@@ -112,11 +112,17 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  Arg::parse(argc,argv);
-
+  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  
   if (print_version_and_exit) {
     printf("%s\n",gmtk_version_id);
+    exit(0);
   }
+  
+  if(!parse_was_ok) {
+    Arg::usage(); exit(-1);
+  }
+
 
   ////////////////////////////////////////////
   // Write index files for all decision trees in the master file 

@@ -320,7 +320,12 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  Arg::parse(argc,argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  
+  if(!parse_was_ok) {
+    Arg::usage(); exit(-1);
+  }
+
   (void) IM::setGlbMsgLevel(verbosity);
 
   if (chunkSkip < 1)

@@ -105,6 +105,7 @@ static int endSkip = 0;
 // General Options
 static bool seedme = false;
 static unsigned verbosity = IM::Default;
+static bool help =false;
 static bool print_version_and_exit = false;
 
 /////////////////////////////////////////////////////////////
@@ -203,6 +204,7 @@ Arg Arg::Args[] = {
   // General Options
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
+  Arg("help",   Arg::Tog, help,  "Print this message"),
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 
   /////////////////////////////////////////////////////////////
@@ -274,13 +276,23 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  Arg::parse(argc,argv);
-  (void) IM::setGlbMsgLevel(verbosity);
-
+  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  if(help) {
+    Arg::usage();
+    exit(0);
+  }
+  
   if (print_version_and_exit) {
     printf("%s\n",gmtk_version_id);
     exit(0);
   }
+
+  if(!parse_was_ok) {
+    Arg::usage(); exit(-1);
+  }
+
+  (void) IM::setGlbMsgLevel(verbosity);
+
 
   if (MixtureCommon::cacheMixtureProbabilities)
     MixtureCommon::cacheComponentsInEmTraining = true;

@@ -112,6 +112,7 @@ char *cppCommandOptions = NULL;
 int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
 int ns=GMTK_DEFAULT_NUM_SPLITS;
 
+bool help =false;
 bool print_version_and_exit = false;
 
 Arg Arg::Args[] = {
@@ -172,7 +173,7 @@ Arg Arg::Args[] = {
  Arg("numSplits",Arg::Opt,ns,"Number of splits to use in logspace recursion (>=2)."),
 
   Arg("baseCaseThreshold",Arg::Opt,bct,"Base case threshold to end recursion (>=2)."),
-
+  Arg("help",   Arg::Tog, help,  "Print this message"),
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 
   Arg()
@@ -195,10 +196,20 @@ main(int argc,char*argv[])
   ieeeFPsetup();
   set_new_handler(memory_error);
 
-  Arg::parse(argc,argv);
-
-  if (print_version_and_exit)
+  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  if(help) {
+    Arg::usage();
+    exit(0);
+  }
+  
+  if (print_version_and_exit) {
     printf("%s\n",gmtk_version_id);
+    exit(0);
+  }
+
+  if(!parse_was_ok) {
+    Arg::usage(); exit(-1);
+  }
 
   map<int, string> word_map;
   if (wordVar != NULL)

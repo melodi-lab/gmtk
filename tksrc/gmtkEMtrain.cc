@@ -124,6 +124,7 @@ int ns=GMTK_DEFAULT_NUM_SPLITS;
 
 unsigned allocateDenseCpts=0;
 
+bool help =false;
 bool print_version_and_exit = false;
 
 Arg Arg::Args[] = {
@@ -241,7 +242,7 @@ Arg("showCliques",Arg::Opt,show_cliques,"Show the cliques after the network has 
   Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture and component probabilities during EM training, speeds things up but uses more memory."),
 
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
-
+  Arg("help",   Arg::Tog, help,  "Print this message"),
   // final one to signal the end of the list
   Arg()
 
@@ -266,10 +267,20 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  Arg::parse(argc,argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  if(help) {
+    Arg::usage();
+    exit(0);
+  }
 
-  if (print_version_and_exit)
+  if (print_version_and_exit) {
     printf("%s\n",gmtk_version_id);
+    exit(0);
+  }
+
+  if(!parse_was_ok) {
+    Arg::usage(); exit(-1);
+  }
 
   if (MixtureCommon::cacheMixtureProbabilities)
     MixtureCommon::cacheComponentsInEmTraining = true;
