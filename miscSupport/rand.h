@@ -20,8 +20,8 @@
 #include <math.h>
 
 extern "C" {
-extern double drand48(void);
-unsigned short *seed48(unsigned short seed16v[3]);
+  extern double drand48(void);
+  unsigned short *seed48(unsigned short seed16v[3]);
 };
 
 class RAND {
