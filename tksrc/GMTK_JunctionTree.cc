@@ -3217,6 +3217,11 @@ JunctionTree::collectEvidence()
 		   E1_message_order,
 		   "E1",partNo);
 
+  // root clique of last partition did not do partition, since it
+  // never sent to next separator (since there is none). We explicitly
+  // call pruning on the root clique of the last partition.
+  jtIPartitions[partNo].maxCliques[E_root_clique].ceDoAllPruning();
+
 }
 
 
@@ -3412,6 +3417,7 @@ JunctionTree::distributeEvidence()
 		     E_root_clique,
 		     E1_message_order,
 		     "E1",partNo);
+
   partNo--;
 
   prv_nm = ((!gm_template.leftInterface)?"Cu0":"Co");
@@ -3470,6 +3476,52 @@ JunctionTree::distributeEvidence()
 		     "P1",partNo);
 
 }
+
+/*
+ * Must be called after collectEvidence() or distributeEvidence() has been called.
+ *
+ */
+void
+JunctionTree::printAllCliques(FILE* f,const bool normalize)
+{
+  unsigned partNo = 0;
+  char buff[2048];
+  if (pPartCliquePrintRange != NULL) {
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (it <= pPartCliquePrintRange->max()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      sprintf(buff,"Partition %d (P), Clique %d:",partNo,cliqueNum); 
+      jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+      it++;
+    }
+  }
+  partNo++;
+
+  if (cPartCliquePrintRange != NULL) {
+    for (;partNo<jtIPartitions.size()-1;partNo++) {
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+      while (it <= cPartCliquePrintRange->max()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	sprintf(buff,"Partition %d (C), Clique %d:",partNo,cliqueNum); 
+	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+	it++;
+      }
+    }
+  } else {
+    partNo = jtIPartitions.size()-1;
+  }
+    
+  if (ePartCliquePrintRange != NULL) {
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (it <= ePartCliquePrintRange->max()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      sprintf(buff,"Partition %d (E), Clique %d:",partNo,cliqueNum); 
+      jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+      it++;
+    }
+  }
+}
+
 
 
 /*-
@@ -3663,6 +3715,11 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		   E1_message_order,
 		   "E1",partNo);
 
+  // root clique of last partition did not do partition, since it
+  // never sent to next separator (since there is none). We explicitly
+  // call pruning on the root clique of the last partition.
+  curPart->maxCliques[E_root_clique].ceDoAllPruning();
+
   logpr rc = curPart->maxCliques[E_root_clique].sumProbabilities();
   
   delete curPart;
@@ -3823,6 +3880,10 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
 		   E1_message_order,
 		   "E1",partNo);
 
+  // root clique of last partition did not do partition, since it
+  // never sent to next separator (since there is none). We explicitly
+  // call pruning on the root clique of the last partition.
+  curPart->maxCliques[E_root_clique].ceDoAllPruning();
 
   res = curPart->maxCliques[E_root_clique].sumProbabilities();
  finished:
@@ -3852,9 +3913,13 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
  *        ceGatherIntoRoot - call CE into the root (RI) of a partition
  *        createPartition - create the partition at location given
  *        ceSendToNextPartition - send from RI of left partition to LI of next right partition.
+ *        cePruneRootCliqueOfPartition - explicitly prune the root cliuqe of the partition 
  *        deReceiveToPreviousPartition - send from LI of right partition to RI of previous left partition
  *        deletePartition - free memory associated with partition, and set array ptr to NULL
  *        deScatterOutofRoot - call DE from root (RI) of a partition
+ *        probEvidenceRoot - return the prob of evidence from the root clique of the partition
+ *        emIncrementIsland - name says it all
+ *        printAllCliques - print out all clique entries according to clique ranges.
  *
  *    Note that these routines only do real work if the current prob evidence is
  *    something other than zero. As if it is zero, that means that
@@ -3978,6 +4043,27 @@ JunctionTree::emIncrementIsland(const unsigned part,
 	  part,partPArray[part].nm);
   return partPArray[part].p->emIncrement(cur_prob_evidence,localCliqueNormalization,curEMTrainingBeam);
 }
+void
+JunctionTree::printAllCliques(const unsigned part,FILE* f,const bool normalize)
+{
+  BP_Range* rng;
+  if (part == 0) 
+    rng = pPartCliquePrintRange;
+  else if (part == partPArray.size()-1)
+    rng = ePartCliquePrintRange;
+  else 
+    rng = cPartCliquePrintRange;
+  char buff[2048];
+  if (rng != NULL) {
+    BP_Range::iterator it = rng->begin();
+    while (it <= rng->max()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      sprintf(buff,"Partition %d (%s), Clique %d:",part,partPArray[part].nm,cliqueNum); 
+      partPArray[part].p->maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+      it++;
+    }
+  }
+}
 
 
 
@@ -4043,17 +4129,12 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
       // incarnation/instantiation of the current partition.  Note,
       // that if we don't send a message to the next partition, we do
       // need to prune last clique of this partition here since that
-      // is what would have happened ordinarily. At the moment, normal
-      // CE does not prune last clique of the last partition (i.e.,
-      // E_root_clique), but all the non-last partition's root cliques
-      // do need to be pruned, as otherwise there might be entries in
-      // that clique not contained in its previously-created outgoing
-      // separator. Therefore, we explicitly prune here in that case.
-      if (part < (partPArray.size()-1)) {
-	// we're not the last partition, so need to do explicit
-	// pruning.
-	cePruneRootCliqueOfPartition(part);
-      }
+      // is what would have happened ordinarily. 
+      // All the partition's root cliques need to be pruned, as
+      // otherwise there might be entries in that clique not contained
+      // in its previously-created outgoing separator. Therefore, we
+      // explicitly prune here in that case.
+      cePruneRootCliqueOfPartition(part);
     }
   }
   for (unsigned part = end; (1);) { 
@@ -4114,6 +4195,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
     if (runEMalgorithm && cur_prob_evidence.not_essentially_zero()) {
       emIncrementIsland(part,cur_prob_evidence,localCliqueNormalization);
     }
+    printAllCliques(part,stdout,true);
 
     if (part == start)
       break;
@@ -4649,7 +4731,31 @@ JunctionTree::printCurrentRVValues(FILE *f)
   }
 }
 
-
+void
+JunctionTree::setCliquePrintRanges(char *p,char*c,char*e)
+{
+  if (p != NULL) {
+    BP_Range* tmp = new BP_Range(p,0,gm_template.P.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      pPartCliquePrintRange = tmp;
+  }
+  if (c != NULL) {
+    BP_Range* tmp = new BP_Range(c,0,gm_template.C.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      cPartCliquePrintRange = tmp;
+  }
+  if (e != NULL) {
+    BP_Range* tmp = new BP_Range(e,0,gm_template.E.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      ePartCliquePrintRange = tmp;
+  }
+}
 
 #if 0
 

@@ -356,6 +356,7 @@ class JunctionTree  {
   void emIncrementIsland(const unsigned part,
 			 const logpr probE, 
 			 const bool localCliqueNormalization);
+  void printAllCliques(const unsigned part,FILE* f,const bool normalize);
 
   void collectDistributeIslandRecurse(const unsigned start,
 				      const unsigned end,
@@ -407,12 +408,25 @@ public:
   // namely \sum_hidden P(evidence,hidden)
   static bool viterbiScore;
 
+  // range of cliques within each partition to print out when doing
+  // CE/DE inference. If these are NULL, then we print nothing.
+  BP_Range* pPartCliquePrintRange;
+  BP_Range* cPartCliquePrintRange;
+  BP_Range* ePartCliquePrintRange;
 
   // constructor
   JunctionTree(GMTemplate& arg_gm_template)
     : curEMTrainingBeam(-LZERO),
       fp(arg_gm_template.fp),
-      gm_template(arg_gm_template) {}
+      gm_template(arg_gm_template) 
+  {
+    pPartCliquePrintRange = cPartCliquePrintRange = ePartCliquePrintRange = NULL;
+  }
+  ~JunctionTree() {
+    delete pPartCliquePrintRange;
+    delete cPartCliquePrintRange;
+    delete ePartCliquePrintRange;
+  }
 
   // the fixed file parser for this model, for RV unrolling, etc.
   FileParser& fp;
@@ -550,7 +564,8 @@ public:
 			     set <RV*>* lp_nodes,set <RV*>* rp_nodes);
   void printMessageOrder(FILE *f,vector< pair<unsigned,unsigned> >& message_order);
   void printCurrentRVValues(FILE* f);
-
+  void setCliquePrintRanges(char *p,char*c,char*e);
+  void printAllCliques(FILE* f,const bool normalize);
 
   // 
   // Do some last-minute data structure setup to prepare for

@@ -109,6 +109,9 @@ static int endSkip = 0;
 static bool seedme = false;
 static unsigned verbosity = IM::Default;
 static bool print_version_and_exit = false;
+static char* pPartCliquePrintRange = NULL;
+static char* cPartCliquePrintRange = NULL;
+static char* ePartCliquePrintRange = NULL;
 
 /////////////////////////////////////////////////////////////
 // Memory management options 
@@ -204,6 +207,11 @@ Arg Arg::Args[] = {
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
+
+  Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P partition."),
+  Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C partition."),
+  Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E partition."),
+
 
   /////////////////////////////////////////////////////////////
   // Inference Options
@@ -417,6 +425,7 @@ main(int argc,char*argv[])
   myjt.prepareForUnrolling();
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
+  myjt.setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
@@ -434,6 +443,12 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
+  if (island) {
+    if (MixtureCommon::cacheMixtureProbabilities == true) {
+      infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
+      fflush(stdout);
+    }
+  }
 
   BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
   while ((*dcdrng_it) <= dcdrng->max()) {
@@ -454,10 +469,6 @@ main(int argc,char*argv[])
 	     probe.val()/numFrames,
 	     probe.val()/numUsableFrames);
     } else if (island) {
-      if (MixtureCommon::cacheMixtureProbabilities == true) {
-	infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
-	fflush(stdout);
-      }
       unsigned numUsableFrames;
       myjt.collectDistributeIsland(numFrames,
 				   numUsableFrames,
@@ -483,14 +494,17 @@ main(int argc,char*argv[])
 
 	if (JunctionTree::viterbiScore)
 	  infoMsg(IM::SoftWarning,"Note: Clique sums will be different since viteri option is active\n");
-	myjt.printAllCliquesProbEvidence();
-	
-	probe = myjt.probEvidence();
-	printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	       segment,
-	       probe.val(),
-	       probe.val()/numFrames,
-	       probe.val()/numUsableFrames);
+	if (IM::messageGlb(IM::Low)) {
+	  myjt.printAllCliquesProbEvidence();
+	  probe = myjt.probEvidence();
+	  printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		 segment,
+		 probe.val(),
+		 probe.val()/numFrames,
+		 probe.val()/numUsableFrames);
+	}
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	  myjt.printAllCliques(stdout,true);
       }
     }
     (*dcdrng_it)++;
