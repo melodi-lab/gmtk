@@ -62,8 +62,6 @@ extern ObservationMatrix globalObservationMatrix;
 
 class VECPT : public CPT {
 
-  unsigned parentCardinality;
-
   // the mode. Dense means that we have a score in the obs file for
   // all parent values. Sparse means that the obs file consists of
   // floats and same number of ints which give DiscRV value for each
