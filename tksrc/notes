@@ -115,7 +115,7 @@ mixgauss swap
 
 to get compiling on IBM
 
-- fileparser, 
+- GMTK_FileParser.lex
   already defined fileno
 
 - no libsunmath to use.
@@ -123,3 +123,6 @@ to get compiling on IBM
 - using g++ w/o a path in makefiles
 
 - ieeefp.h
+
+- fileParser.cc
+     write() overload problem.
