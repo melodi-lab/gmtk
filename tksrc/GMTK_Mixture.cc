@@ -174,7 +174,8 @@ MixGaussians::emIncrement(logpr prob,
 
   emStartIteration();
 
-  if (prob.val() < log_FLT_MIN) {
+  if (prob < minIncrementProbabilty) {
+    missedIncrementCount++;
     return;
   } 
   accumulatedProbability+= prob;
