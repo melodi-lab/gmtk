@@ -1,12 +1,12 @@
 //
 //
 // Log probability class for single or double precision numbers.
-// Much of the inspiration for this code was taken from HTK's HMath.c
+// Inspiration for this code was taken from HTK's HMath.c
 //
 // $Header$
 //
 // Written by: Jeff Bilmes
-//             bilmes@icsi.berkeley.edu
+//             bilmes@ee.washington.edu
 
 
 #ifndef LOGP_H

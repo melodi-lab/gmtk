@@ -3,7 +3,7 @@
 // parsing and and using bi-polar range specifications.
 //     For example: -3:10 means { -3, -2, -1, 0, ...., 10 }
 // 
-// Jeff Bilmes <bilmes@icsi.berkeley.edu>  Sep 1997
+// Jeff Bilmes <bilmes@ee.washington.edu>
 //
 // $Header$
 //

@@ -3,7 +3,7 @@
 //
 // $Header$
 // Written by: Jeff Bilmes
-//             bilmes@icsi.berkeley.edu
+//             bilmes@ee.washington.edu
 
 
 #ifndef GENERAL_H
@@ -19,7 +19,7 @@
 
 char *copyToNewStr(const char *const str);
 
-bool strIsInt(const char *const str, int& i);
+bool strIsInt(const char *const str, int* i=NULL,int* len=NULL);
 
 
 // a general swapping routine.
