@@ -17,8 +17,8 @@ OPTFLAGS = -g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse "$(EXCOMFLAGS)"
 # GMTK modules 
 MODULES = \
 	IEEEFloatingpoint \
-	featureFileIO \
 	miscSupport \
+	featureFileIO \
 	tksrc
 
 # files/dirs that should not be contained in distribution. 
