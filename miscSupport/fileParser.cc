@@ -230,13 +230,13 @@ iDataStreamFile::readStr(char*& str, char *msg)
     do {
       size_t rc = fread(&c, sizeof(char), 1,fh);
       if (rc != 1)
-	return errorReturn("readChar",msg);
+	return errorReturn("readStr",msg);
       tmp.growByNIfNeededAndCopy(2,len+1);
       tmp.ptr[len++] = c;
     } while (c != '\0');
   } else {
     if (!prepareNext())
-      return errorReturn("readChar",msg);
+      return errorReturn("readStr",msg);
     // read until a space. Add a null character
     // onto the end of the string.
     char c;
@@ -259,15 +259,20 @@ iDataStreamFile::readString(string& str, char *msg)
   if (Binary) {
     char c;
     // read a string up to the next NULL character.
-    do {
+    size_t rc = fread(&c, sizeof(char), 1,fh);
+    if (rc != 1)
+      return errorReturn("readString",msg);
+    while (c != '\0') {
+      str += c;
       size_t rc = fread(&c, sizeof(char), 1,fh);
       if (rc != 1)
-	return errorReturn("readChar",msg);
-      str += c;
-    } while (c != '\0');
+	return errorReturn("readString",msg);
+    }
+    if (str.size() == 0)
+	return errorReturn("readString, zero length string",msg);
   } else {
     if (!prepareNext())
-      return errorReturn("readChar",msg);
+      return errorReturn("readString",msg);
     // read until a space. Add a null character
     // onto the end of the string.
     char c = *buffp++;
@@ -290,14 +295,14 @@ iDataStreamFile::readToken(string& str, const string& tokenChars, char *msg)
     do {
       size_t rc = fread(&c, sizeof(char), 1,fh);
       if (rc != 1)
-	return errorReturn("readChar",msg);
+	return errorReturn("readToken",msg);
       if (c == '\0' || tokenChars.find(c,0) == string::npos)
 	break;
       str += c;
     } while (1);
   } else {
     if (!prepareNext())
-      return errorReturn("readChar",msg);
+      return errorReturn("readToken",msg);
     // read until a space. Add a null character
     // onto the end of the string.
     char c = *buffp;
