@@ -533,7 +533,7 @@ main(int argc,char*argv[])
   if (globalObservationMatrix.numSegments()==0)
     error("ERROR: no segments are available in observation file");
 
-  BP_Range* dcdrng = new BP_Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+  Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
   if (dcdrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 	  dcdrng_str);
@@ -551,8 +551,7 @@ main(int argc,char*argv[])
     }
   }
 
-  BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
-  //  while ((*dcdrng_it) <= dcdrng->max()) {
+  Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
     if (globalObservationMatrix.numSegments() < (segment+1)) 

@@ -572,7 +572,7 @@ main(int argc,char*argv[])
     exit_program_with_status(0);
   }
 
-  BP_Range* trrng = new BP_Range(trrng_str,0,globalObservationMatrix.numSegments());
+  Range* trrng = new Range(trrng_str,0,globalObservationMatrix.numSegments());
 #if 0
   if (trrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
@@ -606,8 +606,8 @@ main(int argc,char*argv[])
       inf.read(total_data_prob.valref());
       GM_Parms.emLoadAccumulators(inf);
     } else {
-      BP_Range lfrng(loadAccRange,0,1000);
-      for (BP_Range::iterator lfit=lfrng.begin();
+      Range lfrng(loadAccRange,0,1000);
+      for (Range::iterator lfit=lfrng.begin();
 	   !lfit.at_end();
 	   lfit++) {
 	const int bufsize = 2048;
@@ -649,8 +649,7 @@ main(int argc,char*argv[])
 
     if (trrng->length() > 0) {
       total_data_prob = 1.0;
-      BP_Range::iterator* trrng_it = new BP_Range::iterator(trrng->begin());
-      //      while ((*trrng_it) <= trrng->max()) {
+      Range::iterator* trrng_it = new Range::iterator(trrng->begin());
       while (!trrng_it->at_end()) {
 	const unsigned segment = (unsigned)(*(*trrng_it));
 	if (globalObservationMatrix.numSegments() < (segment+1)) 
