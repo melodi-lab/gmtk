@@ -178,7 +178,7 @@ ARGS ARGS::Args[] = {
 
   ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
   ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
-  ARGS("beam",ARGS::Opt,beam,"Beam, values less than this*max are pruned"),
+  ARGS("beam",ARGS::Opt,beam,"Beam width (less than max*exp(-beam) are pruned away)"),
 
   // support for splitting and vanishing
   ARGS("mcvr",ARGS::Opt,MixGaussiansCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
@@ -190,6 +190,11 @@ ARGS ARGS::Args[] = {
   ARGS("meanCloneSTDfrac",ARGS::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
   ARGS("covarCloneSTDfrac",ARGS::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
   ARGS("dlinkCloneSTDfrac",ARGS::Opt,DlinkMatrix::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+
+  ARGS("cloneShareMeans",ARGS::Opt,GaussianComponent::cloneShareMeans,"Gaussian component clone shares parent mean"),
+  ARGS("cloneShareCovars",ARGS::Opt,GaussianComponent::cloneShareCovars,"Gaussian component clone shares parent covars"),
+  ARGS("cloneShareDlinks",ARGS::Opt,GaussianComponent::cloneShareDlinks,"Gaussian component clone shares parent dlinks"),
+
 
   ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
   ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
