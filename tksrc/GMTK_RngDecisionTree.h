@@ -355,7 +355,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
   } else {
     node->leaf = false;
     node->nonLeafNode.ftr = curFeat;
-    int numSplits;
+    unsigned numSplits;
     is.read(numSplits,"RngDecisionTree:: readRecurse numSplits");
     if (numSplits <= 1)
       error("RngDecisionTree:: readRecurse, can't have < 1 split");
@@ -386,8 +386,8 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
       ///////////////////////////////////////////////////////////////
     }
     // check for overlap errors in the strings
-    for (int i=0;i<numSplits-1;i++) {
-      for (int j=i+1;j<numSplits-1;j++) {
+    for (unsigned i=0;i<numSplits-1;i++) {
+      for (unsigned j=i+1;j<numSplits-1;j++) {
 	if (node->nonLeafNode.rngs[i]
 	    ->overlapP(
 		       node->nonLeafNode.rngs[j]))
@@ -397,7 +397,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
       }
     }
 
-    for (int i=0;i<numSplits;i++)
+    for (unsigned i=0;i<numSplits;i++)
       node->nonLeafNode.children[i] =
 	readRecurse(is,prevLeaf);
   }
