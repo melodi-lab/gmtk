@@ -165,7 +165,10 @@ public:
     // This indexes the set of conditional parents to use.
     int intFromSwitchingState() 
     {
-      return dtMapper->query(switchingParents);
+      if (dtMapper == NULL)
+	return 0;
+      else
+	return dtMapper->query(switchingParents);
     }
 
     ////////////////////////////////////////////////////////////////////////
