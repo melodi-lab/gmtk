@@ -349,6 +349,8 @@ public:
     findConditionalParents();
     if (!hidden) {
       // Observed value must be already set via setToObservedValue();
+      // We do not need to begin the CPT since probGivenParents() takes
+      // the current conditional parents directly.
       DiscreteRandomVariable::probGivenParents(p);      
       return;
     }

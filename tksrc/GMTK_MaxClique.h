@@ -485,7 +485,7 @@ public:
     // We have 6 cases, each case has 1 or more name.
 
     //
-    // 1)
+    // 0)
     //   v is not in sepNodes, and v is a prob node as well, v either
     //   sparse or dense:  meaning we multiply this clique potential by
     //   prob(v|parents(v)). We use CPT iteration to iterate over v
@@ -494,7 +494,7 @@ public:
     AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB=0,
 
     //
-    // 2) 
+    // 1) 
     //   v is not in sepNodes, and v is not a prob node, and V is
     //   sparse. We still use CPT iteration to iterate over v given
     //   parents, but do not multiply clique potential by
@@ -504,7 +504,7 @@ public:
     AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS=1,
 
     //
-    // 3)
+    // 2)
     //   v is not in sepNodes, and v is not a prob node, and V is NOT
     //   sparse.  We iterate using [0,card-1] and continue, and do not
     //   change any probabilities. Note, we could still
@@ -516,7 +516,7 @@ public:
     AN_CARD_ITERATION=2,
 
     //
-    // 4)
+    // 3)
     //   v is in sepNodes, and v is a probability node, v either
     //   sparse or dense. Then we compute the probability for v, apply
     //   it, and continue only if the probabilty is non zero.
@@ -524,7 +524,7 @@ public:
     AN_COMPUTE_AND_APPLY_PROB=3,
 
     //
-    // 5) 
+    // 4) 
     //   A) v is in sepNodes, v is not a probability node, v either
     //   sparse or dense, but v *WAS* assigned in some previous JT
     //   clique. In this case, we just continue on since we know at
@@ -540,7 +540,7 @@ public:
     AN_CONTINUE=4,
 
     //
-    // 6)
+    // 5)
     //   v is in sepNodes, v is not a probability node, v sparse, but
     //   v was *NOT* assigned in a previous JT clique. Then, since v
     //   is sparse, we check here to make sure that the probability of
