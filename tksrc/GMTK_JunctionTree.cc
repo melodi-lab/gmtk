@@ -3525,7 +3525,7 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
   char buff[2048];
   if (pPartCliquePrintRange != NULL) {
     BP_Range::iterator it = pPartCliquePrintRange->begin();
-    while (it <= pPartCliquePrintRange->max()) {
+    while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       sprintf(buff,"Partition %d (P), Clique %d:",partNo,cliqueNum); 
       jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
@@ -3537,7 +3537,7 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
   if (cPartCliquePrintRange != NULL) {
     for (;partNo<jtIPartitions.size()-1;partNo++) {
       BP_Range::iterator it = cPartCliquePrintRange->begin();
-      while (it <= cPartCliquePrintRange->max()) {
+      while (!it.at_end()) {
 	const unsigned cliqueNum = (unsigned)(*it);
 	sprintf(buff,"Partition %d (C), Clique %d:",partNo,cliqueNum); 
 	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
@@ -3550,7 +3550,7 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
     
   if (ePartCliquePrintRange != NULL) {
     BP_Range::iterator it = ePartCliquePrintRange->begin();
-    while (it <= ePartCliquePrintRange->max()) {
+    while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       sprintf(buff,"Partition %d (E), Clique %d:",partNo,cliqueNum); 
       jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
@@ -4093,7 +4093,7 @@ JunctionTree::printAllCliques(const unsigned part,FILE* f,const bool normalize)
   char buff[2048];
   if (rng != NULL) {
     BP_Range::iterator it = rng->begin();
-    while (it <= rng->max()) {
+    while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       sprintf(buff,"Partition %d (%s), Clique %d:",part,partPArray[part].nm,cliqueNum); 
       partPArray[part].p->maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
