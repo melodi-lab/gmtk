@@ -76,6 +76,8 @@
 #include "machine-dependent.h"
 #include "bp_range.h"
 #include "GMTK_Stream.h"
+#include "ieeeFPsetup.h"
+
 
 #define TRANS_NORMALIZATION_LETTER 'N'
 #define TRANS_MEAN_SUB_LETTER 'E'
@@ -300,6 +302,22 @@ class ObservationMatrix {
 	      actionIfDiffNumFrames,actionIfDiffNumSents,
 	      perStreamPreTransforms,postTransforms,ftrcombo);
   }
+
+  unsigned formatStrToNumber(const char * fmt) {
+    if (strcmp(fmt,"htk") == 0)
+      return HTK;
+    else if (strcmp(fmt,"binary") == 0)
+      return RAWBIN;
+    else if (strcmp(fmt,"ascii") == 0)
+      return RAWASC;
+    else if (strcmp(fmt,"pfile") == 0)
+      return  PFILE;
+    else {
+      error("ERROR: Unknown observation file format type: '%s'\n",fmt);
+      return 0;
+    }
+  }
+
 
   
   ///////////////////////////////////////////////////////////
