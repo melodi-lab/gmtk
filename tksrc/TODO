@@ -263,6 +263,9 @@ X make sure that dlinkmatrix precompute is being
   of a DT an continue on using another DT, to make sharing
   easier, and save memory for big DTs).
 
-X option to floor variances when they are read in.
+- option to floor variances when they are read in.
+  (for all programs including ascii/binary conversion)
+
+- ascii/binary conversion program can go both ways.
 
 - dynamic DTs, error messages should print cur name as well as base name. 
