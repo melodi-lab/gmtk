@@ -2073,7 +2073,10 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
     }
 
 #define EMCLEARAMTRAININGBIT_CODE(mapName,name) \
-      if ((it=mapName.find(objName)) == mapName.end()) \
+      if (objName == "*") { \
+         for (unsigned i=0;i<name.size();i++)  \
+            name[i]->emClearAmTrainingBit(); \
+      } else if ((it=mapName.find(objName)) == mapName.end()) \
 	error("ERROR: can't find object '%s' of type '%s' listed in file '%s' of objects to not train.", \
 	      objName.c_str(), \
 	      objType.c_str(), \
