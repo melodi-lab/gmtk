@@ -2024,3 +2024,6 @@ Tue Jul 27 14:57:19 2004
     rather than generate all of C only to have it squashed when going into B, we can use AB sep to
     keep C from generating in the first place the stuff that will ultimately just get squashed.
 
+
+Tue Jul 27 17:44:28 2004
+j - trifile prints out more partition information, interface , number of variables, etc.bb
