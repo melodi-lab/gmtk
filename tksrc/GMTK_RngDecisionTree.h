@@ -38,7 +38,7 @@
 
 #include "fileParser.h"
 #include "logp.h"
-#include "sArray.h"
+#include "vector.h"
 #include "bp_range.h"
 
 
@@ -80,8 +80,8 @@ protected:
     bool leaf;
     struct NonLeafNode {
       int ftr;
-      sArray< Node* > children;
-      sArray< BP_Range* > rngs;
+      vector< Node* > children;
+      vector< BP_Range* > rngs;
     } nonLeafNode;
     struct LeafNode {
       T value;
@@ -117,9 +117,9 @@ protected:
 
   ///////////////////////////////////////////////////////////    
   // support for querying
-  T queryRecurse(const sArray < int >& arr,
+  T queryRecurse(const vector < int >& arr,
 		 Node *n);
-  T queryRecurse(const sArray < RandomVariable* >& arr,
+  T queryRecurse(const vector < RandomVariable* >& arr,
 		 Node *n);
 
 
@@ -172,13 +172,13 @@ public:
   ///////////////////////////////////////////////////////////    
   // Make a query and return the value corresponding to
   // the array of integers.
-  T query(const sArray < int >& arr);
+  T query(const vector < int >& arr);
 
 
   ///////////////////////////////////////////////////////////    
   // Make a query and return the value corresponding to
   // the array of integers, from an array of random variables.
-  T query(const sArray < RandomVariable* >& arr);
+  T query(const vector < RandomVariable* >& arr);
 
 
   ///////////////////////////////////////////////////////////    
@@ -254,10 +254,10 @@ RngDecisionTree<T>::destructorRecurse(RngDecisionTree<T>::Node* node)
   if (node->leaf) {
     // do nothing
   } else {
-    for (int i=0;i<node->nonLeafNode.children.len();i++) {
+    for (unsigned i=0;i<node->nonLeafNode.children.size();i++) {
       destructorRecurse(node->nonLeafNode.children[i]);
       delete node->nonLeafNode.children[i];
-      if (i<node->nonLeafNode.children.len()-1)
+      if (i<node->nonLeafNode.children.size()-1)
 	delete node->nonLeafNode.rngs[i];
     }
   }
@@ -365,7 +365,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
     node->nonLeafNode.children.resize(numSplits);
     // rngs is smaller since last string is always the default catch-all.
     node->nonLeafNode.rngs.resize(numSplits-1);
-    for (int i=0;i<numSplits;i++) {
+    for (unsigned i=0;i<numSplits;i++) {
       char *str;
       is.read(str,"RngDecisionTree:: readRecurse, reading range");
       if (i==(numSplits-1)) {
@@ -472,13 +472,13 @@ RngDecisionTree<T>::writeRecurse(oDataStreamFile& os,
   } else {
     os.space(depth*2);
     os.write(n->nonLeafNode.ftr,"writeRecurse, ftr");
-    os.write(n->nonLeafNode.children.len(),"writeRecurse, numsplits");
-    for (int i=0;i<n->nonLeafNode.rngs.len();i++) {
+    os.write(n->nonLeafNode.children.size(),"writeRecurse, numsplits");
+    for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
       os.write(n->nonLeafNode.rngs[i]->rangeStr());
     }
     os.write(RNG_DECISION_TREE_DEF_STR);
     os.nl();
-    for (int i=0;i<n->nonLeafNode.children.len();i++) 
+    for (unsigned i=0;i<n->nonLeafNode.children.size();i++) 
       writeRecurse(os,n->nonLeafNode.children[i],depth+1);
   }
 }
@@ -514,9 +514,9 @@ RngDecisionTree<T>::writeRecurse(oDataStreamFile& os,
  *-----------------------------------------------------------------------
  */
 template <class T> 
-T RngDecisionTree<T>::query(const sArray < int >& arr)
+T RngDecisionTree<T>::query(const vector < int >& arr)
 {
-  assert ( arr.len() == _numFeatures );
+  assert ( int(arr.size()) == _numFeatures );
   return queryRecurse(arr,root);
 }
 
@@ -543,19 +543,19 @@ T RngDecisionTree<T>::query(const sArray < int >& arr)
  *-----------------------------------------------------------------------
  */
 template <class T> 
-T RngDecisionTree<T>::queryRecurse(const sArray < int >& arr,
+T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
 				RngDecisionTree<T>::Node *n)
 {
   if (n->leaf)
     return n->leafNode.value;
 
-  assert ( n->nonLeafNode.ftr < arr.len() );
+  assert ( n->nonLeafNode.ftr < int(arr.size()) );
   assert ( arr[n->nonLeafNode.ftr] >= 0 &&
 	   arr[n->nonLeafNode.ftr] <= 
 	   RNG_DECISION_TREE_MAX_CARDINALITY );
 
   const int val = arr[n->nonLeafNode.ftr];
-  for (int i=0;i<n->nonLeafNode.rngs.len();i++ ) {
+  for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++ ) {
     // TODO: turn this into a log(n) operation
     // rather than linear. To do this, we'll need
     // to make sure that the ranges are in order.
@@ -564,7 +564,7 @@ T RngDecisionTree<T>::queryRecurse(const sArray < int >& arr,
       return queryRecurse(arr,n->nonLeafNode.children[i]);
   }
   // failed lookup, so return must be the default one.
-  return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.len()]);
+  return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
 }
 
 
@@ -591,30 +591,30 @@ T RngDecisionTree<T>::queryRecurse(const sArray < int >& arr,
  *-----------------------------------------------------------------------
  */
 template <class T> 
-T RngDecisionTree<T>::query(const sArray < RandomVariable* >& arr)
+T RngDecisionTree<T>::query(const vector < RandomVariable* >& arr)
 {
-  assert ( arr.len() == _numFeatures );
+  assert ( int(arr.size()) == _numFeatures );
   return queryRecurse(arr,root);
 }
 template <class T> 
-T RngDecisionTree<T>::queryRecurse(const sArray < RandomVariable* >& arr,
+T RngDecisionTree<T>::queryRecurse(const vector < RandomVariable* >& arr,
 				   RngDecisionTree<T>::Node *n)
 {
   if (n->leaf)
     return n->leafNode.value;
 
-  assert ( n->nonLeafNode.ftr < arr.len() );
+  assert ( n->nonLeafNode.ftr < int(arr.size()) );
   assert ( arr[n->nonLeafNode.ftr]->val >= 0 &&
 	   arr[n->nonLeafNode.ftr]->val <= 
 	   RNG_DECISION_TREE_MAX_CARDINALITY );
 
   const int val = arr[n->nonLeafNode.ftr]->val;
-  for (int i=0;i<n->nonLeafNode.rngs.len();i++ ) {
+  for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++ ) {
     if (n->nonLeafNode.rngs[i]->contains(val))
       return queryRecurse(arr,n->nonLeafNode.children[i]);
   }
   // failed lookup, so return must be the default one.
-  return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.len()]);
+  return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
 }
 
 
