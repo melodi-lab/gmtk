@@ -2413,3 +2413,15 @@ DONE: Tue Sep  7 18:14:56 2004
 
 Sat Sep 11 14:36:36 2004
   - gmtkTime, report performance also in number frames/second.
+
+Tue Sep 14 01:19:08 2004
+  - new DT types
+    - sequence  - successive sorted sequence of integers,no gaps, can start/end at any int, implemented
+                  as an array lookup. 
+    - set - arbitrary set of individual integers, implemented with a hash table.
+    - ranges - arbitray set of integer sets. Imlemented with a hash table for the single integers,
+               and an (sorted if possible) array of bp_range objects for the remainder. 
+
+
+
+ 
