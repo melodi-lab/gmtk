@@ -1010,72 +1010,6 @@ MaxClique
 #endif
 
 
-#if 0
-float
-MaxClique::
-computeWeightInJunctionTree(const set<RV*>& nodes,
-			    const set<RV*>& assignedNodes,
-			    const set<RV*>& unassignedIteratedNodes,
-			    const set<RV*>& separatorNodes,
-			    const set<RV*>& cumulativeAssignedNodes,
-			    const bool useDeterminism)
-{
-  // compute weight in log base 10 so that
-  //   1) we don't overflow
-  //   2) base 10 is an easy to understand magnitude rating of state space.
-
-  float tmp_weight = 0;
-  // Next, get weight of all 'nodes'
-  for (set<RV*>::iterator j=nodes.begin();
-       j != nodes.end();
-       j++) {
-    RV *const rv = (*j);
-    // First get cardinality of 'node', but if
-    // it is continuous or observed, it does not change the weight.
-    // TODO: The assumption here (for now) is that all continuous variables
-    // are observed. This will change in a future version (Lauritzen CG inference).
-    if (rv->discrete() && rv->hidden()) {
-      DiscRV *const drv = (DiscRV*)rv;
-      bool truly_sparse = true;
-      // see comments above for description and rational of this algorithm
-      if (!useDeterminism || !drv->sparse()) {
-	truly_sparse = false;
-      } else if (unassignedIteratedNodes.find(rv) != unassignedIteratedNodes.end()) {
-	truly_sparse = false;
-      } else if (separatorNodes.find(rv) != separatorNodes.end()) {
-	if (assignedNodes.find(rv) != assignedNodes.end()) {
-	  truly_sparse = false;	  
-	} else {
-	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
-	    if (rv->allParentsContainedInSet(separatorNodes)) {
-	      ; // do nothing, we can multiply by use_card.
-	    } else {
-	      // TODO: This is the problem case here. we need to estimate the
-	      // cost.
-	      truly_sparse = true;;
-	    }
-	  } else {
-	    truly_sparse = false;
-	  }
-	}
-      } else {
-	; // do nothing.
-      }
-      // Finally, multiply in the weight depending on if it is "truly
-      // sparse" or not.
-      if (truly_sparse)
-	tmp_weight += log10((double)drv->useCardinality());	
-      else 
-	tmp_weight += log10((double)drv->cardinality);
-    }
-  }
-  return tmp_weight;
-}
-#endif
-
-
-
-
 
 
 
@@ -1175,9 +1109,19 @@ MaxClique::prepareForUnrolling()
  *-----------------------------------------------------------------------
  * MaxClique::computeAssignedNodesDispositions()
  *   
- *   computes the number and set of nodes that are assigned to this clique
- *   that we are actually to iterate over (rather than have them be iterated
- *   by a separator driven iteration).
+ *   computes the disposition of the set of nodes that are assigned to this clique
+ *   (i.e., that have the chance to use cpt iteration). Note that 'assigned'
+ *   nodes are the ones that  exist in the clique with their parents, but
+ *   this does not mean that those nodes contribute probability to this
+ *   clique. Even if they don't contribute probability, if the nodes are
+ *   sparse, it can be beneficial to use that sparsity to consider child
+ *   values rather than iterating over child cardinality (as would
+ *   be done in ceIterateUnassignedIteratedNodes()). Note that
+ *   even some assigned nodes, however, will be cardinality-based iterated, namely
+ *   those that are both not probability contributers to this clique and also
+ *   that are dense. 
+ *   In any event, this routine decides how each node in the clique is iterated.
+ *
  *
  * Preconditions:
  *   assignedNodes, sortedAssignedNodes, and cumulativeUnassignedIteratedNodes members 
@@ -2621,6 +2565,7 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
     return;
   }
   RV* rv = fUnassignedIteratedNodes[nodeNumber];
+  // TODO: update comments here to match others.
   infoMsg(Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
 	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
 
@@ -3523,15 +3468,21 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       // apply the probabiltiy
       logpr cur_p = rv->probGivenParents();
 
-      if (message(Giga)) {
-	if (!rv->discrete()) {
-	  infoMsg(Giga,"Observed Clique prob application of rv %s(%d)=C, nodeNumber =%d, cur_p = %f, p = %f\n",
-		  rv->name().c_str(),rv->frame(),nodeNumber,cur_p.val(),p.val());
+      if (message(Huge)) {
+	psp(stdout,2*nodeNumber);
+	printf("%d:assigned obs/prob app, Pr[",nodeNumber);
+	rv->printNameFrameValue(stdout,false);
+	if (message(Mega)) {
+	  if (rv->allParents.size() > 0) {
+	    printf("|");
+	    printRVSetAndValues(stdout,rv->allParents,false);
+	  }
 	} else {
-	  DiscRV* drv = (DiscRV*)rv;
-	  infoMsg(Giga,"Observed Clique prob application of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
-		  drv->name().c_str(),drv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
+	  if (rv->allParents.size() > 0) {
+	    printf("|parents");
+	  }
 	}
+	printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
       }
 
       // if at any step, we get zero, then back out.
@@ -3547,15 +3498,21 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       // still check for zeros though.
       logpr cur_p = rv->probGivenParents();
 
-      if (message(Giga)) {
-	if (!rv->discrete()) {
-	  infoMsg(Giga,"Observed Clique prob non-application of rv %s(%d)=C, nodeNumber =%d, cur_p = %f, p = %f\n",
-		  rv->name().c_str(),rv->frame(),nodeNumber,cur_p.val(),p.val());
+      if (message(Huge)) {
+	psp(stdout,2*nodeNumber);
+	printf("%d:assigned obs/zero rmv, Pr[",nodeNumber);
+	rv->printNameFrameValue(stdout,false);
+	if (message(Mega)) {
+	  if (rv->allParents.size() > 0) {
+	    printf("|");
+	    printRVSetAndValues(stdout,rv->allParents,false);
+	  }
 	} else {
-	  DiscRV* drv = (DiscRV*)rv;
-	  infoMsg(Giga,"Observed Clique prob non-application of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
-		  drv->name().c_str(),drv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
+	  if (rv->allParents.size() > 0) {
+	    printf("|parents");
+	  } 
 	}
+	printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
       }
 
       if (cur_p.essentially_zero()) {
@@ -3577,6 +3534,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
     // don't bother checking separators.
     maxCEValue.set_to_zero();
     cliqueValues.ptr[0].p.set_to_zero();
+
   } else {
 
     // Now, we check all incoming CE separators, make sure the entry for
@@ -3619,8 +3577,10 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
     cliqueValues.ptr[0].p = p;
   }
 
-  if (message(Giga)) {
-    infoMsg(Giga,"Inserting New (Observed) Clique Value. prob = %f, sum = %f: ",
+  if (message(High)) {
+    if (message(Huge))
+      psp(stdout,2*fSortedAssignedNodes.size());
+    infoMsg(High,"%d:Inserting New Observed Clique Value. prob = %f, sum = %f: ",fSortedAssignedNodes.size(),
 	    cliqueValues.ptr[0].p.val(),sumProbabilities().val());
     printRVSetAndValues(stdout,fNodes);
   }

@@ -451,7 +451,7 @@ public:
   // that once a clique iterates over such a node, any later cliques
   // (closer to the JT root) will not have to re-do this as these
   // assignments here will be represented in this cliques out-going
-  // sepset.
+  // sepset --- this is guaranteed by the running intersection property.
   // Computed in JunctionTree::computeSeparatorIterationOrders()
   // Used to:
   //  1) compute JT weight in clique

@@ -2454,3 +2454,5 @@ Sat Sep 18 21:18:05 2004
   - fix error messages with the bp_range class, since currently range can kill the program
     without any indication of where/when it is wrong.
 
+Tue Sep 21 15:59:32 2004
+  - bug: divide by zero error from bartels, 9/17/04. 

@@ -36,10 +36,11 @@
 #include "GMTK_RVInfo.h"
 
 #include "fileParser.h"
+#include "debug.h"
 
 class RV;
 
-class FileParser
+class FileParser : public IM
 {
  private:
   friend class RV;
@@ -308,7 +309,7 @@ public:
   void parseGraphicalModel();
   void createRandomVariableGraph();
   // ensure no loops in graph for all possible unrollings.
-  void ensureValidTemplate();
+  void ensureValidTemplate(bool longCheck=false);
 
   enum MdcptAllocStatus { noAllocate, allocateRandom, allocateUniform };
   void associateWithDataParams(MdcptAllocStatus allocate = noAllocate);

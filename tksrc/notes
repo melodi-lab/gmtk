@@ -965,7 +965,7 @@ What is needed for each operation:
       But using Cu0 is fine for unrolling 0x clearly.
     - Q: if we do P Cu2_1 Cu2_2 E, we can use Ca for Cu2_1 and use
          Cc for Cu2_2.
-    - Sat Feb  7 16:00:04 2004
+    - Sat Feb  7 16:00:04 2004 (latest as of Tue Sep 21 22:50:38 2004)
        update:
       Plan is to create two temlates:
        u0: P1 Cu0 E1
@@ -974,7 +974,7 @@ What is needed for each operation:
         For left interface case, no, since:
            Cu0 las LI to an P and RI to an E' (really a C)
            C1 las LI to an P and RI to an C (really a C)
-           (so C2 and Cu0 are the same).
+           (so C1 and Cu0 are the same).
         For right interface case, yes, since:
            Cu0 has LI to a P' (really a C) and RI to a real E
            C1 has LI to a P' (really a C) and RI to a real C.
@@ -985,6 +985,7 @@ What is needed for each operation:
         For right interface case, no.
            Cu0 has LI to a P (really a C) and RI to an E
            C2 has LI to a C and RI to an E   
+           (so C2 and Cu0 are the same).
        so we need to 
            make Cu0 and C2 distinct (for left interface)
        and make Cu0 and C1 distinct (for right interface). 

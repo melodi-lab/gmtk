@@ -1238,6 +1238,33 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
     assignRVsToCliques("E1",E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
   }
+
+#ifndef NDEBUG
+
+  // lastly, check to make sure all nodes have been
+  // assigned to to give probability to one clique.
+  set <RV*> allNodes;
+  union_1_2_to_3(P1.nodes,Cu0.nodes,allNodes);
+  union_1_2_to_3(Co.nodes,E1.nodes,allNodes,true);
+  set <RV*> allAssignedProbNodes;
+  union_1_2_to_3(E1.cliques[E_root_clique].cumulativeAssignedProbNodes,
+		 E1.cliques[E_root_clique].assignedProbNodes,
+		 allAssignedProbNodes);
+  set <RV*> nodesThatGiveNoProb;
+  set_difference(allNodes.begin(),allNodes.end(),
+		 allAssignedProbNodes.begin(),allAssignedProbNodes.end(),
+		 inserter(nodesThatGiveNoProb,
+			  nodesThatGiveNoProb.end()));
+  
+  if (nodesThatGiveNoProb.size() > 0) {
+    fprintf(stderr,"INTERNAL ERROR: some nodes do not give any clique probability: ");
+    printRVSet(stderr,nodesThatGiveNoProb);
+    fprintf(stderr,"\n");
+    assert(0);
+  }
+
+#endif
+
 }
 
 
@@ -4427,7 +4454,9 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
  *  one should set base and lst such that everything just fits in main
  *  memory (i.e., so we don't start swapping to disk), but it is not
  *  worth it to set these so that it takes any less than main memory,
- *  as that will slow things down further than necessary.
+ *  as that will slow things down further than necessary. Also note
+ *  that argmin_{ b \in 2,3,4,... } b/ln(b) = 3, so a base of 3 is
+ *  a good starting point. 
  *
  * See Also:
  *    0) collectEvidence()

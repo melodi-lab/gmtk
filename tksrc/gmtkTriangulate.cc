@@ -94,6 +94,7 @@ static bool printResults = false;
 // static char *inputMasterFile=NULL;
 // static char *inputTrainableParameters=NULL;
 // static bool binInputTrainableParameters=false;
+static bool longStrCheck = false;
 
 Arg Arg::Args[] = {
 
@@ -211,6 +212,8 @@ Arg Arg::Args[] = {
   // General Options
 
   Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
+
+  Arg("longStrCheck",Arg::Opt,longStrCheck,"Set to true to do the long check for STR file validity"),
 
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
@@ -399,7 +402,8 @@ main(int argc,char*argv[])
   // create the rv variable objects
   fp.createRandomVariableGraph();
   // Make sure that there are no directed loops in the graph.
-  fp.ensureValidTemplate();
+  // call with argument 'true' to do thorough graph check.
+  fp.ensureValidTemplate(longStrCheck);
 
   if (loadParameters) {
     // link the RVs with the parameters that are contained in

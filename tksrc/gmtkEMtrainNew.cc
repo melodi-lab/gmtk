@@ -111,7 +111,7 @@ static bool print_version_and_exit = false;
 /////////////////////////////////////////////////////////////
 // Inference Options
 static bool island=false;
-static unsigned base=2;
+static unsigned base=3;
 static unsigned lst=100;
 static char* varPartitionAssignmentPrior = "COI";
 static char* varCliqueAssignmentPrior = "COI";
