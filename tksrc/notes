@@ -109,3 +109,17 @@ mixgauss swap
                  clone and perturb entry i
                   add DPMF & cmp ptrs to that map
 
+
+===============================
+
+
+to get compiling on IBM
+
+- fileparser, 
+  already defined fileno
+
+- no libsunmath to use.
+
+- using g++ w/o a path in makefiles
+
+- ieeefp.h
