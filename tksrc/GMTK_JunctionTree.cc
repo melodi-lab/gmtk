@@ -321,7 +321,7 @@ JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
     // starting invalid clique.
     iClique = ~0x0u; 
     // the weight of the interface clique, to break ties.
-    double interfaceCliqueWeight=HUGE_VAL;
+    double interfaceCliqueWeight=DBL_MAX;
 
     for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
       // check that clique fully covers iNodes 
@@ -438,7 +438,7 @@ JT_Partition::cliqueWithMaxWeight()
 unsigned
 JT_Partition::cliqueWithMinWeight()
 {
-  double weight = HUGE_VAL;
+  double weight = DBL_MAX;
   unsigned res = ~0x0;
   assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {

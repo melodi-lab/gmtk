@@ -1244,9 +1244,9 @@ triangulate(const string& tri_heur_str,
   string best_P_method_str;
   string best_C_method_str;
   string best_E_method_str;
-  double best_P_weight = HUGE_VAL;
-  double best_C_weight = HUGE_VAL;
-  double best_E_weight = HUGE_VAL;
+  double best_P_weight = DBL_MAX;
+  double best_C_weight = DBL_MAX;
+  double best_E_weight = DBL_MAX;
   const set <RandomVariable*> emptySet;
 
   parseTriHeuristicString(tri_heur_str,tri_heur);
@@ -1343,7 +1343,7 @@ triangulate(// input: nodes to be triangulated
 
   // compute the real best weight for a set of current
   // cliques, if the weight has not already been computed.
-  if (best_weight == HUGE_VAL && best_cliques.size() > 0) {
+  if (best_weight == DBL_MAX && best_cliques.size() > 0) {
     best_weight = graphWeight(best_cliques,jtWeight,nodesRootMustContain);
   }
 
@@ -2361,7 +2361,7 @@ triangulateSimulatedAnnealing(
     triangulate_best_order,
     best_graph_weight,
     best_this_weight,
-    HUGE_VAL,
+    DBL_MAX,
     chain_length,
     weight_sum,         
     weight_sqr_sum,
@@ -2540,9 +2540,9 @@ annealChain(
   unsigned         i;
   bool             accepted;
   
-  crrnt_graph_weight = HUGE_VAL;
-  prvs_graph_weight  = HUGE_VAL;
-  best_this_weight   = HUGE_VAL;
+  crrnt_graph_weight = DBL_MAX;
+  prvs_graph_weight  = DBL_MAX;
+  best_this_weight   = DBL_MAX;
   moves_accepted     = 0;
 
   ///////////////////////////////////////////////////////////////////////
@@ -4086,7 +4086,7 @@ triangulateExhaustiveSearch(
   ////////////////////////////////////////////////////////////////////
   // Begin Search 
   ////////////////////////////////////////////////////////////////////
-  double best_weight = HUGE_VAL; 
+  double best_weight = DBL_MAX; 
   double weight; 
   bool done = false;
   bool chordal;
@@ -4371,7 +4371,7 @@ unrollAndTriangulate(// triangulate heuristics
     vector<nghbrPairType> orgnl_nghbrs;
     saveCurrentNeighbors(rvsSet,orgnl_nghbrs);
     string best_meth_str;
-    double best_weight = HUGE_VAL;
+    double best_weight = DBL_MAX;
     triangulate(rvsSet,false,emptySet,tri_heur,orgnl_nghbrs,cliques,best_meth_str,best_weight);
     unsigned maxSize = 0;
     float maxSizeCliqueWeight=0;
@@ -4527,9 +4527,9 @@ anyTimeTriangulate(GMTemplate& gm_template,
   string best_P_method_str;
   string best_C_method_str;
   string best_E_method_str;
-  double best_P_weight = HUGE_VAL;
-  double best_C_weight = HUGE_VAL;
-  double best_E_weight = HUGE_VAL;
+  double best_P_weight = DBL_MAX;
+  double best_C_weight = DBL_MAX;
+  double best_E_weight = DBL_MAX;
   const set <RandomVariable*> emptySet;
 
   ////////////////////////////////////////////////////////////////////////
@@ -4718,7 +4718,7 @@ tryEliminationHeuristics(
   string&                     tri_method
   )
 {
-  double best_weight = HUGE_VAL;
+  double best_weight = DBL_MAX;
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Weight, Fill, Size
@@ -4845,7 +4845,7 @@ tryNonEliminationHeuristics(
   string&                     tri_method
   )
 {
-  double best_weight = HUGE_VAL;
+  double best_weight = DBL_MAX;
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try adding all ancestral edges, followed by elimination heuristics 
@@ -5071,9 +5071,9 @@ BoundaryTriangulate::interfaceScore(
 	string best_P_method_str;
 	string best_C_method_str;
 	string best_E_method_str;
-	double best_P_weight = HUGE_VAL;
-	double best_C_weight = HUGE_VAL;
-	double best_E_weight = HUGE_VAL;
+	double best_P_weight = DBL_MAX;
+	double best_C_weight = DBL_MAX;
+	double best_E_weight = DBL_MAX;
 
 	saveCurrentNeighbors(gm_template.P,orgnl_P_nghbrs);
 	saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
