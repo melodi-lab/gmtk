@@ -53,7 +53,7 @@ void CliqueChain::initializeForwardPass()
     preorder(0)->enumerateValues(0, -1, NULL, doingViterbi);
     preorder(0)->prune(beam);
     copies[0]++;
-    assert(preorder(0)->instantiationAddress.size() == 0);
+    assert(Clique::instantiationAddress.size() == 0);
 }
 
 /* 
@@ -500,8 +500,10 @@ bool CliqueChain::compute(compute_mode mode, logpr _beam)
     doingEM=doingViterbi=false;
     if (mode==viterbi)
         doingViterbi = true;
-    else
+    else if (mode==statistics)
         doingEM = true;
+    else
+        assert(mode==data_probs);
     beam = _beam;
 
     if (cliques.size()==1)  // a special case
