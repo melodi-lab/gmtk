@@ -60,7 +60,7 @@ void copyStringWithTag(char *result,const char *const input,
   const char *input_p = input;
   const char *input_endp = input+strlen(input)+1;
   while (input_p < input_endp) {
-    if (*input_p != '%') {
+    if (*input_p != '$') {
       if (result_p < result_endp)
 	*result_p++ = *input_p++;
       else {
@@ -68,7 +68,7 @@ void copyStringWithTag(char *result,const char *const input,
 	return;
       }
     }
-    else if (input_p+1 != input_endp && input_p[1] == 'd') {
+    else if (input_p+1 != input_endp && input_p[1] == 'I') {
       input_p += 2;
       for (int i=0;i<buflen;i++) {
 	if (result_p < result_endp)
