@@ -129,7 +129,7 @@ Dlinks::read(iDataStreamFile& is)
  *-----------------------------------------------------------------------
  */
 void
-CPT::write(oDataStreamFile& os)
+Dlinks::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
   os.write(numFeats(),"Dlinks::write, num feats");
