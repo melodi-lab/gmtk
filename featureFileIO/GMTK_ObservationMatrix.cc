@@ -149,8 +149,8 @@ ObservationMatrix::ObservationMatrix() {
 
   _numStreams     = 0;
   
-  _cont_p         = NULL;
-  _disc_p         = NULL;
+  //_cont_p         = NULL;
+  //_disc_p         = NULL;
   _inStreams      = NULL;
 
   _filterFileName = DEFAULT_FILTER_FILE_NAME;
@@ -327,11 +327,11 @@ void ObservationMatrix::openFiles(int n_files,
 
   _repeat.resize(_bufSize);
 
-  _contFea.resize(_maxContinuous); // temporary buffers for 1 frame of input
-  _discFea.resize(_maxDiscrete);   
+  //  _contFea.resize(_maxContinuous); // temporary buffers for 1 frame of input
+  //_discFea.resize(_maxDiscrete);   
   
-  _cont_p = features.ptr;  // pointer to continuous block 
-  _disc_p = features.ptr + _numContinuous; // pointer to discrete block
+  //_cont_p = features.ptr;  // pointer to continuous block 
+  //_disc_p = features.ptr + _numContinuous; // pointer to discrete block
 
   // karim - 29aug2003
   _cppIfAscii=cppIfAscii;
@@ -545,7 +545,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
   unsigned max_n_samps,prrng_n_samps;  
   bool same_num_samples = checkIfSameNumSamples(segno,max_n_samps,prrng_n_samps);
 
-  reset();  // reset the observation buffer to the beginning.
+  //reset();  // reset the observation buffer to the beginning.
    
 
 
@@ -1238,8 +1238,8 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
 
 void ObservationMatrix::reset() {
 
- _cont_p = features.ptr;
- _disc_p = features.ptr + _numContinuous;
+  //_cont_p = features.ptr;
+  //_disc_p = features.ptr + _numContinuous;
 }
 
 
