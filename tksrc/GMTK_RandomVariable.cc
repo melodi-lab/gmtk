@@ -78,7 +78,8 @@ void RandomVariable::reveal(bool show_vals)
 
     cout << " possible parents: ";
     for (unsigned i=0; i<allPossibleParents.size(); i++)
-        cout << allPossibleParents[i]->label << " ";
+        cout << allPossibleParents[i]->label << "-" 
+             << allPossibleParents[i]->timeIndex << " ";
     cout << endl;
 }
 
@@ -106,14 +107,14 @@ void RandomVariable::reveal(bool show_vals)
 
 void RandomVariable::basicClone(RandomVariable *caller)
 {
-    caller->label = label;
-    caller->hidden = hidden;
-    caller->discrete = discrete;
+    label = caller->label;
+    hidden = caller->hidden;
+    discrete = caller->discrete;
     // leave time index undefined
-    caller->switchingParents = switchingParents;
+    switchingParents = caller->switchingParents;
     // leave allPossibleParents and allPossibleChildren empty
-    caller->conditionalParentsList = conditionalParentsList;
+    conditionalParentsList = caller->conditionalParentsList;
     // leave curConditionalParents empty
-    caller->dtMapper = dtMapper; 
+    dtMapper = caller->dtMapper; 
     // leave cachedIntFromSwitchingState uninitialized
 }
