@@ -74,6 +74,17 @@ class RngDecisionTree : public NamedObject {
 private:
 
 protected:
+
+  ////////////////////////////////////
+  // this is used if we are to obtain multiple
+  // decision trees (using the same name) from
+  // a file
+  iDataStreamFile* dtFile;
+  string dtFileName;
+  unsigned numDTs;
+  int dtNum;
+  string curName;
+
   
   enum NodeType { NonLeafNode, LeafNodeVal, LeafNodeFormula, LeafNodeFullExpand };
 
@@ -162,18 +173,21 @@ protected:
 
 public:
 
-  RngDecisionTree() {}
+  RngDecisionTree() { dtFile = NULL; root = NULL;  }
   ~RngDecisionTree();
 
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 
-  // is located at the correct position.
-  void read(iDataStreamFile& is);
+  // is located at the correct position. Returns true
+  // if this is a variable DT (that comes from a file).
+  bool read(iDataStreamFile& is);
   ///////////////////////////////////////////////////////////    
   // write out the basic parameters, starting at the current
   // file position.
   void write(oDataStreamFile& os);
-
+  ///////////////////////////////////////////////////////////    
+  // read in the next DT assuming this is a file.a
+  void clampNextDecisionTree();
 
   ///////////////////////////////////////////////////////////    
   // iterators for iterating through leaf values.
@@ -258,6 +272,7 @@ RngDecisionTree<T>::~RngDecisionTree()
 {
   destructorRecurse(root);
   delete root;
+  delete dtFile;
 }
 
 
@@ -313,22 +328,46 @@ RngDecisionTree<T>::destructorRecurse(RngDecisionTree<T>::Node* node)
  *      object should not be filled on (data will be lost if so).
  *
  * Postconditions:
- *      object will be filled in.
+ *      object will be filled in if this is a plain DT. This
+ *      might, however, be a pointer to another file that contains
+ *      a list of DTs. In that case, the object is not filled
+ *      in and clampNextDecisionTree() must be called for
+ *      each DT in the file.
  *
  * Side Effects:
  *      Totally changes the object, might kill program if error occurs.
  *
  * Results:
- *      nothing.
+ *      Returns false if everything is fine. If it returns
+ *      true, then that means that this DT is not ready to be used,
+ *      and clampNextDecisionTree() must be called (once for each
+ *      DT that is given in the DT file).
  *
  *-----------------------------------------------------------------------
  */
 template <class T> 
-void
+bool
 RngDecisionTree<T>::read(iDataStreamFile& is)
 {
   NamedObject::read(is);
-  is.read(_numFeatures,"RngDecisionTree:: read numFeatures");
+
+  // read the next entry which is either an integer, or
+  // a string which gives the name of the DT file to obtain
+  // multiple instances of the internals of this decision tree.
+  is.read(dtFileName,"RngDecisionTree:: read file/numFeatures");
+  if (!strIsInt(dtFileName.c_str(),&(int)_numFeatures)) {
+    if (dtFile != NULL)
+      error("ERROR: can't have DTs defined recursively from files");
+    // then this must be a file name
+    dtFile = new iDataStreamFile(dtFileName.c_str());
+    dtNum = -1;
+    numDTs = 0;
+    dtFile->read(numDTs,"num DTs");
+    if (numDTs == 0)
+      error("ERROR: File '%s' specifies an invalid number of DTs\n",
+	    dtFileName.c_str());
+    return true;
+  }
   if (_numFeatures <= 0)
     error("RngDecisionTree::read decision tree must have >= 0 features");
   rightMostLeaf = NULL;
@@ -341,6 +380,7 @@ RngDecisionTree<T>::read(iDataStreamFile& is)
     tmp = tmp->leafNode.prevLeaf;
   }
   leftMostLeaf = rightLeaf;
+  return false;
 }
 
 
@@ -524,6 +564,62 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 
 /*-
  *-----------------------------------------------------------------------
+ * clampNextDecisionTree
+ *      reads in the next DT from the file.
+ * 
+ * Preconditions:
+ *      This must be a DT object that gets its DT instantiations
+ *      from a file.
+ *
+ * Postconditions:
+ *      next DT is read in.
+ *
+ * Side Effects:
+ *      changes internal structures.
+ *
+ * Results:
+ *      returns nil
+ *
+ *-----------------------------------------------------------------------
+ */
+template <class T> 
+void
+RngDecisionTree<T>::clampNextDecisionTree()
+{
+  // first make sure this is a DT from file object
+  if (dtFile == NULL)
+    error("ERROR: can't call clampNextDecisionTree() for non-file DT");
+  dtNum++;
+  int i;
+  dtFile->read(i,"DT num");
+  if (i != dtNum)
+    error("ERROR: reading from file '%s', expecting DT number %d but got number %d\n",dtFileName.c_str(),dtNum,i);
+  // next, delete old DT if it exists.
+  if (root != NULL) {
+    destructorRecurse(root);
+    delete root;
+  }
+  // read in the rest of the DT.
+  dtFile->read(curName,"cur name");
+  dtFile->read(_numFeatures,"num feats");
+  if (_numFeatures <= 0)
+    error("RngDecisionTree::read decision tree must have >= 0 features");
+  rightMostLeaf = NULL;
+  root = readRecurse(*dtFile,rightMostLeaf);
+  Node *tmp = rightMostLeaf;
+  Node *rightLeaf = NULL;
+  while (tmp != NULL) {
+    tmp->leafNode.nextLeaf = rightLeaf;
+    rightLeaf = tmp;
+    tmp = tmp->leafNode.prevLeaf;
+  }
+  leftMostLeaf = rightLeaf;
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
  * write:
  *      writes to from a file.
  * 
@@ -547,9 +643,15 @@ RngDecisionTree<T>::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
   os.nl();
-  os.write(_numFeatures,"RngDecisionTree:: read numFeatures");
-  os.nl();
-  writeRecurse(os,root,0);
+  if (dtFile == NULL) {
+    os.write(_numFeatures,"RngDecisionTree:: write numFeatures");
+    os.nl();
+    writeRecurse(os,root,0);
+  } else {
+    // just write out the file name
+    os.write(dtFileName,"RngDecisionTree:: write numFeatures");
+    os.nl();
+  }
 }
 
 
@@ -580,7 +682,6 @@ RngDecisionTree<T>::writeRecurse(oDataStreamFile& os,
 				 RngDecisionTree<T>::Node *n,
 				 const int depth)
 {
-
   if (n->nodeType != NonLeafNode) {
     os.space(depth*2);
     os.write(-1);
