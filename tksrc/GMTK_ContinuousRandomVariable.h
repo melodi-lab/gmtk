@@ -61,14 +61,14 @@ public:
 
   ////////////////////////////////////////////////////////////////
   // Value caching support.
-  void cacheValue() {}
-  void restoreCachedValue() {}
+  void cacheValue() { error("not implemented"); }
+  void restoreCachedValue() { error("not implemented"); }
   /////////////////////////////////////////////////////////////////////////
   // stores a variable's value elsewhere
-  void storeValue(VariableValue &vv) {vv.fval = val;}
+  void storeValue(VariableValue &vv) { error("not implemented"); }
   /////////////////////////////////////////////////////////////////////////
   // sets a variables value as specified
-  void setValue(VariableValue &vv) {val = vv.ival;}
+  void setValue(VariableValue &vv) { error("not implemented"); }
 
 
   void makeRandom() {}
@@ -89,6 +89,8 @@ public:
   void emClearSwappedBit() { }
   void emSwapCurAndNew() { }
   ///////////////////////////////////////////////////
+
+  RandomVariable *clone() { error("not implemented"); return this; }
 
 
 };

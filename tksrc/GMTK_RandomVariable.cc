@@ -89,6 +89,10 @@ void RandomVariable::reveal(bool show_vals)
  * basicClone 
  *      copies the data structures necessary for unrolling
  *      all random variables have these structures.
+ *      This will be called in child classes using the following
+ *      mechanism:
+ *               rv = new DerivedClassRandomVariable;
+ *               rv->basicClone(this);
  * 
  * Preconditions:
  *      dtMapper and all parents lists must be set
