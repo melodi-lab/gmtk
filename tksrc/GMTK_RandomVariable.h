@@ -328,6 +328,12 @@ public:
   // accumulated statistics into probability distributions.
   virtual void emEndIteration() = 0;
 
+  virtual void emClearAllocatedBit() = 0;
+
+  virtual void emClearSwappedBit() = 0;
+
+  virtual void emSwapCurrentAndNew() = 0;
+
   /////////////////////////////////////////
   /////////////////////////////////////////
   // END OF SUPPORT FOR EM  VARIABLES /////
