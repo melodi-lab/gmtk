@@ -129,11 +129,10 @@ Arg Arg::Args[] = {
   Arg("iswp3",Arg::Opt,iswps[2],"Endian swap condition for observation file 3"),
 
   Arg("strFile",Arg::Req,strFileName,"GM Structure File"),
-  Arg("prmMasterFile",Arg::Req,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
-  Arg("prmTrainableFile",Arg::Opt,prmTrainableFile,"File containing Trainable Parameters"),
-  Arg("binPrmTrainableFile",Arg::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
+  Arg("inputMasterFile",Arg::Req,prmMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
+  Arg("inputTrainableFile",Arg::Opt,prmTrainableFile,"File of only and all trainable parameters"),
+  Arg("binInputTrainableFile",Arg::Opt,binPrmTrainableFile,"Binary condition of trainable parameters file"),
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to cpp"),
-
 
   Arg("varFloor",Arg::Opt,varFloor,"Variance Floor"),
   Arg("floorVarOnRead",Arg::Opt,DiagCovarVector::floorVariancesWhenReadIn,
