@@ -1284,45 +1284,43 @@ plan:
   assignedNodes need to be in topological order:
 
    say v is an assignedNode (meaning it exists with its parents in the clique).
-
   7 cases:
    - v is not in sepNodes, and v is a prob node as well, meaning we multiply
      this clique potential by prob(v|parents(v)). We use
      CPT iteration to iterate over v and compute probabilities.
      Same for v being sparse or not.
-     CPT_ITERATION_COMPUTE_AND_APPLY_PROB
+     AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB
    - v is not in sepNodes, and v is not a prob node, and V is sparse. We still use
      CPT iteration to iterate over v given parents, but do not multiply
      clique potential by probabilties. By using CPT iteration,
      we remove any zeros now.
-     CPT_ITERATION_COMPUTE_PROB
+     AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS
    - v is not in sepNodes, and v is not a prob node, and V is NOT sparse. 
      We iterate using [0,card-1] and continue, and do not 
      change any probabilities.
-     CARD_ITERATION
-
+     AN_CARD_ITERATION
    - v is in sepNodes, and v is a probability node. Then we compute
      the probability for v, and continue only if the probabilty
      is non zero. 
      Same for v being sparse or not.
-     COMPUTE_AND_APPLY_PROB
+     AN_COMPUTE_AND_APPLY_PROB
    - v is in sepNodes, v is not a probability node, but v was
      assigned in a previous JT clique. In this case, we just
      continue on since we know the incomming separators
      killed off any zero entries. 
      same for v being sparse or not.
-     CONTINUE
+     AN_CONTINUE
    - v is in sepNodes, v is not a probability node, v sparse, but v was
      *NOT* assigned in a previous JT clique. Then, since v is
      sparse, we check here to make sure that the probability 
      of v|parents is not zero. If it is zero, we backout,
      but if it is not zero we continue, but *do not* multiply
      the probability into this clique potential.
-     CONTINUE_COMPUTE_PROB
+     AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS
    - v is in sepNodes, v is not a probability node, v not sparse, but v was
      *NOT* assigned in a previous JT clique. We just continue,
       since the CPT won't tell us anything. 
-     CONTINUE
+     AN_CONTINUE
 
 
   unassignedNodes:
@@ -1331,4 +1329,25 @@ plan:
    - if observed, continue going.
 
       
+
+forwardBackward(start,end)
+
+  len = end-start + 1;
+  if (len <= base)
+      do standard
+  else
+    chunk = len/splits
+    forward chunk 1
+    forward chunk 2
+ 
+  	
+
+
+
+
+
+ 
+
+
+
 
