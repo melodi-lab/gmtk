@@ -114,7 +114,7 @@ vector<RandomVariable::DiscreteVariableType> &vec)
       table[a]=nv=new vector<RandomVariable::DiscreteVariableType>(vec);
       if (++count>=table_size/2)
       {
-        if (size_index==13) error("Value hash table size exceeds 2147483647");
+        if (size_index==13) error("ERROR: Internal program error. Value hash table size exceeds 2147483647");
         resize(primes[++size_index]);
       }    
     }
