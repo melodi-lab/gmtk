@@ -1291,6 +1291,7 @@ FileParser::parseListIndex()
 void
 FileParser::createRandomVariableGraph()
 {
+  // first create the RV objects
   for (unsigned i=0;i<rvInfoVector.size();i++) {
     if (rvInfoVector[i].rvType == RVInfo::t_discrete)
       rvInfoVector[i].rv = 
@@ -1375,6 +1376,97 @@ FileParser::createRandomVariableGraph()
   }
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * ensureS_SE_E_NE,
+ *    ensure links are "south", "south east",
+ *    "east", or "north east", meaning that there
+ *    is a numeric ordering on the nodes such that 
+ *    any parents of a node at a particular
+ *    numeric position have their position
+ *    earlier in the ordering.
+ *
+ * Preconditions:
+ *      parseGraphicalModel() must have been called.
+ *
+ * Postconditions:
+ *      ordering exists if program is still running.
+ *
+ * Side Effects:
+ *      none other than possibly killing the program.
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+FileParser::ensureS_SE_E_NE()
+{
+
+  // now set up all the parents of each random variable.
+  for (unsigned i=0;i<rvInfoVector.size();i++) {
+    for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
+
+      rvParent pp(rvInfoVector[i].switchingParents[j].first,
+		  rvInfoVector[i].frame
+		  +rvInfoVector[i].switchingParents[j].second);
+
+      ////////////////////////////////////////////////////
+      // Make sure the rv at the time delta from the current
+      // frame exists.
+      if (nameRVmap.find(pp) == nameRVmap.end())
+	error("Error: parent random variable %s at frame %d does not exist\n",
+	      pp.first.c_str(),pp.second);
+
+      unsigned parent_position = nameRVmap[ pp ];
+
+      if (parent_position > i) {
+	const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
+	error("Error: parent variable %s, frame %d (line %d) is later than child %s frame %d (line %d)",
+	      par.name.c_str(),
+	      par.frame,
+	      par.fileLineNumber,
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber
+	      );
+      }
+    }
+
+    for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
+      for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+
+	rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+		    rvInfoVector[i].frame		    
+		    +rvInfoVector[i].conditionalParents[j][k].second);
+
+	////////////////////////////////////////////////////
+	// Make sure the rv at the time delta from the current
+	// frame exists.
+	if (nameRVmap.find(pp) == nameRVmap.end())
+	  error("Error: parent random variable %s at frame %d does not exist\n",
+		pp.first.c_str(),pp.second);
+	unsigned parent_position = nameRVmap[ pp ];
+
+	if (parent_position > i) {
+	  const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
+	  error("Error: parent variable %s, frame %d (line %d) is later than child %s frame %d (line %d)",
+		par.name.c_str(),
+		par.frame,
+		par.fileLineNumber,
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber
+		);
+	}
+      }
+    }
+  }
+
+}
 
 
 /*-
