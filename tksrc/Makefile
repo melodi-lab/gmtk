@@ -10,8 +10,11 @@
 				   
 SHELL = /bin/sh
 
+# .EXPORT:
+# .EXPORT: Linux AND !crane
 .EXPORT:
-.EXPORT: Linux AND !crane
+.EXPORT: nikola2 Linux
+
 
 .SUFFIXES:
 .SUFFIXES: .c .o .dis .cc

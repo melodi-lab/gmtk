@@ -354,12 +354,12 @@ class JunctionTree  {
 				      const unsigned end,
 				      const unsigned base,
 				      const unsigned linear_section_threshold,
-				      const bool runEMalgorithm = false,
-				      const bool localCliqueNormalization = false);
+				      const bool runEMalgorithm,
+				      const bool localCliqueNormalization);
   void collectDistributeIslandBase(const unsigned start,
 				   const unsigned end,
-				   const bool runEMalgorithm = false,
-				   const bool localCliqueNormalization = false);
+				   const bool runEMalgorithm,
+				   const bool localCliqueNormalization);
 
 public:
 
