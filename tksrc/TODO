@@ -549,3 +549,16 @@ logic therefore needs to be rethought.
 Tue Jul  2 19:35:29 2002
 - errors when reading in parameter files should be more informative
   and perhaps say where in the parameeeeeer files the problem is.
+
+Tue Jul  2 19:38:36 2002
+- no need for warning about accumulatedProb = 0 for MTCPT
+
+Tue Jul  2 19:53:43 2002
+add to documentation something about normalization features
+and variance floor. Hints/tips on what to do here.
+  - possibly a diff. var floor for each feature vector element/
+
+Tue Jul  2 20:24:18 2002
+  - add a 'noscore' CPT so that we can do true conditional discrete
+    observations, similar to what can be done for discrete observations.
+
