@@ -18,6 +18,29 @@
 #include "GMTK_ObservationMatrix.h"
 
 
+
+ObservationMatrix::ObservationMatrix() {
+
+  _numFrames = 0;
+  _numContinuous = 0;
+  _numDiscrete = 0;
+  _numFeatures = 0;
+  _maxContinuous = 0;
+  _maxDiscrete = 0;
+  
+  _stride = 0;
+  
+  _bufSize = 0;
+
+  // structure of observation matrix: in each frame, all continuous
+  // features come first, followed by all discrete features
+  
+  _cont_p = NULL;
+  _disc_p = NULL;
+
+}
+
+
 /* constructor for data buffer (= feature matrix)
  * n_frames: max number of frames in buffer
  * n_floats: number of continuous features
@@ -34,6 +57,36 @@ ObservationMatrix::ObservationMatrix(size_t n_frames,
 				     unsigned max_ints) {
 				     
 
+  _numFrames = n_frames;
+  _numContinuous = n_floats;
+  _numDiscrete = n_ints;
+  _numFeatures = _numContinuous + _numDiscrete;
+  _maxContinuous = max_floats;
+  _maxDiscrete = max_ints;
+  
+  _stride = _numFeatures; 
+  
+  features.resize(_numFrames * _numFeatures); // actual observation buffer
+  
+  cont_fea.resize(_maxContinuous); // temporary buffers for 1 frame of input
+  disc_fea.resize(_maxDiscrete);   
+
+  _bufSize = _numFrames;
+
+  // structure of observation matrix: in each frame, all continuous
+  // features come first, followed by all discrete features
+  
+  _cont_p = features.ptr;  // pointer to continuous block 
+  _disc_p = features.ptr + _numContinuous; // pointer to discrete block
+}
+
+void
+ObservationMatrix::reset(size_t n_frames, 
+			 unsigned n_floats, 
+			 unsigned n_ints,
+			 unsigned max_floats,
+			 unsigned max_ints) 
+{
   _numFrames = n_frames;
   _numContinuous = n_floats;
   _numDiscrete = n_ints;
@@ -329,7 +382,7 @@ ObservationMatrix::readAscInts(unsigned n_ints, FILE *f, BP_Range *disc_rng) {
 
   Int32 *dp = disc_fea.ptr;
  
-  for (int a = 0; a < n_ints; a++,dp++) {
+  for (unsigned a = 0; a < n_ints; a++,dp++) {
     if (fscanf(f,"%i",dp) != 1) {
       warning("ObservationMatrix::readAscInts: couldn't read %i'th item in frame\n",a);
       return 0;

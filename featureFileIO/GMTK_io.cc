@@ -35,7 +35,8 @@ DataInStream::DataInStream(int n_files, const char **fof_names,
                            const char **cont_range_str,
                            const char **disc_range_str,
 			   unsigned *n_floats, unsigned *n_ints, 
-			   unsigned *formats, bool *swapflag) {
+			   unsigned *formats, bool *swapflag)
+{
 
   _numFiles = n_files;
 
@@ -493,7 +494,6 @@ DataInStream::getFileNames(size_t sentno,char **buf) {
 
 void
 DataInStream::getNumFloats(unsigned *buf) {
-
 
   unsigned *p = buf;
 

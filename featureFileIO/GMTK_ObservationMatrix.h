@@ -96,8 +96,11 @@ public:
 
   sArray< Data32 > features; // matrix of features
 
+  ObservationMatrix();
   ObservationMatrix(size_t,unsigned,unsigned,unsigned,unsigned);
   ~ObservationMatrix();
+
+  void reset(size_t,unsigned,unsigned,unsigned,unsigned);
 
   unsigned getSegmentNumber() { return _segmentNumber ;}
   unsigned getNumFrames() { return _numFrames; }
@@ -169,7 +172,7 @@ public:
     assert (feature >= _numContinuous
 	    &&
 	    feature < _numFeatures);
-    return *(unsigned*)(features.ptr+stride*frame+feature);
+    return *(unsigned*)(features.ptr+_stride*frame+feature);
   }
 
   bool elementIsDiscrete(unsigned el) {
