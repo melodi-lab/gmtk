@@ -132,10 +132,15 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
         if (cv.pi > max) max = cv.pi;
     }
     dataProb=viterbiProb=0.0;
-    if (viterbi)
+    if (viterbi) {
         viterbiProb=max;
-    else
+	if (viterbiProb.zero())
+	  return false;
+    } else {
         dataProb=sum;
+	if (dataProb.zero())
+	  return false;
+    }
 
     return true;
 }
