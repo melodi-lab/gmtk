@@ -65,7 +65,6 @@ char    *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL };
 unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
 unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
 char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
-bool   iswps[MAX_NUM_OBS_FILES] = { false, false, false,false,false };
 char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
 char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
 char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
@@ -162,7 +161,7 @@ Arg Arg::Args[] = {
   Arg("nf",  Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fmt", Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("iswp",Arg::Opt,iswps,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("iswp",Arg::Opt,iswp,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fr",  Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
@@ -434,7 +433,7 @@ main(int argc,char*argv[])
 				    (unsigned*)&nfs,
 				    (unsigned*)&nis,
 				    (unsigned*)&ifmts,
-				    (bool*)&iswps,
+				    (bool*)&iswp,
 				    startSkip,
 				    endSkip,
 				    Cpp_If_Ascii,
