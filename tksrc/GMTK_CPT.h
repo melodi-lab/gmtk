@@ -29,7 +29,7 @@
 #include "fileParser.h"
 
 #include "GMTK_RandomVariable.h"
-
+#include "GMTK_NamedObject.h"
 
 /*
  * Generic interface class to all CPT random variables.
@@ -46,7 +46,7 @@
  * 
  * 
  */
-class CPT {
+class CPT : public NamedObject {
 
 protected:
 
@@ -54,7 +54,7 @@ protected:
   // The number of "parents" of this CPT, so if we were
   // to expand this out, the dimensionality of this discrete scalar variable
   // and its parents 
-  unsigned numParents;
+  unsigned _numParents;
 
   ///////////////////////////////////////////////////////////  
   // issue a warning if the number of parents becomes greater than this.
@@ -62,11 +62,12 @@ protected:
 
   ///////////////////////////////////////////////////////////  
   // The cardinality of each variable, this array is
-  // of size (numParents+1).
-  // cardinality[numParents]   = the cardinality of the child
-  // cardinality[numParents-1] = the cardinality of the first parent
-  // cardinality[numParents-2] = the cardinality of the 2nd parent
-  // and so on.
+  // of size (_numParents+1).
+  // cardinality[0] = the cardinality of the first parent
+  // cardinality[1] = the cardinality of the 2nd parent
+  //    ...
+  // cardinality[_nuParents-1] = cardinality of the last parent
+  // cardinality[_numParents] = cardinality of self (the child)
   vector < int > cardinalities;
 
 
@@ -77,17 +78,20 @@ public:
   CPT() {}
   virtual ~CPT() {}
 
+  ////////////////////////////////////////////////
+  unsigned numParents() { return _numParents; }
+
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // Functions to force the internal structures to be particular values.
   // Force the number of parents to be such.
   virtual void setNumParents(const unsigned _nParents);
-  // Set the cardinality. If var = numParents, this sets
+  // Set the cardinality. If var = _numParents, this sets
   // the cardinality of the child. Otherwise, it sets the
   // cardinality of the parent. 
   virtual void setNumCardinality(const unsigned var, const int card);
   // Allocate memory, etc. for the internal data structures
-  // for this CPT, depending on current numParents & cardinalities.
+  // for this CPT, depending on current _numParents & cardinalities.
   virtual void allocateBasicInternalStructures() = 0;
   // compare the cardinalities of this CPT with that of an other. REturn
   // true if they are equil false otherwise.
@@ -101,7 +105,8 @@ public:
   // assignment. All subsequent calls to to probGivenParents
   // will return the probability of the RV given that the
   // parents are at the particular value.
-  virtual void becomeAwareOfParentValues( vector <int>& parentValues ) = 0;
+  virtual void becomeAwareOfParentValues( vector <int>& parentValues,
+					  vector <int>& cards) = 0;
   // Another version of becomeAwareOfParentValues but this
   // one explicitely takes an array of random variable parents.
   virtual void becomeAwareOfParentValues( vector < RandomVariable *>& parents ) = 0;
@@ -112,6 +117,7 @@ public:
   // Similar to the above two. This is convenient for one time
   // probability evaluation.
   virtual logpr probGivenParents(vector <int>& parentValues, 
+				 vector <int>& cards, 
 				 const int val) = 0;
   virtual logpr probGivenParents(vector < RandomVariable *>& parents,
 				 const int val) = 0;
@@ -121,7 +127,7 @@ public:
   // the number of possible values (either with zero or non zero
   // probab) that a RV with this CPT may take on.
   virtual int card() {
-    return cardinalities[numParents]; 
+    return cardinalities[_numParents]; 
   }
 
   class iterator {
