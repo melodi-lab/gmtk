@@ -62,6 +62,8 @@ public:
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
 
+  // 
+  GaussianComponent* cloneUniquePerturbed() { assert(0); return NULL; }
 
   //////////////////////////////////
   // set all current parameters to valid but random values
