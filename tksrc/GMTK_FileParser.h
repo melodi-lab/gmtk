@@ -384,7 +384,9 @@ public:
   ~FileParser();
   void parseGraphicalModel();
   void createRandomVariableGraph();
-  void associateWithDataParams(bool allocateIfNotThere=false);
+
+  enum MdcptAllocStatus { noAllocate, allocateRandom, allocateUniform };
+  void associateWithDataParams(MdcptAllocStatus allocate = noAllocate);
   // ensure links are "south", "south east",
   // "east", or "north east", meaning that there
   // is a numeric ordering on the nodes such that 
