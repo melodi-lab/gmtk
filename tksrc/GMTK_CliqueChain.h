@@ -24,10 +24,10 @@
 
 struct CliqueChain
 {
-    sArray<Clique> cliques;
+    vector<Clique> cliques;
     // The actual cliques in the chain.
 
-    sArray<Clique *> preorder, postorder;
+    vector<Clique *> preorder, postorder;
     // Pointers to the cliques in pre and post-order.
 
     bool forwardPass(logpr beam=0.0, bool viterbi=false);
