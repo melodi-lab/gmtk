@@ -180,6 +180,7 @@ ObservationMatrix::loadSegment(const unsigned segno) {
   size_t n_samps = 0;
   StreamInfo *s;
   char *fname;
+  char *sname;
 
   if (segno < 0 || segno > _numSegments)
     error("ObservationMatrix::loadSegment: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
@@ -190,25 +191,28 @@ ObservationMatrix::loadSegment(const unsigned segno) {
 
     s = _inStreams[i];
 
-    char *sname = s->fofName;
-
     if (s == NULL)
-      error("ObservationMatrix::loadSegment: stream %s is NULL\n",sname);
-
-    fname = s->dataNames[segno];
+      error("ObservationMatrix::loadSegment: stream %i is NULL\n",i);
+    
+    if (s->fofName == NULL)
+      sname = "(unset)";
+    else
+      sname = s->fofName;
 
     if (s->dataFormat != PFILE) {
 
       if (s->dataNames == NULL)
-        error("ObservationMatrix::loadSegment: List of file names for stream %s is NULL\n",sname);
+        error("ObservationMatrix::loadSegment: List of file names for stream %i (%s) is NULL\n",i,sname);
+
+      fname = s->dataNames[segno];
 
       if (fname == NULL)
-        error("ObservationMatrix::loadSegment: Filename %li is NULL in stream %s\n",segno,sname);
+        error("ObservationMatrix::loadSegment: Filename %li is NULL in stream %i (%s)\n",segno,i,sname);
     }
     else {
       if (s->pfile_istr == NULL)
-        error("ObservationMatrix::loadSegment: pfile stream %s is NULL\n",
-              s->fofName);
+        error("ObservationMatrix::loadSegment: pfile stream %i (%s) is NULL\n",
+              i,sname);
     }
 
 
