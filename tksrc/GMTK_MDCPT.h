@@ -99,6 +99,18 @@ public:
     iterator it(this);
     it.internalState = 0;
     it.probVal = *mdcpt_ptr;
+    if (it.probVal.essentially_zero()) {
+      // go to first entry which is not zero.
+      do {
+	it.internalState++;
+	// keep the following assertion as we
+	// must have that at least one entry is non-zero.
+	// the read code of the MDCPT should ensure this
+	// as sure all parameter update procedures.
+	assert (it.internalState < card());
+	it.probVal = mdcpt_ptr[it.internalState];
+      } while (it.probVal.essentially_zero());
+    }
     return it;
   }
 
@@ -113,10 +125,12 @@ public:
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
     // don't increment past the last value.
-    it.internalState++;
-    if (it.internalState == card())
-      return false;
-    it.probVal = mdcpt_ptr[it.internalState];
+    do {
+      it.internalState++;
+      if (it.internalState == card())
+	return false;
+      it.probVal = mdcpt_ptr[it.internalState];
+    } while (it.probVal.essentially_zero());
     return true;
   }
 
