@@ -560,13 +560,14 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 	   ((double)(prev_mean_ptr[i])*(*zAccumulators_ptr++))
 	   );
 	*nextArr_ptr++ += tmp;
+      }
 
-	for (int k=0;k<nLinks;k++) {
-	  *sharedZZDenominator_ptr++ 
-	    +=
-	    previous_variances_inv_ptr[i]*
-	    (*zzAccumulators_ptr++);
-	}
+      const int zz_size = nLinks*(nLinks+1)/2;
+      for (int k=0;k<zz_size;k++) {
+	*sharedZZDenominator_ptr++ 
+	  +=
+	  previous_variances_inv_ptr[i]*
+	  (*zzAccumulators_ptr++);
       }
     }
 
@@ -589,10 +590,11 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
       nextArr[i] = arr[i];
   } else {
 
-    sArray<double> nextDlinkMat;
-
     double *sharedZZDenominator_ptr = sharedZZDenominator.ptr;
     float *nextArr_ptr = nextArr.ptr;
+
+    sArray<double> nextDlinkMat;
+    sArray <double> expSharedZZDen;
 
     for (int i=0;i<dim();i++) {
       const int nLinks = numLinks(i);
@@ -602,10 +604,25 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
       for (int j=0;j<nLinks;j++) {
 	nextDlinkMat[j] = nextArr_ptr[j];
       }
+
+      expSharedZZDen.growIfNeeded(nLinks*nLinks);
+      // copy and convert triangular matrix to full matrix
+      double *zzp = sharedZZDenominator_ptr; // ptr to current zz
+      double *zzep = expSharedZZDen.ptr;   // ptr to current exp zz
+      for (int dlink=0;dlink<nLinks;dlink++) {
+	double *zze_rp = zzep; // row ptr to expanded zz
+	double *zze_cp = zzep; // col ptr to expanded zz
+	for (int j=0;j<(nLinks-dlink);j++) {
+	  *zze_rp = *zze_cp = *zzp++;
+	  zze_rp ++;            // increment by one value
+	  zze_cp +=  nLinks;    // increment by stride
+	}
+	zzep += (nLinks+1);
+      }
       
-      // solve for the link values putting the results in
-      // nextDlinkMat destroying the old values.
-      ::lineqsolve(nLinks,1,sharedZZDenominator_ptr,nextDlinkMat.ptr);
+      // solve for the link values in double precision, putting the 
+      // results in nextDlinkMat destroying the old values.
+      ::lineqsolve(nLinks,1,expSharedZZDen.ptr,nextDlinkMat.ptr);
 
       // copy out and convert back to single precision.
       for (int j=0;j<nLinks;j++) {
@@ -613,7 +630,7 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
       }
 
       nextArr_ptr += nLinks;
-      sharedZZDenominator_ptr += (nLinks*nLinks);
+      sharedZZDenominator_ptr += nLinks*(nLinks+1)/2;
     }
   }
 

@@ -919,6 +919,9 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
       const float*xzAccumulators_ptr = xzAccumulators;
       const float*zzAccumulators_ptr = zzAccumulators;
 
+      // expanded full zzmatrix
+      sArray <double> zzExp;
+
       /////////////////////////////////////////////////////////////////
       // the comments in the following loop (i.e., term 1, 2, etc.)
       // refer to the sheet of equations containing this derivation.
@@ -938,28 +941,37 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 	double xz_B = 0.0;  // term 2
 	double u_z_B = 0.0;   // term 3
 	double B_zz_B = 0.0;   // term 4
+
 	for (int j=0;j<nLinks;j++) {
 	  // term 2 
-	  xz_B += (double)(*xzAccumulators_ptr++)*
-	          (double)(*prev_dlinkMatrix_ptr);
+	  xz_B += (double)(xzAccumulators_ptr[j])*
+	          (double)(prev_dlinkMatrix_ptr[j]);
 	  // term 3
-	  u_z_B += (double)(*zAccumulators_ptr++)*
-	          (double)(*prev_dlinkMatrix_ptr);
+	  u_z_B += (double)(zAccumulators_ptr[j])*
+	          (double)(prev_dlinkMatrix_ptr[j]);
 
 	  // term 4
-	  const float *prev_dlinkMatrix_ptr_ptr = prev_dlinkMatrix_ptr;
-	  double row = 0.0;
+	  double dotproduct = 0.0;
 	  for (int k=0;k<nLinks;k++) {
-	    row += 
-	      (double)(*zzAccumulators_ptr++)*
-	      (double)(*prev_dlinkMatrix_ptr_ptr++);
+	    double zz_tmp;
+	    if (j > k) 
+	      zz_tmp = 
+		zzAccumulators_ptr[k*nLinks - k*(k+1)/2 + j];
+	    else // k >= j
+	      zz_tmp = 
+		zzAccumulators_ptr[j*nLinks - j*(j+1)/2 + k];
+	    dotproduct += 
+	      zz_tmp*(double)(prev_dlinkMatrix_ptr[k]);
 	  }
-	  B_zz_B += row*prev_dlinkMatrix_ptr[j];
+	  B_zz_B += dotproduct*prev_dlinkMatrix_ptr[j];
 	}
 	// finish term 3
 	u_z_B *= prev_mean_ptr[i];
-	// update dlinks
+	// update pointers
 	prev_dlinkMatrix_ptr += nLinks;
+	xzAccumulators_ptr += nLinks;
+	zAccumulators_ptr += nLinks;
+	zzAccumulators_ptr += nLinks*(nLinks+1)/2;
 
 	// term 5
 	const double u_u = 
@@ -968,7 +980,9 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 	  (double)realAccumulatedProbability;
 
 	// convert and accumulate
-	nextCovariances[i] += (xx - 2.0*(x_u + xz_B - u_z_B) + B_zz_B + u_u);
+	const double final_accumulator = 
+	  (xx - 2.0*(x_u + xz_B - u_z_B) + B_zz_B + u_u);
+	nextCovariances[i] += final_accumulator;
       }
     }
 
@@ -997,7 +1011,7 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 
     // TODO: should check for possible overflow here of 
     // accumulatedProbability when we do the inverse and unlog.
-    // Ideally this won't happen for a given minAccumulatedProbability().
+    // Ideally this won't happen for a given minContAccumulatedProbability().
     const double invRealAccumulatedProbability = 
       accumulatedProbability.inverse().unlog();
 
