@@ -80,7 +80,7 @@ Arg Arg::Args[] = {
 
   Arg("decisionTreeFiles", Arg::Opt, DTFiles, "List of decision tree files"),
 
-  Arg("inputMasterFile", Arg::Req, inputMasterFile,
+  Arg("inputMasterFile", Arg::Opt, inputMasterFile,
     "Input file of multi-level master CPP processed GM input parameters"),
 
   Arg("cppCommandOptions", Arg::Opt, cppCommandOptions,
@@ -119,12 +119,43 @@ main(int argc,char*argv[])
   }
 
   ////////////////////////////////////////////
-  //
+  // Write index files for all decision trees in the master file 
   if (inputMasterFile != NULL) {
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
 
     GM_Parms.read(pf);
     GM_Parms.writeDecisionTreeIndexFiles();
+  }
+
+  ////////////////////////////////////////////
+  // Write index files for all decision trees named in the list 
+  if (DTFiles != NULL) {
+
+    string DT_file_name;
+    unsigned int i;
+
+    i = 0;
+    while( DTFiles[i]!='\0' ) { 
+
+      RngDecisionTree decision_tree;
+
+      ////////////////////////////////////////////
+      // Skip white space 
+      while( (DTFiles[i]==' ') || (DTFiles[i]=='\t') ) { 
+        ++i;
+      }
+ 
+      ////////////////////////////////////////////
+      // Get the file name, create a tree object, and write the index file 
+      DT_file_name = "";
+      while( (DTFiles[i]!=' ') && (DTFiles[i]!='\t') && (DTFiles[i]!='\0') ) {
+        DT_file_name += DTFiles[i];
+        ++i;
+      }
+
+      decision_tree.initializeIterableDT(DT_file_name);
+      decision_tree.writeIndexFile();
+    }
   }
 
   printf("Finished reading in all parameters and structures\n");

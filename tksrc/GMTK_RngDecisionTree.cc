@@ -130,11 +130,7 @@ RngDecisionTree::destructorRecurse(RngDecisionTree::Node* node)
  *      Totally changes the object, might kill program if error occurs.
  *
  * Results:
- *      Returns false if everything is fine. If it returns
- *      true, then that means that this DT is not ready to be used,
- *      and clampNextDecisionTree() must be called (once for each
- *      DT that is given in the DT file).
- *
+ *      none 
  *-----------------------------------------------------------------------
  */
 void
@@ -153,23 +149,16 @@ RngDecisionTree::read(iDataStreamFile& is)
   //////////////////////////////////////////////////////////////////////
   if (!strIsInt(dtFileName.c_str(), (int*)&_numFeatures)) {
 
+    //////////////////////////////////////////////////////////////////////
+    // Make sure this instance already hasn't been initialized as an
+    // iterable decision tree 
+    //////////////////////////////////////////////////////////////////////
     if (clampable()) {
       error("ERROR: in DT named '%s' in file '%s', can't have DTs defined recursively in files",
         name().c_str(),is.fileName());
     }
 
-    //////////////////////////////////////////////////////////////////////
-    // Open files needed for reading clampable decision trees 
-    // Turn off cpp pipe since we need to rewind later
-    //////////////////////////////////////////////////////////////////////
-    dtFile = new iDataStreamFile(dtFileName.c_str(), is.binary(), false);
-    numDTs = 0;
-    dtNum  = -1;
-
-    //////////////////////////////////////////////////////////////////////
-    // Read in the first decision tree 
-    //////////////////////////////////////////////////////////////////////
-    clampFirstDecisionTree();
+    initializeIterableDT(dtFileName); 
   }
   //////////////////////////////////////////////////////////////////////
   // Entry is an integer indicating an inline decision tree 
@@ -201,6 +190,52 @@ RngDecisionTree::read(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
+ * initializeIterableDT 
+ * 
+ * Preconditions:
+ *      Decision tree should not have been previously initialized. 
+ *
+ * Postconditions:
+ *      Object is initialized to read in per-utterance decision trees 
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *      None
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::initializeIterableDT(
+  string& fileName
+  ) 
+{
+  //////////////////////////////////////////////////////////////////////
+  // Make sure this instance already hasn't been initialized as an
+  // iterable decision tree 
+  //////////////////////////////////////////////////////////////////////
+  if (clampable()) {
+    error("ERROR: in DT named '%s', can't have DTs defined recursively in files",
+      fileName.c_str()); 
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Initialize variables 
+  //////////////////////////////////////////////////////////////////////
+  dtFileName = fileName;
+  dtFile     = new iDataStreamFile(dtFileName.c_str(), false, false);
+  numDTs     = 0;
+  dtNum      = -1;
+
+  //////////////////////////////////////////////////////////////////////
+  // Read in the first decision tree 
+  //////////////////////////////////////////////////////////////////////
+  clampFirstDecisionTree();
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
  * seek 
  *      Seek to a particular decision tree 
  *
@@ -223,7 +258,7 @@ RngDecisionTree::seek(
   )
 {
   string   indexFileName;
-  unsigned i, numIndexDTs;
+  unsigned numIndexDTs;
   unsigned position; 
   unsigned result; 
 
@@ -679,6 +714,8 @@ RngDecisionTree::writeIndexFile()
   //////////////////////////////////////////////////////////////////////////
   string outputFileName = dtFile->fileName() + DTFileExtension;
   oDataStreamFile outFile(outputFileName.c_str(), true);
+
+  printf("Writing file %s\n", outputFileName.c_str() ); 
  
   //////////////////////////////////////////////////////////////////////////
   // Write number of trees 
@@ -698,7 +735,7 @@ RngDecisionTree::writeIndexFile()
       error("ERROR: probelm reading from file '%s'\n", dtFileName.c_str() );
     }
 
-    outFile.writeInt(position, "");
+    outFile.writeInt(position, "Decision tree index");
 
     ////////////////////////////////////////////////////////////////////////
     // Parse file to the beginning of the next tree 
