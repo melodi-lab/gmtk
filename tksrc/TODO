@@ -930,3 +930,8 @@ Thu Jan 30 19:15:59 2003
     probably best way to do this is to add a bit of code to emIncrement
     in GMTK_DiagGaussian and GMTK_LinMeanCondGaussian for this purpose.
 
+
+
+Fri Jan 31 00:30:30 2003
+  - add a '-debug' option that prints various status
+    messages depending on the '-debug' number.
