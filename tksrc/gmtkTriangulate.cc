@@ -137,7 +137,7 @@ Arg Arg::Args[] = {
 
   Arg("findBestFace",Arg::Opt,findBestFace,"Run find-best-face (exponential time) algorithm or not."),
   Arg("forceLeftRight",Arg::Opt,forceLeftRight,"Use only either left (L) or right (R) face heuristic, rather than best of both"),
-  Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, one+ of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,T=C-st-spc"),
+  Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, one+ of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
 
   Arg("unroll",Arg::Opt,jut,"Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
   Arg("anyTimeTriangulate",Arg::Opt,anyTimeTriangulate,"Run the any-time triangulation algorithm for given duration."),
@@ -334,6 +334,63 @@ main(int argc,char*argv[])
 	// AnyTimeTriangulation anyTime(string(anyTimeTriangulate),gm_template);
 	error("Anytime algorithm not yet implemented\n");
       }
+
+
+      
+
+      gm_template.storePartitions(os,gm_info);
+      gm_template.storePartitionTriangulation(os,
+					      gm_info);
+
+    } else if (reTriangulate && !rePartition) {
+      // utilize the parition information already there but still
+      // run re-triangulation
+      
+      // first get the id and partition information.
+      {
+	iDataStreamFile is(tri_file.c_str());
+	if (!fp.readAndVerifyGMId(is))
+	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+	gm_template.findPartitions(is,
+				   gm_info);
+      }
+      // now using the partition triangulate
+      if (anyTimeTriangulate == NULL) {
+	// just run simple triangulation.
+	gm_template.triangulatePartitions(string(triangulationHeuristic),
+					  gm_info);
+      } else {
+	// In this case, here we only run triangulation on the
+	// provided new P,C,E partitions until the given amount of time
+	// has passed, and we save the best triangulation. This 
+	// is seen as a separate step, and would be expected
+	// to run for a long while.
+
+	AnyTimeTriangulation attr(gm_template,string(anyTimeTriangulate));
+	attr.triangulatePartitions(gm_info);
+
+      }
+      // write everything out anew
+      oDataStreamFile os(tri_file.c_str());
+      fp.writeGMId(os);
+      gm_template.storePartitions(os,gm_info);
+      gm_template.storePartitionTriangulation(os,
+					      gm_info);
+
+    } else {
+      // utilize both the partition information and elimination order information
+      // already computed and contained in the file
+
+      iDataStreamFile is(tri_file.c_str());
+      if (!fp.readAndVerifyGMId(is))
+	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+
+      gm_template.findPartitions(is,
+				 gm_info);
+      gm_template.triangulatePartitions(is,
+					gm_info);
+    }
+
       {
 	printf("\n--- Printing final clique set and clique weights---\n");
 
@@ -391,61 +448,27 @@ main(int argc,char*argv[])
 	printf("--- Final set (P,C,E) has max clique weight = %f, total state space = %f ---\n",
 	       maxWeight,
 	       totalWeight);
-      }
-      
 
-      gm_template.storePartitions(os,gm_info);
-      gm_template.storePartitionTriangulation(os,
-					      gm_info);
-
-    } else if (reTriangulate && !rePartition) {
-      // utilize the parition information already there but still
-      // run re-triangulation
-      
-      // first get the id and partition information.
-      {
-	iDataStreamFile is(tri_file.c_str());
-	if (!fp.readAndVerifyGMId(is))
-	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
-	gm_template.findPartitions(is,
-				   gm_info);
-      }
-      // now using the partition triangulate
-      if (anyTimeTriangulate == NULL) {
-	// just run simple triangulation.
-	gm_template.triangulatePartitions(string(triangulationHeuristic),
-					  gm_info);
-      } else {
-	// In this case, here we only run triangulation on the
-	// provided new P,C,E partitions until the given amount of time
-	// has passed, and we save the best triangulation. This 
-	// is seen as a separate step, and would be expected
-	// to run for a long while.
-
-	AnyTimeTriangulation attr(gm_template,string(anyTimeTriangulate));
-	attr.triangulatePartitions(gm_info);
+	// print out a couple of total state spaces for various unrollings
+	printf("--- Total weight when unrolling 1x = %f ---\n",totalWeight);
+	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));	
+	printf("--- Total weight when unrolling 2x = %f ---\n",totalWeight);
+	totalWeight += log10(1+pow(10,log10(3.0) + c_totalWeight-totalWeight));
+	printf("--- Total weight when unrolling 5x = %f ---\n",totalWeight);
+	totalWeight += log10(1+pow(10,log10(5.0) + c_totalWeight-totalWeight));
+	printf("--- Total weight when unrolling 10x = %f ---\n",totalWeight);
+	totalWeight += log10(1+pow(10,log10(10.0) + c_totalWeight-totalWeight));
+	printf("--- Total weight when unrolling 20x = %f ---\n",totalWeight);
+	totalWeight += log10(1+pow(10,log10(30.0) + c_totalWeight-totalWeight));
+	printf("--- Total weight when unrolling 50x = %f ---\n",totalWeight);
+	totalWeight += log10(1+pow(10,log10(50.0) + c_totalWeight-totalWeight));
+	printf("--- Total weight when unrolling 100x = %f ---\n",totalWeight);
+	totalWeight += log10(1+pow(10,log10(400.0) + c_totalWeight-totalWeight));
+	printf("--- Total weight when unrolling 500x = %f ---\n",totalWeight);
+	totalWeight += log10(1+pow(10,log10(500.0) + c_totalWeight-totalWeight));
+	printf("--- Total weight when unrolling 1000x = %f ---\n",totalWeight);
 
       }
-      // write everything out anew
-      oDataStreamFile os(tri_file.c_str());
-      fp.writeGMId(os);
-      gm_template.storePartitions(os,gm_info);
-      gm_template.storePartitionTriangulation(os,
-					      gm_info);
-
-    } else {
-      // utilize both the partition information and elimination order information
-      // already computed and contained in the file
-
-      iDataStreamFile is(tri_file.c_str());
-      if (!fp.readAndVerifyGMId(is))
-	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
-
-      gm_template.findPartitions(is,
-				 gm_info);
-      gm_template.triangulatePartitions(is,
-					gm_info);
-    }
   }
 
   exit_program_with_status(0);
