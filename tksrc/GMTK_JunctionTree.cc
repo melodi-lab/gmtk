@@ -71,6 +71,11 @@ char* JunctionTree::interfaceCliquePriorityStr = "W";
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
 
+// default names of the three partitions for printing/debugging messages.
+char* JunctionTree::P1_n = "P'";
+char* JunctionTree::Co_n = "C'";
+char* JunctionTree::E1_n = "E'";
+
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -168,6 +173,7 @@ JT_Partition::JT_Partition(
 {
 
   triMethod = from_part.triMethod;
+  numVEseps = 0;
 
   set<RV*>::iterator it;
 
@@ -277,6 +283,8 @@ JT_Partition::JT_Partition(
  )
 {
   nodes = from_part.nodes;
+  triMethod = from_part.triMethod;
+  numVEseps = 0;
   liNodes = from_liVars;
   riNodes = from_riVars;
   // make the cliques.
@@ -421,7 +429,14 @@ JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
     iCliqueSameAsInterface  = (bool)pcArray[0].weights[pcArray[0].weights.size()-1];
 
   } else {
-    iClique = ~0x0;
+    // This could happen either when (case 1) we are trying to find
+    // the r-interface for E, the left interface for P, or (case 2)
+    // for disconnected graphs or when some of the partitions (P, or
+    // E) are empty.  In case 1, it doesn't matter what we return (it
+    // could be an invalid value such as ~0x0). In the disconnected
+    // graph case, we need to return any valid clique index. Since
+    // there is always a clique, we return a 0.
+    iClique = 0;
     iCliqueSameAsInterface = false;
   }
 }
@@ -490,7 +505,8 @@ JT_Partition::cliqueWithMaxWeight()
 {
   double weight = -1.0;
   unsigned res= ~0x0;
-  assert ( cliques.size() > 0 );
+  // TODO: for empty P or E partitions, this next assertion will need to be removed.
+  // assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {
     if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
       res = i;
@@ -503,7 +519,8 @@ JT_Partition::cliqueWithMinWeight()
 {
   double weight = DBL_MAX;
   unsigned res = ~0x0;
-  assert ( cliques.size() > 0 );
+  // TODO: for empty P or E partitions, this next assertion will need to be removed.
+  // assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {
     if (MaxClique::computeWeight(cliques[i].nodes) < weight) {
       res = i;
@@ -607,7 +624,8 @@ JT_InferencePartition::emIncrement(const logpr probE,
  *
  * Preconditions:
  *   Junction tree must have been created. Should not have called 
- *   setUpDataStructures() before.
+ *   setUpDataStructures() before. The C partitions in the template
+ *   have variables, but the other partions (P, and E) might be empty.
  *
  * Postconditions:
  *   All data structures are set up. The JT is ready to have
@@ -677,9 +695,9 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
   infoMsg(IM::Giga,"Starting create JT\n");
 
   if (numMaxCliques == 0) {
-    // this shouldn't happen
-    assert(0);
-    infoMsg(IM::Giga,"Partition is empty\n");
+    // Nothing to do.
+    // This could happen if the partition is empty which might occur
+    // for empty P's and E's. C should never be empty.
     return;
   } else if (numMaxCliques == 1) {
     // then nothing to do
@@ -691,6 +709,8 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
     part.cliques[0].neighbors.push_back(1);
     part.cliques[1].neighbors.push_back(0);
   } else {
+
+    infoMsg(IM::Giga,"Partition has only %d cliques\n",numMaxCliques);
 
     // Run max spanning tree to construct JT from set of cliques.
     // This is basically Krusgal's algorithm, but without using the
@@ -955,14 +975,23 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 		edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
 
 	if (edges[i].weights[0] == 0.0) {
-	  warning("ERROR: junction tree creation trying to join two cliques (%d and %d) with size 0 set intersection. Possible non-triangulated graph.",
-		edges[i].clique1,edges[i].clique2);
-	  // TODO: print out two cliques that are trying to be joined.
-	  fprintf(stderr,"Clique %d: ",edges[i].clique1);
-	  part.cliques[edges[i].clique1].printCliqueNodes(stderr);
-	  fprintf(stderr,"Clique %d: ",edges[i].clique2);
-	  part.cliques[edges[i].clique2].printCliqueNodes(stderr);
-	  error("exiting");
+	  if (IM::messageGlb(IM::Info)) {
+	    // there is no way to know the difference here if the
+	    // graph is non-triangualted or is simply disconnected
+	    // (which is ok). A non-triangulated graph might have
+	    // resulted from the user editing the trifile, but we
+	    // presume that MCS has already checked for this when
+	    // reading in the trifiles. We just issue an informative
+	    // message just in case.
+	    infoMsg(IM::Info,"NOTE: junction tree creation joining two cliques (%d and %d) with size 0 set intersection. Either disconnected or non-triangulated graph.",
+		    edges[i].clique1,edges[i].clique2);
+	    // TODO: print out two cliques that are trying to be joined.
+	    printf("Clique %d: ",edges[i].clique1);
+	    part.cliques[edges[i].clique1].printCliqueNodes(stdout);
+	    printf("\nClique %d: ",edges[i].clique2);
+	    part.cliques[edges[i].clique2].printCliqueNodes(stdout);
+	    printf("\n");
+	  }
 	}
 
  	part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
@@ -1026,19 +1055,11 @@ JunctionTree::base_unroll()
 	    unrolled_rvs,ppf);
   
   set <RV*> empty;
+
   // copy P partition 
   new (&P1) JT_Partition(gm_template.P,0*gm_template.S,
 			 empty,0*gm_template.S,
 			 gm_template.PCInterface_in_P,0*gm_template.S,
-			 unrolled_rvs,ppf);
-
-  // left interface case.
-  // Template has a (P)(C)(CE) = (P')(C')(E')
-  // Right interface case.
-  // Template has a (PC)(C)(E) = (P')(C')(E')
-  new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
-			 gm_template.PCInterface_in_C,0*gm_template.S,			   
-			 gm_template.CEInterface_in_C,0*gm_template.S,
 			 unrolled_rvs,ppf);
 
   // copy E partition
@@ -1046,6 +1067,58 @@ JunctionTree::base_unroll()
 			 gm_template.CEInterface_in_E,0*gm_template.S,
 			 empty,0*gm_template.S,
 			 unrolled_rvs,ppf);
+
+  if (gm_template.leftInterface) {
+    // left interface case
+    // Template has a (P)(C)(CE) = (P')(C')(E')
+
+    // An E' in the LI case must be E' = [ C E ], so there is never an
+    // empty E here (since C is never empty).
+    assert ( E1.cliques.size() > 0 );
+
+    // there might be an empty P1, though, so we need to check for that.
+    if (P1.cliques.size() > 0) {
+      // neither P1 nor E1 are empty.
+      new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
+			     gm_template.PCInterface_in_C,0*gm_template.S,			   
+			     gm_template.CEInterface_in_C,0*gm_template.S,
+			     unrolled_rvs,ppf);
+    } else {
+      // P1 is empty. For Co's left interface, we use its right
+      // interface since there is no interface to P1. The reason why
+      // this is valid is that E' = [C E], and E can't connect to C1
+      // in [C1 C2 E], so C2's li to C1 is the same as E's li to C' in
+      // [C' E']. We do need to shift E'ls li to C' to the left by S
+      // though.
+      new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
+			     gm_template.CEInterface_in_C,-1*gm_template.S,			   
+			     gm_template.CEInterface_in_C,0*gm_template.S,
+			     unrolled_rvs,ppf);
+    }
+  } else {
+    // right interface case, symmetric to the left interface case above.
+    // Right interface case.
+    // Template has a (PC)(C)(E) = (P')(C')(E')
+
+    // An P' in the RI case must be P' = [ P C ], so
+    // there is never an empty P' here.
+    assert ( P1.cliques.size() > 0 );
+    
+    // there might be an empty E1, though, so we need to check for that.
+
+    if (E1.cliques.size() > 0) {
+      // neither E1 nor P1 are empty.
+      new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
+			     gm_template.PCInterface_in_C,0*gm_template.S,			   
+			     gm_template.CEInterface_in_C,0*gm_template.S,
+			     unrolled_rvs,ppf);
+    } else {
+      new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
+			     gm_template.PCInterface_in_C,0*gm_template.S,			   
+			     gm_template.PCInterface_in_C,1*gm_template.S,
+			     unrolled_rvs,ppf);
+    }
+  }
   
 }
 
@@ -1081,13 +1154,16 @@ JunctionTree::computePartitionInterfaces()
   base_unroll();
 
   // Use base partitions to find the various interface cliques.
-
   bool P_riCliqueSameAsInterface;
   bool E_liCliqueSameAsInterface;
   P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
   E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
 
+  // Note that here, we do the same for both left and right interface,
+  // but we break it out into two cases for clarity.
   if (gm_template.leftInterface) {
+    // left interface case
+
     bool Co_liCliqueSameAsInterface;
     bool Co_riCliqueSameAsInterface;
 
@@ -1096,7 +1172,6 @@ JunctionTree::computePartitionInterfaces()
     Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_ri_to_C = C_ri_to_E;
 
-    
     // sanity check
     assert (C_ri_to_C == C_ri_to_E);
 
@@ -1110,6 +1185,7 @@ JunctionTree::computePartitionInterfaces()
       Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
 
   } else { // right interface
+    // left interface case
 
     bool Co_liCliqueSameAsInterface;
     bool Co_riCliqueSameAsInterface;
@@ -1133,9 +1209,9 @@ JunctionTree::computePartitionInterfaces()
 
   }
 
-  // E order, clique 0 is choosen as root arbitrarily for now.
-  // TODO: see if it is possible to choose a better root for E.
-  // Perhaps use the maximum weight clique???
+  // E order, clique 0 is choosen as root arbitrarily for now.  TODO:
+  // see if it is possible to choose a better root for E.  Perhaps use
+  // the maximum weight clique.
   E_root_clique = 0;
   // E_root_clique = E1.cliqueWithMinWeight();
   // If this is updated, need also to update in all other places
@@ -1317,6 +1393,10 @@ void
 JunctionTree::createDirectedGraphOfCliques(JT_Partition& part,
 					   const unsigned root)
 {
+  // check for empty partitions, possible for P or E.
+  if (part.cliques.size() == 0)
+    return;
+
   // make sure none have been so far visited
   vector< bool > visited(part.cliques.size());
   for (unsigned i=0;i<part.cliques.size();i++) {
@@ -1375,26 +1455,37 @@ void
 JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 				 const char *varCliqueAssignmentPrior)
 {
-  infoMsg(IM::Giga,"assigning rvs to P1 partition\n");
-  assignRVsToCliques("P1",P1,P_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+
+
+
+  if (P1.nodes.size() > 0) {
+    infoMsg(IM::Giga,"assigning rvs to P1 partition\n");
+    assignRVsToCliques(P1_n,P1,P_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  }
 
   infoMsg(IM::Max,"assigning rvs to Co partition\n");
-  union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
-		 P1.cliques[P_ri_to_C].assignedNodes,
-		 Co.cliques[C_li_to_P].cumulativeAssignedNodes);
-  union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
-		 P1.cliques[P_ri_to_C].assignedProbNodes,
-		 Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
-  assignRVsToCliques("Co",Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  if (P1.nodes.size() > 0) {
+    // accumulate what occured in P1 so Co can use it. 
+    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
+		   P1.cliques[P_ri_to_C].assignedNodes,
+		   Co.cliques[C_li_to_P].cumulativeAssignedNodes);
+    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
+		   P1.cliques[P_ri_to_C].assignedProbNodes,
+		   Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
+  }
+  assignRVsToCliques(Co_n,Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
-  infoMsg(IM::Max,"assigning rvs to E partition\n");
-  union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
-		 Co.cliques[C_ri_to_E].assignedNodes,
-		 E1.cliques[E_li_to_C].cumulativeAssignedNodes);
-  union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
-		 Co.cliques[C_ri_to_E].assignedProbNodes,
-		 E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
-  assignRVsToCliques("E1",E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  if (E1.nodes.size() > 0) {
+    infoMsg(IM::Max,"assigning rvs to E partition\n");
+    // accumulate what occured in P1,Co so E1 can use it. 
+    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
+		   Co.cliques[C_ri_to_E].assignedNodes,
+		   E1.cliques[E_li_to_C].cumulativeAssignedNodes);
+    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
+		   Co.cliques[C_ri_to_E].assignedProbNodes,
+		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
+    assignRVsToCliques(E1_n,E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  }
 
   // lastly, check to make sure all nodes have been assigned to to
   // give probability to one clique. This should be done in case the
@@ -1404,9 +1495,15 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
   union_1_2_to_3(P1.nodes,Co.nodes,allNodes);
   union_1_2_to_3(Co.nodes,E1.nodes,allNodes,true);
   set <RV*> allAssignedProbNodes;
-  union_1_2_to_3(E1.cliques[E_root_clique].cumulativeAssignedProbNodes,
-		 E1.cliques[E_root_clique].assignedProbNodes,
-		 allAssignedProbNodes);
+  if (E1.cliques.size() > 0)
+    union_1_2_to_3(E1.cliques[E_root_clique].cumulativeAssignedProbNodes,
+		   E1.cliques[E_root_clique].assignedProbNodes,
+		   allAssignedProbNodes);
+  else 
+    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
+		   Co.cliques[C_ri_to_E].assignedProbNodes,
+		   allAssignedProbNodes);
+
   set <RV*> nodesThatGiveNoProb;
   set_difference(allNodes.begin(),allNodes.end(),
 		 allAssignedProbNodes.begin(),allAssignedProbNodes.end(),
@@ -1449,7 +1546,7 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
  *
  * Preconditions:
  *     createPartitionJunctionTrees(), computePartitionInterfaces() must
- *     have been called.
+ *     have been called. The partition must not be empty.
  *
  * Postconditions:
  *     the partition so specified in the code below
@@ -2008,6 +2105,10 @@ JunctionTree::setUpMessagePassingOrder(JT_Partition& part,
 				       const unsigned excludeFromLeafCliques,
 				       vector < unsigned >& leaf_cliques)
 {
+  // first, handle case for potential empty P or E partition. 
+  if (part.cliques.size() == 0)
+    return;
+
   order.clear();
   // a tree of N nodes has N-1 edges.
   order.reserve(part.cliques.size() - 1);
@@ -2080,55 +2181,110 @@ void
 JunctionTree::createSeparators()
 {
 
-  createSeparators(P1,
-		   P1_message_order);
-  P1.cliques[P_ri_to_C].ceSendSeparator = ~0x0; // set to invalid value
-  // P1 has no LI, so nothing more to do for P1 here.
-
-  // insert VE seps last
-  if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_P)) {
-    infoMsg(IM::Max,"Searching for VE seps in P1\n");
-    createVESeparators(P1);
-  } else
-    P1.numVEseps = 0;
+  if (P1.cliques.size() > 0) { 
+    createSeparators(P1,
+		     P1_message_order);
+    P1.cliques[P_ri_to_C].ceSendSeparator = ~0x0; // set to invalid value
+    // P1 has no LI, so nothing more to do for P1 here.
+    
+    // insert VE seps last
+    if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_P)) {
+      infoMsg(IM::Max,"Searching for VE seps in P1\n");
+      createVESeparators(P1);
+    } else
+      P1.numVEseps = 0;
+  }
+  
+  // Cs are never empty.
+  assert ( Co.cliques.size() > 0 );
 
   createSeparators(Co,
 		   Co_message_order);
 
 
-  // insert VE seps last
+  // insert VE seps before the last one
   if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_C)) {
     infoMsg(IM::Max,"Searching for VE seps in Co\n");
     createVESeparators(Co);
   } else
     Co.numVEseps = 0;
 
-  // Create separator of interface cliques. Note that the interface
-  // separator always has to be the last separator inserted.
-  Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Co.cliques[C_li_to_P]));
-  // update right partitions LI clique to include new separator
-  Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
-  // don't update left partitions RI clique's send separator since handeled explicitly
+  // Final one is guaranteed *always* to be the interface separator to
+  // the left partition.
+  if (gm_template.leftInterface) {
+    // left interface case
+    assert ( E1.cliques.size() > 0 );
+
+    if (P1.cliques.size() > 0) {
+      // Create separator of interface cliques, specifically the
+      // separator between, P1's right-interface clique and Co's left
+      // interface clqiue. 
+      // 
+      // Note that the interface separator always has to be the last
+      // separator inserted.
+      Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Co.cliques[C_li_to_P]));
+      // update right partitions LI clique to include new separator
+      Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
+    } else {
+      // Then P1 is empty. We insert a dummy separator that has
+      // been set up so that C'_i can go to C'_{i+1}. For i>0 this
+      // works fine, for i=0 we will need to make sure during
+      // inference not to use this separator since it will have
+      // nothing in it.
+
+      if (Co.liNodes.size() > 0) {
+	// then there will at least be a Ci <-> C_{i+1}
+	// intersection. I.e., we are guaranteed that the chunks are
+	// not disconnected from each other.
+	Co.separators.push_back(SeparatorClique(Co.cliques[C_li_to_P],Co.cliques[C_li_to_P]));
+      } else {
+	// then there will not be a Ci <-> C_{i+1} intersection.  need
+	// to create an empty separator since the chunks are
+	// disconnected from each other.
+	set<RV*> empty;
+	MaxClique mc(empty);
+	Co.separators.push_back(SeparatorClique(mc,mc));
+      }
+      // update right partitions LI clique to include new separator
+      Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
+    }
+  } else {
+    // right interface case
+    assert ( P1.cliques.size() > 0 );
+
+    // Note that the interface separator always has to be the last
+    // separator inserted.
+    Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Co.cliques[C_li_to_P]));
+    // update right partitions LI clique to include new separator
+    Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
+
+  }
+
+  // don't update left partitions RI clique's send separator since handled explicitly
   Co.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
 
-  createSeparators(E1,
-		   E1_message_order);
+  if (E1.cliques.size() > 0) { 
+    createSeparators(E1,
+		     E1_message_order);
 
-  // insert VE seps last
-  if (useVESeparators  && (veSeparatorWhere & VESEP_WHERE_E)) {
-    infoMsg(IM::Max,"Searching for VE seps in E1\n");
-    createVESeparators(E1);
-  } else
-    E1.numVEseps = 0;
+    // insert VE seps before final one.
+    if (useVESeparators  && (veSeparatorWhere & VESEP_WHERE_E)) {
+      infoMsg(IM::Max,"Searching for VE seps in E1\n");
+      createVESeparators(E1);
+    } else
+      E1.numVEseps = 0;
 
-  // Create separator of interface cliques. Note that the interface
-  // separator always has to be the last separator inserted.
-  E1.separators.push_back(SeparatorClique(Co.cliques[C_ri_to_E],E1.cliques[E_li_to_C]));
-  // update right partitions LI clique to include new separator
-  E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
-  // don't update left partitions RI clique's send separator since handeled explicitly
-  E1.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
-
+    // Final one is guaranteed *always* to be the interface separator to
+    // the left partition.
+    // 
+    // Create separator of interface cliques. Co is never empty. Note that the interface
+    // separator always has to be the last separator inserted.
+    E1.separators.push_back(SeparatorClique(Co.cliques[C_ri_to_E],E1.cliques[E_li_to_C]));
+    // update right partitions LI clique to include new separator
+    E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
+    // don't update left partitions RI clique's send separator since handeled explicitly
+    E1.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
+  }
 
 }
 
@@ -2389,10 +2545,11 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // until run time). Therefore, our order is a heuristic.
       // We do this by reordering the entries in clique.ceReceiveSeparators.
 
-      // Ideas:
-      // Probably a dynamic program algorithm would work better here. Use DP
-      // to find the order that minimizes the sum (in reverse order) of the 
-      // intersection of the last set with all previous ones.
+      // Other Ideas:
+      // Probably a dynamic programing algorithm would work better
+      // here. Use DP to find the order that minimizes the sum (in
+      // reverse order) of the intersection of the last set with all
+      // previous ones.
 
       //
       // What we first do: place VE seps last (since they are uneffected by pruning)
@@ -2412,8 +2569,10 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // printf("ceRecSep[%d] = %d\n",i,clique.ceReceiveSeparators[i]);
       // }
 
-
-
+      // TODO: need to change this to be based only on hidden nodes,
+      // since the intersection of observed nodes doesn't count
+      // (observed nodes don't contribute to intersection pruning)
+      // since they are never inserted into the clique.
 
 #if 0
       for (unsigned i=0;i<clique.ceReceiveSeparators.size();i++) {
@@ -2731,7 +2890,8 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
  *   iteration.
  *
  * Preconditions:
- *   computeSeparatorIterationOrder() must have been called.
+ *   computeSeparatorIterationOrder() must have been called. Partition
+ *   in argument 'part' must not be empty.
  *
  * Postconditions:
  *   cliques know which nodes to iterate over or not.
@@ -2769,26 +2929,31 @@ JunctionTree::getCumulativeUnassignedIteratedNodes()
 {
   set<RV*> res;
 
-  // TODO: this should be a member function in P1.
-  getCumulativeUnassignedIteratedNodes(P1,P_ri_to_C);
-  res.clear();
-  set_union(P1.cliques[P_ri_to_C].unassignedIteratedNodes.begin(),
-	    P1.cliques[P_ri_to_C].unassignedIteratedNodes.end(),
-	    P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
-	    P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.end(),	    
-	    inserter(res,res.end()));
+  if (P1.cliques.size() > 0) {
+    // TODO: this should be a member function in P1.
+    getCumulativeUnassignedIteratedNodes(P1,P_ri_to_C);
+    res.clear();
+    set_union(P1.cliques[P_ri_to_C].unassignedIteratedNodes.begin(),
+	      P1.cliques[P_ri_to_C].unassignedIteratedNodes.end(),
+	      P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
+	      P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.end(),	    
+	      inserter(res,res.end()));
+  }
 
+  // Co is never empty.
   Co.cliques[C_li_to_P].cumulativeUnassignedIteratedNodes = res;
   getCumulativeUnassignedIteratedNodes(Co,C_ri_to_C);
 
-  res.clear();
-  set_union(Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	    Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	    Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
-	    Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),	    
-	    inserter(res,res.end()));
-  E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
-  getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
+  if (E1.cliques.size() > 0) {
+    res.clear();
+    set_union(Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
+	      Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
+	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
+	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),	    
+	      inserter(res,res.end()));
+    E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
+    getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
+  }
 
 }
 
@@ -2835,6 +3000,10 @@ JunctionTree::junctionTreeWeight(JT_Partition& part,
 				 set<RV*>* lp_nodes,
 				 set<RV*>* rp_nodes)
 {
+  // check for case of empty E or P partition.
+  if (part.cliques.size() == 0)
+    return 0;
+
   MaxClique& curClique = part.cliques[rootClique];
 
   set <RV*> empty;
@@ -2892,9 +3061,14 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 
 {
 
+  // might be a partition that is empty.
+  if (cliques.size() == 0)
+    return 0.0;
+
   Partition part;
   const set <RV*> emptySet;
   part.cliques = cliques;
+
 
   // set up the nodes into part
   for (unsigned i=0;i<cliques.size();i++) {
@@ -3089,7 +3263,8 @@ JunctionTree::printAllJTInfo(FILE* f,
   // print cliques information
   fprintf(f,"=== Clique Information ===\n");
   fprintf(f,"Number of cliques = %d\n",part.cliques.size());
-  printAllJTInfoCliques(f,part,root,0,lp_nodes,rp_nodes);
+  if (part.cliques.size() > 0)
+    printAllJTInfoCliques(f,part,root,0,lp_nodes,rp_nodes);
 
   // print separator information
   fprintf(f,"\n=== Separator Information ===\n");
@@ -3232,8 +3407,6 @@ void
 JunctionTree::prepareForUnrolling()
 {
 
-
-
   const unsigned totalNumVESeps =
     P1.numVEseps + Co.numVEseps + E1.numVEseps;
   if (useVESeparators && totalNumVESeps > 0) {
@@ -3281,6 +3454,7 @@ JunctionTree::prepareForUnrolling()
       infoMsg(IM::Default,"Done computing information for %d total VE separators\n",totalNumVESeps);
   }
 }
+
 void
 JunctionTree::prepareForUnrolling(JT_Partition& part)
 {
@@ -3375,8 +3549,17 @@ JunctionTree::unroll(const unsigned int numFrames)
   const int numCoPartitions = modifiedTemplateUnrollAmount+1;
 
   new (&jtIPartitions[partNo++]) JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
-  for (int p=0;p<numCoPartitions;p++) 
-    new (&jtIPartitions[partNo++]) JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
+  for (int p=0;p<numCoPartitions;p++) {
+    new (&jtIPartitions[partNo]) JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
+    if (p == 0 && P1.cliques.size() == 0) {
+      // Alternatively to the below, we might set this inference
+      // partition to not use the LI separator, since it is will
+      // always be empty at the start. At the moment, we handle this
+      // in the inference CE/DE code below.
+    }
+    partNo++;
+  }
+
   new (&jtIPartitions[partNo++]) 
     JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
 			  (modifiedTemplateUnrollAmount)*gm_template.S);
@@ -3472,7 +3655,11 @@ JunctionTree::ceGatherIntoRoot(// partition
 			       // (for debugging/status msgs)
 			       const unsigned part_num)
 {
-  // do partition messages
+  // first check that this is not an empty partition.
+  if (part.maxCliques.size() == 0)
+    return;
+
+  // Now, do partition messages.
   for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
     const unsigned from = message_order[msgNo].first;
     const unsigned to = message_order[msgNo].second;
@@ -3545,6 +3732,10 @@ JunctionTree::ceSendToNextPartition(// previous partition
 				    // partitiiton number (debugging/status msgs)
 				    const unsigned next_part_num)
 {
+  // check for empty partitions.
+  if (previous_part.maxCliques.size() == 0 || next_part.maxCliques.size() == 0)
+    return;
+
   infoMsg(IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
 	   previous_part_type_name,
 	   previous_part_num,
@@ -3616,7 +3807,7 @@ JunctionTree::collectEvidence()
   unsigned partNo = 0;
   // set up appropriate name for debugging output.
   const char* prv_nm;
-  prv_nm = "P1";
+  prv_nm = P1_n;
   unsigned prv_ri = P_ri_to_C;
   ceGatherIntoRoot(jtIPartitions[partNo],
 		   P_ri_to_C,
@@ -3625,23 +3816,31 @@ JunctionTree::collectEvidence()
 
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
     ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
-			  jtIPartitions[partNo+1],C_li_to_C,"Co",partNo+1);
+			  jtIPartitions[partNo+1],C_li_to_C,Co_n,partNo+1);
     partNo++;
-    prv_nm = "Co";
+    prv_nm = Co_n;
     prv_ri = C_ri_to_C;
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (p == 0 && P1.cliques.size() == 0)
+      Co.skipLISeparator();
     ceGatherIntoRoot(jtIPartitions[partNo],
 		     C_ri_to_C,
 		     Co_message_order,
 		     prv_nm,partNo);
+    // if the LI separator was turned off, we need to turn it back on.
+    if (p == 0 && P1.cliques.size() == 0)
+      Co.useLISeparator();
   }
 
   ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
-			jtIPartitions[partNo+1],E_li_to_C,"E1",partNo+1);
+			jtIPartitions[partNo+1],E_li_to_C,E1_n,partNo+1);
   partNo++;
   ceGatherIntoRoot(jtIPartitions[partNo],
 		   E_root_clique,
 		   E1_message_order,
-		   "E1",partNo);
+		   E1_n,partNo);
 
 
   assert ( partNo == jtIPartitions.size()-1 );
@@ -3649,7 +3848,8 @@ JunctionTree::collectEvidence()
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
   // call pruning on the root clique of the last partition.
-  jtIPartitions[partNo].maxCliques[E_root_clique].ceDoAllPruning();
+  if (jtIPartitions[partNo].maxCliques.size() > 0)
+    jtIPartitions[partNo].maxCliques[E_root_clique].ceDoAllPruning();
 
 }
 
@@ -3703,6 +3903,9 @@ JunctionTree::deScatterOutofRoot(// the partition
 				 // partition number (debugging/status msgs)
 				 const unsigned part_num)
 {
+  if (part.maxCliques.size() == 0)
+    return;
+
   const unsigned stopVal = (unsigned)(-1);
   part.maxCliques[root].
     deScatterToOutgoingSeparators(part);
@@ -3769,6 +3972,10 @@ JunctionTree::deReceiveToPreviousPartition(// the next partition
 					   // number of prev part (debugging/status msgs)
 					   const unsigned previous_part_num)
 {
+  // check for empty partitions.
+  if (previous_part.maxCliques.size() == 0 || next_part.maxCliques.size() == 0)
+    return;
+
   infoMsg(IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
 	  previous_part_type_name,previous_part_num,previous_part_root,
 	  next_part_type_name,next_part_num,next_part_leaf);
@@ -3844,34 +4051,40 @@ JunctionTree::distributeEvidence()
   deScatterOutofRoot(jtIPartitions[partNo],
 		     E_root_clique,
 		     E1_message_order,
-		     "E1",partNo);
+		     E1_n,partNo);
 
   partNo--;
 
-  prv_nm = "Co";
-  deReceiveToPreviousPartition(jtIPartitions[partNo+1],E_li_to_C,"E1",partNo+1,
-			       jtIPartitions[partNo],C_ri_to_E,"Co",partNo);
+  prv_nm = Co_n;
+  deReceiveToPreviousPartition(jtIPartitions[partNo+1],E_li_to_C,E1_n,partNo+1,
+			       jtIPartitions[partNo],C_ri_to_E,Co_n,partNo);
 
   for (unsigned p=numCoPartitions; p > 0; p--) {
+
+    if (p == 1 && P1.cliques.size() == 0)
+      Co.skipLISeparator();
     deScatterOutofRoot(jtIPartitions[partNo],
 		       C_ri_to_C,
 		       Co_message_order,
-		       "Co",partNo);
+		       Co_n,partNo);
+    if (p == 1 && P1.cliques.size() == 0)
+      Co.useLISeparator();
+
     partNo--;
-    prv_nm = ((p == 1)?"P1":"Co");
+    prv_nm = ((p == 1)?P1_n:Co_n);
     unsigned prv_ri;
     if (p > 1) 
       prv_ri = C_ri_to_C;
     else
       prv_ri = P_ri_to_C;
-    deReceiveToPreviousPartition(jtIPartitions[partNo+1],C_li_to_C,"Co",partNo+1,
+    deReceiveToPreviousPartition(jtIPartitions[partNo+1],C_li_to_C,Co_n,partNo+1,
 				 jtIPartitions[partNo],prv_ri,prv_nm,partNo);
   }
 
   deScatterOutofRoot(jtIPartitions[partNo],
 		     P_ri_to_C,
 		     P1_message_order,
-		     "P1",partNo);
+		     P1_n,partNo);
 
   assert ( partNo == 0 );
 }
@@ -3889,8 +4102,10 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
     BP_Range::iterator it = pPartCliquePrintRange->begin();
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
-      sprintf(buff,"Partition %d (P), Clique %d:",partNo,cliqueNum); 
-      jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+      if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
+	sprintf(buff,"Partition %d (P), Clique %d:",partNo,cliqueNum); 
+	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+      }
       it++;
     }
   }
@@ -3901,8 +4116,10 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
       BP_Range::iterator it = cPartCliquePrintRange->begin();
       while (!it.at_end()) {
 	const unsigned cliqueNum = (unsigned)(*it);
-	sprintf(buff,"Partition %d (C), Clique %d:",partNo,cliqueNum); 
-	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+	if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
+	  sprintf(buff,"Partition %d (C), Clique %d:",partNo,cliqueNum); 
+	  jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+	}
 	it++;
       }
     }
@@ -3914,8 +4131,10 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
     BP_Range::iterator it = ePartCliquePrintRange->begin();
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
-      sprintf(buff,"Partition %d (E), Clique %d:",partNo,cliqueNum); 
-      jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+      if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
+	sprintf(buff,"Partition %d (E), Clique %d:",partNo,cliqueNum); 
+	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+      }
       it++;
     }
   }
@@ -4050,7 +4269,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   partNo = 0;
   curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   prevPart = NULL;
-  prv_nm = "P1";
+  prv_nm = P1_n;
   prv_ri = P_ri_to_C;
   ceGatherIntoRoot(*curPart,
 		   P_ri_to_C,
@@ -4062,14 +4281,20 @@ JunctionTree::probEvidence(const unsigned int numFrames,
     delete curPart;
     curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
     ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			  *curPart,C_li_to_C,"Co",partNo+1);
+			  *curPart,C_li_to_C,Co_n,partNo+1);
     partNo++;
-    prv_nm = "Co";
+    prv_nm = Co_n;
     prv_ri = C_ri_to_C;
+
+    if (p == 0 && P1.cliques.size() == 0)
+      Co.skipLISeparator();
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Co_message_order,
 		     prv_nm,partNo);
+    if (p == 0 && P1.cliques.size() == 0)
+      Co.useLISeparator();
+
     swap(curPart,prevPart);
   }
 
@@ -4077,12 +4302,12 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
 				      modifiedTemplateUnrollAmount*gm_template.S);
   ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			*curPart,E_li_to_C,"E1",partNo+1);
+			*curPart,E_li_to_C,E1_n,partNo+1);
   partNo++;
   ceGatherIntoRoot(*curPart,
 		   E_root_clique,
 		   E1_message_order,
-		   "E1",partNo);
+		   E1_n,partNo);
 
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
@@ -4177,7 +4402,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   partNo = 0;
   curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   prevPart = NULL;
-  prv_nm = "P1";
+  prv_nm = P1_n;
   prv_ri = P_ri_to_C;
   ceGatherIntoRoot(*curPart,
 		   P_ri_to_C,
@@ -4191,14 +4416,20 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
     delete curPart;
     curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
     ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			  *curPart,C_li_to_C,"Co",partNo+1);
+			  *curPart,C_li_to_C,Co_n,partNo+1);
     partNo++;
-    prv_nm = "Co";
+    prv_nm = Co_n;
     prv_ri = C_ri_to_C;
+
+    if (p == 0 && P1.cliques.size() == 0)
+      Co.skipLISeparator();
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Co_message_order,
 		     prv_nm,partNo);
+    if (p == 0 && P1.cliques.size() == 0)
+      Co.useLISeparator();
+
     swap(curPart,prevPart);
     if (probEvidenceTimeExpired)
       goto finished;
@@ -4208,12 +4439,12 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
 				      modifiedTemplateUnrollAmount*gm_template.S);
   ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			*curPart,E_li_to_C,"E1",partNo+1);
+			*curPart,E_li_to_C,E1_n,partNo+1);
   partNo++;
   ceGatherIntoRoot(*curPart,
 		   E_root_clique,
 		   E1_message_order,
-		   "E1",partNo);
+		   E1_n,partNo);
 
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
@@ -4287,12 +4518,18 @@ ceGatherIntoRoot(const unsigned part)
 {
   infoMsg(IM::Mod,"==> ceGatherIntoRoot: part = %d, nm = %s\n",
 	  part,partPArray[part].nm);
+
+  if (part == 1 && P1.cliques.size() == 0)
+    Co.skipLISeparator();
   if (cur_prob_evidence.not_essentially_zero())
     ceGatherIntoRoot(*partPArray[part].p,
 		     partPArray[part].ri,
 		     *partPArray[part].mo,
 		     partPArray[part].nm,
 		     part);
+  if (part == 1 && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
 }
 void JunctionTree::
 createPartition(const unsigned part)
@@ -4345,12 +4582,19 @@ deScatterOutofRoot(const unsigned part)
 {
   infoMsg(IM::Mod,"<== deScatterOutofRoot: part = %d (%s)\n",
 	  part,partPArray[part].nm);
+
+  if (part == 2 && P1.cliques.size() == 0)
+    Co.skipLISeparator();
   if (cur_prob_evidence.not_essentially_zero())
     deScatterOutofRoot(*partPArray[part].p,
 		       partPArray[part].ri,
 		       *partPArray[part].mo,
 		       partPArray[part].nm,
 		       part);
+  if (part == 2 && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
+
 }
 logpr
 JunctionTree::probEvidenceRoot(const unsigned part)
@@ -4858,7 +5102,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   partPArray[partNo].offset = 0*gm_template.S;
   partPArray[partNo].p = NULL;
   partPArray[partNo].mo = &P1_message_order;
-  partPArray[partNo].nm = "P1";
+  partPArray[partNo].nm = P1_n;
   partPArray[partNo].ri = P_ri_to_C;
   partPArray[partNo].li = ~0x0;
   partNo++;
@@ -4867,7 +5111,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
     partPArray[partNo].offset = p*gm_template.S;
     partPArray[partNo].p = NULL;
     partPArray[partNo].mo = &Co_message_order;
-    partPArray[partNo].nm = "Co";
+    partPArray[partNo].nm = Co_n;
     partPArray[partNo].ri = C_ri_to_C;
     partPArray[partNo].li = C_li_to_C;
     partNo++;
@@ -4876,7 +5120,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   partPArray[partNo].offset = (modifiedTemplateUnrollAmount)*gm_template.S;
   partPArray[partNo].p = NULL;
   partPArray[partNo].mo = &E1_message_order;
-  partPArray[partNo].nm = "E1";
+  partPArray[partNo].nm = E1_n;
   partPArray[partNo].ri = E_root_clique;
   partPArray[partNo].li = E_li_to_C;
   partNo++;
@@ -4940,8 +5184,16 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 logpr
 JunctionTree::probEvidence()
 {
-  return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
-    sumProbabilities();
+
+  if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
+    return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
+      sumProbabilities();
+  else {
+    // this means that E is empty, we use the root clique of the last
+    // Co partition.
+    return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
+      sumProbabilities();
+  }
 }
 
 
@@ -4976,11 +5228,13 @@ JunctionTree::probEvidence()
 logpr
 JunctionTree::setRootToMaxCliqueValue()
 {
-  return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
-    setCliqueToMaxCliqueValue();
+  if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
+    return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
+      setCliqueToMaxCliqueValue();
+  else 
+    return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
+      setCliqueToMaxCliqueValue();
 }
-
-
 
 
 /*-
@@ -5077,150 +5331,3 @@ JunctionTree::setCliquePrintRanges(char *p,char*c,char*e)
       ePartCliquePrintRange = tmp;
   }
 }
-
-#if 0
-
-spare code:
-
-  // build a JT
-  // assign RVs.
-
-  
-  Partition part;
-
-  part.cliques = cliques;
-
-  for (unsigned clique = 0; clique <= part.clique.size(); clique ++) {
-    part.cliques[i].neighbors.clear();
-  }
-  createPartitionJunctionTrees(part);
-
-  JT_Partition jt_part(part);
-
-
-  // code from above that is commented out but not yet deleted. 
-  // it is kept here for now to clarify development.
-  // tag: ABCDEFGHIJK at end of this file.
-
-   // Idea: sort the separators in decreasing order, where
-   // sorted by size of intersectio of this separator with all
-   // others. That way, we first iterate over the sep that has
-   // the max overlap with all other seps, next iterate over 
-   // sep that has next max.
-   // actually, first compute max, and then remove it,
-   // then repeat (so this is an N^2 algorithm for "sorting").
-
-
-// Fri Oct 08 21:32:45 2004: new idea: sort in reverse order, by
-// separator that has the minimum intersection with others. At each
-// step, when we have found the sep with min intersection among
-// current number of seps, we place this at the *end* of the
-// separation iteration order. Once we get back down to two
-// separators, we start with the one of minimal weight (perhaps???)
-// What possible options might be given to command line here?
-//   - sort min 1st and place at end, sort max first and place at beginning
-//   - when two seps, what to do (min weight, max weight)
-//      (choose the one last that will have the greatest weight remainder)
-//   - 
-
-// 11/04: when ties exist, do the thing that causes the fewest number of
-// branches and has the inner most loop run interuppted for the
-// greatest amount of time.
-
-
-    {
-      // TODO: need to determine if there is an optimum order or not. If
-      // not, no need to sort here. In general, the number of "live"
-      // entries at the end of a sep traversal will be the same no
-      // matter the order that is chosen. What we want here, however,
-      // is something that kills non-live entries ASAP, to avoid extra
-      // work. The question is if this is depending on properties
-      // of just the separators independent of the particular set of
-      // sparse entries these separators currently contain.
-
-      // current code is set up to do a max spanning tree on sep sets
-      // but it is commented out for now.
-    
-      // 3 or more separators, need to compute max spanning tree
-
-      vector < set<unsigned> >  findSet;
-      findSet.resize(numMaxCliques);
-      for (unsigned i=0;i<numSeparators;i++) {
-	set<unsigned> iset;
-	iset.insert(i);
-	findSet[i] = iset;
-      }
-
-      vector< Edge > edges;
-      edges.reserve((numSeparators*(numSeparators-1))/2);
-
-      set<RV*> sep_intr_set;
-      for (unsigned i=0;i<numSeparators;i++) {
-	for (unsigned j=i+1;j<numSeparators;j++) {
-
-	  const set<RV*>& sep_i =
-	    part.separators[clique.ceReceiveSeparators[i]];
-	  const set<RV*>& sep_j =
-	    part.separators[clique.ceReceiveSeparators[j]];
-	  sep_intr_set.clear();
-	  set_intersection(sep_i.begin(),sep_i.end(),
-			   sep_j.begin(),sep_j.end(),
-			   inserter(sep_intr_set,sep_intr_set.end()));
-	  Edge e;
-	  e.clique1 = i; e.clique2 = j; 
-	  e.weight = sep_intr_set.size();
-	  edges.push_back(e);
-	  infoMsg(IM::Huge,"Edge (%d,%d) has weight %d\n",i,j,e.weight);
-	}
-      }
-  
-      // sort in decreasing order by edge weight which in this
-      // case is the sep-set size.
-      sort(edges.begin(),edges.end(),EdgeCompare());
-
-      unsigned joinsPlusOne = 1;
-      for (unsigned i=0;i<edges.size();i++) {
-	infoMsg(IM::Huge,"edge %d has weight %d\n",i,edges[i].weight);
-
-	// TODO: optimize this to deal with ties to make message
-	// passing cheaper.
-
-	set<unsigned>& iset1 = findSet[edges[i].clique1];
-	set<unsigned>& iset2 = findSet[edges[i].clique2];
-	if (iset1 != iset2) {
-	  // merge the two sets
-	  set<unsigned> new_set;
-	  set_union(iset1.begin(),iset1.end(),
-		    iset2.begin(),iset2.end(),
-		    inserter(new_set,new_set.end()));
-	  // make sure that all members of the set point to the
-	  // new set.
-	  set<unsigned>::iterator ns_iter;
-	  for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
-	    const unsigned clique = *ns_iter;
-	    findSet[clique] = new_set;
-	  }
-	  infoMsg(IM::Med,"Joining cliques %d and %d\n",
-		  edges[i].clique1,edges[i].clique2);
-
-	  // make edge between edges[i].clique1 and edges[i].clique2
-
-	  // part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
-	  // part.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
-
-	  if (++joinsPlusOne == numSeparators)
-	    break;
-	}
-      }
-    
-      // since these are separators, and all for a given clique A
-      // with some other clique B_i, and since all separators are
-      // subsets of A, but it is not the case that all separators have
-      // an intersection with each other. Goal is to find an order to
-      // traverse the sep sets so that we maximize the amount of overlap
-      // from the so-far-traversed to the to-be-traversed.
-
-    }
-
-#endif
-

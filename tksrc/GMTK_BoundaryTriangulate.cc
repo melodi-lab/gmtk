@@ -1156,7 +1156,7 @@ BoundaryTriangulate
     // then user asked to do right interface.
     if (!validInterfaceDefinition(E_u1,C2_u1,Cextra_u1,C1_u1,P_u1,S,unroll1_rvs,unroll1_pos,
 				  E0,C0,P0,unroll0_rvs,unroll0_pos,false))
-      infoMsg(Warning,"WARNING: Can't compute right interface since strcture template not compatible with this case.\n");
+      infoMsg(Warning,"WARNING: Can't compute right interface since structure template not compatible with this case.\n");
     else
       do_right_interface=true;
   }
@@ -1170,7 +1170,7 @@ BoundaryTriangulate
     // on the .str file), so we die with an error here.
     error("ERROR: Can not successfully compute either a left or a right interface.\n"
 	  "Either structure file is not valid for both left & right interface or\n"
-          "under current force L/R options.  Check if P contains extra\n"
+          "under current force L/R command-line options.  Check if P contains extra\n"
 	  "backwards-time links from C to P (that don't exist between neighboring\n"
           "Cs) and/or if E contains extra forwards-time links from C to E (that\n"
           "don't exist between neighboring Cs) In left interface case, interface\n"
@@ -1620,6 +1620,14 @@ BoundaryTriangulate
   const set <RV*> emptySet;
 
   parseTriHeuristicString(tri_heur_str,tri_heur);
+
+  if (gm_template.P.nodes.size() == 0)
+    doP = false;
+  if (gm_template.C.nodes.size() == 0)
+    doC = false;
+  if (gm_template.E.nodes.size() == 0)
+    doE = false;
+
 
   if (doP)
     saveCurrentNeighbors(gm_template.P,orgnl_P_nghbrs);
@@ -6558,8 +6566,14 @@ BoundaryTriangulate::findBestInterface(
       ((bnd_heur_v[0] == IH_MIN_SIZE) 
        || (bnd_heur_v[0] == IH_MIN_FILLIN) 
        || (bnd_heur_v[0] == IH_MIN_WEIGHT)
-       || (bnd_heur_v[0] == IH_MIN_WEIGHT_NO_D))) 
+       || (bnd_heur_v[0] == IH_MIN_WEIGHT_NO_D)))
     {
+      // TODO: check of all heuristics in bnd_heur_v are
+      // submodular, then prioritized ordering of them
+      // is also submodular, and pass this prioritized
+      // ordering down to the maxflow/submodular routine
+      // rather than just passing bnd_heur_v[0] down.
+
       // TODO: then call max-flow or submodular optimization routine
       // to find best boundary. We have that C_l are the nodes connected
       // to the source, and finalLI are the nodes connected to the sync.
@@ -6570,6 +6584,9 @@ BoundaryTriangulate::findBestInterface(
       // place result in the ref. argument best_C_l
       // set<RV*> best_C_l;
       // findBestInterfaceMaxFlowSubmodular(bnd_heur_v[0],C_l,finalLI,C2,bestC_l);
+      // C_l = best_C_l;
+      // return;
+
     }
 
   // Still here? Call exponential routine.

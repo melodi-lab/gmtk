@@ -171,6 +171,11 @@ Arg Arg::Args[] = {
       Arg::Opt,chunkSkip,
       "Number of chunks that should exist between boundaries"),
 
+  Arg("disconnectFromObservedParent",
+      Arg::Opt,RV::disconnectChildrenOfObservedParents,
+      "In going to UGM, disconnect children from observed parents when possible"),
+
+
   Arg("unroll",
       Arg::Opt,jut,
       "Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
@@ -353,6 +358,7 @@ main(int argc,char*argv[])
   }
 
   (void) IM::setGlbMsgLevel(verbosity);
+  GM_Parms.setMsgLevel(verbosity);
 
   if (chunkSkip < 1)
     error("Argument error: chunk skip parameter S must be >= 1\n");

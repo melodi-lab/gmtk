@@ -1094,17 +1094,25 @@ GMParms::readAll(iDataStreamFile& is)
 void 
 GMParms::readTrainable(iDataStreamFile& is)
 {
-
+  infoMsg(Giga,"Reading Dense Prob. Mass Functions\n");
   readDPmfs(is);
+  infoMsg(Giga,"Reading Sparse Prob. Mass Functions\n");
   readSPmfs(is);
+  infoMsg(Giga,"Reading Means Functions\n");
   readMeans(is);
+  infoMsg(Giga,"Reading Covars Functions\n");
   readCovars(is);
+  infoMsg(Giga,"Reading Dlink Mats\n");
   readDLinkMats(is);
+  infoMsg(Giga,"Reading Weight  Mats\n");
   readWeightMats(is);  
+  infoMsg(Giga,"Reading Dense CPTs\n");
   readMdCpts(is);
 
   // next read definitional items
+  infoMsg(Giga,"Reading Components\n");
   readComponents(is);
+  infoMsg(Giga,"Reading Mixtures\n");
   readMixtures(is);
   readGausSwitchMixtures(is);
   readLogitSwitchMixtures(is);
@@ -1141,17 +1149,23 @@ GMParms::readTrainable(iDataStreamFile& is)
 void 
 GMParms::readNonTrainable(iDataStreamFile& is)
 {
-
-
   // first read structural items
+  infoMsg(Giga,"Reading Decision Trees\n");
   readDTs(is);
+  infoMsg(Giga,"Reading Dlinks\n");
   readDLinks(is);
 
+  infoMsg(Giga,"Reading SparseCPTs\n");
   readMsCpts(is);
+  infoMsg(Giga,"Reading Deterministic CPTs\n");
   readMtCpts(is);
+  infoMsg(Giga,"Reading Vocabs\n");
   readVocabs(is);
+  infoMsg(Giga,"Reading NgramCPTs\n");
   readNgramCpts(is);
+  infoMsg(Giga,"Reading FNgramCPTs\n");
   readFNgramImps(is);
+  infoMsg(Giga,"Reading VirtualEvidenceCPTs\n");
   readVECpts(is);
 }
 
@@ -1175,6 +1189,7 @@ GMParms::read(
   fileNameMap[INLINE_FILE_KEYWORD] = &is;
 
   while (is.readString(keyword)) {
+
     if (!is.readString(fileName)) {
       error("ERROR: while reading file '%s' line %d , got keyword '%s' without a filename",
 	    is.fileName(),is.lineNo(),keyword.c_str());
@@ -1195,6 +1210,11 @@ GMParms::read(
 	error("ERROR: while reading file '%s' line %d, got string '%s' when expecting 'ascii'/'binary' keyword",
 	      is.fileName(),is.lineNo(),binStatus.c_str());
       }
+      infoMsg(Giga,"Reading keyword '%s' from %s file '%s'.\n",
+	      keyword.c_str(),(binary_p?"binary":"ASCII"),
+	      fileName.c_str());
+    } else {
+      infoMsg(Giga,"Reading keyword '%s' from inline.\n",keyword.c_str());
     }
 
     map<string,iDataStreamFile*>::iterator it = fileNameMap.find(fileName);

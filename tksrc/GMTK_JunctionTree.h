@@ -103,13 +103,17 @@ public:
   // that live entirely within this partition.  If this is a C or an E
   // partition, then most of the sperators are between cliques that
   // live entirely within this partition.  The last separator in this
-  // vector is the seperator between the right interface (RI) clique
-  // of the adjacent partition on the left, and the left interface
-  // (LI) clique of this partition. The reason for this is that, if
-  // this is a P partition, there is no left interface separator, but
-  // there is with a C or an E partition.
-  // Created in: JunctionTree::createSeparators();
+  // vector is guaranteed to be the seperator between the right
+  // interface (RI) clique of the adjacent partition on the left, and
+  // the left interface (LI) clique of this partition. The reason for
+  // this is that, if this is a P partition, there is no left
+  // interface separator, but there is with a C or an E partition.
+  // Created in: JunctionTree::createSeparators(); This final
+  // separator is called the LI separator.
   vector<SeparatorClique> separators;
+
+  void useLISeparator()  { separators[separators.size()-1].skipMe = false; }
+  void skipLISeparator() { separators[separators.size()-1].skipMe = true; }
 
   // number of VE separators among the separators in this partition.
   unsigned numVEseps;
@@ -225,6 +229,12 @@ class JunctionTree {
   JT_Partition P1; 
   JT_Partition Co;   // C "other", depending on if right or left interface method is used.
   JT_Partition E1; 
+
+  // names of the above three partitions to use for printing,
+  // debugging, etc.
+  static char* P1_n;
+  static char* Co_n;
+  static char* E1_n;
 
   // Note, while we need extra separator cliques that are between the
   // corresponding partitions interface cliques, these separators will
