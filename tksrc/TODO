@@ -969,4 +969,13 @@ Fri Feb 28 00:09:13 2003
     alg. is run). keywords: final, face heuristic, exponential algorithm,
     weight not same, different weight, first weight, final weight
 
+Wed Mar 05 19:45:16 2003
+  - also allow language models to be specified in W3 XML format 
+    see http://www.w3.org/TR/ngram-spec/
+  - allow this as well as the DARPA format above.
+  - 
 
+Sat Mar  8 00:00:26 2003
+  - another arguments.cc bug, in this case with -argsFile and then
+    missing required option later, default argument values are printed
+    incorrectly.
