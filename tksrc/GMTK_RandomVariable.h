@@ -41,18 +41,15 @@ Break definitions into two grand sections,
 
 struct RandomVariable
 {
-    // Each variable can have some predecessors and successors.
-    // The values stored in the Parent and Child arrays define the 
-    // graph topology.
-    // When switching parents are present, the graph topology is taken to
-    // contain the union of all parent relations.
-    // Induced cycles are prevented by requiring that for some given node
-    // ordering, all the switching parents of a variable are lower-numbered
-    // that the variable itself.
-    // This means that a static graph with a predetermined topological order
-    // can be compiled, even when there is switching parentage.
-    // Parent and Child arrays refer only to hidden variables. 
-  
+    // The probability of a variable taking a particular value depends on
+    // the values of its parents. There come in two varieties: switching 
+    // parents and conditional parents. The values of the switching parents
+    // determines an additional set of conditional parents. The variable
+    // is conditioned on these conditional parents. Note that a switching 
+    // parent may also be a conditional parent.
+    // A node's switching and conditional parents must all be lower numbered 
+    // than the node itself, thus allowing a topological ordering of 
+    // the graph induced by the union of all possible conditioning relationships
     sArray<randomVariable *> switchingParents, conditionalParents;
   
     sArray<randomVariable *> allPossibleParents;
@@ -66,7 +63,7 @@ struct RandomVariable
 
     findConditionalParents();
     // Looks at the values of the switching parents, and sets the 
-    // conditional parents appropraitely
+    // conditionalParents array appropriately.
 
     findAllPossibleParents();
     // Iterates through all possible instantiations of the conditioning 
@@ -91,13 +88,11 @@ struct RandomVariable
     // If hidden and discrete, inference will loop over all possible values.
     // If hidden and continuous, something else is done.
 
-    // NOT NEEDED ANYMORE??? 
-    // bool deterministic;
-    // A special case of discrete variables, where the parents' values 
-    // uniquely determine the variable's value. No looping required.
-
     int val;
     // in the discrete case, the actual value of the variable
+
+    int cachedVal;
+    // again, for the discrete case.
 
     virtual logpr probGivenParents() {error("probGivenParents() Undefined\n");}
     // For continuous variables.
@@ -107,20 +102,16 @@ struct RandomVariable
     // to the other work done for continuous variables.
 
     int address(sArray<randomVariable *>);
-    // looks up the values of the the switching parents and computes a 
-    // integer index into a 1 dimensional array
+    // Looks up the values of a vector of parents and computes an
+    // integer index into a 1 dimensional array.
 
     inline logpr discreteProbGivenParents() 
-    {findConditionalParents(); return discreteCPT[address(conditionalParents)][i];}
+    {findConditionalParents(); 
+     return discreteCPT[address(conditionalParents)][val];}
     // For discrete variables.
     // The inference algorithm guarantees that when this is called, the
     // variable and its parents will be clamped to appropriate values.
     // This does a table lookup in the discrete case.  
-
-/* Add a pointer to the appropriate GMTK_DiscretePDF table here */
-/* Then discreteProbGivenParents() will follow it. */
-    discreteVariable *dvp;
-
 
     sArray< int > possibleDiscreteValues;
     // The set of possible discrete values for whatever the
@@ -128,7 +119,7 @@ struct RandomVariable
     // array to obtain the set of values that this random variable
     // may be set to.
 
-    virtual void setPossibleDiscreteValues();
+    virtual void findPossibleDiscreteValues();
     // Fills the table possibleDiscreteValues based on the set of
     // current parent values. Called only once for each 
     // set of parent values.
@@ -169,9 +160,6 @@ struct RandomVariable
     // For discrete variables, incrementing can be done with a table lookup.
     // Avoid a virtual function call.
 
-/* Add a pointer to the appropriate GMTK_DiscretePDF table here */
-/* Then discreteIncrement() will follow it to do the increment. */
-
     virtual void update() = 0;
     // At the end of each EM iteration, this is called to convert the 
     // accumulated statistics into probability distributions.
@@ -182,6 +170,16 @@ struct RandomVariable
     int timeIndex;
     // What time frame does the node belong to?
     // Counting starts from 0.
+
+    virtual void cacheValue() = 0;
+    // It can be useful to tell a variable to cache the value it's currently
+    // set to. For example, wheen keeping track of the best values seen
+    // so far in enumerativeViterbi(). Calling this function tells a variable
+    // to store its current value (wherever it wants).
+    // Not expected to be called many times, so just leave it virtual.
+
+    virtual void restoreCachedValue() = 0;
+    // Sets the variable's value to its cached value.
 };
 
 #endif
