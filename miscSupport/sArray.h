@@ -60,8 +60,15 @@ class sArray {
   }
 
   void growByNIfNeeded(const int n,const int _size) {
+    assert ( n >= 1 );
     if (_size > size)
       resize(n*_size);
+  }
+
+  void growByFIfNeeded(const float f,const int _size) {
+    assert ( f >= 1.0 );
+    if (_size > size)
+      resize((int)(f*_size));
   }
 
   void resizeAndCopy(const int _size) {
@@ -85,6 +92,11 @@ class sArray {
       resizeAndCopy(n*_size);
   }
 
+  void growByFIfNeededAndCopy(const float f,int _size) {
+    assert ( f >= 1.0 );
+    if (_size > size)
+      resizeAndCopy((int)(f*_size));
+  }
 
   void swapPtrs(sArray<T>& sa) {
     if (size != sa.size)
