@@ -109,21 +109,30 @@ Implementation = DiscreteImplementation | ContinousImplementation
 
 DiscreteImplementation = ( "MDCPT" | "MSCPT" | "MTCPT" )  "(" ListIndex ")"
 
-ContinousImplementation = ContObsDistType
+ContinuousImplementation = ContObsDistType
         (
              "(" ListIndex ")"
            |
               MappingSpec
         )
        # A ContinousImplementation has two cases.
-       # 1) the first case is used if conditional parents 
+       # 1) the first case uses the syntax
+       #
+       #          "(" ListIndex ")"
+       #
+       # and is used if conditional parents 
        # are nil in which case we select only one dist. This
        # is analogous to the discrete case where you directly
        # select a CPT with the appropriate parents
-       # 2) in the second case, this is when we have multiple
-       #  conditional parents, and we need another decision tree to map
+       #
+       # 2) in the second case, which uses the syntax
+       #
+       #           MappingSpec
+       #
+       # this is when we have multiple
+       # conditional parents, and we need another decision tree to map
        # from the conditional parents values to the appropriate
-       # distribution.
+       # distribution. Therefore we use the mapping syntax.
 
 
 ContObsDistType = "mixGaussian" | "gausSwitchMixGaussian" 
