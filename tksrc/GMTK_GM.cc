@@ -388,7 +388,7 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
 	  ::sprintf(buff,"%d",i);
 	  string fname = string("gmparms_it") + buff + string(".gmp");
 	  oDataStreamFile of(fname.c_str());
-	  GM_Parms.writeBasic(of);
+	  GM_Parms.writeAll(of);
 	}
         last_dp = total_data_prob;
     }
