@@ -919,5 +919,14 @@ Mon Jan 13 17:18:17 2003
     not match the range of utterance numbers in the observation file.
 
 
-
+Thu Jan 30 19:15:59 2003
+  - optimization
+   right now, updating of Gausisans during mean and variance updating as follows:
+    *covars_p += (*f_p)*(*f_p)*fprob;
+    *nextMeans_p += (*f_p)*fprob;
+   but where the two lines of code occur in different files, and so
+   it can't re-use the common subexpresion (*f_p)*fprob
+  - TODO, write a routine that can update both at the same time,
+    probably best way to do this is to add a bit of code to emIncrement
+    in GMTK_DiagGaussian and GMTK_LinMeanCondGaussian for this purpose.
 
