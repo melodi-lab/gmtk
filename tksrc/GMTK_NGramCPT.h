@@ -79,7 +79,8 @@ public:
 	 *-----------------------------------------------------------------------
 	 */
 	NGramCPT() : CPT(di_NGramCPT), _contextStartBlockSize(0), _probStartBlockSize(0), _totalNumberOfParameters(0), _lmIndexFile(NULL), _lmIndexFileBin(false) {
-		_numParents = _numExistParents = 0;
+		_numParents = 0;
+		_numberOfActiveIterators = 0;
 	}
 
 	/*-
@@ -112,31 +113,27 @@ public:
 	// for this CPT, depending on current _numParents & cardinalities.
 	virtual void allocateBasicInternalStructures() {}
 
-        ///////////////////////////////////////////////////////////  
-        // Probability evaluation, compute Pr( child | parents ), and
-        // iterator support. See GMTK_CPT.h for documentation.
+	///////////////////////////////////////////////////////////
+	// Probability evaluation, compute Pr( child | parents ), and
+	// iterator support. See GMTK_CPT.h for documentation.
 	virtual void becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv);
 	virtual void begin(iterator& it, DiscRV* drv,logpr& p);
-        virtual void becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, 
-							   iterator &it, 
-							   DiscRV* drv, 
-							   logpr& p);
-	virtual logpr probGivenParents(vector< RV* >& parents, 
-				       DiscRV* drv);
+	virtual void becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p);
+	virtual logpr probGivenParents(vector< RV* >& parents, DiscRV* drv);
 	virtual bool next(iterator &it,logpr& p);
 
-        // Include here an extra routine that returns the probability
-        // of the child 'val' given the parents are the assigned to
-        // the set of values set during the most previous call to
-        // becomeAwareOfParentValues.
-        logpr probGivenParents(const int val);
+	// Include here an extra routine that returns the probability
+	// of the child 'val' given the parents are the assigned to
+	// the set of values set during the most previous call to
+	// becomeAwareOfParentValues.
+	logpr probGivenParents(const int val);
 
 
-	///////////////////////////////////////////////////////////  
+	///////////////////////////////////////////////////////////
 	// Given the current parent values, generate a random sample.
 	virtual int randomSample(DiscRV*drv);
 
-	///////////////////////////////////////////////////////////  
+	///////////////////////////////////////////////////////////
 	// Re-normalize the output distributions
 	virtual void normalize() {}
 	// set all values to random values.
@@ -144,11 +141,11 @@ public:
 	// set all values to uniform values.
 	virtual void makeUniform() {}
 
-	///////////////////////////////////////////////////////////    
-	// read in the basic parameters, assuming file pointer 
+	///////////////////////////////////////////////////////////
+	// read in the basic parameters, assuming file pointer
 	// is located at the correct position.
 	virtual void read(iDataStreamFile& is);
-	///////////////////////////////////////////////////////////    
+	///////////////////////////////////////////////////////////
 	// Do nothing.
 	virtual void write(oDataStreamFile& os) {}
 
@@ -159,10 +156,10 @@ public:
 
 	////////////////////////////////////////////////////////////////////////////
 	// from base class EMable
-        void emStartIteration() {}
-        void emIncrement(logpr prob,vector < RV* >& parents, RV*r) {}
-        void emEndIteration() {}
-        void emSwapCurAndNew() {}
+	void emStartIteration() {}
+	void emIncrement(logpr prob,vector < RV* >& parents, RV*r) {}
+	void emEndIteration() {}
+	void emSwapCurAndNew() {}
 
 	// return the number of parameters for object.
 	virtual unsigned totalNumberParameters() {return _totalNumberOfParameters;}
@@ -228,6 +225,8 @@ protected:
 	// the type of the object.
 	virtual const string typeName() {return std::string("NGramCPT");}
 
+	logpr probBackingOff(const int val, ContextHashEntry**ptr, unsigned numOfExistsParents);
+
 	///////////////////////////////////////////////////////////////
 	// context hash M table and probability hash M table
 	HashMTable<ContextHashEntry> _contextTable;
@@ -236,9 +235,9 @@ protected:
 	unsigned _contextStartBlockSize;
 	unsigned _probStartBlockSize;
 
-	// parents values, TODO: convert this to fast sArray 
-	std::vector<ContextHashEntry*> _contextPointers;
-	unsigned _numExistParents;		// The size of _parentValues is fixed.  This is added so that lower order ngram can share the table.
+	// parents values, TODO: convert this to fast sArray
+	std::vector<void *> _contextEntriesStack;
+	unsigned _numberOfActiveIterators;
 
 	// total number of probabilities and backing-off weights
 	unsigned _totalNumberOfParameters;
