@@ -190,7 +190,8 @@ readMaxCliques(iDataStreamFile& is)
     unsigned cliqueSize;
     is.read(cliqueSize,"cliqueSize value");
     if (cliqueSize <= 1)
-      error("ERROR: reading file %s, cliqueSize must be >= 2\n",is.fileName());
+      error("ERROR: reading file %s, cliqueSize %d must be >= 2\n",
+	    cliqueSize,is.fileName());
     
     for (unsigned j=0;j<cliqueSize;j++) {
 
@@ -201,8 +202,8 @@ readMaxCliques(iDataStreamFile& is)
       map < RVInfo::rvParent, RandomVariable* >::iterator loc;
       loc = namePos2Var.find(par);
       if (loc == namePos2Var.end())
-	error("ERROR: reading file %s, clique specification gives parent that does not exist.\n",
-	      is.fileName());
+	error("ERROR: reading file %s, clique specification %d has %d'th variable %s(%d) that does not exist in partition.\n",
+	      is.fileName(),i,j,par.first.c_str(),par.second);
       RandomVariable* rv = (*loc).second;
       clique.insert(rv);
     }

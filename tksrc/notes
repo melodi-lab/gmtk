@@ -697,10 +697,11 @@ for i = 1 .. num_nodes
    // start off by duplicating previous cliques new members
    cl[i].newMember = cl[i-1].newMember
 
-   // The next loop does a deletion. Note that if no deletion
-   // occurs, then the loop just copies over previous
+   // The next loop does a deletion. Note that if no deletions
+   // occurs at all in the loop, then the loop just copies over previous
    // cliques members to new clique members,
    // i.e., cl[i].member = cl[i-1].member
+   // (but this occurs by taking the else condition each time)
    for m in all of cl[i-1]'s members
       if all m's children are in current frontier clique (cl[i-1])
           // see *** below
