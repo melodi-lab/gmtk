@@ -146,6 +146,9 @@ public:
   VHashMapUnsignedUnsignedKeyUpdatable(const unsigned arg_vsize,
 				       unsigned approximateStartingSize = 
 				       HashTableDefaultApproxStartingSize);
+
+
+
 };
 
 class MaxClique : public IM {
