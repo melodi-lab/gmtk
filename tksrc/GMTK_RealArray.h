@@ -48,3 +48,4 @@ public:
 
 
 #endif // defined REALARRAY_H
+
