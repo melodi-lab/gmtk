@@ -1367,3 +1367,17 @@ Wed Jan 21 23:22:18 2004
 
 Fri Jan 23 16:02:09 2004
    - consider writing a parameter file format in XML.
+
+
+Fri Jan 23 18:32:41 2004
+   - add a section to the documentation about the "design" of decision
+     trees, how there can be good ways and bad ways to do it, and how 
+     bad ways can be slower. Give examples.
+   - explain in documentation that a DT's job is to map every possible
+     input variable values (each input variable can have values
+     from 0:(card-1)) to a valid output value (from 0:(card-1)). Not
+     all output values need to be produced, but all possible input
+     variable values (the cross-product) must be considered, or otherwise
+     you might either get 1) unexpected results since a value
+     occurs you didn't expect, or 2) hopefully, you'll get a runtime error 
+     saying that the output value is invalid.
