@@ -96,15 +96,15 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_io.o GMTK_utils.o GMTK_ObservationMatrix.o GMTK_FileDescription.o
+objs = GMTK_io.o GMTK_ObservationMatrix.o GMTK_FileDescription.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
 
-all_srcs = GMTK_io.cc GMTK_utils.cc GMTK_ObservationMatrix.cc GMTK_FileDescription.cc
+all_srcs = GMTK_io.cc GMTK_ObservationMatrix.cc GMTK_FileDescription.cc
 
-all_hdrs = GMTK_FileDescription.h GMTK_ObservationMatrix.h GMTK_io.h GMTK_utils.h
+all_hdrs = GMTK_FileDescription.h GMTK_ObservationMatrix.h GMTK_io.h
 
 all_objs = $(objs)
 
