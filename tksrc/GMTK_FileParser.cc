@@ -1761,7 +1761,7 @@ FileParser::createRandomVariableGraph()
       // discrete
       if (rvInfoVector[i].rvDisp == RVInfo::d_hidden) {
 	// discrete hidden
-	if (rvInfoVector[i].conditionalParents.size() > 1) {
+	if (rvInfoVector[i].switchingParents.size() > 0) {
 	  // discrete hidden switching
 	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
 	    // discrete hidden switching weighted
@@ -1782,7 +1782,7 @@ FileParser::createRandomVariableGraph()
 	}
       } else {
 	// discrete observed
-	if (rvInfoVector[i].conditionalParents.size() > 1) {
+	if (rvInfoVector[i].switchingParents.size() > 0) {
 	  // discrete observed switching
 	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
 	    // discrete observed switching weighted
@@ -1810,7 +1810,7 @@ FileParser::createRandomVariableGraph()
 	rv = NULL; // suppress compiler warning.
       } else {
 	// continuous observed
-	if (rvInfoVector[i].conditionalParents.size() > 1) {
+	if (rvInfoVector[i].switchingParents.size() > 0) {
 	  // continuous observed switching
 	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
 	    // continuous observed switching weighted
