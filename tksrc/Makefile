@@ -89,7 +89,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkEMtrain gmtkViterbi gmtkM2T gmtkB2A gmtkScore gmtkSample
+all_exs = gmtkEMtrain gmtkViterbi gmtkM2T gmtkB2A gmtkScore gmtkSample gmtkNumParms
 
 all: ${all_exs}
 
@@ -131,6 +131,11 @@ gmtkScore: gmtkScore.o $(objs)
 gmtkSample: gmtkSample.o $(objs)
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkSample.o $(objs) $(LIBS)
+
+
+gmtkNumParms: gmtkNumParms.o $(objs)
+	-@rm -f $@
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkNumParms.o $(objs) $(LIBS)
 
 gmtkM2T: gmtkM2T.o $(objs)
 	-@rm -f $@
