@@ -1067,51 +1067,167 @@ GMParms::writeSPmfs(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * writeMeans
+ *      writes out the means 
+ * 
+ * Preconditions:
+ *      markUsedMixtureComponents() should have been called immediately before.
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeMeans(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("means");os.nl();
-  os.write(means.size(),"num Means"); os.nl();
+  // first scan through and find the number that are used.
+  unsigned used = 0;
+  for (unsigned i=0;i<means.size();i++)
+    if (means[i]->emUsedBitIsSet())
+      used++;
+  if (used != means.size())
+    warning("NOTE: saving only %d used means out of a total of %d (hi Karen!! :-)\n",
+	    used,means.size());
+  os.write(used,"num Means"); os.nl();
+  unsigned index=0;
   for (unsigned i=0;i<means.size();i++) {
-    // first write the count
-    os.write(i,"means cnt");
-    os.nl();
-    means[i]->write(os);
+    if (means[i]->emUsedBitIsSet()) {
+      // first write the count
+      os.write(index++,"means cnt");
+      os.nl();
+      means[i]->write(os);
+    }
   }
+
+
+  assert ( used == index );
   os.nl();
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeMeans
+ *      writes out the means 
+ * 
+ * Preconditions:
+ *      markUsedMixtureComponents() should have been called immediately before.
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeCovars(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("diagonal covariance matrices");os.nl();
-  os.write(covars.size(),"num covars"); os.nl();
+  unsigned used = 0;
+  for (unsigned i=0;i<covars.size();i++)
+    if (covars[i]->emUsedBitIsSet())
+      used++;
+  if (used != covars.size())
+    warning("NOTE: saving only %d used covariances out of a total of %d (hi Peng!! :-)\n",
+	    used,covars.size());
+  os.write(used,"num covars"); os.nl();
+  unsigned index=0;
   for (unsigned i=0;i<covars.size();i++) {
-    // first write the count
-    os.write(i,"covar cnt");
-    os.nl();
-    covars[i]->write(os);
+    if (covars[i]->emUsedBitIsSet()) {
+      // first write the count
+      os.write(index++,"covar cnt");
+      os.nl();
+      covars[i]->write(os);
+    }
   }
+  assert ( used == index );
   os.nl();
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeDlinkmats
+ *      writes out the dlink mats
+ * 
+ * Preconditions:
+ *      markUsedMixtureComponents() should have been called immediately before.
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeDLinkMats(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("dlink matrices");os.nl();
-  os.write(dLinkMats.size(),"num dlink mats"); os.nl();
+  unsigned used = 0;
   for (unsigned i=0;i<dLinkMats.size();i++) {
-    // first write the count
-    os.write(i,"dlink mat cnt");
-    os.nl();
-    dLinkMats[i]->write(os);
+    if (dLinkMats[i]->emUsedBitIsSet())
+      used++;
   }
+  if (used != dLinkMats.size())
+    warning("NOTE: saving only %d used dlink matrices out of a total of %d (hi Karim!! :-)\n",
+	    used,dLinkMats.size());
+  os.write(used,"num dlink mats"); os.nl();
+  unsigned index=0;
+  for (unsigned i=0;i<dLinkMats.size();i++) {
+    if (dLinkMats[i]->emUsedBitIsSet()) {
+      // first write the count
+      os.write(index++,"dlink mat cnt");
+      os.nl();
+      dLinkMats[i]->write(os);
+    }
+  }
+  assert ( used == index );
   os.nl();
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeDlinks
+ *      writes out the dlinks
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeDLinks(oDataStreamFile& os)
 {
@@ -1127,21 +1243,72 @@ GMParms::writeDLinks(oDataStreamFile& os)
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeWeightMats
+ *      writes out the weight mats
+ * 
+ * Preconditions:
+ *      markUsedMixtureComponents() should have been called immediately before.
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeWeightMats(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("weight matrices");os.nl();
-  os.write(weightMats.size(),"num weight mats"); os.nl();
+  unsigned used = 0;
   for (unsigned i=0;i<weightMats.size();i++) {
-    // first write the count
-    os.write(i,"weight mat cnt");
-    os.nl();
-    weightMats[i]->write(os);
+    if (weightMats[i]->emUsedBitIsSet())
+      used++;
   }
+  if (used != weightMats.size())
+    warning("NOTE: saving only %d used weight  matrices out of a total of %d\n",
+	    used,weightMats.size());
+  os.write(used,"num weight mats"); os.nl();
+  unsigned index = 0;
+  for (unsigned i=0;i<weightMats.size();i++) {
+    if (weightMats[i]->emUsedBitIsSet()) {
+      // first write the count
+      os.write(index++,"weight mat cnt");
+      os.nl();
+      weightMats[i]->write(os);
+    }
+  }
+  assert ( used == index );
   os.nl();
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writecpts
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeMdCpts(oDataStreamFile& os)
 {
@@ -1157,6 +1324,24 @@ GMParms::writeMdCpts(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * writemscpts
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeMsCpts(oDataStreamFile& os)
 {
@@ -1172,6 +1357,25 @@ GMParms::writeMsCpts(oDataStreamFile& os)
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writemtcpts
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeMtCpts(oDataStreamFile& os)
 {
@@ -1187,6 +1391,24 @@ GMParms::writeMtCpts(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * writeDTs
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeDTs(oDataStreamFile& os)
 {
@@ -1202,29 +1424,78 @@ GMParms::writeDTs(oDataStreamFile& os)
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeGaussianComponents 
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeGaussianComponents(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Gaussian Components");os.nl();
-  os.write(gaussianComponents.size(),"num GCs"); os.nl();
+  unsigned used = 0;
   for (unsigned i=0;i<gaussianComponents.size();i++) {
-    // first write the count
-    os.write(i,"GC cnt");
-    os.nl();
+    if (gaussianComponents[i]->emUsedBitIsSet())
+      used++;
+  }
+  if (used != gaussianComponents.size())
+    warning("NOTE: saving only %d used gaussian components out of a total of %d (hi Geoff!! :-)\n",
+	    used,gaussianComponents.size());
+  os.write(used,"num GCs"); os.nl();
+  unsigned index = 0;  
+  for (unsigned i=0;i<gaussianComponents.size();i++) {
+    if (gaussianComponents[i]->emUsedBitIsSet()) {
+      // first write the count
+      os.write(index++,"GC cnt");
+      os.nl();
 
-    // next write the dimension of this Gaussian
-    os.write(gaussianComponents[i]->dim(),"GC dim");
-    os.nl();
+      // next write the dimension of this Gaussian
+      os.write(gaussianComponents[i]->dim(),"GC dim");
+      os.nl();
 
-    ////////////////////////////////////////////////////////////
-    // Assume that the GC's write routine will 
-    // itself write the Gaussian type
-    gaussianComponents[i]->write(os);
+      ////////////////////////////////////////////////////////////
+      // Assume that the GC's write routine will 
+      // itself write the Gaussian type
+      gaussianComponents[i]->write(os);
+    }
   }
   os.nl();
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeMixGaussians
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeMixGaussians(oDataStreamFile& os)
 {
@@ -1244,6 +1515,27 @@ GMParms::writeMixGaussians(oDataStreamFile& os)
   os.nl();
 }
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeGausSwitchMixGaussians
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeGausSwitchMixGaussians(oDataStreamFile& os)
 {
@@ -1251,6 +1543,27 @@ GMParms::writeGausSwitchMixGaussians(oDataStreamFile& os)
   os.write(0,"num GausSwitchMIXGAUSSIANS"); os.nl();
 }
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeLogitSwitchMixGaussians
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeLogitSwitchMixGaussians(oDataStreamFile& os)
 {
@@ -1258,6 +1571,27 @@ GMParms::writeLogitSwitchMixGaussians(oDataStreamFile& os)
   os.write(0,"num GausSwitchMIXGAUSSIANS"); os.nl();
 }
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeMlpSwitchMixGaussians
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeMlpSwitchMixGaussians(oDataStreamFile& os)
 {
@@ -1266,10 +1600,39 @@ GMParms::writeMlpSwitchMixGaussians(oDataStreamFile& os)
 }
 
 
+/*
+ *  
+ * ==================================================================
+ *			 GROUP WRITE ROUTINES
+ * ==================================================================
+ *
+ */
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeBasic
+ *    write the basic parameters, where 'basic' is defined
+ *    as those which are written in this routine. (sorry)
+ *
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeBasic(oDataStreamFile& os)
 {
+  markUsedMixtureComponents();
 
   os.write(MAGIC_PRM_FILE,"GMTK_GMParms::writeBasic, magic");
   os.nl();
@@ -1309,6 +1672,8 @@ GMParms::writeBasic(oDataStreamFile& os)
 void 
 GMParms::writeAll(oDataStreamFile& os)
 {
+  markUsedMixtureComponents();
+
   // just write everything in one go.
 
   // write structural items
@@ -1358,6 +1723,9 @@ GMParms::writeAll(oDataStreamFile& os)
 void 
 GMParms::writeTrainable(oDataStreamFile& os)
 {
+
+  markUsedMixtureComponents();
+
   // just write everything in one go.
 
   // then write basic numeric items.
@@ -1375,7 +1743,6 @@ GMParms::writeTrainable(oDataStreamFile& os)
   writeGausSwitchMixGaussians(os);
   writeLogitSwitchMixGaussians(os);
   writeMlpSwitchMixGaussians(os);
-
 }
 
 
@@ -1402,6 +1769,7 @@ void
 GMParms::writeNonTrainable(oDataStreamFile& os)
 {
   // just write everything in one go.
+  markUsedMixtureComponents();
 
   // write structural items
   writeDTs(os);
@@ -1507,7 +1875,6 @@ GMParms::clampNextExample()
  *
  *-----------------------------------------------------------------------
  */
-
 void
 GMParms::setStride(const unsigned stride)
 {
@@ -1542,7 +1909,6 @@ GMParms::setStride(const unsigned stride)
  *
  *-----------------------------------------------------------------------
  */
-
 unsigned GMParms::totalNumberParameters()
 {
   unsigned sum=0;
@@ -1567,6 +1933,76 @@ unsigned GMParms::totalNumberParameters()
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * markUsedMixtureComponents()
+ *      Remove all mixture component objects that are not used by anyone
+ *      (possibly because of vanishing).
+ * 
+ * Preconditions:
+ *      parameters should be read in to have non zero value
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      will remove all paramters not used.
+ *
+ * Results:
+ *      obvious
+ *
+ *-----------------------------------------------------------------------
+ */
+void GMParms::markUsedMixtureComponents()
+{
+
+  ///////////////////////////////////////////////////
+  // First, go through *all* gaussian related parameters
+  // and mark as not used.
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->recursivelyClearUsedBit();
+
+  ///////////////////////////////////////////////
+  // Now, set only those bits that are used
+  // by some gaussian mixture.
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->recursivelySetUsedBit();
+
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * makeRandom
+ *      make everyone random
+ * 
+ * Preconditions:
+ *      all must be read in.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
+ *
+ * Side Effects:
+ *      all variable parameters are changed
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 GMParms::makeRandom()
 {

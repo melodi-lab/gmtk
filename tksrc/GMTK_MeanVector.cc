@@ -177,6 +177,8 @@ MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
     // EM already on going.
     // Increment the count of number of Gaussian Components using this mean.
     refCount++; 
+    // this object therefore is shared, set the bit saying so.
+    emSetSharedBit();
     return;
   }
 
@@ -192,6 +194,7 @@ MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
 
   accumulatedProbability = 0.0;
   refCount = 1;
+  emClearSharedBit();
   for (int i=0;i<means.len();i++) {
     nextMeans[i] = 0.0;
   }

@@ -84,7 +84,8 @@ public:
 
   ///////////////////////////////////
   unsigned totalNumberParameters() { return arr.len(); }
-
+  void recursivelyClearUsedBit() {  emClearUsedBit();  }
+  void recursivelySetUsedBit() { emSetUsedBit();  }
 
   ///////////////////////////////////////////////////////////  
   // num number of features (dimensionality) for this 

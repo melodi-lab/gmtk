@@ -291,6 +291,8 @@ DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
     // EM already on going.
     // Increment the count of number of Gaussian Components using this mean.
     refCount++; 
+    // this object therefore is shared, set the bit saying so.
+    emSetSharedBit();
     return; 
   }
 
@@ -308,6 +310,7 @@ DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
   accumulatedProbability = 0.0;
   numFlooredVariances = 0;
   refCount=1;
+  emClearSharedBit();
   for (int i=0;i<covariances.len();i++) {
     // nextMeans[i] = 0.0;
     nextCovariances[i] = 0.0;

@@ -346,7 +346,9 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
   if(emOnGoingBitIsSet()) {
     // EM already on going.
     // Increment the count of number of Gaussian Components using this mean.
-    refCount++; 
+    refCount++;
+    // this object therefore is shared, set the bit saying so.
+    emSetSharedBit();
     return;
   }
 
@@ -362,6 +364,7 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 
   accumulatedProbability = 0.0;
   refCount = 1;
+  emClearSharedBit();
   for (int i=0;i<nextArr.len();i++) {
     nextArr[i] = 0.0;
   }
