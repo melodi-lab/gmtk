@@ -194,8 +194,81 @@ MixGaussians::log_p(const unsigned frameIndex,
 // EM routines //
 /////////////////
 
-
-
+///////////////////////////////////////////////////////////////////
+// NOTES: on algorithm for splitting and vanishing Gaussians with sharing.
+// 
+// J. Bilmes, $Header$
+// 
+// If a Gaussian component is split, it gets cloned meaning that its
+// mean and covariances are cloned.  If another Gaussian component is
+// split, and it shares either the mean/variance of another one that
+// was split, it will continue to share the mean/variance of the
+// cloned Gaussian.  The cloning relationships are forgotten once all
+// is done at the end of the epoch.
+//
+// First, two sets are used and cleared out at the end of each epoch.
+// vanish set, saying a DPMF's particular i'th entry is to be removed.
+// split set, saying a DPMF's particular i'th entry is to be split
+//
+// Next, maps are used for cloning, so that if a GC, mean, variance,
+// etc. is to be cloned twice, the clone will be the same the 2nd time
+// it is around. This is so that if an object (GC, mean, variance,
+// etc.) is shared, its cloned object should be shared as well.  These
+// maps are cleared out after the end of each epoch (so that cloning
+// will start up again next time), and live in the global GM_Parms
+// object.
+//       
+// The reason for using maps here rather than additional members in
+// each object is that splitting/vanishing is probably the exception
+// rather than the norm, therefore we don't want to use up more memory
+// by adding a field in each object pointing to its current clone when
+// that pointer won't be used very often. The map implementation
+// uses almost no extra memory unless things start splitting/vanishing.
+//
+// Here are sketches of the algorithms.
+//
+// EM end of a MixGaussian
+//   end the DPMF
+//   for each entry i in the pmf
+//         end comp epoch i
+//                // need to end comp epoch in any case because
+//                // otherwise cov ref count won't hit zero.
+//         if pmf i is below threshold
+//                 add (DPMF ptr,i) to vanishing set
+//         if pmf i is above threshold
+//                 add (DPMF ptr,i) to splitting set
+//
+// most of the work gets done in the swapping routines.
+//
+//  mixgauss's swap
+//     check on DPMF's new length
+//     for each entry i of PMF
+//         if pmf&i is in vanishing set
+//             skip it, don't swap, move to last position
+//         if pmf&i ptr in split set
+//             clone cmp i and add it in.
+//
+//
+//  densePMF's swap
+//
+//     newLen = len;
+//     go through pmf, entry i
+//        if i is in delete set
+//           newLen --;
+//        if i is in clone set
+//           newLen ++
+//     make new len array
+//     go through pmf, entry i
+//        if i is in delete set
+//           skip j
+//        if i is in clone set
+//           add i an j with split prob
+//        else
+//           just skip
+//     normalize
+//
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 
 
 void
