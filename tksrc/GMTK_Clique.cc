@@ -174,6 +174,7 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
 	// possible.
 
         logpr pi = probGivenParents();
+        pi.floor();  // make sure sums of 0s are 0 before storiing
 	// copy in the clique value -- if it has a nonzero probability
         // otherwise, discard it to avoid further propagation
         if (pi != 0.0)    
