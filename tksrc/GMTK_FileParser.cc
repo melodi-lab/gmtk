@@ -36,6 +36,9 @@
 #include "GMTK_ContinuousRandomVariable.h"
 #include "GMTK_GM.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_MDCPT.h"
+#include "GMTK_MSCPT.h"
+#include "GMTK_MTCPT.h"
 
 
 VCID("$Header$");
@@ -1319,7 +1322,7 @@ FileParser::createRandomVariableGraph()
       // Make sure the rv at the time delta from the current
       // frame exists.
       if (nameRVmap.find(pp) == nameRVmap.end())
-	error("Error: parent random variable %s at frame %d does not exist\n",
+	error("Error: parent random variable \"%s\" at frame %d does not exist\n",
 	      pp.first.c_str(),pp.second);
 
       const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
@@ -1327,7 +1330,7 @@ FileParser::createRandomVariableGraph()
       ////////////////////////////////////////////////////
       // make sure we have no continuous parents.
       if (par.rvType == RVInfo::t_continuous)
-	error("Error: RV %s at frame %d (line %d) specifies a continuous parent %s at frame %d (line %d)\n",
+	error("Error: RV \"%s\" at frame %d (line %d) specifies a continuous parent \"%s\" at frame %d (line %d)\n",
 	      rvInfoVector[i].name.c_str(),
 	      rvInfoVector[i].frame,
 	      rvInfoVector[i].fileLineNumber,
@@ -1351,7 +1354,7 @@ FileParser::createRandomVariableGraph()
 	// Make sure the rv at the time delta from the current
 	// frame exists.
 	if (nameRVmap.find(pp) == nameRVmap.end())
-	  error("Error: parent random variable %s at frame %d does not exist\n",
+	  error("Error: parent random variable \"%s\" at frame %d does not exist\n",
 		pp.first.c_str(),pp.second);
 
 	const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
@@ -1359,7 +1362,7 @@ FileParser::createRandomVariableGraph()
 	////////////////////////////////////////////////////
 	// make sure we have no continuous parents.
 	if (par.rvType == RVInfo::t_continuous)
-	  error("Error: RV %s at frame %d (line %d) specifies a continuous parent %s at frame %d (line %d)\n",
+	  error("Error: RV \"%s\" at frame %d (line %d) specifies a continuous parent \"%s\" at frame %d (line %d)\n",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
 		rvInfoVector[i].fileLineNumber,
@@ -1369,6 +1372,7 @@ FileParser::createRandomVariableGraph()
 	// add
 	cpl[j].push_back(par.rv);
       }
+
     }
 
     // finally, add all the parents.
@@ -1418,14 +1422,14 @@ FileParser::ensureS_SE_E_NE()
       // Make sure the rv at the time delta from the current
       // frame exists.
       if (nameRVmap.find(pp) == nameRVmap.end())
-	error("Error: parent random variable %s at frame %d does not exist\n",
+	error("Error: parent random variable \"%s\" at frame %d does not exist\n",
 	      pp.first.c_str(),pp.second);
 
       unsigned parent_position = nameRVmap[ pp ];
 
       if (parent_position > i) {
 	const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
-	error("Error: parent variable %s, frame %d (line %d) is later than child %s frame %d (line %d)",
+	error("Error: parent variable \"%s\", frame %d (line %d) is later than child \"%s\" frame %d (line %d)",
 	      par.name.c_str(),
 	      par.frame,
 	      par.fileLineNumber,
@@ -1447,13 +1451,13 @@ FileParser::ensureS_SE_E_NE()
 	// Make sure the rv at the time delta from the current
 	// frame exists.
 	if (nameRVmap.find(pp) == nameRVmap.end())
-	  error("Error: parent random variable %s at frame %d does not exist\n",
+	  error("Error: parent random variable \"%s\" at frame %d does not exist\n",
 		pp.first.c_str(),pp.second);
 	unsigned parent_position = nameRVmap[ pp ];
 
 	if (parent_position > i) {
 	  const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
-	  error("Error: parent variable %s, frame %d (line %d) is later than child %s frame %d (line %d)",
+	  error("Error: parent variable \"%s\", frame %d (line %d) is later than child \"%s\" frame %d (line %d)",
 		par.name.c_str(),
 		par.frame,
 		par.fileLineNumber,
@@ -1490,7 +1494,6 @@ FileParser::ensureS_SE_E_NE()
  *
  *-----------------------------------------------------------------------
  */
-
 void
 FileParser::associateWithDataParams()
 {
@@ -1502,23 +1505,25 @@ FileParser::associateWithDataParams()
   // Note that all the other data in GMParms must be allocated.
   for (unsigned i=0;i<rvInfoVector.size();i++) {
 
+    // first set up the switching parent's DT mapper.
     if (rvInfoVector[i].switchingParents.size() == 0) {
       rvInfoVector[i].rv->dtMapper = NULL;
     } else {
       if (rvInfoVector[i].switchMapping.liType == 
 	  RVInfo::ListIndex::li_String) {
 	if (GM_Parms.dtsMap.find(rvInfoVector[i].switchMapping.nameIndex) == GM_Parms.dtsMap.end())
-	  error("Error: RV %s at frame %d (line %d), switching parent DT %s doesn't exist\n",
+	  error("Error: RV \"%s\" at frame %d (line %d), switching parent DT \"%s\" doesn't exist\n",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
 		rvInfoVector[i].fileLineNumber,
 		rvInfoVector[i].switchMapping.nameIndex.c_str());
+
 	rvInfoVector[i].rv->dtMapper = GM_Parms.dtsMap[rvInfoVector[i].switchMapping.nameIndex];
       } else if  (rvInfoVector[i].switchMapping.liType == 
 		  RVInfo::ListIndex::li_Index) {
 	if ((rvInfoVector[i].switchMapping.intIndex < 0) ||
 	    (rvInfoVector[i].switchMapping.intIndex > GM_Parms.dts.size()))
-	  error("Error: RV %s at frame %d (line %d), switching parent num %d out of range\n",
+	  error("Error: RV \"%s\" at frame %d (line %d), switching parent num %d out of range\n",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
 		rvInfoVector[i].fileLineNumber,
@@ -1528,19 +1533,231 @@ FileParser::associateWithDataParams()
 	// this shouldn't happen, unless the parser has a bug.
 	assert ( 0 );
       }
+
+      // now check to make sure that the decision tree matches
+      // the set of parents that were set up as the switching parents.
+      if (rvInfoVector[i].rv->dtMapper->numFeatures() != 
+	  rvInfoVector[i].switchingParents.size()) {
+	error("Error: RV \"%s\" at frame %d (line %d), num switching parents different than required by decision tree named \"%s\".\n",
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber,
+	      rvInfoVector[i].rv->dtMapper->name().c_str());
+      }
     }
 
+    // now set up the conditional parent's parameters.
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
       // get a discrete form of the current rv
       DiscreteRandomVariable* rv = 
 	(DiscreteRandomVariable*) rvInfoVector[i].rv;
-      error("not finished coding yet");
+
+      vector<CPT*> cpts(rvInfoVector[i].conditionalParents.size());
+      for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
+
+	////////////
+	// check each implementation of CPT, and add the
+	// appropriate one of the appropriate type to the the 
+	// virtual CPTS array "cpts". The following code
+	// is essentially the same code but duplicated 
+	// one time for each CPT implementation.
+
+	if (rvInfoVector[i].discImplementations[j] == RVInfo::di_MDCPT) {
+
+	  //////////////////////////////////////////////////////
+	  // set the CPT to a MDCPT, depending on if a string
+	  // or integer index was used in the file.
+	  if (rvInfoVector[i].listIndices[j].liType 
+	      == RVInfo::ListIndex::li_String) {
+	    if (GM_Parms.mdCptsMap.find(
+		      rvInfoVector[i].listIndices[j].nameIndex) ==
+		GM_Parms.mdCptsMap.end()) {
+	      error("Error: RV \"%s\" at frame %d (line %d), conditional parent MDCPT \"%s\" doesn't exist\n",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rvInfoVector[i].listIndices[j].nameIndex.c_str());
+
+	    }
+	    // otherwise add it
+	    cpts[j] = GM_Parms.mdCptsMap[
+		rvInfoVector[i].listIndices[j].nameIndex
+	    ];
+	  } else {
+	    if (rvInfoVector[i].listIndices[j].intIndex >= 
+		GM_Parms.mdCpts.size()) {
+	      error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rvInfoVector[i].listIndices[j].intIndex);
+	    }
+	    // otherwise add it
+	    cpts[j] =
+	      GM_Parms.mdCpts[rvInfoVector[i].listIndices[j].intIndex];
+	  }
+
+	  // now check to make sure this cpt matches this
+	  // number of parents.
+	  if (cpts[j]->numParents() != 
+	      rvInfoVector[i].conditionalParents[j].size()) {
+	    error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by MDCPT \"%s\".\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  j,
+		  cpts[j]->name().c_str());
+	  }
+	} else 
+	  if (rvInfoVector[i].discImplementations[j] == RVInfo::di_MSCPT) {
+	    
+	    // same code as above, but using MSCPTs rather
+	    // then MDCPTs
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a MSCPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType 
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.msCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.msCptsMap.end()) {
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MSCPT \"%s\" doesn't exist\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      }
+	      // otherwise add it
+	      cpts[j] = GM_Parms.msCptsMap[
+					   rvInfoVector[i].listIndices[j].nameIndex
+	      ];
+	    } else {
+	      if (rvInfoVector[i].listIndices[j].intIndex >= 
+		  GM_Parms.msCpts.size()) {
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvInfoVector[i].listIndices[j].intIndex);
+	      }
+	      // otherwise add it
+	      cpts[j] =
+		GM_Parms.msCpts[rvInfoVector[i].listIndices[j].intIndex];
+	    }
+
+	    // now check to make sure this cpt matches this
+	    // number of parents.
+	    if (cpts[j]->numParents() != 
+		rvInfoVector[i].conditionalParents[j].size()) {
+	      error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by MSCPT \"%s\".\n",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    j,
+		    cpts[j]->name().c_str());
+	    }
+
+	} else 
+	  if (rvInfoVector[i].discImplementations[j] == RVInfo::di_MTCPT) {
+	    
+	    // same code as above, but using MTCPTs rather
+	    // then MDCPTs
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a MTCPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType 
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.mtCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.mtCptsMap.end()) {
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MTCPT \"%s\" doesn't exist\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      }
+	      // otherwise add it
+	      cpts[j] = GM_Parms.mtCptsMap[
+					   rvInfoVector[i].listIndices[j].nameIndex
+	      ];
+	    } else {
+	      if (rvInfoVector[i].listIndices[j].intIndex >= 
+		  GM_Parms.mtCpts.size()) {
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvInfoVector[i].listIndices[j].intIndex);
+	      }
+	      // otherwise add it
+	      cpts[j] =
+		GM_Parms.mtCpts[rvInfoVector[i].listIndices[j].intIndex];
+	    }
+
+	    // now check to make sure this cpt matches this
+	    // number of parents.
+	    if (cpts[j]->numParents() != 
+		rvInfoVector[i].conditionalParents[j].size()) {
+	      error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by MTCPT \"%s\".\n",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    j,
+		    cpts[j]->name().c_str());
+	    }
+
+	} else {
+	  // again, this shouldn't happen. If it does, something is wrong
+	  // with the parser or earlier code.
+	  assert ( 0 );
+	}
+
+
+	for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+
+	}
+      }
+      // now add the cpts to the rv
+      rv->setCpts(cpts);
     } else { // continuous
       error("not finished coding yet");
     }
   }
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * addVariablesToGM()
+ *      Adds all the variables that have been created by the
+ *      parser to the GM.
+ *
+ * Preconditions:
+ *      createRandomVariableGraph() and parseGraphicalModel(),
+ *      and associateWithDataParams() must have been called.
+ *
+ * Postconditions:
+ *      GM object contains all of the RVs.
+ *
+ * Side Effects:
+ *      none internally, but changes gm object.
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+FileParser::addVariablesToGM(GMTK_GM& gm)
+{
+  gm.node.resize(rvInfoVector.size());
+  for (unsigned i=0;i<rvInfoVector.size();i++) {
+    gm.node[i] = rvInfoVector[i].rv;
+  }
+}
 
 
 ////////////////////////////////////////////////////////////////////
