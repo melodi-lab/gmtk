@@ -74,6 +74,8 @@ char *prmOutFile="outParms%d.gmp";
 bool binPrmOutFile=true;
 
 double varFloor = 1e-10;
+char *cppCommandOptions = NULL;
+
 
 ARGS ARGS::Args[] = {
 
@@ -86,6 +88,7 @@ ARGS ARGS::Args[] = {
 
   ARGS("prmOutFile",ARGS::Req,prmOutFile,"File to place *TRAINABLE* output parametes"),
   ARGS("binPrmOutFile",ARGS::Opt,binPrmOutFile,"Output parametes binary? (def=false)"),
+  ARGS("cppCommandOptions",ARGS::Opt,cppCommandOptions,"Command line options to give to cpp"),
 
   ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
   ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
@@ -131,7 +134,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // finally, pull any trainable parameters out
   // of a master file and send them to a trainable file. 
-  iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile);
+  iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
   GM_Parms.readTrainable(pf);
   oDataStreamFile of(prmOutFile,binPrmOutFile);
   GM_Parms.writeTrainable(of);
