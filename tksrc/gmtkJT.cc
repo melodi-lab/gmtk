@@ -119,6 +119,8 @@ static char* pPartCliquePrintRange = NULL;
 static char* cPartCliquePrintRange = NULL;
 static char* ePartCliquePrintRange = NULL;
 
+static unsigned help = 0;  // 0: no help; HIGHEST_PRIORITY (1) ... LOWEST_PRIORITY (5) : increasing levels of help.  The priority levels are defined in arguments.h 
+
 /////////////////////////////////////////////////////////////
 // Memory management options 
 
@@ -225,6 +227,7 @@ Arg Arg::Args[] = {
   Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C partition."),
   Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E partition."),
 
+  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
 
   /////////////////////////////////////////////////////////////
   // Inference Options
