@@ -119,6 +119,7 @@ protected:
     struct NonLeafNode {
       // This is when nodeType == NonLeafNode.
       int ftr;
+      bool ordered;
       vector< Node* > children;
       vector< BP_Range* > rngs;
     } nonLeafNode;
@@ -566,6 +567,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
   } else {
     node->nodeType = NonLeafNode;
     node->nonLeafNode.ftr = (T)curFeat;
+    node->nonLeafNode.ordered = true;
     unsigned numSplits;
     is.read(numSplits,"RngDecisionTree:: readRecurse numSplits");
     if (numSplits < 1)
@@ -610,17 +612,20 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 	
 	////////////////////////////////////////////////////////
 	// this next check is required to ensure there is
-	// an ordering of the ranges. If we remove this check,
-	// binary search (below) might not work.
+	// an ordering of the ranges, so sorting makes sense
+	// when we do binary search.
 	if ( 
 	    (!((*node->nonLeafNode.rngs[i]) < (*node->nonLeafNode.rngs[j])))
 	    &&
 	    (!((*node->nonLeafNode.rngs[j]) < (*node->nonLeafNode.rngs[i])))
 	    )
+	  node->nonLeafNode.ordered = false;
+#if 0	
 	  error("ERROR: DT '%s', file '%s': range %d (%s) and %d (%s) do not have an order.",name().c_str(),is.fileName(),
 		i,
 		node->nonLeafNode.rngs[i]->rangeStr(),j,
 		node->nonLeafNode.rngs[j]->rangeStr());
+#endif
       }
     }
 
@@ -628,7 +633,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
       node->nonLeafNode.children[i] =
 	readRecurse(is,prevLeaf);
 
-    if (numSplits >= DT_SPLIT_SORT_THRESHOLD) {
+    if (numSplits >= DT_SPLIT_SORT_THRESHOLD && node->nonLeafNode.ordered) {
       //////////////////////////////////////////////////////////
       // sort the entries so we can do binsearch later.
 
@@ -914,13 +919,16 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
 
     // use a switch to knock off the short cases for
     // which we use simple linear search with little bookkeeping.
-    if (n->nonLeafNode.rngs.size() < DT_SPLIT_SORT_THRESHOLD) {
+    if (n->nonLeafNode.rngs.size() < DT_SPLIT_SORT_THRESHOLD
+	||
+	!n->nonLeafNode.ordered) {
       for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
 	// Do a linear search.
 	if (n->nonLeafNode.rngs[i]->contains(val))
 	  return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
       }
     } else {
+      // do a binary search.
       const int maxRngNum = n->nonLeafNode.rngs.size()-1;
       if (*(n->nonLeafNode.rngs[0]) > val)
 	goto failedQuery;
@@ -1049,13 +1057,16 @@ T RngDecisionTree<T>::queryRecurse(const vector < RandomVariable* >& arr,
 
     // use a switch to knock off the short cases for
     // which we use simple linear search with little bookkeeping.
-    if (n->nonLeafNode.rngs.size() < DT_SPLIT_SORT_THRESHOLD) {
+    if (n->nonLeafNode.rngs.size() < DT_SPLIT_SORT_THRESHOLD
+	|| 
+	!n->nonLeafNode.ordered) {
       for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
 	// Do a linear search.
 	if (n->nonLeafNode.rngs[i]->contains(val))
 	  return queryRecurse(arr,n->nonLeafNode.children[i]);
       }
     } else {
+      // eliminate simple boundary conditions.
       const int maxRngNum = n->nonLeafNode.rngs.size()-1;
       if (*(n->nonLeafNode.rngs[0]) > val)
 	goto failedQuery;
