@@ -64,13 +64,20 @@ static bool reTriangulate = false;
 static bool rePartition = false;
 static unsigned maxNumChunksInBoundary = 1; 
 static unsigned chunkSkip = 1; 
-static int allocateDenseCpts=-1;
+static int allocateDenseCpts=0;
 static char *cppCommandOptions = NULL;
 static char* triangulationHeuristic="WFS";
 static char* boundaryHeuristic="SFW";
 static bool findBestBoundary = true;
 static double traverseFraction = 1.0;
 static bool loadParameters = false;
+
+static char *inputMasterFile=NULL;
+// static char *outputMasterFile=NULL;
+static char *inputTrainableParameters=NULL;
+static bool binInputTrainableParameters=false;
+// static char *objsToNotTrainFile=NULL;
+
 
 static bool noBoundaryMemoize = false;
 static unsigned numBackupFiles = 5;
@@ -89,6 +96,9 @@ Arg Arg::Args[] = {
 
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
   Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
+  Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
+  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
+
 
   /////////////////////////////////////////////////////////////
   // Triangulation Options
@@ -242,22 +252,21 @@ main(int argc,char*argv[])
   // if (chunkSkip > maxNumChunksInBoundary)
   //  error("ERROR: Must have S<=M at this time.\n");
 
-#if 0
-  // don't read in parameters for now
   /////////////////////////////////////////////
-  // read in all the parameters
-  if (inputMasterFile) {
-    // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
-    GM_Parms.read(pf);
+  if (loadParameters) {
+    // read in all the parameters
+    if (inputMasterFile) {
+      // flat, where everything is contained in one file, always ASCII
+      iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
+      GM_Parms.read(pf);
+    }
+    if (inputTrainableParameters) {
+      // flat, where everything is contained in one file
+      iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
+      GM_Parms.readTrainable(pf);
+    }
+    GM_Parms.loadGlobal();
   }
-  if (inputTrainableParameters) {
-    // flat, where everything is contained in one file
-    iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
-    GM_Parms.readTrainable(pf);
-  }
-  GM_Parms.loadGlobal();
-#endif
 
   /////////////////////////////
   // read in the structure of the GM, this will
@@ -272,17 +281,19 @@ main(int argc,char*argv[])
   // Make sure that there are no directed loops in the graph.
   fp.ensureValidTemplate();
 
-  // link the RVs with the parameters that are contained in
-  // the bn1_gm.dt file.
-  if (allocateDenseCpts >= 0) {
-    if (allocateDenseCpts == 0)
-      fp.associateWithDataParams(FileParser::noAllocate);
-    else if (allocateDenseCpts == 1)
-      fp.associateWithDataParams(FileParser::allocateRandom);
-    else if (allocateDenseCpts == 2)
-      fp.associateWithDataParams(FileParser::allocateUniform);
-    else
-      error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
+  if (loadParameters) {
+    // link the RVs with the parameters that are contained in
+    // the bn1_gm.dt file.
+    if (allocateDenseCpts >= 0) {
+      if (allocateDenseCpts == 0)
+	fp.associateWithDataParams(FileParser::noAllocate);
+      else if (allocateDenseCpts == 1)
+	fp.associateWithDataParams(FileParser::allocateRandom);
+      else if (allocateDenseCpts == 2)
+	fp.associateWithDataParams(FileParser::allocateUniform);
+      else
+	error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
+    }
   }
 
   // make sure that all observation variables work
