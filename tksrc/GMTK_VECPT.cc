@@ -129,6 +129,8 @@ VECPT::read(iDataStreamFile& is)
 	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,c);
   }
 
+  const char*pr_str=pr_rs.c_str();
+
   // Now try opening the file:
   obs.openFile(obsFileName.c_str(),
 	       frs.c_str(),
@@ -139,12 +141,13 @@ VECPT::read(iDataStreamFile& is)
 	       iswp,
 	       globalObservationMatrix.startSkip(),
 	       globalObservationMatrix.endSkip(),
-	       false); // do not run CPP if ascii file.
-
-	       // ultimately add this:
-	       //      NULL, // CPP command options
-	       // pr_rs.c_str());
-
+	       false,  // ); // do not run CPP if ascii file.
+	       NULL,
+	       (const char**)&pr_str);
+  // ultimately add this:  Added - Karim
+  //      NULL, // CPP command options
+  // pr_rs.c_str());
+  
   // still here? Do more error checking.
 
   if (obs.numContinuous() == 0) {
