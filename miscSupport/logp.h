@@ -290,6 +290,11 @@ public:
     return *this;
   }
 
+  // floor self to zero.
+  void floor() const {
+    if (v < LSMALL)
+      v = LZERO;
+  }
 
   logp<FT,iFT>& operator = (float p) { 
     if (p<0)
