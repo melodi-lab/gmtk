@@ -735,6 +735,9 @@ BoundaryTriangulate
   // Therefore, making M and/or S larger reduces the number valid possible utterance lengths.
 
 
+  // checkPartitions();
+
+
   ///////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////
   // First create a network (called u2, but could be called "find
@@ -1105,6 +1108,13 @@ BoundaryTriangulate
     gm_template.leftInterface = false; 
 
   }
+}
+
+void BoundaryTriangulate
+::checkPartitions()
+{
+
+
 }
 
 
@@ -1642,22 +1652,25 @@ BoundaryTriangulate
 /*-
  *-----------------------------------------------------------------------
  * BoundaryTriangulate::basicTriangulate()
- *   The actual basic triangulation that does the work of triangulation.
+ *   The actual basic triangulation that does the work of
+ *   elimination-based triangulation.
  *  
  *   This routine will triangulate a set of nodes using any
- *   combination of a number if different (but simple) triangulation
- *   heuristics such as (min weight, min size, min fill, etc.).  For a
- *   good description of these heuristics, see D. Rose et. al, 1970,
- *   1976. The routine also allows for other heuristics to be used
- *   such as eliminate the earlier nodes (temporal order) first, or
- *   eliminate the nodes in order that they appear in the structure
- *   file (sometimes this simple constrained triangulation will work
- *   better than the "intelligent" heuristics, such as for certain
- *   lattice structures). The routine allows heuristics to be
- *   prioritized and combined, so that if there is a tie with the
- *   first heuristic, the second will be used, and if there is still a
- *   tie, the third one will be used, etc.
- *    
+ *   combination of a number if different (but simple)
+ *   elimination-triangulation heuristics such as (min weight, min
+ *   size, min fill, etc.).  For a good description of these
+ *   heuristics, see D. Rose et. al, 1970, 1976. The routine also
+ *   allows for other heuristics to be used such as eliminate the
+ *   earlier nodes (temporal order) first, or eliminate the nodes in
+ *   order that they appear in the structure file (sometimes this
+ *   simple constrained triangulation will work better than the
+ *   "intelligent" heuristics, such as for certain lattice
+ *   structures). The routine allows heuristics to be prioritized and
+ *   combined, so that if there is a tie with the first heuristic, the
+ *   second will be used, and if there is still a tie, the third one
+ *   will be used, etc. Lastly, the routine allows random choices to
+ *   be made over the best K cases at each elimination step.
+ *     
  * Preconditions:
  *   Graph must be a valid undirected model and untriangulated. This means if the graph
  *   was originally a directed model, it must have been properly
