@@ -34,6 +34,10 @@ struct GMTK_GM
     // A topological ordering of the nodes; useful for simulation and
     // enumerative inference.
 
+    void findTopologicalOrder(randomVariable *rv = NULL);
+    // Guarantees that all variables at time t-1 occur before any variables
+    // at time t.
+
     int numEquivalenceClasses;
     // The variables in the network may be divided into equivalence classes,
     // with the members of each equivalence class sharing the same parameters.
@@ -42,10 +46,6 @@ struct GMTK_GM
     // All the members of an equivalence class will use the parameters 
     // associated with this particular member. To save memory, the other
     // member's parameter data structures simply point to this representative.
-
-    void findTopologicalOrder(randomVariable *rv = NULL);
-    // Guarantees that all variables at time t-1 occur before any variables
-    // at time t.
 
     void makeRandom();
     // Goes over each variable in the graph and calls its makeRandom function.
@@ -57,12 +57,33 @@ struct GMTK_GM
     // Goes over the variables in topological order and instantiates them 
     // according to the probability distribution given their parent's values.
 
-    logpr enumerateProb(unsigned pos=0, logpr p=1);
+    void enumerateProb(unsigned pos=0, logpr p=1);
     // A recursive function that enumerates all possible values of the 
     // hidden variables and computes the total data prob by brute force.
     // Good for verifying DP and other inference results.
+    // Call with emMode=false to get the data probability.
+    // Call with emMode=true and p=1/dataProb to do EM
 
-    logpr logDataProb;
+    bool emMode;
+    // Is enumerateProb() being called as part of EM?
+
+    void cacheValues();
+    // Tells all the nodes int the graph to cache the values they are 
+    // currently set to.
+    // Observation variables can ignore this.
+
+    void restoreCachedValues();
+    // Tells all the nodes in the graph to clamp themselves to their cached
+    // values.
+    // Observation variables can ignore this.
+
+    void enumerateViterbiProb(unsigned pos=0, logpr p=1);
+    // Computes the probability of the likeliest instantiation of the hidden
+    // variables, and stores it in logViterbiProb. 
+    // Has the side effect that at termination, the network is clamped to its
+    // liekliest value.
+
+    logpr dataProb, viterbiProb;
 
     int numNodes;
     // how many nodes are in the graph, i.e. node.len()
@@ -72,6 +93,26 @@ struct GMTK_GM
 
     int numSlices; 
     // how many time slices there are in the network
+
+    void emIncrementStatistics(logpr posterior);
+    // Tells each variable to increment its counts by the posterior.
+
+    void emInitialize();
+    // Tells each variable to zero out its accumulators and get ready to 
+    // start EM.
+
+    void emUpdate();
+    // Tells each variable to update its parameters at the end of an EM 
+    // iteration.
+
+    void clampFirstExample();
+    // Clamps the observation variables according to the first example.
+
+    bool clampNextExample();
+    // Clamps the observation variables according to the next example.
+
+    void enumerativeEM(int iterations);
+    // Does EM using brute force inference.
 };
 
 #endif
