@@ -2158,7 +2158,8 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	} else {
 	  // there are > 0 conditional parents for this
 	  // set of switching values. The index should
-	  // specify a DT.
+	  // specify a DT which maps from the set of
+	  // conditional parents to a GM collection.
 	  rv->conditionalGaussians[j].direct = false;
 	  if (rvInfoVector[i].listIndices[j].liType 
 		== RVInfo::ListIndex::li_String) {
@@ -2214,6 +2215,30 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		  ]];
 	      // make sure that the pointer table is filled in for this name.
 	      rv->conditionalGaussians[j].mapping.collection->fillMgTable();
+	      // Might as well do this here. Check that all Gaussians
+	      // in the collection are of the right dimensionality.
+	      // This check is important for ContinuousRandomVariable::probGivenParents().
+	      const unsigned rvDim = 
+		(rvInfoVector[i].rvFeatureRange.lastFeatureElement - 
+		 rvInfoVector[i].rvFeatureRange.firstFeatureElement)+1;
+	      // make sure all Gaussians in the collection have the
+	      // same dimensionality as the RV.
+	      for (unsigned u=0;u<
+		     rv->conditionalGaussians[j].mapping.collection->mgSize();
+		   u++) {
+		if (rv->conditionalGaussians[j].mapping.collection->mg(u)->dim() != rvDim) {
+		error("Error: RV \"%s\" at frame %d (line %d), dimensionality %d, conditional parent %d, collection \"%s\" specifies Gaussian \"%s\" at pos %d with wrong dimension %d\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvDim,
+		      j,
+		      rvInfoVector[i].listIndices[j].collectionName.c_str(),
+		      rv->conditionalGaussians[j].mapping.collection->mg(u)->name().c_str(),
+		      u,
+		      rv->conditionalGaussians[j].mapping.collection->mg(u)->dim());
+		}
+	      }
 	    }
 	}
       }
