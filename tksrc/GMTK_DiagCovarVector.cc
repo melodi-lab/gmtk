@@ -110,7 +110,7 @@ void
 DiagCovarVector::makeRandom()
 {
   for (int i=0;i<covariances.len();i++) {
-    covariances[i] = 1.0+rnd.drand48();
+    covariances[i] = 1.0+rnd.drand48pe();
   }
 }
 
