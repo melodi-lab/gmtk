@@ -947,6 +947,11 @@ FileParser::parseRandomVariableDiscreteType()
   curRV.rvCard = tokenInfo.int_val;
   if (curRV.rvCard <= 1)
     parseError("cardinality must be greater than one (1), for cardinality 1 use observed variable");
+  // TODO: allow cardinality 1 variables, and check here for zero
+  // cardinality.  cardinality 1 might be reasonable to have
+  // "observations" which use a DT that alwyas returns a fixed value
+  // (such as frame number). Also, card 1 vars should probably never
+  // have any parents.
 
   consumeToken();
 }
