@@ -1690,7 +1690,10 @@ Sat Mar 13 22:24:53 2004
     - Note: clique pruning will be easy, but separator pruning
       in this case will be a bit more difficult.
 
- 
+Sun Mar 14 23:04:25 2004
+  - make 1-page reference card for GMTK DTs with everything from syntax, rules, tips for speeding up,
+    and all possible formulas, etc.
+
 
 
 
