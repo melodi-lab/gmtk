@@ -57,7 +57,8 @@ docdir = $(prefix)/man/man1
 #
 # Libraries.
 #
-LIBS = -lfileParser  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport -lfl -lsunmath -lm 
+SUNLIBS=-lsunmath
+LIBS = -lfileParser  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport -lfl $(SUNLIBS) -lm 
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
