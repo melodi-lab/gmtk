@@ -135,3 +135,11 @@ XXX- todo, make sure that chunk n:m is valid.
   of values, and then a pointer to a dense pmf
 
 - get the parameter writing stuff finalized.
+
+- get MCVR working
+
+- if last component (or entire mixture) has no probability, 
+   either 1) die
+          2) do nothing, and do not change anything, reverting
+             to previous values.
+          2) force to uniform parameters.
