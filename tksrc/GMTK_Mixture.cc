@@ -88,10 +88,6 @@ MixGaussians::read(iDataStreamFile& is)
     }
   }
 
-  mixCoeffVanishThreshold =   
-    logpr((double)1.0/numComponents) /
-    logpr(mixCoeffVanishRatio);
-
   // make ready for probability evaluation.
   componentCache.resize(10);
 }
@@ -207,6 +203,12 @@ MixGaussians::emStartIteration()
     emSetEmAllocatedBit();
   }
 
+  if (dense1DPMF->length() != numComponents) {
+    error("ERROR: Gaussian mixture '%s' with '%d' components is trying to start an EM iteration with a dense PMF '%s' of length '%d'\n",
+	  name().c_str(),numComponents,dense1DPMF->name().c_str(),
+	  dense1DPMF->length());
+  }
+
   // EM iteration is now going.
   emSetOnGoingBit();
   emSetSwappableBit();
@@ -318,6 +320,9 @@ MixGaussians::emIncrement(logpr prob,
 
   // increment the mixture weights
   dense1DPMF->emIncrement(prob,weightedPostDistribution);
+
+  const logpr mixCoeffVanishThreshold =   
+    logpr((double)1.0/numComponents)/logpr(mixCoeffVanishRatio);
 
   // and the components themselves.
   for (unsigned i=0;i<numComponents;i++) {
