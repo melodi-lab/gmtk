@@ -39,7 +39,6 @@ class Sparse1DPMF;
 class MeanVector;
 class DiagCovarVector;
 class RealMatrix;
-class PackedSparseRealMatrix;
 class DlinkMatrix;
 class Dlinks;
 class WeightMatrix;
