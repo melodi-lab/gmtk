@@ -77,7 +77,7 @@ public:
 
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
-    assert ( val >= 0 && val < cardinalities[_numParents] );
+    assert ( val >= 0 && val < card() );
     return *(mdcpt_ptr + val);
   }
   logpr probGivenParents(vector <int>& parentValues, 
@@ -93,11 +93,6 @@ public:
     becomeAwareOfParentValues(parents);
     return probGivenParents(val);
   }
-  int numValsGivenParents() { 
-    assert ( bitmask & bm_basicAllocated );
-    return cardinalities[_numParents]; 
-  }
-
 
   // returns an iterator for the first one.
   iterator begin() {
@@ -111,7 +106,7 @@ public:
   iterator end() {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
-    it.internalState = cardinalities[_numParents];
+    it.internalState = card();
     return it;
   }
 
@@ -120,7 +115,7 @@ public:
     assert ( bitmask & bm_basicAllocated );
     // don't increment past the last value.
     it.internalState++;
-    if (it.internalState == cardinalities[_numParents])
+    if (it.internalState == card())
       return false;
     it.probVal = mdcpt_ptr[it.internalState];
     return true;

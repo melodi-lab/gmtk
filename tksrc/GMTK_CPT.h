@@ -69,9 +69,10 @@ protected:
   // cardinality[1] = the cardinality of the 2nd parent
   //    ...
   // cardinality[_nuParents-1] = cardinality of the last parent
-  // cardinality[_numParents] = cardinality of self (the child)
   vector < int > cardinalities;
 
+  // cardinality of self (the child)
+  int _card;
 
 public:
 
@@ -82,11 +83,23 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor, does nothing actually.
-  CPT(const DiscreteImplementaton _cptType) : cptType(_cptType) {}
+  CPT(const DiscreteImplementaton _cptType) : cptType(_cptType) { _card = 0; }
   virtual ~CPT() {}
 
   ////////////////////////////////////////////////
   unsigned numParents() { return _numParents; }
+
+  // Returns the cardinality of this CPT (i.e.,
+  // the number of possible values (either with zero or non zero
+  // probab) that a RV with this CPT may take on.
+  int card() {
+    return _card;
+  }
+
+  int parentCardinality(const unsigned int par) {
+    assert ( par < numParents() );
+    return cardinalities[par];
+  }
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
@@ -129,13 +142,7 @@ public:
   virtual logpr probGivenParents(vector < RandomVariable *>& parents,
 				 const int val) = 0;
 
-
-  // Returns the cardinality of this CPT (i.e.,
-  // the number of possible values (either with zero or non zero
-  // probab) that a RV with this CPT may take on.
-  virtual int card() {
-    return cardinalities[_numParents]; 
-  }
+  
 
   class iterator {
     friend class CPT;
