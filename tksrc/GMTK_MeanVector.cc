@@ -34,6 +34,8 @@
 #include "GMTK_GMParms.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_DiagCovarVector.h"
+#include "GMTK_DlinkMatrix.h"
 
 VCID("$Header$");
 
@@ -157,7 +159,6 @@ MeanVector::noisyClone()
 
 
 
-
 /////////////////
 // EM routines //
 /////////////////
@@ -185,6 +186,16 @@ MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
     refCount++; 
     // this object therefore is shared, set the bit saying so.
     emSetSharedBit();
+
+    if (refCount == 2) {
+      // initialize the denominator if this is the
+      // first time that we find out that this mean is shared
+      // (known by the fact that refCount == 2).
+      sharedMeansDenominator.growIfNeeded(means.len());
+      for (int i=0;i<means.len();i++) {
+	sharedMeansDenominator[i] = 0.0;
+      }
+    }
     return;
   }
 
@@ -192,7 +203,7 @@ MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
     // this is presumably the first time
     emSetEmAllocatedBit();
     // allocate the final next means if needed
-    nextMeans.growIfNeeded(means.len());
+    // nextMeans.growIfNeeded(means.len());
   }
 
   // EM iteration is now going.
@@ -201,9 +212,9 @@ MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
   accumulatedProbability = 0.0;
   refCount = 1;
   emClearSharedBit();
-  for (int i=0;i<means.len();i++) {
-    nextMeans[i] = 0.0;
-  }
+  // for (int i=0;i<means.len();i++) {
+  // nextMeans[i] = 0.0;
+  // }
 
   // make it swapable, although at this point
   // it would swap in the unaccumulated values.
@@ -255,6 +266,7 @@ MeanVector::emIncrement(const logpr prob,
 
 }
 
+#if 0
 
 void
 MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
@@ -262,6 +274,14 @@ MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
+
+  // make sure next-means is set up
+  if (nextMeans.size() < means.len()) {
+    nextMeans.resize(means.len());
+    for (int i=0;i<means.len();i++) {
+      nextMeans[i] = 0.0;
+    }
+  }
 
   if (refCount > 0) {
     // if this isn't the case, something is wrong.
@@ -306,6 +326,387 @@ MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
   // stop EM
   emClearOnGoingBit();
 }
+
+#endif
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIterationSharedMeansCovarsDlinks()
+ *      end the EM iteration for this mean object, where we have 
+ *      shared means, shared covariances, and shared dlink matrices.
+ * 
+ * Preconditions:
+ *      basic structures must be allocated, EM must be ongoing.
+ *
+ * Postconditions:
+ *      em iteration is ended.
+ *
+ * Side Effects:
+ *      possibly updates all next parameters
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulatedProbability,
+						  const float*const xAccumulators,
+						  const float*const zAccumulators,
+						  const DlinkMatrix* dLinkMat,
+						  const DiagCovarVector* covar)
+{
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
+  // make sure next-means is set up
+  if (nextMeans.len() < means.len()) {
+    nextMeans.resize(means.len());
+    for (int i=0;i<means.len();i++) {
+      nextMeans[i] = 0.0;
+    }
+  }
+  
+  if (sharedMeansDenominator.len() < means.len()) {
+    sharedMeansDenominator.resize(means.len());
+    for (int i=0;i<means.len();i++) {
+      sharedMeansDenominator[i] = 0.0;
+    }
+  }
+  
+  if (refCount > 0) {
+    // if this isn't the case, something is wrong.
+    assert ( emOnGoingBitIsSet() );
+
+    if ( parentsAccumulatedProbability >
+	 minContAccumulatedProbability()) {
+      // Only accumulate here if there is something significant 
+      // to accumlate.
+
+      // grab a pointer to the previous inverse variances
+      // needed for normalization.
+      const float* previous_variances_inv_ptr = covar->variances_inv.ptr;
+
+      const double realAccumulatedProbability = 
+	parentsAccumulatedProbability.unlog();
+
+      // grab a pointer to the previous B matrix
+      const float *prev_dlinkMatrix_ptr = dLinkMat->arr.ptr;
+
+      // also get a pointer to the z accumulators
+      const float*zAccumulators_ptr = zAccumulators;
+      
+
+      // accumulate in the 1st order statistics
+      for (int i=0;i<means.len();i++) {
+	
+	const int nLinks = dLinkMat->numLinks(i);
+
+	// first compute the B*zAccumulator value
+	double tmp=0.0;
+	for (int j=0;j<nLinks;j++) {
+	  tmp += (double)(*prev_dlinkMatrix_ptr++)*(double)(*zAccumulators_ptr++);
+	}
+
+	// subtract off the Bz from x
+	tmp = xAccumulators[i] - tmp;
+
+	// and accumulate the result multiplying by the previous iteration's inverse variance
+	nextMeans[i] += tmp*previous_variances_inv_ptr[i];
+
+	// and get the denominator
+	sharedMeansDenominator[i] += previous_variances_inv_ptr[i]*realAccumulatedProbability;
+      }
+
+    }
+
+    refCount--;
+  }
+
+  /////////////////////////////////////////////
+  // if there is still someone who
+  // has not given us his/her 1st order stats,
+  // then we return w/o finishing.
+  if (refCount > 0)
+    return;
+
+  accumulatedProbability.floor();
+  if (accumulatedProbability < minContAccumulatedProbability()) {
+    warning("WARNING: Shared mean vec '%s' received only a total of %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+	    accumulatedProbability.val(),
+	    minContAccumulatedProbability().val());
+    for (int i=0;i<nextMeans.len();i++)
+      nextMeans[i] = means[i];
+  } else {
+    unsigned previousMeansUsed = 0;
+    // finish computing the next means.
+    for (int i=0;i<means.len();i++) {
+      // first make sure denominator is well behaved
+      if (sharedMeansDenominator[i] <= DBL_MIN) {
+	// use previous mean for this iteration.
+	nextMeans[i] = means[i];
+	previousMeansUsed++;
+      } else {
+	// make sure the division is done in double precision.
+	const double tmp = (double) nextMeans[i] / (double) sharedMeansDenominator[i];
+	// then covert it to nextMeans type.
+	nextMeans[i] = tmp;
+      }
+    }
+    if (previousMeansUsed > 0) 
+      warning("WARNING: Shared mean vec '%s' used %d previous means values because of low counts.",
+	      name().c_str(),
+	      previousMeansUsed);
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIterationSharedMeansCovars()
+ *      end the EM iteration for this mean object, where we have both
+ *      shared means and shared covariances.
+ * 
+ * Preconditions:
+ *      basic structures must be allocated, EM must be ongoing.
+ *
+ * Postconditions:
+ *      em iteration is ended.
+ *
+ * Side Effects:
+ *      possibly updates all next parameters
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MeanVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbability,
+						  const float*const partialAccumulatedNextMeans,
+						  const DiagCovarVector* covar)
+{
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
+  // make sure next-means is set up
+  if (nextMeans.len() < means.len()) {
+    nextMeans.resize(means.len());
+    for (int i=0;i<means.len();i++) {
+      nextMeans[i] = 0.0;
+    }
+  }
+
+  if (refCount > 0) {
+    // if this isn't the case, something is wrong.
+    assert ( emOnGoingBitIsSet() );
+
+    if ( parentsAccumulatedProbability >
+	 minContAccumulatedProbability()) {
+      // Only accumulate here if there is something significant 
+      // to accumlate.
+
+      // grab a pointer to the previous inverse variances
+      // needed for normalization.
+      const float* previous_variances_inv_ptr = covar->variances_inv.ptr;
+
+      const double realAccumulatedProbability = 
+	parentsAccumulatedProbability.unlog();
+
+      // accumulate in the 1st order statistics given
+      // by the mean object.
+      for (int i=0;i<means.len();i++) {
+	nextMeans[i] += 
+	  (partialAccumulatedNextMeans[i]*previous_variances_inv_ptr[i]);
+	sharedMeansDenominator[i] += previous_variances_inv_ptr[i]*realAccumulatedProbability;
+      }
+
+    }
+
+    refCount--;
+  }
+
+  /////////////////////////////////////////////
+  // if there is still someone who
+  // has not given us his/her 1st order stats,
+  // then we return w/o finishing.
+  if (refCount > 0)
+    return;
+
+  accumulatedProbability.floor();
+  if (accumulatedProbability < minContAccumulatedProbability()) {
+    warning("WARNING: Shared mean vec '%s' received only a total of %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+	    accumulatedProbability.val(),
+	    minContAccumulatedProbability().val());
+    for (int i=0;i<nextMeans.len();i++)
+      nextMeans[i] = means[i];
+  } else {
+    unsigned previousMeansUsed = 0;
+    // finish computing the next means.
+    for (int i=0;i<means.len();i++) {
+      // first make sure denominator is well behaved
+      if (sharedMeansDenominator[i] <= DBL_MIN) {
+	// use previous mean for this iteration.
+	nextMeans[i] = means[i];
+	previousMeansUsed++;
+      } else {
+	// make sure the division is done in double precision.
+	const double tmp = (double)nextMeans[i] / (double)sharedMeansDenominator[i];
+	// then covert it to nextMeans type.
+	nextMeans[i] = tmp;
+      }
+    }
+    if (previousMeansUsed > 0) 
+      warning("WARNING: Shared mean vec '%s' used %d previous means values because of low counts.",
+	      name().c_str(),
+	      previousMeansUsed);
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIterationNoSharing()
+ *      end the EM iteration for this mean object, where we have no
+ *      sharing.
+ * 
+ * Preconditions:
+ *      basic structures must be allocated, EM must be ongoing.
+ *
+ * Postconditions:
+ *      em iteration is ended.
+ *
+ * Side Effects:
+ *      possibly updates all next parameters
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MeanVector::emEndIterationNoSharing(const float*const partialAccumulatedNextMeans)
+{
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
+  // if this isn't the case, something is wrong.
+  assert ( emOnGoingBitIsSet() );
+
+  // shouldn't be called when sharing occurs.
+  assert ( refCount == 1 );
+  assert (!emSharedBitIsSet());
+
+  // make sure next-means is set up
+  if (nextMeans.len() < means.len()) {
+    nextMeans.resize(means.len());
+    for (int i=0;i<means.len();i++) {
+      nextMeans[i] = 0.0;
+    }
+  }
+
+  refCount = 0;
+
+  accumulatedProbability.floor();
+  if (accumulatedProbability < minContAccumulatedProbability()) {
+    warning("WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+	    accumulatedProbability.val(),
+	    minContAccumulatedProbability().val());
+    for (int i=0;i<nextMeans.len();i++)
+      nextMeans[i] = means[i];
+  } else {
+    const double invRealAccumulatedProbability =
+      accumulatedProbability.inverse().unlog();
+    // finish computing the next means.
+    for (int i=0;i<means.len();i++) {
+      nextMeans[i] = partialAccumulatedNextMeans[i]*invRealAccumulatedProbability;
+    }
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIterationNoSharingAlreadyNormalized()
+ *      end the EM iteration for this mean object, where we have no
+ *      sharing, but the mean has already been normalized. We still
+ *      need to check for a small accumulator probability in which case we 
+ *      just use the previous mean (rather than the new one).
+ * 
+ * Preconditions:
+ *      basic structures must be allocated, EM must be ongoing.
+ *
+ * Postconditions:
+ *      em iteration is ended.
+ *
+ * Side Effects:
+ *      possibly updates all next parameters
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MeanVector::emEndIterationNoSharingAlreadyNormalized(const float*const accumulatedNextMeans)
+{
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
+  // if this isn't the case, something is wrong.
+  assert ( emOnGoingBitIsSet() );
+
+  // shouldn't be called when sharing occurs.
+  assert ( refCount == 1 );
+  assert (!emSharedBitIsSet());
+
+  // make sure next-means is set up
+  if (nextMeans.len() < means.len()) {
+    nextMeans.resize(means.len());
+    for (int i=0;i<means.len();i++) {
+      nextMeans[i] = 0.0;
+    }
+  }
+
+  refCount = 0;
+
+  accumulatedProbability.floor();
+  if (accumulatedProbability < minContAccumulatedProbability()) {
+    warning("WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+	    accumulatedProbability.val(),
+	    minContAccumulatedProbability().val());
+    for (int i=0;i<nextMeans.len();i++)
+      nextMeans[i] = means[i];
+  } else {
+    for (int i=0;i<means.len();i++) {
+      nextMeans[i] = accumulatedNextMeans[i];
+    }
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+
+
 
 
 void
