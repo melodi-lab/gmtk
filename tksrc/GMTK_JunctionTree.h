@@ -41,6 +41,29 @@ class GraphicalModel;
 class BoundaryTriangulate;
 class Partition;
 class GMTemplate;
+class JunctionTree;
+
+// child class of partition that includes support for 
+// doing exact inference.
+class InferencePartition : public Partition {
+
+  friend class JunctionTree;
+public:
+  
+  // the separators for this partition, not including
+  // the ones that go between interfaces.
+  vector<SeparatorClique> separators;
+
+  // create an empty one to be filled in later.
+  InferencePartition() {}
+
+  InferencePartition(Partition& from_part,
+		     vector <RandomVariable*>& newRvs,
+		     map < RVInfo::rvParent, unsigned >& ppf,
+		     const unsigned int frameDelta = 0);
+
+}; 
+
 
 class JunctionTree {
 
@@ -50,11 +73,30 @@ class JunctionTree {
   // the base partitions from which all real partitions will be
   // created, where real partitions are the ones in which
   // inference will take place.
-  vector <Partition> base_partitions;
+  vector <InferencePartition> base_partitions;
+
+  InferencePartition P1; 
+  InferencePartition C1; 
+  InferencePartition C2; 
+  InferencePartition C3; 
+  InferencePartition E1; 
+
+  // between partitions, we need extra separator cliques that are
+  // between the corresponding partitions interface cliques. These
+  // are used to instantiate the separators. Note we need
+  // four of them since we might be in case where we unroll 1x.
+  SeparatorClique base_separator_P_C;
+  SeparatorClique base_separator_C_C;
+  SeparatorClique base_separator_C_E;
 
   // the real partitions, where inference will take place
   // and which will be unrolled depending on the observation vector.
-  vector <Partition> partitions;
+  vector <InferencePartition> partitions;
+
+  // after unrolling, these are the separators between the partitions.
+  // partitionSeparators.size() = partitions.size() - 1;
+  vector <SeparatorClique> partitionSeparators;
+
 
   // identities of cliques in junction trees.
   // for P, P's right interface to C (a root)
@@ -73,12 +115,23 @@ class JunctionTree {
   // root inside of E.
   unsigned E_root_clique;
 
+  // booleans telling if the interface cliques
+  // of the two partitions are the same, meaning
+  // we don't need both and can drop one (to save
+  // a bit of computation).
+  bool P_to_C_icliques_same;
+  bool C_to_C_icliques_same;
+  bool C_to_E_icliques_same;
+
+
   // Message passing orders for each partition.  Increasing index
   // order is 'collect evidence' phase from left to right in directio
   // of time, and decreasing order is 'distribute evidence' phase from
   // right to left in direction of time. Note that this assumes that
   // the overal root node in the JT is on the far right within E (which
   // might not be the best order).
+  // NOTE: These are kept here rather than in the partitions,
+  // since they are re-used for all cloned partitions.
   vector< pair<unsigned,unsigned> > P_to_C_message_order;
   vector< pair<unsigned,unsigned> > C_to_C_message_order;
   vector< pair<unsigned,unsigned> > C_to_E_message_order;
@@ -88,12 +141,13 @@ class JunctionTree {
   // Helper routines that are private (only called by
   // other member functions of this class).
 
-  void setUpMessagePassingOrderRecurse(Partition& part,
+  void setUpMessagePassingOrderRecurse(InferencePartition& part,
 				       const unsigned root,
 				       vector< pair<unsigned,unsigned> >&order);
 
 
-  void assignRVToClique(Partition&part,
+  void assignRVToClique(const unsigned partNo,
+			InferencePartition&part,
 			const unsigned root,
 			unsigned depth,
 			RandomVariable* rv,
@@ -106,11 +160,11 @@ class JunctionTree {
   // fills up base_partitions.
   void base_unroll(unsigned k=1);
 
-  void createDirectedGraphOfCliquesRecurse(Partition& part,
+  void createDirectedGraphOfCliquesRecurse(InferencePartition& part,
 					   const unsigned root,
 					   vector< bool >& visited);
 
-  void getCumulativeAssignedNodes(Partition& part,
+  void getCumulativeAssignedNodes(InferencePartition& part,
 				  const unsigned root,
 				  set<RandomVariable*> &res);
 
@@ -147,10 +201,11 @@ public:
   // routine to find the interface cliques of the partitions
   void computePartitionInterfaces();
   // routine to find the interface cliques of a partition
-  void computePartitionInterface(Partition& part1,
+  void computePartitionInterface(InferencePartition& part1,
 				 unsigned int& part1_ric,
-				 Partition& part2,
-				 unsigned int& part2_lic);
+				 InferencePartition& part2,
+				 unsigned int& part2_lic,
+				 bool& icliques_same);
 
   // create the three junction trees for the basic partitions.
   void createPartitionJunctionTrees() {
@@ -166,7 +221,7 @@ public:
   // For the three partitions, set up the different message passing orders
   // that are to be used.
   void setUpMessagePassingOrders();
-  void setUpMessagePassingOrder(Partition& part,
+  void setUpMessagePassingOrder(InferencePartition& part,
 				const unsigned root,
 				vector< pair<unsigned,unsigned> >&order);
 
@@ -177,7 +232,7 @@ public:
 
   // root the JT
   void createDirectedGraphOfCliques();
-  void createDirectedGraphOfCliques(Partition& part,
+  void createDirectedGraphOfCliques(InferencePartition& part,
 				    const unsigned root);
 
 
@@ -188,13 +243,19 @@ public:
   // criterion in order to make message passing as efficient as
   // possible).
   void assignRVsToCliques();
-  void assignRVsToCliques(Partition&part,
+  void assignRVsToCliques(const unsigned partNo,
+			  InferencePartition&part,
 			  const unsigned rootClique);
 
 
   // actuall message routines.
   void collectMessage(MaxClique& from,MaxClique& to);
   void distributeMessage(MaxClique& from,MaxClique& to);
+
+  // separator creation
+  void createSeparators(InferencePartition& part,
+			vector< pair<unsigned,unsigned> >&order);
+  void createSeparators();
 
 };
 
