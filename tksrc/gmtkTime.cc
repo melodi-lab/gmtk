@@ -24,8 +24,13 @@
 #include <assert.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <wait.h>
+#include <unistd.h>
+
 
 #include "general.h"
 #include "error.h"
@@ -420,6 +425,14 @@ main(int argc,char*argv[])
       else 
 	tri_file = string(triFileName);
     }
+
+
+    if (multiTest) {
+
+
+
+    }
+
 
 
     GMTemplate gm_template(fp);

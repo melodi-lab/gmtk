@@ -76,20 +76,21 @@ VECPT::read(iDataStreamFile& is)
   NamedObject::read(is);
 
   // read the cardinalities.
-  unsigned numParents;
-  is.read(numParents,"Can't read VirtualEvidenceCPT's num parents");
-  if (numParents != 1) 
+  is.read(_numParents,"Can't read VirtualEvidenceCPT's num parents");
+  if (_numParents != 1) 
     error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' must have exactly one(1) rather than %d parents",
-	  is.fileName(),is.lineNo(),name().c_str(),numParents);
+	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
+  cardinalities.resize(_numParents);
   // read the parent cardinality
-  is.read(parentCardinality,"Can't read VirtualEvidenceCPT's parent cardinality");
+  is.read(cardinalities[0],"Can't read VirtualEvidenceCPT's parent cardinality");
 
   // read the self cardinality, must be binary
-  unsigned selfCard;
-  is.read(selfCard,"Can't read VirtualEvidenceCPT's self cardinality");
-  if (selfCard != 2)
+  is.read(_card,"Can't read VirtualEvidenceCPT's self cardinality");
+  if (_card != 2)
     error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s', child cardinality must be two(2) rather than %d.",
-	  is.fileName(),is.lineNo(),name().c_str(),selfCard);
+	  is.fileName(),is.lineNo(),name().c_str(),_card);
+
+
 
 
   // next read the file name from which this is going to get its probabilties.
@@ -170,14 +171,14 @@ VECPT::read(iDataStreamFile& is)
   //       all discrete values are in the range 0 <= val <= (parent_random_var_card-1)
   // 
 
-  if (obs.numDiscrete() == 0 && parentCardinality == obs.numContinuous()) {
+  if (obs.numDiscrete() == 0 && cardinalities[0] == obs.numContinuous()) {
     veMode = VE_Dense;
   } else if ( obs.numDiscrete() == obs.numContinuous() && 
-	       obs.numDiscrete() <= parentCardinality )  {
+	       obs.numDiscrete() <= cardinalities[0] )  {
     veMode = VE_Sparse;
   } else {
     error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' with parent cardinality %d and reading observation file '%s' with %d ints and %d floats. Either num floats in obs file must match parent cardinality, or alternatively obs file must have same number floats as ints, and both must be no more than parent cardinality.",
-	  is.fileName(),is.lineNo(),name().c_str(),parentCardinality,
+	  is.fileName(),is.lineNo(),name().c_str(),cardinalities[0],
 	  obsFileName.c_str(),nis,nfs);
   }
 
@@ -205,7 +206,7 @@ VECPT::write(oDataStreamFile& os)
   NamedObject::write(os);
 
   os.write(1);  // num parents
-  os.write(parentCardinality);
+  os.write(cardinalities[0]);
   os.write(2); // self card
 
   os.write(obsFileName);
@@ -287,6 +288,7 @@ logpr VECPT::probGivenParents(vector <RV *>& parents,
     }
   } else {
     // do a slow linear search since order can be anything.
+    // TODO: make sorted assumption and do binary search.
     unsigned *base = obs.unsignedAtFrame(drv->frame());
     unsigned i;
     for (i=0;i<obs.numDiscrete();i++) {
