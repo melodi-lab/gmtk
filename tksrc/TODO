@@ -1507,3 +1507,19 @@ Wed Feb 18 12:11:08 2004
 Wed Feb 18 15:12:25 2004
   - add mention of Chiaping email from today about splitting
     to manual.
+
+Wed Feb 18 23:57:26 2004
+Check the following and use the one that is faster.
+> Do you know if:
+>
+>   const  set<RandomVariable*>::iterator it;
+>   const  set<RandomVariable*>::iterator it_end = foo.end();
+>   for (it=foo.begin(); it != it_end; it ++) { ...}
+>
+> is indeed faster than:
+>
+>   const  set<RandomVariable*>::iterator it;
+>   for (it=foo.begin(); it != foo.end(); it ++) { ...}
+>
+> I've been noticing it in your code, and if it is faster, will want to
+> start converting over.
