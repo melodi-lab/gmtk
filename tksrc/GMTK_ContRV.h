@@ -34,6 +34,7 @@
 #include "GMTK_GMParms.h"
 #include "GMTK_NameCollection.h"
 
+
 class FileParser;
 
 class ContRV : public RV {
@@ -113,12 +114,12 @@ public:
   virtual ~ContRV() {;}
 
 
-
   // printing routines.
   virtual void printNameFrameValue(FILE *f,bool nl=true) {
     RV::printNameFrame(f,false);
     fprintf(f,"=C%s",nls(nl));
   }
+
   virtual void printSelf(FILE *f,bool nl=true);
   virtual void printSelfVerbose(FILE *f) = 0;
 
