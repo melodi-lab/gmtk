@@ -172,3 +172,5 @@ X change sparse PMF so that it just contains a list
 
 - allow deterministic relations to be enumerated out. in some cases, this is
   easier than a decision tree. 
+
+- add a binary/ascii parameter file conversion program.
