@@ -3,7 +3,7 @@
 // parsing and and using bi-polar range specifications of
 // the form "-5:-1,0,25,9:16,19:3:45" or "1:3,5:8,12,15,22:35"
 // 
-// Jeff Bilmes <bilmes@icsi.berkeley.edu> Sep 1997
+// Jeff Bilmes <bilmes@ee.washington.edu>
 //
 // $Header$
 //

@@ -2,7 +2,7 @@
 // General miscellaneous stuff that belongs nowhere else.
 // 
 // Written by: Jeff Bilmes
-//             bilmes@icsi.berkeley.edu
+//             bilmes@ee.wasington.edu
 
 
 
@@ -21,14 +21,17 @@ char *copyToNewStr(const char *const str)
   return rc;
 }
 
-bool strIsInt(const char*const str, int& i) 
+bool strIsInt(const char*const str, int* i,int* len) 
 {
   char *p;
   long l = strtol(str,&p,0);
   if (p == str)
     return false;
   else {
-    i = l;
+    if (i != NULL)
+      *i = l;
+    if (len != NULL)
+      *len = (p - str);
     return true;
   }
 }
