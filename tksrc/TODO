@@ -724,6 +724,40 @@ Tue Dec 17 13:31:36 2002
 >  I think, including insertion penalty would be quite useful for 
 >  incorporating LMs with GMTK.
  (actually, do the switching variable scale/penalty stuff).
+Email from Dec 18th
+> A way, then, of getting an insertion penalty effect is to have a
+> switching scale and penalty, syntax could be:
+> 
+>       weight: 
+>         value 1.0 value 0.0     // scale = 1, penalty = 0 
+>       | value 5.0 value 3.0 ;   // scale = 5, penalty = 3
+> 
+> which mimics the conditional parents notation. In this case, it uses
+> the first scale,penalty when the switching parent is in its first
+> region, and the 2nd when the switching parent is in its second region.
+> So, when it switches in the true bigram (meaning a word transition
+> occured).
+> 
+> We could have time-dependent scale,penalty by doing:
+> 
+>       weight: 
+>         observed 0:0 observed 1:1
+>       | observed 2:2 observed 3:3 ;
+> 
+> where it would be assumed that observations 0-3 contain only scales
+> and penalties. 
+> 
+> Thoughts??
+
+That's funny because I was about to ask you what happens when you have switching
+ parents and whether you can change the weight for the different branches of the
+ switch.  I didn't think about the penalty but that would be very useful too.  T
+he syntax above looks good to me, except I might make it more explicit about whi
+ch is the scale and which is the penalty, e.g.
+
+weight:  scale value 1.0 penalty observed 0:0 ;
+
+
 
 Thu Dec 19 17:36:22 2002
   - topological sort loop detection should indicate
