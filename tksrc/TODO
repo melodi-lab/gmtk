@@ -385,3 +385,6 @@ TODO:
    on different machines.
 
 - go through and making sure all the tying logic and not-training options work.
+
+
+- change internal class names from ??CPT to the SparseCPT, DenseCPT, etc.
