@@ -73,7 +73,7 @@ void CPT::setNumParents(const unsigned _nParents)
 	  _nParents);
 
   _numParents = _nParents;
-  cardinalities.resize(_numParents+1);
+  cardinalities.resize(_numParents);
 
 }
 
@@ -83,6 +83,7 @@ void CPT::setNumParents(const unsigned _nParents)
  *-----------------------------------------------------------------------
  * CPT::setNumCardinality(var,card)
  *      sets the cardinality of var to card
+ *      to set self, var == _numParents
  *
  * Results:
  *      no results.
@@ -107,9 +108,12 @@ void CPT::setNumCardinality(const unsigned var, const int card)
 
   // assertion should be satisifed by the way that cardinalities
   // is allocated allong with setting num parents.
-  assert ( var < cardinalities.size() );
-
-  cardinalities[var] = card;
+  if ( var == _numParents ) 
+    _card = card;
+  else { 
+    assert ( var < cardinalities.size() );
+    cardinalities[var] = card;
+  }
 
 }
 
@@ -139,6 +143,9 @@ CPT::compareCardinalities(CPT& cpt)
     if (cardinalities[i] != cpt.cardinalities[i])
       return false;
   }
+  if (_card != cpt._card)
+    return false;
+
   return true;
 }
 
