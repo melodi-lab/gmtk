@@ -77,9 +77,11 @@ GraphicalModel::topologicalSortRecurse(vector<RandomVariable*>& outputVarList,
   node->tag = 1;
   for (unsigned i=0;i<node->allPossibleChildren.size();i++) {
     RandomVariable*rv = node->allPossibleChildren[i];
-    if (rv->tag == 0)
-      topologicalSortRecurse(outputVarList,rv,position);
-    else if (rv->tag == 1)
+    if (rv->tag == 0) {
+      bool res = topologicalSortRecurse(outputVarList,rv,position);
+      if (!res)
+	return false;
+    } else if (rv->tag == 1)
       // directed graph has a loop
       return false;
     else
