@@ -67,6 +67,7 @@ unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
 unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
 char *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
 char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+char *psr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
 char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
 bool iswps[MAX_NUM_OBS_FILES] = { false, false, false,false,false };
 
@@ -160,6 +161,7 @@ Arg Arg::Args[] = {
   Arg("ni",Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fr",Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ir",Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("psr",Arg::Opt,irs,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fmt",Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("iswp",Arg::Opt,iswps,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
 
@@ -233,7 +235,7 @@ Arg Arg::Args[] = {
   Arg("vpap",Arg::Opt,varPartitionAssignmentPrior,"Variable partition assignment priority. Sequence of chars in set [C,D,O,B,I]"),  
   Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,I]"),
 
-// Observation Matrix options
+  // Observation Matrix options
   Arg("pr",  Arg::Opt, pr_str,"per stream per-sentence range",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fdiffact", Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("sdiffact", Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
@@ -270,7 +272,7 @@ main(int argc,char*argv[])
   ieeeFPsetup();
   set_new_handler(memory_error);
 
- // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
+  // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
   bool doWeSwap;
   
   ByteEndian byteEndian = getWordOrganization();
@@ -403,7 +405,9 @@ main(int argc,char*argv[])
 				    Action_If_Diff_Num_Sents,
 				    Per_Stream_Transforms,
 				    Post_Transforms,
-				    Ftr_Combo);
+				    Ftr_Combo,
+				    (const char**)&psr
+				    );
 
 
   // TODO: put this parameter checking in one routine somewhere.

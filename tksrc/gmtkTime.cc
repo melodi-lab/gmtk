@@ -74,6 +74,7 @@ unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
 unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
 char *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
 char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+char *psr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
 char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
 bool iswps[MAX_NUM_OBS_FILES] = { false, false, false,false,false };
 
@@ -167,6 +168,7 @@ Arg Arg::Args[] = {
   Arg("ni",Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fr",Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ir",Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("psr",Arg::Opt,irs,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fmt",Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("iswp",Arg::Opt,iswps,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
 
@@ -417,7 +419,9 @@ main(int argc,char*argv[])
 				    Action_If_Diff_Num_Sents,
 				    Per_Stream_Transforms,
 				    Post_Transforms,
-				    Ftr_Combo);
+				    Ftr_Combo,
+				    (const char**)&psr
+				    );
 
 
   MixtureCommon::checkForValidRatioValues();
