@@ -394,6 +394,7 @@ main(int argc,char*argv[])
       //   If trifile is named 'end' then, end.
       //   If empty line, then use triFileName approach, assuming trifile is re-written.
       char buff[16384];
+      fflush(stdout);
       if (!fgets(buff,sizeof(buff),stdin)) {
 	// we're done.
 	break;
@@ -475,6 +476,7 @@ main(int argc,char*argv[])
       printf("%d: ",iteration); 
     }
     printf("Running program for approximately %d seconds\n",seconds);
+    fflush(stdout);
 
     alarm(seconds);
     struct rusage rus; /* starting time */
