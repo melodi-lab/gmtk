@@ -369,8 +369,14 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
       } else {
 	// make sure the division is done in double precision.
 	const double tmp = (double) nextMeans[i] / (double) sharedMeansDenominator[i];
-	// then covert it to nextMeans type.
-	nextMeans[i] = tmp;
+	if (tmp >= FLT_MAX) {
+	  // use previous mean for this iteration.
+	  nextMeans[i] = means[i];
+	  previousMeansUsed++;
+	} else {
+	  // then covert it to nextMeans type.
+	  nextMeans[i] = tmp;
+	}
       }
     }
     if (previousMeansUsed > 0) 
