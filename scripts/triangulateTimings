@@ -21,7 +21,7 @@ my $gmtk_triangulate = 'gmtkTriangulate';
 ##############################################################################
 # Default amount to time each triangulation 
 ##############################################################################
-my $timing_length = 30; 
+my $timing_length = 10; 
 
 my $initial_vpap = 'COI';
 my $initial_vcap = 'COI';
@@ -168,20 +168,17 @@ sub main
 
   if (!defined $timing_export_line) 
   {
-    print "***ERROR:  Must supply an export line for running timings\n";
-    $valid_options = 0;
+    $timing_export_line = ' ';
   }
 
   if (!defined $boundary_export_line) 
   {
-    print "***ERROR:  Must supply an export line for running boundaries\n";
-    $valid_options = 0;
+    $boundary_export_line = '/bin/bash'; 
   }
 
   if (!defined $triangulation_export_line) 
   {
-    print "***ERROR:  Must supply an export line for creating triangulations\n";
-    $valid_options = 0;
+    $triangulation_export_line = ' '; 
   }
 
   if (!defined $timing_script) 
