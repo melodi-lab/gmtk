@@ -16,6 +16,11 @@
  *
  */ 
 
+
+#include "general.h"
+
+VCID("$Header$");
+
 #include "GMTK_CliqueChain.h"
 
 /*-
