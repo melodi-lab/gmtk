@@ -66,10 +66,10 @@ public:
   // return true if the two keys are equal.
   bool keyEqual(const _Key* k1,const _Key* k2) {
     const _Key* k1_endp = k1+vsize;
-    while (k1 != k1_endp) {
+    do {
       if (*k1++ != *k2++)
 	return false;
-    }
+    } while (k1 != k1_endp);
     return true;
   }
 
@@ -215,6 +215,9 @@ public:
 	    hash_abstract::HashTableDefaultApproxStartingSize)
     : vsize(arg_vsize) 
   {
+    // make sure we hash at least one element, otherwise do {} while()'s won't work.
+    assert (vsize > 0);
+
     _totalNumberEntries=0;
     findPrimesArrayIndex(approximateStartingSize);
     initialPrimesArrayIndex = primesArrayIndex;
