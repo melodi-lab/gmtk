@@ -50,7 +50,7 @@ public:
   // 2) match the cardinalities of the parents.
   void allocateProbabiltyTables();
 
-  void setCpts(vector<CPT*> &cpts);
+  void setCpts(vector<CPT*> &cpts) { conditionalCPTs = cpts; }
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
@@ -71,8 +71,11 @@ public:
     return curCPT->probGivenParents(*curConditionalParents,val);
   }
   // clamp this RV to its "first" value
-  void clampFirstValue() 
-  { findConditionalParents(); it = curCPT->begin(); val = it.val(); }
+  void clampFirstValue() { 
+    findConditionalParents(); 
+    curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    it = curCPT->begin(); val = it.val(); 
+  }
   // continue on
   bool clampNextValue() { it++; return (it != curCPT->end()); }
   ////////////////////////////////////////////////////////////////

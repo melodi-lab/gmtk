@@ -2,7 +2,7 @@
  * GMTK_GM.h
  * Defines the basic Graphical Model functions.
  *
- * Written by Geoffrey Zweig <gzweig@us.ibm.com>
+ * Written by Geoffrey Zweig <gzweig@us.ibm.com> & Jeff Bilmes <bilmes@ee.washington.edu>
  *
  * Copyright (c) 2001, < fill in later >
  *
@@ -41,6 +41,7 @@ struct GMTK_GM
     // Go through the nodes in the specified order and show them.
 
     GMTK_GM() {example=NULL;}
+    ~GMTK_GM() { delete chain; delete example; }
 
     void makeRandom();
     // Goes over each variable in the graph and calls its makeRandom function.

@@ -31,7 +31,7 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_NamedObject.h"
 
-class MDCPT : public EMable, public CPT, public NamedObject {
+class MDCPT : public CPT, public EMable {
 
   //////////////////////////////////
   // The acutal cpt. This is the table for
@@ -74,7 +74,7 @@ public:
 
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
-    assert ( val >= 0 && val <= cardinalities[numParents] );
+    assert ( val >= 0 && val <= cardinalities[_numParents] );
     return *(mdcpt_ptr + val);
   }
   logpr probGivenParents(vector <int>& parentValues, 
@@ -92,7 +92,7 @@ public:
   }
   int numValsGivenParents() { 
     assert ( bitmask & bm_basicAllocated );
-    return cardinalities[numParents]; 
+    return cardinalities[_numParents]; 
   }
 
 
@@ -108,7 +108,7 @@ public:
   iterator end() {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
-    it.internalState = cardinalities[numParents];
+    it.internalState = cardinalities[_numParents];
     return it;
   }
 
@@ -116,9 +116,9 @@ public:
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
     // don't increment past the last value.
-    if (it.internalState == cardinalities[numParents])
-      return false;
     it.internalState++;
+    if (it.internalState == cardinalities[_numParents])
+      return false;
     it.probVal = mdcpt_ptr[it.internalState];
     return true;
   }
