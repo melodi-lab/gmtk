@@ -167,6 +167,8 @@ MSCPT::read(iDataStreamFile& is)
   // Finally read in the integer ID of the decision tree
   // that maps from parent values to an integer specifying
   // the sparse CPT. 
+
+  // TODO: change this to names rather than integer indices.
   is.read(dtIndex);
   if (dtIndex < 0 || dtIndex >= GM_Parms.dts.size())
     error("MSCPT::read, invalid DT index %d\n",dtIndex);
@@ -189,7 +191,7 @@ MSCPT::read(iDataStreamFile& is)
       error("MSCPT::read, dt leaf value %d refers to invalid Sparse 1D PMF",
 	    v);
     if (GM_Parms.sPmfs[v]->card() != card()) {
-      error("MSCPT::read, Sparse CPT %d has card %d but CPT has card %d",
+      error("MSCPT::read, Sparse PMF %d has card %d but CPT has card %d",
 	    v,GM_Parms.sPmfs[v]->card(),card());
     }
     it++;
