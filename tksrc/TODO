@@ -702,3 +702,10 @@ Wed Aug 14 14:08:19 2002
     and Katrin's tag-word format. I.e., support observed data
     in the form of words/utterances for a word map.
 
+
+Mon Sep 30 01:21:02 2002
+  - next set of thigns might be redundant with above, but just a check
+   1) deterministic CPTs shouldn't have messagtes/notes, etc. about
+      not getting any accumulated probability, etc.
+   2) error messages with MSCPTs, MDCPts, use new names
+
