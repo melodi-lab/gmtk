@@ -219,8 +219,12 @@ class MaxClique : public IM {
   friend class GMTemplate;
   friend class SeparatorClique;
 
-public:
 
+public:
+  // Thresholds for -cpbeam pruning. We keep previous clique max value
+  // and previous previous clique max value around.
+  logpr prevMaxCEValue;
+  logpr prevPrevMaxCEValue;
 
   // bool which if true means we globally do separator driven (rather
   // than clique driven) inference. Separator driven is good when
@@ -230,6 +234,8 @@ public:
 
   // beam width for clique-based beam pruning.
   static double cliqueBeam;
+  // beam width to use while building cliques for partial clique pruning.
+  static double cliqueBeamBuildBeam;
   // forced max number of states in a clique. Set to 0 to turn it off.
   static unsigned cliqueBeamMaxNumStates;
   // fraction of clique to retain, forcibly pruning away everything else. Must be
@@ -373,14 +379,18 @@ public:
   set<RV*> assignedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // A topologically sorted vector version of assignedNodes.
-  // The topological sort is relative only to the variables
-  // in this clique. The topological sort is used during
-  // CE clique creation, so that CPT iteration can be used when available.
-  // Computed in JunctionTree::assignRVsToCliques().
-  // Used to:
-  //   1) compute assigned nodes dispositions (in appropriate order)
-  //   2) compute fSortedAssignedNodes in an inference clique
+  // A topologically sorted vector version of assignedNodes except for
+  // those nodes with disposition AN_CONTINUE (since we don't want to
+  // iterate those as it would be wasteful).  The topological sort is
+  // relative only to the variables in this clique and relative to
+  // those that are not disposition AN_CONTINUE. The topological sort
+  // is used during CE clique creation, so that CPT iteration can be
+  // used when available.  
+  // Computed in: 
+  //     JunctionTree::assignRVsToCliques() or JunctionTree::sortCliqueAssignedNodesAndComputeDispositions()
+  // Used to: 
+  //    1) compute assigned nodes dispositions (in appropriate order) 
+  //    2) compute fSortedAssignedNodes in an inference clique
   vector<RV*> sortedAssignedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -478,6 +488,7 @@ public:
   // USED ONLY IN JUNCTION TREE INFERENCE 
   // This enum defines the different things that could
   // happen to an assigned node in a clique during CE assigned node iteration.
+  // TODO: come up with better (and only one name) for each of the below.
   enum AssignedNodeDisposition {
     // In the discussion below, say v is an assignedNode (meaning it
     // exists with its parents in the clique).
@@ -550,6 +561,7 @@ public:
     AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS=5
   };
 
+
   // USED ONLY IN JUNCTION TREE INFERENCE 
   // Predicate for each each sorted assigned node, used to say what
   // should be done to that node during assigned node iteration.
@@ -558,7 +570,7 @@ public:
   // enum also defined above. Note that if this
   // array is of size 0, then the default case is assumed
   // to be AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB
-  // computed in MaxClique::computeAssignedNodesDispositions()
+  // computed in MaxClique::computeSortedAssignedNodesDispositions()
   //     which is called in JunctionTree::getCumulativeUnassignedIteratedNodes()
   // Used to:
   //   1) determine way in which fSortedAssignedNodes in inf clique should be iterated.
@@ -742,8 +754,13 @@ public:
   void prepareForUnrolling();
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // compute which assigned nodes to iterate over or not.
-  void computeAssignedNodesDispositions();
+  // compute the way in which assigned nodes are iterated (or not).
+  bool computeSortedAssignedNodesDispositions();
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // sort the node and assign the dispositions.
+  void sortAndAssignDispositions(const char *varCliqueAssignmentPrior);
+
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // print out everything in this junction tree clique to a file.
@@ -779,6 +796,14 @@ public:
   unsigned numVESeparators() { return veSeparators.size(); }
 
   void numParentsSatisfyingChild(unsigned& num,unsigned par,vector <RV*> & parents, RV* child);
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // resets variables that might be used in inference for a "round" (meaning
+  // a full run of collect or collect/distribute evidence.
+  void prepareForNextInferenceRound() {
+    prevMaxCEValue.valref() = (-LZERO);
+    prevPrevMaxCEValue.valref() = (-LZERO);
+  }
 
   // return the s'th VE separator. Must call computeVESeparators()
   // first. Caller assumed to copy this out since we return a
@@ -883,10 +908,14 @@ class InferenceMaxClique  : public IM
   unsigned numCliqueValuesUsed;
 
 
-
   // Max collect-evidence probability for this clique. Used for beam
   // pruning.
   logpr maxCEValue;
+
+  // Estimate of the beam threshold for the current clique based on
+  // the two previous clique's maxCE values.
+  logpr cliqueBeamThresholdEstimate;
+
 
 public:
 
@@ -951,8 +980,9 @@ public:
   {
     if (fSortedAssignedNodes.size() == 0 || message(High)) {
       // let recursive version handle degenerate or message full case
-      return ceIterateAssignedNodesRecurse(part,0,p);
+      ceIterateAssignedNodesRecurse(part,0,p);
     } else {
+      // ceIterateAssignedNodesRecurse(part,0,p);
       ceIterateAssignedNodesNoRecurse(part,p);
     }
   }
