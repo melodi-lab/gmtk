@@ -44,6 +44,7 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "spi.h"
+#include "version.h"
 
 VCID("$Header$");
 
@@ -121,6 +122,10 @@ char *cppCommandOptions = NULL;
 int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
 int ns=GMTK_DEFAULT_NUM_SPLITS;
 
+unsigned allocateDenseCpts=0;
+
+bool print_version_and_exit = false;
+
 Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
@@ -184,6 +189,7 @@ Arg Arg::Args[] = {
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("maxEmIters",Arg::Opt,maxEMIterations,"Max number of EM iterations to do"),
   Arg("beam",Arg::Opt,beam,"Beam width (less than max*exp(-beam) are pruned away)"),
+  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
 
   // support for splitting and vanishing
   Arg("mcvr",Arg::Opt,MixGaussiansCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
@@ -234,6 +240,8 @@ Arg("showCliques",Arg::Opt,show_cliques,"Show the cliques after the netwok has b
 
   Arg("gaussianCache",Arg::Opt,MixGaussiansCommon::cacheGaussiansInEmTraining,"Cache Gaussians evaluations during EM training. true will speeds things up, but uses more memory."),
 
+  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
+
   // final one to signal the end of the list
   Arg()
 
@@ -259,6 +267,9 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   Arg::parse(argc,argv);
+
+  if (print_version_and_exit)
+    printf("%s\n",gmtk_version_id);
 
   ////////////////////////////////////////////
   // check for valid argument values.
@@ -348,7 +359,14 @@ main(int argc,char*argv[])
   fp.ensureS_SE_E_NE();
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
-  fp.associateWithDataParams();
+  if (allocateDenseCpts == 0)
+    fp.associateWithDataParams(FileParser::noAllocate);
+  else if (allocateDenseCpts == 1)
+    fp.associateWithDataParams(FileParser::allocateRandom);
+  else if (allocateDenseCpts == 2)
+    fp.associateWithDataParams(FileParser::allocateUniform);
+  else
+    error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   // make sure that all observation variables work
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();
