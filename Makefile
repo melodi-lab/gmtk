@@ -11,7 +11,8 @@ EXLDFLAGS=
 # GPP=/usr/nikola/pkgs/gcc/.3.2/bin/g++
 CC=gcc
 CXX=g++
-OPTFLAGS = -g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse
+EXCOMFLAGS=
+OPTFLAGS = -g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse "$(EXCOMFLAGS)"
 
 # GMTK modules 
 MODULES = \
