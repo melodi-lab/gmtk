@@ -57,7 +57,7 @@ struct CliqueChain
     // the network, and increments the EM statistics for each node assigned
     // to a clique.
 
-    logpr dataProb, viterbiProb;
+    logpr dataProb, viterbiProb, backwardDataProb;
 };
 
 #endif
