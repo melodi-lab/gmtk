@@ -757,9 +757,9 @@ char  *pr_str               = 0;   // per-sentence range string
 
 
 char*    actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er"};   // 
-unsigned actionIfDiffNumFrames[MAX_OBJECTS]={ERROR,ERROR,ERROR,ERROR,ERROR};   // 
+unsigned actionIfDiffNumFrames[MAX_OBJECTS]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
 char*    actionIfDiffNumSentsStr[MAX_OBJECTS]={"te","te","te","te","te"}; 
-unsigned actionIfDiffNumSents[MAX_OBJECTS]={TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END};   // 
+unsigned actionIfDiffNumSents[MAX_OBJECTS]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
 
 bool     quiet = false;
 
@@ -950,17 +950,17 @@ int main(int argc, const char *argv[])
     for(int i=0; i < MAX_OBJECTS; ++i) {
       if(input_fname[i]!=NULL) {
 	if (strcmp(actionIfDiffNumFramesStr[i],"er") == 0)
-	  actionIfDiffNumFrames[i] = ERROR;
+	  actionIfDiffNumFrames[i] = FRAMEMATCH_ERROR;
 	else if (strcmp(actionIfDiffNumFramesStr[i],"rl") == 0)
-	  actionIfDiffNumFrames[i] = REPEAT_LAST;
+	  actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_LAST;
 	else if (strcmp(actionIfDiffNumFramesStr[i],"rf") == 0)
-	  actionIfDiffNumFrames[i] = REPEAT_FIRST;
+	  actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_FIRST;
 	else if (strcmp(actionIfDiffNumFramesStr[i],"se") == 0)
-	  actionIfDiffNumFrames[i] = EXPAND_SEGMENTALLY;
+	  actionIfDiffNumFrames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
 	else if (strcmp(actionIfDiffNumFramesStr[i],"ts") == 0)
-	  actionIfDiffNumFrames[i] = TRUNCATE_FROM_START;
+	  actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
 	else if (strcmp(actionIfDiffNumFramesStr[i],"te") == 0)
-	  actionIfDiffNumFrames[i] = TRUNCATE_FROM_END;
+	  actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
 	else
 	  error("ERROR: Unknown action when diff num of frames: '%s'\n",actionIfDiffNumFramesStr[i]);
       }
@@ -969,13 +969,13 @@ int main(int argc, const char *argv[])
     for(int i=0; i < MAX_OBJECTS; ++i) {
       if(input_fname[i]!=NULL) {
 	if (strcmp(actionIfDiffNumSentsStr[i],"er") == 0)
-	  actionIfDiffNumSents[i] = ERROR;
+	  actionIfDiffNumSents[i] = SEGMATCH_ERROR;
 	else if (strcmp(actionIfDiffNumSentsStr[i],"rl") == 0)
-	  actionIfDiffNumSents[i] = REPEAT_LAST;
+	  actionIfDiffNumSents[i] = SEGMATCH_REPEAT_LAST;
 	else if (strcmp(actionIfDiffNumSentsStr[i],"wa") == 0)
-	  actionIfDiffNumSents[i] = WRAP_AROUND;
+	  actionIfDiffNumSents[i] = SEGMATCH_WRAP_AROUND;
 	else if (strcmp(actionIfDiffNumSentsStr[i],"te") == 0)
-	  actionIfDiffNumSents[i] = TRUNCATE_FROM_END;
+	  actionIfDiffNumSents[i] = SEGMATCH_TRUNCATE_FROM_END;
 	else
 	  error("ERROR: Unknown action when diff num of sentences: '%s'\n",actionIfDiffNumSentsStr[i]);
       }
