@@ -407,3 +407,29 @@ TODO:
 - remove all cin/cout and use printf/scanf
 
 - add -version flag to everything.
+
+
+- from Gang.
+1. When I want to print the hidden variables I met the following:
+
+suppose my varList file is the following
+   wordLatticeState
+   state
+   phoneTransition
+   wordTransition
+and my fileList file is the following
+   wordLatticeState.log
+   state.log
+   phoneTransition.log
+   wordTransition.log
+
+The output will put everything in the file wordLatticeState.log.  In that
+file the first integer will be wordLatticeState(0), second will be
+state(0), so on and so forth.  It didn't create other three files.
+
+2. suggestion
+
+in gmtkViterbi, cppCommand is very useful.  But I if I have a lot macros,
+the command line string will be very long.  I wonder whether is a way that
+this will take a file of macros.
+
