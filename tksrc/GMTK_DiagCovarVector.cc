@@ -291,8 +291,8 @@ void
 DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   /////////////////////////////////////////////
   // make sure our caller has its covar accumulator resized
@@ -363,8 +363,8 @@ DiagCovarVector::emIncrement(const logpr prob,
 			     float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   
   /////////////////////////////////////////////
@@ -429,8 +429,8 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
 {
   assert ( basicAllocatedBitIsSet() );
 
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -560,8 +560,8 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
 						 const MeanVector* mean)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   if (!emAccInitializedBitIsSet()) {
     nextCovariances.growIfNeeded(covariances.len());
@@ -728,8 +728,8 @@ void
 DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   if (!emAccInitializedBitIsSet()) {
     nextCovariances.growIfNeeded(covariances.len());
@@ -885,8 +885,8 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 						       const DlinkMatrix* dLinkMat)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   if (!emAccInitializedBitIsSet()) {
     nextCovariances.growIfNeeded(covariances.len());
@@ -1111,8 +1111,8 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
 					    const float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   if (!emAccInitializedBitIsSet()) {
     nextCovariances.growIfNeeded(covariances.len());
@@ -1265,8 +1265,8 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
 					 const float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -1405,8 +1405,8 @@ void
 DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for covar '%s'\n",
@@ -1423,8 +1423,8 @@ void
 DiagCovarVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   EMable::emStoreZeroAccumulators(ofile);
 }
 
@@ -1433,8 +1433,8 @@ void
 DiagCovarVector::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emLoadAccumulators(ifile);
 }
@@ -1444,8 +1444,8 @@ void
 DiagCovarVector::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);
 }
