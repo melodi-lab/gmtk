@@ -723,13 +723,15 @@ void GMTK_GM::showCliques()
  *      unroll duplicates one or more time slices a specified number of times 
  * 
  * Preconditions:
- *      The network up to the template slices must be fully set up
- *      Variables from a time slice must be contiguous in the node array
- *      node[i-period] must be analogous to node[i] in the existing network
- *      timeIndex numbering starts at 0
- *      Frames from first_frame to last_frame are replicated. In order for this
- *      to be well-defined, first_frame-1 must be exactly analogous to 
- *      last_frame
+ *      # The network up to the template slices must be fully set up
+ *      # Variables from a time slice must be contiguous in the node array
+ *      # node[i-period] must be analogous to node[i] in the existing network
+ *      # timeIndex numbering starts at 0
+ *      # Frames from first_frame to last_frame are replicated. For this
+ *        to be well-defined, first_frame-1 must be exactly analogous to 
+ *        last_frame
+ *      # all the prents of variables in the tail must be in the repeating
+ *        segments
  *
  * Postconditions:
  *      The network is ready for inference
@@ -774,6 +776,7 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     map<pair<int, int>, RandomVariable *> rv_for_slice;
     int cur_slices = (*node.rbegin())->timeIndex;
     int period = last_frame-first_frame+1;  // over which segments repeat
+    repeatPeriod = period;  // store
     for (int i=0; i<=cur_slices; i++)
     {
         int offset = 0;
@@ -801,8 +804,14 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
 
     // duplicate the range over and over again
     int cs = last_frame+1;  // slice being created
+    unsigned start_of_last_repeated_seg=0, end_of_last_repeated_seg=0;
     for (int i=0; i<times; i++)
     {
+        if (i==times-1)
+        {
+            start_of_last_repeated_seg = unrolled.size();
+            startTimeOfLastSegment = cs;
+        }
         // make the analogous variables in the new slices
         vi = start_of_slice[first_frame];
         for (int j=first_frame; j<=last_frame; j++, cs++)
@@ -813,9 +822,12 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                 assert(rv_for_slice.find(pair<int,int>(cs, k)) ==
                        rv_for_slice.end());  // should not add twice
                 rv_for_slice[pair<int,int>(cs, k)] = nrv; 
+                slice_info_for[nrv] = pair<int,int>(cs, k);
                 unrolled.push_back(nrv);  
             }
         assert(vi==end_of_slice[last_frame]+1);
+        if (i==times-1)
+            end_of_last_repeated_seg = unrolled.size()-1;
     }
 
     // add the tail nodes in the network
@@ -861,6 +873,22 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                     rv_for_slice[pair<int,int>(pslice, poffset)];
                 if (unrolled[i]->switchingParents[j]==NULL)
                     error("Inconsistency in unrolling. Structure OK?\n");
+
+                // update the data structure for fast splicing
+                if (i>=start_of_last_repeated_seg &&i<=end_of_last_repeated_seg)
+                {
+                    RandomVariable *this_parent = 
+                        unrolled[i]->switchingParents[j];
+                    parentsToUpdate.push_back(
+                        &(unrolled[i]->switchingParents[j]));
+                    for (int s=1; s<=times-1; s++)
+                    {
+                        int slice = this_parent->timeIndex - s*period;
+                        pair<RandomVariable *,int> p(this_parent, s);
+                        pair<int,int> v(slice, poffset);
+                        analogue_k_past[p] = rv_for_slice[v];
+                    }
+                }
             }
 
             for (unsigned j=0; j<unrolled[i]->conditionalParentsList.size();j++)
@@ -875,6 +903,23 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                         rv_for_slice[pair<int,int>(pslice, poffset)];
                     if (unrolled[i]->conditionalParentsList[j][k]==NULL)
                         error("Inconsistency in unrolling. Structure OK?\n");
+
+                    // update the data structure for fast splicing
+                    if (i>=start_of_last_repeated_seg 
+                    && i<=end_of_last_repeated_seg)
+                    {
+                        RandomVariable *this_parent = 
+                            unrolled[i]->conditionalParentsList[j][k];
+                        parentsToUpdate.push_back(
+                            &(unrolled[i]->conditionalParentsList[j][k]));
+                        for (int s=1; s<=times-1; s++)
+                        {
+                            int slice = this_parent->timeIndex - s*period;
+                            pair<RandomVariable *,int> p(this_parent, s);
+                            pair<int,int> v(slice, poffset);
+                            analogue_k_past[p] = rv_for_slice[v];
+                        }
+                    }
                 }
         }
     
@@ -885,4 +930,41 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                             unrolled[i]->conditionalParentsList);
 
     node = unrolled;
+}
+
+void GMTK_GM::spliceOut(int segments)
+{
+    parentUpdates.clear();
+    vector<RandomVariable **>::iterator si;
+    for (si=parentsToUpdate.begin(); si!=parentsToUpdate.end(); si++)         
+    {
+        RandomVariable ** ptr_adr = *si;
+        RandomVariable * ptr_val = *ptr_adr;
+        pair<RandomVariable **, RandomVariable *> old_values(ptr_adr, ptr_val);
+        parentUpdates.push_back(old_values);
+        ptr_val = analogue_k_past[pair<RandomVariable *,int>(ptr_val,segments)];
+    }
+    tempNode = node;
+    tempTopo = topologicalOrder;
+
+    int start_purge = startTimeOfLastSegment - segments*repeatPeriod;
+    int end_purge = startTimeOfLastSegment-1;
+    node.clear();
+    for (unsigned i=0; i<tempNode.size(); i++)
+        if (tempNode[i]->timeIndex < start_purge 
+        || tempNode[i]->timeIndex > end_purge)
+            node.push_back(node[i]);
+    topologicalOrder.clear();
+    for (unsigned i=0; i<tempTopo.size(); i++)
+        if (tempTopo[i]->timeIndex < start_purge 
+        || tempTopo[i]->timeIndex > end_purge)
+            topologicalOrder.push_back(node[i]);
+}
+
+void GMTK_GM::restoreNet()
+{
+    for (unsigned i=0; i<parentUpdates.size(); i++)
+        *parentUpdates[i].first = parentUpdates[i].second;
+    node = tempNode;
+    topologicalOrder = tempTopo;
 }
