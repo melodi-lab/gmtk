@@ -2127,6 +2127,7 @@ other minor things mentioned above).
          - virtual evidence extended to separator driven inference so that
            the virtual evidence in a clique acts like a separator, thereby effectively
            pruning away what is not necessary.
+         - Single-Pass Retraining, ala HTK (sec 8.6).
 
      - underlying different models
         - native support for time-inhomogeneous DBNs
