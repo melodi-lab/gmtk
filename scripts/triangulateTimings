@@ -1,4 +1,4 @@
-#!/usr/nikola/bin/perl -w 
+#!/homes/bartels/perl/bin/perl -w
 # $Header$
 
 use strict;
@@ -6,6 +6,7 @@ use File::Basename;
 use File::Copy;
 use File::Temp qw/ tempfile tempdir /;
 use Getopt::Long;
+use IO::Handle; 
 use IPC::Open2; 
 use Symbol; 
 use threads; 
@@ -35,19 +36,31 @@ my $pmake;
 ##############################################################################
 # State variables for method queue 
 ##############################################################################
-my $done_initial   : shared = 0;
-my $once_method    : shared = 0;
-my $many_method    : shared = 0;
-my $iteration_type : shared = 0;
-my $method_sem = new Thread::Semaphore;
+my $done_initial    : shared = 0;
+my $once_index      : shared = 0;
 
 my @run_once = ( 'completed', 'elimination-heuristics', 
   'non-elimination-heuristics' );
-my @run_many = ( 'R', 'W', 'MCS', 'F', 'pre-edge-lo-R', 'pre-edge-lo-W', 'pre-edge-lo-MCS', 'pre-edge-lo-F', 'pre-edge-all-R', 'pre-edge-all-W', 'pre-edge-all-MCS', 'pre-edge-all-F', 'pre-edge-random-R', 'pre-edge-random-W', 'pre-edge-random-MCS', 'pre-edge-random-F' );
-my @iterations = ( 100, 10, 1 ); 
 
+my @iterations = ( '100-', '10-', '1-' ); 
+my @prefix     = ( '', 'pre-edge-lo-', 'pre-edge-all-', 'pre-edge-random-');
+my @method     = ( 'frontier', 'MCS', 'R', 'W', 'F' );
+my @suffix     = ( '', '-2', '-3' );
+
+my $suffix_threshold = 3;
+
+my $iteration_index : shared = 0;
+my $prefix_index    : shared = 0;
+my $method_index    : shared = 0;
+my $suffix_index    : shared = 0;
+  
+my $method_sem = new Thread::Semaphore;
 my $initial_sem = new Thread::Semaphore;
 my $initial_tri_timed : shared = 0;
+
+my $method_count : shared = 1;
+
+my $start_time : shared = 0;
 
 ##############################################################################
 # State variables for comparing triangulation methods 
@@ -63,8 +76,8 @@ $gmtk_triangulate = 'gmtkTriangulate';
 $pmae             = 'pmae'; 
 $pmake            = 'pmake'; 
 
-$timing_length = 7; 
-#$timing_length = 20; 
+$timing_length = 30; 
+#$timing_length = 5; 
 
 ##############################################################################
 # Get command line parameters 
@@ -138,19 +151,24 @@ if (!defined $parallelism)
 
 $str_basename = basename($str_file); 
 $working_dir = `pwd`;
-#$working_dir = '/homes/bartels/proj/crrnt_gmtk/gmtk_dev/scripts';
-#$working_dir = '/homes/bartels/proj/switchboard/train_1';
 
 chomp($working_dir);
 
+STDOUT->autoflush(1);
+$SIG{PIPE} = 'IGNORE';
 
 #############################################################################
 # Start a thread for each processor available
 #############################################################################
 my $last_child;
 
+print "------- Triangulating $str_file -------\n"; 
+
+$start_time = time;
+
 for (my $i=0; $i<$parallelism; $i++) {
   $last_child = threads->new(\&time_triangulation);
+  sleep(3);
 }
 
 $last_child->join;
@@ -174,17 +192,15 @@ sub time_triangulation
   my $timing_script_output;
   my $tmp_name;
   my $tmp_tri_file;
+  my $error_caught;
 
   #####################################################################
   # Open a copy of gmtkTime in multiTest mode 
   #####################################################################
   $timing_script_input  = gensym;
   $timing_script_output = gensym;
-  
-  open2( $timing_script_output, $timing_script_input, "pexport -attr \'$export_line\' $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ");
 
-  $output = <$timing_script_output>;
-  print STDERR "$output";
+  ($timing_script_input, $timing_script_output) = open_time();
 
   #####################################################################
   # Create a temporary file for the current triangulation 
@@ -199,10 +215,20 @@ sub time_triangulation
   {
     $initial_tri_timed = 1;
     $initial_sem->down;
-    $crrnt_partitions = run_timing( $timing_script_input, $timing_script_output,
-       $input_triangulation);
 
-    check_best($crrnt_partitions, 'Initial', $crrnt_weight, $tmp_tri_file);
+    eval {
+      $crrnt_partitions = run_timing( $timing_script_input, 
+        $timing_script_output, $input_triangulation);
+    };
+  
+    if ($@) { 
+      close $timing_script_output;
+      close $timing_script_input;
+      ($timing_script_input, $timing_script_output) = open_time();
+      $crrnt_partitions = -1;
+    }
+
+    check_best($crrnt_partitions, 'Initial', 0, $tmp_tri_file);
   }
   else {
     $initial_sem->down;
@@ -212,17 +238,67 @@ sub time_triangulation
   # Generate and time triangulations 
   #####################################################################
   while (1) {
-    $method = get_triangulation_method();  
-    $crrnt_weight = run_triangulation($method, $tmp_tri_file);
-    $crrnt_partitions = run_timing( $timing_script_input, $timing_script_output,
-       $tmp_tri_file );
 
-    check_best($crrnt_partitions, $method, $crrnt_weight, $tmp_tri_file);
+    $method = get_triangulation_method();
+    threads->yield;
+    $crrnt_weight = run_triangulation($method, $tmp_tri_file);
+
+    if ($crrnt_weight > 0) {
+      eval {
+        $crrnt_partitions = run_timing( $timing_script_input, 
+          $timing_script_output, $tmp_tri_file );
+      };
+    
+      if ($@) {
+        close $timing_script_output;
+        close $timing_script_input;
+        ($timing_script_input, $timing_script_output) = open_time();
+        $crrnt_partitions = -1;
+      }
+
+      check_best($crrnt_partitions, $method, $crrnt_weight, $tmp_tri_file);
+    }
+    else {
+      print "Triangulation failed\n";
+      sleep(15);
+    }
   }
 
   unlink $tmp_tri_file;
 }
 
+
+#############################################################################
+# open_time( );
+#
+#############################################################################
+sub open_time
+{
+  my $error;
+  my $output;
+  my $timing_script_input;
+  my $timing_script_output;
+
+  do {
+    $error = 0;
+    eval {
+      open2( $timing_script_output, $timing_script_input, "pexport -attr \'$export_line\' $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ");
+      $timing_script_input->autoflush(1);
+      $output = <$timing_script_output>;
+      print STDERR "$output";
+    };
+
+    if ($@ || ($output=~'no suitable host available')) { 
+      close $timing_script_output;
+      close $timing_script_input;
+      $error = 1;
+      print "Problem opening timing script:'$output'\n";
+      sleep(15);
+    }
+  } while ($error);
+
+  return ($timing_script_input, $timing_script_output);
+}
 
 
 #############################################################################
@@ -243,8 +319,9 @@ sub run_triangulation
 
   $output = `$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $input_triangulation -findBestBoundary F -seed T -triangulationHeuristic $method -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 2>&1`;
 
-  print STDERR "${output}";
-  ($jt_weight) = $output =~ /Chunk max clique weight =.* jt_weight = ([0-9.]+)/; 
+  print STDERR "$output\n";
+
+  ($jt_weight) = $output =~ /Chunk max clique weight =.* jt_weight = ([0-9.]+)/;
 
   if (!defined $jt_weight) {
     $jt_weight = -1; 
@@ -264,29 +341,56 @@ sub get_triangulation_method
 
   $method_sem->up;
 
-  if ($once_method < (scalar @run_once)) {
-    $method = $run_once[$once_method];
-    $once_method++;
+  if ($once_index < (scalar @run_once)) {
+    $method = $run_once[$once_index];
+    $once_index++;
   }
   else {
-    $many_method++;
 
-    if ($many_method >= (scalar @run_many)) {
-      $many_method = 0;
-      $iteration_type++;
+    $method = "$iterations[$iteration_index]$prefix[$prefix_index]$method[$method_index]";
+    if ($method_index >= $suffix_threshold) {
+      $method = "$method$suffix[$suffix_index]";
+    }
 
-      if ($iteration_type>= (scalar @iterations)) {
-        $iteration_type = 0;
+    #########################################################################
+    # Increment the method indices
+    #########################################################################
+    if ($method_index >= $suffix_threshold) {
+      $suffix_index++;
+      if ($suffix_index >= (scalar @suffix)) {
+        $suffix_index = 0;
+        $method_index++;
       }
     }
 
-    $method = "$iterations[$iteration_type]-$run_many[$many_method]";
-  }
+    if ($method_index < $suffix_threshold) {
+      $method_index++;
+    }
 
+    if ($method_index >= (scalar @method)) {
+      $method_index = 0;
+      $prefix_index++;
+      if ($prefix_index >= (scalar @prefix)) {
+        $prefix_index = 0;
+        $iteration_index++;
+        if ($iteration_index >= (scalar @iterations)) {
+          $iteration_index = 0;
+        }
+      }
+    } 
+  } 
+
+  #############################################################################
+  # Calculate the throughput
+  #############################################################################
+  $method_count++;
   $method_sem->down;
+  if (($method_count % 5)==0) {
+    printf "Throughput:%f\n", ($method_count/(time-$start_time));
+  } 
+
   return($method);
 }
-
 
 #############################################################################
 # run_timing 
@@ -315,10 +419,13 @@ sub run_timing
   #   0: Running program for approximately 7 seconds
   ###########################################################################
   $output = <$timing_script_output>;
+  (defined $output) or die;
   print STDERR "$output";
   $output = <$timing_script_output>;
+  (defined $output) or die;
   print STDERR "$output";
   $output = <$timing_script_output>;
+  (defined $output) or die;
   print STDERR "$output";
 
   ###########################################################################
@@ -327,13 +434,15 @@ sub run_timing
   #   0: Inference stats: 6.98...
   ###########################################################################
   $output = <$timing_script_output>;
+  (defined $output) or die;
   print STDERR "$output";
   $output = <$timing_script_output>;
+  (defined $output) or die;
   print STDERR "$output";
 
   ($partitions) = $output =~ /residual partitions, ([0-9]+) total partitions,/;
 
-  (defined $partitions) or die "Can't find # of partitions in output:'$output'";
+  (defined $partitions) or $partitions = 1; 
 
   return($partitions);
 }
@@ -357,7 +466,7 @@ sub check_best
 
   $best_sem->up;
 
-  printf "%-30s Weight: %4f  Partitions: %5d", $method, $weight, 
+  printf "%-30s Wt: %4f  Part: %5d", $method, $weight, 
     $nmbr_partitions;
 
   if ($nmbr_partitions > $best_partitions)
