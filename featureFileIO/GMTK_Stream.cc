@@ -25,7 +25,9 @@
 StreamInfo::StreamInfo(const char *name, const char *crng_str,
 		       const char *drng_str,
 		       unsigned *nfloats, unsigned *nints, 
-		       unsigned *format, bool swap, unsigned num) {
+		       unsigned *format, bool swap, unsigned num) 
+  : pfile_istr(NULL),dataNames(NULL),cont_rng(NULL),disc_rng(NULL)
+{
 
   if (name == NULL) 	
     error("StreamInfo: File name is NULL for stream %i\n",num);	
@@ -99,9 +101,11 @@ StreamInfo::~StreamInfo() {
     delete [] fofName;
 
   if (dataFormat != PFILE) {
-    for (unsigned i = 0; i < fofSize; i++)
-      delete [] dataNames[i];
-    delete [] dataNames;
+    if (dataNames != NULL) {
+      for (unsigned i = 0; i < fofSize; i++)
+	delete [] dataNames[i];
+      delete [] dataNames;
+    }
   }
   else 
     delete pfile_istr;
