@@ -52,78 +52,34 @@ VCID("$Header$");
 /*
  * command line arguments
  */
-bool seedme = false;
-float beam=-LZERO;
-
-char *strFileName=NULL;
-
-// char *outputTrainableParameters="outParms%d.gmp";
-char *outputTrainableParameters=NULL;
-bool binOutputTrainableParameters=false;
-bool writeParametersAfterEachEMIteration=true;
-
-char *inputMasterFile=NULL;
-char *outputMasterFile=NULL;
-char *inputTrainableParameters=NULL;
-bool binInputTrainableParameters=false;
-char *objsToNotTrainFile=NULL;
-
-unsigned maxEMIterations=3;
-bool randomizeParams = false;
-bool enem = false;
-double mcvr = 1e20;
-double mcsr = 1e10;
-double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
-char *trrng_str="all";
-float lldp = 0.001;
-float mnlldp = 0.01;
-
-char *loadAccFile = NULL;
-char *loadAccRange = NULL;
-char *storeAccFile = NULL;
-bool accFileIsBinary = true;
-
-// file to store log likelihood of this iteration.
-char *llStoreFile = NULL;
-
-int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
-int ns=GMTK_DEFAULT_NUM_SPLITS;
-
-int startSkip = 0;
-int endSkip = 0;
-
-int showFrCliques = 0;
-int jut = 0;
-char* anyTimeTriangulate = NULL;
-bool reTriangulate = false;
-bool rePartition = false;
-
-int allocateDenseCpts=-1;
-// observation file support
-
-char *obsFileName;
-
-#define MAX_NUM_OBS_FILES (3)
-char *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL }; 
-unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
-unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
-char *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
-char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
-char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
-bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
-
-char *cppCommandOptions = NULL;
-
-
-char* triangulationHeuristic="WFS";
-char* faceHeuristic="SFWC";
-
-bool findBestFace = true;
-
-char* forceLeftRight="";
+static bool seedme = false;
+static float beam=-LZERO;
+static char *strFileName=NULL;
+static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
+static float lldp = 0.001;
+static float mnlldp = 0.01;
+static int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
+static int ns=GMTK_DEFAULT_NUM_SPLITS;
+static int startSkip = 0;
+static int endSkip = 0;
+static int showFrCliques = 0;
+static int jut = -1;
+static char* anyTimeTriangulate = NULL;
+static bool reTriangulate = false;
+static bool rePartition = false;
+static unsigned M = 1; 
+static int allocateDenseCpts=-1;
+static char *cppCommandOptions = NULL;
+static char* triangulationHeuristic="WFS";
+static char* faceHeuristic="SFW";
+static bool findBestFace = true;
+static char* forceLeftRight="";
+// uncomment when reading in for sparse CPTs
+// static char *inputMasterFile=NULL;
+// static char *inputTrainableParameters=NULL;
+// static bool binInputTrainableParameters=false;
 
 Arg Arg::Args[] = {
-
 
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
@@ -133,11 +89,12 @@ Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // Triangulation Options
-  Arg("triangulationHeuristic",Arg::Opt,triangulationHeuristic,"Elimination heuristic, one+ of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint,N=wght-w/o-det"),
+  Arg("triangulationHeuristic",Arg::Opt,triangulationHeuristic,"Elim heuristic, >1 of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
 
   Arg("findBestFace",Arg::Opt,findBestFace,"Run find-best-face (exponential time) algorithm or not."),
   Arg("forceLeftRight",Arg::Opt,forceLeftRight,"Use only either left (L) or right (R) face heuristic, rather than best of both"),
-  Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, one+ of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
+  Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
+  Arg("M",Arg::Opt,M,"Mumber of chunks in which to find interface boundary"),
 
   Arg("unroll",Arg::Opt,jut,"Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
   Arg("anyTimeTriangulate",Arg::Opt,anyTimeTriangulate,"Run the any-time triangulation algorithm for given duration."),
@@ -179,14 +136,6 @@ main(int argc,char*argv[])
   // parse arguments
   Arg::parse(argc,argv);
 
-#if 0
-  // for debugging
-  for (int i=0;i<globalObservationMatrix.numSegments();i++) {
-    printf("loading segment %d\n",i);
-    globalObservationMatrix.loadSegment(i);
-  }
-#endif
-
   MixGaussiansCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
@@ -219,7 +168,6 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.loadGlobal();
-  GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 #endif
 
   /////////////////////////////
@@ -285,21 +233,13 @@ main(int argc,char*argv[])
   GMTemplate gm_template(fp);
 
 
-  if (jut > 0) {
+  if (jut >= 0) {
     gm_template.unrollAndTriangulate(string(triangulationHeuristic),
 				     jut);
   } else {
     GMInfo gm_info;
 
-    set<RandomVariable*> P;
-    set<RandomVariable*> C;
-    set<RandomVariable*> E;
-    vector<MaxClique> Pcliques;
-    vector<MaxClique> Ccliques;
-    vector<MaxClique> Ecliques;
-    vector<RandomVariable*> Pordered;
-    vector<RandomVariable*> Cordered;
-    vector<RandomVariable*> Eordered;
+    gm_info.M = M;
 
     string tri_file = string(strFileName) + ".trifile";
     if (rePartition && !reTriangulate) {
@@ -354,6 +294,11 @@ main(int argc,char*argv[])
 	gm_template.findPartitions(is,
 				   gm_info);
       }
+      if (gm_info.M != M) {
+	error("ERROR: M given in partition file = %d, but M given on command line = %d\n",
+		gm_info.M,M);
+      }
+
       // now using the partition triangulate
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
@@ -387,6 +332,11 @@ main(int argc,char*argv[])
 
       gm_template.findPartitions(is,
 				 gm_info);
+
+      if (gm_info.M != M) {
+	error("ERROR: M given in partition file = %d, but M given on command line = %d\n",
+		gm_info.M,M);
+      }
       gm_template.triangulatePartitions(is,
 					gm_info);
     }
@@ -405,7 +355,7 @@ main(int argc,char*argv[])
 	  else
 	    p_totalWeight = p_totalWeight + log10(1+pow(10,curWeight-p_totalWeight));
 	}
-	printf("  --- Prologue max weight = %f, total weight = %f\n",
+	printf("  --- Prologue max clique weight = %f, total weight = %f\n",
 	       p_maxWeight,p_totalWeight);
 
 	float c_maxWeight = -1.0;
@@ -419,8 +369,11 @@ main(int argc,char*argv[])
 	  else
 	    c_totalWeight = c_totalWeight + log10(1+pow(10,curWeight-c_totalWeight));
 	}
-	printf("  --- Chunk max weight = %f, total weight = %f\n",
-	       c_maxWeight,c_totalWeight);
+	printf("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f\n",
+	       c_maxWeight,
+	       M,
+	       c_totalWeight,
+	       c_totalWeight - log10((double)M));
 
 
 	float e_maxWeight = -1.0;
@@ -434,7 +387,7 @@ main(int argc,char*argv[])
 	  else
 	    e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
 	}
-	printf("  --- Epilogue max weight = %f, total weight = %f\n",
+	printf("  --- Epilogue max clique weight = %f, total weight = %f\n",
 	       e_maxWeight,e_totalWeight);
 
 	float maxWeight
@@ -445,28 +398,37 @@ main(int argc,char*argv[])
 	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));
 	totalWeight += log10(1+pow(10,e_totalWeight-totalWeight));
 
-	printf("--- Final set (P,C,E) has max clique weight = %f, total state space = %f ---\n",
+	printf("--- Final set (P,Cx%d,E) has max clique weight = %f, total state space = %f ---\n",
+	       M,
 	       maxWeight,
 	       totalWeight);
 
 	// print out a couple of total state spaces for various unrollings
-	printf("--- Total weight when unrolling 1x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",2*M-1,totalWeight);
+
 	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));	
-	printf("--- Total weight when unrolling 2x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",3*M-1,totalWeight);
+
 	totalWeight += log10(1+pow(10,log10(3.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling 5x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",6*M-1,totalWeight);
+
 	totalWeight += log10(1+pow(10,log10(5.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling 10x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",11*M-1,totalWeight);
+
 	totalWeight += log10(1+pow(10,log10(10.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling 20x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",21*M-1,totalWeight);
+
 	totalWeight += log10(1+pow(10,log10(30.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling 50x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",51*M-1,totalWeight);
+
 	totalWeight += log10(1+pow(10,log10(50.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling 100x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",101*M-1,totalWeight);
+
 	totalWeight += log10(1+pow(10,log10(400.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling 500x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",501*M-1,totalWeight);
+
 	totalWeight += log10(1+pow(10,log10(500.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling 1000x = %f ---\n",totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",1001*M-1,totalWeight);
 
       }
   }

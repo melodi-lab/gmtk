@@ -113,6 +113,8 @@ findPartitions(// face quality heuristic
 	       const string& th, 
 	       // should we run the exponential find best interface
 	       const bool findBestFace,
+	       // number of chunks in which to find interface boundary (M>=1)
+	       const unsigned M,
 	       // the resulting new prologue
 	       set<RandomVariable*>& Pc,
 	       // the resulting new chunk
@@ -126,8 +128,18 @@ findPartitions(// face quality heuristic
 {
   const int debug = 1;
 
+  // M = number of chunks in which interface/pipeline algorithm can operate.
+  // i.e., a boundary is searched for in M repeated chunks, where M >= 1.
+  // Note that M puts a constraints on the number of time frames
+  // of the observations (i.e., the utterance length in time frames).
+  // Specificaly, if N = number of frames of utterance,
+  //  then we must have N = length(P) + length(E) + k*M*length(C)
+  //  where k = 2,3,4, ... is some integer >= 2.
+  // Therefore, making M larger reduces the number valid possible utterance lengths.
+  assert ( M >= 1 );
+
   vector <RandomVariable*> unroll2_rvs;
-  fp.unroll(2,unroll2_rvs);
+  fp.unroll(M+1,unroll2_rvs);
   // drop all the edge directions
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
     unroll2_rvs[i]->createNeighborsFromParentsChildren();
@@ -136,14 +148,14 @@ findPartitions(// face quality heuristic
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
     unroll2_rvs[i]->moralize();    
   }
-  // create sets P, C1, C2, C3, and E, from graph unrolled 2 times
+  // create sets P, C1, C2, C3, and E, from graph unrolled M+1 times
   // prologue
   set<RandomVariable*> P_u2;
-  // 1st chunk
+  // 1st chunk, 1 chunk long
   set<RandomVariable*> C1_u2;
-  // 2nd chunk
+  // 2nd chunk, M chunks long
   set<RandomVariable*> C2_u2;
-  // 3rd chunk
+  // 3rd chunk, 1 chunk long
   set<RandomVariable*> C3_u2;
   // epilogue
   set<RandomVariable*> E_u2;
@@ -157,11 +169,11 @@ findPartitions(// face quality heuristic
       C1_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C1_u2 == -1)
 	start_index_of_C1_u2 = i;
-    } else if (unroll2_rvs[i]->frame() <= lastChunkFrame+chunkNumFrames) {
+    } else if (unroll2_rvs[i]->frame() <= lastChunkFrame+M*chunkNumFrames) {
       C2_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C2_u2 == -1)
 	start_index_of_C2_u2 = i;
-    } else if (unroll2_rvs[i]->frame() <= lastChunkFrame+2*chunkNumFrames) {
+    } else if (unroll2_rvs[i]->frame() <= lastChunkFrame+(M+1)*chunkNumFrames) {
       C3_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C3_u2 == -1)
 	start_index_of_C3_u2 = i;
@@ -169,16 +181,17 @@ findPartitions(// face quality heuristic
       E_u2.insert(unroll2_rvs[i]);
   }
 
-  assert (C1_u2.size() == C2_u2.size());
-  assert (C2_u2.size() == C3_u2.size());
+  assert (M*C1_u2.size() == C2_u2.size());
+  assert (C2_u2.size() == M*C3_u2.size());
   if (debug > 0) 
     printf("Size of (P,C1,C2,C3,E) = (%d,%d,%d,%d,%d)\n",
 	   P_u2.size(),C1_u2.size(),C2_u2.size(),C3_u2.size(),E_u2.size());
 
 
-  // create sets P', C1', C2', and E', from graph unrolled 1 time
+  // create sets P', C1', C2', and E', from graph unrolled 2*M-1 time(s)
+  // each hyper-chunk C1' and C2' are M frames long.
   vector <RandomVariable*> unroll1_rvs;
-  fp.unroll(1,unroll1_rvs);
+  fp.unroll(2*M-1,unroll1_rvs);
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->createNeighborsFromParentsChildren();
   }
@@ -194,11 +207,11 @@ findPartitions(// face quality heuristic
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     if (unroll1_rvs[i]->frame() < firstChunkFrame)
       P_u1.insert(unroll1_rvs[i]);
-    else if (unroll1_rvs[i]->frame() <= lastChunkFrame) {
+    else if (unroll1_rvs[i]->frame() <= lastChunkFrame + (M-1)*chunkNumFrames) {
       C1_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C1_u1 == -1)
 	start_index_of_C1_u1 = i;
-    } else if (unroll1_rvs[i]->frame() <= lastChunkFrame+chunkNumFrames) {
+    } else if (unroll1_rvs[i]->frame() <= lastChunkFrame+(2*M-1)*chunkNumFrames) {
       C2_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C2_u1 == -1)
 	start_index_of_C2_u1 = i;
@@ -241,7 +254,19 @@ findPartitions(// face quality heuristic
     // find best left interface
     if (debug > 0)
       printf("---\nFinding best left interface\n");
-    findBestInterface(C1_u2,C2_u2,C3_u2,
+
+    set<RandomVariable*> C2_1_u2; // first chunk in C2_u2
+    if (M == 1) {
+      // make it empty signaling that we don't bother to check it in this case.
+      C2_1_u2.clear();
+    } else {
+      for (set<RandomVariable*>::iterator i=C2_u2.begin();
+	   i != C2_u2.end();i++) {
+	if ((*i)->frame() > lastChunkFrame && (*i)->frame() <= lastChunkFrame+chunkNumFrames)
+	  C2_1_u2.insert((*i));
+      }
+    }
+    findBestInterface(C1_u2,C2_u2,C2_1_u2,C3_u2,
 		      left_C_l_u2C2,C_l_u2C2,best_L_score,
 		      fh_v,
 		      findBestFace,
@@ -259,7 +284,19 @@ findPartitions(// face quality heuristic
     // find best right interface
     if (debug > 0)
       printf("---\nFinding best right interface\n");
-    findBestInterface(C3_u2,C2_u2,C1_u2,
+
+    set<RandomVariable*> C2_l_u2; // last chunk of C2_u2
+    if (M == 1) {
+      // make it empty signaling that we don't bother to check it in this case.
+      C2_l_u2.clear();
+    } else {
+      for (set<RandomVariable*>::iterator i=C2_u2.begin();
+	   i != C2_u2.end();i++) {
+	if ((*i)->frame() > (lastChunkFrame+(M-1)*chunkNumFrames) && (*i)->frame() <= (lastChunkFrame+M*chunkNumFrames))
+	  C2_l_u2.insert((*i));
+      }
+    }
+    findBestInterface(C3_u2,C2_u2,C2_l_u2,C1_u2,
 		      right_C_r_u2C2,C_r_u2C2,best_R_score,
 		      fh_v,
 		      findBestFace,
@@ -350,15 +387,22 @@ findPartitions(// face quality heuristic
 void
 GMTemplate::
 findPartitions(iDataStreamFile& is,
+	       unsigned &M,
 	       set<RandomVariable*>& Pc,
 	       set<RandomVariable*>& Cc,
 	       set<RandomVariable*>& Ec,
 	       set<RandomVariable*>& PCIc,
 	       set<RandomVariable*>& CEIc)
 {
+
+
+  is.read(M,"M value");
+  if (M == 0)
+    error("ERROR: M (number of chunks in which to find interface boundary) must be >= 1\n");
+
   vector <RandomVariable*> unroll1_rvs;
   map < RVInfo::rvParent, unsigned > positions;
-  fp.unroll(1,unroll1_rvs,positions);
+  fp.unroll(2*M-1,unroll1_rvs,positions);
 
   // need to moralize.
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
@@ -551,7 +595,14 @@ storePartitions(oDataStreamFile& os,const GMInfo& info)
   string buffer;
   char buff[2048];
 
-  // First write it out in human readable form as a comment.
+  // number of chunks in which to find interface boundary
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- M, number of chunks in which to find interface boundary\n");
+  os.write(info.M);
+  os.nl();
+
+  // next write it out in human readable form as a comment.
   os.nl();
   os.writeComment("---\n");
   os.writeComment("--- P partition information: variables and their neighbors\n");
@@ -1049,7 +1100,7 @@ unrollAndTriangulate(// triangulate heuristics
   vector<TriangulateHeuristic> th_v;
   createVectorTriHeuristic(th,th_v);
 
-  if (numTimes > 0) {
+  if (numTimes >= 0) {
     vector <RandomVariable*> rvs;
     set <RandomVariable*> rvsSet;
     fp.unroll(numTimes,rvs);
@@ -1264,6 +1315,11 @@ basicTriangulate(// input: nodes to triangulate
 	  if (debug > 0)
 	    printf("  node has elimination order hint = %f\n",
 		   (*i)->rv_info.eliminationOrderHint);
+	} else if (th == TH_RANDOM) {
+	  float tmp = rnd.drand48();
+	  weight.push_back(tmp);
+	  if (debug > 0)
+	    printf("  node has random value = %f\n",tmp);
 	} else
 	  warning("Warning: unimplemented triangulation heuristic (ignored)\n");
       }
@@ -1458,11 +1514,53 @@ basicTriangulate(// input data stream
     orderedNodes[i] = rv;
   }
 
-  // Also keep ordered (eliminated) nodes as a set for easy
+  // Triangulate using the given elimination order
+  triangulateElimination(nodes, orderedNodes, cliques);
+
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::triangulateElimination()
+ *   Triangulate a set of nodes using an elimination order
+ *    
+ * Preconditions:
+ *   Graph must be a valid undirected model. This means if the graph
+ *   was originally a directed model, it must have been properly
+ *   moralized and their 'neighbors' structure is valid. It is also
+ *   assumed that the parents of each r.v. are valid but that they
+ *   only point to variables within the set 'nodes' (i.e., parents
+ *   must not point out of this set).
+ *
+ * Postconditions:
+ *   Resulting graph is now triangulated.
+ *
+ * Side Effects:
+ *   Changes rv's neighbors variables.
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMTemplate::
+triangulateElimination(// input: nodes to be triangulated
+                       const set<RandomVariable*> nodes,
+                       // elimination order 
+                       vector<RandomVariable*> orderedNodes,  
+                       // output: resulting max cliques
+                       vector<MaxClique>& cliques
+                       )
+{
+  // Keep ordered eliminated nodes as a set for easy
   // intersection, with other node sets.
   set<RandomVariable*> orderedNodesSet;
 
-  // finally triangulate and make cliques
+  // Triangulate and make cliques
   for (unsigned i=0;i<orderedNodes.size();i++) {
     RandomVariable* rv = orderedNodes[i];
 
@@ -1477,17 +1575,17 @@ basicTriangulate(// input data stream
     // new maxclique.
     set<RandomVariable*> candidateMaxClique;
     set_difference(rv->neighbors.begin(),rv->neighbors.end(),
-		   orderedNodesSet.begin(),orderedNodesSet.end(),
-		   inserter(candidateMaxClique,candidateMaxClique.end()));
+                   orderedNodesSet.begin(),orderedNodesSet.end(),
+                   inserter(candidateMaxClique,candidateMaxClique.end()));
     candidateMaxClique.insert(rv);
     bool is_max_clique = true;
     for (unsigned i=0;i < cliques.size(); i++) {
       if (includes(cliques[i].nodes.begin(),cliques[i].nodes.end(),
-		   candidateMaxClique.begin(),candidateMaxClique.end())) {
-	// then found a 'proven' maxclique that includes our current
-	// candidate, so the candidate cannot be a maxclique
-	is_max_clique = false;
-	break;
+                   candidateMaxClique.begin(),candidateMaxClique.end())) {
+        // then found a 'proven' maxclique that includes our current
+        // candidate, so the candidate cannot be a maxclique
+        is_max_clique = false;
+        break;
       }
     }
     if (is_max_clique) {
@@ -1498,6 +1596,9 @@ basicTriangulate(// input data stream
     orderedNodesSet.insert(rv);
   }
 }
+
+
+
 
 
 
@@ -2268,6 +2369,9 @@ GMTemplate::createVectorTriHeuristic(const string& th,
       case 'N':
 	th_v.push_back(TH_MIN_WEIGHT_NO_D);
 	break;
+      case 'R':
+	th_v.push_back(TH_RANDOM);
+	break;
       default:
 	error("ERROR: Unknown triangulation heuristic given '%c' in string '%s'\n",
 	      th[i],th.c_str());
@@ -2473,6 +2577,8 @@ GMTemplate::findBestInterface(
  const set<RandomVariable*> &C1,
  // second chunk of twice unrolled graph
  const set<RandomVariable*> &C2,
+ // first chunk of C2, empty when M=1
+ const set<RandomVariable*> &C2_1,
  // third chunk of twice unrolled graph
  const set<RandomVariable*> &C3,
  // nodes to the "left" of the left interface within C2
@@ -2532,6 +2638,8 @@ GMTemplate::findBestInterface(
   }
   left_C_l.clear();
 
+  // Note that the "partition boundary" is the border/line that cuts the edges
+  // connecting nodes C_l and nodes left_C_l.
 
   interfaceScore(fh_v,C_l,left_C_l,
 		 th_v,
@@ -2568,6 +2676,7 @@ GMTemplate::findBestInterface(
     findBestInterface(left_C_l,
 		      C_l,
 		      C2,
+		      C2_1,
 		      C3,
 		      setset,
 		      best_left_C_l,
@@ -2621,6 +2730,7 @@ findBestInterface(
   const set<RandomVariable*> &left_C_l,
   const set<RandomVariable*> &C_l,
   const set<RandomVariable*> &C2,
+  const set<RandomVariable*> &C2_1,
   const set<RandomVariable*> &C3,
   set< set<RandomVariable*> >& setset,
   set<RandomVariable*> &best_left_C_l,
@@ -2639,8 +2749,29 @@ findBestInterface(
 )
 {
   set<RandomVariable*>::iterator v;  // vertex
-  // consider all v in the current C_l as candidates
-  // to be moved left.
+  // consider all v in the current C_l as candidates to be moved
+  // left. Essentially, we advance the "partition boundary" to the right
+  // by taking nodes that are right of the boundary and moving those
+  // nodes (one by one) to the left of the boundary. This is done
+  // recursively, and memoization is employed to ensure that we don't
+  // redundantly explore the same partition boundary.
+  // In all cases, 
+  //  1) the boundary is a set of edges (and is not explicitly
+  //     represented in the code.
+  //  2) C_l are the nodes adjacent and to the right of the current boundary 
+  //  3) left_C_l are the nodes adjacent and to the left of the current boundary.
+
+  // All nodes in C1 must be to the left of the boundary (ensured by
+  // start condition and by the nature of the algoritm).  All nodes in
+  // C3 must be to the right of the boundary (ensured by "condition ***" below).
+
+  // If C2 consists of multiple chunks (say C2_1, C2_2, etc.) then we
+  // should never have that all of C2_1 lies completely to the left of
+  // the boundary, since this would be redundant (i.e., a boundary
+  // between C1 and C2_1 would be the same edges shifted in time as
+  // the boundary between C2_1 and C2_2). This is ensured by
+  // "condition ###" below.
+
   for (v = C_l.begin(); v != C_l.end(); v ++) {
     // TODO: 
     //      Rather than "for all nodes in C_l", we could do a random
@@ -2652,7 +2783,10 @@ findBestInterface(
     //      be beneficial to do this since its cost would probably be
     //      ammortized over the many runs of inference with the graph.
 
-    // if v has neighbors in C3 (via set intersection), then continue
+    // Condition ***: if v has neighbors in C3 (via set intersection),
+    // then continue since if v was moved left, we would end up with
+    // an invalid interface (i.e., invalid since there would be a node
+    // left of C_l that connects directly to the right of C_l).
     set<RandomVariable*> res;
     set_intersection((*v)->neighbors.begin(),
 		     (*v)->neighbors.end(),
@@ -2661,9 +2795,25 @@ findBestInterface(
     if (res.size() != 0)
       continue;
 
-    // take v from C_l and place it in left_C_l    
+    // Then it is ok to remove v from C_l and move v to the left.
+    // take v from C_l and place it in left_C_l
     set<RandomVariable*> next_left_C_l = left_C_l;
     next_left_C_l.insert((*v));
+
+    // only do this check if C2_1 is non-empty. If it is empty,
+    // we assume the check is not needed.
+    if (C2_1.size() > 0) {
+      // Condition ###: next check to make sure that we haven't used up
+      // all the nodes in C2_1. I.e., make sure that C2_1 is not a
+      // proper subset of (left_C_l U {v}) = next_left_C_l.
+
+      set<RandomVariable*> tmp;      
+      set_difference(C2_1.begin(),C2_1.end(),
+		     next_left_C_l.begin(),next_left_C_l.end(),
+		     inserter(tmp,tmp.end()));
+      if (tmp.size() == 0)
+	continue;
+    }
 
     // and add all neighbors of v that are 
     // in C2\next_left_C_l to next_C_l
@@ -2706,7 +2856,7 @@ findBestInterface(
 
     findBestInterface(next_left_C_l,
 		      next_C_l,
-		      C2,C3,setset,
+		      C2,C2_1,C3,setset,
 		      best_left_C_l,best_C_l,best_score,
 		      fh_v,
 		      th_v,

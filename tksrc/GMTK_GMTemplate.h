@@ -13,6 +13,9 @@
  * Seattle make no representations about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  *
+ *
+ * $Header$
+ *
  */
 
 #ifndef GMTK_GMTEMPLATE_H
@@ -36,6 +39,10 @@ class AnyTimeTriangulation;
 
 // structure to package useful information together.
 struct GMInfo {
+
+  // number of chunks in which to find interface boundary
+  unsigned M;
+
   // the modified prologue, chunk, and epilogue
   set<RandomVariable*> P;
   set<RandomVariable*> C;
@@ -63,6 +70,7 @@ struct GMInfo {
 
   // clear up everything.
   void clear() {
+    M = ~0x0;
     P.clear(); C.clear(); E.clear();
     PCInterface.clear(); CEInterface.clear();
     Pcliques.clear(); Ccliques.clear(); Ecliques.clear();
@@ -127,7 +135,9 @@ public:
 			      /* H */ TH_MIN_HINT = 7,
 			      // use weight, but don't use any information
 			      // about determinism of variables in clique.
-			      /* N */ TH_MIN_WEIGHT_NO_D = 8
+			      /* N */ TH_MIN_WEIGHT_NO_D = 8,
+			      // random triangulation
+			      /* R */ TH_RANDOM = 9
   };
 
   enum InterfaceHeuristic { /* S */ IH_MIN_SIZE = 1,        
@@ -161,6 +171,7 @@ public:
 		      const string& forceLeftRight,
 		      const string& triHeuristic,
 		      const bool findBestFace,
+		      const unsigned M, 
 		      set<RandomVariable*>& P,
 		      set<RandomVariable*>& C,
 		      set<RandomVariable*>& E,
@@ -173,6 +184,7 @@ public:
 		      GMInfo& info) {
     findPartitions(faceHeuristic,forceLeftRight,triHeuristic,
 		   findBestFace,
+		   info.M,
 		   info.P,info.C,info.E,
 		   info.PCInterface,info.CEInterface);
   }
@@ -182,6 +194,7 @@ public:
   // Find partitions using the information that
   // has been pre-computed and stored in file 'is'
   void findPartitions(iDataStreamFile& is,
+		      unsigned &M,
 		      set<RandomVariable*>& P,
 		      set<RandomVariable*>& C,
 		      set<RandomVariable*>& E,
@@ -189,6 +202,7 @@ public:
 		      set<RandomVariable*>& CEI);
   void findPartitions(iDataStreamFile& is,GMInfo& info) {
     findPartitions(is,
+		   info.M,
 		   info.P,info.C,info.E,
 		   info.PCInterface,info.CEInterface);
   }
@@ -316,6 +330,14 @@ public:
 			vector<MaxClique>& cliques,
 			const bool findCliques = true);
 
+  // Triangulate undirected graph using an elimination order
+  void triangulateElimination(// input: nodes to be triangulated
+			      const set<RandomVariable*> nodes,
+			      // elimination order 
+			      vector<RandomVariable*> orderedNodes,  
+			      // output: resulting max cliques
+			      vector<MaxClique>& cliques);
+ 
 
   // Basic triangulation, via elimination from a pre-existing order.
   // Given a set of nodes (that have valid 'neighbors' members,
@@ -427,6 +449,7 @@ public:
   void findBestInterface(
 	     const set<RandomVariable*> &C1,
 	     const set<RandomVariable*> &C2,
+	     const set<RandomVariable*> &C2_1,
 	     const set<RandomVariable*> &C3,
 	     set<RandomVariable*> &left_C_l,
 	     set<RandomVariable*> &C_l,
@@ -446,6 +469,7 @@ public:
              const set<RandomVariable*> &left_C_l,
 	     const set<RandomVariable*> &C_l,
 	     const set<RandomVariable*> &C2,
+	     const set<RandomVariable*> &C2_1,
 	     const set<RandomVariable*> &C3,
 	     set< set<RandomVariable*> >& setset,
 	     set<RandomVariable*> &best_left_C_l,
