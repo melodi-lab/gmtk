@@ -238,7 +238,7 @@ main(int argc,char*argv[])
   }
 
   printf("____ PROGRAM ENDED SUCCESSFULLY AT ");
-  print_date_string();
+  print_date_string(stdout);
   printf(" ____\n");
   return 0;
 }
