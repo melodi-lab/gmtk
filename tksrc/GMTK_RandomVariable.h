@@ -306,6 +306,10 @@ public:
   ///////////////////////////////////////////////////////////////////////
   // Printing: show all the pertinent information about the node
   virtual void reveal(bool show_vals);
+
+  // Printing: show all the information about the node (JB)
+  virtual void printSelf(FILE *f);
+
   // print the switching parent names/timeframes along with their currently clamped values.
   void printSwitchingParentInfo(FILE* stream);
   // print the current conditional parent name/times along with their currently clamped values.

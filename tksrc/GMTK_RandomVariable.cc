@@ -440,6 +440,25 @@ void RandomVariable::reveal(bool show_vals)
 }
 
 
+void RandomVariable::printSelf(FILE *f)
+{
+  fprintf(f,"%s(%d): ",label.c_str(),timeIndex); 
+  if (discrete) 
+    fprintf(f,"discrete card = %d, ",cardinality);
+  if (hidden) 
+    fprintf(f,"hidden, ");
+  else
+    fprintf(f,"observed, ");
+  if (discrete)
+    fprintf(f,"val = %u.",val);
+  else 
+    fprintf(f,"continuous.");
+  fprintf(f,"\n");
+}
+
+
+
+
 bool RandomVariable::allParentsContainedInSet(const set <RandomVariable*> givenSet)
 {
   set <RandomVariable*> res;

@@ -3239,7 +3239,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
  *    fit the smaller size.
  *
  * Side Effects:
- *    none
+ *    changes the clique size
  *
  * Results:
  *     nothing
@@ -3315,7 +3315,7 @@ InferenceMaxClique::ceCliquePrune()
  *    fit the smaller size.
  *
  * Side Effects:
- *    none
+ *    changes the clique size.
  *
  * Results:
  *     nothing
@@ -3418,6 +3418,12 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 
     // Now, deal with potential ties.
     // Move any other entries that are equal to pivot to the center.
+    // -- Note that this next step helps to significantly speed up the
+    // -- algorithm in the case when there are lots of ties --- this
+    // -- is done here since one of the main reasons for having this
+    // -- form of pruning is that normal beam pruning doesn't work
+    // -- well on very "uniform"-like unnormalized distributions,
+    // -- i.e., ones for which many ties might be present.
     unsigned ll;
     if (l > lower) {
       ll = l-1; // left of left-most known pivot value.

@@ -548,6 +548,7 @@ public:
   void printAllJTInfoCliques(FILE* f,JT_Partition& part,const unsigned root,const unsigned treeLevel,
 			     set <RandomVariable*>* lp_nodes,set <RandomVariable*>* rp_nodes);
   void printMessageOrder(FILE *f,vector< pair<unsigned,unsigned> >& message_order);
+  void printCurrentRVValues(FILE* f);
 
 
   // 

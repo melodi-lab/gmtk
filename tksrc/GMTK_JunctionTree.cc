@@ -4586,6 +4586,38 @@ JunctionTree::printAllCliquesProbEvidence()
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::printCurrentRVValues()
+ *   
+ *   Prints out all random variables in the current unrolled set.
+ *
+ * Preconditions:
+ *   - cur_unrolled_rvs must be defined and unrolled
+ *
+ * Postconditions:
+ *   cur_unrolled_rvs is printed.
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::printCurrentRVValues(FILE *f)
+{
+  for (unsigned i=0;i<cur_unrolled_rvs.size();i++) {
+    cur_unrolled_rvs[i]->printSelf(f);
+  }
+}
+
+
+
 #if 0
 
 spare code:
