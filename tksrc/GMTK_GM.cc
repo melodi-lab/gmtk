@@ -843,11 +843,24 @@ void GMTK_GM::GM2CliqueChain()
 
 void GMTK_GM::showCliques()
 {
+    double maxi = 0;
+    unsigned lc = 0;
     for (unsigned i=0; i<chain->preorderSize(); i++)
     {
         cout << "Clique " << i << ":" << endl;
         chain->preorder(i)->reveal();
+
+        Clique *cl = chain->preorder(i);
+        double sz = 1;
+        for (unsigned i=0; i<cl->member.size(); i++)
+            if (cl->member[i]->hidden) sz *= cl->member[i]->cardinality;
+        maxi = max(maxi, sz);
+        lc = max(cl->member.size(), lc);
     }
+    maxi /= 1000000;
+    cout << "Max variables in a clique is " << lc << " elements" << endl;
+    cout << "Upper bound on instantiations of a single clique is " << maxi
+         << "M" << endl;
 }
 
 void GMTK_GM::cloneVariables(vector<RandomVariable *> &from,
