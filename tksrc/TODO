@@ -2488,4 +2488,14 @@ Tue Oct 26 00:52:12 2004
   - the new gmtk viterbi should have option to place output of each
     utterance in separate file, so that each file contains score and viterbi path.
 
+Wed Oct 27 12:48:48 2004
+  - new docs. Write a section on DT optimization ideas, i.e., that you should write DTs for efficiency.
+    Give example of right and wrong way to write:
+        f(0,x) = 0 for all x
+        f(1,x) = f(x)
+    so query the first variable first. 
+
+         
+    
+
 
