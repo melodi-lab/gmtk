@@ -3042,6 +3042,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // TODO: reallocate only if change is > some percentage (say 5%),
   // and export to command line.
   // TODO: possibly tell origin.cliqueValueSpaceManager about this pruning event.
+  // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
+  //       will soon be deleted anyway.
   // 
   if (numCliqueValuesUsed < origNumCliqueValuesUsed)
     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
@@ -3159,6 +3161,8 @@ InferenceMaxClique::ceCliquePrune()
   // TODO: reallocate only if change is > some percentage (say 5%),
   // and export to command line.
   // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
+  // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
+  //       will soon be deleted anyway.
   // 
   if (numCliqueValuesUsed < origNumCliqueValuesUsed)
     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
@@ -3415,6 +3419,8 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   // TODO: reallocate only if change is > some percentage (say 5%),
   // and export to command line.
   // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
+  // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
+  //       will soon be deleted anyway.
   // 
   cliqueValues.resizeAndCopy(k);
   numCliqueValuesUsed = k;

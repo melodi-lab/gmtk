@@ -93,6 +93,7 @@ public:
 
   void emIncrement(logpr posterior) {
     setCurrentConditionalParents(this);
+    curCPT = conditionalCPTs[cachedSwitchingState];
     curCPT->emIncrement(posterior,*curConditionalParents,this);
   }
 

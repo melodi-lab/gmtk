@@ -59,6 +59,8 @@ bool JunctionTree::jtWeightMoreConservative = false;
 float JunctionTree::jtWeightPenalizeUnassignedIterated = 0.0;
 float JunctionTree::jtWeightSparseNodeSepScale = 1.0;
 float JunctionTree::jtWeightDenseNodeSepScale = 1.0;
+char* JunctionTree::priorityStr = "DSU";
+char* JunctionTree::interfaceCliquePriorityStr = "W";
 
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
@@ -299,14 +301,11 @@ JT_Partition::JT_Partition(
 void
 JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
 				   unsigned& iClique,
-				   bool& iCliqueSameAsInterface)
+				   bool& iCliqueSameAsInterface,
+				   const string priorityStr)
 {
   if (iNodes.size() > 0) {
-    iCliqueSameAsInterface = false;
-    // starting invalid clique.
-    iClique = ~0x0u; 
-    // the weight of the interface clique, to break ties.
-    double interfaceCliqueWeight=DBL_MAX;
+    vector < PriorityClique > pcArray;
 
     for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
       // check that clique fully covers iNodes 
@@ -319,29 +318,92 @@ JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
       
       if (res.size() == iNodes.size()) {
 	// we've found a candidate.
-	if (iClique == ~0x0u) {
-	  // first time
-	  iClique = cliqueNo;
-	  interfaceCliqueWeight = MaxClique::computeWeight(cliques[cliqueNo].nodes);
+
+	// Priority for determining which clique becomes the interface
+	// clique.  All attributes get sorted in decreasing order, so
+	// that larger values have priority.  Larger numbers are
+	// prefered.
+
+	// Options to include by priority of priorityStr:
+	//   * W: negative weight of the clique
+	//   * D: number of deterministic nodes in clique
+	//   * H: number of hidden nodes in clique
+	//   * O: number of observed nodes in clique
+	//   * I: Interface Clique same as Interface
+	// 
+	//  Any can be preceeded by a '-' sign to flip effect. E.g., D-E-SU
+	//
+	// Default case: W
+
+	vector <double> weights;
+	float mult = 1.0;
+	bool loc_iCliqueSameAsInterface = false;
+	for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
+	  const char curCase = toupper(priorityStr[charNo]);
+	  if (curCase == '-') {
+	    mult = -1.0;
+	    continue;
+	  }
+
 	  if (res.size() == cliques[cliqueNo].nodes.size()) {
-	    iCliqueSameAsInterface = true;
+	    loc_iCliqueSameAsInterface = true;
 	  } else {
-	    iCliqueSameAsInterface = false;
+	    loc_iCliqueSameAsInterface = false;
 	  }
-	} else {
-	  double new_weight = MaxClique::computeWeight(cliques[cliqueNo].nodes);
-	  if (new_weight < interfaceCliqueWeight) {
-	    iClique = cliqueNo;
-	    interfaceCliqueWeight = new_weight;
-	    if (res.size() == cliques[cliqueNo].nodes.size()) {
-	      iCliqueSameAsInterface = true;
-	    } else {
-	      iCliqueSameAsInterface = false;
+
+	  if (curCase == 'W') {	  
+	    weights.push_back(-mult*(double)MaxClique::computeWeight(cliques[cliqueNo].nodes));
+	  } else if (curCase == 'D') {
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = cliques[cliqueNo].nodes.end();
+	    unsigned numDeterministicNodes = 0;
+	    for (it = cliques[cliqueNo].nodes.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->discrete() && RV2DRV(rv)->deterministic())
+		numDeterministicNodes++;
 	    }
+	    weights.push_back(mult*(double)numDeterministicNodes);
+	  } else if (curCase == 'H') {	  
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = cliques[cliqueNo].nodes.end();
+	    unsigned numHiddenNodes = 0;
+	    for (it = cliques[cliqueNo].nodes.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->hidden())
+		numHiddenNodes++;
+	    }
+	    weights.push_back(mult*(double)numHiddenNodes);
+	  } else if (curCase == 'O') {
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = cliques[cliqueNo].nodes.end();
+	    unsigned numObservedNodes = 0;
+	    for (it = cliques[cliqueNo].nodes.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->observed())
+		numObservedNodes++;
+	    }
+	    weights.push_back(mult*(double)numObservedNodes);
+	  } else if (curCase == 'I') {
+	    weights.push_back(mult*(double)loc_iCliqueSameAsInterface);
+	  } else {
+	    error("ERROR: Unrecognized interface clique determiner letter '%c' in string '%s'\n",
+		  curCase,priorityStr.c_str());
 	  }
+
+	  mult = 1.0;
 	}
+	// always push back at end.
+	weights.push_back((double)loc_iCliqueSameAsInterface);
+
+	pcArray.push_back(PriorityClique(cliqueNo,weights));
       }
     }
+
+    assert ( pcArray.size() > 0 );
+    sort(pcArray.begin(),pcArray.end(),PriorityCliqueCompare());
+    iClique = pcArray[0].clique;
+    iCliqueSameAsInterface  = (bool)pcArray[0].weights[pcArray[0].weights.size()-1];
+
   } else {
     iClique = ~0x0;
     iCliqueSameAsInterface = false;
@@ -373,14 +435,14 @@ JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
  *-----------------------------------------------------------------------
  */
 void
-JT_Partition::findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface)
+JT_Partition::findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface,const string priorityStr)
 {
-  findInterfaceCliques(liNodes,liClique,liCliqueSameAsInterface);
+  findInterfaceCliques(liNodes,liClique,liCliqueSameAsInterface,priorityStr);
 }
 void
-JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface)
+JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface,const string priorityStr)
 {
-  findInterfaceCliques(riNodes,riClique,riCliqueSameAsInterface);
+  findInterfaceCliques(riNodes,riClique,riCliqueSameAsInterface,priorityStr);
 }
 
 
@@ -545,7 +607,7 @@ void
 JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
 				  const char *varCliqueAssignmentPrior)
 {
-  createPartitionJunctionTrees();
+  createPartitionJunctionTrees(priorityStr);
   computePartitionInterfaces();
   createDirectedGraphOfCliques();
   assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
@@ -587,7 +649,7 @@ JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::createPartitionJunctionTree(Partition& part)
+JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityStr)
 {
   const unsigned numMaxCliques = part.cliques.size();
 
@@ -643,44 +705,139 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 	// have the largest intersection size.
 	e.weights.push_back((double)sep_set.size());
 
+	// All gets sorted in decreasing order, so that larger values
+	// have priority.
+
 	// The remaining items we push back in the case of ties.
 	// Larger numbers are prefered.
 	//
-	// Options to possibly include:
-	//   * number of determinisitc nodes
-	//   * weight of separator
-	//   * weight of union of cliques
-	//   * indicator if one clique is a subset of another
-	//   * number of hidden/observed nodes.
+	// Options to include by priority of priorityStr:
+	//   * D: number of deterministic nodes in separator 
+	//   * E: number of deterministic nodes in union of cliques.
+	//   * S: weight of separator
+	//   * U: weight of union of cliques
+	//   * // B: do something useful.
+	//   * H: number of hidden nodes in separator
+	//   * O: number of observed nodes in separator
+	//   * L: number of hidden nodes in union
+	//   * Q: number of observed nodes in union
+	//
+	//  Any can be preceeded by a '-' sign to flip effect. E.g., D-E-SU
+	//
+	// Default case: DSU
 
-	// push back number of deterministic nodes in
-	// the separator
-	set<RV*>::iterator it;
-	set<RV*>::iterator it_end = sep_set.end();
-	unsigned numDeterministicNodes = 0;
-	for (it = sep_set.begin(); it != it_end; it++) {
-	  RV* rv = (*it);
-	  if (!rv->hidden())
-	    numDeterministicNodes++;
+	float mult = 1.0;
+	for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
+	  const char curCase = toupper(priorityStr[charNo]);
+	  if (curCase == '-') {
+	    mult = -1.0;
+	    continue;
+	  }
+
+	  if (curCase == 'D') {
+
+	    // push back number of deterministic nodes in
+	    // the separator
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = sep_set.end();
+	    unsigned numDeterministicNodes = 0;
+	    for (it = sep_set.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->discrete() && RV2DRV(rv)->deterministic())
+		numDeterministicNodes++;
+	    }
+	    e.weights.push_back(mult*(double)numDeterministicNodes);
+
+	  } else if (curCase == 'E' || curCase == 'L' || curCase == 'Q') {
+	    // push back negative weight of two cliques together.
+	    set<RV*> clique_union;
+	    set_union(part.cliques[i].nodes.begin(),
+		      part.cliques[i].nodes.end(),
+		      part.cliques[j].nodes.begin(),
+		      part.cliques[j].nodes.end(),
+		      inserter(clique_union,clique_union.end()));
+
+	    if (curCase == 'E') {
+	      // push back number of deterministic nodes in
+	      // the union
+	      set<RV*>::iterator it;
+	      set<RV*>::iterator it_end = clique_union.end();
+	      unsigned numDeterministicNodes = 0;
+	      for (it = clique_union.begin(); it != it_end; it++) {
+		RV* rv = (*it);
+		if (rv->discrete() && RV2DRV(rv)->deterministic())
+		  numDeterministicNodes++;
+	      }
+	      e.weights.push_back(mult*(double)numDeterministicNodes);
+	    } else if (curCase == 'L') {
+	      set<RV*>::iterator it;
+	      set<RV*>::iterator it_end = clique_union.end();
+	      unsigned numHidden = 0;
+	      for (it = clique_union.begin(); it != it_end; it++) {
+		RV* rv = (*it);
+		if (rv->hidden())
+		  numHidden++;
+	      }
+	      e.weights.push_back(mult*(double)numHidden);
+	    } else if (curCase == 'Q') {
+	      set<RV*>::iterator it;
+	      set<RV*>::iterator it_end = clique_union.end();
+	      unsigned numObserved = 0;
+	      for (it = clique_union.begin(); it != it_end; it++) {
+		RV* rv = (*it);
+		if (rv->observed())
+		  numObserved++;
+	      }
+	      e.weights.push_back(mult*(double)numObserved);
+	    }
+	  } else if (curCase == 'S') {
+
+	    // push back negative weight of separator, to prefer
+	    // least negative (smallest)  weight.
+	    e.weights.push_back(-(double)MaxClique::computeWeight(sep_set));
+
+	    // printf("weight of clique %d = %f, %d = %f\n",
+	    // i,part.cliques[i].weight(),
+	    // j,part.cliques[j].weight());
+
+	  } else if (curCase == 'U') {
+
+	    // push back negative weight of two cliques together.
+	    set<RV*> clique_union;
+	    set_union(part.cliques[i].nodes.begin(),
+		      part.cliques[i].nodes.end(),
+		      part.cliques[j].nodes.begin(),
+		      part.cliques[j].nodes.end(),
+		      inserter(clique_union,clique_union.end()));
+	    e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
+
+	  } else if (curCase == 'B') {
+	    // fill in in future.
+	  } else if (curCase == 'H') {
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = sep_set.end();
+	    unsigned numHidden = 0;
+	    for (it = sep_set.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->hidden())
+		numHidden++;
+	    }
+	    e.weights.push_back(mult*(double)numHidden);
+	  } else if (curCase == 'O') {
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = sep_set.end();
+	    unsigned numObserved = 0;
+	    for (it = sep_set.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->observed())
+		numObserved++;
+	    }
+	    e.weights.push_back(mult*(double)numObserved);
+	  } else {
+	    error("ERROR: Unrecognized junction tree clique sort order letter '%c' in string '%s'\n",curCase,priorityStr.c_str());
+	  }
+	  mult = 1.0;
 	}
-	e.weights.push_back((double)numDeterministicNodes);
-
-	// push back negative weight of separator, to prefer
-	// least negative (smallest)  weight.
-	e.weights.push_back(-(double)MaxClique::computeWeight(sep_set));
-
-	// printf("weight of clique %d = %f, %d = %f\n",
-	// i,part.cliques[i].weight(),
-	// j,part.cliques[j].weight());
-
-	// push back negative weight of two cliques together.
-	set<RV*> clique_union;
-	set_union(part.cliques[i].nodes.begin(),
-		  part.cliques[i].nodes.end(),
-		  part.cliques[j].nodes.begin(),
-		  part.cliques[j].nodes.end(),
-		  inserter(clique_union,clique_union.end()));
-	e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
 
 	// add the edge.
 	edges.push_back(e);
@@ -887,8 +1044,8 @@ JunctionTree::computePartitionInterfaces()
 
   bool P_riCliqueSameAsInterface;
   bool E_liCliqueSameAsInterface;
-  P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface);
-  E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface);
+  P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+  E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
 
   if (gm_template.leftInterface) {
     bool Cu0_liCliqueSameAsInterface;
@@ -896,10 +1053,10 @@ JunctionTree::computePartitionInterfaces()
     bool Co_liCliqueSameAsInterface;
     bool Co_riCliqueSameAsInterface;
 
-    Cu0.findLInterfaceClique(C_li_to_P,Cu0_liCliqueSameAsInterface);
-    Cu0.findRInterfaceClique(C_ri_to_C,Cu0_riCliqueSameAsInterface);
-    Co.findLInterfaceClique(C_li_to_C,Co_liCliqueSameAsInterface);
-    Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface);
+    Cu0.findLInterfaceClique(C_li_to_P,Cu0_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+    Cu0.findRInterfaceClique(C_ri_to_C,Cu0_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+    Co.findLInterfaceClique(C_li_to_C,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+    Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     
     // sanity check
     assert (C_ri_to_C == C_ri_to_E);
@@ -920,10 +1077,10 @@ JunctionTree::computePartitionInterfaces()
     bool Co_liCliqueSameAsInterface;
     bool Co_riCliqueSameAsInterface;
 
-    Co.findLInterfaceClique(C_li_to_P,Co_liCliqueSameAsInterface);
-    Co.findRInterfaceClique(C_ri_to_C,Co_riCliqueSameAsInterface);
-    Cu0.findLInterfaceClique(C_li_to_C,Cu0_liCliqueSameAsInterface);
-    Cu0.findRInterfaceClique(C_ri_to_E,Cu0_riCliqueSameAsInterface);
+    Co.findLInterfaceClique(C_li_to_P,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+    Co.findRInterfaceClique(C_ri_to_C,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+    Cu0.findLInterfaceClique(C_li_to_C,Cu0_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+    Cu0.findRInterfaceClique(C_ri_to_E,Cu0_riCliqueSameAsInterface,interfaceCliquePriorityStr);
 
     // sanity check
     assert (C_li_to_C == C_li_to_P);
@@ -2501,7 +2658,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
   bool tmp;
   unsigned root;
   if (interfaceNodes.size() > 0)
-    jt_part.findRInterfaceClique(root,tmp);
+    jt_part.findRInterfaceClique(root,tmp,interfaceCliquePriorityStr);
   else {
     // 'E_root_clique case'
     // Presumably, this is an E partition, so the root should be done
@@ -2773,7 +2930,10 @@ JunctionTree::printAllJTInfoCliques(FILE* f,
   if (treeLevel == 0)
     fprintf(f,", root/right-interface clique");
   if (part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].children.size() + 1) {
-    fprintf(f,", leaf/left-interface clique");
+    if (part.cliques[root].ceReceiveSeparators.size() > 1) 
+      fprintf(f,", left-interface clique");
+    else
+      fprintf(f,", leaf/left-interface clique");
   } else {
     assert ( part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].children.size() );
     if (part.cliques[root].ceReceiveSeparators.size() == 0) 

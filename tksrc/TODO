@@ -2516,7 +2516,6 @@ Thu Oct 28 00:21:20 2004
 
 Thu Oct 28 13:21:03 2004
   - timing limit arguments to gmtkTriangulate for boundary and triangulate.
-    
 
 Mon Nov 15 13:55:16 2004
   - make sure we are compatible with quicknet for NN-based VE.
@@ -2527,11 +2526,21 @@ Fri Nov 19 12:15:41 2004
   - for docs: include bit aboutu how to use short utterances by concatenating things, and using a VE node
     with value 1, and with an always 1 DT. Also, why it works.
 
-
 Wed Nov 24 12:43:32 2004
-  gmtkEMTrainNew
- - parallel EM training, when no mor etraning jus tacc step, confusing to
-   need to do -trrng nil -maxE 1 (give option to do maxE 0)
+   gmtkEMTrainNew
+  - parallel EM training, when no mor etraning jus tacc step, confusing to
+    need to do -trrng nil -maxE 1 (give option to do maxE 0)
+
+Wed Nov 24 17:44:12 2004
+  - figure out why ri is sometimes faster.
+
+Thu Nov 25 19:24:08 2004
+  - docs: recomended names of objects. E.g., use standard conventions to make
+    things easier to find/debug. E.g., a mixture might have suffix "_MX" or "MX",
+    a DT might have suffix "DT", a cpt "CPT", etc. It is valid to name, say, an
+    MDCPT and its DT the same (since the names live in different name spaces),
+    but try not to do that. Isssue informational warning (debug level 11) if this is done.
+
 
 
 
