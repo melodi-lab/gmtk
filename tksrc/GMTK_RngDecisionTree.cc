@@ -598,6 +598,7 @@ RngDecisionTree::EquationClass::EquationClass()
     function["max"] = TOKEN_MAX;
     function["min"] = TOKEN_MIN;
     function["mod"] = TOKEN_MOD;
+    function["rotate"] = TOKEN_ROTATE;
     function["xor"] = TOKEN_BITWISE_XOR;
 
     ////////////////////////////////////////////////////////////////////////
@@ -683,7 +684,10 @@ RngDecisionTree::EquationClass::evaluateFormula(
   unsigned crrnt_cmnd, end_cmnd;
   unsigned last; 
   unsigned command, operand; 
-  int      value, i;
+  int      i;
+  int      value;
+  unsigned val, number, position, bitwidth;
+  unsigned mask_1, mask_2;
 
   stack.clear();
 
@@ -850,6 +854,42 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PLUS:
         last = stack.stackSize() - 1;
         stack[last-1] = stack[last-1] + stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_ROTATE:
+        //////////////////////////////////////////////////////////////////////
+        // rotate(val, number, position, bitwidth)
+        //////////////////////////////////////////////////////////////////////
+        last     = stack.stackSize() - 1;
+        bitwidth = stack[last]; 
+        position = stack[last-1];
+        value    = (int)stack[last-2];
+
+        if (value < 0) {
+          number   = (-value) % bitwidth; 
+
+          mask_1 = ((1<<(bitwidth-number))-1) << (position); 
+          mask_2 = ((1<<number)-1) << (position+bitwidth-number); 
+
+          val    = stack[last-3] & ~mask_1 & ~mask_2; 
+          val    |= ((stack[last-3] & mask_1) << number); 
+          val    |= ((stack[last-3] & mask_2) >> (bitwidth-number)); 
+        }
+        else {
+          number   = value % bitwidth; 
+
+          mask_1 = ((1<<number)-1) << (position); 
+          mask_2 = ((1<<(bitwidth-number))-1) << (position+number); 
+
+          val    = stack[last-3] & ~mask_1 & ~mask_2; 
+          val    |= ((stack[last-3] & mask_1) << (bitwidth-number)); 
+          val    |= ((stack[last-3] & mask_2) >> number); 
+        }
+
+        stack[last-3] = val;          
+        stack.pop_back();
+        stack.pop_back();
         stack.pop_back();
         break;
 
@@ -1197,6 +1237,57 @@ RngDecisionTree::EquationClass::parseFactor(
       commands.push_back(new_command);
       changeDepth( 1, depth );
       getToken(formula, token); 
+      break;
+
+    //////////////////////////////////////////////////////////////////////
+    //   rotate(val,num,pos,length)
+    //////////////////////////////////////////////////////////////////////
+    case TOKEN_ROTATE:
+      next_token = token.token;
+
+      getToken(formula, token); 
+      if (token.token != TOKEN_LEFT_PAREN) {
+        string error_message = "Expecting left parenthesis at '" + 
+	  formula + "'";
+        throw(error_message);
+      }
+
+      getToken(formula, token); 
+      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+      if (token.token != TOKEN_COMMA) {
+        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)  AA";
+        throw(error_message);
+      }
+
+      getToken(formula, token);
+      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+      if (token.token != TOKEN_COMMA) {
+        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)  BB";
+        throw(error_message);
+      }
+
+      getToken(formula, token);
+      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+      if (token.token != TOKEN_COMMA) {
+        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)  CC";
+        throw(error_message);
+      }
+
+      getToken(formula, token);
+      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+
+      if (token.token != TOKEN_RIGHT_PAREN) {
+        string error_message = "Expecting right parenthesis at '" + 
+	  formula + "'";
+        throw(error_message);
+      }
+
+      new_command = MAKE_COMMAND( COMMAND_ROTATE, 0 );
+      commands.push_back(new_command);
+
+      changeDepth( -3, depth );
+      getToken(formula , token); 
+   
       break;
 
     default:
@@ -2226,6 +2317,31 @@ void test_formula()
 
   formula = "abs((p2-p1-p0))";
   correct &= dt.testFormula( formula, vars, 10 );
+
+  ////////////////////////////////////////////////////////////////////// 
+  // rotate(val,num,pos,bitwidth)
+  ////////////////////////////////////////////////////////////////////// 
+  formula = "rotate(1234, 0, 3, 7)";
+  correct &= dt.testFormula( formula, vars, 1234 );
+
+  formula = "rotate(255, 3, 0, 16)";
+  correct &= dt.testFormula( formula, vars, 57375 );
+
+  formula = "rotate(255, 3, 3, 12)";
+  correct &= dt.testFormula( formula, vars, 28703 );
+
+  formula = "rotate(204, 0-3, 2, 6)";
+  correct &= dt.testFormula( formula, vars, 120 );
+
+  formula = "rotate(4044, 0-3, 2, 6)";
+  correct &= dt.testFormula( formula, vars, 3960 );
+
+  formula = "rotate(255, 0-3, 0, 16)";
+  correct &= dt.testFormula( formula, vars, 2040 );
+
+  formula = "rotate(255, 0-3, 2, 16)";
+  correct &= dt.testFormula( formula, vars, 2019 );
+
 
   if (! correct) {
     error("A formula is not giving the correct answer\n");
