@@ -40,6 +40,11 @@
  */
 template<typename DataT>
 class HashMTable {
+// data types
+public:
+	class iterator;
+protected:
+	struct MBucket;
 
 public:
 	/*-
@@ -97,6 +102,22 @@ public:
 	// retrieving table size and number of active entries.
 	unsigned tableSize() const {return _tableSize;}
 	unsigned size() const {return _size;}
+	unsigned size(unsigned offset, unsigned blockSize) const {
+		assert(offset + blockSize <= _tableSize);
+
+		MBucket *p = _table + offset;
+		MBucket const *end_p = p + blockSize;
+		unsigned count = 0;
+		while ( p != end_p ) {
+			if ( p->key >= 0 ) {
+				count++;
+			}
+
+			p++;
+		}
+
+		return count;
+	}
 
 	/*-
 	 *-----------------------------------------------------------------------
@@ -142,7 +163,7 @@ public:
 	 */
 	void insert(int key, const DataT &item, const unsigned offset, const unsigned blockSize) {
 		assert(key >= 0);
-		assert(blockSize > 0);
+		//assert(blockSize > 0);
 
 		MBucket *pos = findPos(key, offset, blockSize);
 
@@ -163,7 +184,7 @@ public:
 	 *      Return the pointer to the value entry, null if not found.
 	 *
 	 * Side Effects:
-	 *      None.
+	 *      Becareful of infinite loop.
 	 *
 	 *-----------------------------------------------------------------------
 	 */
@@ -314,7 +335,46 @@ public:
 		}
 	}
 
+	/**
+	 * an iterator to traverse valid entries in the hash table
+	 */
+	class iterator {
+	public:
+		iterator(HashMTable<DataT> &ht, unsigned offset, unsigned blockSize) : _left(ht._table + offset), _right(ht._table + offset + blockSize) {
+			assert(offset + blockSize <= ht._tableSize);
+			init();
+		}
+
+		void init() {
+			for ( _current = _left; _current != _right; _current++ ) {
+				if ( _current->key >= 0 )
+					break;
+			}
+		}
+
+		bool next(unsigned& key, DataT& data) {
+			for ( ; _current != _right; _current++ ) {
+				if ( _current->key >= 0 ) {
+					key = _current->key;
+					data = _current->item;
+
+					_current++;
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+	protected:
+		MBucket* const _left;
+		MBucket* const _right;
+		MBucket* _current;
+	};
+
 protected:
+	friend class iterator;
+
 	/*-
 	 * bucket for the hash table
 	 * In order to save memory, key < 0 means the entry is empty.
@@ -349,7 +409,7 @@ protected:
 	 *      Return the pointer to the hash entry.
 	 *
 	 * Side Effects:
-	 *      None.
+	 *      Becareful of infinite loop.
 	 *
 	 *-----------------------------------------------------------------------
 	 */
@@ -370,7 +430,7 @@ protected:
 	}
 
 	MBucket *_table;			// hash multi-table entries
-	unsigned _tableSize;		// the overall table size
+	unsigned _tableSize;			// the overall table size
 	unsigned _size;				// number of active entries in the table
 };
 
