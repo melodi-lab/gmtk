@@ -57,6 +57,7 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 MSCPT::MSCPT()
+  : _name(NULL)
 {
 }
 
@@ -145,6 +146,7 @@ void
 MSCPT::read(iDataStreamFile& is)
 {
 
+  is.read(_name,"MSCPT::read name");
   is.read(numParents,"MSCPT::read numParents");
 
   if (numParents < 0) 
@@ -210,11 +212,13 @@ MSCPT::read(iDataStreamFile& is)
 void
 MSCPT::write(oDataStreamFile& os)
 {
+  os.write(_name,"MSCPT::write name");os.nl();
   os.write(numParents,"MSCPT::write numParents");
-  os.nl();
+  os.writeComment("number parents");os.nl();
   for (int i=0;i<=numParents;i++) {
     os.write(cardinalities[i],"MSCPT::write cardinality");
   }
+  os.writeComment("cardinalities");
   os.nl();
   os.write(dtIndex);
   os.nl();

@@ -30,6 +30,11 @@
 
 class MeanVector : public EMable {
 
+  ///////////////////////////////////////////////////////////  
+  // the name
+  char *_name;
+
+
   //////////////////////////////////
   // The acutal mean vector
   RealArray means;
@@ -44,6 +49,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   MeanVector();
+  ~MeanVector() { delete [] _name; }
 
   //////////////////////////////////
   // set all current parameters to random values
@@ -51,9 +57,14 @@ public:
 
   //////////////////////////////////////////////
   // read/write basic parameters
-  void read(iDataStreamFile& is) { means.read(is); }
-  void write(oDataStreamFile& os) { means.write(os); }
-
+  void read(iDataStreamFile& is) { 
+    is.read(_name,"MeanVector::read name");
+    means.read(is); 
+  }
+  void write(oDataStreamFile& os) { 
+    os.write(_name,"MeanVector::write name");
+    means.write(os); 
+  }
 
   //////////////////////////////////
   // Public interface support for EM

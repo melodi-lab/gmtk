@@ -32,6 +32,9 @@
 
 class Dense1DPMF : public EMable {
 
+  ///////////////////////////////////////////////////////////  
+  // the name
+  char *_name;
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
@@ -49,6 +52,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   Dense1DPMF();
+  ~Dense1DPMF() { delete [] _name; }
 
   int length() { return pmf.len(); }
 

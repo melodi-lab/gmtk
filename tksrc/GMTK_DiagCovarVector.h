@@ -31,6 +31,10 @@
 class DiagCovarVector : public EMable {
 
 
+  //////////////////////////////////////////////////////  
+  // the name
+  char *_name;
+
   //////////////////////////////////
   // The actual covariance "matrix"
   RealArray covariances;
@@ -54,6 +58,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   DiagCovarVector();
+  ~DiagCovarVector() { delete [] _name; }
 
   ///////////////////////////////////////////////////////////  
   void makeRandom();
@@ -61,7 +66,10 @@ public:
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is);
-  void write(oDataStreamFile& os) { covariances.write(os); }
+  void write(oDataStreamFile& os) { 
+    os.write(_name,"DiagCovarVector::write name");
+    covariances.write(os); 
+  }
 
 
 

@@ -31,6 +31,11 @@
 
 class MDCPT : public EMable, public CPT {
 
+
+  //////////////////////////////////////////////////////  
+  // the name
+  char *_name;
+
   //////////////////////////////////
   // The acutal cpt. This is the table for
   // Pr( variable at mdcpt.len()-1 |  variables from 0 to mdcpt.len()-1 )
@@ -55,6 +60,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   MDCPT();
+  ~MDCPT() { delete [] _name; }
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.

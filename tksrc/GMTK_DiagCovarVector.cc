@@ -57,6 +57,7 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 DiagCovarVector::DiagCovarVector() 
+  : _name(NULL)
 {
 }
 
@@ -77,6 +78,7 @@ DiagCovarVector::DiagCovarVector()
 void 
 DiagCovarVector::read(iDataStreamFile& is)
 {
+  is.read(_name,"DiagCovarVector::read name");
   covariances.read(is); 
   for (int i=0;i<covariances.len();i++) {
     if (covariances[i] < GaussianCommon::varianceFloor()) {
