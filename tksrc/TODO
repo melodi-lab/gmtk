@@ -181,3 +181,6 @@ X add VCID everywhere.
 - export internal variables to command line changes
 
 - check on memory leak stuff
+
+- make sure that all gaussians use means/variances that are the right dimensionality
+  in read file.
