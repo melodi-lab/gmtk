@@ -102,27 +102,33 @@ ContinuousRandomVariable::probGivenParents()
   if (curMappingOrDirect->direct) {
     _cachedProb = 
       curMappingOrDirect->gaussian->log_p
-      (
-       globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),
-       globalObservationMatrix.baseAtFrame(timeIndex),
-       globalObservationMatrix.stride
-       );
+      ((unsigned)timeIndex,firstFeatureElement);
   } else {
     // need to find which gaussian this will be.
     const unsigned gaussianIndex =
       curMappingOrDirect->dtMapper->query(*curConditionalParents);
-    assert ( gaussianIndex < GM_Parms.mixGaussians.size() );
+
+    ///////////////////////////////////////////////////////////
+    // Dynamic error checking:
+    // the following check needs to be here because DTs might
+    // have formulas in their leaves and there is no way
+    // to check this statically w/o enumerating through all possible
+    // values of the parents of this RV.
+    if ( gaussianIndex >= GM_Parms.mixGaussians.size()) {
+      error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants GM "
+            "with index %d but there are only %d GMs",
+	    label.c_str(),timeIndex,curMappingOrDirect->dtMapper->name().c_str(),
+	    gaussianIndex,GM_Parms.mixGaussians.size());
+    }
+    ////////////////////////////////////////////////////////////
+
     //
     // TODO: this needs to be changed when we have
     // different types of mixtures of Gaussians.
     // printf("CRV: '%s', par val %d, gi = %d\n",
     // label.c_str(),(*curConditionalParents)[0]->val,gaussianIndex);
     _cachedProb = GM_Parms.mixGaussians[gaussianIndex]->log_p
-      (
-       globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),
-       globalObservationMatrix.baseAtFrame(timeIndex),
-       globalObservationMatrix.stride
-       );
+      ((unsigned)timeIndex,firstFeatureElement);
   }
   return _cachedProb;
 }
@@ -222,12 +228,7 @@ ContinuousRandomVariable::emIncrement(logpr posterior)
   findConditionalParents();
   if (curMappingOrDirect->direct) {
     curMappingOrDirect->gaussian->emIncrement
-      (
-       posterior,
-       globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),
-       globalObservationMatrix.baseAtFrame(timeIndex),
-       globalObservationMatrix.stride
-       );
+      (posterior,(unsigned)timeIndex,firstFeatureElement);
   } else {
     // need to find which gaussian this will be.
     const unsigned gaussianIndex =
@@ -237,12 +238,7 @@ ContinuousRandomVariable::emIncrement(logpr posterior)
     // TODO: this needs to be changed when we have
     // different types of mixtures of Gaussians.
     GM_Parms.mixGaussians[gaussianIndex]->emIncrement
-      (
-       posterior,
-       globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),
-       globalObservationMatrix.baseAtFrame(timeIndex),
-       globalObservationMatrix.stride
-       );
+      (posterior,(unsigned)timeIndex,firstFeatureElement);
   }
 }
 

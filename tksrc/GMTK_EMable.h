@@ -277,6 +277,10 @@ public:
 			   const Data32* const base,
 			   const int stride)
                         { assert(0); }
+  virtual void emIncrement(logpr prob,
+			   const unsigned frameIndex, 
+			   const unsigned firstFeatureElement) 
+                        { assert(0); }
   virtual void emIncrement(logpr prob,sArray<logpr>& a) { assert(0); }  
   virtual void emIncrement(logpr prob,const int val) { assert(0); }  
 
