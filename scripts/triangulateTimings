@@ -6,6 +6,8 @@ use strict;
 use Getopt::Long;
 use File::Basename;
 use File::Copy;
+use IPC::Open2; 
+use Symbol; 
 
 my $valid_options; 
 my $str_file; 
@@ -19,6 +21,7 @@ my @run_many;
 my @iterations; 
 my $str_basename;
 my $tmp_tri_file;
+my $output;
 my $crrnt_weight;
 my $crrnt_partitions;
 my $method;
@@ -34,11 +37,11 @@ my $pmake;
 # -Do not add paths to these definitons, alter your path instead
 ##############################################################################
 $gmtk_triangulate = 'gmtkTriangulate'; 
-#$gmtk_tfmerge     = 'gmtkTFmerge'; 
 $pmae             = 'pmae'; 
 $pmake            = 'pmake'; 
 
-$timing_length = 7.5; 
+#$timing_length = 7; 
+$timing_length = 20; 
 
 @run_once = ( 'completed', 'heuristics' );
 @run_many = ( 'R', 'W', 'MCS', 'F', 'pre-edge-lo-R', 'pre-edge-lo-W', 'pre-edge-lo-MCS', 'pre-edge-lo-F', 'pre-edge-all-R', 'pre-edge-all-W', 'pre-edge-all-MCS', 'pre-edge-all-F', 'pre-edge-random-R', 'pre-edge-random-W', 'pre-edge-random-MCS', 'pre-edge-random-F' );
@@ -103,14 +106,30 @@ else {
 }
 
 $str_basename = basename($str_file); 
-$working_dir = `pwd`;
+#$working_dir = `pwd`;
+#$working_dir = '/homes/bartels/proj/crrnt_gmtk/gmtk_dev/scripts';
+$working_dir = '/homes/bartels/proj/switchboard/train_1';
+
 chomp($working_dir);
 
 $tmp_tri_file = "$working_dir/$str_basename.tmp.trifile";
 
-#$tmp_tri_file = `mktemp $str_basename.tmp.XXXXXX`;
-#chomp($tmp_tri_file);
+#############################################################################
+# Open a copy of gmtkTime in multiTest mode 
+#############################################################################
+my @output;
+my $timing_script_input;
+my $timing_script_output;
 
+$timing_script_input  = gensym;
+$timing_script_output = gensym;
+
+open2( $timing_script_output, $timing_script_input, "pexport -attr \'$export_line\' $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ");
+
+#open2( $timing_script_output, $timing_script_input, "$timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1");
+
+$output = <$timing_script_output>;
+print STDERR "$output";
 
 #############################################################################
 # Time the methods that only need to be run once  
@@ -126,7 +145,7 @@ foreach $method (@run_once)
 {
   $crrnt_weight = run_triangulation( $method );
   $crrnt_partitions = run_timing( $tmp_tri_file );
-  printf "Method: %-10s  Weight: %8f  Partitions: %6d", $method, $crrnt_weight, 
+  printf "Method: %-20s  Weight: %8f  Partitions: %6d", $method, $crrnt_weight, 
     $crrnt_partitions;
   check_best($crrnt_partitions);
 }
@@ -143,7 +162,7 @@ while (1)
     {
       $crrnt_weight = run_triangulation( "$number-$method" );
       $crrnt_partitions = run_timing( $tmp_tri_file );
-      printf "Method: %-10s  Weight: %8f  Partitions: %6d", "$number-$method", 
+      printf "Method: %-20s  Weight: %8f  Partitions: %6d", "$number-$method", 
         $crrnt_weight, $crrnt_partitions;
       check_best($crrnt_partitions);
     }
@@ -165,9 +184,14 @@ sub run_triangulation
 
   $method   = pop;
 
-  $output = `echo \'$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $input_triangulation -findBestBoundary F -seed T -triangulationHeuristic $method -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $tmp_tri_file -printResults T -numBackupFiles 0\' | $pmae | $pmake -f- 1>&2`;
+  $output = `echo \'$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $input_triangulation -findBestBoundary F -seed T -triangulationHeuristic $method -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $tmp_tri_file -printResults T -numBackupFiles 0 1>&2\' | rexport -attr \'$export_line\' -f`;
 
-  ($jt_weight) = $output =~ /--- Chunk max clique weight = .*, jt_weight = ([0-9.]+)/; 
+  print STDERR "$output";
+  ($jt_weight) = $output =~ /Chunk max clique weight = [0-9.]+, total Cx1 weight = [0-9.]+, per-chunk total C weight = [0-9.]+, jt_weight = ([0-9.]+)/; 
+
+  if (!defined $jt_weight) {
+    $jt_weight = 99e9;
+  }
 
   return($jt_weight); 
 }
@@ -185,14 +209,35 @@ sub run_timing
 
   $tri_file = pop;
 
-  $output = `echo \'. $timing_script -strFile $str_file -seconds $timing_length -triFile $tri_file\' | $pmae \'$export_line\' | $pmake -f- `;
+  print $timing_script_input "$tri_file\n";
 
+  ###########################################################################
+  # Read in pre timing output:
+  #   exported to ....        # not needed if not exporting  
+  #   --------
+  #   0: Operating on trifile ''
+  #   0: Running program for approximately 7 seconds
+  ###########################################################################
+  $output = <$timing_script_output>;
+  print STDERR "$output";
+  $output = <$timing_script_output>;
+  print STDERR "$output";
+  $output = <$timing_script_output>;
   print STDERR "$output";
 
-  ($partitions) = $output =~ /% Program stats: .* residual partitions, ([0-9]+) total partitions,/;
+  ###########################################################################
+  # Read in timing results:
+  #   User: 6.980000, System: 0.030000, CPU 7.010000
+  #   0: Inference stats: 6.98...
+  ###########################################################################
+  $output = <$timing_script_output>;
+  print STDERR "$output";
+  $output = <$timing_script_output>;
+  print STDERR "$output";
 
-  #print "\n'$output'\n\n";
-  #print " PART: '$partitions'\n";
+  ($partitions) = $output =~ /residual partitions, ([0-9]+) total partitions,/;
+
+  (defined $partitions) or die "Can't find # of partitions in output:'@output'";
 
   return($partitions);
 }
