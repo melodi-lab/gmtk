@@ -1397,3 +1397,21 @@ Tue Jan 27 18:31:29 2004
     use of their allocated space (assuming in each
     case tha the variables use all their values with
     non-zero probability).
+
+Wed Jan 28 20:40:22 2004
+  - write GMTK's own tokenizer for .str files to avoid problems
+    with flex library, etc.
+
+
+Fri Jan 30 19:17:21 2004
+  - triangulater, add option to just re-triangulate
+    one of P, C, or E.
+    Allows for parallelism. 
+
+Sat Jan 31 11:45:06 2004
+  - arguments code, when printing out default arguments, it
+    prints out the ones after they potentially have been modified om
+    command line, i.e.,
+         foo -arg1 a -arg2 b -arg3 c -helpk
+    will print out default values of a for arg 1 b for arg2 regardless of
+    what they were in program. Fix this as it is confusing. 
