@@ -253,33 +253,50 @@ protected:
 
       #define MAKE_COMMAND(command, operand)     \
         (command | (operand << OPERAND_SHIFT))
+
       #define GET_COMMAND(command) (command & COMMAND_MASK) 
       #define GET_OPERAND(command) ((command & OPERAND_MASK) >> OPERAND_SHIFT)
+
+      typedef enum {
+        HIGHEST_PRECEDENCE = 0,
+        EXPONENT_PRCDNC,  
+        MULT_PRCDNC,  
+        ADDITIVE_PRCDNC,  
+        RELATIONAL_PRCDNC,  
+        EQUALITY_PRCDNC,  
+        BITWISE_AND_PRCDNC,  
+        BITWISE_OR_PRCDNC,  
+        LOGICAL_AND_PRCDNC,  
+        LOGICAL_OR_PRCDNC,  
+        CONDITIONAL_PRCDNC,
+        LAST,
+        LOWEST_PRECEDENCE = (LAST-1) 
+      } precedence_t;
 
       static map<string, tokenEnum> delimiter;
       static map<string, tokenEnum> function;
 
-      static map<tokenEnum, formulaCommand> termToken;
-      static map<tokenEnum, formulaCommand> expressionToken;
+      static map<tokenEnum, formulaCommand> infixToken;
       static map<tokenEnum, formulaCommand> functionToken;
       static map<tokenEnum, formulaCommand> twoValFunctionToken;
 
+      static map<formulaCommand, unsigned> commandPriority;
+
+      typedef vector<formulaCommand> parsingCommandContainer;
+
       void parseExpression(
-        tokenStruct& token,
-        string&      leafNodeVal, 
-        unsigned&    depth  
-      );
- 
-      void parseTerm(
-        tokenStruct& token,
-        string&      leafNodeVal, 
-        unsigned&    depth  
+        tokenStruct&             token,
+        string&                  formula, 
+        parsingCommandContainer& commands,
+        unsigned                 precedence_level, 
+        unsigned&                depth  
       );
 
-      void parseFactor(
-        tokenStruct& token,
-        string&      leafNodeVal, 
-        unsigned&    depth  
+      bool parseFactor(
+        tokenStruct&             token,
+        string&                  formula, 
+        parsingCommandContainer& commands,
+        unsigned&                depth  
       );
 
       void getToken(
