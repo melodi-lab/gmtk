@@ -98,6 +98,32 @@ libIEEEsupport.a: $(objs)
 	rm -f $@
 	$(archive) $@ $(objs)
 
+clean_depends:
+	rm depends.make
+	touch depends.make
+	make depends
+
+solaris:
+	rm -f ieeeFPsetup.h
+	rm -f ieeeFPsetup.cc
+	ln -s ieeeFPsetup_solaris.h ieeeFPsetup.h
+	ln -s ieeeFPsetup_solaris.cc ieeeFPsetup.cc
+
+
+linux:
+	rm -f ieeeFPsetup.h
+	rm -f ieeeFPsetup.cc
+	ln -s ieeeFPsetup_linux.h ieeeFPsetup.h
+	ln -s ieeeFPsetup_linux.cc ieeeFPsetup.cc
+
+
+ibm:
+	rm -f ieeeFPsetup.h
+	rm -f ieeeFPsetup.cc
+	ln -s ieeeFPsetup_ibm.h ieeeFPsetup.h
+	ln -s ieeeFPsetup_ibm.cc ieeeFPsetup.cc
+
+
 #----------------------------------------------------------------------------
 # Test programs for each .cc file
 #----------------------------------------------------------------------------
