@@ -161,6 +161,10 @@ public:
 			const unsigned int frameDelta);
   // destructor
   // ~JT_InferencePartition() {}
+  
+  // EM updating.
+  void emIncrement(const logpr probE, 
+		   const bool localCliqueNormalization = false);
 
 };
 
@@ -531,6 +535,11 @@ public:
   // version that does unrolling, and const. memory.
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames);
 
+
+  // EM training increment, for use with collectEvidence and distributeEvidence.
+  void emIncrement(const logpr probEvidence,
+		   const bool localCliqueNormalization = false);
+
   // print P(E) to stdout using all cliques. After a ce,de stage,
   // all values should be the same.
   void printAllCliquesProbEvidence();
@@ -543,6 +552,8 @@ public:
 			  unsigned& numUsableFrames,
 			  const unsigned base,
 			  const unsigned linear_section_threshold);
+
+
 
 
 

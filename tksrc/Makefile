@@ -96,7 +96,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkEMtrain gmtkViterbi gmtkParmConvert gmtkScore gmtkSample gmtkTriangulate gmtkTFmerge gmtkJT gmtkUnroll gmtkDTindex
+all_exs = gmtkEMtrain gmtkEMtrainNew gmtkViterbi gmtkParmConvert gmtkScore gmtkSample gmtkTriangulate gmtkTFmerge gmtkJT gmtkUnroll gmtkDTindex
 
 all: ${all_exs}
 
@@ -115,7 +115,7 @@ objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVect
 #----------------------------------------------------------------------------
 
 
-all_srcs = gmtkSample.cc gmtkScore.cc gmtkUnroll.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixtureCommon.cc GMTK_Component.cc GMTK_GaussianComponent.cc GMTK_Mixture.cc gmtkEMtrain.cc GMTK_EMable.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_Hash.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc GMTK_JunctionTree.cc gmtkTriangulate.cc gmtkTFmerge.cc gmtkJT.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc gmtkDTindex.cc GMTK_PackCliqueValue.cc
+all_srcs = gmtkSample.cc gmtkScore.cc gmtkUnroll.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixtureCommon.cc GMTK_Component.cc GMTK_GaussianComponent.cc GMTK_Mixture.cc gmtkEMtrain.cc gmtkEMtrainNew.cc GMTK_EMable.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_Hash.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc GMTK_JunctionTree.cc gmtkTriangulate.cc gmtkTFmerge.cc gmtkJT.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc gmtkDTindex.cc GMTK_PackCliqueValue.cc
 
 all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixtureCommon.h GMTK_Component.h GMTK_GaussianComponent.h GMTK_Mixture.h GMTK_LinMeanCondDiagGaussian.h GMTK_Hash.h GMTK_ProgramDefaultParms.h  GMTK_NameCollection.h GMTK_GMTemplate.h GMTK_JunctionTree.h GMTK_GraphicalModel.h GMTK_ZeroScoreMixture.h GMTK_UnityScoreMixture.h GMTK_USCPT.h GMTK_RVInfo.h GMTK_BoundaryTriangulate.h GMTK_MaxClique.h GMTK_Timer.h GMTK_Signals.h version.h GMTK_PackCliqueValue.h
 
@@ -131,6 +131,10 @@ programname: $(objs)
 gmtkEMtrain: gmtkEMtrain.o $(objs)
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkEMtrain.o $(objs) $(LIBS)
+
+gmtkEMtrainNew: gmtkEMtrainNew.o $(objs)
+	-@rm -f $@
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkEMtrainNew.o $(objs) $(LIBS)
 
 gmtkUnroll: gmtkUnroll.o $(objs)
 	-@rm -f $@

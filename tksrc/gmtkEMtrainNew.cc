@@ -75,10 +75,9 @@ static char *outputMasterFile=NULL;
 static char *inputTrainableParameters=NULL;
 static bool binInputTrainableParameters=false;
 // static char *outputTrainableParameters="outParms%d.gmp";
-// static char *outputTrainableParameters=NULL;
-// static bool binOutputTrainableParameters=false;
-// static bool writeParametersAfterEachEMIteration=true;
-// static char *objsToNotTrainFile=NULL;
+static char *outputTrainableParameters=NULL;
+static bool binOutputTrainableParameters=false;
+static bool writeParametersAfterEachEMIteration=true;
 static int allocateDenseCpts=0;
 
 
@@ -99,7 +98,7 @@ static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
 
 /////////////////////////////////////////////////////////////
 // File Range Options
-static char *dcdrng_str="all";
+static char *trrng_str="all";
 static int startSkip = 0;
 static int endSkip = 0;
 
@@ -111,11 +110,25 @@ static bool print_version_and_exit = false;
 
 /////////////////////////////////////////////////////////////
 // Inference Options
-static bool doDistributeEvidence=false;
-static bool probE=false;
 static bool island=false;
 static unsigned base=2;
 static unsigned lst=100;
+
+/////////////////////////////////////////////////////////////
+// EM Training Options
+static unsigned maxEMIterations;
+static bool randomizeParams = false;
+static float lldp = 0.001;
+static float mnlldp = 0.01;
+static char *loadAccFile = NULL;
+static char *loadAccRange = NULL;
+static char *storeAccFile = NULL;
+static bool accFileIsBinary = true;
+static char *llStoreFile = NULL;
+static char *objsToNotTrainFile=NULL;
+static bool localCliqueNormalization = false;
+
+
 
 Arg Arg::Args[] = {
 
@@ -137,7 +150,6 @@ Arg Arg::Args[] = {
   Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 1"),
   Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 1"),
 
-
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
@@ -145,9 +157,10 @@ Arg Arg::Args[] = {
   Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
   Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
   Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
-  // Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
-  // Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
-  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
+  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
+  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
+  Arg("wpaeei",Arg::Opt,writeParametersAfterEachEMIteration,"Write Parameters After Each EM Iteration Completes"),
+  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Auto allocate undef CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 use random initial CPT values. arg = 2, use uniform values"),
   Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
 
   /////////////////////////////////////////////////////////////
@@ -173,7 +186,7 @@ Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // File Range Options
-  Arg("dcdrng",Arg::Opt,dcdrng_str,"Range to decode over segment file"),
+  Arg("trrng",Arg::Opt,trrng_str,"Range to decode over segment file"),
   Arg("startSkip",Arg::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
   Arg("endSkip",Arg::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
 
@@ -185,13 +198,40 @@ Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // Inference Options
-  Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Do distribute evidence also"),
-  Arg("probE",Arg::Opt,probE,"Run the const memory probE function"),
   Arg("island",Arg::Opt,island,"Run island algorithm"),
   Arg("base",Arg::Opt,base,"Island algorithm logarithm base"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
   Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
   Arg("componentCache",Arg::Opt,MixtureCommon::cacheComponentsInEmTraining,"Cache mixture probabilities, faster but uses more memory."),
+
+  /////////////////////////////////////////////////////////////
+  // EM Training Options
+  Arg("maxEmIters",Arg::Opt,maxEMIterations,"Max number of EM iterations to do"),
+  Arg("random",Arg::Opt,randomizeParams,"Randomize the parameters"),
+  // support for vanishing
+  Arg("mcvr",Arg::Opt,MixtureCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
+  Arg("botForceVanish",Arg::Opt,MixtureCommon::numBottomToForceVanish,"Number of bottom mixture components to force vanish"),
+  // support for splitting
+  Arg("mcsr",Arg::Opt,MixtureCommon::mixCoeffSplitRatio,"Mixture Coefficient Splitting Ratio"),
+  Arg("topForceSplit",Arg::Opt,MixtureCommon::numTopToForceSplit,"Number of top mixture components to force split"),
+  Arg("meanCloneSTDfrac",Arg::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
+  Arg("covarCloneSTDfrac",Arg::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+  Arg("dlinkCloneSTDfrac",Arg::Opt,DlinkMatrix::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+  Arg("cloneShareMeans",Arg::Opt,GaussianComponent::cloneShareMeans,"Gaussian component clone shares parent mean"),
+  Arg("cloneShareCovars",Arg::Opt,GaussianComponent::cloneShareCovars,"Gaussian component clone shares parent covars"),
+  Arg("cloneShareDlinks",Arg::Opt,GaussianComponent::cloneShareDlinks,"Gaussian component clone shares parent dlinks"),
+  // likelihood difference thresholds
+  Arg("lldp",Arg::Opt,lldp,"Log Likelihood difference percentage for termination"),
+  Arg("mnlldp",Arg::Opt,mnlldp,"Absolute value of max negative Log Likelihood difference percentage for termination"),
+  // EM accumulator file support
+  Arg("storeAccFile",Arg::Opt,storeAccFile,"Store accumulators file"),
+  Arg("loadAccFile",Arg::Opt,loadAccFile,"Load accumulators file"), 
+  Arg("loadAccRange",Arg::Opt,loadAccRange,"Load accumulators file range"), 
+  Arg("accFileIsBinary",Arg::Opt,accFileIsBinary,"Binary accumulator files"), 
+  // log likelihood store file
+  Arg("llStoreFile",Arg::Opt,llStoreFile,"File to store previous sum LL's"), 
+  Arg("objsNotToTrain",Arg::Opt,objsToNotTrainFile,"File listing trainable parameter objects to not train."),
+  Arg("localCliqueNorm",Arg::Opt,localCliqueNormalization,"Use local clique sum for posterior normalization."),
 
   // final one to signal the end of the list
   Arg()
@@ -383,73 +423,217 @@ main(int argc,char*argv[])
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
-  if (globalObservationMatrix.numSegments()==0)
-    error("ERROR: no segments are available in observation file");
+  if (randomizeParams) {
+    infoMsg(IM::Default,"WARNING: GMTK is randomizing all trainable parameters and writing them to file 'random.gmp'");
+    GM_Parms.makeRandom();
+    oDataStreamFile of("random.gmp");
+    GM_Parms.writeTrainable(of);
+  }
 
-  BP_Range* dcdrng = new BP_Range(dcdrng_str,0,globalObservationMatrix.numSegments());
-  if (dcdrng->length() <= 0) {
-    infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
-	  dcdrng_str);
+  if (globalObservationMatrix.numSegments()==0) {
+    infoMsg(IM::Default,"ERROR: no segments are available in observation file. Exiting...");
     exit_program_with_status(0);
   }
 
-  GM_Parms.setFirstUtterance( dcdrng->min() ); 
-  GM_Parms.clampFirstExample();
-  BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
-  while ((*dcdrng_it) <= dcdrng->max()) {
-    const unsigned segment = (unsigned)(*(*dcdrng_it));
-    if (globalObservationMatrix.numSegments() < (segment+1)) 
-      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-	    globalObservationMatrix.numSegments(),
-	    0,globalObservationMatrix.numSegments()-1);
+  BP_Range* trrng = new BP_Range(trrng_str,0,globalObservationMatrix.numSegments());
+  if (trrng->length() <= 0) {
+    infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
+	  trrng_str);
+    exit_program_with_status(0);
+  }
 
-    globalObservationMatrix.loadSegment(segment);
-    GM_Parms.setSegment(segment);
+  if (trrng->length() == 0 && loadAccFile == NULL) {
+    error("ERROR: with EM training. Either must specify segments to train or must load accumulatores (or both).");
+  }
 
-    const int numFrames = globalObservationMatrix.numFrames();
+  logpr total_data_prob = 1.0;
 
-    if (probE) {
-      unsigned numUsableFrames;
-      logpr probe = myjt.probEvidence(numFrames,numUsableFrames);
-      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-    } else if (island) {
-      unsigned numUsableFrames;
-      myjt.collectDistributeIsland(numFrames,
-				   numUsableFrames,
-				   base,
-				   lst);
+  /////////////////////////////////////////////////////////
+  // first load any and all accumulators
+  if (loadAccFile != NULL) {
+    if (loadAccRange == NULL) {
+      infoMsg(IM::Default,"Loading accumulators from '%s'\n",loadAccFile);
+      iDataStreamFile inf(loadAccFile,accFileIsBinary);
+      inf.read(total_data_prob.valref());
+      GM_Parms.emLoadAccumulators(inf);
     } else {
-      unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Default,"Collecting Evidence\n");
-      myjt.collectEvidence();
-      infoMsg(IM::Default,"Done Collecting Evidence\n");
-      logpr probe = myjt.probEvidence();
-      printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-
-      if (doDistributeEvidence) {
-	infoMsg(IM::Default,"Distributing Evidence\n");
-	myjt.distributeEvidence();
-	infoMsg(IM::Default,"Done Distributing Evidence\n");
-	myjt.printAllCliquesProbEvidence();
-	
-	probe = myjt.probEvidence();
-	printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	       segment,
-	       probe.val(),
-	       probe.val()/numFrames,
-	       probe.val()/numUsableFrames);
+      BP_Range lfrng(loadAccRange,0,1000);
+      for (BP_Range::iterator lfit=lfrng.begin();
+	   lfit<=lfrng.max();
+	   lfit++) {
+	const int bufsize = 2048;
+	char buff[bufsize];
+	copyStringWithTag(buff,loadAccFile,(*lfit),bufsize);
+	iDataStreamFile inf(buff,accFileIsBinary);
+	if (lfit == lfrng.begin()) {
+	  infoMsg(IM::Default,"Loading accumulators from '%s'\n",buff);
+	  inf.read(total_data_prob.valref());
+	  GM_Parms.emLoadAccumulators(inf);
+	} else {
+	  infoMsg(IM::Default,"Accumulating accumulators from '%s'\n",buff);
+	  logpr tmp;
+	  inf.read(tmp.valref());
+	  total_data_prob *= tmp;
+	  GM_Parms.emAccumulateAccumulators(inf);
+	}
       }
     }
-    (*dcdrng_it)++;
   }
+
+  // Now, do EM training iterations
+  logpr previous_dp;
+  previous_dp.set_to_almost_zero();
+  if (fsize(llStoreFile) == sizeof(logpr)) {
+    // get the previous log likelyhood if it exists in a file
+    // so we can keep track of how much the likelihood is changing
+    // when we do externally driven EM iteration (say during
+    // parallel training).
+    iDataStreamFile inf(llStoreFile,false);
+    inf.read(previous_dp.valref());
+  }
+
+  double llDiffPerc = 100.0;
+
+  for (unsigned i=0; i<maxEMIterations; i++)  {
+    total_data_prob = 1.0;
+    unsigned total_num_frames = 0;
+
+    if (trrng->length() > 0) {
+      BP_Range::iterator* trrng_it = new BP_Range::iterator(trrng->begin());
+      while ((*trrng_it) <= trrng->max()) {
+	const unsigned segment = (unsigned)(*(*trrng_it));
+	if (globalObservationMatrix.numSegments() < (segment+1)) 
+	  error("ERROR: only %d segments in file, training range must be in range [%d,%d] inclusive\n",
+		globalObservationMatrix.numSegments(),
+		0,globalObservationMatrix.numSegments()-1);
+
+	globalObservationMatrix.loadSegment(segment);
+	GM_Parms.setSegment(segment);
+
+#if 0
+	if (globalObservationMatrix.active()) {
+	  globalObservationMatrix.printSegmentInfo();
+	  ::fflush(stdout);
+	}
+#endif
+
+	const int numFrames = globalObservationMatrix.numFrames();
+
+	if (island) {
+	  error("WARNING: island EM front end not yet ready\n");
+	  unsigned numUsableFrames;
+	  myjt.collectDistributeIsland(numFrames,
+				       numUsableFrames,
+				       base,
+				       lst);
+	} else {
+	  unsigned numUsableFrames = myjt.unroll(numFrames);
+	  total_num_frames += numUsableFrames;
+	  infoMsg(IM::Low,"Collecting Evidence\n");
+	  myjt.collectEvidence();
+	  infoMsg(IM::Low,"Done Collecting Evidence\n");
+	  logpr probe = myjt.probEvidence();
+	  printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		 segment,
+		 probe.val(),
+		 probe.val()/numFrames,
+		 probe.val()/numUsableFrames);
+	  if (probe.essentially_zero()) {
+	    infoMsg(IM::Default,"Not training segment since probability is essentially zero\n");
+	  } else {
+	    total_data_prob *= probe;
+	    infoMsg(IM::Low,"Distributing Evidence\n");
+	    myjt.distributeEvidence();
+	    infoMsg(IM::Low,"Done Distributing Evidence\n");
+	    
+	    if (IM::messageGlb(IM::Huge)) {
+	      // print out all the clique probabilities. In the ideal
+	      // case, they should be the same.
+	      myjt.printAllCliquesProbEvidence();
+	    }
+	    // And actually train with EM.
+	    infoMsg(IM::Low,"Incrementing EM Accumulators\n");
+	    myjt.emIncrement(probe,localCliqueNormalization);
+	  }
+	}
+	(*trrng_it)++;
+      }
+      infoMsg(IM::Default,"Total data log prob from %d frames processed is: %1.9e\n",
+	      total_num_frames,total_data_prob.val());
+    }
+
+    if (storeAccFile != NULL) {
+      // just store the accumulators and exit.
+      warning("NOTE: storing current accumulators (from training %d segments) to file '%s' and exiting.",
+	      trrng->length(),storeAccFile);
+      oDataStreamFile outf(storeAccFile,accFileIsBinary);
+      outf.write(total_data_prob.val());
+      GM_Parms.emStoreAccumulators(outf);
+      exit_program_with_status(0);
+    }
+
+    // at this point, either we should have
+    // done some training or we should have
+    // accumulated something.
+
+    GM_Parms.emEndIteration();
+    // if (total_data_prob > previous_dp)
+    GM_Parms.emSwapCurAndNew();
+
+    /////////////////////////////////////////////////////////
+    // the basic parameters after each iteration 
+    if (writeParametersAfterEachEMIteration 
+	&& outputTrainableParameters != NULL) {
+      char buff[2048];
+      copyStringWithTag(buff,outputTrainableParameters,
+			i,2048);
+      oDataStreamFile of(buff,binOutputTrainableParameters);
+      GM_Parms.writeTrainable(of);
+    }
+    // also write according to output master
+    GM_Parms.write(outputMasterFile,i);  
+
+    // store the current total data probability to a file.
+    if (llStoreFile != NULL) {
+      oDataStreamFile of(llStoreFile,false);
+      of.write(total_data_prob.val());
+    }
+
+    // compute the log likelihood difference percentage
+    if (previous_dp.val() == 0) {
+      // this means that the data has probability 1, since log(1) = 0
+      if (total_data_prob.val() == previous_dp.val())
+	llDiffPerc = 0.0;
+      else {
+	previous_dp.valref() = std::exp((double)-20.0);
+	llDiffPerc = 
+	  100.0*fabs((total_data_prob.val() - previous_dp.val())/previous_dp.val());
+      }
+    } else {
+      llDiffPerc = 
+	100.0*fabs((total_data_prob.val() - previous_dp.val())/previous_dp.val());
+    }
+    previous_dp = total_data_prob;
+
+    if (llDiffPerc < lldp) {
+      printf("Log likelihood difference percentage (%e) fell below threshold (%e). Ending EM training.\n",llDiffPerc,lldp);
+      break;
+    }
+  }
+
+  /////////////////////////////////////////////////////////
+  // finally, write out the final basic parameters
+  // w/o any numeric tag.
+  if (outputTrainableParameters != NULL) {
+    char buff[2048];
+    copyStringWithTag(buff,outputTrainableParameters,
+		      CSWT_EMPTY_TAG,2048);
+    oDataStreamFile of(buff,binOutputTrainableParameters);
+    GM_Parms.writeTrainable(of);
+  }
+  // also write according to output master
+  GM_Parms.write(outputMasterFile);  
+
 
   exit_program_with_status(0);
 }

@@ -825,7 +825,6 @@ public:
   void ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePartition& part);
 
 
-
   // distribute evidence functions.
   void deScatterToOutgoingSeparators(JT_InferencePartition& part);
   void deReceiveFromIncommingSeparator(JT_InferencePartition& part,
@@ -835,6 +834,10 @@ public:
 
   // sum up the probabilities in the current clique and return their value.
   logpr sumProbabilities();
+
+  // EM accumulation support.
+  void emIncrement(const logpr probE, 
+		   const bool localCliqueNormalization = false);
 
 };
 
