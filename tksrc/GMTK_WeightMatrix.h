@@ -41,16 +41,20 @@ class Weightmatrix : public EMable {
   ///////////////////////////////////////////////////////////  
   // dimensons of the distribution (separate from the memory
   // allocated for arr above).
-  int rows;
-  int cols;
+  int _rows; // == number of outputs
+  int _cols; // == number of inputs
   ///////////////////////////////////////////////////////////  
 
 public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  Weightmatrix() 
+  Weightmatrix();
 
+  int rows() { return _rows; }
+  int cols() { return _cols; }
+  int nInputs() { return _cols; }
+  int nOutputs() { return _rows; }
 
   ///////////////////////////////////////////////////////////    
   void read(iDataStreamFile& is);

@@ -108,6 +108,8 @@ testMDCPT: GMTK_MDCPT.cc GMTK_MDCPT.h  GMTK_CPT.o
 testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_RngDecisionTree.cc $(LIBS)
 
+testGMParms: GMTK_GMParms.cc GMTK_GMParms.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_GMParms.cc $(LIBS)
 
 
 #----------------------------------------------------------------------------
