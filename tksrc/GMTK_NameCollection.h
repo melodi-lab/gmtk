@@ -80,11 +80,12 @@ public:
   void fillMgTable();
   void fillSpmfTable();
 
-  // access routines.
+  // access routines to mix Gaussians
   MixGaussians* mg(int i) { return mgTable[i]; }
   unsigned mgSize() { return mgTable.size(); }
   bool validMgIndex(unsigned u) { return (u < mgSize()); }
 
+  // access routines to sparse 1D PMFs
   Sparse1DPMF* spmf(int i) { return spmfTable[i]; }
   unsigned spmfSize() { return spmfTable.size(); }
   bool validSpmfIndex(unsigned u) { return (u < spmfSize()); }
