@@ -18,37 +18,38 @@
 
 
 
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-#include <float.h>
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
+#include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include <algorithm>
 #include <iterator>
+#include <list>
 #include <map>
 #include <set>
-#include <algorithm>
 
-#include "general.h"
-#include "error.h"
 #include "debug.h"
+#include "error.h"
+#include "general.h"
 #include "rand.h"
 
-#include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
-#include "GMTK_GM.h"
 #include "GMTK_BoundaryTriangulate.h"
-#include "GMTK_GMParms.h"
+#include "GMTK_ContinuousRandomVariable.h"
+#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_FileParser.h"
 #include "GMTK_MDCPT.h"
+#include "GMTK_Mixture.h"
+#include "GMTK_GM.h"
+#include "GMTK_GMParms.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
-#include "GMTK_Mixture.h"
 #include "GMTK_ObservationMatrix.h"
+#include "GMTK_RandomVariable.h"
 
 VCID("$Header$");
 
@@ -1052,21 +1053,25 @@ triangulate(// input: nodes to be triangulated
 {
   infoMsg(Huge,"\nBEGINNING TRIANGULATION --- \n");
 
-  vector<MaxClique> cliques;
-  vector<RandomVariable*>      order;
-  double                       weight;
-  string meth_str;
+  vector<MaxClique>       cliques;
+  vector<RandomVariable*> order;
+  double                  weight;
+  string                  meth_str;
 
   for (unsigned trial = 0;trial<tri_heur.numberTrials;trial++) {
-    char buff[BUFSIZ];
+    string annealing_str;
+    char   buff[BUFSIZ];
+
     sprintf(buff,"%d",trial);
     restoreNeighbors(orgnl_nghbrs);
     if (tri_heur.style == TS_ANNEALING) {
       triangulateSimulatedAnnealing(nodes, 
 				    cliques, 
 				    order, 
-				    orgnl_nghbrs );
-      meth_str = string(buff) + "-" + "annealing";
+				    orgnl_nghbrs,
+                                    annealing_str );
+
+      meth_str = string(buff) + "-" + "annealing-" + annealing_str;
     } else if (tri_heur.style == TS_EXHAUSTIVE) {
       triangulateExhaustiveSearch( nodes, orgnl_nghbrs, cliques ); 
       meth_str = string(buff) + "-" + "exhaustive";
@@ -1436,7 +1441,8 @@ triangulateSimulatedAnnealing(
   set<RandomVariable*>     nodes,
   vector<MaxClique>&       cliques,
   vector<RandomVariable*>& best_order,
-  vector<nghbrPairType>    orgnl_nghbrs
+  vector<nghbrPairType>    orgnl_nghbrs,
+  string&                  parameter_string 
   )
 {
   ///////////////////////////////////////////////////////////////////////
@@ -1457,6 +1463,24 @@ triangulateSimulatedAnnealing(
   const double   stop_ratio = 0.0001;
   const unsigned chain_length = 1000;
 
+  ///////////////////////////////////////////////////////////////////////
+  // Record parameters in a comment string
+  ///////////////////////////////////////////////////////////////////////
+  enum {
+    string_length = 16
+  };
+  char parameter[string_length];    
+
+  sprintf( parameter, "%f", distance );
+  assert( strlen(parameter)<string_length ); 
+  parameter_string = "Distance:" + string(parameter); 
+  sprintf( parameter, "%f", stop_ratio);
+  assert( strlen(parameter)<string_length ); 
+  parameter_string = parameter_string + "  Stop Ratio:" + string(parameter); 
+  sprintf( parameter, "%d", chain_length);
+  assert( strlen(parameter)<string_length ); 
+  parameter_string = parameter_string + "  Chain Length:" + string(parameter); 
+  
   ///////////////////////////////////////////////////////////////////////
   // Local Variables
   ///////////////////////////////////////////////////////////////////////
@@ -2590,7 +2614,6 @@ void
 BoundaryTriangulate::
 anyTimeTriangulate(GMTemplate& gm_template)
 {
-
   assert (timer != NULL);
 
   nghbrPairType nghbr_pair;
