@@ -860,7 +860,7 @@ public:
 
   // Ensure that the partitions in the given template are chordal, and
   // die with an error if not.
-  void ensurePartitionsAreChordal(GMTemplate& gm_template);
+  bool ensurePartitionsAreChordal(GMTemplate& gm_template, const bool dieIfNot=true);
 
   // interface to private boolean.
   void dontMemoizeBoundary() {

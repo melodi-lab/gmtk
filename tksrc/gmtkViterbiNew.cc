@@ -529,10 +529,7 @@ main(int argc,char*argv[])
 	    globalObservationMatrix.numSegments(),
 	    0,globalObservationMatrix.numSegments()-1);
 
-    globalObservationMatrix.loadSegment(segment);
-    GM_Parms.setSegment(segment);
-
-    const int numFrames = globalObservationMatrix.numFrames();
+    const unsigned numFrames = GM_Parms.setSegment(segment);
 
     logpr probe;
     if (island) {

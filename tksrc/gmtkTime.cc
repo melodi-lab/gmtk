@@ -95,7 +95,7 @@ static int allocateDenseCpts=0;
 // Structure file, Triangulation File, and Junction Tree Options.
 static char *strFileName=NULL;
 static char *triFileName=NULL;
-static char *jtFileName="jt_info.txt";
+static char *jtFileName=NULL;
 
 /////////////////////////////////////////////////////////////
 // Continuous RV Options
@@ -120,6 +120,8 @@ static unsigned verbosity = DEF_VERBOSITY;
 static bool print_version_and_exit = false;
 static unsigned seconds = 10;
 static bool multiTest = false;
+static int rlimitSlop = 2;
+// static bool limitBest = true;
 
 /////////////////////////////////////////////////////////////
 // Inference Options
@@ -207,6 +209,8 @@ Arg Arg::Args[] = {
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
   Arg("seconds",Arg::Opt,seconds,"Number of seconds to run and then exit."),
   Arg("multiTest",Arg::Opt,multiTest,"Run gmtkTime in multi-test mode, taking triangulation file names from command line."),
+  Arg("slop",Arg::Opt,rlimitSlop,"In multiTest mode, number of additional seconds before fail-terminate is forced."),
+  // Arg("limitBest",Arg::Opt,limitBest,"Limit running time to be approximately best seen so far.."),
 
   /////////////////////////////////////////////////////////////
   // Inference Options
@@ -242,8 +246,7 @@ void jtExpiredSigHandler(int arg) {
   JunctionTree::probEvidenceTimeExpired = true;
 }
 
-
-
+#define MAX(x,y) ((x)>(y)?(x):(y))
 
 int
 main(int argc,char*argv[])
@@ -262,11 +265,12 @@ main(int argc,char*argv[])
   
   if (print_version_and_exit) {
     printf("%s\n",gmtk_version_id);
-    exit(0);
+    exit(EXIT_SUCCESS);
   }
   
   if(!parse_was_ok) {
-    Arg::usage(); exit(-1);
+    Arg::usage(); 
+    exit(EXIT_FAILURE);
   }
 
   (void) IM::setGlbMsgLevel(verbosity);
@@ -383,57 +387,14 @@ main(int argc,char*argv[])
   // TODO: check that beam is a valid value.
   // logpr pruneRatio;
   // pruneRatio.valref() = -beam;
+  if (!multiTest) {
 
-  unsigned iteration = 0;
-  do {
-
-    // Utilize both the partition information and elimination order
-    // information already computed and contained in the file. This
-    // enables the program to use external triangulation programs,
-    // where this program ensures that the result is triangulated
-    // and where it reports the quality of the triangulation.
-
+    // we're not in multitest mode.
     string tri_file;
-    if (multiTest) {
-      // get name of triangulation file from the command line.
-      //   If trifile is named 'end' then, end.
-      //   If empty line, then use triFileName approach, assuming trifile is re-written.
-      char buff[16384];
-      fflush(stdout);
-      if (!fgets(buff,sizeof(buff),stdin)) {
-	// we're done.
-	break;
-      }
-      unsigned n = strlen(buff);
-      if (buff[n-1] == '\n')
-	buff[n-1] = '\0';
-      if (strlen(buff) == 0) {
-	if (triFileName == NULL) 
-	  tri_file = string(strFileName) + GMTemplate::fileExtension;
-	else 
-	  tri_file = string(triFileName);
-      } else if (strcmp(buff,"END") == 0 || 		 
-		 strcmp(buff,"end") == 0) {
-	multiTest = false;
-	break; // out of enclosing do loop 
-      } else
-	tri_file = buff;
-    } else {
-      // not multiTest mode.
-      if (triFileName == NULL) 
-	tri_file = string(strFileName) + GMTemplate::fileExtension;
-      else 
-	tri_file = string(triFileName);
-    }
-
-
-    if (multiTest) {
-
-
-
-    }
-
-
+    if (triFileName == NULL) 
+      tri_file = string(strFileName) + GMTemplate::fileExtension;
+    else 
+      tri_file = string(triFileName);
 
     GMTemplate gm_template(fp);
     {
@@ -446,19 +407,19 @@ main(int argc,char*argv[])
       gm_template.readMaxCliques(is);
     }
     gm_template.triangulatePartitionsByCliqueCompletion();
-    if (1) { 
+    { 
       // check that graph is indeed triangulated.
-      // TODO: perhaps take this check out so that inference code does
-      // not need to link to the triangulation code (either that, or put
-      // the triangulation check in a different file, so that we only
-      // link to tri check code).
       BoundaryTriangulate triangulator(fp,
 				       gm_template.maxNumChunksInBoundary(),
 				       gm_template.chunkSkip(),1.0);
-      triangulator.ensurePartitionsAreChordal(gm_template);
+      if (!triangulator.ensurePartitionsAreChordal(gm_template)) {
+	error("ERROR: triangulation file '%s' is not chordal",
+	      tri_file.c_str());
+      }
     }
 
 
+    
     ////////////////////////////////////////////////////////////////////
     // CREATE JUNCTION TREE DATA STRUCTURES
     infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
@@ -469,10 +430,10 @@ main(int argc,char*argv[])
       myjt.printAllJTInfo(jtFileName);
     infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
     ////////////////////////////////////////////////////////////////////
-
+    
     if (globalObservationMatrix.numSegments()==0)
       error("ERROR: no segments are available in observation file");
-
+    
     BP_Range* dcdrng = new BP_Range(dcdrng_str,0,globalObservationMatrix.numSegments());
     if (dcdrng->length() <= 0) {
       infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
@@ -484,10 +445,6 @@ main(int argc,char*argv[])
     JunctionTree::probEvidenceTimeExpired = false;
     signal(SIGALRM,jtExpiredSigHandler);
 
-    if (multiTest) {
-      printf("--------\n%d: Operating on trifile '%s'\n",iteration,tri_file.c_str());
-      printf("%d: ",iteration); 
-    }
     printf("Running program for approximately %d seconds\n",seconds);
     fflush(stdout);
 
@@ -508,10 +465,7 @@ main(int argc,char*argv[])
 		globalObservationMatrix.numSegments(),
 		0,globalObservationMatrix.numSegments()-1);
 
-	globalObservationMatrix.loadSegment(segment);
-	GM_Parms.setSegment(segment);
-
-	const int numFrames = globalObservationMatrix.numFrames();
+	const unsigned numFrames = GM_Parms.setSegment(segment);
 
 	unsigned numUsableFrames;
 	numCurPartitionsDone = 0;
@@ -548,13 +502,8 @@ main(int argc,char*argv[])
   
     getrusage(RUSAGE_SELF,&rue);
     alarm(0);
-
-
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
-
-    if (multiTest)
-      printf("%d: ",iteration);
     printf("Inference stats: %0.2f seconds, %d segments + %d residual partitions, %d total partitions, %0.3e partitions/sec\n",
 	   userTime,
 	   totalNumberSegmentsDone,
@@ -562,8 +511,277 @@ main(int argc,char*argv[])
 	   totalNumberPartitionsDone,
 	   (double)totalNumberPartitionsDone/userTime);
 
-    iteration++;
-  } while (multiTest);
+  } else {
+    // we're in multitest mode.
 
-  exit_program_with_status(0);
+    unsigned iteration = 0;
+
+    bool first = true;
+    string best_tri_file;
+    double bestRate = 0.0;
+
+    while (1) {
+
+      // Utilize both the partition information and elimination order
+      // information already computed and contained in the file. This
+      // enables the program to use external triangulation programs,
+      // where this program ensures that the result is triangulated
+      // and where it reports the quality of the triangulation.
+
+      string tri_file;
+      // get name of triangulation file from the command line.
+      //   If trifile is named 'end' then, end.
+      //   If empty line, then use triFileName approach, assuming trifile is re-written.
+      char buff[16384];
+      fflush(stdout);
+      if (!fgets(buff,sizeof(buff),stdin)) {
+	// we're done.
+	break;
+      }
+      unsigned n = strlen(buff);
+      if (buff[n-1] == '\n')
+	buff[n-1] = '\0';
+      if (strlen(buff) == 0) {
+	if (triFileName == NULL) 
+	  tri_file = string(strFileName) + GMTemplate::fileExtension;
+	else 
+	  tri_file = string(triFileName);
+      } else if (strcmp(buff,"END") == 0 || 		 
+		 strcmp(buff,"end") == 0) {
+	multiTest = false;
+	break; // out of enclosing do loop 
+      } else
+	tri_file = buff;
+
+      if (first)
+	best_tri_file = tri_file;
+
+      GMTemplate gm_template(fp);
+      {
+	// do this in scope so that is gets deleted now rather than later.
+	iDataStreamFile is(tri_file.c_str(),false,false);
+	if (!fp.readAndVerifyGMId(is))
+	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+    
+	gm_template.readPartitions(is);
+	gm_template.readMaxCliques(is);
+      }
+      gm_template.triangulatePartitionsByCliqueCompletion();
+      { 
+	// check that graph is indeed triangulated.
+	BoundaryTriangulate triangulator(fp,
+					 gm_template.maxNumChunksInBoundary(),
+					 gm_template.chunkSkip(),1.0);
+	if (!triangulator.ensurePartitionsAreChordal(gm_template)) {
+	  error("ERROR: triangulation file '%s' is not chordal",
+		tri_file.c_str());
+	}
+      }
+
+
+      ////////////////////////////////////////////////////////////////////
+      // CREATE JUNCTION TREE DATA STRUCTURES
+      infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
+      JunctionTree myjt(gm_template);
+      myjt.setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+      myjt.prepareForUnrolling();
+      if (jtFileName != NULL)
+	myjt.printAllJTInfo(jtFileName);
+      infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
+      ////////////////////////////////////////////////////////////////////
+
+      if (globalObservationMatrix.numSegments()==0)
+	error("ERROR: no segments are available in observation file");
+
+      BP_Range* dcdrng = new BP_Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+      if (dcdrng->length() <= 0) {
+	infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
+		dcdrng_str);
+	exit_program_with_status(0);
+      }
+
+
+      JunctionTree::probEvidenceTimeExpired = false;
+      signal(SIGALRM,jtExpiredSigHandler);
+
+
+      struct ipc_struct {
+	unsigned totalNumberPartitionsDone;
+	unsigned totalNumberSegmentsDone;
+	unsigned numCurPartitionsDone ;
+	ipc_struct() {
+	  totalNumberPartitionsDone = 0;
+	  totalNumberSegmentsDone = 0;
+	  numCurPartitionsDone  = 0;
+	};
+      };
+
+      // create a simple pipe for the child to communicate some stuff
+      // to the parent.
+      int filedes[2];
+      if (pipe(&filedes[0])) {
+	error("ERROR: can't create pipe. errno = %d, %s\n",errno,strerror(errno));
+      }
+
+      int& read_fd = filedes[0];
+      int& write_fd = filedes[1];
+
+      const int limitTime = MAX(seconds+rlimitSlop,1);
+
+      printf("--------\n%d: Operating on trifile '%s'\n",iteration,tri_file.c_str());
+      printf("%d: ",iteration); 
+      printf("Running program for approximately %d seconds, not to exceed %d CPU seconds.\n",seconds,limitTime);
+      fflush(stdout);
+
+
+      pid_t pid = fork();
+      if (pid != 0) {
+
+	// this is the parent process.
+	// printf("%d: child process = %d\n",iteration,pid);
+
+	int status;
+	struct rusage rus; /* starting time */
+	struct rusage rue; /* ending time */
+	int rc;
+	if ((rc=getrusage(RUSAGE_CHILDREN,&rus)))
+	  error("ERROR: parent process can't call getruage start, returned %d\n",rc);
+
+	fflush(stdout);
+	// wait for the child.
+	waitpid(pid,&status,0);
+
+	if (WEXITSTATUS(status)== EXIT_SUCCESS && !WIFSIGNALED(status)) {
+	  // NOTE: waitpid man page says this returns non-zero if the
+	  // child exited normally, but this didn't work since
+	  // EXIT_SUCCESS is normally defined as zero. So we check it
+	  // explicitly.
+
+
+	  // Assume process ended normally.
+	  if ((rc=getrusage(RUSAGE_CHILDREN,&rue)))
+	    error("ERROR: parent process can't call getrusage end, returned %d\n",rc);
+
+	  double userTime,sysTime;
+	  printf("%d: Actual running time: ",iteration);
+	  reportTiming(rus,rue,userTime,sysTime,stdout);
+	  fflush(stdout);
+
+	  // get parameters from file that child must have written.
+	  ipc_struct child_info;
+	  if ((rc=read(read_fd,(void*)&child_info,sizeof(child_info))) != sizeof(child_info)) {
+	    error("ERROR: can't read from child pipe, errno = %d, %s",errno,strerror(errno));
+	  }
+	  printf("%d: ",iteration);
+
+	  double curRate = (double)child_info.totalNumberPartitionsDone/userTime;
+	  printf("Inference stats: %0.2f seconds, %d segments + %d residual partitions, %d total partitions, %0.3e partitions/sec\n",
+		 userTime,
+		 child_info.totalNumberSegmentsDone,
+		 child_info.numCurPartitionsDone,
+		 child_info.totalNumberPartitionsDone,
+		 curRate);
+	  
+	  if (curRate > bestRate) {
+	    best_tri_file = tri_file;
+	    bestRate = curRate;
+	  }
+
+	} else {
+	  // child exited abnormally, probably ran out of time.
+	  printf("%d: NOTICE: Triangulation failed to complete in alloted time of %d seconds, or process failed (status = 0x%X): ",
+		 iteration,limitTime,status);
+	  if ((rc=getrusage(RUSAGE_CHILDREN,&rue)))
+	    error("ERROR: parent process can't call getrusage end, returned %d\n",rc);
+	  double userTime,sysTime;
+	  reportTiming(rus,rue,userTime,sysTime,stdout);
+	}
+	// close down the pipe in any case.
+	close(read_fd);
+	close(write_fd);
+
+      } else {
+	// this is the child process.
+
+	// limit the amount of time we run.
+	struct rlimit rlim;
+	rlim.rlim_cur = limitTime;
+	rlim.rlim_max = limitTime;
+	int rc;
+
+	if ((rc = setrlimit(RLIMIT_CPU,&rlim)))
+	  error("ERROR: child process can't set limit to %d seconds, setrlimit returned %d\n",
+		rlim.rlim_cur,rc);
+
+	alarm(seconds);
+
+	// struct rusage rus; /* starting time */
+	//struct rusage rue; /* ending time */
+	// getrusage(RUSAGE_SELF,&rus);
+
+	ipc_struct child_info;
+	while (1) {
+	  BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
+	  while ((*dcdrng_it) <= dcdrng->max()) {
+	    const unsigned segment = (unsigned)(*(*dcdrng_it));
+	    if (globalObservationMatrix.numSegments() < (segment+1)) 
+	      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+		    globalObservationMatrix.numSegments(),
+		    0,globalObservationMatrix.numSegments()-1);
+
+	    const unsigned numFrames = GM_Parms.setSegment(segment);
+
+	    unsigned numUsableFrames;
+	    child_info.numCurPartitionsDone = 0;
+	    if (probE && !island) {
+	      logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,child_info.numCurPartitionsDone);
+	      child_info.totalNumberPartitionsDone += child_info.numCurPartitionsDone;
+	      infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		      segment,
+		      probe.val(),
+		      probe.val()/numFrames,
+		      probe.val()/numUsableFrames);
+	    } else if (island) {
+	      myjt.collectDistributeIsland(numFrames,
+					   numUsableFrames,
+					   base,
+					   lst);
+	      // TODO: note that frames not always equal to partitions but
+	      // do this for now. Ultimately fix this.
+	      child_info.totalNumberPartitionsDone += numUsableFrames;
+	    } else {
+	      error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence\n");
+	    }
+      
+	    if (JunctionTree::probEvidenceTimeExpired)
+	      break;
+
+	    (*dcdrng_it)++;
+	    child_info.totalNumberSegmentsDone ++;
+	  }
+	  delete dcdrng_it;
+	  if (JunctionTree::probEvidenceTimeExpired)
+	    break;
+	}
+	// turn off the signal.
+	alarm(0);
+
+	// write stuff to a file.
+	if ((rc=write(write_fd,(void*)&child_info,sizeof(child_info))) != sizeof(child_info)) {
+	  error("ERROR: can't write to parent pipe, errno = %d, %s",errno,strerror(errno));
+	}
+
+	// exit normally, so parent realizes this.
+	exit(EXIT_SUCCESS);
+	// END OF CHILD PROCESS
+      }
+      iteration++;
+      first = false;
+    }
+
+    printf("Best trifile found at %0.3e partitions/sec is '%s'\n",bestRate,best_tri_file.c_str());
+
+  } // end of multi-test section.
+
+  exit_program_with_status(EXIT_SUCCESS);
 }

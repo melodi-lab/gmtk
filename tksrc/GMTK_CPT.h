@@ -199,7 +199,7 @@ public:
   // iterator support.
 
   // becomeAwareOfParentValues: sets the parent values to a particular
-  // assignment. All subsequent calls to to probGivenParents will
+  // assignment. All subsequent calls to to begin/next will
   // return the probability of the RV given that the parents are at
   // the particular value. This routine assumes (as does similar ones
   // below) that all RVs are really DiscRVs.
@@ -216,8 +216,8 @@ public:
 						     logpr& p) = 0;
 
 
-  // Returns the probability of 'drv->val' given the current values of
-  // the parent RVs.  Note that this routine re-evaluates parent
+  // Returns the probability of 'drv->val' given the values of
+  // the given parent RVs.  Note that this routine re-evaluates parent
   // values (and does not need becomeAwareOfParentValues to be
   // called), so it is convenient for one time probability evaluation.
   virtual logpr probGivenParents(vector < RV* >& parents,
