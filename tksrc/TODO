@@ -1502,3 +1502,8 @@ Wed Feb 18 12:11:08 2004
       1) help reduce bugs by telling a user when DTs are problem
          before running the program.
       2) speed things up as dynamic checking can be removed.
+
+
+Wed Feb 18 15:12:25 2004
+  - add mention of Chiaping email from today about splitting
+    to manual.
