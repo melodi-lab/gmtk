@@ -18,6 +18,8 @@
 #ifndef GMTK_GM_H
 #define GMTK_GM_H
 
+#include <set>
+
 #include "logp.h"
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CliqueChain.h"
@@ -41,7 +43,7 @@ struct GMTK_GM
     // Go through the nodes in the specified order and show them.
 
     GMTK_GM() {example=NULL;}
-    ~GMTK_GM() { delete chain; delete example; }
+    ~GMTK_GM() { delete chain; }
 
     void makeRandom();
     // Goes over each variable in the graph and calls its makeRandom function.
@@ -172,6 +174,31 @@ struct GMTK_GM
     void unroll(int first_frame, int last_frame, int times);
     // duplicates the structure from first_frame to last_frame "times" times
     // e.g. unroll(1,2,5) adds 10 frames -- 5 1,2 chunks
+
+    map<pair<RandomVariable *, int>, RandomVariable *> analogue_k_past;
+    // To make speedy length adjustments possible, we will keep track of
+    // the analogue of every varable that is referenced in the parent lists
+    // of the last slice.
+
+    void spliceOut(int segments);
+    // splices out "segments" repeating portions of the network.
+ 
+    void restoreNet();
+    // undoes the last splice operation
+   
+    vector<pair<RandomVariable **, RandomVariable *> > parentUpdates;
+    // changing the pointers in the first part of the pair to the second part
+    // undoes the parent changes made in a splice
+
+    vector<RandomVariable **> parentsToUpdate;
+    // which guys to change to do the splice
+
+    vector<RandomVariable *> tempNode, tempTopo;
+    // used to store temporary arrays while adjusting length
+
+    int repeatPeriod;   // how many slices is the reepeating period of the net?
+  
+    int startTimeOfLastSegment;  // last repeating segment
 };
 
 #endif
