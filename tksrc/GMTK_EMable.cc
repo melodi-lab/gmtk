@@ -175,11 +175,7 @@ EMable::emLoadAccumulators(iDataStreamFile& ifile)
       return;
     }
   } else {
-    // so we are training. This next assertion
-    // is needed, since it shouldn't be possible that
-    // we're training, but the EM data structures have not
-    // been allocated.
-    assert (emEmAllocatedBitIsSet());
+    // so we are training. 
   
     if (flag == 0) {
       // then we don't have any accumulator values for this object, but
@@ -189,6 +185,12 @@ EMable::emLoadAccumulators(iDataStreamFile& ifile)
       // call virtual function to do actual work for object.
       emZeroOutObjectsAccumulators();
     } else {
+
+      // This next assertion is needed, since it shouldn't be possible
+      // that we're training, but the EM data structures have not been
+      // allocated.
+      assert (emEmAllocatedBitIsSet());
+
       // load up the real accumulators.
       // EMable::emLoadAccumulators(ifile);
       ifile.read(accumulatedProbability.valref(),"EM load accums");
@@ -231,16 +233,18 @@ EMable::emAccumulateAccumulators(iDataStreamFile& ifile)
       return;
     }
   } else {
-    // so we are training. This next assertion
-    // is needed, since it shouldn't be possible that
-    // we're training, but the EM data structures have not
-    // been allocated.
-    assert (emEmAllocatedBitIsSet());
+    // so we are training. 
+
 
     if (flag == 0) {
       // then we don't have any accumulator values for this object, and
       // there is nothing to do.
     } else {
+      // This next assertion is needed, since it shouldn't be possible
+      // that we're training, but the EM data structures have not been
+      // allocated.
+      assert (emEmAllocatedBitIsSet());
+
       // accumulate up the real accumulators.
       // EMable::emAccumulateAccumulators(ifile);
       logpr tmp;
