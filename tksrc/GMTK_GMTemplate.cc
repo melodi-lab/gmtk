@@ -1,6 +1,6 @@
 /*-
  * GMTK_GMTemplate.cc
- *     manipulations of a GM template
+ *     Basic GM Template and Basic Triangulation Routines
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -105,14 +105,23 @@ static const string E_elimination_order("E_ELIMINATION_ORDER");
  */
 void
 GMTemplate::
-findPartitions(const string& fh,  // face quality heuristic
-	       const string& flr, // force left or right
-	       const string& th, // triangualtion heuristic
+findPartitions(// face quality heuristic
+	       const string& fh,  
+	       // force use of only left or right interface
+	       const string& flr, 
+	       // triangualtion heuristic to use
+	       const string& th, 
+	       // should we run the exponential find best interface
 	       const bool findBestFace,
+	       // the resulting new prologue
 	       set<RandomVariable*>& Pc,
+	       // the resulting new chunk
 	       set<RandomVariable*>& Cc,
+	       // the resulting new epilogue
 	       set<RandomVariable*>& Ec,
+	       // interface between P and C
 	       set<RandomVariable*>& PCInterface,
+	       // interface between C and E
 	       set<RandomVariable*>& CEInterface)
 {
   const int debug = 1;
@@ -306,24 +315,25 @@ findPartitions(const string& fh,  // face quality heuristic
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::findPartitions()
- *  Create the three partitions (P,C,E) of the template using
- *  the given information stored in the input file.
+ *  Create the three partitions (P,C,E) of the template using the
+ *  given information stored in the input file. See
+ *  findPartitions() routine above for argument definitions.
  *
  * Preconditions:
  *   Object must be instantiated and have the use of the information
- *   in a valid FileParser object (which stores the parsed structure file)
- *   Arguments must indicate valid heuristics to use.
+ *   in a valid FileParser object (which stores the parsed structure
+ *   file) Arguments must indicate valid heuristics to use.
  *
  * Postconditions:
  *   Arguments Pc, Cc, and Ec now contain partitions in a separate
- *   graph from the FileParser (i.e., file parser information is
- *   not disturbed)
+ *   graph from the FileParser (i.e., file parser information is not
+ *   disturbed)
  *
  * Side Effects:
  *   none
  *
  * Results:
- *   Pc, Cc, and Ec
+ *   Pc, Cc, and Ec as arguments.
  *
  *
  *-----------------------------------------------------------------------
@@ -492,12 +502,14 @@ findPartitions(iDataStreamFile& is,
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::storePartitions()
+ *
  *  Store the given argument partitions into a file for later
- *  retreival. This routine writes out the information both
- *  in a more human readable format (as comments preceeded by
- *  a coment character) and in machine readable form to be read
- *  in again (lines that do not begin with comment characters).
- *  Information written includes;
+ *  retreival. This routine writes out the information both in a more
+ *  human readable format (as comments preceeded by a coment character
+ *  which includes other useful information) and in machine readable
+ *  form to be read in again (lines that do not begin with comment
+ *  characters).  The information written includes;
+ *
  *    P partition
  *    C partition
  *    E partition
@@ -505,6 +517,7 @@ findPartitions(iDataStreamFile& is,
  *    CE interface
  *
  * Preconditions:
+ *
  *   Each partition must corresond to a valid and separte GM. Each
  *   variable in each GM must have a valid parent and neighbor members
  *   and the parents/neighbors must only point to other members of a
@@ -758,8 +771,8 @@ triangulatePartitions(const vector<TriangulateHeuristic>& th_v,
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::triangulatePartitions()
- *  Given the argument partitions and the information in the files, triangulate each
- *  one using the given heuristics.
+ *  Given the argument partitions and the information in the files,
+ *  triangulate each one using the given heuristics.
  *
  * Preconditions:
  *   Each partition must corresond to a valid and separte GM. Each
@@ -821,13 +834,13 @@ triangulatePartitions(iDataStreamFile& is,
  *   information in file pointed to by 'os'
  *
  *   There are two versions of this routine, the first one also writes
- *   out cliques that result from using this elimination order
- *   (using the standard algorithm where a complete set is 
- *    taken to be a maxclique if it is not a subset of a previously
- *    identified clique). It writes out the cliques as comments,
- *    meaning that lines are preceeded by a comment character.
- *   The second version of the routine does not write any out
- *   clique information (as it is not given cliques to write out).
+ *   out cliques that result from using this elimination order (using
+ *   the standard algorithm where a complete set is taken to be a
+ *   maxclique if it is not a subset of a previously identified
+ *   clique). It writes out the cliques as comments, meaning that
+ *   lines are preceeded by a comment character.  The second version
+ *   of the routine does not write any out clique information (as it
+ *   is not given cliques to write out).
  *
  * Preconditions:
  * 
@@ -856,6 +869,7 @@ storePartitionTriangulation(oDataStreamFile& os,
 
   // First write out the cliques for the user
   os.nl();
+  os.writeComment("---\n");
   os.writeComment("---- P Partitions Cliques and their weights\n");
   float maxWeight = -1.0;
   for (unsigned i=0;i<Pcliques.size();i++) {
@@ -887,6 +901,7 @@ storePartitionTriangulation(oDataStreamFile& os,
 
   // First write out the cliques for the user
   os.nl();
+  os.writeComment("---\n");
   os.writeComment("---- C Partitions Cliques and their weights\n");
   maxWeight = -1.0;
   for (unsigned i=0;i<Ccliques.size();i++) {
@@ -918,6 +933,7 @@ storePartitionTriangulation(oDataStreamFile& os,
 
   // First write out the cliques for the user
   os.nl();
+  os.writeComment("---\n");
   os.writeComment("---- E Partitions Cliques and their weights\n");
   maxWeight = -1.0;
   for (unsigned i=0;i<Ecliques.size();i++) {
@@ -945,7 +961,6 @@ storePartitionTriangulation(oDataStreamFile& os,
   }
   os.nl();
 }
-
 void
 GMTemplate::
 storePartitionTriangulation(oDataStreamFile& os,
@@ -958,6 +973,7 @@ storePartitionTriangulation(oDataStreamFile& os,
 {
   // Write out the elimination orders
   os.nl();
+  os.writeComment("---\n");
   os.writeComment("P Parition Elimination Order\n");
   os.write(P_elimination_order);
   os.write(Pordered.size());
@@ -968,7 +984,7 @@ storePartitionTriangulation(oDataStreamFile& os,
   }
   os.nl();
 
-
+  os.writeComment("---\n");
   os.writeComment("C Parition Elimination Order\n");
   os.write(C_elimination_order);
   os.write(Cordered.size());
@@ -979,7 +995,7 @@ storePartitionTriangulation(oDataStreamFile& os,
   }
   os.nl();
 
-
+  os.writeComment("---\n");
   os.writeComment("E Parition Elimination Order\n");
   os.write(E_elimination_order);
   os.write(Eordered.size());
@@ -998,8 +1014,9 @@ storePartitionTriangulation(oDataStreamFile& os,
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::unrollAndTriangulate(th,int)
- *  Just unroll the graph a given number of times and triangulate it
- *  using the heuristics, reporting the results.
+ *  Just unroll the graph a given number of times, triangulate it
+ *  using the supplied heuristics, and report the results.
+ *  This routine corresponds to unconstrained triangulation.
  *
  * Preconditions:
  *
@@ -1085,27 +1102,29 @@ unrollAndTriangulate(// triangulate heuristics
  *   heuristics such as (min weight, min size, min fill, etc.).  For a
  *   good description of these heuristics, see D. Rose et. al, 1970,
  *   1976. The routine also allows for other heuristics to be used
- *   such as eliminate the earlier nodes (temporal order) first,
- *   or eliminate the nodes in order that they appear in the 
- *   structure file (sometimes this simple constrained triangulation
- *   will work better than the "intelligent" heuristics, such as for
- *   certain lattice structures).
+ *   such as eliminate the earlier nodes (temporal order) first, or
+ *   eliminate the nodes in order that they appear in the structure
+ *   file (sometimes this simple constrained triangulation will work
+ *   better than the "intelligent" heuristics, such as for certain
+ *   lattice structures). The routine allows heuristics to be
+ *   prioritized and combined, so that if there is a tie with the
+ *   first heuristic, the second will be used, and if there is still a
+ *   tie, the third one will be used, etc.
  *    
  * Preconditions:
- *   Graph must be a valid undirected model. This means
- *   if the graph was originally a directed model, it must
- *   have been properly moralized and their 'neighbors' structure
- *   is valid. It is also assumed that
- *   the parents of each r.v. are valid but that they
- *   only poiint to variables within the set 'nodes' (i.e.,
- *   parents must not point out of this set).
+ *   Graph must be a valid undirected model. This means if the graph
+ *   was originally a directed model, it must have been properly
+ *   moralized and their 'neighbors' structure is valid. It is also
+ *   assumed that the parents of each r.v. are valid but that they
+ *   only poiint to variables within the set 'nodes' (i.e., parents
+ *   must not point out of this set).
  *
  * Postconditions:
  *   Resulting graph is now triangulated.
  *
  * Side Effects:
- *   Might (and probably will unless graph is already triangulated
- *   and you get lucky by having found the perfect elimination order)
+ *   Might (and probably will unless graph is already triangulated and
+ *   you get lucky by having found the perfect elimination order)
  *   change neighbors members of variables.
  *
  * Results:
@@ -1123,12 +1142,16 @@ basicTriangulate(// input: nodes to triangulate
 		 // output: nodes ordered according to resulting elimination
 		 vector<RandomVariable*>& orderedNodes,  
 		 // output: resulting max cliques
-		 vector<MaxClique>& cliques
+		 vector<MaxClique>& cliques,
+		 // input: find the cliques as well
+		 const bool findCliques
 		 )
 {
 
   const int debug = 0;
   const unsigned num_nodes = nodes.size();
+
+
 
   if (debug > 0)
     printf("\nBEGINNING TRIANGULATION --- \n");
@@ -1148,12 +1171,13 @@ basicTriangulate(// input: nodes to triangulate
   
   // Approach: essentially, create a priority queue data structure
   // using a multimap. In this case, those nodes with the lowest 'X'
-  // where 'X' is the combined weight heuristic can be accessed
-  // immediately in the front of the map. Also, whenever a node gets
-  // eliminated, *ONLY* its neighbor's weights are recalculated. With
-  // this data structure it is possible and efficient to do so. This
-  // is because a multimap (used to simulate a priority queue) has the
-  // ability to remove stuff from the middle.
+  // where 'X' is the combined prioritized weight heuristics can be
+  // accessed immediately in the front of the map. Also, whenever a
+  // node gets eliminated, *ONLY* its neighbor's weights are
+  // recalculated. With this data structure it is possible and
+  // efficient to do so. This is because a multimap (used to simulate
+  // a priority queue) has the ability to efficiently remove stuff
+  // from the middle.
   multimap< vector<float> ,RandomVariable*> unorderedNodes;
 
   // We also need to keep a map to be able to remove elements of
@@ -1249,12 +1273,11 @@ basicTriangulate(// input: nodes to triangulate
     }
 
 
-    // go through the updated multi-map, 
-    // grab an iterator pair to iterate between
-    // all nodes that have the lowest weight. This utilizes
-    // the fact that the multimap stores values in ascending
-    // order based on key (in this case the weight), and so
-    // the first one (i.e., mm.begin() ) should have the lowest weight.
+    // Go through the updated multi-map, grab an iterator pair to
+    // iterate between all nodes that have the lowest weight. This
+    // utilizes the fact that the multimap stores values in ascending
+    // order based on key (in this case the weight), and so the first
+    // one (i.e., mm.begin() ) should have the lowest weight.
     pair< 
       multimap< vector<float>,RandomVariable*>::iterator, 
       multimap< vector<float>,RandomVariable*>::iterator 
@@ -1290,29 +1313,32 @@ basicTriangulate(// input: nodes to triangulate
     // connect all neighbors of r.v. excluding nodes in 'orderedNodesSet'.
     rv->connectNeighbors(orderedNodesSet);
 
-    // check here if this node + its neighbors is a subset
-    // of previous maxcliques. If it is not a subset of any previous
-    // maxclique, then this node and its neighbors is a 
-    // new maxclique.
-    set<RandomVariable*> candidateMaxClique;
-    set_difference(rv->neighbors.begin(),rv->neighbors.end(),
-		   orderedNodesSet.begin(),orderedNodesSet.end(),
-		   inserter(candidateMaxClique,candidateMaxClique.end()));
-    candidateMaxClique.insert(rv);
-    bool is_max_clique = true;
-    for (unsigned i=0;i < cliques.size(); i++) {
-      if (includes(cliques[i].nodes.begin(),cliques[i].nodes.end(),
-		   candidateMaxClique.begin(),candidateMaxClique.end())) {
-	// then found a 'proven' maxclique that includes our current
-	// candidate, so the candidate cannot be a maxclique
-	is_max_clique = false;
-	break;
+    // find the cliques if they are asked for.
+    if (findCliques) {
+      // check here if this node + its neighbors is a subset of
+      // previous maxcliques. If it is not a subset of any previous
+      // maxclique, then this node and its neighbors is a new
+      // maxclique.
+      set<RandomVariable*> candidateMaxClique;
+      set_difference(rv->neighbors.begin(),rv->neighbors.end(),
+		     orderedNodesSet.begin(),orderedNodesSet.end(),
+		     inserter(candidateMaxClique,candidateMaxClique.end()));
+      candidateMaxClique.insert(rv);
+      bool is_max_clique = true;
+      for (unsigned i=0;i < cliques.size(); i++) {
+	if (includes(cliques[i].nodes.begin(),cliques[i].nodes.end(),
+		     candidateMaxClique.begin(),candidateMaxClique.end())) {
+	  // then found a 'proven' maxclique that includes our current
+	  // candidate, so the candidate cannot be a maxclique
+	  is_max_clique = false;
+	  break;
+	}
+      }
+      if (is_max_clique) {
+	cliques.push_back(MaxClique(candidateMaxClique));
       }
     }
-    if (is_max_clique) {
-      cliques.push_back(MaxClique(candidateMaxClique));
-    }
-
+      
     // insert node into ordered list
     orderedNodes.push_back(rv);
 
@@ -1322,17 +1348,16 @@ basicTriangulate(// input: nodes to triangulate
     // erase node from priority queue
     unorderedNodes.erase(ip.first);
 
-    // only update not-yet-eliminated nodes that could possibly
-    // have been effected by the current node 'rv' being
-    // eliminated. I.e., create the set of active neighbors
-    // of rv.
+    // only update not-yet-eliminated nodes that could possibly have
+    // been effected by the current node 'rv' being eliminated. I.e.,
+    // create the set of active neighbors of rv.
     nodesToUpdate.clear();
     set_difference(rv->neighbors.begin(),rv->neighbors.end(),
 		   orderedNodesSet.begin(),orderedNodesSet.end(),
 		   inserter(nodesToUpdate,nodesToUpdate.end()));
 
-    // erase active neighbors of nodes since they
-    // will need to be recomputed above.
+    // erase active neighbors of nodes since they will need to be
+    // recomputed above.
     for (set<RandomVariable*>::iterator n = nodesToUpdate.begin();
 	 n != nodesToUpdate.end();
 	 n++) {
@@ -1352,17 +1377,16 @@ basicTriangulate(// input: nodes to triangulate
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::basicTriangulate()
- *   Triangulate a set of nodes using the elimination order information 
- *   given in file at the current position.
+ *   Triangulate a set of nodes using the elimination order
+ *   information given in file at the current position.
  *    
  * Preconditions:
- *   Graph must be a valid undirected model. This means
- *   if the graph was originally a directed model, it must
- *   have been properly moralized and their 'neighbors' structure
- *   is valid. It is also assumed that
- *   the parents of each r.v. are valid but that they
- *   only point to variables within the set 'nodes' (i.e.,
- *   parents must not point out of this set).
+ *   Graph must be a valid undirected model. This means if the graph
+ *   was originally a directed model, it must have been properly
+ *   moralized and their 'neighbors' structure is valid. It is also
+ *   assumed that the parents of each r.v. are valid but that they
+ *   only point to variables within the set 'nodes' (i.e., parents
+ *   must not point out of this set).
  *
  * Postconditions:
  *   Resulting graph is now triangulated.
@@ -1681,21 +1705,6 @@ computeFillIn(const set<RandomVariable*>& nodes)
     //  but not tmp).
     // In otherwords, we have:
 
-    /*
-      printf("    Neighbor %s(%d) needs %d for fill in\n",
-      (*j)->name().c_str(),(*j)->frame(),
-      (nodes.size() - 1 - tmp.size()));
-      printf("    Neighbors of %s(%d) are:",
-      (*j)->name().c_str(),(*j)->frame());
-      for (set<RandomVariable*>::iterator k=(*j)->neighbors.begin();
-      k != (*j)->neighbors.end();
-      k++) {
-      printf("%s(%d) ",
-      (*k)->name().c_str(),(*k)->frame());
-      }
-      printf("\n");
-    */
-
     fill_in += (nodes.size() - 1 - tmp.size());
   }
   // counted each edge twice, so fix that (although not 
@@ -1709,8 +1718,8 @@ computeFillIn(const set<RandomVariable*>& nodes)
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::variableSetScore()
- *      Compute the 'score' of a set of variables, where the 
- *      score is based on one or more of the set-based triangulation
+ *      Compute the 'score' of a set of variables, where the score is
+ *      based on one or more of the set-based triangulation
  *      heuristics.
  *      
  *
@@ -1766,10 +1775,10 @@ GMTemplate::variableSetScore(const vector<InterfaceHeuristic>& fh_v,
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::interfaceScore()
- *      Compute the 'score' of a set of variables that are to be
- *      a candidate interface. In the best of cases, it is a
- *      simple easy score based on the vars size, fill-in, or weight.
- *      In the "worst" of cases, the score is based on an entire
+ *      Compute the 'score' of a set of variables that are to be a
+ *      candidate interface. In the best of cases, it is a simple easy
+ *      score based on the vars size, fill-in, or weight.  In the
+ *      "worst" of cases, the score is based on an entire
  *      triangulation of the variables that would result from this
  *      interface.
  *      
@@ -1792,18 +1801,30 @@ GMTemplate::variableSetScore(const vector<InterfaceHeuristic>& fh_v,
  */
 void
 GMTemplate::interfaceScore(
+ // the interface heuristic used to score the interface
  const vector<InterfaceHeuristic>& fh_v,
+ // the interface itself
  const set<RandomVariable*>& C_l,
- // more input variables for use when MIN_CLIQUE is active
+ // --------------------------------------------------------------
+ // The next 8 input arguments are used only with the optimal
+ // interface algorithm when the IH_MIN_MAX_C_CLIQUE or
+ // IH_MIN_MAX_CLIQUE heuristics are used:
+ // triangulation heuristic
+ // Variables to the left (or right) of the interface
  const set<RandomVariable*>& left_C_l,
+ // the triangulation heuristic 
  const vector<TriangulateHeuristic>& th_v,
+ // The network unrolled 1 time
  const set<RandomVariable*>& P_u1,
  const set<RandomVariable*>& C1_u1,
  const set<RandomVariable*>& C2_u1,
  const set<RandomVariable*>& E_u1,
- // these next 2 should be const, but there is no "op[] const"
+ // Mappings from C2 in the twice unrolled network to C1 and C2
+ // in the once unrolled network.
+ // (these next 2 should be const, but there is no "op[] const")
  map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
  map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
+ // --------------------------------------------------------------
  // output score
  vector<float>& score)
 {
@@ -1828,10 +1849,10 @@ GMTemplate::interfaceScore(
 	       C_l.size());
     } else if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_MAX_C_CLIQUE) {
       // This is the expensive one, need to form a set of partitions,
-      // given the current interface, triangulate that partition set, and then
-      // compute the score of the worst best clique, and fill the score
-      // variable above with this worst scoring clique (i.e., 
-      // we find the interface that has the best worst-case performance.
+      // given the current interface, triangulate that partition set,
+      // and then compute the score of the worst clique, and fill the
+      // score variable above with this worst scoring clique (i.e., we
+      // find the interface that has the best worst-case performance.
 
       set<RandomVariable*> Pc;
       set<RandomVariable*> Cc;
@@ -1887,7 +1908,6 @@ GMTemplate::interfaceScore(
       if (debug > 0)
 	printf("  Interface Score: set has max clique weight = %f\n",maxWeight);
 
-
       deleteNodes(Pc);
       deleteNodes(Cc);
       deleteNodes(Ec);      
@@ -1905,11 +1925,11 @@ GMTemplate::interfaceScore(
  *-----------------------------------------------------------------------
  * GMTemplate::clone()
  *   Clone a set of random variables from 'in' to 'out'. The cloned
- *   variables have parents, children, and neighbors consisting
- *   of only the members that are in the corresponding 'in' set (i.e.,
- *   if any parents, children, neighbors, in 'in' pointed to variables
- *   outside of 'in', then the corresponding variables in 'out' do
- *   not contain those parents,children,neighbors. 
+ *   variables have parents, children, and neighbors consisting of
+ *   only the members that are in the corresponding 'in' set (i.e., if
+ *   any parents, children, neighbors, in 'in' pointed to variables
+ *   outside of 'in', then the corresponding variables in 'out' do not
+ *   contain those parents,children,neighbors.
  *
  *   There are two versions of this routine, one which returns
  *   the in to out variable map in case that might be useful.
@@ -1962,9 +1982,9 @@ clone(const set<RandomVariable*>& in,
   // just do neighbors for now, don't bother with parents, children,
   // and so on.
   // Set the neighbors of out to be the correctly associated
-  // variables, but do not include neighbors that are
-  // not in the current set (i.e., dissociate with any
-  // other possible portion of the network)
+  // variables, but do not include neighbors that are not in the
+  // current set (i.e., dissociate with any other possible portion of
+  // the network)
 
   for (set<RandomVariable*>::iterator i=in.begin();
        i != in.end(); i++) {
@@ -2013,8 +2033,8 @@ clone(const set<RandomVariable*>& in,
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::deleteNodes()
- *   Given a set of random variables, delete the nodes pointed
- *   to by the set. 
+ *   Given a set of random variables, delete the nodes pointed to by
+ *   the set.
  *
  * Preconditions:
  *   'nodes' is a valid set of node pointers
@@ -2229,79 +2249,37 @@ GMTemplate::makeComplete(set<RandomVariable*> &rvs)
 
 /*-
  *-----------------------------------------------------------------------
- * GMTemplate::findBestLeftInterface()
- *   NOTE: If this routine gets updated, so should findBestRightInterface()
- *   Given a once unrolled graph, P,C1,C2,C3,E
- *   find the best left interface within C2 starting at the
- *   "standard" or initial left interface between C1 and C2.
- *   Note that the routine only uses C1,C2, and C3 and
- *   P and E are not needed.
- *   
- *
- * Preconditions:
- *     Graph must be valid (i.e., unroller should pass graph w/o
- *                                problem).
- *     Graph must be already moralized.
- *     and *must* unrolled exactly two times.
- *     This means graph must be in the form P,C1,C2,C3,E
- *     where P = prologue, 
- *           C1 = first chunk
- *           C2 = 2nd chunk
- *           C3 = 3nd chunk
- *           E =  epilogue
- *
- *     Note that P or E (but not both) could be empty (this
- *     is why we do this procedure on the unrolled-by-2 graph
- *     rather than on the unrolled-by- 0 or 1 graph).
- *
- * Postconditions:
- *     Return values have best left-interface found.
- *
- * Side Effects:
- *      None
- *
- *
- * Results:
- *    Put best left interface from C2 into C_l
- *    and place any additional variables from C2 to the left of C_l
- *    into 'left_C_l';
- *
- *
- *-----------------------------------------------------------------------
- */
-
-
-
-/*-
- *-----------------------------------------------------------------------
  * GMTemplate::findBestInterface()
  *
- *  An exponential-time routine to find best left/right interfaces
- *  and corresponding partitions. Since the operations
- *  for finding the best left and right interfaces are symmetric,
- *  the determiniation of if we are searching for the best
- *  left interface or right interface is determined entirely
- *  based on the arguments that are passed into these routines. 
- *  Note that for simplicity, the names have been defined
- *  in terms of the left interface, but that is only for ease of
- *  understanding.
+ *  An exponential-time routine to find best left (or right)
+ *  interfaces and corresponding partitions. Since the operations for
+ *  finding the best left and right interfaces are symmetric, the case
+ *  of if we are searching for the best left interface or right
+ *  interface is determined entirely based on the arguments that are
+ *  passed into these routines (i.e., just take the mirror image of
+ *  the arguments for the right interface).  Note that for simplicity,
+ *  the names have been defined in terms of the left interface, but
+ *  that is only for simplicity.
+ *
+ *  The routine is given portions of a twice unrolled graph,
+ *  P,C1,C2,C3,E, and finds the best (left) interface within C2
+ *  starting at the "standard" or initial left interface between C1
+ *  and C2.  Note that the routine only uses the partitions C1,C2, and
+ *  C3 as P and E are not needed.
+ *
  *
  * For left interface:
- *   Given a twice unrolled graph, P,C1,C2,C3,E
- *   find the best left interface within C2 starting at the
- *   "standard" or initial left interface between C1 and C2.
- *   Note that the routine only uses C1,C2, and C3 and
- *   P and E are not needed.
+ *   Given a twice unrolled graph, P,C1,C2,C3,E, find the best left
+ *   interface within C2 starting at the "standard" or initial left
+ *   interface between C1 and C2.  Note that the routine only uses
+ *   C1,C2, and C3 and P and E are not needed.
  *
  * For right interface:
- *   Given a twice unrolled graph, P,C1,C2,C3,E
- *   find the best right interface within C2 starting at the
- *   "standard" or initial right interface between C3 and C2.
- *   Note that the routine only uses C1,C2, and C3 and
- *   P and E are not needed.
+ *   Given a twice unrolled graph, P,C1,C2,C3,E, find the best right
+ *   interface within C2 starting at the "standard" or initial right
+ *   interface between C3 and C2.  Note that the routine only uses
+ *   C1,C2, and C3 and P and E are not needed.
  *
- *
- *   
  *
  * Preconditions:
  *     Graph must be valid (i.e., unroller should pass graph w/o
@@ -2336,22 +2314,37 @@ GMTemplate::makeComplete(set<RandomVariable*> &rvs)
  */
 void
 GMTemplate::findBestInterface(
+ // first chunk of twice unrolled graph
  const set<RandomVariable*> &C1,
+ // second chunk of twice unrolled graph
  const set<RandomVariable*> &C2,
+ // third chunk of twice unrolled graph
  const set<RandomVariable*> &C3,
+ // nodes to the "left" of the left interface within C2
  set<RandomVariable*> &left_C_l,
+ // the starting left interface
  set<RandomVariable*> &C_l,
+ // what should be used to judge the quality of the interface
  const vector<InterfaceHeuristic>& fh_v,
+ // true if we should use the exponential time optimal interface algorithm
  const bool recurse,
- // more input variables
+ // --------------------------------------------------------------
+ // The next 7 input arguments are used only with the optimal
+ // interface algorithm when the IH_MIN_MAX_C_CLIQUE or
+ // IH_MIN_MAX_CLIQUE heuristics are used:
+ // triangulation heuristic
  const vector<TriangulateHeuristic>& th_v,
+ // The network unrolled 1 time
  const set<RandomVariable*>& P_u1,
  const set<RandomVariable*>& C1_u1,
  const set<RandomVariable*>& C2_u1,
  const set<RandomVariable*>& E_u1,
- // these next 2 should be const, but there is no "op[] const"
+ // Mappings from C2 in the twice unrolled network to C1 and C2
+ // in the once unrolled network.
+ // (these next 2 should be const, but there is no "op[] const")
  map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
  map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1
+ // end of input arguments (finally)
  )
 {
   const int debug = 1;
@@ -2451,10 +2444,9 @@ GMTemplate::findBestInterface(
 }
 /*-
  *-----------------------------------------------------------------------
- * GMTemplate::findBestInterface()
- *    recursive helper function for the first version of 
- *    findBestInterface().
- *    See that routine above for documentation.
+ * GMTemplate::findBestInterface() 
+ *    Recursive helper function for the * first version of
+ *    findBestInterface(). See that routine above for * documentation.
  *
  * Preconditions:
  *
@@ -2566,6 +2558,8 @@ findBestInterface(
 
   }
 }
+
+
 
 /*-
  *-----------------------------------------------------------------------
