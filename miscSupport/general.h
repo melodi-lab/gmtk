@@ -77,5 +77,7 @@ void print_date_string(FILE* f);
 
 void exit_program_with_status(const int stat);
 
+void memory_error();
+
 
 #endif

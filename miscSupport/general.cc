@@ -137,3 +137,9 @@ void exit_program_with_status(const int stat)
   printf(" ____\n");
   exit (stat);
 }
+ 
+void memory_error()
+{
+  fprintf(stderr,"ERROR: memory_error called. Program ran out of memory.\n");
+  exit_program_with_status(-1);
+}
