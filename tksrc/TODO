@@ -558,7 +558,51 @@ add to documentation something about normalization features
 and variance floor. Hints/tips on what to do here.
   - possibly a diff. var floor for each feature vector element/
 
-Tue Jul  2 20:24:18 2002
-  - add a 'noscore' CPT so that we can do true conditional discrete
-    observations, similar to what can be done for discrete observations.
+XX Tue Jul  2 20:24:18 2002
+   - add a 'noscore' CPT so that we can do true conditional discrete
+     observations, similar to what can be done for discrete observations.
+
+Sun Jul 07 17:16:56 2002
+ - go through all parameter reading code to produce better error messages
+
+XX Sun Jul 07 17:16:56 2002
+   (e.g., realarray, and all of that, probably eliminate realarray class
+    as it's not doing much).
+
+Sun Jul 07 23:40:36 2002
+ - idea, for off-line triangulation heuristic, rather than
+   min-weight, choose "min dynamic weight." The dynamic
+   weight is obtained by running through all possible values
+   in the clique and choose the node to eliminate next which
+   results in the fewest number of clique instantiations.
+   Possible problem. Implementation of edges changes for  
+   each utterance, but it is only the decision trees that
+   change. 
+   Options:
+     1) Do this for one possible value of the DTs and 
+        hope that this works for the rest
+     2) do this for all, and average over the differnet
+        DT values (or take min of max, etc.)
+     3) have user provide "canonical" DT examples
+        that are used for triangulation.
+     4) 
+
+  Question of how much to expose user to triangulation issues:
+    Goal: try to make it possible for them to experiment with
+    better strategies w/o asking them to understand everything,
+    but still include it in the tutorial section.
+  
+Fri Jul 12 23:39:17 2002
+  - rewrite issue with di_xxCPT type of CPT objects being
+    declared. There should be one CPT object type used in
+    the program, and all guys inheret from it. Q: how  
+    to do the separate namespace for MDCPTs, MTCPTS, and MSCPTs?
+  - this also an issue for mixGaussians. Need to re-think all
+    of this.
+
+
+Sat Jul 13 02:05:27 2002
+ - ascii file reading should read in ascii files preprocessed
+   by CPP (optionally and by default). Also, the list of files 
+   itself should be processed by CPP.
 
