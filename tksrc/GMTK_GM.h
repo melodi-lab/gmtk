@@ -38,7 +38,7 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CliqueChain.h"
 
-
+class FileParser;
 
 struct GMTK_GM
 {
@@ -95,7 +95,10 @@ struct GMTK_GM
     void reveal(vector<RandomVariable *> order, bool show_vals = false);
     // Go through the nodes in the specified order and show them.
 
-    GMTK_GM() {
+    FileParser *fp;
+
+    GMTK_GM(FileParser* _fp) {
+      fp = _fp;
       example=NULL; 
       chain=NULL; 
       using_files=false;

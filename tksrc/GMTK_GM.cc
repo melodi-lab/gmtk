@@ -38,6 +38,7 @@ VCID("$Header$");
 
 #include "GMTK_GM.h"
 #include "GMTK_ObservationMatrix.h"
+#include "GMTK_FileParser.h"
 
 #include <stdio.h>
 
@@ -971,6 +972,7 @@ void GMTK_GM::setupForVariableLengthUnrolling(int first_frame, int last_frame)
 {
     // create the template of the GM to be used for unrolling
 
+  // @@@
     cloneVariables(node, gmTemplate);
 
     firstChunkFrame = first_frame;
@@ -1021,6 +1023,11 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
 {
     // first frame is the first frame of the repeating segment
     // last frame is the last frame of the repeating segment
+
+  fp->unroll(times,gmTemplate);
+  node = gmTemplate;
+  verifyTopologicalOrder();
+  return;
 
     if (gmTemplate.size() == 0)  
         error("Must call setupForVariableLengthUnrolling() before unroll");
