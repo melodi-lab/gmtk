@@ -18,6 +18,33 @@
 
 #include "GMTK_Clique.h"
 
+set<vector<RandomVariable::DiscreteVariableType> > CliqueValue::global_val_set;
+
+vector<CliqueValue> Clique::gip;  // the actual global instantiation pool
+vector<unsigned> Clique::freelist;     // and the freelist
+unsigned Clique::nextfree=0;
+
+unsigned Clique::newCliqueValue()
+{
+    if (nextfree==freelist.size())
+    {
+        assert(freelist.size() == gip.size());
+        int oldsize = gip.size(), newsize = 2*gip.size();
+        newsize = max(newsize, 100000);  // don't mess around at the beginning
+        gip.resize(newsize);
+        for (int i=oldsize; i<newsize; i++)
+            freelist.push_back(i);
+        nextfree = oldsize;
+    }
+    return freelist[nextfree++];
+}
+
+void Clique::recycleCliqueValue(unsigned idx)
+{
+    assert(nextfree>0);
+    swap(freelist[idx], freelist[--nextfree]);
+}
+
 void Clique::cacheClampedValues()
 {
     for (unsigned i=0; i<discreteMember.size(); i++)
@@ -42,8 +69,8 @@ logpr Clique::probGivenParents()
  *      nothing
  *
  * Side Effects:
- *      Totally wipes out the previous instantiation object and 
- *      replaces it with the sparse pruned one.
+ *      The low probability entries are removed from the instantiation list
+ *      Their memory is recycled and placed back on the freelist
  *
  *-----------------------------------------------------------------------
  */
@@ -51,25 +78,26 @@ void Clique::prune(logpr beam)
 {
     // find the maximum probability instantiation
     logpr maxv = 0.0;
-    list<CliqueValue>::iterator li;
-    for (li=instantiation.begin(); li!=instantiation.end(); li++)
-        if (li->pi > maxv)
-            maxv = li->pi;
-        
-    // make a list of all the low probability entries
-    logpr threshold = maxv*beam;
-    vector<list<CliqueValue>::iterator> kill;
-    for (li=instantiation.begin(); li!=instantiation.end(); li++)
-        if (li->pi < threshold)
-            kill.push_back(li);
+    for (unsigned i=0; i<instantiation.size(); i++)
+        if (gip[instantiation[i]].pi > maxv)
+            maxv = gip[instantiation[i]].pi;
 
-    // delete them
-    for (unsigned i=0; i<kill.size(); i++)
-        instantiation.erase(kill[i]);
+    // swap back the below-threshold entries
+    logpr threshold = maxv*beam;
+    int i=0, j=instantiation.size()-1;
+    while (i <= j)
+        if (gip[instantiation[i]].pi < threshold)
+            swap(instantiation[i], instantiation[j--]);
+        else
+            i++;
+        
+    // delete the low-probability guys  -- from i to the end
+    for (unsigned k=i; k<instantiation.size(); k++)
+        recycleCliqueValue(instantiation[k]);
+    instantiation.erase(&instantiation[i], instantiation.end()); 
 }
 
-void Clique::enumerateValues(int new_member_num, CliqueValue *pred_val,
-bool viterbi)
+void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
 {
     if (separator)
     {
@@ -77,30 +105,35 @@ bool viterbi)
      
         // Make sure we have a clique value to work with
         // instantiationAddress tells if the instantiation was seen before
-        map<vector<RandomVariable::DiscreteVariableType>, CliqueValue *>::iterator mi;
+        map<vector<RandomVariable::DiscreteVariableType>, int>::iterator mi;
         CliqueValue *cv;
         if ((mi=instantiationAddress.find(clampedValues)) == 
-        instantiationAddress.end())                  // not seen before
+        instantiationAddress.end())               // not seen before
         {
-            instantiation.push_back(CliqueValue());  // auto-init pi to 0.0
-            cv = &instantiation.back();              // work with new value
-            instantiationAddress[clampedValues] = cv;   // store
+            int ncv = newCliqueValue();
+            cv = &gip[ncv];
+            instantiation.push_back(ncv);                
+            instantiationAddress[clampedValues] = ncv;  
             // store the underlying variable values with the instantiation
-            cv->values = clampedValues;   
+            set<vector<RandomVariable::DiscreteVariableType> >::iterator si;
+            si = CliqueValue::global_val_set.insert(
+                CliqueValue::global_val_set.begin(), clampedValues);
+            cv->values = &(*si);   
+            cv->lambda = cv->pi = 0.0;
         }
         else
-            cv = (*mi).second;                    // will word with old value
+            cv = &gip[(*mi).second];              // will word with old value
 
         if (!viterbi)
         {
 	    // accumulate in probability
-            cv->pi += pred_val->pi;
-            pred_val->succ = cv;
+            cv->pi += gip[pred_val].pi;
+            gip[pred_val].succ = instantiationAddress[clampedValues];
         }
-        else if (pred_val->pi >= cv->pi)
+        else if (gip[pred_val].pi >= cv->pi)
         {
 	    // replace value since it is greater
-            cv->pi = pred_val->pi;
+            cv->pi = gip[pred_val].pi;
             cv->pred = pred_val;
         }
     }
@@ -119,13 +152,17 @@ bool viterbi)
         if (pi != 0.0)    
         {
             cacheClampedValues();
-            instantiation.push_back(CliqueValue());
-            CliqueValue *cv = &instantiation.back();
+            int ncv = newCliqueValue();
+            instantiation.push_back(ncv);
+            CliqueValue *cv = &gip[ncv];
             cv->pi = cv->lambda = pi;  // cache value in lambda
             cv->pred = pred_val;
-            cv->values = clampedValues;
-            if (pred_val)   // not doing root
-                cv->pi *= pred_val->pi;
+            set<vector<RandomVariable::DiscreteVariableType> >::iterator si;
+            si = CliqueValue::global_val_set.insert(
+                CliqueValue::global_val_set.begin(), clampedValues);
+            cv->values = &(*si);
+            if (pred_val!=-1)   // not doing root
+                cv->pi *= gip[pred_val].pi;
         }
     }
     else

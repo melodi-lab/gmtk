@@ -21,7 +21,9 @@
 
 #include <vector>
 #include <map>
-#include <list>
+#include <set>
+#include <algorithm>
+#include <numeric>
 #include "GMTK_RandomVariable.h"
 
 struct CliqueValue
@@ -37,11 +39,16 @@ struct CliqueValue
     // to keep track of the clique values that are consistent in the surrounding
     // separators. Note that there is just one in each of the surrounding
     // separators. 
-    CliqueValue *pred, *succ;
+    int pred, succ;
 
     // The underlying variable values corresponding to a particular clique
     // instantiation
-    vector<RandomVariable::DiscreteVariableType> values;
+    const vector<RandomVariable::DiscreteVariableType> *values;
+
+    // In a dynamic network, the same set of values will occur over and
+    // over again in different cliques. To avoid storing them over and over
+    // again, keep a global pool. Also, this can persist across examples 
+    static set<vector<RandomVariable::DiscreteVariableType> > global_val_set; 
 };
 
 struct Clique
@@ -80,23 +87,40 @@ struct Clique
     bool separator;
     // Is the clique a separator?
 
-    list<CliqueValue> instantiation;
+    vector<int> instantiation;
     // This stores all the possible instantiations of a clique.
     // Pruning occurs by removing low probability instantiations.
+    // The storage is indirect: the integer refers to the index of the
+    // instantiation in the global instantiation pool
 
-    map<vector<RandomVariable::DiscreteVariableType>, CliqueValue *> instantiationAddress;
+    map<vector<RandomVariable::DiscreteVariableType>, int>instantiationAddress;
     // A separator clique sums over multiple values from its non-separator
-    // parent. instantiationAddress keeps track of the address of the 
+    // parent. instantiationAddress keeps track of the index of the 
     // unique CliqueValue that all the parent values with the same 
     // underlying variable values sum into.
+
+    static vector<CliqueValue> gip;  // the global instantiation pool
+
+    static vector<unsigned> freelist;     
+    // keeps track of which CliqueVals are available; the next available may
+    // not simply be the next entry in the gip, because pruning frees up
+    // CliqueValues everywhere.
+
+    static unsigned nextfree;  // next free thing on the freelist
+
+    static unsigned newCliqueValue();  // return a clique value (index) to use
+
+    static void recycleCliqueValue(unsigned idx); // frees this one for reuse
+
+    void recycleAllCliqueValues() {for (unsigned i=0;i<instantiation.size();i++)
+                                       recycleCliqueValue(instantiation[i]);}
 
     logpr probGivenParents();
     // This computes the conditional probability of the clique.
     // It calls findConditionalProbabilityNodes(), and then for each
     // member of conditionalProbabilityNode it invokes probGivenParents()
     
-    void enumerateValues(int new_member_num, CliqueValue *pred_val,
-    bool viterbi=false);
+    void enumerateValues(int new_member_num, int pred_val, bool viterbi=false);
     // This is a recursive function that enumerates all the possible
     // instantiations of a clique.  For consistency with the value of
     // the parent clique, only the new members are instantiated.
@@ -107,6 +131,8 @@ struct Clique
 
     void reveal();
     // shows who the members and newMembers are
+
+    ~Clique() {recycleAllCliqueValues();}
 };
 
 #endif
