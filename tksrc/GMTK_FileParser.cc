@@ -594,6 +594,9 @@ FileParser::parseGraphicalModel()
   parseFrameList();
   _maxFrame = curFrame;
 
+  if (_lastChunkframe > _maxFrame)
+    parseError("last chunk integer must be no greater than number of frames");
+
   parseChunkSpecifier();
 
   printf("Found %d random variables.\n",
@@ -1232,6 +1235,11 @@ FileParser::parseChunkSpecifier()
   if (tokenInfo.int_val < 0) 
     parseError("non-negative chunk range");
   _lastChunkframe = (unsigned)tokenInfo.int_val;
+
+  if (_firstChunkframe > _lastChunkframe)
+    parseError("last chunk integer must be no less than first chunk integer");
+
+
   consumeToken();
 
 }
