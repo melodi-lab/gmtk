@@ -90,5 +90,8 @@ void exit_program_with_status(const int stat);
 
 void memory_error();
 
+// return the log10 add of v1 and v2,i.e., res = log10(10^v1 + 10^v2)
+double log10add(double v1,double v2);
+
 
 #endif
