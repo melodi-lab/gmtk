@@ -78,6 +78,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool readChar(char& c,char *msg=NULL);
   bool readStr(char*& str,char *msg=NULL);
   bool readInt(int& i,char *msg=NULL);
+  bool readUnsigned(unsigned& i,char *msg=NULL);
   bool readFloat(float& f,char *msg=NULL);
   bool readDouble(double& d,char *msg=NULL);
   bool readString(string& str,char *msg=NULL);
@@ -88,7 +89,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool read(char*& str,char *msg=NULL) { return readStr(str,msg); }
   bool read(char& c,char *msg=NULL) { return readChar(c,msg); }
   bool read(int& i,char *msg=NULL) { return readInt(i,msg); }
-  bool read(unsigned& i,char *msg=NULL) { return readInt((int&)i,msg); }
+  bool read(unsigned& i,char *msg=NULL) { return readUnsigned(i,msg); }
   bool read(float& f,char *msg=NULL) { return readFloat(f,msg); }
   bool read(double& d,char *msg=NULL) { return readDouble(d,msg); }
   bool read(string& str,char *msg=NULL) { return readString(str,msg); }
@@ -158,6 +159,7 @@ class oDataStreamFile : public ioDataStreamFile {
   bool writeString(const string& str,char *msg=NULL);
   bool writeChar(const char c, char *msg=NULL);
   bool writeInt(const int i,char *msg=NULL);
+  bool writeUnsigned(const unsigned int u,char *msg=NULL);
   bool writeFloat(const float f,char *msg=NULL);
   bool writeDouble(const double d,char *msg=NULL);
   bool writeComment(char *comment, ...);
@@ -172,7 +174,10 @@ class oDataStreamFile : public ioDataStreamFile {
   bool write(const string& str,char *msg=NULL) { return writeString(str,msg); }
   bool write(const char c, char *msg=NULL) { return writeChar(c,msg); }
   bool write(const int i,char *msg=NULL) { return writeInt(i,msg); }
-  bool write(const unsigned i,char *msg=NULL) { return writeInt((int)i,msg); }
+  bool write(const unsigned int u,char *msg=NULL) { return writeUnsigned(u,msg); }
+#ifdef _AIX
+  bool write(const size_t i,char *msg=NULL) { return writeUnsigned(i,msg); }
+#endif
   bool write(const float f,char *msg=NULL) { return writeFloat(f,msg); }
   bool write(const double d,char *msg=NULL) { return writeDouble(d,msg); }
 

@@ -327,6 +327,31 @@ iDataStreamFile::readInt(int& i, char *msg)
 
 
 bool 
+iDataStreamFile::readUnsigned(unsigned& i, char *msg) 
+{
+  if (Binary) {
+    size_t rc = fread(&i, sizeof(unsigned), 1,fh);
+    if (rc != 1)
+      return errorReturn("readUnsigned",msg);
+    return true;
+  } else {
+    if (!prepareNext())
+      return errorReturn("readUnsigned",msg);
+    char *ptr;
+    unsigned long l = strtoul(buffp,&ptr,0);
+    if (ptr == buffp) {
+      error("readUnsigned: Can't form unsigned at (%s) in file (%s). %s",buffp,
+	    fileName(),
+	    (msg?msg:""));
+    } else
+      buffp = ptr;
+    i = (unsigned)l;
+    return true;
+  }
+}
+
+
+bool 
 iDataStreamFile::readFloat(float& f, char *msg) 
 {
   if (Binary) {
@@ -464,6 +489,20 @@ bool oDataStreamFile::writeInt(const int i,char *msg)
   } else {
     if (fprintf(fh,"%d ",i) == 0) 
       return errorReturn("writeInt",msg);
+    return true;
+  }
+}
+
+bool oDataStreamFile::writeUnsigned(const unsigned int u,char *msg)
+{
+  if (Binary) {
+    size_t rc = fwrite(&u, sizeof(int), 1,fh);
+    if (rc != 1)
+      return errorReturn("writeUnsigned",msg);
+    return true;
+  } else {
+    if (fprintf(fh,"%ud ",u) == 0) 
+      return errorReturn("writeUnsigned",msg);
     return true;
   }
 }
