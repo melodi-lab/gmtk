@@ -21,8 +21,12 @@
 #include <set>
 
 #include "logp.h"
+#include "general.h"
+
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CliqueChain.h"
+
+
 
 struct GMTK_GM
 {
@@ -39,7 +43,10 @@ struct GMTK_GM
     // Go through the nodes in the specified order and show them.
 
     GMTK_GM() {example=NULL; chain=NULL; using_files=false;}
-    ~GMTK_GM() { if (chain) delete chain; }
+    ~GMTK_GM() { 
+      if (chain) delete chain; 
+      deleteObsInVector(node);
+    }
 
     void makeRandom();
     // Goes over each variable in the graph and calls its makeRandom function.
