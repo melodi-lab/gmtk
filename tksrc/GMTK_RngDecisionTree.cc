@@ -64,6 +64,9 @@ map<RngDecisionTree::EquationClass::tokenEnum,
   RngDecisionTree::EquationClass::functionToken;
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::oneValFunctionToken;
+map<RngDecisionTree::EquationClass::tokenEnum, 
+  RngDecisionTree::EquationClass::formulaCommand> 
   RngDecisionTree::EquationClass::twoValFunctionToken;
 
 map<RngDecisionTree::EquationClass::tokenEnum, unsigned> 
@@ -535,6 +538,9 @@ RngDecisionTree::EquationClass::EquationClass()
   //////////////////////////////////////////////////////////////////////////
   if (delimiter.size() == 0) {
 
+    ////////////////////////////////////////////////////////////////////////
+    // 'delimiter' and 'function' map text to the tokenEnum 
+    ////////////////////////////////////////////////////////////////////////
     delimiter["&"]  = TOKEN_BITWISE_AND;
     delimiter["|"]  = TOKEN_BITWISE_OR;
     delimiter[":"]  = TOKEN_COLON;
@@ -559,11 +565,15 @@ RngDecisionTree::EquationClass::EquationClass()
     delimiter[")"]  = TOKEN_RIGHT_PAREN;
     delimiter["?"]  = TOKEN_QUESTION_MARK;
 
+    function["abs"] = TOKEN_ABSOLUTE_VALUE;
     function["max"] = TOKEN_MAX;
     function["min"] = TOKEN_MIN;
     function["mod"] = TOKEN_MOD;
     function["xor"] = TOKEN_BITWISE_XOR;
 
+    ////////////////////////////////////////////////////////////////////////
+    //  Maps tokens to commands
+    ////////////////////////////////////////////////////////////////////////
     infixToken[TOKEN_BITWISE_AND]     = COMMAND_BITWISE_AND;
     infixToken[TOKEN_BITWISE_OR]      = COMMAND_BITWISE_OR;
     infixToken[TOKEN_BITWISE_XOR]     = COMMAND_BITWISE_XOR;
@@ -586,9 +596,14 @@ RngDecisionTree::EquationClass::EquationClass()
     functionToken[TOKEN_MAX] = COMMAND_MAX;
     functionToken[TOKEN_MIN] = COMMAND_MIN;
 
-    twoValFunctionToken[TOKEN_BITWISE_XOR]  = COMMAND_BITWISE_XOR;
-    twoValFunctionToken[TOKEN_MOD]          = COMMAND_MOD; 
+    oneValFunctionToken[TOKEN_ABSOLUTE_VALUE] = COMMAND_ABSOLUTE_VALUE;
 
+    twoValFunctionToken[TOKEN_BITWISE_XOR]  = COMMAND_BITWISE_XOR;
+    twoValFunctionToken[TOKEN_MOD]          = COMMAND_MOD;
+
+    ////////////////////////////////////////////////////////////////////////
+    //  Maps tokens to priority levels 
+    ////////////////////////////////////////////////////////////////////////
     tokenPriority[TOKEN_BITWISE_AND]     = BITWISE_AND_PRCDNC;
     tokenPriority[TOKEN_BITWISE_OR]      = BITWISE_OR_PRCDNC;
     tokenPriority[TOKEN_DIVIDE]          = MULT_PRCDNC;
@@ -673,6 +688,13 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack.push_back(operand); 
         break;
 
+      case COMMAND_ABSOLUTE_VALUE: 
+        last = stack.stackSize() - 1;
+        if (stack[last] < 0) { 
+          stack[last] = -stack[last];
+        }
+        break;
+ 
       case COMMAND_BITWISE_AND: 
         last = stack.stackSize() - 1;
         stack[last-1] = stack[last-1] & stack[last];
@@ -1191,6 +1213,33 @@ RngDecisionTree::EquationClass::parseFactor(
         new_command = MAKE_COMMAND( functionToken[next_token], 0 );
         commands.push_back(new_command);
         changeDepth( -1, depth );
+        getToken(formula , token); 
+      }
+      //////////////////////////////////////////////////////////////////////
+      // Functions which take exactly one operand 
+      //////////////////////////////////////////////////////////////////////
+      else if (oneValFunctionToken[token.token] != COMMAND_INVALID) {
+  
+        next_token = token.token;
+
+        getToken(formula, token); 
+        if (token.token != TOKEN_LEFT_PAREN) {
+          string error_message = "Expecting left parenthesis at '" + 
+	    formula + "'";
+          throw(error_message);
+        }
+
+        getToken(formula, token);
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+
+        if (token.token != TOKEN_RIGHT_PAREN) {
+          string error_message = "Expecting right parenthesis at '" + 
+            formula + "'";
+          throw(error_message);
+        }
+
+        new_command = MAKE_COMMAND( oneValFunctionToken[next_token], 0 );
+        commands.push_back(new_command);
         getToken(formula , token); 
       }
       //////////////////////////////////////////////////////////////////////
@@ -2145,6 +2194,9 @@ void test_formula()
 
   formula = "238>>3";
   correct &= dt.testFormula( formula, vars, 29 );
+
+  formula = "abs((p2-p1-p0))";
+  correct &= dt.testFormula( formula, vars, 10 );
 
   if (! correct) {
     error("A formula is not giving the correct answer\n");
