@@ -724,3 +724,5 @@ Tue Dec 17 13:31:36 2002
 >  I think, including insertion penalty would be quite useful for 
 >  incorporating LMs with GMTK.
  (actually, do the switching variable scale/penalty stuff).
+
+
