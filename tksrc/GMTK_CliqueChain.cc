@@ -213,7 +213,7 @@ bool CliqueChain::doViterbi(logpr beam)
         if (cv.pi >= maxprob)
         {
             maxprob = cv.pi;
-            best = j;
+            best = cl->instantiation[j];
         }
     }
     assert(maxprob==viterbiProb); // already computed on forward pass
