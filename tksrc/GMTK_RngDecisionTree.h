@@ -100,57 +100,188 @@ protected:
   unsigned         numDTs;     // number of DTs in this file
   int              dtNum;      // the current DT number
   string           curName;    // the current DT name
-  unsigned         firstDT;    // index of the first decision tree 
+  unsigned         firstDT;    // index of the first decision tree
+ 
+  ///////////////////////////////////////////////////////////////////////////    
+  // Equation Parsing 
+  ///////////////////////////////////////////////////////////////////////////    
 
-  enum NodeType { NonLeafNode, LeafNodeVal, LeafNodeFormula, LeafNodeFullExpand };
+  class EquationClass
+  {
 
-  enum FormulaType { Integer, ParentValue, ParentCardinality, ParentValCard };
+    public:
 
-  struct FormEntry {
-    FormulaType fType;
-    union {
-      unsigned parentIndex;
-      leafNodeValType value;
-    };
+      void parseFormula(
+        string& leafNodeVal 
+        );
+
+      leafNodeValType evaluateFormula(
+        const vector< RandomVariable* >& variables 
+      );
+
+      leafNodeValType evaluateFormula(
+        const vector<unsigned>& value, 
+        const vector<unsigned>& cardinality
+      );
+
+    protected:
+
+      struct commandStruct { 
+        unsigned command;
+        unsigned immediate;
+      };
+
+      // Vector of commands with immediates 
+      vector<commandStruct> commands;
+
+      ///////////////////////////////////////////////////////////////////////
+      // Tokens used by the equation parsing function  
+      ///////////////////////////////////////////////////////////////////////    
+      typedef enum {
+
+        TOKEN_SPACE, 
+        TOKEN_PARENT, 
+        TOKEN_CARDINALITY, 
+        TOKEN_INTEGER, 
+        TOKEN_PLUS, 
+        TOKEN_MINUS, 
+        TOKEN_TIMES, 
+        TOKEN_DIVIDE, 
+        TOKEN_LEFT_PAREN, 
+        TOKEN_RIGHT_PAREN, 
+        TOKEN_COMMA, 
+        TOKEN_EXPONENT, 
+        TOKEN_BITWISE_AND, 
+        TOKEN_BITWISE_OR, 
+        TOKEN_XOR,
+        TOKEN_LOGICAL_AND, 
+        TOKEN_LOGICAL_OR, 
+        TOKEN_MOD,
+        TOKEN_MIN,
+        TOKEN_MAX,
+
+        TOKEN_END, 
+        LAST_TOKEN_INDEX
+
+      } tokenEnum;
+
+      /////////////////////////////////////////////////////////////////////// 
+      // Structure used for storing tokens with associated values 
+      /////////////////////////////////////////////////////////////////////// 
+      struct tokenStruct {
+        tokenEnum token;
+
+        string text; 
+        int    number; 
+      }; 
+
+      ///////////////////////////////////////////////////////////////////////
+      // Commands used in equation evaluation 
+      ///////////////////////////////////////////////////////////////////////    
+      enum {
+
+        COMMAND_PUSH_PARENT,      
+        COMMAND_PUSH_CARDINALITY,
+        COMMAND_PUSH_CONSTANT, 
+        COMMAND_PLUS, 
+        COMMAND_MINUS, 
+        COMMAND_TIMES, 
+        COMMAND_DIVIDE, 
+        COMMAND_EXPONENT, 
+        COMMAND_BITWISE_AND, 
+        COMMAND_BITWISE_OR, 
+        COMMAND_XOR, 
+        COMMAND_LOGICAL_AND, 
+        COMMAND_LOGICAL_OR, 
+        COMMAND_MOD, 
+        COMMAND_MIN, 
+        COMMAND_MAX, 
+
+        LAST_COMMAND_INDEX
+      };
+
+      void parseExpression(
+        tokenStruct& token,
+        string&      leafNodeVal 
+      );
+ 
+      void parseTerm(
+        tokenStruct& token,
+        string&      leafNodeVal 
+      );
+
+      void parseFactor(
+        tokenStruct& token,
+        string&      leafNodeVal 
+      );
+
+      void getToken(
+        string&      expression, 
+        tokenStruct& item
+      );
+
+      bool getInteger(
+        const string& expression, 
+        int&   number 
+      );
   };
 
-  struct Node {
-    NodeType nodeType;
-    // Ideally, this should be a union of
-    // the following two structs, but
-    // either the compiler or C++ doesn't let
-    // us keep a union of structs with templates as below.
-    struct NonLeafNode {
+  ///////////////////////////////////////////////////////////////    
+  // Node Structures 
+  ///////////////////////////////////////////////////////////////    
+  enum NodeType{NonLeafNode, LeafNodeVal, LeafNodeFormula, LeafNodeFullExpand};
+
+  struct Node;
+
+  ///////////////////////////////////////////////////////////    
+  // Tree structure for when node is not a leaf node 
+  ///////////////////////////////////////////////////////////    
+  struct NonLeafNodeStruct {
       // This is when nodeType == NonLeafNode.
       int ftr;
       bool ordered;
       vector< Node* > children;
       vector< BP_Range* > rngs;
-    } nonLeafNode;
-    struct LeafNode {
-      // The string form of the leaf node.
-      string leafNodeString;
-      // The value, if it is just a value,
-      // i.e., when nodeType == LeafNodeVal
-      leafNodeValType value;
-      // The formula if it is a formula,
-      // i.e., when nodeType == LeafNodeFormula
-      vector <FormEntry> formula;
-      // Note: when nodeType == LeafNodeFullExpand,
-      // we just compute the one-to-one mapping
-      // from joint state space of the parents
-      // to the integers, so the above two things
-      // are not used.
+   } nonLeafNode;
 
-      // In order to have easy access to all of the
-      // leaf nodes, we also keep a 
-      // doubly linked list of these nodes.
-      Node* prevLeaf;
-      Node* nextLeaf;
-    } leafNode;
+  ///////////////////////////////////////////////////////////    
+  // Structure for various types of leaf nodes 
+  ///////////////////////////////////////////////////////////    
+  struct LeafNodeStruct {
+
+    // The string form of the leaf node.
+    string leafNodeString;
+
+    // The value, if it is just a value,
+    // i.e., when nodeType == LeafNodeVal
+    leafNodeValType value;
+
+    // Note: when nodeType == LeafNodeFullExpand,
+    // we just compute the one-to-one mapping
+    // from joint state space of the parents
+    // to the integers, so the above two things
+    // are not used.
+
+    // Used when the leaf node is an equation 
+    EquationClass equation;
+
+    // In order to have easy access to all of the
+    // leaf nodes, we also keep a 
+    // doubly linked list of these nodes.
+    Node* prevLeaf;
+    Node* nextLeaf;
+  } ;
+
+  ///////////////////////////////////////////////////////////    
+  // Node structure (nonLeafNode and leafNodes can not be 
+  //  unioned because they have entries with constructors)  
+  ///////////////////////////////////////////////////////////    
+  struct Node {
+    NodeType nodeType;
+    NonLeafNodeStruct nonLeafNode;
+    LeafNodeStruct    leafNode;
   };
 
-    
   ////////////////////////////////////////////////////////////////
   // structure for comparing range pointers. 
   struct RngCompare {  
