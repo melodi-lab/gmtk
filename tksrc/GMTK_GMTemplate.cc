@@ -51,6 +51,24 @@
 
 VCID("$Header$");
 
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        Static variables used in this file
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+static const string P_partition_name("P_PARTITION");
+static const string C_partition_name("C_PARTITION");
+static const string E_partition_name("E_PARTITION");
+static const string PC_interface_name("PC_PARTITION");
+static const string CE_interface_name("CE_PARTITION");
+
+static const string P_elimination_order("P_ELIMINATION_ORDER");
+static const string C_elimination_order("C_ELIMINATION_ORDER");
+static const string E_elimination_order("E_ELIMINATION_ORDER");
+
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Main Partition Routines
@@ -93,7 +111,9 @@ findPartitions(const string& fh,  // face quality heuristic
 	       const bool findBestFace,
 	       set<RandomVariable*>& Pc,
 	       set<RandomVariable*>& Cc,
-	       set<RandomVariable*>& Ec)
+	       set<RandomVariable*>& Ec,
+	       set<RandomVariable*>& PCInterface,
+	       set<RandomVariable*>& CEInterface)
 {
   const int debug = 1;
 
@@ -260,7 +280,9 @@ findPartitions(const string& fh,  // face quality heuristic
 			    C_l_u2C2,
 			    Pc,
 			    Cc,
-			    Ec);
+			    Ec,
+			    PCInterface,
+			    CEInterface);
   } else {
     // find right interface partitions
     findInterfacePartitions(E_u1,
@@ -273,7 +295,9 @@ findPartitions(const string& fh,  // face quality heuristic
 			    C_r_u2C2,
 			    Ec,
 			    Cc,
-			    Pc);
+			    Pc,
+			    CEInterface,
+			    PCInterface);
   }
 }
 
@@ -309,7 +333,9 @@ GMTemplate::
 findPartitions(iDataStreamFile& is,
 	       set<RandomVariable*>& Pc,
 	       set<RandomVariable*>& Cc,
-	       set<RandomVariable*>& Ec)
+	       set<RandomVariable*>& Ec,
+	       set<RandomVariable*>& PCIc,
+	       set<RandomVariable*>& CEIc)
 {
   vector <RandomVariable*> unroll1_rvs;
   map < RVInfo::rvParent, unsigned > positions;
@@ -324,10 +350,14 @@ findPartitions(iDataStreamFile& is,
   }
 
   unsigned setSize;
+  string str_tmp;
   set<RandomVariable*> P;
   set<RandomVariable*> C;
   set<RandomVariable*> E;
 
+  is.read(str_tmp,"name");
+  if (str_tmp != P_partition_name)
+    error("ERROR: P partition information in file %s is invalid for given graph structure\n",is.fileName());
   is.read(setSize,"set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
@@ -342,6 +372,9 @@ findPartitions(iDataStreamFile& is,
     P.insert(unroll1_rvs[(*loc).second]);
   }
 
+  is.read(str_tmp,"name");
+  if (str_tmp != C_partition_name)
+    error("ERROR: C partition information in file %s is invalid for given graph structure\n",is.fileName());
   is.read(setSize,"set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
@@ -356,7 +389,9 @@ findPartitions(iDataStreamFile& is,
     C.insert(unroll1_rvs[(*loc).second]);
   }
 
-
+  is.read(str_tmp,"name");
+  if (str_tmp != E_partition_name)
+    error("ERROR: E partition information in file %s is invalid for given graph structure\n",is.fileName());
   is.read(setSize,"set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
@@ -370,16 +405,85 @@ findPartitions(iDataStreamFile& is,
 	    is.fileName());
     E.insert(unroll1_rvs[(*loc).second]);
   }
+  
+  // next, read in the interface definitions.
 
-  clone(P,Pc);
-  clone(C,Cc);
-  clone(E,Ec);
+  set<RandomVariable*> PCInterface;
+  set<RandomVariable*> CEInterface;
 
-  // @@@ TODO: the inferface for these partitions still
-  // needs to be made complete as the elimination order
-  // will not do this (the elimin order was done with
-  // respet to the partitions where the interfaces were already
-  // complete).
+  // get PC interface
+  is.read(str_tmp,"name");
+  if (str_tmp != PC_interface_name)
+    error("ERROR: PC interface information in file %s is invalid for given graph structure\n",is.fileName());
+  is.read(setSize,"set size");
+  for (unsigned i=0;i<setSize;i++) {
+    RVInfo::rvParent par;
+    is.read(par.first,"parent name");
+    is.read(par.second,"parent position");
+
+    map < RVInfo::rvParent, unsigned >::iterator loc;
+    loc = positions.find(par);
+    if (loc == positions.end())
+      error("ERROR: PC interface information in file %s is invalid for given graph structure\n",
+	    is.fileName());
+    PCInterface.insert(unroll1_rvs[(*loc).second]);
+  }
+
+  // get CE interface
+  is.read(str_tmp,"name");
+  if (str_tmp != CE_interface_name)
+    error("ERROR: CE interface information in file %s is invalid for given graph structure\n",is.fileName());
+  is.read(setSize,"set size");
+  for (unsigned i=0;i<setSize;i++) {
+    RVInfo::rvParent par;
+    is.read(par.first,"parent name");
+    is.read(par.second,"parent position");
+
+    map < RVInfo::rvParent, unsigned >::iterator loc;
+    loc = positions.find(par);
+    if (loc == positions.end())
+      error("ERROR: CE interface information in file %s is invalid for given graph structure\n",
+	    is.fileName());
+    CEInterface.insert(unroll1_rvs[(*loc).second]);
+  }
+
+  // finally create a new variable set for each, make
+  // the interfaces complete, and finish up.
+
+  map < RandomVariable*, RandomVariable* > in_to_out;
+  set < RandomVariable* > tmp;
+
+  clone(P,Pc,in_to_out);
+  tmp.clear();
+  for (set<RandomVariable*>::iterator i=PCInterface.begin();
+       i != PCInterface.end();i++) {
+    tmp.insert(in_to_out[(*i)]);
+  }
+  makeComplete(tmp);
+  PCIc = tmp;
+
+  clone(C,Cc,in_to_out);
+  tmp.clear();
+  for (set<RandomVariable*>::iterator i=PCInterface.begin();
+       i != PCInterface.end();i++) {
+    tmp.insert(in_to_out[(*i)]);
+  }
+  makeComplete(tmp);
+  tmp.clear();
+  for (set<RandomVariable*>::iterator i=CEInterface.begin();
+       i != CEInterface.end();i++) {
+    tmp.insert(in_to_out[(*i)]);
+  }
+  makeComplete(tmp);  
+  CEIc = tmp;
+
+  clone(E,Ec,in_to_out);
+  tmp.clear();
+  for (set<RandomVariable*>::iterator i=CEInterface.begin();
+       i != CEInterface.end();i++) {
+    tmp.insert(in_to_out[(*i)]);
+  }
+  makeComplete(tmp);  
 
 }
 
@@ -393,6 +497,12 @@ findPartitions(iDataStreamFile& is,
  *  in a more human readable format (as comments preceeded by
  *  a coment character) and in machine readable form to be read
  *  in again (lines that do not begin with comment characters).
+ *  Information written includes;
+ *    P partition
+ *    C partition
+ *    E partition
+ *    PC interface
+ *    CE interface
  *
  * Preconditions:
  *   Each partition must corresond to a valid and separte GM. Each
@@ -413,10 +523,7 @@ findPartitions(iDataStreamFile& is,
  */
 void
 GMTemplate::
-storePartitions(oDataStreamFile& os,
-		const set<RandomVariable*>& Pc,
-		const set<RandomVariable*>& Cc,
-		const set<RandomVariable*>& Ec)
+storePartitions(oDataStreamFile& os,const GMInfo& info) 
 {
 
   string buffer;
@@ -427,24 +534,25 @@ storePartitions(oDataStreamFile& os,
   os.writeComment("---\n");
   os.writeComment("--- P partition information: variables and their neighbors\n");
   buffer.clear();
-  for (set<RandomVariable*>::iterator i=Pc.begin();
-       i != Pc.end(); i++) {
+  for (set<RandomVariable*>::iterator i=info.P.begin();
+       i != info.P.end(); i++) {
     RandomVariable* rv = (*i);
     sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
     buffer = buff;
     for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {
       sprintf(buff," %s(%d),",
-		      (*j)->name().c_str(),(*j)->frame());
+	      (*j)->name().c_str(),(*j)->frame());
       buffer += buff;
     }
     os.writeComment("%s\n",buffer.c_str());
   }
   // Then write it out in machine readable form not as a comment
   os.writeComment("--- P partition definition\n");
-  os.write(Pc.size());
-  for (set<RandomVariable*>::iterator i = Pc.begin();
-       i != Pc.end(); i++) {
+  os.write(P_partition_name);
+  os.write(info.P.size());
+  for (set<RandomVariable*>::iterator i = info.P.begin();
+       i != info.P.end(); i++) {
     RandomVariable* rv = (*i);
     os.write(rv->name().c_str(),"rv name");
     os.write(rv->frame(),"rv frame");
@@ -456,24 +564,25 @@ storePartitions(oDataStreamFile& os,
   os.writeComment("---\n");
   os.writeComment("--- C partition information: variables and their neighbors\n");
   buffer.clear();
-  for (set<RandomVariable*>::iterator i=Cc.begin();
-       i != Cc.end(); i++) {
+  for (set<RandomVariable*>::iterator i=info.C.begin();
+       i != info.C.end(); i++) {
     RandomVariable* rv = (*i);
     sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
     buffer = buff;
     for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {
       sprintf(buff," %s(%d),",
-		      (*j)->name().c_str(),(*j)->frame());
+	      (*j)->name().c_str(),(*j)->frame());
       buffer += buff;
     }
     os.writeComment("%s\n",buffer.c_str());
   }
   // Then write it out in machine readable form not as a comment
   os.writeComment("--- C partition definition\n");
-  os.write(Cc.size());
-  for (set<RandomVariable*>::iterator i = Cc.begin();
-       i != Cc.end(); i++) {
+  os.write(C_partition_name);
+  os.write(info.C.size());
+  for (set<RandomVariable*>::iterator i = info.C.begin();
+       i != info.C.end(); i++) {
     RandomVariable* rv = (*i);
     os.write(rv->name().c_str(),"rv name");
     os.write(rv->frame(),"rv frame");
@@ -486,24 +595,87 @@ storePartitions(oDataStreamFile& os,
   os.writeComment("---\n");
   os.writeComment("--- E partition information: variables and their neighbors\n");
   buffer.clear();
-  for (set<RandomVariable*>::iterator i=Ec.begin();
-       i != Ec.end(); i++) {
+  for (set<RandomVariable*>::iterator i=info.E.begin();
+       i != info.E.end(); i++) {
     RandomVariable* rv = (*i);
     sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
     buffer = buff;
     for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {
       sprintf(buff," %s(%d),",
-		      (*j)->name().c_str(),(*j)->frame());
+	      (*j)->name().c_str(),(*j)->frame());
       buffer += buff;
     }
     os.writeComment("%s\n",buffer.c_str());
   }
   // Then write it out in machine readable form not as a comment
   os.writeComment("--- E partition definition\n");
-  os.write(Ec.size());
-  for (set<RandomVariable*>::iterator i = Ec.begin();
-       i != Ec.end(); i++) {
+  os.write(E_partition_name);
+  os.write(info.E.size());
+  for (set<RandomVariable*>::iterator i = info.E.begin();
+       i != info.E.end(); i++) {
+    RandomVariable* rv = (*i);
+    os.write(rv->name().c_str(),"rv name");
+    os.write(rv->frame(),"rv frame");
+  }
+  os.nl();
+
+
+  // First write it out in human readable form as a comment.
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- PC information : variables and their neighbors\n");
+  buffer.clear();
+  for (set<RandomVariable*>::iterator i=info.PCInterface.begin();
+       i != info.PCInterface.end(); i++) {
+    RandomVariable* rv = (*i);
+    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+    buffer = buff;
+    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      sprintf(buff," %s(%d),",
+	      (*j)->name().c_str(),(*j)->frame());
+      buffer += buff;
+    }
+    os.writeComment("%s\n",buffer.c_str());
+  }
+  // Then write it out in machine readable form not as a comment
+  os.writeComment("--- PC interface definition\n");
+  os.write(PC_interface_name);
+  os.write(info.PCInterface.size());
+  for (set<RandomVariable*>::iterator i = info.PCInterface.begin();
+       i != info.PCInterface.end(); i++) {
+    RandomVariable* rv = (*i);
+    os.write(rv->name().c_str(),"rv name");
+    os.write(rv->frame(),"rv frame");
+  }
+  os.nl();
+
+
+  // First write it out in human readable form as a comment.
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- CE information : variables and their neighbors\n");
+  buffer.clear();
+  for (set<RandomVariable*>::iterator i=info.CEInterface.begin();
+       i != info.CEInterface.end(); i++) {
+    RandomVariable* rv = (*i);
+    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+    buffer = buff;
+    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      sprintf(buff," %s(%d),",
+	      (*j)->name().c_str(),(*j)->frame());
+      buffer += buff;
+    }
+    os.writeComment("%s\n",buffer.c_str());
+  }
+  // Then write it out in machine readable form not as a comment
+  os.writeComment("--- CE interface definition\n");
+  os.write(CE_interface_name);
+  os.write(info.CEInterface.size());
+  for (set<RandomVariable*>::iterator i = info.CEInterface.begin();
+       i != info.CEInterface.end(); i++) {
     RandomVariable* rv = (*i);
     os.write(rv->name().c_str(),"rv name");
     os.write(rv->frame(),"rv frame");
@@ -562,7 +734,7 @@ triangulatePartitions(const string& th,
 }
 void
 GMTemplate::
-triangulatePartitions(const vector<TriangulateHeuristic> th_v,
+triangulatePartitions(const vector<TriangulateHeuristic>& th_v,
 		      set<RandomVariable*>& P,
 		      set<RandomVariable*>& C,
 		      set<RandomVariable*>& E,
@@ -573,7 +745,6 @@ triangulatePartitions(const vector<TriangulateHeuristic> th_v,
 		      vector<RandomVariable*>& Cordered,
 		      vector<RandomVariable*>& Eordered)
 {
-
   basicTriangulate(P,th_v,
 		   Pordered,Pcliques);
   basicTriangulate(C,th_v,
@@ -620,8 +791,21 @@ triangulatePartitions(iDataStreamFile& is,
 		      vector<RandomVariable*>& Cordered,
 		      vector<RandomVariable*>& Eordered)
 {
+  string tmp;
+
+  is.read(tmp,"name");
+  if (tmp != P_elimination_order)
+    error("ERROR: P elimination order interface information in file %s is invalid for given graph structure\n",is.fileName());
   basicTriangulate(is,P,Pordered,Pcliques);
+
+  is.read(tmp,"name");
+  if (tmp != C_elimination_order)
+    error("ERROR: C elimination order interface information in file %s is invalid for given graph structure\n",is.fileName());
   basicTriangulate(is,C,Cordered,Ccliques);
+
+  is.read(tmp,"name");
+  if (tmp != E_elimination_order)
+    error("ERROR: E elimination order interface information in file %s is invalid for given graph structure\n",is.fileName());
   basicTriangulate(is,E,Eordered,Ecliques);
 }
 
@@ -690,6 +874,7 @@ storePartitionTriangulation(oDataStreamFile& os,
   // Then write out the elimination order that achieves these
   // cliques.
   os.writeComment("P Parition Elimination Order\n");
+  os.write(P_elimination_order);
   os.write(Pordered.size());
   for (unsigned int i = 0; i < Pordered.size(); i++) {
     RandomVariable* rv = Pordered[i];
@@ -720,6 +905,7 @@ storePartitionTriangulation(oDataStreamFile& os,
   // Then write out the elimination order that achieves these
   // cliques.
   os.writeComment("C Parition Elimination Order\n");
+  os.write(C_elimination_order);
   os.write(Cordered.size());
   for (unsigned int i = 0; i < Cordered.size(); i++) {
     RandomVariable* rv = Cordered[i];
@@ -750,6 +936,7 @@ storePartitionTriangulation(oDataStreamFile& os,
   // Then write out the elimination order that achieves these
   // cliques.
   os.writeComment("E Parition Elimination Order\n");
+  os.write(E_elimination_order);
   os.write(Eordered.size());
   for (unsigned int i = 0; i < Eordered.size(); i++) {
     RandomVariable* rv = Eordered[i];
@@ -757,30 +944,8 @@ storePartitionTriangulation(oDataStreamFile& os,
     os.write(rv->frame(),"rv frame");
   }
   os.nl();
-
-
-#if 0
-  os.writeComment("C Parition Elimination Order\n");
-  os.write(Cordered.size());
-  for (unsigned int i = 0; i < Cordered.size(); i++) {
-    RandomVariable* rv = Cordered[i];
-    os.write(rv->name().c_str(),"rv name");
-    os.write(rv->frame(),"rv frame");
-  }
-  os.nl();
-
-
-  os.writeComment("E Parition Elimination Order\n");
-  os.write(Eordered.size());
-  for (unsigned int i = 0; i < Eordered.size(); i++) {
-    RandomVariable* rv = Eordered[i];
-    os.write(rv->name().c_str(),"rv name");
-    os.write(rv->frame(),"rv frame");
-  }
-  os.nl();
-#endif
-
 }
+
 void
 GMTemplate::
 storePartitionTriangulation(oDataStreamFile& os,
@@ -794,6 +959,7 @@ storePartitionTriangulation(oDataStreamFile& os,
   // Write out the elimination orders
   os.nl();
   os.writeComment("P Parition Elimination Order\n");
+  os.write(P_elimination_order);
   os.write(Pordered.size());
   for (unsigned int i = 0; i < Pordered.size(); i++) {
     RandomVariable* rv = Pordered[i];
@@ -804,6 +970,7 @@ storePartitionTriangulation(oDataStreamFile& os,
 
 
   os.writeComment("C Parition Elimination Order\n");
+  os.write(C_elimination_order);
   os.write(Cordered.size());
   for (unsigned int i = 0; i < Cordered.size(); i++) {
     RandomVariable* rv = Cordered[i];
@@ -814,6 +981,7 @@ storePartitionTriangulation(oDataStreamFile& os,
 
 
   os.writeComment("E Parition Elimination Order\n");
+  os.write(E_elimination_order);
   os.write(Eordered.size());
   for (unsigned int i = 0; i < Eordered.size(); i++) {
     RandomVariable* rv = Eordered[i];
@@ -1247,8 +1415,8 @@ basicTriangulate(// input data stream
     map < RVInfo::rvParent, RandomVariable* >::iterator loc;
     loc = namePos2Var.find(par);
     if (loc == namePos2Var.end())
-	error("ERROR: elimination order list in file %s is not valid for given structure file.\n",
-	      is.fileName());
+      error("ERROR: elimination order list in file %s is not valid for given structure file.\n",
+	    is.fileName());
 
     RandomVariable* rv = (*loc).second;
     orderedNodes[i] = rv;
@@ -1576,16 +1744,16 @@ GMTemplate::variableSetScore(const vector<InterfaceHeuristic>& fh_v,
       float tmp_weight = computeWeight(varSet);
       score.push_back(tmp_weight);
       if (debug > 0)
-	printf("  set has weight = %f\n",tmp_weight);
+	printf("  variableSetScore: set has weight = %f\n",tmp_weight);
     } else if (fh == IH_MIN_FILLIN) {
       int fill_in = computeFillIn(varSet);
       score.push_back((float)fill_in);
       if (debug > 0)
-	printf("  set has fill_in = %d\n",fill_in);
+	printf("  variableSetScore: set has fill_in = %d\n",fill_in);
     } else if (fh == IH_MIN_SIZE) {
       score.push_back((float)varSet.size());
       if (debug > 0)
-	printf("  set has size = %d\n",
+	printf("  variableSetScore: set has size = %d\n",
 	       varSet.size());
     } else
       warning("Warning: invalid variable set score given. Ignored\n");
@@ -1647,18 +1815,18 @@ GMTemplate::interfaceScore(
       float tmp_weight = computeWeight(C_l);
       score.push_back(tmp_weight);
       if (debug > 0)
-	printf("  set has weight = %f\n",tmp_weight);
+	printf("  Interface Score: set has weight = %f\n",tmp_weight);
     } else if (fh == IH_MIN_FILLIN) {
       int fill_in = computeFillIn(C_l);
       score.push_back((float)fill_in);
       if (debug > 0)
-	printf("  set has fill_in = %d\n",fill_in);
+	printf("  Interface Score: set has fill_in = %d\n",fill_in);
     } else if (fh == IH_MIN_SIZE) {
       score.push_back((float)C_l.size());
       if (debug > 0)
-	printf("  set has size = %d\n",
+	printf("  Interface Score: set has size = %d\n",
 	       C_l.size());
-    } else if (fh == IH_MIN_MAX_CLIQUE) {
+    } else if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_MAX_C_CLIQUE) {
       // This is the expensive one, need to form a set of partitions,
       // given the current interface, triangulate that partition set, and then
       // compute the score of the worst best clique, and fill the score
@@ -1668,6 +1836,8 @@ GMTemplate::interfaceScore(
       set<RandomVariable*> Pc;
       set<RandomVariable*> Cc;
       set<RandomVariable*> Ec;
+      set<RandomVariable*> PCInterface;
+      set<RandomVariable*> CEInterface;
       vector<MaxClique> Pcliques;
       vector<MaxClique> Ccliques;
       vector<MaxClique> Ecliques;
@@ -1686,7 +1856,9 @@ GMTemplate::interfaceScore(
 			      C_l,
 			      Pc,
 			      Cc,
-			      Ec);
+			      Ec,
+			      PCInterface,
+			      CEInterface);
 
       triangulatePartitions(th_v,
 			    Pc,Cc,Ec,
@@ -1696,25 +1868,24 @@ GMTemplate::interfaceScore(
       // Now got cliques compute worst score using
       // the weight of a clique as the score mechanism.
       float maxWeight = -1.0;
-      for (unsigned i=0;i<Pcliques.size();i++) {
-	float curWeight = computeWeight(Pcliques[i].nodes);
-	printf("   --- P curWeight = %f\n",curWeight);
-	if (curWeight > maxWeight) maxWeight = curWeight;
-      }
       for (unsigned i=0;i<Ccliques.size();i++) {
 	float curWeight = computeWeight(Ccliques[i].nodes);
-	printf("   --- C curWeight = %f\n",curWeight);
 	if (curWeight > maxWeight) maxWeight = curWeight;
       }
-      for (unsigned i=0;i<Ecliques.size();i++) {
-	float curWeight = computeWeight(Ecliques[i].nodes);
-	printf("   --- E curWeight = %f\n",curWeight);
-	if (curWeight > maxWeight) maxWeight = curWeight;
+      if (fh == IH_MIN_MAX_CLIQUE) {
+	for (unsigned i=0;i<Pcliques.size();i++) {
+	  float curWeight = computeWeight(Pcliques[i].nodes);
+	  if (curWeight > maxWeight) maxWeight = curWeight;
+	}
+	for (unsigned i=0;i<Ecliques.size();i++) {
+	  float curWeight = computeWeight(Ecliques[i].nodes);
+	  if (curWeight > maxWeight) maxWeight = curWeight;
+	}
       }
       score.push_back(maxWeight);
 
       if (debug > 0)
-	printf("  set has max clique weight = %f\n",maxWeight);
+	printf("  Interface Score: set has max clique weight = %f\n",maxWeight);
 
 
       deleteNodes(Pc);
@@ -1773,7 +1944,10 @@ clone(const set<RandomVariable*>& in,
       set<RandomVariable*>& out,
       map < RandomVariable*, RandomVariable* >& in_to_out)
 {
+
   in_to_out.clear();
+  out.clear();
+
   for (set<RandomVariable*>::iterator i=in.begin();
        i != in.end(); i++) {
 
@@ -1785,7 +1959,6 @@ clone(const set<RandomVariable*>& in,
     in_to_out[(*i)] = rv;
 
   }
-
   // just do neighbors for now, don't bother with parents, children,
   // and so on.
   // Set the neighbors of out to be the correctly associated
@@ -1988,6 +2161,9 @@ GMTemplate::createVectorInterfaceHeuristic(const string& fh,
 	fh_v.push_back(IH_MIN_ENTROPY);
 	break;
       case 'C':
+	fh_v.push_back(IH_MIN_MAX_C_CLIQUE);
+	break;
+      case 'M':
 	fh_v.push_back(IH_MIN_MAX_CLIQUE);
 	break;
       default:
@@ -2251,14 +2427,14 @@ GMTemplate::findBestInterface(
 		      P_u1,C1_u1,C2_u1,E_u1,
 		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
     if (debug > 0) {
-      printf("Size of best left interface = %d\n",best_C_l.size());
-      printf("Score of best left interface =");
+      printf("Size of best interface = %d\n",best_C_l.size());
+      printf("Score of best interface =");
       for (unsigned i=0;i<best_score.size();i++)
 	printf(" %f ",best_score[i]);
       printf("\n");
-      printf("Size of best_left_C_l = %d\n",best_left_C_l.size());
+      printf("Size of best_remainder_C_l = %d\n",best_left_C_l.size());
       {
-	printf("Best left interface nodes include:");
+	printf("Best interface nodes include:");
 	set<RandomVariable*>::iterator i;    
 	for (i=best_C_l.begin();i!=best_C_l.end();i++) {
 	  printf(" %s(%d)",
@@ -2273,11 +2449,11 @@ GMTemplate::findBestInterface(
     C_l = best_C_l;
   }
 }
-
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::findBestInterface()
- *    recursive helper function for the first call findBestInterface()
+ *    recursive helper function for the first version of 
+ *    findBestInterface().
  *    See that routine above for documentation.
  *
  * Preconditions:
@@ -2317,15 +2493,17 @@ findBestInterface(
   // consider all v in the current C_l as candidates
   // to be moved left.
   for (v = C_l.begin(); v != C_l.end(); v ++) {
-    // TODO: rather than "for all nodes in C_l", we could
-    // do a random subset of nodes in C_l to speed this up if
-    // it takes too long. But note that this is only run once
-    // per graph so it will be beneficial to do this since
-    // its cost might be ammortized over the many runs of the graph
+    // TODO: 
+    //      Rather than "for all nodes in C_l", we could do a random
+    //      subset of nodes in C_l to speed this up if it takes too
+    //      long for certain graphs.  Alternatively, a greedy strategy
+    //      could be employed where rather than recursing for each v,
+    //      we could first choose the best v and then recurse on that.
+    //      But note that this is only run once per graph so it will
+    //      be beneficial to do this since its cost would probably be
+    //      ammortized over the many runs of inference with the graph.
 
-    // if v has neighbors in C3
-    // next;
-    // do a set intersection.
+    // if v has neighbors in C3 (via set intersection), then continue
     set<RandomVariable*> res;
     set_intersection((*v)->neighbors.begin(),
 		     (*v)->neighbors.end(),
@@ -2441,8 +2619,9 @@ findInterfacePartitions(
  // output variables
  set<RandomVariable*>& Pc,
  set<RandomVariable*>& Cc,
- set<RandomVariable*>& Ec
-)
+ set<RandomVariable*>& Ec,
+ set<RandomVariable*>& PCInterface,
+ set<RandomVariable*>& CEInterface)
 {
 
   // now we need to make a bunch of sets to be unioned
@@ -2500,16 +2679,19 @@ findInterfacePartitions(
 		 left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
 		 inserter(E,E.end()));
 
-
   // These (C_l_u1C1 and C_l_u1C2) are the interfaces which are forced
   // to be complete (i.e., part of a maxclique). This might take
-  // the form of:
+  // the form of of the code:
   //
-  //    makeComplete(C_l_u1C1);
-  //    makeComplete(C_l_u1C2);
+  //   makeComplete(C_l_u1C1);
+  //   makeComplete(C_l_u1C2);
+  //   clone(P,Pc);
+  //   clone(C,Cc);
+  //   clone(E,Ec);
+  //   return;
   //
-  // but we make them clique only after cloning so that
-  // this routine can be called again.
+  // but we want to make them complete only after cloning so that
+  // this routine can be called again. Therefore, we do:
 
   map < RandomVariable*, RandomVariable* > in_to_out;
   set < RandomVariable* > tmp;
@@ -2517,36 +2699,34 @@ findInterfacePartitions(
   clone(P,Pc,in_to_out);
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C1.begin();
-       i != C_l_u1C1.begin(); i++) {
+       i != C_l_u1C1.end(); i++) {
     tmp.insert(in_to_out[(*i)]);
   }
   makeComplete(tmp);
-
+  PCInterface = tmp;
 
   clone(C,Cc,in_to_out);
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C1.begin();
-       i != C_l_u1C1.begin(); i++) {
+       i != C_l_u1C1.end(); i++) {
     tmp.insert(in_to_out[(*i)]);
   }
   makeComplete(tmp);
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C2.begin();
-       i != C_l_u1C2.begin(); i++) {
+       i != C_l_u1C2.end(); i++) {
     tmp.insert(in_to_out[(*i)]);
   }
   makeComplete(tmp);
-
+  CEInterface = tmp;
 
   clone(E,Ec,in_to_out);
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C2.begin();
-       i != C_l_u1C2.begin(); i++) {
+       i != C_l_u1C2.end(); i++) {
     tmp.insert(in_to_out[(*i)]);
   }
   makeComplete(tmp);
-
-
 
 }
 
