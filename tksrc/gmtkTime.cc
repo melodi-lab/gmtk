@@ -22,8 +22,9 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
-#include <time.h>
 #include <signal.h>
+#include <time.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
 #include "general.h"
@@ -118,7 +119,7 @@ static char* progress_file = "-";
 /////////////////////////////////////////////////////////////
 // Inference Options
 static bool doDistributeEvidence=false;
-static bool probE=false;
+static bool probE=true;
 static bool island=false;
 static unsigned base=2;
 static unsigned lst=100;
@@ -222,6 +223,7 @@ ObservationMatrix globalObservationMatrix;
 void jtExpiredSigHandler(int arg) {
   JunctionTree::probEvidenceTimeExpired = true;
 }
+
 
 
 
@@ -412,7 +414,10 @@ main(int argc,char*argv[])
   signal(SIGALRM,jtExpiredSigHandler);
   infoMsg(DEF_VERBOSITY,"Running program for approximately %d seconds\n",seconds);
   alarm(seconds);
-  clock_t start_time = clock();
+  struct rusage rus; /* starting time */
+  struct rusage rue; /* ending time */
+  getrusage(RUSAGE_SELF,&rus);
+
   unsigned totalNumberPartitionsDone = 0;
   unsigned totalNumberSegmentsDone = 0;
   unsigned numCurPartitionsDone = 0;
@@ -432,13 +437,25 @@ main(int argc,char*argv[])
 
       unsigned numUsableFrames;
       numCurPartitionsDone = 0;
-      logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone);
-      totalNumberPartitionsDone += numCurPartitionsDone;
-      infoMsg(IM::Low,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	      segment,
-	      probe.val(),
-	      probe.val()/numFrames,
-	      probe.val()/numUsableFrames);
+      if (probE && !island) {
+	logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone);
+	totalNumberPartitionsDone += numCurPartitionsDone;
+	infoMsg(IM::Low,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		segment,
+		probe.val(),
+		probe.val()/numFrames,
+		probe.val()/numUsableFrames);
+      } else if (island) {
+	myjt.collectDistributeIsland(numFrames,
+				     numUsableFrames,
+				     base,
+				     lst);
+	// TODO: note that frames not always equal to partitions but
+	// do this for now. Ultimately fix this.
+	totalNumberPartitionsDone += numUsableFrames;
+      } else {
+	error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence\n");
+      }
       
       if (JunctionTree::probEvidenceTimeExpired)
 	break;
@@ -450,17 +467,18 @@ main(int argc,char*argv[])
     if (JunctionTree::probEvidenceTimeExpired)
       break;
   }
-
-  clock_t end_time = clock();
-  clock_t diff = end_time-start_time;
+  
+  getrusage(RUSAGE_SELF,&rue);
+  double userTime,sysTime;
+  reportTiming(rus,rue,userTime,sysTime,stdout);
 
   oDataStreamFile of(progress_file,false);
   of.writeComment("Program stats: %0.2f seconds, %d segments + %d residual partitions, %d total partitions, %0.3e partitions/sec\n",
-		  (double)diff/(double)CLOCKS_PER_SEC,
+		  userTime,
 		  totalNumberSegmentsDone,
 		  numCurPartitionsDone,
 		  totalNumberPartitionsDone,
-		  (double)totalNumberPartitionsDone/((double)diff/(double)CLOCKS_PER_SEC));
+		  (double)totalNumberPartitionsDone/userTime);
 
 
 

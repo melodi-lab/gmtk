@@ -392,7 +392,10 @@ main(int argc,char*argv[])
     exit_program_with_status(0);
   }
 
-  clock_t start_time = clock();
+  struct rusage rus; /* starting time */
+  struct rusage rue; /* ending time */
+  getrusage(RUSAGE_SELF,&rus);
+
 
   BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
   while ((*dcdrng_it) <= dcdrng->max()) {
@@ -450,9 +453,12 @@ main(int argc,char*argv[])
     (*dcdrng_it)++;
   }
 
-  clock_t end_time = clock();
-  clock_t diff = end_time-start_time;
+  getrusage(RUSAGE_SELF,&rue);
+  if (IM::messageGlb(IM::Default)) { 
+    infoMsg(IM::Default,"### Final time (seconds) just for inference: ");
+    double userTime,sysTime;
+    reportTiming(rus,rue,userTime,sysTime,stdout);
+  }
 
-  infoMsg(IM::Default,"### Final time just for inference: %ld clocks, %0.2f seconds\n",diff,(double)diff/(double)CLOCKS_PER_SEC);
   exit_program_with_status(0);
 }
