@@ -94,7 +94,10 @@ void SimpleDiscreteRV::emEndIteration()
     {
         vector<logpr> &v = (*mi).second;
         logpr sum = accumulate(v.begin(), v.end(), logpr(0.0));
-        for (unsigned i=0; i<v.size(); i++) v[i] /= sum;
+        if (sum != 0.0)
+            for (unsigned i=0; i<v.size(); i++) v[i] /= sum;
+        else
+            for (unsigned i=0; i<v.size(); i++) v[i] = 1.0/v.size();
     }
 }
 
