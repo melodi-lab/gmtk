@@ -63,7 +63,7 @@ extern "C" {
 
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
 iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii)
-  : ioDataStreamFile(_name,_Binary), cppIfAscii(_cppIfAscii)
+  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii)
 #else
 iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
   : ioDataStreamFile(_name,_Binary)
@@ -120,8 +120,14 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
 iDataStreamFile::~iDataStreamFile()
 {
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
-  if (pclose(fh) != 0) {
-    error("Error: Can't close file.");
+  if (cppIfAscii) {
+    if (pclose(fh) != 0) {
+      error("Error: Can't close file.");
+    }
+  } else {
+    if (fclose(fh) != 0) {
+      error("Error: Can't close file.");
+    }
   }
 #else
   if (fclose(fh) != 0) {
