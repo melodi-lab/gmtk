@@ -330,7 +330,8 @@ sub generate_triangulations
   # Generate more trifiles than the timing parallelism so one is always
   # likely to be ready when needed. 
   ###########################################################################
-  $needed_trifiles->up( $parallelism );
+  #$needed_trifiles->up( $parallelism/2 );
+  $needed_trifiles->up( 1 );
 
   ###########################################################################
   # Phase 1, put the input triangulations on the queue 
@@ -697,6 +698,7 @@ sub get_existing_boundaries
   
   printf "%d boundary files found\n", $total_boundaries; 
 
+sleep(30); ### !!!!! turn this into a lock
   $boundary_queue->enqueue( 'BOUNDARY_SEARCHES_DONE' ); 
 }
 
@@ -788,8 +790,7 @@ sub start_boundary_searches
 #############################################################################
 # run_triangulation( method );
 #
-# Triangulates the graph according to the method parameter, uses the local
-# processor
+# Triangulates the graph according to the method parameter
 #############################################################################
 sub run_triangulation
 {
@@ -804,7 +805,6 @@ sub run_triangulation
   $method_options  = pop;
 
   $output = `$triangulation_export_line $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options 2>&1`;
-
   print STDERR "$output\n";
 
   ($jt_weight) = $output =~ /Chunk max clique weight =.* jt_weight = ([0-9.]+)/;
@@ -837,11 +837,13 @@ sub make_trifile
   $boundary       = pop;
   $boundary_name  = pop;
 
-#  $thread_id = threads->new( \&make_trifile_thread, $boundary_name, $boundary, 
-#    $method_name, $method_options );
-#  $thread_id->detach;  
+  $needed_trifiles->down;
+
+  $thread_id = threads->new( \&make_trifile_thread, $boundary_name, $boundary, 
+    $method_name, $method_options );
+  $thread_id->detach;  
   
-  make_trifile_thread( $boundary_name, $boundary, $method_name, $method_options );
+#  make_trifile_thread( $boundary_name, $boundary, $method_name, $method_options );
 }
 
 
@@ -875,7 +877,6 @@ sub make_trifile_thread
   } while($triangulation_status< 0);
 
   $trifile_queue->enqueue($tmp_tri_file);
-  $needed_trifiles->down; 
 }
 
 
