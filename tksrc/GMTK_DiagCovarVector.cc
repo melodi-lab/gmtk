@@ -248,8 +248,11 @@ DiagCovarVector::preCompute()
     variances_inv[i] = 1.0/covariances[i];
     det *= covariances[i];
     if (det <= DBL_MIN) {
-      error("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",name().c_str());
+      warning("WARNING: determinant of diagonal covariance matrix '%s' is hiting minimum after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",i,name().c_str());
     }
+  }
+  if (det <= DBL_MIN) {
+    error("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",name().c_str());
   }
   const double tmp = (::pow(2*M_PI,covariances.len()/2.0)*::sqrt(det));
   if (tmp <= DBL_MIN)
@@ -520,9 +523,10 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
   // compute the next covariances.
 
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",
+    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
 	    name().c_str(),
-	    accumulatedProbability.val());
+	    accumulatedProbability.val(),
+	    minContAccumulatedProbability().val());
     for (int i=0;i<covariances.len();i++) 
       nextCovariances[i] = covariances[i];
   } else {
