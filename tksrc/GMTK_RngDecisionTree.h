@@ -73,6 +73,7 @@ private:
 
 
 protected:
+  
 
   struct Node {
     bool leaf;
@@ -82,7 +83,9 @@ protected:
       vector< BP_Range* > rngs;
     } nonLeafNode;
     struct LeafNode {
+      // if value
       T value;
+      // doubly linked list of leaf nodes.
       Node* prevLeaf;
       Node* nextLeaf;
     } leafNode;
@@ -116,6 +119,7 @@ protected:
   ///////////////////////////////////////////////////////////    
   // support for querying
   T queryRecurse(const vector < int >& arr,
+		 const vector < int >& cards,
 		 Node *n);
   T queryRecurse(const vector < RandomVariable* >& arr,
 		 Node *n);
@@ -170,7 +174,8 @@ public:
   ///////////////////////////////////////////////////////////    
   // Make a query and return the value corresponding to
   // the array of integers.
-  T query(const vector < int >& arr);
+  T query(const vector < int >& arr,
+	  const vector <int > & cards);
 
 
   ///////////////////////////////////////////////////////////    
@@ -511,10 +516,11 @@ RngDecisionTree<T>::writeRecurse(oDataStreamFile& os,
  *-----------------------------------------------------------------------
  */
 template <class T> 
-T RngDecisionTree<T>::query(const vector < int >& arr)
+T RngDecisionTree<T>::query(const vector < int >& arr,
+			    const vector <int > &cards)
 {
   assert ( int(arr.size()) == _numFeatures );
-  return queryRecurse(arr,root);
+  return queryRecurse(arr,cards,root);
 }
 
 
@@ -541,7 +547,8 @@ T RngDecisionTree<T>::query(const vector < int >& arr)
  */
 template <class T> 
 T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
-				RngDecisionTree<T>::Node *n)
+				   const vector < int >& cards,
+				   RngDecisionTree<T>::Node *n)
 {
   if (n->leaf)
     return n->leafNode.value;
