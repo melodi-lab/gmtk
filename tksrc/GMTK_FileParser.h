@@ -345,9 +345,15 @@ public:
   //////////////////////////////////////////////////////////////
   // access to the chunk information.
   unsigned firstChunkFrame() { return _firstChunkframe; }
-  unsigned lastChunkFrame() { return _firstChunkframe; }
+  unsigned lastChunkFrame() { return _lastChunkframe; }
   unsigned maxFrame() { return _maxFrame; }
   unsigned numFrames() { return _maxFrame+1; }
+  // number of frames in prologue
+  unsigned numFramesInP() { return _firstChunkframe; }
+  // number of frames in chunk
+  unsigned numFramesInC() { return _lastChunkframe - _firstChunkframe +1; }
+  // number of frames in epilogue  
+  unsigned numFramesInE() { return _maxFrame - _lastChunkframe; }
 };
 
 #endif

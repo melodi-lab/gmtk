@@ -655,20 +655,20 @@ findPartitions(// boundary quality heuristic
   int start_index_of_C3_u2 = -1;
   int start_index_of_E_u2 = -1;
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
-    if (unroll2_rvs[i]->frame() < firstChunkFrame())
+    if (unroll2_rvs[i]->frame() < fp.firstChunkFrame())
       // prologue
       P_u2.insert(unroll2_rvs[i]);
-    else if (unroll2_rvs[i]->frame() <= lastChunkFrame()) {
+    else if (unroll2_rvs[i]->frame() <= fp.lastChunkFrame()) {
       // 1st chunk, 1 chunk long
       C1_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C1_u2 == -1)
 	start_index_of_C1_u2 = i;
-    } else if (unroll2_rvs[i]->frame() <= lastChunkFrame()+M*chunkNumFrames()) {
+    } else if (unroll2_rvs[i]->frame() <= fp.lastChunkFrame()+M*fp.numFramesInC()) {
       // 2nd chunk, M chunks long
       C2_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C2_u2 == -1)
 	start_index_of_C2_u2 = i;
-    } else if (unroll2_rvs[i]->frame() <= lastChunkFrame()+(M+1)*chunkNumFrames()) {
+    } else if (unroll2_rvs[i]->frame() <= fp.lastChunkFrame()+(M+1)*fp.numFramesInC()) {
       // 3rd chunk, 1 chunk long
       C3_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C3_u2 == -1)
@@ -725,27 +725,27 @@ findPartitions(// boundary quality heuristic
     // Note that there are some casts to (int) in the below below
     // since it might be the case that M = 0, and if unsigned
     // comparisions are used, the condition could fail inappropriately
-    if (unroll1_rvs[i]->frame() < firstChunkFrame())
+    if (unroll1_rvs[i]->frame() < fp.firstChunkFrame())
       P_u1.insert(unroll1_rvs[i]);
-    if ((unroll1_rvs[i]->frame() >= firstChunkFrame()) &&
-	((int)unroll1_rvs[i]->frame() <= (int)lastChunkFrame() + ((int)M-1)*(int)chunkNumFrames())) {
+    if ((unroll1_rvs[i]->frame() >= fp.firstChunkFrame()) &&
+	((int)unroll1_rvs[i]->frame() <= (int)fp.lastChunkFrame() + ((int)M-1)*(int)fp.numFramesInC())) {
       C1_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C1_u1 == -1)
 	start_index_of_C1_u1 = i;
     }
-    if (((int)unroll1_rvs[i]->frame() > (int)lastChunkFrame() + ((int)M-1)*(int)chunkNumFrames()) &&
-	(unroll1_rvs[i]->frame() < firstChunkFrame() + S*chunkNumFrames())) {
+    if (((int)unroll1_rvs[i]->frame() > (int)fp.lastChunkFrame() + ((int)M-1)*(int)fp.numFramesInC()) &&
+	(unroll1_rvs[i]->frame() < fp.firstChunkFrame() + S*fp.numFramesInC())) {
       // this should only happen when S > M
       assert ( S > M );
       Cextra_u1.insert(unroll1_rvs[i]);
     }
-    if ((unroll1_rvs[i]->frame() >= firstChunkFrame() + S*chunkNumFrames()) &&
-	((int)unroll1_rvs[i]->frame() <= (int)lastChunkFrame() + ((int)M+(int)S-1)*(int)chunkNumFrames())) {
+    if ((unroll1_rvs[i]->frame() >= fp.firstChunkFrame() + S*fp.numFramesInC()) &&
+	((int)unroll1_rvs[i]->frame() <= (int)fp.lastChunkFrame() + ((int)M+(int)S-1)*(int)fp.numFramesInC())) {
       C2_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C2_u1 == -1)
 	start_index_of_C2_u1 = i;
     }
-    if ((int)unroll1_rvs[i]->frame() > (int)lastChunkFrame() + ((int)M+(int)S-1)*(int)chunkNumFrames()) {
+    if ((int)unroll1_rvs[i]->frame() > (int)fp.lastChunkFrame() + ((int)M+(int)S-1)*(int)fp.numFramesInC()) {
       E_u1.insert(unroll1_rvs[i]);
       if (start_index_of_E_u1 == -1)
 	start_index_of_E_u1 = i;
@@ -818,7 +818,7 @@ findPartitions(// boundary quality heuristic
       } else {
 	for (set<RandomVariable*>::iterator i=C2_u2.begin();
 	     i != C2_u2.end();i++) {
-	  if ((*i)->frame() > lastChunkFrame() && (*i)->frame() <= lastChunkFrame()+chunkNumFrames())
+	  if ((*i)->frame() > fp.lastChunkFrame() && (*i)->frame() <= fp.lastChunkFrame()+fp.numFramesInC())
 	    C2_1_u2.insert((*i));
 	}
       }
@@ -867,8 +867,8 @@ findPartitions(// boundary quality heuristic
       } else {
 	for (set<RandomVariable*>::iterator i=C2_u2.begin();
 	     i != C2_u2.end();i++) {
-	  if ((*i)->frame() > (lastChunkFrame()+(M-1)*chunkNumFrames()) 
-	      && (*i)->frame() <= (lastChunkFrame()+M*chunkNumFrames()))
+	  if ((*i)->frame() > (fp.lastChunkFrame()+(M-1)*fp.numFramesInC()) 
+	      && (*i)->frame() <= (fp.lastChunkFrame()+M*fp.numFramesInC()))
 	    C2_l_u2.insert((*i));
 	}
       }

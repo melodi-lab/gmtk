@@ -181,12 +181,14 @@ public:
   vector<nghbrPairType>  orgnl_E_nghbrs;
 
   // Keep a number of member variables here for convenience.
+#if 0
   unsigned numFrames() { return fp.numFrames(); }
   unsigned prologueNumFrames() { return fp.firstChunkFrame(); }
   unsigned chunkNumFrames() { return fp.lastChunkFrame() - fp.firstChunkFrame() + 1; }
   unsigned epilogueNumFrames() { return fp.numFrames() - fp.firstChunkFrame() - 1; }
   unsigned firstChunkFrame() { return fp.firstChunkFrame(); }
   unsigned lastChunkFrame() { return fp.lastChunkFrame(); }
+#endif
 
   // The timer for the anytime algorithm. If this variable
   // is non-NULL, some of the routines will check 'timer' and if
