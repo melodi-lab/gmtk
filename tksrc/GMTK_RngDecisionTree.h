@@ -20,6 +20,17 @@
  *
  */
 
+/*
+ *
+ * TODO: modify so that the resulting leaf node values can
+ * just copy one of the parent values (making it easy
+ * to have one of the parent values just specify the index).
+ * TODO: make it such that a leaf node is some simple integer formula
+ * on the parent values (or the result is an int that can be
+ * type cast to a T).
+ * 
+ */
+
 
 
 #ifndef GMTK_RNG_DECISION_TREE_H
