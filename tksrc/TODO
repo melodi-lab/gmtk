@@ -132,7 +132,7 @@ X GMTK_GMParms::read(), keeps open all files
   it keeps track of where it was and continues reading.
   Also, this should append rather than delete.
 
-X Allow the file parser to pass ascii files through cpp
+X Allow the file parser to pass ASCII files through cpp
   (but not binary).
 
 - need to add a check that makes sure that the observation
@@ -817,3 +817,14 @@ Wed Dec 25 02:09:25 2002
   - with triangulation heuristics, when a tie occurs
     then use another heuristic (i.e., with a tie with
     min weight, then use min fill in)
+
+Wed Dec 25 12:50:41 2002
+  - also include an anytime triangulation algorithm
+    exhaustive search. It should occasionally
+    print out the percent searched so far, and
+    should accept a SIGUSR2 to terminate search
+    so far and take answer. Also, should
+    include an argument that is the time (in days
+    and hours) to compute triangulation for, and
+    stop after that amount of time.
+    
