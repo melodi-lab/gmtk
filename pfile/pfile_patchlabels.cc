@@ -16,8 +16,6 @@
 #include <float.h>
 #include <assert.h>
 #include "pfile.h"
-#include "camfiles.h"
-#include "ILab.h"
 
 /* Patch broken header files. */
 
