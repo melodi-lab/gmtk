@@ -256,7 +256,7 @@ die;
   # Start threads to time triangulations
   #########################################################################
   if ($delay_timings) { 
-    sleep(45);
+    sleep(60);
     print "Starting timing threads\n";
   }
 
@@ -294,8 +294,8 @@ sub generate_triangulations
   my @boundary_list; 
   my @basic_methods; 
 
-  my @vpap_options : shared = ('COB', 'CDOI', 'CODI', 'DOI', 'I', 'C', 'B', 'D', 'O' );
-  my @vcap_options : shared = ('COB', 'CDOI', 'CODI', 'DOI', 'I', 'C', 'B', 'D', 'O' );
+  my @vpap_options : shared = ('COI', 'COB', 'CDOI', 'CODI', 'DOI', 'I', 'C', 'B', 'D', 'O' );
+  my @vcap_options : shared = ('COI', 'COB', 'CDOI', 'CODI', 'DOI', 'I', 'C', 'B', 'D', 'O' );
 
   ###########################################################################
   # Generate more trifiles than the timing parallelism so one is always
@@ -434,7 +434,8 @@ sub generate_triangulations
     print "------ Starting $boundary_name ------\n";
 
     #######################################################################
-    # Run advanced methods, minus the basic methods  
+    # Run advanced methods (minus the basic methods) using initial vcap
+    #   and vpap  
     #######################################################################
     reset_advanced_methods();
 
@@ -461,6 +462,11 @@ sub generate_triangulations
     {
       for ($vcap_index=0; $vcap_index<(scalar @vcap_options); $vcap_index++)
       {
+        if (($vpap_index == 0) && ($vcap_index == 0)) 
+        {
+          $vcap_index++;
+        }
+
         {
           lock($timing_thread_idle);
           for ($i=0; $i<$parallelism; $i++) {
@@ -666,7 +672,7 @@ sub start_boundary_searches
   ############################################################################
   $boundary_job_list = "$output_directory/boundary_job_list";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '5hour' -noBoundaryMemoize T";
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '4hour' -noBoundaryMemoize T";
 
   open JOB_LIST, ">$boundary_job_list";
 
