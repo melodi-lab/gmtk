@@ -118,6 +118,10 @@ Arg Arg::Args[] = {
       Arg::Opt,jtWeight,
       "True means use an estimate of the JT weight to score triangulation rather than sum of weight"),
 
+  Arg("jtwUB",
+      Arg::Opt,JunctionTree::jtWeightUpperBound,
+      "True means jtWeight is allways an upper bound on true JT weight, false means jtWeight is estimate"),
+
   Arg("findBestBoundary",
       Arg::Opt,findBestBoundary,
       "Run the (exponential time) boundary algorithm or not."),
