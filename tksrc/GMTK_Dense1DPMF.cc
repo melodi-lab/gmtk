@@ -256,7 +256,8 @@ Dense1DPMF::emIncrement(logpr prob,
 
   assert ( postDist.len() == nextPmf.len() );
 
-  if (prob.val() < log_FLT_MIN) {
+  if (prob < minIncrementProbabilty) {
+    missedIncrementCount++;
     return;
   } 
   accumulatedProbability+= prob;
