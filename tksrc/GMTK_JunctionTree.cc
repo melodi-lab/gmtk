@@ -2891,7 +2891,7 @@ JunctionTree::distributeEvidence()
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::collectDistributeIslandBase()
+ * JunctionTree::probEvidence()
  *
  *    A const mem (i.e., indep. of T), combination of unroll and
  *    collect evidence. It returns the prob evidence. It keeps
