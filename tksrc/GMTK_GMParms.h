@@ -1,5 +1,5 @@
 /*-
- * GMTK_World.h
+ * GMTK_GMParms.h
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *    The GM world, all aspects associated with a GM
@@ -29,7 +29,7 @@
 #include "sArray.h"
 
 
-class GM_World {
+class GMParms {
 
   /********************************************************************/
 
@@ -170,7 +170,7 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  World(); 
+  GMParms(); 
 
   ///////////////////////////////////////////////////////////    
   // read in all the basic parameters, assuming file pointer 
@@ -187,6 +187,6 @@ public:
 ////////////////////////////////////////////////
 // The global GM parameter object, must be
 // defined in a mainprogram.
-extern World world;
+extern GMParms GM_Parms;
 
 #endif // defined GMTK_CPT
