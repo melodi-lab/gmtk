@@ -2,7 +2,7 @@
  * GMTK_BoundaryTriangulate.h
  *   The GMTK Boundary Algorithm and Graph Triangulation Support Routines
  *
- * Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ * Written by Jeff Bilmes <bilmes@ee.washington.edu> & Chris Bartels <bartels@ee.washington.edu>
  *
  * Copyright (c) 2003, < fill in later >
  *
