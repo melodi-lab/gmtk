@@ -31,6 +31,9 @@
 #include "fileParser.h"
 #include "bp_range.h"
 
+#include "GMTK_RandomVariable.h"
+
+
 /////////////////////////////////////////////////
 // The maximum branching factor on any decision tree node.
 // This may be safely increased, and is here just for
@@ -105,6 +108,13 @@ public:
   // Make a query and return the value corresponding to
   // the array of integers.
   T query(const sArray < int >& arr);
+
+
+  ///////////////////////////////////////////////////////////    
+  // Make a query and return the value corresponding to
+  // the array of integers, from an array of random variables.
+  T query(const sArray < RandomVariable* >& arr);
+
 
   ///////////////////////////////////////////////////////////    
   // make available the number of featurse.
@@ -303,6 +313,8 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
  *-----------------------------------------------------------------------
  * query
  *      queries the decision tree
+ *      NOTE: Any update here should also be done in the
+ *      version that takes arrays of random variables below.
  * 
  * Preconditions:
  *      Must be a filled in DC structure.
@@ -326,11 +338,12 @@ T RngDecisionTree<T>::query(const sArray < int >& arr)
 }
 
 
-
 /*-
  *-----------------------------------------------------------------------
  * queryRecurse
  *      support for querying the decision tree
+ *      NOTE: Any update here should also be done in the
+ *      version that takes arrays of random variables below.
  * 
  * Preconditions:
  *      Must be a filled in DC structure.
@@ -359,6 +372,56 @@ T RngDecisionTree<T>::queryRecurse(const sArray < int >& arr,
 	   RNG_DECISION_TREE_MAX_CARDINALITY );
 
   const int val = arr[n->nonLeafNode.ftr];
+  for (int i=0;i<n->nonLeafNode.rngs.len();i++ ) {
+    if (n->nonLeafNode.rngs[i]->contains(val))
+      return queryRecurse(arr,n->nonLeafNode.children[i]);
+  }
+  // failed lookup, so return must be the default one.
+  return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.len()]);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * query & queryRecurse
+ *      Exact same routine as above but for arrays of random variables.
+ *      This code is duplicated here for simplicity and efficiency.
+ *      NOTE: Any update here should also be done in the
+ *      version that takes arrays of integers above.
+ * 
+ * Preconditions:
+ *      same as above
+ *
+ * Postconditions:
+ *      same as above
+ *
+ * Side Effects:
+ *      same as above
+ *
+ * Results:
+ *      as above
+ *
+ *-----------------------------------------------------------------------
+ */
+template <class T> 
+T RngDecisionTree<T>::query(const sArray < RandomVariable* >& arr)
+{
+  assert ( arr.len() == _numFeatures );
+  return queryRecurse(arr,root);
+}
+template <class T> 
+T RngDecisionTree<T>::queryRecurse(const sArray < RandomVariable* >& arr,
+				   RngDecisionTree<T>::Node *n)
+{
+  if (n->leaf)
+    return n->leafNode.value;
+
+  assert ( n->nonLeafNode.ftr < arr.len() );
+  assert ( arr[n->nonLeafNode.ftr]->val >= 0 &&
+	   arr[n->nonLeafNode.ftr]->val <= 
+	   RNG_DECISION_TREE_MAX_CARDINALITY );
+
+  const int val = arr[n->nonLeafNode.ftr]->val;
   for (int i=0;i<n->nonLeafNode.rngs.len();i++ ) {
     if (n->nonLeafNode.rngs[i]->contains(val))
       return queryRecurse(arr,n->nonLeafNode.children[i]);
