@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <ieeefp.h>
 #include <float.h>
 #include <assert.h>
 
