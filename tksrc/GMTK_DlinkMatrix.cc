@@ -500,10 +500,11 @@ DlinkMatrix::emEndIteration(const float*const xzAccumulators)
   if (refCount > 0)
     return;
 
-  accumulatedProbability.floor();
+  // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: dLink matrx '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
-	    accumulatedProbability.val(),name().c_str());
+	    name().c_str(),
+	    accumulatedProbability.val());
     for (int i=0;i<nextArr.len();i++)
       nextArr[i] = arr[i];
   } else {
