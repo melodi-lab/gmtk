@@ -1,0 +1,1529 @@
+Various notes/scratch paper to myself (JB) on different algorithms and
+other features of GMTK.
+
+J. Bilmes, $Header$
+
+======================================================================
+======================================================================
+======================================================================
+
+Algorithm for splitting and vanishing Gaussians with sharing.
+
+   If a Gaussian component is split, it gets cloned
+   meaning that its mean and covariances are cloned.
+   If another Gaussian component is split, and it shares
+     either the mean/variance of another one that was split,
+     it will continue to share the mean/variance of the cloned
+     Gaussian.
+   The cloning relationships are forgotten once all is done at the 
+   end of the epoch.
+
+Need three maps here, cleared out at the end of each epoch.
+   remove map
+    DPMF ptr & unsiged -> dummy;
+   added map
+    DPMF ptr & unsigned -> dummy
+   addd map 
+    DPMF ptr & cmp ptr -> cmp ptr
+
+Need more maps for cloning, these are cleared out at the end of each epoch.
+They live in GM_Params.
+   map from mean -> its clone
+   map from covar -> its clone
+   map from lincondvar -> its clone
+   map from GC -> its clone   
+
+When we clone a GC
+   if GC has clone in map, use that
+   else
+       clone mean
+       clone var
+
+clone mean
+   if mean has clone in map use that,
+   else really clone
+
+clone covar
+   analogous to clone mean
+       
+The reason for using maps here rather than additional members in
+each object is that splitting/vanishing is probably the exception
+rather than the norm, therefore we don't want to use up
+more memory by adding a field in each object which will
+probably not often be used.
+
+
+mix gaus end 
+
+   end the PMF
+   to through pmf,  entry i
+         end comp epoch
+              // need to end comp epoch in any case because
+              // otherwise cov ref count won't hit zero.
+         if pmf i is below threshold
+               add DPMF ptr & i key to set of removed things
+         if pmf i is above threshold
+               add DPMF ptr & i key to set of added things
+
+mixgauss swap
+
+   check on DPMF's new length
+
+   go through, entry i
+       if pmf&i is in delete set
+           skip it, don't swap, move to last position
+       if pmf&i ptr in add set
+           // can't just use cmp ptr here since it might be shared &
+           // have been cloned for one MG but not for another.
+           clone cmp i and add it in.
+
+
+densePMF swap
+
+   newLen = len;
+   go through pmf, entry i
+      if i is in delete set
+         newLen --;
+      if i is in clone set
+         newLen ++
+   make new len array
+   go through pmf, entry i
+      if i is in delete set
+         skip j
+      if i is in clone set
+         add i an j with split prob
+      else
+         just skip
+   normalize
+
+
+OLD ========================================
+
+
+mixgauss swap
+
+   go through, entry i
+       if pmf&i is in delete set
+           skip it, don't swap
+       if pmf& cmp ptr in add set
+           // can't just use cmp ptr here since it might be shared &
+           // have been cloned for one MG but not for another.
+           add cmp & its clone to new thing      
+           if DPMF ptr & cmp ptr not in that map
+                 clone and perturb entry i
+                  add DPMF & cmp ptrs to that map
+
+
+===============================
+
+======================================================================
+======================================================================
+======================================================================
+
+
+to get compiling on IBM
+
+ -D__GNUC__=2 -D__GNUG__=2 -D__GNUC_MINOR__=95 -D__cplusplus -trigraphs -D__STRICT_ANSI__ -D_IBMR2 -D_POWER -D_AIX -D_AIX32 -D_AIX41 -D_AIX43 -D_LONG_LONG -Asystem(unix) -Asystem(aix) -D__EXCEPTIONS -D__CHAR_UNSIGNED__ -g -Wall -pedantic -D_ARCH_COM
+
+- GMTK_FileParser.lex
+  already defined fileno
+
+- no libsunmath to use.
+
+- using g++ w/o a path in makefiles
+
+- ieeefp.h
+
+- fileParser.cc
+     write() overload problem.
+
+- ieeefp from pfile
+
+
+
+
+======================================================================
+======================================================================
+======================================================================
+
+Originally file 'data_items_needed,v 1.7 2001/05/26 03:53:40 bilmes Exp'
+
+Statistical Data Types Needed
+
+(not the data structures, just what is kept in the files)
+
+
+----------------
+Dense 1D Distributions: GMTK_Dense1DPMF
+ : 1D arrays that sum to 1 and are >= 0
+  Needed for:
+     1) mixture models
+     2) 
+
+----------------
+Sparse 1D Distributions: GMTK_Sparse1DPMF
+  : 1D arrays of <int value, probability> pairs,
+   used for distributions with lots of zeros.
+
+----------------
+1D array of reals: GMTK_RealArray
+  : linear dependency links
+  Needed for:
+      means
+      diagonal covariances
+
+----------------
+Mean arrays: GMTK_MeanVector
+	uses GMTK_RealArray
+
+----------------
+Diagonal Covariances: GMTK_DiagCovarVector
+	uses GMTK_RealArray
+
+----------------
+2D array of reasls: GMTK_RealMatrix.h
+  : needed for MLP weight matrices
+  : needed for log. regression "weight" matrices
+
+----------------
+2D packed-sparse array of reals:  GMTK_PackedSparseRealMatrix.h
+   : needed for blink values.
+
+----------------
+
+Dlink values: GMTK_DlinkMatrix
+   : the actual values used for linear cross-obs. dependencies
+
+----------------
+Full Dense N-D Distributions: 
+  . There are several different types:
+   1) GMTK_MDCPT
+       Multi-d Dense CPT
+   2) GMTK_MSCPT
+       sparse, decision tree based CPT. 
+       sparse in two senses
+          a) parents state space are divided into regions of 
+             same child probabilities.
+          b) child probabilities are sparse also (zeros aren't stored)
+   : used for things such as
+       - markov chain stochastic matris
+       - parameters for a variable along with 
+         conditional parents
+
+----------------
+OBservation DLINKS: GMTK_DLINKS
+  : 2D arrays of 2-tuples containing <time lag, feature offset>
+  The time lag says where, relative to the current position
+  the feature dependency is, and the feature offset
+  says to which feature relative to feature 0.
+  Rows are for each feature, columns are the dlink tuples.
+  Needed for:
+      1) conditional gaussians
+      2) all other observation conditioned obs variables.
+
+N
+0
+0 3 -1 4 -2 5 -5 3
+1 0
+2 1 -4 6
+3 4 -4 5 -1 5 -10 14 -2 3
+1
+0 3 -1 4 -2 5 -5 3
+1 0
+2 1 -4 6
+3 4 -4 5 -1 5 -10 14 -2 3
+2
+0 3 -1 4 -2 5 -5 3
+1 0
+2 1 -4 6
+3 4 -4 5 -1 5 -10 14 -2 3
+
+
+
+============================================================
+Basic Gaussian Components.
+
+----------------
+Diagonal Covariance Gaussians, GMTK_DiagGaussian  
+  : uses 
+      1) array of reals for means
+      2) array of reals for variances
+
+Gaussian looks like:
+
+
+<gaussian number> <index into mean vector> <index into variance vector>
+
+E.g.,
+
+N # number of Gaussians to follow.
+0 name0 5 10
+1 name1 6 10
+2 name2 7  3
+...
+
+
+
+Mean Conditional Gaussian, GMTK_LinMeanCondDiagGaussian
+Diagonal Covariance Gaussians with linear mean dependency links
+  : uses 
+      1) array of reals for means
+      2) array of reals for variances
+      3) 2D array of dlinks
+      4) 2D array of reals for linear conditioning values
+
+Looks like:
+
+<number> <mean index vector> <variance index vector> <dlink index> <2D Array index>
+
+E.g.,
+N
+0  5 10  3  4
+1  0  4  3  1
+2 10  3  2  5
+3 11 23  4  9
+
+
+Diagonal Covariance Gaussians with linear & non-linear mean dependency links,
+GMTK_NLinMeanCondDiagGaussian
+  : uses 
+      1) array of reals for means
+      2) array of reals for variances
+      3) 2D array of dlinks
+      4) 1D array saying how many for each feature is linear and
+	 how many is non-linear
+      5) 2D array of reals for linear conditioning values
+      6) 2D array of reals for linear conditioning values    
+
+
+<gaussian number> <gaussian type integer> <variable number of additional tags>
+
+<gaussian type integer> could be
+   0 := vanilla diagonal covariance Gaussian
+     Additional tags become:
+        <mean index vector> <variance index vector>
+   1 := Linear Mean Conditional Gaussian, only linear dependencies
+     Additional tags become:
+       <mean index vector> <variance index vector> <dlink index> <2D packed sparse Array index>
+   2 := Diagonal Covariance Gaussians with lin + non-lin mean dep. links.
+     Additional tags become: 
+       <mean index vector> <variance index vector> <dlink index> <2D packed sparse Array index> <dlink index> <2D dense array index> <2D dense array index>
+     The first dlink index and packed sparse array index is for the
+       linear part. The index may be -1 to indicate that this doesn't exist.
+       The second dlink index and 2 matrix indices are for the non-linear
+       portion where the two matrices are for the MLP weight matrices. 
+       Note that the dimensions of the dense array must match, or an error
+       will occur.
+      (might need a list of MLPs here, one for each feature element).
+
+Examples:
+
+E.g.,
+
+N # number of Gaussians to follow.
+0 0 5 10  # plain vanilla diag cov Gaussians
+1 0 6 10
+2 0 7  3
+3 1 23 3 5 10 # linear conditional mean Gaussians
+4 1 7  3 6 10 
+5 2 23 3 5 4 5 10 12 # linear/non-linear conditional mean Gaussiansa
+6 2 7  3 5 4 5 10 12
+
+
+<Number> <Dimension> <Type> <Typedep stuff>
+
+  <typedep stuff> 
+        GaussianCompName MeanName CovarianceName
+
+
+N # number of Gaussians to follow.
+0 0 5 10  # plain vanilla diag cov Gaussians
+1 0 6 10
+2 0 7  3
+3 1 23 3 5 10 # linear conditional mean Gaussians
+4 1 7  3 6 10 
+5 2 23 3 5 4 5 10 12 # linear/non-linear conditional mean Gaussiansa
+6 2 7  3 5 4 5 10 12
+
+
+============================================================================
+============================================================================
+============================================================================
+
+The below are the 'only' things that may be true observation densities.
+All of the above
+
+
+Mixture Gaussians, 
+GMTK_MixGaussians
+  (note to have a single Gaussian, we need a mixture of 1 Gaussian component)
+  : uses
+     1) 1D prob. distribution
+     2) list of some number of above Gaussians (of various types)
+
+N
+<index number> <number of mixtures> <index to 1d dist> 
+           <list of integers pairs (GausType Number) indexing to gaussian>
+
+0 5 3 0 1 0 2 0 5 0 6 0 7 # all Diag. Cov. Gaussians
+1 5 3 1 1 1 2 1 5 1 6 1 7 # all Linear Mean Cond. Gaussians
+2 5 3 2 1 2 2 2 5 2 6 2 7 # all Non-Linear Mean Cond. Gaussians
+3 5 3 0 1 1 2 2 5 0 6 1 7 # mixture of heterogeneous Gaussians.
+4
+5
+...
+
+
+
+
+Switching Gaussian Mixture with Gaussian Classifier Switching, 
+GMTK_GausSwitchingMixGaussians
+  : uses
+    a) for the switching distribution
+       1) 1D prob distribution over switch variables
+       2) array of Gaussians
+             constraint on the Gaussians is that the dlink
+	     variables (if any) must have only zero-lag links.
+      Note that the dim of the Gaussians must be equal to the union 
+        of all possible dependency variables from part b.
+    b) for the collection of Gaussian mixtures
+       1) array of Gaussian mixtures (of some type, possibly
+	  heterogeneous)
+
+
+
+N
+<index number> <number of mixtures> <index to 1d dist> <list of integers indexing to one of the gaussians>
+
+Note: these Gaussians will need to be different than the ones above in
+that they take a sparse array of features (this can be done using
+the existing Gaussian code by allowing for the feature vectors to be
+sparse collections of features (by giving one of the 2d arrays of Dlinks
+for the x vector).
+
+Switching Gaussian Mixture with Logistic Regression/classification Switching
+GMTK_LogitSwitchingMixGaussians
+  : uses
+    a) for the switching distribution
+       1) 2D array of reals for the regression.
+      num Rows = switching size
+      num cols must be equal to the union 
+              of all possible dependency variables from part b.
+    b) for the collection of Gaussian mixtures
+       1) array of Gaussian mixtures (of some type, possibly
+	  heterogeneous)
+
+
+N
+<index number> <number of mixtures> <index to 1d dist> <index of dense array>
+
+(the dense array is the weight matrix for the logistic regression).
+Note that the dimensions of the array must match, or an error
+message will occur.
+
+Switching Gaussian Mixture with 3layer Neural Network switching
+GMTK_MLPSwitchingMixGaussians
+  : uses
+    a) for the switching distribution
+       1) 2D array of reals for input to hidden
+	      num Rows = number of NN hidden units
+	      num cols must be equal to the union 
+                  of all possible dependency variables from part b.	
+       2) 2D array of reals for hidden to output (assume logistic)
+	      num Rows = switching size
+	      num cols = num of NN hidden units.
+    b) for the collection of Gaussian mixtures
+       1) array of Gaussian mixtures (of some type, possibly
+	  heterogeneous)
+
+
+
+N
+<index number> <number of mixtures> <index to 1d dist> <index of dense array>
+<index of dense array>
+
+(the dense arrays are the weight matrices for the non-linear regression).
+Note that the dimensions of the array must match, or an error
+message will occur.
+
+
+============================================================================
+============================================================================
+============================================================================
+
+Questions:
+
+   1) how to do the group stuff, G
+       In a frame, we specify observation vector variables.
+       The vector has a discrete set of parents which, by some mapping
+       function (e.g., decision tree), map to an integer which indices 
+       to the appropriate observation type. The observation vector also 
+       associates itself with a range of features. The mapping can 
+       be learned, and this is how we implement "state tying".
+
+       Each frame can have several scoring observation vectors,
+       the score for the final utterance will be the product of
+       all scoring observation probabilities. 
+    
+
+   2) how to unify this description with the feature description
+      from before.
+
+   3) observed discrete at training, hidden discrete at testing.
+
+   4) discrete observations.
+
+   5) Arrays of discrete and continuous features:
+        1) need to ensure Gaussian doesn't index into discrete Gaussian.
+
+
+Syntax for specifying mapping from switching parent values
+to integer values.
+
+RV has a number of switching parents.
+
+File syntax:
+Switching parents are S1, S2, ..., Sn
+
+SwitchingParents: S1, S2, ..., Sn
+ConditionalParents:
+  0:5   0:9   0:5 : C1 C2 ... Cn
+  6:10  11:12 6:9 : 
+  ...
+  default: C1 C2 ... Cm
+
+
+Decision trees on vectors of integers.
+
+<numFtrs>
+<ftr> <num_splits> r1 r2 ... rs 
+   <ftr> <num_splits> r1 r2 ... rs # split 1
+   <ftr> <num_splits> r1 r2 ... rs # split 2
+   -1 value
+   <ftr> <num_splits> r1 r2 ... rs # split s
+ 
+
+0 r0
+  1 r1
+
+
+6 types of files:
+
+- Master file
+   has 
+    o command line options
+    o other file names
+    o various switches, etc.
+- structure file
+    o specifies the basic structure of the
+      hidden variables and between hidden and observations.
+- intra observation structure file
+   o list of DLINK matrices,
+     specifies 
+- DT file
+   o gives a large list of decision trees.
+- observation distribution file
+   o lists of Gaussian mixtures and other such things.
+     Basically a list of integer pointers.
+- generic data file
+   o generic data that Gaussian mixtures and other files
+     might use such as:
+     - 1d dists
+     - vectors
+     - means
+     - variacnes
+     - matrices
+     - single component gaussians
+     - etc.
+
+
+
+======================================================================
+======================================================================
+======================================================================
+
+
+===============================
+
+notes on new tying.
+
+1) add a shared bit to EMAble to say that these parameters
+   are shared. Not necessarily used by all EMable objects,
+   but the bit value is defined here anyway since it
+   is just another bit.
+
+
+2) mean vector emEndIteration
+    if no sharing is taking place, do the normal thing,
+    otherwise, use the pi and C matrices to normalize
+    the incoming partially accumulated means.
+
+
+ 
+
+===============================
+
+notes on face algorithm, all done after
+moralization on an undirected graph.
+
+start off with template, unrolled 0 times
+  of already moralized (but not yet triangulated) graph
+
+create sets P, C, and E containing
+       variables in prologue, chunk, and epilogue
+
+create interface sets
+   C_l = left interface,
+       = all nodes of C that have a neighbor in P
+   C_r = right interface
+       = all nodes of C that have a neighbor in E
+
+Goal is to find a change of C that results
+   in the minimum of min(|C_l|,|C_r|)
+
+Note: not allowed to have a node that goes
+      from any node in P directly to E (i.e.,
+      C separates P from E in the undirected graph)
+
+
+Left-interface only exhaustive search algorithm.
+
+set such that current P,C_l is best at the moment
+
+find_best_left_interface(C_l)
+
+  for all nodes n in C_l, do
+     // rather than "for all nodes in C_l", we could
+     // do a random subset of nodes in C_l to speed this up if
+     // it takes too long. But note that this is only run once
+     // per graph so it will be beneficial to do this since
+     // its cost is ammortized over the many runs of the graph
+
+
+     if n has neighbors in E
+         next;
+     // so n has neighbors in P (since it is in C_l) but not in E
+
+
+     // add n from C_l and place it in P
+     // and add all neighbors of n that are in C\P' to C_l
+     P' = P + n;
+     C'_l = C_l - n + (neighbors of n that are in C\P')
+	
+     if hash_hit(C'_l)
+         next;
+
+     store the candidate P' and C'_l, if its size (or weight) is min so far,
+          and so on as a possible 
+
+     store C'_l in hash for memoization.
+
+     find_best_left_interface(C'_l)
+
+Right-interface algorithm is the same, but inverted.
+
+
+
+General (left interface) algorithm to find the chunks of graph to triangulate.
+ - valid only when number of frames is such that graph can
+   be unrolled at least one time.
+
+ - start with P, C1, C2, C3, and E (graph unrolled 2 times)
+    and find best left interface within C2
+    gets best C_l and best left_C_l
+    (i.e., call them C_l and left_C_l)
+
+ - form P',C1',C2',E' (i.e., graph unrolled 1 time)
+ - make a mapping from nodes in 
+    1) C2 to corresonding nodes in C1'
+    1) C2 to corresonding nodes in C2'
+
+ - make_complete C1'(C_l)
+ - make_complete C2'(C_l)  
+
+ - form sets
+    A: P' + C1'(left_C_l) + C1'(C_l)
+    B: C1'\C1'(left_C_l) + C2'(left_C_l) + C2'(C_l)
+    C: C2'\C2'(left_C_l) + E
+
+ - clone sets A, B, and C
+ - triangulate separately A, B, and C
+ - form cliques of A, B, and C
+ - joint cliques together.
+
+
+
+ - form associate mapping C^1(vars) : C^2 -> C^1 
+                    and   C^2(vars) : C^1 -> C^2    
+                   (possibly also do something with P and E)
+   to map from corresponding sets of vars in either 
+ - find best left interface in P and C^1 -> P', C'_l
+   (the output)
+ - make C'_l into a complete set
+ - make C^2(C'_l) into a complete set
+ - form set union (P',C'_l)
+ - Pbar = union of (P',C'_l)
+ - Cbar = C^1\P' U C^2(P'\P U C'_l)
+   (which necessarily contains C'_l)
+ - Ebar = E U C^2\Cbar
+ - clone Pbar, Cbar, Ebar into P'bar, C'bar, E'bar
+ - triangulate P'bar, C'bar, E'bar
+     and form cliques of graphs.
+
+
+---------------------------------
+
+old triangulation algorithm
+
+n[] is array of nodes in topological order
+     (meaning a variable never appears before
+      all its parents have already appeared.
+      Variables w/o parents can occur at any time)
+cl[] is clique array haivng
+   cl[i].member (nodes that are in the current clique)
+   cl[i].newMember (nodes in cl[i] that are not in 
+                    previous max clique)
+                  = cl[i].member \ cl[j].member
+                  where j is index of previous maxclique.
+         This is used for conditional probability nodes
+	 during inference, and can be ignored just
+         when understanding the triangulation algorithm.
+
+Alg:
+add n[0] to cl[0].member
+add n[0] to cl[0].newMember
+for i = 1 .. num_nodes
+   // at this point cl[i-1] is the current candidate maxclique
+
+   // start off by duplicating previous cliques new members
+   cl[i].newMember = cl[i-1].newMember
+
+   // The next loop does a deletion. Note that if no deletions
+   // occurs at all in the loop, then the loop just copies over previous
+   // cliques members to new clique members,
+   // i.e., cl[i].member = cl[i-1].member
+   // (but this occurs by taking the else condition each time)
+   for m in all of cl[i-1]'s members
+      if all m's children are in current frontier clique (cl[i-1])
+          // see *** below
+      then 
+           // Do a "deletion", which means we do not add m to the
+	   // new clique cl[i].member.
+           // This makes cl[i-1].member maximal. 
+           // cl[i-1].member is maximal because:
+           //  1) it is certainly not a subset of any future maxclique
+           //     since no future clique could possibly contain m
+           //  2) it is not a subset of any past (i-2, i-3, ...) maxclique 
+           //     because n[i-1] was added only to cl[i-1].member at the
+           //     previous i iteration. I.e.,
+           //     n[i-1] was not added to any earlier maxclique.
+	   //
+           // Note that because we are producing a "deletion"
+           // by searching for any parents who are such that
+           // all their children are "in the current frontier clique"
+	   // (or were once in the frontier clique), 
+	   // cl[i-1].members, it is possible that the "deletion" might 
+           // happen multiple times for diff m. But in each case the same 
+           // maximal clique cl[i-1].members will arise. 
+           // Because maximal_set it is a set, it doesn't matter
+           // if cl[i-1].members is inserted multiple times.
+           insert previous clique cl[i-1] into maximal_set
+           // Next, we clear out newMember of current clique since
+           // at this point no new members have been added that would
+           // not be in previous max clique which is now cl[i-1].member.
+           clear out cl[i].newMember
+      else     
+           add m to cl[i].member
+   add n[i] to cl[i].member
+   add n[i] to cl[i].newMember
+end_for
+
+insert last clique cl[i].member into maximal set
+
+
+***
+Refering to the line
+   "if all m's children are in current frontier clique (cl[i-1])"
+the standard algorithm says that all of m's children
+are in the current frontier clique, then m can be deleted. What
+is actually implemented in GMTK however is a check to
+see if A == B, where A and B are defined as:
+
+   A = the number of children of m that has been
+       added to a frontier clique (at one time or another) in the past
+   B = the total number of children of m
+
+If A == B, then m may be removed from the frontier clique. This is
+different than all of m's children being in the current frontier
+clique as that might lead to a condition where a child (say CH) of a
+node (say N) might come an go so that all of N's children are never at
+the same time in the frontier clique. This could happen if for example
+CH is placed in the frontier clique, more nodes are added, all of CH's
+children get inserted, and then CH is removed, but this happens before
+the rest of N's children are in the clique. It seems like this other
+condtion (A==B) is necessary to ensure that this condition doesn't
+occur, as otherwise N will never be removed.
+
+
+
+---------------------------------
+
+Sun Dec 22 20:38:15 2002
+- Unrolling currently allows for links accross the chunk boundary.
+
+
+idea:
+   create a routine to clone a collection/set of random variables
+   (i.e., keeps the same structure topology amongst the 
+    new rvs.)
+
+   - clone set of rvs
+   - makeComplete (make a set of random varibles complete)
+   -     
+
+
+
+
+
+Thu Jul 03 19:08:30 2003
+
+GMTK_GMTemplate
+contains:
+  - paritions
+  - cliques
+  - reading/writing routines for partitions/cliques
+  - triangulation by clique completion
+  - partition creation routines from a PartitionStructures
+
+BoundaryFindingStructures:
+  - data structures stuff that gets searched to find boundary
+
+PartitionStructures:
+  - stuff that gets partitioned to create gm partitions.
+    but this is re-copied anyway since we need to form the
+    partially disjoint thing.
+
+Boundary algorithm code (which needs to call triangulate to evaluate partition)
+  - 
+
+Code that forms partitions from current boundary
+  - findInterfacePartitions
+  - creates a GMTempalte with partitions but w/o cliques
+    (code for this is in GMtemplate, uses
+       setUpClonedPartitionGraph(loc_P,loc_C,loc_E,P,C,E,P_in_to_out,C_in_to_out,E_in_to_out);
+    )
+
+Triangulating code
+  - need to be able to untriangulate since it tries multiple times.
+  - should operate on individual partitions within a GMTemplate
+  - does not operate directly on a GMTempalte
+  - can have a separate triangulation routine that operates on a GMTemplate,
+    or GMTemplate can have a triangulate routine even. May or may not be useful.
+
+
+======================================================================    
+Sat Sep  6 23:38:45 2003
+
+Notes on assigning rvs to clique for their values.
+
+
+given partition part
+with a set of random variables
+and a root clique in the partition
+
+sort nodes topologically within partition so that
+first node has no parents, 
+
+Normally a node will have parents earlier in time, but what if a node
+has parents later in time?? Topological sort will be such that we
+assign nodes in order topologically. We are guaranteed that there will
+be at least one clique that has a variable and all its parents, so
+if we don't find such a clique in this partition, that variable
+should be assigned to another partition.
+
+
+Simple version.
+
+==================================================
+Fri Oct 31 21:39:33 2003
+
+partition unrolling possibilities
+
+Unroll 0 times
+ [P<->C], [C<->E], [E]
+    I       III     IV    
+
+Unroll 1 time
+ [P<->C], [C<->C], [C<->E], [E]
+    I       II       III     IV
+
+Unroll 2 times
+ [P<->C], [C<->C], [C<->C] [C<->E], [E]
+    I        II       II    III     IV
+
+Unroll 3 times
+ [P<->C], [C<->C], [C<->C] [C<->C] [C<->E], [E]
+    I        II      II      II       III    IV
+   
+
+So I's right interface separator is either to 
+      II or III
+     
+II's left interface separator is either to I 
+       or to another II
+
+II's right interface separator is either to III
+       or to another II
+
+III's left interface separator is either to
+       I or to II
+
+III's right interface separator is alwyas to IV
+
+IV's left interface seperator is alwyas to III
+
+"ui:" = unrolling by "i".
+
+u0: P C E   (uses P_ri_to_C, C_li_to_P, C_ri_to_E, E_li_to_C)
+u1: P C C E  (uses P_ri_to_C, C_li_to_P, C_ri_to_C, C_li_to_C, C_ri_to_E, E_li_to_C)
+u2: P C C C E (uses the above guys).
+
+Thm: Since all C's come from same underlying partition and have same triangulation
+   (and JT), there is no way that interface cliques dervied from u1 can't
+   be used for u2, u3, etc.        
+
+Currently, we are creating 4 partitions.
+  1. Clone of P (name P1), to interface on right to C
+  2. Clone of C (name C1), to interface on left to P, right to C
+  3. Clone of C (name C2), to interface on left to C, right to E
+  4. Clone of E (name E1), to interface on left to C
+ in other words:  u1: P C1 C2 E 
+
+What is needed for each operation:
+
+ 1) computing junction trees within a partition.
+     Can be done in base P, C, and E partitions since
+     JT doesn't change when these guys get unrolled.
+
+ 2) compute partition interfaces, determining which clique in each
+    JT interfaces to the left or right.
+    The 4 partitions P1,C1,C2,E1 sufficient for identifying interface cliques, since 
+         P1 always interfaces to a C on the right
+         C1 always interfaces to a P on the left
+         C1 always interfaces toa C on the right
+         C2 always interfaces to a C on the left
+         C2 always interfaces to a E on the right
+         E1 always interfaces to a C on the left.
+    (but these interface clique identities can be used for any unrolling
+     amount)
+
+ 3) create a directed clique tree (i.e., assign root in each partition)
+    (the thing that creates the clique.children arrays).
+    This is done for each partition with a separate right interface (i.e., depends
+      only on root clique in each partition).
+    Therefore sufficient to use P1, C1, C2, and E1 for this.
+
+ 4) assigning random variables to cliques
+     For each partition, assignment depends on both:
+        1) the root clique, since we start recursing from there.
+           The root clique depends on the RI to the right partition.
+        2) the left interface clique since we need to know
+           who the assigned parents are for the left interface's previous clique.
+     Define: u1: P1 C1 C2 E1
+     Consider case:      
+         u2: P C C C E
+      renamed as:      
+         u2: P Ca Cb Cc E
+      P can use P1's assignments since it always has RI to a C. 
+      Ca can use C1's assignments since C1 has LI to a P and RI to a C
+      Cb *CAN NOT* use C2's assignments since C2 has LI to a C and RI to an E
+        but Cb has a LI to a C and ___RI to a C___ (so maybe not same RI clique)
+        (Fri Feb  6 19:36:35 2004, actually, I think this is not true,
+         since the E1 is really an E' and the LI of E' is really part of
+         a C, since the E' came from an (C^M,E) with a boundary through the C^M.
+         and an interface in E' always  comes from part of a C).
+        Sat Feb  7 17:40:16 2004: update again. Actually, this is true
+        when we find best right interface. I.e., Friday's comments    
+        are true only for the left interface method (When E' contains a C on left).
+        When we use the right interface method, it is P' that contains
+        a C on the right, and E' does not contain a C portion on left).           
+      Cc can use C2's assignments since C2 has LI to a C and RI to an E 
+     Consider case:
+        u0: P Cu0 E 
+       P can use P1's assignments
+       Cu0 can't use any of C1, C2, Ca, Cb, or Cc's assignments since
+         none of them have a LI to a P and RI to an E 
+       E can use E's assignments.
+
+   => Therefore, eed to unroll both 2x and 0x here.
+    - Q: if we use Ca, Cb, Cc and Cu0 in the case
+      of unrolling 0x or 1x, will it work.
+      A:
+      Lets say we have P Cu1 E, the assignment depends on the
+      interface of Cu1 to E (that's the root) and Cu1's interface
+      to E (to get cum assigned nodes), so none of Ca, Cb, or Cc will do.
+      But using Cu0 is fine for unrolling 0x clearly.
+    - Q: if we do P Cu2_1 Cu2_2 E, we can use Ca for Cu2_1 and use
+         Cc for Cu2_2.
+    - Sat Feb  7 16:00:04 2004
+       update:
+      Plan is to create two temlates:
+       u0: P1 Cu0 E1
+       u1: P1 C1 C2 E1
+      Are C1 and Cu0 different?
+        For left interface case, no, since:
+           Cu0 las LI to an P and RI to an E' (really a C)
+           C1 las LI to an P and RI to an C (really a C)
+           (so C2 and Cu0 are the same).
+        For right interface case, yes, since:
+           Cu0 has LI to a P' (really a C) and RI to a real E
+           C1 has LI to a P' (really a C) and RI to a real C.
+      Are C2 and Cu0 different? 
+        For left interface case, Yes.
+           Cu0 las LI to an P and RI to an E' (really a C)
+           but C2 has LI to a C and RI to an E' (really a C)
+        For right interface case, no.
+           Cu0 has LI to a P (really a C) and RI to an E
+           C2 has LI to a C and RI to an E   
+       so we need to 
+           make Cu0 and C2 distinct (for left interface)
+       and make Cu0 and C1 distinct (for right interface). 
+      What about unrolling twice:
+       u0: P1 Cu0 E1
+       u1: P1 C1 C2 E1
+       u2: P1 Ca Cb Cc E1
+
+       C1 and Ca are same since:       
+         C1's LI is to a P1 and RI to a C
+         Ca's LI is to a P1 and RI to a C
+         (for left or right interface, P1 will change
+          but Ca or C1 interface to same) 
+       C2 and Cc are same since
+         C2's RI is to an E and LI is to a C
+         Cc's RI is to an E and LI is to a C. 
+       What about Cb, is it identical to either C1 or C2?
+         Left interface:
+            For LI, Cb is same as C2 since:
+               Cb's LI is to a C (like C2) and Cb's RI is to a C
+                     (C2's RI is to an E', a C portion).
+         Right interface:
+            For LI, Cb is same as a C1 since:
+               Cb's RI is to a C (like C1) and Cb's LI is to a C
+                     (C1's LI is to a P', a C portion). 
+       So, if we want to work with both left and right interface case,
+       need to have two templates:
+       u0: P1 Cu0 E1
+       u2: P1 C1 C2 C3 E1
+       Then unrolling 3 times becomes:
+       u3: P1 C1 C2 C2 C3 E1 
+       u4: etc.
+       (alternatively, could have
+             u0: P1 Cu0 E1
+         for left interface case, do:
+             u1: P1 Cu0 C2 E1
+             u2: P1 Cu0 C2 C2 E1
+             u3: P1 Cu0 C2 C2 C2 E1
+         for right interface case do:
+             u1: P1 C1 Cu0 E1
+             u2: P1 C1 C1 Cu0 E1
+             u3: P1 C1 C1 C1 Cu0 E1
+         this way, in either case, we only keep two C partitions
+         rather than four C partitions.
+       )
+
+      Therefore, in the junction tree class, we keep
+       base partitions for P1, E1, Cu0, and C1,C2,C3.
+
+      How to compute interfaces:
+        option 1: do the N^2 algorithm finding the
+                  cliques between two partitions that have
+                  max overlap.
+        option 2: use the interfaces, finding
+               cliques that cover the interfaces.
+
+        Find P1's RI clique via the PC interface.
+          - works in left and right interface case.
+        Find Cu0's LI clique via the PC interface.
+          - works in left and right interface case.
+        Find Cu0's RI clique via the CE interface 
+          - works in left and right interface case.
+        Find C1's LI clique using PC interface
+          - works in left and right interface case.      
+        Find C1's RI clique:
+          - in left interface case:
+            can use time adjusted  CE interface
+            since here E' = portionof(C)|E
+          - in right interface case
+            can use time adjusted  PC interface
+            since here P' = P|portionof(C)
+        Find C2's LI clique:
+          - in left interface case:
+            can use time adjusted CE interface	
+          - in right interface case
+            can use time adjusted PC interface	
+        Find C2's RI clique:
+          - in left interface case:
+            can use time adjusted CE interface	
+          - in right interface case
+            can use time adjusted PC interface	
+        Find C3's LI clique 
+          - in left interface case:
+            can use time adjusted CE interface	
+          - in right interface case
+            can use time adjusted PC interface	
+        Find C3's RI clique via CE interface
+        Find E1's LI clique via CE interface
+
+        In other words:
+         - C-C interface comes from:
+             CE interface in left interface case
+             PC interface in right interface case. 
+
+        L or R interface needs to be stored in .trifile.
+
+      To score a junction tree:
+        Score based on u0: P1 Cu0 E1 since
+        the interface cliques can be calculated easily and
+        each partition's score can be calculated separately.
+
+
+
+ 5) setting up message passing orders
+    (note that this really just does a recursion of the directed tree
+     set up in step 3. It does choose an order of the children though).
+    Depends only on the root clique in a partition, so 
+    can use P1, C1, C2, and E
+
+ 6) Creating separator structures
+   - Within a partition, can be done independent of anything else.
+   - Between partitions, 
+    Sun Nov  9 22:58:50 2003
+    New notation for stored partitions:
+      u0: P1 Cu0 E1
+      u1: P1 C1 C3 E1
+      u2: P1 C1 C2 C3 E1
+      u3: P1 C1 C2 C2 C3 E1
+
+   Can we compute each partitions left interface separator
+   to left most thing? (i.e., each partition stores its LI separator)
+
+      P1 - no left interface
+      C1 - LI always to a P1, always a P
+      C2 - LI either to a C1 or a C2, always a C
+      C3 - LI either to a C1 or a C2, always a C
+      E1 - LI either to a Cu0 or C3, always a C
+      Cu0 - LI always a P1, always a P
+
+   So, each partition stores left interface separator.
+
+ 6.5) Step to unify the RI clique of a left partition with
+      the LI clique of a right partition, if they are identical.
+
+      What this would involve:
+          Right now, the RI clique has only one separator to the
+          right adjacent partition, and similarly for a LI clique.
+
+          Best thing to do would be to remove the RI clique of
+          the left partition, and add the separators of that
+          to the LI clique of the right partition.
+
+
+
+ 7) Compute Receive Separator Iteration Order
+       - does the MST thing.
+
+ 8) 
+
+
+==================================================
+
+Does full aurora clique fit in one 32-bit integer? Yes.
+
+         RV      Card      notes           Num bits
+     
+        WC(1)     22                          5
+        W(1)      13      vocab               4
+        WP(1)     8       num sts/wrd         3
+        WWS(1)    91                          7
+        O(1)      0                           0
+        PT(1)     2                           1  
+        WT(1)     2                           1
+        SS(2)     2                           1
+        WC(2)     22                          5 
+        WP(2)     8                           3 
+
+totals                                        30 bits total
+
+So, a clique of size 10 fits in 1 32-bit machine word, leading to a
+factor of 10 reduction in memory requirements for the clique values.
+
+Boosting up to max 32 states per word would require a total
+of 32 bits, still fitting in one 32-bit machine word.
+
+With same structure, and a vocab size of 60k 
+   16 bits gives 65536, would take 2 32-bit machine words
+   since it occupies 42 bits.
+
+With 20 bits for W(1) (vocab size of 1M), and 32 states per word,
+need 48 bits, still two 32-bit machine words.
+
+
+
+==================================================
+
+Separate class for each RV, virtual functions do their task directly.
+
+Attributes of a random variables:
+
+hidden/observed
+discrete/continuous
+switching parents/just normal parents
+
+no-weight / weight 
+
+  different types of weight:
+     nothing
+   No observation dependence
+     just weight  p(x)^\lambda
+     just penalty p(x) + \beta 
+     weight and penalty  p(x)^\lambda + \beta
+     switching just weight
+     switching just penalty
+     switching just weight and penalty
+   Observation dependence; 
+     just weight  p(x)^\lambda(o)
+     just penalty p(x) + \beta(o) 
+     weight and penalty  p(x)^\lambda + \beta
+     switching just weight
+     switching just penalty
+     switching just weight and penalty
+
+     just weight  p(x)^\lambda
+
+     just exponent from obs p(x)^{\lambda(z)}
+     just exponent and add from obs p(x)^{\lambda(z)} + \beta(z)
+     switching just exponent from obs p(x)^{\lambda(z)}
+     switching just exponent and add from obs p(x)^{\lambda(z)} + \beta(z)
+
+Number of combinations:
+
+{ obs weight, value weight, no weight } x { obs penalty, value penalty, no penalty } x 
+
+
+Random Variable Hierarchy:
+
+RV- RandomVariable
+  - possibly place static functions here to avoid
+    duplicate code for common functions.
+ HRV - Hidden Random Variable
+   DHRV - Discrete Random Variable
+      SDHRV - Switching Discrete Hidden Random Variable
+      NDHRV - Normal Discrete Hidden Random Variable
+   CHRV - Continuous Hidden Random Variable (doesnt' exist)
+ ORV - Observed Random Variable
+   DORV - discrete observed random variable
+      SDORV - Switching Discrete Observed Random Variable
+      NDORV - Normal Discrete Observed Random Variable
+   CORV - continuous observed random variable
+      SCORV - Switching Continuous  Observed Random Variable
+      NCORV - Normal Continuous Observed Random Variable
+
+
+
+----
+
+ two things:
+    1) look inside DT to decide how much they cost
+    2) judge JT quality by number of deterministic unassigned nodes.
+
+
+
+Fri Feb 13 13:20:27 2004
+ - classification of nodes in a clique:
+
+   1) assignedProbNodes: These are the nodes in a clique
+      for which we must compute the probability. I.e.,
+      they have been assigned to this clique to copute the probability.
+      These nodes exist in the clique along with all of this
+      nodes parents.
+      These should be CPT iterated.
+
+   2) assignedIterateNodes: These are nodes in this clique that
+      exist along with all their parents (like assignedGetProb),
+      but each of these nodes have been asigned for computing the
+      CPT probabiltiy in another clique. These should
+      be CPT iterated, but we don't update the probability.
+
+   3) Separator driven. These are nodes that are iterated by
+      the incomming separators during the CE stage. 
+
+      It is bad if any of these nodes are both previously unassigned
+      (lower stages in the JT) and also overlap with the assigned nodes
+      (of either kind) since in that case, we'll be doing
+      a separator iteration over previously unassigned nodes. Note
+      however, that in this case, the current clique will kill off
+      any zero probability entries (even if the node is
+      assignedJustIterate).
+
+   4) Unassigned Iterated. These are nodes that are not assigned
+      to this clique (i.e., the node's parents do not exist in this
+      clique), and so we must iterate them using [0,card-1].  
+
+
+plan:
+
+  assignedNodes: 
+      the nodes in the current clique that also
+      have all its parents in the current clique. These nodes
+      can be charged useCard() in general, but if there
+      is a sepNode that is also an assigned node, then
+      the charge of that node depends on if it was
+      assigned lower in the JT. If it was assigned,
+      we charge the node 
+
+  assignedNodes need to be in topological order:
+
+   say v is an assignedNode (meaning it exists with its parents in the clique).
+  7 cases:
+   - v is not in sepNodes, and v is a prob node as well, meaning we multiply
+     this clique potential by prob(v|parents(v)). We use
+     CPT iteration to iterate over v and compute probabilities.
+     Same for v being sparse or not.
+     AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB
+   - v is not in sepNodes, and v is not a prob node, and V is sparse. We still use
+     CPT iteration to iterate over v given parents, but do not multiply
+     clique potential by probabilties. By using CPT iteration,
+     we remove any zeros now.
+     AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS
+   - v is not in sepNodes, and v is not a prob node, and V is NOT sparse. 
+     We iterate using [0,card-1] and continue, and do not 
+     change any probabilities.
+     AN_CARD_ITERATION
+   - v is in sepNodes, and v is a probability node. Then we compute
+     the probability for v, and continue only if the probabilty
+     is non zero. 
+     Same for v being sparse or not.
+     AN_COMPUTE_AND_APPLY_PROB
+   - v is in sepNodes, v is not a probability node, but v was
+     assigned in a previous JT clique. In this case, we just
+     continue on since we know the incomming separators
+     killed off any zero entries. 
+     same for v being sparse or not.
+     AN_CONTINUE
+   - v is in sepNodes, v is not a probability node, v sparse, but v was
+     *NOT* assigned in a previous JT clique. Then, since v is
+     sparse, we check here to make sure that the probability 
+     of v|parents is not zero. If it is zero, we backout,
+     but if it is not zero we continue, but *do not* multiply
+     the probability into this clique potential.
+     AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS
+   - v is in sepNodes, v is not a probability node, v not sparse, but v was
+     *NOT* assigned in a previous JT clique. We just continue,
+      since the CPT won't tell us anything. 
+     AN_CONTINUE
+
+
+  unassignedNodes:
+  1 case:
+   - if hidden, just iterate [0,card-1]
+   - if observed, continue going.
+
+=========================================================================      
+
+island forwardBackward(start,end)
+
+ We have four basic operations:
+  ceGather(partNo);
+  ceSendNext(partNo);
+
+  deScatter(partNo);
+  deReceiveToPrev(partNo)
+
+
+forwardBackwardRecurse(start,end)
+   len = end-start + 1;
+   if (len <= base)
+      - Free shared hash-table memory arena.
+      - forwardBackward(start,end);
+   else
+      chunk = len/splits
+
+      for (i = 1 to splits-1 )
+         const space forward chunk i
+         save memory at last (all but
+         the last are no-shared, last is shared)??
+      for (i = splits down to 1)
+         forwardBackwardRecurse(i-1,i)
+
+  	
+
+
+Thu Feb 19 14:11:55 2004
+
+
+possible idea: two areans, a shared (so uses hash tables) and no
+shared (so no use of hash tables).
+Have ability to turn a shared into a non-shared, and vice
+versa (swap).
+
+
+things that need space managed:
+1) In MaxClique:
+
+    CliqueValueHolder valueHolder;
+    vhash_set< unsigned > cliqueValueHashSet;
+  
+   - Used only if packed clique values are > IMC_NWWOH words.
+   - Assuming that these are used: 
+
+       - In normal forward backward, there is only one of these
+        for all instances of this maxclique origin. Space management
+        is needed between utterances (upon each new utterance,
+	we use space manager to decide how big to make this).
+
+	decay only after each utterance.
+
+      - In const. space interefence, we'll need two of these, one
+        for previous and one for current partition cliques. There
+        will be no sharing, so the hash set is not used.
+        We will need valueHolder space managed, however, to
+        allocate valueHolder.
+         
+       	decay only after each partition.
+
+      - In space constrained inference, during baseline forward
+        backwards, do shared. During const. space forward, do
+        non-shared case except for very last one (so it can
+        potentially be shared).
+
+2) In SeparatorClique:
+
+    -   CliqueValueHolder accValueHolder;
+        vhash_set< unsigned > accSepValHashSet;
+
+    -   CliqueValueHolder remValueHolder;
+        vhash_set< unsigned > remSepValHashSet;
+
+   - Used only if packed clique values are > ISC_NWWOH_AI 
+      and respectively > ISC_NWWOH_RM ) words.
+
+   - Assuming that these are used: 
+
+
+3) InferenceMaxClique
+
+      // the collection of clique values for this clique.
+  sArray< CliqueValue > cliqueValues;
+   where a clique value contains a 
+      1) (ptr,val) 
+      2) a logpr.
+
+4) SeparatorClique
+
+    - cArray< AISeparatorValue > separatorValues; 
+    - VHashMapUnsignedUnsignedKeyUpdatable iAccHashMap;
+          fast maps from keys to index for separatorValues
+    - AISeparatorValue contains:
+        1) (ptr,val) union
+        2) cArray <RemainderValue> remValues;
+        3) VHashMapUnsignedUnsignedKeyUpdatable iRemHashMap;
+            fast maps from keys to index for remValues
+
+    - RemainderValue contains:
+        1) (ptr,val)
+        2) logpr p (forward) 
+        3) logpr bp (backward)
+       (will contain pointer for viterbi,
+           perhaps could union bp with an unsigned but
+           can't union a logpr with something else since
+           a logpr contains a constructor) 
+       // could do something like:
+       union upi {
+           char p[sizeof(logpr)];
+           // lc l;
+           unsigned i;
+       };
+       logpr&pr = *((logpr*)(&l.u.p));
+       (default size of remainder should be different if we
+        have multiple remainders, should be small when iAcc exists, or when
+        iAcc does not exist, should be larger.)
+
+Fri Feb 20 19:38:47 2004
+   - another idea, only share for a while but not the entire segment.
+
+
+
+ We have four basic operations:
+  ceGather(partNo);
+  ceSendNext(partNo,partNo+1); (from,to)
+
+  deScatter(partNo);
+  deReceiveToPrev(partNo,partNo-1) (from,to)
+
+Forward is:
+   ceGather
+   ceSendToNext
+
+   ceGather
+   ceSendToNext
+
+   ceGather
+
+Backwards is:
+  deScatter
+  deReceiveToPrev
+
+  deScatter
+  deReceiveToPrev
+
+  deScatter
+
+forwardBackwardBaseIsland(start,end)
+{
+   // always share hash tables.
+   // guaranteed that partition[start] has
+   // been created and ceSendNext(start-1,start) has
+   // been called
+   for part = start to end (inclusive)
+     ceGather(part);
+     if (part != final) {
+        create partition part+1
+        ceSendNext(part,part+1);
+     }
+
+  for part = end downto start (inclusive)
+     deScatter(part); 
+     if (part != 0)
+        deReceiveToPrev(part,part-1)
+
+}
+
+
+forwardBackwardRecurseIsland(start,end)
+{
+   len = end-start + 1;
+   if (len <= base)
+      - Free shared hash-table memory arena.
+      - forwardBackwardBaseIslands(start,end);
+   else
+      skip = len/splits;
+      for chunk = start, chunk < end; chunk += skip
+         for part = chunk to 
+
+
+        for (i = 1 to splits-1 )
+
+
+
+         const space forward chunk i
+         save memory at last (all but
+         the last are no-shared, last is shared)??
+      for (i = splits down to 1)
+         forwardBackwardRecurse(i-1,i)
+
+  	
+}
+
+
++ ================================================================================
++ ================================================================================

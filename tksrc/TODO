@@ -1,0 +1,1800 @@
+
+
+$Header$
+
+GMTK TODO List/Memory
+
+Other things that need to be done, or just other ideas that might be
+incorporated into the package at some point. Things that are already
+done are marked with an "X" on the left of the item. When an item is
+added, please add the date to the left of the list item. Note that
+some items below might be redundant as they were added at very
+different time.
+
+--------------------------------------------
+
+X Low level file parser should support
+   both integer and named pointers to
+   the parameters that they share.
+   (when they write out the parameters, they
+    should write out the form that was written in).
+    
+X simple +* equations in decision tree leaf nodes,
+  using variables vi and ci (e.g.,
+  v0, v1, v2, ... , and c0, c1, c2, ...) for values
+  and cardinalities of parent variables.
+  exs:  c0*v0 + v1
+        c0 + 1
+        3
+
+X add a MTCPT type, for deterministic cpt
+  which just points to one of the decision trees
+  in the DT table.
+
+X add error check message if two low level objects
+  have the same name and kill the program.
+   
+X discrete observed variables have only one cardinality,
+  card needs to be a vector.
+
+X Include gaussian objects for special situations.
+    index -1 corresponds to, with probability 1, gaussian
+    index -2 corresponds to, with probability 0, gaussian
+
+- An anytime clique finding algorithm that searches
+  for the best clique tree in an hour, day, weekend, etc.
+  Save the resulting clique (and model description) to
+  a file so that it can be reused multiple times.
+
+- Produce messages to the user saying that what the clique
+  sizes are and that they might want to adjust the 
+  structure to reduce clique sizes if they become too large.
+
+- the inference procedure should work both with clique chains and clique trees
+    - no, but basic data structures are ok.
+    - at some point, add tree stuff, for single frame applications
+
+- the inference procedure should work with disconnected networks
+
+X Allocate data structures for CPTS, etc. automatically, if not explicitly 
+  specified in a file. 
+
+- use namedobject for randomvariable and any other object that
+  has a string name
+
+X- include check to make sure that names for each section in parms are unique
+
+X- todo, make sure that chunk n:m is valid.
+
+X IMPORTANT: ability to train means and other dlinkmats in a dlinkmats structure
+  independently.
+
+- to through and start using setBasicAllocatedBit() on read, and add
+  assertions to that effect on all routines that need it.
+  (later) started doing this, but need to do a sweep to make sure all use
+  this mechanism.
+
+- IMPORTANT: look at and get rid of purify memory lost message
+     - write destructors
+
+- write sampling code
+
+X update make file so that -@ works for .o files.
+<
+X Check the results of all DT query() calls to make sure
+  the index it returns is valid. Report great error messages
+  if it doesn't.
+  Ultimately, some type of run-type check done once at the beginning
+  so this query doesn't need to take place.
+
+X if an object gets no probability, do something
+  more than just issuing a warning, like setting
+  to uniform probs, removing the component,
+  re-randomizing, or something.
+  done: set to previous values.
+
+X add a k-means mode for initialization.
+    - keep covariances at unity for a while.
+    - first iteration just use random assignments
+      (pick a random component who gives unity probability,
+       everyone else gives zero probability)
+    - done essentially since the splitting stuff
+      is working and we can start with a single Gaussian
+      and path counting.
+
+X Add gaussian split program
+
+X add linear BMM links
+
+- add non-linear BMM links
+
+X implement mixture component vanishing using the 
+  shared Dense1DPMF. If one GM decides that
+  its component should vanish based on a MCVR
+  then all of them should (and should check this
+  as well).
+
+X when reading in definitions for each utterance:
+    we could change the DTs with a particular name
+    (e.g., read in a DT file and have a read
+     mode that changes the pointer if it is there).
+    This would need to have objects that use DTs
+    use the integer index rater than the pointer directly.
+   Essentially done, DTs can now specify a file
+   containing a number of DTs one per segment.
+
+- Re-think the 1 DT per utterance stuff so that
+  we can seemlessly do parallelism.
+   (dt file indexes?)
+
+- rethink DT format numbering
+
+- add a 'fail' tag to DT leaves.
+
+X pass .str files through cpp before reading.
+
+X make sure that all files passed through cpp that
+  line numbering error messages is done right.
+
+X GMTK_GMParms::read(), keeps open all files
+  until the end. If it encounters the same name again,
+  it keeps track of where it was and continues reading.
+  Also, this should append rather than delete.
+
+X Allow the file parser to pass ASCII files through cpp
+  (but not binary).
+
+- need to add a check that makes sure that the observation
+  range used by the cont. parents match that used by
+  the gaussian, perhaps add a length check as well.
+
+- Fri Jun 15 12:43:49 2001, 
+  MEMORY SAVINGS:
+  RandomVariables and their discrete and continuous children
+  have lots of redundant information when they are unrolled, thereby
+  wasting lots of memory. This could be changed so that
+  RV's keep a pointer to a RV common structure which when the RV is cloned
+  uses the same common data.
+
+- Short term: evaulate float/double for logp on Aurora
+
+X Long term: 
+     have a log space algorithm option
+
+- in file parser, add checks to make sure that all ints read in
+  are non-negative
+
+X change parser to keep track of multiple #include files via line directives
+
+X change sparse PMF so that it just contains a list
+  of values, and then a pointer to a dense pmf
+
+X get the parameter writing stuff finalized.
+   (get working after workshop, use simple global write in binary for now).
+
+X get MCVR working
+
+- if last component (or entire mixture) has no probability, 
+   either 1) die
+          2) do nothing, and do not change anything, reverting
+             to previous values.
+          2) force to uniform parameters
+          3) For now, **** force to impossible Gaussian *** 
+             and issue a loud warning.
+
+- prior counts
+    - need routine makeAccumulatorsPrior
+    - stand alone program for writing out accumulator file to be read in.
+
+X IMPORTANT: finish load/store/accumulate accumulators
+
+- Identify potential issues with release (ie.., bugs, slowness, obviously needed toolkit abilities,
+  thigns that are inconvenient, etc.).
+
+X add VCID everywhere.
+
+- allow deterministic relations to be enumerated out. in some cases, this is
+  easier than a decision tree. 
+
+X- add a binary/ascii parameter file conversion program.
+
+- export all internal program variables to command line (e.g., var floor, etc)
+
+X check on memory leak stuff
+
+- make sure that all gaussians use means/variances that are the right dimensionality
+  in read file.
+
+- rethink sparse CPT and make it such that sparseCPTs don't use the Dense1DPMF which
+  have become tailored to Gaussian mixtures (so lengths might change).
+   sparse CPTs should use dense CPTs somehow.
+
+- write C++ program to print number of free parameters for a system.
+
+- add simple multiplication onto decision tree leafs. (or better, make it
+  use real integer formulas with parens, etc.).
+
+- export the optional training stuff (i.e., don't train means, just covars, etc)
+  to command line.
+
+- create new objects, integer to name mappings
+  to map to decision tree leaves (corresponding to integers) to either
+     1) Gaussian mixture objects
+     2) Switching gaussian mixture objects
+     3) sparse PMFs
+
+X make sure that dlinkmatrix precompute is being
+  called once the global observation matrix is ready.
+
+- check for cardinalties in str file
+
+- make sure dlinks are checked somewhere for validity wrt a file
+
+- rething the EMable thing with the virtual functions, might
+  be a speedup there, esp. with emIncrement.
+
+- figure out a good way to get (save to disk) most viterbi assignment to 
+  mixture variables.
+
+- clean up source directories.
+
+- fix unrolling bug, where it is possible to get an assertion
+  failure because of unrolling a network but having  incompatible
+  RVs.
+
+- dlinks, make sure we do not point to self
+
+- decision trees, need to deal with the issue with reading them
+  in, parallelism, and so on.
+
+- implement other forms of mappings from RV 
+    - decision tree (done)
+    - hash table
+    - direct mapping 
+
+- write MDCPT parameters out in nice order with smart comments.
+
+- dlinkmats, normalize by "previous" covariance matrix, GEM alg
+
+- more triangulation procedures to reduce large clique sizes.
+
+- get switching parents working with triangulation
+
+- print message at start with largest clique (members, and upper bound on
+  joint state space)
+
+- reading ascii feature files should not be by line.
+
+X fix bug with small parallel chunks and accumulators being zero
+
+- add option to pass definitions to cpp with cpp arg.
+
+- add some way for DTs to refer to other DTs (i.e., a leaf
+  of a DT an continue on using another DT, to make sharing
+  easier, and save memory for big DTs).
+
+X option to floor variances when they are read in.
+  (for all programs including ascii/binary conversion)
+
+X ascii/binary conversion program can go both ways.
+
+- dynamic DTs, error messages should print cur name as well as base name. 
+
+- make DT such taht even if overlap exists, binsearch will occur.
+  (add option to search from the middle outward).
+  
+- add option to split/vanish top/bottom N mixtures irregardless of that.
+
+- for documentation:
+  - good idea to turn on conservative vanishing right after forced splitting.
+    This is to make sure that the splitting as a good idea. A forced
+    split might not be a good idea. The split Gaussian might 
+    dwindle away during training after a split, so keeping conservative
+    vanishing will keep that from happening (and will keep the
+    variances from being large).
+ 
+- option to turn off all warnings and notes.
+
+- accumulators pretty printed
+
+- don't allocate nextmean next covar until end of em iteration
+  since they are contained in component.
+  define a new bit in emable to support this (since need
+  to know the first time end of em thing is called).
+
+- ability to produce viterbi paths with mixture variables
+  using the gaussian mixture objects.
+
+- write a vector version of log(1 + exp(x))
+
+- clean up swap and end EM in gmparams
+
+- add command line option "-format file-type" to the main programs that
+  will explain the formats of the various files. For example, if there are
+  no gaussian mixtures, does the master file still have to mention them?
+
+- make DTS such that 'default' is not required, and that if
+  we have splits w/o a default, then it will have a run-time
+  error if we ever get a case that doesn't match the guys in the split
+
+- change range error messages to indcate where the error is
+  in the file, etc. where the error occurs (add an extra 
+  string argument, etc.).
+
+- check that there are no self loops in dlink strcutres
+
+- add startskip/endskip check
+
+- add link checks
+
+- when no-one left uses a component after vanishing,
+  get rid of it (add a 'used' bit perhaps in EMable.h).
+
+- make vanishing stuff vanish w/o a trace (i.e., unused
+  component is gone).
+
+- make more conise all the warning messages about vanishing
+  (don't need to report all of them, report single summary
+   message).   
+
+- check on error check messages, arguments out of order
+  in dlink matrix message??? (check with Geoff)
+
+- remove all the using_files stuff in GM.cc
+
+- clean up GM.cc with setExampleStream, and all of that.
+
+- Wed Aug  8 21:58:36 2001 it is still the case that
+  the gaussian dimensions are not being checked (since
+  we don't know DT leaf values at start time).
+  Once tables are in place, we can make sure
+  that the tables point to all matching gaussians
+  at start time.
+
+- write our own pre-processor (doesn't have space problem
+  that cpp has, and also will give standard #line/#file directives).
+  Perhaps in perl.
+
+- add tag to command line to add to all cloned objects.
+
+- include global missed increment count in accumulators.
+
+- arguments print default values
+
+- viterbi option so that it prints out max likelyhood of
+  one variable summing over all others.
+
+- clean up virtual functions in GMTK_EMable since some of
+  the EM ones need not be virtual.
+
+x fix arg description of beam
+
+- for docs, when stdfracs are zero for D and B, and
+  when we clonesharemeans, we might make a copy of
+  the gaussians when cloning that are exactly the
+  same as the parent leading to redundant copy of
+  Gaussians. Make sure to mention this in docs.
+
+- support no training names such as gmMx* for foobar*
+
+- state clustering, ala HTK, occupancy counts.
+
+- when segment is to short during training, skip it
+  rather than exiting with an error. 
+
+
+TODO:
+ - file formats (table & output file)
+ - record phone numbers
+ - src id
+ - icassp
+
+- accumulate multiple accumulators, give a list of accumulator
+  files when numeric range doesn't work to support accumulators
+   on different machines.
+
+- go through and making sure all the tying logic and not-training options work.
+
+
+- change internal class names from ??CPT to the SparseCPT, DenseCPT, etc.
+
+- create a name index type so that DT's can be used for the following.
+    - in mappings to GM indexes, DT leaf specifies a relative
+      offset in a table rather than in the global collection of GMs. 
+
+    - in MSCPTs, so that row elements of the MSCPT point to
+      offsets in a table for the 1dPDFs rather than in the global
+      table. Add entry in MSCPT definition in data file.
+
+- a way of adding counts to discrete CPTs without needing to specify an entire accumulator
+  file.
+
+- cpp program is determined by environment variable if it exists.
+
+- remove from parser the integer index stuff since string names exist.
+
+- remove all cin/cout and use printf/scanf
+
+- add -version flag to everything.
+
+
+- from Gang.
+1. When I want to print the hidden variables I met the following:
+
+suppose my varList file is the following
+   wordLatticeState
+   state
+   phoneTransition
+   wordTransition
+and my fileList file is the following
+   wordLatticeState.log
+   state.log
+   phoneTransition.log
+   wordTransition.log
+
+The output will put everything in the file wordLatticeState.log.  In that
+file the first integer will be wordLatticeState(0), second will be
+state(0), so on and so forth.  It didn't create other three files.
+
+2. suggestion
+
+in gmtkViterbi, cppCommand is very useful.  But I if I have a lot macros,
+the command line string will be very long.  I wonder whether is a way that
+this will take a file of macros.
+
+JB answer: but this can be done using cpps #include in one of the
+           files. TODO: add this to documentation.
+
+
+- add implicit approach to tutorial (from Yimin).
+
+- graphvis and grappa from at&t can visualize graphs very nicely.
+
+
+- 
+>.
+>WARNING: Ending EM iteration but 124 rows of MDCPT 'mannerMDCPT' had zero 
+>counts. Using previous values for those rows.
+>
+>Actually, one thing that would be useful would be if it were possible to have 
+>a "verbose" option where it tells you which rows had zero counts.
+>
+------------------------------------------------------------
+
+Tue Jun 18 17:47:44 2002
+> >(2)  Does GMTK allow you to use models that aren't strictly probabilistic?  
+> >E.g. if I wanted to weight the acoustic model score relative to the language 
+> >model, would I be able to do that?  I know that for some purposes I can "fool" 
+> >it, as I've done with the feature model, by having multiple observation 
+> >variables pointing to the same observations, but that is fairly limited.
+> 
+> Not at the moment, but that would be really easy to add (and I'd be happy
+> to do that for you).
+------------------------------------------------------------
+
+
+FIXED Wed Jun 19 19:27:26 2002
+
+Tue Jun 18 17:51:42 2002
+> >(1) I am training a new model, and am getting an error with the new version of gmtkEMtrain but not the old version.  The error occ
+> >urs when loading accumulators (but not when training without accumulators), and the message I get is:
+> >
+> >error in accumulating accumulators: /t/klivescu/aurora/articulatory5/MISC/emtrain.1.log:  
+> >EOF occurred in readDouble, file '/t/klivescu/aurora/articulatory5/MISC/acc_file_1.data': MDCPT load accums
+> >Loading accumulators from '/t/klivescu/aurora/articulatory5/MISC/acc_file_1.data'
+> 
+> Hmm. Are you using accumulators that were generated with the old
+> version with the new version? I don't think any of that code was
+> changed, but it is possible there might have been a bug introduced.
+
+No, the accumulators were generated with the new version.  I ran a
+few more experiments to try to figure this out, and it seems that
+it has to do with the size of the accumulator files--i.e. it only
+happens when the accum files have only a few utterances' worth of
+data.  E.g. if I train on 50 sentences broken up into 2 accum files,
+it's fine; but when broken up into 10, I get the error.  Perhaps it 
+is unhappy about some things not being observed in the accum files?
+
+> That would be good. Could you set up the bug on music and/or orca?
+
+I set up the files on both machines.  On both machines, everything is in
+~klivescu/aurora/articulatory5.  The NOTES file contains the command 
+lines for the old/new versions (sorry about all the long path names--
+the commands were copied directly from script-generated makefiles).  
+I think I made everything group-writable, so you should be able to 
+run the commands.
+
+Thanks!
+Karen
+
+------------------------------------------------------------
+FIXED Wed Jun 19 19:27:26 2002
+
+Tue Jun 18 17:51:16 2002
+	
+(3)  Not so much a question as just letting you know about another error 
+(different from the last one) that I got with the new version but not the old 
+one.  This one also occurred when combining accumulators.  The error message 
+was:
+
+Loading accumulators from '/homes/klivescu/aurora/articulatory7/MISC_NEW/acc_fi
+le_1.data'
+GMTK_MeanVector.cc:718: failed assertion `emEmAllocatedBitIsSet()'
+IOT/Abort trap (core dumped)
+
+This occurred while training a feature model with clustered features.  The only special thing I can think of about this model is that there were a number of Gaussians that I wasn't training (via -objsNotToTrain) because they correspond to impossible combinations of feature values.  I put all the files necessary to replicate the error on music in ~klivescu/aurora/articulatory7.  The NOTES file in that dir has the commands that I ran for both the old and new versions.
+
+-----------------------------------------------------------------
+FIXED Wed Jun 19 19:27:26 2002
+
+Wed Jun 19 11:34:25 2002
+
+At the moment, we are not checking for emAmTrainingBitIsSet() in
+GMTK_MeanVector.cc, GMTK_DlinkMatrix.cc, and GMTK_DiagCovarVector.cc
+in all of the EM routines, except for the swap routine (i.e., if the
+bit is not set, we don't swap). The reason for this is as follows.
+When sharing is not on, it is fine to check this bit before each EM
+routine, and if not set, do nothing. The problem is that with sharing,
+when we compute the updates for the shared means, we'll need the
+counts for not only the means but also for the covariances, and vice
+versa. A similar situation arrises when dlinks are involved. One
+solution might be to activate the accumulation if it is seen that
+sharing is occuring, the the problem with this is that, at the moment,
+we don't know if sharing is occuring until after emINcrement is called
+for the 2nd time on teh same mean object. If the bit is off the first
+time, we might miss the first accumulation.
+
+The solution now is to compute all the counts for the
+means/variances,etc. in all cases, even when the not_training bit is
+on, but this can be very wastefull. Another problem is that we need to
+save the accumulators when doing parallel training, even when the
+means are not being trained. This means that the training bit could be
+off, but we are accumulating accumulators for the shared object so the
+accumulators need to be saved even when the training bit is off.  This
+logic therefore needs to be rethought.
+
+-----------------------------------------------------------------
+
+- get automatic allocation of DenseCPTs working again.
+
+
+Tue Jul  2 19:35:29 2002
+- errors when reading in parameter files should be more informative
+  and perhaps say where in the parameeeeeer files the problem is.
+
+Tue Jul  2 19:38:36 2002
+- no need for warning about accumulatedProb = 0 for MTCPT
+
+Tue Jul  2 19:53:43 2002
+add to documentation something about normalization features
+and variance floor. Hints/tips on what to do here.
+  - possibly a diff. var floor for each feature vector element/
+
+XX Tue Jul  2 20:24:18 2002
+   - add a 'noscore' CPT so that we can do true conditional discrete
+     observations, similar to what can be done for discrete observations.
+
+Sun Jul 07 17:16:56 2002
+ - go through all parameter reading code to produce better error messages
+
+XX Sun Jul 07 17:16:56 2002
+   (e.g., realarray, and all of that, probably eliminate realarray class
+    as it's not doing much).
+
+Sun Jul 07 23:40:36 2002
+ - idea, for off-line triangulation heuristic, rather than
+   min-weight, choose "min dynamic weight." The dynamic
+   weight is obtained by running through all possible values
+   in the clique and choose the node to eliminate next which
+   results in the fewest number of clique instantiations.
+   Possible problem. Implementation of edges changes for  
+   each utterance, but it is only the decision trees that
+   change. 
+   Options:
+     1) Do this for one possible value of the DTs and 
+        hope that this works for the rest
+     2) do this for all, and average over the differnet
+        DT values (or take min of max, etc.)
+     3) have user provide "canonical" DT examples
+        that are used for triangulation.
+     4) 
+
+  Question of how much to expose user to triangulation issues:
+    Goal: try to make it possible for them to experiment with
+    better strategies w/o asking them to understand everything,
+    but still include it in the tutorial section.
+  
+Fri Jul 12 23:39:17 2002
+  - rewrite issue with di_xxCPT type of CPT objects being
+    declared. There should be one CPT object type used in
+    the program, and all guys inheret from it. Q: how  
+    to do the separate namespace for MDCPTs, MTCPTS, and MSCPTs?
+  - this also an issue for mixGaussians. Need to re-think all
+    of this.
+
+
+Sat Jul 13 02:05:27 2002
+ - ascii file reading should read in ascii files preprocessed
+   by CPP (optionally and by default). Also, the list of files 
+   itself should be processed by CPP.
+
+Tue Jul 16 18:38:44 2002
+ - when variances get floored, message should also include occupancy
+   probability (to see if counts are low)
+
+
+Thu Jul 18 15:38:36 2002
+ - add comment to docs about problem with single quotes in GMTK comments
+    because CPP has trouble
+
+XX Thu Jul 18 15:38:51 2002
+ - add neg values between -infty and -0 being log probabilities.
+
+Mon Jul 22 13:39:02 2002
+ - add neg vals cpt and dpmf to docs,
+ - add to docs that normthres can be == 0 to turn it off.
+
+Fri Jul 19 10:11:04 2002
+ - add ability to specify initial counts on command line for discrete objects
+   (M?CPT, DPMF) during training, to do a form of Laplace smoothing.
+   Perhaps similar to obsnottotrain option. 
+
+
+Fri Jul 19 10:13:22 2002
+ - idea. Each gmtk object should have a set of options that can
+   be set when the object is defined, rather than in a separate file???
+
+ri Jul 19 11:59:44 2002
+ - add karen's MCVR/MCSR comments to the docs
+
+Fri Jul 19 18:48:57 2002
+ - use regex library for obs to not train, and other such
+   things.
+
+Mon Jul 22 13:40:06 2002
+ - idea about triangulation heuristic
+   (when doing min weight, when a det. var and its parents
+    live in the clique, don't multiply the child's cardinaliiity
+    into the clique weights). So, if there is only one
+    random parent, entire clique weight = cardinality of
+    that parent).
+
+Mon Jul 22 15:15:04 2002
+  - when strcutre contains no observations in file, shouldn't
+    require obs file (but how to determine unrolling in that case?)
+
+Thu Jul 25 19:57:48 2002
+  - add a per sentence like range option to all programs, like
+    in the pfile tools. This would pass directly down to the
+    file reading utilities.
+  - Update the pfile tools to use the new file format.
+  
+
+Fri Jul 26 14:52:53 2002
+  - add appropriate waring/informational message mechanism,
+    so that users can se more/less of the warning information, with
+    command line option (e.g., for dets hitting zero, and any
+    other funny hacks that occur).
+				   
+
+Wed Jul 31 22:04:27 2002
+  - actually, rather than laplace smoothing, add an object type 
+    that can include initial counts to use for MDCTPs and MSCPTs
+    (use  same file format as these, but just include pos integer or fp counts
+     rather than probabilities).
+
+
+Tue Aug  6 22:49:42 2002
+  - use email to chiaping on Tue Aug  6 22:49:46 2002 about unity
+   score Gaussian -> docs    
+
+
+Wed Aug  7 13:46:35 2002
+ - LM scale factors,
+   for vit decoding, give the option to raise the prob of 
+   a rand var prob to a power (keep it static for now in
+   the structure file).
+
+Fri Aug  9 10:33:17 2002
+  - change low level fileparser to when it has an error
+    message keep track of the line number & file name of file that it
+    is parsing for error messages. Need to parse CPP options
+    as well in that case.
+
+
+Sun Aug 11 18:07:53 2002
+ - obsNotToTrain file formats
+    - should allow multiple objects on the same line
+    - should use a better format (regexpressions, etc.)
+
+
+Wed Aug 14 14:08:19 2002
+    given a word-int map, allow the inclusion of word matrices
+    WidMatrix to map to internal GMTK matrices, using loadWordFactors  
+    and Katrin's tag-word format. I.e., support observed data
+    in the form of words/utterances for a word map.
+
+
+Mon Sep 30 01:21:02 2002
+  - next set of thigns might be redundant with above, but just a check
+   1) deterministic CPTs shouldn't have messagtes/notes, etc. about
+      not getting any accumulated probability, etc.
+   2) error messages with MSCPTs, MDCPts, use new names
+
+
+Wed Dec  4 19:39:41 2002
+  - ascii file formats for data files, add bit in domentation that
+    one frame per line, and fix error message on line 1272 in GMTK_GM.cc
+    (see email from Au@hk).
+
+
+Tue Dec 17 13:31:36 2002
+>2. Usually LM scale factor is accompanied with the insertion penalty, i.e.
+>
+>		scale * log P + penalty
+>
+>  I think, including insertion penalty would be quite useful for 
+>  incorporating LMs with GMTK.
+ (actually, do the switching variable scale/penalty stuff).
+Email from Dec 18th
+> A way, then, of getting an insertion penalty effect is to have a
+> switching scale and penalty, syntax could be:
+> 
+>       weight: 
+>         value 1.0 value 0.0     // scale = 1, penalty = 0 
+>       | value 5.0 value 3.0 ;   // scale = 5, penalty = 3
+> 
+> which mimics the conditional parents notation. In this case, it uses
+> the first scale,penalty when the switching parent is in its first
+> region, and the 2nd when the switching parent is in its second region.
+> So, when it switches in the true bigram (meaning a word transition
+> occured).
+> 
+> We could have time-dependent scale,penalty by doing:
+> 
+>       weight: 
+>         observed 0:0 observed 1:1
+>       | observed 2:2 observed 3:3 ;
+> 
+> where it would be assumed that observations 0-3 contain only scales
+> and penalties. 
+> 
+> Thoughts??
+
+That's funny because I was about to ask you what happens when you have switching
+ parents and whether you can change the weight for the different branches of the
+ switch.  I didn't think about the penalty but that would be very useful too.  T
+he syntax above looks good to me, except I might make it more explicit about whi
+ch is the scale and which is the penalty, e.g.
+
+weight:  scale value 1.0 penalty observed 0:0 ;
+
+
+Thu Dec 19 17:36:22 2002
+  - topological sort loop detection should indicate
+    which node is involved in a loop.
+
+Sun Dec 22 21:09:32 2002
+ - unrolling routine should not allow for P to reference into
+   E and E to reference into P (i.e., P and E can not have
+   a parent on the other side of a chunk).
+   Why?
+    - then the interface method no longer makes sense. This is
+      because that constrained triangulation for DBNs
+      is implicitely assumed by the interface algorithm (i.e.,
+      nodes up until the 'face' are elimiated first). With
+      links accross chunks, then the face might live
+      in both the chunk and E at the same time, might
+      cause large cliques, and would make triangulation
+      more difficult. 
+
+      Note that we could have a mode that allowed for this,
+      if it used the old strategy of first unrolling the
+      network, then moralizing triangulating, and then
+      doing inference.
+      Idea: since we'll need such a mode for unrolling
+          by 0 cases anyway, we could use it for the
+          case when E links into P (and vice versa).
+
+
+    - Makes the concept of unrolling more difficult. If
+      links could span accross a chunk, then depending
+      on the unrolling amount, a link with child in
+      say P might at one time
+      link into a portion of the unrolling chunk, at
+      another time, might link into a node in E.
+    - update: Thu Dec 26 03:19:08 2002
+       perhaps allow for this to occur when using
+       the unroll graph and then triangulation mode (e..g,
+       the same mode that works for snakes will work for here as well).
+
+
+Sun Dec 22 21:12:43 2002
+  - idea: wrap-around mode?
+     i.e., allow for negative indices at the beginning of a graph
+     to link into the end (i.e., P can link to E using negative)?? 
+  - but this would have same problems as linking from P to E
+    in note above.
+
+
+Tue Dec 24 00:25:18 2002
+  - find best {left,right} interface should have the option
+    to judge the quality of the interface not by size
+    but also by weight (which includes deterministic 
+    variables).
+
+
+Tue Dec 24 08:02:50 2002  
+   for min weight heuristic
+	    // TODO: should also look at if this is a sparse CPT,
+	    // and if so, multiply by the average density (number of non-zeros)
+	    // of the CPT rather than the entire cardinality. For a very
+	    // sparse CPT, for example, using just the cardinality
+	    // is *very* conservative. 
+   a sparce CPT can provide this estimate itself of the
+   average cardinality. E.g., it can compute over
+   all parent values number of columns that are non-zero,
+   and take average, that is the 'effective' cardinality.
+   Can do this by looking at sparcePMF.length() field
+   on line 228 of GMTK_MSCPT.cc.
+
+
+Tue Dec 24 08:26:10 2002
+   define a cardinality of a CPT baesd on the
+   average 2^entropy of the node, under the
+   assumption that pruning will remove stuff below
+   those values that are not significant.
+   This is another heuristic to add (and should be
+   controllable via command line parameter).
+
+Tue Dec 24 13:58:16 2002
+  - for snake structure, can have a module that
+    still does regular unconstrained triangulation and
+    unrolls and triangulates for each length (in that
+    case, snake will be better)
+
+
+Tue Dec 24 13:58:48 2002
+  - for min-fill, min-weight, etc., when there
+    is a tie, back off to constrained triangulation
+    (e.g., eliminate the earliest node first, or
+     a random node selected from among the earliest
+     nodes)
+
+
+Wed Dec 25 02:09:25 2002
+  - with triangulation heuristics, when a tie occurs
+    then use another heuristic (i.e., with a tie with
+    min weight, then use min fill in)
+
+Wed Dec 25 12:50:41 2002
+  - also include an anytime triangulation algorithm
+    exhaustive search. It should occasionally
+    print out the percent searched so far, and
+    should accept a SIGUSR2 to terminate search
+    so far and take answer. Also, should
+    include an argument that is the time (in days
+    and hours) to compute triangulation for, and
+    stop after that amount of time.
+    
+
+Thu Dec 26 02:16:36 2002
+  - fix: core dump issue when graph is not connected.
+    (i.e., when chunk is not connected to itself)
+
+
+Thu Dec 26 02:21:28 2002
+  - Chris Bartels Todo:
+    - write a class Anytime_Triangulation
+       that has same interface as basicTriangulation routine
+    - write an anytime exhaustive search triangulatio
+    - get MCS working with current graphs, so we can
+      verify that graphs are indeed triangulated.
+
+
+Thu Dec 26 03:18:13 2002
+  - include something indocumentation about
+    cpp0: ....
+    errors, and that these are generated from cpp not gmtk.
+
+
+Mon Dec 30 05:16:04 2002
+  - this is probably mentioned somewhere above, but
+    change fileParser.{cc,h} to print out line numbers when
+    there is an error message, and also to understand
+    cpp's filename and line number mechanism (for ascii files
+    and when they are processed with cpp).
+
+Fri Jan  3 19:48:46 2003
+  - this is an old todo item taken out of foce.
+  // snake structure with constrained elimination
+  // will ruin the clique_size = 2 property
+  //     of the 'snake' structure. The todo is to get this working 
+  //     with that (and similar) structures.
+  /*
+   *     idea: make complete components in C_l *only* if they
+   *           are connected via nodes/edges within either (P + left_C_l)
+   *           or preceeding C.
+   *           What we will then have is a collection of cliques for 
+   *           the interface(s). In this case, we glue together
+   *           the corresponding sets of cliques. Right interface
+   *           algorithm should be similar (and use E rather than P).
+   *           But might both left and right interface need to be used in the
+   *           same repeated chunk in this case to get clique_size=2???
+   *      alternatively (and easier): for snake, just use the unconstrained
+   *           triangulation method (which works perfectly for snake).
+   *          
+
+
+Sat Jan  4 17:39:20 2003$
+  - build utilities to convert (at least partially) from
+    other standard GM network file formats to GMTK and
+    vice versa. See the 
+    Bayesian Network Repository page.
+        
+
+Tue Jan  7 12:24:16 2003
+  - remove 'observation' as keyword for weight and just use
+    observed.
+
+Mon Jan 13 13:31:34 2003
+  - BUG: when we have a sparse cpt in a parameter file that
+    refers to a name 'global' for a collection object, that
+    object does not exist since loadGlobal() was called in the
+    gmtk programs last (after other trainable and master files
+    have been called). 
+
+Mon Jan 13 13:32:31 2003$
+  - get rid of MSCPT, MDCPT, and MTCPT messages. In sparce CPT
+    error messages, it says MTCPT when it should refer to sparce CPTs.
+    Fri Jan 23 13:17:05 2004: change all internal program variables
+     away from using MTCPT, MDCPT, etc. also
+   
+Mon Jan 13 16:54:33 2003
+  - make sure in documentation that it says that dlink feature index 
+    values are for absolute locations with respect to the
+    feature files and not relative locations, relative
+    to the feature range given in the .str file (if this
+    is not done already).
+      - parent variables are absolute, with absolute feature locations
+       given in dlink definition
+      - child variables are relative, where relative location is given
+        starting with feature range given in .str file.
+
+Mon Jan 13 17:18:17 2003
+  - Fix bad error message, 'Error: upper n >- limit n in range string' when training range does
+    not match the range of utterance numbers in the observation file.
+
+
+Thu Jan 30 19:15:59 2003
+  - optimization
+   right now, updating of Gausisans during mean and variance updating as follows:
+    *covars_p += (*f_p)*(*f_p)*fprob;
+    *nextMeans_p += (*f_p)*fprob;
+   but where the two lines of code occur in different files, and so
+   it can't re-use the common subexpresion (*f_p)*fprob
+  - TODO, write a routine that can update both at the same time,
+    probably best way to do this is to add a bit of code to emIncrement
+    in GMTK_DiagGaussian and GMTK_LinMeanCondGaussian for this purpose.
+
+
+
+Fri Jan 31 00:30:30 2003
+  - add a '-debug' option that prints various status
+    messages depending on the '-debug' number.
+
+Mon Feb 03 14:45:49 2003
+  - might be above, but add the option to
+    unroll more times of the C chunk and triangulate that
+    rather than just one time (this would put more constraints
+    on the number of allowable frames for a P,C,E graph).
+
+Sun Feb 23 17:04:32 2003
+  - have exponential partition algorithm take a SIGUSR1 to terminiate
+    what it has done so far and continue with the best it has found so far.
+
+Sun Feb 23 17:05:10 2003
+  - Have exponential partition algorithm also parallize (so that space
+    can be broken into chunks in some way and have search run in parallel).
+
+Sun Feb 23 17:12:53 2003
+  - when using with an observation set that does not match what unrolling
+    can do for a given graph and triangulation, give options
+      1) left justify, 2) right justify, 3) center, 4) unconstraints
+    Make it clear that when obs length is too short, it will do unconstrainted
+     (or perhaps even backoff to simpler triangulation scheme, one that
+      does not do any partially unrolled triangulation).
+     call it "semi-constrained triangulation"
+     (good for certain graphs, Brian's, Kevin's, but still doesn't 
+      work for snake, the optimal graph is fully unconstrained).
+
+
+Fri Feb 28 00:09:13 2003
+  - not a todo, but rather a note. When the final reported
+    weight is not one of the ones in the boundary alg search (and it
+    is lower), it is probably the intial score (before the boundary
+    alg. is run). keywords: final, face heuristic, exponential algorithm,
+    weight not same, different weight, first weight, final weight
+
+Wed Mar 05 19:45:16 2003
+  - also allow language models to be specified in W3 XML format 
+    see http://www.w3.org/TR/ngram-spec/
+  - allow this as well as the DARPA format above.
+  - 
+
+Sat Mar  8 00:00:26 2003
+  - another arguments.cc bug, in this case with -argsFile and then
+    missing required option later, default argument values are printed
+    incorrectly.
+
+Sat Mar  8 16:56:48 2003
+  - Write an emacs editing mode file for gmtk .str files.
+
+
+Sun Mar  9 14:42:11 2003 
+  - fix arguments.cc to not use C++ iostream
+    and give usage() an optional message.
+
+Sun Mar 09 19:00:59 2003
+  - random variable should be super class, and 
+    subclasses should add things like neighbors, etc.
+    I.e., might make parent class of random variable is all the parser
+    should want to deal with.
+
+Sat Mar 15 22:31:31 2003
+  - the issue of setting objects to not train, i.e., when A) a mean
+    of a Gaussian is trained but a covariance is not, or when B) a covariance
+    of a Gaussian is trained but not a mean. In case B, the
+    covariance update should really be relative to the existing untrained mean,
+    not the new mean which is accumulated, computed, and then discarded.
+    The no-train thing should be re-thought out.
+
+Sat Mar 15 22:33:27 2003
+ - suggestions from Chris Bartels
+	Jeff,
+	
+	You had mentioned that I should keep track of ideas I had to help with
+	GMTK debugging and usability as I used it.  Here is the list.
+	
+	Debugging Support:
+
+	Display the values for observation variables for the first several frames.
+	The user can use this to verify that they are indexing into their data
+	files correctly and have the byte swapping set properly.
+	
+	Allow the user to specify the values of the random variables in some sort
+	of text file, then GMTK can display the values of each of the
+	deterministic variables based on this.  For example, with the aurora
+	based graphs the user would supply a text file of state transitions which
+	would just look something like '0 0 1 0 0 1 0 0 1' and GMTK would print
+	out 9 frames of variables, and because the model can't complete in just 9
+	frames give some sort of error message saying so.
+	
+	Start an FAQ for common problems such as the byte swapping and the
+	'skipping example due to zero probability' that I was seeing.
+	
+	Bugs:
+	
+	In one of my decision tree files I used some #define constants but this
+	did not work nor did it give me an error message.
+	
+	When I was using the decision trees with the #define constants I was
+	sometimes getting core dumps rather than an error message and an elegant
+	exit.  When I didn't get the core dump it looked like my current state
+	value which controlled the DPMFs I was training only was taking on one
+	value.
+	
+	Usability suggestions:
+
+	Give it the ability to generate initial Gaussian parameters like it
+	currently can do with DPMFs.
+	
+	I nice GUI with integrated editing and debugging features.
+
+
+
+Sat Mar 22 21:02:06 2003
+  - environment variables for:
+     - cpp (or some preprocessor) command and/or path
+     - default cpp (or preprocessor) options
+
+
+Thu Apr 24 13:36:20 2003
+  - Add ability to have hidden variables take distributions
+    from observation files (so that the distribution might
+    change from frame to frame, making the distribution 
+    itself an observation, the the variable using that
+    distribution is still hidden). Distribution can for example
+    come from a NN.
+    Sat Jun 14 19:48:34 2003: This allows for "hybrid" like systems
+       (where NNs can supply distributions over observed variables),
+       but also allows for simulation of situations where
+       one has observed continuous parents with hidden discrete children.
+       Learning, of course, has to be done separately (but need to think
+       more about this).
+
+Fri May 09 17:42:07 2003
+  - add automaticly existing observed variable frame, so users
+    can condition on frame(0), frame(-1), etc. which gives 
+    the frame number in an utterance (and so users don't need 
+    to have a counter for this).
+    Sun Feb 22 14:45:15 2004: update, also add length(n) variable
+    that for all n returns the length of the current utterance.
+
+
+Fri May 09 18:52:17 2003
+  - assertion failed when dlink matrices exist but are not used by
+    a Gaussian component, but then the accumulator tries to accumulate
+    the dlink matrix but finds that it's em stuff has not been allocated.
+    this happens when accumulating externally from acc file. 
+    Should report an error when dlink matrices exist in data files
+    that are not being used by any gaussian component, since we might
+    get this error when tring to accumulate the dlink matrices without
+    their em stuff existing.
+    TODO: possibly have automatic allocation of em structures via when
+    we accumulate them rather than the other way around.
+    
+    
+Fri May 23 15:42:30 2003
+  - fix argument code so that rather than giving warnings on argument type errors, it
+    gives true errors.
+ 
+
+XX Wed May 28 14:45:38 2003
+    - perhaps this is done already, but when checking for loops and valid structures,
+     do toploigical sort on all of 
+       - basic template (unroll(0))
+       - unroll(1)
+       - unroll(2)
+     There is some email from me to chris on this topic, look for that.
+    DONE: Sat Jul  5 20:49:37 2003 (JB)
+    Wed Jan 21 23:25:44 2004: need to unroll by from 1 to number of vars in C partition
+      to get this working.
+
+Tue Jun 03 23:19:31 2003
+  - need to add a check for edges spanning from P to E *after* moralization.
+    This can happen with backwards dlinks.
+    (i.e., consider fig 7 graph in uai03 paper, if only a three frame
+     template is used and graph is moralized, then unrolled
+     chunk will have edges from P to E).
+
+
+Tue Jul 01 17:36:05 2003
+  - go through all file reading code and insert the is.fileName()  (and ideally a line number
+    as well) for all error reports about that file.
+
+Fri Jul 04 00:39:18 2003
+  - make the MCS implementation truely O(n+e) raather than O(N^2)
+
+Sat Jul  5 17:30:27 2003
+  - make sure that certain core dumps with M>1 on some of the graphs
+    are due to running out of memory.
+  - Implement a fixed upper bound memory usage, and turn off memoize when
+    that limit is reached, so that memory usage does not grow unboundedly. 
+
+Sat Jul  5 17:34:38 2003
+  - in timer code comments, give a bunch (lots) of examples of valid timer strings.
+  - include these examples in documentation.
+
+Tue Jul 08 15:19:03 2003
+  - improve error message in GMTK_FileParser.cc
+	  error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
+
+Thu Jul 10 16:25:06 2003
+  - set up GMTK web page with links to all papers, etc.
+
+Thu Jul 10 16:25:23 2003
+  - BMM link adaptation
+
+Thu Jul 10 16:25:33 2003
+  - Adding DARPA format Language Model CPTs
+
+Thu Jul 10 16:25:33 2003
+  - Adding FLM Language Model CPTs
+
+Sat Aug 23 15:52:47 2003
+  - see if it helps to do log(size)+weight rather than just weight
+    in triangulation code. 10^weight is just number of "rows" in the 
+    table, but 10^(log(size)+weight) is full table size (with zeros 
+    removed).
+        - this will probably be moot now that packed clique values
+          are used.
+
+Sat Sep  6 18:24:29 2003
+  - add a flush buffer mode to debug.h so that output when error
+    occurs doesn't get lost.
+
+Sun Sep  7 00:34:12 2003
+  - fix bug with partition algorithm
+    with graph parents_before_after.str and similar such things.
+
+
+Sun Oct 12 23:06:28 2003
+  - add an extra internal variable tehat is constant and
+    gives an integer corresponding to the total number of frames
+    in an utterance. It is available at every frame, but
+    is always the same value for an utterance.
+  - add another variable that gives the frame number of
+    the variable in quesiton (i.e., frame(0) is the current
+    frame, frame(-1) is the previous frame, etc.). In
+    first frame of template can't do frame(t<0), and in
+    last frame of template can't do frame(t>0)
+  - Possibly tie this in with the observation matrix by having
+    variables that:
+      - give number of changes in a discrete stream of features
+      - length of original unexpanded number of frames, before
+        obs matrix has done upsampling, etc.
+  - Make a general module to add such variables.
+
+Wed Oct 15 19:18:58 2003
+  - allow for frames without variables to do multirate and 
+    automatic downsampling.
+
+Sun Oct 19 13:36:47 2003
+  - Should either add "noisy-or" and "noisy-and" implementations 
+    of CPTs, and their multivariate generalizations, or
+    mention in documentation how they can easily be obtained  
+    using a deterministic 'or' function with grand-parents
+    the original variables.
+    Add variational training to this sort of model.
+
+
+Sun Nov  2 21:49:43 2003
+ - make other variables available in DT formulas, such as:
+    - current frame number of child
+    - total number of frames in current utterance.
+    - 
+
+Sun Nov  4 22:32:50 2003:
+Triangulation idea: 
+  - add all deterministic ancestors as neighbors when going from DN to UGM.
+Before triangulation:
+ do:
+   1 for each node, if any of its parents are
+     deterministic, add those parents as neighbors .
+   2 If any such newly added neighbors are themselves deterministic,
+     add those new neighbors' parents as neighbors
+     If no new such newly added neighbors are det, then stop.
+   3. Goto 2.
+  - Possibly do similar thing for sparse CPT nodes,
+    i.e., add sparse ancestors if their effective cardinality
+    is small enough.
+    
+
+Sun Nov  9 22:35:40 2003:
+ Other things for inference
+   - for viterbi decoding mode, don't store the probabilities for
+     all time, just for the current and next clique, only   
+     store the back pointers.
+   - Also have a mode where only the back poitners for a particular
+     "word" (variable, set of variables) are stored rather than
+     all variables? (see what this would mean).
+
+
+Mon Dec 29 16:40:08 2003
+
+ - nodes assigned to cliques, there are several categories.
+
+ 1) node is iterated by a separator comming into the clique
+    iterate over: only values that exist in all incomming
+    separators.
+ 2) node is actually assigned to this clique, which means
+    that its parents must either be iterated before we iterate
+    over this node
+    iterate over: only values with non-zero probability.
+ 3) a node that exists because one or more of its children need 
+    the values of the node, so we need to 
+    iterate over: all possible values of node
+
+
+Wed Dec 31 17:45:52 2003
+  need to do something with
+     1) continuous nodes (which are observations)
+     2) discrete observed nodes (ideally, break the graph).
+
+  cpts have their own value which gets set and then
+  copied over again to RV. Make it such that CPT uses
+  RV val directly rather than copying value over many times.
+ 
+
+Sun Jan 11 06:53:27 2004
+ - Go through all code and change variables to use
+   unsigned when variables are really unsigned
+ - Look for machine specific assumptions since problems
+   might arise when compiling on 64b machines.
+ - when this is done, remove all (unsigned**) casts
+   in GMTK_MaxClique.cc in call to pack()
+
+Tue Jan 13 00:07:02 2004
+ - start doing many subclasses of RV.
+   Right now there are virtual functions in RV and its
+   derivatives that are doing checks that could
+   be setup by an appropriate subclass that
+   is created by the file parser. For example,
+     1) the weight stuff 
+     2) switching parent stuff
+     3) etc.
+    (i.e., if we're paying the cost of a virtual
+     function, we might as well switch right
+     to a function that does exactly what we want).
+ - make a packed bit length member function for GMTK_PackedCliqueValue.h  
+ - for hash tables and dynamic arrays, and when doing multiple iterations, use simple 
+   learning algorithm to decide starting size (rather than fixed constants), 
+   to avoid extraneous memory accesses.
+
+
+Sat Jan 17 14:38:59 2004
+  - rewrite RV class hierarchy so that virtual function cost
+    is all we pay for prob, begin(), next(), etc.
+  - all RVs currently use STL, change to use sarrays.
+  - summary: new features to add:
+     - inference features
+          - viterbi decoder and word only (or variable only) 
+            backtrace, generalizing LVCSR decoders (see decoder papers).
+          - n-best and lattice
+          - loopy
+          - importance sampling
+          - variational inference
+     - usability features
+          - ARPA LMs and FLMs
+          - non-linear BMMs 
+          - smoothing for CPTs in EM
+          - generalized parameter adaptation directly within GMTK
+          - ??? (something I'm forgetting).
+          - generalized probability weights/exponents
+          - decision tree formulas (Chris)
+          - integrate in new obs code.
+
+     - theory/algorithms
+          - switching parents in inference in forward/backward
+          - characterize nets which require particular M and S
+          - triangulation for nets with sparse CPTs (Chris)       
+     - tutorials
+          - update and get aurora tutorial into CVS
+          - get Karim's fully implicit tutorial integrated in
+          - write other tutorials for
+              - language modeling
+              - pronunciation modeling
+          - integrate in small test suite examples (exp1, exp2, etc.) which will
+            both serve as tutorial material and something to
+            test things out to ensure compiled version works.  
+
+
+Sun Jan 18 02:11:09 2004
+  - in boundary search, traverse to parents of children
+    in next partition first, to try to find something useful sooner.
+
+Wed Jan 21 23:22:18 2004
+  - pre-allocation size
+    - have a function that computes the clique weight relative to the
+      junction tree and the JT root, one that includes the
+      notion of separator driven clique iterations.
+    - Use this notion of weight to compute a value for initial allocation
+      size. Also, use 'beam' value to help guide how large the first
+      allocation should be (if beam is large, we should allocate
+      a smaller first size).
+
+
+Fri Jan 23 16:02:09 2004
+   - consider writing a parameter file format in XML.
+
+
+Fri Jan 23 18:32:41 2004
+   - add a section to the documentation about the "design" of decision
+     trees, how there can be good ways and bad ways to do it, and how 
+     bad ways can be slower. Give examples.
+   - explain in documentation that a DT's job is to map every possible
+     input variable values (each input variable can have values
+     from 0:(card-1)) to a valid output value (from 0:(card-1)). Not
+     all output values need to be produced, but all possible input
+     variable values (the cross-product) must be considered, or otherwise
+     you might either get 1) unexpected results since a value
+     occurs you didn't expect, or 2) hopefully, you'll get a runtime error 
+     saying that the output value is invalid.
+
+
+Tue Jan 27 15:56:38 2004
+  - have observation files also be able to read streams
+    of words. The words are converted to integers using
+    one of the internal word hash tables, where the
+    hash tables were built using some vocabulary.
+  - Perhaps look into "perfect" hashing functions for
+    vocabularies.
+
+Tue Jan 27 18:31:29 2004
+  - add note in documentation about how cardinalities
+    of 2^n have the  least efficient use of bits
+    whereas cards of 2^n-1 have the most efficient
+    use of their allocated space (assuming in each
+    case tha the variables use all their values with
+    non-zero probability).
+
+Wed Jan 28 20:40:22 2004
+  - write GMTK's own tokenizer for .str files to avoid problems
+    with flex library, etc.
+
+
+Fri Jan 30 19:17:21 2004
+  - triangulater, add option to just re-triangulate
+    one of P, C, or E.
+    Allows for parallelism. 
+    DONE, but need way to merge different trifiles together.
+    create program: gmtkMergeTrifiles
+
+
+Sat Jan 31 11:45:06 2004
+  - arguments code, when printing out default arguments, it
+    prints out the ones after they potentially have been modified om
+    command line, i.e.,
+         foo -arg1 a -arg2 b -arg3 c -helpk
+    will print out default values of a for arg 1 b for arg2 regardless of
+    what they were in program. Fix this as it is confusing. 
+
+Sat Jan 31 19:01:06 2004
+  - get new inference working with disconnected networks.
+
+
+Mon Feb  2 23:41:53 2004
+  - figure out a way to have discrete RVs. in different
+    frames be observed or hidden (i.e., perhaps
+    the hidden/observed status of a RV can be obtained
+    from the observation file for a given utterance in
+    some nice way). This would need to gel with
+    the new RV class hierarchy. 
+
+Mon Feb  9 21:07:55 2004
+  - fix bug where
+      If E = empty in right interface case, and where
+           resulting E only contains interface nodes (which might
+           result in a clique of size one if the interface has one node)
+      If P = empty in left interface case (symmetric case as above).
+   - probable solution. Allow for P or E to still be empty in .trifile.
+   - other (possibly easy) solution: when P (or E) are empty, unroll an extra
+    time to create a P' (or E') that is not empty. 
+
+
+Mon Feb  9 21:11:40 2004
+  - fix bug where buggy graph has core dump in triangulation code:
+   frame : 0 {
+   variable : state {
+      type: discrete hidden cardinality 3 ;
+      switchingparents: nil;
+      conditionalparents: nil using DenseCPT("state0");
+   }
+   variable : obs  {
+      type: continuous observed 0:5 ;
+      switchingparents: nil;
+      conditionalparents: state(0) using mixture 
+            collection(CN) mapping("DT::state2obs");
+   }
+   }
+   frame : 1 {
+   variable : state {
+      type: discrete hidden cardinality 3 ;
+      switchingparents: nil;
+      conditionalparents: state(-1) using DenseCPT("state1_with_state_pars");
+   }
+   variable : obs {
+      type: continuous observed 0:5 ;
+      switchingparents: nil;
+      conditionalparents: state(0) using mixture 
+           collection(CN) mapping("DT::state2obs");
+   }
+  }
+  chunk 0:0
+     
+  This should probably check that unrolled graph produces a connected graph.
+  (or allow for unconnected graphs).
+
+
+Thu Feb 12 11:59:35 2004
+  - also allow triangulation routine to take a SIGUSR1 to stop searching
+    and report back what it has found so far.
+  - add check pointing in triangulation code (say every 10 minutes, save  
+    the best .trifile so far found).
+
+
+Sat Feb 14 22:09:30 2004
+In backward pass during EM, we might have zero probs that were only
+discovered in backward pass, so check for 0 (or threshold) before
+doing EM update. Should have an EM pruning threshold as well.
+So, we'll have three pruning thresholds:
+   1) cbeam - clique beam
+   2) sbeam - separator beam
+   3) ebeam - EM posterior probabiltiy beam, below this we don't
+              bother to update.
+
+
+Wed Feb 18 12:11:08 2004
+  - have a program that goes through and checks all DTs for all
+    values of all parents and ensures that all children are
+    valid values for each location a DT is used. Possibly
+    do this for all iterable DTs as well. 
+    this will
+      1) help reduce bugs by telling a user when DTs are problem
+         before running the program.
+      2) speed things up as dynamic checking can be removed.
+
+
+Wed Feb 18 15:12:25 2004
+  - add mention of Chiaping email from today about splitting
+    to manual.
+
+Wed Feb 18 23:57:26 2004
+Check the following and use the one that is faster.
+> Do you know if:
+>
+>   const  set<RandomVariable*>::iterator it;
+>   const  set<RandomVariable*>::iterator it_end = foo.end();
+>   for (it=foo.begin(); it != it_end; it ++) { ...}
+>
+> is indeed faster than:
+>
+>   const  set<RandomVariable*>::iterator it;
+>   for (it=foo.begin(); it != foo.end(); it ++) { ...}
+>
+> I've been noticing it in your code, and if it is faster, will want to
+> start converting over.
+
+
+Thu Feb 19 23:41:00 2004
+  - tree-structured lexicon: it should be possible to code
+    this up using sparse CPTs, and use the same standard inference procedure.
+    Should investigate this.
+
+
+Sat Feb 21 19:11:22 2004
+  - investigate and use faster hash functions for the vhash stuff.
+   -  Look at Bob Jenkin's hash function
+      and the FNV (Fowler/Noll/Vo) Hash. 
+
+Sun Feb 22 14:36:17 2004
+  - Allow soft evidence to come from an observation
+    file
+  - Allow probability distributions each frame to
+    come from an observation file, so that distributions
+    can come from NN output probabilities.
+      - variable w/o parents can get its distribution from
+        observation file. Define a new CPT that
+        obtains its probabilities in this way.
+      - NN probabilities in some sort of conditional distribution.
+     In other words:
+          - time-inhomogeneous CPTs (for vars without parents)
+          - time-inhomogeneous CPTs for one parent, and observed binary children set to 1.
+            i.e., we have a --> b,  where b is observed == 1 , and the
+            score comes from hidden variable a, as P(b|a) = score_from_file(a).
+  - This functionality should subsume that of hybrid decoders.
+
+Tue Feb 24 11:01:06 2004
+  - add an option to either sort or not sort the separators either
+    as not at all, max overlap, or min weight, and make available 
+    on the command line.
+
+
+Mon Mar  1 23:09:05 2004
+  - cpp include files should be smarter about the current working directory.
+    Currently, if a file says include "foo.file", it uses the users
+    current working directory even if the file was specified using a long path name.
+    Try to pre-pend the path to the file somehow (or add that to CPP's -I options by
+    default)
+     - include in documentation that user can give "-I path" options in the -cppOptions
+       commands in GMTK.
+     - Use environment variable for GMTK, GMTK_CPP_INCLUDE to include other
+       paths for GMTK. 
+
+
+Mon Mar  1 23:41:09 2004
+  - in DT leaf formulas, add
+     variables fp0 fp1 fp2 for frame numbers of parents 0 1 2, and fc for frame number of child.
+  - also, be able to add cardinality of both parent and child.
+  - also, be able to add number of frames in current segment.
+    (this might make moot the need for special internal variables, as it
+    it is easy to have RVs with DTs to do this.) Make sure that we can have
+    RVs without parents and with a MTCPT that always returns a single value,
+    and that can have cardinality 1 (and so should never be placed in any clique
+    value, since it is essentially another way of doing an observation, but here
+    the observation changes each frame).
+
+
+Mon Mar  1 23:50:32 2004
+  - variables with card = 1 should be treated as observations, and triangulation
+    code and methods should pay attention to this. 
+
+
+Sat Mar  6 14:52:42 2004
+  - let cbeam and sbeam come from an observation vector, so we can have dynamic beam pruning.
+  - Also, give a file with a beam schedule based on percentage (i.e.,
+    cbeam argument can either be a fp value, or a name of a file that has something like:
+        0-10: beam1
+        11-50: beam2
+        51-95: beam3
+        96-100: beam4
+    where 0-10 says the first 10% of the file, 11-50 the next 39%, and so on.
+  - also have a beam for each clique in some way (i.e., perhaps a growth function'
+    so that larger cliques have larger beams, etc.)
+
+Sat Mar  6 19:52:15 2004
+ - write an any-time script that iterates for a given amount of time:
+   1) generate a random triangulation (meaning it chooses
+      one of the triangulation heuristics at random).
+   2) run one utterance of inference, timing the result
+      (kill process if it takes too long).
+ - Stores the N-best triangulation files by run-time. 
+
+ 
+Sun Mar  7 14:13:59 2004
+  - allow parameters to be read in in any order, and do not only backward
+    but forward reference to items not yet defined. Do a final pass
+    over parameters to resolve all references.
+
+Sun Mar  7 19:41:24 2004
+  - with '-verb 100' option, set up so that some form of indenting is
+    working within a clique for RV assignment printing (easier to read).
+
+X- Mon Mar  8 01:47:26 2004
+   - fix two bugs that Karim found around this date (see gmtk mail)
+     1) DT leaves with p0 rather than (p0)
+     2) cliques with all obs, see karim learning string-edit distance example.
+
+Mon Mar  8 12:27:41 2004
+  - in DT leaves, add an abs() function.
+  1) absolute value function abs(expression)
+  2) unary negation
+  3) floor, ceil, round (implement without floating point)
+  2) new variables: 
+       - cardinality of child: c
+       - current frame number of parent: fp0, fp1, fp2, etc.
+       - current frame number of children: fc
+       - number of frames in current utterance: nframes
+        
+Mon Mar  8 20:48:40 2004
+  Allow hidden continuous mixtures, and do inference simply
+  by (importance) sampling from that distribution (so it is like discrete).
+  This should be easy to get working with new inference code.
+
+Wed Mar 10 21:56:35 2004
+  - change to allow cliques with all observations, and all observed graphs. T?his
+    should be fairly easy, just do less "error" checking.
+  - change to allow disconnected frames (i.e., just don't send a message between partitions).
+  - add a feature where we topologically sort nodes in a clique based on
+    expected cost. I.e., if a deterministic node uses a complicated DT, then
+    it should come as early as possible in a clique to avoid redundantly calling
+    the expensive DT. Cheap DTs can go later in the clique order (i.e., extend
+    topological sort with continous vars first to be topological based on expected cost.
+    Perhaps use DT description length as an estimate of the DT cost, or perhaps  
+    just number of DT leaf nodes. 
+
+
+
+Fri Mar 12 17:13:42 2004
+ - instead of unity score CPTs and Gaussians, produce alpha-score CPts and Gaussian
+   where alpha can be any value.
+
+Sat Mar 13 18:45:03 2004
+ - docs: place note in documentation about FPEs, and to first make sure that
+   you don't have any NaNs in the feature files (since this will
+   cause FPEs in GMTK and people might think this is a GMTK bug).
+   You can use 'od' to check the status of raw binary feature files.
+   I.e., 'od -f' will print things out in 32-bit floats. You can
+   also use od to skip a bit (say if it is a 12-bite header).
+   Also mention the use of obsPrint (the new pfile functions Karim
+   did). All should go in documentation
+ - Have obs file check for NaNs on input and report error (todo for Karim's
+   new version of obsfile).
+
+
+Sat Mar 13 22:24:53 2004
+  - implement another form of pruning, where you provide the
+    maximum number of clique or separator entries that survive.
+    Number should be able to be specified either as percent (relative
+    to the current total) or as an absolute number.
+    - Note: clique pruning will be easy, but separator pruning
+      in this case will be a bit more difficult.
+
+Sun Mar 14 23:04:25 2004
+  - make 1-page reference card for GMTK DTs with everything from syntax, rules, tips for speeding up,
+    and all possible formulas, etc.
+
+
+Sun Mar 21 05:24:38 2004
+  - in inner inference loops, rather than have:
+        rv->begin()
+            computeProb
+        while (rv->next())
+  - have rv->next() also provide the probability, thereby
+    avoiding yet another virtual function call (which is expensive). 
+    i.e., have rv->next(prob) return true if prob was filled with the next probability.
+   
+
+Thu Mar 25 17:04:41 2004
+  - define a pre-defined CPP variable that gives the major and minor version of GMTK.
+
+Fri Mar 26 14:17:15 2004
+  - make output word strings compatible with NIST word error scoring tools.
+    In general, look at NIST tools, and make GMTK output as compatible as possible with them.
+
+Fri Mar 26 17:38:32 2004
+  - script to convert from an easy rep. of a SparseCPT into single GMTK sparseCPT in one file.
+
+Sat Mar 27 15:14:17 2004
+  - create a .gmtktriangulaterc file for common triangulation options.
+    In addition, have an ENV variable for this purpose.
+
+Sat Mar 27 20:57:04 2004
+ - island algorithm should interact with gaussian component cache, in that
+   cache memory should be re-claimed for different islands so that
+   we don't use O(T) mem for cache but rather O(log T) mem.
+
+Sat Mar 27 21:08:06 2004
+ - add bit about gaussian component cache to docs. 
+
+
+Tue Mar 30 13:08:33 2004
+  - add a noCPTCheck option, to allow cpts to read in non-probabilties, etc.
+    Figure out how to get working with log probs, etc.
+
+Fri Apr  2 12:41:23 2004
+  - look into issue of n-P triangulation being different for different n
+    (see email from Ozgur today regarding that).
+
+
+Sun Apr  4 17:16:40 2004
+  - not really a TODO, but an idea. Another completely different way of doing
+    inference would be to off-line compile out all cliques into single
+    integer states, and then have all loops be single iterations through
+    all non-zero prob states (conditioned on current previous states).
+    This would need to go through all utterances, and do this separately
+    for each, since each utterance having a different DT would mean
+    that there can't be one single compiled version (this still could be
+    done offline, and stored on disk). 
+ 
+
+Tue Apr  6 19:27:48 2004
+  - make it such so that verb if set high enough will also print
+    out values of continuous observed RVs (rather than just C).
+    This means making the 90-100 range print out everything, but
+    higher 90s print out cont. observed vectors as well (this
+    might produce tons of output but it might be useful for debugging).
+
+
+Tue Apr  6 19:29:56 2004
+  Karen's latest wish list:
+
+   Thanks for the reminder about the GMTK wish list.  Here's my wish list so 
+   far...  Some of these I've mentioned before, but just for completeness:
+
+  -Arbitrary sets of variable values, including strings, rather than [0..card-1] 
+  (I think you said this is already being done)
+
+  -Clustering.  Ideally, I imagine a clustering scheme which is not separate 
+  from training, but instead, gmtkEMtrain can optionally, at the end of every N 
+  iterations, cluster two distributions whenever they meet some similarity 
+  criterion.
+
+  -Soft evidence
+
+  -Very minor, but:  having the option to not have the "zero accumulator" 
+  warnings when saving the accumulator files.  This could be a verbosity setting 
+  (maybe this is already done in gmtkEMtrainNew--I haven't tried it yet).  I 
+  tend to have a large number of small chunks, so my log files sometimes wind up 
+  having huge numbers of warnings.
+
+  -An optional probability floor for dense CPTs in gmtkEMtrain
+
+  -Debugging...  I'm still thinking about what kind of output would be helpful.  
+  For starters, it would be good if -showVitVals showed the conditional (log) 
+  prob of each variable value.  One question that I often have is "why do these 
+  observations have zero probability?" and it's hard to say what kind of 
+  debugging output would help to answer that question--maybe someone more 
+  familiar with the internals of the toolkit would know better.  gmtkJT 
+  -verbosity 100 might do the trick, but I don't know how to parse it yet.  In 
+  the long term, I can imagine an application that lets you interactively 
+  suggest different observations and tells you where the zero probabilities 
+  happen.  I'll keep thinking about other types of debugging output.
+
+
+Wed Apr  7 11:51:32 2004
+  - get compiling with intel compiler. Also, see:
+    http://www.coyotegulch.com/reviews/intel_comp/intel_gcc_bench2.html
+
+

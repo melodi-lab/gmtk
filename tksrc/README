@@ -1,0 +1,183 @@
+
+$Header$
+
+
+function header template
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      What the function does.
+ * 
+ * Preconditions:
+ *      What must be true before the function is called.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
+ *
+ * Side Effects:
+ *      Any exernal side effects
+ *
+ * Results:
+ *      What does the function return, if anything. 
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
+
+
+Naming Conventions:
+
+
+Classes (including structs)
+  list of words, no space, capitalize each word, including first word
+  Examples:
+
+        GaussianMixture
+        Discrete1DPDF - discrete 1Dim PDF
+        DiagonalGaussian
+	FooBar
+	Foo
+	
+
+Member Variables, member functions.
+  list of words, no space, capitalize each word, not including first word
+  Examples:
+
+       gaussianMixture
+       discrete1DPDF
+       diagonalGaussian
+       fooBar       
+       foo  // so if it is a single word, it is not capitalized
+
+
+Typedefs & Enums with names
+ Same as classes above.
+
+Member Classes/Structs
+     (i.e., classes/structs that are scoped only within other classes/structs)
+  Same as classes/structs.
+
+
+Global Variables: (including static members, etc.)
+  list of words, no space, capitalize each word, including first word,
+  '_' character between each word.
+
+  Examples:
+
+        Gaussian_Mixture
+        Discrete_1D_PDF
+        Diagonal_Gaussian
+	Foo_Bar
+
+Local Variables:
+   lower case, list of words, separated by '_' character.
+   Examples:
+
+	gaussian_mixture
+	discrete_1D_PDF
+	diagonal_gaussian
+	foo_bar
+
+
+
+File names.
+     .h file contains the class declaration
+     .cc file contains the class member definitions
+     Name file with GMTK_<main_class_name_in_file>
+     
+     Example
+
+       GMTK_GaussianMixture.cc
+       GMTK_GaussianMixture.h
+ 
+     would define the GaussianMixture class. 
+
+Programs Files
+    Two types.
+
+    1) simple test driver programs.
+       Use same type as member functions
+
+        testGaussianMixture
+        testBar
+        runBayesianNetwork
+
+    2) main programs, use list of capitalized '_' separated
+       programs.
+
+        GMTK_Train
+        GMTK_Test
+        GMTK_LoopyInference
+        ...
+
+
+--------------------
+
+
+generic function header
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      Function's purpose
+ *
+ * Results:
+ *      What does the function return, if anything. What might it do?
+ *
+ * Side Effects:
+ *      Any exernal side effects
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
+generic .cc file header
+
+/*-
+ * GMTK_1D_Dist.cc
+ *     Trainable (with say EM) 1D discrete probability
+ *     distributions.
+ *
+ * Written by xxxxxxxxxxx <email addr>
+ *
+ * Copyright (c) 2001, < fill in later >
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software and its documentation for any non-commercial purpose
+ * and without fee is hereby granted, provided that the above copyright
+ * notice appears in all copies.  The University of Washington,
+ * Seattle make no representations about the suitability of this software 
+ * for any purpose. It is provided "as is" without express or implied warranty.
+ *
+ */
+
+
+.h file header
+
+/*-
+ * GMTK_1D_Dist.h
+ *      .h file for GMTK_1D_Dist.cc, trainable 1D discrete probability
+ *      distributions.
+ *
+ *  Written by xxxxxxxxxxs <xxxxxx@ee.washington.edu>
+ * 
+ *  $Header$
+ * 
+ * Copyright (c) 2001, < fill in later >
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software and its documentation for any non-commercial purpose
+ * and without fee is hereby granted, provided that the above copyright
+ * notice appears in all copies.  The University of Washington,
+ * Seattle make no representations about the suitability of this software 
+ * for any purpose. It is provided "as is" without express or implied warranty.
+ *
+ */
+
+
+
+
+
