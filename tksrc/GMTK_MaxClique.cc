@@ -1325,7 +1325,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
   if (!origin.ceSeparatorDrivenInference)
     return ceGatherFromIncommingSeparatorsCliqueDriven(part);
 
-  // if we're still here, we do cliuqe driven inference.
+  // if we're still here, we do separator driven inference.
   logpr p = 1.0;
   if (origin.ceReceiveSeparators.size() == 0) {
     if (origin.unassignedIteratedNodes.size() == 0) {
