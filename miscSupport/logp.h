@@ -291,7 +291,7 @@ public:
   }
 
   // floor self to zero.
-  void floor() const {
+  void floor() {
     if (v < LSMALL)
       v = LZERO;
   }
