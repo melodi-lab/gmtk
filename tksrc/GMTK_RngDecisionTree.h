@@ -69,6 +69,13 @@
 // succeed only if none of the other rng conditions succeed.
 #define RNG_DECISION_TREE_DEF_STR "default"
 
+
+/////////////////////////////////////////////////////////////
+// The threshold beyond which the children in each node
+// of a DT are sorted when they are read in. I.e., 
+// we sort if the number of splits is greater than or equal to this.
+#define DT_SPLIT_SORT_THRESHOLD 3
+
 /////////////////////////////////////////////////
 // Forward declare a RandomVariable so we can
 // use pointers to it in this class.
@@ -142,14 +149,9 @@ protected:
   ////////////////////////////////////////////////////////////////
   // structure for comparing range pointers. 
   struct RngCompare {  
-    bool operator() (const BP_Range* a, const BP_Range* b) {
-      return (*a) < (*b);
-    }
-    bool operator() (const BP_Range* a, const int b) {
-      return (*a) < b;
-    }
-    bool operator() (const int a, const BP_Range* b) {
-      return (*b) > a;
+    bool operator() (const pair<BP_Range*,Node*>& a, 
+		     const pair<BP_Range*,Node*>& b) {
+      return (*a.first) < (*b.first);
     }
   };
 
@@ -596,7 +598,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
     }
 
     //////////////////////////////////////////////
-    // check for overlap errors in the strings
+    // check for overlap and order errors in the strings
     for (unsigned i=0;i<numSplits-1;i++) {
       for (unsigned j=i+1;j<numSplits-1;j++) {
 	if (node->nonLeafNode.rngs[i]
@@ -605,19 +607,47 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 		i,
 		node->nonLeafNode.rngs[i]->rangeStr(),j,
 		node->nonLeafNode.rngs[j]->rangeStr());
+
+	if ( 
+	    (!((*node->nonLeafNode.rngs[i]) < (*node->nonLeafNode.rngs[j])))
+	    &&
+	    (!((*node->nonLeafNode.rngs[j]) < (*node->nonLeafNode.rngs[i])))
+	    )
+	  error("ERROR: DT '%s', file '%s': range %d (%s) and %d (%s) do not have an order.",name().c_str(),is.fileName(),
+		i,
+		node->nonLeafNode.rngs[i]->rangeStr(),j,
+		node->nonLeafNode.rngs[j]->rangeStr());
+
       }
     }
-
-    //////////////////////////////////////////////////////////
-    // sort the entries so we can do binsearch later.
-    RngCompare rc;
-    sort(node->nonLeafNode.rngs.begin(),
-	 node->nonLeafNode.rngs.end(),
-	 rc);
 
     for (unsigned i=0; i<numSplits; i++)
       node->nonLeafNode.children[i] =
 	readRecurse(is,prevLeaf);
+
+    if (numSplits >= DT_SPLIT_SORT_THRESHOLD) {
+      //////////////////////////////////////////////////////////
+      // sort the entries so we can do binsearch later.
+
+      // copy in
+      vector< pair<BP_Range*,Node*> > arr;
+      arr.resize(numSplits-1);
+      for (unsigned i=0;i<(numSplits-1);i++) {
+	arr[i].first = node->nonLeafNode.rngs[i];
+	arr[i].second = node->nonLeafNode.children[i];
+      }
+      //'sort
+      RngCompare rc;
+      sort(arr.begin(),
+	   arr.end(),
+	   rc);
+      // copy out
+      for (unsigned i=0;i<(numSplits-1);i++) {
+	node->nonLeafNode.rngs[i] = arr[i].first;
+	node->nonLeafNode.children[i] = arr[i].second;
+      }
+    }
+
   }
   return node;
 }
@@ -878,94 +908,51 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
 	     RNG_DECISION_TREE_MAX_CARDINALITY );
 
     const int val = arr[n->nonLeafNode.ftr];
-#if 0
-    for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
-      // TODO: turn this into a log(n) operation
-      // rather than linear. To do this, we'll need
-      // to make sure that the ranges are in order.
-      // To do this, define an operator < for bp_ranges.
-      if (n->nonLeafNode.rngs[i]->contains(val))
-	return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
-    }
-#else 
 
     // use a switch to knock off the short cases for
     // which we use simple linear search with little bookkeeping.
-    switch(n->nonLeafNode.rngs.size()) {
-    case 1:
-      if (n->nonLeafNode.rngs[0]->contains(val))
-	return queryRecurse(arr,cards,n->nonLeafNode.children[0]);
-      break;
-    case 2:
-      if (n->nonLeafNode.rngs[0]->contains(val))
-	return queryRecurse(arr,cards,n->nonLeafNode.children[0]);
-      if (n->nonLeafNode.rngs[1]->contains(val))
-	return queryRecurse(arr,cards,n->nonLeafNode.children[1]);
-      break;
-    case 3:
-      if (n->nonLeafNode.rngs[0]->contains(val))
-	return queryRecurse(arr,cards,n->nonLeafNode.children[0]);
-      if (n->nonLeafNode.rngs[1]->contains(val))
-	return queryRecurse(arr,cards,n->nonLeafNode.children[1]);
-      if (n->nonLeafNode.rngs[2]->contains(val))
-	return queryRecurse(arr,cards,n->nonLeafNode.children[2]);
-      break;
-    default: {
-	const int maxRngNum = n->nonLeafNode.rngs.size()-1;
-	if (*(n->nonLeafNode.rngs[0]) > val)
-	  break;
-	if (*(n->nonLeafNode.rngs[maxRngNum]) < val)
-	  break;
+    if (n->nonLeafNode.rngs.size() < DT_SPLIT_SORT_THRESHOLD) {
+      for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
+	// Do a linear search.
+	if (n->nonLeafNode.rngs[i]->contains(val))
+	  return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
+      }
+    } else {
+      const int maxRngNum = n->nonLeafNode.rngs.size()-1;
+      if (*(n->nonLeafNode.rngs[0]) > val)
+	goto failedQuery;
+      if (*(n->nonLeafNode.rngs[maxRngNum]) < val)
+	goto failedQuery;
 
-	// do binary search
-	int l=0,u=maxRngNum;
-	int m=0;
-	while (l<=u) {
-	  // all these are conditional on the val being contained in the rng.
-	  // rngs[l] <= val && val <= rngs[u]  
-	  m = (l+u)/2; 
-	  if (*(n->nonLeafNode.rngs[m]) > val) 
-	    // rngs[l] <= val && val < rngs[m]
-	    u = m-1;
-	    // rngs[l] <= val && val <= rngs[u]
-	  else if (*(n->nonLeafNode.rngs[m]) < val)
-	    // rngs[m] < val && val < rngs[u]
-	    l=m+1;
-	    // rngs[l] < val && val < rngs[u]
-	  else {
-	    // found potential value range
-	    // rngs[l] = val && val <= rngs[u]  
-	    // so need to do linear search.
-	    for (int i=l;i<=u;i++) {
-	      if (n->nonLeafNode.rngs[i]->contains(val))
-		return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
-	    }
-	    break;
+      // do binary search
+      int l=0,u=maxRngNum;
+      int m=0;
+      while (l<=u) {
+	// all these are conditional on the val being contained in the rng.
+	// rngs[l] <= val && val <= rngs[u]  
+	m = (l+u)/2; 
+	if (*(n->nonLeafNode.rngs[m]) > val) 
+	  // rngs[l] <= val && val < rngs[m]
+	  u = m-1;
+	// rngs[l] <= val && val <= rngs[u]
+	else if (*(n->nonLeafNode.rngs[m]) < val)
+	  // rngs[m] < val && val < rngs[u]
+	  l=m+1;
+	// rngs[l] < val && val < rngs[u]
+	else {
+	  // found potential value range
+	  // rngs[l] = val && val = rngs[u] or anything inbetween.
+	  // do linear search on the remainder.
+	  for (int i=l;i<=u;i++) {
+	    if (n->nonLeafNode.rngs[i]->contains(val))
+	      return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
 	  }
 	}
       }
-      break;
     }
 
-//      printf("\n");
-//      printf("Querying with val %d\n",val);
-//      RngCompare rc;
-//      vector <BP_Range*>::iterator it =
-//        lower_bound(n->nonLeafNode.rngs.begin(),
-//  		  n->nonLeafNode.rngs.end(),
-//  		  val,
-//  		  rc);
-   
-//      if (it != n->nonLeafNode.rngs.end() && (*it)->contains(val))
-//        return queryRecurse(arr,cards,
-//  			  n->nonLeafNode.children[it - n->nonLeafNode.rngs.begin()]);
-
-//      if (it == n->nonLeafNode.rngs.end())
-//        printf("didn't find value\n");
-
-
-#endif
     // failed lookup, so return must be the default one.
+  failedQuery:
     return queryRecurse(arr,
 			cards,
 			n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
