@@ -108,8 +108,9 @@ public:
 
 
   // ******************************************************************
-  // This enum must always be consistent with the table 
-  // in fillKeywordTable in the .cc file
+  // This enum must always be order consistent with the table 
+  // in fillKeywordTable in the .cc file, and consistent with the
+  // list of keywords in the .lex file.
   // ******************************************************************
   // when token type is a keyword, the different types of keywords
   enum TokenKeyword {
@@ -138,7 +139,7 @@ public:
     KW_GRAPHICAL_MODEL=22,
     KW_Value=23,
     KW_Weight=24,
-    KW_Observation=25
+    KW_EliminationHint=25
   };
 
   // list of token keyword strings.
@@ -241,6 +242,7 @@ private:
   void parseRandomVariableAttribute();
   void parseRandomVariableTypeAttribute();
   void parseRandomVariableWeightAttribute();
+  void parseRandomVariableEliminationHintAttribute();
   void parseRandomVariableType();
   void parseRandomVariableDiscreteType();
   void parseRandomVariableContinuousType();

@@ -67,7 +67,8 @@ int_rng {int}:{int}
  * and with kw_table[] in FileParser.cc   
 */
 
-keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
+
+keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk|elimination_hint
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 
