@@ -162,7 +162,8 @@ public:
   // A global collection of decision trees mapping vectors
   // of integers to integers. These might be used for
   // different purposes, and other strucures might index
-  // into this array for a variety of purposes.
+  // into this array (or keep their own pointers to individual dts
+  // that live here).
   //////////////////////////////////////////////////////////////////
 
   sArray< RngDecisionTree<int>* > dts;
