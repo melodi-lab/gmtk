@@ -758,6 +758,10 @@ Sun Dec 22 21:09:32 2002
       say P might at one time
       link into a portion of the unrolling chunk, at
       another time, might link into a node in E.
+    - update: Thu Dec 26 03:19:08 2002
+       perhaps allow for this to occur when using
+       the unroll graph and then triangulation mode (e..g,
+       the same mode that works for snakes will work for here as well).
 
 
 Sun Dec 22 21:12:43 2002
