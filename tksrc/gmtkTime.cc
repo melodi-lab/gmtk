@@ -142,9 +142,9 @@ static char* varCliqueAssignmentPrior = "COI";
 // Observation matrix options
 bool     Cpp_If_Ascii        = false;
 char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};
-unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={ERROR,ERROR,ERROR,ERROR,ERROR};
+unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};
 char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"};
-unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END};
+unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};
 
 char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};
 char    *Post_Transforms=NULL;
@@ -351,7 +351,6 @@ main(int argc,char*argv[])
       error("ERROR: command line parameters must specify one of nf%d and ni%d as not zero",
 	    i+1,i+1);
 
-
     if(ofs[i] != NULL && ifmts[i]==PFILE) {
       FILE *in_fp = fopen(ofs[i], "r");
       if (in_fp==NULL) error("Couldn't open input pfile for reading.");
@@ -359,10 +358,26 @@ main(int argc,char*argv[])
       InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswp[i]);
       unsigned num_labs=in_streamp->num_labs();
       unsigned num_ftrs=in_streamp->num_ftrs();
-      if(nis[i] != 0 && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
-      if(nfs[i] != 0 && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
+
+      ////////////////////////////////////////////////////////////
+      // Check consistency between pfile and supplied arguments //
+      char search_str[]="nXXXXX";
+      sprintf(search_str,"-ni%d",i+1);
+      bool found=false;
+      for(int j=1; j < argc; ++j) {
+	if(strcmp(argv[j],search_str)==0) found=true;
+      }
+      if(found && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
+      sprintf(search_str,"-nf%d",i+1);
+      found=false;
+      for(int j=1; j < argc; ++j) {
+	if(strcmp(argv[j],search_str)==0) found=true;
+      }
+      if(found && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
+      ////////////////////////////////////////////////////////////
       nis[i]=num_labs;
       nfs[i]=num_ftrs;
+
       if (fclose(in_fp)) error("Couldn't close input pfile.");
       delete in_streamp;
     }
@@ -380,22 +395,22 @@ main(int argc,char*argv[])
 
    for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
      if(ofs[i]!=NULL) {
-       if (strcmp(Action_If_Diff_Num_Frames_Str[i],"er") == 0)      Action_If_Diff_Num_Frames[i] = ERROR;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rl") == 0) Action_If_Diff_Num_Frames[i] = REPEAT_LAST;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rf") == 0) Action_If_Diff_Num_Frames[i] = REPEAT_FIRST;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0) Action_If_Diff_Num_Frames[i] = EXPAND_SEGMENTALLY;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0) Action_If_Diff_Num_Frames[i] = TRUNCATE_FROM_START;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0) Action_If_Diff_Num_Frames[i] = TRUNCATE_FROM_END;
+       if (strcmp(Action_If_Diff_Num_Frames_Str[i],"er") == 0)      Action_If_Diff_Num_Frames[i] = FRAMEMATCH_ERROR;
+       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rl") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_LAST;
+       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rf") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_FIRST;
+       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
+       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
+       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
        else error("ERROR: Unknown action when diff num of frames: '%s'\n",Action_If_Diff_Num_Frames_Str[i]);
      }
    }
 
    for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
      if(ofs[i]!=NULL) {
-       if (strcmp(Action_If_Diff_Num_Sents_Str[i],"er") == 0)      Action_If_Diff_Num_Sents[i] = ERROR;
-       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0) Action_If_Diff_Num_Sents[i] = REPEAT_LAST;
-       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0) Action_If_Diff_Num_Sents[i] = WRAP_AROUND;
-       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0) Action_If_Diff_Num_Sents[i] = TRUNCATE_FROM_END;
+       if (strcmp(Action_If_Diff_Num_Sents_Str[i],"er") == 0)      Action_If_Diff_Num_Sents[i] = SEGMATCH_ERROR;
+       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_REPEAT_LAST;
+       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_WRAP_AROUND;
+       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_TRUNCATE_FROM_END;
        else error("ERROR: Unknown action when diff num of sentences: '%s'\n",Action_If_Diff_Num_Sents_Str[i]);
      }
    }
