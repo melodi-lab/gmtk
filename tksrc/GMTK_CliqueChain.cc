@@ -65,11 +65,25 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
         // propagate the surviving entries to preorder[i+1]
         for (unsigned j=0; j<preorder[i]->instantiation.size(); j++)
         {
-            CliqueValue &cv = Clique::gip[preorder[i]->instantiation[j]];
-            // clamp the values of the variables in the parent clique
-            assert(cv.values->size()==preorder[i]->discreteMember.size());
-            for (unsigned k=0; k<preorder[i]->discreteMember.size(); k++)
-                preorder[i]->discreteMember[k]->val = (*cv.values)[k];
+            if (!preorder[i]->separator)
+            {
+                // clamp the values of the variables in the clique
+                CliqueValue &cv = Clique::gip[preorder[i]->instantiation[j]];
+                assert(cv.values->size()==preorder[i]->discreteMember.size());
+                for (unsigned k=0; k<preorder[i]->discreteMember.size(); k++)
+                    preorder[i]->discreteMember[k]->val = (*cv.values)[k];
+            }
+            else  
+            {
+                // clamp the values of the previous non-sep clique
+                // there are more than in the separator, but this way we don't 
+                // have to store values for separators
+                CliqueValue &cv =
+                  Clique::gip[Clique::gip[preorder[i]->instantiation[j]].pred];
+                assert(cv.values->size()==preorder[i-1]->discreteMember.size());
+                for (unsigned k=0; k<preorder[i-1]->discreteMember.size(); k++)
+                    preorder[i-1]->discreteMember[k]->val = (*cv.values)[k];
+            }
 
             // compute the clique values of the child clique that are 
             // consistent with this parent instantiation.
@@ -222,9 +236,10 @@ bool CliqueChain::doViterbi(logpr beam)
     for (unsigned i=0; i<postorder.size(); i++)
     {
         cl = postorder[i];
-        // clamp the values
-        for (unsigned j=0; j<cl->discreteMember.size(); j++)
-            cl->discreteMember[j]->val = (*Clique::gip[best].values)[j];
+        // clamp the values -- only care about non-separators
+        if (!cl->separator)
+            for (unsigned j=0; j<cl->discreteMember.size(); j++)
+                cl->discreteMember[j]->val = (*Clique::gip[best].values)[j];
         // set best to the best instantiation of the predecessor clique
         best = Clique::gip[best].pred;
     }
