@@ -33,7 +33,7 @@ class DiagCovarVector : public EMable {
 
   //////////////////////////////////////////////////////  
   // the name
-  char *_name;
+  string _name;
 
   //////////////////////////////////
   // The actual covariance "matrix"
@@ -58,7 +58,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   DiagCovarVector();
-  ~DiagCovarVector() { delete [] _name; }
+  ~DiagCovarVector() { }
 
   ///////////////////////////////////////////////////////////  
   void makeRandom();
