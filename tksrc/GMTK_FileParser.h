@@ -379,6 +379,8 @@ public:
   // gm has not been added to yet.
   void addVariablesToGM(GMTK_GM& gm);
 
+  void checkConsistentWithGlobalObservationStream();
+
   //////////////////////////////////////////////////////////////
   // access to the chunk information.
   unsigned firstChunkFrame() { return _firstChunkframe; }
