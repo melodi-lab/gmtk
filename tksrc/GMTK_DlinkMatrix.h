@@ -61,6 +61,7 @@ public:
   void read(iDataStreamFile& is) { 
     NamedObject::read(is);
     mat.read(is); 
+    setBasicAllocatedBit();
   }
   void write(oDataStreamFile& os) { 
     NamedObject::write(os);

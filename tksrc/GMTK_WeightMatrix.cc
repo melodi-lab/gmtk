@@ -94,6 +94,7 @@ WeightMatrix::read(iDataStreamFile& is)
     is.read(val,"WeightMatrix::read, reading value");
     *ptr++ = val;
   }
+  setBasicAllocatedBit();
 }
 
 
@@ -115,6 +116,8 @@ WeightMatrix::read(iDataStreamFile& is)
 void
 WeightMatrix::write(oDataStreamFile& os)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   NamedObject::write(os);
   os.write(_rows,"WeightMatrix::write, distribution rows");
   os.write(_cols,"WeightMatrix::write, distribution cols");

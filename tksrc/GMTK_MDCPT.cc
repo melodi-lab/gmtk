@@ -208,7 +208,7 @@ MDCPT::read(iDataStreamFile& is)
       error("MDCPT: read, invalid pmf value (%g)",val);
     mdcpt[i] = val;
   }
-  bitmask |= bm_basicAllocated;
+  setBasicAllocatedBit();
 }
 
 
