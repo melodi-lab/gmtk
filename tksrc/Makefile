@@ -113,6 +113,7 @@ programname: $(objs)
 	$(link) -Wall -g  -o $@ $(bmm_objs) $@.o $(LIBS)
 
 gmtkEMtrain: gmtkEMtrain.o $(objs)
+	-@rm gmtkEMtrain
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkEMtrain.o $(objs) $(LIBS)
 
 #----------------------------------------------------------------------------
