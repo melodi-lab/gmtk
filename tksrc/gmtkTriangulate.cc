@@ -54,26 +54,24 @@ VCID("$Header$");
  * command line arguments
  */
 static bool seedme = false;
-static float beam=-LZERO;
 static char *strFileName=NULL;
 static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
-static float lldp = 0.001;
-static float mnlldp = 0.01;
 static int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
 static int ns=GMTK_DEFAULT_NUM_SPLITS;
-static int startSkip = 0;
-static int endSkip = 0;
 static int showFrCliques = 0;
 static int jut = -1;
 static char* anyTimeTriangulate = NULL;
 static bool reTriangulate = false;
 static bool rePartition = false;
 static unsigned maxNumChunksInBoundary = 1; 
+static unsigned chunkSkip = 1; 
 static int allocateDenseCpts=-1;
 static char *cppCommandOptions = NULL;
 static char* triangulationHeuristic="WFS";
-static char* faceHeuristic="SFW";
-static bool findBestFace = true;
+static char* boundaryHeuristic="SFW";
+static bool findBestBoundary = true;
+static double traverseFraction = 1.0;
+
 static bool noBoundaryMemoize = false;
 static char* forceLeftRight="";
 static unsigned verbosity = IM::Default;
@@ -92,19 +90,56 @@ Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // Triangulation Options
-  Arg("triangulationHeuristic",Arg::Opt,triangulationHeuristic,"Elim heuristic, >1 of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
+  Arg("triangulationHeuristic",
+      Arg::Opt,triangulationHeuristic,
+      "Triang. heuristic, >1 of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
 
-  Arg("findBestFace",Arg::Opt,findBestFace,"Run find-best-face (exponential time) algorithm or not."),
-  Arg("noBoundaryMemoize",Arg::Opt,noBoundaryMemoize,"Do not memoize boundaries (less memory but runs slower)"),
+  Arg("findBestBoundary",
+      Arg::Opt,findBestBoundary,
+      "Run the (exponential time) boundary algorithm or not."),
 
-  Arg("forceLeftRight",Arg::Opt,forceLeftRight,"Use only either left (L) or right (R) face heuristic, rather than best of both"),
-  Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
-  Arg("M",Arg::Opt,maxNumChunksInBoundary,"Max number simultaneous chunks in which interface boundary may exist"),
+#if 0
+  Arg("traverseFraction",
+      Arg::Opt,traverseFraction,
+      "Fraction of current interface to traverse in boundary recursion."),
+#endif
 
-  Arg("unroll",Arg::Opt,jut,"Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
-  Arg("anyTimeTriangulate",Arg::Opt,anyTimeTriangulate,"Run the any-time triangulation algorithm for given duration."),
-  Arg("reTriangulate",Arg::Opt,reTriangulate,"Re-Run triangluation algorithm even if .str.trifile exists with existing partition elimination ordering"),
-  Arg("rePartition",Arg::Opt,rePartition,"Re-Run the exponential partition finding algorithm even if .str.trifile exists with existing partition ordering"),
+  Arg("noBoundaryMemoize",
+      Arg::Opt,noBoundaryMemoize,
+      "Do not memoize boundaries (less memory but runs slower)"),
+
+  Arg("forceLeftRight",
+      Arg::Opt,forceLeftRight,
+      "Run boundary algorithm only for either left (L) or right (R) interface, rather than both"),
+
+  Arg("boundaryHeuristic",
+      Arg::Opt,boundaryHeuristic,
+      "Boundary heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
+
+  Arg("M",
+      Arg::Opt,maxNumChunksInBoundary,
+      "Max number simultaneous chunks in which boundary may simultaneously exist"),
+
+  Arg("S",
+      Arg::Opt,chunkSkip,
+      "Number of chunks that should exist between boundaries"),
+
+  Arg("unroll",
+      Arg::Opt,jut,
+      "Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
+
+  Arg("anyTimeTriangulate",
+      Arg::Opt,anyTimeTriangulate,
+      "Run the any-time triangulation algorithm for given duration."),
+
+  Arg("reTriangulate",
+      Arg::Opt,reTriangulate,
+      "Re-Run triangluation algorithm even if .str.trifile exists with existing partition elimination ordering"),
+
+  Arg("rePartition",
+      Arg::Opt,rePartition,
+      "Re-Run the boundary algorithm even if .str.trifile exists with existing partition ordering"),
+
 
   // eventually this next option will be removed.
   Arg("showFrCliques",Arg::Opt,showFrCliques,"Show frontier alg. cliques after the network has been unrolled k times and exit."),
@@ -148,18 +183,15 @@ main(int argc,char*argv[])
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
-  if (lldp < 0.0 || mnlldp < 0.0)
-    error("lldp & mnlldp must be >= 0");
-  if (beam < 0.0)
-    error("beam must be >= 0");
-  if (startSkip < 0 || endSkip < 0)
-    error("startSkip/endSkip must be >= 0");
 
   ////////////////////////////////////////////
   // set global variables/change global state from args
   GaussianComponent::setVarianceFloor(varFloor);
   if (seedme)
     rnd.seed();
+
+  // if (chunkSkip > maxNumChunksInBoundary)
+  //  error("ERROR: Must have S<=M at this time.\n");
 
 #if 0
   // don't read in parameters for now
@@ -182,7 +214,6 @@ main(int argc,char*argv[])
   // read in the structure of the GM, this will
   // die if the file does not exist.
   FileParser fp(strFileName,cppCommandOptions);
-
   printf("Finished reading in structure\n");
 
   // parse the file
@@ -198,11 +229,10 @@ main(int argc,char*argv[])
     // then make sure graph has no loops.
     fp.unroll(1,vars);
     if (!GraphicalModel::topologicalSort(vars,vars2))
-      // TODO: fix this error message.
-      error("ERROR. Graph is not directed and contains has a directed loop.\n");
+      // TODO: fix this error message, and give indication as to where loop is.
+      error("ERROR. Graph is not directed, contains a directed loop.\n");
   }
 
-  
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
   if (allocateDenseCpts >= 0) {
@@ -234,21 +264,23 @@ main(int argc,char*argv[])
     printf("Frontier cliques in the unrolled network are:\n");
     gm.setSize(showFrCliques);
     gm.showCliques();
+    // do nothing else if this option is given
     exit(0);
   }
-
 
   GMTemplate gm_template(fp);
 
   gm_template.noBoundaryMemoize = noBoundaryMemoize;
 
   if (jut >= 0) {
+    // then Just Unroll and Triangulate
     gm_template.unrollAndTriangulate(string(triangulationHeuristic),
 				     jut);
   } else {
     GMInfo gm_info;
 
     gm_info.M = maxNumChunksInBoundary;
+    gm_info.S = chunkSkip;
 
     string tri_file = string(strFileName) + ".trifile";
     if (rePartition && !reTriangulate) {
@@ -256,17 +288,17 @@ main(int argc,char*argv[])
       reTriangulate = true;
     }
 
-    // first check of tri_file exists
+    // first check if tri_file exists
     if (rePartition || fsize(tri_file.c_str()) == 0) {
       // then do everything (partition & triangulation)
 
       oDataStreamFile os(tri_file.c_str());
       fp.writeGMId(os);
       // run partition given options
-      gm_template.findPartitions(string(faceHeuristic),
+      gm_template.findPartitions(string(boundaryHeuristic),
 				 string(forceLeftRight),
 				 string(triangulationHeuristic),
-				 findBestFace,
+				 findBestBoundary,
 				 gm_info);
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
@@ -283,9 +315,6 @@ main(int argc,char*argv[])
 	// AnyTimeTriangulation anyTime(string(anyTimeTriangulate),gm_template);
 	error("Anytime algorithm not yet implemented\n");
       }
-
-
-      
 
       gm_template.storePartitions(os,gm_info);
       gm_template.storePartitionTriangulation(os,
@@ -306,6 +335,10 @@ main(int argc,char*argv[])
       if (gm_info.M != maxNumChunksInBoundary) {
 	error("ERROR: M given in partition file = %d, but M given on command line = %d\n",
 		gm_info.M,maxNumChunksInBoundary);
+      }
+      if (gm_info.S != chunkSkip) {
+	error("ERROR: S given in partition file = %d, but S given on command line = %d\n",
+		gm_info.S,chunkSkip);
       }
 
       // now using the partition triangulate
@@ -346,9 +379,19 @@ main(int argc,char*argv[])
 	error("ERROR: M given in partition file = %d, but M given on command line = %d\n",
 		gm_info.M,maxNumChunksInBoundary);
       }
+
+      if (gm_info.S != chunkSkip) {
+	error("ERROR: S given in partition file = %d, but S given on command line = %d\n",
+		gm_info.S,chunkSkip);
+      }
+
       gm_template.triangulatePartitions(is,
 					gm_info);
+
     }
+
+    // At this point, one way or another, we've got the fully triangulated graph in data structures.
+    // We now just print this information and the triangulation quality out, and then exit.
 
       {
 	printf("\n--- Printing final clique set and clique weights---\n");
@@ -380,9 +423,9 @@ main(int argc,char*argv[])
 	}
 	printf("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f\n",
 	       c_maxWeight,
-	       maxNumChunksInBoundary,
+	       chunkSkip,
 	       c_totalWeight,
-	       c_totalWeight - log10((double)maxNumChunksInBoundary));
+	       c_totalWeight - log10((double)chunkSkip));
 
 
 	float e_maxWeight = -1.0;
@@ -404,40 +447,42 @@ main(int argc,char*argv[])
 	maxWeight =
 	  (maxWeight>e_maxWeight?maxWeight:e_maxWeight);
 	float totalWeight = p_totalWeight;
+	// log version of: totalWeight += c_totalWeight
 	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));
+	// log version of: totalWeight += e_totalWeight
 	totalWeight += log10(1+pow(10,e_totalWeight-totalWeight));
 
 	printf("--- Final set (P,Cx%d,E) has max clique weight = %f, total state space = %f ---\n",
-	       maxNumChunksInBoundary,
+	       chunkSkip,
 	       maxWeight,
 	       totalWeight);
 
 	// print out a couple of total state spaces for various unrollings
-	printf("--- Total weight when unrolling %dx = %f ---\n",2*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+chunkSkip-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));	
-	printf("--- Total weight when unrolling %dx = %f ---\n",3*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+2*chunkSkip-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(3.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",6*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+5*chunkSkip-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(5.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",11*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+10*chunkSkip-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(10.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",21*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+20*chunkSkip-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(30.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",51*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+50*chunkSkip-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(50.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",101*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+100*chunkSkip-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(400.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",501*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+500*chunkSkip-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(500.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",1001*maxNumChunksInBoundary-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+1000*chunkSkip-1,totalWeight);
 
       }
   }
