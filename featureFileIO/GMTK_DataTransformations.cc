@@ -145,9 +145,9 @@ void ObservationMatrix::filter(float* x, unsigned vec_size, unsigned stride, uns
   // copy buffer into a temporary one
   for(unsigned i=0;i<num_frames;++i)  
     for(unsigned j=0;j<vec_size;++j) {
-	tmp_buf[i*vec_size+j]=x[i*stride+j];
+      tmp_buf[i*vec_size+j]=x[i*stride+j];
     }
-
+  
   // Use leading zeros at the beginning of the data buffer
   for (unsigned sample = 0; sample < half_filter_len ; ++sample)     {
     sum = 0.0;
@@ -157,26 +157,23 @@ void ObservationMatrix::filter(float* x, unsigned vec_size, unsigned stride, uns
     // Do something about saturation?
     x[sample] = (float)sum;
   }
-
-   for (unsigned sample =  half_filter_len; sample < num_frames -  filter_len +  half_filter_len ; ++sample ) {
-     sum = 0.0;
-     window_sample= sample -  half_filter_len;
-     for (unsigned i = 0; i < filter_len ;i++)
-       sum += filter_coeffs[i]*tmp_buf[window_sample++];
-     x[sample] = (float)sum;
-   }
-
-   // end
-   for (unsigned sample = num_frames - filter_len +  half_filter_len; sample < num_frames ; ++sample) {
-     sum = 0.0;
-     window_sample= sample - half_filter_len;
-     for (unsigned i = 0; i < filter_len ;i++)
-       sum += filter_coeffs[i] * tmp_buf[window_sample++] ;
-     x[sample] = (float) sum;
-}
-   
-
-
+  
+  for (unsigned sample =  half_filter_len; sample < num_frames -  filter_len +  half_filter_len ; ++sample ) {
+    sum = 0.0;
+    window_sample= sample -  half_filter_len;
+    for (unsigned i = 0; i < filter_len ;i++)
+      sum += filter_coeffs[i]*tmp_buf[window_sample++];
+    x[sample] = (float)sum;
+  }
+  
+  // end
+  for (unsigned sample = num_frames - filter_len +  half_filter_len; sample < num_frames ; ++sample) {
+    sum = 0.0;
+    window_sample= sample - half_filter_len;
+    for (unsigned i = 0; i < filter_len ;i++)
+      sum += filter_coeffs[i] * tmp_buf[window_sample++] ;
+    x[sample] = (float) sum;
+  }
 }
 
 
@@ -187,9 +184,10 @@ void ObservationMatrix::filter(float* x, unsigned vec_size, unsigned stride, uns
  */
 void ObservationMatrix::arma(float* x, unsigned vec_size, unsigned stride, unsigned num_frames,unsigned order) {
   if(vec_size==0 || stride ==0)
-    return;
+    warning("WARNING: Not applying ARMA filter because number of floats is zero.");
+  //    return;
   assert(num_frames>0);
-
+  
   for(unsigned i=0;i<vec_size;i++) {
     for(unsigned frame_no=order;frame_no<num_frames-order;frame_no++) {
       float tf = x[stride*frame_no+i];
@@ -197,9 +195,9 @@ void ObservationMatrix::arma(float* x, unsigned vec_size, unsigned stride, unsig
         tf += (x[stride*(frame_no-tau)+i] + x[stride*(frame_no+tau)+i]);
       }
       x[stride*frame_no+i] = tf/(2*order+1);
-    }
- }
-
+   }
+  }
+  
 }
 
 /**
