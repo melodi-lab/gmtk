@@ -34,4 +34,12 @@ VCID("$Header$");
 #include "GMTK_MixGaussiansCommon.h"
 #include "rand.h"
 
+//////////////////////////////////////////////
+// set the mcvr. By default it is set to a large
+// value meaning that mixtures are not removed.
+// A reasonable value, to eagerly start removing
+// mixtures, is about 50.0 or so.
+double
+MixGaussiansCommon::mixCoeffVanishRatio = 1e20;
+
 
