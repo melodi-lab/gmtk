@@ -178,6 +178,8 @@ main(int argc,char*argv[])
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+  GM_Parms.finalizeParameters();  
+
   if (strFileName != NULL) {
     // load up the structure file as we might want
     // it to allocate some Dense CPTs.
@@ -201,7 +203,7 @@ main(int argc,char*argv[])
     else
       error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   }
-  GM_Parms.finalizeParameters();  
+
 
   printf("Finished reading in all parameters and structures\n");
   printf("Total number of trainable parameters in input files = %u\n",

@@ -335,9 +335,9 @@ main(int argc,char*argv[])
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
-
   // comment for now Sun Jan 11 09:47:23 2004
-  // GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
+  GM_Parms.finalizeParameters();
+  GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 
   /////////////////////////////
   // read in the structure of the GM, this will
@@ -365,7 +365,7 @@ main(int argc,char*argv[])
     else
       error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   }
-  GM_Parms.finalizeParameters();
+
 
 
   // make sure that all observation variables work
@@ -494,10 +494,11 @@ main(int argc,char*argv[])
   double llDiffPerc = 100.0;
 
   for (unsigned i=0; i<maxEMIterations; i++)  {
-    total_data_prob = 1.0;
+
     unsigned total_num_frames = 0;
 
     if (trrng->length() > 0) {
+      total_data_prob = 1.0;
       BP_Range::iterator* trrng_it = new BP_Range::iterator(trrng->begin());
       while ((*trrng_it) <= trrng->max()) {
 	const unsigned segment = (unsigned)(*(*trrng_it));
