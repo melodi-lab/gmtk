@@ -286,7 +286,11 @@ main(int argc,char*argv[])
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
 
-  clock_t start_time = clock();
+  struct rusage rus; /* starting time */
+  struct rusage rue; /* ending time */
+  getrusage(RUSAGE_SELF,&rus);
+
+
   // and away we go
   gm.clampFirstExample();
   do {
@@ -304,10 +308,10 @@ main(int argc,char*argv[])
   } while (gm.clampNextExample());
 
 
-  clock_t end_time = clock();
-  clock_t diff = end_time-start_time;
-
-  printf("### Final time just for inference: %ld clocks, %0.2f seconds\n",diff,(double)diff/(double)CLOCKS_PER_SEC);
+  getrusage(RUSAGE_SELF,&rue);
+  printf("### Final time (seconds) just for inference: ");
+  double userTime,sysTime;
+  reportTiming(rus,rue,userTime,sysTime,stdout);
 
   exit_program_with_status(0);
 }

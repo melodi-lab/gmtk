@@ -445,7 +445,9 @@ main(int argc,char*argv[])
 
   logpr total_data_prob = 1.0;
 
-  clock_t start_time = clock();
+  struct rusage rus; /* starting time */
+  struct rusage rue; /* ending time */
+  getrusage(RUSAGE_SELF,&rus);
 
   /////////////////////////////////////////////////////////
   // first load any and all accumulators
@@ -645,9 +647,12 @@ main(int argc,char*argv[])
   // also write according to output master
   GM_Parms.write(outputMasterFile);  
 
-  clock_t end_time = clock();
-  clock_t diff = end_time-start_time;
-  infoMsg(IM::Default,"### Final time for EM stage: %ld clocks, %0.2f seconds\n",diff,(double)diff/(double)CLOCKS_PER_SEC);
+  getrusage(RUSAGE_SELF,&rue);
+  if (IM::messageGlb(IM::Default)) { 
+    infoMsg(IM::Default,"### Final time (seconds) just for EM stage: ");
+    double userTime,sysTime;
+    reportTiming(rus,rue,userTime,sysTime,stdout);
+  }
 
   exit_program_with_status(0);
 }
