@@ -37,6 +37,8 @@ class DiscreteRandomVariable;
 class ContinuousRandomVariable;
 class FileParser;
 class GMTemplate;
+class BoundaryTriangulate;
+
 
 #include "GMTK_CPT.h"
 #include "GMTK_MixGaussiansCommon.h"
@@ -47,6 +49,7 @@ class RVInfo {
   friend class DiscreteRandomVariable;
   friend class ContinuousRandomVariable;
   friend class GMTemplate;
+  friend class BoundaryTriangulate;
 
   ///////////////////////////////////////////////////
   typedef pair<string,int> rvParent;
