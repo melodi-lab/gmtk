@@ -521,7 +521,7 @@ main(int argc,char*argv[])
 
     logpr probe;
     if (island) {
-      // error("Island for decoding not yet finished (but almost)\n");
+      warning("WARNING:: Island algorithm for decoding not yet debugged (but almost). Use at your own risk!!\n");
       unsigned numUsableFrames;
       myjt.collectDistributeIsland(numFrames,
 				   numUsableFrames,

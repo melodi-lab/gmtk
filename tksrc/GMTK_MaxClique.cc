@@ -1591,8 +1591,9 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     sepValueNumber = 0;
   }
 
-  // Iterate through remainder of separator Q: should we do some
-  // pruning here as well?
+  // Iterate through remainder of separator. 
+  // NOTE: we could do some online pruning here as well, but instead
+  // we do it in a special separator prune routine, called ceSeparatorPrune().
   if (sep.origin.hRemainder.size() == 0) {
     // Only one remainder entry (in position 0) and also no need to
     // unpack since all has been covered by accumulated intersection
@@ -1612,16 +1613,21 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
       printRVSetAndValues(stdout,sep.fNodes);
     }
 
-    // we should have one entry only.
-    assert ( sep.separatorValues.ptr[sepValueNumber].remValues.size() == 1 );
+    // We should have either one or zero entries. The only way zero
+    // entries could arrise is if we have done severe separator pruning.
+    assert ( (sep.separatorValues.ptr[sepValueNumber].remValues.size() & ~0x1)
+	     == 0x0 );
 
-    // Continue down with new probability value.
-    // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
-    // more info why remValues.ptr[0] exists.
-    // TODO: separator prune here.
-    ceIterateSeparators(part,sepNumber+1,
-			p*
-			sep.separatorValues.ptr[sepValueNumber].remValues.ptr[0].p);
+    // assert ( sep.separatorValues.ptr[sepValueNumber].remValues.size() == 1 );
+    if (sep.separatorValues.ptr[sepValueNumber].numRemValuesUsed == 1) {
+      // Continue down with new probability value.
+      // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
+      // more info why remValues.ptr[0] exists.
+      // Note: could do more separator pruning here.
+      ceIterateSeparators(part,sepNumber+1,
+			  p*
+			  sep.separatorValues.ptr[sepValueNumber].remValues.ptr[0].p);
+    }
 
   } else {
 
@@ -3685,21 +3691,31 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 	sv.iRemHashMap.find(&packedVal[0]);
 
       // it must exist
-      assert ( remIndexp != NULL );
+      // assert ( remIndexp != NULL );
+      if ( remIndexp == NULL ) {
+	// NOTE: we could prune this clique entry away, but for now we just issue the error.  
+	error("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\n");
+      }
 
       // We've finally got the sep entry. Multiply it it into the
       // current clique value.
       cliqueValues.ptr[cvn].p *= sv.remValues.ptr[*remIndexp].bp();
     } else {
-      // separator must be all observed. We multiply in its one value.
+      // Either separator is all observed, or the separator
+      // is completely contained in the accumulated intersection.
+      // In either case, we multiply in its one value.
 
       InferenceSeparatorClique::AISeparatorValue& sv
 	= sep.separatorValues.ptr[accIndex];
 
-      // We've finally got the sep entry. Multiply it it into the
-      // current clique value.
-      cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp();
-
+      if (sv.numRemValuesUsed == 1) {
+	// We've finally got the sep entry. Multiply it it into the
+	// current clique value.
+	cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp();
+      } else {
+	// NOTE: we could prune this clique entry away, but for now we just issue the error.  
+	error("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\n");
+      }
     }
 
   }
@@ -3775,8 +3791,9 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
     // TODO: optimize this check out of loop.
     if (sep.remDiscreteValuePtrs.size() == 0) {
       // 2) AI exists and REM doesnt exist
-      // Then this separator is entirely covered by one or 
-      // more other separators earlier in the order.
+      // Then this separator is entirely covered by accumulated
+      // intersection (one or more other separators earlier in the
+      // order).
 
       // go ahead and insert it here to the 1st entry (entry 0).
 
@@ -3844,7 +3861,9 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
 
 
   } else {
-    // separator must be all observed. We use its one value.
+    // Either separator is all observed, or the separator
+    // is completely contained in the accumulated intersection.
+    // In either case, we use its one value.
 
     InferenceSeparatorClique::AISeparatorValue& sv
       = sep.separatorValues.ptr[accIndex];
@@ -4015,7 +4034,8 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	  // pass.
 	  sv.remValues.ptr[*remIndexp].bp() += cliqueValues.ptr[cvn].p;
 	} else {
-	  // Separator must be all observed.
+	  // Either separator is all observed, or the separator
+	  // is completely contained in the accumulated intersection.
 	
 	  // keep handy reference for readability.
 	  InferenceSeparatorClique::AISeparatorValue& sv
@@ -4643,66 +4663,87 @@ InferenceSeparatorClique::ceSeparatorPrune()
     for (unsigned rsv=0;rsv<separatorValues.ptr[asv].numRemValuesUsed;) {
       if (separatorValues.ptr[asv].remValues.ptr[rsv].p < beamThreshold) {
 
-	// We prune away entry for rsv, by swapping it in last
-	// position. Here, however, it is not as easy as with a clique
-	// separator as we have also to deal with the hash
-	// table. Specifically, we need to swap index entries in hash
-	// table as well. Note that we can not remove the hash table
-	// entry for the one that got pruned away without re-hashing
-	// the entire hash table. The reason is that if the entry that
-	// got removed was a collision for another entry that is in
-	// the table, then removing the collision will make the other
-	// entry inaccessible.
-	// TODO: test if it is better to just prune here and just
-	// rehash everything.
+	if (separatorValues.ptr[asv].numRemValuesUsed > 1) {
 
-	// the index of the entry being swapped with the
-	// one that is being pruned.
-	const unsigned swap_index = separatorValues.ptr[asv].numRemValuesUsed-1;
 
-	// First, get pointers to hash table index values for the two
-	// entries corresponding to the one we are prunning
-	// and the one ware swapping it with.
-	unsigned* prune_index_p;
-	unsigned* swap_index_p;
+	  // We prune away entry for rsv, by swapping it in last
+	  // position. Here, however, it is not as easy as with a clique
+	  // separator as we have also to deal with the hash
+	  // table. Specifically, we need to swap index entries in hash
+	  // table as well. Note that we can not remove the hash table
+	  // entry for the one that got pruned away without re-hashing
+	  // the entire hash table. The reason is that if the entry that
+	  // got removed was a collision for another entry that is in
+	  // the table, then removing the collision will make the other
+	  // entry inaccessible.
+	  // TODO: test if it is better to just prune here and just
+	  // rehash everything.
 
-	// the keys for the two entries.
-	unsigned* prune_key_p;
-	unsigned* swap_key_p;
+	  // the index of the entry being swapped with the
+	  // one that is being pruned.
+	  const unsigned swap_index = separatorValues.ptr[asv].numRemValuesUsed-1;
 
-	// pointers to the ht keys for the two entries.
-	unsigned** ht_prune_key_p;
-	unsigned** ht_swap_key_p;
+	  // First, get pointers to hash table index values for the two
+	  // entries corresponding to the one we are prunning
+	  // and the one ware swapping it with.
+	  unsigned* prune_index_p;
+	  unsigned* swap_index_p;
 
-	if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-	  prune_key_p = &(separatorValues.ptr[asv].remValues.ptr[rsv].val[0]);
-	  swap_key_p = &(separatorValues.ptr[asv].remValues.ptr[swap_index].val[0]);
-	} else {
-	  prune_key_p = separatorValues.ptr[asv].remValues.ptr[rsv].ptr;
-	  swap_key_p = separatorValues.ptr[asv].remValues.ptr[swap_index].ptr;
-	}
+	  // the keys for the two entries.
+	  unsigned* prune_key_p;
+	  unsigned* swap_key_p;
+
+	  // pointers to the ht keys for the two entries.
+	  unsigned** ht_prune_key_p;
+	  unsigned** ht_swap_key_p;
+
+	  if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
+	    prune_key_p = &(separatorValues.ptr[asv].remValues.ptr[rsv].val[0]);
+	    swap_key_p = &(separatorValues.ptr[asv].remValues.ptr[swap_index].val[0]);
+	  } else {
+	    prune_key_p = separatorValues.ptr[asv].remValues.ptr[rsv].ptr;
+	    swap_key_p = separatorValues.ptr[asv].remValues.ptr[swap_index].ptr;
+	  }
 	
-	prune_index_p =  separatorValues.ptr[asv].iRemHashMap.find(prune_key_p,ht_prune_key_p);
-	// it must exist
-	assert ( prune_index_p != NULL );
-	swap_index_p =  separatorValues.ptr[asv].iRemHashMap.find(swap_key_p,ht_swap_key_p);
-	// it must exist
-	assert ( swap_index_p != NULL );
+	  prune_index_p =  separatorValues.ptr[asv].iRemHashMap.find(prune_key_p,ht_prune_key_p);
+	  // it must exist
+	  assert ( prune_index_p != NULL );
+	  swap_index_p =  separatorValues.ptr[asv].iRemHashMap.find(swap_key_p,ht_swap_key_p);
+	  // it must exist
+	  assert ( swap_index_p != NULL );
 
-	// swap the entries
-	swap(separatorValues.ptr[asv].remValues.ptr[rsv],
-	     separatorValues.ptr[asv].remValues.ptr[swap_index]);
-	// and swap the hash table pointers
-	swap((*prune_index_p),(*swap_index_p));
-	// and swap the hash table keys if they are pointers to the arrays which
-	// just got swapped.
-	if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-	  // printf("foobarbaz");
-	  swap((*ht_prune_key_p),(*ht_swap_key_p));
+	  // swap the entries
+	  swap(separatorValues.ptr[asv].remValues.ptr[rsv],
+	       separatorValues.ptr[asv].remValues.ptr[swap_index]);
+	  // and swap the hash table pointers
+	  swap((*prune_index_p),(*swap_index_p));
+	  // and swap the hash table keys if they are pointers to the arrays which
+	  // just got swapped.
+	  if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
+	    // printf("foobarbaz");
+	    swap((*ht_prune_key_p),(*ht_swap_key_p));
+	  }
+
+	  // decrease values
+	  separatorValues.ptr[asv].numRemValuesUsed--;
+	} else {
+	  // then separatorValues.ptr[asv].numRemValuesUsed == 1. This
+	  // will happen under two conditiosn.
+	  //  1) There is no remainder, meaning (sep.origin.hRemainder.size() == 0), 
+	  //     and the entire separator is
+	  //     in the accumulated intersection with other separators.
+	  //     In this case there is no hash table at all.
+	  //  2) All other entries in the remainder for this particular
+	  //     accumulated intersection slot have been pruned away. In this
+	  //     case, the hash table does exist, but it'll still be deleted
+	  //     upon calling the destructor.
+
+	  // so, what we do is just set the the number of values to zero.
+	  // Other code will need to thus check for empty separator acc. intersection
+	  // values.
+	  separatorValues.ptr[asv].numRemValuesUsed = 0;
+
 	}
-
-	// decrease values
-	separatorValues.ptr[asv].numRemValuesUsed--;
 
       } else {
 	rsv++;
