@@ -19,8 +19,8 @@
  */
 
 
-#ifndef GMTK_1D_DIST
-#define GMTK_1D_DIST
+#ifndef GMTK_CPT
+#define GMTK_CPT
 
 
 #include "fileParser.h"
@@ -70,5 +70,4 @@ public:
 };
 
 
-
-#endif
+#endif // defined GMTK_CPT

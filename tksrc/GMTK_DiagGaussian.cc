@@ -31,39 +31,28 @@
 VCID("$Header$");
 #include "error.h"
 
-#include "DiagGaussian.h"
-#include "lineqsolve.h"
+#include "GMTK_DiagGaussian.h"
 #include "rand.h"
 
+#ifndef M_PI
 #define M_PI               3.14159265358979323846  /* pi */
+#endif
 
 double DiagGaussian::varianceFloor = 1e-30; // must be >= FLT_MIN;
 
 DiagGaussian::~DiagGaussian()
 {
-
-  if (bm_basicAllocated & bitmask) {
-    delete [] burVals;
-    delete [] variances_inv;
-    delete [] variances;
-  }
-  if (bm_emAllocated & bitmask) {
-    delete [] gamma_oo;
-    delete [] gamma_zz;
-    delete [] gamma_zz_expanded;
-    delete [] gamma_oz;
-    delete [] n_burVals;
-    delete [] n_variances;
-  }
 }
 
 void
 DiagGaussian::read(iDataStreamFile& is)
 {
+
+  
+
   variances = new float[parent->nFeats];
   variances_inv = new float [parent->nFeats];
   burVals = new float[parent->sum_nComsp1];
-
 
   float * burValsp = burVals;
   for (int i=0;i<parent->nFeats;i++) {

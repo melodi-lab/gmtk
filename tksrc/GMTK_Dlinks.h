@@ -37,7 +37,13 @@ class Dlinks {
     int lag;
     int offset;
   };
-  
+
+
+  ///////////////////////////////////////
+  // an array of arrays of Dlinks. Each
+  // member of the outer array corresponds to the dependencies
+  // of one feature. The inner arrays point to the positions
+  // in a feature vector of where the dependencies come from.
   sArray< sArray<Dlink> > dIndices;
 
 public:
