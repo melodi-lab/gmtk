@@ -31,8 +31,8 @@
 VCID("$Header$");
 
 
-#include <iostream.h>
-#include <fstream.h>
+#include <iostream>
+#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -919,12 +919,13 @@ void GMTK_GM::showCliques()
         szsum += sz;
         lc = max(unsigned(cl->member.size()), lc);
 
-        cout << ": " << (sz/1000000) << "M" << endl;
+        cout << ": " << (sz/1000000) << "M" << 
+            " (log10 weight " << log10(sz) << ")" << endl;
     }
     maxi /= 1000000;
     cout << "Max variables in a clique is " << lc << " elements" << endl;
     cout << "Upper bound on instantiations of a single clique is " << maxi
-         << "M" << endl;
+         << "M" << " (log10 weight " << log10(maxi*1e6) << ")" << endl;
     cout << "Upper bound for sum of cliques is " << szsum << endl;
 }
 
