@@ -365,3 +365,6 @@ x fix arg description of beam
   the gaussians when cloning that are exactly the
   same as the parent leading to redundant copy of
   Gaussians. Make sure to mention this in docs.
+
+
+- support no training names such as gmMx* for foobar*
