@@ -52,6 +52,8 @@ class RVInfo {
   friend class Partition;
   friend class BoundaryTriangulate;
   friend class JunctionTree;
+  friend class StructPage;
+  friend class VizNode;
 
   friend class RV;
   friend class DiscRV;

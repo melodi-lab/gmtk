@@ -64,7 +64,7 @@ install_prefix = .
 ##  libdirs = -L$(prefix) -L$(prefix)/../miscSupport  -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L$(prefix)/../featureFileIO -L/g/rcs/sw/lib
 libdirs = -L$(prefix) -L$(prefix)/../miscSupport  -L$(prefix)/../IEEEFloatingpoint -L$(prefix)/../featureFileIO -L/g/rcs/sw/lib
 ##  includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint -I$(prefix)/../featureFileIO 
-includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../IEEEFloatingpoint -I$(prefix)/../featureFileIO 
+includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../IEEEFloatingpoint -I$(prefix)/../featureFileIO
 docdir = $(prefix)/man/man1
 
 #
@@ -106,7 +106,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkJT gmtkTime gmtkEMtrainNew gmtkViterbiNew gmtkTriangulate gmtkParmConvert gmtkTFmerge gmtkUnroll gmtkDTindex gmtkNGramIndex
+all_exs = gmtkJT gmtkTime gmtkEMtrainNew gmtkViterbiNew gmtkTriangulate gmtkParmConvert gmtkTFmerge gmtkUnroll gmtkDTindex gmtkNGramIndex #gmtkViz
 
 all: ${all_exs}
 
@@ -123,7 +123,7 @@ objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVect
 #----------------------------------------------------------------------------
 
 
-all_srcs =  gmtkUnroll.cc GMTK_CPT.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixtureCommon.cc GMTK_Component.cc GMTK_GaussianComponent.cc GMTK_Mixture.cc  gmtkEMtrainNew.cc GMTK_EMable.cc  gmtkViterbiNew.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_Hash.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc GMTK_JunctionTree.cc gmtkTriangulate.cc gmtkTFmerge.cc gmtkJT.cc gmtkTime.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc gmtkDTindex.cc GMTK_PackCliqueValue.cc GMTK_Vocab.cc GMTK_NGramCPT.cc GMTK_FNGramCPT.cc gmtkNGramIndex.cc GMTK_RV.cc GMTK_ContRV.cc GMTK_DiscRV.cc GMTK_HidDiscRV.cc GMTK_ObsContRV.cc GMTK_ObsDiscRV.cc GMTK_ScPnShRV.cc GMTK_ScPnSh_HidDiscRV.cc GMTK_SimpleDiscreteRV.cc GMTK_SwDiscRV.cc GMTK_SwRV.cc GMTK_Sw_HidDiscRV.cc GMTK_Sw_ObsContRV.cc GMTK_Sw_ObsDiscRV.cc GMTK_VECPT.cc
+all_srcs =  gmtkUnroll.cc GMTK_CPT.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixtureCommon.cc GMTK_Component.cc GMTK_GaussianComponent.cc GMTK_Mixture.cc  gmtkEMtrainNew.cc GMTK_EMable.cc  gmtkViterbiNew.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_Hash.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc GMTK_JunctionTree.cc gmtkTriangulate.cc gmtkTFmerge.cc gmtkJT.cc gmtkTime.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc gmtkDTindex.cc GMTK_PackCliqueValue.cc GMTK_Vocab.cc GMTK_NGramCPT.cc GMTK_FNGramCPT.cc gmtkNGramIndex.cc GMTK_RV.cc GMTK_ContRV.cc GMTK_DiscRV.cc GMTK_HidDiscRV.cc GMTK_ObsContRV.cc GMTK_ObsDiscRV.cc GMTK_ScPnShRV.cc GMTK_ScPnSh_HidDiscRV.cc GMTK_SimpleDiscreteRV.cc GMTK_SwDiscRV.cc GMTK_SwRV.cc GMTK_Sw_HidDiscRV.cc GMTK_Sw_ObsContRV.cc GMTK_Sw_ObsDiscRV.cc GMTK_VECPT.cc gmtkViz.cc
 
 
 
@@ -183,6 +183,14 @@ gmtkDTindex: gmtkDTindex.o $(objs)
 gmtkNGramIndex: gmtkNGramIndex.o $(objs)
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkNGramIndex.o $(objs) $(LIBS)
+
+gmtkViz.o: gmtkViz.cc
+	-@rm -f $@
+	$(compile.cc) `wx-config --libs` `wx-config --cxxflags` -Wall -g -c gmtkViz.cc
+
+gmtkViz: gmtkViz.o $(objs)
+	-@rm -f $@
+	$(compile.cc.link) `wx-config --libs` `wx-config --cxxflags` -Wall -g -o $@ gmtkViz.o $(objs) $(LIBS)
 
 #----------------------------------------------------------------------------
 # Test driver programs (defines a -DMAIN to test each .cc file)
