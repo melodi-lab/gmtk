@@ -43,6 +43,7 @@
 #include "GMTK_WeightMatrix.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
+#include "GMTK_MTCPT.h"
 
 
 
@@ -173,6 +174,23 @@ GMParms::readBasic(iDataStreamFile& is)
     msCpts[i]->read(is);
     msCptsMap[msCpts[i]->name()] = msCpts[i];
   }
+
+
+  is.read(num,"GMTK_GMParms::readBasic, MTCPT");
+  if (num < 0) error("GMTK_GMParms::readBasic num MTCPT = %d",num);
+  mtCpts.resize(num);
+  for (unsigned i=0;i<num;i++) {
+    is.read(cnt,"GMTK_GMParms::readBasic, cnt MTCPTS");
+    if (cnt != i) 
+      error("GMTK_GMParms::readBasic, MTCPTs, out of order count",cnt);
+    mtCpts[i] = new MTCPT;
+    mtCpts[i]->read(is);
+    mtCptsMap[mtCpts[i]->name()] = mtCpts[i];
+  }
+
+
+
+
 }
 
 void 
@@ -246,6 +264,16 @@ GMParms::writeBasic(oDataStreamFile& os)
     msCpts[i]->write(os);
   }
   os.nl();
+
+
+  os.write(mtCpts.size(),"GMTK_GMParms::writeBasic, MTCPT");
+  os.nl();
+  for (unsigned i=0;i<mtCpts.size();i++) {
+    os.write(i); os.nl();
+    mtCpts[i]->write(os);
+  }
+  os.nl();
+
 }
 
 
@@ -270,7 +298,7 @@ GMParms::readDTs(iDataStreamFile& is)
     if (cnt != i) 
       error("GMTK_GMParms::readDTs, out of order count",cnt);
 
-    dts[i] = new RngDecisionTree<int>;
+    dts[i] = new RngDecisionTree<unsigned>;
     dts[i]->read(is);
   }
 }

@@ -80,7 +80,7 @@ void MDCPT::setNumParents(const int _nParents)
 
   // assume that the basic stuff is no longer allocated.
   bitmask &= ~bm_basicAllocated;
-  cumulativeCardinalities.resize(numParents);
+  cumulativeCardinalities.resize(_numParents);
 }
 
 
@@ -122,15 +122,15 @@ void MDCPT::setNumCardinality(const int var, const int card)
 void MDCPT::allocateBasicInternalStructures()
 {
   int numValues = 1;
-  for (unsigned i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=_numParents;i++) {
     numValues *= cardinalities[i];
   }
 
   mdcpt.resize(numValues);
 
-  if (numParents > 0) {
-    cumulativeCardinalities[numParents-1] = cardinalities[numParents];
-    for (int i=numParents-2; i>=0; i--) {
+  if (_numParents > 0) {
+    cumulativeCardinalities[_numParents-1] = cardinalities[_numParents];
+    for (int i=_numParents-2; i>=0; i--) {
       cumulativeCardinalities[i] = 
 	cumulativeCardinalities[i+1]*cardinalities[i+1];
     }
@@ -163,19 +163,19 @@ MDCPT::read(iDataStreamFile& is)
 
   NamedObject::read(is);
 
-  is.read(numParents,"MDCPT::read numParents");
+  is.read(_numParents,"MDCPT::read numParents");
 
-  if (numParents < 0) 
-    error("MDCPT: read, trying to use negative (%d) num parents.",numParents);
-  if (numParents >= warningNumParents)
-    warning("MDCPT: read, creating MDCPT with %d parents",numParents);
+  if (_numParents < 0) 
+    error("MDCPT: read, trying to use negative (%d) num parents.",_numParents);
+  if (_numParents >= warningNumParents)
+    warning("MDCPT: read, creating MDCPT with %d parents",_numParents);
 
-  cardinalities.resize(numParents+1);
-  cumulativeCardinalities.resize(numParents);
+  cardinalities.resize(_numParents+1);
+  cumulativeCardinalities.resize(_numParents);
 
   // read the cardinalities
   int numValues = 1;
-  for (unsigned i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=_numParents;i++) {
     is.read(cardinalities[i],"MDCPT::read cardinality");
     if (cardinalities[i] <= 0)
       error("MDCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
@@ -185,9 +185,9 @@ MDCPT::read(iDataStreamFile& is)
   // cumulativeCardinalities gets set to the
   // reverse cumulative cardinalities of the random
   // variables.
-  if (numParents > 0) {
-    cumulativeCardinalities[numParents-1] = cardinalities[numParents];
-    for (int i=numParents-2;i>=0;i--) {
+  if (_numParents > 0) {
+    cumulativeCardinalities[_numParents-1] = cardinalities[_numParents];
+    for (int i=_numParents-2;i>=0;i--) {
       cumulativeCardinalities[i] = 
 	cumulativeCardinalities[i+1]*cardinalities[i+1];
     }
@@ -225,9 +225,9 @@ void
 MDCPT::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
-  os.write(numParents,"MDCPT::write numParents"); 
+  os.write(_numParents,"MDCPT::write numParents"); 
   os.writeComment("number parents");os.nl();
-  for (unsigned i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=_numParents;i++) {
     os.write(cardinalities[i],"MDCPT::write cardinality");
   }
   os.writeComment("cardinalities");
@@ -236,13 +236,13 @@ MDCPT::write(oDataStreamFile& os)
   // Finally write in the probability values (stored as doubles).
   // NOTE: We could check that things sum to approximately 1 here, if
   // we didn't use a large 1D loop. 
-  int childCard = cardinalities[numParents];
+  int childCard = cardinalities[_numParents];
   for (int i=0;i<mdcpt.len();i++) {
     os.writeDouble(mdcpt[i].unlog(),"MDCPT::write, writing value");
     childCard --;
     if (childCard == 0) {
       os.nl();
-      childCard = cardinalities[numParents];
+      childCard = cardinalities[_numParents];
     }
   }
 }
@@ -274,11 +274,11 @@ MDCPT::becomeAwareOfParentValues( vector<int>& parentValues,
 				  vector<int>& cards)
 {
 
-  assert ( parentValues.size() == numParents );
+  assert ( parentValues.size() == _numParents );
   assert ( bitmask & bm_basicAllocated );
   
   int offset = 0;
-  for (unsigned i = 0; i < numParents; i++) {
+  for (unsigned i = 0; i < _numParents; i++) {
     if (parentValues[i] < 0 || parentValues[i] >= cardinalities[i]) 
       error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
     offset += parentValues[i]*cumulativeCardinalities[i];
@@ -306,11 +306,11 @@ void
 MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
 {
 
-  assert ( parents.size() == numParents );
+  assert ( parents.size() == _numParents );
   assert ( bitmask & bm_basicAllocated );
   
   int offset = 0;
-  for (unsigned i = 0; i < numParents; i++) {
+  for (unsigned i = 0; i < _numParents; i++) {
     if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i]) 
       error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parents[i]->val,cardinalities[i]);
     offset += parents[i]->val*cumulativeCardinalities[i];
@@ -378,7 +378,7 @@ MDCPT::normalize()
   // Use the inherent structure of the multi-D array
   // so to loop over the final distributions on the child.
 
-  const int child_card = cardinalities[numParents];
+  const int child_card = cardinalities[_numParents];
   const int num_parent_assignments = mdcpt.len()/child_card;
   logpr *loc_ptr = mdcpt.ptr;
   for (int parent_assignment =0; 
@@ -420,7 +420,7 @@ MDCPT::makeRandom()
   // Use the inherent structure of the multi-D array
   // so to loop over the final distributions on the child.
 
-  const int child_card = cardinalities[numParents];
+  const int child_card = cardinalities[_numParents];
   const int num_parent_assignments = mdcpt.len()/child_card;
   logpr *loc_ptr = mdcpt.ptr;
   for (int parent_assignment =0; 
@@ -466,7 +466,7 @@ MDCPT::makeUniform()
   // Use the inherent structure of the multi-D array
   // so to loop over the final distributions on the child.
 
-  const int child_card = cardinalities[numParents];
+  const int child_card = cardinalities[_numParents];
   double u_val = 1.0/(double)child_card;
   const int num_parent_assignments = mdcpt.len()/child_card;
   logpr *loc_ptr = mdcpt.ptr;
