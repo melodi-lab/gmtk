@@ -382,6 +382,7 @@ public:
   // load internal global objects, after all other parameters
   // have been read in.
   void loadGlobal();
+  void finalizeParameters();
 
   ////////////////////////////////////////////////////////////////
   void clampFirstExample();
