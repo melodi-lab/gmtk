@@ -48,6 +48,8 @@ VCID("$Header$");
 
 unsigned DiagCovarVector::numFlooredVariances = 0;
 
+bool DiagCovarVector::floorVariancesWhenReadIn = false;
+
 double DiagCovarVector::cloneSTDfrac = 0.1;
 
 void DiagCovarVector::checkForValidValues()
@@ -100,9 +102,16 @@ DiagCovarVector::read(iDataStreamFile& is)
   covariances.read(is); 
   for (int i=0;i<covariances.len();i++) {
     if (covariances[i] < GaussianComponent::varianceFloor()) {
-      error("Error: reading diagonal covariance matrix '%s' (from file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
-	    name().c_str(),is.fileName(),
-	    i,covariances[i],GaussianComponent::varianceFloor());
+      if (!floorVariancesWhenReadIn) {
+	error("Error: reading diagonal covariance matrix '%s' (from file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
+	      name().c_str(),is.fileName(),
+	      i,covariances[i],GaussianComponent::varianceFloor());
+      } else {
+	warning("WARNING: reading diagonal covariance matrix '%s' (from file '%s'), and covariance[%d] = (%e) < current Floor = (%e), forcing to var to floor.",
+	      name().c_str(),is.fileName(),
+	      i,covariances[i],GaussianComponent::varianceFloor());
+	covariances[i] = GaussianComponent::varianceFloor();
+      }
     }
   }
   setBasicAllocatedBit();
@@ -233,7 +242,7 @@ DiagCovarVector::preCompute()
     det *= covariances[i];
   }
   if (det <= DBL_MIN) {
-    coredump("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum",name().c_str());
+    coredump("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations.",name().c_str());
   }
   const double tmp = (::pow(2*M_PI,covariances.len()/2.0)*::sqrt(det));
   if (tmp <= DBL_MIN)
