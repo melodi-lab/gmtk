@@ -46,7 +46,8 @@ dig     [0-9]
 ident   ({alpha})({alpha}|{dig}|\_|\-)*
 
 /* numeric stuff */
-int     {dig}+
+unsigned {dig}+
+int     [-+]?{unsigned}
 flt1    [-+]?{dig}+\.?([eE][-+]?{dig}+)?
 flt2    [-+]?{dig}*\.{dig}+([eE][-+]?{dig}+)?
 flt     {flt1}|{flt2}
@@ -58,7 +59,7 @@ int_rng {int}:{int}
 /* all valid keywords */
 keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|nil|using|mapping|MDCPT|MSCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
 
-separator ":"|";"|"{"|"}"|"("|")"|"|"
+separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 
 %%
 
@@ -70,8 +71,16 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
 
 \n        { FileParser::tokenInfo.srcLine++; }
 
+{string}     {
+            FileParser::tokenInfo.tokenStr = yytext;
+            FileParser::tokenInfo.tokenType = FileParser::TT_String;
+            if (debugLexer)
+              printf( "A string: %s (%d)\n", yytext);
+	    return FileParser::tokenInfo.tokenType;
+            }
 
-{int}+      {
+
+{int}      {
             FileParser::tokenInfo.tokenStr = yytext;
             FileParser::tokenInfo.tokenType = FileParser::TT_Integer;
             FileParser::tokenInfo.int_val = atoi( yytext );
@@ -80,6 +89,7 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
                     atoi( yytext ) );
 	    return FileParser::tokenInfo.tokenType;
             }
+
 
 
 {flt}       {
@@ -99,6 +109,10 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
             switch(*yytext) {
                  case ':': 
 		   FileParser::tokenInfo.tokenType = FileParser::TT_Colon;
+		   return FileParser::tokenInfo.tokenType;
+		   break;
+                 case ',': 
+		   FileParser::tokenInfo.tokenType = FileParser::TT_Comma;
 		   return FileParser::tokenInfo.tokenType;
 		   break;
 		 case ';': 

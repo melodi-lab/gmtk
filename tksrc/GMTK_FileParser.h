@@ -56,7 +56,9 @@ public:
     TT_VirtBar=9,
     TT_Keyword=10,
     TT_Identifier=11,
-    TT_Undefined=12
+    TT_Comma=12,
+    TT_String=13,
+    TT_Undefined=14
   };
 
   // when token type is a keyword, the different types of keywords
@@ -178,11 +180,8 @@ private:
   // the actual routines for the recursive descent parser 
   void parseFrameList();
   void parseFrame();
-
   void parseRandomVariableList();
-
   void parseRandomVariable();
-
   void parseRandomVariableAttributeList();
   void parseRandomVariableAttribute();
   void parseRandomVariableTypeAttribute();
@@ -190,21 +189,19 @@ private:
   void parseRandomVariableDiscreteType();
   void parseRandomVariableContinuousType();
   void parseRandomVariableParentAttribute();
-  void parseConditionalParentSpecList();
   void parseSwitchingParentList();
-
-
-  void parseParentList();
-  void parseMappingSpec();
-  void parseConditionalParentListList();
+  void parseConditionalParentSpecList();
+  void parseConditionalParentSpec();
   void parseConditionalParentList();
-  void parseCPT_SPEC();
-  void parseCPT_TYPE();
+  void parseParentList();
   void parseParent();
-  void parseContinousImplementation();
-
+  void parseImplementation();
+  void parseDiscreteImplementation();
+  void parseContinuousImplementation();
+  void parseContObsDistType();
+  void parseMappingSpec();
   void parseChunkSpecifier();
-
+  void parseListIndex();
 
 public:
 
