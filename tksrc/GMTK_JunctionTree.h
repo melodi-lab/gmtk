@@ -324,7 +324,11 @@ public:
   // k is the number of times C' is duplicated (so unroll by 0 means
   // the basic template-prime, unroll by one means two C's, etc.).
   // Unrolling only affects the non-STL data structures.
-  void unroll(unsigned k);
+  // void unroll(unsigned k);
+
+  // unroll for frames = numFrames 
+  // Unrolling only affects the non-STL data structures.
+  void unroll(unsigned numFrames);
 
   // Perhaps make different unrolls for decoding, unroll for EM
   // training unroll for viterbi training, etc.
@@ -333,6 +337,9 @@ public:
   // basic collect evidence phase on basic structures.
   void collectEvidence();
   // void distributeEvidence() {}
+
+  // compute P(E), probability of the evidence
+  logpr probEvidence();
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);

@@ -218,13 +218,7 @@ public:
   ~GMTemplate() {}
 
 
-  // Keep a number of member variables here for convenience.
-  unsigned numFrames() { return fp.numFrames(); }
-  unsigned prologueNumFrames() { return fp.firstChunkFrame(); }
-  unsigned chunkNumFrames() { return fp.lastChunkFrame() - fp.firstChunkFrame() + 1; }
-  unsigned epilogueNumFrames() { return fp.numFrames() - fp.firstChunkFrame() - 1; }
-  unsigned firstChunkFrame() { return fp.firstChunkFrame(); }
-  unsigned lastChunkFrame() { return fp.lastChunkFrame(); }
+  // returning M and S by their "proper" names.
   unsigned maxNumChunksInBoundary() { return M; }
   unsigned chunkSkip() { return S; }
 
@@ -250,6 +244,18 @@ public:
 
   // given the cliques, triangulate the partitions.
   void triangulatePartitionsByCliqueCompletion();
+
+  // routine to compute how much to unroll (for basic template P,C, E
+  // and modified template P',C',E') and any adjustments to
+  // the observation matrix needed (to define where start is).
+  enum JustifyType { leftJustify, rightJustify, centerJustify };
+  bool computeUnrollParamaters(const unsigned numFrames,
+			       unsigned& basicTemplateUnrollAmount,
+			       unsigned& modifiedTemplateUnrollAmount,
+			       unsigned& numUsableFrames,
+			       unsigned& frameStart,
+			       const JustifyType justifyType=leftJustify);
+
 
 };
 
