@@ -1,6 +1,6 @@
 /*
  * GMTK_GMTemplate.h
- * Provides a class that supports GMTK templates.
+ *   Basic GM Template and Basic Triangulation Routines
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -295,7 +295,8 @@ public:
   void basicTriangulate(const set<RandomVariable*> nodes,
 			const vector<TriangulateHeuristic>& th_v,
 			vector<RandomVariable*>& orderedNodes,
-			vector<MaxClique>& cliques);
+			vector<MaxClique>& cliques,
+			const bool findCliques = true);
 
 
   // Basic triangulation, via elimination from a pre-existing order.
