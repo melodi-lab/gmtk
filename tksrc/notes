@@ -63,18 +63,15 @@ mix gaus end
 
 mixgauss swap
 
+   check on DPMF's new length
+
    go through, entry i
        if pmf&i is in delete set
-           skip it, don't swap
-       if pmf& cmp ptr in add set
+           skip it, don't swap, move to last position
+       if pmf&i ptr in add set
            // can't just use cmp ptr here since it might be shared &
            // have been cloned for one MG but not for another.
-           add cmp & its clone to new thing      
-           if DPMF ptr & cmp ptr not in that map
-                 clone and perturb entry i
-                  add DPMF & cmp ptrs to that map
-
-
+           clone cmp i and add it in.
 
 
 densePMF swap
@@ -94,3 +91,21 @@ densePMF swap
       else
          just skip
    normalize
+
+
+OLD ========================================
+
+
+mixgauss swap
+
+   go through, entry i
+       if pmf&i is in delete set
+           skip it, don't swap
+       if pmf& cmp ptr in add set
+           // can't just use cmp ptr here since it might be shared &
+           // have been cloned for one MG but not for another.
+           add cmp & its clone to new thing      
+           if DPMF ptr & cmp ptr not in that map
+                 clone and perturb entry i
+                  add DPMF & cmp ptrs to that map
+
