@@ -20,6 +20,7 @@
 #ifndef CLIQUECHAIN_H
 #define CLIQUECHAIN_H
 
+#include <list>
 #include "GMTK_Clique.h"
 
 struct CliqueChain

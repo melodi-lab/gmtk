@@ -35,6 +35,9 @@ public:
     // fo no switching. If switching, need a bunch of these
     map<vector<int>, vector<logpr> > dist_given_parents;
 
+    // this holds the counts accumulated in EM
+    map<vector<int>, vector<logpr> > counts_given_parents;
+
     ////////////////////////////////////////////////////////////////////////
     // Looks at the values of the switching parents, and sets the 
     // conditionalParents array pointer appropriately.
@@ -91,14 +94,7 @@ public:
     // Sets the variable according to the probability distribution determined
     // by its parent's values. (i.e., sample from this distribution)
     // Used for simulation.
-    virtual void instantiate() {val=(rand()%cardinality);}
-
-    ////////////////////////////////////////////////////////////////////////
-    // In a DGM, the analogous occurrences of a variable in different time
-    // slices all share the same distributions and accumulators. This function
-    // tells a variable to use the data structures associated with just one
-    // member of its equivalence class.
-    virtual void tieWith(RandomVariable *rv) {error("tieWith undefined");}
+    virtual void instantiate();
 
     ////////////////////////////////////////////////////////////////////////
     // It can be useful to tell a variable to cache the value it's currently
@@ -110,11 +106,18 @@ public:
     int cv;
     virtual void cacheValue() {cv=val;}
 
-
     ////////////////////////////////////////////////////////////////////////
     // Sets the variable's value to its cached value.
     // This like a pop operation, off of the stack.
     virtual void restoreCachedValue() {val=cv;}
+
+    /////////////////////////////////////////////////////////////////////////
+    // stores a variable's value elsewhere
+    virtual void storeValue(VariableValue &vv) {vv.ival = val;}
+
+    /////////////////////////////////////////////////////////////////////////
+    // sets a variables value as specified
+    virtual void setValue(VariableValue &vv) {val = vv.ival;}
 
 
     /////////////////////////////////////////
@@ -125,8 +128,7 @@ public:
 
     ////////////////////////////////////////////////////////////////////////
     // Called at the beginning of an EM iteration.
-    virtual void zeroAccumulators(){error("zeroAccumulators undefined\n");} 
-
+    virtual void emStartIteration();
 
     ////////////////////////////////////////////////////////////////////////
     // On the backward pass, this will be called with a posterior probability
@@ -139,14 +141,12 @@ public:
     // Then the count of seeing the variable and its parents with those values
     // is incremented by the posterior amount.
     // For continuous variables, statistics are accumulated.
-    virtual void increment(logpr posterior) {error("increment undefined");}
-
+    virtual void emIncrement(logpr posterior);
 
     ////////////////////////////////////////////////////////////////////////
     // At the end of each EM iteration, this is called to convert the 
     // accumulated statistics into probability distributions.
-    virtual void update() {error("update undefined");}
-
+    virtual void emEndIteration();
 
     /////////////////////////////////////////
     /////////////////////////////////////////
