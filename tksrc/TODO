@@ -112,3 +112,7 @@ XXX- todo, make sure that chunk n:m is valid.
 - Allow the file parser to pass ascii files through cpp
   (but not binary).
 
+- need to add a check that makes sure that the observation
+  range used by the cont. parents match that used by
+  the gaussian.
+
