@@ -57,9 +57,9 @@ struct ValueHashTable
         {
 	  // if (count >= MAX_VALUE_HASH_TABLE_SIZE/2)
 	  //   warning("WARNING: hash table getting large, causing multiple resizes");
-	  if (count >= MAX_VALUE_HASH_TABLE_SIZE)
-	    error("ERROR: hash table too large, needing > %d entries",
-		  MAX_VALUE_HASH_TABLE_SIZE);
+	  // if (count >= MAX_VALUE_HASH_TABLE_SIZE)
+	  // error("ERROR: hash table too large, needing > %d entries",
+	  // MAX_VALUE_HASH_TABLE_SIZE);
 
 	  if (++count>=table_size/2)
 	    resize(max(2*table_size,MAX_VALUE_HASH_TABLE_SIZE)); 
