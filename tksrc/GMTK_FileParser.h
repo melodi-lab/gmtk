@@ -36,6 +36,8 @@
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
 
+#include "fileParser.h"
+
 class RandomVariable;
 
 class FileParser
@@ -43,141 +45,10 @@ class FileParser
  private:
   friend class RandomVariable;
 
-  ///////////////////////////////////////////////////
-  typedef pair<string,int> rvParent;
-
-  ///////////////////////////////////////////////////
-  // A class where information about a RV can
-  // be placed as it is being parsed. 
-  class RVInfo {
-    friend class FileParser;
-
-    ////////////////////////////////////////////////////////////
-    // define a bunch of types that are used in RVs
-    enum Type { t_discrete, t_continuous, t_unknown };
-
-    enum Disposition { d_hidden, d_observed, d_unknown };
-
-    struct WeightInfo {
-      enum wtEnum { wt_NoWeight, wt_Constant, wt_Observation };
-      double weight_value;
-      wtEnum wt_Status;
-      unsigned firstFeatureElement;
-      unsigned lastFeatureElement;
-      WeightInfo() { clear(); }
-      void clear() { wt_Status = wt_NoWeight; weight_value = 1.0; }
-    };
-
-    struct FeatureRange {
-      enum frEnum { fr_UnFilled, fr_Range, fr_FirstIsValue };
-      frEnum filled;
-      unsigned firstFeatureElement;
-      unsigned lastFeatureElement;
-      FeatureRange() { filled = fr_UnFilled; }
-      void clear() { filled = fr_UnFilled; }
-    };
-
-    struct ListIndex {
-      enum ListIndexType { li_String, li_Index, li_Unknown } liType;
-      // if this is an integer index, this is used.
-      unsigned intIndex;
-      // Otherwise, if this is an string index, this is used.
-      string nameIndex;
-      // in cases where this is a reference to a DT that
-      // is supposed to reference via a collection, here
-      // is the name of the collection.
-      string collectionName;
-      void clear() { liType = li_Unknown; }
-    };
-
-
-    // A hint given to the triangulation algorithm.
-    // this is something that can be specified in the structure
-    // file and can be used as a selector during triangulation.
-    float triangulationHint;
-
-    ///////////////////////////////////////////////////////////
-    // data associated with a RV
-
-    // the frame where it was defined (so is part of name really)
-    unsigned frame;
-    // line number of file where this RV was first declared
-    unsigned fileLineNumber;
-    // file name where this r.v. is first defined.
-    string rvFileName;
-    // rv's name
-    string name;    
-
-    // fields from type
-    Type rvType;
-    Disposition rvDisp;
-    unsigned rvCard;
-    // if it is an observed variable, it must have a feature range.
-    FeatureRange rvFeatureRange;
-
-    // if it is an observed continuous, it might have a weight
-    WeightInfo rvWeightInfo;
-
-
-    // switching parents stuff
-    vector< rvParent > switchingParents;
-    ListIndex switchMapping;
-
-    // conditional parents stuff
-    vector<vector< rvParent > > conditionalParents;
-    // if discrete, then the list if discrete implementations
-    vector< CPT::DiscreteImplementaton > discImplementations;
-    // if continuous, the list of continuous implementations
-    vector< MixGaussiansCommon::ContinuousImplementation > contImplementations;
-    // in either case, a low-level parameter index
-    vector< ListIndex > listIndices;
-
-    /////////////////////////////////////////////////////////
-    // An actual pointer to the RV once we instantiate it. 
-    RandomVariable* rv;
-
-  public:
-    /////////////////////////////////////////////////////////
-    // constructor
-    RVInfo() { clear(); }
-
-    // copy constructor
-    RVInfo(const RVInfo&);
-
-    // clear out the current RV structure when we 
-    // are parsing and encounter a new RV.
-    void clear() { 
-      name.erase();
-
-      rvType = t_unknown;
-      rvDisp = d_unknown;
-      rvFeatureRange.clear();
-      rvWeightInfo.clear();
-      triangulationHint = 0.0;
-
-      switchingParents.clear();
-      switchMapping.clear();
-
-      conditionalParents.clear();
-      discImplementations.clear();
-      contImplementations.clear();
-      listIndices.clear();
-
-    }
-
-    // checks the contents of the object to ensure
-    // that this is a validly instantiated RV (i.e.,
-    // all the information is there, it all makes sense, etc.)
-    // Die if there is a problem.
-    void checkConsistency();
-
-  };
-
   ////////////////////////////////////////////////////////////////
   // The current pre-allocated random variable that is being
   // parsed and filled in as we go. 
   RVInfo curRV;
-
 
   ///////////////////////////////////
   // the current frame we are parsing.
@@ -187,7 +58,7 @@ class FileParser
   // Mapping from the name of the random variable
   // to its pointer.
   // map<pair<string, unsigned>, RandomVariable *> variableNamed;
-  map < rvParent , unsigned > nameRVmap;
+  map < RVInfo::rvParent , unsigned > nameRVmap;
 
   //////////////////////////////////////////////
   // This is where the parser puts partially 
@@ -393,7 +264,7 @@ private:
 
   void parseParentList();
   void parseParent();
-  vector < rvParent > parentList;
+  vector < RVInfo::rvParent > parentList;
 
   void parseMappingSpec();
   void parseListIndex();
@@ -451,6 +322,21 @@ public:
   // the result in the existing vector of random
   // variables node.
   void unroll(unsigned k,vector<RandomVariable*> &unrolledVarSet);
+  void unroll(unsigned k,
+	      vector<RandomVariable*> &unrolledVarSet,
+	      map < RVInfo::rvParent, unsigned >& ppf);
+
+  // A routine to write out the graph template (P,C,E) in condensed
+  // form but in sufficient detail so that it can be used to quickly
+  // ID the current template (e.g., so that a given elimination
+  // order can be checked with a current graph).
+  void writeGMId(oDataStreamFile& os);
+
+  // A routine that reads in a graph id that was written
+  // in condensed by writeGMId(), and it verifies that
+  // the GM ID written matches the current template.
+  bool readAndVerifyGMId(iDataStreamFile& is);
+
 
   //////////////////////////////////////////////////////////////
   // access to the chunk information.

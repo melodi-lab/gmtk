@@ -359,42 +359,6 @@ FileParser::fillKeywordTable()
 
 
 ////////////////////////////////////////////////////////////////////
-//        RVInfo functions
-////////////////////////////////////////////////////////////////////
-
-
-FileParser::RVInfo::RVInfo(const RVInfo& v)
-{
-  frame = v.frame;
-  fileLineNumber = v.fileLineNumber;
-  name = v.name;
-  rvType = v.rvType;
-  rvDisp = v.rvDisp;
-  rvCard = v.rvCard;
-  rvFeatureRange = v.rvFeatureRange;
-  rvWeightInfo = v.rvWeightInfo;
-  switchingParents = v.switchingParents;
-  switchMapping = v.switchMapping;
-  conditionalParents = v.conditionalParents;
-  discImplementations = v.discImplementations;
-  contImplementations = v.contImplementations;
-  listIndices = v.listIndices;
-  rv = v.rv;
-}
-
-
-//
-// 
-// Check the consistency of the RV information
-// that couldn't be checked while it was parsing (if anything)
-// void
-// FileParser::RVInfo::checkConsistency()
-// {
-//   error("not implemented");
-// }
-
-
-////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
 
@@ -763,6 +727,7 @@ FileParser::parseRandomVariableList()
 	  rvInfoVector[(*it).second].fileLineNumber);
   }
   
+  curRV.variablePositionInStrFile = rvInfoVector.size();
 
   // everything looks ok, insert it in our tables.
   rvInfoVector.push_back(curRV);
@@ -1561,7 +1526,8 @@ FileParser::createRandomVariableGraph()
 
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
       DiscreteRandomVariable*rv = 
-	new DiscreteRandomVariable(rvInfoVector[i].name,
+	new DiscreteRandomVariable(rvInfoVector[i],
+				   rvInfoVector[i].name,
 				   rvInfoVector[i].rvCard);
       rv->hidden = (rvInfoVector[i].rvDisp == RVInfo::d_hidden);
       if (!rv->hidden) {
@@ -1588,7 +1554,8 @@ FileParser::createRandomVariableGraph()
       rvInfoVector[i].rv = rv;
     } else {
       ContinuousRandomVariable*rv = 
-	new ContinuousRandomVariable(rvInfoVector[i].name);
+	new ContinuousRandomVariable(rvInfoVector[i],
+				     rvInfoVector[i].name);
       rv->hidden = (rvInfoVector[i].rvDisp == RVInfo::d_hidden);
       if (!rv->hidden) {
 	rv->firstFeatureElement = 
@@ -2578,6 +2545,11 @@ FileParser::addVariablesToTemplate(GMTemplate& gm_template)
  *      the parent offset information that is contained in 
  *      the template.
  *
+ *      There are TWO interfaces to this routine. One of them
+ *      also returns a map from rvParent structures to the position
+ *      in the returned array of the corresponding variable (which
+ *      might be useful to the caller).
+ *
  * Preconditions:
  *      createRandomVariableGraph() and parseGraphicalModel(),
  *      and associateWithDataParams() must have been called.
@@ -2603,15 +2575,20 @@ void
 FileParser::unroll(unsigned timesToUnroll,
 		   vector<RandomVariable*> &unrolledVarSet)
 {
-
   // a map from the r.v. name and new frame number to
   // position in the new unrolled array of r.v.'s
   map < RVInfo::rvParent, unsigned > posOfParentAtFrame;
+  return unroll(timesToUnroll,unrolledVarSet,posOfParentAtFrame);
+}
+void
+FileParser::unroll(unsigned timesToUnroll,
+		   vector<RandomVariable*> &unrolledVarSet,
+		   map < RVInfo::rvParent, unsigned >& posOfParentAtFrame)
+{
 
   // a map from the new r.v. to the corresponding rv info
   // vector position in the template.
   map < RandomVariable *, unsigned > infoOf;
-
 
   // first go though and create all of the new r.v., without parents,
   // but with parameters shared
@@ -2853,6 +2830,187 @@ FileParser::unroll(unsigned timesToUnroll,
   // unrolledVarSet = res;
 
 }
+
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeGMId()
+ *  A routine to write out the graph template (P,C,E) in condensed
+ *  form but in sufficient detail so that it can be used to quickly
+ *  ID the current template (e.g., so that a given elimination
+ *  order can be checked with a current graph).
+ *
+ * Preconditions:
+ *     The routines parseGraphicalModel() and createRandomVariableGraph()
+ *     must have been called at some point, thereby creating
+ *     a valid random variable graph template in rvInfoVector.
+ *     It is also assumed that the order that the rvs in rvInfoVector
+ *     occur in is the same order as that in the file. If a file
+ *     has re-ordered variables in the file, then that will
+ *     create a differnet ID (i.e., there is no attempt by this
+ *     routine to normalize the order of the random variable presentation
+ *     and everything is done in strict structure file (.str) order.
+ *     'os' must point to a valid open output file.
+ *
+ * Postconditions:
+ *     An "ID" is written to the file that gives sufficient
+ *     detail about the graph (but not the parameters, etc.)
+ *
+ * Side Effects:
+ *     None, other than change the file pointer in os.
+ *
+ * Results:
+ *     None
+ *
+ *----------------------------------------------------------------------- 
+ */
+void
+FileParser::writeGMId(oDataStreamFile& os)
+{
+
+
+  os.writeComment("Structure File Identification Information\n");
+  for (unsigned i=0;i<rvInfoVector.size();i++) {
+
+    // For each variable in template, we write out one per line the following:
+    //   0. Position of in file of variable
+    //   1. rv name
+    //   2. rv frame number
+    //   3. rv cardinality
+    //   4. rv type
+    //   5. number of switching parents
+    //   6. list of switching parents, each a <name,offset> pair
+    //   7. Number of sets of conditional parents
+    //   8. For each set of conditional parents
+    //        A. number of conditional parents in this set
+    //        B. list of conditional parents, each a <name,offset> pair
+
+    os.write(i,"position");
+    os.write(rvInfoVector[i].name,"name");
+    os.write(rvInfoVector[i].frame,"frame");
+    os.write(rvInfoVector[i].rvCard,"card");
+    os.write(((rvInfoVector[i].rvType == RVInfo::t_discrete)?"D":"C"),"type");
+    os.write(rvInfoVector[i].switchingParents.size(),"num sp");
+    for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
+      os.write(rvInfoVector[i].switchingParents[j].first,"s par n");
+      os.write(rvInfoVector[i].switchingParents[j].second,"s par f");
+    }
+    os.write(rvInfoVector[i].conditionalParents.size(),"num cps");
+    for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
+      os.write(rvInfoVector[i].conditionalParents[j].size(),"num cp");
+      for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+	os.write(rvInfoVector[i].conditionalParents[j][k].first,"c par n");
+	os.write(rvInfoVector[i].conditionalParents[j][k].second,"c par f");	
+      }
+    }
+    os.nl();
+  }
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * readAndVerifyGMId()
+ *  A routine that reads in a graph id that was written
+ *  in condensed by writeGMId(), and it verifies that
+ *  the GM ID written matches the current template.
+ *  See the routine 'writeGMId()' for further information.
+ *
+ * Preconditions:
+ *     The routines parseGraphicalModel() and createRandomVariableGraph()
+ *     must have been called at some point, thereby creating
+ *     a valid random variable graph template in rvInfoVector.
+ *     It is also assumed that the order that the rvs in rvInfoVector
+ *     occur in is the same order as that in the file. If a file
+ *     has re-ordered variables in the file, then that will
+ *     create a differnet ID (i.e., there is no attempt by this
+ *     routine to normalize the order of the random variable presentation
+ *     and everything is done in strict structure file (.str) order.
+ *     'is' must point to a valid open input file.
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+ *     none, other than moving file position.
+ *
+ * Results:
+ *     If ID in file matches, true is returned, otherwise false.a
+ *
+ *----------------------------------------------------------------------- 
+ */
+bool
+FileParser::readAndVerifyGMId(iDataStreamFile& is)
+{
+  // just go through and make sure everything is the same.
+
+  // variables for checking
+  int ival;
+  unsigned uval;
+  string nm;
+  
+  for (unsigned i=0;i<rvInfoVector.size();i++) {
+
+    if (!is.read(uval)) return false;
+    if (uval != i) return false;
+
+    if (!is.read(nm)) return false;
+    if (nm != rvInfoVector[i].name) return false;
+
+    if (!is.read(uval)) return false;
+    if (uval != rvInfoVector[i].frame) return false;
+
+    if (!is.read(uval)) return false;
+    if (uval != rvInfoVector[i].rvCard) return false;
+
+    if (!is.read(nm)) return false;
+    if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
+      if (nm != "D") return false;
+    } else {
+      if (nm != "C") return false;
+    }
+
+    if (!is.read(uval)) return false;    
+    if (uval != rvInfoVector[i].switchingParents.size()) return false;
+
+    for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
+      if (!is.read(nm)) return false;
+      if (nm != rvInfoVector[i].switchingParents[j].first) return false;
+
+
+      if (!is.read(ival)) return false;
+      if (ival != rvInfoVector[i].switchingParents[j].second) return false;
+
+    }
+
+    if (!is.read(uval)) return false;
+    if (uval != rvInfoVector[i].conditionalParents.size()) return false;
+
+    for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
+
+      if (!is.read(uval)) return false;      
+      if (uval != rvInfoVector[i].conditionalParents[j].size()) return false;
+
+      for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+
+	if (!is.read(nm)) return false;
+	if (nm != rvInfoVector[i].conditionalParents[j][k].first) return false;
+
+	if (!is.read(ival)) return false;	
+	if (ival != rvInfoVector[i].conditionalParents[j][k].second) return false;
+
+      }
+    }
+  }
+  // all checked out ok
+  return true;
+}
+
 
 
 
