@@ -84,6 +84,14 @@ public:
 
   void setCpts(vector<CPT*> &cpts);
 
+  // returns true if all cpts are determinstic.
+  bool deterministic() {
+    for (unsigned i=0;i<conditionalCPTs.size();i++) {
+      if (conditionalCPTs[i]->cptType != CPT::di_MTCPT)
+	return false; 
+    }
+    return true;
+  }
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
