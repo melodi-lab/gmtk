@@ -42,10 +42,14 @@ OPTFLAGS=-O3
 # extra flags via command line (e.g., -pg).
 EXCFLAGS =  
 EXLDFLAGS =  
-CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -pedantic
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic
+CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -pedantic -DMAIN
+CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic -DMAIN
 LDFLAGS = 
 DEFS = 
+
+ifdef DEBUG
+CXXFLAGS := $(CXXFLAGS) -DDEBUG='$(DEBUG)'
+endif
 
 
 prefix = .
@@ -60,13 +64,20 @@ docdir = $(prefix)/man/man1
 # Libraries.
 #
 LIBS = -lfileParser  -lmiscSupport -lpfile -lIEEEsupport -lfl -lsunmath -lm 
+GMTEST_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm 
+OBS_PRINT_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+OBS_INFO_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+OBS_SKMEANS_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+OBS_CONCAT_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+OBS_DIFF_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
 # This can be done easily by doing 'make -DPURE=purify' 
 PURE =
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CCFLAGS)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CXXFLAGS)
+compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS)
+compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS)
 link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
 compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
@@ -90,7 +101,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = libgmtkio.a
+all_exs = libgmtkio.a obs-print obs-info obs-skmeans obs-concat obs-diff
 
 all: ${all_exs}
 
@@ -98,15 +109,15 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_ObservationMatrix.o GMTK_Stream.o
+objs = GMTK_ObservationMatrix.o GMTK_Stream.o GMTK_DataTransformations.o GMTK_WordOrganization.o GMTK_ObsStats.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
 
-all_srcs = GMTK_ObservationMatrix.cc GMTK_Stream.cc
+all_srcs = GMTK_ObservationMatrix.cc GMTK_Stream.cc GMTK_DataTransformations.cc GMTK_WordOrganization.cc  GMTK_ObsStats.cc
 
-all_hdrs = GMTK_Stream.h GMTK_ObservationMatrix.h
+all_hdrs = GMTK_Stream.h GMTK_ObservationMatrix.h GMTK_WordOrganization.h  GMTK_ObsStats.h
 
 all_objs = $(objs)
 
@@ -116,13 +127,27 @@ all_objs = $(objs)
 
 gmtest: $(objs) gmtest.o
 	rm -f $@
-	$(link) -Wall -g  -o $@ $@.o $(objs) $(LIBS)
+	$(link) -Wall -g  -o $@ $@.o $(objs) $(GMTEST_LIBS)
 
 
 libgmtkio.a: $(objs)
 	rm -f $@
 	$(archive) $@ $(objs)
 
+obs-print: $(objs) GMTK_ObsPrint.o GMTK_ObsKLT.o GMTK_ObsNorm.o GMTK_ObsGaussianNorm.o GMTK_ObsAddSil.o
+	$(link) -Wall -o $@ GMTK_ObsPrint.o  GMTK_ObsKLT.o GMTK_ObsNorm.o GMTK_ObsGaussianNorm.o GMTK_ObsAddSil.o $(objs) $(OBS_PRINT_LIBS)
+
+obs-info: $(objs) GMTK_ObsInfo.o
+	$(link) -Wall -o $@ GMTK_ObsInfo.o $(objs) $(OBS_INFO_LIBS)
+
+obs-skmeans: $(objs) GMTK_ObsSkmeans.o GMTK_ObsInitmg.o GMTK_Kmeans.o
+	$(link) -Wall -o $@ GMTK_ObsSkmeans.o GMTK_ObsInitmg.o GMTK_Kmeans.o $(objs) $(OBS_SKMEANS_LIBS)
+
+obs-concat: $(objs) GMTK_ObsConcat.o
+	 $(link) -Wall -o $@ GMTK_ObsConcat.o $(objs) $(OBS_CONCAT_LIBS)
+
+obs-diff: $(objs) GMTK_ObsDiff.o
+	$(link) -Wall -o $@ GMTK_ObsDiff.o $(objs) $(OBS_DIFF_LIBS)
 
 #----------------------------------------------------------------------------
 # Test driver programs (defines a -DMAIN to test each .cc file)
