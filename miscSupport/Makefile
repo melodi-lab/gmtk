@@ -79,7 +79,7 @@ archive = $(AR) -r
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all: libgeneralSupport.a
+all: libmiscSupport.a
 
 #----------------------------------------------------------------------------
 # Define the standard library modules
@@ -91,7 +91,7 @@ objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o
 # Main build programs.
 #----------------------------------------------------------------------------
 
-libgeneralSupport.a: $(objs)
+libmiscSupport.a: $(objs)
 	rm -f $@
 	$(archive) $@ $(objs)
 
@@ -124,16 +124,16 @@ testsArray: sArray.cc
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = $(srcdir)/fileParser.cc 
+all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc
 
-all_hdrs = $(srcdir)/fileParser.h
+all_hdrs = 
 
 all_objs = 
 
-all_exs = fileParserTest
+all_exs = testError testBPRange testArguments testLogp testRand testsArray
 
 #----------------------------------------------------------------------------
-# Installation
+# installation
 #----------------------------------------------------------------------------
 
 install-docs:
