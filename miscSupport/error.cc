@@ -16,10 +16,7 @@ enum bool { false = 0, true = 1 };
 #include <stdio.h>
 #include <stdarg.h>
 
-
 #include "error.h"
-
-int e_info_level = 0;
 
 
 void
