@@ -89,8 +89,7 @@ FileDescription::FileDescription(const char *name, const char *crng_str,
      size_t n_read = fread((char *)fofBuf,1,fsize,fofFile);
 
      if (n_read < fsize) 
-	error("FileDescription: Only read %li bytes from file %s, 
-                    expected %li for file %s\n", n_read,fofName,fsize);
+	error("FileDescription: Only read %li bytes from file %s, expected %li for file %s\n", n_read,fofName,fsize);
 
      dataNames = new char*[MAXFILES];
      fofSize = readFof();
