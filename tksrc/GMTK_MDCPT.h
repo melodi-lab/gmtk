@@ -142,15 +142,14 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emInit() { error("not implemented"); }
-  void startEmEpoch()  { error("not implemented"); }
-  void emAccumulate(const float prob,
-		    const float *const oo_array) { error("not implemented"); }
-  void endEmEpoch(logpr cmpSop_acc)  { error("not implemented"); }
-  void emLoadAccumulators(iDataStreamFile& ifile)  { error("not implemented"); }
-  void emStoreAccumulators(oDataStreamFile& ofile)  { error("not implemented"); }
-  void emAccumulateAccumulators(iDataStreamFile& ifile)  { error("not implemented"); }
-  void swapCurAndNew() { error("not implemented"); }
+  void emInit() {}
+  void emStartIteration() {}
+  void emIncrement(logpr prob) {}
+  void emEndIteration() {}
+  void emSwapCurAndNew() {}
+  void emStoreAccumulators(oDataStreamFile& ofile) {}
+  void emLoadAccumulators(iDataStreamFile& ifile) {}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
   //////////////////////////////////
 
 

@@ -134,22 +134,6 @@ DiagGaussian::randomize()
 
 
 void
-DiagGaussian::swapCurAndNew()
-{
-  assert ( bitmask & 
-	   (bm_basicAllocated | bm_emAllocated) );
-
-  if (bitmask & bm_swapped)
-    return;
-  else 
-    bitmask |= bm_swapped;
-
-  genSwap(burVals,n_burVals);
-  genSwap(variances,n_variances);
-
-}
-
-void
 DiagGaussian::expandGammaZZ()
 {
   float *zz = gamma_zz;
@@ -341,7 +325,7 @@ DiagGaussian::emInit()
 
 
 void
-DiagGaussian::startEmEpoch()
+DiagGaussian::startEmIteration()
 {
   // the accumulators    
   ::memset(gamma_oz,0,sizeof(gamma_oz[0])*parent->sum_nComsp1);
@@ -350,8 +334,26 @@ DiagGaussian::startEmEpoch()
   preCompute();
 }
 
+
 void
-DiagGaussian::emAccumulate(const float prob,
+DiagGaussian::emSwapCurAndNew()
+{
+  assert ( bitmask & 
+	   (bm_basicAllocated | bm_emAllocated) );
+
+  if (bitmask & bm_swapped)
+    return;
+  else 
+    bitmask |= bm_swapped;
+
+  genSwap(burVals,n_burVals);
+  genSwap(variances,n_variances);
+
+}
+
+
+void
+DiagGaussian::emIncrement(const float prob,
 			   const float *const oz_array,
 			   const float *const zz_array,
 			   const float *const oo_array)
@@ -390,12 +392,12 @@ DiagGaussian::emAccumulate(const float prob,
 
 
 void
-DiagGaussian::endEmEpoch(logpr cmpSop_acc)
+DiagGaussian::emEndIteration(logpr cmpSop_acc)
 {
   assert (bitmask & bm_emAllocated);
   if (cmpSop_acc.zero())
   {
-    printf("Error: zero cmpSop_acc in DiagGaussian::endEmEpoch\n");
+    printf("Error: zero cmpSop_acc in DiagGaussian::endEmIteration\n");
     return;
   }
 

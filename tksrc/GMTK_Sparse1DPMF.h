@@ -111,15 +111,14 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emInit() {};
-  void startEmEpoch() {};
-  void emAccumulate(const float prob,
-		    const float *const oo_array) {};
-  void endEmEpoch(logpr cmpSop_acc) {};
-  void emLoadAccumulators(iDataStreamFile& ifile) {};
-  void emStoreAccumulators(oDataStreamFile& ofile) {};
-  void emAccumulateAccumulators(iDataStreamFile& ifile) {};
-  void swapCurAndNew() {};
+  void emInit() {}
+  void emStartIteration() {}
+  void emIncrement(logpr prob) {}
+  void emEndIteration() {}
+  void emSwapCurAndNew() {}
+  void emStoreAccumulators(oDataStreamFile& ofile) {}
+  void emLoadAccumulators(iDataStreamFile& ifile) {}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
   //////////////////////////////////
 
 
