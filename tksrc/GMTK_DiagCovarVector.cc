@@ -133,6 +133,7 @@ DiagCovarVector::read(iDataStreamFile& is)
   setBasicAllocatedBit();
   preCompute();
   numTimesShared = 0;
+  refCount = 0;
 }
 
 
@@ -227,6 +228,7 @@ DiagCovarVector::noisyClone()
       cloneNo++;
     } while (GM_Parms.covarsMap.find(clone->_name) != GM_Parms.covarsMap.end());
     clone->refCount = 0;
+    clone->numTimesShared = 0;
     clone->covariances.resize(covariances.len());
     for (int i=0;i<covariances.len();i++) {
 
@@ -351,6 +353,26 @@ DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
     refCount++; 
     // this object therefore is shared, set the bit saying so.
     emSetSharedBit();
+
+    // Make sure our callers accumulators are allocated.  The reason
+    // for this is that the caller of this routine is one who is
+    // sharing this object with at least one other caller, and this
+    // caller is being set up after the first caller.  This caller has
+    // therefore not had its own accumulators allocated yet unless
+    // this is the second iteration in an internal EM iteration run
+    // (e.g., we are not running in parallel), but in any event it
+    // should not be calling its emStartIteration() multiple times.
+    componentsNextCovars.growIfNeeded(covariances.len());
+    for (int i=0;i<covariances.len();i++) {
+      componentsNextCovars[i] = 0.0;
+    }
+
+    // We return now since we might have already
+    // accumulated some probability for this object
+    // (which would be stored in accumulatedProbability)
+    // but accumulated it for an object that is
+    // sharing self but has a different set of its
+    // own accumulators.
     return; 
   }
 

@@ -165,6 +165,7 @@ DlinkMatrix::read(iDataStreamFile& is)
   }
   setBasicAllocatedBit();
   numTimesShared = 0;
+  refCount = 0;
 }
 
 
@@ -308,6 +309,7 @@ DlinkMatrix::noisyClone()
       cloneNo++;
     } while (GM_Parms.dLinkMatsMap.find(clone->_name) != GM_Parms.dLinkMatsMap.end());
     clone->refCount = 0;
+    clone->numTimesShared = 0;
     clone->dLinks = dLinks;
 
     clone->arr.resize(arr.len());
@@ -353,12 +355,39 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 
 
 
-  if(emOnGoingBitIsSet()) {
+  if (emOnGoingBitIsSet()) {
     // EM already on going.
     // Increment the count of number of Gaussian Components using this mean.
     refCount++;
     // this object therefore is shared, set the bit saying so.
     emSetSharedBit();
+
+    // Make sure our callers accumulators are allocated.  The reason
+    // for this is that the caller of this routine is one who is
+    // sharing this object with at least one other caller, and this
+    // caller is being set up after the first caller.  This caller has
+    // therefore not had its own accumulators allocated yet unless
+    // this is the second iteration in an internal EM iteration run
+    // (e.g., we are not running in parallel), but in any event it
+    // should not be calling its emStartIteration() multiple times.
+    xzAccumulators.growIfNeeded(dLinks->totalNumberLinks());
+    for (int i=0;i<xzAccumulators.len();i++) {
+      xzAccumulators[i] = 0.0;
+    }
+    zzAccumulators.growIfNeeded(dLinks->zzAccumulatorLength());
+    for (int i=0;i<zzAccumulators.len();i++) {
+      zzAccumulators[i] = 0.0;
+    }
+    zAccumulators.growIfNeeded(dLinks->totalNumberLinks());
+    for (int i=0;i<zAccumulators.len();i++) {
+      zAccumulators[i] = 0.0;
+    }
+    // We return now since we might have already
+    // accumulated some probability for this object
+    // (which would be stored in accumulatedProbability)
+    // but accumulated it for an object that is
+    // sharing self but has a different set of its
+    // own accumulators.
     return;
   }
 
