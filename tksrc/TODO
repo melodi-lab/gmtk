@@ -1705,4 +1705,6 @@ Sun Mar 21 05:24:38 2004
     i.e., have rv->next(prob) return true if prob was filled with the next probability.
    
 
+Thu Mar 25 17:04:41 2004
+  - define a pre-defined CPP variable that gives the major and minor version of GMTK.
 
