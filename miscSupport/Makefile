@@ -85,7 +85,7 @@ all: libgeneralSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o
+objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
