@@ -2432,5 +2432,13 @@ Tue Sep 14 01:19:08 2004
                and an (sorted if possible) array of bp_range objects for the remainder. 
 
 
-
- 
+Wed Sep 15 21:17:36 2004
+  - manual idea: give some arbitrary DBN and by-hand derive forward/backward
+    equations for the model using the CI statements made by the model. But
+    are these equations good? the best we can do? Show the triangulation
+    of the model corresponding to these equations, and then say how
+    better to think of this in terms of finding a different triangulation,
+    which means finding the cheapest set of equations. 
+    It can be faster to write a general toolkit and search for a good triangulation 
+    since we've got a systematic way of iterating over all possible sets of equations,
+    than it is to write one set of equations in C by hand (general phipac philosophy).
