@@ -2348,3 +2348,5 @@ Tue Sep  7 18:14:56 2004
   - bug:
   - cd ~bartels/A/word_baseline 
   - run -of1 ../DATA/testing_2.scp -nf1 39 -ni1 0 -fmt1 htk -iswp1 true -inputMasterFile PARAMS/masterFile.decoding -inputTrainable ./LEARNED_PARAMS/initial.gmp -str ./PARAMS/acoustic_decoding.str -printWordVar Word -varMap ../dictionary/word_list_2 -transitionLabel Word_Transition -island T -base 2 -ckbeam 5000 -dcdrng 0:0 -verb 50
+
+

@@ -2776,6 +2776,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
 
   const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;  
+  // logpr origSum = sumProbabilities();
 
   // next check if the outgoing separator has only obseved values.
   if (sep.origin.hAccumulatedIntersection.size() == 0 && sep.origin.hRemainder.size() == 0) {
@@ -3104,13 +3105,25 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // take a look at what state space size is with large verbosity
   // value.
   if (origin.cliqueBeam != (-LZERO)) {
+
     infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
 	    maxCEValue.valref(),
 	    beamThreshold.valref(),
 	    origNumCliqueValuesUsed,
 	    numCliqueValuesUsed);
+#if 0
+    // A version with a bit more information printed.
+    infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, orig sum = %f, new clique state space = %d, new sum = %f\n",
+	    maxCEValue.valref(),
+	    beamThreshold.valref(),
+	    origNumCliqueValuesUsed,
+	    origSum.valref(),
+	    numCliqueValuesUsed,
+	    sumProbabilities().valref());
+#endif
   }
 
+  // printCliqueEntries(stdout);
 
   /////////////////////////////////////
   // And prune the separator as well.
@@ -3130,8 +3143,10 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
  *    Note that InferenceMaxClique::ceSendToOutgoingSeparator() does
  *    its own pruning, so when using ceSendToOutgoingSeparator(), this
  *    pruning routine does not need to be called (at least with the
- *    same beam width). This routine is kept here for pedagogical
- *    purposes however.
+ *    same beam width). This routine, however, is kept here since 1)
+ *    at the very right clique of the right most partition, we need to
+ *    explicitely prune, and 2) the island algorithm sometimes also
+ *    needs to explicitely call pruning.
  *
  * Preconditions:
  *   1) the value of the max clique 'maxCEValue' must have been
@@ -3166,8 +3181,15 @@ InferenceMaxClique::ceCliquePrune()
   
   // create an ininitialized variable
   logpr beamThreshold((void*)0);
-  // break into the logp to avoid unnecessary zero checking.
-  beamThreshold.valref() = maxCEValue.valref() - origin.cliqueBeam;
+  if (origin.cliqueBeam != (-LZERO)) {
+    // then we do clique table pruning right here rather
+    // than a separate call to ceCliquePrune().
+    // break into the logp to avoid unnecessary zero checking.
+    beamThreshold.valref() = maxCEValue.valref() - origin.cliqueBeam;
+  } else {
+    // set beam threshold to a value that will never cause pruning.
+    beamThreshold.set_to_zero();
+  }
 
   const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
@@ -3198,6 +3220,53 @@ InferenceMaxClique::ceCliquePrune()
 
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceDoAllPruning()
+ *
+ *    Clique Prune: This routine will do both k-pruning and beam pruning just
+ *    like the routine that projects down to the next separator, but this routine does
+ *    just the pruning part.
+ *
+ * Preconditions:
+ *   same as other pruning routines
+ *
+ * Postconditions:
+ *    Clique table has been pruned, and memory for it has been re-allocated to
+ *    fit the smaller size.
+ *
+ * Side Effects:
+ *    changes the clique size.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+InferenceMaxClique::ceDoAllPruning()
+{
+  // First, do k-pruning (ideally we would do this after
+  // beam pruning, but since beam pruning is integrated
+  // into the code above, we do max state pruning first).
+  // Prune the minimum of the fixed K size and the percentage size.
+  unsigned k;
+  k = 2 + (unsigned)((origin.cliqueBeamRetainFraction)*(double)numCliqueValuesUsed);
+  if (origin.cliqueBeamMaxNumStates > 0) {
+    k = min(k,origin.cliqueBeamMaxNumStates);
+  }
+  //   printf("nms = %d, pf = %f, ncv = %d, k = %d\n",origin.cliqueBeamMaxNumStates,
+  // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
+  ceCliquePrune(k);
+
+  // next, do beam pruning.
+  ceCliquePrune();
+
+  // printCliqueEntries(stdout);
+
+}
 
 
 /*-
@@ -3244,6 +3313,11 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   unsigned lower = 0;
   unsigned upper = numCliqueValuesUsed-1;
 
+  // we seed the random number generator specifically for this clique
+  // since it might get called again during island algorithm. 
+  // Search for string K-BEAM-SEED elsewhere in this file for further information.
+  rnd.seed(&(cliqueValues[0].p.valref()));
+
   // We find the k max elements using a quick sort-like algorithm, and
   // start by processing the elements between lower and upper
   // inclusive. Note that unlike quicksort (which is O(NlogN) average
@@ -3280,6 +3354,9 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 	pl = pl3;
       }
     }
+
+    // Uncomment to give a valid but fixed deterministic pivot just for testing.
+    // pl = (lower+upper)/2;
 
     logpr pivot = cliqueValues[pl].p;
     // printf("pivot location = %d, pivot = %f\n",pl,pivot);
@@ -3874,6 +3951,29 @@ sumProbabilities()
 }
 
 
+
+void
+InferenceMaxClique::
+printCliqueEntries(FILE *f) 
+{
+  fprintf(f,"--- Printing Clique with %d values\n",numCliqueValuesUsed);
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
+			   (unsigned**)discreteValuePtrs.ptr);
+    } else {
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
+			   (unsigned**)discreteValuePtrs.ptr);
+    }
+    fprintf(f,"--- %d:p=%f:",cvn,cliqueValues.ptr[cvn].p.valref());
+    printRVSetAndValues(f,fNodes);
+  }
+}
+
+
+
+
 void
 InferenceMaxClique::
 emIncrement(const logpr probE,
@@ -3922,8 +4022,10 @@ emIncrement(const logpr probE,
     // break into the logp to avoid unnecessary zero checking.
     beamThreshold.valref() = - emTrainingBeam;
   } else {
-    // set beam threshold to a value that will never cause pruning.
-    beamThreshold.set_to_zero();
+    // set beam threshold to a value that will never cause real
+    // pruning (i.e., we always prune posteriors that are almost
+    // zero).
+    beamThreshold.set_to_almost_zero();
   }
   // create unnormalized beam threshold.
   beamThreshold *= locProbE;
@@ -3933,7 +4035,7 @@ emIncrement(const logpr probE,
 
     // EM pruning here based on unnormalized posterior. Don't bother
     // with things that are below threshold.
-    if (cliqueValues.ptr[cvn].p < beamThreshold)
+    if (cliqueValues.ptr[cvn].p <= beamThreshold)
       continue;
 
     // if still here, then create the posterior to update the
@@ -4099,8 +4201,32 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
       // it must exist
       // assert ( remIndexp != NULL );
       if ( remIndexp == NULL ) {
-	// NOTE: we could prune this clique entry away, but for now we just issue the error.  
-	error("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\n");
+	// This condition occurs when the clique entry is encountered
+	// without corresponding incomming separator entry.
+	// 
+	// There are several valid reasons why this might occur:
+	// 1) if sbeam is turned on, it's possible that the separator entry corresponding to this
+	//    clique entry was pruned away. This can happen since separator pruning is later
+	//    then the clique which created (projected down into) the separator. The solution
+	//    here is to increase or entirely turn off sbeam pruning.
+	// 
+	// 2) During the island algorithm and using k-pruning (fixed k clique size), there
+	//    were ties in the clique probability and since we use a random median to find the top
+	//    k entries, we didn't get the same top k entries the 2nd (or 3rd, 4th, etc. depending 
+	//    on the island algorithm's 'base' and 'lst' parameters) time that we created the 
+	//    clique and then pruned it down to k entries. The solution we employ is to
+	//    seed the random number generator in k-pruning to something that is clique dependent.
+	//    Search for string K-BEAM-SEED elsewhere in this file for further information.
+
+	// NOTE: we could prune this clique entry away, for case 1, but this would get ugly for
+	// case 2, as if the clique was all ties, this would mean that we prune all but  the
+	// intersection of the survivors of both k-prunings, and this might be small or empty.
+	// In the best of cases, this would probably be much smaller than k, so we instead
+	// just issue the error.
+
+	warning("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\nClique contains:");
+	printRVSetAndValues(stdout,fNodes);
+	error("");
       }
 
       // We've finally got the sep entry. Multiply it it into the
@@ -4119,8 +4245,11 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 	// current clique value.
 	cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp();
       } else {
-	// NOTE: we could prune this clique entry away, but for now we just issue the error.  
-	error("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\n");
+	// This condition occurs when the clique entry is encountered
+	// without corresponding incomming separator entry. See comment above.
+	warning("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\nClique contains:");
+	printRVSetAndValues(stdout,fNodes);
+	error("");
       }
     }
 

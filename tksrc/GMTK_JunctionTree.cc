@@ -1481,6 +1481,11 @@ JunctionTree::assignRVToClique(const char *const partName,
     // The goal here is to figure out in which of a set of possible
     // cliques the node should be producing probabilities.
 
+    // TODO: make these various options available in priority order
+    // to the command line, just like the topologically-constrainted
+    // variable within-clique iteration order, currently available
+    // via -vcap.
+
     // Compute (and ultimately push back) items in decreasing order of
     // priority.  Lower numbers is better (e.g., more negative or less
     // positive is higher priority).  First thing inserted has highest
@@ -1543,6 +1548,12 @@ JunctionTree::assignRVToClique(const char *const partName,
     // when the node is continuous, assign it to a clique that is the
     // smallest possible in terms of weight.
     double weight = - curClique.weight();
+
+    // TODO: add heuristic that assigns RV to smallest clique, in
+    // terms of size. This might be useful for EM training,
+    // particularly of continuous Gaussian variables, in that only the
+    // parents of the Gaussian will be iterated over, rather than
+    // parents of parents.
 
 
     // And so on. We can create as many heuristics as we want.
@@ -3014,6 +3025,7 @@ JunctionTree::ceGatherIntoRoot(// partition
   for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
     const unsigned from = message_order[msgNo].first;
     const unsigned to = message_order[msgNo].second;
+    // TODO: add another info message here
     part.maxCliques[from].
       ceGatherFromIncommingSeparators(part);
     infoMsg(IM::Mod,
@@ -3023,6 +3035,7 @@ JunctionTree::ceGatherIntoRoot(// partition
       ceSendToOutgoingSeparator(part);
   }
   // collect to partition's root clique
+  // TODO: add another info message here
   part.maxCliques[root].
     ceGatherFromIncommingSeparators(part);
 }
@@ -3262,8 +3275,8 @@ JunctionTree::deScatterOutofRoot(// the partition
   for (unsigned msgNo=(message_order.size()-1);msgNo != stopVal; msgNo --) {
     const unsigned to = message_order[msgNo].first;
     const unsigned from = message_order[msgNo].second;
-    infoMsg(IM::Mod,"DE: message %s,part[%d]: clique %d --> clique %d\n",
-	    part_type_name,part_num,from,to);
+    infoMsg(IM::Mod,"DE: message %s,part[%d]: clique %d <-- clique %d\n",
+	    part_type_name,part_num,to,from);
     part.maxCliques[to].
       deReceiveFromIncommingSeparator(part);
     part.maxCliques[to].
@@ -3322,9 +3335,9 @@ JunctionTree::deReceiveToPreviousPartition(// the next partition
 					   // number of prev part (debugging/status msgs)
 					   const unsigned previous_part_num)
 {
-  infoMsg(IM::Mod,"DE: message %s,part[%d],clique(%d) -> %s,part[%d],clique(%d)\n",
-	  next_part_type_name,next_part_num,next_part_leaf,
-	  previous_part_type_name,previous_part_num,previous_part_root);
+  infoMsg(IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
+	  previous_part_type_name,previous_part_num,previous_part_root,
+	  next_part_type_name,next_part_num,next_part_leaf);
   previous_part.maxCliques[previous_part_root].
     deReceiveFromIncommingSeparator(previous_part,
 				    next_part.
@@ -3843,6 +3856,11 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
  *        deletePartition - free memory associated with partition, and set array ptr to NULL
  *        deScatterOutofRoot - call DE from root (RI) of a partition
  *
+ *    Note that these routines only do real work if the current prob evidence is
+ *    something other than zero. As if it is zero, that means that
+ *    we've already gotten to the end and found it is zero, and we're
+ *    in the mode where we're just freeing up memory.
+ *
  * Preconditions:
  *   For the non create/destroy routines, each routine assumes that
  *   the array location for the corresponding partition has been
@@ -3869,20 +3887,22 @@ ceGatherIntoRoot(const unsigned part)
 {
   infoMsg(IM::Mod,"==> ceGatherIntoRoot: part = %d, nm = %s\n",
 	  part,partPArray[part].nm);
-  ceGatherIntoRoot(*partPArray[part].p,
-		   partPArray[part].ri,
-		   *partPArray[part].mo,
-		   partPArray[part].nm,
-		   part);
+  if (cur_prob_evidence.not_essentially_zero())
+    ceGatherIntoRoot(*partPArray[part].p,
+		     partPArray[part].ri,
+		     *partPArray[part].mo,
+		     partPArray[part].nm,
+		     part);
 }
 void JunctionTree::
 createPartition(const unsigned part)
 {
   infoMsg(IM::Mod,"$$$ createPartition: part = %d, nm = %s\n",
 	  part,partPArray[part].nm);
-  partPArray[part].p = new JT_InferencePartition(*partPArray[part].JT,
-						 cur_unrolled_rvs,cur_ppf,
-						 partPArray[part].offset);
+  if (cur_prob_evidence.not_essentially_zero())
+    partPArray[part].p = new JT_InferencePartition(*partPArray[part].JT,
+						   cur_unrolled_rvs,cur_ppf,
+						   partPArray[part].offset);
 }
 void JunctionTree::
 ceSendToNextPartition(const unsigned part,const unsigned nextPart)
@@ -3890,8 +3910,17 @@ ceSendToNextPartition(const unsigned part,const unsigned nextPart)
   infoMsg(IM::Mod,"--> ceSendToNextPartition: part = %d (%s), nextPart = %d (%s)\n",
 	  part,partPArray[part].nm,
 	  nextPart,partPArray[nextPart].nm);
-  ceSendToNextPartition(*partPArray[part].p,partPArray[part].ri,partPArray[part].nm,part,
-			*partPArray[nextPart].p,partPArray[nextPart].li,partPArray[nextPart].nm,nextPart);
+  if (cur_prob_evidence.not_essentially_zero())
+    ceSendToNextPartition(*partPArray[part].p,partPArray[part].ri,partPArray[part].nm,part,
+			  *partPArray[nextPart].p,partPArray[nextPart].li,partPArray[nextPart].nm,nextPart);
+}
+void JunctionTree::
+cePruneRootCliqueOfPartition(const unsigned part)
+{
+  infoMsg(IM::Mod,"\\/- cePruneRootCliqueOfPartition: part = %d, nm = %s\n",
+	  part,partPArray[part].nm);
+  if (cur_prob_evidence.not_essentially_zero())
+    partPArray[part].p->maxCliques[partPArray[part].ri].ceDoAllPruning();
 }
 void JunctionTree::
 deReceiveToPreviousPartition(const unsigned part,const unsigned prevPart)
@@ -3899,8 +3928,9 @@ deReceiveToPreviousPartition(const unsigned part,const unsigned prevPart)
   infoMsg(IM::Mod,"<-- deReceiveToPreviousPartition: part = %d (%s), prevPart = %d (%s)\n",
 	  part,partPArray[part].nm,
 	  prevPart,partPArray[prevPart].nm);
-  deReceiveToPreviousPartition(*partPArray[part].p,partPArray[part].li,partPArray[part].nm,part,
-			       *partPArray[prevPart].p,partPArray[prevPart].ri,partPArray[prevPart].nm,prevPart);
+  if (cur_prob_evidence.not_essentially_zero())
+    deReceiveToPreviousPartition(*partPArray[part].p,partPArray[part].li,partPArray[part].nm,part,
+				 *partPArray[prevPart].p,partPArray[prevPart].ri,partPArray[prevPart].nm,prevPart);
 }
 void JunctionTree::
 deletePartition(const unsigned part)
@@ -3915,11 +3945,12 @@ deScatterOutofRoot(const unsigned part)
 {
   infoMsg(IM::Mod,"<== deScatterOutofRoot: part = %d (%s)\n",
 	  part,partPArray[part].nm);
-  deScatterOutofRoot(*partPArray[part].p,
-		     partPArray[part].ri,
-		     *partPArray[part].mo,
-		     partPArray[part].nm,
-		     part);
+  if (cur_prob_evidence.not_essentially_zero())
+    deScatterOutofRoot(*partPArray[part].p,
+		       partPArray[part].ri,
+		       *partPArray[part].mo,
+		       partPArray[part].nm,
+		       part);
 }
 logpr
 JunctionTree::probEvidenceRoot(const unsigned part)
@@ -4005,21 +4036,30 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
     } else {
       // We are at the end, so we don't create and send to the next
       // partition. This is because either 1)
-      // end=(partPArray.size()-1) (we are really at the last position
-      // on the right), so there is no right partition, or 2) the
-      // right partition has already been sent a message from the
-      // previous incarnation of the current partition.  Note, that if
-      // we don't send a message to the next partition, we do need to
-      // prune last clique of this partition here since that is what
-      // would have happened ordinarily.  TODO: normal CE stage,
-      // should prune last clique of last partition (i.e.,
-      // E_root_clique).
+      // end=(partPArray.size()-1) (we are really at the last
+      // partition on the right), so there is no right neighboring
+      // partition, or 2) the right neighboring partition has already
+      // been sent a message from the previous
+      // incarnation/instantiation of the current partition.  Note,
+      // that if we don't send a message to the next partition, we do
+      // need to prune last clique of this partition here since that
+      // is what would have happened ordinarily. At the moment, normal
+      // CE does not prune last clique of the last partition (i.e.,
+      // E_root_clique), but all the non-last partition's root cliques
+      // do need to be pruned, as otherwise there might be entries in
+      // that clique not contained in its previously-created outgoing
+      // separator. Therefore, we explicitly prune here in that case.
+      if (part < (partPArray.size()-1)) {
+	// we're not the last partition, so need to do explicit
+	// pruning.
+	cePruneRootCliqueOfPartition(part);
+      }
     }
   }
   for (unsigned part = end; (1);) { 
     if (part < (partPArray.size()-1)) {
       // then there is something on the right to receive a message
-      // from.
+      // from. 
       deReceiveToPreviousPartition(part+1,part);
     } else {
       // this is the true end and we can get the probability of evidence here.
@@ -4043,7 +4083,10 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 	} else
 	  setRootToMaxCliqueValue(part);
       }
-      // TODO: put in an info message flag just so that we can get the score out.
+      if (IM::messageGlb(IM::Low)) {
+	infoMsg(IM::Low,"XXX Island Finished Inference: part = %d (%s): log probE = %f\n",
+		part,partPArray[part].nm,probEvidenceRoot(part).valref());
+      }
     }
     // 
     if (part != end) {
@@ -4055,16 +4098,15 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 	 || cur_prob_evidence.not_essentially_zero()) {
       // scatter into all cliques within this separator (at the very least)
       deScatterOutofRoot(part);
-    }
-
-    // We now have a completed partition that we can use
-    // for EM, viterbi decoding, scoring, etc.
-    if (IM::messageGlb(IM::Mod)) {
-      infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
-	      part,partPArray[part].nm);
-      for (unsigned cliqueNo=0;cliqueNo<partPArray[part].p->maxCliques.size();cliqueNo++) {
-	printf("Island: Part no %d: clique no %d: log probE = %f\n",
-	       part,cliqueNo,partPArray[part].p->maxCliques[cliqueNo].sumProbabilities().valref());
+      // We now have a completed partition that we can use
+      // for EM, viterbi decoding, scoring, etc.
+      if (IM::messageGlb(IM::Mod)) {
+	infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
+		part,partPArray[part].nm);
+	for (unsigned cliqueNo=0;cliqueNo<partPArray[part].p->maxCliques.size();cliqueNo++) {
+	  printf("XXX Island: Part no %d: clique no %d: log probE = %f\n",
+		 part,cliqueNo,partPArray[part].p->maxCliques[cliqueNo].sumProbabilities().valref());
+	}
       }
     }
     
@@ -4133,7 +4175,7 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
     const unsigned section_size = len/base;
 
     if (section_size <= 1) {
-      infoMsg(IM::Info,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
+      infoMsg(IM::High,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
       return collectDistributeIslandBase(start,end,runEMalgorithm,
 					 runViterbiAlgorithm,
 					 localCliqueNormalization);
@@ -4350,7 +4392,6 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
     error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",linear_section_threshold);
 
 
-
   // the log base must be a number that actually causes a split.
   if (base <= 1)
     error("ERROR: Island algorithm collect/distribute inference. base of log (%d) is too small.\n",base);
@@ -4439,6 +4480,18 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   assert (partNo == partPArray.size());
 
+  // Start off with unity probability of evidence (we can set it to be
+  // anything other than zero actually). This will signal to the
+  // island algorithm to keep going and do real work. If we reach the
+  // end and if the segment decodes with zero probability, this
+  // variable will be set to such, and which will cause the island
+  // algorithm to, during its backward phase, just free up the islands
+  // of memory that have been allocated rather than doing anything
+  // else.
+  cur_prob_evidence.set_to_one();
+
+  // The recursion assumes that its first partition is already
+  // allocated, so we make sure to do that here.
   partPArray[0].p = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   ceGatherIntoRoot(0);
   collectDistributeIslandRecurse(0,partPArray.size()-1,base,linear_section_threshold,

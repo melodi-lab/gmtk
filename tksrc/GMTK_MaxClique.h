@@ -889,6 +889,9 @@ public:
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
   void ceCliquePrune();
   void ceCliquePrune(const unsigned k);
+  // a version that does all the pruning for this clique.
+  void ceDoAllPruning();
+
 
   // support for collect evidence clique driven operations.
   void ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePartition& part);
@@ -916,6 +919,10 @@ public:
 
   // sum up the probabilities in the current clique and return their value.
   logpr sumProbabilities();
+  // print all clique values and prob to given file.
+  void printCliqueEntries(FILE*f);
+  
+
 
   // EM accumulation support.
   void emIncrement(const logpr probE, 
@@ -1078,6 +1085,10 @@ class InferenceSeparatorClique : public IM
   struct ForwardPointer {
     unsigned viterbiAccIndex;
     unsigned viterbiRemIndex;
+    ForwardPointer() 
+    {
+      viterbiAccIndex = viterbiRemIndex = 0xABCDEFA;
+    }
   };
   // TODO: make an array for N-best decoding.
   ForwardPointer forwPointer;
