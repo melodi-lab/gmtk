@@ -40,6 +40,7 @@
 #include "GMTK_RealMatrix.h"
 #include "GMTK_PackedSparseRealMatrix.h"
 #include "GMTK_DlinkMatrix.h"
+#include "GMTK_Dlinks.h"
 #include "GMTK_WeightMatrix.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
@@ -53,6 +54,14 @@
 
 
 VCID("$Header$");
+
+/////////////////////////////////
+// an integer that specifies the maximum number of objects (such
+// as means, covariances, DTs, etc.) that may be specified at
+// one time in a file. This can be safely increased (to the
+// extend that memory on the machine exists), but is here
+// many for checking obviously invalid values.
+const unsigned GMPARMS_MAX_NUM = 100000;
 
 
 ////////////////////////////////
@@ -68,9 +77,506 @@ VCID("$Header$");
 GMParms::GMParms()
 {}
 
-void GMParms::readDPmfs(iDataStreamFile& is,bool reset)
-{
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        READING Routines
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 
+
+void 
+GMParms::readDPmfs(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num dPMFs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dense PMFs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    dPmfs.resize(num);
+  } else {
+    start = dPmfs.size();
+    dPmfs.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    Dense1DPMF* ob;
+
+    is.read(cnt,"DPMF cnt");
+    if (cnt != i) 
+      error("ERROR: dense PMF count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new Dense1DPMF;
+    ob->read(is);
+    if (dPmfsMap.find(ob->name()) != dPmfsMap.end())
+      error("ERROR: dense PMF named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    dPmfs[i+start] = ob;
+    dPmfsMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readSPmfs(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num sPMFs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of sparse PMFs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    sPmfs.resize(num);
+  } else {
+    start = sPmfs.size();
+    sPmfs.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    Sparse1DPMF* ob;
+
+    is.read(cnt,"SPMF cnt");
+    if (cnt != i) 
+      error("ERROR: dense PMF count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new Sparse1DPMF;
+    ob->read(is);
+    if (sPmfsMap.find(ob->name()) != sPmfsMap.end())
+      error("ERROR: sparse PMF named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    sPmfs[i+start] = ob;
+    sPmfsMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readMeans(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num means");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of means (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    means.resize(num);
+  } else {
+    start = means.size();
+    means.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    MeanVector* ob;
+
+    is.read(cnt,"mean cnt");
+    if (cnt != i) 
+      error("ERROR: mean count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new MeanVector;
+    ob->read(is);
+    if (meansMap.find(ob->name()) != meansMap.end())
+      error("ERROR: mean named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    means[i+start] = ob;
+    meansMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readCovars(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num covars");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of covars (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    covars.resize(num);
+  } else {
+    start = covars.size();
+    covars.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    DiagCovarVector* ob;
+
+    is.read(cnt,"cova cnt");
+    if (cnt != i) 
+      error("ERROR: covar count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new DiagCovarVector;
+    ob->read(is);
+    if (covarsMap.find(ob->name()) != covarsMap.end())
+      error("ERROR: covar named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    covars[i+start] = ob;
+    covarsMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readDLinkMats(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num dlinkmats");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dlink matrices (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    dLinkMats.resize(num);
+  } else {
+    start = dLinkMats.size();
+    dLinkMats.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    DlinkMatrix* ob;
+
+    is.read(cnt,"dlink cnt");
+    if (cnt != i) 
+      error("ERROR: dlink matrix count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new DlinkMatrix;
+    ob->read(is);
+    if (dLinkMatsMap.find(ob->name()) != dLinkMatsMap.end())
+      error("ERROR: dlink matrix named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    dLinkMats[i+start] = ob;
+    dLinkMatsMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readDLinks(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num dlinks");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dlinks (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    dLinks.resize(num);
+  } else {
+    start = dLinks.size();
+    dLinks.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    Dlinks* ob;
+
+    is.read(cnt,"dlinks cnt");
+    if (cnt != i) 
+      error("ERROR: dlink count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new Dlinks;
+    ob->read(is);
+    if (dLinksMap.find(ob->name()) != dLinksMap.end())
+      error("ERROR: dlink structure named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    dLinks[i+start] = ob;
+    dLinksMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readWeightMats(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num weight matrices");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of weight matrices (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    weightMats.resize(num);
+  } else {
+    start = weightMats.size();
+    weightMats.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    WeightMatrix* ob;
+
+    is.read(cnt,"weight mat cnt");
+    if (cnt != i) 
+      error("ERROR: weight matrix count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new WeightMatrix;
+    ob->read(is);
+    if (weightMatsMap.find(ob->name()) != weightMatsMap.end())
+      error("ERROR: weight matrix named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    weightMats[i+start] = ob;
+    weightMatsMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readMdCpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num MDCPTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of MDCPTs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    mdCpts.resize(num);
+  } else {
+    start = mdCpts.size();
+    mdCpts.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    MDCPT* ob;
+
+    is.read(cnt,"MDCPT cnt");
+    if (cnt != i) 
+      error("ERROR: MDCPT count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new MDCPT;
+    ob->read(is);
+    if (mdCptsMap.find(ob->name()) != mdCptsMap.end())
+      error("ERROR: MDCPT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    mdCpts[i+start] = ob;
+    mdCptsMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readMsCpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num MSCPTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of MSCPTs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    msCpts.resize(num);
+  } else {
+    start = msCpts.size();
+    msCpts.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    MSCPT* ob;
+
+    is.read(cnt,"MSCPT cnt");
+    if (cnt != i) 
+      error("ERROR: MSCPT count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new MSCPT;
+    ob->read(is);
+    if (msCptsMap.find(ob->name()) != msCptsMap.end())
+      error("ERROR: MSCPT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    msCpts[i+start] = ob;
+    msCptsMap[ob->name()] = i+start;
+  }
+}
+
+
+
+void 
+GMParms::readMtCpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num MTCPTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of MTCPTs (%d) exceeds maximum",num);
+  if (reset) {
+    start = 0;
+    mtCpts.resize(num);
+  } else {
+    start = mtCpts.size();
+    mtCpts.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    MTCPT* ob;
+
+    is.read(cnt,"MTCPT cnt");
+    if (cnt != i) 
+      error("ERROR: MTCPT count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new MTCPT;
+    ob->read(is);
+    if (mtCptsMap.find(ob->name()) != mtCptsMap.end())
+      error("ERROR: MTCPT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    mtCpts[i+start] = ob;
+    mtCptsMap[ob->name()] = i+start;
+  }
+}
+
+
+
+void 
+GMParms::readDTs(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num DTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of DTs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    dts.resize(num);
+  } else {
+    start = dts.size();
+    dts.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    RngDecisionTree<unsigned>* ob;
+
+    is.read(cnt,"DT cnt");
+    if (cnt != i) 
+      error("ERROR: DT count (%d), out of order in file '%s', expecting %d",
+	    cnt,is.fileName(),i);
+
+    ob = new RngDecisionTree<unsigned>;
+    ob->read(is);
+    if (dtsMap.find(ob->name()) != dtsMap.end())
+      error("ERROR: DT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+    dts[i+start] = ob;
+    dtsMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+
+  unsigned start = 0;
+  is.read(num,"num Gaussian components");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of Gaussian components (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    gaussianComponents.resize(num);
+  } else {
+    start = gaussianComponents.size();
+    gaussianComponents.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    GaussianComponent* gc;
+
+    is.read(cnt,"Gaussian comp cnt");
+    if (cnt != i) 
+      error("ERROR: Gaussian component count (%d), out of order in file '%s', expecting %d",cnt,is.fileName(),i);
+
+    // next read the dimension of this Gaussian
+    int dim;
+    is.read(dim,"Gaussian comp dim");
+
+    // read the Gaussian type
+    int t;
+    is.read(t,"Gaussian comp type");
+    if (t == GaussianComponent::Diag) {
+      gc = new DiagGaussian(dim);
+    } else if (t == GaussianComponent::LinMeanCondDiag) {
+      error("LinMeanCondDiag not implemented");
+      // gc = new LinMeanCondDiagGaussian(dim);
+    } else if (t == GaussianComponent::NLinMeanCondDiag) {
+      error("NLinMeanCondDiag not implemented");
+      // gc = new NLinMeanCondDiagGaussian(dim);
+    } else {
+      error("Error: unknown gaussian component type in file");
+    }
+    gc->read(is);
+    if (gaussianComponentsMap.find(gc->name()) != gaussianComponentsMap.end())
+      error("ERROR: Gaussian component named '%s' specified more than once in file '%s'",gc->name().c_str(),is.fileName());
+    gaussianComponents[i+start] = gc;
+    gaussianComponentsMap[gc->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num MGs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of mixtures of Gaussians (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (reset) {
+    start = 0;
+    mixGaussians.resize(num);
+  } else {
+    start = mixGaussians.size();
+    mixGaussians.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    MixGaussians* gm;
+
+    is.read(cnt,"MG cnt");
+    if (cnt != i) 
+      error("ERROR: mix Gaussian count (%d), out of order in file '%s', expecting %d",cnt,is.fileName(),i);
+
+
+    // next read the dimension of this Gaussian
+    int dim;
+    is.read(dim,"MG dim");
+
+    gm = new MixGaussians(dim);
+    gm->read(is);
+    if (mixGaussiansMap.find(gm->name()) != mixGaussiansMap.end()) {
+      error("ERROR: mixture of Gaussian named '%s' specified more than once in file '%s'",gm->name().c_str(),is.fileName());
+    }
+    mixGaussians[i+start] = gm;
+    mixGaussiansMap[gm->name()] = i+start;
+  }
+}
+
+void 
+GMParms::readGausSwitchMixGaussians(iDataStreamFile& is, bool reset)
+{
+  error("not implemented");
+}
+
+void 
+GMParms::readLogitSwitchMixGaussians(iDataStreamFile& is, bool reset)
+{
+  error("not implemented");
+}
+
+void 
+GMParms::readMlpSwitchMixGaussians(iDataStreamFile& is, bool reset)
+{
+  error("not implemented");
 }
 
 
@@ -204,6 +710,73 @@ GMParms::readBasic(iDataStreamFile& is)
 }
 
 void 
+GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
+{
+  // read a file consisting of a list of keyword,filename
+  // pairs. the keyword says which structure to read in,
+  // and the filename says where to get it.
+
+  string keyword;
+  string fileName;
+
+  while (is.readString(keyword)) {
+    if (!is.readString(fileName)) {
+      error("ERROR: while reading file '%s', got keyword '%s' without a filename",is.fileName(),keyword.c_str());
+    }
+
+    iDataStreamFile isf(fileName.c_str(),dataFilesAreBinary);
+    if (keyword == "DPMF_FILE") {
+      readDPmfs(isf,false);
+    } else if (keyword == "SPMF_FILE") {
+      readSPmfs(isf,false);
+    } else if (keyword == "MEAN_FILE") {
+      readMeans(isf,false);
+    } else if (keyword == "COVAR_FILE") {
+      readCovars(isf,false);
+    } else if (keyword == "DLINK_MAT_FILE") {
+      readDLinkMats(isf,false);
+    } else if (keyword == "DLINK_FILE") {
+      readDLinks(isf,false);
+    } else if (keyword == "WEIGHT_MAT_FILE") {
+      readWeightMats(isf,false);
+    } else if (keyword == "MDCPT_FILE") {
+      readMdCpts(isf,false);
+    } else if (keyword == "MSCPT_FILE") {
+      readMsCpts(isf,false);
+    } else if (keyword == "MTCPT_FILE") {
+      readMtCpts(isf,false);
+    } else if (keyword == "DT_FILE") {
+      readDTs(isf,false);
+    } else if (keyword == "GC_FILE") {
+      readGaussianComponents(isf,false);
+    } else if (keyword == "MG_FILE") {
+      readMixGaussians(isf,false);
+    } else if (keyword == "GSMG_FILE") {
+      error("GSMG_FILE in file '%s', not implemented",
+	    is.fileName());
+    } else if (keyword == "LSMG_FILE") {
+      error("LSMG_FILE in file '%s', not implemented",
+	    is.fileName());
+    } else if (keyword == "MSMG_FILE") {
+      error("MSMG_FILE in file '%s', not implemented",
+	    is.fileName());
+    } else {
+      error("ERROR: encountered unknown file type '%s' in file '%s'",
+	    keyword.c_str(),is.fileName());
+    }
+  }
+
+}
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        WRITING Routines
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+
+void 
 GMParms::writeBasic(oDataStreamFile& os)
 {
 
@@ -297,34 +870,6 @@ GMParms::writeBasic(oDataStreamFile& os)
 
 
 void 
-GMParms::readDTs(iDataStreamFile& is)
-{
-  unsigned num;
-  unsigned cnt;
-  char *str;
-
-  is.read(str,"GMTK_GMParms::readDTs, magic");
-  if (strcmp(str,MAGIC_DT_FILE))
-    error("GMTK_GMParms::readDTs. Expecting DT file, got (%s)",str);
-  delete [] str;
-
-  is.read(num,"GMTK_GMParms::readDTs, dpmfs");
-  if (num < 0) error("GMTK_GMParms::readDTs num dpmfs = %d",num);
-  dts.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readDTs, cnt");
-    if (cnt != i) 
-      error("GMTK_GMParms::readDTs, out of order count",cnt);
-
-    dts[i] = new RngDecisionTree<unsigned>;
-    dts[i]->read(is);
-    dtsMap[dts[i]->name()] = i;
-  }
-}
-
-
-
-void 
 GMParms::writeDTs(oDataStreamFile& os)
 {
   os.write(MAGIC_DT_FILE,"GMTK_GMParms::writeDTs, magic");
@@ -338,92 +883,6 @@ GMParms::writeDTs(oDataStreamFile& os)
 }
 
 
-void 
-GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
-{
-  unsigned num;
-  unsigned cnt;
-
-  unsigned start = 0;
-  is.read(num,"GMTK_GMParms::readGaussianComponents");
-  if (num < 0) error("GMTK_GMParms::readGaussianComponents num = %d",num);
-  if (reset) {
-    start = 0;
-    gaussianComponents.resize(num);
-  } else {
-    start = gaussianComponents.size();
-    gaussianComponents.resize(start+num);
-  }
-  for (unsigned i=0;i<num;i++) {
-    // first read the count
-    GaussianComponent* gc;
-
-    is.read(cnt,"GMTK_GMParms::readGaussianComponents, cnt");
-    if (cnt != i) 
-      error("GMTK_GMParms::readGaussianComponents, out of order count",cnt);
-
-    // next read the dimension of this Gaussian
-    int dim;
-    is.read(dim,"GMTK_GMParms::readGaussianComponents, dim");
-
-    // read the Gaussian type
-    int t;
-    is.read(t,"GMTK_GMParms::readGaussianComponents, type");
-    if (t == GaussianComponent::Diag) {
-      gc = new DiagGaussian(dim);
-    } else if (t == GaussianComponent::LinMeanCondDiag) {
-      error("LinMeanCondDiag not implemented");
-      // gc = new LinMeanCondDiagGaussian(dim);
-    } else if (t == GaussianComponent::NLinMeanCondDiag) {
-      error("NLinMeanCondDiag not implemented");
-      // gc = new NLinMeanCondDiagGaussian(dim);
-    } else {
-      error("Error: unknown gaussian component type in file");
-    }
-    gc->read(is);
-    gaussianComponents[i+start] = gc;
-    gaussianComponentsMap[gc->name()] = i+start;
-  }
-}
-
-
-void 
-GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
-{
-  unsigned num;
-  unsigned cnt;
-
-  unsigned start = 0;
-  is.read(num,"GMTK_GMParms::readGaussianMixtures");
-  if (num < 0) error("GMTK_GMParms::readGaussianMixtures num = %d",num);
-  if (reset) {
-    start = 0;
-    mixGaussians.resize(num);
-  } else {
-    start = mixGaussians.size();
-    mixGaussians.resize(start+num);
-  }
-  for (unsigned i=0;i<num;i++) {
-    // first read the count
-    MixGaussians* gm;
-
-    is.read(cnt,"GMTK_GMParms::readGaussianMixtures, cnt");
-    if (cnt != i) 
-      error("GMTK_GMParms::readGaussianMixtures, out of order count",cnt);
-
-    // next read the dimension of this Gaussian
-    int dim;
-    is.read(dim,"GMTK_GMParms::readGaussianMixtures, dim");
-
-    gm = new MixGaussians(dim);
-    gm->read(is);
-    if (mixGaussiansMap.find(gm->name()) != mixGaussiansMap.end()) {
-      error("ERROR: mixture of Gaussian named '%s' specified more than once in file '%s'",gm->name().c_str(),is.fileName());
-    }
-    mixGaussians[i+start] = gm;
-    mixGaussiansMap[gm->name()] = i+start;
-  }
-}
 
 
 
