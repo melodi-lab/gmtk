@@ -400,12 +400,6 @@ protected:
   // support for destructor
   void destructorRecurse(Node *n);
 
-  ///////////////////////////////////////////////////////////    
-  // seek through decision tree file to a particular tree 
-  void seek(
-    unsigned dt_nmbr 
-  );
-
 public:
 
   RngDecisionTree() : indexFile(NULL), dtFile(NULL), firstDT(0), root(NULL) {}; 
@@ -427,6 +421,13 @@ public:
   void setFirstDecisionTree(
     unsigned first_index
   ) { firstDT = first_index; } 
+
+
+  ///////////////////////////////////////////////////////////    
+  // seek through decision tree file to a particular tree 
+  void seek(
+    unsigned dt_nmbr 
+  );
  
   ///////////////////////////////////////////////////////////    
   // Set the file pointer and read ino the first DT 
