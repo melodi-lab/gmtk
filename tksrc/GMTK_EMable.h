@@ -88,7 +88,6 @@ protected:
   static unsigned long missedIncrementCount;
 
 
-
   ///////////////////////////////////////////////////////
   // The minimum continuous accumulated probability of mean and covariance -like
   // objects. If the accumulated probability falls below this
