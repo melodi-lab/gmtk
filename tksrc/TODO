@@ -1,8 +1,17 @@
 
+
 $Header$
 
+GMTK TODO List/Memory
+
 Other things that need to be done, or just other ideas that might be
-incorporated into the package at some point.
+incorporated into the package at some point. Things that are already
+done are marked with an "X" on the left of the item. When an item is
+added, please add the date to the left of the list item. Note that
+some items below might be redundant as they were added at very
+different time.
+
+--------------------------------------------
 
 X Low level file parser should support
    both integer and named pointers to
