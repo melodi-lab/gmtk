@@ -1014,8 +1014,9 @@ void GMTK_GM::setSize(int repeat_segs)
 
 void GMTK_GM::setExampleStream(char *obs_file_name)
 {
-    globalObservationMatrix.openFile(obs_file_name);
-    using_files = true;
+  globalObservationMatrix.openFile(obs_file_name);
+  using_files = true;
+  GM_Parms.setStride(globalObservationMatrix.stride);
 }
 
 void GMTK_GM::clampFirstExample()
@@ -1032,7 +1033,6 @@ void GMTK_GM::clampFirstExample()
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
         expos = 0;
-	GM_Parms.clampFirstDTs();
     }
     else
     {
@@ -1043,6 +1043,7 @@ void GMTK_GM::clampFirstExample()
         setValues((*example)[0]);
         expos=0;
     }
+    GM_Parms.clampFirstExample();
 }
 
 bool GMTK_GM::clampNextExample()
@@ -1059,7 +1060,6 @@ bool GMTK_GM::clampNextExample()
 	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",expos);
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
-	GM_Parms.clampNextDTs();
     }
     else
     {
@@ -1070,5 +1070,6 @@ bool GMTK_GM::clampNextExample()
         setSize( ((*example)[expos].size()-obsInTemplate)/obsInRepeatSeg);
         setValues((*example)[expos]); 
     }
+    GM_Parms.clampNextExample();
     return true;
 }
