@@ -52,6 +52,10 @@ depend:
 	for subdir in $(MODULES); do \
 		(cd $$subdir; touch depends.make; $(MAKE) $(MAKE_VARS) $@); \
 	done
+create_depend:
+	for subdir in $(MODULES); do \
+		(cd $$subdir; touch depends.make; ); \
+	done
 
 
 # this will make world just for linux for now.
