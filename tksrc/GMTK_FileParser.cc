@@ -40,6 +40,7 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+#include "GMTK_USCPT.h"
 #include "GMTK_MixGaussians.h"
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_GraphicalModel.h"
@@ -1708,7 +1709,7 @@ FileParser::ensureS_SE_E_NE()
  *-----------------------------------------------------------------------
  */
 void
-FileParser::associateWithDataParams(bool allocateIfNotThere)
+FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 {
   // now set up rest of info about RV such as
   // - feature range
@@ -1794,7 +1795,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	    if (GM_Parms.mdCptsMap.find(
 		      rvInfoVector[i].listIndices[j].nameIndex) ==
 		GM_Parms.mdCptsMap.end()) {
-	      if (!allocateIfNotThere) {
+	      if (allocate == noAllocate) {
 		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MDCPT \"%s\" doesn't exist\n",
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
@@ -1832,6 +1833,12 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		mdcpt->setNumCardinality(rvInfoVector[i].conditionalParents[j].size(),
 					 rvInfoVector[i].rvCard);
 		mdcpt->allocateBasicInternalStructures();
+		if (allocate == allocateRandom)
+		  mdcpt->makeRandom();
+		else if (allocate == allocateUniform)
+		  mdcpt->makeUniform();
+		else
+		  assert(0);
 
 		GM_Parms.mdCpts.push_back(mdcpt);
 		GM_Parms.mdCptsMap[rvInfoVector[i].listIndices[j].nameIndex]
@@ -1849,6 +1856,9 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 
 	    }
 	  } else {
+	    // need to remove the integer index code.
+	    assert (0);
+#if 0
 	    if (rvInfoVector[i].listIndices[j].intIndex >= 
 		GM_Parms.mdCpts.size()) {
 	      if (!allocateIfNotThere) {
@@ -1865,6 +1875,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	      cpts[j] =
 		GM_Parms.mdCpts[rvInfoVector[i].listIndices[j].intIndex];
 	    }
+#endif
 	  }
 
 	} else 
@@ -1882,50 +1893,11 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	      if (GM_Parms.msCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
 		  GM_Parms.msCptsMap.end()) {
-		if (!allocateIfNotThere) {
-		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent MSCPT \"%s\" doesn't exist\n",
-			rvInfoVector[i].name.c_str(),
-			rvInfoVector[i].frame,
-			rvInfoVector[i].fileLineNumber,
-			rvInfoVector[i].listIndices[j].nameIndex.c_str());
-		}
-		else {
-		  // allocate the MSCPT with name and install it.
-		  MSCPT* mscpt = new MSCPT();
-		  mscpt->setName(rvInfoVector[i].listIndices[j].nameIndex);
-		  mscpt->
-		    setNumParents
-		    (rvInfoVector[i].conditionalParents[j].size());
-
-		  for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
-
-
-		    rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
-				rvInfoVector[i].frame
-				+rvInfoVector[i].conditionalParents[j][k].second);
-		    map < rvParent , unsigned >::iterator it;
-		    it = nameRVmap.find(pp);
-		    if (it == nameRVmap.end()) {
-		      // this really shouldn't happen at this point since
-		      // it should have been checked somewhere else,
-		      // but we include the check nonetheless
-		      error("Error: parent random variable \"%s\" at" 
-			    "frame %d does not exist\n",
-			    rvInfoVector[i].conditionalParents[j][k].first.c_str(),
-			    rvInfoVector[i].conditionalParents[j][k].second);
-		    }
-		    mscpt->setNumCardinality(k,
-					     rvInfoVector[(*it).second].rvCard);
-		  }
-		  mscpt->setNumCardinality(rvInfoVector[i].conditionalParents[j].size(),
-					   rvInfoVector[i].rvCard);
-		  mscpt->allocateBasicInternalStructures();
-
-		  GM_Parms.msCpts.push_back(mscpt);
-		  GM_Parms.msCptsMap[rvInfoVector[i].listIndices[j].nameIndex]
-		    = GM_Parms.msCpts.size()-1;
-		  cpts[j] = mscpt;
-		}
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MSCPT \"%s\" doesn't exist\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
 	      } else {
 		// otherwise add it
 		cpts[j] = 
@@ -1936,6 +1908,9 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		  ];
 	      }
 	    } else {
+	      // need to remove the integer index code.
+	      assert(0);
+#if 0
 	      if (rvInfoVector[i].listIndices[j].intIndex >= 
 		  GM_Parms.msCpts.size()) {
 		if (!allocateIfNotThere) {
@@ -1952,6 +1927,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		cpts[j] =
 		  GM_Parms.msCpts[rvInfoVector[i].listIndices[j].intIndex];
 	      }
+#endif
 	    }
 
 	} else 
@@ -1969,50 +1945,11 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	      if (GM_Parms.mtCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
 		  GM_Parms.mtCptsMap.end()) {
-		if (!allocateIfNotThere) {
 		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent MTCPT \"%s\" doesn't exist\n",
 			rvInfoVector[i].name.c_str(),
 			rvInfoVector[i].frame,
 			rvInfoVector[i].fileLineNumber,
 			rvInfoVector[i].listIndices[j].nameIndex.c_str());
-		}
-		else {
-		  // allocate the MTCPT with name and install it.
-		  MTCPT* mtcpt = new MTCPT();
-		  mtcpt->setName(rvInfoVector[i].listIndices[j].nameIndex);
-		  mtcpt->
-		    setNumParents
-		    (rvInfoVector[i].conditionalParents[j].size());
-
-		  for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
-
-
-		    rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
-				rvInfoVector[i].frame
-				+rvInfoVector[i].conditionalParents[j][k].second);
-		    map < rvParent , unsigned >::iterator it;
-		    it = nameRVmap.find(pp);
-		    if (it == nameRVmap.end()) {
-		      // this really shouldn't happen at this point since
-		      // it should have been checked somewhere else,
-		      // but we include the check nonetheless
-		      error("Error: parent random variable \"%s\" at" 
-			    "frame %d does not exist\n",
-			    rvInfoVector[i].conditionalParents[j][k].first.c_str(),
-			    rvInfoVector[i].conditionalParents[j][k].second);
-		    }
-		    mtcpt->setNumCardinality(k,
-					     rvInfoVector[(*it).second].rvCard);
-		  }
-		  mtcpt->setNumCardinality(rvInfoVector[i].conditionalParents[j].size(),
-					   rvInfoVector[i].rvCard);
-		  mtcpt->allocateBasicInternalStructures();
-
-		  GM_Parms.mtCpts.push_back(mtcpt);
-		  GM_Parms.mtCptsMap[rvInfoVector[i].listIndices[j].nameIndex]
-		    = GM_Parms.mtCpts.size()-1;
-		  cpts[j] = mtcpt;
-		}
 	      } else {
 		// otherwise add it
 		cpts[j] = 
@@ -2023,6 +1960,9 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		  ];
 	      }
 	    } else {
+	      // need to remove the integer index code.
+	      assert(0);
+#if 0
 	      if (rvInfoVector[i].listIndices[j].intIndex >= 
 		  GM_Parms.mtCpts.size()) {
 		if (!allocateIfNotThere) {
@@ -2039,6 +1979,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		cpts[j] =
 		  GM_Parms.mtCpts[rvInfoVector[i].listIndices[j].intIndex];
 	      }
+#endif
 	    }
 
 	} else {
@@ -2075,29 +2016,46 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		cpts[j]->name().c_str());
 	}
 
-	if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
-	  error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
-		rvInfoVector[i].name.c_str(),
-		rvInfoVector[i].frame,
-		rvInfoVector[i].fileLineNumber,
-		rvInfoVector[i].rvCard,
-		cptType.c_str(),		
-		cpts[j]->name().c_str(),
-		cpts[j]->card());
-	}
-	for (unsigned par=0;par<cpts[j]->numParents();par++) {
-	  if (rv->conditionalParentsList[j][par]->cardinality !=
-	      cpts[j]->parentCardinality(par))
-	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
+	if (cpts[j]->cptType == CPT::di_USCPT) {
+	  // then we need to do special checking for an USCPT, meaning
+	  // we need to check only if that this discrete random
+	  // variable is observed. Note we've already checked for
+	  // the number of parents above, so since a USCPT always
+	  // has zero parents, we don't need to do further
+	  // checking of parent cardinality below.
+	  if (rvInfoVector[i].rvDisp != RVInfo::d_observed) {
+	    error("Error: RV '%s' at frame %d (line %d), wants to use a unity score DenseCPT which requires an observed variable with no parents, but variable '%s' is not specified as observed.\n",
 		  rvInfoVector[i].name.c_str(),
 		  rvInfoVector[i].frame,
 		  rvInfoVector[i].fileLineNumber,
-		  rv->conditionalParentsList[j][par]->name().c_str(),
-		  rv->conditionalParentsList[j][par]->cardinality,
-		  par,
-		  cptType.c_str(),
+		  rvInfoVector[i].name.c_str());
+	  }
+	} else {
+	  // regular non USCPT checking below.
+	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
+	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rvInfoVector[i].rvCard,
+		  cptType.c_str(),		
 		  cpts[j]->name().c_str(),
-		  cpts[j]->parentCardinality(par));
+		  cpts[j]->card());
+	  }
+	  for (unsigned par=0;par<cpts[j]->numParents();par++) {
+	    if (rv->conditionalParentsList[j][par]->cardinality !=
+		cpts[j]->parentCardinality(par))
+	      error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rv->conditionalParentsList[j][par]->name().c_str(),
+		    rv->conditionalParentsList[j][par]->cardinality,
+		    par,
+		    cptType.c_str(),
+		    cpts[j]->name().c_str(),
+		    cpts[j]->parentCardinality(par));
+	  }
 	}
       }
 
@@ -2154,6 +2112,9 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		      ]];
 	    }
 	  } else {
+	    // need to remove the integer index code.
+	    assert(0);
+#if 0
 	    // the list index is an integer
 	    if (rvInfoVector[i].listIndices[j].intIndex >= 
 		GM_Parms.mixGaussiansMap.size()) {
@@ -2173,6 +2134,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
                         rvInfoVector[i].listIndices[j].intIndex
 		      ];
 	      }
+#endif
 	  }
 	} else {
 	  // there are > 0 conditional parents for this
@@ -2245,8 +2207,16 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	      for (unsigned u=0;u<
 		     rv->conditionalGaussians[j].mapping.collection->mgSize();
 		   u++) {
-		if (rv->conditionalGaussians[j].mapping.collection->mg(u)->dim() != rvDim) {
-		error("Error: RV \"%s\" at frame %d (line %d), dimensionality %d, conditional parent %d, collection \"%s\" specifies Gaussian \"%s\" at pos %d with wrong dimension %d\n",
+		if ( // we only check the dimension for those Gaussians that have it.
+		    (rv->conditionalGaussians[j].mapping.collection->mg(u)->mixType
+		     != MixGaussiansCommon::ci_zeroScoreMixGaussian)
+		    &&
+		    (rv->conditionalGaussians[j].mapping.collection->mg(u)->mixType
+		     != MixGaussiansCommon::ci_unityScoreMixGaussian)
+		    && 
+		    (rv->conditionalGaussians[j].mapping.collection->mg(u)->dim() 
+		     != rvDim)) {
+		  error("Error: RV \"%s\" at frame %d (line %d), dimensionality %d, conditional parent %d, collection \"%s\" specifies Gaussian \"%s\" at pos %d with wrong dimension %d\n",
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
 		      rvInfoVector[i].fileLineNumber,
@@ -2426,8 +2396,6 @@ FileParser::addVariablesToTemplate(GMTemplate& gm_template)
     }
   }
 }
-
-
 
 
 
