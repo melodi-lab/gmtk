@@ -640,6 +640,9 @@ main(int argc,char*argv[])
 	// this is the parent process.
 	// printf("%d: child process = %d\n",iteration,pid);
 
+	// close, so that we don't keep accumulating open fds. 
+	close(write_fd);
+
 	int status;
 	struct rusage rus; /* starting time */
 	struct rusage rue; /* ending time */
@@ -652,11 +655,6 @@ main(int argc,char*argv[])
 	waitpid(pid,&status,0);
 
 	if (WEXITSTATUS(status)== EXIT_SUCCESS && !WIFSIGNALED(status)) {
-	  // NOTE: waitpid man page says this returns non-zero if the
-	  // child exited normally, but this didn't work since
-	  // EXIT_SUCCESS is normally defined as zero. So we check it
-	  // explicitly.
-
 
 	  // Assume process ended normally.
 	  if ((rc=getrusage(RUSAGE_CHILDREN,&rue)))
@@ -698,10 +696,11 @@ main(int argc,char*argv[])
 	}
 	// close down the pipe in any case.
 	close(read_fd);
-	close(write_fd);
 
       } else {
 	// this is the child process.
+
+	close(read_fd);
 
 	// limit the amount of time we run.
 	struct rlimit rlim;
@@ -710,7 +709,7 @@ main(int argc,char*argv[])
 	int rc;
 
 	if ((rc = setrlimit(RLIMIT_CPU,&rlim)))
-	  warning("WARNING: child process can't set limit to %d seconds, setrlimit returned %d. No hard limit on process time!!!\n",
+	  warning("WARNING: child process can't set limit to %d seconds, setrlimit() returned %d. No hard limit on process time!!!\n",
 		  rlim.rlim_cur,rc);
 
 	alarm(seconds);
@@ -766,7 +765,7 @@ main(int argc,char*argv[])
 	// turn off the signal.
 	alarm(0);
 
-	// write stuff to a file.
+	// write stuff to pipe.
 	if ((rc=write(write_fd,(void*)&child_info,sizeof(child_info))) != sizeof(child_info)) {
 	  error("ERROR: can't write to parent pipe, errno = %d, %s",errno,strerror(errno));
 	}

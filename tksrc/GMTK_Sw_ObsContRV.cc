@@ -143,7 +143,7 @@ Sw_ObsContRV::probGivenParents(logpr& p)
   } else {
     // need to find which gaussian this will be.
     const unsigned gaussianIndex =
-      curMappingOrDirect->mapping.dtMapper->query(allParents,this);
+      curMappingOrDirect->mapping.dtMapper->query(*curConditionalParents,this);
 
     ///////////////////////////////////////////////////////////
     // Dynamic error checking:
@@ -158,7 +158,7 @@ Sw_ObsContRV::probGivenParents(logpr& p)
 	      gaussianIndex,
 	      curMappingOrDirect->mapping.collection->mxSize(),
 	      curMappingOrDirect->mapping.collection->name().c_str());
-      fprintf(stderr,"Parents configuration :");
+      fprintf(stderr,"All parents configuration :");
       printRVSetAndValues(stderr,allParents);
       error("");
     }
