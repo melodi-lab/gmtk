@@ -56,6 +56,11 @@ usage(const char* message = 0)
 	    "-k <val>	     additive offset for final result\n"
 	    "-lr <range>     label range\n"
 	    "-l #            take labels from first (1, default) or later pfile\n"
+	    "-iswap1         byte-swap input file 1\n"
+	    "-iswap2         byte-swap input file 2\n"
+	    "-iswap3         byte-swap input file 3\n"
+	    "-iswap4         byte-swap input file 4\n"
+	    "-iswapo         byte-swap output file\n"
 	    "-debug <level>  number giving level of debugging output to produce 0=none.\n"
     );
     exit(EXIT_FAILURE);
@@ -525,6 +530,10 @@ main(int argc, const char *argv[])
 
     int ftrop = FTROP_NONE;
 
+    bool iswap1 = false, iswap2 = false;
+    bool iswap3 = false, iswap4 = false;
+    bool iswapo = false;
+
     program_name = *argv++;
     argc--;
 
@@ -585,6 +594,26 @@ main(int argc, const char *argv[])
             else
                 usage("No input filename given.");
         }
+        else if (strcmp(argp,"-iswap1") == 0)
+	  {
+	    iswap1 = true;
+	  }
+        else if (strcmp(argp,"-iswap2") == 0)
+          {
+            iswap2 = true;
+	  }
+        else if (strcmp(argp,"-iswap3") == 0)
+	  {
+	    iswap3 = true;
+	  }
+        else if (strcmp(argp,"-iswap4") == 0)
+          {
+            iswap4 = true;
+	  }
+        else if (strcmp(argp,"-iswapo") == 0)
+          {
+            iswapo = true;
+	  }
         else if (strcmp(argp, "-o")==0)
         {
             // Output file name.
@@ -824,13 +853,13 @@ main(int argc, const char *argv[])
     //////////////////////////////////////////////////////////////////////
 
     InFtrLabStream_PFile* in1_streamp
-        = new InFtrLabStream_PFile(debug_level, "", in1_fp, 1);
+        = new InFtrLabStream_PFile(debug_level, "", in1_fp, 1,iswap1);
     sr1_rng = new Range(sr_str,0,in1_streamp->num_segs());
     fr1_rng = new Range(fr1_str,0,in1_streamp->num_ftrs());
 
     InFtrLabStream_PFile* in2_streamp = NULL;
     if (in2_fp) {
-        in2_streamp = new InFtrLabStream_PFile(debug_level, "", in2_fp, 1);
+        in2_streamp = new InFtrLabStream_PFile(debug_level, "", in2_fp, 1,iswap2);
 	sr2_rng = new Range(sr_str,0,in2_streamp->num_segs());
 	fr2_rng = new Range(fr1_str,0,in2_streamp->num_ftrs());
 	if (sr1_rng->length() != sr2_rng->length()) {
@@ -843,7 +872,7 @@ main(int argc, const char *argv[])
 
     InFtrLabStream_PFile* in3_streamp = NULL;
     if (in3_fp) {
-        in3_streamp = new InFtrLabStream_PFile(debug_level, "", in3_fp, 1);
+        in3_streamp = new InFtrLabStream_PFile(debug_level, "", in3_fp, 1,iswap3);
 	sr3_rng = new Range(sr_str,0,in3_streamp->num_segs());
 	fr3_rng = new Range(fr1_str,0,in3_streamp->num_ftrs());
 	if (sr1_rng->length() != sr3_rng->length()) {
@@ -856,7 +885,7 @@ main(int argc, const char *argv[])
 
     InFtrLabStream_PFile* in4_streamp = NULL;
     if (in4_fp) {
-        in4_streamp = new InFtrLabStream_PFile(debug_level, "", in4_fp, 1);
+        in4_streamp = new InFtrLabStream_PFile(debug_level, "", in4_fp, 1,iswap4);
 	sr4_rng = new Range(sr_str,0,in4_streamp->num_segs());
 	fr4_rng = new Range(fr1_str,0,in4_streamp->num_ftrs());
 	if (sr1_rng->length() != sr4_rng->length()) {
@@ -882,7 +911,7 @@ main(int argc, const char *argv[])
                                        out_fp,
 				       fr1_rng->length(),
 				       lr_rng->length(),
-                                       1);
+                                       1,iswapo);
 
     //////////////////////////////////////////////////////////////////////
     // Do the work.
