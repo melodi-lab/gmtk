@@ -15,6 +15,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "GMTK_io.h"
 #include "GMTK_FileDescription.h"
 
 FileDescription::FileDescription(const char *name, const char *crng_str,
@@ -22,13 +23,12 @@ FileDescription::FileDescription(const char *name, const char *crng_str,
     	                         unsigned *nfloats, unsigned *nints, 
 		                 unsigned *format, bool *swap, unsigned num) {
 
-
-   if (name == NULL) 	
-       error("FileDescription: File name is NULL for file %i\n",num);	
-
-   fofName = new char[strlen(name)+1];
-   strcpy(fofName,name);
-   
+  if (name == NULL) 	
+    error("FileDescription: File name is NULL for file %i\n",num);	
+  
+  fofName = new char[strlen(name)+1];
+  strcpy(fofName,name);
+  
    if (format == NULL)
      error("FileDescription:Data format unspecified for file %i\n",num);
    
@@ -50,116 +50,99 @@ FileDescription::FileDescription(const char *name, const char *crng_str,
    nFloatsUsed = cont_rng->length();
    nIntsUsed = disc_rng->length();
 
-   if (dataFormat == PFILE) {
-
-   if ((curDataFile = fopen(fofName,"rb")) == NULL)
-	error("FileDescription: Can't open '%s' for input\n",
-		   fofName);
-
-   pfile_istr = new InFtrLabStream_PFile(0,fofName,curDataFile,1,*swap);
-
-   fofSize = pfile_istr->num_segs();
-
-   if (pfile_istr->num_ftrs() != nFloats) 
-	error("FileDescription: File %s has %i floats, expected %i\n",
-		   fofName,
-		   pfile_istr->num_ftrs(),
-		   nFloats);
-
-    // in a pfile, only the labs can be ints
-
-   if (pfile_istr->num_labs() != nInts)
-	error("FileDescription: File %s has %i floats, expected %i\n",
-		   fofName,
-		   pfile_istr->num_labs(),
-		   nInts);
-
-    }
-
-   // if not a pfile we are dealing with a file of file names
-
-    else {
-      if ((fofFile = fopen(fofName,"r")) == NULL)
-	error("FileDescription: Can't open '%s' for input\n",fofName);
-      
-     size_t fsize = fileSize(fofFile);
-
-     fofBuf = new char[fsize];
-      
-     size_t n_read = fread((char *)fofBuf,1,fsize,fofFile);
-
-     if (n_read < fsize) 
-	error("FileDescription: Only read %li bytes from file %s, expected %li for file %s\n", n_read,fofName,fsize);
-
-     dataNames = new char*[MAXFILES];
-     fofSize = readFof();
-
-     pfile_istr = NULL;
-
-     fclose(fofFile);
-  }
   if (swap == NULL)
     bswap = false; //default
   else
     bswap = *swap; 
 
+   if (dataFormat == PFILE) {
 
+     if ((curDataFile = fopen(fofName,"rb")) == NULL)
+       error("FileDescription: Can't open '%s' for input\n",
+	     fofName);
+
+     pfile_istr = new InFtrLabStream_PFile(0,fofName,curDataFile,1,bswap);
+     
+     fofSize = pfile_istr->num_segs();
+     
+     if (pfile_istr->num_ftrs() != nFloats) 
+       error("FileDescription: File %s has %i floats, expected %i\n",
+	     fofName,
+	     pfile_istr->num_ftrs(),
+	     nFloats);
+
+    // in a pfile, only the labs can be ints
+     
+     if (pfile_istr->num_labs() != nInts)
+       error("FileDescription: File %s has %i floats, expected %i\n",
+	     fofName,
+	     pfile_istr->num_labs(),
+	     nInts);
+     
+   }
+
+   else {
+     pfile_istr = NULL;
+
+     if ((fofFile = fopen(fofName,"r")) == NULL)
+       error("FileDescription: Can't open '%s' for input\n",fofName);
+
+     fofSize = readFof(fofFile);
+
+     fclose(fofFile);
+   }
 }
 
 
 FileDescription::~FileDescription() {
 
-  printf("deleting file description\n");
+  if (fofName != NULL)
+    delete [] fofName;
 
-  delete [] fofName;
-  delete [] fofBuf;
-  delete [] dataNames;
+  if (dataFormat != PFILE) {
+    for (int i = 0; i < fofSize; i++)
+      delete [] dataNames[i];
+    delete [] dataNames;
+  }
+  else 
+    delete pfile_istr;
 
   if (cont_rng != NULL)
-    delete cont_rng;	
+    delete cont_rng;   
   if (disc_rng != NULL)
     delete disc_rng;
-
-  
 }
 	
 size_t
-FileDescription::readFof() {
+FileDescription::readFof(FILE *f) {
 
-  size_t n_lines = 0;
-  char *tmp2, *endp;
-  char prev;
+  size_t n_lines = 0,maxlines = 0;
+  char line[MAXSTRLEN];
 
-  tmp2 = fofBuf;
-  dataNames[n_lines] = tmp2;
-  endp = fofBuf;
+  while (fgets(line,sizeof(line),f) != NULL)
+    maxlines++;
+  rewind(f);
 
-  while (*endp != '\0')
-    endp++;
+  dataNames = new char*[maxlines];
 
-
-  prev = *tmp2;
-
-  while (++tmp2 != endp) {
+  n_lines = 0;
+  
+  while (fgets(line,sizeof(line),f) != NULL) {
+    int l = strlen(line);
+    if (line[l-1] != '\n') {
+      if (n_lines < maxlines-1) 
+	error("GMTK_FileDescription::readFof: line %i too long in file '%s' - increase MAXSTRLEN\n",
+	      n_lines+1,fofName);
+    }
+    else
+      line[l-1] = '\0';
     
-    if (isspace(*tmp2) && (!(isspace(prev)))) {
-      prev = *tmp2;
-      *tmp2 = '\0';
-      printf("%s\n",dataNames[n_lines]);
-    }
-    else if (isspace(prev) && (!(isspace(*tmp2)))) {
-      dataNames[++n_lines] = tmp2;
-      prev = *tmp2;
-    }
-    else 
-      prev = *tmp2;
+    dataNames[n_lines] = new char[l+1];
+
+    strcpy(dataNames[n_lines],line);
+
+    n_lines++;
   }
-  
-  // add 1 count if final newline if missing 
-  
-  printf("prev: %c last: '%c'\n",prev,*tmp2);
-  
-  
   return n_lines;
 }
 
