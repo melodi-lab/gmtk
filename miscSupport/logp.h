@@ -17,6 +17,9 @@
 
 #include "error.h"
 
+#define HAVE_LOG1P 1
+
+
 // use a lookup table? If so, define the following,
 // or otherwise, undefine to use log(1+exp(x)) directly.
 // #define _TABLE_
@@ -194,7 +197,11 @@ public:
 #ifdef _TABLE_
       z.v = x.v + table[int(diff*inc)]; 
 #else
+#ifdef HAVE_LOG1P
+      z.v = x.v+log1p(exp(diff)); 
+#else // don't HAVE_LOG1P
       z.v = x.v+log(1.0+exp(diff)); 
+#endif
 #endif
 
       return z;
