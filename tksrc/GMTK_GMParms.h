@@ -192,16 +192,10 @@ public:
   GMParms(); 
 
   ///////////////////////////////////////////////////////////    
-  // read in all the basic parameters, assuming file pointer 
+  // read/write in all the basic parameters, assuming file pointer 
   // is located at the correct position.
   void readBasic(iDataStreamFile& is);
-
-  ///////////////////////////////////////////////////////////    
-  // write out the basic parameters, starting at the current
-  // file position.
   void writeBasic(oDataStreamFile& os);
-
-
 
   ///////////////////////////////////////////////////////////    
   // read and write all the DTs.
@@ -228,12 +222,18 @@ public:
   void readStructure(iDataStreamFile& is);
   void writeStructure(oDataStreamFile& os);
 
+  ///////////////////////////////////////////////////////////    
+  // read/write an entire GM (params + structure, i.e.,
+  // all of the above) from a single file.
+  void read(iDataStreamFile& is);
+  void write(oDataStreamFile& os);
+
 
 };
 
 ////////////////////////////////////////////////
 // The global GM parameter object, must be
-// defined in a mainprogram.
+// actually defined near where main() is defined.
 extern GMParms GM_Parms;
 
 #endif
