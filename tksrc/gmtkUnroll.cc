@@ -39,7 +39,7 @@ VCID("$Header$");
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
@@ -177,7 +177,7 @@ main(int argc,char*argv[])
   }
 #endif
 
-  MixGaussiansCommon::checkForValidRatioValues();
+  MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
@@ -220,9 +220,7 @@ main(int argc,char*argv[])
   fp.parseGraphicalModel();
   // create the rv variable objects
   fp.createRandomVariableGraph();
-  // make sure that there are no directed loops in the graph
-  // by imposing the S,SE,E,NE constrains
-  fp.ensureS_SE_E_NE();
+  fp.ensureValidTemplate();
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
   fp.associateWithDataParams();
