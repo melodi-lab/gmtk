@@ -122,16 +122,16 @@ iDataStreamFile::~iDataStreamFile()
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   if (cppIfAscii) {
     if (pclose(fh) != 0) {
-      error("Error: Can't close file.");
+      error("Error: Can't close pipe 'cpp %s'.",fileName());
     }
   } else {
     if (fclose(fh) != 0) {
-      error("Error: Can't close file.");
+      error("Error: Can't close file '%s'.",fileName());
     }
   }
 #else
   if (fclose(fh) != 0) {
-    error("Error: Can't close file.");
+    error("Error: Can't close file '%s'.",fileName());
   }
 #endif
   if (!Binary)
@@ -428,7 +428,7 @@ oDataStreamFile::oDataStreamFile(const char *const _name,bool _Binary)
 oDataStreamFile::~oDataStreamFile()
 {
   if (fclose(fh) != 0) {
-    error("Error: Can't close file.");
+    error("Error: Can't close file '%s'.",fileName());
   }
 }
 
