@@ -994,3 +994,11 @@ Sun Mar 09 19:00:59 2003
     I.e., might make parent class of random variable is all the parser
     should want to deal with.
 
+Sat Mar 15 22:31:31 2003
+  - the issue of setting objects to not train, i.e., when A) a mean
+    of a Gaussian is trained but a covariance is not, or when B) a covariance
+    of a Gaussian is trained but not a mean. In case B, the
+    covariance update should really be relative to the existing untrained mean,
+    not the new mean which is accumulated, computed, and then discarded.
+    The no-train thing should be re-thought out.
+
