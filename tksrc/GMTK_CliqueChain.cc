@@ -268,7 +268,7 @@ void CliqueChain::incrementEMStatistics()
             // do the updates
             logpr posterior = li->lambda*li->pi/dataProb;
             for (unsigned j=0; j<cl->conditionalProbabilityNode.size(); j++)
-                cl->conditionalProbabilityNode[j]->increment(posterior);
+                cl->conditionalProbabilityNode[j]->emIncrement(posterior);
         }
     }
 }
