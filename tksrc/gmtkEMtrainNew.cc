@@ -375,11 +375,6 @@ main(int argc,char*argv[])
 
   GM_Parms.setStride(globalObservationMatrix.stride());
 
-  /////
-  // TODO: check that beam is a valid value.
-  // logpr pruneRatio;
-  // pruneRatio.valref() = -beam;
-
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
   // enables the program to use external triangulation programs,
@@ -447,6 +442,8 @@ main(int argc,char*argv[])
   }
 
   logpr total_data_prob = 1.0;
+
+  clock_t start_time = clock();
 
   /////////////////////////////////////////////////////////
   // first load any and all accumulators
@@ -520,7 +517,7 @@ main(int argc,char*argv[])
 	const int numFrames = globalObservationMatrix.numFrames();
 
 	if (island) {
-	  error("Island for EM not yet finished (but almost)\n");
+	  // error("Island for EM not yet finished (but almost)\n");
 	  unsigned numUsableFrames;
 	  myjt.collectDistributeIsland(numFrames,
 				       numUsableFrames,
@@ -645,6 +642,9 @@ main(int argc,char*argv[])
   // also write according to output master
   GM_Parms.write(outputMasterFile);  
 
+  clock_t end_time = clock();
+  clock_t diff = end_time-start_time;
+  infoMsg(IM::Default,"### Final time for EM stage: %ld clocks, %0.2f seconds\n",diff,(double)diff/(double)CLOCKS_PER_SEC);
 
   exit_program_with_status(0);
 }

@@ -3798,12 +3798,14 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
     } else {
       // this is the true end and we can get the probability of evidence here.
       // only initialize this if we are not doing localCliqueNormalization
-      cur_prob_evidence = probEvidenceRoot(part);
-      if (cur_prob_evidence.essentially_zero()) {
-	infoMsg(IM::Default,"Island not training segment since probability is essentially zero\n");
-	// note that we can't just jump out as we have to free up all the
-	// memory that we allocated. We thus have to check a bunch of conditions on 
-	// the way out and do EM training when appropriate, but always delete.
+      if (runEMalgorithm) {
+	cur_prob_evidence = probEvidenceRoot(part);
+	if (cur_prob_evidence.essentially_zero()) {
+	  infoMsg(IM::Default,"Island not training segment since probability is essentially zero\n");
+	  // note that we can't just jump out as we have to free up all the
+	  // memory that we allocated. We thus have to check a bunch of conditions on 
+	  // the way out and do EM training when appropriate, but always delete.
+	}
       }
     }
     // 
@@ -3830,7 +3832,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
     
     // and do em updating if appropriate.
     if (runEMalgorithm && cur_prob_evidence.not_essentially_zero()) {
-      emIncrement(cur_prob_evidence,localCliqueNormalization);
+      emIncrementIsland(part,cur_prob_evidence,localCliqueNormalization);
     }
 
     if (part == start)
