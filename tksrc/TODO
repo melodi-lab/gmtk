@@ -609,3 +609,11 @@ Sat Jul 13 02:05:27 2002
 Tue Jul 16 18:38:44 2002
  - when variances get floored, message should also include occupancy
    probability (to see if counts are low)
+
+
+Thu Jul 18 15:38:36 2002
+ - add comment about problem with single quotes in GMTK comments
+    because CPP has trouble
+
+Thu Jul 18 15:38:51 2002
+ - add neg values between -infty and -0 being log probabilities.
