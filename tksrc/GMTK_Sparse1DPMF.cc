@@ -93,7 +93,7 @@ Sparse1DPMF::read(iDataStreamFile& is)
 
   is.read(len,"Sparse1DPMF::read, len");
   if (len <= 0)
-    error("ERROR: invalid read length (%d) < 0 in SPMF '%s' of cardinality %d in file '%s'",
+    error("ERROR: invalid length of %d (which is <= 0) when reading SPMF '%s' of cardinality %d in file '%s'",
 	  len,name().c_str(),_card,is.fileName());
 
   pmf.resize(len);
