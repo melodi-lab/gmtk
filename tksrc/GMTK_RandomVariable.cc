@@ -4,7 +4,7 @@
  * Defines the functions that all random variables must satisfy in order
  * for the inference, sampling, and other generic routines to work.
  *
- * Written by Geoffrey Zweig <gzweig@us.ibm.com>
+ * Written by Geoffrey Zweig <gzweig@us.ibm.com> & Jeff Bilmes <bilmes@ee.washington.edu>
  * 
  * Copyright (c) 2001, < fill in later >
  *
@@ -69,6 +69,72 @@ void RandomVariable::setParents(vector<RandomVariable *> &sparents,
         allPossibleParents[p++] = *si;
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * clone
+ *      copies the data structures necessary for unrolling
+ *      all random variables have these structures.
+ * 
+ * Preconditions:
+ *      dtMapper and all parents lists must be set appropriately.
+ *
+ * Postconditions:
+ *      specified data members are copied
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      A cloned RV
+ *
+ *-----------------------------------------------------------------------
+ */
+
+RandomVariable* RandomVariable::clone()
+{
+  RandomVariable* rv = create();
+  rv->label = label;
+  rv->hidden = hidden;
+  rv->discrete = discrete;
+  // leave time index undefined
+  // rv->timeIndex = timeIndex;
+
+  rv->switchingParents = switchingParents;
+  // leave allPossibleParents and allPossibleChildren empty
+  rv->conditionalParentsList = conditionalParentsList;
+  // leave curConditionalParents empty
+  rv->dtMapper = dtMapper; 
+  // leave cachedIntFromSwitchingState uninitialized since
+  // it will be changed individually for each rv.
+
+  return rv;
+}
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * reveal()
+ *      i.e., "print" out the contents of the rv.
+ * 
+ * Preconditions:
+ *      rv must be filled in.
+ *
+ * Postconditions:
+ *      Same as before.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+
 void RandomVariable::reveal(bool show_vals)
 {
     cout << label << "-" << timeIndex << " : ";
@@ -83,42 +149,3 @@ void RandomVariable::reveal(bool show_vals)
     cout << endl;
 }
 
-
-/*-
- *-----------------------------------------------------------------------
- * basicClone 
- *      copies the data structures necessary for unrolling
- *      all random variables have these structures.
- *      This will be called in child classes using the following
- *      mechanism:
- *               rv = new DerivedClassRandomVariable;
- *               rv->basicClone(this);
- * 
- * Preconditions:
- *      dtMapper and all parents lists must be set
- *
- * Postconditions:
- *      specified data members are copied
- *
- * Side Effects:
- *      none
- *
- * Results:
- *      none   
- *
- *-----------------------------------------------------------------------
- */
-
-void RandomVariable::basicClone(RandomVariable *caller)
-{
-    label = caller->label;
-    hidden = caller->hidden;
-    discrete = caller->discrete;
-    // leave time index undefined
-    switchingParents = caller->switchingParents;
-    // leave allPossibleParents and allPossibleChildren empty
-    conditionalParentsList = caller->conditionalParentsList;
-    // leave curConditionalParents empty
-    dtMapper = caller->dtMapper; 
-    // leave cachedIntFromSwitchingState uninitialized
-}
