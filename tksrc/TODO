@@ -403,3 +403,5 @@ TODO:
 - cpp program is determined by environment variable if it exists.
 
 - remove from parser the integer index stuff since string names exist.
+
+- remove all cin/cout and use printf/scanf
