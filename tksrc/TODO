@@ -694,3 +694,11 @@ Sun Aug 11 18:07:53 2002
  - obsNotToTrain file formats
     - should allow multiple objects on the same line
     - should use a better format (regexpressions, etc.)
+
+
+Wed Aug 14 14:08:19 2002
+    given a word-int map, allow the inclusion of word matrices
+    WidMatrix to map to internal GMTK matrices, using loadWordFactors  
+    and Katrin's tag-word format. I.e., support observed data
+    in the form of words/utterances for a word map.
+
