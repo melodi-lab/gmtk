@@ -91,8 +91,11 @@ public:
     findConditionalParents(); 
     if (!hidden) {
       // observed, so set value from observation matrix
-      if (globalObservationMatrix.active())
+      if (globalObservationMatrix.active()) {
+	// printf("getting value of random variable '%s', time index %d, el %d\n",
+	// label.c_str(),timeIndex,featureElement);
 	val = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
+      }
       return;
     }
     curCPT->becomeAwareOfParentValues(*curConditionalParents);

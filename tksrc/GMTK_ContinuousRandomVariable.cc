@@ -96,6 +96,9 @@ ContinuousRandomVariable::findConditionalParents()
 logpr
 ContinuousRandomVariable::probGivenParents()
 {
+  // TODO: there should be some check to make sure
+  // that the resulting gaussian is the correct dimensionality.
+
   if (curMappingOrDirect->direct) {
     _cachedProb = 
       curMappingOrDirect->gaussian->log_p
@@ -112,6 +115,8 @@ ContinuousRandomVariable::probGivenParents()
     //
     // TODO: this needs to be changed when we have
     // different types of mixtures of Gaussians.
+    // printf("CRV: '%s', par val %d, gi = %d\n",
+    // label.c_str(),(*curConditionalParents)[0]->val,gaussianIndex);
     _cachedProb = GM_Parms.mixGaussians[gaussianIndex]->log_p
       (
        globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),

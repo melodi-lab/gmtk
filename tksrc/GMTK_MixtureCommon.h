@@ -62,6 +62,10 @@ public:
     : _dim(dim),mixType(_mixType) {}
   virtual ~MixGaussiansCommon() {}
 
+  /////////////////////////////////////
+  // return the dimensionality
+  unsigned dim() { return _dim; }
+
   //////////////////////////////////////////////
   // read/write basic parameters
   virtual void read(iDataStreamFile& is) = 0;

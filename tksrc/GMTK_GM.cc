@@ -18,6 +18,9 @@
 
 #include "GMTK_GM.h"
 #include "GMTK_ObservationMatrix.h"
+
+#include <stdio.h>
+
 #include <map>
 #include <set>
 #include <algorithm>
@@ -355,8 +358,10 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
         clampFirstExample();
         do
         {
-            if (globalObservationMatrix.active())
+	     if (globalObservationMatrix.active()) {
 	        globalObservationMatrix.printSegmentInfo();
+                ::fflush(stdout);
+	     }
             // first compute the probabilities
             if (!chain->computePosteriors(beam))
             {
@@ -369,6 +374,7 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
             chain->incrementEMStatistics();
         } while (clampNextExample());
 	printf("Total data prob is: %1.9e\n",total_data_prob.val());
+        ::fflush(stdout);
         GM_Parms.emEndIteration();
         // if (total_data_prob > last_dp)
 	GM_Parms.emSwapCurAndNew();

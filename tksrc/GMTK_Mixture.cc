@@ -122,6 +122,8 @@ MixGaussians::log_p(const float *const x,
 		    const Data32* const base,
 		    const int stride)
 {
+  // printf("Computing prob for name '%s'\n",
+  // name().c_str());
   logpr rc;
   rc.set_to_zero();
   for (unsigned i=0;i<numComponents;i++) {
