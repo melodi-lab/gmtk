@@ -1759,12 +1759,41 @@ JunctionTree::assignRVToClique(const char *const partName,
 
   if (closure_in_clique && !allParentsObserved) {
     // need to further check that parents are in clique
-    set<RV*> res;
+    set<RV*> parentsInClique;
     set_intersection(curClique.nodes.begin(),
 		     curClique.nodes.end(),
 		     parSet.begin(),parSet.end(),
-		     inserter(res,res.end()));
-    closure_in_clique = (res.size() == parSet.size());
+		     inserter(parentsInClique,parentsInClique.end()));
+
+    // First check for equal size. If the size is equal, then *all*
+    // parents are in the clique.
+    closure_in_clique = (parentsInClique.size() == parSet.size());
+    if (!closure_in_clique) {
+      // rather than only checking for equal size, we here also check
+      // if no *hidden* parents are out of the clique, since that is
+      // all we need to assign this node to this clique. In other
+      // words, if all parents that are out of clique are observed, we
+      // can still go.
+
+      assert ( parentsInClique.size() < parSet.size() );
+
+      set<RV*> parentsOutOfClique;
+      set_difference(parSet.begin(),parSet.end(),
+		     parentsInClique.begin(),parentsInClique.end(),
+		     inserter(parentsOutOfClique,parentsOutOfClique.end()));
+      
+      // Check to see if all parents out of the clique are observed,
+      // and if so, the closure is in the clique.
+      set<RV*>::iterator it;
+      closure_in_clique = true;
+      for (it = parentsOutOfClique.begin(); it != parentsOutOfClique.end(); it++) {
+	RV* rv = (*it);
+	if (rv->hidden()) {
+	  closure_in_clique = false;
+	  break;
+	}
+      }
+    }
   }
 
   // printf("clique%d: from par(rv), closure_not_in_clique = %d, num
@@ -1772,10 +1801,10 @@ JunctionTree::assignRVToClique(const char *const partName,
   // %d\n",root,closure_not_in_clique,part.cliques[root].children.size());
 
   if (closure_in_clique) {
-    // So closure(rv) is in current clique, meaning rv and all its
-    // parents are members of this clique, but it is not nec. the case
-    // that all of rv's parents are themselves assigned to produce
-    // probabilities in this clique
+    // So closure(rv) is in current clique, meaning rv and *all* its
+    // hidden parents are members of this clique, but it is not
+    // nec. the case that all of rv's parents are themselves assigned
+    // to produce probabilities in this clique.
 
     // Since closure is in the clique, we "assign" this node to this
     // clique. Note, this does not necessarily mean that the node will
