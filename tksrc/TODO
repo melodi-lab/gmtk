@@ -238,4 +238,4 @@ X make sure that dlinkmatrix precompute is being
   in, parallelism, and so on.
 
 
- 
+- write MDCPT parameters out in nice order with smart comments.
