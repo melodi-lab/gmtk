@@ -767,8 +767,13 @@ void GMTK_GM::GM2CliqueChain()
         chain->cliques[i].member.resize(se-tempv.begin());
         copy(tempv.begin(), se, chain->cliques[i].member.begin());
 
-       assert(chain->cliques[i].member.begin()!=chain->cliques[i].member.end());
-       
+       if (chain->cliques[i].member.begin()==chain->cliques[i].member.end())
+       {
+           cout << "Error: Two consecutive cliques share no variables. The "
+                << "unrolled network is disconnected. Check your structure "
+                << "file.\n";
+           exit(1);
+       }
     }
     
     // now initialize all the other clique data members
