@@ -824,7 +824,9 @@ ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 
   /* for ascii, newline is record delimiter - additional or missing nl's will cause error messages */
 
-  while ((ch = fgetc(f->curDataFile)) != EOF) {
+  int tmp;
+  while ((tmp = fgetc(f->curDataFile)) != EOF) {
+    ch = tmp;
     if (ch == '\n')
       n_samples++;
   }
@@ -968,7 +970,7 @@ void
 ObservationMatrix::printSegmentInfo() {
 
   printf("Processing segment # %d. Number of frames = %d.\n",
-	segmentNumber,numFrames);
+	 (unsigned)segmentNumber,numFrames);
 }
 
 
