@@ -125,3 +125,5 @@ XXX- todo, make sure that chunk n:m is valid.
   uses the same common data.
 
 
+- in file parser, add checks to make sure that all ints read in
+  are non-negative
