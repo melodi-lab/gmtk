@@ -81,7 +81,16 @@ MixGaussians::read(iDataStreamFile& is)
 	GM_Parms.gaussianComponentsMap[str]
     ];
     components[i] = gc;
+    if (gc->dim() != dim()) {
+      error("ERROR: MixGaussians '%s' in file '%s' of dim %d trying to use component '%s' of dim %d\n",
+	    name().c_str(),is.fileName(),dim(),gc->name().c_str(),gc->dim());
+    }
   }
+
+  mixCoeffVanishThreshold =   
+    logpr((double)1.0/numComponents) /
+    logpr(mixCoeffVanishRatio);
+
   // make ready for probability evaluation.
   componentCache.resize(10);
 }
@@ -314,7 +323,6 @@ MixGaussians::emIncrement(logpr prob,
     components[i]->emIncrement(weightedPostDistribution[i],
 			       x,base,stride);
   }
-
 }
 
 
@@ -329,7 +337,7 @@ MixGaussians::emEndIteration()
     return; // done already
 
   if (accumulatedProbability.zero()) {
-    warning("WARNING: Diagonal covariance vector named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+    warning("WARNING: Gaussian mixture named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
   dense1DPMF->emEndIteration();
