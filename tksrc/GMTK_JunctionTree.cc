@@ -2648,7 +2648,15 @@ JunctionTree::printAllJTInfoCliques(FILE* f,
 {
   // print cliques information
   for (unsigned i=0;i<treeLevel;i++) fprintf(f,"  ");
-  fprintf(f,"== Clique number: %d\n",root);
+  fprintf(f,"== Clique number: %d",root);
+  if (treeLevel == 0)
+    fprintf(f,", root/right-interface clique");
+  if (part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].children.size() + 1) {
+    fprintf(f,", leaf/left-interface clique");
+  } else {
+    assert ( part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].children.size() );
+  }
+  fprintf(f,"\n");
   part.cliques[root].printAllJTInfo(f,treeLevel,part.unassignedInPartition);
   for (unsigned childNo=0;
        childNo<part.cliques[root].children.size();childNo++) {

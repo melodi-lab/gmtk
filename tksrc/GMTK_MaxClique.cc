@@ -1965,7 +1965,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part)
 void 
 InferenceMaxClique::
 ceSendToOutgoingSeparator(JT_InferencePartition& part,
-		     InferenceSeparatorClique& sep)
+			  InferenceSeparatorClique& sep)
 {
 
   // create an ininitialized variable using dummy argument
@@ -2586,20 +2586,18 @@ InferenceMaxClique::ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& 
     } while (++drv->val < drv->cardinality);
   } else {
     // observed, either discrete or continuous
-    if (message(Giga)) {
-      if (rv->discrete) {
-	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-	// TODO: for observed variables, do this once at the begining
-	// before any looping here.
-	drv->setToObservedValue();
-	infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
-		rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
-      } else {
-	// nothing to do since we get continuous observed
-	// value indirectly
-	infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
-		rv->name().c_str(),rv->frame(),nodeNumber,p.val());
-      }
+    if (rv->discrete) {
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      // TODO: for observed variables, do this once at the begining
+      // before any looping here.
+      drv->setToObservedValue();
+      infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+    } else {
+      // nothing to do since we get continuous observed
+      // value indirectly
+      infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
     }
     // continue on, effectively multiplying p by unity.
     ceIterateUnassignedNodesCliqueDriven(part,nodeNumber+1,p);
