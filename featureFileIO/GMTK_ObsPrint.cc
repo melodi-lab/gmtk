@@ -394,10 +394,11 @@ unsigned int nfs[MAX_OBJECTS];
 char  *sr_str               = 0;   // sentence range string
 Range *sr_rng;
 char  *psr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per-stream sentence range string
-char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // feature range string    
-char  *lr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // label range string  
-char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string 
+char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // feature range string    
+char  *lr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // label range string  
+char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream per sentence frame range string 
 char  *pr_str               = 0;   // per-sentence range string
+char  *pre_trans_spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream pre-transform per sentence frame range string 
 
 char* actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er","er","er","er","er","er"};   // 
 unsigned actionIfDiffNumFrames[MAX_OBJECTS]={ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR};   // 
@@ -479,6 +480,7 @@ Arg Arg::Args[] = {
   Arg("fr",   Arg::Opt, fr_str,"feature range",Arg::ARRAY,MAX_OBJECTS),
   Arg("spr",  Arg::Opt, spr_str,"per stream per-sentence frame range",Arg::ARRAY,MAX_OBJECTS),
   //  Arg("pr",   Arg::Opt, pr_str,"per-sentence range"),
+  Arg("pretransspr",  Arg::Opt, pre_trans_spr_str,"per stream pre-transform per-sentence frame range",Arg::ARRAY,MAX_OBJECTS),
   Arg("lr",   Arg::Opt, lr_str,"label range",Arg::ARRAY,MAX_OBJECTS),
   Arg("startskip",   Arg::Opt, startSkip,"start skip"),
   Arg("endskip",   Arg::Opt, endSkip,"end skip"),
@@ -750,7 +752,8 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 				   perStreamTransforms,
 				   postTransforms,
 				   ftrcombo,
-				   (const char**)& psr_str
+				   (const char**)& psr_str,
+				   (const char**)& pre_trans_spr_str
 				   );   
 
 
