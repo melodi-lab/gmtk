@@ -279,6 +279,7 @@ main(int argc,char*argv[])
     iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+  GM_Parms.finalizeParameters();
 
   /////////////////////////////
   // read in the structure
@@ -300,7 +301,7 @@ main(int argc,char*argv[])
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
   fp.associateWithDataParams();
-  GM_Parms.finalizeParameters();
+
   // make sure that all observation variables work
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();

@@ -225,7 +225,7 @@ main(int argc,char*argv[])
       GM_Parms.readTrainable(pf);
     }
   }
-
+  GM_Parms.finalizeParameters();
 
   /////////////////////////////
   // read in the structure of the GM, this will
@@ -254,7 +254,7 @@ main(int argc,char*argv[])
 	error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
     }
   }
-  GM_Parms.finalizeParameters();
+
 
   // create with bogus M and S values for now, to be overwritten
   // once we read in the partitions.

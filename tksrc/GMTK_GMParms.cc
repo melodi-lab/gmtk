@@ -91,8 +91,6 @@ const unsigned GMPARMS_MAX_NUM = 900000000;
 GMParms::GMParms()
 {
   emTrainBitmask = emDefaultState;
-  // load all internal global objects.
-  loadGlobal();
 }
 
 
@@ -1114,23 +1112,24 @@ writeDecisionTreeIndexFiles()
 
 /*-
  *-----------------------------------------------------------------------
- * GMParms::loadGlobal()
+ * GMParms::finalizeParameters()
  *   load internal global objects, after all other parameters
  *   have been read in.
  *
  * Preconditions:
- *      Should be called before any internal objects have been read in. This routine
- *      should not be called after other GMTK objects have
- *      been loaded.
+ *      Should be called after all internal objects have been read in. This routine
+ *      should not be called before other GMTK objects have
+ *      been loaded. Note also this should be done *before* any association
+ *      with the RV structure, so that it doesn't have any undefined values.
  *
  * Postconditions:
- *      New global 
+ *      New global objects have been done.
  *
  * Side Effects:
  *      changes internal GMTK object arrays. Note that
  *      this routine will add to the internal GMKT object arrays
- *      by pre-pending to the beginning. This routine should be called first,
- *      before any other objects have been allocated. Also, when
+ *      by appending at the end. This routine should be called last,
+ *      after all other objects have been allocated. Also, when
  *      writing out any of these objects, we should be sure
  *      not to write out any of the objects which are being
  *      stored here.
@@ -1141,30 +1140,34 @@ writeDecisionTreeIndexFiles()
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::loadGlobal()
+GMParms::finalizeParameters()
 {
   ///////////////////////////////////////////////////////
   // Now that presumably everything has been read in,
   // we insert the global internal objects:
   //     1) a named collection which references the global arrays.
-  //     2) special scoring mixtures
+  //     2) two special scoring mixtures (unity and zero)
+  //     3) one special scoring MDCPT (unity)
 
   // Load the global named collection.  first, make sure that the name
-  // hasn't already been defined, meaning that this routine has
-  // already been called (meaning this routine wasn't called first)
+  // hasn't already been defined, meaning either that this routine has
+  // not been called or nobody else defined a collection with this name.
   assert (nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) == nclsMap.end());
 
   NameCollection* nc = new NameCollection();
   nc->_name = NAMED_COLLECTION_GLOBAL_NAME;
   // copy the tables:
-  // TODO: figure out how to make this be by reference.
+  // TODO: figure out a better way than copying the entire collection
+  // to global. Perhaps, however, STL does the right thing and will
+  // share the internal array, but should check this.
   nc->mxTable = mixtures;
   nc->spmfTable = sPmfs;
   ncls.push_back(nc);
   nclsMap[nc->name()] = ncls.size()-1;
 
   /////////////////////////////////////////////////////////////////////
-  // now we load 2 extra mixtures.
+  // now we load 2 extra mixtures. 
+  // IMPORTANT: when making changes here, also see routine:  GMParms::writeMixtures(oDataStreamFile& os)
 
   // Load the zero scoring Mixture
   assert (mixturesMap.find(string(ZEROSCOREMIXTURE_NAME)) == mixturesMap.end());
@@ -1181,6 +1184,7 @@ GMParms::loadGlobal()
 
   /////////////////////////////////////////////////////////////////////
   // and we load 1 extra MDCPT
+  // IMPORTANT: when making changes here, also see routine:  GMParms::writeMdCpts(oDataStreamFile& os)
 
   // load the unity scoring MDCPT.  Note, this CPT corresponds to
   // a random variable:
@@ -1195,54 +1199,6 @@ GMParms::loadGlobal()
   USCPT *uscpt = new USCPT();
   mdCpts.push_back(uscpt);
   mdCptsMap[uscpt->name()] = mdCpts.size()-1;
-
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * GMParms::finalizeParameters()
- *   Some additional cleanup & setting of global parameters needs
- *   to be done *after* all other parameters are loaded in, and
- *   assigned to random variables, but before the parameters are used.
- *   This routine does this.
- *
- * Preconditions:
- *
- *      Should be called after all internal objects have been read in
- *      and assigned to RVs. This routine should not be called before
- *      other GMTK objects have been loaded.
- *
- * Postconditions:
- *      New globals are set up and ready to use. 
- *
- * Side Effects:
- *      changes internal GMTK object arrays. Note that this routine
- *      will add to the internal GMKT object arrays.  This routine
- *      should be called last, after all other objects have been
- *      allocated.
- *      
- *      
- *
- * Results:
- *      nil
- *
- *-----------------------------------------------------------------------
- */
-void 
-GMParms::finalizeParameters()
-{
-
-  // reset the global named collection to point to all
-  // existing parameters, so that it can be used properly.
-
-  assert ( nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) != nclsMap.end() );
-  NameCollection* gnc = ncls[nclsMap[string(NAMED_COLLECTION_GLOBAL_NAME)]];
-  // TODO: figure out a better way than copying the entire collection
-  // to global. Perhaps, however, STL does the right thing and will
-  // share the internal array, but check this.
-  gnc->mxTable = mixtures;
-  gnc->spmfTable = sPmfs;
 
 }
 
@@ -1562,9 +1518,22 @@ GMParms::writeMdCpts(oDataStreamFile& os)
   // leave out the 1st one (ie., the -1) as it is an internal
   // object. See routine loadGlobal()
   os.write(mdCpts.size()-1,"num Dense CPTs"); os.nl();
-  for (unsigned i=1;i<mdCpts.size();i++) {
+
+  // Next, get a pointer to the unity score CPT that we should not
+  // write out.  Note that it potentially might not be at the end of
+  // the array since we might have done automatic allocation of MDCPTs
+  // when reading in the .str file.
+  const string usname = string(USMDCPT_NAME);
+  assert (mdCptsMap.find(usname) != mdCptsMap.end());
+  const unsigned idx = mdCptsMap[string(USMDCPT_NAME)];
+  assert ( idx < mdCpts.size() );
+  USCPT *uscpt = (USCPT*) mdCpts[idx];
+  unsigned cnt = 0;
+  for (unsigned i=0;i<mdCpts.size();i++) {
+    if (mdCpts[i] == uscpt)
+      continue;
     // first write the count
-    os.write(i-1,"Dense CPT cnt");
+    os.write(cnt++,"Dense CPT cnt");
     os.nl();
     mdCpts[i]->write(os);
   }
@@ -1754,11 +1723,12 @@ GMParms::writeMixtures(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Mixtures of components");os.nl();
   // Leave out the first two (ie., the -2) as they are internal
-  // objects. See routine loadGlobal().
+  // objects. See routine finalizeParameters().
   os.write(mixtures.size()-2,"num MIXCOMPONENTS"); os.nl();
-  for (unsigned i=2;i<mixtures.size();i++) {
+
+  for (unsigned i=0;i<mixtures.size()-2;i++) {
     // first write the count
-    os.write(i-2,"MIXCOMPONENTS cnt");
+    os.write(i,"MIXCOMPONENTS cnt");
     os.nl();
 
     // next write the dimension of this mixture
@@ -1767,6 +1737,7 @@ GMParms::writeMixtures(oDataStreamFile& os)
 
     mixtures[i]->write(os);
   }
+
   os.nl();
 }
 

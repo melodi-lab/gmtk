@@ -340,6 +340,7 @@ main(int argc,char*argv[])
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+  GM_Parms.finalizeParameters();
 
   /////////////////////////////
   // read in the structure of the GM, this will
@@ -363,7 +364,7 @@ main(int argc,char*argv[])
     fp.associateWithDataParams(FileParser::allocateUniform);
   else
     error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
-  GM_Parms.finalizeParameters();
+
 
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 

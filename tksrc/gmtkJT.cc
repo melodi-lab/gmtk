@@ -296,9 +296,7 @@ main(int argc,char*argv[])
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
-
-  // comment for now Sun Jan 11 09:47:23 2004
-  // GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
+  GM_Parms.finalizeParameters();
 
   /////////////////////////////
   // read in the structure of the GM, this will
@@ -326,7 +324,7 @@ main(int argc,char*argv[])
     else
       error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   }
-  GM_Parms.finalizeParameters();
+
 
 
   // make sure that all observation variables work
