@@ -8,12 +8,10 @@
 /* need this for the call to atof() below */
 #include <math.h>
 
-#define INT_TYPE  0
-#define FLT_TYPE  1
-#define KWD_TYPE  2
-#define ID_TYPE  3
-#define OP_TYPE  3
-#define UN_TYPE  3
+#include <stdio.h>
+
+
+#include "GMTK_FileParser.h"
 
 
 %}
@@ -53,38 +51,36 @@ separator ":"|";"
 {int}+    {
             printf( "An integer: %s (%d)\n", yytext,
                     atoi( yytext ) );
-	    return INT_TYPE;
+	    return FileParser::TT_INT;
             }
 
 
 {flt}        {
             printf( "A float: %s (%g)\n", yytext,
                     atof( yytext ) );
-	    return FLT_TYPE;
+	    return FileParser::TT_FLT;
             }
 
 {keyword}   {
             printf( "A keyword: %s\n", yytext );
-	    return KWD_TYPE;
+	    return FileParser::TT_KWD;
             }
 
 {ident}     { printf( "An identifier: %s\n", yytext );
-              return ID_TYPE; 
+              return FileParser::TT_ID; 
             }
  
 {separator} {  printf( "A separator: %s\n", yytext );
-              return OP_TYPE;                      
+              return FileParser::TT_OP;                      
             }
 
 .           { printf( "Unrecognized character: %s\n", yytext );
-              return UN_TYPE;
+              return FileParser::TT_UNDEF;
             }
 
 %%
 
-main( argc, argv )
-int argc;
-char **argv;
+main( int argc, char **argv )
 {
     ++argv, --argc;  /* skip over program name */
     if ( argc > 0 )
