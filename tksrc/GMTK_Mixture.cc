@@ -417,16 +417,55 @@ MixGaussians::emEndIteration()
 
   dense1DPMF->emEndIteration();
 
+  /////////////////////////////////////////////////////////////////
+  // The next bunch of code does splitting/vanishing
+  // using both he MCVR/MCSR stuff but also works
+  // with the force top split and force bottom vanish
+  // framework.
+  // The intension is that MCVR will go ahead and vanish
+  // everyone according to that value. If there are any additional
+  // ones in the bottom N that need to be vanish, that will
+  // occur on top of the MCVR.
+  // Similarly, MCSR will split anyone that satisfies that ratio.
+  // The force top split will then split any additional onces
+  // that need to be split according to the top N value.
+  
+
+  /////////////////////////////////////////////////////////
+  // first split/vanish based on ratio.
 
   logpr mixCoeffVanishThreshold =
     logpr((double)1.0/numComponents)/logpr(mixCoeffVanishRatio);
   logpr mixCoeffSplitThreshold =
     logpr(mixCoeffSplitRatio)/logpr((double)numComponents);
 
+  assert ( mixCoeffVanishThreshold < mixCoeffSplitThreshold );
+
+  unsigned numVanishedSoFar = 0;
+  unsigned numSplitSoFar = 0;
+  for (unsigned i=0;i<numComponents;i++) {
+    if (numVanishedSoFar < (numComponents-1) && 
+	dense1DPMF->np(i) < mixCoeffVanishThreshold) {
+      // make sure not to vanish everyone.
+      numVanishedSoFar++;
+      MixGaussiansCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
+    } else if (dense1DPMF->np(i) >= mixCoeffSplitThreshold) {
+      numSplitSoFar++;
+      MixGaussiansCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
+    }
+    // need to end component iteration in both cases.
+    components[i]->emEndIteration();
+  }
+
+  ///////////////////////////////////////////////////////////
+  // next split/vanish based on force split/vanish
+
   unsigned localNumTopToForceSplit = numTopToForceSplit;
   unsigned localNumBottomToForceVanish = numBottomToForceVanish;
   if ((localNumTopToForceSplit + localNumBottomToForceVanish) >= 
       dense1DPMF->length()) {
+    // need to adjust the top/bottom ones to match
+    // the local number of mixtures. Do it proportionally.
     double splitFrac = localNumTopToForceSplit/
       (localNumTopToForceSplit + localNumBottomToForceVanish);
     double vanishFrac = 1.0 - splitFrac;
@@ -438,59 +477,66 @@ MixGaussians::emEndIteration()
 
   assert ( localNumTopToForceSplit < dense1DPMF->length() );
   assert ( localNumBottomToForceVanish < dense1DPMF->length() );
-  bool vanishingThresholdIsDueToForce = false;
-  bool splittingThresholdIsDueToForce = false;
+
   if (localNumTopToForceSplit > 0 
       ||
       localNumBottomToForceVanish > 0) {
-    vector< logpr > coefs;
+    // more work
+
+    vector< pair<logpr,unsigned> > coefs;
     coefs.resize(dense1DPMF->length());
     for (unsigned i=0;i<coefs.size();i++) {
-      coefs[i] = dense1DPMF->np(i);
+      coefs[i].first = dense1DPMF->np(i);
+      coefs[i].second = i;
     }
+
     // need to sort in *accending* order.
-    sort(coefs.begin(),coefs.end());
-    // now, adjust the splitting/vanishing thresholds according to the position
-    // in the sorted array of next probabilities.
+    LogpUnsignedPairCompare lupc;
+    sort(coefs.begin(),coefs.end(),lupc);
+
+    /////////////////////////////////////
+    // Add new split/vanish occurances to appropriate set.
+    // Make sure we don't vanish too many, as the vanishing ratio might have
+    // already vanished some of the ones that we want to vanish here.
     if (localNumBottomToForceVanish > 0) {
-      if (coefs[localNumBottomToForceVanish-1] > mixCoeffVanishThreshold) {
-	mixCoeffVanishThreshold = coefs[localNumBottomToForceVanish];
-	vanishingThresholdIsDueToForce = true;
-	if (mixCoeffVanishThreshold >= mixCoeffSplitThreshold)
-	  // bump up split threshold to be greater than
-	  // vanish threshold
-	  mixCoeffSplitThreshold = 2.0*mixCoeffVanishThreshold;
+      for (unsigned i=0;
+	   (i<localNumBottomToForceVanish)
+	     &&
+	     (numVanishedSoFar < (numComponents-1))
+	     ;i++) {
+	bool alreadyVanished =
+	  (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
+	   != MixGaussiansCommon::vanishingComponentSet.end());
+	bool alreadySplit =
+	  (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
+	   != MixGaussiansCommon::splittingComponentSet.end());
+	if (!alreadyVanished && !alreadySplit) {
+	  // then ok to vanish
+	  numVanishedSoFar++;
+	  MixGaussiansCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second));
+	}
       }
     }
 
     if (localNumTopToForceSplit > 0) {
-      if (coefs[coefs.size()-localNumTopToForceSplit] < mixCoeffSplitThreshold) {
-	mixCoeffSplitThreshold = coefs[coefs.size()-localNumTopToForceSplit];
-	splittingThresholdIsDueToForce = true;
-	if (mixCoeffSplitThreshold <= mixCoeffVanishThreshold)
-	  // bump down vanish threshold
-	  mixCoeffVanishThreshold = mixCoeffSplitThreshold/2.0;
+
+      for (unsigned j=0,i = (coefs.size()-1);
+	   ;j<localNumTopToForceSplit;j++,i--) {
+	bool alreadyVanished =
+	  (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
+	   != MixGaussiansCommon::vanishingComponentSet.end());
+	bool alreadySplit =
+	  (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
+	   != MixGaussiansCommon::splittingComponentSet.end());
+
+	if (!alreadyVanished && !alreadySplit) {
+	  numSplitSoFar++;
+	  MixGaussiansCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second));
+	}
       }
     }
   }
 
-  assert ( mixCoeffVanishThreshold < mixCoeffSplitThreshold );
-
-  unsigned numVanished = 0;
-  unsigned numSplit = 0;
-  for (unsigned i=0;i<numComponents;i++) {
-    if (numVanished < (numComponents-1) && 
-	dense1DPMF->np(i) < mixCoeffVanishThreshold) {
-      // make sure not to vanish everyone.
-      numVanished++;
-      MixGaussiansCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
-    } else if (dense1DPMF->np(i) >= mixCoeffSplitThreshold) {
-      numSplit++;
-      MixGaussiansCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
-    }
-    // need to end component iteration in both cases.
-    components[i]->emEndIteration();
-  }
 
   // stop EM
   emClearOnGoingBit();
