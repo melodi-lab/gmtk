@@ -28,6 +28,8 @@
 #include "logp.h"
 #include "sArray.h"
 
+#include "GMTK_EMable.h"
+
 class Sparse1DPMF : public EMable {
 
   //////////////////////////////////////
@@ -42,7 +44,7 @@ class Sparse1DPMF : public EMable {
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
-  sArray <Entry> pmf
+  sArray <Entry> pmf;
   ///////////////////////////////////////////////////////////  
 
   //////////////////////////////////
@@ -79,7 +81,7 @@ public:
   }
   ///////////////////////////////////////
   // return the value at entry i
-  logpr valueAtEntry(const int i) {
+  int valueAtEntry(const int i) {
     assert ( i >= 0 && i < pmf.len() );
     return pmf[i].val;
   }

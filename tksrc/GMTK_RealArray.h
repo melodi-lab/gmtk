@@ -20,8 +20,8 @@
  */
 
 
-#ifndef GMTK_REALARRAY
-#define GMTK_REALARRAY
+#ifndef GMTK_REALARRAY_H
+#define GMTK_REALARRAY_H
 
 #include "fileParser.h"
 #include "logp.h"
@@ -57,4 +57,4 @@ public:
 
 
 
-#endif // defined REALARRAY
+#endif // defined REALARRAY_H
