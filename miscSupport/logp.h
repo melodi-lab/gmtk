@@ -128,6 +128,7 @@ public:
   }
   
   inline bool zero() const { return (v == LZERO); }
+  inline bool essentially_zero() const { return (v < LSMALL); }
   inline bool almost_zero() const { return (v == LSMALL); }
   inline void set_to_zero() { v = LZERO; }
   inline void set_to_almost_zero() { v = LSMALL; }
