@@ -44,7 +44,7 @@ public:
 
   ZeroScoreMixGaussian() 
     : MixGaussians(0,ci_zeroScoreMixGaussian)
-  { _name = ZEROSCOREMIXGAUSSIAN_NAME; }
+  { _name = ZEROSCOREMIXGAUSSIAN_NAME; setBasicAllocatedBit(); }
   ~ZeroScoreMixGaussian() {}
 
   //////////////////////////////////////////////

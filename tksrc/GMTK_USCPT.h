@@ -52,6 +52,7 @@ public:
     // we use a special cardinality here just for this
     // type of CPT.
     _card = 0;
+    setBasicAllocatedBit();
   }
   ~USCPT() { }
 
