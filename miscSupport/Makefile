@@ -90,7 +90,7 @@ all: libmiscSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o range.o mul_mdmd_md.o mul_mdmd_md_l0g.o mul_mdmd_md_l0nf.o eig.o bin_search.o
+objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o mul_mdmd_md.o mul_mdmd_md_l0g.o mul_mdmd_md_l0nf.o eig.o bin_search.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
@@ -159,9 +159,9 @@ fileParserTest: fileParser.cc fileParser.h
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc cArray.cc general.cc lineqsolve.cc string_err.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc range.cc mul_mdmd_md.c mul_mdmd_md_l0g.c mul_mdmd_md_l0nf.c eig.c bin_search.cc
+all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc cArray.cc general.cc lineqsolve.cc string_err.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc  mul_mdmd_md.c mul_mdmd_md_l0g.c mul_mdmd_md_l0nf.c eig.c bin_search.cc
 
-all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h range.h eig.h
+all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h eig.h
 
 all_objs = 
 
