@@ -29,7 +29,7 @@
 
 #include "general.h"
 #include "error.h"
-
+#include "rand.h"
 
 VCID("$Header$");
 
@@ -53,64 +53,17 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 MeanVector::MeanVector()
-{
-
-
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * MeanVector::read(is)
- *      read in the mean
- * 
- * Results:
- *      No results.
- *
- * Side Effects:
- *      Changes the 'means' member function in the object.
- *
- *-----------------------------------------------------------------------
- */
-
-//  void
-//  MeanVector::read(iDataStreamFile& is)
-//  {}
-
-
-/*-
- *-----------------------------------------------------------------------
- * RealArray::write(os)
- *      write out data to file 'os'. 
- * 
- * Results:
- *      No results.
- *
- * Side Effects:
- *      No effects other than  moving the file pointer of os.
- *
- *-----------------------------------------------------------------------
- */
-void
-RealArray::write(oDataStreamFile& os)
-{
-  assert (nFeats > 0);
-
-  os.write(length,"RealArray::write, length");
-  for (int i=0;i<length;i++) {
-    os.write(arr[i],"RealArray::write, values");
-  }
-  os.nl();
-}
+{}
 
 
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
 ////////////////////////////////////////////////////////////////////
 
-
-
-
-
-
-
+void
+MeanVector::makeRandom()
+{
+  for (int i=0;i<means.len();i++) {
+    means[i] = rnd.drand48();
+  }
+}
