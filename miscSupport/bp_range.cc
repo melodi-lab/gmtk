@@ -528,52 +528,6 @@ bool BP_Range::overlapP(const BP_Range& r) const
 }
 
 
-bool BP_Range::operator <(const BP_Range& r) const
-{
-  if (max() < r.min())
-    return true;
-  if (max() < r.max() && min() < r.min())
-    return true;
-  return false;
-}
-
-bool BP_Range::operator <=(const BP_Range& r) const
-{
-  return (*this < r) || (*this == r);
-}
-
-
-bool BP_Range::operator >(const BP_Range& r) const
-{
-  if (min() > r.max())
-    return true;
-  if (min() > r.min() && max() > r.max())
-    return true;
-  return false;
-}
-
-bool BP_Range::operator >=(const BP_Range& r) const
-{
-  return (*this > r) || (*this == r);
-}
-
-
-bool BP_Range::operator == (const BP_Range& r) const
-{
-  if (min() != r.min() || max() != r.max() || length() != r.length())
-    return false;
-  BP_Range::iterator it1 = begin();
-  BP_Range::iterator it2 = r.begin();
-  for (;it1 <= max() && it2 <= r.max();it1++,it2++) {
-    if ((*it1) != (*it2))
-      return false;
-  }
-  return true;
-}
-
-
-
-
 
 #ifdef MAIN
 
