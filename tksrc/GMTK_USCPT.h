@@ -93,7 +93,6 @@ public:
     return val; 
   }
 
-
   // returns an iterator for the first one that is not zero prob.
   iterator begin() {
     // this routine should never be called for this object.
@@ -103,20 +102,29 @@ public:
     return it;
   }
 
-  iterator end() {
+  // returns an iterator for the first one that is not zero prob.
+  void begin(iterator& it) {
+    // this routine should never be called for this object.
     assert ( 0 );
     // include code to keep compiler happy
-    iterator it(this);
-    return it;
+    it.setCPT(this);
   }
 
   // Given a current iterator, return the next one in the sequence.
-  // Skip the zero probability ones.
   bool next(iterator &_it) {
+    // this routine should never be called for this object.
     assert ( 0 );
     // include code to keep compiler happy
     return false;
   }
+
+
+  bool end(iterator &it) {
+    assert ( 0 );
+    // include code to keep compiler happy
+    return true;
+  }
+
 
   ///////////////////////////////////
   int randomSample() { return 0; }

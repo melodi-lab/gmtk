@@ -64,7 +64,7 @@ DiscreteRandomVariable::findConditionalParents()
   cachedIntFromSwitchingState = intFromSwitchingState();
   if ( cachedIntFromSwitchingState < 0 ||
        cachedIntFromSwitchingState >= conditionalParentsList.size()) {
-    error("ERROR: DRV %s:%d using DT '%s' got invalid switching position %d. Must be between 0 and %d.\n",
+    error("ERROR: Discrete Random Variable %s(%d) using DT '%s' got invalid switching position %d. Must be between 0 and %d.\n",
 	  label.c_str(),timeIndex, (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedIntFromSwitchingState,conditionalParentsList.size());
   }
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];

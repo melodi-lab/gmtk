@@ -232,6 +232,7 @@ public:
     }
     return _cachedProb;
   }
+
   void probGivenParents(logpr& p) {
     logpr _cachedProb = curCPT->probGivenParents(*curConditionalParents,val);
     // 
@@ -300,20 +301,28 @@ public:
     }
     // a hidden variable, so we set up the iterator.
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    it = curCPT->begin(); 
+    curCPT->begin(it); 
     val = it.val();
     // assert ( val >= 0 );
   }
 
   // continue on
   bool clampNextValue() { 
+#if 0
     if (!hidden) 
       return false;
     it++; 
-    if (it!=curCPT->end()) 
+    if (!curCPT->end(it)) 
       val = it.val();
     // assert ( val >= 0 );
-    return (it != curCPT->end()); 
+    return (!curCPT->end(it));
+#endif
+    if (!hidden) 
+      return false;
+    const bool unfinished = curCPT->next(it);
+    if (unfinished)
+      val = it.val();
+    return unfinished;
   }
 
 
@@ -327,21 +336,11 @@ public:
     }
     // a hidden variable, so we set up the iterator.
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    it = curCPT->begin(); 
+    curCPT->begin(it); 
     val = it.val();
     // assert ( val >= 0 );
   }
 
-  // continue on
-  bool next() { 
-    if (!hidden) 
-      return false;
-    it++; 
-    if (it!=curCPT->end()) 
-      val = it.val();
-    // assert ( val >= 0 );
-    return (it != curCPT->end()); 
-  }
 
   // clamp this RV to its "first" value
   void begin(logpr& p) {
@@ -353,23 +352,60 @@ public:
     }
     // a hidden variable, so we set up the iterator.
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    it = curCPT->begin(); 
+    curCPT->begin(it); 
     val = it.val();
-    DiscreteRandomVariable::probGivenParents(p);
+    p = it.probVal;
+    if (wtStatus != wt_NoWeight) {
+      if (wtStatus == wt_Constant)
+	p.valref() *= wtWeight;
+      else // get weight from observation matrix at current time frame
+	p.valref() *= 
+	  (*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
+    }
     // assert ( val >= 0 );
+  }
+
+
+  // continue on
+  bool next() { 
+    if (!hidden) 
+      return false;
+    it++; 
+    if (!curCPT->end(it)) 
+      val = it.val();
+    // assert ( val >= 0 );
+    return (!curCPT->end(it)); 
   }
 
   // continue on
   bool next(logpr& p) { 
+#if 0
     if (!hidden) 
       return false;
     it++; 
-    const bool unfinished = (it != curCPT->end());
+    if (!curCPT->end(it)) {
+      val = it.val();
+      p = probGivenParents();
+      assert ( p == it.probVal );
+    }
+    return (!curCPT->end(it)); 
+#endif
+    if (!hidden) 
+      return false;
+    const bool unfinished = curCPT->next(it);
     if (unfinished) {
       val = it.val();
-      DiscreteRandomVariable::probGivenParents(p);
+      p = it.probVal;
+      if (wtStatus != wt_NoWeight) {
+	if (wtStatus == wt_Constant)
+	  p.valref() *= wtWeight;
+	else // get weight from observation matrix at current time frame
+	  p.valref() *= 
+	    (*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
+      }
     }
     return unfinished;
+
   }
 
 

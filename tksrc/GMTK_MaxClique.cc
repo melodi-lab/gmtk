@@ -31,6 +31,8 @@
  *
  */
 
+#define JunctionTree__viterbiScore 0
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -119,7 +121,7 @@ printRVSetAndValues(FILE*f,sArray<RandomVariable*>& locset)
   for (unsigned i=0;i<locset.size();i++) {
     RandomVariable* rv = locset[i];
     if (!first)
-      fprintf(f,", ");
+      fprintf(f,",");
     fprintf(f,"%s(%d)=",rv->name().c_str(),rv->frame());
     if (!rv->discrete) {
       fprintf(f,"C");
@@ -138,7 +140,7 @@ printRVSet(FILE*f,sArray<RandomVariable*>& locset)
   for (unsigned i=0;i<locset.size();i++) {
     RandomVariable* rv = locset[i];
     if (!first)
-      fprintf(f,", ");
+      fprintf(f,",");
     fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
     first = false;
   }
@@ -1549,8 +1551,10 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // (no hash tables even exist), so we just continue along.
 
     if (message(Giga)) {
-      fprintf(stdout,"Separator iteration no-unpack, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
-	      sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
+      fprintf(stdout,"Separator iteration no-unpack, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+	      sepNumber,origin.ceReceiveSeparators[sepNumber],
+	      p.val(),
+	      sep.separatorValues.ptr[sepValueNumber].remValues.ptr[0].p.val());
       printRVSetAndValues(stdout,sep.fNodes);
     }
 
@@ -1587,12 +1591,13 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	// } 
 
 	if (message(Giga)) {
-	  fprintf(stdout,"Separator iteration %d, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+	  fprintf(stdout,"Separator iteration %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
 		  i,
-		  sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
+		  sepNumber,origin.ceReceiveSeparators[sepNumber],
+		  p.val(),
+		  sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].p.val());
 	  printRVSetAndValues(stdout,sep.fNodes);
 	}
-
 
 	// continue down with new probability value.
 	// TODO: separator prune here.
@@ -1609,9 +1614,11 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
 
 	if (message(Giga)) {
-	  fprintf(stdout,"pSeparator iteration %d, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+	  fprintf(stdout,"pSeparator iteration %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
 		  i,
-		  sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
+		  sepNumber,origin.ceReceiveSeparators[sepNumber],
+		  p.val(),
+		  sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].p.val());
 	  printRVSetAndValues(stdout,sep.fNodes);
 	}
 
@@ -1728,9 +1735,9 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
     cliqueValues.ptr[numCliqueValuesUsed].p = p;
     numCliqueValuesUsed++;
 
-    if (message(Giga)) {
+    if (message(Mega)) {
       psp(stdout,2*nodeNumber);
-      infoMsg(Giga,"Inserting New Clique Value. prob = %f, sum = %f: ",
+      infoMsg(Mega,"Inserting New Clique Value. prob = %f, sum = %f: ",
 	      cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
       printRVSetAndValues(stdout,fNodes);
     }
@@ -1751,7 +1758,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
   switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
   case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
     {
-#if 1
+#if 0
       rv->begin();
       do {
 	// At each step, we compute probability
@@ -2096,10 +2103,9 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
       cliqueValues.ptr[numCliqueValuesUsed].p = final_p;
       numCliqueValuesUsed++;
 
-
-      if (message(Giga)) {
-	psp(stdout,2*nodeNumber);
-	infoMsg(Giga,"Inserting New Clique Value. prob = %f, sum = %f: ",
+      if (message(Mega)) {
+	// psp(stdout,2*nodeNumber);
+	infoMsg(Mega,"Inserting New Clique Value. prob = %f, sum = %f: ",
 		cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
 	printRVSetAndValues(stdout,fNodes);
       }
@@ -2485,7 +2491,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	// continue on to next iteration without incrementing cvn
 	continue;
       } else {
-	if (JunctionTree::viterbiScore) {
+	if (JunctionTree__viterbiScore) {
 	  // sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 	  if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
 	    sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
@@ -2642,7 +2648,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	  } else {
 	    // already there so must have hit before.
 	    // we thus accumulate.
-	    if (JunctionTree::viterbiScore) {
+	    if (JunctionTree__viterbiScore) {
 	      // sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 	      if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
 		sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
@@ -2732,7 +2738,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
       // We've finally got the entry, so accumulate the clique's
       // probability into this separator's probability.
-      if (JunctionTree::viterbiScore) {
+      if (JunctionTree__viterbiScore) {
 	// sv.remValues.ptr[*remIndexp].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 	if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[*remIndexp].p) {
 	  sv.remValues.ptr[*remIndexp].p = cliqueValues.ptr[cvn].p;
@@ -3411,7 +3417,7 @@ InferenceMaxClique::
 deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 				InferenceSeparatorClique& sep)
 {
-  if (JunctionTree::viterbiScore) {
+  if (JunctionTree__viterbiScore) {
     return deReceiveFromIncommingSeparatorViterbi(part,sep);
   }
 
@@ -3711,7 +3717,7 @@ InferenceMaxClique::
 deScatterToOutgoingSeparators(JT_InferencePartition& part)
 {
 
-  if (JunctionTree::viterbiScore) {
+  if (JunctionTree__viterbiScore) {
     // there is nothing to do in this case since if the RVs associated
     // with the current clique have been set to the appropriate clique
     // table entry, the associated separator RVs have also been set.

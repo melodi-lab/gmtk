@@ -393,7 +393,7 @@ Dense1DPMF::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minDiscAccumulatedProbability()) {
-    warning("WARNING: Dense1DPMF named '%s' received only %e accumulated probability in EM iteration. Using previous values.",name().c_str(),accumulatedProbability.val());
+    infoMsg(IM::SoftWarning,"WARNING: Dense1DPMF named '%s' received only %e accumulated probability in EM iteration. Using previous values.",name().c_str(),accumulatedProbability.val());
     for (int i=0;i<nextPmf.len();i++) {
       nextPmf[i] = pmf[i];
     }

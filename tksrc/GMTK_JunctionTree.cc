@@ -3974,7 +3974,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
       // E_root_clique).
     }
   }
-  for (unsigned part = end; (1); ) { 
+  for (unsigned part = end; (1);) { 
     if (part < (partPArray.size()-1)) {
       // then there is something on the right to receive a message
       // from.

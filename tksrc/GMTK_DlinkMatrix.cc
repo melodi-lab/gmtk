@@ -642,7 +642,7 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: shared dLink matrix '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
+    infoMsg(IM::Warning,"WARNING: shared dLink matrix '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
 	    name().c_str(),
 	    accumulatedProbability.val());
     for (int i=0;i<nextArr.len();i++)
@@ -760,7 +760,7 @@ DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumu
 
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: dLink matrx '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
+    infoMsg(IM::Warning,"WARNING: dLink matrx '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
 	    name().c_str(),
 	    accumulatedProbability.val());
     for (int i=0;i<nextArr.len();i++)
@@ -831,7 +831,7 @@ DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
     // be needed by another object for which the training bit is set.
     if (accumulatedProbability.zero()) {
       // then we indeed have no probability values, so lets emit a warning
-      warning("WARNING: zero accumulator values for %s '%s'\n",
+      infoMsg(IM::SoftWarning,"WARNING: zero accumulator values for %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
       // We write out '0' to state that 

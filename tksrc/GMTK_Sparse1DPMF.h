@@ -89,7 +89,7 @@ public:
   // return the value at entry i
   RandomVariable::DiscreteVariableType valueAtEntry(const int i) {
     assert ( i >= 0 && i < pmf.len() );
-    return pmf[i];
+    return pmf.ptr[i];
   }
 
   ///////////////////////////////////////////////////////////  
