@@ -31,8 +31,6 @@
 #include "fileParser.h"
 #include "bp_range.h"
 
-#include "GMTK_RandomVariable.h"
-
 
 /////////////////////////////////////////////////
 // The maximum branching factor on any decision tree node.
@@ -47,6 +45,8 @@
 #define RNG_DECISION_TREE_MAX_CARDINALITY 512
 
 #define RNG_DECISION_TREE_DEF_STR "default"
+
+class RandomVariable;
 
 template <class T = int>
 class RngDecisionTree {
@@ -81,8 +81,16 @@ protected:
   Node* readRecurse(iDataStreamFile& is);
 
   ///////////////////////////////////////////////////////////    
+  // support for writing
+  void writeRecurse(oDataStreamFile& os,
+		     Node *n,
+		     const int depth);
+
+  ///////////////////////////////////////////////////////////    
   // support for querying
   T queryRecurse(const sArray < int >& arr,
+		 Node *n);
+  T queryRecurse(const sArray < RandomVariable* >& arr,
 		 Node *n);
 
 
@@ -123,6 +131,13 @@ public:
 };
 
 
+#include "GMTK_RandomVariable.h"
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//                    CONSTRUCTOR/DESTRUCTOR
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 /*-
  *-----------------------------------------------------------------------
@@ -186,6 +201,12 @@ RngDecisionTree<T>::destructorRecurse(RngDecisionTree<T>::Node* node)
   }
 }
 
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//                    Reading/Writing
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 
 /*-
@@ -311,6 +332,91 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
+ * write:
+ *      writes to from a file.
+ * 
+ * Preconditions:
+ *      object should be filled in
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+template <class T> 
+void
+RngDecisionTree<T>::write(oDataStreamFile& os)
+{
+  os.write(_numFeatures,"RngDecisionTree:: read numFeatures");
+  os.nl();
+  writeRecurse(os,root,0);
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeRecurse:
+ *      continues (from write) writing out to a file 
+ * 
+ * Preconditions:
+ *      object should be filled in
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      the current node it read
+ *
+ *-----------------------------------------------------------------------
+ */
+template <class T> 
+void
+RngDecisionTree<T>::writeRecurse(oDataStreamFile& os,
+				 RngDecisionTree<T>::Node *n,
+				 const int depth)
+{
+
+  if (n->leaf) {
+    os.space(depth*2);
+    os.write(-1);
+    os.write(n->leafNode.value);
+    os.nl();
+  } else {
+    os.space(depth*2);
+    os.write(n->nonLeafNode.ftr,"writeRecurse, ftr");
+    os.write(n->nonLeafNode.children.len(),"writeRecurse, numsplits");
+    for (int i=0;i<n->nonLeafNode.rngs.len();i++) {
+      os.write(n->nonLeafNode.rngs[i]->rangeStr());
+    }
+    os.write(RNG_DECISION_TREE_DEF_STR);
+    os.nl();
+    for (int i=0;i<n->nonLeafNode.children.len();i++) 
+      writeRecurse(os,n->nonLeafNode.children[i],depth+1);
+  }
+}
+
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//                    Querying the decision tree
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
+
+
+/*-
+ *-----------------------------------------------------------------------
  * query
  *      queries the decision tree
  *      NOTE: Any update here should also be done in the
@@ -431,7 +537,14 @@ T RngDecisionTree<T>::queryRecurse(const sArray < RandomVariable* >& arr,
 }
 
 
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//                    Misc
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
-#endif // defined GMTK_CPT
+
+
+#endif 
 
 
