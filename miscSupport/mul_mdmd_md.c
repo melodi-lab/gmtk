@@ -44,8 +44,8 @@
 **
 */
 
-extern mul_mdmd_md_l0g(const int M, const int K, const int N, const double *const A, const double *const B, double *const C, const int Astride, const int Bstride, const int Cstride);
-extern mul_mdmd_md_l0nf(const int M, const int K, const int N, const double *const A, const double *const B, double *const C, const int Astride, const int Bstride, const int Cstride);
+extern void mul_mdmd_md_l0g(const int M, const int K, const int N, const double *const A, const double *const B, double *const C, const int Astride, const int Bstride, const int Cstride);
+extern void mul_mdmd_md_l0nf(const int M, const int K, const int N, const double *const A, const double *const B, double *const C, const int Astride, const int Bstride, const int Cstride);
 
 
 void
