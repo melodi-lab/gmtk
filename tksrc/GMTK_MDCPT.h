@@ -27,7 +27,7 @@
 
 #include "GMTK_CPT.h"
 #include "GMTK_EMable.h"
-
+#include "GMTK_RandomVariable.h"
 
 class MDCPT : public EMable, public CPT {
 
@@ -66,7 +66,9 @@ public:
 
   //////////////////////////////////
   // various forms of probability calculation
-  void setParentValues( sArray <int>& parentValues );
+  void becomeAwareOfParentValues( sArray <int>& parentValues );
+  void becomeAwareOfParentValues( sArray <randomVariable *>& parents );
+
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
     assert ( val >= 0 && val <= cardinalities[numParents] );
@@ -75,7 +77,13 @@ public:
   logpr probGivenParents(sArray <int>& parentValues, 
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
-    setParentValues(parentValues);
+    becomeAwareOfParentValues(parentValues);
+    return probGivenParents(val);
+  }
+  logpr probGivenParents(sArray <randomVariable *>& parents,
+			 const int val) {
+    assert ( bitmask & bm_basicAllocated );
+    becomeAwareOfParentValues(parents);
     return probGivenParents(val);
   }
   int numValsGivenParents() { 
@@ -100,6 +108,7 @@ public:
     it.probVal = mdcpt_ptr[it.val];
     return true;
   }
+  int randomSample();
 
   
   ///////////////////////////////////////////////////////////  
