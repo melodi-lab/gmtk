@@ -176,3 +176,5 @@ X add VCID everywhere.
 - add a binary/ascii parameter file conversion program.
 
 - export internal variables to command line changes
+
+- check on memory leak stuff
