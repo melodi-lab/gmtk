@@ -90,7 +90,9 @@ Dlinks::read(iDataStreamFile& is)
     error("Dlinks::read, read num feats (%d) < 0 in input",nFeats);
 
   dIndices.resize(nFeats);
-
+  
+  _minLag = 1000000;
+  _maxLag = -1000000;
   for (int i=0;i<nFeats;i++) {
     int nLinks;
     is.read(nLinks,"Dlinks::read, nLinks");
@@ -105,6 +107,11 @@ Dlinks::read(iDataStreamFile& is)
       int l,o;
       // lags can be pos or negative
       is.read(l,"Dlinks::read, lag");      
+      if (l < _minLag)
+	_minLag = l;
+      if (l > _maxLag)
+	_maxLag = l;
+
       // offsets must be >= 0
       is.read(o,"Dlinks::read, offset");
       if (o < 0)
@@ -134,9 +141,9 @@ void
 Dlinks::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
-  os.write(numFeats(),"Dlinks::write, num feats");
+  os.write(dim(),"Dlinks::write, num feats");
   os.nl();
-  for (int i=0;i<numFeats();i++) {
+  for (int i=0;i<dim();i++) {
     os.write(numLinks(i),"Dlinks::write, nLinks");
     for (int j=0;j<numLinks(i);j++) {
       os.write(dIndices[i][j].lag,"Dlinks::write, lag");      
@@ -174,9 +181,9 @@ Dlinks::write(oDataStreamFile& os)
 bool 
 Dlinks::compatibleWith(DlinkMatrix& d)
 {
-  if (numFeats() != d.numFeats())
+  if (dim() != d.dim())
     return false;
-  for (int i=0;i<numFeats();i++) {
+  for (int i=0;i<dim();i++) {
     if (numLinks(i) != d.numLinks(i))
       return false;
   }
@@ -210,15 +217,17 @@ Dlinks::preCompute(const unsigned stride)
 {
   // first go through and find out how long it needs to be
   unsigned len = 0;
-  for (int i=0;i<numFeats();i++) 
+  for (int i=0;i<dim();i++) 
     len += numLinks(i);
 
   preComputedOffsets.resize(len);
 
-  int entry = 0;
-  for (int i=0;i<numFeats();i++)
+  unsigned entry = 0;
+  for (int i=0;i<dim();i++)
     for (int j=0;j<numLinks(i);j++) {
-      preComputedOffsets[entry] = 
+      preComputedOffsets[entry++] = 
 	dIndices[i][j].lag*stride+dIndices[i][j].offset;
     }
+  assert ( len == entry );
+
 }
