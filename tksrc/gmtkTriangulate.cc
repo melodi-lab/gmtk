@@ -29,7 +29,7 @@
 #include "rand.h"
 #include "arguments.h"
 #include "ieeeFPsetup.h"
-#include "spi.h"
+//#include "spi.h"
 #include "version.h"
 
 VCID("$Header$");
