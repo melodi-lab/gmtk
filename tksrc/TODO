@@ -2450,3 +2450,7 @@ Sat Sep 18 21:15:19 2004
     hash tables, memory arena, memory size memorization, etc.) when they are compatible. Right now they
     each have their own separate ones.
 
+Sat Sep 18 21:18:05 2004
+  - fix error messages with the bp_range class, since currently range can kill the program
+    without any indication of where/when it is wrong.
+
