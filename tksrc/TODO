@@ -437,3 +437,24 @@ this will take a file of macros.
 - add implicit approach to tutorial (from Yimin).
 
 - graphvis and grappa from at&t can visualize graphs very nicely.
+
+
+- 
+>.
+>WARNING: Ending EM iteration but 124 rows of MDCPT 'mannerMDCPT' had zero 
+>counts. Using previous values for those rows.
+>
+>Actually, one thing that would be useful would be if it were possible to have 
+>a "verbose" option where it tells you which rows had zero counts.
+>
+
+
+Tue Jun 18 17:47:44 2002
+> >(2)  Does GMTK allow you to use models that aren't strictly probabilistic?  
+> >E.g. if I wanted to weight the acoustic model score relative to the language 
+> >model, would I be able to do that?  I know that for some purposes I can "fool" 
+> >it, as I've done with the feature model, by having multiple observation 
+> >variables pointing to the same observations, but that is fairly limited.
+> 
+> Not at the moment, but that would be really easy to add (and I'd be happy
+> to do that for you).
