@@ -68,12 +68,19 @@ bool seedme = false;
 float beam=1000;
 
 char *strFileName=NULL;
+
 char *outFileName="outParms%d.gmp";
-bool writeParametersAfterEachEMIteration=true;
 bool binOutFile=false;
-char *parmsFileName=NULL;
-bool binParmsFile=false;
-char *parmsPtrFileName=NULL;
+bool writeParametersAfterEachEMIteration=true;
+
+char *prmMasterFile=NULL;
+char *prmTrainableFile=NULL;
+bool binPrmTrainableFile=false;
+char *prmNonTrainableFile=NULL;
+bool binPrmNonTrainableFile=false;
+char *prmAllFile=NULL;
+bool binPrmAllFile=false;
+
 unsigned maxEMIterations=3;
 bool randomizeParams = true;
 bool enem = false;
@@ -111,85 +118,95 @@ bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
 ARGS ARGS::Args[] = {
 
- // observation file handling
+  /////////////////////////////////////////////////////////////
+  // observation input file handling
 
- ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
- ARGS("nf1",ARGS::Opt,nfs[0],"Number of floats in observation file 1"),
- ARGS("ni1",ARGS::Opt,nis[0],"Number of ints in observation file 1"),
- ARGS("fr1",ARGS::Opt,frs[0],"Float range for observation file 1"),
- ARGS("ir1",ARGS::Opt,irs[0],"Int range for observation file 1"),
- ARGS("fmt1",ARGS::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
- ARGS("iswp1",ARGS::Opt,iswps[0],"Endian swap condition for observation file 1"),
-
-
- ARGS("of2",ARGS::Opt,ofs[1],"Observation File 2"),
- ARGS("nf2",ARGS::Opt,nfs[1],"Number of floats in observation file 2"),
- ARGS("ni2",ARGS::Opt,nis[1],"Number of ints in observation file 2"),
- ARGS("fr2",ARGS::Opt,frs[1],"Float range for observation file 2"),
- ARGS("ir2",ARGS::Opt,irs[1],"Int range for observation file 2"),
- ARGS("fmt2",ARGS::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
- ARGS("iswp2",ARGS::Opt,iswps[1],"Endian swap condition for observation file 2"),
+  ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
+  ARGS("nf1",ARGS::Opt,nfs[0],"Number of floats in observation file 1"),
+  ARGS("ni1",ARGS::Opt,nis[0],"Number of ints in observation file 1"),
+  ARGS("fr1",ARGS::Opt,frs[0],"Float range for observation file 1"),
+  ARGS("ir1",ARGS::Opt,irs[0],"Int range for observation file 1"),
+  ARGS("fmt1",ARGS::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
+  ARGS("iswp1",ARGS::Opt,iswps[0],"Endian swap condition for observation file 1"),
 
 
- ARGS("of3",ARGS::Opt,ofs[2],"Observation File 3"),
- ARGS("nf3",ARGS::Opt,nfs[2],"Number of floats in observation file 3"),
- ARGS("ni3",ARGS::Opt,nis[2],"Number of ints in observation file 3"),
- ARGS("fr3",ARGS::Opt,frs[2],"Float range for observation file 3"),
- ARGS("ir3",ARGS::Opt,irs[2],"Int range for observation file 3"),
- ARGS("fmt3",ARGS::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
- ARGS("iswp3",ARGS::Opt,iswps[2],"Endian swap condition for observation file 3"),
+  ARGS("of2",ARGS::Opt,ofs[1],"Observation File 2"),
+  ARGS("nf2",ARGS::Opt,nfs[1],"Number of floats in observation file 2"),
+  ARGS("ni2",ARGS::Opt,nis[1],"Number of ints in observation file 2"),
+  ARGS("fr2",ARGS::Opt,frs[1],"Float range for observation file 2"),
+  ARGS("ir2",ARGS::Opt,irs[1],"Int range for observation file 2"),
+  ARGS("fmt2",ARGS::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
+  ARGS("iswp2",ARGS::Opt,iswps[1],"Endian swap condition for observation file 2"),
 
 
- // ARGS("obsFile",ARGS::Req,obsFileName,"File containing observations"),
+  ARGS("of3",ARGS::Opt,ofs[2],"Observation File 3"),
+  ARGS("nf3",ARGS::Opt,nfs[2],"Number of floats in observation file 3"),
+  ARGS("ni3",ARGS::Opt,nis[2],"Number of ints in observation file 3"),
+  ARGS("fr3",ARGS::Opt,frs[2],"Float range for observation file 3"),
+  ARGS("ir3",ARGS::Opt,irs[2],"Int range for observation file 3"),
+  ARGS("fmt3",ARGS::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
+  ARGS("iswp3",ARGS::Opt,iswps[2],"Endian swap condition for observation file 3"),
 
- ARGS("parmsPtrFile",ARGS::Opt,parmsPtrFileName,"Multi-level GM Parms File"),
 
- ARGS("parmsFile",ARGS::Opt,parmsFileName,"Single-level GM Parms File"),
- ARGS("binParmsFile",ARGS::Opt,binParmsFile,"Is Single-level GM Parms File binary? (def=false)"),
+  /////////////////////////////////////////////////////////////
+  // input parameter/structure file handling
 
- ARGS("outFileName",ARGS::Opt,outFileName,"File to place output parametes"),
- ARGS("binOutFile",ARGS::Opt,binOutFile,"Output parametes binary? (def=false)"),
- ARGS("wpaeei",ARGS::Opt,writeParametersAfterEachEMIteration,
+  ARGS("prmMasterFile",ARGS::Opt,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
+
+  ARGS("prmTrainableFile",ARGS::Opt,prmTrainableFile,"File containing Trainable Parameters"),
+  ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
+
+  ARGS("prmNonTrainableFile",ARGS::Opt,binPrmNonTrainableFile,"File containing *** NON *** Trainable Parameters (not modified)"),
+  ARGS("binPrmNonTrainableFile",ARGS::Opt,binPrmNonTrainableFile,"Is Binary? File containing *** NON *** Trainable Parameters (not modified)"),
+
+  ARGS("prmAllFile",ARGS::Opt,prmAllFile,"File containing All Parameters (both train&non-train)"),
+  ARGS("binPrmAllFile",ARGS::Opt,binPrmAllFile,"Is Binary? File containing All Parameters (both train&non-train)"),
+
+  ARGS("prmOutFile",ARGS::Opt,outFileName,"File to place *TRAINABLE* output parametes"),
+  ARGS("binPrmOutFile",ARGS::Opt,binOutFile,"Output parametes binary? (def=false)"),
+
+
+  ARGS("wpaeei",ARGS::Opt,writeParametersAfterEachEMIteration,
       "Write Parameters *After* Each EM Iteration? (def=true)"),
 
- ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
+  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
 
- ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
+  /////////////////////////////////////////////////////////////
+  // general files
 
- ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
+  ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
+  ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
+  ARGS("beam",ARGS::Opt,beam,"Beam, values less than this*max are pruned"),
 
- ARGS("beam",ARGS::Opt,beam,"Beam, values less than this*max are pruned"),
+  // support for splitting and vanishing
+  ARGS("mcvr",ARGS::Opt,MixGaussiansCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
+  ARGS("mcsr",ARGS::Opt,MixGaussiansCommon::mixCoeffSplitRatio,"Mixture Coefficient Splitting Ratio"),
 
- // support for splitting and vanishing
- ARGS("mcvr",ARGS::Opt,MixGaussiansCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
- ARGS("mcsr",ARGS::Opt,MixGaussiansCommon::mixCoeffSplitRatio,"Mixture Coefficient Splitting Ratio"),
+  ARGS("meanCloneSTDfrac",ARGS::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
+  ARGS("covarCloneSTDfrac",ARGS::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+  ARGS("dlinkCloneSTDfrac",ARGS::Opt,DlinkMatrix::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
 
- ARGS("meanCloneSTDfrac",ARGS::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
- ARGS("covarCloneSTDfrac",ARGS::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
- ARGS("dlinkCloneSTDfrac",ARGS::Opt,DlinkMatrix::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+  ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
+  ARGS("lldp",ARGS::Opt,lldp,"Log Likelihood difference percentage for termination"),
+  ARGS("mnlldp",ARGS::Opt,mnlldp,"Absolute value of max negative Log Likelihood difference percentage for termination"),
 
+  ARGS("trrng",ARGS::Opt,trrng_str,"Range to train over segment file"),
 
- ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
- ARGS("lldp",ARGS::Opt,lldp,"Log Likelihood difference percentage for termination"),
- ARGS("mnlldp",ARGS::Opt,mnlldp,"Absolute value of max negative Log Likelihood difference percentage for termination"),
+  ARGS("storeAccFile",ARGS::Opt,storeAccFile,"Store accumulators file"),
+  ARGS("loadAccFile",ARGS::Opt,loadAccFile,"Load accumulators file"), 
+  ARGS("loadAccRange",ARGS::Opt,loadAccRange,"Load accumulators file range"), 
+  ARGS("llStoreFile",ARGS::Opt,llStoreFile,"File to store previous sum LL's"), 
+  ARGS("accFileIsBinary",ARGS::Opt,accFileIsBinary,"Binary accumulator files (def true)"), 
 
- ARGS("trrng",ARGS::Opt,trrng_str,"Range to train over segment file"),
+  ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
+  ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
 
- ARGS("storeAccFile",ARGS::Opt,storeAccFile,"Store accumulators file"),
- ARGS("loadAccFile",ARGS::Opt,loadAccFile,"Load accumulators file"), 
- ARGS("loadAccRange",ARGS::Opt,loadAccRange,"Load accumulators file range"), 
- ARGS("llStoreFile",ARGS::Opt,llStoreFile,"File to store previous sum LL's"), 
- ARGS("accFileIsBinary",ARGS::Opt,accFileIsBinary,"Binary accumulator files (def true)"), 
+  ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
+  ARGS("enem",ARGS::Opt,enem,"Run enumerative EM"),
 
- ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
- ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
+  // final one to signal the end of the list
+  ARGS()
 
-
- ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
- ARGS("enem",ARGS::Opt,enem,"Run enumerative EM"),
-
- // final one to signal the end of the list
- ARGS()
 };
 
 /*
@@ -243,6 +260,7 @@ main(int argc,char*argv[])
   }
 
 #if 0
+  // for debugging
   for (int i=0;i<globalObservationMatrix.numSegments();i++) {
     printf("loading segment %d\n",i);
     globalObservationMatrix.loadSegment(i);
@@ -259,8 +277,14 @@ main(int argc,char*argv[])
     error("beam must be >= 0");
   if (startSkip < 0 || endSkip < 0)
     error("startSkip/endSkip must be >= 0");
-  if (!parmsFileName && !parmsPtrFileName) 
-    error("ERROR: arguments must specify a parameter file.");  
+  if (!(
+      prmMasterFile
+      || 
+      (prmTrainableFile && prmNonTrainableFile)
+      ||
+      prmAllFile
+      ))
+    error("ERROR: must specify at least one of prmMasterFile, or pair prmTrainableFile,prmNonTrainableFile, or prmAllFile on command line");
 
   ////////////////////////////////////////////
   // set global variables/change global state from args
@@ -269,18 +293,27 @@ main(int argc,char*argv[])
     rnd.seed();
 
   /////////////////////////////////////////////
-  // read in all parameters
-  if (parmsFileName) {
-    // flat, where everything is contained in one file.
-    iDataStreamFile parmsFile(parmsFileName,binParmsFile);
-    GM_Parms.readAll(parmsFile);
+  // read in all the parameters
+  if (prmMasterFile) {
+    // flat, where everything is contained in one file, always ASCII
+    iDataStreamFile pf(prmMasterFile,false);
+    GM_Parms.read(pf);
   }
-  if (parmsPtrFileName) {
+  if (prmTrainableFile) {
+    // flat, where everything is contained in one file, always ASCII
+    iDataStreamFile pf(prmTrainableFile,false);
+    GM_Parms.readTrainable(pf);
+  }
+  if (prmNonTrainableFile) {
+    // flat, where everything is contained in one file, always ASCII
+    iDataStreamFile pf(prmNonTrainableFile,false);
+    GM_Parms.readNonTrainable(pf);
+  }
+  if (prmAllFile) {
     // this file is always ASCII.
-    iDataStreamFile parmsFile(parmsPtrFileName);
-    GM_Parms.read(parmsFile);
+    iDataStreamFile pf(prmAllFile);
+    GM_Parms.readAll(pf);
   }
-
 
   /////////////////////////////
   // read in the structure of the GM, this will
