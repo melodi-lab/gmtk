@@ -103,6 +103,7 @@ class oDataStreamFile : public ioDataStreamFile {
   bool writeDouble(const double d,char *msg=NULL);
   bool writeComment(char *comment, ...);
   bool indent(const int i,const bool doubSpace, char *msg=NULL);
+  bool space(const int numSpaceChars, char *msg=NULL);
   bool nl(char *msg=NULL);
   bool flush(char *msg=NULL);
   void rewind();

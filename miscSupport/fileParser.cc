@@ -374,6 +374,21 @@ bool oDataStreamFile::indent(const int i,const bool doubSpace,char *msg)
   return true;
 }
 
+
+bool oDataStreamFile::space(const int numSpaceChars,char *msg)
+{
+  if (Binary) {
+  } else {
+    int tmp = numSpaceChars;
+    while (tmp--) {
+      if (fprintf(fh," ") == 0) 
+	return errorReturn("space",msg);
+    }
+  }
+  return true;
+}
+
+
 bool oDataStreamFile::nl(char *msg)
 {
   if (Binary) {
