@@ -64,10 +64,10 @@ private:
 					   RandomVariable* node,
 					   unsigned& position);
 
-  static bool topologicalSortRecurseContObsFirst(const set<RandomVariable*>& sortSet,
-						 vector<RandomVariable*>& outputVarList,
-						 RandomVariable* node,
-						 unsigned& position);
+  static bool topologicalSortRecurseContFirst(const set<RandomVariable*>& sortSet,
+					      vector<RandomVariable*>& outputVarList,
+					      RandomVariable* node,
+					      unsigned& position);
 
 public:
 
@@ -98,11 +98,11 @@ public:
 				    vector<RandomVariable*> &outputVarList);
 
   // A version of topological sort that places the continuous
-  // observations as *early* in the sort as possible, all other things
+  // variables as *early* in the sort as possible, all other things
   // being equal.
-  static bool topologicalSortContObsFirst(const set<RandomVariable*> &inputVarList,
-					  const set<RandomVariable*> &sortSet,
-					  vector<RandomVariable*> &outputVarList);
+  static bool topologicalSortContFirst(const set<RandomVariable*> &inputVarList,
+				       const set<RandomVariable*> &sortSet,
+				       vector<RandomVariable*> &outputVarList);
 
   ///////////////////////////////////////////
   // print this graphical model

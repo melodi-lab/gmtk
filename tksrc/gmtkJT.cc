@@ -411,7 +411,8 @@ main(int argc,char*argv[])
     if (probE) {
       unsigned numUsableFrames;
       logpr probe = myjt.probEvidence(numFrames,numUsableFrames);
-      printf("After Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     segment,
 	     probe.val(),
 	     probe.val()/numFrames,
 	     probe.val()/numUsableFrames);
@@ -427,7 +428,8 @@ main(int argc,char*argv[])
       myjt.collectEvidence();
       infoMsg(IM::Default,"Done Collecting Evidence\n");
       logpr probe = myjt.probEvidence();
-      printf("After CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+      printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     segment,
 	     probe.val(),
 	     probe.val()/numFrames,
 	     probe.val()/numUsableFrames);
@@ -439,7 +441,8 @@ main(int argc,char*argv[])
 	myjt.printAllCliquesProbEvidence();
 	
 	probe = myjt.probEvidence();
-	printf("After DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	       segment,
 	       probe.val(),
 	       probe.val()/numFrames,
 	       probe.val()/numUsableFrames);

@@ -1258,14 +1258,15 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 {
   vector<RandomVariable*> sortedNodes;
 
-  // TODO: change topological sort so that among all possible sorts,
-  // the continuous observations come as early as possible in the
+  // We use a topological sort so that among all possible sorts, the
+  // continuous variables come as early as possible in the
   // ordering. This way, we are not repeatedly calling the computation
-  // of probability on those nodes (computing prob of a mixture is
-  // more expensive than that of a discrete variable). Also, possibly
-  // cache mixture probabilities if we find a mixture is in a big
-  // clique and forced to be at the end.
-  GraphicalModel::topologicalSort(part.nodes,part.nodes,sortedNodes);
+  // of probability on those nodes (computing prob of a continuous
+  // variable is more expensive than that of a discrete
+  // variable). Also, possibly cache mixture probabilities if we find
+  // a mixture is in a big clique and forced to be at the end. This
+  // will also be beneficial when sampling hidden continuous nodes.
+  GraphicalModel::topologicalSortContFirst(part.nodes,part.nodes,sortedNodes);
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),part.cliques.size());
 
