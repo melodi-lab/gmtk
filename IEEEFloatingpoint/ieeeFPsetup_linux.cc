@@ -19,7 +19,7 @@
 #include<fpu_control.h>
 #include <signal.h>
 
-#include "ieeeSetup.h"
+#include "ieeeFPsetup.h"
 
 
 /*
@@ -29,8 +29,8 @@
 
 void sighandler(int sigarg) 
 {
-  unsigned int cw=0;
-  if (sigarg = SIGFPE) {
+  // unsigned int cw=0;
+  if (sigarg == SIGFPE) {
     unsigned int sw=0;
     int found=0;
     /* Ideally, this should work but it looks like for now
@@ -84,15 +84,15 @@ void sighandler(int sigarg)
 void ieeeFPsetup()
 {
   unsigned int cw=0;
-  unsigned int sw=0;
+  // unsigned int sw=0;
 
   /* set the signal handler */
   signal(SIGFPE,(void(*)(int))sighandler);
 
 
-  /* get the current FPU control word
-  _FPU_GETCW(cw);
-  /* _FPU_GETSTW(sw); */
+  //  get the current FPU control word
+  // _FPU_GETCW(cw);
+  // _FPU_GETSTW(sw);
 
   /* printf("Before setting cw = 0x%X, sw = 0x%X\n",cw,sw); */
 
