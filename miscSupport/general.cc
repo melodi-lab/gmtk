@@ -7,6 +7,9 @@
 #include <ctype.h>
 #include <sys/time.h>
 #include <time.h>
+#include <time.h>
+#include <sys/resource.h>
+#include <unistd.h>
 
 
 #include "general.h"
@@ -154,3 +157,52 @@ double log10add(double v1, double v2)
   }
   return (big + ::log10(1+::pow(10.0,small-big)));
 }
+
+// report timing in seconds for two calls of
+// getrusage()
+void reportTiming(// input 
+		  const struct rusage& rus,
+		  const struct rusage& rue,
+		  // output
+		  double& userTime, 
+		  double& sysTime,
+		  // input
+		  FILE* outputf)
+{
+
+  struct timeval utime;
+  double utimef;
+  struct timeval stime;
+  double stimef;
+
+  /* user time */
+  utime.tv_sec = rue.ru_utime.tv_sec - rus.ru_utime.tv_sec ;
+  if ( rue.ru_utime.tv_usec < rus.ru_utime.tv_usec ) {
+    utime.tv_sec--;
+    utime.tv_usec = 1000000l - rus.ru_utime.tv_usec +
+      rue.ru_utime.tv_usec;
+  } else
+    utime.tv_usec = rue.ru_utime.tv_usec -
+      rus.ru_utime.tv_usec ;
+  utimef = (double)utime.tv_sec + (double)utime.tv_usec/1e6;
+
+  /* system time */
+  stime.tv_sec = rue.ru_stime.tv_sec - rus.ru_stime.tv_sec ;
+  if ( rue.ru_stime.tv_usec < rus.ru_stime.tv_usec ) {
+    stime.tv_sec--;
+    stime.tv_usec = 1000000l - rus.ru_stime.tv_usec +
+      rue.ru_stime.tv_usec;
+  } else
+    stime.tv_usec = rue.ru_stime.tv_usec -
+      rus.ru_stime.tv_usec ;
+  
+  stimef = (double)stime.tv_sec + (double)stime.tv_usec/1e6;
+  if (outputf != NULL)
+    fprintf(outputf,"User: %f, System: %f, CPU %f\n", utimef, stimef, utimef+stimef);
+  
+  if (userTime)
+    userTime = utimef;
+  if (sysTime)
+    sysTime = stimef;
+}
+

@@ -23,6 +23,7 @@ using namespace std;
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 
 #include <vector>
 
@@ -93,5 +94,14 @@ void memory_error();
 // return the log10 add of v1 and v2,i.e., res = log10(10^v1 + 10^v2)
 double log10add(double v1,double v2);
 
+// report timing for getrusage
+void reportTiming(// input 
+		  const struct rusage& rus,
+		  const struct rusage& rue,
+		  // output
+		  double& userTime, 
+		  double& sysTime,
+		  // input
+		  FILE* outputf=NULL);
 
 #endif
