@@ -58,5 +58,4 @@ double GaussianComponent::varianceFloor()
 
 GaussianComponent::GaussianComponent(const int dim) : _dim(dim) 
 {
-  printf("hello");
 }

@@ -167,7 +167,7 @@ DiagGaussian::log_p(const float *const x,
     xp++;
     mean_p++;
     var_inv_p++;
-  } while (x != x_endp);
+  } while (xp != x_endp);
   d *= -0.5;
   return logpr(0,(covar->log_inv_normConst() + d));
 

@@ -102,7 +102,8 @@ public:
   bool clampNextValue() { 
     if (!hidden) return false;
     it++; if (it!=curCPT->end()) val = it.val();
-    return (it != curCPT->end()); }
+    return (it != curCPT->end()); 
+  }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
@@ -141,30 +142,11 @@ public:
 
   ///////////////////////////////////////////////////
   // EM Support
-  void emStartIteration() { 
-    for(unsigned i=0;i<conditionalCPTs.size();i++)
-      conditionalCPTs[i]->emStartIteration();
-  }
   void emIncrement(logpr posterior) { 
     findConditionalParents();
     curCPT->emIncrement(posterior,this);
   }
-  void emEndIteration() { 
-    for(unsigned i=0;i<conditionalCPTs.size();i++)
-      conditionalCPTs[i]->emEndIteration();
-  }
-  void emClearEmAllocatedBit() { 
-    for(unsigned i=0;i<conditionalCPTs.size();i++)
-      conditionalCPTs[i]->emClearEmAllocatedBit();
-  }
-  void emClearSwappedBit() { 
-    for(unsigned i=0;i<conditionalCPTs.size();i++)
-      conditionalCPTs[i]->emClearSwappableBit();
-  }
-  void emSwapCurAndNew() { 
-    for(unsigned i=0;i<conditionalCPTs.size();i++)
-      conditionalCPTs[i]->emSwapCurAndNew();
-  }
+
   ///////////////////////////////////////////////////
 
   ///////////////////////////////////////////////////
