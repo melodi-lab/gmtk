@@ -396,8 +396,10 @@ sub main
       $boundary_time = '4hours';
     }
 
-    # No maximum on number of boundary searches with advanced options 
-    #   ($max_boundaries_with_advanced)
+    if (!defined $max_boundaries_with_advanced)
+    {
+      $max_boundaries_with_advanced = 4;
+    }
 
     if (!defined $triangulateP)
     {
@@ -648,11 +650,11 @@ sub generate_triangulations
       }
     } # end while
   
+    print "Found $boundary_count unique boundaries\n";
+
     if ((!defined $max_boundaries_with_advanced) || 
         ($max_boundaries_with_advanced > 0))
     {
-      print "Found $boundary_count unique boundaries\n";
-
       #########################################################################
       # Wait for all triangulations in the queue to be triangulated 
       #
@@ -825,7 +827,7 @@ sub generate_triangulations
       }
     }
   }
-
+   
   $best_from_previous_section = "$output_directory/after_C_search.trifile";
   copy( $best_trifile, $best_from_previous_section );
  
@@ -1357,7 +1359,6 @@ sub get_existing_boundaries
 #############################################################################
 sub start_boundary_searches 
 {
-  my @boundary_heuristics;
   my $boundary_heuristic;
   my $boundary_job_list;
   my $triangulate_line;
@@ -1373,7 +1374,8 @@ sub start_boundary_searches
 ##  @boundary_heuristics = ('W', 'S', 'F', 'FWH', 'T', 'P', 'N', 'ST', 'SF', 
 ##    'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 'FT', 'FW', 'FTSW');
 
-  @boundary_heuristics = ('N', 'S');
+  my @boundary_heuristics = ('N', 'S');
+  my @no_M_boundary_heuristics = ('W');
 
   print "Starting boundary searches\n";
 
@@ -1382,34 +1384,54 @@ sub start_boundary_searches
   ############################################################################
   $boundary_job_list = "$output_directory/boundary_job_list";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -triangulationHeuristic heuristics -noBoundaryMemoize T -jtWeight T";
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -triangulationHeuristic 100-pre-edge-lo-W-2 -noBoundaryMemoize T -jtWeight T";
 
   open JOB_LIST, ">$boundary_job_list";
-
   $boundary_calls = 0;
+
+  $boundary_M=1;
   foreach $disconnect_type ('T', 'F')
   {
-    for ($boundary_M=1; $boundary_M<=4; $boundary_M++)
+    foreach $boundary_heuristic (@no_M_boundary_heuristics)
+    {
+      if ($boundary_heuristic =~ /W/) {
+        @weight_UB_types = ('F', 'T');
+      }
+      else {
+        @weight_UB_types = ('F');
+      }
+
+      foreach $weight_UB_type (@weight_UB_types)
+      {
+        foreach $left_right ('R', 'L') 
+        {
+          if ((!defined $maximum_boundary_searches) || 
+              ($boundary_calls < $maximum_boundary_searches))
+          { 
+            $output_name = "$output_directory/$boundary_heuristic.$left_right.M$boundary_M.UB_$weight_UB_type.D_$disconnect_type.$str_basename.boundary";
+            print JOB_LIST "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M -anyTimeTriangulate $boundary_time -noBoundaryMemoize T -jtWeight T 2>&1 ; echo DONE WITH $output_name\n";
+            $boundary_calls++;
+          }
+        }
+      }
+    } 
+  } 
+
+  $weight_UB_type = 'F'; 
+  for ($boundary_M=1; $boundary_M<=4; $boundary_M++)
+  {
+    foreach $disconnect_type ('T', 'F')
     {
       foreach $boundary_heuristic (@boundary_heuristics)
       {
-        if ($boundary_heuristic =~ /W/) {
-          @weight_UB_types = ('F', 'T');
-        }
-        else {
-          @weight_UB_types = ('F');
-        }
-        foreach $weight_UB_type (@weight_UB_types)
+        foreach $left_right ('R', 'L') 
         {
-          foreach $left_right ('R', 'L') 
-          {
-            if ((!defined $maximum_boundary_searches) || 
-                ($boundary_calls < $maximum_boundary_searches))
-            { 
-              $output_name = "$output_directory/$boundary_heuristic.$left_right.M$boundary_M.UB_$weight_UB_type.D_$disconnect_type.$str_basename.boundary";
-              print JOB_LIST "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1 ; echo DONE WITH $output_name\n";
-              $boundary_calls++;
-            }
+          if ((!defined $maximum_boundary_searches) || 
+              ($boundary_calls < $maximum_boundary_searches))
+          { 
+            $output_name = "$output_directory/$boundary_heuristic.$left_right.M$boundary_M.UB_$weight_UB_type.D_$disconnect_type.$str_basename.boundary";
+            print JOB_LIST "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1 ; echo DONE WITH $output_name\n";
+            $boundary_calls++;
           }
         }
       }
@@ -1569,6 +1591,7 @@ sub run_triangulation
   my $triangulation_mode;
   my $triangulation_mode_string;
   my $bndry_M;
+  my $disconnect_type;
 
   $triangulation_mode = pop;
   $output_tri_file = pop;
@@ -1593,9 +1616,12 @@ sub run_triangulation
   $bndry_M = `head -$line_nmbr $boundary | tail -1`;
   #print "BNDRY:$boundary\n";
   #print "BN_M: $bndry_M\n";
+  chomp($bndry_M);
   (defined $bndry_M) or die "Can't find M in boundary $boundary";
 
-  $output = `$triangulation_export_line $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options $triangulation_mode_string -jtWeight T -M $bndry_M 2>&1`;
+  ($disconnect_type) = $boundary =~ /M\d+\.UB_.\.D_(T|F)\./;
+
+  $output = `$triangulation_export_line $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options $triangulation_mode_string -jtWeight T -M $bndry_M -disconnectFromObservedParent $disconnect_type 2>&1`;
 
   print STDERR "$output\n";
 
@@ -1883,34 +1909,45 @@ sub boundary_files_ne
   my $trifile_2;
   my @boundary_1;
   my @boundary_2;
+  my $disconnect_type_1;
+  my $disconnect_type_2;
   my $boundaries_ne;
   my $i;
 
   $trifile_2 = pop;
   $trifile_1 = pop;
 
-  @boundary_1 = load_boundary( $trifile_1 );
-  @boundary_2 = load_boundary( $trifile_2 );
-
   $boundaries_ne = 0;
 
-  if ((scalar @boundary_1) != (scalar @boundary_2)) {
+  ($disconnect_type_1) = $trifile_1 =~ /M\d+\.UB_.\.D_(T|F)\./;
+  ($disconnect_type_2) = $trifile_2 =~ /M\d+\.UB_.\.D_(T|F)\./;
+
+  if ($disconnect_type_1 ne $disconnect_type_2)
+  {
     $boundaries_ne = 1;
   }
-  else {
+  else 
+  {
+    @boundary_1 = load_boundary( $trifile_1 );
+    @boundary_2 = load_boundary( $trifile_2 );
 
-    @boundary_1 = remove_boundary_offset(@boundary_1);
-    @boundary_2 = remove_boundary_offset(@boundary_2);
+    if ((scalar @boundary_1) != (scalar @boundary_2)) {
+      $boundaries_ne = 1;
+    }
+    else {
 
-    for ( $i=0; 
-          ($i<(scalar @boundary_1)) && (!$boundaries_ne); 
-          $i++ ) 
-    {
-      if ($boundary_1[$i] ne $boundary_2[$i]) {
-        $boundaries_ne = 1;
+      @boundary_1 = remove_boundary_offset(@boundary_1);
+      @boundary_2 = remove_boundary_offset(@boundary_2);
+
+      for ( $i=0; 
+            ($i<(scalar @boundary_1)) && (!$boundaries_ne); 
+            $i++ ) 
+      {
+        if ($boundary_1[$i] ne $boundary_2[$i]) {
+          $boundaries_ne = 1;
+        }
       }
     }
-
   }
 
   return($boundaries_ne);
