@@ -60,7 +60,7 @@ VCID("$Header$");
 // one time in a file. This can be safely increased (to the
 // extend that memory on the machine exists), but is here
 // many for checking obviously invalid values.
-const unsigned GMPARMS_MAX_NUM = 100000;
+const unsigned GMPARMS_MAX_NUM = 100000000;
 
 
 ////////////////////////////////
