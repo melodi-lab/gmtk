@@ -89,6 +89,7 @@ void
 GMTemplate::
 findPartitions(const string& fh,  // face quality heuristic
 	       const string& flr, // force left or right
+	       const string& th, // triangualtion heuristic
 	       const bool findBestFace,
 	       set<RandomVariable*>& Pc,
 	       set<RandomVariable*>& Cc,
@@ -192,25 +193,6 @@ findPartitions(const string& fh,  // face quality heuristic
       = unroll1_rvs[i+start_index_of_C2_u1];
   }
 
-
-  // Create some maps that will be needed if the find best interface
-  // algorithm will need to do triangulations to evaluate an
-  // interface. Note that these are only filled in if they
-  // are going to be needed.
-#if 0
-  map < RandomVariable*, RandomVariable* > C2_u2_to_C1_u2;
-  map < RandomVariable*, RandomVariable* > C2_u2_to_C3_u2;
-  if (find(fh_v.begin(),fh_v.end(),IH_MIN_CLIQUE) != fh_v.end()) {
-    // then fill in the arrays only in this case.
-    for (unsigned i=0;i<C2_u2.size();i++) {
-      C2_u2_to_C1_u2[unroll2_rvs[i+start_index_of_C2_u2]]
-	= unroll2_rvs[i+start_index_of_C1_u2];
-      C2_u2_to_C3_u2[unroll2_rvs[i+start_index_of_C2_u2]]
-	= unroll2_rvs[i+start_index_of_C3_u2];
-    }
-  }
-#endif
-
   // allocate space for results
   set<RandomVariable*> left_C_l_u2C2;
   set<RandomVariable*> C_l_u2C2;
@@ -220,18 +202,22 @@ findPartitions(const string& fh,  // face quality heuristic
   vector<InterfaceHeuristic> fh_v;
   createVectorInterfaceHeuristic(fh,fh_v);
 
+  vector<TriangulateHeuristic> th_v;
+  createVectorTriHeuristic(th,th_v);
+
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'R')) {
     // find best left interface
     findBestInterface(C1_u2,C2_u2,C3_u2,
 		      left_C_l_u2C2,C_l_u2C2,fh_v,
 		      findBestFace,
 		      // find best face args
+		      th_v,
 		      P_u1,
 		      C1_u1,
 		      C2_u1,
 		      E_u1,
 		      C2_u2_to_C1_u1,
-		      C2_u2_to_C2_u1,
+		      C2_u2_to_C2_u1
 		      );
   }
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
@@ -240,12 +226,13 @@ findPartitions(const string& fh,  // face quality heuristic
 		      right_C_r_u2C2,C_r_u2C2,fh_v,
 		      findBestFace,
 		      // find best face args
+		      th_v,
 		      E_u1,
 		      C2_u1,
 		      C1_u1,
 		      P_u1,
 		      C2_u2_to_C2_u1,
-		      C2_u2_to_C1_u1,
+		      C2_u2_to_C1_u1
 		      );
   }
 
@@ -558,6 +545,22 @@ triangulatePartitions(const string& th,
 {
   vector<TriangulateHeuristic> th_v;
   createVectorTriHeuristic(th,th_v);
+  triangulatePartitions(th_v,P,C,E,Pcliques,Ccliques,Ecliques,
+			Pordered,Cordered,Eordered);
+}
+void
+GMTemplate::
+triangulatePartitions(const vector<TriangulateHeuristic> th_v,
+		      set<RandomVariable*>& P,
+		      set<RandomVariable*>& C,
+		      set<RandomVariable*>& E,
+		      vector<MaxClique>& Pcliques,
+		      vector<MaxClique>& Ccliques,
+		      vector<MaxClique>& Ecliques,
+		      vector<RandomVariable*>& Pordered,
+		      vector<RandomVariable*>& Cordered,
+		      vector<RandomVariable*>& Eordered)
+{
 
   basicTriangulate(P,th_v,
 		   Pordered,Pcliques);
@@ -565,36 +568,6 @@ triangulatePartitions(const string& th,
 		   Cordered,Ccliques);
   basicTriangulate(E,th_v,
 		   Eordered,Ecliques);
-
-#if 0
-  printf("Modified C Cliques\n");  
-  for (unsigned i=0;i<Ccliques.size();i++) {
-    printf("%d : %d  %f\n",i,
-	   Ccliques[i].nodes.size(),
-	   computeWeight(Ccliques[i].nodes));
-    for (set<RandomVariable*>::iterator j=Ccliques[i].nodes.begin();
-	 j != Ccliques[i].nodes.end(); j++) {
-      RandomVariable* rv = (*j);
-      printf("   %s(%d)\n",rv->name().c_str(),rv->frame());
-    }
-  }
-  printf("\n");
-
-
-  printf("Modified E Cliques\n");  
-  for (unsigned i=0;i<Ecliques.size();i++) {
-    printf("%d : %d  %f\n",i,
-	   Ecliques[i].nodes.size(),
-	   computeWeight(Ecliques[i].nodes));
-    for (set<RandomVariable*>::iterator j=Ecliques[i].nodes.begin();
-	 j != Ecliques[i].nodes.end(); j++) {
-      RandomVariable* rv = (*j);
-      printf("   %s(%d)\n",rv->name().c_str(),rv->frame());
-    }
-  }
-  printf("\n");
-#endif
-
 }
 
 
@@ -1624,7 +1597,7 @@ GMTemplate::interfaceScore(
  // output score
  vector<float>& score)
 {
-  const int debug=0;
+  const int debug=1;
   score.clear();
   for (unsigned fhi=0;fhi<fh_v.size();fhi++) {
     const InterfaceHeuristic fh = fh_v[fhi];
@@ -1634,7 +1607,7 @@ GMTemplate::interfaceScore(
       if (debug > 0)
 	printf("  set has weight = %f\n",tmp_weight);
     } else if (fh == IH_MIN_FILLIN) {
-      int fill_in = computeFillIn(C_L);
+      int fill_in = computeFillIn(C_l);
       score.push_back((float)fill_in);
       if (debug > 0)
 	printf("  set has fill_in = %d\n",fill_in);
@@ -1642,55 +1615,71 @@ GMTemplate::interfaceScore(
       score.push_back((float)C_l.size());
       if (debug > 0)
 	printf("  set has size = %d\n",
-	       varSet.size());
-    } else if (fh == IH_MIN_CLIQUE) {
+	       C_l.size());
+    } else if (fh == IH_MIN_MAX_CLIQUE) {
       // This is the expensive one, need to form a set of partitions,
       // given the current interface, triangulate that partition set, and then
       // compute the score of the worst best clique, and fill the score
       // variable above with this worst scoring clique (i.e., 
       // we find the interface that has the best worst-case performance.
 
+      set<RandomVariable*> Pc;
+      set<RandomVariable*> Cc;
+      set<RandomVariable*> Ec;
+      vector<MaxClique> Pcliques;
+      vector<MaxClique> Ccliques;
+      vector<MaxClique> Ecliques;
+      vector<RandomVariable*> Pordered;
+      vector<RandomVariable*> Cordered;
+      vector<RandomVariable*> Eordered;
 
-      // for left interface, CO = C3, so need to form
-      //     C2\rest + CO(rest) + CO(interface)
-      // for right interface, CO = C1, so need to form
-      //     C2\rest + CO(rest) + CO(interface)
-      // so need a mapping from variables in C2 to those in CO
+      findInterfacePartitions(P_u1,
+			      C1_u1,
+			      C2_u1,
+			      E_u1,
+			      C2_u2_to_C1_u1,
+			      C2_u2_to_C2_u1,
+			      left_C_l,
+			      C_l,
+			      Pc,
+			      Cc,
+			      Ec);
 
-      // C2 and CO should be the same chunk at successive times.
+      triangulatePartitions(th_v,
+			    Pc,Cc,Ec,
+			    Pcliques,Ccliques,Ecliques,
+			    Pordered,Cordered,Eordered);
 
-      assert (C2.size() == CO.size());
-      assert (C2.size() == C2_to_CO.size());
-
-      // first construct the set to be mapped
-      set <RandomVariable*> toTriangulate;
-
-      set_difference(C2.begin(),C2.end(),
-		     rest.begin(),rest.end(),
-		     inserter(toTriangulate,toTriangulate.end()));
-      for (set <RandomVariable*>::iterator i=rest.begin();
-	   i!=rest.end();i++) {
-	toTriangulate.insert(C2_to_CO((*i)));
+      // Now got cliques compute worst score using
+      // the weight of a clique as the score mechanism.
+      float maxWeight = -1.0;
+      for (unsigned i=0;i<Pcliques.size();i++) {
+	float curWeight = computeWeight(Pcliques[i].nodes);
+	printf("   --- P curWeight = %f\n",curWeight);
+	if (curWeight > maxWeight) maxWeight = curWeight;
       }
-      for (set <RandomVariable*>::iterator i=interface.begin();
-	   i!=interface.end();i++) {
-	toTriangulate.insert(C2_to_CO((*i)));
+      for (unsigned i=0;i<Ccliques.size();i++) {
+	float curWeight = computeWeight(Ccliques[i].nodes);
+	printf("   --- C curWeight = %f\n",curWeight);
+	if (curWeight > maxWeight) maxWeight = curWeight;
       }
-      
-      set <RandomVariable*> toTriangulate_clone;
-      clone(toTriangulate,toTriangulate_clone);
-      basicTriangulate(toTriangulate_clone,th_v,
-		       order,cliques);
+      for (unsigned i=0;i<Ecliques.size();i++) {
+	float curWeight = computeWeight(Ecliques[i].nodes);
+	printf("   --- E curWeight = %f\n",curWeight);
+	if (curWeight > maxWeight) maxWeight = curWeight;
+      }
+      score.push_back(maxWeight);
 
+      if (debug > 0)
+	printf("  set has max clique weight = %f\n",maxWeight);
 
-
-      // @@@@ get clique score and do something with it.
-      // delete toTriangulate_clone variables
+      deleteNodes(Pc);
+      deleteNodes(Cc);
+      deleteNodes(Ec);      
 
     }  else
       warning("Warning: invalid variable set score given. Ignored\n");
   }
-#endif
 
   return;
 }
@@ -1726,8 +1715,7 @@ GMTemplate::interfaceScore(
 void
 GMTemplate::
 clone(const set<RandomVariable*>& in, 
-      set<RandomVariable*>& out
-      )
+      set<RandomVariable*>& out)
 {
   
   map < RandomVariable*, RandomVariable* > in_to_out;
@@ -1791,6 +1779,41 @@ clone(const set<RandomVariable*>& in,
     in_to_out[rv]->setParents(sParents,cParentsList);
   }
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::deleteNodes()
+ *   Given a set of random variables, delete the nodes pointed
+ *   to by the set. 
+ *
+ * Preconditions:
+ *   'nodes' is a valid set of node pointers
+ *
+ * Postconditions:
+ *   all RV*'s in 'nodes' have been deleted. The set should thereafter
+ *   immediately be deleted or filled with new nodes
+ *
+ * Side Effects:
+ *     none
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMTemplate::
+deleteNodes(const set<RandomVariable*>& nodes)
+{
+  for (set<RandomVariable*>::iterator i = nodes.begin();
+       i != nodes.end(); i++) 
+    delete (*i);
+}
+
+
 
 
 /*-
@@ -1910,7 +1933,7 @@ GMTemplate::createVectorInterfaceHeuristic(const string& fh,
 	fh_v.push_back(IH_MIN_ENTROPY);
 	break;
       case 'C':
-	fh_v.push_back(IH_MIN_CLIQUE);
+	fh_v.push_back(IH_MIN_MAX_CLIQUE);
 	break;
       default:
 	error("ERROR: Unknown triangulation heuristic given '%c' in string '%s'\n",
@@ -1968,7 +1991,7 @@ GMTemplate::makeComplete(set<RandomVariable*> &rvs)
 
 
 ////////////////////////////////////////////////////////////////////
-//        Support Routines for P,C,E Triangulation
+//        Support Routines for P,C,E Interface Computation
 ////////////////////////////////////////////////////////////////////
 
 
@@ -2771,8 +2794,7 @@ findRightInterfacePartitions(
  *-----------------------------------------------------------------------
  * GMTemplate::findBestInterface()
  *
- *
- *  exponential time routines to find best left/right interfaces
+ *  An exponential-time routine to find best left/right interfaces
  *  and corresponding partitions. Since the operations
  *  for finding the best left and right interfaces are symmetric,
  *  the determiniation of if we are searching for the best
@@ -2840,6 +2862,7 @@ GMTemplate::findBestInterface(
  const vector<InterfaceHeuristic>& fh_v,
  const bool recurse,
  // more input variables
+ const vector<TriangulateHeuristic>& th_v,
  const set<RandomVariable*>& P_u1,
  const set<RandomVariable*>& C1_u1,
  const set<RandomVariable*>& C2_u1,
@@ -2878,7 +2901,11 @@ GMTemplate::findBestInterface(
   left_C_l.clear();
 
   vector<float> best_score;
-  variableSetScore(fh_v,C_l,best_score);
+  interfaceScore(fh_v,C_l,left_C_l,
+		 th_v,
+		 P_u1,C1_u1,C2_u1,E_u1,
+		 C2_u2_to_C1_u1,C2_u2_to_C2_u1,
+		 best_score);
 
   if (debug > 0) {
     printf("Size of basic left interface C_l = %d\n",C_l.size());
@@ -2906,14 +2933,17 @@ GMTemplate::findBestInterface(
     set<RandomVariable*> best_left_C_l = left_C_l;
     set<RandomVariable*> best_C_l = C_l;
     set< set<RandomVariable*> > setset;
-    findBestLeftInterface(left_C_l,
-			  C_l,
-			  C2,
-			  C3,
-			  setset,
-			  best_left_C_l,
-			  best_C_l,
-			  best_score,fh_v);
+    findBestInterface(left_C_l,
+		      C_l,
+		      C2,
+		      C3,
+		      setset,
+		      best_left_C_l,
+		      best_C_l,
+		      best_score,fh_v,
+		      th_v,
+		      P_u1,C1_u1,C2_u1,E_u1,
+		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
     if (debug > 0) {
       printf("Size of best left interface = %d\n",best_C_l.size());
       printf("Score of best left interface =");
@@ -2936,16 +2966,13 @@ GMTemplate::findBestInterface(
     left_C_l = best_left_C_l;
     C_l = best_C_l;
   }
-
-
 }
-
 
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::findBestInterface()
  *    recursive helper function for the first call findBestInterface()
- *    See that routine for documentation.
+ *    See that routine above for documentation.
  *
  * Preconditions:
  *
@@ -2959,15 +2986,26 @@ GMTemplate::findBestInterface(
  */
 void
 GMTemplate::
-findBestInterface(const set<RandomVariable*> &left_C_l,
-		  const set<RandomVariable*> &C_l,
-		  const set<RandomVariable*> &C2,
-		  const set<RandomVariable*> &C3,
-		  set< set<RandomVariable*> >& setset,
-		  set<RandomVariable*> &best_left_C_l,
-		  set<RandomVariable*> &best_C_l,
-		  vector<float>& best_score,
-		  const vector<InterfaceHeuristic>& fh_v)
+findBestInterface(
+  const set<RandomVariable*> &left_C_l,
+  const set<RandomVariable*> &C_l,
+  const set<RandomVariable*> &C2,
+  const set<RandomVariable*> &C3,
+  set< set<RandomVariable*> >& setset,
+  set<RandomVariable*> &best_left_C_l,
+  set<RandomVariable*> &best_C_l,
+  vector<float>& best_score,
+  const vector<InterfaceHeuristic>& fh_v,
+  // more input variables
+  const vector<TriangulateHeuristic>& th_v,
+  const set<RandomVariable*>& P_u1,
+  const set<RandomVariable*>& C1_u1,
+  const set<RandomVariable*>& C2_u1,
+  const set<RandomVariable*>& E_u1,
+  // these next 2 should be const, but there is no "op[] const"
+  map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
+  map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1
+)
 {
   set<RandomVariable*>::iterator v;  // vertex
   // consider all v in the current C_l as candidates
@@ -3018,9 +3056,13 @@ findBestInterface(const set<RandomVariable*> &left_C_l,
     // memoize
     setset.insert(next_C_l);
 
-
     vector<float> next_score;
-    variableSetScore(fh_v,next_C_l,next_score);
+    interfaceScore(fh_v,next_C_l,next_left_C_l,
+		   th_v,
+		   P_u1,C1_u1,C2_u1,E_u1,
+		   C2_u2_to_C1_u1,C2_u2_to_C2_u1,
+		   next_score);
+
     // check size of candiate interface, and keep a copy of
     // it if it is less then the one we have seen so far.
     if (next_score < best_score) {
@@ -3033,16 +3075,37 @@ findBestInterface(const set<RandomVariable*> &left_C_l,
 		      next_C_l,
 		      C2,C3,setset,
 		      best_left_C_l,best_C_l,best_score,
-		      fh_v);
+		      fh_v,
+		      th_v,
+		      P_u1,C1_u1,C2_u1,E_u1,
+		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
 
   }
 }
 
-
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::findInterfacePartitions()
- *   Create the three partitions and triangulate them. 
+ *   Create the three partitions, either left or right depending
+ *   on the order of the arguments given.
+ *
+ * For the left interface, we create new P,C, and E variable sets where
+ *  where P = modified prologue
+ *  where C = modified chunk to repeat
+ *  where E = modified epilogue to repeat
+ *  which are to be triangulated separately.
+ *   P = P' + C1'(left_C_l) + C1'(C_l)
+ *   C = C1'\C1'(left_C_l) + C2'(left_C_l) + C2'(C_l)
+ *   E = C2'\C2'(left_C_l) + E'
+ *
+ * For the right interface,  we create new P,C, and E variable sets where
+ *   where P = modified prologue
+ *   where C = modified chunk to repeat
+ *   where E = modified epilogue to repeat
+ *   which are to be triangulated separately.
+ *    P = P' + C1'\C1'(right_C_r)
+ *    C = C1'(C_r) + C1'(right_C_r) + C2'\C2'(right_C_r)
+ *    E = C2'(C_r) + C2'(right_C_l) + E'
  *
  * Preconditions:
  *
