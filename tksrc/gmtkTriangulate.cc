@@ -59,6 +59,7 @@ static char *strFileName=NULL;
 static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
 static int jut = -1;
 static char* anyTimeTriangulate = NULL;
+static char* timeLimit = NULL;
 static bool reTriangulate = false;
 static bool rePartition = false;
 static unsigned maxNumChunksInBoundary = 1; 
@@ -183,6 +184,10 @@ Arg Arg::Args[] = {
   Arg("anyTimeTriangulate",
       Arg::Opt,anyTimeTriangulate,
       "Run the any-time triangulation algorithm for given duration."),
+
+  Arg("timeLimit",
+      Arg::Opt,timeLimit,
+      "Do not run for longer than the given amount of time."),
 
   Arg("rePartition",
       Arg::Opt,rePartition,
@@ -443,18 +448,31 @@ main(int argc,char*argv[])
   // Initialize the timer if anyTimeTriangulate is selected
   if (anyTimeTriangulate != NULL) {
     time_t given_time;
-    given_time = timer->parseTimeString( string(anyTimeTriangulate) );
+    if (timeLimit != NULL) {
+      time_t t1,t2;
+      t1 = timer->parseTimeString( string(anyTimeTriangulate) );      
+      t2 = timer->parseTimeString( string(timeLimit) );      
+      given_time = min(t1,t2);
+    } else
+      given_time = timer->parseTimeString( string(anyTimeTriangulate) );
     if (given_time == 0) {
       error("ERROR: Must specify a non-zero amount of time for -anyTimeTriangulate"); 
     }
     infoMsg(IM::Low, "Triangulating for %d seconds\n", (int)given_time);
     timer->Reset(given_time);
-  }
-  else { 
-    timer->DisableTimer();
+  } else { 
+    if (timeLimit != NULL) {
+      time_t t1;
+      t1 = timer->parseTimeString( string(timeLimit) );      
+      if (t1 == 0) {
+	error("ERROR: -timeLimit option must specify a non-zero amount of time"); 
+      }
+      infoMsg(IM::Low, "Running for no more than %d seconds\n", (int)t1);
+      timer->Reset(t1);
+    } else
+      timer->DisableTimer();
   }
   triangulator.useTimer(timer);
-   
 
   if (jut >= 0) {
     // then Just Unroll, Triangulate, and report on quality of triangulation.
