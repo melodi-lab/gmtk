@@ -21,8 +21,8 @@
  */
 
 
-#ifndef EMABLE_H
-#define EMABLE_H
+#ifndef GMTK_EMABLE_H
+#define GMTK_EMABLE_H
 
 #include "fileParser.h"
 #include "logp.h"
@@ -64,13 +64,6 @@ public:
   EMable() { bitmask = 0x0; }
   virtual ~EMable() {}
 
-  //////////////////////////////////
-  // swap the old and the new parameters.
-  virtual void swapCurAndNew() = 0;
-  // clear the swap bit, needed for sharing.
-  void clearSwap() { bitmask &= ~bm_swapped; }
-  //////////////////////////////////
-
 
   //////////////////////////////////
   // Full Baum-Welch EM training  //
@@ -83,6 +76,9 @@ public:
   virtual void emLoadAccumulators(iDataStreamFile& ifile) = 0;
   virtual void emStoreAccumulators(oDataStreamFile& ofile) = 0;
   virtual void emAccumulateAccumulators(iDataStreamFile& ifile) = 0;
+  virtual void swapCurAndNew() = 0;
+  // clear the swap bit, needed for sharing.
+  void clearSwap() { bitmask &= ~bm_swapped; }
   //////////////////////////////////
 
 

@@ -20,8 +20,8 @@
  */
 
 
-#ifndef GMTK_WORLD_H
-#define GMTK_WORLD_H
+#ifndef GMTK_GMPARMS_H
+#define GMTK_GMPARMS_H
 
 
 #include "fileParser.h"
@@ -50,12 +50,14 @@ class GausSwitchingMixGaussians;
 class LogitSwitchingMixGaussians;
 class MLPSwitchingMixGaussians;
 
+template <class T>
 class RngDecisionTree;
 class Dlinks;
 class GMTK_GM;
 
 
 class GMParms {
+public:
 
   /********************************************************************/
 
@@ -84,14 +86,6 @@ class GMParms {
   sArray< DiagCovarVector* > covars;
 
   ////////////////////////////////
-  // Collection of dense real matrices
-  sArray< RealMatrix* > realMats;
-
-  ////////////////////////////////
-  // Collection of packed sparse real matrices
-  sArray< PackedSparseRealMatrix* > psRealMats;
-
-  ////////////////////////////////
   // Collection of objects
   // used for linear dependencies via
   // a dlink topology structure.
@@ -109,7 +103,7 @@ class GMParms {
 
   ///////////////////////////////////
   // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
-  sArray< MSCPT* > dSCpts;
+  sArray< MSCPT* > msCpts;
 
 
   //////////////////////////////////////////////////////////////////
@@ -170,7 +164,7 @@ class GMParms {
   // into this array for a variety of purposes.
   //////////////////////////////////////////////////////////////////
 
-  sArray< RngDecisionTree* > dts;
+  sArray< RngDecisionTree<int>* > dts;
 
   /********************************************************************/
 
@@ -191,8 +185,6 @@ class GMParms {
   GMTK_GM* gm;
 
   /********************************************************************/
-
-public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
@@ -215,4 +207,4 @@ public:
 // defined in a mainprogram.
 extern GMParms GM_Parms;
 
-#endif // defined GMTK_CPT
+#endif

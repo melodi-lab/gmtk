@@ -34,11 +34,6 @@ class RealArray {
   sArray<float> arr;
   ///////////////////////////////////////////////////////////  
 
-  ///////////////////////////////////////////////////////////  
-  // length of the distribution (separate from the memory
-  // allocated for arr above).
-  int length;
-  ///////////////////////////////////////////////////////////  
 
 public:
 
@@ -46,8 +41,10 @@ public:
   // General constructor
   RealArray();
 
-  float operator[] (int i) { return arr[i]; }
-    
+  float& operator[] (const int i) { return arr[i]; }
+
+  int len() { return arr.len(); }
+
   ///////////////////////////////////////////////////////////    
   // reading and writing from/to disk.
   void read(iDataStreamFile& is);

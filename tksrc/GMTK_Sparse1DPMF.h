@@ -20,8 +20,8 @@
  */
 
 
-#ifndef GMTK_DISCRETE1DPDF
-#define GMTK_DISCRETE1DPDF
+#ifndef GMTK_SPARSE1DPMF_H
+#define GMTK_SPARSE1DPMF_H
 
 
 #include "fileParser.h"
@@ -105,8 +105,23 @@ public:
   void write(oDataStreamFile& os);
 
 
+  //////////////////////////////////
+  // Public interface support for EM
+  //////////////////////////////////
+  void emInit() {};
+  void startEmEpoch() {};
+  void emAccumulate(const float prob,
+		    const float *const oo_array) {};
+  void endEmEpoch(logpr cmpSop_acc) {};
+  void emLoadAccumulators(iDataStreamFile& ifile) {};
+  void emStoreAccumulators(oDataStreamFile& ofile) {};
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {};
+  void swapCurAndNew() {};
+  //////////////////////////////////
+
+
 };
 
 
 
-#endif // defined DISCRETE1DPDF
+#endif 

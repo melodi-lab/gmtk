@@ -20,8 +20,8 @@
  */
 
 
-#ifndef DIAGGAUSSIAN_H
-#define DIAGGAUSSIAN_H
+#ifndef GMTK_DIAGGAUSSIAN_H
+#define GMTK_DIAGGAUSSIAN_H
 
 #include "fileParser.h"
 #include "logp.h"

@@ -37,7 +37,7 @@ VCID("$Header$");
 ////////////////////////////////////////////////////
 // The default value of the minimum possible variance of any
 // Gaussian. This must be >= FLT_MIN for numeric stability.
-double DiagGaussian::_varianceFloor = 1e-30; 
+double GaussianCommon::_varianceFloor = 1e-30; 
 
 
 

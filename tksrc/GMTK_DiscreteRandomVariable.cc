@@ -106,3 +106,35 @@ DiscreteRandomVariable::tieWith(RandomVariable* rv)
 
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * allocateProbabiltyTables()
+ *      Allocate the internal CPT probability tables.
+ * 
+ * Preconditions:
+ *      CPT structures shouldn't be defined. All parents
+ *      both switching and otherwise should be defined.
+ *
+ * Postconditions:
+ *      CPT structures are defined, and match the cardinalities
+ *      of the current set of parents.
+ *
+ * Side Effects:
+ *      Changes the interal CPT data structures.
+ *
+ * Results:
+ *      What does the function return, if anything. 
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DiscreteRandomVariable::allocateProbabiltyTables()
+{
+  
+  
+
+
+
+}

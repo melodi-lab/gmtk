@@ -29,6 +29,10 @@
 
 #include "general.h"
 #include "error.h"
+#include "rand.h"
+
+#include "GMTK_DiagCovarVector.h"
+#include "GMTK_GaussianCommon.h"
 
 
 VCID("$Header$");
@@ -54,9 +58,36 @@ VCID("$Header$");
  */
 DiagCovarVector::DiagCovarVector() 
 {
-
-
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * DiagCovarVector::read()
+ *      read in, and make sure it is a valid cov. matrix.
+ *
+ * Results:
+ *      Constructs the object.
+ *
+ * Side Effects:
+ *      None so far.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+DiagCovarVector::read(iDataStreamFile& is)
+{
+  covariances.read(is); 
+  for (int i=0;i<covariances.len();i++) {
+    if (covariances[i] < GaussianCommon::varianceFloor()) {
+      error("DiagCovarVector:: read, covariance[%d] = (%e) < current Floor = (%e)",
+	    i,covariances[i],GaussianCommon::varianceFloor());
+    }
+  }
+}
+
+
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -66,8 +97,8 @@ DiagCovarVector::DiagCovarVector()
 void
 DiagCovarVector::makeRandom()
 {
-  for (int i=0;i<means.len();i++) {
-    covars[i] = 1.0+rnd.drand48();
+  for (int i=0;i<covariances.len();i++) {
+    covariances[i] = 1.0+rnd.drand48();
   }
 }
 

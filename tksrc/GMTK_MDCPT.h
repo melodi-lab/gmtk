@@ -90,6 +90,8 @@ public:
     assert ( bitmask & bm_basicAllocated );
     return cardinalities[numParents]; 
   }
+
+
   // returns an iterator for the first one.
   iterator begin() {
     assert ( bitmask & bm_basicAllocated );
@@ -102,15 +104,15 @@ public:
   iterator end() {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
-    it.internalState = cardinalities[numParents]-1;
+    it.internalState = cardinalities[numParents];
     return it;
   }
 
   // Given a current iterator, return the next one in the sequence.
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
-
-    if (it.internalState == cardinalities[numParents]-1)
+    // don't increment past the last value.
+    if (it.internalState == cardinalities[numParents])
       return false;
     it.internalState++;
     it.probVal = mdcpt_ptr[it.internalState];

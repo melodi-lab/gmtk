@@ -19,8 +19,8 @@
  */
 
 
-#ifndef GMTK_DLINKS
-#define GMTK_DLINKS
+#ifndef GMTK_DLINKS_H
+#define GMTK_DLINKS_H
 
 
 #include "fileParser.h"
@@ -80,4 +80,4 @@ public:
 };
 
 
-#endif // defined GMTK_CPT
+#endif

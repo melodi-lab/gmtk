@@ -52,13 +52,74 @@ int CPT::warningNumParents = 50;
 ////////////////////////////////////////////////////////////////////
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * CPT::setNumParents()
+ *      Just sets the number of parents and resizes arrays as appropriate.
+ *
+ * Results:
+ *      no results.
+ *
+ * Side Effects:
+ *      Will change internal arrays of this object.
+ *
+ *-----------------------------------------------------------------------
+ */
+void CPT::setNumParents(const int _nParents)
+{
+
+  if (_nParents < 0) 
+    error("CPT: setNumParents, trying to use negative (%d) num parents.",
+	  _nParents);
+
+  numParents = _nParents;
+  cardinalities.resize(numParents+1);
+
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * CPT::setNumCardinality(var,card)
+ *      sets the cardinality of var to card
+ *
+ * Results:
+ *      no results.
+ *
+ * Side Effects:
+ *      Will change internal array content of this object.
+ *
+ *-----------------------------------------------------------------------
+ */
+void CPT::setNumCardinality(const int var, const int card)
+{
+
+  if (var < 0)
+    error("CPT: setNumCardinality, trying to use negative (%d) var.",
+	  var);
+  if (var > numParents) 
+    error("CPT: setNumCardinality, trying to use illegal (%d) var.",
+	  var);
+  if (card <= 0)
+    error("CPT: setNumCardinality, trying to use illegal (%d) card.",
+	  card);
+
+  // assertion should be satisifed by the way that cardinalities
+  // is allocated allong with setting num parents.
+  assert ( var < cardinalities.len() );
+
+  cardinalities[var] = card;
+
+}
+
 
 
 /*-
  *-----------------------------------------------------------------------
  * Function
  *      compareCardinalities: compare the cardinalities of this CPT with that of an other. REturn
- *      true if they are equil false otherwise.
+ *      true if they are equal false otherwise.
  *
  * Results:
  *      returns true if cards are equal.
@@ -78,6 +139,7 @@ CPT::compareCardinalities(CPT& cpt)
     if (cardinalities[i] != cpt.cardinalities[i])
       return false;
   }
+  return true;
 }
 
 

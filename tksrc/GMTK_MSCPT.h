@@ -25,10 +25,13 @@
 #include "logp.h"
 #include "sArray.h"
 
-#include "GMTK_CPT.h"
-#include "GMTK_EMable.h"
-#include "GMTK_RandomVariable.h"
 #include "GMTK_RngDecisionTree.h"
+#include "GMTK_RandomVariable.h"
+#include "GMTK_CPT.h"
+#include "GMTK_Sparse1DPMF.h"
+
+#include "GMTK_EMable.h"
+#include "GMTK_GMParms.h"
 
 class MSCPT : public EMable, public CPT {
 
@@ -41,7 +44,7 @@ class MSCPT : public EMable, public CPT {
 
   ///////////////////////////////////////
   // Direct pointer to the decision tree.
-  RngDecisionTree* dt;
+  RngDecisionTree<int>* dt;
 
   ///////////////////////////////////////
   // Index of world's sparse mass function,
@@ -59,23 +62,20 @@ public:
   MSCPT();
 
   ///////////////////////////////////////////////////////////    
-  void setNumParents(const int _nParents) 
-     { error("Not Implemented"); }
-  void setNumCardinality(const int var, const int card)
-     { error("Not Implemented"); }
-  void allocateBasicInternalStructures()
-     { error("Not Implemented"); }
+  void setNumParents(const int _nParents);
+  void setNumCardinality(const int var, const int card);
+  void allocateBasicInternalStructures();
   ///////////////////////////////////////////////////////////    
 
   //////////////////////////////////
   // various forms of probability calculation
   void becomeAwareOfParentValues( sArray <int>& parentValues ) {
-    dtIndex = dt->query(parentValues);
-    spmf = GM_Parms.dts[dtIndex];
+    spmfIndex = dt->query(parentValues);
+    spmf = GM_Parms.sPmfs[spmfIndex];
   }
-  void becomeAwareOfParentValues( sArray <randomVariable *>& parents ) {
-    dtIndex = dt->query(parents);
-    spmf = GM_Parms.dts[dtIndex];
+  void becomeAwareOfParentValues( sArray <RandomVariable *>& parents ) {
+    spmfIndex = dt->query(parents);
+    spmf = GM_Parms.sPmfs[spmfIndex];
   }
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
@@ -88,7 +88,7 @@ public:
     becomeAwareOfParentValues(parentValues);
     return probGivenParents(val);
   }
-  logpr probGivenParents(sArray <randomVariable *>& parents,
+  logpr probGivenParents(sArray <RandomVariable *>& parents,
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents);
@@ -100,24 +100,34 @@ public:
   }
 
   // returns an iterator for the first one.
-  iterator first() {
+  iterator begin() {
     assert ( bitmask & bm_basicAllocated );
     iterator it;
-    it.val = 0;
-    it.probVal = *mscpt_ptr;
+    it.internalState = 0;
+    it.probVal = spmf->probAtEntry(0);
     return it;
   }
 
-  // Given a current iterator, return the next one in the sequence.
+  iterator end() {
+    assert ( bitmask & bm_basicAllocated );
+    iterator it(this);
+    it.internalState = spmf->length();
+    return it;
+  }
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
-
-    if (it.val == cardinalities[numParents]-1)
+    // don't increment past the last value.
+    if (it.internalState == spmf->length());
       return false;
-    it.val++;
-    it.probVal = mscpt_ptr[it.val];
+    it.internalState++;
+    it.probVal = spmf->probAtEntry(it.internalState);
     return true;
   }
+  virtual int valueAtIt(const int internalState) { 
+    assert ( internalState >= 0 && internalState < spmf->length() );
+    return spmf->valueAtEntry(internalState); 
+  }
+
   int randomSample();
 
   ///////////////////////////////////////////////////////////  
@@ -146,8 +156,6 @@ public:
   void emAccumulateAccumulators(iDataStreamFile& ifile)  { error("not implemented"); }
   void swapCurAndNew() { error("not implemented"); }
   //////////////////////////////////
-
-
 
 };
 

@@ -19,8 +19,8 @@
  */
 
 
-#ifndef GMTK_CPT
-#define GMTK_CPT
+#ifndef GMTK_CPT_H
+#define GMTK_CPT_H
 
 
 #include "logp.h"
@@ -116,10 +116,10 @@ public:
 				 const int val) = 0;
 
 
-  // Returns an integer that gives, for the current parent assignment
-  // the number of possible (i.e., with non-zero probability)
-  // different values of this random variable.
-  virtual int numValsGivenParents() {
+  // Returns the cardinality of this CPT (i.e.,
+  // the number of possible values (either with zero or non zero
+  // probab) that a RV with this CPT may take on.
+  virtual int card() {
     return cardinalities[numParents]; 
   }
 
@@ -127,35 +127,45 @@ public:
     friend class CPT;
     // An integer internal state which "hopefully" will
     // be enough for each derived class.
-    int internalState;
-    const CPT* cpt;
+    CPT* cpt;
   public:
-    iterator(CPT* _cpt) : cpt(_cpt) {}
-    
-    int val() { return internalState; }
+    int internalState;
+    // another name for internalState, the value of the RV.
+    int val() { return cpt->valueAtIt(internalState); }
     // the probability of the variable being value 'val()'
     logpr probVal;
-    // change the iterator to be the next valid value.
+
+    iterator(CPT* _cpt) : cpt(_cpt) {}
+    iterator(const iterator& it) :cpt(it.cpt) 
+    { internalState = it.internalState; probVal = it.probVal; }
+    // allow to construct an empty iterator, to be filled
+    // in later
+    iterator() : cpt(NULL) {}
+
     // prefix
-    virtual iterator& operator ++() = 0;
+    iterator& operator ++() { cpt->next(*this); return *this; }
     // postfix
-    virtual iterator operator ++(int) = 0;
+    iterator operator ++(int) {
+      iterator tmp=*this; ++*this; return tmp;
+    }
+
     bool operator == (const iterator &it) 
        { return it.internalState == internalState; } 
     bool operator != (const iterator &it)
        { return it.internalState != internalState; } 
-    void next();
   };
 
   // returns an iterator for the first one.
   virtual iterator begin() = 0;
   // returns an iterator for the first one.
   virtual iterator end() = 0;
-
   // Given a current iterator, return true if it
   // is a valid next value, otherwise return false so
   // a loop can terminate.
   virtual bool next(iterator &) = 0;
+  // given an internal state of an iterator, return
+  // the value corresponding to this random variable.
+  virtual int valueAtIt(const int internalState) { return internalState; }
 
 
   ///////////////////////////////////////////////////////////  
@@ -184,5 +194,5 @@ public:
 };
 
 
-#endif // defined GMTK_CPT
+#endif 
 
