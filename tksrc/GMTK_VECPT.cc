@@ -240,6 +240,7 @@ void VECPT::begin(iterator& it,DiscRV* drv, logpr& p)
   assert ( bitmask & bm_basicAllocated );
   it.setCPT(this);
   it.drv = drv;
+  it.uInternalState = curParentValue;
   drv->val = 0;
 
   if (veMode == VE_Dense) {
@@ -268,6 +269,7 @@ void VECPT::becomeAwareOfParentValuesAndIterBegin(vector < RV *>& parents,
 						  logpr& p) 
 {
   becomeAwareOfParentValues(parents,drv);
+  it.uInternalState = curParentValue;
   begin(it,drv,p);
 }
 
@@ -319,13 +321,13 @@ bool VECPT::next(iterator &it,logpr& p)
     return false;
   it.drv->val = 1;
   if (veMode == VE_Dense) {
-    p.valref() = (*obs.floatVecAtFrame(it.drv->frame(),curParentValue));
+    p.valref() = (*obs.floatVecAtFrame(it.drv->frame(),it.uInternalState));
   } else {
     // do a slow linear search since order can be anything.
     unsigned *base = obs.unsignedAtFrame(it.drv->frame());
     unsigned i;
     for (i=0;i<obs.numDiscrete();i++) {
-      if (base[i] == curParentValue)
+      if (base[i] == it.uInternalState)
 	break;
     }
     if (i<obs.numDiscrete()) {
