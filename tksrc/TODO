@@ -1292,3 +1292,18 @@ Sun Jan 11 06:53:27 2004
    might arise when compiling on 64b machines.
  - when this is done, remove all (unsigned**) casts
    in GMTK_MaxClique.cc in call to pack()
+
+Tue Jan 13 00:07:02 2004
+ - start doing many subclasses of RV.
+   Right now there are virtual functions in RV and its
+   derivatives that are doing checks that could
+   be setup by an appropriate subclass that
+   is created by the file parser. For example,
+     1) the weight stuff 
+     2) switching parent stuff
+     3) etc.
+    (i.e., if we're paying the cost of a virtual
+     function, we might as well switch right
+     to a function that does exactly what we want).
+ 
+   
