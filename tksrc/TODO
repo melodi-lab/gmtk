@@ -828,3 +828,16 @@ Wed Dec 25 12:50:41 2002
     and hours) to compute triangulation for, and
     stop after that amount of time.
     
+
+Thu Dec 26 02:16:36 2002
+  - fix: core dump issue when graph is not connected.
+    (i.e., when chunk is not connected to itself)
+
+
+Thu Dec 26 02:21:28 2002
+  - Chris Bartels Todo:
+    - write a class Anytime_Triangulation
+       that has same interface as basicTriangulation routine
+    - write an anytime exhaustive search triangulatio
+    - get MCS working with current graphs, so we can
+      verify that graphs are indeed triangulated.
