@@ -2128,7 +2128,8 @@ BoundaryTriangulate::
 triangulateExhaustiveSearch( 
   set<RandomVariable*>     nodes,
   vector<nghbrPairType>    orgnl_nghbrs,
-  vector<MaxClique>&       cliques
+  // output: resulting max cliques
+  vector<MaxClique>&       best_cliques
   )
 {
   // define local constanced used in this routine.
@@ -2137,9 +2138,11 @@ triangulateExhaustiveSearch(
   const unsigned EDGE = 2; 
   const unsigned UNUSED = 3;
 
-  // do a vector<int> rather than an ENUM here to avoid yet another STL instantiation
+  // do a vector<int> rather than an ENUM here to avoid yet another STL 
+  //   instantiation
   vector<vector<unsigned> > adjacency;  
-  vector<RandomVariable*>  node_v; 
+  vector<MaxClique>         cliques;
+  vector<RandomVariable*>   node_v; 
   unsigned nmbr_empty, nmbr_nodes;
   unsigned i, j;
   unsigned row, col;
@@ -2269,10 +2272,10 @@ triangulateExhaustiveSearch(
         }
         infoMsg(IM::Tiny, "--------------------------\n");
 
+        best_cliques = cliques;
         best_weight = weight;
       } 
     } 
-//    infoMsg(IM::Tiny, "\n");
 
     //////////////////////////////////////////////////////////////////
     // Set up next edge configuration 
@@ -2646,7 +2649,6 @@ anyTimeTriangulate(GMTemplate& gm_template)
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using simulated annealing 
   ////////////////////////////////////////////////////////////////////////
-
   if (timer->SecondsLeft() > 10) {
     // Do C first since it is more important.
     infoMsg(IM::Tiny, "---\nTriangulating C using Simulated Annealing:\n");
