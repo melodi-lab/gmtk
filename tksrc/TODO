@@ -542,3 +542,5 @@ accumulators need to be saved even when the training bit is off.  This
 logic therefore needs to be rethought.
 
 -----------------------------------------------------------------
+
+- get automatic allocation of DenseCPTs working again.
