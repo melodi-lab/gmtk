@@ -7,7 +7,15 @@
 // 1998sep29 dpwe@icsi.berkeley.edu
 //
 // Modified to allow repetition of terms as in 0:1r3, which equivalent to 0:1,0:1,0:1
+// See RANGEREPEATTERM -> RANGETERM[rNUMBER] in syntax below
 //   02sep2003 karim@cs.washington.edu
+//
+// Added some error checking the supplied range bounds are exceeded.
+// This functionality can be turned off by undefining
+// ENFORCE_LOWER_UPPER_LIMITS (this can be useful if we want to report
+// the error higher up, when we have more information about the
+// specific range that is causing the problem)
+//   13oct2004 karim@cs.washington
 //
 // $Header$
 
@@ -35,11 +43,14 @@
 // "-" is a synonym for ":", SPACE is a synonym for "," and 
 // RETURN is a synonym for ";". 
 
-#include <assert.h>
-#include <string.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstring>
+#include <cstdlib>
 
 #include "range.h"
+#include "error.h"
+
+#define ENFORCE_LOWER_UPPER_LIMITS 1
 
 //#define DEBUG
 
@@ -861,6 +872,16 @@ Range::Range(const char *defstr /*=NULL*/, int minval /*=0*/,
     min_val=0; max_val=0;
     SetLimits(minval, ulimval);
     SetDefStr(defstr?defstr:"all");
+    // Report an error if our range exceeds the specified limits 
+    //  -- Karim Oct,13, 2004
+#ifdef ENFORCE_LOWER_UPPER_LIMITS
+    if(first() < minval) {
+      error("ERROR: First value of range specification '%s' is below the minimum possible value '%d'",defstr,minval);
+    }
+    if(last() > ulimval) {
+      error("ERROR: Last value of range specification '%s' is greater than the maximum possible value '%d'",defstr,minval);
+    }
+#endif
 }
 
 Range::~Range() {
