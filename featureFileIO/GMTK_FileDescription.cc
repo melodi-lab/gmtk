@@ -100,7 +100,7 @@ FileDescription::~FileDescription() {
     delete [] fofName;
 
   if (dataFormat != PFILE) {
-    for (int i = 0; i < fofSize; i++)
+    for (unsigned i = 0; i < fofSize; i++)
       delete [] dataNames[i];
     delete [] dataNames;
   }
