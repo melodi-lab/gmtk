@@ -81,6 +81,13 @@ VCID("$Header$");
 double 
 MaxClique::continuousObservationPerFeaturePenalty = 0.0;
 
+/*
+ *
+ * true to do separator driven inference, false means do clique driven. 
+ *
+ */
+bool
+MaxClique::ceSeparatorDrivenInference = true;
 
 
 
@@ -1237,6 +1244,30 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
     fUnassignedIteratedNodes[i++] = nrv;
   }
 
+
+  // do unassignedNodes
+  if (MaxClique::ceSeparatorDrivenInference == false) {
+    i=0;
+    fUnassignedNodes.resize(from_clique.unassignedNodes.size());
+    for (it = from_clique.unassignedNodes.begin();
+	 it != from_clique.unassignedNodes.end();
+	 it++) {
+      RandomVariable* rv = (*it);
+      RVInfo::rvParent rvp;
+      rvp.first = rv->name();
+      rvp.second = rv->frame()+frameDelta;    
+
+      if ( ppf.find(rvp) == ppf.end() ) {
+	coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+		 rv->name().c_str(),rv->frame(),frameDelta,
+		 rvp.first.c_str(),rvp.second);
+      }
+      RandomVariable* nrv = newRvs[ppf[rvp]];
+      fUnassignedNodes[i++] = nrv;
+    }
+  }
+
+
   // Clique values only store/hash values of hidden (thus necessarily
   // discrete) variables since they are the only thing that change.
   discreteValuePtrs.resize(from_clique.hiddenNodes.size());
@@ -1269,6 +1300,9 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 
 }
 
+//
+// TODO: make proper comments to all of the functions below.
+//
 
 /*-
  *-----------------------------------------------------------------------
@@ -1288,8 +1322,11 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 void
 InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
 {
-  logpr p = 1.0;
+  if (!origin.ceSeparatorDrivenInference)
+    return ceGatherFromIncommingSeparatorsCliqueDriven(part);
 
+  // if we're still here, we do cliuqe driven inference.
+  logpr p = 1.0;
   if (origin.ceReceiveSeparators.size() == 0) {
     if (origin.unassignedIteratedNodes.size() == 0) {
       ceIterateAssignedNodes(part,0,p);
@@ -1474,7 +1511,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       cliqueValues.resizeAndCopy(cliqueValues.size()*2);
     }
 
-    // TODO: figure out if it is possible to get around doint this
+    // TODO: figure out if it is possible to get around doing this
     // check (or to help branch prediction predict it, since it will
     // be different for differnet cliques). Answer: We can do this
     // check once at beginning of iteration of assigned nodes, and
@@ -1946,6 +1983,308 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   }
 
 }
+
+//////////////
+// Clique driven version of gather from incomming separators
+/////////////
+
+void
+InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePartition& part)
+{
+  assert (MaxClique::ceSeparatorDrivenInference == false); 
+  logpr p = 1.0;
+  if (origin.unassignedNodes.size() == 0) {
+    ceIterateAssignedNodesCliqueDriven(part,0,p);
+  } else {
+    ceIterateUnassignedNodesCliqueDriven(part,0,p);
+  }
+}
+
+
+
+void
+InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& part,
+						       const unsigned nodeNumber,
+						       logpr p)
+{
+  if (nodeNumber == fSortedAssignedNodes.size()) {
+    // time to store clique value and total probability, p is
+    // current clique probability.
+
+    // Now, we iterate through all incoming CE separators, make sure the entry 
+    // for the current clique value it exists, and if it does, multiply by separator probability.
+    for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
+      // get a handy reference to the current separator
+      InferenceSeparatorClique& sep = 
+	part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+
+      unsigned packedVal[128];
+      // If these assertions fail (at some time in the future, probably in
+      // the year 2150), then it is fine to increase 128 to something larger.
+      // In fact, 128 is so large, lets not even do the assert.
+      // assert ( sep.origin.accPacker.packedLen() < 128 );
+      // assert ( sep.origin.remPacker.packedLen() < 128 );
+
+      /*
+       * There are 3 cases.
+       * 1) AI exists and REM exist
+       * 2) AI exists and REM doesnt exist
+       * 3) AI does not exist, but REM exists
+       * AI not exist and REM not exist can't occur.
+       */
+
+      unsigned accIndex;
+      // TODO: optimize this check away out of loop.
+      if (sep.origin.hAccumulatedIntersection.size() > 0) {
+	// an accumulated intersection exists.
+
+	sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
+				  &packedVal[0]);
+	unsigned* accIndexp =
+	  sep.iAccHashMap.find(&packedVal[0]);
+
+	
+	// If it doesn't exist in this separator, then it must have
+	// zero probability some where. We therefore do not insert it
+	// into this clique, and continue on with next cliuqe value.
+	if ( accIndexp == NULL )
+	  return;
+
+	accIndex = *accIndexp;
+
+	// TODO: optimize this check out of loop.
+	if (sep.remDiscreteValuePtrs.size() == 0) {
+	  // 2) AI exists and REM doesnt exist
+	  // Then this separator is entirely covered by one or 
+	  // more other separators earlier in the order.
+
+	  // go ahead and insert it here to the 1st entry (entry 0).
+
+	  // handy reference for readability.
+	  InferenceSeparatorClique::AISeparatorValue& sv
+	    = sep.separatorValues[accIndex];
+
+	  // Multiply in the separator values probability into the clique value's current entry.
+	  p *= sv.remValues[0].p;
+	  // done, move on to next separator.
+	  continue; 
+	}
+      } else {
+	// no accumulated intersection exists, everything
+	// is in the remainder.
+	accIndex = 0;
+      }
+
+      // if we're here, then we must have some remainder
+      // pointers.
+      // TODO: remove assertion when debugged.
+      assert (sep.remDiscreteValuePtrs.size() > 0);
+
+      // Do the remainder exists in this separator.
+      // 
+      // either:
+      //   1) AI exists and REM exist
+      //     or
+      //   3) AI does not exist (accIndex == 0), but REM exists
+      // 
+
+      // keep handy reference for readability.
+      InferenceSeparatorClique::AISeparatorValue& sv
+	= sep.separatorValues[accIndex];
+
+      sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
+				&packedVal[0]);
+
+      unsigned* remIndexp =
+	sv.iRemHashMap.find(&packedVal[0]);
+
+      // If it doesn't exist in this separator, then it must have
+      // zero probability some where. We therefore do not insert it
+      // into this clique, and continue on with next cliuqe value.
+      if ( remIndexp == NULL )
+	return;
+
+      // We've finally got the sep entry.  Multiply in the separator
+      // values probability into the clique value's current entry.
+      p *= sv.remValues[*remIndexp].p;
+    }
+
+
+    // keep track of the max clique probability right here.
+    if (p > maxCEValue)
+      maxCEValue = p;
+
+    if (numCliqueValuesUsed >= cliqueValues.size()) {
+      // TODO: optimize this.
+      cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+    }
+
+    // TODO: figure out if it is possible to get around doing this
+    // check (or to help branch prediction predict it, since it will
+    // be different for differnet cliques). Answer: We can do this
+    // check once at beginning of iteration of assigned nodes, and
+    // have two versions of this code.
+    if (origin.packer.packedLen() <= IMC_NWWOH) {
+      // pack the clique values directly into place
+      origin.packer.pack(
+			 (unsigned**)discreteValuePtrs.ptr,
+			 (unsigned*)&(cliqueValues[numCliqueValuesUsed].val[0]));
+    } else {
+      // Deal with the hash table to re-use clique values.
+      // First, grab pointer to storge where next clique value would
+      // be stored if it ends up being used.
+      unsigned *pcv = origin.valueHolder.curCliqueValuePtr();
+      // Next, pack the clique values into this position.
+      origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
+      // Look it up in the hash table.
+      bool foundp;
+      unsigned *key;
+      key = origin.cliqueValueHashSet.insert(pcv,foundp);
+      if (!foundp) {
+	// if it was not found, need to claim this storage that we
+	// just used.
+	origin.valueHolder.allocateCurCliqueValue();
+      }
+      // Save the pointer to whatever the hash table decided to use.
+      cliqueValues[numCliqueValuesUsed].ptr = key;
+    }
+    // save the probability
+    cliqueValues[numCliqueValuesUsed].p = p;
+    numCliqueValuesUsed++;
+
+    return;
+  }
+  RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
+  // do the loop right here
+
+  infoMsg(Giga,"Starting assigned iteration of rv %s(%d), nodeNumber=%d, p = %f\n",
+	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+
+  switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
+  case MaxClique::AN_NOTSEP_PROB_SPARSEDENSE:
+  case MaxClique::AN_SEP_PROB_SPARSEDENSE:
+    {
+      rv->clampFirstValue();
+      do {
+	// At each step, we compute probability
+	logpr cur_p = rv->probGivenParents();
+	if (message(Giga)) {
+	  if (!rv->discrete) {
+	    infoMsg(Giga,"  Assigned iteration and prob application of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+	  } else {
+	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    infoMsg(Giga,"  Assigned CPT iteration and prob application of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	  }
+	}
+	// if at any step, we get zero, then back out.
+	if (!cur_p.essentially_zero()) {
+	  // Continue, updating probability by cur_p, contributing this
+	  // probability to the clique potential.
+	  ceIterateAssignedNodesCliqueDriven(part,nodeNumber+1,p*cur_p);
+	}
+      } while (rv->clampNextValue());
+    }
+    break;
+
+
+  case MaxClique::AN_NOTSEP_NOTPROB_DENSE:
+    {
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      // do the loop right here
+      drv->val = 0;
+      do {
+	infoMsg(Giga,"  Assigned card iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+		rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	// Continue, do not update probability!!
+	ceIterateAssignedNodesCliqueDriven(part,nodeNumber+1,p);
+      } while (++drv->val < drv->cardinality);
+    }
+    break;
+
+
+  default: // all other cases, we do CPT iteration removing zeros without updating probabilities.
+    {
+      rv->clampFirstValue();
+      do {
+	// At each step, we compute probability
+	logpr cur_p = rv->probGivenParents();
+	if (message(Giga)) {
+	  if (!rv->discrete) {
+	    infoMsg(Giga,"  Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+	  } else {
+	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    infoMsg(Giga,"  Assigned CPT iteration and zero removal of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	  }
+	}
+	// if at any step, we get zero, then back out.
+	if (!cur_p.essentially_zero()) {
+	  // Continue, do not update probability!!
+	  ceIterateAssignedNodesCliqueDriven(part,nodeNumber+1,p);
+	}
+      } while (rv->clampNextValue());
+    }
+    break;
+  }
+
+}
+
+
+
+
+
+void
+InferenceMaxClique::ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& part,
+							 const unsigned nodeNumber,
+							 const logpr p)
+{
+  if (nodeNumber == fUnassignedNodes.size()) {
+    ceIterateAssignedNodesCliqueDriven(part,0,p);
+    return;
+  }
+  RandomVariable* rv = fUnassignedNodes[nodeNumber];
+  infoMsg(Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
+	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+
+  if (rv->hidden) {
+    // only discrete RVs can be hidden for now.
+    DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+    // do the loop right here
+    drv->val = 0;
+    do {
+      infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+      // continue on, effectively multiplying p by unity.
+      ceIterateUnassignedNodesCliqueDriven(part,nodeNumber+1,p);
+    } while (++drv->val < drv->cardinality);
+  } else {
+    // observed, either discrete or continuous
+    if (message(Giga)) {
+      if (rv->discrete) {
+	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	// TODO: for observed variables, do this once at the begining
+	// before any looping here.
+	drv->setToObservedValue();
+	infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+		rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+      } else {
+	// nothing to do since we get continuous observed
+	// value indirectly
+	infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
+		rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+      }
+    }
+    // continue on, effectively multiplying p by unity.
+    ceIterateUnassignedNodesCliqueDriven(part,nodeNumber+1,p);
+  }
+}
+
+
+
+
 
 
 logpr
@@ -2667,7 +3006,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   } else {
     // start with something a bit larger
     // TODO: optimize this.
-    const unsigned starting_size = 2000;
+    const unsigned starting_size = 3; // 2000;
     separatorValues.resize(starting_size);
     if (origin.hRemainder.size() > 0) {
       for (unsigned i=0;i<starting_size;i++) {
@@ -2705,6 +3044,38 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
  *-----------------------------------------------------------------------
  */
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::computeUnassignedCliqueNodes()
+ *   Compute the unassignedNodes variable
+ *
+ * Preconditions:
+ *   Nodes and assignedNodes must be filled in.
+ *   Note that this routine is a nop if we're doing separator driven inference.
+ *
+ * Postconditions:
+ *   Unassigned nodes udpated.
+ *
+ * Side Effects:
+ *   changes member variable unasssignedNodes
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+MaxClique::computeUnassignedCliqueNodes()
+{
+  if (ceSeparatorDrivenInference)
+    return; // don't compute if we're doing separator driven.
+  unassignedNodes.clear();
+  set_difference(nodes.begin(),nodes.end(),
+		 assignedNodes.begin(),assignedNodes.end(),
+		 inserter(unassignedNodes,unassignedNodes.end()));
+}
 
 
 ////////////////////////////////////////////////////////////////////

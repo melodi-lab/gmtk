@@ -49,6 +49,7 @@ VCID("$Header$");
 #include "GMTK_ProgramDefaultParms.h"
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
+#include "GMTK_MaxClique.h"
 
 /*
  * command line arguments
@@ -109,7 +110,7 @@ static unsigned verbosity = IM::Default;
 static bool print_version_and_exit = false;
 
 /////////////////////////////////////////////////////////////
-// Temporary Options
+// Inference Options
 static bool doDistributeEvidence=false;
 static bool probE=false;
 static bool island=false;
@@ -183,12 +184,13 @@ Arg Arg::Args[] = {
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 
   /////////////////////////////////////////////////////////////
-  // Temporary Options
+  // Inference Options
   Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Do distribute evidence also"),
   Arg("probE",Arg::Opt,probE,"Run the const memory probE function"),
   Arg("island",Arg::Opt,island,"Run island algorithm"),
   Arg("base",Arg::Opt,base,"Island algorithm base"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
+  Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
 
   // final one to signal the end of the list
   Arg()

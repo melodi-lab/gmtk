@@ -204,6 +204,13 @@ class MaxClique : public IM {
 public:
 
 
+  // bool which if true means we globally do separator driven (rather
+  // than clique driven) inference. Separator driven is good when
+  // pruning is turned on. Clique driven is good when you want
+  // inference cost to directly correspond to normal weight.
+  static bool ceSeparatorDrivenInference;
+
+
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
 #if 0
   MaxClique& operator=(const MaxClique& f) {
@@ -393,7 +400,7 @@ public:
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of nodes that are not assigned to this clique but that
-  // also are not iterated over by the incomming
+  // also are *NOT* iterated over by the incomming
   // separators. Therefore, these nodes in the clique must be iterated
   // over [0,card-1] unfortunately.  The hope is that assignment and setup can be
   // done so there are very few or zero of such nodes. Note however
@@ -411,19 +418,33 @@ public:
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE 
+  // The set of nodes that are simply not assigned. In other words,
+  // these nodes can be defined as:
+  // 
+  //    unassignedNodes = nodes - assignedNodes;
+  //
+  // Computed in JunctionTree::assignRVsToCliques().
+  // Used to:
+  //  1) These nodes are used for iteration when doing
+  //     clique driven inference.
+  set<RandomVariable*> unassignedNodes;
+
+
+  // USED ONLY IN JUNCTION TREE INFERENCE 
   // This enum defines the different things that could
   // happen to an assigned node in a clique during CE assigned node iteration.
   enum AssignedNodeDisposition {
     // In the discussion below, say v is an assignedNode (meaning it
     // exists with its parents in the clique).
-    // We have 6 cases:
+    // We have 6 cases, each case has 1 or more name.
 
     //
     // 1)
-    //   v is not in sepNodes, and v is a prob node as well, meaning
-    //   we multiply this clique potential by prob(v|parents(v)). We
-    //   use CPT iteration to iterate over v and compute and apply
-    //   probabilities.  Same for v being sparse or not.
+    //   v is not in sepNodes, and v is a prob node as well, v either
+    //   sparse or dense:  meaning we multiply this clique potential by
+    //   prob(v|parents(v)). We use CPT iteration to iterate over v
+    //   and compute and apply probabilities.
+    AN_NOTSEP_PROB_SPARSEDENSE=0,
     AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB=0,
 
     //
@@ -433,6 +454,7 @@ public:
     //   parents, but do not multiply clique potential by
     //   probabilties. By using CPT iteration, we remove any zeros
     //   now.
+    AN_NOTSEP_NOTPROB_SPARSE=1,
     AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS=1,
 
     //
@@ -443,26 +465,32 @@ public:
     //   do CPT iteration in this case, as there might be zeros
     //   in a dense CPT that are being missed due to the fact
     //   that we're doing card iteration. I.e., this case
-    //   could be 1.
+    //   could be set to value 1. TODO: test this.
+    AN_NOTSEP_NOTPROB_DENSE=2,
     AN_CARD_ITERATION=2,
 
     //
     // 4)
-    //   v is in sepNodes, and v is a probability node. Then we
-    //   compute the probability for v, apply it, and continue only if the
-    //   probabilty is non zero.  Same for v being sparse or not.
+    //   v is in sepNodes, and v is a probability node, v either
+    //   sparse or dense. Then we compute the probability for v, apply
+    //   it, and continue only if the probabilty is non zero.
+    AN_SEP_PROB_SPARSEDENSE=3,
     AN_COMPUTE_AND_APPLY_PROB=3,
 
     //
     // 5) 
-    //   A) v is in sepNodes, v is not a probability node, but v was
-    //   assigned in some previous JT clique. In this case, we just
-    //   continue on since we know at least one of the incomming separators killed off
-    //   any zero entries.  same for v being sparse or not.
+    //   A) v is in sepNodes, v is not a probability node, v either
+    //   sparse or dense, but v *WAS* assigned in some previous JT
+    //   clique. In this case, we just continue on since we know at
+    //   least one of the incomming separators killed off any zero
+    //   entries, i.e., no need to use the CPT, even when this node is
+    //   sparse since the zero was used in a previous clique.
+    AN_SEP_NOTPROB_SPARSEDENSE_PRVASSIGNED=4,
     //   -
     //   B) v is in sepNodes, v is not a probability node, v not sparse,
     //   but v was *NOT* assigned in a previous JT clique. We just
     //   continue, since the CPT won't tell us anything.
+    AN_SEP_NOTPROB_DENSE_NOTPRVASSIGNED=4,
     AN_CONTINUE=4,
 
     //
@@ -473,6 +501,7 @@ public:
     //   v|parents is not zero. If it is zero, we backout, but if it
     //   is not zero we continue, but *do not* multiply the
     //   probability into this clique potential.
+    AN_SEP_NOTPROB_SPARSE_NOTPRVASSIGNED=5,
     AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS=5
   };
 
@@ -643,6 +672,10 @@ public:
     }
   }
 
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // used to compute the unassigned nodes in this clique.
+  void computeUnassignedCliqueNodes();
+
 };
 
 
@@ -665,6 +698,7 @@ class InferenceMaxClique  : public IM
   sArray< RandomVariable*> fNodes;
   sArray< RandomVariable*> fSortedAssignedNodes;
   sArray< RandomVariable*> fUnassignedIteratedNodes;
+  sArray< RandomVariable*> fUnassignedNodes;
   // Direct pointers to the values within the discrete hidden RVs
   // within this clique.  Note, the observed discrete and continuous
   // variables are not contained here.
@@ -765,6 +799,17 @@ public:
   void ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			    InferenceSeparatorClique& sep); 
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
+
+  // support for collect evidence clique driven operations.
+  void ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePartition& part);
+  void ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& part,
+					  const unsigned nodeNumber,
+					  logpr p);
+  void ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& part,
+					    const unsigned nodeNumber,
+					    const logpr p);
+  
+
 
 
   // distribute evidence functions.
