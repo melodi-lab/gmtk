@@ -1461,10 +1461,6 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
   if (P1.nodes.size() > 0) {
     infoMsg(IM::Giga,"assigning rvs to P1 partition\n");
     assignRVsToCliques(P1_n,P1,P_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-  }
-
-  infoMsg(IM::Max,"assigning rvs to Co partition\n");
-  if (P1.nodes.size() > 0) {
     // accumulate what occured in P1 so Co can use it. 
     union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
 		   P1.cliques[P_ri_to_C].assignedNodes,
@@ -1472,7 +1468,16 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
     union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
 		   P1.cliques[P_ri_to_C].assignedProbNodes,
 		   Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
+
+    // printf("P1's cum ass prob:");
+    // printRVSet(stdout,P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes);
+    // printf("P1's ass prob:");
+    // printRVSet(stdout,P1.cliques[P_ri_to_C].assignedProbNodes);
+    // printf("Co's cum ass prob:");
+    // printRVSet(stdout,Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
+
   }
+  infoMsg(IM::Max,"assigning rvs to Co partition\n");
   assignRVsToCliques(Co_n,Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
   if (E1.nodes.size() > 0) {
@@ -1583,18 +1588,26 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),part.cliques.size());
 
+  // update the cumulative RV assignments before we begin.
+  getCumulativeAssignedNodes(part,rootClique);
+
   for (unsigned n=0;n<sortedNodes.size();n++) {
 
     RV* rv = sortedNodes[n];
 
     // precompute the parents set for set intersection operations.
     // The one stored in the rv is a vector, but we need a set, so we
-    // pre-compute it here.
+    // pre-compute it here. While we're at it, we compute if all
+    // parents are observed since the behaviour is a bit
+    // different in this case.
     set<RV*> parSet;
+    bool allParentsObserved=true;
     for (unsigned p=0;p<rv->allParents.size();p++) {
       // TODO: see if there is a faster STL way to go from vector to set.
       // fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
       parSet.insert(rv->allParents[p]);
+      if (rv->allParents[p]->hidden())
+	allParentsObserved = false;
     }
 
     // create a map to keep track of the scores of a given clique in
@@ -1610,7 +1623,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 		     0,
 		     rv,
 		     numberOfTimesAssigned,
-		     parSet,
+		     parSet,allParentsObserved,
 		     scoreSet);
     infoMsg(IM::Max,
 	    "Part %s: random variable %s(%d) with its parents contained in %d cliques\n",
@@ -1618,27 +1631,37 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 	    rv->name().c_str(),rv->frame(),numberOfTimesAssigned);
 
     if (numberOfTimesAssigned > 0) {
+      // then it was assigned in this partition at least once, but we
+      // still need to check if it should give probability to some
+      // clique within this partition. We need to check both if the
+      // scoreSet has a value, and also if it was not assigned, since
+      // the scoreSet might have obtained a value from a branch of the
+      // JT below which didn't have this rv assigned with probability.
 
-      if (scoreSet.size() > 0) {
+      if ((scoreSet.size() > 0)  &&
+	  (part.cliques[rootClique].cumulativeAssignedProbNodes.find(rv) == 
+	   part.cliques[rootClique].cumulativeAssignedProbNodes.end())) {
+
 	// Then the node will be a probability contributer to one clique
 	// in this partition.
 	
-	assert ( numberOfTimesAssigned > 0 ); 
-
 	// We choose one of those cliques to be the one the node
 	// contributes probabilty to.
 	unsigned clique_num = (*(scoreSet.begin())).second;
 	part.cliques[clique_num].assignedProbNodes.insert(rv);
-	infoMsg(IM::Max,
-		"Part %s: random variable %s(%d) giving probability to clique %d\n",
-		partName,
-		rv->name().c_str(),rv->frame(),clique_num);
+	if (IM::messageGlb(IM::Max)) {
+	  infoMsg(IM::Max,
+		  "Part %s: random variable %s(%d) giving probability to clique %d.\n",
+		  partName,
+		  rv->name().c_str(),rv->frame(),clique_num);
+	}
       }
-
+      
       // update the cumulative RV assignments.
       getCumulativeAssignedNodes(part,rootClique);
 
     } else {
+
       // rv was not assigned to this partition, it must be the case
       // that it will be assigned to a different partition. This
       // could come from the partition before or the partition after
@@ -1722,6 +1745,7 @@ JunctionTree::assignRVToClique(const char *const partName,
 			       RV* rv,
 			       unsigned& numberOfTimesAssigned,
 			       set<RV*>& parSet,
+			       const bool allParentsObserved,
 			       multimap < vector<double>, unsigned >& scoreSet)
 {
   // keep a reference for easy access
@@ -1733,7 +1757,7 @@ JunctionTree::assignRVToClique(const char *const partName,
   
   // printf("clique%d: from rv, closure_in_clique = %d\n",root,closure_in_clique);
 
-  if (closure_in_clique) {
+  if (closure_in_clique && !allParentsObserved) {
     // need to further check that parents are in clique
     set<RV*> res;
     set_intersection(curClique.nodes.begin(),
@@ -1926,7 +1950,7 @@ JunctionTree::assignRVToClique(const char *const partName,
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
     const unsigned child = part.cliques[root].children[childNo];
-    assignRVToClique(partName,part,child,depth+1,rv,numberOfTimesAssigned,parSet,scoreSet);
+    assignRVToClique(partName,part,child,depth+1,rv,numberOfTimesAssigned,parSet,allParentsObserved,scoreSet);
   }
 
 }
