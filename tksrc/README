@@ -64,6 +64,24 @@ File names.
  
      would define the GaussianMixture class. 
 
+Programs Files
+    Two types.
+
+    1) simple test driver programs.
+       Use same type as member functions
+
+        testGaussianMixture
+        testBar
+        runBayesianNetwork
+
+    2) main programs, use list of capitalized '_' separated
+       programs.
+
+        GMTK_Train
+        GMTK_Test
+        GMTK_LoopyInference
+        ...
+
 
 --------------------
 
