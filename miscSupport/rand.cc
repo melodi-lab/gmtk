@@ -274,6 +274,45 @@ RAND::inverse_normal_func(double p)
 	return(y);
 } 
 
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * permute
+ *      Randomly and uniformly permute the integers in vec of lenght len.
+ * 
+ *  Preconditions:
+ *     vec must be of length len.
+ *
+ * Results:
+ *      returns the permuted vector in place
+ *
+ * Side Effects:
+ *      changes the argument
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+RAND::rpermute(int * vec, const unsigned len)
+{
+  for (unsigned i=0;i<len;i++) {
+    unsigned val = uniform(i,len-1);
+    swap(vec[i],vec[val]);
+  }
+}
+void
+RAND::rpermute(unsigned * vec, const unsigned len)
+{
+  for (unsigned i=0;i<len;i++) {
+    unsigned val = uniform(i,len-1);
+    swap(vec[i],vec[val]);
+  }
+}
+
+
+
 #ifdef MAIN
 
 #include <stdio.h>
