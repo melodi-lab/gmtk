@@ -191,7 +191,7 @@ Sw_ObsContRV::emIncrement(logpr posterior)
   } else {
     // need to find which mixture this will be.
     const unsigned mixtureIndex =
-      curMappingOrDirect->mapping.dtMapper->query(allParents,this);
+      curMappingOrDirect->mapping.dtMapper->query(*curConditionalParents,this);
 
     ///////////////////////////////////////////////////////////
     // Dynamic error checking:
@@ -206,8 +206,10 @@ Sw_ObsContRV::emIncrement(logpr posterior)
 	    mixtureIndex,
 	    curMappingOrDirect->mapping.collection->mxSize(),
 	    curMappingOrDirect->mapping.collection->name().c_str());
-      fprintf(stderr,"Parents configuration :");
+      fprintf(stderr,"All parents' configuration:");
       printRVSetAndValues(stderr,allParents);
+      fprintf(stderr,"Current conditional parents' configuration:");
+      printRVSetAndValues(stderr,*curConditionalParents);
       error("");
     }
 
