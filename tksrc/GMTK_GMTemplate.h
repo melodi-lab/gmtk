@@ -1,6 +1,9 @@
 /*
  * GMTK_GMTemplate.h
- *   Basic GM Template and Basic Triangulation Routines
+ *   Basic GM Template and Basic Triangulation Routines.
+ *   This includes code that is common to both triangulation and inference,
+ *   so does not contain the more elaborate triangulation methods so that
+ *   they are not appart of inference code.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -41,6 +44,7 @@ class Partition;
 class GMTemplate;
 
 class Partition {
+
   friend class GMTemplate;
   friend class BoundaryTriangulate;
 
@@ -52,11 +56,19 @@ public:
   // The cliques themselves, used to store the current triangulation
   // of each of the partitions.
   vector<MaxClique> cliques;
-
+  
   // a string with information about the method used to form the cliques
   string triMethod;
 
   Partition() {}
+
+  // Clone constructor from another Partition, but that uses a new set
+  // of random variables, and adjusts the frame of each new set of
+  // random variable with offset
+  Partition(Partition& from_part,
+	    vector <RandomVariable*>& newRvs,
+	    map < RVInfo::rvParent, unsigned >& ppf,
+	    const unsigned int frameDelta = 0);
 
   void clear() { nodes.clear(); cliques.clear(); triMethod.clear(); }
 
@@ -66,6 +78,8 @@ public:
 
 };
 
+#define GMTEMPLATE_UNINITIALIZED_MS  (~(unsigned)0)
+
 class GMTemplate : public IM 
 {
 
@@ -74,6 +88,7 @@ class GMTemplate : public IM
   friend class Triangulate;
   friend class Partition;
   friend class BoundaryTriangulate;
+  friend class JunctionTree;
 
   // the file parser for this model.
   FileParser& fp;
@@ -107,6 +122,7 @@ private:
     CEInterface_in_E.clear();
     boundaryMethod.clear();
   }
+
 
   // TODO: put this next routine in the RV .cc file.
   void makeComplete(set<RandomVariable*> &rvs);
@@ -174,9 +190,17 @@ public:
   GMTemplate(FileParser& arg_fp,
 	     const unsigned arg_M,
 	     const unsigned arg_S)
-    : fp(arg_fp),M(arg_M),S(arg_S) 
-  { 
+    : fp(arg_fp),M(arg_M),S(arg_S)
+  {
     clear(); 
+  }
+
+  GMTemplate(FileParser& arg_fp)
+    : fp(arg_fp),
+      M(GMTEMPLATE_UNINITIALIZED_MS),
+      S(GMTEMPLATE_UNINITIALIZED_MS)
+  {
+    clear();
   }
 
   GMTemplate(GMTemplate& t)
@@ -201,7 +225,8 @@ public:
   unsigned epilogueNumFrames() { return fp.numFrames() - fp.firstChunkFrame() - 1; }
   unsigned firstChunkFrame() { return fp.firstChunkFrame(); }
   unsigned lastChunkFrame() { return fp.lastChunkFrame(); }
-
+  unsigned maxNumChunksInBoundary() { return M; }
+  unsigned chunkSkip() { return S; }
 
   // Read partition information into file
   void createPartitions(const set<RandomVariable*>& P,

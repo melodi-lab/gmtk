@@ -54,6 +54,12 @@ private:
 				     RandomVariable* node,
 				     unsigned& position);
 
+  static bool topologicalSortRecurse(const set<RandomVariable*>& sortSet,
+				     vector<RandomVariable*>& outputVarList,
+				     RandomVariable* node,
+				     unsigned& position);
+
+
 public:
 
   GraphicalModel() {}
@@ -61,6 +67,17 @@ public:
 
   static bool topologicalSort(vector<RandomVariable*> &inputVarList,
 			      vector<RandomVariable*> &outputVarList);
+
+
+
+  // topoligical sort where 
+  //  1) input is a set
+  //  2) constrain sort to be only variables in sortSet (which
+  //     might be a subset of the ancestral or 'descendal' set.
+  static bool topologicalSort(const set<RandomVariable*> &inputVarList,
+			      const set<RandomVariable*> &sortSet,
+			      vector<RandomVariable*> &outputVarList);
+
 
 
   ///////////////////////////////////////////

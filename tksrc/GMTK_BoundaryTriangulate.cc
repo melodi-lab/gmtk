@@ -317,6 +317,9 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
 	case 'T':
 	  tri_heur.heuristic_vector.push_back(TH_MIN_TIMEFRAME);
 	  break;
+	case 'X':
+	  tri_heur.heuristic_vector.push_back(TH_MAX_TIMEFRAME);
+	  break;
 	case 'F':
 	  tri_heur.heuristic_vector.push_back(TH_MIN_FILLIN);
 	  break;
@@ -607,15 +610,15 @@ findPartitions(// boundary quality heuristic
 	       GMTemplate& gm_template)
 {
 
-  // M = number of chunks in which interface/pipeline algorithm can operate.
-  // i.e., a boundary is searched for in M repeated chunks, where M >= 1.
-  // Note that M puts a constraints on the number of time frames
+  //
+  // M = number of chunks in which boundary algorithm is allowed to exist
+  // i.e., a boundary is searched for within M repeated chunks, where M >= 1.
+  // Note that M and S put constraints on the number of time frames
   // of the observations (i.e., the utterance length in time frames).
-  // Specificaly, if N = number of frames of utterance,
-  //  then we must have N = length(P) + length(E) + k*M*length(C)
-  //  where k = 2,3,4, ... is some integer >= 2.
-  // Therefore, making M larger reduces the number valid possible utterance lengths.
-
+  // Specificaly, if N = number of frames of utterance, 
+  //   then we must have N = length(P) + length(E) + (M+k*S)*length(C)
+  //   where k = 1,2,3,4, ... is some integer >= 1.
+  // Therefore, making M and/or S larger reduces the number valid possible utterance lengths.
 
   // First create a network (called u2, but could be called "find
   // boundary") that is used to find the boundary in. This network is
@@ -634,7 +637,7 @@ findPartitions(// boundary quality heuristic
   }
   // moralize graph
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
-    unroll2_rvs[i]->moralize();    
+    unroll2_rvs[i]->moralize();
   }
   // create sets P, C1, C2, C3, and E, from graph unrolled M+1 times
   // prologue
@@ -653,20 +656,25 @@ findPartitions(// boundary quality heuristic
   int start_index_of_E_u2 = -1;
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
     if (unroll2_rvs[i]->frame() < firstChunkFrame())
+      // prologue
       P_u2.insert(unroll2_rvs[i]);
     else if (unroll2_rvs[i]->frame() <= lastChunkFrame()) {
+      // 1st chunk, 1 chunk long
       C1_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C1_u2 == -1)
 	start_index_of_C1_u2 = i;
     } else if (unroll2_rvs[i]->frame() <= lastChunkFrame()+M*chunkNumFrames()) {
+      // 2nd chunk, M chunks long
       C2_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C2_u2 == -1)
 	start_index_of_C2_u2 = i;
     } else if (unroll2_rvs[i]->frame() <= lastChunkFrame()+(M+1)*chunkNumFrames()) {
+      // 3rd chunk, 1 chunk long
       C3_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C3_u2 == -1)
 	start_index_of_C3_u2 = i;
     } else {
+      // epilogue
       E_u2.insert(unroll2_rvs[i]);
       if (start_index_of_E_u2 == -1)
 	start_index_of_E_u2 = i;
@@ -687,11 +695,15 @@ findPartitions(// boundary quality heuristic
   // call the network from which P, C, and E are created u1 (but
   // could call it "partition")
 
-  // create sets P', C1', C2', and E', from graph unrolled 2*M-1 time(s)
-  // each hyper-chunk C1' and C2' are M frames long.
-
   // When we have an S and an M parameter, , number of chunks needed
-  // is M + S, so we should unroll (M+S-1) times.
+  // is M + S, so we should unroll (M+S-1) times.  We start by
+  // creating sets P', C1', C2', and E', from the graph unrolled
+  // (S+M-1) time(s), where each hyper-chunk C1' and C2' are M frames long
+  // Note that 
+  //    1) if S==M, Cextra will be empty, and C1' and C2' will not overlap.
+  //    2) if M > S, then C1' and C2' will overlap certain variables.
+  //    3) if S > M, C1' and C2' will not overlap, and there will be chunks 
+  //       between C1' and C2', and they'll be placed in Cextra
 
   vector <RandomVariable*> unroll1_rvs;
   fp.unroll(M+S-1,unroll1_rvs);
@@ -710,35 +722,40 @@ findPartitions(// boundary quality heuristic
   int start_index_of_C2_u1 = -1;
   int start_index_of_E_u1 = -1;
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
+    // Note that there are some casts to (int) in the below below
+    // since it might be the case that M = 0, and if unsigned
+    // comparisions are used, the condition could fail inappropriately
     if (unroll1_rvs[i]->frame() < firstChunkFrame())
       P_u1.insert(unroll1_rvs[i]);
     if ((unroll1_rvs[i]->frame() >= firstChunkFrame()) &&
-	(unroll1_rvs[i]->frame() <= lastChunkFrame() + (M-1)*chunkNumFrames())) {
+	((int)unroll1_rvs[i]->frame() <= (int)lastChunkFrame() + ((int)M-1)*(int)chunkNumFrames())) {
       C1_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C1_u1 == -1)
 	start_index_of_C1_u1 = i;
     }
-    if ((unroll1_rvs[i]->frame() > lastChunkFrame() + (M-1)*chunkNumFrames()) &&
+    if (((int)unroll1_rvs[i]->frame() > (int)lastChunkFrame() + ((int)M-1)*(int)chunkNumFrames()) &&
 	(unroll1_rvs[i]->frame() < firstChunkFrame() + S*chunkNumFrames())) {
       // this should only happen when S > M
       assert ( S > M );
       Cextra_u1.insert(unroll1_rvs[i]);
     }
     if ((unroll1_rvs[i]->frame() >= firstChunkFrame() + S*chunkNumFrames()) &&
-	(unroll1_rvs[i]->frame() <= lastChunkFrame() + (M+S-1)*chunkNumFrames())) {
+	((int)unroll1_rvs[i]->frame() <= (int)lastChunkFrame() + ((int)M+(int)S-1)*(int)chunkNumFrames())) {
       C2_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C2_u1 == -1)
 	start_index_of_C2_u1 = i;
     }
-    if (unroll1_rvs[i]->frame() > lastChunkFrame() + (M+S-1)*chunkNumFrames()) {
+    if ((int)unroll1_rvs[i]->frame() > (int)lastChunkFrame() + ((int)M+(int)S-1)*(int)chunkNumFrames()) {
       E_u1.insert(unroll1_rvs[i]);
       if (start_index_of_E_u1 == -1)
 	start_index_of_E_u1 = i;
     }
   }
 
+  // sanity checks
   assert (C1_u1.size() == C2_u1.size());
   assert (C1_u1.size() == C2_u2.size());
+  assert ((S<=M) || (Cextra_u1.size() == C1_u2.size()*(S-M)));
 
   // create mapping from C2_u2 (for which we now
   // have an appropriate interface vars) to nodes C1_u1 and C2_u1
@@ -777,61 +794,99 @@ findPartitions(// boundary quality heuristic
     infoMsg(Tiny,"---\nFinding BEST LEFT interface\n");
 
     set<RandomVariable*> C2_1_u2; // first chunk in C2_u2
-    if (M == 1) {
-      // make it empty signaling that we don't bother to check it in this case.
-      C2_1_u2.clear();
-    } else {
-      for (set<RandomVariable*>::iterator i=C2_u2.begin();
-	   i != C2_u2.end();i++) {
-	if ((*i)->frame() > lastChunkFrame() && (*i)->frame() <= lastChunkFrame()+chunkNumFrames())
-	  C2_1_u2.insert((*i));
+    if (M == 0) {
+      // find interface in basic template
+      assert ( C2_u2.size() == 0 );
+      findBestInterface(C1_u2,C3_u2,C2_1_u2,C3_u2,
+			left_C_l_u2C2,C_l_u2C2,best_L_score,
+			bnd_heur_v,
+			false,
+			// find best boundary args
+			tri_heur,
+			P_u1,
+			C1_u1,
+			Cextra_u1,
+			C2_u1,
+			E_u1,
+			C2_u2_to_C1_u1,
+			C2_u2_to_C2_u1
+			);
+    } else { 
+      if (M == 1) {
+	// make it empty signaling that we don't bother to check it in this case.
+	C2_1_u2.clear();
+      } else {
+	for (set<RandomVariable*>::iterator i=C2_u2.begin();
+	     i != C2_u2.end();i++) {
+	  if ((*i)->frame() > lastChunkFrame() && (*i)->frame() <= lastChunkFrame()+chunkNumFrames())
+	    C2_1_u2.insert((*i));
+	}
       }
+      findBestInterface(C1_u2,C2_u2,C2_1_u2,C3_u2,
+			left_C_l_u2C2,C_l_u2C2,best_L_score,
+			bnd_heur_v,
+			findBestBoundary,
+			// find best boundary args
+			tri_heur,
+			P_u1,
+			C1_u1,
+			Cextra_u1,
+			C2_u1,
+			E_u1,
+			C2_u2_to_C1_u1,
+			C2_u2_to_C2_u1
+			);
     }
-    findBestInterface(C1_u2,C2_u2,C2_1_u2,C3_u2,
-		      left_C_l_u2C2,C_l_u2C2,best_L_score,
-		      bnd_heur_v,
-		      findBestBoundary,
-		      // find best boundary args
-		      tri_heur,
-		      P_u1,
-		      C1_u1,
-		      Cextra_u1,
-		      C2_u1,
-		      E_u1,
-		      C2_u2_to_C1_u1,
-		      C2_u2_to_C2_u1
-		      );
   }
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
     // find best right interface
     infoMsg(Tiny,"---\nFinding BEST RIGHT interface\n");
 
     set<RandomVariable*> C2_l_u2; // last chunk of C2_u2
-    if (M == 1) {
-      // make it empty signaling that we don't bother to check it in this case.
-      C2_l_u2.clear();
+    if (M == 0) {
+      // find interface in basic template
+      assert ( C2_u2.size() == 0 );
+      findBestInterface(C3_u2,C1_u2,C2_l_u2,C1_u2,
+			right_C_r_u2C2,C_r_u2C2,best_R_score,
+			bnd_heur_v,
+			false,
+			// find best boundary args
+			tri_heur,
+			E_u1,
+			C2_u1,
+			Cextra_u1,
+			C1_u1,
+			P_u1,
+			C2_u2_to_C2_u1,
+			C2_u2_to_C1_u1
+			);
     } else {
-      for (set<RandomVariable*>::iterator i=C2_u2.begin();
-	   i != C2_u2.end();i++) {
-	if ((*i)->frame() > (lastChunkFrame()+(M-1)*chunkNumFrames()) 
-	    && (*i)->frame() <= (lastChunkFrame()+M*chunkNumFrames()))
-	  C2_l_u2.insert((*i));
+      if (M == 1) {
+	// make it empty signaling that we don't bother to check it in this case.
+	C2_l_u2.clear();
+      } else {
+	for (set<RandomVariable*>::iterator i=C2_u2.begin();
+	     i != C2_u2.end();i++) {
+	  if ((*i)->frame() > (lastChunkFrame()+(M-1)*chunkNumFrames()) 
+	      && (*i)->frame() <= (lastChunkFrame()+M*chunkNumFrames()))
+	    C2_l_u2.insert((*i));
+	}
       }
+      findBestInterface(C3_u2,C2_u2,C2_l_u2,C1_u2,
+			right_C_r_u2C2,C_r_u2C2,best_R_score,
+			bnd_heur_v,
+			findBestBoundary,
+			// find best boundary args
+			tri_heur,
+			E_u1,
+			C2_u1,
+			Cextra_u1,
+			C1_u1,
+			P_u1,
+			C2_u2_to_C2_u1,
+			C2_u2_to_C1_u1
+			);
     }
-    findBestInterface(C3_u2,C2_u2,C2_l_u2,C1_u2,
-		      right_C_r_u2C2,C_r_u2C2,best_R_score,
-		      bnd_heur_v,
-		      findBestBoundary,
-		      // find best boundary args
-		      tri_heur,
-		      E_u1,
-		      C2_u1,
-		      Cextra_u1,
-		      C1_u1,
-		      P_u1,
-		      C2_u2_to_C2_u1,
-		      C2_u2_to_C1_u1
-		      );
   }
 
   // Now find the partitions (i.e., left or right) corresponding
@@ -939,27 +994,38 @@ findInterfacePartitions(
   // together to get the partitions.
   set<RandomVariable*> C_l_u1C1;
   set<RandomVariable*> C_l_u1C2;
-  for (set<RandomVariable*>::iterator i = C_l_u2C2.begin();
-       i!= C_l_u2C2.end(); i++) {
-
-    assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
-    assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
-
-    C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
-  }
 
   set<RandomVariable*> left_C_l_u1C1;
   set<RandomVariable*> left_C_l_u1C2;
-  for (set<RandomVariable*>::iterator i = left_C_l_u2C2.begin();
-       i != left_C_l_u2C2.end(); i++) {
+  if (M > 0) {
+    for (set<RandomVariable*>::iterator i = C_l_u2C2.begin();
+	 i!= C_l_u2C2.end(); i++) {
 
-    assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
-    assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
+      assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
+      assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
 
-    left_C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    left_C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
+      C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
+      C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
+    }
+
+    for (set<RandomVariable*>::iterator i = left_C_l_u2C2.begin();
+	 i != left_C_l_u2C2.end(); i++) {
+      
+      assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
+      assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
+    
+      left_C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
+      left_C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
+    }
+  } else {
+    // M == 0
+    error("findInterfacePartitions: M==0 case not implemented, use unroll and triangulate\n");
+    // this case is needed presumably because we want to do something
+    // where the original GMTK template is unrolled 0 times. Rather
+    // than doing this here, we will just use the unroll and triangulate
+    // method and then do inference on the resulting cliques.
   }
+
   
   // Finally, create the modified sets P, C, and E
   //   where P = modified prologue
@@ -1082,6 +1148,15 @@ triangulate(const string& tri_heur_str,
   triangulate(gm_template.P.nodes,tri_heur,orgnl_P_nghbrs,gm_template.P.cliques,gm_template.P.triMethod,best_P_weight);
   triangulate(gm_template.C.nodes,tri_heur,orgnl_C_nghbrs,gm_template.C.cliques,gm_template.C.triMethod,best_C_weight);
   triangulate(gm_template.E.nodes,tri_heur,orgnl_E_nghbrs,gm_template.E.cliques,gm_template.E.triMethod,best_E_weight);
+
+  ////////////////////////////////////////////////////////////////////////
+  // Return with the best triangulations found, which is
+  // be stored within the template at this point.
+  ////////////////////////////////////////////////////////////////////////
+  restoreNeighbors(orgnl_P_nghbrs);
+  restoreNeighbors(orgnl_C_nghbrs);
+  restoreNeighbors(orgnl_E_nghbrs);
+  gm_template.triangulatePartitionsByCliqueCompletion();
 
 }
 
@@ -1323,6 +1398,9 @@ basicTriangulate(// input: nodes to triangulate
 	} else if (th == TH_MIN_TIMEFRAME) {
 	  weight.push_back((*i)->frame());
 	  infoMsg(Huge,"  node has time frame = %d\n",(*i)->frame());
+	} else if (th == TH_MAX_TIMEFRAME) {
+	  weight.push_back( - ((*i)->frame()));
+	  infoMsg(Huge,"  node has (neg) time frame = -%d\n",(*i)->frame());
 	} else if (th == TH_MIN_SIZE) {
 	  weight.push_back((float)activeNeighbors.size());
 	  infoMsg(Huge,"  node has active neighbor size = %d\n",
@@ -1425,7 +1503,19 @@ basicTriangulate(// input: nodes to triangulate
 	}
       }
       if (is_max_clique) {
-	cliques.push_back(MaxClique(candidateMaxClique));
+	if (message(Huge)) {
+	  // print out clique information.
+	  printf("Found a max clique of size %d while eliminating node %s(%d):",
+		 candidateMaxClique.size(),
+		 rv->name().c_str(),rv->frame());
+	  for (set<RandomVariable*>::iterator j=candidateMaxClique.begin();
+	       j != candidateMaxClique.end(); j++) {
+	    RandomVariable* rv = (*j);
+	    printf(" %s(%d)",rv->name().c_str(), rv->frame());
+	  }
+	  printf("\n");
+	}
+ 	cliques.push_back(MaxClique(candidateMaxClique));
       }
     }
       
@@ -3419,8 +3509,9 @@ unrollAndTriangulate(// triangulate heuristics
  *   not died.
  *
  * Side Effects:
- *   Re-writes the cliques in the current gm_template (i.e., they'll still be 
- *   cliques, but now they come from and be ordered by MCS).
+ *   Re-writes the maxcliques in the current gm_template (i.e.,
+ *   they'll still be maxcliques, but now they come from and are
+ *   ordered by MCS).
  *
  * Results:
  *   none
@@ -3452,7 +3543,6 @@ ensurePartitionsAreChordal(GMTemplate& gm_template)
   e_chordal = testZeroFillIn( order );
 
   if (!p_chordal || !c_chordal || !e_chordal) {
-
     error("ERROR: Program exiting since the following partitions are not chordal:%s%s%s",
 	  (p_chordal?"":" P"),
 	  (c_chordal?"":" C"),
@@ -3697,9 +3787,24 @@ tryHeuristics(
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Size 
-  triangulate( nodes, "30-S",  orgnl_nghbrs, cliques, tri_method, best_weight );
-  triangulate( nodes, "20-HS", orgnl_nghbrs, cliques, tri_method, best_weight );
-  triangulate( nodes, "20-TS", orgnl_nghbrs, cliques, tri_method, best_weight );
+  triangulate( nodes, "30-S",  orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "20-HS", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "20-ST", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Try Time
+  triangulate( nodes, "100-T",  orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "30-TS", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "30-TW", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "30-TF", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Try Position
+  triangulate( nodes, "P",  orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "30-WP", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "30-FP", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "30-SP", orgnl_nghbrs, cliques, tri_method, best_weight ); 
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Maximum Cardinality Search

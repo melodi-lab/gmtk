@@ -1,7 +1,6 @@
 /*
- * GMTK_GM.h
- * Parses a text file giving the basic GM structure
- * over hidden varialbes.
+ * version.h
+ * Keeps track of the major and minor GMTK version number.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *

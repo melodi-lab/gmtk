@@ -111,7 +111,10 @@ public:
 				    // about determinism of variables in clique.
 				    /* N */ TH_MIN_WEIGHT_NO_D = 8,
 				    // random triangulation
-				    /* R */ TH_RANDOM = 9
+				    /* R */ TH_RANDOM = 9, 
+				    // reverse time frame
+				    /* X */ TH_MAX_TIMEFRAME = 10
+
   };
 
   enum TriangulateStyles { TS_ANNEALING = 0,

@@ -1,6 +1,9 @@
 /*-
  * GMTK_GMTemplate.cc
- *     Basic GM Template structure for a given graph file.
+ *    Basic GM Template structure for a given graph file.
+ *    This includes code that is common to both triangulation and inference,
+ *    so does not contain the more elaborate triangulation methods so that
+ *    they are not appart of inference code.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -70,6 +73,54 @@ const string GMTemplate::fileExtension(".trifile");
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
+//        Constructors/Destructors 
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+Partition::Partition(Partition& from_part,
+		     vector <RandomVariable*>& newRvs,
+		     map < RVInfo::rvParent, unsigned >& ppf,
+		     const unsigned int frameDelta)
+{
+
+  triMethod = from_part.triMethod;
+
+  set<RandomVariable*>::iterator it;
+
+  // clone over nodes RVs.  
+  // TODO: make this next code a routine
+  //  nodesClone() since it is used in several places.
+  for (it = from_part.nodes.begin();
+       it != from_part.nodes.end();
+       it++) {
+    RandomVariable* rv = (*it);
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    // TODO: ultimately turn this just into an assert
+    if ( ppf.find(rvp) == ppf.end() ) {
+      warning("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	    rv->name().c_str(),rv->frame(),frameDelta,
+	    rvp.first.c_str(),rvp.second);
+      assert ( ppf.find(rvp) != ppf.end() );
+    }
+
+    RandomVariable* nrv = newRvs[ppf[rvp]];
+    nodes.insert(nrv);
+  }
+  cliques.reserve(from_part.cliques.size());
+  // 
+  // NOTE: It is Crucial for the cliques in the cloned partition to be
+  // inserted in the *SAME ORDER* as in the partition being cloned.
+  for (unsigned i=0;i<from_part.cliques.size();i++) {
+    cliques.push_back(MaxClique(from_part.cliques[i],
+				newRvs,ppf,frameDelta));
+  }
+}
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 //        Partition support
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -101,7 +152,8 @@ writeMaxCliques(oDataStreamFile& os)
   // First write out the cliques in commented form for the user
 
   if (triMethod.length() > 0) 
-    os.writeComment("---- Triangulation came from method: %s\n",triMethod.c_str());
+    os.writeComment("---- Triangulation came from method: %s, %d total max-cliques \n",
+		    triMethod.c_str(),cliques.size());
   float maxWeight = -1.0;
   float totalWeight = -1.0; // starting flag
   for (unsigned i=0;i<cliques.size();i++) {
@@ -725,20 +777,37 @@ readPartitions(iDataStreamFile& is)
   unsigned loc_S,loc_M;
 
   is.read(loc_M,"M value");
+
   if (loc_M == 0)
     error("ERROR: reading file %s, M (number of chunks in which to find interface boundary) must be >= 1\n",
 	  is.fileName());
-  if (loc_M != M)
-    error("ERROR: reading file %s, M in file (%d) does not equal %d\n",
-	  is.fileName(),loc_M,M);
+
+  if (M == GMTEMPLATE_UNINITIALIZED_MS) {
+    // This is a const cast hack to get around the fact that member M
+    // is declared constant, in cases where we create an object with
+    // an uninitialized M.  Perhaps the right thing to do is to
+    // undeclare M constant.
+    unsigned* Mp = &(unsigned)M;
+    *Mp = loc_M;
+  } else {
+    if (loc_M != M)
+      error("ERROR: reading file %s, M (=%d) given in tri-file does not equal %d\n",
+	    is.fileName(),loc_M,M);
+  }
 
   is.read(loc_S,"S value");
   if (loc_S == 0)
     error("ERROR: reading file %s, S (chunk skip) must be >= 1\n",
 	  is.fileName());
-  if (loc_S != S)
-    error("ERROR: reading file %s, S in file (%d) does not equal %d\n",
-	  is.fileName(),loc_S,S);    
+
+  if (S == GMTEMPLATE_UNINITIALIZED_MS) {
+    unsigned *Sp = &(unsigned)S;
+    *Sp = loc_S;
+  } else {
+    if (loc_S != S)
+      error("ERROR: reading file %s, S in file (%d) does not equal %d\n",
+	    is.fileName(),loc_S,S);
+  }
 
   vector <RandomVariable*> unrolled_rvs;
   map < RVInfo::rvParent, unsigned > positions;

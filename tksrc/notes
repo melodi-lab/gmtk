@@ -1,5 +1,5 @@
-Various notes to myself (JB) on different algorithms and other
-features of GMTK.
+Various notes/scratch paper to myself (JB) on different algorithms and
+other features of GMTK.
 
 J. Bilmes, $Header$
 
@@ -818,4 +818,219 @@ Triangulating code
   - can have a separate triangulation routine that operates on a GMTemplate,
     or GMTemplate can have a triangulate routine even. May or may not be useful.
 
+
+======================================================================    
+Sat Sep  6 23:38:45 2003
+
+Notes on assigning rvs to clique for their values.
+
+
+given partition part
+with a set of random variables
+and a root clique in the partition
+
+sort nodes topologically within partition so that
+first node has no parents, 
+
+Normally a node will have parents earlier in time, but what if a node
+has parents later in time?? Topological sort will be such that we
+assign nodes in order topologically. We are guaranteed that there will
+be at least one clique that has a variable and all its parents, so
+if we don't find such a clique in this partition, that variable
+should be assigned to another partition.
+
+
+Simple version.
+
+==================================================
+Fri Oct 31 21:39:33 2003
+
+partition unrolling possibilities
+
+Unroll 0 times
+ [P<->C], [C<->E], [E]
+    I       III     IV    
+
+Unroll 1 time
+ [P<->C], [C<->C], [C<->E], [E]
+    I       II       III     IV
+
+Unroll 2 times
+ [P<->C], [C<->C], [C<->C] [C<->E], [E]
+    I        II       II    III     IV
+
+Unroll 3 times
+ [P<->C], [C<->C], [C<->C] [C<->C] [C<->E], [E]
+    I        II      II      II       III    IV
+   
+
+So I's right interface separator is either to 
+      II or III
+     
+II's left interface separator is either to I 
+       or to another II
+
+II's right interface separator is either to III
+       or to another II
+
+III's left interface separator is either to
+       I or to II
+
+III's right interface separator is alwyas to IV
+
+IV's left interface seperator is alwyas to III
+
+u0: P C E   (uses P_ri_to_C, C_li_to_P, C_ri_to_E, E_li_to_C)
+u1: P C C E  (uses P_ri_to_C, C_li_to_P, C_ri_to_C, C_li_to_C, C_ri_to_E, E_li_to_C)
+u2: P C C C E (uses the above guys).
+
+Thm: Since all C's come from same underlying partition and have same triangulation
+   (and JT), there is no way that interface cliques dervied from u1 can't
+   be used for u2, u3, etc.        
+
+Currently, we are creating 4 partitions.
+  1. Clone of P (name P1), to interface on right to C
+  2. Clone of C (name C1), to interface on left to P, right to C
+  3. Clone of C (name C2), to interface on left to C, right to E
+  4. Clone of E (name E1), to interface on left to C
+ in other words:  u1: P C1 C2 E 
+
+What is needed for each operation:
+
+ 1) computing junction trees within a partition.
+     Can be done in base P, C, and E partitions since
+     JT doesn't change when these guys get unrolled.
+
+ 2) compute partition interfaces, determining which clique in each
+    JT interfaces to the left or right.
+    The 4 partitions P1,C1,C2,E1 sufficient for identifying interface cliques, since 
+         P1 always interfaces to a C on the right
+         C1 always interfaces to a P on the left
+         C1 always interfaces toa C on the right
+         C2 always interfaces to a C on the left
+         C2 always interfaces to a E on the right
+         E1 always interfaces to a C on the left.
+    (but these interface clique identities can be used for any unrolling
+     amount)
+
+ 3) create a directed clique tree (i.e., assign root in each partition)
+    (the thing that creates the clique.children arrays).
+    This is done for each partition with a separate right interface (i.e., depends
+      only on root clique in each partition).
+    Therefore sufficient to use P1, C1, C2, and E1 for this.
+
+ 4) assigning random variables to cliques
+     For each partition, assignment depends on both:
+        1) the root clique, since we start recursing from there.
+           The root clique depends on the RI to the right partition.
+        2) the left interface clique since we need to know
+           who the assigned parents are for the left interface's previous clique.
+     Consider case:      
+         u2: P C C C E
+      renamed as:      
+         u2: P Ca Cb Cc E
+      P can use P1's assignments
+      Ca can use C1's assignments since C1 has LI to a P and RI to a C
+      Cb CAN NOT use C2's assignments since C2 has LI to a C and RI to an E
+        but Cb has a LI to a C and RI to a C (so maybe not same RI clique)
+      Cc can use C2's assignments since C2 has LI to a C and RI to an E 
+     Consider case:
+        u0: P Cu0 E 
+       P can use P1's assignments
+       Cu0 can't use any of C1, C2, Ca, Cb, or Cc's assignments since
+         none of them have a LI to a P and RI to an E 
+       E can use E's assignments.
     
+   => Therefore, eed to unroll both 2x and 0x here.
+    - Q: if we use Ca, Cb, Cc and Cu0 in the case
+      of unrolling 0x or 1x, will it work.
+      A: 
+      Lets say we have P Cu1 E, the assignment depends on the
+      interface of Cu1 to E (that's the root) and Cu1's interface
+      to E (to get cum assigned nodes), so none of Ca, Cb, or Cc will do.
+      But using Cu0 is fine for unrolling 0x clearly.
+    - Q: if we do P Cu2_1 Cu2_2 E, we can use Ca for Cu2_1 and use
+         Cc for Cu2_2.
+        
+ 5) setting up message passing orders
+    (note that this really just does a recursion of the directed tree
+     set up in step 3. It does choose an order of the children though).
+    Depends only on the root clique in a partition, so 
+    can use P1, C1, C2, and E
+
+ 6) Creating separator structures
+   - Within a partition, can be done independent of anything else.
+   - Between partitions, 
+    Sun Nov  9 22:58:50 2003
+    New notation for stored partitions:
+      u0: P1 Cu0 E1
+      u1: P1 C1 C3 E1
+      u2: P1 C1 C2 C3 E1
+      u3: P1 C1 C2 C2 C3 E1
+
+   Can we compute each partitions left interface separator
+   to left most thing? (i.e., each partition stores its LI separator)
+
+      P1 - no left interface
+      C1 - LI always to a P1, always a P
+      C2 - LI either to a C1 or a C2, always a C
+      C3 - LI either to a C1 or a C2, always a C
+      E1 - LI either to a Cu0 or C3, always a C
+      Cu0 - LI always a P1, always a P
+
+   So, each partition stores left interface separator.
+
+ 6.5) Step to unify the RI clique of a left partition with
+      the LI clique of a right partition, if they are identical.
+
+      What this would involve:
+          Right now, the RI clique has only one separator to the
+          right adjacent partition, and similarly for a LI clique.
+
+          Best thing to do would be to remove the RI clique of
+          the left partition, and add the separators of that
+          to the LI clique of the right partition.
+
+
+
+ 7) Compute Receive Separator Iteration Order
+       - does the MST thing.
+
+ 8) 
+
+
+==================================================
+
+Does full aurora clique fit in one 32-bit integer? Yes.
+
+         RV      Card      notes           Num bits
+     
+        WC(1)     22                          5
+        W(1)      13      vocab               4
+        WP(1)     8       num sts/wrd         3
+        WWS(1)    91                          7
+        O(1)      0                           0
+        PT(1)     2                           1  
+        WT(1)     2                           1
+        SS(2)     2                           1
+        WC(2)     22                          5 
+        WP(2)     8                           3 
+
+totals                                        30 bits total
+
+So, a clique of size 10 fits in 1 32-bit machine word, leading to a
+factor of 10 reduction in memory requirements for the clique values.
+
+Boosting up to max 32 states per word would require a total
+of 32 bits, still fitting in one 32-bit machine word.
+
+With same structure, and a vocab size of 60k 
+   16 bits gives 65536, would take 2 32-bit machine words
+   since it occupies 42 bits.
+
+With 20 bits for W(1) (vocab size of 1M), and 32 states per word,
+need 48 bits, still two 32-bit machine words.
+
+
+
+==================================================

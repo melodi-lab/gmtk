@@ -1226,3 +1226,69 @@ Sun Oct 19 13:36:47 2003
     the original variables.
     Add variational training to this sort of model.
 
+
+Sun Nov  2 21:49:43 2003
+ - make other variables available in DT formulas, such as:
+    - current frame number of child
+    - total number of frames in current utterance.
+    - 
+
+Sun Nov  4 22:32:50 2003:
+Triangulation idea: 
+  - add all deterministic ancestors as neighbors when going from DN to UGM.
+Before triangulation:
+ do:
+   1 for each node, if any of its parents are
+     deterministic, add those parents as neighbors .
+   2 If any such newly added neighbors are themselves deterministic,
+     add those new neighbors' parents as neighbors
+     If no new such newly added neighbors are det, then stop.
+   3. Goto 2.
+  - Possibly do similar thing for sparse CPT nodes,
+    i.e., add sparse ancestors if their effective cardinality
+    is small enough.
+    
+
+Sun Nov  9 22:35:40 2003:
+ Other things for inference
+   - for viterbi decoding mode, don't store the probabilities for
+     all time, just for the current and next clique, only   
+     store the back pointers.
+   - Also have a mode where only the back poitners for a particular
+     "word" (variable, set of variables) are stored rather than
+     all variables? (see what this would mean).
+
+
+Mon Dec 29 16:40:08 2003
+
+ - nodes assigned to cliques, there are several categories.
+
+ 1) node is iterated by a separator comming into the clique
+    iterate over: only values that exist in all incomming
+    separators.
+ 2) node is actually assigned to this clique, which means
+    that its parents must either be iterated before we iterate
+    over this node
+    iterate over: only values with non-zero probability.
+ 3) a node that exists because one or more of its children need 
+    the values of the node, so we need to 
+    iterate over: all possible values of node
+
+
+Wed Dec 31 17:45:52 2003
+  need to do something with
+     1) continuous nodes (which are observations)
+     2) discrete observed nodes (ideally, break the graph).
+
+  cpts have their own value which gets set and then
+  copied over again to RV. Make it such that CPT uses
+  RV val directly rather than copying value over many times.
+ 
+
+Sun Jan 11 06:53:27 2004
+ - Go through all code and change variables to use
+   unsigned when variables are really unsigned
+ - Look for machine specific assumptions since problems
+   might arise when compiling on 64b machines.
+ - when this is done, remove all (unsigned**) casts
+   in GMTK_MaxClique.cc in call to pack()
