@@ -259,7 +259,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
 
   // now associate the RVs with a GM
-  GMTK_GM gm;
+  GMTK_GM gm(&fp);
   fp.addVariablesToGM(gm);
 
   gm.setExampleStream(obsFileName,dcdrng_str);
