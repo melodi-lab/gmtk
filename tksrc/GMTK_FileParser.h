@@ -365,7 +365,7 @@ public:
   //////////////////////////////////////////////
   // constructor opens and parses file, or dies if an
   // error occurs.
-  string fileNameParsing;
+  static string fileNameParsing;
   FileParser(const char *const fileName, 
 	     const char *const cppCommandOptions = NULL);
   ~FileParser();
