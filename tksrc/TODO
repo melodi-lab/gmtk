@@ -1738,3 +1738,14 @@ Fri Apr  2 12:41:23 2004
     (see email from Ozgur today regarding that).
 
 
+Sun Apr  4 17:16:40 2004
+  - not really a TODO, but an idea. Another completely different way of doing
+    inference would be to off-line compile out all cliques into single
+    integer states, and then have all loops be single iterations through
+    all non-zero prob states (conditioned on current previous states).
+    This would need to go through all utterances, and do this separately
+    for each, since each utterance having a different DT would mean
+    that there can't be one single compiled version (this still could be
+    done offline, and stored on disk). 
+ 
+
