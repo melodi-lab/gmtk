@@ -174,6 +174,7 @@ Arg Arg::Args[] = {
   /////////////////////////////////////////////////////////////
   // Beam Options
   Arg("cbeam",Arg::Opt,MaxClique::cliqueBeam,"Clique Beam"),
+  Arg("ckbeam",Arg::Opt,MaxClique::cliqueBeamMaxNumStates,"Clique max state space pruning value (0 = no pruning)"),
   Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator Beam"),
 
   /////////////////////////////////////////////////////////////

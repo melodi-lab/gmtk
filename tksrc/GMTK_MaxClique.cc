@@ -3317,16 +3317,19 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   unsigned lower = 0;
   unsigned upper = numCliqueValuesUsed-1;
 
+  // We find the k max elements using a quick sort-like algorithm, and
+  // start by processing the elements between lower and upper
+  // inclusive. Note that unlike quicksort (which is O(NlogN) average
+  // case and O(N^2) worse case), this algorithm is O(N) average case
+  // (yes, not dep. on k) since we're only finding the top k values,
+  // and those top k values need not be sorted.
+
   do {
     // k'th largest lives within [lower,upper] inclusive.
     // printf("lower = %d, upper = %d\n",lower,upper);
 
     if (lower == upper)
       break;
-
-    // We find the k max elements using a quick sort-like algorithm,
-    // and start by processing the elements between lower and upper
-    // inclusive.
 
     // Choose a random pivot and then divide the array so that
     // elements >= pivot are on the left, and elements < pivot are on
