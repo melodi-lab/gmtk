@@ -129,6 +129,8 @@ static bool multiTest = false;
 static int rlimitSlop = 2;
 // static bool limitBest = true;
 
+static unsigned help = 0;  // 0: no help; HIGHEST_PRIORITY (1) ... LOWEST_PRIORITY (5) : increasing levels of help.  The priority levels are defined in arguments.h 
+
 /////////////////////////////////////////////////////////////
 // Inference Options
 static bool doDistributeEvidence=false;
@@ -232,6 +234,8 @@ Arg Arg::Args[] = {
   Arg("multiTest",Arg::Opt,multiTest,"Run gmtkTime in multi-test mode, taking triangulation file names from command line."),
   Arg("slop",Arg::Opt,rlimitSlop,"In multiTest mode, number of additional seconds before fail-terminate is forced."),
   // Arg("limitBest",Arg::Opt,limitBest,"Limit running time to be approximately best seen so far.."),
+
+  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
 
   /////////////////////////////////////////////////////////////
   // Inference Options

@@ -110,7 +110,8 @@ static int endSkip = 0;
 // General Options
 static bool seedme = false;
 static unsigned verbosity = IM::Default;
-static bool help = false;
+//static bool help = false;
+static unsigned help = 0;  // 0: no help; HIGHEST_PRIORITY (1) ... LOWEST_PRIORITY (5) : increasing levels of help.  The priority levels are defined in arguments.h 
 static bool print_version_and_exit = false;
 
 /////////////////////////////////////////////////////////////
@@ -215,7 +216,7 @@ Arg Arg::Args[] = {
   // General Options
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
-  Arg("help",   Arg::Tog, help,  "Print this message"),
+  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 
   /////////////////////////////////////////////////////////////
