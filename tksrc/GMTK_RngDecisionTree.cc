@@ -72,11 +72,12 @@ VCID("$Header$");
  * <ftr> <num_splits> r1 r2 ... rs # split s
  */
 
+#if 0
 char *dtStr =
 "% this is a decision tree file\n"
 "%\n"
 "dt_name 3  % number of features\n"
-"0 10 0:5 6:9 10 11 12 13 14 15 50: default\n"
+"0 10 10 11 12 13 0:5 6:9 14 50: 15 default\n"
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
 "      -1 expand\n"
@@ -105,6 +106,29 @@ char *dtStr =
 "    2 2 0:5 default\n"
 "      -1 11\n"
 "      -1 12\n";
+
+#endif
+
+char *dtStr =
+"% this is a decision tree file\n"
+"%\n"
+"dt_name 1  % number of features\n"
+"0 14 10 11 12 13 0:5 6:9 14 50: 15 17,19,21 16,18,20 23,25,27 22,24,26 default\n"
+"  -1 2\n"
+"  -1 3\n"
+"  -1 4\n"
+"  -1 5\n"
+"  -1 0\n"
+"  -1 1\n"
+"  -1 6\n"
+"  -1 50\n"
+"  -1 7\n"
+"  -1 8\n"
+"  -1 9\n"
+"  -1 10\n"
+"  -1 11\n"
+"  -1 100\n"
+;
 
 
 int
@@ -146,12 +170,13 @@ main()
     fflush(stdout);
     stin.read(card,dt.numFeatures());
 
-    printf("Result of querying with vector and cards: ");
+    printf("Querying with vector and cards: ");
     fflush(stdout);
     for (unsigned i=0;i<dt.numFeatures();i++) {
       printf(" %d:%d",vec[i],card[i]);
     }
-    printf("\n is %d\n",dt.query(vec,card));
+    printf("\n");
+    printf("### RESULT ==> %d\n",dt.query(vec,card));
   }
 
 }
