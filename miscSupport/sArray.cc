@@ -13,7 +13,6 @@
 #include <string.h>
 #include <values.h>
 #include <math.h>
-#include <ieeefp.h>
 #include <float.h>
 #include <assert.h>
 
