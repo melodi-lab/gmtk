@@ -3212,7 +3212,6 @@ triangulateFrontier(
   cliques.clear();
   vector <RandomVariable*> sortedNodes;
 
-  // TODO: implement true random topological sort.
   GraphicalModel::topologicalSortRandom(nodes,nodes,sortedNodes);
   if (message(High)) {
     infoMsg(High,"Frontier: Sorted Nodes:");
