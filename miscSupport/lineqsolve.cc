@@ -132,7 +132,9 @@ lineqsolve(const int n, const int nrhs,
   float d;
   int i;
   float *bp;
-#if 0
+
+#define LINEQSOLVE_USE_MALLOC
+#ifdef LINEQSOLVE_USE_MALLOC
   static int *indx = NULL;
   static int indx_len = 0;
   if (indx_len < n) {
@@ -142,8 +144,9 @@ lineqsolve(const int n, const int nrhs,
     indx = (int*)malloc((size_t)(n*sizeof(int)));
     indx_len = n;
   }
-#endif
+#else
   int *indx = (int*)alloca((size_t)(n*sizeof(int)));
+#endif
 
   ludcmp(a,n,indx,&d);
 
@@ -217,5 +220,6 @@ main(int argc, char *argv[])
 
   return 0;
 }
+
 
 #endif
