@@ -812,3 +812,8 @@ Tue Dec 24 13:58:48 2002
      a random node selected from among the earliest
      nodes)
 
+
+Wed Dec 25 02:09:25 2002
+  - with triangulation heuristics, when a tie occurs
+    then use another heuristic (i.e., with a tie with
+    min weight, then use min fill in)
