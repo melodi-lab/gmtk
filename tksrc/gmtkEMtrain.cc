@@ -92,6 +92,8 @@ char *loadAccRange = NULL;
 char *storeAccFile = NULL;
 bool accFileIsBinary = true;
 
+char *objsToNotTrainFile=NULL;
+
 // file to store log likelihood of this iteration.
 char *llStoreFile = NULL;
 
@@ -170,6 +172,10 @@ ARGS ARGS::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // general files
+
+  ARGS("objsToNotTrainFile",ARGS::Opt,objsToNotTrainFile,"File list list trainable parm objs not train."),
+  
+
 
   ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
   ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
@@ -310,6 +316,8 @@ main(int argc,char*argv[])
     iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+  GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
+
 
   /////////////////////////////
   // read in the structure of the GM, this will
@@ -325,6 +333,9 @@ main(int argc,char*argv[])
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
   fp.associateWithDataParams();
+  // make sure that all observation variables work
+  // with the global observation stream.
+  fp.checkConsistentWithGlobalObservationStream();
   // now associate the RVs with a GM
   GMTK_GM gm;
   fp.addVariablesToGM(gm);
@@ -333,7 +344,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////
   // set up the observation stream
   gm.setExampleStream(obsFileName,trrng_str);
-
+  GM_Parms.checkConsistentWithGlobalObservationStream();
 
   gm.GM2CliqueChain();
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
