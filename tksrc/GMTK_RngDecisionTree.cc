@@ -44,7 +44,8 @@ const string DTFileExtension = ".index";
 /////////////////////////////////////////////////////////////////////
 // Static computation stack for formula evaluation 
 /////////////////////////////////////////////////////////////////////
-RngDecisionTree::sArrayStack<int> RngDecisionTree::EquationClass::stack(0);
+RngDecisionTree::sArrayStack<RngDecisionTree::EquationClass::stack_element_t> 
+  RngDecisionTree::EquationClass::stack(0);
 
 /////////////////////////////////////////////////////////////////////
 // Arrays to classify formula tokens and map their strings to their 
@@ -55,6 +56,8 @@ map<string, RngDecisionTree::EquationClass::tokenEnum>
   RngDecisionTree::EquationClass::delimiter;
 map<string, RngDecisionTree::EquationClass::tokenEnum> 
   RngDecisionTree::EquationClass::function;
+map<string, RngDecisionTree::EquationClass::tokenEnum> 
+  RngDecisionTree::EquationClass::variable;
 
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
@@ -71,6 +74,9 @@ map<RngDecisionTree::EquationClass::tokenEnum,
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
   RngDecisionTree::EquationClass::twoValFunctionToken;
+map<RngDecisionTree::EquationClass::tokenEnum, 
+  RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::variableToken;
 
 map<RngDecisionTree::EquationClass::tokenEnum, unsigned> 
   RngDecisionTree::EquationClass::tokenPriority;
@@ -584,7 +590,10 @@ RngDecisionTree::EquationClass::EquationClass()
     delimiter["~"]  = TOKEN_BITWISE_NOT;
     delimiter[":"]  = TOKEN_COLON;
     delimiter[","]  = TOKEN_COMMA;
-    delimiter["/"]  = TOKEN_DIVIDE;
+    delimiter["./"] = TOKEN_DIVIDE_CEIL;
+    delimiter["/"]  = TOKEN_DIVIDE_FLOOR;
+    delimiter["/."] = TOKEN_DIVIDE_FLOOR;
+    delimiter["~/"] = TOKEN_DIVIDE_ROUND;
     delimiter["=="] = TOKEN_EQUALS;
     delimiter["^"]  = TOKEN_EXPONENT;
     delimiter[">"]  = TOKEN_GREATER_THAN;
@@ -606,11 +615,29 @@ RngDecisionTree::EquationClass::EquationClass()
     delimiter["?"]  = TOKEN_QUESTION_MARK;
 
     function["abs"] = TOKEN_ABSOLUTE_VALUE;
+    function["ceil_divide"]  = TOKEN_DIVIDE_CEIL_FUNCTION;
+    function["floor_divide"] = TOKEN_DIVIDE_FLOOR_FUNCTION;
+    function["round_divide"] = TOKEN_DIVIDE_ROUND_FUNCTION;
     function["max"] = TOKEN_MAX;
     function["min"] = TOKEN_MIN;
     function["mod"] = TOKEN_MOD;
     function["rotate"] = TOKEN_ROTATE;
     function["xor"] = TOKEN_BITWISE_XOR;
+
+    variable["cardinality_child"]   = TOKEN_CARDINALITY_CHILD;
+    variable["cc"]                  = TOKEN_CARDINALITY_CHILD;
+    variable["cardinality_parent_"] = TOKEN_CARDINALITY_PARENT;
+    variable["cp"]                  = TOKEN_CARDINALITY_PARENT;
+    variable["parent_"]             = TOKEN_PARENT_VALUE;
+    variable["p"]                   = TOKEN_PARENT_VALUE;
+    variable["parent_minus_one_"]   = TOKEN_PARENT_VALUE_MINUS_ONE;
+    variable["pmo"]                 = TOKEN_PARENT_VALUE_MINUS_ONE;
+    variable["parent_plus_one_"]    = TOKEN_PARENT_VALUE_PLUS_ONE;
+    variable["ppo"]                 = TOKEN_PARENT_VALUE_PLUS_ONE;
+    variable["max_value_child"]     = TOKEN_MAX_VALUE_CHILD;
+    variable["mc"]                  = TOKEN_MAX_VALUE_CHILD;
+    variable["max_value_parent_"]   = TOKEN_MAX_VALUE_PARENT;
+    variable["mp"]                  = TOKEN_MAX_VALUE_PARENT;
 
     ////////////////////////////////////////////////////////////////////////
     //  Maps tokens to commands
@@ -618,7 +645,9 @@ RngDecisionTree::EquationClass::EquationClass()
     infixToken[TOKEN_BITWISE_AND]     = COMMAND_BITWISE_AND;
     infixToken[TOKEN_BITWISE_OR]      = COMMAND_BITWISE_OR;
     infixToken[TOKEN_BITWISE_XOR]     = COMMAND_BITWISE_XOR;
-    infixToken[TOKEN_DIVIDE]          = COMMAND_DIVIDE;
+    infixToken[TOKEN_DIVIDE_CEIL]     = COMMAND_DIVIDE_CEIL;
+    infixToken[TOKEN_DIVIDE_FLOOR]    = COMMAND_DIVIDE_FLOOR;
+    infixToken[TOKEN_DIVIDE_ROUND]    = COMMAND_DIVIDE_ROUND;
     infixToken[TOKEN_EXPONENT]        = COMMAND_EXPONENT;
     infixToken[TOKEN_EQUALS]          = COMMAND_EQUALS;
     infixToken[TOKEN_GREATER_THAN]    = COMMAND_GREATER_THAN;
@@ -644,7 +673,20 @@ RngDecisionTree::EquationClass::EquationClass()
     oneValFunctionToken[TOKEN_ABSOLUTE_VALUE] = COMMAND_ABSOLUTE_VALUE;
 
     twoValFunctionToken[TOKEN_BITWISE_XOR]  = COMMAND_BITWISE_XOR;
+    twoValFunctionToken[TOKEN_DIVIDE_CEIL_FUNCTION]  = COMMAND_DIVIDE_CEIL;
+    twoValFunctionToken[TOKEN_DIVIDE_FLOOR_FUNCTION] = COMMAND_DIVIDE_FLOOR;
+    twoValFunctionToken[TOKEN_DIVIDE_ROUND_FUNCTION] = COMMAND_DIVIDE_ROUND;
     twoValFunctionToken[TOKEN_MOD]          = COMMAND_MOD;
+
+    variableToken[TOKEN_CARDINALITY_CHILD]  = COMMAND_PUSH_CARDINALITY_CHILD;
+    variableToken[TOKEN_CARDINALITY_PARENT] = COMMAND_PUSH_CARDINALITY_PARENT;
+    variableToken[TOKEN_PARENT_VALUE]       = COMMAND_PUSH_PARENT_VALUE;
+    variableToken[TOKEN_PARENT_VALUE_MINUS_ONE] = 
+      COMMAND_PUSH_PARENT_VALUE_MINUS_ONE;
+    variableToken[TOKEN_PARENT_VALUE_PLUS_ONE]  = 
+      COMMAND_PUSH_PARENT_VALUE_PLUS_ONE;
+    variableToken[TOKEN_MAX_VALUE_CHILD]    = COMMAND_PUSH_MAX_VALUE_CHILD;
+    variableToken[TOKEN_MAX_VALUE_PARENT]   = COMMAND_PUSH_MAX_VALUE_PARENT;
 
     ////////////////////////////////////////////////////////////////////////
     //  Maps tokens to priority levels 
@@ -652,7 +694,9 @@ RngDecisionTree::EquationClass::EquationClass()
     tokenPriority[TOKEN_BITWISE_AND]     = BITWISE_AND_PRCDNC;
     tokenPriority[TOKEN_BITWISE_NOT]     = UNARY_PRCDNC;
     tokenPriority[TOKEN_BITWISE_OR]      = BITWISE_OR_PRCDNC;
-    tokenPriority[TOKEN_DIVIDE]          = MULT_PRCDNC;
+    tokenPriority[TOKEN_DIVIDE_CEIL]     = MULT_PRCDNC;
+    tokenPriority[TOKEN_DIVIDE_FLOOR]    = MULT_PRCDNC;
+    tokenPriority[TOKEN_DIVIDE_ROUND]    = MULT_PRCDNC;
     tokenPriority[TOKEN_EXPONENT]        = EXPONENT_PRCDNC;
     tokenPriority[TOKEN_EQUALS]          = EQUALITY_PRCDNC;
     tokenPriority[TOKEN_GREATER_THAN]    = RELATIONAL_PRCDNC;
@@ -696,22 +740,14 @@ RngDecisionTree::EquationClass::EquationClass()
 leafNodeValType 
 RngDecisionTree::EquationClass::evaluateFormula(
 	const vector< RV* >& variables,
-	const RV* rv
+	const RV* const rv
 )
 {
-
-  // TODO: 
-  // to get the cardinality of rv, do:
-  //    (rv->discrete() ? RV2DRV(rv)->cardinality : 0)
-  // to get framem of rv, do:
-  //    rv->frame()
-
-
   unsigned crrnt_cmnd, end_cmnd;
   unsigned last; 
   unsigned command, operand; 
   int      i;
-  int      value;
+  stack_element_t value;
   unsigned val, number, position, bitwidth;
   unsigned mask_1, mask_2;
 
@@ -726,21 +762,58 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
     switch (command) {
 	
-      case COMMAND_PUSH_PARENT:	
+      case COMMAND_PUSH_CARDINALITY_CHILD:
+        stack.push_back( (rv->discrete() ? RV2DRV(rv)->cardinality : 0) );
+        break;
+
+      case COMMAND_PUSH_CARDINALITY_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
           error("ERROR:  Reference to non-existant parent\n"); 	
         }
-        stack.push_back( RV2DRV(variables[operand])->val );	
+        stack.push_back( (variables[operand]->discrete() ? 
+          RV2DRV(variables[operand])->cardinality : 0) );
         break;	
 
-      case COMMAND_PUSH_CARDINALITY:
+      case COMMAND_PUSH_PARENT_VALUE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {
-          error("ERROR:  Reference to non-existant parent cardinality\n"); 
+        if (operand >= variables.size()) {	
+          error("ERROR:  Reference to non-existant parent\n"); 	
         }
-        stack.push_back( RV2DRV(variables[operand])->cardinality ); 
-        break;
+        stack.push_back( RV2DRV(variables[operand])->discrete() ? 
+          RV2DRV(variables[operand])->val : 0 );	
+        break;	
+
+      case COMMAND_PUSH_PARENT_VALUE_MINUS_ONE:	
+        operand = GET_OPERAND(commands[crrnt_cmnd]); 
+        if (operand >= variables.size()) {	
+          error("ERROR:  Reference to non-existant parent\n"); 	
+        }
+        stack.push_back( RV2DRV(variables[operand])->discrete() ? 
+          (RV2DRV(variables[operand])->val-1) : 0 );	
+        break;	
+
+      case COMMAND_PUSH_PARENT_VALUE_PLUS_ONE:	
+        operand = GET_OPERAND(commands[crrnt_cmnd]); 
+        if (operand >= variables.size()) {	
+          error("ERROR:  Reference to non-existant parent\n"); 	
+        }
+        stack.push_back( RV2DRV(variables[operand])->discrete() ? 
+          (RV2DRV(variables[operand])->val+1) : 0 );	
+        break;	
+
+      case COMMAND_PUSH_MAX_VALUE_CHILD:	
+        stack.push_back( (rv->discrete() ? (RV2DRV(rv)->cardinality - 1) : 0) );
+        break;	
+
+      case COMMAND_PUSH_MAX_VALUE_PARENT:	
+        operand = GET_OPERAND(commands[crrnt_cmnd]); 
+        if (operand >= variables.size()) {	
+          error("ERROR:  Reference to non-existant parent\n"); 	
+        }
+        stack.push_back( (variables[operand]->discrete() ? 
+          (RV2DRV(variables[operand])->cardinality - 1) : 0) );
+        break;	
 
       case COMMAND_PUSH_CONSTANT:
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
@@ -790,12 +863,30 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack.pop_back();
         break;
  
-      case COMMAND_DIVIDE:
+      case COMMAND_DIVIDE_CEIL:
+        last = stack.stackSize() - 1;
+        if (stack[last] == 0) {
+          error("ERROR:  Divide by zero error\n"); 
+        }
+        stack[last-1] = (stack[last-1] + stack[last] - 1) / stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_DIVIDE_FLOOR:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
           error("ERROR:  Divide by zero error\n"); 
         }
         stack[last-1] = stack[last-1] / stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_DIVIDE_ROUND:
+        last = stack.stackSize() - 1;
+        if (stack[last] == 0) {
+          error("ERROR:  Divide by zero error\n"); 
+        }
+        stack[last-1] = (stack[last-1] + (stack[last]>>1)) / stack[last];
         stack.pop_back();
         break;
 
@@ -1275,77 +1366,22 @@ RngDecisionTree::EquationClass::parseFactor(
       getToken(formula, token); 
       break;
 
-    case TOKEN_PARENT:
-      new_command = MAKE_COMMAND( COMMAND_PUSH_PARENT, token.number );
-      commands.push_back(new_command);
-      changeDepth( 1, depth );
-      getToken(formula, token); 
-      break;
-
-    case TOKEN_CARDINALITY:
-      new_command = MAKE_COMMAND( COMMAND_PUSH_CARDINALITY, token.number );
-      commands.push_back(new_command);
-      changeDepth( 1, depth );
-      getToken(formula, token); 
-      break;
-
-    //////////////////////////////////////////////////////////////////////
-    // rotate(val,num,pos,length)
-    //////////////////////////////////////////////////////////////////////
-    case TOKEN_ROTATE:
-      next_token = token.token;
-
-      getToken(formula, token); 
-      if (token.token != TOKEN_LEFT_PAREN) {
-        string error_message = "Expecting left parenthesis at '" + 
-          formula + "'";
-        throw(error_message);
-      }
-
-      getToken(formula, token); 
-      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
-      if (token.token != TOKEN_COMMA) {
-        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
-        throw(error_message);
-      }
-
-      getToken(formula, token);
-      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
-      if (token.token != TOKEN_COMMA) {
-        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
-        throw(error_message);
-      }
-
-      getToken(formula, token);
-      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
-      if (token.token != TOKEN_COMMA) {
-        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
-        throw(error_message);
-      }
-
-      getToken(formula, token);
-      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
-
-      if (token.token != TOKEN_RIGHT_PAREN) {
-        string error_message = "Expecting right parenthesis at '" + 
-          formula + "'";
-        throw(error_message);
-      }
-
-      new_command = MAKE_COMMAND( COMMAND_ROTATE, 0 );
-      commands.push_back(new_command);
-
-      changeDepth( -3, depth );
-      getToken(formula , token); 
-   
-      break;
-
     default:
+      //////////////////////////////////////////////////////////////////////
+      // Is it a variable token 
+      //////////////////////////////////////////////////////////////////////
+      if (variableToken[token.token] != COMMAND_INVALID) {
+        new_command = MAKE_COMMAND( variableToken[token.token], token.number );
+        commands.push_back(new_command);
+        changeDepth( 1, depth );
+        getToken(formula, token); 
+      }
+
       //////////////////////////////////////////////////////////////////////
       // Functions which take two or more operands 
       //////////////////////////////////////////////////////////////////////
-      if (functionToken[token.token] != COMMAND_INVALID) {
- 
+      else if (functionToken[token.token] != COMMAND_INVALID) {
+  
         next_token = token.token;
 
         getToken(formula, token); 
@@ -1447,6 +1483,57 @@ RngDecisionTree::EquationClass::parseFactor(
         changeDepth( -1, depth );
         getToken(formula , token); 
       }
+      //////////////////////////////////////////////////////////////////////
+      // Handle to rotate function separately
+      //    rotate(val,num,pos,length)
+      //////////////////////////////////////////////////////////////////////
+      else if (token.token == TOKEN_ROTATE) {
+
+        next_token = token.token;
+
+        getToken(formula, token); 
+        if (token.token != TOKEN_LEFT_PAREN) {
+          string error_message = "Expecting left parenthesis at '" + 
+            formula + "'";
+          throw(error_message);
+        }
+
+        getToken(formula, token); 
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+        if (token.token != TOKEN_COMMA) {
+          string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
+          throw(error_message);
+        }
+
+        getToken(formula, token);
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+        if (token.token != TOKEN_COMMA) {
+          string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
+          throw(error_message);
+        }
+
+        getToken(formula, token);
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+        if (token.token != TOKEN_COMMA) {
+          string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
+          throw(error_message);
+        }
+
+        getToken(formula, token);
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+
+        if (token.token != TOKEN_RIGHT_PAREN) {
+          string error_message = "Expecting right parenthesis at '" + 
+            formula + "'";
+          throw(error_message);
+        }
+
+        new_command = MAKE_COMMAND( COMMAND_ROTATE, 0 );
+        commands.push_back(new_command);
+
+        changeDepth( -3, depth );
+        getToken(formula , token); 
+      }     
       //////////////////////////////////////////////////////////////////////
       // Not a valid factor 
       //////////////////////////////////////////////////////////////////////
@@ -1564,7 +1651,7 @@ RngDecisionTree::EquationClass::getToken(
       //////////////////////////////////////////////////////////////////////////
       // Check for an integer 
       //////////////////////////////////////////////////////////////////////////
-      string rest;
+      map<string, tokenEnum>::iterator found_string;
       int    number;    
       bool   is_integer;
 
@@ -1572,40 +1659,58 @@ RngDecisionTree::EquationClass::getToken(
       if (is_integer) {
         token.token  = TOKEN_INTEGER;
         token.number = number; 
-      } 
-      //////////////////////////////////////////////////////////////////////////
-      // Next, check for parent or cardinality (such as "p0" or "c2")
-      //////////////////////////////////////////////////////////////////////////
-      else if ( token_string[0] == 'p' ) {
-  
-        rest = token_string.substr(1, token_string.length());
-        is_integer = getInteger( rest,  number ); 
-        if (is_integer) {
-          token.token  = TOKEN_PARENT;
-          token.number = number; 
-        } 
       }
-      else if ( token_string[0] == 'c' ) {
-  
-        rest = token_string.substr(1, token_string.length());
-        is_integer = getInteger( rest,  number ); 
-        if (is_integer) {
-          token.token  = TOKEN_CARDINALITY;
-          token.number = number; 
-        } 
-      }
-
-      //////////////////////////////////////////////////////////////////////////
-      // Check if token string is a multiple character key word 
-      //////////////////////////////////////////////////////////////////////////
       else {
 
-        map<string, tokenEnum>::iterator found_string;
+        ////////////////////////////////////////////////////////////////////////
+        // Check if token string is a function 
+        ////////////////////////////////////////////////////////////////////////
         found_string = function.find( token_string );
         if (found_string != function.end()) {
           token.token = (*found_string).second; 
         }
-      }
+
+        ////////////////////////////////////////////////////////////////////////
+        // Check if token string is a variable name (which doesn't require a
+        // following integer)
+        ////////////////////////////////////////////////////////////////////////
+        found_string = variable.find( token_string );
+        if (found_string != variable.end()) {  
+          token.token = (*found_string).second;
+          token.number = number; 
+        }
+   
+        if (token.token == LAST_TOKEN_INDEX) {
+          //////////////////////////////////////////////////////////////////////
+          // Next, check for variable name (such as "p0" or "c2")
+          //////////////////////////////////////////////////////////////////////
+
+          string variable_name; 
+          int integer_location = -1;
+
+          for (unsigned i=0; i<token_string.size(); ++i) {
+            if (isdigit(token_string[i])) { 
+              integer_location = i;
+              break;
+            }
+          }
+
+          if (integer_location >= 0) {
+         
+            is_integer = getInteger( token_string.substr(integer_location,
+              token_string.length()), number );
+
+            if (is_integer) {
+              found_string = variable.find( token_string.substr(0, 
+                integer_location) );
+              if (found_string != variable.end()) {
+                token.token = (*found_string).second;
+                token.number = number; 
+              }
+            }
+          } 
+        } 
+      } 
     }
   }
   
@@ -2164,36 +2269,17 @@ class TestRandomVariable : public DiscRV
   public:
 
     TestRandomVariable( RVInfo new_info, string new_name, int new_cardinality ) 
-       : RandomVariable(new_info, new_name, Discrete, new_cardinality) {return;}
-    void findConditionalParents() { return; }
-    logpr probGivenParents() { return(0.0); }
-    void  probGivenParents(logpr& p) { return; }
-    logpr probGivenParentsWSetup() { return(0.0); }
-    void  probGivenParentsWSetup(logpr& p) { return; }
-    void makeRandom() { return; }
-    void makeUniform()  { return; }
-    void tieParametersWith(RandomVariable*const other,
-                         bool checkStructure=true) { return; }
-    void clampFirstValue() { return; }
-    bool clampNextValue() { return(false); }
-    void begin() { return; }
+       : DiscRV(new_info, 0, new_cardinality) { return; }
     void begin(logpr& p) { return; }
-    bool next() { return(false); }
     bool next(logpr& p) { return(false); }
-    void instantiate() { return; }
-    void cacheValue() { return; }
-    void restoreCachedValue() { return; }
-    void storeValue(VariableValue &vv) {vv.ival = val;}
-    void setValue(VariableValue &vv) {val = vv.ival;}
-    void emIncrement(logpr posterior) { return; }
-    RandomVariable *create() { return(NULL); }
-
+    RV* create() { return(NULL); } //*
 };
 
 bool RngDecisionTree::testFormula(
-  string                           formula,
-  const vector< RandomVariable* >& variables, 
-  unsigned                         desired_answer 
+  string               formula,
+  const vector< RV* >& variables, 
+  RV*                  child, 
+  unsigned             desired_answer 
   )
 {
   Node     node;
@@ -2212,7 +2298,7 @@ bool RngDecisionTree::testFormula(
     error("   PARSE ERROR: %s", error_message );
   }
 
-  answer = node.leafNode.equation.evaluateFormula( variables );
+  answer = node.leafNode.equation.evaluateFormula( variables, child );
   printf("   Answer: %d   0x%x\n", answer, answer);
 
   if (answer == desired_answer) {
@@ -2228,135 +2314,199 @@ bool RngDecisionTree::testFormula(
 
 void test_formula()
 {
-  RngDecisionTree         dt;
-  vector<RandomVariable*> vars;
-  string                  formula;
-  RVInfo                  dummy;
-  bool                    correct;
+  RngDecisionTree dt;
+  vector<RV*>     vars;
+  string          formula;
+  bool            correct;
 
-  TestRandomVariable aa(dummy, "aa",  8 );
-  TestRandomVariable bb(dummy, "bb", 40 );
-  TestRandomVariable cc(dummy, "cc",  2 );
+  RVInfo::FeatureRange tmp_fr;
+  RVInfo::ListIndex    tmp_li;
+  vector< RVInfo::rvParent > tmp_switchingParents;
+  vector<vector< RVInfo::rvParent > > tmp_conditionalParents;
+  vector< CPT::DiscreteImplementaton > tmp_discImplementations;
+  vector< MixtureCommon::ContinuousImplementation > tmp_contImplementations;
+  vector< RVInfo::ListIndex > tmp_listIndices;
+  vector< RVInfo::WeightInfo > tmp_rvWeightInfo;
 
-  aa.val  = 7;
-  bb.val  = 3;
-  cc.val  = 0;
-  vars.push_back(&aa);
-  vars.push_back(&bb);
-  vars.push_back(&cc);
+  RVInfo dummy(
+    0, 1, 0, 10, "test", "aa_info", RVInfo::t_discrete, RVInfo::d_hidden, 100, 
+    tmp_fr, NULL, tmp_li, tmp_switchingParents, 
+    tmp_conditionalParents, tmp_discImplementations, tmp_contImplementations,
+    tmp_listIndices, tmp_rvWeightInfo 
+    );
+
+  TestRandomVariable p0(dummy, "p0",  8 );
+  TestRandomVariable p1(dummy, "p1", 40 );
+  TestRandomVariable p2(dummy, "p2",  2 );
+  TestRandomVariable child(dummy, "child",  1000000 );
+
+  p0.val  = 7;
+  p1.val  = 3;
+  p2.val  = 0;
+  vars.push_back(&p0);
+  vars.push_back(&p1);
+  vars.push_back(&p2);
 
   correct = true;
 
+  formula = "cc";
+  correct &= dt.testFormula( formula, vars, &child, 1000000 );
+
+  formula = "cardinality_child";
+  correct &= dt.testFormula( formula, vars, &child, 1000000 );
+
+  formula = "cardinality_parent_0+cp0";
+  correct &= dt.testFormula( formula, vars, &child, 16 );
+
+  formula = "parent_1+p2";
+  correct &= dt.testFormula( formula, vars, &child, 3 );
+
+  formula = "parent_minus_one_0+pmo1";
+  correct &= dt.testFormula( formula, vars, &child, 8 );
+
+  formula = "parent_plus_one_0+ppo1";
+  correct &= dt.testFormula( formula, vars, &child, 12 );
+
+  formula = "max_value_child+mc";
+  correct &= dt.testFormula( formula, vars, &child, (2*1000000)-2 );
+
+  formula = "max_value_parent_2+mp0";
+  correct &= dt.testFormula( formula, vars, &child, 8 );
+
+  formula = "round_divide(11,7)";
+  correct &= dt.testFormula( formula, vars, &child, 2 );
+
+  formula = "10~/7";
+  correct &= dt.testFormula( formula, vars, &child, 1 );
+
+  formula = "floor_divide(11,7)";
+  correct &= dt.testFormula( formula, vars, &child, 1 );
+
+  formula = "11/.7";
+  correct &= dt.testFormula( formula, vars, &child, 1 );
+
+  formula = "ceil_divide (13,7)";
+  correct &= dt.testFormula( formula, vars, &child, 2 );
+
+  formula = "ceil_divide (14,7)";
+  correct &= dt.testFormula( formula, vars, &child, 2 );
+
+  formula = "15./7";
+  correct &= dt.testFormula( formula, vars, &child, 3 );
+
   formula = "1+1";
-  correct &= dt.testFormula( formula, vars, 2 );
+  correct &= dt.testFormula( formula, vars, &child, 2 );
 
   formula = "(1+1)";
-  correct &= dt.testFormula( formula, vars, 2 );
+  correct &= dt.testFormula( formula, vars, &child, 2 );
 
   formula = "2*3+4";
-  correct &= dt.testFormula( formula, vars, 10 );
+  correct &= dt.testFormula( formula, vars, &child, 10 );
 
   formula = "2+3*4";
-  correct &= dt.testFormula( formula, vars, 14 );
+  correct &= dt.testFormula( formula, vars, &child, 14 );
 
   formula = "1+2+3+4+5";
-  correct &= dt.testFormula( formula, vars, 15 );
+  correct &= dt.testFormula( formula, vars, &child, 15 );
 
   formula = "3+(4==4)*5^2|6";
-  correct &= dt.testFormula( formula, vars, 30 );
+  correct &= dt.testFormula( formula, vars, &child, 30 );
 
-  formula = "((p0&p1)|c0)";
-  correct &= dt.testFormula( formula, vars, 11 );
+  formula = "((p0&p1)|cp0)";
+  correct &= dt.testFormula( formula, vars, &child, 11 );
 
-  formula = "(c1/c0)*p1";
-  correct &= dt.testFormula( formula, vars, 15 );
+  formula = "(cp1/cp0)*p1";
+  correct &= dt.testFormula( formula, vars, &child, 15 );
 
-  formula = "c2^5";
-  correct &= dt.testFormula( formula, vars, 32 );
+  formula = "cp2^5";
+  correct &= dt.testFormula( formula, vars, &child, 32 );
 
   formula = "7>3";
-  correct &= dt.testFormula( formula, vars, 1 );
+  correct &= dt.testFormula( formula, vars, &child, 1 );
 
   formula = "(7<3)";
-  correct &= dt.testFormula( formula, vars, 0 );
+  correct &= dt.testFormula( formula, vars, &child, 0 );
 
   formula = "(3>=3)&&(3==3)&&(3<=3)";
-  correct &= dt.testFormula( formula, vars, 1 );
+  correct &= dt.testFormula( formula, vars, &child, 1 );
 
   formula = "p0 || (27<2) ||  (229<=1)";
-  correct &= dt.testFormula( formula, vars, 1 );
+  correct &= dt.testFormula( formula, vars, &child, 1 );
 
-  formula = "(MIN(C0,C1,C2))";
-  correct &= dt.testFormula( formula, vars, 2 );
+  formula = "(MIN(CP0,CP1,CP2))";
+  correct &= dt.testFormula( formula, vars, &child, 2 );
 
   formula = "2+max(p0,  P1,p2)*3 + 4";
-  correct &= dt.testFormula( formula, vars, 27 );
+  correct &= dt.testFormula( formula, vars, &child, 27 );
 
   formula = "  mod  (  8 , 3 ) ";
-  correct &= dt.testFormula( formula, vars, 2 );
+  correct &= dt.testFormula( formula, vars, &child, 2 );
 
-  formula = "((12>3)?(p0*p1):(c0+p2))";
-  correct &= dt.testFormula( formula, vars, 21 );
+  formula = "((12>3)?(p0*p1):(cp0+p2))";
+  correct &= dt.testFormula( formula, vars, &child, 21 );
 
-  formula = "12<3 ? p1/0 : c0+p2";
-  correct &= dt.testFormula( formula, vars, 8 );
+  formula = "12<3 ? p1/0 : cp0+p2";
+  correct &= dt.testFormula( formula, vars, &child, 8 );
 
-  formula = " 1 ? 27==p0 ? c0+c2 :  p0+2 :7/0 ";
-  correct &= dt.testFormula( formula, vars, 9 );
+  formula = " 1 ? 27==p0 ? cp0+cp2 :  p0+2 :7/0 ";
+  correct &= dt.testFormula( formula, vars, &child, 9 );
 
-  formula = "  (  max  (  ( 12/  4) , 14,p2  ) + ( c1   -p1))*   p0+27";
-  correct &= dt.testFormula( formula, vars, 384 );
+  formula = "  (  max  (  ( 12/  4) , 14,p2  ) + ( cp1   -p1))*   p0+27";
+  correct &= dt.testFormula( formula, vars, &child, 384 );
 
-  formula = " Mod(  c1  - p1 , 17 + P0  ) - 4";
-  correct &= dt.testFormula( formula, vars, 9 );
+  formula = " Mod(  cp1  - p1 , 17 + P0  ) - 4";
+  correct &= dt.testFormula( formula, vars, &child, 9 );
 
   formula = "3<<4";
-  correct &= dt.testFormula( formula, vars, 48 );
+  correct &= dt.testFormula( formula, vars, &child, 48 );
 
   formula = "238>>3";
-  correct &= dt.testFormula( formula, vars, 29 );
+  correct &= dt.testFormula( formula, vars, &child, 29 );
 
   formula = "abs((p2-p1-p0))";
-  correct &= dt.testFormula( formula, vars, 10 );
+  correct &= dt.testFormula( formula, vars, &child, 10 );
 
   ////////////////////////////////////////////////////////////////////// 
   // rotate(val,num,pos,bitwidth)
   ////////////////////////////////////////////////////////////////////// 
   formula = "rotate(1234, 0, 3, 7)";
-  correct &= dt.testFormula( formula, vars, 1234 );
+  correct &= dt.testFormula( formula, vars, &child, 1234 );
 
   formula = "rotate(255, 3, 0, 16)";
-  correct &= dt.testFormula( formula, vars, 57375 );
+  correct &= dt.testFormula( formula, vars, &child, 57375 );
 
   formula = "rotate(255, 3, 3, 12)";
-  correct &= dt.testFormula( formula, vars, 28703 );
+  correct &= dt.testFormula( formula, vars, &child, 28703 );
 
   formula = "rotate(204, 0-3, 2, 6)";
-  correct &= dt.testFormula( formula, vars, 120 );
+  correct &= dt.testFormula( formula, vars, &child, 120 );
 
   formula = "rotate(4044, 0-3, 2, 6)";
-  correct &= dt.testFormula( formula, vars, 3960 );
+  correct &= dt.testFormula( formula, vars, &child, 3960 );
 
   formula = "rotate(255, 0-3, 0, 16)";
-  correct &= dt.testFormula( formula, vars, 2040 );
+  correct &= dt.testFormula( formula, vars, &child, 2040 );
 
   formula = "rotate(255, 0-3, 2, 16)";
-  correct &= dt.testFormula( formula, vars, 2019 );
+  correct &= dt.testFormula( formula, vars, &child, 2019 );
 
   formula = "!0";
-  correct &= dt.testFormula( formula, vars, 1 );
+  correct &= dt.testFormula( formula, vars, &child, 1 );
 
   formula = "~10&15";
-  correct &= dt.testFormula( formula, vars, 5 );
+  correct &= dt.testFormula( formula, vars, &child, 5 );
 
   formula = "-(3-12)";
-  correct &= dt.testFormula( formula, vars, 9 );
+  correct &= dt.testFormula( formula, vars, &child, 9 );
 
   formula = "-3--12-4*-2";
-  correct &= dt.testFormula( formula, vars, 17 );
+  correct &= dt.testFormula( formula, vars, &child, 17 );
 
 
-  if (! correct) {
+  if (correct) {
+    printf("All formulas gave the correct answer\n"); 
+  }
+  else {
     error("A formula is not giving the correct answer\n");
   }
 }
@@ -2454,6 +2604,7 @@ main(int argc,char *argv[])
   // Test the formula parser 
   test_formula();
 
+/*
   // first write out the file
   if (argc == 1)
     {
@@ -2505,6 +2656,7 @@ main(int argc,char *argv[])
     printf("\n");
     printf("### RESULT ==> %d\n",dt.query(vec,card));
   }
+*/
 
 }
 
