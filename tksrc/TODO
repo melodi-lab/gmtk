@@ -1130,3 +1130,11 @@ Wed May 28 14:45:38 2003
       - unroll(1)
       - unroll(2)
     There is some email from me to chris on this topic, look for that.
+
+
+Tue Jun 03 23:19:31 2003
+  - need to add a check for edges spanning from P to E *after* moralization.
+    This can happen with backwards dlinks.
+    (i.e., consider fig 7 graph in uai03 paper, if only a three frame
+     template is used and graph is moralized, then unrolled
+     chunk will have edges from P to E).
