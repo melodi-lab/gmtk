@@ -2027,3 +2027,14 @@ Tue Jul 27 14:57:19 2004
 
 Tue Jul 27 17:44:28 2004
 j - trifile prints out more partition information, interface , number of variables, etc.bb
+
+
+Thu Jul 29 14:29:41 2004
+  - export to command line the not processing of stuff via cpp (to assume that).
+
+Fri Jul 30 01:12:00 2004
+  - allow DT formulas to have variables corresponding to the integer
+    portion of the global observation files using the frame of the child and/or parent.
+    I.e., p3o21 would be the integer in the observation file at position 21 using
+    the frame of parent3, or co12 would be the int in the obs file at the frame of the child.
+
