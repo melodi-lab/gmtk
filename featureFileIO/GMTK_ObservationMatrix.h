@@ -396,9 +396,12 @@ class ObservationMatrix {
   /////////////////////////////////////////////
   // these access routines respect the start frame and end frame.
 
+  // advances the featuresBase pointer by n frames
+  // Side effect:  decreases the number of frames by n
   void mvFeatBaseByNumFrames(unsigned n) {
     assert (n >= 0 && n < _numFrames);
     featuresBase += (_stride*n);
+    _numFrames -= n;
   }
 
   Data32*const baseAtFrame(unsigned f) {
