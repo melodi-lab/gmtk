@@ -64,7 +64,7 @@ VCID("$Header$");
 
 // the file of observation
 
-float pruneRatio=0.0;
+float beam=-1000;
 char *obsFileName;
 char *strFileName;
 char *parmsFileName=NULL;
@@ -81,7 +81,7 @@ ARGS ARGS::Args[] = {
  ARGS("parmsFile",ARGS::Opt,parmsFileName,"GM Parms File"), 
  ARGS("parmsPtrFile",ARGS::Opt,parmsPtrFileName,"GM Parms File"), 
  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
- ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
+ ARGS("beam",ARGS::Opt,beam,"Pruning Ratio, values less than this*max are pruned"),
  ARGS("showVitVals",ARGS::Opt,showVitVals,"Print the viterbi values??"),
 
  // These 3 must be used together or not at all
@@ -175,6 +175,8 @@ main(int argc,char*argv[])
   gm.clampFirstExample();
   do
   {
+    logpr pruneRatio;
+    pruneRatio.valref() = beam;
     gm.cliqueChainViterbiProb(pruneRatio);
     cout << "Example prob: " << gm.viterbiProb.val() << " : "
          << ((*gm.node.rbegin())->timeIndex+1) << " frames\n";
