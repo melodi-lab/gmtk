@@ -217,6 +217,7 @@ class JunctionTree {
 					   vector< bool >& visited);
   void getCumulativeAssignedNodes(JT_Partition& part,
 				  const unsigned root);
+  void getPrecedingIteratedUnassignedNodes(JT_Partition& part,const unsigned root);
 
 
   
@@ -312,6 +313,11 @@ public:
 				      JT_Partition& part);
   void computeSeparatorIterationOrders(JT_Partition& part);
   void computeSeparatorIterationOrders();
+
+  // Computes the preceding iterated unassigned nodes and therein the
+  // set of assigned nodes in each clique that should/shouldn't be
+  // iterated.
+  void getPrecedingIteratedUnassignedNodes();
 
   // 
   // Print all information about the JT. Must

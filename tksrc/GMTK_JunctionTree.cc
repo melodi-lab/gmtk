@@ -286,10 +286,21 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 	  const unsigned clique = *ns_iter;
 	  findSet[clique] = new_set;
 	}
-	infoMsg(IM::Med,"Joining cliques %d and %d\n",
-		edges[i].clique1,edges[i].clique2);
+	infoMsg(IM::Med,"Joining cliques %d and %d with intersection size %d\n",
+		edges[i].clique1,edges[i].clique2,edges[i].weight);
 
-	part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
+	if (edges[i].weight == 0) {
+	  warning("ERROR: junction tree creation trying to join two cliques (%d and %d) with size 0 set intersection. Possible non-triangulated graph.",
+		edges[i].clique1,edges[i].clique2);
+	  // TODO: print out two cliques that are trying to be joined.
+	  fprintf(stderr,"Clique %d: ",edges[i].clique1);
+	  part.cliques[edges[i].clique1].printCliqueNodes(stderr);
+	  fprintf(stderr,"Clique %d: ",edges[i].clique2);
+	  part.cliques[edges[i].clique2].printCliqueNodes(stderr);
+	  error("exiting");
+	}
+
+ 	part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
 	part.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
 
 	if (++joinsPlusOne == numMaxCliques)
@@ -745,6 +756,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),part.cliques.size());
 
+  unsigned numUnassigned = 0;
   for (unsigned n=0;n<sortedNodes.size();n++) {
 
     RandomVariable* rv = sortedNodes[n];
@@ -782,12 +794,14 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 	// partition.
 	infoMsg(IM::Med,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
 		rv->name().c_str(),rv->frame());
+	numUnassigned++;
       }
     }
     // update the cumulative RV assignments.
     if (assigned)
       getCumulativeAssignedNodes(part,rootClique);
   }
+
 }
 
 
@@ -1045,7 +1059,7 @@ JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
 
-    const unsigned child = part.cliques[root].children[childNo];
+    const unsigned child = curClique.children[childNo];
 
     getCumulativeAssignedNodes(part,child);
 
@@ -1065,6 +1079,12 @@ JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
 		     curClique.cumulativeAssignedNodes.end()));
 
 }
+
+
+
+
+
+
 
 
 /*-
@@ -1533,20 +1553,107 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::getPrecedingIteratedUnassignedNodes()
+ *
+ *   Computes for each clique the union of the set of nodes which have
+ *   been iterated unassigned in previous cliques in the JT. This is
+ *   used to determine which, in each clique, nodes should be iterated
+ *   over and which are already assigned by a separator driven
+ *   iteration.
+ *
+ * Preconditions:
+ *   computeSeparatorIterationOrder() must have been called.
+ *
+ * Postconditions:
+ *   cliques know which nodes to iterate over or not.
+ *
+ * Side Effects:
+ *    Changes member variables within cliques of this partition.
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::getPrecedingIteratedUnassignedNodes(JT_Partition& part,
+						  const unsigned root)
+{
+
+  MaxClique& curClique = part.cliques[root];
+  set<RandomVariable*>& res = curClique.precedingUnassignedIteratedNodes;
+  for (unsigned childNo=0;
+       childNo<curClique.children.size();childNo++) {
+
+    const unsigned child = curClique.children[childNo];
+    getPrecedingIteratedUnassignedNodes(part,child);
+
+    set_union(part.cliques[child].precedingUnassignedIteratedNodes.begin(),
+	      part.cliques[child].precedingUnassignedIteratedNodes.end(),
+	      part.cliques[child].unassignedIteratedNodes.begin(),
+	      part.cliques[child].unassignedIteratedNodes.end(),
+	      inserter(res,res.end()));
+  }
+  curClique.computeAssignedNodesToIterate();
+}
+void
+JunctionTree::getPrecedingIteratedUnassignedNodes()
+{
+  set<RandomVariable*> res;
+
+  getPrecedingIteratedUnassignedNodes(P1,P_ri_to_C);
+
+  res.clear();
+  set_union(P1.cliques[P_ri_to_C].unassignedIteratedNodes.begin(),
+	    P1.cliques[P_ri_to_C].unassignedIteratedNodes.end(),
+	    P1.cliques[P_ri_to_C].precedingUnassignedIteratedNodes.begin(),
+	    P1.cliques[P_ri_to_C].precedingUnassignedIteratedNodes.end(),	    
+	    inserter(res,res.end()));
+  C1.cliques[C_li_to_P].precedingUnassignedIteratedNodes = res;
+  getPrecedingIteratedUnassignedNodes(C1,C_ri_to_C);
 
 
+  res.clear();
+  set_union(C1.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
+	    C1.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
+	    C1.cliques[C_ri_to_C].precedingUnassignedIteratedNodes.begin(),
+	    C1.cliques[C_ri_to_C].precedingUnassignedIteratedNodes.begin(),	    
+	    inserter(res,res.end()));
+  C2.cliques[C_li_to_C].precedingUnassignedIteratedNodes = res;
+  getPrecedingIteratedUnassignedNodes(C2,C_ri_to_C);
 
 
+  res.clear();
+  set_union(C2.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
+	    C2.cliques[C_ri_to_C].unassignedIteratedNodes.end(),
+	    C2.cliques[C_ri_to_C].precedingUnassignedIteratedNodes.begin(),
+	    C2.cliques[C_ri_to_C].precedingUnassignedIteratedNodes.end(),	    
+	    inserter(res,res.end()));
+  C3.cliques[C_li_to_C].precedingUnassignedIteratedNodes = res;
+  getPrecedingIteratedUnassignedNodes(C3,C_ri_to_E);
 
 
+  res.clear();
+  set_union(P1.cliques[P_ri_to_C].unassignedIteratedNodes.begin(),
+	    P1.cliques[P_ri_to_C].unassignedIteratedNodes.end(),
+	    P1.cliques[P_ri_to_C].precedingUnassignedIteratedNodes.begin(),
+	    P1.cliques[P_ri_to_C].precedingUnassignedIteratedNodes.end(),
+	    inserter(res,res.end()));
+  Cu0.cliques[C_li_to_P].precedingUnassignedIteratedNodes = res;
+  getPrecedingIteratedUnassignedNodes(Cu0,C_ri_to_E);
 
 
-
-
-
-
-
-
+  res.clear();
+  set_union(C3.cliques[C_ri_to_E].unassignedIteratedNodes.begin(),
+	    C3.cliques[C_ri_to_E].unassignedIteratedNodes.end(),
+	    C3.cliques[C_ri_to_E].precedingUnassignedIteratedNodes.begin(),
+	    C3.cliques[C_ri_to_E].precedingUnassignedIteratedNodes.end(),
+	    inserter(res,res.end()));
+  E1.cliques[E_li_to_C].precedingUnassignedIteratedNodes = res;
+  getPrecedingIteratedUnassignedNodes(E1,E_root_clique);
+}
 
 
 
@@ -1965,8 +2072,6 @@ JunctionTree::collectEvidence()
     collectEvidenceFromSeparators(jtIPartitions[partNo]);
 
 }
-
-
 
 
 

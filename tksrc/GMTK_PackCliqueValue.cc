@@ -188,6 +188,7 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
 				 const unsigned *const cards)
   : unpackedVectorLength(len)
 {
+  assert (unpackedVectorLength > 0);
   init(cards);
 }
 
@@ -236,7 +237,7 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
 PackCliqueValue::PackCliqueValue(vector<RandomVariable*>& nodes)
   : unpackedVectorLength(nodes.size())
 {
-  assert (nodes.size() != 0);
+  assert (nodes.size() > 0);
 
   sArray < unsigned > cards(nodes.size());
 

@@ -325,6 +325,8 @@ main(int argc,char*argv[])
   myjt.setUpMessagePassingOrders();
   myjt.createSeparators();
   myjt.computeSeparatorIterationOrders();
+  myjt.getPrecedingIteratedUnassignedNodes();
+  myjt.printAllJTInfo("jt_info_before_unrolling.txt");
   myjt.prepareForUnrolling();
   // TODO: allow user input file name
   myjt.printAllJTInfo("jt_info.txt");

@@ -326,6 +326,7 @@ public:
   // variable and its parents will be clamped to appropriate values.
   // This also assumes that findConditionalParents has been called.
   virtual logpr probGivenParents() = 0;
+  virtual logpr probGivenParentsWSetup() = 0;
 
 
   //////////////////////////////////////////////////////////

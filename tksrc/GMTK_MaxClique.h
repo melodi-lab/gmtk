@@ -38,7 +38,9 @@
 #include "vhash_map.h"
 #include "logp.h"
 #include "cArray.h"
+#include "sArray.h"
 #include "debug.h"
+
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_PackCliqueValue.h"
@@ -128,6 +130,23 @@ public:
 };
 
 
+// a (someday to be) special vhash class
+typedef vhash_map < unsigned, unsigned > VHashMapUnsignedUnsigned;
+class VHashMapUnsignedUnsignedKeyUpdatable : public VHashMapUnsignedUnsigned {
+public:
+  //////////////////////
+  // constructor for empty invalid object. 
+  // WARNING: this will create an invalid object. It is assumed
+  // that this object will re-reconstructed later.
+  VHashMapUnsignedUnsignedKeyUpdatable() {}
+  // constructor
+  VHashMapUnsignedUnsignedKeyUpdatable(const unsigned arg_vsize,
+				       unsigned approximateStartingSize = 
+				       HashTableDefaultApproxStartingSize);
+};
+
+
+
 class MaxClique : public IM
 {
   friend class FileParser;
@@ -158,6 +177,15 @@ public:
   // in this clique.
   vector<RandomVariable*> sortedAssignedNodes;
 
+  // USED ONLY IN JUNCTION TREE INFERENCE 
+  // predicate for each each sorted assigned node, used to say if that
+  // node should be iterated, or if its value has already been set by
+  // a separator iteration. If this has zero length, then we iterate
+  // everything. If it does not have zero length, it has same length
+  // as sortedAssignedNodes array.
+  sArray < bool > iterateSortedAssignedNodesP;
+
+
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of nodes that are not
   // assigned to this clique but that also are not iterated over by
@@ -173,8 +201,20 @@ public:
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of assigned nodes cummulative in the JT relative to root
   // in the JT for the current partition.  This variable is used only
-  // by the code that assigns CPTs to cliques.
+  // by the code that assigns CPTs to cliques. Note that
+  // cumulativeAssignedNodes includes the assignedNodes
+  // in the current clique.
   set<RandomVariable*> cumulativeAssignedNodes;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // the preceding cumulative set of unassigned and iterated nodes
+  // relative to the root in the JT for the current partition adn
+  // clique. This is used to determine which of the assigned nodes
+  // need actually be iterated within a clique, and which are already
+  // set by the separator iterations. Note that
+  // cumulativeUnassignedIteratedNodes does *NOT* include the
+  // assignedNodes in the current clique (thus the name preceding).
+  set<RandomVariable*> precedingUnassignedIteratedNodes;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -241,7 +281,7 @@ public:
   // Note that if a packed clique value can be held in <
   // sizeof(unsigned)*8, then this isn't used since the pointer
   // storage can be used instead.
-  vhash_set< unsigned > hashTable;
+  vhash_set< unsigned > cliqueValueHashSet;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // a value that is roughly equal to the order of the state space of
@@ -302,6 +342,13 @@ public:
 
   // print out everything in this clique to a file.
   void printAllJTInfo(FILE* f,const unsigned indent);
+
+  // print just the clique nodes
+  void printCliqueNodes(FILE* f);
+
+  // compute which assigned nodes to iterate over or not.
+  void computeAssignedNodesToIterate();
+
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
   MaxClique& operator=(const MaxClique& f) {
@@ -448,7 +495,6 @@ public:
   set<RandomVariable*> accumulatedIntersection;
   // hidden version of above
   vector<RandomVariable*> hAccumulatedIntersection;
-
   // structure used to pack and unpack clique values
   PackCliqueValue accPacker;
   // structure to allocate clique values from.  These things are
@@ -458,7 +504,8 @@ public:
   CliqueValueHolder accValueHolder;
   // hash table that holds the clique values (a packed vector of RV
   // values). The actual values are pointers to within valueHolder.
-  vhash_set< unsigned > accHashTable;
+  vhash_set< unsigned > accSepValHashSet;
+
 
   //////////////////////////////////////////////////////////////////////
   // remainder = nodes - accumulatedIntersection which is precomputed
@@ -466,7 +513,6 @@ public:
   set<RandomVariable*> remainder;
   // hidden version of above
   vector<RandomVariable*> hRemainder;
-
   // structure used to pack and unpack clique values
   PackCliqueValue remPacker;
   // structure to allocate clique values from.  These things are
@@ -476,7 +522,7 @@ public:
   CliqueValueHolder remValueHolder;
   // hash table that holds the clique values (a packed vector of RV
   // values). The actual values are pointers to within valueHolder.
-  vhash_set< unsigned > remHashTable;
+  vhash_set< unsigned > remSepValHashSet;
 
 
   SeparatorClique(const SeparatorClique& sep)
@@ -521,12 +567,13 @@ class InferenceSeparatorClique : public IM
 {
   friend class InferenceMaxClique;
 
-  // Non-STL "fast" versions of arrays that are instantiated
+  // Non-STL "f=fast" versions of arrays that are instantiated
   // only in the final unrolled versions of the separator cliques.
   sArray< RandomVariable*> fNodes;
   sArray< RandomVariable*> fAccumulatedIntersection;
   sArray< RandomVariable*> fRemainder;
-  // Direct pointers to the values within the discrete hidden RVs
+
+  // Direct pointers to the values within the discrete *HIDDEN* RVs
   // within this sep clique.  Note, the observed discrete and
   // continuous variables are not contained here.
   // 1) one for the accumulated intersection
@@ -556,6 +603,7 @@ class InferenceSeparatorClique : public IM
     logpr p;
   };
 
+
   // Accumulated intersection separator values.
   class AISeparatorValue {
   public:
@@ -582,7 +630,13 @@ class InferenceSeparatorClique : public IM
     // to project down into the outgoing separator in a CE stage.
     // Note, by default, these hash tables are constructed empty and
     // invalid, and they need to be explicitly re-constructed.
-    vhash_map < unsigned, unsigned > iRemHashTable;
+    VHashMapUnsignedUnsignedKeyUpdatable iRemHashMap;
+
+    // ensure that we start with nothing inserted.
+    AISeparatorValue() { 
+      numRemValuesUsed = 0;
+      // fprintf(stderr,"in aisv init\n"); 
+    }
   };
 
   // The collection of AI separator values.
@@ -598,7 +652,7 @@ class InferenceSeparatorClique : public IM
   // there is a common value between this separator and all previous
   // separators that we have so far seen, and we must continue
   // iteration using the remaining rvs in this separator.
-  vhash_map < unsigned, unsigned > iAccHashTable;
+  VHashMapUnsignedUnsignedKeyUpdatable iAccHashMap;
 
 public:
 

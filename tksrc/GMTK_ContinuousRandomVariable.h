@@ -108,6 +108,10 @@ public:
 
   // compute the probability
   logpr probGivenParents();
+  logpr probGivenParentsWSetup() {
+    findConditionalParents();
+    return probGivenParents();
+  }
 
   ////////////////////////////////////////////////
   // clamp this RV to its "first" value,
