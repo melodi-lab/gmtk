@@ -686,7 +686,7 @@ JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityStr)
+JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionTreeMSTpriorityStr)
 {
   const unsigned numMaxCliques = part.cliques.size();
 
@@ -753,7 +753,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	//
 	// *** Larger numbers are prefered. ***
 	//
-	// Options to include by priority of priorityStr:
+	// Options to include by priority of junctionTreeMSTpriorityStr:
 	//   * D: number of deterministic nodes in separator 
 	//   * E: number of deterministic nodes in union of cliques.
 	//   * S: neg. weight of separator
@@ -780,8 +780,8 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	// 
 
 	float mult = 1.0;
-	for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
-	  const char curCase = toupper(priorityStr[charNo]);
+	for (unsigned charNo=0;charNo< junctionTreeMSTpriorityStr.size(); charNo++) {
+	  const char curCase = toupper(junctionTreeMSTpriorityStr[charNo]);
 	  if (curCase == '-') {
 	    mult = -1.0;
 	    continue;
@@ -924,7 +924,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	    }
 	    e.weights.push_back(mult*(double)numObserved);
 	  } else {
-	    error("ERROR: Unrecognized junction tree clique sort order letter '%c' in string '%s'\n",curCase,priorityStr.c_str());
+	    error("ERROR: Unrecognized junction tree clique sort order letter '%c' in string '%s'\n",curCase,junctionTreeMSTpriorityStr.c_str());
 	  }
 	  mult = 1.0;
 	}
@@ -935,8 +935,8 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	  infoMsg(IM::Giga,"Edge (%d,%d) has sep size %.0f, ",
 		  i,j,
 		  e.weights[0]);
-	  for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
-	    const char curCase = toupper(priorityStr[charNo]);
+	  for (unsigned charNo=0;charNo< junctionTreeMSTpriorityStr.size(); charNo++) {
+	    const char curCase = toupper(junctionTreeMSTpriorityStr[charNo]);
 	    infoMsg(IM::Giga,"%c,weight[%d] = %f, ",curCase,charNo+1,e.weights[charNo+1]);
 	  }
 	  infoMsg(IM::Giga,"\n");
