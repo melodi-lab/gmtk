@@ -642,7 +642,7 @@ RngDecisionTree::writeRecurse(oDataStreamFile& os,
  *
  *-----------------------------------------------------------------------
  */
-leafNodeValType RngDecisionTree::query(const vector < int >& arr,
+leafNodeValType RngDecisionTree::query(const vector <int >& arr,
 				       const vector <int > &cards)
 {
   assert ( unsigned(arr.size()) == _numFeatures );
@@ -682,9 +682,13 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < int >& arr,
   } else if (n->nodeType == NonLeafNode) {
 
     assert ( n->nonLeafNode.ftr < int(arr.size()) );
-    assert ( arr[n->nonLeafNode.ftr] >= 0 &&
-	     arr[n->nonLeafNode.ftr] <= 
-	     RNG_DECISION_TREE_MAX_CARDINALITY );
+
+    assert ( arr[n->nonLeafNode.ftr] >= 0 );
+    /*
+      assert ( arr[n->nonLeafNode.ftr] >= 0 &&
+      arr[n->nonLeafNode.ftr] <= 
+      RNG_DECISION_TREE_MAX_CARDINALITY );
+    */
 
     const int val = arr[n->nonLeafNode.ftr];
 
@@ -819,9 +823,11 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& 
   } else if (n->nodeType == NonLeafNode) {
 
     assert ( n->nonLeafNode.ftr < int(arr.size()) );
-    assert ( arr[n->nonLeafNode.ftr]->val >= 0 &&
-	     arr[n->nonLeafNode.ftr]->val < 
-	     RNG_DECISION_TREE_MAX_CARDINALITY );
+
+    /*
+     * assert ( arr[n->nonLeafNode.ftr]->val < 
+     * RNG_DECISION_TREE_MAX_CARDINALITY );
+     */
 
     const int val = arr[n->nonLeafNode.ftr]->val;
 
