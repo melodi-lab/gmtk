@@ -51,6 +51,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool readFloat(float& f,char *msg=NULL);
   bool readDouble(double& d,char *msg=NULL);
 
+
   // type implicit
   bool read(char*& str,char *msg=NULL) { return readStr(str,msg); }
   bool read(char& c,char *msg=NULL) { return readChar(c,msg); }
@@ -58,6 +59,27 @@ class iDataStreamFile : public ioDataStreamFile {
   bool read(unsigned& i,char *msg=NULL) { return readInt((int&)i,msg); }
   bool read(float& f,char *msg=NULL) { return readFloat(f,msg); }
   bool read(double& d,char *msg=NULL) { return readDouble(d,msg); }
+
+
+  template <class T>
+  bool readArray(int length, T* location, char *msg = NULL) 
+  {
+    assert ( length >= 0 && location != NULL);
+    
+    if (length == 0)
+      return true;
+
+    bool rc;
+    int i=0; do {
+      rc = read(location[i],msg);
+      i++;
+    } while (rc == true && i < length );
+    return rc;
+  }
+
+  template <class T>
+  bool read(int length, T* location, char *msg = NULL)
+  { return readArray(length,location,msg); }
 
 };
 
@@ -90,6 +112,28 @@ class oDataStreamFile : public ioDataStreamFile {
   bool write(const unsigned i,char *msg=NULL) { return writeInt((int)i,msg); }
   bool write(const float f,char *msg=NULL) { return writeFloat(f,msg); }
   bool write(const double d,char *msg=NULL) { return writeDouble(d,msg); }
+
+
+  template <class T>
+  bool writeArray(int length, T* location, char *msg = NULL) 
+  {
+    assert ( length >= 0 && location != NULL);
+    
+    if (length == 0)
+      return true;
+
+    bool rc;
+    int i=0; do {
+      rc = write(location[i],msg);
+      i++;
+    } while (rc == true && i < length );
+    return rc;
+  }
+
+  template <class T>
+  bool write(int length, T* location, char *msg = NULL)
+  { return writeArray(length,location,msg); }
+
 
 
 };
