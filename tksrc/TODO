@@ -1152,3 +1152,9 @@ Tue Jul 01 17:36:05 2003
 
 Fri Jul 04 00:39:18 2003
   - make the MCS implementation truely O(n+e) raather than O(N^2)
+
+Sat Jul  5 17:30:27 2003
+  - make sure that certain core dumps with M>1 on some of the graphs
+    are due to running out of memory.
+  - Implement a fixed upper bound memory usage, and turn off memoize when
+    that limit is reached, so that memory usage does not grow unboundedly. 
