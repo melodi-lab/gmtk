@@ -726,22 +726,22 @@ void GMTK_GM::GM2CliqueChain()
 
         // do all the removes possible
         for (unsigned j=0; j<cl[i-1].member.size(); j++)
-        if (num_children_added_for[cl[i-1].member[j]] 
-        != cl[i-1].member[j]->allPossibleChildren.size())
-        {
-            cl[i].member.push_back(cl[i-1].member[j]);
-        }
-        else
-        {
-            maximal.insert(&cl[i-1]);
-            cl[i].newMember.clear();
-        }
+	  if (num_children_added_for[cl[i-1].member[j]] != 
+	      cl[i-1].member[j]->allPossibleChildren.size())
+	    {
+	      cl[i].member.push_back(cl[i-1].member[j]);
+	    }
+	  else
+	    {
+	      maximal.insert(&cl[i-1]);
+	      cl[i].newMember.clear();
+	    }
 
         // do an add
         cl[i].member.push_back(node[num_adds]);
         cl[i].newMember.push_back(node[num_adds]);
         for (unsigned j=0; j<node[num_adds]->allPossibleParents.size(); j++)
-            num_children_added_for[node[num_adds]->allPossibleParents[j]]++;
+	  num_children_added_for[node[num_adds]->allPossibleParents[j]]++;
         num_adds++;
 
         // keep the clique members sorted for later intersection
