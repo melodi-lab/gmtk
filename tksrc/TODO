@@ -286,3 +286,7 @@ X ascii/binary conversion program can go both ways.
 
 - accumulators pretty printed
 
+- don't allocate nextmean next covar until end of em iteration
+  since they are contained in component.
+  define a new bit in emable to support this (since need
+  to know the first time end of em thing is called).
