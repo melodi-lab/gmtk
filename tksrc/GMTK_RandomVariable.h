@@ -54,7 +54,7 @@ public:
     RandomVariable(string _label, vartype vt, int card=0)
     {hidden=true; discrete=(vt==discrete); timeIndex=-1;
      cardinality=card; if (discrete) assert(card!=0);
-     label=_label;}
+     label=_label;dtMapper=NULL;}
 
     virtual ~RandomVariable() {}
 
