@@ -79,16 +79,16 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
    ////// Special cases {c|d}rng_str eq "-1"
    //if(crng_str != NULL && strcmp(crng_str,"-1")==0) {
      // empty range
-   //cont_rng = new BP_Range(NULL,0,0);
+   //cont_rng = new Range(NULL,0,0);
    //}
    //else {
-   cont_rng = new BP_Range(crng_str,0,nFloats);
+   cont_rng = new Range(crng_str,0,nFloats);
    //}
    //if(drng_str != NULL && strcmp(drng_str,"-1")==0) {
-   //disc_rng = new BP_Range(NULL,0,0);  // empty range
+   //disc_rng = new Range(NULL,0,0);  // empty range
    //}
    //else {
-   disc_rng = new BP_Range(drng_str,0,nInts);
+   disc_rng = new Range(drng_str,0,nInts);
    //}
 
 
