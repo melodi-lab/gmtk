@@ -194,6 +194,36 @@ GMParms::writeBasic(oDataStreamFile& os)
   os.nl();
 }
 
+
+
+void 
+GMParms::readDTs(iDataStreamFile& is)
+{
+  int tmp;
+  is.read(tmp,"GMTK_GMParms::readDTs, dpmfs");
+  if (tmp < 0) error("GMTK_GMParms::readDTs num dpmfs = %d",tmp);
+  dts.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    dts[i] = new RngDecisionTree<int>;
+    dts[i]->read(is);
+  }
+}
+
+
+
+void 
+GMParms::writeDTs(oDataStreamFile& os)
+{
+  os.write(dts.len(),"GMTK_GMParms::writeDTs, dpmfs");
+  os.nl();
+  for (int i=0;i<dts.len();i++) {
+    dts[i]->write(os);
+  }
+}
+
+
+
+
 #ifdef MAIN
 
 GMParms GM_Parms;
