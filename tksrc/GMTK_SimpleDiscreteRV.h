@@ -160,7 +160,7 @@ public:
     /////////////////////////////////////////
     /////////////////////////////////////////
 
-    void emClearAllocatedBit() {;}
+    void emClearEmAllocatedBit() {;}
     void emClearSwappedBit() {;}
     void emSwapCurAndNew() {;}
 
