@@ -49,6 +49,7 @@
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GraphicalModel.h"
+#include "GMTK_NetworkFlowTriangulate.h"
 
 VCID("$Header$");
 
@@ -6343,6 +6344,22 @@ void BoundaryTriangulate::augmentToAbideBySMarkov(const vector <RV*>& rvs,
 
 
 
+/*
+  Misc functions for weight computation.
+*/
+
+float flowMinSizeHelper(const set<RV*>& rvs) {
+  return rvs.size();
+}
+
+float flowMinWeightHelper(const set<RV*>& rvs) {
+  return MaxClique::computeWeight(rvs, NULL, true);
+}
+
+float flowMinNoDWeightHelper(const set<RV*>& rvs) {
+  return MaxClique::computeWeight(rvs, NULL, false);
+}
+
 /*-
  *-----------------------------------------------------------------------
  * BoundaryTriangulate::findBestInterface()
@@ -6567,7 +6584,33 @@ BoundaryTriangulate::findBestInterface(
        || (bnd_heur_v[0] == IH_MIN_FILLIN) 
        || (bnd_heur_v[0] == IH_MIN_WEIGHT)
        || (bnd_heur_v[0] == IH_MIN_WEIGHT_NO_D)))
-    {
+    {      
+      float (*cw)(const set<RV*>&) = NULL;
+      if (bnd_heur_v[0] == IH_MIN_WEIGHT_NO_D)
+	cw = &flowMinNoDWeightHelper;
+      else if (bnd_heur_v[0] == IH_MIN_WEIGHT)
+	cw = &flowMinWeightHelper;
+      else
+	cw = &flowMinSizeHelper;
+
+      printf("Initial boundary:\n\t");
+      printRVSet(stdout,C_l);
+
+      
+      GMTK2Network network(cw, C_l, C2, finalLI);
+      double flow = network.findMaxFlow();
+      infoMsg(IM::Info, "Best flow found is %f", flow); 
+      std::set<RV*> bestC_l; 
+      std::set<RV*> leftBestC_l; 
+      network.findBoundary(bestC_l, leftBestC_l);
+      C_l = bestC_l;
+      left_C_l = leftBestC_l; 
+      infoMsg(IM::Info, "Best boundary found has size %d and is:",C_l.size());
+      printRVSet(stdout,C_l);
+      infoMsg(IM::Info, "Best (left of boundary) found has size %d and is:",left_C_l.size());
+      printRVSet(stdout,left_C_l);
+      return; 
+      
       // TODO: check of all heuristics in bnd_heur_v are
       // submodular, then prioritized ordering of them
       // is also submodular, and pass this prioritized
@@ -6679,6 +6722,9 @@ BoundaryTriangulate::findBestInterface(
     C_l = best_C_l;
   }
 }
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * BoundaryTriangulate::findBestInterfaceRecurse() 
