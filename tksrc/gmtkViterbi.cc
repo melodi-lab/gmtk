@@ -356,7 +356,7 @@ main(int argc,char*argv[])
     pruneRatio.valref() = -beam;
     gm.cliqueChainViterbiProb(pruneRatio);
     cout << "Example prob: " << gm.viterbiProb.val() << " : "
-         << ((*gm.node.rbegin())->timeIndex+1) << " frames\n";
+         << ((*gm.node.rbegin())->timeIndex+1) << " frames\n" << flush;
     if (showVitVals)
       gm.reveal(gm.node, true);
     if (dumpNames)
@@ -408,7 +408,7 @@ main(int argc,char*argv[])
           if (gm.node[i]->val==1)  // a word transition
           {
             cout << word_map[lv] << " (" << lf << "-" 
-                 << gm.node[i]->timeIndex << ")\n";  
+                 << gm.node[i]->timeIndex << ")\n" << flush;  
             lf = gm.node[i]->timeIndex+1;
           }
         }
