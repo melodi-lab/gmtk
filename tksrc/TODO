@@ -2338,3 +2338,5 @@ Fri Sep  3 21:21:22 2004
   - make sure bug in DT formulas, donj't accept 'p2' as avariable when there are only 2 parents (i.e.,
     in formula should check that p_k, that k is valid for current number of parents).  
 
+Mon Sep  6 11:02:55 2004
+  - get cliques of size 1 working (there is no reason they should not work as they are valid cliques). 
