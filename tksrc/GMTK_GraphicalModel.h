@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +31,6 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_GM.h" 
 #include "GMTK_CPT.h"
-#include "GMTK_GMTemplate.h"
 #include "GMTK_MixGaussiansCommon.h"
 
 class RandomVariable;
@@ -38,6 +38,8 @@ class RandomVariable;
 class GraphicalModel
 {
 private:
+
+
 
   struct frame {
     // list of random variables for this frame
@@ -59,6 +61,7 @@ public:
 
   static bool topologicalSort(vector<RandomVariable*> &inputVarList,
 			      vector<RandomVariable*> &outputVarList);
+
 
   ///////////////////////////////////////////
   // print this graphical model
