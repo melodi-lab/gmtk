@@ -371,6 +371,11 @@ class ObservationMatrix {
     return (float*)(featuresBase + _stride*f + startFeature);
   }
 
+  float floatAtFrame(unsigned f, 
+		     const unsigned startFeature) {
+    assert (f >= 0 && f < _numFrames);
+    return *(float*)(featuresBase + _stride*f + startFeature);
+  }
 
   unsigned*const unsignedVecAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
