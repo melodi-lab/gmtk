@@ -1480,3 +1480,16 @@ Thu Feb 12 11:59:35 2004
     and report back what it has found so far.
   - add check pointing in triangulation code (say every 10 minutes, save  
     the best .trifile so far found).
+
+
+Sat Feb 14 22:09:30 2004
+In backward pass during EM, we might have zero probs that were only
+discovered in backward pass, so check for 0 (or threshold) before
+doing EM update. Should have an EM pruning threshold as well.
+So, we'll have three pruning thresholds:
+   1) cbeam - clique beam
+   2) sbeam - separator beam
+   3) ebeam - EM posterior probabiltiy beam, below this we don't
+              bother to update.
+
+
