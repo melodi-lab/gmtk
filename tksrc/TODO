@@ -2521,3 +2521,15 @@ Thu Oct 28 13:21:03 2004
 Mon Nov 15 13:55:16 2004
   - make sure we are compatible with quicknet for NN-based VE.
 
+Fri Nov 19 12:15:41 2004
+  - for docs: include bit about how different structures can be used to train same set of parameters  
+    by using the same master file.
+  - for docs: include bit aboutu how to use short utterances by concatenating things, and using a VE node
+    with value 1, and with an always 1 DT. Also, why it works.
+
+
+
+
+ 
+
+
