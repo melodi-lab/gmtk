@@ -365,7 +365,8 @@ public:
   void triangulateSimulatedAnnealing(set<RandomVariable*>     nodes,
 				     vector<MaxClique>&       cliques,
 				     vector<RandomVariable*>& best_order,
-				     vector<nghbrPairType>    orgnl_nghbrs
+				     vector<nghbrPairType>    orgnl_nghbrs,
+                                     string&                  comment 
 				     );
 
   // triangulate by maximum cardinality search
