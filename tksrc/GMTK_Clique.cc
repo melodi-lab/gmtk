@@ -123,7 +123,6 @@ vector<RandomVariable::DiscreteVariableType> &vec)
 
 void ValueHashTable::resize(int size)
 {
-cout << "resizing " << size << endl;
     table_size = size;  // used for addressing; not same as table.size()
     nt.resize(table_size);
     for (int i=0; i<table_size; i++) nt[i] = NULL;
