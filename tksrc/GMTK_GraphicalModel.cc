@@ -80,6 +80,7 @@ GraphicalModel::topologicalSortRecurse(vector<RandomVariable*>& outputVarList,
     if (rv->tag == 0) {
       bool res = topologicalSortRecurse(outputVarList,rv,position);
       if (!res)
+	// directed graph has a loop
 	return false;
     } else if (rv->tag == 1)
       // directed graph has a loop
