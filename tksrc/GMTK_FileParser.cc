@@ -44,89 +44,92 @@ VCID("$Header$");
 
 # The GM Grammar:
 
-GM = "GRAPHICAL_MODEL" identifier Frame_List Chunk_Specifier
+GM = "GRAPHICAL_MODEL" identifier FrameList ChunkSpecifier
 
-Frame_List = Frame Frame_List | NULL
+FrameList = Frame FrameList | NULL
 
-Frame = "frame" ":" integer "{" RV_List "}"
+Frame = "frame" ":" integer "{" RandomVariableList "}"
 
-RV_List = RV RV_List | NULL
+RandomVariableList = RandomVariable RandomVariableList | NULL
 
-RV = "variable" ":" name "{" RV_Attribute "}"
+RV = "variable" ":" name "{" RandomVariableAttribute "}"
 
-RV_Attribute_List =
-        RV_Attribute RV_Attribute_List | NULL
+RandomVariableAttributeList =
+        RandomVariableAttribute RandomVariableAttributeList | NULL
 
-RV_Attribute = Type_Attribute | Parents_Attribute
+RandomVariableAttribute = TypeAttribute | ParentsAttribute
 
-Type_Attribute = "type" ":" RV_Type ";"
+TypeAttribute = "type" ":" RandomVariableType ";"
 
-Parents_Attribute =
-      ( "switchingparents" ":" Switching_Parent_LIST ";" )
-   |  ( "conditionalparents" ":" Conditional_Parent_Spec_List  ";" )
+ParentsAttribute =
+      ( "switchingparents" ":" SwitchingParentList ";" )
+   |  ( "conditionalparents" ":" ConditionalParentSpecList  ";" )
     # Semanatics requires that we have both
     # switchingparents & conditionalparents in a RV. Note that
     # the parse grammer allows this not to be the case.
 
-RV_Type = Discrete_RV_TYPE | Continuous_RV_TYPE
+RandomVariableType = RandomVariableDiscreteType | 
+                     RandomVariableContinuousType
 
-Discrete_RV_TYPE = 
+RandomVariableDiscreteType = 
       "discrete" 
       ( "hidden" | "observed" integer ":" integer ) 
      "cardinality" integer
 
-Continuous_RV_TYPE = 
+RandomVariableContinuousType = 
        "continuous" 
        ("hidden" | "observed" integer:integer)
 
-Switching_Parent_LIST = "nil" | Parent_List "using" Mapping_Spec
+SwitchingParentList = "nil" | ParentList "using" MappingSpec
 
-Conditional_Parent_Spec_List =
-    Conditional_Parent_Spec "|" Conditional_Parent_Spec_List
-  | Conditional_Parent_Spec
+ConditionalParentSpecList =
+    ConditionalParentSpec "|" ConditionalParentSpecList
+  | ConditionalParentSpec
 
-Conditional_Parent_Spec = Conditional_Parent_List using Implementation
+ConditionalParentSpec = ConditionalParentList using Implementation
 
-Cond_Parent_List = "nil" | Parent_List
+ConditionalParentList = "nil" | ParentList
 
-Parent_List = 
-       Parent "," Parent_List
+ParentList = 
+       Parent "," ParentList
      | Parent
 
 Parent = identifier "(" integer ")"
 
 Implementation = DiscreteImplementation | ContinousImplementation
 
-DiscreteImplementation = "MDCPT" | "MSCPT"
+DiscreteImplementation = ( "MDCPT" | "MSCPT" )  "(" ListIndex ")"
 
-ContinousImplementation = DirectContObsDist | MappingToAContObsDist
-
-DirectContObsDist = ContObsDistType "(" List_Index ")"
-       # direct cont. observation dist is used if conditional parents 
-       # are nil
-       # in which case we select only one dist. This
+ContinousImplementation = ContObsDistType
+        (
+             "(" ListIndex ")"
+           |
+              MappingSpec
+        )
+       # A ContinousImplementation has two cases.
+       # 1) the first case is used if conditional parents 
+       # are nil in which case we select only one dist. This
        # is analogous to the discrete case where you directly
        # select a CPT with the appropriate parents
-
-MappingToAContObsDist = ContObsDistType Mapping_Spec
-       # this is when we have multiple conditional parents,
-       # and we need another decision tree to map
+       # 2) in the second case, this is when we have multiple
+       #  conditional parents, and we need another decision tree to map
        # from the conditional parents values to the appropriate
        # distribution.
+
 
 ContObsDistType = "mixGaussian" | "gausSwitchMixGaussian" 
   | "logitSwitchMixGaussian" | "mlpSwitchMixGaussian"
 
-Mapping_Spec = "mapping" "(" List_Index ")"
-     # A Mapping_Spec always indexes into one of the decision trees.
+MappingSpec = "mapping" "(" ListIndex ")"
+     # A MappingSpec always indexes into one of the decision trees.
      # The integer (or string) is used to index into a table
      # of decision trees to choose the decision tree
      # that will map from the switching parents to one of the
      # conditional parent lists.
 
-Chunk_Specifier = "chunk"  integer ":" integer
+ChunkSpecifier = "chunk"  integer ":" integer
 
-List_Index = integer | string
+ListIndex = integer | string
 
 ======================================================================
 
@@ -134,7 +137,9 @@ List_Index = integer | string
 Example of a grammatical GM file
 -----------------------------------
 
-# Actual model definition
+#
+# Actual model definition (that parsed).
+# 
 GRAPHICAL_MODEL FHMM
 
 frame:0 {
@@ -164,15 +169,15 @@ frame:0 {
        }
 
        variable : obs1 {
-          type: continous observed 0:5 ;
-          switchingparents: state1(0), state2(0) 
+          type: continuous observed 0:5 ;
+          switchingparents: state1(0), state2(0)
                    using mapping("state2obs6") ;
           conditionalparents: 
-                 nil using mixGaussian("the_forth_gaussian");
+                 nil using mixGaussian("the_forth_gaussian")
                | state1(0) using mixGaussian mapping("gausmapping");
        }
        variable : obs2 {
-          type: continous observed 6:25  ;
+          type: continuous observed 6:25  ;
           switchingparents: nil ;
           conditionalparents: 
                 state1(0) using mlpSwitchMixGaussian
@@ -216,16 +221,16 @@ frame:1 {
        # like in the first frame, the obs. are only dep.
        # on RVs from the current frame.
        variable : obs1 {
-          type: continous observed 0:5 ;
+          type: continuous observed 0:5 ;
           switchingparents: state1(0), state2(0) 
                    using mapping("state2obs6") ;
           conditionalparents: 
-                 nil using mixGaussian("the_forth_gaussian");
+                 nil using mixGaussian("the_forth_gaussian")
                | state1(0) using mixGaussian mapping("gausmapping");
        }
 
        variable : obs2 {
-          type: continous observed 6:25  ;
+          type: continuous observed 6:25  ;
           switchingparents: nil ;
           conditionalparents: 
                 state1(0) using mlpSwitchMixGaussian
@@ -749,7 +754,6 @@ FileParser::parseRandomVariableContinuousType()
 
 }
 
-
 void
 FileParser::parseRandomVariableParentAttribute()
 {
@@ -793,11 +797,197 @@ FileParser::parseRandomVariableParentAttribute()
 void
 FileParser::parseSwitchingParentList()
 {
+
+  ensureNotAtEOF("list of switching parents");
+  if (tokenInfo == KW_Nil) {
+    consumeToken();
+  } else {
+    parseParentList();
+
+    ensureNotAtEOF(KW_Using);
+    if (tokenInfo != KW_Using)
+      parseError(KW_Using);
+    consumeToken();
+
+    parseMappingSpec();
+  }
 }
 
 void
 FileParser::parseConditionalParentSpecList()
 {
+  parseConditionalParentSpec();
+  if (tokenInfo == TT_VirtBar) {
+    consumeToken();
+    parseConditionalParentSpecList();
+  }
+}
+
+void
+FileParser::parseConditionalParentSpec()
+{
+  parseConditionalParentList();
+
+  ensureNotAtEOF(KW_Using);
+  if (tokenInfo != KW_Using)
+    parseError(KW_Using);
+  consumeToken();
+
+  parseImplementation();
+}
+
+void
+FileParser::parseConditionalParentList()
+{
+  if (tokenInfo == KW_Nil) {
+    consumeToken();
+  } else {
+    parseParentList();
+  }
+}
+
+void
+FileParser::parseParentList()
+{
+  parseParent();
+  if (tokenInfo == TT_Comma) {
+    consumeToken();
+    parseParentList();
+  }
+}
+
+void
+FileParser::parseParent()
+{
+  ensureNotAtEOF("parent RV name");
+  if (tokenInfo != TT_Identifier) 
+    parseError("parent RV name");
+  consumeToken();
+
+  ensureNotAtEOF("(");
+  if (tokenInfo != TT_LeftParen) 
+    parseError("(");
+  consumeToken();
+
+  ensureNotAtEOF("parent RV offset");
+  if (tokenInfo != TT_Integer) 
+    parseError("parent RV offset");
+  consumeToken();
+
+  ensureNotAtEOF(")");
+  if (tokenInfo != TT_RightParen) 
+    parseError(")");
+  consumeToken();
+
+}
+
+void
+FileParser::parseImplementation()
+{
+  
+  ensureNotAtEOF("implementation");  
+  if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT) {
+    parseDiscreteImplementation();
+  } else {
+    parseContinuousImplementation();
+  }
+}
+
+
+void
+FileParser::parseDiscreteImplementation()
+{
+  ensureNotAtEOF("discrete implementation");  
+  if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT) {
+    consumeToken();
+
+    ensureNotAtEOF("(");
+    if (tokenInfo != TT_LeftParen) {
+      parseError("(");
+    }
+    consumeToken();
+  
+    parseListIndex();
+
+    ensureNotAtEOF(")");
+    if (tokenInfo != TT_RightParen) {
+      parseError(")");
+    }
+    consumeToken();
+
+
+  } else {
+    parseError("discrete implementation");
+  }
+
+}
+
+
+void
+FileParser::parseContinuousImplementation()
+{
+  
+  parseContObsDistType();
+
+  ensureNotAtEOF("remainder of continuous random variable spec");  
+  if (tokenInfo == TT_LeftParen) {
+    // this presumably comes from a RV with nil conditional parents.
+    consumeToken();
+
+    parseListIndex();
+
+    ensureNotAtEOF(")");
+    if (tokenInfo != TT_RightParen) {
+      parseError(")");
+    }
+    consumeToken();
+
+  } else {
+    parseMappingSpec();
+  }
+}
+
+
+void
+FileParser::parseContObsDistType()
+{
+  ensureNotAtEOF("continuous observation distribution type");
+  if (tokenInfo == KW_MixGaussian) {
+    consumeToken();
+  } else if (tokenInfo == KW_GausSwitchMixGaussian) {
+    consumeToken();
+  }  else if (tokenInfo == KW_LogitSwitchMixGaussian) {
+    consumeToken();
+  }  else if (tokenInfo == KW_MlpSwitchMixGaussin) {
+    consumeToken();
+  } else 
+    parseError("continuous observation distribution type");
+}
+
+
+void
+FileParser::parseMappingSpec()
+{
+
+  ensureNotAtEOF(KW_Mapping);
+  if (tokenInfo != KW_Mapping)
+    parseError(KW_Mapping);
+  consumeToken();
+
+  ensureNotAtEOF("(");
+  if (tokenInfo != TT_LeftParen) {
+    parseError("(");
+  }
+  consumeToken();
+  
+  parseListIndex();
+
+  ensureNotAtEOF(")");
+  if (tokenInfo != TT_RightParen) {
+    parseError(")");
+  }
+  consumeToken();
+
 }
 
 void
@@ -823,6 +1013,20 @@ FileParser::parseChunkSpecifier()
     parseError("expecting second chunk integer");
   consumeToken();
 
+}
+
+
+void
+FileParser::parseListIndex()
+{
+
+  ensureNotAtEOF("list index");
+  if (tokenInfo == TT_Integer) {
+    consumeToken();
+  } else if (tokenInfo == TT_String) {
+    consumeToken();
+  } else
+    parseError("expecting list index");
 }
 
 
