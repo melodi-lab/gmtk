@@ -67,7 +67,7 @@ public:
   //////////////////////////////////
   // various forms of probability calculation
   void becomeAwareOfParentValues( sArray <int>& parentValues );
-  void becomeAwareOfParentValues( sArray <randomVariable *>& parents );
+  void becomeAwareOfParentValues( sArray <RandomVariable *>& parents );
 
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
@@ -80,7 +80,7 @@ public:
     becomeAwareOfParentValues(parentValues);
     return probGivenParents(val);
   }
-  logpr probGivenParents(sArray <randomVariable *>& parents,
+  logpr probGivenParents(sArray <RandomVariable *>& parents,
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents);
@@ -91,33 +91,44 @@ public:
     return cardinalities[numParents]; 
   }
   // returns an iterator for the first one.
-  iterator first() {
+  iterator begin() {
     assert ( bitmask & bm_basicAllocated );
-    iterator it;
-    it.val = 0;
+    iterator it(this);
+    it.internalState = 0;
     it.probVal = *mdcpt_ptr;
     return it;
   }
+
+  iterator end() {
+    assert ( bitmask & bm_basicAllocated );
+    iterator it(this);
+    it.internalState = cardinalities[numParents]-1;
+    return it;
+  }
+
   // Given a current iterator, return the next one in the sequence.
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
 
-    if (it.val == cardinalities[numParents]-1)
+    if (it.internalState == cardinalities[numParents]-1)
       return false;
-    it.val++;
-    it.probVal = mdcpt_ptr[it.val];
+    it.internalState++;
+    it.probVal = mdcpt_ptr[it.internalState];
     return true;
   }
+
+
+  //////////////////
   int randomSample();
 
   
   ///////////////////////////////////////////////////////////  
   // Re-normalize the output distributions
-  void normalize() {};
+  void normalize();
   // set all values to random values.
   void makeRandom();
   // set all values to uniform values.
-  void makeUniform() {};
+  void makeUniform();
 
   //////////////////////////////////////////////
   // read/write basic parameters

@@ -28,6 +28,32 @@
 #include "logp.h"
 #include "sArray.h"
 
+/////////////////////
+// forward refs
+class Dense1DPMF;
+class Sparse1DPMF;
+class MeanVector;
+class DiagCovarVector;
+class RealMatrix;
+class PackedSparseRealMatrix;
+class DlinkMatrix;
+class WeightMatrix;
+class MDCPT;
+class MSCPT;
+
+class DiagGaussian;
+class LinMeanCondDiagGaussian;
+class NLinMeanCondDiagGaussian;
+
+class MixGaussians;
+class GausSwitchingMixGaussians;
+class LogitSwitchingMixGaussians;
+class MLPSwitchingMixGaussians;
+
+class RngDecisionTree;
+class Dlinks;
+class GMTK_GM;
+
 
 class GMParms {
 
@@ -83,7 +109,7 @@ class GMParms {
 
   ///////////////////////////////////
   // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
-  sArray< SMDCPT* > sMdCpts;
+  sArray< MSCPT* > dSCpts;
 
 
   //////////////////////////////////////////////////////////////////
@@ -117,22 +143,22 @@ class GMParms {
   ////////////////////////////////
   // Mixtures of Gaussians (could be a heterogeneous mixutre of
   // different types above)
-  sArray < GMTK_MixGaussians* > mixGaussians;
+  sArray < MixGaussians* > mixGaussians;
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with Gaussians.
-  sArray < GMTK_GausSwitchingMixGaussians* > gausSwitchMixGaussians;
+  sArray < GausSwitchingMixGaussians* > gausSwitchMixGaussians;
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with logistic regression (i.e., 1 layer MLP)
-  sArray< GMTK_LogitSwitchingMixGaussians* > logitSwitchMixGaussians;
+  sArray< LogitSwitchingMixGaussians* > logitSwitchMixGaussians;
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with 2 layer (2 weight matrix) MLP
-  sArray< GMTK_LogitSwitchingMixGaussians* > mlpSwitchMixGaussians;
+  sArray< MLPSwitchingMixGaussians* > mlpSwitchMixGaussians;
 
 
   /********************************************************************/
