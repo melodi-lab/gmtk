@@ -37,6 +37,9 @@
 #include "general.h"
 #include "error.h"
 
+
+#define HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE (200000)
+
 extern const unsigned HashTable_SizePrimesArray;
 extern const unsigned HashTable_PrimesArray[];
 
@@ -79,6 +82,11 @@ public:
   // the index into the above prime array of the current size.
   unsigned primesArrayIndex; 
 
+  // the initial starting index into the above prime 
+  // array based on the contructors approximate starting
+  // size.
+  unsigned initialPrimesArrayIndex; 
+
   //////////////////////////////////////////////////////////
   // the actual hash table, an array of pointers to T's
   vector < T* > table;
@@ -92,7 +100,8 @@ public:
 public:
 
   // constructors
-  HashTable(unsigned approximateStartingSize = 200000) {
+  HashTable(unsigned approximateStartingSize = 
+	    HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE) {
     _totalNumberEntries=0;
     for (primesArrayIndex=0;
 	 primesArrayIndex<HashTable_SizePrimesArray;
@@ -103,12 +112,15 @@ public:
     if (primesArrayIndex == HashTable_SizePrimesArray)
       error("ERROR: Can't create hash table of approximate size %u\n",
 	    approximateStartingSize);
+    initialPrimesArrayIndex = primesArrayIndex;
 #ifdef COLLECT_COLLISION_STATISTICS
     maxCollisions = 0;
     numCollisions = 0;
     numInserts = 0;
 #endif
   }
+
+  // destructors
   ~HashTable() {
     clear();
   } 
@@ -263,14 +275,14 @@ public:
 
   /////////////////////////////////////////////////////////
   // clear out the table entirely, including deleting
-  // all memory pointed to by the T* pointers.
+  // all memory pointed to by the T* pointers. 
   void clear() {
     for (unsigned i=0; i<table.size(); i++)
       if (table[i]) 
 	delete table[i];
     table.clear();
     _totalNumberEntries=0;
-    primesArrayIndex=0;
+    primesArrayIndex=initialPrimesArrayIndex;
   }
 
   ////////////////////////////////////////////////////////////////
