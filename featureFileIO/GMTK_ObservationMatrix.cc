@@ -73,7 +73,7 @@ v *    2- Add flatascii and flatbin formats
  *   (could treat them as single sentences or have each frame prefixed
  *   by the sentence number and maybe the frame number)
  *    3- Add support for the WAVEFORM HTK paramter kind 
- *   
+ *      
  *            
  *   Dec 02, 2003 -- Fixed discrete data reading bug when using the
  *   HTK format.  HTK uses shorts not ints.
@@ -95,10 +95,6 @@ v *    2- Add flatascii and flatbin formats
 #include <stdio.h>
 #include "GMTK_ObservationMatrix.h"
 
-#define INITIAL_BUF_NUM_FRAMES 1000 
-
-
-// karim - 29aug2003
 #include "fileParser.h"
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
 #ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
@@ -123,8 +119,8 @@ v *    2- Add flatascii and flatbin formats
 #endif
 
 
-
-
+void check_required_inputs(const char** fof_names, const unsigned* formats, const unsigned* n_floats, const unsigned *n_ints);
+char* init_range_str(const char** range_str, unsigned stream_no);
 
 
 // create ObservationMatrix object
@@ -154,189 +150,6 @@ ObservationMatrix::ObservationMatrix() {
   _filterFileName = NULL;
 }
 
-// initializes input streams, allocates feature buffer 
-
-void ObservationMatrix::openFiles(int n_files,
-			     const char **fof_names,
-			     const char **cont_range_str,
-			     const char **disc_range_str,
-			     unsigned *n_floats,
-			     unsigned *n_ints,
-			     unsigned *formats,
-			     bool *swapflag,
-			     const unsigned _startSkipa,
-			     const unsigned _endSkipa,
-			     bool cppIfAscii,
-			     char* cppCommandOptions,
-			     const char **pr_range_str,
-			     unsigned* actionIfDiffNumFrames,
-			     unsigned* actionIfDiffNumSents,
-			     char** perStreamPreTransforms,
-			     char* postTransforms,
-			     unsigned ftrcombo,
-			     const char **sr_range_str,
-			     const char **preTransFrameRangeStr) 
-{
-  
-  assert (n_files > 0);
-
-  unsigned max_num_segments=0;
-
-  _prrngStr=pr_range_str;
-  _preTransFrameRangeStr=preTransFrameRangeStr;
-  _actionIfDiffNumFrames=actionIfDiffNumFrames;
-  _actionIfDiffNumSents=actionIfDiffNumSents;
-  _perStreamPreTransforms=perStreamPreTransforms;
-  _postTransforms=postTransforms;
-
-  _numStreams = n_files;
-
-  _ftrcombo=ftrcombo;
-
-  // obligatory info
-
-  if (fof_names == NULL)
-    error("ObservationMatrix::openFiles: list of file names is NULL\n");
-
-  if (formats == NULL)
-    error("ObservationMatrix::openFiles: list of file formats is NULL\n");
-
-  if (n_floats == NULL)
-    error("ObservationMatrix::openFiles: list of number of floats is NULL\n");
-
-  if (n_ints == NULL)
-    error("ObservationMatrix::openFiles: list of number of ints is NULL\n");
-
-  _inStreams = new StreamInfo*[_numStreams];
-  for (unsigned i = 0; i < _numStreams; i++) {
-    _inStreams[i] = NULL;
-  }
-
-  // create stream info for each stream
-
-  for (unsigned i = 0; i < _numStreams; i++) {
-
-    if (fof_names[i] == NULL)
-      error("ObservationMatrix::openFiles: file list for stream %i is NULL\n",i);
-
-    // when range string is missing, assume default = all features
-
-    const char *crng, *drng, *srrng;
-    
-    if (cont_range_str == NULL || cont_range_str[i] == NULL )
-      crng = "all"; 
-    else
-      crng = cont_range_str[i];
-
-    if (disc_range_str == NULL || disc_range_str[i] == NULL)
-      drng = "all";
-    else
-      drng = disc_range_str[i];
-
-    if (sr_range_str == NULL || sr_range_str[i] == NULL)
-      srrng = "all";
-    else
-      srrng = sr_range_str[i];
-
-
-    // assume default = no swapping
-
-    bool sflag;
-
-    if (swapflag == NULL || swapflag[i] == false)
-      sflag = false; 
-    else
-      sflag = swapflag[i];
-
-    // If we want to add deltas, something needs to be done about the
-    // cont range: it wouldn't be valid to have a range extend into
-    // the deltas for example.  Therefore we need to know about
-    // delats at this point already
-
-    _inStreams[i] = new StreamInfo(fof_names[i],crng,drng,&n_floats[i],&n_ints[i],&formats[i],sflag,i,cppIfAscii,cppCommandOptions,srrng);
-
-    // check stream sizes and take action according to the value of _actionIfDiffNumSents
-    if(_actionIfDiffNumSents==NULL || _actionIfDiffNumSents[i]==ERROR  || _actionIfDiffNumSents[i]==TRUNCATE_FROM_END) {
-      if (i > 0 ) {
-	size_t a = _inStreams[i-1]->getFofSize();
-	size_t b = _inStreams[i]->getFofSize();
-	if (a != b) {
-	  if(_actionIfDiffNumSents!=NULL && _actionIfDiffNumSents[i]==ERROR) {
-	    error("ERROR: ObservationMatrix: different number of files in '%s' (%li) and '%s' (%li)\n",fof_names[i-1],a,fof_names[i], b);
-	  }
-	  else {
-	    warning("WARNING ObservationMatrix: different number of files in '%s' (%li) and '%s' (%li) - will only read minimum number\n",fof_names[i-1],a,fof_names[i], b);
-	  
-	    a < b ? _inStreams[i]->setFofSize(a) : _inStreams[i-1]->setFofSize(b);
-	  }
-	}
-      }
-      max_num_segments =  _inStreams[0]->getFofSize(); // same for all streams;
-    }
-    else {
-      //find maximumm number of sentences/segments
-      if(_inStreams[i]->getFofSize() > max_num_segments)
-	max_num_segments=_inStreams[i]->getFofSize();
-    }
-
-    if (n_floats[i] > _maxContinuous)
-      _maxContinuous = n_floats[i];
-
-    if (n_ints[i] > _maxDiscrete)
-      _maxDiscrete = n_ints[i];
-
-    // add up features used for observation matrix
-    _numContinuous += _inStreams[i]->getNumFloatsUsed();
-    _numDiscrete += _inStreams[i]->getNumIntsUsed();
-#if !(ALLOW_VARIABLE_DIM_COMBINED_STREAMS)
-    if(ftrcombo!=FTROP_NONE && i >0) {
-      if(n_floats[i] != n_floats[i-1]) {
-	error("ERROR:  When doing feature combination, the number of floats across streams has to be the same.\n");
-      }
-    }
-#endif
-  }  // end of for (unsigned i = 0; i < _numStreams; i++)
-
-  if(ftrcombo!=FTROP_NONE) {
-    // we'll combine features streams so the overall number of floats will be the max.
-    // Labels are not affected by the feature combination.  Could be changed in the future.
-    _numContinuous=_maxContinuous;
-  }
-
-  _numSegments = max_num_segments;
-
-  _numFeatures = _numContinuous + _numDiscrete;
-
-  if(_numFeatures == 0) { // possible this can happen if we all the ranges are -1 (i.e. special case in which no feature is selected)
-    error("ERROR: No features (continuous or discrete) were selected.  Check the feature ranges.");
-  }
-
-  _stride = _numFeatures; 
-
-  _startSkip = _startSkipa;
-  _endSkip = _endSkipa;
-  _totalSkip = _startSkip + _endSkip;
-
-  // initialize feature buffer 
-  _bufSize = INITIAL_BUF_NUM_FRAMES;
-
-#if ALLOW_VARIABLE_DIM_COMBINED_STREAMS
-  features.resizeAndZero(_bufSize * _stride); 
-#else
-  features.resize(_bufSize * _stride); 
-#endif
-  featuresBase = features.ptr + _stride*_startSkip;
-
-  DBGFPRINTF((stderr,"Allocating %dx%d=%d entries each temp float buffer\n",_bufSize,_maxContinuous,_bufSize * _maxContinuous));
-  _tmpFloatSenBuffer.resize(_bufSize * _maxContinuous);
-  _tmpIntSenBuffer.resize(_bufSize * _maxDiscrete);
-
-  _repeat.resize(_bufSize);
-
-  _cppIfAscii=cppIfAscii;
-  _cppCommandOptions=cppCommandOptions;
-}
-
 ObservationMatrix::~ObservationMatrix() {
   for (unsigned i = 0; i < _numStreams; i++)
     delete _inStreams[i];
@@ -346,10 +159,225 @@ ObservationMatrix::~ObservationMatrix() {
     delete [] _filterFileName;
 }
 
+// initializes input streams, allocates feature buffer 
+
+void ObservationMatrix::openFiles(int n_files,
+			     const char **fof_names,
+			     const char **cont_range_str,
+			     const char **disc_range_str,
+			     unsigned *n_floats,
+			     unsigned *n_ints,
+			     unsigned *formats,
+			     bool *swap_flag,
+			     const unsigned start_skip,
+			     const unsigned end_skip,
+			     bool cpp_if_ascii,
+			     char* cpp_command_options,
+			     const char **pr_range_str,
+			     unsigned* actionIfDiffNumFrames,
+			     unsigned* actionIfDiffNumSents,
+			     char** perStreamPreTransforms,
+			     char* postTransforms,
+			     unsigned ftrcombo,
+			     const char **segment_range_str,
+			     const char **preTransFrameRangeStr,
+			     const char * finalFrameRangeStr) 
+{
+  assert (n_files > 0);
+  check_required_inputs(fof_names,formats,n_floats,n_ints);
+
+  _numStreams = n_files;
+  _prrngStr=pr_range_str;
+  _preTransFrameRangeStr=preTransFrameRangeStr;
+  _finalFrameRangeStr=finalFrameRangeStr;
+  _actionIfDiffNumFrames=actionIfDiffNumFrames;
+  _actionIfDiffNumSents=actionIfDiffNumSents;
+  _perStreamPreTransforms=perStreamPreTransforms;
+  _postTransforms=postTransforms;
+  _ftrcombo=ftrcombo; 
+  _cppIfAscii            = (bool)      cpp_if_ascii;
+  _cppCommandOptions     = (char*)     cpp_command_options;
+
+  _inStreams = new StreamInfo*[_numStreams];
+  assert(_inStreams != NULL);
+  
+  ///////////////////////////////////////////////////////////////////////
+  ////////////////   Create Streams /////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////
+  for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
+    
+    if (fof_names[stream_no] == NULL) error("ObservationMatrix::openFiles: file list for stream %i is NULL\n",stream_no);
+
+    // When range string is missing, assume default = all features
+    const char *crng, *drng, *srng;
+    crng=init_range_str(cont_range_str,stream_no);
+    drng=init_range_str(disc_range_str,stream_no);
+    srng=init_range_str(segment_range_str,stream_no);
+
+    bool sflag;
+    if (swap_flag == NULL || swap_flag[stream_no] == false) sflag = false; 
+    else sflag = swap_flag[stream_no];
+
+    // If we want to add deltas, something needs to be done about the
+    // cont range: it wouldn't be valid to have a range extend into
+    // the deltas for example.
+    _inStreams[stream_no] = new StreamInfo(fof_names[stream_no],crng,drng,(unsigned*)&n_floats[stream_no],(unsigned*)&n_ints[stream_no],(unsigned*)&formats[stream_no],sflag,stream_no,(bool)cpp_if_ascii,(char*)cpp_command_options,srng);
+    assert(_inStreams[stream_no] != NULL);
+  }  // end for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++)
+  
+  ///////////////////////////////////////
+  ////// Check stream lengths ///////////
+  ///////////////////////////////////////
+  _numSegments = 0;
+  _numSegments = checkNumSegments(_inStreams,_numStreams,_actionIfDiffNumSents);
+  ///////////////////////////////////////
+
+  ///////////// Check num features ///////////////////////////////////////////////////////////////////
+  _numContinuous = _numDiscrete = _maxContinuous = _maxDiscrete = 0;
+  checkNumFeatures(_inStreams, _numStreams, &_numContinuous,&_numDiscrete, &_maxContinuous, &_maxDiscrete, _ftrcombo);
+  _numFeatures = _numContinuous + _numDiscrete;
+  if(_numFeatures == 0)
+    error("ERROR: No features (continuous or discrete) were selected.  Check the feature ranges.");
+  _stride = _numFeatures; // _stride might become an option in the future and be != _numFeatures
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  _startSkip = start_skip;
+  _endSkip =   end_skip;
+
+  _bufSize = INITIAL_NUM_FRAMES_IN_BUFFER;
+
+#if ALLOW_VARIABLE_DIM_COMBINED_STREAMS
+  features.resizeAndZero(_bufSize * _stride); 
+#else
+  features.resize(_bufSize * _stride); 
+#endif
+  featuresBase = features.ptr + _stride*_startSkip;
+
+  _tmpFloatSenBuffer.resize(_bufSize * _maxContinuous);
+  _tmpIntSenBuffer.resize(_bufSize * _maxDiscrete);
+  _repeat.resize(_bufSize);
+}
+
+/** 
+ * Verifies that required inputs are provided.
+ * Exists if that's not the case.
+ */
+void check_required_inputs(const char** fof_names, const unsigned* formats, const unsigned* n_floats, const unsigned *n_ints) {
+  if (fof_names == NULL) error("ObservationMatrix::openFiles: list of file names is NULL\n");
+  if (formats == NULL) error("ObservationMatrix::openFiles: list of file formats is NULL\n");
+  if (n_floats == NULL) error("ObservationMatrix::openFiles: list of number of floats is NULL\n");
+  if (n_ints == NULL) error("ObservationMatrix::openFiles: list of number of ints is NULL\n");
+}
+
+char* init_range_str(const char** range_str, unsigned stream_no) {
+  char* rng=NULL;
+  if (range_str == NULL || range_str[stream_no] == NULL ) rng = "all"; 
+  else rng = (char*) range_str[stream_no];
+  return rng;
+}
+
+/**
+ *
+ * Side effects:  truncates the length of streams if that's called for.
+ */
+unsigned ObservationMatrix::checkNumSegments(StreamInfo* streams[], unsigned n_streams, unsigned* action_if_diff_stream_len) {
+  
+  unsigned min_len=streams[0]->getFofSize();
+  unsigned max_len=streams[0]->getFofSize();
+  if(max_len == 0) warning("WARNING: ObservationMatrix:OpenFiles:checkNumSegments:  stream %d is empty\n",0);
+
+  bool got_error    = false;
+  bool got_truncate = false;
+  bool got_expand   = false;
+
+  for(unsigned stream_no=0; stream_no < n_streams; ++stream_no) {
+    unsigned len=streams[stream_no]->getFofSize();
+    if(len < min_len) min_len=len;
+    if(len > max_len) max_len=len;
+    
+    if(	(action_if_diff_stream_len != NULL && action_if_diff_stream_len[stream_no] == SEGMATCH_ERROR) )
+      got_error = true; 
+    // the default is always to truncate (i.e. NULL case below)
+    else if(action_if_diff_stream_len == NULL || action_if_diff_stream_len[stream_no] == SEGMATCH_TRUNCATE_FROM_END)
+      got_truncate =true;
+    else if( action_if_diff_stream_len != NULL &&
+	(action_if_diff_stream_len[stream_no] == SEGMATCH_REPEAT_LAST || 
+	 action_if_diff_stream_len[stream_no] == SEGMATCH_WRAP_AROUND)
+	     ) 
+      got_expand = true;
+  }
+
+  if(max_len == 0) 
+    error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments:  all streams have zero length");
+
+  // error checking
+  if(min_len != max_len) {
+    if(got_error)
+      error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: Streams have different # of segments (min=%d, max=%d)",min_len,max_len);
+    
+    if(got_truncate && got_expand)
+      error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: Cannot specify both truncate and expand actions when using streams of different lengths");
+  }
+
+  if(got_truncate) {
+    // Adjust length of streams in the truncate case
+    // We don't need to do that in the expand case
+    for(unsigned stream_no=0; stream_no < n_streams; ++stream_no) {
+	streams[stream_no]->setFofSize(min_len);
+    }
+    if(min_len == 0) 
+      error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: minimum stream length is zero");
+    return min_len;
+  }
+  else
+    return max_len;  // if there is no expand, it means min_len=max_len
+}
+
+void ObservationMatrix::checkNumFeatures(StreamInfo* streams[], unsigned n_streams, unsigned* n_floats, unsigned* n_ints, unsigned* max_n_floats, unsigned* max_n_ints, unsigned ftrcombo) {
+
+  *n_floats = 0;
+  *n_ints   = 0;
+
+  unsigned max_cont =  streams[0]->getNumFloatsUsed();
+  unsigned max_disc =  streams[0]->getNumIntsUsed();
+  for(unsigned stream_no=0; stream_no < n_streams; ++stream_no) {
+    unsigned stream_n_floats = streams[stream_no]->getNumFloatsUsed();
+    unsigned stream_n_ints   = streams[stream_no]->getNumIntsUsed();
+
+    if (stream_n_floats > max_cont)
+      max_cont = stream_n_floats;
+    
+    if (stream_n_ints > max_disc)
+      max_disc = stream_n_ints;
+    
+    // add up features used for observation matrix
+    *n_floats += stream_n_floats;
+    *n_ints   += stream_n_ints;
+
+#if !(ALLOW_VARIABLE_DIM_COMBINED_STREAMS)
+    if(ftrcombo!=FTROP_NONE && stream_no > 0) {
+      if(stream_n_floats != streams[stream_no-1]->getNumFloatsUsed()) {
+	error("ERROR:  ObservationMatrix:openFiles:checkNumFeatures: When doing feature combination, the number of floats across streams has to be the same.\n");
+      }
+    }
+#endif
+  }  // end of for (unsigned stream_no = 0; stream_no < n_streams; stream_no++)
+
+  if(ftrcombo!=FTROP_NONE) {
+    // we'll combine features streams so the overall number of floats will be the max.
+    // Labels are not affected by the feature combination.  Could be changed in the future.
+    *n_floats=max_cont;
+  }
+
+  *max_n_floats = max_cont;
+  *max_n_ints   = max_disc;
+}
+
+
 /**
  *  returns true if true if all streams have the same number of frames
  *  at segno.  Else, returns false (if the action when the number of
- *  frames is different is ERROR, we exit with an error) 
+ *  frames is different is FRAMEMATCH_ERROR, we exit with an error) 
  *
  * max_num_samples get the maximum number of frames over all streams.
  *
@@ -391,10 +419,10 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
       sname = s->fofName;
 
     if(_actionIfDiffNumSents!=NULL &&  segno > s->getFofSize()-1) {
-      if(_actionIfDiffNumSents[stream_no]==REPEAT_LAST) {
+      if(_actionIfDiffNumSents[stream_no]==SEGMATCH_REPEAT_LAST) {
 	segno=s->getFofSize()-1;
       }
-      else if(_actionIfDiffNumSents[stream_no]==WRAP_AROUND) {
+      else if(_actionIfDiffNumSents[stream_no]==SEGMATCH_WRAP_AROUND) {
 	segno= segno % s->getFofSize();
       }
     }
@@ -497,15 +525,15 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, checking if different num frames.\n"));
 
     if( _actionIfDiffNumFrames != NULL ) {
-      if(_actionIfDiffNumFrames[stream_no]==TRUNCATE_FROM_START || _actionIfDiffNumFrames[stream_no]==TRUNCATE_FROM_END) 
+      if(_actionIfDiffNumFrames[stream_no]==FRAMEMATCH_TRUNCATE_FROM_START || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_TRUNCATE_FROM_END) 
 	gotATruncate=true;
-      if(_actionIfDiffNumFrames[stream_no]==REPEAT_FIRST || _actionIfDiffNumFrames[stream_no]==REPEAT_LAST || _actionIfDiffNumFrames[stream_no]==EXPAND_SEGMENTALLY) 
+      if(_actionIfDiffNumFrames[stream_no]==FRAMEMATCH_REPEAT_FIRST || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_REPEAT_LAST || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_EXPAND_SEGMENTALLY) 
 	gotAnExpand=true;
     }
 
     // unless we adjust the number of frames, report an error
     if (stream_no > 0 && cur_prrng_n_samps != _inStreams[stream_no-1]->getPrrngCurNumFrames()) {
-      if(_actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]==ERROR && _actionIfDiffNumFrames[stream_no-1]==ERROR)) {
+      if(_actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]==FRAMEMATCH_ERROR && _actionIfDiffNumFrames[stream_no-1]==FRAMEMATCH_ERROR)) {
 	error("ObservationMatrix::checkIfSameNumSamples: Number of samples for sentence %i don't match for streams %s and %s (%li vs. %li)\n",segno,_inStreams[stream_no-1]->fofName,s->fofName,_inStreams[stream_no-1]->getPrrngCurNumFrames(),cur_prrng_n_samps);
       }
       else {
@@ -534,10 +562,10 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
 
   for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
     s = _inStreams[stream_no];
-    if(gotAnExpand && s->getPrrngCurNumFrames() < prrng_max_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=REPEAT_FIRST && _actionIfDiffNumFrames[stream_no]!=REPEAT_LAST && _actionIfDiffNumFrames[stream_no]!=EXPAND_SEGMENTALLY))  ) {
+    if(gotAnExpand && s->getPrrngCurNumFrames() < prrng_max_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_REPEAT_FIRST && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_REPEAT_LAST && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_EXPAND_SEGMENTALLY))  ) {
       error("ERROR: Stream no %d does not have expand action associated with it and its number of frames, %d, is less than the maximum, %d, across streams",stream_no,s->getPrrngCurNumFrames(),prrng_max_num_samples);
     }
-    if(gotATruncate && s->getPrrngCurNumFrames() > prrng_min_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=TRUNCATE_FROM_START && _actionIfDiffNumFrames[stream_no]!=TRUNCATE_FROM_END))) { 
+    if(gotATruncate && s->getPrrngCurNumFrames() > prrng_min_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_TRUNCATE_FROM_START && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_TRUNCATE_FROM_END))) { 
       error("ERROR: Stream no %d does not have truncate action associated with it and its number of frames, %d, is larger than the minimum, %d, across streams",stream_no,s->getPrrngCurNumFrames(),prrng_min_num_samples);
     }
   }
@@ -585,9 +613,6 @@ void ObservationMatrix::loadSegment(unsigned segno) {
   unsigned max_n_samps,prrng_n_samps;  
   DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: before call to checkIfSameNumSamples\n"));
   bool same_num_samples = checkIfSameNumSamples(segno,max_n_samps,prrng_n_samps);
-  //reset();  // reset the observation buffer to the beginning.
-   
-
 
   // maybe move this to the end after potential upsampling takes place
   if (_totalSkip >= prrng_n_samps)
@@ -622,10 +647,10 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     assert(prrng != NULL);
 
     if(_actionIfDiffNumSents!=NULL &&  segno > s->fofSize-1) {
-      if(_actionIfDiffNumSents[i]==REPEAT_LAST) {
+      if(_actionIfDiffNumSents[i]==SEGMATCH_REPEAT_LAST) {
 	segno=s->fofSize-1;
       }
-      else if(_actionIfDiffNumSents[i]==WRAP_AROUND) {
+      else if(_actionIfDiffNumSents[i]==SEGMATCH_WRAP_AROUND) {
 	segno= segno % s->fofSize;
       }
     }
@@ -706,12 +731,16 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     DBGFPRINTF((stderr,"In loadSegment(): Deleted prrng.\n"));
   }  //end for(int i = 0; i < _numStreams; i++) loop
 
-  _numFrames = _numNonSkippedFrames - _totalSkip;
-
   DBGFPRINTF((stderr,"In loadSegment(): Applying post transforms.\n"));  
   if(_postTransforms!=NULL) {
     applyPostTransforms(_postTransforms,numContinuous(), numDiscrete(), _numNonSkippedFrames);
   }
+
+  if(_finalFrameRangeStr != NULL) {
+    _numNonSkippedFrames = applyFinalFrameRange(_numNonSkippedFrames,_finalFrameRangeStr);
+  }
+
+  _numFrames = _numNonSkippedFrames - _totalSkip;
 
   DBGFPRINTF((stderr,"In loadSegment(): Closing data files.\n"));
   closeDataFiles();
@@ -914,7 +943,7 @@ void ObservationMatrix::applyTransforms(char* trans_str, unsigned num_floats, un
       break;
     case UPSAMPLE_SMOOTH:
       upsampleSmooth(&_tmpFloatSenBuffer, num_floats,num_floats,num_frames,(unsigned)magic_double);
-      upsampleSmooth(&_tmpIntSenBuffer, num_ints,num_ints,num_frames,(unsigned)magic_double);
+      upsampleIntNoSmooth(&_tmpIntSenBuffer, num_ints,num_ints,num_frames,(unsigned)magic_double);
       num_frames = ( (num_frames-1)*((unsigned)magic_double+1) + 1 );  // needed in case another upsample op follows
       break;
     case NORMALIZE:
@@ -974,6 +1003,15 @@ void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats
   while ( (trans=parseTransform(trans_str_ptr,magic_int,magic_double) ) != END_STR) {
     DBGFPRINTF((stderr,"In ObservationMatrix::applyTransforms: trans no = %d (trans_str_ptr=%s)\n",trans,trans_str_ptr));
     switch(trans) {
+    case UPSAMPLE_HOLD:
+      upsampleHold(num_frames,(unsigned)magic_double);
+      num_frames *= ( (unsigned) magic_double + 1);  // needed in case another upsample op follows
+      break;
+    case UPSAMPLE_SMOOTH:
+      upsampleSmooth(num_frames,(unsigned)magic_double);
+      num_frames = ( (num_frames-1)*((unsigned)magic_double+1) + 1 );  // needed in case another upsample op follows
+      break;
+
     case NORMALIZE:
       inPlaceMeanSubVarNorm((float*)features.ptr,numContinuous(),stride(),num_frames);
       break;
@@ -1155,40 +1193,40 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
   // find out how to repeat/truncate frames
   if( _actionIfDiffNumFrames!=NULL ) {
      switch(_actionIfDiffNumFrames[stream_no]) {
-     case ERROR:
+     case FRAMEMATCH_ERROR:
        _repeat[0]=cur_stream_prrng_num_frames;
        _repeat[1]=1;
        _repeat[2]=-1;
        break;
-     case REPEAT_LAST:
+     case FRAMEMATCH_REPEAT_LAST:
        _repeat[0]=cur_stream_prrng_num_frames-1;
        _repeat[1]=1; // print all but the last frame once
        _repeat[2]=1;
        _repeat[3]=diff_in_num_frames+1; // last frame is printed diff_in_num_frames+1 times
        _repeat[4]=-1;  //we stop here
        break;
-     case REPEAT_FIRST:
+     case FRAMEMATCH_REPEAT_FIRST:
        _repeat[0]=1;
        _repeat[1]=diff_in_num_frames+1; // last frame is printed diff_in_num_frames+1 times
        _repeat[2]=cur_stream_prrng_num_frames-1;
        _repeat[3]=1; // print all but the last frame once
        _repeat[4]=-1;  //we stop here
        break;
-     case EXPAND_SEGMENTALLY:
+     case FRAMEMATCH_EXPAND_SEGMENTALLY:
        _repeat[0]=rem;
        _repeat[1]=num_per_frame+1;
        _repeat[2]=cur_stream_prrng_num_frames-rem;
        _repeat[3]=num_per_frame; // last frame is printed diff_in_num_frames+1 times
        _repeat[4]=-1;  //we stop here
        break;
-     case TRUNCATE_FROM_END:
+     case FRAMEMATCH_TRUNCATE_FROM_END:
        _repeat[0]=prrng_n_samps;
        _repeat[1]=1;
        _repeat[2]=-diff_in_num_frames;
        _repeat[3]=0;
        _repeat[4]=-1;  //we stop here
        break;
-     case TRUNCATE_FROM_START:
+     case FRAMEMATCH_TRUNCATE_FROM_START:
        _repeat[0]=-diff_in_num_frames;
        _repeat[1]=0; // delete extra frames
        _repeat[2]=prrng_n_samps;
@@ -1314,6 +1352,259 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
     }
   }
 }
+
+
+
+/**
+ *
+ * side effects: resizes the features sArray appropriately
+*/
+
+unsigned ObservationMatrix::applyFinalFrameRange(unsigned num_frames,const char* final_frame_range_str) {
+
+  Range* ffrng=new Range(final_frame_range_str,0,num_frames);
+  assert(ffrng != NULL);
+
+  unsigned new_num_frames= ffrng->length();
+
+  if(ffrng->full()) return new_num_frames;
+
+  bool resized=false;  // we want to resize features only once
+  if(_numContinuous > 0) {
+    float* float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
+    float* tmp_float_buf=new float[num_frames*_numContinuous];
+    // copy buffer into a temporary one
+    for(unsigned i=0;i<num_frames;++i)  
+      for(unsigned j=0;j<_numContinuous;++j) {
+	tmp_float_buf[i*_numContinuous+j]=float_ptr[i*_stride+j];
+      }
+
+    if(new_num_frames > _bufSize) {
+      _bufSize = new_num_frames*2;
+      resize(_bufSize);
+      resized=true;
+      float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
+    }
+
+
+    unsigned cnt=0;
+    for(Range::iterator frame_it = ffrng->begin(); !frame_it.at_end();++frame_it,++cnt) {
+      for(unsigned j=0;j<_numContinuous;++j) { 
+	float_ptr[cnt*_stride+j]=tmp_float_buf[*frame_it*_numContinuous+j];
+      }
+    }  
+
+    delete [] tmp_float_buf;
+  }
+  
+  if(_numDiscrete > 0) {
+      int * int_ptr=getPhysicalStartOfIntFeaturesBuffer();
+      int* tmp_int_buf = new int[num_frames*_numDiscrete];
+      // copy buffer into a temporary one
+      for(unsigned i=0;i<num_frames;++i)  
+	for(unsigned j=0;j<_numDiscrete;++j) {
+	  tmp_int_buf[i*_numDiscrete+j]=int_ptr[i*_stride+j];
+	}
+
+      if(!resized && new_num_frames > _bufSize) {
+	_bufSize = new_num_frames*2;
+	resize(_bufSize);
+	int_ptr=getPhysicalStartOfIntFeaturesBuffer();
+      }
+      
+
+      unsigned cnt=0;
+      for(Range::iterator frame_it = ffrng->begin(); !frame_it.at_end();++frame_it,++cnt) {
+	for(unsigned j=0;j<_numDiscrete;++j) { 
+	  int_ptr[cnt*_stride+j]=tmp_int_buf[*frame_it*_numDiscrete+j];
+	}
+      }  
+      delete [] tmp_int_buf;
+  }
+
+
+  delete ffrng;
+
+  return new_num_frames;
+
+}
+
+
+
+void ObservationMatrix::upsampleHold(unsigned num_frames,unsigned upsample) {
+  
+  unsigned new_num_frames = num_frames*(upsample+1);
+  bool resized=false;  // we want to resize features only once
+  if(_numContinuous > 0) {
+    float* float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
+    float* tmp_float_buf=new float[num_frames*_numContinuous*(upsample+1)];
+    // copy buffer into a temporary one
+    for(unsigned i=0;i<num_frames;++i)  
+      for(unsigned j=0;j<_numContinuous;++j) {
+	tmp_float_buf[i*_numContinuous+j]=float_ptr[i*_stride+j];
+      }
+    
+    if(new_num_frames > _bufSize) {
+      _bufSize = new_num_frames*2;
+      resize(_bufSize);
+      resized=true;
+      float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
+    }
+
+    unsigned cnt=0;
+    for(unsigned frame_no=0;frame_no<num_frames;++frame_no) {
+      for(unsigned k=0;k<upsample+1;++k) {
+	for(unsigned j=0;j<_numContinuous;++j) { 
+	  float_ptr[cnt*_stride+j]=tmp_float_buf[frame_no*_numContinuous+j];
+	}
+      }  
+    }
+    delete [] tmp_float_buf;
+  }
+  
+  if(_numDiscrete > 0) {
+    int * int_ptr=getPhysicalStartOfIntFeaturesBuffer();
+    int* tmp_int_buf = new int[num_frames*_numDiscrete*(upsample+1)];
+    // copy buffer into a temporary one
+    for(unsigned i=0;i<num_frames;++i)  
+      for(unsigned j=0;j<_numDiscrete;++j) {
+	tmp_int_buf[i*_numDiscrete+j]=int_ptr[i*_stride+j];
+      }
+    
+    if(!resized && new_num_frames > _bufSize) {
+      _bufSize = new_num_frames*2;
+      resize(_bufSize);
+      int_ptr=getPhysicalStartOfIntFeaturesBuffer();
+    }
+    
+    unsigned cnt=0;
+    for(unsigned frame_no=0;frame_no<num_frames;++frame_no) {
+      for(unsigned k=0;k<upsample+1;++k) {
+	for(unsigned j=0;j<_numDiscrete;++j) { 
+	  int_ptr[cnt*_stride+j]=tmp_int_buf[frame_no*_numDiscrete+j];
+	}
+      }
+    }  
+    delete [] tmp_int_buf;
+  }
+
+}
+
+void ObservationMatrix::upsampleSmooth(unsigned num_frames, unsigned upsample){ 
+
+  unsigned new_num_frames = num_frames*(upsample+1);  
+  bool resized=false;  // we want to resize features only once
+  if(_numContinuous > 0) {
+    float* float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
+    float* tmp_float_buf=new float[num_frames*_numContinuous*(upsample+1)];
+    // copy buffer into a temporary one
+    for(unsigned i=0;i<num_frames;++i)  
+      for(unsigned j=0;j<_numContinuous;++j) {
+	tmp_float_buf[i*_numContinuous+j]=float_ptr[i*_stride+j];
+      }
+    
+    if(new_num_frames > _bufSize) {
+      _bufSize = new_num_frames*2;
+      resize(_bufSize);
+      resized=true;
+      float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
+    }
+
+
+    double inc;
+    double additive_const;
+    unsigned cnt=0;
+    for(unsigned i=0;i<num_frames-1;++i) {
+      inc=0;
+      for(unsigned k=0;k<upsample+1;++k) {
+	for(unsigned j=0;j<_numContinuous;++j) {
+	  additive_const =  tmp_float_buf[(i+1)*_numContinuous+j] - tmp_float_buf[i*_numContinuous+j];
+	  additive_const /= (upsample+1);
+	  inc = k*additive_const;
+	  float_ptr[cnt*_stride+j]=tmp_float_buf[i*_numContinuous+j] + (float)inc;
+	}
+	cnt++;
+      }
+    }
+    
+    for(unsigned j=0;j<_numContinuous;++j) {
+      float_ptr[cnt*_stride+j]=tmp_float_buf[(num_frames-1)*_numContinuous+j];
+    }
+    
+    delete [] tmp_float_buf;
+  }
+  
+  if(_numDiscrete > 0) {
+    int * int_ptr=getPhysicalStartOfIntFeaturesBuffer();
+    int* tmp_int_buf = new int[num_frames*_numDiscrete*(upsample+1)];
+    // copy buffer into a temporary one
+    for(unsigned i=0;i<num_frames;++i)  
+      for(unsigned j=0;j<_numDiscrete;++j) {
+	tmp_int_buf[i*_numDiscrete+j]=int_ptr[i*_stride+j];
+      }
+    
+    if(!resized && new_num_frames > _bufSize) {
+      _bufSize = new_num_frames*2;
+      resize(_bufSize);
+      int_ptr=getPhysicalStartOfIntFeaturesBuffer();
+    }
+
+    unsigned cnt=0;
+    for(unsigned i=0;i<num_frames-1;++i) {
+      for(unsigned k=0;k<upsample+1;++k) {
+	for(unsigned j=0;j<_numDiscrete;++j) {
+	  int_ptr[cnt*_stride+j]=tmp_int_buf[i*_numDiscrete+j];
+	}
+	cnt++;
+      }
+    }
+    
+    for(unsigned j=0;j<_numDiscrete;++j) {
+      int_ptr[cnt*_stride+j]=tmp_int_buf[(num_frames-1)*_numDiscrete+j];
+    }
+    delete [] tmp_int_buf;
+  }
+}
+
+
+void ObservationMatrix::upsampleIntNoSmooth(sArray<int>* tmp_sen_buffer, unsigned vec_size, unsigned stride, unsigned num_frames, unsigned upsample) {
+
+  if(vec_size==0 || stride ==0)
+    return;
+  
+  int* tmp_buf=new int[num_frames*vec_size*(upsample+1)];
+  int* x=tmp_sen_buffer->ptr;
+
+  // copy buffer into a temporary one
+  for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned j=0;j<vec_size;++j) {
+	tmp_buf[i*vec_size+j]=x[i*stride+j];
+    }
+
+  unsigned after_transform_num_frames = ((num_frames-1)*(upsample+1)+1)*2;
+
+  tmp_sen_buffer->resize(after_transform_num_frames*stride);
+  resize(after_transform_num_frames);
+   
+  x=tmp_sen_buffer->ptr;
+
+  unsigned cnt=0;
+  for(unsigned i=0;i<num_frames-1;++i) {
+    for(unsigned k=0;k<upsample+1;++k) {
+      for(unsigned j=0;j<vec_size;++j) {
+	x[cnt*stride+j]=tmp_buf[i*vec_size+j];
+      }
+      cnt++;
+    }
+  }
+
+    for(unsigned j=0;j<vec_size;++j) {
+      x[cnt*stride+j]=tmp_buf[(num_frames-1)*vec_size+j];
+    }
+
+    delete [] tmp_buf;
+}
+
 
 
 

@@ -398,14 +398,14 @@ char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
 char  *ir_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // int range string  
 char  *prepr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream pre-transform per sentence frame range string 
 char  *postpr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream post-transform frame range string 
-char  *gpr_str               = 0;   // global frame range string
+char  *gpr_str               = 0;   // global final frame range string
 
 char* actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er","er","er","er","er","er"};   // 
-unsigned actionIfDiffNumFrames[MAX_OBJECTS]={ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR};   // 
+unsigned actionIfDiffNumFrames[MAX_OBJECTS]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
 
 
 char*    actionIfDiffNumSentsStr[MAX_OBJECTS] = {"te","te","te","te","te","te","te","te","te","te"}; 
-unsigned actionIfDiffNumSents[MAX_OBJECTS]    = {TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END};   // 
+unsigned actionIfDiffNumSents[MAX_OBJECTS]    = {SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
 
 char* perStreamTransforms[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // 
 char* postTransforms                   = NULL;
@@ -483,8 +483,9 @@ Arg Arg::Args[] = {
   Arg("ir",   Arg::Opt, ir_str,"int range for obs file X",Arg::ARRAY,MAX_OBJECTS),
   Arg("sr",   Arg::Opt, sr_str,"per-stream sentence range",Arg::ARRAY,MAX_OBJECTS),
   Arg("gsr",  Arg::Opt, gsr_str,"global sentence range. Is applied on top of the per-stream sentence range above."),
-  Arg("postpr", Arg::Opt, postpr_str,"frame range for obs file X after per-stream transformations are applied",Arg::ARRAY,MAX_OBJECTS),
   Arg("prepr",  Arg::Opt, prepr_str,"frame range for obs file X before any transformations are applied",Arg::ARRAY,MAX_OBJECTS),
+  Arg("postpr", Arg::Opt, postpr_str,"frame range for obs file X after per-stream transformations are applied",Arg::ARRAY,MAX_OBJECTS),
+  Arg("gpr",    Arg::Opt, gpr_str,"global final frame range"),
   Arg("startskip",   Arg::Opt, startSkip,"start skip"),
   Arg("endskip",   Arg::Opt, endSkip,"end skip"),
   Arg("fdiffact",  Arg::Opt,actionIfDiffNumFramesStr ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_OBJECTS),
@@ -651,17 +652,17 @@ if (strcmp(ftrcomboStr,"none") == 0)
  for(int i=0; i < MAX_OBJECTS; ++i) {
    if(input_fname[i]!=NULL) {
      if (strcmp(actionIfDiffNumFramesStr[i],"er") == 0)
-       actionIfDiffNumFrames[i] = ERROR;
+       actionIfDiffNumFrames[i] = FRAMEMATCH_ERROR;
      else if (strcmp(actionIfDiffNumFramesStr[i],"rl") == 0)
-       actionIfDiffNumFrames[i] = REPEAT_LAST;
+       actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_LAST;
      else if (strcmp(actionIfDiffNumFramesStr[i],"rf") == 0)
-       actionIfDiffNumFrames[i] = REPEAT_FIRST;
+       actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_FIRST;
      else if (strcmp(actionIfDiffNumFramesStr[i],"se") == 0)
-       actionIfDiffNumFrames[i] = EXPAND_SEGMENTALLY;
+       actionIfDiffNumFrames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
      else if (strcmp(actionIfDiffNumFramesStr[i],"ts") == 0)
-       actionIfDiffNumFrames[i] = TRUNCATE_FROM_START;
+       actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
      else if (strcmp(actionIfDiffNumFramesStr[i],"te") == 0)
-       actionIfDiffNumFrames[i] = TRUNCATE_FROM_END;
+       actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
      else
        error("ERROR: Unknown action when diff num of frames: '%s'\n",actionIfDiffNumFramesStr[i]);
    }
@@ -670,13 +671,13 @@ if (strcmp(ftrcomboStr,"none") == 0)
 for(int i=0; i < MAX_OBJECTS; ++i) {
    if(input_fname[i]!=NULL) {
      if (strcmp(actionIfDiffNumSentsStr[i],"er") == 0)
-       actionIfDiffNumSents[i] = ERROR;
+       actionIfDiffNumSents[i] = SEGMATCH_ERROR;
      else if (strcmp(actionIfDiffNumSentsStr[i],"rl") == 0)
-       actionIfDiffNumSents[i] = REPEAT_LAST;
+       actionIfDiffNumSents[i] = SEGMATCH_REPEAT_LAST;
      else if (strcmp(actionIfDiffNumSentsStr[i],"wa") == 0)
-       actionIfDiffNumSents[i] = WRAP_AROUND;
+       actionIfDiffNumSents[i] = SEGMATCH_WRAP_AROUND;
      else if (strcmp(actionIfDiffNumSentsStr[i],"te") == 0)
-       actionIfDiffNumSents[i] = TRUNCATE_FROM_END;
+       actionIfDiffNumSents[i] = SEGMATCH_TRUNCATE_FROM_END;
      else
        error("ERROR: Unknown action when diff num of sentences: '%s'\n",actionIfDiffNumSentsStr[i]);
    }
@@ -718,8 +719,23 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 
        unsigned num_labs=in_streamp->num_labs();
        unsigned num_ftrs=in_streamp->num_ftrs();
-       if(nis[i] != 0 && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
-       if(nfs[i] != 0 && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
+
+       ////////////////////////////////////////////////////////////
+       // Check consistency between pfile and supplied arguments //
+       char search_str[]="nXXXXX";
+       sprintf(search_str,"-ni%d",i+1);
+       bool found=false;
+       for(int j=1; j < argc; ++j) {
+	 if(strcmp(argv[j],search_str)==0) found=true;
+       }
+       if(found && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
+       sprintf(search_str,"-nf%d",i+1);
+       found=false;
+       for(int j=1; j < argc; ++j) {
+	 if(strcmp(argv[j],search_str)==0) found=true;
+       }
+       if(found && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
+       ////////////////////////////////////////////////////////////
        nis[i]=num_labs;
        nfs[i]=num_ftrs;
 
@@ -752,8 +768,8 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 				   postTransforms,
 				   ftrcombo,
 				   (const char**)& sr_str,
-				   (const char**)& prepr_str
-				   );   
+				   (const char**)& prepr_str,
+				   gpr_str);   
 
 
      gsr_rng = new Range(gsr_str,0,globalObservationMatrix.numSegments());
@@ -795,7 +811,7 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 	   error("Could not open input stat file, %s, for writing.",Gauss_Norm_Input_Stat_File_Name);
 	 }
        }
-       gaussianNorm(out_fp,&globalObservationMatrix,is_fp,os_fp,*gsr_rng,*fr_rng, gpr_str, Num_Hist_Bins, Gaussian_Num_Stds, Gaussian_Uniform, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       gaussianNorm(out_fp,&globalObservationMatrix,is_fp,os_fp,*gsr_rng,*fr_rng, NULL, Num_Hist_Bins, Gaussian_Num_Stds, Gaussian_Uniform, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
        delete fr_rng;
        if(Gauss_Norm_Output_Stat_File_Name != NULL) fclose(os_fp);
        if(Gauss_Norm_Input_Stat_File_Name  != NULL) fclose(is_fp);
@@ -825,7 +841,7 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
        addSil(out_fp,&globalObservationMatrix,*gsr_rng,Add_Sil_Num_Beg_Frames,Add_Sil_Beg_Rng_Str, Add_Sil_Num_End_Frames,Add_Sil_End_Rng_Str, Add_Sil_MMF, Add_Sil_MAF, Add_Sil_SMF, Add_Sil_SAF, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
      else {
-       obsPrint(out_fp,*gsr_rng,gpr_str,dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsPrint(out_fp,*gsr_rng,NULL,dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
     //////////////////////////////////////////////////////////////////////
     // Clean up and exit.

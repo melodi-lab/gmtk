@@ -6,6 +6,8 @@
  * option to pipe the list of file names through CPP.  Made a few
  * other minor bug fixes.
  *
+ * Also, added a sentence range.
+ *
  * $Header$
  *
  * Copyright (c) 2001
