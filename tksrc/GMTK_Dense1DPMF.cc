@@ -271,6 +271,47 @@ Dense1DPMF::emIncrement(logpr prob,
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * emIncrement()
+ *      Increment a single value count into the next parameters for this PMF.
+ * 
+ * Preconditions:
+ *      prob must be valid probability, and val
+ *      must indicate a valid entry into the array.
+ *
+ * Postconditions:
+ *      val of post. val has been accumulated in.
+ *
+ * Side Effects:
+ *      Changes internal variables.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+Dense1DPMF::emIncrement(logpr prob,
+			const int val)
+{
+  assert ( val >= 0 && val < nextPmf.len() );
+
+  if (!GM_Parms.amTrainingDense1DPMFs())
+    return;
+  emStartIteration();
+
+  if (prob < minIncrementProbabilty) {
+    missedIncrementCount++;
+    return;
+  } 
+  accumulatedProbability+= prob;
+  nextPmf[val] += prob;
+}
+
+
 void
 Dense1DPMF::emEndIteration()
 {
