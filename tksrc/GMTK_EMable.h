@@ -55,6 +55,12 @@ protected:
     bm_swappable         = (1 << 3),
     // Has the accumulators been loaded/stored.
     bm_accLoadStore    = (1 << 4),
+    // Are we training this object.
+    bm_amTraining    = (1 << 5),
+    // Are the parameters of this object shared by
+    // multiple users. NOTE: this might not be used
+    // by all child classes of EMable.
+    bm_isShared    = (1 << 6),
 
     // Initial State, where no data structures have been allocated.
     bm_initState      = 0x0
@@ -337,6 +343,16 @@ public:
   void emClearOnGoingBit() { bitmask &= ~bm_emEpochOnGoing; }
   void emSetOnGoingBit() { bitmask |= bm_emEpochOnGoing; }
   bool emOnGoingBitIsSet() { return (bitmask & bm_emEpochOnGoing); }
+
+  /////////////////////////////////////////////////////////////////
+  void emClearAmTrainingBit() { bitmask &= ~bm_amTraining; }
+  void emSetAmTrainingBit() { bitmask |= bm_amTraining; }
+  bool emAmTrainingBitIsSet() { return (bitmask & bm_amTraining); }
+
+  /////////////////////////////////////////////////////////////////
+  void emClearIsSharedBit() { bitmask &= ~bm_isShared; }
+  void emSetIsSharedBit() { bitmask |= bm_isShared; }
+  bool emIsSharedBitIsSet() { return (bitmask & bm_isShared); }
 
   //////////////////////////////////////////////
   // For parallel EM training.
