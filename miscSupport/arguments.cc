@@ -247,8 +247,8 @@ ARGS::ArgsRetCode ARGS::parseFromFile(char *fileName)
       // ****************************
       // ** LIBG++ VERSION 2.2 BUG WORK-ARROUND 
       // ****************************
-      if (ifile.flags() | ios::failbit && ::strlen(buffer) == 0)
-	ifile.unsetf(ios::failbit);
+      // if (ifile.flags() | ios::failbit && ::strlen(buffer) == 0)
+      // ifile.unsetf(ios::failbit);
       // ****************************
       // ** END OF LIBG++ BUG WORK-ARROUND  
       // ****************************
