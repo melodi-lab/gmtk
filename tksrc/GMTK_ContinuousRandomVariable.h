@@ -135,6 +135,16 @@ public:
   // Sample, set value.
   void instantiate() { error("not implemented"); }
 
+  // what is the dimensionality of this variable?
+  // intended for indexing fval() after sampling 
+  int dimensionality() 
+      {error("dimensionality function not implemented"); return 0;}
+
+  // return a pointer to the actual array of values
+  // intended for use after sampling
+  // will probably return a pointer into the global observation matrix
+  float *fval() {error("fval function not implemented"); return NULL;}
+
   ///////////////////////////////////////////////////
   // EM Support
   void emIncrement(logpr prob);
