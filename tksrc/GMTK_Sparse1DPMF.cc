@@ -210,3 +210,68 @@ Sparse1DPMF::prob(const int val)
   return LZERO;
 }
 
+
+
+
+////////////////////////////////////////////////////////////////////
+//        Misc Support
+////////////////////////////////////////////////////////////////////
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * normalize, makeRandom, and makeUniform
+ *      normalizes, makes random, and makes uniform (resp.) the values. 
+ * 
+ * Preconditions:
+ *      internals must be allocated
+ *
+ * Postconditions:
+ *      values are normalized, randomized, or uniformized
+ *
+ * Side Effects:
+ *      Changes all values of internal probabilities.
+ *
+ * Results:
+ *      nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Dense1DPMF::normalize()
+{
+  logpr sum = 0.0;
+  for (int i=0;i<pmf.len();i++) {
+    sum += pmf[i].val;
+  }
+  for (int i=0;i<pmf.len();i++) {
+    pmf[i].val = pmf[i].val / sum;
+  }
+}
+
+void
+Dense1DPMF::makeRandom()
+{
+  logpr sum = 0.0;
+  for (int i=0;i<pmf.len();i++) {
+    logpr tmp = rnd.drand48();
+    sum += tmp;
+    pmf[i].val = tmp;
+  }
+  for (int i=0;i<pmf.len();i++) {
+    pmf[i].val = pmf[i].val / sum;
+  }
+}
+
+void
+Dense1DPMF::makeUniform()
+{
+  // NOTE: this doesn't assign non-zero values to "holes"
+  // in the table (which are forced to be zero).
+  logpr val = 1.0/pmf.len();
+  for (int i=0;i<pmf.len();i++) {
+    pmf[i].val = val;
+  }
+}
+

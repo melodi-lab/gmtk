@@ -84,10 +84,13 @@ public:
     return pmf[i].val;
   }
 
-
   ///////////////////////////////////////////////////////////  
-  // Re-normalize the distribution
-  normalize();
+  // Re-normalize the output distributions
+  void normalize();
+  // set all values to random values.
+  void makeRandom();
+  // set all values to uniform values.
+  void makeUniform();
 
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 

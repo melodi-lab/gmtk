@@ -30,6 +30,7 @@
 
 #include "general.h"
 #include "error.h"
+#include "rand.h"
 
 
 VCID("$Header$");
@@ -132,4 +133,59 @@ Dense1DPMF::write(oDataStreamFile& os)
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
 ////////////////////////////////////////////////////////////////////
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * normalize, makeRandom, and makeUniform
+ *      normalizes, makes random, and makes uniform (resp.) the values. 
+ * 
+ * Preconditions:
+ *      internals must be allocated
+ *
+ * Postconditions:
+ *      values are normalized, randomized, or uniformized
+ *
+ * Side Effects:
+ *      Changes all values of internal probabilities.
+ *
+ * Results:
+ *      nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Dense1DPMF::normalize()
+{
+  logpr sum = 0.0;
+  for (int i=0;i<pmf.len();i++) {
+    sum += pmf[i];
+  }
+  for (int i=0;i<pmf.len();i++) {
+    pmf[i] = pmf[i] / sum;
+  }
+}
+
+void
+Dense1DPMF::makeRandom()
+{
+  logpr sum = 0.0;
+  for (int i=0;i<pmf.len();i++) {
+    logpr tmp = rnd.drand48();
+    sum += tmp;
+    pmf[i] = tmp;
+  }
+  for (int i=0;i<pmf.len();i++) {
+    pmf[i] = pmf[i] / sum;
+  }
+}
+
+void
+Dense1DPMF::makeUniform()
+{
+  logpr val = 1.0/pmf.len();
+  for (int i=0;i<pmf.len();i++) {
+    pmf[i] = val;
+  }
+}
 
