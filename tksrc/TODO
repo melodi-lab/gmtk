@@ -1612,3 +1612,7 @@ Sat Mar  6 19:52:15 2004
  - Stores the N-best triangulation files by run-time. 
 
  
+Sun Mar  7 14:13:59 2004
+  - allow parameters to be read in in any order, and do not only backward
+    but forward reference to items not yet defined. Do a final pass
+    over parameters to resolve all references.
