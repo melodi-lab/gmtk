@@ -46,6 +46,46 @@ typedef union
     Int32 l; float f;
 } PFile_Val;
 
+// Adapted from the latest (2004-10-26) Quicknet distribution to
+// support 64 bit pfiles. I am defining _FILE_OFFSET_BITS here but it
+// should be set during config time.  -- Karim
+
+#define _FILE_OFFSET_BITS 64
+
+// Some stuff to deal with large file support
+//  First make sure things still work if we do not have fseeko/ftello
+#ifdef PF_HAVE_FSEEKO
+#define pfile_fseek(a,b,c) fseeko(a,b,c)
+#define pfile_ftell(a) ftello(a)
+typedef off_t pfile_off_t;
+#else
+#define pfile_fseek(a,b,c) fseek(a,b,c)
+#define pfile_ftell(a) ftell(a)
+typedef long pfile_off_t;
+#endif
+
+// Set up long long types if we have them, along with approriate format
+// string segments
+#if defined(PF_HAVE_LONG_LONG)
+typedef long long pfile_longlong_t;
+typedef unsigned long long pfile_ulonglong_t;
+#define PF_LLU "%llu"
+#define PF_LLD "%lld"
+#else
+typedef long pfile_longlong_t;
+typedef unsigned long pfile_ulonglong_t;
+#define PF_LLU "%lu"
+#define PF_LLD "%ld"
+#endif
+
+// Define PFILE_LARGE if we support large PFiles
+#if (defined(PF_HAVE_FSEEKO) && defined(PF_HAVE_LONG_LONG) && (_FILE_OFFSET_BITS==64))
+#define PFILE_LARGEFILES 1
+#else
+#define PFILE_LARGEFILES 0
+#endif
+
+
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 // InFtrLabStream_PFile - access a PFile for input
@@ -149,8 +189,8 @@ private:
 //    unsigned int first_target_col; // First column of targets.
 //    unsigned int num_target_cols; // Number of target columns.
 
-    long data_offset;		// Offset of data section from pfile header.
-    long sentind_offset;	// The offset of the segment index section
+    pfile_longlong_t data_offset;		// Offset of data section from pfile header.
+    pfile_longlong_t sentind_offset;	// The offset of the segment index section
 				// ..in the pfile.
     size_t bytes_in_row;		// Bytes in one row of the PFile.
 

@@ -42,10 +42,8 @@ OPTFLAGS=-O3
 # extra flags via command line (e.g., -pg).
 EXCFLAGS =  
 EXLDFLAGS =  
-# CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -pedantic -DMAIN
-# CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic -DMAIN
-CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -pedantic -Wno-deprecated -DMAIN
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -pedantic -ansi -DMAIN
+CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -DMAIN
+CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -DMAIN
 LDFLAGS = 
 DEFS = 
 
