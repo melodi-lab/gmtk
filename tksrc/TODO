@@ -617,3 +617,13 @@ Thu Jul 18 15:38:36 2002
 
 Thu Jul 18 15:38:51 2002
  - add neg values between -infty and -0 being log probabilities.
+
+Fri Jul 19 10:11:04 2002
+ - add ability to specify initial counts on command line for discrete objects
+   (M?CPT, DPMF) during training, to do a form of Laplace smoothing.
+   Perhaps similar to obsnottotrain option. 
+
+
+Fri Jul 19 10:13:22 2002
+ - idea. Each gmtk object should have a set of options that can
+   be set when the object is defined, rather than in a separate file???
