@@ -100,6 +100,10 @@ diff:
 version :
 	cvs tag -F "$(VERSION)"
 
+# Move the development tag on files which are have newer versions in the 
+# current working directory 
+update_development:
+	scripts/update_development tag
 
 
 #----------------------------------------------------------------------------
