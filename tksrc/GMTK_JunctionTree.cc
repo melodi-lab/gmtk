@@ -31,6 +31,7 @@
 #include <map>
 #include <set>
 #include <algorithm>
+#include <new>
 
 #include "general.h"
 #include "error.h"
@@ -62,6 +63,8 @@ VCID("$Header$");
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+#if 0
+// TODO: put this function somewhere more generally available.
 static void
 printRVSet(set<RandomVariable*>& locset)
 {
@@ -76,10 +79,11 @@ printRVSet(set<RandomVariable*>& locset)
   }
   printf("\n");
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
-//        Inference Partition support
+//        JT Partition support
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
@@ -89,7 +93,7 @@ printRVSet(set<RandomVariable*>& locset)
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-InferencePartition::InferencePartition(
+JT_Partition::JT_Partition(
 		       Partition& from_part,
 		       vector <RandomVariable*>& newRvs,
 		       map < RVInfo::rvParent, unsigned >& ppf,
@@ -111,12 +115,10 @@ InferencePartition::InferencePartition(
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      error("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -124,12 +126,42 @@ InferencePartition::InferencePartition(
   }
   cliques.reserve(from_part.cliques.size());
   // 
-  // NOTE: It is Crucial for the cliques in the cloned partition to be
-  // inserted in the *SAME ORDER* as in the partition being cloned.
+  // NOTE: It is ***CRUCIAL*** for the cliques in the cloned partition
+  // to be inserted in the *SAME ORDER* as in the partition being
+  // cloned.
   for (unsigned i=0;i<from_part.cliques.size();i++) {
     cliques.push_back(MaxClique(from_part.cliques[i],
 				newRvs,ppf,frameDelta));
   }
+}
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        JT Inference Partition support
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
+					     vector <RandomVariable*>& newRvs,
+					     map < RVInfo::rvParent, unsigned >& ppf,
+					     const unsigned int frameDelta)
+  : origin(from_part)
+{
+  // first allocate space with empty (and unusable) entries
+  maxCliques.resize(origin.cliques.size());
+  separatorCliques.resize(origin.separators.size());
+
+  // then actually re-construct the objects in the array appropriately.
+  for (unsigned i=0;i<maxCliques.size();i++) {
+    new (&maxCliques[i]) InferenceMaxClique(origin.cliques[i],
+					    newRvs,ppf,frameDelta);
+  }
+  for (unsigned i=0;i<separatorCliques.size();i++) {
+    new (&separatorCliques[i]) InferenceSeparatorClique(origin.separators[i],
+					    newRvs,ppf,frameDelta);
+  }
+
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -260,7 +292,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::unroll()
+ * JunctionTree::base_unroll()
  *   sets up the internal data structures and creates a junction tree corresponding
  *   to the graph with C' unrolled k=2 times, (i.e., we have
  *   a graph that has (3) copies of C'). It does this using the initial
@@ -310,16 +342,16 @@ JunctionTree::base_unroll()
 	    unrolled_rvs,ppf);
   
   // copy P partition 
-  new (&P1) InferencePartition(gm_template.P,unrolled_rvs,ppf,0);
+  new (&P1) JT_Partition(gm_template.P,unrolled_rvs,ppf,0);
 
   // copy C partition
-  new (&C1) InferencePartition(gm_template.C,unrolled_rvs,ppf,0*gm_template.S);
-  new (&Cu0) InferencePartition(gm_template.C,unrolled_rvs,ppf,0*gm_template.S);
-  new (&C2) InferencePartition(gm_template.C,unrolled_rvs,ppf,1*gm_template.S);
-  new (&C3) InferencePartition(gm_template.C,unrolled_rvs,ppf,2*gm_template.S);
+  new (&C1) JT_Partition(gm_template.C,unrolled_rvs,ppf,0*gm_template.S);
+  new (&Cu0) JT_Partition(gm_template.C,unrolled_rvs,ppf,0*gm_template.S);
+  new (&C2) JT_Partition(gm_template.C,unrolled_rvs,ppf,1*gm_template.S);
+  new (&C3) JT_Partition(gm_template.C,unrolled_rvs,ppf,2*gm_template.S);
 
   // copy E partition
-  new (&E1) InferencePartition(gm_template.E,unrolled_rvs,ppf,2*gm_template.S);
+  new (&E1) JT_Partition(gm_template.E,unrolled_rvs,ppf,2*gm_template.S);
   
 }
 
@@ -414,10 +446,10 @@ JunctionTree::computePartitionInterfaces()
  */
 
 void
-JunctionTree::computePartitionInterface(InferencePartition& part1,
+JunctionTree::computePartitionInterface(JT_Partition& part1,
 					// partitition 1's right interface clique
 					unsigned int& part1_ric,
-					InferencePartition& part2,
+					JT_Partition& part2,
 					// partitition 2's left interface clique
 					unsigned int& part2_lic,
 					// are the two interface cliques identical
@@ -556,7 +588,7 @@ JunctionTree::createDirectedGraphOfCliques()
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::createDirectedGraphOfCliques(InferencePartition& part,
+JunctionTree::createDirectedGraphOfCliques(JT_Partition& part,
 					   const unsigned root)
 {
   // make sure none have been so far visited
@@ -568,7 +600,7 @@ JunctionTree::createDirectedGraphOfCliques(InferencePartition& part,
   createDirectedGraphOfCliquesRecurse(part,root,visited);
 }
 void
-JunctionTree::createDirectedGraphOfCliquesRecurse(InferencePartition& part,
+JunctionTree::createDirectedGraphOfCliquesRecurse(JT_Partition& part,
 						  const unsigned root,
 						  vector< bool >& visited)
 {
@@ -623,8 +655,8 @@ JunctionTree::assignRVsToCliques()
   infoMsg(IM::Med,"assigning rvs to C1 partition\n");
   C1.cliques[C_li_to_P].cumulativeAssignedNodes = 
     P1.cliques[P_ri_to_C].cumulativeAssignedNodes;
-  printf("C1's li to P cum nodes are:\n");
-  printRVSet(C1.cliques[C_li_to_P].cumulativeAssignedNodes);
+  // printf("C1's li to P cum nodes are:\n");
+  // printRVSet(C1.cliques[C_li_to_P].cumulativeAssignedNodes);
   assignRVsToCliques("C1",C1,C_ri_to_C);
 
   infoMsg(IM::Med,"assigning rvs to C2 partition\n");
@@ -694,7 +726,7 @@ JunctionTree::assignRVsToCliques()
  */
 void
 JunctionTree::assignRVsToCliques(const char *const partName,
-				 InferencePartition& part,
+				 JT_Partition& part,
 				 const unsigned rootClique)
 {
   vector<RandomVariable*> sortedNodes;
@@ -707,6 +739,8 @@ JunctionTree::assignRVsToCliques(const char *const partName,
     RandomVariable* rv = sortedNodes[n];
 
     // precompute the parents set for set intersection operations.
+    // The one stored in the rv is a vector, but we need a set, so we
+    // pre-compute it here.
     set<RandomVariable*> parSet;
     for (unsigned p=0;p<rv->allPossibleParents.size();p++) {
       parSet.insert(rv->allPossibleParents[p]);
@@ -768,7 +802,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
  */
 void
 JunctionTree::assignRVToClique(const char *const partName,
-			       InferencePartition& part,
+			       JT_Partition& part,
 			       const unsigned root,
 			       unsigned depth,
 			       RandomVariable* rv,
@@ -989,7 +1023,7 @@ JunctionTree::assignRVToClique(const char *const partName,
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::getCumulativeAssignedNodes(InferencePartition& part,
+JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
 					 const unsigned root)
 {
   MaxClique& curClique = part.cliques[root];
@@ -1051,19 +1085,27 @@ JunctionTree::setUpMessagePassingOrders()
 
   setUpMessagePassingOrder(P1,
 			   P_ri_to_C,
-			   P1_message_order);
+			   P1_message_order,
+			   ~0x0,
+			   P1_leaf_cliques);
 
   setUpMessagePassingOrder(C1,
 			   C_ri_to_C,
-			   C1_message_order);
+			   C1_message_order,
+			   C_li_to_P,
+			   C1_leaf_cliques);
 
   setUpMessagePassingOrder(C3,
 			   C_ri_to_E,
-			   C3_message_order);
+			   C3_message_order,
+			   C_li_to_C,
+			   C3_leaf_cliques);
 
   setUpMessagePassingOrder(E1,
 			   E_root_clique,
-			   E1_message_order);
+			   E1_message_order,
+			   E_li_to_C,
+			   E1_leaf_cliques);
 
 }
 
@@ -1095,14 +1137,16 @@ JunctionTree::setUpMessagePassingOrders()
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::setUpMessagePassingOrder(InferencePartition& part,
+JunctionTree::setUpMessagePassingOrder(JT_Partition& part,
 				       const unsigned root,
-				       vector< pair<unsigned,unsigned> >& order)
+				       vector< pair<unsigned,unsigned> >& order,
+				       const unsigned excludeFromLeafCliques,
+				       vector < unsigned >& leaf_cliques)
 {
   order.clear();
   // a tree of N nodes has N-1 edges.
   order.reserve(part.cliques.size() - 1);
-  setUpMessagePassingOrderRecurse(part,root,order);
+  setUpMessagePassingOrderRecurse(part,root,order,excludeFromLeafCliques,leaf_cliques);
 }
 /*-
  *-----------------------------------------------------------------------
@@ -1110,25 +1154,34 @@ JunctionTree::setUpMessagePassingOrder(InferencePartition& part,
  *   Recursive support routine for setUpMessagePassingOrder() and
  *   should only be called from there. See that
  *   routine for documentation.
- * 
+d * 
  *-----------------------------------------------------------------------
  */					
 void
-JunctionTree::setUpMessagePassingOrderRecurse(InferencePartition& part,
-					     const unsigned root,
-					     vector< pair<unsigned,unsigned> >& order)
+JunctionTree::setUpMessagePassingOrderRecurse(JT_Partition& part,
+					      const unsigned root,
+					      vector< pair<unsigned,unsigned> >& order,
+					      const unsigned excludeFromLeafCliques,
+					      vector < unsigned >& leaf_cliques)
 {
-
-  for (unsigned childNo=0;
-       childNo<part.cliques[root].children.size();
-       childNo++) {
-    const unsigned child = part.cliques[root].children[childNo];
-    setUpMessagePassingOrderRecurse(part,child,order);
-    pair<unsigned,unsigned> msg;
-    msg.first = child;
-    msg.second = root;
-    order.push_back(msg);
+  if (part.cliques[root].children.size() == 0) {
+    // store leaf nodes here if children.size() == 0.
+    if (root != excludeFromLeafCliques)
+      leaf_cliques.push_back(root);
+  } else {
+    for (unsigned childNo=0;
+	 childNo<part.cliques[root].children.size();
+	 childNo++) {
+      const unsigned child = part.cliques[root].children[childNo];
+      setUpMessagePassingOrderRecurse(part,child,order,
+				      excludeFromLeafCliques,leaf_cliques);
+      pair<unsigned,unsigned> msg;
+      msg.first = child;
+      msg.second = root;
+      order.push_back(msg);
+    }
   }
+  
 }
 
 
@@ -1140,7 +1193,9 @@ JunctionTree::setUpMessagePassingOrderRecurse(InferencePartition& part,
  *   relative to the base partitions 0, 1, 2, and 3. Each
  *   seperator contains nodes consisting of the intersection
  *   of the maxCliques between which a message is sent.
- *
+ *   
+ *   See comment in class JT_Partition for 'separators' member for more information.
+ * 
  * Preconditions:
  *   setUpMessagePassingOrder() must have already been called.
  *
@@ -1162,21 +1217,55 @@ JunctionTree::createSeparators()
 
   createSeparators(P1,
 		   P1_message_order);
+  P1.cliques[P_ri_to_C].ceSendSeparator = ~0x0; // set to invalid value
+  // P1 has no LI, so nothing more to do for P1 here.
 
   createSeparators(C1,
 		   C1_message_order);
+  // Create separator of interface cliques
+  C1.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],C1.cliques[C_li_to_P]));
+  // update right partitions LI clique to include new separator
+  C1.cliques[C_li_to_P].ceReceiveSeparators.push_back(C1.separators.size()-1);
+  // don't update left partitions RI clique's send separator since handeled explicitly
+  C1.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
 
   createSeparators(C2,
 		   C1_message_order);
+  // Create separator of interface cliques
+  C2.separators.push_back(SeparatorClique(C1.cliques[C_ri_to_C],C2.cliques[C_li_to_C]));
+  // update right partitions LI clique to include new separator
+  C2.cliques[C_li_to_C].ceReceiveSeparators.push_back(C2.separators.size()-1);
+  // don't update left partitions RI clique's send separator since handeled explicitly
+  C2.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
 
   createSeparators(C3,
 		   C3_message_order);
+  // Create separator of interface cliques
+  C3.separators.push_back(SeparatorClique(C2.cliques[C_ri_to_C],C3.cliques[C_li_to_C]));
+  // update right partitions LI clique to include new separator
+  C3.cliques[C_li_to_C].ceReceiveSeparators.push_back(C3.separators.size()-1);
+  // don't update left partitions RI clique's send separator since handeled explicitly
+  C3.cliques[C_ri_to_E].ceSendSeparator = ~0x0; //set to invalid value
+
 
   createSeparators(E1,
 		   E1_message_order);
+  // Create separator of interface cliques
+  E1.separators.push_back(SeparatorClique(C3.cliques[C_ri_to_E],E1.cliques[E_li_to_C]));
+  // update right partitions LI clique to include new separator
+  E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
+  // don't update left partitions RI clique's send separator since handeled explicitly
+  C3.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
+
 
   createSeparators(Cu0,
 		   C3_message_order);
+  // Create separator of interface cliques
+  Cu0.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Cu0.cliques[C_li_to_P]));
+  // update right partitions LI clique to include new separator
+  Cu0.cliques[C_li_to_P].ceReceiveSeparators.push_back(Cu0.separators.size()-1);
+  // don't update left partitions RI clique's send separator since handeled explicitly
+  Cu0.cliques[C_ri_to_E].ceSendSeparator = ~0x0; //set to invalid value
 
 }
 
@@ -1205,7 +1294,7 @@ JunctionTree::createSeparators()
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::createSeparators(InferencePartition& part,
+JunctionTree::createSeparators(JT_Partition& part,
 			       vector< pair<unsigned,unsigned> >& order)
 {
   part.separators.clear();
@@ -1224,12 +1313,259 @@ JunctionTree::createSeparators(InferencePartition& part,
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::computeSeparatorIterationOrders()
+ *   computes the order in which we iterate over the separators
+ *   when we do seperator driven clique potential function
+ *   creation.
+ *
+ * Preconditions:
+ *   separators both within and between partitions must have been
+ *   created (meaning createSeparators() must be called).
+ *
+ * Postconditions:
+ *   Separator orders have now been created.
+ *
+ *
+ * Side Effects:
+ *    Changes member variables within cliques of each partition.
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::computeSeparatorIterationOrders()
+{
+
+  computeSeparatorIterationOrders(P1);
+  computeSeparatorIterationOrders(C1);
+  computeSeparatorIterationOrders(C2);
+  computeSeparatorIterationOrders(C3);
+  computeSeparatorIterationOrders(E1);
+  computeSeparatorIterationOrders(Cu0);
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::computeSeparatorIterationOrders()/computeSeparatorIterationOrder()
+ *
+ *   1) computes the order in which we iterate over the separators
+ *   when we do seperator driven clique potential function creation,
+ *   for the given partition.
+ *
+ *   2) Also, set up the separator structures so they know the
+ *   intersection of each of their nodes with the accumulated union of
+ *   all nodes in separators earlier in the order.
+ *
+ *   3) Also, assigns unassignedIteratedNodes in this clique.
+ *
+ * Preconditions:
+ *   separators must be created, should only be called from
+ *   the general routine above w/o arguments.
+ *
+ * Postconditions:
+ *   Separator orders have now been created within given partition.
+ *
+ *
+ * Side Effects:
+ *    Changes member variables within cliques of each partition.
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::computeSeparatorIterationOrders(JT_Partition& part)
+{
+  for (unsigned cliqueNum=0;cliqueNum<part.cliques.size();cliqueNum++) {
+    computeSeparatorIterationOrder(part.cliques[cliqueNum],part);
+  }
+}
+void
+JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
+					     JT_Partition& part)
+{
+  // do an order based on the MST over the separators.
+  const unsigned numSeparators = clique.ceReceiveSeparators.size();
+
+  // partial and then ultimately the final union of of all nodes in
+  // separators for incomming messages for this clique.
+  set<RandomVariable*> accumSeps;
+
+
+  if (numSeparators == 0) {
+    // This must be a leaf-node clique relatve to root.
+    // 'accumSeps' is already empty so no need to do anything there.
+  } else if (numSeparators == 1) {
+    accumSeps = part.separators[clique.ceReceiveSeparators[0]].nodes;
+  } else if (numSeparators == 2) {
+    
+
+    // shortcuts to separator 0 and 1
+    SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
+    SeparatorClique& s1 = part.separators[clique.ceReceiveSeparators[1]];
+
+    // intersection of the two separators
+    set<RandomVariable*> sepIntersection;
+    set_intersection(s0.nodes.begin(),s0.nodes.end(),
+		     s1.nodes.begin(),s1.nodes.end(),
+		     inserter(sepIntersection,sepIntersection.end()));
+
+    // first one in order should be empty.
+    s0.accumulatedIntersection.clear();
+    // and remainder of first one should get the rest
+    s0.remainder = s0.nodes;
+    // 2nd one in should be intersection
+    s1.accumulatedIntersection = sepIntersection;
+    // and remainder gets the residual.
+    set_difference(s1.nodes.begin(),
+		   s1.nodes.end(),
+		   sepIntersection.begin(),sepIntersection.end(),
+		   inserter(s1.remainder,
+			    s1.remainder.end()));
+    // compute union of all separators.
+    set_union(s0.nodes.begin(),s0.nodes.end(),
+	      s1.nodes.begin(),s1.nodes.end(),
+	      inserter(accumSeps,accumSeps.end()));
+
+  } else {
+    // there are 3 or more separators, determine proper order and then
+    // compute running accumulated intersection relative to that order.
+
+    // TODO: need to determine if there is an optimum order or not.
+    // note: code to compute 'an' order is commented out and taged
+    // with ABCDEFGHIJK at end of this file.
+
+    // Compute the cummulative intersection of the sepsets
+    // using the current sepset order.
+
+    {
+
+      // initialize union of all previous separators
+      accumSeps = 
+	part.separators[clique.ceReceiveSeparators[0]].nodes;
+
+      part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
+      for (unsigned sep=1;sep<numSeparators;sep++) {
+      
+	// reference variables for easy access
+	set<RandomVariable*>& sepNodes
+	  = part.separators[clique.ceReceiveSeparators[sep]].nodes;
+	set<RandomVariable*>& sepAccumInter
+	  = part.separators[clique.ceReceiveSeparators[sep]].accumulatedIntersection;
+
+
+	// create the intersection of 1) the union of all previous nodes in
+	// the sep order, and 2) the current sep nodes.
+	sepAccumInter.clear();
+	set_intersection(accumSeps.begin(),accumSeps.end(),
+			 sepNodes.begin(),sepNodes.end(),
+			 inserter(sepAccumInter,sepAccumInter.end()));
+
+	// compute the separator remainder while we're at it.
+	// specifically: remainder = sepNodes - sepAccumInter.
+	part.separators[clique.ceReceiveSeparators[sep]].remainder.clear();
+	set_difference(sepNodes.begin(),sepNodes.end(),
+		       sepAccumInter.begin(),sepAccumInter.end(),
+		       inserter(part.separators[clique.ceReceiveSeparators[sep]].remainder,
+				part.separators[clique.ceReceiveSeparators[sep]].remainder.end()));
+
+
+	// update the accumulated (union) of all previous sep nodes.
+	set<RandomVariable*> res;
+	set_union(sepNodes.begin(),sepNodes.end(),
+		  accumSeps.begin(),accumSeps.end(),
+		  inserter(res,res.end()));
+	accumSeps = res;	
+      }
+    }
+
+  }
+
+  // lastly, assign unassignedIteratedNodes in this clique
+  {
+    // compute: unassignedIteratedNodes  = nodes - (assignedNodes U accumSeps)
+    // first: compute res = nodes - assignedNodes
+    set<RandomVariable*> res;
+    set_difference(clique.nodes.begin(),clique.nodes.end(),
+		   clique.assignedNodes.begin(),clique.assignedNodes.end(),
+		   inserter(res,res.end()));
+    // next: compute unassignedIteratedNodes = res - accumSeps
+    // note at this point accumSeps contains the union of all nodes in all separators
+    set_difference(res.begin(),res.end(),
+		   accumSeps.begin(),accumSeps.end(),
+		   inserter(clique.unassignedIteratedNodes,
+			    clique.unassignedIteratedNodes.end()));
+  }
+
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::prepareForUnrolling()
+ *
+ *  Sets up a number of data structures that must be ready before
+ *  we can do general unrolling. This includes:
+ *  
+ *   1) computes the number of hidden variables in each clique/separator
+ *      (i.e., the number of discrete hidden and non-continous variables)
+ *
+ * Preconditions:
+ *   computeSeparatorIterationOrders() must have been called.
+ *
+ * Postconditions:
+ *   everything is now ready for general unrolling.
+ *
+ *
+ * Side Effects:
+ *    Changes member variables within cliques/separators within each partition.
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::prepareForUnrolling()
+{
+  prepareForUnrolling(P1);
+  prepareForUnrolling(C1);
+  prepareForUnrolling(C2);
+  prepareForUnrolling(C3);
+  prepareForUnrolling(E1);
+  prepareForUnrolling(Cu0);
+}
+void
+JunctionTree::prepareForUnrolling(JT_Partition& part)
+{
+  for (unsigned i=0;i<part.cliques.size();i++) {
+    part.cliques[i].prepareForUnrolling();
+  }
+  for (unsigned i=0;i<part.separators.size();i++) {
+    part.separators[i].prepareForUnrolling();
+  }
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::unroll()
  *   sets up the internal data structures and creates a junction tree corresponding
  *   to the graph with C' unrolled k times, k >= 0. (i.e., we have
  *   a graph that has (k+1) copies of C'). 
+ *
+ *   This also set up data structures for inference. Some of what this routine
+ *   does is copy data out of STL structures into faster customized structures
+ *   (such as hash tables, arrays, etc.).
  *
  *   Sets things up so that inference can take place.
  *   Unrolling is in terms of new C' partitions (so that if S=1, k corresponds to frames)
@@ -1243,6 +1579,7 @@ JunctionTree::createSeparators(InferencePartition& part,
  * Postconditions:
  *   The partitions are such that they now know who they are connected to on
  *   the right and left.
+ *   Also, unrolled data structures are set up and ready for inference for this length.
  *
  * Side Effects:
  *   Modifies all neighbors variables within the cliques within the
@@ -1262,41 +1599,43 @@ JunctionTree::unroll(const unsigned int k)
 
   // unrolled random variables
   vector <RandomVariable*> unrolled_rvs;
-  // mapping from name(frame) to integer index into unrolled_rvs.
+  // mapping from 'name+frame' to integer index into unrolled_rvs.
   map < RVInfo::rvParent, unsigned > ppf;
   // number of C repetitions is M + (k+1)*S, so
   // we unroll one less than that.
+  fprintf(stderr,"   start: unrolling nodes\n");
   fp.unroll(gm_template.M + (k+1)*gm_template.S - 1,
 	    unrolled_rvs,ppf);
+  fprintf(stderr,"   end: unrolling nodes\n");
 
   // printf("unrolled variables %d times\n",gm_template.M + (k+1)*gm_template.S - 1);
 
   // clear out the old and pre-allocate for new size.
-  partitions.clear();
-  partitions.reserve(k+3);
+  jtIPartitions.resize(k+3);
 
   // printf("unroll: doing P\n");
   // copy P partition into partitions[0]
-  partitions.push_back(InferencePartition(P1,unrolled_rvs,ppf,0));
+  new (&jtIPartitions[0]) JT_InferencePartition(P1,unrolled_rvs,ppf,0);
+
 
   if (k == 0) {
-    partitions.push_back(InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S));
-    partitions.push_back(InferencePartition(E1,unrolled_rvs,ppf,-2*gm_template.S));
+    new (&jtIPartitions[1]) JT_InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S);
+    new (&jtIPartitions[2]) JT_InferencePartition(E1,unrolled_rvs,ppf,-2*gm_template.S);
   } else if (k == 1) {
-    partitions.push_back(InferencePartition(C1,unrolled_rvs,ppf,0*gm_template.S));
-    partitions.push_back(InferencePartition(C3,unrolled_rvs,ppf,-1*gm_template.S));
-    partitions.push_back(InferencePartition(E1,unrolled_rvs,ppf,-1*gm_template.S));
+    new (&jtIPartitions[1]) JT_InferencePartition(C1,unrolled_rvs,ppf, 0*gm_template.S);
+    new (&jtIPartitions[2]) JT_InferencePartition(C3,unrolled_rvs,ppf,-1*gm_template.S);
+    new (&jtIPartitions[3]) JT_InferencePartition(E1,unrolled_rvs,ppf,-1*gm_template.S);
   } else {
-    partitions.push_back(InferencePartition(C1,unrolled_rvs,ppf,0*gm_template.S));
+    new (&jtIPartitions[1]) JT_InferencePartition(C1,unrolled_rvs,ppf, 0*gm_template.S);
 
     for (unsigned i = 1; i < k; i++) {
-      partitions.push_back(InferencePartition(C2,unrolled_rvs,ppf,(i-1)*gm_template.S));
+      new (&jtIPartitions[i+1]) JT_InferencePartition(C2,unrolled_rvs,ppf, (i-1)*gm_template.S);
     }
 
-    partitions.push_back(InferencePartition(C3,unrolled_rvs,ppf,((int)k-2)*gm_template.S));
-    partitions.push_back(InferencePartition(E1,unrolled_rvs,ppf,((int)k-2)*gm_template.S));
+    new (&jtIPartitions[k+1]) JT_InferencePartition(C3,unrolled_rvs,ppf, ((int)k-2)*gm_template.S);
+    new (&jtIPartitions[k+2]) JT_InferencePartition(E1,unrolled_rvs,ppf, ((int)k-2)*gm_template.S);
+
   }
-  
 }
 
 
@@ -1322,52 +1661,201 @@ void
 JunctionTree::collectEvidence()
 {
 
-#if 0
+  // this routine handles all of:
+  // unrolled 0 times: (so there is a single P1,Cu0, and E1)  
+  // unrolled 1 time: so there is a P1, C1, C3, E1
+  // unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
 
-  // first do P messages
-  for (unsigned msgNo=0;msgNo < P1_message_order.size(); msgNo ++){
-    infoMsg(IM::Med,"message in P from clique %d --> clique %d\n",
-	    P1_message_order[msgNo].first,
-	    P1_message_order[msgNo].second);
+
+  // do P1 messages
+  for (unsigned msgNo=0;msgNo < P1_message_order.size(); msgNo ++) {
+    const unsigned from = P1_message_order[msgNo].first;
+    const unsigned to = P1_message_order[msgNo].second;
+    infoMsg(IM::Med,"message in P1,part[0] from clique %d --> clique %d\n",
+	    from,to);
+    jtIPartitions[0].maxCliques[from].
+      collectEvidenceFromSeparators(jtIPartitions[0]);
+    jtIPartitions[0].maxCliques[from].
+      ceCollectToSeparator(jtIPartitions[0]);
   }
+  // do P1-C1 interface 
+  jtIPartitions[0].maxCliques[P_ri_to_C].
+    collectEvidenceFromSeparators(jtIPartitions[0]);
+  jtIPartitions[0].maxCliques[P_ri_to_C].
+    ceCollectToSeparator(jtIPartitions[0],
+			 jtIPartitions[1].
+			 separatorCliques[jtIPartitions[1].
+					  separatorCliques.size()-1]);
 
-  infoMsg(IM::Med,"message from P clique %d --> C clique %d\n",
-	 P_ri_to_C,C_li_to_P);
-
-  // then do C messsages
-  if (partitions.size() == 3) {
-
-
-
-
-  for (unsigned partNo = 1; partNo <= (partitions.size()-2); partNo ++ ) {
-    
-    for (unsigned msgNo=0;msgNo < C_to_C_message_order.size(); msgNo ++){
-      infoMsg(IM::Med,"message in C%d from clique %d --> clique %d\n",
-	     partNo,
-	     C_to_C_message_order[msgNo].first,
-	     C_to_C_message_order[msgNo].second);
+  // then do C1 [C2 ...] messages
+  unsigned partNo;
+  for (partNo = 1; partNo < (jtIPartitions.size()-2); partNo ++ ) {
+    for (unsigned msgNo=0;msgNo < C1_message_order.size(); msgNo ++) {
+      const unsigned from = C1_message_order[msgNo].first;
+      const unsigned to = C1_message_order[msgNo].second;
+      infoMsg(IM::Med,"message in C1,part[%d] from clique %d --> clique %d\n",
+	      partNo,from,to);
+      jtIPartitions[partNo].maxCliques[from].
+	collectEvidenceFromSeparators(jtIPartitions[partNo]);
+      jtIPartitions[partNo].maxCliques[from].
+	ceCollectToSeparator(jtIPartitions[partNo]);
     }
 
-    if (partNo < (partitions.size()-2)) {
-      infoMsg(IM::Med,"message from C%d clique %d --> C%d clique %d\n",
-	     partNo,C_ri_to_C,
-	     partNo+1,C_li_to_C);
-    }
+    // do C1-nextC interface
+    jtIPartitions[partNo].maxCliques[C_ri_to_C].
+      collectEvidenceFromSeparators(jtIPartitions[partNo]);
+    jtIPartitions[partNo].maxCliques[C_ri_to_C].
+      ceCollectToSeparator(jtIPartitions[partNo],
+			   jtIPartitions[partNo+1].
+			   separatorCliques[jtIPartitions[partNo+1].
+					    separatorCliques.size()-1]);
   }
 
-  infoMsg(IM::Med,"message from C clique %d --> E clique %d\n",
-	 C_ri_to_E,E_li_to_C);
-
-  // and lastly do E messages
-  for (unsigned msgNo=0;msgNo < E_message_order.size(); msgNo ++) {
-    infoMsg(IM::Med,"message in E from clique %d --> clique %d\n",
-	   E_message_order[msgNo].first,
-	   E_message_order[msgNo].second);
+  // then do C3 messages
+  for (unsigned msgNo=0;msgNo < C3_message_order.size(); msgNo ++) {
+    const unsigned from = C3_message_order[msgNo].first;
+    const unsigned to = C3_message_order[msgNo].second;
+    infoMsg(IM::Med,"message in C3,part[%d] from clique %d --> clique %d\n",
+	    partNo,from,to);
+    jtIPartitions[partNo].maxCliques[from].
+      collectEvidenceFromSeparators(jtIPartitions[partNo]);
+    jtIPartitions[partNo].maxCliques[from].
+      ceCollectToSeparator(jtIPartitions[partNo]);
   }
+  // do C3-E1 interface
+  jtIPartitions[partNo].maxCliques[C_ri_to_E].
+    collectEvidenceFromSeparators(jtIPartitions[partNo]);
+  jtIPartitions[partNo].maxCliques[C_ri_to_E].
+    ceCollectToSeparator(jtIPartitions[partNo],
+			 jtIPartitions[partNo+1].
+			 separatorCliques[jtIPartitions[partNo+1].
+					  separatorCliques.size()-1]);
 
-#endif
+
+
+  // finally E1 messages
+  partNo++;
+  for (unsigned msgNo=0;msgNo < E1_message_order.size(); msgNo ++) {
+    const unsigned from = E1_message_order[msgNo].first;
+    const unsigned to = E1_message_order[msgNo].second;
+    infoMsg(IM::Med,"message in E1,part[%d] from clique %d --> clique %d\n",
+	    partNo,from,to);
+    jtIPartitions[partNo].maxCliques[from].
+      collectEvidenceFromSeparators(jtIPartitions[partNo]);
+    jtIPartitions[partNo].maxCliques[from].
+      ceCollectToSeparator(jtIPartitions[partNo]);
+  }
+  jtIPartitions[partNo].maxCliques[E_root_clique].
+    collectEvidenceFromSeparators(jtIPartitions[partNo]);
 
 }
 
+
+
+
+
+
+
+#if 0
+
+
+  // code from above that is commented out but not yet deleted. 
+  // it is kept here for now to clarify development.
+  // tag: ABCDEFGHIJK at end of this file.
+
+    {
+    // TODO: need to determine if there is an optimum order or not. If
+    // not, no need to sort here. In general, the number of "live"
+    // entries at the end of a sep traversal will be the same no
+    // matter the order that is chosen. What we want here, however,
+    // is something that kills non-live entries ASAP, to avoid extra
+    // work. The question is if this is depending on properties
+    // of just the separators independent of the particular set of
+    // sparse entries these separators currently contain.
+
+    // current code is set up to do a max spanning tree on sep sets
+    // but it is commented out for now.
+    
+    // 3 or more separators, need to compute max spanning tree
+
+    vector < set<unsigned> >  findSet;
+    findSet.resize(numMaxCliques);
+    for (unsigned i=0;i<numSeparators;i++) {
+      set<unsigned> iset;
+      iset.insert(i);
+      findSet[i] = iset;
+    }
+
+    vector< Edge > edges;
+    edges.reserve((numSeparators*(numSeparators-1))/2);
+
+    set<RandomVariable*> sep_intr_set;
+    for (unsigned i=0;i<numSeparators;i++) {
+      for (unsigned j=i+1;j<numSeparators;j++) {
+
+	const set<RandomVariable*>& sep_i =
+	  part.separators[clique.ceReceiveSeparators[i]];
+	const set<RandomVariable*>& sep_j =
+	  part.separators[clique.ceReceiveSeparators[j]];
+	sep_intr_set.clear();
+	set_intersection(sep_i.begin(),sep_i.end(),
+			 sep_j.begin(),sep_j.end(),
+			 inserter(sep_intr_set,sep_intr_set.end()));
+	Edge e;
+	e.clique1 = i; e.clique2 = j; 
+	e.weight = sep_intr_set.size();
+	edges.push_back(e);
+	infoMsg(IM::Huge,"Edge (%d,%d) has weight %d\n",i,j,e.weight);
+      }
+    }
+  
+    // sort in decreasing order by edge weight which in this
+    // case is the sep-set size.
+    sort(edges.begin(),edges.end(),EdgeCompare());
+
+    unsigned joinsPlusOne = 1;
+    for (unsigned i=0;i<edges.size();i++) {
+      infoMsg(IM::Huge,"edge %d has weight %d\n",i,edges[i].weight);
+
+      // TODO: optimize this to deal with ties to make message
+      // passing cheaper.
+
+      set<unsigned>& iset1 = findSet[edges[i].clique1];
+      set<unsigned>& iset2 = findSet[edges[i].clique2];
+      if (iset1 != iset2) {
+	// merge the two sets
+	set<unsigned> new_set;
+	set_union(iset1.begin(),iset1.end(),
+		  iset2.begin(),iset2.end(),
+		  inserter(new_set,new_set.end()));
+	// make sure that all members of the set point to the
+	// new set.
+	set<unsigned>::iterator ns_iter;
+	for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
+	  const unsigned clique = *ns_iter;
+	  findSet[clique] = new_set;
+	}
+	infoMsg(IM::Med,"Joining cliques %d and %d\n",
+		edges[i].clique1,edges[i].clique2);
+
+	// make edge between edges[i].clique1 and edges[i].clique2
+
+	// part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
+	// part.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
+
+	if (++joinsPlusOne == numSeparators)
+	  break;
+      }
+    }
+    
+    // since these are separators, and all for a given clique A
+    // with some other clique B_i, and since all separators are
+    // subsets of A, but it is not the case that all separators have
+    // an intersection with each other. Goal is to find an order to
+    // traverse the sep sets so that we maximize the amount of overlap
+    // from the so-far-traversed to the to-be-traversed.
+
+    }
+
+#endif
 

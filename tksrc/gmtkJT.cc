@@ -63,14 +63,64 @@ static char *cppCommandOptions = NULL;
 static unsigned verbosity = IM::Default;
 
 static unsigned unroll_k = 0;
+int startSkip = 0;
+int endSkip = 0;
+float lldp = 0.001;
+float mnlldp = 0.01;
+float beam=-LZERO;
+
+// char *outputTrainableParameters="outParms%d.gmp";
+char *outputTrainableParameters=NULL;
+bool binOutputTrainableParameters=false;
+bool writeParametersAfterEachEMIteration=true;
+
+
+char *inputMasterFile=NULL;
+char *outputMasterFile=NULL;
+char *inputTrainableParameters=NULL;
+bool binInputTrainableParameters=false;
+char *objsToNotTrainFile=NULL;
+
+
+#define MAX_NUM_OBS_FILES (3)
+char *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL }; 
+unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
+unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
+char *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
+char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
+char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
+bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
+
 
 bool print_version_and_exit = false;
 Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
+  // observation input file handling
+
+  Arg("of1",Arg::Req,ofs[0],"Observation File 1"),
+  Arg("nf1",Arg::Opt,nfs[0],"Number of floats in observation file 1"),
+  Arg("ni1",Arg::Opt,nis[0],"Number of ints in observation file 1"),
+  Arg("fr1",Arg::Opt,frs[0],"Float range for observation file 1"),
+  Arg("ir1",Arg::Opt,irs[0],"Int range for observation file 1"),
+  Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
+  Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
+
+  /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
 
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
+
+  Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
+  Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
+
+  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
+  Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
+
+  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
+  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
+
+
   Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
 
   /////////////////////////////////////////////////////////////
@@ -106,11 +156,6 @@ int
 main(int argc,char*argv[])
 {
 
-  if (print_version_and_exit) {
-    printf("%s\n",gmtk_version_id);
-    exit(0);
-  }
-
   ////////////////////////////////////////////
   // set things up so that if an FP exception
   // occurs such as an "invalid" (NaN), overflow
@@ -123,11 +168,57 @@ main(int argc,char*argv[])
   Arg::parse(argc,argv);
   (void) IM::setGlbMsgLevel(verbosity);
 
+  if (print_version_and_exit) {
+    printf("%s\n",gmtk_version_id);
+    exit(0);
+  }
+
+
+  ////////////////////////////////////////////
+  // check for valid argument values.
+  int nfiles = 0;
+  unsigned ifmts[MAX_NUM_OBS_FILES];
+  for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
+    if (ofs[i] != NULL && nfs[i] == 0 && nis[i] == 0)
+      error("ERROR: command line parameters must specify one of nf%d and ni%d as not zero",
+	    i+1,i+1);
+    nfiles += (ofs[i] != NULL);
+    if (strcmp(fmts[i],"htk") == 0)
+      ifmts[i] = HTK;
+    else if (strcmp(fmts[i],"binary") == 0)
+      ifmts[i] = RAWBIN;
+    else if (strcmp(fmts[i],"ascii") == 0)
+      ifmts[i] = RAWASC;
+    else if (strcmp(fmts[i],"pfile") == 0)
+      ifmts[i] = PFILE;
+    else
+      error("ERROR: Unknown observation file format type: '%s'\n",fmts[i]);
+  }
+
+  globalObservationMatrix.openFiles(nfiles,
+				    (const char**)&ofs,
+				    (const char**)&frs,
+				    (const char**)&irs,
+				    (unsigned*)&nfs,
+				    (unsigned*)&nis,
+				    (unsigned*)&ifmts,
+				    (bool*)&iswps,
+				    startSkip,
+				    endSkip);
+
+
 
   MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
+  if (lldp < 0.0 || mnlldp < 0.0)
+    error("lldp & mnlldp must be >= 0");
+  if (beam < 0.0)
+    error("beam must be >= 0");
+  if (startSkip < 0 || endSkip < 0)
+    error("startSkip/endSkip must be >= 0");
+
 
   ////////////////////////////////////////////
   // set global variables/change global state from args
@@ -136,8 +227,6 @@ main(int argc,char*argv[])
     rnd.seed();
 
 
-#if 0
-  // don't read in parameters for now
   /////////////////////////////////////////////
   // read in all the parameters
   if (inputMasterFile) {
@@ -151,7 +240,8 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.loadGlobal();
-#endif
+  // comment for now Sun Jan 11 09:47:23 2004
+  // GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 
   /////////////////////////////
   // read in the structure of the GM, this will
@@ -179,6 +269,16 @@ main(int argc,char*argv[])
       error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   }
 
+  // make sure that all observation variables work
+  // with the global observation stream.
+  fp.checkConsistentWithGlobalObservationStream();
+  GM_Parms.checkConsistentWithGlobalObservationStream();
+
+  /////
+  // TODO: check that beam is a valid value.
+  logpr pruneRatio;
+  pruneRatio.valref() = -beam;
+
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
   // enables the program to use external triangulation programs,
@@ -195,7 +295,7 @@ main(int argc,char*argv[])
   gm_template.readPartitions(is);
   gm_template.readMaxCliques(is);
   gm_template.triangulatePartitionsByCliqueCompletion();
-  if (0) { 
+  if (1) { 
     // check that it is triangulated for now, 
     // 
     // TODO: ultimately take this check out so that inference code
@@ -214,8 +314,27 @@ main(int argc,char*argv[])
 
   myjt.createDirectedGraphOfCliques();
   myjt.assignRVsToCliques();
-
   myjt.setUpMessagePassingOrders();
+  myjt.createSeparators();
+  myjt.computeSeparatorIterationOrders();
+  myjt.prepareForUnrolling();
+
+
+  // fprintf(stderr,"starting unrolling\n");
+  // myjt.unroll(unroll_k);
+  // fprintf(stderr,"ending unrolling\n");
+
+  if (globalObservationMatrix.numSegments()==0)
+    error("ERROR: no segments are available in observation file");
+  GM_Parms.clampFirstExample();
+
+  globalObservationMatrix.loadSegment(0);
+
+  int frames = globalObservationMatrix.numFrames();
+
+  // assume size(P) = 1, size(C) = 1, and size(E) = 1 for now.
+  unsigned unroll_k = (frames-3);
+
   myjt.unroll(unroll_k);
   myjt.collectEvidence();
 

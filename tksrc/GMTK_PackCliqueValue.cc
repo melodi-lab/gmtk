@@ -142,6 +142,8 @@ PackCliqueValue::init(const unsigned *const cards)
       valLocators[wordBoundaryOverlapLocation].startMask =
 	((1 << curNumberUnusedBits)-1) << 
 	valLocators[wordBoundaryOverlapLocation].startRightShift;
+      
+      // and use bits from next word
 
       const unsigned numBitsRemaining = curNumberBits - curNumberUnusedBits;
 
@@ -198,7 +200,7 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
  *   but works directly with cliques.
  *
  * Preconditions:
- *   see above + maxClique's sortedNodes variable must have
+ *   see above constructor + nodes's variable must have
  *   been instantiated.
  * 
  * Postconditions:
@@ -213,17 +215,35 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
  *-----------------------------------------------------------------------
  */
 
-PackCliqueValue::PackCliqueValue(MaxClique& maxClique)
-  : unpackedVectorLength(maxClique.nodes.size())
+// PackCliqueValue::PackCliqueValue(MaxClique& maxClique)
+//   : unpackedVectorLength(maxClique.nodes.size())
+// {
+//   assert (maxClique.nodes.size() != 0);
+
+//   sArray < unsigned > cards(maxClique.nodes.size());
+
+//   set<RandomVariable*>::iterator it;
+//   unsigned i=0;
+//   for (it=maxClique.nodes.begin();
+//        it != maxClique.nodes.end();it++) {
+//     RandomVariable*rv = (*it);
+//     cards.ptr[i] = rv->cardinality;
+//     i++;
+//   }
+//   init(cards.ptr);
+// }
+
+PackCliqueValue::PackCliqueValue(vector<RandomVariable*>& nodes)
+  : unpackedVectorLength(nodes.size())
 {
-  assert (maxClique.nodes.size() != 0);
+  assert (nodes.size() != 0);
 
-  sArray < unsigned > cards(maxClique.nodes.size());
+  sArray < unsigned > cards(nodes.size());
 
-  set<RandomVariable*>::iterator it;
+  vector<RandomVariable*>::iterator it;
   unsigned i=0;
-  for (it=maxClique.nodes.begin();
-       it != maxClique.nodes.end();it++) {
+  for (it=nodes.begin();
+       it != nodes.end();it++) {
     RandomVariable*rv = (*it);
     cards.ptr[i] = rv->cardinality;
     i++;

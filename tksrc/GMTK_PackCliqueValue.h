@@ -90,9 +90,12 @@ class PackCliqueValue {
 
 public:
 
-  PackCliqueValue(MaxClique& maxClique);
+  PackCliqueValue(vector<RandomVariable*>& nodes);
 
   PackCliqueValue(const unsigned len, const unsigned *const cards); 
+
+  // create an empty one for re-construction later
+  PackCliqueValue() : unpackedVectorLength(0) {}
 
   ~PackCliqueValue() {}
 
@@ -145,8 +148,9 @@ public:
     }
   }
 
+
   // same as above, but that packs from an array of pointers to ints
-  void pack(const unsigned **const unpacked_vec,
+  void pack(const unsigned *const *const unpacked_vec,
 	    unsigned *const packed_vec) {
     // zero out packed vector
     unsigned *packed_vecp = packed_vec;
@@ -183,6 +187,13 @@ public:
       }
     }
   }
+
+  // version to do type change.
+  // inline void pack(const int *const *const unpacked_vec,
+  // int *const packed_vec) {
+  // pack((const unsigned *const *const) unpacked_vec,
+  //	 (unsigned*const)packed_vec);
+  // }
 
   void unpack(const unsigned *const packed_vec,
 	      unsigned *const unpacked_vec) {
