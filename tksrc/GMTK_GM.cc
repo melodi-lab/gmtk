@@ -355,7 +355,8 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
         clampFirstExample();
         do
         {
-	    globalObservationMatrix.printSegmentInfo();
+            if (globalObservationMatrix.active())
+	        globalObservationMatrix.printSegmentInfo();
             // first compute the probabilities
             if (!chain->computePosteriors(beam))
             {
