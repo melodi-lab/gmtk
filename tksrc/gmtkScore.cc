@@ -136,6 +136,7 @@ ARGS ARGS::Args[] = {
 
   ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
   ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
+  ARGS("cptNormThreshold",ARGS::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
   ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
 
   ARGS()
