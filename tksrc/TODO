@@ -2678,5 +2678,17 @@ Wed Feb  9 18:54:52 2005
   - for -verb 55, include printouts at every partition boundary giving memory usage summaries
      (clique hash tables, separator hash tables, clique entries, separator entries, etc.).
  
+Wed Feb  9 20:37:23 2005
+  - for docs: include mention in DT section that DTs do not specify cardinalities of parents,
+    only number of parents. This means that a DT can be used in a number of contexts (with
+    different sets of RVs with different RVS), and that the evaluation of DT formulas will
+    be different for the same parent corresponding parent values with different parent cardinalities.
 
+Thu Feb 10 09:22:32 2005
+  - fix zombie process issue:
+   Yes, that is on my todo list. I do know that the zombies go away once
+  the process has ended (basically, the problem is that there is an input
+  pipe that stays open for the duration of the process, but the pipe has
+  called cpp which has already terminated, but the pipe doesn't get closed
+  until the end of the process, and its a pain to close it earlier).
 
