@@ -278,6 +278,9 @@ public:
 	    error("ERROR: Hash table error, table size exceeds max size of %lu",
 		  HashTable_PrimesArray[primesArrayIndex]);
 	  resize(HashTable_PrimesArray[++primesArrayIndex]);
+	  // need to re-get location
+	  a = entryOf(key,table);
+	  assert (!empty(table[a]));
       }
     } else {
       foundp = true;
