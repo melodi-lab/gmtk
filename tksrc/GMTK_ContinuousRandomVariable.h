@@ -2,7 +2,7 @@
  * GMTK_ContinuousRandomVariable.h
  * A specific case of the RandomVariable class
  *
- * Written by Geoffrey Zweig <gzweig@us.ibm.com> & Jeff Bilmes <bilmes@ee.washington.edu>
+ * Jeff Bilmes <bilmes@ee.washington.edu>
  * 
  * Copyright (c) 2001, < fill in later >
  *
@@ -20,6 +20,8 @@
 
 #include <vector>
 
+#include "logp.h"
+
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
 
@@ -31,51 +33,47 @@ private:
 
 public:
 
-  ContinuousRandomVariable(string _label) 
-    : RandomVariable(_label,Continuous) {}
+  ContinuousRandomVariable(string _label);
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
   void findConditionalParents();
 
   // compute the probability
-  logpr probGivenParents();
+  logpr probGivenParents() { return 0.0; }
 
   ////////////////////////////////////////////////
   // clamp this RV to its "first" value,
   // presumably this is an observation and contains only one value.
-  void clampFirstValue();
-  { findConditionalParents(); it = curCPT->begin(); val = it.val(); }
+  void clampFirstValue() {}
   // always the last value.
   bool clampNextValue() { return true; }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
   // Value caching support.
-  CONTINUOUS_VARIABLE_TYPE cached_val;
-  void cacheValue() {cached_val=val;}
-  void restoreCachedValue() {val=cached_val;}
-
+  void cacheValue() {}
+  void restoreCachedValue() {}
   /////////////////////////////////////////////////////////////////////////
   // stores a variable's value elsewhere
-  virtual void storeValue(VariableValue &vv) {vv.ival = val;}
-
+  void storeValue(VariableValue &vv) {vv.ival = val;}
   /////////////////////////////////////////////////////////////////////////
   // sets a variables value as specified
-  virtual void setValue(VariableValue &vv) {val = vv.ival;}
+  void setValue(VariableValue &vv) {val = vv.ival;}
 
-  void makeRandom();
-  void makeUniform();
+
+  void makeRandom() {}
+  void makeUniform() {}
 
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
-  void instantiate();
+  void instantiate() {}
 
   ///////////////////////////////////////////////////
   // EM Support
-  void emStartIteration();
-  void emIncrement(logpr posterior);
-  void emEndIteration();
+  void emStartIteration() {}
+  void emIncrement(logpr posterior) {}
+  void emEndIteration() {}
   ///////////////////////////////////////////////////
 
 
