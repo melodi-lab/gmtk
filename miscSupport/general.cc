@@ -200,9 +200,9 @@ void reportTiming(// input
   if (outputf != NULL)
     fprintf(outputf,"User: %f, System: %f, CPU %f\n", utimef, stimef, utimef+stimef);
   
-  if (userTime)
-    userTime = utimef;
-  if (sysTime)
-    sysTime = stimef;
+  // if (userTime)
+  userTime = utimef;
+  // if (sysTime)
+  sysTime = stimef;
 }
 
