@@ -21,7 +21,7 @@ INSTALL_LIB = $(INSTALL_DATA)
 MKINSTALLDIRS =	$(srcdir)/mkinstalldirs
 
 #directories
-INCLUDES= -I. -I../miscSupport
+INCLUDES= -I. -I../miscSupport -I../IEEEFloatingpoint
 LIBDIR= -L. -L../miscSupport
 PURIFYDIR=/g/ssli/commercial/rational/releases/DeveloperTools.DE17/sun4_solaris2/bin/
 
@@ -67,7 +67,7 @@ link = $(PUR) $(LD) $(LDFLAGS) $(CXXFLAGS)
 all: libpfile.a pfile_gaussian pfile_info pfile_merge pfile_diff pfile_print \
 	pfile_select pfile_stats pfile_build  pfile_create \
 	pfile_concat pfile_norm pfile_normutts pfile_ftrcombo  \
-	pfile_klt pfile_mi pfile_skmeans pfile_addsil
+	pfile_klt pfile_mi pfile_skmeans pfile_addsil pfile_initmg
 
 
 #----------------------------------------------------------------------------
@@ -89,6 +89,13 @@ pfile_gaussian : pfile_gaussian.o bin_search.o libpfile.a
 
 pfile_info : pfile_info.o libpfile.a
 	$(link) -o pfile_info pfile_info.o $(LIBS)
+
+
+pfile_initmg : pfile_initmg.o libpfile.a
+	$(link) -o pfile_initmg pfile_initmg.o $(LIBS)
+
+
+
 
 pfile_merge : pfile_merge.o libpfile.a
 	$(link) -o pfile_merge pfile_merge.o $(LIBS)
