@@ -178,23 +178,11 @@ void GMTK_GM::enumerateProb(unsigned pos, logpr p)
     }
 
     randomVariable *rv = topologicalOrder[pos];
-    if (rv->hidden)
+    rv->clampFirstValue();
+    do
     {
-        assert(rv->discrete);
-	rv->setPossibleDiscreteValues();
-        for (int i=0; i<rv->possibleDiscreteValues.len(); i++)
-        {
-            rv->val = rv->possibleDiscreteValues[i];
-            enumerateProb(pos+1, p*rv->discreteProbGivenParents());
-        }
-    }
-    else
-    {
-        if (rv->discrete)
-            enumerateProb(pos+1, p*rv->discreteProbGivenParents();
-        else
-            enumerateProb(pos+1, p*rv->probGivenParents();
-    }
+        enumerateProb(pos+1, p*rv->probGivenParents());
+    } while (rv->clampNextValue());
 
     if (pos == 0)  // all done with everything
         if (dataProb == 0 && !emMode)
@@ -267,23 +255,11 @@ void GMTK_GM::enumerateViterbiProb(unsigned pos, logpr p)
     }
 
     randomVariable *rv = topologicalOrder[pos];
-    if (rv->hidden)
+    rv->clampFirstValue();
+    do
     {
-        assert(rv->discrete);
-	rv->findPossibleDiscreteValues();
-        for (int i=0; i<rv->possibleDiscreteValues.len(); i++)
-        {
-            rv->val = rv->possibleDiscreteValues[i];
-            enumerateViterbiProb(pos+1, p*rv->discreteProbGivenParents());
-        }
-    }
-    else
-    {
-        if (rv->discrete)
-            enumerateViterbiProb(pos+1, p*rv->discreteProbGivenParents();
-        else
-            enumerateViterbiProb(pos+1, p*rv->probGivenParents();
-    }
+        enumerateViterbiProb(pos+1, p*rv->probGivenParents();
+    } while (rv->clampNextValue());
 
     if (pos == 0)  // all done with everything
         if (viterbiProb == 0)
