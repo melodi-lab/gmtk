@@ -224,11 +224,13 @@ public:
 					  const set<RandomVariable*>& unionSepNodes,
 					  const bool useDeterminism = true);
   static float computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-					   const set<RandomVariable*>& assignedProbNodes,
-					   const set<RandomVariable*>& unassignedIteratedNodes,
-					   const set<RandomVariable*>& separatorNodes,
+					   const set<RandomVariable*>& assignedNodes,
 					   const set<RandomVariable*>& cumulativeAssignedNodes,
+					   const set<RandomVariable*>& unassignedIteratedNodes,
+					   const set<RandomVariable*>& cumulativeUnassignedIteratedNodes,
+					   const set<RandomVariable*>& separatorNodes,
 					   const set<RandomVariable*>& unassignedInPartition,
+					   const bool upperBound,
 					   const bool useDeterminism);
 
   // compute the weight (log10 state space) of this clique.
@@ -236,13 +238,16 @@ public:
     return computeWeight(nodes,NULL,useDeterminism); 
   }
   float weightInJunctionTree(const set<RandomVariable*>& unassignedInPartition,
+			     const bool upperBound = false,
 			     const bool useDeterminism = true) const { 
     return computeWeightInJunctionTree(nodes,
-				       assignedProbNodes,
-				       unassignedIteratedNodes,
-				       accumSeps,
+				       assignedNodes,
 				       cumulativeAssignedNodes,
+				       unassignedIteratedNodes,
+				       cumulativeUnassignedIteratedNodes,
+				       unionIncommingCESeps,
 				       unassignedInPartition,
+				       upperBound,
 				       useDeterminism);
   }
 
@@ -258,73 +263,51 @@ public:
   // triangulation.
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // The set of nodes that are assigned to this maxClique from which
-  // probabilities are extracted.  Necessarily it is the case that
-  // assignedProbNodes <= nodes (i.e., set containment).
+  // The set of nodes that are *assigned* to this maxClique. "Assigned"
+  // means that the node and its parents exist in this clique, but
+  // assigned does not necessarily mean that such a node will be used
+  // to contribute a probability to this clique potential. Assigned
+  // nodes will have the option of using CPT-based iteration in certain
+  // cases, unless it can't (i.e., the node is also in the incomming 
+  // CE separator) or it is not worth it (the node is not sparse).
   // Computed in JunctionTree::assignRVsToCliques().
   // Used to:
-  //    1) compute cumulativeAssignedNodes below
-  //    2) compute unassignedIteratedNodes = nodes - (assignedProbNodes U accumSeps)
-  //    3) compute JT weight
-  //    4) compute iterateSortedAssignedNodesP
+  //   1) compute cumulativeAssignedNodes
+  //   2) compute unassignedIteratedNodes (and its cumulative verison)
+  //   3) compute jt weight
+  set<RandomVariable*> assignedNodes;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // A topologically sorted vector version of assignedNodes.
+  // The topological sort is relative only to the variables
+  // in this clique. The topological sort is used during
+  // CE clique creation, so that CPT iteration can be used when available.
+  // Computed in JunctionTree::assignRVsToCliques().
+  // Used to:
+  //   1) compute assigned nodes dispositions (in appropriate order)
+  //   2) compute fSortedAssignedNodes in an inference clique
+  vector<RandomVariable*> sortedAssignedNodes;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // These are the nodes in this clique that are used to
+  // contribute a probability to the clique potential. Necessarily, it is the
+  // case that assignedProbNodes <= assignedNodes.
+  // Computed in JunctionTree::assignRVsToCliques().
+  // Used to:
+  //   1) compute cumulativeAssignedProbNodes
+  //   2) determine nodes to assign to clique
+  //   3) compute assigned nodes dispositions 
+  //   4) which nodes in cliques during EM get sent posterior probability.
   set<RandomVariable*> assignedProbNodes;
 
-  // USED ONLY IN JUNCTION TREE INFERENCE
-  // a topologically sorted vector version of assignedProbNodes
-  // The topological sort is relative only to the variables
-  // in this clique.
-  // Computed in JunctionTree::assignRVsToCliques().
-  // Used to:
-  //   1) compute iterateSortedAssignedNodesP (since order here must be sorted order)
-  //   2) compute fSortedAssignedNodes in inference cliques
-  vector<RandomVariable*> sortedAssignedProbNodes;
-
-  // USED ONLY IN JUNCTION TREE INFERENCE
-  // These are the nodes in this clique that have their parents
-  // in the same clique, but have been assigned to the
-  // assignedProbNodes set in another clique. We still
-  // keep track of them here, since we can use CPT iteration
-  // over them rather than [0,card-1] iteration.
-  // Computed in JunctionTree::assignRVsToCliques().
-  // set<RandomVariable*> assignedIterNodes;
-
-
-  // USED ONLY IN JUNCTION TREE INFERENCE 
-  // Predicate for each each sorted assigned node, used to say if that
-  // node should be iterated, or if its value has already been set by
-  // an incomming separator being iterated. If this has zero length,
-  // then we iterate everything in sortedAssignedProbNodes. If it does not
-  // have zero length, it has same length as sortedAssignedProbNodes array
-  // indicating which ones should not be CPT-iterated.
-  // computed in MaxClique::computeAssignedNodesToIterate()
-  // Used to:
-  //   1) determine which of fSortedAssignedNodes in inf clique should be iterated.
-  sArray < bool > iterateSortedAssignedNodesP;
-
-
-  // USED ONLY IN JUNCTION TREE INFERENCE
-  // The set of nodes that are not assigned to this clique but that
-  // also are not iterated over by the incomming
-  // separators. Therefore, these nodes in the clique must be iterated
-  // over from scratch.  The hope is that assignment and setup can be
-  // done so there are very few or zero of such nodes. Note however
-  // that once a clique iterates over such a node, any later cliques
-  // (closer to the JT root) will not have to re-do this as these
-  // assignments here will be represented in this cliques out-going
-  // sepset.
-  // Computed in JunctionTree::computeSeparatorIterationOrders()
-  // Used to:
-  //  1) help compute precedingUnassignedIteratedNodes
-  //  2) compute JT weight in clique
-  //  3) compute fUnassignedIteratedNodes in inference clique (which says
-  //     which nodes in a clique are unassigend so iterated [0,card-1]
-  set<RandomVariable*> unassignedIteratedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of assigned nodes cummulative in the JT relative to root
-  // in the JT for the current partition.  Note that
-  // cumulativeAssignedNodes DOES INCLUDE the assignedProbNodes in the current
-  // clique.  Also note, that during inference, this includes all
+  // in the JT for the current partition and clique.  Note that
+  // cumulativeAssignedNodes *DOES NOT* include the assignedNodes in the current
+  // clique.  In other words, we have that:
+  // intersect(cumulativeAssignedNodes,assignedNodes) = EMPTY
+  // Also note, that during inference, this includes all
   // assigned nodes in the previous partition, but during jt-weight
   // evaluation in triangulation, it does not include those previous
   // partition nodes. Instead, those nodes are a subset of
@@ -332,34 +315,27 @@ public:
   // Computed in JunctionTree::getCumulativeAssignedNodes
   //    via JunctionTree::assignRVsToCliques()
   // Used to:
-  //   1) when assigning RV, heuristic to tell if a rv
-  //      when being considered to be assigned to a clique
-  //      has its parents previously assigned in lower JT cliques (i.e.,
-  //       will the parents be assigned in an CE incomming separator.
-  //   2) compute JT weight
+  //   1) compute JT weight
+  //   2) compute assigned nodes dispositions 
   set<RandomVariable*> cumulativeAssignedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // the preceding cumulative set of unassigned and iterated nodes
-  // relative to the root in the JT for the current partition adn
-  // clique. This is used to determine which of the assigned nodes
-  // need actually be iterated within a clique, and which are already
-  // set by the separator iterations. Note that
-  // precedingUnassignedIteratedNodes does *NOT* include the
-  // unassignedIteratedNodes in the current clique (thus the name
-  // preceding).  
-  // Computed in JunctionTree::getPrecedingIteratedUnassignedNodes()
+  // The set of assigned probability nodes cummulative in the JT relative to root
+  // in the JT for the current partition. This *DOES NOT* include
+  // the set of nodes in the current clique that contribute
+  // probability. In other words, we have that:
+  // intersect(cumulativeAssignedProbNodes,assignedProbNodes) = EMPTY
+  // Computed in JunctionTree::getCumulativeAssignedNodes
+  //    via JunctionTree::assignRVsToCliques()
   // Used to:
-  //    1) compute, iterateSortedAssignedNodesP to determine
-  //       if any of the assigned nodes are being iterated
-  //       by previously unassigned iterated nodes.
-  // Note: should be replaced by accumSeps, perhaps remove.
-  set<RandomVariable*> precedingUnassignedIteratedNodes;
+  //     1) select clique for later nodes to be assigned to.
+  set<RandomVariable*> cumulativeAssignedProbNodes;
+
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The union of of all nodes in separators for incomming messages
-  // for this clique. By 'incomming', what is meant is incomming
-  // during the collect evidence stage.
+  // for this clique during collect evidence stage. By 'incomming',
+  // what is meant is incomming during the collect evidence stage.
   // Computed in JunctionTree::computeSeparatorIterationOrder()
   // Used to:
   //   1) when computing the sep sets division between previous
@@ -368,7 +344,124 @@ public:
   //      the union of all CE incoming separators, but 
   //      is not currently used outside the routine it is created in
   //      (other than printing).
-  set<RandomVariable*> accumSeps;
+  //   2) computing  unassignedIteratedNodes
+  //   3) compute assigned nodes dispositions 
+  set<RandomVariable*> unionIncommingCESeps;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // The set of nodes that are not assigned to this clique but that
+  // also are not iterated over by the incomming
+  // separators. Therefore, these nodes in the clique must be iterated
+  // over [0,card-1] unfortunately.  The hope is that assignment and setup can be
+  // done so there are very few or zero of such nodes. Note however
+  // that once a clique iterates over such a node, any later cliques
+  // (closer to the JT root) will not have to re-do this as these
+  // assignments here will be represented in this cliques out-going
+  // sepset.
+  // Computed in JunctionTree::computeSeparatorIterationOrders()
+  // Used to:
+  //  1) compute JT weight in clique
+  //  2) compute fUnassignedIteratedNodes in inference clique (which says
+  //     which nodes in a clique are unassigend so iterated [0,card-1]
+  //  3) in CE, choose which routine to call first.
+  set<RandomVariable*> unassignedIteratedNodes;
+
+
+  // USED ONLY IN JUNCTION TREE INFERENCE 
+  // This enum defines the different things that could
+  // happen to an assigned node in a clique during CE assigned node iteration.
+  enum AssignedNodeDisposition {
+    // In the discussion below, say v is an assignedNode (meaning it
+    // exists with its parents in the clique).
+    // We have 6 cases:
+
+    //
+    // 1)
+    //   v is not in sepNodes, and v is a prob node as well, meaning
+    //   we multiply this clique potential by prob(v|parents(v)). We
+    //   use CPT iteration to iterate over v and compute and apply
+    //   probabilities.  Same for v being sparse or not.
+    AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB=0,
+
+    //
+    // 2) 
+    //   v is not in sepNodes, and v is not a prob node, and V is
+    //   sparse. We still use CPT iteration to iterate over v given
+    //   parents, but do not multiply clique potential by
+    //   probabilties. By using CPT iteration, we remove any zeros
+    //   now.
+    AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS=1,
+
+    //
+    // 3)
+    //   v is not in sepNodes, and v is not a prob node, and V is NOT
+    //   sparse.  We iterate using [0,card-1] and continue, and do not
+    //   change any probabilities. Note, we could still
+    //   do CPT iteration in this case, as there might be zeros
+    //   in a dense CPT that are being missed due to the fact
+    //   that we're doing card iteration. I.e., this case
+    //   could be 1.
+    AN_CARD_ITERATION=2,
+
+    //
+    // 4)
+    //   v is in sepNodes, and v is a probability node. Then we
+    //   compute the probability for v, apply it, and continue only if the
+    //   probabilty is non zero.  Same for v being sparse or not.
+    AN_COMPUTE_AND_APPLY_PROB=3,
+
+    //
+    // 5) 
+    //   A) v is in sepNodes, v is not a probability node, but v was
+    //   assigned in some previous JT clique. In this case, we just
+    //   continue on since we know at least one of the incomming separators killed off
+    //   any zero entries.  same for v being sparse or not.
+    //   -
+    //   B) v is in sepNodes, v is not a probability node, v not sparse,
+    //   but v was *NOT* assigned in a previous JT clique. We just
+    //   continue, since the CPT won't tell us anything.
+    AN_CONTINUE=4,
+
+    //
+    // 6)
+    //   v is in sepNodes, v is not a probability node, v sparse, but
+    //   v was *NOT* assigned in a previous JT clique. Then, since v
+    //   is sparse, we check here to make sure that the probability of
+    //   v|parents is not zero. If it is zero, we backout, but if it
+    //   is not zero we continue, but *do not* multiply the
+    //   probability into this clique potential.
+    AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS=5
+  };
+
+  // USED ONLY IN JUNCTION TREE INFERENCE 
+  // Predicate for each each sorted assigned node, used to say what
+  // should be done to that node during assigned node iteration.
+  // There are a number of different options, and they are documented
+  // in the routine. The options are specified by the corresponding
+  // enum also defined above. Note that if this
+  // array is of size 0, then the default case is assumed
+  // to be AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB
+  // computed in MaxClique::computeAssignedNodesToIterate()
+  // Used to:
+  //   1) determine way in which fSortedAssignedNodes in inf clique should be iterated.
+  sArray < AssignedNodeDisposition > dispositionSortedAssignedNodes;
+
+
+  // TODO: TRY TO REMOVE THIS AS IT IS REDUNDANT!!
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // the preceding cumulative set of unassigned and iterated nodes
+  // relative to the root in the JT for the current partition and
+  // clique. This is used to determine which of the assigned nodes
+  // need actually be iterated within a clique, and which are already
+  // set by the separator iterations. Note that
+  // precedingUnassignedIteratedNodes does *NOT* include the
+  // unassignedIteratedNodes in the current clique (thus the name
+  // preceding).  
+  // Computed in JunctionTree::getCumulativeUnassignedIteratedNodes()
+  // Used to:
+  //    1) comptue jt weight
+  // Note: should be replaced by unionIncommingCESeps, perhaps remove.
+  set<RandomVariable*> cumulativeUnassignedIteratedNodes;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -465,13 +558,14 @@ public:
   // Clear up the things that are just to create and hold information
   // about this maxclique being used in a junction tree.
   void clearJTStructures() {
+    assignedNodes.clear();
+    sortedAssignedNodes.clear();
     assignedProbNodes.clear();
-    sortedAssignedProbNodes.clear();
-    iterateSortedAssignedNodesP.clear();
-    unassignedIteratedNodes.clear();
     cumulativeAssignedNodes.clear();
-    precedingUnassignedIteratedNodes.clear();
-    accumSeps.clear();
+    unionIncommingCESeps.clear();
+    unassignedIteratedNodes.clear();
+    dispositionSortedAssignedNodes.clear();
+    cumulativeUnassignedIteratedNodes.clear();
     hiddenNodes.clear();
     neighbors.clear();
     children.clear();
@@ -491,11 +585,18 @@ public:
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // compute which assigned nodes to iterate over or not.
-  void computeAssignedNodesToIterate();
+  void computeAssignedNodesDispositions();
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // print out everything in this junction tree clique to a file.
-  void printAllJTInfo(FILE* f,const unsigned indent);
+  void printAllJTInfo(FILE* f,const unsigned indent,const set<RandomVariable*>& unassignedInPartition);
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // used to clear out hash table memory between segments
+  void clearDataMemory() {
+    valueHolder.prepare();
+    cliqueValueHashSet.clear();    
+  }
 
 };
 
@@ -730,12 +831,27 @@ public:
   // create an empty separator
   SeparatorClique() {}
 
+  // compute the weight (log10 state space) of this separator clique.
+  float weight(const bool useDeterminism = true) const { 
+    return MaxClique::computeWeight(nodes,NULL,useDeterminism); 
+  }
+
   // prepare the last set of data structures so that clones of this
   // can be unrolled and inference can occur.
   void prepareForUnrolling();
 
   // print out everything in this clique to a file.
   void printAllJTInfo(FILE* f);
+
+
+  // used to clear out hash table memory between segments
+  void clearDataMemory() {
+    accValueHolder.prepare();
+    accSepValHashSet.clear();
+    remValueHolder.prepare();
+    remSepValHashSet.clear();
+  }
+
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
 #if 0

@@ -53,38 +53,9 @@ VCID("$Header$");
 /*
  * command line arguments
  */
-static bool seedme = false;
-static char *strFileName=NULL;
-static char *triFileName=NULL;
-static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
 
-static int allocateDenseCpts=0;
-static char *cppCommandOptions = NULL;
-
-static unsigned verbosity = IM::Default;
-
-static unsigned unroll_k = 0;
-int startSkip = 0;
-int endSkip = 0;
-float lldp = 0.001;
-float mnlldp = 0.01;
-float beam=-LZERO;
-
-bool doDistributeEvidence=false;
-
-// char *outputTrainableParameters="outParms%d.gmp";
-char *outputTrainableParameters=NULL;
-bool binOutputTrainableParameters=false;
-bool writeParametersAfterEachEMIteration=true;
-
-
-char *inputMasterFile=NULL;
-char *outputMasterFile=NULL;
-char *inputTrainableParameters=NULL;
-bool binInputTrainableParameters=false;
-char *objsToNotTrainFile=NULL;
-
-
+/////////////////////////////////////////////////////////////
+// observation input file handling
 #define MAX_NUM_OBS_FILES (3)
 char *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL }; 
 unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
@@ -94,14 +65,58 @@ char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
 char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
 bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
-static unsigned segment=0;
 
-bool print_version_and_exit = false;
+/////////////////////////////////////////////////////////////
+// input parameter/structure file handling
+static char *cppCommandOptions = NULL;
+static char *inputMasterFile=NULL;
+static char *outputMasterFile=NULL;
+static char *inputTrainableParameters=NULL;
+static bool binInputTrainableParameters=false;
+// static char *outputTrainableParameters="outParms%d.gmp";
+// static char *outputTrainableParameters=NULL;
+// static bool binOutputTrainableParameters=false;
+// static bool writeParametersAfterEachEMIteration=true;
+// static char *objsToNotTrainFile=NULL;
+static int allocateDenseCpts=0;
+
+
+/////////////////////////////////////////////////////////////
+// Structure file, Triangulation File, and Junction Tree Options.
+static char *strFileName=NULL;
+static char *triFileName=NULL;
+static char *jtFileName="jt_info.txt";
+
+/////////////////////////////////////////////////////////////
+// Continuous RV Options
+static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
+
+/////////////////////////////////////////////////////////////
+// Beam Options
+static double cliqueBeam=-LZERO;
+static double separatorBeam=-LZERO;
+
+/////////////////////////////////////////////////////////////
+// File Range Options
+static char *dcdrng_str="all";
+static int startSkip = 0;
+static int endSkip = 0;
+
+/////////////////////////////////////////////////////////////
+// General Options
+static bool seedme = false;
+static unsigned verbosity = IM::Default;
+static bool print_version_and_exit = false;
+
+/////////////////////////////////////////////////////////////
+// Temporary Options
+static bool doDistributeEvidence=false;
+static bool probE=false;
+
 Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // observation input file handling
-
   Arg("of1",Arg::Req,ofs[0],"Observation File 1"),
   Arg("nf1",Arg::Opt,nfs[0],"Number of floats in observation file 1"),
   Arg("ni1",Arg::Opt,nis[0],"Number of ints in observation file 1"),
@@ -109,7 +124,6 @@ Arg Arg::Args[] = {
   Arg("ir1",Arg::Opt,irs[0],"Int range for observation file 1"),
   Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
   Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
-
 
   Arg("of2",Arg::Opt,ofs[1],"Observation File 1"),
   Arg("nf2",Arg::Opt,nfs[1],"Number of floats in observation file 1"),
@@ -119,40 +133,56 @@ Arg Arg::Args[] = {
   Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 1"),
   Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 1"),
 
-  Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Do distribute evidence also"),
-
-  Arg("segment",Arg::Opt,segment,"Which segment to do"),
 
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
-
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
-
   Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
   Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
-
   Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
   Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
+  // Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
+  // Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
+  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
+  Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
 
-  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
-  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
-
-
+  /////////////////////////////////////////////////////////////
+  // Structure file, Triangulation File, and Junction Tree Options.
   Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
   Arg("triFile",Arg::Opt,triFileName,"Triangulation file for strFile"),
+  Arg("jtFile",Arg::Opt,jtFileName,"Name of file to write junction tree information"),
+  // this is here only to affect printing of jt_info.txt
+  Arg("jtwUB",
+      Arg::Opt,JunctionTree::jtWeightUpperBound,
+      "True means jtWeight is allways an upper bound on true JT weight, false means jtWeight is estimate"),
+
+  /////////////////////////////////////////////////////////////
+  // Continuous RV Options
+  Arg("varFloor",Arg::Opt,varFloor,"Variance Floor"),
+  Arg("floorVarOnRead",Arg::Opt,DiagCovarVector::floorVariancesWhenReadIn,
+       "Floor the variances to varFloor when they are read in"),
+
+  /////////////////////////////////////////////////////////////
+  // Beam Options
+  Arg("cbeam",Arg::Opt,cliqueBeam,"Clique Beam"),
+  Arg("sbeam",Arg::Opt,separatorBeam,"Separator Beam"),
+
+  /////////////////////////////////////////////////////////////
+  // File Range Options
+  Arg("dcdrng",Arg::Opt,dcdrng_str,"Range to decode over segment file"),
+  Arg("startSkip",Arg::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
+  Arg("endSkip",Arg::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
 
   /////////////////////////////////////////////////////////////
   // General Options
-
-  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
-
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
-
-  // temp arg
-  Arg("k",Arg::Opt,unroll_k,"amount to unroll"),
-
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
+
+  /////////////////////////////////////////////////////////////
+  // Temporary Options
+  Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Do distribute evidence also"),
+  Arg("probE",Arg::Opt,probE,"Run the const memory probE function"),
 
   // final one to signal the end of the list
   Arg()
@@ -230,10 +260,10 @@ main(int argc,char*argv[])
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
-  if (lldp < 0.0 || mnlldp < 0.0)
-    error("lldp & mnlldp must be >= 0");
-  if (beam < 0.0)
-    error("beam must be >= 0");
+  if (cliqueBeam < 0.0)
+    error("cliqueBeam must be >= 0");
+  if (separatorBeam < 0.0)
+    error("separatorBeam must be >= 0");
   if (startSkip < 0 || endSkip < 0)
     error("startSkip/endSkip must be >= 0");
 
@@ -295,8 +325,8 @@ main(int argc,char*argv[])
 
   /////
   // TODO: check that beam is a valid value.
-  logpr pruneRatio;
-  pruneRatio.valref() = -beam;
+  // logpr pruneRatio;
+  // pruneRatio.valref() = -beam;
 
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
@@ -318,83 +348,86 @@ main(int argc,char*argv[])
   gm_template.readMaxCliques(is);
   gm_template.triangulatePartitionsByCliqueCompletion();
   if (1) { 
-    // check that it is triangulated for now, 
-    // 
-    // TODO: ultimately take this check out so that inference code
-    // does not need to link to the triangulation code (either that,
-    // or put the triangulation check in a different file, so that we
-    // only link to tri check code).
+    // check that graph is indeed triangulated.
+    // TODO: perhaps take this check out so that inference code does
+    // not need to link to the triangulation code (either that, or put
+    // the triangulation check in a different file, so that we only
+    // link to tri check code).
     BoundaryTriangulate triangulator(fp,
 				     gm_template.maxNumChunksInBoundary(),
 				     gm_template.chunkSkip(),1.0);
     triangulator.ensurePartitionsAreChordal(gm_template);
   }
 
-  printf("Creating Junction Tree\n"); fflush(stdout);
+
+  ////////////////////////////////////////////////////////////////////
+  // CREATE JUNCTION TREE DATA STRUCTURES
+  infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
   JunctionTree myjt(gm_template);
   myjt.setUpDataStructures();
-
-  // this will cause problems when printing number of bits.
-  // myjt.printAllJTInfo("jt_info_before_unrolling.txt");
   myjt.prepareForUnrolling();
-  // TODO: allow user input file name
-  myjt.printAllJTInfo("jt_info.txt");
-  printf("DONE creating Junction Tree\n"); fflush(stdout);
-
-  // fprintf(stderr,"starting unrolling\n");
-  // myjt.unroll(unroll_k);
-  // fprintf(stderr,"ending unrolling\n");
+  if (jtFileName != NULL)
+    myjt.printAllJTInfo(jtFileName);
+  infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
+  ////////////////////////////////////////////////////////////////////
 
   if (globalObservationMatrix.numSegments()==0)
     error("ERROR: no segments are available in observation file");
 
-  if (globalObservationMatrix.numSegments() < (segment+1)) 
-    error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-	  globalObservationMatrix.numSegments(),
-	  0,globalObservationMatrix.numSegments()-1);
-
-  GM_Parms.clampFirstExample();
-  for (unsigned i=0;i<segment;i++) {
-    GM_Parms.clampNextExample();
-  }
-  
-  globalObservationMatrix.loadSegment(segment);
-
-  int frames = globalObservationMatrix.numFrames();
-
-  // myjt.unroll(partition_unroll_amount);
-  unsigned numUsableFrames = myjt.unroll(frames);
-  printf("Collecting Evidence\n"); fflush(stdout);
-  myjt.collectEvidence();
-  printf("Done Collecting Evidence\n"); fflush(stdout);
-  // myjt.printAllCliquesProbEvidence();
-
-  logpr probe = myjt.probEvidence();
-  printf("after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	 probe.val(),
-	 probe.val()/frames,
-	 probe.val()/numUsableFrames);
-
-  if (doDistributeEvidence) {
-    printf("Distributing Evidence\n");
-    myjt.distributeEvidence();
-    printf("DONE Distributing Evidence\n");
-    myjt.printAllCliquesProbEvidence();
-  
-    probe = myjt.probEvidence();
-    printf("after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	   probe.val(),
-	   probe.val()/frames,
-	   probe.val()/numUsableFrames);
+  BP_Range* dcdrng = new BP_Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+  if (dcdrng->length() <= 0) {
+    infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
+	  dcdrng_str);
+    exit_program_with_status(0);
   }
 
-  
-#if 0
-  fprintf(stderr,"Hit return when ready:");
-  {
-    scanf("\n");
+  BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
+  while ((*dcdrng_it) <= dcdrng->max()) {
+    const unsigned segment = (unsigned)(*(*dcdrng_it));
+    if (globalObservationMatrix.numSegments() < (segment+1)) 
+      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+	    globalObservationMatrix.numSegments(),
+	    0,globalObservationMatrix.numSegments()-1);
+
+    globalObservationMatrix.loadSegment(segment);
+    GM_Parms.setSegment(segment);
+
+    const int numFrames = globalObservationMatrix.numFrames();
+
+    if (probE) {
+      unsigned numUsableFrames;
+      logpr probe = myjt.probEvidence(numFrames,numUsableFrames);
+      printf("After Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     probe.val(),
+	     probe.val()/numFrames,
+	     probe.val()/numUsableFrames);
+
+    } else {
+      unsigned numUsableFrames = myjt.unroll(numFrames);
+      infoMsg(IM::Default,"Collecting Evidence\n");
+      myjt.collectEvidence();
+      infoMsg(IM::Default,"Done Collecting Evidence\n");
+      logpr probe = myjt.probEvidence();
+      printf("After CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     probe.val(),
+	     probe.val()/numFrames,
+	     probe.val()/numUsableFrames);
+
+      if (doDistributeEvidence) {
+	infoMsg(IM::Default,"Distributing Evidence\n");
+	myjt.distributeEvidence();
+	infoMsg(IM::Default,"Done Distributing Evidence\n");
+	myjt.printAllCliquesProbEvidence();
+	
+	probe = myjt.probEvidence();
+	printf("After DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	       probe.val(),
+	       probe.val()/numFrames,
+	       probe.val()/numUsableFrames);
+      }
+    }
+    (*dcdrng_it)++;
   }
-#endif
 
   exit_program_with_status(0);
 }
