@@ -254,3 +254,5 @@ X make sure that dlinkmatrix precompute is being
   joint state space)
 
 - reading ascii files should not be by line.
+
+- fix bug with small parallel chunks and accumulators being zero
