@@ -4,6 +4,63 @@
  * an easy interface to quickly define arguments.
  * 
  *       Jeff Bilmes <bilmes@ee.washington.edu>
+
+ Modified by Karim Filali (karim@cs.washington.edu) to handle the following:
+
+ - "Array type" flags: an example is the input flag -i; before if we
+   wanted to have five input files we had to have five different flag
+   entries -i1,-i2,...,-i5, all of which have the same properties.
+   Now we only need to specify a generic flag -iX which is tied to an
+   array instead to just a variable. -i1 corresponds to the first
+   element of the array and so on.
+   There are a few options relating to how to treat potentially ambiguous flags:
+
+     - The variable "static bool Disambiguate_When_Perfect_Match"
+     controls whether we want to allow switches such as -i, -invert,
+     and -input. If the bool below is false, command line flags -i and
+     -in are both ambiguous. If it is true, -i is no longer ambiguous
+     because it mathes the arg -i perfectly.
+
+     - The variable "static bool
+     Disambiguate_When_Different_Data_Struct_Type" controls whether we
+     want to allow an array command line arg -in1 when we have say
+     switches -invert (SINGLE switch), and -input (ARRAY).  If the
+     bool below is true, -in1 is valid since it is a array type switch
+     (assuming no -in1 arg exits) and -input is the only matching
+     template of the same type.  If the bool is false, we don't
+     disambiguate
+ 
+     - The variable "static bool
+     Error_If_No_Index_For_Array_Data_Struct_Type", if true, cause an
+     error if the user does not specify the index (e.g. -i instead
+     of -i1) for array type flags. If false -i is equivalent to -i1.
+   (2003/08/15)
+
+ - Ability to hide some flags and to selectively print usage
+   information about a subset of the flags based on the prefix string.
+   For example the flag -klt has several suboptions, -kltUnityVar,
+   -kltInputStat, etc, that are only relevant when the main flag is
+   used.  By making that flag hidden, usage information about the
+   subflags will not be printed unless we specify the option "-usage
+   klt" The way the suboptions are linked to a min option is by
+   sharing the same prefix, "klt" in this case.
+   (2003/12/22)
+
+ Also, I changed a few things such as the handling of argument errors:
+ now we do not exit when such an error occurs but return an error code
+ so that the calling routine gets a chance to print specific usage
+ information before quiting.
+
+ I also changed the names of the C style include files to get rid of
+ warnings.  There are still a few warnings left though.
+
+ Implementation-wise I replaced the previous MultiArg union mechanism
+ by one in which I just use a void pointer and cast appropriately.  I
+ needed to do that because the MultiArg union could not handle array
+ type variables.
+
+ TODO: cleanup; a better driver program.
+
  *
  *  $Header$
  *
@@ -15,7 +72,9 @@
 #define ARGS_h
 
 #include <iostream>
-#include <stdio.h>
+#include <cstdio>
+
+#define DEFAULT_MAX_NUM_ARRAY_ELEMENTS 1
 
 class MultiType {
   friend class Arg;
@@ -24,30 +83,31 @@ class MultiType {
     uint_type,   // unsigned integer
     float_type,  // single precision float
     double_type, // double precision float
-    str_type,    // string precision float
-    char_type,   // char precision float
-    bool_type   // boolean precision float
+    str_type,    // string
+    char_type,   // char
+    bool_type   // boolean
   };
-  union MultiArg {
-    int integer;
-    unsigned int uinteger;
-    float single_prec;
-    double double_prec;
-    char * string;
-    char ch;
-    bool boolean;
-  };
-  MultiArg* ptr;
+
+  void * ptr;
   ArgumentType type;
   static char* printable(MultiType::ArgumentType);
  public:
-  MultiType(bool& b) { ptr = (MultiArg*)&b; type = bool_type; }
-  MultiType(char& c) { ptr = (MultiArg*)&c; type = char_type; }
-  MultiType(char*& s) { ptr = (MultiArg*)&s; type = str_type; }
-  MultiType(int& i)  { ptr = (MultiArg*)&i; type = int_type; }
-  MultiType(unsigned int& i)  { ptr = (MultiArg*)&i; type = uint_type; }
-  MultiType(float& f) { ptr = (MultiArg*)&f; type = float_type; }
-  MultiType(double& d) { ptr = (MultiArg*)&d; type = double_type; }
+  MultiType(bool& b) { ptr = (void*)&b; type = bool_type; }
+  MultiType(char& c) { ptr = (void*)&c;  type = char_type; }
+  MultiType(char*& s) { ptr = (void*)&s; type = str_type; }
+  MultiType(int& i)  { ptr = (void*)&i;  type = int_type; }
+  MultiType(unsigned int& i)  { ptr = (void*)&i; type = uint_type; }
+  MultiType(float& f) { ptr = (void*)&f; type = float_type; }
+  MultiType(double& d) { ptr = (void*)&d; type = double_type; }
+
+  MultiType(char** s) { ptr = (void*)s; type = str_type; }
+  MultiType(bool* b) { ptr = (void*)b; type = bool_type; }
+  MultiType(int* i)  { ptr = (void*)i; type = int_type; }
+  MultiType(unsigned int* i)  { ptr = (void*)i;  type = uint_type; }
+  MultiType(float* f) { ptr = (void*)f;  type = float_type; }
+  MultiType(double* d) { ptr = (void*)d;  type = double_type; }
+
+
   void print(FILE*);
 };
 
@@ -60,10 +120,29 @@ class Arg {
   enum ArgDisposition { Opt, Req, Tog };
   // the return codes, missing, ok, or in error.
   enum ArgsRetCode { ARG_MISSING, ARG_OK, ARG_ERROR };
+  // the argument data structure type: single variable or array.
+  enum ArgDataStruct { SINGLE, ARRAY };
   // the actual argument array itself.
   static Arg Args[];
 
  private:
+
+  // This specifies whether we want to allow switches such as -i, -invert, and -input.
+  // If the bool below is false, command line flags -i and -in are both ambiguous.
+  // If it is true, -i is no longer ambiguous because it mathes the arg -i perfectly.
+  static bool Disambiguate_When_Perfect_Match;
+
+  // This specifies whether we want to allow an array command line arg
+  // -in1 when we have say switches -invert (SINGLE switch), and
+  // -input (ARRAY).  If the bool below is true, -in1 is valid since
+  // it is a array type switch (assuming no -in1 arg exits) and -input
+  // is the only matching template of the same type.  If the bool is
+  // false, we don't disambiguate
+  static bool Disambiguate_When_Different_Data_Struct_Type;
+
+  // If true, cause an error if the user does not specify the index (e.g. -i
+  // instead of -i1) for array type flags. If false -i is equivalent to -i1. 
+   static bool Error_If_No_Index_For_Array_Data_Struct_Type;
 
   static char* const NOFLAG;
   static char* const NOFL_FOUND;
@@ -80,30 +159,41 @@ class Arg {
   ArgDisposition arg_kind;  // optional, required, toggle
   MultiType mt;
   char *description;
-  
+
+  ArgDataStruct dataStructType;
+  int arrayElmtIndex;
+  unsigned maxArrayElmts;
+
+  bool hidden;  // if true makes this flag not appear in the usual usage message.
+
   // special lvalue boolean to be able to construct empty argument
   // entry for end of array.
   static bool EMPTY_ARGS_FLAG;
 
  public:
-  Arg(char*,ArgDisposition,MultiType,char*d=NULL);
-  Arg(ArgDisposition,MultiType,char*d=NULL);
+  //Arg(char*,ArgDisposition,MultiType,char*d=NULL);
+  Arg(char*,ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false);
+  //Arg(ArgDisposition,MultiType,char*d=NULL);
+  Arg(ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false);
   Arg(const Arg&);
   Arg();
   ~Arg();
 
   static ArgsRetCode parseArgsFromCommandLine(int,char**);
   static ArgsRetCode parseArgsFromFile(char*f="argsFile");
-  static void parse(int i,char**c);
-  static void usage();
+  static bool parse(int i,char**c);
+  static void usage(char* filter=NULL);
   static void printArgs(Arg*args,FILE*f);
 
  private:
-  void initialize(char*,ArgDisposition,char*);
+  //void initialize(char*,ArgDisposition,char*);
+  void initialize(char*,ArgDisposition,char*,ArgDataStruct,unsigned,bool);
 
   static bool noFlagP(char *);
   static ArgsRetCode argsSwitch(Arg*,char *,int&,bool&,char*);
   static Arg* searchArgs(Arg*,char*);
+  static Arg* searchArgs(Arg* ag,char *flag, ArgDataStruct dataStructure);
+  static Arg* searchArrayArgs(Arg* Args, char* flag);
   static void countAndClearArgBits();
   static bool checkMissing(bool printMessage=false);
   static bool validBoolean(char* string,bool&value);
