@@ -39,7 +39,7 @@ VCID("$Header$");
 
 logpr
 // EMable::minIncrementProbabilty = logpr((void*)NULL,log_FLT_MIN);
-EMable::minIncrementProbabilty = 0.0;
+EMable::minIncrementProbabilty = logpr((void*)NULL,log_FLT_MIN);
 
 unsigned long
 EMable::missedIncrementCount = 0;

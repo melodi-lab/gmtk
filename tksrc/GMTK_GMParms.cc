@@ -69,6 +69,8 @@ const unsigned GMPARMS_MAX_NUM = 100000;
 #define MAGIC_DT_FILE "GMTK_DT_FILE"
 #define MAGIC_PRM_FILE "GMTK_PRM_FILE"
 
+// possibly use this at some point for ascii files.
+// static const char* sectionSeparator = "############################################################################";
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -559,7 +561,7 @@ GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
   }
   for (unsigned i=0;i<num;i++) {
     // first read the count
-    GaussianComponent* gc;
+    GaussianComponent* gc = NULL;
 
     is.read(cnt,"Gaussian comp cnt");
     if (cnt != i) 
@@ -569,7 +571,8 @@ GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
     int dim;
     is.read(dim,"Gaussian comp dim");
 
-    // read the Gaussian type
+    // read the Gaussian type, note that when
+    // this is written, the object itself will write the type.
     int t;
     is.read(t,"Gaussian comp type");
     if (t == GaussianComponent::Diag) {
@@ -634,19 +637,28 @@ GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
 void 
 GMParms::readGausSwitchMixGaussians(iDataStreamFile& is, bool reset)
 {
-  error("not implemented");
+  unsigned num;
+  is.read(num,"num GSMGs");
+  if (num > 0)
+    error("ERROR: GausSwitchMixGaussians not implemented just yet");
 }
 
 void 
 GMParms::readLogitSwitchMixGaussians(iDataStreamFile& is, bool reset)
 {
-  error("not implemented");
+  unsigned num;
+  is.read(num,"num LSMGs");
+  if (num > 0)
+    error("ERROR: LogitSwitchMixGaussians not implemented just yet");
 }
 
 void 
 GMParms::readMlpSwitchMixGaussians(iDataStreamFile& is, bool reset)
 {
-  error("not implemented");
+  unsigned num;
+  is.read(num,"num MSMGs");
+  if (num > 0)
+    error("ERROR: MLPSwitchMixGaussians not implemented just yet");
 }
 
 
@@ -654,8 +666,6 @@ void
 GMParms::readBasic(iDataStreamFile& is)
 {
 
-  unsigned num;
-  unsigned cnt;
   string str;
 
   is.read(str,"GMTK_GMParms::readBasic, magic");
@@ -663,121 +673,48 @@ GMParms::readBasic(iDataStreamFile& is)
     error("GMTK_GMParms::readBasic. Expecting basic param file, got (%s) in file (%s)",str.c_str(),is.fileName());
 
 
-  is.read(num,"GMTK_GMParms::readBasic, dpmfs");
-  if (num < 0) error("GMTK_GMParms::readBasic num dpmfs = %d",num);
-  dPmfs.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt dpmfs");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic,dpmfs, out of order count",cnt);
-    dPmfs[i] = new Dense1DPMF;
-    dPmfs[i]->read(is);
-    if (dPmfsMap.find(dPmfs[i]->name()) != dPmfsMap.end())
-      error("GMTK_GMParms::readBasic,dpmfs, multiple use of name '%s'",
-	    dPmfs[i]->name().c_str());
-    dPmfsMap[dPmfs[i]->name()] = i;
-  }
-
-
-  is.read(num,"GMTK_GMParms::readBasic, spmfs");
-  if (num < 0) error("GMTK_GMParms::readBasic num spmfs = %d",num);
-  sPmfs.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt spmfs");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic,spmfs, out of order count",cnt);
-    sPmfs[i] = new Sparse1DPMF;
-    sPmfs[i]->read(is);
-    sPmfsMap[sPmfs[i]->name()] = i;
-  }
-
-  is.read(num,"GMTK_GMParms::readBasic, means");
-  if (num < 0) error("GMTK_GMParms::readBasic num means = %d",num);
-  means.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt means");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic,means,  out of order count",cnt);
-    means[i] = new MeanVector;
-    means[i]->read(is);
-    meansMap[means[i]->name()] = i;
-  }
-
-  is.read(num,"GMTK_GMParms::readBasic, covars");
-  if (num < 0) error("GMTK_GMParms::readBasic num covars = %d",num);
-  covars.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt covars");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic,covars, out of order count",cnt);
-    covars[i] = new DiagCovarVector;
-    covars[i]->read(is);
-    covarsMap[covars[i]->name()] = i;
-  }
-
-  is.read(num,"GMTK_GMParms::readBasic, DlinkMatrix");
-  if (num < 0) error("GMTK_GMParms::readBasic num DlinkMatrix = %d",num);
-  dLinkMats.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt dlinks");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic,dlinks, out of order count",cnt);
-    dLinkMats[i] = new DlinkMatrix;
-    dLinkMats[i]->read(is);
-    dLinkMatsMap[dLinkMats[i]->name()] = i;
-  }
-
-  is.read(num,"GMTK_GMParms::readBasic, WeightMatrix");
-  if (num < 0) error("GMTK_GMParms::readBasic num WeightMatrix = %d",num);
-  weightMats.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt weights");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic, weights, out of order count",cnt);
-    weightMats[i] = new WeightMatrix;
-    weightMats[i]->read(is);
-    weightMatsMap[weightMats[i]->name()] = i;
-  }
-
-
-  is.read(num,"GMTK_GMParms::readBasic, MDCPT");
-  if (num < 0) error("GMTK_GMParms::readBasic num MDCPT = %d",num);
-  mdCpts.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt MDCPTs");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic, MDCPTs, out of order count",cnt);
-    mdCpts[i] = new MDCPT;
-    mdCpts[i]->read(is);
-    mdCptsMap[mdCpts[i]->name()] = i;
-  }
-
-  is.read(num,"GMTK_GMParms::readBasic, MSCPT");
-  if (num < 0) error("GMTK_GMParms::readBasic num MSCPT = %d",num);
-  msCpts.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt MSCPTS");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic, MSCPTs, out of order count",cnt);
-    msCpts[i] = new MSCPT;
-    msCpts[i]->read(is);
-    msCptsMap[msCpts[i]->name()] = i;
-  }
-
-
-  is.read(num,"GMTK_GMParms::readBasic, MTCPT");
-  if (num < 0) error("GMTK_GMParms::readBasic num MTCPT = %d",num);
-  mtCpts.resize(num);
-  for (unsigned i=0;i<num;i++) {
-    is.read(cnt,"GMTK_GMParms::readBasic, cnt MTCPTS");
-    if (cnt != i) 
-      error("GMTK_GMParms::readBasic, MTCPTs, out of order count",cnt);
-    mtCpts[i] = new MTCPT;
-    mtCpts[i]->read(is);
-    mtCptsMap[mtCpts[i]->name()] = i;
-  }
+  readDPmfs(is);
+  readSPmfs(is);
+  readMeans(is);
+  readCovars(is);
+  readDLinkMats(is);
+  readWeightMats(is);  
+  readMdCpts(is);
+  readMsCpts(is);
+  readMtCpts(is);
 
 }
+
+
+void 
+GMParms::readAll(iDataStreamFile& is)
+{
+  // just read everything in one go.
+
+  // first read basic numeric items.
+  readDPmfs(is);
+  readSPmfs(is);
+  readMeans(is);
+  readCovars(is);
+  readDLinkMats(is);
+  readWeightMats(is);  
+  readMdCpts(is);
+  readMsCpts(is);
+  readMtCpts(is);
+
+  // next read definitional items
+  readGaussianComponents(is);
+  readMixGaussians(is);
+  readGausSwitchMixGaussians(is);
+  readLogitSwitchMixGaussians(is);
+  readMlpSwitchMixGaussians(is);  
+
+  // and finally read structural items
+  readDTs(is);
+  readDLinks(is);
+
+}
+
 
 void 
 GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
@@ -871,8 +808,8 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
 void 
 GMParms::writeDPmfs(oDataStreamFile& os)
 {
-  os.write(dPmfs.size(),"num dPMFs");
-  os.nl();
+  os.nl(); os.writeComment("dense PMFs");os.nl();
+  os.write(dPmfs.size(),"num dPMFs"); os.nl();
   for (unsigned i=0;i<dPmfs.size();i++) {
     // first write the count
     os.write(i,"dDPMF cnt");
@@ -887,8 +824,8 @@ GMParms::writeDPmfs(oDataStreamFile& os)
 void 
 GMParms::writeSPmfs(oDataStreamFile& os)
 {
-  os.write(sPmfs.size(),"num sPMFs");
-  os.nl();
+  os.nl(); os.writeComment("sparse PMFs");os.nl();
+  os.write(sPmfs.size(),"num sPMFs"); os.nl();
   for (unsigned i=0;i<sPmfs.size();i++) {
     // first write the count
     os.write(i,"sPMFs cnt");
@@ -902,8 +839,8 @@ GMParms::writeSPmfs(oDataStreamFile& os)
 void 
 GMParms::writeMeans(oDataStreamFile& os)
 {
-  os.write(means.size(),"num Means");
-  os.nl();
+  os.nl(); os.writeComment("means");os.nl();
+  os.write(means.size(),"num Means"); os.nl();
   for (unsigned i=0;i<means.size();i++) {
     // first write the count
     os.write(i,"means cnt");
@@ -917,8 +854,8 @@ GMParms::writeMeans(oDataStreamFile& os)
 void 
 GMParms::writeCovars(oDataStreamFile& os)
 {
-  os.write(covars.size(),"num covars");
-  os.nl();
+  os.nl(); os.writeComment("diagonal covariance matrices");os.nl();
+  os.write(covars.size(),"num covars"); os.nl();
   for (unsigned i=0;i<covars.size();i++) {
     // first write the count
     os.write(i,"covar cnt");
@@ -932,8 +869,8 @@ GMParms::writeCovars(oDataStreamFile& os)
 void 
 GMParms::writeDLinkMats(oDataStreamFile& os)
 {
-  os.write(dLinkMats.size(),"num dlink mats");
-  os.nl();
+  os.nl(); os.writeComment("dlink matrices");os.nl();
+  os.write(dLinkMats.size(),"num dlink mats"); os.nl();
   for (unsigned i=0;i<dLinkMats.size();i++) {
     // first write the count
     os.write(i,"dlink mat cnt");
@@ -947,8 +884,8 @@ GMParms::writeDLinkMats(oDataStreamFile& os)
 void 
 GMParms::writeDLinks(oDataStreamFile& os)
 {
-  os.write(dLinks.size(),"num dlinks");
-  os.nl();
+  os.nl(); os.writeComment("dlinks");os.nl();
+  os.write(dLinks.size(),"num dlinks"); os.nl();
   for (unsigned i=0;i<dLinks.size();i++) {
     // first write the count
     os.write(i,"dlink cnt");
@@ -962,8 +899,8 @@ GMParms::writeDLinks(oDataStreamFile& os)
 void 
 GMParms::writeWeightMats(oDataStreamFile& os)
 {
-  os.write(weightMats.size(),"num weight mats");
-  os.nl();
+  os.nl(); os.writeComment("weight matrices");os.nl();
+  os.write(weightMats.size(),"num weight mats"); os.nl();
   for (unsigned i=0;i<weightMats.size();i++) {
     // first write the count
     os.write(i,"weight mat cnt");
@@ -977,8 +914,8 @@ GMParms::writeWeightMats(oDataStreamFile& os)
 void 
 GMParms::writeMdCpts(oDataStreamFile& os)
 {
-  os.write(mdCpts.size(),"num MDCPTs");
-  os.nl();
+  os.nl(); os.writeComment("MDCPTs");os.nl();
+  os.write(mdCpts.size(),"num MDCPTs"); os.nl();
   for (unsigned i=0;i<mdCpts.size();i++) {
     // first write the count
     os.write(i,"MDCPT cnt");
@@ -992,8 +929,8 @@ GMParms::writeMdCpts(oDataStreamFile& os)
 void 
 GMParms::writeMsCpts(oDataStreamFile& os)
 {
-  os.write(msCpts.size(),"num MSCPTs");
-  os.nl();
+  os.nl(); os.writeComment("MSCPTs");os.nl();
+  os.write(msCpts.size(),"num MSCPTs"); os.nl();
   for (unsigned i=0;i<msCpts.size();i++) {
     // first write the count
     os.write(i,"MSCPT cnt");
@@ -1007,8 +944,8 @@ GMParms::writeMsCpts(oDataStreamFile& os)
 void 
 GMParms::writeMtCpts(oDataStreamFile& os)
 {
-  os.write(mtCpts.size(),"num MTCPTs");
-  os.nl();
+  os.nl(); os.writeComment("MTCPTs");os.nl();
+  os.write(mtCpts.size(),"num MTCPTs"); os.nl();
   for (unsigned i=0;i<mtCpts.size();i++) {
     // first write the count
     os.write(i,"MTCPT cnt");
@@ -1022,8 +959,8 @@ GMParms::writeMtCpts(oDataStreamFile& os)
 void 
 GMParms::writeDTs(oDataStreamFile& os)
 {
-  os.write(dts.size(),"num DTS");
-  os.nl();
+  os.nl(); os.writeComment("Decision Trees");os.nl();
+  os.write(dts.size(),"num DTS"); os.nl();
   for (unsigned i=0;i<dts.size();i++) {
     // first write the count
     os.write(i,"DTS cnt");
@@ -1037,9 +974,9 @@ GMParms::writeDTs(oDataStreamFile& os)
 void 
 GMParms::writeGaussianComponents(oDataStreamFile& os)
 {
-  os.write(gaussianComponents.size(),"num GCs");
-  os.nl();
-  for (unsigned i=0;i<dts.size();i++) {
+  os.nl(); os.writeComment("Gaussian Components");os.nl();
+  os.write(gaussianComponents.size(),"num GCs"); os.nl();
+  for (unsigned i=0;i<gaussianComponents.size();i++) {
     // first write the count
     os.write(i,"GC cnt");
     os.nl();
@@ -1060,8 +997,8 @@ GMParms::writeGaussianComponents(oDataStreamFile& os)
 void 
 GMParms::writeMixGaussians(oDataStreamFile& os)
 {
-  os.write(mixGaussians.size(),"num MIXGAUSSIANS");
-  os.nl();
+  os.nl(); os.writeComment("Mixtures of Gaussians");os.nl();
+  os.write(mixGaussians.size(),"num MIXGAUSSIANS"); os.nl();
   for (unsigned i=0;i<mixGaussians.size();i++) {
     // first write the count
     os.write(i,"MIXGAUSSIANS cnt");
@@ -1079,19 +1016,22 @@ GMParms::writeMixGaussians(oDataStreamFile& os)
 void 
 GMParms::writeGausSwitchMixGaussians(oDataStreamFile& os)
 {
-  error("not implemented");
+  os.nl(); os.writeComment("Gaussian Switching Mixtures of Gaussians");os.nl();
+  os.write(0,"num GausSwitchMIXGAUSSIANS"); os.nl();
 }
 
 void 
 GMParms::writeLogitSwitchMixGaussians(oDataStreamFile& os)
 {
-  error("not implemented");
+  os.nl(); os.writeComment("Logistic-Regression-based Switching Mixtures of Gaussians");os.nl();
+  os.write(0,"num GausSwitchMIXGAUSSIANS"); os.nl();
 }
 
 void 
 GMParms::writeMlpSwitchMixGaussians(oDataStreamFile& os)
 {
-  error("not implemented");
+  os.nl(); os.writeComment("MLP-based Switching Mixtures of Gaussians");os.nl();
+  os.write(0,"num GausSwitchMIXGAUSSIANS"); os.nl();
 }
 
 
@@ -1103,89 +1043,48 @@ GMParms::writeBasic(oDataStreamFile& os)
   os.write(MAGIC_PRM_FILE,"GMTK_GMParms::writeBasic, magic");
   os.nl();
 
-  os.nl(); os.writeComment("dense PMFs");os.nl();
-  os.write(dPmfs.size(),"GMTK_GMParms::writeBasic, dpmfs");
-  os.nl();
-  for (unsigned i=0;i<dPmfs.size();i++) {
-    os.write(i);
-    dPmfs[i]->write(os);
-  }
-  os.nl();
-
-  os.nl(); os.writeComment("sparse PMFs");os.nl();
-  os.write(sPmfs.size(),"GMTK_GMParms::writeBasic, spmfs");
-  os.nl();
-  for (unsigned i=0;i<sPmfs.size();i++) {
-    os.write(i);
-    sPmfs[i]->write(os);
-  }
-  os.nl();
-
-
-  os.nl(); os.write(means.size(),"GMTK_GMParms::writeBasic, means");
-  os.nl();
-  for (unsigned i=0;i<means.size();i++) {
-    os.write(i);
-    means[i]->write(os);
-  }
-  os.nl();
-
-  os.nl(); os.writeComment("covars");os.nl();
-  os.write(covars.size(),"GMTK_GMParms::writeBasic, covars");
-  os.nl();
-  for (unsigned i=0;i<covars.size();i++) {
-    os.write(i);
-    covars[i]->write(os);
-  }
-  os.nl();
-
-  os.nl(); os.writeComment("dlink matrices");os.nl();
-  os.write(dLinkMats.size(),"GMTK_GMParms::writeBasic, DlinkMatrix");
-  os.nl();
-  for (unsigned i=0;i<dLinkMats.size();i++) {
-    os.write(i); os.nl();
-    dLinkMats[i]->write(os);
-  }
-  os.nl();
-
-  os.nl(); os.writeComment("weight matrices");os.nl();
-  os.write(weightMats.size(),"GMTK_GMParms::writeBasic, WeightMatrix");
-  os.nl();
-  for (unsigned i=0;i<weightMats.size();i++) {
-    os.write(i); os.nl();
-    weightMats[i]->write(os);
-  }
-  os.nl();
-
-  os.nl(); os.writeComment("MDCPTs");os.nl();
-  os.write(mdCpts.size(),"GMTK_GMParms::writeBasic, MDCPT");
-  os.nl();
-  for (unsigned i=0;i<mdCpts.size();i++) {
-    os.write(i); os.nl();
-    mdCpts[i]->write(os);
-  }
-  os.nl();
-
-  os.nl();  os.writeComment("MSCPTs");os.nl();
-  os.write(msCpts.size(),"GMTK_GMParms::writeBasic, MSCPT");
-  os.nl();
-  for (unsigned i=0;i<msCpts.size();i++) {
-    os.write(i); os.nl();
-    msCpts[i]->write(os);
-  }
-  os.nl();
-
-
-  os.nl(); os.writeComment("MTCPTs");os.nl();
-  os.write(mtCpts.size(),"GMTK_GMParms::writeBasic, MTCPT");
-  os.nl();
-  for (unsigned i=0;i<mtCpts.size();i++) {
-    os.write(i); os.nl();
-    mtCpts[i]->write(os);
-  }
-  os.nl();
+  writeDPmfs(os);
+  writeSPmfs(os);
+  writeMeans(os);
+  writeCovars(os);
+  writeDLinkMats(os);
+  writeWeightMats(os);  
+  writeMdCpts(os);
+  writeMsCpts(os);
+  writeMtCpts(os);
 
 }
+
+
+void 
+GMParms::writeAll(oDataStreamFile& os)
+{
+  // just write everything in one go.
+
+  // first write basic numeric items.
+  writeDPmfs(os);
+  writeSPmfs(os);
+  writeMeans(os);
+  writeCovars(os);
+  writeDLinkMats(os);
+  writeWeightMats(os);  
+  writeMdCpts(os);
+  writeMsCpts(os);
+  writeMtCpts(os);
+
+  // next write definitional items
+  writeGaussianComponents(os);
+  writeMixGaussians(os);
+  writeGausSwitchMixGaussians(os);
+  writeLogitSwitchMixGaussians(os);
+  writeMlpSwitchMixGaussians(os);
+
+  // and finally write structural items
+  writeDTs(os);
+  writeDLinks(os);
+
+}
+
 
 
 
@@ -1202,12 +1101,22 @@ GMParms::emEndIteration()
   // go through all EMable objects possibly
   // used by any RV and make the call
 
+  //////////////////////////////////////////
+  // First, do the gaussian components. This
+  // will recursively call this for all
+  // mean-like objects, and covariance-like
+  // objects, so there is no need to do that here.
+  // Mean-like objects include:
+  //       means
+  //       linCondMeans
+  //       nonLinCondMeans
+  // variance-like objects include
+  //       covars
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emEndIteration();
 
-  // first do the basic objects
-  for (unsigned i=0;i<dPmfs.size();i++)
-    dPmfs[i]->emEndIteration();
-  for (unsigned i=0;i<sPmfs.size();i++)
-    sPmfs[i]->emEndIteration();
+
+#if 0
   for (unsigned i=0;i<means.size();i++)
     means[i]->emEndIteration();
   for (unsigned i=0;i<covars.size();i++)
@@ -1216,10 +1125,14 @@ GMParms::emEndIteration()
     dLinkMats[i]->emEndIteration();
   for (unsigned i=0;i<weightMats.size();i++)
     weightMats[i]->emEndIteration();
+#endif
 
-  // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emEndIteration();
+
+  // do the basic discrete objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emEndIteration();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emEndIteration();
 
   // for discrete RVs
   for (unsigned i=0;i<mdCpts.size();i++)
@@ -1280,6 +1193,7 @@ GMParms::emSwapCurAndNew()
   for (unsigned i=0;i<mixGaussians.size();i++)
     mixGaussians[i]->emSwapCurAndNew();
 #if 0
+  // fill this in later.
   for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
     gausSwitchingMixGaussians[i]->emSwapCurAndNew();
   for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)

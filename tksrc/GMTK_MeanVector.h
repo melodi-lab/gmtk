@@ -33,6 +33,9 @@
 
 class MeanVector : public EMable, public NamedObject {
 
+private:
+
+  friend class DiagGaussian;
 
   //////////////////////////////////
   // The acutal mean vector
@@ -42,11 +45,16 @@ class MeanVector : public EMable, public NamedObject {
   // Data structures support for EM
   sArray<float> nextMeans;
 
-  ////////////////////////////////////////////////////////////
-  // this dummy variable apparently needs to be here so that gdb 5.0 on
-  // Solaris can print out *this. If this is removed, that version of
-  // gdb can't do that.
-  int _dummy;
+  /////////////////////////////////////////////////
+  // counts the number of gaussian components
+  // that are sharing this mean.
+  unsigned refCount;
+
+  /////////////////////////////////////////////////
+  // allow access to internal accumulator pointer for
+  // shared covariance object to use to add to its
+  // accumulation.
+  const float* const accumulatorPtr() { return nextMeans.ptr; }
 
 public:
 
@@ -80,11 +88,14 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emStartIteration();
-  void emIncrement(logpr prob,const float *f,
+  void emStartIteration(sArray<float>& componentsNextMeans);
+  void emIncrement(const logpr prob,
+		   const float fprob,
+		   const float *f,
 		   const Data32* const base,
-		   const int stride);
-  void emEndIteration();
+		   const int stride,
+		   float *const partialAccumulatedNextMeans);
+  void emEndIteration(const float *const partialAccumulatedNextMeans);
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
   void emLoadAccumulators(iDataStreamFile& ifile);

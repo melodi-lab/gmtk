@@ -425,13 +425,17 @@ MSCPT::emEndIteration()
     warning("WARNING: MSCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
-
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
-  // now, we need to go through all Sparse1DPMFs that this
+  // Now we need to go through all Sparse1DPMFs that this
   // MSCPT might use and call emEndIteration(). We assume
   // however that this is done somewhere else from the
-  // global object.
+  // global object. The reason we are not able to do it here
+  // is that our decision tree can have integer formulas
+  // as leaf nodes, and we do not know at this point who all 
+  // of the Sparse1DPMFs that are being used by this MDCPT
+  // are. Instead, we make the assumption above about
+  // the global object (GMTK_GMParms).
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
 

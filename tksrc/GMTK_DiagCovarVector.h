@@ -57,6 +57,11 @@ class DiagCovarVector : public EMable, public NamedObject {
   float _log_inv_normConst;
   ///////////////////////////////////////////////////////
 
+  /////////////////////////////////////////////////
+  // counts the number of gaussian components
+  // that are sharing this covariance
+  unsigned refCount;
+
   /////////////////////////////////////////////////////////////
   // used by EM to count the number of times variances 
   // became very small.
@@ -98,11 +103,14 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emStartIteration();
-  void emIncrement(logpr prob,const float* f,
+  void emStartIteration(sArray<float>&);
+  void emIncrement(const logpr prob,
+		   const float fprob,
+		   const float* f,
 		   const Data32* const base,
-		   const int stride);
-  void emEndIteration();
+		   const int stride,
+		   float *const partialAccumulatedNextCovars);
+  void emEndIteration(const logpr prob,const float*const m,const float*const v);
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
   void emLoadAccumulators(iDataStreamFile& ifile);

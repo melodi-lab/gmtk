@@ -81,6 +81,13 @@ public:
   virtual ~EMable() {}
 
 
+  /////////////////////////////////////////////////////////////////
+  // clear the swap bit, needed for sharing.
+  void clearBasicAllocatedBit() { bitmask &= ~bm_basicAllocated; }
+  void setBasicAllocatedBit() { bitmask |= bm_basicAllocated; }
+  bool basicAllocatedBitIsSet() { return (bitmask & bm_basicAllocated); }
+
+
   //////////////////////////////////
   // EM training                  //
   //////////////////////////////////
@@ -92,6 +99,10 @@ public:
    * The following dummy routines describe the
    * generic EM Loop functionality for an EMable.
    * An "iteration" is an entire pass through the data.
+   * There might, however, be variations to this theme
+   * (for example, for mean- and variance- like objects)
+   * to support either parameter tying, or to improve
+   * computational efficiency.
    *
    *emStartIeration() {
    *  // First check if this type object (means, variances,
@@ -235,7 +246,10 @@ public:
   ////////////////////////////////////////////////////////////////////
   // begins a new epoch. Also ensures that data for EM is allocated
   // and possibly changes the alocated bit, and ongoing bit
-  virtual void emStartIteration() = 0;
+  virtual void emStartIteration()  { assert(0); }
+  // The next few are for Gaussian component objects.
+  virtual void emStartIteration(sArray<float>& componentsNextMeans)  { assert(0); }
+
 
   ////////////////////////////////////////////////////////////////////
   // Accumulate new data into the internal structures for eam.
@@ -251,7 +265,14 @@ public:
   // for a particular child class.
   virtual void emIncrement(logpr prob) { assert(0); }
   virtual void emIncrement(logpr prob,RandomVariable*r) { assert(0); }
-  virtual void emIncrement(logpr prob,
+  // for real-valued things.
+  virtual void emIncrement(const logpr prob,
+			   const float*f,
+			   const Data32* const base,
+			   const int stride)
+                        { assert(0); }
+  virtual void emIncrement(const logpr prob,
+			   const float fprob, // precomputed prob.unlog() for speed
 			   const float*f,
 			   const Data32* const base,
 			   const int stride)
@@ -263,7 +284,11 @@ public:
   ////////////////////////////////////////////////////////////////////
   // Accumulate new data into the internal structures for this 
   // em iteration, clears the ongoing bit.
-  virtual void emEndIteration() = 0;
+  virtual void emEndIteration() { assert(0); }
+  // This second two is for mean/covariance objects who need the
+  // corresponding accumulated stats from its shared components.
+  virtual void emEndIteration(const float*const m) { assert(0); }
+  virtual void emEndIteration(const logpr prob,const float*const m,const float*const v) { assert(0); }
 
   ////////////////////////////////////////////////////////////////////////////
   // if swap bit not set, swaps the current and new parameters, set swap bit.

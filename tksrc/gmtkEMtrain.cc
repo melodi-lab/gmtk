@@ -68,9 +68,7 @@ ARGS ARGS::Args[] = {
 
  ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
 
-// why does this report an error??
  ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
- ARGS("emLimit",ARGS::Opt,EMLimit,"its to do"),  // well, this works.
 
  ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
  ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
@@ -105,7 +103,7 @@ main(int argc,char*argv[])
   /////////
   // read in all parameters
   iDataStreamFile parmsFile(parmsFileName);
-  GM_Parms.read(parmsFile);
+  GM_Parms.readAll(parmsFile);
 
   /////////////////////////////
   // read in the structure
@@ -139,9 +137,9 @@ main(int argc,char*argv[])
   if (randomizeParams) {
     printf("randomizing parameters\n");
     GM_Parms.makeRandom();
-cout << "writing the random parameters to random.gmp\n";
-oDataStreamFile of("random.gmp");
-GM_Parms.writeBasic(of);
+    printf("writing the random parameters to random.gmp\n");
+    oDataStreamFile of("random.gmp");
+    GM_Parms.writeAll(of);
   }
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
