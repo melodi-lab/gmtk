@@ -491,13 +491,13 @@ public:
 			   const char *varCliqueAssignmentPrior);
 
   // create the three junction trees for the basic partitions.
-  void createPartitionJunctionTrees(const string priorityStr = "DSU") {
+  void createPartitionJunctionTrees(const string pStr = priorityStr) {
     createPartitionJunctionTree(gm_template.P,priorityStr);
     createPartitionJunctionTree(gm_template.C,priorityStr);
     createPartitionJunctionTree(gm_template.E,priorityStr);
   }
   // create a junction tree within a partition.
-  static void createPartitionJunctionTree(Partition& part, const string priorityStr = "DSU");
+  static void createPartitionJunctionTree(Partition& part, const string pStr = priorityStr);
 
   // routine to find the interface cliques of the partitions
   void computePartitionInterfaces();

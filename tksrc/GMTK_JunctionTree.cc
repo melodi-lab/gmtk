@@ -699,24 +699,28 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	Edge e;
 	// define the edge
 	e.clique1 = i; e.clique2 = j; 
-	// !!!MUST DO THIS FIRST!!!
-	// First push sep set size. To get a JT, we must
+	// !!!************************!!!
+	// !!!** MUST DO THIS FIRST **!!!
+	// !!!************************!!!
+	// First push sep set size. To get a JT, we *MUST*
 	// always choose from among the cliques that
 	// have the largest intersection size.
 	e.weights.push_back((double)sep_set.size());
+	// now that the size is there, we have many other options.
 
 	// All gets sorted in decreasing order, so that larger values
-	// have priority.
-
-	// The remaining items we push back in the case of ties.
-	// Larger numbers are prefered.
+	// have priority. Thus, the remaining items we push back in
+	// the case of ties.  
+	//
+	// *** Larger numbers are prefered. ***
 	//
 	// Options to include by priority of priorityStr:
 	//   * D: number of deterministic nodes in separator 
 	//   * E: number of deterministic nodes in union of cliques.
-	//   * S: weight of separator
-	//   * U: weight of union of cliques
-	//   * // B: do something useful.
+	//   * S: neg. weight of separator
+	//   * U: neg. weight of union of cliques
+	//   * V: neg. frame number variance in separator
+	//   * W: neg. frame number variance in union
 	//   * H: number of hidden nodes in separator
 	//   * O: number of observed nodes in separator
 	//   * L: number of hidden nodes in union
@@ -725,6 +729,16 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	//  Any can be preceeded by a '-' sign to flip effect. E.g., D-E-SU
 	//
 	// Default case: DSU
+	//
+	// TODO: Other ideas for this:
+	//        a) maximize number of variables in same frame (or near each other) (like variance)
+	//        b) minimize number of neighbors in each clique (i.e., 
+	//           if cliques already have neighbors, choose the ones with fewer.
+	//        c) integrate with RV value assignment to minimize
+	//           the number of unassigned clique nodes (since they're
+	//           iterated over w/o knowledge of any parents. If this
+	//           ends up being a search, make this be offline, in with gmtkTriangulate
+	// 
 
 	float mult = 1.0;
 	for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
@@ -748,7 +762,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	    }
 	    e.weights.push_back(mult*(double)numDeterministicNodes);
 
-	  } else if (curCase == 'E' || curCase == 'L' || curCase == 'Q') {
+	  } else if (curCase == 'E' || curCase == 'L' || curCase == 'Q' || curCase == 'W') {
 	    // push back negative weight of two cliques together.
 	    set<RV*> clique_union;
 	    set_union(part.cliques[i].nodes.begin(),
@@ -789,11 +803,29 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 		  numObserved++;
 	      }
 	      e.weights.push_back(mult*(double)numObserved);
+	    } else if (curCase == 'W') {
+	      // compute frame number variance in union, push back
+	      // negative to prefer smalller frame variance (i.e.,
+	      // connect things that on average are close to each
+	      // other in time).
+	      set<RV*>::iterator it;
+	      set<RV*>::iterator it_end = clique_union.end();
+	      double sum = 0;
+	      double sumSq = 0;
+	      for (it = clique_union.begin(); it != it_end; it++) {
+		RV* rv = (*it);
+		sum += rv->frame();
+		sumSq += rv->frame()*rv->frame();
+	      }
+	      double invsize = 1.0/(double)clique_union.size();
+	      double variance = invsize*(sumSq - sum*sum*invsize);
+	      e.weights.push_back(mult*(double)-variance);
 	    }
 	  } else if (curCase == 'S') {
 
 	    // push back negative weight of separator, to prefer
-	    // least negative (smallest)  weight.
+	    // least negative (smallest)  weight, since larger numbers
+	    // are prefered.
 	    e.weights.push_back(-(double)MaxClique::computeWeight(sep_set));
 
 	    // printf("weight of clique %d = %f, %d = %f\n",
@@ -811,8 +843,27 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 		      inserter(clique_union,clique_union.end()));
 	    e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
 
-	  } else if (curCase == 'B') {
-	    // fill in in future.
+	  } else if (curCase == 'V') {
+	    // compute frame number variance in separator, push back
+	    // negative to prefer smalller frame variance (i.e.,
+	    // connect things that on average are close to each
+	    // other in time).
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = sep_set.end();
+	    double sum = 0;
+	    double sumSq = 0;
+	    for (it = sep_set.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      sum += rv->frame();
+	      sumSq += rv->frame()*rv->frame();
+	    }
+	    if (sep_set.size() == 0) {
+	      e.weights.push_back(mult*(double)-FLT_MAX);
+	    } else {
+	      double invsize = 1.0/(double)sep_set.size();
+	      double variance = invsize*(sumSq - sum*sum*invsize);
+	      e.weights.push_back(mult*(double)-variance);
+	    }
 	  } else if (curCase == 'H') {
 	    set<RV*>::iterator it;
 	    set<RV*>::iterator it_end = sep_set.end();
@@ -841,11 +892,16 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 
 	// add the edge.
 	edges.push_back(e);
-	infoMsg(IM::Giga,"Edge (%d,%d) has sep size %.0f, log(sep state) %f, log(union state) %f \n",
-		i,j,
-		e.weights[0],
-		-e.weights[1],
-		-e.weights[2]);
+	if (IM::messageGlb(IM::Giga)) {
+	  infoMsg(IM::Giga,"Edge (%d,%d) has sep size %.0f, ",
+		  i,j,
+		  e.weights[0]);
+	  for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
+	    const char curCase = toupper(priorityStr[charNo]);
+	    infoMsg(IM::Giga,"%c,weight[%d] = %f, ",curCase,charNo+1,e.weights[charNo+1]);
+	  }
+	  infoMsg(IM::Giga,"\n");
+	}
       }
     }
   
@@ -855,24 +911,9 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 
     unsigned joinsPlusOne = 1;
     for (unsigned i=0;i<edges.size();i++) {
-	infoMsg(IM::Giga,"Edge %d has sep size %.0f, log(sep state) %f, log(union state) %f \n",
-		i,
-		edges[i].weights[0],
-		-edges[i].weights[1],
-		-edges[i].weights[2]);
-
-      // TODO: optimize this to deal with ties to make message
-      // passing cheaper.
-      //    Ideas: among all ties
-      //        a) maximize number of variables in same frame (or near each other)
-      //        b) minimize cardinality or state space of separator
-      //        c) minimize number of neighbors in each clique (i.e., 
-      //           if cliques already have neighbors, choose the ones with fewer.
-      //        d) integrate with RV value assignment to minimize
-      //           the number of unassigned clique nodes (since they're
-      //           iterated over w/o knowledge of any parents. If this
-      //           ends up being a search, make this be offline, in with gmtkTriangulate
-
+      infoMsg(IM::Giga,"Edge %d has sep size %.0f\n",
+	      i,
+	      edges[i].weights[0]);
 
       set<unsigned>& iset1 = findSet[edges[i].clique1];
       set<unsigned>& iset2 = findSet[edges[i].clique2];
@@ -1421,7 +1462,7 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 			  nodesThatGiveNoProb.end()));
   
   if (nodesThatGiveNoProb.size() > 0) {
-    fprintf(stderr,"INTERNAL ERROR: some nodes do not give any clique probability: ");
+    fprintf(stderr,"INTERNAL ERROR: some nodes do not give probability to any clique, those nodes include: ");
     printRVSet(stderr,nodesThatGiveNoProb);
     fprintf(stderr,"\n");
     assert(0);
@@ -4999,6 +5040,10 @@ spare code:
 //   - sort min 1st and place at end, sort max first and place at beginning
 //   - when two seps, what to do (min weight, max weight)
 //   - 
+
+// 11/04: when ties exist, do the thing that causes the fewest number of
+// branches and has the inner most loop run interuppted for the
+// greatest amount of time.
 
 
     {

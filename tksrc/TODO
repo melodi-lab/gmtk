@@ -729,7 +729,7 @@ Mon Sep 30 01:21:02 2002
 
 
 Wed Dec  4 19:39:41 2002
-  - ascii file formats for data files, add bit in domentation that
+  - docs: ascii file formats for data files, add bit in domentation that
     one frame per line, and fix error message on line 1272 in GMTK_GM.cc
     (see email from Au@hk).
 
@@ -2564,7 +2564,15 @@ Sat Nov 27 09:44:40 2004
     Way to explain it: parents are determined to satisfy CPTs (e.g., b's CPT needs a parent).
  
 
- 
+Sat Nov 27 22:10:37 2004
+  - gmtkTime -multi should also take vcap, icap, etc. options along with trifile so you don't
+    need to re-start to try these options.
+  - also, gmktTime should take just vcap, icap, etc. options to try same trifile over and over
+    with different JT creation options.
+
+
+    
+
 
 
 
