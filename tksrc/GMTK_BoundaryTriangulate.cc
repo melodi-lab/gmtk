@@ -3770,17 +3770,21 @@ anyTimeTriangulate(GMTemplate& gm_template,
   // expires.
   ////////////////////////////////////////////////////////////////////////
 
-  if (doP)
+  if (doP) {
+    infoMsg(IM::Tiny, "---\nPreliminary Triangulation of P:\n");
     triangulate( gm_template.P.nodes, jtWeight, 
 		 gm_template.PCInterface_in_P,
 		 "FWH", orgnl_P_nghbrs, gm_template.P.cliques,
 		 gm_template.P.triMethod, best_P_weight );
+  }
 
-  if (doE)
+  if (doE) {
+    infoMsg(IM::Tiny, "---\nPreliminary Triangulation of E:\n");
     triangulate( gm_template.E.nodes, jtWeight, 
 		 emptySet,
 		 "FWH", orgnl_E_nghbrs, gm_template.E.cliques, 
 		 gm_template.E.triMethod, best_E_weight ); 
+  }
 
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using a variety of heuristic searches 

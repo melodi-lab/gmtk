@@ -1848,6 +1848,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 		   inserter(clique.unassignedIteratedNodes,
 			    clique.unassignedIteratedNodes.end()));
   }
+  // @@@ perhaps subtract out unassignedInPartition since they are different??
 
 }
 
@@ -2008,7 +2009,7 @@ JunctionTree::junctionTreeWeight(JT_Partition& part,
 
   set <RandomVariable*> empty;
   // @@ add in unassigned in partition information to next call
-  double weight = curClique.weightInJunctionTree();
+  double weight = curClique.weightInJunctionTree(part.unassignedInPartition);
   // double weight = curClique.weight();
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
@@ -2053,6 +2054,7 @@ double
 JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 				 const set<RandomVariable*>& interfaceNodes)
 {
+
   Partition part;
   const set <RandomVariable*> emptySet;
   part.cliques = cliques;
@@ -2098,6 +2100,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
   // return jt_part.cliques[root].precedingUnassignedIteratedNodes.size();
   double weight = junctionTreeWeight(jt_part,root);
 
+
 #if 0
   unsigned badness_count=0;
   set <RandomVariable*>::iterator it;
@@ -2106,15 +2109,25 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
        it++) 
     {
       RandomVariable* rv = (*it);
+
       assert ( rv-> discrete );
       DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      if (!drv->sparse())
+	continue;
 
-      if (drv->sparse())
-	badness_count ++;
+      // if it has not at all been assigned in this partition, we
+      // assume it has been assigned in previous partition, and dont'
+      // count it's cost.
+      if (jt_part.unassignedInPartition.find(rv) ==
+	  jt_part.unassignedInPartition.end())
+	continue;
+      
+      badness_count ++;
     }
 #endif
 
   return weight;
+  // return badness_count*1000 + weight;
 
 }
 

@@ -228,18 +228,21 @@ public:
 					   const set<RandomVariable*>& unassignedIteratedNodes,
 					   const set<RandomVariable*>& separatorNodes,
 					   const set<RandomVariable*>& cumulativeAssignedNodes,
+					   const set<RandomVariable*>& unassignedInPartition,
 					   const bool useDeterminism);
 
   // compute the weight (log10 state space) of this clique.
   float weight(const bool useDeterminism = true) const { 
     return computeWeight(nodes,NULL,useDeterminism); 
   }
-  float weightInJunctionTree(const bool useDeterminism = true) const { 
+  float weightInJunctionTree(const set<RandomVariable*>& unassignedInPartition,
+			     const bool useDeterminism = true) const { 
     return computeWeightInJunctionTree(nodes,
 				       assignedNodes,
 				       unassignedIteratedNodes,
 				       accumSeps,
 				       cumulativeAssignedNodes,
+				       unassignedInPartition,
 				       useDeterminism);
   }
 
