@@ -340,7 +340,7 @@ DiagCovarVector::emIncrement(const logpr prob,
   assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingCovars())
     return;
-  assert ( emOnGoingBitIsSet() ); 
+
 
   
   /////////////////////////////////////////////
@@ -351,7 +351,10 @@ DiagCovarVector::emIncrement(const logpr prob,
   // is using this mean. This is because
   // this object keeps a reference count (needed for
   // sharing), and calling that routine repeatedly 
-  // would result in an incorrect count.
+  // would result in an incorrect count. We do
+  // make sure that em has been allocated with the
+  // following assertion.
+  assert ( emEmAllocatedBitIsSet() ); 
 
   // we assume here that (prob > minIncrementProbabilty),
   // i.e., that this condition has been checked by the caller
@@ -415,14 +418,14 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
   assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingCovars())
     return;
-  assert ( emOnGoingBitIsSet() ); 
 
   if (refCount > 0) {
-    // then we just accumulate in the covariance
-    // shared by the parent.
-
     // if this isn't the case, something is wrong.
     assert ( emOnGoingBitIsSet() );
+
+
+    // we just accumulate in the covariance
+    // shared by the parent.
 
     // NOTE: What are we doing here? We need to compute
     // the weighted average of the shared means and covariances.
@@ -615,13 +618,13 @@ DiagCovarVector::emEndIteration(const float *const parentsAccumulatedNextCovar)
   assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingCovars())
     return;
-  assert ( emOnGoingBitIsSet() ); 
-
 
   if (refCount > 0) {
-    // then we just accumulate in the covariance
+    // if this isn't the case, something is wrong.
+    assert ( emOnGoingBitIsSet() );
+
+    // we just accumulate in the covariance
     // shared by the parent.
-    
     for (int i=0;i<covariances.len();i++)
       nextCovariances[i] += parentsAccumulatedNextCovar[i];
 
@@ -741,14 +744,16 @@ void
 DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
 }
 
 void
 DiagCovarVector::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emLoadAccumulators(ifile);
 }
 
 
@@ -756,7 +761,8 @@ void
 DiagCovarVector::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
 }
 
 

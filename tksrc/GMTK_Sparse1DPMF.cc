@@ -158,6 +158,7 @@ Sparse1DPMF::read(iDataStreamFile& is)
 void
 Sparse1DPMF::write(oDataStreamFile& os)
 {
+  assert ( basicAllocatedBitIsSet() );
   NamedObject::write(os);
   os.write(_card,"Sparse1DPMF::write, card");
   os.write(pmf.len(),"Sparse1DPMF::write, len");
@@ -200,6 +201,7 @@ Sparse1DPMF::write(oDataStreamFile& os)
 logpr
 Sparse1DPMF::prob(const int val)
 {
+  assert ( basicAllocatedBitIsSet() );
   assert ( pmf.len() > 0 );
   assert ( val >= 0 && val < _card );
   const int last = pmf.len()-1;
@@ -291,6 +293,7 @@ Sparse1DPMF::makeUniform()
 void
 Sparse1DPMF::emStartIteration()
 {
+  assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingSparse1DPMFs())
     return;
 
@@ -320,6 +323,7 @@ Sparse1DPMF::emStartIteration()
 void
 Sparse1DPMF::emIncrement(logpr prob,const int val)
 {
+  assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingSparse1DPMFs())
     return;
 
@@ -372,6 +376,7 @@ Sparse1DPMF::emIncrement(logpr prob,const int val)
 void
 Sparse1DPMF::emEndIteration()
 {
+  assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingSparse1DPMFs())
     return;
 
@@ -392,6 +397,8 @@ Sparse1DPMF::emEndIteration()
 void
 Sparse1DPMF::emSwapCurAndNew()
 {
+
+  assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingSparse1DPMFs())
     return;
 
@@ -407,20 +414,26 @@ Sparse1DPMF::emSwapCurAndNew()
 void
 Sparse1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
 }
 
 void
 Sparse1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert (basicAllocatedBitIsSet());
+  assert (emEmAllocatedBitIsSet());
+  EMable::emLoadAccumulators(ifile);
 }
 
 
 void
 Sparse1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
 }
 
 

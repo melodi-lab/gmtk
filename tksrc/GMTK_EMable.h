@@ -326,16 +326,23 @@ public:
 
   ///////////////////////////////////////////////////////////////
   // store the current set of accumulators to a file.
-  virtual void emStoreAccumulators(oDataStreamFile& ofile) = 0;
+  virtual void emStoreAccumulators(oDataStreamFile& ofile) {
+    ofile.write(accumulatedProbability.val());
+  }
 
   ///////////////////////////////////////////////////////////////
   // load the current set of accumulators from a file.
-  virtual void emLoadAccumulators(iDataStreamFile& ifile) = 0;
+  virtual void emLoadAccumulators(iDataStreamFile& ifile) {
+    ifile.read(accumulatedProbability.valref());
+  }
 
   //////////////////////////////////////////////////////////////////////
   // accumulate (add to) the current set of accumulators from a file.
-  virtual void emAccumulateAccumulators(iDataStreamFile& ifile) = 0;
-
+  virtual void emAccumulateAccumulators(iDataStreamFile& ifile) {
+    logpr tmp;
+    ifile.read(tmp.valref());
+    accumulatedProbability += tmp;
+  }
 
   //////////////////////////////////////////////
 

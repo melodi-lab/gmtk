@@ -414,20 +414,37 @@ Dense1DPMF::emSwapCurAndNew()
 void
 Dense1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
+  for (int i=0;i<nextPmf.len();i++) {
+    ofile.write(nextPmf[i].val());
+  }
 }
 
 void
 Dense1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert (basicAllocatedBitIsSet());
+  assert (emEmAllocatedBitIsSet());
+  EMable::emLoadAccumulators(ifile);
+  for (int i=0;i<nextPmf.len();i++) {
+    ifile.read(nextPmf[i].valref());
+  }
 }
 
 
 void
 Dense1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
+  for (int i=0;i<nextPmf.len();i++) {
+    logpr tmp;
+    ifile.read(tmp.valref());
+    nextPmf[i] += tmp;
+  }
 }
 
 

@@ -281,24 +281,27 @@ MTCPT::emSwapCurAndNew()
 void
 MTCPT::emStoreAccumulators(oDataStreamFile& ofile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
 }
 
 void
 MTCPT::emLoadAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert (basicAllocatedBitIsSet());
+  assert (emEmAllocatedBitIsSet());
+  EMable::emLoadAccumulators(ifile);
 }
 
 
 void
 MTCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
 }
-
-
-
 
 
 ////////////////////////////////////////////////////////////////////

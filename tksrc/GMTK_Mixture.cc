@@ -525,14 +525,16 @@ void
 MixGaussians::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
 }
 
 void
 MixGaussians::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emLoadAccumulators(ifile);
 }
 
 
@@ -540,7 +542,8 @@ void
 MixGaussians::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
 }
 
 

@@ -299,9 +299,9 @@ void
 LinMeanCondDiagGaussian::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
     return;
+
 
   if (emOnGoingBitIsSet())
     return;
@@ -318,7 +318,7 @@ LinMeanCondDiagGaussian::emStartIteration()
   accumulatedProbability = 0.0;
   mean->emStartIteration(xAccumulators);
   dLinkMat->emStartIteration(xzAccumulators,zzAccumulators,zAccumulators);
-  covar->emStartIteration(xxCovarAccumulators);
+  covar->emStartIteration(xxAccumulators);
 }
 
 
@@ -330,7 +330,6 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
 {
   
   assert ( basicAllocatedBitIsSet() );
-  
   if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
     return;
 
@@ -353,7 +352,7 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
 			xzAccumulators.ptr,
 			zzAccumulators.ptr,
 			zAccumulators.ptr);
-  covar->emIncrement(prob,fprob,f,base,stride,xxCovarAccumulators.ptr);
+  covar->emIncrement(prob,fprob,f,base,stride,xxAccumulators.ptr);
 
 }
 
@@ -386,9 +385,9 @@ void
 LinMeanCondDiagGaussian::emEndIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
     return;
+
 
   if (!emOnGoingBitIsSet())
     return;
@@ -529,8 +528,8 @@ LinMeanCondDiagGaussian::emEndIteration()
     // is done below as well, since when sharing occurs, the
     // individual covars might be small, but the shared covariances
     // might be fine.
-    xxCovarAccumulators[feat] = 
-      (xxCovarAccumulators[feat] - tmp);
+    xxAccumulators[feat] = 
+      (xxAccumulators[feat] - tmp);
 
     xzExpAccumulators_p += (nLinks+1);
     nextDlinkMat_p += (nLinks+1);
@@ -564,7 +563,7 @@ LinMeanCondDiagGaussian::emEndIteration()
   // normalization
   mean->emEndIteration(xAccumulators.ptr);
   dLinkMat->emEndIteration(xzAccumulators.ptr);
-  covar->emEndIteration(xxCovarAccumulators.ptr);
+  covar->emEndIteration(xxAccumulators.ptr);
 
   // Finally, end the EM epoch.
   emClearOnGoingBit();
@@ -575,7 +574,6 @@ void
 LinMeanCondDiagGaussian::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
     return;
 
@@ -590,18 +588,56 @@ LinMeanCondDiagGaussian::emSwapCurAndNew()
 }
 
 
+////////////////////////////////////////////////////////////
+// Parallel EM support
+////////////////////////////////////////////////////////////
+
+
 void
 LinMeanCondDiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
+  for (int i=0;i<xAccumulators.len();i++) {
+    ofile.write(xAccumulators[i],"nxm");
+  }
+  for (int i=0;i<xxAccumulators.len();i++) {
+    ofile.write(xxAccumulators[i],"ndc");
+  }
+  for (int i=0;i<xzAccumulators.len();i++) {
+    ofile.write(xzAccumulators[i],"ndc");
+  }
+  for (int i=0;i<zzAccumulators.len();i++) {
+    ofile.write(zzAccumulators[i],"ndc");
+  }
+  for (int i=0;i<zAccumulators.len();i++) {
+    ofile.write(zAccumulators[i],"ndc");
+  }
 }
 
 void
 LinMeanCondDiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emLoadAccumulators(ifile);
+  for (int i=0;i<xAccumulators.len();i++) {
+    ifile.read(xAccumulators[i],"nxm");
+  }
+  for (int i=0;i<xxAccumulators.len();i++) {
+    ifile.read(xxAccumulators[i],"ndc");
+  }
+  for (int i=0;i<xzAccumulators.len();i++) {
+    ifile.read(xzAccumulators[i],"ndc");
+  }
+  for (int i=0;i<zzAccumulators.len();i++) {
+    ifile.read(zzAccumulators[i],"ndc");
+  }
+  for (int i=0;i<zAccumulators.len();i++) {
+    ifile.read(zAccumulators[i],"ndc");
+  }
+
 }
 
 
@@ -609,7 +645,33 @@ void
 LinMeanCondDiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
+  for (int i=0;i<xAccumulators.len();i++) {
+    float tmp;
+    ifile.read(tmp,"nxm");
+    xAccumulators[i] += tmp;
+  }
+  for (int i=0;i<xxAccumulators.len();i++) {
+    float tmp;
+    ifile.read(tmp,"ndc");
+    xxAccumulators[i] += tmp;
+  }
+  for (int i=0;i<xzAccumulators.len();i++) {
+    float tmp;
+    ifile.read(tmp,"ndc");
+    xzAccumulators[i] += tmp;
+  }
+  for (int i=0;i<zzAccumulators.len();i++) {
+    float tmp;
+    ifile.read(tmp,"ndc");
+    zzAccumulators[i] += tmp;
+  }
+  for (int i=0;i<zAccumulators.len();i++) {
+    float tmp;
+    ifile.read(tmp,"ndc");
+    zAccumulators[i] += tmp;
+  }
 }
 
 

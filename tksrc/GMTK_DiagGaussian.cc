@@ -262,6 +262,7 @@ DiagGaussian::log_p(const float *const x,
 void
 DiagGaussian::emStartIteration()
 {
+  assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
 
@@ -289,8 +290,10 @@ DiagGaussian::emIncrement(logpr prob,
 			  const Data32* const base,
 			  const int stride)
 {
+  assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
+
 
   emStartIteration();
 
@@ -314,11 +317,15 @@ DiagGaussian::emIncrement(logpr prob,
 void
 DiagGaussian::emEndIteration()
 {
+  assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
 
+  // if EM not ongoing, we just return
+  // here since, if this object is shared,
+  // we don't want to end the epoch > 1 time
   if (!emOnGoingBitIsSet())
-    return;
+    return; 
 
   if (accumulatedProbability == 0.0) {
     // Note: we assume here that the mean and covar object will check for us that 
@@ -339,6 +346,7 @@ DiagGaussian::emEndIteration()
 void
 DiagGaussian::emSwapCurAndNew()
 {
+  assert ( basicAllocatedBitIsSet() );
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
 
@@ -352,23 +360,55 @@ DiagGaussian::emSwapCurAndNew()
 }
 
 
+////////////////////////////////////////////////////////////
+// Parallel EM support
+////////////////////////////////////////////////////////////
+
 void
 DiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
+  for (int i=0;i<nextMeans.len();i++) {
+    ofile.write(nextMeans[i],"nxm");
+  }
+  for (int i=0;i<nextDiagCovars.len();i++) {
+    ofile.write(nextDiagCovars[i],"ndc");
+  }
 }
 
 void
 DiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emLoadAccumulators(ifile);
+  for (int i=0;i<nextMeans.len();i++) {
+    ifile.read(nextMeans[i],"nxm");
+  }
+  for (int i=0;i<nextDiagCovars.len();i++) {
+    ifile.read(nextDiagCovars[i],"ndc");
+  }
 }
 
 
 void
 DiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
+  for (int i=0;i<nextMeans.len();i++) {
+    float tmp;
+    ifile.read(tmp,"nxm");
+    nextMeans[i] += tmp;
+  }
+  for (int i=0;i<nextDiagCovars.len();i++) {
+    float tmp;
+    ifile.read(tmp,"ndc");
+    nextDiagCovars[i] += tmp;
+  }
 }
 
 
