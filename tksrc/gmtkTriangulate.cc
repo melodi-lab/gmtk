@@ -448,6 +448,7 @@ main(int argc,char*argv[])
     timer->DisableTimer();
   }
   triangulator.useTimer(timer);
+   
 
   if (jut >= 0) {
     // then Just Unroll, Triangulate, and report on quality of triangulation.
@@ -458,19 +459,33 @@ main(int argc,char*argv[])
     GMTemplate gm_template(fp,maxNumChunksInBoundary,chunkSkip);
     string input_tri_file, output_tri_file;
 
+    //////////////////////////////////////////////////////////////////////
+    // Get name of input triangulation  
+    //////////////////////////////////////////////////////////////////////
     if (inputTriangulatedFile == NULL) {
       input_tri_file = string(strFileName) + GMTemplate::fileExtension;
     }
     else {
       input_tri_file = string(inputTriangulatedFile);
+      if (fsize(input_tri_file.c_str()) == 0) {
+	  error("ERROR: triangulation file '%s' does not exist or is empty\n",
+            input_tri_file.c_str() );
+      }
     }
 
+    //////////////////////////////////////////////////////////////////////
+    // Get name of output triangulation  
+    //////////////////////////////////////////////////////////////////////
     if (outputTriangulatedFile == NULL) {
       output_tri_file = string(strFileName) + GMTemplate::fileExtension;
     }
     else {
       output_tri_file = string(outputTriangulatedFile);
     }
+
+    BoundaryTriangulate::SavedGraph orgnl_P_graph;
+    BoundaryTriangulate::SavedGraph orgnl_C_graph;
+    BoundaryTriangulate::SavedGraph orgnl_E_graph;
 
     if (rePartition && !reTriangulate) {
       infoMsg(IM::Info,"NOTE: rePartition=T option forces -reTriangulate option to be true.\n");
@@ -487,6 +502,11 @@ main(int argc,char*argv[])
 				  string(triangulationHeuristic),
 				  findBestBoundary,
 				  gm_template);
+
+      triangulator.saveCurrentNeighbors( gm_template.P.nodes, orgnl_P_graph );
+      triangulator.saveCurrentNeighbors( gm_template.C.nodes, orgnl_C_graph );
+      triangulator.saveCurrentNeighbors( gm_template.E.nodes, orgnl_E_graph );
+
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
 	triangulator.triangulate(string(triangulationHeuristic),
@@ -537,7 +557,10 @@ main(int argc,char*argv[])
 	if (!noReTriE)
 	  gm_template.clear_E_Cliques();
       }
-	
+
+      triangulator.saveCurrentNeighbors( gm_template.P.nodes, orgnl_P_graph );
+      triangulator.saveCurrentNeighbors( gm_template.C.nodes, orgnl_C_graph );
+      triangulator.saveCurrentNeighbors( gm_template.E.nodes, orgnl_E_graph );
 
       // now using the partition triangulate
       if (anyTimeTriangulate == NULL) {
@@ -577,11 +600,17 @@ main(int argc,char*argv[])
       // where this program ensures that the result is triangulated
       // and where it reports the quality of the triangulation.
 
+
       iDataStreamFile is(input_tri_file.c_str(),false,false);
       if (!fp.readAndVerifyGMId(is))
 	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",input_tri_file.c_str(),strFileName);
 
       gm_template.readPartitions(is);
+
+      triangulator.saveCurrentNeighbors( gm_template.P.nodes, orgnl_P_graph );
+      triangulator.saveCurrentNeighbors( gm_template.C.nodes, orgnl_C_graph );
+      triangulator.saveCurrentNeighbors( gm_template.E.nodes, orgnl_E_graph );
+
       gm_template.readMaxCliques(is);
       gm_template.triangulatePartitionsByCliqueCompletion();
       triangulator.ensurePartitionsAreChordal(gm_template);
@@ -605,11 +634,17 @@ main(int argc,char*argv[])
 	  else
 	    p_totalWeight = p_totalWeight + log10(1+pow(10,curWeight-p_totalWeight));
 	}
-	printf("  --- Prologue max clique weight = %f, total weight = %f, jt_weight = %f\n",
+	printf("   --- Prologue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	       p_maxWeight,p_totalWeight,
 	       JunctionTree::junctionTreeWeight(gm_template.P.cliques,
 						gm_template.PCInterface_in_P,
 						NULL,&gm_template.PCInterface_in_P));
+        printf("  --- Prologue triangulation is ");
+        if (!triangulator.isEliminationGraph(orgnl_P_graph, 
+             gm_template.P.nodes)) {
+          printf("not ");
+        }
+        printf("an elimination graph\n"); 
 
 	double c_maxWeight = -1.0;
 	double c_totalWeight = -1.0; // starting flag
@@ -623,7 +658,7 @@ main(int argc,char*argv[])
 	  else
 	    c_totalWeight = c_totalWeight + log10(1+pow(10,curWeight-c_totalWeight));
 	}
-	printf("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f, jt_weight = %f\n",
+	printf("   --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f, jt_weight = %f\n",
 	       c_maxWeight,
 	       chunkSkip,
 	       c_totalWeight,
@@ -632,6 +667,12 @@ main(int argc,char*argv[])
 						gm_template.CEInterface_in_C,
 						&gm_template.PCInterface_in_C,
 						&gm_template.CEInterface_in_C));
+        printf("  --- Chunk triangulation is ");
+        if (!triangulator.isEliminationGraph(orgnl_C_graph, 
+             gm_template.C.nodes)) {
+          printf("not ");
+        }
+        printf("an elimination graph\n"); 
 
 	double e_maxWeight = -1.0;
 	double e_totalWeight = -1.0; // starting flag
@@ -646,11 +687,17 @@ main(int argc,char*argv[])
 	    e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
 	}
 	const set <RV*> emptySet;
-	printf("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
+	printf("   --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	       e_maxWeight,e_totalWeight,
 	       JunctionTree::junctionTreeWeight(gm_template.E.cliques,
 						emptySet,
 						&gm_template.CEInterface_in_E,NULL));
+        printf("  --- Epilogue triangulation is ");
+        if (!triangulator.isEliminationGraph(orgnl_E_graph, 
+             gm_template.E.nodes)) {
+          printf("not ");
+        }
+        printf("an elimination graph\n"); 
 
 	double maxWeight
 	  = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);

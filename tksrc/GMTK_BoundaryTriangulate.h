@@ -44,6 +44,10 @@ class BoundaryTriangulate : public IM
   friend class GraphicalModel;
   friend class GMTemplate;
 
+public:
+  typedef pair<RV*, set<RV*> > NghbrPairType; 
+  typedef vector<pair<RV*, set<RV*> > > SavedGraph; 
+
 private:
 
   // the file parser for this model.
@@ -196,19 +200,6 @@ private:
   // interface boundary (set to false).
   bool findingLeftInterface;
 
-  // Support for unTriangulating partitions. This stuff
-  // could go into the Partition class, but we don't want
-  // to include all the STL code for triangulation/untriangulting
-  // since Partitiona and GMTemplate will most often be used
-  // for inference, and where a triangulation will simply
-  // come from a set of maxcliques.
-  typedef pair<RV*, set<RV*> > nghbrPairType; 
-
-  // original neighbors of nodes so that deTriangulate() will work.
-  vector<nghbrPairType>  orgnl_P_nghbrs;
-  vector<nghbrPairType>  orgnl_C_nghbrs;
-  vector<nghbrPairType>  orgnl_E_nghbrs;
-
   // The timer for the anytime algorithm. If this variable
   // is non-NULL, some of the routines will check 'timer' and if
   // it has expired, the routines will return. If this variable is NULL,
@@ -320,7 +311,7 @@ private:
 		       // triangulation heuristic method
 		       const TriangulateHeuristics& tri_heur,
 		       // original neighbor structures
-		       vector<nghbrPairType>& orgnl_nghbrs,
+		       SavedGraph& orgnl_nghbrs,
 		       // output: resulting max cliques
 		       vector<MaxClique>& best_cliques,
 		       // output: string giving resulting method used
@@ -336,7 +327,7 @@ private:
 			    // triangulation heuristic method
 			    const TriangulateHeuristics& tri_heur,
 			    // original neighbor structures
-			    vector<nghbrPairType>& orgnl_nghbrs,
+			    SavedGraph& orgnl_nghbrs,
 			    // output: resulting max cliques
 			    vector<MaxClique>& best_cliques,
 			    // output: string giving resulting method used
@@ -358,7 +349,7 @@ private:
 			    // triangulation heuristic method
 			    const string& tri_heur_str,
 			    // original neighbor structures
-			    vector<nghbrPairType>& orgnl_nghbrs,
+			    SavedGraph& orgnl_nghbrs,
 			    // output: resulting max cliques
 			    vector<MaxClique>& best_cliques,
 			    // output: string giving resulting method used
@@ -383,7 +374,7 @@ private:
 				  // triangulation heuristic method
 				  const TriangulateHeuristics& tri_heur,
 				  // original neighbor structures
-				  vector<nghbrPairType>& orgnl_nghbrs,
+				  SavedGraph& orgnl_nghbrs,
 				  // output: resulting max cliques
 				  vector<MaxClique>& best_cliques,
 				  // output: string giving resulting method used
@@ -463,11 +454,11 @@ private:
 
 
   // triangulate by exhaustive search, takes a *LONG* time.
-  void triangulateExhaustiveSearch(const set<RV*>&  nodes,
-				   const bool jtWeight,
-				   const set<RV*>& nodesRootMustContain,
-				   const vector<nghbrPairType>& orgnl_nghbrs,
-				   vector<MaxClique>&           cliques
+  void triangulateExhaustiveSearch(const set<RV*>&    nodes,
+				   const bool         jtWeight,
+				   const set<RV*>&    nodesRootMustContain,
+				   const SavedGraph&  orgnl_nghbrs,
+				   vector<MaxClique>& cliques
 				   );
 
   // Triangulate by pre-specified elimination order
@@ -483,14 +474,14 @@ private:
   // triangulate using elimination with a number of basic heuristics, 
   // returning the best.
   double tryEliminationHeuristics(
-    const set<RV*>& nodes,
-    const bool                  jtWeight,
-    const set<RV*>& nodesRootMustContain,
-    vector<nghbrPairType>&      orgnl_nghbrs,
-    vector<MaxClique>&          best_cliques,
-    string&                     best_method,
-    double&                     best_weight,
-    string                      best_method_prefix = ""
+    const set<RV*>&    nodes,
+    const bool         jtWeight,
+    const set<RV*>&    nodesRootMustContain,
+    SavedGraph&        orgnl_nghbrs,
+    vector<MaxClique>& best_cliques,
+    string&            best_method,
+    double&            best_weight,
+    string             best_method_prefix = ""
     );
 
   ////////////////////////////////////////////////////////////
@@ -500,7 +491,7 @@ private:
     const set<RV*>& nodes,
     const bool                  jtWeight,
     const set<RV*>& nrmc,         // nrmc = nodes root must contain
-    vector<nghbrPairType>&      orgnl_nghbrs,
+    SavedGraph&        orgnl_nghbrs,
     vector<MaxClique>&          best_cliques,
     string&                     best_method,
     double&                     best_weight
@@ -579,7 +570,6 @@ private:
 	     map < RV*, RV* >& C2_u2_to_C1_u1,
 	     map < RV*, RV* >& C2_u2_to_C2_u1);
 
-
   // check that the basic definitions (as given by the template) will be
   // valid for the boundary that will be computed for this particular partitioning
   // set. In other words, the boundary that the boundary algorithm returns is used
@@ -596,7 +586,6 @@ private:
 				const vector <RV*>& rvs,
 				map < RVInfo::rvParent, unsigned >& pos);
   
-				
   //////////////////////////////////////////////////////////////////////////// 
   // Custom data structures for fast Maximum Cardinality Search, fill-in 
   // computation, and chordality test. 
@@ -614,7 +603,7 @@ private:
       triangulateNode();
       triangulateNode(RV* random_variable);
 
-      RV*          randomVariable;
+      RV*                      randomVariable;
       triangulateNeighborType  neighbors;
       triangulateNodeList*     nodeList; 
       unsigned                 cardinality;
@@ -723,23 +712,8 @@ private:
   );
 
   //////////////////////////////////////////////////////////////////////////// 
-  // Overloaded functions for saving and restoring graph structure when using 
-  // triangulateNodes
+  // Functions for saving and restoring graph structure 
   //////////////////////////////////////////////////////////////////////////// 
-
-  void saveCurrentNeighbors(
-    const set<RV*> nodes,
-    vector<nghbrPairType>& orgnl_nghbrs
-  );
-
-  void saveCurrentNeighbors(
-    Partition &prt,
-    vector<nghbrPairType>& orgnl_nghbrs) 
-  {
-    saveCurrentNeighbors(prt.nodes,orgnl_nghbrs);
-  }
-
-  void restoreNeighbors(vector<nghbrPairType>& orgnl_nghbrs);
 
   typedef pair<triangulateNode*, vector<triangulateNode*> > 
     triangulateNghbrPairType; 
@@ -884,6 +858,39 @@ public:
   void dontMemoizeBoundary() {
     noBoundaryMemoize = true;
   }
+
+  //////////////////////////////////////////////////////////////////////////// 
+  // Functions for saving and restoring graph structure 
+  //////////////////////////////////////////////////////////////////////////// 
+
+  // Support for unTriangulating partitions. This stuff
+  // could go into the Partition class, but we don't want
+  // to include all the STL code for triangulation/untriangulting
+  // since Partitiona and GMTemplate will most often be used
+  // for inference, and where a triangulation will simply
+  // come from a set of maxcliques.
+
+  void saveCurrentNeighbors(
+    const set<RV*> nodes,
+    SavedGraph&    orgnl_nghbrs
+  );
+
+  void saveCurrentNeighbors(
+    Partition&  prt,
+    SavedGraph& orgnl_nghbrs) 
+  {
+    saveCurrentNeighbors(prt.nodes,orgnl_nghbrs);
+  }
+
+  void restoreNeighbors(SavedGraph& orgnl_nghbrs);
+
+  //////////////////////////////////////////////////////////////////////// 
+  // Returns true if triangulation could have come from elimination 
+  //////////////////////////////////////////////////////////////////////// 
+  bool isEliminationGraph(
+    SavedGraph orgnl_nghbrs,
+    const set<RV*>& nodes
+  );
 
 };
 
