@@ -139,7 +139,8 @@ private:
   };
 
   struct TriangulateHeuristics {
-    unsigned               numberTrials;
+    int                    numberTrials;
+    int                    seconds;
     TriangulateStyles      style;
     extraEdgeHeuristicType extraEdgeHeuristic;
     vector<BasicTriangulateHeuristic> heuristic_vector;
