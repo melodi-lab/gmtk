@@ -80,7 +80,7 @@ public:
   void emSwapCurAndNew() {}
   void emStoreAccumulators(oDataStreamFile& ofile) {}
   void emLoadAccumulators(iDataStreamFile& ifile) {}
-  void emAccumulateAccumulators(iDataStreamFile& ifile){}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
   //////////////////////////////////
 
 };
