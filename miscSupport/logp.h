@@ -1,7 +1,7 @@
 //
 //
-// Log probability class for single or double precision numbers.
-// Some inspiration for this code was taken from HTK's HMath.c
+// Log probability class for single or double precision numbers.  Some
+// initial inspiration for this code was taken from HTK's HMath.c
 //
 // $Header$
 //

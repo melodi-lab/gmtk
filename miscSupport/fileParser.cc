@@ -44,9 +44,9 @@ bool
 ioDataStreamFile::errorReturn(char *from,char *msg)
 {
   if (msg != NULL) {
-    error("%s occurred in %s, file '%s': %s\n",
+    error("%s occurred in %s, file '%s' line %d: %s\n",
 	  (feof(fh) ? "EOF" : (ferror(fh) ? "Error" : "Strange Error")),
-	  from,fileName(),
+	  from,fileName(),lineNo(),
 	  msg);
   }
   return false;
@@ -161,12 +161,57 @@ iDataStreamFile::prepareNext()
       if (s == NULL)
 	return false;
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
-      if (*s == CPP_DIRECTIVE_CHAR)
+      if (*s == CPP_DIRECTIVE_CHAR) {
+	// check if there is a filename/lineNo change.
+	{
+	  if (strcmp("#line",s) == 0) {
+	    // then this is probabilty of the form: ^"#line"{ws}{int}{ws}{string}.* 
+	    // skip over '#line' string
+	    s += 5;
+	  } else { 
+	    // then might be of the form: ^"#"{ws}{int}{ws}{string}.*
+	    // skip over '#' character
+	    s += 1; 
+	  }
+	  // skip over ws
+	  while (*s && isspace(*s))
+	    s++;
+	  // try to get an int.
+	  char *ss;
+	  long newLineNo = strtol(s,&ss,0);
+	  if (ss == s) {
+	    // then not an int, so we just skip this line
+	    continue;
+	  }
+	  // ok, got int, presumably line number is in newLineNo
+	  s = ss;
+	  // skip over ws
+	  while (*s && isspace(*s))
+	    s++;
+	  if (!(*s)) {
+	    // then at end of line, so no file name, so skip line
+	    continue;
+	  }
+	  // scan filename until next ws or eol.
+	  ss = s;
+	  while (*ss && !isspace(*s))
+	    ss++;
+	  // end the line if not ended already.
+	  *ss = '\0';
+	  // we're done. We've got new line number and get remainder
+	  // of string the presumably new file name.
+	  _curLineNo = newLineNo;
+	  _fileName = s;
+	}
 	continue;
+      }
 #endif
+      // otherwise, we've successfully read the next line.
+      _curLineNo ++;
+
       if (::strlen(s) == (MAXLINSIZEPLUS1-1))
-	error("ERROR: maximum line length of %d reached in ASCII file '%s'\n",
-	      fileName());
+	error("ERROR: maximum line length of %d reached in ASCII file '%s', line %d\n",
+	      fileName(),lineNo());
 
       char *cstart = ::index(s,COMMENTCHAR);
       if (cstart != NULL) {
@@ -202,6 +247,7 @@ void iDataStreamFile::rewind()
   if (::fseek (fh, 0L, SEEK_SET) != 0)
     error("ERROR: trouble seeking to beginning of file '%s', %s\n",
 	  fileName(),strerror(errno));
+  _curLineNo = 0;
   state = GetNextLine;
 }
 
@@ -378,8 +424,8 @@ iDataStreamFile::readInt(int& i, char *msg)
     char *ptr;
     long l = strtol(buffp,&ptr,0);
     if (ptr == buffp) {
-      error("readInt: Can't form int at (%s) in file (%s). %s",buffp,
-	    fileName(),
+      error("readInt: Can't form int at (%s) in file (%s) line %d. %s",buffp,
+	    fileName(),lineNo(),
 	    (msg?msg:""));
     } else
       buffp = ptr;
@@ -403,8 +449,8 @@ iDataStreamFile::readUnsigned(unsigned& i, char *msg)
     char *ptr;
     unsigned long l = strtoul(buffp,&ptr,0);
     if (ptr == buffp) {
-      error("readUnsigned: Can't form unsigned at (%s) in file (%s). %s",buffp,
-	    fileName(),
+      error("readUnsigned: Can't form unsigned at (%s) in file (%s) line %d. %s",buffp,
+	    fileName(),lineNo(),
 	    (msg?msg:""));
     } else
       buffp = ptr;
@@ -428,8 +474,8 @@ iDataStreamFile::readFloat(float& f, char *msg)
     char *ptr;
     f = strtod(buffp,&ptr);
     if (ptr == buffp) {
-      error("readFloat: Can't form float at (%s) in file (%s). %s",buffp,
-	    fileName(),
+      error("readFloat: Can't form float at (%s) in file (%s) line %d. %s",buffp,
+	    fileName(),lineNo(),
 	    (msg?msg:""));
     } else
       buffp = ptr;
@@ -452,8 +498,8 @@ iDataStreamFile::readDouble(double& d, char *msg)
     char *ptr;
     d = strtod(buffp,&ptr);
     if (ptr == buffp) {
-      error("readDouble: Can't form double at (%s) in file (%s). %s",buffp,
-	    fileName(),
+      error("readDouble: Can't form double at (%s) in file (%s) line %d. %s",buffp,
+	    fileName(),lineNo(),
 	    (msg?msg:""));
     } else
       buffp = ptr;
@@ -693,6 +739,7 @@ bool oDataStreamFile::nl(char *msg)
     if (fprintf(fh,"\n") == 0) 
       return errorReturn("indent",msg);
   }
+  _curLineNo++;
   return true;
 }
 
@@ -706,6 +753,7 @@ bool oDataStreamFile::flush(char *msg)
 
 void oDataStreamFile::rewind()
 {
+  _curLineNo = 0;
   if (::fseek (fh, 0L, SEEK_SET) != 0)
     error("ERROR: trouble seeking to beginning of file '%s', %s\n",
 	  fileName(),strerror(errno));
