@@ -47,11 +47,6 @@ public:
 	    unsigned _cardinality = 0)
     : DiscRV(_rv_info,_timeFrame,_cardinality)
   {
-    t.hidden = 1;
-    t.switching = 0;
-    t.scale = 0;
-    t.penalty = 0;
-    t.shift = 0;
   }
 
   virtual void printSelf(FILE *f,bool nl=true);
@@ -69,7 +64,6 @@ public:
   virtual HidDiscRV* cloneRVShell();
   virtual HidDiscRV* create() {
     HidDiscRV*rv = new HidDiscRV(rv_info,frame(),cardinality);
-    rv->t = t;
     return rv;
   }
 

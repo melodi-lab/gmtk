@@ -55,11 +55,6 @@ public:
 	    unsigned _cardinality = 0)
     : DiscRV(_rv_info,_timeFrame,_cardinality)
   {
-    t.hidden = 0;
-    t.switching = 0;
-    t.scale = 0;
-    t.penalty = 0;
-    t.shift = 0;
   }
   virtual ~ObsDiscRV() {;}
 
@@ -76,7 +71,6 @@ public:
   virtual ObsDiscRV* cloneRVShell();
   virtual ObsDiscRV* create() {
     ObsDiscRV*rv = new ObsDiscRV(rv_info,frame(),cardinality);
-    rv->t = t;
     return rv;
   }
 

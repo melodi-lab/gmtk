@@ -418,28 +418,32 @@ Partition::setCliquesFromAnotherPartition(Partition& from_part)
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::setUpClonedPartitionGraph()
- *   Given a P,C, and E that has been cloned without parents, this 
- *   will set up the partitions as follows.
- *   only the members that are in the corresponding 'in' set (i.e., if
- *   any parents, children, neighbors, in 'in' pointed to variables
- *   outside of 'in', then the corresponding variables in 'out' do not
- *   contain those parents,children,neighbors.
  *
- *   There are two versions of this routine, one which returns
- *   the in to out variable map in case that might be useful.
+ *   Given a P,C, and E that has been cloned without parents, this
+ *   will set up each partition (P,C, and E) as follows: only the nodes that are
+ *   in the corresponding current partition set are pointed to by
+ *   the resuling neighbors member in each RV in the partition. 
+ *   In other words, neighbors of variables in a parititon never
+ *   point to nodes outside of the partitions. Parents and children,
+ *   however, of nodes in the partition, might very well point
+ *   to variables outside of the current partition. See also
+ *   comment below in main body of this routine.
  *
  * Preconditions:
- *   'in' is a set of random variables to be cloned.
+ *   P, C, and E are the partitions to be cloned. 
  *
  * Postconditions:
- *   'out' is a clone of 'in' but without parents,children,neighbors.
+ *   Pc,Cc,Ec are the cloned partitions of P,C, and E respectively, but
+ *   with the properties as mentioned above. Also, the P_in_to_out,
+ *   C_in_to_out, E_in_to_out, provide the mappings from P to Pc,
+ *   C to Cc, and E to Ec respectively.
  *   
  *
  * Side Effects:
  *     none
  *
  * Results:
- *     returns the in_to_out mapping
+ *     returns the cloned partitions and the in_to_out mappings
  *
  *
  *-----------------------------------------------------------------------
@@ -453,39 +457,47 @@ setUpClonedPartitionGraph(const set<RV*>& P,
 			  set<RV*>& Pc,
 			  set<RV*>& Cc,
 			  set<RV*>& Ec,
-			  // next 3 should be const but ther eis no "op[] const"
+			  // next 3 should be const but there is no "op[] const"
 			  map < RV*, RV* >& P_in_to_out,
 			  map < RV*, RV* >& C_in_to_out,
 			  map < RV*, RV* >& E_in_to_out)
 {
-
-  // Just do neighbors for now, don't bother with parents, children,
-  // and so on.
-
   // These routine calls set the neighbors of the output form (e.g.,
   // PC, Cc, and Ec) to be the correctly associated variables, but it
-  // does not include neighbors that are not in the current set (i.e.,
-  // dissociate with any other possible portion of the network).  This
-  // means that the rvs themselves in the intersection between
-  // partitions need to be unique. Meaning, the intersection I =
-  // intersection(P,C) is contained both in P, and C, but since P[I]
+  // does not include neighbors that are not in the current partition
+  // (i.e., dissociate with any other possible portion of the
+  // network).  This means that the rvs themselves in the intersection
+  // between partitions need to be unique. Meaning, the intersection I
+  // = intersection(P,C) is contained both in P, and C, but since P[I]
   // should have neighbors only in P and C[I] should have neighbors
-  // only in C, we must use different random variables for P[I] and
-  // C[I] (otherwise, the triangulation code won't work). Note that
-  // this is a little weird, however, since a variable v in C with
-  // a parent p in P will not have p as v's neighbor.
+  // only in C, we must use different actuall C++ random variables for
+  // P[I] and C[I]. The reason for this is the triangulation code
+  // which otherwise wont work: specifically, we triangulate each
+  // partition separately, and after triangulation, the neighbors
+  // member of variables in P[I] will not be the same as the
+  // corresponding neighbors member for variables in C[I] (since they
+  // are triangulated separately).  Indeed, this is a little weird,
+  // however, since a variable v in C with a parent p in P will not
+  // have p as v's neighbor.
 
   // Note further that the variables PCInterface_in_P,
   // PCInterface_in_C, CEInterface_in_C, and CEInterface_in_E will
   // have the unique interface variables in each partition since they
-  // will sometimes be useful. I.e., even though PCInterface_in_P and
-  // PCInterface_in_C correspond to the same variables, they are STL
-  // sets with differnt pointers (so their STL set intersection will
-  // be empty).
+  // will sometimes be quite useful. I.e., even though
+  // PCInterface_in_P and PCInterface_in_C correspond to the same
+  // actual variables, they are STL sets with pointers to different
+  // C++ objects (so their STL set intersection will in fact be
+  // empty).
+
 
   cloneRVShell(P,Pc,P_in_to_out);
   cloneRVShell(C,Cc,C_in_to_out);
   cloneRVShell(E,Ec,E_in_to_out);
+  // Note that now, Pc, Cc, and Ec consist of completely separate C++
+  // RV objects, meaning that from STL's point of view, there is no
+  // intersection between any of them (i..e, intersection(Pc,Cc) =
+  // empty, etc.). Of course, in terms of actual real RVs, there is an
+  // intersection, namely the interface variables.
 
   setPartitionParentsChildrenNeighbors(P,Pc,P_in_to_out,C_in_to_out,E_in_to_out);
   setPartitionParentsChildrenNeighbors(C,Cc,C_in_to_out,P_in_to_out,E_in_to_out);
@@ -503,13 +515,20 @@ setUpClonedPartitionGraph(const set<RV*>& P,
  *   takes a mapping from S to Sc, and the corresponding mappings from
  *   the other partitions whatever they are, called O1 and O1. 
  *   
- *   It then sets the neighbors structures for all of Sc from S. The neighbors
- *   are variables that are forced to be part of the partition S itself.
- *
- *   It then sets the parents variables for each variable in Sc. The parents
- *   (and also the children) might NOT be fully contained in Sc, so it needs
- *   to use the mappings for O1 and O2 to get the location of the correspondly
- *   cloned variables for those partitions.
+ *   It then sets the neighbors structures for all of Sc from S. The
+ *   neighbors are variables that are forced to be part of the
+ *   partition S itself. The reason for this is that we triangulate
+ *   each partition separately, so there must not be any neighbors
+ *   edges pointing into adjacent partitions. Note, however, that
+ *   partitions will of course have overlap in nodes (i.e., the
+ *   interface nodes).
+ *   
+ *   It then sets the parents variables for each variable in Sc. The
+ *   parents (and also the children) might NOT be fully contained in
+ *   Sc, so it needs to use the mappings for O1 and O2 to get the
+ *   location of the correspondly cloned variables for those
+ *   partitions. In other words, when done the parents and children
+ *   very well might point into other partitions.
  *
  * Preconditions:
  *   Sc is unfishined, i.e., variables have been cloned without parents
@@ -706,7 +725,7 @@ writePartitions(oDataStreamFile& os, string& str)
     tms = localtime(&tloc);
     strftime(buff,2048,"%A %B %d %Y, %H:%M:%S %Z",tms);
   }
-  os.writeComment("File Created: %s\n",buff);
+  os.writeComment("GMTK Triangulation File Created: %s\n",buff);
   os.writeComment("Options-: %s\n",str.c_str());
   os.writeComment("---\n");
   os.nl();

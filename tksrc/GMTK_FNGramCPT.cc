@@ -447,6 +447,7 @@ void FNGramImp::readLMFile(std::vector<Vocab*> vocabs) {
 	unsigned number;
 	for ( unsigned i = 0; i < _numberOfBGNodes; i++ ) {
 		ifs.readLine(line, MAX_LINE_LENGTH);
+		// TODO: fix compiler warning here about "warning: int format, unsigned int arg (arg 4)"
 		if ( sscanf(line, "ngram %x=%d", &nodeId, &number) < 2 )
 			error("Error: reading lm file %s in %s", _lmFileName, line);
 		if ( nodeId > _numberOfBGNodes )

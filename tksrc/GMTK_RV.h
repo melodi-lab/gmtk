@@ -70,22 +70,25 @@ Main RV hierarchy:
            + Sw_ObsDiscRV  (also inherits from SwDiscRV)
               + ScPnSh_Sw_ObsDiscRV  (also inherits from ScPnShRV)
    - ContRV
-        - HidContRV
+        - // HidContRV (doesn't exist yet)
         + ObsContRV
            + ScPnSh_ObsContRV (also inherits from ScPnShRV)
            + Sw_ObsContRV  (also inherits from SwObsRV)
               + ScPnSh_Sw_ObsContRV  (also inherits from ScPnShRV)
 
-
 Please finish this if anyone cares to.
 
-                               RV
-                             /    \
-                       ContRV       DiscRV
+                               RV______________
+                             /                 \
+                       ContRV                 DiscRV
                      /    \
                           |
                          ObsContRV
                           /     \
+              Sw_ObsContRV       ScPnSh_ObsContRV
+                    /
+        ScPnSh_Sw_ObsContRV  
+
 
  
 
@@ -177,9 +180,9 @@ class RV  {
   virtual void setDTMapper(RngDecisionTree *) { assert( 0 );  }
 
   virtual vector< RV* >& switchingParentsVec() {
-    // a general RV has no switching parents. Subclasses re-define as desired.
+    // a general RV has no switching parents. Subclasses must re-define as desired.
     assert ( 0 );
-    // return something, but this will never happen.
+    // return something to satisfy compiler, but this will/should never happen.
     return allParents;
   }
   
@@ -189,7 +192,6 @@ class RV  {
     assert ( j == 0 );
     return allParents;
   }
-
 
 
 protected:
@@ -203,9 +205,6 @@ protected:
   // The time frame (time slice) of the random variable.
   // Counting starts from 0.
   unsigned timeFrame;
-
-  // the current variable type.
-  RVType t;
 
   //////////////////////////////////////////////////////////
   // Support for the Graph of Random Variables
@@ -237,16 +236,20 @@ public:
   // return the current time frame
   unsigned frame() const { return timeFrame; }
 
-
-  // return elements from the type structure
-  bool discrete() const { return t.discrete; }
-  bool continuous() const { return !t.discrete; }
-  bool hidden() const { return t.hidden; }
-  bool observed() const { return !t.hidden; }
-  bool switching() const { return t.switching; }
-  bool scale() const { return t.scale; }
-  bool penalty() const { return t.penalty; }
-  bool shift() const { return t.shift; }
+  // return various aspects of the RV, based on the RVInfo of this RV.
+  bool discrete() const { return (rv_info.rvType == RVInfo::t_discrete); }
+  bool continuous() const { return !discrete(); }
+  bool hidden() const { return (rv_info.rvDisp == RVInfo::d_hidden); }
+  bool observed() const { return !hidden(); }
+  bool switching() const { return (rv_info.switchingParents.size() > 0); } 
+  // Right now, we don't distinguish between scale/penalty/shift
+  // (i.e., either they're all on or all off from the class
+  // hierarchy's point of view).  If we add subclasses for each
+  // combination of cases for each switching condition, this might
+  // change.
+  bool scale() const { return (rv_info.rvWeightInfo.size() > 0); }
+  bool penalty() const { return (rv_info.rvWeightInfo.size() > 0); }
+  bool shift() const { return (rv_info.rvWeightInfo.size() > 0); }
 
   /////////////////////////////////////////////////////////////////////////
   // Initialize with the variable type.
@@ -383,7 +386,6 @@ public:
   // included.
   virtual RV *cloneRVShell() { 
     RV* rv = create();
-    rv->t = t;
     return rv;
   }
 

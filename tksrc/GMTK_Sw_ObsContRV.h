@@ -63,11 +63,6 @@ public:
 	       unsigned _timeFrame = ~0x0)
     : ObsContRV(_rv_info,_timeFrame)
   {
-    t.hidden = 0;
-    t.switching = 1;
-    t.scale = 0;
-    t.penalty = 0;
-    t.shift = 0;
   }
 
   void printSelf(FILE*f,bool nl=true);
@@ -85,7 +80,6 @@ public:
   virtual Sw_ObsContRV* cloneRVShell();
   virtual Sw_ObsContRV* create() {
     Sw_ObsContRV*rv = new Sw_ObsContRV(rv_info,frame());
-    rv->t = t;
     return rv;
   }
 

@@ -43,11 +43,6 @@ public:
 		   unsigned _cardinality = 0)
     : Sw_HidDiscRV(_rv_info,_timeFrame,_cardinality)
   {
-    t.hidden = 1;
-    t.switching = 1;
-    t.scale = 1;
-    t.penalty = 1;
-    t.shift = 1;
   }
 
   virtual void printSelf(FILE *f,bool nl=true) {
@@ -98,7 +93,6 @@ public:
   }
   virtual ScPnSh_Sw_HidDiscRV* create() {
     ScPnSh_Sw_HidDiscRV*rv = new ScPnSh_Sw_HidDiscRV(rv_info,frame(),cardinality);
-    rv->t = t;
     return rv;
   }
 
@@ -125,11 +119,6 @@ public:
 		   unsigned _cardinality = 0)
     : Sw_HidDiscRV(_rv_info,_timeFrame,_cardinality)
   {
-    t.hidden = 1;
-    t.switching = 1;
-    t.scale = 1;
-    t.penalty = 1;
-    t.shift = 1;
   }
 
   virtual void printSelf(FILE *f,bool nl=true) {
@@ -167,11 +156,6 @@ public:  \
 		   unsigned _cardinality = 0)  \
     : Sw_HidDiscRV(_rv_info,_timeFrame,_cardinality)  \
   {  \
-    t.hidden = 1;  \
-    t.switching = 1;  \
-    t.scale = 1;  \
-    t.penalty = 1;  \
-    t.shift = 1;  \
   }  \
   \
   \
