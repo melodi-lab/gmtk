@@ -177,10 +177,9 @@ void
 ObservationMatrix::loadSegment(const unsigned segno) {
 
   int i;
-  size_t n_samps;
+  size_t n_samps = 0;
   StreamInfo *s;
   char *fname;
-
 
   if (segno < 0 || segno > _numSegments)
     error("ObservationMatrix::loadSegment: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
@@ -196,12 +195,12 @@ ObservationMatrix::loadSegment(const unsigned segno) {
     if (s == NULL)
       error("ObservationMatrix::loadSegment: stream %s is NULL\n",sname);
 
+    fname = s->dataNames[segno];
+
     if (s->dataFormat != PFILE) {
 
       if (s->dataNames == NULL)
         error("ObservationMatrix::loadSegment: List of file names for stream %s is NULL\n",sname);
-
-      fname = s->dataNames[segno];
 
       if (fname == NULL)
         error("ObservationMatrix::loadSegment: Filename %li is NULL in stream %s\n",segno,sname);
@@ -211,7 +210,8 @@ ObservationMatrix::loadSegment(const unsigned segno) {
         error("ObservationMatrix::loadSegment: pfile stream %s is NULL\n",
               s->fofName);
     }
-  
+
+
     switch(s->dataFormat) {
 
     case RAWBIN:
