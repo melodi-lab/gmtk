@@ -431,11 +431,13 @@ main(int argc,char*argv[])
   }
 
   BP_Range* trrng = new BP_Range(trrng_str,0,globalObservationMatrix.numSegments());
+#if 0
   if (trrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 	  trrng_str);
     exit_program_with_status(0);
   }
+#endif
 
   if (trrng->length() == 0 && loadAccFile == NULL) {
     error("ERROR: with EM training. Either must specify segments to train or must load accumulatores (or both).");
