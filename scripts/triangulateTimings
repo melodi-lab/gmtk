@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/nikola/bin/perl -w
 
 ##############################################################################
 # triangulateTimings
@@ -23,6 +23,7 @@ use Thread::Queue;
 # Executable names 
 ##############################################################################
 my $gmtk_triangulate = 'gmtkTriangulate'; 
+my $gmtk_tfmerge = 'gmtkTFmerge'; 
 
 ##############################################################################
 # State variables for basic methods 
@@ -30,8 +31,9 @@ my $gmtk_triangulate = 'gmtkTriangulate';
 my $basic_once_index    : shared = 0;
 my $advanced_once_index : shared = 0;
 
-my @run_once = ( 'completed', 'elimination-heuristics', 
-  'non-elimination-heuristics' );
+my @run_once = ( 'completed' );
+#my @run_once = ( 'completed', 'elimination-heuristics', 
+#  'non-elimination-heuristics' );
 
 my @basic_iterations : shared = ( '100-', '10-', '1-' ); 
 my @basic_prefix     : shared = ( '', 'pre-edge-lo-', 'pre-edge-all-', 
@@ -146,6 +148,7 @@ my $single_processor_vcap;
 my $single_processor_caching;
 
 my $start_time; 
+my $cumulative_time : shared = 0; 
 
 ##############################################################################
 # Run the program 
@@ -483,7 +486,8 @@ sub main
   #########################################################################
   if (!$use_existing_boundaries) 
   {
-    if ($parallelism == 1) {
+    if (($parallelism == 1) || ($delay_timings))
+    {
       start_boundary_searches();
     }
     else {
@@ -491,15 +495,26 @@ sub main
     }
   }
 
+  if ($delay_timings)
+  {
+    while ($boundary_queue->pending > 0) {
+      $boundary_queue->dequeue();
+    }
+    get_existing_boundaries();
+
+    $start_time = time();
+
+  }
+
   #########################################################################
   # If requested, delay the timing and triangulation threads to make sure 
   #  boundary searches have a chance to get processors 
   #########################################################################
-  if ($delay_timings)
-  { 
-    sleep(60);
-    print "Starting timing threads\n";
-  }
+#  if ($delay_timings)
+#  { 
+#    sleep(60);
+#    print "Starting timing threads\n";
+#  }
 
   #########################################################################
   # If not generating boundaries, get a list of boundary files 
@@ -864,7 +879,7 @@ sub generate_triangulations
       }
     }
   }
-  
+ 
   foreach $boundary_item (@boundary_list)
   {
     if ($best_boundary_index eq $boundary_item->{INDEX})
@@ -1081,6 +1096,7 @@ sub dequeue_and_time_triangulation
   my $timing_script_output;
   my $processing_command;
   my $crrnt_partitions;
+  my $real_time;
   my $trifile_name;
   my $boundary;
   my $method;
@@ -1132,11 +1148,12 @@ sub dequeue_and_time_triangulation
   #####################################################################
   if (!$exit) {
     ($crrnt_pid, $timing_script_input, $timing_script_output, 
-    $crrnt_partitions) = run_timing( $trifile_name, $crrnt_pid, 
+    $crrnt_partitions, $real_time) = run_timing( $trifile_name, $crrnt_pid, 
     $timing_script_input, $timing_script_output, 
     "vcap=\"$vcap\" componentCache=\"$caching\"" );
 
-    check_best($crrnt_partitions, $vcap, $caching, $trifile_name);
+    check_best($crrnt_partitions, $real_time, $vcap, $caching, $trifile_name);
+
   }
 
   return($timing_script_input, $timing_script_output, $crrnt_pid, 
@@ -1160,6 +1177,7 @@ sub run_timing
   my $tri_file;
   my $output;
   my $partitions;
+  my $real_time;
 
   my $crrnt_pid; 
   my $timing_script_input; 
@@ -1222,14 +1240,18 @@ sub run_timing
   #   0: Inference stats: 6.98...
   ###########################################################################
   eval {
-    $output = <$timing_script_output>;
-    (defined $output) or die;
-    print STDERR "$output";
+
+    do {
+      $output = <$timing_script_output>;
+      (defined $output) or die;
+      print STDERR "O1:$output";
+      ($real_time)  = $output =~ /User: ([0-9.]+)/;;
+    } while (!defined $real_time); 
 
     if (!($output =~ /NOTICE/)) {
       $output = <$timing_script_output>;
       (defined $output) or die;
-      print STDERR "$output";
+      print STDERR "O3:$output";
     }
 
     ($partitions) = $output =~ /, ([0-9+-.e]+) partitions\/sec/;
@@ -1237,7 +1259,16 @@ sub run_timing
 
   (defined $partitions) or $partitions = -1; 
 
-  return($crrnt_pid, $timing_script_input, $timing_script_output, $partitions );
+  return($crrnt_pid, $timing_script_input, $timing_script_output, $partitions, $real_time );
+}
+
+
+#############################################################################
+# Record time 
+#############################################################################
+sub record_time : locked 
+{
+  $cumulative_time += pop; 
 }
 
 
@@ -1260,6 +1291,7 @@ sub check_best
   my $boundary_index;
   my $tmp;
   my $nmbr_partitions;
+  my $real_time;
   my $vcap;
   my $caching;
   my $trifile_name;
@@ -1269,7 +1301,10 @@ sub check_best
   $trifile_name    = pop;
   $caching         = pop;
   $vcap            = pop;
+  $real_time       = pop;
   $nmbr_partitions = pop;
+
+  record_time($real_time);
 
   $best_sem->down;
 
@@ -1288,8 +1323,11 @@ sub check_best
 
   $crrnt_time = time() - $start_time;
 
-  printf "%-8d%-3s%-39s%-5s%-2s %4e", $crrnt_time, $boundary, $method, $vcap, 
-    $caching, $nmbr_partitions;
+  printf "%-8d%-8d%-8d%-3s%-39s%-5s%-2s %4e", $crrnt_time, 
+    int($cumulative_time+0.5), 
+    int($crrnt_time-$cumulative_time+0.5), 
+    $boundary, $method, $vcap, $caching, 
+    $nmbr_partitions;
 
   if ($nmbr_partitions > $best_partitions) {
     print " => BEST!!!";
@@ -1392,6 +1430,20 @@ sub get_existing_boundaries
   @boundary_list = grep /.*\.boundary$/, readdir WORK_DIR; 
   closedir WORK_DIR;
 
+  ###########################################################################
+  # Sort small M before large M 
+  ###########################################################################
+  @boundary_list = sort { 
+    my $a_M;
+    my $b_M;
+    ($a_M) = $a =~ /\.M(\d+)\./;  
+    ($b_M) = $b =~ /\.M(\d+)\./;  
+    $a_M <=> $b_M;
+  } @boundary_list;
+
+  ###########################################################################
+  # Enqueue all boundaries 
+  ###########################################################################
   $total_boundaries = 0; 
   foreach $boundary (@boundary_list)
   {
@@ -1415,6 +1467,9 @@ sub start_boundary_searches
 {
   my $boundary_heuristic;
   my $boundary_job_list;
+  my $initial_job_list;
+  my $merge_job_list;
+  my $boundary_line;
   my $triangulate_line;
   my @weight_UB_types;
   my $weight_UB_type;
@@ -1424,6 +1479,9 @@ sub start_boundary_searches
   my $total_boundaries;
   my $disconnect_type;
   my $boundary_M;
+
+  my $boundary_search_time;
+  my $boundary_triangulation_time;
 
 ##  @boundary_heuristics = ('W', 'S', 'F', 'FWH', 'T', 'P', 'N', 'ST', 'SF', 
 ##    'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 'FT', 'FW', 'FTSW');
@@ -1436,15 +1494,31 @@ sub start_boundary_searches
   ############################################################################
   # Create makefile for boundaries  
   ############################################################################
+  $boundary_search_time = (3*get_seconds($boundary_time))/4;
+  if ($boundary_search_time < 1) {
+    $boundary_search_time = 1;
+  }
+  $boundary_triangulation_time = get_seconds($boundary_time)/12;
+  if ($boundary_triangulation_time  < 1) {
+    $boundary_triangulation_time =1;  
+  }
+
   $boundary_job_list = "$output_directory/boundary_job_list";  
+  $initial_job_list = "$output_directory/initial_tri_job_list";  
+  $merge_job_list = "$output_directory/merge_job_list";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -triangulationHeuristic 100-pre-edge-lo-W-2 -noBoundaryMemoize T -jtWeight T -anyTimeTriangulate $boundary_time -noBoundaryMemoize T -jtWeight T";
+  $boundary_line = "$gmtk_triangulate -strFile $str_file -rePartition T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -triangulationHeuristic completed -noBoundaryMemoize T -jtWeight T -timeLimit $boundary_search_time";
 
-  open JOB_LIST, ">$boundary_job_list";
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -seed T -printResults F -numBackupFiles 0 -triangulationHeuristic heuristics -jtWeight T -timeLimit $boundary_triangulation_time";
+
+  open BOUNDARY_JOB_LIST, ">$boundary_job_list";
+  open TRI_JOB_LIST, ">$initial_job_list";
+  open MERGE_JOB_LIST, ">$merge_job_list";
   $boundary_calls = 0;
 
   $boundary_M=1;
-  foreach $disconnect_type ('T', 'F')
+#  foreach $disconnect_type ('T', 'F')
+  foreach $disconnect_type ('T')
   {
     foreach $boundary_heuristic (@no_M_boundary_heuristics)
     {
@@ -1463,7 +1537,16 @@ sub start_boundary_searches
               ($boundary_calls < $maximum_boundary_searches))
           { 
             $output_name = "$output_directory/$boundary_heuristic.$left_right.M$boundary_M.UB_$weight_UB_type.D_$disconnect_type.$str_basename.boundary";
-            print JOB_LIST "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1 ; echo DONE WITH $output_name\n";
+
+            print BOUNDARY_JOB_LIST "$boundary_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1\n";
+
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.P -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP F -noReTriC T -noReTriE T 2>&1\n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.C -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC F -noReTriE T 2>&1\n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.E -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC T -noReTriE F 2>&1\n";
+
+            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 2>&1 ; ";  
+            print MERGE_JOB_LIST "echo DONE WITH $output_name\n";
+
             $boundary_calls++;
           }
         }
@@ -1474,7 +1557,8 @@ sub start_boundary_searches
   $weight_UB_type = 'F'; 
   for ($boundary_M=1; $boundary_M<=4; $boundary_M++)
   {
-    foreach $disconnect_type ('T', 'F')
+#    foreach $disconnect_type ('T', 'F')
+    foreach $disconnect_type ('T')
     {
       foreach $boundary_heuristic (@boundary_heuristics)
       {
@@ -1484,7 +1568,16 @@ sub start_boundary_searches
               ($boundary_calls < $maximum_boundary_searches))
           { 
             $output_name = "$output_directory/$boundary_heuristic.$left_right.M$boundary_M.UB_$weight_UB_type.D_$disconnect_type.$str_basename.boundary";
-            print JOB_LIST "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1 ; echo DONE WITH $output_name\n";
+
+            print BOUNDARY_JOB_LIST "$boundary_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1 \n";
+ 
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.P -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP F -noReTriC T -noReTriE T 2>&1 \n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.C -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC F -noReTriE T 2>&1 \n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.E -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC T -noReTriE F 2>&1 \n";
+
+            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 2>&1 ; ";
+            print MERGE_JOB_LIST "echo DONE WITH $output_name\n";
+
             $boundary_calls++;
           }
         }
@@ -1492,12 +1585,23 @@ sub start_boundary_searches
     } 
   } 
 
-  close JOB_LIST; 
+  close BOUNDARY_JOB_LIST; 
+  close TRI_JOB_LIST; 
+  close MERGE_JOB_LIST; 
 
   ############################################################################
   # Start searches and enque the boundaries as they finish
   ############################################################################
-  open RUN_JOBS, "cat $boundary_job_list | $boundary_export_line |";
+print `date`;
+print "Start boundaries\n";
+  print STDERR `cat $boundary_job_list | $boundary_export_line`;
+print `date`;
+print "Start initial job\n";
+  print STDERR `cat $initial_job_list | $boundary_export_line`;
+
+print `date`;
+print "Start merge jobjob\n";
+  open RUN_JOBS, "cat $merge_job_list | $boundary_export_line |";
 
   $total_boundaries = 0; 
   while (<RUN_JOBS>) 
@@ -1524,6 +1628,7 @@ sub start_boundary_searches
     print "Boundary search completed\n";
   }
 
+print `date`;
   $boundary_queue->enqueue( 'BOUNDARY_SEARCHES_DONE' ); 
 }
 
@@ -1641,6 +1746,7 @@ sub run_triangulation
   my $boundary;
   my $output;
   my $jt_weight;
+  my $real_time;
   my $output_tri_file;
   my $triangulation_mode;
   my $triangulation_mode_string;
@@ -1675,10 +1781,11 @@ sub run_triangulation
 
   ($disconnect_type) = $boundary =~ /M\d+\.UB_.\.D_(T|F)\./;
 
-  $output = `$triangulation_export_line $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options $triangulation_mode_string -jtWeight T -M $bndry_M -disconnectFromObservedParent $disconnect_type 2>&1`;
+  $output = `$triangulation_export_line /usr/bin/time $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options $triangulation_mode_string -jtWeight T -M $bndry_M -disconnectFromObservedParent $disconnect_type 2>&1`;
 
   print STDERR "$output\n";
 
+  ($real_time) = $output =~ /user\s+([0-9.]+)/;
   ($jt_weight) = $output =~ /Chunk max clique weight =.* jt_weight = ([0-9.]+)/;
 
   if (!defined $jt_weight) {
@@ -1688,6 +1795,8 @@ sub run_triangulation
     $jt_weight = 1; 
   }
 
+  record_time($real_time);
+ 
   return($jt_weight); 
 }
 
