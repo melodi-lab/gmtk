@@ -75,6 +75,12 @@ XXX- todo, make sure that chunk n:m is valid.
   re-randomizing, or something.
 
 - add a k-means mode for initialization.
+    - keep covariances at unity for a while.
+    - first iteration just use random assignments
+      (pick a random component who gives unity probability,
+       everyone else gives zero probability)
+    - 
+
 
 - add linear BMM links
 
@@ -85,3 +91,10 @@ XXX- todo, make sure that chunk n:m is valid.
   its component should vanish based on a MCVR
   then all of them should (and should check this
   as well).
+
+- when reading in definitions for each utterance:
+    we could change the DTs with a particular name
+    (e.g., read in a DT file and have a read
+     mode that changes the pointer if it is there).
+    This would need to have objects that use DTs
+    use the integer index rater than the pointer directly.
