@@ -179,7 +179,7 @@ ObservationMatrix::loadSegment(const unsigned segno) {
   int i;
   size_t n_samps = 0;
   StreamInfo *s;
-  char *fname;
+  char *fname = "Unknown file";
   char *sname;
 
   if (segno < 0 || segno > _numSegments)
