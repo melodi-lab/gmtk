@@ -31,7 +31,7 @@
 #include <assert.h>
 
 #include "error.h"
-#include "Range.H"
+//#include "Range.H"
 
 
 #include "GMTK_ObsGaussianNorm.h"
@@ -392,7 +392,7 @@ void gaussianNorm(FILE* out_fp,
 	    *ftr_ranges_p = *ftr_maxs_p - *ftr_mins_p;
 	    if (hist_bins > 0) {
 		hist_tot = 0;
-		for (j=0;j<hist_bins;j++) {
+		for (unsigned j=0;j<hist_bins;j++) {
 		    if (fscanf(in_st_fp,"%d ", hist_p) != 1) {
 			fprintf(stderr,
 				"%s: Error reading input stats file, "
@@ -424,7 +424,7 @@ void gaussianNorm(FILE* out_fp,
 	// We don't need to make a pre-pass through the data, but we 
 	// *do* need to calculate the total number of frames...
 	// .. and also to realloc the ftr buf to be the largest
-	int max_n_frames = buf_size;
+	size_t max_n_frames = buf_size;
 	for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
 	  obs_mat->loadSegment((const unsigned)(*srit));
 	  const size_t n_frames = obs_mat->numFrames();
