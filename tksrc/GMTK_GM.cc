@@ -511,7 +511,7 @@ void GMTK_GM::cliqueChainEM(const int iterations,
       if (total_data_prob.val() == previous_dp.val())
 	llDiffPerc = 0.0;
       else {
-	previous_dp.valref() = exp(-20);
+	previous_dp.valref() = std::exp((double)-20.0);
 	llDiffPerc = 
 	  100.0*fabs((total_data_prob.val() - previous_dp.val())/previous_dp.val());
       }
