@@ -314,7 +314,7 @@ bool oDataStreamFile::writeStr(const char *const str,char *msg)
 }
 
 
-bool oDataStreamFile::writeString(string& str,char *msg)
+bool oDataStreamFile::writeString(const string& str,char *msg)
 {
   if (Binary) {
     const int len = str.length()+1;

@@ -133,7 +133,7 @@ class oDataStreamFile : public ioDataStreamFile {
 
   // type explicit
   bool writeStr(const char * const str, char *msg=NULL);
-  bool writeString(string& str,char *msg=NULL);
+  bool writeString(const string& str,char *msg=NULL);
   bool writeChar(const char c, char *msg=NULL);
   bool writeInt(const int i,char *msg=NULL);
   bool writeFloat(const float f,char *msg=NULL);
@@ -147,7 +147,7 @@ class oDataStreamFile : public ioDataStreamFile {
 
   // type implicit
   bool write(const char *const str,char *msg=NULL) { return writeStr(str,msg); }
-  bool write(string& str,char *msg=NULL) { return writeString(str,msg); }
+  bool write(const string& str,char *msg=NULL) { return writeString(str,msg); }
   bool write(const char c, char *msg=NULL) { return writeChar(c,msg); }
   bool write(const int i,char *msg=NULL) { return writeInt(i,msg); }
   bool write(const unsigned i,char *msg=NULL) { return writeInt((int)i,msg); }
