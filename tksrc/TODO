@@ -860,3 +860,30 @@ Mon Dec 30 05:16:04 2002
     cpp's filename and line number mechanism (for ascii files
     and when they are processed with cpp).
 
+Fri Jan  3 19:48:46 2003
+  - this is an old todo item taken out of foce.
+  // snake structure with constrained elimination
+  // will ruin the clique_size = 2 property
+  //     of the 'snake' structure. The todo is to get this working 
+  //     with that (and similar) structures.
+  /*
+   *     idea: make complete components in C_l *only* if they
+   *           are connected via nodes/edges within either (P + left_C_l)
+   *           or preceeding C.
+   *           What we will then have is a collection of cliques for 
+   *           the interface(s). In this case, we glue together
+   *           the corresponding sets of cliques. Right interface
+   *           algorithm should be similar (and use E rather than P).
+   *           But might both left and right interface need to be used in the
+   *           same repeated chunk in this case to get clique_size=2???
+   *      alternatively (and easier): for snake, just use the unconstrained
+   *           triangulation method (which works perfectly for snake).
+   *          
+
+
+Sat Jan  4 17:39:20 2003$
+  - build utilities to convert (at least partially) from
+    other standard GM network file formats to GMTK and
+    vice versa. See the 
+    Bayesian Network Repository page.
+        
