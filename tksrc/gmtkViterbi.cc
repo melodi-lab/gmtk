@@ -161,6 +161,7 @@ main(int argc,char*argv[])
   // occurs such as an "invalid" (NaN), overflow
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
+  set_new_handler(memory_error);
 
   ARGS::parse(argc,argv);
 
