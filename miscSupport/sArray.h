@@ -44,7 +44,7 @@ class sArray {
     _size = arg_size;
     ptr = NULL;
     if (_size < 0)
-      error("Error: sArray::sArray arg_size < 0");
+      coredump("Error: sArray::sArray arg_size < 0");
     if (_size > 0)
       ptr = new T[_size];
   }
@@ -54,7 +54,7 @@ class sArray {
   }
   void resize(int arg_size) {
     if (arg_size < 0)
-      error("Error: Sarray:resize arg_size < 0");
+      coredump("Error: Sarray:resize arg_size < 0");
     delete [] ptr;
     _size = arg_size;
     ptr = new T[_size];
@@ -82,7 +82,7 @@ class sArray {
 
   void resizeAndCopy(const int arg_size) {
     if (arg_size < 0)
-      error("Error: Sarray:resize arg_size < 0");
+      coredump("Error: Sarray:resize arg_size < 0");
     T* tmp = new T[arg_size];
     const int nsize = (_size<arg_size?_size:arg_size);
     ::memcpy((void*)tmp,(void*)ptr,sizeof(T)*nsize);
@@ -109,7 +109,7 @@ class sArray {
 
   void swapPtrs(sArray<T>& sa) {
     if (_size != sa._size)
-      error("Error: Sarray:swapPtrs, different sizes");
+      coredump("Error: Sarray:swapPtrs, different sizes");
     T *tmp = ptr;
     ptr = sa.ptr;
     sa.ptr = tmp;
