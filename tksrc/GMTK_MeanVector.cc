@@ -186,7 +186,7 @@ MeanVector::emSwapCurAndNew()
   for (int i=0;i<means.len();i++) {
     genSwap(means[i],nextMeans[i]);
   }
-  emSetSwappableBit();
+  emClearSwappableBit();
 }
 
 
