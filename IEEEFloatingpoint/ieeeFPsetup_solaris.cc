@@ -77,16 +77,19 @@ void ieeeFPsetup()
 	    );
 
 #ifdef HAVE_NONSTANDARD_ARITHMETIC
-     // This presumably sets a bit in the FPU that keeps
-     // denormals from traping and being handled in sofware.
-     // Instead, (again presumably), denormals are truncated to zero.
-     // WARNING: This should probably not be used when debugging.
-     // On the ohter hand, this can significantly speed up a program 
-     // w/o changing the results much.
-     nonstandard_arithmetic();
+  // This presumably sets a bit in the FPU that keeps
+  // denormals from traping and being handled in sofware.
+  // Instead, (again presumably), denormals are truncated to zero.
+  // WARNING: This should probably not be used when debugging.
+  // On the ohter hand, this can significantly speed up a program 
+  // w/o changing the results much.
+  // Note: you need to have the sunmath library (-lsunmat) to
+  // have this routine. This is part of the SUNWspro SC sun
+  // optimizing compiler.
+  nonstandard_arithmetic();
 
-     // print out a status of the FPU bits.
-     // ieee_retrospective(stdout); 
+  // print out a status of the FPU bits.
+  // ieee_retrospective(stdout); 
 #endif
 
   // these are the options. Default is FP_RN
