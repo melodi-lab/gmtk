@@ -735,8 +735,6 @@ BoundaryTriangulate
   // Therefore, making M and/or S larger reduces the number valid possible utterance lengths.
 
 
-  // checkPartitions();
-
 
   ///////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////
@@ -1108,13 +1106,6 @@ BoundaryTriangulate
     gm_template.leftInterface = false; 
 
   }
-}
-
-void BoundaryTriangulate
-::checkPartitions()
-{
-
-
 }
 
 
