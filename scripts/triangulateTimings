@@ -1,4 +1,4 @@
-#!/homes/bartels/perl/bin/perl -w
+#!/usr/nikola/bin/perl -w
 # $Header$
 
 use strict;
