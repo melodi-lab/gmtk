@@ -31,6 +31,20 @@
 #include "general.h"
 #include "error.h"
 
+#include "GMTK_GMParms.h"
+
+#include "GMTK_Dense1DPMF.h"
+#include "GMTK_Sparse1DPMF.h"
+#include "GMTK_MeanVector.h"
+#include "GMTK_DiagCovarVector.h"
+#include "GMTK_RealMatrix.h"
+#include "GMTK_PackedSparseRealMatrix.h"
+#include "GMTK_DlinkMatrix.h"
+#include "GMTK_WeightMatrix.h"
+#include "GMTK_MDCPT.h"
+#include "GMTK_MSCPT.h"
+
+
 
 VCID("$Header$");
 
@@ -39,11 +53,106 @@ VCID("$Header$");
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
 
+GMParms::GMParms()
+{}
+
+
+
+void 
+GMParms::readBasic(iDataStreamFile& is)
+{
+  int tmp;
+
+  is.read(tmp,"GMTK_GMParms::readBasic, dpmfs");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num dpmfs = %d",tmp);
+  dPmfs.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    dPmfs[i] = new Dense1DPMF;
+    dPmfs[i]->read(is);
+  }
+
+
+  is.read(tmp,"GMTK_GMParms::readBasic, spmfs");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num spmfs = %d",tmp);
+  sPmfs.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    sPmfs[i] = new Sparse1DPMF;
+    sPmfs[i]->read(is);
+  }
+
+  is.read(tmp,"GMTK_GMParms::readBasic, means");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num means = %d",tmp);
+  means.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    means[i] = new MeanVector;
+    means[i]->read(is);
+  }
+
+  is.read(tmp,"GMTK_GMParms::readBasic, covars");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num covars = %d",tmp);
+  covars.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    covars[i] = new DiagCovarVector;
+    covars[i]->read(is);
+  }
+
+#if 0
+  is.read(tmp,"GMTK_GMParms::readBasic, PackedSparseRealMatrix");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num PackedSparseRealMatrix = %d",tmp);
+  psRealMats.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    psRealMats[i] = new PackedSparseRealMatrix;
+    psRealMats[i]->read(is);
+  }
+#endif
+
+  is.read(tmp,"GMTK_GMParms::readBasic, DlinkMatrix");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num DlinkMatrix = %d",tmp);
+  dLinkMats.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    dLinkMats[i] = new DlinkMatrix;
+    dLinkMats[i]->read(is);
+  }
+
+  is.read(tmp,"GMTK_GMParms::readBasic, WeightMatrix");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num WeightMatrix = %d",tmp);
+  weightMats.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    weightMats[i] = new WeightMatrix;
+    weightMats[i]->read(is);
+  }
+
+
+  is.read(tmp,"GMTK_GMParms::readBasic, MDCPT");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num MDCPT = %d",tmp);
+  mdCpts.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    mdCpts[i] = new MDCPT;
+    mdCpts[i]->read(is);
+  }
+
+  is.read(tmp,"GMTK_GMParms::readBasic, MSCPT");
+  if (tmp < 0) error("GMTK_GMParms::readBasic num MSCPT = %d",tmp);
+  msCpts.resize(tmp);
+  for (int i=0;i<tmp;i++) {
+    msCpts[i] = new MSCPT;
+    msCpts[i]->read(is);
+  }
+
+}
+
+
+void 
+GMParms::writeBasic(oDataStreamFile& os)
+{
+  error("GMParms::writeBasic, not implemented");
+}
 
 #ifdef MAIN
 
 GMParms GM_Parms;
 
+int
 main()
 {
   iDataStreamFile is("dataFiles/test1.gmb",false);
@@ -52,11 +161,6 @@ main()
   oDataStreamFile os("dataFiles/test1_out.gmb");
   GM_Parms.writeBasic(os);
 }
-
-
-
-
-
 
 
 #endif
