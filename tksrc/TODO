@@ -709,3 +709,10 @@ Mon Sep 30 01:21:02 2002
       not getting any accumulated probability, etc.
    2) error messages with MSCPTs, MDCPts, use new names
 
+
+Wed Dec  4 19:39:41 2002
+  - ascii file formats for data files, add bit in domentation that
+    one frame per line, and fix error message on line 1272 in GMTK_GM.cc
+    (see email from Au@hk).
+
+
