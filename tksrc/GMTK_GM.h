@@ -161,8 +161,6 @@ struct GMTK_GM
           logpr beam=0.0);
     // computes the likelihood of the examples
 
-    map<pair<string, unsigned>, RandomVariable *> variableNamed;
-
     void GM2CliqueChain();
     // this creates and initializes a clique chain corresponding to the GM
 
