@@ -62,7 +62,7 @@ public:
   unsigned firstFeatureElement() { return rv_info.rvFeatureRange.firstFeatureElement; }
   unsigned lastFeatureElement() { return rv_info.rvFeatureRange.lastFeatureElement; }
 
-
+  virtual void printNameFrameValue(FILE *f,bool nl=true);
   virtual void printSelf(FILE *f,bool nl=true);
   virtual void printSelfVerbose(FILE *f);
   

@@ -47,6 +47,47 @@ VCID("$Header$");
 #include "GMTK_RngDecisionTree.h"
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * printNameFrameValue()
+ *      prints a one-line summary of the detailed information about this RV, optionally including
+ *      the continuous observation (which might be long).
+ *
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      self is printed.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+ObsContRV::printNameFrameValue(FILE *f,bool nl)
+{
+  RV::printNameFrame(f,false);
+  // the current global debug level changes the way observed variables are printed.
+  if (IM::messageGlb(IM::Mega+5)) {
+    // then print out the observation.
+    for (unsigned i=firstFeatureElement();i<=lastFeatureElement();i++) {
+      // print only 1+3 significant digits for now.
+      fprintf(f,"%.3e%s",
+	      (*globalObservationMatrix.floatVecAtFrame(frame(), i)),
+	      ((i<lastFeatureElement())?",":""));
+    }
+    if (nl)
+      fprintf(f,"\n");
+  } else
+    fprintf(f,"=C%s",nls(nl));
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * printSelf()
