@@ -77,6 +77,10 @@ class VECPT : public CPT {
   // observation file.
   ObservationMatrix obs;
   
+  // TODO: redo all this so that it works well
+  // with obs.openFile(). Either change to char* and make
+  // proper destructor, or something else.
+
   // The observation file name.
   string obsFileName;
   // number of floats expeced in the file
@@ -88,7 +92,7 @@ class VECPT : public CPT {
   // int range string in file  
   string irs;
   // per-segment range string
-  string pr_rs;
+  char* pr_rs;
   // format string "pfile", "htk", "ascii", or "binary"
   string fmt;
   // Endian swap condition for observation files.
@@ -98,7 +102,7 @@ class VECPT : public CPT {
   char* preTransforms;
   char* postTransforms;
 
-  string sentRange;
+  char* sentRange;
 
   ////////////////
   // current parent value
@@ -116,6 +120,11 @@ public:
   VECPT() : CPT(di_VECPT)
   { _numParents = 1; _card = 2; cardinalities.resize(_numParents); }
   ~VECPT() { }
+
+  // a VECPT is considered iterable since its implementation can
+  // change not only from segment to segment, but even within a
+  // segment.
+  bool iterable() { return true; }
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
