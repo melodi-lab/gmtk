@@ -11,7 +11,9 @@
 #ifndef FILEPARSER_H
 #define FILEPARSER_H
 
+#include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 class ioDataStreamFile {
 
@@ -99,7 +101,7 @@ class oDataStreamFile : public ioDataStreamFile {
   bool writeInt(const int i,char *msg=NULL);
   bool writeFloat(const float f,char *msg=NULL);
   bool writeDouble(const double d,char *msg=NULL);
-  bool writeComment(char *comment);
+  bool writeComment(char *comment, ...);
   bool indent(const int i,const bool doubSpace, char *msg=NULL);
   bool nl(char *msg=NULL);
   bool flush(char *msg=NULL);
