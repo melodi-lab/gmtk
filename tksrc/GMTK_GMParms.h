@@ -285,6 +285,30 @@ public:
   // for papers, etc.
   unsigned totalNumberParameters();
 
+
+  ///////////////////////////////////////////////////////////    
+  // Support for EM, applies to all EMable objects contained herein.
+  ///////////////////////////////////////////////////////////
+
+  ///////////////////////////////////////////////////////////
+  // begins a new epoch. Also ensures that data for EM is allocated
+  // and possibly changes the alocated bit, and ongoing bit
+  void emStartIteration();
+
+  ////////////////////////////////////////////////////////////////////
+  // Accumulate new data into the internal structures for this 
+  // em iteration, clears the ongoing bit.
+  void emEndIteration();
+
+  ////////////////////////////////////////////////////////////////////////////
+  // if swap bit not set, swaps the current and new parameters, set swap bit.
+  // otherwise does nothing.
+  void emSwapCurAndNew();
+
+
+
+
+
 };
 
 ////////////////////////////////////////////////
