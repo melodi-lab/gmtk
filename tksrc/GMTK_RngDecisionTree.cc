@@ -72,8 +72,8 @@ VCID("$Header$");
  * <ftr> <num_splits> r1 r2 ... rs # split s
  */
 
-#if 0
-char *dtStr =
+
+char *dtStr1 =
 "% this is a decision tree file\n"
 "%\n"
 "dt_name 3  % number of features\n"
@@ -107,13 +107,12 @@ char *dtStr =
 "      -1 11\n"
 "      -1 12\n";
 
-#endif
 
-char *dtStr =
+char *dtStr2 =
 "% this is a decision tree file\n"
 "%\n"
 "dt_name 1  % number of features\n"
-"0 14 10 17 11 12 13 0:5 6:9 14 50: 15 18,20 23,25,27 21:22 default\n"
+"0 14 10 17,19,21 11 12 13 0:5 6:9 14 50: 15 18,20 23,25,27 22,24,26,28 default\n"
 "  -1 2\n"
 "  -1 3\n"
 "  -1 4\n"
@@ -127,7 +126,23 @@ char *dtStr =
 "  -1 9\n"
 "  -1 10\n"
 "  -1 11\n"
-"  -1 100\n"
+"  0 16 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 default\n"
+"     -1 0\n"
+"     -1 1\n"
+"     -1 2\n"
+"     -1 3\n"
+"     -1 4\n"
+"     -1 5\n"
+"     -1 6\n"
+"     -1 7\n"
+"     -1 8\n"
+"     -1 9\n"
+"     -1 10\n"
+"     -1 11\n"
+"     -1 12\n"
+"     -1 13\n"
+"     -1 14\n"
+"     -1 15\n"
 ;
 
 
@@ -138,7 +153,7 @@ main()
   // first write out the file
   {
     oDataStreamFile dtfile ("/tmp/foo.dt",false);
-    dtfile.write(dtStr);
+    dtfile.write(dtStr1);
   }
 
   // read it in again
@@ -157,18 +172,21 @@ main()
   iDataStreamFile stin ("-",false,false);
 
   // first test iterating through all leaf values.
+#if 0
   for (RngDecisionTree<int>::iterator it = dt.begin();
        it != dt.end(); it++) {
     printf("leaf value = %d\n",it.value());
   }
+#endif
+
+  printf("Enter a length %d set of cardinalities:",dt.numFeatures());
+  fflush(stdout);
+  stin.read(card,dt.numFeatures());
 
   while (1) {
     printf("Enter a length %d intvec:",dt.numFeatures());
     fflush(stdout);
     stin.read(vec,dt.numFeatures());
-    printf("Enter a length %d set of cardinalities:",dt.numFeatures());
-    fflush(stdout);
-    stin.read(card,dt.numFeatures());
 
     printf("Querying with vector and cards: ");
     fflush(stdout);
