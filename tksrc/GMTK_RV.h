@@ -62,17 +62,17 @@ Main RV hierarchy:
 - RV
    - DiscRV
         + HidDiscRV
-           + ScPnSh_HidDiscRV
+           + ScPnSh_HidDiscRV (also inherits from ScPnShRV)
            + Sw_HidDiscRV (also inherits from SwDiscRV)
               + ScPnSh_Sw_HidDiscRV (also inherits from ScPnShRV)
         + ObsDiscRV
-           + ScPnSh_ObsDiscRV
+           + ScPnSh_ObsDiscRV (also inherits from ScPnShRV)
            + Sw_ObsDiscRV  (also inherits from SwDiscRV)
               + ScPnSh_Sw_ObsDiscRV  (also inherits from ScPnShRV)
    - ContRV
         - HidContRV
         + ObsContRV
-           + ScPnSh_ObsContRV
+           + ScPnSh_ObsContRV (also inherits from ScPnShRV)
            + Sw_ObsContRV  (also inherits from SwObsRV)
               + ScPnSh_Sw_ObsContRV  (also inherits from ScPnShRV)
 
