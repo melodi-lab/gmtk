@@ -96,6 +96,8 @@ class VECPT : public CPT {
   char* preTransforms;
   char* postTransforms;
 
+  string sentRange;
+
   ////////////////
   // current parent value
   unsigned curParentValue;

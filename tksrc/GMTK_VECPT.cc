@@ -132,8 +132,9 @@ VECPT::read(iDataStreamFile& is)
   // Read Observation Matrix tranform string
   is.read(preTransforms,"Can't read VirtualEvidenceCPT's obs file pre-transform string");
   is.read(postTransforms,"Can't read VirtualEvidenceCPT's obs file post-transform string");
-
+  is.read(sentRange,"Can't read VirtualEvidenceCPT's obs file sentence range  string");
   const char*pr_str=pr_rs.c_str();
+  const char*sentRangeStr=sentRange.c_str();
 
   // Now try opening the file:
   obs.openFile(obsFileName.c_str(),
@@ -151,7 +152,9 @@ VECPT::read(iDataStreamFile& is)
 	       NULL,
 	       NULL,
 	       &preTransforms,
-	       postTransforms
+	       postTransforms,
+	       0,  // FTROP_NONE
+	       (const char**)&sentRangeStr
 	       );
 
 
@@ -233,6 +236,7 @@ VECPT::write(oDataStreamFile& os)
   os.write((iswp?"T":"F"));
   os.write(preTransforms);
   os.write(postTransforms);
+  os.write(sentRange);
   os.nl();
   os.nl();
 }
