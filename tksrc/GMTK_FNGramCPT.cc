@@ -1955,7 +1955,7 @@ const unsigned FNGramImp::maxNumParentsPerChild = 32;
  *
  *-----------------------------------------------------------------------
  */
-FNGramCPT::FNGramCPT() : CPT(di_FNGramCPT), _fngram(NULL), _startNode(0), _contextEntries(NULL) {
+FNGramCPT::FNGramCPT() : CPT(di_FNGramCPT), _fngram(NULL), _startNode(0), _numberOfActiveIterators(0) {
 	_numParents = 0;
 }
 
@@ -1974,7 +1974,13 @@ FNGramCPT::FNGramCPT() : CPT(di_FNGramCPT), _fngram(NULL), _startNode(0), _conte
  *-----------------------------------------------------------------------
  */
 FNGramCPT::~FNGramCPT() {
+	for ( unsigned i = 0; i < _contextEntriesStack.size(); i++ ) {
+		delete [] _contextEntriesStack[i];
+		_contextEntriesStack[i] = NULL;
+	}
+	/*
 	delete [] _contextEntries;
+	*/
 }
 
 
@@ -2006,10 +2012,21 @@ void FNGramCPT::setFNGramImp(FNGramImp *fngram) {
 	_parentsValues.resize(_fngram->_numParents);
 #endif
 
+	/*
 	if ( _contextEntries != NULL)
-		delete _contextEntries;
-	_contextEntries = new FNGramImp::BackoffGraphNode::HashEntry * [_fngram->_numberOfBGNodes];
-	memset(_contextEntries, 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
+	if ( _contextEntriesStack != NULL ) {
+		for ( unsigned i = 0; i < stackSize; i++ )
+			delete [] _contextEntriesStack[i];
+	}
+	*/
+
+	//_contextEntriesStack = new FNGramImp::BackoffGraphNode::HashEntry ** [stackSize];
+	_contextEntriesStack.resize(4);
+	for ( unsigned i = 0; i < _contextEntriesStack.size(); i++ ) {
+		_contextEntriesStack[i] = new FNGramImp::BackoffGraphNode::HashEntry * [_fngram->_numberOfBGNodes];
+		memset(_contextEntriesStack[i], 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
+	}
+	_numberOfActiveIterators = 0;
 }
 
 
@@ -2048,6 +2065,9 @@ void FNGramCPT::setParentsPositions(const vector<unsigned> &parentsPositions) {
  *-----------------------------------------------------------------------
  */
 void FNGramCPT::becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv) {
+	error("FNGramCPT::becomeAwareOfParentValues shouldn't be used alone");
+
+	/*
 	assert(parents.size() == _numParents);
 
 	memset(_contextEntries, 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
@@ -2076,6 +2096,7 @@ void FNGramCPT::becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv) 
 	for ( unsigned i = 0; i < _numParents; i++ )
 		_parentsValues[_parentsPositions[i]] = RV2DRV(parents[i])->val;
 #endif
+	*/
 }
 
 
@@ -2093,6 +2114,9 @@ void FNGramCPT::becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv) 
  *-----------------------------------------------------------------------
  */
 void FNGramCPT::begin(CPT::iterator& it, DiscRV* drv, logpr& p) {
+	error("FNGramCPT::begin shouldn't be used alone");
+
+	/*
 	it.drv = drv;
 	register DiscRVType value = 0;
 	p = _fngram->probBackingOff(value, _startNode, _contextEntries, _parentsValues);
@@ -2107,6 +2131,7 @@ void FNGramCPT::begin(CPT::iterator& it, DiscRV* drv, logpr& p) {
 		p = _fngram->probBackingOff(value, _startNode, _contextEntries, _parentsValues);
 	}
 	drv->val = value;
+	*/
 }
 
 
@@ -2126,11 +2151,65 @@ void FNGramCPT::begin(CPT::iterator& it, DiscRV* drv, logpr& p) {
 void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 						      iterator &it,
 						      DiscRV*drv,
-						      logpr& p)
-{
-  // call functions in this class directly to avoid virtual dispatch.
-  FNGramCPT::becomeAwareOfParentValues(parents,drv);
-  FNGramCPT::begin(it, drv, p);
+						      logpr& p) {
+	assert(parents.size() == _numParents);
+
+	// increment counter and set inter point for iterator
+	if ( _numberOfActiveIterators >= _contextEntriesStack.size() ) {
+		FNGramImp::BackoffGraphNode::HashEntry **tmpPtr = new FNGramImp::BackoffGraphNode::HashEntry * [_fngram->_numberOfBGNodes];
+		_contextEntriesStack.push_back(tmpPtr);
+	}
+	FNGramImp::BackoffGraphNode::HashEntry **ptr = _contextEntriesStack[_numberOfActiveIterators];
+	++_numberOfActiveIterators;
+
+	memset(ptr, 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
+
+	unsigned * context = new unsigned [_numParents];
+
+	// descend down the BG, level by level except buttom (0)
+	for ( int level = _numParents; level > 0; level-- ) {
+		FNGramImp::LevelIter liter(_numParents, level);
+		for ( unsigned nodeAtLevel; liter.next(nodeAtLevel); ) {
+			// we make sure it is somewhere below startNode
+			if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+				// figure out which bits are on
+				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
+				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {
+					context[i] = RV2DRV(parents[onPos[i]])->val;
+				}
+				ptr[nodeAtLevel] = _fngram->_bgNodes[nodeAtLevel].contextTable->find(context);
+			}
+		}
+	}
+
+	delete [] context;
+
+#ifdef FNGRAM_BOW_GROW_DYNA
+	for ( unsigned i = 0; i < _numParents; i++ )
+		_parentsValues[_parentsPositions[i]] = RV2DRV(parents[i])->val;
+#endif
+
+	it.drv = drv;
+	it.internalStatePtr = ptr;
+	register DiscRVType value = 0;
+	p = _fngram->probBackingOff(value, _startNode, ptr, _parentsValues);
+
+	while ( p.essentially_zero() ) {
+		value++;
+		// We keep the following assertion as we
+		// must have that at least one entry is non-zero.
+		// The read code of the FNGramCPT should ensure this
+		// as sure all parameter update procedures.
+		assert(value < card());
+		p = _fngram->probBackingOff(value, _startNode, ptr, _parentsValues);
+	}
+	drv->val = value;
+
+	/*
+	// call functions in this class directly to avoid virtual dispatch.
+	FNGramCPT::becomeAwareOfParentValues(parents,drv);
+	FNGramCPT::begin(it, drv, p);
+  */
 }
 
 
@@ -2146,10 +2225,43 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
  *
  *-----------------------------------------------------------------------
  */
-logpr FNGramCPT::probGivenParents(vector < RV* >& parents, DiscRV* drv)
-{
-  FNGramCPT::becomeAwareOfParentValues(parents,drv);
-  return _fngram->probBackingOff(drv->val, _startNode, _contextEntries, _parentsValues);
+logpr FNGramCPT::probGivenParents(vector < RV* >& parents, DiscRV* drv) {
+	assert(parents.size() == _numParents);
+
+	FNGramImp::BackoffGraphNode::HashEntry ** contextEntries = new FNGramImp::BackoffGraphNode::HashEntry * [_fngram->_numberOfBGNodes];
+	memset(contextEntries, 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
+
+	unsigned * context = new unsigned [_numParents];
+
+	// descend down the BG, level by level except buttom (0)
+	for ( int level = _numParents; level > 0; level-- ) {
+		FNGramImp::LevelIter liter(_numParents, level);
+		for ( unsigned nodeAtLevel; liter.next(nodeAtLevel); ) {
+			// we make sure it is somewhere below startNode
+			if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+				// figure out which bits are on
+				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
+				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {
+					context[i] = RV2DRV(parents[onPos[i]])->val;
+				}
+				contextEntries[nodeAtLevel] = _fngram->_bgNodes[nodeAtLevel].contextTable->find(context);
+			}
+		}
+	}
+
+	delete [] context;
+
+#ifdef FNGRAM_BOW_GROW_DYNA
+	for ( unsigned i = 0; i < _numParents; i++ )
+		_parentsValues[_parentsPositions[i]] = RV2DRV(parents[i])->val;
+#endif
+
+	return _fngram->probBackingOff(drv->val, _startNode, contextEntries, _parentsValues);
+
+	/*
+	FNGramCPT::becomeAwareOfParentValues(parents,drv);
+	return _fngram->probBackingOff(drv->val, _startNode, _contextEntries, _parentsValues);
+	*/
 }
 
 
@@ -2167,14 +2279,18 @@ logpr FNGramCPT::probGivenParents(vector < RV* >& parents, DiscRV* drv)
  *
  *-----------------------------------------------------------------------
  */
-bool FNGramCPT::next(iterator &it, logpr& p)
-{
-  do{
-    if ( (++it.drv->val) >= card() )
-      return false;
-    p = _fngram->probBackingOff(it.drv->val, _startNode, _contextEntries, _parentsValues);
-  } while ( p.essentially_zero() );
-  return true;
+bool FNGramCPT::next(iterator &it, logpr& p) {
+	do{
+		if ( (++it.drv->val) >= card() ) {
+			// need to clean the stack pointer
+			--_numberOfActiveIterators;
+
+			return false;
+		}
+		p = _fngram->probBackingOff(it.drv->val, _startNode, (FNGramImp::BackoffGraphNode::HashEntry **)it.internalStatePtr, _parentsValues);
+	} while ( p.essentially_zero() );
+
+	return true;
 }
 
 
@@ -2222,6 +2338,5 @@ int FNGramCPT::randomSample(DiscRV* drv)
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::read(iDataStreamFile &is)
-{
+void FNGramCPT::read(iDataStreamFile &is) {
 }
