@@ -1,5 +1,11 @@
 #!/usr/bin/perl -w
 
+##############################################################################
+# triangulateTimings
+#
+# Script for generating and timing GMTK triangulations
+##############################################################################
+
 use strict;
 use File::Basename;
 use File::Copy;
@@ -30,10 +36,7 @@ my @run_once = ( 'completed', 'elimination-heuristics',
 my @basic_iterations : shared = ( '100-', '10-', '1-' ); 
 my @basic_prefix     : shared = ( '', 'pre-edge-lo-', 'pre-edge-all-', 
   'pre-edge-random-');
-my @basic_suffix     : shared = ( '-1', '-2', '-3' );
-
-#my @basic_method     : shared = ( 'MCS', 'N', 'W' );
-#my $basic_suffix_threshold : shared = 1;
+my @basic_suffix     : shared = ( '-1', '-3' );
 
 my @basic_method : shared = ( 'MCS', 'R', 'T', 'X', 'S', 'F', 'W', 'P', 'N' );
 my $basic_suffix_threshold : shared = 1;
@@ -109,6 +112,9 @@ my @best_time_per_boundary : shared;
 my @input_triangulations; 
 my $str_file; 
 my $timing_script;
+my $short_mode;
+my $medium_mode;
+my $long_mode;
 my $parallelism;
 my $timing_export_line;
 my $timing_length = 10; 
@@ -118,8 +124,10 @@ my $output_directory;
 my $str_basename;
 my $working_dir;
 my $delay_timings;
+my $max_boundaries_with_advanced;
 my $use_existing_boundaries;
 my $maximum_boundary_searches;
+my $boundary_time;
 my $triangulateP;
 my $triangulateC;
 my $triangulateE;
@@ -155,22 +163,27 @@ sub main
   # Get command line parameters 
   ##############################################################################
   $valid_options = &GetOptions( 
-    "strFile:s"                 => \$str_file, 
-    "timingExportLine:s"        => \$timing_export_line,
-    "boundaryExportLine:s"      => \$boundary_export_line,
-    "triangulationExportLine:s" => \$triangulation_export_line,
-    "timingScript:s"            => \$timing_script,
-    "parallelism:i"             => \$parallelism,
-    "outputDirectory:s"         => \$output_directory,
-    "seconds:i"                 => \$timing_length,
-    "useExistingBoundaries!"    => \$use_existing_boundaries,
-    "maximumBoundarySearches:i" => \$maximum_boundary_searches,
-    "delayTimings!"             => \$delay_timings,
-    "triangulateP!"             => \$triangulateP,
-    "triangulateC!"             => \$triangulateC,
-    "triangulateE!"             => \$triangulateE
+    "strFile:s"                   => \$str_file,
+    "short!"                      => \$short_mode,
+    "medium!"                     => \$medium_mode,
+    "long!"                       => \$long_mode,
+    "timingExportLine:s"          => \$timing_export_line,
+    "boundaryExportLine:s"        => \$boundary_export_line,
+    "triangulationExportLine:s"   => \$triangulation_export_line,
+    "timingScript:s"              => \$timing_script,
+    "parallelism:i"               => \$parallelism,
+    "outputDirectory:s"           => \$output_directory,
+    "seconds:i"                   => \$timing_length,
+    "useExistingBoundaries!"      => \$use_existing_boundaries,
+    "maximumBoundarySearches:i"   => \$maximum_boundary_searches,
+    "boundaryTime:s"              => \$boundary_time,
+    "maxBoundariesWithAdvanced:i" => \$max_boundaries_with_advanced,
+    "delayTimings!"               => \$delay_timings,
+    "triangulateP!"               => \$triangulateP,
+    "triangulateC!"               => \$triangulateC,
+    "triangulateE!"               => \$triangulateE
    );
-  
+
   if (!$valid_options) {
     pod2usage( -verbose=>1 );
   }
@@ -181,6 +194,9 @@ sub main
   # Process command line parameters
   ##########################################################################
 
+  ########################################################################
+  # Settings that don't deal with triangulation options
+  ########################################################################
   if (!defined $str_file)
   {
     pod2usage(-message=>"${error_message}Must supply a structure file name\n",
@@ -228,26 +244,6 @@ sub main
     );
   }
 
-  if (!defined $use_existing_boundaries) 
-  {
-    $use_existing_boundaries = 0;  
-  }
-
-  if (!defined $triangulateP)
-  {
-    $triangulateP = 1;
-  }
-
-  if (!defined $triangulateC)
-  {
-    $triangulateC = 1;
-  }
-
-  if (!defined $triangulateE)
-  {
-    $triangulateE = 1;
-  }
-
   if (!defined $parallelism) 
   {
      $parallelism = 1;
@@ -267,8 +263,150 @@ sub main
     $delay_timings = 0;
   }
 
+  if (!defined $use_existing_boundaries) 
+  {
+    $use_existing_boundaries = 0;  
+  }
+
+
+  ########################################################################
+  # Use the mode to set up default triangulation settings  
+  ########################################################################
+
+  if (!defined $short_mode) 
+  {
+    $short_mode = 0;
+  }
+
+  if (!defined $medium_mode) 
+  {
+    $medium_mode = 0;
+  }
+
+  if (!defined $long_mode) 
+  {
+    $long_mode = 0;
+  }
+
+  my $nmbr_modes;
+  $nmbr_modes = $short_mode + $medium_mode + $long_mode;
+
+  if ($nmbr_modes == 0)
+  {
+    $short_mode = 1;
+  }
+
+  if ($nmbr_modes > 1) 
+  {
+    pod2usage(-message=>
+      "${error_message}Only use one of -short, -medium, and -long",
+      -verbose=>0
+    );
+  }
+
+  ########################################################################
+  # Short mode 
+  ########################################################################
+  if ($short_mode) 
+  {
+    if (!defined $maximum_boundary_searches)
+    {
+      $maximum_boundary_searches = 1;
+    }
+
+    if (!defined $boundary_time)
+    {
+      $boundary_time = '30seconds';
+    }
+ 
+    if (!defined $max_boundaries_with_advanced)
+    {
+      $max_boundaries_with_advanced = 0;
+    }
+
+    if (!defined $triangulateP)
+    {
+      $triangulateP = 0;
+    }
+
+    if (!defined $triangulateC)
+    {
+      $triangulateC = 1;
+    }
+
+    if (!defined $triangulateE)
+    {
+      $triangulateE = 0;
+    }
+  }
+  ########################################################################
+  # Medium mode 
+  ########################################################################
+  elsif ($medium_mode)
+  {
+    if (!defined $maximum_boundary_searches)
+    {
+      $maximum_boundary_searches = 6;
+    }
+
+    if (!defined $boundary_time)
+    {
+      $boundary_time = '30minutes';
+    }
+ 
+    if (!defined $max_boundaries_with_advanced)
+    {
+      $max_boundaries_with_advanced = 1;
+    }
+
+    if (!defined $triangulateP)
+    {
+      $triangulateP = 0;
+    }
+
+    if (!defined $triangulateC)
+    {
+      $triangulateC = 1;
+    }
+
+    if (!defined $triangulateE)
+    {
+      $triangulateE = 1;
+    }
+  }
+  ########################################################################
+  # Long mode 
+  ########################################################################
+  elsif ($long_mode)
+  {
+    # No maximum number of boundary searches ($maximum_boundary_searches) 
+
+    if (!defined $boundary_time)
+    {
+      $boundary_time = '4hours';
+    }
+
+    # No maximum on number of boundary searches with advanced options 
+    #   ($max_boundaries_with_advanced)
+
+    if (!defined $triangulateP)
+    {
+      $triangulateP = 1;
+    }
+
+    if (!defined $triangulateC)
+    {
+      $triangulateC = 1;
+    }
+
+    if (!defined $triangulateE)
+    {
+      $triangulateE = 1;
+    }
+  }
+
   #############################################################################
-  # Initialize variables 
+  # Initialize other global variables 
   #############################################################################
   $str_basename = basename($str_file); 
   $working_dir = `pwd`;
@@ -282,18 +420,14 @@ sub main
   STDOUT->autoflush(1);
   $SIG{PIPE} = 'IGNORE';
 
-print "P:$triangulateP\n";
-print "C:$triangulateC\n";
-print "E:$triangulateE\n";
-
   #############################################################################
   # Start the threads 
   #############################################################################
   print "------- Triangulating $str_file -------\n"; 
 
-  #####################################################################
+  #########################################################################
   # Start gmtkTime locally if only using one processor 
-  #####################################################################
+  #########################################################################
   if ($parallelism == 1)
   {
     $single_processor_timing_script_input  = gensym;
@@ -306,11 +440,10 @@ print "E:$triangulateE\n";
       "-vpap $single_processor_vpap -vcap $single_processor_vcap" );
   }
 
-  ########################################################################### 
+  #########################################################################
   # Start boundary searches 
-  ########################################################################### 
-  if ((!$use_existing_boundaries) &&
-      ($triangulateC))
+  #########################################################################
+  if (!$use_existing_boundaries) 
   {
     if ($parallelism == 1) {
       start_boundary_searches();
@@ -320,14 +453,11 @@ print "E:$triangulateE\n";
     }
   }
 
-  ########################################################################### 
+  #########################################################################
   # If requested, delay the timing and triangulation threads to make sure 
   #  boundary searches have a chance to get processors 
-  ########################################################################### 
-  if (($parallelism > 1)          &&
-      (!$use_existing_boundaries) &&
-      ($triangulateC)             &&
-      ($delay_timings)) 
+  #########################################################################
+  if ($delay_timings)
   { 
     sleep(60);
     print "Starting timing threads\n";
@@ -505,126 +635,132 @@ sub generate_triangulations
       }
     } # end while
   
-    ###########################################################################
-    # Wait for all triangulations in the queue to be triangulated 
-    #
-    # Lock the timing_thread_idle variable 
-    # Queue a copy of BECOME_IDLE for each timing thread
-    # Decrement the timing_thread_idle_sem once for each timing thread (the
-    #   timing threads will increment it as they process BECOME_IDLE)
-    # The timing_thread_idle variable is unlocked, telling the timing threads  
-    #   to they can continue
-    ###########################################################################
+    if ((defined $max_boundaries_with_advanced) && 
+        ($max_boundaries_with_advanced > 0))
     {
-      lock($timing_thread_idle);
-      for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-        enqueue_trifile('BECOME_IDLE');
-      }
-      $timing_thread_idle_sem->down($nmbr_timing_processes); 
-    }
-  
-    print "Found $boundary_count unique boundaries\n";
-  
-    print "---------- Beginning triangulation using advanced option set ----------\n";
-  
-    ###########################################################################
-    # Sort the boundaries by their performance on the basic triangulations
-    ###########################################################################
-    for($i=0; $i<(scalar @boundary_list); $i++)
-    {
-      $boundary_list[$i]->{SPEED} = $best_time_per_boundary[$i];
-    }
-  
-    @boundary_list = sort { $b->{SPEED} <=> $a->{SPEED} } @boundary_list;
-  
-    ###########################################################################
-    # Phase 3, 
-    ###########################################################################
-    for ( $boundary_count = 0; 
-          $boundary_count < (scalar @boundary_list); 
-          $boundary_count++ )
-    {
-      $boundary = $boundary_list[$boundary_count]->{NAME};
-      $boundary_name = "B$boundary_list[$boundary_count]->{INDEX}";
-  
-      print "------ Starting $boundary_name ------\n";
-  
-      #######################################################################
-      # Run advanced methods (minus the basic methods) using initial vcap
-      #   and vpap  
-      #######################################################################
-      reset_advanced_methods();
-  
-      ($method, $method_name) = get_advanced_triangulation_method();
-  
-      while ($method_name ne 'DONE')
-      {
-        if (!grep /^$method_name$/, @basic_methods) 
-        {
-          make_trifile( $boundary_name, $boundary, $method_name, $method, 
-            $triangulation_mode );
-        }
-  
-        ($method, $method_name) = get_advanced_triangulation_method();
-      }
-  
-      #######################################################################
-      # Now run all methods using various combinations of vpap and vcap
-      #######################################################################
-      for ($vpap_index=0; $vpap_index<(scalar @vpap_options); $vpap_index++)
-      {
-        for ($vcap_index=0; $vcap_index<(scalar @vcap_options); $vcap_index++)
-        {
-          if (($vpap_index == 0) && ($vcap_index == 0)) 
-          {
-            $vcap_index++;
-          }
-  
-          {
-            lock($timing_thread_idle);
-            for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-              enqueue_trifile("RESTART_${vpap_options[$vpap_index]}_${vcap_options[$vcap_index]}");
-            }
-            $timing_thread_idle_sem->down($nmbr_timing_processes ); 
-          }
-  
-          ###############################################################
-          # Input triangulations  
-          ###############################################################
-          foreach $trifile_name (@input_trifile_names)
-          {
-            enqueue_trifile($trifile_name);
-            $needed_trifiles->down; 
-          }
-  
-          ###############################################################
-          # Advanced triangulation methods  
-          ###############################################################
-          reset_advanced_methods();
-  
-          ($method, $method_name) = get_advanced_triangulation_method();
-          while ($method_name ne 'DONE')
-          { 
-            $trifile_name = "$output_directory/$boundary_name.$method_name.$str_basename.trifile"; 
-            enqueue_trifile($trifile_name);
-            $needed_trifiles->down; 
-            ($method, $method_name) = get_advanced_triangulation_method();
-          } 
-        } 
-      } 
-  
-      #######################################################################
-      # Restart gmtkTime using initial vpap and vcap 
-      #######################################################################
+      print "Found $boundary_count unique boundaries\n";
+
+      #########################################################################
+      # Wait for all triangulations in the queue to be triangulated 
+      #
+      # Lock the timing_thread_idle variable 
+      # Queue a copy of BECOME_IDLE for each timing thread
+      # Decrement the timing_thread_idle_sem once for each timing thread (the
+      #   timing threads will increment it as they process BECOME_IDLE)
+      # The timing_thread_idle variable is unlocked, telling the timing threads 
+      #   to they can continue
+      #########################################################################
       {
         lock($timing_thread_idle);
         for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-          enqueue_trifile("RESTART_${initial_vpap}_${initial_vcap}");
+          enqueue_trifile('BECOME_IDLE');
         }
-        $timing_thread_idle_sem->down($nmbr_timing_processes ); 
+        $timing_thread_idle_sem->down($nmbr_timing_processes); 
       }
-  
-    } # for boundary_list
+
+      print "---------- Beginning triangulation using advanced option set ----------\n";
+
+      #########################################################################
+      # Sort the boundaries by their performance on the basic triangulations
+      #########################################################################
+      for($i=0; $i<(scalar @boundary_list); $i++)
+      {
+        $boundary_list[$i]->{SPEED} = $best_time_per_boundary[$i];
+      }
+    
+      @boundary_list = sort { $b->{SPEED} <=> $a->{SPEED} } @boundary_list;
+    
+      #########################################################################
+      # Phase 3, 
+      #########################################################################
+      for ( $boundary_count = 0; 
+            ( ($boundary_count < (scalar @boundary_list)) &&
+              ($boundary_count < $max_boundaries_with_advanced) );
+            $boundary_count++ )
+      {
+        $boundary = $boundary_list[$boundary_count]->{NAME};
+        $boundary_name = "B$boundary_list[$boundary_count]->{INDEX}";
+    
+        print "------ Starting $boundary_name ------\n";
+    
+        #######################################################################
+        # Run advanced methods (minus the basic methods) using initial vcap
+        #   and vpap  
+        #######################################################################
+        reset_advanced_methods();
+    
+        ($method, $method_name) = get_advanced_triangulation_method();
+    
+        while ($method_name ne 'DONE')
+        {
+          if (!grep /^$method_name$/, @basic_methods) 
+          {
+            make_trifile( $boundary_name, $boundary, $method_name, $method, 
+              $triangulation_mode );
+          }
+    
+          ($method, $method_name) = get_advanced_triangulation_method();
+        }
+    
+        #######################################################################
+        # Now run all methods using various combinations of vpap and vcap
+        #######################################################################
+        for ($vpap_index=0; $vpap_index<(scalar @vpap_options); $vpap_index++)
+        {
+          for ($vcap_index=0; $vcap_index<(scalar @vcap_options); $vcap_index++)
+          {
+            if (($vpap_index == 0) && ($vcap_index == 0)) 
+            {
+              $vcap_index++;
+            }
+    
+            {
+              lock($timing_thread_idle);
+              for ($i=0; $i<$nmbr_timing_processes ; $i++) {
+                enqueue_trifile("RESTART_${vpap_options[$vpap_index]}_${vcap_options[$vcap_index]}");
+              }
+              $timing_thread_idle_sem->down($nmbr_timing_processes ); 
+            }
+    
+            ###############################################################
+            # Input triangulations  
+            ###############################################################
+            foreach $trifile_name (@input_trifile_names)
+            {
+              enqueue_trifile($trifile_name);
+              $needed_trifiles->down; 
+            }
+    
+            ###############################################################
+            # Advanced triangulation methods  
+            ###############################################################
+            reset_advanced_methods();
+    
+            ($method, $method_name) = get_advanced_triangulation_method();
+            while ($method_name ne 'DONE')
+            { 
+              $trifile_name = "$output_directory/$boundary_name.$method_name.$str_basename.trifile"; 
+              enqueue_trifile($trifile_name);
+              $needed_trifiles->down; 
+              ($method, $method_name) = get_advanced_triangulation_method();
+            } 
+          } 
+        } 
+    
+        #######################################################################
+        # Restart gmtkTime using initial vpap and vcap 
+        #######################################################################
+        {
+          lock($timing_thread_idle);
+          for ($i=0; $i<$nmbr_timing_processes ; $i++) {
+            enqueue_trifile("RESTART_${initial_vpap}_${initial_vcap}");
+          }
+          $timing_thread_idle_sem->down($nmbr_timing_processes ); 
+        }
+    
+      } # for boundary_list
+    } # if max_boundaries_with_advanced>0
+
   } # if triangulate C
 
   ###########################################################################
@@ -1228,10 +1364,8 @@ sub start_boundary_searches
   ############################################################################
   $boundary_job_list = "$output_directory/boundary_job_list";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '10s' -noBoundaryMemoize T -jtWeight T";
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate $boundary_time -noBoundaryMemoize T -jtWeight T";
 
-  ##  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '4hour' -noBoundaryMemoize T -jtWeight F";
- 
   open JOB_LIST, ">$boundary_job_list";
 
   $boundary_calls = 0;
@@ -1246,7 +1380,7 @@ sub start_boundary_searches
 
     foreach $weight_UB_type (@weight_UB_types)
     {
-      foreach $left_right ('L', 'R') 
+      foreach $left_right ('R', 'L') 
       {
         if ((!defined $maximum_boundary_searches) || 
             ($boundary_calls < $maximum_boundary_searches))
@@ -1281,8 +1415,15 @@ sub start_boundary_searches
   }
 
   close RUN_JOBS;
-  
-  printf "%d boundary searches completed\n", $total_boundaries; 
+
+  if ($total_boundaries>1)
+  {
+    printf "%d boundary searches completed\n", $total_boundaries; 
+  }
+  else 
+  {
+    print "Boundary search completed\n";
+  }
 
   $boundary_queue->enqueue( 'BOUNDARY_SEARCHES_DONE' ); 
 }
@@ -1838,6 +1979,19 @@ line in quotes which calls gmtkTime, or a script file.  If using a script file,
 the script must add any command line options given to it to its call to
 gmtkTime (typically using $*).
 
+=item [-short]
+
+Default settings for undefined parameters are for a short triangulation run.
+
+=item [-medium]
+
+Default settings for undefined parameters are for a medium length triangulation
+run.
+
+=item [-long]
+
+Default settings for undefined parameters are for a long triangulation run.
+
 =item [-boundaryExportLine I<script>] 
 
 This should specify a command which reads a list of commands from its standard
@@ -1870,6 +2024,12 @@ Directory to store trifiles.
 
 The number of seconds to time the triangulation.  
 
+=item [-boundaryTime I<string>] 
+
+String giving the amount of time spent on each boundary search.  The string can
+specify seconds, minutes, hours, days, or weeks.  Examples: '3 seconds 4
+minutes 1 hour',  '4min 1 hour 2 days',  '1w3s1h',  
+
 =item [-maximumBoundarySearches I<integer>] 
 
 The maximum number of boundary searches to be run. 
@@ -1879,6 +2039,14 @@ The maximum number of boundary searches to be run.
 When this flag is set no boundary searches will be run.  The boundaries will be
 taken from the the input triangulations and the .boundary files in the output
 directory and.  
+
+=item [-maxBoundariesWithAdvanced I<integer>]
+
+All unique boundaries are timed using basic triangulation heuristics.  After
+this is completed the boundaries are sorted based on their performance, and a
+larger set of heuristics are used on each boundary.  This option controls the
+number of boundaries that are examined using the advanced triangulation
+heuristics.  If not defined, all unique boundaries are used. 
 
 =item [-delayTimings] 
 
