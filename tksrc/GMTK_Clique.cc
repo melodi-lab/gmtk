@@ -20,6 +20,7 @@
 
 void Clique::cacheClampedValues()
 {
+    clampedValues.resize(discreteMember.size());
     for (unsigned i=0; i<discreteMember.size(); i++)
         clampedValues[i] = discreteMember[i]->val;
 }
@@ -99,8 +100,9 @@ bool viterbi)
         {
             CliqueValue c;
             c.pi = 0.0;
-            instantiation.push_back(c);              // add a new value
+            instantiation.push_back(c);           // add a new value
             cv = &instantiation.back();           // will work with new value
+            instantiationAddress[clampedValues] = cv;   // store
         }
         else
             cv = (*mi).second;                    // will word with old value
@@ -151,7 +153,18 @@ bool viterbi)
         do
         {
             enumerateValues(new_member_num+1, pred_val, viterbi);
-        } while (member[new_member_num]->clampNextValue());
+        } while (newMember[new_member_num]->clampNextValue());
     }
 }
 
+void Clique::reveal()
+{
+    for (unsigned i=0; i<member.size(); i++)
+    {
+        cout << member[i]->label << " ";
+        for (unsigned j=0; j<newMember.size(); j++)
+            if (newMember[j] == member[i])
+                cout << "(new) ";
+    }
+    cout << endl;
+}
