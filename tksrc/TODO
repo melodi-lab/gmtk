@@ -269,3 +269,8 @@ X make sure that dlinkmatrix precompute is being
 - ascii/binary conversion program can go both ways.
 
 - dynamic DTs, error messages should print cur name as well as base name. 
+
+- sorted DT splits, when range found, search down and up
+  while < and > are both not true (so sort will have put
+  them next to each other).
+  
