@@ -38,7 +38,8 @@
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
-#include <values.h>
+// #include <values.h>
+#include <math.h>
 #include <cmath>
 #include <cassert>
 

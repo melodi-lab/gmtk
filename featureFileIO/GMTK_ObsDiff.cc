@@ -11,7 +11,9 @@
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
+#ifndef __CYGWIN__
 #include <values.h>
+#endif
 #include <cmath>
 #include <cassert>
 #include "pfile.h"

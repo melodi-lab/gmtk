@@ -14,7 +14,9 @@
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
+#ifndef __CYGWIN__
 #include <values.h>
+#endif
 #include <cmath>
 #include <cassert>
 #include <stdlib.h>
@@ -63,7 +65,7 @@ void initmg(ObservationMatrix* obs_mat,
     kmeans *kms = new kmeans[num_kmeans];
     size_t sent_no;
 
-    double bestVarianceSum=HUGE;
+    double bestVarianceSum=DBL_MAX;
     
     for (int epoch=0;epoch<numRandomReStarts;epoch++) {
 

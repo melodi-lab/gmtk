@@ -21,7 +21,8 @@
 
 #include "GMTK_ObsAddSil.h"
 #include "rand.h"
-#include <values.h>
+// #include <values.h>
+#include <math.h>
 
 
 RAND rnd(true);

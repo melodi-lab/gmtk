@@ -42,8 +42,10 @@ OPTFLAGS=-O3
 # extra flags via command line (e.g., -pg).
 EXCFLAGS =  
 EXLDFLAGS =  
-CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -pedantic -DMAIN
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic -DMAIN
+# CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -pedantic -DMAIN
+# CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic -DMAIN
+CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -pedantic -ansi -Wno-deprecated -DMAIN
+CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -pedantic -ansi -DMAIN
 LDFLAGS = 
 DEFS = 
 
@@ -75,8 +77,8 @@ LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
 # This can be done easily by doing 'make -DPURE=purify' 
 PURE =
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS)
+compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CCFLAGS)
+compile.c = $(CC) $(DEFS) $(INCLUDES) $(CXXFLAGS)
 link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
 compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)

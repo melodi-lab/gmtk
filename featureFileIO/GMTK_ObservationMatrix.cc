@@ -98,10 +98,10 @@ v *    2- Add flatascii and flatbin formats
 #include "fileParser.h"
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
 #ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
-// extern "C" {
-//   FILE     *popen(const char *, const char *) __THROW;
-//   int pclose(FILE *stream) __THROW;
-// };
+extern "C" {
+  FILE     *popen(const char *, const char *) __THROW;
+  int pclose(FILE *stream) __THROW;
+};
 #endif
 #endif
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP

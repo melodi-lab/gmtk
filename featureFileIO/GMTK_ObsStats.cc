@@ -7,7 +7,8 @@
 */
 
 
-#include <values.h>
+// #include <values.h>
+#include <math.h>
 #include "GMTK_ObsStats.h"
 
 
