@@ -2520,11 +2520,16 @@ triangulateSimulatedAnnealing(
 
       std_dev = sqrt(variance);
 
-      crrnt_tmprtr = crrnt_tmprtr /
-        (1 + (crrnt_tmprtr*log(1+distance))/(3*std_dev));  
+      if (std_dev > DBL_MIN) {
+        crrnt_tmprtr = crrnt_tmprtr /
+          (1 + (crrnt_tmprtr*log(1+distance))/(3*std_dev));  
 
-      ratio = (mean - best_this_weight) / std_dev; 
-      ++i;
+        ratio = (mean - best_this_weight) / std_dev; 
+        ++i;
+      }
+      else {
+        ratio = 0;
+      }
     }
     ////////////////////////////////////////////////////////////////
     // Exit prematurely if no moves in the chain were accepted 
