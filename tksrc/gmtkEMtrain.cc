@@ -363,6 +363,7 @@ main(int argc,char*argv[])
     fp.associateWithDataParams(FileParser::allocateUniform);
   else
     error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
+  GM_Parms.finalizeParameters();
 
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 

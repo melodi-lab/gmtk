@@ -223,6 +223,7 @@ main(int argc,char*argv[])
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
   fp.associateWithDataParams();
+  GM_Parms.finalizeParameters();
   // make sure that all observation variables work
   // with the global observation stream.
   // fp.checkConsistentWithGlobalObservationStream();
