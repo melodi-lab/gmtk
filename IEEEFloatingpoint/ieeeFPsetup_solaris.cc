@@ -76,11 +76,14 @@ void ieeeFPsetup()
 	    );
 
 #ifdef HAVE_NONSTANDARD_ARITHMETIC
-     // this presumably sets a bit in the FPU that keeps
+     // This presumably sets a bit in the FPU that keeps
      // denormals from traping and being handled in sofware.
      // Instead, (again presumably), denormals are truncated to zero.
      // WARNING: This should probably not be used when debugging.
+     // On the ohter hand, this can significantly speed up a program 
+     // w/o changing the results much.
      nonstandard_arithmetic();
+
      // print out a status of the FPU bits.
      // ieee_retrospective(stdout); 
 #endif
