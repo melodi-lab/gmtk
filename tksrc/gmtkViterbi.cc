@@ -99,6 +99,9 @@ char *varMapFile=NULL;
 char *transitionLabel=NULL;
 double varFloor = 1e-10;
 
+char *ofilelist = NULL;
+char *dumpNames = NULL;
+
 bool show_cliques=false;
 
 ARGS ARGS::Args[] = {
@@ -147,6 +150,8 @@ ARGS ARGS::Args[] = {
   ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
   ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
 
+  ARGS("dumpNames",ARGS::Opt,dumpNames,"File containing the names of the variables to save to a file"),
+  ARGS("ofilelist",ARGS::Opt,ofilelist,"List of filenames to dump the hidden variable values to"),
   ARGS()
 
 };
@@ -187,6 +192,9 @@ main(int argc,char*argv[])
     }
     in.close();
   }
+
+  if (dumpNames)
+    if (ofilelist==NULL) error("Must specify output files for binary dumping");
 
   ////////////////////////////////////////////
   // check for valid argument values.
@@ -280,10 +288,41 @@ main(int argc,char*argv[])
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
 
+  set<string> dumpVars;
+  map<string,int> posFor;
+  int ndv=0;
+  if (dumpNames)
+  {
+      ifstream din(dumpNames);
+      if (!din) {cout << "Unable to open " << dumpNames << endl; exit(1);}
+      string s;
+      while (!din.eof())
+      {
+          din >> s >> ws;
+          dumpVars.insert(s);
+          posFor[s] = ndv++;  // which position within a frame to put it
+      }
+      din.close();
+  }
+
+  vector<string> ofiles;
+  if (ofilelist)
+  {
+      ifstream oin(ofilelist);
+      if (!oin) {cout << "Unable to open " << ofilelist << endl; exit(1);} 
+      string s;
+      while (!oin.eof())
+      {
+          oin >> s >> ws;
+          ofiles.push_back(s);
+      }
+      oin.close();
+  }
+
   // and away we go
+  int ne=0;
   gm.clampFirstExample();
   do {
-
     logpr pruneRatio;
     pruneRatio.valref() = -beam;
     gm.cliqueChainViterbiProb(pruneRatio);
@@ -291,6 +330,30 @@ main(int argc,char*argv[])
          << ((*gm.node.rbegin())->timeIndex+1) << " frames\n";
     if (showVitVals)
       gm.reveal(gm.node, true);
+    if (dumpNames)
+    {
+        if (ne==int(ofiles.size())) error("More utterances than output files");
+        FILE *fp = fopen(ofiles[ne++].c_str(), "wb");
+        if (!fp) {cout << "Unable to open " << ofiles[ne-1] << endl; exit(1);}
+        int *vals = new int[gm.node.size()];
+        // just in case a variable isn't present in a slice, write a -1
+        for (int i=0; i<int(gm.node.size()); i++) vals[i] = -1;
+        int nv=0;
+        for (int i=0; i<int(gm.node.size()); i++)
+            if (dumpVars.count(gm.node[i]->label)) 
+            {
+                if (!gm.node[i]->discrete || !gm.node[i]->hidden) 
+                    error("variables to dump must be discrete and hidden");
+                int p = gm.node[i]->timeIndex*dumpVars.size() 
+                        + posFor[gm.node[i]->label];
+                assert(p<int(gm.node.size()));
+                vals[p] = gm.node[i]->val; 
+                nv++;
+            }
+        fwrite((void *) vals, sizeof(int), nv, fp); 
+        delete [] vals;
+        fclose(fp);
+    }
     if (wordVar && gm.viterbiProb!=0.0)
     {
       // print the sequence of values for this variable
