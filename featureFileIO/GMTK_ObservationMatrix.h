@@ -23,105 +23,65 @@
 #include "machine-dependent.h"
 #include "pfile.h"
 #include "bp_range.h"
-#include "GMTK_FileDescription.h"
+#include "GMTK_Stream.h"
+
+#define MAXBUFSIZE 1000 
 
 
-/* ObservationMatrix: basic data structure for input feature buffer */
+/* ObservationMatrix: basic data structure for input feature buffer 
+ * contains one or more input streams, where each stream is a list of filenames 
+ * or a pfile. Must be created using constructor and initialized using
+ * 'openFiles'. Reads specified number of features ( continuous and/or discrete)
+ * from each input stream and creates one global feature buffer, where all
+ * continuous features come first (per frame), followed by all discrete features */
+
 
 
 class ObservationMatrix
 {
 
 
-  // the segment number
-  size_t _segmentNumber;
+  int _numStreams; // number of input streams 
 
-  // the number of frames in this segment
-  unsigned _numFrames;
+  unsigned _totalContinuous;  // total num of continuous features
+  unsigned _totalDiscrete;    // total num of discrete features 
 
-  // number of continuous features in this segment
-  unsigned _numContinuous;
+  unsigned _maxContinuous;  // max number of cont. features in any stream
+  unsigned _maxDiscrete;    // max number of disc. features in any stream
 
-  // number of discrete features
-  unsigned _numDiscrete;
+  // total number of segments in input streams (identical for all streams)
 
-  // sum of the above two
-  unsigned _numFeatures;
+  unsigned _numSegments; 
 
-  // stride, which is the number of Data32's between
-  // each frame, as it might be different than numFeatures
+ // temporary feature buffers for single frame 
 
-  unsigned _stride;
+  sArray<float> _contFea; 
+  sArray<Int32> _discFea;
 
-  // max number of discrete/continuous features in input streams
-
-  unsigned _maxContinuous;
-
-  unsigned _maxDiscrete;
-
-  Data32 *_cont_p; // pointers into continuous or discrete features
+  Data32 *_cont_p; // pointers into continuous/discrete feature block
   Data32 *_disc_p; 
 
- // temporary feature buffers for single frame
-
-  sArray<float> cont_fea; 
-  sArray<Int32> disc_fea;
+  StreamInfo **_inStreams; // input streams
 
   size_t _bufSize; // maximum number of frames in buffer
 
   // read pfile features
   bool readPFloats(InFtrLabStream_PFile *, BP_Range *);	
-
   bool readPInts(InFtrLabStream_PFile *, BP_Range *);
 
   // read binary features
-
   bool readBinFloats(unsigned, FILE *, BP_Range *, bool);
-
-  bool readCRCFloats(unsigned, FILE *, BP_Range *, bool);
-
   bool readBinInts(unsigned,FILE *,BP_Range *, bool);
   
   // read ascii features
-
   bool readAscFloats(unsigned, FILE *,BP_Range *);
-
   bool readAscInts(unsigned, FILE *, BP_Range *);
 
-  // advance pointers for reading in next frame
 
-  void next();
-
-public:
-
-  sArray< Data32 > features; // matrix of features
-
-  ObservationMatrix();
-  ObservationMatrix(size_t,unsigned,unsigned,unsigned,unsigned);
-  ~ObservationMatrix();
-
-  void reset(size_t,unsigned,unsigned,unsigned,unsigned);
-
-  unsigned getSegmentNumber() { return _segmentNumber ;}
-  unsigned getNumFrames() { return _numFrames; }
-  unsigned getNumContinuous() { return _numContinuous; }
-  unsigned getNumDiscrete() { return _numDiscrete; }
-  unsigned getNumFeatures() { return _numFeatures; }
-  unsigned getStride() {return _stride; }
-  size_t getBufSize() { return _bufSize; }
-
-  void setSegNo(size_t n) { _segmentNumber = n; }
-
-  void setNumFrames(size_t n) { _numFrames = n; }
-
-  void reset();	 // resets pointers to beginning of obs matrix, 
-                 // call after every utterance
+  void reset();	 // resets pointers to beginning of obs matrix
 
   void resize(size_t); // resize obs matrix
 
-  // set internal pointers to beginning of frame f
-
-  void gotoFrame(size_t f);
 
   // get pointer to individual features in current frame
 
@@ -129,67 +89,125 @@ public:
 
   Int32 *getDiscFea(unsigned short n);
 
+  // read single frame into observation matrix
+
+  void readFrame(size_t);	
+
+  // file opening routines
+
+  size_t openBinaryFile(StreamInfo *,size_t);
+  size_t openAsciiFile(StreamInfo *,size_t);
+  size_t openHTKFile(StreamInfo *,size_t);
+  size_t openPFile(StreamInfo *,size_t);
+
+  void closeDataFiles();
+
+ public:
+
+  // the segment number
+  size_t segmentNumber;
+
+  // the number of frames in this segment
+  unsigned numFrames;
+
+  // number of continuous features in this segment
+  unsigned numContinuous;
+
+  // number of discrete features
+  unsigned numDiscrete;
+
+  // sum of the above two
+  unsigned numFeatures;
+
+  // stride, which is the number of Data32's between
+  // each frame, as it might be different than numFeatures
+
+  unsigned stride;
+
+  sArray< Data32 > features; // matrix of features
+
+  ObservationMatrix();
+  ~ObservationMatrix();
+
   // skip to beginning of frame f	 
   
   Data32*const baseAtFrame(unsigned f) {
-    assert (f >= 0 && f < _numFrames);
-    return features.ptr + _stride*f;
+    assert (f >= 0 && f < numFrames);
+    return features.ptr + stride*f;
   }
 
   float*const floatVecAtFrame(unsigned f) {
-    assert (f >= 0 && f < _numFrames);
-    return (float*)(features.ptr + _stride*f);
+    assert (f >= 0 && f < numFrames);
+    return (float*)(features.ptr + stride*f);
   }
   
   float*const floatAtFrame(unsigned f) {
-    assert (f >= 0 && f < _numFrames);
-    return (float*)(features.ptr + _stride*f);
+    assert (f >= 0 && f < numFrames);
+    return (float*)(features.ptr + stride*f);
   }
 
   float*const floatVecAtFrame(unsigned f, 
 			      const unsigned startFeature,
 			      const unsigned len) {
-    assert (f >= 0 && f < _numFrames);
-    assert (startFeature >= 0 && startFeature + len <= _numContinuous);
-    return (float*)(features.ptr + _stride*f + startFeature);
+    assert (f >= 0 && f < numFrames);
+    assert (startFeature >= 0 && startFeature + len <= numContinuous);
+    return (float*)(features.ptr + stride*f + startFeature);
   }
 
 
   float*const floatVecAtFrame(unsigned f, 
 			      const unsigned startFeature) {
-    assert (f >= 0 && f < _numFrames);
-    return (float*)(features.ptr + _stride*f + startFeature);
+    assert (f >= 0 && f < numFrames);
+    return (float*)(features.ptr + stride*f + startFeature);
   }
 
 
   unsigned*const unsignedAtFrame(unsigned f) {
-    assert (f >= 0 && f < _numFrames);
-    return (unsigned*)(features.ptr + _stride*f + _numContinuous);
+    assert (f >= 0 && f < numFrames);
+    return (unsigned*)(features.ptr + stride*f + numContinuous);
   }
 
   unsigned& unsignedAtFrame(const unsigned frame, const unsigned feature) {
-    assert (frame >= 0 && frame < _numFrames);
-    assert (feature >= _numContinuous
+    assert (frame >= 0 && frame < numFrames);
+    assert (feature >= numContinuous
 	    &&
-	    feature < _numFeatures);
-    return *(unsigned*)(features.ptr+_stride*frame+feature);
+	    feature < numFeatures);
+    return *(unsigned*)(features.ptr+stride*frame+feature);
   }
 
   bool elementIsDiscrete(unsigned el) {
-    return (el >= _numContinuous && el < _numFeatures);
+    return (el >= numContinuous && el < numFeatures);
   }
 
   bool elementIsContinuous(unsigned el) {
-    return (el >= 0 && el < _numContinuous);
+    return (el >= 0 && el < numContinuous);
   }
 
-  // read single frame into observation matrix
+  // initialize input streams and allocate obs matrix
+  
+  void openFiles(int n_files,  
+		 const char **fof_names,
+		 const char **cont_range_str,
+		 const char **disc_range_str,
+		 unsigned *n_floats,
+		 unsigned *n_ints,
+		 unsigned *formats,
+		 bool *swapflags);
 
-  void readFrame(size_t,FileDescription**,int);	
+  // load data for single segment (utterance)
+
+  void loadSegment(const unsigned seg);
+
+  unsigned numSegments() { return _numSegments ; }
+
+
+  bool active() { return (_numStreams > 0); }
+
+  void printSegmentInfo();
 
   // print frame
 
-  void printFrame(FILE *stream, size_t no);
+  void printFrame(FILE *, size_t no);
 
 
 };
