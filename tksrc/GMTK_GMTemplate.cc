@@ -95,7 +95,7 @@ findPartitions(const string& fh,  // face quality heuristic
 	       set<RandomVariable*>& Cc,
 	       set<RandomVariable*>& Ec)
 {
-  const int debug = 0;
+  const int debug = 1;
 
   vector <RandomVariable*> unroll2_rvs;
   fp.unroll(2,unroll2_rvs);
@@ -207,6 +207,8 @@ findPartitions(const string& fh,  // face quality heuristic
 
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'R')) {
     // find best left interface
+    if (debug > 0)
+      printf("Finding best left interface\n");
     findBestInterface(C1_u2,C2_u2,C3_u2,
 		      left_C_l_u2C2,C_l_u2C2,fh_v,
 		      findBestFace,
@@ -222,6 +224,8 @@ findPartitions(const string& fh,  // face quality heuristic
   }
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
     // find best right interface
+    if (debug > 0)
+      printf("Finding best right interface\n");
     findBestInterface(C3_u2,C2_u2,C1_u2,
 		      right_C_r_u2C2,C_r_u2C2,fh_v,
 		      findBestFace,
@@ -236,6 +240,9 @@ findPartitions(const string& fh,  // face quality heuristic
 		      );
   }
 
+  // Now find the partitions (i.e., left or right) corresponding
+  // the interface which had minimum size, prefering the left
+  // interface if there is a tie.
   if ((flr.size() == 0 && C_l_u2C2.size() <= C_r_u2C2.size())
       || 
       (flr.size() > 0 && toupper(flr[0]) == 'L')) {
@@ -269,7 +276,6 @@ findPartitions(const string& fh,  // face quality heuristic
 			    Pc);
   }
 }
-
 
 
 
@@ -368,6 +374,12 @@ findPartitions(iDataStreamFile& is,
   clone(P,Pc);
   clone(C,Cc);
   clone(E,Ec);
+
+  // @@@ TODO: the inferface for these partitions still
+  // needs to be made complete as the elimination order
+  // will not do this (the elimin order was done with
+  // respet to the partitions where the interfaces were already
+  // complete).
 
 }
 
@@ -834,7 +846,9 @@ storePartitionTriangulation(oDataStreamFile& os,
  */
 void
 GMTemplate::
-unrollAndTriangulate(const string& th,  // triangulate heuristics
+unrollAndTriangulate(// triangulate heuristics
+		     const string& th,  
+		     // number of times it should be unrolled
 		     const unsigned numTimes)
 {
   vector<TriangulateHeuristic> th_v;
@@ -857,17 +871,37 @@ unrollAndTriangulate(const string& th,  // triangulate heuristics
 		     ordered,cliques);
     // TODO: just print out for now. Ultimately
     // return the cliques and do inference with them.
+    unsigned maxSize = 0;
+    float maxSizeCliqueWeight;
+    float maxWeight = -1.0;
+    unsigned maxWeightCliqueSize;
     printf("Cliques from graph unrolled %d times\n",numTimes);
     for (unsigned i=0;i<cliques.size();i++) {
+
+      float curWeight = computeWeight(cliques[i].nodes);
+      if (curWeight > maxWeight) {
+	maxWeight = curWeight;
+	maxWeightCliqueSize = cliques[i].nodes.size();
+      }
+      if (cliques[i].nodes.size() > maxSize) {
+	maxSize = cliques[i].nodes.size();
+	maxSizeCliqueWeight = curWeight;
+      }
+
       printf("%d : %d  %f\n",i,
-	     cliques[i].nodes.size(),
-	     computeWeight(cliques[i].nodes));
+	     cliques[i].nodes.size(),curWeight);
       for (set<RandomVariable*>::iterator j=cliques[i].nodes.begin();
 	   j != cliques[i].nodes.end(); j++) {
 	RandomVariable* rv = (*j);
 	printf("   %s(%d)\n",rv->name().c_str(),rv->frame());
       }
     }
+    printf("When unrolling %d times, max size clique = %d (with a weight of %f) and max weight of a clique = %f (with a size of %d)\n",
+	   numTimes,
+	   maxSize,
+	   maxSizeCliqueWeight,
+	   maxWeight,
+	   maxWeightCliqueSize);
     printf("\n");
   }
 }
@@ -876,11 +910,18 @@ unrollAndTriangulate(const string& th,  // triangulate heuristics
 /*-
  *-----------------------------------------------------------------------
  * GMTemplate::basicTriangulate()
- *   Triangulate a set of nodes using any combination of a number
- *   if different (but simple) triangulation heuristics such as
- *   (min weight, min size, min fill, etc.).
- *   For a good description of these heuristics, see
- *      D. Rose et. al, 1970, 1976
+ *   The actual basic triangulation that does the work of triangulation.
+ *  
+ *   This routine will triangulate a set of nodes using any
+ *   combination of a number if different (but simple) triangulation
+ *   heuristics such as (min weight, min size, min fill, etc.).  For a
+ *   good description of these heuristics, see D. Rose et. al, 1970,
+ *   1976. The routine also allows for other heuristics to be used
+ *   such as eliminate the earlier nodes (temporal order) first,
+ *   or eliminate the nodes in order that they appear in the 
+ *   structure file (sometimes this simple constrained triangulation
+ *   will work better than the "intelligent" heuristics, such as for
+ *   certain lattice structures).
  *    
  * Preconditions:
  *   Graph must be a valid undirected model. This means
@@ -896,7 +937,7 @@ unrollAndTriangulate(const string& th,  // triangulate heuristics
  *
  * Side Effects:
  *   Might (and probably will unless graph is already triangulated
- *   and you get lucky by having the found elimination order is perfect) 
+ *   and you get lucky by having found the perfect elimination order)
  *   change neighbors members of variables.
  *
  * Results:
@@ -908,7 +949,7 @@ unrollAndTriangulate(const string& th,  // triangulate heuristics
 void
 GMTemplate::
 basicTriangulate(// input: nodes to triangulate
-		 set<RandomVariable*> nodes,
+		 const set<RandomVariable*> nodes,
 		 // input: triangulation heuristic
 		 const vector<TriangulateHeuristic>& th_v,
 		 // output: nodes ordered according to resulting elimination
@@ -1169,8 +1210,10 @@ basicTriangulate(// input: nodes to triangulate
  */
 void
 GMTemplate::
-basicTriangulate(iDataStreamFile& is,
-		 set<RandomVariable*> nodes,
+basicTriangulate(// input data stream
+		 iDataStreamFile& is,
+		 // input: nodes to be triangulated
+		 const set<RandomVariable*> nodes,
 		 // output: nodes ordered according to resulting elimination
 		 vector<RandomVariable*>& orderedNodes,  
 		 // output: resulting max cliques
@@ -1249,7 +1292,6 @@ basicTriangulate(iDataStreamFile& is,
 
     // insert node into ordered set
     orderedNodesSet.insert(rv);
-
   }
 }
 
@@ -1633,6 +1675,7 @@ GMTemplate::interfaceScore(
       vector<RandomVariable*> Cordered;
       vector<RandomVariable*> Eordered;
 
+
       findInterfacePartitions(P_u1,
 			      C1_u1,
 			      C2_u1,
@@ -1673,11 +1716,12 @@ GMTemplate::interfaceScore(
       if (debug > 0)
 	printf("  set has max clique weight = %f\n",maxWeight);
 
+
       deleteNodes(Pc);
       deleteNodes(Cc);
       deleteNodes(Ec);      
 
-    }  else
+    } else
       warning("Warning: invalid variable set score given. Ignored\n");
   }
 
@@ -1695,6 +1739,9 @@ GMTemplate::interfaceScore(
  *   if any parents, children, neighbors, in 'in' pointed to variables
  *   outside of 'in', then the corresponding variables in 'out' do
  *   not contain those parents,children,neighbors. 
+ *
+ *   There are two versions of this routine, one which returns
+ *   the in to out variable map in case that might be useful.
  *
  * Preconditions:
  *   'in' is a set of random variables to be cloned.
@@ -1717,8 +1764,16 @@ GMTemplate::
 clone(const set<RandomVariable*>& in, 
       set<RandomVariable*>& out)
 {
-  
   map < RandomVariable*, RandomVariable* > in_to_out;
+  clone(in,out,in_to_out);
+}
+void
+GMTemplate::
+clone(const set<RandomVariable*>& in, 
+      set<RandomVariable*>& out,
+      map < RandomVariable*, RandomVariable* >& in_to_out)
+{
+  in_to_out.clear();
   for (set<RandomVariable*>::iterator i=in.begin();
        i != in.end(); i++) {
 
@@ -1796,7 +1851,7 @@ clone(const set<RandomVariable*>& in,
  *   immediately be deleted or filled with new nodes
  *
  * Side Effects:
- *     none
+ *     Will delete all variables pointed to by the RV*'s within the set.
  *
  * Results:
  *     none
@@ -2038,755 +2093,6 @@ GMTemplate::makeComplete(set<RandomVariable*> &rvs)
  *
  *-----------------------------------------------------------------------
  */
-void
-GMTemplate::findBestLeftInterface(
-           const set<RandomVariable*> &C1,
-	   const set<RandomVariable*> &C2,
-	   const set<RandomVariable*> &C3,
-
-
-
-	   set<RandomVariable*> &left_C_l,
-	   set<RandomVariable*> &C_l,
-	   const vector<InterfaceHeuristic>& fh_v,
-	   const bool recurse)
-{
-  const int debug = 1;
-
-  // left interface
-  C_l.clear();
-
-  // First, construct the basic left interface (i.e., left
-  // interface of C2).
-
-  // go through through set C1, and pick out all neighbors
-  // of variables in set C1 that live in C2.
- set<RandomVariable*>::iterator c1_iter;
-  for (c1_iter = C1.begin(); c1_iter != C1.end(); c1_iter ++) {
-    // go through all neighbors of nodes in C1
-    RandomVariable *cur_rv = (*c1_iter);
-    // neighbor iterator
-    set<RandomVariable*>::iterator n_iter;
-    for (n_iter = cur_rv->neighbors.begin();
-	 n_iter != cur_rv->neighbors.end();
-	 n_iter ++) {
-      if (C2.find((*n_iter)) != C2.end()) {
-	// found a neighbor of cur_rv in C2, so
-	// it must be in C_l
-	C_l.insert((*n_iter));
-      }
-    }
-  }
-  left_C_l.clear();
-
-  vector<float> best_score;
-  variableSetScore(fh_v,C_l,best_score);
-
-  if (debug > 0) {
-    printf("Size of basic left interface C_l = %d\n",C_l.size());
-    printf("Score of basic left interface C_l =");
-    for (unsigned i=0;i<best_score.size();i++)
-      printf(" %f ",best_score[i]);
-    printf("\n");
-    printf("Size of left_C_l = %d\n",left_C_l.size());
-    {
-      printf("Left interface nodes include:");
-      set<RandomVariable*>::iterator i;    
-      for (i=C_l.begin();i!=C_l.end();i++) {
-	printf(" %s(%d)",
-	       (*i)->name().c_str(),
-	       (*i)->frame());
-	     
-      }
-      printf("\n");
-    }
-  }
-
-  // start recursion to find the truly best interface.
-  if (recurse) {
-    // best ones found so far
-    set<RandomVariable*> best_left_C_l = left_C_l;
-    set<RandomVariable*> best_C_l = C_l;
-    set< set<RandomVariable*> > setset;
-    findBestLeftInterface(left_C_l,
-			  C_l,
-			  C2,
-			  C3,
-			  setset,
-			  best_left_C_l,
-			  best_C_l,
-			  best_score,fh_v);
-    if (debug > 0) {
-      printf("Size of best left interface = %d\n",best_C_l.size());
-      printf("Score of best left interface =");
-      for (unsigned i=0;i<best_score.size();i++)
-	printf(" %f ",best_score[i]);
-      printf("\n");
-      printf("Size of best_left_C_l = %d\n",best_left_C_l.size());
-      {
-	printf("Best left interface nodes include:");
-	set<RandomVariable*>::iterator i;    
-	for (i=best_C_l.begin();i!=best_C_l.end();i++) {
-	  printf(" %s(%d)",
-		 (*i)->name().c_str(),
-		 (*i)->frame());
-	}
-	printf("\n");
-
-      }
-    }
-    left_C_l = best_left_C_l;
-    C_l = best_C_l;
-  }
-
-
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * GMTemplate::findBestLeftInterface()
- *    recursive helper function for the first call findBestLeftInterface()
- *    See that routine for documentation.
- *
- * Preconditions:
- *
- * Postconditions:
- *
- * Side Effects:
- *
- * Results:
- *
- *-----------------------------------------------------------------------
- */
-void
-GMTemplate::
-findBestLeftInterface(const set<RandomVariable*> &left_C_l,
-		      const set<RandomVariable*> &C_l,
-		      const set<RandomVariable*> &C2,
-		      const set<RandomVariable*> &C3,
-		      set< set<RandomVariable*> >& setset,
-		      set<RandomVariable*> &best_left_C_l,
-		      set<RandomVariable*> &best_C_l,
-		      vector<float>& best_score,
-		      const vector<InterfaceHeuristic>& fh_v)
-{
-  set<RandomVariable*>::iterator v;  // vertex
-  // consider all v in the current C_l as candidates
-  // to be moved left.
-  for (v = C_l.begin(); v != C_l.end(); v ++) {
-    // TODO: rather than "for all nodes in C_l", we could
-    // do a random subset of nodes in C_l to speed this up if
-    // it takes too long. But note that this is only run once
-    // per graph so it will be beneficial to do this since
-    // its cost might be ammortized over the many runs of the graph
-
-    // if v has neighbors in C3
-    // next;
-    // do a set intersection.
-    set<RandomVariable*> res;
-    set_intersection((*v)->neighbors.begin(),
-		     (*v)->neighbors.end(),
-		     C3.begin(),C3.end(),
-		     inserter(res, res.end()));
-    if (res.size() != 0)
-      continue;
-
-    // take v from C_l and place it in left_C_l    
-    set<RandomVariable*> next_left_C_l = left_C_l;
-    next_left_C_l.insert((*v));
-
-    // and add all neighbors of v that are 
-    // in C2\next_left_C_l to next_C_l
-    set<RandomVariable*> next_C_l;
-    set<RandomVariable*> tmp;
-    set_intersection((*v)->neighbors.begin(),
-		     (*v)->neighbors.end(),
-		     C2.begin(),C2.end(),
-		     inserter(tmp,tmp.end()));
-    res.clear();    
-    set_difference(tmp.begin(),tmp.end(),
-		   next_left_C_l.begin(),next_left_C_l.end(),
-		   inserter(res,res.end()));
-
-    set_union(res.begin(),res.end(),
-	      C_l.begin(),C_l.end(),
-	      inserter(next_C_l,next_C_l.end()));
-    next_C_l.erase((*v));
-
-    if (setset.find(next_C_l) != setset.end())
-      continue; // check if memoized, if so, no need to go further.
-
-    // memoize
-    setset.insert(next_C_l);
-
-
-    vector<float> next_score;
-    variableSetScore(fh_v,next_C_l,next_score);
-    // check size of candiate interface, and keep a copy of
-    // it if it is less then the one we have seen so far.
-    if (next_score < best_score) {
-      best_left_C_l = next_left_C_l;
-      best_C_l = next_C_l;
-      best_score = next_score;
-    } 
-
-    findBestLeftInterface(next_left_C_l,
-			  next_C_l,
-			  C2,C3,setset,
-			  best_left_C_l,best_C_l,best_score,
-			  fh_v);
-
-  }
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * GMTemplate::findLeftInterfacePartitions()
- *   Create the three partitions and triangulate them. This
- *   routine is essentialy the left-interface specific portion
- *   of routine triangulatePartitions(). See that routine
- *   for more documentation.
- *
- * Preconditions:
- *
- * Postconditions:
- *
- * Side Effects:
- *
- * Results:
- *
- *
- *-----------------------------------------------------------------------
- */
-void
-GMTemplate::
-findLeftInterfacePartitions(
- // input variables
- const set<RandomVariable*>& P_u1,
- const set<RandomVariable*>& C1_u1,
- const set<RandomVariable*>& C2_u1,
- const set<RandomVariable*>& E_u1,
- // these next 2 should be const, but there is no "op[] const"
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
- const set<RandomVariable*>& left_C_l_u2C2,
- const set<RandomVariable*>& C_l_u2C2,
- // output variables
- set<RandomVariable*>& Pc,
- set<RandomVariable*>& Cc,
- set<RandomVariable*>& Ec
-)
-{
-
-  // now we need to make a bunch of sets to be unioned
-  // together to get the partitions.
-  set<RandomVariable*> C_l_u1C1;
-  set<RandomVariable*> C_l_u1C2;
-  for (set<RandomVariable*>::iterator i = C_l_u2C2.begin();
-       i!= C_l_u2C2.end(); i++) {
-
-    C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);					  
-  }
-
-  // These (C_l_u1C1 and C_l_u1C2) are the interfaces which are forced
-  // to be complete (i.e., part of a maxclique).
-  // TODO: these next steps will ruin the clique_size = 2 property
-  //     of the 'snake' structure. The todo is to get this working 
-  //     with that (and similar) structures.
-  /*
-   *     idea: make complete components in C_l *only* if they
-   *           are connected via nodes/edges within either (P + left_C_l)
-   *           or preceeding C.
-   *           What we will then have is a collection of cliques for 
-   *           the interface(s). In this case, we glue together
-   *           the corresponding sets of cliques. Right interface
-   *           algorithm should be similar (and use E rather than P).
-   *           But might both left and right interface need to be used in the
-   *           same repeated chunk in this case to get clique_size=2???
-   *      alternatively (and easier): for snake, just use the unconstrained
-   *           triangulation method (which works perfectly for snake).
-   *          
-   */
-  makeComplete(C_l_u1C1);
-  makeComplete(C_l_u1C2);
-
-  set<RandomVariable*> left_C_l_u1C1;
-  set<RandomVariable*> left_C_l_u1C2;
-  for (set<RandomVariable*>::iterator i = left_C_l_u2C2.begin();
-       i != left_C_l_u2C2.end(); i++) {
-
-    left_C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    left_C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);					  
-  }
-  
-  // finally, create the modified sets P, C, and E
-  // where P = modified prologue
-  // where C = modified chunk to repeat
-  // where E = modified epilogue to repeat
-  // which are to be triangulated separately.
-  //  P = P' + C1'(left_C_l) + C1'(C_l)
-  //  C = C1'\C1'(left_C_l) + C2'(left_C_l) + C2'(C_l)
-  //  E = C2'\C2'(left_C_l) + E'
-
-  set<RandomVariable*> P = P_u1;
-  set<RandomVariable*> C;
-  set<RandomVariable*> E = E_u1;
-
-  // Finish P
-  set_union(left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
-	    C_l_u1C1.begin(),C_l_u1C1.end(),
-	    inserter(P,P.end()));
-
-  // C
-  set_union(left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
-	    C_l_u1C2.begin(),C_l_u1C2.end(),
-	    set_difference(C1_u1.begin(),C1_u1.end(),
-			   left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
-			   inserter(C,C.end())));
-  // finish E
-  set_difference(C2_u1.begin(),C2_u1.end(),
-		 left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
-		 inserter(E,E.end()));
-		 
-#if 0  
-  printf("---\nSet P is:\n");
-  for (set<RandomVariable*>::iterator i=P.begin();
-       i != P.end(); i++) {
-    RandomVariable* rv = (*i);
-    printf("%s(%d) :",rv->name().c_str(),rv->frame());
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {
-      printf(" %s(%d),",
-	     (*j)->name().c_str(),(*j)->frame());
-
-    }
-    printf("\n");
-  }
-
-  printf("---\nSet C is:\n");
-  for (set<RandomVariable*>::iterator i=C.begin();
-       i != C.end(); i++) {
-    RandomVariable* rv = (*i);
-    printf("%s(%d) :",rv->name().c_str(),rv->frame());
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {
-      printf(" %s(%d),",
-	     (*j)->name().c_str(),(*j)->frame());
-
-    }
-    printf("\n");
-  }
-
-
-  printf("---\nSet E is:\n");
-  for (set<RandomVariable*>::iterator i=E.begin();
-       i != E.end(); i++) {
-    RandomVariable* rv = (*i);
-    printf("%s(%d) :",rv->name().c_str(),rv->frame());
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {
-      printf(" %s(%d),",
-	     (*j)->name().c_str(),(*j)->frame());
-
-    }
-    printf("\n");
-  }
-#endif
-
-  clone(P,Pc);
-  clone(C,Cc);
-  clone(E,Ec);
-
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * GMTemplate::findBestRightInterface()
- *   just like findBestLeftInterface() but looks for the right interface.
- *   NOTE: If this routine gets updated, so should findBestLeftInterface()
- *
- * Preconditions:
- *   Original graph *must* be unrolled 2 times for this to work.
- *
- * Postconditions:
- *
- * Side Effects:
- *
- *
- * Results:
- *    Put best right interface from C2 into C_r
- *    and place any additional variables from C2 to the right of C_r
- *    into 'right_C_r';
- *
- *
- *-----------------------------------------------------------------------
- */
-void
-GMTemplate::findBestRightInterface(const set<RandomVariable*> &C1,
-				   const set<RandomVariable*> &C2,
-				   const set<RandomVariable*> &C3,
-
-
-
-				   set<RandomVariable*> &right_C_r,
-				   set<RandomVariable*> &C_r,
-				   const vector<InterfaceHeuristic>& fh_v,
-				   const bool recurse)
-{
-  const int debug = 1;
-
-  // right interface
-  C_r.clear();
-
-  // First, construct the basic right interface (i.e., right
-  // interface of C2).
-
-  // go through through set C3, and pick out all neighbors
-  // of variables in set C3 that live in C2.
-  set<RandomVariable*>::iterator c3_iter;
-  for (c3_iter = C3.begin(); c3_iter != C3.end(); c3_iter ++) {
-    // go through all neighbors of nodes in C1
-    RandomVariable *cur_rv = (*c3_iter);
-    // neighbor iterator
-    set<RandomVariable*>::iterator n_iter;
-    for (n_iter = cur_rv->neighbors.begin();
-	 n_iter != cur_rv->neighbors.end();
-	 n_iter ++) {
-      if (C2.find((*n_iter)) != C2.end()) {
-	// found a neighbor of cur_rv in C2, so
-	// it must be in C_r
-	C_r.insert((*n_iter));
-      }
-    }
-  }
-  right_C_r.clear();
-
-  vector<float> best_score;
-  variableSetScore(fh_v,C_r,best_score);
-
-  if (debug > 0) {
-    printf("Size of basic right interface C_r = %d\n",C_r.size());
-    printf("Score of basic right interface C_r =");
-    for (unsigned i=0;i<best_score.size();i++)
-      printf(" %f ",best_score[i]);
-    printf("\n");
-    printf("Size of right_C_r = %d\n",right_C_r.size());
-    {
-      printf("Right interface nodes include:");
-      set<RandomVariable*>::iterator i;    
-      for (i=C_r.begin();i!=C_r.end();i++) {
-	printf(" %s(%d)",
-	       (*i)->name().c_str(),
-	       (*i)->frame());
-	     
-      }
-      printf("\n");
-    }
-  }
-
-
-  // start recursion to find the truly best interface.
-  if (recurse) {
-    // best ones found so far
-    set<RandomVariable*> best_right_C_r = right_C_r;
-    set<RandomVariable*> best_C_r = C_r;
-    set< set<RandomVariable*> > setset;
-
-    findBestRightInterface(right_C_r,
-			   C_r,
-			   C2,
-			   C1,
-			   setset,
-			   best_right_C_r,
-			   best_C_r,
-			   best_score,fh_v);
-
-    if (debug > 0) {
-      printf("Size of best right interface = %d\n",best_C_r.size());
-      printf("Score of best right interface =");
-      for (unsigned i=0;i<best_score.size();i++)
-	printf(" %f ",best_score[i]);
-      printf("\n");
-      printf("Size of best_right_C_r = %d\n",best_right_C_r.size());
-      {
-	printf("Best right interface nodes include:");
-	set<RandomVariable*>::iterator i;    
-	for (i=best_C_r.begin();i!=best_C_r.end();i++) {
-	  printf(" %s(%d)",
-		 (*i)->name().c_str(),
-		 (*i)->frame());
-	}
-	printf("\n");
-
-      }
-    }
-
-    right_C_r = best_right_C_r;
-    C_r = best_C_r;
-  }
-
-}
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * GMTemplate::findBestRightInterface()
- *    recursive helper function for the first call findBestRightInterface()
- *    See that routine for documentation.
- *
- * Preconditions:
- *
- * Postconditions:
- *
- * Side Effects:
- *
- * Results:
- *
- *-----------------------------------------------------------------------
- */
-void
-GMTemplate::
-findBestRightInterface(const set<RandomVariable*> &right_C_r,
-		       const set<RandomVariable*> &C_r,
-		       const set<RandomVariable*> &C2,
-		       const set<RandomVariable*> &C1,
-		       set< set<RandomVariable*> >& setset,
-		       set<RandomVariable*> &best_right_C_r,
-		       set<RandomVariable*> &best_C_r,
-		       vector<float>& best_score,
-		       const vector<InterfaceHeuristic>& fh_v)
-{
-  set<RandomVariable*>::iterator v;  // vertex
-  // consider all v in the current C_r as candidates
-  // to be moved right.
-  for (v = C_r.begin(); v != C_r.end(); v ++) {
-
-    // if v has neighbors in C1
-    // next;
-    // do a set intersection.
-    set<RandomVariable*> res;
-    set_intersection((*v)->neighbors.begin(),
-		     (*v)->neighbors.end(),
-		     C1.begin(),C1.end(),
-		     inserter(res, res.end()));
-    if (res.size() != 0)
-      continue;
-
-    // take v from C_r and place it in right_C_r
-    set<RandomVariable*> next_right_C_r = right_C_r;
-    next_right_C_r.insert((*v));
-
-    // and add all neighbors of v that are 
-    // in C2\next_right_C_r to next_C_r
-    set<RandomVariable*> next_C_r;
-    set<RandomVariable*> tmp;
-    set_intersection((*v)->neighbors.begin(),
-		     (*v)->neighbors.end(),
-		     C2.begin(),C2.end(),
-		     inserter(tmp,tmp.end()));
-    res.clear();    
-    set_difference(tmp.begin(),tmp.end(),
-		   next_right_C_r.begin(),next_right_C_r.end(),
-		   inserter(res,res.end()));
-
-    set_union(res.begin(),res.end(),
-	      C_r.begin(),C_r.end(),
-	      inserter(next_C_r,next_C_r.end()));
-    next_C_r.erase((*v));
-
-    if (setset.find(next_C_r) != setset.end())
-      continue; // check if memoized, and if so, no need to go further.
-
-    // memoize
-    setset.insert(next_C_r);
-
-    vector<float> next_score;
-    variableSetScore(fh_v,next_C_r,next_score);
-    // check size of candiate interface, and keep a copy of
-    // it if it is less then the one we have seen so far.
-    if (next_score < best_score) {
-      best_right_C_r = next_right_C_r;
-      best_C_r = next_C_r;
-      best_score = next_score;
-    } 
-
-    findBestLeftInterface(next_right_C_r,
-			  next_C_r,
-			  C2,C1,setset,
-			  best_right_C_r,best_C_r,best_score,
-			  fh_v);
-
-  }
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * GMTemplate::findRightInterfacePartitions()
- *   Create the three partitions and triangulate them. This
- *   routine is essentialy the left-interface specific portion
- *   of routine triangulatePartitions(). See that routine
- *   for more documentation.
- *
- * Preconditions:
- *
- * Postconditions:
- *
- * Side Effects:
- *
- * Results:
- *
- *
- *-----------------------------------------------------------------------
- */
-void
-GMTemplate::
-findRightInterfacePartitions(
- // input variables
- const set<RandomVariable*>& P_u1,
- const set<RandomVariable*>& C1_u1,
- const set<RandomVariable*>& C2_u1,
- const set<RandomVariable*>& E_u1,
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
- const set<RandomVariable*>& right_C_r_u2C2,
- const set<RandomVariable*>& C_r_u2C2,
- // output variables
- set<RandomVariable*>& Pc,
- set<RandomVariable*>& Cc,
- set<RandomVariable*>& Ec
-)
-{
-
-  // now we need to make a bunch of sets to be unioned
-  // together to get the partitions.
-  set<RandomVariable*> C_r_u1C1;
-  set<RandomVariable*> C_r_u1C2;
-  for (set<RandomVariable*>::iterator i = C_r_u2C2.begin();
-       i!= C_r_u2C2.end(); i++) {
-
-    C_r_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    C_r_u1C2.insert(C2_u2_to_C2_u1[(*i)]);					  
-  }
-
-  // These (C_r_u1C1 and C_r_u1C2) are the interfaces which are forced
-  // to be complete (i.e., part of a maxclique).
-  // TODO: these next steps will ruin the clique_size = 2 property
-  //     of the 'snake' structure. The todo is to get this working 
-  //     with that (and similar) structures.
-  /*
-   *     idea: make complete components in C_r *only* if they
-   *           are connected via nodes/edges within either (P + left_C_r)
-   *           or preceeding C.
-   *           What we will then have is a collection of cliques for 
-   *           the interface(s). In this case, we glue together
-   *           the corresponding sets of cliques. Right interface
-   *           algorithm should be similar (and use E rather than P).
-   *           But might both left and right interface need to be used in the
-   *           same repeated chunk in this case to get clique_size=2???
-   *          
-   */
-  makeComplete(C_r_u1C1);
-  makeComplete(C_r_u1C2);
-
-  set<RandomVariable*> right_C_r_u1C1;
-  set<RandomVariable*> right_C_r_u1C2;
-  for (set<RandomVariable*>::iterator i = right_C_r_u2C2.begin();
-       i != right_C_r_u2C2.end(); i++) {
-
-    right_C_r_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    right_C_r_u1C2.insert(C2_u2_to_C2_u1[(*i)]);					  
-  }
-  
-  // finally, create the modified sets P, C, and E
-  // where P = modified prologue
-  // where C = modified chunk to repeat
-  // where E = modified epilogue to repeat
-  // which are to be triangulated separately.
-  //  P = P' + C1'\C1'(right_C_r)
-  //  C = C1'(C_r) + C1'(right_C_r) + C2'\C2'(right_C_r)
-  //  E = C2'(C_r) + C2'(right_C_l) + E'
-
-
-  set<RandomVariable*> P = P_u1;
-  set<RandomVariable*> C;
-  set<RandomVariable*> E = E_u1;
-
-  // Finish E
-  set_union(right_C_r_u1C2.begin(),right_C_r_u1C2.end(),
-	    C_r_u1C2.begin(),C_r_u1C2.end(),
-	    inserter(E,E.end()));
-
-  // C
-  set_union(right_C_r_u1C1.begin(),right_C_r_u1C1.end(),
-	    C_r_u1C1.begin(),C_r_u1C1.end(),
-	    set_difference(C2_u1.begin(),C2_u1.end(),
-			   right_C_r_u1C2.begin(),right_C_r_u1C2.end(),
-			   inserter(C,C.end())));
-  // finish P
-  set_difference(C1_u1.begin(),C1_u1.end(),
-		 right_C_r_u1C1.begin(),right_C_r_u1C1.end(),
-		 inserter(P,P.end()));
-		 
-
-#if 0
-  printf("---\nSet P is:\n");
-  for (set<RandomVariable*>::iterator i=P.begin();
-       i != P.end(); i++) {
-    RandomVariable* rv = (*i);
-    printf("%s(%d) :",rv->name().c_str(),rv->frame());
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {
-      printf(" %s(%d),",
-	     (*j)->name().c_str(),(*j)->frame());
-
-    }
-    printf("\n");
-  }
-
-  printf("---\nSet C is:\n");
-  for (set<RandomVariable*>::iterator i=C.begin();
-       i != C.end(); i++) {
-    RandomVariable* rv = (*i);
-    printf("%s(%d) :",rv->name().c_str(),rv->frame());
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {
-      printf(" %s(%d),",
-	     (*j)->name().c_str(),(*j)->frame());
-
-    }
-    printf("\n");
-  }
-
-
-  printf("---\nSet E is:\n");
-  for (set<RandomVariable*>::iterator i=E.begin();
-       i != E.end(); i++) {
-    RandomVariable* rv = (*i);
-    printf("%s(%d) :",rv->name().c_str(),rv->frame());
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {
-      printf(" %s(%d),",
-	     (*j)->name().c_str(),(*j)->frame());
-
-    }
-    printf("\n");
-  }
-#endif
-
-  clone(P,Pc);
-  clone(C,Cc);
-  clone(E,Ec);
-
-}
 
 
 
@@ -2908,14 +2214,14 @@ GMTemplate::findBestInterface(
 		 best_score);
 
   if (debug > 0) {
-    printf("Size of basic left interface C_l = %d\n",C_l.size());
-    printf("Score of basic left interface C_l =");
+    printf("Size of basic interface C_l = %d\n",C_l.size());
+    printf("Score of basic interface C_l =");
     for (unsigned i=0;i<best_score.size();i++)
       printf(" %f ",best_score[i]);
     printf("\n");
-    printf("Size of left_C_l = %d\n",left_C_l.size());
+    printf("Size of remainder_C_l = %d\n",left_C_l.size());
     {
-      printf("Left interface nodes include:");
+      printf("Interface nodes include:");
       set<RandomVariable*>::iterator i;    
       for (i=C_l.begin();i!=C_l.end();i++) {
 	printf(" %s(%d)",
@@ -3112,6 +2418,7 @@ findBestInterface(
  * Postconditions:
  *
  * Side Effects:
+ *   Makes the interfaces in C1_u1 and C2_u1 complete.
  *
  * Results:
  *
@@ -3146,30 +2453,8 @@ findInterfacePartitions(
        i!= C_l_u2C2.end(); i++) {
 
     C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);					  
+    C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
   }
-
-  // These (C_l_u1C1 and C_l_u1C2) are the interfaces which are forced
-  // to be complete (i.e., part of a maxclique).
-  // TODO: these next steps will ruin the clique_size = 2 property
-  //     of the 'snake' structure. The todo is to get this working 
-  //     with that (and similar) structures.
-  /*
-   *     idea: make complete components in C_l *only* if they
-   *           are connected via nodes/edges within either (P + left_C_l)
-   *           or preceeding C.
-   *           What we will then have is a collection of cliques for 
-   *           the interface(s). In this case, we glue together
-   *           the corresponding sets of cliques. Right interface
-   *           algorithm should be similar (and use E rather than P).
-   *           But might both left and right interface need to be used in the
-   *           same repeated chunk in this case to get clique_size=2???
-   *      alternatively (and easier): for snake, just use the unconstrained
-   *           triangulation method (which works perfectly for snake).
-   *          
-   */
-  makeComplete(C_l_u1C1);
-  makeComplete(C_l_u1C2);
 
   set<RandomVariable*> left_C_l_u1C1;
   set<RandomVariable*> left_C_l_u1C2;
@@ -3177,17 +2462,23 @@ findInterfacePartitions(
        i != left_C_l_u2C2.end(); i++) {
 
     left_C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    left_C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);					  
+    left_C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
   }
   
-  // finally, create the modified sets P, C, and E
-  // where P = modified prologue
-  // where C = modified chunk to repeat
-  // where E = modified epilogue to repeat
-  // which are to be triangulated separately.
-  //  P = P' + C1'(left_C_l) + C1'(C_l)
-  //  C = C1'\C1'(left_C_l) + C2'(left_C_l) + C2'(C_l)
-  //  E = C2'\C2'(left_C_l) + E'
+  // Finally, create the modified sets P, C, and E
+  //   where P = modified prologue
+  //   where C = modified chunk to repeat
+  //   where E = modified epilogue to repeat.
+  // which are to be triangulated separately. 
+  // For the *left* interface, the modified sets are defined
+  // as follows:
+  //    P = P' + C1'(left_C_l) + C1'(C_l)
+  //    C = C1'\C1'(left_C_l) + C2'(left_C_l) + C2'(C_l)
+  //    E = C2'\C2'(left_C_l) + E'
+  // and the symmetric definitions apply for the right interface.
+  // We use the left interface definitions in this code and
+  // assume the caller calles with inverted arguments
+  // to get the right interface behavior.
 
   set<RandomVariable*> P = P_u1;
   set<RandomVariable*> C;
@@ -3198,20 +2489,64 @@ findInterfacePartitions(
 	    C_l_u1C1.begin(),C_l_u1C1.end(),
 	    inserter(P,P.end()));
 
-  // C
+  // Finish C
   set_union(left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
 	    C_l_u1C2.begin(),C_l_u1C2.end(),
 	    set_difference(C1_u1.begin(),C1_u1.end(),
 			   left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
 			   inserter(C,C.end())));
-  // finish E
+  // Finish E
   set_difference(C2_u1.begin(),C2_u1.end(),
 		 left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
 		 inserter(E,E.end()));
 
-  clone(P,Pc);
-  clone(C,Cc);
-  clone(E,Ec);
+
+  // These (C_l_u1C1 and C_l_u1C2) are the interfaces which are forced
+  // to be complete (i.e., part of a maxclique). This might take
+  // the form of:
+  //
+  //    makeComplete(C_l_u1C1);
+  //    makeComplete(C_l_u1C2);
+  //
+  // but we make them clique only after cloning so that
+  // this routine can be called again.
+
+  map < RandomVariable*, RandomVariable* > in_to_out;
+  set < RandomVariable* > tmp;
+
+  clone(P,Pc,in_to_out);
+  tmp.clear();
+  for (set<RandomVariable*>::iterator i = C_l_u1C1.begin();
+       i != C_l_u1C1.begin(); i++) {
+    tmp.insert(in_to_out[(*i)]);
+  }
+  makeComplete(tmp);
+
+
+  clone(C,Cc,in_to_out);
+  tmp.clear();
+  for (set<RandomVariable*>::iterator i = C_l_u1C1.begin();
+       i != C_l_u1C1.begin(); i++) {
+    tmp.insert(in_to_out[(*i)]);
+  }
+  makeComplete(tmp);
+  tmp.clear();
+  for (set<RandomVariable*>::iterator i = C_l_u1C2.begin();
+       i != C_l_u1C2.begin(); i++) {
+    tmp.insert(in_to_out[(*i)]);
+  }
+  makeComplete(tmp);
+
+
+  clone(E,Ec,in_to_out);
+  tmp.clear();
+  for (set<RandomVariable*>::iterator i = C_l_u1C2.begin();
+       i != C_l_u1C2.begin(); i++) {
+    tmp.insert(in_to_out[(*i)]);
+  }
+  makeComplete(tmp);
+
+
 
 }
 
