@@ -190,3 +190,5 @@ X add VCID everywhere.
    sparse CPTs should use dense CPTs somehow.
 
 - write C++ program to print number of free parameters for a system.
+
+- add simple multiplication onto decision tree leafs.
