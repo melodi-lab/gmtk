@@ -1716,5 +1716,7 @@ Fri Mar 26 14:17:15 2004
 Fri Mar 26 17:38:32 2004
   - script to convert from an easy rep. of a SparseCPT into single GMTK sparseCPT in one file.
 
-
+Sat Mar 27 15:14:17 2004
+  - create a .gmtktriangulaterc file for common triangulation options.
+    In addition, have an ENV variable for this purpose.
 
