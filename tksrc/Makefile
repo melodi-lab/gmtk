@@ -27,6 +27,7 @@ CXX = /g/rcs/sw/bin/g++
 CC = /g/rcs/sw/bin/gcc
 LD = $(CXX)
 AR = ar
+LEX = flex
 RANLIB = :
 INSTALL = /usr/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 555
@@ -49,7 +50,7 @@ prefix = .
 exec_prefix = .
 install_prefix = .
 
-libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO
+libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO -L/g/rcs/sw/lib
 includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO
 docdir = $(prefix)/man/man1
 
@@ -90,7 +91,7 @@ all:
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_PackedSparseRealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_GaussianCommon.o
+objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_PackedSparseRealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_GaussianCommon.o GMTK_GMParms.o
 
 
 #----------------------------------------------------------------------------
@@ -123,11 +124,15 @@ GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc $(objs) $(LIBS)
 
 
 lex.yy: lex.yy.cc
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ lex.yy.cc $(objs) $(LIBS) -lfl
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ lex.yy.cc -lfl
 
 lex.yy.cc: GMTK_FileTokenizer.lex
-	lex GMTK_FileTokenizer.lex
+	${LEX} GMTK_FileTokenizer.lex
 	mv lex.yy.c lex.yy.cc	
+
+testFileParser: GMTK_FileParser.cc GMTK_FileParser.h lex.yy.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_FileParser.cc lex.yy.o $(objs) $(LIBS) -lfl
+
 
 #----------------------------------------------------------------------------
 # Gather stuff together.
