@@ -27,7 +27,7 @@ Member Variables, member functions.
        foo  // so if it is a single word, it is not capitalized
 
 
-Typedefs
+Typedefs & Enums with names
  Same as classes above.
 
 Member Classes/Structs
