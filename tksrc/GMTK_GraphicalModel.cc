@@ -415,6 +415,138 @@ GraphicalModel::topologicalSortRecurseRandom(const set<RandomVariable*>& sortSet
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * GraphicalModel::topologicalSortContObsFirst
+ *      Another topological sort, just like the ones above, but this
+ *      one constrains the sort to be determined with respect only to 
+ *      those variables that are in the given sortSet argument. I.e.,
+ *      its as if each variables children are considered to be its
+ *      real children intersected with sortSet (so some children are
+ *      never considered in the sort, nor are they traversed). 
+ *
+ *      This version also produces a sort but this one produces sorts
+ *      where continuous observations are as early in the sort as
+ *      possible. This is thus useful to sort nodes in a clique
+ *      to avoid calling the cont. Gaussian more often than necessary.
+ *      
+ *
+ * Preconditions:
+ *     inputVarLIst must contain a set of random variables with
+ *     the variables appropriately set up.
+ *
+ * Postconditions:
+ *     ouputVarList contains the list of variables in order.
+ *
+ * Side Effects:
+ *     changes the call by reference variable outputVarList. Destroys
+ *     what is there before if anything. Changes the tag member of each
+ *     random variable.
+ *
+ * Results:
+ *     returns true if everything works, return false if the
+ *     graph has a directed loop.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool
+GraphicalModel::topologicalSortContObsFirst(const set<RandomVariable*>& inputVarList,
+					    const set<RandomVariable*>& sortSet,
+					    vector<RandomVariable*>& outputVarList)
+
+{
+  outputVarList.clear();
+  outputVarList.resize(inputVarList.size());
+  set<RandomVariable*>::iterator it;
+  const   set<RandomVariable*>::iterator it_end = inputVarList.end();
+
+  sArray < unsigned > permutation(inputVarList.size());
+  vector< RandomVariable*> rv_vec(inputVarList.size());
+  unsigned i = 0;
+  for (it=inputVarList.begin();it != it_end;it++) {
+    RandomVariable* rv = (*it);
+    rv->tag = 0;
+    permutation.ptr[i] = i;
+    rv_vec[i] = rv;
+    i++;
+  }
+  rnd.rpermute(permutation.ptr,inputVarList.size());
+  unsigned position=inputVarList.size();
+  for (i=0;i<inputVarList.size();i++) {
+    RandomVariable* rv = rv_vec[permutation.ptr[i]];
+    if (rv->tag == 0)
+      if (!topologicalSortRecurseRandom(sortSet,
+					outputVarList,
+					rv,
+					position))
+	return false;
+  }
+  assert (position == 0);
+  return true;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GraphicalModel::topologicalSortRecurseRandom
+ *      Support routine for the topological Sort routine that
+ *      uses the sortSet argument and is random.
+ *
+ * Preconditions:
+ *      must only be called from topological sort with the sortSet argument.
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+ *     Position variable is modified
+ *
+ * Results:
+ *     returns true if everything works, return false if the
+ *     graph has a directed loop.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool
+GraphicalModel::topologicalSortRecurseContObsFirst(const set<RandomVariable*>& sortSet,
+						   vector<RandomVariable*>& outputVarList,
+						   RandomVariable* node,
+						   unsigned& position)
+{
+  node->tag = 1;
+
+  const unsigned nChildren = node->allPossibleChildren.size();
+  sArray <unsigned > permutation(nChildren);
+  for (unsigned i=0;i<nChildren;i++) {
+    permutation.ptr[i] = i;
+  }
+  rnd.rpermute(permutation.ptr,nChildren);
+  for (unsigned i=0;i<nChildren;i++) {
+    RandomVariable*rv = node->allPossibleChildren[permutation.ptr[i]];
+    // don't bother with children not in sort set.
+    if (sortSet.find(rv) == sortSet.end())
+      continue;
+    if (rv->tag == 0) {
+      bool res = topologicalSortRecurseRandom(sortSet,outputVarList,rv,position);
+      if (!res)
+	// directed graph has a loop
+	return false;
+    } else if (rv->tag == 1)
+      // directed graph has a loop
+      return false;
+    else
+      ;
+      // tag == 2, meaning we've gone down this path before and need not
+      // do it again.
+  }
+  node->tag = 2; // done with this node
+  outputVarList[--position] = node;
+  return true;
+}
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////
 //        Test Driver
 ////////////////////////////////////////////////////////////////////
