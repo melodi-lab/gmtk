@@ -1002,3 +1002,48 @@ Sat Mar 15 22:31:31 2003
     not the new mean which is accumulated, computed, and then discarded.
     The no-train thing should be re-thought out.
 
+Sat Mar 15 22:33:27 2003
+ - suggestions from Chris Bartels
+	Jeff,
+	
+	You had mentioned that I should keep track of ideas I had to help with
+	GMTK debugging and usability as I used it.  Here is the list.
+	
+	Debugging Support:
+
+	Display the values for observation variables for the first several frames.
+	The user can use this to verify that they are indexing into their data
+	files correctly and have the byte swapping set properly.
+	
+	Allow the user to specify the values of the random variables in some sort
+	of text file, then GMTK can display the values of each of the
+	deterministic variables based on this.  For example, with the aurora
+	based graphs the user would supply a text file of state transitions which
+	would just look something like '0 0 1 0 0 1 0 0 1' and GMTK would print
+	out 9 frames of variables, and because the model can't complete in just 9
+	frames give some sort of error message saying so.
+	
+	Start an FAQ for common problems such as the byte swapping and the
+	'skipping example due to zero probability' that I was seeing.
+	
+	Bugs:
+	
+	In one of my decision tree files I used some #define constants but this
+	did not work nor did it give me an error message.
+	
+	When I was using the decision trees with the #define constants I was
+	sometimes getting core dumps rather than an error message and an elegant
+	exit.  When I didn't get the core dump it looked like my current state
+	value which controlled the DPMFs I was training only was taking on one
+	value.
+	
+	Usability suggestions:
+
+	Give it the ability to generate initial Gaussian parameters like it
+	currently can do with DPMFs.
+	
+	I nice GUI with integrated editing and debugging features.
+
+
+
+
