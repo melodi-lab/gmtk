@@ -26,6 +26,21 @@
 #include <numeric>
 #include "GMTK_RandomVariable.h"
 
+class VecCompare
+{
+  public:
+    bool operator () (const vector<RandomVariable::DiscreteVariableType> &a,
+                      const vector<RandomVariable::DiscreteVariableType> &b)
+    const 
+    {if (a.size() < b.size()) return true;
+     if (a.size() > b.size()) return false;
+     for (unsigned i=0; i<a.size(); i++) 
+         if (a[i] < b[i]) return true;
+         else if (a[i] > b[i]) return false;
+     return false;
+    }
+};
+
 struct CliqueValue
 {
     // A clique has a bunch of possible values, depending on the possible
@@ -48,7 +63,8 @@ struct CliqueValue
     // In a dynamic network, the same set of values will occur over and
     // over again in different cliques. To avoid storing them over and over
     // again, keep a global pool. Also, this can persist across examples 
-    static set<vector<RandomVariable::DiscreteVariableType> > global_val_set; 
+    static set<vector<RandomVariable::DiscreteVariableType>, VecCompare> 
+        global_val_set; 
 };
 
 struct Clique
