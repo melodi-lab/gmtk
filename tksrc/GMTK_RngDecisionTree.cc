@@ -41,6 +41,7 @@
 
 VCID("$Header$");
 
+
 /////////////////////////////////////////////////////////////////////
 // File extension for compiled DT files 
 /////////////////////////////////////////////////////////////////////
@@ -147,16 +148,62 @@ RngDecisionTree::~RngDecisionTree()
 void
 RngDecisionTree::destructorRecurse(RngDecisionTree::Node* node)
 {
-  if (node->nodeType != NonLeafNode) {
-    // do nothing since this is a leaf
-  } else {
-    for (unsigned i=0;i<node->nonLeafNode.children.size();i++) {
-      destructorRecurse(node->nonLeafNode.children[i]);
-      delete node->nonLeafNode.children[i];
-      if (i<node->nonLeafNode.children.size()-1)
-	delete node->nonLeafNode.rngs[i];
+  if (node == NULL)
+    return;
+
+
+  switch (node->nodeType) {
+  case NonLeafNodeArray: 
+    // printf("deleting NonLeafNodeArray\n");
+    for (unsigned i=0;i<node->nln_a().children.size(); i++) {
+      destructorRecurse(&(node->nln_a().children[i]));
     }
+    node->nln_a().children.clear();
+    // node->nln_a().children.~sArray < Node >();
+    node->nln_a().~NonLeafNodeArrayStruct();
+    break;
+
+  case NonLeafNodeHash:
+    // printf("deleting NonLeafNodeHash\n");
+    for (unsigned i=0;i<node->nln_h().children.size(); i++) {
+      destructorRecurse(&(node->nln_h().children[i]));
+    }
+    node->nln_h().children.clear();      
+    // try to call destructors
+    // node->nln_h().children.~sArray < Node >();
+    // node->nln_h().nodeMapper.~shash_map < unsigned, Node* >();
+    node->nln_h().~NonLeafNodeHashStruct();
+    break;
+	
+  case NonLeafNodeRngs:
+    // printf("deleting NonLeafNodeRngs\n");
+    for (unsigned i=0;i<node->nln_r().children.size(); i++) {
+      destructorRecurse(&(node->nln_r().children[i].nd));
+    }
+    destructorRecurse(node->nln_r().def);
+    node->nln_r().children.clear();
+    delete node->nln_r().def;
+    // node->nln_r().children.~sArray < RangeNode >();
+    node->nln_r().~NonLeafNodeRngsStruct();
+    break;
+
+  case LeafNodeVal:
+    // printf("deleting LeafNodeVal\n");
+    // nothing to delete here
+    node->ln_v().~LeafNodeValStruct();
+    break;
+
+  case LeafNodeEquation:
+    // printf("deleting LeafNodeEquation\n");
+    // make sure anything in an equation gets deleted
+    node->ln_e().~LeafNodeEquationStruct();
+    break;
+
+  default:
+    error("INTERNAL ERROR: unknown DT node type.\n");
+    break;
   }
+
 }
 
 
@@ -226,19 +273,13 @@ RngDecisionTree::read(iDataStreamFile& is)
       name().c_str(), is.fileName(),is.lineNo());
     }
 
-    rightMostLeaf = NULL;
-    root = readRecurse(is,rightMostLeaf);
-
-    // set up the 'right' pointers in the doubly 
-    // linked lists.
-    Node *tmp = rightMostLeaf;
-    Node *rightLeaf = NULL;
-    while (tmp != NULL) {
-      tmp->leafNode.nextLeaf = rightLeaf;
-      rightLeaf = tmp;
-      tmp = tmp->leafNode.prevLeaf;
+    if (root != NULL) {
+      destructorRecurse(root);
+      delete root;
+      root = NULL;
     }
-    leftMostLeaf = rightLeaf;
+    root = new Node;
+    readRecurse(is,*root);
   }
 
 }
@@ -374,9 +415,8 @@ RngDecisionTree::seek(
  *
  *-----------------------------------------------------------------------
  */
-RngDecisionTree::Node* 
-RngDecisionTree::readRecurse(iDataStreamFile& is,
-			     Node* &prevLeaf)
+void
+RngDecisionTree::readRecurse(iDataStreamFile& is,Node& node)
 {
   int curFeat;
   is.read(curFeat,"Can't read DecisionTree's feature value");
@@ -387,20 +427,17 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
     error("ERROR: DT '%s', file '%s' line %d, feature number (=%d) must be < numFeatures (=%d)",
 	  name().c_str(),is.fileName(),is.lineNo(),curFeat,
 	  _numFeatures);
-  Node *node = new Node;
 
   if (curFeat == -1) {
+    //////////////////////////////////////////////////////////////////////
+    // Definitely is a leaf node, either value or equation.
+    //////////////////////////////////////////////////////////////////////
 
     string leafNodeVal;
     int    val;
 
     //////////////////////////////////////////////////////////////////////
-    // This is a leaf node
-    //////////////////////////////////////////////////////////////////////
-    node->leafNode.value = 0;
-
-    //////////////////////////////////////////////////////////////////////
-    // Skip leading spaces, then read until a { or a space is found 
+    // Skip leading spaces, then read until a '{' or a space is found 
     //////////////////////////////////////////////////////////////////////
     is.readStringUntil(leafNodeVal, '{', true,
         "Can't read RngDecisionTree's '{' character");
@@ -411,15 +448,16 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
     if (leafNodeVal.size() == 0) {
 
       //////////////////////////////////////////////////////////////////////
-      // Read until another " is found (will not stop at spaces) 
+      // Read until '}' is found (will not stop at spaces) 
       //////////////////////////////////////////////////////////////////////
       is.readStringUntil(leafNodeVal, '}', false, 
         "Can't read RngDecisionTree's '}' character");
 
-      node->nodeType = LeafNodeFormula;
+      node.nodeType = LeafNodeEquation;
+      new (&node.ln_e()) LeafNodeEquationStruct();
       
       try {
-        node->leafNode.equation.parseFormula(leafNodeVal);
+	node.ln_e().equation.parseFormula(leafNodeVal);
       }
       catch( string error_message ){
         error("ERROR: In file '%s' line %d, DT '%s', equation '%s':  %s", 
@@ -433,137 +471,356 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
       }
     }
     //////////////////////////////////////////////////////////////////////
-    // Check for integer 
+    // Check for integer
     //////////////////////////////////////////////////////////////////////
     else if (strIsInt(leafNodeVal.c_str(),&val)) {
-      node->nodeType = LeafNodeVal;
-      node->leafNode.value = val;
-      node->leafNode.leafNodeString = leafNodeVal;
-    } 
-    //////////////////////////////////////////////////////////////////////
-    // Check for full expand 
-    //////////////////////////////////////////////////////////////////////
-    else if (leafNodeVal == "expand") {
-      node->nodeType = LeafNodeFullExpand;
-      node->leafNode.leafNodeString = leafNodeVal;
+      node.nodeType = LeafNodeVal;
+      new (&node.ln_v()) LeafNodeValStruct();
+      node.ln_v().value = val;
     }
     else {
       error("ERROR: In file '%s' line %d, DT '%s', invalid leaf node value '%s'.",
         is.fileName(), is.lineNo(),name().c_str(), leafNodeVal.c_str() ); 
-    } 
-
-    node->leafNode.prevLeaf = prevLeaf;
-    prevLeaf = node;
-  } 
+    }
+  }
   else {
-    node->nodeType = NonLeafNode;
-    node->nonLeafNode.ftr = (leafNodeValType)curFeat;
-    node->nonLeafNode.ordered = true;
+    //////////////////////////////////////////////////////////////////////
+    // Definitely a non leaf node, either array, hash, or rngs
+    //////////////////////////////////////////////////////////////////////
+
     unsigned numSplits;
     is.read(numSplits,"Can't read DecisionTree's number of splits");
     if (numSplits < 1)
       error("ERROR: DT '%s', file '%s' line %d, can't have < 1 node splits",
 	    name().c_str(),is.fileName(),is.lineNo());
-    if (numSplits > RNG_DECISION_TREE_MAX_ARY)
-      error("ERROR: DT '%s', file '%s' line %d: can't have > %d splits",
-	    name().c_str(),is.fileName(),is.lineNo(),RNG_DECISION_TREE_MAX_ARY);
-    node->nonLeafNode.children.resize(numSplits);
-    // rngs is smaller since last string is always the default catch-all.
-    node->nonLeafNode.rngs.resize(numSplits-1);
-    for (unsigned i=0;i<numSplits;i++) {
-      char *str;
-      is.read(str,"Can't read DecisionTree's integer set");
-      if (i==(numSplits-1)) {
-	if (strcmp(RNG_DECISION_TREE_DEF_STR,str))
-	  error("ERROR: DT '%s', file '%s' line %d: expecting default str (%s) got (%s)",
-		name().c_str(),is.fileName(),is.lineNo(),RNG_DECISION_TREE_DEF_STR,str);
+
+    // we need to start reading the splits before we can determine what type
+    // of node this is. Here are the cases.
+    //
+    // Array: if the splits are a list of consecutive integers of the form:
+    //        3 4 5 6 7 8
+    // or if it is a range of the form 
+    //        3 ... 100
+    // either of the appropriate length, then this can be handled by an array
+    // of nodes, so we use the array form.
+
+    // Hash: if the splits are a list of non-consequtive integers, then
+    // a hash table is used.
+
+    // Lastly, if it is a list of BP_Rngs, then the Rng array (the slowest
+    // but most general of the three) is used.
+
+    // in all cases, we end with the string 'default'
+
+    // mode/state variable. 
+    // 0 for array sequence of integers
+    // 1 for array range [ start ... end ]
+    // 2 for hash, and
+    // 3 for ranges
+    unsigned mode = 0;
+    int firstUnsigned=~0x0;
+    int previousUnsigned=~0x0;
+
+    // keep a temporary copy of the split int values in case this is
+    // mode 0, 1, or 2 since if we move to 3, we can't allocate 3's
+    // data structures until we've deleted 2's.
+    sArray < unsigned > splitIntVals(numSplits-1);
+
+    // read (numSplits-1) ints or ranges.
+    string token;
+    for (unsigned i=0; (i<(numSplits-1)) || (mode == 1) ;i++) {
+
+      is.read(token,"Can't read DecisionTree's integer value/range");
+
+      if (mode == 0) {
+	// we are still in array mode, search for an int.
+
+	int tokenLen;
+	int tokenVal;
+	if (strIsInt(token.c_str(),&tokenVal,&tokenLen) && (tokenLen == (int)token.size())) {
+	  if (tokenVal < 0) 
+	    error("ERROR: DT '%s', file '%s' line %d: got negative int (%d) but must be non-negative",
+		  name().c_str(),is.fileName(),is.lineNo(),tokenVal);
+	  // then we got a valid unsigned.
+	  if (i == 0) {
+	    firstUnsigned = tokenVal;
+	  } else {
+	    // we've seen an int before.
+	    if (tokenVal != previousUnsigned + 1) {
+	      // then we've got a non-consecutive int, we need to
+	      // move into hash mode (and hope we stay there).
+
+	      // nothing to free because we haven't yet
+	      // set up the array case.
+
+	      // set up hash table and change mode.
+	      mode = 2;
+	      node.nodeType = NonLeafNodeHash;
+	      new (& node.nln_h() ) NonLeafNodeHashStruct(numSplits-1);
+	      node.nln_h().ftr = (leafNodeValType)curFeat;
+	      node.nln_h().children.resize(numSplits);
+	      // new (& (node.nln_h().children) ) sArray < Node >(numSplits);
+	      // new (& (node.nln_h().nodeMapper) ) shash_map < unsigned, Node * > ();
+
+	      // now insert all the integers we've got so far, all of which
+	      // are consecutive except for this last one.
+	      for (unsigned j=0;j<i;j++) {
+		// since these are consecutive, we need not check the hash found condition.
+		node.nln_h().nodeMapper.insert(firstUnsigned+j,&(node.nln_h().children[j]));
+	      }
+	      // insert the newly found non-consecutive int.
+	      bool foundp;
+	      node.nln_h().nodeMapper.insert(tokenVal,&(node.nln_h().children[i]),foundp);
+	      if (foundp) 
+		error("ERROR: DT '%s', file '%s' line %d: dupilcate integer entry %d",
+		      name().c_str(),is.fileName(),is.lineNo(),tokenVal);
+	    }
+	  }
+	  previousUnsigned = tokenVal;
+	  splitIntVals[i] = tokenVal;
+	} else if (token == "...") {
+	  if (i != 1)
+	    error("ERROR: DT '%s', file '%s' line %d: array range indicateor '...' can only occur at 2nd position between two ints",
+		  name().c_str(),is.fileName(),is.lineNo());
+	  // then this is an int array in "int ... int" form. 
+	  mode = 1;
+	} else {
+	  // then this is perhaps a range, and we've moving from mode
+	  // 0 to mode 3. Need to convert the (consecutive) ints we've
+	  // seen so far into ranges, and move into most general but
+	  // slowest range mode.
+
+	  // Set up range array and change mode.
+	  mode = 3;
+	  node.nodeType = NonLeafNodeRngs;
+	  new (& node.nln_r() ) NonLeafNodeRngsStruct();
+	  node.nln_r().ftr = (leafNodeValType)curFeat;
+	  // assume it is ordered, but we'll need to make sure
+	  // later on.
+	  node.nln_r().ordered = true;
+	  // new (& (node.nln_r().children) ) sArray < RangeNode >(numSplits-1);
+	  node.nln_r().children.resize(numSplits-1);
+	  // allocate one more for the default.
+	  node.nln_r().def = new Node;
+
+	  // now insert all the integers we've got so far, all of which
+	  // are consecutive integers except for this last one which should be a range.
+	  for (unsigned j=0;j<i;j++) {
+	    char buff[1024];
+	    sprintf(buff,"%d",firstUnsigned+j);
+	    // this will die if buff is not a rnage
+	    new (&node.nln_r().children[j].rng) BP_Range(buff,
+							 0,
+							 MAX_BP_RANGE_VALUE);
+	  }
+	  // insert the newly found presumably range spec.
+	  new (&node.nln_r().children[i].rng) BP_Range(token.c_str(),
+						       0,
+						       MAX_BP_RANGE_VALUE);
+
+	}
+      } else if (mode == 1) {
+	// we are in array range mode. We must have already seen an an
+	// "int ..." and we expect an "int default" for this to be
+	// valid. We finish up here.
+
+	int tokenLen;
+	int tokenVal;
+	if (!strIsInt(token.c_str(),&tokenVal,&tokenLen) || (tokenLen != (int)token.size()) || (tokenVal < 0)) {
+	    error("ERROR: DT '%s', file '%s' line %d: expecting non negative int at split position %d, but got '%s'",
+		  name().c_str(),is.fileName(),is.lineNo(),i,token.c_str());
+	}
+
+	// tokenVal - firstUnsigned + 1 + 1 == numSplits
+	if ((unsigned)tokenVal + 2 != numSplits + firstUnsigned) {
+	    error("ERROR: DT '%s', file '%s' line %d: array range '%d ... %d' must be %d long",
+		  name().c_str(),is.fileName(),is.lineNo(),firstUnsigned,tokenVal,numSplits-1);
+	}
+
+	// everything checks out ok. Allocate.
+	node.nodeType = NonLeafNodeArray;
+	new (& node.nln_a() ) NonLeafNodeArrayStruct();
+	node.nln_a().ftr = (leafNodeValType)curFeat;
+	node.nln_a().base = (leafNodeValType)firstUnsigned;
+	node.nln_a().children.resize(numSplits);
+
+	// leave the loop. 
+	goto doneWithSplits;
+
+      } else if (mode == 2) {
+	// we are in hash mode, having not survived array mode in
+	// at least first iteration.
+
+	assert ( i > 0 );
+	int tokenLen;
+	int tokenVal;
+	if (strIsInt(token.c_str(),&tokenVal,&tokenLen) && (tokenLen == (int)token.size())) {
+	  // then we got a valid int.
+	  if (tokenVal < 0) 
+	    error("ERROR: DT '%s', file '%s' line %d: got negative int (%d) but must be non-negative",
+		  name().c_str(),is.fileName(),is.lineNo(),tokenVal);
+
+	  // insert the newly found int token
+	  bool foundp;
+	  node.nln_h().nodeMapper.insert(tokenVal,&(node.nln_h().children[i]),foundp);
+	  if (foundp) 
+	    error("ERROR: DT '%s', file '%s' line %d: dupilcate integer entry %d",
+		  name().c_str(),is.fileName(),is.lineNo(),tokenVal);
+	  splitIntVals[i] = tokenVal;
+	} else {
+	  // need to move to range mode (if we've got a valid range)
+
+	  // then this is perhaps a range. Need to convert
+	  // the ints we've seen so far into ranges, and move into
+	  // most general but slowest range mode. Need to delete
+	  // all existing hash-mode structures as well.  
+
+	  // delete hash mode structures since we came from  hash mode.
+	  // node.nln_h().children.~sArray < Node >();
+	  // node.nln_h().nodeMapper.~shash_map < unsigned, Node * > ();
+	  node.nln_h().~NonLeafNodeHashStruct();
+
+	  // set up range array and change mode.
+	  mode = 3;
+	  node.nodeType = NonLeafNodeRngs;
+	  new (& node.nln_r() ) NonLeafNodeRngsStruct();
+	  node.nln_r().ftr = (leafNodeValType)curFeat;
+	  // assume it is ordered, but we'll need to make sure
+	  // later on.
+	  node.nln_r().ordered = true;
+	  node.nln_r().children.resize(numSplits-1);
+
+	  // allocate one more for the default.
+	  node.nln_r().def = new Node;
+
+	  // now insert all the integers we've got so far, all of which
+	  // are consecutive integers except for this last one which should be a range.
+	  for (unsigned j=0;j<i;j++) {
+	    char buff[1024];
+	    sprintf(buff,"%d",splitIntVals[j]);
+	    // this will die if buff is not a range
+	    new (&node.nln_r().children[j].rng) BP_Range(buff,
+							 0,
+							 MAX_BP_RANGE_VALUE);
+	  }
+	  // insert the newly found presumably range spec.
+	  new (&node.nln_r().children[i].rng) BP_Range(token.c_str(),
+						       0,
+						       MAX_BP_RANGE_VALUE);
+	}
       } else {
-	// note: ideally, we would limit the maximum range
-	// value to be equal to the cardinality of the random
-	// variable here. We can't do that, however, because
-	// the DT is generic, and could be used with multiple
-	// different RVs with different cardinalities.
-	node->nonLeafNode.rngs[i]
-	  = new BP_Range(str,
-			 0,
-			 MAX_BP_RANGE_VALUE);
+	// we are in rngs mode, having not survived either array or hash mode.
+	assert ( mode == 3 );
+
+	// insert the newly found presumably range spec.
+	new (&node.nln_r().children[i].rng) BP_Range(token.c_str(),
+						     0,
+						     MAX_BP_RANGE_VALUE);
+
       }
-      ///////////////////////////////////////////////////////////////
-      // WARNING: We assume here that BP_Range will make
-      // its own copy of the string, so we delete it here.
-      // If the above class changes, we might need to change this code.
-      delete [] str;
-      ///////////////////////////////////////////////////////////////
     }
+  doneWithSplits:
+    if (mode == 0) {
+      // still haven't done this.
+      node.nodeType = NonLeafNodeArray;
+      new (& node.nln_a()) NonLeafNodeArrayStruct();
+      node.nln_a().ftr = (leafNodeValType)curFeat;
+      node.nln_a().base = (leafNodeValType)firstUnsigned;
+      node.nln_a().children.resize(numSplits);
+    }
+    
+    // ranges are ok, now make sure we get default string.
+    is.read(token,"Can't read DecisionTree's 'default'");
+    if (strcmp(RNG_DECISION_TREE_DEF_STR,token.c_str()))
+      error("ERROR: DT '%s', file '%s' line %d: expecting default str (%s) got (%s)",
+	    name().c_str(),is.fileName(),is.lineNo(),RNG_DECISION_TREE_DEF_STR,token.c_str());
 
-    //////////////////////////////////////////////
-    // check for overlap and order errors in the strings
-    // TODO: this is way inefficient, see if it is possible not to do
-    // an N^2 algorithm.
+    // free up the memory since we don't need it any longer.
+    splitIntVals.clear();
 
-    for (unsigned i=0;i<numSplits-1;i++) {
-      for (unsigned j=i+1;j<numSplits-1;j++) {
-	if (node->nonLeafNode.rngs[i]
-	    ->overlapP(node->nonLeafNode.rngs[j]))
-	  error("ERROR: DT '%s', file '%s' line %d: range %d (%s) and %d (%s) have a non-empty intersection.",
-		name().c_str(),is.fileName(),is.lineNo(),
-		i,
-		node->nonLeafNode.rngs[i]->rangeStr(),j,
-		node->nonLeafNode.rngs[j]->rangeStr());
-	
-	////////////////////////////////////////////////////////
-	// this next check is required to ensure there is
-	// an ordering of the ranges, so sorting makes sense
-	// when we do binary search. An unordered list of ranges would, for
-	// example, have things like 1,3,5 and 2,4 where you can't say
-	// that either (1,3,5) < (2,4) nor (2,4) < (1,3,5). In these
-	// cases, we do not sort the lists, and have to resort to linear search
-	// when doing a query.
-	if ( 
-	    (!((*node->nonLeafNode.rngs[i]) < (*node->nonLeafNode.rngs[j])))
-	    &&
-	    (!((*node->nonLeafNode.rngs[j]) < (*node->nonLeafNode.rngs[i])))
-	    ) {
-	  // then it isn't ordered, and we'll have to do linear search
-	  // on a query. 
-	  // 
-	  // TODO: check if it is ordered alread, and if
-	  // so, don't do the sort below.
-	  node->nonLeafNode.ordered = false;
+    if (node.nodeType == NonLeafNodeRngs) {
+
+      //////////////////////////////////////////////
+      // check for overlap and order errors in the strings
+      // TODO: this is way inefficient, see if it is possible not to do
+      // an N^2 algorithm. How? Do own version quicksort that backs out when
+      // it finds a non-comparable entry.
+
+      for (unsigned i=0;i<numSplits-1;i++) {
+	for (unsigned j=i+1;j<numSplits-1;j++) {
+	  if (node.nln_r().children[i].rng.overlapP(node.nln_r().children[j].rng))
+	    error("ERROR: DT '%s', file '%s' line %d: range %d (%s) and %d (%s) have a non-empty intersection.",
+		  name().c_str(),is.fileName(),is.lineNo(),
+		  i,node.nln_r().children[i].rng.rangeStr(),
+		  j,node.nln_r().children[j].rng.rangeStr()
+		  );
+
+#if 0	
+	  ////////////////////////////////////////////////////////
+	  // this next check is required to ensure there is
+	  // an ordering of the ranges, so sorting makes sense
+	  // when we do binary search. An unordered list of ranges would, for
+	  // example, have things like 1,3,5 and 2,4 where you can't say
+	  // that either (1,3,5) < (2,4) nor (2,4) < (1,3,5). In these
+	  // cases, we do not sort the lists, and have to resort to linear search
+	  // when doing a query.
+	  if (node.nln_r().ordered
+	      &&
+	      !(node.nln_r().children[i].rng < node.nln_r().children[j].rng)
+	      && 
+	      !(node.nln_r().children[j].rng < node.nln_r().children[i].rng)
+	      ) {
+	    // then it isn't ordered, and we'll have to do linear search
+	    // on a query. 
+	    // 
+	    // TODO: check if it is ordered alread, and if
+	    // so, don't do the sort below.
+	    node.nln_r().ordered = false;
+	  }
+#endif
 	}
       }
     }
 
-    for (unsigned i=0; i<numSplits; i++)
-      node->nonLeafNode.children[i] =
-	readRecurse(is,prevLeaf);
-
-    if (numSplits >= DT_SPLIT_SORT_THRESHOLD && node->nonLeafNode.ordered) {
-      //////////////////////////////////////////////////////////
-      // sort the entries so we can do binsearch later. Sort only
-      // if 1) there are a sufficient number to warrant a sort and 2)
-      // the list of ranges is sortable.
-
-      // copy in
-      vector< pair<BP_Range*,Node*> > arr;
-      arr.resize(numSplits-1);
-      for (unsigned i=0;i<(numSplits-1);i++) {
-	arr[i].first = node->nonLeafNode.rngs[i];
-	arr[i].second = node->nonLeafNode.children[i];
+    if (node.nodeType == NonLeafNodeArray) {
+      for (unsigned i=0; i<numSplits; i++) {
+	readRecurse(is,node.nln_a().children[i]);
       }
-      //'sort
-      sort(arr.begin(),
-	   arr.end(),
-	   RngCompare());
-      // copy out
-      for (unsigned i=0;i<(numSplits-1);i++) {
-	node->nonLeafNode.rngs[i] = arr[i].first;
-	node->nonLeafNode.children[i] = arr[i].second;
+    } else if (node.nodeType == NonLeafNodeHash) {
+      for (unsigned i=0; i<numSplits; i++) {
+	readRecurse(is,node.nln_h().children[i]);
       }
+    } else if (node.nodeType == NonLeafNodeRngs) {
+      for (unsigned i=0; i<numSplits - 1; i++) {
+	readRecurse(is,node.nln_r().children[i].nd);
+      }
+      // default case is special here.
+      readRecurse(is,*(node.nln_r().def));
+    } else {
+      // shouldn't happen.
+      assert ( 0 );
+    }
+
+
+    if (node.nodeType == NonLeafNodeRngs) { 
+      // when ordered, do the sort right now.
+      if (numSplits >= DT_SPLIT_SORT_THRESHOLD && node.nln_r().ordered) 
+	{
+	  //////////////////////////////////////////////////////////
+	  // sort the entries in ascending so we can do bin-like search later. Sort only
+	  // if there are a sufficient number to warrant a sort (condition above).
+	  // note that even if some of the entries aren't comparable (i.e., are "equal",
+	  // the binary search should check this condition.
+	  // printf("---------- Sorting\n");
+	  node.nln_r().children.sort();
+	  // printf("-------- Done Sorting\n");
+	} else {
+	  // didn't sort so can't be ordered.
+	  node.nln_r().ordered = false;
+	}
     }
 
   }
-  return node;
 }
 
 
@@ -2162,6 +2419,7 @@ RngDecisionTree::nextIterableDT()
   if (root != NULL) {
     destructorRecurse(root);
     delete root;
+    root = NULL;
   }
 
   // read in the rest of the DT.
@@ -2172,16 +2430,8 @@ RngDecisionTree::nextIterableDT()
 	  name().c_str(),
 	  curName.c_str(),
 	  dtFile->fileName());
-  rightMostLeaf = NULL;
-  root = readRecurse(*dtFile,rightMostLeaf);
-  Node *tmp = rightMostLeaf;
-  Node *rightLeaf = NULL;
-  while (tmp != NULL) {
-    tmp->leafNode.nextLeaf = rightLeaf;
-    rightLeaf = tmp;
-    tmp = tmp->leafNode.prevLeaf;
-  }
-  leftMostLeaf = rightLeaf;
+  root = new Node;
+  readRecurse(*dtFile,*root);
 }
 
 
@@ -2267,16 +2517,13 @@ RngDecisionTree::writeIndexFile()
         name().c_str(), curName.c_str(), dtFile->fileName());
     } 
 
-    rightMostLeaf = NULL;
-    root = readRecurse(*dtFile,rightMostLeaf);
-    Node *tmp = rightMostLeaf;
-    Node *rightLeaf = NULL;
-    while (tmp != NULL) {
-      tmp->leafNode.nextLeaf = rightLeaf;
-      rightLeaf = tmp;
-      tmp = tmp->leafNode.prevLeaf;
+    if (root != NULL) {
+      destructorRecurse(root);
+      delete root;
+      root = NULL;
     }
-    leftMostLeaf = rightLeaf;
+    root = new Node;
+    readRecurse(*dtFile,*root);
   }
 
 }
@@ -2342,24 +2589,55 @@ RngDecisionTree::writeRecurse(oDataStreamFile& os,
 			      RngDecisionTree::Node *n,
 			      const int depth)
 {
-  if (n->nodeType != NonLeafNode) {
+  if (n->nodeType == LeafNodeVal) {
     os.space(depth*2);
     os.write(-1);
-    os.write(n->leafNode.leafNodeString);
+    os.write(n->ln_v().value);
     os.nl();
-  } else {
+  } else if (n->nodeType == LeafNodeEquation) {
     os.space(depth*2);
-    os.write(n->nonLeafNode.ftr,"writeRecurse, ftr");
-    os.write(n->nonLeafNode.children.size(),"writeRecurse, numsplits");
-    for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
-      os.write(n->nonLeafNode.rngs[i]->rangeStr());
+    os.write(-1);
+    // TODO: equation guy should be able to write itself.
+    os.write("equation");
+    os.nl();
+  } else if (n->nodeType == NonLeafNodeArray) {
+    os.space(depth*2);
+    os.write(n->nln_a().ftr,"writeRecurse, ftr");
+    os.write(n->nln_a().children.size(),"writeRecurse, numsplits");
+    if (n->nln_a().children.size() > 1) {
+      os.write(n->nln_a().base);
+      os.write("...");
+      os.write(n->nln_a().base+n->nln_a().children.size()-2);
     }
     os.write(RNG_DECISION_TREE_DEF_STR);
     os.nl();
-    for (unsigned i=0;i<n->nonLeafNode.children.size();i++) 
-      writeRecurse(os,n->nonLeafNode.children[i],depth+1);
+    for (unsigned i=0;i<n->nln_a().children.size();i++) 
+      writeRecurse(os,&(n->nln_a().children[i]),depth+1);
+
+  } else if (n->nodeType == NonLeafNodeHash) {
+    os.space(depth*2);
+    os.write(n->nln_h().ftr,"writeRecurse, ftr");
+    os.write(n->nln_h().children.size(),"writeRecurse, numsplits");
+    os.write("hashed_int_vals");
+    os.write(RNG_DECISION_TREE_DEF_STR);    
+    os.nl();
+    for (unsigned i=0;i<n->nln_h().children.size();i++) 
+      writeRecurse(os,&(n->nln_h().children[i]),depth+1);
+  } else {
+    os.space(depth*2);
+    os.write(n->nln_r().ftr,"writeRecurse, ftr");
+    os.write(n->nln_r().children.size()+1,"writeRecurse, numsplits");
+    for (unsigned i=0;i<n->nln_r().children.size();i++) {
+      os.write(n->nln_r().children[i].rng.rangeStr());
+    }
+    os.write(RNG_DECISION_TREE_DEF_STR);
+    os.nl();
+    for (unsigned i=0;i<n->nln_r().children.size();i++) 
+      writeRecurse(os,&(n->nln_r().children[i].nd),depth+1);
+    writeRecurse(os,n->nln_r().def,depth+1);
   }
 }
+
 
 
 //////////////////////////////////////////////////////////////////////
@@ -2408,32 +2686,54 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
  topOfRoutine:
 
   if (n->nodeType == LeafNodeVal) {
-    return n->leafNode.value;
-  } else if (n->nodeType == NonLeafNode) {
-
-    assert ( n->nonLeafNode.ftr < int(arr.size()) );
-
-    const int val = RV2DRV(arr[n->nonLeafNode.ftr])->val;
+    return n->ln_v().value;
+  } else if  (n->nodeType == LeafNodeEquation) {
+    leafNodeValType answer;
+    answer = n->ln_e().equation.evaluateFormula( arr, rv );
+    return(answer);
+  } else if (n->nodeType == NonLeafNodeArray) {
+    assert ( n->nln_a().ftr < int(arr.size()) );
+    const int val = RV2DRV(arr[n->nln_a().ftr])->val - n->nln_a().base;
+    
+    if (val >= 0 &&  (val+1) < (int)n->nln_a().children.size()) {
+      n = & n->nln_a().children[val];
+    } else {
+      // default case
+      n = & n->nln_a().children[n->nln_a().children.size()-1];
+    }
+    goto topOfRoutine;
+  } else if (n->nodeType == NonLeafNodeHash) {
+    assert ( n->nln_h().ftr < int(arr.size()) );
+    const int val = RV2DRV(arr[n->nln_h().ftr])->val;
+    Node** tmp = n->nln_h().nodeMapper.find(val);
+    if (tmp != NULL)
+      n = *tmp;
+    else
+      n = & n->nln_h().children[n->nln_h().children.size()-1];
+    goto topOfRoutine;
+  } else if (n->nodeType == NonLeafNodeRngs) {
+    assert ( n->nln_r().ftr < int(arr.size()) );
+    const int val = RV2DRV(arr[n->nln_r().ftr])->val;
 
     // use a switch to knock off the short cases for
     // which we use simple linear search with little bookkeeping.
-    if (n->nonLeafNode.rngs.size() < DT_SPLIT_SORT_THRESHOLD
+    if (n->nln_r().children.size() < DT_SPLIT_SORT_THRESHOLD
 	|| 
-	!n->nonLeafNode.ordered) {
-      for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
+	!n->nln_r().ordered) {
+      for (unsigned i=0;i<n->nln_r().children.size();i++) {
 	// Do a linear search.
-	if (n->nonLeafNode.rngs[i]->contains(val)) {
+	if (n->nln_r().children[i].rng.contains(val)) {
 	  // return queryRecurse(arr,n->nonLeafNode.children[i],rv);
-	  n = n->nonLeafNode.children[i];
+	  n = &(n->nln_r().children[i].nd);
 	  goto topOfRoutine;
 	}
       }
     } else {
       // eliminate simple boundary conditions.
-      const int maxRngNum = n->nonLeafNode.rngs.size()-1;
-      if (*(n->nonLeafNode.rngs[0]) > val)
+      const int maxRngNum = n->nln_r().children.size()-1;
+      if ((n->nln_r().children[0].rng) > val)
 	goto failedQuery;
-      if (*(n->nonLeafNode.rngs[maxRngNum]) < val)
+      if ((n->nln_r().children[maxRngNum].rng) < val)
 	goto failedQuery;
 
       // do binary search
@@ -2443,21 +2743,52 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
 	// all these are conditional on the val being contained in the rng.
 	// rngs[l] <= val && val <= rngs[u]  
 	m = (l+u)/2; 
-	if (*(n->nonLeafNode.rngs[m]) > val) 
+	if ((n->nln_r().children[m].rng) > val) 
 	  // rngs[l] <= val && val < rngs[m]
 	  u = m-1;
 	// rngs[l] <= val && val <= rngs[u]
-	else if (*(n->nonLeafNode.rngs[m]) < val)
+	else if ((n->nln_r().children[m].rng) < val)
 	  // rngs[m] < val && val < rngs[u]
 	  l=m+1;
 	// rngs[l] < val && val < rngs[u]
 	else {
 	  // found potential range that might contain value
 	  // since neither val < rng nor val > rng. 
-	  if (n->nonLeafNode.rngs[m]->contains(val)) {
+	  if (n->nln_r().children[m].rng.contains(val)) {
 	    // return queryRecurse(arr,n->nonLeafNode.children[m],rv);
-	    n = n->nonLeafNode.children[m];
+	    n = &(n->nln_r().children[m].nd);
 	    goto topOfRoutine;
+	  }
+	  // linearly search up and down for all ranges that have overlapping
+	  // boundaries, using boundariesOverlap() and query them as well since
+	  // they are treated as equal.
+	  if (m < maxRngNum) {
+	    int im=m;
+	    do {
+	      if (n->nln_r().children[im].rng.boundariesOverlap(n->nln_r().children[im+1].rng)) {
+		if (n->nln_r().children[im+1].rng.contains(val)) {
+		  n = &(n->nln_r().children[im+1].nd);
+		  goto topOfRoutine;
+		}
+	      } else {
+		// boundaries don't ovelrap so no chance of finding it here.
+		break;
+	      }
+	    } while (++im < maxRngNum);
+	  }
+	  if (m > 0) {
+	    int im=m;
+	    do {
+	      if (n->nln_r().children[im].rng.boundariesOverlap(n->nln_r().children[im-1].rng)) {
+		if (n->nln_r().children[im-1].rng.contains(val)) {
+		  n = &(n->nln_r().children[im-1].nd);
+		  goto topOfRoutine;
+		}
+	      } else {
+		// boundaries don't ovelrap so no chance of finding it here.
+		break;
+	      }
+	    } while (--im > 0);
 	  }
 	  break;
 	}
@@ -2469,26 +2800,12 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
 
     // failed lookup, so return must be the default one. 
     // return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()],rv);
-    n = n->nonLeafNode.children[n->nonLeafNode.rngs.size()];
+    n = n->nln_r().def;
     goto topOfRoutine;
-  } else if (n->nodeType == LeafNodeFullExpand) {
-
-    leafNodeValType res = 0;
-    for (unsigned i=0;i<arr.size()-1;i++) {
-      unsigned val = RV2DRV(arr[i])->val;
-      unsigned card = RV2DRV(arr[i])->cardinality;
-      res = card*(res + val);
-    }
-    res += RV2DRV(arr[arr.size()-1])->val;
-    return res;
-
-  } else {
-    leafNodeValType answer;
-
-    answer = n->leafNode.equation.evaluateFormula( arr, rv );
-    return(answer);
   }
-
+  assert ( 0 ) ;
+  // this should never happen.
+  return ~0x0;
 }
 
 
@@ -2690,9 +3007,11 @@ bool RngDecisionTree::testFormula(
   bool     correct;
 
   printf("Formula: %s\n",   formula.c_str());
+  
+  new (&node.ln_e()) LeafNodeEquationStruct();
 
   try {
-    node.leafNode.equation.parseFormula(formula);
+    node.ln_e().equation.parseFormula(formula);
   }
   catch( string error_message ){
     error("   PARSE ERROR: %s", error_message.c_str());
@@ -2701,7 +3020,7 @@ bool RngDecisionTree::testFormula(
     error("   PARSE ERROR: %s", error_message );
   }
 
-  answer = node.leafNode.equation.evaluateFormula( variables, child );
+  answer = node.ln_e().equation.evaluateFormula( variables, child );
   printf("   Answer: %d   0x%x\n", answer, answer);
 
   if (answer == desired_answer) {
@@ -2983,17 +3302,21 @@ void test_formula()
  */
 
 
+// Some example DTs to write to a file, read back in,
+// and then test out.
+
 char *dtStr1 =
 "% this is a decision tree file\n"
 "%\n"
 "dt_name 3  % number of features\n"
-"0 10 10 11 12 13 0:5 6:9 14 50: 15 default\n"
+//    0   1  2  3  4   5  6   7  8   9
+"0 10 10 11 12 13 0:5 6:9 14,43 50:10:150 55:10:155 default\n"
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
-"      -1 expand\n"
+"      -1 42\n"
 "      -1 {  (  p0  \n  +   1    )    }\n"
 "    2 2 0:5 default\n"
-"      -1 {(c0+1)}\n"
+"      -1 {(cp0+1)}\n"
 "      -1 {(00+1)}\n"
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
@@ -3002,20 +3325,46 @@ char *dtStr1 =
 "    2 2 0:5 default\n"
 "      -1 7\n"
 "      -1 8\n"
-"  -1 10 % when feature[0] = 10, map to 10 regardless of all else\n"
-"  -1 11 % when feature[0] = 11, map to 11 regardless of all else\n"
-"  -1 12 % when feature[0] = 12, map to 12 regardless of all else\n"
-"  -1 13 % when feature[0] = 13, map to 13 regardless of all else\n"
-"  -1 14 % when feature[0] = 14, map to 14 regardless of all else\n"
-"  -1 15 % when feature[0] = 15, map to 15 regardless of all else\n"
-"  -1 16 % when feature[0] >= 50, map to 16 regardless of all else\n"
-"  1 2 0:10 default\n"
-"    2 2 0:10 default\n"
-"      -1 9\n"
-"      -1 10\n"
-"    2 2 0:5 default\n"
+"  -1 10 % when feature[0] = 12, map to 10 regardless of all else\n"
+"  -1 11 % when feature[0] = 13, map to 11 regardless of all else\n"
+"  -1 12 % when feature[0] = 0:5, map to 12 regardless of all else\n"
+"  -1 13 % when feature[0] = 6:9, map to 13 regardless of all else\n"
+"  -1 14 % when feature[0] = 4, map to 14 regardless of all else\n"
+"  -1 15 % when feature[0] >=50, map to 15 regardless of all else\n"
+"  -1 16 % when feature[0] = 15, map to 16 regardless of all else\n"
+"  1 3 0:10 11 default  % none of the above, formula again\n"   
+"    2 7 0 ... 5 default\n"
+"      -1 99\n"
+"      -1 101\n"
+"      -1 202\n"
+"      -1 303\n"
+"      -1 404\n"
+"      -1 505\n"
+"      -1 606\n"
+"    2 10 100 5 3 4 9 303 404 40 50 default\n"
 "      -1 11\n"
-"      -1 12\n";
+"      -1 12\n"
+"      -1 13\n"
+"      -1 14\n"
+"      -1 15\n"
+"      -1 16\n"
+"      -1 17\n"
+"      -1 18\n"
+"      -1 19\n"
+"      -1 20\n"
+"    2 10 100 5 3 4 9 303 404 40 51 default\n"
+"      -1 1100\n"
+"      -1 1200\n"
+"      -1 1300\n"
+"      -1 1400\n"
+"      -1 1500\n"
+"      -1 1600\n"
+"      -1 1700\n"
+"      -1 1800\n"
+"      -1 1900\n"
+"      -1 2000\n"
+"\n\n";
+
 
 
 char *dtStr2 =
@@ -3023,6 +3372,7 @@ char *dtStr2 =
 "%\n"
 "dt_name 1  % number of features\n"
 "0 14 10 17,19,21 11 12 13 0:5 6:9 14 50: 15 18,20 23,25,27 22,24,26,28 default\n"
+// "0 14 0 ... 12 default\n"
 "  -1 2\n"
 "  -1 3\n"
 "  -1 4\n"
@@ -3056,65 +3406,148 @@ char *dtStr2 =
 ;
 
 
-int
-main(int argc,char *argv[])
-{
-  // Test the formula parser 
-  test_formula();
+char *dtStr3 = 
+"wordPosition % name \n"
+"3 % parents: wordTransition(-1), phoneTransition(-1), wordPosition(-1)\n"
+"1 2 0 default\n"
+"  -1 {(p2)}\n"
+"   0 2 1 default\n"
+"      -1 0\n"
+"       2 2 7 default\n"
+"           -1 7\n"
+"	    -1 {(p2+1)}\n"
+"\n\n";
 
-/*
+
+char *dtStr4 = 
+"eou13A_0 % DT name\n"
+"2 % number of parents\n"
+"0 2 1 default\n"
+"         1 3 4 3 default\n"
+"                 -1 1\n"
+"                 -1 0\n"
+"                 -1 0\n"
+"\n\n";
+
+
+void test_dts()
+{
+
+
   // first write out the file
-  if (argc == 1)
-    {
-      oDataStreamFile dtfile ("/tmp/foo.dt",false);
-      dtfile.write(dtStr1);
-    }
+  {
+    oDataStreamFile dtfile ("/tmp/foo.dt",false);
+    dtfile.write(dtStr4);
+    dtfile.write('\n',"",false);
+  }
+
+
+  {
+    char *file = "/tmp/foo.dt";
+    iDataStreamFile is (file,false);
+    RngDecisionTree dt;
+    dt.read(is);
+    oDataStreamFile dtfile ("/tmp/foo_output.dt",false);
+    dt.write(dtfile);
+    dtfile.write('\n',"",false);
+  }
+
+
+  // a test for memory leaks 
+  while (1) {
+    char *file = "/tmp/foo.dt";
+    iDataStreamFile is (file,false);
+    RngDecisionTree dt;
+    dt.read(is);
+  }
 
   char *file = "/tmp/foo.dt";
-  if (argc > 1)
-    // read it in again
-    file = argv[1];
   iDataStreamFile is (file,false);
-
   RngDecisionTree dt;
   dt.read(is);
 
-  printf("Found decision tree\n");
-  oDataStreamFile os("-",false);
-  dt.write(os);
 
-  vector<int> vec;
-  vector<int> card;
-  vec.resize(dt.numFeatures());
-  card.resize(dt.numFeatures());
+
+  printf("Found decision tree\n");
+
+  RVInfo::FeatureRange tmp_fr;
+  RVInfo::ListIndex    tmp_li;
+  vector< RVInfo::rvParent > tmp_switchingParents;
+  vector<vector< RVInfo::rvParent > > tmp_conditionalParents;
+  vector< CPT::DiscreteImplementaton > tmp_discImplementations;
+  vector< MixtureCommon::ContinuousImplementation > tmp_contImplementations;
+  vector< RVInfo::ListIndex > tmp_listIndices;
+  vector< RVInfo::WeightInfo > tmp_rvWeightInfo;
+
+  RVInfo dummy(
+    0, 1, 0, 10, "test", "aa_info", RVInfo::t_discrete, RVInfo::d_hidden, 100, 
+    tmp_fr, NULL, tmp_li, tmp_switchingParents, 
+    tmp_conditionalParents, tmp_discImplementations, tmp_contImplementations,
+    tmp_listIndices, tmp_rvWeightInfo 
+    );
+
+  TestRandomVariable p0(dummy, "p0",  8 );
+  TestRandomVariable p1(dummy, "p1", 40 );
+  TestRandomVariable p2(dummy, "p2",  2 );
+  TestRandomVariable child(dummy, "child",  1000000 );
+
+  p0.val  = 7;
+  p1.val  = 3;
+  p2.val  = 0;
+
+  vector<RV*> vars;
+  vars.push_back(&p0);
+  vars.push_back(&p1);
+  vars.push_back(&p2);
+
+  assert ( dt.numFeatures() == 3 );
+
   iDataStreamFile stin ("-",false,false);
 
-  // first test iterating through all leaf values.
-#if 0
-  for (RngDecisionTree::iterator it = dt.begin();
-       it != dt.end(); it++) {
-    printf("leaf value = %d\n",it.value());
-  }
-#endif
-
-  printf("Enter a length %d set of cardinalities:",dt.numFeatures());
-  fflush(stdout);
-  stin.read(card,dt.numFeatures());
+  vector<int> vec;
+  vec.resize(dt.numFeatures());
 
   while (1) {
     printf("Enter a length %d intvec:",dt.numFeatures());
     fflush(stdout);
     stin.read(vec,dt.numFeatures());
 
+    p0.val = vec[0];
+    p1.val = vec[1];
+    p2.val = vec[2];
+
     printf("Querying with vector and cards: ");
     fflush(stdout);
-    for (unsigned i=0;i<dt.numFeatures();i++) {
-      printf(" %d:%d",vec[i],card[i]);
-    }
+    printf(" %d:%d",p0.val,p0.cardinality);
+    printf(" %d:%d",p1.val,p1.cardinality);
+    printf(" %d:%d",p2.val,p2.cardinality);
+    printf(" chd_crd = %d",child.cardinality);
     printf("\n");
-    printf("### RESULT ==> %d\n",dt.query(vec,card));
+    printf("### RESULT ==> %d\n",dt.query(vars,(RV*)&child));
   }
-*/
+
+
+}
+
+int
+main(int argc,char *argv[])
+{
+
+  printf("sizeof RngDecisionTree::Node = %d\n",sizeof(RngDecisionTree::Node));
+  printf("sizeof EquationClass = %d\n",sizeof(RngDecisionTree::EquationClass));
+  printf("sizeof BP_Range = %d\n",sizeof(BP_Range));
+
+  printf("sizeof NonLeafNodeArrayStruct = %d\n",sizeof(RngDecisionTree::NonLeafNodeArrayStruct));
+  printf("sizeof NonLeafNodeHashStruct = %d\n",sizeof(RngDecisionTree::NonLeafNodeHashStruct));
+  printf("sizeof NonLeafNodeRngsStruct = %d\n",sizeof(RngDecisionTree::NonLeafNodeRngsStruct));
+  printf("sizeof LeafNodeValStruct = %d\n",sizeof(RngDecisionTree::LeafNodeValStruct));
+  printf("sizeof LeafNodeEquationStruct = %d\n",sizeof(RngDecisionTree::LeafNodeEquationStruct));
+
+  // Test the formula parser 
+
+  // test_formula();
+
+  test_dts();
 
 }
 

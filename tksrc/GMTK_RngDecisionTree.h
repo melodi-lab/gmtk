@@ -42,7 +42,7 @@
 #include "GMTK_NamedObject.h"
 #include "logp.h"
 #include "sArray.h"
-
+#include "shash_map.h"
 
 #include "GMTK_DiscRV.h"
 
@@ -82,18 +82,34 @@ class PackCliqueValue;
 // we sort if the number of splits is greater than or equal to this.
 #define DT_SPLIT_SORT_THRESHOLD 3
 
+//////////////////////////////////////////////////////////////////
+// Computes the max over N objects, for various N.
+#define MAX_OF_2(a,b)          ((a)>(b)?(a):(b))
+#define MAX_OF_3(a,b,c)        MAX_OF_2(a,MAX_OF_2(b,c))
+#define MAX_OF_4(a,b,c,d)      MAX_OF_3(a,b,MAX_OF_2(c,d))
+#define MAX_OF_5(a,b,c,d,e)    MAX_OF_4(a,b,c,MAX_OF_2(d,e))
+#define MAX_OF_6(a,b,c,d,e,f)  MAX_OF_5(a,b,c,d,MAX_OF_2(e,f))
+
+
 /////////////////////////////////////////////////
 // Forward declare a RandomVariable so we can
 // use pointers to it in this class.
 class RV;
 class DiscRV;
 
-
+// unsigned cnt_NonLeafNodeRngsStruct = 0;
+// unsigned cnt_NonLeafNodeArrayStruct = 0;
+// unsigned cnt_Node = 0;
+// unsigned cnt_RangeNode = 0;
 
 /////////////////////////////////////////////////
 typedef unsigned leafNodeValType;
 
 class RngDecisionTree : public NamedObject, IM {
+
+#ifdef MAIN
+  friend int main(int,char**);
+#endif
 
 private:
 
@@ -153,284 +169,375 @@ protected:
 
   class EquationClass
   {
-    public:
+  public:
 
-      typedef unsigned formulaCommand;
-      typedef sArray<formulaCommand> formulaCommandContainer;
+    typedef unsigned formulaCommand;
+    typedef sArray<formulaCommand> formulaCommandContainer;
 
-      EquationClass();
+    EquationClass();
 
-      void parseFormula(
-        string leafNodeVal 
-        );
+    void parseFormula(
+		      string leafNodeVal 
+		      );
 
-      leafNodeValType evaluateFormula(const vector< RV* >& variables,
-				      const RV* rv = NULL);
+    leafNodeValType evaluateFormula(const vector< RV* >& variables,
+				    const RV* rv = NULL);
 
-    protected:
+  protected:
 
-      typedef int stack_element_t;
-      static sArrayStack<stack_element_t> stack;
+    typedef int stack_element_t;
+    static sArrayStack<stack_element_t> stack;
 
-      // Vector of commands 
-      formulaCommandContainer commands;
+    // Vector of commands 
+    formulaCommandContainer commands;
 
-      ///////////////////////////////////////////////////////////////////////
-      // Tokens used by the equation parsing function  
-      ///////////////////////////////////////////////////////////////////////    
-      typedef enum {
+    ///////////////////////////////////////////////////////////////////////
+    // Tokens used by the equation parsing function  
+    ///////////////////////////////////////////////////////////////////////    
+    typedef enum {
 
-        TOKEN_ABSOLUTE_VALUE, 
-        TOKEN_BITWISE_AND, 
-        TOKEN_BITWISE_OR, 
-        TOKEN_BITWISE_NOT, 
-        TOKEN_BITWISE_XOR,
-        TOKEN_COLON, 
-        TOKEN_COMMA, 
-        TOKEN_DIVIDE_CEIL, 
-        TOKEN_DIVIDE_FLOOR, 
-        TOKEN_DIVIDE_ROUND, 
-        TOKEN_DIVIDE_CEIL_FUNCTION, 
-        TOKEN_DIVIDE_FLOOR_FUNCTION, 
-        TOKEN_DIVIDE_ROUND_FUNCTION, 
-        TOKEN_EQUALS, 
-        TOKEN_EXPONENT, 
-        TOKEN_GREATER_THAN, 
-        TOKEN_GREATER_THAN_EQ, 
-        TOKEN_INTEGER, 
-        TOKEN_LEFT_PAREN, 
-        TOKEN_LESS_THAN, 
-        TOKEN_LESS_THAN_EQ, 
-        TOKEN_LOGICAL_AND, 
-        TOKEN_LOGICAL_OR, 
-        TOKEN_MAX,
-        TOKEN_MEDIAN,
-        TOKEN_MIN,
-        TOKEN_MINUS, 
-        TOKEN_MOD,
-        TOKEN_NOT,
-        TOKEN_PLUS, 
-        TOKEN_QUESTION_MARK, 
-        TOKEN_RIGHT_PAREN, 
-        TOKEN_ROTATE, 
-        TOKEN_SHIFT_LEFT, 
-        TOKEN_SHIFT_RIGHT, 
-        TOKEN_SPACE, 
-        TOKEN_TIMES, 
+      TOKEN_ABSOLUTE_VALUE, 
+      TOKEN_BITWISE_AND, 
+      TOKEN_BITWISE_OR, 
+      TOKEN_BITWISE_NOT, 
+      TOKEN_BITWISE_XOR,
+      TOKEN_COLON, 
+      TOKEN_COMMA, 
+      TOKEN_DIVIDE_CEIL, 
+      TOKEN_DIVIDE_FLOOR, 
+      TOKEN_DIVIDE_ROUND, 
+      TOKEN_DIVIDE_CEIL_FUNCTION, 
+      TOKEN_DIVIDE_FLOOR_FUNCTION, 
+      TOKEN_DIVIDE_ROUND_FUNCTION, 
+      TOKEN_EQUALS, 
+      TOKEN_EXPONENT, 
+      TOKEN_GREATER_THAN, 
+      TOKEN_GREATER_THAN_EQ, 
+      TOKEN_INTEGER, 
+      TOKEN_LEFT_PAREN, 
+      TOKEN_LESS_THAN, 
+      TOKEN_LESS_THAN_EQ, 
+      TOKEN_LOGICAL_AND, 
+      TOKEN_LOGICAL_OR, 
+      TOKEN_MAX,
+      TOKEN_MEDIAN,
+      TOKEN_MIN,
+      TOKEN_MINUS, 
+      TOKEN_MOD,
+      TOKEN_NOT,
+      TOKEN_PLUS, 
+      TOKEN_QUESTION_MARK, 
+      TOKEN_RIGHT_PAREN, 
+      TOKEN_ROTATE, 
+      TOKEN_SHIFT_LEFT, 
+      TOKEN_SHIFT_RIGHT, 
+      TOKEN_SPACE, 
+      TOKEN_TIMES, 
 
-        TOKEN_CARDINALITY_CHILD, 
-        TOKEN_CARDINALITY_PARENT, 
-        TOKEN_MAX_VALUE_CHILD, 
-        TOKEN_MAX_VALUE_PARENT, 
-        TOKEN_PARENT_VALUE, 
-        TOKEN_PARENT_VALUE_MINUS_ONE, 
-        TOKEN_PARENT_VALUE_PLUS_ONE, 
+      TOKEN_CARDINALITY_CHILD, 
+      TOKEN_CARDINALITY_PARENT, 
+      TOKEN_MAX_VALUE_CHILD, 
+      TOKEN_MAX_VALUE_PARENT, 
+      TOKEN_PARENT_VALUE, 
+      TOKEN_PARENT_VALUE_MINUS_ONE, 
+      TOKEN_PARENT_VALUE_PLUS_ONE, 
 
-        TOKEN_END, 
-        LAST_TOKEN_INDEX
+      TOKEN_END, 
+      LAST_TOKEN_INDEX
 
-      } tokenEnum;
+    } tokenEnum;
 
-      /////////////////////////////////////////////////////////////////////// 
-      // Structure used for storing tokens with associated values 
-      /////////////////////////////////////////////////////////////////////// 
-      struct tokenStruct {
-        tokenEnum token;
+    /////////////////////////////////////////////////////////////////////// 
+    // Structure used for storing tokens with associated values 
+    /////////////////////////////////////////////////////////////////////// 
+    struct tokenStruct {
+      tokenEnum token;
 
-        string text; 
-        int    number; 
-      }; 
+      string text; 
+      int    number; 
+    }; 
 
-      ///////////////////////////////////////////////////////////////////////
-      // Commands used in equation evaluation 
-      ///////////////////////////////////////////////////////////////////////    
-      enum {
-        OPERAND_SHIFT = 6,
-        COMMAND_MASK  = 0x3f, 
-        OPERAND_MASK  = ~COMMAND_MASK,
+    ///////////////////////////////////////////////////////////////////////
+    // Commands used in equation evaluation 
+    ///////////////////////////////////////////////////////////////////////    
+    enum {
+      OPERAND_SHIFT = 6,
+      COMMAND_MASK  = 0x3f, 
+      OPERAND_MASK  = ~COMMAND_MASK,
 
-        COMMAND_INVALID = 0,
-        COMMAND_PUSH_CARDINALITY_CHILD, 
-        COMMAND_PUSH_CARDINALITY_PARENT, 
-        COMMAND_PUSH_PARENT_VALUE, 
-        COMMAND_PUSH_PARENT_VALUE_MINUS_ONE, 
-        COMMAND_PUSH_PARENT_VALUE_PLUS_ONE, 
-        COMMAND_PUSH_MAX_VALUE_CHILD, 
-        COMMAND_PUSH_MAX_VALUE_PARENT, 
-        COMMAND_PUSH_CONSTANT,    
-        COMMAND_ABSOLUTE_VALUE, 
-        COMMAND_BITWISE_AND, 
-        COMMAND_BITWISE_NOT, 
-        COMMAND_BITWISE_OR, 
-        COMMAND_BITWISE_XOR, 
-        COMMAND_BRANCH,
-        COMMAND_BRANCH_IF_FALSE,
-        COMMAND_DIVIDE_CEIL, 
-        COMMAND_DIVIDE_FLOOR, 
-        COMMAND_DIVIDE_ROUND, 
-        COMMAND_EQUALS, 
-        COMMAND_EXPONENT, 
-        COMMAND_GREATER_THAN, 
-        COMMAND_GREATER_THAN_EQ, 
-        COMMAND_LESS_THAN, 
-        COMMAND_LESS_THAN_EQ, 
-        COMMAND_LOGICAL_AND, 
-        COMMAND_LOGICAL_OR, 
-        COMMAND_MAX,
-        COMMAND_MEDIAN, 
-        COMMAND_MIN, 
-        COMMAND_MINUS, 
-        COMMAND_MOD, 
-        COMMAND_NEGATE, 
-        COMMAND_NOT, 
-        COMMAND_PLUS, 
-        COMMAND_ROTATE,
-        COMMAND_SHIFT_LEFT, 
-        COMMAND_SHIFT_RIGHT, 
-        COMMAND_TIMES, 
+      COMMAND_INVALID = 0,
+      COMMAND_PUSH_CARDINALITY_CHILD, 
+      COMMAND_PUSH_CARDINALITY_PARENT, 
+      COMMAND_PUSH_PARENT_VALUE, 
+      COMMAND_PUSH_PARENT_VALUE_MINUS_ONE, 
+      COMMAND_PUSH_PARENT_VALUE_PLUS_ONE, 
+      COMMAND_PUSH_MAX_VALUE_CHILD, 
+      COMMAND_PUSH_MAX_VALUE_PARENT, 
+      COMMAND_PUSH_CONSTANT,    
+      COMMAND_ABSOLUTE_VALUE, 
+      COMMAND_BITWISE_AND, 
+      COMMAND_BITWISE_NOT, 
+      COMMAND_BITWISE_OR, 
+      COMMAND_BITWISE_XOR, 
+      COMMAND_BRANCH,
+      COMMAND_BRANCH_IF_FALSE,
+      COMMAND_DIVIDE_CEIL, 
+      COMMAND_DIVIDE_FLOOR, 
+      COMMAND_DIVIDE_ROUND, 
+      COMMAND_EQUALS, 
+      COMMAND_EXPONENT, 
+      COMMAND_GREATER_THAN, 
+      COMMAND_GREATER_THAN_EQ, 
+      COMMAND_LESS_THAN, 
+      COMMAND_LESS_THAN_EQ, 
+      COMMAND_LOGICAL_AND, 
+      COMMAND_LOGICAL_OR, 
+      COMMAND_MAX,
+      COMMAND_MEDIAN, 
+      COMMAND_MIN, 
+      COMMAND_MINUS, 
+      COMMAND_MOD, 
+      COMMAND_NEGATE, 
+      COMMAND_NOT, 
+      COMMAND_PLUS, 
+      COMMAND_ROTATE,
+      COMMAND_SHIFT_LEFT, 
+      COMMAND_SHIFT_RIGHT, 
+      COMMAND_TIMES, 
 
-        LAST_COMMAND_INDEX
-      };
+      LAST_COMMAND_INDEX
+    };
 
-      #define MAKE_COMMAND(command, operand)  \
+#define MAKE_COMMAND(command, operand)  \
         (command | (operand << OPERAND_SHIFT))
 
-      #define GET_COMMAND(command) (command & COMMAND_MASK) 
-      #define GET_OPERAND(command) ((command & OPERAND_MASK) >> OPERAND_SHIFT)
+#define GET_COMMAND(command) (command & COMMAND_MASK) 
+#define GET_OPERAND(command) ((command & OPERAND_MASK) >> OPERAND_SHIFT)
 
-      typedef enum {
-        HIGHEST_PRECEDENCE = 0,
-        PAREN_PRCDNC,  
-        UNARY_PRCDNC,  
-        EXPONENT_PRCDNC,  
-        MULT_PRCDNC,  
-        ADDITIVE_PRCDNC,  
-        SHIFT_PRCDNC,  
-        RELATIONAL_PRCDNC,  
-        EQUALITY_PRCDNC,  
-        BITWISE_AND_PRCDNC,  
-        BITWISE_OR_PRCDNC,  
-        LOGICAL_AND_PRCDNC,  
-        LOGICAL_OR_PRCDNC,  
-        CONDITIONAL_PRCDNC,
-        LAST,
-        LOWEST_PRECEDENCE = (LAST-1) 
-      } precedence_t;
+    typedef enum {
+      HIGHEST_PRECEDENCE = 0,
+      PAREN_PRCDNC,  
+      UNARY_PRCDNC,  
+      EXPONENT_PRCDNC,  
+      MULT_PRCDNC,  
+      ADDITIVE_PRCDNC,  
+      SHIFT_PRCDNC,  
+      RELATIONAL_PRCDNC,  
+      EQUALITY_PRCDNC,  
+      BITWISE_AND_PRCDNC,  
+      BITWISE_OR_PRCDNC,  
+      LOGICAL_AND_PRCDNC,  
+      LOGICAL_OR_PRCDNC,  
+      CONDITIONAL_PRCDNC,
+      LAST,
+      LOWEST_PRECEDENCE = (LAST-1) 
+    } precedence_t;
 
-      static map<string, tokenEnum> delimiter;
-      static map<string, tokenEnum> function;
-      static map<string, tokenEnum> variable;
+    static map<string, tokenEnum> delimiter;
+    static map<string, tokenEnum> function;
+    static map<string, tokenEnum> variable;
 
-      static map<tokenEnum, formulaCommand> infixToken;
-      static map<tokenEnum, formulaCommand> unaryToken;
-      static map<tokenEnum, formulaCommand> functionToken;
-      static map<tokenEnum, formulaCommand> oneValFunctionToken;
-      static map<tokenEnum, formulaCommand> twoValFunctionToken;
-      static map<tokenEnum, formulaCommand> variableToken;
-      static map<tokenEnum, unsigned>       tokenPriority;
+    static map<tokenEnum, formulaCommand> infixToken;
+    static map<tokenEnum, formulaCommand> unaryToken;
+    static map<tokenEnum, formulaCommand> functionToken;
+    static map<tokenEnum, formulaCommand> oneValFunctionToken;
+    static map<tokenEnum, formulaCommand> twoValFunctionToken;
+    static map<tokenEnum, formulaCommand> variableToken;
+    static map<tokenEnum, unsigned>       tokenPriority;
 
-      typedef vector<formulaCommand> parsingCommandContainer;
+    typedef vector<formulaCommand> parsingCommandContainer;
 
-      void preProcessFormula(
-        string& original 
-      );
+    void preProcessFormula(
+			   string& original 
+			   );
 
-      void parseExpression(
-        tokenStruct&             token,
-        string&                  formula, 
-        parsingCommandContainer& commands,
-        unsigned                 precedence_level, 
-        unsigned&                depth  
-      );
+    void parseExpression(
+			 tokenStruct&             token,
+			 string&                  formula, 
+			 parsingCommandContainer& commands,
+			 unsigned                 precedence_level, 
+			 unsigned&                depth  
+			 );
 
-      void parseQuestionMark(
-        tokenStruct&             token,
-        string&                  formula,  
-        parsingCommandContainer& commands,
-        unsigned&                depth  
-      );
+    void parseQuestionMark(
+			   tokenStruct&             token,
+			   string&                  formula,  
+			   parsingCommandContainer& commands,
+			   unsigned&                depth  
+			   );
 
-      bool parseFactor(
-        tokenStruct&             token,
-        string&                  formula, 
-        parsingCommandContainer& commands,
-        unsigned&                depth  
-      );
+    bool parseFactor(
+		     tokenStruct&             token,
+		     string&                  formula, 
+		     parsingCommandContainer& commands,
+		     unsigned&                depth  
+		     );
 
-      void getToken(
-        string&      expression, 
-        tokenStruct& item
-      );
+    void getToken(
+		  string&      expression, 
+		  tokenStruct& item
+		  );
 
-      bool getInteger(
-        const string& expression, 
-        int&   number 
-      );
+    bool getInteger(
+		    const string& expression, 
+		    int&   number 
+		    );
 
-      void changeDepth(
-        const int change, 
-        unsigned& depth 
-      );
+    void changeDepth(
+		     const int change, 
+		     unsigned& depth 
+		     );
 
   };
 
   ///////////////////////////////////////////////////////////////    
-  // Node Structures 
+  // Node Structure Types. 
   ///////////////////////////////////////////////////////////////    
-  enum NodeType{NonLeafNode, LeafNodeVal, LeafNodeFormula, LeafNodeFullExpand};
+  enum NodeType{NonLeafNodeArray, NonLeafNodeHash, NonLeafNodeRngs, 
+		LeafNodeVal, LeafNodeEquation };
 
+  // forward declaration.
   struct Node;
 
+  // Note: none of the following structures can contain either
+  // pointers to themselves or members which contain pointers to
+  // themselves.
+
+
   ///////////////////////////////////////////////////////////    
-  // Tree structure for when node is not a leaf node 
+  // Caess when node is not a leaf node 
   ///////////////////////////////////////////////////////////    
-  struct NonLeafNodeStruct {
-      // This is when nodeType == NonLeafNode.
-      int ftr;
-      bool ordered;
-      vector< Node* > children;
-      vector< BP_Range* > rngs;
-   } nonLeafNode;
+  struct NonLeafNodeArrayStruct {
+     // Which feature (parent) are we querying
+     int ftr;
+     // value to subtract from parent to get index into array
+     unsigned base;
+     // last entry of children is the "default" node.
+     sArray < Node > children;
+
+    // NonLeafNodeArrayStruct() { printf("::NonLeafNodeArrayStruct, cnt = %d\n",cnt_NonLeafNodeArrayStruct++); }
+    // ~NonLeafNodeArrayStruct() { printf("::~NonLeafNodeArrayStruct, cnt = %d\n",--cnt_NonLeafNodeArrayStruct); }
+
+  };
+
+  struct NonLeafNodeHashStruct {
+    // Which feature (parent) are we querying
+    int ftr;
+    // last entry of children is the "default" case
+    sArray < Node > children;
+    // hash table from parent int value to pointer to node within children.
+    // TODO: the hash member is big, try to use something smaller.
+    shash_map < unsigned, Node* > nodeMapper;
+
+    NonLeafNodeHashStruct(unsigned starting_size)
+      : nodeMapper(starting_size) {}
+
+  };
+
+
+  // forward declaration
+  struct RangeNode;
+
+  struct NonLeafNodeRngsStruct {
+    // Which feature (parent) are we querying
+    int ftr;
+    // true if the ranges are ordered, so we can do binsearch.
+    bool ordered;
+    // here, 'children' structure does not include "default" case.
+    // so this is of size numSplits - 1.
+    sArray < RangeNode > children;
+    // default special case if all ranges don't match.
+    Node* def;
+
+    // NonLeafNodeRngsStruct() { printf("::NonLeafNodeRngsStruct, cnt = %d\n",cnt_NonLeafNodeRngsStruct++); }
+    // ~NonLeafNodeRngsStruct() { printf("::~NonLeafNodeRngsStruct, cnt = %d\n",--cnt_NonLeafNodeRngsStruct); }
+  };
+
 
   ///////////////////////////////////////////////////////////    
   // Structure for various types of leaf nodes 
   ///////////////////////////////////////////////////////////    
-  struct LeafNodeStruct {
-
-    // The string form of the leaf node.
-    string leafNodeString;
+  struct LeafNodeValStruct {
 
     // The value, if it is just a value,
     // i.e., when nodeType == LeafNodeVal
     leafNodeValType value;
+  } ;
 
-    // Note: when nodeType == LeafNodeFullExpand,
-    // we just compute the one-to-one mapping
-    // from joint state space of the parents
-    // to the integers, so the above two things
-    // are not used.
-
+  struct LeafNodeEquationStruct {
     // Used when the leaf node is an equation 
     EquationClass equation;
-
-    // In order to have easy access to all of the
-    // leaf nodes, we also keep a 
-    // doubly linked list of these nodes.
-    Node* prevLeaf;
-    Node* nextLeaf;
   } ;
 
   ///////////////////////////////////////////////////////////    
   // Node structure (nonLeafNode and leafNodes can not be 
   // unioned because they have entries with constructors)  
-  // TODO: this needs to change as it is a huge waste of memory.
-  // change into an 'unsigned char foo[max(sizeof,sizeof)]' construct.
+  // Therefore, we hack it using 'unsigned char foo[max(sizeof,sizeof)]' 
+  // constructs and C++'s placement new/delete constructs. 
+  // This significantly reduces memory requirements and
+  // also allows for contiguous allocation of Nodes in
+  // the hierarchy (further reducing space requirements).
   ///////////////////////////////////////////////////////////    
   struct Node {
     NodeType nodeType;
-    NonLeafNodeStruct nonLeafNode;
-    LeafNodeStruct    leafNode;
+
+    unsigned char _buffer[MAX_OF_5(sizeof(NonLeafNodeArrayStruct),sizeof(NonLeafNodeHashStruct),sizeof(NonLeafNodeRngsStruct),sizeof(LeafNodeValStruct),sizeof(LeafNodeEquationStruct))];
+
+    inline NonLeafNodeArrayStruct& nln_a()  { return (*((NonLeafNodeArrayStruct*)&_buffer)); }
+    inline NonLeafNodeHashStruct&  nln_h()  { return (*((NonLeafNodeHashStruct*)&_buffer)); }
+    inline NonLeafNodeRngsStruct&  nln_r()  { return (*((NonLeafNodeRngsStruct*)&_buffer)); }
+    inline LeafNodeValStruct&      ln_v()   { return (*((LeafNodeValStruct*)&_buffer)); }
+    inline LeafNodeEquationStruct& ln_e()   { return (*((LeafNodeEquationStruct*)&_buffer)); }
+
+
+#if 0
+    Node(const Node&nd) { 
+      *this = nd;
+    }
+    Node& operator=(const Node&nd) {
+      nodeType = nd.nodeType;
+      ::memcpy(_buffer,nd._buffer,sizeof(_buffer));
+      printf("--- Node(nd), op = %d\n",cnt_Node); 
+      return *this;
+    }
+
+    Node() { printf("::Node(), cnt = %d\n",cnt_Node++); }
+    ~Node() { printf("::~Node(), cnt = %d\n",--cnt_Node); }
+#endif
+
   };
+
+  // complete declaration of RangeNode mentioned above.
+  struct RangeNode {
+    BP_Range rng;
+    Node nd;
+
+
+    bool operator<(const RangeNode& rn) const { return (rng < rn.rng); }
+
+#if 0
+    RangeNode(const RangeNode& rn)
+      : rng(rn.rng),nd(rn.nd) 
+    {
+      printf("::RangeNode(rn), cnt = %d\n",cnt_RangeNode++);
+    }
+
+    RangeNode& operator=(const RangeNode& rn) {
+      rng = rn.rng; nd = rn.nd; return *this; 
+      printf("-- RangeNode op  = %d\n",cnt_RangeNode);
+    }
+    RangeNode()
+    {
+      printf("::RangeNode(), cnt = %d\n",cnt_RangeNode++);
+    }
+    ~RangeNode()
+    {
+      printf("::~RangeNode(), cnt = %d\n",--cnt_RangeNode);
+    }
+#endif
+
+  };
+
 
   ////////////////////////////////////////////////////////////////
   // structure for comparing range pointers. 
@@ -452,20 +559,17 @@ protected:
   Node *root;
 
   ///////////////////////////////////////////////////////////    
-  // The leaf nodes.
-  Node *rightMostLeaf;
-  Node *leftMostLeaf;
-
-  ///////////////////////////////////////////////////////////    
   // support for reading
-  Node* readRecurse(iDataStreamFile& is,
-		    Node* & prevLeaf);
+  void readRecurse(iDataStreamFile& is,Node& node);
+
 
   ///////////////////////////////////////////////////////////    
   // support for writing
   void writeRecurse(oDataStreamFile& os,
-		     Node *n,
-		     const int depth);
+		    Node *n,
+		    const int depth); 
+
+
 
   ///////////////////////////////////////////////////////////    
   // support for querying:
@@ -503,6 +607,7 @@ public:
   // file position.
   void write(oDataStreamFile& os);
 
+
   ///////////////////////////////////////////////////////////    
   // Set the index of the first decision tree
   void setFirstDecisionTree(
@@ -532,34 +637,6 @@ public:
     RV*                  child, 
     unsigned             desired_answer 
     );
-
-  ///////////////////////////////////////////////////////////    
-  // iterators for iterating through leaf values.
-
-  class iterator {
-    friend class RngDecisionTree;
-    Node *leaf;
-    const RngDecisionTree& mydt;
-  public:
-    iterator(RngDecisionTree& dt) : mydt(dt) { 
-      leaf = dt.leftMostLeaf;
-      // We could also start with rightMostLeaf and
-      // move leftwards.
-    }
-    // prefix
-    iterator& operator ++() { leaf = leaf->leafNode.nextLeaf; return *this; }
-    // postfix
-    iterator operator ++(int) { iterator tmp=*this; ++*this; return tmp; }
-    leafNodeValType value() { return leaf->leafNode.value; }
-    bool valueNode() { return (leaf->nodeType == LeafNodeVal); }
-    bool operator == (const iterator &it) { return it.leaf == leaf; } 
-    bool operator != (const iterator &it) { return it.leaf != leaf; } 
-  };
-  friend class iterator;
-  
-  iterator begin() { return iterator(*this); }
-  iterator end() { iterator it(*this); it.leaf = NULL; return it; }
-
 
   ///////////////////////////////////////////////////////////    
   ///////////////////////////////////////////////////////////    

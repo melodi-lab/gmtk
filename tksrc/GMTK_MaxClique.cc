@@ -2171,7 +2171,7 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
       if (rv->discrete()) {
 	infoMsg(Huge,"U%d:Unassigned pass through observed rv %s(%d)=%d,p=%f\n",
 		nodeNumber,
-		rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,nodeNumber,p.val());
+		rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,p.val());
       } else {
 	// nothing to do since we get continuous observed value
 	// indirectly
@@ -3016,6 +3016,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // Then indeed, outgoing separator is all observed values. We do
     // this special separately from the general case since that case
     // is already getting a bit unwieldy.
+
+    // TODO: this can also probably handle the case of disconnected networks.
+    // 
 
     InferenceSeparatorClique::AISeparatorValue& sv
       = sepSeparatorValuesPtr[0];
