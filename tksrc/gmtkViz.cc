@@ -141,6 +141,7 @@ public:
     bool getViewDirectLines( void ) { return drawDirectLines; }
     bool getViewFrameSeps( void ) { return drawFrameSeps; }
     bool getViewNodeNames( void ) { return drawNodeNames; }
+    bool getViewFrameNames( void ) { return drawFrameNames; }
     bool getViewToolTips( void ) { return drawToolTips; }
 
     // toggle drawing ...
@@ -153,6 +154,7 @@ public:
     void toggleViewDirectLines( void );
     void toggleViewFrameSeps( void );
     void toggleViewNodeNames( void );
+    void toggleViewFrameNames( void );
     void toggleViewToolTips( void );
 
     // Ask the user what font they want to use.
@@ -181,6 +183,7 @@ private:
     bool drawDirectLines;
     bool drawFrameSeps;
     bool drawNodeNames;
+    bool drawFrameNames;
     bool drawToolTips;
 
     // How big?
@@ -226,6 +229,7 @@ private:
     std::vector< std::vector< VizArc* > > arcs; // arcs[a][b] is the
     // information about the arc/spline from node a to node b (or NULL)
     std::vector< VizSep* > frameEnds; // positions of dividers between frames
+    std::vector< NameTag* > frameNameTags; // frame nametags
 };
 
 
@@ -396,6 +400,7 @@ public:
 	MENU_VIEW_DIRECT_LINES,
 	MENU_VIEW_FRAME_SEPS,
 	MENU_VIEW_NODE_NAMES,
+	MENU_VIEW_FRAME_NAMES,
 	MENU_VIEW_TOOLTIPS,
 	MENU_ZOOM_BEGIN,
 	MENU_ZOOM_2_pow_neg_4dot000,
@@ -517,6 +522,7 @@ public:
     void OnMenuViewDirectLines(wxCommandEvent &event);
     void OnMenuViewFrameSeps(wxCommandEvent &event);
     void OnMenuViewNodeNames(wxCommandEvent &event);
+    void OnMenuViewFrameNames(wxCommandEvent &event);
     void OnMenuViewToolTips(wxCommandEvent &event);
 
     // Handle events from the Zoom menu to change the scale/zoom
@@ -956,6 +962,7 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_VIEW_DIRECT_LINES, GFrame::OnMenuViewDirectLines)
     EVT_MENU(MENU_VIEW_FRAME_SEPS, GFrame::OnMenuViewFrameSeps)
     EVT_MENU(MENU_VIEW_NODE_NAMES, GFrame::OnMenuViewNodeNames)
+    EVT_MENU(MENU_VIEW_FRAME_NAMES, GFrame::OnMenuViewFrameNames)
     EVT_MENU(MENU_VIEW_TOOLTIPS, GFrame::OnMenuViewToolTips)
     EVT_MENU_RANGE(MENU_ZOOM_BEGIN+1, MENU_ZOOM_END-1, GFrame::OnMenuZoom)
     EVT_MENU(MENU_CUSTOMIZE_FONT, GFrame::OnMenuCustomizeFont)
@@ -1603,6 +1610,37 @@ GFrame::OnMenuViewNodeNames(wxCommandEvent &event)
 /**
  *******************************************************************
  * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of frame names
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws frame names and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws frame names and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuViewFrameNames(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->toggleViewFrameNames();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
  * toggle the drawing of tooltips. Note that tool tips don't
  * actually work so this doesn't really do anything.
  *
@@ -1974,6 +2012,8 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 				      curPage->getViewFrameSeps() );
 	MainVizWindow_menubar->Check( MENU_VIEW_NODE_NAMES,
 				      curPage->getViewNodeNames());
+	MainVizWindow_menubar->Check( MENU_VIEW_FRAME_NAMES,
+				      curPage->getViewFrameNames());
 	// tooltips don't work
 	// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS,
 	// curPage->getViewToolTips() );
@@ -2085,6 +2125,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
     drawDirectLines = false;
     drawFrameSeps = true;
     drawNodeNames = true;
+    drawFrameNames = true;
     // Has no real effect since our tooltips don't work
     drawToolTips = true;
 
@@ -2123,11 +2164,14 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
     int beginning, ending;
     if ( (beginning = file.rfind('/') + 1) < 1 )
 	beginning = 0;
-    if ( (ending = file.rfind(wxT(".str"))) <= beginning &&
-	 (ending = file.rfind(wxT(".gvp"))) <= beginning )
+    ending = file.rfind(wxT(".str"));
+    if (ending <= beginning)
+	ending = file.rfind(wxT(".gvp"));
+    if (ending <= beginning)
 	ending = file.size();
     parentNotebook->InsertPage(parentNotebook->GetPageCount(),
-			       this, file.substr(beginning, ending), true);
+			       this, file.substr(beginning, ending-beginning),
+			       true);
 
     /* If this was specified as "old" then the file is a gvp file so
      * we should populate the config map with info from that.
@@ -2154,6 +2198,64 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	// XXX: verify that the str and gvp files go together
 	// make up initial positions for the nodes
 	initNodes();
+	if ( frameEnds.size() ) {
+	    if ( frameEnds[0]->sepType == VizSep::PROLOGUE ||
+		 frameEnds[0]->sepType == VizSep::BEGIN_CHUNK )
+		frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
+							    10*ACTUAL_SCALE),
+						    wxT("frame 0 (P)")));
+	    else
+		frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
+							    10*ACTUAL_SCALE),
+						    wxT("frame 0 (C)")));
+	}
+	for (unsigned int i = 0; i < frameEnds.size(); i++) {
+	    char partition;
+	    wxString label;
+	    if ( frameEnds[i]->sepType == VizSep::PROLOGUE )
+		partition = 'P';
+	    else if ( frameEnds[i]->sepType == VizSep::BEGIN_CHUNK ||
+		      frameEnds[i]->sepType == VizSep::CHUNK )
+		partition = 'C';
+	    else partition = 'E';
+	    label.sprintf("frame %d (%c)", i+1, partition);
+	    frameNameTags.push_back(new NameTag( wxPoint( frameEnds[i]->x +
+							  10*ACTUAL_SCALE,
+							  10*ACTUAL_SCALE ),
+						 label ));
+	}
+	wxString key, value;
+	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	    // move the nametag, if requested
+	    // x
+	    key.sprintf( "frames[%d].nametag.pos.x", i );
+	    value = config[key];
+	    if (value != wxEmptyString) {
+		long xPos;
+		if (value.ToLong(&xPos)) {
+		    frameNameTags[i]->pos.x = xPos;
+		} else {
+		    wxString msg;
+		    msg.sprintf("frames[%d].nametag.pos.x is not a number", i);
+		    wxLogMessage(msg);
+		    gvpAborted = true;
+		}
+	    }
+	    // y
+	    key.sprintf( "frames[%d].nametag.pos.y", i );
+	    value = config[key];
+	    if (value != wxEmptyString) {
+		long yPos;
+		if (value.ToLong(&yPos)) {
+		    frameNameTags[i]->pos.y = yPos;
+		} else {
+		    wxString msg;
+		    msg.sprintf("frames[%d].nametag.pos.y is not a number", i);
+		    wxLogMessage(msg);
+		    gvpAborted = true;
+		}
+	    }
+	}
 	initArcs();
 	// At this point we no longer need the file parser, and since it
 	// uses global variables, we can't have more than one. Thus, we
@@ -2165,7 +2267,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 
     // If there was anything odd about the gvp file, say so.
     if (gvpAborted)
-	wxLogMessage("Position file contained errors: proceed with caution");
+	wxLogMessage("Position file contained oddities: proceed with caution");
 
     // Update the status bar and stuff
     onComeForward();
@@ -2240,12 +2342,13 @@ StructPage::fillMap( void )
 
     if (gvp.Open()) {
 	// get the keys and values
-	if (!gvp.Eof()) {
+	if (gvp.GetLineCount()) {
 	    for ( line = gvp.GetFirstLine();
 		  !gvp.Eof();
 		  line = gvp.GetNextLine() ) {
 		config[line.BeforeFirst('=')] = line.AfterFirst('=');
 	    }
+	    config[line.BeforeFirst('=')] = line.AfterFirst('=');
 	}
 	// get the one absolutely required key=value pair
 	strFile = config[wxT("strFile")];
@@ -2291,6 +2394,8 @@ StructPage::initNodes( void )
     int yMax = 0;
     wxString key, value;
 
+    std::map< RVInfo::rvParent, unsigned int > nameGvpNodeMap;
+
     // check that gvp has valid info and matches str
     key.sprintf("numNodes");
     value = config[key];
@@ -2300,6 +2405,29 @@ StructPage::initNodes( void )
 	    if (numNodes != numVars) {
 		wxLogMessage("gvp and str disagree on number of nodes");
 		gvpAborted = true;
+	    }
+	    // map rvId's to the number in the gvp file
+	    RVInfo::rvParent rvId;
+	    for (int i = 0; i < numNodes; i++) {
+		key.sprintf("nodes[%d].nametag.name", i);
+		value = config[key];
+		if (value != wxEmptyString) {
+		    rvId.first = value;
+		    key.sprintf("nodes[%d].frame", i);
+		    value = config[key];
+		    if (value != wxEmptyString) {
+			long temp;
+			if (value.ToLong(&temp)) {
+			    rvId.second = temp;
+			    nameGvpNodeMap[rvId] = i;
+			} else {
+			    wxString msg;
+			    msg.sprintf("nodes[%d].frame is not a number", i);
+			    wxLogMessage(msg);
+			    gvpAborted = true;
+			}
+		    }
+		}
 	    }
 	} else {
 	    wxLogMessage("numNodes is not a number");
@@ -2378,9 +2506,12 @@ StructPage::initNodes( void )
 	// add it to the map from Id to index
 	nameVizNodeMap[nodes[i]->rvId] = i;
 
-	// if a position was specified, move the node to it
+	// if a position was specified for a variable with the same
+	// name, move the node to it
 	// x
-	key.sprintf("nodes[%d].center.x", i);
+	key.sprintf( "nodes[%d].center.x",
+		     nameGvpNodeMap.count(nodes[i]->rvId) ?
+		     nameGvpNodeMap[nodes[i]->rvId] : i );
 	value = config[key];
 	if (value != wxEmptyString) {
 	    long xPos;
@@ -2389,13 +2520,17 @@ StructPage::initNodes( void )
 		nodeNameTags[i]->pos.x = xPos;
 	    } else {
 		wxString msg;
-		msg.sprintf("nodes[%d].center.x is not a number", i);
+		msg.sprintf( "nodes[%d].center.x is not a number",
+			     nameGvpNodeMap.count(nodes[i]->rvId) ?
+			     nameGvpNodeMap[nodes[i]->rvId] : i );
 		wxLogMessage(msg);
 		gvpAborted = true;
 	    }
 	}
 	// y
-	key.sprintf("nodes[%d].center.y", i);
+	key.sprintf( "nodes[%d].center.y",
+		     nameGvpNodeMap.count(nodes[i]->rvId) ?
+		     nameGvpNodeMap[nodes[i]->rvId] : i );
 	value = config[key];
 	if (value != wxEmptyString) {
 	    long yPos;
@@ -2404,14 +2539,18 @@ StructPage::initNodes( void )
 		nodeNameTags[i]->pos.y = yPos;
 	    } else {
 		wxString msg;
-		msg.sprintf("nodes[%d].center.y is not a number", i);
+		msg.sprintf( "nodes[%d].center.y is not a number",
+			     nameGvpNodeMap.count(nodes[i]->rvId) ?
+			     nameGvpNodeMap[nodes[i]->rvId] : i );
 		wxLogMessage(msg);
 		gvpAborted = true;
 	    }
 	}
 	// and move the nametag, if requested
 	// x
-	key.sprintf("nodes[%d].nametag.pos.x", i);
+	key.sprintf( "nodes[%d].nametag.pos.x",
+		     nameGvpNodeMap.count(nodes[i]->rvId) ?
+		     nameGvpNodeMap[nodes[i]->rvId] : i );
 	value = config[key];
 	if (value != wxEmptyString) {
 	    long xPos;
@@ -2419,13 +2558,17 @@ StructPage::initNodes( void )
 		nodeNameTags[i]->pos.x = xPos;
 	    } else {
 		wxString msg;
-		msg.sprintf("nodes[%d].nametag.pos.x is not a number", i);
+		msg.sprintf( "nodes[%d].nametag.pos.x is not a number",
+			     nameGvpNodeMap.count(nodes[i]->rvId) ?
+			     nameGvpNodeMap[nodes[i]->rvId] : i );
 		wxLogMessage(msg);
 		gvpAborted = true;
 	    }
 	}
 	// y
-	key.sprintf("nodes[%d].nametag.pos.y", i);
+	key.sprintf( "nodes[%d].nametag.pos.y",
+		     nameGvpNodeMap.count(nodes[i]->rvId) ?
+		     nameGvpNodeMap[nodes[i]->rvId] : i );
 	value = config[key];
 	if (value != wxEmptyString) {
 	    long yPos;
@@ -2433,7 +2576,9 @@ StructPage::initNodes( void )
 		nodeNameTags[i]->pos.y = yPos;
 	    } else {
 		wxString msg;
-		msg.sprintf("nodes[%d].nametag.pos.y is not a number", i);
+		msg.sprintf( "nodes[%d].nametag.pos.y is not a number",
+			     nameGvpNodeMap.count(nodes[i]->rvId) ?
+			     nameGvpNodeMap[nodes[i]->rvId] : i );
 		wxLogMessage(msg);
 		gvpAborted = true;
 	    }
@@ -3074,14 +3219,17 @@ StructPage::crossesNode( wxCoord x0, wxCoord x1 )
 		 x1 < nodes[i]->center.x-NODE_RADIUS ) ||
 	       ( x0 > nodes[i]->center.x+NODE_RADIUS !=
 		 x1 > nodes[i]->center.x+NODE_RADIUS ) ) ||
-	     ( ( x0 < nodes[i]->nametag.pos.x
-		 + nodes[i]->nametag.size.x/2 - NODE_RADIUS !=
-		 x1 < nodes[i]->nametag.pos.x
-		 + nodes[i]->nametag.size.x/2 - NODE_RADIUS ) ||
-	       ( x0 > nodes[i]->nametag.pos.x
-		 + nodes[i]->nametag.size.x/2 + NODE_RADIUS !=
-		 x1 > nodes[i]->nametag.pos.x
-		 + nodes[i]->nametag.size.x/2 + NODE_RADIUS ) ) )
+	     ( ( x0 < nodes[i]->nametag.pos.x !=
+		 x1 < nodes[i]->nametag.pos.x ) ||
+	       ( x0 > nodes[i]->nametag.pos.x + 2*NODE_RADIUS !=
+		 x1 > nodes[i]->nametag.pos.x + 2*NODE_RADIUS ) ) )
+	    return true;
+    }
+    for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	if ( ( x0 < frameNameTags[i]->pos.x !=
+	       x1 < frameNameTags[i]->pos.x ) ||
+	     ( x0 > frameNameTags[i]->pos.x + 2*NODE_RADIUS !=
+	       x1 > frameNameTags[i]->pos.x + 2*NODE_RADIUS ) )
 	    return true;
     }
     return false;
@@ -3162,17 +3310,24 @@ StructPage::moveSelected( int dx, int dy )
 	    frameEnds[i]->x += dx;
 	}
     }
+    // frame name tags
+    for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	if ( frameNameTags[i]->getSelected()
+	     && inBounds( frameNameTags[i]->pos.x + dx,
+			  frameNameTags[i]->pos.y + dy ) ) {
+	    if ( !crossesFrameEnd( frameNameTags[i]->pos.x + NODE_RADIUS,
+				   frameNameTags[i]->pos.x + NODE_RADIUS+dx ) )
+		frameNameTags[i]->pos.x += dx;
+	    frameNameTags[i]->pos.y += dy;
+	}
+    }
     // node name tags
     for (int i = 0; i < numNodes; i++) {
 	if ( nodeNameTags[i]->getSelected()
-	     && inBounds( nodeNameTags[i]->pos.x
-			  + nodeNameTags[i]->size.x/2 + dx,
-			  nodeNameTags[i]->pos.y
-			  + nodeNameTags[i]->size.y/2 + dy ) ) {
-	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x
-				   + nodeNameTags[i]->size.x/2,
-				   nodeNameTags[i]->pos.x + dx
-				   + nodeNameTags[i]->size.x/2 ) )
+	     && inBounds( nodeNameTags[i]->pos.x + dx,
+			  nodeNameTags[i]->pos.y + dy ) ) {
+	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
+				   nodeNameTags[i]->pos.x + NODE_RADIUS+dx ) )
 		nodeNameTags[i]->pos.x += dx;
 	    nodeNameTags[i]->pos.y += dy;
 	}
@@ -3242,6 +3397,23 @@ StructPage::snapSelectedToGrid( void )
 	    frameEnds[i]->x += dx;
 	}
     }
+    // frame name tags
+    for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	dx = -(frameNameTags[i]->pos.x % GRID_SIZE);
+	if (dx <= -GRID_SIZE/2)
+	    dx += GRID_SIZE;
+	dy = -(frameNameTags[i]->pos.y % GRID_SIZE);
+	if (dy <= -GRID_SIZE/2)
+	    dy += GRID_SIZE;
+	if ( frameNameTags[i]->getSelected()
+	     && inBounds( frameNameTags[i]->pos.x + dx,
+			  frameNameTags[i]->pos.y + dy ) ) {
+	    if ( !crossesFrameEnd( frameNameTags[i]->pos.x,
+				   frameNameTags[i]->pos.x + dx ) )
+		frameNameTags[i]->pos.x += dx;
+	    frameNameTags[i]->pos.y += dy;
+	}
+    }
     // node name tags
     for (int i = 0; i < numNodes; i++) {
 	dx = -(nodeNameTags[i]->pos.x % GRID_SIZE);
@@ -3251,14 +3423,10 @@ StructPage::snapSelectedToGrid( void )
 	if (dy <= -GRID_SIZE/2)
 	    dy += GRID_SIZE;
 	if ( nodeNameTags[i]->getSelected()
-	     && inBounds( nodeNameTags[i]->pos.x
-			  + nodeNameTags[i]->size.x/2 + dx,
-			  nodeNameTags[i]->pos.y
-			  + nodeNameTags[i]->size.y/2 + dy ) ) {
-	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x
-				   + nodeNameTags[i]->size.x/2,
-				   nodeNameTags[i]->pos.x + dx
-				   + nodeNameTags[i]->size.x/2 ) )
+	     && inBounds( nodeNameTags[i]->pos.x + dx,
+			  nodeNameTags[i]->pos.y + dy ) ) {
+	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x,
+				   nodeNameTags[i]->pos.x + dx ) )
 		nodeNameTags[i]->pos.x += dx;
 	    nodeNameTags[i]->pos.y += dy;
 	}
@@ -3345,6 +3513,13 @@ StructPage::itemAt( const wxPoint& pt )
 		    }
 		}
 	    }
+	}
+    }
+    if (drawFrameNames) {
+	// frame name tags (only if they're drawn)
+	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	    if (frameNameTags[i]->onMe( pt ))
+		return frameNameTags[i];
 	}
     }
     if (drawNodeNames) {
@@ -3463,23 +3638,15 @@ StructPage::draw( wxDC& dc )
 
     if (drawFrameSeps) {
 	// draw frame/chunk separators
-	if ( frameEnds[0]->sepType == VizSep::PROLOGUE ||
-	     frameEnds[0]->sepType == VizSep::BEGIN_CHUNK )
-	    dc.DrawText(wxT("frame 0 (P)"), 10*ACTUAL_SCALE, 10*ACTUAL_SCALE);
-	else dc.DrawText(wxT("frame 0 (C)"), 10*ACTUAL_SCALE, 10*ACTUAL_SCALE);
 	for (unsigned int i = 0; i < frameEnds.size(); i++) {
 	    frameEnds[i]->draw(&dc);
-	    char partition;
-	    wxString label;
-	    if ( frameEnds[i]->sepType == VizSep::PROLOGUE )
-		partition = 'P';
-	    else if ( frameEnds[i]->sepType == VizSep::BEGIN_CHUNK ||
-		      frameEnds[i]->sepType == VizSep::CHUNK )
-		partition = 'C';
-	    else partition = 'E';
-	    label.sprintf("frame %d (%c)", i+1, partition);
-	    dc.DrawText( label, frameEnds[i]->x + 10*ACTUAL_SCALE,
-			 10*ACTUAL_SCALE );
+	}
+    }
+
+    if (drawFrameNames) {
+	// draw frame labels
+	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	    frameNameTags[i]->draw(&dc);
 	}
     }
 
@@ -3498,6 +3665,13 @@ StructPage::draw( wxDC& dc )
 	    nodes[i]->draw(&dc);
 	}
 	dc.SetPen(oldPen);
+    }
+
+    if (drawFrameNames) {
+	// draw frame names
+	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	    frameNameTags[i]->draw(&dc);
+	}
     }
 
     if (drawNodeNames) {
@@ -3578,12 +3752,12 @@ StructPage::Save( void )
 		/* These are unnecessary but could be used to better
 		 * match up variables and/or to verify that the gvp
 		 * file goes with the str file. */
-		/*line.sprintf( "nodes[%d].frame=%d\n",
+		line.sprintf( "nodes[%d].frame=%d\n",
 			      i, nodes[i]->rvId.second );
 		gvp.Write(line);
 		line.sprintf( "nodes[%d].nametag.name=%s\n",
 			      i, nodes[i]->nametag.name.c_str() );
-		gvp.Write(line);*/
+		gvp.Write(line);
 		line.sprintf( "nodes[%d].nametag.pos.x=%d\n",
 			      i, nodes[i]->nametag.pos.x );
 		gvp.Write(line);
@@ -3628,6 +3802,17 @@ StructPage::Save( void )
 		/*line.sprintf( "frameEnds[%d].chunkBorder=%d\n",
 			      i, (frameEnds[i]->chunkBorder ? 1 : 0) );
 		gvp.Write(line);*/
+	    }
+	    for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+		/*line.sprintf( "frames[%d].nametag.name=%s\n",
+			      i, frameNameTags[i]->name.c_str() );
+		gvp.Write(line);*/
+		line.sprintf( "frames[%d].nametag.pos.x=%d\n",
+			      i, frameNameTags[i]->pos.x );
+		gvp.Write(line);
+		line.sprintf( "frames[%d].nametag.pos.y=%d\n",
+			      i, frameNameTags[i]->pos.y );
+		gvp.Write(line);
 	    }
 
 	    gvpDirty = false;
@@ -3808,6 +3993,10 @@ StructPage::setAllSelected( bool newSelected )
     for (unsigned int i = 0; i < frameEnds.size(); i++) {
 	frameEnds[i]->setSelected(newSelected);
     }
+    // select all frame nametags
+    for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	frameNameTags[i]->setSelected(newSelected);
+    }
 }
 
 /**
@@ -3830,6 +4019,12 @@ void
 StructPage::toggleSelectedInRect( const wxRect& rect )
 {
     int numNodes = nodes.size();
+
+    // select frame nametags
+    for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	if (frameNameTags[i]->inRect(rect))
+	    frameNameTags[i]->toggleSelected();
+    }
 
     // select node nametags before nodes so that nodes will correct
     // the possibly incorrect toggle
@@ -4030,6 +4225,28 @@ void
 StructPage::toggleViewFrameSeps( void )
 {
     drawFrameSeps = !drawFrameSeps;
+    redraw();
+    blit();
+}
+
+/**
+ *******************************************************************
+ * Toggle whether frame labels are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether frame labels will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether frame labels will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::toggleViewFrameNames( void )
+{
+    drawFrameNames = !drawFrameNames;
     redraw();
     blit();
 }
