@@ -57,7 +57,7 @@ docdir = $(prefix)/man/man1
 #
 # Libraries.
 #
-LIBS = -lfileParser  -lmiscSupport -lm
+LIBS = -lfileParser  -lmiscSupport -lfl -lm 
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
@@ -91,7 +91,7 @@ all:
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_PackedSparseRealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_GaussianCommon.o GMTK_GMParms.o
+objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_PackedSparseRealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_GaussianCommon.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o
 
 
 #----------------------------------------------------------------------------
@@ -114,6 +114,10 @@ testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h
 
 testGMParms: GMTK_GMParms.cc GMTK_GMParms.h $(objs)
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_GMParms.cc $(objs) $(LIBS)
+
+
+testBN1: testBN1.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ testBN1.o $(objs) $(LIBS)
 
 
 BN1: BN1.cc BN1.o GMTK_GM.cc GMTK_GM.o GMTK_Clique.cc GMTK_Clique.o \
@@ -153,9 +157,9 @@ testFileParser: GMTK_FileParser.cc GMTK_FileParser.h lex.yy.o $(objs)
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = BN1.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_DLINKS.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_GaussianCommon.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_PackedSparseRealMatrix.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex
+all_srcs = BN1.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_DLINKS.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_GaussianCommon.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_PackedSparseRealMatrix.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex
 
-all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_DLINKS.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_GaussianCommon.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_PackedSparseRealMatrix.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h
+all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_DLINKS.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_GaussianCommon.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_PackedSparseRealMatrix.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h
 
 all_objs = $(objs)
 
