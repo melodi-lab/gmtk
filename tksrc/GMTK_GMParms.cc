@@ -232,12 +232,15 @@ int
 main()
 {
 
+  // read in a file of decision trees
   iDataStreamFile isdt("dataFiles/foo.dt",false);
   GM_Parms.readDTs(isdt);
 
+  // read in basic structures
   iDataStreamFile is("dataFiles/test1.gmb",false);
   GM_Parms.readBasic(is);
 
+  // write both out again to stdout (i.e., "-")
   oDataStreamFile os("-");
   GM_Parms.writeDTs(os);
   GM_Parms.writeBasic(os);
