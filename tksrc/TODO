@@ -1097,6 +1097,12 @@ Thu Apr 24 13:36:20 2003
     itself an observation, the the variable using that
     distribution is still hidden). Distribution can for example
     come from a NN.
+    Sat Jun 14 19:48:34 2003: This allows for "hybrid" like systems
+       (where NNs can supply distributions over observed variables),
+       but also allows for simulation of situations where
+       one has observed continuous parents with hidden discrete children.
+       Learning, of course, has to be done separately (but need to think
+       more about this).
 
 Fri May 09 17:42:07 2003
   - add automaticly existing observed variable frame, so users
