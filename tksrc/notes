@@ -48,6 +48,7 @@ rather than the norm, therefore we don't want to use up
 more memory by adding a field in each object which will
 probably not often be used.
 
+
 mix gaus end 
 
    end the PMF
@@ -56,35 +57,39 @@ mix gaus end
               // need to end comp epoch in any case because
               // otherwise cov ref count won't hit zero.
          if pmf i is below threshold
-               add DPMF ptr & i key to map of removed things
+               add DPMF ptr & i key to set of removed things
          if pmf i is above threshold
-               add DPMF ptr & i key to map of added things
-               if DPMF ptr & cmp ptr not in that map
-                    clone and perturb entry i
-                    add DPMF & cmp ptrs to that map
+               add DPMF ptr & i key to set of added things
 
 mixgauss swap
+
    go through, entry i
-       if pmf&i is in delete map
+       if pmf&i is in delete set
            skip it, don't swap
-       if pmf& cmp ptr in add map 
+       if pmf& cmp ptr in add set
            // can't just use cmp ptr here since it might be shared &
            // have been cloned for one MG but not for another.
            add cmp & its clone to new thing      
+           if DPMF ptr & cmp ptr not in that map
+                 clone and perturb entry i
+                  add DPMF & cmp ptrs to that map
+
+
+
 
 densePMF swap
 
    newLen = len;
    go through pmf, entry i
-      if i is in delete map
+      if i is in delete set
          newLen --;
-      if i is in clone map
+      if i is in clone set
          newLen ++
    make new len array
    go through pmf, entry i
-      if i is in delete map
+      if i is in delete set
          skip j
-      if i is in clone map
+      if i is in clone set
          add i an j with split prob
       else
          just skip
