@@ -2,6 +2,15 @@
     $Header$
   
     Simple verbosity,informational,debugging error function.
+    There are two ways to use this facility:
+
+    1) as a class-specific debug message thing, where you use inheritance and do:
+          class FOO : public IM { ... }
+       In this case, the debug levels are specific to the class, and info messages
+       can be called as infoMesg(Low,"message");
+
+    2) A global info message handler, just call infoMsg(IM::Low,"message");
+       (see below).
 
     Jeff Bilmes <bilmes@cs.berkeley.edu>
 */
