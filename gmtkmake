@@ -1,0 +1,238 @@
+#!/bin/sh
+#
+# A general make gmtk script that makes
+# the binaries for a number of architectures.
+# J. Bilmes <bilmes@ee.washington.edu>
+# $Header$
+
+
+set -e
+set -x
+
+remakedepends() {
+  rm depends.make
+  touch depends.make
+  make depends
+}
+
+# default architecture
+ARCH=solaris
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	ibm|IBM)    ARCH=ibm; shift 1 ;;
+	linux|LINUX|Linux)    ARCH=linux; shift 1 ;;
+	sun|solaris|Sun|Solaris|SUN) ARCH=solaris; shift 1 ;;
+	cygwin|CYGWIN) ARCH=cygwin; shift 1 ;;
+	*)	echo Unknown option $1; exit -1 ;;
+	esac
+done
+
+
+if [ "$ARCH" = "ibm" ]; then
+#########################################################
+# compile for IBM
+OF='-O3 -Wl,-bmaxdata:0x80000000'
+
+cd IEEEFloatingpoint
+make $ARCH
+remakedepends
+make clean
+make OPTFLAGS="$OF"
+cd ..
+
+
+cd featureFileIO
+remakedepends
+make clean
+make OPTFLAGS="$OF"
+cd ..
+
+
+cd lowLevelFileIO
+remakedepends
+make clean
+make OPTFLAGS="$OF"
+cd ..
+
+
+cd miscSupport
+remakedepends
+make clean
+make OPTFLAGS="$OF"
+cd ..
+
+cd pfile
+make clean
+make libpfile.a OPTFLAGS="$OF"
+cd ..
+
+
+cd tksrc
+remakedepends
+make clean
+make SUNLIBS= OPTFLAGS="$OF"
+cd ..
+
+elif [ "$ARCH" = "linux" ]; then
+#########################################################
+# compile for linux
+
+# try version 3.0
+GCC=/usr/nikola/pkgs/gcc/.3.2/bin/gcc
+GPP=/usr/nikola/pkgs/gcc/.3.2/bin/g++
+EXLDFLAGS=-static
+OF='-g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse'
+
+
+cd IEEEFloatingpoint
+make $ARCH
+remakedepends
+make clean
+make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+cd ..
+
+
+cd featureFileIO
+remakedepends
+make clean
+make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+cd ..
+
+
+cd lowLevelFileIO
+remakedepends
+make clean
+make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+cd ..
+
+
+cd miscSupport
+remakedepends
+make clean
+make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+cd ..
+
+cd pfile
+make clean
+make libpfile.a  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+cd ..
+
+
+cd tksrc
+remakedepends
+make clean
+make SUNLIBS=  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+cd ..
+
+
+elif [ "$ARCH" = "solaris" ]; then
+#########################################################
+# compile for sun
+
+# version 2.95.3
+GCC=/usr/nikola/pkgs/gcc/.2.95.3/bin/gcc
+GPP=/usr/nikola/pkgs/gcc/.2.95.3/bin/g++
+EXLDFLAGS=-static
+
+
+cd IEEEFloatingpoint
+make $ARCH
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+cd featureFileIO
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+cd lowLevelFileIO
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+cd miscSupport
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+cd pfile
+make clean
+make libpfile.a CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+cd tksrc
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+elif [ "$ARCH" = "cygwin" ]; then
+#########################################################
+# compile for cygwin
+
+GCC=gcc
+GPP=g++
+EXLDFLAGS=-static
+
+cd IEEEFloatingpoint
+make $ARCH
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+cd featureFileIO
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+cd lowLevelFileIO
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+cd miscSupport
+remakedepends
+make clean
+make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+cd pfile
+make clean
+make libpfile.a  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+cd tksrc
+remakedepends
+make clean
+make SUNLIBS=  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+cd ..
+
+
+else
+#########################################################
+# error
+
+echo Unknown architecture;
+exit -1;
+
+fi
+
+exit 0;
