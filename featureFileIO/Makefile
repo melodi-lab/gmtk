@@ -23,8 +23,8 @@ VPATH = .
 #
 # Compilng programs to use.
 #
-CXX = /g/rcs/sw/bin/g++
-CC = /g/rcs/sw/bin/gcc
+CXX = /g/scs/sw/bin/g++
+CC =  /g/scs/sw/bin/gcc
 LD = $(CXX)
 AR = ar
 LEX = flex
@@ -96,15 +96,15 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_io.o GMTK_ObservationMatrix.o GMTK_FileDescription.o
+objs = GMTK_ObservationMatrix.o GMTK_Stream.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
 
-all_srcs = GMTK_io.cc GMTK_ObservationMatrix.cc GMTK_FileDescription.cc
+all_srcs = GMTK_ObservationMatrix.cc GMTK_Stream.cc
 
-all_hdrs = GMTK_FileDescription.h GMTK_ObservationMatrix.h GMTK_io.h
+all_hdrs = GMTK_Stream.h GMTK_ObservationMatrix.h
 
 all_objs = $(objs)
 
@@ -112,7 +112,7 @@ all_objs = $(objs)
 # Main build programs.
 #----------------------------------------------------------------------------
 
-iotest: $(objs) iotest.o
+gmtest: $(objs) gmtest.o
 	rm -f $@
 	$(link) -Wall -g  -o $@ $@.o $(objs) $(LIBS)
 
