@@ -1997,4 +1997,12 @@ Wed Jun 23 00:24:01 2004
  DT formula reading errors when {} characters are not there, causes core dump. 
       
 
-   
+Fri Jul 16 00:52:15 2004
+  >When gmtkTriangulate is run with -anyTime and a non-integer time string, the decimal point is ignored.  E.g., -anyTime 1.5h will r
+  >un for 15 hours, and 15.0m will run for 150 minutes.  It doesn't make a big difference if non-integers are supported or not, but i
+  >f not, it would be good to have a warning if a user enters a non-integer.   
+
+
+Sun Jul 18 22:52:56 2004
+  BUG: unityScore CPT iterators should work (right now they just die with an assertion).
+   Also, fix class hierarchy in CPT class.

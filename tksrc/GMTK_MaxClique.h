@@ -313,7 +313,10 @@ public:
 					   const set<RandomVariable*>& cumulativeUnassignedIteratedNodes,
 					   const set<RandomVariable*>& separatorNodes,
 					   const set<RandomVariable*>& unassignedInPartition,
+					   set<RandomVariable*>* lp_nodes,
+					   set<RandomVariable*>* rp_nodes,
 					   const bool upperBound,
+					   const bool moreConservative,
 					   const bool useDeterminism);
 
   // compute the weight (log10 state space) of this clique.
@@ -321,8 +324,13 @@ public:
     return computeWeight(nodes,NULL,useDeterminism); 
   }
   float weightInJunctionTree(const set<RandomVariable*>& unassignedInPartition,
-			     const bool upperBound = false,
-			     const bool useDeterminism = true) const { 
+			     const bool upperBound,
+			     const bool moreConservative,
+			     const bool useDeterminism,
+			     set<RandomVariable*>* lp_nodes,
+			     set<RandomVariable*>* rp_nodes) const { 
+    // We pass in all the arguments needed to the static routine that
+    // actually does the work.
     return computeWeightInJunctionTree(nodes,
 				       assignedNodes,
 				       cumulativeAssignedNodes,
@@ -330,7 +338,9 @@ public:
 				       cumulativeUnassignedIteratedNodes,
 				       unionIncommingCESeps,
 				       unassignedInPartition,
+				       lp_nodes,rp_nodes,
 				       upperBound,
+				       moreConservative,
 				       useDeterminism);
   }
 
@@ -554,13 +564,17 @@ public:
   // TODO: TRY TO REMOVE THIS AS IT IS REDUNDANT!!
   // USED ONLY IN JUNCTION TREE INFERENCE
   // the preceding cumulative set of unassigned and iterated nodes
-  // relative to the root in the JT for the current partition and
-  // clique. This is used to determine which of the assigned nodes
+  // relative to the root in the JT. During JT weight scoring,
+  // this only includes the current partition, but during
+  // actual inference (and jt_info.txt file creation), this will also include 
+  // previous partitions as well.
+  // 
+  // This var is used to determine which of the assigned nodes
   // need actually be iterated within a clique, and which are already
   // set by the separator iterations. Note that
   // precedingUnassignedIteratedNodes does *NOT* include the
-  // unassignedIteratedNodes in the current clique (thus the name
-  // preceding).  
+  // unassignedIteratedNodes in the current clique (thus the word
+  // preceding above).  
   // Computed in JunctionTree::getCumulativeUnassignedIteratedNodes()
   // Used to:
   //    1) comptue jt weight
@@ -712,7 +726,11 @@ public:
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // print out everything in this junction tree clique to a file.
-  void printAllJTInfo(FILE* f,const unsigned indent,const set<RandomVariable*>& unassignedInPartition);
+  void printAllJTInfo(FILE* f,const unsigned indent,const set<RandomVariable*>& unassignedInPartition,
+		      const bool upperBound,
+		      const bool moreConservative,
+		      const bool useDeterminism,
+		      set<RandomVariable*>* lp_nodes,set<RandomVariable*>* rp_nodes);
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // used to clear out hash table memory between segments

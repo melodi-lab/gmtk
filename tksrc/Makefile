@@ -59,9 +59,9 @@ prefix = .
 exec_prefix = .
 install_prefix = .
 
-#libdirs = -L$(prefix) -L$(prefix)/../miscSupport  -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L$(prefix)/../featureFileIO -L/g/rcs/sw/lib
+##  libdirs = -L$(prefix) -L$(prefix)/../miscSupport  -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L$(prefix)/../featureFileIO -L/g/rcs/sw/lib
 libdirs = -L$(prefix) -L$(prefix)/../miscSupport  -L$(prefix)/../IEEEFloatingpoint -L$(prefix)/../featureFileIO -L/g/rcs/sw/lib
-#includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint -I$(prefix)/../featureFileIO 
+##  includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint -I$(prefix)/../featureFileIO 
 includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../IEEEFloatingpoint -I$(prefix)/../featureFileIO 
 docdir = $(prefix)/man/man1
 
