@@ -245,6 +245,7 @@ Sw_ObsContRV* Sw_ObsContRV::cloneRVShell()
   Sw_ObsContRV*rv = (Sw_ObsContRV*)ContRV::cloneRVShell();
   rv->conditionalMixtures = conditionalMixtures;
   rv->curMappingOrDirect = curMappingOrDirect;
+  rv->tieParametersWith(this);
   return rv;
 }
 

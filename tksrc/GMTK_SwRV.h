@@ -98,6 +98,10 @@ public:
   // of conditional parents.
   void setCurrentConditionalParents(RV* rv);
 
+  void tieParametersWith(SwRV* other) {
+    dtMapper = other->dtMapper;
+  }
+
 };
 
 

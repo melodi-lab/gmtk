@@ -57,6 +57,7 @@ public:
   ////////////////////////////////////////////////////////////////////////
   // Ties the parameters of 'this' with whatever those of 'other' are. 
   void tieParametersWith(SwDiscRV* other) {
+    SwRV::tieParametersWith(other);
     conditionalCPTs = other->conditionalCPTs;
   }
 

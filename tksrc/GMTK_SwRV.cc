@@ -56,6 +56,11 @@ void SwRV::setSwitchingConditionalParents(vector<RV *> &sparents,
 					  RV* self,
 					  vector<RV*>& allParents)
 {
+  // make sure we give this swithcing information.
+  assert ( sparents.size() > 0 );
+  assert ( cpl.size() > 1 );
+
+
   switchingParents = sparents;
   conditionalParentsList = cpl;
 
