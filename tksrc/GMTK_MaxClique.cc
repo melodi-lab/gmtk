@@ -137,6 +137,15 @@ unsigned
 MaxClique::cliqueBeamMaxNumStates = 0;
 
 /*
+ * Fraction of clique to retain. Default (1.0) means prune nothing.
+ *
+ */
+float
+MaxClique::cliqueBeamRetainFraction = 1.0;
+
+
+
+/*
  *
  * separator beam width, for separator-based beam pruning.  Default value is
  * very large (1.0/0.0 = est. of infty) meaning that we do no beam
@@ -2843,7 +2852,15 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // do k-pruning (ideally we would do this after
   // beam pruning, but since beam pruning is integrated
   // into the code below, we do max state pruning first).
-  ceCliquePrune(origin.cliqueBeamMaxNumStates);
+  // Prune the minimum of the fixed K size and the percentage size.
+  unsigned k;
+  k = 2 + (unsigned)((origin.cliqueBeamRetainFraction)*(double)numCliqueValuesUsed);
+  if (origin.cliqueBeamMaxNumStates > 0) {
+    k = min(k,origin.cliqueBeamMaxNumStates);
+  }
+  //   printf("nms = %d, pf = %f, ncv = %d, k = %d\n",origin.cliqueBeamMaxNumStates,
+  // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
+  ceCliquePrune(k);
 
   // create an ininitialized variable using dummy argument
   logpr beamThreshold((void*)0);

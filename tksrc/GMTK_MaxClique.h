@@ -233,6 +233,9 @@ public:
   static double cliqueBeam;
   // forced max number of states in a clique. Set to 0 to turn it off.
   static unsigned cliqueBeamMaxNumStates;
+  // fraction of clique to retain, forcibly pruning away everything else. Must be
+  // between 0 and 1 (i.e., 0 < v <= 1).
+  static float cliqueBeamRetainFraction;
 
   // When doing inference if any kind, this variable determines
   // if we should clear the clique and separator value cache
