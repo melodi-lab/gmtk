@@ -25,12 +25,6 @@
 #include "logp.h"
 #include "GMTK_RngDecisionTree.h"
 
-//////////////////////////////////////////////////////////////////////////////
-// This is the integer type of the values that a discrete random variable
-// may take on. Possibilities include unsigned char, char, short, int, 
-// unsigned long, and so on.
-#define DISCRETE_VARIABLE_TYPE short 
-
 // Variables come in these basic varieties.
 enum vartype {Continuous,Discrete};
 
@@ -66,6 +60,13 @@ struct VariableValue
 class RandomVariable
 {
 public:
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  // This is the integer type of the values that a discrete random variable
+  // may take on. Possibilities include unsigned char, char, short, int, 
+  // unsigned long, and so on.
+  typedef short DiscreteVariableType;
 
   ////////////////////////////////////////////////////////////////////////
   // What is my name?
@@ -209,7 +210,7 @@ public:
   /////////////////////////////////////////////////////////////////
   // in the discrete case, the actual value of the variable.
   // Cliques keep track of the values of their discrete members.
-  DISCRETE_VARIABLE_TYPE val;
+  DiscreteVariableType val;
   
   /////////////////////////////////////////////////////////////////////////
   // Again in the discrete case.
@@ -227,7 +228,10 @@ public:
   ///////////////////////////////////////////////////////////////////////
   // Printing: show all the pertinent information about the node
   virtual void reveal(bool show_vals);
-
+  // print the switching parent names/timeframes along with their currently clamped values.
+  void printSwitchingParentInfo(FILE* stream);
+  // print the current conditional parent name/times along with their currently clamped values.
+  void printCurConditionalParentInfo(FILE* stream);
 
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
