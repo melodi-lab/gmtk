@@ -375,7 +375,7 @@ Dense1DPMF::emSwapCurAndNew()
     }
   }
   if (numVanished > 0 || numSplit > 0)
-    warning("NOTE: DPMF '%s' has %d/%d elements is vanishing/splitting",
+    warning("NOTE: DPMF '%s' has %d/%d elements vanishing/splitting",
 	      name().c_str(),numVanished,numSplit);
   
   // command line check should ensure this
