@@ -28,7 +28,7 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 
@@ -710,8 +710,8 @@ main(int argc,char*argv[])
 	int rc;
 
 	if ((rc = setrlimit(RLIMIT_CPU,&rlim)))
-	  error("ERROR: child process can't set limit to %d seconds, setrlimit returned %d\n",
-		rlim.rlim_cur,rc);
+	  warning("WARNING: child process can't set limit to %d seconds, setrlimit returned %d. No hard limit on process time!!!\n",
+		  rlim.rlim_cur,rc);
 
 	alarm(seconds);
 
