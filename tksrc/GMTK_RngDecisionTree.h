@@ -646,10 +646,9 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 	arr[i].second = node->nonLeafNode.children[i];
       }
       //'sort
-      RngCompare rc;
       sort(arr.begin(),
 	   arr.end(),
-	   rc);
+	   RngCompare());
       // copy out
       for (unsigned i=0;i<(numSplits-1);i++) {
 	node->nonLeafNode.rngs[i] = arr[i].first;
