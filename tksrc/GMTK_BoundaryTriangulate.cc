@@ -693,14 +693,24 @@ BoundaryTriangulate
   //   where k = 1,2,3,4, ... is some integer >= 1.
   // Therefore, making M and/or S larger reduces the number valid possible utterance lengths.
 
+
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
   // First create a network (called u2, but could be called "find
-  // boundary") that is used to find the boundary in. This network is
-  // the template unrolled M+1 times. M = Max number simultaneous
-  // chunks in which interface boundary may exist. By unrolling M+1
-  // times, we create a network with M+2 chunks. The first and last
-  // one are used to ensure boundary algorithm works (since we are not
-  // guaranteed that P or E will exist), and the middle M chunks are
-  // used to find the boundary.
+  // boundary" or "boundary search") that is used to find the boundary
+  // in. This network is the template unrolled M+1 times. M = Max
+  // number simultaneous chunks in which interface boundary may
+  // exist. By unrolling M+1 times, we create a network with M+2
+  // chunks. The first and last one are used to ensure boundary
+  // algorithm works (since we are not guaranteed that P or E will
+  // exist), and the middle M chunks are used to find the boundary. In
+  // other words, we get:
+  // 
+  //     P C [ C C ... C ] C E
+  //           1 2 ... M    
+  //
+  // where we find the boundary in the chunks within the square brackets. The
+  // set of nodes consitituting the boundary is not allowed to exist in more than M chunks.
 
   vector <RV*> unroll2_rvs;
   fp.unroll(M+1,unroll2_rvs);
@@ -761,6 +771,7 @@ BoundaryTriangulate
 
 
   ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
   // Next, create the network from which the new P, C, and E will
   // be formed. I.e., this new P, C, and E will be the graph partitions
   // that are ultimately triangulated, where the new C will
@@ -768,7 +779,7 @@ BoundaryTriangulate
   // call the network from which P, C, and E are created u1 (but
   // could call it "partition")
 
-  // When we have an S and an M parameter, , number of chunks needed
+  // When we have an S and an M parameter, number of chunks needed
   // is M + S, so we should unroll (M+S-1) times.  We start by
   // creating sets P', C1', C2', and E', from the graph unrolled
   // (S+M-1) time(s), where each hyper-chunk C1' and C2' are M frames long
@@ -777,9 +788,33 @@ BoundaryTriangulate
   //    2) if M > S, then C1' and C2' will overlap certain variables.
   //    3) if S > M, C1' and C2' will not overlap, and there will be chunks 
   //       between C1' and C2', and they'll be placed in Cextra
+  //
+  // From this unrolled graph, new partitions P', C', and E' will ultimately be formed.
+  // Examples (all in the left interface initial-boundary case):
+  //   M=1,S=1:  
+  //          P  C  C E
+  //          |  |   \/
+  //          P' C'  E' 
+  //
+  //   M=2,S=1:
+  //          P  C  C C E
+  //          |  |   \|_/
+  //          P' C'   E' 
+  //
+  //   M=2,S=2:
+  //          P  C C C C E
+  //          |  |/   \|_/
+  //          P' C'    E'  
+  //
+  //   M=2,S=3:
+  //          P  C C C C C E
+  //          |   \|/   \|_/
+  //          P'   C'    E'  
+  //
 
   vector <RV*> unroll1_rvs;
-  fp.unroll(M+S-1,unroll1_rvs);
+  map < RVInfo::rvParent, unsigned > unroll1_pos;
+  fp.unroll(M+S-1,unroll1_rvs,unroll1_pos);
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->createNeighborsFromParentsChildren();
   }
@@ -788,8 +823,8 @@ BoundaryTriangulate
   }
   set<RV*> P_u1;
   set<RV*> C1_u1;
-  set<RV*> C2_u1;
   set<RV*> Cextra_u1;
+  set<RV*> C2_u1;
   set<RV*> E_u1;
   int start_index_of_C1_u1 = -1;
   int start_index_of_C2_u1 = -1;
@@ -829,11 +864,15 @@ BoundaryTriangulate
   assert (C1_u1.size() == C2_u1.size());
   assert (C1_u1.size() == C2_u2.size());
   assert ((S<=M) || (Cextra_u1.size() == C1_u2.size()*(S-M)));
-  infoMsg(High,"Size of (P,C1,C2,E) = (%d,%d,%d,%d)\n",
-	  P_u1.size(),C1_u1.size(),C2_u1.size(),E_u1.size());
+  infoMsg(High,"Size of (P,C1,Cextra,C2,E) = (%d,%d,%d,%d,%d)\n",
+	  P_u1.size(),C1_u1.size(),Cextra_u1.size(),C2_u1.size(),E_u1.size());
+
+  
 
 
 
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
 
   // create mapping from C2_u2 (for which we now
   // have an appropriate interface vars) to nodes C1_u1 and C2_u1
@@ -868,31 +907,16 @@ BoundaryTriangulate
   vector<float> best_R_score;
 
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'R')) {
-    // find best left interface
-    findingLeftInterface = true;
     infoMsg(Tiny,"---\nFinding BEST LEFT interface\n");
+    if (!validInterfaceDefinition(P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,S,unroll1_rvs,unroll1_pos)) {
+      infoMsg(Warning,"WARNING: Can't compute left interface since strcture template not compatible with this case.\n");
+    } else {
+      // find best left interface
+      findingLeftInterface = true;
+
     
 
-    set<RV*> C2_1_u2; // first chunk in C2_u2
-    if (M == 0) {
-      // TODO: remove this, as we require M >= 1
-      // find interface in basic template
-      assert ( C2_u2.size() == 0 );
-      findBestInterface(C1_u2,C3_u2,C2_1_u2,C3_u2,
-			left_C_l_u2C2,C_l_u2C2,best_L_score,
-			bnd_heur_v,
-			false,
-			// find best boundary args
-			tri_heur,
-			P_u1,
-			C1_u1,
-			Cextra_u1,
-			C2_u1,
-			E_u1,
-			C2_u2_to_C1_u1,
-			C2_u2_to_C2_u1
-			);
-    } else { 
+      set<RV*> C2_1_u2; // first chunk in C2_u2
       if (M == 1) {
 	// make it empty signaling that we don't bother to check it in this case.
 	C2_1_u2.clear();
@@ -920,30 +944,15 @@ BoundaryTriangulate
     }
   }
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
-    // find best right interface
-    findingLeftInterface = false;
     infoMsg(Tiny,"---\nFinding BEST RIGHT interface\n");
-
-    set<RV*> C2_l_u2; // last chunk of C2_u2
-    if (M == 0) {
-      // TODO: remove this, as we require M >= 1
-      // find interface in basic template
-      assert ( C2_u2.size() == 0 );
-      findBestInterface(C3_u2,C1_u2,C2_l_u2,C1_u2,
-			right_C_r_u2C2,C_r_u2C2,best_R_score,
-			bnd_heur_v,
-			false,
-			// find best boundary args
-			tri_heur,
-			E_u1,
-			C2_u1,
-			Cextra_u1,
-			C1_u1,
-			P_u1,
-			C2_u2_to_C2_u1,
-			C2_u2_to_C1_u1
-			);
+    if (!validInterfaceDefinition(E_u1,C2_u1,Cextra_u1,C1_u1,P_u1,-S,unroll1_rvs,unroll1_pos)) {
+      infoMsg(Warning,"WARNING: Can't compute right interface since strcture template not compatible with this case.\n");
     } else {
+      // find best right interface
+      findingLeftInterface = false;
+
+
+      set<RV*> C2_l_u2; // last chunk of C2_u2
       if (M == 1) {
 	// make it empty signaling that we don't bother to check it in this case.
 	C2_l_u2.clear();
@@ -972,29 +981,46 @@ BoundaryTriangulate
     }
   }
 
+  if (best_L_score.size() == 0 && best_R_score.size() == 0) {
+    // then neither left nor right interface approach is valid. This
+    // results when we have a template such that neither the interface
+    // between P and C, nor the interface between C and E is
+    // compatible with the interface between C and C. Since we run the
+    // boundary algorithm only one time (for interface between C and
+    // C), we don't deal with this situation (i.e., it is a constraint
+    // on the .str file), so we die with an error here.
+    error("ERROR: Successfully computed neither left nor right interface. Either structure file not valid for both left & right interface, or under current force L/R options. Check if both P contains extra backwards-time links from C to P, & where E contains extra forwards-time links from C to E\n");
+  }
+
   // Now find the partitions (i.e., left or right) corresponding
   // the interface which had minimum size, prefering the left
   // interface if there is a tie.
-  if ((flr.size() == 0 && best_L_score <= best_R_score)
-      || 
-      (flr.size() > 0 && toupper(flr[0]) == 'L')) {
+  if ((best_L_score.size() > 0) &&
+      ((best_R_score.size() == 0) // not valid structure file for right interface
+       ||
+       (flr.size() > 0 && toupper(flr[0]) == 'L') // we forced to the left and never computed right
+       || 
+       (flr.size() == 0 && best_L_score <= best_R_score) // both were scored and left is better or tied
+       )
+      ) {
+    findingLeftInterface = true;
+    infoMsg(Tiny,"---\nUsing left interface to define partitions\n");
+
     // this next routine gives us the best left interface that
     // exists from within the chunk C2_u2 and places
     // it in C_l_u2, and everything to the 'left' of C_l_u2
     // that still lies within C2_u2 is placed in left_C_l_u2
-    findingLeftInterface = true;
-    infoMsg(Tiny,"---\nUsing left interface to define partitions\n");
 
-    findInterfacePartitions(P_u1,
-			    C1_u1,
-			    Cextra_u1,
-			    C2_u1,
-			    E_u1,
-			    C2_u2_to_C1_u1,
-			    C2_u2_to_C2_u1,
-			    left_C_l_u2C2,
-			    C_l_u2C2,
-			    gm_template);
+    constructInterfacePartitions(P_u1,
+				 C1_u1,
+				 Cextra_u1,
+				 C2_u1,
+				 E_u1,
+				 C2_u2_to_C1_u1,
+				 C2_u2_to_C2_u1,
+				 left_C_l_u2C2,
+				 C_l_u2C2,
+				 gm_template);
 
     // Write information about how boundary was created to a string,
     // but make sure there is no white space in the string.
@@ -1015,16 +1041,16 @@ BoundaryTriangulate
     // create a mapping from C1_u2 to C1_u1 and from C1_u2 to P_u1
     // (where a correspondence exists)
 
-    findInterfacePartitions(E_u1,
-			    C2_u1,
-			    Cextra_u1,
-			    C1_u1,
-			    P_u1,
-			    C2_u2_to_C2_u1,
-			    C2_u2_to_C1_u1,
-			    right_C_r_u2C2,
-			    C_r_u2C2,
-			    gm_template);
+    constructInterfacePartitions(E_u1,
+				 C2_u1,
+				 Cextra_u1,
+				 C1_u1,
+				 P_u1,
+				 C2_u2_to_C2_u1,
+				 C2_u2_to_C1_u1,
+				 right_C_r_u2C2,
+				 C_r_u2C2,
+				 gm_template);
 
     // Write information about how boundary was created to a string,
     // but make sure there is no white space in the string.
@@ -1043,8 +1069,8 @@ BoundaryTriangulate
 
 /*-
  *-----------------------------------------------------------------------
- * BoundaryTriangulate::findInterfacePartitions()
- *   Create the three partitions, either left or right depending
+ * BoundaryTriangulate::constructInterfacePartitions()
+ *   Construct the three partitions, either left or right depending
  *   on the order of the arguments given.
  *
  * For the left interface, we create new P,C, and E variable sets where
@@ -1068,7 +1094,7 @@ BoundaryTriangulate
  */
 void
 BoundaryTriangulate
-::findInterfacePartitions(
+::constructInterfacePartitions(
  // input variables
  const set<RV*>& P_u1,
  const set<RV*>& C1_u1,
@@ -1113,13 +1139,12 @@ BoundaryTriangulate
     }
   } else {
     // M == 0
-    error("findInterfacePartitions: M==0 case not implemented, use unroll and triangulate\n");
+    error("constructInterfacePartitions: M==0 case not implemented, use unroll and triangulate\n");
     // this case is needed presumably because we want to do something
     // where the original GMTK template is unrolled 0 times. Rather
     // than doing this here, we will just use the unroll and triangulate
     // method and then do inference on the resulting cliques.
   }
-
   
   // Finally, create the modified sets P, C, and E
   //   where P = modified prologue
@@ -1128,19 +1153,23 @@ BoundaryTriangulate
   // which are to be triangulated separately. 
   // For the *left* interface, the modified sets are defined
   // as follows:
-  //    P = P_u1 + C1_u1(left_C_l_u2) + C1_u1(C_l_u2)
-  //    E = C2_u1\C2_u1(left_C_l_u1) + E_u1
-  //    C = ((C1_u1 + C2_u1) \ (P + E)) + C2_u1(C_l_u2) + C1_u1(C_l_u2) + Cextra_u1
-  // and the symmetric definitions apply for the right interface.
-  // We use the left interface definitions in this code and
-  // assume the caller calles with inverted arguments
-  // to get the right interface behavior.
+  //
+  //    1) P = P_u1 + C1_u1(left_C_l_u2) + C1_u1(C_l_u2)
+  //    2) E = C2_u1\C2_u1(left_C_l_u2) + E_u1
+  //    3) C = ((C1_u1 + C2_u1) \ (P + E)) + C1_u1(C_l_u2) + Cextra_u1 + C2_u1(C_l_u2) 
+  //
+  // and the symmetric definitions apply for the right interface.  We
+  // use the left interface definitions in this code and assume the
+  // caller calles with inverted arguments to get the right interface
+  // behavior.  Note that the construction in line 3) uses the P, and E
+  // constructed in line 1) and 2).
 
   // Finish P
   set<RV*> P = P_u1;
   set_union(left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
 	    C_l_u1C1.begin(),C_l_u1C1.end(),
 	    inserter(P,P.end()));
+
 
   // Finish E
   set<RV*> E = E_u1;
@@ -1168,6 +1197,11 @@ BoundaryTriangulate
   set_difference(tmp1.begin(),tmp1.end(),
 		 tmp2.begin(),tmp2.end(),
 		 inserter(C,C.end()));
+
+  // TODO: if P (resp. E) is such that P_u1 (resp. E_u1) is empty, and
+  //       also that left_C_l is empty, then should allow P to be empty
+  //       rather than having non-useful completed interface only in P (since this
+  //       will be in C as well. Same for E.
 
   // create the template with these partition definitions.
   if (findingLeftInterface)
@@ -4472,6 +4506,10 @@ unrollAndTriangulate(// triangulate heuristics
     vector <RV*> rvs;
     set <RV*> rvsSet;
     fp.unroll(numTimes,rvs);
+    if (message(Huge)) {
+      // print out unrolled graph
+      printRVSet(stdout,rvs);
+    }
     for (unsigned i=0;i<rvs.size();i++) {
       rvs[i]->createNeighborsFromParentsChildren();
     }
@@ -5228,16 +5266,16 @@ BoundaryTriangulate::interfaceScore(
       // up a bit.
 
       GMTemplate gm_template(fp,M,S);
-      findInterfacePartitions(P_u1,
-			      C1_u1,
-			      Cextra_u1,
-			      C2_u1,
-			      E_u1,
-			      C2_u2_to_C1_u1,
-			      C2_u2_to_C2_u1,
-			      left_C_l,
-			      C_l,
-			      gm_template);
+      constructInterfacePartitions(P_u1,
+				   C1_u1,
+				   Cextra_u1,
+				   C2_u1,
+				   E_u1,
+				   C2_u2_to_C1_u1,
+				   C2_u2_to_C2_u1,
+				   left_C_l,
+				   C_l,
+				   gm_template);
 
       if (fh == IH_MIN_MAX_CLIQUE || IH_MIN_STATE_SPACE) {
 	// then we do the entire graph, all three partitions
@@ -5326,6 +5364,111 @@ BoundaryTriangulate::interfaceScore(
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * bool BoundaryTriangulate::validInterfaceDefinition()
+ *
+ * check that the basic definitions (as given by the template) will be
+ * valid for the boundary that will be computed for this particular partitioning
+ * set. In other words, the boundary that the boundary algorithm returns is used
+ * to compute the interface for the P-C boundary, the C-C boundary, and the C-E
+ * boundary. This routine checks that this will be valid (routine defined
+ * for the left interface case, call with mirrored arguments for the right
+ * interface case).
+ *
+ */
+bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
+						   const set<RV*> &C1,
+						   const set<RV*> &Cextra,
+						   const set<RV*> &C2,
+						   const set<RV*> &E,
+						   const int S,
+						   const vector <RV*>& rvs,
+						   // should be const, but need member pos.find().
+						   map < RVInfo::rvParent, unsigned >& pos)
+{
+  // check that C1's left interface to P matches C2's left interface
+  // to union(P,C1,Cextra)
+  
+  /*
+  printf("P:");printRVSet(stdout,P);
+  printf("C1:");printRVSet(stdout,C1);
+  printf("Cextra:");printRVSet(stdout,Cextra);
+  printf("C2:");printRVSet(stdout,C2);
+  printf("E:");printRVSet(stdout,E);
+  */
+
+  // Compute C1's left interface to P
+  set<RV*> C1s_li;
+  // go through through set P, and pick out all neighbors of variables
+  // in set P that live in C1, and these neighbors are C1s_li.
+  set<RV*>::iterator p_iter;
+  for (p_iter = P.begin(); p_iter != P.end(); p_iter ++) {
+    // go through all neighbors of nodes in P
+    RV *cur_rv = (*p_iter);
+    set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
+		     C1.begin(),C1.end(),
+		     inserter(C1s_li, C1s_li.end()));
+  }
+
+  /*
+  printf("C1s li:");
+  printRVSet(stdout,C1s_li);
+  */
+
+  // Compute C2's left interface to union(P,C1,Cextra)
+  set<RV*> C2s_li;
+  // first compute union
+  set<RV*> union_left = P;
+  set_union(C1.begin(),C1.end(),
+	    Cextra.begin(),Cextra.end(),
+	    inserter(union_left,union_left.end()));
+  // go through through set union_left, and pick out all neighbors of variables
+  // in set union_left that live in C2, and these neighbors are C2s_li.
+  set<RV*>::iterator u_iter;
+  for (u_iter = union_left.begin(); u_iter != union_left.end(); u_iter ++) {
+    // go through all neighbors of nodes in P
+    RV *cur_rv = (*u_iter);
+    set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
+		     C2.begin(),C2.end(),
+		     inserter(C2s_li, C2s_li.end()));
+  }
+
+  /*
+  printf("C2s li:");
+  printRVSet(stdout,C2s_li);
+  */
+  
+  if (C1s_li.size() != C2s_li.size())
+    return false;
+
+  // they have same size so need to check that they are same 
+  // variables separated by S (i.e., C1s_li + S == C2s_li) 
+  set<RV*>::iterator c1iter;
+  for (c1iter = C1s_li.begin(); c1iter != C1s_li.end(); c1iter ++) {
+    // get the name & frame, look up name & frame+S and make
+    // sure RV lives in C2s_li.
+    RV *cur_rv = (*c1iter);
+    RVInfo::rvParent p(cur_rv->name(),cur_rv->frame()+S);
+    map < RVInfo::rvParent , unsigned >::iterator it;      
+    if ((it = pos.find(p)) == pos.end()) {
+      // this could be an assertion failure as well, but we need
+      // to set 'it'
+      error("INTERNAL ERROR: C1+S contains variable %s(%d) not in unrolled network. S = %d.\n",
+	    cur_rv->name().c_str(),
+	    cur_rv->frame()+S,
+	    S);
+    }
+    RV *correponding_C2_rv = rvs[(*it).second];
+    if (C2s_li.find(correponding_C2_rv) == C2s_li.end())
+      return false;
+  }
+  // so now we've gone through all of C1s_li and found corresponding variable (+S)
+  // in C2s_li, and they're the same size, so then we can return true. 
+  return true;
+}
+
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -5402,13 +5545,13 @@ BoundaryTriangulate::interfaceScore(
  */
 void
 BoundaryTriangulate::findBestInterface(
- // first chunk of twice unrolled graph
+ // first chunk, 1 chunk long
  const set<RV*> &C1,
- // second chunk of twice unrolled graph
+ // second chunk, M chunks long (where the boundary is located)
  const set<RV*> &C2,
  // first chunk of C2, empty when M=1
  const set<RV*> &C2_1,
- // third chunk of twice unrolled graph
+ // third chunk, 1 chunk long
  const set<RV*> &C3,
  // nodes to the "left" of the left interface within C2
  set<RV*> &left_C_l,
@@ -5450,7 +5593,7 @@ BoundaryTriangulate::findBestInterface(
   // go through through set C1, and pick out all neighbors
   // of variables in set C1 that live in C2, and these neighbors
   // become the initial left interface C_l
- set<RV*>::iterator c1_iter;
+  set<RV*>::iterator c1_iter;
   for (c1_iter = C1.begin(); c1_iter != C1.end(); c1_iter ++) {
     // go through all neighbors of nodes in C1
     RV *cur_rv = (*c1_iter);
@@ -5512,19 +5655,19 @@ BoundaryTriangulate::findBestInterface(
     set< set<RV*> > setset;
     // call recursive routine.
     boundaryRecursionDepth = 0;
-    findBestInterface(left_C_l,
-		      C_l,
-		      C2,
-		      C2_1,
-		      C3,
-		      setset,
-		      best_left_C_l,
-		      best_C_l,
-		      best_score,bnd_heur_v,
-		      // 
-		      tri_heur,
-		      P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
-		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
+    findBestInterfaceRecurse(left_C_l,
+			     C_l,
+			     C2,
+			     C2_1,
+			     C3,
+			     setset,
+			     best_left_C_l,
+			     best_C_l,
+			     best_score,bnd_heur_v,
+			     // 
+			     tri_heur,
+			     P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
+			     C2_u2_to_C1_u1,C2_u2_to_C2_u1);
     if (message(Tiny)) {
       printf("  Size of best interface = %d\n",best_C_l.size());
       printf("  Score of best interface =");
@@ -5550,7 +5693,7 @@ BoundaryTriangulate::findBestInterface(
 }
 /*-
  *-----------------------------------------------------------------------
- * BoundaryTriangulate::findBestInterface() 
+ * BoundaryTriangulate::findBestInterfaceRecurse() 
  *    Recursive helper function for the * first version of
  *    findBestInterface(). See that routine above for * documentation.
  *
@@ -5566,7 +5709,7 @@ BoundaryTriangulate::findBestInterface(
  */
 void
 BoundaryTriangulate::
-findBestInterface(
+findBestInterfaceRecurse(
   const set<RV*> &left_C_l,
   const set<RV*> &C_l,
   const set<RV*> &C2,
@@ -5767,14 +5910,14 @@ findBestInterface(
     } 
 
     // recurse
-    findBestInterface(next_left_C_l,
-		      next_C_l,
-		      C2,C2_1,C3,setset,
-		      best_left_C_l,best_C_l,best_score,
-		      bnd_heur_v,
-		      tri_heur,
-		      P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
-		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
+    findBestInterfaceRecurse(next_left_C_l,
+			     next_C_l,
+			     C2,C2_1,C3,setset,
+			     best_left_C_l,best_C_l,best_score,
+			     bnd_heur_v,
+			     tri_heur,
+			     P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
+			     C2_u2_to_C1_u1,C2_u2_to_C2_u1);
 
   }
 

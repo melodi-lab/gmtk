@@ -392,7 +392,7 @@ void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl)
   }
   if (nl) fprintf(f,"\n");
 }
-void printRVSet(FILE*f,set<RV*>& locset,bool nl)
+void printRVSet(FILE*f,const set<RV*>& locset,bool nl)
 {
   bool first = true;
   set<RV*>::iterator it;

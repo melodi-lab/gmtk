@@ -864,7 +864,6 @@ Unroll 2 times
 Unroll 3 times
  [P<->C], [C<->C], [C<->C] [C<->C] [C<->E], [E]
     I        II      II      II       III    IV
-   
 
 So I's right interface separator is either to 
       II or III
@@ -891,6 +890,10 @@ u2: P C C C E (uses the above guys).
 Thm: Since all C's come from same underlying partition and have same triangulation
    (and JT), there is no way that interface cliques dervied from u1 can't
    be used for u2, u3, etc.        
+Sat Nov 27 01:16:42 2004: this is false, since the C<->C interface might
+     be different than the P<->C interface (and resp., the C<->C interface
+     migth be different than the C<->E interface). The reason is that P (resp. E)
+     might link into C differently than C links into C.
 
 Currently, we are creating 4 partitions.
   1. Clone of P (name P1), to interface on right to C
@@ -915,7 +918,7 @@ What is needed for each operation:
          C2 always interfaces to a E on the right
          E1 always interfaces to a C on the left.
     (but these interface clique identities can be used for any unrolling
-     amount)
+     amount) (11/04 this is false).
 
  3) create a directed clique tree (i.e., assign root in each partition)
     (the thing that creates the clique.children arrays).
@@ -961,7 +964,7 @@ What is needed for each operation:
       A:
       Lets say we have P Cu1 E, the assignment depends on the
       interface of Cu1 to E (that's the root) and Cu1's interface
-      to E (to get cum assigned nodes), so none of Ca, Cb, or Cc will do.
+      to P (to get cum assigned nodes), so none of Ca, Cb, or Cc will do.
       But using Cu0 is fine for unrolling 0x clearly.
     - Q: if we do P Cu2_1 Cu2_2 E, we can use Ca for Cu2_1 and use
          Cc for Cu2_2.
@@ -1018,7 +1021,7 @@ What is needed for each operation:
        Then unrolling 3 times becomes:
        u3: P1 C1 C2 C2 C3 E1 
        u4: etc.
-       (alternatively, could have
+       (newer: alternatively, could have
              u0: P1 Cu0 E1
          for left interface case, do:
              u1: P1 Cu0 C2 E1

@@ -265,7 +265,7 @@ private:
   ////////////////////////////////////////////////////////////
 
 
-  void findInterfacePartitions(
+  void constructInterfacePartitions(
    // input params
    const set<RV*>& P_u1,
    const set<RV*>& C1_u1,
@@ -558,7 +558,7 @@ private:
 	     map < RV*, RV* >& C2_u2_to_C1_u1,
 	     map < RV*, RV* >& C2_u2_to_C2_u1);
 
-  void findBestInterface(
+  void findBestInterfaceRecurse(
              const set<RV*> &left_C_l,
 	     const set<RV*> &C_l,
 	     const set<RV*> &C2,
@@ -580,6 +580,23 @@ private:
 	     map < RV*, RV* >& C2_u2_to_C2_u1);
 
 
+  // check that the basic definitions (as given by the template) will be
+  // valid for the boundary that will be computed for this particular partitioning
+  // set. In other words, the boundary that the boundary algorithm returns is used
+  // to compute the interface for the P-C boundary, the C-C boundary, and the C-E
+  // boundary. This routine checks that this will be valid (routine defined
+  // for the left interface case, call with mirrored arguments for the right
+  // interface case).
+  bool validInterfaceDefinition(const set<RV*> &P,
+				const set<RV*> &C1,
+				const set<RV*> &Cextra,
+				const set<RV*> &C2,
+				const set<RV*> &E,
+				const int S,
+				const vector <RV*>& rvs,
+				map < RVInfo::rvParent, unsigned >& pos);
+  
+				
   //////////////////////////////////////////////////////////////////////////// 
   // Custom data structures for fast Maximum Cardinality Search, fill-in 
   // computation, and chordality test. 
@@ -848,6 +865,7 @@ public:
 		      const string& triHeuristic,
 		      const bool findBestBoundary,
 		      GMTemplate& gm_template);
+
 
 
   // use the timer given by arg, returning the old timer.

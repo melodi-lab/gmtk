@@ -200,6 +200,8 @@ Arg Arg::Args[] = {
   Arg("noReTriE",
       Arg::Opt,noReTriE,
       "When re-triangulating existing .tri file, don't re-triangulate E, keep old"),
+  Arg("jcap",Arg::Opt,JunctionTree::priorityStr,"Junction Tree Clique Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
+  Arg("icap",Arg::Opt,JunctionTree::interfaceCliquePriorityStr,"Interface Clique Priority Determiner Priority. From Set: [W,D,H,O,I]"),
 
 
   Arg("numBackupFiles",Arg::Opt,numBackupFiles,"Number of backup .trifiles (_bak0,_bak1,etc.) to keep."),
@@ -213,7 +215,7 @@ Arg Arg::Args[] = {
 
   Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
 
-  Arg("longStrCheck",Arg::Opt,longStrCheck,"Set to true to do the long check for STR file validity"),
+  Arg("longStrCheck",Arg::Opt,longStrCheck,"Set to true to do the long check for structure file validity"),
 
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),

@@ -240,7 +240,7 @@ Arg Arg::Args[] = {
   Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture and component probabilities, faster but uses more memory."),
   Arg("vpap",Arg::Opt,varPartitionAssignmentPrior,"Variable partition assignment priority. Sequence of chars in set [C,D,O,B,I]"),  
   Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,I]"),
-  Arg("jcap",Arg::Opt,JunctionTree::priorityStr,"Junction Tree Clique Sorting Priority. From Set: [D,E,S,U,H,O,L,Q]"),
+  Arg("jcap",Arg::Opt,JunctionTree::priorityStr,"Junction Tree Clique Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
   Arg("icap",Arg::Opt,JunctionTree::interfaceCliquePriorityStr,"Interface Clique Priority Determiner Priority. From Set: [W,D,H,O,I]"),
 
   /////////////////////////////////////////////////////////////

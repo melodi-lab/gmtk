@@ -419,7 +419,7 @@ void printRVSetAndValues(FILE*f,sArray<RV*>& locset,const bool nl=true);
 void printRVSetAndValues(FILE*f,set<RV*>& locset,const bool nl=true);
 void printRVSet(FILE*f,vector<RV*>& locvec,const bool nl=true);
 void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl=true);
-void printRVSet(FILE*f,set<RV*>& locset,const bool nl=true);
+void printRVSet(FILE*f,const set<RV*>& locset,const bool nl=true);
 void printRVSetPtr(FILE*f,set<RV*>& locset,const bool nl=true);
 
 
