@@ -143,7 +143,7 @@ display=false)
 main(int argc, char *argv[])
 {
     if (argc!=3 && argc!=4) 
-        {cout << "Usage: string_err infile reference [show-align]\n"; exit(1);}
+      {cout<<"Usage: string_err infile reference [\"show-align\"]\n"; exit(1);}
  
     /* This program takes two files that have utterances separated by #.
        It computes the string WER on an utterance by utterance basis, and
@@ -170,10 +170,10 @@ main(int argc, char *argv[])
         while (1)
         {
             in >> s >> ws;
-            assert(in.good());
             if (s == "#")
                break;
             instr.push_back(s);
+            assert(in.good());
         }
         assert(s=="#");
 
@@ -181,10 +181,10 @@ main(int argc, char *argv[])
         while (1)
         {
             ref >> s >> ws;
-            assert(ref.good());
             if (s == "#")
                break;
             refstr.push_back(s);
+            assert(ref.good());
         }
         assert(s=="#");
     
@@ -199,5 +199,4 @@ main(int argc, char *argv[])
     in.close();
     ref.close();
 }
-
 
