@@ -67,7 +67,7 @@ ARGS ARGS::Args[] = {
  ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
  ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
  ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
- ARGS("showVitVals",ARGS::Opt,showVitVals,"Print the viterbi values??");
+ ARGS("showVitVals",ARGS::Opt,showVitVals,"Print the viterbi values??"),
  ARGS()
 
 };
@@ -137,22 +137,19 @@ main(int argc,char*argv[])
   if (randomizeParams) {
     printf("randomizing parameters\n");
     GM_Parms.makeRandom();
-    printf("writing the random parameters to random.gmp\n");
-    oDataStreamFile of("random.gmp");
-    GM_Parms.writeAll(of);
   }
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
 
   // and away we go
-  clampFirstExample();
+  gm.clampFirstExample();
   do
   {
     gm.cliqueChainViterbiProb(pruneRatio);
     cout << "Example prob: " << gm.viterbiProb.val() << endl;
     if (showVitVals)
-      gm.reveal(gm.preorder, true);
-  } while (clampNextExample());
+      gm.reveal(gm.node, true);
+  } while (gm.clampNextExample());
 
 
   return 0;  

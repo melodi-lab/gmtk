@@ -987,6 +987,7 @@ void GMTK_GM::setExampleStream(char *obs_file_name)
 
 void GMTK_GM::clampFirstExample()
 {
+    CliqueValue::global_val_set.clear();
     if (using_files)
     {
         if (globalObservationMatrix.numSegments()==0)
@@ -1013,6 +1014,7 @@ void GMTK_GM::clampFirstExample()
 
 bool GMTK_GM::clampNextExample()
 {
+    CliqueValue::global_val_set.clear();
     if (using_files)
     {
         if (expos==globalObservationMatrix.numSegments()-1)
