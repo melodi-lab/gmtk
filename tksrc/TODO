@@ -2706,6 +2706,20 @@ Thu Feb 17 13:52:17 2005
     In fact, logp.h should have a #define option to use linear arithmetic, and then
     this option is active, it activiates the scaling code in GMTK_MaxClique.cc
 
+Fri Feb 18 20:14:44 2005
+ - another speedup:
+  - to reduce virtual functions in inner loops, change CPTs so that
+    begin also returns a direct function pointer to the next() function,
+    and we use that pointer to function rather than the virtual mechanism
+    which goes through two virtual functions currently. This doesn't
+    eliminate dynamic dispatch, but it reduces it by a factor of 2 on the next calls at least.
+  - in addition, given a clique, the first thing we do is iterate through all the
+    variables in the clique constructing an array of begin() and next() function pointers
+    for each variable in the clique.
+
+
+
+
 
 
 
