@@ -391,14 +391,14 @@ unsigned ofmt;
 unsigned int nis[MAX_OBJECTS];
 unsigned int nfs[MAX_OBJECTS];
 
-char  *sr_str               = 0;   // sentence range string
-Range *sr_rng;
-char  *psr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per-stream sentence range string
-char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // feature range string    
-char  *lr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // label range string  
-char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream per sentence frame range string 
-char  *pr_str               = 0;   // per-sentence range string
-char  *pre_trans_spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream pre-transform per sentence frame range string 
+char  *gsr_str               = 0;   // sentence range string
+Range *gsr_rng;
+char  *sr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per-stream sentence range string
+char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // float range string    
+char  *ir_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // int range string  
+char  *prepr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream pre-transform per sentence frame range string 
+char  *postpr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream post-transform frame range string 
+char  *gpr_str               = 0;   // global frame range string
 
 char* actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er","er","er","er","er","er"};   // 
 unsigned actionIfDiffNumFrames[MAX_OBJECTS]={ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR,ERROR};   // 
@@ -468,32 +468,30 @@ char* Usage_Str = NULL;
 bool help=false;
 
 Arg Arg::Args[] = {
-  Arg("i",      Arg::Req, input_fname,"input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ifmt",      Arg::Opt,ifmtStr ,"format of input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("o",      Arg::Opt, output_fname,"output file"),
-  Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file"),
-  Arg("nf",   Arg::Opt, nfs,"number of floats in input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ni",   Arg::Opt, nis,"number of ints (labels) in input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("q",  Arg::Tog, quiet,"quiet mode"),
-  Arg("psr",  Arg::Opt, psr_str,"per-stream sentence range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("sr",   Arg::Opt, sr_str,"sentence range. Is applied on top of the per-stream sentence range above."),
-  Arg("fr",   Arg::Opt, fr_str,"feature range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("spr",  Arg::Opt, spr_str,"per stream per-sentence frame range",Arg::ARRAY,MAX_OBJECTS),
-  //  Arg("pr",   Arg::Opt, pr_str,"per-sentence range"),
-  Arg("pretransspr",  Arg::Opt, pre_trans_spr_str,"per stream pre-transform per-sentence frame range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("lr",   Arg::Opt, lr_str,"label range",Arg::ARRAY,MAX_OBJECTS),
+  Arg("i",    Arg::Req, input_fname,"input file. Replace X with the file number",Arg::ARRAY,MAX_OBJECTS),
+  Arg("ifmt", Arg::Opt,ifmtStr ,"format of input file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("iswp", Arg::Opt, iswap,"do byte swapping on the input file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("nf",   Arg::Opt, nfs,"number of floats in input file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("ni",   Arg::Opt, nis,"number of ints (labels) in input file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("o",    Arg::Opt, output_fname,"output file"),
+  Arg("ofmt", Arg::Opt, ofmtStr,"format of output file"),
+  Arg("olist",Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
+  Arg("sep",  Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file)."),
+  Arg("oswp", Arg::Opt, oswap,"do byte swapping on the output file"),
+  Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
+  Arg("fr",   Arg::Opt, fr_str,"float range for obs file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("ir",   Arg::Opt, ir_str,"int range for obs file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("sr",   Arg::Opt, sr_str,"per-stream sentence range",Arg::ARRAY,MAX_OBJECTS),
+  Arg("gsr",  Arg::Opt, gsr_str,"global sentence range. Is applied on top of the per-stream sentence range above."),
+  Arg("postpr", Arg::Opt, postpr_str,"frame range for obs file X after per-stream transformations are applied",Arg::ARRAY,MAX_OBJECTS),
+  Arg("prepr",  Arg::Opt, prepr_str,"frame range for obs file X before any transformations are applied",Arg::ARRAY,MAX_OBJECTS),
   Arg("startskip",   Arg::Opt, startSkip,"start skip"),
   Arg("endskip",   Arg::Opt, endSkip,"end skip"),
   Arg("fdiffact",  Arg::Opt,actionIfDiffNumFramesStr ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_OBJECTS),
   Arg("sdiffact",  Arg::Opt,actionIfDiffNumSentsStr ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_OBJECTS),
-  Arg("trans",  Arg::Opt,perStreamTransforms ,"per stream transformations string",Arg::ARRAY,MAX_OBJECTS),
-  Arg("posttrans",  Arg::Opt,postTransforms ,"Final global transformations string"),
+  Arg("trans",     Arg::Opt,perStreamTransforms ,"transformations string for obs file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("posttrans", Arg::Opt,postTransforms ,"Final global transformations string"),
   Arg("comb",      Arg::Opt, ftrcomboStr,"Combine float features (none: no combination, add, sub, mul,div"),
-  Arg("iswap",Arg::Opt, iswap,"do byte swapping on the input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("oswap",Arg::Opt, oswap,"do byte swapping on the output file"),
-  Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
-  Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file)."),
-  Arg("olist",      Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
   Arg("cppifascii",Arg::Opt, cppIfAscii,"Pre-process ASCII files using CPP"),
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
   Arg("norm",      Arg::Tog, Normalize, "Normalize the observation file"),
@@ -514,20 +512,21 @@ Arg Arg::Args[] = {
   Arg("kltOutputFtrRange", Arg::Opt, KLT_Output_Ftr_Range,"KLT: output feature range",Arg::SINGLE,0,true),
   Arg("stats",           Arg::Tog, Get_Stats,"Output statistics of the form:\nfeatnum mean std max @sent# @frame# min @sent# @frame# max/stds min/stds [histogram]"),
   Arg("histBins",   Arg::Opt, Num_Hist_Bins,"STATS/GAUSS: number of histogram bins"),
- Arg("addsil",               Arg::Tog, Add_Sil,"Add silence frames at the begining and end each sentence"), 
- Arg("addsilNumBeg",               Arg::Opt, Add_Sil_Num_Beg_Frames,"Number of new beginning silence frames",Arg::SINGLE,0,true), 
- Arg("addsilPrb",               Arg::Opt, Add_Sil_Beg_Rng_Str,"Per-sentence range to compute beginning silence",Arg::SINGLE,0,true), 
- Arg("addsilNumEnd",               Arg::Opt, Add_Sil_Num_End_Frames,"Number of new ending silence frames",Arg::SINGLE,0,true), 
- Arg("addsilPre",               Arg::Opt, Add_Sil_End_Rng_Str,"Per-sentence range to compute ending silence",Arg::SINGLE,0,true), 
- Arg("addsilMMF",               Arg::Opt, Add_Sil_MMF,"Mean multiplicative factor",Arg::SINGLE,0,true), 
- Arg("addsilMAF",               Arg::Opt, Add_Sil_MAF,"Mean additive factor",Arg::SINGLE,0,true),
- Arg("addsilSMF",               Arg::Opt, Add_Sil_SMF,"Standard deviation multiplicative factor",Arg::SINGLE,0,true),  
- Arg("addsilSAF",               Arg::Opt, Add_Sil_SAF,"Standard deviation additive factor",Arg::SINGLE,0,true),  
-  Arg("htkKind",  Arg::Opt, HTK_Param_Kind,"Kind of output HTK parameters"),
-  Arg("htkSamplePeriod",  Arg::Opt, HTK_Sample_Period,"Output HTK Sample Period"),
- Arg("debug",  Arg::Opt, debug_level,"Number giving level of debugging output to produce 0=none"),
-  Arg("usage",  Arg::Opt, Usage_Str, "Print usage information about one of the follwoing topics: {norm, gauss, klt, addsil}"),
-  Arg("help",   Arg::Tog, help,  "Print this message"),
+  Arg("addsil",          Arg::Tog, Add_Sil,"Add silence frames at the begining and end each sentence"), 
+  Arg("addsilNumBeg",    Arg::Opt, Add_Sil_Num_Beg_Frames,"Number of new beginning silence frames",Arg::SINGLE,0,true), 
+  Arg("addsilPrb",       Arg::Opt, Add_Sil_Beg_Rng_Str,"Per-sentence range to compute beginning silence",Arg::SINGLE,0,true), 
+  Arg("addsilNumEnd",    Arg::Opt, Add_Sil_Num_End_Frames,"Number of new ending silence frames",Arg::SINGLE,0,true), 
+  Arg("addsilPre",       Arg::Opt, Add_Sil_End_Rng_Str,"Per-sentence range to compute ending silence",Arg::SINGLE,0,true), 
+  Arg("addsilMMF",       Arg::Opt, Add_Sil_MMF,"Mean multiplicative factor",Arg::SINGLE,0,true), 
+  Arg("addsilMAF",       Arg::Opt, Add_Sil_MAF,"Mean additive factor",Arg::SINGLE,0,true),
+  Arg("addsilSMF",       Arg::Opt, Add_Sil_SMF,"Standard deviation multiplicative factor",Arg::SINGLE,0,true),  
+  Arg("addsilSAF",       Arg::Opt, Add_Sil_SAF,"Standard deviation additive factor",Arg::SINGLE,0,true),  
+  Arg("htkKind",         Arg::Opt, HTK_Param_Kind,"Kind of output HTK parameters"),
+  Arg("htkSamplePeriod", Arg::Opt, HTK_Sample_Period,"Output HTK Sample Period"),
+  Arg("debug", Arg::Opt, debug_level,"Number giving level of debugging output to produce 0=none"),
+  Arg("q",     Arg::Tog, quiet,"quiet mode"),
+  Arg("usage", Arg::Opt, Usage_Str, "Print usage information about one of the follwoing topics: {norm, gauss, klt, addsil}"),
+  Arg("help",  Arg::Tog, help,  "Print this message"),
   // The argumentless argument marks the end of the above list.
   Arg()
 };
@@ -737,7 +736,7 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
  globalObservationMatrix.openFiles(numFiles,  // number of files.   For now we use only one
 				   (const char**)&input_fname,
 				   (const char**)&fr_str,
-				   (const char**)&lr_str,
+				   (const char**)&ir_str,
 				   (unsigned*)&nfs,
 				   (unsigned*)&nis,
 				   (unsigned*)&ifmt,
@@ -746,18 +745,18 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 				   endSkip,  // endSkip  pr_rng takes care of these two  
 				   cppIfAscii,
 				   cppCommandOptions,
-				   (const char**)&spr_str,
+				   (const char**)&postpr_str,
 				   actionIfDiffNumFrames,
 				   actionIfDiffNumSents,
 				   perStreamTransforms,
 				   postTransforms,
 				   ftrcombo,
-				   (const char**)& psr_str,
-				   (const char**)& pre_trans_spr_str
+				   (const char**)& sr_str,
+				   (const char**)& prepr_str
 				   );   
 
 
-     sr_rng = new Range(sr_str,0,globalObservationMatrix.numSegments());
+     gsr_rng = new Range(gsr_str,0,globalObservationMatrix.numSegments());
 
      /////////////////////////////////////////////////////////////////////
      unsigned too_many_switches=0;
@@ -777,11 +776,11 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 
      if(Get_Stats) {
        Range* fr_rng=new Range(NULL,0,globalObservationMatrix.numContinuous());
-       obsStats(out_fp, &globalObservationMatrix, *sr_rng, *fr_rng, NULL, Num_Hist_Bins, quiet);
+       obsStats(out_fp, &globalObservationMatrix, *gsr_rng, *fr_rng, NULL, Num_Hist_Bins, quiet);
        delete fr_rng;
      }
      else if(Normalize) {
-       obsNorm(out_fp,&globalObservationMatrix,*sr_rng,Norm_Mean, Norm_Std, Norm_Segment_Group_Len_File, Norm_Segment_Group_Len, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsNorm(out_fp,&globalObservationMatrix,*gsr_rng,Norm_Mean, Norm_Std, Norm_Segment_Group_Len_File, Norm_Segment_Group_Len, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
      else if(Gaussian_Norm) {
        Range* fr_rng=new Range(NULL,0,globalObservationMatrix.numContinuous());
@@ -796,7 +795,7 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 	   error("Could not open input stat file, %s, for writing.",Gauss_Norm_Input_Stat_File_Name);
 	 }
        }
-       gaussianNorm(out_fp,&globalObservationMatrix,is_fp,os_fp,*sr_rng,*fr_rng, pr_str, Num_Hist_Bins, Gaussian_Num_Stds, Gaussian_Uniform, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       gaussianNorm(out_fp,&globalObservationMatrix,is_fp,os_fp,*gsr_rng,*fr_rng, gpr_str, Num_Hist_Bins, Gaussian_Num_Stds, Gaussian_Uniform, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
        delete fr_rng;
        if(Gauss_Norm_Output_Stat_File_Name != NULL) fclose(os_fp);
        if(Gauss_Norm_Input_Stat_File_Name  != NULL) fclose(is_fp);
@@ -816,22 +815,22 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 	 }
        }
        
-       obsKLT(out_fp,&globalObservationMatrix,is_fp,os_fp,*sr_rng,*ofr_rng,KLT_Unity_Variance, KLT_Ascii_Stat_Files, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsKLT(out_fp,&globalObservationMatrix,is_fp,os_fp,*gsr_rng,*ofr_rng,KLT_Unity_Variance, KLT_Ascii_Stat_Files, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
        
        delete ofr_rng;
        if(KLT_Output_Stat_File_Name != NULL) fclose(os_fp);
        if(KLT_Input_Stat_File_Name != NULL) fclose(is_fp);
      }
      else if (Add_Sil) {
-       addSil(out_fp,&globalObservationMatrix,*sr_rng,Add_Sil_Num_Beg_Frames,Add_Sil_Beg_Rng_Str, Add_Sil_Num_End_Frames,Add_Sil_End_Rng_Str, Add_Sil_MMF, Add_Sil_MAF, Add_Sil_SMF, Add_Sil_SAF, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       addSil(out_fp,&globalObservationMatrix,*gsr_rng,Add_Sil_Num_Beg_Frames,Add_Sil_Beg_Rng_Str, Add_Sil_Num_End_Frames,Add_Sil_End_Rng_Str, Add_Sil_MMF, Add_Sil_MAF, Add_Sil_SMF, Add_Sil_SAF, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
      else {
-       obsPrint(out_fp,*sr_rng,pr_str,dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsPrint(out_fp,*gsr_rng,gpr_str,dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
     //////////////////////////////////////////////////////////////////////
     // Clean up and exit.
     //////////////////////////////////////////////////////////////////////
-    delete sr_rng;
+    delete gsr_rng;
     if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK) {
       if (fclose(out_fp)) error("Couldn't close output file.");
     }
