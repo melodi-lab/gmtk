@@ -205,7 +205,7 @@ Dlinks::compatibleWith(DlinkMatrix& d)
  *
  *-----------------------------------------------------------------------
  */
-bool 
+void
 Dlinks::preCompute(const unsigned stride)
 {
   // first go through and find out how long it needs to be
@@ -219,6 +219,6 @@ Dlinks::preCompute(const unsigned stride)
   for (int i=0;i<numFeats();i++)
     for (int j=0;j<numLinks(i);j++) {
       preComputedOffsets[entry] = 
-	dIndices[i][j].lag*stride+offset;
+	dIndices[i][j].lag*stride+dIndices[i][j].offset;
     }
 }
