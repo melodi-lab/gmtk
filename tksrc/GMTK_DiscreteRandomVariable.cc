@@ -1,7 +1,7 @@
 /*-
  * GMTK_DiscreteRandomVariable.cc
  *     Support code for discrete random variables.
-
+ *
  * Written by Jeff Bilmes<bilmes@ee.washington.edu>
  *
  * Copyright (c) 2001, < fill in later >
