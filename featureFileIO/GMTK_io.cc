@@ -18,17 +18,16 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
-#include "GMTK_utils.h"
 #include "GMTK_io.h"
 
 /* create data input stream  
- * n_files: number of input files
- * fof: list of files-of-filenames
+ * n_files: number of input streams
+ * fof_names: array of names of files of filenames
  * cont_range_str: array of continuous range specification strings
  * disc_range_str: array of discrete range specification strings
- * n_floats: array of numbers of floats for each file
- * n_ints: array of numbers of ints for each file
- * formats: array of format specification for each file
+ * n_floats: array of numbers of floats for each stream
+ * n_ints: array of numbers of ints for each stream
+ * formats: array of file format specification for each stream
  * swapflag: array of boolean flags indicating whether byteswapping is required
  */
 
@@ -41,7 +40,6 @@ DataInStream::DataInStream(int n_files, const char **fof_names,
   _numFiles = n_files;
 
   assert(_numFiles > 0);
-
 
   if (fof_names == NULL)
     error("ERROR DataInStream: need list of filenames\n");
@@ -61,32 +59,74 @@ DataInStream::DataInStream(int n_files, const char **fof_names,
   _totalInts = 0;
 
   fd = new FileDescription*[_numFiles];
+  
+
+  char *crng;
+  char *drng;
+  bool swap = 0,sflag;
+
+  unsigned max_floats = 0, max_ints = 0;
 
   for (int i = 0; i < _numFiles; i++) {
-      fd[i] = new FileDescription(fof_names[i],cont_range_str[i],
-		disc_range_str[i], &n_floats[i],&n_ints[i],
-                &formats[i],&swapflag[i],i);
 
+    if (fof_names[i] == NULL)
+      error("GMTK_io: file name for file %i is NULL\n",i);
+    
+    if (cont_range_str == NULL || cont_range_str[i] == NULL ) 
+      crng = "all"; // default: use all features in stream
+    else
+      crng = (char *)cont_range_str[i];
 
-      if (i > 0 ) {
+    if (disc_range_str == NULL || disc_range_str[i] == NULL) 
+      drng = "all";
+    else
+      drng = (char *)disc_range_str[i];
 
-          size_t a = fd[i-1]->fofSize; 
-	  size_t b = fd[i]->fofSize;
+    if (swapflag == NULL || swapflag[i] == NULL) 
+      sflag = swap; // default: no byte-swapping
+    else
+      sflag = swapflag[i];
 
-        if (a != b) {
-   	 warning("WARNING: DataInStream: different number of files in '%s' (%li) and '%s' (%li) - will only read minimum number\n",fof_names[i-1],a,
-	fof_names[i], b);
-
+    fd[i] = new FileDescription(fof_names[i],
+				crng,
+				drng,
+				&n_floats[i],
+				&n_ints[i],
+				&formats[i],
+				&sflag,i);
+    
+    // check number of files mismatch
+    
+    if (i > 0 ) {
+      
+      size_t a = fd[i-1]->fofSize; 
+      size_t b = fd[i]->fofSize;
+      
+      if (a != b) {
+	warning("WARNING: DataInStream: different number of files in '%s' (%li) and '%s' (%li) - will only read minimum number\n",fof_names[i-1],a,
+		fof_names[i], b);
+	
 	a < b ? fd[i]->fofSize = a : fd[i-1]->fofSize = b; 
-       }
-     }
-
+      }
+    }
+    
     _totalFloats += fd[i]->nFloatsUsed;
     _totalInts += fd[i]->nIntsUsed;
-  }
-  _numSegs = fd[0]->fofSize;
 
-  inp_buf = new ObservationMatrix(MAXFRAMES,_totalFloats,_totalInts);
+    if (n_floats[i] > max_floats)
+      max_floats = n_floats[i];
+   
+    if (n_ints[i] > max_ints)
+      max_ints = n_ints[i];
+  }
+ 
+ _numSegs = fd[0]->fofSize;
+
+  inp_buf = new ObservationMatrix(MAXFRAMES,
+				  _totalFloats,
+				  _totalInts,
+				  max_floats,
+				  max_ints);
 }
 
 
@@ -94,7 +134,6 @@ DataInStream::~DataInStream() {
 
   for (int i = 0; i < _numFiles; i++) 
     delete fd[i];
-
   delete [] fd;
   delete inp_buf;
 
@@ -116,11 +155,9 @@ DataInStream::readFile(size_t sent_no) {
 
   _curPos = sent_no;
 
-  size_t max_sents =fd[0]->fofSize; 
-
-  if (sent_no < 0 || sent_no >= max_sents) {
+  if (sent_no < 0 || sent_no >= _numSegs) {
       error("GMTK_io::readFile: Sentence number (%li) outside range of 0 - %li\n",
-	sent_no,max_sents);
+	sent_no,_numSegs);
   }
 
 
@@ -129,31 +166,31 @@ DataInStream::readFile(size_t sent_no) {
     f = fd[i];     
          	
     if (f == NULL) 
-       error("GMTK_io::readFile: file descriptor for file %i is zero\n",i);
+      error("GMTK_io::readFile: file descriptor for file %i is zero\n",i);
 
     if (f->dataFormat != PFILE) {
 	
-    if (f->dataNames == NULL)
-      error("List of data files for stream %i is NULL\n",i);
+      if (f->dataNames == NULL)
+	error("GMTK_io::readFile: List of data files for stream %i is NULL\n",i);
 
-     tmp_name = f->dataNames[sent_no];
+      tmp_name = f->dataNames[sent_no];
 
       if (tmp_name == NULL)
-	error("GMTK_io::readFile: File %i does not exist in list %s\n",
-            sent_no,f->fofName);
+	error("GMTK_io::readFile: Filename %i is NULL in stream %s\n",
+	      sent_no,f->fofName);
     }
     else {
       if (f->curDataFile == NULL) 
 	error("GMTK_io::readFile: PFile data stream is NULL for file %s\n",
-        	f->fofName);
-
+	      f->fofName);
+      
       tmp_name = f->fofName;
     }
     
     switch(f->dataFormat) {
       
     case RAWBIN:
-     n_samps = openBinaryFile(f,sent_no);
+      n_samps = openBinaryFile(f,sent_no);
       break;
     case RAWASC:
       n_samps = openAsciiFile(f,sent_no);
@@ -241,12 +278,13 @@ DataInStream::openBinaryFile(FileDescription *f, size_t sentno) {
   if ((f->curDataFile = fopen(fname,"rb")) == NULL) {
     error("GMTK_io::openBinaryFile: Can't open '%s' for input\n",
 		 fname);
+
   }
 
   //sanity check on number of bytes
 
   if (fseek(f->curDataFile,0L,SEEK_END) == -1) {
-    error("GMTK_io::openBinaryFile: Can't skip to end of file",
+    warning("GMTK_io::openBinaryFile: Can't skip to end of file %s",
 		 fname);
   }
 
@@ -258,7 +296,6 @@ DataInStream::openBinaryFile(FileDescription *f, size_t sentno) {
   
   if ((fsize % rec_size) > 0) 
     error("GMTK_io::openBinaryFile: odd number of bytes in file %s\n",fname);
-
 
   int n_samples = fsize / rec_size;
 
@@ -438,20 +475,21 @@ DataInStream::closeDataFiles() {
 void
 DataInStream::getFileNames(size_t sentno,char **buf) {
 
+  if (buf == NULL) 
+     error("DataInStream::getFileNames: trying to read string to NULL array\n");
+
   for (int i = 0; i < _numFiles; i++) {
     if (sentno >= fd[i]->fofSize)
       error("DataInStream::getFileNames: sent no %i exceeds number of file name\n",
 	    sentno);
-    if (buf[i] == NULL)
-      error("DataInStream::getFileNames: memory error\n");
-    strcpy(buf[i],fd[i]->dataNames[sentno]);
+    buf[i] = fd[i]->dataNames[sentno];
   }
 }     	            	
 
 
 /* get numbers of floats associated with different input streams
  * buf: buffer to store numbers of floats
- */
+*/
 
 void
 DataInStream::getNumFloats(unsigned *buf) {
@@ -494,8 +532,8 @@ DataInStream::getObs() {
 
 
 DataOutStream::DataOutStream(int n_files, 
-                             unsigned *n_floats, 
-                             unsigned *n_ints,
+			     unsigned *n_floats,
+			     unsigned *n_ints,
                              unsigned *formats, 
                              bool *swapflags,
                              int *htkPK,
@@ -511,15 +549,15 @@ DataOutStream::DataOutStream(int n_files,
 
    // obligatory items
 
-   if (n_floats == NULL) 
-    error("GMTK_io::DataOutStream: num floats needs to be specified\n");
-  
+   if (n_floats == NULL)
+     error("GMTK_io::DataOutStream: number of floats must be specified\n");
+   
    if (n_ints == NULL)
-    error("GMTK_io::DataOutStream: num ints needs to be specified\n");
-      
+     error("GMTK_io::DataOutStream: number of ints must be specified\n");
+   
    if (formats == NULL)
-    error("GMTK_io::DataOutStream: output data formats need to be specified\n");
-
+     error("GMTK_io::DataOutStream: output data formats must be specified\n");
+   
    outNames = new char*[_numFiles];
    outFiles = new FILE*[_numFiles];
    dataFormats = new unsigned[_numFiles];
@@ -536,7 +574,6 @@ DataOutStream::DataOutStream(int n_files,
    char *name;
 
 
-   // null arrays explicitly to avoid portability problems
 
    for (int i = 0; i < _numFiles; i++) {
 
@@ -562,8 +599,6 @@ DataOutStream::DataOutStream(int n_files,
 
      pfile_ostr[i] = NULL;
 
-     
-       
      initOutStream(&n_ints[i],&n_floats[i],&formats[i],
 		   &sw,&pk,&sp,&name,i);
    }
@@ -572,73 +607,76 @@ DataOutStream::DataOutStream(int n_files,
 
 
 void
-DataOutStream::initOutStream(unsigned *n_ints, unsigned *n_floats, unsigned *format,
-			     bool *swapflag,int *pk,unsigned *samp_period,
-			     char **pfile_name,unsigned num) {
+DataOutStream::initOutStream(unsigned *n_ints, unsigned *n_floats, 
+			     unsigned *format,bool *swapflag,
+			     int *pk,unsigned *samp_period,
+			     char **pfile_name, int num) {
+
+  
+
+  assert(num > 0 && num < _numFiles);
+
+  if (format == NULL) {
+    warning("No output file format for file stream %i - writing headerless binary\n",num); 
+    dataFormats[num] = RAWBIN;
+  }
+  else 
+    dataFormats[num] = *format;
+
+  _maxInts = 0;
+  _maxFloats = 0;
+
+  ftr_buf = NULL;
+  lab_buf = NULL;
+
+  if (n_ints == NULL)
+    error("DataOutStream::initOutStream: Number of ints for output stream %i needs to be specified\n",num);
      
+  nInts[num] = *n_ints;
+  
+  if (nInts[num] > _maxInts)
+    _maxInts = nInts[num];
 
+  if (n_floats == NULL)
+    error("DataOutStream:initOutStream: Number of floats for output stream %i needs to be specified\n",num);
+  
+  nFloats[num] = *n_floats;
 
-     if (format == NULL) {
-       warning("No output file format for file stream %i - writing headerless binary\n",num); 
-       dataFormats[num] = RAWBIN;
-     }
-     else 
-       dataFormats[num] = *format;
-
-     _maxInts = 0;
-     _maxFloats = 0;
-
-     ftr_buf = NULL;
-     lab_buf = NULL;
-
-     if (n_ints == NULL)
-       error("DataOutStream::initOutStream: Number of ints for output stream %i needs to be specified\n",num);
-     
-     nInts[num] = *n_ints;
-
-     if (nInts[num] > _maxInts)
-       _maxInts = nInts[num];
-
-     if (n_floats == NULL)
-       error("DataOutStream:initOutStream: Number of floats for output stream %i needs to be specified\n",num);
-     
-     nFloats[num] = *n_floats;
-
-     if (nFloats[num] > _maxFloats)
-       _maxFloats = nFloats[num];
-
-     
-     sampRate[num] = *samp_period;
-     
-     parKind[num] = *pk;
-     
-     if (swapflag == NULL)
-       bswap[num] = false;  // default: no byte-swapping on output
-     else
-       bswap[num] = *swapflag;
-
-     if (dataFormats[num] == PFILE) {
-
-       // allocate temporary feature buffers for pfile stream
-     
-       ftr_buf = new float[_bufSize*_maxFloats];
-       lab_buf = new UInt32[_bufSize*_maxInts];
-
-       if (pfile_name == NULL)
-	 error("GMTK_io::DataOutStream: pfile name must be specified\n");
-
-       if ((outFiles[num] = fopen(*pfile_name,"wb")) == NULL)
-	 error("GMTK_io::DataOutStream: can't create pfile '%s'\n",pfile_name);
-
-       pfile_ostr[num] = new OutFtrLabStream_PFile(0,*pfile_name,outFiles[num],
-						 nFloats[num],nInts[num],1,
-						 bswap[num]);
-
-     }
-     
-     if (nFloats[num] > 0 && nInts[num] > 0 && dataFormats[num] != PFILE)
-       error("GMTK_io::DataOutStream: Can't write file with both floats and ints unless it is a pfile\n");
-
+  if (nFloats[num] > _maxFloats)
+    _maxFloats = nFloats[num];
+  
+  
+  sampRate[num] = *samp_period;
+  
+  parKind[num] = *pk;
+  
+  if (swapflag == NULL)
+    bswap[num] = false;  // default: no byte-swapping on output
+  else
+    bswap[num] = *swapflag;
+  
+  if (dataFormats[num] == PFILE) {
+    
+    // temporary feature buffers for pfile stream
+    
+    ftr_buf = new float[_bufSize*_maxFloats];
+    lab_buf = new UInt32[_bufSize*_maxInts];
+    
+    if (pfile_name == NULL)
+      error("GMTK_io::DataOutStream: pfile name must be specified\n");
+    
+    if ((outFiles[num] = fopen(*pfile_name,"wb")) == NULL)
+      error("GMTK_io::DataOutStream: can't create pfile '%s'\n",pfile_name);
+    
+    pfile_ostr[num] = new OutFtrLabStream_PFile(0,*pfile_name,outFiles[num],
+						nFloats[num],nInts[num],1,
+						bswap[num]);
+    
+  }
+  
+  if (nFloats[num] > 0 && nInts[num] > 0 && dataFormats[num] != PFILE)
+    error("GMTK_io::DataOutStream: Can't write file with both floats and ints unless it is a pfile\n");
+  
 }
 
 
@@ -657,6 +695,7 @@ DataOutStream::initFiles(char **file_names,char **out_ext,size_t n_frames) {
 
       char *ip = file_names[i];
       char *xp = out_ext[i];
+
       if (ip == NULL)
 	error("DataOutStream::initFiles: output file name for stream %i needs to be specified\n",i);
       if (xp != NULL) {
@@ -719,7 +758,6 @@ DataOutStream::writeHTKHeader(FILE *f,
   if (f == NULL) 
     error("DataOutStream::writeHTKHeader: output file is NULL\n");
 
-  // checking has been done but just in case
 
   if (samp_rate == NULL) {
     warning("DataOutStream::writeHTKHEader: sampling rate is NULL");
@@ -787,15 +825,16 @@ DataOutStream::writeHTKHeader(FILE *f,
 	
 
 void
-DataOutStream::writeData(size_t sent_no,
+DataOutStream::writeData(size_t sent_no,  
 			 char **crng_str, 
-			 char **drng_str,
+			 char **drng_str, 
                          char *frng_str, 
-			 ObservationMatrix *obs) {
+			 ObservationMatrix *obs) { 
 
      BP_Range *cr, *dr, *fr;
      unsigned num_floats, num_ints;
      char *s;
+
 
      for (int i = 0; i < _numFiles; i++) {
        if (crng_str == NULL || crng_str[i] == NULL)
@@ -803,14 +842,18 @@ DataOutStream::writeData(size_t sent_no,
        else
 	 s = crng_str[i];
 
-       cr = new BP_Range(s,0,nFloats[i]);
+       cr = new BP_Range(s,0,obs->getNumContinuous());
+
+       assert(cr->length() <= (int)nFloats[i]);
 
        if (drng_str == NULL || drng_str[i] == NULL)
 	 s = "all";
        else
 	 s  = drng_str[i];
 
-       dr = new BP_Range(s,0,nInts[i]);
+       dr = new BP_Range(s,0,obs->getNumDiscrete());
+
+       assert(dr->length() <= (int)nInts[i]);
 
        if (frng_str == NULL)
 	 s = "all";
@@ -864,13 +907,13 @@ DataOutStream::writeBinFeatures(FILE *fp,
 
   // for all frames in range
 
-  for (BP_Range::iterator fit  = fr->begin(); fit <= fr->max(); fit++) {
+  for (BP_Range::iterator fit  = fr->begin(); fit <= fr->end(); fit++) {
 
     o->gotoFrame(*fit);
     
     // print continuous features
     
-    for (BP_Range::iterator cit = cr->begin(); cit <= cr->max(); cit++) {
+    for (BP_Range::iterator cit = cr->begin(); cit <= cr->end(); cit++) {
       
       float *f = o->getContFea(*cit);
       
@@ -881,7 +924,7 @@ DataOutStream::writeBinFeatures(FILE *fp,
     
     // or discrete features 
     
-    for (BP_Range::iterator dit = dr->begin(); dit <= dr->max(); dit++) {
+    for (BP_Range::iterator dit = dr->begin(); dit <= dr->end(); dit++) {
       
       Int32 *i = o->getDiscFea(*dit);
       
@@ -920,7 +963,7 @@ DataOutStream::writePFileFeatures(OutFtrLabStream_PFile *str,
   float *fp = ftr_buf;      
   UInt32 *lp = lab_buf;
 
-  for (BP_Range::iterator fit = fr->begin(); fit <= fr->max(); fit++) {
+  for (BP_Range::iterator fit = fr->begin(); fit <= fr->end(); fit++) {
     
     o->gotoFrame(*fit);
     
@@ -928,7 +971,7 @@ DataOutStream::writePFileFeatures(OutFtrLabStream_PFile *str,
       
       // fill temporary feature buffer
       
-      for (BP_Range::iterator cit = cr->begin(); cit <= cr->max(); cit++,fp++) {
+      for (BP_Range::iterator cit = cr->begin(); cit <= cr->end(); cit++,fp++) {
 	float *tmp_fp = o->getContFea(*cit);
 	if (tmp_fp == NULL)
 	  error("DataOutStream::writePFileFeatures: couldn't read %i'th feature for frame %i from buffer",*cit,*fit);
@@ -936,7 +979,7 @@ DataOutStream::writePFileFeatures(OutFtrLabStream_PFile *str,
       }
     }
     else if (n_ints > 0) {
-      for (BP_Range::iterator cit = cr->begin(); cit <= cr->max(); cit++,lp++){
+      for (BP_Range::iterator cit = cr->begin(); cit <= cr->end(); cit++,lp++){
 	UInt32 *tmp_lp = (UInt32 *)o->getDiscFea(*cit);
 	if (tmp_lp == NULL)
 	  error("DataOutStream::writePFileFeatures: couldn't read %i'th feature for frame %i from buffer",*cit,*fit);
@@ -979,13 +1022,13 @@ DataOutStream::writeAscFeatures(FILE *fp,
   // for all frames in range
 
 
-  for (BP_Range::iterator fit  = fr->begin(); fit <= fr->max(); fit++) {
+  for (BP_Range::iterator fit  = fr->begin(); fit <= fr->end(); fit++) {
     
     o->gotoFrame(*fit);
     
     // print continuous features    
 
-    for (BP_Range::iterator cit = cr->begin(); cit <= cr->max(); cit++) {
+    for (BP_Range::iterator cit = cr->begin(); cit <= cr->end(); cit++) {
       
       float *f = o->getContFea(*cit);
       
@@ -999,11 +1042,9 @@ DataOutStream::writeAscFeatures(FILE *fp,
     
     // or print discrete features
     
-    for (BP_Range::iterator dit = dr->begin(); dit <= dr->max(); dit++) {
+    for (BP_Range::iterator dit = dr->begin(); dit <= dr->end(); dit++) {
       
       Int32 *i = o->getDiscFea(*dit);
-
-      printf("%i\n",*dit);
 
       if (i == NULL)
 	error("DataOutStream::writeAscFeatures: couldn't read %i'th feature in frame %i from buffer\n",*dit,*fit);
@@ -1031,6 +1072,7 @@ DataOutStream::~DataOutStream() {
     delete [] ftr_buf;
   if (lab_buf != NULL)
     delete [] lab_buf;
+  
   delete [] outNames;
   delete [] pfile_ostr;
   delete [] outFiles;
