@@ -36,7 +36,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "GMTK_MaxClique.h"
 
 #include "debug.h"
 

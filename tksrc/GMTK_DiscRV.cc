@@ -34,6 +34,7 @@ VCID("$Header$");
 #include <string.h>
 
 #include "GMTK_DiscRV.h"
+#include "GMTK_MTCPT.h"
 
 
 /*-
@@ -265,4 +266,102 @@ DiscRV* DiscRV::cloneRVShell()
   return rv;
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * computeParentsChildSatisfyingGrandChild()
+ *      pass arguments down to MTCPT to count cases for VE seps.
+ *      This routine is here to avoid a cpp circular dependency
+ *
+ * Preconditions:
+ *      see caller
+ *
+ * Postconditions:
+ *      see caller
+ *
+ * Side Effects:
+ *      see caller
+ *
+ * Results:
+ *      see caller
+ *
+ *-----------------------------------------------------------------------
+ */
+void DiscRV::computeParentsChildSatisfyingGrandChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    RV* grandChild,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num)
+{
+  assert ( !switching() && deterministic() && curCPT->cptType == CPT::di_MTCPT );
+  MTCPT* mtcpt = (MTCPT*) curCPT;
+  return mtcpt->computeParentsChildSatisfyingGrandChild(par,parents,hiddenParents,hiddenParentPacker,
+							hiddenNodeValPtrs,child,grandChild,
+							packedParentVals,num);
+}
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * printRVSetAndCards}()
+ *      Prints out the set of random variables and their cardinalities as well when discrete.
+ *
+ * Preconditions:
+ *      f must be open, locset a set of RVs.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      void
+ *
+ *-----------------------------------------------------------------------
+ */
+void printRVSetAndCards(FILE*f,vector<RV*>& locset,const bool nl) 
+{
+  bool first = true;
+  for (unsigned i=0;i<locset.size();i++) {
+    RV* rv = locset[i];
+    if (!first)
+      fprintf(f,",");
+    if (rv->discrete())
+      RV2DRV(rv)->printNameFrameCard(f,false);
+    else 
+      rv->printNameFrame(f,false);
+    first = false;
+  }
+  if (nl) fprintf(f,"\n");
+}
+
+void printRVSetAndCards(FILE*f,set<RV*>& locset,bool nl)
+{
+  bool first = true;
+  set<RV*>::iterator it;
+  for (it = locset.begin();
+       it != locset.end();it++) {
+    RV* rv = (*it);
+    if (!first)
+      fprintf(f,",");
+    if (rv->discrete())
+      RV2DRV(rv)->printNameFrameCard(f,false);
+    else 
+      rv->printNameFrame(f,false);
+    first = false;
+  }
+  if (nl) fprintf(f,"\n");
+}
 

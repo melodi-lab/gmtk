@@ -43,9 +43,14 @@
 #include "logp.h"
 #include "sArray.h"
 
+
+#include "GMTK_DiscRV.h"
+
 #include <algorithm>
 #include <map>
 #include <vector>
+
+class PackCliqueValue;
 
 /////////////////////////////////////////////////
 // The maximum branching factor on any decision tree node.
@@ -83,10 +88,12 @@
 class RV;
 class DiscRV;
 
+
+
 /////////////////////////////////////////////////
 typedef unsigned leafNodeValType;
 
-class RngDecisionTree : public NamedObject {
+class RngDecisionTree : public NamedObject, IM {
 
 private:
 
@@ -480,7 +487,11 @@ public:
 
   RngDecisionTree() : indexFile(NULL), dtFile(NULL), firstDT(0), root(NULL) {}; 
   ~RngDecisionTree();
-  bool clampable() { return (dtFile != NULL); }
+
+  // return true if this DT changes from one segment to the next. We
+  // know this by if the dtFile is available (if it is, presumably
+  // this DT is iterable).
+  bool iterable() { return (dtFile != NULL); }
 
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 
@@ -507,11 +518,11 @@ public:
  
   ///////////////////////////////////////////////////////////    
   // Set the file pointer and read ino the first DT 
-  void clampFirstDecisionTree();
+  void beginIterableDT();
 
   ///////////////////////////////////////////////////////////    
   // read in the next DT 
-  void clampNextDecisionTree();
+  void nextIterableDT();
 
   ///////////////////////////////////////////////////////////    
   // Function only used for testing 
@@ -585,6 +596,34 @@ public:
   ///////////////////////////////////////////////////////////    
   // write index file for a clampable DT 
   void writeIndexFile();
+
+  ///////////////////////////////////////////////////////////    
+  // count the number of parent assignments that satisfy a 
+  // observed child. All variables are discrete.
+  void computeParentsSatisfyingChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num);
+  void computeParentsChildSatisfyingGrandChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    RV* grandChild,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num);
+
 
 };
 

@@ -23,16 +23,14 @@
 #ifndef GMTK_DISC_RV_H
 #define GMTK_DISC_RV_H
 
+#include "GMTK_DiscRVType.h"
+
 #include <vector>
 
 #include "GMTK_RV.h"
 #include "GMTK_CPT.h"
 #include "GMTK_ObservationMatrix.h"
-
-
-//////////////////////////////////////////////////////////////////////////
-// The type of the values that a discrete random variable may take on.
-typedef unsigned DiscRVType;
+#include "GMTK_PackCliqueValue.h"
 
 class FileParser;
 
@@ -68,6 +66,7 @@ public:
   // in the range [0:cardinality-1] (so they are never
   // negative). Making the cardinality as small as possible will save
   // memory and run-time.
+  // TODO: take this from the rv_info object.
   unsigned cardinality;
 
   // The current value of this random variable. Note that there is no
@@ -111,7 +110,10 @@ public:
   }
   virtual void printSelf(FILE *f,bool nl=true);
   virtual void printSelfVerbose(FILE *f);
-
+  
+  void printNameFrameCard(FILE *f,const bool nl=true) {
+    fprintf(f,"%s(%d)[%d]%s",name().c_str(),frame(),cardinality,nls(nl));
+  }
 
   //////////////////////////////////////////////////////////
   // computing with probabilities
@@ -263,10 +265,36 @@ public:
       return cardinality;
   }
 
+  bool iterable() const {
+    if (curCPT == NULL)
+      return false;
+    else {
+      return curCPT->iterable();
+    }
+  }
+
+
   // various other routines want a cardinality to 'use'.  they use the
   // routine useCardinality() which can be defined either as the avg
   // or max cardinality above.
   unsigned useCardinality() { return maxCardinality(); }  
+
+
+  // only valid when this var is non-switching, observed, with a deterministic implementation.
+  void computeParentsChildSatisfyingGrandChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    RV* grandChild,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num);
+    // body placed in .cc file to avoid circularity;
+
 
   /////////////////////////////////////////
   // Cloning Support                     //
@@ -290,6 +318,8 @@ inline const DiscRV* const RV2DRV(const RV* const rv) {
   return ((const DiscRV* const)rv);
 }
 
+void printRVSetAndCards(FILE*f,set<RV*>& locvec,const bool nl=true);
+void printRVSetAndCards(FILE*f,vector<RV*>& locvec,const bool nl=true);
 
 // TODO: make a special subclass DummyDiscRV where RVs are easily
 // creatable on the fly for certain test code (CPTs, DTs, etc).

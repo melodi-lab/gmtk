@@ -58,6 +58,8 @@
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"
 #include "GMTK_DiscRV.h"
+#include "GMTK_HidDiscRV.h"
+#include "GMTK_ObsDiscRV.h"
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
@@ -89,14 +91,40 @@ VCID("$Header$");
 #define REM_SEP_VALUE_HOLDER_GROWTH_RATE   2.0
 
 
+// for sorting an array of RVs ascending based on increasing cardinality
+struct ParentCardinalityCompare 
+{  
+  bool operator() (const RV* rv1,
+		   const RV* rv2) 
+  {
+    // place observed ones first.
+    if (RV2DRV(rv1)->discreteObservedImmediate())
+      return false;
+    else if (RV2DRV(rv2)->discreteObservedImmediate())
+      return true;
+    else return (RV2DRV(rv1)->cardinality < RV2DRV(rv2)->cardinality);
+  }
+};
+
+
+
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Static variables and functions
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+/*
+ * integer value to keep track of indenting when running in trace mode.
+ */
+int InferenceMaxClique::traceIndent = -1;
 
-
+/*
+ * number of spaces per indent.
+ *
+ */
+const unsigned spi = 1;
 
 
 /*
@@ -114,6 +142,15 @@ MaxClique::continuousObservationPerFeaturePenalty = 0.0;
  */
 bool
 MaxClique::ceSeparatorDrivenInference = true;
+
+///////////////////////////////////////////////
+// VE separator files information.
+///////////////////////////////////////////////
+bool SeparatorClique::recomputeVESeparatorTables = false;
+char* SeparatorClique::veSeparatorFileName = "veSeparatorFile.dat";
+bool SeparatorClique::generatingVESeparatorTables = "true";
+FILE* SeparatorClique::veSeparatorFile = NULL;
+float SeparatorClique::veSeparatorLogProdCardLimit = 7.0; // i.e., 1e7=10M is default max.
 
 bool MaxClique::perSegmentClearCliqueValueCache = true;
 
@@ -157,6 +194,21 @@ double
 SeparatorClique::separatorBeam=(-LZERO);
 
 
+// TODO: put this in misc support
+static void
+psp2(FILE*f,const int numSpaceChars,const char c = ' ')
+{
+  int tmp = numSpaceChars;
+  // prints a '|' every 4 chars. 
+  if (!tmp) return;
+  fprintf(f,"|"); tmp--;
+  while (tmp > 4) {
+    fprintf(f,"   |");
+    tmp -= 4;
+  }
+  while (tmp--)
+    fprintf(f,"%c",c);
+}
 
 // TODO: put this in misc support
 static void
@@ -1145,7 +1197,6 @@ void
 MaxClique::computeAssignedNodesDispositions()
 {
 
-
   dispositionSortedAssignedNodes.resize(sortedAssignedNodes.size());
   for (unsigned i=0;i<sortedAssignedNodes.size();i++) {
     RV*rv = sortedAssignedNodes[i];
@@ -1247,7 +1298,7 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
 
 
   psp(f,indent*2);
-  fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
+  fprintf(f,"%d Nodes: ",nodes.size()); printRVSetAndCards(f,nodes);
 
   psp(f,indent*2);
   fprintf(f,"%d Assigned: ",assignedNodes.size()); printRVSet(f,assignedNodes);
@@ -1275,10 +1326,8 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
   fprintf(f,"%d Unassigned Iterated: ",unassignedIteratedNodes.size()); printRVSet(f,unassignedIteratedNodes);
 
 
-
   psp(f,indent*2);
   fprintf(f,"%d Cumulative Unassigned: ",cumulativeUnassignedIteratedNodes.size()); printRVSet(f,cumulativeUnassignedIteratedNodes);
-
 
   psp(f,indent*2);
   fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSet(f,hiddenNodes);
@@ -1295,6 +1344,9 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
   psp(f,indent*2);
   fprintf(f,"%d Receive Seps: ",ceReceiveSeparators.size());
   for (unsigned i=0;i<ceReceiveSeparators.size();i++) fprintf(f,"%d,",ceReceiveSeparators[i]); fprintf(f,"\n");
+
+  psp(f,indent*2);
+  fprintf(f,"%d incomming VE Separators\n",veSeparators.size());
 
   psp(f,indent*2);
   fprintf(f,"Send Sep: %d\n",ceSendSeparator);
@@ -1363,6 +1415,174 @@ MaxClique::computeUnassignedCliqueNodes()
 		 assignedNodes.begin(),assignedNodes.end(),
 		 inserter(unassignedNodes,unassignedNodes.end()));
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::computeVESeparators()
+ *   
+ * computes initial information about any VE separators that
+ * might exist in this clique, and sets up any data structures
+ * needed to produce these separators. Returns the number of VE separators.
+ * A VE separator is basically either:
+ *   1) TYPE PC: When a child c exists such that:
+ *        A: c is immediate observed (meaning it is const observed in the structure file)
+ *        B: c a deterministic function of its parents, and the deterministic function
+ *           is static (e.g., not an iterable DeterministicCPT or DT), and c is
+ *           not switching (i.e., there are no switching parents, so only one CPT is involved)   
+ *        C: all c's parents (and there are more than one) live in the current clique
+ *        D: c gives probability to the current clique (so ideally is as
+ *           far away from the current JT root as possible).
+ *      - in this case the VE sep consists of the parents of c, and c.
+ *   2) TYPE PCG: when a child c exists such that:
+ *        A: c is immediate observed (meaning it is const observed in the structure file)
+ *        B: c is a random or deterministic function of a c's single parent p,
+ *           and c is not switching (i.e., there are no switching parents).
+ *        C: p lives in the clique and is hidden
+ *        D: p is a deterministic function of its parents, and the deterministic function
+ *           is static (e.g., not an iterable DeterministicCPT or DT), and again there
+ *           is no switching.
+ *        C: all p's parents live in the current clique
+ *        D: both c and p give probability to the current clique (so ideally as
+ *           far away from the current JT root as possible).
+ *      - in this case the VE sep consists of the parents of p, p, and c.
+ *
+ * TODO: switching() is possible, but we no longer can use just the DT to generate
+ *       the table in those cases.
+ *
+ *
+ * Preconditions:
+ *   Nodes and assignedNodes must be filled in.
+ *   Note that this routine is a nop if we're doing separator driven inference.
+ *
+ * Postconditions:
+ *   Unassigned nodes udpated.
+ *
+ * Side Effects:
+ *   changes some member variables relative to the VE seps.
+ *
+ * Results:
+ *     returns number of possible VE seps.
+ *
+ *-----------------------------------------------------------------------
+ */
+unsigned
+MaxClique::computeVESeparators()
+{
+  veSeparators.clear();
+
+  // search through all assigned nodes looking for immediate observed nodes.
+
+  // TODO: figure out a way to not store child value redundantly in separator.
+  
+  set<RV*>::iterator apn_it;
+  for (apn_it = assignedProbNodes.begin(); apn_it != assignedProbNodes.end(); apn_it ++) {
+    RV* rv = (*apn_it);
+    if (rv->discreteObservedImmediate() && !rv->switching() && !rv->iterable()) {
+      DiscRV* c = RV2DRV(rv);
+      if (c->allParents.size() == 1 && 
+	  c->allParents[0]->hidden() && 
+	  c->allParents[0]->discrete() && 
+	  RV2DRV(c->allParents[0])->deterministic() &&
+	  !c->allParents[0]->iterable() &&
+	  !c->allParents[0]->switching()) {
+	// continue checking condition PCG
+	RV * p = c->allParents[0];
+	if ((JunctionTree::useVESeparators & JunctionTree::VESEP_PCG)  && 
+	    (assignedProbNodes.find(p) !=  assignedProbNodes.end())) {
+
+	  float logProdCard = 
+	    log10((double)RV2DRV(p->allParents[0])->cardinality);
+	  for (unsigned i=1;i<p->allParents.size();i++) {
+	    if (!p->allParents[i]->discreteObservedImmediate())
+	      logProdCard += log10((double)RV2DRV(p->allParents[i])->cardinality);
+	  }
+
+	  if (logProdCard > SeparatorClique::veSeparatorLogProdCardLimit)
+	    continue;
+
+	  infoMsg(Max,"Found VE sep of type PCG (currently not using it).\n");
+	  // uncomment when rest of code below is finished.
+
+	  // since p is assigned prob, all it parents live in the
+	  // current clique. Iterate through all parents finding combinations
+	  // that explain the child (with score given by Pr(c|p)).
+	  VESepInfo vesep;
+	  vesep.parents = p->allParents;
+	  vesep.child = p;
+	  vesep.grandChild = c;
+	  veSeparators.push_back(vesep);
+	}
+      } else if ((JunctionTree::useVESeparators & JunctionTree::VESEP_PC) 
+		 &&
+		 (c->deterministic() && c->allParents.size() > 1)) {
+	// continue checking condition PC.
+
+	// NOTE: we allow the parents to be observed even if they are
+	// not immediate observed, since in that case we generate the
+	// table for all possible parent values.
+
+	// check that the product of cardinalities of parents does not exceed threshold.
+
+
+	float logProdCard = 
+	  log10((double)RV2DRV(c->allParents[0])->cardinality);
+	for (unsigned i=1;i<c->allParents.size();i++) {
+	  if (!c->allParents[i]->discreteObservedImmediate())
+	    logProdCard += log10((double)RV2DRV(c->allParents[i])->cardinality);
+	}
+	
+	if (logProdCard > SeparatorClique::veSeparatorLogProdCardLimit)
+	  continue;
+
+	infoMsg(Max,"Found VE sep of type PC. iterable = %d\n",rv->iterable());
+
+	// since c is an assigned prob node, we know its parents live
+	// in current clique as well. We build a table of all parent
+	// values that explain this child being observed this value,
+	// and the table becomes a new separator used for all
+	// inference instantiations of this clique.
+	VESepInfo vesep;
+	vesep.parents = c->allParents;
+	vesep.child = c; 
+	vesep.grandChild = NULL;
+	veSeparators.push_back(vesep);
+
+      }
+    }
+  }
+  return veSeparators.size();
+}
+
+void
+MaxClique::numParentsSatisfyingChild(unsigned& num,unsigned par,vector <RV*> & parents, RV* child)
+{
+  if (par == parents.size()) {
+    logpr cur_p;
+    child->probGivenParents(cur_p);
+    if (!cur_p.zero())
+      num++;
+#if 0
+    printf("Pr[%s(%d)=%d|",child->name().c_str(),child->frame(),
+	   RV2DRV(child)->val);
+    printRVSetAndValues(stdout,parents,false);
+    printf("]=%d\n",!cur_p.zero());
+#endif
+  } else {
+    DiscRV*drv = RV2DRV(parents[par]);
+    if (drv->hidden()) {
+      HidDiscRV*hdrv = (HidDiscRV*)drv;
+      for (hdrv->val = 0; hdrv->val < hdrv->cardinality; hdrv->val ++) {
+	numParentsSatisfyingChild(num,par+1,parents,child);
+      }
+    } else {
+      ObsDiscRV*odrv = (ObsDiscRV*)drv;
+      odrv->setToObservedValue();
+      numParentsSatisfyingChild(num,par+1,parents,child);
+    }
+  }
+}
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -1595,8 +1815,11 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 void
 InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
 {
+  traceIndent=-1; 
   if (!origin.ceSeparatorDrivenInference)
     return ceGatherFromIncommingSeparatorsCliqueDriven(part);
+
+  // this is like the sub-main() for collect evidence.
 
   if (origin.hiddenNodes.size() == 0) {
     ceGatherFromIncommingSeparatorsCliqueObserved(part);
@@ -1615,6 +1838,28 @@ InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
   }
 }
 
+
+/*
+  A note on trace printing and debugging values to control it for the
+  following few routines: 
+  Rough range of debug values:
+
+    Med  = 50,
+    High = 60,
+    Huge = 70,
+    Mega = 80,
+
+   We have three routines for iterating a clique.
+       ceIterateSeparators
+       ceIterateUnassignedIteratedNodes
+       ceIterateAssignedNodesRecurse
+  - High: print just final clique insertions, nothign else. No indentation. 
+    done just in ceIterateAssignedNodesRecurse
+  - High+5: add all starts (Separator, Unassigned, and RV iteration starts)
+  - Huge: Print all iters (separator, unassigned, & RV iters), but not parent values in RV case.
+  - Mega: Also print all parent values at all iterations.
+
+*/
 
 
 /*-
@@ -1666,9 +1911,14 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
   InferenceSeparatorClique& sep = 
     part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
 
-  if (message(High)) {
-    psp(stdout,2*sepNumber);    
-    infoMsg(High,"Starting separator iter, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+  // keep a local variable copy of this around to avoid potential dereferencing.
+  InferenceSeparatorClique::AISeparatorValue * const
+    sepSeparatorValuesPtr = sep.separatorValues->ptr; 
+
+  if (message(High+5)) {
+    traceIndent++;
+    psp2(stdout,spi*traceIndent);    
+    infoMsg(High+5,"S%d:Starting separator iter,partSepNo=%d,p=%f,nodes:",
 	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
     printRVSet(stdout,sep.fNodes);
   }
@@ -1697,12 +1947,19 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // int** foo = sep.accDiscreteValuePtrs.ptr;
     // sep.origin.accPacker.pack(foo,&tmp);
 
-    unsigned* indexp = sep.iAccHashMap.find(key);
+    unsigned* indexp = sep.iAccHashMap->find(key);
     if (indexp == NULL) {
       // Then not found in this separator, so it must have zero
       // probability. We continue with the next value of the previous
       // separator.
-      return;
+      if (message(Huge)) {
+	psp2(stdout,spi*traceIndent);
+	infoMsg(Huge,"S%d:Separator iter accumulated intersection prune\n",
+		sepNumber);
+	// TODO: @@@ figure out why we can't do: 
+	// printRVSet(stdout,sep.fAccumulatedIntersection);
+      }
+      goto ceIterateSeparatorsFinished;
     } else {
       // need to further iterate.
       sepValueNumber = *indexp;
@@ -1714,7 +1971,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // we've got a negative beam. non-negative beam means
     // that we will always have at least one entry.
     // TODO: probably ok to remove this assertion.
-    assert ( sep.separatorValues.size() == 1);
+    assert ( sep.separatorValues->size() == 1);
     sepValueNumber = 0;
   }
 
@@ -1732,40 +1989,42 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // of 0 and a hreminder size of 0 -- nothing to unpack here either
     // (no hash tables even exist), so we just continue along.
 
-    if (message(High+5)) {
-      psp(stdout,2*sepNumber);
-      infoMsg(High+5,"Separator iter no-unpack %d,%d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
-	      sep.separatorValues.ptr[sepValueNumber].remValues.size(),
-	      sep.separatorValues.ptr[sepValueNumber].numRemValuesUsed,
-	      sepNumber,origin.ceReceiveSeparators[sepNumber],
+    if (message(Huge)) {
+      psp2(stdout,spi*traceIndent);
+      infoMsg(Huge,"S%d:Separator iter no-unpack %d,%d,partSepNo=%d,p=%f,sp=%f,nodes:",
+	      sepNumber,
+	      sepSeparatorValuesPtr[sepValueNumber].remValues.size(),
+	      sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed,
+	      origin.ceReceiveSeparators[sepNumber],
 	      p.val(),
-	      sep.separatorValues.ptr[sepValueNumber].remValues.ptr[0].p.val());
+	      sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[0].p.val());
       printRVSetAndValues(stdout,sep.fNodes);
     }
 
     // We should have either one or zero entries. The only way zero
     // entries could arrise is if we have done severe separator pruning.
-    assert ( (sep.separatorValues.ptr[sepValueNumber].remValues.size() & ~0x1)
+    assert ( (sepSeparatorValuesPtr[sepValueNumber].remValues.size() & ~0x1)
 	     == 0x0 );
 
-    // assert ( sep.separatorValues.ptr[sepValueNumber].remValues.size() == 1 );
-    if (sep.separatorValues.ptr[sepValueNumber].numRemValuesUsed == 1) {
+    // assert ( sepSeparatorValuesPtr[sepValueNumber].remValues.size() == 1 );
+    if (sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed == 1) {
       // Continue down with new probability value.
       // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
       // more info why remValues.ptr[0] exists.
       // Note: could do more separator pruning here.
       ceIterateSeparators(part,sepNumber+1,
 			  p*
-			  sep.separatorValues.ptr[sepValueNumber].remValues.ptr[0].p);
+			  sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[0].p);
     }
-
   } else {
 
     // TODO: this assertion should be redundant (check above)
     assert ( sep.origin.remPacker.packedLen() > 0 );
 
+    // TODO: perhaps special case for VE seps, since all probs are == 1, so no need to multiply.
+
     if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-      for (unsigned i=0;i< sep.separatorValues.ptr[sepValueNumber].numRemValuesUsed; i++) {
+      for (unsigned i=0;i< sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed; i++) {
 
 	// if (i == 0 && sep.fNodes[0]->timeIndex == 5 && sep.fNodes[0]->label == "state") {
 	// printf("here1");
@@ -1773,20 +2032,21 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
 	// TODO: optimize this, pre-compute base array outside of loop.
 	sep.origin.remPacker.unpack(
-		  (unsigned*)&(sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].val[0]),
+		  (unsigned*)&(sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].val[0]),
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
 
 	// if (i == 0 && sep.fNodes[0]->timeIndex == 5 && sep.fNodes[0]->label == "state") {
 	// printf("here2");
 	// } 
 
-	if (message(High+5)) {
-	  psp(stdout,2*sepNumber);
-	  infoMsg(High+5,"Separator iter %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+	if (message(Huge)) {
+	  psp2(stdout,spi*traceIndent);
+	  infoMsg(Huge,"S%d:Separator iter %d,partSepNo=%d,p=%f,sp=%f,nodes:",
+		  sepNumber,
 		  i,
-		  sepNumber,origin.ceReceiveSeparators[sepNumber],
+		  origin.ceReceiveSeparators[sepNumber],
 		  p.val(),
-		  sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].p.val());
+		  sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p.val());
 	  printRVSetAndValues(stdout,sep.fNodes);
 	}
 
@@ -1794,23 +2054,24 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	// TODO: separator prune here.
 	ceIterateSeparators(part,sepNumber+1,
 		    p*
-		    sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].p);
+		    sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p);
       }
     } else {
-      for (unsigned i=0;i< sep.separatorValues.ptr[sepValueNumber].numRemValuesUsed; i++) {
+      for (unsigned i=0;i< sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed; i++) {
 
 	// TODO: optimize this, pre-compute base array outside of loop.
 	sep.origin.remPacker.unpack(
-		  (unsigned*)sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].ptr,
+		  (unsigned*)sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].ptr,
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
 
-	if (message(High+5)) {
-	  psp(stdout,2*sepNumber);
-	  infoMsg(High+5,"Separator iter %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+	if (message(Huge)) {
+	  psp2(stdout,spi*traceIndent);
+	  infoMsg(Huge,"S%d:Separator iter %d,partSepNo=%d,p=%f,sp=%f,nodes:",
+		  sepNumber,
 		  i,
-		  sepNumber,origin.ceReceiveSeparators[sepNumber],
+		  origin.ceReceiveSeparators[sepNumber],
 		  p.val(),
-		  sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].p.val());
+		  sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p.val());
 	  printRVSetAndValues(stdout,sep.fNodes);
 	}
 
@@ -1818,13 +2079,113 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	// TODO: separator prune here.
 	ceIterateSeparators(part,sepNumber+1,
 			    p*
-			    sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].p);
+			    sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p);
       }
     }
+
   }
 
+ ceIterateSeparatorsFinished:
+  if (message(High+5))
+    traceIndent--;
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::ceIterateUnassignedIteratedNodes()
+ *
+ *    Collect Evidence, Iterate Separators: This routine
+ *    is part of separator driven clique instantiation. Once
+ *    we have a partial clique value that has survied the separators,
+ *    the next thing we need to do is iterate through any unassigned
+ *    nodes in this cliuqe (if any, hopefully not since these can be costly
+ *    and might indicate a poor triangulation, depending on pruning and/or
+ *    the sparse/deterministic variables).
+ *
+ *    If we have reached the last unassigned node in this clique, we
+ *    move directly on to the assigned nodes.
+ *
+ * Preconditions:
+ *
+ *   All the cliques incomming separators *must* have been created and are ready
+ *   to be used to produce the clique table.
+ *     
+ *
+ * Postconditions:
+ *    We move on to the asssigned nodes with an probabilty. The prob. has
+ *    not been updated from what is passed in since these nodes are unassigned
+ *    and so never contribute score to this clique.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
+						     const unsigned nodeNumber,
+						     const logpr p)
+{
+  if (nodeNumber == fUnassignedIteratedNodes.size()) {
+    ceIterateAssignedNodes(part,0,p);
+    return;
+  }
+  RV* rv = fUnassignedIteratedNodes[nodeNumber];
+  // TODO: update comments here to match others.
+  if (message(High+5)) {
+    traceIndent++;
+    psp2(stdout,spi*traceIndent);
+    infoMsg(High+5,"U%d:Starting Unassigned iteration of rv %s(%d),p=%f\n",
+	    nodeNumber,
+	    rv->name().c_str(),rv->frame(),p.val());
+  }
+  if (rv->hidden()) {
+    // only discrete RVs can be hidden for now.
+    DiscRV* drv = (DiscRV*)rv;
+    // do the loop right here
+    drv->val = 0;
+    do {
+      if (message(Huge)) {
+	psp2(stdout,spi*traceIndent);
+	infoMsg(Huge,"U%d:Unassigned iter of rv %s(%d)=%d,p=%f\n",
+		nodeNumber,
+		rv->name().c_str(),rv->frame(),drv->val,p.val());
+      }
+      // continue on, effectively multiplying p by unity.
+      ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
+    } while (++drv->val < drv->cardinality);
+  } else {
+    // TODO: Perhaps unassignedIteratedNodes should contain
+    // no observed nodes at all since we are not updating 
+    // probability here anyway.
+
+    if (message(Huge)) {
+      psp2(stdout,spi*traceIndent);
+      // observed, either discrete or continuous
+      if (rv->discrete()) {
+	infoMsg(Huge,"U%d:Unassigned pass through observed rv %s(%d)=%d,p=%f\n",
+		nodeNumber,
+		rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,nodeNumber,p.val());
+      } else {
+	// nothing to do since we get continuous observed value
+	// indirectly
+	infoMsg(Huge,"U%d:Unassigned pass through of observed rv %s(%d)=C,p=%f\n",
+		nodeNumber,
+		rv->name().c_str(),rv->frame(),p.val());
+      }
+    }
+    // continue on, effectively multiplying p by unity.
+    ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
+  }
+  if (message(High+5))
+    traceIndent--;
+}
 
 
 /*-
@@ -1877,7 +2238,6 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 						  const unsigned nodeNumber,
 						  const logpr p)
 {
-
   if (nodeNumber == fSortedAssignedNodes.size()) {
     // time to store clique value and total probability, p is
     // current clique probability.
@@ -1931,22 +2291,22 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
     numCliqueValuesUsed++;
 
     if (message(High)) {
-      if (message(Huge))
-	psp(stdout,2*nodeNumber);
-      infoMsg(High,"%d:Inserting New Clique Value. prob = %f, sum = %f: ",
-	      nodeNumber,
+      psp2(stdout,spi*(traceIndent+1));
+      infoMsg(High,"CI:Inserting %d-clique ent #%d,pr=%f,sm=%f:",
+	      fNodes.size(),
+	      (numCliqueValuesUsed-1),
 	      cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
       printRVSetAndValues(stdout,fNodes);
     }
-
     return;
   }
   RV* rv = fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
-  if (message(Huge)) {
-    psp(stdout,2*nodeNumber);
-    infoMsg(Huge,"%d:Starting assigned iteration of rv %s(%d), crClqPr=%f\n",
+  if (message(High+5)) {
+    traceIndent++;
+    psp2(stdout,spi*traceIndent);
+    infoMsg(High+5,"A%d:Starting assigned iteration of rv %s(%d),crClqPr=%f\n",
 	    nodeNumber,
 	    rv->name().c_str(),rv->frame(),p.val());
   }
@@ -1958,8 +2318,8 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       rv->begin(cur_p);
       do {
 	if (message(Huge)) {
-	  psp(stdout,2*nodeNumber);
-	  printf("%d:assigned iter/prob app, Pr[",nodeNumber);
+	  psp2(stdout,spi*traceIndent);
+	  printf("A%d:assigned iter/prob app, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
 	  if (message(Mega)) {
 	    if (rv->allParents.size() > 0) {
@@ -1971,7 +2331,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	      printf("|parents");
 	    }
 	  }
-	  printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  printf("]=%f,crClqPr=%f\n",cur_p.val(),p.val());
 	}
 	// if at any step, we get zero, then back out.
 	if (!cur_p.essentially_zero()) {
@@ -1990,8 +2350,8 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       do {
 	// At each step, we compute probability
 	if (message(Huge)) {
-	  psp(stdout,2*nodeNumber);
-	  printf("%d:assigned iter/zero rmv, Pr[",nodeNumber);
+	  psp2(stdout,spi*traceIndent);
+	  printf("A%d:assigned iter/zero rmv, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
 	  if (message(Mega)) {
 	    if (rv->allParents.size() > 0) {
@@ -2003,7 +2363,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	      printf("|parents");
 	    } 
 	  }
-	  printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  printf("]=%f,crClqPr=%f\n",cur_p.val(),p.val());
 	}
 	// if at any step, we get zero, then back out.
 	if (!cur_p.essentially_zero()) {
@@ -2022,8 +2382,8 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       drv->val = 0;
       do {
 	if (message(Huge)) {
-	  psp(stdout,2*nodeNumber);
-	  printf("%d:assigned card iter, Pr[",nodeNumber);
+	  psp2(stdout,spi*traceIndent);
+	  printf("A%d:assigned card iter, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
 	  if (message(Mega)) {
 	    if (rv->allParents.size() > 0) {
@@ -2035,7 +2395,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	      printf("|parents");
 	    }
 	  }
-	  printf("]=???, crClqPr=%f\n",p.val());
+	  printf("]=???,crClqPr=%f\n",p.val());
 	}
 	// Continue, do not update probability!!
 	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
@@ -2050,8 +2410,8 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       logpr cur_p = rv->probGivenParents();
       // if at any step, we get zero, then back out.
       if (message(Huge)) {
-	psp(stdout,2*nodeNumber);
-	printf("%d:assigned compute appl prob, Pr[",nodeNumber);
+	psp2(stdout,spi*traceIndent);
+	printf("A%d:assigned compute appl prob, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
 	if (message(Mega)) {
 	  if (rv->allParents.size() > 0) {
@@ -2063,7 +2423,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	    printf("|parents");
 	  }
 	}
-	printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	printf("]=%f,crClqPr=%f\n",cur_p.val(),p.val());
       }
       if (!cur_p.essentially_zero()) {
 	// Continue, updating probability by cur_p.
@@ -2074,8 +2434,8 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 
   case MaxClique::AN_CONTINUE:
     if (message(Huge)) {
-      psp(stdout,2*nodeNumber);
-      printf("%d:sep cont, non prob, Pr[",nodeNumber);
+      psp2(stdout,spi*traceIndent);
+      printf("A%d:sep cont, non prob, Pr[",nodeNumber);
       rv->printNameFrameValue(stdout,false);
       if (message(Mega)) {
 	if (rv->allParents.size() > 0) {
@@ -2087,7 +2447,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	  printf("|parents");
 	}
       }
-      printf("]=???, crClqPr=%f\n",p.val());
+      printf("]=???,crClqPr=%f\n",p.val());
     }
     ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
     break;
@@ -2098,8 +2458,8 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       // RV.
       logpr cur_p = rv->probGivenParents();
       if (message(Huge)) {
-	psp(stdout,2*nodeNumber);
-	printf("%d:assigned compute continue, Pr[",nodeNumber);
+	psp2(stdout,spi*traceIndent);
+	printf("A%d:assigned compute continue, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
 	if (message(Mega)) {
 	  if (rv->allParents.size() > 0) {
@@ -2111,7 +2471,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	    printf("|parents");
 	  }
 	}
-	printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	printf("]=%f,crClqPr=%f\n",cur_p.val(),p.val());
       }
       if (!cur_p.essentially_zero()) {
 	// Continue, do not update probability!!
@@ -2124,6 +2484,8 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
     assert(0);
     break;
   }
+  if (message(High+5))
+    traceIndent--;
 
 }
 
@@ -2342,8 +2704,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
        */
       /*
       if (message(Mega)) {
-	// psp(stdout,2*nodeNumber);
-	infoMsg(Mega,"Inserting New Clique Value. prob = %f, sum = %f: ",
+	// psp2(stdout,spi*traceIndent);
+	infoMsg(Mega,"Inserting New Clique Val,pr=%f,sm=%f: ",
 		cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
 	printRVSetAndValues(stdout,fNodes);
       }
@@ -2522,91 +2884,6 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
 /*-
  *-----------------------------------------------------------------------
- * MaxClique::ceIterateUnassignedIteratedNodes()
- *
- *    Collect Evidence, Iterate Separators: This routine
- *    is part of separator driven clique instantiation. Once
- *    we have a partial clique value that has survied the separators,
- *    the next thing we need to do is iterate through any unassigned
- *    nodes in this cliuqe (if any, hopefully not since these can be costly
- *    and might indicate a poor triangulation, depending on pruning and/or
- *    the sparse/deterministic variables).
- *
- *    If we have reached the last unassigned node in this clique, we
- *    move directly on to the assigned nodes.
- *
- * Preconditions:
- *
- *   All the cliques incomming separators *must* have been created and are ready
- *   to be used to produce the clique table.
- *     
- *
- * Postconditions:
- *    We move on to the asssigned nodes with an probabilty. The prob. has
- *    not been updated from what is passed in since these nodes are unassigned
- *    and so never contribute score to this clique.
- *
- * Side Effects:
- *    none
- *
- * Results:
- *     nothing
- *
- *-----------------------------------------------------------------------
- */
-
-void
-InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
-						     const unsigned nodeNumber,
-						     const logpr p)
-{
-  if (nodeNumber == fUnassignedIteratedNodes.size()) {
-    ceIterateAssignedNodes(part,0,p);
-    return;
-  }
-  RV* rv = fUnassignedIteratedNodes[nodeNumber];
-  // TODO: update comments here to match others.
-  infoMsg(Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
-	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
-
-  if (rv->hidden()) {
-    // only discrete RVs can be hidden for now.
-    DiscRV* drv = (DiscRV*)rv;
-    // do the loop right here
-    drv->val = 0;
-    do {
-      infoMsg(Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),drv->val,nodeNumber,p.val());
-      // continue on, effectively multiplying p by unity.
-      ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
-    } while (++drv->val < drv->cardinality);
-  } else {
-    // TODO: Perhaps unassignedIteratedNodes should contain
-    // no observed nodes at all since we are not updating 
-    // probability here anyway.
-
-    // observed, either discrete or continuous
-    if (rv->discrete()) {
-      // DiscRV* drv = (DiscRV*)rv;
-      // TODO: for observed variables, do this once at the begining
-      // before any looping here.
-      // drv->setToObservedValue();
-      infoMsg(Giga,"Unassigned pass through of observed rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,nodeNumber,p.val());
-    } else {
-      // nothing to do since we get continuous observed
-      // value indirectly
-      infoMsg(Giga,"Unassigned pass through of observed rv %s(%d)=C, nodeNumber = %d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
-    }
-    // continue on, effectively multiplying p by unity.
-    ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
-  }
-}
-
-
-/*-
- *-----------------------------------------------------------------------
  * MaxClique::ceSendToOutgoingSeparator()
  *
  *    Collect Evidence, Send to outgoing separator.
@@ -2655,6 +2932,14 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			  InferenceSeparatorClique& sep)
 {
 
+
+  // keep a local variable copy of this around to avoid potential
+  // dereferencing.  This one cannot be const since it might change
+  // during a resize, in which case we need to reassign this variable.
+  InferenceSeparatorClique::AISeparatorValue * 
+    sepSeparatorValuesPtr = sep.separatorValues->ptr; 
+
+
   // first check if this is an all observed clique.
   if (origin.hiddenNodes.size() == 0) {
     // Everything in this clique is observed.  Therefore, there should
@@ -2677,7 +2962,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // To find out where has this been allocated, 
     // search for tag: ALLOCATE_REMVALUES_ALL_OBSERVED.
     InferenceSeparatorClique::AISeparatorValue& sv
-      = sep.separatorValues.ptr[accIndex];
+      = sepSeparatorValuesPtr[accIndex];
 
     // This must be first time for this entry.  We never need more
     // than one rem value.  Search for tag
@@ -2733,7 +3018,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // is already getting a bit unwieldy.
 
     InferenceSeparatorClique::AISeparatorValue& sv
-      = sep.separatorValues.ptr[0];
+      = sepSeparatorValuesPtr[0];
 
     // This must be first time for this entry.  We never need more
     // than one rem value.  Search for tag
@@ -2831,35 +3116,38 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	// an accumulated intersection exists.
 
 	// make sure there is at least one available accumulated intersection entry
-	assert ( sep.numSeparatorValuesUsed <= sep.separatorValues.size());
-	if (sep.numSeparatorValuesUsed >= sep.separatorValues.size()) {
-	  const unsigned old_size = sep.separatorValues.size();
+	assert ( sep.numSeparatorValuesUsed <= sep.separatorValues->size());
+	if (sep.numSeparatorValuesUsed >= sep.separatorValues->size()) {
+	  const unsigned old_size = sep.separatorValues->size();
 	  // TODO: optimize this size re-allocation.
-	  // sep.separatorValues.resizeAndCopy(sep.separatorValues.size()*2);
 	  if (sep.numSeparatorValuesUsed >= sep.origin.separatorValueSpaceManager.currentSize()) 
 	    sep.origin.separatorValueSpaceManager.advanceToNextSize();
-	  sep.separatorValues.resizeAndCopy(sep.origin.separatorValueSpaceManager.currentSize()); 
+	  sep.separatorValues->resizeAndCopy(sep.origin.separatorValueSpaceManager.currentSize()); 
+	  sepSeparatorValuesPtr = sep.separatorValues->ptr;
 	  if (isc_nwwoh_ai_p) {
 	    // Then the above resize just invalided all our pointers to keys,
 	    // but it did not invalidate the array indices. Go through
 	    // and correct the keys within the hash table.
 	    // TODO: think of a better way to do this that also looses no efficiency.
-	    for (unsigned i=0;i<sep.iAccHashMap.tableSize();i++) {
-	      if (!sep.iAccHashMap.tableEmpty(i)) {
-		sep.iAccHashMap.tableKey(i)
-		  = &(sep.separatorValues.ptr[sep.iAccHashMap.tableItem(i)].val[0]);
+	    for (unsigned i=0;i<sep.iAccHashMap->tableSize();i++) {
+	      if (!sep.iAccHashMap->tableEmpty(i)) {
+		sep.iAccHashMap->tableKey(i)
+		  = &(sepSeparatorValuesPtr[sep.iAccHashMap->tableItem(i)].val[0]);
 	      }
 	    }
 	  }
-	  const unsigned new_size = sep.separatorValues.size();
+	  const unsigned new_size = sep.separatorValues->size();
 	  // if (sep.remDiscreteValuePtrs.size() > 0) {
 	  if (sep_remDiscreteValuePtrs_exists_p) {
 	    for (unsigned i=old_size;i<new_size;i++) {
 	      // re-construct hash tables only for new entries.
-	      new (&sep.separatorValues.ptr[i].iRemHashMap)
+	      new (&sepSeparatorValuesPtr[i].iRemHashMap)
 		VHashMapUnsignedUnsignedKeyUpdatable
 		(sep.origin.remPacker.packedLen(),2);
-	      // TODO: potentially preallocate default size of  separatorValues.ptr[i].remValues.resize(default);
+	      // TODO: potentially preallocate default size of  
+	      // separatorValues->ptr[i].remValues.resize(default);
+	      // TODO: potentially create zero size here, and only
+	      //       grow bigger when we start adding things.
 	    }
 	  }
 	}
@@ -2867,7 +3155,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	unsigned *accKey;
 	// TODO: optimize this check out of loop.
 	if (isc_nwwoh_ai_p) {
-	  accKey = &(sep.separatorValues.ptr[sep.numSeparatorValuesUsed].val[0]);
+	  accKey = &(sepSeparatorValuesPtr[sep.numSeparatorValuesUsed].val[0]);
 	  sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
 				    accKey);
 	} else {
@@ -2883,12 +3171,12 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	    sep.origin.accValueHolder.allocateCurCliqueValue();
 	  }
 	  // store the pointer in case we use it.
-	  sep.separatorValues.ptr[sep.numSeparatorValuesUsed].ptr = accKey;
+	  sepSeparatorValuesPtr[sep.numSeparatorValuesUsed].ptr = accKey;
 	}
       
 	bool foundp;
 	unsigned* accIndexp =
-	  sep.iAccHashMap.insert(accKey,
+	  sep.iAccHashMap->insert(accKey,
 				 sep.numSeparatorValuesUsed,
 				 foundp);
 
@@ -2909,7 +3197,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
 	  // handy reference for readability.
 	  InferenceSeparatorClique::AISeparatorValue& sv
-	    = sep.separatorValues.ptr[accIndex];
+	    = sepSeparatorValuesPtr[accIndex];
 
 	  // Accumulate the clique's
 	  // probability into this separator's probability.
@@ -2956,7 +3244,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
       // keep handy reference for readability.
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues.ptr[accIndex];
+	= sepSeparatorValuesPtr[accIndex];
     
       // make sure there is at least one available entry
       assert (sv.numRemValuesUsed <= sv.remValues.size());
@@ -3262,7 +3550,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   unsigned lower = 0;
   unsigned upper = numCliqueValuesUsed-1;
 
-  // we seed the random number generator specifically for this clique
+  // We seed the random number generator specifically for this clique
   // since it might get called again during island algorithm. 
   // Search for string K-BEAM-SEED elsewhere in this file for further information.
   rnd.seed(&(cliqueValues[0].p.valref()));
@@ -3428,36 +3716,30 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved()
+ *
+ *    A version of ceGatherFromIncommingSeparators that is is
+ *    specifically for cliques that are all observed which means that
+ *    all surrounding separators are also all observed.  observed
+ *    clique observedclique
+ *
+ * Preconditions:
+ *      Same as the separator driven case.
+ *
+ * Postconditions:
+ *      Same as the separator driven case.
+ *
+ * Side Effects:
+ *      Same as the separator driven case.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
 
-
-//////////////
-// Clique driven version of gather from incomming separators
-// TODO: add comments
-/////////////
-
-void
-InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePartition& part)
-{
-  assert (MaxClique::ceSeparatorDrivenInference == false); 
-
-  if (origin.hiddenNodes.size() == 0) {
-    ceGatherFromIncommingSeparatorsCliqueObserved(part);
-  } else {
-    logpr p = 1.0;
-    if (origin.unassignedNodes.size() == 0) {
-      ceIterateAssignedNodesCliqueDriven(part,0,p);
-    } else {
-      ceIterateUnassignedNodesCliqueDriven(part,0,p);
-    }
-  }
-
-}
-
-
-//
-// a version that is specifically for cliques that are all observed which
-// means that all surrounding separators are also all observed.
-// observed clique observedclique
 void
 InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePartition& part)
 {
@@ -3475,7 +3757,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       logpr cur_p = rv->probGivenParents();
 
       if (message(Huge)) {
-	psp(stdout,2*nodeNumber);
+	psp2(stdout,spi*(traceIndent+1));
 	printf("%d:assigned obs/prob app, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
 	if (message(Mega)) {
@@ -3488,7 +3770,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
 	    printf("|parents");
 	  }
 	}
-	printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	printf("]=%f,crClqPr=%f\n",cur_p.val(),p.val());
       }
 
       // if at any step, we get zero, then back out.
@@ -3505,7 +3787,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       logpr cur_p = rv->probGivenParents();
 
       if (message(Huge)) {
-	psp(stdout,2*nodeNumber);
+	psp2(stdout,spi*(traceIndent+1));
 	printf("%d:assigned obs/zero rmv, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
 	if (message(Mega)) {
@@ -3518,7 +3800,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
 	    printf("|parents");
 	  } 
 	}
-	printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	printf("]=%f,crClqPr=%f\n",cur_p.val(),p.val());
       }
 
       if (cur_p.essentially_zero()) {
@@ -3552,6 +3834,10 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       // get a handy reference to the current separator
       InferenceSeparatorClique& sep = 
 	part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+      // keep a local variable copy of this around to avoid potential dereferencing.
+      InferenceSeparatorClique::AISeparatorValue * const
+	sepSeparatorValuesPtr = sep.separatorValues->ptr; 
+
 
       unsigned accIndex = 0;
       // separator consists of all observed values. We just multiply
@@ -3561,7 +3847,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       // has no hidden variables.
       
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues.ptr[accIndex];
+	= sepSeparatorValuesPtr[accIndex];
     
       // Where was this allocated?  Search in file for key string
       // "ALLOCATE_REMVALUES_ALL_OBSERVED'
@@ -3584,9 +3870,9 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
   }
 
   if (message(High)) {
-    if (message(Huge))
-      psp(stdout,2*fSortedAssignedNodes.size());
-    infoMsg(High,"%d:Inserting New Observed Clique Value. prob = %f, sum = %f: ",fSortedAssignedNodes.size(),
+    psp2(stdout,spi*(traceIndent+2));
+    infoMsg(High,"CI:Inserting Observed %d-clique ent #0,pr=%f,sm=%f:",
+	    fNodes.size(),
 	    cliqueValues.ptr[0].p.val(),sumProbabilities().val());
     printRVSetAndValues(stdout,fNodes);
   }
@@ -3594,10 +3880,95 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueDriven()
+ *
+ *    Stub for gather from the incomming separators, but rather than do
+ *    separator driven inference, iterate over the clique directly and
+ *    check the CE incomming separators on each clique iteration to
+ *    ensure compatibility. Therefore, the computation here is truely
+ *    order of the state space of the cliques (rather than having lots
+ *    to do with what comes in as a separator). The computation here
+ *    is also fairly well reflected by the standard "weight" measure
+ *    of clique costs that is used fairly often.
+ *    
+ *
+ * Preconditions:
+ *      Same as the separator driven case. The only difference here is
+ *      that the separators need to be set up so that they don't
+ *      have any intersection with respect to each other. 
+ *
+ * Postconditions:
+ *      Same as the separator driven case.
+ *
+ * Side Effects:
+ *      Same as the separator driven case.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePartition& part)
+{
+  assert (MaxClique::ceSeparatorDrivenInference == false); 
+
+  if (origin.hiddenNodes.size() == 0) {
+    ceGatherFromIncommingSeparatorsCliqueObserved(part);
+  } else {
+    logpr p = 1.0;
+    if (origin.unassignedNodes.size() == 0) {
+      ceIterateAssignedNodesCliqueDriven(part,0,p);
+    } else {
+      ceIterateUnassignedNodesCliqueDriven(part,0,p);
+    }
+  }
+
+}
 
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueDriven()
+ *
+ *    Stub for gather from the incomming separators, but rather than
+ *    do separator driven inference, iterate over the clique directly
+ *    and check the CE incomming separators on each clique iteration
+ *    to ensure compatibility. Therefore, the computation here is
+ *    truely order of the state space of the cliques (rather than
+ *    having lots to do with what comes in as a separator). The
+ *    computation here is also fairly well reflected by the standard
+ *    "weight" measure of clique costs that is used fairly often.
+ *
+ *    This routine is the one that does the actual work. It
+ *    recursively (and as topologically as possible) iterates through
+ *    all "assigned" nodes in the clique. Once all nodes in the clique are
+ *    instantiated, it checks all incomming separators to make sure
+ *    they are compatible and if so multiply in any probability.
+ *
+ *    Note that this routine is most faithfull to the equations
+ *    implied by the GDL equations.
+ *
+ * Preconditions:
+ *      Same as the separator driven case. The only difference here is
+ *      that the separators need to be set up so that they don't
+ *      have any intersection with respect to each other. 
+ *
+ * Postconditions:
+ *      Same as the separator driven case.
+ *
+ * Side Effects:
+ *      Same as the separator driven case.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& part,
 						       const unsigned nodeNumber,
@@ -3614,6 +3985,9 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
       // get a handy reference to the current separator
       InferenceSeparatorClique& sep = 
 	part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+      // keep a local variable copy of this around to avoid potential dereferencing.
+      InferenceSeparatorClique::AISeparatorValue * const
+	sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
       unsigned packedVal[128];
       // If these assertions fail (at some time in the future, probably in
@@ -3638,7 +4012,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 	sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
 				  &packedVal[0]);
 	unsigned* accIndexp =
-	  sep.iAccHashMap.find(&packedVal[0]);
+	  sep.iAccHashMap->find(&packedVal[0]);
 
 	
 	// If it doesn't exist in this separator, then it must have
@@ -3659,7 +4033,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
 	  // handy reference for readability.
 	  InferenceSeparatorClique::AISeparatorValue& sv
-	    = sep.separatorValues.ptr[accIndex];
+	    = sepSeparatorValuesPtr[accIndex];
 
 	  // Multiply in the separator values probability into the clique value's current entry.
 	  p *= sv.remValues.ptr[0].p;
@@ -3688,7 +4062,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
 	// keep handy reference for readability.
 	InferenceSeparatorClique::AISeparatorValue& sv
-	  = sep.separatorValues.ptr[accIndex];
+	  = sepSeparatorValuesPtr[accIndex];
 
 	sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 				  &packedVal[0]);
@@ -3713,7 +4087,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 	// hidden variables.
 
 	InferenceSeparatorClique::AISeparatorValue& sv
-	  = sep.separatorValues.ptr[accIndex];
+	  = sepSeparatorValuesPtr[accIndex];
 
 	// Where was this allocated?  Search in file for key string
 	// "ALLOCATE_REMVALUES_ALL_OBSERVED'
@@ -3846,12 +4220,43 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
     }
     break;
   }
-
 }
 
 
 
-
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueDriven()
+ *
+ *    Stub for gather from the incomming separators, but rather than
+ *    do separator driven inference, iterate over the clique directly
+ *    and check the CE incomming separators on each clique iteration
+ *    to ensure compatibility. Therefore, the computation here is
+ *    truely order of the state space of the cliques (rather than
+ *    having lots to do with what comes in as a separator). The
+ *    computation here is also fairly well reflected by the standard
+ *    "weight" measure of clique costs that is used fairly often.
+ *
+ *    This routine recursively iterates through any unassigned nodes
+ *    in the clique, and when done calls the corresponding routine
+ *    for the assigned clique nodes.
+ *
+ * Preconditions:
+ *      Same as the separator driven case. The only difference here is
+ *      that the separators need to be set up so that they don't
+ *      have any intersection with respect to each other. 
+ *
+ * Postconditions:
+ *      Same as the separator driven case.
+ *
+ * Side Effects:
+ *      Same as the separator driven case.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 InferenceMaxClique::ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& part,
 							 const unsigned nodeNumber,
@@ -3901,6 +4306,28 @@ InferenceMaxClique::ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& 
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::sumProbabilities()
+ *
+ *    Simply sum up the probabilities of all elements in this clique
+ *    and return the results.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     sum of probabilities of all elements in the clique.
+ *
+ *-----------------------------------------------------------------------
+ */
 logpr
 InferenceMaxClique::
 sumProbabilities()
@@ -3918,6 +4345,95 @@ sumProbabilities()
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::setCliqueToMaxCliqueValue()
+ *
+ *    This routine just sets the clique to the clique value to the one
+ *    that has maximum score. It sets all RVs to the values associated
+ *    with the clique value that has maximum score.
+ *    
+ * Preconditions:
+ *
+ *     Clique table must be at least partially instantiated.
+ *
+ * Postconditions:
+ *
+ *     Hidden RVs now have values of clique value having maximum score
+ *     in clique table.
+ *
+ * Side Effects:
+ *
+ *    Changes values of RVs associated with this clique
+ *
+ * Results:
+ *    nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr
+InferenceMaxClique::
+setCliqueToMaxCliqueValue()
+{
+
+  if (origin.hiddenNodes.size() == 0) {
+    // The observed clique case requires no action since this
+    // means that the cliuqe (and therefore all its separators)
+    // are all observed and already set to their max prob (and only) values.
+    return cliqueValues.ptr[0].p;
+  } else {
+    unsigned max_cvn = 0;
+    logpr max_cvn_score = cliqueValues.ptr[0].p;
+    
+    // find the max score clique entry
+    for (unsigned cvn=1;cvn<numCliqueValuesUsed;cvn++) {
+      if (cliqueValues.ptr[cvn].p > max_cvn_score) {
+	max_cvn_score = cliqueValues.ptr[cvn].p;
+	max_cvn = cvn;
+      }
+    }
+
+    const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[max_cvn].val[0]),
+			   (unsigned**)discreteValuePtrs.ptr);
+    } else {
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[max_cvn].ptr,
+			   (unsigned**)discreteValuePtrs.ptr);
+    }
+
+    return max_cvn_score;
+  }
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::printCliqueEntries()
+ *
+ *    Simply prints out all elements in the clique, giving both the RV
+ *    values and the (not necessarily a probability) score for the
+ *    corresponding clique entry. If the normalize option is given,
+ *    then the scores can rightfully be interpreted as probabilities,
+ *    and if CE/DE has been called, then this will produce true marginal
+ *    probabilities over the variables in the clique.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 InferenceMaxClique::
 printCliqueEntries(FILE *f,const char*str, const bool normalize) 
@@ -3953,7 +4469,32 @@ printCliqueEntries(FILE *f,const char*str, const bool normalize)
 
 
 
-
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::emIncrement()
+ *
+ *      Do the work of EM increment. That is, for each clique element,
+ *      load the values into the variables and then for each assigned prob node
+ *      call that nodes emIncrement() routine thus realizing EM training.
+ *      The routine has the option of using either a local normalization
+ *      (useful when doing double precision 64-bit floating point) or a local
+ *      normalization (perhaps better for signle precision, especially on
+ *      longer utterances).
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      Potentially all assigned probability nodes accumulators are changed.
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 InferenceMaxClique::
 emIncrement(const logpr probE,
@@ -4046,13 +4587,67 @@ emIncrement(const logpr probE,
 
 
 
-/*
- * we have now a fully instantiated clique and are ready for backwards
- * pass. Iterate through the values that are above beam and
- * instantiate the outgoing separator with those values.
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::deReceiveFromIncommingSeparator()
  *
+ *      We are in the DE phase, and the separator that during the CE phase
+ *      we sent a message out to is now ready with a backwards message back
+ *      to this clique. We iterate through all clique entries and lookup
+ *      the corresponding "incomming separator" entry, multiplying in its score
+ *      into the corresponding clique entry.
+ *
+ *      Note that some of the incomming separator values might be zero (for
+ *      reason based on higher up in the JT). Therefore, at the end of this
+ *      routine we do another DE pruning pass to remove clique entries
+ *      that have become zero. Since one separator entry might correspond to
+ *      many clique entries, a zero separator entry might cause a lot of backwards
+ *      clique pruning. 
+ *
+ *      Note: A condition might occur where we've got a clique entry without
+ *      a corresponding incomming separator entry. On first thought, this
+ *      shouldn't occur, but in actuallity it can occur for one of two reasons:
+ *
+ *     1) if sbeam is turned on, it's possible that the separator entry corresponding to this
+ *        clique entry was pruned away. This can happen since separator pruning is later
+ *        then the clique which created (projected down into) the separator. The solution
+ *        here is to increase or entirely turn off sbeam pruning.
+ *     
+ *     2) During the island algorithm and using k-pruning (fixed k clique size), there
+ *        were ties in the clique probability and since we use a random median to find the top
+ *        k entries, we didn't get the same top k entries the 2nd (or 3rd, 4th, etc. depending 
+ *        on the island algorithm's 'base' and 'lst' parameters) time that we created the 
+ *        clique and then pruned it down to k entries. The solution we employ is to
+ *        seed the random number generator in k-pruning to something that is clique dependent.
+ *        This is now being done in InferenceMaxClique::ceCliquePrune() above. Search for string 
+ *        K-BEAM-SEED elsewhere in this file for further information. Therefore, this 
+ *        case should not occur.
+ *
+ *        The solution (Marked by the keyword "SEPCLIQUEZERO" below) is to just
+ *        prune this clique entry away, for case 1 since case 2 will not
+ *        happen. 
+ *
+ *        Another solution would be to remove the clique-dependent seed for case
+ *        2, but pruning would then get ugly. This is because if the clique was
+ *        all ties, this would mean that we prune all but the intersection of
+ *        the survivors of both k-prunings, and this might be small or empty.
+ *        In the best of cases, this would probably be much smaller than k, so
+ *        we instead just do the clique-dependent seed which is much easier.
+ *
+ * Preconditions:
+ *      Clique data structures and separator must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      Potentially all assigned probability nodes accumulators are changed.
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
  */
-
 void 
 InferenceMaxClique::
 deReceiveFromIncommingSeparator(JT_InferencePartition& part)
@@ -4060,9 +4655,6 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part)
   deReceiveFromIncommingSeparator(part,
 				  part.separatorCliques[origin.ceSendSeparator]);
 }
-
-// For each clique value, we need to look up appropriate value in the
-// separator and multiply it into the current clique probability.
 void 
 InferenceMaxClique::
 deReceiveFromIncommingSeparator(JT_InferencePartition& part,
@@ -4072,11 +4664,15 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
     return deReceiveFromIncommingSeparatorViterbi(part,sep);
   }
 
+  // keep a local variable copy of this around to avoid potential dereferencing.
+  InferenceSeparatorClique::AISeparatorValue * const
+    sepSeparatorValuesPtr = sep.separatorValues->ptr; 
+
   if (origin.hiddenNodes.size() == 0) {
     // do the observed clique case up front right here so we don't
     // need to keep checking below.
     InferenceSeparatorClique::AISeparatorValue& sv
-      = sep.separatorValues.ptr[0];
+      = sepSeparatorValuesPtr[0];
     cliqueValues.ptr[0].p *= sv.remValues.ptr[0].bp();
     return;
   }
@@ -4130,10 +4726,16 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
       sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
 				&packedVal[0]);
       unsigned* accIndexp =
-	sep.iAccHashMap.find(&packedVal[0]);
+	sep.iAccHashMap->find(&packedVal[0]);
 
-      // we should always find something or else something is wrong.
-      assert ( accIndexp != NULL ); 
+      // case SEPCLIQUEZERO, see comments in routine heading
+      if ( accIndexp == NULL ) {
+	// Then separator entry got pruned away. Force prune of clique
+	// entry as well.
+	cliqueValues.ptr[cvn].p.set_to_zero();
+	goto next_iteration;
+      }
+
       accIndex = *accIndexp;
 
       // TODO: optimize this check out of loop.
@@ -4146,7 +4748,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 
 	// handy reference for readability.
 	InferenceSeparatorClique::AISeparatorValue& sv
-	  = sep.separatorValues.ptr[accIndex];
+	  = sepSeparatorValuesPtr[accIndex];
 
 	// Multiply in this separator value's probability.
 	cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp();
@@ -4170,7 +4772,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 
       // keep handy reference for readability.
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues.ptr[accIndex];
+	= sepSeparatorValuesPtr[accIndex];
 
       sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 				&packedVal[0]);
@@ -4178,35 +4780,15 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
       unsigned* remIndexp =
 	sv.iRemHashMap.find(&packedVal[0]);
 
-      // it must exist
-      // assert ( remIndexp != NULL );
+      // case SEPCLIQUEZERO, see comments in routine heading
       if ( remIndexp == NULL ) {
-	// This condition occurs when the clique entry is encountered
-	// without corresponding incomming separator entry.
-	// 
-	// There are several valid reasons why this might occur:
-	// 1) if sbeam is turned on, it's possible that the separator entry corresponding to this
-	//    clique entry was pruned away. This can happen since separator pruning is later
-	//    then the clique which created (projected down into) the separator. The solution
-	//    here is to increase or entirely turn off sbeam pruning.
-	// 
-	// 2) During the island algorithm and using k-pruning (fixed k clique size), there
-	//    were ties in the clique probability and since we use a random median to find the top
-	//    k entries, we didn't get the same top k entries the 2nd (or 3rd, 4th, etc. depending 
-	//    on the island algorithm's 'base' and 'lst' parameters) time that we created the 
-	//    clique and then pruned it down to k entries. The solution we employ is to
-	//    seed the random number generator in k-pruning to something that is clique dependent.
-	//    Search for string K-BEAM-SEED elsewhere in this file for further information.
+	// Then separator entry got pruned away. Force prune of clique
+	// entry as well.
+	cliqueValues.ptr[cvn].p.set_to_zero();
+	goto next_iteration;
+	// warning("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\nClique contains:");
+	// printRVSetAndValues(stdout,fNodes);
 
-	// NOTE: we could prune this clique entry away, for case 1, but this would get ugly for
-	// case 2, as if the clique was all ties, this would mean that we prune all but  the
-	// intersection of the survivors of both k-prunings, and this might be small or empty.
-	// In the best of cases, this would probably be much smaller than k, so we instead
-	// just issue the error.
-
-	warning("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\nClique contains:");
-	printRVSetAndValues(stdout,fNodes);
-	error("");
       }
 
       // We've finally got the sep entry. Multiply it it into the
@@ -4218,18 +4800,18 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
       // In either case, we multiply in its one value.
 
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues.ptr[accIndex];
+	= sepSeparatorValuesPtr[accIndex];
 
       if (sv.numRemValuesUsed == 1) {
 	// We've finally got the sep entry. Multiply it it into the
 	// current clique value.
 	cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp();
       } else {
-	// This condition occurs when the clique entry is encountered
-	// without corresponding incomming separator entry. See comment above.
-	warning("ERROR: During distribute evidence, found clique entry without corresponding incomming separator entry. Try increasing -sbeam beam, or just use -cbeam without the -sbeam option.\nClique contains:");
-	printRVSetAndValues(stdout,fNodes);
-	error("");
+	// case SEPCLIQUEZERO, see comments in routine heading
+	// Then separator entry got pruned away. Force prune of clique
+	// entry as well.
+	cliqueValues.ptr[cvn].p.set_to_zero();
+	goto next_iteration;
       }
     }
 
@@ -4238,7 +4820,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
   ;    
   }
 
-  // backwards pruning: Fixed backwards/distribute evidence beam
+  // Backwards pruning: Fixed backwards/distribute evidence beam
   // pruning here. Since we know log(prob(E)), we can do fairly
   // accurate pruning now. This will be useful particulalry when many
   // of the bp() values are zero (i.e., in this case, we have zero
@@ -4264,9 +4846,46 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 }
 
 
-// Viterbi version of above.
-// For each clique value, we need to look up appropriate value in the
-// separator and multiply it into the current clique probability.
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::deReceiveFromIncommingSeparatorViterbi()
+ *
+ *      We are in the DE phase, and the separator that during the CE phase
+ *      we sent a message out to is now ready with a backwards message back
+ *      to this clique. We iterate through all clique entries and lookup
+ *      the corresponding "incomming separator" entry, multiplying in its score
+ *      into the corresponding clique entry.
+ *
+ *      This is the Viterbi version of
+ *      deReceiveFromIncommingSeparator() above.  Here, we simply look
+ *      up the separators back pointer index and use it to choose the
+ *      current clique entry. Moreover, we unpack that clique entry
+ *      leaving the RVs assigned to what is given in the clique entry.
+ *
+ *      An alternative strategy would be to assume that the RVs of the
+ *      separator currently point to the viterbi entry containing the
+ *      back pointer index. We would then look up the separator entry
+ *      corresponding to the currently set RV values, and choose the
+ *      current clique entry accordingly. This, however, interacts
+ *      poorly with the island algorithm, so we do not do this here.
+ *      (the code is there below commented out)
+ *
+ * Preconditions:
+ *      Clique data structures and separator must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      Potentially all assigned probability nodes accumulators are changed.
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 InferenceMaxClique::
 deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
@@ -4279,12 +4898,15 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
     return;
   }
 
+  // keep a local variable copy of this around to avoid potential dereferencing.
+  InferenceSeparatorClique::AISeparatorValue * const
+    sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
   // cache check here.
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
   // grab backpointer from seps forward pointer entry directly.
   InferenceSeparatorClique::AISeparatorValue& sv
-    = sep.separatorValues.ptr[sep.forwPointer.viterbiAccIndex];
+    = sepSeparatorValuesPtr[sep.forwPointer.viterbiAccIndex];
   unsigned cvn = sv.remValues.ptr[sep.forwPointer.viterbiRemIndex].backPointer;
 
   if (imc_nwwoh_p) {
@@ -4335,7 +4957,7 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
     sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
 			      &packedVal[0]);
     unsigned* accIndexp =
-      sep.iAccHashMap.find(&packedVal[0]);
+      sep.iAccHashMap->find(&packedVal[0]);
 
     // we should always find something or else something is wrong.
     assert ( accIndexp != NULL ); 
@@ -4352,7 +4974,7 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
 
       // handy reference for readability.
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues.ptr[accIndex];
+	= sepSeparatorValuesPtr[accIndex];
 
       // Multiply in this separator value's probability.
 
@@ -4387,7 +5009,7 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
 
     // keep handy reference for readability.
     InferenceSeparatorClique::AISeparatorValue& sv
-      = sep.separatorValues.ptr[accIndex];
+      = sepSeparatorValuesPtr[accIndex];
 
     sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 			      &packedVal[0]);
@@ -4412,14 +5034,13 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
     }
 
 
-
   } else {
     // Either separator is all observed, or the separator
     // is completely contained in the accumulated intersection.
     // In either case, we use its one value.
 
     InferenceSeparatorClique::AISeparatorValue& sv
-      = sep.separatorValues.ptr[accIndex];
+      = sepSeparatorValuesPtr[accIndex];
 
     // We've finally got the sep entry. Unpack the pointed-to clique
     // entry.
@@ -4439,9 +5060,37 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
 
 
 
-// Scatter out to the outgoing separators which are the same as the
-// receive separators in the collect evidence stage, so we use that
-// array here.
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::deScatterToOutgoingSeparators()
+ *
+ *      We are in the DE phase, and we've received the separator
+ *      message fror the separator we sent a message out during CE.
+ *      Now it is our turn to send (project down to) to the separators 
+ *      that we received incomming messages during the CE phase.
+ *
+ *      Specifically, we "scatter" out to the now outgoing separators which are the same as the
+ *      "incomming" separators in the collect evidence stage, so we use that
+ *      array here directly here. We do this by iterating through all clique entries
+ *      and sending it back out to all CE-incomming separators (unless the separator
+ *      is a VE separator, in which case it is just a constaint constraint that
+ *      we have already acounted for).
+ *
+ * Preconditions:
+ *      Clique data structures and separator must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      Potentially all assigned probability nodes accumulators are changed.
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 InferenceMaxClique::
 deScatterToOutgoingSeparators(JT_InferencePartition& part)
@@ -4513,7 +5162,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
       InferenceSeparatorClique& sep = 
 	part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues.ptr[0];
+	= sep.separatorValues->ptr[0];
       // can use assignment rather than += here since there is only one value.
       sv.remValues.ptr[0].bp() = cliqueValues.ptr[0].p;      
     }
@@ -4539,9 +5188,18 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 
       // now we iterate through all the separators.
       for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
+
 	// get a handy reference to the current separator
 	InferenceSeparatorClique& sep = 
 	  part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+
+	// don't distribute to VE separators.
+	if (sep.veSeparator())
+	  continue;
+
+	// keep a local variable copy of this around to avoid potential dereferencing.
+	InferenceSeparatorClique::AISeparatorValue * const
+	  sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
 	// If these assertions fail (at some time in the future, probably in
 	// the year 2150), then it is fine to increase 128 to something larger.
@@ -4566,7 +5224,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	  sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
 				    &packedVal[0]);
 	  unsigned* accIndexp =
-	    sep.iAccHashMap.find(&packedVal[0]);
+	    sep.iAccHashMap->find(&packedVal[0]);
 
 	  // we should always find something or else something is wrong.
 	  assert ( accIndexp != NULL ); 
@@ -4582,7 +5240,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 
 	    // handy reference for readability.
 	    InferenceSeparatorClique::AISeparatorValue& sv
-	      = sep.separatorValues.ptr[accIndex];
+	      = sepSeparatorValuesPtr[accIndex];
 
 	    // Add in this clique value's probability.  Note that bp was
 	    // initialized during forward pass.
@@ -4610,7 +5268,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	
 	  // keep handy reference for readability.
 	  InferenceSeparatorClique::AISeparatorValue& sv
-	    = sep.separatorValues.ptr[accIndex];
+	    = sepSeparatorValuesPtr[accIndex];
 	
 	  sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 				    &packedVal[0]);
@@ -4631,7 +5289,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	
 	  // keep handy reference for readability.
 	  InferenceSeparatorClique::AISeparatorValue& sv
-	    = sep.separatorValues.ptr[accIndex];
+	    = sepSeparatorValuesPtr[accIndex];
 
 	  // We've finally got the sep entry.  Add in this clique value's
 	  // probability.  Note that bp was initialized during forward
@@ -4649,8 +5307,16 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
     InferenceSeparatorClique& sep = 
       part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
 
+    // don't distribute to VE separators.
+    if (sep.veSeparator())
+      continue;
+
+    // keep a local variable copy of this around to avoid potential dereferencing.
+    InferenceSeparatorClique::AISeparatorValue * const
+      sepSeparatorValuesPtr = sep.separatorValues->ptr; 
+
     for (unsigned aiNo=0;aiNo < sep.numSeparatorValuesUsed; aiNo ++) {
-      InferenceSeparatorClique::AISeparatorValue* aisep = &(sep.separatorValues.ptr[aiNo]);
+      InferenceSeparatorClique::AISeparatorValue* aisep = &(sepSeparatorValuesPtr[aiNo]);
       for (unsigned remNo=0; remNo < aisep->numRemValuesUsed; remNo++) {
 	InferenceSeparatorClique::RemainderValue* rv = &(aisep->remValues.ptr[remNo]);
 	// We remove p from bp since bp will already have a factor of
@@ -4678,11 +5344,39 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 }
 
 
-// Viterbi version. 
-// Since all sep value are currently set to appropriate max
-// value from cur clique, through each sep and find the index to
-// re-set the sep to that value so it can be restored later. We
-// do this since the seps otherwise might change their value.
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::deScatterToOutgoingSeparatorsViterbi()
+ *
+ *      Viterbi version of deScatterToOutgoingSeparators(). We assume
+ *      here that all RV values in the separator are currently set to
+ *      appropriate max value the current clique.
+ *
+ *      What we do here is find the index (two indices actually) in each
+ *      CE-incomming separator corresponding to the current max clique
+ *      assignment, and store this index in the separator. These indices can
+ *      thus at a later time be used to look up the separator entries
+ *      corresponding to the currently assigned clique RV values, but
+ *      regardless of what the RV values happen to be assigned to at that
+ *      later time (and they might be different, say, during the island
+ *      algorithm).
+ *
+ * Preconditions:
+ *      Clique data structures and separator must be created. RVs within clique 
+ *      are assumed to be set to their maximum (or DE Viterbi max) values.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      changes all CE-incomming separators.
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 InferenceMaxClique::
 deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part)
@@ -4698,7 +5392,16 @@ deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part)
     // get a handy reference to the current separator
     InferenceSeparatorClique& sep = 
       part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+
+    // don't distribute to VE separators.
+    if (sep.veSeparator())
+      continue;
+
+    // keep a local variable copy of this around to avoid potential dereferencing.
+    InferenceSeparatorClique::AISeparatorValue * const
+      sepSeparatorValuesPtr = sep.separatorValues->ptr; 
     
+
     /*
      * There are 3 cases.
      * 1) AI exists and REM exist
@@ -4715,7 +5418,7 @@ deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part)
       sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
 				&packedVal[0]);
       unsigned* accIndexp =
-	sep.iAccHashMap.find(&packedVal[0]);
+	sep.iAccHashMap->find(&packedVal[0]);
 
       // we should always find something or else something is wrong.
       assert ( accIndexp != NULL ); 
@@ -4747,7 +5450,7 @@ deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part)
 	
       // keep handy reference for readability.
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues.ptr[accIndex];
+	= sepSeparatorValuesPtr[accIndex];
 	
       sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 				&packedVal[0]);
@@ -4767,69 +5470,6 @@ deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part)
 
 
 
-/*-
- *-----------------------------------------------------------------------
- * InferenceMaxClique::setCliqueToMaxCliqueValue()
- *
- *    This routine just sets the clique to the clique value to the one
- *    that has maximum score. It sets all RVs to the values associated
- *    with the clique value that has maximum score.
- *    
- * Preconditions:
- *
- *     Clique table must be at least partially instantiated.
- *
- * Postconditions:
- *
- *     Hidden RVs now have values of clique value having maximum score
- *     in clique table.
- *
- * Side Effects:
- *
- *    Changes values of RVs associated with this clique
- *
- * Results:
- *    nothing
- *
- *-----------------------------------------------------------------------
- */
-logpr
-InferenceMaxClique::
-setCliqueToMaxCliqueValue()
-{
-
-  if (origin.hiddenNodes.size() == 0) {
-    // The observed clique case requires no action since this
-    // means that the cliuqe (and therefore all its separators)
-    // are all observed and already set to their max prob (and only) values.
-    return cliqueValues.ptr[0].p;
-  } else {
-    unsigned max_cvn = 0;
-    logpr max_cvn_score = cliqueValues.ptr[0].p;
-    
-    // find the max score clique entry
-    for (unsigned cvn=1;cvn<numCliqueValuesUsed;cvn++) {
-      if (cliqueValues.ptr[cvn].p > max_cvn_score) {
-	max_cvn_score = cliqueValues.ptr[cvn].p;
-	max_cvn = cvn;
-      }
-    }
-
-    const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
-    if (imc_nwwoh_p) {
-      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[max_cvn].val[0]),
-			   (unsigned**)discreteValuePtrs.ptr);
-    } else {
-      origin.packer.unpack((unsigned*)cliqueValues.ptr[max_cvn].ptr,
-			   (unsigned**)discreteValuePtrs.ptr);
-    }
-
-    return max_cvn_score;
-  }
-
-}
-
-
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -4845,7 +5485,8 @@ setCliqueToMaxCliqueValue()
 ////////////////////////////////////////////////////////////////////
 
 SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
-  :  separatorValueSpaceManager(1,     // starting size
+  :  veSeparator(false),
+     separatorValueSpaceManager(1,     // starting size
 				2.0,   // growth rate
 				1,     // growth addition
 				0.90),  // decay rate 
@@ -4853,8 +5494,12 @@ SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
 				2.0,   // growth rate
 				1,     // growth addition
 				0.90)  // decay rate
+     
 {
   nodes.clear();
+
+  // not a ve sep clique.
+  veSepClique = NULL;
 
   // create a set of nodes that is the intersection of the two
   set_intersection(c1.nodes.begin(),c1.nodes.end(),
@@ -4864,7 +5509,16 @@ SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
   
 }
 
+SeparatorClique::~SeparatorClique()
+{
+  if (veSeparator) {
+    delete veSepClique;
+  }
+}
 
+
+#if 0
+// This constructor is not used for now.
 SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 				 vector <RV*>& newRvs,
 				 map < RVInfo::rvParent, unsigned >& ppf,
@@ -4940,6 +5594,7 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 
 
 }
+#endif
 
 
 /*-
@@ -4977,7 +5632,11 @@ SeparatorClique::prepareForUnrolling()
        it != accumulatedIntersection.end();
        it++) {
     RV* rv = (*it);
-    if (rv->hidden())
+    // VE separators have a different notion of hidden (see below).
+
+    if ((!veSeparator && rv->hidden())
+	||
+	(veSeparator && !rv->discreteObservedImmediate()))
       hAccumulatedIntersection.push_back(rv);
   }
 
@@ -5002,7 +5661,10 @@ SeparatorClique::prepareForUnrolling()
        it != remainder.end();
        it++) {
     RV* rv = (*it);
-    if (rv->hidden())
+
+    if ((!veSeparator && rv->hidden())
+	||
+	(veSeparator && !rv->discreteObservedImmediate()))
       hRemainder.push_back(rv);
   }
 
@@ -5018,6 +5680,457 @@ SeparatorClique::prepareForUnrolling()
 					      REM_SEP_VALUE_HOLDER_GROWTH_RATE); // 1.25
       new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),REM_SEP_VALUE_HOLDER_STARTING_SIZE);
     }
+  }
+
+  if (veSeparator) {
+    // need to create the shared InferenceSeparatorClique that will
+    // be used for all instances of this SeparatorClique. 
+
+    // sanity check.
+    assert ( veSepInfo.child != NULL && veSepInfo.parents.size() == veSepInfo.child->allParents.size() );
+
+    // sort parents by increasing cardinality, for better branch
+    // prediction.
+    // printf("before sort");printRVSetAndCards(stdout,veSepInfo.parents);
+    sort(veSepInfo.parents.begin(),veSepInfo.parents.end(),ParentCardinalityCompare());
+    // printf("after sort");printRVSetAndCards(stdout,veSepInfo.parents);
+
+    if (veSepInfo.grandChild == NULL) {
+      ///////////////////////////
+      // the PC case.
+
+      ObsDiscRV* odc = (ObsDiscRV*)veSepInfo.child;
+
+      // set any observed variables to their observed values
+      // the child is guaranteed to be immediate const observed
+      odc->setToObservedValue();
+      // set any observed parents to their observed values.
+      for (unsigned i=0;i<odc->allParents.size();i++) {
+	// only discrete immediate observed RV parents are not stored,
+	// the rest might vary per frame so we need to compute
+	// the table for them with all possible values [0,card-1].
+	if (odc->allParents[i]->discreteObservedImmediate()) {
+	  ObsDiscRV*odrv = (ObsDiscRV*)odc->allParents[i];
+	  odrv->setToObservedValue();
+	}
+      }
+
+      // create a vector of just the hidden parents
+      vector<RV*> hiddenParents;
+      for (unsigned i = 0; i < odc->allParents.size() ; i++ ) {
+	RV* rv = odc->allParents[i];
+	// code will need to change when using continuous hidden
+	// variables. Only consider a variable hidden if it is not a
+	// discrete immediate observed, since any such varible might
+	// still have varying values over time.
+	if (!rv->discreteObservedImmediate())
+	  hiddenParents.push_back(rv);
+      }
+
+      assert ( hiddenParents.size() == hAccumulatedIntersection.size() + hRemainder.size() );
+
+      // Generate the table of parent values satisfying the observed
+      // child, packing them into an array.
+      PackCliqueValue parentPacker(hiddenParents);
+      
+      // create an array of direct pointers to the discrete hidden RV
+      // values within the hidden nodes just computed above.
+      sArray < DiscRVType*> hiddenNodeValPtrs;
+      hiddenNodeValPtrs.resize(hiddenParents.size());
+      for (unsigned i=0;i<hiddenParents.size();i++) {
+	DiscRV* drv = RV2DRV(hiddenParents[i]);
+	hiddenNodeValPtrs[i] = &(drv->val);
+      }
+
+      // create an array where we place the packed parent values that
+      // satisfy the child.
+      sArray < unsigned > packedParentVals(parentPacker.packedLen());
+
+      unsigned num = 0;
+
+      if (generatingVESeparatorTables == true) {
+
+	if (message(Low)) {
+	  float logProdCard = 
+	    log10((double)RV2DRV(odc->allParents[0])->cardinality);
+	  for (unsigned i=1;i<odc->allParents.size();i++) {
+	    if (!odc->allParents[i]->discreteObservedImmediate())
+	      logProdCard += log10((double)RV2DRV(odc->allParents[i])->cardinality);
+	  }
+	  printf("VE separator PC computation: Iterating 10^%f possible parent vals.\n",logProdCard);
+	}
+	odc->computeParentsSatisfyingChild(0,
+					   veSepInfo.parents,
+					   hiddenParents,
+					   parentPacker,
+					   hiddenNodeValPtrs,
+					   odc,
+					   packedParentVals,
+					   num);
+	if (num == 0) {
+	  error("ERROR: found VE separator with 0 entries. No way for any parents to satisfy %s(%d)=const with non-zero probability. Makes all observations have probability 0.\n",
+		odc->name().c_str(),odc->frame());
+	}
+
+	if (veSeparatorFile != NULL) {
+	  // then we need to save this information to a file for next time.
+	  unsigned tmp;
+	  bool writeError = false;
+
+	  // write a bunch of ID information.
+	  // write a zero for case PC
+	  tmp = 0;
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  // write the cardinality of the child.
+	  tmp = odc->cardinality;
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  // write the number and cardinalities of the parents
+	  tmp = odc->allParents.size();
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  for (unsigned i=0; i < odc->allParents.size(); i++) {
+	    tmp = RV2DRV(odc->allParents[i])->cardinality;
+	    if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	      writeError = true;
+	  }
+
+	  // write the number of elements 
+	  if (!fwrite(&num,sizeof(num),1,veSeparatorFile))
+	    writeError = true;
+
+	  // write the size of the elements
+	  tmp = parentPacker.packedLen();
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  
+	  // finally write the set of parent values
+	  if (!fwrite(packedParentVals.ptr,parentPacker.packedLen()*sizeof(unsigned),num,veSeparatorFile))
+	    writeError = true;
+	  
+	  if (writeError)
+	    error("ERROR: writing to PC VE separator file (%s)\n",veSeparatorFileName);
+
+
+	}
+      } else {
+	// we must have a file to read from here.
+	assert (veSeparatorFile != NULL);
+	unsigned tmp;
+	unsigned corrupt = 0;
+
+	// read in and check the ID information for this separator information.
+	if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	  corrupt = 1;
+	if (!corrupt && tmp != 0)
+	  corrupt = 2;
+	if (!corrupt) {
+	  if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	    corrupt = 3;
+	}
+	if (!corrupt && tmp != odc->cardinality)
+	  corrupt = 4;
+	if (!corrupt) {
+	  if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	    corrupt = 5;
+	}
+	if (!corrupt && tmp != odc->allParents.size())
+	  corrupt = 6;
+	if (!corrupt) {
+	  for (unsigned i=0; i < odc->allParents.size(); i++) {
+	    if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1) {
+	      corrupt = 7;
+	      break;
+	    }
+	    if (!corrupt && tmp != RV2DRV(odc->allParents[i])->cardinality) {
+	      corrupt = 8;
+	      break;
+	    }
+	  }
+	}
+	if (!corrupt) {
+	  if (fread(&num,sizeof(num),1,veSeparatorFile) != 1)
+	    corrupt = 9; 
+	  // we can't check num.
+	}
+	if (!corrupt) {
+	  if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	    corrupt = 10;
+	}
+	if (!corrupt && tmp != parentPacker.packedLen())
+	  corrupt = 11;
+	packedParentVals.resize(num*parentPacker.packedLen());
+	if (!corrupt) {
+	  if (fread(packedParentVals.ptr,parentPacker.packedLen()*sizeof(unsigned),num,veSeparatorFile) != num)
+	    corrupt = 12;
+	}
+
+	if (corrupt)
+	  error("ERROR: corrupt/wrong PC VE separator file (%s) with respect to current structure/triangulation/command options. Reason %d.\n",veSeparatorFileName,corrupt);
+      }
+
+      infoMsg(Low,"VE separator PC generation: %d parent vals satisfying this case.\n",num);
+
+      // now create an InferenceSeparatorClique and insert all
+      // of the packed parent values we generated or got above.
+
+      veSepClique = new InferenceSeparatorClique(*this);
+
+      set < vector < unsigned > > tmpset;
+
+      for (unsigned i=0;i<num;i++) {
+	parentPacker.unpack(&(packedParentVals.ptr[i*parentPacker.packedLen()]),
+			    hiddenNodeValPtrs.ptr);
+	{
+	  vector < unsigned > foo(hiddenNodeValPtrs.size());
+	  for (unsigned i=0;i<foo.size();i++) {
+	    foo[i] = *(hiddenNodeValPtrs[i]);
+	  }
+	  if (tmpset.find(foo) != tmpset.end())
+	    printf("Entry alreay in set\n");
+	  else
+	    tmpset.insert(foo);
+	}
+	if (message(Max+5)) {
+	  printf("Inserting into PC VE separator:"); printRVSetAndValues(stdout,hiddenParents);
+	}
+	// insert current RV values into the separator. 
+	veSepClique->insert();
+      }
+
+    } else {
+      //////////////////////////////////////////////
+      // the PCG case, grand-child is not NULL.
+
+      // We know grandChild is observed.
+
+      // set any observed parents to their observed values
+      // Child and/or an parents of child might be observed. Need to check
+      // those cases.
+      // observed discrete grand child
+      ObsDiscRV* odgc = (ObsDiscRV*)veSepInfo.grandChild;
+      // dicrete child
+      DiscRV* dc = (DiscRV*)veSepInfo.child;
+
+      // the grandchild is guaranteed to be immediate const observed
+      odgc->setToObservedValue();
+
+      // child is going to be hidden, otherwise not PCG case.
+      // if (dc->discreteObservedImmediate()) {
+      //   ObsDiscRV* odc = (ObsDiscRV*)dc;
+      //   odc->setToObservedValue();
+      // }
+
+      // set any observed parents to their observed values.
+      for (unsigned i=0;i<dc->allParents.size();i++) {
+	// only discrete immediate observed RV parents are not stored,
+	// the rest might vary per frame so we need to compute
+	// the table for them with all possible values [0,card-1].
+	if (dc->allParents[i]->discreteObservedImmediate()) {
+	  ObsDiscRV*odrv = (ObsDiscRV*)dc->allParents[i];
+	  odrv->setToObservedValue();
+	}
+      }
+
+      // create a vector of just the hidden (parents and child)
+      vector<RV*> hiddenParents;
+      for (unsigned i = 0; i < dc->allParents.size() ; i++ ) {
+	RV* rv = dc->allParents[i];
+	// code will need to change when using continuous hidden
+	// variables.  only consider a variable hidden if it is not a
+	// discrete immediate observed, since any such varible might
+	// still have varying values over time.
+	if (!rv->discreteObservedImmediate())
+	  hiddenParents.push_back(rv);
+      }
+      // guaranteed not to be observed
+      assert ( dc->hidden() );
+      hiddenParents.push_back(dc);
+
+      assert ( hiddenParents.size() == hAccumulatedIntersection.size() + hRemainder.size() );
+
+      // Generate the table of parent values and child satisfying the
+      // observed grandchild, packing them into an array.
+      PackCliqueValue parentPacker(hiddenParents);
+      
+      // create an array of direct pointers to the discrete hidden
+      // RV values within the hidden nodes just computed above.n 
+      sArray < DiscRVType*> hiddenNodeValPtrs;
+      hiddenNodeValPtrs.resize(hiddenParents.size());
+      for (unsigned i=0;i<hiddenParents.size();i++) {
+	DiscRV* drv = RV2DRV(hiddenParents[i]);
+	hiddenNodeValPtrs[i] = &(drv->val);
+      }
+
+      // create an array where we place the packed parent values that
+      // satisfy the child.
+      sArray < unsigned > packedParentVals(parentPacker.packedLen());
+
+      unsigned num = 0;
+
+      if (generatingVESeparatorTables == true) {
+	if (message(Low)) {
+	  float logProdCard = 
+	    log10((double)RV2DRV(dc->allParents[0])->cardinality);
+	  for (unsigned i=1;i<dc->allParents.size();i++) {
+	    if (!dc->allParents[i]->discreteObservedImmediate())
+	      logProdCard += log10((double)RV2DRV(dc->allParents[i])->cardinality);
+	  }
+	  printf("VE separator PCG computation: Iterating 10^%f possible parent vals.\n",logProdCard);
+	}
+
+	dc->computeParentsChildSatisfyingGrandChild(0,
+						    veSepInfo.parents,
+						    hiddenParents,
+						    parentPacker,
+						    hiddenNodeValPtrs,
+						    dc,
+						    odgc,
+						    packedParentVals,
+						    num);
+
+	if (num == 0) {
+	  error("ERROR: found VE separator with 0 entries. No way for any parents to satisfy %s(%d)=const with non-zero probability. Makes all observations have probability 0.\n",
+		odgc->name().c_str(),odgc->frame());
+	}
+
+	if (veSeparatorFile != NULL) {
+	  // then we need to save this information to a file for next time.
+	  unsigned tmp;
+	  bool writeError = false;
+
+	  // write a bunch of ID information.
+	  // write a zero for case PC
+	  tmp = 1;
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  // write the cardinality of the grandchild.
+	  tmp = odgc->cardinality;
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  // write the cardinality of the child.
+	  tmp = dc->cardinality;
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  // write the number and cardinalities of the parents
+	  tmp = dc->allParents.size();
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  for (unsigned i=0; i < dc->allParents.size(); i++) {
+	    tmp = RV2DRV(dc->allParents[i])->cardinality;
+	    if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	      writeError = true;
+	  }
+
+	  // write the number of elements 
+	  if (!fwrite(&num,sizeof(num),1,veSeparatorFile))
+	    writeError = true;
+
+	  // write the size of the elements
+	  tmp = parentPacker.packedLen();
+	  if (!fwrite(&tmp,sizeof(tmp),1,veSeparatorFile))
+	    writeError = true;
+
+	  
+	  // finally write the set of parent values
+	  if (!fwrite(packedParentVals.ptr,parentPacker.packedLen()*sizeof(unsigned),num,veSeparatorFile))
+	    writeError = true;
+	  
+	  if (writeError)
+	    error("ERROR: writing to PCG VE separator file (%s)\n",veSeparatorFileName);
+
+
+	}
+      } else {
+	// we must have a file to read from here.
+	assert (veSeparatorFile != NULL);
+	unsigned tmp;
+	unsigned corrupt = 0;
+
+	// read in and check the ID information for this separator information.
+	if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	  corrupt = 1;
+	if (!corrupt && tmp != 1)
+	  corrupt = 2;
+	if (!corrupt) {
+	  if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	    corrupt = 3;
+	}
+	if (!corrupt && tmp != odgc->cardinality)
+	  corrupt = 4;
+	if (!corrupt) {
+	  if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	    corrupt = 5;
+	}
+	if (!corrupt && tmp != dc->cardinality)
+	  corrupt = 6;
+	if (!corrupt) {
+	  if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	    corrupt = 7;
+	}
+	if (!corrupt && tmp != dc->allParents.size())
+	  corrupt = 8;
+	if (!corrupt) {
+	  for (unsigned i=0; i < dc->allParents.size(); i++) {
+	    if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1) {
+	      corrupt = 9;
+	      break;
+	    }
+	    if (!corrupt && tmp != RV2DRV(dc->allParents[i])->cardinality) {
+	      corrupt = 10;
+	      break;
+	    }
+	  }
+	}
+	if (!corrupt) {
+	  if (fread(&num,sizeof(num),1,veSeparatorFile) != 1)
+	    corrupt = 11; 
+	  // we can't check num.
+	}
+	if (!corrupt) {
+	  if (fread(&tmp,sizeof(tmp),1,veSeparatorFile) != 1)
+	    corrupt = 12;
+	}
+	if (!corrupt && tmp != parentPacker.packedLen())
+	  corrupt = 13;
+	packedParentVals.resize(num*parentPacker.packedLen());
+	if (!corrupt) {
+	  if (fread(packedParentVals.ptr,parentPacker.packedLen()*sizeof(unsigned),num,veSeparatorFile) != num)
+	    corrupt = 14;
+	}
+
+	if (corrupt)
+	  error("ERROR: corrupt/wrong PCG VE separator file (%s) with respect to current structure/triangulation/command options. Reason %d.\n",veSeparatorFileName,corrupt);
+
+      }
+
+      infoMsg(Low,"VE separator PCG generation: %d (parent,child) combinations satisfying this case.\n",num);
+
+      // now create an InferenceSeparatorClique and insert all
+      // of the packed parent values we generated or got above.
+
+      veSepClique = new InferenceSeparatorClique(*this);
+      for (unsigned i=0;i<num;i++) {
+	parentPacker.unpack(&(packedParentVals.ptr[i*parentPacker.packedLen()]),
+			    hiddenNodeValPtrs.ptr);
+	if (message(Max+5)) {
+	  printf("Inserting into PCG VE separator:"); printRVSetAndValues(stdout,hiddenParents);
+	}
+	// insert current RV values into the separator. 
+	// TODO: make this return bool to indicate if found or not.
+	veSepClique->insert();
+      }
+    }
+
   }
 
 }
@@ -5053,16 +6166,25 @@ void
 SeparatorClique::printAllJTInfo(FILE*f)
 {
   // TODO: also print out nubmer of bits for acc and rem.
-  fprintf(f,"Separator information: %d acc packed bits (%d words), %d rem packed bits (%d words)\n",
+  fprintf(f,"%sSeparator information: %d acc packed bits (%d words), %d rem packed bits (%d words)\n",
+	  (veSeparator?"VE ":""),
 	  accPacker.packedLenBits(),accPacker.packedLen(),
 	  remPacker.packedLenBits(),remPacker.packedLen());
 
-
-  fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
+  fprintf(f,"%d Nodes: ",nodes.size()); printRVSetAndCards(f,nodes);
   fprintf(f,"%d Acc Inter: ",accumulatedIntersection.size()); printRVSet(f,accumulatedIntersection);  
   fprintf(f,"%d Hid Acc Inter: ",hAccumulatedIntersection.size()); printRVSet(f,hAccumulatedIntersection);  
   fprintf(f,"%d remainder: ",remainder.size()); printRVSet(f,remainder);  
-  fprintf(f,"%d hRemainder: ",hRemainder.size()); printRVSet(f,hRemainder);  
+  fprintf(f,"%d hRemainder: ",hRemainder.size()); printRVSet(f,hRemainder);
+
+  if (veSeparator) {
+    fprintf(f,"%d VE sep parents: ",veSepInfo.parents.size()); printRVSet(f,veSepInfo.parents);
+    fprintf(f,"VE sep child: "); veSepInfo.child->printNameFrame(f);
+    if (veSepInfo.grandChild != NULL) {
+      fprintf(f,"VE sep grand child: "); veSepInfo.grandChild->printNameFrame(f);
+    }
+  }
+
 }
 
 
@@ -5102,7 +6224,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 						   vector <RV*>& newRvs,
 						   map < RVInfo::rvParent, unsigned >& ppf,
 						   const unsigned int frameDelta)
-  : origin(from_clique)
+  : origin(from_clique),separatorValues(NULL),iAccHashMap(NULL)
 {
 
   set<RV*>::iterator it;
@@ -5223,10 +6345,137 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     remDiscreteValuePtrs[i] = &(drv->val);
   }
 
+  if (veSeparator()) {
+    separatorValues = origin.veSepClique->separatorValues;
+    iAccHashMap =  origin.veSepClique->iAccHashMap;
+    numSeparatorValuesUsed = origin.veSepClique->numSeparatorValuesUsed;
+  } else {
+
+    separatorValues = new cArray< AISeparatorValue >;
+    // allocate at one value for now.
+    if (origin.hAccumulatedIntersection.size() == 0) {
+      // in this case, we'll only need one and never more.
+      separatorValues->resize(1);
+      // there will always be one used value here.
+      numSeparatorValuesUsed = 1;
+      if (origin.hRemainder.size() > 0) {
+	// So we have no accumulated intersection, and a remainder which
+	// means we are in a good position to predict the size of the
+	// (necessarily single) remainder vectors from the previous
+	// times we used it. Therefore, we do just that, but only in
+	// this case.
+	separatorValues->ptr[0].remValues.resize(origin.remainderValueSpaceManager.currentSize());
+	new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
+	  (origin.remPacker.packedLen(),origin.remainderValueSpaceManager.currentSize());
+	// new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable(origin.remPacker.packedLen(),2);
+      } else {
+	// The separator consists of all observed nodes. 
+	// Search in file for key string
+	// "ALLOCATE_REMVALUES_ALL_OBSERVED'
+	// to find where the nec. single entry is allocated.
+      }
+    } else {
+      // start with something a bit larger
+      // TODO: optimize this.
+      const unsigned starting_size = origin.separatorValueSpaceManager.currentSize(); // 3,2000;
+      separatorValues->resize(starting_size);
+      if (origin.hRemainder.size() > 0) {
+	for (unsigned i=0;i<starting_size;i++) {
+	  // need to re-construct individual hash tables.
+	  new (&separatorValues->ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
+	    (origin.remPacker.packedLen(),2);
+	  // TODO: while we potentially could preallocate default size
+	  // of separatorValues->ptr[i].remValues.resize(default); here,
+	  // we don't really know what it should be. Since there are
+	  // multiple remainders here, and each might be drastically
+	  // different in size (some even being zero length), it is not
+	  // a good idea to allocate anything at all and we let it
+	  // lazily be sized as needed. The TODO is to come up with a
+	  // better scheme (e.g., keep a counter array to keep track of
+	  // the number at each allocation level, and then allocate this
+	  // to the min size of the previous time that that a non-zero
+	  // number of cases.
+	}
+      } else {
+	// things such as array separatorValues.ptr[i].remValues will be sized as needed later.
+	// Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for where it is allocated.
+      }
+      // need to re-construct the hash table.
+      iAccHashMap = new VHashMapUnsignedUnsignedKeyUpdatable
+	(origin.accPacker.packedLen(),starting_size); // 2
+      numSeparatorValuesUsed = 0;
+    }
+  }
+}
+// Version of the above constructor to create specifically for a VE
+// separator, where the set of RVs are the same, and there is no frame
+// delta. See comments above.
+InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique)
+  : origin(from_clique),separatorValues(NULL),iAccHashMap(NULL)
+{
+
+  assert ( from_clique.veSeparator );
+
+  set<RV*>::iterator it;
+
+  // clone over nodes RVs.
+  fNodes.resize(origin.nodes.size());
+  unsigned i=0;
+  for (it = origin.nodes.begin();
+       it != origin.nodes.end();
+       it++) {
+    RV* rv = (*it);
+    fNodes[i++] = rv;
+  }
+
+  i=0;
+  fAccumulatedIntersection.resize(origin.accumulatedIntersection.size());
+  for (it = origin.accumulatedIntersection.begin();
+       it != origin.accumulatedIntersection.end();
+       it++) {
+    RV* rv = (*it);
+    fAccumulatedIntersection[i] = rv;
+  }
+
+  i=0;
+  fRemainder.resize(origin.remainder.size());
+  for (it = origin.remainder.begin();
+       it != origin.remainder.end();
+       it++) {
+    RV* rv = (*it);
+    fRemainder[i++] = rv;
+  }
+
+  // Separator accumulated intersection values only store/hash values
+  // of hidden (thus necessarily discrete) variables since they are
+  // the only thing that change.
+  accDiscreteValuePtrs.resize(origin.hAccumulatedIntersection.size());
+  for (i=0;i<accDiscreteValuePtrs.size();i++) {
+    // get the hidden rv for this location
+    RV* rv = origin.hAccumulatedIntersection[i];;
+    DiscRV* drv = (DiscRV*)rv;
+    // grab a pointer directly to its value for easy access later.
+    accDiscreteValuePtrs[i] = &(drv->val);
+  }
+
+  // Separator remainder values only store/hash values of hidden (thus
+  // necessarily discrete) variables since they are the only thing
+  // that change.
+  remDiscreteValuePtrs.resize(origin.hRemainder.size());
+  for (i=0;i<remDiscreteValuePtrs.size();i++) {
+    // get the hidden rv for this location
+    RV* rv = origin.hRemainder[i];
+    // hidden nodes are always discrete (in this version).
+    DiscRV* drv = (DiscRV*)rv;
+    // grab a pointer directly to its value for easy access later.
+    remDiscreteValuePtrs[i] = &(drv->val);
+  }
+
+  separatorValues = new cArray< AISeparatorValue >;
   // allocate at one value for now.
   if (origin.hAccumulatedIntersection.size() == 0) {
     // in this case, we'll only need one and never more.
-    separatorValues.resize(1);
+    separatorValues->resize(1);
     // there will always be one used value here.
     numSeparatorValuesUsed = 1;
     if (origin.hRemainder.size() > 0) {
@@ -5235,10 +6484,10 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
       // (necessarily single) remainder vectors from the previous
       // times we used it. Therefore, we do just that, but only in
       // this case.
-      separatorValues.ptr[0].remValues.resize(origin.remainderValueSpaceManager.currentSize());
-      new (&separatorValues.ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
+      separatorValues->ptr[0].remValues.resize(origin.remainderValueSpaceManager.currentSize());
+      new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
 	(origin.remPacker.packedLen(),origin.remainderValueSpaceManager.currentSize());
-      // new (&separatorValues.ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable(origin.remPacker.packedLen(),2);
+      // new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable(origin.remPacker.packedLen(),2);
     } else {
       // The separator consists of all observed nodes. 
       // Search in file for key string
@@ -5249,14 +6498,14 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     // start with something a bit larger
     // TODO: optimize this.
     const unsigned starting_size = origin.separatorValueSpaceManager.currentSize(); // 3,2000;
-    separatorValues.resize(starting_size);
+    separatorValues->resize(starting_size);
     if (origin.hRemainder.size() > 0) {
       for (unsigned i=0;i<starting_size;i++) {
 	// need to re-construct individual hash tables.
-	new (&separatorValues.ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
+	new (&separatorValues->ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
 	  (origin.remPacker.packedLen(),2);
 	// TODO: while we potentially could preallocate default size
-	// of separatorValues.ptr[i].remValues.resize(default); here,
+	// of separatorValues->ptr[i].remValues.resize(default); here,
 	// we don't really know what it should be. Since there are
 	// multiple remainders here, and each might be drastically
 	// different in size (some even being zero length), it is not
@@ -5272,10 +6521,274 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
       // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for where it is allocated.
     }
     // need to re-construct the hash table.
-    new (&iAccHashMap) VHashMapUnsignedUnsignedKeyUpdatable
+    iAccHashMap = new VHashMapUnsignedUnsignedKeyUpdatable
       (origin.accPacker.packedLen(),starting_size); // 2
     numSeparatorValuesUsed = 0;
   }
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceSeparatorClique::insert()
+ *
+ *    Insert whatever the current RV values are set to into the current
+ *    inference separator (based in their RV values).
+ *
+ * Preconditions:
+ *   1) separator tables must be created, meaning that the same
+ *      conditions must holed as just before ceSendToOutgoingSeparator() is
+ *      called.
+ *
+ * Postconditions:
+ *    Separator table has entry added, according to current accumulated intersection
+ *    and remainder, and current RV values.
+ *
+ * Side Effects:
+ *    potential memory allocations and hash table adjustments.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void InferenceSeparatorClique::insert()
+{
+
+  // keep a local variable copy of this around to avoid potential
+  // dereferencing.  This one cannot be const since it might change
+  // during a resize, in which case we need to reassign this variable.
+  InferenceSeparatorClique::AISeparatorValue * 
+    sepSeparatorValuesPtr = separatorValues->ptr; 
+
+  // there must be someplace to insert in this case.
+  assert (!(origin.hAccumulatedIntersection.size() == 0 && origin.hRemainder.size() == 0));
+
+  // precompute some constants.
+  const bool isc_nwwoh_ai_p = (origin.accPacker.packedLen() <= ISC_NWWOH_AI);
+  const bool isc_nwwoh_rm_p = (origin.remPacker.packedLen() <= ISC_NWWOH_RM);
+  const bool sep_origin_hAccumulatedIntersection_exists_p =
+    (origin.hAccumulatedIntersection.size() > 0);
+  const bool sep_remDiscreteValuePtrs_exists_p = 
+    (remDiscreteValuePtrs.size() > 0);
+  
+  unsigned accIndex;
+  if (sep_origin_hAccumulatedIntersection_exists_p) { 
+    // an accumulated intersection exists.
+
+    // make sure there is at least one available accumulated intersection entry
+    assert ( numSeparatorValuesUsed <= separatorValues->size());
+    if (numSeparatorValuesUsed >= separatorValues->size()) {
+      
+      infoMsg(Max+5,"ac-rsz,");
+
+      const unsigned old_size = separatorValues->size();
+      // TODO: optimize this size re-allocation.
+      if (numSeparatorValuesUsed >= origin.separatorValueSpaceManager.currentSize()) 
+	origin.separatorValueSpaceManager.advanceToNextSize();
+      separatorValues->resizeAndCopy(origin.separatorValueSpaceManager.currentSize()); 
+      sepSeparatorValuesPtr = separatorValues->ptr;
+      if (isc_nwwoh_ai_p) {
+	// Then the above resize just invalided all our pointers to
+	// keys (which in this case are compressed RV values for the
+	// acc inter), but it did not invalidate the hash items (which
+	// in this case are the array indices in the accumulated
+	// intersection corresponding to a given compressed acc intr
+	// RV values). We thus go through and correct the key pointers
+	// within the hash table.  TODO: think of a better way to do
+	// this that also looses no efficiency.
+	for (unsigned i=0;i<iAccHashMap->tableSize();i++) {
+	  if (!iAccHashMap->tableEmpty(i)) {
+	    iAccHashMap->tableKey(i)
+	      = &(sepSeparatorValuesPtr[iAccHashMap->tableItem(i)].val[0]);
+	  }
+	}
+      }
+      const unsigned new_size = separatorValues->size();
+      // if (remDiscreteValuePtrs.size() > 0) {
+      if (sep_remDiscreteValuePtrs_exists_p) {
+	for (unsigned i=old_size;i<new_size;i++) {
+	  // re-construct hash tables only for new entries.
+	  new (&sepSeparatorValuesPtr[i].iRemHashMap)
+	    VHashMapUnsignedUnsignedKeyUpdatable
+	    (origin.remPacker.packedLen(),2);
+	  // TODO: potentially preallocate default size of  
+	  // separatorValues->ptr[i].remValues.resize(default);
+	  // TODO: potentially create zero size here, and only
+	  //       grow bigger when we start adding things.
+	}
+      }
+    }
+      
+    unsigned *accKey;
+    // TODO: optimize this check out of loop.
+    if (isc_nwwoh_ai_p) {
+      accKey = &(sepSeparatorValuesPtr[numSeparatorValuesUsed].val[0]);
+      origin.accPacker.pack((unsigned**)accDiscreteValuePtrs.ptr,
+				accKey);
+    } else {
+      accKey = origin.accValueHolder.curCliqueValuePtr();
+      origin.accPacker.pack((unsigned**)accDiscreteValuePtrs.ptr,
+				accKey);
+      // check if this value combination already lives in
+      // origin's value holder hash table and if so, use that.
+      bool foundp;
+      accKey = origin.accSepValHashSet.insert(accKey,foundp);
+      if (!foundp) {
+	// only allocate a new value if it was inserted.
+	origin.accValueHolder.allocateCurCliqueValue();
+      }
+      // store the pointer in case we use it.
+      sepSeparatorValuesPtr[numSeparatorValuesUsed].ptr = accKey;
+    }
+
+      
+    bool foundp;
+    unsigned* accIndexp =
+      iAccHashMap->insert(accKey,
+			      numSeparatorValuesUsed,
+			      foundp);
+
+    if (!foundp) {
+      //  add the values we just used. 
+      numSeparatorValuesUsed++;
+    }
+    accIndex = *accIndexp;
+
+    infoMsg(Max+5,"inst:ai=%d,ky=%X,",accIndex,*accKey);
+
+    // TODO: optimize this check out of loop.
+    // if (remDiscreteValuePtrs.size() == 0) {
+    if (!sep_remDiscreteValuePtrs_exists_p) {
+      // 2) AI exists and REM doesnt exist
+      // Then this separator is entirely covered by one or 
+      // more other separators earlier in the order.
+
+      // go ahead and insert it here to the 1st entry (entry 0).
+
+      // handy reference for readability.
+      InferenceSeparatorClique::AISeparatorValue& sv
+	= sepSeparatorValuesPtr[accIndex];
+
+      // Accumulate the clique's
+      // probability into this separator's probability.
+      if (sv.remValues.size() < 1) {
+	// This must be first time for this entry.
+	// Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for where else this could
+	// be done.
+	sv.remValues.resize(1);
+	sv.numRemValuesUsed = 1;	  
+	// initialize and assign.
+	sv.remValues.ptr[0].p = 1.0; // probability being assigned is unity
+	// if (JunctionTree::viterbiScore)
+	// sv.remValues.ptr[0].backPointer = cvn;
+      } else {
+	// already there so must have hit before.
+	// for now, die with an assertion if this case occurs (can't insert twice)
+	assert ( 0 );
+      }
+      return;
+    }
+
+  } else {
+    accIndex = 0;
+    infoMsg(Max+5,"inst:ai=%d,",accIndex);
+  }
+
+
+
+
+  // If we're here, then we are guaranteed must have some remainder
+  // pointers, i.e., we could do:
+  //    assert (remDiscreteValuePtrs.size() > 0);
+  // So, the remainder exists in this separator.
+  // either:
+  //   1) AI exists and REM exist
+  //     or
+  //   3) AI does not exist (accIndex == 0), but REM exists
+  // 
+
+  // keep handy reference for readability.
+  InferenceSeparatorClique::AISeparatorValue& sv
+    = sepSeparatorValuesPtr[accIndex];
+    
+  // make sure there is at least one available entry
+  assert (sv.numRemValuesUsed <= sv.remValues.size());
+  if (sv.numRemValuesUsed >= sv.remValues.size()) {
+
+    infoMsg(Max+5,"rm-rsz,u=%d,f=%d,",sv.numRemValuesUsed,sv.remValues.size());
+
+    // TODO: optimize this growth rate.
+    // start small but grow fast.
+    // sv.remValues.resizeAndCopy(1+sv.remValues.size()*2); // *3
+    sv.remValues.resizeAndCopy(origin.remainderValueSpaceManager.nextSizeFrom(sv.remValues.size()));
+    origin.remainderValueSpaceManager.setCurrentAllocationSizeIfLarger(sv.remValues.size());
+
+    infoMsg(Max+5,"=%d,",sv.remValues.size());
+
+    if (isc_nwwoh_rm_p) {
+      // Then the above resize just invalided all sv.iRemHashMap's pointers to keys,
+      // but it did not invalidate its array indices. Go through
+      // and correct the keys within the hash table.
+      // TODO: think of a better way to do this that looses no efficiency.
+      for (unsigned i=0;i<sv.iRemHashMap.tableSize();i++) {
+	if (!sv.iRemHashMap.tableEmpty(i)) {
+	  sv.iRemHashMap.tableKey(i)
+	    = &(sv.remValues.ptr[sv.iRemHashMap.tableItem(i)].val[0]);
+	}
+      }
+    }
+  }
+
+  unsigned *remKey;
+  // pack relevant variable values
+  // TODO: optimize away this check.
+  if (isc_nwwoh_rm_p) {
+    // grab pointer to next location to be used in this case.
+    remKey = &(sv.remValues.ptr[sv.numRemValuesUsed].val[0]);
+    // pack the remainder pointers
+    origin.remPacker.pack((unsigned**)remDiscreteValuePtrs.ptr,
+			      remKey);
+  } else {
+    // grab pointer to next packed clique value to be used.
+    remKey = origin.remValueHolder.curCliqueValuePtr();
+    origin.remPacker.pack((unsigned**)remDiscreteValuePtrs.ptr,
+			      remKey);
+    // check if this value combination already lives in
+    // origin's value holder hash table and if so, use that.
+    bool foundp;
+    remKey = origin.remSepValHashSet.insert(remKey,foundp);
+    if (!foundp) {
+      // only allocate a new value if it was inserted.
+      origin.remValueHolder.allocateCurCliqueValue();
+    }
+    // store the pointer in case we use it.
+    sv.remValues.ptr[sv.numRemValuesUsed].ptr = remKey;
+  }
+
+  bool foundp;
+  unsigned* remIndexp =
+    sv.iRemHashMap.insert(remKey,
+			  sv.numRemValuesUsed,
+			  foundp);
+
+  infoMsg(Max+5,"inst:ky=%X,rii=%d\n",*remKey,*remIndexp);
+
+  if (!foundp) {
+    // add the values we just used. 
+    sv.numRemValuesUsed++;
+  } else {
+    // already found
+    infoMsg(Max+5,"already found\n");
+    fflush(stdout);
+    fflush(stderr);
+    assert ( 0 );
+  }
+
+  // We've finally got the entry, assign the probability as unity.
+  sv.remValues.ptr[*remIndexp].p = 1.0;
+
 
 }
 
@@ -5294,6 +6807,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
  *
  *        InferenceMaxClique::ceSendToOutgoingSeparator()
  *      must have been called sending a message (projection downto) this separator.
+ *      Separator must not be a VE separator.
  *
  * Postconditions:
  *    Separator table has been pruned, and memory for it has been re-allocated to
@@ -5315,14 +6829,23 @@ InferenceSeparatorClique::ceSeparatorPrune()
   if (origin.separatorBeam == (-LZERO))
     return;
 
+  // we shouldn't have to check this since we should never be pruning
+  // a VE separator.
+  // if (veSeparator())
+  // return;
+
+  // keep a local variable copy of this around to avoid potential dereferencing.
+  AISeparatorValue * const
+    separatorValuesPtr = separatorValues->ptr; 
+
   // compute max and current state space.
   logpr maxCEsepValue;
   unsigned originalTotalStateSpace = 0;
   for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
-    originalTotalStateSpace += separatorValues.ptr[asv].numRemValuesUsed;
-    for (unsigned rsv=0;rsv<separatorValues.ptr[asv].numRemValuesUsed;rsv++) {
-      if (separatorValues.ptr[asv].remValues.ptr[rsv].p > maxCEsepValue)
-	maxCEsepValue = separatorValues.ptr[asv].remValues.ptr[rsv].p;
+    originalTotalStateSpace += separatorValuesPtr[asv].numRemValuesUsed;
+    for (unsigned rsv=0;rsv<separatorValuesPtr[asv].numRemValuesUsed;rsv++) {
+      if (separatorValuesPtr[asv].remValues.ptr[rsv].p > maxCEsepValue)
+	maxCEsepValue = separatorValuesPtr[asv].remValues.ptr[rsv].p;
     }
   }
 
@@ -5339,11 +6862,11 @@ InferenceSeparatorClique::ceSeparatorPrune()
   // go through and shrink guys less than maximum.
   unsigned newTotalStateSpace = 0;  
   for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
-    const unsigned origNumRemValuesUsed = separatorValues.ptr[asv].numRemValuesUsed;
-    for (unsigned rsv=0;rsv<separatorValues.ptr[asv].numRemValuesUsed;) {
-      if (separatorValues.ptr[asv].remValues.ptr[rsv].p < beamThreshold) {
+    const unsigned origNumRemValuesUsed = separatorValuesPtr[asv].numRemValuesUsed;
+    for (unsigned rsv=0;rsv<separatorValuesPtr[asv].numRemValuesUsed;) {
+      if (separatorValuesPtr[asv].remValues.ptr[rsv].p < beamThreshold) {
 
-	if (separatorValues.ptr[asv].numRemValuesUsed > 1) {
+	if (separatorValuesPtr[asv].numRemValuesUsed > 1) {
 
 
 	  // We prune away entry for rsv, by swapping it in last
@@ -5361,7 +6884,7 @@ InferenceSeparatorClique::ceSeparatorPrune()
 
 	  // the index of the entry being swapped with the
 	  // one that is being pruned.
-	  const unsigned swap_index = separatorValues.ptr[asv].numRemValuesUsed-1;
+	  const unsigned swap_index = separatorValuesPtr[asv].numRemValuesUsed-1;
 
 	  // First, get pointers to hash table index values for the two
 	  // entries corresponding to the one we are prunning
@@ -5378,23 +6901,23 @@ InferenceSeparatorClique::ceSeparatorPrune()
 	  unsigned** ht_swap_key_p;
 
 	  if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-	    prune_key_p = &(separatorValues.ptr[asv].remValues.ptr[rsv].val[0]);
-	    swap_key_p = &(separatorValues.ptr[asv].remValues.ptr[swap_index].val[0]);
+	    prune_key_p = &(separatorValuesPtr[asv].remValues.ptr[rsv].val[0]);
+	    swap_key_p = &(separatorValuesPtr[asv].remValues.ptr[swap_index].val[0]);
 	  } else {
-	    prune_key_p = separatorValues.ptr[asv].remValues.ptr[rsv].ptr;
-	    swap_key_p = separatorValues.ptr[asv].remValues.ptr[swap_index].ptr;
+	    prune_key_p = separatorValuesPtr[asv].remValues.ptr[rsv].ptr;
+	    swap_key_p = separatorValuesPtr[asv].remValues.ptr[swap_index].ptr;
 	  }
 	
-	  prune_index_p =  separatorValues.ptr[asv].iRemHashMap.find(prune_key_p,ht_prune_key_p);
+	  prune_index_p =  separatorValuesPtr[asv].iRemHashMap.find(prune_key_p,ht_prune_key_p);
 	  // it must exist
 	  assert ( prune_index_p != NULL );
-	  swap_index_p =  separatorValues.ptr[asv].iRemHashMap.find(swap_key_p,ht_swap_key_p);
+	  swap_index_p =  separatorValuesPtr[asv].iRemHashMap.find(swap_key_p,ht_swap_key_p);
 	  // it must exist
 	  assert ( swap_index_p != NULL );
 
 	  // swap the entries
-	  swap(separatorValues.ptr[asv].remValues.ptr[rsv],
-	       separatorValues.ptr[asv].remValues.ptr[swap_index]);
+	  swap(separatorValuesPtr[asv].remValues.ptr[rsv],
+	       separatorValuesPtr[asv].remValues.ptr[swap_index]);
 	  // and swap the hash table pointers
 	  swap((*prune_index_p),(*swap_index_p));
 	  // and swap the hash table keys if they are pointers to the arrays which
@@ -5405,9 +6928,9 @@ InferenceSeparatorClique::ceSeparatorPrune()
 	  }
 
 	  // decrease values
-	  separatorValues.ptr[asv].numRemValuesUsed--;
+	  separatorValuesPtr[asv].numRemValuesUsed--;
 	} else {
-	  // then separatorValues.ptr[asv].numRemValuesUsed == 1. This
+	  // then separatorValuesPtr[asv].numRemValuesUsed == 1. This
 	  // will happen under two conditiosn.
 	  //  1) There is no remainder, meaning (sep.origin.hRemainder.size() == 0), 
 	  //     and the entire separator is
@@ -5421,7 +6944,7 @@ InferenceSeparatorClique::ceSeparatorPrune()
 	  // so, what we do is just set the the number of values to zero.
 	  // Other code will need to thus check for empty separator acc. intersection
 	  // values.
-	  separatorValues.ptr[asv].numRemValuesUsed = 0;
+	  separatorValuesPtr[asv].numRemValuesUsed = 0;
 
 	}
 
@@ -5429,13 +6952,13 @@ InferenceSeparatorClique::ceSeparatorPrune()
 	rsv++;
       }
     }
-    newTotalStateSpace += separatorValues.ptr[asv].numRemValuesUsed;
-    if (separatorValues.ptr[asv].numRemValuesUsed < origNumRemValuesUsed) {
-      if (separatorValues.ptr[asv].numRemValuesUsed == 0 ) {
+    newTotalStateSpace += separatorValuesPtr[asv].numRemValuesUsed;
+    if (separatorValuesPtr[asv].numRemValuesUsed < origNumRemValuesUsed) {
+      if (separatorValuesPtr[asv].numRemValuesUsed == 0 ) {
 	// should/could remove accumulator entry here as well. 
       }
       // - re-allocate memory & adjust hash table.
-      // - separatorValues.ptr[asv].remValues
+      // - separatorValuesPtr[asv].remValues
       // - possibly re-hash hash tables if necessary.
     }
   }
@@ -5541,5 +7064,8 @@ VHashMapUnsignedUnsignedKeyUpdatable(const unsigned arg_vsize,
 {
   // do nothing
 }
-	
 
+
+/////////////////////////////////////////////	
+/// END OF FILE
+/////////////////////////////////////////////

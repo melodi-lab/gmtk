@@ -81,6 +81,9 @@ public:
   void setNumCardinality(const int var, const int card);
   void allocateBasicInternalStructures();
 
+  //////////////////////////////////
+  bool iterable() { return dt->iterable(); } 
+
   virtual unsigned averageCardinality() { return _averageCardinality; }
   virtual unsigned maxCardinality() { return _maxCardinality; }
 

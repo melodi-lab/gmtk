@@ -66,6 +66,9 @@ public:
   ///////////////////////////////////////////////////////////    
 
   //////////////////////////////////
+  bool iterable() { return dt->iterable(); } 
+
+  //////////////////////////////////
   // various forms of probability calculation
 
   ///////////////////////////////////////////////////////////  
@@ -180,6 +183,42 @@ public:
   void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {}
   const string typeName() { return "DeterministicCPT"; }
   //////////////////////////////////
+
+  void computeParentsSatisfyingChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num)
+  {
+    return dt->computeParentsSatisfyingChild(par,parents,hiddenParents,hiddenParentPacker,
+					     hiddenNodeValPtrs,child,packedParentVals,num);
+  }
+
+  void computeParentsChildSatisfyingGrandChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    RV* grandChild,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num)
+  {
+    return dt->computeParentsChildSatisfyingGrandChild(par,parents,hiddenParents,hiddenParentPacker,
+						       hiddenNodeValPtrs,child,grandChild,
+						       packedParentVals,num);
+  }
+
+
 
 };
 

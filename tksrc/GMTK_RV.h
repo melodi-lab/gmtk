@@ -73,7 +73,7 @@ Main RV hierarchy:
         - // HidContRV (doesn't exist yet)
         + ObsContRV
            + ScPnSh_ObsContRV (also inherits from ScPnShRV)
-           + Sw_ObsContRV  (also inherits from SwObsRV)
+           + Sw_ObsContRV  (also inherits from SwContRV)
               + ScPnSh_Sw_ObsContRV  (also inherits from ScPnShRV)
 
 Please finish this if anyone cares to.
@@ -154,6 +154,8 @@ class RV  {
   friend class InferenceMaxClique;
   friend class BoundaryTriangulate;
   friend class SwRV;
+  friend class SeparatorClique;
+  friend class RngDecisionTree;
 
 
   /////////////////////////////////////////
@@ -241,6 +243,13 @@ public:
   bool continuous() const { return !discrete(); }
   bool hidden() const { return (rv_info.rvDisp == RVInfo::d_hidden); }
   bool observed() const { return !hidden(); }
+  bool discreteObservedImmediate() const {
+    // returns true if the variable is discrete, observed, and the
+    // observed value is a fixed constant (i.e., not variable like a
+    // frame number, etc.) in the .str file.
+    return (observed() && discrete() && 
+	    (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_FirstIsValue));
+  }
   bool switching() const { return (rv_info.switchingParents.size() > 0); } 
   // Right now, we don't distinguish between scale/penalty/shift
   // (i.e., either they're all on or all off from the class
@@ -250,6 +259,8 @@ public:
   bool scale() const { return (rv_info.rvWeightInfo.size() > 0); }
   bool penalty() const { return (rv_info.rvWeightInfo.size() > 0); }
   bool shift() const { return (rv_info.rvWeightInfo.size() > 0); }
+  // returns true if the implementation of this RV changes with each segment.
+  virtual bool iterable() const { return false; } 
 
   /////////////////////////////////////////////////////////////////////////
   // Initialize with the variable type.
@@ -292,7 +303,6 @@ public:
   void printNameFrame(FILE *f,const bool nl=true) {
     fprintf(f,"%s(%d)%s",name().c_str(),frame(),nls(nl));
   }
-
   // print just the name frame and value of this RV.
   virtual void printNameFrameValue(FILE *f,bool nl=true) = 0;
 
@@ -311,7 +321,7 @@ public:
   ////////////////////////////////////////////////////////////////////////
 
   // Compute the probability of this RV given the current values of
-  // the parents, usign whatever their values are currently set to.
+  // the parents, using whatever their values are currently set to.
   // See also begin() and next() iterators below, to iterate
   // through all values of this rv given current parent values.
   virtual void probGivenParents(logpr& p) = 0;

@@ -33,7 +33,11 @@
 #include "sArray.h"
 
 #include "GMTK_DiscRV.h"
+#include "GMTK_HidDiscRV.h"
+#include "GMTK_ObsDiscRV.h"
+#include "GMTK_PackCliqueValue.h"
 #include "GMTK_RngDecisionTree.h"
+
 
 VCID("$Header$");
 
@@ -175,7 +179,7 @@ RngDecisionTree::destructorRecurse(RngDecisionTree::Node* node)
  *      object will be filled in if this is a plain DT. This
  *      might, however, be a pointer to another file that contains
  *      a list of DTs. In that case, the object is not filled
- *      in and clampNextDecisionTree() must be called for
+ *      in and nextIterableDT() must be called for
  *      each DT in the file.
  *
  * Side Effects:
@@ -205,7 +209,7 @@ RngDecisionTree::read(iDataStreamFile& is)
     // Make sure this instance already hasn't been initialized as an
     // iterable decision tree 
     //////////////////////////////////////////////////////////////////////
-    if (clampable()) {
+    if (iterable()) {
       error("ERROR: in DT named '%s' in file '%s' line %d, can't have DTs defined recursively in files",
         name().c_str(),is.fileName(),is.lineNo());
     }
@@ -266,7 +270,7 @@ RngDecisionTree::initializeIterableDT(
   // Make sure this instance already hasn't been initialized as an
   // iterable decision tree 
   //////////////////////////////////////////////////////////////////////
-  if (clampable()) {
+  if (iterable()) {
     error("ERROR: in DT named '%s', can't have DTs defined recursively in files",
       fileName.c_str()); 
   }
@@ -282,7 +286,7 @@ RngDecisionTree::initializeIterableDT(
   //////////////////////////////////////////////////////////////////////
   // Read in the first decision tree 
   //////////////////////////////////////////////////////////////////////
-  clampFirstDecisionTree();
+  beginIterableDT();
 }
 
 
@@ -314,8 +318,8 @@ RngDecisionTree::seek(
   unsigned position; 
   unsigned result; 
 
-  if (!clampable()) {
-    error("ERROR: trying to seek in non-clampable DT, '%s'\n",  
+  if (!iterable()) {
+    error("ERROR: trying to seek in non-iterable DT, '%s'\n",  
       curName.c_str() ); 
   }
 
@@ -496,6 +500,7 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
     // check for overlap and order errors in the strings
     // TODO: this is way inefficient, see if it is possible not to do
     // an N^2 algorithm.
+
     for (unsigned i=0;i<numSplits-1;i++) {
       for (unsigned j=i+1;j<numSplits-1;j++) {
 	if (node->nonLeafNode.rngs[i]
@@ -2058,7 +2063,7 @@ RngDecisionTree::EquationClass::changeDepth(
 
 /*-
  *-----------------------------------------------------------------------
- * clampFirstDecisionTree
+ * beginIterableDT
  *      rewinds the DT file to the beginning.
  * 
  * Preconditions:
@@ -2077,13 +2082,13 @@ RngDecisionTree::EquationClass::changeDepth(
  *-----------------------------------------------------------------------
  */
 void
-RngDecisionTree::clampFirstDecisionTree()
+RngDecisionTree::beginIterableDT()
 {
   //////////////////////////////////////////////////////////////////////
   // first make sure this is a DT from file object
   //////////////////////////////////////////////////////////////////////
-  if (!clampable()) {
-    error("ERROR: can't call clampFirstDecisionTree() for non-file DT");
+  if (!iterable()) {
+    error("ERROR: can't call beginIterableDT() for non-file DT");
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -2104,13 +2109,13 @@ RngDecisionTree::clampFirstDecisionTree()
   //////////////////////////////////////////////////////////////////////
   // Read in the first tree 
   //////////////////////////////////////////////////////////////////////
-  clampNextDecisionTree();
+  nextIterableDT();
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * clampNextDecisionTree
+ * nextIterableDT
  *      reads in the next DT from the file.
  * 
  * Preconditions:
@@ -2129,15 +2134,15 @@ RngDecisionTree::clampFirstDecisionTree()
  *-----------------------------------------------------------------------
  */
 void
-RngDecisionTree::clampNextDecisionTree()
+RngDecisionTree::nextIterableDT()
 {
   int    readDTNum;
 
   //////////////////////////////////////////////////////////////////////
   // first make sure this is a DT from file object
   //////////////////////////////////////////////////////////////////////
-  if (!clampable()) {
-    error("ERROR: can't call clampNextDecisionTree() for non-file DT");
+  if (!iterable()) {
+    error("ERROR: can't call nextIterableDT() for non-file DT");
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -2183,7 +2188,7 @@ RngDecisionTree::clampNextDecisionTree()
 /*-
  *-----------------------------------------------------------------------
  * writeIndexFile 
- *   Writes an index file for a clampable DT 
+ *   Writes an index file for a iterable DT 
  * 
  * Preconditions:
  *   The file containing the per-utterance DTs should have already been 
@@ -2194,7 +2199,7 @@ RngDecisionTree::clampNextDecisionTree()
  *
  * Side Effects:
  *   File pointer for per-utterance DTs is moved to the end of the file.
- *   If it is to be used again clampFirstDecisionTree must be called. 
+ *   If it is to be used again beginIterableDT must be called. 
  *
  * Results:
  *   none
@@ -2209,7 +2214,7 @@ RngDecisionTree::writeIndexFile()
   unsigned position;
   int      i;
 
-  assert(clampable()); 
+  assert(iterable()); 
 
   //////////////////////////////////////////////////////////////////////////
   // Open index file for writing 
@@ -2301,7 +2306,7 @@ RngDecisionTree::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
   os.nl();
-  if (!clampable()) {
+  if (!iterable()) {
     os.write(_numFeatures,"RngDecisionTree:: write numFeatures");
     os.nl();
     writeRecurse(os,root,0);
@@ -2484,6 +2489,162 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
     return(answer);
   }
 
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ *  computeParentsSatisfyingChild()
+ *      Count the number of parent assigments will satisfy the current observed child.
+ *
+ * Preconditions:
+ *      Child is assumed to be assigned to (observed at)  an appropriate value.
+ *      If any parents are observed, we assume they are already set to their observed
+ *      values.
+ *
+ * Postconditions:
+ *      child must be observed
+ *
+ * Side Effects:
+ *      changes values of rvs
+ *
+ * Results:
+ *      count in reference 'num'
+ *
+ *-----------------------------------------------------------------------
+ */
+void RngDecisionTree::computeParentsSatisfyingChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num)
+{
+  if (par == parents.size()) {
+    unsigned val = query(child->allParents,child);
+    if (val == RV2DRV(child)->val) {
+      // we've got a hit.
+      packedParentVals.growByNIfNeededAndCopy(2,(num+1)*hiddenParentPacker.packedLen());
+      // printf("before pack"); printRVSetAndValues(stdout,parents);
+      hiddenParentPacker.pack(hiddenNodeValPtrs.ptr,&packedParentVals.ptr[num*hiddenParentPacker.packedLen()]);
+      // hiddenParentPacker.unpack(&packedParentVals.ptr[num*hiddenParentPacker.packedLen()],hiddenNodeValPtrs.ptr);
+      // printf("after unpack"); printRVSetAndValues(stdout,parents);
+      // number of entries increases 
+      num++;
+    }
+
+    if (message(Max+5)) {
+      // optionally print out diagnostics
+      printf("Pr[%s(%d)=%d|",child->name().c_str(),child->frame(),
+	     RV2DRV(child)->val);
+      printRVSetAndValues(stdout,parents,false);
+      printf("]=%d\n",(val == RV2DRV(child)->val));
+    }
+  } else {
+    DiscRV*drv = RV2DRV(parents[par]);
+    if (!drv->discreteObservedImmediate()) {
+      HidDiscRV*hdrv = (HidDiscRV*)drv;
+      for (hdrv->val = 0; hdrv->val < hdrv->cardinality; hdrv->val ++) {
+	computeParentsSatisfyingChild(par+1,parents,hiddenParents,hiddenParentPacker,hiddenNodeValPtrs,
+				      child,packedParentVals,num);
+      }
+    } else {
+      // We assume any observed parents are already set to observed value.
+      // ObsDiscRV*odrv = (ObsDiscRV*)drv;
+      // odrv->setToObservedValue();
+      computeParentsSatisfyingChild(par+1,parents,hiddenParents,hiddenParentPacker,hiddenNodeValPtrs,
+				    child,packedParentVals,num);
+    }
+  }
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ *  computeParentsChildSatisfyingGrandChild
+ *      Count the number of parent assigments giving a child that satisfies the observed grand child.
+ *
+ * Preconditions:
+ *      grandChild is assumed to be assigned to (observed at)  an appropriate value.
+ *      If any parents are observed, we assume they are already set to their observed
+ *      values.
+ *
+ * Postconditions:
+ *      child must be observed
+ *
+ * Side Effects:
+ *      changes values of rvs
+ *
+ * Results:
+ *      count in reference 'num'
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void RngDecisionTree::computeParentsChildSatisfyingGrandChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    RV* grandChild,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num)
+{
+  if (par == parents.size()) {
+    unsigned val = query(child->allParents,child);
+    RV2DRV(child)->val = val;
+    logpr cur_p;
+    // parent of granGhild is now Guaranteed to be set. 
+    grandChild->probGivenParents(cur_p);
+    if (!cur_p.zero()) {
+      // we've got a hit.
+      packedParentVals.growByNIfNeededAndCopy(2,(num+1)*hiddenParentPacker.packedLen());
+      hiddenParentPacker.pack(hiddenNodeValPtrs.ptr,&packedParentVals.ptr[num*hiddenParentPacker.packedLen()]);
+      num++;
+    }
+
+    if (message(Max+5)) {
+      // optionally print out diagnostics
+      printf("Pr[%s(%d)=%d|%s(%d)=%d]=%f;",
+	     grandChild->name().c_str(),grandChild->frame(),RV2DRV(grandChild)->val,
+	     child->name().c_str(),child->frame(),RV2DRV(child)->val,
+	     cur_p.valref());
+      printf("Pr[%s(%d)=%d|",child->name().c_str(),child->frame(),
+	     RV2DRV(child)->val);
+      printRVSetAndValues(stdout,parents,false);
+      printf("]=%d\n",(val == RV2DRV(child)->val));
+    }
+  } else {
+    DiscRV*drv = RV2DRV(parents[par]);
+    if (!drv->discreteObservedImmediate()) {
+      HidDiscRV*hdrv = (HidDiscRV*)drv;
+      for (hdrv->val = 0; hdrv->val < hdrv->cardinality; hdrv->val ++) {
+	computeParentsChildSatisfyingGrandChild(par+1,parents,hiddenParents,hiddenParentPacker,
+						hiddenNodeValPtrs,
+						child,grandChild,
+						packedParentVals,num);
+      }
+    } else {
+      // We assume any observed parents are already set to observed value.
+      // ObsDiscRV*odrv = (ObsDiscRV*)drv;
+      // odrv->setToObservedValue();
+      computeParentsChildSatisfyingGrandChild(par+1,parents,hiddenParents,hiddenParentPacker,
+					      hiddenNodeValPtrs,
+					      child,grandChild,
+					      packedParentVals,num);
+    }
+  }
 }
 
 

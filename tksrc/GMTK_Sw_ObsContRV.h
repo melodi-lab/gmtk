@@ -83,6 +83,11 @@ public:
     return rv;
   }
 
+  bool iterable() const {
+    return iterableSw();
+  }
+
+
 };
 
 

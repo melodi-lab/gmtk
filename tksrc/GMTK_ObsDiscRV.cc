@@ -37,6 +37,7 @@ VCID("$Header$");
 #include <string.h>
 
 #include "GMTK_ObsDiscRV.h"
+#include "GMTK_MTCPT.h"
 
 
 /*-
@@ -220,4 +221,24 @@ void ObsDiscRV::setToObservedValue()
     }
     // otherwise, we keep the value set to what it was before.
     return;
+}
+
+
+
+void ObsDiscRV::computeParentsSatisfyingChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num)
+{
+  assert ( !switching() && deterministic() && curCPT->cptType == CPT::di_MTCPT );
+  MTCPT* mtcpt = (MTCPT*) curCPT;
+  return mtcpt->computeParentsSatisfyingChild(par,parents,hiddenParents,hiddenParentPacker,
+					      hiddenNodeValPtrs,child,packedParentVals,num);
 }

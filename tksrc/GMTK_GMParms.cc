@@ -151,8 +151,8 @@ void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
 void GMParms::add(MLPSwitchingMixture*ob) { assert (0); }
 void GMParms::add(RngDecisionTree*ob) {
   add(ob,dts,dtsMap);
-  if (ob->clampable())
-    clampableDts.push_back(ob);
+  if (ob->iterable())
+    iterableDts.push_back(ob);
 }
 void GMParms::add(Dlinks* ob) { add(ob,dLinks,dLinksMap); }
 
@@ -774,8 +774,8 @@ GMParms::readDTs(
 	    ob->name().c_str(),is.fileName(),is.lineNo());
     dts[i+start] = ob;
     dtsMap[ob->name()] = i+start;
-    if (ob->clampable()) {
-      clampableDts.push_back(ob);
+    if (ob->iterable()) {
+      iterableDts.push_back(ob);
     } 
   }   
 }
@@ -1296,10 +1296,10 @@ GMParms::read(
  * GMParms::writeDecisionTreeIndexFiles()
  *
  * Preconditions:
- *    The clampableDts vector has been filled in using readDTs 
+ *    The iterableDts vector has been filled in using readDTs 
  *
  * Postconditions:
- *    An index file is written for each clampable DT
+ *    An index file is written for each iterable DT
  *
  * Side Effects:
  *    The first decison tree is set to 0 for all trees. 
@@ -1315,8 +1315,8 @@ writeDecisionTreeIndexFiles()
   vector<RngDecisionTree*>::iterator crrnt_tree; 
   vector<RngDecisionTree*>::iterator end_tree; 
 
-  for (crrnt_tree = clampableDts.begin(), 
-       end_tree   = clampableDts.end();
+  for (crrnt_tree = iterableDts.begin(), 
+       end_tree   = iterableDts.end();
        crrnt_tree != end_tree;
        crrnt_tree++) {
  
@@ -2415,7 +2415,7 @@ GMParms::write(const char *const outputFileFormat, const int intTag)
  *-----------------------------------------------------------------------
  * 
  *      do any necessary bookkeeping work with regard to the
- *      parameters in order that we properly clamp the first example.
+ *      parameters in order that we properly instantiate the first example.
  * 
  * Preconditions:
  *      nil
@@ -2434,9 +2434,9 @@ GMParms::write(const char *const outputFileFormat, const int intTag)
 void
 GMParms::clampFirstExample()
 {
-  for(unsigned i = 0; i<clampableDts.size(); i++) {
-    clampableDts[i]->setFirstDecisionTree(firstUtterance);
-    clampableDts[i]->clampFirstDecisionTree();
+  for(unsigned i = 0; i<iterableDts.size(); i++) {
+    iterableDts[i]->setFirstDecisionTree(firstUtterance);
+    iterableDts[i]->beginIterableDT();
   }
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
@@ -2472,8 +2472,8 @@ GMParms::clampFirstExample()
 void
 GMParms::clampNextExample()
 {
-  for(unsigned i = 0; i<clampableDts.size(); i++) {
-    clampableDts[i]->clampNextDecisionTree();
+  for(unsigned i = 0; i<iterableDts.size(); i++) {
+    iterableDts[i]->nextIterableDT();
   }
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
@@ -2515,9 +2515,9 @@ GMParms::setSegment(const unsigned segmentNo)
   globalObservationMatrix.loadSegment(segmentNo);
   const unsigned numFrames = globalObservationMatrix.numFrames();
 
-  for(unsigned i = 0; i<clampableDts.size(); i++) {
-    clampableDts[i]->seek(segmentNo);
-    clampableDts[i]->clampNextDecisionTree();
+  for(unsigned i = 0; i<iterableDts.size(); i++) {
+    iterableDts[i]->seek(segmentNo);
+    iterableDts[i]->nextIterableDT();
   }
   for (unsigned i=0; i< veCpts.size(); i++) {
     veCpts[i]->setSegment(segmentNo);

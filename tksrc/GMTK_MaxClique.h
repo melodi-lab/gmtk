@@ -56,7 +56,7 @@
 #include <map>
 
 class JT_InferencePartition;
-class SeperatorClique;
+class SeparatorClique;
 class InferenceSeparatorClique;
 class MaxClique;
 class InferenceMaxClique;
@@ -148,7 +148,8 @@ public:
 };
 
 
-// a (someday to be) special vhash class
+// a special vhash class, for mapping from keys consisting of
+// compressed sets of RV values, to items consisting of array indices.
 typedef vhash_map < unsigned, unsigned > VHashMapUnsignedUnsigned;
 class VHashMapUnsignedUnsignedKeyUpdatable : public VHashMapUnsignedUnsigned {
 public:
@@ -216,7 +217,7 @@ class MaxClique : public IM {
   friend class FileParser;
   friend class GraphicalModel;
   friend class GMTemplate;
-  friend class SeperatorClique;
+  friend class SeparatorClique;
 
 public:
 
@@ -558,6 +559,7 @@ public:
   // array is of size 0, then the default case is assumed
   // to be AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB
   // computed in MaxClique::computeAssignedNodesDispositions()
+  //     which is called in JunctionTree::getCumulativeUnassignedIteratedNodes()
   // Used to:
   //   1) determine way in which fSortedAssignedNodes in inf clique should be iterated.
   sArray < AssignedNodeDisposition > dispositionSortedAssignedNodes;
@@ -683,6 +685,22 @@ public:
   // Should be one greater than the size of: sortedAssignedNodes.size()
   sArray< logpr > probArrayStorage;
 
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // structure to store the VE separators for this clique, if there are 
+  // any.
+  struct VESepInfo {
+    vector< RV* > parents;
+    // if this is a case of just parents and child,
+    // then grandChild is NULL. If this is parents, child, and child/grandChild relationship,
+    // then grandChild is non NULL.
+    RV* child;
+    RV* grandChild;
+    VESepInfo() {
+      child = grandChild = NULL;
+    }
+  };
+
+  vector < VESepInfo > veSeparators;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // a value that is roughly equal to the order of the state space of
@@ -750,6 +768,26 @@ public:
   // used to compute the unassigned nodes in this clique.
   void computeUnassignedCliqueNodes();
 
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // computes initial information about any VE separators that
+  // might exist in this clique, and sets up any data structures
+  // needed to produce these separators. Returns the number of VE separators.
+  // See the routine code for the definition of a VE separator.
+  unsigned computeVESeparators();
+
+  // returns number of VE seps, but only after computeVESeparators() is called.
+  unsigned numVESeparators() { return veSeparators.size(); }
+
+  void numParentsSatisfyingChild(unsigned& num,unsigned par,vector <RV*> & parents, RV* child);
+
+  // return the s'th VE separator. Must call computeVESeparators()
+  // first. Caller assumed to copy this out since we return a
+  // reference.
+  VESepInfo& VESeparatorInfo(unsigned s) { 
+    assert ( s < veSeparators.size() );
+    return veSeparators[s];
+  }
+
 };
 
 
@@ -760,6 +798,10 @@ public:
 // these objects to have to have all MaxClique's member variables.
 class InferenceMaxClique  : public IM
 {
+
+  // integer value to keep track of indenting when running in trace
+  // mode.
+  static int traceIndent;
 
   // the original maxclique from which this object has been cloned and
   // where we get access to some data structures that are common to
@@ -934,11 +976,14 @@ public:
 
 
 
+
 class SeparatorClique : public IM
 {
   friend class FileParser;
   friend class GraphicalModel;
   friend class GMTemplate;
+  friend class InferenceSeparatorClique;
+  friend class JunctionTree;
 
 public:
 
@@ -952,7 +997,7 @@ public:
   // For a given iteration order, the intersection of 'nodes' with all
   // nodes in previous seperators according to the iteration.
   set<RV*> accumulatedIntersection;
-  // hidden version of above
+  // hidden variables of the above
   vector<RV*> hAccumulatedIntersection;
   // structure used to pack and unpack clique values
   PackCliqueValue accPacker;
@@ -970,7 +1015,7 @@ public:
   // remainder = nodes - accumulatedIntersection which is precomputed
   // in the non-unrolled version of a separator.
   set<RV*> remainder;
-  // hidden version of above
+  // hidden variables of the above
   vector<RV*> hRemainder;
   // structure used to pack and unpack clique values
   PackCliqueValue remPacker;
@@ -983,20 +1028,94 @@ public:
   // values). The actual values are pointers to within valueHolder.
   vhash_set< unsigned > remSepValHashSet;
 
+  ////////////////////////////////////////////////////////////
+  // Data structures for when this is a VE separator. 
+  // set to true if this is a virtual evidence (VE) separator.
+  bool veSeparator;
+  // information about this VE separator
+  MaxClique::VESepInfo veSepInfo;
+  // a pointer to the ve sep clique that contains the actual probabily table.
+  // This is computed in prepareForUnrolling(). Once it is computed,
+  // we are not allowed to make any additional copies of this object,
+  // or otherwise this pointer might get deleted twice.
+  InferenceSeparatorClique* veSepClique;
+  ///////////////////////////////////////////////
+  // VE separator files information.
+  ///////////////////////////////////////////////
+  // Command line: recompute the VE separator tables and save to disk in all cases.
+  static bool recomputeVESeparatorTables;
+  // File name to read/write VE separator table.
+  static char* veSeparatorFileName;
+  // set to true if we are (re-)generating the VE tables,
+  // or set to false if we are just reading them in from disk.
+  static bool generatingVESeparatorTables;
+  // actual file to get ve sep stuff.
+  static FILE* veSeparatorFile;
+  // The log (base 10) upper limit on a VE sep variable cardinality
+  // product. I.e., if the number of parents that need to be iterated
+  // over to produce the VE sep table has a prod. of cardinalties
+  // greater than this (in log base 10), we don't use this VE sep.
+  static float veSeparatorLogProdCardLimit;
 
   SeparatorClique(const SeparatorClique& sep)
-  { nodes = sep.nodes; }
+    : veSeparator(sep.veSeparator)
+  { 
+    // this constructor only copies the non-filled out information
+    // (nodes and veSep status and information) since the other stuff
+    // isn't needed for this type of constructor. Note that if other
+    // code changes, we might need to add more here.
+    nodes = sep.nodes; 
+    veSepInfo = sep.veSepInfo;
+    // make sure this is NULL as if we copy this in, it will get
+    // deleted twice.
+    assert ( sep.veSepClique == NULL );;
+    veSepClique = NULL;
+  }
+
+  // constructor for VE separators.
+  SeparatorClique(const MaxClique::VESepInfo& _veSepInfo)
+    : veSeparator(true)
+  { 
+    veSepInfo = _veSepInfo;
+    // need nodes to reflect union, to sort, etc.
+    for (unsigned i=0;i<veSepInfo.parents.size();i++) {
+      nodes.insert(veSepInfo.parents[i]);
+    }
+    // child is guaranteed not to be NULL.
+    assert ( veSepInfo.child != NULL );
+    if (veSepInfo.grandChild == NULL) {
+      // then this is a PC case.
+      // Here, we do not insert the child since
+      // it is not officially part of the separator.
+    } else {
+      // the PCG case. Here we insert the child, since the separator
+      // is relative to the grandchild, so we iterate over both the
+      // parents and the child. 
+      nodes.insert(veSepInfo.child);
+      // We do not insert the grandchild since it is not officially
+      // part of the separator.
+    }
+    veSepClique = NULL;
+  }
 
   // construct a separator between two cliques
   SeparatorClique(MaxClique& c1, MaxClique& c2);
 
+#if 0
+  // not used any longer. Keep here in case we 
+  // need it again in future.
   SeparatorClique(SeparatorClique& from_sep,
 		  vector <RV*>& newRvs,
 		  map < RVInfo::rvParent, unsigned >& ppf,
 		  const unsigned int frameDelta = 0);
+#endif
   
   // create an empty separator
-  SeparatorClique() {}
+  SeparatorClique() : veSeparator(false),veSepClique(NULL) {}
+
+
+  ~SeparatorClique();
+
 
   // compute the weight (log10 state space) of this separator clique.
   float weight(const bool useDeterminism = true) const { 
@@ -1051,6 +1170,8 @@ public:
 
 
 };
+
+
 
 
 
@@ -1125,6 +1246,7 @@ class InferenceSeparatorClique : public IM
       unsigned backPointer;
     };
 
+    // probability for distribute evidence pass
     // easy access to different fields
     inline logpr& bp() { return (*((logpr*)(&_bpo[0]))); }
 
@@ -1132,8 +1254,6 @@ class InferenceSeparatorClique : public IM
       bp().set_to_zero(); 
     }
 
-    // probability for distribute evidence pass
-    // logpr bp;
   };
 
 
@@ -1176,7 +1296,7 @@ class InferenceSeparatorClique : public IM
   };
 
   // The collection of AI separator values.
-  cArray< AISeparatorValue > separatorValues;
+  cArray< AISeparatorValue >* separatorValues;
   // number of currently used clique values
   unsigned numSeparatorValuesUsed;
   // The hash table from accum intersection rv values to integer index
@@ -1188,10 +1308,11 @@ class InferenceSeparatorClique : public IM
   // there is a common value between this separator and all previous
   // separators that we have so far seen, and we must continue
   // iteration using the remaining rvs in this separator.
-  VHashMapUnsignedUnsignedKeyUpdatable iAccHashMap;
+  VHashMapUnsignedUnsignedKeyUpdatable* iAccHashMap;
 
 public:
 
+  bool veSeparator() {  return origin.veSeparator; }
 
   // WARNING: constructor hack to create a very broken object with
   // non-functional reference objects (in order to create an array of
@@ -1203,13 +1324,32 @@ public:
 			   vector <RV*>& newRvs,
 			   map < RVInfo::rvParent, unsigned >& ppf,
 			   const unsigned int frameDelta);
+  // version for VE separators
+  InferenceSeparatorClique(SeparatorClique& _origin);
+
   // destructor
-  ~InferenceSeparatorClique() {}
+  ~InferenceSeparatorClique() 
+  {
+    if (!veSeparator()) {
+      // only delete when not a VE separator, since when it is these
+      // guys are shared accross multiple InferenceSeparatorCliques.
+      // Note: the 'mother' VE InferenceSeparatorClique is actually a
+      // placeholder VE separator, but it is deleted only when the
+      // containing SeparatorClique is deleted.
+      delete iAccHashMap;
+      delete separatorValues;
+    }
+  }
+
+  // insert current value of RVs into separator
+  void insert();
 
   // separator based pruning
   void ceSeparatorPrune();
 
 };
+
+
 
 
 

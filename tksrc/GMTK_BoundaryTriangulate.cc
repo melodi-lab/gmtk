@@ -934,10 +934,10 @@ BoundaryTriangulate
   //   (here, since M=S, there is no C1 C2 overlap).
   //
   //   M=3,S=2:
-  //       unrolled: P  C   C   C   C  C   E
-  //                 |   \ /   / \   \/    |
-  //                 |    |  /    \ /      | 
-  //       named:    P    C1       C2      E
+  //       unrolled: P  C   C   C  C  C   E
+  //                 |   \ /   / \  \/    |
+  //                 |    |  /    \ /     | 
+  //       named:    P    C1       C2     E
   //   (here, since M>S, there is again a C1 C2 overlap of (M-S) chunks).
   //
   //   M=3,S=1:
@@ -974,12 +974,12 @@ BoundaryTriangulate
   // above):
   // 
   //   M=1,S=1:  
-  //          P  C  C E
+  //          P  C  C  E
   //          |  |   \/
   //          P' C'  E' 
   // 
   //   M=1,S=2:  
-  //          P  C  C  C E
+  //          P  C  C  C  E
   //          |  | /    \/
   //          P' C'     E' 
   //
@@ -989,26 +989,26 @@ BoundaryTriangulate
   //          P' C'   E' 
   //
   //   M=2,S=2:
-  //        P  C C C C E
+  //        P  C C C C  E
   //        |  |/   \|_/
   //        P' C'    E'  
   // 
   //   M=3,S=2:
   //      P  C  C  C  C  C E
   //      |  | /    \ |  / /
-  //      |   |      \| //
+  //      |   |      \| /_/
   //      P'  C'      E'  
   //        
   // 
   //   M=3,S=1:
   //        P  C   C  C  C  E
   //        |  |    \ |  / /
-  //        |  |     \| // 
+  //        |  |     \| /_/ 
   //       P'  C'     E'
   // 
   //
   //   M=2,S=3:
-  //          P  C C C C C E
+  //          P  C C C C C  E
   //          |   \|/   \|_/
   //          P'   C'    E'  
   //
@@ -5903,8 +5903,10 @@ BoundaryTriangulate::interfaceScore(
  *   3) between P' and E'
  *
  *  A simple way to write this is to say that:
- *  For left interface
- *    P | C E == P | C C E == P C | C E 
+ *   In the left interface case (with M=S=1), we must have:
+ *
+ *    [P | C E] == [P | C C E] == [P C | C E]
+ *
  *  What this means is this. The vertical bar '|' cuts the graph (via
  *  edges) into a left and a right portion.  In the left interface
  *  case, the nodes on the right of the edge cut must be the same
@@ -5915,8 +5917,11 @@ BoundaryTriangulate::interfaceScore(
  *  so there is only one total interface, The C C interface, in C | C
  *  E.
  *
- *  For right interface (checked by reversing arguments).
- *    P C | E == P C C | E == P C | C E 
+ *  In the right interface case (with M=S=1), checked by reversing this 
+ *  routines arguments, we must have:
+ *
+ *    [P C | E] == [P C C | E] == [P C | C E]
+ *
  *  Here, we check that the nodes on the left of the cut are relatively the same.
  *
  * The above is the only graphical restriction paced on the template
@@ -5925,6 +5930,26 @@ BoundaryTriangulate::interfaceScore(
  * that the boundary that the boundary algorithm returns,used to
  * compute the interface for the P-C boundary, the C-C boundary, and
  * the C-E boundary, will be valid.
+ *
+ *  As an example, we can now have a variable in E ask for a parent in,
+ *  say, P, if the above restrictions are followed (which might means
+ *  that C has to ask for the same variable in P, and that the variable
+ *  in P being asked for also exists in C).
+ *
+ *  Here is a complete picture of the above, for arbitrary M>=1 and S>=1.
+ *
+ *  Left interface:
+ *	    [ P | C(1) C(2) ... C(M) E ] 
+ *	    [ P | C(1)  C(2)   ...     C(M+S) E ]
+ *	    [ P  C(1) ...  C(S) | C(S+1) ... C(M+S) E ]
+ *
+ *  Right interface:
+ *	    [ P C(1) C(2) ... C(M) | E ]
+ *	    [ P C(1)  C(2)   ...     C(M+S) | E ]
+ *	    [ P C(1) ...  C(S) | C(S+1) ... C(M+S) E ]
+ *
+ *  Therefore, you can increase M and/or S to relax further the restriction above
+ *  (but at the cost of more restricted length T).
  * 
  * NOTE: This routine checks that this will be valid template defined
  * for the LEFT INTERFACE CASE ONLY. Call with mirrored arguments for the
@@ -6148,7 +6173,8 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
  * 
  * Preconditions:
  *      Graph must be from unrolled 2*S-1 times, and each partition
- *      must come from the same underlying unrolling.
+ *      must come from the same underlying unrolling. Partitions
+ *      must be valid (i.e., pass the validInterfaceDefinition() check). 
  *
  * Postconditions:
  *      Adjustment is placed in argument.
@@ -6219,6 +6245,9 @@ void BoundaryTriangulate::computeSMarkovAugmentation(const vector <RV*>& rvs,
     // add augmentation to Cs1
     augmentToAbideBySMarkov(rvs,pos,augmentation,Cs1,firstFrameCs1);
   }
+
+  // TODO: below is symmetric. Could just call this routine twice with
+  // reversed arguments.
 
   // Next, go through Cs2 and any neighbors that are in Ps that are not
   // in Cs1, we add them to cs1 and to augmentation (relative to the beginning
@@ -6454,7 +6483,7 @@ BoundaryTriangulate::findBestInterface(
 
   // initial left interface of C2 consists of all nodes in C2 either that
   // 1) have a neighbor in union(P,C1), or that are contained
-  // in union(P,C1).
+  // in both C2 and union(P,C1).
   // first, insert intersection(C2,union(P,C1)) == union(intersection(C2,P),intersection(C2,C1))
   set_intersection(C2.begin(),C2.end(),
 		   C1.begin(),C1.end(),
@@ -6490,7 +6519,7 @@ BoundaryTriangulate::findBestInterface(
 
   // final left interface of C2 consists of all nodes in C2 either that
   // 1) have a neighbor in union(C3,E) or that are contained in
-  // union(C3,E). These are the nodes that the l-interface might contain,
+  // both C2 and union(C3,E). These are the nodes that the l-interface might contain,
   // but we can't go beyond.
 
   // left interface
@@ -6534,7 +6563,13 @@ BoundaryTriangulate::findBestInterface(
       // TODO: then call max-flow or submodular optimization routine
       // to find best boundary. We have that C_l are the nodes connected
       // to the source, and finalLI are the nodes connected to the sync.
-      // findBestInterfaceSubmodular();
+      // The routine should ignore all variables except for those
+      // in C2. I.e., if any variables in C2 have neighbors out of
+      // C2, they should be both left alone and ignored. The routine
+      // should not change any neighbors of any variables in C2.
+      // place result in the ref. argument best_C_l
+      // set<RV*> best_C_l;
+      // findBestInterfaceMaxFlowSubmodular(bnd_heur_v[0],C_l,finalLI,C2,bestC_l);
     }
 
   // Still here? Call exponential routine.

@@ -294,7 +294,7 @@ public:
   //////////////////////////////////////////////////////////////////
 
   vector< RngDecisionTree* > dts;
-  vector< RngDecisionTree* > clampableDts;
+  vector< RngDecisionTree* > iterableDts;
   ObjectMapType dtsMap;
   void add(RngDecisionTree*);
   

@@ -64,6 +64,12 @@ public:
   unsigned averageCardinality(RVInfo& rv_info);
   unsigned maxCardinality(RVInfo& rv_info);
 
+  bool iterableSw() const { 
+    for (unsigned i=0;i<conditionalCPTs.size();i++)
+      if (conditionalCPTs[i]->iterable())
+	return false;
+    return dtMapper->iterable();
+  }
 
 };
 

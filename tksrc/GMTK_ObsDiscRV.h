@@ -29,7 +29,6 @@
 
 #include "GMTK_DiscRV.h"
 
-
 class ObsDiscRV : public DiscRV {
   friend class FileParser;
   friend class CPT;
@@ -78,6 +77,20 @@ public:
   // file (this should be done once outside of the inference inner
   // loops).
   void setToObservedValue();
+
+  // only valid when this var is non-switching, observed, with a deterministic implementation.
+  void computeParentsSatisfyingChild(
+	    // input arguments
+	    unsigned par, // parent number
+	    vector <RV*> & parents, 
+	    vector <RV*> & hiddenParents,
+	    PackCliqueValue& hiddenParentPacker,
+	    sArray < DiscRVType*>& hiddenNodeValPtrs,
+	    RV* child,
+	    // output arguments
+	    sArray < unsigned >& packedParentVals,
+	    unsigned& num);
+
 
 };
 
