@@ -83,7 +83,7 @@ static const string E_elimination_order("E_ELIMINATION_ORDER");
  *  the heuristics supplied.
  *     fh = a string with triangulation heuristics to use (in order)
  *     flr = force the use of either left or right, rather than use min.
- *     findBestFace = T/F if to use the exponential face finding alg.
+ *     findBestBoundary = T/F if to use the exponential boundary finding alg.
  *
  * Preconditions:
  *   Object must be instantiated and have the use of the information
@@ -106,14 +106,14 @@ static const string E_elimination_order("E_ELIMINATION_ORDER");
  */
 void
 GMTemplate::
-findPartitions(// face quality heuristic
+findPartitions(// boundary quality heuristic
 	       const string& fh,  
 	       // force use of only left or right interface
 	       const string& flr, 
 	       // triangualtion heuristic to use
 	       const string& th, 
 	       // should we run the exponential find best interface
-	       const bool findBestFace,
+	       const bool findBestBoundary,
 	       // number of chunks in which to find interface boundary (M>=1)
 	       const unsigned M,
 	       // the resulting new prologue
@@ -137,6 +137,16 @@ findPartitions(// face quality heuristic
   //  where k = 2,3,4, ... is some integer >= 2.
   // Therefore, making M larger reduces the number valid possible utterance lengths.
   assert ( M >= 1 );
+
+
+  // First create a network (called u2, but could be called "find
+  // boundary") that is used to find the boundary in. This network is
+  // the template unrolled M+1 times. M = Max number simultaneous
+  // chunks in which interface boundary may exist. By unrolling M+1
+  // times, we create a network with M+2 chunks. The first and last
+  // one are used to ensure boundary algorithm works (since we are not
+  // guaranteed that P or E will exist), and the middle M chunks are
+  // used to find the boundary.
 
   vector <RandomVariable*> unroll2_rvs;
   fp.unroll(M+1,unroll2_rvs);
@@ -187,8 +197,19 @@ findPartitions(// face quality heuristic
 	  P_u2.size(),C1_u2.size(),C2_u2.size(),C3_u2.size(),E_u2.size());
 
 
+  // Next, create the network from which the new P, C, and E will
+  // be formed. I.e., this new P, C, and E will be the graph partitions
+  // that are ultimately triangulated, where the new C will
+  // be unrolled as appropriate to get a full network. We
+  // call the network from which P, C, and E are created u1 (but
+  // could call it "partition")
+
   // create sets P', C1', C2', and E', from graph unrolled 2*M-1 time(s)
   // each hyper-chunk C1' and C2' are M frames long.
+
+  // When we have an S and an M parameter, , number of chunks needed
+  // is M + S, so we should unroll (M+S-1) times.
+
   vector <RandomVariable*> unroll1_rvs;
   fp.unroll(2*M-1,unroll1_rvs);
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
@@ -235,9 +256,13 @@ findPartitions(// face quality heuristic
   }
 
   // allocate space for results
+  // left of the left interface in u2C2
   set<RandomVariable*> left_C_l_u2C2;
+  // the left interface in u2C2
   set<RandomVariable*> C_l_u2C2;
+  // right of the right interface in u2C2
   set<RandomVariable*> right_C_r_u2C2;
+  // the right interface in u2C2
   set<RandomVariable*> C_r_u2C2;
 
   vector<InterfaceHeuristic> fh_v;
@@ -268,8 +293,8 @@ findPartitions(// face quality heuristic
     findBestInterface(C1_u2,C2_u2,C2_1_u2,C3_u2,
 		      left_C_l_u2C2,C_l_u2C2,best_L_score,
 		      fh_v,
-		      findBestFace,
-		      // find best face args
+		      findBestBoundary,
+		      // find best boundary args
 		      th_v,
 		      P_u1,
 		      C1_u1,
@@ -298,8 +323,8 @@ findPartitions(// face quality heuristic
     findBestInterface(C3_u2,C2_u2,C2_l_u2,C1_u2,
 		      right_C_r_u2C2,C_r_u2C2,best_R_score,
 		      fh_v,
-		      findBestFace,
-		      // find best face args
+		      findBestBoundary,
+		      // find best boundary args
 		      th_v,
 		      E_u1,
 		      C2_u1,
@@ -1948,7 +1973,7 @@ GMTemplate::interfaceScore(
 
   if (message(Moderate)) {
     set<RandomVariable*>::iterator i;    
-    printf("  Cur Interface:");
+    printf("  --- Cur Interface:");
     for (i=C_l.begin();i!=C_l.end();i++) {
       printf(" %s(%d)",
 	     (*i)->name().c_str(),
@@ -2357,7 +2382,7 @@ GMTemplate::createVectorTriHeuristic(const string& th,
     // then by fill in if weight in tie
     th_v.push_back(TH_MIN_FILLIN); 
     // and lastly by time frame (earliest first)
-    // (but note that this is not valid to judge a face)
+    // (but note that this is not valid to judge a boundary)
     th_v.push_back(TH_MIN_TIMEFRAME); 
   } else {
     for (unsigned i=0;i<th.size();i++) {
@@ -2534,39 +2559,47 @@ GMTemplate::makeComplete(set<RandomVariable*> &rvs)
  *  interface is determined entirely based on the arguments that are
  *  passed into these routines (i.e., just take the mirror image of
  *  the arguments for the right interface).  Note that for simplicity,
- *  the names have been defined in terms of the left interface, but
- *  that is only for simplicity.
+ *  the names have been defined in terms of the left interface.
  *
- *  The routine is given portions of a twice unrolled graph,
- *  P,C1,C2,C3,E, and finds the best (left) interface within C2
- *  starting at the "standard" or initial left interface between C1
- *  and C2.  Note that the routine only uses the partitions C1,C2, and
- *  C3 as P and E are not needed.
+ *  The routine is given portions of an unrolled graph, P,C1,C2,C3,E,
+ *  where C1 is one chunk, C2 is M chunks, and C3 is one chunk. The
+ *  routine finds the best left (or right) interface entirely within
+ *  C2 by searching for the boundary with the best interface.  The
+ *  Boundary may span M chunks. The algorithm starts at the boundary
+ *  corresponding to the "standard" or initial left interface between
+ *  C1 and C2. Nodes in the left interface are shifted left across the
+ *  boundary (thereby advancing the boundary). When a node is shifted
+ *  left, then a new boundary forms. Note that the routine only uses
+ *  the partitions C1,C2, and C3 as P and E are not needed (and can
+ *  even be empty).
  *
  *
  * For left interface:
- *   Given a twice unrolled graph, P,C1,C2,C3,E, find the best left
- *   interface within C2 starting at the "standard" or initial left
- *   interface between C1 and C2.  Note that the routine only uses
- *   C1,C2, and C3 and P and E are not needed.
+ *   Given a the unrolled graph, P,C1,C2,C3,E, find the best left
+ *   interface within C2 starting at the boundary corresponding to the
+ *   "standard" or initial left interface between C1 and C2.  Note
+ *   that the routine only uses C1,C2, and C3 and P and E are not
+ *   needed.
  *
  * For right interface:
- *   Given a twice unrolled graph, P,C1,C2,C3,E, find the best right
+ *   Given an unrolled graph, P,C1,C2,C3,E, find the best right
  *   interface within C2 starting at the "standard" or initial right
  *   interface between C3 and C2.  Note that the routine only uses
- *   C1,C2, and C3 and P and E are not needed.
+ *   C1,C2, and C3 and P and E are not needed. In order to get
+ *   the behavior for right interface, the routine is called by
+ *   swapping the arguments for C1 and C3 (see the caller).
  *
  *
  * Preconditions:
  *     Graph must be valid (i.e., unroller should pass graph w/o
  *                                problem).
  *     Graph must be already moralized.
- *     and *must* unrolled exactly two times.
+ *     and *must* unrolled exactly M+1 times.
  *     This means graph must be in the form P,C1,C2,C3,E
  *     where P = prologue, 
  *           C1 = first chunk
- *           C2 = 2nd chunk
- *           C3 = 3nd chunk
+ *           C2 = 2nd section, M chunks long
+ *           C3 = last chunk
  *           E =  epilogue
  *
  *     Note that P or E (but not both) could be empty (this
@@ -2614,7 +2647,7 @@ GMTemplate::findBestInterface(
  // IH_MIN_MAX_CLIQUE heuristics are used:
  // triangulation heuristic
  const vector<TriangulateHeuristic>& th_v,
- // The network unrolled 1 time
+ // The network unrolled 1 time (TODO: change to M+S-1)
  const set<RandomVariable*>& P_u1,
  const set<RandomVariable*>& C1_u1,
  const set<RandomVariable*>& C2_u1,
@@ -2635,7 +2668,8 @@ GMTemplate::findBestInterface(
   // interface of C2).
 
   // go through through set C1, and pick out all neighbors
-  // of variables in set C1 that live in C2.
+  // of variables in set C1 that live in C2, and these neighbors
+  // become the initial left interface C_l
  set<RandomVariable*>::iterator c1_iter;
   for (c1_iter = C1.begin(); c1_iter != C1.end(); c1_iter ++) {
     // go through all neighbors of nodes in C1
@@ -2652,11 +2686,14 @@ GMTemplate::findBestInterface(
       }
     }
   }
+  // Since the interface is currently the first one, 
+  // the set left of the left interface within C2 is now empty.
   left_C_l.clear();
 
-  // Note that the "partition boundary" is the border/line that cuts the edges
-  // connecting nodes C_l and nodes left_C_l.
+  // Note that the partition "boundary" is the border/line that cuts
+  // the edges connecting nodes C_l and nodes left_C_l.
 
+  // how good is this interface.
   interfaceScore(fh_v,C_l,left_C_l,
 		 th_v,
 		 P_u1,C1_u1,C2_u1,E_u1,
@@ -2664,14 +2701,18 @@ GMTemplate::findBestInterface(
 		 best_score);
 
   if (message(Tiny)) {
-    printf("Size of basic interface C_l = %d\n",C_l.size());
-    printf("Score of basic interface C_l =");
+    printf("  Size of basic interface = %d\n",C_l.size());
+    printf("  Score of basic interface =");
     for (unsigned i=0;i<best_score.size();i++)
       printf(" %f ",best_score[i]);
     printf("\n");
-    // printf("Size of remainder_C_l = %d\n",left_C_l.size());
+    // Note that this next print always prints the string "left_C_l"
+    // but if we are running the right interface version, it should
+    // print the string "right_C_l" instead. The algorithm however
+    // does not know if it is running left or right interface.
+    infoMsg(Med,"Size of left_C_l = %d\n",left_C_l.size());
     {
-      printf("Interface nodes include:");
+      printf("  Interface nodes include:");
       set<RandomVariable*>::iterator i;    
       for (i=C_l.begin();i!=C_l.end();i++) {
 	printf(" %s(%d)",
@@ -2683,12 +2724,13 @@ GMTemplate::findBestInterface(
     }
   }
 
-  // start recursion to find the truly best interface.
+  // start exponential recursion to find the truly best interface.
   if (recurse) {
     // best ones found so far
     set<RandomVariable*> best_left_C_l = left_C_l;
     set<RandomVariable*> best_C_l = C_l;
     set< set<RandomVariable*> > setset;
+    // call recursive routine.
     findBestInterface(left_C_l,
 		      C_l,
 		      C2,
@@ -2698,18 +2740,19 @@ GMTemplate::findBestInterface(
 		      best_left_C_l,
 		      best_C_l,
 		      best_score,fh_v,
+		      // 
 		      th_v,
 		      P_u1,C1_u1,C2_u1,E_u1,
 		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
     if (message(Tiny)) {
-      printf("Size of best interface = %d\n",best_C_l.size());
-      printf("Score of best interface =");
+      printf("  Size of best interface = %d\n",best_C_l.size());
+      printf("  Score of best interface =");
       for (unsigned i=0;i<best_score.size();i++)
 	printf(" %f ",best_score[i]);
       printf("\n");
-      // printf("Size of best_remainder_C_l = %d\n",best_left_C_l.size());
+      infoMsg(Med,"  Size of best_left_C_l = %d\n",best_left_C_l.size());
       {
-	printf("Best interface nodes include:");
+	printf("  Best interface nodes include:");
 	set<RandomVariable*>::iterator i;    
 	for (i=best_C_l.begin();i!=best_C_l.end();i++) {
 	  printf(" %s(%d)",
@@ -2753,7 +2796,10 @@ findBestInterface(
   set<RandomVariable*> &best_C_l,
   vector<float>& best_score,
   const vector<InterfaceHeuristic>& fh_v,
-  // more input variables
+  // --------------------------------------------------------------
+  // The next 7 input arguments are used only with the optimal
+  // interface algorithm when the IH_MIN_MAX_C_CLIQUE or
+  // IH_MIN_MAX_CLIQUE heuristics are used:
   const vector<TriangulateHeuristic>& th_v,
   const set<RandomVariable*>& P_u1,
   const set<RandomVariable*>& C1_u1,
@@ -2773,20 +2819,24 @@ findBestInterface(
   // redundantly explore the same partition boundary.
   // In all cases, 
   //  1) the boundary is a set of edges (and is not explicitly
-  //     represented in the code.
-  //  2) C_l are the nodes adjacent and to the right of the current boundary 
-  //  3) left_C_l are the nodes adjacent and to the left of the current boundary.
+  //     represented in the code).
+  //  2) C_l are the nodes adjacent and to and directly to the right of the current boundary 
+  //  3) left_C_l are the nodes to the left of the current boundary (i.e., they
+  //     are former interface nodes that have been shifted left accross the boundary).
 
   // All nodes in C1 must be to the left of the boundary (ensured by
-  // start condition and by the nature of the algoritm).  All nodes in
-  // C3 must be to the right of the boundary (ensured by "condition ***" below).
+  // start condition and by the nature of the algoritm).  All nodes to
+  // the right of the left interface in C3 must be to the right of the
+  // boundary, and we can not have an interface that consists entirely
+  // of nodes in C3 (both are ensured by "condition ***" below).
 
   // If C2 consists of multiple chunks (say C2_1, C2_2, etc.) then we
   // should never have that all of C2_1 lies completely to the left of
   // the boundary, since this would be redundant (i.e., a boundary
   // between C1 and C2_1 would be the same edges shifted in time as
   // the boundary between C2_1 and C2_2). This is ensured by
-  // "condition ###" below.
+  // "condition ###" below where further comments on this point are
+  // given.
 
   for (v = C_l.begin(); v != C_l.end(); v ++) {
     // TODO: 
@@ -2798,16 +2848,14 @@ findBestInterface(
     //      But note that this is only run once per graph so it will
     //      be beneficial to do this since its cost would probably be
     //      ammortized over the many runs of inference with the graph.
-
-    // Condition ***: if v has neighbors in C3 (via set intersection),
-    // and if (v in C3), then continue since if v was moved left, we would 
-    // end up with a boundary that spans more than M chunks
-    set<RandomVariable*> res;
-    set_intersection((*v)->neighbors.begin(),
-		     (*v)->neighbors.end(),
-		     C3.begin(),C3.end(),
-		     inserter(res, res.end()));
-    if ((res.size() != 0) && (C3.find((*v)) != C3.end()))
+    
+    // Condition ***: Never move a variable to the left that's already in C3 over,
+    // since if we did, we would end up with a boundary that spans
+    // more than M chunks. This condition also ensures termination
+    // since as soon as all the variables live in C3 (which would
+    // eventually happen if we kept sliding everything left) we do no
+    // more recursion below.
+    if (C3.find((*v)) != C3.end())
       continue;
 
     // Then it is ok to remove v from C_l and move v to the left.
@@ -2815,11 +2863,21 @@ findBestInterface(
     set<RandomVariable*> next_left_C_l = left_C_l;
     next_left_C_l.insert((*v));
 
-    // only do this check if C2_1 is non-empty. If it is empty,
-    // we assume the check is not needed.
+    // Only do this check if C2_1 is non-empty. If it is empty, we
+    // assume the check is not needed (say because C2 is itself only
+    // one chunk wide).
     if (C2_1.size() > 0) {
-      // Condition ###: next check to make sure that we haven't used up
-      // all the nodes in C2_1. I.e., make sure that C2_1 is not a
+      // Condition ###: next check to make sure that we haven't used
+      // up all the nodes in C2_1, because if we did we would be in
+      // the (M - 1) case (i.e., the only other possible boundaries
+      // would span M-1 chunks, skipping the first one). Any
+      // boundaries that we return thus will always have a left
+      // interface with at least one node in the first chunk of C2, which
+      // we call C2_1. Note that it is possible to return a boundary
+      // that spans fewer than M chunks (which means that the optimal
+      // interface would have been found for a smaller M).
+
+      // We ensure this condition by making sure that C2_1 is not a
       // proper subset of (left_C_l U {v}) = next_left_C_l.
 
       set<RandomVariable*> tmp;      
@@ -2830,29 +2888,35 @@ findBestInterface(
 	continue;
     }
 
-    // and add all neighbors of v that are 
-    // in C3 U C2\next_left_C_l to next_C_l
+    // Next, create the new left interface, next_C_l by adding all
+    // neighbors of v that are in C3 U C2\next_left_C_l to an
+    // initially empty next_C_l.
     set<RandomVariable*> next_C_l;
     set<RandomVariable*> tmp;
+    // add neighbors of v that are in C2
     set_intersection((*v)->neighbors.begin(),
 		     (*v)->neighbors.end(),
 		     C2.begin(),C2.end(),
 		     inserter(tmp,tmp.end()));
-    // add neighbors from C3
+    // add neighbors of v that are in C3
     set_intersection((*v)->neighbors.begin(),
 		     (*v)->neighbors.end(),
 		     C3.begin(),C3.end(),
 		     inserter(tmp,tmp.end()));
+    // remove nodes that are in next_left_C_l
     res.clear();    
     set_difference(tmp.begin(),tmp.end(),
 		   next_left_C_l.begin(),next_left_C_l.end(),
 		   inserter(res,res.end()));
+    // add this to the previous left interface
     set_union(res.begin(),res.end(),
 	      C_l.begin(),C_l.end(),
 	      inserter(next_C_l,next_C_l.end()));
+    // and lastly, remove v from the new left interface since that was
+    // added just above.
     next_C_l.erase((*v));
 
-
+    // check if we've seen this left interface already.
     if (!noBoundaryMemoize) {
       if (setset.find(next_C_l) != setset.end())
 	continue; // check if memoized, if so, no need to go further.
@@ -2861,21 +2925,22 @@ findBestInterface(
       setset.insert(next_C_l);
     }
 
+    // score the new left interface
     vector<float> next_score;
     interfaceScore(fh_v,next_C_l,next_left_C_l,
 		   th_v,
 		   P_u1,C1_u1,C2_u1,E_u1,
 		   C2_u2_to_C1_u1,C2_u2_to_C2_u1,
 		   next_score);
-
-    // check size of candiate interface, and keep a copy of
-    // it if it is less then the one we have seen so far.
+    // check size of candiate interface, and keep a copy of it if it
+    // is strictly less then the one we have seen so far.
     if (next_score < best_score) {
       best_left_C_l = next_left_C_l;
       best_C_l = next_C_l;
       best_score = next_score;
     } 
 
+    // recurse
     findBestInterface(next_left_C_l,
 		      next_C_l,
 		      C2,C2_1,C3,setset,
@@ -2957,9 +3022,10 @@ findInterfacePartitions(
     // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     // TODO BUG: this assertion will occur if interface has nodes in C3
     // need to fix this!! 
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ fails with three_frame_interface.str
     assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
     assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
+
 
     C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
     C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
@@ -2969,6 +3035,13 @@ findInterfacePartitions(
   set<RandomVariable*> left_C_l_u1C2;
   for (set<RandomVariable*>::iterator i = left_C_l_u2C2.begin();
        i != left_C_l_u2C2.end(); i++) {
+
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // TODO BUG: this assertion will occur if interface has nodes in C3
+    // need to fix this!! 
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ fails with snake.str 
+    assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
+    assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
 
     left_C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
     left_C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
