@@ -30,7 +30,10 @@
 #include "general.h"
 VCID("$Header$");
 
-
+#include <iostream.h>
+#include <fstream.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <set>
 #include "GMTK_RandomVariable.h"
 
