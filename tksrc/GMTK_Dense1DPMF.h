@@ -67,6 +67,12 @@ public:
     assert ( i < (unsigned)pmf.len() );
     return pmf[i]; 
   }
+  
+  // also give access to next pmf
+  logpr np(unsigned i) { 
+    assert ( i < (unsigned)pmf.len() );
+    return nextPmf[i]; 
+  }
 
   ///////////////////////////////////////////////////////////  
   // Re-normalize the output distributions
