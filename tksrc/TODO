@@ -1198,10 +1198,15 @@ Sun Sep  7 00:34:12 2003
 
 
 Sun Oct 12 23:06:28 2003
-  - add an extra internal variable that is constant and
+  - add an extra internal variable tehat is constant and
     gives an integer corresponding to the total number of frames
     in an utterance. It is available at every frame, but
     is always the same value for an utterance.
+  - add another variable that gives the frame number of
+    the variable in quesiton (i.e., frame(0) is the current
+    frame, frame(-1) is the previous frame, etc.). In
+    first frame of template can't do frame(t<0), and in
+    last frame of template can't do frame(t>0)
   - Possibly tie this in with the observation matrix by having
     variables that:
       - give number of changes in a discrete stream of features
