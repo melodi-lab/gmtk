@@ -779,7 +779,7 @@ main(int argc,char*argv[])
       first = false;
     }
 
-    printf("Best trifile found at %0.3e partitions/sec is '%s'\n",bestRate,best_tri_file.c_str());
+    printf("--------\nBest trifile found at %0.3e partitions/sec is '%s'\n--------\n",bestRate,best_tri_file.c_str());
 
   } // end of multi-test section.
 
