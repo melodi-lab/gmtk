@@ -96,6 +96,26 @@ public:
 				       covar->totalNumberParameters()+
 				       dLinkMat->totalNumberParameters(); }
 
+
+
+
+  // these routines are used to not save gaussian
+  // components (and their means, variances, etc.) 
+  // that are not actively used in a parameter file (such
+  // as those that have vanished away).
+  void recursivelyClearUsedBit() { 
+    emClearUsedBit();
+    mean->recursivelyClearUsedBit();
+    covar->recursivelyClearUsedBit();
+    dLinkMat->recursivelyClearUsedBit();
+  }
+  void recursivelySetUsedBit() {
+    emSetUsedBit();    
+    mean->recursivelySetUsedBit();
+    covar->recursivelySetUsedBit();
+    dLinkMat->recursivelySetUsedBit();
+  }
+
   //////////////////////////////////
   // probability evaluation
   logpr log_p(const float *const x,    // real-valued scoring obs at time t

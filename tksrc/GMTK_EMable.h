@@ -58,10 +58,17 @@ protected:
     bm_accLoadStore    = (1 << 4),
     // Are we training this object.
     bm_amTraining    = (1 << 5),
-    // Are the parameters of this object shared by
+    // True if  the parameters of this object shared by
     // multiple users. NOTE: this might not be used
-    // by all child classes of EMable.
+    // by all child classes of EMable, used only by
+    // those objects who keep track of if they are being
+    // shared.
     bm_isShared    = (1 << 6),
+    // bm_isUsed == is this object "used" by anyone, in that
+    // is a mean used by a component, or is a component used
+    // by a mixture. Again, this field might not be needed
+    // by all EM objects.
+    bm_isUsed    = (1 << 7),
 
     // Initial State, where no data structures have been allocated.
     bm_initState      = 0x0
@@ -354,6 +361,11 @@ public:
   void emClearSharedBit() { bitmask &= ~bm_isShared; }
   void emSetSharedBit() { bitmask |= bm_isShared; }
   bool emSharedBitIsSet() { return (bitmask & bm_isShared); }
+
+  /////////////////////////////////////////////////////////////////
+  void emClearUsedBit() { bitmask &= ~bm_isUsed; }
+  void emSetUsedBit() { bitmask |= bm_isUsed; }
+  bool emUsedBitIsSet() { return (bitmask & bm_isUsed); }
 
   // return the number of parameters for object.
   virtual unsigned totalNumberParameters() = 0;

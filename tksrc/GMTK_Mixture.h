@@ -89,6 +89,21 @@ public:
 
   unsigned totalNumberParameters();
 
+  // these routines are used to not save gaussian
+  // components (and their means, variances, etc.) 
+  // that are not actively used in a parameter file (such
+  // as those that have vanished away).
+  void recursivelyClearUsedBit() { 
+    emClearUsedBit();
+    for (unsigned i=0;i<components.size();i++)
+      components[i]->recursivelyClearUsedBit();
+  }
+  void recursivelySetUsedBit() {
+    emSetUsedBit();    
+    for (unsigned i=0;i<components.size();i++)
+      components[i]->recursivelySetUsedBit();
+  }
+
   //////////////////////////////////
   // set all current parameters to valid but random values
   void makeRandom();

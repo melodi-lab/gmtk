@@ -73,6 +73,9 @@ public:
   void makeUniform() {}
 
   unsigned totalNumberParameters() { return 0; }
+  void recursivelyClearUsedBit() {  emClearUsedBit();  }
+  void recursivelySetUsedBit() { emSetUsedBit();  }
+
 
   //////////////////////////////////
   // Public interface support for EM
