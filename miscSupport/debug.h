@@ -1,54 +1,105 @@
 /*
     $Header$
   
-    Simple fatal error function.
+    Simple verbosity,informational,debugging error function.
+
     Jeff Bilmes <bilmes@cs.berkeley.edu>
 */
 
 
 
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef DEBUG_H
+#define DEBUG_H
 
-
-#ifndef EXIT_SUCCESS
 #include <stdlib.h>
-#ifndef EXIT_SUCCESS
-#define EXIT_SUCCESS (0)
-#define EXIT_FAILURE (1)
-#endif
-#endif
-
+#include <stdio.h>
 #include <stdarg.h>
 
-#define E_INFO_INCREMENT            (10)
+// set this to zero to make all the routines nop stubs.
+#define INFO_MESSAGES_ON 1
 
-#define I_NOTHING                   (0*E_INFO_INCREMENT)
-#define I_INFO_LOW_PRI              (1*E_INFO_INCREMENT)
-#define I_MED_PRI                   (2*E_INFO_INCREMENT)
-#define I_INFO_HIGH_PRI             (3*E_INFO_INCREMENT)
-#define E_INFO_WARNING_LOW_PRI      (4*E_INFO_INCREMENT)
-#define E_INFO_WARNING_MED_PRI      (5*E_INFO_INCREMENT)
-#define E_INFO_WARNING_HIGH_PRI     (6*E_INFO_INCREMENT)
+class IM {
 
-extern int e_info_level;
+  static unsigned globalMessageLevel;
+  unsigned messageLevel;
+  bool messagesOn;
 
-void error(char *format, ...);
-void coredump(char *format, ...);
-void warning(char *format, ...);
-void ensure(bool condition,char *errorIfFail, ...);
+public:
 
-/* 
- * routine to print out informative debugging messages
- */
-inline void info(int fo,char*format, ...) {
-  if (fo >= e_info_level) {
+  IM() {
+    messagesOn = globalMessageLevel;
+    messagesOn = true;
+  }
+
+  // levels for general informational and/or debugging messages.
+
+  enum VerbosityLevels { 
+    Min = 0,
+    Warning = 0, // Anything lower than this should be an error
+                 // called with the error() function which will kill
+                 // the program. Also, this level is the
+                 // threshold at which things get sent to stderr.
+                 //
+    Nano = 10,   // This should be the default.
+    Tiny = 20,
+    Low  = 30,
+    Med  = 40,
+    High = 50,
+    Huge = 60,
+    Mega = 70,
+    Rediculous = 80,
+    Max  = 80    //  keep this set at the maximum
+  };
+
+
+  inline bool message(unsigned v) {
+    return (messagesOn && ((v <= messageLevel) || (v <= globalMessageLevel)));
+  }
+
+  static inline bool messageGlb(unsigned v) {
+    return (v <= globalMessageLevel);
+  }
+
+  inline void infoMsg(unsigned v,char*format, ...) 
+  {
+#if INFO_MESSAGES_ON
+    if (message(v)) {
+      va_list ap;
+      va_start(ap,format);
+      if (v == Warning)
+	(void) vfprintf(stderr, format, ap);
+      else 
+	(void) vfprintf(stdout, format, ap);
+      va_end(ap);
+    }
+#endif
+  }
+
+
+  void msgsOn() { messagesOn = true; }
+  void msgsOff() { messagesOn = false; }
+  unsigned msgLevel() { return messageLevel; }
+  unsigned setMsgLevel(const unsigned ml) { messageLevel = ml; return ml; }
+  static unsigned glbMsgLevel() { return globalMessageLevel; }
+  static unsigned setGlbMsgLevel(const unsigned ml)
+  { globalMessageLevel = ml; return ml; }
+
+};
+
+// Global version
+inline void infoMsg(unsigned v,char*format, ...) 
+{
+#if INFO_MESSAGES_ON
+  if (IM::messageGlb(v)) {
     va_list ap;
     va_start(ap,format);
-    (void) vfprintf(stdout, format, ap);
+    if (v == IM::Warning)
+      (void) vfprintf(stderr, format, ap);
+    else 
+      (void) vfprintf(stdout, format, ap);
     va_end(ap);
-    (void) fprintf(stdout, "\n");
   }
+#endif
 }
 
 
