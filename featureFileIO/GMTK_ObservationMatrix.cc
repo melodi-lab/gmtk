@@ -206,6 +206,10 @@ void ObservationMatrix::openFiles(int n_files,
   ///////////////////////////////////////////////////////////////////////
   ////////////////   Create Streams /////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////
+  unsigned sen_float_buffer_stride=0; 
+  unsigned sen_int_buffer_stride=0; // hold the maximum strides
+				    // necessary to read any stream
+				    // into _tmp{Flot,Int}SenBuffer
   for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
     
     if (fof_names[stream_no] == NULL) error("ObservationMatrix::openFiles: file list for stream %i is NULL\n",stream_no);
@@ -225,8 +229,25 @@ void ObservationMatrix::openFiles(int n_files,
     // the deltas for example.
     _inStreams[stream_no] = new StreamInfo(fof_names[stream_no],crng,drng,(unsigned*)&n_floats[stream_no],(unsigned*)&n_ints[stream_no],(unsigned*)&formats[stream_no],sflag,stream_no,(bool)cpp_if_ascii,(char*)cpp_command_options,srng);
     assert(_inStreams[stream_no] != NULL);
+    unsigned stream_n_floats_before_rng=_inStreams[stream_no]->getNumFloats();
+    unsigned stream_n_ints_before_rng=_inStreams[stream_no]->getNumInts();
+
+    DBGFPRINTF((stderr,"ObservationMatrix::openFiles: stream_n_floats_before_rng = %d, stream_n_ints_before_rng = %d\n",stream_n_floats_before_rng,stream_n_ints_before_rng));
+    
+    if(sen_float_buffer_stride < stream_n_floats_before_rng) {
+      sen_float_buffer_stride = stream_n_floats_before_rng;
+    }
+    if(sen_int_buffer_stride < stream_n_ints_before_rng) {
+      sen_int_buffer_stride = stream_n_ints_before_rng;
+    }
   }  // end for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++)
-  
+
+    DBGFPRINTF((stderr,"ObservationMatrix::openFiles: sen_float_buffer_stride = %d, sen_int_buffer_stride = %d\n",sen_float_buffer_stride,sen_int_buffer_stride));
+
+  if(sen_float_buffer_stride == 0 && sen_int_buffer_stride == 0) {
+    error("ERROR: ObservationMatrix: Empty streams.\n");
+  }
+
   ///////////////////////////////////////
   ////// Check stream lengths ///////////
   ///////////////////////////////////////
@@ -255,8 +276,10 @@ void ObservationMatrix::openFiles(int n_files,
 #endif
   featuresBase = features.ptr + _stride*_startSkip;
 
-  _tmpFloatSenBuffer.resize(_bufSize * _maxContinuous);
-  _tmpIntSenBuffer.resize(_bufSize * _maxDiscrete);
+  DBGFPRINTF((stderr,"ObservationMatrix::openFiles: Creating _tmpFloatSenBuffer of size sen_float_buffer_stride x _bufSize = %d x %d\n",sen_float_buffer_stride,_bufSize));
+
+  _tmpFloatSenBuffer.resize(_bufSize * sen_float_buffer_stride);
+  _tmpIntSenBuffer.resize(_bufSize * sen_int_buffer_stride);
   _repeat.resize(_bufSize);
 }
 
@@ -681,7 +704,12 @@ void ObservationMatrix::loadSegment(unsigned segno) {
       error("ObservationMatrix::loadSegment: Invalid file format specified for stream %i\n",i);
     }
 
-    DBGFPRINTF((stderr,"In loadSegment(): Before pre-transform frame range _prrngStr[i]= %s, prrng->length()=%d, s->curNumFrames=%d.\n",_prrngStr[i],prrng->length(),s->curNumFrames));
+    DBGFPRINTF((stderr,"In loadSegment()\n"));
+
+    //    DBGFPRINTF((stderr,"In loadSegment(): Before pre-transform frame range _prrngStr[i]= %s, prrng->length()=%d, s->curNumFrames=%d.\n",_prrngStr[i],prrng->length(),s->curNumFrames));
+    DBGFPRINTF((stderr,"In loadSegment(): Before pre-transform frame range _prrngStr[i]= %s\n",_prrngStr==NULL?"NULL":_prrngStr[i]==NULL?"NULL":_prrngStr[i]));
+    DBGFPRINTF((stderr,"  prrng->length()=%d\n",prrng->length()));
+    DBGFPRINTF((stderr,"  frame range s->curNumFrames=%d.\n",s->curNumFrames));
 
     // Apply pre-transform frame range
     if(_preTransFrameRangeStr != NULL && _preTransFrameRangeStr[i] != NULL && strcmp(_preTransFrameRangeStr[i],"all") !=0 && strcmp(_preTransFrameRangeStr[i],"nil") !=0 &&  strcmp(_preTransFrameRangeStr[i],"none") !=0 &&  strcmp(_preTransFrameRangeStr[i],"full") !=0) {
@@ -697,8 +725,9 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     DBGFPRINTF((stderr,"In loadSegment(): After pre-transform frame range prrng->length()=%d, s->curNumFrames=%d.\n",prrng->length(),s->curNumFrames));
 
 #ifdef DEBUG
-    DBGFPRINTF((stderr,"In loadSegment(): num_floats = %d and _tmpFloatSenBuffer.ptr = \n",num_floats));
-    for(unsigned fr_no=0;fr_no<_numNonSkippedFrames;++fr_no) 
+    DBGFPRINTF((stderr,"In loadSegment(): num_floats = %d and first frame of _tmpFloatSenBuffer.ptr = \n",num_floats));
+    //    for(unsigned fr_no=0;fr_no<_numNonSkippedFrames;++fr_no) 
+    for(unsigned fr_no=0;fr_no<1;++fr_no) 
       for(unsigned j=0; j<num_floats;j++)   
 	//	DBGFPRINTF((stderr,"%f\n", _tmpFloatSenBuffer.ptr[fr_no*num_floats+j]));
 	DBGFPRINTF((stderr,"%f ", _tmpFloatSenBuffer.ptr[fr_no*num_floats+j]));
@@ -755,8 +784,24 @@ void ObservationMatrix::loadSegment(unsigned segno) {
   // featuresBase after the initialization in openFiles.
   featuresBase = features.ptr + _stride*_startSkip;
 
+#if DEBUG
+  // print the first 2 frames in featuresBase
+  fprintf(stderr,"_numContinuous=%d\n",_numContinuous);
+  fprintf(stderr,"First two frames of final features buffer=\n");
+  for(int i=0; i<2; ++i) {
+    for(unsigned j=0; j<_numContinuous; ++j) {
+      fprintf(stderr,"%f ",floatAtFrame(i,j));
+    }
+    for(unsigned j=0; j<_numDiscrete; ++j) {
+      fprintf(stderr,"%d ",unsignedAtFrame(i,j));
+    }
+    fprintf(stderr,"\n");
+  }
+#endif
+
   DBGFPRINTF((stderr,"In loadSegment(): Closing data files.\n"));
   closeDataFiles();
+  DBGFPRINTF((stderr,"In loadSegment(): All done.\n"));
 }
 
 
@@ -1164,7 +1209,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
   if(num_floats>0) {
     for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_float_buf+=stride) {
       float_buf_ptr=start_float_buf;
-      DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.   *pr_it= %d.\n",*pr_it));  
+      //      DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.   *pr_it= %d.\n",*pr_it));  
       for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	copy_swap_func_ptr(1,(const int *) &float_buf[*it+(*pr_it)*num_floats], (int *)float_buf_ptr++);
 	if(!finite(*(float_buf_ptr-1))) {
@@ -2218,14 +2263,16 @@ bool ObservationMatrix::readPfileSentence(const unsigned segno, float* float_buf
     }
   }
 
-    DBGFPRINTF((stderr,"In ObservationMatrix::readPfileSentence, the first 2 frames are:\n"));
+    DBGFPRINTF((stderr,"In ObservationMatrix::readPfileSentence, the first 3 frames are:\n"));
 #ifdef DEBUG
-    for(unsigned f=0; f< 2;++f) {
+    for(unsigned f=0; f< 3;++f) {
       for(unsigned i=0; i< num_floats;++i)
 	DBGFPRINTF((stderr,"%f ",float_buffer[i+f*num_floats]));
       DBGFPRINTF((stderr,"\n"));
     }
 #endif
+
+    DBGFPRINTF((stderr,"Returning from ObservationMatrix::readPfileSentence\n"));
 
   return true;
 }
