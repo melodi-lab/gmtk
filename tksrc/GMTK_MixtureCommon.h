@@ -36,6 +36,7 @@
 class Dense1DPMF;
 class MeanVector;
 class DiagCovarVector;
+class DlinkMatrix;
 class GaussianComponent;
 
 
@@ -62,6 +63,7 @@ public:
   static set<pair<Dense1DPMF*,unsigned> > splittingComponentSet;
 
   static map<MeanVector*,MeanVector*> meanCloneMap;
+  static map<DlinkMatrix*,DlinkMatrix*> dLinkMatCloneMap;
   static map<DiagCovarVector*,DiagCovarVector*> diagCovarCloneMap;
   static map<GaussianComponent*,GaussianComponent*> gcCloneMap;
 
