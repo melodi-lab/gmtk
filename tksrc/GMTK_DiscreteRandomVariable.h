@@ -72,12 +72,15 @@ public:
   }
   // clamp this RV to its "first" value
   void clampFirstValue() { 
+    if (!hidden) return;
     findConditionalParents(); 
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
     it = curCPT->begin(); val = it.val(); 
   }
   // continue on
-  bool clampNextValue() { it++; if (it!=curCPT->end()) val = it.val();
+  bool clampNextValue() { 
+    if (!hidden) return false;
+    it++; if (it!=curCPT->end()) val = it.val();
     return (it != curCPT->end()); }
   ////////////////////////////////////////////////////////////////
 
