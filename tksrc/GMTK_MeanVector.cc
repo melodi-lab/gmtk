@@ -124,7 +124,8 @@ MeanVector::emIncrement(logpr prob,
 
   emStartIteration();
 
-  if (prob.val() < log_FLT_MIN) {
+  if (prob < minIncrementProbabilty) {
+    missedIncrementCount++;
     return;
     // don't accumulate anything since this one is so small and
     // if we did an unlog() and converted to a single precision

@@ -66,6 +66,13 @@ protected:
   // the sum of the EM accumulated probability for this
   // object.
   logpr accumulatedProbability;
+
+  ////////////////////////////////////////////////
+  // If the posterior probability falls below this
+  // value, we do not increment.
+  static logpr minIncrementProbabilty;
+  static unsigned long missedIncrementCount;
+  
  
 public:
 
@@ -136,6 +143,13 @@ public:
    *  // things are initialized appropriately.
    *
    *  emStartIteration();
+   *
+   *  // Next, perhaps check that this prob is large enough and if
+   *  // it is not we don't bother to increment anything.
+   *  if (prob < minIncrementProbabilty) {
+   *     missedIncrementCount++;
+   *     return;
+   *  }
    *
    *  // Next, accumulate the probabilities.
    *  accumulatedProbability+= prob;
