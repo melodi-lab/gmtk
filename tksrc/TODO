@@ -273,3 +273,6 @@ X ascii/binary conversion program can go both ways.
 - make DT such taht even if overlap exists, binsearch will occur.
   
 - add option to split/vanish top/bottom N mixtures irregardless of that.
+
+- for documentation:
+  - good idea to turn on conservative vanishing right after forced splitting.
