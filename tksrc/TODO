@@ -243,3 +243,9 @@ X make sure that dlinkmatrix precompute is being
 - dlinkmats, normalize by "previous" covariance matrix.
 
 - do a sensible triangulation algoritms to reduce large clique sizes.
+
+- get switching parents working with triangulation
+
+- print message at start with largest clique (members, and upper bound on
+  joint state space)
+
