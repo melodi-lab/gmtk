@@ -63,7 +63,7 @@ ARGS ARGS::Args[] = {
  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
 
  ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
- ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Number of EM iterations to do"),
+ ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
  ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
  ARGS()
 
