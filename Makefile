@@ -104,6 +104,11 @@ diff:
 version :
 	cvs tag -F "$(VERSION)"
 
+# tag all source with today's date
+datetag:
+	cvs tag -F DATESTAMP_`date +%a_%b_%d_%Y`
+
+
 # Move the development tag on files which are have newer versions in the 
 # current working directory 
 update_development:
