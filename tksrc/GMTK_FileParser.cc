@@ -648,12 +648,14 @@ FileParser::parseGraphicalModel()
   if (_lastChunkframe > _maxFrame)
     parseError("last chunk integer must be no greater than number of frames");
 
+#if 0
   printf("Found %d random variables.\n",
 	 rvInfoVector.size());
   for (unsigned i=0;i<rvInfoVector.size();i++ ) {
     printf("RV(%d) is named (%s)\n",
 	   i,rvInfoVector[i].name.c_str());
   }
+#endif
 
 
 }
@@ -1790,42 +1792,6 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	    }
 	  }
 
-	  // now check to make sure this cpt matches this
-	  // number of parents.
-	  if (cpts[j]->numParents() != 
-	      rvInfoVector[i].conditionalParents[j].size()) {
-	    error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by MDCPT \"%s\".\n",
-		  rvInfoVector[i].name.c_str(),
-		  rvInfoVector[i].frame,
-		  rvInfoVector[i].fileLineNumber,
-		  j,
-		  cpts[j]->name().c_str());
-	  }
-
-	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
-	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but MDCPT \"%s\" requires cardinality of %d.\n",
-		  rvInfoVector[i].name.c_str(),
-		  rvInfoVector[i].frame,
-		  rvInfoVector[i].fileLineNumber,
-		  rvInfoVector[i].rvCard,
-		  cpts[j]->name().c_str(),
-		  cpts[j]->card());
-	  }
-	  //// @@@@@@@@@@@@@@@@@@@@@@@@@
-	  ///// @@@ continuoue and check parent cpt cards.
-	  for (unsigned par=0;par<cpts[j]->numParents();par++) {
-	    if (rv->conditionalParentsList[j][par]->cardinality !=
-		cpts[j]->parentCardinality(par))
-	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of MDCPT \"%s\" requires cardinality of %d.\n",
-		  rvInfoVector[i].name.c_str(),
-		  rvInfoVector[i].frame,
-		  rvInfoVector[i].fileLineNumber,
-		  rv->conditionalParentsList[j][par]->name().c_str(),
-		  rv->conditionalParentsList[j][par]->cardinality,
-		  cpts[j]->name().c_str(),
-		  cpts[j]->parentCardinality(par));
-	  }
-
 	} else 
 	  if (rvInfoVector[i].discImplementations[j] == CPT::di_MSCPT) {
 
@@ -1913,17 +1879,6 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	      }
 	    }
 
-	    // now check to make sure this cpt matches this
-	    // number of parents.
-	    if (cpts[j]->numParents() != 
-		rvInfoVector[i].conditionalParents[j].size()) {
-	      error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by MSCPT \"%s\".\n",
-		    rvInfoVector[i].name.c_str(),
-		    rvInfoVector[i].frame,
-		    rvInfoVector[i].fileLineNumber,
-		    j,
-		    cpts[j]->name().c_str());
-	    }
 	} else 
 	  if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
 
@@ -2011,18 +1966,6 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	      }
 	    }
 
-	    // now check to make sure this cpt matches this
-	    // number of parents.
-	    if (cpts[j]->numParents() != 
-		rvInfoVector[i].conditionalParents[j].size()) {
-	      error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by MTCPT \"%s\".\n",
-		    rvInfoVector[i].name.c_str(),
-		    rvInfoVector[i].frame,
-		    rvInfoVector[i].fileLineNumber,
-		    j,
-		    cpts[j]->name().c_str());
-	    }
-
 	} else {
 	  // Again, this shouldn't happen. If it does, something is wrong
 	  // with the parser code or some earlier code, and it didn't correctly
@@ -2030,8 +1973,10 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	  assert ( 0 );
 	}
 
-	// now check that the current cpt's cardinalities match
-	// that with the parents.
+
+	// do checking to ensure that CPTs specified are
+	// compatible with parent cardinalities.
+
 	// first get the name for better error reporting.
 	string cptType;
 	if (rvInfoVector[i].discImplementations[j] == CPT::di_MDCPT) {
@@ -2041,9 +1986,8 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
 	  cptType = "MTCPT";
 	}
-	// now do the checking.
-	
-	// now check to make sure this cpt matches this
+
+	// check to make sure this cpt matches this
 	// number of parents.
 	if (cpts[j]->numParents() != 
 	    rvInfoVector[i].conditionalParents[j].size()) {
@@ -2079,13 +2023,10 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		  cpts[j]->name().c_str(),
 		  cpts[j]->parentCardinality(par));
 	}
-
-
       }
 
-      // now add the cpts to the rv
+      // finally, give the the cpts to the rv
       rv->setCpts(cpts);
-
 
     } else { 
       ///////////////////////////////////////////////////////////
