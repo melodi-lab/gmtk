@@ -6,7 +6,7 @@
 // indent feature. In binary mode, the formating routines have no effect.
 // 
 // Written by: Jeff Bilmes
-//             bilmes@icsi.berkeley.edu
+//             bilmes@ee.washington.edu
 
 
 #include <stdio.h>
