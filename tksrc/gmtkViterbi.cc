@@ -48,6 +48,7 @@
 #include "rand.h"
 #include "arguments.h"
 #include "version.h"
+#include "debug.h"
 
 #include "ieeeFPsetup.h"
 
@@ -360,6 +361,10 @@ main(int argc,char*argv[])
       oin.close();
   }
 
+  struct rusage rus; /* starting time */
+  struct rusage rue; /* ending time */
+  getrusage(RUSAGE_SELF,&rus);
+
   // and away we go
   int ne=0;
   gm.clampFirstExample();
@@ -427,6 +432,14 @@ main(int argc,char*argv[])
       }
     }
   } while (gm.clampNextExample());
+
+  getrusage(RUSAGE_SELF,&rue);
+  if (IM::messageGlb(IM::Default)) { 
+    infoMsg(IM::Default,"### Final time (seconds) just for decoding stage: ");
+    double userTime,sysTime;
+    reportTiming(rus,rue,userTime,sysTime,stdout);
+  }
+
 
   exit_program_with_status(0);
 }

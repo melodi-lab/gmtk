@@ -272,6 +272,8 @@ main(int argc,char*argv[])
 
   if (MixtureCommon::cacheMixtureProbabilities)
     MixtureCommon::cacheComponentsInEmTraining = true;
+  else 
+    MixtureCommon::cacheComponentsInEmTraining = false;
 
   ////////////////////////////////////////////
   // check for valid argument values.
@@ -530,7 +532,8 @@ main(int argc,char*argv[])
 				       numUsableFrames,
 				       base,
 				       lst,
-				       true,
+				       true, // run EM algorithm
+				       false, // run Viterbi algorithm
 				       localCliqueNormalization);
 	  total_num_frames += numUsableFrames;
 	  printf("Segment %d, after Island, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",

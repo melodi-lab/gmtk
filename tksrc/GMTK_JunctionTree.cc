@@ -2845,7 +2845,7 @@ JunctionTree::unroll(const unsigned int numFrames)
     // return 0
 
   infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
-  infoMsg(IM::Default,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+  infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
 	  numFrames,
 	  basicTemplateUnrollAmount,
 	  modifiedTemplateUnrollAmount);
@@ -3883,7 +3883,17 @@ logpr
 JunctionTree::probEvidenceRoot(const unsigned part)
 {
   // return the sum of probs for the root (right interface) clique of the given partition.
+  infoMsg(IM::Mod,"^^^ computing evidence for JT root: part = %d (%s)\n",
+	  part,partPArray[part].nm);
   return partPArray[part].p->maxCliques[partPArray[part].ri].sumProbabilities();
+}
+logpr
+JunctionTree::setRootToMaxCliqueValue(const unsigned part)
+{
+  // return the sum of probs for the root (right interface) clique of the given partition.
+  infoMsg(IM::Mod,"^^^ setting JT root to max clique value: part = %d (%s)\n",
+	  part,partPArray[part].nm);
+  return partPArray[part].p->maxCliques[partPArray[part].ri].setCliqueToMaxCliqueValue();
 }
 void
 JunctionTree::emIncrementIsland(const unsigned part,
@@ -3891,6 +3901,8 @@ JunctionTree::emIncrementIsland(const unsigned part,
 				const bool localCliqueNormalization)
 {
   // increment for this partition.
+  infoMsg(IM::Mod,"^^^ incrementing EM: part = %d (%s)\n",
+	  part,partPArray[part].nm);
   return partPArray[part].p->emIncrement(cur_prob_evidence,localCliqueNormalization);
 }
 
@@ -3935,6 +3947,7 @@ void
 JunctionTree::collectDistributeIslandBase(const unsigned start,
 					  const unsigned end,
 					  const bool runEMalgorithm,
+					  const bool runViterbiAlgorithm,
 					  const bool localCliqueNormalization)
 {
   for (unsigned part = start; part <= end; part ++) {
@@ -3975,8 +3988,18 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 	  infoMsg(IM::Default,"Island not training segment since probability is essentially zero\n");
 	  // note that we can't just jump out as we have to free up all the
 	  // memory that we allocated. We thus have to check a bunch of conditions on 
-	  // the way out and do EM training when appropriate, but always delete.
+	  // the way out and do EM training only when appropriate, but always delete.
 	}
+      } else if (runViterbiAlgorithm) {
+	cur_prob_evidence = probEvidenceRoot(part);
+	if (cur_prob_evidence.essentially_zero()) {
+	  infoMsg(IM::Default,"Island not decoding segment since probability is essentially zero\n");
+	  // note that we can't just jump out as we have to free up
+	  // all the memory that we allocated. We thus have to check a
+	  // bunch of conditions on the way out and do decoding only
+	  // when appropriate, but always delete.
+	} else
+	  setRootToMaxCliqueValue(part);
       }
     }
     // 
@@ -3985,13 +4008,14 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
       deletePartition(part+1);
     }
 
-    if (!runEMalgorithm || cur_prob_evidence.not_essentially_zero()) {
+    if ( ((runEMalgorithm == runViterbiAlgorithm) && (runEMalgorithm == false))
+	 || cur_prob_evidence.not_essentially_zero()) {
       // scatter into all cliques within this separator (at the very least)
       deScatterOutofRoot(part);
     }
 
     // We now have a completed partition that we can use
-    // for EM, scoring, etc.
+    // for EM, viterbi decoding, scoring, etc.
     if (IM::messageGlb(IM::Mod)) {
       infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
 	      part,partPArray[part].nm);
@@ -4051,6 +4075,7 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
 					     const unsigned base,
 					     const unsigned linear_section_threshold,
 					     const bool runEMalgorithm,
+					     const bool runViterbiAlgorithm,
 					     const bool localCliqueNormalization)
 {
   // We're doing from [start,end] inclusive, so compute length
@@ -4058,13 +4083,17 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
   const unsigned len = end-start + 1;
   if (len <= linear_section_threshold) {
     // do base case.
-    collectDistributeIslandBase(start,end,runEMalgorithm,localCliqueNormalization);
+    collectDistributeIslandBase(start,end,runEMalgorithm,
+				runViterbiAlgorithm,
+				localCliqueNormalization);
   } else { 
     const unsigned section_size = len/base;
 
     if (section_size <= 1) {
       infoMsg(IM::Info,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
-      return collectDistributeIslandBase(start,end,runEMalgorithm,localCliqueNormalization);
+      return collectDistributeIslandBase(start,end,runEMalgorithm,
+					 runViterbiAlgorithm,
+					 localCliqueNormalization);
     }
     // so we are assured there that section_size is at least two here. 
 
@@ -4133,7 +4162,9 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
       // recurse
       collectDistributeIslandRecurse(section_start,section_end,
 				     base,linear_section_threshold,
-				     runEMalgorithm,localCliqueNormalization);
+				     runEMalgorithm,
+				     runViterbiAlgorithm,
+				     localCliqueNormalization);
       // need to delete partition at location section_start+cur_section_size
       // if it is one that we created.
       if (!first_iteration) {
@@ -4264,12 +4295,18 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				      // evidence stage.
 				      const unsigned linear_section_threshold,
 				      const bool runEMalgorithm,
+				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization)
 {
+
+  // cant run both EM and viterbi at the same time.
+  assert (!runEMalgorithm || !runViterbiAlgorithm);
 
   // must have a linear_section_threshold of at least two partitions.
   if (linear_section_threshold < 2)
     error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",linear_section_threshold);
+
+
 
   // the log base must be a number that actually causes a split.
   if (base <= 1)
@@ -4362,7 +4399,9 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   partPArray[0].p = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   ceGatherIntoRoot(0);
   collectDistributeIslandRecurse(0,partPArray.size()-1,base,linear_section_threshold,
-				 runEMalgorithm,localCliqueNormalization);
+				 runEMalgorithm,
+				 runViterbiAlgorithm,
+				 localCliqueNormalization);
   delete partPArray[0].p;
   partPArray[0].p = NULL;
 
@@ -4405,6 +4444,43 @@ JunctionTree::probEvidence()
   return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
     sumProbabilities();
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::setRootToMaxCliqueValue()
+ *   
+ *   This version of probEvidence() merely sets E's root clique to its
+ *   current max value, and return the max value.
+ *
+ * See Also:
+ *   probEvidence() above, the other (overloaded) version which is
+ *   a const. mem version of collectEvidence().
+ *
+ * Preconditions:
+ *   - collectEvidence() (or the other probEvidence()) must have been called
+ *     for this to work.
+ *   - The E partition must exist in the jtIPartitions array
+ *     and must have been called for this to work right.
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   The probability of the evidence
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr
+JunctionTree::setRootToMaxCliqueValue()
+{
+  return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
+    setCliqueToMaxCliqueValue();
+}
+
 
 
 
