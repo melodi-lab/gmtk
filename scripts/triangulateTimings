@@ -41,7 +41,7 @@ $pmake            = 'pmake';
 $timing_length = 7.5; 
 
 @run_once = ( 'completed', 'heuristics' );
-@run_many = ( 'R', 'W', 'MCS', 'F' );
+@run_many = ( 'R', 'W', 'MCS', 'F', 'pre-edge-lo-R', 'pre-edge-lo-W', 'pre-edge-lo-MCS', 'pre-edge-lo-F', 'pre-edge-all-R', 'pre-edge-all-W', 'pre-edge-all-MCS', 'pre-edge-all-F', 'pre-edge-random-R', 'pre-edge-random-W', 'pre-edge-random-MCS', 'pre-edge-random-F' );
 @iterations = ( 100, 10, 1 ); 
 
 ##############################################################################
