@@ -51,9 +51,9 @@ incorporated into the package at some point.
 - use namedobject for randomvariable and any other object that
   has a string name
 
-- include check to make sure that names for each section in parms are unique
+XXX- include check to make sure that names for each section in parms are unique
 
-- todo, make sure that chunk n:m is valid.
+XXX- todo, make sure that chunk n:m is valid.
 
 - ability to train means and other dlinkmats in a dlinkmats structure
   independently.
