@@ -63,6 +63,14 @@ DiagCovarVector::DiagCovarVector()
 //        Misc Support
 ////////////////////////////////////////////////////////////////////
 
+void
+DiagCovarVector::makeRandom()
+{
+  for (int i=0;i<means.len();i++) {
+    covars[i] = 1.0+rnd.drand48();
+  }
+}
+
 
 
 

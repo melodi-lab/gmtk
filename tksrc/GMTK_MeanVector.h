@@ -44,11 +44,9 @@ public:
   // General constructor
   MeanVector();
 
-
   //////////////////////////////////
   // set all current parameters to random values
-  void randomize();
-
+  void makeRandom();
 
   //////////////////////////////////////////////
   // read/write basic parameters
