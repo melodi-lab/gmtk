@@ -147,13 +147,21 @@ Arg Arg::Args[] = {
   Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
   Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
 
-  Arg("of2",Arg::Opt,ofs[1],"Observation File 1"),
-  Arg("nf2",Arg::Opt,nfs[1],"Number of floats in observation file 1"),
-  Arg("ni2",Arg::Opt,nis[1],"Number of ints in observation file 1"),
-  Arg("fr2",Arg::Opt,frs[1],"Float range for observation file 1"),
-  Arg("ir2",Arg::Opt,irs[1],"Int range for observation file 1"),
-  Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 1"),
-  Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 1"),
+  Arg("of2",Arg::Opt,ofs[1],"Observation File 2"),
+  Arg("nf2",Arg::Opt,nfs[1],"Number of floats in observation file 2"),
+  Arg("ni2",Arg::Opt,nis[1],"Number of ints in observation file 2"),
+  Arg("fr2",Arg::Opt,frs[1],"Float range for observation file 2"),
+  Arg("ir2",Arg::Opt,irs[1],"Int range for observation file 2"),
+  Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
+  Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 2"),
+
+  Arg("of3",Arg::Opt,ofs[2],"Observation File 3"),
+  Arg("nf3",Arg::Opt,nfs[2],"Number of floats in observation file 3"),
+  Arg("ni3",Arg::Opt,nis[2],"Number of ints in observation file 3"),
+  Arg("fr3",Arg::Opt,frs[2],"Float range for observation file 3"),
+  Arg("ir3",Arg::Opt,irs[2],"Int range for observation file 3"),
+  Arg("fmt3",Arg::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
+  Arg("iswp3",Arg::Opt,iswps[2],"Endian swap condition for observation file 3"),
 
 
   /////////////////////////////////////////////////////////////
@@ -679,6 +687,7 @@ main(int argc,char*argv[])
 		 child_info.numCurPartitionsDone,
 		 child_info.totalNumberPartitionsDone,
 		 curRate);
+	  fflush(stdout);
 	  
 	  if (curRate > bestRate) {
 	    best_tri_file = tri_file;
@@ -693,6 +702,7 @@ main(int argc,char*argv[])
 	    error("ERROR: parent process can't call getrusage end, returned %d\n",rc);
 	  double userTime,sysTime;
 	  reportTiming(rus,rue,userTime,sysTime,stdout);
+	  fflush(stdout);
 	}
 	// close down the pipe in any case.
 	close(read_fd);

@@ -237,7 +237,7 @@ readMaxCliques(iDataStreamFile& is)
 
   // read number of cliques
   unsigned numCliques;
-  is.read(numCliques,"numCliques value");
+  is.read(numCliques,"number of cliques");
   if (numCliques == 0)
     error("ERROR: reading file '%s' line %d, numCliques must be >= 1\n",
 	  is.fileName(),is.lineNo());
@@ -257,13 +257,13 @@ readMaxCliques(iDataStreamFile& is)
     set<RV*> clique;
     
     unsigned cliqueNo;
-    is.read(cliqueNo,"cliqueNo value");
+    is.read(cliqueNo,"clique number value");
     if (cliqueNo != i)
       error("ERROR: reading file %s, bad cliqueNo (= %d) when reading cliques, out of sequence, should be = %d, file '%s' line %d\n",
 	    is.fileName(),is.lineNo(),cliqueNo,i);
     
     unsigned cliqueSize;
-    is.read(cliqueSize,"cliqueSize value");
+    is.read(cliqueSize,"clique size value");
 
 #if 0
     // remove check for min clique size of 1.
@@ -1008,11 +1008,11 @@ readPartitions(iDataStreamFile& is)
   unsigned setSize;
   string str_tmp;
 
-  is.read(str_tmp,"name");
+  is.read(str_tmp,"P partition name");
   if (str_tmp != P_partition_name)
     error("ERROR: P partition information in file '%s' line %d is invalid for given graph structure\n",
 	  is.fileName(),is.lineNo());
-  is.read(setSize,"set size");
+  is.read(setSize,"P partition set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
     is.read(par.first,"parent name");
@@ -1026,11 +1026,11 @@ readPartitions(iDataStreamFile& is)
     loc_P.insert(unrolled_rvs[(*loc).second]);
   }
 
-  is.read(str_tmp,"name");
+  is.read(str_tmp,"C partition name");
   if (str_tmp != C_partition_name)
     error("ERROR: C partition information in file '%s' line %d is invalid for given graph structure\n",
 	  is.fileName(),is.lineNo());
-  is.read(setSize,"set size");
+  is.read(setSize,"C partition set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
     is.read(par.first,"parent name");
@@ -1044,11 +1044,11 @@ readPartitions(iDataStreamFile& is)
     loc_C.insert(unrolled_rvs[(*loc).second]);
   }
 
-  is.read(str_tmp,"name");
+  is.read(str_tmp,"E partition name");
   if (str_tmp != E_partition_name)
     error("ERROR: E partition information in file '%s' line %d is invalid for given graph structure\n",
 	  is.fileName(),is.lineNo());
-  is.read(setSize,"set size");
+  is.read(setSize,"E partition set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
     is.read(par.first,"parent name");
@@ -1069,11 +1069,11 @@ readPartitions(iDataStreamFile& is)
   set<RV*> loc_CEInterface;
 
   // get PC interface
-  is.read(str_tmp,"name");
+  is.read(str_tmp,"PC interface name");
   if (str_tmp != PC_interface_name)
     error("ERROR: PC interface information in file '%s' line %d is invalid for given graph structure\n",
 	  is.fileName(),is.lineNo());
-  is.read(setSize,"set size");
+  is.read(setSize,"PC interface set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
     is.read(par.first,"parent name");
@@ -1088,11 +1088,11 @@ readPartitions(iDataStreamFile& is)
   }
 
   // get CE interface
-  is.read(str_tmp,"name");
+  is.read(str_tmp,"CE interface name");
   if (str_tmp != CE_interface_name)
     error("ERROR: CE interface information in file '%s' line %d is invalid for given graph structure\n",
 	  is.fileName(),is.lineNo());
-  is.read(setSize,"set size");
+  is.read(setSize,"CE interface set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
     is.read(par.first,"parent name");

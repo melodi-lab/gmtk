@@ -467,7 +467,7 @@ main(int argc,char*argv[])
     }
 
     if (rePartition && !reTriangulate) {
-      infoMsg(IM::Warning,"Warning: rePartition=T option forces -reTriangulate option to be true.\n");
+      infoMsg(IM::Info,"NOTE: rePartition=T option forces -reTriangulate option to be true.\n");
       reTriangulate = true;
     }
 
