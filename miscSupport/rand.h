@@ -46,6 +46,18 @@ class RAND {
       seed48(seedv); 
     }
 
+  // seed with a double 
+  void seed(double* d) {
+    unsigned short* tmp = (unsigned short*)d;
+    seed48(tmp);
+  }
+  // seed with a float
+  void seed(float* f) {
+    unsigned short* tmp = (unsigned short*)f;
+    seed48(tmp);
+  }
+
+
   /* return a random number uniformly in [l,u] inclusive, l < u */
   int uniform(int l, int u) 
     { return (l + (int)((1+u-l)*::drand48())); }
