@@ -9,10 +9,13 @@
 set -e
 set -x
 
+MAKE=make
+PMAKE='pmake -J 30'
+
 remakedepends() {
   rm -f depends.make
   touch depends.make
-  make depends
+  $MAKE depends
 }
 
 # default architecture
@@ -37,37 +40,37 @@ OF='-O3 -Wl,-bmaxdata:0x80000000'
 cd IEEEFloatingpoint
 rm -f depends.make
 touch depends.make
-make $ARCH
-make depends
-make clean
-make OPTFLAGS="$OF"
+$MAKE $ARCH
+$MAKE depends
+$MAKE clean
+$MAKE OPTFLAGS="$OF"
 cd ..
 
 
 cd featureFileIO
 remakedepends
-make clean
-make OPTFLAGS="$OF"
+$MAKE clean
+$MAKE OPTFLAGS="$OF"
 cd ..
 
 
 
 cd miscSupport
 remakedepends
-make clean
-make OPTFLAGS="$OF"
+$MAKE clean
+$MAKE OPTFLAGS="$OF"
 cd ..
 
 cd pfile
-make clean
-make libpfile.a OPTFLAGS="$OF"
+$MAKE clean
+$MAKE libpfile.a OPTFLAGS="$OF"
 cd ..
 
 
 cd tksrc
 remakedepends
-make clean
-make SUNLIBS= OPTFLAGS="$OF"
+$MAKE clean
+$MAKE SUNLIBS= OPTFLAGS="$OF"
 cd ..
 
 elif [ "$ARCH" = "linux" ]; then
@@ -79,22 +82,23 @@ GCC=/usr/nikola/pkgs/gcc/.3.2/bin/gcc
 GPP=/usr/nikola/pkgs/gcc/.3.2/bin/g++
 EXLDFLAGS=-static
 OF='-g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse'
+# OF=''
 
 
 cd IEEEFloatingpoint
 rm -f depends.make
 touch depends.make
-make $ARCH
-make depends
-make clean
-make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+$MAKE $ARCH
+$MAKE depends
+$MAKE clean
+$PMAKE  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
 cd ..
 
 
 cd featureFileIO
 remakedepends
-make clean
-make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+$MAKE clean
+$PMAKE  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
 cd ..
 
 
@@ -102,20 +106,20 @@ cd ..
 
 cd miscSupport
 remakedepends
-make clean
-make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+$MAKE clean
+$PMAKE  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
 cd ..
 
 cd pfile
-make clean
-make libpfile.a  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+$MAKE clean
+$PMAKE libpfile.a  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
 cd ..
 
 
 cd tksrc
 remakedepends
-make clean
-make SUNLIBS=  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
+$MAKE clean
+$PMAKE SUNLIBS=  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
 cd ..
 
 
@@ -132,37 +136,37 @@ EXLDFLAGS=-static
 cd IEEEFloatingpoint
 rm -f depends.make
 touch depends.make
-make $ARCH
-make depends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE $ARCH
+$MAKE depends
+$MAKE clean
+$MAKE CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
 cd featureFileIO
 remakedepends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE clean
+$MAKE CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
 
 cd miscSupport
 remakedepends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE clean
+$MAKE CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 cd pfile
-make clean
-make libpfile.a CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE clean
+$MAKE libpfile.a CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
 cd tksrc
 remakedepends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE clean
+$MAKE CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
@@ -177,36 +181,36 @@ EXLDFLAGS=-static
 cd IEEEFloatingpoint
 rm -f depends.make
 touch depends.make
-make $ARCH
-make depends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE $ARCH
+$MAKE depends
+$MAKE clean
+$MAKE CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
 cd featureFileIO
 remakedepends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE clean
+$MAKE CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
 cd miscSupport
 remakedepends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE clean
+$MAKE CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 cd pfile
-make clean
-make libpfile.a  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE clean
+$MAKE libpfile.a  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
 cd tksrc
 remakedepends
-make clean
-make SUNLIBS=  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
+$MAKE clean
+$MAKE SUNLIBS=  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
