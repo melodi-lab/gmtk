@@ -5,6 +5,8 @@
 #include "GMTK_RVInfo.h"
 // all of the wxWidgets headers for the things gmtkViz uses
 #include <wx/wx.h>
+#include <wx/cmdline.h>
+#include <wx/colordlg.h>
 #include <wx/dcbuffer.h>
 #include <wx/ffile.h>
 #include <wx/fontdlg.h>
@@ -15,6 +17,7 @@
 #include <wx/print.h>
 #include <wx/printdlg.h>
 #include <wx/statline.h>
+#include <wx/textdlg.h>
 #include <wx/textfile.h>
 #include <wx/tooltip.h>
 #include <cassert>
@@ -73,7 +76,7 @@ class ControlPoint;
 /// associated with a structure file.
 class StructPage: public wxScrolledWindow
 {
- public:
+public:
     // constructor
     StructPage(wxWindow *parent, wxWindowID id,
 	       wxFrame *parentFrame, wxNotebook *parentNotebook,
@@ -109,8 +112,11 @@ class StructPage: public wxScrolledWindow
     void setScale( int newScale );
     void getName( wxString& name );
 
+    // some drawing-related convenience methods
     void draw( wxDC& dc );
-    void DrawText(wxDC& dc );
+    void redraw( void );
+    void blit( wxDC& dc );
+    void blit( void );
 
     // pens and fonts for drawing different items
     wxPen switchingPen;
@@ -175,11 +181,6 @@ private:
 
     void initNodes( void );
     void initArcs( void );
-
-    // some drawing-related convenience methods
-    void redraw( void );
-    void blit( wxDC& dc );
-    void blit( void );
 
     // utility methods
     VizArc* newArc(int i, int j);
@@ -316,8 +317,9 @@ public:
     VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage );
     // destructor (to delete the wxList of points)
     ~VizArc( void );
+    enum { DRAW_ARCS = 1<<0, DRAW_CPS = 1<<1 };
     // draw itself
-    void draw( wxDC *dc );
+    void draw( wxDC *dc, int drawFlags );
 };
 
 
@@ -327,11 +329,12 @@ public:
     /// only need an absolute x position for this
     wxCoord x;
     /// Does it separate the chunk from the prologue or epilogue?
-    bool chunkBorder;
+    enum FrameSepType { PROLOGUE, BEGIN_CHUNK, CHUNK, END_CHUNK, EPILOGUE };
+    FrameSepType sepType;
     /// the parent
     StructPage *page;
     // constructor
-    VizSep( wxCoord xNew, StructPage *newPage, bool newChunkBorder = false );
+    VizSep( wxCoord xNew, StructPage *newPage, FrameSepType newSepType );
     // draw itself
     void draw( wxDC *dc );
     // selectable methods
@@ -399,13 +402,48 @@ public:
 	MENU_ZOOM_2_pow_pos_3dot000,
 	MENU_ZOOM_2_pow_pos_4dot000,
 	MENU_ZOOM_END,
-	MENU_CUSTOMIZE_FONT
+	MENU_CUSTOMIZE_FONT,
+	MENU_CUSTOMIZE_PENS_BEGIN,
+	MENU_CUSTOMIZE_SWITCHING_PEN,
+	MENU_CUSTOMIZE_SWITCHING_PEN_COLOR,
+	MENU_CUSTOMIZE_SWITCHING_PEN_WIDTH,
+	MENU_CUSTOMIZE_SWITCHING_PEN_STYLE,
+	MENU_CUSTOMIZE_CONDITIONAL_PEN,
+	MENU_CUSTOMIZE_CONDITIONAL_PEN_COLOR,
+	MENU_CUSTOMIZE_CONDITIONAL_PEN_WIDTH,
+	MENU_CUSTOMIZE_CONDITIONAL_PEN_STYLE,
+	MENU_CUSTOMIZE_BOTH_PEN,
+	MENU_CUSTOMIZE_BOTH_PEN_COLOR,
+	MENU_CUSTOMIZE_BOTH_PEN_WIDTH,
+	MENU_CUSTOMIZE_BOTH_PEN_STYLE,
+	MENU_CUSTOMIZE_FRAMEBORDER_PEN,
+	MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR,
+	MENU_CUSTOMIZE_FRAMEBORDER_PEN_WIDTH,
+	MENU_CUSTOMIZE_FRAMEBORDER_PEN_STYLE,
+	MENU_CUSTOMIZE_CHUNKBORDER_PEN,
+	MENU_CUSTOMIZE_CHUNKBORDER_PEN_COLOR,
+	MENU_CUSTOMIZE_CHUNKBORDER_PEN_WIDTH,
+	MENU_CUSTOMIZE_CHUNKBORDER_PEN_STYLE,
+	MENU_CUSTOMIZE_CONTROLPOINT_PEN,
+	MENU_CUSTOMIZE_CONTROLPOINT_PEN_COLOR,
+	MENU_CUSTOMIZE_CONTROLPOINT_PEN_WIDTH,
+	MENU_CUSTOMIZE_CONTROLPOINT_PEN_STYLE,
+	MENU_CUSTOMIZE_NODE_PEN,
+	MENU_CUSTOMIZE_NODE_PEN_COLOR,
+	MENU_CUSTOMIZE_NODE_PEN_WIDTH,
+	MENU_CUSTOMIZE_NODE_PEN_STYLE,
+	MENU_CUSTOMIZE_PENS_END
     };
 
     /**
      * Constructor. Creates a new GFrame.
      */
-    GFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
+    GFrame( wxWindow* parent, int id, const wxString& title,
+	    const wxPoint& pos=wxDefaultPosition,
+	    const wxSize& size=wxDefaultSize,
+	    long style=wxDEFAULT_FRAME_STYLE );
+
+    void file(wxString &fileName, bool gvpFormat);
 
     /**
      * Processes menu File->New
@@ -468,6 +506,7 @@ public:
 
     // Handle events from the Customize menu to alter how items are drawn
     void OnMenuCustomizeFont(wxCommandEvent &event);
+    void OnMenuCustomizePen(wxCommandEvent &event);
 
     // Do this when a different notebook page is chosen
     void OnNotebookPageChanged(wxCommandEvent &event);
@@ -504,6 +543,21 @@ public:
 
 IMPLEMENT_APP(GMTKStructVizApp)
 
+#include "arguments.h"
+bool help =false;
+bool print_version_and_exit = false;
+#define MAX_OBJECTS (5)
+char *gvpFileNames[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};
+char *strFileNames[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};
+
+Arg Arg::Args[] = {
+    Arg( "gvpFile", Arg::Opt, gvpFileNames, "position file",
+	 Arg::ARRAY, MAX_OBJECTS ),
+    Arg( "strFile", Arg::Opt, strFileNames, "structure file",
+	 Arg::ARRAY, MAX_OBJECTS ),
+    Arg("help", Arg::Tog, help, "print this message"),
+    Arg()
+};
 /**
  *******************************************************************
  * Called implicitly by the wxWidgets system, this method shows
@@ -519,14 +573,32 @@ IMPLEMENT_APP(GMTKStructVizApp)
  *******************************************************************/
 bool GMTKStructVizApp::OnInit()
 {
+    bool parse_was_ok = Arg::parse(argc, argv);
+    if(help || !parse_was_ok) {
+	Arg::usage();
+	return false;
+    }
+
     wxInitAllImageHandlers();
     // MainVizWindow has no parent...
-    GFrame* MainVizWindow = new GFrame(0, -1,
-				       wxT("GMTK Structure File Vizualizer"));
+    GFrame* MainVizWindow = new GFrame( 0, -1,
+					wxT("GMTK Structure File Vizualizer"),
+					wxDefaultPosition, wxSize(640, 480),
+					wxDEFAULT_FRAME_STYLE );
     // ...because it's the top level window.
     SetTopWindow(MainVizWindow);
     // Once we show the window, the program is event driven.
     MainVizWindow->Show();
+    for (int i = 0; i < MAX_OBJECTS && gvpFileNames[i]; i++) {
+	wxString fileName;
+	fileName = gvpFileNames[i];
+	MainVizWindow->file(fileName, true);
+    }
+    for (int i = 0; i < MAX_OBJECTS && strFileNames[i]; i++) {
+	wxString fileName;
+	fileName = strFileNames[i];
+	MainVizWindow->file(fileName, false);
+    }
     return true;
 }
 
@@ -540,6 +612,9 @@ bool GMTKStructVizApp::OnInit()
  * \param id An integer you may use to identify this window. If you
  *      don't care, you may specify -1 and wxWidgets will assign it an
  *      internal identifier.
+ * \param argParser A parser set up for strFile, gvpFile, and "" whose
+ *      Parse() method has already been successfully called, so that
+        we may simply use the Found() and GetParamCount() methods.
  * \param title What would you like to appear in the window's title
  *      bar?
  * \param pos Where do you want the window to appear?
@@ -617,6 +692,129 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     wxMenu* menu_customize = new wxMenu();
     menu_customize->Append( MENU_CUSTOMIZE_FONT, wxT("Change Font..."),
 			    wxEmptyString, wxITEM_NORMAL );
+    wxMenu* menu_customize_switching = new wxMenu();
+    menu_customize_switching->Append( MENU_CUSTOMIZE_SWITCHING_PEN_COLOR,
+				      wxT("Change Color..."),
+				      wxT( "Change the color of arcs "
+					   "from switching parents" ),
+				      wxITEM_NORMAL );
+    menu_customize_switching->Append( MENU_CUSTOMIZE_SWITCHING_PEN_WIDTH,
+				      wxT("Change Width..."),
+				      wxT( "Change the width of arcs "
+					   "from switching parents" ),
+				      wxITEM_NORMAL );
+    menu_customize_switching->Append( MENU_CUSTOMIZE_SWITCHING_PEN_STYLE,
+				      wxT("Change Style..."),
+				      wxT( "Change the style of arcs "
+					   "from switching parents" ),
+				      wxITEM_NORMAL );
+    menu_customize->Append( MENU_CUSTOMIZE_SWITCHING_PEN,
+			    wxT("Switching Pen"), menu_customize_switching );
+    wxMenu* menu_customize_conditional = new wxMenu();
+    menu_customize_conditional->Append( MENU_CUSTOMIZE_CONDITIONAL_PEN_COLOR,
+				      wxT("Change Color..."),
+				      wxT( "Change the color of arcs "
+					   "from conditional parents" ),
+				      wxITEM_NORMAL );
+    menu_customize_conditional->Append( MENU_CUSTOMIZE_CONDITIONAL_PEN_WIDTH,
+				      wxT("Change Width..."),
+				      wxT( "Change the width of arcs "
+					   "from conditional parents" ),
+				      wxITEM_NORMAL );
+    menu_customize_conditional->Append( MENU_CUSTOMIZE_CONDITIONAL_PEN_STYLE,
+				      wxT("Change Style..."),
+				      wxT( "Change the style of arcs "
+					   "from conditional parents" ),
+				      wxITEM_NORMAL );
+    menu_customize->Append( MENU_CUSTOMIZE_CONDITIONAL_PEN,
+			    wxT("Conditional Pen"),
+			    menu_customize_conditional );
+    wxMenu* menu_customize_both = new wxMenu();
+    menu_customize_both->Append( MENU_CUSTOMIZE_BOTH_PEN_COLOR,
+				      wxT("Change Color..."),
+				      wxT( "Change the color of arcs "
+					   "from parents that are both "
+					   "switching and conditional" ),
+				      wxITEM_NORMAL );
+    menu_customize_both->Append( MENU_CUSTOMIZE_BOTH_PEN_WIDTH,
+				      wxT("Change Width..."),
+				      wxT( "Change the width of arcs "
+					   "from parents that are both "
+					   "switching and conditional" ),
+				      wxITEM_NORMAL );
+    menu_customize_both->Append( MENU_CUSTOMIZE_BOTH_PEN_STYLE,
+				      wxT("Change Style..."),
+				      wxT( "Change the style of arcs "
+					   "from parents that are both "
+					   "switching and conditional" ),
+				      wxITEM_NORMAL );
+    menu_customize->Append( MENU_CUSTOMIZE_BOTH_PEN,
+			    wxT("Both Pen"),
+			    menu_customize_both );
+    wxMenu* menu_customize_frameborder = new wxMenu();
+    menu_customize_frameborder->Append( MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR,
+				      wxT("Change Color..."),
+				      wxT("Change the color of frameborders"),
+				      wxITEM_NORMAL );
+    menu_customize_frameborder->Append( MENU_CUSTOMIZE_FRAMEBORDER_PEN_WIDTH,
+				      wxT("Change Width..."),
+				      wxT("Change the width of frameborders"),
+				      wxITEM_NORMAL );
+    menu_customize_frameborder->Append( MENU_CUSTOMIZE_FRAMEBORDER_PEN_STYLE,
+				      wxT("Change Style..."),
+				      wxT( "Change the style of frameborders"),
+				      wxITEM_NORMAL );
+    menu_customize->Append( MENU_CUSTOMIZE_FRAMEBORDER_PEN,
+			    wxT("Frameborder Pen"),
+			    menu_customize_frameborder );
+    wxMenu* menu_customize_chunkborder = new wxMenu();
+    menu_customize_chunkborder->Append( MENU_CUSTOMIZE_CHUNKBORDER_PEN_COLOR,
+				      wxT("Change Color..."),
+				      wxT("Change the color of chunkborders" ),
+				      wxITEM_NORMAL );
+    menu_customize_chunkborder->Append( MENU_CUSTOMIZE_CHUNKBORDER_PEN_WIDTH,
+				      wxT("Change Width..."),
+				      wxT("Change the width of chunkborders"),
+				      wxITEM_NORMAL );
+    menu_customize_chunkborder->Append( MENU_CUSTOMIZE_CHUNKBORDER_PEN_STYLE,
+				      wxT("Change Style..."),
+				      wxT("Change the style of chunkborders"),
+				      wxITEM_NORMAL );
+    menu_customize->Append( MENU_CUSTOMIZE_CHUNKBORDER_PEN,
+			    wxT("Chunkborder Pen"),
+			    menu_customize_chunkborder );
+    wxMenu* menu_customize_controlpoint = new wxMenu();
+    menu_customize_controlpoint->Append( MENU_CUSTOMIZE_CONTROLPOINT_PEN_COLOR,
+				      wxT("Change Color..."),
+				      wxT("Change the color of controlpoints"),
+				      wxITEM_NORMAL );
+    menu_customize_controlpoint->Append( MENU_CUSTOMIZE_CONTROLPOINT_PEN_WIDTH,
+				      wxT("Change Width..."),
+				      wxT("Change the width of controlpoints"),
+				      wxITEM_NORMAL );
+    menu_customize_controlpoint->Append( MENU_CUSTOMIZE_CONTROLPOINT_PEN_STYLE,
+				      wxT("Change Style..."),
+				      wxT("Change the style of controlpoints"),
+				      wxITEM_NORMAL );
+    menu_customize->Append( MENU_CUSTOMIZE_CONTROLPOINT_PEN,
+			    wxT("Controlpoint Pen"),
+			    menu_customize_controlpoint );
+    wxMenu* menu_customize_node = new wxMenu();
+    menu_customize_node->Append( MENU_CUSTOMIZE_NODE_PEN_COLOR,
+				      wxT("Change Color..."),
+				      wxT("Change the color of nodes" ),
+				      wxITEM_NORMAL );
+    menu_customize_node->Append( MENU_CUSTOMIZE_NODE_PEN_WIDTH,
+				      wxT("Change Width..."),
+				      wxT("Change the width of nodes"),
+				      wxITEM_NORMAL );
+    menu_customize_node->Append( MENU_CUSTOMIZE_NODE_PEN_STYLE,
+				      wxT("Change Style..."),
+				      wxT("Change the style of nodes"),
+				      wxITEM_NORMAL );
+    menu_customize->Append( MENU_CUSTOMIZE_NODE_PEN,
+			    wxT("Node Pen"),
+			    menu_customize_node );
     MainVizWindow_menubar->Append(menu_customize, wxT("Customize"));
     // Again, needs a document to make sense.
     MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
@@ -683,21 +881,21 @@ void GFrame::do_layout()
     wxBoxSizer* MainVizWindow_sizer = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* about_sizer = new wxBoxSizer(wxVERTICAL);
     wxStaticBoxSizer* about_label_static_sizer = new wxStaticBoxSizer(new wxStaticBox(about_pane, -1, wxT("")), wxHORIZONTAL);
-    about_label_static_sizer->Add( about_label, 0,
+    about_label_static_sizer->Add( about_label, 1,
 				   wxALL|wxALIGN_CENTER_HORIZONTAL, 2 );
     about_sizer->Add( about_label_static_sizer, 1,
 		      wxEXPAND|wxALIGN_CENTER_HORIZONTAL, 0 );
     about_sizer->Add(about_info, 2, wxALL|wxEXPAND, 2);
     about_pane->SetAutoLayout(true);
     about_pane->SetSizer(about_sizer);
-    about_sizer->Fit(about_pane);
-    about_sizer->SetSizeHints(about_pane);
+    about_sizer->FitInside(about_pane);
+    about_sizer->SetVirtualSizeHints(about_pane);
     struct_notebook->AddPage(about_pane, wxT("About"));
     MainVizWindow_sizer->Add(new wxNotebookSizer(struct_notebook), 1, wxEXPAND, 0);
     SetAutoLayout(true);
     SetSizer(MainVizWindow_sizer);
-    MainVizWindow_sizer->Fit(this);
-    MainVizWindow_sizer->SetSizeHints(this);
+    MainVizWindow_sizer->FitInside(this);
+    MainVizWindow_sizer->SetVirtualSizeHints(this);
     Layout();
 }
 
@@ -723,9 +921,38 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_VIEW_TOOLTIPS, GFrame::OnMenuViewToolTips)
     EVT_MENU_RANGE(MENU_ZOOM_BEGIN+1, MENU_ZOOM_END-1, GFrame::OnMenuZoom)
     EVT_MENU(MENU_CUSTOMIZE_FONT, GFrame::OnMenuCustomizeFont)
+    EVT_MENU_RANGE(MENU_CUSTOMIZE_PENS_BEGIN+1, MENU_CUSTOMIZE_PENS_END-1, GFrame::OnMenuCustomizePen)
     EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, GFrame::OnNotebookPageChanged)
     EVT_CLOSE(GFrame::OnClose)
 END_EVENT_TABLE()
+
+/**
+ *******************************************************************
+ * Make a new StructPage for the given structure or position.
+ *
+ * \param fileName The file to use.
+ * \param gvpFormat Is it a position file (as opposed to a structure)?
+ *
+ * \pre The GFrame needs to be fully initialized.
+ *
+ * \post A new page is added for this file.
+ *
+ * \note A new page is added for this file.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::file(wxString &fileName, bool gvpFormat)
+{
+    // This will add itself to the notebook and be destroyed when
+    // the notebook is destroyed.
+    new StructPage( struct_notebook, -1, this, struct_notebook,
+		    fileName, gvpFormat );
+    // We won't get an event for this new notebook page coming to
+    // the front, so we'll just pretend we did
+    wxCommandEvent dummy;
+    OnNotebookPageChanged(dummy);
+}
 
 /**
  *******************************************************************
@@ -758,14 +985,9 @@ void GFrame::OnMenuFileNew(wxCommandEvent &event)
     // put the dialog up (as a modal dialog) and only continue if the
     // user clicked OK
     if ( dlg.ShowModal() == wxID_OK ) {
-	// This will add itself to the notebook and be destroyed when
-	// the notebook is destroyed.
-	new StructPage(struct_notebook, -1, this, struct_notebook,
-		       dlg.GetPath(), false);
-	// We won't get an event for this new notebook page coming to
-	// the front, so we'll just pretend we did
-	wxCommandEvent dummy;
-	OnNotebookPageChanged(dummy);
+	wxString fileName;
+	fileName = dlg.GetPath();
+	file(fileName, false);
     }
 }
 
@@ -798,14 +1020,9 @@ void GFrame::OnMenuFileOpen(wxCommandEvent &event)
     // Show the dialog modally and only continue if the user dismissed
     // the dialog by clicking OK
     if ( dlg.ShowModal() == wxID_OK ) {
-	// This will add itself to the notebook and be destroyed when
-	// the notebook is destroyed.
-	new StructPage( struct_notebook, -1, this, struct_notebook,
-			dlg.GetPath(), true );
-	// We won't get an event for this new notebook page coming to
-	// the front, so we'll just pretend we did
-	wxCommandEvent dummy;
-	OnNotebookPageChanged(dummy);
+	wxString fileName;
+	fileName = dlg.GetPath();
+	file(fileName, true);
     }
 }
 
@@ -1411,6 +1628,187 @@ GFrame::OnMenuCustomizeFont(wxCommandEvent &event)
 
 /**
  *******************************************************************
+ * Modify the StructPage's pen and tell it to repaint.
+ *
+ * \param event The event caused by selecting one of the Customize menu
+ *      items. At the very least event.GetId() must return the right
+ *      thing.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it may have altered one of
+ *      its pens and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it may have altered one of
+ *      its pens and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuCustomizePen(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage) {
+	int id = event.GetId()/*, scale = curPage->getScale()*/;
+	wxPen *thePen = NULL;
+	switch (id) {
+	case MENU_CUSTOMIZE_SWITCHING_PEN_COLOR:
+	case MENU_CUSTOMIZE_SWITCHING_PEN_WIDTH:
+	case MENU_CUSTOMIZE_SWITCHING_PEN_STYLE:
+	    thePen = &curPage->switchingPen;
+	    break;
+	case MENU_CUSTOMIZE_CONDITIONAL_PEN_COLOR:
+	case MENU_CUSTOMIZE_CONDITIONAL_PEN_WIDTH:
+	case MENU_CUSTOMIZE_CONDITIONAL_PEN_STYLE:
+	    thePen = &curPage->conditionalPen;
+	    break;
+	case MENU_CUSTOMIZE_BOTH_PEN_COLOR:
+	case MENU_CUSTOMIZE_BOTH_PEN_WIDTH:
+	case MENU_CUSTOMIZE_BOTH_PEN_STYLE:
+	    thePen = &curPage->bothPen;
+	    break;
+	case MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR:
+	case MENU_CUSTOMIZE_FRAMEBORDER_PEN_WIDTH:
+	case MENU_CUSTOMIZE_FRAMEBORDER_PEN_STYLE:
+	    thePen = &curPage->frameBorderPen;
+	    break;
+	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_COLOR:
+	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_WIDTH:
+	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_STYLE:
+	    thePen = &curPage->chunkBorderPen;
+	    break;
+	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_COLOR:
+	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_WIDTH:
+	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_STYLE:
+	    thePen = &curPage->controlPointPen;
+	    break;
+	case MENU_CUSTOMIZE_NODE_PEN_COLOR:
+	case MENU_CUSTOMIZE_NODE_PEN_WIDTH:
+	case MENU_CUSTOMIZE_NODE_PEN_STYLE:
+	    thePen = &curPage->nodePen;
+	    break;
+	default:
+	    return;
+	}
+	wxColour newColor;
+	int newWidth;
+	int newStyleNum;
+	int penStyle;
+	static const wxString choices[] = { wxT("Solid"),
+					    wxT("Transparent"),
+					    wxT("Dotted"),
+					    wxT("Dashed (long dashes)"),
+					    wxT("Dashed (shart dashes)"),
+					    wxT("Dotted and Dashed") };
+	switch (id) {
+	case MENU_CUSTOMIZE_SWITCHING_PEN_COLOR:
+	case MENU_CUSTOMIZE_CONDITIONAL_PEN_COLOR:
+	case MENU_CUSTOMIZE_BOTH_PEN_COLOR:
+	case MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR:
+	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_COLOR:
+	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_COLOR:
+	case MENU_CUSTOMIZE_NODE_PEN_COLOR:
+	    newColor = wxGetColourFromUser(this, thePen->GetColour());
+	    if (newColor.Ok())
+		thePen->SetColour(newColor);
+	    //else wxLogMessage("User canceled or invalid color");
+	    break;
+	case MENU_CUSTOMIZE_SWITCHING_PEN_WIDTH:
+	case MENU_CUSTOMIZE_CONDITIONAL_PEN_WIDTH:
+	case MENU_CUSTOMIZE_BOTH_PEN_WIDTH:
+	case MENU_CUSTOMIZE_FRAMEBORDER_PEN_WIDTH:
+	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_WIDTH:
+	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_WIDTH:
+	case MENU_CUSTOMIZE_NODE_PEN_WIDTH:
+	    penStyle = thePen->GetStyle();
+	    if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
+		 penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
+		 penStyle == wxUSER_DASH ) {
+		wxLogMessage("Dots and dashes can only be used with pens of width 1, so you can't change the width until you change the style.");
+	    } else {
+		newWidth = wxGetNumberFromUser( wxT("How wide should the pen be?"),
+						wxT("Width: "),
+						wxT("Change Pen Width"),
+						thePen->GetWidth(), 1, 256 );
+		if (newWidth > 0)
+		    thePen->SetWidth(newWidth);
+	    }
+	    break;
+	case MENU_CUSTOMIZE_SWITCHING_PEN_STYLE:
+	case MENU_CUSTOMIZE_CONDITIONAL_PEN_STYLE:
+	case MENU_CUSTOMIZE_BOTH_PEN_STYLE:
+	case MENU_CUSTOMIZE_FRAMEBORDER_PEN_STYLE:
+	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_STYLE:
+	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_STYLE:
+	case MENU_CUSTOMIZE_NODE_PEN_STYLE:
+	    newStyleNum = wxGetSingleChoiceIndex( wxT("What style would you like?"),
+						  wxT("Change Pen Style"),
+						  6, choices, this );
+	    if (newStyleNum >= 0) {
+		if ( 2 <= newStyleNum && newStyleNum <= 5 &&
+		     thePen->GetWidth() != 1 ) {
+		    thePen->SetWidth(1);
+		    wxLogMessage( "Dots and dashes require a pen width of 1.\n"
+				  "The width has been altered accordingly." );
+		}
+		switch (newStyleNum) {
+		case 0:
+		    thePen->SetStyle(wxSOLID);
+		    break;
+		case 1:
+		    thePen->SetStyle(wxTRANSPARENT);
+		    break;
+		case 2:
+		    thePen->SetStyle(wxDOT);
+		    break;
+		case 3:
+		    thePen->SetStyle(wxLONG_DASH);
+		    break;
+		case 4:
+		    thePen->SetStyle(wxSHORT_DASH);
+		    break;
+		case 5:
+		    thePen->SetStyle(wxDOT_DASH);
+		    break;
+		/*case 6:
+		    thePen->SetStyle(wxBDIAGONAL_HATCH);
+		    break;
+		case 7:
+		    thePen->SetStyle(wxCROSSDIAG_HATCH);
+		    break;
+		case 8:
+		    thePen->SetStyle(wxFDIAGONAL_HATCH);
+		    break;
+		case 9:
+		    thePen->SetStyle(wxCROSS_HATCH);
+		    break;
+		case 10:
+		    thePen->SetStyle(wxHORIZONTAL_HATCH);
+		    break;
+		case 11:
+		    thePen->SetStyle(wxVERTICAL_HATCH);
+		    break;*/
+		default:
+		    return;
+		}
+	    }
+	    break;
+	default:
+	    return;
+	}
+	curPage->redraw();
+	curPage->blit();
+    }
+}
+
+/**
+ *******************************************************************
  * Update menus, etc. when the page is changed.
  *
  * \param event Ignored.
@@ -1816,9 +2214,19 @@ StructPage::initNodes( void )
 	/* If this is a new frame, add a frame separator and move over
 	 * yet again. */
 	if (fp->rvInfoVector[i].frame != curFrame) {
-	    frameEnds.push_back(new VizSep( curPos.x, this,
-					    curFrame==fp->_firstChunkframe-1 ||
-					    curFrame==fp->_lastChunkframe ));
+	    VizSep::FrameSepType sepType;
+	    if (curFrame < fp->_firstChunkframe-1)
+		sepType = VizSep::PROLOGUE;
+	    else if (curFrame == fp->_firstChunkframe-1)
+		sepType = VizSep::BEGIN_CHUNK;
+	    else if ( fp->_firstChunkframe <= curFrame &&
+		      curFrame < fp->_lastChunkframe )
+		sepType = VizSep::CHUNK;
+	    else if (curFrame == fp->_lastChunkframe)
+		sepType = VizSep::END_CHUNK;
+	    else //if (fp->_lastChunkframe < curFrame)
+		sepType = VizSep::EPILOGUE;
+	    frameEnds.push_back(new VizSep( curPos.x, this, sepType ));
 	    // if a position was specified, move the frameEnd to it
 	    key.sprintf("frameEnds[%d].x", i);
 	    value = config[key];
@@ -2169,6 +2577,22 @@ StructPage::OnChar( wxKeyEvent &event )
 	deleteSelectedCps();
 	redraw();
 	blit();
+    } else if (event.m_keyCode == WXK_LEFT) {
+	moveSelected(-ACTUAL_SCALE*(event.ShiftDown()?10:1), 0);
+	redraw();
+	blit();
+    } else if (event.m_keyCode == WXK_UP) {
+	moveSelected(0, -ACTUAL_SCALE*(event.ShiftDown()?10:1));
+	redraw();
+	blit();
+    } else if (event.m_keyCode == WXK_RIGHT) {
+	moveSelected(ACTUAL_SCALE*(event.ShiftDown()?10:1), 0);
+	redraw();
+	blit();
+    } else if (event.m_keyCode == WXK_DOWN) {
+	moveSelected(0, ACTUAL_SCALE*(event.ShiftDown()?10:1));
+	redraw();
+	blit();
     } else {
 	event.Skip();
     }
@@ -2485,7 +2909,13 @@ StructPage::blit( wxDC& dc )
 {
     // Clear away what used to be there to keep the background clean
     dc.SetBackground(*wxLIGHT_GREY_BRUSH);
+    wxCoord w, h;
+    dc.GetSize(&w, &h);
+    wxRegion tempClip(0, 0, w, h);
+    tempClip.Subtract(wxRegion(0, 0, getWidth(), getHeight()));
+    dc.SetClippingRegion(tempClip);
     dc.Clear();
+    dc.DestroyClippingRegion();
     // all the action is the constructor and destructor
     wxBufferedDC bdc( &dc, *content );
 }
@@ -2678,21 +3108,6 @@ StructPage::itemAt( const wxPoint& pt )
     // XXX: This may be the best way, but is it?
     int numNodes = nodes.size();
 
-    if (drawNodeNames) {
-	// node name tags (only if they're drawn)
-	for (int i = 0; i < numNodes; i++) {
-	    if (nodeNameTags[i]->onMe( pt ))
-		return nodeNameTags[i];
-	}
-    }
-
-    if (drawNodes) {
-	// nodes
-	for (int i = 0; i < numNodes; i++) {
-	    if (nodes[i]->onMe( pt ))
-		return nodes[i];
-	}
-    }
     if (drawCPs) {
 	// then arcs
 	for (int i = 0; i < numNodes; i++) {
@@ -2706,6 +3121,21 @@ StructPage::itemAt( const wxPoint& pt )
 		    }
 		}
 	    }
+	}
+    }
+    if (drawNodeNames) {
+	// node name tags (only if they're drawn)
+	for (int i = 0; i < numNodes; i++) {
+	    if (nodeNameTags[i]->onMe( pt ))
+		return nodeNameTags[i];
+	}
+    }
+
+    if (drawNodes) {
+	// nodes
+	for (int i = 0; i < numNodes; i++) {
+	    if (nodes[i]->onMe( pt ))
+		return nodes[i];
 	}
     }
     if (drawFrameSeps) {
@@ -2796,15 +3226,30 @@ StructPage::draw( wxDC& dc )
 
     if (drawFrameSeps) {
 	// first draw frame/chunk separators
+	if ( frameEnds[0]->sepType == VizSep::PROLOGUE ||
+	     frameEnds[0]->sepType == VizSep::BEGIN_CHUNK )
+	    dc.DrawText(wxT("frame 0 (P)"), 10*ACTUAL_SCALE, 10*ACTUAL_SCALE);
+	else dc.DrawText(wxT("frame 0 (C)"), 10*ACTUAL_SCALE, 10*ACTUAL_SCALE);
 	for (unsigned int i = 0; i < frameEnds.size(); i++) {
 	    frameEnds[i]->draw(&dc);
+	    char partition;
+	    wxString label;
+	    if ( frameEnds[i]->sepType == VizSep::PROLOGUE )
+		partition = 'P';
+	    else if ( frameEnds[i]->sepType == VizSep::BEGIN_CHUNK ||
+		      frameEnds[i]->sepType == VizSep::CHUNK )
+		partition = 'C';
+	    else partition = 'E';
+	    label.sprintf("frame %d (%c)", i+1, partition);
+	    dc.DrawText( label, frameEnds[i]->x + 10*ACTUAL_SCALE,
+			 10*ACTUAL_SCALE );
 	}
     }
 
     // then draw arcs
     for (int i = 0; i < numNodes; i++) {
 	for (int j = 0; j < numNodes; j++) {
-	    if (arcs[i][j]) arcs[i][j]->draw(&dc);
+	    if (arcs[i][j]) arcs[i][j]->draw(&dc, VizArc::DRAW_ARCS);
 	}
     }
 
@@ -2822,6 +3267,14 @@ StructPage::draw( wxDC& dc )
 	// draw node names
 	for (int i = 0; i < numNodes; i++) {
 	    nodeNameTags[i]->draw(&dc);
+	}
+    }
+
+    // then draw control points
+    for (int i = 0; i < numNodes; i++) {
+	for (int j = 0; j < numNodes; j++) {
+	    if (arcs[i][j])
+		arcs[i][j]->draw(&dc, VizArc::DRAW_CPS);
 	}
     }
 
@@ -3797,78 +4250,83 @@ VizArc::~VizArc( void )
  * \return void
  *******************************************************************/
 void
-VizArc::draw( wxDC *dc )
+VizArc::draw( wxDC *dc, int drawFlags )
 {
-    wxPen *pen = NULL;
-    /* Set the pen appropriately depending on whether it's switching,
-     * conditional, or both. */
-    if (switching && conditional)
-	pen = &page->bothPen;
-    else if (switching)
-	pen = &page->switchingPen;
-    else if (conditional)
-	pen = &page->conditionalPen;
-
     wxPen oldPen = dc->GetPen();
-    dc->SetPen(*pen);
+    if ( drawFlags & DRAW_ARCS ) {
+	wxPen *pen = NULL;
+	/* Set the pen appropriately depending on whether it's switching,
+	 * conditional, or both. */
+	if (switching && conditional)
+	    pen = &page->bothPen;
+	else if (switching)
+	    pen = &page->switchingPen;
+	else if (conditional)
+	    pen = &page->conditionalPen;
 
-    /* Draw whatever splines, lines, or direct lines the StructPage
-     * calls for. */
-    if ( page->getViewSplines() )
-	dc->DrawSpline(points);
-    if ( page->getViewLines() )
-	dc->DrawLines(points);
-    if ( page->getViewDirectLines() )
-	dc->DrawLine((*cps)[0]->pos, (*cps)[cps->size()-1]->pos);
+	dc->SetPen(*pen);
 
-    dc->SetPen(oldPen);
-    if ( page->getViewArrowHeads() ) {
-	// draw the arrow (quite a complicated process really)
-	wxPoint arrow[3];
-	int opp, adj;
-	double hyp;
-	opp = (*cps)[cps->size()-1]->pos.y - (*cps)[cps->size()-2]->pos.y;
-	adj = (*cps)[cps->size()-1]->pos.x - (*cps)[cps->size()-2]->pos.x;
-	hyp = hypot( opp, adj );
+	/* Draw whatever splines, lines, or direct lines the StructPage
+	 * calls for. */
+	if ( page->getViewSplines() )
+	    dc->DrawSpline(points);
+	if ( page->getViewLines() )
+	    dc->DrawLines(points);
+	if ( page->getViewDirectLines() )
+	    dc->DrawLine((*cps)[0]->pos, (*cps)[cps->size()-1]->pos);
 
-	arrow[0].x = (*cps)[cps->size()-1]->pos.x -
-	    (int)(NODE_RADIUS * adj / hyp);
-	arrow[0].y = (*cps)[cps->size()-1]->pos.y -
-	    (int)(NODE_RADIUS * opp / hyp);
-	
-	arrow[1].x = arrow[0].x - (int)round(ARROW_LEN * adj / hyp) +
-	    (int)round(ARROW_WID * opp / hyp);
-	arrow[1].y = arrow[0].y - (int)round(ARROW_LEN * opp / hyp) -
-	    (int)round(ARROW_WID * adj / hyp);
-	arrow[2].x = arrow[0].x - (int)round(ARROW_LEN * adj / hyp) -
-	    (int)round(ARROW_WID * opp / hyp);
-	arrow[2].y = arrow[0].y - (int)round(ARROW_LEN * opp / hyp) +
-	    (int)round(ARROW_WID * adj / hyp);
+	if ( page->getViewArrowHeads() ) {
+	    // draw the arrow (quite a complicated process really)
+	    wxPoint arrow[3];
+	    int opp, adj;
+	    double hyp;
+	    opp = (*cps)[cps->size()-1]->pos.y - (*cps)[cps->size()-2]->pos.y;
+	    adj = (*cps)[cps->size()-1]->pos.x - (*cps)[cps->size()-2]->pos.x;
+	    hyp = hypot( opp, adj );
 
-	wxBrush oldBrush = dc->GetBrush();
-	dc->SetBrush(*wxBLACK_BRUSH);
-	dc->DrawPolygon( 3, arrow );
-	dc->SetBrush(oldBrush);
-    }
+	    arrow[0].x = (*cps)[cps->size()-1]->pos.x -
+		(int)(NODE_RADIUS * adj / hyp);
+	    arrow[0].y = (*cps)[cps->size()-1]->pos.y -
+		(int)(NODE_RADIUS * opp / hyp);
 
-    // draw the control points
-    dc->SetPen(page->controlPointPen);
-    int end = points->GetCount() - 1;
-    assert(end > 0);
-    wxNode *node = points->GetFirst();
-    node = node->GetNext();
-    for ( int i = 1; i < end; i++, node = node->GetNext() ) {
-	assert(node != NULL);
-	wxPoint *p = (wxPoint *)node->GetData();
-	if ( (*cps)[i]->getSelected() )
-	    dc->DrawRectangle(p->x-(3*ACTUAL_SCALE)/2, p->y-(3*ACTUAL_SCALE)/2,
-			      3*ACTUAL_SCALE, 3*ACTUAL_SCALE);
-	if ( page->getViewCPs() ) {
-	    dc->DrawRectangle( p->x-ACTUAL_SCALE/2, p->y-ACTUAL_SCALE/2,
-			       ACTUAL_SCALE, ACTUAL_SCALE );
+	    arrow[1].x = arrow[0].x - (int)round(ARROW_LEN * adj / hyp) +
+		(int)round(ARROW_WID * opp / hyp);
+	    arrow[1].y = arrow[0].y - (int)round(ARROW_LEN * opp / hyp) -
+		(int)round(ARROW_WID * adj / hyp);
+	    arrow[2].x = arrow[0].x - (int)round(ARROW_LEN * adj / hyp) -
+		(int)round(ARROW_WID * opp / hyp);
+	    arrow[2].y = arrow[0].y - (int)round(ARROW_LEN * opp / hyp) +
+		(int)round(ARROW_WID * adj / hyp);
+
+	    wxBrush oldBrush = dc->GetBrush();
+	    dc->SetBrush(*wxBLACK_BRUSH);
+	    dc->DrawPolygon( 3, arrow );
+	    dc->SetBrush(oldBrush);
 	}
+	dc->SetPen(oldPen);
     }
-    dc->SetPen(oldPen);
+
+    if (drawFlags & DRAW_CPS) {
+	// draw the control points
+	dc->SetPen(page->controlPointPen);
+	int end = points->GetCount() - 1;
+	assert(end > 0);
+	wxNode *node = points->GetFirst();
+	node = node->GetNext();
+	for ( int i = 1; i < end; i++, node = node->GetNext() ) {
+	    assert(node != NULL);
+	    wxPoint *p = (wxPoint *)node->GetData();
+	    if ( (*cps)[i]->getSelected() )
+		dc->DrawRectangle( p->x-(3*ACTUAL_SCALE)/2,
+				   p->y-(3*ACTUAL_SCALE)/2,
+				   3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
+	    if ( page->getViewCPs() ) {
+		dc->DrawRectangle( p->x-ACTUAL_SCALE/2, p->y-ACTUAL_SCALE/2,
+				   ACTUAL_SCALE, ACTUAL_SCALE );
+	    }
+	}
+	dc->SetPen(oldPen);
+    }
 }
 
 
@@ -3889,11 +4347,11 @@ VizArc::draw( wxDC *dc )
  *
  * \return Nothing.
  *******************************************************************/
-VizSep::VizSep( wxCoord newX, StructPage *newPage, bool newChunkBorder )
+VizSep::VizSep( wxCoord newX, StructPage *newPage, FrameSepType newSepType )
 {
     x = newX;
     page = newPage;
-    chunkBorder = newChunkBorder;
+    sepType = newSepType;
 }
 
 /**
@@ -3915,7 +4373,7 @@ VizSep::draw( wxDC * dc )
 {
     // pick a pen
     wxPen *pen = &page->frameBorderPen;
-    if (chunkBorder)
+    if (sepType == BEGIN_CHUNK || sepType == END_CHUNK)
 	pen = &page->chunkBorderPen;
 
     // remember the old pen
