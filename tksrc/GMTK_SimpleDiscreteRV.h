@@ -158,15 +158,21 @@ public:
     void emClearSwappedBit() {;}
     void emSwapCurAndNew() {;}
 
-    RandomVariable * clone() 
-    { RandomVariable *rv = new SimpleDiscreteRV(label, 
+  RandomVariable* create() {
+    RandomVariable *rv = new SimpleDiscreteRV(label, 
       ((discrete)?(Discrete):(Continuous)), cardinality);
-      rv->basicClone(this);
-      rv->tieParameters(this);
+    return rv;
+  }
+
+    RandomVariable * clone() 
+    { 
+      RandomVariable *rv = RandomVariable::clone();
+      rv->cardinality = cardinality;
+      rv->tieParametersWith(this);
       return rv;
     } 
 
-    void tieParameters(RandomVariable *other)
+    void tieParametersWith(RandomVariable *other)
     { cout << "Can't tie parameters for simple RVs\n"; }
 };
 

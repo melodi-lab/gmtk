@@ -18,6 +18,8 @@
 #include <numeric>
 #include "GMTK_SimpleDiscreteRV.h"
 
+#include "rand.h"
+
 void SimpleDiscreteRV::recMakeRandom(int pos)
 {
     if (unsigned(pos)==(*curConditionalParents).size())  // at the end
@@ -32,7 +34,7 @@ void SimpleDiscreteRV::recMakeRandom(int pos)
         logpr s=0.0;
         for (int i=0; i<cardinality; i++)
         {
-            logpr v = logpr(float(rand())/RAND_MAX);
+	    logpr v = rnd.drand48();
             s += v;
             vals.push_back(v); 
         }

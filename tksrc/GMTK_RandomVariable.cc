@@ -74,8 +74,11 @@ void RandomVariable::setParents(vector<RandomVariable *> &sparents,
  *-----------------------------------------------------------------------
  * clone
  *      copies the data structures necessary for unrolling
- *      all random variables have these structures.
- * 
+ *      all random variables have these structures. Note that
+ *      this routine clones *ONLY* those attributes that
+ *      are abstract, in that they are associated with 
+ *      all derived classes of RandomVariable. 
+ *
  * Preconditions:
  *      dtMapper and all parents lists must be set appropriately.
  *
@@ -111,6 +114,77 @@ RandomVariable* RandomVariable::clone()
   return rv;
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * identicalStructureWith.
+ *      Returns true if this rv has identical structure with that of other.
+ *      "identical structure" means that the r.v. have the same
+ *      number, type, and cardinality parents. If this returns
+ *      true, then it will be valid to tie parameters between
+ *      these two random variables.
+ *
+ * 
+ * Preconditions:
+ *      Both rvs must have parents filled in.
+ *
+ * Postconditions:
+ *      If function returns true, then the variables have
+ *      identical structure, otherwise not.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      indicating boolean.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool
+RandomVariable::identicalStructureWith(const RandomVariable& other)
+{
+
+  if (discrete != other.discrete)
+    return false;
+
+  // check that switching parents are compatible
+  if (switchingParents.size() != other.switchingParents.size())
+    return false;
+  for (unsigned i=0;i<switchingParents.size();i++) {
+    if (switchingParents[i]->discrete !=
+	other.switchingParents[i]->discrete)
+      return false;
+    if (switchingParents[i]->discrete) {
+      if (switchingParents[i]->cardinality !=
+	  other.switchingParents[i]->cardinality)
+	return false;
+    }
+  }
+
+  // switching parents check out ok, now check all sets
+  // of conditional parents
+  if (conditionalParentsList.size() !=
+      other.conditionalParentsList.size())
+    return false;
+
+  for (unsigned i=0;i<conditionalParentsList.size();i++) {
+    if (conditionalParentsList[i].size() !=
+	other.conditionalParentsList[i].size())
+      return false;
+    for (unsigned j=0;j<conditionalParentsList[i].size();j++) {
+      if (conditionalParentsList[i][j]->discrete !=
+	  other.conditionalParentsList[i][j]->discrete)
+	return false;
+      if (conditionalParentsList[i][j]->discrete) {
+	if (conditionalParentsList[i][j]->cardinality !=
+	    other.conditionalParentsList[i][j]->cardinality)
+	  return false;
+      }
+    }
+  }
+  return true;
+}
 
 
 
