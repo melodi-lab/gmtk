@@ -351,8 +351,8 @@ void gaussianNorm(FILE* out_fp,
     for (size_t i=0;i<frrng.length();i++) {
       ftr_sum[i] = ftr_sumsq[i] = 0.0;
       ftr_means[i] = ftr_stds[i] = 0.0;
-      ftr_maxs[i] = -MAXFLOAT;
-      ftr_mins[i] = MAXFLOAT;
+      ftr_maxs[i] = -FLT_MAX;
+      ftr_mins[i] = FLT_MAX;
     }
 
     ftr_ranges = new float[frrng.length()];

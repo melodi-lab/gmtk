@@ -11,7 +11,6 @@
 #include <values.h>
 #endif
 #include <math.h>
-#include <values.h>
 #include "GMTK_ObsStats.h"
 
 typedef struct { 
@@ -58,8 +57,8 @@ void obsStats(FILE *out_fp, ObservationMatrix* obs_mat,Range& srrng, Range& frrn
     for (i=0;i<frrng.length();i++) {
       ftr_sum[i] = ftr_sumsq[i] = 0.0;
       ftr_means[i] = ftr_stds[i] = 0.0;
-      ftr_maxs[i] = -MAXFLOAT;
-      ftr_mins[i] = MAXFLOAT;
+      ftr_maxs[i] = -FLT_MAX;
+      ftr_mins[i] = FLT_MAX;
     }
 
     for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
@@ -217,8 +216,8 @@ void obsStats(FILE *out_fp, ObservationMatrix* obs_mat,Range& srrng, Range& frrn
     ftr_maxs_locs_p = ftr_maxs_locs;
     ftr_mins_locs_p = ftr_mins_locs;
 
-    double max_maxs_stds=-MAXFLOAT;
-    double min_mins_stds=+MAXFLOAT;
+    double max_maxs_stds=-FLT_MAX;
+    double min_mins_stds=+FLT_MAX;
     size_t *hist_p = histogram;
     for (i=0;i<frrng.length();i++) {
       const double maxs_stds = (*ftr_maxs_p)/(*ftr_stds_p);

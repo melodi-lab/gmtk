@@ -12,6 +12,7 @@
 
 #include <math.h>
 #include "GMTK_ObsNorm.h"
+#include "general.h"
 
 void obsNorm(FILE*  out_fp,
 	     ObservationMatrix* obs_mat,
@@ -234,7 +235,7 @@ public:
 
     tokFile(FILE* a_file, const char *a_name = "(unknown)") {
         file = a_file;
-        filename = strdup(a_name);
+        filename = copyToNewStr(a_name);
         buflen = 1024;
         buf = new char[buflen];
         bufpos = 0;
@@ -242,7 +243,7 @@ public:
         linect = 0;
     }
     ~tokFile(void) {
-        free(filename);
+        delete [] filename;
         delete [] buf;
     }
     int getNextTok(char **ret);
