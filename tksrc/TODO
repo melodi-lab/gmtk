@@ -34,4 +34,15 @@ incorporated into the package at some point.
     index -1 corresponds to, with probability 1, gaussian
     index -2 corresponds to, with probability 0, gaussian
 
-- 
+- An anytime clique finding algorithm that searches
+  for the best clique tree in an hour, day, weekend, etc.
+  Save the resulting clique (and model description) to
+  a file so that it can be reused multiple times.
+
+- Produce messages to the user saying that what the clique
+  sizes are and that they might want to adjust the 
+  structure to reduce clique sizes if they become too large.
+
+- Q: the inference procedure works both with clique chains
+  and clique trees???
+
