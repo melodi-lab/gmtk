@@ -99,7 +99,6 @@ public:
 	unsigned _cardinality = 0)
     : RV(_rv_info,_timeFrame),cardinality(_cardinality)
   {
-    t.discrete = 1;
     curCPT = NULL;
   }
 

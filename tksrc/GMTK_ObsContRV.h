@@ -52,12 +52,6 @@ public:
 	    unsigned _timeFrame = ~0x0)
     : ContRV(_rv_info,_timeFrame)
   {
-    t.discrete = 0;
-    t.hidden = 0;
-    t.switching = 0;
-    t.scale = 0;
-    t.penalty = 0;
-    t.shift = 0;
   }
   virtual ~ObsContRV() {;}
 
@@ -91,7 +85,6 @@ public:
   virtual ObsContRV* cloneRVShell();
   virtual ObsContRV* create() {
     ObsContRV*rv = new ObsContRV(rv_info,frame());
-    rv->t = t;
     return rv;
   }
 

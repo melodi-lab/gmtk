@@ -68,11 +68,6 @@ public:
 	       unsigned _cardinality = 0)
     : ObsDiscRV(_rv_info,_timeFrame,_cardinality)
   {
-    t.hidden = 0;
-    t.switching = 1;
-    t.scale = 0;
-    t.penalty = 0;
-    t.shift = 0;
   }
 
   void printSelf(FILE*f,bool nl=true);
@@ -103,7 +98,6 @@ public:
   virtual Sw_ObsDiscRV* cloneRVShell();
   virtual Sw_ObsDiscRV* create() {
     Sw_ObsDiscRV*rv = new Sw_ObsDiscRV(rv_info,frame(),cardinality);
-    rv->t = t;
     return rv;
   }
 

@@ -43,11 +43,6 @@ public:
 		   unsigned _cardinality = 0)
     : HidDiscRV(_rv_info,_timeFrame,_cardinality)
   {
-    t.hidden = 1;
-    t.switching = 0;
-    t.scale = 1;
-    t.penalty = 1;
-    t.shift = 1;
   }
 
   virtual void printSelf(FILE *f,bool nl=true) {
@@ -88,7 +83,6 @@ public:
   }
   virtual ScPnSh_HidDiscRV* create() {
     ScPnSh_HidDiscRV*rv = new ScPnSh_HidDiscRV(rv_info,frame(),cardinality);
-    rv->t = t;
     return rv;
   }
 

@@ -108,7 +108,6 @@ public:
 	 unsigned _timeFrame = ~0x0)
     : RV(_rv_info,_timeFrame)
   {
-    t.discrete = 0;
   }
 
   virtual ~ContRV() {;}

@@ -43,11 +43,6 @@ public:
 		   unsigned _cardinality = 0)
     : ObsDiscRV(_rv_info,_timeFrame,_cardinality)
   {
-    t.hidden = 0;
-    t.switching = 0;
-    t.scale = 1;
-    t.penalty = 1;
-    t.shift = 1;
   }
 
   virtual void printSelf(FILE *f,bool nl=true) {
@@ -79,7 +74,6 @@ public:
   }
   virtual ScPnSh_ObsDiscRV* create() {
     ScPnSh_ObsDiscRV*rv = new ScPnSh_ObsDiscRV(rv_info,frame(),cardinality);
-    rv->t = t;
     return rv;
   }
 

@@ -1757,8 +1757,10 @@ FileParser::createRandomVariableGraph()
       assert(0);
 
     RV*rv;
-    // go through and consider all possible RV types instantiating the
-    // currect one here.
+    // Go through and consider all possible RV types instantiating the
+    // currect one here. The reason for the deep class hierarchy is
+    // that it is much better to do this here, at parse time, then to
+    // do it at run time during inference.
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
       // discrete
       if (rvInfoVector[i].rvDisp == RVInfo::d_hidden) {

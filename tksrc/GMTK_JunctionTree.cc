@@ -4806,7 +4806,6 @@ spare code:
   JT_Partition jt_part(part);
 
 
-
   // code from above that is commented out but not yet deleted. 
   // it is kept here for now to clarify development.
   // tag: ABCDEFGHIJK at end of this file.
@@ -4818,7 +4817,19 @@ spare code:
    // sep that has next max.
    // actually, first compute max, and then remove it,
    // then repeat (so this is an N^2 algorithm for "sorting").
-   
+
+
+// Fri Oct 08 21:32:45 2004: new idea: sort in reverse order, by
+// separator that has the minimum intersection with others. At each
+// step, when we have found the sep with min intersection among
+// current number of seps, we place this at the *end* of the
+// separation iteration order. Once we get back down to two
+// separators, we start with the one of minimal weight (perhaps???)
+// What possible options might be given to command line here?
+//   - sort min 1st and place at end, sort max first and place at beginning
+//   - when two seps, what to do (min weight, max weight)
+//   - 
+
 
     {
     // TODO: need to determine if there is an optimum order or not. If

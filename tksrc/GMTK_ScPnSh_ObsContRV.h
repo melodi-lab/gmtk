@@ -42,11 +42,6 @@ public:
 		   unsigned _timeFrame = ~0x0)
     : ObsContRV(_rv_info,_timeFrame)
   {
-    t.hidden = 0;
-    t.switching = 0;
-    t.scale = 1;
-    t.penalty = 1;
-    t.shift = 1;
   }
 
   virtual void printSelf(FILE *f,bool nl=true) {
@@ -76,7 +71,6 @@ public:
   }
   virtual ScPnSh_ObsContRV* create() {
     ScPnSh_ObsContRV*rv = new ScPnSh_ObsContRV(rv_info,frame());
-    rv->t = t;
     return rv;
   }
 

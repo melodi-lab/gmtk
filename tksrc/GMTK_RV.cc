@@ -291,7 +291,9 @@ void RV::setParents(vector<RV *> &sparents,vector<vector<RV *> > &cpl)
   allParents = cpl[0];
 
   // now set this as a child of all parents, making sure to avoid
-  // duplicates by creating a temporary set.
+  // duplicates by creating a temporary set. Note that this might
+  // change order in child array relative to parent array, but this is
+  // ok, as we never rely on order of variables in child array.
   set<RV *> parentSet;
   for (unsigned i=0;i<allParents.size();i++) {
     parentSet.insert(allParents[i]);
@@ -301,8 +303,6 @@ void RV::setParents(vector<RV *> &sparents,vector<vector<RV *> > &cpl)
     RV* rv = (*si);
     rv->allChildren.push_back(this);
   }
-
-
 
 }
 
