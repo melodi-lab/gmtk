@@ -13,6 +13,66 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
+ * An example of how you'd specify VECPTs:
+ (in a masterfile:)
+
+VE_CPT_IN_FILE inline
+
+2  % num VECPTs 
+
+0
+VEL_VECPT  % name of VECPT
+numParents:1 % num par
+parentCard:2 % par card
+selfCard:2 % self card
+of:VE_FILE_VEL
+nfs:2 % nfloats
+nis:0 % nints
+frs:all % float range
+irs:all % int range
+pr:all % must be all
+fmt:ascii
+swap:F % endian swapping condition
+preTransforms:X
+postTransforms:X
+sentRange:all
+EOF
+
+1
+TB_LOC_VECPT
+numParents:1 % num par
+parentCard:TB_LOC_CARD % par card
+selfCard:2 % self card
+of:VE_FILE_TB_LOC
+nfs:TB_LOC_CARD % nfloats
+fmt:ascii
+EOF
+
+Note the "EOF" at the end of each VECPT.  Also, parsing of the VECPTs is
+rudimentary and no spaces are allowed around the ":".
+
+Also the order in which the arguments are written is not important.
+
+
+The default values are:
+
+numParents:1
+parentCard:0 % will cause an error if not updated 
+selfCard:2
+of:""  % will cause an error if not updated
+nfs:0  % will cause an error if not updated
+nis:0
+frs:all
+irs:all
+pr:all
+fmt:pfile
+swap:F 
+preTransforms:X
+postTransforms:X
+sentRange:all
+
+
+ *
  * Copyright (c) 2001, < fill in later >
  *
  * Permission to use, copy, modify, and distribute this
@@ -67,81 +127,139 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 
+
 void
 VECPT::read(iDataStreamFile& is)
 {
-  string str;
 
+  //Initialize defaults
+  // _numParents and _card already initialized in VECPT constructor
+  cardinalities[0]=0; // triggers an error if not updated
+  nfs=0;  // idem
+  nis=0;
+  frs="all";
+  irs="all";
+  pr_rs=NULL;
+  fmt="pfile";
+  iswp=false;
+  sentRange=NULL;
+  preTransforms=NULL;
+  postTransforms=NULL;
+
+  string str;
+  string option_name;
+  string option_value;
+  unsigned lineNum=0;
   // read the name of the object.
   NamedObject::read(is);
 
-  // read the cardinalities.
-  is.read(_numParents,"Can't read VirtualEvidenceCPT's num parents");
-  if (_numParents != 1) 
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' must have exactly one(1) rather than %d parents",
-	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
-  cardinalities.resize(_numParents);
-  // read the parent cardinality
-  is.read(cardinalities[0],"Can't read VirtualEvidenceCPT's parent cardinality");
+  //  bool done=false;
+  is.read(str);
+  while(! (is.isEOF() || str=="EOF")) {
+    lineNum++;
+    // parse the string we have just read
+    string::size_type len=str.length();
+    string::size_type pos=str.find(":",0);
+    if (pos == string::npos) error("ERROR: Invalid option format at line %u while reading the VECPT.  The format should be x:y where x is the option name and y the option value",is.lineNo());
+    option_value=str.substr(pos+1,len-pos-1);
+    option_name=str.substr(0,pos);
+    char * tmpString=new char[len];
+    strcpy(tmpString,option_value.c_str());
+    if(option_name=="numParents") {
+      sscanf(option_value.c_str(),"%u",&_numParents);
+      if (_numParents != 1)
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' must have exactly one(1) rather than %d parents",is.fileName(),is.lineNo(),name().c_str(),_numParents);
+      cardinalities.resize(_numParents);
+    }
+    else if(option_name == "parentCard") {
+      sscanf(option_value.c_str(),"%u",&cardinalities[0]);
+    } 
+    else if(option_name == "selfCard") {
+      sscanf(option_value.c_str(),"%u",&_card);
+      if (_card != 2)
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s', child cardinality must be two(2) rather than %d.", is.fileName(),is.lineNo(),name().c_str(),_card);
+    }
+    else if(option_name == "of") {
+      obsFileName=option_value;
+    }  
+    else if(option_name == "nfs") {
+      sscanf(option_value.c_str(),"%u",&nfs);
+    }  
+    else if(option_name == "nis") {
+      sscanf(option_value.c_str(),"%u",&nis);
+    }  
+    else if(option_name == "frs") {
+      frs=option_value;
+    }  
+    else if(option_name == "irs") {
+      irs=option_value;
+    }  
+    else if(option_name == "pr") {
+      pr_rs=new char[option_value.length()];
+      strcpy(pr_rs,option_value.c_str());
+    }  
+    else if(option_name == "fmt") {
+      fmt=option_value;
+    }  
+    else if(option_name == "swap") {
+      char c = (option_value.c_str())[0];
+      if (c == 't' || c == 'T')
+	iswp = true;
+      else if (c == 'f' || c == 'F')
+	iswp = false;
+      else {
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' just before reading observation file '%s' with %d ints and %d floats. Endian swap condition is '%c', must be T or F",
+	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,c);
+      }
+    }  
+    else if(option_name == "preTransforms") {
+      sscanf(option_value.c_str(),"%s",preTransforms);
+    }  
+    else if(option_name == "postTransforms") {
+      sscanf(option_value.c_str(),"%s",postTransforms);
+    }  
+    else if(option_name == "sentRange") {
+      sentRange=new char[option_value.length()];
+      strcpy(sentRange,option_value.c_str());
+    }  
+    else {
+      error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s'.  Unknown option line '%s'",
+	    is.fileName(),is.lineNo(),name().c_str(),str.c_str());
+    }
 
-  // read the self cardinality, must be binary
-  is.read(_card,"Can't read VirtualEvidenceCPT's self cardinality");
-  if (_card != 2)
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s', child cardinality must be two(2) rather than %d.",
-	  is.fileName(),is.lineNo(),name().c_str(),_card);
+    delete [] tmpString;
 
+    // is.read() returns (via errorReturn() in
+    // miscSupport/fileParser.{h,cc}) false when a problem occurs, in
+    // particular, when we reach the EOF.  Alternatively we could
+    // check for the end of file directly, feof(fh), which I am doing here
+    is.read(str);
+  } 
 
-
-
-  // next read the file name from which this is going to get its probabilties.
-  is.read(obsFileName,"Can't read VirtualEvidenceCPT's obs file name");
-  // read number of floats in file
-  is.read(nfs,"Can't read VirtualEvidenceCPT's obs file num floats");
-  // read number of ints in file
-  is.read(nis,"Can't read VirtualEvidenceCPT's obs file num ints");
   // check valid number of ints. 
   if (!(nis == 0 || (nis == nfs))) {
     error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' just before reading observation file '%s' with %d ints and %d floats. Must have either 0 ints, or same number of ints as floats",
 	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs);
   }
   if (nfs == 0) {
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' just before reading observation file '%s' with %d ints and %d floats. Must have either > 0 floats",
+    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' just before reading observation file '%s' with %d ints and %d floats. Must have > 0 floats",
 	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs);
   }
-  // read float range in file
-  is.read(frs,"Can't read VirtualEvidenceCPT's obs file float range");
-  // read int range in file
-  is.read(irs,"Can't read VirtualEvidenceCPT's obs file int range");
-  // per observation range in file
-  is.read(pr_rs,"Can't read VirtualEvidenceCPT's obs file per-utterance range string");
-  // read format string
-  is.read(fmt,"Can't read VirtualEvidenceCPT's obs file file format");
-  // endian swapping condition
-  is.read(str,"Can't read VirtualEvidenceCPT's obs file swapping condition");
-  // use first letter to determine condition.
-  char c = (str.c_str())[0];
-  if (c == 't' || c == 'T')
-    iswp = true;
-  else if (c == 'f' || c == 'F')
-    iswp = false;
-  else {
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' just before reading observation file '%s' with %d ints and %d floats. Endian swap condition is '%c', must be T or F",
-	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,c);
+
+
+
+  //  if (pr_rs.length() != 0) pr_str=(char*)pr_rs.c_str();
+
+  //  if(sentRange.length() !=0) sentRangeStr=(char*)sentRange.c_str();
+
+  if(obsFileName.length()==0) {
+    error("ERROR: need to supply the observation file name");
   }
 
-  // Read Observation Matrix tranform string
-  is.read(preTransforms,"Can't read VirtualEvidenceCPT's obs file pre-transform string");
-  is.read(postTransforms,"Can't read VirtualEvidenceCPT's obs file post-transform string");
-  is.read(sentRange,"Can't read VirtualEvidenceCPT's obs file sentence range  string");
-
-  // TODO: can't do this and take address of local variable!!
-  // const char*pr_str=pr_rs.c_str();
-  // const char*sentRangeStr=sentRange.c_str();
-
-  // TODO: fix the below as the below requires that the current object to stay
-  // existing (i.e., it takes addresses into members of this object). This
-  // is a quick fix as before it was taking addresses of local variables.
-  // 
+  if(cardinalities[0]==0) {
+    error("ERROR: need to supply parent cardinality");
+  }
+  
   // Now try opening the file:
   obs.openFile(obsFileName.c_str(),
 	       frs.c_str(),
@@ -154,20 +272,18 @@ VECPT::read(iDataStreamFile& is)
 	       globalObservationMatrix.endSkip(),
 	       false,  // ); // do not run CPP if ascii file.
 	       NULL,
+	       //	       (const char**)&pr_str,
 	       (const char**)&pr_rs,
 	       NULL,
 	       NULL,
 	       &preTransforms,
 	       postTransforms,
 	       0,  // FTROP_NONE
+	       //	       (const char**)&sentRangeStr
 	       (const char**)&sentRange
 	       );
 
 
-  // ultimately add this:  Added - Karim
-  //      NULL, // CPP command options
-  // pr_rs.c_str());
-  
   // still here? Do more error checking.
 
   if (obs.numContinuous() == 0) {
@@ -209,6 +325,7 @@ VECPT::read(iDataStreamFile& is)
 }
 
 
+
 /*-
  *-----------------------------------------------------------------------
  * VECPT::write(os)
@@ -225,28 +342,45 @@ VECPT::read(iDataStreamFile& is)
 void
 VECPT::write(oDataStreamFile& os)
 {
+
+#define VECPT_TMP_OUTPUT_STR_LEN 500
+
+  char* tmp=new char[VECPT_TMP_OUTPUT_STR_LEN];
+
   // write without any formatting.
   NamedObject::write(os);
 
-  os.write(1);  // num parents
-  os.write(cardinalities[0]);
-  os.write(2); // self card
-
-  os.write(obsFileName);
-  os.write(nfs);
-  os.write(nis);
-  os.write(frs);
-  os.write(irs);
-  os.write(pr_rs);
+  sprintf(tmp,"numParents:%d",1);
+  os.write("numParents:1");  // num parents
+  sprintf(tmp,"parentCard:%u",cardinalities[0]);
+  os.write(tmp);
+  os.write("selfCard:2"); // self card
+  sprintf(tmp,"of:%s",obsFileName.c_str());
+  os.write(tmp);
+  sprintf(tmp,"nfs:%u",nfs);
+  os.write(tmp);
+  sprintf(tmp,"nis:%u",nis);
+  os.write(tmp);
+  sprintf(tmp,"frs:%s",frs.c_str());
+  os.write(tmp);
+  sprintf(tmp,"nfs:%s",irs.c_str());
+  os.write(tmp);
+  sprintf(tmp,"pr_rs:%s",pr_rs);
+  os.write(tmp);
+  sprintf(tmp,"fmt:%s",fmt.c_str());
   os.write(fmt);
+  sprintf(tmp,"swap:%s",iswp?"T":"F");
   os.write((iswp?"T":"F"));
-  os.write(preTransforms);
-  os.write(postTransforms);
-  os.write(sentRange);
+  sprintf(tmp,"preTransforms:%s",preTransforms);
+  os.write(tmp);
+  sprintf(tmp,"postTransforms:%s",postTransforms);
+  os.write(tmp);
+  sprintf(tmp,"sentRange:%s",sentRange);
+  os.write(tmp);
+  os.write("EOF");
   os.nl();
   os.nl();
 }
-
 
 
 ////////////////////////////////////////////////////////////////////
