@@ -1017,7 +1017,7 @@ JunctionTree::base_unroll()
   // Template has a (PC)(C)(E) = (P')(C')(E')
   new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
 			 gm_template.PCInterface_in_C,0*gm_template.S,			   
-			 gm_template.PCInterface_in_C,0*gm_template.S,
+			 gm_template.CEInterface_in_C,0*gm_template.S,
 			 unrolled_rvs,ppf);
 
   // copy E partition
