@@ -318,6 +318,87 @@ triangulatePartitionsByCliqueCompletion()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * Partition::setCliquesFromAnotherPartition()
+ *   Set the cliques from anohter partition. The other partition
+ *   must be from the same structure file, and if the current partition is  a P (resp. C, E)
+ *   than the other partition must also be a P (resp. C, and E). Also, the partitions
+ *   are assumed to come from the same boundary for the .str file.
+ *   The routine is used to merge together gm_templates for different triangulations
+ *   of the same boundary but say a paralle triangulation of P, C, and E.
+ *  
+ *   Note that it is assumed that the different partitions refer to different instantiations of
+ *   the same set of random variables (so we can't use rv1 == rv2, but instead must use
+ *   name and frame equality).
+ *
+ * Preconditions:
+ *   The corresponding partition must be instantiated with nodes.
+ *   
+ *
+ * Postconditions:
+ *   The clique variables now refer to the cliques in the other partition.
+ *
+ * Side Effects:
+ *   Current cliques will be destroyed and set to new versions.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Partition::setCliquesFromAnotherPartition(Partition& from_part)
+{
+  cliques.clear();
+
+  // create a rv set of just the IDs for the dest
+  map < RVInfo::rvParent, unsigned > ppf;
+  vector <RandomVariable*> newRvs;
+  set<RandomVariable*>::iterator it;
+
+  newRvs.reserve(nodes.size());
+  unsigned i;
+  for (i=0,it = nodes.begin();
+       it != nodes.end();
+       i++,it++) {
+    RandomVariable* rv = (*it);
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame();
+    ppf[rvp] = i;
+    newRvs.push_back(rv);
+  }
+
+  // make sure nodes refer to same partition.
+  for (it = from_part.nodes.begin();
+       it != from_part.nodes.end();
+       it++) {
+    RandomVariable* rv = (*it);
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame();
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      warning("ERROR: can't find rv %s(%d) in RV set of dest partition\n",
+	    rvp.first.c_str(),rvp.second);
+      assert ( 0 );
+    }
+
+  }  
+  cliques.reserve(from_part.cliques.size());
+  
+  for (unsigned i=0;i<from_part.cliques.size();i++) {
+    cliques.push_back(MaxClique(from_part.cliques[i],
+				newRvs,ppf,0));
+  }
+  // copy tri-method string as well.
+  triMethod = from_part.triMethod;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Private Support Routines
@@ -632,7 +713,7 @@ writePartitions(oDataStreamFile& os, string& str)
   os.nl();
   os.writeComment("---\n");
   os.writeComment("--- boundary method\n");
-  printf("about to write boundary method = %s\n",boundaryMethod.c_str());
+  // printf("about to write boundary method = %s\n",boundaryMethod.c_str());
   if (boundaryMethod.size() > 0) {
     // make sure string has no white space.
     for (unsigned i=0;i<boundaryMethod.size();i++) {
@@ -1105,22 +1186,134 @@ void
 GMTemplate::
 writeMaxCliques(oDataStreamFile& os)
 {
+  writePMaxCliques(os);
+  writeCMaxCliques(os);
+  writeEMaxCliques(os);
+  writeCliqueInformation(os);
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::writePMaxCliques()
+ *   Write out the max cliques of the P partition.
+ *
+ *
+ * Preconditions:
+ *   The maxclique variable Pcliques must be instantiated!!
+ *
+ * Postconditions:
+ *   Information about the maxclique variables is written out.
+ *
+ * Side Effects:
+ *   Moves file pointer
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMTemplate::
+writePMaxCliques(oDataStreamFile& os)
+{
   os.nl();
   os.writeComment("---\n");
   os.writeComment("---- P Partitions Cliques and their weights\n");
   P.writeMaxCliques(os);
+}
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::writeCMaxCliques()
+ *   Write out the max cliques of the C partition.
+ *
+ *
+ * Preconditions:
+ *   The maxclique variable Ccliques must be instantiated!!
+ *
+ * Postconditions:
+ *   Information about the maxclique variables is written out.
+ *
+ * Side Effects:
+ *   Moves file pointer
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMTemplate::
+writeCMaxCliques(oDataStreamFile& os)
+{
   os.nl();
   os.writeComment("---\n");
   os.writeComment("---- C Partitions Cliques and their weights\n");
   C.writeMaxCliques(os);
+}
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::writeEMaxCliques()
+ *   Write out the max cliques of the E partition.
+ *
+ *
+ * Preconditions:
+ *   The maxclique variable Ecliques must be instantiated!!
+ *
+ * Postconditions:
+ *   Information about the maxclique variables is written out.
+ *
+ * Side Effects:
+ *   Moves file pointer
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMTemplate::
+writeEMaxCliques(oDataStreamFile& os)
+{
   os.nl();
   os.writeComment("---\n");
   os.writeComment("---- E Partitions Cliques and their weights\n");
   E.writeMaxCliques(os);
+}
 
-  // and write out all the clique information to the file as comments.
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::writeCliqueInformation()
+ *   Write out information in comment form for the max cliques of the three partitions.
+ *
+ *
+ * Preconditions:
+ *   The maxclique variables Pcliques, Ccliques, and Ecliques must be instantiated!!
+ *
+ * Postconditions:
+ *   Information about the maxclique variables is written out.
+ *
+ * Side Effects:
+ *   Moves file pointer
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMTemplate::
+writeCliqueInformation(oDataStreamFile& os)
+{
+  // write out all the clique information to the file as comments.
   {
     os.nl();
     os.nl();
@@ -1225,7 +1418,6 @@ writeMaxCliques(oDataStreamFile& os)
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+1000*S-1,totalWeight);
 
   }
-
 }
 
 

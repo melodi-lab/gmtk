@@ -74,10 +74,11 @@ public:
 
   void clearCliques() { cliques.clear(); triMethod.clear(); }
 
-
-  void writeMaxCliques(oDataStreamFile& os);
+  void writeMaxCliques(oDataStreamFile& os);  
   void readMaxCliques(iDataStreamFile& is);
   void triangulatePartitionsByCliqueCompletion();
+  void setCliquesFromAnotherPartition(Partition& p);
+
 
 };
 
@@ -158,6 +159,11 @@ private:
   void cloneWithoutParents(const set<RandomVariable*>& in, 
 			   set<RandomVariable*>& out,
 			   map < RandomVariable*, RandomVariable* >& in_to_out);
+
+  void writePMaxCliques(oDataStreamFile& os);
+  void writeCMaxCliques(oDataStreamFile& os);
+  void writeEMaxCliques(oDataStreamFile& os);
+  void writeCliqueInformation(oDataStreamFile& os);
 
   void writeMaxCliques(oDataStreamFile& os, const vector<MaxClique>& cliques);
   void readMaxCliques(iDataStreamFile& is, const set<RandomVariable*> nodes, vector<MaxClique>& cliques);
