@@ -131,11 +131,13 @@ public:
   enum InterfaceHeuristic { /* S */ IH_MIN_SIZE = 1,        
 			    /* F */ IH_MIN_FILLIN = 2,
 			    /* W */ IH_MIN_WEIGHT = 3,
+			    /* N */ IH_MIN_WEIGHT_NO_D = 4,
 			    // use average entropy in CPTs
-			    /* E */ IH_MIN_ENTROPY = 4,
-			    /* C */ IH_MIN_MAX_C_CLIQUE = 5,
+			    /* E */ IH_MIN_ENTROPY = 5,
 			    /* M */ IH_MIN_MAX_CLIQUE = 6,
-			    /* N */ IH_MIN_WEIGHT_NO_D = 7
+			    /* C */ IH_MIN_MAX_C_CLIQUE = 7,
+			    /* A */ IH_MIN_STATE_SPACE = 8,
+			    /* T */ IH_MIN_C_STATE_SPACE = 9
   };
 
 
@@ -457,9 +459,8 @@ public:
    );
 
 
-
-
 };
+
 
 #endif
 
