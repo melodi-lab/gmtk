@@ -520,8 +520,9 @@ MixGaussians::emEndIteration()
 
     if (localNumTopToForceSplit > 0) {
 
-      for (unsigned j=0,i = (coefs.size()-1);
-	   ;j<localNumTopToForceSplit;j++,i--) {
+      for (unsigned j=0,i=(coefs.size()-1);
+	   j<localNumTopToForceSplit;
+	   j++,i--) {
 	bool alreadyVanished =
 	  (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
 	   != MixGaussiansCommon::vanishingComponentSet.end());
