@@ -359,21 +359,54 @@ Dense1DPMF::emSwapCurAndNew()
     return;
 
   unsigned newLen = nextPmf.len();
+  unsigned numVanished = 0;
+  unsigned numSplit = 0;
   for (unsigned i=0;i<(unsigned)nextPmf.len();i++) {
-    if (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(this,i))
-	!= MixGaussiansCommon::vanishingComponentSet.end())
+    if (MixGaussiansCommon::vanishingComponentSet.
+	find(pair<Dense1DPMF*,unsigned>(this,i))
+	!= MixGaussiansCommon::vanishingComponentSet.end()) {
+      numVanished++;
       newLen--;
-    else if (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(this,i))
-	     != MixGaussiansCommon::splittingComponentSet.end())
+    } else if (MixGaussiansCommon::splittingComponentSet.
+	       find(pair<Dense1DPMF*,unsigned>(this,i))
+	       != MixGaussiansCommon::splittingComponentSet.end()) {
+      numSplit++;
       newLen++;
+    }
   }
-
-  // @@@@ need to finish this.
+  if (numVanished > 0 || numSplit > 0)
+    warning("NOTE: DPMF '%s' has %d/%d elements is vanishing/splitting",
+	      name().c_str(),numVanished,numSplit);
   
-  for (int i=0;i<nextPmf.len();i++) {
-    genSwap(nextPmf[i],pmf[i]);
-  }
+  // command line check should ensure this
+  assert ( newLen > 0 );
 
+  pmf.resizeIfDifferent(newLen);
+
+  unsigned newIndex = 0;
+  for (unsigned i=0;i<(unsigned)nextPmf.len();i++) {
+    if (MixGaussiansCommon::vanishingComponentSet.
+	find(pair<Dense1DPMF*,unsigned>(this,i))
+	!= MixGaussiansCommon::vanishingComponentSet.end()) {
+      // do nothing, don't copy it over
+      ;
+    } else if (MixGaussiansCommon::splittingComponentSet.
+	       find(pair<Dense1DPMF*,unsigned>(this,i))
+	       != MixGaussiansCommon::splittingComponentSet.end()) {
+
+      // copy it and clone over
+      pmf[newIndex++] = nextPmf[i]/2.0;
+      pmf[newIndex++] = nextPmf[i]/2.0;
+    } else {
+      pmf[newIndex++] = nextPmf[i];
+    }
+  }  
+  assert ( newIndex == newLen );
+
+  nextPmf.resizeIfDifferent(newLen);
+
+  // renormalize
+  normalize();
   emClearSwappableBit();
 }
 
