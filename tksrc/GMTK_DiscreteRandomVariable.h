@@ -27,6 +27,12 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_ObservationMatrix.h"
 
+//////////////////////////////////////////////////////////////////////////
+// A constant consisting of a special feature element value to indicate
+// that this discrete RV should always use the value that it is currently
+// assigned to (i.e., it is a fixed clamped value).
+#define DRV_USE_FIXED_VALUE_FEATURE_ELEMENT (1 << (sizeof(unsigned)*8-1))
+
 class DiscreteRandomVariable : public RandomVariable
 {
 private:
@@ -91,13 +97,15 @@ public:
     findConditionalParents(); 
     if (!hidden) {
       // observed, so set value from observation matrix
-      if (globalObservationMatrix.active()) {
+      if (globalObservationMatrix.active() && featureElement != DRV_USE_FIXED_VALUE_FEATURE_ELEMENT) {
 	// printf("getting value of random variable '%s', time index %d, el %d\n",
 	// label.c_str(),timeIndex,featureElement);
 	val = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
       }
+      // otherwise, we keep the value set to what it was before.
       return;
     }
+    // a hidden variable, so we set up the iterator.
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
     it = curCPT->begin(); val = it.val(); 
   }
