@@ -939,7 +939,9 @@ Mon Jan 13 13:31:34 2003
 Mon Jan 13 13:32:31 2003$
   - get rid of MSCPT, MDCPT, and MTCPT messages. In sparce CPT
     error messages, it says MTCPT when it should refer to sparce CPTs.
-
+    Fri Jan 23 13:17:05 2004: change all internal program variables
+     away from using MTCPT, MDCPT, etc. also
+   
 Mon Jan 13 16:54:33 2003
   - make sure in documentation that it says that dlink feature index 
     values are for absolute locations with respect to the
