@@ -276,8 +276,9 @@ MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Mean vec '%s' received only %e accumulated log probability in EM iteration, using previous means",name().c_str(),
-	    accumulatedProbability.val());
+    warning("WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+	    accumulatedProbability.val(),
+	    minContAccumulatedProbability().val());
     for (int i=0;i<nextMeans.len();i++)
       nextMeans[i] = means[i];
   } else {

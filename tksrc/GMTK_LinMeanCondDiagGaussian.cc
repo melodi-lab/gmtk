@@ -400,7 +400,12 @@ LinMeanCondDiagGaussian::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    error("ERROR: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration, check child mean '%s', covar '%s', and dlink matrix '%s'",name().c_str(),mean->name().c_str(),covar->name().c_str(),dLinkMat->name().c_str());
+    error("ERROR: Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, also check child mean '%s', covar '%s', and dlink matrix '%s'",name().c_str(),
+	  accumulatedProbability.val(),
+	  minContAccumulatedProbability().val(),
+	  mean->name().c_str(),
+	  covar->name().c_str(),
+	  dLinkMat->name().c_str());
   }
 
   const double realAccumulatedProbability =
