@@ -110,7 +110,10 @@ X if an object gets no probability, do something
 - add a 'fail' tag to DT leaves.
 
 X pass .str files through cpp before reading.
-  and make sure that file line numbering is done right.
+
+- make sure that all files passed through cpp that
+  line numbering error messages is done right.
+
 
 X GMTK_GMParms::read(), keeps open all files
   until the end. If it encounters the same name again,
