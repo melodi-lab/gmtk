@@ -638,3 +638,13 @@ ri Jul 19 11:59:44 2002
 Fri Jul 19 18:48:57 2002
  - use regex library for obs to not train, and other such
    things.
+
+Mon Jul 22 13:40:06 2002
+ - idea about triangulation heuristic
+   (when doing min weight, when a det. var and its parents
+    live in the clique, don't multiply the child's cardinaliiity
+    into the clique weights). So, if there is only one
+    random parent, entire clique weight = cardinality of
+    that parent).
+
+ 
