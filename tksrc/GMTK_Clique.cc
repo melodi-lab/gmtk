@@ -121,7 +121,7 @@ bool viterbi)
             cacheClampedValues();
             instantiation.push_back(CliqueValue());
             CliqueValue *cv = &instantiation.back();
-            cv->pi = cv->lambda = probGivenParents();  // cache value in lambda
+            cv->pi = cv->lambda = pi;  // cache value in lambda
             cv->pred = pred_val;
             cv->values = clampedValues;
             if (pred_val)   // not doing root

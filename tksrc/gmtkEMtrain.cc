@@ -136,9 +136,9 @@ GM_Parms.writeBasic(of);
   }
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
-//  gm.cliqueChainEM(maxEMIterations, pruneRatio);
-cout << "\n\n\n Doing enumerative EM!!! \n\n";
-  gm.enumerativeEM(maxEMIterations);
+  gm.cliqueChainEM(maxEMIterations, pruneRatio);
+// cout << "\n\n\n Doing enumerative EM!!! \n\n";
+//   gm.enumerativeEM(maxEMIterations);
 
   return 0;  
 
