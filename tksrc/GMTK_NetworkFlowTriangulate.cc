@@ -98,7 +98,7 @@ void GMTK2Network::init(float (*computeWeight)(const set<RV*>&),
 
 void GMTK2Network::findBoundary(std::set<RV*>& boundary, std::set<RV*>& preBoundary, bool forward) {
   EdgeSet::iterator ei,cutEnd;
-  infoMsg(IM::Info, "Computing the boundary");
+  infoMsg(IM::Mod, "Computing the boundary");
   ei=_minCut.begin(); cutEnd=_minCut.end();
   for(;ei!=cutEnd;++ei) {
     int node= (*ei)->sourceNode();
@@ -107,7 +107,7 @@ void GMTK2Network::findBoundary(std::set<RV*>& boundary, std::set<RV*>& preBound
     }
   }
 
-  infoMsg(IM::Info, "Computing the frontier.");
+  infoMsg(IM::Mod, "Computing the frontier.");
   NodeSet::iterator ni,reachableEnd;
   reachableEnd=_reachableSet.end();
   std::set<RV*>::iterator boundaryEnd = boundary.end();
