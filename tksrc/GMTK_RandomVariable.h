@@ -235,6 +235,12 @@ public:
   // have that 0 <= val < cardinality
   int cardinality;
 
+  /////////////////////////////////////////////////
+  // return true only if this node is discrete and
+  // if *all* CPTs are MTCPT.
+  virtual bool deterministic() { return false; }  
+
+
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
   // END OF SUPPORT ONLY FOR DISCRETE RANDOM VARIABLES /////
