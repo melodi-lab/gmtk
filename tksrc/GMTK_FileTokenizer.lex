@@ -56,7 +56,7 @@ int_rng {int}:{int}
 
 
 /* all valid keywords */
-keyword GRAPHICAL_MODEL|frame|variable|type|disposition|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|nil|using|mapping|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
+keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|nil|using|mapping|MDCPT|MSCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"
 
@@ -73,7 +73,7 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
 
 {int}+      {
             FileParser::tokenInfo.tokenStr = yytext;
-            FileParser::tokenInfo.tokenType = FileParser::Token_Integer;
+            FileParser::tokenInfo.tokenType = FileParser::TT_Integer;
             FileParser::tokenInfo.int_val = atoi( yytext );
             if (debugLexer)
               printf( "An integer: %s (%d)\n", yytext,
@@ -84,7 +84,7 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
 
 {flt}       {
             FileParser::tokenInfo.tokenStr = yytext;
-            FileParser::tokenInfo.tokenType = FileParser::Token_Real;
+            FileParser::tokenInfo.tokenType = FileParser::TT_Real;
             FileParser::tokenInfo.float_val = atof( yytext );
             if (debugLexer)
               printf( "A float: %s (%g)\n", yytext,
@@ -98,31 +98,31 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
               printf( "A separator: %s\n", yytext );	     	    	       
             switch(*yytext) {
                  case ':': 
-		   FileParser::tokenInfo.tokenType = FileParser::Token_Colon;
+		   FileParser::tokenInfo.tokenType = FileParser::TT_Colon;
 		   return FileParser::tokenInfo.tokenType;
 		   break;
 		 case ';': 
-		   FileParser::tokenInfo.tokenType = FileParser::Token_SemiColon;
+		   FileParser::tokenInfo.tokenType = FileParser::TT_SemiColon;
 		   return FileParser::tokenInfo.tokenType;
 		   break;
 		 case '{': 
-		   FileParser::tokenInfo.tokenType = FileParser::Token_LeftBrace;
+		   FileParser::tokenInfo.tokenType = FileParser::TT_LeftBrace;
 		   return FileParser::tokenInfo.tokenType;
 		   break;
 		 case '}': 
-		   FileParser::tokenInfo.tokenType = FileParser::Token_RightBrace;
+		   FileParser::tokenInfo.tokenType = FileParser::TT_RightBrace;
 		   return FileParser::tokenInfo.tokenType;
 		   break;
 		 case '(': 
-		   FileParser::tokenInfo.tokenType = FileParser::Token_LeftParen;
+		   FileParser::tokenInfo.tokenType = FileParser::TT_LeftParen;
 		   return FileParser::tokenInfo.tokenType;
 		   break;
 		 case ')': 
-		   FileParser::tokenInfo.tokenType = FileParser::Token_RightParen;
+		   FileParser::tokenInfo.tokenType = FileParser::TT_RightParen;
 		   return FileParser::tokenInfo.tokenType;
 		   break;
 		 case '|': 
-		   FileParser::tokenInfo.tokenType = FileParser::Token_VirtBar;
+		   FileParser::tokenInfo.tokenType = FileParser::TT_VirtBar;
 		   return FileParser::tokenInfo.tokenType;
 		   break;
 		 default: { abort(); }
@@ -131,7 +131,7 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
 
 {keyword}   {
             FileParser::tokenInfo.tokenStr = yytext;
-            FileParser::tokenInfo.tokenType = FileParser::Token_Keyword;
+            FileParser::tokenInfo.tokenType = FileParser::TT_Keyword;
             if (debugLexer)
               printf( "A keyword: %s\n", yytext );
 	    return FileParser::tokenInfo.tokenType;
@@ -139,7 +139,7 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
 
 {ident}     { 
             FileParser::tokenInfo.tokenStr = yytext;
-            FileParser::tokenInfo.tokenType = FileParser::Token_Identifier;
+            FileParser::tokenInfo.tokenType = FileParser::TT_Identifier;
             if (debugLexer)
 	      printf( "An identifier: %s\n", yytext );
 	    return FileParser::tokenInfo.tokenType;
@@ -147,7 +147,7 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"
 
 .           { 
             FileParser::tokenInfo.tokenStr = yytext;
-            FileParser::tokenInfo.tokenType = FileParser::Token_Undefined;
+            FileParser::tokenInfo.tokenType = FileParser::TT_Undefined;
             if (debugLexer)
               printf( "Unrecognized character: %s\n", yytext );
 	    return FileParser::tokenInfo.tokenType;
