@@ -3,11 +3,12 @@
  *   PackCliqueValue:
  *
  *     Class to support packing/unpacking of a vector of unsigned into
- *     a packed machine word representation.  It uses an array of
- *     pointers to functions to do the packing under the assumption
- *     that the branch-always-taken condition for a routine call will
- *     be cheaper than using the if-then branch but which will be less
- *     predictable for the branch prediction logic.
+ *     a packed machine word representation.  It uses an array, the
+ *     first portion for those elements that fit within a word
+ *     boundary and the second portion for those that cross word
+ *     boundaries.  This will obtain better branch prediction behavior
+ *     (since otherwise, it'll be harder for the processor to
+ *     accurately predict branch outcomes).
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *

@@ -112,6 +112,9 @@ static bool print_version_and_exit = false;
 // Temporary Options
 static bool doDistributeEvidence=false;
 static bool probE=false;
+static bool island=false;
+static unsigned base=2;
+static unsigned lst=100;
 
 Arg Arg::Args[] = {
 
@@ -183,6 +186,9 @@ Arg Arg::Args[] = {
   // Temporary Options
   Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Do distribute evidence also"),
   Arg("probE",Arg::Opt,probE,"Run the const memory probE function"),
+  Arg("island",Arg::Opt,island,"Run island algorithm"),
+  Arg("base",Arg::Opt,base,"Island algorithm base"),
+  Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
 
   // final one to signal the end of the list
   Arg()
@@ -404,7 +410,12 @@ main(int argc,char*argv[])
 	     probe.val(),
 	     probe.val()/numFrames,
 	     probe.val()/numUsableFrames);
-
+    } else if (island) {
+      unsigned numUsableFrames;
+      myjt.collectDistributeIsland(numFrames,
+				   numUsableFrames,
+				   base,
+				   lst);
     } else {
       unsigned numUsableFrames = myjt.unroll(numFrames);
       infoMsg(IM::Default,"Collecting Evidence\n");

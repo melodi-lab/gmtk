@@ -1109,6 +1109,8 @@ Fri May 09 17:42:07 2003
     can condition on frame(0), frame(-1), etc. which gives 
     the frame number in an utterance (and so users don't need 
     to have a counter for this).
+    Sun Feb 22 14:45:15 2004: update, also add length(n) variable
+    that for all n returns the length of the current utterance.
 
 
 Fri May 09 18:52:17 2003

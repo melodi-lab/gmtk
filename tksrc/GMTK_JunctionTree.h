@@ -204,6 +204,34 @@ class JunctionTree {
   // will be unrolled depending on the observation vector.
   sArray <JT_InferencePartition> jtIPartitions;
 
+  ////////////////////////////////////////////////////////////////////////
+  // Island algorithm support variables.
+  // 
+  // an array that is used by the Island algorithm for inference.
+  struct PartitionInfo {
+    // pointer to origin
+    JT_Partition* JT;
+    // offset to set random variables
+    unsigned offset;
+    // a pointer to the partition information
+    JT_InferencePartition* p;
+    // Message order for this partition.
+    vector< pair<unsigned,unsigned> >* mo;
+    // the name (type) of this partition, i.e., either
+    // a P1, Cu0, Co, or an E1.
+    char *nm;
+    // clique number of right interface 
+    unsigned ri;
+    // clique number of left interface
+    unsigned li;
+  };
+  // Partition Pointer Array of IPartitionInfo used by recursive Island algorithm.
+  sArray <PartitionInfo> partPArray;
+  // current set of unrolled random variables
+  vector <RandomVariable*> cur_unrolled_rvs;
+  // current mapping from 'name+frame' to integer index into unrolled_rvs.
+  map < RVInfo::rvParent, unsigned > cur_ppf;
+  ////////////////////////////////////////////////////////////////////////
 
   // Identities of cliques in junction trees: 
   // for P, 
@@ -254,7 +282,7 @@ class JunctionTree {
   void base_unroll();
 
   // Helper routines that are private (only called by other member
-  // functions of this class). 
+  // functions of this class).
   static void setUpMessagePassingOrderRecurse(JT_Partition& part,
 					      const unsigned root,
 					      vector< pair<unsigned,unsigned> >&order,
@@ -304,6 +332,21 @@ class JunctionTree {
 				    const unsigned previous_part_root,
 				    const char*const previous_part_type_name,
 				    const unsigned previous_part_num);
+
+  // support routines for island algorithm inference.
+  void ceGatherIntoRoot(const unsigned part);
+  void createPartition(const unsigned part);
+  void ceSendToNextPartition(const unsigned part,const unsigned nextPart);
+  void deReceiveToPreviousPartition(const unsigned part,const unsigned prevPart);
+  void deletePartition(const unsigned part);
+  void deScatterOutofRoot(const unsigned part);
+  void collectDistributeIslandRecurse(const unsigned start,
+				      const unsigned end,
+				      const unsigned base,
+				      const unsigned linear_section_threshold);
+  void collectDistributeIslandBase(const unsigned start,
+				   const unsigned end);
+
 
   
 public:
@@ -471,6 +514,16 @@ public:
   // print P(E) to stdout using all cliques. After a ce,de stage,
   // all values should be the same.
   void printAllCliquesProbEvidence();
+
+
+  // Routine that calls collect/distribute evidence using the island
+  // algorithm (i.e., log-space inference).
+  void
+  collectDistributeIsland(const unsigned numFrames,
+			  unsigned& numUsableFrames,
+			  const unsigned base,
+			  const unsigned linear_section_threshold);
+
 
 
   // actuall message routines.

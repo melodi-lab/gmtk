@@ -929,6 +929,12 @@ class InferenceSeparatorClique : public IM
     };
     // probability
     logpr p;
+    // 
+    // union upi {
+    //   char bp[sizeof(logpr)];
+    //   unsigned backPointer;
+    // };
+    // 
     // probability for distribute evidence pass
     logpr bp;
   };

@@ -1349,7 +1349,7 @@ computeUnrollParamaters(const unsigned numFrames,
   //    (T - p - e - M*c) = jS*c  for j = positive integer.
 
   // compute T-p-e-M*c % S*c, the remainder.
-  const unsigned remainder = (T-p-e-M*c) % S*c;
+  const unsigned remainder = (T-p-e-M*c) % (S*c);
   // number of usable frames subtracts this off, assign to
   // T' = numUsableFrames
   numUsableFrames = numFrames - remainder;

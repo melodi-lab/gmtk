@@ -1376,7 +1376,7 @@ things that need space managed:
    - Used only if packed clique values are > IMC_NWWOH words.
    - Assuming that these are used: 
 
-      - In normal forward backward, there is only one of these
+       - In normal forward backward, there is only one of these
         for all instances of this maxclique origin. Space management
         is needed between utterances (upon each new utterance,
 	we use space manager to decide how big to make this).
@@ -1424,7 +1424,7 @@ things that need space managed:
     - VHashMapUnsignedUnsignedKeyUpdatable iAccHashMap;
           fast maps from keys to index for separatorValues
     - AISeparatorValue contains:
-        1) (ptr,val)
+        1) (ptr,val) union
         2) cArray <RemainderValue> remValues;
         3) VHashMapUnsignedUnsignedKeyUpdatable iRemHashMap;
             fast maps from keys to index for remValues
@@ -1447,6 +1447,82 @@ things that need space managed:
        (default size of remainder should be different if we
         have multiple remainders, should be small when iAcc exists, or when
         iAcc does not exist, should be larger.)
+
+Fri Feb 20 19:38:47 2004
+   - another idea, only share for a while but not the entire segment.
+
+
+
+ We have four basic operations:
+  ceGather(partNo);
+  ceSendNext(partNo,partNo+1); (from,to)
+
+  deScatter(partNo);
+  deReceiveToPrev(partNo,partNo-1) (from,to)
+
+Forward is:
+   ceGather
+   ceSendToNext
+
+   ceGather
+   ceSendToNext
+
+   ceGather
+
+Backwards is:
+  deScatter
+  deReceiveToPrev
+
+  deScatter
+  deReceiveToPrev
+
+  deScatter
+
+forwardBackwardBaseIsland(start,end)
+{
+   // always share hash tables.
+   // guaranteed that partition[start] has
+   // been created and ceSendNext(start-1,start) has
+   // been called
+   for part = start to end (inclusive)
+     ceGather(part);
+     if (part != final) {
+        create partition part+1
+        ceSendNext(part,part+1);
+     }
+
+  for part = end downto start (inclusive)
+     deScatter(part); 
+     if (part != 0)
+        deReceiveToPrev(part,part-1)
+
+}
+
+
+forwardBackwardRecurseIsland(start,end)
+{
+   len = end-start + 1;
+   if (len <= base)
+      - Free shared hash-table memory arena.
+      - forwardBackwardBaseIslands(start,end);
+   else
+      skip = len/splits;
+      for chunk = start, chunk < end; chunk += skip
+         for part = chunk to 
+
+
+        for (i = 1 to splits-1 )
+
+
+
+         const space forward chunk i
+         save memory at last (all but
+         the last are no-shared, last is shared)??
+      for (i = splits down to 1)
+         forwardBackwardRecurse(i-1,i)
+
+  	
+}
 
 
 + ================================================================================
