@@ -1,6 +1,6 @@
 /*
  * GMTK_JunctionTree.h
- *   GMTK Junction Tree, for three partitions.
+ *   GMTK Junction Tree. Exact inference support for GMTK.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -43,6 +43,10 @@ class Partition;
 class GMTemplate;
 class JunctionTree;
 
+// TODO: perhaps create a subclass of maxClique at some point, rather than
+// adding everything for exact inference to the base class.
+
+
 // child class of partition that includes support for 
 // doing exact inference.
 class InferencePartition : public Partition {
@@ -70,16 +74,14 @@ class JunctionTree {
   friend class GMTemplate;
   friend class BoundaryTriangulate;
 
-  // the base partitions from which all real partitions will be
-  // created, where real partitions are the ones in which
-  // inference will take place.
-  vector <InferencePartition> base_partitions;
-
+  // the base partitions from which real unrolled things are cloned from.
   InferencePartition P1; 
   InferencePartition C1; 
   InferencePartition C2; 
   InferencePartition C3; 
   InferencePartition E1; 
+  // extra one for unrolling 0 times.
+  InferencePartition Cu0; 
 
   // between partitions, we need extra separator cliques that are
   // between the corresponding partitions interface cliques. These
@@ -132,10 +134,12 @@ class JunctionTree {
   // might not be the best order).
   // NOTE: These are kept here rather than in the partitions,
   // since they are re-used for all cloned partitions.
-  vector< pair<unsigned,unsigned> > P_to_C_message_order;
-  vector< pair<unsigned,unsigned> > C_to_C_message_order;
-  vector< pair<unsigned,unsigned> > C_to_E_message_order;
-  vector< pair<unsigned,unsigned> > E_message_order;  
+  vector< pair<unsigned,unsigned> > P1_message_order;
+  vector< pair<unsigned,unsigned> > C1_message_order;
+  // C2' message order is the same as C1's message order
+  vector< pair<unsigned,unsigned> > C3_message_order;
+  vector< pair<unsigned,unsigned> > E1_message_order;  
+  // Cu0's message order is the same as C3's message order
 
 
   // Helper routines that are private (only called by
@@ -146,7 +150,7 @@ class JunctionTree {
 				       vector< pair<unsigned,unsigned> >&order);
 
 
-  void assignRVToClique(const unsigned partNo,
+  void assignRVToClique(const char *const partName,
 			InferencePartition&part,
 			const unsigned root,
 			unsigned depth,
@@ -157,16 +161,15 @@ class JunctionTree {
 
 
   // a version of unroll that starts with the gm_template and
-  // fills up base_partitions.
-  void base_unroll(unsigned k=1);
+  // fills up base partitions.
+  void base_unroll();
 
   void createDirectedGraphOfCliquesRecurse(InferencePartition& part,
 					   const unsigned root,
 					   vector< bool >& visited);
 
   void getCumulativeAssignedNodes(InferencePartition& part,
-				  const unsigned root,
-				  set<RandomVariable*> &res);
+				  const unsigned root);
 
 public:
 
@@ -195,6 +198,13 @@ public:
     }
   };
 
+
+  // create the three junction trees for the basic partitions.
+  void createPartitionJunctionTrees() {
+    createPartitionJunctionTree(gm_template.P);
+    createPartitionJunctionTree(gm_template.C);
+    createPartitionJunctionTree(gm_template.E);
+  }
   // create a junction tree within a partition.
   void createPartitionJunctionTree(Partition& part);
 
@@ -207,28 +217,6 @@ public:
 				 unsigned int& part2_lic,
 				 bool& icliques_same);
 
-  // create the three junction trees for the basic partitions.
-  void createPartitionJunctionTrees() {
-    createPartitionJunctionTree(gm_template.P);
-    createPartitionJunctionTree(gm_template.C);
-    createPartitionJunctionTree(gm_template.E);
-  }
-
-  // Set up internal structures for unrolled network k>=0 times,
-  // where k is the number of times C' is repeated.
-  void unroll(unsigned k);
-
-  // For the three partitions, set up the different message passing orders
-  // that are to be used.
-  void setUpMessagePassingOrders();
-  void setUpMessagePassingOrder(InferencePartition& part,
-				const unsigned root,
-				vector< pair<unsigned,unsigned> >&order);
-
-
-  // basic collect evidence phase on basic structures.
-  void collectEvidence();
-  void distributeEvidence();
 
   // root the JT
   void createDirectedGraphOfCliques();
@@ -243,19 +231,36 @@ public:
   // criterion in order to make message passing as efficient as
   // possible).
   void assignRVsToCliques();
-  void assignRVsToCliques(const unsigned partNo,
+  void assignRVsToCliques(const char *const partName,
 			  InferencePartition&part,
 			  const unsigned rootClique);
 
 
-  // actuall message routines.
-  void collectMessage(MaxClique& from,MaxClique& to);
-  void distributeMessage(MaxClique& from,MaxClique& to);
+  // For the three partitions, set up the different message passing orders
+  // that are to be used.
+  void setUpMessagePassingOrders();
+  void setUpMessagePassingOrder(InferencePartition& part,
+				const unsigned root,
+				vector< pair<unsigned,unsigned> >&order);
 
   // separator creation
   void createSeparators(InferencePartition& part,
 			vector< pair<unsigned,unsigned> >&order);
   void createSeparators();
+
+
+  // basic collect evidence phase on basic structures.
+  void collectEvidence();
+  void distributeEvidence();
+
+  // actuall message routines.
+  void collectMessage(MaxClique& from,MaxClique& to);
+  void distributeMessage(MaxClique& from,MaxClique& to);
+
+  // Set up internal structures for unrolled network k>=0 times,
+  // where k is the number of times C' is repeated.
+  void unroll(unsigned k);
+
 
 };
 
