@@ -26,6 +26,7 @@
 #include <ieeefp.h>
 #include <float.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include <string>
 
@@ -57,9 +58,23 @@ DiagGaussian::read(iDataStreamFile& is)
   // read mean vector
   string str;
   is.read(str);
-  
 
-
+  if (strIsInt(str.c_str(),meanIndex)) {
+    if (meanIndex < 0 || meanIndex > (int)GM_Parms.means.size()) {
+      error("Error: DiagGaussian '%s' specifies mean index (%d) that does not exist",
+	    _name.c_str(),meanIndex);
+    }
+    means = GM_Parms.means[meanIndex];
+  } else {
+    meanIndex = -1;
+    map< string, MeanVector* >::iterator it;
+    it = GM_Parms.meansMap.find(str);
+    if (it == GM_Parms.meansMap.end()) {
+      error("Error: DiagGaussian '%s' specifies mean name '%s' that does not exist",
+	    _name.c_str(),str.c_str());
+    }
+    means = (*it).second;
+  }
 
   // read covariance vector
 
@@ -71,55 +86,18 @@ DiagGaussian::read(iDataStreamFile& is)
 void
 DiagGaussian::write(oDataStreamFile& os)
 {
-  os.writeComment("burying values");
-  os.nl();
-  float *burValsp = burVals;
-  for (int i=0;i<parent->nFeats;i++) {
-    const int nComs_p1 = parent->numComs[i]+1;
-    for (int j=0;j<nComs_p1;j++) {
-      os.writeFloat(*burValsp++,"DiagGaussian::write bvs");
-    }
-    os.nl();
-  }
-  os.writeInt(0,"DiagGaussian::write cvtyp");
-  os.writeComment("diagonal covariance type");
-  os.nl();
-  for (int i=0;i<parent->nFeats;i++) 
-    os.writeFloat(variances[i],"DiagGaussian::write vars");
-  os.nl();
 }
 
 
 void
 DiagGaussian::preCompute()
 {
-  double det = 1.0;
-  for (int i=0;i<parent->nFeats;i++) {
-    if (variances[i] <= varianceFloor) {
-      // Theoretically, this shouldn't happen unless you are reading
-      // in a file that was computed from a previous run with a different threshold.
-      coredump("DiagGaussian::preCompute, variance %d hit floor, cmp %d, parent id %d. Dumping.",i,parent->whichComponentAmI(this),parent->id());
-    }
-    variances_inv[i] = 1.0/variances[i];
-    det *= variances[i];
-  }
-  if (det <= DBL_MIN) {
-    coredump("DiagGaussian::preCompute, determinant hit minimum, cmp %d, parent id %d. Dumping.",parent->whichComponentAmI(this),parent->id());
-  }
-  const double tmp = (pow(2*M_PI,parent->nFeats/2.0)*sqrt(det));
-  if (tmp <= DBL_MIN) {
-    coredump("DiagGaussian::preCompute, norm const hit maximum, cmp %d, parent id %d. Dumping.",parent->whichComponentAmI(this),parent->id());
-  }
-  // log_inv_normConst = -log(tmp);
-  log_inv_normConst = -0.5*(parent->nFeats*log(2*M_PI) + log(det));
 }
 
 void
 DiagGaussian::randomize()
 {
-  assert ( bitmask & bm_basicAllocated );
-  means -> makeRandom();
-  variance -> makeRandom();
+
 }
 
 
