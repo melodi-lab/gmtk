@@ -101,6 +101,11 @@ class iDataStreamFile : public ioDataStreamFile {
     return readToken(str,tokenChars,msg);
   }
 
+  bool readStringUntil(
+    string& str, 
+    const char delimiter, 
+    bool spaceIsDelimiter, 
+    char *msg=NULL ); 
 
   template <class T>
   bool readArray(T* location, const int length, char *msg = NULL) 

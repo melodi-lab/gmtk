@@ -153,7 +153,6 @@ iDataStreamFile::~iDataStreamFile()
 bool
 iDataStreamFile::prepareNext()
 {
-
   if (state==GetNextLine) {
     bool haveData = false;
 
@@ -284,6 +283,49 @@ iDataStreamFile::readString(string& str, char *msg)
     char c = *buffp++;
     while (!isspace(c) &&  c != '\n') {
       str += c;
+      c = *buffp++;
+    }
+  }
+  return true;
+}
+
+
+bool 
+iDataStreamFile::readStringUntil(
+  string& str, 
+  const char delimiter, 
+  bool spaceIsDelimiter, 
+  char *msg ) 
+{
+  str.erase();
+  if (Binary) {
+    char c;
+    // read a string up to the next delimiter character.
+    size_t rc = fread(&c, sizeof(char), 1,fh);
+    if (rc != 1)
+      return errorReturn("readStringUntil",msg);
+    while ((c != delimiter) && ((!spaceIsDelimiter) || (!isspace(c)))) {
+      str += c;
+      size_t rc = fread(&c, sizeof(char), 1,fh);
+      if (rc != 1)
+	return errorReturn("readStringUntil",msg);
+    }
+    if (str.size() == 0)
+	return errorReturn("readStringUntil, zero length string",msg);
+  } else {
+    if (!prepareNext()) {
+      return errorReturn("readStringUntil_aaa",msg);
+    }
+    char c = *buffp++;
+
+    while ((c != delimiter) && ((!spaceIsDelimiter) || (!isspace(c)))) {
+      str += c;
+
+      if (c == '\n') {
+        if (!prepareNext()) {
+          return errorReturn("readStringUntil_whee",msg);
+        }
+      }
       c = *buffp++;
     }
   }
