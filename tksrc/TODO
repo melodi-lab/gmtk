@@ -297,3 +297,4 @@ X ascii/binary conversion program can go both ways.
 
 - write a vector version of log(1 + exp(x))
 
+- clean up swap and end EM in gmparams
