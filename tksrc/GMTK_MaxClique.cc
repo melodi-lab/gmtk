@@ -2731,6 +2731,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	    sv.numRemValuesUsed = 1;	  
 	    // initialize and assign.
 	    sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
+	    if (JunctionTree::viterbiScore)
+	      sv.remValues.ptr[0].backPointer = cvn;
 	  } else {
 	    // already there so must have hit before.
 	    // we thus accumulate.
