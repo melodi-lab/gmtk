@@ -1244,7 +1244,8 @@ triangulate(// input: nodes to be triangulated
 
     weight = graphWeight(cliques);
     if (weight < best_weight) {
-    
+
+      best_cliques.clear();
       best_cliques = cliques;
       best_weight  = weight;
       best_meth_str = meth_str;
@@ -2793,6 +2794,7 @@ testZeroFillIn(
   return(chordal);
 }
 
+
 /*-
  *-----------------------------------------------------------------------
  * triangulateMaximumCardinalitySearch
@@ -2803,10 +2805,10 @@ testZeroFillIn(
  *   nodes in the set. 
  *
  * Postconditions:
- *   The graph is triangulated with an elimination order as determined by 
- *   maximum cardinality search.  The maximal cliques are stored in the
+ *   A triangulation with an elimination order as determined by maximum 
+ *   cardinality search is stored via the maximal cliques in the
  *   cliques variable in RIP order.  The elimination order used is stored 
- *   in order. 
+ *   in order.  Note that the graph is not actually triangulated. 
  *
  * Side Effects:
  *   Neighbor members of each random variable can be changed.
@@ -2836,10 +2838,8 @@ triangulateMaximumCardinalitySearch(
   fillTriangulateNodeStructures( nodes, triangulate_nodes );
   maximumCardinalitySearch( triangulate_nodes, list_cliques, triangulate_order, 
     true);
-  fillInComputation( triangulate_order );
  
   listVectorCliquetoVectorSetClique( list_cliques, cliques );
-  triangulateCompletePartition( nodes, cliques );
 }
 
 
