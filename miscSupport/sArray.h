@@ -6,14 +6,18 @@
 // (such as an int*, float*, double*, etc.)  and where the underlying
 // pointer is easy to access for low level loops. But this class also
 // provides for convenient managing of lengths, allocation,
-// deallocation, and resizing.
+// deallocation, and resizing. It also includes a simple sort routine
+// that will work as long as the object T has an operator<(), copy
+// constructor and operator=().
 //
 // ******************* NOTE *****************************************
-// There is no COPY CONSTRUCTOR, so all copies are bit-wise
-// copies. This means that sArrays work *COMPLETELY* differently then
-// say STL vector types, etc.. sArrays are meant to be used when you
-// wish not to create lots of temporaries during
-// construction/destruction in routine return and call.
+// There is no COPY CONSTRUCTOR for this object, so all copies are
+// bit-wise copies. This means that sArrays work *COMPLETELY*
+// differently then say STL vector types, etc.. sArrays are meant to
+// be used when you wish not to create lots of temporaries during
+// construction/destruction in routine return and call. If you include
+// sArrays in a class, you will need to explicitly manage any
+// copying/constructing.
 // ******************* NOTE *****************************************
 // 
 //
@@ -40,6 +44,40 @@ template <class T>
 class sArray {
 
   int _size;
+
+  // simple dirty quicksort with dumb pivoting. Current type must have
+  // assignment, comparison (operator <()), and be swapable (i.e.,
+  // copy constructor and/or writable)
+  void internalSort(int begin,int end) {
+    if (end > begin) {
+      // last element is pivot. Could also choose a random median-like
+      // element and swap it to the end.
+      T& pivot = ptr[end];
+      int l = begin;
+      int r = end - 1;
+      while (l < r) {
+	if (ptr[l] < pivot) {
+	  l++;
+	} else {
+	  T tmp(ptr[l]);
+	  ptr[l] = ptr[r];
+	  ptr[r] = tmp;
+	  r--;
+	}
+      }
+      if (ptr[l] < pivot) {
+	r++;
+      } else {
+	T tmp(ptr[end]);
+	ptr[end] = ptr[l];
+	ptr[l] = tmp;
+	l--;
+	r++;
+      }
+      internalSort(begin, l);
+      internalSort(r, end);
+    }
+  }
 
  public:
 
@@ -187,6 +225,10 @@ class sArray {
       ptr[i] = x;
   }
 
+  // simple naive implementation of ascending quicksort.  Current
+  // type must have assignment, comparison (operator <()), and be
+  // swapable (i.e., copy constructor or writable)
+  void sort() { internalSort(0,_size-1); }
 
 };
 

@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <sys/types.h>
 
+#include "sArray.h"
+
 class BP_Range {
 
 
@@ -36,20 +38,17 @@ class BP_Range {
   };
 
   // the actuall range array
-  sub_range* range;
-  // Ensures we can add one to the range array
-  void make_range_safe_to_add_one();
+  sArray < sub_range > range;
   // The number of valid elements of the range array
+  // (might be less than what is allocated) 
   int range_size;
-  // The actuall range array size
-  int range_array_length;
   // A copy of the range spec string.
   char *range_str;
 
   // The smallest valid range value
-  const int lower_limit;
+  int lower_limit;
   // The largest valid range value (corresponding to ^0)
-  const int upper_limit;
+  int upper_limit;
 
   // the total number of entries that a
   // range specifies, i.e., "1,2,4:7" would
@@ -71,10 +70,16 @@ public:
 	const int lower_limit_a, // Limits of a valid range, 
 	const int upper_limit_a); // must be in [l:(u-1)]
 
-  // create an invalid version of this object for re-construction
-  // within an array later using new&.
+  // copy constructor and copy.
+  BP_Range(const BP_Range& other);
+  BP_Range& operator=(const BP_Range& other);
+
+
+  //////////////////////////////////////////////////////////////////
+  // Create an *INVALID* version of this object for re-construction
+  // within an array later using C++ placement new&.
   BP_Range() 
-    : lower_limit(0),upper_limit(0) {}
+    : range_str(NULL),lower_limit(0),upper_limit(0) {}
 
   ~BP_Range();
   
@@ -146,13 +151,29 @@ public:
   bool overlapP (const BP_Range& r) const;
   bool overlapP (const BP_Range* r) const { return overlapP(*r); }
 
+
   bool operator<  (const BP_Range& r)  const { return (max() < r.min()); }
+  // operator <=, an "==" range is one that is non-comparable, i.e.,
+  // one that has boundaries that overlaping.
+  bool operator<=  (const BP_Range& r)  const 
+  { return (max() < r.min()) || (min() <= r.max()); }
+
   bool operator>  (const BP_Range& r)  const { return (min() > r.max()); }
+  // operator >=, an "==" range is one that is non-comparable, i.e.,
+  // one that has boundaries that overlaping.
+  bool operator>=  (const BP_Range& r)  const 
+  { return (min() > r.max()) || (max() >= r.min()); }
+
+
+  // essentially an "==" operator.
   bool boundariesOverlap(const  BP_Range& r) const {
     if (max() < r.min() || min() > r.max())
       return false;
     return true;
   }
+  bool operator== (const BP_Range& r)  const 
+  { return boundariesOverlap(r); }
+
 
   bool operator<  (const int r)  const { return (max() < r); }
   bool operator<= (const int r)  const { return (max() < r || contains(r)); }

@@ -145,7 +145,7 @@ testVHashMap: vhash_map.h vhash_map.cc hash_abstract.o hash_abstract.cc hash_abs
 testRand: rand.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ rand.cc error.o $(LIBS)
 
-testsArray: sArray.cc
+testsArray: sArray.cc sArray.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ sArray.cc error.o $(LIBS)
 
 testcArray: cArray.cc
