@@ -69,7 +69,7 @@ void Argument_List::add(string _name, bool _required, double *s, string desc)
 void Argument_List::add(string _name, bool _required, char **s, string desc)
 {
     checkRedundancy(_name = "-" + _name);
-    arguments.push_back(Argument(_name,"char *",_required,s,desc));
+    arguments.push_back(Argument(_name,"string",_required,s,desc));
 }
 
 void Argument_List::add(string _name, bool _required, bool *s, string desc)
@@ -177,7 +177,7 @@ void Argument_List::getVal(Argument *arg, char *val)
         double v = atof(val);
         *((double *)arg->storage) = v;
     }
-    else if (arg->type=="char *" || arg->type=="char*")
+    else if (arg->type=="string")
     {
         *((char **)arg->storage) = val;
     }
@@ -203,10 +203,30 @@ void Argument_List::getVal(Argument *arg, char *val)
 void Argument_List::dumpArgs()
 {
     for (unsigned i=0; i<arguments.size(); i++)
+    {
         cout << arguments[i].name << " " 
-             << "(" << arguments[i].type << ", "
-             << ((arguments[i].required)?("required): " ):("optional): "))
-             << endl << "\t" << arguments[i].remark << endl;
+             << "(" << arguments[i].type;
+        if (arguments[i].required)
+            cout << ", required): ";
+        else
+        {
+            cout << " [";
+            if (arguments[i].type == "int")
+                cout << *((int *)arguments[i].storage);
+            else if (arguments[i].type=="unsigned")
+                cout << *((unsigned *)arguments[i].storage);
+            else if (arguments[i].type=="float")
+                cout << *((float *)arguments[i].storage);
+            else if (arguments[i].type=="double")
+                cout << *((double *)arguments[i].storage);
+            else if (arguments[i].type=="string")
+                cout << *((char **)arguments[i].storage);
+            else if (arguments[i].type=="bool")
+                cout << *((bool *)arguments[i].storage);
+            cout << "]): ";
+        }
+        cout << endl << "\t" << arguments[i].remark << endl;
+    }
 }
  
 void Argument_List::checkArgStructure(int count, char *args[])
