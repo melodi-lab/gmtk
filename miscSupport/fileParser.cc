@@ -23,7 +23,7 @@ VCID("$Header$");
 #include "sArray.h"
 
 
-#define MAXLINSIZE 131072
+#define MAXLINSIZEPLUS1 (262144)
 #define COMMENTCHAR '%'
 
 #define FLOATWRITESTR   "%0.10e "
@@ -117,7 +117,7 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
   }
 #endif
   if (!Binary) {
-    buff = new char[MAXLINSIZE];
+    buff = new char[MAXLINSIZEPLUS1];
     buffp = buff;
     state = GetNextLine;
   }
@@ -152,13 +152,17 @@ iDataStreamFile::prepareNext()
     bool haveData = false;
 
     do {
-      char *s = fgets(buff,MAXLINSIZE,fh);
+      char *s = fgets(buff,MAXLINSIZEPLUS1,fh);
       if (s == NULL)
 	return false;
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
       if (*s == CPP_DIRECTIVE_CHAR)
 	continue;
 #endif
+      if (::strlen(s) == (MAXLINSIZEPLUS1-1))
+	error("ERROR: maximum line length of %d reached in ASCII file '%s'\n",
+	      fileName());
+
       char *cstart = ::index(s,COMMENTCHAR);
       if (cstart != NULL) {
 	if (cstart == buff)
