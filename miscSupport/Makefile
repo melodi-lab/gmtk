@@ -101,7 +101,7 @@ libmiscSupport.a: $(objs)
 
 
 string_err: string_err.o
-	$(compile.cc) -Wall -g -DMAIN  -o string_err string_err.o $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o string_err string_err.o $(LIBS)
 
 
 #----------------------------------------------------------------------------
@@ -109,25 +109,25 @@ string_err: string_err.o
 #----------------------------------------------------------------------------
 
 testError: error.cc
-	$(compile.cc) -Wall -g -DMAIN  -o $@ error.cc $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ error.cc $(LIBS)
 
 
 testBPRange: bp_range.cc error.o
-	$(compile.cc) -Wall -g -DMAIN  -o $@ bp_range.cc error.o $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ bp_range.cc error.o $(LIBS)
 
 
 testArguments: arguments.cc
-	$(compile.cc) -Wall -g -DMAIN  -o $@ arguments.cc $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ arguments.cc $(LIBS)
 
 testLogp: logp.cc
-	$(compile.cc) -Wall -g -DMAIN  -o $@ logp.cc error.o $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ logp.cc error.o $(LIBS)
 
 
 testRand: rand.cc
-	$(compile.cc) -Wall -g -DMAIN  -o $@ rand.cc error.o $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ rand.cc error.o $(LIBS)
 
 testsArray: sArray.cc
-	$(compile.cc) -Wall -g -DMAIN  -o $@ sArray.cc error.o $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ sArray.cc error.o $(LIBS)
 
 #----------------------------------------------------------------------------
 # Gather stuff together.
