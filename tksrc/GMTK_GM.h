@@ -15,34 +15,37 @@
  *
  */
 
-#ifndef GMTK_GM
-#define GMTK_GM
+#ifndef GMTK_GM_H
+#define GMTK_GM_H
 
 #include "sArray.h"
-#include "error.h"
-#include "randomVariable.h"
 #include "logp.h"
+#include "GMTK_RandomVariable.h"
+#include "GMTK_CliqueChain.h"
 
 struct GMTK_GM
 {
-    sArray<randomVariable *> node;
+    sArray<RandomVariable *> node;
     // This holds all the variables in the graph.
     // The topology os determined by the Parent and Child arrays associated
     // with each random variable.
 
-    sArray<randomVariable *> topologicalOrder;
+    sArray<RandomVariable *> topologicalOrder;
     // A topological ordering of the nodes; useful for simulation and
     // enumerative inference.
 
-    void findTopologicalOrder(randomVariable *rv = NULL);
+    void findTopologicalOrder(RandomVariable *rv = NULL);
     // Guarantees that all variables at time t-1 occur before any variables
     // at time t.
+
+    void reveal(sArray<RandomVariable *> order);
+    // Go through the nodes in the specified order and show them.
 
     int numEquivalenceClasses;
     // The variables in the network may be divided into equivalence classes,
     // with the members of each equivalence class sharing the same parameters.
 
-    sArray<randomVariable *> representativeOfEquivalenceClass;
+    sArray<RandomVariable *> representativeOfEquivalenceClass;
     // All the members of an equivalence class will use the parameters 
     // associated with this particular member. To save memory, the other
     // member's parameter data structures simply point to this representative.
@@ -57,7 +60,7 @@ struct GMTK_GM
     // Goes over the variables in topological order and instantiates them 
     // according to the probability distribution given their parent's values.
 
-    void enumerateProb(unsigned pos=0, logpr p=1);
+    void enumerateProb(int pos=0, logpr p=1.0);
     // A recursive function that enumerates all possible values of the 
     // hidden variables and computes the total data prob by brute force.
     // Good for verifying DP and other inference results.
@@ -77,7 +80,7 @@ struct GMTK_GM
     // values.
     // Observation variables can ignore this.
 
-    void enumerateViterbiProb(unsigned pos=0, logpr p=1);
+    void enumerateViterbiProb(int pos=0, logpr p=1.0);
     // Computes the probability of the likeliest instantiation of the hidden
     // variables, and stores it in logViterbiProb. 
     // Has the side effect that at termination, the network is clamped to its
@@ -114,10 +117,10 @@ struct GMTK_GM
     void enumerativeEM(int iterations);
     // Does EM using brute force inference.
 
-    cliqueChain *chain;
+    CliqueChain *chain;
     // A pointer to a clique chain representation of the GM.
 
-    void cliqueChainEM(int iterations, logpr beam=0);
+    void cliqueChainEM(int iterations, logpr beam=0.0);
     // Does EM using dynamic programming on a clique chain.
 };
 

@@ -30,7 +30,7 @@ struct CliqueChain
     sArray<Clique *> preorder, postorder;
     // Pointers to the cliques in pre and post-order.
 
-    bool forwardPass(logpr beam=0, bool viterbi=false);
+    bool forwardPass(logpr beam=0.0, bool viterbi=false);
     // Computes the alpha probabilities and/or viterbi clique value pointers.
     // Prunes away entries that are less than beam*max.
 
@@ -40,12 +40,12 @@ struct CliqueChain
     // corresponding pis, and divided by the data prob, the poserior of each
     // clique instantiation results.
 
-    bool doViterbi(logpr beam=0);
+    bool doViterbi(logpr beam=0.0);
     // Computes the likeliest value of each clique, and clamps the variables
     // in the underlying network correspondingly.
     // Prunes away entries that are less than beam*max.
 
-    void computePosteriors(logpr beam=0);
+    void computePosteriors(logpr beam=0.0);
     // Calculates the lambdas and pis for all the cliques.
     // Prunes away entries that are less than beam*max.
 
@@ -54,7 +54,7 @@ struct CliqueChain
     // the network, and increments the EM statistics for each node assigned
     // to a clique.
 
-    GMTK_GM *gm;
+    logpr dataProb, viterbiProb;
 };
 
 #endif

@@ -17,6 +17,7 @@
  */
 
 #include "GMTK_GM.h"
+#include <map>
 
 /*
  *-------------------------------------------------------------------------
@@ -32,34 +33,30 @@
  * Side Effects:
  * None.
 */
-void GMTK_GM::findTopologicalOrder(randomVariabe *rv)
+void GMTK_GM::findTopologicalOrder(RandomVariable *rv)
 {
 
     /* Finds a topological order of the random variables.
        The first call is made with no parameters.
     */
 
-    static int *constraints_for;
-    static randomVariable **temp_top0_order;
+    static map<RandomVariable *, int> constraints_for;
+    static RandomVariable **temp_topo_order;
     static int topo_pos;
     if (rv == NULL)  // the first call
     {
-        constraints_for = new int[numNodes];
-        temp_topo_order = new randomVariable[numNodes];
+        constraints_for.clear();
+        temp_topo_order = new RandomVariable *[numNodes];
         topo_pos = 0;
         for (int i=0; i<numNodes; i++)
-        {
-            node[i]->findAllPossibleParents();
-            constraints_for[i] += node[i]->allPossibleParents.len();
-        }
+            constraints_for[node[i]] += node[i]->allPossibleParents.len();
 
         // now start processing all nodes w/o and predecessors
         for (int i=0; i<numNodes; i++)
-            if (constraints_for[i] == 0)
-                findTopologicalOrder(&node[i]);
+            if (constraints_for[node[i]] == 0)
+                findTopologicalOrder(node[i]);
 
         assert(topo_pos == numNodes);
-        delete [] constraints_for;
 
         // Now "pack" the ordering so that all the nodes from time t occur
         // before any nodes from time t+1. 
@@ -72,7 +69,7 @@ void GMTK_GM::findTopologicalOrder(randomVariabe *rv)
         for (int i=0; i<numNodes; i++)
         {
             int slice = temp_topo_order[i]->timeIndex;
-            topologicalOrder[slice_size*slice + pos[slice]++] = 
+            topologicalOrder[sliceSize*slice + pos[slice]++] = 
                 temp_topo_order[i];
         }
 
@@ -83,13 +80,13 @@ void GMTK_GM::findTopologicalOrder(randomVariabe *rv)
 
     // not a first call
     // we have a node with no predecessors
-    assert(constraints_for[rv->nodeNum] == 0);
-    temp_topo_order[topo_pos++] = rv 
-    constraints_for[rv->nodeNum] = -1;  // mark as processed
-    for (int i=0; i<rv->allPossibleChildren.len(); i++)
+    assert(constraints_for[rv] == 0);
+    temp_topo_order[topo_pos++] = rv; 
+    constraints_for[rv] = -1;  // mark as processed
+    for (unsigned i=0; i<rv->allPossibleChildren.size(); i++)
     {
         assert(constraints_for[rv->allPossibleChildren[i]] > 0);
-        if (--constrains_for[rv->allPossibleChildren[i]] == 0)
+        if (--constraints_for[rv->allPossibleChildren[i]] == 0)
             findTopologicalOrder(rv->allPossibleChildren[i]);
     }
 }
@@ -162,11 +159,11 @@ void GMTK_GM::simulate()
  * The hidden variables in the network are left clamped to some arbitrary value
 */
 
-void GMTK_GM::enumerateProb(unsigned pos, logpr p)
+void GMTK_GM::enumerateProb(int pos, logpr p)
 {
     if (pos == 0)             // first call
         if (!emMode)          // computing the data prob
-            dataProb = 0;     // initialize
+            dataProb = 0.0;     // initialize
 
     if (pos == numNodes)  // all the nodes are instantiated
     {
@@ -177,7 +174,7 @@ void GMTK_GM::enumerateProb(unsigned pos, logpr p)
         return;
     }
 
-    randomVariable *rv = topologicalOrder[pos];
+    RandomVariable *rv = topologicalOrder[pos];
     rv->clampFirstValue();
     do
     {
@@ -185,7 +182,7 @@ void GMTK_GM::enumerateProb(unsigned pos, logpr p)
     } while (rv->clampNextValue());
 
     if (pos == 0)  // all done with everything
-        if (dataProb == 0 && !emMode)
+        if (dataProb == 0.0 && !emMode)
             cout << "Warning: Data probability is 0\n";
 }
 
@@ -239,10 +236,10 @@ void GMTK_GM::restoreCachedValues()
  * Each variable is left clamped with its likeliest value.
 */
 
-void GMTK_GM::enumerateViterbiProb(unsigned pos, logpr p)
+void GMTK_GM::enumerateViterbiProb(int pos, logpr p)
 {
     if (pos == 0)            // first call
-        viterbiProb = 0;     // initialize
+        viterbiProb = 0.0;     // initialize
 
     if (pos == numNodes)  // all the nodes are instantiated
     {
@@ -254,15 +251,15 @@ void GMTK_GM::enumerateViterbiProb(unsigned pos, logpr p)
         return;
     }
 
-    randomVariable *rv = topologicalOrder[pos];
+    RandomVariable *rv = topologicalOrder[pos];
     rv->clampFirstValue();
     do
     {
-        enumerateViterbiProb(pos+1, p*rv->probGivenParents();
+        enumerateViterbiProb(pos+1, p*rv->probGivenParents());
     } while (rv->clampNextValue());
 
     if (pos == 0)  // all done with everything
-        if (viterbiProb == 0)
+        if (viterbiProb == 0.0)
             cout << "Warning: All instantiations have 0 probability.\n"
                  << "Network not clamped\n";
         else
@@ -341,20 +338,20 @@ void GMTK_GM::enumerativeEM(int iterations)
     emInitialize();
     for (int i=0; i<iterations; i++)
     {
-        logpr total_data_prob = 0;
+        logpr total_data_prob = 0.0;
         clampFirstExample();
         do
         {
             // first get the total data probability
             emMode=false;
-            enumerativeProb();  
+            enumerateProb();  
             total_data_prob *= dataProb;
 
             // then increment the em counts
             emMode=true;
-            enumerativeProb(0, 1.0/DataProb);
-        } while (clampNextExample);
-        cout << "Total data prob is: " << total_data_prob << endl;
+            enumerateProb(0, 1.0/dataProb);
+        } while (clampNextExample());
+        cout << "Total data prob is: " << total_data_prob.val() << endl;
         emUpdate();
     }
 }
@@ -378,18 +375,24 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
     emInitialize();
     for (int i=0; i<iterations; i++)
     {
-        logpr total_data_prob = 0;
+        logpr total_data_prob = 0.0;
         clampFirstExample();
         do
         {
             // first compute the probabilities
             chain->computePosteriors(beam);
-            total_data_prob *= dataProb;
+            total_data_prob *= chain->dataProb;
 
             // then increment the em counts
             chain->incrementEMStatistics();
-        } while (clampNextExample);
-        cout << "Total data prob is: " << total_data_prob << endl;
+        } while (clampNextExample());
+        cout << "Total data prob is: " << total_data_prob.val() << endl;
         emUpdate();
     }
+}
+
+void GMTK_GM::reveal(sArray<RandomVariable *> order)
+{
+    for (int i=0; i<order.len(); i++)
+        order[i]->reveal();
 }
