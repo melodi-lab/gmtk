@@ -133,6 +133,9 @@ public:
 		   const Data32* const base,
 		   const int stride);
   void emEndIteration();
+  void emEndIterationNoSharing();
+  void emEndIterationSharedCovars();
+  void emEndIterationSharedAll();
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
   void emStoreZeroAccumulators(oDataStreamFile& ofile);

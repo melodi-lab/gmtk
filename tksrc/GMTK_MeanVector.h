@@ -31,11 +31,16 @@
 #include "GMTK_RandomVariable.h"
 
 
+class DiagCovarVector;
+class DlinkMatrix;
+
 class MeanVector : public EMable, public NamedObject {
 
 private:
 
   friend class DiagGaussian;
+  friend class DiagCovarVector;
+  friend class DlinkMatrix;
 
   //////////////////////////////////
   // The acutal mean vector
@@ -44,6 +49,10 @@ private:
   //////////////////////////////////
   // Data structures support for EM
   sArray<float> nextMeans;
+
+  /////////////////////////////////////////////////////////
+  // the denominator used in the case of shared means.
+  sArray<double> sharedMeansDenominator;
 
   /////////////////////////////////////////////////
   // counts the number of gaussian components
@@ -111,6 +120,18 @@ public:
 		   const int stride,
 		   float *const partialAccumulatedNextMeans);
   void emEndIteration(const float *const partialAccumulatedNextMeans);
+  void emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbability,
+					     const float*const partialAccumulatedNextMeans,
+					     const DiagCovarVector* covar);
+  void emEndIterationNoSharing(const float *const partialAccumulatedNextMeans);
+
+  void emEndIterationNoSharingAlreadyNormalized(const float *const accumulatedNextMeans);
+  void emEndIterationSharedMeansCovarsDlinks(const logpr accumulatedProbability,
+					     const float*const xAccumulators,
+					     const float*const zAccumulators,
+					     const DlinkMatrix* dLinkMat,
+					     const DiagCovarVector* covar);
+
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
   void emStoreZeroAccumulators(oDataStreamFile& ofile);

@@ -342,8 +342,47 @@ DiagGaussian::emEndIteration()
 	    covar->name().c_str());
   }
 
-  mean->emEndIteration(nextMeans.ptr);
-  covar->emEndIteration(accumulatedProbability,nextMeans.ptr,nextDiagCovars.ptr);
+
+  if (covar->emSharedBitIsSet()) {
+    // covariance is shared
+    if (mean->emSharedBitIsSet()) {
+      // mean and covariance are both shared
+      mean->emEndIterationSharedMeansCovars
+	(accumulatedProbability,nextMeans.ptr,covar);
+      covar->emEndIterationSharedMeansCovars
+	(accumulatedProbability,
+	 nextMeans.ptr,
+	 nextDiagCovars.ptr,
+	 mean);
+    } else {
+      // Mean is not shared, but covariance is shared
+      // can still use normal EM
+      mean->emEndIterationNoSharing(nextMeans.ptr);
+      covar->emEndIterationSharedCovars(accumulatedProbability,nextMeans.ptr,nextDiagCovars.ptr);
+    }
+  } else {
+    // covariance is not shared
+    if (mean->emSharedBitIsSet()) {
+      // covariance is not shared, mean is shared,
+      // but use the "all shared" versions since we don't
+      // have the new mean at this point.
+      mean->emEndIterationSharedMeansCovars
+	(accumulatedProbability,nextMeans.ptr,covar);
+      covar->emEndIterationSharedMeansCovars
+	(accumulatedProbability,
+	 nextMeans.ptr,
+	 nextDiagCovars.ptr,
+	 mean);
+    } else {
+      // nothing is shared, use EM
+      mean->emEndIterationNoSharing(nextMeans.ptr);
+      covar->emEndIterationNoSharing(nextMeans.ptr,nextDiagCovars.ptr);
+    }
+  }
+
+  // mean->emEndIteration(nextMeans.ptr);
+  // covar->emEndIteration(accumulatedProbability,nextMeans.ptr,nextDiagCovars.ptr);
+
 
   emClearOnGoingBit();
 }
