@@ -41,9 +41,20 @@ VCID("$Header$");
 
 
 ////////////////////////////////////////////////////////////////////
-//        General create, read, destroy routines 
+//        Static members
 ////////////////////////////////////////////////////////////////////
 
+// ok if -startSkip <= _globalMinLag
+int Dlinks::_globalMinLag = 1000000;
+// ok if endSkip >= _globalMaxLag
+int Dlinks::_globalMaxLag = -1000000;
+
+int Dlinks::_globalMinOffset = 1000000;
+int Dlinks::_globalMaxOffset = -1000000;
+
+////////////////////////////////////////////////////////////////////
+//        General create, read, destroy routines 
+////////////////////////////////////////////////////////////////////
 
 /*-
  *-----------------------------------------------------------------------
@@ -116,13 +127,20 @@ Dlinks::read(iDataStreamFile& is)
       is.read(o,"Dlinks::read, offset");
       if (o < 0)
 	error("Dlinks::read, read offset (%d) < 0 in input",o);
+      if (o < _globalMinOffset)
+	_globalMinOffset = o;
+      if (o > _globalMaxOffset)
+	_globalMaxOffset = o;	
+
       dIndices[i][j].lag = l;
       dIndices[i][j].offset = o;
     }
   }
-
+  if (_minLag < _globalMinLag)
+    _globalMinLag = _minLag;
+  if (_maxLag > _globalMaxLag)
+    _globalMaxLag = _maxLag;
   arrayCacheTag = NULL;
-
 }
 
 
