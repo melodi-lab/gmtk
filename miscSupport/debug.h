@@ -32,7 +32,12 @@ public:
   }
 
   // levels for general informational and/or debugging messages.
-
+  // In general, there are levels between 0 and 100, where
+  // larger means be more verbose, and lower means be less
+  // verbose. A info message gives a tag that says
+  // how verbose it is (i.e., a tag of 0 means that this is a
+  // warning that could indicate a problem, a tag of 100 means
+  // that this is something that should not exist.
   enum VerbosityLevels { 
     Min = 0,
     Warning = 0, // Anything lower than this should be an error
@@ -44,12 +49,22 @@ public:
     Default = 10,
     Tiny = 20,
     Low  = 30,
-    Med  = 40,
-    High = 50,
-    Huge = 60,
-    Mega = 70,
-    Rediculous = 80,
-    Max  = 80    //  keep this set at the maximum
+    Moderate = 40,
+    Med  = 50,
+    High = 60,
+    Huge = 70,
+    Mega = 80,
+    Rediculous = 90,
+    Foolish = 100,
+    Max  = 100,    //  keep this set at the maximum
+    // We also define an "increment" variable here, so that a user
+    // can do something like 
+    //   infoMsg( (Nano + 0.3*Increment), "bar" );
+    Increment = 10
+    // Note also that the user could do something
+    // like 
+    //   infoMsg( (Tiny + Low)/2, "baz" );
+    // to get something between tiny and low.
   };
 
 
