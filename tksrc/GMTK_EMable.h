@@ -43,6 +43,7 @@ protected:
   //      that parameters aren't swapped twice)
   //   3) Loading/Storing accumulators, to make sure they aren't
   //      loaded/stored more than one time.
+  //   and a number of other things (see below).
   enum {
     // Basic data structures allocated (after a read)
     bm_basicAllocated  = (1 << 0),
@@ -93,7 +94,7 @@ protected:
 public:
 
   
-  EMable() { bitmask = 0x0; }
+  EMable() { bitmask = bm_amTraining; }
   virtual ~EMable() {}
 
   static logpr minContAccumulatedProbability()
