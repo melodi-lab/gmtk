@@ -209,3 +209,6 @@ X add VCID everywhere.
 
 - rething the EMable thing with the virtual functions, might
   be a speedup there, esp. with emIncrement.
+
+- figure out a good way to get (save to disk) most viterbi assignment to 
+  mixture variables.
