@@ -726,3 +726,6 @@ Tue Dec 17 13:31:36 2002
  (actually, do the switching variable scale/penalty stuff).
 
 
+Thu Dec 19 17:36:22 2002
+  - topological sort loop detection should indicate
+    which node is involved in a loop.
