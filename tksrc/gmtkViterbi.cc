@@ -102,7 +102,7 @@ double varFloor = 1e-10;
 char *ofilelist = NULL;
 char *dumpNames = NULL;
 
-bool show_cliques=false;
+int show_cliques=0;
 
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
@@ -156,7 +156,7 @@ ARGS ARGS::Args[] = {
   ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
   ARGS("cptNormThreshold",ARGS::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
 
-  ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
+  ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques after the netwok has been unrolled k times."),
 
 
   ARGS("dumpNames",ARGS::Opt,dumpNames,"File containing the names of the variables to save to a file"),
@@ -294,13 +294,14 @@ main(int argc,char*argv[])
   gm.verifyTopologicalOrder();
 
   gm.GM2CliqueChain();
+  gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
+
   if (show_cliques)
   {
-    cout << "The cliques in the template network are:\n";
+    cout << "The cliques in the unrolled network are:\n";
+    gm.setSize(show_cliques);
     gm.showCliques();
   }
-
-  gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
 
   set<string> dumpVars;
   map<string,int> posFor;

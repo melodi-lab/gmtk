@@ -111,7 +111,7 @@ char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
 char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
 bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
-bool show_cliques=false;
+int show_cliques=0;
 
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
@@ -210,7 +210,7 @@ ARGS ARGS::Args[] = {
   ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
   ARGS("enem",ARGS::Opt,enem,"Run enumerative EM"),
 
-  ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
+ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques after the netwok has been unrolled k times."),
 
   ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
 
@@ -334,9 +334,11 @@ main(int argc,char*argv[])
 
 
   gm.GM2CliqueChain();
+  gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
   if (show_cliques)
   {
-    cout << "The cliques in the template network are:\n";
+    cout << "The cliques in the unrolled network are:\n";
+    gm.setSize(show_cliques);
     gm.showCliques();
   }
 
@@ -350,7 +352,6 @@ main(int argc,char*argv[])
 
   /////////////////////////////////////
   // finaly, start training.
-  gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
   logpr pruneRatio;
   pruneRatio.valref() = -beam;
   if (enem) {
