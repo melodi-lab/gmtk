@@ -44,8 +44,11 @@ private:
 
 public:
 
-  DiscreteRandomVariable(string _label, vartype vt, int card=0)
-    : RandomVariable(_label, vt,card) {}
+  DiscreteRandomVariable(char * _label, vartype vt, int card);
+/*
+  DiscreteRandomVariable(char * _label, vartype vt, int card)
+    : RandomVariable(_label, vt, card) {;}
+*/
 
   ////////////////////////////////////////////////
   // Assuming the parents have been allocated, this forces
