@@ -337,6 +337,17 @@ extern void copy_f_vf(size_t len, float from, float* to);
 extern short swapb_short_short(short sval);
 
 
+// karim@cs
+
+extern void copy_add_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
+extern void copy_mul_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
+extern void copy_sub_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
+extern void copy_div_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
+
+extern void swapb_add_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
+extern void swapb_mul_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
+extern void swapb_sub_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
+extern void swapb_div_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
 #endif // #ifndef PFILE_H_INCLUDED
 
 
