@@ -57,7 +57,11 @@
 
 VCID("$Header$");
 bool JunctionTree::jtWeightUpperBound = false;
-bool JunctionTree::jtWeightPenalizeUnassignedIterated = false;
+bool JunctionTree::jtWeightMoreConservative = false;
+float JunctionTree::jtWeightPenalizeUnassignedIterated = 0.0;
+float JunctionTree::jtWeightSparseNodeSepScale = 1.0;
+float JunctionTree::jtWeightDenseNodeSepScale = 1.0;
+
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
 
@@ -2139,13 +2143,15 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // 
       // In otherwords, rerder clique.ceReceiveSeparators for maximal overlap.
       // 
-    
-      // sort based on increasing 
+      // sort
+      // ... ADD SORTING CODE HERE.
+      // Done sorting. sort separator
 
 
-      // Compute the cummulative intersection of the sepsets
-      // using the current sepset order.
 
+
+      // Compute the cummulative intersection of the sepsets using the
+      // currently assigned sepset order.
       {
 
 	// initialize union of all previous separators
@@ -2385,20 +2391,26 @@ JunctionTree::getCumulativeUnassignedIteratedNodes()
  */
 double
 JunctionTree::junctionTreeWeight(JT_Partition& part,
-				 const unsigned rootClique)
+				 const unsigned rootClique,
+				 set<RandomVariable*>* lp_nodes,
+				 set<RandomVariable*>* rp_nodes)
 {
   MaxClique& curClique = part.cliques[rootClique];
 
   set <RandomVariable*> empty;
   // @@ add in unassigned in partition information to next call
-  double weight = curClique.weightInJunctionTree(part.unassignedInPartition,jtWeightUpperBound);
+  double weight = curClique.weightInJunctionTree(part.unassignedInPartition,
+						 jtWeightUpperBound,
+						 jtWeightMoreConservative,
+						 true,
+						 lp_nodes,rp_nodes);
   // double weight = curClique.weight();
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
     double child_weight = junctionTreeWeight(part,
-					     curClique.children[childNo]);
+					     curClique.children[childNo],lp_nodes,rp_nodes);
     // i.e., log addition for weight = weight + child_weight
-    weight = weight + log10(1+pow(10,child_weight - weight));
+    weight = log10add(weight,child_weight);
   }
   return weight;
 }
@@ -2434,7 +2446,10 @@ JunctionTree::junctionTreeWeight(JT_Partition& part,
  */
 double
 JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
-				 const set<RandomVariable*>& interfaceNodes)
+				 const set<RandomVariable*>& interfaceNodes,
+				 set<RandomVariable*>* lp_nodes,
+				 set<RandomVariable*>* rp_nodes)
+
 {
 
   Partition part;
@@ -2476,14 +2491,19 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 			   message_order,
 			   ~0x0,
 			   leaf_cliques);
+
+  // Note that since we're calling createSeparators(jt_part,msg_order)
+  // here directly, this means that the left interface clique will not
+  // have its separator to the left partition filled in.
   createSeparators(jt_part,message_order);
+
   computeSeparatorIterationOrders(jt_part);
   getCumulativeUnassignedIteratedNodes(jt_part,root);
   
   // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
-  double weight = junctionTreeWeight(jt_part,root);
+  double weight = junctionTreeWeight(jt_part,root,lp_nodes,rp_nodes);
 
-  if (jtWeightPenalizeUnassignedIterated) {
+  if (jtWeightPenalizeUnassignedIterated > 0.0) {
     unsigned badness_count=0;
     set <RandomVariable*>::iterator it;
     for (it = jt_part.cliques[root].cumulativeUnassignedIteratedNodes.begin();
@@ -2506,7 +2526,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 	
 	badness_count ++;
       }
-    weight = badness_count*1000 + weight;
+    weight = badness_count*jtWeightPenalizeUnassignedIterated + weight;
   }
   return weight;
 
@@ -2553,45 +2573,50 @@ JunctionTree::printAllJTInfo(char *fileName)
 
   fprintf(f,"===============================\n");
   fprintf(f,"   P1 partition information: JT_weight = %f\n",
-	  junctionTreeWeight(P1,P_ri_to_C));
-  printAllJTInfo(f,P1,P_ri_to_C);
+	  junctionTreeWeight(P1,P_ri_to_C,
+			     NULL,(gm_template.leftInterface?&Cu0.nodes:&Co.nodes)));
+  printAllJTInfo(f,P1,P_ri_to_C,NULL,(gm_template.leftInterface?&Cu0.nodes:&Co.nodes));
   fprintf(f,"\n\n");
 
   if (gm_template.leftInterface) {
 
     fprintf(f,"===============================\n");
     fprintf(f,"   Cu0 partition information: JT_weight = %f\n",
-	    junctionTreeWeight(Cu0,C_ri_to_C));
-    printAllJTInfo(f,Cu0,C_ri_to_C);
+	    junctionTreeWeight(Cu0,C_ri_to_C,
+			       &P1.nodes,&Co.nodes));
+
+    printAllJTInfo(f,Cu0,C_ri_to_C,&P1.nodes,&Co.nodes);
     fprintf(f,"\n\n");
 
 
     fprintf(f,"===============================\n");
     fprintf(f,"   Co partition information: JT_weight = %f\n",
-	    junctionTreeWeight(Co,C_ri_to_E));
-    printAllJTInfo(f,Co,C_ri_to_E);
+	    junctionTreeWeight(Co,C_ri_to_E,&Cu0.nodes,&E1.nodes));
+    printAllJTInfo(f,Co,C_ri_to_E,&Cu0.nodes,&E1.nodes);
     fprintf(f,"\n\n");
 
   } else { // right interface
 
     fprintf(f,"===============================\n");
     fprintf(f,"   Co partition information: JT_weight = %f\n",
-	    junctionTreeWeight(Co,C_ri_to_C));
-    printAllJTInfo(f,Co,C_ri_to_C);
+	    junctionTreeWeight(Co,C_ri_to_C,&P1.nodes,&Cu0.nodes));
+    printAllJTInfo(f,Co,C_ri_to_C,&P1.nodes,&Cu0.nodes);
     fprintf(f,"\n\n");
 
     fprintf(f,"===============================\n");
     fprintf(f,"   Cu0 partition information: JT_weight = %f\n",
-	    junctionTreeWeight(Cu0,C_ri_to_E));
-    printAllJTInfo(f,Cu0,C_ri_to_E);
+	    junctionTreeWeight(Cu0,C_ri_to_E,&Co.nodes,&E1.nodes));
+    printAllJTInfo(f,Cu0,C_ri_to_E,&Co.nodes,&E1.nodes);
     fprintf(f,"\n\n");
 
   }
 
   fprintf(f,"===============================\n");
   fprintf(f,"   E1 partition information: JT_weight = %f\n",
-	  junctionTreeWeight(E1,E_root_clique));
-  printAllJTInfo(f,E1,E_root_clique);
+	  junctionTreeWeight(E1,E_root_clique,
+			     (gm_template.leftInterface?&Co.nodes:&Cu0.nodes),NULL));
+
+  printAllJTInfo(f,E1,E_root_clique,(gm_template.leftInterface?&Co.nodes:&Cu0.nodes),NULL);
   fprintf(f,"\n\n");
 
   // print message order information
@@ -2661,12 +2686,15 @@ JunctionTree::printAllJTInfo(char *fileName)
 void
 JunctionTree::printAllJTInfo(FILE* f,
 			     JT_Partition& part,
-			     const unsigned root)
+			     const unsigned root,
+			     set <RandomVariable*>* lp_nodes,
+			     set <RandomVariable*>* rp_nodes)
+			     
 {
   // print cliques information
   fprintf(f,"=== Clique Information ===\n");
   fprintf(f,"Number of cliques = %d\n",part.cliques.size());
-  printAllJTInfoCliques(f,part,root,0);
+  printAllJTInfoCliques(f,part,root,0,lp_nodes,rp_nodes);
 
   // print separator information
   fprintf(f,"\n=== Separator Information ===\n");
@@ -2707,7 +2735,9 @@ void
 JunctionTree::printAllJTInfoCliques(FILE* f,
 				    JT_Partition& part,
 				    const unsigned root,
-				    const unsigned treeLevel)
+				    const unsigned treeLevel,
+				    set <RandomVariable*>* lp_nodes,
+				    set <RandomVariable*>* rp_nodes)
 {
   // print cliques information
   for (unsigned i=0;i<treeLevel;i++) fprintf(f,"  ");
@@ -2718,13 +2748,19 @@ JunctionTree::printAllJTInfoCliques(FILE* f,
     fprintf(f,", leaf/left-interface clique");
   } else {
     assert ( part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].children.size() );
+    if (part.cliques[root].ceReceiveSeparators.size() == 0) 
+      fprintf(f,", leaf");
   }
   fprintf(f,"\n");
-  part.cliques[root].printAllJTInfo(f,treeLevel,part.unassignedInPartition);
+  part.cliques[root].printAllJTInfo(f,treeLevel,part.unassignedInPartition,
+				    jtWeightUpperBound,
+				    jtWeightMoreConservative,
+				    true,
+				    lp_nodes,rp_nodes);
   for (unsigned childNo=0;
        childNo<part.cliques[root].children.size();childNo++) {
     unsigned child = part.cliques[root].children[childNo];
-    printAllJTInfoCliques(f,part,child,treeLevel+1);
+    printAllJTInfoCliques(f,part,child,treeLevel+1,lp_nodes,rp_nodes);
   }
 }
 

@@ -620,8 +620,8 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
      are as follows:
 
     nodes: The set of all nodes in clique.
-    assigned_nodes: The set of nodes that are assigned (i.e., used
-                    to compute a probability) to this clique.
+    assigned_nodes: The set of nodes that are assigned (i.e., meaning
+                    node and its parents live in this clique).
     unassigned_iterated_nodes: nodes in this clique that   
                      are not assigned and are not incomming
                      separator nodes (so they need to be iterated in
@@ -630,10 +630,13 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
                      during the collect evidence stage of inference. 
                      The cost of these nodes (if sparse) depends on two things.
 
-                     If the separator nodes are also assigned here, we pay
-                     full cardinality (since we're doing separator driven
-                     clique instantiation).
-                  
+                     If the separator nodes are also assigned here, we
+                     pay full cardinality (since we're doing separator
+                     driven clique instantiation). This is true even
+                     if the node are assigned (have parents in clique)
+                     since we can't be sure that the node in a
+                     separator has all its parents in the same separator.
+                     
                      If, on the other hand, the separator nodes are
                      previously unassigned, we also pay full card.
         
@@ -710,25 +713,221 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 			    const set<RandomVariable*>& cumulativeUnassignedIteratedNodes,
 			    const set<RandomVariable*>& separatorNodes,
 			    const set<RandomVariable*>& unassignedInPartition,
+			    set<RandomVariable*>* lp_nodes,
+			    set<RandomVariable*>* rp_nodes,
 			    const bool upperBound,
+			    const bool moreConservative,
 			    const bool useDeterminism)
 {
   // compute weight in log base 10 so that
   //   1) we don't overflow
   //   2) base 10 is an easy to understand magnitude rating of state space.
 
-  float tmp_weight = 0;
+  printf("separatorNodes.size() = %d, lp_nodes = 0x%X, rp_nodes = 0x%X\n",separatorNodes.size(),
+	 lp_nodes,rp_nodes);
+
+  // weight for the sparse separator nodes
+  float weight_sep_sparse = 0;
+  // weight for the dense separator nodes
+  float weight_sep_dense = 0;
+  // weight for all the rest.
+  float weight_remainder = 0;
+
   // Next, get weight of all 'nodes'
   for (set<RandomVariable*>::iterator j=nodes.begin();
        j != nodes.end();
        j++) {
     RandomVariable *const rv = (*j);
+
+    printf("computing charge for RV %s(%d)\n",rv->name().c_str(),rv->frame());
+
     // First get cardinality of 'node', but if
     // it is continuous or observed, it does not change the weight.
     // TODO: The assumption here (for now) is that all continuous variables
     // are observed. This will change in a future version (Lauritzen CG inference).
     if (rv->discrete && rv->hidden) {
       DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+      if (!drv->sparse()) {
+	printf("   RV %s(%d) is dense\n",rv->name().c_str(),rv->frame());
+
+	// node is dense.
+	if (separatorNodes.find(rv) != separatorNodes.end()) {
+	  // then node lives in separator.
+	  weight_sep_dense += log10((double)drv->cardinality);
+	} else {
+	  weight_remainder += log10((double)drv->cardinality);
+	}
+      } else {
+	printf("   RV %s(%d) is sparse\n",rv->name().c_str(),rv->frame());
+	// node is sparse
+	if (!useDeterminism) {
+	  // we're not using determinism/sparsity for node charging
+	  if (separatorNodes.find(rv) != separatorNodes.end()) {
+	    printf("   RV %s(%d) charged to weight_sep_sparse, full since not using det.\n",rv->name().c_str(),rv->frame());
+	    // then node lives in separator.
+	    weight_sep_sparse += log10((double)drv->cardinality);
+	  } else {
+	    printf("   RV %s(%d) charged to weight_remainder, full since not using det.\n",rv->name().c_str(),rv->frame());
+	    weight_remainder += log10((double)drv->cardinality);
+	  }
+	} else {
+	  // we are using determinism/sparsity for node charging.
+	  if (separatorNodes.find(rv) != separatorNodes.end() 
+	      ||
+	      // if this is not a separator node, but if we are given the the nodes in
+	      // the left partition and rv is in the left partition, then it is still a
+	      // separator node.
+	      ((lp_nodes != NULL) && ((*lp_nodes).find(rv) != (*lp_nodes).end()))) {
+	    printf("   RV %s(%d) is a separator\n",rv->name().c_str(),rv->frame());
+	    // node in separator case.
+	    if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
+	      // node in separator, UNassigned in the current partition (so either
+	      // assigned in previous or next partition, depending on direction
+	      // of edges):
+	      if (upperBound)
+		weight_sep_sparse += log10((double)drv->cardinality);
+	      else {
+		// Then variable is unasigned in this partition. We assume
+		 // that the node has been assigned in another (say
+		 // previous) partition, but it could have been assigned in
+		 // the next partition (if there are backwards time links).
+
+		 if (moreConservative) {
+		   // now you know that more conservative really means try a cludge/hack.
+		   // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
+		   // Even so, this could either be a lower or upper bound.
+		   weight_sep_sparse += (min(drv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
+					     log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
+		 } else {
+		   // What we do: we don't charge full amount. Note that this
+		   // could cause the estimate to be LOWER than the true
+		   // weight.
+		   weight_sep_sparse += log10((double)drv->useCardinality());
+		 }
+	       }
+	     } else if (cumulativeUnassignedIteratedNodes.find(rv) !=
+			cumulativeUnassignedIteratedNodes.end()) {
+	       // node in separator, assigned in this partition, but NOT assigned
+	       // in any previous clique.
+	       if (assignedNodes.find(rv) == assignedNodes.end()) {
+		 // node in separator, assigned in this partition, unassigned previously, not assigned 
+		 // in current clique either:
+
+		 // Charge full amount since we do separator iteration over
+		 // something that is not assigned in any previous cliques
+		 // and nor in this clique.
+
+		 // add to weight_remainder since there is no
+		 // way this will be pruned coming into this clique.
+		 weight_remainder += log10((double)drv->cardinality);
+	       } else {
+		 // node in separator, assigned in this partition, unassigned
+		 // previously, assigned here in this clique:
+
+		 // This is the case we would like to avoid since for
+		 // separator driven iteration, we are iterating over all
+		 // values of var, and don't remove the zeros until this
+		 // clique. If there are many of these cases, we might
+		 // consider doing clique driven rather than separator
+		 // driven clique potential instantiation.
+
+		 // While it will come into this clique without zeros being
+		 // removed, this clique will remove them (since it is
+		 // assigned), so from a memory point of view, we could
+		 // charge useCard. For now, we are conservative here,
+		 // however, and charge full card (which is the computational
+		 // but not the memory cost).
+
+		 // add to weight_remainder since there is no
+		 // way this will be pruned coming into this clique.
+		 weight_remainder += log10((double)drv->cardinality);
+	       }
+	     } else {
+	       // node in separator, assigned in this partition, and assigned in a
+	       // previous clique.
+
+	       if (upperBound) 
+		 weight_sep_sparse += log10((double)drv->cardinality);
+	       else {
+		 // This is an important one since this is quite likely to occur
+		 // when determinism abounds.
+		 if (moreConservative) {
+		   // now you know that more conservative really means try a cludge/hack.
+		   // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
+		   // Even so, this could either be a lower or upper bound.
+		   weight_sep_sparse += (min(drv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
+				      log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
+		 } else {
+		   // Charge low amount since it has been assigned in some
+		   // previous clique, and at least one of the separators will
+		   // kill off the zero prob entries. This could cause the
+		   // estimate to be LOWER than the true weight.
+		   weight_sep_sparse += log10((double)drv->useCardinality());
+		 }
+	       }
+	     }
+	   } else {
+	     printf("   RV %s(%d) is NOT a separator\n",rv->name().c_str(),rv->frame());
+	     // node NOT in separator case.
+	     if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
+	       // node NOT in separator, unassigned in partition (probably assigned
+	       // in right partition).
+
+	       if (upperBound) 
+		 weight_remainder += log10((double)drv->cardinality);
+	       else {
+		 if (moreConservative) {
+		   // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
+		   // Even so, this could either be a lower or upper bound.
+		   weight_remainder += (min(drv->log10ProductCardOfParentsNotContainedInSet(nodes),
+					    log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;	      
+		 } else {
+		   // Then unasigned in this partition. We assume that the
+		   // node has been assigned in another (say previous) partition
+		   // and we don't charge full amount. Note that
+		   // this could cause the estimate to be LOWER than
+		   // the true weight.
+		   weight_remainder += log10((double)drv->useCardinality());
+		 }
+	       }
+	     } else if (assignedNodes.find(rv) != assignedNodes.end()) {
+	       // node NOT in separator, assigned here in this clique:
+
+	       // Then assigned in this clique. Charge correct amount.
+	       weight_remainder += log10((double)drv->useCardinality());
+	     } else {
+	       // node NOT in separator, not assigned here in this clique:
+
+	       // Not assigned in this clique. We know it can't be in
+	       // cumulativeAssignedNodes since it is not a sep node.
+	       assert ( cumulativeAssignedNodes.find(rv) == cumulativeAssignedNodes.end());
+	       // charge full amount.
+	       weight_remainder += log10((double)drv->cardinality);
+	     }
+	   }
+	}
+      }
+    } else if (!rv->discrete) {
+      // node is continuous observed.
+      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
+      weight_remainder += crv->dimensionality()*continuousObservationPerFeaturePenalty;
+    } else {
+      // node is discrete observed, charge nothing.
+    }
+  }
+  printf("weight_sep_sparse = %f, weight_sep_dense = %f, weight_remainder = %f\n",
+	 weight_sep_sparse,
+	 weight_sep_dense,
+	 weight_remainder);
+
+  return JunctionTree::jtWeightSparseNodeSepScale*weight_sep_sparse + 
+    JunctionTree::jtWeightDenseNodeSepScale*weight_sep_dense 
+    + weight_remainder;
+}
+
+
+
+#if 0
       // see comments above for description and rational of this algorithm
       if (!useDeterminism || !drv->sparse()) {
 	// charge full amount since not sparse.
@@ -736,21 +935,30 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       } else if (separatorNodes.find(rv) != separatorNodes.end()) {
 	// separator node case.
 	if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
-	  // separator, unassigned in the current partition:
+	  // separator, UNassigned in the current partition (so either
+	  // assigned in previous or next partition, depending on direction
+	  // of edges):
 
 	  if (upperBound)
 	    tmp_weight += log10((double)drv->cardinality);
 	  else {
-	    // Then unasigned in this partition. We assume that the node
-	    // has been assigned in another (say previous) partition and
-	    // we don't charge full amount. Note that this could cause
-	    // the estimate to be LOWER than the true weight.
-	    tmp_weight += log10((double)drv->useCardinality());
-	    // cludge/hack:
-	    // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
-	    // tmp_weight += (min(rv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
-	    // log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
-	    // tmp_weight += log10((double)drv->useCardinality());
+	    // Then variable is unasigned in this partition. We assume
+	    // that the node has been assigned in another (say
+	    // previous) partition, but it could have been assigned in
+	    // the next partition (if there are backwards time links).
+
+	    if (moreConservative) {
+	      // now you know that more conservative really means try a cludge/hack.
+	      // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
+	      // Even so, this could either be a lower or upper bound.
+	      tmp_weight += (min(drv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
+				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
+	    } else {
+	      // What we do: we don't charge full amount. Note that this
+	      // could cause the estimate to be LOWER than the true
+	      // weight.
+	      tmp_weight += log10((double)drv->useCardinality());
+	    }
 	  }
 	} else if (cumulativeUnassignedIteratedNodes.find(rv) !=
 		   cumulativeUnassignedIteratedNodes.end()) {
@@ -790,11 +998,21 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	  if (upperBound) 
 	    tmp_weight += log10((double)drv->cardinality);
 	  else {
-	    // Charge low amount since it has been assigned in some
-	    // previous clique, and at least one of the separators will
-	    // kill off the zero prob entries. This could cause the
-	    // estimate to be LOWER than the true weight.
-	    tmp_weight += log10((double)drv->useCardinality());
+	    // This is an important one since this is quite likely to occur
+	    // when determinism abounds.
+	    if (moreConservative) {
+	      // now you know that more conservative really means try a cludge/hack.
+	      // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
+	      // Even so, this could either be a lower or upper bound.
+	      tmp_weight += (min(drv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
+				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
+	    } else {
+	      // Charge low amount since it has been assigned in some
+	      // previous clique, and at least one of the separators will
+	      // kill off the zero prob entries. This could cause the
+	      // estimate to be LOWER than the true weight.
+	      tmp_weight += log10((double)drv->useCardinality());
+	    }
 	  }
 	}
       } else {
@@ -805,12 +1023,19 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	  if (upperBound) 
 	    tmp_weight += log10((double)drv->cardinality);
 	  else {
-	    // Then unasigned in this partition. We assume that the
-	    // node has been assigned in another (say previous) partition
-	    // and we don't charge full amount. Note that
-	    // this could cause the estimate to be LOWER than
-	    // the true weight.
-	    tmp_weight += log10((double)drv->useCardinality());
+	    if (moreConservative) {
+	      // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
+	      // Even so, this could either be a lower or upper bound.
+	      tmp_weight += (min(drv->log10ProductCardOfParentsNotContainedInSet(nodes),
+				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;	      
+	    } else {
+	      // Then unasigned in this partition. We assume that the
+	      // node has been assigned in another (say previous) partition
+	      // and we don't charge full amount. Note that
+	      // this could cause the estimate to be LOWER than
+	      // the true weight.
+	      tmp_weight += log10((double)drv->useCardinality());
+	    }
 	  }
 	} else if (assignedNodes.find(rv) != assignedNodes.end()) {
 	  // non separator, assigned here:
@@ -831,10 +1056,12 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       // node is continuous observed.
       ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
       tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
+    } else {
+      // node is discrete observed.
+      
     } 
   }
-  return tmp_weight;
-}
+#endif
 
 
 #if 0
@@ -1110,15 +1337,23 @@ MaxClique::computeAssignedNodesDispositions()
  *-----------------------------------------------------------------------
  */
 void
-MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RandomVariable*>& unassignedInPartition)
+MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RandomVariable*>& unassignedInPartition,
+			  const bool upperBound,
+			  const bool moreConservative,
+			  const bool useDeterminism,
+			  set<RandomVariable*>* lp_nodes,set<RandomVariable*>* rp_nodes)
 {
 
   // TODO: also print out nubmer of bits for acc and rem.
 
   psp(f,indent*2);
   fprintf(f,"Clique information: %d packed bits, %d unsigned words, weight = %f, jt_weight = %f\n",
-	  packer.packedLenBits(),packer.packedLen(),weight(),weightInJunctionTree(unassignedInPartition));
-
+	  packer.packedLenBits(),packer.packedLen(),weight(),
+	  weightInJunctionTree(unassignedInPartition,
+			       upperBound,
+			       moreConservative,
+			       useDeterminism,
+			       lp_nodes,rp_nodes));
 
 
   psp(f,indent*2);

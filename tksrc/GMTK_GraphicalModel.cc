@@ -525,6 +525,7 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
   // Some good ones to try: 
   //   COB, 
   //   CDOI or CODI (good when no continuous vars)
+  //   DOI
   //
 
   for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {

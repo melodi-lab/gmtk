@@ -89,6 +89,7 @@ public:
   // (LI) clique of this partition. The reason for this is that, if
   // this is a P partition, there is no left interface separator, but
   // there is with a C or an E partition.
+  // Created in: JunctionTree::createSeparators();
   vector<SeparatorClique> separators;
 
 
@@ -375,9 +376,21 @@ public:
   // guaranteed to at least be *an* upper bound.
   static bool jtWeightUpperBound;
 
-  // Set to true if the JT weight that we compute should heavily
-  // penalize any unassigned iterated nodes.
-  static bool jtWeightPenalizeUnassignedIterated;
+  // Set to true if the JT weight scoring mechansim should be more
+  // conservative, meaning it should not underestimate the charge of a
+  // node in a clique as much. See code for details.
+  static bool jtWeightMoreConservative;
+
+  // Set to > 0.0 if the JT weight that we compute should heavily
+  // penalize any unassigned iterated nodes. Penalty = factor
+  // that gets multiplied by number of unassigned iterated.
+  static float jtWeightPenalizeUnassignedIterated;
+
+  // scaling factors (must be > 0 and <= 1) corresponding
+  // to how much the separator nodes' charge gets scaled. The more pruning
+  // we do during inference, the lower this should go.
+  static float jtWeightSparseNodeSepScale;
+  static float jtWeightDenseNodeSepScale;
 
   // When doing separator driven clique instantiation, if this
   // variable is true, we intersect the separators first before we
@@ -510,8 +523,9 @@ public:
   // given partition, where the JT weight is defined as the cost of
   // doing collect evidence on this JT.
   static double junctionTreeWeight(JT_Partition& part,
-				   const unsigned rootClique);
-
+				   const unsigned rootClique,
+				   set<RandomVariable*>* lp_nodes,
+				   set<RandomVariable*>* rp_nodes);
 
   // Given a set of maxcliques for a partition, and an interface for
   // this (can be left right, or any set including empty, the only
@@ -520,15 +534,19 @@ public:
   // estimated JT cost. This is a static routine so can be called from
   // anywhere.
   static double junctionTreeWeight(vector<MaxClique>& cliques,
-				   const set<RandomVariable*>& interfaceNodes);
+				   const set<RandomVariable*>& interfaceNodes,
+				   set<RandomVariable*>* lp_nodes,
+				   set<RandomVariable*>* rp_nodes);
 				   
   // 
   // Print all information about the JT. Must
   // have had computeSeparatorIterationOrders() called
   // already.
   void printAllJTInfo(char* fileName);
-  void printAllJTInfo(FILE* f,JT_Partition& part,const unsigned root);
-  void printAllJTInfoCliques(FILE* f,JT_Partition& part,const unsigned root,const unsigned treeLevel);
+  void printAllJTInfo(FILE* f,JT_Partition& part,const unsigned root,
+		      set <RandomVariable*>* lp_nodes,set <RandomVariable*>* rp_nodes);
+  void printAllJTInfoCliques(FILE* f,JT_Partition& part,const unsigned root,const unsigned treeLevel,
+			     set <RandomVariable*>* lp_nodes,set <RandomVariable*>* rp_nodes);
   void printMessageOrder(FILE *f,vector< pair<unsigned,unsigned> >& message_order);
 
 

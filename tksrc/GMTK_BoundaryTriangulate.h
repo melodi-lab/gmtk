@@ -44,8 +44,7 @@ class BoundaryTriangulate : public IM
   friend class GraphicalModel;
   friend class GMTemplate;
 
-public:
-
+private:
 
   // the file parser for this model.
   FileParser& fp;
@@ -55,7 +54,6 @@ public:
 
   // chunk skip, Number of chunks that should exist between boundaries
   const unsigned S;
-
 
   // Structures over which the best boundary search is performed.
   struct BoundaryFindingStructures {
@@ -221,6 +219,7 @@ public:
   // for debugging and informational purposes.
   unsigned boundaryRecursionDepth;
 
+
   /////////////////////////////////////////////////////
   // Private support routines
   /////////////////////////////////////////////////////
@@ -249,7 +248,6 @@ public:
     const vector<MaxClique>& cliques 
   );
 
-public:
 
   ////////////////////////////////////////////////////////////
   // options
@@ -261,47 +259,12 @@ public:
   double boundaryTraverseFraction;
 
   ////////////////////////////////////////////////////////////
-  // constructors/destructors and other misc.
-  ////////////////////////////////////////////////////////////
-  BoundaryTriangulate(FileParser& arg_fp, 
-		      const unsigned arg_M,
-		      const unsigned arg_S,
-		      double arg_boundaryTraverseFraction = 1.0) 
-    : fp(arg_fp),M(arg_M),S(arg_S),
-      noBoundaryMemoize(false),
-      boundaryTraverseFraction(arg_boundaryTraverseFraction)
-  {   
-    assert ( M >= 1 ); assert( S >= 1); 
-    timer = NULL;  // disable anytime by setting timer to NULL.
-  }
-  ~BoundaryTriangulate() {}
-
-  // use the timer given by arg, returning the old timer.
-  // If no argument given, then don't use any timer.
-  TimerClass* useTimer(TimerClass* arg = NULL) { 
-    TimerClass* tmp = timer;
-    timer = arg;
-    return tmp;
-  }
-
-  ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
   // The Main Routines To Form optimal P,C,E partitions
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
 
-  // Given the template, compute the best partitions
-  // using the heuristics that are provided. If 'findBestBoundary'
-  // is true, this will run the exponential algorithm (which
-  // isn't necessarily bad since for many structures
-  // it is still efficient, but for some it might blow
-  // up in amount of time to complete, so caller should
-  // be forwarned)
-  void findPartitions(const string& boundaryHeuristic,
-		      const string& forceLeftRight,
-		      const string& triHeuristic,
-		      const bool findBestBoundary,
-		      GMTemplate& gm_template);
+
   void findInterfacePartitions(
    // input params
    const set<RandomVariable*>& P_u1,
@@ -317,18 +280,22 @@ public:
    GMTemplate& gm_template);
 
 
+
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
   // The Main Triangulation Routines
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
 
-  // Triangulate an entire template at once, putting cliques in the template.
-  void triangulate(const string& tri_heur_str,
-		   const bool jtWeight,
-		   GMTemplate& gm_template,
-		   bool doP = true, bool doC = true, bool doE = true);
-  
+  // when triangulating a partition, jt-weight likes
+  // to know the nodes in the left and/or right partition (if any
+  // are availalbe). These variables, if not set to NULL, contain
+  // pointers to these. These are set in the main public triangulation routine.
+  // Left-partition nodes (NULL if no left partition relative to current partition)
+  set<RandomVariable*> *lp_nodes;
+  // right partition nodes.
+  set<RandomVariable*> *rp_nodes;  
+
   // Calls method which triangulates once, support routine for triangulate 
   void triangulateOnce(// input: nodes to be triangulated
   		       const set<RandomVariable*>& nodes,
@@ -346,71 +313,75 @@ public:
 		       string& meth_str );
   
   // High-level generic graph triangulation using optionally all methods below.
-  void triangulate(// input: nodes to be triangulated
-		   const set<RandomVariable*>& nodes,
-		   // use JT weight rather than sum of weight
-		   const bool jtWeight,
-		   // nodes that a JT root must contain (ok to be empty).
-		   const set<RandomVariable*>& nodesRootMustContain,
-		   // triangulation heuristic method
-		   const TriangulateHeuristics& tri_heur,
-		   // original neighbor structures
-		   vector<nghbrPairType>& orgnl_nghbrs,
-		   // output: resulting max cliques
-		   vector<MaxClique>& best_cliques,
-		   // output: string giving resulting method used
-		   string& best_meth_str,
-		   // weight to best
-		   double& best_weight,
-		   // Prefix for new best_meth_str 
-                   string  best_method_prefix = "");
-
-  // include version that always uses sum weight.
-  void triangulate(// input: nodes to be triangulated
-		   const set<RandomVariable*>& nodes,
-		   // triangulation heuristic method
-		   const TriangulateHeuristics& tri_heur,
-		   // original neighbor structures
-		   vector<nghbrPairType>& orgnl_nghbrs,
-		   // output: resulting max cliques
-		   vector<MaxClique>& best_cliques,
-		   // output: string giving resulting method used
-		   string& best_meth_str,
-		   // weight to best
-		   double& best_weight)
-  {
-    const set <RandomVariable*> emptySet;
-    triangulate(nodes, false, emptySet, tri_heur, orgnl_nghbrs,
-      best_cliques, best_meth_str, best_weight);
-  }
+  void triangulatePartition(// input: nodes to be triangulated
+			    const set<RandomVariable*>& nodes,
+			    // use JT weight rather than sum of weight
+			    const bool jtWeight,
+			    // nodes that a JT root must contain (ok to be empty).
+			    const set<RandomVariable*>& nodesRootMustContain,
+			    // triangulation heuristic method
+			    const TriangulateHeuristics& tri_heur,
+			    // original neighbor structures
+			    vector<nghbrPairType>& orgnl_nghbrs,
+			    // output: resulting max cliques
+			    vector<MaxClique>& best_cliques,
+			    // output: string giving resulting method used
+			    string& best_meth_str,
+			    // weight to best
+			    double& best_weight,
+			    // Prefix for new best_meth_str 
+			    string  best_method_prefix = "");
 
 
-  // version of above that takes triangulation heuristic strings.
-  void triangulate(// input: nodes to be triangulated
-		   const set<RandomVariable*>& nodes,
-		   // use JT weight rather than sum of weight
-		   const bool jtWeight,
-		   // nodes that a JT root must contain (ok to be empty).
-		   const set<RandomVariable*>& nodesRootMustContain,
-		   // triangulation heuristic method
-		   const string& tri_heur_str,
-		   // original neighbor structures
-		   vector<nghbrPairType>& orgnl_nghbrs,
-		   // output: resulting max cliques
-		   vector<MaxClique>& best_cliques,
-		   // output: string giving resulting method used
-		   string& best_meth_str,
-		   // weight to best
-		   double& best_weight, 
-		   // Prefix for new best_meth_str 
-                   string  best_method_prefix = "" ) 
+  // version of triangulatePartition() above that takes triangulation
+  // heuristic strings.
+  void triangulatePartition(// input: nodes to be triangulated
+			    const set<RandomVariable*>& nodes,
+			    // use JT weight rather than sum of weight
+			    const bool jtWeight,
+			    // nodes that a JT root must contain (ok to be empty).
+			    const set<RandomVariable*>& nodesRootMustContain,
+			    // triangulation heuristic method
+			    const string& tri_heur_str,
+			    // original neighbor structures
+			    vector<nghbrPairType>& orgnl_nghbrs,
+			    // output: resulting max cliques
+			    vector<MaxClique>& best_cliques,
+			    // output: string giving resulting method used
+			    string& best_meth_str,
+			    // weight to best
+			    double& best_weight, 
+			    // Prefix for new best_meth_str 
+			    string  best_method_prefix = "" ) 
   {
     TriangulateHeuristics tri_heur;
     parseTriHeuristicString(tri_heur_str,tri_heur);
-    triangulate(nodes,jtWeight,nodesRootMustContain,
-		tri_heur,orgnl_nghbrs,
-		best_cliques,best_meth_str,best_weight,best_method_prefix);
+    triangulatePartition(nodes,jtWeight,nodesRootMustContain,
+			 tri_heur,orgnl_nghbrs,
+			 best_cliques,best_meth_str,best_weight,best_method_prefix);
   }
+
+
+  // include version that always uses the standard weight measure
+  // (i.e., does not use jt-weight).
+  void triangulatePartitionWeight(// input: nodes to be triangulated
+				  const set<RandomVariable*>& nodes,
+				  // triangulation heuristic method
+				  const TriangulateHeuristics& tri_heur,
+				  // original neighbor structures
+				  vector<nghbrPairType>& orgnl_nghbrs,
+				  // output: resulting max cliques
+				  vector<MaxClique>& best_cliques,
+				  // output: string giving resulting method used
+				  string& best_meth_str,
+				  // weight to best
+				  double& best_weight)
+  {
+    const set <RandomVariable*> emptySet;
+    triangulatePartition(nodes, false, emptySet, tri_heur, orgnl_nghbrs,
+			 best_cliques, best_meth_str, best_weight);
+  }
+
 
   // The basic triangulation heuristic routine. Given a set of nodes
   // (that have valid 'neighbors' members, triangulate it using the
@@ -448,8 +419,8 @@ public:
     vector<RandomVariable*>&    order
     );
 
-  // This procedure is like triangulateMaximumCardinalitySearch except that
-  // it tests if the original graph was triangulated 
+  // This procedure is like triangulateMaximumCardinalitySearch except
+  // that it tests if the original graph was triangulated
   bool triangulateMCSIfNotTriangulated( 
     const set<RandomVariable*>& nodes,
     vector<MaxClique>&          cliques
@@ -493,28 +464,6 @@ public:
 			      // output: resulting max cliques
 			      vector<MaxClique>& cliques);
 
-  // Given the template, just unroll it flat-out a given number of
-  // times and triangulate the result (possibly unconstrained
-  // but depending on the heuristics given in 'th').
-  void unrollAndTriangulate(const string& tri_heur_str,
-			    const unsigned numTimes);
-
-  // ensure that the partitions in the given template are chordal, and die 
-  // with an error if not.
-  void ensurePartitionsAreChordal(GMTemplate& gm_template);
-
-
-  ////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////
-  // Support for Anytime Triangulation.
-  ////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////
-
-  // a simple one-stop shop for good triangulation for a
-  // given amount of time.
-  void anyTimeTriangulate(GMTemplate& gm_template,
-			  const bool jtWeight,
-			  bool doP = true, bool doC = true, bool doE = true);
 
   ////////////////////////////////////////////////////////////
   // triangulate using elimination with a number of basic heuristics, 
@@ -616,7 +565,6 @@ public:
 	     map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
 	     map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1);
 
-private:
 
   //////////////////////////////////////////////////////////////////////////// 
   // Custom data structures for fast Maximum Cardinality Search, fill-in 
@@ -821,6 +769,89 @@ private:
     double&                   weight_sqr_sum,         
     vector<triangulateNghbrPairType>&    orgnl_nghbrs
     );
+
+public:
+
+  // Public Interface
+
+  ////////////////////////////////////////////////////////////
+  // constructors/destructors and other misc.
+  ////////////////////////////////////////////////////////////
+  BoundaryTriangulate(FileParser& arg_fp, 
+		      const unsigned arg_M,
+		      const unsigned arg_S,
+		      double arg_boundaryTraverseFraction = 1.0) 
+    : fp(arg_fp),M(arg_M),S(arg_S),
+      noBoundaryMemoize(false),
+      boundaryTraverseFraction(arg_boundaryTraverseFraction)
+  {   
+    assert ( M >= 1 ); assert( S >= 1); 
+    timer = NULL;  // disable anytime by setting timer to NULL.
+  }
+  ~BoundaryTriangulate() {}
+
+  ////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////
+  // Main interface Support for graph Triangulation.
+  ////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////
+
+  // Main external interface to graph triangulation routine using a
+  // simple textual string to determine the heuristics. This routine
+  // will triangulate an entire template at once, putting cliques in
+  // the template, but it includes options to only triangulate one
+  // partition at a time if so desired.
+  void triangulate(const string& tri_heur_str,
+		   const bool jtWeight,
+		   GMTemplate& gm_template,
+		   bool doP = true,  // triangulate P
+		   bool doC = true,  // triangulate C
+		   bool doE = true   // triangulate E
+		   );
+
+  // A simple one-stop shop for good anytime algorithm triangulation,
+  // runs only for a given amount of time.
+  void anyTimeTriangulate(GMTemplate& gm_template,
+			  const bool jtWeight,
+			  bool doP = true, bool doC = true, bool doE = true);
+
+  // Given the template, just unroll it flat-out a given number of
+  // times and triangulate the result (possibly unconstrained
+  // but depending on the heuristics given in 'th').
+  void unrollAndTriangulate(const string& tri_heur_str,
+			    const unsigned numTimes);
+
+
+  // Given the template, compute the best partitions
+  // using the heuristics that are provided. If 'findBestBoundary'
+  // is true, this will run the exponential algorithm (which
+  // isn't necessarily bad since for many structures
+  // it is still efficient, but for some it might blow
+  // up in amount of time to complete, so caller should
+  // be forwarned)
+  void findPartitions(const string& boundaryHeuristic,
+		      const string& forceLeftRight,
+		      const string& triHeuristic,
+		      const bool findBestBoundary,
+		      GMTemplate& gm_template);
+
+
+  // use the timer given by arg, returning the old timer.
+  // If no argument given, then don't use any timer.
+  TimerClass* useTimer(TimerClass* arg = NULL) { 
+    TimerClass* tmp = timer;
+    timer = arg;
+    return tmp;
+  }
+
+  // Ensure that the partitions in the given template are chordal, and
+  // die with an error if not.
+  void ensurePartitionsAreChordal(GMTemplate& gm_template);
+
+  // interface to private boolean.
+  void dontMemoizeBoundary() {
+    noBoundaryMemoize = true;
+  }
 
 };
 

@@ -127,7 +127,19 @@ Arg Arg::Args[] = {
 
   Arg("jtwPUI",
       Arg::Opt,JunctionTree::jtWeightPenalizeUnassignedIterated,
-      "True means jtWeight should heavily penalize cliques with unassigned iterated nodes"),
+      "Amount jtWeight should penalize cliques with unassigned iterated nodes (0.0 means no penalty)"),
+
+  Arg("jtwMC",
+      Arg::Opt,JunctionTree::jtWeightMoreConservative,
+      "True means jtWeight should be more conservative (more upper bound like) regarding charges to some nodes"),
+
+  Arg("jtwSNSC",
+      Arg::Opt,JunctionTree::jtWeightSparseNodeSepScale,
+      "Amount to scale charge of a sparse node in a clique's incomming separator"),
+
+  Arg("jtwDNSC",
+      Arg::Opt,JunctionTree::jtWeightDenseNodeSepScale,
+      "Amount to scale charge of a dense node in a clique's incomming separator"),
 
   Arg("pfCobWeight",
       Arg::Opt,MaxClique::continuousObservationPerFeaturePenalty,
@@ -234,6 +246,21 @@ void createCommandLineOptionString(string& res)
   sprintf(buff,"jtWeight: %s, ",MYBS(jtWeight));
   res += buff;
 
+  sprintf(buff,"jtwUB: %s, ",MYBS(JunctionTree::jtWeightUpperBound));
+  res += buff;
+
+  sprintf(buff,"jtwPUI: %f, ",JunctionTree::jtWeightPenalizeUnassignedIterated);
+  res += buff;
+
+  sprintf(buff,"jtwMC: %s, ",MYBS(JunctionTree::jtWeightMoreConservative));
+  res += buff;
+
+  sprintf(buff,"jtwSNSC: %f, ",JunctionTree::jtWeightSparseNodeSepScale);
+  res += buff;
+
+  sprintf(buff,"jtwDNSC: %f, ",JunctionTree::jtWeightDenseNodeSepScale);
+  res += buff;
+
   sprintf(buff,"pfCobWeight: %f, ",MaxClique::continuousObservationPerFeaturePenalty);
   res += buff;
   
@@ -246,7 +273,7 @@ void createCommandLineOptionString(string& res)
   sprintf(buff,"noBoundaryMemoize: %s, ",MYBS(noBoundaryMemoize));
   res += buff;
 
-  sprintf(buff,"forceLeftRight: %s, ",MYBS(forceLeftRight));  
+  sprintf(buff,"forceLeftRight: %s, ",forceLeftRight);  
   res += buff;
 
   sprintf(buff,"boundaryHeuristic: %s, ",boundaryHeuristic);
@@ -256,8 +283,8 @@ void createCommandLineOptionString(string& res)
     sprintf(buff,"anyTimeTriangulate: %s, ",anyTimeTriangulate);
     res += buff;
   }
-}
 
+}
 
 
 /*
@@ -420,7 +447,8 @@ main(int argc,char*argv[])
 
   BoundaryTriangulate triangulator(fp,maxNumChunksInBoundary,chunkSkip,traverseFraction);
 
-  triangulator.noBoundaryMemoize = noBoundaryMemoize;
+  if (noBoundaryMemoize)
+    triangulator.dontMemoizeBoundary();
 
   TimerClass* timer = NULL;
   timer = new TimerClass;
@@ -597,7 +625,9 @@ main(int argc,char*argv[])
 	}
 	printf("  --- Prologue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	       p_maxWeight,p_totalWeight,
-	       JunctionTree::junctionTreeWeight(gm_template.P.cliques,gm_template.PCInterface_in_P));
+	       JunctionTree::junctionTreeWeight(gm_template.P.cliques,
+						gm_template.PCInterface_in_P,
+						NULL,&gm_template.C.nodes));
 
 	double c_maxWeight = -1.0;
 	double c_totalWeight = -1.0; // starting flag
@@ -616,7 +646,10 @@ main(int argc,char*argv[])
 	       chunkSkip,
 	       c_totalWeight,
 	       c_totalWeight - log10((double)chunkSkip),
-	       JunctionTree::junctionTreeWeight(gm_template.C.cliques,gm_template.CEInterface_in_C));
+	       JunctionTree::junctionTreeWeight(gm_template.C.cliques,
+						gm_template.CEInterface_in_C,
+						&gm_template.P.nodes,
+						&gm_template.E.nodes));
 
 	double e_maxWeight = -1.0;
 	double e_totalWeight = -1.0; // starting flag
@@ -633,7 +666,9 @@ main(int argc,char*argv[])
 	const set <RandomVariable*> emptySet;
 	printf("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	       e_maxWeight,e_totalWeight,
-	       JunctionTree::junctionTreeWeight(gm_template.E.cliques,emptySet));
+	       JunctionTree::junctionTreeWeight(gm_template.E.cliques,
+						emptySet,
+						&gm_template.C.nodes,NULL));
 
 	double maxWeight
 	  = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);

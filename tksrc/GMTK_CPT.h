@@ -47,8 +47,8 @@ class RandomVariable;
  *  +-- MSCPT - Multi-d Sparse (decision tree based) CPT
  *  |
  *  +-- MTCPT - Multi-d deTerminisitc (decision tree based) CPT
- *  |
- *  +-- USCPT - special unity score CPT for discrete features.
+ *  |     |
+ *  |     +-- USCPT - special unity (1) score CPT for discrete features.
  *  |
  *  +-- NGramCPT - ngram language model with backing-off support
  * 

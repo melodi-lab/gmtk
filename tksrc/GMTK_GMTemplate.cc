@@ -1334,9 +1334,12 @@ writeCliqueInformation(oDataStreamFile& os)
       else
 	p_totalWeight = p_totalWeight + log10(1+pow(10,curWeight-p_totalWeight));
     }
-    os.writeComment("  --- Prologue max clique weight = %f, total weight = %f, jt weight = %f\n",
+    os.writeComment("  --- Prologue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	   p_maxWeight,p_totalWeight,
-		    JunctionTree::junctionTreeWeight(P.cliques,PCInterface_in_P));
+		    JunctionTree::junctionTreeWeight(P.cliques,
+						     PCInterface_in_P,
+						     NULL,&C.nodes));
+
 
     double c_maxWeight = -1.0;
     double c_totalWeight = -1.0; // starting flag
@@ -1350,12 +1353,14 @@ writeCliqueInformation(oDataStreamFile& os)
       else
 	c_totalWeight = c_totalWeight + log10(1+pow(10,curWeight-c_totalWeight));
     }
-    os.writeComment("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f, jt weight = %f\n",
+    os.writeComment("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f, jt_weight = %f\n",
 	   c_maxWeight,
 	   S,
 	   c_totalWeight,
 	   c_totalWeight - log10((double)S),
-           JunctionTree::junctionTreeWeight(C.cliques,CEInterface_in_C));
+           JunctionTree::junctionTreeWeight(C.cliques,
+					    CEInterface_in_C,
+					    &P.nodes,&E.nodes));
 
 
     double e_maxWeight = -1.0;
@@ -1373,7 +1378,9 @@ writeCliqueInformation(oDataStreamFile& os)
     const set <RandomVariable*> emptySet;
     os.writeComment("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	   e_maxWeight,e_totalWeight,
-           JunctionTree::junctionTreeWeight(E.cliques,emptySet));
+           JunctionTree::junctionTreeWeight(E.cliques,
+					    emptySet,
+					    &C.nodes,NULL));
 
     double maxWeight
       = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);
