@@ -13,6 +13,9 @@
 #include <string.h>
 #include <values.h>
 #include <math.h>
+
+#include "general.h"
+
 #ifdef HAVE_SYS_IEEEFP_H
 #  include <sys/ieeefp.h>
 #else
