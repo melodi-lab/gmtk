@@ -457,8 +457,8 @@ GMParms::readMdCpts(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num MDCPTs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of MDCPTs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"num Dense CPTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of Dense CPTs (%d) in file '%s' exceeds maximum",num,is.fileName());
   if (reset) {
     start = 0;
     mdCpts.resize(num);
@@ -470,15 +470,15 @@ GMParms::readMdCpts(iDataStreamFile& is, bool reset)
     // first read the count
     MDCPT* ob;
 
-    is.read(cnt,"MDCPT cnt");
+    is.read(cnt,"Dense CPT cnt");
     if (cnt != i) 
-      error("ERROR: MDCPT count (%d), out of order in file '%s', expecting %d",
+      error("ERROR: Dense CPT count (%d), out of order in file '%s', expecting %d",
 	    cnt,is.fileName(),i);
 
     ob = new MDCPT;
     ob->read(is);
     if (mdCptsMap.find(ob->name()) != mdCptsMap.end())
-      error("ERROR: MDCPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: Dense CPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     mdCpts[i+start] = ob;
     mdCptsMap[ob->name()] = i+start;
   }
@@ -492,8 +492,8 @@ GMParms::readMsCpts(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num MSCPTs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of MSCPTs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"num Sparse CPTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of Sparse CPTs (%d) in file '%s' exceeds maximum",num,is.fileName());
   if (reset) {
     start = 0;
     msCpts.resize(num);
@@ -505,15 +505,15 @@ GMParms::readMsCpts(iDataStreamFile& is, bool reset)
     // first read the count
     MSCPT* ob;
 
-    is.read(cnt,"MSCPT cnt");
+    is.read(cnt,"Sparse CPT cnt");
     if (cnt != i) 
-      error("ERROR: MSCPT count (%d), out of order in file '%s', expecting %d",
+      error("ERROR: Sparse CPT count (%d), out of order in file '%s', expecting %d",
 	    cnt,is.fileName(),i);
 
     ob = new MSCPT;
     ob->read(is);
     if (msCptsMap.find(ob->name()) != msCptsMap.end())
-      error("ERROR: MSCPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: Sparse CPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     msCpts[i+start] = ob;
     msCptsMap[ob->name()] = i+start;
   }
@@ -528,8 +528,8 @@ GMParms::readMtCpts(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num MTCPTs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of MTCPTs (%d) exceeds maximum",num);
+  is.read(num,"num DETERMINISTIC CPTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of deterministic CPTs (%d) exceeds maximum",num);
   if (reset) {
     start = 0;
     mtCpts.resize(num);
@@ -541,15 +541,15 @@ GMParms::readMtCpts(iDataStreamFile& is, bool reset)
     // first read the count
     MTCPT* ob;
 
-    is.read(cnt,"MTCPT cnt");
+    is.read(cnt,"Deterministic CPT cnt");
     if (cnt != i) 
-      error("ERROR: MTCPT count (%d), out of order in file '%s', expecting %d",
+      error("ERROR: deterministic CPT count (%d), out of order in file '%s', expecting %d",
 	    cnt,is.fileName(),i);
 
     ob = new MTCPT;
     ob->read(is);
     if (mtCptsMap.find(ob->name()) != mtCptsMap.end())
-      error("ERROR: MTCPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: deterministic CPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     mtCpts[i+start] = ob;
     mtCptsMap[ob->name()] = i+start;
   }
@@ -1026,6 +1026,12 @@ GMParms::read(iDataStreamFile& is)
     }
   }
 
+}
+
+
+void 
+GMParms::loadGlobal()
+{
   ///////////////////////////////////////////////////////
   // Now that presumably everything has been read in,
   // we insert the global named collection which references
@@ -1047,7 +1053,6 @@ GMParms::read(iDataStreamFile& is)
   nclsMap[nc->name()] = ncls.size()-1;
 
 }
-
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -1273,7 +1278,7 @@ GMParms::writeDLinkMats(oDataStreamFile& os)
 void 
 GMParms::writeDLinks(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("dlinks");os.nl();
+  os.nl(); os.writeComment("dlink structures");os.nl();
   os.write(dLinks.size(),"num dlinks"); os.nl();
   for (unsigned i=0;i<dLinks.size();i++) {
     // first write the count
@@ -1354,11 +1359,11 @@ GMParms::writeWeightMats(oDataStreamFile& os)
 void 
 GMParms::writeMdCpts(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("MDCPTs");os.nl();
-  os.write(mdCpts.size(),"num MDCPTs"); os.nl();
+  os.nl(); os.writeComment("Dense CPTs");os.nl();
+  os.write(mdCpts.size(),"num Dense CPTs"); os.nl();
   for (unsigned i=0;i<mdCpts.size();i++) {
     // first write the count
-    os.write(i,"MDCPT cnt");
+    os.write(i,"Dense CPT cnt");
     os.nl();
     mdCpts[i]->write(os);
   }
@@ -1387,11 +1392,11 @@ GMParms::writeMdCpts(oDataStreamFile& os)
 void 
 GMParms::writeMsCpts(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("MSCPTs");os.nl();
-  os.write(msCpts.size(),"num MSCPTs"); os.nl();
+  os.nl(); os.writeComment("Sparse CPTs");os.nl();
+  os.write(msCpts.size(),"num Sparse CPTs"); os.nl();
   for (unsigned i=0;i<msCpts.size();i++) {
     // first write the count
-    os.write(i,"MSCPT cnt");
+    os.write(i,"Sparse CPT cnt");
     os.nl();
     msCpts[i]->write(os);
   }
@@ -1421,11 +1426,11 @@ GMParms::writeMsCpts(oDataStreamFile& os)
 void 
 GMParms::writeMtCpts(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("MTCPTs");os.nl();
-  os.write(mtCpts.size(),"num MTCPTs"); os.nl();
+  os.nl(); os.writeComment("Deterministic CPTs");os.nl();
+  os.write(mtCpts.size(),"num deterministic CPTs"); os.nl();
   for (unsigned i=0;i<mtCpts.size();i++) {
     // first write the count
-    os.write(i,"MTCPT cnt");
+    os.write(i,"deterministic CPT cnt");
     os.nl();
     mtCpts[i]->write(os);
   }
@@ -1583,9 +1588,15 @@ void
 GMParms::writeNameCollections(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Collection of Names");os.nl();
-  os.write(ncls.size(),"num collections"); os.nl();
+  unsigned numToWrite = ncls.size();
+  if (nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) != nclsMap.end()) {
+    numToWrite --;
+  }
+  os.write(numToWrite,"num collections"); os.nl();
   for (unsigned i=0;i<ncls.size();i++) {
-    // first write the count
+    if (ncls[i]->name() == NAMED_COLLECTION_GLOBAL_NAME)
+      continue;
+    // write the count
     os.write(i,"NCLS cnt");
     os.nl();
     ncls[i]->write(os);
@@ -2312,11 +2323,11 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
       EMCLEARAMTRAININGBIT_CODE(weightMatsMap,weightMats);
     } else if (objType == "GAUSIANCOMPONENT") {
       EMCLEARAMTRAININGBIT_CODE(gaussianComponentsMap,gaussianComponents);
-    } else if (objType == "MDCPT") {
+    } else if (objType == "DENSECPT") {
       EMCLEARAMTRAININGBIT_CODE(mdCptsMap,mdCpts);
-    } else if (objType == "MSCPT") {
+    } else if (objType == "SPARSECPT") {
       EMCLEARAMTRAININGBIT_CODE(msCptsMap,msCpts);
-    } else if (objType == "MTCPT") {
+    } else if (objType == "DETERMINISTICCPT") {
       EMCLEARAMTRAININGBIT_CODE(mtCptsMap,mtCpts);
     } else if (objType == "MIXGAUSSIAN") {
       EMCLEARAMTRAININGBIT_CODE(mixGaussiansMap,mixGaussians);
