@@ -346,8 +346,7 @@ void gaussianNorm(FILE* out_fp,
 
     // 
     // Initialize the above declared arrays
-    size_t i,j;
-    for (i=0;i<frrng.length();i++) {
+    for (size_t i=0;i<frrng.length();i++) {
       ftr_sum[i] = ftr_sumsq[i] = 0.0;
       ftr_means[i] = ftr_stds[i] = 0.0;
       ftr_maxs[i] = -MAXFLOAT;
@@ -371,18 +370,18 @@ void gaussianNorm(FILE* out_fp,
 	size_t *hist_p = histogram;
 	int rc,j;
 
-	int hist_tot, last_hist_tot = -1;
+	int hist_tot=0, last_hist_tot = -1;
 
-	for (i=0;i<frrng.length();i++) {
+	for (size_t i=0;i<frrng.length();i++) {
 	    double maxs_stds, mins_stds;
-	    rc = fscanf(in_st_fp,"%d %lf %lf %f %d %d %f %d %d %lf %lf ",&j,
+	    rc = fscanf(in_st_fp,"%d %lf %lf %f %u %u %f %u %u %lf %lf ",&j,
 		    ftr_means_p,ftr_stds_p,
 		    ftr_maxs_p,
 		    &ftr_maxs_locs_p->sent_no,&ftr_maxs_locs_p->frame_no,
 		    ftr_mins_p,
 		    &ftr_mins_locs_p->sent_no,&ftr_mins_locs_p->frame_no,
 		    &maxs_stds,&mins_stds);
-	    if (rc != 11 || j != i) {
+	    if (rc != 11 || j != (int) i) {
 		fprintf(stderr,
 		       "%s: Error reading input stats file in lead-in %d.\n",
 		       program_name, i);
@@ -393,7 +392,7 @@ void gaussianNorm(FILE* out_fp,
 	    if (hist_bins > 0) {
 		hist_tot = 0;
 		for (unsigned j=0;j<hist_bins;j++) {
-		    if (fscanf(in_st_fp,"%d ", hist_p) != 1) {
+		    if (fscanf(in_st_fp,"%u ", hist_p) != 1) {
 			fprintf(stderr,
 				"%s: Error reading input stats file, "
 				"el %d bin %d.\n",
@@ -537,7 +536,7 @@ void gaussianNorm(FILE* out_fp,
 	ftr_stds_p = ftr_stds;
 	ftr_sum_p = ftr_sum;
 	ftr_sumsq_p = ftr_sumsq;
-	for (i=0;i<frrng.length();i++) {
+	for (size_t i=0;i<frrng.length();i++) {
 	  (*ftr_means_p) = (*ftr_sum_p)/total_frames;
 	  (*ftr_stds_p) = 
 	    sqrt(
@@ -555,7 +554,7 @@ void gaussianNorm(FILE* out_fp,
 	// for each feature, using hist_bins between the extreme
 	// values for each feature.
 	::memset(histogram,0,sizeof(size_t)*frrng.length()*hist_bins);
-	for (i=0;i<frrng.length();i++)
+	for (size_t i=0;i<frrng.length();i++)
 	  ftr_ranges[i] = ftr_maxs[i]-ftr_mins[i];
 	printf("Computing histograms...\n");
 	for (Range::iterator srit1=srrng.begin();!srit1.at_end();srit1++) {
@@ -610,7 +609,7 @@ void gaussianNorm(FILE* out_fp,
       ftr_maxs_locs_p = ftr_maxs_locs;
       ftr_mins_locs_p = ftr_mins_locs;
       size_t *hist_p = histogram;
-      for (i=0;i<frrng.length();i++) {
+      for (size_t i=0;i<frrng.length();i++) {
 	const double maxs_stds = (*ftr_maxs_p)/(*ftr_stds_p);
 	const double mins_stds = (*ftr_mins_p)/(*ftr_stds_p);
 	fprintf(out_st_fp,"%d %f %f %f %d %d %f %d %d %f %f ",i,
@@ -619,7 +618,7 @@ void gaussianNorm(FILE* out_fp,
 		*ftr_mins_p,ftr_mins_locs_p->sent_no,ftr_mins_locs_p->frame_no,
 		maxs_stds,mins_stds);
 	if (hist_bins > 0) {
-	  for (j=0;j<hist_bins;j++) {
+	  for (size_t j=0;j<hist_bins;j++) {
 	    fprintf(out_st_fp,"%d ",*hist_p++);
 	  }
 	}
@@ -648,12 +647,12 @@ void gaussianNorm(FILE* out_fp,
     float *histc_dom_p = histc_dom;
     double *histc_rng_p = histc_rng;
     const double inv_total_frames = 1.0/total_frames;
-    for (i=0;i<frrng.length();i++) {
+    for (size_t i=0;i<frrng.length();i++) {
       const double dom_step = (*ftr_ranges_p)/hist_bins;
       *histc_dom_p++ = *ftr_mins_p;
       *histc_rng_p++ = 0.0;
       int cumfr = 0;
-      for (j=1;j<hist_bins;j++) {
+      for (size_t j=1;j<hist_bins;j++) {
 	*histc_dom_p++ = (*ftr_mins_p) + j*dom_step;
 	// *histc_rng_p = histc_rng_p[-1] + (*hist_p)*inv_total_frames;
 	cumfr += *hist_p;
@@ -677,8 +676,8 @@ void gaussianNorm(FILE* out_fp,
     if (!uniform_output) {
       histc_rng_p = histc_rng;
 
-      for (i=0;i<frrng.length();i++) {
-	for (j=0;j<(hist_bins+1);j++) {
+      for (size_t i=0;i<frrng.length();i++) {
+	for (size_t j=0;j<(hist_bins+1);j++) {
 	  *histc_rng_p = 
 	    p_num_stds + (*histc_rng_p)*p_num_stds_mul;
 	  histc_rng_p ++;
