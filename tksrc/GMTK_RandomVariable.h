@@ -17,6 +17,12 @@
  */ 
 
 
+TODO:
+Break definitions into two grand sections,
+  discrete and continuous support.
+
+
+
 #ifndef GMTK_RANDOMVARIABLE
 #define GMTK_RANDOMVARIABLE
 
@@ -76,16 +82,17 @@ struct RandomVariable
        clique tree. (The constituents of each clique are random variables.)
     */
 
-    bool hidden;
+    const bool hidden;
     // If a variable is not hidden, inference has no choices to make about
     // its value.
 
-    bool discrete;
+    const bool discrete;
     // If not hidden then inference has no choices to make.
     // If hidden and discrete, inference will loop over all possible values.
     // If hidden and continuous, something else is done.
 
-    bool deterministic;
+    // NOT NEEDED ANYMORE??? 
+    // bool deterministic;
     // A special case of discrete variables, where the parents' values 
     // uniquely determine the variable's value. No looping required.
 
@@ -121,9 +128,10 @@ struct RandomVariable
     // array to obtain the set of values that this random variable
     // may be set to.
 
-    void setPossibleDiscreteValues();
+    virtual void setPossibleDiscreteValues();
     // Fills the table possibleDiscreteValues based on the set of
-    // current parent values.
+    // current parent values. Called only once for each 
+    // set of parent values.
 
     virtual void makeRandom() = 0;
     // Sets the parameters determining probGivenParents() to random values.
