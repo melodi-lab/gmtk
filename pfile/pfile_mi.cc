@@ -39,13 +39,7 @@ extern "C" void nonstandard_arithmetic();
 #include "sArray.h"
 #include "general.h"
 
-#ifdef HAVE_SYS_IEEEFP_H
-#  include <sys/ieeefp.h>
-#else
-#  ifdef HAVE_IEEEFP_H
-#    include <ieeefp.h>
-#  endif
-#endif
+#include "ieeeFPsetup.h"
 
 //
 // Turn on for debugging.
@@ -2214,38 +2208,7 @@ main(int argc, const char *argv[])
     //////////////////////////////////////////////////////////////////////
 
 #if SET_IEEE_TRAPS
-#ifdef HAVE_IEEE_FLAGS
-    char *out;
-    ieee_flags("set",
-	       "exception",
-	       "invalid",
-	       &out);
-    ieee_flags("set",
-	       "exception",
-	       "division",
-	       &out);
-#else
-#  ifdef HAVE_FPSETMASK
-    fpsetmask(
-	      FP_X_INV      /* invalid operation exception */
-	      /* | FP_X_OFL */     /* overflow exception */
-	      /* | FP_X_UFL */     /* underflow exception */
-	      | FP_X_DZ       /* divide-by-zero exception */
-	      /* | FP_X_IMP */      /* imprecise (loss of precision) */
-	      );
-#  else // create a syntax error.
-//#    error No way known to trap FP exceptions
-#  endif
-#endif
-#endif
-
-
-#ifdef HAVE_NONSTANDARD_ARITHMETIC
-     // this presumably sets a bit in the FPU that keeps
-     // denormals from traping and being handled in sofware.
-     // Instead, (again presumably), denormals are truncated to zero.
-     nonstandard_arithmetic();
-     // ieee_retrospective(stdout); 
+    ieeeFPsetup();
 #endif
 
     //////////////////////////////////////////////////////////////////////
