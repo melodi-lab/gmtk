@@ -97,6 +97,11 @@ libmiscSupport.a: $(objs)
 	rm -f $@
 	$(archive) $@ $(objs)
 
+
+string_err: string_err.o
+	$(compile.cc) -Wall -g -DMAIN  -o string_err string_err.o $(LIBS)
+
+
 #----------------------------------------------------------------------------
 # Test programs for each .cc file
 #----------------------------------------------------------------------------
