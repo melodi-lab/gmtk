@@ -312,6 +312,8 @@ main(int argc,char*argv[])
   gm.setExampleStream(obsFileName,dcdrng_str);
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
+  GM_Parms.setFirstUtterance( gm.trrng->min() );
+ 
   gm.setCliqueChainRecursion(ns, bct);
 
   gm.verifyTopologicalOrder();
