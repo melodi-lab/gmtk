@@ -76,13 +76,6 @@ bool binOutputTrainableParameters=false;
 char *inputTrainableParameters=NULL;
 bool binInputTrainableParameters=false;
 
-char *prmTrainableFile=NULL;
-bool binPrmTrainableFile=false;
-
-char *prmMasterFile=NULL;
-char *prmOutFile="outParms%d.gmp";
-bool binPrmOutFile=true;
-
 double varFloor = 1e-10;
 char *cppCommandOptions = NULL;
 
@@ -144,7 +137,7 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
 
   if ((inputMasterFile == NULL) && (inputTrainableParameters == NULL)) {
-    error("ERROR: need to specify either inputMasterFile or inputTrainableParameters command line arguments");
+    error("ERROR: need to specify command line parameters inputMasterFile or inputTrainableParameters (or both)");
   }
   ////////////////////////////////////////////
   if (inputMasterFile != NULL) {
@@ -157,7 +150,7 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
 
-  printf("Input files have a total of '%u' parameters\n",
+  printf("Total number of trainable parameters in input files = %u\n",
 	 GM_Parms.totalNumberParameters());
 
   if (outputMasterFile != NULL) {
