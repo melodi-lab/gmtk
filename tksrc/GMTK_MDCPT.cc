@@ -270,7 +270,8 @@ MDCPT::write(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void
-MDCPT::becomeAwareOfParentValues( vector<int>& parentValues)
+MDCPT::becomeAwareOfParentValues( vector<int>& parentValues,
+				  vector<int>& cards)
 {
 
   assert ( parentValues.size() == numParents );
