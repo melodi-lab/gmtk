@@ -72,13 +72,30 @@ protected:
   // value, we do not increment.
   static logpr minIncrementProbabilty;
   static unsigned long missedIncrementCount;
-  
+
+
+
+  ///////////////////////////////////////////////////////
+  // The minimum continuous accumulated probability of mean and covariance -like
+  // objects. If the accumulated probability falls below this
+  // value, then the mean or variance like object will not
+  // update its values.
+  static logpr _minContAccumulatedProbability;
+  // same thing as above but for discrete objects.
+  static logpr _minDiscAccumulatedProbability;
  
 public:
 
   
   EMable() { bitmask = 0x0; }
   virtual ~EMable() {}
+
+  static logpr minContAccumulatedProbability()
+  { return _minContAccumulatedProbability; }
+  static logpr minDiscAccumulatedProbability()
+  { return _minContAccumulatedProbability; }
+  static logpr setMinContAccumulatedProbability(const logpr floor);
+  static logpr setMinDiscAccumulatedProbability(const logpr floor);
 
 
   /////////////////////////////////////////////////////////////////
@@ -327,24 +344,25 @@ public:
   ///////////////////////////////////////////////////////////////
   // store the current set of accumulators to a file.
   virtual void emStoreAccumulators(oDataStreamFile& ofile) {
-    ofile.write(accumulatedProbability.val());
+    ofile.write(accumulatedProbability.val(),"EM store accums");
   }
   virtual void emStoreZeroAccumulators(oDataStreamFile& ofile) {
     const logpr p;
-    ofile.write(p.val());
+    ofile.write(p.val(),"EM store zero accums");
   }
 
   ///////////////////////////////////////////////////////////////
   // load the current set of accumulators from a file.
   virtual void emLoadAccumulators(iDataStreamFile& ifile) {
-    ifile.read(accumulatedProbability.valref());
+    ifile.read(accumulatedProbability.valref(),
+	       "EM load accums");
   }
 
   //////////////////////////////////////////////////////////////////////
   // accumulate (add to) the current set of accumulators from a file.
   virtual void emAccumulateAccumulators(iDataStreamFile& ifile) {
     logpr tmp;
-    ifile.read(tmp.valref());
+    ifile.read(tmp.valref(),"EM accumulate accums");
     accumulatedProbability += tmp;
   }
 
