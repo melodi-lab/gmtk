@@ -139,7 +139,7 @@ void CliqueChain::backwardPass()
     // now do the middle cliques, whose instantiations must pull in a lambda 
     // from the instantiations derived from them, and push a lambda to the 
     // instantiations they derive from.
-    for (unsigned i=2; i<postorder.size()-2; i++)
+    for (int i=2; i<int(postorder.size())-2; i++)
     {
         Clique *cl = postorder[i];
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
