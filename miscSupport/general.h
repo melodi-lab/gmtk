@@ -11,6 +11,15 @@
 
 using namespace std;
 
+// added this to keep gcc -pedantic flag from complaining
+// about incompatibilities with not defining certain
+// extern "C" functions with the 'throw()' directive
+// in the function prototypes. Such functions include
+// popen, pclose, drand48, seed48, etc.
+#ifndef __THROW
+#define __THROW
+#endif
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
