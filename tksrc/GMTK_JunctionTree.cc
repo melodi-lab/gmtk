@@ -235,7 +235,7 @@ JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
     // starting invalid clique.
     iClique = ~0x0u; 
     // the weight of the interface clique, to break ties.
-    float interfaceCliqueWeight=HUGE;
+    double interfaceCliqueWeight=HUGE_VAL;
 
     for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
       // check that clique fully covers iNodes 
@@ -258,7 +258,7 @@ JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
 	    iCliqueSameAsInterface = false;
 	  }
 	} else {
-	  float new_weight = MaxClique::computeWeight(cliques[cliqueNo].nodes);
+	  double new_weight = MaxClique::computeWeight(cliques[cliqueNo].nodes);
 	  if (new_weight < interfaceCliqueWeight) {
 	    iClique = cliqueNo;
 	    interfaceCliqueWeight = new_weight;
@@ -294,7 +294,7 @@ JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterf
 unsigned
 JT_Partition::cliqueWithMaxWeight()
 {
-  float weight = -1.0;
+  double weight = -1.0;
   unsigned res= ~0x0;
   assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {
@@ -309,7 +309,7 @@ JT_Partition::cliqueWithMaxWeight()
 unsigned
 JT_Partition::cliqueWithMinWeight()
 {
-  float weight = HUGE;
+  double weight = HUGE_VAL;
   unsigned res = ~0x0;
   assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {
@@ -480,7 +480,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 	// First push sep set size. To get a JT, we must
 	// always choose from among the cliques that
 	// have the largest intersection size.
-	e.weights.push_back((float)sep_set.size());
+	e.weights.push_back((double)sep_set.size());
 
 	// The remaining items we push back in the case of ties.
 	// Larger numbers are prefered.
@@ -495,11 +495,11 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 	  if (!rv->hidden)
 	    numDeterministicNodes++;
 	}
-	e.weights.push_back((float)numDeterministicNodes);
+	e.weights.push_back((double)numDeterministicNodes);
 
 	// push back negative weight of separator, to prefer
 	// least negative (smallest)  weight.
-	e.weights.push_back(-(float)MaxClique::computeWeight(sep_set));
+	e.weights.push_back(-(double)MaxClique::computeWeight(sep_set));
 
 	// printf("weight of clique %d = %f, %d = %f\n",
 	// i,part.cliques[i].weight(),
@@ -512,7 +512,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 		  part.cliques[j].nodes.begin(),
 		  part.cliques[j].nodes.end(),
 		  inserter(clique_union,clique_union.end()));
-	e.weights.push_back(-(float)MaxClique::computeWeight(clique_union));
+	e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
 
 	// add the edge.
 	edges.push_back(e);
@@ -1151,7 +1151,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
       // fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
       parSet.insert(rv->allPossibleParents[p]);
     }
-    multimap < vector<float>, unsigned> scoreSet;
+    multimap < vector<double>, unsigned> scoreSet;
 
     bool alreadyAProbContributer = false;
     assignRVToClique(partName,
@@ -1250,7 +1250,7 @@ JunctionTree::assignRVToClique(const char *const partName,
 			       RandomVariable* rv,
 			       bool& alreadyAProbContributer,
 			       set<RandomVariable*>& parSet,
-			       multimap < vector<float>, unsigned >& scoreSet)
+			       multimap < vector<double>, unsigned >& scoreSet)
 {
   // keep a reference for easy access
   MaxClique& curClique = part.cliques[root];
@@ -1369,7 +1369,7 @@ JunctionTree::assignRVToClique(const char *const partName,
     
     // when the node is continuous, assign it to a clique that is the
     // smallest possible in terms of weight.
-    float weight = - curClique.weight();
+    double weight = - curClique.weight();
 
 
     // And so on. We can create as many heuristics as we want.
@@ -1388,7 +1388,7 @@ JunctionTree::assignRVToClique(const char *const partName,
 
     // We've now computed a bunch of heursitcs, push them
     // into an array in priority order to be scored later
-    vector<float> score;
+    vector<double> score;
     if (rv->discrete) {
       DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
       // 1st thing pushed has highest priority.
@@ -1413,7 +1413,7 @@ JunctionTree::assignRVToClique(const char *const partName,
 
     // done inserting heuristicss, now insert the score and the
     // current clique into the set.
-    pair < vector<float>, unsigned> p(score,root);
+    pair < vector<double>, unsigned> p(score,root);
     scoreSet.insert(p);
   }
 

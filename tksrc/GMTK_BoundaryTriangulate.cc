@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern long int lrand48(void);
+
 #include <algorithm>
 #include <iterator>
 #include <list>
