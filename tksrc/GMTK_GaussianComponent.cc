@@ -48,7 +48,14 @@ double GaussianComponent::setVarianceFloor(const double floor)
   return _varianceFloor;
 }
 
-
+// true if when a clone occurs, we use the same mean (i.e.,
+// share the mean and only clone other things)
+bool GaussianComponent::cloneShareMeans = false;
+// true if when a clone occurs, we use the same covariance
+// (i.e., share the covariance and clone other things)
+bool GaussianComponent::cloneShareCovars = false;
+// true if hwen a clone occurs, we use the same dlink matrix
+bool GaussianComponent::cloneShareDlinks = false;
 
 GaussianComponent::GaussianComponent(const int dim) : _dim(dim) 
 {

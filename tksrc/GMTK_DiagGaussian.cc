@@ -172,8 +172,20 @@ DiagGaussian::noisyClone()
     } while (GM_Parms.gaussianComponentsMap.find(clone->_name) 
 	     != GM_Parms.gaussianComponentsMap.end());
 
-    clone->mean = mean->noisyClone();
-    clone->covar = covar->noisyClone();
+    if (cloneShareMeans && cloneShareCovars) {
+      warning("WARNING: Diagonal Gaussian component '%s' is cloning, and was asked to share both means and covariances. No sharing is occuring instead.",name().c_str());
+      clone->mean = mean->noisyClone();
+      clone->covar = covar->noisyClone();
+    } else {
+      if (cloneShareMeans)
+	clone->mean = mean;
+      else
+	clone->mean = mean->noisyClone();
+      if (cloneShareCovars)
+	clone->covar = covar;
+      else
+	clone->covar = covar->noisyClone();
+    }
 
     clone->setBasicAllocatedBit();
     MixGaussiansCommon::gcCloneMap[this] = clone;

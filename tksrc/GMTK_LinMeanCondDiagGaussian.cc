@@ -284,9 +284,25 @@ LinMeanCondDiagGaussian::noisyClone()
     } while (GM_Parms.gaussianComponentsMap.find(clone->_name) 
 	     != GM_Parms.gaussianComponentsMap.end());
 
-    clone->mean = mean->noisyClone();
-    clone->covar = covar->noisyClone();
-    clone->dLinkMat = dLinkMat->noisyClone();
+    if (cloneShareMeans && cloneShareCovars && cloneShareDlinks) {
+      warning("WARNING: Dlink Gaussian component '%s' is cloning, and was asked to share both means, covariances, and dlinks. No sharing is occuring instead.",name().c_str());
+      clone->mean = mean->noisyClone();
+      clone->covar = covar->noisyClone();
+      clone->dLinkMat = dLinkMat->noisyClone();
+    } else {
+      if (cloneShareMeans)
+	clone->mean = mean;
+      else 
+	clone->mean = mean->noisyClone();
+      if (cloneShareCovars)
+	clone->covar = covar;
+      else
+	clone->covar = covar->noisyClone();
+      if (cloneShareDlinks)
+	clone->dLinkMat = dLinkMat;
+      else
+	clone->dLinkMat = dLinkMat->noisyClone();
+    }
 
     clone->setBasicAllocatedBit();
     MixGaussiansCommon::gcCloneMap[this] = clone;

@@ -61,6 +61,10 @@ public:
   static double varianceFloor() { return _varianceFloor; }
   static double setVarianceFloor(const double floor);
 
+  static bool cloneShareMeans;
+  static bool cloneShareCovars;
+  static bool cloneShareDlinks;
+
   unsigned dim() const { return _dim; }
 
 
