@@ -41,19 +41,27 @@
 #define M_PI               3.14159265358979323846  /* pi */
 #endif
 
-
-
 VCID("$Header$");
 
+////////////////////////////////////////////////////////////////////
+//        Static members
+////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////
-// static member initialization
 unsigned DiagCovarVector::numFlooredVariances = 0;
+
+double DiagCovarVector::cloneSTDfrac = 0.1;
+
+void DiagCovarVector::checkForValidValues()
+{
+  if (DiagCovarVector::cloneSTDfrac < 0)
+    error("ERROR: DiagCovarVector's cloneSTDfrac (%e) must be >= 0",
+	  DiagCovarVector::cloneSTDfrac);
+}
+
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -168,7 +176,7 @@ DiagCovarVector::noisyClone()
     clone->covariances.resize(covariances.len());
     for (int i=0;i<covariances.len();i++) {
       clone->covariances[i] = covariances[i] + 
-	0.05*covariances[i]*rnd.normal();
+	cloneSTDfrac*covariances[i]*rnd.normal();
     }
     clone->setBasicAllocatedBit();
     MixGaussiansCommon::diagCovarCloneMap[this] = clone;

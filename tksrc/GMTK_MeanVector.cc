@@ -38,6 +38,18 @@
 
 VCID("$Header$");
 
+////////////////////////////////////////////////////////////////////
+//        Static members
+////////////////////////////////////////////////////////////////////
+
+double MeanVector::cloneSTDfrac = 0.1;
+
+void MeanVector::checkForValidValues()
+{
+  if (MeanVector::cloneSTDfrac < 0)
+    error("ERROR: MeanVector's cloneSTDfrac (%e) must be >= 0",
+	  MeanVector::cloneSTDfrac);
+}
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -124,7 +136,7 @@ MeanVector::noisyClone()
     clone->means.resize(means.len());
     for (int i=0;i<means.len();i++) {
       clone->means[i] = means[i] + 
-	0.05*means[i]*rnd.normal();
+	cloneSTDfrac*means[i]*rnd.normal();
     }
     clone->setBasicAllocatedBit();
     MixGaussiansCommon::meanCloneMap[this] = clone;

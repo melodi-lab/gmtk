@@ -63,6 +63,11 @@ public:
   MeanVector();
   ~MeanVector() { } 
 
+  // When noisy cloning an object, this gives
+  // the fraction to multiply to get the STD of the noise.
+  static double cloneSTDfrac;
+  static void checkForValidValues();
+
   //////////////////////////////////
   // set all current parameters to random values
   void makeRandom();
