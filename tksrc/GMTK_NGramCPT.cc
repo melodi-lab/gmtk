@@ -156,14 +156,15 @@ void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, ite
 	assert(it.uInternalState <= _numParents);
 
 	ContextHashEntry **ptr;
-	_numberOfActiveIterators++;
-	if ( _numberOfActiveIterators > _contextEntriesStack.size() * 4 ) {
+
+	if ( _numberOfActiveIterators >= _contextEntriesStack.size() * 4 ) {
 		void *tmpPtr = (void *) malloc(sizeof(ContextHashEntry *) * 4 * _numParents);
 		_contextEntriesStack.push_back(tmpPtr);
 		ptr = (ContextHashEntry **)tmpPtr;
 	} else {
 		ptr = ((ContextHashEntry **)_contextEntriesStack[_numberOfActiveIterators / 4]) + (_numberOfActiveIterators % 4) * _numParents;
 	}
+	_numberOfActiveIterators++;
 
 	unsigned j = 0;
 	if ( it.uInternalState > 0 ) {
