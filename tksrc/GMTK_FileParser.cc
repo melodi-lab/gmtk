@@ -77,7 +77,18 @@ RV = "variable" ":" name "{" RandomVariableAttribute "}"
 RandomVariableAttributeList =
         RandomVariableAttribute RandomVariableAttributeList | NULL
 
-RandomVariableAttribute = TypeAttribute | ParentsAttribute
+RandomVariableAttribute = TypeAttribute | 
+                          EliminationHintAttribute | 
+                          WeightAttribute | 
+                          ParentsAttribute
+
+WeightAttribute = "weight" : 
+               ( "value" number )
+          | ( "observed" integer ":" integer )
+
+
+EliminationHintAttribute = "elimination_hint" : number ;
+
 
 TypeAttribute = "type" ":" RandomVariableType ";"
 
@@ -172,6 +183,9 @@ MappingSpec = "mapping" "(" ListIndex ")"
 ChunkSpecifier = "chunk"  integer ":" integer
 
 ListIndex = integer | string
+
+
+number = integer | floating_point_value
 
 ======================================================================
 
@@ -317,36 +331,36 @@ const vector<string>
 FileParser::fillKeywordTable()
 {
   // ******************************************************************
-  // This table must always be consistent with the enum TokenKeyword in 
-  // the .h file and with 'keyword' in the .lex file.
+  // This table must always be order consistent with the enum TokenKeyword in 
+  // the .h file and consistent with 'keyword' in the .lex file.
   // ******************************************************************
   const char*const kw_table[] = {
-    "frame",
-    "variable",
-    "type",
-    "cardinality",
-    "switchingparents",
-    "conditionalparents",
-    "discrete",
-    "continuous",
-    "hidden",
-    "observed",
-    "nil",
-    "using",
-    "mapping",
-    "collection",
-    "DenseCPT",
-    "SparseCPT",
-    "DeterministicCPT",
-    "mixGaussian",
-    "gausSwitchMixGaussian",
-    "logitSwitchMixGaussian",
-    "mlpSwitchMixGaussian",
-    "chunk",
-    "GRAPHICAL_MODEL",
-    "value",
-    "weight",
-    "observation" 
+    /* 0  */    "frame",
+    /* 1  */ "variable",
+    /* 2  */ "type",
+    /* 3  */ "cardinality",
+    /* 4  */ "switchingparents",
+    /* 5  */ "conditionalparents",
+    /* 6  */ "discrete",
+    /* 7  */ "continuous",
+    /* 8  */ "hidden",
+    /* 9  */ "observed",
+    /* 10 */ "nil",
+    /* 11 */ "using",
+    /* 12 */ "mapping",
+    /* 13 */ "collection",
+    /* 14 */ "DenseCPT",
+    /* 15 */ "SparseCPT",
+    /* 16 */ "DeterministicCPT",
+    /* 17 */ "mixGaussian",
+    /* 18 */ "gausSwitchMixGaussian",
+    /* 19 */ "logitSwitchMixGaussian",
+    /* 20 */ "mlpSwitchMixGaussian",
+    /* 21 */ "chunk",
+    /* 22 */ "GRAPHICAL_MODEL",
+    /* 23 */ "value",
+    /* 24 */ "weight",
+    /* 25 */ "elimination_hint",
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -495,7 +509,7 @@ FileParser::prepareNextToken()
 void
 FileParser::consumeToken()
 {
-#if 0  
+#if 0
   printf("Consuming token (%s) of type %d from src line (%d)\n",
 	 tokenInfo.tokenStr,tokenInfo.tokenType,tokenInfo.srcLine);
 #endif
@@ -783,6 +797,7 @@ FileParser::parseRandomVariableAttributeList()
 {
   if (tokenInfo == KW_Type || 
       tokenInfo == KW_Weight ||
+      tokenInfo == KW_EliminationHint ||
       tokenInfo == KW_Switchingparents ||
       tokenInfo == KW_Conditionalparents) 
     {
@@ -800,6 +815,8 @@ FileParser::parseRandomVariableAttribute()
     return parseRandomVariableTypeAttribute();
   else if (tokenInfo == KW_Weight)
     return parseRandomVariableWeightAttribute();
+  else if (tokenInfo == KW_EliminationHint)
+    return parseRandomVariableEliminationHintAttribute();
   else if (tokenInfo == KW_Switchingparents ||
 	   tokenInfo == KW_Conditionalparents) {
     if (curRV.rvType == RVInfo::t_unknown)
@@ -991,9 +1008,40 @@ FileParser::parseRandomVariableContinuousType()
 }
 
 void
+FileParser::parseRandomVariableEliminationHintAttribute()
+{
+  ensureNotAtEOF(KW_EliminationHint);
+  if (tokenInfo != KW_EliminationHint)
+    parseError(KW_EliminationHint);
+  consumeToken();  
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseError(":");
+  consumeToken();
+
+  static const char *const tmp_str = "elimination hint numeric value";
+  ensureNotAtEOF(tmp_str);
+  // allow an int to be treated as a float value.
+  if (tokenInfo != TT_Real && tokenInfo != TT_Integer)
+    parseError(tmp_str);
+  if (tokenInfo == TT_Real)
+    curRV.eliminationOrderHint = tokenInfo.doub_val;
+  else 
+    curRV.eliminationOrderHint = (double)tokenInfo.int_val;
+  consumeToken();
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseError(";");
+  consumeToken();
+
+
+}
+
+void
 FileParser::parseRandomVariableWeightAttribute()
 {
-
 
   ensureNotAtEOF(KW_Weight);
   if (tokenInfo != KW_Weight)
@@ -1024,7 +1072,7 @@ FileParser::parseRandomVariableWeightAttribute()
 
     curRV.rvWeightInfo.wt_Status = RVInfo::WeightInfo::wt_Constant;    
     
-  } else if (tokenInfo == KW_Observation) {
+  } else if (tokenInfo == KW_Observed) {
     consumeToken();
     
     ensureNotAtEOF("first feature range");
