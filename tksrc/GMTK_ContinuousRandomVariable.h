@@ -54,7 +54,7 @@ private:
     bool direct;
     union { 
       MixGaussiansCommon* gaussian;
-      RngDecisionTree<unsigned>* dtMapper;
+      RngDecisionTree* dtMapper;
     };
   };
 

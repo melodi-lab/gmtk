@@ -45,7 +45,7 @@ class MTCPT : public CPT  {
 
   ///////////////////////////////////////
   // Direct pointer to the decision tree.
-  RngDecisionTree<unsigned>* dt;
+  RngDecisionTree* dt;
 
   ////////////////
   // the value

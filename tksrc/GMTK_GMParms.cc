@@ -125,7 +125,7 @@ void GMParms::add(MixGaussians*ob) { add(ob,mixGaussians,mixGaussiansMap); }
 void GMParms::add(GausSwitchingMixGaussians*ob) { assert (0); }
 void GMParms::add(LogitSwitchingMixGaussians*ob) { assert (0); }
 void GMParms::add(MLPSwitchingMixGaussians*ob) { assert (0); }
-void GMParms::add(RngDecisionTree<unsigned>*ob) { 
+void GMParms::add(RngDecisionTree*ob) { 
   add(ob,dts,dtsMap);
   if (ob->clampable())
     clampableDts.push_back(ob);
@@ -568,14 +568,14 @@ GMParms::readDTs(iDataStreamFile& is, bool reset)
   }
   for (unsigned i=0;i<num;i++) {
     // first read the count
-    RngDecisionTree<unsigned>* ob;
+    RngDecisionTree* ob;
 
     is.read(cnt,"DT cnt");
     if (cnt != i) 
       error("ERROR: DT count (%d), out of order in file '%s', expecting %d",
 	    cnt,is.fileName(),i);
 
-    ob = new RngDecisionTree<unsigned>;
+    ob = new RngDecisionTree;
     ob->read(is);
     if (dtsMap.find(ob->name()) != dtsMap.end())
       error("ERROR: DT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());

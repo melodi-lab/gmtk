@@ -45,7 +45,7 @@ class MSCPT : public CPT {
 
   ///////////////////////////////////////
   // Direct pointer to the decision tree.
-  RngDecisionTree<unsigned>* dt;
+  RngDecisionTree* dt;
 
   ///////////////////////////////////////
   // Index of world's sparse mass function,
