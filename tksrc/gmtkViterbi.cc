@@ -104,6 +104,9 @@ char *dumpNames = NULL;
 
 bool show_cliques=false;
 
+char *argsFile = NULL;
+char *cppCommandOptions = NULL;
+
 ARGS ARGS::Args[] = {
 
   ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
@@ -134,6 +137,9 @@ ARGS ARGS::Args[] = {
   ARGS("prmMasterFile",ARGS::Req,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
   ARGS("prmTrainableFile",ARGS::Opt,prmTrainableFile,"File containing Trainable Parameters"),
   ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
+  ARGS("cppCommandOptions",ARGS::Opt,cppCommandOptions,"Command line options to give to cpp"),
+
+
   ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
   ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
        "Floor the variances to varFloor when they are read in"),
@@ -155,6 +161,11 @@ ARGS ARGS::Args[] = {
 
   ARGS("dumpNames",ARGS::Opt,dumpNames,"File containing the names of the variables to save to a file"),
   ARGS("ofilelist",ARGS::Opt,ofilelist,"List of filenames to dump the hidden variable values to"),
+
+  ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
+
+
+
   ARGS()
 
 };
@@ -175,7 +186,7 @@ main(int argc,char*argv[])
   ieeeFPsetup();
   set_new_handler(memory_error);
 
-  ARGS::parse(argc,argv);
+  ARGS::parse(argc,argv,argsFile);
 
   map<int, string> word_map;
   if (wordVar != NULL)
@@ -247,12 +258,12 @@ main(int argc,char*argv[])
   // read in all the parameters
   if (prmMasterFile) {
     // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(prmMasterFile,false);
+    iDataStreamFile pf(prmMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
   }
   if (prmTrainableFile) {
     // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(prmTrainableFile,false);
+    iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
 
@@ -262,7 +273,7 @@ main(int argc,char*argv[])
   /////////////////////////////
   // read in the structure of the GM, this will
   // die if the file does not exist.
-  FileParser fp(strFileName);
+  FileParser fp(strFileName,cppCommandOptions);
   // parse the file
   fp.parseGraphicalModel();
   // create the rv variable objects
