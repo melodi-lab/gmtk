@@ -117,6 +117,7 @@ public:
 		   const Data32* const base,
 		   const int stride,
 		   float *const partialAccumulatedNextCovars);
+  void emEndIteration(const float*const c);
   void emEndIteration(const logpr prob,const float*const m,const float*const v);
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
