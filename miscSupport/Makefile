@@ -125,6 +125,21 @@ testArguments: arguments.cc
 testLogp: logp.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ logp.cc error.o $(LIBS)
 
+testHashMapList: hash_map_list.cc hash_abstract.o hash_map_list.h hash_abstract.cc hash_abstract.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ hash_map_list.cc error.o hash_abstract.o $(LIBS)
+
+
+testHashTree: hash_tree.h hash_tree.cc hash_map_list.cc hash_abstract.o hash_map_list.h hash_abstract.cc hash_abstract.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ hash_tree.cc error.o hash_abstract.o $(LIBS)
+
+testVHashSet: vhash_set.h vhash_set.cc hash_abstract.o hash_abstract.cc hash_abstract.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ vhash_set.cc error.o hash_abstract.o $(LIBS)
+
+
+testVHashMap: vhash_map.h vhash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ vhash_map.cc error.o hash_abstract.o $(LIBS)
+
+
 
 testRand: rand.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ rand.cc error.o $(LIBS)
@@ -139,13 +154,13 @@ fileParserTest: fileParser.cc fileParser.h
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc general.cc lineqsolve.cc string_err.cc debug.cc fileParser.cc
+all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc general.cc lineqsolve.cc string_err.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc
 
-all_hdrs = error.h debug.h fileParser.h
+all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h
 
 all_objs = 
 
-all_exs = testError testBPRange testArguments testLogp testRand testsArray string_err testDebug fileParserTest
+all_exs = testError testBPRange testArguments testLogp testRand testsArray string_err testDebug fileParserTest testHashMapList
 
 #----------------------------------------------------------------------------
 # installation
