@@ -85,10 +85,10 @@ class PackCliqueValue;
 //////////////////////////////////////////////////////////////////
 // Computes the max over N objects, for various N.
 #define MAX_OF_2(a,b)          ((a)>(b)?(a):(b))
-#define MAX_OF_3(a,b,c)        MAX_OF_2(a,MAX_OF_2(b,c))
-#define MAX_OF_4(a,b,c,d)      MAX_OF_3(a,b,MAX_OF_2(c,d))
-#define MAX_OF_5(a,b,c,d,e)    MAX_OF_4(a,b,c,MAX_OF_2(d,e))
-#define MAX_OF_6(a,b,c,d,e,f)  MAX_OF_5(a,b,c,d,MAX_OF_2(e,f))
+#define MAX_OF_3(a,b,c)        MAX_OF_2((a),MAX_OF_2((b),(c)))
+#define MAX_OF_4(a,b,c,d)      MAX_OF_3((a),(b),MAX_OF_2((c),(d)))
+#define MAX_OF_5(a,b,c,d,e)    MAX_OF_4((a),(b),(c),MAX_OF_2((d),(e)))
+#define MAX_OF_6(a,b,c,d,e,f)  MAX_OF_5((a),(b),(c),(d),MAX_OF_2((e),(f)))
 
 
 /////////////////////////////////////////////////
@@ -671,7 +671,7 @@ public:
   ); 
 
   ///////////////////////////////////////////////////////////    
-  // write index file for a clampable DT 
+  // write index file for a iterable DT 
   void writeIndexFile();
 
   ///////////////////////////////////////////////////////////    

@@ -426,8 +426,8 @@ public:
   void finalizeParameters();
 
   ////////////////////////////////////////////////////////////////
-  void clampFirstExample();
-  void clampNextExample();
+  void begin();
+  void next();
   unsigned setSegment(const unsigned segmentNo);
 
   // some parameter objects require the stride in the observation
@@ -491,7 +491,7 @@ public:
   void setFirstUtterance( unsigned first_index ); 
 
   ////////////////////////////////////////////////////////////////////////////
-  // Write index files for clampable decision trees 
+  // Write index files for iterable decision trees 
   void writeDecisionTreeIndexFiles();
 
 private:

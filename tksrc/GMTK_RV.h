@@ -156,6 +156,7 @@ class RV  {
   friend class SwRV;
   friend class SeparatorClique;
   friend class RngDecisionTree;
+  friend class GMTK2Network;
 
 
   /////////////////////////////////////////

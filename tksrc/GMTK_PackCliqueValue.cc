@@ -86,19 +86,15 @@ PackCliqueValue::init(const unsigned *const cards)
   // for easy access
   unsigned len = unpackedVectorLength;
 
-  // 1.0/log10(2) pre-defined, as a 64-bit double
-  const double inv_log_2_base_e = 1.4426950408889633870E0;
- 
   const unsigned numBitsPerUnsigned = sizeof(unsigned)*8;
 
   totalNumBits = 0;
   for (unsigned i = 0; i< len; i++) {
-    totalNumBits += 
-      (unsigned)ceil(log((double)cards[i])*inv_log_2_base_e);
+    totalNumBits += bitsRequiredUptoNotIncluding(cards[i]);
   }
 
-  numUnsignedInPackedVector = (unsigned)
-    ceil((double)totalNumBits/(double)numBitsPerUnsigned);
+  numUnsignedInPackedVector = 
+    (totalNumBits+numBitsPerUnsigned-1)/numBitsPerUnsigned;
 
   valLocators.resize(len);
   iterations.resize(len);
@@ -112,7 +108,8 @@ PackCliqueValue::init(const unsigned *const cards)
   for (unsigned i=0; i<len; i++) {
 
     unsigned curNumberBits = 
-      (unsigned)ceil(log((double)cards[i])*inv_log_2_base_e);
+      bitsRequiredUptoNotIncluding(cards[i]);
+
 
     if (curNumberBits <= curNumberUnusedBits) {
       // use bits only in current word
@@ -161,7 +158,7 @@ PackCliqueValue::init(const unsigned *const cards)
 
   }
   assert( wordBoundaryNoOverlapLocation == wordBoundaryOverlapLocation);
-} 
+}
 
 
 /*-

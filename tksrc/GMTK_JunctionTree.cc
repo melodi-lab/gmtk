@@ -983,14 +983,13 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	    // presume that MCS has already checked for this when
 	    // reading in the trifiles. We just issue an informative
 	    // message just in case.
-	    infoMsg(IM::High,"NOTE: junction tree creation joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.",
+	    printf("NOTE: junction tree creation joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.\n",
 		    edges[i].clique1,edges[i].clique2);
 	    // TODO: print out two cliques that are trying to be joined.
 	    printf("Clique %d: ",edges[i].clique1);
 	    part.cliques[edges[i].clique1].printCliqueNodes(stdout);
-	    printf("\nClique %d: ",edges[i].clique2);
+	    printf("Clique %d: ",edges[i].clique2);
 	    part.cliques[edges[i].clique2].printCliqueNodes(stdout);
-	    printf("\n");
 	  }
 	}
 
@@ -2546,7 +2545,12 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
 
       // iterate through smaller weight separator first. If no
-      // intersection, then this of course doesn't matter at all.
+      // intersection, then this still can have a benefit since we
+      // want to do the most work in the inner (rather than the outer)
+      // loops. Of course, we don't know the real cost of the
+      // separater state space until run time (which depends on the
+      // evidence set, current parameters, and the pruning
+      // thresholds), but we use the weight heuristic for now.
       if (part.separators[clique.ceReceiveSeparators[0]].weight() <=
 	  part.separators[clique.ceReceiveSeparators[1]].weight()) {
 	// do nothing

@@ -67,6 +67,7 @@ Mixture::read(iDataStreamFile& is)
   dense1DPMF = GM_Parms.dPmfs[
 			      GM_Parms.dPmfsMap[str]
   ];
+  // dcopy = dense1DPMF;
 
   // now make sure that this one matches the number of components.
   if (numComponents != dense1DPMF->length()) {

@@ -2435,7 +2435,7 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
 
 /*-
  *-----------------------------------------------------------------------
- * 
+ * begin()
  *      do any necessary bookkeeping work with regard to the
  *      parameters in order that we properly instantiate the first example.
  * 
@@ -2454,7 +2454,7 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
  *-----------------------------------------------------------------------
  */
 void
-GMParms::clampFirstExample()
+GMParms::begin()
 {
   for(unsigned i = 0; i<iterableDts.size(); i++) {
     iterableDts[i]->setFirstDecisionTree(firstUtterance);
@@ -2473,12 +2473,11 @@ GMParms::clampFirstExample()
 
 /*-
  *-----------------------------------------------------------------------
- * clampNextExample
- *      do any necessary bookkeeping work with regard to the
- *      parameters in order that we properly clamp the first example.
+ * next()
+ *      Move on to the next example.
  * 
  * Preconditions:
- *      nil
+ *      begin() must have been called.
  *
  * Postconditions:
  *      nil
@@ -2492,7 +2491,7 @@ GMParms::clampFirstExample()
  *-----------------------------------------------------------------------
  */
 void
-GMParms::clampNextExample()
+GMParms::next()
 {
   for(unsigned i = 0; i<iterableDts.size(); i++) {
     iterableDts[i]->nextIterableDT();
