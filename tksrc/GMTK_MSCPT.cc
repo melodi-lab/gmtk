@@ -146,15 +146,15 @@ MSCPT::read(iDataStreamFile& is)
 {
 
   NamedObject::read(is);
-  is.read(numParents,"MSCPT::read numParents");
+  is.read(_numParents,"MSCPT::read numParents");
 
-  if (numParents < 0) 
-    error("MSCPT: read, trying to use negative (%d) num parents.",numParents);
-  if (numParents >= warningNumParents)
-    warning("MSCPT: read, creating MSCPT with %d parents",numParents);
-  cardinalities.resize(numParents+1);
+  if (_numParents < 0) 
+    error("MSCPT: read, trying to use negative (%d) num parents.",_numParents);
+  if (_numParents >= warningNumParents)
+    warning("MSCPT: read, creating MSCPT with %d parents",_numParents);
+  cardinalities.resize(_numParents+1);
   // read the cardinalities
-  for (unsigned i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=_numParents;i++) {
     is.read(cardinalities[i],"MSCPT::read cardinality");
     if (cardinalities[i] <= 0)
       error("MSCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
@@ -178,7 +178,7 @@ MSCPT::read(iDataStreamFile& is)
   // now go through the dt and make sure each dt leaf
   // node points to a Sparse1DPMF that has the same
   // cardinality as self.
-  RngDecisionTree<int>::iterator it = dt->begin();
+  RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const unsigned v = it.value();
     if ( v < 0 || v >= GM_Parms.sPmfs.size() )
@@ -212,9 +212,9 @@ void
 MSCPT::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
-  os.write(numParents,"MSCPT::write numParents");
+  os.write(_numParents,"MSCPT::write numParents");
   os.writeComment("number parents");os.nl();
-  for (unsigned i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=_numParents;i++) {
     os.write(cardinalities[i],"MSCPT::write cardinality");
   }
   os.writeComment("cardinalities");
@@ -286,7 +286,7 @@ void
 MSCPT::normalize()
 {
   assert ( bitmask & bm_basicAllocated );
-  RngDecisionTree<int>::iterator it = dt->begin();
+  RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const int v = it.value();
     GM_Parms.msCpts[v]->normalize();
@@ -314,7 +314,7 @@ void
 MSCPT::makeRandom()
 {
   assert ( bitmask & bm_basicAllocated );
-  RngDecisionTree<int>::iterator it = dt->begin();
+  RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const int v = it.value();
     GM_Parms.msCpts[v]->makeRandom();
@@ -344,7 +344,7 @@ void
 MSCPT::makeUniform()
 {
   assert ( bitmask & bm_basicAllocated );
-  RngDecisionTree<int>::iterator it = dt->begin();
+  RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const int v = it.value();
     GM_Parms.msCpts[v]->makeUniform();

@@ -36,7 +36,7 @@
 #include "GMTK_NamedObject.h"
 
 
-class MTCPT : public EMable, public CPT, public NamedObject {
+class MTCPT : public CPT, public EMable  {
 
   //////////////////////////////////
   // Index into the world structure
@@ -45,7 +45,7 @@ class MTCPT : public EMable, public CPT, public NamedObject {
 
   ///////////////////////////////////////
   // Direct pointer to the decision tree.
-  RngDecisionTree<int>* dt;
+  RngDecisionTree<unsigned>* dt;
 
   ////////////////
   // the value
@@ -75,7 +75,7 @@ public:
   }
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
-    assert ( val >= 0 && val <= cardinalities[numParents] );
+    assert ( val >= 0 && val <= cardinalities[_numParents] );
     if (val == _val)
       return 1.0;
     else
@@ -96,7 +96,7 @@ public:
   }
   int numValsGivenParents() { 
     assert ( bitmask & bm_basicAllocated );
-    return cardinalities[numParents]; 
+    return cardinalities[_numParents]; 
   }
 
   // returns an iterator for the first one.

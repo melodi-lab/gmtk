@@ -36,7 +36,7 @@
 #include "GMTK_NamedObject.h"
 
 
-class MSCPT : public EMable, public CPT, public NamedObject {
+class MSCPT : public CPT, public EMable {
 
   //////////////////////////////////
   // Index into the world structure
@@ -45,12 +45,12 @@ class MSCPT : public EMable, public CPT, public NamedObject {
 
   ///////////////////////////////////////
   // Direct pointer to the decision tree.
-  RngDecisionTree<int>* dt;
+  RngDecisionTree<unsigned>* dt;
 
   ///////////////////////////////////////
   // Index of world's sparse mass function,
   // cached for current value of parents.
-  int spmfIndex;
+  unsigned spmfIndex;
 
   ///////////////////////////////////////
   // Direct index to the Sparse PMF
@@ -82,7 +82,7 @@ public:
   }
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
-    assert ( val >= 0 && val <= cardinalities[numParents] );
+    assert ( val >= 0 && val <= cardinalities[_numParents] );
     return spmf->prob(val);
   }
   logpr probGivenParents(vector <int>& parentValues, 
@@ -100,7 +100,7 @@ public:
   }
   int numValsGivenParents() { 
     assert ( bitmask & bm_basicAllocated );
-    return cardinalities[numParents]; 
+    return cardinalities[_numParents]; 
   }
 
   // returns an iterator for the first one.

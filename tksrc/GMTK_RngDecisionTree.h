@@ -94,7 +94,7 @@ protected:
   ///////////////////////////////////////////////////////////    
   // the size of the integer vector that we are making
   // decisions based on. 
-  int _numFeatures;
+  unsigned _numFeatures;
 
   ///////////////////////////////////////////////////////////    
   // The root of the decision tree.
@@ -186,7 +186,7 @@ public:
 
   ///////////////////////////////////////////////////////////    
   // make available the number of featurse.
-  int numFeatures() { return _numFeatures; }
+  unsigned numFeatures() { return _numFeatures; }
 
   ///////////////////////////////////////////////////////////    
   // return the number of leaves.
@@ -344,8 +344,8 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
   is.read(curFeat,"RngDecisionTree:: readRecurse curFeat");
   if (curFeat < -1) 
     error("RngDecisionTree::readRecurse, feature number (=%d) must be non-negative",curFeat);
-  if (curFeat >= _numFeatures) 
-    error("RngDecisionTree::readRecurse, feature number (=%d) must be < numFeatures (=%d)",
+  if (curFeat >= (int)_numFeatures) 
+    error("RngDecisionTree::readRecurse, feature number (=%d) must be < numFeatures (=%d)",curFeat,
 	  _numFeatures);
   Node *node = new Node;
   if (curFeat == -1) {
@@ -356,7 +356,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
     prevLeaf = node;
   } else {
     node->leaf = false;
-    node->nonLeafNode.ftr = curFeat;
+    node->nonLeafNode.ftr = (T)curFeat;
     unsigned numSplits;
     is.read(numSplits,"RngDecisionTree:: readRecurse numSplits");
     if (numSplits <= 1)
@@ -519,7 +519,7 @@ template <class T>
 T RngDecisionTree<T>::query(const vector < int >& arr,
 			    const vector <int > &cards)
 {
-  assert ( int(arr.size()) == _numFeatures );
+  assert ( unsigned(arr.size()) == _numFeatures );
   return queryRecurse(arr,cards,root);
 }
 
@@ -565,10 +565,10 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
     // to make sure that the ranges are in order.
     // To do this, define an operator < for bp_ranges.
     if (n->nonLeafNode.rngs[i]->contains(val))
-      return queryRecurse(arr,n->nonLeafNode.children[i]);
+      return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
   }
   // failed lookup, so return must be the default one.
-  return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
+  return queryRecurse(arr,cards,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
 }
 
 
@@ -597,7 +597,7 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
 template <class T> 
 T RngDecisionTree<T>::query(const vector < RandomVariable* >& arr)
 {
-  assert ( int(arr.size()) == _numFeatures );
+  assert ( unsigned(arr.size()) == _numFeatures );
   return queryRecurse(arr,root);
 }
 template <class T> 

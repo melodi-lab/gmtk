@@ -44,6 +44,7 @@ class DlinkMatrix;
 class WeightMatrix;
 class MDCPT;
 class MSCPT;
+class MTCPT;
 
 class DiagGaussian;
 class LinMeanCondDiagGaussian;
@@ -117,6 +118,13 @@ public:
   vector< MSCPT* > msCpts;
   map< string, MSCPT* > msCptsMap;
 
+
+  ///////////////////////////////////
+  // Collection of deterministic "CPTs" 
+  vector< MTCPT* > mtCpts;
+  map< string, MTCPT* > mtCptsMap;
+
+
   /********************************************************************/
 
   //////////////////////////////////////////////////////////////////
@@ -185,8 +193,8 @@ public:
   // that live here).
   //////////////////////////////////////////////////////////////////
 
-  vector< RngDecisionTree<int>* > dts;
-  map< string,  RngDecisionTree<int>* > dtsMap;
+  vector< RngDecisionTree<unsigned>* > dts;
+  map< string,  RngDecisionTree<unsigned>* > dtsMap;
 
 
   /********************************************************************/
