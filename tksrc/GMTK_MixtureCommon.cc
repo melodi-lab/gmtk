@@ -1,6 +1,6 @@
 /*-
- * GMTK_Mixgaussiancommon.cc
- *        Any of the common code for the family of Gaussian-like
+ * GMTK_MixtureCommon.cc
+ *        Any of the common code for the family of mixture-like
  *        classes.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -32,11 +32,11 @@ VCID("$Header$");
 #include "rand.h"
 
 
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_Dense1DPMF.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
-#include "GMTK_GaussianComponent.h"
+#include "GMTK_Component.h"
 
 //////////////////////////////////////////////////////////////////
 // set the mcvr. By default it is set to a large
@@ -44,25 +44,25 @@ VCID("$Header$");
 // A reasonable value, to eagerly start removing
 // mixtures, is about 50.0 or so.
 double
-MixGaussiansCommon::mixCoeffVanishRatio = 1e20;
+MixtureCommon::mixCoeffVanishRatio = 1e20;
 
 //////////////////////////////////////////////////////////////////
 // set the mcsr. By default it is set to a large
 // value meaning that mixtures are not split.
 double
-MixGaussiansCommon::mixCoeffSplitRatio = 1e10;
+MixtureCommon::mixCoeffSplitRatio = 1e10;
 
 unsigned
-MixGaussiansCommon::numTopToForceSplit = 0;
+MixtureCommon::numTopToForceSplit = 0;
 
 unsigned 
-MixGaussiansCommon::numBottomToForceVanish = 0;
+MixtureCommon::numBottomToForceVanish = 0;
 
 bool
-MixGaussiansCommon::cacheGaussiansInEmTraining = true;
+MixtureCommon::cacheComponentsInEmTraining = true;
 
 void
-MixGaussiansCommon::checkForValidRatioValues() {
+MixtureCommon::checkForValidRatioValues() {
   // this next check guarantees that we will never eliminate
   // all components
   if (mixCoeffVanishRatio < 1.0)
@@ -78,11 +78,11 @@ MixGaussiansCommon::checkForValidRatioValues() {
 //////////////////////////////////////////////////////////////////
 // support for component vanishing & splitting with multiple
 // potentially shared objects.
-set<pair<Dense1DPMF*,unsigned> > MixGaussiansCommon::vanishingComponentSet;
-set<pair<Dense1DPMF*,unsigned> > MixGaussiansCommon::splittingComponentSet;
+set<pair<Dense1DPMF*,unsigned> > MixtureCommon::vanishingComponentSet;
+set<pair<Dense1DPMF*,unsigned> > MixtureCommon::splittingComponentSet;
 
-map<MeanVector*,MeanVector*> MixGaussiansCommon::meanCloneMap;
-map<DiagCovarVector*,DiagCovarVector*> MixGaussiansCommon::diagCovarCloneMap;
-map<DlinkMatrix*,DlinkMatrix*> MixGaussiansCommon::dLinkMatCloneMap;
-map<GaussianComponent*,GaussianComponent*> MixGaussiansCommon::gcCloneMap;
+map<MeanVector*,MeanVector*> MixtureCommon::meanCloneMap;
+map<DiagCovarVector*,DiagCovarVector*> MixtureCommon::diagCovarCloneMap;
+map<DlinkMatrix*,DlinkMatrix*> MixtureCommon::dLinkMatCloneMap;
+map<Component*,Component*> MixtureCommon::mcCloneMap;
 

@@ -1,5 +1,5 @@
 /*-
- * GMTK_Mixgaussiancommon
+ * GMTK_MixtureCommon.h
  *        Common elements that are shared by all Gaussiaan type clases.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -19,8 +19,8 @@
  */
 
 
-#ifndef GMTK_MIXGAUSSIANCOMMON_H
-#define GMTK_MIXGAUSSIANCOMMON_H
+#ifndef GMTK_MIXTURECOMMON_H
+#define GMTK_MIXTURECOMMON_H
 
 #include <map>
 #include <set>
@@ -37,21 +37,22 @@ class Dense1DPMF;
 class MeanVector;
 class DiagCovarVector;
 class DlinkMatrix;
-class GaussianComponent;
+class Component;
 
 
-class MixGaussiansCommon : public EMable {
+class MixtureCommon : public EMable {
 
 protected:
 
   ///////////////////////////////////////////////////////
-  // dim = dimensionality of this Gaussian.
+  // dim = dimensionality of this Mixture
   // Typically, this will be the number of features over which
-  // this Gaussian applies.
+  // this mixture applies. All components of this
+  // mixture must be of the same dimension of course.
   const unsigned _dim;
 
   ////////////////////////////////////////////////////////////////////
-  // The number of mixture components for this mixture of Gaussians.
+  // The number of mixture components for this mixture.
   unsigned numComponents;
   
 public:
@@ -62,28 +63,34 @@ public:
   static set<pair<Dense1DPMF*,unsigned> > vanishingComponentSet;
   static set<pair<Dense1DPMF*,unsigned> > splittingComponentSet;
 
+  /////////////////////////////////////////////////////////
+  // Support for cloning of portitions of components with shared objects.
+  // These maps are used to remember when, in a given iteration,
+  // a portion of a component has been cloned. If it already
+  // has, rather than cloning again, we use the clone
+  // that has already occured.
   static map<MeanVector*,MeanVector*> meanCloneMap;
   static map<DlinkMatrix*,DlinkMatrix*> dLinkMatCloneMap;
   static map<DiagCovarVector*,DiagCovarVector*> diagCovarCloneMap;
-  static map<GaussianComponent*,GaussianComponent*> gcCloneMap;
+  static map<Component*,Component*> mcCloneMap;
 
   ///////////////////////////////////////////////////////////
   // This object must be aware of types of its derived
   // classes for reading from file purposes. 
   enum ContinuousImplementation { ci_unknown=-1,
-				  ci_mixGaussian=0,
-				  ci_gausSwitchMixGaussian=1,
-				  ci_logitSwitchMixGaussian=2,
-				  ci_mlpSwitchMixGaussian=3,
-				  ci_zeroScoreMixGaussian=4,
-				  ci_unityScoreMixGaussian=5
+				  ci_mixture=0,
+				  ci_gausSwitchMixture=1,
+				  ci_logitSwitchMixture=2,
+				  ci_mlpSwitchMixture=3,
+				  ci_zeroScoreMixture=4,
+				  ci_unityScoreMixture=5
 				  };
   const ContinuousImplementation mixType;
 
-  MixGaussiansCommon(const int dim, 
+  MixtureCommon(const int dim, 
 		     const ContinuousImplementation _mixType) 
     : _dim(dim),mixType(_mixType) {}
-  virtual ~MixGaussiansCommon() {}
+  virtual ~MixtureCommon() {}
 
   //////////////////////////////////////////////////////
   // Support for mixture vanishing
@@ -101,7 +108,7 @@ public:
   // gets greater or equal to mixCoeffSplitRatio/curNumComponents,
   // then the mixture will split. Typical values
   // might be something in the range 1.0 - 10.0. To
-  // split single Gaussians, set it to unity. In other words, if
+  // split single component, set it to unity. In other words, if
   // a mixture coeff is such that;:
   // 
   //     p_component >= mixCoeffSplitRatio/curNumComponents;
@@ -116,9 +123,9 @@ public:
   static void checkForValidRatioValues();
 
   ///////////////////////////////////////////////////////////
-  // set to true if we are supposed to cache the Gaussians
+  // set to true if we are supposed to cache the component probabilities
   // during EM training.
-  static bool cacheGaussiansInEmTraining;
+  static bool cacheComponentsInEmTraining;
 
   //////////////////////////////////////////////////////
   // force splitting of the number of top mixture componets

@@ -32,8 +32,8 @@
 #include "GMTK_ContinuousRandomVariable.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
-#include "GMTK_MixGaussiansCommon.h"
-#include "GMTK_MixGaussians.h"
+#include "GMTK_MixtureCommon.h"
+#include "GMTK_Mixture.h"
 
 
 VCID("$Header$");
@@ -77,7 +77,7 @@ ContinuousRandomVariable::findConditionalParents()
   }
 
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
-  curMappingOrDirect = &conditionalGaussians[cachedIntFromSwitchingState];
+  curMappingOrDirect = &conditionalMixtures[cachedIntFromSwitchingState];
 }
 
 
@@ -104,14 +104,14 @@ logpr
 ContinuousRandomVariable::probGivenParents()
 {
   ///////////////////
-  // We assume here that the resulting gaussian is the correct
+  // We assume here that the resulting mixture is the correct
   // dimensionality (this is checked in GMTK_FileParser.cc, 
   // in function FileParser::associateWithDataParams(bool)
 
   logpr _cachedProb;
   if (curMappingOrDirect->direct) {
     _cachedProb = 
-      curMappingOrDirect->gaussian->log_p
+      curMappingOrDirect->mixture->log_p
       ((unsigned)timeIndex,firstFeatureElement);
   } else {
     // need to find which gaussian this will be.
@@ -124,23 +124,23 @@ ContinuousRandomVariable::probGivenParents()
     // have formulas in their leaves and there is no way
     // to check this statically w/o enumerating through all possible
     // values of the parents of this RV.
-    if (!curMappingOrDirect->mapping.collection->validMgIndex(gaussianIndex)) {
+    if (!curMappingOrDirect->mapping.collection->validMxIndex(gaussianIndex)) {
       error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants GM "
             "with index %d but there are only %d GMs in collection '%s'",
 	    label.c_str(),timeIndex,curMappingOrDirect->mapping.dtMapper->name().c_str(),
 	    gaussianIndex,
-	    curMappingOrDirect->mapping.collection->mgSize(),
+	    curMappingOrDirect->mapping.collection->mxSize(),
 	    curMappingOrDirect->mapping.collection->name().c_str());
     }
     ////////////////////////////////////////////////////////////
 
     //
     // TODO: this needs to be changed when we have
-    // different types of mixtures of Gaussians.
+    // different types of mixtures.
     // printf("CRV: '%s', par val %d, gi = %d\n",
     // label.c_str(),(*curConditionalParents)[0]->val,gaussianIndex);
     _cachedProb = 
-      curMappingOrDirect->mapping.collection->mg(gaussianIndex)->log_p
+      curMappingOrDirect->mapping.collection->mx(gaussianIndex)->log_p
       ((unsigned)timeIndex,firstFeatureElement);
   }
   if (wtStatus != wt_NoWeight) {
@@ -199,7 +199,7 @@ ContinuousRandomVariable::tieParametersWith(RandomVariable*const _other,
     error("Error, trying to tie parameters of RV '%s' with RV '%s' but they have different structure.",
 	  label.c_str(),other->label.c_str());
 
-  conditionalGaussians = other->conditionalGaussians;
+  conditionalMixtures = other->conditionalMixtures;
   curMappingOrDirect = other->curMappingOrDirect;
 }
 
@@ -279,11 +279,11 @@ ContinuousRandomVariable::emIncrement(logpr posterior)
 {
   findConditionalParents();
   if (curMappingOrDirect->direct) {
-    curMappingOrDirect->gaussian->emIncrement
+    curMappingOrDirect->mixture->emIncrement
       (posterior,(unsigned)timeIndex,firstFeatureElement);
   } else {
-    // need to find which gaussian this will be.
-    const unsigned gaussianIndex =
+    // need to find which mixture this will be.
+    const unsigned mixtureIndex =
       curMappingOrDirect->mapping.dtMapper->query(*curConditionalParents);
 
     ///////////////////////////////////////////////////////////
@@ -292,18 +292,18 @@ ContinuousRandomVariable::emIncrement(logpr posterior)
     // have formulas in their leaves and there is no way
     // to check this statically w/o enumerating through all possible
     // values of the parents of this RV.
-    if (!curMappingOrDirect->mapping.collection->validMgIndex(gaussianIndex)) {
+    if (!curMappingOrDirect->mapping.collection->validMxIndex(mixtureIndex)) {
       error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants GM "
             "with index %d but there are only %d GMs in collection '%s'",
 	    label.c_str(),timeIndex,curMappingOrDirect->mapping.dtMapper->name().c_str(),
-	    gaussianIndex,
-	    curMappingOrDirect->mapping.collection->mgSize(),
+	    mixtureIndex,
+	    curMappingOrDirect->mapping.collection->mxSize(),
 	    curMappingOrDirect->mapping.collection->name().c_str());
     }
 
     // TODO: this needs to be changed when we have
-    // different types of mixtures of Gaussians.
-    curMappingOrDirect->mapping.collection->mg(gaussianIndex)->emIncrement
+    // different types of mixtures.
+    curMappingOrDirect->mapping.collection->mx(mixtureIndex)->emIncrement
       (posterior,(unsigned)timeIndex,firstFeatureElement);
   }
 }

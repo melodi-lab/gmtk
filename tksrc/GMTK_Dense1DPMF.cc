@@ -33,7 +33,7 @@
 
 #include "GMTK_Dense1DPMF.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_CPT.h"
 
 VCID("$Header$");
@@ -423,14 +423,14 @@ Dense1DPMF::emSwapCurAndNew()
   unsigned numVanished = 0;
   unsigned numSplit = 0;
   for (unsigned i=0;i<(unsigned)nextPmf.len();i++) {
-    if (MixGaussiansCommon::vanishingComponentSet.
+    if (MixtureCommon::vanishingComponentSet.
 	find(pair<Dense1DPMF*,unsigned>(this,i))
-	!= MixGaussiansCommon::vanishingComponentSet.end()) {
+	!= MixtureCommon::vanishingComponentSet.end()) {
       numVanished++;
       newLen--;
-    } else if (MixGaussiansCommon::splittingComponentSet.
+    } else if (MixtureCommon::splittingComponentSet.
 	       find(pair<Dense1DPMF*,unsigned>(this,i))
-	       != MixGaussiansCommon::splittingComponentSet.end()) {
+	       != MixtureCommon::splittingComponentSet.end()) {
       numSplit++;
       newLen++;
     }
@@ -446,14 +446,14 @@ Dense1DPMF::emSwapCurAndNew()
 
   unsigned newIndex = 0;
   for (unsigned i=0;i<(unsigned)nextPmf.len();i++) {
-    if (MixGaussiansCommon::vanishingComponentSet.
+    if (MixtureCommon::vanishingComponentSet.
 	find(pair<Dense1DPMF*,unsigned>(this,i))
-	!= MixGaussiansCommon::vanishingComponentSet.end()) {
+	!= MixtureCommon::vanishingComponentSet.end()) {
       // do nothing, don't copy it over
       ;
-    } else if (MixGaussiansCommon::splittingComponentSet.
+    } else if (MixtureCommon::splittingComponentSet.
 	       find(pair<Dense1DPMF*,unsigned>(this,i))
-	       != MixGaussiansCommon::splittingComponentSet.end()) {
+	       != MixtureCommon::splittingComponentSet.end()) {
 
       // copy it and clone over
       pmf[newIndex++] = nextPmf[i]/2.0;

@@ -1,5 +1,5 @@
 /*-
- * GMTK_UnityScoreMixGaussian
+ * GMTK_UnityScoreMixture
  *        Mixture of gaussian that always returns probability 0 regardless
  *        of its parents or the corresponding feature values. This object
  *        can be useful in certain situations. The name of this mixture
@@ -25,27 +25,27 @@
  */
 
 
-#ifndef GMTK_UNITYSCOREMIXGAUSSIANS_H
-#define GMTK_UNITYSCOREMIXGAUSSIANS_H
+#ifndef GMTK_UNITYSCOREMIXTURE_H
+#define GMTK_UNITYSCOREMIXTURE_H
 
 #include "fileParser.h"
 #include "logp.h"
 #include "machine-dependent.h"
 
 
-#include "GMTK_MixGaussians.h"
+#include "GMTK_Mixture.h"
 
 // name to use in collections when refering to one of these objects.
-#define UNITYSCOREMIXGAUSSIAN_NAME "internal:UnityScore"
+#define UNITYSCOREMIXTURE_NAME "internal:UnityScore"
 
-class UnityScoreMixGaussian : public MixGaussians {
+class UnityScoreMixture : public Mixture {
  
 public:
 
-  UnityScoreMixGaussian() 
-    : MixGaussians(0,ci_unityScoreMixGaussian)
-  { _name = UNITYSCOREMIXGAUSSIAN_NAME; setBasicAllocatedBit(); }
-  ~UnityScoreMixGaussian() {}
+  UnityScoreMixture() 
+    : Mixture(0,ci_unityScoreMixture)
+  { _name = UNITYSCOREMIXTURE_NAME; setBasicAllocatedBit(); }
+  ~UnityScoreMixture() {}
 
   //////////////////////////////////////////////
   // read/write basic parameters

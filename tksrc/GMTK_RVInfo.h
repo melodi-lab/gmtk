@@ -42,7 +42,7 @@ class BoundaryTriangulate;
 
 
 #include "GMTK_CPT.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 
 class RVInfo {
   friend class FileParser;
@@ -138,7 +138,7 @@ class RVInfo {
   // if discrete, then the list if discrete implementations
   vector< CPT::DiscreteImplementaton > discImplementations;
   // if continuous, the list of continuous implementations
-  vector< MixGaussiansCommon::ContinuousImplementation > contImplementations;
+  vector< MixtureCommon::ContinuousImplementation > contImplementations;
   // in either case, a low-level parameter index
   vector< ListIndex > listIndices;
 

@@ -1,6 +1,6 @@
 /*-
- * GMTK_MixGaussians
- *        Mixture of gaussians of various types.
+ * GMTK_Mixture
+ *        Mixture of components of various types.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
@@ -19,27 +19,27 @@
  */
 
 
-#ifndef GMTK_MIXGAUSSIANS_H
-#define GMTK_MIXGAUSSIANS_H
+#ifndef GMTK_MIXTURES_H
+#define GMTK_MIXTURES_H
 
 #include "fileParser.h"
 #include "logp.h"
 #include "machine-dependent.h"
 
 
-#include "GMTK_MixGaussiansCommon.h"
-#include "GMTK_GaussianComponent.h"
+#include "GMTK_MixtureCommon.h"
+#include "GMTK_Component.h"
 
 #include "GMTK_DiagGaussian.h"
 
 #include "GMTK_Dense1DPMF.h"
 
 
-class MixGaussians : public MixGaussiansCommon {
+class Mixture : public MixtureCommon {
 
   ///////////////////////////////////////////
   // the (possibly) shared components
-  vector < GaussianComponent* > components;
+  vector < Component* > components;
 
   ///////////////////////////////////////////
   // For EM, the posteriors
@@ -77,11 +77,11 @@ class MixGaussians : public MixGaussiansCommon {
  
 public:
 
-  MixGaussians(const int dim,ContinuousImplementation mtype=ci_mixGaussian)
-    : MixGaussiansCommon(dim,mtype)
+  Mixture(const int dim,ContinuousImplementation mtype=ci_mixture)
+    : MixtureCommon(dim,mtype)
   { }
-  //  MixGaussians() {}
-  ~MixGaussians() {}
+  //  Mixture() {}
+  ~Mixture() {}
 
   //////////////////////////////////////////////
   // read/write basic parameters
@@ -90,8 +90,8 @@ public:
 
   unsigned totalNumberParameters();
 
-  // these routines are used to not save gaussian
-  // components (and their means, variances, etc.) 
+  // these routines are used to not save 
+  // components (and their means, variances, parms, etc.) 
   // that are not actively used in a parameter file (such
   // as those that have vanished away).
   void recursivelyClearUsedBit() { 
@@ -141,7 +141,7 @@ public:
   void emZeroOutObjectsAccumulators() {}
   void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}
   void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {}
-  const string typeName() { return "Gaussian mixture"; }
+  const string typeName() { return "Mixture"; }
   //////////////////////////////////
 
   //////////////////////////////////

@@ -41,7 +41,7 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_USCPT.h"
-#include "GMTK_Mixtures.h"
+#include "GMTK_Mixture.h"
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
@@ -1421,16 +1421,16 @@ FileParser::parseContObsDistType()
 {
   ensureNotAtEOF("continuous observation distribution type");
   if (tokenInfo == KW_Mixture) {
-    curRV.contImplementations.push_back(MixturesCommon::ci_mixture);
+    curRV.contImplementations.push_back(MixtureCommon::ci_mixture);
     consumeToken();
   } else if (tokenInfo == KW_GausSwitchMixture) {
-    curRV.contImplementations.push_back(MixturesCommon::ci_gausSwitchMixture);
+    curRV.contImplementations.push_back(MixtureCommon::ci_gausSwitchMixture);
     consumeToken();
   }  else if (tokenInfo == KW_LogitSwitchMixture) {
-    curRV.contImplementations.push_back(MixturesCommon::ci_logitSwitchMixture);
+    curRV.contImplementations.push_back(MixtureCommon::ci_logitSwitchMixture);
     consumeToken();
   }  else if (tokenInfo == KW_MlpSwitchMixture) {
-    curRV.contImplementations.push_back(MixturesCommon::ci_mlpSwitchMixture);
+    curRV.contImplementations.push_back(MixtureCommon::ci_mlpSwitchMixture);
     consumeToken();
   } else 
     parseError("continuous observation distribution type");
@@ -1743,15 +1743,15 @@ FileParser::ensureValidTemplate()
   vector <RandomVariable*> vars2;
 
   // TODO: fix error messages to give indication as to where loop is.
-  fp.unroll(0,vars);
+  unroll(0,vars);
   if (!GraphicalModel::topologicalSort(vars,vars2))
     error("ERROR. Graph is not directed, contains a directed loop when unrolled 0 times.\n");
   vars.clear(); vars2.clear();
-  fp.unroll(1,vars);
+  unroll(1,vars);
   if (!GraphicalModel::topologicalSort(vars,vars2))
     error("ERROR. Graph is not directed, contains a directed loop when unrolled 1 time.\n");
   vars.clear(); vars2.clear();
-  fp.unroll(2,vars);
+  unroll(2,vars);
   if (!GraphicalModel::topologicalSort(vars,vars2))
     error("ERROR. Graph is not directed, contains a directed loop when unrolled 2 times.\n");
 }
@@ -2252,7 +2252,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
       ContinuousRandomVariable* rv = 
 	(ContinuousRandomVariable*) rvInfoVector[i].rv;
 
-      rv->conditionalGaussians.resize
+      rv->conditionalMixtures.resize
 	(
 	 rvInfoVector[i].conditionalParents.size()
 	 );
@@ -2261,7 +2261,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	// TODO:: implement the other continuous implementations
 	// and allow the other cases here.
 	if (rvInfoVector[i].contImplementations[j] !=
-	    MixturesCommon::ci_mixture) {
+	    MixtureCommon::ci_mixture) {
 	  error("ERROR: Only supports mixture implementations for now");
 	  // ultimately, we can remove this and we'll have to duplicate
 	  // the below code for each continuous implementation, just
@@ -2272,7 +2272,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	  // then under this value for switching parents, there
 	  // are no conditional parents and we have a direct
 	  // pointer to some Gaussian mixture.
-	  rv->conditionalGaussians[j].direct = true;
+	  rv->conditionalMixtures[j].direct = true;
 	  if (rvInfoVector[i].listIndices[j].liType 
 		== RVInfo::ListIndex::li_String) {
 	    if (GM_Parms.mixturesMap.find(
@@ -2285,7 +2285,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
 	    } else {
 	      // Mix Gaussian is there, so add it.
-	      rv->conditionalGaussians[j].gaussian =
+	      rv->conditionalMixtures[j].mixture =
 		GM_Parms.mixtures[
 		      GM_Parms.mixturesMap[
 			  rvInfoVector[i].listIndices[j].nameIndex
@@ -2309,7 +2309,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		}
 	      } else {
 		// otherwise add it
-		rv->conditionalGaussians[j].gaussian =
+		rv->conditionalMixtures[j].mixture =
 		  GM_Parms.mixtures[
                         rvInfoVector[i].listIndices[j].intIndex
 		      ];
@@ -2321,7 +2321,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	  // set of switching values. The index should
 	  // specify a DT which maps from the set of
 	  // conditional parents to a GM collection.
-	  rv->conditionalGaussians[j].direct = false;
+	  rv->conditionalMixtures[j].direct = false;
 	  if (rvInfoVector[i].listIndices[j].liType 
 		== RVInfo::ListIndex::li_String) {
 	    // string name index to DT
@@ -2335,7 +2335,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		      j,
 		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
 	    } else {
-	      rv->conditionalGaussians[j].mapping.dtMapper =
+	      rv->conditionalMixtures[j].mapping.dtMapper =
 		GM_Parms.dts[
 		   GM_Parms.dtsMap[
 				rvInfoVector[i].listIndices[j].nameIndex
@@ -2353,7 +2353,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 			rvInfoVector[i].listIndices[j].intIndex);
 	      } else {
 		// otherwise add it
-		rv->conditionalGaussians[j].mapping.dtMapper =
+		rv->conditionalMixtures[j].mapping.dtMapper =
 		  GM_Parms.dts[rvInfoVector[i].listIndices[j].intIndex];
 	      }
 	  }
@@ -2369,13 +2369,13 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		      j,
 		      rvInfoVector[i].listIndices[j].collectionName.c_str());
 	    } else {
-	      rv->conditionalGaussians[j].mapping.collection =
+	      rv->conditionalMixtures[j].mapping.collection =
 		GM_Parms.ncls[
 		   GM_Parms.nclsMap[
 				rvInfoVector[i].listIndices[j].collectionName
 		  ]];
 	      // make sure that the pointer table is filled in for this name.
-	      rv->conditionalGaussians[j].mapping.collection->fillMxTable();
+	      rv->conditionalMixtures[j].mapping.collection->fillMxTable();
 	      // Might as well do this here. Check that all Gaussians
 	      // in the collection are of the right dimensionality.
 	      // This check is important for ContinuousRandomVariable::probGivenParents().
@@ -2385,16 +2385,16 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      // make sure all Gaussians in the collection have the
 	      // same dimensionality as the RV.
 	      for (unsigned u=0;u<
-		     rv->conditionalGaussians[j].mapping.collection->mxSize();
+		     rv->conditionalMixtures[j].mapping.collection->mxSize();
 		   u++) {
 		if ( // we only check the dimension for those Gaussians that have it.
-		    (rv->conditionalGaussians[j].mapping.collection->mx(u)->mixType
-		     != MixturesCommon::ci_zeroScoreMixture)
+		    (rv->conditionalMixtures[j].mapping.collection->mx(u)->mixType
+		     != MixtureCommon::ci_zeroScoreMixture)
 		    &&
-		    (rv->conditionalGaussians[j].mapping.collection->mx(u)->mixType
-		     != MixturesCommon::ci_unityScoreMixture)
+		    (rv->conditionalMixtures[j].mapping.collection->mx(u)->mixType
+		     != MixtureCommon::ci_unityScoreMixture)
 		    && 
-		    (rv->conditionalGaussians[j].mapping.collection->mx(u)->dim() 
+		    (rv->conditionalMixtures[j].mapping.collection->mx(u)->dim() 
 		     != rvDim)) {
 		  error("Error: RV \"%s\" at frame %d (line %d), dimensionality %d, conditional parent %d, collection \"%s\" specifies Gaussian \"%s\" at pos %d with wrong dimension %d\n",
 		      rvInfoVector[i].name.c_str(),
@@ -2403,9 +2403,9 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		      rvDim,
 		      j,
 		      rvInfoVector[i].listIndices[j].collectionName.c_str(),
-		      rv->conditionalGaussians[j].mapping.collection->mx(u)->name().c_str(),
+		      rv->conditionalMixtures[j].mapping.collection->mx(u)->name().c_str(),
 		      u,
-		      rv->conditionalGaussians[j].mapping.collection->mx(u)->dim());
+		      rv->conditionalMixtures[j].mapping.collection->mx(u)->dim());
 		}
 	      }
 	    }

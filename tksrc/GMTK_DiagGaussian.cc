@@ -36,7 +36,7 @@ VCID("$Header$");
 
 #include "GMTK_DiagGaussian.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 
 
 
@@ -102,7 +102,7 @@ DiagGaussian::write(oDataStreamFile& os)
   assert ( basicAllocatedBitIsSet() );
 
   // write the type of self and the name
-  os.write((int)GaussianComponent::Diag);
+  os.write((int)Component::DiagGaussian);
   NamedObject::write(os);
   os.nl();
 
@@ -155,14 +155,14 @@ DiagGaussian::makeUniform()
  *
  *-----------------------------------------------------------------------
  */
-GaussianComponent*
+Component*
 DiagGaussian::noisyClone()
 {
   assert ( basicAllocatedBitIsSet() );
 
-  map<GaussianComponent*,GaussianComponent*>::iterator it = MixGaussiansCommon::gcCloneMap.find(this);
+  map<Component*,Component*>::iterator it = MixtureCommon::mcCloneMap.find(this);
   // first check if self is already cloned, and if so, return that.
-  if (it == MixGaussiansCommon::gcCloneMap.end()) {
+  if (it == MixtureCommon::mcCloneMap.end()) {
     DiagGaussian* clone;
     clone = new DiagGaussian(dim());
 
@@ -171,8 +171,8 @@ DiagGaussian::noisyClone()
       sprintf(buff,"%d",cloneNo);
       clone->_name = _name + string("_cl") + buff;
       cloneNo++;
-    } while (GM_Parms.gaussianComponentsMap.find(clone->_name) 
-	     != GM_Parms.gaussianComponentsMap.end());
+    } while (GM_Parms.componentsMap.find(clone->_name) 
+	     != GM_Parms.componentsMap.end());
 
     if (cloneShareMeans && cloneShareCovars) {
       warning("WARNING: Diagonal Gaussian component '%s' is cloning, and was asked to share both means and covariances. No sharing is occuring instead.",name().c_str());
@@ -198,7 +198,7 @@ DiagGaussian::noisyClone()
     clone->covar->numTimesShared++;
 
     clone->setBasicAllocatedBit();
-    MixGaussiansCommon::gcCloneMap[this] = clone;
+    MixtureCommon::mcCloneMap[this] = clone;
 
     // also add self to GMParms object.
     GM_Parms.add(clone);

@@ -64,7 +64,7 @@ public:
 
   // create a copy of self, but with slightly perturbed
   // means/variance values.
-  GaussianComponent* noisyClone();
+  Component* noisyClone();
 
   //////////////////////////////////
   // set all current parameters to valid but random values

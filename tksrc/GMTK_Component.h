@@ -1,6 +1,6 @@
 /*-
- * GMTK_GaussianComponent
- *        Component elements that are shared by all Gaussian type clases.
+ * GMTK_Component
+ *        Component elements that are shared by all mixture components
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
@@ -19,8 +19,8 @@
  */
 
 
-#ifndef GMTK_GAUSSIANCOMPONENT_H
-#define GMTK_GAUSSIANCOMPONENT_H
+#ifndef GMTK_COMPONENT_H
+#define GMTK_COMPONENT_H
 
 #include "fileParser.h"
 #include "logp.h"
@@ -30,19 +30,14 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_EMable.h"
 
-class GaussianComponent :  public EMable {
+class Component :  public EMable {
 
-  ///////////////////////////////////////////////////////
-  // The value that, if any variances go below, cause
-  // either warnings (and adjustments) or errors to occur
-  // depending on how probable this component is.
-  static double _varianceFloor;
 
 protected:
   ///////////////////////////////////////////////////////
-  // dim = dimensionality of this Gaussian.
+  // dim = dimensionality of this component.
   // Typically, this will be the number of features over which
-  // this Gaussian applies.
+  // this component applies.
   const unsigned _dim;
 
 public:
@@ -50,20 +45,25 @@ public:
   ///////////////////////////////////////////////////////////
   // This object must be aware of types of its derived
   // classes for reading from file purposes. 
-  enum ComponentType { Diag = 0, 
-		       LinMeanCondDiag = 1,
-		       NLinMeanCondDiag = 2};
+  enum ComponentType { 
+    // standard diagonal Gaussian
+    DiagGaussian = 0, 
+    // Linear mean-conditional diagonal Gaussian. 
+    // Implements full-covariance Gaussians (via chol. factorization),
+    // sparse covariance Gaussians with Bayesian network covariance matrices,
+    // and linear BMMs.
+    LinMeanCondDiagGaussian = 1,
+    // Polynomial non-linear mean-conditional diagonal Gaussians 
+    // Implements sparse covariance Gaussians with Bayesian network covariance matrices
+    // but non-linear dependencies, and polynomial non-linear BMMs.
+    PolyNLinMeanCondDiagGaussian = 2
+    // add others here as they are written...
+  };
 
 
-  GaussianComponent(const int dim);
-  virtual ~GaussianComponent() { }
+  Component(const int dim) : _dim(dim) {}
+  virtual ~Component() { }
 
-  static double varianceFloor() { return _varianceFloor; }
-  static double setVarianceFloor(const double floor);
-
-  static bool cloneShareMeans;
-  static bool cloneShareCovars;
-  static bool cloneShareDlinks;
 
   unsigned dim() const { return _dim; }
 
@@ -78,7 +78,7 @@ public:
   // create a copy of self, with entirely new parameters
   // (so clone shares nothing), and with slightly (and 
   // randomly) perturbed values.
-  virtual GaussianComponent* noisyClone() = 0;
+  virtual Component* noisyClone() = 0;
 
   //////////////////////////////////
   // set all current parameters to valid but random values

@@ -46,14 +46,15 @@
 #include "GMTK_USCPT.h"
 #include "GMTK_NameCollection.h"
 
+// particular Gaussian components
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_DiagGaussian.h"
 #include "GMTK_LinMeanCondDiagGaussian.h"
 
-#include "GMTK_MixGaussiansCommon.h"
-#include "GMTK_MixGaussians.h"
-#include "GMTK_ZeroScoreMixGaussian.h"
-#include "GMTK_UnityScoreMixGaussian.h"
+#include "GMTK_MixtureCommon.h"
+#include "GMTK_Mixture.h"
+#include "GMTK_ZeroScoreMixture.h"
+#include "GMTK_UnityScoreMixture.h"
 
 #include "GMTK_ObservationMatrix.h"
 
@@ -65,7 +66,7 @@ VCID("$Header$");
 // one time in a file. This can be safely increased (to the
 // extend that memory on the machine exists), but is here
 // many for checking obviously invalid values.
-const unsigned GMPARMS_MAX_NUM = 100000000;
+const unsigned GMPARMS_MAX_NUM = 900000000;
 
 
 ////////////////////////////////
@@ -101,14 +102,14 @@ GMParms::~GMParms()
   deleteObsInVector(covars);
   deleteObsInVector(dLinkMats);
   deleteObsInVector(weightMats);
-  deleteObsInVector(gaussianComponents);
+  deleteObsInVector(components);
   deleteObsInVector(mdCpts);
   deleteObsInVector(msCpts);
   deleteObsInVector(mtCpts);
-  deleteObsInVector(mixGaussians);
-  // deleteObsInVector(gausSwitchingMixGaussians);
-  // deleteObsInVector(logitSwitchingMixGaussians);
-  // deleteObsInVector(mlpSwitchingMixGaussians);
+  deleteObsInVector(mixtures);
+  // deleteObsInVector(gausSwitchingMixtures);
+  // deleteObsInVector(logitSwitchingMixtures);
+  // deleteObsInVector(mlpSwitchingMixtures);
   deleteObsInVector(dts);
   deleteObsInVector(dLinks);
 }
@@ -125,16 +126,16 @@ void GMParms::add(MeanVector* ob){ add(ob,means,meansMap); }
 void GMParms::add(DiagCovarVector* ob){ add(ob,covars,covarsMap); }
 void GMParms::add(DlinkMatrix* ob) { add(ob,dLinkMats,dLinkMatsMap); }
 void GMParms::add(WeightMatrix*ob) { add(ob,weightMats,weightMatsMap); }
-void GMParms::add(GaussianComponent*ob){ add(ob,
-					     gaussianComponents,
-					     gaussianComponentsMap); }
+void GMParms::add(Component*ob){ add(ob,
+				     components,
+				     componentsMap); }
 void GMParms::add(MDCPT*ob) { add(ob,mdCpts,mdCptsMap); }
 void GMParms::add(MSCPT*ob) { add(ob,msCpts,msCptsMap); }
 void GMParms::add(MTCPT*ob) { add(ob,mtCpts,mtCptsMap); }
-void GMParms::add(MixGaussians*ob) { add(ob,mixGaussians,mixGaussiansMap); }
-void GMParms::add(GausSwitchingMixGaussians*ob) { assert (0); }
-void GMParms::add(LogitSwitchingMixGaussians*ob) { assert (0); }
-void GMParms::add(MLPSwitchingMixGaussians*ob) { assert (0); }
+void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
+void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
+void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
+void GMParms::add(MLPSwitchingMixture*ob) { assert (0); }
 void GMParms::add(RngDecisionTree*ob) { 
   add(ob,dts,dtsMap);
   if (ob->clampable())
@@ -598,46 +599,46 @@ GMParms::readDTs(iDataStreamFile& is, bool reset)
 
 
 void 
-GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
+GMParms::readComponents(iDataStreamFile& is, bool reset)
 {
   unsigned num;
   unsigned cnt;
 
   unsigned start = 0;
-  is.read(num,"num Gaussian components");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of Gaussian components (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"num components");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of components (%d) in file '%s' exceeds maximum",num,is.fileName());
   if (reset) {
     start = 0;
-    gaussianComponents.resize(num);
+    components.resize(num);
   } else {
-    start = gaussianComponents.size();
-    gaussianComponents.resize(start+num);
+    start = components.size();
+    components.resize(start+num);
   }
   for (unsigned i=0;i<num;i++) {
     // first read the count
-    GaussianComponent* gc = NULL;
+    Component* gc = NULL;
 
-    is.read(cnt,"Gaussian comp cnt");
+    is.read(cnt,"comp cnt");
     if (cnt != i) 
-      error("ERROR: Gaussian component count (%d), out of order in file '%s', expecting %d",cnt,is.fileName(),i);
+      error("ERROR: component count (%d), out of order in file '%s', expecting %d",cnt,is.fileName(),i);
 
-    // next read the dimension of this Gaussian
+    // next read the dimension of this component
     int dim;
-    is.read(dim,"Gaussian comp dim");
+    is.read(dim,"comp dim");
 
     // read the Gaussian type, note that when
     // this is written, the object itself will write the type.
     int t;
-    is.read(t,"Gaussian comp type");
-    if (t == GaussianComponent::Diag) {
+    is.read(t,"comp type");
+    if (t == Component::DiagGaussian) {
       gc = new DiagGaussian(dim);
-    } else if (t == GaussianComponent::LinMeanCondDiag) {
+    } else if (t == Component::LinMeanCondDiagGaussian) {
       gc = new LinMeanCondDiagGaussian(dim);
-    } else if (t == GaussianComponent::NLinMeanCondDiag) {
-      error("NLinMeanCondDiag not implemented");
-      // gc = new NLinMeanCondDiagGaussian(dim);
+    } else if (t == Component::PolyNLinMeanCondDiagGaussian) {
+      error("PolyNLinMeanCondDiag not implemented");
+      // gc = new PolyNLinMeanCondDiagGaussian(dim);
     } else {
-      error("Error: unknown gaussian component type in file");
+      error("Error: reading file %s, unknown component type %d in file",is.fileName(),t);
     }
     gc->read(is);
 
@@ -646,50 +647,51 @@ GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
     // it here, however, since 1) it costs almost nothing, and 2) as new object types 
     // are added, we might need such a check here.
     if (dim <= 0)
-      error("ERROR: Gaussian component named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gc->name().c_str(),is.fileName(),dim);
+      error("ERROR: component named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gc->name().c_str(),is.fileName(),dim);
 
-    if (gaussianComponentsMap.find(gc->name()) != gaussianComponentsMap.end())
-      error("ERROR: Gaussian component named '%s' already defined but is specified for a second time in file '%s'",gc->name().c_str(),is.fileName());
-    gaussianComponents[i+start] = gc;
-    gaussianComponentsMap[gc->name()] = i+start;
+    if (componentsMap.find(gc->name()) != componentsMap.end())
+      error("ERROR: component named '%s' already defined but is specified for a second time in file '%s'",gc->name().c_str(),is.fileName());
+    components[i+start] = gc;
+    componentsMap[gc->name()] = i+start;
   }
 }
 
 
 void 
-GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
+GMParms::readMixtures(iDataStreamFile& is, bool reset)
 {
   unsigned num;
   unsigned cnt;
   unsigned start = 0;
 
   is.read(num,"num MGs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of mixtures of Gaussians (%d) in file '%s' exceeds maximum",num,is.fileName());
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of mixtures (%d) in file '%s' exceeds maximum",num,is.fileName());
   if (reset) {
     // this isn't implemented at the moment.
     assert(0);
     // start = 0;
-    // mixGaussians.resize(num);
+    // mixtures.resize(num);
   } else {
-    start = mixGaussians.size();
-    mixGaussians.resize(start+num);
+    start = mixtures.size();
+    mixtures.resize(start+num);
   }
 
 
   for (unsigned i=0;i<num;i++) {
     // first read the count
-    MixGaussians* gm;
+    Mixture* gm;
 
     is.read(cnt,"MG cnt");
     if (cnt != i) 
-      error("ERROR: mix Gaussian count (%d), out of order in file '%s', expecting %d",cnt,is.fileName(),i);
+      error("ERROR: reading file %s, mixture count (%d), out of order, expecting %d",
+	    is.fileName(),cnt,i);
 
 
-    // next read the dimension of this Gaussian
+    // next read the dimension of this mixture
     int dim;
     is.read(dim,"MG dim");
 
-    gm = new MixGaussians(dim);
+    gm = new Mixture(dim);
     gm->read(is);
 
     // this next check is redundant since the dim > 0 check is
@@ -697,13 +699,13 @@ GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
     // it here, however, since 1) it costs almost nothing, and 2) as new object types 
     // are added, we might need such a check here.
     if (dim <= 0)
-      error("ERROR: mixture of Gaussian named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gm->name().c_str(),is.fileName(),dim);
+      error("ERROR: mixture named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gm->name().c_str(),is.fileName(),dim);
 
-    if (mixGaussiansMap.find(gm->name()) != mixGaussiansMap.end()) {
-      error("ERROR: mixture of Gaussian named '%s' already defined but is specified for a second time in file '%s'",gm->name().c_str(),is.fileName());
+    if (mixturesMap.find(gm->name()) != mixturesMap.end()) {
+      error("ERROR: mixture named '%s' already defined but is specified for a second time in file '%s'",gm->name().c_str(),is.fileName());
     }
-    mixGaussians[i+start] = gm;
-    mixGaussiansMap[gm->name()] = i+start;
+    mixtures[i+start] = gm;
+    mixturesMap[gm->name()] = i+start;
   }
 }
 
@@ -750,30 +752,30 @@ GMParms::readNameCollections(iDataStreamFile& is, bool reset)
 
 
 void 
-GMParms::readGausSwitchMixGaussians(iDataStreamFile& is, bool reset)
+GMParms::readGausSwitchMixtures(iDataStreamFile& is, bool reset)
 {
   unsigned num;
   is.read(num,"num GSMGs");
   if (num > 0)
-    error("ERROR: reading file '%s', GausSwitchMixGaussians not implemented just yet",is.fileName());
+    error("ERROR: reading file '%s', GausSwitchMixtures not implemented just yet",is.fileName());
 }
 
 void 
-GMParms::readLogitSwitchMixGaussians(iDataStreamFile& is, bool reset)
+GMParms::readLogitSwitchMixtures(iDataStreamFile& is, bool reset)
 {
   unsigned num;
   is.read(num,"num LSMGs");
   if (num > 0)
-    error("ERROR: reading file '%s', LogitSwitchMixGaussians not implemented just yet",is.fileName());
+    error("ERROR: reading file '%s', LogitSwitchMixtures not implemented just yet",is.fileName());
 }
 
 void 
-GMParms::readMlpSwitchMixGaussians(iDataStreamFile& is, bool reset)
+GMParms::readMlpSwitchMixtures(iDataStreamFile& is, bool reset)
 {
   unsigned num;
   is.read(num,"num MSMGs");
   if (num > 0)
-    error("ERROR: reading file '%s', MLPSwitchMixGaussians not implemented just yet",is.fileName());
+    error("ERROR: reading file '%s', MLPSwitchMixtures not implemented just yet",is.fileName());
 }
 
 
@@ -840,11 +842,11 @@ GMParms::readAll(iDataStreamFile& is)
   readMtCpts(is);
 
   // next read definitional items
-  readGaussianComponents(is);
-  readMixGaussians(is);
-  readGausSwitchMixGaussians(is);
-  readLogitSwitchMixGaussians(is);
-  readMlpSwitchMixGaussians(is);  
+  readComponents(is);
+  readMixtures(is);
+  readGausSwitchMixtures(is);
+  readLogitSwitchMixtures(is);
+  readMlpSwitchMixtures(is);  
 }
 
 
@@ -886,11 +888,11 @@ GMParms::readTrainable(iDataStreamFile& is)
   readMdCpts(is);
 
   // next read definitional items
-  readGaussianComponents(is);
-  readMixGaussians(is);
-  readGausSwitchMixGaussians(is);
-  readLogitSwitchMixGaussians(is);
-  readMlpSwitchMixGaussians(is);  
+  readComponents(is);
+  readMixtures(is);
+  readGausSwitchMixtures(is);
+  readLogitSwitchMixtures(is);
+  readMlpSwitchMixtures(is);  
 }
 
 
@@ -1013,11 +1015,11 @@ GMParms::read(iDataStreamFile& is)
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
 
-    } else if (keyword == "GC_IN_FILE") {
-      readGaussianComponents(*((*it).second),false);
+    } else if (keyword == "MC_IN_FILE") {
+      readComponents(*((*it).second),false);
 
-    } else if (keyword == "MG_IN_FILE") {
-      readMixGaussians(*((*it).second),false);
+    } else if (keyword == "MX_IN_FILE") {
+      readMixtures(*((*it).second),false);
 
     } else if (keyword == "NAME_COLLECTION_IN_FILE") {
       readNameCollections(*((*it).second),false);
@@ -1088,7 +1090,7 @@ GMParms::loadGlobal()
   // Now that presumably everything has been read in,
   // we insert the global internal objects:
   //     1) a named collection which references the global arrays.
-  //     2) special scoring Gaussians
+  //     2) special scoring mixtures
 
   // Load the global named collection.
   // first, make sure that the name hasn't already been defined,
@@ -1101,29 +1103,29 @@ GMParms::loadGlobal()
   nc->_name = NAMED_COLLECTION_GLOBAL_NAME;
   // copy the tables:
   // TODO: figure out how to make this be by reference.
-  nc->mgTable = mixGaussians;
+  nc->mxTable = mixtures;
   nc->spmfTable = sPmfs;
   ncls.push_back(nc);
   nclsMap[nc->name()] = ncls.size()-1;
 
 
-  // now we load 2 extra Gaussian mixtures.
+  // now we load 2 extra mixtures.
 
-  // Load the zero scoring Gaussian Mixture
-  if (mixGaussiansMap.find(string(ZEROSCOREMIXGAUSSIAN_NAME)) != mixGaussiansMap.end()) {
-    error("ERROR: special internal Gaussian mixture named '%s' must not be used in parameter files, as it is used internally",ZEROSCOREMIXGAUSSIAN_NAME);
+  // Load the zero scoring Mixture
+  if (mixturesMap.find(string(ZEROSCOREMIXTURE_NAME)) != mixturesMap.end()) {
+    error("ERROR: special internal mixture named '%s' must not be used in parameter files, as it is used internally",ZEROSCOREMIXTURE_NAME);
   }
-  ZeroScoreMixGaussian* zs = new ZeroScoreMixGaussian();
-  mixGaussians.push_back(zs);
-  mixGaussiansMap[zs->name()] = mixGaussians.size()-1;
+  ZeroScoreMixture* zs = new ZeroScoreMixture();
+  mixtures.push_back(zs);
+  mixturesMap[zs->name()] = mixtures.size()-1;
 
-  // Load the zero scoring Gaussian Mixture
-  if (mixGaussiansMap.find(string(UNITYSCOREMIXGAUSSIAN_NAME)) != mixGaussiansMap.end()) {
-    error("ERROR: special internal Gaussian mixture named '%s' must not be used in parameter files, as it is used internally",UNITYSCOREMIXGAUSSIAN_NAME);
+  // Load the zero scoring Mixture
+  if (mixturesMap.find(string(UNITYSCOREMIXTURE_NAME)) != mixturesMap.end()) {
+    error("ERROR: special internal mixture named '%s' must not be used in parameter files, as it is used internally",UNITYSCOREMIXTURE_NAME);
   }
-  UnityScoreMixGaussian* us = new UnityScoreMixGaussian();
-  mixGaussians.push_back(us);
-  mixGaussiansMap[us->name()] = mixGaussians.size()-1;
+  UnityScoreMixture* us = new UnityScoreMixture();
+  mixtures.push_back(us);
+  mixturesMap[us->name()] = mixtures.size()-1;
 
   // and we load 1 extra MDCPT
 
@@ -1567,7 +1569,7 @@ GMParms::writeDTs(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * writeGaussianComponents 
+ * writeComponents 
  * 
  * Preconditions:
  *      nil
@@ -1584,33 +1586,33 @@ GMParms::writeDTs(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeGaussianComponents(oDataStreamFile& os)
+GMParms::writeComponents(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("Gaussian Components");os.nl();
+  os.nl(); os.writeComment("Components");os.nl();
   unsigned used = 0;
-  for (unsigned i=0;i<gaussianComponents.size();i++) {
-    if (gaussianComponents[i]->emUsedBitIsSet())
+  for (unsigned i=0;i<components.size();i++) {
+    if (components[i]->emUsedBitIsSet())
       used++;
   }
-  if (used != gaussianComponents.size())
-    warning("NOTE: saving only %d used gaussian components out of a total of %d",
-	    used,gaussianComponents.size());
+  if (used != components.size())
+    warning("NOTE: saving only %d used components out of a total of %d",
+	    used,components.size());
   os.write(used,"num GCs"); os.nl();
   unsigned index = 0;  
-  for (unsigned i=0;i<gaussianComponents.size();i++) {
-    if (gaussianComponents[i]->emUsedBitIsSet()) {
+  for (unsigned i=0;i<components.size();i++) {
+    if (components[i]->emUsedBitIsSet()) {
       // first write the count
       os.write(index++,"GC cnt");
       os.nl();
 
-      // next write the dimension of this Gaussian
-      os.write(gaussianComponents[i]->dim(),"GC dim");
+      // next write the dimension of this component
+      os.write(components[i]->dim(),"GC dim");
       os.nl();
 
       ////////////////////////////////////////////////////////////
       // Assume that the GC's write routine will 
-      // itself write the Gaussian type
-      gaussianComponents[i]->write(os);
+      // itself write the component type
+      components[i]->write(os);
     }
   }
   os.nl();
@@ -1620,7 +1622,7 @@ GMParms::writeGaussianComponents(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * writeMixGaussians
+ * writeMixtures
  * 
  * Preconditions:
  *      nil
@@ -1637,22 +1639,22 @@ GMParms::writeGaussianComponents(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeMixGaussians(oDataStreamFile& os)
+GMParms::writeMixtures(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("Mixtures of Gaussians");os.nl();
+  os.nl(); os.writeComment("Mixtures of components");os.nl();
   // leave out the last two (ie., the -2) as they are internal
   // objects. See routine loadGlobal()
-  os.write(mixGaussians.size()-2,"num MIXGAUSSIANS"); os.nl();
-  for (unsigned i=0;i<mixGaussians.size()-2;i++) {
+  os.write(mixtures.size()-2,"num MIXCOMPONENTS"); os.nl();
+  for (unsigned i=0;i<mixtures.size()-2;i++) {
     // first write the count
-    os.write(i,"MIXGAUSSIANS cnt");
+    os.write(i,"MIXCOMPONENTS cnt");
     os.nl();
 
-    // next write the dimension of this Gaussian
-    os.write(mixGaussians[i]->dim(),"MG dim");
+    // next write the dimension of this mixture
+    os.write(mixtures[i]->dim(),"MG dim");
     os.nl();
 
-    mixGaussians[i]->write(os);
+    mixtures[i]->write(os);
   }
   os.nl();
 }
@@ -1705,7 +1707,7 @@ GMParms::writeNameCollections(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * writeGausSwitchMixGaussians
+ * writeGausSwitchMixtures
  * 
  * Preconditions:
  *      nil
@@ -1722,10 +1724,10 @@ GMParms::writeNameCollections(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeGausSwitchMixGaussians(oDataStreamFile& os)
+GMParms::writeGausSwitchMixtures(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("Gaussian Switching Mixtures of Gaussians");os.nl();
-  os.write(0,"num GausSwitchMIXGAUSSIANS"); os.nl();
+  os.nl(); os.writeComment("Gaussian Switching Mixtures");os.nl();
+  os.write(0,"num GausSwitchMIXTURE"); os.nl();
 }
 
 
@@ -1733,7 +1735,7 @@ GMParms::writeGausSwitchMixGaussians(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * writeLogitSwitchMixGaussians
+ * writeLogitSwitchMixtures
  * 
  * Preconditions:
  *      nil
@@ -1750,10 +1752,10 @@ GMParms::writeGausSwitchMixGaussians(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeLogitSwitchMixGaussians(oDataStreamFile& os)
+GMParms::writeLogitSwitchMixtures(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("Logistic-Regression-based Switching Mixtures of Gaussians");os.nl();
-  os.write(0,"num GausSwitchMIXGAUSSIANS"); os.nl();
+  os.nl(); os.writeComment("Logistic-Regression-based Switching Mixtures");os.nl();
+  os.write(0,"num GausSwitchMIXTURE"); os.nl();
 }
 
 
@@ -1761,7 +1763,7 @@ GMParms::writeLogitSwitchMixGaussians(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * writeMlpSwitchMixGaussians
+ * writeMlpSwitchMixtures
  * 
  * Preconditions:
  *      nil
@@ -1778,10 +1780,10 @@ GMParms::writeLogitSwitchMixGaussians(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeMlpSwitchMixGaussians(oDataStreamFile& os)
+GMParms::writeMlpSwitchMixtures(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("MLP-based Switching Mixtures of Gaussians");os.nl();
-  os.write(0,"num GausSwitchMIXGAUSSIANS"); os.nl();
+  os.nl(); os.writeComment("MLP-based Switching Mixtures");os.nl();
+  os.write(0,"num GausSwitchMIXTURE"); os.nl();
 }
 
 
@@ -1877,11 +1879,11 @@ GMParms::writeAll(oDataStreamFile& os)
   writeMtCpts(os);
 
   // next write definitional items
-  writeGaussianComponents(os);
-  writeMixGaussians(os);
-  writeGausSwitchMixGaussians(os);
-  writeLogitSwitchMixGaussians(os);
-  writeMlpSwitchMixGaussians(os);
+  writeComponents(os);
+  writeMixtures(os);
+  writeGausSwitchMixtures(os);
+  writeLogitSwitchMixtures(os);
+  writeMlpSwitchMixtures(os);
 
 }
 
@@ -1923,11 +1925,11 @@ GMParms::writeTrainable(oDataStreamFile& os)
   writeMdCpts(os);
 
   // next write definitional items
-  writeGaussianComponents(os);
-  writeMixGaussians(os);
-  writeGausSwitchMixGaussians(os);
-  writeLogitSwitchMixGaussians(os);
-  writeMlpSwitchMixGaussians(os);
+  writeComponents(os);
+  writeMixtures(os);
+  writeGausSwitchMixtures(os);
+  writeLogitSwitchMixtures(os);
+  writeMlpSwitchMixtures(os);
 }
 
 
@@ -2063,11 +2065,11 @@ GMParms::write(const char *const outputFileFormat, const int intTag)
     } else if (keyword == "DT_OUT_FILE") {
       writeDTs(*((*it).second));
 
-    } else if (keyword == "GC_OUT_FILE") {
-      writeGaussianComponents(*((*it).second));
+    } else if (keyword == "MC_OUT_FILE") {
+      writeComponents(*((*it).second));
 
-    } else if (keyword == "MG_OUT_FILE") {
-      writeMixGaussians(*((*it).second));
+    } else if (keyword == "MX_OUT_FILE") {
+      writeMixtures(*((*it).second));
 
     } else if (keyword == "NAME_COLLECTION_OUT_FILE") {
       writeNameCollections(*((*it).second));
@@ -2277,9 +2279,9 @@ unsigned GMParms::totalNumberParameters()
   for (unsigned i=0;i<dPmfs.size();i++)
     sum += dPmfs[i]->totalNumberParameters();
 
-  // gaussian components, gets means, vars, dlinks, weight mats
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    sum += gaussianComponents[i]->totalNumberParameters();
+  // components, gets means, vars, dlinks, weight mats
+  for (unsigned i=0;i<components.size();i++)
+    sum += components[i]->totalNumberParameters();
 
   // for discrete RVs
   for (unsigned i=0;i<mdCpts.size();i++)
@@ -2319,7 +2321,7 @@ void GMParms::markUsedMixtureComponents()
 {
 
   ///////////////////////////////////////////////////
-  // First, go through *all* gaussian related parameters
+  // First, go through *all* component related parameters
   // and mark as not used.
   for (unsigned i=0;i<means.size();i++)
     means[i]->recursivelyClearUsedBit();
@@ -2329,16 +2331,16 @@ void GMParms::markUsedMixtureComponents()
     dLinkMats[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<weightMats.size();i++)
     weightMats[i]->recursivelyClearUsedBit();
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->recursivelyClearUsedBit();
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<components.size();i++)
+    components[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->recursivelyClearUsedBit();
 
   ///////////////////////////////////////////////
   // Now, set only those bits that are used
-  // by some gaussian mixture.
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->recursivelySetUsedBit();
+  // by some mixture.
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->recursivelySetUsedBit();
 
 }
 
@@ -2416,16 +2418,16 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
       EMCLEARAMTRAININGBIT_CODE(dLinkMatsMap,dLinkMats);
     } else if (objType == "WEIGHTMAT") {
       EMCLEARAMTRAININGBIT_CODE(weightMatsMap,weightMats);
-    } else if (objType == "GAUSIANCOMPONENT") {
-      EMCLEARAMTRAININGBIT_CODE(gaussianComponentsMap,gaussianComponents);
+    } else if (objType == "COMPONENT") {
+      EMCLEARAMTRAININGBIT_CODE(componentsMap,components);
     } else if (objType == "DENSECPT") {
       EMCLEARAMTRAININGBIT_CODE(mdCptsMap,mdCpts);
     } else if (objType == "SPARSECPT") {
       EMCLEARAMTRAININGBIT_CODE(msCptsMap,msCpts);
     } else if (objType == "DETERMINISTICCPT") {
       EMCLEARAMTRAININGBIT_CODE(mtCptsMap,mtCpts);
-    } else if (objType == "MIXGAUSSIAN") {
-      EMCLEARAMTRAININGBIT_CODE(mixGaussiansMap,mixGaussians);
+    } else if (objType == "MIXTURE") {
+      EMCLEARAMTRAININGBIT_CODE(mixturesMap,mixtures);
     } else {
       error("ERROR: bad object type name '%s' in file '%s' of objects to not train.",
 	    objType.c_str(),
@@ -2477,9 +2479,9 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
    for (unsigned i=0;i<weightMats.size();i++)
      weightMats[i]->makeRandom();
 
-   // gaussian components
-   for (unsigned i=0;i<gaussianComponents.size();i++)
-     gaussianComponents[i]->makeRandom();
+   // components
+   for (unsigned i=0;i<components.size();i++)
+     components[i]->makeRandom();
 
    // for discrete RVs
    for (unsigned i=0;i<mdCpts.size();i++)
@@ -2514,9 +2516,9 @@ GMParms::makeUniform()
   for (unsigned i=0;i<weightMats.size();i++)
     weightMats[i]->makeUniform();
 
-   // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->makeUniform();
+   // components
+  for (unsigned i=0;i<components.size();i++)
+    components[i]->makeUniform();
 
    // for discrete RVs
   for (unsigned i=0;i<mdCpts.size();i++)
@@ -2564,7 +2566,7 @@ GMParms::emEndIteration()
   // used by any RV and make the call
 
    /////////////////////////////////////////////////////////////////
-   // First, do the gaussian mixtures. This will recursively call
+   // First, do the mixtures. This will recursively call
    // this for all mean-like objects, covariance-like objects, and so
    // on, so there is no need to do those here.  
    //
@@ -2580,12 +2582,12 @@ GMParms::emEndIteration()
    // 
    //       covars
    // 
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emEndIteration();
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->emEndIteration();
 
    //////////////////////////////////////////////////////////////
    // We don't do the following code  here because those objects use
-   // ref counts needed for sharing. The Gaussian components will
+   // ref counts needed for sharing. The components will
    // themselves end the EM iteration for those objects, and will call
    // it the appropriate number of times so that the ref counts are set
    // properly.
@@ -2603,7 +2605,7 @@ GMParms::emEndIteration()
 
    // finish up the spmfs and dpmfs, some of which
    // might already have been ended by the
-   // above code via the Gaussian mixture component densities. 
+   // above code via the mixture component densities. 
   for (unsigned i=0;i<dPmfs.size();i++)
     dPmfs[i]->emEndIteration();
   for (unsigned i=0;i<sPmfs.size();i++)
@@ -2620,12 +2622,12 @@ GMParms::emEndIteration()
 
 #if 0
   // uncomment this when the objects get written.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emEndIteration();
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emEndIteration();
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emEndIteration();
+  for (unsigned i=0;i<gausSwitchingMixtures.size();i++)
+    gausSwitchingMixtures[i]->emEndIteration();
+  for (unsigned i=0;i<logitSwitchingMixtures.size();i++)
+    logitSwitchingMixtures[i]->emEndIteration();
+  for (unsigned i=0;i<mlpSwitchingMixtures.size();i++)
+    mlpSwitchingMixtures[i]->emEndIteration();
 #endif
 
 }
@@ -2661,8 +2663,8 @@ GMParms::emSwapCurAndNew()
 
    // for continuous RVs, this will recursively
    // call swap for all sub objects.
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->emSwapCurAndNew();
 
    // make sure that all dpmfs and spmfs have been swapped.
   for (unsigned i=0;i<dPmfs.size();i++)
@@ -2670,21 +2672,18 @@ GMParms::emSwapCurAndNew()
   for (unsigned i=0;i<sPmfs.size();i++)
     sPmfs[i]->emSwapCurAndNew();
 
-   // don't swap these since it should have
-   // been done by the mix gausisan swapping
-
-
- //    for (unsigned i=0;i<means.size();i++)
- //      means[i]->emSwapCurAndNew();
- //    for (unsigned i=0;i<covars.size();i++)
- //      covars[i]->emSwapCurAndNew();
- //    for (unsigned i=0;i<dLinkMats.size();i++)
- //      dLinkMats[i]->emSwapCurAndNew();
- //    for (unsigned i=0;i<weightMats.size();i++)
- //      weightMats[i]->emSwapCurAndNew();
- // gaussian components
-   //  for (unsigned i=0;i<gaussianComponents.size();i++)
-   //    gaussianComponents[i]->emSwapCurAndNew();
+  // Don't swap these since it should have
+  // been done by the mixture swapping above.
+  //    for (unsigned i=0;i<means.size();i++)
+  //      means[i]->emSwapCurAndNew();
+  //    for (unsigned i=0;i<covars.size();i++)
+  //      covars[i]->emSwapCurAndNew();
+  //    for (unsigned i=0;i<dLinkMats.size();i++)
+  //      dLinkMats[i]->emSwapCurAndNew();
+  //    for (unsigned i=0;i<weightMats.size();i++)
+  //      weightMats[i]->emSwapCurAndNew();
+  //    for (unsigned i=0;i<components.size();i++)
+  //      components[i]->emSwapCurAndNew();
 
    // for discrete RVs
   for (unsigned i=0;i<mdCpts.size();i++)
@@ -2697,23 +2696,23 @@ GMParms::emSwapCurAndNew()
 
 #if 0
   // uncomment this when the objects get written.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<gausSwitchingMixtures.size();i++)
+    gausSwitchingMixtures[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<logitSwitchingMixtures.size();i++)
+    logitSwitchingMixtures[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<mlpSwitchingMixtures.size();i++)
+    mlpSwitchingMixtures[i]->emSwapCurAndNew();
 #endif
 
   // clear out the cloning maps, under the assumption
   // that all clones become 'real' objects.
-  MixGaussiansCommon::vanishingComponentSet.clear();
-  MixGaussiansCommon::splittingComponentSet.clear();
+  MixtureCommon::vanishingComponentSet.clear();
+  MixtureCommon::splittingComponentSet.clear();
 
-  MixGaussiansCommon::meanCloneMap.clear();
-  MixGaussiansCommon::dLinkMatCloneMap.clear();
-  MixGaussiansCommon::diagCovarCloneMap.clear();
-  MixGaussiansCommon::gcCloneMap.clear();
+  MixtureCommon::meanCloneMap.clear();
+  MixtureCommon::dLinkMatCloneMap.clear();
+  MixtureCommon::diagCovarCloneMap.clear();
+  MixtureCommon::mcCloneMap.clear();
 
 }
 
@@ -2734,9 +2733,9 @@ GMParms::emStoreAccumulators(oDataStreamFile& ofile)
   for (unsigned i=0;i<weightMats.size();i++)
     weightMats[i]->emStoreAccumulators(ofile);
 
-   // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emStoreAccumulators(ofile);
+   // components
+  for (unsigned i=0;i<components.size();i++)
+    components[i]->emStoreAccumulators(ofile);
 
    // for discrete RVs
   for (unsigned i=0;i<mdCpts.size();i++)
@@ -2747,16 +2746,16 @@ GMParms::emStoreAccumulators(oDataStreamFile& ofile)
     mtCpts[i]->emStoreAccumulators(ofile);
 
    // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->emStoreAccumulators(ofile);
 #if 0
   // uncomment this when the objects get written.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<gausSwitchingMixtures.size();i++)
+    gausSwitchingMixtures[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<logitSwitchingMixtures.size();i++)
+    logitSwitchingMixtures[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<mlpSwitchingMixtures.size();i++)
+    mlpSwitchingMixtures[i]->emStoreAccumulators(ofile);
 #endif
 
 }
@@ -2772,8 +2771,8 @@ GMParms::emLoadAccumulators(iDataStreamFile& ifile)
   // have been allocated, so that they can be accumulated to.
 
   // components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emStartIteration();
+  for (unsigned i=0;i<components.size();i++)
+    components[i]->emStartIteration();
 
   // do the basic discrete objects
   for (unsigned i=0;i<dPmfs.size();i++)
@@ -2790,8 +2789,8 @@ GMParms::emLoadAccumulators(iDataStreamFile& ifile)
     mtCpts[i]->emStartIteration();
 
   // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emStartIteration();
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->emStartIteration();
   /////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////
 
@@ -2812,9 +2811,9 @@ GMParms::emLoadAccumulators(iDataStreamFile& ifile)
   for (unsigned i=0;i<weightMats.size();i++)
     weightMats[i]->emLoadAccumulators(ifile);
 
-  // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emLoadAccumulators(ifile);
+  // components
+  for (unsigned i=0;i<components.size();i++)
+    components[i]->emLoadAccumulators(ifile);
 
   // for discrete RVs
   for (unsigned i=0;i<mdCpts.size();i++)
@@ -2825,16 +2824,16 @@ GMParms::emLoadAccumulators(iDataStreamFile& ifile)
     mtCpts[i]->emLoadAccumulators(ifile);
 
   // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->emLoadAccumulators(ifile);
 #if 0
   // uncomment this when the objects get written.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emLoadAccumulators(ifile);
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emLoadAccumulators(ifile);
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<gausSwitchingMixtures.size();i++)
+    gausSwitchingMixtures[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<logitSwitchingMixtures.size();i++)
+    logitSwitchingMixtures[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<mlpSwitchingMixtures.size();i++)
+    mlpSwitchingMixtures[i]->emLoadAccumulators(ifile);
 #endif
   /////////////////////////////////////////////////////////////
 }
@@ -2856,9 +2855,9 @@ GMParms::emAccumulateAccumulators(iDataStreamFile& ifile)
   for (unsigned i=0;i<weightMats.size();i++)
     weightMats[i]->emAccumulateAccumulators(ifile);
 
-  // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emAccumulateAccumulators(ifile);
+  // components
+  for (unsigned i=0;i<components.size();i++)
+    components[i]->emAccumulateAccumulators(ifile);
 
   // for discrete RVs
   for (unsigned i=0;i<mdCpts.size();i++)
@@ -2869,29 +2868,26 @@ GMParms::emAccumulateAccumulators(iDataStreamFile& ifile)
     mtCpts[i]->emAccumulateAccumulators(ifile);
 
   // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->emAccumulateAccumulators(ifile);
 #if 0
   // uncomment this when the objects get written.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emAccumulateAccumulators(ifile);
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emAccumulateAccumulators(ifile);
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<gausSwitchingMixtures.size();i++)
+    gausSwitchingMixtures[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<logitSwitchingMixtures.size();i++)
+    logitSwitchingMixtures[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<mlpSwitchingMixtures.size();i++)
+    mlpSwitchingMixtures[i]->emAccumulateAccumulators(ifile);
 #endif
 }
 
 
 
 
-
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
-
-
 
 
 

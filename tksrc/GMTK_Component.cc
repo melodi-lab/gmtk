@@ -1,5 +1,5 @@
 /*-
- * GMTK_GaussianComponent.cc
+ * GMTK_Component.cc
  *        Any of the common code for the family of Gaussian-like
  *        classes.
  *
@@ -30,33 +30,6 @@
 VCID("$Header$");
 #include "error.h"
 
-#include "GMTK_GaussianComponent.h"
+#include "GMTK_Component.h"
 #include "rand.h"
 
-////////////////////////////////////////////////////
-// The default value of the minimum possible variance of any
-// Gaussian. This must be >= FLT_MIN for numeric stability,
-// and it should be made availalbe as a command line parameter at some point.
-double GaussianComponent::_varianceFloor = GaussianComponent::setVarianceFloor(1e-15);
-
-double GaussianComponent::setVarianceFloor(const double floor) 
-{ 
-  if (floor < FLT_MIN) 
-    _varianceFloor = FLT_MIN; 
-  else 
-    _varianceFloor = floor; 
-  return _varianceFloor;
-}
-
-// true if when a clone occurs, we use the same mean (i.e.,
-// share the mean and only clone other things)
-bool GaussianComponent::cloneShareMeans = false;
-// true if when a clone occurs, we use the same covariance
-// (i.e., share the covariance and clone other things)
-bool GaussianComponent::cloneShareCovars = false;
-// true if hwen a clone occurs, we use the same dlink matrix
-bool GaussianComponent::cloneShareDlinks = false;
-
-GaussianComponent::GaussianComponent(const int dim) : _dim(dim) 
-{
-}

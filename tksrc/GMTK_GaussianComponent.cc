@@ -1,7 +1,7 @@
 /*-
  * GMTK_GaussianComponent.cc
  *        Any of the common code for the family of Gaussian-like
- *        classes.
+ *        components classes.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -57,6 +57,8 @@ bool GaussianComponent::cloneShareCovars = false;
 // true if hwen a clone occurs, we use the same dlink matrix
 bool GaussianComponent::cloneShareDlinks = false;
 
-GaussianComponent::GaussianComponent(const int dim) : _dim(dim) 
+GaussianComponent::GaussianComponent(const int dim) 
+  : Component(dim) 
 {
+
 }

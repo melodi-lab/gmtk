@@ -34,7 +34,7 @@
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DlinkMatrix.h"
 
@@ -218,8 +218,8 @@ DiagCovarVector::noisyClone()
   // first check if self is already cloned, and if so, return that.
   DiagCovarVector* clone;
 
-  map<DiagCovarVector*,DiagCovarVector*>::iterator it = MixGaussiansCommon::diagCovarCloneMap.find(this);
-  if (it == MixGaussiansCommon::diagCovarCloneMap.end()) {
+  map<DiagCovarVector*,DiagCovarVector*>::iterator it = MixtureCommon::diagCovarCloneMap.find(this);
+  if (it == MixtureCommon::diagCovarCloneMap.end()) {
     clone = new DiagCovarVector();
     unsigned cloneNo=0; do {
       char buff[256];
@@ -248,7 +248,7 @@ DiagCovarVector::noisyClone()
       clone->covariances[i] = tmp;
     }
     clone->setBasicAllocatedBit();
-    MixGaussiansCommon::diagCovarCloneMap[this] = clone;
+    MixtureCommon::diagCovarCloneMap[this] = clone;
 
     // also add self to GMParms object.
     GM_Parms.add(clone);

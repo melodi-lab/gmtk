@@ -31,7 +31,7 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_GM.h" 
 #include "GMTK_CPT.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 
 class RandomVariable;
 

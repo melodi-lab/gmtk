@@ -19,7 +19,7 @@
 
 /*
  * This class is just a readable/writable table of names of objects
- * (such as Gaussian Mixtures, SPMFS, and so on).
+ * (such as Mixtures, SPMFS, and so on).
  * Instances of this class are used to associate integer decision tree leaves
  * to actual object pointers.
  */
@@ -36,7 +36,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_GMParms.h"
 
-class MixGaussiansCommon;
+class MixtureCommon;
 class Sparse1DPMF;
 
 class NameCollection : public NamedObject  {
@@ -47,17 +47,17 @@ class NameCollection : public NamedObject  {
   // 0) just table is allocated
   //    (right after being read in from disk)
   // 1) table is allocated
-  //    one or both of mgTable and spmfTable are allocated
+  //    one or both of mxTable and spmfTable are allocated
   //    (after being associated with an object)
   // 2) table is not allocated
-  //    one or both of mgTable and spmfTable are allocated
+  //    one or both of mxTable and spmfTable are allocated
   //    (special global objects)
 
   // string of names. 
   vector<string> table;
   // direct pointers to those objects
   // for which this might refer to.
-  vector<MixGaussians*> mgTable;
+  vector<Mixture*> mxTable;
   vector<Sparse1DPMF*> spmfTable;
 
 
@@ -75,13 +75,13 @@ public:
 
   //////////////////////////////////////////////
   // routines to fill in tables
-  void fillMgTable();
+  void fillMxTable();
   void fillSpmfTable();
 
-  // access routines to mix Gaussians
-  MixGaussians* mg(int i) { return mgTable[i]; }
-  unsigned mgSize() { return mgTable.size(); }
-  bool validMgIndex(unsigned u) { return (u < mgSize()); }
+  // access routines to mixtures
+  Mixture* mx(int i) { return mxTable[i]; }
+  unsigned mxSize() { return mxTable.size(); }
+  bool validMxIndex(unsigned u) { return (u < mxSize()); }
 
   // access routines to sparse 1D PMFs
   Sparse1DPMF* spmf(int i) { return spmfTable[i]; }

@@ -1,6 +1,6 @@
 /*-
  * GMTK_GaussianComponent
- *        Component elements that are shared by all Gaussian type clases.
+ *        Gaussian Component elements that are shared by all Gaussian type component clases.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
@@ -28,9 +28,9 @@
 #include "machine-dependent.h"
 
 #include "GMTK_NamedObject.h"
-#include "GMTK_EMable.h"
+#include "GMTK_Component.h"
 
-class GaussianComponent :  public EMable {
+class GaussianComponent :  public Component {
 
   ///////////////////////////////////////////////////////
   // The value that, if any variances go below, cause
@@ -38,21 +38,7 @@ class GaussianComponent :  public EMable {
   // depending on how probable this component is.
   static double _varianceFloor;
 
-protected:
-  ///////////////////////////////////////////////////////
-  // dim = dimensionality of this Gaussian.
-  // Typically, this will be the number of features over which
-  // this Gaussian applies.
-  const unsigned _dim;
-
 public:
-
-  ///////////////////////////////////////////////////////////
-  // This object must be aware of types of its derived
-  // classes for reading from file purposes. 
-  enum ComponentType { Diag = 0, 
-		       LinMeanCondDiag = 1,
-		       NLinMeanCondDiag = 2};
 
 
   GaussianComponent(const int dim);
@@ -65,8 +51,6 @@ public:
   static bool cloneShareCovars;
   static bool cloneShareDlinks;
 
-  unsigned dim() const { return _dim; }
-
 
   //////////////////////////////////////////////
   // read/write basic parameters
@@ -78,7 +62,7 @@ public:
   // create a copy of self, with entirely new parameters
   // (so clone shares nothing), and with slightly (and 
   // randomly) perturbed values.
-  virtual GaussianComponent* noisyClone() = 0;
+  virtual Component* noisyClone() = 0;
 
   //////////////////////////////////
   // set all current parameters to valid but random values

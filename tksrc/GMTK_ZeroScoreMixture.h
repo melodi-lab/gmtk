@@ -1,9 +1,9 @@
 /*-
- * GMTK_ZeroScoreMixGaussian
- *        Mixture of gaussian that always returns probability 0 regardless
+ * GMTK_ZeroScoreMixture
+ *        Mixture that always returns probability 0 regardless
  *        of its parents or the corresponding feature values. This object
  *        can be useful in certain situations. The name of this mixture
- *        is internal, and is "internal::ZeroScoreGaussianMixture"
+ *        is internal, and is "internal::ZeroScoreMixture"
  *        Note that this object has dim = 0. It is up to the other checking
  *        routines when checking the dimension to make sure that zero matches
  *        anything else, as zero is not normally a valid specifyable dimension.
@@ -25,27 +25,27 @@
  */
 
 
-#ifndef GMTK_ZEROSCOREMIXGAUSSIANS_H
-#define GMTK_ZEROSCOREMIXGAUSSIANS_H
+#ifndef GMTK_ZEROSCOREMIXTURE_H
+#define GMTK_ZEROSCOREMIXTURE_H
 
 #include "fileParser.h"
 #include "logp.h"
 #include "machine-dependent.h"
 
 
-#include "GMTK_MixGaussians.h"
+#include "GMTK_Mixture.h"
 
 // name to use in collections when refering to one of these objects.
-#define ZEROSCOREMIXGAUSSIAN_NAME "internal:ZeroScore"
+#define ZEROSCOREMIXTURE_NAME "internal:ZeroScore"
 
-class ZeroScoreMixGaussian : public MixGaussians {
+class ZeroScoreMixture : public Mixture {
  
 public:
 
-  ZeroScoreMixGaussian() 
-    : MixGaussians(0,ci_zeroScoreMixGaussian)
-  { _name = ZEROSCOREMIXGAUSSIAN_NAME; setBasicAllocatedBit(); }
-  ~ZeroScoreMixGaussian() {}
+  ZeroScoreMixture() 
+    : Mixture(0,ci_zeroScoreMixture)
+  { _name = ZEROSCOREMIXTURE_NAME; setBasicAllocatedBit(); }
+  ~ZeroScoreMixture() {}
 
   //////////////////////////////////////////////
   // read/write basic parameters
@@ -54,8 +54,8 @@ public:
 
   unsigned totalNumberParameters() { return 0; }
 
-  // these routines are used to not save gaussian
-  // components (and their means, variances, etc.) 
+  // these routines are used to not save 
+  // components (and their parameters, etc.)
   // that are not actively used in a parameter file (such
   // as those that have vanished away).
   void recursivelyClearUsedBit() { }
@@ -105,7 +105,7 @@ public:
   void emZeroOutObjectsAccumulators() {}
   void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}
   void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {}
-  const string typeName() { return "Zero Score Gaussian mixture"; }
+  const string typeName() { return "Zero Score Mixture"; }
   //////////////////////////////////
 
   //////////////////////////////////

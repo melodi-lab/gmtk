@@ -44,7 +44,7 @@ VCID("$Header$");
 
 #include "GMTK_LinMeanCondDiagGaussian.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 
 
 void
@@ -128,7 +128,7 @@ LinMeanCondDiagGaussian::write(oDataStreamFile& os)
   assert ( basicAllocatedBitIsSet() );
 
   // write the type of self and the name
-  os.write((int)GaussianComponent::LinMeanCondDiag);
+  os.write((int)Component::LinMeanCondDiagGaussian);
   NamedObject::write(os);
   os.nl();
 
@@ -269,14 +269,14 @@ LinMeanCondDiagGaussian::log_p(const float *const x,
  *
  *-----------------------------------------------------------------------
  */
-GaussianComponent*
+Component*
 LinMeanCondDiagGaussian::noisyClone()
 {
   assert ( basicAllocatedBitIsSet() );
 
-  map<GaussianComponent*,GaussianComponent*>::iterator it = MixGaussiansCommon::gcCloneMap.find(this);
+  map<Component*,Component*>::iterator it = MixtureCommon::mcCloneMap.find(this);
   // first check if self is already cloned, and if so, return that.
-  if (it == MixGaussiansCommon::gcCloneMap.end()) {
+  if (it == MixtureCommon::mcCloneMap.end()) {
     LinMeanCondDiagGaussian* clone;
     clone = new LinMeanCondDiagGaussian(dim());
 
@@ -285,8 +285,8 @@ LinMeanCondDiagGaussian::noisyClone()
       sprintf(buff,"%d",cloneNo);
       clone->_name = _name + string("_cl") + buff;
       cloneNo++;
-    } while (GM_Parms.gaussianComponentsMap.find(clone->_name) 
-	     != GM_Parms.gaussianComponentsMap.end());
+    } while (GM_Parms.componentsMap.find(clone->_name) 
+	     != GM_Parms.componentsMap.end());
 
     if (cloneShareMeans && cloneShareCovars && cloneShareDlinks) {
       warning("WARNING: Dlink Gaussian component '%s' is cloning, and was asked to share both means, covariances, and dlinks. No sharing is occuring instead.",name().c_str());
@@ -318,7 +318,7 @@ LinMeanCondDiagGaussian::noisyClone()
     clone->dLinkMat->numTimesShared++;
 
     clone->setBasicAllocatedBit();
-    MixGaussiansCommon::gcCloneMap[this] = clone;
+    MixtureCommon::mcCloneMap[this] = clone;
 
     // also add self to GMParms object.
     GM_Parms.add(clone);
@@ -498,7 +498,7 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
 {
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
+    warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
 	  name().c_str(),
 	  accumulatedProbability.val(),
 	  minContAccumulatedProbability().val(),
@@ -723,7 +723,7 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
 {
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
+    warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
 	  name().c_str(),
 	  accumulatedProbability.val(),
 	  minContAccumulatedProbability().val(),
@@ -944,7 +944,7 @@ LinMeanCondDiagGaussian::emEndIterationSharedAll()
 
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
+    warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
 	  name().c_str(),
 	  accumulatedProbability.val(),
 	  minContAccumulatedProbability().val(),

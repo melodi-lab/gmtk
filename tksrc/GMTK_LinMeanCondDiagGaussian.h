@@ -80,7 +80,7 @@ public:
 
   // create a copy of self, but with slightly perturbed
   // means/variance values.
-  GaussianComponent* noisyClone();
+  Component* noisyClone();
 
 
   //////////////////////////////////
