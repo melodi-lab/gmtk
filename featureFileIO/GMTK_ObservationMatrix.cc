@@ -703,6 +703,9 @@ void
 ObservationMatrix::printFrame(FILE *stream, size_t frameno) {
   
   unsigned f;
+
+  assert(frameno < numFrames && frameno >= 0);
+
   unsigned offset = stride*frameno;
 
   Data32 *p = features.ptr + offset;
@@ -719,39 +722,12 @@ ObservationMatrix::printFrame(FILE *stream, size_t frameno) {
 
 }
 
-// get cont. feature number 'n' in current frame
-	
-float *
-ObservationMatrix::getContFea(unsigned short n) {
-
-
-  assert(n < numFeatures);
-
-  if (n > (numContinuous-1))
-    warning("ObservationMatrix::getFeature: feature %i has type int but requested as float\n");
-
-
-  return (float *)(_cont_p + n);
-}
-
-// get disc. feature number 'n' in current frame
-
-
-Int32 *
-ObservationMatrix::getDiscFea(unsigned short n) {
-
-  assert (n < numFeatures);
-
-  if (n > (numDiscrete-1))
-    warning("ObservationMatrix::getDiscFea: feature %i has type int but requested as float\n");
-
-  return (Int32 *)(_disc_p + n);
-}
-
 /* get info for segment 'sentno' from pfile stream 'f' */
 
 size_t
 ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
+
+  assert(sentno >= 0 && sentno < _numSegments);
 
   if (f->pfile_istr == NULL) {
     error("ObservationMatrix::openPFile: stream is NULL");
@@ -774,6 +750,8 @@ ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
 
 size_t
 ObservationMatrix::openBinaryFile(StreamInfo *f, size_t sentno) {
+
+  assert(sentno >= 0 && sentno < _numSegments);
 
   char *fname = f->dataNames[sentno];
   int nfloats = f->nFloats;
@@ -849,6 +827,8 @@ ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 
 size_t
 ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
+
+  assert(sentno >= 0 && sentno < _numSegments);
 
   char *fname = f->dataNames[sentno];
 
@@ -979,3 +959,5 @@ ObservationMatrix::printSegmentInfo() {
   printf("Processing segment # %d. Number of frames = %d.\n",
 	segmentNumber,numFrames);
 }
+
+
