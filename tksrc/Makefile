@@ -50,14 +50,14 @@ prefix = .
 exec_prefix = .
 install_prefix = .
 
-libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L/g/rcs/sw/lib
-includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint
+libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L$(prefix)/../featureFileIO -L/g/rcs/sw/lib
+includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint -I$(prefix)/../featureFileIO 
 docdir = $(prefix)/man/man1
 
 #
 # Libraries.
 #
-LIBS = -lfileParser  -lmiscSupport -lpfile -lIEEEsupport -lfl -lsunmath -lm 
+LIBS = -lfileParser  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport -lfl -lsunmath -lm 
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
@@ -96,15 +96,15 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixGaussiansCommon.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_SimpleDiscreteRV.o GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_GM.o  GMTK_CliqueChain.o GMTK_Clique.o GMTK_MixGaussians.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_ObservationMatrix.o GMTK_EMable.o GMTK_LinMeanCondDiagGaussian.o
+objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixGaussiansCommon.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_SimpleDiscreteRV.o GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_GM.o  GMTK_CliqueChain.o GMTK_Clique.o GMTK_MixGaussians.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_EMable.o GMTK_LinMeanCondDiagGaussian.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
 
-all_srcs = BN1.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixGaussiansCommon.cc GMTK_GaussianComponent.cc GMTK_MixGaussians.cc gmtkEMtrain.cc GMTK_ObservationMatrix.cc  GMTK_EMable.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc
+all_srcs = BN1.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixGaussiansCommon.cc GMTK_GaussianComponent.cc GMTK_MixGaussians.cc gmtkEMtrain.cc GMTK_EMable.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc
 
-all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixGaussiansCommon.h GMTK_GaussianComponent.h GMTK_MixGaussians.h  GMTK_ObservationMatrix.h GMTK_LinMeanCondDiagGaussian.h
+all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixGaussiansCommon.h GMTK_GaussianComponent.h GMTK_MixGaussians.h GMTK_LinMeanCondDiagGaussian.h
 
 all_objs = $(objs)
 
@@ -192,7 +192,7 @@ install: $(all_exs)
 	(for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i; done)
 
 installd: $(all_exs)
-	(for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i.`date +%a%b%d_%k_%Y | sed -e 's, ,,g'`; strip $(install_prefix)/bin/$$i.`date +%a%b%d_%k_%Y | sed -e 's, ,,g'`; done)
+	(STR=`date +%a%b%d_%k_%Y | sed -e 's, ,,g'`; echo Installing with postfix $$STR; for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i.$$STR; strip $(install_prefix)/bin/$$i.$$STR; done)
 
 uninstall:
 	rm -f $(exec_prefix)/bin/foo
