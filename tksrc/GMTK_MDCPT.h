@@ -93,7 +93,7 @@ public:
     return probGivenParents(val);
   }
 
-  // returns an iterator for the first one.
+  // returns an iterator for the first one that is not zero prob.
   iterator begin() {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
@@ -122,6 +122,7 @@ public:
   }
 
   // Given a current iterator, return the next one in the sequence.
+  // Skip the zero probability ones.
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
     // don't increment past the last value.
