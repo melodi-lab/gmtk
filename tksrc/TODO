@@ -447,7 +447,7 @@ this will take a file of macros.
 >Actually, one thing that would be useful would be if it were possible to have 
 >a "verbose" option where it tells you which rows had zero counts.
 >
-
+------------------------------------------------------------
 
 Tue Jun 18 17:47:44 2002
 > >(2)  Does GMTK allow you to use models that aren't strictly probabilistic?  
@@ -458,3 +458,54 @@ Tue Jun 18 17:47:44 2002
 > 
 > Not at the moment, but that would be really easy to add (and I'd be happy
 > to do that for you).
+------------------------------------------------------------
+
+Tue Jun 18 17:51:42 2002
+> >(1) I am training a new model, and am getting an error with the new version of gmtkEMtrain but not the old version.  The error occ
+> >urs when loading accumulators (but not when training without accumulators), and the message I get is:
+> >
+> >error in accumulating accumulators: /t/klivescu/aurora/articulatory5/MISC/emtrain.1.log:  
+> >EOF occurred in readDouble, file '/t/klivescu/aurora/articulatory5/MISC/acc_file_1.data': MDCPT load accums
+> >Loading accumulators from '/t/klivescu/aurora/articulatory5/MISC/acc_file_1.data'
+> 
+> Hmm. Are you using accumulators that were generated with the old
+> version with the new version? I don't think any of that code was
+> changed, but it is possible there might have been a bug introduced.
+
+No, the accumulators were generated with the new version.  I ran a
+few more experiments to try to figure this out, and it seems that
+it has to do with the size of the accumulator files--i.e. it only
+happens when the accum files have only a few utterances' worth of
+data.  E.g. if I train on 50 sentences broken up into 2 accum files,
+it's fine; but when broken up into 10, I get the error.  Perhaps it 
+is unhappy about some things not being observed in the accum files?
+
+> That would be good. Could you set up the bug on music and/or orca?
+
+I set up the files on both machines.  On both machines, everything is in
+~klivescu/aurora/articulatory5.  The NOTES file contains the command 
+lines for the old/new versions (sorry about all the long path names--
+the commands were copied directly from script-generated makefiles).  
+I think I made everything group-writable, so you should be able to 
+run the commands.
+
+Thanks!
+Karen
+
+------------------------------------------------------------
+
+
+Tue Jun 18 17:51:16 2002
+	
+(3)  Not so much a question as just letting you know about another error 
+(different from the last one) that I got with the new version but not the old 
+one.  This one also occurred when combining accumulators.  The error message 
+was:
+
+Loading accumulators from '/homes/klivescu/aurora/articulatory7/MISC_NEW/acc_fi
+le_1.data'
+GMTK_MeanVector.cc:718: failed assertion `emEmAllocatedBitIsSet()'
+IOT/Abort trap (core dumped)
+
+This occurred while training a feature model with clustered features.  The only special thing I can think of about this model is that there were a number of Gaussians that I wasn't training (via -objsNotToTrain) because they correspond to impossible combinations of feature values.  I put all the files necessary to replicate the error on music in ~klivescu/aurora/articulatory7.  The NOTES file in that dir has the commands that I ran for both the old and new versions.
+
