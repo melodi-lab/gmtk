@@ -22,7 +22,7 @@
 extern "C" {
 extern double drand48(void);
 unsigned short *seed48(unsigned short seed16v[3]);
-	   };
+};
 
 class RAND {
  public:
@@ -44,11 +44,11 @@ class RAND {
 
   /* return a random number uniformly in [l,u] inclusive, l < u */
   int uniform(int l, int u) 
-    { return (l + (int)((1+u-l)*drand48())); }
+    { return (l + (int)((1+u-l)*::drand48())); }
 
   /* return a random number uniformly in [0,u] inclusive */
   int uniform(int u) 
-    { return ((int)((u+1)* drand48())); }
+    { return ((int)((u+1)* ::drand48())); }
 
   /* return 1 with probability p */
   int coin(float p) 
@@ -59,10 +59,12 @@ class RAND {
   double drand48pe() {
     double rc;
     do {
-      rc = drand48();
+      rc = ::drand48();
     } while (rc == 0.0);
     return rc;
   }
+
+  double drand48() { return ::drand48(); }
 
   // choose from [0:(u-1)] according to a length u 'dist', assume sum(dist) = 1.0
   int sample(const int u,const float *const dist);

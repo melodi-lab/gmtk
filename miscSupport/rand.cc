@@ -60,7 +60,7 @@ RAND::sample(const int u, const float *const dist)
     arr[i] = dist[i];
     sum += dist[i];
   }
-  double tmp = drand48()*sum;
+  double tmp = ::drand48()*sum;
   double *arr_p = arr;
   i = 0;
   // do a dumb linear search for now.
