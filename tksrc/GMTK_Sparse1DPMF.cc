@@ -270,7 +270,7 @@ Sparse1DPMF::normalize()
 void
 Sparse1DPMF::makeRandom()
 {
-  dense1DPMF->normalize();
+  dense1DPMF->randomize();
 }
 
 void
