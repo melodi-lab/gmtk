@@ -193,3 +193,10 @@ X add VCID everywhere.
 
 - add simple multiplication onto decision tree leafs. (or better, make it
   use real integer formulas with parens, etc.).
+
+- create new objects, integer to name mappings
+  to map to decision tree leaves (corresponding to integers) to either
+     1) Gaussian mixture objects
+     2) Switching gaussian mixture objects
+     3) sparse PMFs
+
