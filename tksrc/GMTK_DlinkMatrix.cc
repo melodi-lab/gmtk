@@ -68,6 +68,95 @@ DlinkMatrix::DlinkMatrix()
 
 /*-
  *-----------------------------------------------------------------------
+ * read(is)
+ *      read in the array from file 'is'. 
+ *      The data probs are stored as doubles, but when they are read in
+ *      they are converted to the log domain. Also, they are read
+ *      in as a single array for speed reasons.
+ *
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      object is read in.
+ *
+ * Side Effects:
+ *      Changes the pmf member function in the object.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::read(iDataStreamFile& is)
+{
+  NamedObject::read(is);
+
+  int _dim;
+
+  is.read(_dim,"DlinkMatrix::read, _dim");
+  if (_dim <= 0)
+    error("ERROR: reading DlinkMatrix '%s' from file '%s', dim (%d) must be positive",name().c_str(),is.fileName(),_dim);
+
+  _numLinks.resize(_dim);
+
+  for (int i=0;i<_dim;i++) {
+    int nlinks;
+    is.read(nlinks,"DlinkMatrix::read, nlinks");
+
+    if (nlinks < 0) 
+      error("ERROR: reading DlinkMatrix '%s' from file '%s', # dlinks (%d) must be >= 0",name().c_str(),is.fileName(),nlinks);
+
+    _numLinks[i] = nlinks;
+
+    int oldLen = arr.len();
+    arr.resizeAndCopy(oldLen+nlinks);
+
+    for (int j=0;j<nlinks;j++) {
+      is.read(arr[oldLen+j],"DlinkMatrix::read, v");
+    }
+  }
+  setBasicAllocatedBit();
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * DlinkMatrix::write(os)
+ *      write out data to file 'os'. 
+ * 
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      No effects other than  moving the file pointer of os.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::write(oDataStreamFile& os)
+{
+  NamedObject::write(os);
+  os.write(dim(),"DlinkMatrix::write, dim()");
+  os.nl();
+  int ptr = 0;
+  for (int i=0;i<dim();i++) {
+    os.write(_numLinks[i],"DlinkMatrix::write, nlinks");
+    for (int j=0;j<_numLinks[i];j++) {
+      os.write(arr[ptr++],"DlinkMatrix::write val ");
+    }
+    os.nl();
+  }
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
  * compatibleWith()
  *      returns true of this object is compatible with the argument function.
  * 
@@ -88,9 +177,9 @@ DlinkMatrix::DlinkMatrix()
 bool 
 DlinkMatrix::compatibleWith(Dlinks& d)
 {
-  if (numFeats() != d.numFeats())
+  if (dim() != d.dim())
     return false;
-  for (int i=0;i<numFeats();i++) {
+  for (int i=0;i<dim();i++) {
     if (numLinks(i) != d.numLinks(i))
       return false;
   }
@@ -120,9 +209,8 @@ DlinkMatrix::compatibleWith(Dlinks& d)
 void
 DlinkMatrix::makeRandom()
 {
-  for (int i=0;i<numFeats();i++)
-    for (int j=0;j<numLinks(i);j++)
-      mat.arr[i][j] = rnd.drand48pe();
+  for (int i=0;i<arr.len();i++)
+    arr[i] = rnd.drand48pe();
 }
 
 
@@ -149,8 +237,7 @@ DlinkMatrix::makeRandom()
 void
 DlinkMatrix::makeUniform()
 {
-  for (int i=0;i<numFeats();i++)
-    for (int j=0;j<numLinks(i);j++)
-      mat.arr[i][j] = 0.0;
+  for (int i=0;i<arr.len();i++)
+    arr[i] = 0;
 }
 
