@@ -343,6 +343,9 @@ void
 MSCPT::makeRandom()
 {
   assert ( bitmask & bm_basicAllocated );
+  if (!emAmTrainingBitIsSet())
+    return;
+
   RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const int v = it.value();
@@ -377,6 +380,9 @@ void
 MSCPT::makeUniform()
 {
   assert ( bitmask & bm_basicAllocated );
+  if (!emAmTrainingBitIsSet())
+    return;
+
   RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const int v = it.value();

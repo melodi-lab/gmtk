@@ -459,7 +459,8 @@ void
 MDCPT::makeRandom()
 {
   assert ( basicAllocatedBitIsSet() );
-
+  if (!emAmTrainingBitIsSet())
+    return;
 
   // Use the inherent structure of the multi-D array
   // so to loop over the final distributions on the child.
@@ -507,6 +508,9 @@ void
 MDCPT::makeUniform()
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
 
   // Use the inherent structure of the multi-D array
   // so to loop over the final distributions on the child.

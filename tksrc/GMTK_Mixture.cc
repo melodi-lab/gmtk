@@ -146,6 +146,9 @@ unsigned MixGaussians::totalNumberParameters()
 void
 MixGaussians::makeUniform()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   dense1DPMF->makeUniform();
   for (unsigned i=0;i<numComponents;i++) {
     components[i]->makeUniform();
@@ -156,6 +159,9 @@ MixGaussians::makeUniform()
 void
 MixGaussians::makeRandom()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   dense1DPMF->makeRandom();
   for (unsigned i=0;i<numComponents;i++) {
     components[i]->makeRandom();

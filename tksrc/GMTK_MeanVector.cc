@@ -79,6 +79,9 @@ MeanVector::MeanVector()
 void
 MeanVector::makeRandom()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   for (int i=0;i<means.len();i++) {
     means[i] = rnd.drand48pe();
   }
@@ -87,6 +90,9 @@ MeanVector::makeRandom()
 void
 MeanVector::makeUniform()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   for (int i=0;i<means.len();i++) {
     means[i] = 0.0;
   }

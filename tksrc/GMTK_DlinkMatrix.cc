@@ -226,6 +226,9 @@ DlinkMatrix::write(oDataStreamFile& os)
 void
 DlinkMatrix::makeRandom()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   for (int i=0;i<arr.len();i++)
     arr[i] = rnd.drand48pe();
 }
@@ -254,6 +257,9 @@ DlinkMatrix::makeRandom()
 void
 DlinkMatrix::makeUniform()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   for (int i=0;i<arr.len();i++)
     arr[i] = 0;
 }

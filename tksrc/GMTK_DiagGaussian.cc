@@ -115,7 +115,8 @@ void
 DiagGaussian::makeRandom()
 {
   assert ( basicAllocatedBitIsSet() );
-
+  if (!emAmTrainingBitIsSet())
+    return;
   mean->makeRandom();
   covar->makeRandom();
 }
@@ -125,6 +126,8 @@ void
 DiagGaussian::makeUniform()
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
 
   mean->makeUniform();
   covar->makeUniform();
