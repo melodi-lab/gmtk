@@ -42,8 +42,46 @@ VCID("$Header$");
 void
 MixGaussians::read(iDataStreamFile& is)
 {
-  // read name
+  // read name of self
   NamedObject::read(is);
+  
+  // read number of mixtures
+  is.read(numComponents,"MixGaussians::read numComponents");
+  if (numComponents <= 0) 
+    error("Error: MixGaussians '%s' has number of components = %d\n",
+	  _name.c_str(),numComponents);
+
+  // read name of dense 1d PMF to use for mixtures
+  string str;
+  is.read(str);
+  if (GM_Parms.dPmfsMap.find(str) == GM_Parms.dPmfsMap.end()) {
+    error("Error: MixGaussians '%s', can't find PMF named '%s'\n",
+	  _name.c_str(),str.c_str());
+  }
+
+  dense1DPMF = GM_Parms.dPmfs[
+			      GM_Parms.dPmfsMap[str]
+  ];
+
+  // now make sure that this one matches the number of components.
+  if (numComponents != dense1DPMF->length()) {
+    error("Error: MixGaussians '%s', PMF named '%s' has %d elements but we need %d\n",
+	  _name.c_str(),
+	  str.c_str(),dense1DPMF->length(),numComponents);
+  }
+
+  // now read 'name' pointers to all the Gaussians.
+  components.resize(numComponents);
+  for (int i=0;i<numComponents;i++) {
+    is.read(str);
+    if (GM_Parms.gaussianComponentsMap.find(str) == GM_Parms.gaussianComponentsMap.end()) {
+      error("Error: MixGaussians '%s', can't find Gaussian Component named '%s'\n",_name.c_str(),str.c_str());
+    }
+    GaussianComponent*gc = GM_Parms.gaussianComponents [
+	GM_Parms.gaussianComponentsMap[str]
+    ];
+    components[i] = gc;
+  }
 }
 
 void
@@ -57,7 +95,31 @@ MixGaussians::write(oDataStreamFile& os)
 void
 MixGaussians::preCompute()
 {
+  for (int i=0;i<numComponents;i++) {
+    components[i]->preCompute();
+  }
 }
+
+
+void
+MixGaussians::makeUniform()
+{
+  dense1DPMF->makeUniform();
+  for (int i=0;i<numComponents;i++) {
+    components[i]->makeUniform();
+  }
+}
+
+
+void
+MixGaussians::makeRandom()
+{
+  dense1DPMF->makeRandom();
+  for (int i=0;i<numComponents;i++) {
+    components[i]->makeRandom();
+  }
+}
+
 
 
 //
@@ -68,7 +130,12 @@ MixGaussians::log_p(const float *const x,
 		    const Data32* const base,
 		    const int stride)
 {
-  return 0.0;
+  logpr rc;
+  rc.set_to_zero();
+  for (unsigned i=0;i<numComponents;i++) {
+    rc += dense1DPMF->p(i)* components[i]->log_p(x,base,stride);
+  }
+  return rc;
 }
 
 

@@ -47,7 +47,7 @@ class DiagCovarVector : public EMable, public NamedObject {
   //    Precomputed inverse variances.
   sArray<float> variances_inv;
   //    precomputed logged normalization constant.
-  float log_inv_normConst;
+  float _log_inv_normConst;
   ///////////////////////////////////////////////////////
 
 
@@ -56,10 +56,11 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   DiagCovarVector();
-  ~DiagCovarVector() { }
+  ~DiagCovarVector() {}
 
   ///////////////////////////////////////////////////////////  
   void makeRandom();
+  void makeUniform();
 
   //////////////////////////////////////////////
   // read/write basic parameters
@@ -69,7 +70,15 @@ public:
     covariances.write(os); 
   }
 
-  void preCompute() { error("not implemented"); }
+  ///////////////////////////////////////
+  void preCompute();
+  // easy access to internal pointers for efficient reading.
+  const float* basePtr() { return &covariances[0]; }
+  const float* baseVarInvPtr() { return &variances_inv[0]; }
+  float log_inv_normConst() { return _log_inv_normConst; }
+
+  ///////////////////////////////////////
+  int dim() { return covariances.len(); }
 
 
   //////////////////////////////////

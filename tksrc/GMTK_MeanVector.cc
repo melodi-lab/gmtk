@@ -69,3 +69,11 @@ MeanVector::makeRandom()
     means[i] = rnd.drand48();
   }
 }
+
+void
+MeanVector::makeUniform()
+{
+  for (int i=0;i<means.len();i++) {
+    means[i] = 0.0;
+  }
+}

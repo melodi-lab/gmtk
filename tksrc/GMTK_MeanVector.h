@@ -53,6 +53,12 @@ public:
   //////////////////////////////////
   // set all current parameters to random values
   void makeRandom();
+  void makeUniform();
+
+  ///////////////////////////////////////
+  int dim() { return means.len(); }
+
+  const float *basePtr() { return &means[0]; }
 
   //////////////////////////////////////////////
   // read/write basic parameters

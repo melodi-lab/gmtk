@@ -170,7 +170,7 @@ public:
 
   vector < MLPSwitchingMixGaussians* > mlpSwitchingMixGaussians;
   typedef map< string, unsigned > MlpSwitchingMixGaussiansMapType;
-  MlpSwitchingMixGaussiansMapType   MlpSwitchingMixGaussiansMap;
+  MlpSwitchingMixGaussiansMapType  mlpSwitchingMixGaussiansMap;
 
   /********************************************************************/
 
@@ -233,7 +233,6 @@ public:
   void readLinMeanCondGaussians(iDataStreamFile& is,bool reset = false);
   void readNLinMeanCondGaussians(iDataStreamFile& is,bool reset = false);
 
-  void readGaussianMixtures(iDataStreamFile& is,bool reset = false);
   void readMixGaussians(iDataStreamFile& is,bool reset = false);
   void readGausSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
   void readLogitSwitchMixGaussians(iDataStreamFile& is,bool reset = false);

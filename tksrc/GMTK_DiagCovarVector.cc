@@ -19,6 +19,7 @@
 
 
 #include <math.h>
+#include <cmath>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -33,6 +34,11 @@
 
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_GaussianComponent.h"
+
+#ifndef M_PI
+#define M_PI               3.14159265358979323846  /* pi */
+#endif
+
 
 
 VCID("$Header$");
@@ -81,7 +87,8 @@ DiagCovarVector::read(iDataStreamFile& is)
   covariances.read(is); 
   for (int i=0;i<covariances.len();i++) {
     if (covariances[i] < GaussianComponent::varianceFloor()) {
-      error("DiagCovarVector:: read, covariance[%d] = (%e) < current Floor = (%e)",
+      error("Error: reading diagonal covariance matrix '%s' (file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
+	    name().c_str(),is.fileName(),
 	    i,covariances[i],GaussianComponent::varianceFloor());
     }
   }
@@ -102,6 +109,40 @@ DiagCovarVector::makeRandom()
     covariances[i] = 1.0+rnd.drand48();
   }
 }
+
+void
+DiagCovarVector::makeUniform()
+{
+  for (int i=0;i<covariances.len();i++) {
+    covariances[i] = 1.0;
+  }
+}
+
+
+void
+DiagCovarVector::preCompute()
+{
+  variances_inv.growIfNeeded(covariances.len());
+  double det = 1.0;
+  for (int i=0;i<covariances.len();i++) {
+    if (covariances[i] <= GaussianComponent::varianceFloor()) {
+      // Theoretically, this shouldn't happen unless you are reading
+      // in a file that was computed from a previous run with a different threshold.
+      coredump("ERROR: element %i of diagonal covariance matrix '%s' is at or below floor value",i,name().c_str());
+    }
+    variances_inv[i] = 1.0/covariances[i];
+    det *= covariances[i];
+  }
+  if (det <= DBL_MIN) {
+    coredump("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum",name().c_str());
+  }
+  const double tmp = (::pow(2*M_PI,covariances.len()/2.0)*::sqrt(det));
+  if (tmp <= DBL_MIN)
+    coredump("ERROR:  norm const has hit maximum of diagonal covariance matrix '%s'",name().c_str());
+  _log_inv_normConst = -0.5*(covariances.len()*::log(2*M_PI) + ::log(det));
+}
+
+
 
 
 

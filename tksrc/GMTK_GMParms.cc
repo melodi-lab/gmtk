@@ -387,10 +387,8 @@ GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
 }
 
 
-
-
 void 
-GMParms::readGaussianMixtures(iDataStreamFile& is, bool reset)
+GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
 {
   unsigned num;
   unsigned cnt;
@@ -407,7 +405,7 @@ GMParms::readGaussianMixtures(iDataStreamFile& is, bool reset)
   }
   for (unsigned i=0;i<num;i++) {
     // first read the count
-    MixGaussiansCommon* gm;
+    MixGaussians* gm;
 
     is.read(cnt,"GMTK_GMParms::readGaussianMixtures, cnt");
     if (cnt != i) 
@@ -417,29 +415,15 @@ GMParms::readGaussianMixtures(iDataStreamFile& is, bool reset)
     int dim;
     is.read(dim,"GMTK_GMParms::readGaussianMixtures, dim");
 
-    // read the Gaussian type
-    int t;
-    is.read(t,"GMTK_GMParms::readGaussianMixtures, type");
-    if (t == MixGaussiansCommon::ci_mixGaussian) {
-      gm = new MixGaussians(dim);
-    } else if (t == MixGaussiansCommon::ci_gausSwitchMixGaussian) {
-      error("GausSwitchMix not implemented");
-      // gm = new GausSwitchingMixGaussians();
-    } else if (t == MixGaussiansCommon::ci_logitSwitchMixGaussian) {
-      error("LogitSwitchMix not implemented");
-      // gm = new LogitSwitchingMixGaussians();      
-    } else if (t == MixGaussiansCommon::ci_mlpSwitchMixGaussian) {
-      error("MlpSwitchMix not implemented");
-      // gm = new MLPSwitchingMixGaussians(dim);
-    } else {
-      error("Error: unknown gaussian mixture type in file");
-    }
+    gm = new MixGaussians(dim);
     gm->read(is);
+    if (mixGaussiansMap.find(gm->name()) != mixGaussiansMap.end()) {
+      error("ERROR: mixture of Gaussian named '%s' specified more than once in file '%s'",gm->name().c_str(),is.fileName());
+    }
     mixGaussians[i+start] = gm;
     mixGaussiansMap[gm->name()] = i+start;
   }
 }
-
 
 
 

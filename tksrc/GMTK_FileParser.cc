@@ -39,6 +39,7 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+#include "GMTK_MixGaussians.h"
 
 
 VCID("$Header$");
@@ -1569,7 +1570,11 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
     // NOW set up the conditional parent's parameters.
     //
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
-      // get a discrete form of the current rv
+      ///////////////////////////////////////////////////////
+      //
+      // DISCRETE form of the current rv
+      //
+      ///////////////////////////////////////////////////////
       DiscreteRandomVariable* rv = 
 	(DiscreteRandomVariable*) rvInfoVector[i].rv;
 
@@ -1887,8 +1892,12 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
       // now add the cpts to the rv
       rv->setCpts(cpts);
     } else { 
-      // This is a continuous RV, so 
+      ///////////////////////////////////////////////////////////
+      ///////////////////////////////////////////////////////////
+      // This is a CONTINUOUS RV, so 
       // get a cont. form of the current rv
+      ///////////////////////////////////////////////////////////
+      ///////////////////////////////////////////////////////////
       ContinuousRandomVariable* rv = 
 	(ContinuousRandomVariable*) rvInfoVector[i].rv;
 
@@ -1900,7 +1909,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 
 	// TODO:: implement the other continuous implementations
 	// and allow the other cases here.
-	if (rvInfoVector[i].discImplementations[j] !=
+	if (rvInfoVector[i].contImplementations[j] !=
 	    MixGaussiansCommon::ci_mixGaussian) {
 	  error("ERROR: Only supports mixGaussian implementations for now");
 	  // ultimately, we can remove this and we'll have to duplicate
@@ -1918,16 +1927,11 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	    if (GM_Parms.mixGaussiansMap.find(
 		    rvInfoVector[i].listIndices[j].nameIndex) ==
 		GM_Parms.mixGaussiansMap.end()) {
-	      if (!allocateIfNotThere) {
-		error("Error: RV \"%s\" at frame %d (line %d), Gaussian mixture \"%s\" doesn't exist\n",
+	      error("Error: RV \"%s\" at frame %d (line %d), Gaussian mixture \"%s\" doesn't exist\n",
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
 		      rvInfoVector[i].fileLineNumber,
 		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
-	      } else {
-		// need to create a Gaussian.
-		error("code to create Mix Gaussians on the fly not yet done");
-	      }
 	    } else {
 	      // Mix Gaussian is there, so add it.
 	      rv->conditionalGaussians[j].gaussian =
@@ -1957,18 +1961,6 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		      ];
 	      }
 	  }
-	  // now check that the Gaussian we have added is
-	  // the expected type.
-	  if (rv->conditionalGaussians[j].gaussian.mixType
-	      != rvInfoVector[i].contImplementations[j]) {
-	    error("Error: RV \"%s\" at frame %d (line %d), conditional parent %d specifies a Gaussian Mixture '%s' of the wrong type\n",
-		  rvInfoVector[i].name.c_str(),
-		  rvInfoVector[i].frame,
-		  rvInfoVector[i].fileLineNumber,
-		  j,
-		  rv->conditionalGaussians[j].gaussian.name().c_str()
-		  );
-	  }
 	} else {
 	  // there are > 0 conditional parents for this
 	  // set of switching values. The index should
@@ -1976,6 +1968,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	  rv->conditionalGaussians[j].direct = false;
 	  if (rvInfoVector[i].listIndices[j].liType 
 		== RVInfo::ListIndex::li_String) {
+	    // string name index to DT
 	    if (GM_Parms.dtsMap.find(
 		    rvInfoVector[i].listIndices[j].nameIndex) ==
 		GM_Parms.dtsMap.end()) {
@@ -1993,19 +1986,15 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		  ]];
 	    }
 	  } else {
-	    // int index
+	    // int index to DT
 	    if (rvInfoVector[i].listIndices[j].intIndex >= 
 		GM_Parms.dts.size()) {
-		if (!allocateIfNotThere) {
-		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent %d specifies a DT index (%d) too large\n",
+	      error("Error: RV \"%s\" at frame %d (line %d), conditional parent %d specifies a DT index (%d) that is too large\n",
 			rvInfoVector[i].name.c_str(),
 			rvInfoVector[i].frame,
 			rvInfoVector[i].fileLineNumber,
 			j,
 			rvInfoVector[i].listIndices[j].intIndex);
-		} else {
-		  error("Can't allocate DT with integer index");
-		}
 	      } else {
 		// otherwise add it
 		rv->conditionalGaussians[j].dtMapper =
@@ -2014,7 +2003,6 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	  }
 	}
       }
-      error("not finished coding yet");
     }
   }
 }

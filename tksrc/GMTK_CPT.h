@@ -75,9 +75,14 @@ protected:
 
 public:
 
+
+  enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_MTCPT, di_unknown };
+  const DiscreteImplementaton cptType;
+
+
   ///////////////////////////////////////////////////////////  
   // General constructor, does nothing actually.
-  CPT() {}
+  CPT(const DiscreteImplementaton _cptType) : cptType(_cptType) {}
   virtual ~CPT() {}
 
   ////////////////////////////////////////////////

@@ -50,41 +50,41 @@ DiagGaussian::read(iDataStreamFile& is)
   string str;
   is.read(str);
 
-  if (strIsInt(str.c_str(),meanIndex)) {
-    if (meanIndex < 0 || meanIndex >= (int)GM_Parms.means.size()) {
-      error("Error: DiagGaussian '%s' specifies mean index (%d) that does not exist",
-	    _name.c_str(),meanIndex);
-    }
-  } else {
-    GMParms::MeansMapType::iterator it;
-    it = GM_Parms.meansMap.find(str);
-    if (it == GM_Parms.meansMap.end()) {
+  if (GM_Parms.meansMap.find(str) ==  GM_Parms.meansMap.end()) 
       error("Error: DiagGaussian '%s' specifies mean name '%s' that does not exist",
 	    _name.c_str(),str.c_str());
-    }
-    meanIndex = (*it).second;
-  }
+  meanIndex = GM_Parms.meansMap[str];
   means = GM_Parms.means[meanIndex];
 
 
   // read covariance vector
   is.read(str);
-
-  if (strIsInt(str.c_str(),covarIndex)) {
-    if (covarIndex < 0 || covarIndex >= (int)GM_Parms.covars.size()) {
-      error("Error: DiagGaussian '%s' specifies covar index (%d) that does not exist",
-	    _name.c_str(),covarIndex);
-    }
-  } else {
-    GMParms::CovarsMapType::iterator it;
-    it = GM_Parms.covarsMap.find(str);
-    if (it == GM_Parms.covarsMap.end()) {
-      error("Error: DiagGaussian '%s' specifies covar name '%s' that does not exist",
-	    _name.c_str(),str.c_str());
-    }
-    covarIndex = (*it).second;
-  }
+  if (GM_Parms.covarsMap.find(str) == GM_Parms.covarsMap.end())
+    error("Error: DiagGaussian '%s' specifies covar name '%s' that does not exist",
+	  _name.c_str(),str.c_str());
+  
+  covarIndex = GM_Parms.covarsMap[str];
   covar = GM_Parms.covars[covarIndex];
+
+  // check that lengths match, etc.
+  if (covar->dim() != means->dim()) {
+    error("Error: DiagGaussian '%s' specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
+	  _name.c_str(),
+	  means->name().c_str(),
+	  means->dim(),
+	  covar->name().c_str(),
+	  covar->dim());
+  }
+  if (covar->dim() != _dim) {
+    error("Error: DiagGaussian '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
+	  _name.c_str(),
+	  _dim,
+	  means->name().c_str(),
+	  means->dim(),
+	  covar->name().c_str(),
+	  covar->dim());
+  }
+
 }
 
 
@@ -98,6 +98,7 @@ DiagGaussian::write(oDataStreamFile& os)
 void
 DiagGaussian::preCompute()
 {
+  covar->preCompute();
 }
 
 
@@ -105,16 +106,26 @@ DiagGaussian::preCompute()
 void
 DiagGaussian::makeRandom()
 {
+  means->makeRandom();
+  covar->makeRandom();
 }
 
 
 void
 DiagGaussian::makeUniform()
 {
+  means->makeUniform();
+  covar->makeUniform();
 }
 
 
 
+// This can be changed from 'float' to 'double' to
+// provide extra range for temporary accumulators. Alternatively,
+// decreasing the program's mixCoeffVanishRatio at the beginning
+// of training should eliminate any component that produces
+// such low scores.
+#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE double
 
 
 //
@@ -125,7 +136,27 @@ DiagGaussian::log_p(const float *const x,
 		    const Data32* const base,
 		    const int stride)
 {
-  return 0.0;
+  logpr rc;
+  rc.set_to_zero();
+
+  // covariances must be precomputed for this
+  // to work.
+  const float *xp = x;
+  const float *const x_endp = x + _dim;
+  const float *mean_p = means->basePtr();
+  const float *var_inv_p = covar->baseVarInvPtr();
+  DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE d=0.0;
+  do {
+    const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp
+      = (*xp - *mean_p);
+    d += tmp*tmp*(*var_inv_p);
+
+    xp++;
+    mean_p++;
+    var_inv_p++;
+  } while (x != x_endp);
+  d *= -0.5;
+  return logpr(0,(covar->log_inv_normConst() + d));
 }
 
 
