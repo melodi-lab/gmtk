@@ -30,6 +30,12 @@
 class WeightMatrix : public EMable {
 
 
+
+  //////////////////////////////////////////////////////  
+  // the name
+  char *_name;
+
+
   ///////////////////////////////////////////////////////////  
   // The data values
   sArray<float> weights;
@@ -52,6 +58,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   WeightMatrix();
+  ~WeightMatrix() { delete [] _name; }
 
   int rows() { return _rows; }
   int cols() { return _cols; }

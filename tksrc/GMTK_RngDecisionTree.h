@@ -71,6 +71,9 @@ class RngDecisionTree {
 
 private:
 
+  ////////////////////////////////////////////////////////////
+  char *_name;
+
 protected:
 
   struct Node {
@@ -126,7 +129,7 @@ protected:
 
 public:
 
-  RngDecisionTree() {}
+  RngDecisionTree() : _name(NULL) {}
   ~RngDecisionTree();
 
   ///////////////////////////////////////////////////////////    
@@ -219,6 +222,7 @@ public:
 template <class T>
 RngDecisionTree<T>::~RngDecisionTree()
 {
+  delete [] _name;
   destructorRecurse(root);
   delete root;
 }
@@ -290,6 +294,7 @@ template <class T>
 void
 RngDecisionTree<T>::read(iDataStreamFile& is)
 {
+  is.read(_name,"RngDecisionTree:: read name");
   is.read(_numFeatures,"RngDecisionTree:: read numFeatures");
   if (_numFeatures <= 0)
     error("RngDecisionTree::read decision tree must have >= 0 features");
@@ -423,6 +428,8 @@ template <class T>
 void
 RngDecisionTree<T>::write(oDataStreamFile& os)
 {
+  os.write(_name,"RngDecisionTree:: read name");
+  os.nl();
   os.write(_numFeatures,"RngDecisionTree:: read numFeatures");
   os.nl();
   writeRecurse(os,root,0);

@@ -32,6 +32,10 @@
 
 class Sparse1DPMF : public EMable {
 
+  ///////////////////////////////////////////////////////////  
+  // the name
+  char *_name;
+
   //////////////////////////////////////
   // The cardinality of this RV, i.e., 
   // values may take value between [0:card-1]
@@ -59,6 +63,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   Sparse1DPMF();
+  ~Sparse1DPMF() { delete [] _name; } 
 
   //////////////////////////////////////
   // Return the number of valid values

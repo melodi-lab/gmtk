@@ -57,6 +57,7 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 MDCPT::MDCPT()
+  : _name(NULL)
 {
 }
 
@@ -161,6 +162,7 @@ void
 MDCPT::read(iDataStreamFile& is)
 {
 
+  is.read(_name,"MDCPT::read name");
   is.read(numParents,"MDCPT::read numParents");
 
   if (numParents < 0) 
@@ -222,6 +224,7 @@ MDCPT::read(iDataStreamFile& is)
 void
 MDCPT::write(oDataStreamFile& os)
 {
+  os.write(_name,"MDCPT::write name"); os.nl();
   os.write(numParents,"MDCPT::write numParents"); 
   os.writeComment("number parents");os.nl();
   for (int i=0;i<=numParents;i++) {

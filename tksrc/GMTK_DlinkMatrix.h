@@ -30,6 +30,11 @@
 
 class DlinkMatrix : public EMable {
 
+
+  //////////////////////////////////////////////////////  
+  // the name
+  char *_name;
+
   //////////////////////////////////
   // The acutal matrix.
   PackedSparseRealMatrix mat;
@@ -43,6 +48,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   DlinkMatrix();
+  ~DlinkMatrix() { delete [] _name; }
 
   //////////////////////////////////
   // set all current parameters to random values
@@ -50,8 +56,14 @@ public:
 
   //////////////////////////////////////////////
   // read/write basic parameters
-  void read(iDataStreamFile& is) { mat.read(is); }
-  void write(oDataStreamFile& os) { mat.write(os); }
+  void read(iDataStreamFile& is) { 
+    is.read(_name,"DlinkMatrix::read name");
+    mat.read(is); 
+  }
+  void write(oDataStreamFile& os) { 
+    os.write(_name,"DlinkMatrix::write name");
+    mat.write(os); 
+  }
 
   //////////////////////////////////
   // Public interface support for EM
