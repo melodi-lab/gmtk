@@ -199,38 +199,43 @@ MSCPT::read(iDataStreamFile& is)
   ncl->fillSpmfTable();
 
   //////////////////////////////////////////////////////////
-  // now go through the dt and make sure each dt leaf
-  // node points to a Sparse1DPMF that has the same
-  // cardinality as self.
+  // now go through the dt and make sure each dt leaf (to
+  // the extent possible) to a valid collection entry
   RngDecisionTree::iterator it = dt->begin();
   do {
     if (!it.valueNode()) {
-      // must have a value node for MSCPT DT so we don't
-      // need to have run time checks.
-      error("Error: MTCPT '%s' uses a DT '%s' that has non-constant (i.e., integer expression) leaf nodes",
-	    name().c_str(),
-	    str.c_str());
-    }
-    const unsigned v = it.value();
-    if (!ncl->validSpmfIndex(v))
-      error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d is out of range of collection '%s'",
-	    is.fileName(),
-	    name().c_str(),
-	    str.c_str(),
-	    v,
-	    ncl->name().c_str());
-    if (ncl->spmf(v)->card() != card()) {
-      error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d referring to SPMF '%s' (position %d within collection '%s') with card %d but MSCPT needs card %d",
-	    is.fileName(),
-	    name().c_str(),
-	    str.c_str(),
-	    v,
-	    ncl->spmf(v)->name().c_str(),
-	    v,ncl->name().c_str(),
-	    ncl->spmf(v)->card(),
-	    card());
+      // run-time check will check for this condition.
+    } else {
+      // if it is a constant value, might as well
+      // do the check here since that might inform user
+      // of problems earlier on than during run-time.
+      const unsigned v = it.value();
+      if (!ncl->validSpmfIndex(v))
+	error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d is out of range of collection '%s'",
+	      is.fileName(),
+	      name().c_str(),
+	      str.c_str(),
+	      v,
+	      ncl->name().c_str());
     }
   } while (++it != dt->end());
+
+  // Check that each Sparse1DPMF pointed to by the colleciton has the same
+  // cardinality as self. This will eliminate the need for run-time checks of
+  // this condition since all DT leaf values, even if they have integer expressions,
+  // must go through a collection.
+  for (unsigned u=0;u<ncl->spmfSize();u++) {
+    if (ncl->spmf(u)->card() != card()) {
+      error("ERROR: reading file '%s', MSCPT '%s' uses collection '%s' referring to SPMF '%s' (position %d within collection) with card %d but MSCPT needs card %d",
+	    is.fileName(),
+	    name().c_str(),
+	    ncl->name().c_str(),
+	    ncl->spmf(u)->name().c_str(),
+	    u,
+	    ncl->spmf(u)->card(),
+	    card());
+    }
+  }
 
   setBasicAllocatedBit();
 }
