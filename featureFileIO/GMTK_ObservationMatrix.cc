@@ -125,7 +125,7 @@
 
 
 
-int parseTransform(char*& trans_str, int& magic_int, double& magic_double);
+
 
 // create ObservationMatrix object
 ObservationMatrix::ObservationMatrix() {
@@ -149,11 +149,9 @@ ObservationMatrix::ObservationMatrix() {
 
   _numStreams     = 0;
   
-  //_cont_p         = NULL;
-  //_disc_p         = NULL;
   _inStreams      = NULL;
 
-  _filterFileName = DEFAULT_FILTER_FILE_NAME;
+  _filterFileName = NULL;
 }
 
 // initializes input streams, allocates feature buffer 
@@ -342,6 +340,9 @@ ObservationMatrix::~ObservationMatrix() {
   for (unsigned i = 0; i < _numStreams; i++)
     delete _inStreams[i];
   delete [] _inStreams;
+  
+  if(  _filterFileName != NULL ) 
+    delete [] _filterFileName;
 }
 
 /**
@@ -746,7 +747,7 @@ double conv2double(char* str, unsigned& len, char delimiter,bool conv2int=false)
  * recognized.  Otherwise returns the unsigned that corresponds to the
  * transformation substring.
  * */
-int parseTransform(char*& trans_str, int& magic_int, double& magic_double) {
+int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& magic_double) {
 
   if(*trans_str=='\0') 
     return (END_STR);
@@ -810,7 +811,18 @@ int parseTransform(char*& trans_str, int& magic_int, double& magic_double) {
     ++trans_str;
     if(*(trans_str)=='@') {
       magic_int=-1;  //we'll read the filter from a file
+#define MAX_TMP_STRING_LEN 200
+      char tmpString[MAX_TMP_STRING_LEN];
       ++trans_str;
+      unsigned i=0;
+      while(*trans_str != '\0' && *trans_str != '_') {
+	tmpString[i++]=*trans_str;
+	++trans_str;
+      } 
+      unsigned tmpStringLen=strlen(tmpString);
+      if(tmpStringLen==0) error("ERROR: parseTransform: no filter file name specified\n");
+      _filterFileName=new char[tmpStringLen];
+      strcpy(_filterFileName,tmpString);
     }
     else if(*trans_str=='_') ++trans_str;
     

@@ -92,7 +92,6 @@
 #define UNRECOGNIZED_TRANSFORM (-2)
 #define SEPARATOR "_"
 
-#define DEFAULT_FILTER_FILE_NAME "filter.in"
 #define MAX_NUM_STORED_FILTERS 10
 #define MAX_FILTER_LEN 100
 #define MIN_FILTER_LEN 1
@@ -210,7 +209,8 @@ class ObservationMatrix {
   
   
   /////////////////         data transformation routines      //////////////////  
-  
+
+  int  parseTransform(char*& trans_str, int& magic_int, double& magic_double);
   void applyTransforms(char* trans_str, unsigned num_floats, unsigned num_ints, unsigned num_frames);
   void applyPostTransforms(char* trans_str, unsigned num_floats, unsigned num_ints, unsigned num_frames);
   
