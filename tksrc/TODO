@@ -941,3 +941,12 @@ Mon Feb 03 14:45:49 2003
     unroll more times of the C chunk and triangulate that
     rather than just one time (this would put more constraints
     on the number of allowable frames for a P,C,E graph).
+
+Sun Feb 23 17:04:32 2003
+  - have exponential partition algorithm take a SIGUSR1 to terminiate
+    what it has done so far and continue with the best it has found so far.
+
+Sun Feb 23 17:05:10 2003
+  - Have exponential partition algorithm also parallize (so that space
+    can be broken into chunks in some way and have search run in parallel).
+
