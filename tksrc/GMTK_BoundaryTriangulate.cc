@@ -58,15 +58,15 @@ VCID("$Header$");
 #endif
 
 
-/*********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+/*******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  **
  **           General Support Routines
  **
- *********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+ *******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  */
 
 /*-
@@ -112,7 +112,8 @@ saveCurrentNeighbors(const set<RandomVariable*> nodes,vector<nghbrPairType>& org
  *
  * Preconditions:
  *   The corresponding partition must be instantiated. 
- *   For this routine to have any effect, previous neighbors must have already been saved.
+ *   For this routine to have any effect, previous neighbors must have 
+ *     already been saved.
  *
  * Postconditions:
  *   Old neighbors restored.
@@ -371,7 +372,6 @@ BoundaryTriangulate::createVectorBoundaryHeuristic(const string& bnd_heur_str,
  * BoundaryTriangulate::computeFillIn()
  *   Computes the number of edges that would need to be added
  *   among 'nodes' to make 'nodes' complete.
- *   
  *
  * Preconditions:
  *   Set of nodes must be valid meaning that it has valid neighbors,
@@ -474,15 +474,15 @@ graphWeight(vector<MaxClique>& cliques)
 
 
 
-/*********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+/*******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  **
  **         Main Partition Routines
  **
- *********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+ *******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  */
 
 
@@ -936,15 +936,15 @@ findInterfacePartitions(
 }
 
 
-/*********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+/*******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  **
  **         Main Triangulation Routines
  **
- *********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+ *******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  */
 
 
@@ -1076,7 +1076,7 @@ triangulate(// input: nodes to be triangulated
       triangulateExhaustiveSearch( nodes, orgnl_nghbrs, cliques ); 
       meth_str = string(buff) + "-" + "exhaustive";
     } else if (tri_heur.style == TS_MCS) {
-      maximumCardinalitySearch(nodes, cliques, order);
+      triangulateMaximumCardinalitySearch(nodes, cliques, order );
       meth_str = string(buff) + "-" + "MCS";
     } else if (tri_heur.style == TS_COMPLETED) {
       triangulateCompletePartition( nodes, cliques );
@@ -1770,12 +1770,369 @@ annealChain(
 
 /*-
  *-----------------------------------------------------------------------
+ * triangulateNode::triangulateNode (default constructor) 
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *
+ *-----------------------------------------------------------------------
+ */
+BoundaryTriangulate::
+triangulateNode::
+triangulateNode(
+  void 
+  )
+  : randomVariable( NULL ), 
+    nodeList( NULL ),
+    cardinality( 0 ),
+    eliminated( false ),
+    position( 0 ),
+    previousNode( NULL ),
+    nextNode( NULL )
+{
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateNode::triangulateNode (constructor) 
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+BoundaryTriangulate::
+triangulateNode::
+triangulateNode(
+  RandomVariable* random_variable 
+  )
+  : randomVariable( random_variable ), 
+    nodeList( NULL ),
+    cardinality( 0 ),
+    eliminated( false ),
+    position( 0 ),
+    previousNode( NULL ),
+    nextNode( NULL )
+{
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateNodeList::triangulateNodeList (constructor)
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+BoundaryTriangulate::
+triangulateNodeList::
+triangulateNodeList()
+  : last( NULL ),
+    list_length( 0 )
+{
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateNodeList::push_back
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+triangulateNodeList::
+push_back(
+  triangulateNode* node 
+  )
+{
+  node->previousNode = last; 
+  node->nextNode     = NULL;
+  node->nodeList     = this;
+
+  if (last != NULL) { 
+    last->nextNode = node;
+  }
+
+  last = node;
+  list_length++;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateNodeList::pop_back
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   The last node is removed from the list 
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   A pointer to the (former) last node is returned  
+ *-----------------------------------------------------------------------
+ */
+BoundaryTriangulate::triangulateNode*
+BoundaryTriangulate::
+triangulateNodeList::
+pop_back()
+{
+  triangulateNode* deleted; 
+
+  if (last->previousNode != NULL) {
+    last->previousNode->nextNode = NULL; 
+  }
+
+  deleted = last;
+  last    = last->previousNode;
+
+  deleted->nextNode     = NULL;
+  deleted->previousNode = NULL;
+  deleted->nodeList     = NULL;
+  
+  list_length--;
+
+  return(deleted);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateNodeList::erase
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   The given node is removed from the list.  The memory for the node 
+ *   is not-deallocated.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+triangulateNodeList::
+erase(
+  triangulateNode* node 
+  )
+{
+  assert(node->nodeList == this); 
+
+  if (node == last) {
+    last = last->previousNode;
+  }
+
+  if (node->previousNode != NULL) {
+    node->previousNode->nextNode = node->nextNode;
+  }
+
+  if (node->nextNode != NULL) {
+    node->nextNode->previousNode = node->previousNode;
+  }
+
+  node->nextNode     = NULL;
+  node->previousNode = NULL;
+  node->nodeList     = NULL;
+  
+  list_length--;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateNode::operator[]
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   A pointer to the i'th node in the list.  Note that this is a O(N) 
+ *   operation. 
+ *
+ *-----------------------------------------------------------------------
+ */
+BoundaryTriangulate::triangulateNode* 
+BoundaryTriangulate::
+triangulateNodeList::
+operator[] (
+  unsigned i 
+  )
+{
+  triangulateNode* node; 
+  unsigned count; 
+
+  assert(i < list_length);
+
+  node = last;
+  for( count=list_length-1; count>i; count-- ) {
+    assert(node != NULL);
+    node = node->previousNode;
+  } 
+
+  return(node);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * fillTriangulateNodeStructures
+ *
+ * Preconditions:
+ *   none 
+ *
+ * Postconditions:
+ *   The graph structure given by a set of RandomVariable*'s is copied 
+ *   into a set of triangulateNode's.  This O(N+E*log(N)) where E is the
+ *   number of edges and N is the number of nodes.
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+fillTriangulateNodeStructures( 
+  const set<RandomVariable*>& orgnl_nodes,
+  vector<triangulateNode>&    new_nodes 
+  )
+{
+  map<RandomVariable*, triangulateNode*> rv_to_mcs; 
+  set<RandomVariable*>::iterator         crrnt_node;
+  set<RandomVariable*>::iterator         end_node; 
+  vector<triangulateNode>::iterator      crrnt_triangulate; 
+  vector<triangulateNode>::iterator      end_triangulate; 
+
+  ////////////////////////////////////////////////////////////////////////
+  // Create a triangulateNode instance for each random variable 
+  ////////////////////////////////////////////////////////////////////////
+  new_nodes.clear();
+
+  for (crrnt_node = orgnl_nodes.begin(),  
+       end_node   = orgnl_nodes.end();  
+       crrnt_node != end_node;
+       ++crrnt_node) { 
+
+    triangulateNode new_node( *crrnt_node );
+    new_nodes.push_back( new_node );
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  // Create map from the randomVariable* to its triangulateNode 
+  ////////////////////////////////////////////////////////////////////////
+
+  for (crrnt_triangulate = new_nodes.begin(),  
+       end_triangulate   = new_nodes.end();  
+       crrnt_triangulate != end_triangulate;
+       ++crrnt_triangulate) {
+ 
+    rv_to_mcs[(*crrnt_triangulate).randomVariable] = &(*crrnt_triangulate);
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  // Create neighbor sets composed of triangulateNode's which match the 
+  // original sets of RandomVariable*'s    
+  ////////////////////////////////////////////////////////////////////////
+  set<RandomVariable*>::iterator crrnt_nghbr;
+  set<RandomVariable*>::iterator end_nghbr; 
+
+  for (crrnt_node = orgnl_nodes.begin(),  
+       end_node   = orgnl_nodes.end();  
+       crrnt_node != end_node;
+       ++crrnt_node) {
+
+    for (crrnt_nghbr = (*crrnt_node)->neighbors.begin(),  
+         end_nghbr   = (*crrnt_node)->neighbors.end();  
+         crrnt_nghbr != end_nghbr;
+         ++crrnt_nghbr) {
+
+      rv_to_mcs[*crrnt_node]->neighbors.push_back( rv_to_mcs[*crrnt_nghbr] ); 
+    }  
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
  * maximumCardinalitySearch
- *   Determines if a given graph is triangulated.  
- *   -If chordal_test is set to false, an order will be given, the 
- *    graph will be triangulated, and a list of cliques is calculated.
- *   -If chordal_test is true, it tests for chordality and if it is the
- *    cliques are returned.  
+ *   
+ *   Calculated a perfect ordering on the graph, if it exists.  If the 
+ *   order is perfect, the maximal cliques of the graph are determined.
+ *   The procedure can be used as a first step in an O(N+E) chordality 
+ *   test.  The procedure can also be used as a heuristic search for an 
+ *   optimal elimination order.  If the given graph is not triangulated 
+ *   the cliques correspond to the maximal cliques that will occur if 
+ *   elimination is run on the graph using the given order.  
+ *
+ *   The function calculated the order from back to front.  At each step 
+ *   it chooses the node with the largest number of previously ordered 
+ *   neighbors. 
+ *
+ *   If randomize_order = true, when there is a tie for the node with the 
+ *   largest number of previously ordered neighbors the tie is broken 
+ *   randomly.  In this case, the function runs in O(N^2). 
+ *
+ *   If randomize_order = false, ties are broken in a deterministic
+ *   manner and the function runs in O(N+E).  
  *
  *   Maximum cardinality search was originally described in:
  *     R. E. Tarjan and M. Yannakakis.  "Simple linear time algorithm to 
@@ -1783,27 +2140,402 @@ annealChain(
  *     selectively reduce acyclic hypergraphs."  SIAM J. Comput., 
  *     13:566--579, 1984.  
  *
- *   Although the method can be implemented in O(n+e), this implementation 
- *   is O(N^2) due to the data structures used to store graphs in this
- *   application.
- *   TODO: re-implement this to be O(n+e) time.
- *    
  * Preconditions:
  *   Each variable in the set of nodes must have valid parent and 
  *   neighbor members and the parents/neighbors must only point to other 
  *   nodes in the set. 
  *
  * Postconditions:
- *   If chordal_test is true, the graph is triangulated, the 
- *     corresponding order is placed in order, and the maximal cliques 
- *     are stored in cliques.
- *   If chordal_test is false, the nodes and their neighbors will be 
- *     unmodified, cliques will be changed but only valid if the return
- *     value is true, order will be left unmodified.   
+ *   order is cleared and replaced with an order based on the give nodes. 
+ *  
+ *   cliques is cleared and replaced with a new list based on the given 
+ *   nodes.   
  *
  * Side Effects:
- *   If chordal_test is true and the graph is untriangulated, neighbor 
- *     members of each random variable can be changed.
+ *   none 
+ *
+ * Results:
+ *   none 
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+BoundaryTriangulate::
+maximumCardinalitySearch( 
+  vector<triangulateNode>&         nodes, 
+  list<vector<triangulateNode*> >& cliques,
+  vector<triangulateNode*>&        order,
+  bool                             randomize_order 
+  )
+{
+  vector<triangulateNodeList> card_set;
+
+  vector<triangulateNode*> empty_clique; 
+  list<vector<triangulateNode*> >::iterator prvs_clique;
+  list<vector<triangulateNode*> >::iterator crrnt_clique;
+  list<vector<triangulateNode*> >::iterator tmp_clique;
+
+  vector<triangulateNode>::iterator  crrnt_node; 
+  vector<triangulateNode>::iterator  end_node; 
+  vector<triangulateNode*>::iterator crrnt_nghbr; 
+  vector<triangulateNode*>::iterator end_nghbr; 
+
+  unsigned         max_cardinality;    // largest cardinality found so far
+  int              index;              // index of selected variable 
+  triangulateNode* elmnt_node;         // node selected for elimination
+  unsigned         nmbr_nodes_ordered; // count of number of nodes ordered
+  RAND             rndm_nmbr(0);       // random number class
+
+  ////////////////////////////////////////////////////////////////////
+  // Put all nodes in cardinality set 0 
+  ////////////////////////////////////////////////////////////////////
+  card_set.resize( nodes.size() );
+
+  for (crrnt_node = nodes.begin(), 
+       end_node = nodes.end(); 
+       crrnt_node != nodes.end();
+       ++crrnt_node ) {
+
+    (*crrnt_node).cardinality = 0;
+    (*crrnt_node).eliminated  = false;
+    card_set[0].push_back( &(*crrnt_node) ); 
+  }
+
+  max_cardinality = 0;
+  
+  ////////////////////////////////////////////////////////////////////
+  // Set up the current clique and previous clique.
+  ////////////////////////////////////////////////////////////////////
+  cliques.clear();
+  empty_clique.reserve( nodes.size() );
+ 
+  cliques.push_back(empty_clique);
+  prvs_clique = cliques.end();
+  --prvs_clique;
+  cliques.push_back(empty_clique);
+  crrnt_clique = cliques.end();
+  --crrnt_clique;
+
+  ////////////////////////////////////////////////////////////////////
+  // Iterate through all of the nodes 
+  ////////////////////////////////////////////////////////////////////
+  order.clear();
+
+  for ( nmbr_nodes_ordered = 0;
+        nmbr_nodes_ordered < nodes.size();
+        nmbr_nodes_ordered++ ) {
+
+    ////////////////////////////////////////////////////////////////////
+    // Find unordered node with the largest number of ordered neighbors
+    ////////////////////////////////////////////////////////////////////
+    if (! randomize_order) {
+
+      elmnt_node = card_set[max_cardinality].pop_back();
+    }
+    else { 
+      ////////////////////////////////////////////////////////////////
+      // Choose randomly among all nodes tied for maximum cardinality
+      ////////////////////////////////////////////////////////////////
+      index = rndm_nmbr.uniform( card_set[max_cardinality].size() - 1 );
+
+      ////////////////////////////////////////////////////////////////
+      // Get the pointer referred to by the index, be warned that 
+      //  there is an O(N) operation hidden in the second [] 
+      ////////////////////////////////////////////////////////////////
+      elmnt_node = card_set[max_cardinality][index];  
+
+      card_set[max_cardinality].erase(elmnt_node);
+    }
+
+    assert(elmnt_node != NULL);
+    order.push_back(elmnt_node); 
+    elmnt_node->eliminated = true;
+
+    //////////////////////////////////////////////////////////////////
+    // a) Move the node's ordered neighbors into a higher cardinality 
+    //    set 
+    // b) Remember the node's unordered neighbors as a potential max
+    //    clique 
+    //////////////////////////////////////////////////////////////////
+    (*crrnt_clique).push_back( elmnt_node );
+   
+    for (crrnt_nghbr = elmnt_node->neighbors.begin(), 
+         end_nghbr   = elmnt_node->neighbors.end(); 
+         crrnt_nghbr != end_nghbr;
+         ++crrnt_nghbr) {
+
+      if ((*crrnt_nghbr)->eliminated == false) {
+
+        card_set[(*crrnt_nghbr)->cardinality].erase( *crrnt_nghbr );
+        (*crrnt_nghbr)->cardinality++; 
+        card_set[(*crrnt_nghbr)->cardinality].push_back( *crrnt_nghbr );
+      }
+      else {
+
+        (*crrnt_clique).push_back( *crrnt_nghbr );   
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////
+    // If the previous node had more or the same number of unordered 
+    //   neighbors prvs_clique is a maximal clique.  Set prvs_clique as
+    //   the crrnt_clique and start a new current clique.
+    ////////////////////////////////////////////////////////////////////
+    if ((*prvs_clique).size() >= (*crrnt_clique).size()) {
+
+      prvs_clique = crrnt_clique;
+      cliques.push_back(empty_clique);
+      crrnt_clique = cliques.end();
+      --crrnt_clique; 
+    }
+    ////////////////////////////////////////////////////////////////////
+    // Maximumal clique is not detected, so swap prvs_clique and  
+    // crrnt_clique and clear the new crrnt_clique.  This sets the 
+    // previous clique to be the current clique and clears next 
+    // iteration's current clique without deallocating or allocating any
+    // memory. 
+    ////////////////////////////////////////////////////////////////////
+    else {
+      cliques.splice(prvs_clique, cliques, crrnt_clique );
+
+      tmp_clique   = prvs_clique;
+      prvs_clique  = crrnt_clique;
+      crrnt_clique = tmp_clique;
+      (*crrnt_clique).clear();
+    }
+
+    //////////////////////////////////////////////////////////////////
+    // Set the maximum cardinality  
+    //////////////////////////////////////////////////////////////////
+    ++max_cardinality;
+    while( card_set[max_cardinality].size() == 0 ) {
+      --max_cardinality;
+    }
+
+  }
+
+  //////////////////////////////////////////////////////////////////
+  // Remove the current clique (which will just be the last node 
+  // and not a maximal clique)
+  //////////////////////////////////////////////////////////////////
+  cliques.erase( crrnt_clique ); 
+
+  //////////////////////////////////////////////////////////////////
+  // Put the order in forward elimination order 
+  //////////////////////////////////////////////////////////////////
+  reverse( order.begin(), order.end() );
+}  
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateMaximumCardinalitySearch
+ *   
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   The graph is triangulated with an elimination order as determined by 
+ *   maximum cardinality search.  This procedure is O(N^2). 
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *   none 
+ *
+ * (For more details see maximumCardinalitySearch) 
+ *-----------------------------------------------------------------------
+ */
+void 
+BoundaryTriangulate::
+triangulateMaximumCardinalitySearch( 
+  const set<RandomVariable*>& nodes,
+  vector<MaxClique>&          cliques,
+  vector<RandomVariable*>&    order
+  )
+{
+  vector<triangulateNode>         triangulate_nodes; 
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        triangulate_order; 
+
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, triangulate_order, 
+    true);
+  fillInComputation( triangulate_order );
+ 
+  listVectorCliquetoVectorSetClique( list_cliques, cliques );
+  triangulateCompletePartition( nodes, cliques );
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * fillInComputation
+ *  
+ *   Triangulates a graph according to a given elimination order in 
+ *   O(N+E') time, where N is the number of nodes and E' is the number 
+ *   of original graph edges plus the number of fill in edges. 
+ *
+ *   This algorithm is given in:
+ *     R. E. Tarjan and M. Yannakakis.  "Simple linear time algorithm to 
+ *     test chordality of graphs, test acyclicity of hypergraphs, and 
+ *     selectively reduce acyclic hypergraphs."  SIAM J. Comput., 
+ *     13:566--579, 1984.  
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   The graph is triangulated according to the elimination order 
+ *   ordered_nodes. 
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *   none 
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+fillInComputation( 
+  vector<triangulateNode*>& ordered_nodes 
+  )
+{
+  enum {
+    invalid_index = ~0
+  };
+
+  typedef pair<triangulateNode*, triangulateNode*> edge; 
+  
+  vector<triangulateNode*> follower; 
+  vector<unsigned>         index;
+  vector<edge>             edges;  
+ 
+  vector<triangulateNode*>::iterator crrnt_node;
+  vector<triangulateNode*>::iterator end_node;
+  vector<triangulateNode*>::iterator crrnt_nghbr;
+  vector<triangulateNode*>::iterator end_nghbr;
+  unsigned i;
+ 
+  triangulateNode* new_nghbr;  
+
+  ////////////////////////////////////////////////////////////////////
+  // Set up follower and index arrays 
+  ////////////////////////////////////////////////////////////////////
+  follower.resize(ordered_nodes.size());
+  index.resize(ordered_nodes.size(), invalid_index);
+
+  ////////////////////////////////////////////////////////////////////
+  // Record each node's position in the order into the triangulateNode 
+  // structure so that positions can be determined from the pointers 
+  ////////////////////////////////////////////////////////////////////
+  for (unsigned j = 0; j<ordered_nodes.size(); j++) {
+
+    ordered_nodes[j]->position = j; 
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  // Iterate through all nodes 
+  ////////////////////////////////////////////////////////////////////
+  for (crrnt_node = ordered_nodes.begin(), 
+       end_node   = ordered_nodes.end(),
+       i = 0;
+       crrnt_node != end_node;
+       ++i, ++crrnt_node ) {
+
+    follower[i] = *crrnt_node; 
+    index[i]    = i;
+
+    ////////////////////////////////////////////////////////////////////
+    // Find edges {crrnt_node, new_nghbr} with (crrnt_node<new_nghbr) 
+    // such that there is a vertex crrnt_nghbr with with 
+    // {crrnt_nghbr, new_nghbr} is a graph edge and 
+    // follower^i(crrnt_nghbr)=crrnt_node  
+    ////////////////////////////////////////////////////////////////////
+    for (crrnt_nghbr = (*crrnt_node)->neighbors.begin(), 
+         end_nghbr   = (*crrnt_node)->neighbors.end();
+         crrnt_nghbr != end_nghbr; 
+         ++crrnt_nghbr ) {
+
+      if ((*crrnt_nghbr)->position < i) {
+
+        new_nghbr = *crrnt_nghbr; 
+        assert( index[new_nghbr->position] != invalid_index );
+
+        while ( index[new_nghbr->position] < i ) { 
+
+          index[new_nghbr->position] = i;
+          edges.push_back( edge(*crrnt_node, new_nghbr) );
+          new_nghbr = follower[new_nghbr->position]; 
+        }
+
+        if (follower[new_nghbr->position] == new_nghbr) {
+
+          follower[new_nghbr->position] = *crrnt_node;
+        } 
+      } 
+    } 
+  }   
+
+  ////////////////////////////////////////////////////////////////////
+  // Remove the previous edge sets 
+  ////////////////////////////////////////////////////////////////////
+  vector<edge>::iterator crrnt_edge;  
+  vector<edge>::iterator end_edge;  
+ 
+  for (crrnt_node = ordered_nodes.begin(), 
+       end_node   = ordered_nodes.end();
+       crrnt_node != end_node;
+       ++crrnt_node ) {
+
+    (*crrnt_node)->neighbors.clear();  
+  }
+ 
+  ////////////////////////////////////////////////////////////////////
+  // Add the new edge sets to the graph 
+  ////////////////////////////////////////////////////////////////////
+  for (crrnt_edge = edges.begin(), 
+       end_edge   = edges.end();
+       crrnt_edge != end_edge;
+       ++crrnt_edge ) {
+
+    (*crrnt_edge).first->neighbors.push_back( (*crrnt_edge).second ); 
+    (*crrnt_edge).second->neighbors.push_back( (*crrnt_edge).first ); 
+  }
+}
+ 
+
+/*-
+ *-----------------------------------------------------------------------
+ * testZeroFillIn
+ *  
+ *  Determines if an elimination order is zero fill in.  This algorithm
+ *  runs in O(N+E) time.  Combined with maximum cardinality search this
+ *  function provides the second step of a chordality test. 
+ *
+ *  The algorithm was given in:
+ *    R. E. Tarjan and M. Yannakakis.  "Simple linear time algorithm to 
+ *    test chordality of graphs, test acyclicity of hypergraphs, and 
+ *    selectively reduce acyclic hypergraphs."  SIAM J. Comput., 
+ *    13:566--579, 1984.  
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none 
  *
  * Results:
  *   true if the graph is triangulated   
@@ -1812,270 +2544,92 @@ annealChain(
  */
 bool
 BoundaryTriangulate::
-maximumCardinalitySearch( 
-  set<RandomVariable*>     nodes,
-  vector<MaxClique>&       cliques,
-  vector<RandomVariable*>& order,
-  bool                     chordal_test 
+testZeroFillIn( 
+  vector<triangulateNode*>& ordered_nodes 
   )
 {
-  ////////////////////////////////////////////////////////////////
-  // This map associates a node with its cardinality 
-  ////////////////////////////////////////////////////////////////
-  map<RandomVariable*, unsigned> unordered_nodes; 
-  map<RandomVariable*, unsigned>::iterator crrnt_unordered_node;
-  map<RandomVariable*, unsigned>::iterator end_unordered_node;
+  enum {
+    invalid_index = ~0
+  };
 
-  ////////////////////////////////////////////////////////////////
-  // Vectors of ordered and unordered neighbors of a given node 
-  ////////////////////////////////////////////////////////////////
-  vector<RandomVariable*> unordered_nghbrs;
-  vector<RandomVariable*> ordered_nghbrs;
-  vector<RandomVariable*> max_cardinality_set; 
-  vector<RandomVariable*>::iterator crrnt_node;
-  vector<RandomVariable*>::iterator end_node;
-  vector<RandomVariable*>::iterator next_node;
-  set<RandomVariable*>::iterator found_node;
+  vector<triangulateNode*> follower; 
+  vector<unsigned> index;
   
-  ////////////////////////////////////////////////////////////////
-  // Set of previously ordered nodes 
-  ////////////////////////////////////////////////////////////////
-  set<RandomVariable*> ordered_nodes;
-  set<RandomVariable*>::iterator crrnt_nodes;
-  set<RandomVariable*>::iterator end_nodes;
+  vector<triangulateNode*>::iterator crrnt_node;
+  vector<triangulateNode*>::iterator end_node;
+  vector<triangulateNode*>::iterator crrnt_nghbr;
+  vector<triangulateNode*>::iterator end_nghbr;
+  unsigned i;
+  bool chordal = true;
 
-  ////////////////////////////////////////////////////////////////
-  // Number of unorderd neighbors of the node ordered on the 
-  // previous iteration.  Used to determine if the current node
-  // is a ladder node meaning a new clique is being formed. 
-  ////////////////////////////////////////////////////////////////
-  unsigned prvs_nghbr_sz;               
+  ////////////////////////////////////////////////////////////////////
+  // Set up follower and index arrays 
+  ////////////////////////////////////////////////////////////////////
+  follower.resize(ordered_nodes.size());
+  index.resize(ordered_nodes.size(), invalid_index);
 
-  ////////////////////////////////////////////////////////////////
-  // The current maximal clique
-  ////////////////////////////////////////////////////////////////
-  set<RandomVariable*> crrnt_clique;    
+  ////////////////////////////////////////////////////////////////////
+  // Record each node's position in the order into the triangulateNode 
+  // structure so that positions can be determined from the pointers 
+  ////////////////////////////////////////////////////////////////////
+  for (unsigned j = 0; j<ordered_nodes.size(); j++) {
 
-  ////////////////////////////////////////////////////////////////
-  // Return value 
-  ////////////////////////////////////////////////////////////////
-  bool chordal;
-
-  ////////////////////////////////////////////////////////////////
-  // misc. 
-  ////////////////////////////////////////////////////////////////
-  RandomVariable* elmnt_node;  // node selected for elimination          
-  unsigned max_cardinality;    // largest cardinality found so far     
-  int  index;                  // index of selected variable 
-  bool first_var;              // flag for the first iteration
-  RAND rndm_nmbr(0);           // random number class
-
-
-  ////////////////////////////////////////////////////////////////
-  // Initialize variables 
-  ////////////////////////////////////////////////////////////////
-  cliques.clear();
-
-  prvs_nghbr_sz = 0; 
-  first_var = true;
-  chordal = true;
-
-  ////////////////////////////////////////////////////////////////
-  // Put all vertices in the unordered list and set their 
-  // cardinalities to zero 
-  ////////////////////////////////////////////////////////////////
-  end_nodes = nodes.end();
-
-  for (crrnt_nodes = nodes.begin();
-       crrnt_nodes != end_nodes; 
-       ++crrnt_nodes ) {
-
-    unordered_nodes[*crrnt_nodes] = 0;
+    ordered_nodes[j]->position = j; 
   }
 
-  ////////////////////////////////////////////////////////////////
-  // Loop until all nodes have been ordered 
-  ////////////////////////////////////////////////////////////////
-  while ((unordered_nodes.size() > 0) && 
-         !((chordal_test == true) && (chordal == false))) { 
+  ////////////////////////////////////////////////////////////////////
+  // Iterate through all nodes 
+  ////////////////////////////////////////////////////////////////////
+  for (crrnt_node = ordered_nodes.begin(), 
+       end_node   = ordered_nodes.end(),
+       i = 0;
+       (crrnt_node != end_node) && (chordal == true); 
+       ++i, ++crrnt_node ) {
+
+    assert( (*crrnt_nghbr)->position == i ); 
+    follower[i] = *crrnt_node; 
+    index[i]    = i;
 
     ////////////////////////////////////////////////////////////////////
-    // Find unordered node with the largest number of ordered neighbors
+    // Calculate the followers and indexes of ordered neighbors 
     ////////////////////////////////////////////////////////////////////
+    for (crrnt_nghbr = (*crrnt_node)->neighbors.begin(), 
+         end_nghbr   = (*crrnt_node)->neighbors.end();
+         crrnt_nghbr != end_nghbr; 
+         ++crrnt_nghbr ) {
 
-    if (chordal_test) {
-      
-      crrnt_unordered_node = unordered_nodes.begin();
-      elmnt_node = crrnt_unordered_node->first; 
-      max_cardinality = crrnt_unordered_node->second; 
+      assert( (*crrnt_nghbr)->position] != invalid_index ); 
 
-      for ( ++crrnt_unordered_node, 
-            end_unordered_node = unordered_nodes.end();
-            crrnt_unordered_node != end_unordered_node;
-            ++crrnt_unordered_node
-            ) {
-        if (crrnt_unordered_node->second > max_cardinality) {
-          max_cardinality = crrnt_unordered_node->second;
-          elmnt_node = crrnt_unordered_node->first;
-        }
-      } 
+      if ((*crrnt_nghbr)->position < i) {
+
+        index[(*crrnt_nghbr)->position] = i;
+
+        if ( follower[(*crrnt_nghbr)->position] == *crrnt_nghbr ) {
+          follower[(*crrnt_nghbr)->position] = *crrnt_node;
+        }           
+      }
     }
-    else {
-      ////////////////////////////////////////////////////////////////
-      // If this is not a chordal test, create a list of all nodes
-      // tied for maximum cardinality.  Ties between these nodes are 
-      // broken randomly.  
-      ////////////////////////////////////////////////////////////////
-      max_cardinality_set.clear();
-      max_cardinality = 0;
- 
-      for ( crrnt_unordered_node = unordered_nodes.begin(),
-            end_unordered_node = unordered_nodes.end();
-            crrnt_unordered_node != end_unordered_node;
-            ++crrnt_unordered_node
-            ) {
-        if (crrnt_unordered_node->second > max_cardinality) {
-
-          max_cardinality = crrnt_unordered_node->second;
-          max_cardinality_set.clear();     
-          max_cardinality_set.push_back(crrnt_unordered_node->first);     
-        }
-        else if (crrnt_unordered_node->second == max_cardinality) {
-
-          max_cardinality_set.push_back(crrnt_unordered_node->first);     
-        }
-      } 
- 
-      index = rndm_nmbr.uniform( max_cardinality_set.size() - 1 ); 
-      elmnt_node = max_cardinality_set[index];
-    } 
 
     ////////////////////////////////////////////////////////////////////
-    // Divide the set of neighbors into ordered and unordered 
+    // Graph is not triangulated if any ordered neighbors did not have
+    // their indexes set. 
     ////////////////////////////////////////////////////////////////////
-    unordered_nghbrs.clear();
-    ordered_nghbrs.clear();
+    for (crrnt_nghbr = (*crrnt_node)->neighbors.begin(), 
+         end_nghbr   = (*crrnt_node)->neighbors.end();
+         crrnt_nghbr != end_nghbr; 
+         ++crrnt_nghbr ) {
 
-    set_intersection( elmnt_node->neighbors.begin(), 
-		      elmnt_node->neighbors.end(),
-		      ordered_nodes.begin(), 
-		      ordered_nodes.end(), 
-		      inserter(ordered_nghbrs, ordered_nghbrs.end()) ); 
-    
-    set_difference(   elmnt_node->neighbors.begin(), 
-		      elmnt_node->neighbors.end(), 
-		      ordered_nodes.begin(), 
-		      ordered_nodes.end(), 
-		      inserter(unordered_nghbrs, unordered_nghbrs.end()) ); 
+      if ((*crrnt_nghbr)->position < i) { 
 
-    ////////////////////////////////////////////////////////////////////
-    // Check if all ordered neighbors are connected, if not, graph is 
-    //  not chordal.
-    ////////////////////////////////////////////////////////////////////
-    end_node = ordered_nghbrs.end();
-
-    for ( crrnt_node = ordered_nghbrs.begin();
-          crrnt_node != end_node;
-          ++crrnt_node ) {
-
-      for ( next_node = crrnt_node + 1; 
-            next_node != end_node;
-            ++next_node ) {
-
-        found_node = find( (*next_node)->neighbors.begin(),
-                           (*next_node)->neighbors.end(),
-                           *crrnt_node );
-
-        if (found_node == (*next_node)->neighbors.end()) {
+        if ( index[(follower[(*crrnt_nghbr)->position])->position] < i ) {
           chordal = false;
-          break;
-        }
-      }    
-    } 
-
-    ////////////////////////////////////////////////////////////////////
-    // Skip last section if chordality test has already failed
-    ////////////////////////////////////////////////////////////////////
-    if (!((chordal_test == true) && (chordal == false))) {
- 
-      ////////////////////////////////////////////////////////////////////
-      // If the previous more or the same unordered neighbors, it a 
-      //   ladder node, begin new maximal clique. 
-      ////////////////////////////////////////////////////////////////////
-      if ( (first_var == false) && 
-           (prvs_nghbr_sz >= ordered_nghbrs.size()) ) {
-
-        cliques.push_back(MaxClique(crrnt_clique));
+        } 
       }
-        
-      ////////////////////////////////////////////////////////////////////
-      // Remember current clique in case next node is a ladder node 
-      ////////////////////////////////////////////////////////////////////
-      crrnt_clique.clear(); 
-      end_node = ordered_nghbrs.end();
-      for ( crrnt_node = ordered_nghbrs.begin();
-            crrnt_node != end_node; 
-            ++crrnt_node ) {
-
-        crrnt_clique.insert(*crrnt_node);  
-      }
-      crrnt_clique.insert(elmnt_node);
-
-      first_var = false;       
-      prvs_nghbr_sz = ordered_nghbrs.size(); 
-
-      ////////////////////////////////////////////////////////////////////
-      // Increment the counts of the neighbors of the node we just
-      //   ordered 
-      ////////////////////////////////////////////////////////////////////
-      end_node = unordered_nghbrs.end();
-
-      for ( crrnt_node = unordered_nghbrs.begin();
-            crrnt_node != end_node;
-            ++crrnt_node ) {
-        ++unordered_nodes[*crrnt_node];
-      }
-
-      ////////////////////////////////////////////////////////////////////
-      // Add the node to the ordering 
-      ////////////////////////////////////////////////////////////////////
-      ordered_nodes.insert(elmnt_node);
-      unordered_nodes.erase(elmnt_node);
-    } 
-  }
-
-  ////////////////////////////////////////////////////////////////////
-  // Add the last maximal clique to the list 
-  ////////////////////////////////////////////////////////////////////
-  cliques.push_back(MaxClique(crrnt_clique));
-
-  ////////////////////////////////////////////////////////////////////
-  // Put order in the output vector and triangulate the graph 
-  ////////////////////////////////////////////////////////////////////
-  if (!chordal_test) {
-
-    order.clear();
-    copy( ordered_nodes.begin(), 
-          ordered_nodes.end(), 
-          inserter(order, order.end()) );
-
-    ////////////////////////////////////////////////////////////////////
-    // Put nodes in forward order 
-    ////////////////////////////////////////////////////////////////////
-    reverse( order.begin(), order.end() );
-
-    ////////////////////////////////////////////////////////////////////
-    // Triangulate the graph if it is not already done 
-    ////////////////////////////////////////////////////////////////////
-    if (chordal == false) {
-      cliques.clear();
-      triangulateElimination( nodes, order, cliques);
-    } 
-  }
+    }
+  } 
 
   return(chordal);
-}  
-
+}
 
 
 /*-
@@ -2102,8 +2656,8 @@ maximumCardinalitySearch(
 void
 BoundaryTriangulate::
 triangulateCompletePartition( 
-  set<RandomVariable*>     nodes,
-  vector<MaxClique>&       cliques
+  const set<RandomVariable*>& nodes,
+  vector<MaxClique>&          cliques
   )
 {
   ////////////////////////////////////////////////////////////////////
@@ -2111,17 +2665,73 @@ triangulateCompletePartition(
   ////////////////////////////////////////////////////////////////////
   MaxClique::makeComplete(nodes);
 
-  ////////////////////////////////////////////////////////////////////
-  // Use maximum cardinality search to find the maximal cliques  
-  ////////////////////////////////////////////////////////////////////
-  // TODO: but there is one clique, and it is complete, so this is not necessary,
-  // chordal = maximumCardinalitySearch(nodes, cliques, order, false);
-  // assert(chordal);
-  
   cliques.clear();
   cliques.push_back(MaxClique(nodes));
 
   return;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * listVectorCliquetoVectorSetClique
+ *
+ * Preconditions:
+ *   none
+ * 
+ * Postconditions:
+ *   The vector of MaxCliques matches the list of vectors of 
+ *   triangulateNode pointers.  This is useful for converting a graph 
+ *   defined by triangulateNode's into a graph defined by RandomVariable's
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *-----------------------------------------------------------------------
+ */
+void  
+BoundaryTriangulate::
+listVectorCliquetoVectorSetClique(
+  const list<vector<triangulateNode*> >& lv_cliques,
+  vector<MaxClique>&                     vs_cliques
+  )
+{
+  vector<MaxClique>::iterator crrnt_vs_clique;
+
+  list<vector<triangulateNode*> >::const_iterator crrnt_lv_clique; 
+  list<vector<triangulateNode*> >::const_iterator end_lv_clique;
+
+  vector<triangulateNode*>::const_iterator crrnt_node;
+  vector<triangulateNode*>::const_iterator end_node;
+ 
+  set<RandomVariable*> empty_RV_set;
+  MaxClique empty_MaxClique( empty_RV_set );
+
+  ////////////////////////////////////////////////////////////////////
+  // Iterate through original data structure and construct the new 
+  ////////////////////////////////////////////////////////////////////
+  vs_cliques.clear();
+
+  for( crrnt_lv_clique = lv_cliques.begin(),  
+       end_lv_clique   = lv_cliques.end();  
+       crrnt_lv_clique != end_lv_clique;   
+       ++crrnt_lv_clique ) {
+
+    vs_cliques.push_back(empty_MaxClique);
+    crrnt_vs_clique = vs_cliques.end();
+    --crrnt_vs_clique; 
+     
+    for( crrnt_node = (*crrnt_lv_clique).begin(),  
+         end_node   = (*crrnt_lv_clique).end();  
+         crrnt_node != end_node;   
+         ++crrnt_node ) {
+
+      (*crrnt_vs_clique).nodes.insert( (*crrnt_node)->randomVariable );   
+    }
+  }
+
 }
 
 
@@ -2137,11 +2747,11 @@ triangulateCompletePartition(
  *   nodes in the set. 
  *
  * Postconditions:
- *   Each of the partitions have been triangulated to the graph giving
- *   the best weight that was found. 
+ *   The minimum weight triangulation is stored in best_cliques.  Graph 
+ *   is triangulated.
  *
  * Side Effects:
- *   Neighbor members of each random variable can be changed.
+ *   Neighbor members of each random variable can be changed.  
  *
  * Results:
  *      none
@@ -2150,38 +2760,53 @@ triangulateCompletePartition(
 void
 BoundaryTriangulate::
 triangulateExhaustiveSearch( 
-  set<RandomVariable*>     nodes,
-  vector<nghbrPairType>    orgnl_nghbrs,
+  const set<RandomVariable*>&  nodes,
+  const vector<nghbrPairType>& orgnl_nghbrs,
   // output: resulting max cliques
-  vector<MaxClique>&       best_cliques
+  vector<MaxClique>&           best_cliques
   )
 {
-  // define local constanced used in this routine.
+  // define local constants used in this routine.
   const unsigned NONE = 0;
   const unsigned FILL_IN = 1;
   const unsigned EDGE = 2; 
   const unsigned UNUSED = 3;
 
-  // do a vector<int> rather than an ENUM here to avoid yet another STL 
-  //   instantiation
   vector<vector<unsigned> > adjacency;  
-  vector<MaxClique>         cliques;
-  vector<RandomVariable*>   node_v; 
+  vector<MaxClique>         vector_cliques;
+
   unsigned nmbr_empty, nmbr_nodes;
   unsigned i, j;
   unsigned row, col;
 
-  
+  vector<triangulateNode>            triangulate_nodes; 
+
+  list<vector<triangulateNode*> > cliques;
+  list<vector<triangulateNode*> > best_list_cliques;
+
+  list<vector<triangulateNode*> >::iterator crrnt_clique;
+  list<vector<triangulateNode*> >::iterator end_clique;
+
+  vector<triangulateNode*>           order; 
+  vector<triangulateNode*>::iterator crrnt_node;
+  vector<triangulateNode*>::iterator end_node;
+  vector<triangulateNode*>::iterator nghbr; 
+
   ////////////////////////////////////////////////////////////////////
-  // Create a vector of nodes 
+  // Reserve space in the containers 
   ////////////////////////////////////////////////////////////////////
-  copy( nodes.begin(), nodes.end(), inserter(node_v, node_v.begin()) );
+  vector_cliques.reserve( nodes.size() );
+  triangulate_nodes.reserve( nodes.size() ); 
+  order.reserve( nodes.size() ); 
+
+  ////////////////////////////////////////////////////////////////////
+  // Create triagulateNode object from the RandomVariable set 
+  ////////////////////////////////////////////////////////////////////
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
 
   ////////////////////////////////////////////////////////////////////
   // Build the adjacency matrix 
   ////////////////////////////////////////////////////////////////////
-
-  set<RandomVariable*>::iterator nghbr;
 
   nmbr_empty = 0;
   nmbr_nodes = nodes.size();
@@ -2193,9 +2818,9 @@ triangulateExhaustiveSearch(
 
     for( j=i+1; j<nmbr_nodes; j++) {
   
-      nghbr = find(node_v[i]->neighbors.begin(), node_v[i]->neighbors.end(),
-                   node_v[j]);   
-      if (nghbr == (*node_v[i]).neighbors.end()) {
+      nghbr = find( triangulate_nodes[i].neighbors.begin(), 
+        triangulate_nodes[i].neighbors.end(), &triangulate_nodes[j] );   
+      if (nghbr == triangulate_nodes[i].neighbors.end()) {
          adjacency[i][j] = NONE;
          nmbr_empty++; 
       }
@@ -2211,8 +2836,9 @@ triangulateExhaustiveSearch(
   infoMsg(IM::Tiny, "----------\n"); 
         
   for( i=0; i<nmbr_nodes; i++) {
-    infoMsg(IM::Tiny, "[%d] %s(%d)\n", i, node_v[i]->name().c_str(), 
-      node_v[i]->timeIndex);
+    infoMsg(IM::Tiny, "[%d] %s(%d)\n", i, 
+      triangulate_nodes[i].randomVariable->name().c_str(), 
+      triangulate_nodes[i].randomVariable->timeIndex );
   } 
   infoMsg(IM::Tiny, "\n");
 
@@ -2234,7 +2860,7 @@ triangulateExhaustiveSearch(
   // Begin Search 
   ////////////////////////////////////////////////////////////////////
 
-  vector<RandomVariable*> order;
+  //vector<RandomVariable*> order;
   double best_weight = HUGE_VAL; 
   double weight; 
   bool done = false;
@@ -2258,11 +2884,13 @@ triangulateExhaustiveSearch(
     //////////////////////////////////////////////////////////////////
     // Test current configuration  
     //////////////////////////////////////////////////////////////////
-    chordal = maximumCardinalitySearch(nodes, cliques, order, true);
+    maximumCardinalitySearch( triangulate_nodes, cliques, order, false);
+    chordal = testZeroFillIn( order );
 
     if (chordal) {
 
-      weight = graphWeight(cliques);
+      listVectorCliquetoVectorSetClique( cliques, vector_cliques );
+      weight = graphWeight(vector_cliques);
 
       if (weight < best_weight) {
         infoMsg(IM::Tiny, "----- New Best: %f -----\n", weight); 
@@ -2281,22 +2909,24 @@ triangulateExhaustiveSearch(
           infoMsg(IM::Tiny, "\n"); 
         } 
 
-	set<RandomVariable*>::iterator crrnt_node;
-	set<RandomVariable*>::iterator end_node;
+        for( crrnt_clique = cliques.begin(), 
+             end_clique   = cliques.end();
+             crrnt_clique != end_clique; 
+             ++crrnt_clique ) {
 
-        for( i=0; i<cliques.size(); i++) {
           infoMsg(IM::Tiny, "--- Clique ---\n"); 
-          for( crrnt_node = cliques[i].nodes.begin(), 
-	       end_node   = cliques[i].nodes.end(); 
+          for( crrnt_node = (*crrnt_clique).begin(), 
+	       end_node   = (*crrnt_clique).end(); 
                crrnt_node != end_node;
 	       crrnt_node++ ) { 
-            infoMsg(IM::Tiny, "%s(%d)\n", (*crrnt_node)->name().c_str(), 
-              (*crrnt_node)->timeIndex); 
+            infoMsg(IM::Tiny, "%s(%d)\n", 
+              (*crrnt_node)->randomVariable->name().c_str(), 
+              (*crrnt_node)->randomVariable->timeIndex); 
           }
         }
         infoMsg(IM::Tiny, "--------------------------\n");
 
-        best_cliques = cliques;
+        best_list_cliques = cliques;
         best_weight = weight;
       } 
     } 
@@ -2330,8 +2960,8 @@ triangulateExhaustiveSearch(
     else {
 
       adjacency[row][col] = FILL_IN;
-      node_v[row]->neighbors.insert(node_v[col]);
-      node_v[col]->neighbors.insert(node_v[row]);
+      triangulate_nodes[row].neighbors.push_back(&(triangulate_nodes[col]));
+      triangulate_nodes[col].neighbors.push_back(&(triangulate_nodes[row]));
 
       i = 0;
       j = 1;
@@ -2339,8 +2969,14 @@ triangulateExhaustiveSearch(
       while ((i != row) || (j != col)) {
         if (adjacency[i][j] == FILL_IN) {
           adjacency[i][j] = NONE;
-          node_v[j]->neighbors.erase(node_v[i]);
-          node_v[i]->neighbors.erase(node_v[j]);
+
+          crrnt_node = find( triangulate_nodes[j].neighbors.begin(),
+            triangulate_nodes[j].neighbors.end(), &triangulate_nodes[i] );
+          triangulate_nodes[j].neighbors.erase(crrnt_node);
+
+          crrnt_node = find( triangulate_nodes[i].neighbors.begin(),
+            triangulate_nodes[i].neighbors.end(), &triangulate_nodes[j] );
+          triangulate_nodes[i].neighbors.erase(crrnt_node);
         }
 
         j++;
@@ -2351,6 +2987,9 @@ triangulateExhaustiveSearch(
       }
     } 
 
+    //////////////////////////////////////////////////////////////
+    // Check if timer has expired 
+    //////////////////////////////////////////////////////////////
     if (timer && timer->Expired()) { 
       infoMsg(IM::Tiny, 
         "Time expired before completion of exhaustive search\n");
@@ -2358,6 +2997,9 @@ triangulateExhaustiveSearch(
     }
 
   }
+
+  listVectorCliquetoVectorSetClique( best_list_cliques, best_cliques );
+  triangulateCompletePartition( nodes, best_cliques );
 
   infoMsg(IM::Tiny, "---->Tested:  %d\n", crrnt_trial); 
 }
@@ -2385,7 +3027,6 @@ triangulateExhaustiveSearch(
  * Results:
  *     none
  *
- *
  *-----------------------------------------------------------------------
  */
 void
@@ -2408,7 +3049,7 @@ triangulateElimination(// input: nodes to be triangulated
 
     
     // connect all neighbors of r.v. excluding nodes in 'orderedNodesSet'.
-    rv->connectNeighbors(orderedNodesSet);
+    rv->connectNeighbors(orderedNodesSet); 
     
 
     // check here if this node + its neighbors is a subset
@@ -2530,7 +3171,6 @@ unrollAndTriangulate(// triangulate heuristics
 }
 
 
-
 /*-
  *-----------------------------------------------------------------------
  * BoundaryTriangulate::ensurePartitionsAreChordal(gm_template)
@@ -2541,48 +3181,61 @@ unrollAndTriangulate(// triangulate heuristics
  *   Template should be fully instantiated
  *
  * Postconditions:
- *   Partitions in template are guaranteed to be chordal, if program has not died.
+ *   Partitions in template are guaranteed to be chordal, if program has 
+ *   not died.
  *
  * Side Effects:
- *   Re-writes the cliques in the current gm_template (i.e., they'll still be cliques,
- *   but now they come from and be ordered by MCS).
+ *   Re-writes the cliques in the current gm_template (i.e., they'll still be 
+ *   cliques, but now they come from and be ordered by MCS).
  *
  * Results:
- *
- *
+ *   none
  *-----------------------------------------------------------------------
  */
 void
 BoundaryTriangulate::
 ensurePartitionsAreChordal(GMTemplate& gm_template)
 {
-  vector<RandomVariable*> dummy_order;
+  vector<triangulateNode>         triangulate_nodes; 
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        order; 
   bool p_chordal;
   bool c_chordal;
   bool e_chordal;
+ 
+  fillTriangulateNodeStructures( gm_template.P.nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false);
+  p_chordal = testZeroFillIn( order );
 
-  // TODO: 
-  p_chordal = maximumCardinalitySearch(gm_template.P.nodes, gm_template.P.cliques, dummy_order, true);
-  c_chordal = maximumCardinalitySearch(gm_template.C.nodes, gm_template.C.cliques, dummy_order, true);
-  e_chordal = maximumCardinalitySearch(gm_template.E.nodes, gm_template.E.cliques, dummy_order, true);
+  triangulate_nodes.clear();
+  fillTriangulateNodeStructures( gm_template.C.nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false);
+  c_chordal = testZeroFillIn( order );
 
-  if (!p_chordal || !c_chordal || !e_chordal)
+  triangulate_nodes.clear();
+  fillTriangulateNodeStructures( gm_template.E.nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false);
+  e_chordal = testZeroFillIn( order );
+
+  if (!p_chordal || !c_chordal || !e_chordal) {
+
     error("ERROR: Program exiting since the following partitions are not chordal:%s%s%s",
 	  (p_chordal?"":" P"),
 	  (c_chordal?"":" C"),
 	  (e_chordal?"":" E"));
+  }
 }
 
 
-/*********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+/*******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  **
  **        Support for Anytime Triangulation.
  **
- *********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+ *******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  */
 
 
@@ -2637,7 +3290,8 @@ anyTimeTriangulate(GMTemplate& gm_template)
 
   ////////////////////////////////////////////////////////////////////////
   // Triangulate P and E partitions using a basic heuristic so that 
-  // something valid is in place in case these never complete before timer expires.
+  // something valid is in place in case these never complete before timer 
+  // expires.
   ////////////////////////////////////////////////////////////////////////
 
   triangulate( gm_template.P.nodes, "FWH", orgnl_P_nghbrs, gm_template.P.cliques,
@@ -2782,13 +3436,17 @@ tryHeuristics(
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Weight, Fill, Size
-  triangulate( nodes, "20-WFS",  orgnl_nghbrs, cliques, tri_method, best_weight );
-  triangulate( nodes, "20-HWFS", orgnl_nghbrs, cliques, tri_method, best_weight );
+  triangulate( nodes, "20-WFS",  orgnl_nghbrs, cliques, tri_method, 
+    best_weight );
+  triangulate( nodes, "20-HWFS", orgnl_nghbrs, cliques, tri_method,  
+    best_weight );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Fill, Weight, Size 
-  triangulate( nodes, "20-FWS",  orgnl_nghbrs, cliques, tri_method, best_weight );
-  triangulate( nodes, "20-HFWS", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "20-FWS",  orgnl_nghbrs, cliques, tri_method, 
+    best_weight );
+  triangulate( nodes, "20-HFWS", orgnl_nghbrs, cliques, tri_method, 
+    best_weight ); 
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Weight
@@ -2798,43 +3456,44 @@ tryHeuristics(
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Fill 
-  triangulate( nodes, "30-F",  orgnl_nghbrs, cliques, tri_method, best_weight ); 
-  triangulate( nodes, "20-HF", orgnl_nghbrs, cliques, tri_method, best_weight ); 
-  triangulate( nodes, "20-TF", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "30-F",  orgnl_nghbrs, cliques, tri_method, best_weight );
+  triangulate( nodes, "20-HF", orgnl_nghbrs, cliques, tri_method, best_weight );
+  triangulate( nodes, "20-TF", orgnl_nghbrs, cliques, tri_method, best_weight );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Size 
-  triangulate( nodes, "30-S",  orgnl_nghbrs, cliques, tri_method, best_weight ); 
-  triangulate( nodes, "20-HS", orgnl_nghbrs, cliques, tri_method, best_weight ); 
-  triangulate( nodes, "20-TS", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "30-S",  orgnl_nghbrs, cliques, tri_method, best_weight );
+  triangulate( nodes, "20-HS", orgnl_nghbrs, cliques, tri_method, best_weight );
+  triangulate( nodes, "20-TS", orgnl_nghbrs, cliques, tri_method, best_weight );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Maximum Cardinality Search
-  triangulate( nodes, "50-MCS", orgnl_nghbrs, cliques, tri_method, best_weight ); 
+  triangulate( nodes, "50-MCS", orgnl_nghbrs, cliques, tri_method, 
+    best_weight ); 
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try hints only 
   triangulate( nodes, "500-H", orgnl_nghbrs, cliques, tri_method, best_weight );
 
   ///////////////////////////////////////////////////////////////////////////// 
-  // Try simply completing the partition (it is fast and it can work well if 
-  // many deterministic nodes exist in the partition)
-  triangulate( nodes, "completed", orgnl_nghbrs, cliques, 
-    tri_method, best_weight );
+  // Try simply completing the partition (this can work well if many 
+  // deterministic nodes exist in the partition)
+  triangulate( nodes, "completed", orgnl_nghbrs, cliques, tri_method, 
+    best_weight );
 
   return(best_weight);
 }
 
 
-/*********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+/*******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  **
  **         Boundary Algorithm Routines
  **
- *********************************************************************************************
- *********************************************************************************************
- *********************************************************************************************
+ *******************************************************************************
+ *******************************************************************************
+ *******************************************************************************
  */
 
 

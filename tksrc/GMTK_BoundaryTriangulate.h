@@ -23,6 +23,7 @@
 
 #include <vector>
 #include <string>
+#include <list>
 #include <map>
 
 #include <stdio.h>
@@ -31,6 +32,7 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_GMTemplate.h"
+
 #include "GMTK_MaxClique.h"
 #include "GMTK_Timer.h"
 
@@ -44,6 +46,8 @@ class BoundaryTriangulate : public IM
   friend class FileParser;
   friend class GraphicalModel;
   friend class GMTemplate;
+
+public:
 
   // the file parser for this model.
   FileParser& fp;
@@ -369,22 +373,22 @@ public:
                                      string&                  comment 
 				     );
 
-  // triangulate by maximum cardinality search
-  bool maximumCardinalitySearch(set<RandomVariable*>     nodes,
-				vector<MaxClique>&       cliques,
-				vector<RandomVariable*>& order,
-				bool                     chordal_test = false
-				);
+  // Triangulate by maximum cardinality search
+  void triangulateMaximumCardinalitySearch( 
+    const set<RandomVariable*>& nodes,
+    vector<MaxClique>&          cliques,
+    vector<RandomVariable*>&    order
+    );
 
   // triangulation by simple completion
-  void triangulateCompletePartition(set<RandomVariable*>     nodes,
-				    vector<MaxClique>&       cliques
+  void triangulateCompletePartition(const set<RandomVariable*>& nodes,
+				    vector<MaxClique>&          cliques
 				    );
 
   // triangulate by exhaustive search, takes a *LONG* time.
-  void triangulateExhaustiveSearch(set<RandomVariable*>     nodes,
-				   vector<nghbrPairType>    orgnl_nghbrs,
-				   vector<MaxClique>&       cliques
+  void triangulateExhaustiveSearch(const set<RandomVariable*>&  nodes,
+				   const vector<nghbrPairType>& orgnl_nghbrs,
+				   vector<MaxClique>&           cliques
 				   );
 
   // Triangulate by pre-specified elimination order
@@ -394,7 +398,6 @@ public:
 			      vector<RandomVariable*> orderedNodes,  
 			      // output: resulting max cliques
 			      vector<MaxClique>& cliques);
- 
 
   // Given the template, just unroll it flat-out a given number of
   // times and triangulate the result (possibly unconstrained
@@ -497,6 +500,77 @@ public:
 	     map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
 	     map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1);
 
+private:
+
+  //////////////////////////////////////////////////////////////////// 
+  // 
+  //////////////////////////////////////////////////////////////////// 
+  class triangulateNode;
+  class triangulateNodeList;
+
+  class triangulateNode {
+ 
+    friend class triangulateNodeList;
+
+    public:
+      triangulateNode();
+      triangulateNode(RandomVariable* random_variable);
+
+      RandomVariable*          randomVariable;
+      vector<triangulateNode*> neighbors;
+      triangulateNodeList*     nodeList; 
+      unsigned                 cardinality;
+      bool                     eliminated;
+      unsigned                 position;
+
+    private:
+      triangulateNode*         previousNode;
+      triangulateNode*         nextNode;
+  };
+
+  class triangulateNodeList {
+
+    public:
+
+      triangulateNodeList(); 
+      void             push_back(triangulateNode* node); 
+      triangulateNode* pop_back(); 
+      void             erase(triangulateNode* node);
+      unsigned size() { return(list_length); }
+      triangulateNode* back() { return(last); }
+
+      triangulateNode* operator[] (unsigned i);
+  
+    private:
+
+      triangulateNode* last; 
+      unsigned         list_length;
+  }; 
+
+  void fillTriangulateNodeStructures( 
+    const set<RandomVariable*>& orgnl_nodes,
+    vector<triangulateNode>&    new_nodes 
+  );
+ 
+  void maximumCardinalitySearch(
+    vector<triangulateNode>&         nodes,
+    list<vector<triangulateNode*> >& cliques,
+    vector<triangulateNode*>&        order,
+    bool                             randomize_order 
+    );
+
+  void fillInComputation(
+    vector<triangulateNode*>& ordered_nodes 
+  );
+ 
+  bool testZeroFillIn( 
+    vector<triangulateNode*>& ordered_nodes 
+  );
+
+  void listVectorCliquetoVectorSetClique(
+    const list<vector<triangulateNode*> >& lv_cliques,
+    vector<MaxClique>&                     vs_cliques
+  );
 
 };
 
