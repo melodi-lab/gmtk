@@ -2015,32 +2015,16 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	  printf("%d:assigned iter/prob app, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
 	  if (message(Mega)) {
-	    printf("|");
-	    printRVSetAndValues(stdout,rv->allParents,false);
-	    printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	    if (rv->allParents.size() > 0) {
+	      printf("|");
+	      printRVSetAndValues(stdout,rv->allParents,false);
+	    }
 	  } else {
-	    printf("|parents]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	    if (rv->allParents.size() > 0) {
+	      printf("|parents");
+	    }
 	  }
-
-#if 0
-	  if (!rv->discrete()) {
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Huge,"%d:assigned iter/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",nodeNumber,
-		    rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
-
-	  } else {
-	    DiscRV* drv = (DiscRV*)rv;
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(High,"%d:assigned CPT iter/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
-		    nodeNumber,
-		    rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
-	  }
-	  if (message(Mega)) {
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Mega,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	    printRVSetAndValues(stdout,rv->allParents);
-	  }
-#endif
+	  printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
 	}
 	// if at any step, we get zero, then back out.
 	if (!cur_p.essentially_zero()) {
@@ -2063,34 +2047,17 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	  printf("%d:assigned iter/zero rmv, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
 	  if (message(Mega)) {
-	    printf("|");
-	    printRVSetAndValues(stdout,rv->allParents,false);
-	    printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	    if (rv->allParents.size() > 0) {
+	      printf("|");
+	      printRVSetAndValues(stdout,rv->allParents,false);
+	    }
 	  } else {
-	    printf("|parents]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	    if (rv->allParents.size() > 0) {
+	      printf("|parents");
+	    } 
 	  }
+	  printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
 	}
-#if 0
-	if (message(Huge)) {
-	  if (!rv->discrete()) {
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Huge,"%d:assigned iter rv %s(%d)=C,p=%f,cur_p=%f\n",
-		    nodeNumber,
-		    rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
-	  } else {
-	    DiscRV* drv = (DiscRV*)rv;
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Huge,"%d:assigned CPT iter/zero removal rv %s(%d)=%d,p=%f,cur_p=%f\n",
-		    nodeNumber,
-		    rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
-	  }
-	  if (message(Mega)) {
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Mega,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	    printRVSetAndValues(stdout,rv->allParents);
-	  }
-	}
-#endif
 	// if at any step, we get zero, then back out.
 	if (!cur_p.essentially_zero()) {
 	  // Continue, do not update probability!!
@@ -2112,26 +2079,17 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	  printf("%d:assigned card iter, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
 	  if (message(Mega)) {
-	    printf("|");
-	    printRVSetAndValues(stdout,rv->allParents,false);
-	    printf("]=???, crClqPr=%f\n",p.val());
+	    if (rv->allParents.size() > 0) {
+	      printf("|");
+	      printRVSetAndValues(stdout,rv->allParents,false);
+	    }
 	  } else {
-	    printf("|parents]=???, crClqPr=%f\n",p.val());
+	    if (rv->allParents.size() > 0) {
+	      printf("|parents");
+	    }
 	  }
+	  printf("]=???, crClqPr=%f\n",p.val());
 	}
-#if 0
-	if (message(Huge)) {
-	  psp(stdout,2*nodeNumber);
-	  infoMsg(Huge,"%d:assigned card iter rv %s(%d)=%d,p=%f\n",
-		  nodeNumber,
-		  rv->name().c_str(),rv->frame(),drv->val,p.val());
-	  if (message(Mega)) {
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	    printRVSetAndValues(stdout,rv->allParents);
-	  }
-	}
-#endif
 	// Continue, do not update probability!!
 	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
       } while (++drv->val < drv->cardinality);
@@ -2149,33 +2107,17 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	printf("%d:assigned compute appl prob, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
 	if (message(Mega)) {
-	  printf("|");
-	  printRVSetAndValues(stdout,rv->allParents,false);
-	  printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  if (rv->allParents.size() > 0) {
+	    printf("|");
+	    printRVSetAndValues(stdout,rv->allParents,false);
+	  }
 	} else {
-	  printf("|parents]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  if (rv->allParents.size() > 0) {
+	    printf("|parents");
+	  }
 	}
+	printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
       }
-#if 0
-      if (message(Huge)) {
-	psp(stdout,2*nodeNumber);
-	if (!rv->discrete()) {
-	  infoMsg(Huge,"%d:assigned compute/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",
-		  nodeNumber,
-		  rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
-	} else {
-	  DiscRV* drv = (DiscRV*)rv;
-	  infoMsg(Huge,"%d:assigned compute/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
-		  nodeNumber,
-		  rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
-	}
-	if (message(Mega)) {
-	  psp(stdout,2*nodeNumber);
-	  infoMsg(Mega,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	  printRVSetAndValues(stdout,rv->allParents);
-	}
-      }
-#endif
       if (!cur_p.essentially_zero()) {
 	// Continue, updating probability by cur_p.
 	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p*cur_p);
@@ -2197,32 +2139,17 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	printf("%d:assigned compute continue, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
 	if (message(Mega)) {
-	  printf("|");
-	  printRVSetAndValues(stdout,rv->allParents,false);
-	  printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  if (rv->allParents.size() > 0) {
+	    printf("|");
+	    printRVSetAndValues(stdout,rv->allParents,false);
+	  }
 	} else {
-	  printf("|parents]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  if (rv->allParents.size() > 0) {
+	    printf("|parents");
+	  }
 	}
+	printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
       }
-#if 0
-      if (message(Huge)) {
-	psp(stdout,2*nodeNumber);
-	if (rv->discrete()) {
-	  infoMsg(Huge,"%d:assigned compute continue rv %s(%d)=%d,p=%f,cur_p=%f\n",
-		  nodeNumber,
-		  rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,p.val(),cur_p.val());
-	} else {
-	  infoMsg(Huge,"%d:assigned compute continue rv %s(%d)=C,p=%f,cur_p=%f\n",
-		  nodeNumber,
-		  rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
-	}
-	if (message(Mega)) {
-	  psp(stdout,2*nodeNumber);
-	  infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	  printRVSetAndValues(stdout,rv->allParents);
-	}
-      }
-#endif
       if (!cur_p.essentially_zero()) {
 	// Continue, do not update probability!!
 	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
