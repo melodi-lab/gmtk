@@ -65,6 +65,7 @@
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
+#include "GMTK_ProgramDefaultParms.h"
 
 VCID("$Header$");
 
@@ -97,7 +98,7 @@ char *dcdrng_str="all";
 char *wordVar=NULL;
 char *varMapFile=NULL;
 char *transitionLabel=NULL;
-double varFloor = 1e-10;
+double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
 
 char *ofilelist = NULL;
 char *dumpNames = NULL;
@@ -107,7 +108,8 @@ int show_cliques=0;
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
 
-int bct=10, ns=3;
+int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
+int ns=GMTK_DEFAULT_NUM_SPLITS;
 
 ARGS ARGS::Args[] = {
 

@@ -59,7 +59,7 @@ VCID("$Header$");
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
-
+#include "GMTK_ProgramDefaultParms.h"
 
 /*
  * command line arguments
@@ -83,7 +83,7 @@ bool randomizeParams = true;
 bool enem = false;
 double mcvr = 1e20;
 double mcsr = 1e10;
-double varFloor = 1e-10;
+double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
 char *trrng_str="all";
 float lldp = 0.001;
 float mnlldp = 0.01;
@@ -117,7 +117,8 @@ int show_cliques=0;
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
 
-int bct=750, ns=3;
+int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
+int ns=GMTK_DEFAULT_NUM_SPLITS;
 
 ARGS ARGS::Args[] = {
 
