@@ -53,6 +53,7 @@
 #include "error.h"
 #include "rand.h"
 #include "arguments.h"
+#include "version.h"
 
 #include "ieeeFPsetup.h"
 
@@ -66,7 +67,7 @@
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
 
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
@@ -104,6 +105,8 @@ char *ofilelist = NULL;
 char *dumpNames = NULL;
 
 double varFloor = 1e-10;
+
+bool print_version_and_exit = false;
 
 Arg Arg::Args[] = {
 
@@ -144,6 +147,9 @@ Arg Arg::Args[] = {
 
   Arg("dumpNames",Arg::Req,dumpNames,"File containing the names of the variables to save to a file"),
   Arg("ofilelist",Arg::Req,ofilelist,"List of filenames to dump the hidden variable values to"),
+
+  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
+
   Arg()
 
 };
@@ -165,6 +171,9 @@ main(int argc,char*argv[])
   set_new_handler(memory_error);
 
   Arg::parse(argc,argv);
+
+  if (print_version_and_exit)
+    printf("%s\n",gmtk_version_id);
 
   ////////////////////////////////////////////
   // check for valid argument values.
@@ -199,7 +208,7 @@ main(int argc,char*argv[])
 				    startSkip,
 				    endSkip);
 
-  MixGaussiansCommon::checkForValidRatioValues();
+  MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
