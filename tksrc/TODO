@@ -433,6 +433,9 @@ in gmtkViterbi, cppCommand is very useful.  But I if I have a lot macros,
 the command line string will be very long.  I wonder whether is a way that
 this will take a file of macros.
 
+JB answer: but this can be done using cpps #include in one of the
+           files. TODO: add this to documentation.
+
 
 - add implicit approach to tutorial (from Yimin).
 
