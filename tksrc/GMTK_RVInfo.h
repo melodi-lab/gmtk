@@ -37,6 +37,7 @@ class DiscreteRandomVariable;
 class ContinuousRandomVariable;
 class FileParser;
 class GMTemplate;
+class Partition;
 class BoundaryTriangulate;
 
 
@@ -49,6 +50,7 @@ class RVInfo {
   friend class DiscreteRandomVariable;
   friend class ContinuousRandomVariable;
   friend class GMTemplate;
+  friend class Partition;
   friend class BoundaryTriangulate;
 
   ///////////////////////////////////////////////////
