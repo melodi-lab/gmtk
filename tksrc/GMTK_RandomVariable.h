@@ -78,11 +78,8 @@ struct RandomVariable
     // integer index into a 1 dimensional array.
 
     virtual logpr probGivenParents() {error("probGivenParents() Undefined\n");}
-    // For continuous variables.
     // The inference algorithm guarantees that when this is called, the
     // variable and its parents will be clamped to appropriate values.
-    // The virtualness of this function is expected to be negligible comared
-    // to the other work done for continuous variables.
 
     virtual void clampFirstValue() = 0;
     // Sets a variable to the first value that is possible.
