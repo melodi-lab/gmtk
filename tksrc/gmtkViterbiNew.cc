@@ -635,7 +635,7 @@ main(int argc,char*argv[])
   infoMsg(IM::Default,"Total data log prob is: %1.9e\n",
 	  total_data_prob.val());
 
-  if (vitValsFile != stdout)
+  if (vitValsFile && vitValsFile != stdout)
     fclose(vitValsFile);
 
   getrusage(RUSAGE_SELF,&rue);
