@@ -19,10 +19,7 @@
 #include <ctype.h>
 #include "bp_range.h"
 #include "pfile.h"
-#include "GMTK_utils.h"
 
-
-#define MAXFILES 2048  // max number of input file names (initially)
 
 enum {
   RAWBIN, 
@@ -46,10 +43,8 @@ public:
   unsigned nFloatsUsed;    // number of floats actually used (of input)
   unsigned nIntsUsed;      // number of ints actually used (of input)
 
-
   char *fofName;           // this file's file name (name of list of file names)
   FILE *fofFile;           // this file (list of file names)
-  char *fofBuf;            // buffer for list of file names
   size_t fofSize;          // size of list of file names
 
   bool bswap;              // true if file needs to be byte-swapped
@@ -76,7 +71,7 @@ public:
 
   ~FileDescription();
 
-  size_t readFof();       // read file of file names
+  size_t readFof(FILE *);       // read file of file names
 };
 
 #endif

@@ -53,12 +53,18 @@ class ObservationMatrix
 
   unsigned _stride;
 
+  // max number of discrete/continuous features in input streams
+
+  unsigned _maxContinuous;
+
+  unsigned _maxDiscrete;
+
   Data32 *_cont_p; // pointers into continuous or discrete features
   Data32 *_disc_p; 
 
  // temporary feature buffers for single frame
 
-  sArray<float> fea; 
+  sArray<float> cont_fea; 
   sArray<Int32> disc_fea;
 
   size_t _bufSize; // maximum number of frames in buffer
@@ -90,7 +96,7 @@ public:
 
   sArray< Data32 > features; // matrix of features
 
-  ObservationMatrix(size_t,unsigned,unsigned);
+  ObservationMatrix(size_t,unsigned,unsigned,unsigned,unsigned);
   ~ObservationMatrix();
 
   unsigned getSegmentNumber() { return _segmentNumber ;}
@@ -102,6 +108,7 @@ public:
   size_t getBufSize() { return _bufSize; }
 
   void setSegNo(size_t n) { _segmentNumber = n; }
+
   void setNumFrames(size_t n) { _numFrames = n; }
 
   void reset();	 // resets pointers to beginning of obs matrix, 
