@@ -20,7 +20,7 @@
 
 void Clique::cacheClampedValues()
 {
-    for (int i=0; i<discreteMember.len(); i++)
+    for (unsigned i=0; i<discreteMember.size(); i++)
         clampedValues[i] = discreteMember[i]->val;
 }
 
@@ -28,7 +28,7 @@ logpr Clique::probGivenParents()
 {
     logpr p = 1.0;
     findConditionalProbabilityNodes();
-    for (int i=0; i<conditionalProbabilityNode.len(); i++)
+    for (unsigned i=0; i<conditionalProbabilityNode.size(); i++)
         p *= conditionalProbabilityNode[i]->probGivenParents();
     return p;
 }
@@ -121,7 +121,8 @@ bool viterbi)
             cv->pred = pred_val;
         }
     }
-    else if (new_member_num == newMember.len())  // base case: all members fixed
+    else if (new_member_num == int(newMember.size())) 
+    // base case: all members fixed
     {
 	// Then all members of this clique have their values clamped,
 	// and we are ready to compute the probablity of this clique.

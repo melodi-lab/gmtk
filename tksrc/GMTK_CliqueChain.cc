@@ -39,11 +39,11 @@
 bool CliqueChain::forwardPass(logpr beam, bool viterbi)
 {
     // zero  out the clique instantiations.
-    for (int i=0; i<preorder.len(); i++)
+    for (unsigned i=0; i<preorder.size(); i++)
         preorder[i]->instantiation.clear();
 
     preorder[0]->enumerateValues(0, NULL, viterbi);
-    for (int i=0; i<preorder.len()-1; i++)
+    for (unsigned i=0; i<preorder.size()-1; i++)
     {
         // we are done enumerating the values for preorder[i], and can
         // free the memory used in its instantiationAddress
@@ -58,8 +58,8 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
         li!=preorder[i]->instantiation.end(); li++) 
         {
             // clamp the values of the variables in the parent clique
-            assert(int(li->values.size()) == preorder[i]->discreteMember.len());
-            for (int j=0; j<preorder[i]->discreteMember.len(); j++)
+            assert(li->values.size()==preorder[i]->discreteMember.size());
+            for (unsigned j=0; j<preorder[i]->discreteMember.size(); j++)
                 preorder[i]->discreteMember[j]->val = li->values[j];
 
             // compute the clique values of the child clique that are 
@@ -111,7 +111,7 @@ void CliqueChain::backwardPass()
 {
     // zero out the separator lambdas
     list<CliqueValue>::iterator li;
-    for (int i=1; i<postorder.len(); i+=2)
+    for (unsigned i=1; i<postorder.size(); i+=2)
     {
         Clique *cl = postorder[i];
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
@@ -132,14 +132,14 @@ void CliqueChain::backwardPass()
     {
         logpr t = li->lambda;  // retrieve the cached probGivenParents
         li->lambda = 1.0;
-        if (postorder.len() > 1)  // watch out for degenerate case
+        if (postorder.size() > 1)  // watch out for degenerate case
             li->pred->lambda += t;
     }
 
     // now do the middle cliques, whose instantiations must pull in a lambda 
     // from the instantiations derived from them, and push a lambda to the 
     // instantiations they derive from.
-    for (int i=2; i<postorder.len()-2; i++)
+    for (unsigned i=2; i<postorder.size()-2; i++)
     {
         Clique *cl = postorder[i];
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
@@ -152,7 +152,7 @@ void CliqueChain::backwardPass()
 
     // now do the root, which does not do any pushing
     cl = preorder[0];
-    if (preorder.len() > 1)
+    if (preorder.size() > 1)
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
             li->lambda =  li->succ->lambda;
 }
@@ -193,11 +193,11 @@ bool CliqueChain::doViterbi(logpr beam)
     assert(maxprob==viterbiProb); // already computed on forward pass
             
     // then trace backwards and clamp the best values
-    for (int i=0; i<postorder.len(); i++)
+    for (unsigned i=0; i<postorder.size(); i++)
     {
         cl = postorder[i];
         // clamp the values
-        for (int j=0; j<cl->discreteMember.len(); j++)
+        for (unsigned j=0; j<cl->discreteMember.size(); j++)
             cl->discreteMember[j]->val = best->values[j];
         // set best to the best instantiation of the predecessor clique
         best = best->pred;
@@ -251,7 +251,7 @@ void CliqueChain::incrementEMStatistics()
 
     // go over the cliques and increment the statistics for all the nodes 
     // assigned to each clique
-    for (int i=0; i<preorder.len(); i++)
+    for (unsigned i=0; i<preorder.size(); i++)
     {
         Clique *cl = preorder[i];
         
@@ -259,7 +259,7 @@ void CliqueChain::incrementEMStatistics()
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
         {
             // clamp the instantiation values
-            for (int j=0; j<cl->discreteMember.len(); j++)
+            for (unsigned j=0; j<cl->discreteMember.size(); j++)
                 cl->discreteMember[j]->val = li->values[j];
 
             // find the conditional families, given the switching parent values
@@ -267,7 +267,7 @@ void CliqueChain::incrementEMStatistics()
             
             // do the updates
             logpr posterior = li->lambda*li->pi/dataProb;
-            for (int j=0; j<cl->conditionalProbabilityNode.len(); j++)
+            for (unsigned j=0; j<cl->conditionalProbabilityNode.size(); j++)
                 cl->conditionalProbabilityNode[j]->increment(posterior);
         }
     }
