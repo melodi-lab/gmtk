@@ -82,20 +82,17 @@ Dense1DPMF::Dense1DPMF()
 void
 Dense1DPMF::read(iDataStreamFile& is)
 {
-
+  int length;
   is.read(length,"Dense1DPMF::read, distribution length");
-
   if (length <= 0)
     error("Dense1DPMF: read length (%d) < 0 in input",length);
-
   pmf.resize(length);
-
   for (int i=0;i<length;i++) {
-    double val;
-    is.readDouble(val,"Dense1DPMF::read, reading value");
-    if (val < 0 || val > 1)
-      error("Dense1DPMF: read, invalid pmf value (%g)",val);
-    pmf[i] = val;
+    double prob;
+    is.readDouble(prob,"Dense1DPMF::read, reading prob");
+    if (prob < 0 || prob > 1)
+      error("Dense1DPMF: read, invalid pmf value (%g)",prob);
+    pmf[i] = prob;
   }
 }
 
@@ -104,7 +101,7 @@ Dense1DPMF::read(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
- * Dense1DPMF::read(is)
+ * Dense1DPMF::write(is)
  *      write out distribution to file 'os'. 
  *      the data probs are stored on disk as doubles,  NOT in log domain.
  * 
@@ -120,14 +117,12 @@ void
 Dense1DPMF::write(oDataStreamFile& os)
 {
   assert (nFeats > 0);
-
-  os.write(length,"Dense1DPMF::write, distribution length");
+  os.write(pmf.len(),"Dense1DPMF::write, distribution length");
   for (int i=0;i<length;i++) {
     // convert out of log domain and write out.
-    os.writeDouble(pmf[i].unlog(),"Dense1DPMF::write, writing value");
+    os.writeDouble(pmf[i].unlog(),"Dense1DPMF::write, writing prob");
   }
   os.nl();
-
 }
 
 
