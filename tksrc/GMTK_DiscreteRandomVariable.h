@@ -65,15 +65,21 @@ public:
 
   ////////////////////////////////////////////////////////////////
   // These next several routines use the switching state and
-  // parent set determined the last time findConditionalParents
-  // was called.
+  // parent set determined when clampFirstValue() is called.
+  // clampFirstValue() invokes findConditionalParents(), and  
+  // calls to clampNextValue() and probGivenParents() rely on being
+  // called in the appropriate context. i.e. the values of the switching
+  // parents must not have changed since the last call to clampFirstValue().
+  // This imposes some constraints -- which do happen to be satisfied by
+  // the inference loops.
   // 
   // compute the probability
   logpr probGivenParents() {
     return curCPT->probGivenParents(*curConditionalParents,val);
   }
   // clamp this RV to its "first" value
-  void clampFirstValue() { it = curCPT->begin(); val = it.val(); }
+  void clampFirstValue() 
+  { findConditionalParents(); it = curCPT->begin(); val = it.val(); }
   // continue on
   bool clampNextValue() { it++; return (it != curCPT->end()); }
   ////////////////////////////////////////////////////////////////
