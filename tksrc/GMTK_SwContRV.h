@@ -58,6 +58,12 @@ public:
     SwRV::tieParametersWith(other);
   }
 
+  bool iterableSw() const { 
+    return dtMapper->iterable();
+  }
+
+
+
 };
 
 #endif

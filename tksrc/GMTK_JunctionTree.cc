@@ -46,7 +46,6 @@
 #include "GMTK_GMParms.h"
 
 
-
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Static variables used by classes
@@ -54,6 +53,13 @@
 ////////////////////////////////////////////////////////////////////
 
 VCID("$Header$");
+
+// turns on or off VE separators, and determins the type to use PC, or PCG. 
+unsigned JunctionTree::useVESeparators = (VESEP_PC | VESEP_PCG);
+// turn off VE separators by default.
+unsigned JunctionTree::veSeparatorWhere = 0;
+// uncomment to turn on VE separators.
+// unsigned JunctionTree::veSeparatorWhere = (VESEP_WHERE_P | VESEP_WHERE_C | VESEP_WHERE_E);
 bool JunctionTree::jtWeightUpperBound = false;
 bool JunctionTree::jtWeightMoreConservative = false;
 float JunctionTree::jtWeightPenalizeUnassignedIterated = 0.0;
@@ -87,6 +93,16 @@ union_1_2_to_3(const set<RV*>& A,
 	    B.begin(),B.end(),
 	    inserter(C,C.end()));
 }
+
+struct PairUnsigned1stElementCompare {  
+  // sort ascending, comparing only 1st element.
+  bool operator() (const pair<unsigned,unsigned>& a, 
+		   const pair<unsigned,unsigned>& b) {
+    // printf("comparing %d with %d\n",a.first,b.first);
+    return (a.first) < (b.first);
+  }
+};
+
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -584,8 +600,10 @@ JT_InferencePartition::emIncrement(const logpr probE,
  *-----------------------------------------------------------------------
  * JunctionTree::setUpDataStructures()
  *
- *   Sets up all the data structures in a JT (other than preparing for unrolling),
- *   and calls all the routines in the necessary order.
+ *   Sets up all the data structures in a JT (other than preparing for
+ *   unrolling), and calls all the routines in the necessary
+ *   order. This is like the main routine of this class, as it calls
+ *   what needs to be done to set up a JT.
  *
  * Preconditions:
  *   Junction tree must have been created. Should not have called 
@@ -607,6 +625,7 @@ void
 JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
 				  const char *varCliqueAssignmentPrior)
 {
+  // main() routine for this class.
   createPartitionJunctionTrees(priorityStr);
   computePartitionInterfaces();
   createDirectedGraphOfCliques();
@@ -614,9 +633,11 @@ JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
   computeUnassignedCliqueNodes();
   // TODO: move this next one above by one.
   setUpMessagePassingOrders();
-  createSeparators();
+  // create seps and VE seps.
+  createSeparators(); 
   computeSeparatorIterationOrders();
-  // the next routine also computes the dispositions
+  // the next routine also computes the dispositions, and a bunch
+  // of other members of each MaxClique object.
   getCumulativeUnassignedIteratedNodes();
 }
 
@@ -1117,8 +1138,8 @@ JunctionTree::computePartitionInterfaces()
   // Perhaps use the maximum weight clique???
   E_root_clique = 0;
   // E_root_clique = E1.cliqueWithMinWeight();
-  // If this is updated, need also to update in other places
-  // the code, search for 'E_root_clique case'
+  // If this is updated, need also to update in all other places
+  // the code, search for string "update E_root_clique"
   
 }
 
@@ -1452,11 +1473,12 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 {
   vector<RV*> sortedNodes;
 
-  // We use a topological sort so that among all possible sorts, so
-  // that variables come in an appropraite order (e.g., might have it
-  // such that continuous variables or discrete observations come as
-  // early as possible in the ordering).  This will also be beneficial
-  // when sampling hidden continuous nodes.
+  // We use a constrained topological sort based on command line
+  // arguments, so that variables are considered in what hopefully
+  // will be a good order (e.g., might have it such that continuous
+  // variables or discrete observations come as early as possible in
+  // the ordering).  This will also be beneficial when sampling hidden
+  // continuous nodes.
   infoMsg(IM::Giga,"Sorting partition variables using priority order (%s)\n",
 	  (varPartitionAssignmentPrior?varPartitionAssignmentPrior:"NULL"));
 
@@ -1477,26 +1499,35 @@ JunctionTree::assignRVsToCliques(const char *const partName,
       // fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
       parSet.insert(rv->allParents[p]);
     }
+
+    // create a map to keep track of the scores of a given clique in
+    // which RV should produce probability.  This utilizes the fact
+    // that the multimap stores values in *ascending* order based on
+    // key (here the score), and so the first one (i.e.,
+    // scoreSet.begin()) should have the lowest weight.
     multimap < vector<double>, unsigned> scoreSet;
 
-    bool alreadyAProbContributer = false;
+    unsigned numberOfTimesAssigned = 0;
     assignRVToClique(partName,
 		     part,rootClique,
 		     0,
 		     rv,
-		     alreadyAProbContributer,
+		     numberOfTimesAssigned,
 		     parSet,
 		     scoreSet);
     infoMsg(IM::Max,
 	    "Part %s: random variable %s(%d) with its parents contained in %d cliques\n",
 	    partName,
-	    rv->name().c_str(),rv->frame(),scoreSet.size());
+	    rv->name().c_str(),rv->frame(),numberOfTimesAssigned);
 
-    if (scoreSet.size() > 0) {
-      // Then the node was assigned, i.e., existed in at least one clique
-      // with all its parents.
+    if (numberOfTimesAssigned > 0) {
 
-      if (!alreadyAProbContributer) {
+      if (scoreSet.size() > 0) {
+	// Then the node will be a probability contributer to one clique
+	// in this partition.
+	
+	assert ( numberOfTimesAssigned > 0 ); 
+
 	// We choose one of those cliques to be the one the node
 	// contributes probabilty to.
 	unsigned clique_num = (*(scoreSet.begin())).second;
@@ -1520,20 +1551,26 @@ JunctionTree::assignRVsToCliques(const char *const partName,
       // both directed edges, it could be assigned in either left or
       // right partition.
 
-      // Note that it is impossible for a node to be assigned in two
-      // partitions. The reason is the following. The only nodes that
-      // live in both partitions are the interface nodes.  These nodes
-      // have been special cased above using the
-      // 'alreadyAProbContributer' variable.
+      // Note that it is impossible for a node to be assigned to give
+      // probabiltiy in two partitions. The reason is the
+      // following. The only nodes that live in both partitions are
+      // the interface nodes.  These nodes have been special cased
+      // above using the 'alreadyAProbContributer' variable, and
+      // since we keep cumulative track of nodes that are to
+      // provide probability, we won't do this more than once
+      // across partitions.
 
       infoMsg(IM::Max,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
 	      rv->name().c_str(),rv->frame());
-      // in any event, keep track of this node.
+      // in any event, keep track of this node, perhaps useful for jtWeight.
       part.unassignedInPartition.insert(rv);
     }
-
   }
 
+  // Next, we compute the order that the assigned nodes in this clique
+  // are iterated. This can have a dramatic effect on performance in
+  // some cases. In general, we want to iterate over large cardinality
+  // nodes last, since that results in the fewest branch mis-predicts.
   if (varCliqueAssignmentPrior && strlen(varCliqueAssignmentPrior) > 0) {
     infoMsg(IM::Giga,"Sorting cliques variables using priority order (%s)\n",varCliqueAssignmentPrior);
     
@@ -1551,7 +1588,6 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 	printRVSet(stdout,part.cliques[clique_num].sortedAssignedNodes,true);
       }
     }
-
   }
 
 }
@@ -1587,7 +1623,7 @@ JunctionTree::assignRVToClique(const char *const partName,
 			       const unsigned root,
 			       const unsigned depth,
 			       RV* rv,
-			       bool& alreadyAProbContributer,
+			       unsigned& numberOfTimesAssigned,
 			       set<RV*>& parSet,
 			       multimap < vector<double>, unsigned >& scoreSet)
 {
@@ -1622,156 +1658,178 @@ JunctionTree::assignRVToClique(const char *const partName,
 
     // Since closure is in the clique, we "assign" this node to this
     // clique. Note, this does not necessarily mean that the node will
-    // contribute probabilties to this clique's potential
-    // function. That is decided after we consider all possible such
-    // candidate cliques.
+    // contribute probabilties to this clique's potential function,
+    // only that we will use the RV iterator in some cases (sparse,
+    // deterministic, sampling) to iterate over this RV after its
+    // parents have been assigned (as long as the RV doesn't come in
+    // as a separator that is).
     curClique.assignedNodes.insert(rv);
     curClique.sortedAssignedNodes.push_back(rv);
+    numberOfTimesAssigned++;
 
     infoMsg(IM::Max,
 	    "Part %s: RV and its parents in clique, assigning random variable %s(%d) to clique %d\n",
 	    partName,
 	    rv->name().c_str(),rv->frame(),root);
 
-    if (curClique.cumulativeAssignedProbNodes.find(rv) != curClique.cumulativeAssignedProbNodes.end()) {
-      alreadyAProbContributer = true;
-    }
+    // We don't make the probability assignment decision until after
+    // we consider all possible such candidate cliques.  But first,
+    // check if already set up to give probability to some other
+    // clique.
+    if (curClique.cumulativeAssignedProbNodes.find(rv) == curClique.cumulativeAssignedProbNodes.end()) {
+      // So RV is not yet giving probability anywhere. We deal with
+      // the score stuff to find a good clique for this variable to
+      // assign probability.
 
-    // Note: in this discussion, we make a distinction between node
-    // parents and children (i.e., original graph parents and
-    // children) and JT parents and children which are cliques in the
-    // JT. A child clique c of a parent p in the JT is one such that c
-    // ~ p and that depth(c) = depth(p)+1, where depth(root)=0 in the
-    // junction tree.
+      infoMsg(IM::Max,
+	      "Part %s: considering clique %d for random variable %s(%d) probability contribution\n",
+	      partName,
+	      root,
+	      rv->name().c_str(),rv->frame());
 
-    // The goal here is to figure out in which of a set of possible
-    // cliques the node should be producing probabilities.
+      // In this discussion that follows, we make a distinction
+      // between node parents and children (i.e., original graph
+      // parents and children) and JT parents and children which are
+      // cliques in the JT. A child clique c of a parent p in the JT
+      // is one such that c ~ p and that depth(c) = depth(p)+1, where
+      // depth(root)=0 in the junction tree.
 
-    // TODO: make these various options available in priority order
-    // to the command line, just like the topologically-constrainted
-    // variable within-clique iteration order, currently available
-    // via -vcap.
+      // The goal here is to figure out in which of a set of possible
+      // cliques the node should be producing probabilities.
 
-    // Compute (and ultimately push back) items in decreasing order of
-    // priority.  Lower numbers is better (e.g., more negative or less
-    // positive is higher priority).  First thing inserted has highest
-    // priority.  At some time later, the rv will be assigned to the
-    // clique with the *LOWEST* score.
-
-    // What we do, is continue on down. It may be the the case that we
-    // find a clique with rv and all of rv's node parents assigned (in
-    // which case we assign rv right then), but in the mean time we
-    // keep track of this clique's "score" using a set of
-    // heuristics. 
-
-    // TODO: change it so that only heuristics that are
-    // used are computed.
-
-    // Compute number of previous parents with their probability assigned.
-    // The heuristic here is, have this node contribute probabiltiy
-    // to this clique if many of its parents are already doing so, which
-    // might produce a clique with good pruning behavior.
-    set<RV*> res;
-    set_intersection(curClique.assignedProbNodes.begin(),
-		     curClique.assignedProbNodes.end(),
-		     parSet.begin(),parSet.end(),
-		     inserter(res,res.end()));
-    int num_parents_with_probability = (int) res.size();
-    // Previous Parents with their probabilities in Junction Tree.
-    // We add this to the above. 
-    res.clear();
-    set_intersection(curClique.cumulativeAssignedProbNodes.begin(),
-		     curClique.cumulativeAssignedProbNodes.end(),
-		     parSet.begin(),parSet.end(),
-		     inserter(res,res.end()));
-    num_parents_with_probability += (int) res.size();
-    // negate so that lower is preferable.
-    num_parents_with_probability *= -1;
+      // TODO: make these various options available in priority order
+      // to the command line, just like the topologically-constrainted
+      // variable within-clique iteration order, currently available
+      // via -vcap.
 
 
-    // Distance from root, among the higher priorities that are equal,
-    // try to be as far away from the root as possible so as to prune
-    // away as much zero as possible as early as possible. I.e., try
-    // encourage it to have as much "influence" as possible in JT
-    // parents.
-    // negate so that lower is preferable.
-    const int distance_from_root = -(int)depth;
+      // Since the multimap stores values in *ascending* order based
+      // on key, lower numbers are prefered.
 
+      // Compute (and ultimately push back) items in decreasing order of
+      // priority.  Lower numbers is better (e.g., more negative or less
+      // positive is higher priority).  First thing inserted has highest
+      // priority.  At some time later, the rv will be assigned to the
+      // clique with the *LOWEST* score.
 
-    // Number of children in current clique. If rv has lots of
-    // children in this clique, it is hopeful that other parents of
-    // those children might also be assigned to the same clique.
-    int numChildren = 0;
-    for (unsigned i=0;i<rv->allChildren.size();i++) {
-      RV* child = rv->allChildren[i];
-      if (curClique.nodes.find(child) != curClique.nodes.end())
-	numChildren++;
-    }
-    // negate so that lower is preferable.
-    numChildren *= -1;
+      // What we do, is continue on down. It may be the the case that we
+      // find a clique with rv and all of rv's node parents assigned (in
+      // which case we assign rv right then), but in the mean time we
+      // keep track of this clique's "score" using a set of
+      // heuristics. 
 
-    
-    // when the node is continuous, assign it to a clique that is the
-    // smallest possible in terms of weight.
-    double weight = - curClique.weight();
+      // TODO: change it so that only heuristics that are
+      // used are computed.
 
-    // TODO: add heuristic that assigns RV to smallest clique, in
-    // terms of size. This might be useful for EM training,
-    // particularly of continuous Gaussian variables, in that only the
-    // parents of the Gaussian will be iterated over, rather than
-    // parents of parents.
+      // Compute number of previous parents with their probability assigned.
+      // The heuristic here is, have this node contribute probabiltiy
+      // to this clique if many of its parents are already doing so, which
+      // might produce a clique with good pruning behavior.
+      set<RV*> res;
+      set_intersection(curClique.assignedProbNodes.begin(),
+		       curClique.assignedProbNodes.end(),
+		       parSet.begin(),parSet.end(),
+		       inserter(res,res.end()));
+      int num_parents_with_probability = (int) res.size();
+      // Previous Parents (earlier in the junction tree) with their
+      // probabilities in Junction Tree.  We add this to the above.
+      res.clear();
+      set_intersection(curClique.cumulativeAssignedProbNodes.begin(),
+		       curClique.cumulativeAssignedProbNodes.end(),
+		       parSet.begin(),parSet.end(),
+		       inserter(res,res.end()));
+      num_parents_with_probability += (int) res.size();
+      // negate so that lower is preferable.
+      num_parents_with_probability *= -1;
 
+      // Distance from root, among the higher priorities that are equal,
+      // try to be as far away from the root as possible so as to prune
+      // away as much zero as possible as early as possible. I.e., try
+      // encourage it to have as much "influence" as possible in JT
+      // parents.
+      // negate so that lower (farther from the root) is preferable.
+      const int distance_from_root = -(int)depth;
 
-    // And so on. We can create as many heuristics as we want.
-    // alternatively, perhaps take a weighted average of some of them.
-    // TODO: add more heuristics here, and/or produce better
-    // prioritized order above.
-
-    // Other possible heuristics:
-    //    1) a clique where it has the greatest number of node
-    //    descendants (but this is only a heuristic since to gain
-    //    benefit, we would need to have it be such that those node
-    //    descendants have their node parents in clique as well.
-
-
-
-
-    // We've now computed a bunch of heursitcs, push them
-    // into an array in priority order to be scored later
-    vector<double> score;
-    if (rv->discrete()) {
-      DiscRV* drv = (DiscRV*)rv;
-      // 1st thing pushed has highest priority.
-      if (drv->sparse()) {
-	// if the RV is sparse, use distance from
-	// root as the higest priority, since a sparse
-	// node will have lots of zeros, regardless of beam width.
-	score.push_back(distance_from_root);
-	score.push_back(num_parents_with_probability);
-      } else {
-	// if the RV is not sparse, try to assign it to a node with its
-	// parents root as the higest priority, since a it will make for
-	// a clique that will prune more effectively
-	score.push_back(num_parents_with_probability);
-	score.push_back(distance_from_root);
+      // Number of children in current clique. If rv has lots of
+      // children in this clique, it is hopeful that other parents of
+      // those children might also be assigned to the same clique.
+      int numChildren = 0;
+      for (unsigned i=0;i<rv->allChildren.size();i++) {
+	RV* child = rv->allChildren[i];
+	if (curClique.nodes.find(child) != curClique.nodes.end())
+	  numChildren++;
       }
-      score.push_back(numChildren);
-    } else {
-      score.push_back(weight);
-      score.push_back(num_parents_with_probability);      
-    }
+      // negate so that lower (more children in current clique) is preferable.
+      numChildren *= -1;
 
-    // done inserting heuristicss, now insert the score and the
-    // current clique into the set.
-    pair < vector<double>, unsigned> p(score,root);
-    scoreSet.insert(p);
+      // when the node is continuous, assign it to a clique that is the
+      // smallest possible in terms of weight.
+      // Again, negate so that larger weight is preferable.
+      double weight = - curClique.weight();
+
+      // TODO: add heuristic that assigns RV to smallest clique, in
+      // terms of size. This might be useful for EM training,
+      // particularly of continuous Gaussian variables, in that only
+      // the parents of the Gaussian will be iterated over, rather
+      // than parents of parents.
+
+      // And so on. We can create as many heuristics as we want.
+      // alternatively, perhaps take a weighted average of some of them.
+      // TODO: add more heuristics here, and/or produce better
+      // prioritized order above.
+
+      // Other possible heuristics:
+      //    1) a clique where it has the greatest number of node
+      //    descendants (but this is only a heuristic since to gain
+      //    benefit, we would need to have it be such that those node
+      //    descendants have their node parents in clique as well.
+
+
+      // We've now computed a bunch of heursitcs, push them
+      // into an array in priority order to be scored later
+      vector<double> score;
+      if (rv->discrete()) {
+	DiscRV* drv = (DiscRV*)rv;
+	// 1st thing pushed has highest priority.
+	if (drv->sparse() || drv->deterministic()) {
+	  // if the RV is sparse/deterministic, use distance from root
+	  // as the higest priority, since a sparse node will have
+	  // lots of zeros, regardless of beam width. Goal is to prune
+	  // away as early as possible.
+	  score.push_back(distance_from_root);
+	  score.push_back(num_parents_with_probability);
+	} else {
+	  // if the RV is not sparse, try to assign it to a clique
+	  // with as many of its parents assigning probabiltiy, since
+	  // a it will make for a clique that will prune more
+	  // effectively
+	  score.push_back(num_parents_with_probability);
+	  score.push_back(distance_from_root);
+	}
+	// Last, assign based on prefering cliques where this variable
+	// has lots of children (the children might then use the fact
+	// that this RV gives probability to encourage it to live here
+	// as well, again to improve pruning performance).
+	score.push_back(numChildren);
+      } else {
+	// RV is continue. Pefer small weight.
+	score.push_back(weight);
+	// RV is continue. Then perfer lots of parents with probability.
+	score.push_back(num_parents_with_probability);      
+      }
+
+      // done inserting heuristicss, now insert the score and the
+      // current clique into the set.
+      pair < vector<double>, unsigned> p(score,root);
+      scoreSet.insert(p);
+    }
   }
 
   // continue on down.
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
     const unsigned child = part.cliques[root].children[childNo];
-    assignRVToClique(partName,part,child,depth+1,rv,alreadyAProbContributer,parSet,scoreSet);
+    assignRVToClique(partName,part,child,depth+1,rv,numberOfTimesAssigned,parSet,scoreSet);
   }
 
 }
@@ -2027,24 +2085,50 @@ JunctionTree::createSeparators()
   P1.cliques[P_ri_to_C].ceSendSeparator = ~0x0; // set to invalid value
   // P1 has no LI, so nothing more to do for P1 here.
 
+  // insert VE seps last
+  if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_P)) {
+    infoMsg(IM::Max,"Searching for VE seps in P1\n");
+    createVESeparators(P1);
+  } else
+    P1.numVEseps = 0;
+
   createSeparators(Co,
 		   Co_message_order);
-  createSeparators(E1,
-		   E1_message_order);
 
-  // Create separator of interface cliques
+
+  // insert VE seps last
+  if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_C)) {
+    infoMsg(IM::Max,"Searching for VE seps in Co\n");
+    createVESeparators(Co);
+  } else
+    Co.numVEseps = 0;
+
+  // Create separator of interface cliques. Note that the interface
+  // separator always has to be the last separator inserted.
   Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Co.cliques[C_li_to_P]));
   // update right partitions LI clique to include new separator
   Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
   // don't update left partitions RI clique's send separator since handeled explicitly
   Co.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
 
-  // Create separator of interface cliques
+  createSeparators(E1,
+		   E1_message_order);
+
+  // insert VE seps last
+  if (useVESeparators  && (veSeparatorWhere & VESEP_WHERE_E)) {
+    infoMsg(IM::Max,"Searching for VE seps in E1\n");
+    createVESeparators(E1);
+  } else
+    E1.numVEseps = 0;
+
+  // Create separator of interface cliques. Note that the interface
+  // separator always has to be the last separator inserted.
   E1.separators.push_back(SeparatorClique(Co.cliques[C_ri_to_E],E1.cliques[E_li_to_C]));
   // update right partitions LI clique to include new separator
   E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
   // don't update left partitions RI clique's send separator since handeled explicitly
   E1.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
+
 
 }
 
@@ -2090,6 +2174,67 @@ JunctionTree::createSeparators(JT_Partition& part,
 
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::createVESeparator()
+ *   Creates the virtual evidence (VE) separator objects based on any
+ *   virtual evidence that might live in the current cliques.
+ *
+ * Preconditions:
+ *   createSeparators() must have already been called.
+ *
+ * Postconditions:
+ *   The VE separators for this partition have been created
+ *   the right and left.
+ *
+ * Side Effects:
+ *   Modifies the partitions separators data structures. Pushes
+ *   each such separator back at the end of separator list.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::createVESeparators(JT_Partition& part)
+{
+  part.numVEseps = 0;
+  if (!useVESeparators) {
+    return;
+  }
+  for (unsigned c=0;c<part.cliques.size();c++) {
+    // there might several VE separators.
+    unsigned numVEsepsInClique = part.cliques[c].computeVESeparators();
+    if (numVEsepsInClique > 0) {
+      if (IM::messageGlb(IM::Max)) {
+	printf("Found %d VE seps in clique number %d of current partition\n",numVEsepsInClique,c);
+	for (unsigned i=0;i<numVEsepsInClique;i++) {
+	  printf("VE sep %d,",i);
+	  if (part.cliques[c].veSeparators[i].grandChild != NULL) 
+	    printf("pcg:");
+	  else
+	    printf("pc:");
+	  printRVSetAndCards(stdout,part.cliques[c].veSeparators[i].parents,false);
+	  printf(",c=");
+	  RV2DRV(part.cliques[c].veSeparators[i].child)->printNameFrameCard(stdout,false);
+	  if (part.cliques[c].veSeparators[i].grandChild != NULL) {
+	    printf(",gc=");
+	    RV2DRV(part.cliques[c].veSeparators[i].grandChild)->printNameFrameCard(stdout,false);
+	  }
+	  printf("\n");
+	}
+      }
+    }
+    for (unsigned n=0;n<numVEsepsInClique;n++) {
+      const unsigned sepNo = part.separators.size();
+      part.separators.push_back(SeparatorClique(part.cliques[c].VESeparatorInfo(n)));
+      part.cliques[c].ceReceiveSeparators.push_back(sepNo);
+    }
+    part.numVEseps += numVEsepsInClique;
+  }
+}
 
 
 
@@ -2233,22 +2378,254 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // there are 3 or more separators, determine proper order and then
       // compute running accumulated intersection relative to that order.
 
-      // TODO: need to determine if there is an optimum order or not.
-      // note: code to compute 'an' order is commented out and taged
-      // with ABCDEFGHIJK at end of this file.
-      // 
-      // In otherwords, reorder clique.ceReceiveSeparators for maximal overlap.
-      // 
-      // sort
-      // ... ADD SORTING CODE HERE.
+      // Goal: to produce an optimal separator iteration order.  In
+      // general, the number of "live" surviving entries of all
+      // separators when they are intersected the end of a sep
+      // traversal will be the same no matter the order that is
+      // chosen. What we want here, however, is something that kills
+      // non-live entries ASAP, to avoid extra work.  This will depend
+      // on properties of the separators (which we have here) and the
+      // entries contained within the separators (which we don't have
+      // until run time). Therefore, our order is a heuristic.
+      // We do this by reordering the entries in clique.ceReceiveSeparators.
+
+      // Ideas:
+      // Probably a dynamic program algorithm would work better here. Use DP
+      // to find the order that minimizes the sum (in reverse order) of the 
+      // intersection of the last set with all previous ones.
+
+      //
+      // What we first do: place VE seps last (since they are uneffected by pruning)
+      // What we next do: sort in reverse order, by separator that has the
+      // minimum intersection with others. At each step, when we have
+      // found the sep with min intersection among current number of
+      // seps, we place this at the *end* of the separation iteration
+      // order. Once we get back down to two separators, we start with
+      // the one of minimal weight (to do as much as possible in the
+      // inner loops).  Also, when ties exist, do the thing that
+      // causes the fewest number of branches and has the inner most
+      // loop run interuppted for the greatest amount of time (i.e.,
+      // min weight goes first).
+
+      // printf("before sorting\n");
+      // for (unsigned i = 0; i< clique.ceReceiveSeparators.size(); i++) {
+      // printf("ceRecSep[%d] = %d\n",i,clique.ceReceiveSeparators[i]);
+      // }
 
 
-      // ...
 
 
-      // ... DONE SORTING clique.ceReceiveSeparators
+#if 0
+      for (unsigned i=0;i<clique.ceReceiveSeparators.size();i++) {
+	if ((clique.ceReceiveSeparators[i] == (part.separators.size()-1))) {
+	  swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[i]);
+	  break;
+	}
+      }
+#endif
+
+      // First, place all non VE separators first in the order, since
+      // these will be affected by the pruning parameters (while the
+      // VE seps (if any) don't change with pruning.
+      int swapPosition = numSeparators-1;
+      for (int i=0;i<swapPosition;) {
+	if (part.separators[clique.ceReceiveSeparators[i]].veSeparator) {
+	  swap(clique.ceReceiveSeparators[i],clique.ceReceiveSeparators[swapPosition]);
+	  swapPosition--;
+	} else
+	  i++;
+      }
+      if (!part.separators[clique.ceReceiveSeparators[swapPosition]].veSeparator)
+	swapPosition++;
+      const int firstVESeparator = swapPosition;
+      const int lastRealSeparator = swapPosition-1;
+
+      // printf("lastReal = %d, ceseps:",lastRealSeparator); 
+      // for (unsigned i=0;i<numSeparators;i++) {
+      // printf("%d ",clique.ceReceiveSeparators[i]);
+      // }
+      // printf("\n");
+
+      // printf("Sorting Seps\n");
+
+      // next, sort the real separators based on maximizing intersection.
+      if (lastRealSeparator > 0) {
+	// then we have at least 2 real separators.
+
+	unsigned lastSeparator = lastRealSeparator;
+	set<RV*> sep_intr_set;
+	set<RV*> sep_union_set;
+	set<RV*> empty;
+	vector < pair<unsigned,unsigned> > sepIntersections; 
+	while (lastSeparator > 1) {
+	  // then at least three real separators to go.
+
+	  // compute separator index with minimum intersection with all previous separators
+	  // and swap its index with lastSeparator.
+	  sepIntersections.clear();
+	  sepIntersections.resize(lastSeparator+1);
+	  for (unsigned i=0;i<=lastSeparator;i++) {
+	    SeparatorClique& sep_i =
+	      part.separators[clique.ceReceiveSeparators[i]];
+	    sepIntersections[i].second = i;
+	    sepIntersections[i].first = 0;
+	    sep_union_set.clear();
+	    for (unsigned j=0;j<=lastSeparator;j++) {
+	      if (j == i)
+		continue;
+	      SeparatorClique& sep_j =
+		part.separators[clique.ceReceiveSeparators[j]];
+	      set_union(empty.begin(),empty.end(),
+			sep_j.nodes.begin(),sep_j.nodes.end(),
+			inserter(sep_union_set,sep_union_set.end()));
+	    }
+	    sep_intr_set.clear();
+	    set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
+			     sep_union_set.begin(),sep_union_set.end(),
+			     inserter(sep_intr_set,sep_intr_set.end()));
+	    sepIntersections[i].first = sep_intr_set.size();
+	  }
+
+	  // sort in (default) ascending order
+	  sort(sepIntersections.begin(),sepIntersections.end(),PairUnsigned1stElementCompare());
+	
+	  // among number of ties (the ones with minimal intersection
+	  // with others), find the one with greatest weight to place
+	  // last.
+	  unsigned bestIndex = 0;
+	  float bestWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[bestIndex].second]].weight();
+	  unsigned i = 1;
+	  while (i < sepIntersections.size() && sepIntersections[bestIndex].first == sepIntersections[i].first) {
+	    float curWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[i].second]].weight();
+	    if (curWeight > bestWeight) {
+	      bestWeight = curWeight;
+	      bestIndex = i;
+	    }
+	    i++;
+	  }
+
+	  // finally, swap the best into last place.
+	  // printf("swaping sep %d with %d\n",bestIndex,lastSeparator);
+	  swap(clique.ceReceiveSeparators[sepIntersections[bestIndex].second],clique.ceReceiveSeparators[lastSeparator]);
+	  lastSeparator --;
+	}
+
+	// Lastly, the first two separators should be iterated
+	// so that the min weight one goes first.
+	if (part.separators[clique.ceReceiveSeparators[0]].weight() >
+	    part.separators[clique.ceReceiveSeparators[1]].weight()) {
+	  swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
+	}
+      }
+
+      // next, sort  the VE separators to maximize overlap.
+      const unsigned numVESeparators = numSeparators-firstVESeparator;
+      if (numVESeparators > 1) {
+	// so at least two VE separators.
+
+	int lastSeparator = numSeparators-1;
+	set<RV*> sep_intr_set;
+	set<RV*> sep_union_set;
+	set<RV*> empty;
+	vector < pair<unsigned,unsigned> > sepIntersections; 
+	while (lastSeparator > firstVESeparator + 1) {
+	  // then at least three to go.
+
+	  // compute separator index with minimum intersection with
+	  // *all* previous separators (both normal and VE) and swap
+	  // its index with lastSeparator.
+	  sepIntersections.clear();
+	  sepIntersections.resize(lastSeparator+1-firstVESeparator);
+	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
+	    SeparatorClique& sep_i =
+	      part.separators[clique.ceReceiveSeparators[i]];
+	    sepIntersections[i-firstVESeparator].second = i;
+	    sepIntersections[i-firstVESeparator].first = 0;
+	    sep_union_set.clear();
+	    for (int j=0;j<=lastSeparator;j++) {
+	      if (j == i)
+		continue;
+	      SeparatorClique& sep_j =
+		part.separators[clique.ceReceiveSeparators[j]];
+	      set_union(empty.begin(),empty.end(),
+			sep_j.nodes.begin(),sep_j.nodes.end(),
+			inserter(sep_union_set,sep_union_set.end()));
+	    
+	    }
+	    sep_intr_set.clear();
+	    set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
+		      sep_union_set.begin(),sep_union_set.end(),
+		      inserter(sep_intr_set,sep_intr_set.end()));
+	    sepIntersections[i-firstVESeparator].first = sep_intr_set.size();
+	  }
+	  
+
+// 	  printf("before sorting: VE seps have intersection among others:");
+// 	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
+// 	    printf("%d has %d,",
+// 		   sepIntersections[i-firstVESeparator].second,
+// 		   sepIntersections[i-firstVESeparator].first);
+// 	  }
+// 	  printf("\n");
 
 
+	  // sort in (default) ascending order
+	  sort(sepIntersections.begin(),sepIntersections.end(),PairUnsigned1stElementCompare());
+
+//  	  printf("after sorting: VE seps have intersection among others size = %d:",sepIntersections.size());
+//  	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
+//  	    printf("Sep %d w inter %d.  ",
+//  		   clique.ceReceiveSeparators[sepIntersections[i-firstVESeparator].second],
+//  		   sepIntersections[i-firstVESeparator].first);
+//  	  }
+// 	  printf("\n");
+
+// 	  vector < pair<unsigned,unsigned> >::iterator it;
+// 	  for (it = sepIntersections.begin(); 
+// 		 ((it) != sepIntersections.end()); it++) {
+// 	    printf("cur=(%d,%d), next=(%d,%d), cur<next=%d\n",
+// 		   (*it).first,(*it).second,
+// 		   (*(it+1)).first,(*(it+1)).second,
+// 		   (*it)<(*(it+1)));
+// 	  }
+
+	
+	  // among number of ties (the ones with minimal intersection
+	  // with others), find the one with greatest weight to place
+	  // last.
+	  unsigned bestIndex = 0;
+	  float bestWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[bestIndex].second]].weight();
+	  unsigned i = 1;
+	  while (i < sepIntersections.size() && sepIntersections[bestIndex].first == sepIntersections[i].first) {
+	    float curWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[i].second]].weight();
+	    if (curWeight > bestWeight) {
+	      bestWeight = curWeight;
+	      bestIndex = i;
+	    }
+	    i++;
+	  }
+
+	  // finally, swap the best into last place.
+	  // printf("swaping sep %d with %d\n",bestIndex,lastSeparator);
+	  swap(clique.ceReceiveSeparators[sepIntersections[bestIndex].second],clique.ceReceiveSeparators[lastSeparator]);
+	  lastSeparator --;
+	}
+
+	// Lastly, the first two separators should be iterated
+	// so that the min weight one goes first.
+	if (part.separators[clique.ceReceiveSeparators[firstVESeparator]].weight() >
+	    part.separators[clique.ceReceiveSeparators[firstVESeparator+1]].weight()) {
+	  swap(clique.ceReceiveSeparators[firstVESeparator],clique.ceReceiveSeparators[firstVESeparator+1]);
+	}
+      }
+
+
+      ///////////////////////////////////////////////////////
+      // DONE SORTING clique.ceReceiveSeparators
+      // printf("after sorting\n");
+      // for (unsigned i = 0; i< clique.ceReceiveSeparators.size(); i++) {
+      // printf("ceRecSep[%d] = %d\n",i,clique.ceReceiveSeparators[i]);
+      // }
       // Compute the cummulative intersection of the sepsets using the
       // currently assigned sepset order.
       {
@@ -2541,6 +2918,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
     // 'E_root_clique case'
     // Presumably, this is an E partition, so the root should be done
     // same as E_root_clique computed above.
+    // "update E_root_clique"
     root = 0; 
   }
     
@@ -2761,14 +3139,16 @@ JunctionTree::printAllJTInfoCliques(FILE* f,
   fprintf(f,"== Clique number: %d",root);
   if (treeLevel == 0)
     fprintf(f,", root/right-interface clique");
-  if (part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].children.size() + 1) {
-    if (part.cliques[root].ceReceiveSeparators.size() > 1) 
+  if (part.cliques[root].ceReceiveSeparators.size() == 
+      part.cliques[root].numVESeparators() + part.cliques[root].children.size() + 1) {
+    if (part.cliques[root].ceReceiveSeparators.size() > 1 + part.cliques[root].numVESeparators()) 
       fprintf(f,", left-interface clique");
     else
       fprintf(f,", leaf/left-interface clique");
   } else {
-    assert ( part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].children.size() );
-    if (part.cliques[root].ceReceiveSeparators.size() == 0) 
+    assert ( part.cliques[root].ceReceiveSeparators.size() == 
+	     part.cliques[root].children.size() + part.cliques[root].numVESeparators());
+    if (part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].numVESeparators()) 
       fprintf(f,", leaf");
   }
   fprintf(f,"\n");
@@ -2851,9 +3231,55 @@ JunctionTree::printMessageOrder(FILE *f,
 void
 JunctionTree::prepareForUnrolling()
 {
+
+
+
+  const unsigned totalNumVESeps =
+    P1.numVEseps + Co.numVEseps + E1.numVEseps;
+  if (useVESeparators && totalNumVESeps > 0) {
+    // possibly set VE sep file
+
+    SeparatorClique::veSeparatorFile = NULL;
+
+    if (SeparatorClique::recomputeVESeparatorTables || 
+	((SeparatorClique::veSeparatorFileName != NULL) &&
+	 (::fsize(SeparatorClique::veSeparatorFileName) == 0))) {
+      // open file for writing since we're re-generating the information.
+
+      if (SeparatorClique::veSeparatorFileName != NULL) {
+	SeparatorClique::veSeparatorFile =
+	  ::fopen(SeparatorClique::veSeparatorFileName,"w");
+	if (SeparatorClique::veSeparatorFile == NULL) {
+	  error("ERROR: cannot open VE separator file (%s) for writing.",SeparatorClique::veSeparatorFileName);
+	}
+      }
+      SeparatorClique::generatingVESeparatorTables = true;
+      infoMsg(IM::Default,"Computing information for %d total VE separators\n",totalNumVESeps);
+    } else if (SeparatorClique::veSeparatorFileName != NULL) {
+      // assume that the current ve sep file is valid.
+      SeparatorClique::veSeparatorFile =
+	::fopen(SeparatorClique::veSeparatorFileName,"r");
+      if (SeparatorClique::veSeparatorFile == NULL) {
+	error("ERROR: cannot open VE separator file (%s) for reading.",SeparatorClique::veSeparatorFileName);
+      }
+      SeparatorClique::generatingVESeparatorTables = false;
+      infoMsg(IM::Default,"Reading information for %d total VE separators\n",totalNumVESeps);
+    }
+
+
+  }
+
   prepareForUnrolling(P1);
   prepareForUnrolling(Co);
   prepareForUnrolling(E1);
+
+  if (useVESeparators && totalNumVESeps > 0) {
+    // close file
+    if (SeparatorClique::veSeparatorFile != NULL)
+      fclose(SeparatorClique::veSeparatorFile);
+    if (SeparatorClique::generatingVESeparatorTables)
+      infoMsg(IM::Default,"Done computing information for %d total VE separators\n",totalNumVESeps);
+  }
 }
 void
 JunctionTree::prepareForUnrolling(JT_Partition& part)
@@ -2918,7 +3344,7 @@ JunctionTree::unroll(const unsigned int numFrames)
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, decrease M,S, or different template.\n",
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
 	  numFrames,
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
@@ -3587,7 +4013,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, decrease M,S, or different template.\n",
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
 	  numFrames,
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
@@ -3715,7 +4141,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, decrease M,S, or different template.\n",
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
 	  numFrames,
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
@@ -4400,7 +4826,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, decrease M,S, or different template.\n",
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
 	  numFrames,
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
@@ -4422,6 +4848,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   // this clears the shared caches. 
   clearCliqueSepValueCache();
 
+  // TODO: turn this array into a function so we don't alloate the entire array length.
   // re-allocate.
   partPArray.resize(numPartitions);
   // Redundantly store partition information in an array both for
@@ -4693,6 +5120,7 @@ spare code:
 // What possible options might be given to command line here?
 //   - sort min 1st and place at end, sort max first and place at beginning
 //   - when two seps, what to do (min weight, max weight)
+//      (choose the one last that will have the greatest weight remainder)
 //   - 
 
 // 11/04: when ties exist, do the thing that causes the fewest number of
@@ -4701,96 +5129,96 @@ spare code:
 
 
     {
-    // TODO: need to determine if there is an optimum order or not. If
-    // not, no need to sort here. In general, the number of "live"
-    // entries at the end of a sep traversal will be the same no
-    // matter the order that is chosen. What we want here, however,
-    // is something that kills non-live entries ASAP, to avoid extra
-    // work. The question is if this is depending on properties
-    // of just the separators independent of the particular set of
-    // sparse entries these separators currently contain.
+      // TODO: need to determine if there is an optimum order or not. If
+      // not, no need to sort here. In general, the number of "live"
+      // entries at the end of a sep traversal will be the same no
+      // matter the order that is chosen. What we want here, however,
+      // is something that kills non-live entries ASAP, to avoid extra
+      // work. The question is if this is depending on properties
+      // of just the separators independent of the particular set of
+      // sparse entries these separators currently contain.
 
-    // current code is set up to do a max spanning tree on sep sets
-    // but it is commented out for now.
+      // current code is set up to do a max spanning tree on sep sets
+      // but it is commented out for now.
     
-    // 3 or more separators, need to compute max spanning tree
+      // 3 or more separators, need to compute max spanning tree
 
-    vector < set<unsigned> >  findSet;
-    findSet.resize(numMaxCliques);
-    for (unsigned i=0;i<numSeparators;i++) {
-      set<unsigned> iset;
-      iset.insert(i);
-      findSet[i] = iset;
-    }
-
-    vector< Edge > edges;
-    edges.reserve((numSeparators*(numSeparators-1))/2);
-
-    set<RV*> sep_intr_set;
-    for (unsigned i=0;i<numSeparators;i++) {
-      for (unsigned j=i+1;j<numSeparators;j++) {
-
-	const set<RV*>& sep_i =
-	  part.separators[clique.ceReceiveSeparators[i]];
-	const set<RV*>& sep_j =
-	  part.separators[clique.ceReceiveSeparators[j]];
-	sep_intr_set.clear();
-	set_intersection(sep_i.begin(),sep_i.end(),
-			 sep_j.begin(),sep_j.end(),
-			 inserter(sep_intr_set,sep_intr_set.end()));
-	Edge e;
-	e.clique1 = i; e.clique2 = j; 
-	e.weight = sep_intr_set.size();
-	edges.push_back(e);
-	infoMsg(IM::Huge,"Edge (%d,%d) has weight %d\n",i,j,e.weight);
+      vector < set<unsigned> >  findSet;
+      findSet.resize(numMaxCliques);
+      for (unsigned i=0;i<numSeparators;i++) {
+	set<unsigned> iset;
+	iset.insert(i);
+	findSet[i] = iset;
       }
-    }
-  
-    // sort in decreasing order by edge weight which in this
-    // case is the sep-set size.
-    sort(edges.begin(),edges.end(),EdgeCompare());
 
-    unsigned joinsPlusOne = 1;
-    for (unsigned i=0;i<edges.size();i++) {
-      infoMsg(IM::Huge,"edge %d has weight %d\n",i,edges[i].weight);
+      vector< Edge > edges;
+      edges.reserve((numSeparators*(numSeparators-1))/2);
 
-      // TODO: optimize this to deal with ties to make message
-      // passing cheaper.
+      set<RV*> sep_intr_set;
+      for (unsigned i=0;i<numSeparators;i++) {
+	for (unsigned j=i+1;j<numSeparators;j++) {
 
-      set<unsigned>& iset1 = findSet[edges[i].clique1];
-      set<unsigned>& iset2 = findSet[edges[i].clique2];
-      if (iset1 != iset2) {
-	// merge the two sets
-	set<unsigned> new_set;
-	set_union(iset1.begin(),iset1.end(),
-		  iset2.begin(),iset2.end(),
-		  inserter(new_set,new_set.end()));
-	// make sure that all members of the set point to the
-	// new set.
-	set<unsigned>::iterator ns_iter;
-	for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
-	  const unsigned clique = *ns_iter;
-	  findSet[clique] = new_set;
+	  const set<RV*>& sep_i =
+	    part.separators[clique.ceReceiveSeparators[i]];
+	  const set<RV*>& sep_j =
+	    part.separators[clique.ceReceiveSeparators[j]];
+	  sep_intr_set.clear();
+	  set_intersection(sep_i.begin(),sep_i.end(),
+			   sep_j.begin(),sep_j.end(),
+			   inserter(sep_intr_set,sep_intr_set.end()));
+	  Edge e;
+	  e.clique1 = i; e.clique2 = j; 
+	  e.weight = sep_intr_set.size();
+	  edges.push_back(e);
+	  infoMsg(IM::Huge,"Edge (%d,%d) has weight %d\n",i,j,e.weight);
 	}
-	infoMsg(IM::Med,"Joining cliques %d and %d\n",
-		edges[i].clique1,edges[i].clique2);
-
-	// make edge between edges[i].clique1 and edges[i].clique2
-
-	// part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
-	// part.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
-
-	if (++joinsPlusOne == numSeparators)
-	  break;
       }
-    }
+  
+      // sort in decreasing order by edge weight which in this
+      // case is the sep-set size.
+      sort(edges.begin(),edges.end(),EdgeCompare());
+
+      unsigned joinsPlusOne = 1;
+      for (unsigned i=0;i<edges.size();i++) {
+	infoMsg(IM::Huge,"edge %d has weight %d\n",i,edges[i].weight);
+
+	// TODO: optimize this to deal with ties to make message
+	// passing cheaper.
+
+	set<unsigned>& iset1 = findSet[edges[i].clique1];
+	set<unsigned>& iset2 = findSet[edges[i].clique2];
+	if (iset1 != iset2) {
+	  // merge the two sets
+	  set<unsigned> new_set;
+	  set_union(iset1.begin(),iset1.end(),
+		    iset2.begin(),iset2.end(),
+		    inserter(new_set,new_set.end()));
+	  // make sure that all members of the set point to the
+	  // new set.
+	  set<unsigned>::iterator ns_iter;
+	  for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
+	    const unsigned clique = *ns_iter;
+	    findSet[clique] = new_set;
+	  }
+	  infoMsg(IM::Med,"Joining cliques %d and %d\n",
+		  edges[i].clique1,edges[i].clique2);
+
+	  // make edge between edges[i].clique1 and edges[i].clique2
+
+	  // part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
+	  // part.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
+
+	  if (++joinsPlusOne == numSeparators)
+	    break;
+	}
+      }
     
-    // since these are separators, and all for a given clique A
-    // with some other clique B_i, and since all separators are
-    // subsets of A, but it is not the case that all separators have
-    // an intersection with each other. Goal is to find an order to
-    // traverse the sep sets so that we maximize the amount of overlap
-    // from the so-far-traversed to the to-be-traversed.
+      // since these are separators, and all for a given clique A
+      // with some other clique B_i, and since all separators are
+      // subsets of A, but it is not the case that all separators have
+      // an intersection with each other. Goal is to find an order to
+      // traverse the sep sets so that we maximize the amount of overlap
+      // from the so-far-traversed to the to-be-traversed.
 
     }
 

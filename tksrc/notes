@@ -1632,3 +1632,6 @@ C | [ C E ]
 
 
 
+#define CAT_B(a,b)                 a ## b
+#define CONCAT(a,b)                CAT_B(a,b)
+

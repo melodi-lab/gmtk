@@ -117,8 +117,13 @@ EMable::emStoreAccumulators(oDataStreamFile& ofile)
       infoMsg(IM::SoftWarning,"WARNING: zero accumulator values for %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
-      // We write out '0' to state that 
-      // there are no values stored for this object.
+      // We write out a special flag '0' to state that there are no
+      // values stored for this object. This saves space compared to
+      // writing out all the accumulators with zero values. This also
+      // makes parameters and accumulator files compatible between
+      // different structures (so we can use different structures to
+      // train different parts of the parameters, or in different
+      // ways).
       unsigned flag = 0;
       ofile.write(flag,"writing acc flag");
     } else {
@@ -128,8 +133,8 @@ EMable::emStoreAccumulators(oDataStreamFile& ofile)
       // we will always have the full set of accumulators written.
       assert (emEmAllocatedBitIsSet());
 
-      // we write a 1 to indicate that there are accumulators
-      // stored for this object.
+      // We first write a 1 to indicate that there are real
+      // accumulators stored for this object.
       unsigned flag = 1;
       ofile.write(flag,"writing acc flag");
       // store the accumulators as normal.
@@ -139,7 +144,6 @@ EMable::emStoreAccumulators(oDataStreamFile& ofile)
     }
   }
 }
-
 
 
 void
@@ -179,7 +183,7 @@ EMable::emLoadAccumulators(iDataStreamFile& ifile)
   
     if (flag == 0) {
       // then we don't have any accumulator values for this object, but
-      // still need to initizlie the accumulators.
+      // still need to initialize the accumulators.
       // EMable::emZeroOutAccumulators();
       accumulatedProbability.set_to_zero();
       // call virtual function to do actual work for object.
@@ -187,8 +191,8 @@ EMable::emLoadAccumulators(iDataStreamFile& ifile)
     } else {
 
       // This next assertion is needed, since it shouldn't be possible
-      // that we're training, but the EM data structures have not been
-      // allocated.
+      // that we're training and have non-zero accumulation, but the
+      // EM data structures have not been allocated.
       assert (emEmAllocatedBitIsSet());
 
       // load up the real accumulators.
@@ -235,14 +239,13 @@ EMable::emAccumulateAccumulators(iDataStreamFile& ifile)
   } else {
     // so we are training. 
 
-
     if (flag == 0) {
       // then we don't have any accumulator values for this object, and
       // there is nothing to do.
     } else {
       // This next assertion is needed, since it shouldn't be possible
-      // that we're training, but the EM data structures have not been
-      // allocated.
+      // that we're training and have non-zero accumulation, but the EM
+      // data structures have not been allocated.
       assert (emEmAllocatedBitIsSet());
 
       // accumulate up the real accumulators.

@@ -148,7 +148,10 @@ public:
   // compare the cardinalities of this CPT with that of an other. REturn
   // true if they are equil false otherwise.
   bool compareCardinalities(CPT& cpt);
-
+  // return true if it is possible for this CPT implementation to
+  // change from one utterance to the next. Child classes can override
+  // this default definition if they so choose.
+  virtual bool iterable() { return false; }
 
 
   class iterator {

@@ -111,6 +111,8 @@ public:
   // Created in: JunctionTree::createSeparators();
   vector<SeparatorClique> separators;
 
+  // number of VE separators among the separators in this partition.
+  unsigned numVEseps;
 
   // create an empty one to be filled in later.
   JT_Partition() {}
@@ -192,7 +194,7 @@ public:
 };
 
 
-class JunctionTree  {
+class JunctionTree {
 
   friend class GMTemplate;
   friend class BoundaryTriangulate;
@@ -325,7 +327,7 @@ class JunctionTree  {
 			       const unsigned root,
 			       const unsigned depth,
 			       RV* rv,
-			       bool& alreadyAProbContributer,
+			       unsigned& numberOfTimesAssigned,
 			       set<RV*>& parSet,
 			       multimap< vector<double>, unsigned >& scoreSet);
   static void createDirectedGraphOfCliquesRecurse(JT_Partition& part,
@@ -396,7 +398,17 @@ class JunctionTree  {
 public:
 
 
-
+  // Set to true if the JT should create extra separators for any
+  // virtual evidence (VE) that might be usefully exploitable
+  // computationally in the clique. I.e., we treat the parents
+  // of an immediate observed child, where the child is a deterministic 
+  // function of the parents, a a separator over the parents
+  // to be intersected as normal with all the other separators.
+  static unsigned useVESeparators;
+  enum VESeparatorType { VESEP_PC = 0x1, VESEP_PCG = 0x2 }; 
+  // booleans to indicate where ve-seps should be used.
+  static unsigned veSeparatorWhere;
+  enum VESeparatorWhere { VESEP_WHERE_P = 0x1, VESEP_WHERE_C = 0x2, VESEP_WHERE_E = 0x4 }; 
 
   // Set to true if the JT weight that we compute should be an upper
   // bound.  It is not guaranteed to be a tight upper bound, but is
@@ -554,6 +566,9 @@ public:
   static void createSeparators(JT_Partition& part,
 			       vector< pair<unsigned,unsigned> >&order);
   void createSeparators();
+
+  // create the virtual evidence separators
+  static void createVESeparators(JT_Partition& part);
 
 
   // Separator iteration order and accumulated set intersection

@@ -115,6 +115,10 @@ public:
   }
 
 
+  bool iterable() const {
+    return iterableSw();
+  }
+
   ////////////////////////////////////////////////////////////////////////
   // Increment the statistics with probabilty 'posterior' for the
   // current random variable's parameters, for the case where

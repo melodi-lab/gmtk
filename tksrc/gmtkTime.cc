@@ -247,6 +247,22 @@ Arg Arg::Args[] = {
   Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,I]"),
   Arg("jcap",Arg::Opt,JunctionTree::priorityStr,"Junction Tree Clique Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
   Arg("icap",Arg::Opt,JunctionTree::interfaceCliquePriorityStr,"Interface Clique Priority Determiner Priority. From Set: [W,D,H,O,I]"),
+  Arg("useVESeparators",
+      Arg::Opt,JunctionTree::useVESeparators,
+      "Use Virtual Evidence (VE) Separators (if any are available) during inference"),
+  Arg("veSepWhere",
+      Arg::Opt,JunctionTree::veSeparatorWhere,
+      "Where to use VE seps. Bitwise or of 0x1 (P), 0x2 (C), 0x4 (E)"),
+  Arg("veSepFileName",
+      Arg::Opt,SeparatorClique::veSeparatorFileName,
+      "Name of VE separators file to store VE sep/read previous VE sep info"),
+  Arg("veSepRecompute",
+      Arg::Opt,SeparatorClique::recomputeVESeparatorTables,
+      "Force a re-compute of VE separator information"),  
+  Arg("veSepLogProdCardLimit",
+      Arg::Opt,SeparatorClique::veSeparatorLogProdCardLimit,
+      "The log (base 10) upper limit on a VE sep variable cardinality product"),
+  
 
 
   // Observation Matrix transformation options
