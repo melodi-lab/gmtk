@@ -314,5 +314,5 @@ main(int argc,char*argv[])
     }
   } while (gm.clampNextExample());
 
-  return 0;  
+  exit_program_with_status(0);
 }
