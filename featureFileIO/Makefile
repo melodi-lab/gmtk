@@ -51,7 +51,7 @@ exec_prefix = .
 install_prefix = .
 
 libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L/g/rcs/sw/lib
-includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint
+includedirs = -I/usr/include -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint
 docdir = $(prefix)/man/man1
 
 #
