@@ -290,3 +290,6 @@ X ascii/binary conversion program can go both ways.
   since they are contained in component.
   define a new bit in emable to support this (since need
   to know the first time end of em thing is called).
+
+- ability to produce viterbi paths with mixture variables
+  using the gaussian mixture objects.
