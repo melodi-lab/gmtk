@@ -42,7 +42,7 @@ struct GMTK_GM
     void reveal(vector<RandomVariable *> order, bool show_vals = false);
     // Go through the nodes in the specified order and show them.
 
-    GMTK_GM() {example=NULL; chain=NULL;}
+    GMTK_GM() {example=NULL; chain=NULL; using_files=false;}
     ~GMTK_GM() { if (chain) delete chain; }
 
     void makeRandom();
@@ -123,40 +123,26 @@ struct GMTK_GM
     vector<vector<VariableValue> > *example;
     // In EM there must be a way of iterating over the examples.
     // This store the examples to look at.
-// need a file-based alternative too
+    // Note: if files are being used, the globalObservationMatrix stores the
+    // data.
 
     // how far in the example array have we gotten?
     unsigned expos; 
 
+    // Examples can be read from a file, or from an vector of vector of
+    // VariableValues. This says which it is.
+    bool using_files;
+
     void setExampleStream(vector<vector<VariableValue> > *_example)
     {example=_example;}
     // The examples to be iterated over are held in here
-// need a file-based analog too
 
-    void clampFirstExample() 
-    { if (example==NULL) error("Example array not set.");
-      if (example->size()==0) error("No examples.");
-/*
-      assert(((*example)[0].size()-obsInTemplate)%obsInRepeatSeg==0);
-      setSize(((*example)[0].size()-obsInTemplate)/obsInRepeatSeg);
-*/
-      setValues((*example)[0]);
-      expos=0;
-    }
+    void setExampleStream(char *obs_file_name);
 
+    void clampFirstExample(); 
     // Clamps the observation variables according to the first example.
-// need to add a member that specifies if file-based or array-based example
-// reading is to be done.
 
-    bool clampNextExample() 
-    { if (expos==example->size()-1) return false; 
-      ++expos;
-/*
-      assert( ((*example)[expos].size()-obsInTemplate)%obsInRepeatSeg==0);
-      setSize( ((*example)[expos].size()-obsInTemplate)/obsInRepeatSeg);
-*/
-      setValues((*example)[expos]); return true; 
-    }
+    bool clampNextExample(); 
     // Clamps the observation variables according to the next example.
 
     void enumerativeEM(int iterations);
@@ -199,7 +185,7 @@ struct GMTK_GM
     int firstChunkFrame, lastChunkFrame;
     // the first and last frames in the template repeating segment
 
-    int obsInTemplate, obsInRepeatSeg;
+    int obsInTemplate, obsInRepeatSeg, framesInTemplate, framesInRepeatSeg;
 };
 
 #endif

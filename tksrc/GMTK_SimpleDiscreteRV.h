@@ -28,15 +28,19 @@ class SimpleDiscreteRV : public RandomVariable
 {
 public:
 
-    SimpleDiscreteRV(string _label, vartype vt, int card)
-    : RandomVariable(_label, vt, card) {;}
+    SimpleDiscreteRV(string _label, vartype vt, int card, bool make_cpt=false)
+    : RandomVariable(_label, vt, card) 
+    {if (make_cpt) {
+        dist_given_parents=new map<vector<int>, vector<logpr> >;
+        counts_given_parents=new map<vector<int>, vector<logpr> >;}
+    }
 
     // distribution over own values, given parents values
     // fo no switching. If switching, need a bunch of these
-    map<vector<int>, vector<logpr> > dist_given_parents;
+    map<vector<int>, vector<logpr> > *dist_given_parents;
 
     // this holds the counts accumulated in EM
-    map<vector<int>, vector<logpr> > counts_given_parents;
+    map<vector<int>, vector<logpr> > *counts_given_parents;
 
     ////////////////////////////////////////////////////////////////////////
     // Looks at the values of the switching parents, and sets the 
@@ -55,7 +59,7 @@ public:
         vector<int> pvals;
         for (unsigned i=0; i<curConditionalParents->size(); i++)
             pvals.push_back((*curConditionalParents)[i]->val);
-        return dist_given_parents[pvals][val];
+        return (*dist_given_parents)[pvals][val];
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -64,7 +68,8 @@ public:
     // This function must always do a clamping.
     // Observation variables (already clamped do nothing).
     // It is assumed that the parent values are clamped at this point.
-    virtual void clampFirstValue() {if (hidden) val = 0;}
+    virtual void clampFirstValue() {findConditionalParents();
+    if (hidden) val = 0;}
 
     ////////////////////////////////////////////////////////////////////////
     // Sets a variable to the next possible value.
@@ -84,7 +89,8 @@ public:
     ////////////////////////////////////////////////////////////////////////
     // Sets the parameters determining probGivenParents() to random values.
     // In general, must do this for each set of switching values
-    virtual void makeRandom() {findConditionalParents(); recMakeRandom(0);}
+    virtual void makeRandom() 
+    {findConditionalParents(); recMakeRandom(0);}
 
     ////////////////////////////////////////////////////////////////////////
     // Sets the parameters determining probGivenParents() to uniform values.
@@ -171,7 +177,10 @@ public:
       return rv;
     } 
 
-    void tieParametersWith(RandomVariable *other) {;}
+    void tieParametersWith(RandomVariable *other) 
+    {SimpleDiscreteRV *p = (SimpleDiscreteRV *) other;
+     dist_given_parents=p->dist_given_parents;
+     counts_given_parents=p->counts_given_parents;}
 };
 
 #endif

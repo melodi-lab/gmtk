@@ -17,9 +17,13 @@
  */
 
 #include "GMTK_GM.h"
+#include "GMTK_ObservationMatrix.h"
 #include <map>
 #include <set>
 #include <algorithm>
+
+// the observation matrix is referred to in the functions for clamping examples
+extern ObservationMatrix globalObservationMatrix;
 
 /*
  *-------------------------------------------------------------------------
@@ -794,7 +798,7 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
         lastChunkFrame = last_frame;
 
         obsInTemplate=obsInRepeatSeg=0;
-        for (unsigned i=0; i<=node.size(); i++)
+        for (unsigned i=0; i<node.size(); i++)
         {
             if (node[i]->timeIndex>=first_frame 
             && node[i]->timeIndex<=last_frame && !node[i]->hidden)
@@ -956,7 +960,7 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
 
 void GMTK_GM::setSize(int repeat_segs)
 {
-cout << "setting size " << repeat_segs << endl;
+cout << "number of repeating segments: " << repeat_segs << endl;
     // delete the old clique chain -- we're going to make a new one
     if (chain)
         delete chain;
@@ -966,5 +970,61 @@ cout << "setting size " << repeat_segs << endl;
 
     // make a clique chain to go with the new model
     GM2CliqueChain();
-cout << "size set" << endl;
+}
+
+void GMTK_GM::setExampleStream(char *obs_file_name)
+{
+    globalObservationMatrix.openFile(obs_file_name);
+    using_files = true;
+}
+
+void GMTK_GM::clampFirstExample()
+{
+    if (using_files)
+    {
+        if (globalObservationMatrix.numSegments()==0)
+            error("no data available");
+        globalObservationMatrix.loadSegment(0);
+        int frames = globalObservationMatrix.numFrames;
+        assert((frames-framesInTemplate)%framesInRepeatSeg == 0);
+        setSize((frames-framesInTemplate)/framesInRepeatSeg);
+        expos = 0;
+    }
+    else
+    {
+        if (example==NULL) error("Example array not set.");
+        if (example->size()==0) error("No examples.");
+ /*
+        assert(((*example)[0].size()-obsInTemplate)%obsInRepeatSeg==0);
+        setSize(((*example)[0].size()-obsInTemplate)/obsInRepeatSeg);
+ */
+        setValues((*example)[0]);
+        expos=0;
+    }
+}
+
+bool GMTK_GM::clampNextExample()
+{
+    if (using_files)
+    {
+        if (expos==globalObservationMatrix.numSegments()-1)
+            return false;
+        expos++;
+        globalObservationMatrix.loadSegment(expos);
+        int frames = globalObservationMatrix.numFrames;
+        assert((frames-framesInTemplate)%framesInRepeatSeg == 0);
+        setSize((frames-framesInTemplate)/framesInRepeatSeg);
+    }
+    else
+    {
+        if (expos==example->size()-1) 
+           return false;
+        expos++;
+ /*
+        assert( ((*example)[expos].size()-obsInTemplate)%obsInRepeatSeg==0);
+        setSize( ((*example)[expos].size()-obsInTemplate)/obsInRepeatSeg);
+ */
+        setValues((*example)[expos]); 
+    }
+    return true;
 }

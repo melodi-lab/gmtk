@@ -42,7 +42,7 @@ void SimpleDiscreteRV::recMakeRandom(int pos)
             vals[i] /= s;
 
         // associate the two
-        dist_given_parents[pvals] = vals;
+        (*dist_given_parents)[pvals] = vals;
         return; 
     }
 
@@ -62,7 +62,7 @@ void SimpleDiscreteRV::instantiate()
     vector<int> pvals;
     for (unsigned i=0; i<(*curConditionalParents).size(); i++)
         pvals.push_back((*curConditionalParents)[i]->val);
-    vector<logpr> &vals = dist_given_parents[pvals];
+    vector<logpr> &vals = (*dist_given_parents)[pvals];
 
     logpr target = 0.9999*logpr(float(rand())/RAND_MAX);
     int pos = 0;
@@ -76,11 +76,12 @@ void SimpleDiscreteRV::instantiate()
 void SimpleDiscreteRV::emStartIteration()
 {
     // assume that the CPTs have been set up by now
-    assert(dist_given_parents.size());        
+    assert(dist_given_parents->size());        
 
-    counts_given_parents = dist_given_parents;  // get the sizes right
+    *counts_given_parents = *dist_given_parents;  // get the sizes right
     map<vector<int>, vector<logpr> >::iterator mi;
-    for (mi=counts_given_parents.begin(); mi!=counts_given_parents.end(); mi++)
+    for (mi=(*counts_given_parents).begin(); mi!=(*counts_given_parents).end();
+    mi++)
     {
         vector<logpr> &v = (*mi).second;
         fill(v.begin(), v.end(), logpr(0.0));  // zero out the counts
@@ -90,9 +91,9 @@ void SimpleDiscreteRV::emStartIteration()
 void SimpleDiscreteRV::emEndIteration()
 {
     // inefficient as hell
-    dist_given_parents = counts_given_parents;
+    *dist_given_parents = *counts_given_parents;
     map<vector<int>, vector<logpr> >::iterator mi;
-    for (mi=dist_given_parents.begin(); mi!=dist_given_parents.end(); mi++)
+    for (mi=(*dist_given_parents).begin();mi!=(*dist_given_parents).end();mi++)
     {
         vector<logpr> &v = (*mi).second;
         logpr sum = accumulate(v.begin(), v.end(), logpr(0.0));
@@ -110,6 +111,6 @@ void SimpleDiscreteRV::emIncrement(logpr posterior)
     vector<int> pvals;
     for (unsigned i=0; i<(*curConditionalParents).size(); i++)
         pvals.push_back((*curConditionalParents)[i]->val);
-    counts_given_parents[pvals][val] += posterior;
+    (*counts_given_parents)[pvals][val] += posterior;
 }
 
