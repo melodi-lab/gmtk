@@ -537,7 +537,7 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
  *      than tying multiple means & variances together identicaly.
  *      In that case, state tieing should be used.
  *
- *      Note: this routine is probably a GEM rather than an EM.
+ *      Note: this routine is a GEM rather than an EM.
  * 
  * Preconditions:
  *      see the assertions
@@ -858,7 +858,7 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
  *      than tying multiple means & variances together identicaly.
  *      In that case, state tieing should be used.
  *
- *      Note: this routine is probably a GEM rather than an EM.
+ *      Note: this routine is a GEM rather than an EM.
  * 
  * Preconditions:
  *      see the assertions
