@@ -168,5 +168,4 @@ X change sparse PMF so that it just contains a list
 - Identify potential issues with release (ie.., bugs, slowness, obviously needed toolkit abilities,
   thigns that are inconvenient, etc.).
 
-
-
+- add VCID everywhere.
