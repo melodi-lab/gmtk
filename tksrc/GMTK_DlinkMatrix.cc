@@ -42,7 +42,7 @@ VCID("$Header$");
 //        Static members
 ////////////////////////////////////////////////////////////////////
 
-double DlinkMatrix::cloneSTDfrac = 0.1;
+double DlinkMatrix::cloneSTDfrac = 0.0;
 
 void DlinkMatrix::checkForValidValues()
 {
