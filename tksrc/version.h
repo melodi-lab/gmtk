@@ -18,7 +18,9 @@
  *
  */
 
-// TODO: automate the process of updating this string.a
+// TODO: automate the process of updating this string.
 static char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
+// TODO: figure out a better way to keep compiler from complaining
+static char *___gvi_tmp___ = gmtk_version_id;
 
 

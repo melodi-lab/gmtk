@@ -365,8 +365,6 @@ main(int argc,char*argv[])
     error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
 
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
-  // lastly, load the internal objects.
-  GM_Parms.loadGlobal();
 
   printf("Finished reading in all parameters and structures\n");
 

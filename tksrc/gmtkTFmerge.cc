@@ -61,7 +61,6 @@ static bool loadParameters = false;
 
 static char *inputMasterFile=NULL;
 static char *inputTrainableParameters=NULL;
-static char *inputTriangulatedFile=NULL;
 static char *outputTriangulatedFile=NULL;
 static bool binInputTrainableParameters=false;
 
@@ -71,7 +70,7 @@ static char* Etrifile = false;
 
 static unsigned numBackupFiles = 7;
 static unsigned verbosity = IM::Default;
-static bool printResults = false;
+// static bool printResults = false;
 static int allocateDenseCpts=0;
 
 Arg Arg::Args[] = {
@@ -255,7 +254,6 @@ main(int argc,char*argv[])
 	error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
     }
   }
-  GM_Parms.loadGlobal();
 
   // create with bogus M and S values for now, to be overwritten
   // once we read in the partitions.
