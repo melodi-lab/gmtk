@@ -124,7 +124,7 @@ X when reading in definitions for each utterance:
 
 X pass .str files through cpp before reading.
 
-- make sure that all files passed through cpp that
+X make sure that all files passed through cpp that
   line numbering error messages is done right.
 
 X GMTK_GMParms::read(), keeps open all files
@@ -155,12 +155,12 @@ X Allow the file parser to pass ascii files through cpp
 - in file parser, add checks to make sure that all ints read in
   are non-negative
 
-- change parser to keep track of multiple #include files via line directives
+X change parser to keep track of multiple #include files via line directives
 
 X change sparse PMF so that it just contains a list
   of values, and then a pointer to a dense pmf
 
-- get the parameter writing stuff finalized.
+X get the parameter writing stuff finalized.
    (get working after workshop, use simple global write in binary for now).
 
 X get MCVR working
@@ -187,7 +187,7 @@ X add VCID everywhere.
 - allow deterministic relations to be enumerated out. in some cases, this is
   easier than a decision tree. 
 
-- add a binary/ascii parameter file conversion program.
+X- add a binary/ascii parameter file conversion program.
 
 - export all internal program variables to command line (e.g., var floor, etc)
 
@@ -401,3 +401,5 @@ TODO:
   file.
 
 - cpp program is determined by environment variable if it exists.
+
+- remove from parser the integer index stuff since string names exist.
