@@ -30,6 +30,7 @@
 #include "general.h"
 #include "error.h"
 
+#include "GMTK_RealArray.h"
 
 VCID("$Header$");
 
@@ -77,9 +78,9 @@ RealArray::RealArray()
 void
 RealArray::read(iDataStreamFile& is)
 {
+  int length;
 
   is.read(length,"RealArray::read, distribution length");
-
   if (length <= 0)
     error("RealArray: read length (%d) < 0 in input",length);
 
@@ -111,10 +112,9 @@ RealArray::read(iDataStreamFile& is)
 void
 RealArray::write(oDataStreamFile& os)
 {
-  assert (nFeats > 0);
 
-  os.write(length,"RealArray::write, length");
-  for (int i=0;i<length;i++) {
+  os.write(arr.len(),"RealArray::write, length");
+  for (int i=0;i<arr.len();i++) {
     os.write(arr[i],"RealArray::write, values");
   }
   os.nl();

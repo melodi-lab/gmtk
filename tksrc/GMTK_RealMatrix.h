@@ -18,14 +18,15 @@
  */
 
 
-#ifndef GMTK_REALARRAY
-#define GMTK_REALARRAY
+#ifndef GMTK_REALMATRIX_H
+#define GMTK_REALMATRIX_H
 
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
 
-class RealArray {
+
+class RealMatrix {
 
   ///////////////////////////////////////////////////////////  
   // The data values
@@ -43,7 +44,7 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  RealArray() 
+  RealMatrix();
 
 
   ///////////////////////////////////////////////////////////    
@@ -56,4 +57,4 @@ public:
 
 
 
-#endif // defined REALARRAY
+#endif

@@ -25,6 +25,9 @@
 #include "logp.h"
 #include "sArray.h"
 
+#include "GMTK_EMable.h"
+#include "GMTK_RealArray.h"
+
 class DiagCovarVector : public EMable {
 
 
@@ -57,16 +60,24 @@ public:
 
   //////////////////////////////////////////////
   // read/write basic parameters
-  void read(iDataStreamFile& is) { 
-    covariances.read(is); 
-    for (i=0;i<covariances.len();i++) {
-      if (covariances[i] < GaussianCommon::varianceFloor()) {
-	error("DiagCovarVector:: read, covariance[%d] = (%e) < current Floor = (%e)",
-	      i,covariances[i],GaussianCommon::varianceFloor());
-      }
-    }
-  }
+  void read(iDataStreamFile& is);
   void write(oDataStreamFile& os) { covariances.write(os); }
+
+
+
+  //////////////////////////////////
+  // Public interface support for EM
+  //////////////////////////////////
+  void emInit() {}
+  void startEmEpoch() {}
+  void emAccumulate(const float prob,
+		    const float *const oo_array) {}
+  void endEmEpoch(logpr cmpSop_acc) {}
+  void emLoadAccumulators(iDataStreamFile& ifile) {}
+  void emStoreAccumulators(oDataStreamFile& ofile) {}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void swapCurAndNew() {}
+  //////////////////////////////////
 
 };
 

@@ -31,6 +31,8 @@
 #include "error.h"
 #include "rand.h"
 
+#include "GMTK_MeanVector.h"
+
 VCID("$Header$");
 
 

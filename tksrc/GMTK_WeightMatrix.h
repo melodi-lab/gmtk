@@ -18,14 +18,16 @@
  */
 
 
-#ifndef GMTK_WEIGHTMATRIX
-#define GMTK_WEIGHTMATRIX
+#ifndef GMTK_WEIGHTMATRIX_H
+#define GMTK_WEIGHTMATRIX_H
 
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
 
-class Weightmatrix : public EMable {
+#include "GMTK_EMable.h"
+
+class WeightMatrix : public EMable {
 
 
   ///////////////////////////////////////////////////////////  
@@ -49,7 +51,7 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  Weightmatrix();
+  WeightMatrix();
 
   int rows() { return _rows; }
   int cols() { return _cols; }
@@ -62,8 +64,25 @@ public:
   ///////////////////////////////////////////////////////////    
   void write(oDataStreamFile& os);
 
+
+  //////////////////////////////////
+  // Public interface support for EM
+  //////////////////////////////////
+  void emInit() {}
+  void startEmEpoch() {}
+  void emAccumulate(const float prob,
+    const float *const oo_array) {}
+  void endEmEpoch(logpr cmpSop_acc) {}
+  void emLoadAccumulators(iDataStreamFile& ifile) {}
+  void emStoreAccumulators(oDataStreamFile& ofile) {}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void swapCurAndNew() {}
+  //////////////////////////////////
+
+
+
 };
 
 
 
-#endif // defined WEIGHTMATRIX
+#endif 

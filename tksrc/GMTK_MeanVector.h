@@ -18,14 +18,15 @@
  */
 
 
-#ifndef GMTK_REALARRAY
-#define GMTK_REALARRAY
+#ifndef GMTK_MEANVECTOR_H
+#define GMTK_MEANVECTOR_H
 
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
 
 #include "GMTK_RealArray.h"
+#include "GMTK_EMable.h"
 
 class MeanVector : public EMable {
 
@@ -53,17 +54,19 @@ public:
   void read(iDataStreamFile& is) { means.read(is); }
   void write(oDataStreamFile& os) { means.write(os); }
 
+
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emInit();
-  void startEmEpoch();
+  void emInit() {}
+  void startEmEpoch() {}
   void emAccumulate(const float prob,
-		    const float *const oo_array);
-  void endEmEpoch(logpr cmpSop_acc);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emStoreAccumulators(oDataStreamFile& ofile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
+    const float *const oo_array) {}
+  void endEmEpoch(logpr cmpSop_acc) {}
+  void emLoadAccumulators(iDataStreamFile& ifile) {}
+  void emStoreAccumulators(oDataStreamFile& ofile) {}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void swapCurAndNew() {}
   //////////////////////////////////
 
 
@@ -72,4 +75,4 @@ public:
 
 
 
-#endif // defined REALARRAY
+#endif // defined MEANVECTOR_H

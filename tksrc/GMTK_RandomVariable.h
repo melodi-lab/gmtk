@@ -16,8 +16,8 @@
  *
  */ 
 
-#ifndef GMTK_RANDOMVARIABLE
-#define GMTK_RANDOMVARIABLE
+#ifndef GMTK_RANDOMVARIABLE_H
+#define GMTK_RANDOMVARIABLE_H
 
 #include <vector>
 #include <string>

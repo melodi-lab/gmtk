@@ -30,6 +30,7 @@
 #include "general.h"
 #include "error.h"
 
+#include "GMTK_RealMatrix.h"
 
 VCID("$Header$");
 
@@ -87,7 +88,7 @@ RealMatrix::read(iDataStreamFile& is)
 
   arr.resize(rows*cols);
 
-  float ptr = arr.ptr;
+  float *ptr = arr.ptr;
   for (int i=0;i<rows*cols;i++) {
     float val;
     is.read(val,"RealMatrix::read, reading value");

@@ -15,8 +15,8 @@
  *
  */ 
 
-#ifndef GMTK_DISCRETERANDOMVARIABLE
-#define GMTK_DISCRETERANDOMVARIABLE
+#ifndef GMTK_DISCRETERANDOMVARIABLE_H
+#define GMTK_DISCRETERANDOMVARIABLE_H
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
@@ -46,6 +46,13 @@ public:
 
   DiscreteRandomVariable(string _label, vartype vt, int card=0)
     : RandomVariable(_label, vt,card) {}
+
+  ////////////////////////////////////////////////
+  // Assuming the parents have been allocated, this forces
+  // the internal CPT structures to 1) be allocated and 
+  // 2) match the cardinalities of the parents.
+  void allocateProbabiltyTables();
+
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.

@@ -19,11 +19,13 @@
  */
 
 
-#ifndef GAUSSIANCOMMON_H
-#define GAUSSIANCOMMON_H
+#ifndef GMTK_GAUSSIANCOMMON_H
+#define GMTK_GAUSSIANCOMMON_H
 
 #include "fileParser.h"
 #include "logp.h"
+
+#include "machine-dependent.h"
 
 class GaussianCommon {
 
@@ -41,18 +43,18 @@ class GaussianCommon {
 
   /////////////////////////////////////////////////////////
   // precompute values so that evaluation is efficient.
-  virtual void preCompute() 
+  virtual void preCompute();
 
 public:
 
   
-  GaussianCommon() { bitmask = 0x0; }
+  GaussianCommon() {}
   virtual ~GaussianCommon() {}
 
 
   static double varianceFloor() { return _varianceFloor; }
   static void setVarianceFloor(double floor) 
-    { if (floor < FLT_MIN) floor = FLT_MIN; varianceFloor = floor; }
+    { if (floor < FLT_MIN) floor = FLT_MIN; _varianceFloor = floor; }
 
 
   //////////////////////////////////////////////
@@ -73,12 +75,12 @@ public:
   //////////////////////////////////
   // probability evaluation
   virtual logpr log_p(const float *const x,    // real-valued scoring obs at time t
-		      const ptr32* const base, // ptr to base obs at time t
+		      const Data32* const base, // ptr to base obs at time t
 		      const int stride);       // stride
   virtual double p(const float *const x,
-		   const ptr32* const base,
-		   const int stride);
-  { return exp(log_p(x,stride).val()); }
+		   const Data32* const base,
+		   const int stride)
+  { return exp(log_p(x,base,stride).val()); }
   //////////////////////////////////
 
 
@@ -102,7 +104,7 @@ public:
   // Sample Generation            //
   //////////////////////////////////
   virtual void sampleGenerate(float *const sample,
-		      const ptr32* const base);
+		      const Data32* const base);
   //////////////////////////////////
 
 
