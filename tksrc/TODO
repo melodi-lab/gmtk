@@ -627,3 +627,6 @@ Fri Jul 19 10:11:04 2002
 Fri Jul 19 10:13:22 2002
  - idea. Each gmtk object should have a set of options that can
    be set when the object is defined, rather than in a separate file???
+
+ri Jul 19 11:59:44 2002
+ - add karen's MCVR/MCSR comments to the docs
