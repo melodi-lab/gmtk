@@ -294,3 +294,6 @@ X ascii/binary conversion program can go both ways.
 
 - ability to produce viterbi paths with mixture variables
   using the gaussian mixture objects.
+
+- write a vector version of log(1 + exp(x))
+
