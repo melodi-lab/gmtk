@@ -30,8 +30,8 @@
 #include "error.h"
 #include "rand.h"
 
-
 #include "GMTK_MDCPT.h"
+#include "GMTK_RandomVariable.h"
 
 VCID("$Header$");
 
@@ -76,18 +76,11 @@ MDCPT::MDCPT()
  */
 void MDCPT::setNumParents(const int _nParents)
 {
-
-  if (_nParents < 0) 
-    error("MDCPT: setNumParents, trying to use negative (%d) num parents.",
-	  _nParents);
+  CPT::setNumParents(_nParents);
 
   // assume that the basic stuff is no longer allocated.
   bitmask &= ~bm_basicAllocated;
-
-  numParents = _nParents;
-  cardinalities.resize(numParents+1);
   cumulativeCardinalities.resize(numParents);
-
 }
 
 
@@ -106,23 +99,7 @@ void MDCPT::setNumParents(const int _nParents)
  */
 void MDCPT::setNumCardinality(const int var, const int card)
 {
-
-  if (var < 0)
-    error("MDCPT: setNumCardinality, trying to use negative (%d) var.",
-	  var);
-  if (var > numParents) 
-    error("MDCPT: setNumCardinality, trying to use illegal (%d) var.",
-	  var);
-  if (card <= 0)
-    error("MDCPT: setNumCardinality, trying to use illegal (%d) card.",
-	  card);
-
-  // assertion should be satisifed by the way that cardinalities
-  // is allocated allong with setting num parents.
-  assert ( var < cardinalities.len() );
-
-  cardinalities[var] = card;
-
+  CPT::setNumCardinality(var,card);
   // assume that the basic stuff is not allocated.
   bitmask &= ~bm_basicAllocated;
 }
@@ -215,8 +192,8 @@ MDCPT::read(iDataStreamFile& is)
   }
 
   // Finally read in the probability values (stored as doubles).
-  // NOTE: We could check that things sum to approximately 1 here, if
-  // we didn't use a large 1D loop. 
+  // NOTE: We could check that things sum to approximately 1.0 here
+  // (if we didn't use a large 1D loop).
   mdcpt.resize(numValues);
   for (int i=0;i<numValues;i++) {
     double val;
@@ -322,7 +299,7 @@ MDCPT::becomeAwareOfParentValues( sArray<int>& parentValues)
  *-----------------------------------------------------------------------
  */
 void
-MDCPT::becomeAwareOfParentValues( sArray< randomVariable * >& parents)
+MDCPT::becomeAwareOfParentValues( sArray< RandomVariable * >& parents)
 {
 
   assert ( parents.len() == numParents );
@@ -330,9 +307,9 @@ MDCPT::becomeAwareOfParentValues( sArray< randomVariable * >& parents)
   
   int offset = 0;
   for (int i = 0; i < numParents; i++) {
-    if ( parents[i].val < 0 || parents[i].val >= cardinalities[i]) 
-      error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
-    offset += parents[i].val*cumulativeCardinalities[i];
+    if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i]) 
+      error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parents[i]->val,cardinalities[i]);
+    offset += parents[i]->val*cumulativeCardinalities[i];
   }
   mdcpt_ptr = mdcpt.ptr + offset;
 }
@@ -369,7 +346,7 @@ MDCPT::randomSample()
     sum += it.probVal;
     if (uniform <= sum)
       break;
-  } while next(it);
+  } while (next(it));
   
   return it.val;
 }
@@ -491,7 +468,6 @@ MDCPT::makeUniform()
   for (int parent_assignment =0; 
        parent_assignment < num_parent_assignments; 
        parent_assignment ++) {
-    logpr sum = 0.0;
     logpr *tmp_loc_ptr = loc_ptr;
     for (int i=0;i<child_card;i++) {
       *tmp_loc_ptr ++ = u_val;
@@ -591,6 +567,14 @@ main()
   parentVals[2] = 1;
   mdcpt.becomeAwareOfParentValues(parentVals);
 
+  it = mdcpt.first();
+  do {
+    printf("Prob of %d is %f\n",
+	   it.val,it.probVal.unlog());
+  } while (mdcpt.next(it));
+
+  mdcpt.makeRandom();
+  printf("After randomization\n");
   it = mdcpt.first();
   do {
     printf("Prob of %d is %f\n",
