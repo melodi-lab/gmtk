@@ -191,4 +191,5 @@ X add VCID everywhere.
 
 - write C++ program to print number of free parameters for a system.
 
-- add simple multiplication onto decision tree leafs.
+- add simple multiplication onto decision tree leafs. (or better, make it
+  use real integer formulas with parens, etc.).
