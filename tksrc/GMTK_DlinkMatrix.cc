@@ -115,7 +115,9 @@ DlinkMatrix::read(iDataStreamFile& is)
   is.read(str);
   if (GM_Parms.dLinksMap.find(str) == GM_Parms.dLinksMap.end())
     error("Error: Dlink matrix '%s' in file '%s' specifies dlink structure name '%s' that does not exist",
-	  name().c_str(),is.fileName(),str.c_str());
+	  name().c_str(),
+	  is.fileName(),
+	  str.c_str());
   
   dLinks = GM_Parms.dLinks[GM_Parms.dLinksMap[str]];
 
@@ -123,11 +125,15 @@ DlinkMatrix::read(iDataStreamFile& is)
 
   is.read(_dim,"DlinkMatrix::read, _dim");
   if (_dim <= 0)
-    error("ERROR: reading DlinkMatrix '%s' from file '%s', dim (%d) must be positive",name().c_str(),is.fileName(),_dim);
+    error("ERROR: reading DlinkMatrix '%s' from file '%s', dim (%d) must be positive",
+	  name().c_str(),
+	  is.fileName(),
+	  _dim);
 
   if (_dim != dLinks->dim())
     error("Error: Dlink matrix '%s' in file '%s' specifices a dlink structure '%s' with incompatible dimensions\n",
-	  name().c_str(),is.fileName(),
+	  name().c_str(),
+	  is.fileName(),
 	  dLinks->name().c_str());
 
 
@@ -136,11 +142,15 @@ DlinkMatrix::read(iDataStreamFile& is)
     is.read(nlinks,"DlinkMatrix::read, nlinks");
 
     if (nlinks < 0) 
-      error("ERROR: reading DlinkMatrix '%s' from file '%s', # dlinks (%d) must be >= 0",name().c_str(),is.fileName(),nlinks);
+      error("ERROR: reading DlinkMatrix '%s' from file '%s', # dlinks (%d) must be >= 0",
+	    name().c_str(),
+	    is.fileName(),
+	    nlinks);
 
     if (nlinks != dLinks->numLinks(i))
       error("Error: Dlink matrix '%s' in file '%s' specifices a dlink structure '%s' with incompatible number of links\n",
-	    name().c_str(),is.fileName(),
+	    name().c_str(),
+	    is.fileName(),
 	    dLinks->name().c_str());
 
     int oldLen = arr.len();
@@ -324,7 +334,7 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 			      sArray<float>& zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingdLinkMats())
+  if (!emAmTrainingBitIsSet())
     return;
 
   /////////////////////////////////////////////
@@ -409,7 +419,7 @@ DlinkMatrix::emIncrement(const logpr prob,
 			 float* zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingdLinkMats())
+  if (!emAmTrainingBitIsSet())
     return;
 
   /////////////////////////////////////////////
@@ -469,7 +479,7 @@ void
 DlinkMatrix::emEndIteration(const float*const xzAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingdLinkMats())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (refCount > 0) {
@@ -514,7 +524,7 @@ void
 DlinkMatrix::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingdLinkMats())
+  if (!emAmTrainingBitIsSet())
     return;
 
   // we should have that the number of calls
@@ -535,6 +545,8 @@ void
 DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert (basicAllocatedBitIsSet());
+  if (!emAmTrainingBitIsSet())
+    return;
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for dlink matrix '%s'\n",
 	    name().c_str());
@@ -549,6 +561,8 @@ void
 DlinkMatrix::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert (basicAllocatedBitIsSet());
+  if (!emAmTrainingBitIsSet())
+    return;
   EMable::emStoreZeroAccumulators(ofile);
 }
 
@@ -557,6 +571,8 @@ void
 DlinkMatrix::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet());
+  if (!emAmTrainingBitIsSet())
+    return;
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
 }
@@ -566,6 +582,8 @@ void
 DlinkMatrix::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet());
+  if (!emAmTrainingBitIsSet())
+    return;
   assert (emEmAllocatedBitIsSet());
   EMable::emAccumulateAccumulators(ifile);
 }

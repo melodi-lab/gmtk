@@ -247,7 +247,6 @@ DiagGaussian::log_p(const float *const x,
   } while (xp != x_endp);
   d *= -0.5;
   return logpr(0,(covar->log_inv_normConst() + d));
-
 }
 
 
@@ -262,7 +261,7 @@ void
 DiagGaussian::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingDiagGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (emOnGoingBitIsSet())
@@ -290,11 +289,11 @@ DiagGaussian::emIncrement(logpr prob,
 			  const int stride)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingDiagGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
 
-
-  emStartIteration();
+  if (!emOnGoingBitIsSet())
+    emStartIteration();
 
   if (prob < minIncrementProbabilty) {
     missedIncrementCount++;
@@ -317,7 +316,7 @@ void
 DiagGaussian::emEndIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingDiagGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
 
   // if EM not ongoing, we just return
@@ -347,7 +346,7 @@ void
 DiagGaussian::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingDiagGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emSwappableBitIsSet())
@@ -368,6 +367,8 @@ void
 DiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for Diag Gaussian '%s'\n",
 	    name().c_str());
@@ -387,6 +388,8 @@ void
 DiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   EMable::emStoreZeroAccumulators(ofile);
   for (int i=0;i<mean->dim();i++) {
     ofile.write((float)0.0,"Diag Gaussian store zero accums nm.");
@@ -400,6 +403,8 @@ void
 DiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emLoadAccumulators(ifile);
   for (int i=0;i<nextMeans.len();i++) {
@@ -415,6 +420,8 @@ void
 DiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);
   for (int i=0;i<nextMeans.len();i++) {
@@ -442,12 +449,3 @@ void DiagGaussian::sampleGenerate(float *const sample,
 {
   error("not implemented");
 }
-
-
-
-
-
-
-
-
-

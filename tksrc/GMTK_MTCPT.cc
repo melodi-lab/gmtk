@@ -231,6 +231,9 @@ MTCPT::write(oDataStreamFile& os)
 void
 MTCPT::emStartIteration()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   if(emOnGoingBitIsSet())
     return; // already done
 
@@ -248,7 +251,11 @@ MTCPT::emStartIteration()
 void
 MTCPT::emIncrement(logpr prob,RandomVariable* rv)
 {
-  emStartIteration();
+  if (!emAmTrainingBitIsSet())
+    return;
+
+  if(!emOnGoingBitIsSet())
+    emStartIteration();
 
   // this is an MTCPT, so rv must be discrete.a
   assert ( rv -> discrete );
@@ -259,7 +266,7 @@ MTCPT::emIncrement(logpr prob,RandomVariable* rv)
 
   // TODO: This needs to be factored out of the inner most
   // loop! (in an MTCPT can safely remove this).
-  becomeAwareOfParentValues(*(drv->curConditionalParents));
+  // becomeAwareOfParentValues(*(drv->curConditionalParents));
 
   accumulatedProbability += prob;
 }
@@ -267,6 +274,8 @@ MTCPT::emIncrement(logpr prob,RandomVariable* rv)
 void
 MTCPT::emEndIteration()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
 
   if (!emOnGoingBitIsSet())
     return;
@@ -284,6 +293,9 @@ MTCPT::emEndIteration()
 void
 MTCPT::emSwapCurAndNew()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   if (!emSwappableBitIsSet())
     return;
   emClearSwappableBit();
@@ -293,6 +305,9 @@ MTCPT::emSwapCurAndNew()
 void
 MTCPT::emStoreAccumulators(oDataStreamFile& ofile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for MTCPT '%s'\n",
@@ -307,6 +322,9 @@ MTCPT::emStoreAccumulators(oDataStreamFile& ofile)
 void
 MTCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   EMable::emStoreZeroAccumulators(ofile);
 }
@@ -314,6 +332,9 @@ MTCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
 void
 MTCPT::emLoadAccumulators(iDataStreamFile& ifile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert (basicAllocatedBitIsSet());
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
@@ -323,6 +344,9 @@ MTCPT::emLoadAccumulators(iDataStreamFile& ifile)
 void
 MTCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);

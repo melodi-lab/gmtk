@@ -303,9 +303,9 @@ void
 MixGaussians::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-
-  if (!GM_Parms.amTrainingMixGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
+
   if(emOnGoingBitIsSet())
     return; // already done
 
@@ -368,11 +368,11 @@ MixGaussians::emIncrement(logpr prob,
 			  const unsigned firstFeatureElement)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
 
-  if (!GM_Parms.amTrainingMixGaussians())
-    return;  
-
-  emStartIteration();
+  if(!emOnGoingBitIsSet())
+    emStartIteration();
 
   if (prob < minIncrementProbabilty) {
     missedIncrementCount++;
@@ -429,8 +429,7 @@ void
 MixGaussians::emEndIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-
-  if (!GM_Parms.amTrainingMixGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if ( !emOnGoingBitIsSet() )
@@ -614,8 +613,7 @@ void
 MixGaussians::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-
-  if (!GM_Parms.amTrainingMixGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emSwappableBitIsSet())
@@ -675,6 +673,8 @@ void
 MixGaussians::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for mix gaussian '%s'\n",
 	    name().c_str());
@@ -688,6 +688,8 @@ void
 MixGaussians::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   EMable::emStoreZeroAccumulators(ofile);
 }
 
@@ -695,6 +697,8 @@ void
 MixGaussians::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emLoadAccumulators(ifile);
 }
@@ -704,6 +708,8 @@ void
 MixGaussians::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);
 }
