@@ -232,32 +232,6 @@ inverse_error_func(double p)
 
 
 
-static void
-usage(const char* message = 0)
-{
-    if (message)
-        fprintf(stderr, "%s: %s\n", program_name, message);
-    fprintf(stderr, "Usage: %s <options>\n", program_name);
-    fprintf(stderr,
-	    "Where <options> include:\n"
-	    "-help           print this message\n"
-	    "-i <file-name>  input pfile\n"
-	    "-o <file-name>  output pfile ('-' for stdout)\n"
-            "-iswap          byte-swap input\n"
-            "-oswap          byte-swap output\n"
-	    "-sr range       sentence range\n"
-	    "-fr range       feature range\n"
-	    "-pr range       per-sentence frame range\n"
-	    "-h #            number of histogram bins (default 0)\n"
-            "-oh <file-name> statistics output file (if desired)\n"
-            "-ih <file-name> read in statistics (rather than calculating)\n"
-            "-d #            number of Gaussian standard deviations\n"
-	    "-u              Output is uniform[0,1] distributed rather than Gaussian.\n"
-	    "-debug <level>  number giving level of debugging output to produce 0=none.\n"
-    );
-    exit(EXIT_FAILURE);
-}
-
 double
 histc_lookup(float *domain,
 	     double *range,
