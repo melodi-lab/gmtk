@@ -354,6 +354,8 @@ void GMTK_GM::enumerativeEM(int iterations)
  *-----------------------------------------------------------------------
  * Function
  *    cliqueChainEM does EM using dynamic programming on a clique chain
+ *    Use the beam given as arguments, and write parameters to a file
+ *    given in the argument.
  *
  * Results:
  *
@@ -364,11 +366,26 @@ void GMTK_GM::enumerativeEM(int iterations)
  *-----------------------------------------------------------------------
  */
 
-void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
+void GMTK_GM::cliqueChainEM(int iterations, 
+			    logpr beam, 
+			    const bool writeParametersBeforeEachEMIteration,
+			    const string outputParamFile,
+			    const bool binOutFile)
 {
     logpr last_dp = 0.0;
     for (int i=0; i<iterations; i++)
     {
+	/////////////////////////////////////////////////////////
+	// the basic parameters before each iteration 
+	if (writeParametersBeforeEachEMIteration 
+	    && outputParamFile.size() > 0) {
+	  char buff[2048];
+	  copyStringWithTag(buff,outputParamFile.c_str(),
+			    i,2048);
+	  oDataStreamFile of(buff,binOutFile);
+	  GM_Parms.writeAll(of);
+	}
+
         logpr total_data_prob = 1.0;
         int frames = 0;
         clampFirstExample();
@@ -397,17 +414,19 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
         // if (total_data_prob > last_dp)
 	GM_Parms.emSwapCurAndNew();
 
-	/////////////////////////////////////////////////////////
-	// write out the basic parameters after each iteration 
-	// for debugging purposes. 
-	{
-	  char buff[1024];
-	  ::sprintf(buff,"%d",i);
-	  string fname = string("gmparms_it") + buff + string(".gmp");
-	  oDataStreamFile of(fname.c_str());
-	  GM_Parms.writeAll(of);
-	}
+
         last_dp = total_data_prob;
+    }
+
+    /////////////////////////////////////////////////////////
+    // finally, write out the final basic parameters
+    // w/o the tag.
+    if (outputParamFile.size() > 0) {
+      char buff[2048];
+      copyStringWithTag(buff,outputParamFile.c_str(),
+			CSWT_EMPTY_TAG,2048);
+      oDataStreamFile of(buff,binOutFile);
+      GM_Parms.writeAll(of);
     }
 }
 
