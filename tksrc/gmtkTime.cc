@@ -522,7 +522,6 @@ main(int argc,char*argv[])
   }
 
 
-
   // make sure that all observation variables work
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();
@@ -564,7 +563,6 @@ main(int argc,char*argv[])
 	      tri_file.c_str());
       }
     }
-
 
     
     ////////////////////////////////////////////////////////////////////

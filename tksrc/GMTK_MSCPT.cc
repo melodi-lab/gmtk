@@ -199,27 +199,6 @@ MSCPT::read(iDataStreamFile& is)
   ncl = GM_Parms.ncls[GM_Parms.nclsMap[clstr]];
   ncl->fillSpmfTable();
 
-  //////////////////////////////////////////////////////////
-  // now go through the dt and make sure each dt leaf (to
-  // the extent possible) to a valid collection entry
-  RngDecisionTree::iterator it = dt->begin();
-  do {
-    if (!it.valueNode()) {
-      // run-time check will check for this condition.
-    } else {
-      // if it is a constant value, might as well
-      // do the check here since that might inform user
-      // of problems earlier on than during run-time.
-      const unsigned v = it.value();
-      if (!ncl->validSpmfIndex(v))
-	error("ERROR: reading file '%s' line %d, SparseCPT '%s' has DT '%s' with leaf value %d is out of range of collection '%s'",
-	      is.fileName(),is.lineNo(),
-	      name().c_str(),
-	      str.c_str(),
-	      v,
-	      ncl->name().c_str());
-    }
-  } while (++it != dt->end());
 
   // Check that each Sparse1DPMF pointed to by the colleciton has the same
   // cardinality as self. This will eliminate the need for run-time checks of
@@ -343,25 +322,10 @@ void
 MSCPT::normalize()
 {
   assert ( bitmask & bm_basicAllocated );
-  RngDecisionTree::iterator it = dt->begin();
-  do {
-    const int v = it.value();
 
-    // TODO: this runtime check isn't needed if
-    // we do not allow integer expression leaf nodes for MSCPT
-    // DTs and if we check at read time above.
-    if (!ncl->validSpmfIndex(v)) {
-      error("ERROR: SparseCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
-	    name().c_str(),
-	    dt->name().c_str(),
-	    v,
-	    ncl->name().c_str(),
-	    ncl->spmfSize());
-    }
+  for (unsigned i=0;i<ncl->spmfSize(); i++) 
+    ncl->spmf(i)->normalize();
 
-    ncl->spmf(v)->normalize();
-    it++;
-  } while (it != dt->end());
 }
 
 
@@ -387,17 +351,10 @@ MSCPT::makeRandom()
   if (!emAmTrainingBitIsSet())
     return;
 
-  RngDecisionTree::iterator it = dt->begin();
-  do {
-    const int v = it.value();
-    if (!ncl->validSpmfIndex(v)) {
-      error("ERROR: SparseCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
-	    name().c_str(),dt->name().c_str(),v,
-	    ncl->name().c_str(),ncl->spmfSize());
-    }
-    ncl->spmf(v)->normalize();
-    it++;
-  } while (it != dt->end());
+  for (unsigned i=0;i<ncl->spmfSize(); i++) 
+    ncl->spmf(i)->makeRandom();
+
+
 }
 
 
@@ -424,19 +381,8 @@ MSCPT::makeUniform()
   assert ( bitmask & bm_basicAllocated );
   if (!emAmTrainingBitIsSet())
     return;
-
-  RngDecisionTree::iterator it = dt->begin();
-  do {
-    const int v = it.value();
-    if (!ncl->validSpmfIndex(v)) {
-      error("ERROR: SparseCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
-	    name().c_str(),dt->name().c_str(),v,
-	    ncl->name().c_str(),
-	    ncl->spmfSize());
-    }
-    ncl->spmf(v)->normalize();
-    it++;
-  } while (it != dt->end());
+  for (unsigned i=0;i<ncl->spmfSize(); i++) 
+    ncl->spmf(i)->makeUniform();
 }
 
 

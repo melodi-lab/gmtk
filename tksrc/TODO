@@ -2628,4 +2628,16 @@ Fri Dec 31 01:54:39 2004
 Fri Dec 31 22:03:17 2004
   - iterate unassigned nodes, should iterate in order of increasing cardinality.
 
+Fri Dec 31 22:21:42 2004
+  - change names of P1, Co, and E1 to P', C', and E' (or somethign).
+  - have one global place for their names and use everywhere (rather than
+    multiple strings).
+
+
+Sat Jan  1 23:07:03 2005
+  - for DOCS
+     for normalize(), makeUniform(), makeRandom(), if thigns are shared,
+     no guarantee to behaviour (i.e., it depends on the internal order which
+     the last operation will be). When in doubt, load with a table
+     or write out indivual parameters separately and then read back in jointly.
 
