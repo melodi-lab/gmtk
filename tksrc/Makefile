@@ -186,7 +186,7 @@ gmtkNGramIndex: gmtkNGramIndex.o $(objs)
 
 gmtkViz.o: gmtkViz.cc
 	-@rm -f $@
-	$(compile.cc) `wx-config --libs` `wx-config --cxxflags` -Wall -g -c gmtkViz.cc
+	$(CXX) $(DEFS) $(INCLUDES) -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -Wno-deprecated `wx-config --cxxflags` -Wall -g -c gmtkViz.cc
 
 gmtkViz: gmtkViz.o $(objs)
 	-@rm -f $@

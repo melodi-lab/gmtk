@@ -27,10 +27,29 @@ GMParms GM_Parms;
 RAND rnd(0);
 ObservationMatrix globalObservationMatrix;
 
-#define NODE_RADIUS (10)
-#define NEW_CP_OFFSET (10)
-#define ARROW_LEN (12)
-#define ARROW_WID (4)
+#define ACTUAL_SCALE (16)
+static double gZoomMap[] = {
+    0.0625/ACTUAL_SCALE,
+    0.125/ACTUAL_SCALE,
+    0.25/ACTUAL_SCALE,
+    0.5/ACTUAL_SCALE,
+    0.70710678118654746/ACTUAL_SCALE,
+    0.84089641525371461/ACTUAL_SCALE,
+    0.91700404320467122/ACTUAL_SCALE,
+    1.0/ACTUAL_SCALE,
+    1.0905077326652577/ACTUAL_SCALE,
+    1.189207115002721/ACTUAL_SCALE,
+    1.4142135623730951/ACTUAL_SCALE,
+    2.0/ACTUAL_SCALE,
+    4.0/ACTUAL_SCALE,
+    8.0/ACTUAL_SCALE,
+    16.0/ACTUAL_SCALE
+};
+
+#define NODE_RADIUS (10*ACTUAL_SCALE)
+#define NEW_CP_OFFSET (10*ACTUAL_SCALE)
+#define ARROW_LEN (12*ACTUAL_SCALE)
+#define ARROW_WID (4*ACTUAL_SCALE)
 
 class NameTag;
 class VizNode;
@@ -66,8 +85,10 @@ class StructPage: public wxScrolledWindow
     void toggleSelectedInRect( const wxRect& rect );
     void moveSelected( int dx, int dy );
 
-    int getWidth( void ) { return content->GetWidth(); }
-    int getHeight( void ) { return content->GetHeight(); }
+    int getWidth( void ) { return canvasWidth; }
+    int getHeight( void ) { return canvasHeight; }
+    int getScale( void ) { return displayScale; }
+    void setScale( int newScale );
     void getName( wxString& name );
     void draw( wxDC& dc );
     wxPen switchingPen;
@@ -75,6 +96,8 @@ class StructPage: public wxScrolledWindow
     wxPen bothPen;
     wxPen frameBorderPen;
     wxPen chunkBorderPen;
+    wxPen controlPointPen;
+    wxPen nodePen;
 
     bool getViewCPs( void ) { return drawCPs; }
     bool getViewLines( void ) { return drawLines; }
@@ -114,6 +137,9 @@ private:
     bool drawFrameSeps;
     bool drawNodeNames;
     bool drawToolTips;
+    int displayScale;
+    long canvasWidth;
+    long canvasHeight;
     void initNodes( void );
     void initArcs( void );
     void redraw( void );
@@ -263,7 +289,24 @@ public:
 	MENU_VIEW_DIRECT_LINES,
 	MENU_VIEW_FRAME_SEPS,
 	MENU_VIEW_NODE_NAMES,
-	MENU_VIEW_TOOLTIPS
+	MENU_VIEW_TOOLTIPS,
+	MENU_ZOOM_BEGIN,
+	MENU_ZOOM_2_pow_neg_4dot000,
+	MENU_ZOOM_2_pow_neg_3dot000,
+	MENU_ZOOM_2_pow_neg_2dot000,
+	MENU_ZOOM_2_pow_neg_1dot000,
+	MENU_ZOOM_2_pow_neg_0dot500,
+	MENU_ZOOM_2_pow_neg_0dot250,
+	MENU_ZOOM_2_pow_neg_0dot125,
+	MENU_ZOOM_2_pow_pos_0dot000,
+	MENU_ZOOM_2_pow_pos_0dot125,
+	MENU_ZOOM_2_pow_pos_0dot250,
+	MENU_ZOOM_2_pow_pos_0dot500,
+	MENU_ZOOM_2_pow_pos_1dot000,
+	MENU_ZOOM_2_pow_pos_2dot000,
+	MENU_ZOOM_2_pow_pos_3dot000,
+	MENU_ZOOM_2_pow_pos_4dot000,
+	MENU_ZOOM_END
     };
 
     /**
@@ -325,6 +368,7 @@ public:
     void OnMenuViewFrameSeps(wxCommandEvent &event);
     void OnMenuViewNodeNames(wxCommandEvent &event);
     void OnMenuViewToolTips(wxCommandEvent &event);
+    void OnMenuZoom(wxCommandEvent &event);
     void OnNotebookPageChanged(wxCommandEvent &event);
 
 private:
@@ -347,6 +391,8 @@ class GMTKStructVizApp: public wxApp {
 public:
     bool OnInit();
 };
+
+/*** implementation starts here ***/
 
 IMPLEMENT_APP(GMTKStructVizApp)
 
@@ -396,6 +442,15 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
     MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
     MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+    wxMenu* menu_zoom = new wxMenu();
+    for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
+	wxString zoomStr;
+	zoomStr.sprintf("%7.3f", gZoomMap[i]*(ACTUAL_SCALE));
+	menu_zoom->Append( i + MENU_ZOOM_BEGIN + 1, zoomStr,
+			   wxEmptyString, wxITEM_RADIO );
+    }
+    MainVizWindow_menubar->Append(menu_zoom, wxT("Zoom"));
+    MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
     MainVizWindow_statusbar = CreateStatusBar(2);
     about_label = new wxStaticText(about_pane, -1, wxT("GMTKStructViz version 0.0.1\n\nThe graph visualizer and organizer for GMTK structure files.\n\nwritten by Evan Dower <evantd@ssli.ee.washington.edu>"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
     about_info = new wxTextCtrl(about_pane, -1, wxT("GMTKStructViz reads GMTK structure files and attempts to display their contents semi-intelligently. Since it is not human, it can only have limited success in this domain. Thus the user is permitted to move nodes and edges to organize the graph in a more logical and visually appealing way than GMTKStructViz's original guess."), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY);
@@ -461,6 +516,7 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_VIEW_FRAME_SEPS, GFrame::OnMenuViewFrameSeps)
     EVT_MENU(MENU_VIEW_NODE_NAMES, GFrame::OnMenuViewNodeNames)
     EVT_MENU(MENU_VIEW_TOOLTIPS, GFrame::OnMenuViewToolTips)
+    EVT_MENU_RANGE(MENU_ZOOM_BEGIN+1, MENU_ZOOM_END-1, GFrame::OnMenuZoom)
     EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, GFrame::OnNotebookPageChanged)
     EVT_CLOSE(GFrame::OnClose)
 END_EVENT_TABLE()
@@ -722,6 +778,21 @@ GFrame::OnMenuViewToolTips(wxCommandEvent &event)
 }
 
 void
+GFrame::OnMenuZoom(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    if (curPage) {
+	int id = event.GetId()/*, scale = curPage->getScale()*/;
+	//MainVizWindow_menubar->Check(MENU_ZOOM_BEGIN + scale + 1, false);
+	MainVizWindow_menubar->Check(id, true);
+	curPage->setScale(id - MENU_ZOOM_BEGIN - 1);
+    }
+}
+
+void
 GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 {
     // figure out which page this is for and pass the buck
@@ -752,6 +823,13 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 	MainVizWindow_menubar->Check( MENU_VIEW_NODE_NAMES,
 				      curPage->getViewNodeNames());
 	// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS, curPage->getViewToolTips() );
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
+	/*for (int i = 0, scale = curPage->getScale(); i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
+	    MainVizWindow_menubar->Check( i + MENU_ZOOM_BEGIN + 1,
+					  i==scale );
+	}*/
+	MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
+				      true );
     }
     else {
 	SetStatusText(wxEmptyString, 1);
@@ -761,6 +839,7 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 	MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
     }
 }
 
@@ -777,9 +856,10 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		       const wxString &file, bool old)
     : wxScrolledWindow( parent, id, wxDefaultPosition, wxDefaultSize,
 			wxSUNKEN_BORDER | wxTAB_TRAVERSAL, _T("") ),
-      switchingPen(*wxBLACK_PEN), conditionalPen(*wxBLACK_PEN),
-      bothPen(*wxBLACK_PEN), frameBorderPen(*wxBLACK_PEN),
-      chunkBorderPen(*wxBLACK_PEN)
+      switchingPen(*wxCYAN_PEN), conditionalPen(*wxBLACK_PEN),
+      bothPen(*wxRED_PEN), frameBorderPen(*wxLIGHT_GREY_PEN),
+      chunkBorderPen(*wxBLACK_PEN), controlPointPen(*wxRED_PEN),
+      nodePen(*wxBLACK_PEN)
 {
     this->parentFrame = parentFrame;
     this->parentNotebook = parentNotebook;
@@ -795,15 +875,22 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
     drawFrameSeps = true;
     drawNodeNames = true;
     drawToolTips = true;
+    content = NULL;
 
-    switchingPen.SetStyle(wxDOT);
-    conditionalPen.SetStyle(wxSOLID);
-    bothPen.SetStyle(wxLONG_DASH);
-    frameBorderPen.SetStyle(wxDOT);
-    chunkBorderPen.SetStyle(wxSOLID);
+    //switchingPen.SetStyle(wxDOT);
+    //conditionalPen.SetStyle(wxSOLID);
+    //bothPen.SetStyle(wxLONG_DASH);
+    //frameBorderPen.SetStyle(wxDOT);
+    //chunkBorderPen.SetStyle(wxSOLID);
+    switchingPen.SetWidth(ACTUAL_SCALE);
+    conditionalPen.SetWidth(ACTUAL_SCALE);
+    bothPen.SetWidth(ACTUAL_SCALE);
+    frameBorderPen.SetWidth(ACTUAL_SCALE);
+    chunkBorderPen.SetWidth(ACTUAL_SCALE);
+    controlPointPen.SetWidth(ACTUAL_SCALE);
+    controlPointPen.SetJoin(wxJOIN_MITER);
+    nodePen.SetWidth(ACTUAL_SCALE);
     SetScrollRate( 10, 10 );
-    SetVirtualSize( 500, 500 );
-    content = new wxBitmap( 500, 500 );
     wxToolTip::SetDelay(250);
     wxToolTip::Enable(drawToolTips);
 
@@ -849,7 +936,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 
     onComeForward();
 
-    redraw();
+    setScale(7);
 }
 
 StructPage::~StructPage( void )
@@ -903,8 +990,8 @@ StructPage::initNodes( void )
     unsigned int curFrame = 0;
     wxPoint curPos;
 
-    curPos.x = 200;
-    curPos.y = 120;
+    curPos.x = 200*ACTUAL_SCALE;
+    curPos.y = 120*ACTUAL_SCALE;
     nodes.clear();
 
     int numVars = fp->numVarsInPrologue + fp->numVarsInChunk +
@@ -946,8 +1033,8 @@ StructPage::initNodes( void )
 	if (row >= numRows || fp->rvInfoVector[i].frame != curFrame) {
 	    if (curPos.y > yMax)
 		yMax = curPos.y;
-	    curPos.x += 80;
-	    curPos.y = 120;
+	    curPos.x += 80*ACTUAL_SCALE;
+	    curPos.y = 120*ACTUAL_SCALE;
 	    row = 0;
 	}
 	if (fp->rvInfoVector[i].frame != curFrame) {
@@ -968,11 +1055,11 @@ StructPage::initNodes( void )
 		    gvpAborted = true;
 		}
 	    }
-	    curPos.x += 80;
+	    curPos.x += 80*ACTUAL_SCALE;
 	    curFrame++;
 	    assert(fp->rvInfoVector[i].frame == curFrame);
 	}
-	curPos.y += 80;
+	curPos.y += 80*ACTUAL_SCALE;
 	nodes.push_back(new VizNode( curPos, &fp->rvInfoVector[i], this ));
 	assert(nodes.size() == (unsigned)i + 1);
 	nodeNameTags.push_back(&nodes[i]->nametag);
@@ -1042,9 +1129,8 @@ StructPage::initNodes( void )
     }
     if (curPos.y > yMax)
 	yMax = curPos.y;
-    if (content)
-	delete content;
-    long canvasWidth = curPos.x + 200, canvasHeight = yMax + 200;
+    canvasWidth = curPos.x + 200*ACTUAL_SCALE;
+    canvasHeight = yMax + 200*ACTUAL_SCALE;
     key.sprintf("canvasWidth");
     value = config[key];
     if (value != wxEmptyString) {
@@ -1071,8 +1157,6 @@ StructPage::initNodes( void )
 	    gvpAborted = true;
 	}
     }
-    content = new wxBitmap(canvasWidth, canvasHeight);
-    SetVirtualSize(canvasWidth, canvasHeight);
     gvpDirty = true;
     onComeForward();
 }
@@ -1107,7 +1191,7 @@ StructPage::initArcs( void )
 	    int i = nameVizNodeMap[ absId ];
 	    if (!arcs[i][j])
 		arcs[i][j] = newArc(i, j);
-	    if (arcs[i][j]->switching) {
+	    /*if (arcs[i][j]->switching) {
 		wxString msg;
 		msg.sprintf("switching arc from node %d (%s:%d) "
 			    "to node %d (%s:%d) already exists",
@@ -1116,7 +1200,7 @@ StructPage::initArcs( void )
 			    j, nodes[j]->rvId.first.c_str(),
 			    nodes[j]->rvId.second);
 		wxLogMessage(msg);
-	    }
+	    }*/
 	    arcs[i][j]->switching = true;
 	}
 	// for each conditional parent
@@ -1133,7 +1217,7 @@ StructPage::initArcs( void )
 		int i=nameVizNodeMap[absId];
 		if (!arcs[i][j])
 		    arcs[i][j] = newArc(i, j);
-		if (arcs[i][j]->conditional) {
+		/*if (arcs[i][j]->conditional) {
 		    wxString msg;
 		    msg.sprintf("conditional arc from node %d (%s:%d) "
 				"to node %d (%s:%d) already exists",
@@ -1142,7 +1226,7 @@ StructPage::initArcs( void )
 				j, nodes[j]->rvId.first.c_str(),
 				nodes[j]->rvId.second);
 		    wxLogMessage(msg);
-		}
+		}*/
 		arcs[i][j]->conditional = true;
 	    }
 	}
@@ -1205,12 +1289,12 @@ StructPage::newArc( int i, int j )
 	    gvpAborted = true;
 	}
     } else {
-	pt.x = (2*nodes[i]->center.x + nodes[j]->center.x) / 3 + 20;
-	pt.y = (2*nodes[i]->center.y + nodes[j]->center.y) / 3 - 20;
+	pt.x = (2*nodes[i]->center.x + nodes[j]->center.x)/3 + 20*ACTUAL_SCALE;
+	pt.y = (2*nodes[i]->center.y + nodes[j]->center.y)/3 - 20*ACTUAL_SCALE;
 	ControlPoint *mid = new ControlPoint(pt);
 	cps->push_back(mid);
-	pt.x = (nodes[i]->center.x + 2*nodes[j]->center.x) / 3 + 20;
-	pt.y = (nodes[i]->center.y + 2*nodes[j]->center.y) / 3 + 20;
+	pt.x = (nodes[i]->center.x + 2*nodes[j]->center.x)/3 + 20*ACTUAL_SCALE;
+	pt.y = (nodes[i]->center.y + 2*nodes[j]->center.y)/3 + 20*ACTUAL_SCALE;
 	mid = new ControlPoint(pt);
 	cps->push_back(mid);
     }
@@ -1262,9 +1346,12 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
     static bool shifted = false;
     static wxPoint dragStart;
     bool screenDirty = false;
+    wxPoint pt;
 
-    wxPoint pt( event.GetPosition() );
+    event.GetPosition(&pt.x, &pt.y);
     CalcUnscrolledPosition( pt.x, pt.y, &pt.x, &pt.y );
+    pt.x = (int)round(pt.x / gZoomMap[displayScale]);
+    pt.y = (int)round(pt.y / gZoomMap[displayScale]);
     Selectable *pointee = itemAt(pt);
 
     if (event.LeftDown()) {
@@ -1349,10 +1436,10 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			x = ( (y1-y0) ?
 			      (x1-x0)/(double)(y1-y0)*(pt.y-y0) + x0 :
 			      (x0+x1)/2 ),
-			epsilon = fabs(2 * (y1-y0)/(double)(x1-x0)),
-			delta = fabs(2 * (x1-x0)/(double)(y1-y0));
-		    epsilon = ( epsilon > 2 ? epsilon : 2 );
-		    delta = ( delta > 2 ? delta : 2 );
+			epsilon = fabs(2*ACTUAL_SCALE*(y1-y0)/(double)(x1-x0)),
+			delta = fabs(2*ACTUAL_SCALE*(x1-x0)/(double)(y1-y0));
+		    epsilon = (epsilon>2*ACTUAL_SCALE?epsilon:2*ACTUAL_SCALE);
+		    delta = ( delta>2*ACTUAL_SCALE ? delta : 2*ACTUAL_SCALE );
 #if 0
 		    wxString msg;
 		    msg.sprintf("(pt.x, pt.y) = (%d, %d)\n"
@@ -1465,8 +1552,8 @@ StructPage::crossesFrameEnd( wxCoord x0, wxCoord x1 )
 bool
 StructPage::inBounds( wxCoord x, wxCoord y )
 {
-    return ( x > 0 && x < content->GetWidth() &&
-	     y > 0 && y < content->GetHeight() );
+    return ( x > 0 && x < getWidth() &&
+	     y > 0 && y < getHeight() );
 }
 
 void
@@ -1585,6 +1672,7 @@ StructPage::redraw( void )
 {
     wxMemoryDC dc;
     dc.SelectObject( *content );
+    dc.SetUserScale(gZoomMap[displayScale], gZoomMap[displayScale]);
     draw(dc);
 }
 
@@ -1619,9 +1707,12 @@ StructPage::draw( wxDC& dc )
 
     if (drawNodes) {
 	// then draw nodes
+	wxPen oldPen = dc.GetPen();
+	dc.SetPen(nodePen);
 	for (int i = 0; i < numNodes; i++) {
 	    nodes[i]->draw(&dc);
 	}
+	dc.SetPen(oldPen);
     }
 
     if (drawNodeNames) {
@@ -1636,7 +1727,7 @@ StructPage::draw( wxDC& dc )
 	wxBrush oldBrush = dc.GetBrush();
 	wxPen oldPen = dc.GetPen();
 	dc.SetBrush(*wxTRANSPARENT_BRUSH);
-	dc.SetPen(*wxBLACK_DASHED_PEN);
+	dc.SetPen(*wxGREY_PEN);
 	dc.DrawRectangle(selectBox);
 	dc.SetBrush(oldBrush);
 	dc.SetPen(oldPen);
@@ -1661,9 +1752,9 @@ StructPage::Save( void )
 	    gvp.Write(line);
 
 	    // canvas size
-	    line.sprintf( "canvasWidth=%d\n", content->GetWidth());
+	    line.sprintf( "canvasWidth=%d\n", getWidth());
 	    gvp.Write(line);
-	    line.sprintf( "canvasHeight=%d\n", content->GetHeight());
+	    line.sprintf( "canvasHeight=%d\n", getHeight());
 	    gvp.Write(line);
 
 	    // nodes (and node nametags)
@@ -1740,8 +1831,10 @@ StructPage::Save( void )
 void
 StructPage::SaveAs( void )
 {
+    wxString defaultGvp;
+    defaultGvp.sprintf("%s.gvp", strFile.c_str());
     wxFileDialog dlg(this, "Save position file as...",
-		     "", "",
+		     defaultGvp.BeforeLast('/'), defaultGvp.AfterLast('/'),
 		     "All files|*"
 		     "|Position Files (*.gvp)|*.gvp"
 		     "|Text Files|*.txt;*.text",
@@ -1764,14 +1857,15 @@ bool
 StructPage::RequestClose( void )
 {
     // if the file has unsaved changes
-    if (gvpDirty) {
+    while (gvpDirty) {
 	wxString msg;
 	msg.sprintf( "The file '%s' may have unsaved changes. "
 		     "What would you like to do?", gvpFile.c_str() );
 	wxString choices[] = { wxT("Save the changes."),
-			   wxT("Discard the changes."),
-			   wxT("Nevermind. Don't close the file.") };
-	wxSingleChoiceDialog dlg( this, msg, wxT("Save file?"), 3, choices,
+			       wxT("Save the changes to a different file."),
+			       wxT("Discard the changes."),
+			       wxT("Nevermind. Don't close the file.") };
+	wxSingleChoiceDialog dlg( this, msg, wxT("Save file?"), 4, choices,
 				  NULL, wxOK | wxCENTRE, wxDefaultPosition );
 	// prompt to save it
 	dlg.ShowModal(); // no need to test for wxOK
@@ -1780,11 +1874,14 @@ StructPage::RequestClose( void )
 	    // try saving it
 	    Save();
 	    // go back to the beginning
-	    return RequestClose();
 	} else if (dlg.GetSelection() == 1) {
+	    // try saving it
+	    SaveAs();
+	    // go back to the beginning
+	} else if (dlg.GetSelection() == 2) {
 	    // else if the user discards changes, allow it to closed
 	    return true;
-	} else if (dlg.GetSelection() == 2) {
+	} else if (dlg.GetSelection() == 3) {
 	    // else if the user cancels, do not allow it to be closed
 	    return false;
 	}
@@ -1954,6 +2051,24 @@ StructPage::getName( wxString& name )
     name = ( (gvpFile != wxEmptyString) ? gvpFile : strFile );
 }
 
+void
+StructPage::setScale( int newScale )
+{
+    displayScale = newScale;
+    if (content) delete content;
+    content = new wxBitmap( (int)round(canvasWidth*gZoomMap[displayScale]),
+			    (int)round(canvasHeight*gZoomMap[displayScale]) );
+    SetVirtualSize( (int)round(canvasWidth*gZoomMap[displayScale]),
+		    (int)round(canvasHeight*gZoomMap[displayScale]) );
+    do {
+	wxClientDC temp(this);
+	temp.SetBackground(*wxLIGHT_GREY_BRUSH);
+	temp.Clear();
+    } while (false);
+    redraw();
+    blit();
+}
+
 
 NameTag::NameTag( const wxPoint& newPos, const wxString& newName )
     : pos(newPos), name(newName)
@@ -2010,10 +2125,14 @@ VizNode::draw( wxDC *dc )
 {
     dc->DrawCircle(center, NODE_RADIUS);
     if (getSelected()) {
-	dc->DrawRectangle(center.x-NODE_RADIUS, center.y-NODE_RADIUS, 3, 3);
-	dc->DrawRectangle(center.x+NODE_RADIUS, center.y-NODE_RADIUS, -3, 3);
-	dc->DrawRectangle(center.x-NODE_RADIUS, center.y+NODE_RADIUS, 3, -3);
-	dc->DrawRectangle(center.x+NODE_RADIUS, center.y+NODE_RADIUS, -3, -3);
+	dc->DrawRectangle( center.x-NODE_RADIUS, center.y-NODE_RADIUS,
+			   3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
+	dc->DrawRectangle( center.x+NODE_RADIUS, center.y-NODE_RADIUS,
+			   -3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
+	dc->DrawRectangle( center.x-NODE_RADIUS, center.y+NODE_RADIUS,
+			   3*ACTUAL_SCALE, -3*ACTUAL_SCALE );
+	dc->DrawRectangle( center.x+NODE_RADIUS, center.y+NODE_RADIUS,
+			   -3*ACTUAL_SCALE, -3*ACTUAL_SCALE );
     }
 }
 
@@ -2038,8 +2157,8 @@ VizNode::setSelected( bool newSelected ) {
 bool
 ControlPoint::onMe( const wxPoint& pt )
 {
-    return pos.x-1 <= pt.x && pt.x <= pos.x+1
-	&& pos.y-1 <= pt.y && pt.y <= pos.y+1;
+    return pos.x-1*ACTUAL_SCALE <= pt.x && pt.x <= pos.x+1*ACTUAL_SCALE
+	&& pos.y-1*ACTUAL_SCALE <= pt.y && pt.y <= pos.y+1*ACTUAL_SCALE;
 }
 
 ControlPoint::ControlPoint( const wxPoint& pt )
@@ -2101,7 +2220,36 @@ VizArc::draw( wxDC *dc )
 	dc->DrawLine((*cps)[0]->pos, (*cps)[cps->size()-1]->pos);
 
     dc->SetPen(oldPen);
+    if ( page->getViewArrowHeads() ) {
+	// draw the arrow (quite a complicated process really)
+	wxPoint arrow[3];
+	int opp, adj;
+	double hyp;
+	opp = (*cps)[cps->size()-1]->pos.y - (*cps)[cps->size()-2]->pos.y;
+	adj = (*cps)[cps->size()-1]->pos.x - (*cps)[cps->size()-2]->pos.x;
+	hyp = hypot( opp, adj );
 
+	arrow[0].x = (*cps)[cps->size()-1]->pos.x -
+	    (int)(NODE_RADIUS * adj / hyp);
+	arrow[0].y = (*cps)[cps->size()-1]->pos.y -
+	    (int)(NODE_RADIUS * opp / hyp);
+	
+	arrow[1].x = arrow[0].x - (int)round(ARROW_LEN * adj / hyp) +
+	    (int)round(ARROW_WID * opp / hyp);
+	arrow[1].y = arrow[0].y - (int)round(ARROW_LEN * opp / hyp) -
+	    (int)round(ARROW_WID * adj / hyp);
+	arrow[2].x = arrow[0].x - (int)round(ARROW_LEN * adj / hyp) -
+	    (int)round(ARROW_WID * opp / hyp);
+	arrow[2].y = arrow[0].y - (int)round(ARROW_LEN * opp / hyp) +
+	    (int)round(ARROW_WID * adj / hyp);
+
+	wxBrush oldBrush = dc->GetBrush();
+	dc->SetBrush(*wxBLACK_BRUSH);
+	dc->DrawPolygon( 3, arrow );
+	dc->SetBrush(oldBrush);
+    }
+
+    dc->SetPen(page->controlPointPen);
     int end = points->GetCount() - 1;
     assert(end > 0);
     wxNode *node = points->GetFirst();
@@ -2110,38 +2258,14 @@ VizArc::draw( wxDC *dc )
 	assert(node != NULL);
 	wxPoint *p = (wxPoint *)node->GetData();
 	if ( (*cps)[i]->getSelected() )
-	    dc->DrawRectangle( p->x-1, p->y-1, 3, 3 );
-	if ( page->getViewCPs() )
-	    dc->DrawPoint( *p );
+	    dc->DrawRectangle(p->x-(3*ACTUAL_SCALE)/2, p->y-(3*ACTUAL_SCALE)/2,
+			      3*ACTUAL_SCALE, 3*ACTUAL_SCALE);
+	if ( page->getViewCPs() ) {
+	    dc->DrawRectangle( p->x-ACTUAL_SCALE/2, p->y-ACTUAL_SCALE/2,
+			       ACTUAL_SCALE, ACTUAL_SCALE );
+	}
     }
-
-    if ( page->getViewArrowHeads() ) {
-	// draw the arrow (quite a complicated process really)
-	wxPoint arrow[3];
-	int opp, adj, hyp;
-	opp = (*cps)[cps->size()-1]->pos.y - (*cps)[cps->size()-2]->pos.y;
-	adj = (*cps)[cps->size()-1]->pos.x - (*cps)[cps->size()-2]->pos.x;
-	hyp = (int)hypot( opp, adj );
-
-	arrow[0].x = (*cps)[cps->size()-1]->pos.x -
-	    (int)(NODE_RADIUS * adj / (double)hyp);
-	arrow[0].y = (*cps)[cps->size()-1]->pos.y -
-	    (int)(NODE_RADIUS * opp / (double)hyp);
-	
-	arrow[1].x = arrow[0].x - (int)(ARROW_LEN * adj / (double)hyp + 0.5) +
-	    (int)(ARROW_WID * opp / (double)hyp + 0.5);
-	arrow[1].y = arrow[0].y - (int)(ARROW_LEN * opp / (double)hyp + 0.5) -
-	    (int)(ARROW_WID * adj / (double)hyp + 0.5);
-	arrow[2].x = arrow[0].x - (int)(ARROW_LEN * adj / (double)hyp + 0.5) -
-	    (int)(ARROW_WID * opp / (double)hyp + 0.5);
-	arrow[2].y = arrow[0].y - (int)(ARROW_LEN * opp / (double)hyp + 0.5) +
-	    (int)(ARROW_WID * adj / (double)hyp + 0.5);
-
-	wxBrush oldBrush = dc->GetBrush();
-	dc->SetBrush(*wxBLACK_BRUSH);
-	dc->DrawPolygon( 3, arrow );
-	dc->SetBrush(oldBrush);
-    }
+    dc->SetPen(oldPen);
 }
 
 
@@ -2165,16 +2289,18 @@ VizSep::draw( wxDC * dc )
     dc->SetPen(oldPen);
 
     if (getSelected()) {
-	dc->DrawRectangle( x-1, -1, 3, 3 );
-	dc->DrawRectangle( x-1, page->getHeight()-2, 3, 3 );
+	dc->DrawRectangle( x-1*ACTUAL_SCALE, -1*ACTUAL_SCALE,
+			   3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
+	dc->DrawRectangle( x-1*ACTUAL_SCALE, page->getHeight()-2*ACTUAL_SCALE,
+			   3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
     }
 }
 
 bool
 VizSep::onMe( const wxPoint& pt )
 {
-    return x-1 <= pt.x && pt.x <= x+1
-	&& 0   <= pt.y && pt.y <= page->getHeight();
+    return x-1*ACTUAL_SCALE <= pt.x && pt.x <= x+1*ACTUAL_SCALE
+	&& 0 <= pt.y && pt.y <= page->getHeight();
 }
 
 
