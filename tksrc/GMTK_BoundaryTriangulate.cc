@@ -685,7 +685,7 @@ findPartitions(// boundary quality heuristic
 
   assert (M*C1_u2.size() == C2_u2.size());
   assert (C2_u2.size() == M*C3_u2.size());
-  infoMsg(Low,"Size of (P,C1,C2,C3,E) = (%d,%d,%d,%d,%d)\n",
+  infoMsg(High,"Size of (P,C1,C2,C3,E) = (%d,%d,%d,%d,%d)\n",
 	  P_u2.size(),C1_u2.size(),C2_u2.size(),C3_u2.size(),E_u2.size());
 
 
@@ -758,6 +758,11 @@ findPartitions(// boundary quality heuristic
   assert (C1_u1.size() == C2_u1.size());
   assert (C1_u1.size() == C2_u2.size());
   assert ((S<=M) || (Cextra_u1.size() == C1_u2.size()*(S-M)));
+  infoMsg(High,"Size of (P,C1,C2,E) = (%d,%d,%d,%d)\n",
+	  P_u1.size(),C1_u1.size(),C2_u1.size(),E_u1.size());
+
+
+
 
   // create mapping from C2_u2 (for which we now
   // have an appropriate interface vars) to nodes C1_u1 and C2_u1
@@ -929,6 +934,7 @@ findPartitions(// boundary quality heuristic
 	    boundaryTraverseFraction,
 	    tri_heur_str.c_str());
     gm_template.boundaryMethod = buff;
+    gm_template.leftInterface = true; 
   } else {
     // find right interface partitions
     findingLeftInterface = false;
@@ -958,6 +964,7 @@ findPartitions(// boundary quality heuristic
 	    boundaryTraverseFraction,
 	    tri_heur_str.c_str());
     gm_template.boundaryMethod = buff;
+    gm_template.leftInterface = false; 
 
   }
 }
