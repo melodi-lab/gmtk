@@ -31,6 +31,8 @@
 
 #include "GMTK_NamedObject.h"
 
+class DlinkMatrix;
+
 class Dlinks : public NamedObject {
 
 
@@ -49,6 +51,9 @@ class Dlinks : public NamedObject {
   // of one feature. The inner arrays point to the positions
   // in a feature vector of where the dependencies come from.
   vector< vector<Dlink> > dIndices;
+
+  // use an sArray for speed
+  sArray<int> preComputedOffsets;
 
 public:
 
@@ -69,6 +74,13 @@ public:
     return dIndices[i].size(); 
   }
 
+  /////////////////////////////////////////////////////
+  // returns true if objects are compatible
+  bool compatibleWith(DlinkMatrix&d);
+
+  ////////////////////////////////////////////////
+  // precomputes the offset array 
+  void preCompute(const unsigned stride);
 
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 
