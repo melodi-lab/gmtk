@@ -1911,3 +1911,14 @@ Sat Jun  5 19:14:59 2004
 Tue Jun  8 12:14:48 2004
   - staged verbose outputs, so that when you wnat to be verbose in inference, you don't
     get so much verbose output during initial JT creation, etc.
+
+
+Sat Jun 12 14:22:47 2004
+  - add new observation component type: ChordalGaussian,
+    which allows user to specify a sparse representation of
+    a Gaussian (i.e., sparse inverse covariance). The triangulation
+    engine will triangulate it (finding a good triangulation), and
+    the result will be the chordal sparse Gaussian used. Since it
+    is chordal, ML estimates still exist.
+
+
