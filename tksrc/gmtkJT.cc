@@ -111,6 +111,9 @@ static unsigned verbosity = IM::Default;
 static bool print_version_and_exit = false;
 
 /////////////////////////////////////////////////////////////
+// Memory management options 
+
+/////////////////////////////////////////////////////////////
 // Inference Options
 static bool doDistributeEvidence=false;
 static bool probE=false;
@@ -171,6 +174,10 @@ Arg Arg::Args[] = {
   // Beam Options
   Arg("cbeam",Arg::Opt,MaxClique::cliqueBeam,"Clique Beam"),
   Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator Beam"),
+
+  /////////////////////////////////////////////////////////////
+  // Memory management options
+  Arg("clearCliqueValMem",Arg::Opt,MaxClique::perSegmentClearCliqueValueCache,"Free clique/separator value cache for each segment"),
 
   /////////////////////////////////////////////////////////////
   // File Range Options

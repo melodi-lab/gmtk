@@ -185,6 +185,11 @@ Arg Arg::Args[] = {
   Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator Beam"),
 
   /////////////////////////////////////////////////////////////
+  // Memory management options
+  Arg("clearCliqueValMem",Arg::Opt,MaxClique::perSegmentClearCliqueValueCache,"Free clique/separator value cache for each segment"),
+
+
+  /////////////////////////////////////////////////////////////
   // File Range Options
   Arg("trrng",Arg::Opt,trrng_str,"Range to decode over segment file"),
   Arg("startSkip",Arg::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),

@@ -61,6 +61,7 @@ bool JunctionTree::jtWeightPenalizeUnassignedIterated = false;
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
 
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
@@ -2866,9 +2867,7 @@ JunctionTree::unroll(const unsigned int numFrames)
   // re-allocate.
   jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
   // this clears the shared caches. 
-  clearDataMemory();
-
-
+  clearCliqueSepValueCache();
 
   unsigned partNo = 0;
   const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
@@ -3533,7 +3532,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   setObservedRVs(cur_unrolled_rvs);
 
   // this clears the shared caches. 
-  clearDataMemory();
+  clearCliqueSepValueCache();
 
 
 
@@ -3546,13 +3545,6 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   // set up appropriate name for debugging output.
   const char* prv_nm;
   unsigned prv_ri;
-
-  // NOTE, if this isn't done in some way every partition, we will
-  // continue growing memory via the shared hash tables
-  // 
-  // TODO: change cliques so that in this case they have the ability
-  //       to use their own memory areana.
-  clearDataMemory();
 
   partNo = 0;
   curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
@@ -3693,10 +3685,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   setObservedRVs(cur_unrolled_rvs);
 
   // this clears the shared caches. 
-  clearDataMemory();
-
-
-
+  clearCliqueSepValueCache();
 
   // actual absolute part numbers
   unsigned partNo;
@@ -3706,13 +3695,6 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   // set up appropriate name for debugging output.
   const char* prv_nm;
   unsigned prv_ri;
-
-  // NOTE, if this isn't done in some way every partition, we will
-  // continue growing memory via the shared hash tables
-  // 
-  // TODO: change cliques so that in this case they have the ability
-  //       to use their own memory areana.
-  clearDataMemory();
 
   partNo = 0;
   curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
@@ -4366,7 +4348,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   unsigned partNo = 0;  
 
   // this clears the shared caches. 
-  clearDataMemory();
+  clearCliqueSepValueCache();
 
   // re-allocate.
   partPArray.resize(numPartitions);
