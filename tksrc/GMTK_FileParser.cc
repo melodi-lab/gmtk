@@ -105,7 +105,7 @@ ParentList =
 
 Parent = identifier "(" integer ")"
 
-Implementation = DiscreteImplementation | ContinousImplementation
+Implementation = DiscreteImplementation | ContinuousImplementation
 
 DiscreteImplementation = ( "MDCPT" | "MSCPT" | "MTCPT" )  "(" ListIndex ")"
 
@@ -115,14 +115,21 @@ ContinuousImplementation = ContObsDistType
            |
               MappingSpec
         )
-       # A ContinousImplementation has two cases.
+       #
+       # A ContinousImplementation has two cases:
        # 1) the first case uses the syntax
        #
        #          "(" ListIndex ")"
        #
        # and is used if conditional parents 
-       # are nil in which case we select only one dist. This
-       # is analogous to the discrete case where you directly
+       # are nil in which case we select only one dist. In 
+       # this case, 'ListIndex' refers directly to 
+       # a particular single gaussian mixture, using
+       # the normal 'ListIndex' format (either an int
+       # or a string name). Note that in this case, 
+       # the number of conditional parents (as given
+       # in the 'conditionalParents' array, will be zero.
+       # This is analogous to the discrete case where you directly
        # select a CPT with the appropriate parents
        #
        # 2) in the second case, which uses the syntax
@@ -133,6 +140,9 @@ ContinuousImplementation = ContObsDistType
        # conditional parents, and we need another decision tree to map
        # from the conditional parents values to the appropriate
        # distribution. Therefore we use the mapping syntax.
+       # In this case, the 'MappingSpec' must refer to one of
+       # the decision trees. 
+       # 
 
 
 ContObsDistType = "mixGaussian" | "gausSwitchMixGaussian" 
@@ -779,7 +789,7 @@ FileParser::parseRandomVariableType()
   ensureNotAtEOF("variable type");
   if (tokenInfo == KW_Discrete)
     parseRandomVariableDiscreteType(); 
-  else if (tokenInfo == KW_Continous)
+  else if (tokenInfo == KW_Continuous)
     parseRandomVariableContinuousType();
   else 
     parseError("variable type");
@@ -852,9 +862,9 @@ FileParser::parseRandomVariableDiscreteType()
 void
 FileParser::parseRandomVariableContinuousType()
 {
-  ensureNotAtEOF(KW_Continous);
-  if (tokenInfo != KW_Continous)
-    parseError(KW_Continous);
+  ensureNotAtEOF(KW_Continuous);
+  if (tokenInfo != KW_Continuous)
+    parseError(KW_Continuous);
   if (curRV.rvType != RVInfo::t_unknown)
     error("Error parsing file: RV (%s) already has a type, frame %d, line %d",
 	  curRV.name.c_str(),
@@ -1075,11 +1085,11 @@ FileParser::parseDiscreteImplementation()
       || tokenInfo == KW_MTCPT) {
 
     if (tokenInfo == KW_MDCPT)
-      curRV.discImplementations.push_back(RVInfo::di_MDCPT);
+      curRV.discImplementations.push_back(CPT::di_MDCPT);
     else if (tokenInfo == KW_MSCPT)
-      curRV.discImplementations.push_back(RVInfo::di_MSCPT);
+      curRV.discImplementations.push_back(CPT::di_MSCPT);
     else // (tokenInfo == KW_MTCPT)
-      curRV.discImplementations.push_back(RVInfo::di_MTCPT);
+      curRV.discImplementations.push_back(CPT::di_MTCPT);
     consumeToken();
 
 
@@ -1168,16 +1178,16 @@ FileParser::parseContObsDistType()
 {
   ensureNotAtEOF("continuous observation distribution type");
   if (tokenInfo == KW_MixGaussian) {
-    curRV.contImplementations.push_back(RVInfo::ci_mixGaussian);
+    curRV.contImplementations.push_back(MixGaussiansCommon::ci_mixGaussian);
     consumeToken();
   } else if (tokenInfo == KW_GausSwitchMixGaussian) {
-    curRV.contImplementations.push_back(RVInfo::ci_gausSwitchMixGaussian);
+    curRV.contImplementations.push_back(MixGaussiansCommon::ci_gausSwitchMixGaussian);
     consumeToken();
   }  else if (tokenInfo == KW_LogitSwitchMixGaussian) {
-    curRV.contImplementations.push_back(RVInfo::ci_logitSwitchMixGaussian);
+    curRV.contImplementations.push_back(MixGaussiansCommon::ci_logitSwitchMixGaussian);
     consumeToken();
   }  else if (tokenInfo == KW_MlpSwitchMixGaussin) {
-    curRV.contImplementations.push_back(RVInfo::ci_mlpSwitchMixGaussian);
+    curRV.contImplementations.push_back(MixGaussiansCommon::ci_mlpSwitchMixGaussian);
     consumeToken();
   } else 
     parseError("continuous observation distribution type");
@@ -1555,7 +1565,9 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
       }
     }
 
-    // now set up the conditional parent's parameters.
+    //////////////////////////////////////////////////////////
+    // NOW set up the conditional parent's parameters.
+    //
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
       // get a discrete form of the current rv
       DiscreteRandomVariable* rv = 
@@ -1571,7 +1583,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	// is essentially the same code but duplicated 
 	// one time for each CPT implementation.
 
-	if (rvInfoVector[i].discImplementations[j] == RVInfo::di_MDCPT) {
+	if (rvInfoVector[i].discImplementations[j] == CPT::di_MDCPT) {
 
 	  //////////////////////////////////////////////////////
 	  // set the CPT to a MDCPT, depending on if a string
@@ -1665,10 +1677,11 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		  cpts[j]->name().c_str());
 	  }
 	} else 
-	  if (rvInfoVector[i].discImplementations[j] == RVInfo::di_MSCPT) {
-	    
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_MSCPT) {
+
+	    /////////////////////////////////////////////////////////
 	    // same code as above, but using MSCPTs rather
-	    // then MDCPTs
+	    // then MDCPTs. There should be a better way to do this.
 
 	    //////////////////////////////////////////////////////
 	    // set the CPT to a MSCPT, depending on if a string
@@ -1678,30 +1691,76 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	      if (GM_Parms.msCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
 		  GM_Parms.msCptsMap.end()) {
-		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MSCPT \"%s\" doesn't exist\n",
-		      rvInfoVector[i].name.c_str(),
-		      rvInfoVector[i].frame,
-		      rvInfoVector[i].fileLineNumber,
-		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+		if (!allocateIfNotThere) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent MSCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+		}
+		else {
+		  // allocate the MSCPT with name and install it.
+		  MSCPT* mscpt = new MSCPT();
+		  mscpt->setName(rvInfoVector[i].listIndices[j].nameIndex);
+		  mscpt->
+		    setNumParents
+		    (rvInfoVector[i].conditionalParents[j].size());
+
+		  for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+
+
+		    rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+				rvInfoVector[i].frame
+				+rvInfoVector[i].conditionalParents[j][k].second);
+		    map < rvParent , unsigned >::iterator it;
+		    it = nameRVmap.find(pp);
+		    if (it == nameRVmap.end()) {
+		      // this really shouldn't happen at this point since
+		      // it should have been checked somewhere else,
+		      // but we include the check nonetheless
+		      error("Error: parent random variable \"%s\" at" 
+			    "frame %d does not exist\n",
+			    rvInfoVector[i].conditionalParents[j][k].first.c_str(),
+			    rvInfoVector[i].conditionalParents[j][k].second);
+		    }
+		    mscpt->setNumCardinality(k,
+					     rvInfoVector[(*it).second].rvCard);
+		  }
+		  mscpt->setNumCardinality(rvInfoVector[i].conditionalParents[j].size(),
+					   rvInfoVector[i].rvCard);
+		  mscpt->allocateBasicInternalStructures();
+
+		  GM_Parms.msCpts.push_back(mscpt);
+		  GM_Parms.msCptsMap[rvInfoVector[i].listIndices[j].nameIndex]
+		    = GM_Parms.msCpts.size()-1;
+		  cpts[j] = mscpt;
+		}
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.msCpts[
+				  GM_Parms.msCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
 	      }
-	      // otherwise add it
-	      cpts[j] = 
-		GM_Parms.msCpts[
-		   GM_Parms.msCptsMap[
-			   rvInfoVector[i].listIndices[j].nameIndex
-	                      ]];
 	    } else {
 	      if (rvInfoVector[i].listIndices[j].intIndex >= 
 		  GM_Parms.msCpts.size()) {
-		error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
-		      rvInfoVector[i].name.c_str(),
-		      rvInfoVector[i].frame,
-		      rvInfoVector[i].fileLineNumber,
-		      rvInfoVector[i].listIndices[j].intIndex);
+		if (!allocateIfNotThere) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].intIndex);
+		} else {
+		  error("Can't allocate with integer cpt index");
+		}
+	      } else {
+		// otherwise add it
+		cpts[j] =
+		  GM_Parms.msCpts[rvInfoVector[i].listIndices[j].intIndex];
 	      }
-	      // otherwise add it
-	      cpts[j] =
-		GM_Parms.msCpts[rvInfoVector[i].listIndices[j].intIndex];
 	    }
 
 	    // now check to make sure this cpt matches this
@@ -1715,12 +1774,12 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		    j,
 		    cpts[j]->name().c_str());
 	    }
-
 	} else 
-	  if (rvInfoVector[i].discImplementations[j] == RVInfo::di_MTCPT) {
-	    
-	    // same code as above, but using MTCPTs rather
-	    // then MDCPTs
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using MTCPTs rather
+	    // then MDCPTs or MSCPTs. 
 
 	    //////////////////////////////////////////////////////
 	    // set the CPT to a MTCPT, depending on if a string
@@ -1730,30 +1789,76 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	      if (GM_Parms.mtCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
 		  GM_Parms.mtCptsMap.end()) {
-		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MTCPT \"%s\" doesn't exist\n",
-		      rvInfoVector[i].name.c_str(),
-		      rvInfoVector[i].frame,
-		      rvInfoVector[i].fileLineNumber,
-		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+		if (!allocateIfNotThere) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent MTCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+		}
+		else {
+		  // allocate the MTCPT with name and install it.
+		  MTCPT* mtcpt = new MTCPT();
+		  mtcpt->setName(rvInfoVector[i].listIndices[j].nameIndex);
+		  mtcpt->
+		    setNumParents
+		    (rvInfoVector[i].conditionalParents[j].size());
+
+		  for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+
+
+		    rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+				rvInfoVector[i].frame
+				+rvInfoVector[i].conditionalParents[j][k].second);
+		    map < rvParent , unsigned >::iterator it;
+		    it = nameRVmap.find(pp);
+		    if (it == nameRVmap.end()) {
+		      // this really shouldn't happen at this point since
+		      // it should have been checked somewhere else,
+		      // but we include the check nonetheless
+		      error("Error: parent random variable \"%s\" at" 
+			    "frame %d does not exist\n",
+			    rvInfoVector[i].conditionalParents[j][k].first.c_str(),
+			    rvInfoVector[i].conditionalParents[j][k].second);
+		    }
+		    mtcpt->setNumCardinality(k,
+					     rvInfoVector[(*it).second].rvCard);
+		  }
+		  mtcpt->setNumCardinality(rvInfoVector[i].conditionalParents[j].size(),
+					   rvInfoVector[i].rvCard);
+		  mtcpt->allocateBasicInternalStructures();
+
+		  GM_Parms.mtCpts.push_back(mtcpt);
+		  GM_Parms.mtCptsMap[rvInfoVector[i].listIndices[j].nameIndex]
+		    = GM_Parms.mtCpts.size()-1;
+		  cpts[j] = mtcpt;
+		}
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.mtCpts[
+				  GM_Parms.mtCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
 	      }
-	      // otherwise add it
-	      cpts[j] = 
-		GM_Parms.mtCpts[
-				GM_Parms.mtCptsMap[
-				   rvInfoVector[i].listIndices[j].nameIndex
-				]];
 	    } else {
 	      if (rvInfoVector[i].listIndices[j].intIndex >= 
 		  GM_Parms.mtCpts.size()) {
-		error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
-		      rvInfoVector[i].name.c_str(),
-		      rvInfoVector[i].frame,
-		      rvInfoVector[i].fileLineNumber,
-		      rvInfoVector[i].listIndices[j].intIndex);
+		if (!allocateIfNotThere) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].intIndex);
+		} else {
+		  error("Can't allocate with integer cpt index");
+		}
+	      } else {
+		// otherwise add it
+		cpts[j] =
+		  GM_Parms.mtCpts[rvInfoVector[i].listIndices[j].intIndex];
 	      }
-	      // otherwise add it
-	      cpts[j] =
-		GM_Parms.mtCpts[rvInfoVector[i].listIndices[j].intIndex];
 	    }
 
 	    // now check to make sure this cpt matches this
@@ -1769,8 +1874,9 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	    }
 
 	} else {
-	  // again, this shouldn't happen. If it does, something is wrong
-	  // with the parser or earlier code.
+	  // Again, this shouldn't happen. If it does, something is wrong
+	  // with the parser code or some earlier code, and it didn't correctly
+	  // set the CPT type. 
 	  assert ( 0 );
 	}
 
@@ -1780,12 +1886,138 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
       }
       // now add the cpts to the rv
       rv->setCpts(cpts);
-    } else { // continuous
+    } else { 
+      // This is a continuous RV, so 
+      // get a cont. form of the current rv
+      ContinuousRandomVariable* rv = 
+	(ContinuousRandomVariable*) rvInfoVector[i].rv;
+
+      rv->conditionalGaussians.resize
+	(
+	 rvInfoVector[i].conditionalParents.size()
+	 );
+      for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
+
+	// TODO:: implement the other continuous implementations
+	// and allow the other cases here.
+	if (rvInfoVector[i].discImplementations[j] !=
+	    MixGaussiansCommon::ci_mixGaussian) {
+	  error("ERROR: Only supports mixGaussian implementations for now");
+	  // ultimately, we can remove this and we'll have to duplicate
+	  // the below code for each continuous implementation, just
+	  // like what was done above for the discrete implementations.
+	}
+
+	if (rvInfoVector[i].conditionalParents[j].size() == 0) {
+	  // then under this value for switching parents, there
+	  // are no conditional parents and we have a direct
+	  // pointer to some Gaussian mixture.
+	  rv->conditionalGaussians[j].direct = true;
+	  if (rvInfoVector[i].listIndices[j].liType 
+		== RVInfo::ListIndex::li_String) {
+	    if (GM_Parms.mixGaussiansMap.find(
+		    rvInfoVector[i].listIndices[j].nameIndex) ==
+		GM_Parms.mixGaussiansMap.end()) {
+	      if (!allocateIfNotThere) {
+		error("Error: RV \"%s\" at frame %d (line %d), Gaussian mixture \"%s\" doesn't exist\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// need to create a Gaussian.
+		error("code to create Mix Gaussians on the fly not yet done");
+	      }
+	    } else {
+	      // Mix Gaussian is there, so add it.
+	      rv->conditionalGaussians[j].gaussian =
+		GM_Parms.mixGaussians[
+		      GM_Parms.mixGaussiansMap[
+			  rvInfoVector[i].listIndices[j].nameIndex
+		      ]];
+	    }
+	  } else {
+	    // the list index is an integer
+	    if (rvInfoVector[i].listIndices[j].intIndex >= 
+		GM_Parms.mixGaussiansMap.size()) {
+		if (!allocateIfNotThere) {
+		  error("Error: RV \"%s\" at frame %d (line %d), Gaussian mixture index (%d) too large\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].intIndex);
+		} else {
+		  error("Can't allocate with integer Gaussian mixture index");
+		}
+	      } else {
+		// otherwise add it
+		rv->conditionalGaussians[j].gaussian =
+		  GM_Parms.mixGaussians[
+                        rvInfoVector[i].listIndices[j].intIndex
+		      ];
+	      }
+	  }
+	  // now check that the Gaussian we have added is
+	  // the expected type.
+	  if (rv->conditionalGaussians[j].gaussian.mixType
+	      != rvInfoVector[i].contImplementations[j]) {
+	    error("Error: RV \"%s\" at frame %d (line %d), conditional parent %d specifies a Gaussian Mixture '%s' of the wrong type\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  j,
+		  rv->conditionalGaussians[j].gaussian.name().c_str()
+		  );
+	  }
+	} else {
+	  // there are > 0 conditional parents for this
+	  // set of switching values. The index should
+	  // specify a DT.
+	  rv->conditionalGaussians[j].direct = false;
+	  if (rvInfoVector[i].listIndices[j].liType 
+		== RVInfo::ListIndex::li_String) {
+	    if (GM_Parms.dtsMap.find(
+		    rvInfoVector[i].listIndices[j].nameIndex) ==
+		GM_Parms.dtsMap.end()) {
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent %d specifies a DT \"%s\" that doesn't exist\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      j,
+		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	    } else {
+	      rv->conditionalGaussians[j].dtMapper =
+		GM_Parms.dts[
+		   GM_Parms.dtsMap[
+				rvInfoVector[i].listIndices[j].nameIndex
+		  ]];
+	    }
+	  } else {
+	    // int index
+	    if (rvInfoVector[i].listIndices[j].intIndex >= 
+		GM_Parms.dts.size()) {
+		if (!allocateIfNotThere) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent %d specifies a DT index (%d) too large\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			j,
+			rvInfoVector[i].listIndices[j].intIndex);
+		} else {
+		  error("Can't allocate DT with integer index");
+		}
+	      } else {
+		// otherwise add it
+		rv->conditionalGaussians[j].dtMapper =
+		  GM_Parms.dts[rvInfoVector[i].listIndices[j].intIndex];
+	      }
+	  }
+	}
+      }
       error("not finished coding yet");
     }
   }
 }
-
 
 
 /*-
