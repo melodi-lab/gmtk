@@ -123,6 +123,12 @@ ibm:
 	ln -s ieeeFPsetup_ibm.h ieeeFPsetup.h
 	ln -s ieeeFPsetup_ibm.cc ieeeFPsetup.cc
 
+cygwin:
+	rm -f ieeeFPsetup.h
+	rm -f ieeeFPsetup.cc
+	ln -s ieeeFPsetup_cygwin.h ieeeFPsetup.h
+	ln -s ieeeFPsetup_cygwin.cc ieeeFPsetup.cc
+
 
 #----------------------------------------------------------------------------
 # Test programs for each .cc file
