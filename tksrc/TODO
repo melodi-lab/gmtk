@@ -2040,3 +2040,14 @@ Fri Jul 30 01:12:00 2004
 
 Tue Aug  3 15:07:03 2004
   -jt_info.txt dispositions, print text rather than numbers.
+
+
+Thu Aug 12 12:21:15 2004
+  - improve clique packing code to be smarter about how it packs cliques into multiples of words.
+    Right now, we always allocate multiples of machine words to pack cliques. There will most often
+    be wasted space at the end of the last word. For multi-word packings, code should figure out
+    how to shift values around so that we minimize the number of values that cross word boundaries
+    since they cost more to pack and unpack, while staying within the contraint of using the same number
+    of words.
+
+
