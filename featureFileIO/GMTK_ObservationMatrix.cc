@@ -644,23 +644,25 @@ unsigned ObservationMatrix::numFrames(unsigned segno) {
 /* read input for single segment 'segno' */
 
 void ObservationMatrix::loadSegment(unsigned segno) {
-  DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: Loading segment no %d\n",segno));
+  unsigned logicalSegNo=segno;
+
+  DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: Loading logical segment no %d\n",logicalSegNo));
 
   StreamInfo *s;
   // max_n_samps and prrng_n_samps are initialized in the next fct call
   unsigned max_n_samps,prrng_n_samps;  
   DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: before call to checkIfSameNumSamples\n"));
-  bool same_num_samples = checkIfSameNumSamples(segno,max_n_samps,prrng_n_samps);
+  bool same_num_samples = checkIfSameNumSamples(logicalSegNo,max_n_samps,prrng_n_samps);
 
   // maybe move this to the end after potential upsampling takes place
   if (_totalSkip >= prrng_n_samps)
-    error("ERROR: The number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
+    error("ERROR: The number of real frames (%d) for logical segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,logicalSegNo,_totalSkip);
   
 
   /////////////////////////////////////////////
   // resize buffer if necessary
   if (max_n_samps > _bufSize) {
-    DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: Resizing buffer for segment no %d\n",segno));
+    DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: Resizing buffer for logical segment no %d\n",logicalSegNo));
     DBGFPRINTF((stderr,"Allocating %dx%dx%d=%d entries for temp float buffer\n",max_n_samps,_maxContinuous,2,max_n_samps * _maxContinuous*2));
     _bufSize=max_n_samps*2;
     resize(_bufSize);
@@ -671,6 +673,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
   
   _numNonSkippedFrames = prrng_n_samps;
   
+
   ////////////////////////////////////////////
   // Loop over al streams
   ////////////////////////////////////////////
@@ -679,22 +682,25 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     s = _inStreams[i];
     unsigned num_floats = s->getNumFloats();
     unsigned num_ints   = s->getNumInts();
+    unsigned physicalSegNo=s->mapToValueInRange(logicalSegNo);
     // all checks were done in the function checkNumSamples
     
     Range* prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[i],0,s->getAfterTransformCurNumFrames());
     assert(prrng != NULL);
 
-    if(_actionIfDiffNumSents!=NULL &&  segno > s->fofSize-1) {
+  DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: logical segno=%d.physical segno=%d, s->fofSize=%d\n",logicalSegNo,physicalSegNo,s->fofSize));
+  // s->fofSize stores the adjusted number of segments after the sgment range is taken into account
+    if(_actionIfDiffNumSents!=NULL &&  logicalSegNo > s->fofSize-1) {
       if(_actionIfDiffNumSents[i]==SEGMATCH_REPEAT_LAST) {
-	segno=s->fofSize-1;
+	logicalSegNo=s->fofSize-1;
       }
       else if(_actionIfDiffNumSents[i]==SEGMATCH_WRAP_AROUND) {
-	segno= segno % s->fofSize;
+	logicalSegNo= logicalSegNo % s->fofSize;
       }
     }
 
     // Used to before the above section of code that modifies segno.  It seems obvious it should follow it instead, but the coment is here just in case there was a reason for that I don't see now. 
-    _segmentNumber = segno;
+    _segmentNumber = logicalSegNo;
 
     DBGFPRINTF((stderr,"In loadSegment(): Reading sentence. prrng->length()=%d.\n",prrng->length()));
 
@@ -707,7 +713,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
       readAsciiSentence(_tmpFloatSenBuffer.ptr,num_floats,_tmpIntSenBuffer.ptr,num_ints,s->curNumFrames,s->curDataFile);
       break;
     case PFILE:
-      readPfileSentence(segno,_tmpFloatSenBuffer.ptr,_tmpIntSenBuffer.ptr,s->pfile_istr);
+      readPfileSentence(physicalSegNo,_tmpFloatSenBuffer.ptr,_tmpIntSenBuffer.ptr,s->pfile_istr);
       break;
     default:
       error("ObservationMatrix::loadSegment: Invalid file format specified for stream %i\n",i);
@@ -2244,12 +2250,14 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
  */
 
 bool ObservationMatrix::readPfileSentence(const unsigned segno, float* float_buffer,  Int32* int_buffer, InFtrLabStream_PFile *f) {
-  
+
+  /////// segno is the physical segment number
+
   unsigned num_ints    = f->num_labs();
   unsigned num_floats  = f->num_ftrs();
   unsigned num_frames  = f->num_frames(segno); 
 
-  DBGFPRINTF((stderr,"In ObservationMatrix::readPfileSentence, num_ints=%d, num_floats=%d, num_frames=%d\n", num_ints,num_floats,num_frames));
+  DBGFPRINTF((stderr,"In ObservationMatrix::readPfileSentence, segno=%d, num_ints=%d, num_floats=%d, num_frames=%d\n", segno,num_ints,num_floats,num_frames));
 
   if(num_ints > 0 and num_floats > 0) {
     if (f->read_ftrslabs((size_t)num_frames,(float *)float_buffer,(UInt32 *)int_buffer) != num_frames) {
