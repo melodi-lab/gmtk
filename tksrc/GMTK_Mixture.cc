@@ -55,7 +55,8 @@ MixGaussians::read(iDataStreamFile& is)
   string str;
   is.read(str);
   if (GM_Parms.dPmfsMap.find(str) == GM_Parms.dPmfsMap.end()) {
-    error("Error: MixGaussians '%s', can't find PMF named '%s'\n",
+    error("ERROR: Mix Gaussian '%s' in file '%s', can't find PMF named '%s'\n",
+	  is.fileName(),
 	  _name.c_str(),str.c_str());
   }
 
@@ -65,8 +66,8 @@ MixGaussians::read(iDataStreamFile& is)
 
   // now make sure that this one matches the number of components.
   if (numComponents != dense1DPMF->length()) {
-    error("Error: MixGaussians '%s', PMF named '%s' has %d elements but we need %d\n",
-	  _name.c_str(),
+    error("ERROR: MixGaussians '%s' in file '%s', PMF named '%s' has %d elements but we need %d\n",
+	  _name.c_str(),is.fileName(),
 	  str.c_str(),dense1DPMF->length(),numComponents);
   }
 
@@ -75,7 +76,7 @@ MixGaussians::read(iDataStreamFile& is)
   for (unsigned i=0;i<numComponents;i++) {
     is.read(str);
     if (GM_Parms.gaussianComponentsMap.find(str) == GM_Parms.gaussianComponentsMap.end()) {
-      error("Error: MixGaussians '%s', can't find Gaussian Component named '%s'\n",_name.c_str(),str.c_str());
+      error("ERROR: MixGaussians '%s' in file '%s', can't find Gaussian Component named '%s'\n",_name.c_str(),is.fileName(),str.c_str());
     }
     GaussianComponent*gc = GM_Parms.gaussianComponents [
 	GM_Parms.gaussianComponentsMap[str]
