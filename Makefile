@@ -48,6 +48,13 @@ all clean:
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
 	done
 
+# this will make world just for linux for now.
+World:
+	$(MAKE) linux
+	$(MAKE) clean
+	$(MAKE) depend
+	$(MAKE) all
+
 TAR = /bin/tar
 
 package:  EXCLUDE
