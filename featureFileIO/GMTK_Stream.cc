@@ -70,7 +70,7 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
      // in a pfile, only the labs can be ints
      
      if (pfile_istr->num_labs() != nInts)
-       error("StreamInfo: File %s has %i floats, expected %i\n",
+       error("StreamInfo: File %s has %i ints, expected %i\n",
 	     fofName,
 	     pfile_istr->num_labs(),
 	     nInts);
