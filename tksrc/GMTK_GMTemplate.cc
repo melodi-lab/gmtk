@@ -238,9 +238,13 @@ readMaxCliques(iDataStreamFile& is)
   // read number of cliques
   unsigned numCliques;
   is.read(numCliques,"number of cliques");
+
+#if 0
+  // remove check for numCliques being > 0 since we now allow for empty partitions.
   if (numCliques == 0)
     error("ERROR: reading file '%s' line %d, numCliques must be >= 1\n",
 	  is.fileName(),is.lineNo());
+#endif
 
   // create a map for easy access to set of nodes
   map < RVInfo::rvParent, RV* > namePos2Var;
@@ -513,7 +517,7 @@ setUpClonedPartitionGraph(const set<RV*>& P,
  *   graph, and its unfinished cloned version Sc (unfinished in that
  *   it has no parents, neighbors (and children) set up yet). It also
  *   takes a mapping from S to Sc, and the corresponding mappings from
- *   the other partitions whatever they are, called O1 and O1. 
+ *   the other partitions whatever they are, called O1 and O2. 
  *   
  *   It then sets the neighbors structures for all of Sc from S. The
  *   neighbors are variables that are forced to be part of the
@@ -1050,6 +1054,9 @@ readPartitions(iDataStreamFile& is)
     error("ERROR: C partition information in file '%s' line %d is invalid for given graph structure\n",
 	  is.fileName(),is.lineNo());
   is.read(setSize,"C partition set size");
+  if (setSize == 0)
+    error("ERROR: C partition information in file '%s' line %d specifies no variables. C partition must not be empty.\n",
+	  is.fileName(),is.lineNo());
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
     is.read(par.first,"parent name");
@@ -1062,6 +1069,8 @@ readPartitions(iDataStreamFile& is)
 	    is.fileName(),is.lineNo());
     loc_C.insert(unrolled_rvs[(*loc).second]);
   }
+
+
 
   is.read(str_tmp,"E partition name");
   if (str_tmp != E_partition_name)
@@ -1505,6 +1514,10 @@ readMaxCliques(iDataStreamFile& is)
 {
   P.readMaxCliques(is);
   C.readMaxCliques(is);
+  // C can't be empty.
+  if (C.cliques.size() == 0)
+    error("ERROR: reading file '%s' near line %d. Number of cliques in the C partition must be >= 1\n",
+	  is.fileName(),is.lineNo());
   E.readMaxCliques(is);
 }
 

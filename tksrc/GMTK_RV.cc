@@ -36,6 +36,16 @@ VCID("$Header$");
 #include "GMTK_RV.h"
 
 
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        Static variables used by classes
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+
+bool RV::disconnectChildrenOfObservedParents = true;
+
+
 /*-
  *-----------------------------------------------------------------------
  * printParentInfo()
@@ -142,9 +152,17 @@ void RV::createNeighborsFromParentsChildren()
   for (unsigned i=0;i<allParents.size();i++) {
     neighbors.insert(allParents[i]);
   }
-  for (unsigned i=0;i<allChildren.size();i++) {
-    neighbors.insert(allChildren[i]);
+  if (observed() && disconnectChildrenOfObservedParents) {
+    // do nothing with the children.
+  } else {
+    // Go ahead and add the children of this as neighbors anyway,
+    // ignoring the fact in the resulting UGM that 'this' renders the
+    // children independent of the parents.
+    for (unsigned i=0;i<allChildren.size();i++) {
+      neighbors.insert(allChildren[i]);
+    }
   }
+  // sanity check.
   assert ( neighbors.find(this) == neighbors.end() );
 }
 

@@ -346,7 +346,7 @@ main(int argc,char*argv[])
   }
 
   (void) IM::setGlbMsgLevel(verbosity);
-
+  GM_Parms.setMsgLevel(verbosity);
 
   // Make sure not to cache the mixture component probabilities as it
   // is only needed in EM training.

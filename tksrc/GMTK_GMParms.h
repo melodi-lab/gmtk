@@ -32,6 +32,7 @@
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
+#include "debug.h"
 
 /////////////////////
 // forward refs
@@ -70,7 +71,7 @@ class NameCollection;
 class GMTK_GM;
 
 
-class GMParms {
+class GMParms : public IM  {
 public:
 
   //////////////////////////////////////////////////////////////////

@@ -72,6 +72,9 @@ extern "C" {
 };
 #endif
 
+#define TRIFILE_END_OF_ID_STRING "@@@!!!TRIFILE_END_OF_ID_STRING!!!@@@"
+
+
 /*
 ***********************************************************************
 ***********************************************************************
@@ -3312,6 +3315,12 @@ FileParser::writeGMId(oDataStreamFile& os)
     }
     os.nl();
   }
+  os.write(_firstChunkframe);
+  os.write(_lastChunkframe);
+  os.nl();
+  os.write(TRIFILE_END_OF_ID_STRING);
+  os.nl();
+
 }
 
 
@@ -3410,6 +3419,16 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is)
       }
     }
   }
+
+  if (!is.read(uval)) return false;
+  if (uval != _firstChunkframe) return false;
+
+  if (!is.read(uval)) return false;
+  if (uval != _lastChunkframe) return false;
+
+  if (!is.read(nm)) return false;
+  if (nm != TRIFILE_END_OF_ID_STRING) return false;
+
   // all checked out ok
   return true;
 }
