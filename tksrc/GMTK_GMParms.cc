@@ -96,16 +96,6 @@ GMParms::readBasic(iDataStreamFile& is)
     covars[i]->read(is);
   }
 
-#if 0
-  is.read(tmp,"GMTK_GMParms::readBasic, PackedSparseRealMatrix");
-  if (tmp < 0) error("GMTK_GMParms::readBasic num PackedSparseRealMatrix = %d",tmp);
-  psRealMats.resize(tmp);
-  for (int i=0;i<tmp;i++) {
-    psRealMats[i] = new PackedSparseRealMatrix;
-    psRealMats[i]->read(is);
-  }
-#endif
-
   is.read(tmp,"GMTK_GMParms::readBasic, DlinkMatrix");
   if (tmp < 0) error("GMTK_GMParms::readBasic num DlinkMatrix = %d",tmp);
   dLinkMats.resize(tmp);
@@ -145,7 +135,63 @@ GMParms::readBasic(iDataStreamFile& is)
 void 
 GMParms::writeBasic(oDataStreamFile& os)
 {
-  error("GMParms::writeBasic, not implemented");
+
+  os.write(dPmfs.len(),"GMTK_GMParms::writeBasic, dpmfs");
+  os.nl();
+  for (int i=0;i<dPmfs.len();i++) {
+    dPmfs[i]->write(os);
+  }
+  os.nl();
+
+  os.write(sPmfs.len(),"GMTK_GMParms::writeBasic, spmfs");
+  os.nl();
+  for (int i=0;i<sPmfs.len();i++) {
+    sPmfs[i]->write(os);
+  }
+  os.nl();
+
+  os.write(means.len(),"GMTK_GMParms::writeBasic, means");
+  os.nl();
+  for (int i=0;i<means.len();i++) {
+    means[i]->write(os);
+  }
+  os.nl();
+
+  os.write(covars.len(),"GMTK_GMParms::writeBasic, covars");
+  os.nl();
+  for (int i=0;i<covars.len();i++) {
+    covars[i]->write(os);
+  }
+  os.nl();
+
+  os.write(dLinkMats.len(),"GMTK_GMParms::writeBasic, DlinkMatrix");
+  os.nl();
+  for (int i=0;i<dLinkMats.len();i++) {
+    dLinkMats[i]->write(os);
+  }
+  os.nl();
+
+  os.write(weightMats.len(),"GMTK_GMParms::writeBasic, WeightMatrix");
+  os.nl();
+  for (int i=0;i<weightMats.len();i++) {
+    weightMats[i]->write(os);
+  }
+  os.nl();
+
+
+  os.write(mdCpts.len(),"GMTK_GMParms::writeBasic, MDCPT");
+  os.nl();
+  for (int i=0;i<mdCpts.len();i++) {
+    mdCpts[i]->write(os);
+  }
+  os.nl();
+
+  os.write(msCpts.len(),"GMTK_GMParms::writeBasic, MSCPT");
+  os.nl();
+  for (int i=0;i<msCpts.len();i++) {
+    msCpts[i]->write(os);
+  }
+  os.nl();
 }
 
 #ifdef MAIN
@@ -158,7 +204,8 @@ main()
   iDataStreamFile is("dataFiles/test1.gmb",false);
   GM_Parms.readBasic(is);
 
-  oDataStreamFile os("dataFiles/test1_out.gmb");
+  // oDataStreamFile os("dataFiles/test1_out.gmb");
+  oDataStreamFile os("-");
   GM_Parms.writeBasic(os);
 }
 

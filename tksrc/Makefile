@@ -88,7 +88,8 @@ all:
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_Discrete1DPDF.o
+objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_PackedSparseRealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_GaussianCommon.o
+
 
 #----------------------------------------------------------------------------
 # Main build programs.
@@ -108,8 +109,8 @@ testMDCPT: GMTK_MDCPT.cc GMTK_MDCPT.h  GMTK_CPT.o
 testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_RngDecisionTree.cc $(LIBS)
 
-testGMParms: GMTK_GMParms.cc GMTK_GMParms.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_GMParms.cc $(LIBS)
+testGMParms: GMTK_GMParms.cc GMTK_GMParms.h $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_GMParms.cc $(objs) $(LIBS)
 
 
 #----------------------------------------------------------------------------

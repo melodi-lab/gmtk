@@ -18,14 +18,15 @@
  */
 
 
-#ifndef GMTK_DLINKMATRIX
-#define GMTK_DLINKMATRIX
+#ifndef GMTK_DLINKMATRIX_H
+#define GMTK_DLINKMATRIX_H
 
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
 
-#include "GMTK_DlinkMatrix.h"
+#include "GMTK_PackedSparseRealMatrix.h"
+#include "GMTK_EMable.h"
 
 class DlinkMatrix : public EMable {
 
@@ -55,20 +56,20 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emInit();
-  void startEmEpoch();
+  void emInit() {}
+  void startEmEpoch() {}
   void emAccumulate(const float prob,
-		    const float *const oo_array);
-  void endEmEpoch(logpr cmpSop_acc);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emStoreAccumulators(oDataStreamFile& ofile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
+    const float *const oo_array) {}
+  void endEmEpoch(logpr cmpSop_acc) {}
+  void emLoadAccumulators(iDataStreamFile& ifile) {}
+  void emStoreAccumulators(oDataStreamFile& ofile) {}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void swapCurAndNew() {}
   //////////////////////////////////
-
 
 
 };
 
 
 
-#endif // defined DLINKMATRIX
+#endif
