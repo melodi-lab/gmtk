@@ -44,8 +44,7 @@ const string DTFileExtension = ".index";
 /////////////////////////////////////////////////////////////////////
 // Static computation stack for formula evaluation 
 /////////////////////////////////////////////////////////////////////
-RngDecisionTree::sArrayStack<RngDecisionTree::EquationClass::formulaCommand> 
-  RngDecisionTree::EquationClass::stack(0);
+RngDecisionTree::sArrayStack<int> RngDecisionTree::EquationClass::stack(0);
 
 /////////////////////////////////////////////////////////////////////
 // Arrays to classify formula tokens and map their strings to their 
@@ -533,10 +532,11 @@ RngDecisionTree::EquationClass::EquationClass()
 
     delimiter["&"]  = TOKEN_BITWISE_AND;
     delimiter["|"]  = TOKEN_BITWISE_OR;
+    delimiter[":"]  = TOKEN_COLON;
     delimiter[","]  = TOKEN_COMMA;
     delimiter["/"]  = TOKEN_DIVIDE;
-    delimiter["^"]  = TOKEN_EXPONENT;
     delimiter["=="] = TOKEN_EQUALS;
+    delimiter["^"]  = TOKEN_EXPONENT;
     delimiter[">"]  = TOKEN_GREATER_THAN;
     delimiter[">="] = TOKEN_GREATER_THAN_EQ;
     delimiter["<"]  = TOKEN_LESS_THAN;
@@ -550,6 +550,7 @@ RngDecisionTree::EquationClass::EquationClass()
     delimiter["("]  = TOKEN_LEFT_PAREN;
     delimiter["*"]  = TOKEN_TIMES;
     delimiter[")"]  = TOKEN_RIGHT_PAREN;
+    delimiter["?"]  = TOKEN_QUESTION_MARK;
 
     function["max"] = TOKEN_MAX;
     function["min"] = TOKEN_MIN;
@@ -572,12 +573,13 @@ RngDecisionTree::EquationClass::EquationClass()
     termToken[TOKEN_LOGICAL_AND]     = COMMAND_LOGICAL_AND;
     termToken[TOKEN_LOGICAL_OR]      = COMMAND_LOGICAL_OR; 
     termToken[TOKEN_TIMES]           = COMMAND_TIMES;
+    termToken[TOKEN_QUESTION_MARK]   = COMMAND_QUESTION_MARK;
 
     functionToken[TOKEN_MAX] = COMMAND_MAX;
     functionToken[TOKEN_MIN] = COMMAND_MIN;
 
-    twoValFunctionToken[TOKEN_MOD]         = COMMAND_MOD; 
     twoValFunctionToken[TOKEN_BITWISE_XOR] = COMMAND_BITWISE_XOR;
+    twoValFunctionToken[TOKEN_MOD]         = COMMAND_MOD; 
   }
 
 }
@@ -609,6 +611,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
   unsigned crrnt_cmnd, end_cmnd;
   unsigned last; 
   unsigned command, operand; 
+  int      value, i;
 
   stack.clear();
 
@@ -668,22 +671,20 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack[last-1] = stack[last-1] / stack[last];
         stack.pop_back();
         break;
- 
-      case COMMAND_EXPONENT: 
-	unsigned value, i;
-
-        last = stack.stackSize() - 1;
-        value = 1; 
-	for (i=0; i<stack[last]; ++i) {
-          value = value*stack[last-1]; 
-	}
-	stack[last-1] = value;
-        stack.pop_back();
-        break;
 
       case COMMAND_EQUALS: 
         last = stack.stackSize() - 1;
         stack[last-1] = stack[last-1] == stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_EXPONENT: 
+        last = stack.stackSize() - 1;
+        value = 1; 
+        for (i=0; i<stack[last]; ++i) {
+          value = value*stack[last-1]; 
+        }
+        stack[last-1] = value;
         stack.pop_back();
         break;
 
@@ -727,7 +728,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
         last = stack.stackSize() - 1;
         if (stack[last] > stack[last-1]) {
           stack[last-1] = stack[last];
-	}
+        }
         stack.pop_back();
         break;
 
@@ -735,15 +736,12 @@ RngDecisionTree::EquationClass::evaluateFormula(
         last = stack.stackSize() - 1;
         if (stack[last] < stack[last-1]) {
           stack[last-1] = stack[last];
-	}
+        }
         stack.pop_back();
         break;
  
       case COMMAND_MINUS:
         last = stack.stackSize() - 1;
-        if (stack[last-1] < stack[last]) {
-          error("ERROR:  Result of subtraction is negative\n"); 
-        }
         stack[last-1] = stack[last-1] - stack[last];
         stack.pop_back();
         break;
@@ -769,6 +767,13 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack.pop_back();
         break;
 
+      case COMMAND_QUESTION_MARK: 
+        last = stack.stackSize() - 1;
+        stack[last-2] = stack[last-2] ? stack[last-1] : stack[last]; 
+        stack.pop_back();
+        stack.pop_back();
+        break;
+
       default:
         assert(0);
         break;
@@ -776,7 +781,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
   }
 
   assert(stack.stackSize() == 1);
-  return(stack[0]);
+  return((unsigned)stack[0]);
 }    
 
 
@@ -925,14 +930,37 @@ RngDecisionTree::EquationClass::parseTerm(
 
   while( termToken[token.token] != COMMAND_INVALID ) { 
  
-    next_token  = token.token;
-    getToken(leafNodeVal, token); 
-    parseFactor(token, leafNodeVal, depth);
+    switch (token.token) {
 
-    new_command = MAKE_COMMAND( termToken[next_token], 0 );
-    commands.resizeAndCopy( commands.size()+1 );
-    commands[commands.size()-1] = new_command;
-    changeDepth( -1, depth );
+      case TOKEN_QUESTION_MARK:  
+        getToken(leafNodeVal, token); 
+        parseExpression(token, leafNodeVal, depth);
+
+        if (token.token != TOKEN_COLON) {
+          string error_message = "Expecting colon after '?' operator"; 
+          throw(error_message); 
+        }
+
+        getToken(leafNodeVal, token); 
+        parseExpression(token, leafNodeVal, depth);
+
+        new_command = MAKE_COMMAND( COMMAND_QUESTION_MARK, 0 );
+        commands.resizeAndCopy( commands.size()+1 );
+        commands[commands.size()-1] = new_command;
+        changeDepth( -1, depth );
+        break;
+
+      default:
+        next_token  = token.token;
+        getToken(leafNodeVal, token); 
+        parseFactor(token, leafNodeVal, depth);
+
+        new_command = MAKE_COMMAND( termToken[next_token], 0 );
+        commands.resizeAndCopy( commands.size()+1 );
+        commands[commands.size()-1] = new_command;
+        changeDepth( -1, depth );
+        break;
+    }
   }
 }
 
@@ -975,6 +1003,7 @@ RngDecisionTree::EquationClass::parseFactor(
       parseExpression(token, leafNodeVal, depth);
 
       if (token.token == TOKEN_RIGHT_PAREN) {
+
         getToken(leafNodeVal, token); 
       }
       else {
@@ -1014,7 +1043,7 @@ RngDecisionTree::EquationClass::parseFactor(
       //////////////////////////////////////////////////////////////////////
       if (functionToken[token.token] != COMMAND_INVALID) {
   
-	next_token = token.token;
+        next_token = token.token;
 
         getToken(leafNodeVal, token); 
         if (token.token != TOKEN_LEFT_PAREN) {
@@ -1061,7 +1090,7 @@ RngDecisionTree::EquationClass::parseFactor(
       //////////////////////////////////////////////////////////////////////
       else if (twoValFunctionToken[token.token] != COMMAND_INVALID) {
   
-	next_token = token.token;
+        next_token = token.token;
 
         getToken(leafNodeVal, token); 
         if (token.token != TOKEN_LEFT_PAREN) {
@@ -1124,7 +1153,6 @@ RngDecisionTree::EquationClass::getToken(
   tokenStruct& token 
   )
 {
-
   //////////////////////////////////////////////////////////////////////////
   // Local variables 
   //////////////////////////////////////////////////////////////////////////
