@@ -1756,3 +1756,41 @@ Tue Apr  6 19:27:48 2004
     higher 90s print out cont. observed vectors as well (this
     might produce tons of output but it might be useful for debugging).
 
+
+Tue Apr  6 19:29:56 2004
+  Karen's latest wish list:
+
+   Thanks for the reminder about the GMTK wish list.  Here's my wish list so 
+   far...  Some of these I've mentioned before, but just for completeness:
+
+  -Arbitrary sets of variable values, including strings, rather than [0..card-1] 
+  (I think you said this is already being done)
+
+  -Clustering.  Ideally, I imagine a clustering scheme which is not separate 
+  from training, but instead, gmtkEMtrain can optionally, at the end of every N 
+  iterations, cluster two distributions whenever they meet some similarity 
+  criterion.
+
+  -Soft evidence
+
+  -Very minor, but:  having the option to not have the "zero accumulator" 
+  warnings when saving the accumulator files.  This could be a verbosity setting 
+  (maybe this is already done in gmtkEMtrainNew--I haven't tried it yet).  I 
+  tend to have a large number of small chunks, so my log files sometimes wind up 
+  having huge numbers of warnings.
+
+  -An optional probability floor for dense CPTs in gmtkEMtrain
+
+  -Debugging...  I'm still thinking about what kind of output would be helpful.  
+  For starters, it would be good if -showVitVals showed the conditional (log) 
+  prob of each variable value.  One question that I often have is "why do these 
+  observations have zero probability?" and it's hard to say what kind of 
+  debugging output would help to answer that question--maybe someone more 
+  familiar with the internals of the toolkit would know better.  gmtkJT 
+  -verbosity 100 might do the trick, but I don't know how to parse it yet.  In 
+  the long term, I can imagine an application that lets you interactively 
+  suggest different observations and tells you where the zero probabilities 
+  happen.  I'll keep thinking about other types of debugging output.
+
+
+
