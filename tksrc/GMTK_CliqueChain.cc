@@ -188,8 +188,8 @@ void CliqueChain::backwardPass()
 	      backwardDataProb += (cv.lambda=Clique::gip[cv.succ].lambda)*cv.pi;
         }
     }
-    cout << "Forward data prob: " << dataProb.val() << " Backward data prob: "
-    << backwardDataProb.val() << endl;
+    // cout << "Forward data prob: " << dataProb.val() << " Backward data prob: "
+    // << backwardDataProb.val() << endl;
 }
 
 /*-
