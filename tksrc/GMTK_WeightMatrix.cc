@@ -77,18 +77,18 @@ RealMatrix::RealMatrix()
 void
 RealMatrix::read(iDataStreamFile& is)
 {
-  is.read(rows,"RealMatrix::read, distribution rows");
-  if (rows <= 0)
+  is.read(_rows,"RealMatrix::read, distribution rows");
+  if (_rows <= 0)
     error("RealMatrix: read rows (%d) < 0 in input",rows);
 
-  is.read(cols,"RealMatrix::read, distribution cols");
-  if (cols <= 0)
-    error("RealMatrix: read cols (%d) < 0 in input",cols);
+  is.read(_cols,"RealMatrix::read, distribution cols");
+  if (_cols <= 0)
+    error("RealMatrix: read cols (%d) < 0 in input",_cols);
 
-  weights.resize(rows*cols);
+  weights.resize(_rows*_cols);
 
   float ptr = weights.ptr;
-  for (int i=0;i<rows*cols;i++) {
+  for (int i=0;i<_rows*_cols;i++) {
     float val;
     is.read(val,"RealMatrix::read, reading value");
     *ptr++ = val;
@@ -115,10 +115,10 @@ void
 RealMatrix::write(oDataStreamFile& os)
 {
 
-  os.write(rows,"RealMatrix::write, distribution rows");
-  os.write(cols,"RealMatrix::write, distribution cols");
+  os.write(_rows,"RealMatrix::write, distribution rows");
+  os.write(_cols,"RealMatrix::write, distribution cols");
 
-  for (int i=0;i<rows*cols;i++) {
+  for (int i=0;i<_rows*_cols;i++) {
     os.write(weights[i],"RealMatrix::write, writeing value");
   }
 }
