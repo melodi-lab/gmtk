@@ -64,6 +64,7 @@ display=false)
 
      int i,j;
      cost[0][0] = 0;
+     
      for (j=1; j<=reference_words; j++)
      {
           cost[0][j] = cost[0][j-1] + insert_cost;
@@ -102,23 +103,29 @@ display=false)
                << cost[actual_words][reference_words] << endl;
 
           const int msg_len=100;
-          char msg[max_words][msg_len];
+          char msg[2*max_words+1][msg_len];
           int op = -1;
           int r=actual_words, c=reference_words;
           while (r!=0 || c!=0)
           {
                     if (from[r][c].row == r)
                     {
+                              assert(c>0);
+                              assert(op<2*max_words);
                               strcpy(msg[++op], "Insert ");
                               strcat(msg[op], reference[c-1].c_str());
                     }
                     else if (from[r][c].column == c)
                     {
+                              assert(r>0);
+                              assert(op<2*max_words);
                               strcpy(msg[++op], "Delete ");
                               strcat(msg[op], actual[r-1].c_str());
                     }
                     else
                     {
+                              assert(r>0 && c>0);
+                              assert(op<2*max_words);
                               strcpy(msg[++op], "Match ");
                               strcat(msg[op], actual[r-1].c_str());
                               strcat(msg[op], " , ");
