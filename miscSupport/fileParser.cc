@@ -31,7 +31,8 @@ VCID("$Header$");
 /////////////////////////////////////////
 // Define if you want to pipe all ASCII
 // files through the C pre-processor to
-// get to use it's macro facilities.
+// get to use it's macro facilities. Might
+// need to change the comment character above.
 // #define PIPE_ASCII_FILES_THROUGH_CPP
 
 bool 
