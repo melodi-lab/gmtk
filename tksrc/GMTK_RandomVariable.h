@@ -28,6 +28,9 @@
    variables must implement. For speed, there are some special non-virtual
    functions for discrete and deterministic variables, which can be handled
    with table lookups.
+
+   Switching parents are guaranteed to be discrete.
+   A nodes conditioning parents must be lower indexed than it.
 */
 
 struct RandomVariable
@@ -42,7 +45,17 @@ struct RandomVariable
     // that the variable itself.
     // This means that a static graph with a predetermined topological order
     // can be compiled, even when there is switching parentage.
-    sArray<RandomVariable *> Parent, Child;
+    // Parent and Child arrays refer only to hidden variables. 
+
+    sArray<randomVariable *> switchingParents, conditionalParents;
+
+    findConditioningParents();
+    // Looks at the values of the switching parents, and sets the 
+    // conditional parents appropraitely
+
+    sarray <sparseCPT> discreteCPT;
+    // entry i of the sArray gives the CPT to use when the switching parents
+    // have instantiation i
 
     /* These next members are used to control the inference loops in a
        clique tree. (The constituents of each clique are random variables.)
@@ -72,7 +85,12 @@ struct RandomVariable
     // The virtualness of this function is expected to be negligible comared
     // to the other work done for continuous variables.
 
-    inline logp discreteProbGivenParents();
+    int address(sArray<randomVariable *>);
+    // looks up the values of the the switching parents and computes a 
+    // integer index into a 1 dimensional array
+
+    inline logp discreteProbGivenParents() 
+    {findConditionalParents(); return discreteCPT[address(conditionalParents)][i];}
     // For discrete variables.
     // The inference algorithm guarantees that when this is called, the
     // variable and its parents will be clamped to appropriate values.
@@ -80,6 +98,7 @@ struct RandomVariable
 
 /* Add a pointer to the appropriate GMTK_DiscretePDF table here */
 /* Then discreteProbGivenParents() will follow it. */
+    discreteVariable *dvp;
 
     virtual void makeRandom() = 0;
     // Sets the parameters determining probGivenParents() to random values.
