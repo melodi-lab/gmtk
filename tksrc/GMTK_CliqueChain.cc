@@ -74,7 +74,10 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
 
     // check if nothing had any probability, or pruning was too drastic
     if (postorder[0]->instantiation.size() == 0) 
+    {
+        dataProb = viterbiProb = 0.0;
         return false; 
+    }
 
     // look at the probabilities
     logpr sum=0.0, max=0.0;
@@ -176,8 +179,11 @@ void CliqueChain::backwardPass()
 bool CliqueChain::doViterbi(logpr beam)
 {
     bool viterbi=true;
-    if (!forwardPass(beam, viterbi))  // 
+    if (!forwardPass(beam, viterbi))  
+    {
+        cout << "Zero probability on the forward pass\n";
         return false;
+    }
 
     // first find the likeliest instantiation of the last clique
     logpr maxprob = 0.0;
@@ -222,13 +228,16 @@ bool CliqueChain::doViterbi(logpr beam)
  *-----------------------------------------------------------------------
  */
 
-void CliqueChain::computePosteriors(logpr beam)
+bool CliqueChain::computePosteriors(logpr beam)
 {
     if (!forwardPass(beam))
-// really need to throw an exception so that the program can continue with the
-// next example
-        error("Zero probability on the forward pass");
+    {
+        cout << "Zero probability on the forward pass\n";
+        return false;
+    }
+    assert(dataProb != 0.0);
     backwardPass();
+    return true;
 }
 
 /*-
@@ -266,6 +275,7 @@ void CliqueChain::incrementEMStatistics()
             cl->findConditionalProbabilityNodes();
             
             // do the updates
+            assert(dataProb != 0.0);
             logpr posterior = li->lambda*li->pi/dataProb;
             for (unsigned j=0; j<cl->conditionalProbabilityNode.size(); j++)
                 cl->conditionalProbabilityNode[j]->emIncrement(posterior);

@@ -59,8 +59,8 @@ struct GMTK_GM
     // Call with emMode=false to get the data probability.
     // Call with emMode=true and p=1/dataProb to do EM
 
-    void cliqueChainProb()
-    { chain->computePosteriors(); dataProb = chain->dataProb; }
+    void cliqueChainProb(logpr beam=0.0)
+    { chain->computePosteriors(beam); dataProb = chain->dataProb; }
     // Computes the likelihood of the observed variable values with
     // dynamic programming on a clique chain
 
@@ -90,8 +90,8 @@ struct GMTK_GM
     // Has the side effect that at termination, the network is clamped to its
     // likeliest value.
 
-    void cliqueChainViterbiProb() 
-    {chain->doViterbi(); viterbiProb=chain->viterbiProb;}
+    void cliqueChainViterbiProb(logpr beam=0.0) 
+    {chain->doViterbi(beam); viterbiProb=chain->viterbiProb;}
     // Computes the probability of the likeliest instantiation of the hidden
     // variables, and stores it in logViterbiProb. 
     // Has the side effect that at termination, the network is clamped to its
@@ -157,7 +157,8 @@ struct GMTK_GM
     logpr enumerativeExampleProb(vector<vector<VariableValue > > &example);
     // computes the likelihood of the examples
 
-    logpr cliqueChainExampleProb(vector<vector<VariableValue > > &example);
+    logpr cliqueChainExampleProb(vector<vector<VariableValue > > &example,
+          logpr beam=0.0);
     // computes the likelihood of the examples
 
     map<pair<string, unsigned>, RandomVariable *> variableNamed;
