@@ -33,6 +33,7 @@
 
 #include "GMTK_MeanVector.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_GaussianComponent.h"
 
 VCID("$Header$");
 
@@ -195,15 +196,13 @@ MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
   if (refCount > 0)
     return;
 
-  if (accumulatedProbability.zero()) {
-    // TODO: need to check if this will overflow here
-    // when dividing by it. This is more than just checking
-    // for zero. Also need to do this in every such EM object.
-    warning("WARNING: Mean vector named '%s' did not receive any accumulated probability in EM iteration, using previous means",name().c_str());
-    for (int i=0;i<nextMeans.len();i++) 
+  if (accumulatedProbability < GaussianComponent::minAccumulatedProbability()) {
+    warning("WARNING: Mean vec '%s' received only %e accumulated log probability in EM iteration, using previous means",
+	    accumulatedProbability.val(),name().c_str());
+    for (int i=0;i<nextMeans.len();i++)
       nextMeans[i] = means[i];
   } else {
-    const double invRealAccumulatedProbability = 
+    const double invRealAccumulatedProbability =
       accumulatedProbability.inverse().unlog();
     // finish computing the next means.
     float * nextMeans_p = nextMeans.ptr;

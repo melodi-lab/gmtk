@@ -316,11 +316,8 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
   // otherwise, we're ready to finish and
   // compute the next covariances.
 
-  if (accumulatedProbability.zero()) {
-    // TODO: need to check if this will overflow here
-    // when dividing by it. This is more than just checking
-    // for zero. Also need to do this in every such EM object.
-    warning("WARNING: Diagonal covariance vector named '%s' did not receive any accumulated probability in EM iteration, using previous values instead.",name().c_str());
+  if (accumulatedProbability < GaussianComponent::minAccumulatedProbability()) {
+    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",accumulatedProbability.val(),name().c_str());
     for (int i=0;i<covariances.len();i++) 
       nextCovariances[i] = covariances[i];
   } else {
