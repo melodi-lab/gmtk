@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <vector>
+
 #include "machine-dependent.h"
 
 #define VCID(x) static char * version_control_id = x; static char *___tmp___ = version_control_id;
@@ -30,6 +32,14 @@ void genSwap(T& v1, T& v2)
    v1 = v2;
    v2 = tmp;
 }
+
+
+template <class T>
+void deleteObsInVector(vector < T* >& v) {
+  for (unsigned i=0;i<v.size();i++) 
+    delete v[i];
+}
+
 
 #define CSWT_EMPTY_TAG (~0)
 // Copies input over to result and if 
