@@ -1350,18 +1350,104 @@ forwardBackwardRecurse(start,end)
 
       for (i = 1 to splits-1 )
          const space forward chunk i
-         save memory at last
+         save memory at last (all but
+         the last are no-shared, last is shared)??
       for (i = splits down to 1)
          forwardBackwardRecurse(i-1,i)
 
   	
 
 
+Thu Feb 19 14:11:55 2004
 
 
+possible idea: two areans, a shared (so uses hash tables) and no
+shared (so no use of hash tables).
+Have ability to turn a shared into a non-shared, and vice
+versa (swap).
 
- 
+
+things that need space managed:
+1) In MaxClique:
+
+    CliqueValueHolder valueHolder;
+    vhash_set< unsigned > cliqueValueHashSet;
+  
+   - Used only if packed clique values are > IMC_NWWOH words.
+   - Assuming that these are used: 
+
+      - In normal forward backward, there is only one of these
+        for all instances of this maxclique origin. Space management
+        is needed between utterances (upon each new utterance,
+	we use space manager to decide how big to make this).
+
+	decay only after each utterance.
+
+      - In const. space interefence, we'll need two of these, one
+        for previous and one for current partition cliques. There
+        will be no sharing, so the hash set is not used.
+        We will need valueHolder space managed, however, to
+        allocate valueHolder.
+         
+       	decay only after each partition.
+
+      - In space constrained inference, during baseline forward
+        backwards, do shared. During const. space forward, do
+        non-shared case except for very last one (so it can
+        potentially be shared).
+
+2) In SeparatorClique:
+
+    -   CliqueValueHolder accValueHolder;
+        vhash_set< unsigned > accSepValHashSet;
+
+    -   CliqueValueHolder remValueHolder;
+        vhash_set< unsigned > remSepValHashSet;
+
+   - Used only if packed clique values are > ISC_NWWOH_AI 
+      and respectively > ISC_NWWOH_RM ) words.
+
+   - Assuming that these are used: 
 
 
+3) InferenceMaxClique
+
+      // the collection of clique values for this clique.
+  sArray< CliqueValue > cliqueValues;
+   where a clique value contains a 
+      1) (ptr,val) 
+      2) a logpr.
+
+4) SeparatorClique
+
+    - cArray< AISeparatorValue > separatorValues; 
+    - VHashMapUnsignedUnsignedKeyUpdatable iAccHashMap;
+          fast maps from keys to index for separatorValues
+    - AISeparatorValue contains:
+        1) (ptr,val)
+        2) cArray <RemainderValue> remValues;
+        3) VHashMapUnsignedUnsignedKeyUpdatable iRemHashMap;
+            fast maps from keys to index for remValues
+
+    - RemainderValue contains:
+        1) (ptr,val)
+        2) logpr p (forward) 
+        3) logpr bp (backward)
+       (will contain pointer for viterbi,
+           perhaps could union bp with an unsigned but
+           can't union a logpr with something else since
+           a logpr contains a constructor) 
+       // could do something like:
+       union upi {
+           char p[sizeof(logpr)];
+           // lc l;
+           unsigned i;
+       };
+       logpr&pr = *((logpr*)(&l.u.p));
+       (default size of remainder should be different if we
+        have multiple remainders, should be small when iAcc exists, or when
+        iAcc does not exist, should be larger.)
 
 
++ ================================================================================
++ ================================================================================
