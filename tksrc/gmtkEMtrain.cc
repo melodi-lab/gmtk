@@ -76,6 +76,7 @@ bool writeParametersAfterEachEMIteration=true;
 char *prmMasterFile=NULL;
 char *prmTrainableFile=NULL;
 bool binPrmTrainableFile=false;
+char *objsToNotTrainFile=NULL;
 
 unsigned maxEMIterations=3;
 bool randomizeParams = true;
@@ -91,8 +92,6 @@ char *loadAccFile = NULL;
 char *loadAccRange = NULL;
 char *storeAccFile = NULL;
 bool accFileIsBinary = true;
-
-char *objsToNotTrainFile=NULL;
 
 // file to store log likelihood of this iteration.
 char *llStoreFile = NULL;
@@ -117,6 +116,8 @@ int show_cliques=0;
 
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
+
+int bct=10, ns=3;
 
 ARGS ARGS::Args[] = {
 
@@ -157,6 +158,7 @@ ARGS ARGS::Args[] = {
 
   ARGS("prmTrainableFile",ARGS::Opt,prmTrainableFile,"File containing Trainable Parameters"),
   ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
+  ARGS("objsToNotTrainFile",ARGS::Opt,objsToNotTrainFile,"File list list trainable parm objs not train."),
 
   ARGS("cppCommandOptions",ARGS::Opt,cppCommandOptions,"Command line options to give to cpp"),
 
@@ -172,10 +174,6 @@ ARGS ARGS::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // general files
-
-  ARGS("objsToNotTrainFile",ARGS::Opt,objsToNotTrainFile,"File list list trainable parm objs not train."),
-  
-
 
   ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
   ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
@@ -220,6 +218,9 @@ ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques after the netwok has
 
   ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
 
+  ARGS("numSplits",ARGS::Opt,ns,"Number of splits to use in logspace recursion (>=2)."),
+
+  ARGS("baseCaseThreshold",ARGS::Opt,bct,"Base case threshold to end recursion (>=2)."),
 
   // final one to signal the end of the list
   ARGS()
@@ -318,7 +319,6 @@ main(int argc,char*argv[])
   }
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 
-
   /////////////////////////////
   // read in the structure of the GM, this will
   // die if the file does not exist.
@@ -345,6 +345,8 @@ main(int argc,char*argv[])
   // set up the observation stream
   gm.setExampleStream(obsFileName,trrng_str);
   GM_Parms.checkConsistentWithGlobalObservationStream();
+
+  gm.setCliqueChainRecursion(ns, bct);
 
   gm.GM2CliqueChain();
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());

@@ -44,21 +44,46 @@ int Clique::nextfree=-1;
 
 static const float mem_factor=1.2;  // resize by this factor
 
+// the global instantiation address
+map<vector<RandomVariable::DiscreteVariableType>, int> 
+Clique::instantiationAddress;
+
+void Clique::addInstantiation(int inum)
+{
+    if (instantiation_capacity <= numInstantiations)  // resize
+    {
+        int newsize = max(2000, int(mem_factor*instantiation_capacity));
+        int *temp = new int[newsize];
+        for (int i=0; i<instantiation_capacity; i++)
+            temp[i] = instantiation[i];
+        swap(temp, instantiation);
+        delete [] temp;
+        instantiation_capacity = newsize;
+    }
+    instantiation[numInstantiations++] = inum;
+}
+
+void Clique::clearInstantiationList()
+{
+    if (instantiation)
+        delete [] instantiation;
+    instantiation = NULL;
+    instantiation_capacity = 0;
+    numInstantiations = 0;
+}
+
 unsigned Clique::newCliqueValue()
 {
     if (nextfree==-1)         // nothing more left
     {
         freelist.clear();     // the previous entries have all been used
         int oldsize = gip.size(), newsize = int(mem_factor*gip.size());
-        newsize = max(newsize, 2000000);  // don't mess around at the beginning
+        newsize = max(newsize, 20000);  
         gip.resize(newsize);  // make more CliqueValues
+// cout << "bytes in gip: " << (gip.capacity()*sizeof(CliqueValue)/1000000.0) << "M"<< endl;
         for (int i=oldsize; i<newsize; i++)
             freelist.push_back(i);  // add the indexes of the new CliqueValues
         nextfree = freelist.size()-1;  // initialize the nextfree pointer
-/*
-cout << "gip size: " << newsize << " " << newsize*sizeof(CliqueValue) << endl;
-cout << "gip capacity: " << gip.capacity() << " " << gip.capacity()*sizeof(CliqueValue) << endl;
-*/
     }
     return freelist[nextfree--];
 }
@@ -108,13 +133,13 @@ void Clique::prune(logpr beam)
 {
     // find the maximum probability instantiation
     logpr maxv = 0.0;
-    for (unsigned i=0; i<instantiation.size(); i++)
+    for (int i=0; i<numInstantiations; i++)
         if (gip[instantiation[i]].pi > maxv)
             maxv = gip[instantiation[i]].pi;
 
     // swap back the below-threshold entries
     logpr threshold = maxv*beam;
-    int i=0, j=instantiation.size()-1;
+    int i=0, j=numInstantiations-1;
     while (i <= j)
         if (gip[instantiation[i]].pi < threshold)
             swap(instantiation[i], instantiation[j--]);
@@ -122,12 +147,19 @@ void Clique::prune(logpr beam)
             i++;
         
     // delete the low-probability guys  -- from i to the end
-    for (unsigned k=i; k<instantiation.size(); k++)
+    for (int k=i; k<numInstantiations; k++)
         recycleCliqueValue(instantiation[k]);
-    instantiation.erase(&instantiation[i], instantiation.end()); 
+
+    // resize the instantiation vector
+    numInstantiations = i;  
+    int *temp = new int[numInstantiations];
+    for (int i=0; i<numInstantiations; i++) temp[i] = instantiation[i];
+    swap(temp, instantiation);
+    delete [] temp;
 }
 
-void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
+void Clique::enumerateValues(int new_member_num, int pred_val, 
+vector<int> *in2gn, bool viterbi)
 {
     if (separator)
     {
@@ -141,12 +173,14 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
         if ((mi=instantiationAddress.find(clampedValues)) == 
         instantiationAddress.end())               // not seen before
         {
-            instantiation.push_back(inst=newCliqueValue());                
+            addInstantiation(inst=newCliqueValue());                
             instantiationAddress[clampedValues] = inst;  
             cv = &gip[inst];
             cv->values = NULL;  // will use the parent's 
             cv->lambda = cv->pi = 0.0;
             cv->pred = pred_val;
+            cv->inum = numInstantiations-1;
+            inum2gnum->push_back(inst);
         }
         else
             cv = &gip[(inst=(*mi).second)];       // will word with old value
@@ -154,13 +188,13 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
         if (!viterbi)
         {
 	    // accumulate in probability
-            cv->pi += gip[pred_val].pi;
-            gip[pred_val].succ = inst;
+            cv->pi += gip[(*in2gn)[pred_val]].pi;
+            gip[(*in2gn)[pred_val]].succ = gip[inst].inum;
         }
-        else if (gip[pred_val].pi >= cv->pi)
+        else if (gip[(*in2gn)[pred_val]].pi >= cv->pi)
         {
 	    // replace value since it is greater
-            cv->pi = gip[pred_val].pi;
+            cv->pi = gip[(*in2gn)[pred_val]].pi;
             cv->pred = pred_val;
         }
     }
@@ -181,13 +215,15 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
         {
             cacheClampedValues();
             int ncv = newCliqueValue();
-            instantiation.push_back(ncv);
+            addInstantiation(ncv);
             CliqueValue *cv = &gip[ncv];
             cv->pi = cv->lambda = pi;  // cache value in lambda
             cv->pred = pred_val;
             cv->values = CliqueValue::global_val_set.insert(clampedValues);
             if (pred_val!=-1)   // not doing root
-                cv->pi *= gip[pred_val].pi;
+                cv->pi *= gip[(*in2gn)[pred_val]].pi;
+            cv->inum = numInstantiations-1;
+            inum2gnum->push_back(ncv);
         }
     }
     else
@@ -197,7 +233,7 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
         newMember[new_member_num]->clampFirstValue();
         do
         {
-            enumerateValues(new_member_num+1, pred_val, viterbi);
+            enumerateValues(new_member_num+1, pred_val, in2gn, viterbi);
         } while (newMember[new_member_num]->clampNextValue());
     }
 }
@@ -212,4 +248,12 @@ void Clique::reveal()
                 cout << "(new) ";
     }
     cout << endl;
+}
+
+void Clique::reclaimMemory()
+{
+    recycleAllCliqueValues();
+    clearInstantiationList();
+    delete inum2gnum;
+    inum2gnum = NULL;
 }

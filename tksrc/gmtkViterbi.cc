@@ -107,6 +107,8 @@ int show_cliques=0;
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
 
+int bct=10, ns=3;
+
 ARGS ARGS::Args[] = {
 
   ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
@@ -162,9 +164,11 @@ ARGS ARGS::Args[] = {
   ARGS("dumpNames",ARGS::Opt,dumpNames,"File containing the names of the variables to save to a file"),
   ARGS("ofilelist",ARGS::Opt,ofilelist,"List of filenames to dump the hidden variable values to"),
 
+ ARGS("numSplits",ARGS::Opt,ns,"Number of splits to use in logspace recursion (>=2)."),
+
+  ARGS("baseCaseThreshold",ARGS::Opt,bct,"Base case threshold to end recursion (>=2)."),
+
   ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
-
-
 
   ARGS()
 
@@ -296,6 +300,8 @@ main(int argc,char*argv[])
 
   gm.setExampleStream(obsFileName,dcdrng_str);
   GM_Parms.checkConsistentWithGlobalObservationStream();
+
+  gm.setCliqueChainRecursion(ns, bct);
 
   gm.verifyTopologicalOrder();
 
