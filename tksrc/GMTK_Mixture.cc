@@ -528,8 +528,7 @@ MixGaussians::emEndIteration()
     }
 
     // need to sort in *accending* order.
-    LogpUnsignedPairCompare lupc;
-    sort(coefs.begin(),coefs.end(),lupc);
+    sort(coefs.begin(),coefs.end(),LogpUnsignedPairCompare());
 
     ///////////////////////////////////////////////////////////////////////
     // Add new split/vanish occurances to appropriate set.
