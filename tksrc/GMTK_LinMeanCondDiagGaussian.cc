@@ -75,7 +75,7 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 
   // read the dlink structure 
   is.read(str);
-  if (GM_Parms.dLinks.find(str) == GM_Parms.dLinks.end())
+  if (GM_Parms.dLinksMap.find(str) == GM_Parms.dLinksMap.end())
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies dlink name '%s' that does not exist",
 	  _name.c_str(),is.fileName(),str.c_str());
   
@@ -84,13 +84,13 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 
   // read the dlink matrix parameter values
   is.read(str);
-  if (GM_Parms.dLinkMats.find(str) == GM_Parms.dLinkMats.end())
+  if (GM_Parms.dLinkMatsMap.find(str) == GM_Parms.dLinkMatsMap.end())
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies dlink matrix name '%s' that does not exist",
 	  _name.c_str(),is.fileName(),str.c_str());
   
   dLinkMat = GM_Parms.dLinkMats[GM_Parms.dLinkMatsMap[str]];
 
-  if (!dLinks->compatibleWith(*dLinkMats))
+  if (!dLinks->compatibleWith(*dLinkMat))
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifices a dlink structure '%s' and matrix '%s' that are not compatible with each other\n",
 	  _name.c_str(),is.fileName(),
 	  dLinks->name().c_str(),
@@ -105,7 +105,7 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 	  covar->name().c_str(),
 	  covar->dim());
   }
-  if (covar->dim() != _dim) {
+  if ((unsigned)covar->dim() != dim()) {
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
 	  _name.c_str(),is.fileName(),
 	  _dim,
@@ -116,7 +116,7 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   }
 
 
-  if (dLinks->numFeats() != _dim)
+  if ((unsigned)dLinks->dim() != _dim)
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies a dlink structure '%s'(matrix '%s') that does not match its mean and covariance with dim '%d'\n",
 	  _name.c_str(),is.fileName(),
 	  dLinks->name().c_str(),
@@ -216,15 +216,34 @@ LinMeanCondDiagGaussian::log_p(const float *const x,
   const float *const x_endp = x + _dim;
   const float *mean_p = mean->basePtr();
   const float *var_inv_p = covar->baseVarInvPtr();
+  assert ( dLinks->preComputedOffsets.len() == dLinkMat->arr.len() );
+  const int* lagStrideOffsetsp = dLinks->preComputedOffsets.ptr;
+  const float* buryValsp = dLinkMat->arr.ptr;
   DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE d=0.0;
-  do {
+
+  int i=0; do {
+    float u=0.0;
+    const int nComs = dLinks->numLinks(i);
+    if (nComs > 0) {
+      const int *lagStrideOffsets_endp = lagStrideOffsetsp+nComs;
+      do {
+	u += (*buryValsp) *
+	  *((float*)base + *lagStrideOffsetsp);
+	lagStrideOffsetsp++;
+	buryValsp++;
+      } while (lagStrideOffsetsp != lagStrideOffsets_endp);
+    }
+    u += *mean_p;
+
     const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp
-      = (*xp - *mean_p);
+      = (*xp - u);
+
     d += tmp*tmp*(*var_inv_p);
 
     xp++;
     mean_p++;
     var_inv_p++;
+    i++;
   } while (xp != x_endp);
   d *= -0.5;
   return logpr(0,(covar->log_inv_normConst() + d));
@@ -242,6 +261,8 @@ LinMeanCondDiagGaussian::log_p(const float *const x,
 void
 LinMeanCondDiagGaussian::emStartIteration()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
 
@@ -259,6 +280,7 @@ LinMeanCondDiagGaussian::emStartIteration()
 
   accumulatedProbability = 0.0;
   mean->emStartIteration(nextMeans);
+  // dLinkMat->emStartIteration(nextDiagCovars);
   covar->emStartIteration(nextDiagCovars);
 }
 
@@ -269,6 +291,9 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
 			  const Data32* const base,
 			  const int stride)
 {
+
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
 
@@ -287,13 +312,18 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
   // twice by the callees.
   const float fprob = prob.unlog();
   mean->emIncrement(prob,fprob,f,base,stride,nextMeans.ptr);
+  // dLinkMat->emIncrement(prob,fprob,f,base,stride,
+  // dLinks,nextDlinkMat);
   covar->emIncrement(prob,fprob,f,base,stride,nextDiagCovars.ptr);
+
 }
 
 
 void
 LinMeanCondDiagGaussian::emEndIteration()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
 
@@ -317,6 +347,8 @@ LinMeanCondDiagGaussian::emEndIteration()
 void
 LinMeanCondDiagGaussian::emSwapCurAndNew()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
 
@@ -333,12 +365,14 @@ LinMeanCondDiagGaussian::emSwapCurAndNew()
 void
 LinMeanCondDiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
 void
 LinMeanCondDiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
@@ -346,6 +380,7 @@ LinMeanCondDiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
 void
 LinMeanCondDiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
