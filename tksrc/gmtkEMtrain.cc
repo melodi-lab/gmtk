@@ -69,17 +69,19 @@ float beam=-LZERO;
 
 char *strFileName=NULL;
 
-char *prmOutFile="outParms%d.gmp";
-bool binPrmOutFile=false;
+// char *outputTrainableParameters="outParms%d.gmp";
+char *outputTrainableParameters=NULL;
+bool binOutputTrainableParameters=false;
 bool writeParametersAfterEachEMIteration=true;
 
-char *prmMasterFile=NULL;
-char *prmTrainableFile=NULL;
-bool binPrmTrainableFile=false;
+char *inputMasterFile=NULL;
+char *outputMasterFile=NULL;
+char *inputTrainableParameters=NULL;
+bool binInputTrainableParameters=false;
 char *objsToNotTrainFile=NULL;
 
 unsigned maxEMIterations=3;
-bool randomizeParams = true;
+bool randomizeParams = false;
 bool enem = false;
 double mcvr = 1e20;
 double mcsr = 1e10;
@@ -154,28 +156,32 @@ Arg Arg::Args[] = {
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
 
-  Arg("prmMasterFile",Arg::Req,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
+  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
 
-  Arg("prmTrainableFile",Arg::Opt,prmTrainableFile,"File containing Trainable Parameters"),
-  Arg("binPrmTrainableFile",Arg::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
-  Arg("objsToNotTrainFile",Arg::Opt,objsToNotTrainFile,"File list list trainable parm objs not train."),
+  Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
+  Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
 
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to cpp"),
+  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
+  Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
 
+  Arg("objsNotToTrain",Arg::Opt,objsToNotTrainFile,"File listing trainable parameter objects to not train."),
 
-  Arg("prmOutFile",Arg::Opt,prmOutFile,"File to place *TRAINABLE* output parametes"),
-  Arg("binPrmOutFile",Arg::Opt,binPrmOutFile,"Output parametes binary? (def=false)"),
+  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
+  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
 
 
   Arg("wpaeei",Arg::Opt,writeParametersAfterEachEMIteration,
-      "Write Parameters *After* Each EM Iteration? (def=true)"),
+      "Write Parameters After Each EM Iteration Completes"),
 
-  Arg("strFile",Arg::Req,strFileName,"GM Structure File"),
+
+  Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
+
+
 
   /////////////////////////////////////////////////////////////
   // general files
 
-  Arg("seed",Arg::Opt,seedme,"Seed the RN generator"),
+  Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("maxEmIters",Arg::Opt,maxEMIterations,"Max number of EM iterations to do"),
   Arg("beam",Arg::Opt,beam,"Beam width (less than max*exp(-beam) are pruned away)"),
 
@@ -260,7 +266,7 @@ main(int argc,char*argv[])
   unsigned ifmts[MAX_NUM_OBS_FILES];
   for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
     if (ofs[i] != NULL && nfs[i] == 0 && nis[i] == 0)
-      error("ERROR: command line must specify one of nf%d and ni%d not zero",
+      error("ERROR: command line parameters must specify one of nf%d and ni%d as not zero",
 	    i+1,i+1);
     nfiles += (ofs[i] != NULL);
     if (strcmp(fmts[i],"htk") == 0)
@@ -313,14 +319,14 @@ main(int argc,char*argv[])
 
   /////////////////////////////////////////////
   // read in all the parameters
-  if (prmMasterFile) {
+  if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(prmMasterFile,false,true,cppCommandOptions);
+    iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
   }
-  if (prmTrainableFile) {
+  if (inputTrainableParameters) {
     // flat, where everything is contained in one file
-    iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
+    iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
@@ -364,11 +370,10 @@ main(int argc,char*argv[])
   }
 
   if (randomizeParams) {
-    printf("NOTE: Randomizing initial parameters\n");
+    printf("### GMTK is randomizing all trainable parameters and writing them to random.gmp ####\n");
     GM_Parms.makeRandom();
-    printf("NOTE: Writing iniial randomized parameters to random.gmp\n");
     oDataStreamFile of("random.gmp");
-    GM_Parms.writeAll(of);
+    GM_Parms.writeTrainable(of);
   }
 
   /////////////////////////////////////
@@ -384,8 +389,9 @@ main(int argc,char*argv[])
     gm.cliqueChainEM(maxEMIterations, 
 		     pruneRatio,
 		     writeParametersAfterEachEMIteration,
-		     prmOutFile,
-		     binPrmOutFile,
+		     outputTrainableParameters,
+		     binOutputTrainableParameters,
+		     outputMasterFile,
 		     loadAccFile,
 		     loadAccRange,
 		     storeAccFile,
