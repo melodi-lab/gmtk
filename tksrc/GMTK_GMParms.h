@@ -120,6 +120,15 @@ public:
   /********************************************************************/
   /********************************************************************/
 
+  typedef map< string, unsigned > ObjectMapType;
+
+  template <class T> void add(T* ob, vector<T*>& arr, ObjectMapType& map) {
+    if (map.find(ob->name()) != map.end())
+      error("ERROR: name '%s' already exists in map.",ob->name().c_str());
+    arr.push_back(ob);
+    map[ob->name()] = arr.size()-1;
+  }
+
   //////////////////////////////////////////////////////////////////
   // BASIC SHARED LOW-LEVEL SUPPORT PARAMETERS: These are the objects that 
   //  higher level objects (see below) might share together.
@@ -131,42 +140,42 @@ public:
   /////////////////////////////  
   // Collection of dense prob. mass functions
   vector< Dense1DPMF* > dPmfs;
-  typedef map< string, unsigned > DPmfsMapType;
-  DPmfsMapType dPmfsMap;
+  ObjectMapType dPmfsMap;
+  void add( Dense1DPMF* ob );
 
   /////////////////////////////  
   // Collection of sparse prob. mass functions
   vector< Sparse1DPMF* > sPmfs;
-  typedef map< string, unsigned  > SPmfsMapType;
-  SPmfsMapType sPmfsMap;
+  ObjectMapType sPmfsMap;
+  void add( Sparse1DPMF* ob );
 
   /////////////////////////////
   // Collection of means
   vector< MeanVector* > means;
-  typedef map< string, unsigned > MeansMapType;
-  MeansMapType meansMap;
+  ObjectMapType meansMap;
+  void add(MeanVector* ob);
 
   ////////////////////////////////
   // Collection of diag. covariances
   vector< DiagCovarVector* > covars;
-  typedef map< string, unsigned > CovarsMapType;
-  CovarsMapType covarsMap;
+  ObjectMapType covarsMap;
+  void add(DiagCovarVector* ob);
 
   ////////////////////////////////
   // Collection of objects
   // used for linear dependencies via
   // a dlink topology structure.
   vector< DlinkMatrix* > dLinkMats;
-  typedef map< string, unsigned > DLinkMatsMapType;
-  DLinkMatsMapType dLinkMatsMap;
+  ObjectMapType dLinkMatsMap;
+  void add(DlinkMatrix* ob);
 
   ////////////////////////////////
   // Collection of 2D Dense matrices, used
   // for weight matrices of MLPs, or 
   // for logistic regression.
   vector< WeightMatrix* > weightMats;
-  typedef map< string, unsigned > WeightMatsMapType;
-  WeightMatsMapType weightMatsMap;
+  ObjectMapType weightMatsMap;
+  void add(WeightMatrix*ob);
 
 
   //////////////////////////////////////////////////////////////////
@@ -174,8 +183,8 @@ public:
   //////////////////////////////////////////////////////////////////
 
   vector< GaussianComponent* > gaussianComponents;
-  typedef map< string, unsigned > GaussianComponentsMapType;
-  GaussianComponentsMapType gaussianComponentsMap;
+  ObjectMapType gaussianComponentsMap;
+  void add(GaussianComponent*);
 
   /********************************************************************/
   /********************************************************************/
@@ -188,20 +197,20 @@ public:
   ////////////////////////////////
   // Collection of multi-dimensional dense CPTs
   vector< MDCPT* > mdCpts;
-  typedef map< string, unsigned > MdCptsMapType;
-  MdCptsMapType mdCptsMap;
+  ObjectMapType mdCptsMap;
+  void add(MDCPT*);
 
   ///////////////////////////////////
   // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
   vector< MSCPT* > msCpts;
-  typedef map< string, unsigned > MsCptsMapType;
-  MsCptsMapType msCptsMap;
+  ObjectMapType msCptsMap;
+  void add(MSCPT*);
 
   ///////////////////////////////////
   // Collection of deterministic "CPTs" 
   vector< MTCPT* > mtCpts;
-  typedef map< string, unsigned > mtCptsMapType;
-  mtCptsMapType mtCptsMap;
+  ObjectMapType mtCptsMap;
+  void add(MTCPT*);
 
 
   /********************************************************************/
@@ -217,20 +226,20 @@ public:
   // Mixtures of Gaussians (could be a heterogeneous mixutre of
   // different types above)
   vector < MixGaussians* > mixGaussians;
-  typedef map< string, unsigned > MixGaussiansMapType;
-  MixGaussiansMapType mixGaussiansMap;
+  ObjectMapType mixGaussiansMap;
+  void add(MixGaussians*);
 
   vector < GausSwitchingMixGaussians* > gausSwitchingMixGaussians;
-  typedef map< string, unsigned > GausSwitchingMixGaussiansMapType;
-  GausSwitchingMixGaussiansMapType gausSwitchingMixGaussiansMap;
+  ObjectMapType gausSwitchingMixGaussiansMap;
+  void add(GausSwitchingMixGaussians*);
 
   vector < LogitSwitchingMixGaussians* > logitSwitchingMixGaussians;
-  typedef map< string, unsigned > LogitSwitchingMixGaussiansMapType;
-  LogitSwitchingMixGaussiansMapType logitSwitchingMixGaussiansMap;
+  ObjectMapType logitSwitchingMixGaussiansMap;
+  void add(LogitSwitchingMixGaussians*);
 
   vector < MLPSwitchingMixGaussians* > mlpSwitchingMixGaussians;
-  typedef map< string, unsigned > MlpSwitchingMixGaussiansMapType;
-  MlpSwitchingMixGaussiansMapType  mlpSwitchingMixGaussiansMap;
+  ObjectMapType  mlpSwitchingMixGaussiansMap;
+  void add(MLPSwitchingMixGaussians*);
 
   /********************************************************************/
   /********************************************************************/
@@ -252,8 +261,8 @@ public:
 
   vector< RngDecisionTree<unsigned>* > dts;
   vector< RngDecisionTree<unsigned>* > clampableDts;
-  typedef map< string,  unsigned > DtsMapType;
-  DtsMapType dtsMap;
+  ObjectMapType dtsMap;
+  void add(RngDecisionTree<unsigned>*);
   
 
   //////////////////////////////////////////////////////////////////
@@ -262,9 +271,9 @@ public:
   //////////////////////////////////////////////////////////////////
 
   vector< Dlinks* > dLinks;
-  typedef map< string, unsigned > DLinksMapType;
-  DLinksMapType dLinksMap;
-
+  ObjectMapType dLinksMap;
+  void add(Dlinks*);
+  
   /********************************************************************/
   /********************************************************************/
   /********************************************************************/
@@ -305,7 +314,7 @@ public:
   void readLogitSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
   void readMlpSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
 
-  ////
+  //
   void writeDPmfs(oDataStreamFile& os);
   void writeSPmfs(oDataStreamFile& os);
   void writeMeans(oDataStreamFile& os);
@@ -358,7 +367,6 @@ public:
   // for papers, etc.
   unsigned totalNumberParameters();
 
-
   ///////////////////////////////////////////////////////////    
   // Support for EM, applies to all EMable objects contained herein.
   ///////////////////////////////////////////////////////////
@@ -371,13 +379,11 @@ public:
   // calls the swap routine on all objects current and next parameters.
   void emSwapCurAndNew();
 
-
   ////////////////////////////////////////////////////////////////////////////
   void makeRandom();
 
   ////////////////////////////////////////////////////////////////////////////
   void makeUniform();
-
 
 };
 
