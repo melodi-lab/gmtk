@@ -1285,20 +1285,17 @@ BoundaryTriangulate
 
   if (doP) {
     infoMsg(IM::Tiny, "---\nTriangulating P:\n");
-    lp_nodes = NULL;
-    rp_nodes = &gm_template.PCInterface_in_P;
+    setUpForP(gm_template);
     triangulatePartition(gm_template.P.nodes,jtWeight,gm_template.PCInterface_in_P,tri_heur,orgnl_P_nghbrs,gm_template.P.cliques,gm_template.P.triMethod,best_P_weight);
   }
   if (doC) {
     infoMsg(IM::Tiny, "---\nTriangulating C:\n");
-    lp_nodes = &gm_template.PCInterface_in_C;
-    rp_nodes = &gm_template.CEInterface_in_C;
+    setUpForC(gm_template);
     triangulatePartition(gm_template.C.nodes,jtWeight,gm_template.CEInterface_in_C,tri_heur,orgnl_C_nghbrs,gm_template.C.cliques,gm_template.C.triMethod,best_C_weight);
   }
   if (doE) {
     infoMsg(IM::Tiny, "---\nTriangulating E:\n");
-    lp_nodes = &gm_template.CEInterface_in_E;
-    rp_nodes = NULL;
+    setUpForE(gm_template);
     triangulatePartition(gm_template.E.nodes,jtWeight,emptySet,tri_heur,orgnl_E_nghbrs,gm_template.E.cliques,gm_template.E.triMethod,best_E_weight);
   }
 
@@ -4685,6 +4682,7 @@ BoundaryTriangulate
     if (timer)
       timer->DisableTimer();
     infoMsg(IM::Tiny, "---\nPreliminary Triangulation of P:\n");
+    setUpForP(gm_template);
     triangulatePartition( gm_template.P.nodes, jtWeight, 
 			  gm_template.PCInterface_in_P,
 			  "FWH", orgnl_P_nghbrs, gm_template.P.cliques,
@@ -4697,6 +4695,7 @@ BoundaryTriangulate
     if (timer)
       timer->DisableTimer();
     infoMsg(IM::Tiny, "---\nPreliminary Triangulation of C:\n");
+    setUpForC(gm_template);
     triangulatePartition( gm_template.C.nodes, jtWeight, 
 			  gm_template.CEInterface_in_C,
 			  "FWH", orgnl_C_nghbrs, gm_template.C.cliques,
@@ -4709,6 +4708,7 @@ BoundaryTriangulate
     if (timer)
       timer->DisableTimer();
     infoMsg(IM::Tiny, "---\nPreliminary Triangulation of E:\n");
+    setUpForE(gm_template);
     triangulatePartition( gm_template.E.nodes, jtWeight, 
 			  emptySet,
 			  "FWH", orgnl_E_nghbrs, gm_template.E.cliques, 
@@ -4723,6 +4723,7 @@ BoundaryTriangulate
 
   if (doC) {
     infoMsg(IM::Tiny, "---\nTriangulating C using Heuristics:\n");
+    setUpForC(gm_template);
     triangulatePartition( gm_template.C.nodes, jtWeight, gm_template.CEInterface_in_C,
 			  "heuristics", orgnl_C_nghbrs, gm_template.C.cliques, 
 			  gm_template.C.triMethod, best_C_weight );
@@ -4730,6 +4731,7 @@ BoundaryTriangulate
  
   if (doP) { 
     infoMsg(IM::Tiny, "---\nTriangulating P using Heuristics:\n");
+    setUpForP(gm_template);
     triangulatePartition( gm_template.P.nodes, jtWeight, gm_template.PCInterface_in_P, 
 			  "heuristics", orgnl_P_nghbrs, gm_template.P.cliques, 
 			  gm_template.P.triMethod, best_P_weight );
@@ -4737,6 +4739,7 @@ BoundaryTriangulate
   
   if (doE) { 
     infoMsg(IM::Tiny, "---\nTriangulating E using Heuristics:\n");
+    setUpForE(gm_template);
     triangulatePartition( gm_template.E.nodes, jtWeight, emptySet, 
 			  "heuristics", orgnl_E_nghbrs, gm_template.E.cliques, 
 			  gm_template.E.triMethod, best_E_weight );
@@ -4750,7 +4753,7 @@ BoundaryTriangulate
   if (doC && timer->SecondsLeft() > 10) {
     // Do C first since it is more important.
     infoMsg(IM::Tiny, "---\nTriangulating C using Simulated Annealing:\n");
-
+    setUpForC(gm_template);
     triangulatePartition( gm_template.C.nodes, jtWeight, gm_template.CEInterface_in_C,
 			  "anneal", orgnl_C_nghbrs, gm_template.C.cliques, 
 			  gm_template.C.triMethod, best_C_weight ); 
@@ -4760,7 +4763,7 @@ BoundaryTriangulate
 
   if (doP && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "---\nTriangulating P using Simulated Annealing:\n");
-
+    setUpForP(gm_template);
     triangulatePartition( gm_template.P.nodes, jtWeight, gm_template.PCInterface_in_P,
 			  "anneal", orgnl_P_nghbrs, gm_template.P.cliques, 
 			  gm_template.P.triMethod, best_P_weight ); 
@@ -4771,7 +4774,7 @@ BoundaryTriangulate
 
   if (doE && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "---\nTriangulating E using Simulated Annealing:\n");
-
+    setUpForE(gm_template);
     triangulatePartition( gm_template.E.nodes, jtWeight, emptySet,
 			  "anneal", orgnl_E_nghbrs, gm_template.E.cliques, 
 			  gm_template.E.triMethod, best_E_weight ); 
@@ -4785,7 +4788,7 @@ BoundaryTriangulate
 
   if (doC && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating C using Exhaustive Search:\n");
-    
+    setUpForC(gm_template);    
     triangulatePartition( gm_template.C.nodes, jtWeight, gm_template.CEInterface_in_C,
 			  "exhaustive", orgnl_C_nghbrs, gm_template.C.cliques, 
 			  gm_template.C.triMethod, best_C_weight ); 
@@ -4795,7 +4798,7 @@ BoundaryTriangulate
 
   if (doP && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating P using Exhaustive Search:\n");
-
+    setUpForP(gm_template);
     triangulatePartition( gm_template.P.nodes, jtWeight, gm_template.PCInterface_in_P,
 			  "exhaustive", orgnl_P_nghbrs, gm_template.P.cliques, 
 			  gm_template.P.triMethod, best_P_weight ); 
@@ -4805,7 +4808,7 @@ BoundaryTriangulate
 
   if (doE && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating E using Exhaustive Search:\n");
-
+    setUpForE(gm_template);
     triangulatePartition( gm_template.E.nodes, jtWeight, emptySet,
 			  "exhaustive", orgnl_E_nghbrs, gm_template.E.cliques, 
 			  gm_template.E.triMethod, best_E_weight ); 
