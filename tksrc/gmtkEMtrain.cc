@@ -99,74 +99,48 @@ int endSkip = 0;
 
 char *obsFileName;
 
-#define MAX_NUM_FILES (3)
-char *of[MAX_NUM_FILES] = { NULL, NULL, NULL }; 
-int nf[MAX_NUM_FILES] = { 0, 0, 0 };
-int ni[MAX_NUM_FILES] = { 0, 0, 0 };
-char *fr[MAX_NUM_FILES] = { "all", "all", "all" };
-char *ir[MAX_NUM_FILES] = { "all", "all", "all" };
-char *fmt[MAX_NUM_FILES] = { "pfile", "pfile", "pfile" };
-bool iswp[MAX_NUM_FILES] = { false, false, false };
-
-
-char *of1=NULL;        // observation file 1
-int nf1=0;             // number of floats in observation file 1
-int ni1=0;             // number of ints in observation file 1
-char *fr1="all";       // float range 1
-char *ir1="all";       // int range 1
-char *fmt1="pfile";    // format for file 1
-bool iswp1=false;      // endian swap flag for file 1
-
-char *of2=NULL;        // observation file 2
-int nf2=0;             // number of floats in observation file 2
-int ni2=0;             // number of ints in observation file 2
-char *fr2="all";       // float range 2
-char *ir2="all";       // int range 2
-char *fmt2="pfile";    // format for file 2
-bool iswp2=false;      // endian swap flag for file 2
-
-
-char *of3=NULL;        // observation file 3
-int nf3=0;             // number of floats in observation file 3
-int ni3=0;             // number of ints in observation file 3
-char *fr3="all";       // float range 3
-char *ir3="all";       // int range 3
-char *fmt3="pfile";    // format for file 3
-bool iswp3=false;      // endian swap flag for file 3
+#define MAX_NUM_OBS_FILES (3)
+char *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL }; 
+unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
+unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
+char *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
+char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
+char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
+bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
 
 ARGS ARGS::Args[] = {
 
  // observation file handling
 
- ARGS("of1",ARGS::Req,of[0],"Observation File 1"),
- ARGS("nf1",ARGS::Opt,nf[0],"Number of floats in observation file 1"),
- ARGS("ni1",ARGS::Opt,nf[0],"Number of ints in observation file 1"),
- ARGS("fr1",ARGS::Opt,fr[0],"Float range for observation file 1"),
- ARGS("ir1",ARGS::Opt,ir[0],"Int range for observation file 1"),
- ARGS("fmt1",ARGS::Opt,fmt[0],"Format (htk,bin,asc,pfile) for observation file 1"),
- ARGS("iswp1",ARGS::Opt,iswp[0],"Endian swap condition for observation file 1"),
+ ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
+ ARGS("nf1",ARGS::Opt,nfs[0],"Number of floats in observation file 1"),
+ ARGS("ni1",ARGS::Opt,nis[0],"Number of ints in observation file 1"),
+ ARGS("fr1",ARGS::Opt,frs[0],"Float range for observation file 1"),
+ ARGS("ir1",ARGS::Opt,irs[0],"Int range for observation file 1"),
+ ARGS("fmt1",ARGS::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
+ ARGS("iswp1",ARGS::Opt,iswps[0],"Endian swap condition for observation file 1"),
 
 
- ARGS("of2",ARGS::Opt,of[1],"Observation File 2"),
- ARGS("nf2",ARGS::Opt,nf[1],"Number of floats in observation file 2"),
- ARGS("ni2",ARGS::Opt,nf[1],"Number of ints in observation file 2"),
- ARGS("fr2",ARGS::Opt,fr[1],"Float range for observation file 2"),
- ARGS("ir2",ARGS::Opt,ir[1],"Int range for observation file 2"),
- ARGS("fmt2",ARGS::Opt,fmt[1],"Format (htk,bin,asc,pfile) for observation file 2"),
- ARGS("iswp2",ARGS::Opt,iswp[1],"Endian swap condition for observation file 2"),
+ ARGS("of2",ARGS::Opt,ofs[1],"Observation File 2"),
+ ARGS("nf2",ARGS::Opt,nfs[1],"Number of floats in observation file 2"),
+ ARGS("ni2",ARGS::Opt,nis[1],"Number of ints in observation file 2"),
+ ARGS("fr2",ARGS::Opt,frs[1],"Float range for observation file 2"),
+ ARGS("ir2",ARGS::Opt,irs[1],"Int range for observation file 2"),
+ ARGS("fmt2",ARGS::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
+ ARGS("iswp2",ARGS::Opt,iswps[1],"Endian swap condition for observation file 2"),
 
 
- ARGS("of3",ARGS::Opt,of[2],"Observation File 3"),
- ARGS("nf3",ARGS::Req,nf[2],"Number of floats in observation file 3"),
- ARGS("ni3",ARGS::Opt,nf[2],"Number of ints in observation file 3"),
- ARGS("fr3",ARGS::Opt,fr[2],"Float range for observation file 3"),
- ARGS("ir3",ARGS::Opt,ir[2],"Int range for observation file 3"),
- ARGS("fmt3",ARGS::Opt,fmt[2],"Format (htk,bin,asc,pfile) for observation file 3"),
- ARGS("iswp3",ARGS::Opt,iswp[2],"Endian swap condition for observation file 3"),
+ ARGS("of3",ARGS::Opt,ofs[2],"Observation File 3"),
+ ARGS("nf3",ARGS::Opt,nfs[2],"Number of floats in observation file 3"),
+ ARGS("ni3",ARGS::Opt,nis[2],"Number of ints in observation file 3"),
+ ARGS("fr3",ARGS::Opt,frs[2],"Float range for observation file 3"),
+ ARGS("ir3",ARGS::Opt,irs[2],"Int range for observation file 3"),
+ ARGS("fmt3",ARGS::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
+ ARGS("iswp3",ARGS::Opt,iswps[2],"Endian swap condition for observation file 3"),
 
 
- ARGS("obsFile",ARGS::Req,obsFileName,"File containing observations"),
+ // ARGS("obsFile",ARGS::Req,obsFileName,"File containing observations"),
 
  ARGS("parmsPtrFile",ARGS::Opt,parmsPtrFileName,"Multi-level GM Parms File"),
 
@@ -240,49 +214,40 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // check for valid argument values.
-  if (of1 != NULL & nf1 <= 0 && ni2 <= 0)
-    error("ERROR: command line must specify one of nf1 and ni1 not zero");
-  if (of2 != NULL & nf2 <= 0 && ni2 <= 0)
-    error("ERROR: command line must specify one of nf2 and ni2 not zero");
-  if (of3 != NULL & nf3 <= 0 && ni3 <= 0)
-    error("ERROR: command line must specify one of nf3 and ni3 not zero");
   int nfiles = 0;
-  nfiles += (of2 != NULL);
-  nfiles += (of3 != NULL);
-  {  
-    char *ofs[3] = { of1, of2, of3 };
-    char *frs[3] = { fr1, fr2, fr3 };
-    char *irs[3] = { ir1, ir2, ir3 };
-    int  nfs[3] = { nf1, nf2, nf3 };
-    int  nis[3] = { ni1, ni2, ni3 };
+  unsigned ifmts[MAX_NUM_OBS_FILES];
+  for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
+    if (ofs[i] != NULL && nfs[i] == 0 && nis[i] == 0)
+      error("ERROR: command line must specify one of nf%d and ni%d not zero",
+	    i+1,i+1);
+    nfiles += (ofs[i] != NULL);
+    if (strcmp(fmts[i],"htk") == 0)
+      ifmts[i] = HTK;
+    else if (strcmp(fmts[i],"binary") == 0)
+      ifmts[i] = RAWBIN;
+    else if (strcmp(fmts[i],"ascii") == 0)
+      ifmts[i] = RAWASC;
+    else if (strcmp(fmts[i],"pfile") == 0)
+      ifmts[i] = PFILE;
+    else
+      error("ERROR: Unknown observation file format type: '%s'\n",fmts[i]);
 
-    int fmts[3];
-
-    int i = 0;
-    if (strcmp(fmt1,"htk") == 0)
-      fmts[i] = HTK;
-    else if (strcmp(fmt1,"binary") == 0)
-      fmts[i] = RAWBIN;
-    else if (strcmp(fmt1,"ascii") == 0)
-      fmts[i] = RAWASC;
-    else if (strcmp(fmt1,"pfile") == 0)
-      fmts[i] = PFILE;
-    else {
-      printf("ERROR: Unknown observation file format type: '%s'\n",fmt1);
-      exit(-1); 
-    }
-
-    bool iswps[] = { iswp1, iswp2, iswp3 };
     globalObservationMatrix.openFiles(nfiles,
-				      (char**)&ofs,
-				      (char**)&frs,
-				      (char**)&irs,
-				      (int*)&nfs,
-				      (int*)&nis,
-				      (int*)fmts,
-				      (bool*)iswps);
+				      (const char**)&ofs,
+				      (const char**)&frs,
+				      (const char**)&irs,
+				      (unsigned*)&nfs,
+				      (unsigned*)&nis,
+				      (unsigned*)&ifmts,
+				      (bool*)&iswps);
   }
 
+#if 0
+  for (int i=0;i<globalObservationMatrix.numSegments();i++) {
+    printf("loading segment %d\n",i);
+    globalObservationMatrix.loadSegment(i);
+  }
+#endif
 
   MixGaussiansCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
@@ -338,7 +303,7 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////
   // set up the observation stream
-  // @@@@  gm.setExampleStream(obsFileName,trrng_str);
+  gm.setExampleStream(obsFileName,trrng_str);
 
 
   gm.GM2CliqueChain();
