@@ -926,7 +926,8 @@ void GMTK_GM::showCliques()
     cout << "Max variables in a clique is " << lc << " elements" << endl;
     cout << "Upper bound on instantiations of a single clique is " << maxi
          << "M" << " (log10 weight " << log10(maxi*1e6) << ")" << endl;
-    cout << "Upper bound for sum of cliques is " << szsum << endl;
+    cout << "Upper bound for sum of cliques is " << szsum << 
+      " (log10 val " << log10(szsum) << ")" << endl;
 }
 
 void GMTK_GM::cloneVariables(vector<RandomVariable *> &from,
