@@ -27,6 +27,13 @@ VCID("$Header$");
 #define FLOATWRITESTR   "%0.10e "
 #define DOUBLEWRITESTR   "%0.17e "
 
+
+/////////////////////////////////////////
+// Define if you want to pipe all ASCII
+// files through the C pre-processor to
+// get to use it's macro facilities.
+#define PIPE_ASCII_FILES_THROUGH_CPP
+
 bool 
 ioDataStreamFile::errorReturn(char *from,char *msg)
 {
@@ -47,16 +54,50 @@ ioDataStreamFile::errorReturn(char *from,char *msg)
 //////////////////////////////////////////////////////////////////////
 
 
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+extern "C" {
+  FILE     *popen(const char *, const char *);
+  int pclose(FILE *stream);
+};
+#endif
+
+
 iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
   : ioDataStreamFile(_name,_Binary)
 {
   if (_name == NULL)
     error("Error: Can't open null file for reading.");
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+  if (!Binary) {
+    if (!strcmp("-",_name)) {
+      fh = ::popen("cpp","r");
+      if (fh == NULL) {
+	error("ERROR: unable to open standard input via cpp");
+      }
+    }  else {
+      if ((fh = ::fopen(_name,"r")) == NULL) {
+	error("ERROR: unable to open file (%s) for reading",_name);
+      }
+      fclose(fh);
+      string str = (string)"cpp " + (string)_name;
+      fh = ::popen(str.c_str(),"r");    
+      if (fh == NULL)
+	error("ERROR, can't open file stream from (%s)",_name);
+    }
+  } else {
+    if (!strcmp("-",_name)) {
+      fh = stdin;
+    } else if ((fh=fopen(_name,"r")) == NULL) {
+      error("Error: Can't open file (%s) for reading.",_name);
+    }
+  }
+#else
   if (!strcmp("-",_name)) {
     fh = stdin;
   } else if ((fh=fopen(_name,"r")) == NULL) {
     error("Error: Can't open file (%s) for reading.",_name);
   }
+#endif
   if (!Binary) {
     buff = new char[MAXLINSIZE];
     buffp = buff;
@@ -66,9 +107,15 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
 
 iDataStreamFile::~iDataStreamFile()
 {
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+  if (pclose(fh) != 0) {
+    error("Error: Can't close file.");
+  }
+#else
   if (fclose(fh) != 0) {
     error("Error: Can't close file.");
   }
+#endif
   if (!Binary)
     delete [] buff;
 }
@@ -185,6 +232,36 @@ iDataStreamFile::readString(string& str, char *msg)
     while (!isspace(c) &&  c != '\n') {
       str += c;
       c = *buffp++;
+    }
+  }
+  return true;
+}
+
+
+bool 
+iDataStreamFile::readToken(string& str, const string& tokenChars, char *msg) 
+{
+  str.erase();
+  if (Binary) {
+    char c;
+    // read a string up to the next NULL character.
+    do {
+      size_t rc = fread(&c, sizeof(char), 1,fh);
+      if (rc != 1)
+	return errorReturn("readChar",msg);
+      if (c == '\0' || tokenChars.find(c,0) == string::npos)
+	break;
+      str += c;
+    } while (1);
+  } else {
+    if (!prepareNext())
+      return errorReturn("readChar",msg);
+    // read until a space. Add a null character
+    // onto the end of the string.
+    char c = *buffp;
+    while (!isspace(c) &&  c != '\n' && tokenChars.find(c,0) != string::npos) {
+      str += c;
+      c = *++buffp;
     }
   }
   return true;

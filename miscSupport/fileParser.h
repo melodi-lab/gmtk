@@ -63,6 +63,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool readFloat(float& f,char *msg=NULL);
   bool readDouble(double& d,char *msg=NULL);
   bool readString(string& str,char *msg=NULL);
+  bool readToken(string& str,const string& tokenChars,char *msg=NULL);
 
 
   // type implicit
@@ -73,6 +74,9 @@ class iDataStreamFile : public ioDataStreamFile {
   bool read(float& f,char *msg=NULL) { return readFloat(f,msg); }
   bool read(double& d,char *msg=NULL) { return readDouble(d,msg); }
   bool read(string& str,char *msg=NULL) { return readString(str,msg); }
+  bool read(string& str,const string& tokenChars,char *msg=NULL) {
+    return readToken(str,tokenChars,msg);
+  }
 
 
   template <class T>
