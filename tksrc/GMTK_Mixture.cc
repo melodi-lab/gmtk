@@ -480,8 +480,6 @@ MixGaussians::emEndIteration()
       numSplitSoFar++;
       MixGaussiansCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
     }
-    // need to end component iteration in both cases.
-    components[i]->emEndIteration();
   }
 
   ///////////////////////////////////////////////////////////
@@ -578,6 +576,10 @@ MixGaussians::emEndIteration()
     }
   }
 
+  // finally end the components iteration.
+  for (unsigned i=0;i<numComponents;i++) {
+    components[i]->emEndIteration();
+  }
 
   // stop EM
   emClearOnGoingBit();
