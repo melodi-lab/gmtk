@@ -256,11 +256,16 @@ main(int argc,char*argv[])
   gm.clampFirstExample();
   do {
 
+    if (globalObservationMatrix.active()) 
+    {
+        globalObservationMatrix.printSegmentInfo();
+        ::fflush(stdout);
+    }
+
     logpr pruneRatio;
     pruneRatio.valref() = -beam;
     gm.chain->computePosteriors(pruneRatio);
-    cout << "Data prob: " << gm.chain->dataProb.val() << " : "
-         << ((*gm.node.rbegin())->timeIndex+1) << " frames\n";
+    cout << "Data prob: " << gm.chain->dataProb.val() << endl;
   } while (gm.clampNextExample());
 
   exit_program_with_status(0);
