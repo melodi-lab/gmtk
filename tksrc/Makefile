@@ -91,7 +91,7 @@ all:
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_PackedSparseRealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixGaussiansCommon.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_GM.o  GMTK_CliqueChain.o GMTK_Clique.o GMTK_MixGaussians.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_ObservationMatrix.o
+objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_PackedSparseRealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixGaussiansCommon.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_SimpleDiscreteRV.o GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_GM.o  GMTK_CliqueChain.o GMTK_Clique.o GMTK_MixGaussians.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_ObservationMatrix.o
 
 
 #----------------------------------------------------------------------------
@@ -126,20 +126,14 @@ testGMParms: GMTK_GMParms.cc GMTK_GMParms.h $(objs)
 testBN1: testBN1.o $(objs)
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ testBN1.o $(objs) $(LIBS)
 
+BN1: BN1.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BN1.o $(objs) $(LIBS)
 
-BN1: BN1.cc BN1.o GMTK_GM.cc GMTK_GM.o GMTK_Clique.cc GMTK_Clique.o \
-GMTK_CliqueChain.cc GMTK_CliqueChain.o GMTK_RandomVariable.cc \
-GMTK_RandomVariable.o GMTK_SimpleDiscreteRV.cc GMTK_SimpleDiscreteRV.o
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BN1.cc GMTK_GM.cc \
-GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc \
-GMTK_SimpleDiscreteRV.cc $(LIBS)
+BNU: BNU.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BNU.o $(objs) $(LIBS)
 
-BNU: BNU.cc BNU.o GMTK_GM.cc GMTK_GM.o GMTK_Clique.cc GMTK_Clique.o \
-GMTK_CliqueChain.cc GMTK_CliqueChain.o GMTK_RandomVariable.cc \
-GMTK_RandomVariable.o GMTK_SimpleDiscreteRV.cc GMTK_SimpleDiscreteRV.o
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BNU.cc GMTK_GM.cc \
-GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc \
-GMTK_SimpleDiscreteRV.cc $(LIBS)
+testBN2: testBN2.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ testBN2.o $(objs) $(LIBS)
 
 BN2: BN2.cc BN2.o GMTK_GM.cc GMTK_GM.o GMTK_Clique.cc GMTK_Clique.o \
 GMTK_CliqueChain.cc GMTK_CliqueChain.o GMTK_RandomVariable.cc \
