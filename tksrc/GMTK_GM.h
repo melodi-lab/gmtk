@@ -34,7 +34,9 @@ struct GMTK_GM
     // A topological ordering of the nodes; useful for simulation and
     // enumerative inference.
 
-    void findTopologicalOrder();
+    void findTopologicalOrder(randomVariable *rv = NULL);
+    // Guarantees that all variables at time t-1 occur before any variables
+    // at time t.
 
     void makeRandom();
     // Goes over each variable in the graph and calls its makeRandom function.
