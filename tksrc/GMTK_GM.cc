@@ -23,9 +23,9 @@
 #include <algorithm>
 
 #include "GMTK_GMParms.h"
-
 // the observation matrix is referred to in the functions for clamping examples
-extern ObservationMatrix globalObservationMatrix;
+#include "GMTK_ObservationMatrix.h"
+
 
 /*
  *-------------------------------------------------------------------------
@@ -296,50 +296,6 @@ void GMTK_GM::emIncrement(logpr p)
 /*
  *---------------------------------------------------------------------------
  * Function:
- * emStartIteration 
- *
- * Results:
- * Each variable zeros out its accumulators.
- *
- * Side Effects:
- * None.
-*/
-
-void GMTK_GM::emStartIteration()
-{
-  for (unsigned i=0; i<node.size(); i++)
-    node[i]->emStartIteration();
-}
-
-/*
- *---------------------------------------------------------------------------
- * Function:
- * emEndIteration
- *
- * Results:
- * Each variable updates its parameters at the end of an EM iteration.
- *
- * Side Effects:
- * None.
-*/
-
-void GMTK_GM::emEndIteration()
-{
-  GM_Parms.emEndIteration();
-  for (unsigned i=0; i<node.size(); i++)
-    node[i]->emEndIteration();
-}
-
-void GMTK_GM::emSwapCurAndNew()
-{
-  GM_Parms.emSwapCurAndNew();
-  for (unsigned i=0; i<node.size(); i++)
-    node[i]->emSwapCurAndNew();
-}
-
-/*
- *---------------------------------------------------------------------------
- * Function:
  * enumerativeEM
  *
  * Results:
@@ -355,7 +311,6 @@ void GMTK_GM::enumerativeEM(int iterations)
     logpr last_dp = 0.0;
     for (int i=0; i<iterations; i++)
     {
-      // emStartIteration();
         logpr total_data_prob = 1.0;
         clampFirstExample();
         do
@@ -370,9 +325,9 @@ void GMTK_GM::enumerativeEM(int iterations)
             enumerateProb(0, 1.0/dataProb);
         } while (clampNextExample());
         cout << "Total data prob is: " << total_data_prob.val() << endl;
-        emEndIteration();
+        GM_Parms.emEndIteration();
         if (total_data_prob > last_dp)
-            emSwapCurAndNew();
+	  GM_Parms.emSwapCurAndNew();
         last_dp = total_data_prob;
     }
 }
@@ -396,11 +351,11 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
     logpr last_dp = 0.0;
     for (int i=0; i<iterations; i++)
     {
-      // emStartIteration();
         logpr total_data_prob = 1.0;
         clampFirstExample();
         do
         {
+	    globalObservationMatrix.printSegmentInfo();
             // first compute the probabilities
             if (!chain->computePosteriors(beam))
             {
@@ -413,9 +368,9 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
             chain->incrementEMStatistics();
         } while (clampNextExample());
         cout << "Total data prob is: " << total_data_prob.val() << endl;
-        emEndIteration();
+        GM_Parms.emEndIteration();
         if (total_data_prob > last_dp)
-            emSwapCurAndNew();
+            GM_Parms.emSwapCurAndNew();
         last_dp = total_data_prob;
     }
 }

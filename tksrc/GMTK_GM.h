@@ -103,22 +103,13 @@ struct GMTK_GM
     // likeliest value.
     
     logpr dataProb, viterbiProb;
+  
 
-    void emIncrement(logpr posterior);
+    /////////////////////////////////////////////////////////
+    //  EM Support
     // Tells each variable to increment its counts by the posterior.
-
-    void emStartIteration();
-    // Tells each variable to zero out its accumulators and get ready to 
-    // start EM.
-
-    void emEndIteration();
-    // Tells each variable to update its parameters at the end of an EM 
-    // iteration.
-
-    void emSwapCurAndNew();
-    // exchanges the newly estimated parameters with the old set, at the
-    // end of an em iteration.
-    // user has control to do this, or not
+    void emIncrement(logpr posterior);
+    ///////////////////////////////////////
 
     vector<vector<VariableValue> > *example;
     // In EM there must be a way of iterating over the examples.
