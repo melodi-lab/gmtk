@@ -606,3 +606,6 @@ Sat Jul 13 02:05:27 2002
    by CPP (optionally and by default). Also, the list of files 
    itself should be processed by CPP.
 
+Tue Jul 16 18:38:44 2002
+ - when variances get floored, message should also include occupancy
+   probability (to see if counts are low)
