@@ -28,15 +28,14 @@
 
 #include "GMTK_GM.h" 
 #include "GMTK_CPT.h"
+#include "GMTK_GMTemplate.h"
 #include "GMTK_MixGaussiansCommon.h"
 
 class RandomVariable;
 
 class FileParser
 {
-
-
-private:
+ private:
 
   ///////////////////////////////////////////////////
   typedef pair<string,int> rvParent;
@@ -159,7 +158,11 @@ private:
 
   //////////////////////////////////////////////
   // This is where the parser puts partially 
-  // completed RVs as it is parsing them.
+  // completed RVs as it is parsing them. This array
+  // will be filled in in order of variables encountered
+  // in the file. This means that all frame 0 variables
+  // will be seen (and positioned in the array) first, 
+  // then frame 1, and so on.
   vector < RVInfo > rvInfoVector;
 
   //////////////////////////////////////////////
@@ -383,6 +386,11 @@ public:
   // add all the variables inself to the GM. Presumably
   // gm has not been added to yet.
   void addVariablesToGM(GMTK_GM& gm);
+
+  // add all the variables to a template, essentially
+  // keeping all the rv information but removing the
+  // file specific information.
+  void addVariablesToTemplate(GMTemplate&);
 
   void checkConsistentWithGlobalObservationStream();
 

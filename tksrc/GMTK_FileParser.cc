@@ -35,6 +35,7 @@
 #include "GMTK_DiscreteRandomVariable.h"
 #include "GMTK_ContinuousRandomVariable.h"
 #include "GMTK_GM.h"
+#include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
@@ -1536,7 +1537,7 @@ FileParser::createRandomVariableGraph()
       sparents.push_back(par.rv);
     }
     
-    // now build continous parent list
+    // now build conditional parent list
     vector<vector<RandomVariable * > > cpl(rvInfoVector[i].conditionalParents.size());
     for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
       for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
@@ -2354,8 +2355,62 @@ FileParser::addVariablesToGM(GMTK_GM& gm)
   gm.lastChunkFrame = lastChunkFrame();
   gm.framesInTemplate = numFrames();
   gm.framesInRepeatSeg = lastChunkFrame()- firstChunkFrame() + 1;
-
 }
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * addVariablesToGMTemplate()
+ *      Adds all the variables that have been created by the
+ *      parser to the GMTemplate argument. This routine is like
+ *      an "export" command, in that it exports only the
+ *      graph information contained in the file w/o any of the
+ *      file specific information. After calling this routine,
+ *      the template is entirely dissociated with the fileparser,
+ *      and the fileparser information may be deleted.
+ *
+ * Preconditions:
+ *      createRandomVariableGraph() and parseGraphicalModel(),
+ *      and associateWithDataParams() must have been called.
+ *
+ * Postconditions:
+ *      GMTemplate contains a stripped down version
+ *      of the template contained in the fileparser, but without
+ *      all of the file/line number information.
+ *
+ * Side Effects:
+ *      none internally, but changes GMTemplate object.
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+FileParser::addVariablesToTemplate(GMTemplate& gm_template)
+{
+  gm_template.numFrames = numFrames();
+  gm_template.firstChunkFrame = firstChunkFrame();
+  gm_template.lastChunkFrame = lastChunkFrame();
+
+  gm_template.frames.resize(numFrames());
+
+  ///////////////////////////////////////////////////////////
+  // Assume that the rvs inserted into rvInfoVector are 
+  // insereted in frame order.
+  unsigned rvindex=0;
+  for (unsigned frameIndex=0;frameIndex<numFrames();frameIndex++) {
+    while (rvInfoVector[rvindex].frame == frameIndex) {
+      gm_template.frames[frameIndex].rvs.push_back(rvInfoVector[rvindex].rv);
+      rvindex++;
+    }
+  }
+}
+
+
+
 
 
 ////////////////////////////////////////////////////////////////////
