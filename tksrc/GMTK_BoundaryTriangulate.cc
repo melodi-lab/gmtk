@@ -4532,7 +4532,7 @@ unrollAndTriangulate(// triangulate heuristics
 
 /*-
  *-----------------------------------------------------------------------
- * BoundaryTriangulate::ensurePartitionsAreChordal(gm_template)
+ * BoundaryTriangulate::ensurePartitionsAreChordal(gm_template,dieIfNot)
  *   ensure that the partitions in the given template are chordal, and die 
  *   with an error if not.
  *
@@ -4585,7 +4585,7 @@ ensurePartitionsAreChordal(GMTemplate& gm_template,
 	    (c_chordal?"":" C"),
 	    (e_chordal?"":" E"));
     } else {
-      warning("ERROR: Program exiting since the following partitions are not chordal:%s%s%s",
+      warning("ERROR: Problem with graph since the following partitions are not chordal:%s%s%s",
 	    (p_chordal?"":" P"),
 	    (c_chordal?"":" C"),
 	    (e_chordal?"":" E"));
