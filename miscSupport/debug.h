@@ -34,12 +34,14 @@ class IM {
   static unsigned globalMessageLevel;
   unsigned messageLevel;
   bool messagesOn;
+  bool flush;
 
 public:
 
   IM() {
     messageLevel = globalMessageLevel;
     messagesOn = true;
+    flush = true;
   }
 
   // levels for general informational and/or debugging messages.
@@ -106,8 +108,10 @@ public:
       va_start(ap,format);
       if (v == Warning)
 	(void) vfprintf(stderr, format, ap);
-      else 
+      else {
 	(void) vfprintf(stdout, format, ap);
+	if (flush) fflush(stdout);
+      }
       va_end(ap);
     }
 #endif
@@ -121,12 +125,34 @@ public:
       va_start(ap,format);
       if (Default == Warning)
 	(void) vfprintf(stderr, format, ap);
-      else 
+      else {
 	(void) vfprintf(stdout, format, ap);
+	if (flush) fflush(stdout);
+      }
       va_end(ap);
     }
 #endif
   }
+
+  // already checked/force message case.
+  // I.e., this routine can be used with an
+  // external check, so we don't pay to do a
+  // routine call case this doesn't get inlined.
+  inline void infoMsgForce(char*format, ...) 
+  {
+#if INFO_MESSAGES_ON
+    va_list ap;
+    va_start(ap,format);
+    if (Default == Warning)
+      (void) vfprintf(stderr, format, ap);
+    else {
+      (void) vfprintf(stdout, format, ap);
+      if (flush) fflush(stdout);
+    }
+    va_end(ap);
+#endif
+  }
+
 
   void msgsOn() { messagesOn = true; }
   void msgsOff() { messagesOn = false; }
@@ -168,6 +194,20 @@ inline void infoMsg(char*format, ...)
       (void) vfprintf(stdout, format, ap);
     va_end(ap);
   }
+#endif
+}
+
+
+inline void infoMsgForce(char*format, ...) 
+{
+#if INFO_MESSAGES_ON
+    va_list ap;
+    va_start(ap,format);
+    if (IM::Default == IM::Warning)
+      (void) vfprintf(stderr, format, ap);
+    else 
+      (void) vfprintf(stdout, format, ap);
+    va_end(ap);
 #endif
 }
 
