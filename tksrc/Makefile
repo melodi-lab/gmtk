@@ -29,7 +29,7 @@ LD = $(CXX)
 AR = ar
 LEX = flex
 RANLIB = :
-INSTALL = /usr/bin/install -c
+INSTALL = /usr/ucb/install -c
 INSTALL_DATA = ${INSTALL} -m 555
 INSTALL_EXE = $(INSTALL) -m 555
 
@@ -88,7 +88,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkEMtrain
+all_exs = gmtkEMtrain gmtkViterbi
 
 all: ${all_exs}
 
