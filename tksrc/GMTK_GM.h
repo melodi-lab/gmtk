@@ -33,6 +33,7 @@
 
 #include "logp.h"
 #include "general.h"
+#include "bp_range.h"
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CliqueChain.h"
@@ -41,10 +42,49 @@
 
 struct GMTK_GM
 {
+
     vector<RandomVariable *> node;
     // This holds all the variables in the graph.
     // The topology os determined by the Parent and Child arrays associated
     // with each random variable.
+
+    bool emMode;
+    // when data probability is computed, this controls whether counts
+    // are accumulated. If emMode==true, they are accumulated
+
+    logpr dataProb, viterbiProb;
+  
+    vector<vector<VariableValue> > *example;
+    // In EM there must be a way of iterating over the examples.
+    // This store the examples to look at.
+    // Note: if files are being used, the globalObservationMatrix stores the
+    // data.
+
+    // how far in the example array have we gotten?
+    unsigned expos; 
+
+    // Examples can be read from a file, or from an vector of vector of
+    // VariableValues. This says which it is.
+    bool using_files;
+
+
+    CliqueChain *chain;
+    // A pointer to a clique chain representation of the GM.
+
+    vector<RandomVariable *> gmTemplate;
+
+    int firstChunkFrame, lastChunkFrame;
+    // the first and last frames in the template repeating segment
+
+    int obsInTemplate, obsInRepeatSeg, framesInTemplate, framesInRepeatSeg;
+
+    // support for iterating through a subset of the training segments
+    BP_Range* trrng;  
+    BP_Range::iterator* trrng_it; // iterator
+
+    ///////////////////////////////////////////////////////////
+    // The dividing line between member variables and member functions
+    ///////////////////////////////////////////////////////////
 
     void verifyTopologicalOrder();
     // verifies that the node array is in topological order
@@ -53,11 +93,20 @@ struct GMTK_GM
     void reveal(vector<RandomVariable *> order, bool show_vals = false);
     // Go through the nodes in the specified order and show them.
 
-    GMTK_GM() {example=NULL; chain=NULL; using_files=false;}
+    GMTK_GM() {
+      example=NULL; 
+      chain=NULL; 
+      using_files=false;
+      trrng = NULL;
+      trrng_it = NULL;
+    }
+
     ~GMTK_GM() { 
       if (chain) delete chain; 
       deleteObsInVector(node);
       deleteObsInVector(gmTemplate);
+      delete trrng;
+      delete trrng_it;
     }
 
     void makeRandom();
@@ -83,10 +132,6 @@ struct GMTK_GM
     { chain->computePosteriors(beam); dataProb = chain->dataProb; }
     // Computes the likelihood of the observed variable values with
     // dynamic programming on a clique chain
-
-    bool emMode;
-    // when data probability is computed, this controls whether counts
-    // are accumulated. If emMode==true, they are accumulated
 
     void cacheValues();
     // Tells all the nodes int the graph to cache the values they are 
@@ -116,9 +161,6 @@ struct GMTK_GM
     // variables, and stores it in logViterbiProb. 
     // Has the side effect that at termination, the network is clamped to its
     // likeliest value.
-    
-    logpr dataProb, viterbiProb;
-  
 
     /////////////////////////////////////////////////////////
     //  EM Support
@@ -126,24 +168,12 @@ struct GMTK_GM
     void emIncrement(logpr posterior);
     ///////////////////////////////////////
 
-    vector<vector<VariableValue> > *example;
-    // In EM there must be a way of iterating over the examples.
-    // This store the examples to look at.
-    // Note: if files are being used, the globalObservationMatrix stores the
-    // data.
-
-    // how far in the example array have we gotten?
-    unsigned expos; 
-
-    // Examples can be read from a file, or from an vector of vector of
-    // VariableValues. This says which it is.
-    bool using_files;
-
     void setExampleStream(vector<vector<VariableValue> > *_example)
     {example=_example;}
     // The examples to be iterated over are held in here
 
-    void setExampleStream(char *obs_file_name);
+    void setExampleStream(const char *const obs_file_name,
+			  const char *const trrng_str = NULL);
 
     void clampFirstExample(); 
     // Clamps the observation variables according to the first example.
@@ -153,9 +183,6 @@ struct GMTK_GM
 
     void enumerativeEM(int iterations);
     // Does EM using brute force inference.
-
-    CliqueChain *chain;
-    // A pointer to a clique chain representation of the GM.
 
     void cliqueChainEM(int iterations, 
 		       logpr beam=0.0,
@@ -181,8 +208,6 @@ struct GMTK_GM
     // duplicates the structure from first_frame to last_frame "times" times
     // e.g. unroll(1,2,5) adds 10 frames -- 5 1,2 chunks
 
-    vector<RandomVariable *> gmTemplate;
-
     void cloneVariables(vector<RandomVariable *> &from, 
         vector<RandomVariable *> &to);
     // clones the network structure held in from so that it is reproduced in to.
@@ -191,11 +216,6 @@ struct GMTK_GM
     void setSize(int repeat_segs);
     // sets the network up for infrence with an observation sequence that
     // is time_frames long
-
-    int firstChunkFrame, lastChunkFrame;
-    // the first and last frames in the template repeating segment
-
-    int obsInTemplate, obsInRepeatSeg, framesInTemplate, framesInRepeatSeg;
 
     void setupForVariableLengthUnrolling(int first_frame, int last_frame);
 };

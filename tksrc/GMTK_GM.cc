@@ -1012,11 +1012,19 @@ void GMTK_GM::setSize(int repeat_segs)
     GM2CliqueChain();
 }
 
-void GMTK_GM::setExampleStream(char *obs_file_name)
+void GMTK_GM::setExampleStream(const char *const obs_file_name,
+			       const char *const trrng_str)
 {
   globalObservationMatrix.openFile(obs_file_name);
-  using_files = true;
+  trrng = new BP_Range(trrng_str,0,globalObservationMatrix.numSegments());
+  if (trrng->length() <= 0) {
+    error("ERROR: training range '%s' must specify non-empty set.",
+	  trrng_str);
+  }
+
   GM_Parms.setStride(globalObservationMatrix.stride);
+
+  using_files = true;
 }
 
 void GMTK_GM::clampFirstExample()
@@ -1025,17 +1033,20 @@ void GMTK_GM::clampFirstExample()
     if (using_files)
     {
         if (globalObservationMatrix.numSegments()==0)
-            error("no data available");
-        globalObservationMatrix.loadSegment(0);
+            error("ERROR: no data available in observation file");
+	trrng_it = new BP_Range::iterator(trrng->begin());
+	// we are assured it is not an empty range from an earlier check.
+	const int seg_no = *(*trrng_it);
+        globalObservationMatrix.loadSegment(seg_no);
         int frames = globalObservationMatrix.numFrames;
 	if ((frames-framesInTemplate)%framesInRepeatSeg != 0) {
-	  error("ERROR: segment 0 in observation file does not have a number of frames compatible with unrolling specified structure file");
+	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",seg_no);
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
-        expos = 0;
     }
     else
     {
+      // does this code still work? perhaps remove. JB Wed Jul  4 02:53:36 2001
         if (example==NULL) error("Example array not set.");
         if (example->size()==0) error("No examples.");
         assert(((*example)[0].size()-obsInTemplate)%obsInRepeatSeg==0);
@@ -1051,13 +1062,14 @@ bool GMTK_GM::clampNextExample()
     CliqueValue::global_val_set.clear();
     if (using_files)
     {
-        if (expos==globalObservationMatrix.numSegments()-1)
-            return false;
-        expos++;
-        globalObservationMatrix.loadSegment(expos);
+        (*trrng_it)++;
+	if ((*trrng_it) > trrng->max())
+	  return false;
+	const int seg_no = *(*trrng_it);
+        globalObservationMatrix.loadSegment(seg_no);
         int frames = globalObservationMatrix.numFrames;
 	if ((frames-framesInTemplate)%framesInRepeatSeg != 0) {
-	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",expos);
+	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",seg_no);
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
     }
