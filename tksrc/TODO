@@ -961,3 +961,12 @@ Sun Feb 23 17:12:53 2003
      (good for certain graphs, Brian's, Kevin's, but still doesn't 
       work for snake, the optimal graph is fully unconstrained).
 
+
+Fri Feb 28 00:09:13 2003
+  - not a todo, but rather a note. When the final reported
+    weight is not one of the ones in the boundary alg search (and it
+    is lower), it is probably the intial score (before the boundary
+    alg. is run). keywords: final, face heuristic, exponential algorithm,
+    weight not same, different weight, first weight, final weight
+
+
