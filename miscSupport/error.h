@@ -21,5 +21,7 @@
 void error(char *format, ...);
 void coredump(char *format, ...);
 void warning(char *format, ...);
+void ensure(bool condition,char *errorIfFail, ...);
+
 
 #endif
