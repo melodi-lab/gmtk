@@ -1429,3 +1429,45 @@ Mon Feb  2 23:41:53 2004
     from the observation file for a given utterance in
     some nice way). This would need to gel with
     the new RV class hierarchy. 
+
+Mon Feb  9 21:07:55 2004
+  - fix bug where
+      If E = empty in right interface case, and where
+           resulting E only contains interface nodes (which might
+           result in a clique of size one if the interface has one node)
+      If P = empty in left interface case (symmetric case as above).
+    probable solution. Allow for P or E to still be empty in .trifile.
+
+
+Mon Feb  9 21:11:40 2004
+  - fix bug where buggy graph has core dump in triangulation code:
+   frame : 0 {
+   variable : state {
+      type: discrete hidden cardinality 3 ;
+      switchingparents: nil;
+      conditionalparents: nil using DenseCPT("state0");
+   }
+   variable : obs  {
+      type: continuous observed 0:5 ;
+      switchingparents: nil;
+      conditionalparents: state(0) using mixture 
+            collection(CN) mapping("DT::state2obs");
+   }
+   }
+   frame : 1 {
+   variable : state {
+      type: discrete hidden cardinality 3 ;
+      switchingparents: nil;
+      conditionalparents: state(-1) using DenseCPT("state1_with_state_pars");
+   }
+   variable : obs {
+      type: continuous observed 0:5 ;
+      switchingparents: nil;
+      conditionalparents: state(0) using mixture 
+           collection(CN) mapping("DT::state2obs");
+   }
+  }
+  chunk 0:0
+     
+  This should probably check that unrolled graph produces a connected graph.
+  (or allow for unconnected graphs).
