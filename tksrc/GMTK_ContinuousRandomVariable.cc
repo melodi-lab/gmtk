@@ -99,6 +99,7 @@ ContinuousRandomVariable::probGivenParents()
   // TODO: there should be some check to make sure
   // that the resulting gaussian is the correct dimensionality.
 
+  logpr _cachedProb;
   if (curMappingOrDirect->direct) {
     _cachedProb = 
       curMappingOrDirect->gaussian->log_p

@@ -87,7 +87,7 @@ RandomVariableType = RandomVariableDiscreteType |
 
 RandomVariableDiscreteType = 
       "discrete" 
-      ( "hidden" | "observed" integer ":" integer ) 
+      ( "hidden" | "observed" (integer ":" integer | "value" integer) ) 
      "cardinality" integer
 
 RandomVariableContinuousType = 
@@ -306,6 +306,9 @@ FileParser::KeywordTable = FileParser::fillKeywordTable();
 const vector<string> 
 FileParser::fillKeywordTable()
 {
+  // ******************************************************************
+  // This table must always be consistent with the enum TokenKeyword.
+  // ******************************************************************
   const char*const kw_table[] = {
     "frame",
     "variable",
@@ -328,7 +331,8 @@ FileParser::fillKeywordTable()
     "logitSwitchMixGaussian",
     "mlpSwitchMixGaussian",
     "chunk",
-    "GRAPHICAL_MODEL"
+    "GRAPHICAL_MODEL",
+    "value"
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -868,34 +872,51 @@ FileParser::parseRandomVariableDiscreteType()
     curRV.rvDisp = RVInfo::d_observed;
     consumeToken();
     
-    ensureNotAtEOF("first feature range");
-    if (tokenInfo != TT_Integer)
-      parseError("first feature range");
-    curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
-    consumeToken();
+    ensureNotAtEOF("first feature range|value keyword");
+    if (tokenInfo == TT_Integer) {
+      // should be n:m syntax, so values come from file
 
-    ensureNotAtEOF("feature range separator");
-    if (tokenInfo != TT_Colon)
-      parseError("feature range separator");
-    consumeToken();
+      if (tokenInfo != TT_Integer)
+	parseError("first feature range");
+      curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
+      consumeToken();
+
+      ensureNotAtEOF("feature range separator");
+      if (tokenInfo != TT_Colon)
+	parseError("feature range separator");
+      consumeToken();
     
-    ensureNotAtEOF("second feature range");
-    if (tokenInfo != TT_Integer)
-      parseError("second feature range");
-    curRV.rvFeatureRange.lastFeatureElement = tokenInfo.int_val;
-    if (curRV.rvFeatureRange.lastFeatureElement < curRV.rvFeatureRange.firstFeatureElement)
-      parseError("first range num must be < second range num");
-    curRV.rvFeatureRange.filled = true;
-    consumeToken();
+      ensureNotAtEOF("second feature range");
+      if (tokenInfo != TT_Integer)
+	parseError("second feature range");
+      curRV.rvFeatureRange.lastFeatureElement = tokenInfo.int_val;
+      if (curRV.rvFeatureRange.lastFeatureElement < curRV.rvFeatureRange.firstFeatureElement)
+	parseError("first range num must be < second range num");
+      curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_Range;
+      // A discrete random variable is, at this time, only a scalar.
+      // Therefore, the feature range spec should be of the
+      // form n:n (i.e., it may only specify a single number).
+      // Ultimately, a discrete RV will be a vector so we 
+      // keep the n:m notation, but for we check this
+      if (curRV.rvFeatureRange.lastFeatureElement != curRV.rvFeatureRange.firstFeatureElement)
+	parseError("for scalar RV, first feature range num be same as second range num");
+      consumeToken();
+    }  else if (tokenInfo == KW_Value) {
+      // should be "value n" syntax
+      consumeToken(); // consume the 'value' token
 
-    // A discrete random variable is, at this time, only a scalar.
-    // Therefore, the feature range spec should be of the
-    // form n:n (i.e., it may only specify a single number).
-    // Ultimately, a discrete RV will be a vector, but for
-    // now 
+      if (tokenInfo != TT_Integer)
+	parseError("value integer");
+      if (tokenInfo.int_val < 0)
+	parseError("non-negative value integer");
+      curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
+      curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_FirstIsValue;
+      consumeToken();
 
-
-
+    } else {
+      // parse error
+      parseError("first feature range n:m | value keyword");
+    }
   } else 
     parseError("variable disposition (hidden|discrete)");
 
@@ -932,8 +953,9 @@ FileParser::parseRandomVariableContinuousType()
   if (tokenInfo == KW_Hidden) {
     // hidden continuous RV
     curRV.rvDisp = RVInfo::d_hidden;
+    // ... fill in later
     consumeToken();
-
+    
     ///////////////////////////////////////////////
     // TODO: removing the following is safe when
     // hidden continuous variables are implemented.
@@ -960,8 +982,8 @@ FileParser::parseRandomVariableContinuousType()
       parseError("second feature range");
     curRV.rvFeatureRange.lastFeatureElement = tokenInfo.int_val;
     if (curRV.rvFeatureRange.lastFeatureElement < curRV.rvFeatureRange.firstFeatureElement)
-      parseError("first range num must be < second range num");
-    curRV.rvFeatureRange.filled = true;
+      parseError("first range num must be <= second range num");
+    curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_Range;
     consumeToken();
 
   } else
@@ -1380,8 +1402,17 @@ FileParser::createRandomVariableGraph()
 				   rvInfoVector[i].rvCard);
       rv->hidden = (rvInfoVector[i].rvDisp == RVInfo::d_hidden);
       if (!rv->hidden) {
-	rv->featureElement = 
-	  rvInfoVector[i].rvFeatureRange.firstFeatureElement;
+	if (rvInfoVector[i].rvFeatureRange.filled == RVInfo::FeatureRange::fr_Range) {
+	  rv->featureElement = 
+	    rvInfoVector[i].rvFeatureRange.firstFeatureElement;
+	} else if (rvInfoVector[i].rvFeatureRange.filled == RVInfo::FeatureRange::fr_FirstIsValue) {
+	  rv->val = rvInfoVector[i].rvFeatureRange.firstFeatureElement;
+	  rv->featureElement = DRV_USE_FIXED_VALUE_FEATURE_ELEMENT;
+	} else {
+	  // this shouldn't happen (the parser should not let this case occur) 
+	  // but we keep the check just in case.
+	  error("ERROR: internal parser error, feature range is not filled in");
+	}
       }
       rvInfoVector[i].rv = rv;
     } else {

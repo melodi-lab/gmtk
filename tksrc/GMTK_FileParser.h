@@ -53,11 +53,12 @@ private:
     enum Type { t_discrete, t_continuous, t_unknown };
     enum Disposition { d_hidden, d_observed, d_unknown };
     struct FeatureRange {
-      bool filled;
+      enum frEnum { fr_UnFilled, fr_Range, fr_FirstIsValue };
+      frEnum filled;
       unsigned firstFeatureElement;
       unsigned lastFeatureElement;
-      FeatureRange() { filled = false; }
-      void clear() { filled = false; }
+      FeatureRange() { filled = fr_UnFilled; }
+      void clear() { filled = fr_UnFilled; }
     };
     struct ListIndex {
       enum ListIndexType { li_String, li_Index, li_Unknown } liType;
@@ -188,6 +189,11 @@ public:
     TT_Undefined=15
   };
 
+
+  // ******************************************************************
+  // This enum must always be consistent with the table 
+  // in fillKeywordTable in the .cc file
+  // ******************************************************************
   // when token type is a keyword, the different types of keywords
   enum TokenKeyword {
     KW_Frame = 0,
@@ -211,7 +217,8 @@ public:
     KW_LogitSwitchMixGaussian=18,
     KW_MlpSwitchMixGaussin=19,
     KW_Chunk=20,
-    KW_GRAPHICAL_MODEL=21
+    KW_GRAPHICAL_MODEL=21,
+    KW_Value=22
   };
 
   // list of token keyword strings.
