@@ -171,8 +171,7 @@ public:
       return rv;
     } 
 
-    void tieParametersWith(RandomVariable *other)
-    { cout << "Can't tie parameters for simple RVs\n"; }
+    void tieParametersWith(RandomVariable *other) {;}
 };
 
 #endif
