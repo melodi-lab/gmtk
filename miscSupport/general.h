@@ -9,6 +9,8 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
+using namespace std;
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
