@@ -37,7 +37,7 @@
 #ifndef RANGE_H
 #define RANGE_H
 
-#include <stdio.h>
+#include <cstdio>
 
 class RangeNode {
     // One node in a linked-list of matlab sequences
