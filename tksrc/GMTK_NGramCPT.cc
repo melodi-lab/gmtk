@@ -30,7 +30,7 @@
 #include "GMTK_NGramCPT.h"
 #include "GMTK_GMParms.h"
 #include "fileParser.h"
-#include "vhash_map.h"
+#include "shash_map.h"
 #include "rand.h"
 #include "error.h"
 
@@ -63,7 +63,7 @@ struct ContextTreeEntry {
 	unsigned contextBlockSize;
 
 	// pointer to next level context hash table
-	vhash_map<int, ContextTreeEntry> *next;
+	shash_map<int, ContextTreeEntry> *next;
 
 	// information for the next level context
 	// hash table (no iterations for hashmap)
@@ -511,16 +511,6 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	ContextTreeEntry startEntry;
 
 	// phase I
-	// 1. Read in the vocabulary
-	// 2. Set up the indices table
-	int * indices = new int [ucard()];
-	if ( indices == NULL )
-		error("out of memory in NGramCPT::read");
-
-	int i;
-	for ( i = 0; i < (int)ucard(); ++i )
-		indices[i] = i;
-
 	iDataStreamFile ifs(lmFile, false, false);	// ascii, no cpp
 
 	// Read in the ARPA header
@@ -538,6 +528,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	unsigned index, num;
 	char c;
 	_totalNumberOfParameters = 0;
+	int i;
 	for ( i = 1; i < (int)_numParents + 2; ++i ) {
 		{
 			char *foo;
@@ -604,8 +595,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 
 			// insert the context into datebase only when there is bow
 			if ( startEntry.next == NULL )
-				startEntry.next = new vhash_map<int, ContextTreeEntry>(1, num);
-			startEntry.next->insert(indices + wid, contextEntry);
+				startEntry.next = new shash_map<int, ContextTreeEntry>(num);
+			startEntry.next->insert(wid, contextEntry);
 			startEntry.keys.push_back(wid);
 		}
 	}
@@ -640,7 +631,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			// update the previous level of hashing
 			ContextTreeEntry *contextEntry = &startEntry;
 			for ( int m = index -2; m >= 0; --m )
-				contextEntry = contextEntry->next->find(indices + context[m]);
+				contextEntry = contextEntry->next->find(context[m]);
 
 			if ( prevContextEntry == NULL )
 				prevContextEntry = contextEntry;	// first on the n-gram
@@ -674,16 +665,16 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 				for ( int m = index -1; m > 0; --m ) {
 					if ( contextEntry->next == NULL )
 						error("wrong lm: lower order context didn't appear before.");
-					contextEntry = contextEntry->next->find(indices + context[m]);
+					contextEntry = contextEntry->next->find(context[m]);
 				}
 				
 				if ( contextEntry == NULL )
 					error("error in ngram file");
 	
 				if ( contextEntry->next == NULL )
-					contextEntry->next = new vhash_map<int, ContextTreeEntry>(1, 3);
+					contextEntry->next = new shash_map<int, ContextTreeEntry>(3);
 	 
-				contextEntry->next->insert(indices + context[0], entry);
+				contextEntry->next->insert(context[0], entry);
 				contextEntry->keys.push_back(context[0]);
 			}
 		}
@@ -728,7 +719,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	
 			ContextTreeEntry *contextEntry = &startEntry;
 			for ( int m = index -2; m >= 0; --m )
-				contextEntry = contextEntry->next->find(indices + context[m]);
+				contextEntry = contextEntry->next->find(context[m]);
 	
 			if ( prevContextEntry == NULL )
 				prevContextEntry = contextEntry;	// this is the first of the n-gram
@@ -773,7 +764,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			contextTotalSize += currentContextEntry->contextBlockSize;
 
 			for ( iit = currentContextEntry->keys.begin(); iit != currentContextEntry->keys.end(); ++iit ) {
-				nextContextEntry = currentContextEntry->next->find(indices + *iit);
+				nextContextEntry = currentContextEntry->next->find(*iit);
 				contextQueue.push(nextContextEntry);
 			}
 		}
@@ -791,7 +782,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 
 		if ( currentContextEntry->next != NULL && currentContextEntry->keys.size() > 0 ) {
 			for ( iit = currentContextEntry->keys.begin(); iit != currentContextEntry->keys.end(); ++iit ) {
-				nextContextEntry = currentContextEntry->next->find(indices + *iit);
+				nextContextEntry = currentContextEntry->next->find(*iit);
 
 				ContextHashEntry hEntry;
 				hEntry.bow = nextContextEntry->bow;
@@ -891,7 +882,6 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	delete [] line;
 	delete [] numNGrams;
 	delete [] context;
-	delete [] indices;
 }
 
 
