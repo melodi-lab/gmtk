@@ -32,7 +32,7 @@ VCID("$Header$");
 // Define if you want to pipe all ASCII
 // files through the C pre-processor to
 // get to use it's macro facilities.
-#define PIPE_ASCII_FILES_THROUGH_CPP
+// #define PIPE_ASCII_FILES_THROUGH_CPP
 
 bool 
 ioDataStreamFile::errorReturn(char *from,char *msg)
