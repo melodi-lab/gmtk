@@ -194,7 +194,7 @@ DiagGaussian::noisyClone()
  *      Computes the probability of this Gaussian.
  * 
  * Preconditions:
- *      preCompute() must have been called before this.
+ *      preCompute() must have been called on covariance matrix before this.
  *
  * Postconditions:
  *      nil
