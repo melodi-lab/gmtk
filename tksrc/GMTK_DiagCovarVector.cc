@@ -482,7 +482,7 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
     // done below after refCount hits zero below.
 
     if ( parentsAccumulatedProbability >
-	 GaussianComponent::minAccumulatedProbability()) {
+	 minContAccumulatedProbability()) {
       // Only accumulate here if there is something significant 
       // to accumlate.
 
@@ -512,7 +512,7 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
   // otherwise, we're ready to finish and
   // compute the next covariances.
 
-  if (accumulatedProbability < GaussianComponent::minAccumulatedProbability()) {
+  if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",
 	    name().c_str(),
 	    accumulatedProbability.val());
@@ -650,7 +650,8 @@ DiagCovarVector::emEndIteration(const float *const parentsAccumulatedNextCovar)
   // otherwise, we're ready to finish and
   // compute the next covariances.
 
-  if (accumulatedProbability < GaussianComponent::minAccumulatedProbability()) {
+  accumulatedProbability.floor();
+  if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",accumulatedProbability.val(),name().c_str());
     for (int i=0;i<covariances.len();i++) 
       nextCovariances[i] = covariances[i];
