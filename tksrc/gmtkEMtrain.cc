@@ -241,7 +241,7 @@ main(int argc,char*argv[])
   } else {
     gm.cliqueChainEM(maxEMIterations, pruneRatio,
 		     writeParametersBeforeEachEMIteration,
-		     string(outFileName),
+		     ((outFileName)?(string(outFileName)):("")),
 		     binOutFile);
   }
 
