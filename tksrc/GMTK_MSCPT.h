@@ -86,27 +86,25 @@ public:
   void becomeAwareOfParentValues( vector <int>& parentValues,
 				  vector <int>& cards ) {
     spmfIndex = dt->query(parentValues,cards);
+
+    ////////////////////////////////////////////////////////////////
+    // Include this run-time check for index validity since the
+    // decision tree might have integer expression leaf nodes.
+    // If the tree only had constant leaf expressions, we wouldn't
+    // need this check here.
     if (!ncl->validSpmfIndex(spmfIndex)) {
       error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
 	    name().c_str(),dt->name().c_str(),spmfIndex,
 	    ncl->name().c_str(),ncl->spmfSize());
     }
+
     spmf = ncl->spmf(spmfIndex);
-    if (spmf->card() != card()) {
-      warning("ERROR: MSCPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' (offset %d in collection '%s') having card %d",
-	      name().c_str(),
-	      card(),
-	      dt->name().c_str(),
-	      spmfIndex,
-	      spmf->name().c_str(),
-	      spmfIndex,ncl->name().c_str(),
-	      spmf->card());
-      fprintf(stderr,"Parent values:");
-      for (unsigned i=0;i<parentValues.size();i++) {
-	fprintf(stderr," %d", parentValues[i]);
-      }
-      error("");
-    }
+
+    // No need for cardinality checking of SPMF here
+    // since that is done statically when the MSCPT is
+    // read in, for all the SPMF entries of the 
+    // collection.
+
   }
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
     spmfIndex = dt->query(parents);
