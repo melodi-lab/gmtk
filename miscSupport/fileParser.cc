@@ -501,7 +501,7 @@ bool oDataStreamFile::writeUnsigned(const unsigned int u,char *msg)
       return errorReturn("writeUnsigned",msg);
     return true;
   } else {
-    if (fprintf(fh,"%ud ",u) == 0) 
+    if (fprintf(fh,"%u ",u) == 0) 
       return errorReturn("writeUnsigned",msg);
     return true;
   }
