@@ -2507,6 +2507,7 @@ RngDecisionTree::writeIndexFile()
     if (root != NULL) {
       destructorRecurse(root);
       delete root;
+      root = NULL;
     }
 
     // read in the rest of the DT.
@@ -2517,11 +2518,7 @@ RngDecisionTree::writeIndexFile()
         name().c_str(), curName.c_str(), dtFile->fileName());
     } 
 
-    if (root != NULL) {
-      destructorRecurse(root);
-      delete root;
-      root = NULL;
-    }
+
     root = new Node;
     readRecurse(*dtFile,*root);
   }
