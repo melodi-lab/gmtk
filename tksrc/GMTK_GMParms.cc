@@ -2245,6 +2245,7 @@ GMParms::setSegment(const unsigned segmentNo)
 {
   for(unsigned i = 0; i<clampableDts.size(); i++) {
     clampableDts[i]->seek(segmentNo);
+    clampableDts[i]->clampNextDecisionTree();
   }
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();

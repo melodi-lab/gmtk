@@ -37,7 +37,7 @@ INSTALL_EXE = $(INSTALL) -m 755
 # Program options.
 #
 # OPTFLAGS = -O2 -DNDEBUG
-OPTFLAGS=-O2
+OPTFLAGS=-O3
 # OPTFLAGS=
 
 # extra flags via command line (e.g., -pg).

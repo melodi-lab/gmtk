@@ -323,11 +323,11 @@ RngDecisionTree::seek(
   //////////////////////////////////////////////////////////////////////////
   // Read in the position of the tree in the DT file 
   //////////////////////////////////////////////////////////////////////////
-  indexFile->fseek( sizeof(unsigned)*(dt_nmbr+1), SEEK_CUR ); 
+  indexFile->fseek( sizeof(unsigned)*(dt_nmbr), SEEK_CUR ); 
   indexFile->read(position, "DT offset");
 
   result = dtFile->fseek(position, SEEK_SET); 
-  dtNum = firstDT - 1; 
+  dtNum = dt_nmbr - 1; 
 }
 
 /*-
@@ -1532,7 +1532,7 @@ RngDecisionTree::writeIndexFile()
     position = dtFile->ftell();
 
     if (position < 0) {
-      error("ERROR: probelm reading from file '%s'\n", dtFileName.c_str() );
+      error("ERROR: problem reading from file '%s'\n", dtFileName.c_str() );
     }
 
     outFile.writeInt(position, "Decision tree index");

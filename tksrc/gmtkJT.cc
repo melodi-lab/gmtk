@@ -321,6 +321,7 @@ main(int argc,char*argv[])
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
+
   GM_Parms.setStride(globalObservationMatrix.stride());
 
   /////
@@ -381,6 +382,8 @@ main(int argc,char*argv[])
     exit_program_with_status(0);
   }
 
+  GM_Parms.setFirstUtterance( dcdrng->min() ); 
+  GM_Parms.clampFirstExample();
   BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
   while ((*dcdrng_it) <= dcdrng->max()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
