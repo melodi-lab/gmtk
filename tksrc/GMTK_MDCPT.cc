@@ -339,16 +339,17 @@ MDCPT::randomSample()
 {
   assert ( bitmask & bm_basicAllocated );
   
-  iterator it = first();
+  iterator it = begin();
   logpr uniform = rnd.drand48();
   logpr sum = 0.0;
   do {
     sum += it.probVal;
     if (uniform <= sum)
       break;
-  } while (next(it));
+    it++;
+  } while (it != end());
   
-  return it.val;
+  return it.val();
 }
 
 
@@ -555,11 +556,12 @@ main()
   }
 
   // Now iterate over valid values.
-  MDCPT::iterator it = mdcpt.first();
+  MDCPT::iterator it = mdcpt.begin();
   do {
     printf("Prob of %d is %f\n",
-	   it.val,it.probVal.unlog());
-  } while (mdcpt.next(it));
+	   it.val(),it.probVal.unlog());
+    it++;
+  } while (it != mdcpt.end());
 
 
   parentVals[0] = 0;
@@ -567,19 +569,21 @@ main()
   parentVals[2] = 1;
   mdcpt.becomeAwareOfParentValues(parentVals);
 
-  it = mdcpt.first();
+  it = mdcpt.begin();
   do {
     printf("Prob of %d is %f\n",
-	   it.val,it.probVal.unlog());
-  } while (mdcpt.next(it));
+	   it.val(),it.probVal.unlog());
+    it++;
+  } while (it != mdcpt.end());
 
   mdcpt.makeRandom();
   printf("After randomization\n");
-  it = mdcpt.first();
+  it = mdcpt.begin();
   do {
     printf("Prob of %d is %f\n",
-	   it.val,it.probVal.unlog());
-  } while (mdcpt.next(it));
+	   it.val(),it.probVal.unlog());
+    it++;
+  } while (it != mdcpt.end());
 
 
 }
