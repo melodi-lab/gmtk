@@ -77,6 +77,10 @@ class iDataStreamFile : public ioDataStreamFile {
   
   void rewind();
 
+  bool isEOF() { 
+    if(feof(fh)) return true;
+    else         return false;
+  }
 
   // These return true if a successful value is returned,
   // false otherwise. If 'msg' is provided and an error
