@@ -129,3 +129,7 @@ XXX- todo, make sure that chunk n:m is valid.
   are non-negative
 
 - change parser to keep track of multiple #include files via line directives.
+
+
+- change sparse PMF so that it just contains a list
+  of values, and then a pointer to a dense pmf
