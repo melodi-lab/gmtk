@@ -34,6 +34,7 @@ VCID("$Header$");
 #include <string.h>
 
 #include "GMTK_ContRV.h"
+#include "debug.h"
 
 
 /*-
