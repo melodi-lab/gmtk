@@ -52,7 +52,7 @@
 
 #include "ieeeFPsetup.h"
 
-#include "spi.h"
+//#include "spi.h"
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RandomVariable.h"
