@@ -434,15 +434,15 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
 
     if (s->dataFormat != PFILE) {
       if (s->dataNames == NULL)
-        error("ObservationMatrix::loadSegment: List of file names for stream %i (%s) is NULL\n",stream_no,sname);
+        error("ERROR: ObservationMatrix::loadSegment: List of file names for stream %i (%s) is NULL\n",stream_no,sname);
 
       fname = s->dataNames[segno];
       if (fname == NULL)
-        error("ObservationMatrix::loadSegment: Filename %li is NULL in stream %i (%s)\n",segno,stream_no,sname);
+        error("ERROR: ObservationMatrix::loadSegment: Filename %li is NULL in stream %i (%s)\n",segno,stream_no,sname);
     }
     else {
       if (s->pfile_istr == NULL)
-        error("ObservationMatrix::loadSegment: pfile stream %i (%s) is NULL\n",stream_no,sname);
+        error("ERROR: ObservationMatrix::loadSegment: pfile stream %i (%s) is NULL\n",stream_no,sname);
     }
 
     switch(s->dataFormat) {
@@ -582,7 +582,11 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
 }
 
 
-// Overloaded method that returns the number of frames in a given segment
+// Overloaded method that returns the number of frames in a given
+// segment DANGEROUS SIDE EFFECT: closes data files.  Should never be
+// called between the time loadSegment() (or another numFrames(segno)
+// invocation) opens the data files and actually reads them.
+
 unsigned ObservationMatrix::numFrames(unsigned segno) {
   unsigned num_frames=0;
 
@@ -595,7 +599,7 @@ unsigned ObservationMatrix::numFrames(unsigned segno) {
     error("ERROR: The number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
   
   num_frames = prrng_n_samps - _totalSkip;
-
+  closeDataFiles();
   return num_frames;
 }
 
@@ -716,6 +720,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     // efficient to combine all transformations as it is done in the
     // copy...() functions below
     if(_perStreamPreTransforms!=NULL && _perStreamPreTransforms[i] != NULL) {
+      // if binary or HTK, we need to swap if needed before applying the transforms
       applyTransforms(_perStreamPreTransforms[i],num_floats, num_ints, s->curNumFrames);
     }
 
@@ -1674,8 +1679,12 @@ void ObservationMatrix::printFrame(FILE *stream, size_t absoluteFrameno) {
 /* get info for segment 'sentno' from pfile stream 'f' */
 
 size_t ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
-
-  assert(sentno >= 0 && sentno < _numSegments);
+  
+  unsigned long pfile_size=f->getFullFofSize();
+  if((sentno < 0) || (sentno >= pfile_size)) {
+    error("ERROR: Requested segment no %li of observation file '%s' but the max num of segments in pfile is %li",sentno,f->fofName,pfile_size);
+  }
+  //  assert(sentno >= 0 && sentno < _numSegments);
 
   if (f->pfile_istr == NULL) {
     error("ObservationMatrix::openPFile: stream is NULL");
@@ -1698,7 +1707,12 @@ size_t ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
 
 size_t ObservationMatrix::openBinaryFile(StreamInfo *f, size_t sentno) {
 
-  assert(sentno >= 0 && sentno < _numSegments);
+  unsigned long binfile_size=f->getFullFofSize();
+  if(sentno < 0 || sentno >= binfile_size) {
+    error("ERROR: Requested segment no %li of observation file '%s' but the max num of segments in list of binary files is %li",sentno,f->fofName,binfile_size);
+  }
+
+  //  assert(sentno >= 0 && sentno < _numSegments);
 
   char *fname = f->dataNames[sentno];
   int nfloats = f->nFloats;
@@ -1760,7 +1774,7 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
        }
        // make sure the file  exists first.
        if ((f->curDataFile = ::fopen(fname,"r")) == NULL) {
-	 error("ERROR: unable to open file (%s) for reading",fname);
+	 error("ERROR: unable to open segment no %li (file '%s') for reading",sentno,fname);
        }
        fclose(f->curDataFile);
        cppCommand = cppCommand + string(" ") + string(fname);
@@ -1836,7 +1850,12 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 
 size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
-  assert(sentno >= 0 && sentno < _numSegments);
+  unsigned long htkfile_size=f->getFullFofSize();
+  if(sentno < 0 || sentno >= htkfile_size) {
+    error("ERROR: Requested segment no %li of observation file '%s' but the max num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
+  }
+
+  //  assert(sentno >= 0 && sentno < _numSegments);
 
   char *fname = f->dataNames[sentno];
 
