@@ -36,18 +36,23 @@ DiscreteRandomVariable::DiscreteRandomVariable(string _label, vartype vt,
 int card)
     : RandomVariable(_label, vt, card) {;}
 
-
 /*-
  *-----------------------------------------------------------------------
  * Function
  *      findConditionalParents()
  *     Set up conditional parents pointers and other tables.
- *  
- * Results:
- *      none
+ * 
+ * Preconditions:
+ *      variable must be filled in.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
  *
  * Side Effects:
  *      Changes some internal object structures such as;
+ *
+ * Results:
+ *      What does the function return, if anything. 
  *
  *-----------------------------------------------------------------------
  */
@@ -55,10 +60,17 @@ void
 DiscreteRandomVariable::findConditionalParents()
 {
   cachedIntFromSwitchingState = intFromSwitchingState();
-  assert (cachedIntFromSwitchingState >= 0 && 
-	  cachedIntFromSwitchingState < conditionalCPTs.size());
-  curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
-  curCPT = conditionalCPTs[cachedIntFromSwitchingState];
+  if (conditionalCPTs.size() == 0) {
+    // then this variable has no parents.
+    assert ( curConditionalParents != NULL );
+    assert ( *curConditionalParents.size() == 0 );
+    assert ( curCPT == NULL );
+  } else {
+    assert ( cachedIntFromSwitchingState >= 0 && 
+	     cachedIntFromSwitchingState < conditionalCPTs.size() );
+    curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
+    curCPT = conditionalCPTs[cachedIntFromSwitchingState];
+  }
 }
 
 
@@ -127,8 +139,5 @@ void
 DiscreteRandomVariable::allocateProbabiltyTables()
 {
   
-  
-
-
 
 }

@@ -88,16 +88,14 @@ public:
   //////////////////////////////////
   // Full Baum-Welch EM training  //
   //////////////////////////////////
-  virtual void emInit();
-  virtual void startEmEpoch();
-  // WARNING: Interface to this will soon change. JB: 4/19/01
-  virtual void emAccumulate(const float prob,
-			    const float *const obs);
-  virtual void endEmEpoch(logpr cmpSop_acc);
-  // For parallelism, loading/storing partially completed accumulators.
-  virtual void emLoadAccumulators(iDataStreamFile& ifile);
-  virtual void emStoreAccumulators(oDataStreamFile& ofile);
-  virtual void emAccumulateAccumulators(iDataStreamFile& ifile);
+  void emInit() {}
+  void emStartIteration() {}
+  void emIncrement(logpr prob) {}
+  void emEndIteration() {}
+  void emSwapCurAndNew() {}
+  void emStoreAccumulators(oDataStreamFile& ofile) {}
+  void emLoadAccumulators(iDataStreamFile& ifile) {}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
   //////////////////////////////////
 
 
