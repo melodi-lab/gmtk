@@ -41,6 +41,7 @@ class DiagCovarVector;
 class RealMatrix;
 class PackedSparseRealMatrix;
 class DlinkMatrix;
+class Dlinks;
 class WeightMatrix;
 class MDCPT;
 class MSCPT;
@@ -66,6 +67,14 @@ class GMTK_GM;
 class GMParms {
 public:
 
+  class ParamFile {
+  public:
+    string fileName;
+    // number of items contained in this file.
+    unsigned count;
+  };
+  typedef vector < ParamFile >  ParamFileVector;
+
   /********************************************************************/
 
   //////////////////////////////////////////////////////////////////
@@ -81,6 +90,7 @@ public:
   vector< Dense1DPMF* > dPmfs;
   typedef map< string, unsigned > DPmfsMapType;
   DPmfsMapType dPmfsMap;
+  ParamFileVector dPmfsParamFiles;
 
   /////////////////////////////  
   // Collection of sparse prob. mass functions
@@ -193,9 +203,9 @@ public:
   // DLINKs
   //////////////////////////////////////////////////////////////////
 
-  vector< Dlinks* > dlinks;
-  typedef map< string, unsigned > DlinksMapType;
-  DlinksMapType dlinksMap;
+  vector< Dlinks* > dLinks;
+  typedef map< string, unsigned > DLinksMapType;
+  DLinksMapType dLinksMap;
 
   /********************************************************************/
 
@@ -212,7 +222,6 @@ public:
   // General constructor
   GMParms(); 
 
-
   /////////////////////////////////////////////////
   // Support for "accumulative" reading into 
   // the various data structures. If 'reset' is true
@@ -223,42 +232,35 @@ public:
   void readMeans(iDataStreamFile& is,bool reset = false);
   void readCovars(iDataStreamFile& is,bool reset = false);
   void readDLinkMats(iDataStreamFile& is,bool reset = false);
+  void readDLinks(iDataStreamFile& is,bool reset = false);
   void readWeightMats(iDataStreamFile& is,bool reset = false);
-  void readDdCpts(iDataStreamFile& is,bool reset = false);
+  void readMdCpts(iDataStreamFile& is,bool reset = false);
   void readMsCpts(iDataStreamFile& is,bool reset = false);
   void readMtCpts(iDataStreamFile& is,bool reset = false);
-
+  void readDTs(iDataStreamFile& is,bool reset = false);
   void readGaussianComponents(iDataStreamFile& is,bool reset = false);
-  void readDiagGaussians(iDataStreamFile& is,bool reset = false);
-  void readLinMeanCondGaussians(iDataStreamFile& is,bool reset = false);
-  void readNLinMeanCondGaussians(iDataStreamFile& is,bool reset = false);
-
   void readMixGaussians(iDataStreamFile& is,bool reset = false);
   void readGausSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
   void readLogitSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
   void readMlpSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
 
-  void readDts(iDataStreamFile& is,bool reset = false);
-  void readDlinks(iDataStreamFile& is,bool reset = false);
-
+  ////
   void writeDPmfs(oDataStreamFile& os);
   void writeSPmfs(oDataStreamFile& os);
   void writeMeans(oDataStreamFile& os);
   void writeCovars(oDataStreamFile& os);
   void writeDLinkMats(oDataStreamFile& os);
+  void writeDlinks(oDataStreamFile& os);
   void writeWeightMats(oDataStreamFile& os);
-  void writeDdCpts(oDataStreamFile& os);
+  void writeMdCpts(oDataStreamFile& os);
   void writeMsCpts(oDataStreamFile& os);
   void writeMtCpts(oDataStreamFile& os);
-  void writeDiagGaussians(oDataStreamFile& os);
-  void writeLinMeanCondGaussians(oDataStreamFile& os);
-  void writeNLinMeanCondGaussians(oDataStreamFile& os);
+  void writeDTs(oDataStreamFile& os);
+  void writeGaussianComponents(oDataStreamFile& os);
   void writeMixGaussians(oDataStreamFile& os);
   void writeGausSwitchMixGaussians(oDataStreamFile& os);
   void writeLogitSwitchMixGaussians(oDataStreamFile& os);
   void writeMlpSwitchMixGaussians(oDataStreamFile& os);
-  void writeDts(oDataStreamFile& os);
-  void writeDlinks(oDataStreamFile& os);
 
 
   ///////////////////////////////////////////////////////////    
@@ -267,35 +269,12 @@ public:
   void readBasic(iDataStreamFile& is);
   void writeBasic(oDataStreamFile& os);
 
-  ///////////////////////////////////////////////////////////    
-  // read and write all the DTs.
-  void readDTs(iDataStreamFile& is);
-  void writeDTs(oDataStreamFile& os);
-
-  ///////////////////////////////////////////////////////////    
-  // read and write basic Gaussians
-  void readGaussians(iDataStreamFile& is);
-  void writeGaussians(oDataStreamFile& os);
-
-  ///////////////////////////////////////////////////////////    
-  // read and write Observation Params
-  void readObservationParams(iDataStreamFile& is);
-  void writeObservationParams(oDataStreamFile& os);
-
-  ///////////////////////////////////////////////////////////    
-  // read and write the DLINKS
-  void readObservationStructures(iDataStreamFile& is);
-  void writeObservationStructures(oDataStreamFile& os);
-
-  ///////////////////////////////////////////////////////////    
-  // read and write structure
-  void readStructure(iDataStreamFile& is);
-  void writeStructure(oDataStreamFile& os);
 
   ///////////////////////////////////////////////////////////    
   // read/write an entire GM (params + structure, i.e.,
-  // all of the above) from a single file.
-  void read(iDataStreamFile& is);
+  // all of the above) from a single file consisting
+  // of sets of <keyword,fileName> pairs
+  void read(iDataStreamFile& is,bool dataFilesAreBinary=false);
   void write(oDataStreamFile& os);
 
   ////////////////////////////////////////////////////////////////
@@ -305,7 +284,6 @@ public:
   // program. Use this for reporting number of parameters
   // for papers, etc.
   unsigned totalNumberParameters();
-
 
 };
 
