@@ -126,7 +126,7 @@ main()
   oDataStreamFile os("-",false);
   dt.write(os);
 
-  sArray<int> vec;
+  vector<int> vec;
   vec.resize(dt.numFeatures());
   iDataStreamFile stin ("-",false);
 
