@@ -1713,6 +1713,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 					const logpr p)
 {
   if (sepNumber == origin.ceReceiveSeparators.size()) {
+    // printf("sepNumber = %d, calling iterate unassigned\n");
     ceIterateUnassignedIteratedNodes(part,0,p);
     return;
   }
@@ -1723,7 +1724,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
   if (message(High)) {
     psp(stdout,2*sepNumber);    
-    infoMsg(High,"Starting separator iteration, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+    infoMsg(High,"Starting separator iter, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
 	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
     printRVSet(stdout,sep.fNodes);
   }
@@ -1789,7 +1790,9 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
     if (message(High+5)) {
       psp(stdout,2*sepNumber);
-      infoMsg(High+5,"Separator iteration no-unpack, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+      infoMsg(High+5,"Separator iter no-unpack %d,%d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+	      sep.separatorValues.ptr[sepValueNumber].remValues.size(),
+	      sep.separatorValues.ptr[sepValueNumber].numRemValuesUsed,
 	      sepNumber,origin.ceReceiveSeparators[sepNumber],
 	      p.val(),
 	      sep.separatorValues.ptr[sepValueNumber].remValues.ptr[0].p.val());
@@ -1835,7 +1838,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
 	if (message(High+5)) {
 	  psp(stdout,2*sepNumber);
-	  infoMsg(High+5,"Separator iteration %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+	  infoMsg(High+5,"Separator iter %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
 		  i,
 		  sepNumber,origin.ceReceiveSeparators[sepNumber],
 		  p.val(),
@@ -1859,7 +1862,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
 	if (message(High+5)) {
 	  psp(stdout,2*sepNumber);
-	  infoMsg(High+5,"Separator iteration %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+	  infoMsg(High+5,"Separator iter %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
 		  i,
 		  sepNumber,origin.ceReceiveSeparators[sepNumber],
 		  p.val(),
@@ -2126,6 +2129,22 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
     break;
 
   case MaxClique::AN_CONTINUE:
+    if (message(Huge)) {
+      psp(stdout,2*nodeNumber);
+      printf("%d:sep cont, non prob, Pr[",nodeNumber);
+      rv->printNameFrameValue(stdout,false);
+      if (message(Mega)) {
+	if (rv->allParents.size() > 0) {
+	  printf("|");
+	  printRVSetAndValues(stdout,rv->allParents,false);
+	}
+      } else {
+	if (rv->allParents.size() > 0) {
+	  printf("|parents");
+	}
+      }
+      printf("]=???, crClqPr=%f\n",p.val());
+    }
     ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
     break;
 
@@ -2761,6 +2780,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // next check if the outgoing separator has only obseved values.
   if (sep.origin.hAccumulatedIntersection.size() == 0 && sep.origin.hRemainder.size() == 0) {
 
+    // printf("Observed separator\n");
+
     // Then indeed, outgoing separator is all observed values. We do
     // this special separately from the general case since that case
     // is already getting a bit unwieldy.
@@ -2774,6 +2795,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // this could be done, but we allocate it here.
     if (sv.remValues.size() == 0)
       sv.remValues.resize(1); 
+    // in all cases, we use only one entry when the separator is observed.
+    sv.numRemValuesUsed = 1;
 
     // Just sum up the clique entries projecting down into the
     // observed separator, but only do the ones that pass the beam
@@ -2822,6 +2845,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
       (sep.remDiscreteValuePtrs.size() > 0);
 
     for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {{
+
+
+      // printf("Iteration through clique, iter = %d\n",cvn);
 
       if (cliqueValues.ptr[cvn].p < beamThreshold) {
 	// swap with last entry, and decrease numCliqueValuesUsed by
@@ -3055,6 +3081,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
       } else {
 	sv.remValues.ptr[*remIndexp].p += cliqueValues.ptr[cvn].p;
       }
+
+      // printf("Inserted sep value, iter = %d\n",cvn);
+
     }
     next_iteration:
     cvn++;
