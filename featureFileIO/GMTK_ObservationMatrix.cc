@@ -82,6 +82,9 @@ ObservationMatrix::openFiles(int n_files,
     error("ObservationMatrix::openFiles: list of number of ints is NULL\n");
 
   _inStreams = new StreamInfo*[_numStreams];
+  for (int i = 0; i < _numStreams; i++) {
+    _inStreams[i] = NULL;
+  }
 
   // create stream info for each stream
 
@@ -115,12 +118,12 @@ ObservationMatrix::openFiles(int n_files,
       sflag = swapflag[i];
 
     _inStreams[i] = new StreamInfo(fof_names[i],
-				  crng,
-				  drng,
-				  &n_floats[i],
-				  &n_ints[i],
-				  &formats[i],
-				  sflag,i);
+				   crng,
+				   drng,
+				   &n_floats[i],
+				   &n_ints[i],
+				   &formats[i],
+				   sflag,i);
 
     // check stream sizes and set to smallest common value
 
