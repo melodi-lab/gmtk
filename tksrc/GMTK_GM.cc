@@ -960,7 +960,6 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
 
 void GMTK_GM::setSize(int repeat_segs)
 {
-cout << "number of repeating segments: " << repeat_segs << endl;
     // delete the old clique chain -- we're going to make a new one
     if (chain)
         delete chain;
@@ -996,10 +995,8 @@ void GMTK_GM::clampFirstExample()
     {
         if (example==NULL) error("Example array not set.");
         if (example->size()==0) error("No examples.");
- /*
         assert(((*example)[0].size()-obsInTemplate)%obsInRepeatSeg==0);
         setSize(((*example)[0].size()-obsInTemplate)/obsInRepeatSeg);
- */
         setValues((*example)[0]);
         expos=0;
     }
@@ -1024,10 +1021,8 @@ bool GMTK_GM::clampNextExample()
         if (expos==example->size()-1) 
            return false;
         expos++;
- /*
         assert( ((*example)[expos].size()-obsInTemplate)%obsInRepeatSeg==0);
         setSize( ((*example)[expos].size()-obsInTemplate)/obsInRepeatSeg);
- */
         setValues((*example)[expos]); 
     }
     return true;
