@@ -252,7 +252,7 @@ RAND::inverse_normal_func(double p)
 	static double a, w, x;
 	static double sd, wi, sn, y;
 
-	double inverse_error_func(double p);
+	// double inverse_error_func(double p);
 
 	/* Note: 0.0 < p < 1.0 */
 	/* assert ( 0.0 < p && p < 1.0 ); */
