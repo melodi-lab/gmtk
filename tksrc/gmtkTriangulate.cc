@@ -70,6 +70,7 @@ static char* triangulationHeuristic="WFS";
 static char* boundaryHeuristic="SFW";
 static bool findBestBoundary = true;
 static double traverseFraction = 1.0;
+static bool loadParameters = false;
 
 static bool noBoundaryMemoize = false;
 static unsigned numBackupFiles = 5;
@@ -93,7 +94,7 @@ Arg Arg::Args[] = {
   // Triangulation Options
   Arg("triangulationHeuristic",
       Arg::Opt,triangulationHeuristic,
-      "Triang. heuristic, >1 of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
+      "Triang. heuristic, >1 of S=size,T=time,F=fill,W=wght,X=rev-time,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
 
   Arg("findBestBoundary",
       Arg::Opt,findBestBoundary,
@@ -113,7 +114,7 @@ Arg Arg::Args[] = {
 
   Arg("boundaryHeuristic",
       Arg::Opt,boundaryHeuristic,
-      "Boundary heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
+      "Boundary heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
 
   Arg("M",
       Arg::Opt,maxNumChunksInBoundary,
@@ -143,6 +144,7 @@ Arg Arg::Args[] = {
 
   Arg("printResults",Arg::Opt,printResults,"Print information about result of triangulation."),
 
+  Arg("loadParameters",Arg::Opt,loadParameters,"Also load in all trainable parameters."),
 
   // eventually this next option will be removed.
   Arg("showFrCliques",Arg::Opt,showFrCliques,"Show frontier alg. cliques after the network has been unrolled k times and exit."),
@@ -221,6 +223,10 @@ main(int argc,char*argv[])
   Arg::parse(argc,argv);
   (void) IM::setGlbMsgLevel(verbosity);
 
+  if (chunkSkip < 1)
+    error("Argument error: chunk skip parameter S must be >= 1\n");
+  if (maxNumChunksInBoundary < 1)
+    error("Argument error: max number chunks in boundary parameter M must be >= 1\n");
 
   MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
@@ -337,12 +343,6 @@ main(int argc,char*argv[])
     if (rePartition || fsize(tri_file.c_str()) == 0) {
       // Then do everything (both partition & triangulation)
 
-      backupTriFile(tri_file);
-      oDataStreamFile os(tri_file.c_str());
-      fp.writeGMId(os);
-
-
-
       // run partition given options
       triangulator.findPartitions(string(boundaryHeuristic),
 				  string(forceLeftRight),
@@ -365,8 +365,12 @@ main(int argc,char*argv[])
 	triangulator.anyTimeTriangulate(gm_template);
       }
 
+      backupTriFile(tri_file);
+      oDataStreamFile os(tri_file.c_str());
+      fp.writeGMId(os);
       gm_template.writePartitions(os);
       gm_template.writeMaxCliques(os);
+      triangulator.ensurePartitionsAreChordal(gm_template);
 
     } else if (reTriangulate && !rePartition) {
       // utilize the parition information already there but still
@@ -402,6 +406,7 @@ main(int argc,char*argv[])
       fp.writeGMId(os);
       gm_template.writePartitions(os);
       gm_template.writeMaxCliques(os);
+      triangulator.ensurePartitionsAreChordal(gm_template);
     } else {
 
       // 

@@ -103,6 +103,7 @@ public:
   // General tag variable that is used for a variety of purposes,
   // such as topological sort, etc. Having this variable avoids
   // needing to use STL maps for certain operations.
+  // TODO: think if we can get rid of this without affecting efficiency.
   unsigned tag;
 
   /////////////////////////////////////////////////////////////////////////
@@ -271,6 +272,8 @@ public:
   // may take on. Possibilities include unsigned char, char, short, int, 
   // unsigned long, and so on. Note, if this changes,
   // then might need to change Decision tree code as well.
+  // TODO: ultimately change this to unsigned (or better ub4 or
+  // something that makes specific its presumed size).
   typedef int DiscreteVariableType;
 
 

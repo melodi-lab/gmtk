@@ -163,6 +163,9 @@ public:
   // compute the probability
   logpr probGivenParents() {
     logpr _cachedProb = curCPT->probGivenParents(*curConditionalParents,val);
+    // 
+    // TODO: make this weight stuff part of a subclass with a new version
+    // of this function, same speed since probGivenParents is virtual anyway.
     if (wtStatus != wt_NoWeight) {
       if (wtStatus == wt_Constant)
 	_cachedProb.valref() *= wtWeight;
@@ -173,36 +176,43 @@ public:
     return _cachedProb;
   }
 
+
+  // set the RV (which must be 
+  void setToObservedValue() {
+    // assert (!hidden);
+    // observed, so set value from observation matrix
+    if (globalObservationMatrix.active() && featureElement != DRV_USE_FIXED_VALUE_FEATURE_ELEMENT) {
+      // printf("getting value of random variable '%s', time index %d, el %d\n",
+      // label.c_str(),timeIndex,featureElement);
+      unsigned tmp = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
+
+      // TODO: do this check outside of this loop.
+      if (tmp >= (unsigned)cardinality) 
+	error("ERROR: RV '%s' at time index %d has cardinality %d, but feature element position %d in observation file (time %d of segment %d) has value %u.\n",
+	      label.c_str(),
+	      timeIndex,
+	      cardinality,
+	      featureElement,
+	      timeIndex,
+	      globalObservationMatrix.segmentNumber(),
+	      tmp);
+      val = tmp;
+    }
+    // otherwise, we keep the value set to what it was before.
+    return;
+  }
+
   // clamp this RV to its "first" value
   void clampFirstValue() {
     findConditionalParents();
     if (!hidden) {
-      // observed, so set value from observation matrix
-      if (globalObservationMatrix.active() && featureElement != DRV_USE_FIXED_VALUE_FEATURE_ELEMENT) {
-	// printf("getting value of random variable '%s', time index %d, el %d\n",
-	// label.c_str(),timeIndex,featureElement);
-	unsigned tmp = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
-	if (tmp >= (unsigned)cardinality) 
-	  error("ERROR: RV '%s' at time index %d has cardinality %d, but feature element position %d in observation file (time %d of segment %d) has value %u.\n",
-		label.c_str(),
-		timeIndex,
-		cardinality,
-		featureElement,
-		timeIndex,
-		globalObservationMatrix.segmentNumber(),
-		tmp);
-	val = tmp;
-      }
-      // otherwise, we keep the value set to what it was before.
+      setToObservedValue();
       return;
     }
     // a hidden variable, so we set up the iterator.
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
-
     it = curCPT->begin(); 
-
     val = it.val();
-
     // assert ( val >= 0 );
   }
 

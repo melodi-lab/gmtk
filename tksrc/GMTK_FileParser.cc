@@ -748,7 +748,7 @@ FileParser::parseRandomVariableList()
   // add to map
   nameRVmap[
 	    RVInfo::rvParent(curRV.name,curRV.frame)
-            ] 
+            ]
     = rvInfoVector.size()-1;
 
   parseRandomVariableList();
@@ -945,8 +945,9 @@ FileParser::parseRandomVariableDiscreteType()
   if (tokenInfo != TT_Integer)
     parseError("cardinality value");
   curRV.rvCard = tokenInfo.int_val;
-  if (curRV.rvCard == 0)
-    parseError("positive cardinality value");
+  if (curRV.rvCard <= 1)
+    parseError("cardinality must be greater than one (1), for cardinality 1 use observed variable");
+
   consumeToken();
 }
 

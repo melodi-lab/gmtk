@@ -52,9 +52,12 @@ class RVInfo {
   friend class GMTemplate;
   friend class Partition;
   friend class BoundaryTriangulate;
+  friend class JunctionTree;
 
+public:
   ///////////////////////////////////////////////////
   typedef pair<string,int> rvParent;
+private:
 
   ////////////////////////////////////////////////////////////
   // define a bunch of types that are used in RVs
@@ -154,6 +157,7 @@ class RVInfo {
   RandomVariable* rv;
 
 public:
+
   /////////////////////////////////////////////////////////
   // constructor
   RVInfo() { clear(); }
