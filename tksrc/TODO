@@ -116,3 +116,12 @@ XXX- todo, make sure that chunk n:m is valid.
   range used by the cont. parents match that used by
   the gaussian.
 
+- Fri Jun 15 12:43:49 2001, 
+  MEMORY SAVINGS:
+  RandomVariables and their discrete and continuous children
+  have lots of redundant information when they are unrolled, thereby
+  wasting lots of memory. This could be changed so that
+  RV's keep a pointer to a RV common structure which when the RV is cloned
+  uses the same common data.
+
+
