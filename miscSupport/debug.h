@@ -96,8 +96,10 @@ public:
   unsigned msgLevel() { return messageLevel; }
   unsigned setMsgLevel(const unsigned ml) { messageLevel = ml; return ml; }
   static unsigned glbMsgLevel() { return globalMessageLevel; }
-  static unsigned setGlbMsgLevel(const unsigned ml)
-  { globalMessageLevel = ml; return ml; }
+  static unsigned setGlbMsgLevel(const unsigned ml) { 
+    globalMessageLevel = ml; 
+    return ml; 
+  }
 
 };
 
