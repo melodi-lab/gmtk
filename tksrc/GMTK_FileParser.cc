@@ -2019,6 +2019,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		  rvInfoVector[i].fileLineNumber,
 		  rv->conditionalParentsList[j][par]->name().c_str(),
 		  rv->conditionalParentsList[j][par]->cardinality,
+		  par,
 		  cptType.c_str(),
 		  cpts[j]->name().c_str(),
 		  cpts[j]->parentCardinality(par));
