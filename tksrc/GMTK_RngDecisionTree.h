@@ -370,6 +370,7 @@ RngDecisionTree<T>::read(iDataStreamFile& is)
     dtFile->read(numDTs,"num DTs");
     if (numDTs == 0)
       error("ERROR: in DT named '%s', File '%s' specifies an invalid number of DTs\n",name().c_str(),dtFileName.c_str());
+    clampNextDecisionTree();
     return true;
   }
   if (_numFeatures < 0)
