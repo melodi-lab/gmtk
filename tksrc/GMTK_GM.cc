@@ -176,9 +176,10 @@ void GMTK_GM::enumerateProb(unsigned pos, logpr p)
     if (rv->hidden)
     {
         assert(rv->discrete);
-        for (int i=0; i<rv->numVals; i++)
+	rv->setPossibleDiscreteValues();
+        for (int i=0; i<rv->possibleDiscreteValues.len(); i++)
         {
-            rv->val = i;
+            rv->val = rv->possibleDiscreteValues[i];
             enumerateProb(pos+1, p*rv->discreteProbGivenParents());
         }
     }
@@ -189,4 +190,6 @@ void GMTK_GM::enumerateProb(unsigned pos, logpr p)
         else
             enumerateProb(pos+1, p*rv->probGivenParents();
     }
+
+
 }
