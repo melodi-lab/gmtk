@@ -87,9 +87,7 @@ RealArray::read(iDataStreamFile& is)
   resize(length);
 
   for (int i=0;i<length;i++) {
-    float val;
-    is.read(val,"RealArray::read, reading value");
-    operator[](i) = val;
+    is.read(operator[](i),"RealArray::read, reading value");
   }
 }
 
