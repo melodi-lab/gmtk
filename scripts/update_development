@@ -1,4 +1,4 @@
-#!/usr/nikola/bin/perl -w
+#!/usr/bin/perl -w
 # $Header$
 
 use Cwd;
