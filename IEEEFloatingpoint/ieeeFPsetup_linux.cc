@@ -18,6 +18,7 @@
 #include<stdio.h>
 #include<fpu_control.h>
 #include <signal.h>
+#include <stdlib.h>
 
 #include "ieeeFPsetup.h"
 
