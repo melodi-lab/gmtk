@@ -1,7 +1,9 @@
 /*-
- * GMTK_VariableParams.h
+ * GMTK_World.h
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ *    The GM world, all aspects associated with a GM
+ *    as read in from a file.
  * 
  *  $Header$
  * 
@@ -18,30 +20,21 @@
  */
 
 
-#ifndef GMTK_VARIABLEPARAMS_H
-#define GMTK_VARIABLEPARAMS_H
+#ifndef GMTK_WORLD_H
+#define GMTK_WORLD_H
 
 
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
 
-class VariableParams {
 
+class GM_World {
 
-  //////////////////////////////////////////////////////////////////
-  // General structure 
-  //  higher level objects (see below) might share together.
-  //  All of these objects are "EMable" in the sense that
-  //  they may be trained using EM (plus possibly some other gradient
-  //  based training method).
-  //////////////////////////////////////////////////////////////////
-
-  GM_Structure
-
+  /********************************************************************/
 
   //////////////////////////////////////////////////////////////////
-  // Basic shared low-level parameters: These are the objects that 
+  // BASIC SHARED LOW-LEVEL PARAMETERS: These are the objects that 
   //  higher level objects (see below) might share together.
   //  All of these objects are "EMable" in the sense that
   //  they may be trained using EM (plus possibly some other gradient
@@ -72,11 +65,6 @@ class VariableParams {
   // Collection of packed sparse real matrices
   sArray< PackedSparseRealMatrix* > psRealMats;
 
-
-  ////////////////////////////////
-  // Collection of DLINKS
-  sArray< Dlinks* > dlinks;
-
   ////////////////////////////////
   // Collection of objects
   // used for linear dependencies via
@@ -97,11 +85,6 @@ class VariableParams {
   // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
   sArray< SMDCPT* > sMdCpts;
 
-
-  ///////////////////////////////////
-  // Collection of multi-dimensional decision-tree based sparse CPTs 
-  sArray< DTMDCPT* > dtMdCpts;
-  
 
   //////////////////////////////////////////////////////////////////
   // Basic Gaussian Components
@@ -125,10 +108,10 @@ class VariableParams {
   sArray< NLinMeanCondDiagGaussian* > nLinMeanCondGaussians;
 
 
+  /********************************************************************/
+
   //////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////
-  // These are only the Possible OBSERVATION DISTRIBUTIONS 
-  //////////////////////////////////////////////////////////////////
+  // OBSERVATION DENSITIES
   //////////////////////////////////////////////////////////////////
 
   ////////////////////////////////
@@ -146,37 +129,64 @@ class VariableParams {
   // implemented with logistic regression (i.e., 1 layer MLP)
   sArray< GMTK_LogitSwitchingMixGaussians* > logitSwitchMixGaussians;
 
-
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with 2 layer (2 weight matrix) MLP
   sArray< GMTK_LogitSwitchingMixGaussians* > mlpSwitchMixGaussians;
 
-  // The following are for discrete observations
 
-  ...
+  /********************************************************************/
 
-  ...
+  //////////////////////////////////////////////////////////////////
+  // A global collection of decision trees mapping vectors
+  // of integers to integers. These might be used for
+  // different purposes, and other strucures might index
+  // into this array for a variety of purposes.
+  //////////////////////////////////////////////////////////////////
 
+  sArray< RngDecisionTree* > dts;
 
+  /********************************************************************/
+
+  //////////////////////////////////////////////////////////////////
+  // Structure between observations as a collection of
+  // DLINKs
+  //////////////////////////////////////////////////////////////////
+
+  sArray< Dlinks* > dlinks;
+
+  /********************************************************************/
+
+  //////////////////////////////////////////////////////////////////
+  // Structure of model between hidden variables
+  // and between hidden and observed variables.
+  //////////////////////////////////////////////////////////////////
+
+  GMTK_GM* gm;
+
+  /********************************************************************/
 
 public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  VariableParams(); 
+  World(); 
 
   ///////////////////////////////////////////////////////////    
   // read in all the basic parameters, assuming file pointer 
   // is located at the correct position.
-  void read(iDataStreamFile& is);
+  void readBasic(iDataStreamFile& is);
 
   ///////////////////////////////////////////////////////////    
   // write out the basic parameters, starting at the current
   // file position.
-  void write(oDataStreamFile& os);
+  void writeBasic(oDataStreamFile& os);
 
 };
 
+////////////////////////////////////////////////
+// The global GM parameter object, must be
+// defined in a mainprogram.
+extern World world;
 
 #endif // defined GMTK_CPT
