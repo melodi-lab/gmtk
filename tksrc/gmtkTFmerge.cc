@@ -100,7 +100,7 @@ Arg Arg::Args[] = {
       "Tri-file to obtain triangulation for E partition"),
 
   Arg("numBackupFiles",Arg::Opt,numBackupFiles,"Number of backup output .trifiles (_bak0,_bak1,etc.) to keep."),
-  Arg("printResults",Arg::Opt,printResults,"Print information about result of final triangulation."),
+  // Arg("printResults",Arg::Opt,printResults,"Print information about result of final triangulation."),
   Arg("loadParameters",Arg::Opt,loadParameters,"Also load in all trainable parameters."),
 
   /////////////////////////////////////////////////////////////
