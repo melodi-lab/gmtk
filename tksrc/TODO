@@ -984,3 +984,6 @@ Sat Mar  8 16:56:48 2003
   - Write an emacs editing mode file for gmtk .str files.
 
 
+Sun Mar  9 14:42:11 2003 
+  - fix arguments.cc to not use C++ iostream
+    and give usage() an optional message.
