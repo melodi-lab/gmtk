@@ -147,17 +147,22 @@ char *dtStr2 =
 
 
 int
-main()
+main(int argc,char *argv[])
 {
 
   // first write out the file
-  {
-    oDataStreamFile dtfile ("/tmp/foo.dt",false);
-    dtfile.write(dtStr1);
-  }
+  if (argc == 1)
+    {
+      oDataStreamFile dtfile ("/tmp/foo.dt",false);
+      dtfile.write(dtStr1);
+    }
 
-  // read it in again
-  iDataStreamFile is ("/tmp/foo.dt",false);
+  char *file = "/tmp/foo.dt";
+  if (argc > 1)
+    // read it in again
+    file = argv[1];
+  iDataStreamFile is (file,false);
+
   RngDecisionTree<int> dt;
   dt.read(is);
 
