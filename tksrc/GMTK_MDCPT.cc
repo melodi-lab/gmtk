@@ -431,6 +431,7 @@ MDCPT::normalize()
     tmp_loc_ptr = loc_ptr;
     i=0; do {
       *tmp_loc_ptr /= sum;
+      (*tmp_loc_ptr).floor();
       tmp_loc_ptr++;   
     } while (++i < child_card);
 
@@ -476,6 +477,7 @@ MDCPT::makeRandom()
     tmp_loc_ptr = loc_ptr;
     for (int i=0;i<child_card;i++) {
       *tmp_loc_ptr /= sum;
+      (*tmp_loc_ptr).floor();
       tmp_loc_ptr++;
     }
     loc_ptr += child_card;
@@ -594,50 +596,52 @@ MDCPT::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minDiscAccumulatedProbability()) {
-    warning("WARNING: MDCPT named '%s' received only %e accumulated probability in EM iteration. Using previous values.",name().c_str(),accumulatedProbability.val());
+    warning("WARNING: MDCPT named '%s' received only %e accumulated probability in EM iteration. Using previous iteraton values.",name().c_str(),accumulatedProbability.val());
     for (int i=0;i<nextMdcpt.len();i++) {
       nextMdcpt[i] = mdcpt[i];
     }
-  }
+  } else {
 
-  // now normalize the next ones
-  const int child_card = card();
-  const int num_parent_assignments = mdcpt.len()/child_card;
-  logpr *loc_ptr = nextMdcpt.ptr;
-  int num_rows_with_zero_counts = 0;
-  for (int parent_assignment =0; 
-       parent_assignment < num_parent_assignments; 
-       parent_assignment ++) {
-    logpr sum = 0.0;
-    logpr *tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
-      sum += *tmp_loc_ptr++;
+    // now normalize the next ones
+    const int child_card = card();
+    const int num_parent_assignments = mdcpt.len()/child_card;
+    logpr *loc_ptr = nextMdcpt.ptr;
+    int num_rows_with_zero_counts = 0;
+    for (int parent_assignment =0; 
+	 parent_assignment < num_parent_assignments; 
+	 parent_assignment ++) {
+      logpr sum = 0.0;
+      logpr *tmp_loc_ptr = loc_ptr;
+      for (int i=0;i<child_card;i++) {
+	sum += *tmp_loc_ptr++;
+      }
+
+      sum.floor();
+      if (sum == 0.0) {
+	num_rows_with_zero_counts ++;
+	logpr *mdcpt_p = mdcpt.ptr + (loc_ptr - nextMdcpt.ptr);
+	tmp_loc_ptr = loc_ptr;
+	for (int i=0;i<child_card;i++) {
+	  *tmp_loc_ptr++ = *mdcpt_p++; 
+	}
+      } else {
+	tmp_loc_ptr = loc_ptr;
+	for (int i=0;i<child_card;i++) {
+	  *tmp_loc_ptr /= sum;
+	  (*tmp_loc_ptr).floor();
+	  tmp_loc_ptr++;
+	}
+      }
+
+      loc_ptr += child_card;
     }
 
-    sum.floor();
-    if (sum == 0.0) {
-      num_rows_with_zero_counts ++;
-      logpr *mdcpt_p = mdcpt.ptr + (loc_ptr - nextMdcpt.ptr);
-      tmp_loc_ptr = loc_ptr;
-      for (int i=0;i<child_card;i++) {
-	*tmp_loc_ptr++ = *mdcpt_p++; 
-      }
-    } else {
-      tmp_loc_ptr = loc_ptr;
-      for (int i=0;i<child_card;i++) {
-	*tmp_loc_ptr /= sum;
-	tmp_loc_ptr++;
-      }
-    }
+    if (num_rows_with_zero_counts > 0) 
+      warning("WARNING: Ending EM iteration but %d rows of MDCPT '%s' had zero counts. Using previous values for those rows.\n",
+	      num_rows_with_zero_counts,
+	      _name.c_str());
 
-    loc_ptr += child_card;
   }
-
-  if (num_rows_with_zero_counts > 0) 
-    warning("WARNING: Ending EM iteration but %d rows of MDCPT '%s' had zero counts. Using previous values for those rows.\n",
-	    num_rows_with_zero_counts,
-	    _name.c_str());
-
   // stop EM
   emClearOnGoingBit();
 
