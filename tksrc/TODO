@@ -1164,3 +1164,21 @@ Sat Jul  5 17:34:38 2003
   - in timer code comments, give a bunch (lots) of examples of valid timer strings.
   - include these examples in documentation.
 
+Tue Jul 08 15:19:03 2003
+  - improve error message in GMTK_FileParser.cc
+	  error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
+
+Thu Jul 10 16:25:06 2003
+  - set up GMTK web page with links to all papers, etc.
+
+Thu Jul 10 16:25:23 2003
+  - BMM link adaptation
+
+Thu Jul 10 16:25:33 2003
+  - Adding DARPA format Language Model CPTs
+
+Thu Jul 10 16:25:33 2003
+  - Adding FLM Language Model CPTs
+
+
+
