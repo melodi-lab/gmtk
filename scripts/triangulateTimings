@@ -448,9 +448,12 @@ sub run_timing
     $output = <$timing_script_output>;
     (defined $output) or die;
     print STDERR "$output";
-    $output = <$timing_script_output>;
-    (defined $output) or die;
-    print STDERR "$output";
+
+    if (!($output =~ /NOTICE/)) {
+      $output = <$timing_script_output>;
+      (defined $output) or die;
+      print STDERR "$output";
+    }
 
     ($partitions) = $output =~ 
       /residual partitions, ([0-9]+) total partitions,/;
