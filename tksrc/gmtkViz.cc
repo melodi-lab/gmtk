@@ -1,10 +1,13 @@
 // -*- C++ -*-
 
+// the only parts of gmtk that gmtkViz needs to concern itself with
 #include "GMTK_FileParser.h"
 #include "GMTK_RVInfo.h"
+// all of the wxWidgets headers for the things gmtkViz uses
 #include <wx/wx.h>
 #include <wx/dcbuffer.h>
 #include <wx/ffile.h>
+#include <wx/fontdlg.h>
 //#include <wx/gdicmn.h>
 #include <wx/image.h>
 #include <wx/list.h>
@@ -27,30 +30,38 @@ GMParms GM_Parms;
 RAND rnd(0);
 ObservationMatrix globalObservationMatrix;
 
-#define ACTUAL_SCALE (16)
-static double gZoomMap[] = {
-    0.0625/ACTUAL_SCALE,
-    0.125/ACTUAL_SCALE,
-    0.25/ACTUAL_SCALE,
-    0.5/ACTUAL_SCALE,
-    0.70710678118654746/ACTUAL_SCALE,
-    0.84089641525371461/ACTUAL_SCALE,
-    0.91700404320467122/ACTUAL_SCALE,
-    1.0/ACTUAL_SCALE,
-    1.0905077326652577/ACTUAL_SCALE,
-    1.189207115002721/ACTUAL_SCALE,
-    1.4142135623730951/ACTUAL_SCALE,
-    2.0/ACTUAL_SCALE,
-    4.0/ACTUAL_SCALE,
-    8.0/ACTUAL_SCALE,
-    16.0/ACTUAL_SCALE
+// Actually draw things 16x larger than we're going to display
+// them. That way, if they want to zoom in 16x it still looks
+// good. This should probably be a variable. Then we could just change
+// it to whatever it needs to be to draw correctly.
+#define ACTUAL_SCALE (1)
+// The different zooming modes (in the menu) correspond to the
+// following scales:
+static const double gZoomMap[] = {
+    0.0625/ACTUAL_SCALE, // 1/16
+    0.125/ACTUAL_SCALE, // 1/8
+    0.25/ACTUAL_SCALE, // 1/4
+    0.5/ACTUAL_SCALE, // 1/2
+    0.70710678118654746/ACTUAL_SCALE, // 1/(2**(1/2))
+    0.84089641525371461/ACTUAL_SCALE, // 1/(2**(1/4))
+    0.91700404320467122/ACTUAL_SCALE, // 1/(2**(1/8))
+    1.0/ACTUAL_SCALE, // 1
+    1.0905077326652577/ACTUAL_SCALE, // 2**(1/8)
+    1.189207115002721/ACTUAL_SCALE, // 2**(1/4)
+    1.4142135623730951/ACTUAL_SCALE, // 2**(1/2)
+    2.0/ACTUAL_SCALE, // 2
+    4.0/ACTUAL_SCALE, // 4
+    8.0/ACTUAL_SCALE, // 8
+    16.0/ACTUAL_SCALE // 16
 };
 
+// some sizes of things
 #define NODE_RADIUS (10*ACTUAL_SCALE)
 #define NEW_CP_OFFSET (10*ACTUAL_SCALE)
 #define ARROW_LEN (12*ACTUAL_SCALE)
 #define ARROW_WID (4*ACTUAL_SCALE)
 
+// forward declarations of things StructPage needs
 class NameTag;
 class VizNode;
 class VizArc;
@@ -58,25 +69,31 @@ class VizSep;
 class Selectable;
 class ControlPoint;
 
+/// A tab with a scrolled area for displaying and manipulating a graph
+/// associated with a structure file.
 class StructPage: public wxScrolledWindow
 {
  public:
-    StructPage() {}
+    // constructor
     StructPage(wxWindow *parent, wxWindowID id,
 	       wxFrame *parentFrame, wxNotebook *parentNotebook,
 	       const wxString &file, bool old = true);
+    // destructor
     ~StructPage();
+    // some event handlers
     void OnPaint( wxPaintEvent &event );
     void OnChar( wxKeyEvent &event );
     void OnMouseEvent( wxMouseEvent &event );
 
+    // pseudo event handlers: GFrame calls these.
     void Save( void );
     void SaveAs( void );
     bool RequestClose( void );
-
-    bool Ready( void ) { return !gvpAborted; }
-
+    // Set the status bar etc. when we're in the front
     void onComeForward( void );
+
+    // Did everything parse successfully?
+    bool Ready( void ) { return !gvpAborted; }
 
     // things related to selecting
     Selectable *itemAt( const wxPoint& pt );
@@ -85,12 +102,17 @@ class StructPage: public wxScrolledWindow
     void toggleSelectedInRect( const wxRect& rect );
     void moveSelected( int dx, int dy );
 
+    // general stats
     int getWidth( void ) { return canvasWidth; }
     int getHeight( void ) { return canvasHeight; }
     int getScale( void ) { return displayScale; }
     void setScale( int newScale );
     void getName( wxString& name );
+
     void draw( wxDC& dc );
+    void DrawText(wxDC& dc );
+
+    // pens and fonts for drawing different items
     wxPen switchingPen;
     wxPen conditionalPen;
     wxPen bothPen;
@@ -98,7 +120,9 @@ class StructPage: public wxScrolledWindow
     wxPen chunkBorderPen;
     wxPen controlPointPen;
     wxPen nodePen;
+    wxFont labelFont;
 
+    // Are we drawing ... ?
     bool getViewCPs( void ) { return drawCPs; }
     bool getViewLines( void ) { return drawLines; }
     bool getViewSplines( void ) { return drawSplines; }
@@ -108,6 +132,8 @@ class StructPage: public wxScrolledWindow
     bool getViewFrameSeps( void ) { return drawFrameSeps; }
     bool getViewNodeNames( void ) { return drawNodeNames; }
     bool getViewToolTips( void ) { return drawToolTips; }
+
+    // toggle drawing ...
     void toggleViewCPs( void );
     void toggleViewLines( void );
     void toggleViewSplines( void );
@@ -118,15 +144,19 @@ class StructPage: public wxScrolledWindow
     void toggleViewNodeNames( void );
     void toggleViewToolTips( void );
 
-    DECLARE_DYNAMIC_CLASS(StructPage)
+    // Ask the user what font they want to use.
+    void changeFont( void );
+
+    //DECLARE_DYNAMIC_CLASS(StructPage)
     DECLARE_EVENT_TABLE()
 private:
     wxFrame *parentFrame;
     wxNotebook *parentNotebook;
-    int pageNum;
     wxBitmap *content; // the drawing buffer
     std::map< RVInfo::rvParent, unsigned int > nameVizNodeMap;
     wxRect selectBox;
+
+    // What do we draw?
     bool drawSelectBox;
     bool drawCPs;
     bool drawLines;
@@ -137,14 +167,21 @@ private:
     bool drawFrameSeps;
     bool drawNodeNames;
     bool drawToolTips;
+
+    // How big?
     int displayScale;
     long canvasWidth;
     long canvasHeight;
+
     void initNodes( void );
     void initArcs( void );
+
+    // some drawing-related convenience methods
     void redraw( void );
     void blit( wxDC& dc );
     void blit( void );
+
+    // utility methods
     VizArc* newArc(int i, int j);
     VizArc* findArcOwning( ControlPoint *cp, int& index );
     void deleteSelectedCps( void );
@@ -158,9 +195,13 @@ private:
 
     // things related to the position (gvp) file
     wxString gvpFile;
+    /// needs saving?
     bool gvpDirty;
+    /// gvp file had peculiarities?
     bool gvpAborted;
+    // reads the gvp info into the config map
     void fillMap( void );
+    /// comparator for the config map
     struct ltstr {
 	bool operator()(const wxString s1, const wxString s2) const
 	{
@@ -176,44 +217,66 @@ private:
 };
 
 
-// Represents anything that can be selected
+/// Represents anything that can be selected
 class Selectable {
 public:
+    // Is it currently selected?
     virtual bool getSelected( void ) { return selected; }
+    // Tell it whether or not to be selected.
     virtual void setSelected( bool newSelected ) { selected = newSelected; }
     virtual void toggleSelected( void ) { setSelected(!getSelected()); }
+    // If it can be selected, it must be somewhere. These tell you
+    // if a click landed on it...
     virtual bool onMe( const wxPoint& pt ) = 0;
+    // or if it's in a given rectangle (e.g. the selection rectangle)
     virtual bool inRect( const wxRect& rect ) = 0;
+    // constructor: items start out unselected
     		Selectable() { selected = false; }
+    // destructor: no dnamically allocated memory to free
     virtual 	~Selectable() {  }
 protected:
     bool selected;
 };
 
 
-// Represents a node's nametag
+/// Represents a node's nametag
 class NameTag : public Selectable {
 public:
+    /// absolute position (not relative to node)
     wxPoint pos;
+    /// automatically updated size
     wxPoint size;
+    /// the text displayed
     wxString name;
+    // constructor
     NameTag( const wxPoint& newPos, const wxString& newName );
+    // drawing
     void draw( wxDC *dc );
+    // selectable method overrides
     virtual bool onMe( const wxPoint& pt );
     virtual bool inRect( const wxRect& rect );
 };
 
-// Represents a node 
+/// Represents a node 
 class VizNode : public Selectable {
 public:
+    /// absolute position of the center of the circle
     wxPoint center;
+    /// a pointer to the RVInfo entry in the XXX FileParser
     RVInfo *rvi;
+    /// the parent
     StructPage *page;
+    /// name and frame number
     RVInfo::rvParent rvId;
+    /// the node's label
     NameTag nametag;
+    /// pointer to a generic window from a failed attempt at tooltips
     wxWindow *tipWin;
+    // constructor
     VizNode( const wxPoint& newPos, RVInfo *newRvi, StructPage *parentPage );
+    // destructor (noop for now)
     ~VizNode( void );
+    // draw the node
     void draw( wxDC *dc );
     // Selectable methods
     virtual void setSelected( bool newSelected );
@@ -222,56 +285,85 @@ public:
 };
 
 
-// Represents a control point
+/// Represents a control point
 class ControlPoint : public Selectable {
 public:
+    /// absolute position
     wxPoint pos;
+    /// the parent arc owning this control point
     VizArc *arc;
+    // constructor
     ControlPoint( const wxPoint& pt );
+    // selectable methods
     virtual bool onMe( const wxPoint& pt );
     virtual bool inRect( const wxRect& rect ) { return rect.Inside(pos); }
 };
 
-// Represents an arc
+/// Represents an arc
 class VizArc {
 public:
+    /// for some wxDC methods
     wxList *points;
+    /// much more user-friendly and with all the necessary info
     std::vector< ControlPoint* > *cps;
+    /// the parent
     StructPage *page;
+    /// Is it a switching arc?
     bool switching;
+    /// Is it a conditional arc?
     bool conditional;
+    // constructor
     VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage );
+    // destructor (to delete the wxList of points)
     ~VizArc( void );
+    // draw itself
     void draw( wxDC *dc );
 };
 
 
-// Represents a separator between frames
+/// Represents a separator between frames
 class VizSep : public Selectable {
 public:
+    /// only need an absolute x position for this
     wxCoord x;
+    /// Does it separate the chunk from the prologue or epilogue?
     bool chunkBorder;
+    /// the parent
     StructPage *page;
+    // constructor
     VizSep( wxCoord xNew, StructPage *newPage, bool newChunkBorder = false );
+    // draw itself
     void draw( wxDC *dc );
+    // selectable methods
     virtual bool onMe( const wxPoint& pt );
     virtual bool inRect( const wxRect& rect ) { return false; }
 };
 
 
+/// This is what wxWidgets uses for printing, previewing, etc.
 class GmtkPrintout : public wxPrintout {
 public:
-    GmtkPrintout(StructPage *newPage, const wxChar *title = wxT("gmtkViz printout"));
+    // constructor
+    GmtkPrintout( StructPage *newPage,
+		  const wxChar *title = wxT("gmtkViz printout") );
+    // What to do when a page needs to be printed.
     bool OnPrintPage(int page);
-    bool HasPage(int page);
-    void GetPageInfo(int *minPage, int *maxPage, int *selPageFrom, int *selPageTo);
+    // We only have one page
+    bool HasPage(int pageNum) { return (pageNum == 1); }
+    // Tell the system about our pages.
+    void GetPageInfo( int *minPage, int *maxPage,
+		      int *selPageFrom, int *selPageTo );
+    // actually set the scales and draw
     void DrawPageOne(wxDC *dc);
 private:
+    /// The StructPage whose draw() method we use.
     StructPage *page;
 };
 
+/// This is the main window
 class GFrame: public wxFrame {
 public:
+    /// all the menu event IDs
     enum {
         MENU_FILE_NEW = 1006,
         MENU_FILE_OPEN,
@@ -306,7 +398,8 @@ public:
 	MENU_ZOOM_2_pow_pos_2dot000,
 	MENU_ZOOM_2_pow_pos_3dot000,
 	MENU_ZOOM_2_pow_pos_4dot000,
-	MENU_ZOOM_END
+	MENU_ZOOM_END,
+	MENU_CUSTOMIZE_FONT
     };
 
     /**
@@ -359,6 +452,7 @@ public:
      */
     void OnClose(wxCloseEvent &event);
 
+    // Handle events from the View menu to toggle drawing various items
     void OnMenuViewCPs(wxCommandEvent &event);
     void OnMenuViewLines(wxCommandEvent &event);
     void OnMenuViewSplines(wxCommandEvent &event);
@@ -368,27 +462,41 @@ public:
     void OnMenuViewFrameSeps(wxCommandEvent &event);
     void OnMenuViewNodeNames(wxCommandEvent &event);
     void OnMenuViewToolTips(wxCommandEvent &event);
+
+    // Handle events from the Zoom menu to change the scale/zoom
     void OnMenuZoom(wxCommandEvent &event);
+
+    // Handle events from the Customize menu to alter how items are drawn
+    void OnMenuCustomizeFont(wxCommandEvent &event);
+
+    // Do this when a different notebook page is chosen
     void OnNotebookPageChanged(wxCommandEvent &event);
 
 private:
+    // initialize the status bar
     void set_properties();
+    // arrange and insert the about page
     void do_layout();
+    // places to keep the print and page setup settings
     wxPrintData printData;
     wxPageSetupData pageSetupData;
 
 protected:
+    // the widgets associated with this GFrame
     wxMenuBar* MainVizWindow_menubar;
     wxStatusBar* MainVizWindow_statusbar;
     wxStaticText* about_label;
     wxTextCtrl* about_info;
     wxPanel* about_pane;
     wxNotebook* struct_notebook;
+
     DECLARE_EVENT_TABLE()
 };
 
+/// represents the app as a whole to the wxWidgets system
 class GMTKStructVizApp: public wxApp {
 public:
+    // kind of like main(), except this just gets things started
     bool OnInit();
 };
 
@@ -396,23 +504,72 @@ public:
 
 IMPLEMENT_APP(GMTKStructVizApp)
 
+/**
+ *******************************************************************
+ * Called implicitly by the wxWidgets system, this method shows
+ * the main window and gets the the event loop started.
+ *
+ * \pre This method should not be called explicitly.
+ *
+ * \post The main window is shown and the program is running.
+ *
+ * \note Shows the main window and generally starts the program.
+ *
+ * \return true
+ *******************************************************************/
 bool GMTKStructVizApp::OnInit()
 {
     wxInitAllImageHandlers();
-    GFrame* MainVizWindow = new GFrame(0, -1, "");
+    // MainVizWindow has no parent...
+    GFrame* MainVizWindow = new GFrame(0, -1,
+				       wxT("GMTK Structure File Vizualizer"));
+    // ...because it's the top level window.
     SetTopWindow(MainVizWindow);
+    // Once we show the window, the program is event driven.
     MainVizWindow->Show();
     return true;
 }
 
+/**
+ *******************************************************************
+ * Constructs the main window, setting up menus, tabs, event
+ * handlers, etc.
+ *
+ * \param parent A pointer to the parent of this GFrame. The parent
+ *      will delete this when it is deleted.
+ * \param id An integer you may use to identify this window. If you
+ *      don't care, you may specify -1 and wxWidgets will assign it an
+ *      internal identifier.
+ * \param title What would you like to appear in the window's title
+ *      bar?
+ * \param pos Where do you want the window to appear?
+ * \param size How big should the window be?
+ * \param style An OR'd list of flags regarding the appearance of this
+ *      window. See the wxWidgets documentation for more details.
+ *
+ * \pre Requires valid parent pointer, id (-1 if you don't care), and
+ *      title. The rest can be omitted. Can't be called explicitly
+ *      (because it's a constructor).
+ *
+ * \post A GFrame exists and is ready to be shown, etc.
+ *
+ * \note The GFrame gets registered with the parent to be destroyed
+ *      when the parent is closed.
+ *
+ * \return Nothing.
+ *******************************************************************/
 GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 		const wxPoint& pos, const wxSize& size, long style )
-    : wxFrame( parent, id, title, pos, size, wxDEFAULT_FRAME_STYLE )
+    : wxFrame( parent, id, title, pos, size, style )
 {
+    // create widgets
     struct_notebook = new wxNotebook(this, -1, wxDefaultPosition, wxDefaultSize, wxCLIP_CHILDREN);
     about_pane = new wxPanel(struct_notebook, -1);
     MainVizWindow_menubar = new wxMenuBar();
+
+    // A bunch of menu bar stuff
     SetMenuBar(MainVizWindow_menubar);
+    // The File menu
     wxMenu* menu_file = new wxMenu();
     menu_file->Append(MENU_FILE_NEW, wxT("&New...\tCtrl+N"), wxT("Create a new placement file (requires an existing structure file)"), wxITEM_NORMAL);
     menu_file->Append(MENU_FILE_OPEN, wxT("&Open...\tCtrl+O"), wxT("Open an existing placement file"), wxITEM_NORMAL);
@@ -426,6 +583,12 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     menu_file->Append(MENU_FILE_CLOSE, wxT("&Close\tCtrl+W"), wxT("Close current placement file"), wxITEM_NORMAL);
     menu_file->Append(MENU_FILE_EXIT, wxT("E&xit\tCtrl+Q"), wxT("Close all files and exit"), wxITEM_NORMAL);
     MainVizWindow_menubar->Append(menu_file, wxT("&File"));
+    // These don't make sense until a document is open.
+    MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
+    MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
+    MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
+    MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+    // The View menu
     wxMenu* menu_view = new wxMenu();
     menu_view->Append(MENU_VIEW_CPS, wxT("Draw Control Points"), wxT("Toggle display of arc spline control points"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_LINES, wxT("Draw Arc Lines"), wxT("Toggle display of straight lines between control points in arcs"), wxITEM_CHECK);
@@ -437,11 +600,9 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     menu_view->Append(MENU_VIEW_NODE_NAMES, wxT("Draw Node Names"), wxT("Toggle display of node names"), wxITEM_CHECK);
     // XXX: menu_view->Append(MENU_VIEW_TOOLTIPS, wxT("Draw Tool Tips"), wxT("Toggle display of tool tips for node names"), wxITEM_CHECK);
     MainVizWindow_menubar->Append(menu_view, wxT("View"));
-    MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
-    MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
-    MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
-    MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+    // Doesn't make sense unless a document is active, so disable it for now.
     MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+    // The Zoom menu
     wxMenu* menu_zoom = new wxMenu();
     for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
 	wxString zoomStr;
@@ -450,21 +611,52 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 			   wxEmptyString, wxITEM_RADIO );
     }
     MainVizWindow_menubar->Append(menu_zoom, wxT("Zoom"));
+    // Also doesn't make sense without a document
     MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+    // The Customize menu
+    wxMenu* menu_customize = new wxMenu();
+    menu_customize->Append( MENU_CUSTOMIZE_FONT, wxT("Change Font..."),
+			    wxEmptyString, wxITEM_NORMAL );
+    MainVizWindow_menubar->Append(menu_customize, wxT("Customize"));
+    // Again, needs a document to make sense.
+    MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+
+    // The status bar (with 2 fields)
     MainVizWindow_statusbar = CreateStatusBar(2);
+    // The text displayed at the top of the About tab
     about_label = new wxStaticText(about_pane, -1, wxT("GMTKStructViz version 0.0.1\n\nThe graph visualizer and organizer for GMTK structure files.\n\nwritten by Evan Dower <evantd@ssli.ee.washington.edu>"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
+    // The textarea (and text) at the bottom of the About tab
     about_info = new wxTextCtrl(about_pane, -1, wxT("GMTKStructViz reads GMTK structure files and attempts to display their contents semi-intelligently. Since it is not human, it can only have limited success in this domain. Thus the user is permitted to move nodes and edges to organize the graph in a more logical and visually appealing way than GMTKStructViz's original guess."), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY);
 
+    // pretty much justinitialize the status bar
     set_properties();
+    // arrange the About tab and add it to the notebook
     do_layout();
 }
 
-
+/**
+ *******************************************************************
+ * Initialize the status bar. I'm thinking of getting rid of this
+ * method.
+ *
+ * \pre Can be called any time after the frame and its status bar have
+ *      been created.
+ *
+ * \post The status bar text may be altered.
+ *
+ * \note The status bar text may be altered.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::set_properties()
 {
-    SetTitle(wxT("GMTK Structure File Visualizer"));
+    //SetTitle(wxT("GMTK Structure File Visualizer"));
+    /* The second (right-most) field is 16 pixels wide, the first
+     * (left-most) field takes the rest of the space. (Menu tips,
+     * etc. show up in the left-most field. I use the right-most field
+     * to indicate whether the file needs saving or not.) */
     int MainVizWindow_statusbar_widths[] = { -1, 16 };
-    MainVizWindow_statusbar->SetStatusWidths(2, MainVizWindow_statusbar_widths);
+    MainVizWindow_statusbar->SetStatusWidths(2,MainVizWindow_statusbar_widths);
     const wxString MainVizWindow_statusbar_fields[] = {
 	wxT("About GMTKStructViz"),
         wxEmptyString
@@ -474,14 +666,27 @@ void GFrame::set_properties()
     }
 }
 
-
+/**
+ *******************************************************************
+ * Create and arrange the About tab and add it to the notebook.
+ *
+ * \pre The frame, notebook, and about pane must exist.
+ *
+ * \post The about pane is modified and added to the notebook.
+ *
+ * \note The about pane is modified and added to the notebook.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::do_layout()
 {
     wxBoxSizer* MainVizWindow_sizer = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* about_sizer = new wxBoxSizer(wxVERTICAL);
     wxStaticBoxSizer* about_label_static_sizer = new wxStaticBoxSizer(new wxStaticBox(about_pane, -1, wxT("")), wxHORIZONTAL);
-    about_label_static_sizer->Add(about_label, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 2);
-    about_sizer->Add(about_label_static_sizer, 1, wxEXPAND, 0);
+    about_label_static_sizer->Add( about_label, 0,
+				   wxALL|wxALIGN_CENTER_HORIZONTAL, 2 );
+    about_sizer->Add( about_label_static_sizer, 1,
+		      wxEXPAND|wxALIGN_CENTER_HORIZONTAL, 0 );
     about_sizer->Add(about_info, 2, wxALL|wxEXPAND, 2);
     about_pane->SetAutoLayout(true);
     about_pane->SetSizer(about_sizer);
@@ -497,7 +702,7 @@ void GFrame::do_layout()
 }
 
 /* *** event handling *** */
-
+// This is where all of GFrame's event handlers are hooked up
 BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_FILE_NEW, GFrame::OnMenuFileNew)
     EVT_MENU(MENU_FILE_OPEN, GFrame::OnMenuFileOpen)
@@ -517,12 +722,30 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_VIEW_NODE_NAMES, GFrame::OnMenuViewNodeNames)
     EVT_MENU(MENU_VIEW_TOOLTIPS, GFrame::OnMenuViewToolTips)
     EVT_MENU_RANGE(MENU_ZOOM_BEGIN+1, MENU_ZOOM_END-1, GFrame::OnMenuZoom)
+    EVT_MENU(MENU_CUSTOMIZE_FONT, GFrame::OnMenuCustomizeFont)
     EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, GFrame::OnNotebookPageChanged)
     EVT_CLOSE(GFrame::OnClose)
 END_EVENT_TABLE()
 
+/**
+ *******************************************************************
+ * Prompt the user for a structure file and create a StructPage
+ * for it. The StructPage will add iteslf to the notebook.
+ *
+ * \param event Ignored.
+ *
+ * \pre Program must be fully initialized.
+ *
+ * \post A new page may have been created and added to the notebook.
+ *
+ * \note A new page may have been created and added to the notebook.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::OnMenuFileNew(wxCommandEvent &event)
 {
+    // The position file will be new, but they still have to open a
+    // structure file.
     wxFileDialog dlg(this,
 		     "Find the desired structure file", "", "",
 		     "All files|*"
@@ -532,14 +755,35 @@ void GFrame::OnMenuFileNew(wxCommandEvent &event)
 
     dlg.SetFilterIndex(1); // show only .str's by default
 
+    // put the dialog up (as a modal dialog) and only continue if the
+    // user clicked OK
     if ( dlg.ShowModal() == wxID_OK ) {
+	// This will add itself to the notebook and be destroyed when
+	// the notebook is destroyed.
 	new StructPage(struct_notebook, -1, this, struct_notebook,
 		       dlg.GetPath(), false);
+	// We won't get an event for this new notebook page coming to
+	// the front, so we'll just pretend we did
 	wxCommandEvent dummy;
 	OnNotebookPageChanged(dummy);
     }
 }
 
+/**
+ *******************************************************************
+ * Prompt the user for a position file and create a StructPage
+ * for it. The StructPage will add iteslf to the notebook.
+ *
+ * \param event Ignored.
+ *
+ * \pre Program must be fully initialized.
+ *
+ * \post A new page may have been created and added to the notebook.
+ *
+ * \note A new page may have been created and added to the notebook.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::OnMenuFileOpen(wxCommandEvent &event)
 {
     wxFileDialog dlg(this,
@@ -551,68 +795,137 @@ void GFrame::OnMenuFileOpen(wxCommandEvent &event)
 
     dlg.SetFilterIndex(1); // show only .gvp's by default
 
+    // Show the dialog modally and only continue if the user dismissed
+    // the dialog by clicking OK
     if ( dlg.ShowModal() == wxID_OK ) {
-	/* demonstrate that we got the right file
-	wxTextCtrl *new_text_area = new wxTextCtrl(struct_notebook, -1,
-						   wxEmptyString,
-						   wxDefaultPosition,
-						   wxDefaultSize,
-						   wxTE_MULTILINE);
-	new_text_area->LoadFile(dlg.GetPath());
-	struct_notebook->AddPage(new_text_area, dlg.GetFilename());
-	SetStatusText(dlg.GetFilename(), 0);*/
-
 	// This will add itself to the notebook and be destroyed when
 	// the notebook is destroyed.
 	new StructPage( struct_notebook, -1, this, struct_notebook,
 			dlg.GetPath(), true );
+	// We won't get an event for this new notebook page coming to
+	// the front, so we'll just pretend we did
 	wxCommandEvent dummy;
 	OnNotebookPageChanged(dummy);
     }
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage to do the actual
+ * saving and user prompting.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post The file may have been saved.
+ *
+ * \note The file may have been saved.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::OnMenuFileSave(wxCommandEvent &event)
 {
     // figure out which page this is for and pass the buck
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->Save();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage to do the actual
+ * saving and user prompting.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post The file may have been saved.
+ *
+ * \note The file may have been saved.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::OnMenuFileSaveas(wxCommandEvent &event)
 {
     // figure out which page this is for and pass the buck
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->SaveAs();
 }
 
+/**
+ *******************************************************************
+ * Display a page setup dialog and alter the page setup data.
+ *
+ * \param event Ignored.
+ *
+ * \pre Program must be fully initialized.
+ *
+ * \post The print and page setup data may have been altered.
+ *
+ * \note The print and page setup data may have been altered.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::OnMenuFilePageSetup(wxCommandEvent &event)
 {
     pageSetupData = printData;
 
     wxPageSetupDialog pageSetupDialog(this, &pageSetupData);
 
-    pageSetupDialog.ShowModal();
-
-    printData = pageSetupDialog.GetPageSetupData().GetPrintData();
-    pageSetupData = pageSetupDialog.GetPageSetupData();
+    if (pageSetupDialog.ShowModal() == wxID_OK) {
+	printData = pageSetupDialog.GetPageSetupData().GetPrintData();
+	pageSetupData = pageSetupDialog.GetPageSetupData();
+    }
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to a GmtkPrintout which will then pass the buck
+ * to the appropriate StructPage to do the actual
+ * printing, previewing, and user prompting.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post The file may have been printed and some printing preferences
+ *      may have been altered..
+ *
+ * \note The file may have been printed and some printing preferences
+ *      may have been altered..
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 {
     // figure out which page this is for and pass the buck
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage) {
+	// get a title for the printout
 	wxString name;
 	curPage->getName(name);
-	// Pass two printout objects: for preview, and possible printing.
+	/* Pass two printout objects: for preview, and possible
+	 * printing. The printout object is what does much of the
+	 * work. It in turn calls the StructPage's draw() method to do
+	 * the actual drawing. */
 	wxPrintDialogData printDialogData(printData);
 	wxPrintPreview *preview =
 	    new wxPrintPreview(new GmtkPrintout(curPage, name),
@@ -624,6 +937,7 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 	    return;
 	}
 	
+	// Now that the preview is set up, show it in a preview frame.
 	wxPreviewFrame *frame =
 	    new wxPreviewFrame(preview, this, wxT("gmtkViz Print Preview"),
 			       wxPoint(100, 100), wxSize(600, 650));
@@ -633,51 +947,136 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
     }
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage to do any
+ * necessary prompting and saving. Delete the page if it says we
+ * can.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post The file may have been saved and/or closed.
+ *
+ * \note The file may have been saved and/or closed.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::OnMenuFileClose(wxCommandEvent &event)
 {
     // figure out which page this is for and pass the buck
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage) {
+	// delete the page only if it says it's okay
 	if (curPage->RequestClose()) {
 	    struct_notebook->DeletePage(curPageNum);
 	}
     }
 }
 
+/**
+ *******************************************************************
+ * Just attempt to close the frame.
+ *
+ * \param event Ignored.
+ *
+ * \pre Program should probably be fully initialized.
+ *
+ * \post Files may have been saved and/or closed and the program may
+ *      have exited.
+ *
+ * \note Files may have been saved and/or closed and the program may
+ *      have exited.
+ *
+ * \return void
+ *******************************************************************/
 void GFrame::OnMenuFileExit(wxCommandEvent &event)
 {
+    // Just try to close the window. The details will be handled in
+    // the event handler OnClose().
     Close(false);
 }
 
+/**
+ *******************************************************************
+ * Loop through the notebook pages, requesting that any
+ * StructPages close themselves. Pass the buck to the appropriate
+ * StructPages to do any necessary prompting and saving. Delete
+ * the pages when they say we can, and cancel if any say we can't.
+ *
+ * \param event Ignored.
+ *
+ * \pre The program should be fully initialized. This is meant to be
+ *      called automatically by wxWidgets when an attempt is made to
+ *      close the window.
+ *
+ * \post Files may have been saved and/or closed and the main window
+ *      may have been closed.
+ *
+ * \note Files may have been saved and/or closed and the main window
+ *      may have been closed.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnClose(wxCloseEvent& event)
 {
     bool destroy = true;
 
+    // There are some cases where we're not allowed to veto the event.
     if ( event.CanVeto() ) {
 	StructPage *curPage;
+	// for each tab (going backward since we delete them)
 	for ( int pageNum = struct_notebook->GetPageCount() - 1;
 	      pageNum >= 0 && destroy;
 	      pageNum-- ) {
 	    curPage = dynamic_cast<StructPage*>
 		(struct_notebook->GetPage(pageNum));
+	    /* If it couldn't be casted to a StructPage, then curPage
+	     * will be NULL. */
 	    if (curPage) {
+		// only delete the tab if it says we can
 		if (curPage->RequestClose()) {
 		    struct_notebook->DeletePage(pageNum);
 		} else {
+		    // otherwise the user cancelled so we abort
 		    event.Veto();
 		    destroy = false;
 		}
 	    }
 	}
     }
+    // if we didn't abort (weren't cancelled), then destroy the frame
     if ( destroy ) {
 	Destroy();
     }
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of control points
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws control points and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws control points and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuViewCPs(wxCommandEvent &event)
 {
@@ -685,10 +1084,31 @@ GFrame::OnMenuViewCPs(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewCPs();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of straight line segments from control
+ * point to control point
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws straight line segments and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws straight line segments and redrawn itself.
+ *
+ * \return void
+ */
 void
 GFrame::OnMenuViewLines(wxCommandEvent &event)
 {
@@ -696,10 +1116,30 @@ GFrame::OnMenuViewLines(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewLines();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of arc splines
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws arc splines segments and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws arc splines segments and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuViewSplines(wxCommandEvent &event)
 {
@@ -707,10 +1147,30 @@ GFrame::OnMenuViewSplines(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewSplines();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of arrow heads
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws arrow heads and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws arrow heads and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuViewArrowHeads(wxCommandEvent &event)
 {
@@ -718,10 +1178,30 @@ GFrame::OnMenuViewArrowHeads(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewArrowHeads();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of nodes
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws nodes and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws nodes and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuViewNodes(wxCommandEvent &event)
 {
@@ -729,10 +1209,30 @@ GFrame::OnMenuViewNodes(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewNodes();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of direct lines from node to node
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws direct lines and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws direct lines and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuViewDirectLines(wxCommandEvent &event)
 {
@@ -740,10 +1240,30 @@ GFrame::OnMenuViewDirectLines(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewDirectLines();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of frame separators
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws frame separators and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws frame separators and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuViewFrameSeps(wxCommandEvent &event)
 {
@@ -751,10 +1271,30 @@ GFrame::OnMenuViewFrameSeps(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewFrameSeps();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of node names
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws node names and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws node names and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuViewNodeNames(wxCommandEvent &event)
 {
@@ -762,10 +1302,31 @@ GFrame::OnMenuViewNodeNames(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewNodeNames();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of tooltips. Note that tool tips don't
+ * actually work so this doesn't really do anything.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws tooltips and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws tooltips and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuViewToolTips(wxCommandEvent &event)
 {
@@ -773,10 +1334,32 @@ GFrame::OnMenuViewToolTips(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->toggleViewToolTips();
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * change its scaling factor
+ *
+ * \param event The event caused by selecting one of the Zoom menu
+ *      items. At the very least event.GetId() must return the right
+ *      thing.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has adjusted its scaling
+ *      factor and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has adjusted its scaling
+ *      factor and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnMenuZoom(wxCommandEvent &event)
 {
@@ -784,14 +1367,62 @@ GFrame::OnMenuZoom(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage) {
 	int id = event.GetId()/*, scale = curPage->getScale()*/;
+	// Since the are radio items, only one will be checked at a time.
 	//MainVizWindow_menubar->Check(MENU_ZOOM_BEGIN + scale + 1, false);
 	MainVizWindow_menubar->Check(id, true);
 	curPage->setScale(id - MENU_ZOOM_BEGIN - 1);
     }
 }
 
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * change its font
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it may have gotten a new
+ *      font from the user and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it may have gotten a new
+ *      font from the user and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuCustomizeFont(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage) {
+	curPage->changeFont();
+    }
+}
+
+/**
+ *******************************************************************
+ * Update menus, etc. when the page is changed.
+ *
+ * \param event Ignored.
+ *
+ * \pre Program should be fully initialized.
+ *
+ * \post Menus, etc. should be updated.
+ *
+ * \note Menus, etc. should be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 {
@@ -799,13 +1430,19 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
     int curPageNum = struct_notebook->GetSelection();
     StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage) {
+	// pass the buck (this will update the status bar)
 	curPage->onComeForward();
+	// and do a bunch of stuff on our own too
+	// These menu items should be enabled when a document is in front.
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVE, true);
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, true);
 	MainVizWindow_menubar->Enable(MENU_FILE_PRINT, true);
 	MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, true);
+	// and this menu
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), true);
+	// restore the checked status of each item
 	MainVizWindow_menubar->Check( MENU_VIEW_CPS,
 				      curPage->getViewCPs() );
 	MainVizWindow_menubar->Check( MENU_VIEW_LINES,
@@ -822,35 +1459,81 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 				      curPage->getViewFrameSeps() );
 	MainVizWindow_menubar->Check( MENU_VIEW_NODE_NAMES,
 				      curPage->getViewNodeNames());
-	// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS, curPage->getViewToolTips() );
+	// tooltips don't work
+	// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS,
+	// curPage->getViewToolTips() );
+	// Zoom should be enabled for documents
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
+	// since they are radio items, keeping only one selected is
+	// handled automatically
 	/*for (int i = 0, scale = curPage->getScale(); i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
 	    MainVizWindow_menubar->Check( i + MENU_ZOOM_BEGIN + 1,
 					  i==scale );
 	}*/
 	MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
 				      true );
+	// and the Customize menu should be shown for documents as well
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
     }
     else {
+	// otherwise we set the status bar to some default values
 	SetStatusText(wxEmptyString, 1);
 	SetStatusText(wxT("About GMTKStructViz"), 0);
+	// diable menus and menu items that don't apply to the About tab
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
     }
 }
 
-IMPLEMENT_DYNAMIC_CLASS(StructPage, wxScrolledWindow)
+// I don't claim to understand this
+//IMPLEMENT_DYNAMIC_CLASS(StructPage, wxScrolledWindow)
 
+// StructPages handle some events too
 BEGIN_EVENT_TABLE(StructPage, wxScrolledWindow)
     EVT_PAINT(StructPage::OnPaint)
     EVT_MOUSE_EVENTS(StructPage::OnMouseEvent)
     EVT_CHAR(StructPage::OnChar)
 END_EVENT_TABLE()
 
+/**
+ *******************************************************************
+ * Constructs a structure graph tab, adds it to the
+ * parentNotebook, reads a structure file (and possibly a
+ * position file), initializes the positions of nodes and
+ * arcs, and updates the status bar.
+ *
+ * \param parent A pointer to this widget's parent widget so that it
+ *      can be informed of its new child.
+ * \param id An integer you can use to identify this widget. If you
+ *      don't care, just give -1 and wxWidgets will make up it's own
+ *      internal identifier.
+ * \param parentFrame A point to the wxFrame that this is part of so
+ *      that we can update its status bar.
+ * \param parentNotebook The notebook into which we should insert
+ *      ourselves.
+ * \param file The filename of either a structure file (.str) or a
+ *      position file (.gvp).
+ * \param old Are we opening a pre-existing position file? In other
+ *      words, does \p file reference a position file (as opposed to a
+ *      structure file)?
+ *
+ * \pre All the parameters should be valid.
+ *
+ * \post A new tab will be created in \p parentNotebook in which the
+ *      user may manipulate the graph.
+ *
+ * \note A bunch of memory is allocated. A FileParser is created and
+ *      destroyed. Since FileParser uses globals variables, you
+ *      should avoid having a FileParser around when you call this
+ *      method.
+ *
+ * \return Nothing.
+ *******************************************************************/
 StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		       wxFrame *parentFrame, wxNotebook *parentNotebook,
 		       const wxString &file, bool old)
@@ -859,13 +1542,23 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
       switchingPen(*wxCYAN_PEN), conditionalPen(*wxBLACK_PEN),
       bothPen(*wxRED_PEN), frameBorderPen(*wxLIGHT_GREY_PEN),
       chunkBorderPen(*wxBLACK_PEN), controlPointPen(*wxRED_PEN),
-      nodePen(*wxBLACK_PEN)
+      nodePen(*wxBLACK_PEN),
+      labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL, wxNORMAL)
 {
+    // This is used later to update the status bar
     this->parentFrame = parentFrame;
+    // We add ourselves to this
     this->parentNotebook = parentNotebook;
+    // The file starts out clean
     gvpDirty = false;
+    // No peculiarities have been found in the gvp file yet
     gvpAborted = false;
+    canvasWidth = 1;
+    canvasHeight = 1;
+    /* No need to draw the selection box since the user can't be
+     * selecting anything quite yet */
     drawSelectBox = false;
+    // defaults for optionally drawn items
     drawCPs = true;
     drawLines = false;
     drawSplines = true;
@@ -874,23 +1567,35 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
     drawDirectLines = false;
     drawFrameSeps = true;
     drawNodeNames = true;
+    // Has no real effect since our tooltips don't work
     drawToolTips = true;
+
+    // The drawing area. If we don't make sure it's NULL, we might
+    // accidentally delete it later (cause a segfault).
     content = NULL;
 
+    /* Ever since I started drawing at 16x and then scaling down 16x,
+     * dotted and dashed lines have stopped working. */
     //switchingPen.SetStyle(wxDOT);
     //conditionalPen.SetStyle(wxSOLID);
     //bothPen.SetStyle(wxLONG_DASH);
     //frameBorderPen.SetStyle(wxDOT);
     //chunkBorderPen.SetStyle(wxSOLID);
+    // Scale all these lines up.
     switchingPen.SetWidth(ACTUAL_SCALE);
     conditionalPen.SetWidth(ACTUAL_SCALE);
     bothPen.SetWidth(ACTUAL_SCALE);
     frameBorderPen.SetWidth(ACTUAL_SCALE);
     chunkBorderPen.SetWidth(ACTUAL_SCALE);
     controlPointPen.SetWidth(ACTUAL_SCALE);
+    // Make the corners sharp
     controlPointPen.SetJoin(wxJOIN_MITER);
     nodePen.SetWidth(ACTUAL_SCALE);
+
+    // scroll 10 pixels at a time
     SetScrollRate( 10, 10 );
+
+    // totally useless for now, but may someday come in handy
     wxToolTip::SetDelay(250);
     wxToolTip::Enable(drawToolTips);
 
@@ -898,12 +1603,15 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
     int beginning, ending;
     if ( (beginning = file.rfind('/') + 1) < 1 )
 	beginning = 0;
-    if ( (ending = file.rfind(_T(".str"))) <= beginning &&
-	 (ending = file.rfind(_T(".gvp"))) <= beginning )
+    if ( (ending = file.rfind(wxT(".str"))) <= beginning &&
+	 (ending = file.rfind(wxT(".gvp"))) <= beginning )
 	ending = file.size();
-    parentNotebook->InsertPage(pageNum = parentNotebook->GetPageCount(),
+    parentNotebook->InsertPage(parentNotebook->GetPageCount(),
 			       this, file.substr(beginning, ending), true);
 
+    /* If this was specified as "old" then the file is a gvp file so
+     * we should populate the config map with info from that.
+     * Otherwise, it's the str file and we don't have a gvp file yet. */
     if (old) {
 	gvpFile = file;
 	fillMap();
@@ -911,42 +1619,66 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	strFile = file;
     }
 
-    // load up the structure file
-    fp = new FileParser(strFile, NULL);
+    if (!gvpAborted && strFile.length()) {
+	// load up the structure file
+	fp = new FileParser(strFile, NULL);
 
-    // XXX: prevent this from crashing with parse error
-    // parse the file
-    fp->parseGraphicalModel();
-    // create the rv variable objects
-    fp->createRandomVariableGraph();
-    // ensure no loops in graph for all possible unrollings.
-    fp->ensureValidTemplate();
+	// XXX: prevent this from crashing with parse error
+	// parse the file
+	fp->parseGraphicalModel();
+	// create the rv variable objects
+	fp->createRandomVariableGraph();
+	// ensure no loops in graph for all possible unrollings.
+	fp->ensureValidTemplate();
 
-    // XXX: verify that the str and gvp files go together
-    // make up initial positions for the nodes
-    initNodes();
-    initArcs();
-    // At this point we no longer need the file parser, and since it
-    // uses global variables, we can't have more than one. Thus, we
-    // delete it now, rather than later.
-    delete fp;
+	// XXX: verify that the str and gvp files go together
+	// make up initial positions for the nodes
+	initNodes();
+	initArcs();
+	// At this point we no longer need the file parser, and since it
+	// uses global variables, we can't have more than one. Thus, we
+	// delete it now, rather than later.
+	// XXX: references to the rvinfo vector still exist!
+	delete fp;
+    }
     fp = NULL;
+
+    // If there was anything odd about the gvp file, say so.
     if (gvpAborted)
 	wxLogMessage("Position file contained errors: proceed with caution");
 
+    // Update the status bar and stuff
     onComeForward();
 
+    // Item 7 in gZoomMap is a 1.0 scaling factor.
     setScale(7);
 }
 
+/**
+ *******************************************************************
+ * Deletes all the dynamically allocated data including frame
+ * separators, arcs, nodes, and the drawing buffer.
+ *
+ * \pre Should not be called explicitly.
+ *
+ * \post The StructPage object will have freed all its dynamically
+ *      allocated memory and become invalid.
+ *
+ * \note The StructPage object will have freed all its dynamically
+ *      allocated memory and become invalid.
+ *
+ * \return Nothing.
+ *******************************************************************/
 StructPage::~StructPage( void )
 {
     int numNodes = nodes.size();
 
+    // delete all the frameEnds
     for (int i = frameEnds.size() - 1; i >= 0; i--) {
 	delete frameEnds[i];
 	frameEnds[i] = NULL;
     }
+    // delete all the arcs
     for (int i = numNodes - 1; i >= 0; i--) {
 	for (int j = numNodes - 1; j >= 0; j--) {
 	    if (arcs[i][j]) {
@@ -955,14 +1687,31 @@ StructPage::~StructPage( void )
 	    }
 	}
     }
+    // delete all the nodes
     for (int i = numNodes - 1; i >= 0; i--) {
 	delete nodes[i];
 	nodes[i] = NULL;
     }
+    // delete the drawing buffer
     delete content;
     content = NULL;
 }
 
+/**
+ *******************************************************************
+ * Fills the config map with the keys and values specified in the
+ * position file.
+ *
+ * \pre gvpFile must reference a valid position file.
+ *
+ * \post Any keys and values specified in the position file will be
+ *      put in the config map.
+ *
+ * \note Any keys and values specified in the position file will be
+ *      put in the config map.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::fillMap( void )
 {
@@ -970,10 +1719,17 @@ StructPage::fillMap( void )
     wxString line;
 
     if (gvp.Open()) {
-	for (line = gvp.GetFirstLine(); !gvp.Eof(); line = gvp.GetNextLine()) {
-	    config[line.BeforeFirst('=')] = line.AfterFirst('=');
+	// get the keys and values
+	if (!gvp.Eof()) {
+	    for ( line = gvp.GetFirstLine();
+		  !gvp.Eof();
+		  line = gvp.GetNextLine() ) {
+		config[line.BeforeFirst('=')] = line.AfterFirst('=');
+	    }
 	}
+	// get the one absolutely required key=value pair
 	strFile = config[wxT("strFile")];
+	// complain if it wasn't present
 	if (!strFile.length()) {
 	    wxLogMessage(wxT("gvp file doesn't specify a structure file"));
 	    gvpAborted = true;
@@ -984,6 +1740,21 @@ StructPage::fillMap( void )
     }
 }
 
+/**
+ *******************************************************************
+ * Places the nodes it finds in the structure file in their grid
+ * positions or in the position specified in the config map (from
+ * the position file) if one was specified.
+ *
+ * \pre The FileParser should be valid and have already parsed the
+ *      structure file.
+ *
+ * \post The vector of nodes will be populated with positioned nodes.
+ *
+ * \note The vector of nodes will be populated with positioned nodes.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::initNodes( void )
 {
@@ -1000,6 +1771,7 @@ StructPage::initNodes( void )
     int yMax = 0;
     wxString key, value;
 
+    // check that gvp has valid info and matches str
     key.sprintf("numNodes");
     value = config[key];
     if (value != wxEmptyString) {
@@ -1014,6 +1786,7 @@ StructPage::initNodes( void )
 	    gvpAborted = true;
 	}
     }
+    // check that gvp has valid info and matches str
     key.sprintf("numFrames");
     value = config[key];
     if (value != wxEmptyString) {
@@ -1029,7 +1802,10 @@ StructPage::initNodes( void )
 	}
     }
 
+    // for each node
     for (int i = 0, row = 0; i < numVars; i++, row++) {
+	/* If this is a new frame or there are to many nodes in this
+	 * column, then move over to the next column. */
 	if (row >= numRows || fp->rvInfoVector[i].frame != curFrame) {
 	    if (curPos.y > yMax)
 		yMax = curPos.y;
@@ -1037,6 +1813,8 @@ StructPage::initNodes( void )
 	    curPos.y = 120*ACTUAL_SCALE;
 	    row = 0;
 	}
+	/* If this is a new frame, add a frame separator and move over
+	 * yet again. */
 	if (fp->rvInfoVector[i].frame != curFrame) {
 	    frameEnds.push_back(new VizSep( curPos.x, this,
 					    curFrame==fp->_firstChunkframe-1 ||
@@ -1055,15 +1833,19 @@ StructPage::initNodes( void )
 		    gvpAborted = true;
 		}
 	    }
+	    // move to the next column
 	    curPos.x += 80*ACTUAL_SCALE;
 	    curFrame++;
 	    assert(fp->rvInfoVector[i].frame == curFrame);
 	}
+	// move down to the next row
 	curPos.y += 80*ACTUAL_SCALE;
+	// add the node with this position and move it if necessary later
 	nodes.push_back(new VizNode( curPos, &fp->rvInfoVector[i], this ));
 	assert(nodes.size() == (unsigned)i + 1);
 	nodeNameTags.push_back(&nodes[i]->nametag);
 	assert(nodeNameTags.size() == nodes.size());
+	// add it to the map from Id to index
 	nameVizNodeMap[nodes[i]->rvId] = i;
 
 	// if a position was specified, move the node to it
@@ -1127,10 +1909,12 @@ StructPage::initNodes( void )
 	    }
 	}
     }
+    // get an idea of how big the canvas should be
     if (curPos.y > yMax)
 	yMax = curPos.y;
     canvasWidth = curPos.x + 200*ACTUAL_SCALE;
     canvasHeight = yMax + 200*ACTUAL_SCALE;
+    // use the width from the gvp if one was specified
     key.sprintf("canvasWidth");
     value = config[key];
     if (value != wxEmptyString) {
@@ -1144,6 +1928,7 @@ StructPage::initNodes( void )
 	    gvpAborted = true;
 	}
     }
+    // use the height from the gvp if one was specified
     key.sprintf("canvasHeight");
     value = config[key];
     if (value != wxEmptyString) {
@@ -1157,10 +1942,29 @@ StructPage::initNodes( void )
 	    gvpAborted = true;
 	}
     }
+    /* Since I'm not sure what we made up and what was in the file,
+     * consider the file dirty. */
     gvpDirty = true;
+    // Update the status bar to reflect that we're dirty.
     onComeForward();
 }
 
+/**
+ *******************************************************************
+ * Creates the arcs and control points defined in the position
+ * file plus the mandatory beginning and ending points, or makes
+ * them up if they weren't specified.
+ *
+ * \pre The nodes should already be created and placed.
+ *
+ * \post The arcs and control points are created for all the arcs in
+ *      the structure file according to the position file.
+ *
+ * \note The arcs and control points are created for all the arcs in
+ *      the structure file according to the position file.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::initArcs( void )
 {
@@ -1179,28 +1983,25 @@ StructPage::initArcs( void )
 	}
     }
 
+    // for each node
     for (unsigned int j = 0; j < numNodes; j++) {
 	// for each switching parent
 	for ( unsigned int k = 0;
 	      k < nodes[j]->rvi->switchingParents.size();
 	      k++ ) {
+	    /* The Id in the parent vector is relative to the current
+	     * frame, so I need to translate it to an absolute frame
+	     * number given a zero unrolling. */
 	    RVInfo::rvParent absId;
 	    absId.first = nodes[j]->rvi->switchingParents[k].first;
 	    absId.second = nodes[j]->rvi->switchingParents[k].second
 		+ nodes[j]->rvi->frame;
+	    // figure out which node number that is
 	    int i = nameVizNodeMap[ absId ];
+	    // if the arc doesn't exist yet, make it
 	    if (!arcs[i][j])
 		arcs[i][j] = newArc(i, j);
-	    /*if (arcs[i][j]->switching) {
-		wxString msg;
-		msg.sprintf("switching arc from node %d (%s:%d) "
-			    "to node %d (%s:%d) already exists",
-			    i, nodes[i]->rvId.first.c_str(),
-			    nodes[i]->rvId.second,
-			    j, nodes[j]->rvId.first.c_str(),
-			    nodes[j]->rvId.second);
-		wxLogMessage(msg);
-	    }*/
+	    // label it as a switching arc (an arc to a switching parent)
 	    arcs[i][j]->switching = true;
 	}
 	// for each conditional parent
@@ -1210,31 +2011,56 @@ StructPage::initArcs( void )
 	    for ( unsigned int l = 0;
 		  l < nodes[j]->rvi->conditionalParents[k].size();
 		  l++ ) {
+		/* The Id in the parent vector is relative to the
+		 * current frame, so I need to translate it to an
+		 * absolute frame number given a zero unrolling. */
 		RVInfo::rvParent absId;
 		absId.first = nodes[j]->rvi->conditionalParents[k][l].first;
 		absId.second = nodes[j]->rvi->conditionalParents[k][l].second
 		    + nodes[j]->rvi->frame;
+		// figure out which node number that is
 		int i=nameVizNodeMap[absId];
+		// if the arc doesn't exist yet, make it
 		if (!arcs[i][j])
 		    arcs[i][j] = newArc(i, j);
-		/*if (arcs[i][j]->conditional) {
-		    wxString msg;
-		    msg.sprintf("conditional arc from node %d (%s:%d) "
-				"to node %d (%s:%d) already exists",
-				i, nodes[i]->rvId.first.c_str(),
-				nodes[i]->rvId.second,
-				j, nodes[j]->rvId.first.c_str(),
-				nodes[j]->rvId.second);
-		    wxLogMessage(msg);
-		}*/
+		/* label it as a conditional arc (an arc to a
+		 * conditional parent) */
 		arcs[i][j]->conditional = true;
 	    }
 	}
     }
+    /** \todo Only mark the file dirty when it really is, maybe. On
+     *  the other hand, the file could have just about anything in it
+     *  to start with, and those things won't necessarily get written
+     *  back. Then again, that may be a reason to not mark the file
+     *  dirty, since saving won't affect the graph but will only get
+     *  rid of whatever other info was in the file. */
     gvpDirty = true;
+    // Update the status bar to reflect that we're dirty.
     onComeForward();
 }
 
+/**
+ *******************************************************************
+ * Given two node indexes, create and return an arc from the
+ * first node to the second. Take the definition from the config
+ * map (from the position file) if possible. Otherwise make up a
+ * couple control points for it.
+ *
+ * \param i The index of the first ("from") node in the nodes vector.
+ * \param j The index of the second ("to") node in the nodes vector.
+ *
+ * \pre The nodes need to exist and be initialized.
+ *
+ * \post A VizArc will be dynamically allocated and returned to you
+ *      along with appropriate ControlPoints.
+ *
+ * \note This method dynamically allocates memory that the caller is
+ *      expected to dispose of.
+ *
+ * \return A VizArc will be dynamically allocated and returned to you
+ *      along with appropriate ControlPoints.
+ *******************************************************************/
 VizArc*
 StructPage::newArc( int i, int j )
 {
@@ -1243,24 +2069,32 @@ StructPage::newArc( int i, int j )
     wxString key, value;
 
     cps->clear();
+    // The first control point _must_ be the first node's center point.
     cps->push_back(new ControlPoint(nodes[i]->center));
 
     wxPoint pt;
+    /* Check to see if the arc is in the config map and if so how many
+     * control points it should have. */
     key.sprintf("arcs[%d][%d].numCPs", i, j);
     value = config[key];
     if (value != wxEmptyString) {
 	long numCPs;
 	if (value.ToLong(&numCPs)) {
+	    // for each pointrol point in the arc
 	    for (int k = 1; k < numCPs - 1; k++) {
+		// try to get the x position
 		key.sprintf("arcs[%d][%d].cps[%d].pos.x", i, j, k);
 		value = config[key];
 		if (value != wxEmptyString) {
 		    long xPos;
 		    if (value.ToLong(&xPos)) {
+			// and try to get the y position
 			key.sprintf("arcs[%d][%d].cps[%d].pos.y", i, j, k);
 			value = config[key];
 			if (value != wxEmptyString) {
 			    long yPos;
+			    /* If you get good values for x and y,
+			     * then add the control point. */
 			    if (value.ToLong(&yPos)) {
 				pt.x = xPos;
 				pt.y = yPos;
@@ -1289,6 +2123,8 @@ StructPage::newArc( int i, int j )
 	    gvpAborted = true;
 	}
     } else {
+	/* Make up a couple points so that arcs don't overlap and hide
+	 * each other. */
 	pt.x = (2*nodes[i]->center.x + nodes[j]->center.x)/3 + 20*ACTUAL_SCALE;
 	pt.y = (2*nodes[i]->center.y + nodes[j]->center.y)/3 - 20*ACTUAL_SCALE;
 	ControlPoint *mid = new ControlPoint(pt);
@@ -1299,13 +2135,36 @@ StructPage::newArc( int i, int j )
 	cps->push_back(mid);
     }
 
+    /* The last control point absolutely must be the center of the
+     * second node. */
     cps->push_back(new ControlPoint(nodes[j]->center));
     return new VizArc(cps, this);
 }
 
+/**
+ *******************************************************************
+ * Event handler for key presses that simply deletes control points
+ * when the delete key is pressed.
+ *
+ * \param event The event generated by the keypress. At the very
+ *      least, event.m_keyCode should be filled in.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Any selected ControlPoints will be deleted iff the event says
+ *      that the delete key was pressed.
+ *
+ * \note Any selected ControlPoints will be deleted iff the event says
+ *      that the delete key was pressed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::OnChar( wxKeyEvent &event )
 {
+    /* if it was delete, then delete the selected control points
+     * otherwise pass it on in case someone else wants to do something
+     * with it. */
     if (event.m_keyCode == WXK_DELETE) {
 	deleteSelectedCps();
 	redraw();
@@ -1315,16 +2174,33 @@ StructPage::OnChar( wxKeyEvent &event )
     }
 }
 
+/**
+ *******************************************************************
+ * Iterate through all of the ControlPoints (except those that
+ * correspond to the beginning or end of an arc and are therefore at
+ * the center of a node) and delete any which are currently selected.
+ *
+ * \pre The StructPage must be fully initialized.
+ *
+ * \post Any selected ControlPoints will be deleted.
+ *
+ * \note Any selected ControlPoints will be deleted.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::deleteSelectedCps( void )
 {
     int numNodes = nodes.size();
 
+    // iterate through every possible arc
     for (int i = 0; i < numNodes; i++) {
 	for (int j = 0; j < numNodes; j++) {
 	    if (arcs[i][j]) {
 		int end = arcs[i][j]->cps->size() - 1;
+		// and every control point
 		for (int k = end - 1; k > 0; k--) {
+		    // delete only if it was selected
 		    if ((*arcs[i][j]->cps)[k]->getSelected()) {
 			// delete's on it's own?
 			arcs[i][j]->cps->erase(arcs[i][j]->cps->begin() + k);
@@ -1334,10 +2210,32 @@ StructPage::deleteSelectedCps( void )
 	    }
 	}
     }
+    /* Assume that this made it dirty. We could make this accurate at
+     * the cost of an assignment per deletion. */
     gvpDirty = true;
+    // Update the status bar to indicate that we're dirty.
     onComeForward();
 }
 
+/**
+ *******************************************************************
+ * Handles mouse events. This is where all the action takes
+ * place. This keeps track of the selection and moves things around.
+ *
+ * \param event Describes the details of the mouse event, such as
+ * where it occurred, what modifier keys are held down, and what kind
+ * of event it is.
+ *
+ * \pre event should be properly filled out and the StructPage should
+ * be fully initialized.
+ *
+ * \post Any number of things might have changed since this is the
+ * main driver for user manipulation of the graph.
+ *
+ * \note Numerous side effects.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::OnMouseEvent( wxMouseEvent &event )
 {
@@ -1350,18 +2248,21 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 
     event.GetPosition(&pt.x, &pt.y);
     CalcUnscrolledPosition( pt.x, pt.y, &pt.x, &pt.y );
+    // calculate unscaled position
     pt.x = (int)round(pt.x / gZoomMap[displayScale]);
     pt.y = (int)round(pt.y / gZoomMap[displayScale]);
+    // find out what (if anything) was clicked
     Selectable *pointee = itemAt(pt);
 
     if (event.LeftDown()) {
 	shifted = event.ShiftDown(); // keep this around
 	if (pointee) {
 	    if (shifted) {
+		// LeftDown + Shifted + on something
 		pointee->toggleSelected();
 		screenDirty = true;
-	    }
-	    else {
+	    } else {
+		// LeftDown + not Shifted + on something
 		dragging = true;
 		dragStart.x = pt.x;
 		dragStart.y = pt.y;
@@ -1372,6 +2273,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 		}
 	    }
 	} else {
+	    // LeftDown + not on anything
 	    boxSelecting = true;
 	    selectBox.x = pt.x;
 	    selectBox.y = pt.y;
@@ -1379,15 +2281,18 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 	    selectBox.height = 0;
 	    drawSelectBox = true;
 	    if (!shifted) {
+		// LeftDown + not Shifted + not on anything
 		setAllSelected( false );
 		screenDirty = true;
 	    }
 	}
     } else if (event.Dragging() && event.LeftIsDown()) {
 	if (boxSelecting) {
+	    // LeftDragging + box selecting
 	    selectBox.width = pt.x - selectBox.x;
 	    selectBox.height = pt.y - selectBox.y;
 	} else if (dragging) {
+	    // LeftDragging + moving items
 	    moveSelected( pt.x - dragStart.x, pt.y - dragStart.y );
 	    dragStart.x = pt.x;
 	    dragStart.y = pt.y;
@@ -1395,24 +2300,33 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 	screenDirty = true;
     } else if (event.LeftUp()) {
 	if (boxSelecting) {
+	    // LeftUp + box selecting = done box selecting
 	    selectBox.width = pt.x - selectBox.x;
 	    selectBox.height = pt.y - selectBox.y;
 	    if (!shifted) {
+		// LeftUp + box selecting + not shifted when we started
 		setAllSelected(false);
 	    }
 	    toggleSelectedInRect(selectBox);
 	    screenDirty = true;
 	}
+	// Whatever we were doing, we're done.
 	boxSelecting = shifted = dragging = drawSelectBox = false;
     } else if (event.RightDown()) {
+	// clone a control point maybe
 	ControlPoint *cp = dynamic_cast<ControlPoint *>(pointee);
+	/* If the user right clicked on a control point that makes our
+	 * job a bit easier. */
 	if (cp) {
 	    int index = -1;
+	    // get the arc and control point index
 	    VizArc *arc = findArcOwning(cp, index);
 	    if (arc && index >= 0) {
+		// make a new one
 		wxPoint where(pt.x - NEW_CP_OFFSET, pt.y - NEW_CP_OFFSET);
 		arc->cps->insert( arc->cps->begin() + index,
 				  new ControlPoint(where) );
+		// Tell it who its parent is.
 		(*arc->cps)[index]->arc = arc;
 		// must keep these in sync
 		arc->points->Insert( index,
@@ -1428,6 +2342,8 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 		for (int j = 0; j < numNodes && !arc; j++) {
 		    arc = arcs[i][j];
 		    if (arc == NULL) continue;
+		    /* This stuff is all used to figure out if a point
+		     * is near the line. */
 		    int x0 = (*arc->cps)[0]->pos.x, x1 = (*arc->cps)[1]->pos.x,
 			y0 = (*arc->cps)[0]->pos.y, y1 = (*arc->cps)[1]->pos.y;
 		    double y = ( (x1-x0) ?
@@ -1441,6 +2357,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 		    epsilon = (epsilon>2*ACTUAL_SCALE?epsilon:2*ACTUAL_SCALE);
 		    delta = ( delta>2*ACTUAL_SCALE ? delta : 2*ACTUAL_SCALE );
 #if 0
+		    // allow this to compile for some insight
 		    wxString msg;
 		    msg.sprintf("(pt.x, pt.y) = (%d, %d)\n"
 				"(x0, y0)     = (%d, %d)\n"
@@ -1461,10 +2378,12 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			 ( ( y0-1 <= pt.y && pt.y <= y1+1 ) ||
 			   ( y1-1 <= pt.y && pt.y <= y0+1 ) ) &&
 			 // and (roughly) on the line
-			 fabs(y - pt.y) <= epsilon && fabs(x - pt.x) <= delta ) {
+			 fabs(y-pt.y) <= epsilon && fabs(x-pt.x) <= delta ) {
+			// make a new control point
 			wxPoint where(pt.x-NEW_CP_OFFSET, pt.y-NEW_CP_OFFSET);
 			arc->cps->insert( arc->cps->begin() + 1,
 					  new ControlPoint(where) );
+			// Tell it who its parent is.
 			(*arc->cps)[1]->arc = arc;
 			// must keep these in sync
 			arc->points->Insert(1,(wxObject*)&(*arc->cps)[1]->pos);
@@ -1486,12 +2405,36 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
     event.Skip();
 }
 
+/**
+ *******************************************************************
+ * Determine the parent arc and index in that arc for the given
+ * ControlPoint.
+ *
+ * \param cp The ControlPoint whose parent and index you want.
+ * \param index A reference to an integer where the index into the
+ * vector of control points is to be stored.
+ *
+ * \pre \p cp must exist and be properly initialized.
+ *
+ * \post \p index holds the index into the control points vector or -1
+ * if it couldn't be found.
+ *
+ * \note No side effects.
+ *
+ * \return A pointer to the VizArc that owns the given control point.
+ *******************************************************************/
 VizArc*
 StructPage::findArcOwning( ControlPoint *cp, int& index )
 {
+    /* Originally, ControlPoints didn't have arc pointers, so this
+     * involved iterating through all the control points to find a
+     * match. Now we just check the arc pointer assuming that it is
+     * accurate. */
     if (cp->arc) {
 	int end = cp->arc->cps->size() - 1;
 	for (int k = 1; k < end; k++) {
+	    /* If this is the right control point, set the index and
+	     * return the arc. */
 	    if ( (*cp->arc->cps)[k] == cp ) {
 		index = k;
 		return cp->arc;
@@ -1502,6 +2445,19 @@ StructPage::findArcOwning( ControlPoint *cp, int& index )
     return NULL; // nothing found
 }
 
+/**
+ *******************************************************************
+ * Convenience method to blit the drawing buffer to the screen.
+ *
+ * \pre The StructPage must be fully initialized. In particular, we
+ * need the drawing buffer to be valid.
+ *
+ * \post The screen will be updated.
+ *
+ * \note The screen will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::blit( void )
 {
@@ -1510,12 +2466,48 @@ StructPage::blit( void )
     blit( dc );
 }
 
+/**
+ *******************************************************************
+ * Copy the contents of the drawing buffer to the specified device
+ * context.
+ *
+ * \pre The StructPage must be fully initialized. In particular, we
+ * need the drawing buffer to be valid.
+ *
+ * \post The given device context will be updated.
+ *
+ * \note The given device context will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::blit( wxDC& dc )
 {
+    // Clear away what used to be there to keep the background clean
+    dc.SetBackground(*wxLIGHT_GREY_BRUSH);
+    dc.Clear();
+    // all the action is the constructor and destructor
     wxBufferedDC bdc( &dc, *content );
 }
 
+/**
+ *******************************************************************
+ * Determines whether a node (or its nametag) should prevent moving a
+ * frame separator from \p x0 to \p x1.
+ *
+ * \param x0 The x position the frame separator is moving from.
+ * \param x1 The x position the frame separator is moving to.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post No real change.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the movement would cross a node or its nametag
+ * and should therefor be prevented, or \c false if the move should be
+ * fine.
+ *******************************************************************/
 bool
 StructPage::crossesNode( wxCoord x0, wxCoord x1 )
 {
@@ -1528,7 +2520,8 @@ StructPage::crossesNode( wxCoord x0, wxCoord x1 )
 		 x1 > nodes[i]->center.x+NODE_RADIUS ) ) ||
 	     ( ( x0 < nodes[i]->nametag.pos.x
 		 + nodes[i]->nametag.size.x/2 - NODE_RADIUS !=
-		 x1 < nodes[i]->nametag.pos.x - NODE_RADIUS ) ||
+		 x1 < nodes[i]->nametag.pos.x
+		 + nodes[i]->nametag.size.x/2 - NODE_RADIUS ) ||
 	       ( x0 > nodes[i]->nametag.pos.x
 		 + nodes[i]->nametag.size.x/2 + NODE_RADIUS !=
 		 x1 > nodes[i]->nametag.pos.x
@@ -1538,6 +2531,23 @@ StructPage::crossesNode( wxCoord x0, wxCoord x1 )
     return false;
 }
 
+/**
+ *******************************************************************
+ * Determines when moving an object (generally a node) from x position
+ * \p x0 to x position \p x1 would cross a frame separator and should
+ * therefor be prevented.
+ *
+ * \pre The StructPage (and in particular the vector of frame
+ * separators) should be fully initialized.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the movement would get too close to a frame
+ * separator and should therefor be prevented, or \c false if the
+ * movement should be fine.
+ *******************************************************************/
 bool
 StructPage::crossesFrameEnd( wxCoord x0, wxCoord x1 )
 {
@@ -1549,6 +2559,21 @@ StructPage::crossesFrameEnd( wxCoord x0, wxCoord x1 )
     return false;
 }
 
+/**
+ *******************************************************************
+ * Determines whether the given point is in the drawing area or
+ * not. (If not a move to this position shouldn't be allowed.)
+ *
+ * \pre The StructPage should be fully initialized. In particular,
+ * canvasWidth and canvasHeight should be set properly.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the coordinates are within the canvas area, \c
+ * false if they are not.
+ *******************************************************************/
 bool
 StructPage::inBounds( wxCoord x, wxCoord y )
 {
@@ -1556,6 +2581,19 @@ StructPage::inBounds( wxCoord x, wxCoord y )
 	     y > 0 && y < getHeight() );
 }
 
+/**
+ *******************************************************************
+ * Move all selected items \p dx units to the right and \p dy units
+ * down, except in cases where the move should not be allowed.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Selected items may be moved.
+ *
+ * \note Selected items may be moved.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::moveSelected( int dx, int dy )
 {
@@ -1614,10 +2652,26 @@ StructPage::moveSelected( int dx, int dy )
 	    }
 	}
     }
+    // Things are almost definitely dirty.
     gvpDirty = true;
+    // Update the status bar to reflect the dirt.
     onComeForward();
 }
 
+/**
+ *******************************************************************
+ * Return whatever item is at the given point (or NULL if there's
+ * nothing there).
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return A pointer to an item at the given point, or \c NULL if
+ * there is no such item.
+ *******************************************************************/
 Selectable*
 StructPage::itemAt( const wxPoint& pt )
 {
@@ -1632,62 +2686,111 @@ StructPage::itemAt( const wxPoint& pt )
 	}
     }
 
-    // nodes
-    for (int i = 0; i < numNodes; i++) {
-	if (nodes[i]->onMe( pt ))
-	    return nodes[i];
+    if (drawNodes) {
+	// nodes
+	for (int i = 0; i < numNodes; i++) {
+	    if (nodes[i]->onMe( pt ))
+		return nodes[i];
+	}
     }
-    // then arcs
-    for (int i = 0; i < numNodes; i++) {
-	for (int j = 0; j < numNodes; j++) {
-	    if (arcs[i][j]) {
-		int end = arcs[i][j]->cps->size() - 1;
-		assert(end > 0);
-		for ( int k = 1; k < end; k++ ) {
-		    if ((*arcs[i][j]->cps)[k]->onMe(pt))
-			return (*arcs[i][j]->cps)[k];
+    if (drawCPs) {
+	// then arcs
+	for (int i = 0; i < numNodes; i++) {
+	    for (int j = 0; j < numNodes; j++) {
+		if (arcs[i][j]) {
+		    int end = arcs[i][j]->cps->size() - 1;
+		    assert(end > 0);
+		    for ( int k = 1; k < end; k++ ) {
+			if ((*arcs[i][j]->cps)[k]->onMe(pt))
+			    return (*arcs[i][j]->cps)[k];
+		    }
 		}
 	    }
 	}
     }
-    // then frame borders
-    for (unsigned int i = 0; i < frameEnds.size(); i++) {
-	if (frameEnds[i]->onMe( pt ))
-	    return frameEnds[i];
+    if (drawFrameSeps) {
+	// frame borders
+	for (unsigned int i = 0; i < frameEnds.size(); i++) {
+	    if (frameEnds[i]->onMe( pt ))
+		return frameEnds[i];
+	}
     }
+    // apparently nothing was found
     return NULL;
 }
 
+/**
+ *******************************************************************
+ * Handles a paint event by blitting the drawing buffer to the screen
+ *
+ * \param event Ignored.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The screen will be updated.
+ *
+ * \note The screen will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::OnPaint( wxPaintEvent &WXUNUSED(event) )
 {
-    wxBufferedPaintDC dc( this, *content );
-    //PrepareDC( dc );
-
     // Nothing has changed so we can skip the actual drawing and just blit 
+    blit();
 }
 
+/**
+ *******************************************************************
+ * Convenience method to draw to the drawing buffer.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The drawing buffer is updated.
+ *
+ * \note The drawing buffer is updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::redraw( void )
 {
     wxMemoryDC dc;
     dc.SelectObject( *content );
+    dc.Clear();
+    // Scale everything appropriately.
     dc.SetUserScale(gZoomMap[displayScale], gZoomMap[displayScale]);
+    // Do the actual drawing.
     draw(dc);
 }
 
+/**
+ *******************************************************************
+ * Draw the graph to the given device context.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The device context will be updated.
+ *
+ * \note The device context will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::draw( wxDC& dc )
 {
     dc.BeginDrawing();
-    dc.SetBackground(*wxWHITE_BRUSH);
-    dc.SetBrush(*wxWHITE_BRUSH);
-    dc.SetFont(*wxNORMAL_FONT);
+    // Don't trust the DC defaults.
+    dc.Clear();
+    wxFont tempFont( labelFont.GetPointSize(), labelFont.GetFamily(),
+		     labelFont.GetStyle(), labelFont.GetWeight() );
+    dc.SetFont(tempFont);
     dc.SetPen(*wxBLACK_PEN);
     dc.SetTextBackground(*wxWHITE);
     dc.SetBackgroundMode(wxTRANSPARENT);
     dc.SetTextForeground(*wxBLACK);
-    dc.Clear();
+    dc.SetBackground(*wxWHITE_BRUSH);
+    dc.SetBrush(*wxWHITE_BRUSH);
 
     int numNodes = nodes.size();
 
@@ -1736,6 +2839,21 @@ StructPage::draw( wxDC& dc )
     dc.EndDrawing();
 }
 
+/**
+ *******************************************************************
+ * Writes a bunch of key=value pairs to gvpFile so that they can be
+ * read in again by fillMap().
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The file whose name is in gvpFile may be overwritten with the
+ * current graph data.
+ *
+ * \note The file whose name is in gvpFile may be overwritten with the
+ * current graph data.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::Save( void )
 {
@@ -1767,6 +2885,9 @@ StructPage::Save( void )
 		line.sprintf( "nodes[%d].center.y=%d\n",
 			      i, nodes[i]->center.y );
 		gvp.Write(line);
+		/* These are unnecessary but could be used to better
+		 * match up variables and/or to verify that the gvp
+		 * file goes with the str file. */
 		/*line.sprintf( "nodes[%d].frame=%d\n",
 			      i, nodes[i]->rvId.second );
 		gvp.Write(line);
@@ -1813,6 +2934,7 @@ StructPage::Save( void )
 	    for (unsigned int i = 0; i < frameEnds.size(); i++) {
 		line.sprintf( "frameEnds[%d].x=%d\n", i, frameEnds[i]->x );
 		gvp.Write(line);
+		// This can be taken from the str file.
 		/*line.sprintf( "frameEnds[%d].chunkBorder=%d\n",
 			      i, (frameEnds[i]->chunkBorder ? 1 : 0) );
 		gvp.Write(line);*/
@@ -1825,9 +2947,23 @@ StructPage::Save( void )
     } else {
 	SaveAs();
     }
+    // We may not be dirty anymore, so update the status bar.
     onComeForward();
 }
 
+/**
+ *******************************************************************
+ * Prompt the user for a filename and then save the graph data to that
+ * file (unless the user cancels it of course).
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The selected file may be overwritten with the current graph data.
+ *
+ * \note The selected file may be overwritten with the current graph data.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::SaveAs( void )
 {
@@ -1853,6 +2989,19 @@ StructPage::SaveAs( void )
     }
 }
 
+/**
+ *******************************************************************
+ * Prepare for the tab to be closed, by asking to the user to save if
+ * the file is dirty. Let the caller know whether they may close the tab.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The graph data may be saved to a file.
+ *
+ * \note The graph data may be saved to a file.
+ *
+ * \return void
+ *******************************************************************/
 bool
 StructPage::RequestClose( void )
 {
@@ -1875,7 +3024,7 @@ StructPage::RequestClose( void )
 	    Save();
 	    // go back to the beginning
 	} else if (dlg.GetSelection() == 1) {
-	    // try saving it
+	    // try saving it with a different name
 	    SaveAs();
 	    // go back to the beginning
 	} else if (dlg.GetSelection() == 2) {
@@ -1890,6 +3039,24 @@ StructPage::RequestClose( void )
     return true;
 }
 
+/**
+ *******************************************************************
+ * Set all control points to have the given selected value if they are
+ * endpoints attached to the node specified by the given Id.
+ *
+ * \param newSelected The selected value desired for the endpoints.
+ * \param rvId The Id of the node whose endpoints should be (un)selected.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The control points that start an arc from or end an arc to
+ * the given node will be selected (or unselected).
+ *
+ * \note The control points that start an arc from or end an arc to
+ * the given node will be selected (or unselected).
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::setEndpointsSelected( bool newSelected, RVInfo::rvParent rvId )
 {
@@ -1897,9 +3064,11 @@ StructPage::setEndpointsSelected( bool newSelected, RVInfo::rvParent rvId )
     int totalNodes = nodes.size();
 
     for ( int i = 0; i < totalNodes; i++ ) {
+	// outgoing arcs
 	if (arcs[n][i]) {
 	    (*arcs[n][i]->cps)[0]->setSelected(newSelected);
 	}
+	// incoming arcs
 	if (arcs[i][n]) {
 	    (*arcs[i][n]->cps)[ arcs[i][n]->cps->size()-1 ]
 		->setSelected(newSelected);
@@ -1907,6 +3076,22 @@ StructPage::setEndpointsSelected( bool newSelected, RVInfo::rvParent rvId )
     }
 }
 
+/**
+ *******************************************************************
+ * Set the selected status of every item.
+ *
+ * \param newSelected The selected value desired for the items.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Every item will either be selected or unselected according to
+ * \p newSelected.
+ *
+ * \note Every item will either be selected or unselected according to
+ * \p newSelected.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::setAllSelected( bool newSelected )
 {
@@ -1935,6 +3120,22 @@ StructPage::setAllSelected( bool newSelected )
     }
 }
 
+/**
+ *******************************************************************
+ * Toggle the selected value for all items in the given rectangle.
+ *
+ * \param rect The rectangle within which to toggle selected values.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The selected value for all the items in the rectangle will be
+ * toggled.
+ *
+ * \note The selected value for all the items in the rectangle will be
+ * toggled.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleSelectedInRect( const wxRect& rect )
 {
@@ -1967,6 +3168,20 @@ StructPage::toggleSelectedInRect( const wxRect& rect )
     }
 }
 
+/**
+ *******************************************************************
+ * Toggle whether control points are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether control points will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether control points will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewCPs( void )
 {
@@ -1975,6 +3190,20 @@ StructPage::toggleViewCPs( void )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Toggle whether zig-zag lines are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether lines will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether lines will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewLines( void )
 {
@@ -1983,6 +3212,20 @@ StructPage::toggleViewLines( void )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Toggle whether splines are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether splines will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether splines will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewSplines( void )
 {
@@ -1991,6 +3234,20 @@ StructPage::toggleViewSplines( void )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Toggle whether arrow heads are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether arrow heads will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether arrow heads will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewArrowHeads( void )
 {
@@ -1999,6 +3256,20 @@ StructPage::toggleViewArrowHeads( void )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Toggle whether nodes are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether nodes will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether nodes will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewNodes( void )
 {
@@ -2007,6 +3278,20 @@ StructPage::toggleViewNodes( void )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Toggle whether direct lines are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether direct lines will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether direct lines will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewDirectLines( void )
 {
@@ -2015,6 +3300,20 @@ StructPage::toggleViewDirectLines( void )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Toggle whether frame separators are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether frame separators will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether frame separators will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewFrameSeps( void )
 {
@@ -2023,6 +3322,20 @@ StructPage::toggleViewFrameSeps( void )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Toggle whether node labels are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether node labels will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether node labels will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewNodeNames( void )
 {
@@ -2031,6 +3344,22 @@ StructPage::toggleViewNodeNames( void )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Toggle whether tool tips are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether tool tips will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether tool tips will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \remark Tool tips in gmtkViz don't work anyway.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::toggleViewToolTips( void )
 {
@@ -2038,6 +3367,41 @@ StructPage::toggleViewToolTips( void )
     wxToolTip::Enable(drawToolTips);
 }
 
+/**
+ *******************************************************************
+ * Prompt the user for a new font and redraw with that font.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The font may be changed and the screen may be updated.
+ *
+ * \note The font may be changed and the screen may be updated.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::changeFont( void )
+{
+    wxFont newFont = wxGetFontFromUser(this, labelFont);
+    if (newFont.Ok()) {
+	labelFont = newFont;
+	redraw();
+	blit();
+    }
+}
+
+/**
+ *******************************************************************
+ * Update the status bar with our file name and dirtiness.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The status bar will be updated.
+ *
+ * \note The status bar will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::onComeForward( void )
 {
@@ -2045,36 +3409,91 @@ StructPage::onComeForward( void )
     parentFrame->SetStatusText(gvpFile.length()?gvpFile:wxT("UNTITLED (and unsaved)"), 0);
 }
 
+/**
+ *******************************************************************
+ * Supply a reasonable name for this document.
+ *
+ * \param name Where to store the name.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post \p name will be updated with the appropriate string.
+ *
+ * \note No side effects.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::getName( wxString& name )
 {
     name = ( (gvpFile != wxEmptyString) ? gvpFile : strFile );
 }
 
+/**
+ *******************************************************************
+ * Update the scale at which everything is drawn/displayed.
+ *
+ * \param newScale The index into the gZoomMap array corresponding to
+ * the desired scale.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The scale will be adjusted and the document redrawn.
+ *
+ * \note The scale will be adjusted and the document redrawn.
+ *
+ * \return void
+ *******************************************************************/
 void
 StructPage::setScale( int newScale )
 {
     displayScale = newScale;
+    // The drawing buffer needs to change size.
     if (content) delete content;
     content = new wxBitmap( (int)round(canvasWidth*gZoomMap[displayScale]),
 			    (int)round(canvasHeight*gZoomMap[displayScale]) );
+    // The scrollable area needs to change size.
     SetVirtualSize( (int)round(canvasWidth*gZoomMap[displayScale]),
 		    (int)round(canvasHeight*gZoomMap[displayScale]) );
-    do {
-	wxClientDC temp(this);
-	temp.SetBackground(*wxLIGHT_GREY_BRUSH);
-	temp.Clear();
-    } while (false);
     redraw();
     blit();
 }
 
 
+/**
+ *******************************************************************
+ * Construct a NameTag.
+ *
+ * \param newPos The location of the upper right corner of the label.
+ * \param newName The text to be displayed in the label.
+ *
+ * \pre Valid parameters.
+ *
+ * \post The NameTag should exist.
+ *
+ * \note No side effects.
+ *
+ * \return Nothing.
+ *******************************************************************/
 NameTag::NameTag( const wxPoint& newPos, const wxString& newName )
     : pos(newPos), name(newName)
 {
 }
 
+/**
+ *******************************************************************
+ * Drawing routine for the NameTag.
+ *
+ * \param dc A pointer to the device context in which to draw the NameTag.
+ *
+ * \pre \p dc should be ready.
+ *
+ * \post \p dc will be updated.
+ *
+ * \note \p dc will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 NameTag::draw( wxDC *dc )
 {
@@ -2084,6 +3503,22 @@ NameTag::draw( wxDC *dc )
     dc->DrawText(name, pos);
 }
 
+/**
+ *******************************************************************
+ * Determine whether a given point lies on the NameTag.
+ *
+ * \param pt The point that might be on the NameTag.
+ *
+ * \pre The NameTag should have been drawn at least once (no we know
+ * how big it is in the device context).
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the point lies on the the NameTag, \c false if
+ * it doesn't.
+ *******************************************************************/
 bool
 NameTag::onMe( const wxPoint& pt )
 {
@@ -2092,12 +3527,43 @@ NameTag::onMe( const wxPoint& pt )
     return temp.Inside(pt);
 }
 
+/**
+ *******************************************************************
+ * Determine whether the NameTag lies within the given rectangle.
+ *
+ * \param rect The rectangle which might contain the NameTag.
+ *
+ * \pre \p rect and the NameTag should be valid.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the center of the NameTag is inside the
+ * rectangle, or false otherwise.
+ *******************************************************************/
 bool
 NameTag::inRect( const wxRect& rect )
 {
     return rect.Inside(pos.x + size.x/2, pos.y + size.y/2);
 }
 
+/**
+ *******************************************************************
+ * Constructs a VizNode.
+ *
+ * \param pos The center of the node.
+ * \param newRvi The RVInfo (name and frame) for this node.
+ * \param newPage The StructPage owning this node.
+ *
+ * \pre Valid parameters.
+ *
+ * \post This VizNode will be initialized along with its NameTag.
+ *
+ * \note No side effects.
+ *
+ * \return Nothing.
+ *******************************************************************/
 VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
     : nametag(pos, wxT(newRvi->name.c_str()))
 {
@@ -2107,6 +3573,8 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
     rvId.first = rvi->name;
     rvId.second = rvi->frame;
     page = newPage;
+    /* This may provide tooltips on Windows, but not GTK because the
+     * window won't actually be transparent, and takes events. */
     tipWin = new wxWindow( newPage, -1, wxPoint(pos.x - NODE_RADIUS,
 						pos.y - NODE_RADIUS),
 			   wxSize(2*NODE_RADIUS, 2*NODE_RADIUS),
@@ -2115,11 +3583,37 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
     tipWin->SetToolTip(wxT(rvId.first.c_str()));
 }
 
+/**
+ *******************************************************************
+ * Destroy the VizNode in a spectacular no-op.
+ *
+ * \pre The VizNode should be fully initialized.
+ *
+ * \post The VizNode will no longer be valid. It's memory will be freed.
+ *
+ * \note The VizNode will no longer be valid. It's memory will be freed.
+ *
+ * \return Nothing.
+ *******************************************************************/
 VizNode::~VizNode( void )
 {
     // don't need to destroy tipWin because it's parent will
 }
 
+/**
+ *******************************************************************
+ * Draw the VizNode to the given device context.
+ *
+ * \param dc The device context in which to draw.
+ *
+ * \pre The device context must be valid.
+ *
+ * \post The device context will be updated.
+ *
+ * \note The device context will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 VizNode::draw( wxDC *dc )
 {
@@ -2136,6 +3630,20 @@ VizNode::draw( wxDC *dc )
     }
 }
 
+/**
+ *******************************************************************
+ * Determine whether a point lies on this VizNode.
+ *
+ * \param pt The point which might be on this VizNode.
+ *
+ * \pre The point must be valid.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the point is on the VizNode, or \c false otherwise.
+ *******************************************************************/
 bool
 VizNode::onMe( const wxPoint& pt )
 {
@@ -2143,6 +3651,22 @@ VizNode::onMe( const wxPoint& pt )
     return ( hypot(dx, dy) <= NODE_RADIUS );
 }
 
+/**
+ *******************************************************************
+ * Set the selected state of this node and any arc endpoints leading
+ * to or from it.
+ *
+ * \param newSelected The new selected value for this node (and
+ * endpoints).
+ *
+ * \pre The StructPage and VizNode should be fully initialized.
+ *
+ * \post The node and enpoints will have the specified selected value.
+ *
+ * \note The node and enpoints will have the specified selected value.
+ *
+ * \return void
+ *******************************************************************/
 void
 VizNode::setSelected( bool newSelected ) {
     selected = newSelected;
@@ -2154,6 +3678,20 @@ VizNode::setSelected( bool newSelected ) {
 }
 
 
+/**
+ *******************************************************************
+ * Determine whether a point lies on this ControlPoint
+ *
+ * \param pt The point that might be on this ControlPoint.
+ *
+ * \pre The point must be valid.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the point is on the ControlPoint, or false otherwise.
+ *******************************************************************/
 bool
 ControlPoint::onMe( const wxPoint& pt )
 {
@@ -2161,6 +3699,21 @@ ControlPoint::onMe( const wxPoint& pt )
 	&& pos.y-1*ACTUAL_SCALE <= pt.y && pt.y <= pos.y+1*ACTUAL_SCALE;
 }
 
+/**
+ *******************************************************************
+ * Construct the ControlPoint.
+ *
+ * \param pt The point on which to put this ControlPoint.
+ *
+ * \pre The point should be valid.
+ *
+ * \post The ControlPoint should be valid except that its arc pointer
+ * does not yet point to its parent. This must be set manually.
+ *
+ * \note No side effects.
+ *
+ * \return Nothing.
+ *******************************************************************/
 ControlPoint::ControlPoint( const wxPoint& pt )
 {
     pos.x = pt.x;
@@ -2168,6 +3721,25 @@ ControlPoint::ControlPoint( const wxPoint& pt )
     arc = NULL;
 }
 
+/**
+ *******************************************************************
+ * Construct a VizArc.
+ *
+ * \param newCps A vector of ControlPoints for the arc's spline to
+ * follow.
+ * \param newPage The StructPage owning this VizArc.
+ *
+ * \pre Valid parameters. The StructPage should be fully initialized.
+ *
+ * \post The VizArc should be fully initialized. It will adopt its
+ * ControlPoints, pointing their arc pointers to itself. It will also
+ * create the wxList of wxPoints. If you add or remove ControlPoints
+ * later, the wxList and arc pointers will have to be updated manually.
+ *
+ * \note No side effects.
+ *
+ * \return Nothing.
+ *******************************************************************/
 VizArc::VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage )
 {
     cps = newCps;
@@ -2186,6 +3758,18 @@ VizArc::VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage )
     }
 }
 
+/**
+ *******************************************************************
+ * Destroy the VizArc, freeing dynamically allocated data.
+ *
+ * \pre The VizArc should be fully initialized.
+ *
+ * \post The ControlPoints will be deleted as well as the wxList and vector.
+ *
+ * \note The ControlPoints will be deleted as well as the wxList and vector.
+ *
+ * \return Nothing.
+ *******************************************************************/
 VizArc::~VizArc( void )
 {
     for (int k = cps->size() - 1; k >= 0; k--) {
@@ -2198,10 +3782,26 @@ VizArc::~VizArc( void )
     cps = NULL;
 }
 
+/**
+ *******************************************************************
+ * Draw this arc to the given device context.
+ *
+ * \param dc The device context on which to draw.
+ *
+ * \pre The StructPage and wxDC should be fully initialized.
+ *
+ * \post The device context will be updated.
+ *
+ * \note The device context will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 VizArc::draw( wxDC *dc )
 {
     wxPen *pen = NULL;
+    /* Set the pen appropriately depending on whether it's switching,
+     * conditional, or both. */
     if (switching && conditional)
 	pen = &page->bothPen;
     else if (switching)
@@ -2212,6 +3812,8 @@ VizArc::draw( wxDC *dc )
     wxPen oldPen = dc->GetPen();
     dc->SetPen(*pen);
 
+    /* Draw whatever splines, lines, or direct lines the StructPage
+     * calls for. */
     if ( page->getViewSplines() )
 	dc->DrawSpline(points);
     if ( page->getViewLines() )
@@ -2249,6 +3851,7 @@ VizArc::draw( wxDC *dc )
 	dc->SetBrush(oldBrush);
     }
 
+    // draw the control points
     dc->SetPen(page->controlPointPen);
     int end = points->GetCount() - 1;
     assert(end > 0);
@@ -2269,6 +3872,23 @@ VizArc::draw( wxDC *dc )
 }
 
 
+/**
+ *******************************************************************
+ * Construct the VizSep.
+ *
+ * \param newX The x coordinate of the desired frame separator.
+ * \param newPage The StructPage owning this VizSep.
+ * \param newChunkBorder Is this frame separator at either end of the
+ * chunk?
+ *
+ * \pre Valid parameters. The StructPage should be fully initialized.
+ *
+ * \post The VizSep should be valid.
+ *
+ * \note No side effects.
+ *
+ * \return Nothing.
+ *******************************************************************/
 VizSep::VizSep( wxCoord newX, StructPage *newPage, bool newChunkBorder )
 {
     x = newX;
@@ -2276,18 +3896,36 @@ VizSep::VizSep( wxCoord newX, StructPage *newPage, bool newChunkBorder )
     chunkBorder = newChunkBorder;
 }
 
+/**
+ *******************************************************************
+ * Draw the VizSep on the given device context.
+ *
+ * \param dc The device context on which to draw.
+ *
+ * \pre The device context should be fully initialized.
+ *
+ * \post The device context will be updated.
+ *
+ * \note The device context will be updated.
+ *
+ * \return void
+ *******************************************************************/
 void
 VizSep::draw( wxDC * dc )
 {
+    // pick a pen
     wxPen *pen = &page->frameBorderPen;
     if (chunkBorder)
 	pen = &page->chunkBorderPen;
 
+    // remember the old pen
     wxPen oldPen = dc->GetPen();
     dc->SetPen(*pen);
+    // draw the frame separator
     dc->DrawLine( x, 0, x, page->getHeight() );
     dc->SetPen(oldPen);
 
+    // maybe draw handles
     if (getSelected()) {
 	dc->DrawRectangle( x-1*ACTUAL_SCALE, -1*ACTUAL_SCALE,
 			   3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
@@ -2296,6 +3934,20 @@ VizSep::draw( wxDC * dc )
     }
 }
 
+/**
+ *******************************************************************
+ * Determine whether the given point is on this VizSep.
+ *
+ * \param pt The point which might be on this VizSep.
+ *
+ * \pre The point should be valid.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the point is on the VizSep, or \c false otherwise.
+ *******************************************************************/
 bool
 VizSep::onMe( const wxPoint& pt )
 {
@@ -2304,12 +3956,51 @@ VizSep::onMe( const wxPoint& pt )
 }
 
 
+/**
+ *******************************************************************
+ * Construct the GmtkPrintout.
+ *
+ * \param newPage The StructPage whose graph should be drawn.
+ * \param title The name of this printout.
+ *
+ * \pre The StructPage and title should be fully initialized.
+ *
+ * \post The GmtkPrintout should be valid.
+ *
+ * \note Use of this object may cause the StructPage to be drawn with
+ * a different scale to a different device context, which in turn may
+ * alter the size of NameTag objects until it is drawn to its usual
+ * device context with its usual scale again.
+ *
+ * \return Nothing.
+ *******************************************************************/
 GmtkPrintout::GmtkPrintout(StructPage * newPage, const wxChar *title)
     : wxPrintout(title)
 {
     page = newPage;
 }
 
+/**
+ *******************************************************************
+ * Print the requested page to whatever device context is given by
+ * GetDC().
+ *
+ * \param page Should be 1, because we only have one page.
+ *
+ * \pre The StructPage and GmtkPrintout should be fully initialized.
+ *
+ * \post The device context will be updated and the NameTag objects
+ * may have changed size according to this device context and
+ * scale. To revert their sizes, draw to the usual device context with
+ * the usual scale.
+ *
+ * \note The device context will be updated and the NameTag objects
+ * may have changed size according to this device context and
+ * scale. To revert their sizes, draw to the usual device context with
+ * the usual scale.
+ *
+ * \return \c true on success, or \c false on failure.
+ *******************************************************************/
 bool
 GmtkPrintout::OnPrintPage(int page)
 {
@@ -2333,6 +4024,18 @@ GmtkPrintout::OnPrintPage(int page)
         return false;
 }
 
+/**
+ *******************************************************************
+ * Disclose the page ranges of this document (which only has one page).
+ *
+ * \pre The GmtkPrintout should be fully initialized.
+ *
+ * \post The parameters will be filled with 1s.
+ *
+ * \note No side effects.
+ *
+ * \return void
+ *******************************************************************/
 void
 GmtkPrintout::GetPageInfo( int *minPage, int *maxPage,
 			   int *selPageFrom, int *selPageTo )
@@ -2343,12 +4046,27 @@ GmtkPrintout::GetPageInfo( int *minPage, int *maxPage,
     *selPageTo = 1;
 }
 
-bool
-GmtkPrintout::HasPage(int pageNum)
-{
-    return (pageNum == 1);
-}
-
+/**
+ *******************************************************************
+ * Draw the graph to the given device context, scaling it to fit in
+ * the drawable area.
+ *
+ * \param dc The device context on which to draw.
+ *
+ * \pre The GmtkPrintout and wxDC should be fully initialized.
+ *
+ * \post The device context will be updated and the NameTag objects
+ * may have changed size according to this device context and
+ * scale. To revert their sizes, draw to the usual device context with
+ * the usual scale.
+ *
+ * \note The device context will be updated and the NameTag objects
+ * may have changed size according to this device context and
+ * scale. To revert their sizes, draw to the usual device context with
+ * the usual scale.
+ *
+ * \return void
+ *******************************************************************/
 void
 GmtkPrintout::DrawPageOne(wxDC *dc)
 {
