@@ -56,6 +56,8 @@ VCID("$Header$");
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_MixGaussiansCommon.h"
 #include "GMTK_GaussianComponent.h"
+#include "GMTK_MeanVector.h"
+#include "GMTK_DiagCovarVector.h"
 
 
 /*
@@ -88,6 +90,7 @@ char *llStoreFile = NULL;
 bool accFileIsBinary = true;
 int startSkip = 0;
 int endSkip = 0;
+
 ARGS ARGS::Args[] = {
 
  ARGS("obsFile",ARGS::Req,obsFileName,"File containing observations"),
@@ -110,8 +113,13 @@ ARGS ARGS::Args[] = {
 
  ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
 
+ // support for splitting and vanishing
  ARGS("mcvr",ARGS::Opt,MixGaussiansCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
  ARGS("mcsr",ARGS::Opt,MixGaussiansCommon::mixCoeffSplitRatio,"Mixture Coefficient Splitting Ratio"),
+
+ ARGS("meanCloneSTDfrac",ARGS::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
+ ARGS("covarCloneSTDfrac",ARGS::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+
  ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
  ARGS("lldp",ARGS::Opt,lldp,"Log Likelihood difference percentage for termination"),
  ARGS("mnlldp",ARGS::Opt,mnlldp,"Absolute value of max negative Log Likelihood difference percentage for termination"),
@@ -158,12 +166,12 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // check for valid argument values.
   MixGaussiansCommon::checkForValidRatioValues();
+  MeanVector::checkForValidValues();
+  DiagCovarVector::checkForValidValues();
   if (lldp < 0.0 || mnlldp < 0.0)
     error("lldp & mnlldp must be >= 0");
   if (pruneRatio < 0.0)
     error("pruneRatio must be >= 0");
-  if (varFloor < 0.0)
-    error("varFloor must be >= 0");
   if (startSkip < 0 || endSkip < 0)
     error("startSkip/endSkip must be >= 0");
   if (!parmsFileName && !parmsPtrFileName) 
