@@ -1,4 +1,4 @@
-/*-
+/*
  * GMTK_BoundaryTriangulate.cc
  *   The GMTK Boundary Algorithm and Graph Triangulation Support Routines
  *
@@ -335,6 +335,14 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
       tri_heur.style = TS_ANNEALING;
     } else if (strncmp(endp, "exhaustive", strlen(endp)) == 0) {
       tri_heur.style = TS_EXHAUSTIVE;
+    } else if (strncmp(endp, "pre-edge-all", strlen(endp)) == 0) {
+      tri_heur.style = TS_PRE_EDGE_ALL;
+    } else if (strncmp(endp, "pre-edge-lo", strlen(endp)) == 0) {
+      tri_heur.style = TS_PRE_EDGE_LO;
+    } else if (strncmp(endp, "pre-edge-random", strlen(endp)) == 0) {
+      tri_heur.style = TS_PRE_EDGE_RANDOM;
+    } else if (strncmp(endp, "heuristics", strlen(endp)) == 0) {
+      tri_heur.style = TS_ELIMINATION_HEURISTICS;
     } else if (strncmp(endp, "frontier", strlen(endp)) == 0) {
       tri_heur.style = TS_FRONTIER;
     } else if (strcmp(endp, "MCS") == 0) { 
@@ -1357,6 +1365,21 @@ triangulate(// input: nodes to be triangulated
       triangulateExhaustiveSearch( nodes, jtWeight, nodesRootMustContain,
 				   orgnl_nghbrs, cliques ); 
       meth_str = string(buff) + "-" + "exhaustive";
+    } else if (tri_heur.style == TS_PRE_EDGE_ALL) {
+      preEdgeAdditionElimination( nodes, jtWeight, nodesRootMustContain, 
+        ALL_EDGES, cliques, meth_str );
+    } else if (tri_heur.style == TS_PRE_EDGE_LO) {
+      preEdgeAdditionElimination( nodes, jtWeight, nodesRootMustContain, 
+        LOCALLY_OPTIMAL_EDGES, cliques, meth_str );
+    } else if (tri_heur.style == TS_PRE_EDGE_RANDOM) {
+      preEdgeAdditionElimination( nodes, jtWeight, nodesRootMustContain, 
+        RANDOM_EDGES, cliques, meth_str );
+    } else if (tri_heur.style == TS_ELIMINATION_HEURISTICS) {
+      vector<nghbrPairType>   orgnl_nghbrs;
+      saveCurrentNeighbors(nodes, orgnl_nghbrs);
+
+      tryEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
+        orgnl_nghbrs, cliques, meth_str );
     } else if (tri_heur.style == TS_MCS) {
       triangulateMaximumCardinalitySearch(nodes, 
 					  cliques, order );
@@ -1697,6 +1720,466 @@ basicTriangulate(// input: nodes to triangulate
   infoMsg(Huge,"\nENDING BASIC TRIANGULATION --- \n");
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::
+ *  fillAccordingToCliques 
+ *  
+ * Preconditions:
+ *  If one wants the graph to match the given cliques exactly, the 
+ *  RandomVariables should not have any neighbor which are present in the 
+ *  input cliques as this procedure does not remove any edges.  Typically 
+ *  this procedure is preceeded by resotring the original graph neighbors 
+ *  or removing all neighbors, and the vector of cliques corresponds to a
+ *  triangulation.
+ *
+ * Postconditions:
+ *   Graph is triangulated according to the best weight found.
+ *   
+ * Side Effects:
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+fillAccordingToCliques(
+  const vector<MaxClique>& cliques
+  ) 
+{
+  //////////////////////////////////////////////////////////////////////////
+  // Convert to triangulate the RandomVariable structures
+  //////////////////////////////////////////////////////////////////////////
+  vector<MaxClique>::const_iterator crrnt_clique;
+  vector<MaxClique>::const_iterator end_clique;
+
+  for ( crrnt_clique = cliques.begin(), 
+        end_clique   = cliques.end();
+        crrnt_clique != end_clique;
+        ++crrnt_clique ) {
+    MaxClique::makeComplete((*crrnt_clique).nodes);
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::preEdgeAdditionElimination()
+ *   Triangulates a graph by adding extra edges followed by the 
+ *   elimination heuristics. 
+ *  
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   Graph is triangulated according to the best weight found.
+ *   The triangulation is stored in 'cliques'.
+ *   The method that found the best triangulation is written to best_method. 
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+preEdgeAdditionElimination(
+  const set<RandomVariable*>& nodes,           // input: nodes to triangulate
+  const bool                  jtWeight,        // If true, use jtWeight 
+  const set<RandomVariable*>& nodesRootMustContain,
+  const extraEdgeHeuristic    edge_heuristic, 
+  vector<MaxClique>&          cliques,         // output: resulting max cliques
+  string&                     best_method
+  )
+{
+  vector<triangulateNode> triangulate_nodes;
+  vector<nghbrPairType>   orgnl_nghbrs;
+  string tri_method;
+
+  infoMsg(IM::Tiny, "--- adding ancestral edges ---\n");
+
+  //////////////////////////////////////////////////////////////////////
+  // Initialize
+  //////////////////////////////////////////////////////////////////////
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+
+  //////////////////////////////////////////////////////////////////////
+  // Add the extra edges accoring to 'edge_heuristic' 
+  //////////////////////////////////////////////////////////////////////
+  addExtraEdgesToGraph( triangulate_nodes, edge_heuristic );
+
+  //////////////////////////////////////////////////////////////////////
+  // Now eliminate using the heuristics 
+  //////////////////////////////////////////////////////////////////////
+  saveCurrentNeighbors(nodes, orgnl_nghbrs);
+  tryEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, orgnl_nghbrs,
+    cliques, tri_method );
+
+  //////////////////////////////////////////////////////////////////////
+  // Triangulate according to best triangulation 
+  //////////////////////////////////////////////////////////////////////
+  restoreNeighbors( orgnl_nghbrs );
+  fillAccordingToCliques( cliques );
+
+  //////////////////////////////////////////////////////////////////////
+  // Record the best method 
+  //////////////////////////////////////////////////////////////////////
+  best_method = "pre-edge-";
+  switch (edge_heuristic) {
+    case ALL_EDGES:
+      best_method += "all";
+      break; 
+    case LOCALLY_OPTIMAL_EDGES:
+      best_method += "lo";
+      break; 
+    case RANDOM_EDGES:
+      best_method += "random";
+      break; 
+    default:
+      assert(0);
+      break;
+  }
+  best_method += "-" + tri_method;  
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::fillParentChildLists
+ *   Fill containers in the triangulateNode structure that list each 
+ *   node's parents and nonChildren.  nonChildren are the union of the 
+ *   parents and undirected neighbors.  Note that these lists will be 
+ *   different from the ones contained the associated RandomVariable 
+ *   because the containers created here don't include nodes from outside 
+ *   of the partition. 
+ * 
+ * Preconditions:
+ *   The nodes given as input are initialized 
+ *
+ * Postconditions:
+ *   The parents and nonChildren containers of each node are filled in.
+ * 
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+fillParentChildLists(
+  vector<triangulateNode>& nodes
+  )
+{
+  vector<triangulateNode>::iterator crrnt_node;
+  vector<triangulateNode>::iterator end_node;
+  triangulateNeighborType::iterator crrnt_nghbr;
+  triangulateNeighborType::iterator end_nghbr;
+  vector<RandomVariable*>::iterator found_node;
+
+  for( crrnt_node = nodes.begin(),
+       end_node   = nodes.end();
+       crrnt_node != end_node;
+       ++crrnt_node ) {
+
+    for( crrnt_nghbr = (*crrnt_node).neighbors.begin(), 
+         end_nghbr   = (*crrnt_node).neighbors.end(); 
+         crrnt_nghbr != end_nghbr;
+         ++crrnt_nghbr ) {
+
+      found_node = find( 
+        (*crrnt_node).randomVariable->allPossibleParents.begin(), 
+        (*crrnt_node).randomVariable->allPossibleParents.end(),
+        (*crrnt_nghbr)->randomVariable );
+ 
+      //////////////////////////////////////////////////////////////
+      // If a parent, add to both parents and non-children
+      //////////////////////////////////////////////////////////////
+      if (found_node != 
+          (*crrnt_node).randomVariable->allPossibleParents.end()) {
+        (*crrnt_node).parents.push_back( *crrnt_nghbr );
+        (*crrnt_node).nonChildren.push_back( *crrnt_nghbr );
+      }
+      //////////////////////////////////////////////////////////////
+      // If not a parent, check if it is a non-child
+      //////////////////////////////////////////////////////////////
+      else {
+        found_node = find( 
+          (*crrnt_node).randomVariable->allPossibleChildren.begin(), 
+          (*crrnt_node).randomVariable->allPossibleChildren.end(),
+          (*crrnt_nghbr)->randomVariable ); 
+
+        if (found_node == 
+            (*crrnt_node).randomVariable->allPossibleChildren.end()) {
+          (*crrnt_node).nonChildren.push_back( *crrnt_nghbr );
+        }
+      }
+    }
+  } 
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::addExtraEdgesToGraph()
+ *   Add extra edges to the graph according to a particular heuristic
+ *  
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   The nodes may have additional neighbors.
+ * 
+ * Side Effects:
+ *   The parents and nonChildren members of the triangulateNode 
+ *   structures are filled in. 
+ *
+ * Results:
+ *   none
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+addExtraEdgesToGraph(
+  vector<triangulateNode>& nodes,
+  const extraEdgeHeuristic edge_heuristic 
+  )
+{
+  vector<triangulateNode>::iterator crrnt_node;
+  vector<triangulateNode>::iterator end_node;
+  vector<triangulateNode>::iterator crrnt_mark;
+  vector<triangulateNode>::iterator end_mark;
+  triangulateNeighborType::iterator crrnt_nghbr;
+  triangulateNeighborType::iterator end_nghbr;
+  vector<edge> extra_edges;
+
+  fillParentChildLists( nodes );
+
+  //////////////////////////////////////////////////////////////////////////
+  // Iterate through all nodes
+  //////////////////////////////////////////////////////////////////////////
+  for( crrnt_node = nodes.begin(),
+       end_node   = nodes.end();
+       crrnt_node != end_node;
+       ++crrnt_node ) {
+
+    //////////////////////////////////////////////////////////////////////////
+    // Mark all nodes as not visited 
+    //////////////////////////////////////////////////////////////////////////
+    for( crrnt_mark = nodes.begin(),
+         end_mark   = nodes.end();
+         crrnt_mark != end_mark;
+         ++crrnt_mark ) {
+      (*crrnt_mark).marked = false;
+    }
+
+    (*crrnt_node).marked = true;
+
+    //////////////////////////////////////////////////////////////////////////
+    // Find all nodes which are parents or undirected neighbors, and are 
+    //   deterministic or sparse 
+    //////////////////////////////////////////////////////////////////////////
+    for( crrnt_nghbr = (*crrnt_node).nonChildren.begin(), 
+         end_nghbr   = (*crrnt_node).nonChildren.end(); 
+         crrnt_nghbr != end_nghbr;
+         ++crrnt_nghbr ) {
+
+      (*crrnt_nghbr)->marked = true;
+
+      if  ((*crrnt_nghbr)->parents.size() > 0)  { 
+        if ( ((*crrnt_nghbr)->randomVariable->deterministic()) || 
+             (((*crrnt_nghbr)->randomVariable->discrete) && 
+              (((DiscreteRandomVariable*)
+               ((*crrnt_nghbr)->randomVariable))->sparse())) ) {
+
+          addEdgesToNode((*crrnt_nghbr)->parents, *crrnt_nghbr, &(*crrnt_node), 
+            edge_heuristic, extra_edges);
+        }
+      }
+    }
+  } 
+
+  addEdges(extra_edges);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::addEdgesToNode
+ *   Choose if an edge should be added from a set of nodes to another 
+ *   node.  This is intended to be a set of parents of child connecting  
+ *   to a grandchild for use in addExtraEdgesToGraph.  If the edge is 
+ *   added, this procedure calls itself recursively. 
+ *  
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ * 
+ * Postconditions:
+ *   The choice of edges is stored in 'extra_edges'.  These will be from 
+ *   'grandchild' to any other node in the graph.  The neighbor sets of 
+ *   the nodes are not modified.  
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+addEdgesToNode(
+  triangulateNeighborType& parent_set,  
+  triangulateNode* const   child, 
+  triangulateNode* const   grandchild,
+  const extraEdgeHeuristic edge_heuristic, 
+  vector<edge>&            extra_edges
+  )
+{
+  triangulateNeighborType::iterator crrnt_prnt;
+  triangulateNeighborType::iterator end_prnt;
+  float parent_weight, child_weight; 
+  float no_edge_weight, with_edge_weight;  
+  set<RandomVariable*> parents_child, child_grandchild, all;  
+  RAND rndm_nmbr(0);
+  bool add_edge;
+
+  //////////////////////////////////////////////////////////////////////////
+  // Choose if the edges should be added according to edge_heuristic
+  //////////////////////////////////////////////////////////////////////////
+  switch (edge_heuristic) {
+
+    case ALL_EDGES:
+      add_edge = true;
+      break;
+
+    case RANDOM_EDGES:
+      add_edge = rndm_nmbr.uniform( 1 ); 
+      break;
+
+    case LOCALLY_OPTIMAL_EDGES:
+      for( crrnt_prnt = parent_set.begin(), end_prnt = parent_set.end();
+           crrnt_prnt != end_prnt;
+         ++crrnt_prnt ) {
+        parents_child.insert( (*crrnt_prnt)->randomVariable );
+      }
+      parents_child.insert( child->randomVariable );
+
+      child_grandchild.insert( child->randomVariable );
+      child_grandchild.insert( grandchild->randomVariable );
+
+      all = parents_child;
+      all.insert( grandchild->randomVariable );
+
+      parent_weight = MaxClique::computeWeight(parents_child);  
+      child_weight  = MaxClique::computeWeight(child_grandchild);
+
+      no_edge_weight = parent_weight + 
+        log10(1+pow(10,child_weight-parent_weight));
+      with_edge_weight = MaxClique::computeWeight(all); 
+      if (with_edge_weight < no_edge_weight) { 
+        add_edge = true;
+      }
+      else {
+        add_edge = false;
+      }
+      break;
+  
+    default:
+      assert(0);
+      break;
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Add the edges if the criteria was met 
+  //////////////////////////////////////////////////////////////////////////
+  if (add_edge) {
+
+    //////////////////////////////////////////////////////////////////////////
+    // Add the edge from each node in parent_set to grandchild 
+    //////////////////////////////////////////////////////////////////////////
+    for( crrnt_prnt = parent_set.begin(), end_prnt = parent_set.end();
+         crrnt_prnt != end_prnt;
+         ++crrnt_prnt ) {
+
+      extra_edges.push_back( edge(*crrnt_prnt, grandchild) ); 
+      (*crrnt_prnt)->marked = true;
+
+      ////////////////////////////////////////////////////////////////////////
+      // The current parent just gained an undirected neighbor, so recurse if 
+      // the parent is deterministic or sparse. 
+      ////////////////////////////////////////////////////////////////////////
+      if  ((*crrnt_prnt)->parents.size() > 0)  { 
+        if ( ((*crrnt_prnt)->randomVariable->deterministic()) || 
+             (((*crrnt_prnt)->randomVariable->discrete) && 
+              (((DiscreteRandomVariable*)
+               ((*crrnt_prnt)->randomVariable))->sparse())) ) {
+          addEdgesToNode( (*crrnt_prnt)->parents, *crrnt_prnt, grandchild, 
+            edge_heuristic, extra_edges );        
+        }
+      }
+    }
+  }
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::addEdges
+ *   Add neighbors to RandomVariables according to a vector edge 
+ *   structures.  Node that the edge class contains triangulateNode's, 
+ *   but this proceedure adds the neighbors to the associated 
+ *   RandomVariables. 
+ * 
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   The neighbors of the RandomVariable associated with each 
+ *   triangulateNode in each edge will change. 
+ *   
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+addEdges(
+  const vector<edge>& extra_edges
+  )
+{
+  vector<edge>::const_iterator crrnt_edge; 
+  vector<edge>::const_iterator end_edge; 
+
+  for ( crrnt_edge = extra_edges.begin(),
+        end_edge   = extra_edges.end();
+        crrnt_edge != end_edge;
+        ++crrnt_edge ) {
+
+    (*crrnt_edge).first()->randomVariable->neighbors.insert(
+      (*crrnt_edge).second()->randomVariable);
+    (*crrnt_edge).second()->randomVariable->neighbors.insert(
+      (*crrnt_edge).first()->randomVariable);
+  }
+}
 
 
 /*-
@@ -2154,8 +2637,9 @@ triangulateNode(
   : randomVariable( NULL ), 
     nodeList( NULL ),
     cardinality( 0 ),
-    eliminated( false ),
     position( 0 ),
+    eliminated( false ),
+    marked( false ),
     previousNode( NULL ),
     nextNode( NULL )
 {
@@ -2188,8 +2672,9 @@ triangulateNode(
   : randomVariable( random_variable ), 
     nodeList( NULL ),
     cardinality( 0 ),
-    eliminated( false ),
     position( 0 ),
+    eliminated( false ),
+    marked( false ),
     previousNode( NULL ),
     nextNode( NULL )
 {
@@ -2993,8 +3478,6 @@ triangulateMaximumCardinalitySearch(
   list<vector<triangulateNode*> >   list_cliques;
   vector<triangulateNode*>          triangulate_order; 
   vector<triangulateNode*>          dummy_order; 
-  vector<MaxClique>::iterator       crrnt_clique; 
-  vector<MaxClique>::iterator       end_clique; 
   vector<triangulateNode>::iterator crrnt_node; 
   vector<triangulateNode>::iterator end_node; 
 
@@ -3018,11 +3501,7 @@ triangulateMaximumCardinalitySearch(
   // Convert to MaxCliques and triangulate the RandomVariable structures 
   ////////////////////////////////////////////////////////////////////////// 
   listVectorCliquetoVectorSetClique( list_cliques, cliques );
-  for ( crrnt_clique = cliques.begin(), end_clique   = cliques.end();
-        crrnt_clique != end_clique;
-        ++crrnt_clique ) {
-    MaxClique::makeComplete((*crrnt_clique).nodes);
-  }
+  fillAccordingToCliques( cliques );
 
   ////////////////////////////////////////////////////////////////////////// 
   // Store the order 
@@ -3177,8 +3656,6 @@ triangulateMCSIfNotTriangulated(
   vector<triangulateNode>         triangulate_nodes; 
   list<vector<triangulateNode*> > list_cliques;
   vector<triangulateNode*>        order; 
-  vector<MaxClique>::iterator     crrnt_clique; 
-  vector<MaxClique>::iterator     end_clique; 
   bool                            chordal;
 
   fillTriangulateNodeStructures( nodes, triangulate_nodes );
@@ -3205,11 +3682,7 @@ triangulateMCSIfNotTriangulated(
   // Convert to MaxCliques and triangulate the RandomVariable structures 
   ////////////////////////////////////////////////////////////////////////// 
   listVectorCliquetoVectorSetClique( list_cliques, cliques );
-  for ( crrnt_clique = cliques.begin(), end_clique   = cliques.end();
-        crrnt_clique != end_clique;
-        ++crrnt_clique ) {
-    MaxClique::makeComplete((*crrnt_clique).nodes);
-  }
+  fillAccordingToCliques( cliques );
 
   return(chordal);
 }
@@ -3485,11 +3958,10 @@ void
 BoundaryTriangulate::
 triangulateExhaustiveSearch( 
   const set<RandomVariable*>&  nodes,
-  const bool jtWeight,
-  const set<RandomVariable*>& nodesRootMustContain,
+  const bool                   jtWeight,
+  const set<RandomVariable*>&  nodesRootMustContain,
   const vector<nghbrPairType>& orgnl_nghbrs,
-  // output: resulting max cliques
-  vector<MaxClique>&           best_cliques
+  vector<MaxClique>&           best_cliques   
   )
 {
   // define local constants used in this routine.
@@ -3665,7 +4137,7 @@ triangulateExhaustiveSearch(
               (*crrnt_node)->randomVariable->name().c_str(), 
               (*crrnt_node)->randomVariable->timeIndex); 
           }
-        }
+        } 
         infoMsg(IM::Tiny, "--------------------------\n");
 
         best_list_cliques = cliques;
@@ -3741,18 +4213,10 @@ triangulateExhaustiveSearch(
   }
 
   //////////////////////////////////////////////////////////////////////////
-  // Convert to MaxCliques and triangulate the RandomVariable structures
+  // Convert to MaxClique and triangulate the RandomVariable structures
   //////////////////////////////////////////////////////////////////////////
-  vector<MaxClique>::iterator crrnt_v_clique; 
-  vector<MaxClique>::iterator end_v_clique;
-
   listVectorCliquetoVectorSetClique( best_list_cliques, best_cliques );
-
-  for ( crrnt_v_clique = best_cliques.begin(), end_v_clique = best_cliques.end();
-        crrnt_v_clique != end_v_clique;
-        ++crrnt_v_clique ) {
-    MaxClique::makeComplete((*crrnt_v_clique).nodes);
-  }
+  fillAccordingToCliques( best_cliques );
 
   infoMsg(IM::Tiny, "---->Tested:  %d\n", crrnt_trial); 
 }
@@ -4076,26 +4540,30 @@ anyTimeTriangulate(GMTemplate& gm_template,
   // Like above, always do at least C, so we return something valid.
   if (doC) {
     infoMsg(IM::Tiny, "---\nTriangulating C using Heuristics:\n");
-    best_C_weight = tryHeuristics(gm_template.C.nodes, jtWeight, 
-				  gm_template.CEInterface_in_C,
-				  orgnl_C_nghbrs, gm_template.C.cliques, 
-				  gm_template.C.triMethod );
+    best_C_weight = tryEliminationHeuristics( gm_template.C.nodes, jtWeight, 
+      gm_template.CEInterface_in_C, orgnl_C_nghbrs, gm_template.C.cliques, 
+      gm_template.C.triMethod );
+    best_C_weight = tryNonEliminationHeuristics( gm_template.C.nodes, jtWeight, 
+      gm_template.CEInterface_in_C, orgnl_C_nghbrs, gm_template.C.cliques, 
+      gm_template.C.triMethod );
   }
  
   if (doP && !timer->Expired()) { 
     infoMsg(IM::Tiny, "---\nTriangulating P using Heuristics:\n");
-    best_P_weight = tryHeuristics(gm_template.P.nodes, jtWeight,
-				  gm_template.PCInterface_in_P,
-				  orgnl_P_nghbrs, gm_template.P.cliques, 
-				  gm_template.P.triMethod );
+    best_P_weight = tryEliminationHeuristics( gm_template.P.nodes, 
+      jtWeight, gm_template.PCInterface_in_P, orgnl_P_nghbrs, 
+      gm_template.P.cliques, gm_template.P.triMethod );
+    best_P_weight = tryNonEliminationHeuristics( gm_template.P.nodes, 
+      jtWeight, gm_template.PCInterface_in_P, orgnl_P_nghbrs, 
+      gm_template.P.cliques, gm_template.P.triMethod );
   }
   
   if (doE && !timer->Expired()) { 
     infoMsg(IM::Tiny, "---\nTriangulating E using Heuristics:\n");
-    best_E_weight = tryHeuristics(gm_template.E.nodes, jtWeight,
-				  emptySet,
-				  orgnl_E_nghbrs, gm_template.E.cliques, 
-				  gm_template.E.triMethod );
+    best_E_weight = tryEliminationHeuristics( gm_template.E.nodes, jtWeight, 
+      emptySet, orgnl_E_nghbrs, gm_template.E.cliques, gm_template.E.triMethod);
+    best_E_weight = tryNonEliminationHeuristics( gm_template.E.nodes, jtWeight, 
+      emptySet, orgnl_E_nghbrs, gm_template.E.cliques, gm_template.E.triMethod);
   }
   
   infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
@@ -4183,13 +4651,15 @@ anyTimeTriangulate(GMTemplate& gm_template,
 
 /*-
  *-----------------------------------------------------------------------
- * BoundaryTriangulate::tryHeuristics
- *  Triangulate a partition using multiple iterations of a variety of
- *  heuristics. Use overal graph weight to judge ultimate triangulation quality.
+ * BoundaryTriangulate::tryEliminationHeuristics
+ *  Triangulate a partition using elimination with multiple iterations of 
+ *  a variety of heuristics.  Use overal graph weight to judge ultimate 
+ *  triangulation quality.
  *
  *  There are two ways to judget the quality of the triangulation. 
  *  If jtWeight = false, use just sum of weights in each resulting clique.
- *  If jtWeight = true, approximate JT quality by forming JT and computing JT weight.
+ *  If jtWeight = true, approximate JT quality by forming JT and computing 
+ *  JT weight.
  *
  * Preconditions:
  *   Each variable in the set of nodes must have valid parent and 
@@ -4197,8 +4667,7 @@ anyTimeTriangulate(GMTemplate& gm_template,
  *   members in the set. 
  * 
  * Postconditions:
- *   The order is filled in with the order giving the best weight of any
- *   of the heuristic searches.
+ *   The triangulation with the best weight is stored in 'cliques' 
  *
  * Side Effects:
  *   The partition is triangulated to some triangulation, not 
@@ -4206,23 +4675,20 @@ anyTimeTriangulate(GMTemplate& gm_template,
  *   each random variable can be changed.
  *
  * Results:
- *   none
- *
+ *   The best weight found 
  *-----------------------------------------------------------------------
  */
 double 
 BoundaryTriangulate::
-tryHeuristics(
-  set<RandomVariable*>&     nodes,
-  const bool jtWeight,
-  // nrmc = nodes root must contain
-  const set<RandomVariable*>& nrmc,
-  vector<nghbrPairType>&    orgnl_nghbrs,
-  vector<MaxClique>&        cliques,
-  string& tri_method
+tryEliminationHeuristics(
+  const set<RandomVariable*>& nodes,
+  const bool                  jtWeight,
+  const set<RandomVariable*>& nrmc,        // nrmc = nodes root must contain
+  vector<nghbrPairType>&      orgnl_nghbrs,
+  vector<MaxClique>&          cliques,
+  string&                     tri_method
   )
 {
-
   double best_weight = HUGE_VAL;
 
   ///////////////////////////////////////////////////////////////////////////// 
@@ -4300,21 +4766,85 @@ tryHeuristics(
 	       orgnl_nghbrs, cliques, tri_method, best_weight );
 
   ///////////////////////////////////////////////////////////////////////////// 
-  // Try frontier algorithm
-  triangulate( nodes, jtWeight, nrmc, "500-frontier", 
-	       orgnl_nghbrs, cliques, tri_method, best_weight );
-  ///////////////////////////////////////////////////////////////////////////// 
-
   // Try hints only 
   triangulate( nodes, jtWeight, nrmc, "30-H", 
+	       orgnl_nghbrs, cliques, tri_method, best_weight );
+
+  return(best_weight);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::tryNonEliminationHeuristics
+ *  Triangulate a partition using elimination with multiple iterations of 
+ *  a variety of heuristics.  All of the heuristics in this proceedure 
+ *  have the potential to give triangulations not obtainable through any
+ *  elimination order.  Use overal graph weight to judge ultimate 
+ *  triangulation quality.
+ *
+ *  There are two ways to judget the quality of the triangulation. 
+ *  If jtWeight = false, use just sum of weights in each resulting clique.
+ *  If jtWeight = true, approximate JT quality by forming JT and computing 
+ *    JT weight.
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   members in the set. 
+ * 
+ * Postconditions:
+ *   The triangulation with the best weight is stored in 'cliques' 
+ *
+ * Side Effects:
+ *   The partition is triangulated to some triangulation, not 
+ *   necessarily corresponding to the best order.  Neighbor members of 
+ *   each random variable can be changed.
+ *
+ * Results:
+ *   The best weight found 
+ *-----------------------------------------------------------------------
+ */
+double 
+BoundaryTriangulate::
+tryNonEliminationHeuristics(
+  const set<RandomVariable*>& nodes,
+  const bool                  jtWeight,
+  const set<RandomVariable*>& nrmc,         // nrmc = nodes root must contain
+  vector<nghbrPairType>&      orgnl_nghbrs,
+  vector<MaxClique>&          cliques,
+  string&                     tri_method
+  )
+{
+  double best_weight = HUGE_VAL;
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Try adding all ancestral edges, followed by elimination heuristics 
+  triangulate( nodes, jtWeight, nrmc, "pre-edge-all", 
+	       orgnl_nghbrs, cliques, tri_method, best_weight );
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Try adding locally optimal ancestral edges, followed by elimination 
+  // heuristics 
+  triangulate( nodes, jtWeight, nrmc, "pre-edge-lo", 
+	       orgnl_nghbrs, cliques, tri_method, best_weight );
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Try adding random optimal ancestral edges, followed by elimination 
+  // heuristics 
+  triangulate( nodes, jtWeight, nrmc, "10-pre-edge-random", 
+	       orgnl_nghbrs, cliques, tri_method, best_weight );
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Try frontier algorithm
+  triangulate( nodes, jtWeight, nrmc, "500-frontier", 
 	       orgnl_nghbrs, cliques, tri_method, best_weight );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try simply completing the partition (this can work well if many 
   // deterministic nodes exist in the partition)
-  triangulate( nodes, jtWeight, nrmc, "completed", 
-	       orgnl_nghbrs, cliques, tri_method, 
-    best_weight );
+  triangulate( nodes, jtWeight, nrmc, "completed", orgnl_nghbrs, cliques, 
+    tri_method, best_weight );
 
   return(best_weight);
 }
