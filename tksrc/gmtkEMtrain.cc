@@ -340,15 +340,11 @@ main(int argc,char*argv[])
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
-  GM_Parms.loadGlobal();
-  GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 
   /////////////////////////////
   // read in the structure of the GM, this will
   // die if the file does not exist.
   FileParser fp(strFileName,cppCommandOptions);
-
-  printf("Finished reading in all parameters and structures\n");
 
   // parse the file
   fp.parseGraphicalModel();
@@ -367,6 +363,13 @@ main(int argc,char*argv[])
     fp.associateWithDataParams(FileParser::allocateUniform);
   else
     error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
+
+  GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
+  // lastly, load the internal objects.
+  GM_Parms.loadGlobal();
+
+  printf("Finished reading in all parameters and structures\n");
+
   // make sure that all observation variables work
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();
