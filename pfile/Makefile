@@ -80,9 +80,15 @@ all: libpfile.a
 # Build pfile_utils programs.
 #----------------------------------------------------------------------------
 
-libpfile.a: pfile.o spi.o error.o 
+
+libpfile.a: pfile.o spi.o
 	ar rv libpfile.a pfile.o spi.o
 	-ranlib libpfile.a
+
+
+# libpfile.a: pfile.o spi.o error.o 
+# 	ar rv libpfile.a pfile.o spi.o
+# 	-ranlib libpfile.a
 
 pfile_skmeans : pfile_skmeans.o Range.o libpfile.a
 	$(link) -o pfile_skmeans pfile_skmeans.o Range.o rand.o $(LIBS)
@@ -387,4 +393,16 @@ disttree: $(dist_files)
 		cp -p $(srcdir)/$$file $(distdir)/$$file || exit 1; \
 	done;
 
-# DO NOT DELETE THIS LINE -- make depend depends on it.
+depend:
+	${CXX} ${INCLUDES} -MM ${CXXFLAGS} ${all_srcs} > depends.make
+
+
+##################
+####  DEPENDS ####
+# To make dependencies, first do:
+#     make depend
+# when the file doesn't exist, do a 'touch depends.make' first.
+depends: depend
+
+# also include the dependencies
+include depends.make
