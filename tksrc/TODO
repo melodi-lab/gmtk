@@ -1720,3 +1720,8 @@ Sat Mar 27 15:14:17 2004
   - create a .gmtktriangulaterc file for common triangulation options.
     In addition, have an ENV variable for this purpose.
 
+Sat Mar 27 20:57:04 2004
+ - island algorithm should interact with gaussian component cache, in that
+   cache memory should be re-claimed for different islands so that
+   we don't use O(T) mem for cache but rather O(log T) mem.
+
