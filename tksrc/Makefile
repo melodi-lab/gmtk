@@ -50,14 +50,14 @@ prefix = .
 exec_prefix = .
 install_prefix = .
 
-libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO -L$(prefix)/../pfile -L/g/rcs/sw/lib
-includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO -I$(prefix)/../pfile 
+libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L/g/rcs/sw/lib
+includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint
 docdir = $(prefix)/man/man1
 
 #
 # Libraries.
 #
-LIBS = -lfileParser  -lmiscSupport -lpfile -lfl -lm 
+LIBS = -lfileParser  -lmiscSupport -lpfile -lIEEEsupport -lfl -lm 
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
