@@ -51,6 +51,7 @@
 #include "GMTK_MixGaussiansCommon.h"
 #include "GMTK_MixGaussians.h"
 
+#include "GMTK_ObservationMatrix.h"
 
 VCID("$Header$");
 
@@ -1885,6 +1886,47 @@ GMParms::setStride(const unsigned stride)
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * checkConsistentWithGlobalObservationStream()
+ *      Check that the parameters are consistent
+ *      with the observation matrix
+ * 
+ * Preconditions:
+ *      global observation matrix must have been read in.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      possible error if problems occur.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMParms::checkConsistentWithGlobalObservationStream()
+{
+  if ((int)globalObservationMatrix.startSkip() < -(int)Dlinks::_globalMinLag)
+    error("ERROR: a start skip of %d is invalid for a minimum dlink lag of %d\n",
+	  globalObservationMatrix.startSkip(),
+	  Dlinks::_globalMinLag);
+
+  if ((int)globalObservationMatrix.endSkip() < (int)Dlinks::_globalMaxLag)
+    error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
+	  globalObservationMatrix.endSkip(),
+	  Dlinks::_globalMaxLag);
+
+  if ((int)globalObservationMatrix.numContinuous() <= (int)Dlinks::_globalMaxOffset)
+    error("ERROR: there is a dlink ofset of value %d which is too large for the observation matrix with only %d continuous features.",
+	  Dlinks::_globalMaxOffset,
+	  globalObservationMatrix.numContinuous());
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * totalNumberParameters
@@ -1984,328 +2026,415 @@ void GMParms::markUsedMixtureComponents()
 
 
 
+
 /*-
  *-----------------------------------------------------------------------
- * makeRandom
- *      make everyone random
+ *  markObjectsToNotTrain(fn)
+ *      Using the file given by file name, mark all objects
+ *      listed in that file so that they are not trained by EM. 
+ *  The format of the file is a list of pairs, where
+ *  the first element in the pair specifies an object type
+ *  and the 2nd gives an object name.
+ *
+ *
  * 
  * Preconditions:
- *      all must be read in.
+ *      parameters should be read in to have non zero value
  *
  * Postconditions:
- *      What is true after the function is called.
+ *      none
  *
  * Side Effects:
- *      all variable parameters are changed
+ *      will set all objects listed in file so that they are not trained.
  *
  * Results:
- *      nil
+ *      il
  *
  *-----------------------------------------------------------------------
  */
-void
-GMParms::makeRandom()
+void GMParms::markObjectsToNotTrain(const char*const fileName,
+				    const char *const cppOptions)
 {
-  // go through all EMable objects possibly
-  // used by any RV and make the call
+  if (fileName == NULL)
+    return;
 
-  // first do the basic objects
-  // which also does everything for continuous RVs
-  for (unsigned i=0;i<dPmfs.size();i++)
-    dPmfs[i]->makeRandom();
-  for (unsigned i=0;i<sPmfs.size();i++)
-    sPmfs[i]->makeRandom();
-  for (unsigned i=0;i<means.size();i++)
-    means[i]->makeRandom();
-  for (unsigned i=0;i<covars.size();i++)
-    covars[i]->makeRandom();
-  for (unsigned i=0;i<dLinkMats.size();i++)
-    dLinkMats[i]->makeRandom();
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->makeRandom();
+  iDataStreamFile is(fileName, // name
+			false,    // not binary 
+			true,     // run cpp
+			cppOptions);
 
-  // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->makeRandom();
+  string objType;
+  string objName;
+  while (is.readString(objType)) {
+    if (!is.readString(objName)) {
+      error("ERROR: while reading file '%s', got object type '%s' without an object name",
+	    is.fileName(),
+	    objType.c_str());
+    }
 
-  // for discrete RVs
-  for (unsigned i=0;i<mdCpts.size();i++)
-    mdCpts[i]->makeRandom();
-  for (unsigned i=0;i<msCpts.size();i++)
-    msCpts[i]->makeRandom();
-  for (unsigned i=0;i<mtCpts.size();i++)
-    mtCpts[i]->makeRandom();
+#define EMCLEARAMTRAININGBIT_CODE(mapName,name) \
+      if ((it=mapName.find(objName)) == mapName.end()) \
+	error("ERROR: can't find object '%s' of type '%s' listed in file '%s' of objects to not train.", \
+	      objName.c_str(), \
+	      objType.c_str(), \
+	      is.fileName()); \
+        name[(*it).second]->emClearAmTrainingBit();
 
+
+    ObjectMapType::iterator it;
+    if (objType == "DPMF") {
+      EMCLEARAMTRAININGBIT_CODE(dPmfsMap,dPmfs);
+    } else if (objType == "SPMF") {
+      EMCLEARAMTRAININGBIT_CODE(sPmfsMap,sPmfs);
+    } else if (objType == "MEAN") {
+      EMCLEARAMTRAININGBIT_CODE(meansMap,means);
+    } else if (objType == "COVAR") {
+      EMCLEARAMTRAININGBIT_CODE(covarsMap,covars);
+    } else if (objType == "DLINKMAT") {
+      EMCLEARAMTRAININGBIT_CODE(dLinkMatsMap,dLinkMats);
+    } else if (objType == "WEIGHTMAT") {
+      EMCLEARAMTRAININGBIT_CODE(weightMatsMap,weightMats);
+    } else if (objType == "GAUSIANCOMPONENT") {
+      EMCLEARAMTRAININGBIT_CODE(gaussianComponentsMap,gaussianComponents);
+    } else if (objType == "MDCPT") {
+      EMCLEARAMTRAININGBIT_CODE(mdCptsMap,mdCpts);
+    } else if (objType == "MSCPT") {
+      EMCLEARAMTRAININGBIT_CODE(msCptsMap,msCpts);
+    } else if (objType == "MIXGAUSSIAN") {
+      EMCLEARAMTRAININGBIT_CODE(mixGaussiansMap,mixGaussians);
+    } else {
+      error("ERROR: bad object type name '%s' in file '%s' of objects to not train.",
+	    objType.c_str(),
+	    is.fileName());
+    }
+
+  }
 }
 
 
 
-void
-GMParms::makeUniform()
-{
-  // go through all EMable objects possibly
-  // used by any RV and make the call
+ /*-
+  *-----------------------------------------------------------------------
+  * makeRandom
+  *      make everyone random
+  * 
+  * Preconditions:
+  *      all must be read in.
+  *
+  * Postconditions:
+  *      What is true after the function is called.
+  *
+  * Side Effects:
+  *      all variable parameters are changed
+  *
+  * Results:
+  *      nil
+  *
+  *-----------------------------------------------------------------------
+  */
+ void
+ GMParms::makeRandom()
+ {
+   // go through all EMable objects possibly
+   // used by any RV and make the call
 
-  // first do the basic objects
-  // which also does everything for continuous RVs
-  for (unsigned i=0;i<dPmfs.size();i++)
-    dPmfs[i]->makeUniform();
-  for (unsigned i=0;i<sPmfs.size();i++)
-    sPmfs[i]->makeUniform();
-  for (unsigned i=0;i<means.size();i++)
-    means[i]->makeUniform();
-  for (unsigned i=0;i<covars.size();i++)
-    covars[i]->makeUniform();
-  for (unsigned i=0;i<dLinkMats.size();i++)
-    dLinkMats[i]->makeUniform();
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->makeUniform();
+   // first do the basic objects
+   // which also does everything for continuous RVs
+   for (unsigned i=0;i<dPmfs.size();i++)
+     dPmfs[i]->makeRandom();
+   for (unsigned i=0;i<sPmfs.size();i++)
+     sPmfs[i]->makeRandom();
+   for (unsigned i=0;i<means.size();i++)
+     means[i]->makeRandom();
+   for (unsigned i=0;i<covars.size();i++)
+     covars[i]->makeRandom();
+   for (unsigned i=0;i<dLinkMats.size();i++)
+     dLinkMats[i]->makeRandom();
+   for (unsigned i=0;i<weightMats.size();i++)
+     weightMats[i]->makeRandom();
 
-  // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->makeUniform();
+   // gaussian components
+   for (unsigned i=0;i<gaussianComponents.size();i++)
+     gaussianComponents[i]->makeRandom();
 
-  // for discrete RVs
-  for (unsigned i=0;i<mdCpts.size();i++)
-    mdCpts[i]->makeUniform();
-  for (unsigned i=0;i<msCpts.size();i++)
-    msCpts[i]->makeUniform();
-  for (unsigned i=0;i<mtCpts.size();i++)
-    mtCpts[i]->makeUniform();
+   // for discrete RVs
+   for (unsigned i=0;i<mdCpts.size();i++)
+     mdCpts[i]->makeRandom();
+   for (unsigned i=0;i<msCpts.size();i++)
+     msCpts[i]->makeRandom();
+   for (unsigned i=0;i<mtCpts.size();i++)
+     mtCpts[i]->makeRandom();
 
-}
-
-
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-//        EM Routines
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * emEndIteration()
- *      Call emEndIteration() for all top level objects (top level
- *      objects are those who will not be pointed to by other objects).
- *
- * Preconditions:
- *      em should be running.
- *
- * Postconditions:
- *      EM iteration is finished.
- *
- * Side Effects:
- *      Changes almost all of the parameter objects.
- *
- * Results:
- *      nil
- *
- *-----------------------------------------------------------------------
- */
-void
-GMParms::emEndIteration()
-{
-  // go through all EMable objects possibly
-  // used by any RV and make the call
-
-  /////////////////////////////////////////////////////////////////
-  // First, do the gaussian components. This will recursively call
-  // this for all mean-like objects, covariance-like objects, and so
-  // on, so there is no need to do that here.  
-  //
-  // Mean-like objects include:
-  //
-  //       means
-  //       linCondMeans
-  //       nonLinCondMeans
-  //       ...
-  // 
-  // Variance-like objects include
-  // 
-  //       covars
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emEndIteration();
-
-  //////////////////////////////////////////////////////////////
-  // While you might think that we would need something like the
-  // following code, we don't do this here because those objects use
-  // ref counts needed for sharing. The Gaussian components will
-  // themselves end the EM iteration for those objects, and will call
-  // it the appropriate number of times so that the ref counts are set
-  // properly.
-  //
-  //    for (unsigned i=0;i<means.size();i++)
-  //      means[i]->emEndIteration();
-  //    for (unsigned i=0;i<covars.size();i++)
-  //      covars[i]->emEndIteration();
-  //    for (unsigned i=0;i<dLinkMats.size();i++)
-  //      dLinkMats[i]->emEndIteration();
-  //    for (unsigned i=0;i<weightMats.size();i++)
-  //      weightMats[i]->emEndIteration();
-  //
-  //////////////////////////////////////////////////////////////
-
-  // do the basic discrete objects
-  for (unsigned i=0;i<dPmfs.size();i++)
-    dPmfs[i]->emEndIteration();
-  for (unsigned i=0;i<sPmfs.size();i++)
-    sPmfs[i]->emEndIteration();
-
-  // for discrete RVs
-  for (unsigned i=0;i<mdCpts.size();i++)
-    mdCpts[i]->emEndIteration();
-  for (unsigned i=0;i<msCpts.size();i++)
-    msCpts[i]->emEndIteration();
-  for (unsigned i=0;i<mtCpts.size();i++)
-    mtCpts[i]->emEndIteration();
-
-  // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emEndIteration();
-#if 0
-  // uncomment this when the objects get written.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emEndIteration();
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emEndIteration();
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emEndIteration();
-#endif
-
-}
+ }
 
 
 
+ void
+ GMParms::makeUniform()
+ {
+   // go through all EMable objects possibly
+   // used by any RV and make the call
 
-/*-
- *-----------------------------------------------------------------------
- * emSwapCurAndNew()
- *      Call emSwapCurAndNew() for all top level objects (top level
- *      objects are those who will not be pointed to by other objects).
- *
- * Preconditions:
- *      EM should not be running.
- *
- * Postconditions:
- *      EM iteration is finished.
- *
- * Side Effects:
- *      Changes almost all of the parameter objects.
- *
- * Results:
- *      nil
- *
- *-----------------------------------------------------------------------
- */
-void
-GMParms::emSwapCurAndNew()
-{
-  // go through all EMable objects possibly
-  // used by any RV and make the call
+   // first do the basic objects
+   // which also does everything for continuous RVs
+   for (unsigned i=0;i<dPmfs.size();i++)
+     dPmfs[i]->makeUniform();
+   for (unsigned i=0;i<sPmfs.size();i++)
+     sPmfs[i]->makeUniform();
+   for (unsigned i=0;i<means.size();i++)
+     means[i]->makeUniform();
+   for (unsigned i=0;i<covars.size();i++)
+     covars[i]->makeUniform();
+   for (unsigned i=0;i<dLinkMats.size();i++)
+     dLinkMats[i]->makeUniform();
+   for (unsigned i=0;i<weightMats.size();i++)
+     weightMats[i]->makeUniform();
 
-  // for continuous RVs, this will recursively
-  // call swap for all sub objects.
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emSwapCurAndNew();
+   // gaussian components
+   for (unsigned i=0;i<gaussianComponents.size();i++)
+     gaussianComponents[i]->makeUniform();
 
-  // make sure that all dpmfs and spmfs have been swapped.
-  for (unsigned i=0;i<dPmfs.size();i++)
-    dPmfs[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<sPmfs.size();i++)
-    sPmfs[i]->emSwapCurAndNew();
+   // for discrete RVs
+   for (unsigned i=0;i<mdCpts.size();i++)
+     mdCpts[i]->makeUniform();
+   for (unsigned i=0;i<msCpts.size();i++)
+     msCpts[i]->makeUniform();
+   for (unsigned i=0;i<mtCpts.size();i++)
+     mtCpts[i]->makeUniform();
 
-  // don't swap these since it should have
-  // been done by the mix gausisan swapping
+ }
 
 
-//    for (unsigned i=0;i<means.size();i++)
-//      means[i]->emSwapCurAndNew();
-//    for (unsigned i=0;i<covars.size();i++)
-//      covars[i]->emSwapCurAndNew();
-//    for (unsigned i=0;i<dLinkMats.size();i++)
-//      dLinkMats[i]->emSwapCurAndNew();
-//    for (unsigned i=0;i<weightMats.size();i++)
-//      weightMats[i]->emSwapCurAndNew();
-// gaussian components
-  //  for (unsigned i=0;i<gaussianComponents.size();i++)
-  //    gaussianComponents[i]->emSwapCurAndNew();
-
-  // for discrete RVs
-  for (unsigned i=0;i<mdCpts.size();i++)
-    mdCpts[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<msCpts.size();i++)
-    msCpts[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<mtCpts.size();i++)
-    mtCpts[i]->emSwapCurAndNew();
+ ////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////
+ //        EM Routines
+ ////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////
 
 
-#if 0
-  // uncomment this when the objects get written.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emSwapCurAndNew();
-#endif
 
-  // clear out the cloning maps, under the assumption
-  // that all clones become 'real' objects.
-  MixGaussiansCommon::vanishingComponentSet.clear();
-  MixGaussiansCommon::splittingComponentSet.clear();
+ /*-
+  *-----------------------------------------------------------------------
+  * emEndIteration()
+  *      Call emEndIteration() for all top level objects (top level
+  *      objects are those who will not be pointed to by other objects).
+  *
+  * Preconditions:
+  *      em should be running.
+  *
+  * Postconditions:
+  *      EM iteration is finished.
+  *
+  * Side Effects:
+  *      Changes almost all of the parameter objects.
+  *
+  * Results:
+  *      nil
+  *
+  *-----------------------------------------------------------------------
+  */
+ void
+ GMParms::emEndIteration()
+ {
+   // go through all EMable objects possibly
+   // used by any RV and make the call
 
-  MixGaussiansCommon::meanCloneMap.clear();
-  MixGaussiansCommon::dLinkMatCloneMap.clear();
-  MixGaussiansCommon::diagCovarCloneMap.clear();
-  MixGaussiansCommon::gcCloneMap.clear();
+   /////////////////////////////////////////////////////////////////
+   // First, do the gaussian components. This will recursively call
+   // this for all mean-like objects, covariance-like objects, and so
+   // on, so there is no need to do that here.  
+   //
+   // Mean-like objects include:
+   //
+   //       means
+   //       linCondMeans
+   //       nonLinCondMeans
+   //       ...
+   // 
+   // Variance-like objects include
+   // 
+   //       covars
+   for (unsigned i=0;i<gaussianComponents.size();i++)
+     gaussianComponents[i]->emEndIteration();
 
-}
+   //////////////////////////////////////////////////////////////
+   // While you might think that we would need something like the
+   // following code, we don't do this here because those objects use
+   // ref counts needed for sharing. The Gaussian components will
+   // themselves end the EM iteration for those objects, and will call
+   // it the appropriate number of times so that the ref counts are set
+   // properly.
+   //
+   //    for (unsigned i=0;i<means.size();i++)
+   //      means[i]->emEndIteration();
+   //    for (unsigned i=0;i<covars.size();i++)
+   //      covars[i]->emEndIteration();
+   //    for (unsigned i=0;i<dLinkMats.size();i++)
+   //      dLinkMats[i]->emEndIteration();
+   //    for (unsigned i=0;i<weightMats.size();i++)
+   //      weightMats[i]->emEndIteration();
+   //
+   //////////////////////////////////////////////////////////////
 
-void
-GMParms::emStoreAccumulators(oDataStreamFile& ofile)
-{
-  // first do the basic objects
-  for (unsigned i=0;i<dPmfs.size();i++)
-    dPmfs[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<sPmfs.size();i++)
-    sPmfs[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<means.size();i++)
-    means[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<covars.size();i++)
-    covars[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<dLinkMats.size();i++)
-    dLinkMats[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emStoreAccumulators(ofile);
+   // do the basic discrete objects
+   for (unsigned i=0;i<dPmfs.size();i++)
+     dPmfs[i]->emEndIteration();
+   for (unsigned i=0;i<sPmfs.size();i++)
+     sPmfs[i]->emEndIteration();
 
-  // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emStoreAccumulators(ofile);
+   // for discrete RVs
+   for (unsigned i=0;i<mdCpts.size();i++)
+     mdCpts[i]->emEndIteration();
+   for (unsigned i=0;i<msCpts.size();i++)
+     msCpts[i]->emEndIteration();
+   for (unsigned i=0;i<mtCpts.size();i++)
+     mtCpts[i]->emEndIteration();
 
-  // for discrete RVs
-  for (unsigned i=0;i<mdCpts.size();i++)
-    mdCpts[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<msCpts.size();i++)
-    msCpts[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<mtCpts.size();i++)
-    mtCpts[i]->emStoreAccumulators(ofile);
+   // for continuous RVs
+   for (unsigned i=0;i<mixGaussians.size();i++)
+     mixGaussians[i]->emEndIteration();
+ #if 0
+   // uncomment this when the objects get written.
+   for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+     gausSwitchingMixGaussians[i]->emEndIteration();
+   for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+     logitSwitchingMixGaussians[i]->emEndIteration();
+   for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+     mlpSwitchingMixGaussians[i]->emEndIteration();
+ #endif
 
-  // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emStoreAccumulators(ofile);
-#if 0
-  // uncomment this when the objects get written.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
-#endif
+ }
 
-}
+
+
+
+ /*-
+  *-----------------------------------------------------------------------
+  * emSwapCurAndNew()
+  *      Call emSwapCurAndNew() for all top level objects (top level
+  *      objects are those who will not be pointed to by other objects).
+  *
+  * Preconditions:
+  *      EM should not be running.
+  *
+  * Postconditions:
+  *      EM iteration is finished.
+  *
+  * Side Effects:
+  *      Changes almost all of the parameter objects.
+  *
+  * Results:
+  *      nil
+  *
+  *-----------------------------------------------------------------------
+  */
+ void
+ GMParms::emSwapCurAndNew()
+ {
+   // go through all EMable objects possibly
+   // used by any RV and make the call
+
+   // for continuous RVs, this will recursively
+   // call swap for all sub objects.
+   for (unsigned i=0;i<mixGaussians.size();i++)
+     mixGaussians[i]->emSwapCurAndNew();
+
+   // make sure that all dpmfs and spmfs have been swapped.
+   for (unsigned i=0;i<dPmfs.size();i++)
+     dPmfs[i]->emSwapCurAndNew();
+   for (unsigned i=0;i<sPmfs.size();i++)
+     sPmfs[i]->emSwapCurAndNew();
+
+   // don't swap these since it should have
+   // been done by the mix gausisan swapping
+
+
+ //    for (unsigned i=0;i<means.size();i++)
+ //      means[i]->emSwapCurAndNew();
+ //    for (unsigned i=0;i<covars.size();i++)
+ //      covars[i]->emSwapCurAndNew();
+ //    for (unsigned i=0;i<dLinkMats.size();i++)
+ //      dLinkMats[i]->emSwapCurAndNew();
+ //    for (unsigned i=0;i<weightMats.size();i++)
+ //      weightMats[i]->emSwapCurAndNew();
+ // gaussian components
+   //  for (unsigned i=0;i<gaussianComponents.size();i++)
+   //    gaussianComponents[i]->emSwapCurAndNew();
+
+   // for discrete RVs
+   for (unsigned i=0;i<mdCpts.size();i++)
+     mdCpts[i]->emSwapCurAndNew();
+   for (unsigned i=0;i<msCpts.size();i++)
+     msCpts[i]->emSwapCurAndNew();
+   for (unsigned i=0;i<mtCpts.size();i++)
+     mtCpts[i]->emSwapCurAndNew();
+
+
+ #if 0
+   // uncomment this when the objects get written.
+   for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+     gausSwitchingMixGaussians[i]->emSwapCurAndNew();
+   for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+     logitSwitchingMixGaussians[i]->emSwapCurAndNew();
+   for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+     mlpSwitchingMixGaussians[i]->emSwapCurAndNew();
+ #endif
+
+   // clear out the cloning maps, under the assumption
+   // that all clones become 'real' objects.
+   MixGaussiansCommon::vanishingComponentSet.clear();
+   MixGaussiansCommon::splittingComponentSet.clear();
+
+   MixGaussiansCommon::meanCloneMap.clear();
+   MixGaussiansCommon::dLinkMatCloneMap.clear();
+   MixGaussiansCommon::diagCovarCloneMap.clear();
+   MixGaussiansCommon::gcCloneMap.clear();
+
+ }
+
+ void
+ GMParms::emStoreAccumulators(oDataStreamFile& ofile)
+ {
+   // first do the basic objects
+   for (unsigned i=0;i<dPmfs.size();i++)
+     dPmfs[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<sPmfs.size();i++)
+     sPmfs[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<means.size();i++)
+     means[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<covars.size();i++)
+     covars[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<dLinkMats.size();i++)
+     dLinkMats[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<weightMats.size();i++)
+     weightMats[i]->emStoreAccumulators(ofile);
+
+   // gaussian components
+   for (unsigned i=0;i<gaussianComponents.size();i++)
+     gaussianComponents[i]->emStoreAccumulators(ofile);
+
+   // for discrete RVs
+   for (unsigned i=0;i<mdCpts.size();i++)
+     mdCpts[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<msCpts.size();i++)
+     msCpts[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<mtCpts.size();i++)
+     mtCpts[i]->emStoreAccumulators(ofile);
+
+   // for continuous RVs
+   for (unsigned i=0;i<mixGaussians.size();i++)
+     mixGaussians[i]->emStoreAccumulators(ofile);
+ #if 0
+   // uncomment this when the objects get written.
+   for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+     gausSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+     logitSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
+   for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+     mlpSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
+ #endif
+
+ }
 
 void
 GMParms::emLoadAccumulators(iDataStreamFile& ifile)
