@@ -479,7 +479,7 @@ public:
 
 
   ///////////////////////////////////////////////////////////    
-  // make available the number of featurse.
+  // make available the number of features.
   unsigned numFeatures() { return _numFeatures; }
 
   ///////////////////////////////////////////////////////////    
