@@ -43,6 +43,7 @@ VCID("$Header$");
 ***********************************************************************
 
 The GM Grammar:
+-------------------
 
 GM = "GRAPHICAL_MODEL" identifier Frame_List Chunk_Specifier
 
@@ -94,6 +95,139 @@ Continuous_Implementation = "mixGaussian" |
          "mlpSwitchMixGaussian"
      
 Chunk_Specifier = "chunk"  integer ":" integer
+
+==========================================================================
+
+# The GM Grammar:
+
+GM = "GRAPHICAL_MODEL" identifier Frame_List Chunk_Specifier
+
+Frame_List = Frame | Frame Frame_List
+
+Frame = "frame" ":" integer "{" RV_List "}"
+
+RV_List = RV | RV RV_List
+
+RV = "variable" ":" name "{" RV_Attribute_List "}"
+
+RV_Attribute_List = Type_Attribute | Parents_Attribute
+
+Type_Attribute = "type" ":" RV_Type ";"
+
+Parents_Attribute =
+    "switchingparents" ":" Switching_Parent_LIST ";"
+    "conditionalparents" ":" Conditional_Parent_List_List  ";"
+
+RV_Type = Discrete_RV | Continuous_RV
+
+Discrete_RV = "discrete" ( "hidden" | "observed" integer ":" integer ) "cardinality" integer
+
+Continuous_RV = "continuous" ("hidden" | "observed" "features" integer:integer)
+
+Switching_Parent_LIST = "nil" | Parent_List "using" Mapping_Spec
+
+Conditional_Parent_List_List =
+    Conditional_Parent_List using Implementation |
+    Conditional_Parent_List using Implementation "|" Conditional_Parent_List_List
+
+Cond_Parent_List = "nil" | Parent_List
+
+Parent_List = Parent | Parent "," Parent_List
+
+Parent = identifier "(" integer ")"
+
+Implementation = DiscreteImplementation | ContinousImplementation
+
+DiscreteImplementation = "MDCPT" | "MSCPT"
+
+ContinousImplementation = DirectContObsDist | MappingToAContObsDist
+
+DirectContObsDist = ContObsDistType "(" List_Index ")"
+       # direct cont. observation dist is used if conditional parents 
+       # are nil
+       # in which case we select only one dist. This
+       # is analogous to the discrete case where you directly
+       # select a CPT with the appropriate parents
+
+MappingToAContObsDist = ContObsDistType Mapping_Spec
+       # this is when we have multiple conditional parents,
+       # and we need another decision tree to map
+       # from the conditional parents values to the appropriate
+       # distribution.
+
+ContObsDistType = "mixGaussian" | "gausSwitchMixGaussian" 
+  | "logitSwitchMixGaussian" | "mlpSwitchMixGaussian"
+
+Mapping_Spec = "mapping" "(" List_Index ")"
+     # the integer (or string) is used to index into a table
+     # of decision trees to choose the decision tree
+     # that will map from the switching parents to one of the
+     # conditional parent lists.
+
+
+Chunk_Specifier = "chunk"  integer ":" integer
+
+List_Index = integer | string
+
+======================================================================
+
+
+Example of a grammatical GM file
+-----------------------------------
+
+# Actual model definition
+GRAPHICAL_MODEL FHMM
+frame:1 {
+     variable : word {
+          type: discrete hidden cardinality 3 ;
+          switchingparents: nil ;
+          conditionalparents: nil using MDCPT("initcpt") ;
+        }
+     variable : phone {
+          type: discrete hidden cardinality 4 ;
+          switchingparents : nil ;
+          conditionalparents :
+                     word(0) using MDCPT("dep_on_word") ;
+        }
+     variable : state1 {
+          type: discrete hidden cardinality 4 ;
+          switchingparents: phone(0) using mapping("phone2state1") ;
+          conditionalparents :
+                  nil using MSCPT("f1")
+                | nil using MDCPT("f2") ;
+       }
+       variable : state2 {
+          type: discrete hidden cardinality 4 ;
+          switchingparents: nil ;
+          conditionalparents:
+                     nil using MDCPT("f5") ;
+       }
+
+       variable : obs1 {
+          type: continous observed features 0:5 ;
+          switchingparents: state1(0), state2(0) 
+                   using mapping("state2obs6") ;
+          conditionalparents: 
+                 nil using mixGaussian("the_forth_gaussian");
+               | state1(0) using mixGaussian mapping("gausmapping");
+       }
+       variable : obs2 {
+          type: continous observed features 6:25  ;
+          switchingparents: nil ;
+          conditionalparents: 
+                state1(0) using mlpSwitchMixGaussian
+                          mapping("gaussmapping3") ;
+       }
+
+}
+
+frame:2 {
+     (similar changes here)
+}
+
+chunk: 2:2
+
+
 
 *********************************************************************** 
 *********************************************************************** 
