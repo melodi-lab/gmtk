@@ -57,7 +57,6 @@ class GausSwitchingMixGaussians;
 class LogitSwitchingMixGaussians;
 class MLPSwitchingMixGaussians;
 
-template <class T>
 class RngDecisionTree;
 class Dlinks;
 class GMTK_GM;
@@ -260,10 +259,10 @@ public:
   // that live here).
   //////////////////////////////////////////////////////////////////
 
-  vector< RngDecisionTree<unsigned>* > dts;
-  vector< RngDecisionTree<unsigned>* > clampableDts;
+  vector< RngDecisionTree* > dts;
+  vector< RngDecisionTree* > clampableDts;
   ObjectMapType dtsMap;
-  void add(RngDecisionTree<unsigned>*);
+  void add(RngDecisionTree*);
   
 
   //////////////////////////////////////////////////////////////////

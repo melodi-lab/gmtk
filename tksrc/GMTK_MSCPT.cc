@@ -192,7 +192,7 @@ MSCPT::read(iDataStreamFile& is)
   // now go through the dt and make sure each dt leaf
   // node points to a Sparse1DPMF that has the same
   // cardinality as self.
-  RngDecisionTree<unsigned>::iterator it = dt->begin();
+  RngDecisionTree::iterator it = dt->begin();
   do {
     if (!it.valueNode())
       continue;
@@ -311,7 +311,7 @@ void
 MSCPT::normalize()
 {
   assert ( bitmask & bm_basicAllocated );
-  RngDecisionTree<unsigned>::iterator it = dt->begin();
+  RngDecisionTree::iterator it = dt->begin();
   do {
     const int v = it.value();
     if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
@@ -346,7 +346,7 @@ MSCPT::makeRandom()
   if (!emAmTrainingBitIsSet())
     return;
 
-  RngDecisionTree<unsigned>::iterator it = dt->begin();
+  RngDecisionTree::iterator it = dt->begin();
   do {
     const int v = it.value();
     if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
@@ -383,7 +383,7 @@ MSCPT::makeUniform()
   if (!emAmTrainingBitIsSet())
     return;
 
-  RngDecisionTree<unsigned>::iterator it = dt->begin();
+  RngDecisionTree::iterator it = dt->begin();
   do {
     const int v = it.value();
     if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
