@@ -33,6 +33,8 @@
 #include "rand.h"
 #include "arguments.h"
 
+#include "ieeeFPsetup.h"
+
 #include "spi.h"
 
 #include "GMTK_FileParser.h"
@@ -76,6 +78,13 @@ ObservationMatrix globalObservationMatrix;
 int
 main(int argc,char*argv[])
 {
+  ////////////////////////////////////////////
+  // set things up so that if an FP exception
+  // occurs such as an "invalid" (NaN), overflow
+  // or divide by zero, we actually get a FPE
+  ieeeFPsetup();
+
+
   ARGS::parse(argc,argv);
 
   if (seedme)
