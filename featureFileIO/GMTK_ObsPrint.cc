@@ -712,8 +712,14 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
        FILE *in_fp = fopen(input_fname[i], "r");
        if (in_fp==NULL) error("Couldn't open input pfile for reading.");
        InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswap[i]);
-       nis[i]=in_streamp->num_labs();
-       nfs[i]=in_streamp->num_ftrs();
+
+       unsigned num_labs=in_streamp->num_labs();
+       unsigned num_ftrs=in_streamp->num_ftrs();
+       if(nis[i] != 0 && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
+       if(nfs[i] != 0 && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
+       nis[i]=num_labs;
+       nfs[i]=num_ftrs;
+
        if (fclose(in_fp)) error("Couldn't close input pfile.");
        delete in_streamp;
      }
