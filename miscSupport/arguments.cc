@@ -657,6 +657,8 @@ char *unionClass::typeStr(unionClass::argType at) {
     return "string";
   case unionClass::int_t:
     return "integer";
+  case unionClass::uint_t:
+    return "unsigned";
   case unionClass::float_t:
     return "float";
   case unionClass::double_t:
