@@ -158,7 +158,7 @@ X Allow the file parser to pass ASCII files through cpp
 
 - Short term: evaulate float/double for logp on Aurora
 
-- Long term: 
+X Long term: 
      have a log space algorithm option
 
 - in file parser, add checks to make sure that all ints read in
