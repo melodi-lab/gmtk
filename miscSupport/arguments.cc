@@ -11,6 +11,7 @@
  */
 
 #include <strstream.h>
+#include <iostream.h>
 #include <fstream.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -763,37 +764,41 @@ Arg::ArgsRetCode Arg::parseArgsFromFile(char *fileName)
     return ARG_ERROR;
   } else {
     // get the remaining from file
-    const int max_line_length = 8096;
+    const unsigned max_line_length = 32*1024;
     char buffer[max_line_length];
-    char buffer_orig[max_line_length];
-    char c;
-    while (ifile.good()) { 
-      ifile.get(buffer,max_line_length,'\n');
-      if (ifile.get(c) && c != '\n') {
+
+    while (ifile.getline(buffer,max_line_length,'\n')) {
+      // printf("Got line (%s)\n",buffer);
+      const unsigned line_length = strlen(buffer);
+      if (line_length+1 >= max_line_length) {
 	// input string is too long.
-	warning("%s Line length too long in file: %s",
-		ArgsErrStr,
-		fileName);
-	return ARG_ERROR; // give up
+ 	warning("%s Line length too long in command line parameter arguments file: %s",
+ 		ArgsErrStr,
+ 		fileName);
+ 	return ARG_ERROR; // give up
       }
-      strcpy(buffer_orig,buffer);
       char* buffp = buffer;
       while (*buffp) {
-	if (*buffp == COMMENTCHAR)
+	if (*buffp == COMMENTCHAR) {
 	  *buffp = '\0';
+	  break;
+	}
 	buffp++;
       }
 
       buffp = buffer;
-      while (*buffp == ' ' || *buffp == '\t')
+      while (*buffp && isspace(*buffp))
         buffp++;       // skip space
+      if (!*buffp) {
+	continue; // empty line
+      }
       char *flag = buffp; // get flag
       char *arg;
       // get command up to space or ':'
       while (*buffp && *buffp != ' ' && *buffp != '\t' &&  *buffp != ':')
 	buffp++;
       if (buffp == flag)
-	continue; // empty line.
+	continue; // empty line or empty flag
       if (*buffp) { 
 	// get ':' and position buffp to start of arg.
 	if (*buffp == ':')
