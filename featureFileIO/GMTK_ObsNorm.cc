@@ -6,8 +6,9 @@
  *  Time-stamp: <>
 */
 
-
-// #include <values.h>
+#ifndef __CYGWIN__
+#include <values.h>
+#endif
 
 #include <math.h>
 #include "GMTK_ObsNorm.h"

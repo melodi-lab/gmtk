@@ -7,10 +7,12 @@
 */
 
 
-// #include <values.h>
+#ifndef __CYGWIN__
+#include <values.h>
+#endif
 #include <math.h>
+#include <values.h>
 #include "GMTK_ObsStats.h"
-
 
 typedef struct { 
   size_t sent_no;
