@@ -163,7 +163,7 @@ MSCPT::read(iDataStreamFile& is)
   // that maps from parent values to an integer specifying
   // the sparse CPT. 
   is.read(dtIndex);
-  if (dtIndex < 0 || dtIndex > GM_Parms.dts.len())
+  if (dtIndex < 0 || dtIndex >= GM_Parms.dts.len())
     error("MSCPT::read, invalid DT index %d\n",dtIndex);
 
   // TODO: check that the cardinalities of self match

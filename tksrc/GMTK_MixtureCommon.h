@@ -52,9 +52,9 @@ public:
   virtual ~GaussianCommon() {}
 
 
-  static double varianceFloor() { return _varianceFloor; }
-  static void setVarianceFloor(double floor) 
-    { if (floor < FLT_MIN) floor = FLT_MIN; _varianceFloor = floor; }
+  static double varianceFloor();
+  static void setVarianceFloor(const double floor);
+
 
 
   //////////////////////////////////////////////
