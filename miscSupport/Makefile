@@ -35,7 +35,7 @@ INSTALL_EXE = $(INSTALL) -m 555
 # Program options.
 #
 # OPTFLAGS = -O
-OPTFLAGS =
+OPTFLAGS = -O
 
 EXFLAGS =  # extra flags via command line (e.g., -pg).
 CXXFLAGS = -g $(OPTFLAGS) $(EXFLAGS) -Wall -ansi -pedantic
@@ -87,7 +87,7 @@ all: libmiscSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o
+objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o lineqsolve.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
