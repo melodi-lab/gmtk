@@ -380,6 +380,17 @@ public:
     vector<RandomVariable*>&    order
     );
 
+  // Check if graph is chordal 
+  bool chordalityTest( 
+    const set<RandomVariable*>& nodes
+  );
+
+  // Check chordality and get cliques in RIP order
+  bool getCliques( 
+    const set<RandomVariable*>& nodes,
+    vector<MaxClique>&          cliques
+  );
+
   // triangulation by simple completion
   void triangulateCompletePartition(const set<RandomVariable*>& nodes,
 				    vector<MaxClique>&          cliques
