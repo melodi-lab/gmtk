@@ -286,12 +286,16 @@ main(int argc,char*argv[])
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
   fp.associateWithDataParams();
+  // make sure that all observation variables work
+  // with the global observation stream.
+  fp.checkConsistentWithGlobalObservationStream();
 
   // now associate the RVs with a GM
   GMTK_GM gm;
   fp.addVariablesToGM(gm);
 
   gm.setExampleStream(obsFileName,dcdrng_str);
+  GM_Parms.checkConsistentWithGlobalObservationStream();
 
   gm.verifyTopologicalOrder();
 
