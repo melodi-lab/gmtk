@@ -249,7 +249,11 @@ public:
   virtual void emStartIteration()  { assert(0); }
   // The next few are for Gaussian component objects.
   virtual void emStartIteration(sArray<float>& componentsNextMeans)  { assert(0); }
-
+  // The next few are for Gaussian component objects.
+  virtual void emStartIteration(sArray<float>& xzAccumulators,
+				sArray<float>& zzAccumulators,
+				sArray<float>& zAccumulators)
+  { assert(0); }
 
   ////////////////////////////////////////////////////////////////////
   // Accumulate new data into the internal structures for eam.
