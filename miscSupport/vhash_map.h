@@ -68,8 +68,8 @@ public:
 
   //////////////////////////////////////////////////
   // return true if the two keys are equal.
-  bool keyEqual(const _Key* k1,const _Key* k2) {
-    const _Key* k1_endp = k1+vsize;
+  bool keyEqual(const register _Key* k1,const register _Key* k2) {
+    const register _Key* k1_endp = k1+vsize;
     do {
       if (*k1++ != *k2++)
 	return false;
@@ -313,7 +313,24 @@ public:
     else 
       return NULL;
   }
-  // Note: 
+
+
+  ////////////////////////////////////////////////////////
+  // Another version of find that returns not only the data item, but
+  // also a pointer to the keyp in the hash table itself, which can be
+  // modified if need be. If item is not found, key_pp is *NOT*
+  // modified.
+  _Data* find(_Key* key,_Key**& key_pp) {
+    const unsigned a = entryOf(key,table);
+    // printf("find: entry %d\n",a);
+    if (!empty(table[a])) {
+      key_pp = &table[a].key;
+      return &table[a].item;
+    } else {
+      return NULL;
+    }
+  }
+
 
   /////////////////////////////////////////////////////////
   // search for key, returning a reference to the data item
@@ -327,12 +344,15 @@ public:
     return *resp;
   }
 
+#if 0
+  // Make these avaialble only in derived classes.
   // Direct access to tables and keys (made available for speed).
   // Use sparingly, and only if you know what you are doing.
   _Key*& tableKey(const unsigned i) { return table[i].key; }
   _Data& tableItem(const unsigned i) { return table[i].item; }
   bool tableEmpty(const unsigned i) { return empty(table[i]); }
   unsigned tableSize() { return table.size(); }
+#endif
 
 };
 
