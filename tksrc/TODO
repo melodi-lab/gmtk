@@ -64,3 +64,7 @@ XXX- todo, make sure that chunk n:m is valid.
 - look at and get rid of purify memory lost message
 
 - update make file so that -@ works for .o files.
+
+- Check the results of all DT query() calls to make sure
+  the index it returns is valid. Report great error messages
+  if it doesn't.

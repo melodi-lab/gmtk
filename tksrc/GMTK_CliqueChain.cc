@@ -172,8 +172,8 @@ void CliqueChain::backwardPass()
 	      backwardDataProb += (li->lambda=li->succ->lambda)*li->pi;
     }
 
-    cout << "Forward data prob: " << dataProb.val() << " Backward data prob: "
-         << backwardDataProb.val() << endl;
+    // cout << "Forward data prob: " << dataProb.val() << " Backward data prob: "
+    // << backwardDataProb.val() << endl;
 }
 
 /*-
