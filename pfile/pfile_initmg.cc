@@ -958,9 +958,9 @@ main(int argc, const char *argv[])
      }
 
      if (input_fname2 == NULL) {
-       in_streamp = new SPI(input_fname);
+       in_streamp = new SPI(input_fname, false);
      } else {
-       in_streamp = new SPI2(input_fname,input_fname2);
+       in_streamp = new SPI2(input_fname,input_fname2,false,false);
        printf("NOTE: Merging multiple pfiles frame-by-frame, resulting num feats per frame = %d\n",in_streamp->n_ftrs());
      }
 
