@@ -1254,13 +1254,13 @@ findInterfacePartitions(
  *-----------------------------------------------------------------------
  */
 void
-BoundaryTriangulate::
-triangulate(const string& tri_heur_str,
-	    bool jtWeight,
-	    GMTemplate& gm_template,
-	    bool doP,
-	    bool doC,
-	    bool doE)
+BoundaryTriangulate
+::triangulate(const string& tri_heur_str,
+	      bool jtWeight,
+	      GMTemplate& gm_template,
+	      bool doP,
+	      bool doC,
+	      bool doE)
 {
   TriangulateHeuristics tri_heur;
   vector<nghbrPairType> orgnl_P_nghbrs;
@@ -1434,8 +1434,8 @@ triangulateOnce(// input: nodes to be triangulated
  *-----------------------------------------------------------------------
  */
 void
-BoundaryTriangulate::
-triangulatePartition(
+BoundaryTriangulate
+::triangulatePartition(
   const set<RandomVariable*>& nodes,  // nodes to be triangulated
   const bool jtWeight,                // use JT weight rather than sum of weight
   const set<RandomVariable*>& nodesRootMustContain, // nodes that a JT root must
@@ -1445,7 +1445,7 @@ triangulatePartition(
   vector<MaxClique>& best_cliques,       // output: resulting max cliques
   string& best_method,            // output: string giving resulting method used
   double& best_weight,            // weight to best
-  string  best_method_prefix 
+  string  best_method_prefix
   )
 {
   vector<MaxClique>       cliques;
@@ -4648,12 +4648,12 @@ ensurePartitionsAreChordal(GMTemplate& gm_template)
  *-----------------------------------------------------------------------
  */
 void
-BoundaryTriangulate::
-anyTimeTriangulate(GMTemplate& gm_template,
-		   const bool jtWeight,
-		   const bool doP,
-		   const bool doC,
-		   const bool doE)
+BoundaryTriangulate
+::anyTimeTriangulate(GMTemplate& gm_template,
+		     const bool jtWeight,
+		     const bool doP,
+		     const bool doC,
+		     const bool doE)
 {
   assert (timer != NULL);
 
@@ -4682,27 +4682,39 @@ anyTimeTriangulate(GMTemplate& gm_template,
   // place just in case there is no time for anything else 
   ////////////////////////////////////////////////////////////////////////
   if (doP) {
+    if (timer)
+      timer->DisableTimer();
     infoMsg(IM::Tiny, "---\nPreliminary Triangulation of P:\n");
     triangulatePartition( gm_template.P.nodes, jtWeight, 
 			  gm_template.PCInterface_in_P,
 			  "FWH", orgnl_P_nghbrs, gm_template.P.cliques,
 			  gm_template.P.triMethod, best_P_weight );
+    if (timer)
+      timer->EnableTimer();
   }
 
   if (doC) {
+    if (timer)
+      timer->DisableTimer();
     infoMsg(IM::Tiny, "---\nPreliminary Triangulation of C:\n");
     triangulatePartition( gm_template.C.nodes, jtWeight, 
 			  gm_template.CEInterface_in_C,
 			  "FWH", orgnl_C_nghbrs, gm_template.C.cliques,
 			  gm_template.C.triMethod, best_C_weight );
+    if (timer)
+      timer->EnableTimer();
   }
 
   if (doE) {
+    if (timer)
+      timer->DisableTimer();
     infoMsg(IM::Tiny, "---\nPreliminary Triangulation of E:\n");
     triangulatePartition( gm_template.E.nodes, jtWeight, 
 			  emptySet,
 			  "FWH", orgnl_E_nghbrs, gm_template.E.cliques, 
 			  gm_template.E.triMethod, best_E_weight ); 
+    if (timer)
+      timer->EnableTimer();
   }
 
   ////////////////////////////////////////////////////////////////////////
