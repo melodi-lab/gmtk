@@ -128,4 +128,12 @@ void print_date_string(FILE*f)
   fprintf(f,"%s",buf);
 }
  
-
+void exit_program_with_status(const int stat)
+{
+  printf("____ PROGRAM ENDED %sWITH STATUS %d AT ", 
+	 (stat == 0 ? "SUCCESSFULLY " : ""),
+	 stat);
+  print_date_string(stdout);
+  printf(" ____\n");
+  exit (stat);
+}
