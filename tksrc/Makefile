@@ -88,7 +88,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all: 
+all: all_exs
 
 #----------------------------------------------------------------------------
 # Define the standard library modules
@@ -106,7 +106,7 @@ all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dli
 
 all_objs = $(objs)
 
-all_exs = gmtkEMtrain gmtkViterbi gmtkSplitGaussians
+all_exs = gmtkEMtrain gmtkViterbi
 
 #----------------------------------------------------------------------------
 # Main build programs.
