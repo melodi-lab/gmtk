@@ -24,7 +24,7 @@
 #include "bp_range.h"
 #include "GMTK_Stream.h"
 
-#define MAXBUFSIZE 1000 
+
 
 
 /* ObservationMatrix: basic data structure for input feature buffer 
@@ -102,89 +102,49 @@ class ObservationMatrix
 
   void closeDataFiles();
 
- public:
 
   // the segment number
-  size_t segmentNumber;
+  size_t _segmentNumber;
 
   // the number of frames in this segment
-  unsigned numFrames;
+  unsigned _numFrames;
+
+  // the number of frames in this segment that are not skipped
+  unsigned _numNonSkippedFrames;
 
   // number of continuous features in this segment
-  unsigned numContinuous;
+  unsigned _numContinuous;
 
   // number of discrete features
-  unsigned numDiscrete;
+  unsigned _numDiscrete;
 
   // sum of the above two
-  unsigned numFeatures;
+  unsigned _numFeatures;
 
   // stride, which is the number of Data32's between
   // each frame, as it might be different than numFeatures
 
-  unsigned stride;
+  unsigned _stride;
 
-  sArray< Data32 > features; // matrix of features
+  // number of frames to skip at the beginning
+  unsigned _startSkip;
 
+  // number of frames to skip a the end.
+  unsigned _endSkip;
+
+  /////////////////////////////////////////////
+  unsigned _totalSkip;
+
+ public:
+  
+  /////////////////////////////////////////////////
+  // constructor just makes an inactive object.
   ObservationMatrix();
   ~ObservationMatrix();
 
-  // skip to beginning of frame f	 
-  
-  Data32*const baseAtFrame(unsigned f) {
-    assert (f >= 0 && f < numFrames);
-    return features.ptr + stride*f;
-  }
-
-  float*const floatVecAtFrame(unsigned f) {
-    assert (f >= 0 && f < numFrames);
-    return (float*)(features.ptr + stride*f);
-  }
-  
-  float*const floatAtFrame(unsigned f) {
-    assert (f >= 0 && f < numFrames);
-    return (float*)(features.ptr + stride*f);
-  }
-
-  float*const floatVecAtFrame(unsigned f, 
-			      const unsigned startFeature,
-			      const unsigned len) {
-    assert (f >= 0 && f < numFrames);
-    assert (startFeature >= 0 && startFeature + len <= numContinuous);
-    return (float*)(features.ptr + stride*f + startFeature);
-  }
-
-
-  float*const floatVecAtFrame(unsigned f, 
-			      const unsigned startFeature) {
-    assert (f >= 0 && f < numFrames);
-    return (float*)(features.ptr + stride*f + startFeature);
-  }
-
-
-  unsigned*const unsignedAtFrame(unsigned f) {
-    assert (f >= 0 && f < numFrames);
-    return (unsigned*)(features.ptr + stride*f + numContinuous);
-  }
-
-  unsigned& unsignedAtFrame(const unsigned frame, const unsigned feature) {
-    assert (frame >= 0 && frame < numFrames);
-    assert (feature >= numContinuous
-	    &&
-	    feature < numFeatures);
-    return *(unsigned*)(features.ptr+stride*frame+feature);
-  }
-
-  bool elementIsDiscrete(unsigned el) {
-    return (el >= numContinuous && el < numFeatures);
-  }
-
-  bool elementIsContinuous(unsigned el) {
-    return (el >= 0 && el < numContinuous);
-  }
-
-  // initialize input streams and allocate obs matrix
-  
+  /////////////////////////////////////////////////////////
+  // the true constructor, in that it initializes the
+  // input streams and allocate obs matrix.
   void openFiles(int n_files,  
 		 const char **fof_names,
 		 const char **cont_range_str,
@@ -192,16 +152,120 @@ class ObservationMatrix
 		 unsigned *n_floats,
 		 unsigned *n_ints,
 		 unsigned *formats,
-		 bool *swapflags);
+		 bool *swapflags,
+		 const unsigned _startSkip = 0,
+		 const unsigned _endSkip = 0);
+
+  
+  ///////////////////////////////////////////////////////////
+  // returns true if the current observation matrix
+  // is "active" in the sence that there are open
+  // files, and data can be read from them. 
+  bool active() { return (_numStreams > 0); }
+
+  // the segment number
+  size_t segmentNumber() { return _segmentNumber; }
+
+  // the number of frames not including the skip in this segment
+  unsigned numFrames() { return _numFrames ; }
+
+  // the number of "real" frames in this segment
+  unsigned numNonSkippedFrames() { return _numNonSkippedFrames; }
+
+  // number of continuous features in this segment
+  unsigned numContinuous() { return _numContinuous; }
+
+  // number of discrete features
+  unsigned numDiscrete() { return _numDiscrete; }
+
+  // sum of the above two
+  unsigned numFeatures() { return _numFeatures; }
+
+  // stride, which is the number of Data32's between
+  // each frame, as it might be different than numFeatures
+
+  unsigned stride() { return _stride; }
+
+  // number of frames to skip at the beginning
+  unsigned startSkip() { return _startSkip; }
+
+  // number of frames to skip a the end.
+  unsigned endSkip() { return _endSkip; }
+
+  unsigned numSegments() { return _numSegments ; }
+
+  // The actual matrix of features, which may be used directly
+  // if so desired. This is a matrix of Data32s, some of which
+  // might refer to single precision floating point numbers,
+  // and some of which might refer to 32 bit unsigned integers.
+  // The access routines below will index into this for convenient
+  // user access. 
+  sArray< Data32 > features; 
+
+  /////////////////////////////////////////
+  // A pointer to the starting base of: 
+  Data32 *featuresBase;
+
+
+  /////////////////////////////////////////////
+  // these access routines respect the start frame and end frame.
+  Data32*const baseAtFrame(unsigned f) {
+    assert (f >= 0 && f < _numFrames);
+    return featuresBase + _stride*f;
+  }
+
+  float*const floatVecAtFrame(unsigned f) {
+    assert (f >= 0 && f < _numFrames);
+    return (float*)(featuresBase + _stride*f);
+  }
+  
+  float*const floatAtFrame(unsigned f) {
+    assert (f >= 0 && f < _numFrames);
+    return (float*)(featuresBase + _stride*f);
+  }
+
+  float*const floatVecAtFrame(unsigned f, 
+			      const unsigned startFeature,
+			      const unsigned len) {
+    assert (f >= 0 && f < _numFrames);
+    assert (startFeature >= 0 && startFeature + len <= _numContinuous);
+    return (float*)(featuresBase + _stride*f + startFeature);
+  }
+
+
+  float*const floatVecAtFrame(unsigned f, 
+			      const unsigned startFeature) {
+    assert (f >= 0 && f < _numFrames);
+    return (float*)(featuresBase + _stride*f + startFeature);
+  }
+
+
+  unsigned*const unsignedAtFrame(unsigned f) {
+    assert (f >= 0 && f < _numFrames);
+    return (unsigned*)(featuresBase + _stride*f + _numContinuous);
+  }
+
+  unsigned& unsignedAtFrame(const unsigned frame, const unsigned feature) {
+    assert (frame >= 0 && frame < _numFrames);
+    assert (feature >= _numContinuous
+	    &&
+	    feature < _numFeatures);
+    return *(unsigned*)(featuresBase+_stride*frame+feature);
+  }
+
+  bool elementIsDiscrete(unsigned el) {
+    return (el >= _numContinuous && el < _numFeatures);
+  }
+
+  bool elementIsContinuous(unsigned el) {
+    return (el >= 0 && el < _numContinuous);
+  }
+
 
   // load data for single segment (utterance)
 
   void loadSegment(const unsigned seg);
-
-  unsigned numSegments() { return _numSegments ; }
-
-
-  bool active() { return (_numStreams > 0); }
+  void storeSegment(const unsigned seg) { error("not implemented\n"); }
 
   void printSegmentInfo();
 

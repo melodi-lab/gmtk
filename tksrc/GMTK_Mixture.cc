@@ -166,7 +166,7 @@ MixGaussians::log_p(const unsigned frameIndex,
 
   const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
-  const int stride =  globalObservationMatrix.stride;
+  const int stride =  globalObservationMatrix.stride();
 
   if (componentCache.size() < (frameIndex+1)) {
     // never have more than 25% more frames than needed while still
@@ -354,7 +354,7 @@ MixGaussians::emIncrement(logpr prob,
 
   const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
-  const int stride = globalObservationMatrix.stride;
+  const int stride = globalObservationMatrix.stride();
 
   logpr tmp = prob/componentCache[frameIndex].prob;
   for (unsigned i=0;i<numComponents;i++) {

@@ -17,16 +17,22 @@
 #include <stdio.h>
 #include "GMTK_ObservationMatrix.h"
 
+#define INITIAL_BUF_NUM_FRAMES 1000 
+
 // create ObservationMatrix object
+
+
+
 
 ObservationMatrix::ObservationMatrix() {
 
-  numFrames = 0;
-  numContinuous = 0;
-  numDiscrete = 0;
-  numFeatures = 0;
-  stride = 0;
-  segmentNumber = 0;
+  _numFrames = _numNonSkippedFrames = 0;
+  _numContinuous = 0;
+  _numDiscrete = 0;
+  _numFeatures = 0;
+  _stride = 0;
+  _segmentNumber = 0;
+  _startSkip = _endSkip = _totalSkip = 0;
 
   _totalContinuous = 0;
   _totalDiscrete = 0;
@@ -52,7 +58,10 @@ ObservationMatrix::openFiles(int n_files,
 			     unsigned *n_floats,
 			     unsigned *n_ints,
 			     unsigned *formats,
-			     bool *swapflag) {
+			     bool *swapflag,
+			     const unsigned _startSkipa,
+			     const unsigned _endSkipa) 
+{
   
   assert (n_files > 0);
 
@@ -131,8 +140,8 @@ d '%s' (%li) - will only read minimum number\n",fof_names[i-1],a,
 
     // add up features used for observation matrix
 
-    numContinuous += _inStreams[i]->nFloatsUsed;
-    numDiscrete += _inStreams[i]->nIntsUsed;
+    _numContinuous += _inStreams[i]->nFloatsUsed;
+    _numDiscrete += _inStreams[i]->nIntsUsed;
 
     if (n_floats[i] > _maxContinuous)
       _maxContinuous = n_floats[i];
@@ -141,25 +150,26 @@ d '%s' (%li) - will only read minimum number\n",fof_names[i-1],a,
       _maxDiscrete = n_ints[i];
   }
 
-
   _numSegments = _inStreams[0]->fofSize; // same for all streams
 
-  numFeatures = numContinuous + numDiscrete;
+  _numFeatures = _numContinuous + _numDiscrete;
 
-  stride = numFeatures; 
+  _stride = _numFeatures; 
+
+  _startSkip = _startSkipa;
+  _endSkip = _endSkipa;
+  _totalSkip = _startSkip + _endSkip;
 
   // initialize feature buffer 
-
-  _bufSize = MAXBUFSIZE;
-  
-  features.resize(_bufSize * stride); 
+  _bufSize = INITIAL_BUF_NUM_FRAMES;
+  features.resize(_bufSize * _stride); 
+  featuresBase = features.ptr + _stride*_startSkip;
 
   _contFea.resize(_maxContinuous); // temporary buffers for 1 frame of input
   _discFea.resize(_maxDiscrete);   
-
   
   _cont_p = features.ptr;  // pointer to continuous block 
-  _disc_p = features.ptr + numContinuous; // pointer to discrete block
+  _disc_p = features.ptr + _numContinuous; // pointer to discrete block
 
 }
 
@@ -174,7 +184,8 @@ ObservationMatrix::~ObservationMatrix() {
 /* read input for single segment 'segno' */
 
 void
-ObservationMatrix::loadSegment(const unsigned segno) {
+ObservationMatrix::loadSegment(const unsigned segno) 
+{
 
   int i;
   size_t n_samps = 0;
@@ -236,12 +247,11 @@ ObservationMatrix::loadSegment(const unsigned segno) {
 
     if (n_samps == 0)
       error("ObservationMatrix::loadSegment: failure to read segment %i ",i);
-    if (s->dataFormat != PFILE) {
-      if (fname != NULL)
-	printf("%s\n",fname);
-    }
-    else
-      printf("\n");
+    // uncomment to print the utterance
+    // if (s->dataFormat != PFILE) {
+    // if (fname != NULL)
+    // printf("%s\n",fname);
+    // }
 
     if (i > 0 && n_samps != _inStreams[i-1]->curNumFrames) {
       error("ObservationMatrix::loadSegment: Number of samples for sentence %i don't match for streams %s and %s (%li vs. %li)\n",
@@ -252,17 +262,22 @@ ObservationMatrix::loadSegment(const unsigned segno) {
 	    n_samps);
     }
   }
-  numFrames = n_samps;
+  _numNonSkippedFrames = n_samps;
+  _segmentNumber = segno;
 
-  // resize buffer if necessary
-
-  if (numFrames > _bufSize) 
-    resize(numFrames*2);
-
-  for (size_t n = 0; n < numFrames; n++) 
-    readFrame(n);
+  if (_totalSkip >= _numNonSkippedFrames)
+    error("ERROR: number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",_numNonSkippedFrames,segno,_totalSkip);
   
-  segmentNumber = segno;
+
+  /////////////////////////////////////////////
+  // resize buffer if necessary
+  if (_numNonSkippedFrames > _bufSize)
+    resize(_numNonSkippedFrames*2);
+
+  for (size_t n = 0; n < _numNonSkippedFrames; n++)
+    readFrame(n);
+
+  _numFrames = _numNonSkippedFrames - _totalSkip;
 
   closeDataFiles();
 }
@@ -621,8 +636,8 @@ ObservationMatrix::readFrame(size_t frameno) {
   unsigned num_floats,num_ints;
   int i;
 
-  _cont_p = features.ptr + (stride*frameno);
-  _disc_p = _cont_p + numContinuous;
+  _cont_p = features.ptr + (_stride*frameno);
+  _disc_p = _cont_p + _numContinuous;
   
   for (i = 0; i < _numStreams; i++) {
     
@@ -690,7 +705,7 @@ void
 ObservationMatrix::reset() {
 
  _cont_p = features.ptr;
- _disc_p = features.ptr + numContinuous;
+ _disc_p = features.ptr + _numContinuous;
 }
 
 
@@ -699,10 +714,11 @@ ObservationMatrix::reset() {
  */
 
 void
-ObservationMatrix::resize(size_t n_frames) {
-
-   features.growIfNeeded(n_frames * stride);
-   _bufSize = n_frames;
+ObservationMatrix::resize(size_t n_frames) 
+{
+  features.growIfNeeded(n_frames * _stride);
+  featuresBase = features.ptr + _stride*_startSkip;
+  _bufSize = n_frames;
 }
 
 /* print frame from data buffer
@@ -711,21 +727,21 @@ ObservationMatrix::resize(size_t n_frames) {
  */
 
 void
-ObservationMatrix::printFrame(FILE *stream, size_t frameno) {
+ObservationMatrix::printFrame(FILE *stream, size_t absoluteFrameno) {
   
   unsigned f;
 
-  assert(frameno < numFrames && frameno >= 0);
+  assert(absoluteFrameno < _numNonSkippedFrames && absoluteFrameno >= 0);
 
-  unsigned offset = stride*frameno;
+  unsigned offset = _stride*absoluteFrameno;
 
   Data32 *p = features.ptr + offset;
 
-  for (f = 0; f < numContinuous; f++,p++) {
+  for (f = 0; f < _numContinuous; f++,p++) {
     float *fp = (float *)p;
     fprintf(stream,"%e ",*fp);
   }
-  for (f = 0; f < numDiscrete; f++,p++) {
+  for (f = 0; f < _numDiscrete; f++,p++) {
     Int32 *ip = (Int32 *)p;
     fprintf(stream,"%i ",*ip);
   }
@@ -954,8 +970,7 @@ ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   return n_samples;
 }
 
-/* close individual data files */
-
+/* close individual data files, except for pfile. */
 void
 ObservationMatrix::closeDataFiles() {
 
@@ -969,8 +984,8 @@ ObservationMatrix::closeDataFiles() {
 void
 ObservationMatrix::printSegmentInfo() {
 
-  printf("Processing segment # %d. Number of frames = %d.\n",
-	 (unsigned)segmentNumber,numFrames);
+  printf("Processing segment # %d. Number of frames = %d, number non skipped frames = %d.\n",
+	 (unsigned)_segmentNumber,_numFrames,_numNonSkippedFrames);
 }
 
 
