@@ -351,9 +351,9 @@ public:
   bool emAmTrainingBitIsSet() { return (bitmask & bm_amTraining); }
 
   /////////////////////////////////////////////////////////////////
-  void emClearIsSharedBit() { bitmask &= ~bm_isShared; }
-  void emSetIsSharedBit() { bitmask |= bm_isShared; }
-  bool emIsSharedBitIsSet() { return (bitmask & bm_isShared); }
+  void emClearSharedBit() { bitmask &= ~bm_isShared; }
+  void emSetSharedBit() { bitmask |= bm_isShared; }
+  bool emSharedBitIsSet() { return (bitmask & bm_isShared); }
 
   //////////////////////////////////////////////
   // For parallel EM training.
