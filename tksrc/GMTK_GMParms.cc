@@ -534,11 +534,13 @@ GMParms::readDTs(iDataStreamFile& is, bool reset)
 	    cnt,is.fileName(),i);
 
     ob = new RngDecisionTree<unsigned>;
-    ob->read(is);
+    bool clampable = ob->read(is);
     if (dtsMap.find(ob->name()) != dtsMap.end())
       error("ERROR: DT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
     dts[i+start] = ob;
     dtsMap[ob->name()] = i+start;
+    if (clampable)
+      clampableDts.push_back(ob);
   }
 }
 
@@ -1085,6 +1087,22 @@ GMParms::writeAll(oDataStreamFile& os)
 
 }
 
+
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        Misc Routines
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+void
+GMParms::clampNextDTs()
+{
+  for(unsigned i = 0; i<clampableDts.size(); i++) {
+    clampableDts[i]->clampNextDecisionTree();
+  }
+}
 
 
 
