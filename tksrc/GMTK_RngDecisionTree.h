@@ -79,13 +79,12 @@ protected:
   // this is used if we are to obtain multiple
   // decision trees (using the same name) from
   // a file
-  iDataStreamFile* dtFile;
-  string dtFileName;
-  unsigned numDTs;
-  int dtNum;
-  string curName;
+  iDataStreamFile* dtFile; // the file pointer
+  string dtFileName;       // the file name
+  unsigned numDTs;         // number of DTs in this file
+  int dtNum;               // the current DT number
+  string curName;          // the current DT name
 
-  
   enum NodeType { NonLeafNode, LeafNodeVal, LeafNodeFormula, LeafNodeFullExpand };
 
   enum FormulaType { Integer, ParentValue, ParentCardinality, ParentValCard };
@@ -493,6 +492,12 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 	  // we have an int value
 	  pos += len;
 	  fe.parentIndex = val;
+	  if (fe.parentIndex >= _numFeatures)
+	    error("ERROR: DT '%s' in file '%s' specifies a parent index (%c%d) larger than number of parents (%d)\n",
+		  name().c_str(),is.fileName(),
+		  fe.parentIndex,
+		  (fe.fType == ParentValue?'p':(fe.fType == ParentCardinality?'c':'m')),
+		  _numFeatures);
 	  node->leafNode.formula.push_back(fe);
 	  expectingPlus = true;
 	} else if (leafNodeVal[pos] == '+') {
@@ -966,26 +971,29 @@ T RngDecisionTree<T>::queryRecurse(const vector < RandomVariable* >& arr,
       if (n->leafNode.formula[i].fType == Integer)
 	res += n->leafNode.formula[i].value;
       else if (n->leafNode.formula[i].fType == ParentValue) {
-	if (n->leafNode.formula[i].parentIndex >= arr.size())
-	  error("ERROR: Dynamic error, DT '%s' specifies a parent index (p%d) larger than number of parents (%d)\n",
-		name().c_str(),
-		n->leafNode.formula[i].parentIndex,
-		arr.size());
+	// This check is redundant.
+	// if (n->leafNode.formula[i].parentIndex >= arr.size())
+	//  error("ERROR: Dynamic error, DT '%s' specifies a parent index (p%d) larger than number of parents (%d)\n",
+	//	name().c_str(),
+	//	n->leafNode.formula[i].parentIndex,
+	//	arr.size());
 	res += arr[n->leafNode.formula[i].parentIndex]->val;
       } else if (n->leafNode.formula[i].fType == ParentCardinality) {
-	if (n->leafNode.formula[i].parentIndex >= arr.size())
-	  error("ERROR: Dynamic error, DT '%s' specifies a card index (c%d) larger than number of parents (%d)\n",
-		name().c_str(),
-		n->leafNode.formula[i].parentIndex,
-		arr.size());
+	// This check is redundant.
+	// if (n->leafNode.formula[i].parentIndex >= arr.size())
+	//  error("ERROR: Dynamic error, DT '%s' specifies a card index (c%d) larger than number of parents (%d)\n",
+	//	name().c_str(),
+	//	n->leafNode.formula[i].parentIndex,
+	//	arr.size());
 	res += arr[n->leafNode.formula[i].parentIndex]->cardinality;
       } else {
 	// we must have that (n->leafNode.formula[i].fType == ParentValCard)
-	if (n->leafNode.formula[i].parentIndex >= arr.size())
-	  error("ERROR: Dynamic error, DT '%s' specifies an index (m%d) larger than number of parents (%d)\n",
-		name().c_str(),
-		n->leafNode.formula[i].parentIndex,
-		arr.size());
+	// This check is redundant.
+	// if (n->leafNode.formula[i].parentIndex >= arr.size())
+	//  error("ERROR: Dynamic error, DT '%s' specifies an index (m%d) larger than number of parents (%d)\n",
+	//	name().c_str(),
+	//	n->leafNode.formula[i].parentIndex,
+	//	arr.size());
 	res += arr[n->leafNode.formula[i].parentIndex]->cardinality*
 	       arr[n->leafNode.formula[i].parentIndex]->val;
       }
