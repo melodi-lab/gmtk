@@ -750,6 +750,11 @@ void ObservationMatrix::loadSegment(unsigned segno) {
 
   _numFrames = _numNonSkippedFrames - _totalSkip;
 
+  // Set the start of the features buffer.  The reason we do this both
+  // here and in the openFiles function we could have moved the
+  // featuresBase after the initialization in openFiles.
+  featuresBase = features.ptr + _stride*_startSkip;
+
   DBGFPRINTF((stderr,"In loadSegment(): Closing data files.\n"));
   closeDataFiles();
 }

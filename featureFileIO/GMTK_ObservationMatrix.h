@@ -395,6 +395,12 @@ class ObservationMatrix {
 
   /////////////////////////////////////////////
   // these access routines respect the start frame and end frame.
+
+  void mvFeatBaseByNumFrames(unsigned n) {
+    assert (n >= 0 && n < _numFrames);
+    featuresBase += (_stride*n);
+  }
+
   Data32*const baseAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
     return featuresBase + _stride*f;
