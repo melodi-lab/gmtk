@@ -30,7 +30,7 @@
 #define INFO_MESSAGES_ON 1
 
 class IM {
-
+  friend class InferenceMaxClique;
   static unsigned globalMessageLevel;
   unsigned messageLevel;
   bool messagesOn;
