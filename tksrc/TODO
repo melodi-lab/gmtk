@@ -1577,6 +1577,10 @@ Mon Mar  1 23:09:05 2004
     current working directory even if the file was specified using a long path name.
     Try to pre-pend the path to the file somehow (or add that to CPP's -I options by
     default)
+     - include in documentation that user can give "-I path" options in the -cppOptions
+       commands in GMTK.
+     - Use environment variable for GMTK, GMTK_CPP_INCLUDE to include other
+       paths for GMTK. 
 
 
 Mon Mar  1 23:41:09 2004
@@ -1661,3 +1665,6 @@ Wed Mar 10 21:56:35 2004
 
 
 
+Fri Mar 12 17:13:42 2004
+ - instead of unity score CPTs and Gaussians, produce alpha-score CPts and Gaussian
+   where alpha can be any value.
