@@ -36,7 +36,7 @@ VCID("$Header$");
 
 #include "GMTK_MixGaussians.h"
 #include "GMTK_GMParms.h"
-
+#include "GMTK_ObservationMatrix.h"
 
 
 void
@@ -83,6 +83,7 @@ MixGaussians::read(iDataStreamFile& is)
     components[i] = gc;
   }
   // make ready for probability evaluation.
+  componentCache.resize(10);
 }
 
 void
@@ -135,10 +136,43 @@ MixGaussians::log_p(const float *const x,
   // printf("Computing prob for name '%s'\n",
   // name().c_str());
   logpr rc;
-  rc.set_to_zero();
   for (unsigned i=0;i<numComponents;i++) {
     rc += dense1DPMF->p(i)* components[i]->log_p(x,base,stride);
   }
+  return rc;
+}
+
+
+//
+// compute the log probability of x with stride 'stride'
+// This version uses the current global observatio matrix directly,
+// and caches the result for EM.
+logpr
+MixGaussians::log_p(const unsigned frameIndex, 
+		    const unsigned firstFeatureElement)
+
+{
+  const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
+  const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
+  const int stride =  globalObservationMatrix.stride;
+
+  if (componentCache.size() < (frameIndex+1)) {
+    // never have more than 25% more frames than needed while still
+    // having log number of allocations in the ultimate size of the observation vectors.
+    componentCache.resize( ((frameIndex+1)*5)>>2 );
+  }
+  if (componentCache[frameIndex].cmpProbArray.size() < numComponents)
+    componentCache[frameIndex].cmpProbArray.resize(numComponents);
+
+  logpr rc;
+  for (unsigned i=0;i<numComponents;i++) {
+    logpr tmp = dense1DPMF->p(i)* components[i]->log_p(x,base,stride);
+    // store each component prob value
+    componentCache[frameIndex].cmpProbArray[i].prob = tmp;
+    rc += tmp;
+  }
+  // and store the sum as well.
+  componentCache[frameIndex].prob = rc;
   return rc;
 }
 
@@ -159,7 +193,7 @@ MixGaussians::emStartIteration()
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
-    postDistribution.resize(components.size());
+    weightedPostDistribution.resize(components.size());
     emSetEmAllocatedBit();
   }
 
@@ -174,7 +208,7 @@ MixGaussians::emStartIteration()
   }
 }
 
-
+#if 0
 void
 MixGaussians::emIncrement(logpr prob,
 			  const float *f,
@@ -198,7 +232,6 @@ MixGaussians::emIncrement(logpr prob,
 
   // first compute the local Gaussian mixture posterior distribution.
   logpr sum;
-  sum.set_to_zero();
   for (unsigned i=0;i<numComponents;i++) {
     postDistribution[i] = 
       dense1DPMF->p(i)* components[i]->log_p(f,base,stride);
@@ -218,6 +251,68 @@ MixGaussians::emIncrement(logpr prob,
   for (unsigned i=0;i<numComponents;i++) {
     components[i]->emIncrement(postDistribution[i],
 			       f,base,stride);
+  }
+
+}
+#endif
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emIncrement()
+ *      increment the EM counts
+ * 
+ * Preconditions:
+ *      IMPORTANT: log_p() must have been called on this frameIndex and firstFeatureElement
+ *      for the CURRENT observation matrix for this function to be valid. Note that
+ *      there is no tagging of the cache to determine if it is valid. This rountine simply assumes
+ *      that log_p() has been called, and the cache for the appropriate frame has been filled in.
+ *
+ * Postconditions:
+ *      The EM counts have been added in.
+ *
+ * Side Effects:
+ *      Possible changes to internal structures.
+ *
+ * Results:
+ *      none.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MixGaussians::emIncrement(logpr prob,
+			  const unsigned frameIndex, 
+			  const unsigned firstFeatureElement)
+{
+
+  if (!GM_Parms.amTrainingMixGaussians())
+    return;  
+
+  emStartIteration();
+
+  if (prob < minIncrementProbabilty) {
+    missedIncrementCount++;
+    return;
+  } 
+  accumulatedProbability+= prob;
+
+  const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
+  const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
+  const int stride = globalObservationMatrix.stride;
+
+  logpr tmp = prob/componentCache[frameIndex].prob;
+  for (unsigned i=0;i<numComponents;i++) {
+    weightedPostDistribution[i] =
+      componentCache[frameIndex].cmpProbArray[i].prob*tmp;
+  }
+
+  // increment the mixture weights
+  dense1DPMF->emIncrement(prob,weightedPostDistribution);
+
+  // and the components themselves.
+  for (unsigned i=0;i<numComponents;i++) {
+    components[i]->emIncrement(weightedPostDistribution[i],
+			       x,base,stride);
   }
 
 }

@@ -43,12 +43,30 @@ class MixGaussians : public MixGaussiansCommon {
 
   ///////////////////////////////////////////
   // For EM, the posteriors
-  sArray < logpr > postDistribution;
+  sArray < logpr > weightedPostDistribution;
+  // For EM training,
+  // create a 2D component array cache.
+  // the first index is by frame number for the current
+  // utterance, and the second is by mixture
+  // component value (which is stored as we might
+  // be doing pruning to save memory).
+  struct CompProb {
+    logpr prob;
+    // unsigned componentNum; to be used soon.
+  };
+  struct CompCacheArray {
+    vector < CompProb > cmpProbArray;
+    logpr prob;
+    // might want to add more fields later.
+  };
+
+  vector< CompCacheArray > componentCache;
+
+  ///////////////////////////////////////////
 
   ///////////////////////////////////////////
   // the (possibly) shared 1DPMFs used for the mixture weights.
   Dense1DPMF* dense1DPMF;
-
 
 
   ////////////////////////////////////////////////////////////
@@ -83,6 +101,9 @@ public:
   logpr log_p(const float *const x,    // real-valued scoring obs at time t
 	      const Data32* const base, // ptr to base obs at time t
 	      const int stride);       // stride
+  // a version that uses the current global obervation matrix directly.
+  logpr log_p(const unsigned frameIndex, 
+	      const unsigned firstFeatureElement);
   //////////////////////////////////
 
 
@@ -91,9 +112,8 @@ public:
   //////////////////////////////////
   void emStartIteration();
   void emIncrement(logpr prob, 
-		   const float*f,
-		   const Data32* const base,
-		   const int stride);
+		   const unsigned frameIndex, 
+		   const unsigned firstFeatureElement);
   void emEndIteration();
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
