@@ -92,6 +92,10 @@ DiagGaussian::read(iDataStreamFile& is)
 void
 DiagGaussian::write(oDataStreamFile& os)
 {
+  // first write the type
+
+  // next write the name
+
   error("DiagGaussian::write not implemented");
 }
 
