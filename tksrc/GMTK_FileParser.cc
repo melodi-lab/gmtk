@@ -44,6 +44,10 @@
 
 VCID("$Header$");
 
+extern "C" {
+  FILE     *popen(const char *, const char *);
+  int pclose(FILE *stream);
+};
 
 /*
 ***********************************************************************
@@ -397,16 +401,54 @@ FileParser::RVInfo::checkConsistency()
  */
 FileParser::FileParser(const char*const file)
 {
-
+  FILE* f;
   if (file == NULL)
     error("FileParser::FileParser, can't open NULL file");
-  if (!strcmp("-",file))
-    yyin = stdin;
-  else {
-    if ((yyin = fopen (file,"r")) == NULL)
-      error("FileParser::FileParser, can't open file (%s)",file);
+  if (!strcmp("-",file)) {
+    f = ::popen("cpp","r");
+    if (f == NULL) {
+      error("ERROR: unable to open with standard input structure file");
+    }
+  }  else {
+    if ((f = ::fopen(file,"r")) == NULL) {
+      error("ERROR: unable to open file (%s) for reading",file);
+    }
+    fclose(f);
+
+    string str = (string)"cpp " + (string)file;
+    f = ::popen(str.c_str(),"r");    
+    if (f == NULL)
+      error("FileParser::FileParser, can't open file stream from (%s)",file);
   }
+  yyin = f;
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * ~FileParser
+ *      destructor
+ *
+ * Preconditions:
+ *      should be constructed.
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+ *      Just closes the input file.
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+FileParser::~FileParser()
+{
+  pclose(yyin);
+}
+
+
 
 
 /*-
