@@ -13,9 +13,7 @@
  * Seattle make no representations about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  *
- *
  * $Header$
- *
  */
 
 #ifndef GMTK_BOUNDARYTRIANGULATE_H
@@ -32,7 +30,6 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_GMTemplate.h"
-
 #include "GMTK_MaxClique.h"
 #include "GMTK_Timer.h"
 
@@ -118,12 +115,17 @@ public:
 
   };
 
-  enum TriangulateStyles { TS_ANNEALING = 0,
-			   TS_EXHAUSTIVE = 1,
-			   TS_MCS = 2,
-			   TS_COMPLETED = 3,
-			   TS_BASIC = 4,
-			   TS_FRONTIER = 5
+  enum TriangulateStyles { 
+    TS_ANNEALING, 
+    TS_EXHAUSTIVE,
+    TS_MCS,
+    TS_COMPLETED,
+    TS_BASIC,
+    TS_FRONTIER,
+    TS_PRE_EDGE_ALL, 
+    TS_PRE_EDGE_LO, 
+    TS_PRE_EDGE_RANDOM, 
+    TS_ELIMINATION_HEURISTICS 
   };
 
   struct TriangulateHeuristics {
@@ -205,15 +207,6 @@ public:
   // Private support routines
   /////////////////////////////////////////////////////
 
-  // save the current neighbors of the partition.
-  void saveCurrentNeighbors(const set<RandomVariable*> nodes,vector<nghbrPairType>& orgnl_nghbrs);
-  void saveCurrentNeighbors(Partition &prt,vector<nghbrPairType>& orgnl_nghbrs) {
-    saveCurrentNeighbors(prt.nodes,orgnl_nghbrs);
-  }
-
-  // return partitions to their state at previous saveCurrentNeighbors();
-  void restoreNeighbors(vector<nghbrPairType>& orgnl_nghbrs);
-
   // delete a set of variables
   void deleteNodes(const set<RandomVariable*>& nodes);
 
@@ -234,6 +227,10 @@ public:
 		     // root must cover.
 		     const set<RandomVariable*>& interfaceNodes);
   
+  void fillAccordingToCliques(
+    const vector<MaxClique>& cliques 
+  );
+
 public:
 
   ////////////////////////////////////////////////////////////
@@ -416,7 +413,21 @@ public:
 			vector<RandomVariable*>& orderedNodes,
 			vector<MaxClique>& cliques,
 			const bool findCliques = true);
+ 
+  typedef enum { 
+    ALL_EDGES,
+    RANDOM_EDGES,
+    LOCALLY_OPTIMAL_EDGES
+  } extraEdgeHeuristic;
 
+  void preEdgeAdditionElimination(
+   const set<RandomVariable*>& nodes,   
+   const bool                  jtWeight, 
+   const set<RandomVariable*>& nodesRootMustContain, 
+   extraEdgeHeuristic          edge_heuristic,
+   vector<MaxClique>&          cliques, 
+   string&                     best_method
+  );
 
   // triangulate by simulated annealing
   void triangulateSimulatedAnnealing(
@@ -503,14 +514,29 @@ public:
 			  const bool jtWeight,
 			  bool doP = true, bool doC = true, bool doE = true);
 
-  // triangulate using a number of basic heuristics, returning
-  // the best.
-  double tryHeuristics(set<RandomVariable*>& nodes,
-		       const bool jtWeight,
-		       const set<RandomVariable*>& nodesRootMustContain,
-		       vector<nghbrPairType>& orgnl_nghbrs,
-		       vector<MaxClique>&     cliques,
-		       string& tri_method);
+  ////////////////////////////////////////////////////////////
+  // triangulate using elimination with a number of basic heuristics, 
+  // returning the best.
+  double tryEliminationHeuristics(
+    const set<RandomVariable*>& nodes,
+    const bool                  jtWeight,
+    const set<RandomVariable*>& nodesRootMustContain,
+    vector<nghbrPairType>&      orgnl_nghbrs,
+    vector<MaxClique>&          cliques,
+    string&                     tri_method
+    );
+
+  ////////////////////////////////////////////////////////////
+  // triangulate using using a number of non-elimination based heuristics, 
+  // returning the best.
+  double tryNonEliminationHeuristics(
+    const set<RandomVariable*>& nodes,
+    const bool                  jtWeight,
+    const set<RandomVariable*>& nrmc,         // nrmc = nodes root must contain
+    vector<nghbrPairType>&      orgnl_nghbrs,
+    vector<MaxClique>&          cliques,
+    string&                     tri_method
+    );
 
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
@@ -594,6 +620,8 @@ private:
   class triangulateNode;
   class triangulateNodeList;
 
+  typedef vector<triangulateNode*> triangulateNeighborType;
+
   class triangulateNode {
  
     friend class triangulateNodeList;
@@ -603,11 +631,14 @@ private:
       triangulateNode(RandomVariable* random_variable);
 
       RandomVariable*          randomVariable;
-      vector<triangulateNode*> neighbors;
+      triangulateNeighborType  neighbors;
       triangulateNodeList*     nodeList; 
       unsigned                 cardinality;
-      bool                     eliminated;
       unsigned                 position;
+      bool                     eliminated;
+      bool                     marked;
+      triangulateNeighborType  parents;
+      triangulateNeighborType  nonChildren;
     
     private:
       triangulateNode*         previousNode;
@@ -637,6 +668,51 @@ private:
     const set<RandomVariable*>& orgnl_nodes,
     vector<triangulateNode>&    new_nodes 
   );
+
+  //////////////////////////////////////////////////////////////////////////// 
+  // Edge class
+  //////////////////////////////////////////////////////////////////////////// 
+  class edge {
+    private:
+      triangulateNode* first_node;
+      triangulateNode* second_node;
+
+      void assign( triangulateNode* a, triangulateNode* b) {
+        if (a < b) {
+          first_node  = a;
+          second_node = b;
+        } 
+        else {
+          first_node  = b;
+          second_node = a;
+        } 
+      }
+
+    public:
+  
+      triangulateNode* first() const { return(first_node); };
+      triangulateNode* second() const { return(second_node); };
+
+      edge() { first_node = NULL; second_node = NULL; }
+
+      edge operator= (const edge& e) {
+        assign( e.first(), e.second() ); 
+        return(*this);
+      }
+
+      edge( triangulateNode* a, triangulateNode* b) {
+        assign(a,b); 
+      }
+
+      bool operator< (const edge& e) const {
+        if (first_node != e.first()) {
+          return(first_node<e.first());
+        }
+        else { 
+          return(second_node<e.second());
+        }
+      }
+  };
  
   //////////////////////////////////////////////////////////////////////////// 
   // O(n+e) routines for Maximum Cardinality Search, fill-in 
@@ -666,7 +742,21 @@ private:
   // Overloaded functions for saving and restoring graph structure when using 
   // triangulateNodes
   //////////////////////////////////////////////////////////////////////////// 
- 
+
+  void saveCurrentNeighbors(
+    const set<RandomVariable*> nodes,
+    vector<nghbrPairType>& orgnl_nghbrs
+  );
+
+  void saveCurrentNeighbors(
+    Partition &prt,
+    vector<nghbrPairType>& orgnl_nghbrs) 
+  {
+    saveCurrentNeighbors(prt.nodes,orgnl_nghbrs);
+  }
+
+  void restoreNeighbors(vector<nghbrPairType>& orgnl_nghbrs);
+
   typedef pair<triangulateNode*, vector<triangulateNode*> > 
     triangulateNghbrPairType; 
 
@@ -675,10 +765,37 @@ private:
     vector<triangulateNghbrPairType>& orgnl_nghbrs
     );
 
-  void restoreNeighbors(vector<triangulateNghbrPairType>& orgnl_nghbrs);
+  void restoreNeighbors(
+    vector<triangulateNghbrPairType>& orgnl_nghbrs
+  );
 
   //////////////////////////////////////////////////////////////////////////// 
-  // Support routine for triangulation by simulated annealing
+  // Extra edges 
+  //////////////////////////////////////////////////////////////////////////// 
+ 
+  void fillParentChildLists(
+    vector<triangulateNode>& nodes
+  );
+
+  void addExtraEdgesToGraph(
+    vector<triangulateNode>& nodes,
+    const extraEdgeHeuristic edge_heuristic
+  );
+
+  void addEdgesToNode(
+    triangulateNeighborType& parent_set,  
+    triangulateNode* const   child, 
+    triangulateNode* const   grandchild, 
+    const extraEdgeHeuristic edge_heuristic,
+    vector<edge>&            extra_edges 
+  );
+
+  void addEdges(
+    const vector<edge>& extra_edges
+  );
+
+  //////////////////////////////////////////////////////////////////////////// 
+  // Support routine for simulated annealing
   //////////////////////////////////////////////////////////////////////////// 
   unsigned annealChain(
     vector<triangulateNode>&  nodes,
