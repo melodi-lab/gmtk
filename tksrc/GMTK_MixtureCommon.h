@@ -113,6 +113,11 @@ public:
   //                         1/(curNumComponents*mixCoeffVanishRatio)
   static void checkForValidRatioValues();
 
+  ///////////////////////////////////////////////////////////
+  // set to true if we are supposed to cache the Gaussians
+  // during EM training.
+  static bool cacheGaussiansInEmTraining;
+
   //////////////////////////////////////////////////////
   // force splitting of the number of top mixture componets
   // regardless of all else. Zero to turn off.

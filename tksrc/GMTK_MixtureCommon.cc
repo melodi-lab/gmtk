@@ -58,6 +58,8 @@ MixGaussiansCommon::numTopToForceSplit = 0;
 unsigned 
 MixGaussiansCommon::numBottomToForceVanish = 0;
 
+bool
+MixGaussiansCommon::cacheGaussiansInEmTraining = true;
 
 void
 MixGaussiansCommon::checkForValidRatioValues() {

@@ -228,6 +228,8 @@ ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques after the netwok has
 
   ARGS("baseCaseThreshold",ARGS::Opt,bct,"Base case threshold to end recursion (>=2)."),
 
+  ARGS("gaussianCache",ARGS::Opt,MixGaussiansCommon::cacheGaussiansInEmTraining,"Cache Gaussians evaluations during EM training. true will speeds things up, but uses more memory."),
+
   // final one to signal the end of the list
   ARGS()
 
