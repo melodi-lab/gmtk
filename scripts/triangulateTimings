@@ -13,28 +13,21 @@ use threads;
 use Thread::Semaphore;
 
 ##############################################################################
-# Variables for parameters 
-##############################################################################
-my $valid_options; 
-my $str_file; 
-my $timing_script;
-my $parallelism;
-my $export_line;
-my $input_triangulation;
-my $timing_length; 
-my $str_basename;
-my $working_dir;
-
-##############################################################################
 # Executable names (should eventually be overwritten by command line 
 # parameters)
 ##############################################################################
-my $gmtk_triangulate;
-my $pmae;
-my $pmake;
+my $gmtk_triangulate = 'rexport -attr Linux gmtkTriangulate'; 
+my $pmae             = 'pmae'; 
+my $pmake            = 'pmake'; 
 
 ##############################################################################
-# State variables for method queue 
+# Default amount to time each triangulation 
+##############################################################################
+#my $timing_length = 30; 
+my $timing_length = 5; 
+
+##############################################################################
+# State variables queues which generate the trifiles
 ##############################################################################
 my $done_initial    : shared = 0;
 my $once_index      : shared = 0;
@@ -42,138 +35,314 @@ my $once_index      : shared = 0;
 my @run_once = ( 'completed', 'elimination-heuristics', 
   'non-elimination-heuristics' );
 
-my @iterations = ( '100-', '10-', '1-' ); 
-my @prefix     = ( '', 'pre-edge-lo-', 'pre-edge-all-', 'pre-edge-random-');
-my @method     = ( 'frontier', 'MCS', 'R', 'W', 'F' );
-my @suffix     = ( '', '-2', '-3' );
+my @basic_iterations : shared = ( '100-', '10-' ); 
+my @basic_prefix     : shared = ( 'pre-edge-lo-', 'pre-edge-all-', 
+  'pre-edge-random-');
+my @basic_method     : shared = ( 'MCS', 'R', 'W', 'F' );
+my @basic_suffix     : shared = ( '-1', '-3' );
+my $basic_suffix_threshold : shared = 2;
 
-my $suffix_threshold = 3;
+my $basic_iteration_index : shared = 0;
+my $basic_prefix_index    : shared = 0;
+my $basic_method_index    : shared = 0;
+my $basic_suffix_index    : shared = 0;
+my $basic_iterations_done : shared = 0;
 
-my $iteration_index : shared = 0;
-my $prefix_index    : shared = 0;
-my $method_index    : shared = 0;
-my $suffix_index    : shared = 0;
-  
-my $method_sem = new Thread::Semaphore;
-my $initial_sem = new Thread::Semaphore;
-my $initial_tri_timed : shared = 0;
+my @advanced_iterations : shared = ( '100-', '10-', '1-' ); 
+my @advanced_prefix     : shared = ( '', 'pre-edge-lo-', 'pre-edge-all-', 
+  'pre-edge-random-');
+my @advanced_method     : shared = ( 'frontier', 'MCS', 'R', 'S', 'T', 'F', 
+  'W', 'X', 'P', 'N', 'ST', 'SF', 'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 
+  'FT', 'FW', 'FTSW' );
+my @advanced_suffix     : shared = ( '-1', '-2', '-3' );
+my $advanced_suffix_threshold : shared = 3;
+
+my $advanced_iteration_index : shared = 0;
+my $advanced_prefix_index    : shared = 0;
+my $advanced_method_index    : shared = 0;
+my $advanced_suffix_index    : shared = 0;
 
 my $method_count : shared = 1;
 
-my $start_time : shared = 0;
+my @trifile_queue : shared;
+
+##############################################################################
+# Thread Semaphores 
+##############################################################################
+my $alter_trifile_queue_sem = new Thread::Semaphore;
+my $available_trifiles      = new Thread::Semaphore(0);
+my $needed_trifiles         = new Thread::Semaphore(0);
 
 ##############################################################################
 # State variables for comparing triangulation methods 
 ##############################################################################
-my $best_partitions : shared = 0; 
 my $best_sem = new Thread::Semaphore;
+my $best_partitions : shared = 0; 
+my @best_time_per_boundary : shared;
 
 ##############################################################################
-# GMTK tool names
-# -Do not add paths to these definitons, alter your path instead
+# Command line parameters 
 ##############################################################################
-$gmtk_triangulate = 'gmtkTriangulate'; 
-$pmae             = 'pmae'; 
-$pmake            = 'pmake'; 
-
-$timing_length = 30; 
-#$timing_length = 5; 
+my @input_triangulations; 
+my $str_file; 
+my $timing_script;
+my $parallelism;
+my $export_line;
+my $output_directory;
+my $str_basename;
+my $working_dir;
 
 ##############################################################################
-# Get command line parameters 
+# Run the program 
 ##############################################################################
-$valid_options = &GetOptions( 
-  "strFile:s"               => \$str_file, 
-  "exportLine:s"            => \$export_line,
-  "inputTriangulatedFile:s" => \$input_triangulation, 
-  "timingScript:s"          => \$timing_script,
-  "parallelism:i"           => \$parallelism
- );
+main();
+print "Done Triangulating\n";
 
-##########################################################################
-# Process command line parameters
-##########################################################################
 
-if (!defined $str_file)
+##############################################################################
+# main 
+#
+# Evaluate command line parameters and start threads 
+##############################################################################
+sub main
 {
-  print "***ERROR:  Must supply a structure file name\n";
-  $valid_options = 0;
-}
-else 
-{
-  (-e $str_file) or die "***ERROR:  '$str_file' does not exist\n"; 
+  ##############################################################################
+  # Variables for parameters 
+  ##############################################################################
+  my $valid_options; 
+
+  ##############################################################################
+  # Get command line parameters 
+  ##############################################################################
+  $valid_options = &GetOptions( 
+    "strFile:s"               => \$str_file, 
+    "exportLine:s"            => \$export_line,
+    "timingScript:s"          => \$timing_script,
+    "parallelism:i"           => \$parallelism,
+    "outputDirectory:s"      => \$output_directory 
+   );
+
+  @input_triangulations = @ARGV;
+
+  ##########################################################################
+  # Process command line parameters
+  ##########################################################################
+
+  if (!defined $str_file)
+  {
+    print "***ERROR:  Must supply a structure file name\n";
+    $valid_options = 0;
+  }
+  else 
+  {
+    (-e $str_file) or die "***ERROR:  '$str_file' does not exist\n"; 
+  }
+
+  if (!defined $export_line) 
+  {
+    print "***ERROR:  Must supply a pmake export line\n";
+    $valid_options = 0;
+  }
+
+  if (!defined $timing_script) 
+  { 
+    print "***ERROR:  Must supply a script which runs gmtkTime\n";
+    $valid_options = 0;
+  }
+
+  if (!$valid_options) 
+  {
+    print "Must give:\n";
+    print "  1) Structure file which already has a triangulation\n"; 
+    print "  2) An export line specifying a particular speed of processor for inference\n";
+    print "  3) Scripts which runs gmtkTime (-inputTriangulatedFile, -strFile, and\n";
+    print "     -seconds are passed in as parameters)\n"; 
+    print "      -strFile                Structure file name\n";
+    print "      -exportLine             pmake export line\n";
+    print "      -timingScript           Script running gmtkTime\n";
+    print "      -inputTriangulatedFile  Starting triangulation\n";
+    die "\n";
+  }
+
+  if (!defined $timing_script) 
+  { 
+    print "***ERROR:  Must supply a script which runs gmtkTime\n";
+    $valid_options = 0;
+  }
+
+  if (!defined $parallelism) 
+  {
+     $parallelism = 1;
+  }
+    
+  if (!defined $output_directory)
+  {
+    $output_directory = './';
+  }
+
+  if (! -d $output_directory)  
+  {
+    print "***ERROR:  '$output_directory' is not a valid directory\n";
+    $valid_options = 0;
+  }
+
+  ($valid_options) or die "wheeee\n";
+
+  $str_basename = basename($str_file); 
+  $working_dir = `pwd`;
+
+  chomp($working_dir);
+
+  STDOUT->autoflush(1);
+  $SIG{PIPE} = 'IGNORE';
+
+  #############################################################################
+  # Start the threads 
+  #############################################################################
+  my $last_child;
+
+  print "------- Triangulating $str_file -------\n"; 
+
+
+  ########################################################################### 
+  # Start boundary searches 
+  ########################################################################### 
+  my @search_boundary_queue;
+  my $boundary_search_thread_ID;
+
+print "Starting B\n";
+  $boundary_search_thread_ID = start_boundary_searches(\@search_boundary_queue);
+
+  #########################################################################
+  # Start thread to generate triangulations 
+  #########################################################################
+print "Starting triangs\n";
+  $last_child = threads->new( \&generate_triangulations, 
+    $boundary_search_thread_ID, \@search_boundary_queue );
+
+  #########################################################################
+  # Start threads to time triangulations
+  #########################################################################
+
+  for (my $i=0; $i<$parallelism; $i++) {
+print "Starting times\n";
+    $last_child = threads->new(\&time_triangulation);
+    sleep(1);  # Delay appears to help all jobs get exported first try 
+  }
+
+  $last_child->join;
+
 }
 
-if (!defined $export_line) 
-{
-  print "***ERROR:  Must supply a pmake export line\n";
-  $valid_options = 0;
-}
-
-if (!defined $timing_script) 
-{ 
-  print "***ERROR:  Must supply a script which runs gmtkTime\n";
-  $valid_options = 0;
-}
-
-if (!$valid_options) 
-{
-  print "Must give:\n";
-  print "  1) Structure file which already has a triangulation\n"; 
-  print "  2) An export line specifying a particular speed of processor for inference\n";
-  print "  3) Scripts which runs gmtkTime (-inputTriangulatedFile, -strFile, and\n";
-  print "     -seconds are passed in as parameters)\n"; 
-  print "      -strFile                Structure file name\n";
-  print "      -exportLine             pmake export line\n";
-  print "      -timingScript           Script running gmtkTime\n";
-  print "      -inputTriangulatedFile  Starting triangulation\n";
-  die "\n";
-}
-
-if (!defined $input_triangulation)
-{
-  $input_triangulation = "$str_file.trifile";
-}
-else {
-  (-e $input_triangulation) or die "***ERROR:  '$input_triangulation' does not exist\n"; 
-}
-
-if (!defined $timing_script) 
-{ 
-  print "***ERROR:  Must supply a script which runs gmtkTime\n";
-  $valid_options = 0;
-}
-
-if (!defined $parallelism) 
-{
-   $parallelism = 1;
-}
-
-$str_basename = basename($str_file); 
-$working_dir = `pwd`;
-
-chomp($working_dir);
-
-STDOUT->autoflush(1);
-$SIG{PIPE} = 'IGNORE';
 
 #############################################################################
-# Start a thread for each processor available
+# generate_triangulations() 
+#
+# Thread which creates triangulations.  It attempts to keep a queue of 
+# triangulations ready for the timing processes. 
 #############################################################################
-my $last_child;
+sub generate_triangulations 
+{
+  my $boundary_search_thread_ID; 
+  my $search_boundary_queue;
+  my @input_boundary_queue;
+  my $input_triangulation;
+  my $output_triangulation;
+  my $input_basename;
+  my $i;
+  my $boundary_count;
+  my $total_boundary_count;
+  my $boundary_name;
+  my $boundary;
+  my $method;
 
-print "------- Triangulating $str_file -------\n"; 
+  $search_boundary_queue = pop; 
+  $boundary_search_thread_ID = pop;
 
-$start_time = time;
+  ###########################################################################
+  # Generate more trifiles than the timing parallelism so one is always
+  # likely to be ready when needed. 
+  ###########################################################################
+  $needed_trifiles->up( 3*$parallelism );
 
-for (my $i=0; $i<$parallelism; $i++) {
-  $last_child = threads->new(\&time_triangulation);
-  sleep(3);
+  ###########################################################################
+  # Phase 1, time the input triangulations 
+  ###########################################################################
+  $i = 1;
+  foreach $input_triangulation (@input_triangulations) 
+  {
+    $input_basename = basename($input_triangulation); 
+
+    if (-e $input_triangulation) 
+    {
+      $output_triangulation = "$output_directory/input.$i.$input_basename";
+      copy( $input_triangulation, $output_triangulation ); 
+
+      $alter_trifile_queue_sem->down;
+      push @trifile_queue, $output_triangulation;
+      $alter_trifile_queue_sem->up;
+
+      $available_trifiles->up; 
+      $needed_trifiles->down;
+
+      push @input_boundary_queue, $output_triangulation;
+    }
+
+    $i++;
+  }
+
+  ###########################################################################
+  # Phase 2, run basic methods on boundaries from input triangulations 
+  ###########################################################################
+  for ($boundary_count=0; $boundary_count<(scalar @input_boundary_queue);
+       $boundary_count++)
+  {
+    $boundary = $input_boundary_queue[$boundary_count];
+    $boundary_name = "B$boundary_count";
+
+    print "$boundary_name ==> Boundary from '$boundary'\n";
+
+    reset_basic_methods();
+
+    $method = get_basic_triangulation_method();
+    while ($method ne 'DONE')
+    {
+      make_trifile( $boundary_name, $boundary, $method );
+      $method = get_basic_triangulation_method();
+    } 
+  }
+
+  ###########################################################################
+  # Wait for boundaries to complete 
+  ###########################################################################
+print "Waiting for boundary searches to complete...\n";
+  $boundary_search_thread_ID->join; 
+  printf "%d boundaries found\n", (scalar @$search_boundary_queue);
+
+  ###########################################################################
+  # Phase 3, run basic methods on boundaries from search  
+  ###########################################################################
+  for ($boundary_count=0; $boundary_count<(scalar @$search_boundary_queue);
+       $boundary_count++)
+  {
+    $boundary = $$search_boundary_queue[$boundary_count];
+    $total_boundary_count = (scalar @input_boundary_queue)+$boundary_count;
+    $boundary_name = "B$total_boundary_count";
+
+    print "$boundary_name ==> Boundary from '$boundary'\n";
+
+    reset_basic_methods();
+
+    $method = get_basic_triangulation_method();
+    while ($method ne 'DONE')
+    {
+      make_trifile( $boundary_name, $boundary, $method );
+      $method = get_basic_triangulation_method();
+    } 
+  }
+
+  print "Done generating triangulations\n"; 
 }
-
-$last_child->join;
-
-die;
 
 
 #############################################################################
@@ -183,16 +352,13 @@ die;
 #############################################################################
 sub time_triangulation 
 {
-  my $crrnt_partitions;
-  my $crrnt_weight;
-  my $file_h;
-  my $method;
-  my $output;
   my $crrnt_pid;
   my $timing_script_input;
   my $timing_script_output;
-  my $tmp_name;
-  my $tmp_tri_file;
+  my $crrnt_partitions;
+  my $trifile_name;
+  my $boundary;
+  my $method;
 
   #####################################################################
   # Open a copy of gmtkTime in multiTest mode 
@@ -203,53 +369,25 @@ sub time_triangulation
   ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
 
   #####################################################################
-  # Create a temporary file for the current triangulation 
-  #####################################################################
-  ($file_h, $tmp_tri_file) = tempfile("$str_basename.tmp.trifile.XXXXX");
-
-  #####################################################################
-  # Time the input triangulation 
-  #####################################################################
-  $initial_sem->up;
-  if (!$initial_tri_timed) 
-  {
-    $initial_tri_timed = 1;
-    $initial_sem->down;
-
-    ($crrnt_pid, $timing_script_input, $timing_script_output, $crrnt_partitions)
-      = run_timing( $crrnt_pid, $timing_script_input, $timing_script_output, 
-      $input_triangulation);
-
-    check_best($crrnt_partitions, 'Initial', 0, $tmp_tri_file);
-  }
-  else {
-    $initial_sem->down;
-  }
-
-  #####################################################################
   # Generate and time triangulations 
   #####################################################################
-  while (1) {
-
-    $method = get_triangulation_method();
-    threads->yield;
-
-    do {
-      $crrnt_weight = run_triangulation($method, $tmp_tri_file);
-      if ($crrnt_weight < 0) {
-        print "Triangulation failed\n";
-        sleep(15);
-      }
-    } while($crrnt_weight < 0);
-     
+  while (1) 
+  {
+    $trifile_name = get_trifile();
+      
     ($crrnt_pid, $timing_script_input, $timing_script_output, $crrnt_partitions)
       = run_timing( $crrnt_pid, $timing_script_input, $timing_script_output, 
-      $tmp_tri_file);
+      $trifile_name);
 
-    check_best($crrnt_partitions, $method, $crrnt_weight, $tmp_tri_file);
+    ($method) = $trifile_name =~ /(input\.\d+\.[^\/]+)$/; 
+    
+    if (! defined $method) {
+      ($boundary, $method) = $trifile_name =~ /(B\d+).([^\/]+)\.$str_basename/;
+    }
+
+    check_best($crrnt_partitions, $boundary, $method, $trifile_name);
   }
 
-  unlink $tmp_tri_file;
 }
 
 
@@ -289,6 +427,81 @@ sub open_time
 
 
 #############################################################################
+# start_boundary_searches 
+#
+# do boundary searches 
+#############################################################################
+sub start_boundary_searches 
+{
+  my $boundary_queue;
+  my @boundary_heuristics;
+  my $boundary_heuristic;
+  my $tmp_file;
+  my $triangulate_line;
+  my @weight_UB_types;
+  my $weight_UB_type;
+  my $left_right;
+  my $output_name;
+  my $boundary_search_thread_ID;
+
+  $boundary_queue = pop;
+
+  #@boundary_heuristics = ('W' , 'Q', 'A', 'FWH', 'S', 'T', 'F', 'P', 'N', 'ST',
+    #'SF', 'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 'FT', 'FW', 'FTSW');
+
+  @boundary_heuristics = ('W' ); 
+
+  $tmp_file = "$output_directory/boundaries.makefile";  
+
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '2m'";
+
+  open PMAE, "| pmae > $tmp_file"; 
+
+  foreach $boundary_heuristic (@boundary_heuristics)
+  {
+    if ($boundary_heuristic =~ /W/) {
+      @weight_UB_types = ('F', 'T');
+    }
+    else {
+      @weight_UB_types = ('F');
+    }
+
+    foreach $weight_UB_type (@weight_UB_types)
+    {
+      foreach $left_right ('L', 'R') 
+      { 
+        $output_name = "$output_directory/$boundary_heuristic.$weight_UB_type.$left_right.$str_basename.boundary";
+        print PMAE "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right 2&>1\n";
+        push @$boundary_queue, $output_name;
+      }
+    }
+  }
+
+  close PMAE;
+
+  $boundary_search_thread_ID = threads->new(\&run_boundary_searches,
+    $tmp_file);
+
+  return($boundary_search_thread_ID);
+}
+
+
+#############################################################################
+# start_boundary_searches 
+#
+# do boundary searches 
+#############################################################################
+sub run_boundary_searches 
+{
+  my $makefile_name;
+
+  $makefile_name = pop;
+
+  print STDERR `pmake -L 0 -J 10 -f $makefile_name`;  
+}
+
+
+#############################################################################
 # run_triangulation( method );
 #
 # Triangulates the graph according to the method parameter, uses the local
@@ -297,24 +510,113 @@ sub open_time
 sub run_triangulation
 {
   my $method;
+  my $boundary;
   my $output;
   my $jt_weight;
   my $output_tri_file;
 
   $output_tri_file = pop;
+  $boundary = pop;
   $method   = pop;
 
-  $output = `$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $input_triangulation -findBestBoundary F -seed T -triangulationHeuristic $method -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 2>&1`;
+  $output = `$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -triangulationHeuristic $method -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 2>&1`;
 
   print STDERR "$output\n";
 
   ($jt_weight) = $output =~ /Chunk max clique weight =.* jt_weight = ([0-9.]+)/;
 
   if (!defined $jt_weight) {
-    $jt_weight = -1; 
+    $jt_weight = 0; 
+  }
+  else {
+    $jt_weight = 1; 
   }
 
   return($jt_weight); 
+}
+
+#############################################################################
+# make_trifile 
+#
+# Create a trifile with given method and adjust the trifile queues
+#############################################################################
+sub make_trifile
+{
+  my $method;
+  my $boundary;
+  my $boundary_name;
+  my $file_h;
+  my $tmp_tri_file;
+  my $triangulation_status;
+
+  $method   = pop;
+  $boundary = pop;
+  $boundary_name = pop;
+
+  #####################################################################
+  # Create a temporary file for the current triangulation 
+  #####################################################################
+  ($file_h, $tmp_tri_file) = tempfile(
+    "$boundary_name.$method.$str_basename.tmp.trifile.XXXXX", 
+    DIR=>$output_directory );
+
+  do {
+    $triangulation_status = run_triangulation($method, $boundary, 
+      $tmp_tri_file);
+    if ($triangulation_status < 0) {
+      print "Triangulation failed\n";
+      sleep(15);
+    } 
+  } while($triangulation_status< 0);
+
+  $alter_trifile_queue_sem->down;
+  push @trifile_queue, $tmp_tri_file;
+  $alter_trifile_queue_sem->up;
+
+  $available_trifiles->up; 
+  $needed_trifiles->down; 
+}
+
+#############################################################################
+# get_trifile 
+#
+# Get file name of trifile that needs to be timed 
+#############################################################################
+sub get_trifile
+{
+  my $trifile_name;
+
+#print "Getting...\n";
+  $available_trifiles->down; 
+  $needed_trifiles->up;
+
+  $alter_trifile_queue_sem->down;
+  $trifile_name = shift @trifile_queue;
+  $alter_trifile_queue_sem->up;
+
+#print "got $trifile_name...\n";
+ 
+  if (! -e $trifile_name) {
+    print "Trifile not ready";
+    sleep(15);
+  }
+
+  return($trifile_name);
+}
+
+
+#############################################################################
+# reset_basic_methods();
+#
+# Reset the counters that keep track of the current basic method 
+#############################################################################
+sub reset_basic_methods 
+{
+  $basic_iteration_index = 0;
+  $basic_prefix_index    = 0;
+  $basic_method_index    = 0;
+  $basic_suffix_index    = 0;
+  $basic_iterations_done = 0;
 }
 
 #############################################################################
@@ -322,58 +624,52 @@ sub run_triangulation
 #
 # Get triangulation method from the circular queue  
 #############################################################################
-sub get_triangulation_method  
+sub get_basic_triangulation_method  
 {
   my $method;
 
-  $method_sem->up;
-
-  if ($once_index < (scalar @run_once)) {
+  if ($basic_iterations_done) { 
+    $method = 'DONE';
+  }
+  elsif ($once_index < (scalar @run_once)) {
     $method = $run_once[$once_index];
     $once_index++;
   }
   else {
 
-    $method = "$iterations[$iteration_index]$prefix[$prefix_index]$method[$method_index]";
-    if ($method_index >= $suffix_threshold) {
-      $method = "$method$suffix[$suffix_index]";
+    $method = "$basic_iterations[$basic_iteration_index]$basic_prefix[$basic_prefix_index]$basic_method[$basic_method_index]";
+
+    if ($basic_method_index >= $basic_suffix_threshold) {
+      $method = "$method$basic_suffix[$basic_suffix_index]";
     }
 
     #########################################################################
     # Increment the method indices
     #########################################################################
-    if ($method_index >= $suffix_threshold) {
-      $suffix_index++;
-      if ($suffix_index >= (scalar @suffix)) {
-        $suffix_index = 0;
-        $method_index++;
+    if ($basic_method_index >= $basic_suffix_threshold) {
+      $basic_suffix_index++;
+      if ($basic_suffix_index >= (scalar @basic_suffix)) {
+        $basic_suffix_index = 0;
+        $basic_method_index++;
       }
     }
 
-    if ($method_index < $suffix_threshold) {
-      $method_index++;
+    if ($basic_method_index < $basic_suffix_threshold) {
+      $basic_method_index++;
     }
 
-    if ($method_index >= (scalar @method)) {
-      $method_index = 0;
-      $prefix_index++;
-      if ($prefix_index >= (scalar @prefix)) {
-        $prefix_index = 0;
-        $iteration_index++;
-        if ($iteration_index >= (scalar @iterations)) {
-          $iteration_index = 0;
+    if ($basic_method_index >= (scalar @basic_method)) {
+      $basic_method_index = 0;
+      $basic_prefix_index++;
+      if ($basic_prefix_index >= (scalar @basic_prefix)) {
+        $basic_prefix_index = 0;
+        $basic_iteration_index++;
+        if ($basic_iteration_index >= (scalar @basic_iterations)) {
+          $basic_iteration_index = 0;
+          $basic_iterations_done = 1; 
         }
       }
     } 
-  } 
-
-  #############################################################################
-  # Calculate the throughput
-  #############################################################################
-  $method_count++;
-  $method_sem->down;
-  if (($method_count % 5)==0) {
-    printf "    Throughput:%f\n", (60*$method_count/(time-$start_time));
   } 
 
   return($method);
@@ -455,8 +751,7 @@ sub run_timing
       print STDERR "$output";
     }
 
-    ($partitions) = $output =~ 
-      /residual partitions, ([0-9]+) total partitions,/;
+    ($partitions) = $output =~ /, ([0-9+-.e]+) partitions\/sec/;
   };
 
   (defined $partitions) or $partitions = -1; 
@@ -472,30 +767,47 @@ sub run_timing
 sub check_best 
 {
   my $method;
+  my $boundary;
+  my $boundary_index;
   my $nmbr_partitions;
   my $tmp_tri_file;
-  my $weight;
+  my $overall_best_flag;
 
   $tmp_tri_file    = pop;
-  $weight          = pop;
   $method          = pop;
+  $boundary        = pop;
   $nmbr_partitions = pop;
 
   $best_sem->up;
 
-  printf "%-30s Wt: %4f  Part: %5d", $method, $weight, 
-    $nmbr_partitions;
+  printf "%-4s%-40s%4e", $boundary, $method, $nmbr_partitions;
 
-  if ($nmbr_partitions > $best_partitions)
-  {
-    print " ==> NEW BEST!!!\n";
+  if ($nmbr_partitions > $best_partitions) {
+    print " ==> NEW BEST!!!";
     $best_partitions = $nmbr_partitions;
     copy( $tmp_tri_file, "$str_basename.best.trifile" );
+    $overall_best_flag = 1;
   }
-  else 
+  else {
+    $overall_best_flag = 0;
+  }
+
+  ($boundary_index) = $boundary =~ /B(\d+)/;
+  if (!defined $boundary_index) {
+    ($boundary_index) = $method =~ /input\.(\d+)\./;
+    $boundary_index--;
+  }
+
+  if ($nmbr_partitions > $best_time_per_boundary[$boundary_index])
   {
-    print "\n";
+    if (!$overall_best_flag) {
+      print " ==> boundary best";
+    }
+
+    $best_time_per_boundary[$boundary_index] = $nmbr_partitions;
   }
+  
+  print "\n";
 
   $best_sem->down;
 }
