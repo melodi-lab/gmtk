@@ -382,6 +382,7 @@ Sparse1DPMF::emEndIteration()
   if ( !emOnGoingBitIsSet() )
     return; 
 
+  accumulatedProbability.floor();
   if (accumulatedProbability.zero()) {
     warning("WARNING: Sparse 1D PMF named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
