@@ -62,24 +62,36 @@ RV_Attribute = Type_Attribute | Parents_Attribute
 Type_Attribute = "type" ":" RV_Type ";"
 
 Parents_Attribute =
-    "switchingparents" ":" Switching_Parent_LIST ";"
-   | "conditionalparents" ":" Conditional_Parent_List_List  ";"
+      ( "switchingparents" ":" Switching_Parent_LIST ";" )
+   |  ( "conditionalparents" ":" Conditional_Parent_Spec_List  ";" )
+    # Semanatics requires that we have both
+    # switchingparents & conditionalparents in a RV. Note that
+    # the parse grammer allows this not to be the case.
 
-RV_Type = Discrete_RV | Continuous_RV
+RV_Type = Discrete_RV_TYPE | Continuous_RV_TYPE
 
-Discrete_RV = "discrete" ( "hidden" | "observed" integer ":" integer ) "cardinality" integer
+Discrete_RV_TYPE = 
+      "discrete" 
+      ( "hidden" | "observed" integer ":" integer ) 
+     "cardinality" integer
 
-Continuous_RV = "continuous" ("hidden" | "observed" "features" integer:integer)
+Continuous_RV_TYPE = 
+       "continuous" 
+       ("hidden" | "observed" integer:integer)
 
 Switching_Parent_LIST = "nil" | Parent_List "using" Mapping_Spec
 
-Conditional_Parent_List_List =
-    Conditional_Parent_List using Implementation |
-    Conditional_Parent_List using Implementation "|" Conditional_Parent_List_List
+Conditional_Parent_Spec_List =
+    Conditional_Parent_Spec "|" Conditional_Parent_Spec_List
+  | Conditional_Parent_Spec
+
+Conditional_Parent_Spec = Conditional_Parent_List using Implementation
 
 Cond_Parent_List = "nil" | Parent_List
 
-Parent_List = Parent | Parent "," Parent_List
+Parent_List = 
+       Parent "," Parent_List
+     | Parent
 
 Parent = identifier "(" integer ")"
 
@@ -152,7 +164,7 @@ frame:0 {
        }
 
        variable : obs1 {
-          type: continous observed features 0:5 ;
+          type: continous observed 0:5 ;
           switchingparents: state1(0), state2(0) 
                    using mapping("state2obs6") ;
           conditionalparents: 
@@ -160,7 +172,7 @@ frame:0 {
                | state1(0) using mixGaussian mapping("gausmapping");
        }
        variable : obs2 {
-          type: continous observed features 6:25  ;
+          type: continous observed 6:25  ;
           switchingparents: nil ;
           conditionalparents: 
                 state1(0) using mlpSwitchMixGaussian
@@ -204,7 +216,7 @@ frame:1 {
        # like in the first frame, the obs. are only dep.
        # on RVs from the current frame.
        variable : obs1 {
-          type: continous observed features 0:5 ;
+          type: continous observed 0:5 ;
           switchingparents: state1(0), state2(0) 
                    using mapping("state2obs6") ;
           conditionalparents: 
@@ -213,7 +225,7 @@ frame:1 {
        }
 
        variable : obs2 {
-          type: continous observed features 6:25  ;
+          type: continous observed 6:25  ;
           switchingparents: nil ;
           conditionalparents: 
                 state1(0) using mlpSwitchMixGaussian
@@ -244,10 +256,89 @@ extern int yylex();
 
 FileParser::TokenInfo FileParser::tokenInfo;
 
+
+////////////////////////////////////////////////////////////////////
+//        Internal Keyword Symbols
+////////////////////////////////////////////////////////////////////
+
+
+const vector<string> 
+FileParser::KeywordTable = FileParser::fillKeywordTable();
+
+const vector<string> 
+FileParser::fillKeywordTable()
+{
+  const char*const kw_table[] = {
+    "frame",
+    "variable",
+    "type",
+    "cardinality",
+    "switchingparents",
+    "conditionalparents",
+    "discrete",
+    "continuous",
+    "hidden",
+    "observed",
+    "nil",
+    "using",
+    "mapping",
+    "MDCPT",
+    "MSCPT",
+    "mixGaussian",
+    "gausSwitchMixGaussian",
+    "logitSwitchMixGaussian",
+    "mlpSwitchMixGaussian",
+    "chunk",
+    "GRAPHICAL_MODEL"
+  };
+  vector<string> v;
+  const unsigned len = sizeof(kw_table)/sizeof(char*);
+  v.resize(len);
+  for (unsigned i=0;i<len;i++) {
+    v[i] = kw_table[i];
+  }
+  return v;
+}
+
+
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * FileParser
+ *      constructor of an object, takes file argument, program
+ *      dies if there is an error or file does not parse.
+ *
+ * Preconditions:
+ *      file should contain a valid GM structure file.
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+ *      program might die, totally changes internal structure of object.
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+FileParser::FileParser(const char*const file)
+{
+
+  if (file == NULL)
+    error("FileParser::FileParser, can't open NULL file");
+  if (!strcmp("-",file))
+    yyin = stdin;
+  else {
+    if ((yyin = fopen (file,"r")) == NULL)
+      error("FileParser::FileParser, can't open file (%s)",file);
+  }
+  tokenInfo.srcLine = 1;
+  tokenInfo.srcChar = 1;
+}
 
 
 /*-
@@ -279,7 +370,38 @@ FileParser::prepareNextToken()
 
 /*-
  *-----------------------------------------------------------------------
- * ensureNotEOF:
+ * ConsumeToken
+ *   consumes the current token 
+ * 
+ * Preconditions:
+ *      Object must be in the midst of parsing a file.
+ *
+ * Postconditions:
+ *      Same as before, new token parsed, possible new 
+ *      EOF condition might exist.
+ *
+ * Side Effects:
+ *      Changes the interal token info function to point
+ *      to the next unconsumed token (or EOF if that occurs).
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+FileParser::consumeToken()
+{
+  printf("Consuming token (%s) of type %d from src line (%d)\n",
+	 tokenInfo.tokenStr,tokenInfo.tokenType,tokenInfo.srcLine);
+  prepareNextToken();
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * ensureNotAtEOF:
  *   makes sure that we are not at the EOF.
  * 
  * Preconditions:
@@ -297,17 +419,48 @@ FileParser::prepareNextToken()
  *-----------------------------------------------------------------------
  */
 void
-FileParser::ensureNotEOF(const char *const msg)
+FileParser::ensureNotAtEOF(const char *const msg)
 {
-  if (tokenInfo.rc == Token_EOF) {
+  if (tokenInfo.rc == TT_EOF) {
     fprintf(stderr,"Unexpected EOF Error: expecting %s at line %d\n",
 	    msg,
 	    tokenInfo.srcLine);
     error("Exiting Program");
   }
 }
+void
+FileParser::ensureNotAtEOF(const TokenKeyword kw)
+{
+  if (tokenInfo.rc == TT_EOF) {
+    fprintf(stderr,"Unexpected EOF Error: expecting keyword (%s) at line %d\n",
+	    KeywordTable[kw].c_str(),
+	    tokenInfo.srcLine);
+    error("Exiting Program");
+  }
+}
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * parseError
+ *   exists with a parse error condition.
+ * 
+ * Preconditions:
+ *      some error
+ *
+ * Postconditions:
+ *      program dies.
+ *
+ * Side Effects:
+ *      program dies.
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 FileParser::parseError(const char* const str)
 {
@@ -318,95 +471,101 @@ FileParser::parseError(const char* const str)
   error("Exiting Program");
 }
 
-
-
-FileParser::FileParser(const char*const file)
+void
+FileParser::parseError(const TokenKeyword kw)
 {
-  if (file == NULL)
-    error("FileParser::FileParser, can't open NULL file");
-  if (!strcmp("-",file))
-    yyin = stdin;
-  else {
-    if ((yyin = fopen (file,"r")) == NULL)
-      error("FileParser::FileParser, can't open file (%s)",file);
-  }
-  tokenInfo.srcLine = 1;
-  parseGraphicalModel();
+  fprintf(stderr,"Parse Error: expecting keyword (%s) at line %d, near (%s)\n",
+	  KeywordTable[kw].c_str(),
+	  tokenInfo.srcLine,
+	  tokenInfo.tokenStr);
+  error("Exiting Program");
 }
+
+
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//                  PARSING FUNCTIONS                             //
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 
 
 void
 FileParser::parseGraphicalModel()
 {
-
+  // prepare the first lookahead token
   prepareNextToken();
-  ensureNotEOF("GM magic keyword");
-  if (tokenInfo != "GRAPHICAL_MODEL")
-    parseError("expecting key word GRAPHICAL_MODEL");
 
-  prepareNextToken();
-  ensureNotEOF("GM name");
-  if (tokenInfo != Token_Identifier)
-    parseError("expecting GM name ID");
+  // now start parsing.
+  ensureNotAtEOF("GM magic keyword");
+  if (tokenInfo != KW_GRAPHICAL_MODEL)
+    parseError(KW_GRAPHICAL_MODEL);
+  consumeToken();
 
-  prepareNextToken();
-  ensureNotEOF("frame keyword");
+  ensureNotAtEOF("GM name");
+  if (tokenInfo != TT_Identifier)
+    parseError("expecting GM name identifier");
+  consumeToken();
 
-
-  if (tokenInfo != "frame")
-    parseError("expecting frame keyword");
+  // look ahead to make sure it is a frame
+  ensureNotAtEOF("frame keyword");
+  if (tokenInfo != KW_Frame)
+    parseError(KW_Frame);
+  // now this will consume the token
   parseFrameList();
-  parseChunkSpecifier();
 
+  parseChunkSpecifier();
 }
 
 
 void
 FileParser::parseFrameList()
 {
-  if (tokenInfo != "frame")
+  if (tokenInfo != KW_Frame)
     return;
   parseFrame();
   parseFrameList();
 }
 
 
-
 void
 FileParser::parseFrame()
 {
+  ensureNotAtEOF(KW_Frame);
+  if (tokenInfo != KW_Frame)
+    parseError(KW_Frame);
+  consumeToken();
 
-  prepareNextToken();
-  ensureNotEOF("frame colon");
-  if (tokenInfo != Token_Colon)
+  ensureNotAtEOF("frame colon");
+  if (tokenInfo != TT_Colon)
     parseError("frame colon");
+  consumeToken();
 
-
-  prepareNextToken();
-  ensureNotEOF("frame number");
-  if (tokenInfo != Token_Integer)
+  ensureNotAtEOF("frame number");
+  if (tokenInfo != TT_Integer)
     parseError("frame number");
+  consumeToken();
 
-  prepareNextToken();
-  ensureNotEOF("open frame {");
-  if (tokenInfo != Token_LeftBrace)
+  ensureNotAtEOF("open frame {");
+  if (tokenInfo != TT_LeftBrace)
     parseError("open frame {");
-
-  prepareNextToken();
+  consumeToken();
 
   parseRandomVariableList();
 
-  if (tokenInfo != Token_RightBrace)
-    parseError("open frame }");
-
-  prepareNextToken();
+  ensureNotAtEOF("close frame }");
+  if (tokenInfo != TT_RightBrace)
+    parseError("close frame }");
+  consumeToken();
 }
 
 void
 FileParser::parseRandomVariableList()
 {
-  ensureNotEOF("variable name or }");
-  if (tokenInfo != Token_Keyword || tokenInfo != "variable")
+  if (tokenInfo != KW_Variable)
     return;
   parseRandomVariable();
   parseRandomVariableList();
@@ -416,68 +575,253 @@ FileParser::parseRandomVariableList()
 void
 FileParser::parseRandomVariable()
 {
+  ensureNotAtEOF(KW_Variable);
+  if (tokenInfo != KW_Variable)
+    parseError(KW_Variable);
+  consumeToken();
 
-  if (tokenInfo != Token_Keyword || tokenInfo != "variable")  
-    parseError("variable keyword");
-
-  prepareNextToken();
-  ensureNotEOF(":");
-  if (tokenInfo != Token_Colon)
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
     parseError(":");
+  consumeToken();
 
-
-  prepareNextToken();
-  ensureNotEOF("variable name");
-  if (tokenInfo != Token_Identifier)
+  ensureNotAtEOF("variable name");
+  if (tokenInfo != TT_Identifier)
     parseError("variable name");
+  consumeToken();
 
-
-  prepareNextToken();
-  ensureNotEOF("open RV {");
-  if (tokenInfo != Token_LeftBrace)
+  ensureNotAtEOF("open RV {");
+  if (tokenInfo != TT_LeftBrace)
     parseError("open RV {");
-
-  prepareNextToken();
+  consumeToken();
 
   parseRandomVariableAttributeList();
 
-  if (tokenInfo != Token_RightBrace)
-    parseError("open frame }");
-
-  prepareNextToken();
+  ensureNotAtEOF("close frame }");
+  if (tokenInfo != TT_RightBrace)
+    parseError("close RV }");
+  consumeToken();
 
 }
 
 void
 FileParser::parseRandomVariableAttributeList()
 {
+  if (tokenInfo == KW_Type || 
+      tokenInfo == KW_Switchingparents ||
+      tokenInfo == KW_Conditionalparents) 
+    {
+      parseRandomVariableAttribute();
+      parseRandomVariableAttributeList();
+    }
+    return;
+}
+
+void
+FileParser::parseRandomVariableAttribute()
+{
+  ensureNotAtEOF("variable attribute");
+  if (tokenInfo == KW_Type)
+    return parseRandomVariableTypeAttribute();
+  else if (tokenInfo == KW_Switchingparents ||
+	   tokenInfo == KW_Conditionalparents)
+    return parseRandomVariableParentAttribute();
+  else
+    parseError("variable attribute");
+}
+
+void
+FileParser::parseRandomVariableTypeAttribute()
+{
+
+  ensureNotAtEOF(KW_Type);
+  if (tokenInfo != KW_Type)
+    parseError(KW_Type);
+  consumeToken();
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseError(":");
+  consumeToken();
+
+  parseRandomVariableType();
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseError(";");
+  consumeToken();
+
+}
+
+void
+FileParser::parseRandomVariableType()
+{
+  ensureNotAtEOF("variable type");
+  if (tokenInfo == KW_Discrete)
+    parseRandomVariableDiscreteType(); 
+  else if (tokenInfo == KW_Continous)
+    parseRandomVariableContinuousType();
+  else 
+    parseError("variable type");
+}
 
 
+
+void
+FileParser::parseRandomVariableDiscreteType()
+{
+  ensureNotAtEOF(KW_Discrete);
+  if (tokenInfo != KW_Discrete)
+    parseError(KW_Discrete);
+  consumeToken();
+
+  ensureNotAtEOF("variable disposition (hidden|discrete)");
+  if (tokenInfo == KW_Hidden) {
+    // hidden discrete RV
+    consumeToken();
+  } else if (tokenInfo == KW_Observed) {
+    // observed discrete RV    
+    consumeToken();
+    
+    ensureNotAtEOF("first feature range");
+    if (tokenInfo != TT_Integer)
+      parseError("first feature range");
+    consumeToken();
+
+    ensureNotAtEOF("feature range separator");
+    if (tokenInfo != TT_Colon)
+      parseError("feature range separator");
+    consumeToken();
+    
+    ensureNotAtEOF("second feature range");
+    if (tokenInfo != TT_Integer)
+      parseError("second feature range");
+    consumeToken();
+
+  } else 
+    parseError("variable disposition (hidden|discrete)");
+
+  ensureNotAtEOF(KW_Cardinality);
+  if (tokenInfo != KW_Cardinality)
+    parseError(KW_Cardinality);
+  consumeToken();
+
+  ensureNotAtEOF("cardinality value");
+  if (tokenInfo != TT_Integer)
+    parseError("cardinality value");
+  consumeToken();
+}
+
+
+void
+FileParser::parseRandomVariableContinuousType()
+{
+  ensureNotAtEOF(KW_Continous);
+  if (tokenInfo != KW_Continous)
+    parseError(KW_Continous);
+  consumeToken();
+
+  ensureNotAtEOF("variable disposition (hidden|discrete)");
+  if (tokenInfo == KW_Hidden) {
+    // hidden discrete RV
+    consumeToken();
+  } else if (tokenInfo == KW_Observed) {
+    // observed discrete RV    
+    consumeToken();
+    
+    ensureNotAtEOF("first feature range");
+    if (tokenInfo != TT_Integer)
+      parseError("first feature range");
+    consumeToken();
+
+    ensureNotAtEOF("feature range separator");
+    if (tokenInfo != TT_Colon)
+      parseError("feature range separator");
+    consumeToken();
+    
+    ensureNotAtEOF("second feature range");
+    if (tokenInfo != TT_Integer)
+      parseError("second feature range");
+    consumeToken();
+
+  } else
+    parseError("variable disposition (hidden|discrete)");
+
+}
+
+
+void
+FileParser::parseRandomVariableParentAttribute()
+{
+
+  ensureNotAtEOF("parent attribute");
+  if (tokenInfo == KW_Switchingparents) {
+    consumeToken();
+
+    ensureNotAtEOF("attribute seperator");
+    if (tokenInfo != TT_Colon)
+      parseError("attribute separator");
+    consumeToken();
+
+    parseSwitchingParentList();
+
+    ensureNotAtEOF(";");
+    if (tokenInfo != TT_SemiColon)
+      parseError(";");
+    consumeToken();
+
+  } else if (tokenInfo == KW_Conditionalparents) {
+    consumeToken();
+
+    ensureNotAtEOF("attribute seperator");
+    if (tokenInfo != TT_Colon)
+      parseError("attribute separator");
+    consumeToken();
+
+    parseConditionalParentSpecList(); 
+
+    ensureNotAtEOF(";");
+    if (tokenInfo != TT_SemiColon)
+      parseError(";");
+    consumeToken();
+
+  } else 
+    parseError("parent attribute");
+
+}
+
+void
+FileParser::parseSwitchingParentList()
+{
+}
+
+void
+FileParser::parseConditionalParentSpecList()
+{
 }
 
 void
 FileParser::parseChunkSpecifier()
 {
-  if (tokenInfo != "chunk") 
-    parseError("expecting chunk keyword");
+  ensureNotAtEOF(KW_Chunk);
+  if (tokenInfo != KW_Chunk) 
+    parseError(KW_Chunk);
+  consumeToken();
 
-  prepareNextToken();
-  ensureNotEOF("first chunk integer");
+  ensureNotAtEOF("first chunk integer");
+  if (tokenInfo != TT_Integer)
+    parseError("first chunk integer");
+  consumeToken();
 
-  if (tokenInfo != Token_Integer)
-    parseError("expecting first chunk integer");
-
-  prepareNextToken();
-  ensureNotEOF("chunk colon");
-
-  if (tokenInfo != Token_Colon) 
+  ensureNotAtEOF("chunk colon");
+  if (tokenInfo != TT_Colon) 
     parseError("expecting chunk colon");
+  consumeToken();
 
-  prepareNextToken();
-  ensureNotEOF("second chunk integer");
-
-  if (tokenInfo != Token_Integer) 
+  ensureNotAtEOF("second chunk integer");
+  if (tokenInfo != TT_Integer) 
     parseError("expecting second chunk integer");
+  consumeToken();
 
 }
 
@@ -494,10 +838,14 @@ GMParms GM_Parms;
 int
 main(int argc,char*argv[])
 {
-  if (argc > 1) 
+  if (argc > 1) {
     FileParser fp(argv[1]);    
-  else 
+    fp.parseGraphicalModel();
+  } else {
     FileParser fp("-");
+    fp.parseGraphicalModel();
+  }
+
 }
 
 
