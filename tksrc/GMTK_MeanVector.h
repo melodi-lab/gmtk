@@ -85,6 +85,9 @@ public:
     means.write(os); 
   }
 
+  // create a copy of self, but with slightly perturbed
+  // means values.
+  MeanVector* noisyClone();
 
   //////////////////////////////////
   // Public interface support for EM
