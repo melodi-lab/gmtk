@@ -150,6 +150,7 @@ protected:
   ////////////////////////////////////////////////////////////////
   // structure for comparing range pointers. 
   struct RngCompare {  
+    RngCompare() {}
     bool operator() (const pair<BP_Range*,Node*>& a, 
 		     const pair<BP_Range*,Node*>& b) {
       return (*a.first) < (*b.first);
