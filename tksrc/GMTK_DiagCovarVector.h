@@ -39,7 +39,14 @@ class DiagCovarVector : public EMable, public NamedObject {
 
   //////////////////////////////////
   // Data structures support for EM
-  RealArray nextCovariances;
+  sArray<float> nextCovariances;
+  // Need the following means because of potential sharing.
+  // that is, if multiple Gaussians share different means
+  // and different covariances, then the covariance matrices
+  // need to keep track of the accumulated means according to
+  // all the Gaussians that share this Covariance matrix (which
+  // might not be the same sharing as the means.
+  sArray<float> nextMeans;
 
   ///////////////////////////////////////////////////////
   // Precomputed values for efficiency (computed at the
@@ -50,6 +57,10 @@ class DiagCovarVector : public EMable, public NamedObject {
   float _log_inv_normConst;
   ///////////////////////////////////////////////////////
 
+  /////////////////////////////////////////////////////////////
+  // used by EM to count the number of times variances 
+  // became very small.
+  static unsigned numFlooredVariances;
 
 public:
 
@@ -84,13 +95,15 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emStartIteration() {}
-  void emIncrement(RandomVariable*,logpr prob) {}
-  void emEndIteration() {}
-  void emSwapCurAndNew() {}
-  void emStoreAccumulators(oDataStreamFile& ofile) {}
-  void emLoadAccumulators(iDataStreamFile& ifile) {}
-  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void emStartIteration();
+  void emIncrement(logpr prob,const float* f,
+		   const Data32* const base,
+		   const int stride);
+  void emEndIteration();
+  void emSwapCurAndNew();
+  void emStoreAccumulators(oDataStreamFile& ofile);
+  void emLoadAccumulators(iDataStreamFile& ifile);
+  void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////
 
 };

@@ -32,6 +32,9 @@
 
 #include "GMTK_MSCPT.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_GMParms.h"
+
 
 VCID("$Header$");
 
@@ -355,36 +358,124 @@ MSCPT::makeUniform()
 
 
 
-
-
 ////////////////////////////////////////////////////////////////////
 //        EM Routines
 ////////////////////////////////////////////////////////////////////
 
+ 
 void
 MSCPT::emStartIteration()
 {
-  error("Not implemented");
+  if (!GM_Parms.amTrainingMSCPTs())
+    return;
+
+  if(emOnGoingBitIsSet())
+    return; // already done
+
+  if (!emEmAllocatedBitIsSet()) {
+    emSetEmAllocatedBit();
+  }
+  // EM iteration is now going.
+  emSetOnGoingBit();
+  emSetSwappableBit();
+
+  spmf->emStartIteration();
+
+  accumulatedProbability = 0.0;  
 }
 
 
 void
-MSCPT::emIncrement(RandomVariable* rv, logpr prob)
+MSCPT::emIncrement(logpr prob,RandomVariable* rv)
 {
-  error("Not implemented");
+  if (!GM_Parms.amTrainingMSCPTs())
+    return;
+
+  emStartIteration();
+
+  // this is an MSCPT, so rv must be discrete.a
+  assert ( rv -> discrete );
+
+  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+  // make sure, by checking that drv's curCPT points to this.
+  assert ( drv -> curCPT == this );
+
+  // 
+  // TODO: This needs to be factored out of the inner most
+  // loop!
+  becomeAwareOfParentValues(*(drv->curConditionalParents));
+
+  spmf->emIncrement(prob,drv->val);
+
+  accumulatedProbability += prob;
 }
 
 void
 MSCPT::emEndIteration()
 {
-  error("Not implemented");
+  if (!GM_Parms.amTrainingMSCPTs())
+    return;
+
+  if (!emOnGoingBitIsSet())
+    return;
+
+  if (accumulatedProbability.zero()) {
+    warning("WARNING: MSCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+  }
+
+
+  ////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////
+  // now, we need to go through all Sparse1DPMFs that this
+  // MSCPT might use and call emEndIteration(). We assume
+  // however that this is done somewhere else from the
+  // global object.
+  ////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////
+
+  // stop EM
+  emClearOnGoingBit();
 }
 
 void
 MSCPT::emSwapCurAndNew()
 {
-  error("Not implemented"); 
+  if (!GM_Parms.amTrainingMSCPTs())
+    return;
+
+  if (!emSwappableBitIsSet())
+    return;
+  
+  // We don't call our member's swap function since
+  // they are avaiable only as leaves of a decision tree
+  // which depend on parent values. We assume that this
+  // happens via the global object.
+
+  emSetSwappableBit();
 }
+
+
+void
+MSCPT::emStoreAccumulators(oDataStreamFile& ofile)
+{
+  error("not implemented");
+}
+
+void
+MSCPT::emLoadAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+void
+MSCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+
 
 
 
@@ -399,87 +490,6 @@ MSCPT::emSwapCurAndNew()
 int
 main()
 {
-
-  MSCPT mdcpt;
-
-  // this is a binary variable with three parents
-  // the first one is binary, the second one is ternary,
-  // and the third one is binary.
-
-  mdcpt.setNumParents(3);
-  mdcpt.setNumCardinality(0,2);
-  mdcpt.setNumCardinality(1,3);
-  mdcpt.setNumCardinality(2,2);
-  mdcpt.setNumCardinality(3,3);
-  mdcpt.allocateBasicInternalStructures();
-
-  // set to random values
-  mdcpt.makeRandom();
-  
-  // write values to a data file in ASCII.
-  oDataStreamFile od ("/tmp/foo.mdcpt",false);
-
-  mdcpt.write(od);
-
-  // now print out some probabilities.
-  vector < int > parentVals;
-  parentVals.resize(3);
-
-  parentVals[0] = 0;
-  parentVals[1] = 0;
-  parentVals[2] = 0;
-
-  for (int i =0; i<3;i++) {
-    printf("Prob(%d) Given cur Par = %f\n",
-	   i,mdcpt.probGivenParents(parentVals,i).unlog());
-  }
-
-  parentVals[0] = 0;
-  parentVals[1] = 0;
-  parentVals[2] = 1;
-
-  for (int i =0; i<3;i++) {
-    printf("Prob(%d) Given cur Par = %f\n",
-	   i,mdcpt.probGivenParents(parentVals,i).unlog());
-  }
-
-  parentVals[0] = 0;
-  parentVals[1] = 1;
-  parentVals[2] = 1;
-
-  for (int i =0; i<3;i++) {
-    printf("Prob(%d) Given cur Par = %f\n",
-	   i,mdcpt.probGivenParents(parentVals,i).unlog());
-  }
-
-  parentVals[0] = 1;
-  parentVals[1] = 2;
-  parentVals[2] = 1;
-
-  for (int i =0; i<3;i++) {
-    printf("Prob(%d) Given cur Par = %f\n",
-	   i,mdcpt.probGivenParents(parentVals,i).unlog());
-  }
-
-  // Now iterate over valid values.
-  MSCPT::iterator it = mdcpt.first();
-  do {
-    printf("Prob of %d is %f\n",
-	   it.val,it.probVal.unlog());
-  } while (mdcpt.next(it));
-
-
-  parentVals[0] = 0;
-  parentVals[1] = 0;
-  parentVals[2] = 1;
-  mdcpt.becomeAwareOfParentValues(parentVals);
-
-  it = mdcpt.first();
-  do {
-    printf("Prob of %d is %f\n",
-	   it.val,it.probVal.unlog());
-  } while (mdcpt.next(it));
-
 
 }
 

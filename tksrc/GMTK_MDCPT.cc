@@ -33,6 +33,7 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_RandomVariable.h"
 #include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_GMParms.h"
 
 VCID("$Header$");
 
@@ -493,23 +494,38 @@ MDCPT::makeUniform()
 void
 MDCPT::emStartIteration()
 {
-  if (!(bitmask & bm_emAllocated)) {
+  if (!GM_Parms.amTrainingMDCPTs())
+    return;
+
+  if(emOnGoingBitIsSet())
+    return; // already done
+
+  if (!emEmAllocatedBitIsSet()) {
     nextMdcpt.resize(mdcpt.len());
-    emSetAllocatedBit();
+    emSetEmAllocatedBit();
   }
-  
+  // EM iteration is now going.
+  emSetOnGoingBit();
+  emSetSwappableBit();
+
+  accumulatedProbability = 0.0;  
   // zero the accumulators
   // or if we want to add priors here, we can do that at this point.
   for (int i=0;i<nextMdcpt.len();i++) {
     nextMdcpt[i].set_to_zero();
   }
-  accumulator = 0.0;
 }
 
 
 void
-MDCPT::emIncrement(RandomVariable* rv, logpr prob)
+MDCPT::emIncrement(logpr prob,RandomVariable* rv)
 {
+  if (!GM_Parms.amTrainingMDCPTs())
+    return;
+
+  emStartIteration();
+
+
   // this is an MDCPT, so rv must be discrete.a
   assert ( rv -> discrete );
 
@@ -528,15 +544,21 @@ MDCPT::emIncrement(RandomVariable* rv, logpr prob)
   // ... and use it for the next cpt 
   *(nextMdcpt.ptr + offset + drv->val) += prob;
 
-  accumulator += prob;
+  accumulatedProbability += prob;
 }
 
 void
 MDCPT::emEndIteration()
 {
-  if (accumulator == 0.0) 
-    error("Ending EM iteration but CPT %s has zero probability of occurance\n",
-	  _name.c_str());
+  if (!GM_Parms.amTrainingMDCPTs())
+    return;
+
+  if (!emOnGoingBitIsSet())
+    return;
+
+  if (accumulatedProbability.zero()) {
+    warning("WARNING: MDCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+  }
 
   // now normalize the next ones
 
@@ -564,14 +586,44 @@ MDCPT::emEndIteration()
     loc_ptr += child_card;
   }
 
+  // stop EM
+  emClearOnGoingBit();
+
 }
 
 void
 MDCPT::emSwapCurAndNew()
 {
+  if (!GM_Parms.amTrainingMDCPTs())
+    return;
+
+  if (!emSwappableBitIsSet())
+    return;
+
   mdcpt.swapPtrs(nextMdcpt);
+  emClearSwappableBit();
 }
 
+
+
+void
+MDCPT::emStoreAccumulators(oDataStreamFile& ofile)
+{
+  error("not implemented");
+}
+
+void
+MDCPT::emLoadAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+void
+MDCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
 
 
 

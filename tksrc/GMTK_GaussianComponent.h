@@ -78,10 +78,6 @@ public:
   virtual void makeUniform() = 0;
   //////////////////////////////////
 
-  /////////////////////////////////////////////////////////
-  // precompute any values so that evaluation is efficient.
-  virtual void preCompute() = 0;
-
   //////////////////////////////////
   // probability evaluation
   virtual logpr log_p(const float *const x,     // real-valued scoring obs at time t

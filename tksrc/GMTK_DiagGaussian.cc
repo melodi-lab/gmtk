@@ -40,6 +40,7 @@ VCID("$Header$");
 
 
 
+
 void
 DiagGaussian::read(iDataStreamFile& is)
 {
@@ -54,7 +55,7 @@ DiagGaussian::read(iDataStreamFile& is)
       error("Error: DiagGaussian '%s' specifies mean name '%s' that does not exist",
 	    _name.c_str(),str.c_str());
   meanIndex = GM_Parms.meansMap[str];
-  means = GM_Parms.means[meanIndex];
+  mean = GM_Parms.means[meanIndex];
 
 
   // read covariance vector
@@ -67,11 +68,11 @@ DiagGaussian::read(iDataStreamFile& is)
   covar = GM_Parms.covars[covarIndex];
 
   // check that lengths match, etc.
-  if (covar->dim() != means->dim()) {
+  if (covar->dim() != mean->dim()) {
     error("Error: DiagGaussian '%s' specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
 	  _name.c_str(),
-	  means->name().c_str(),
-	  means->dim(),
+	  mean->name().c_str(),
+	  mean->dim(),
 	  covar->name().c_str(),
 	  covar->dim());
   }
@@ -79,12 +80,12 @@ DiagGaussian::read(iDataStreamFile& is)
     error("Error: DiagGaussian '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
 	  _name.c_str(),
 	  _dim,
-	  means->name().c_str(),
-	  means->dim(),
+	  mean->name().c_str(),
+	  mean->dim(),
 	  covar->name().c_str(),
 	  covar->dim());
   }
-
+  emSetEmAllocatedBit();
 }
 
 
@@ -96,17 +97,9 @@ DiagGaussian::write(oDataStreamFile& os)
 
 
 void
-DiagGaussian::preCompute()
-{
-  covar->preCompute();
-}
-
-
-
-void
 DiagGaussian::makeRandom()
 {
-  means->makeRandom();
+  mean->makeRandom();
   covar->makeRandom();
 }
 
@@ -114,23 +107,31 @@ DiagGaussian::makeRandom()
 void
 DiagGaussian::makeUniform()
 {
-  means->makeUniform();
+  mean->makeUniform();
   covar->makeUniform();
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * log_p()
+ *      Computes the probability of this Gaussian.
+ * 
+ * Preconditions:
+ *      preCompute() must have been called before this.
+ *
+ * Postconditions:
+ *      nil
+ *
+ * Side Effects:
+ *      nil, other than possible FPEs if the values are garbage
+ *
+ * Results:
+ *      Returns the probability.
+ *
+ *-----------------------------------------------------------------------
+ */
 
-// This can be changed from 'float' to 'double' to
-// provide extra range for temporary accumulators. Alternatively,
-// decreasing the program's mixCoeffVanishRatio at the beginning
-// of training should eliminate any component that produces
-// such low scores.
-#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE double
-
-
-//
-// compute the log probability of x with stride 'stride'
-// 
 logpr
 DiagGaussian::log_p(const float *const x,
 		    const Data32* const base,
@@ -139,11 +140,23 @@ DiagGaussian::log_p(const float *const x,
   logpr rc;
   rc.set_to_zero();
 
-  // covariances must be precomputed for this
+
+  //////////////////////////////////////////////////////////////////
+  // The local accumulator type in this routine.
+  // This can be changed from 'float' to 'double' to
+  // provide extra range for temporary accumulators. Alternatively,
+  // decreasing the program's mixCoeffVanishRatio at the beginning
+  // of training should eliminate any component that produces
+  // such low scores.
+#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE double
+
+  ////////////////////
+  // note: 
+  // covariances must have been precomputed for this
   // to work.
   const float *xp = x;
   const float *const x_endp = x + _dim;
-  const float *mean_p = means->basePtr();
+  const float *mean_p = mean->basePtr();
   const float *var_inv_p = covar->baseVarInvPtr();
   DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE d=0.0;
   do {
@@ -157,6 +170,7 @@ DiagGaussian::log_p(const float *const x,
   } while (x != x_endp);
   d *= -0.5;
   return logpr(0,(covar->log_inv_normConst() + d));
+
 }
 
 
@@ -166,32 +180,81 @@ DiagGaussian::log_p(const float *const x,
 /////////////////
 
 
+
 void
 DiagGaussian::emStartIteration()
 {
-  error("not implemented");
+  if (!GM_Parms.amTrainingDiagGaussians())
+    return;
+
+  if (emOnGoingBitIsSet())
+    return;
+
+  if (!emEmAllocatedBitIsSet()) {
+    // this is presumably the first time
+    emSetEmAllocatedBit();
+  }
+
+  // EM iteration is now going.
+  emSetOnGoingBit();
+  emSetSwappableBit();
+
+  accumulatedProbability = 0.0;
+  mean->emStartIteration();
+  covar->emStartIteration();
 }
 
 
 void
-DiagGaussian::emSwapCurAndNew()
+DiagGaussian::emIncrement(logpr prob,
+			  const float*f,
+			  const Data32* const base,
+			  const int stride)
 {
-  error("not implemented");
-}
+  if (!GM_Parms.amTrainingDiagGaussians())
+    return;
 
+  emStartIteration();
 
-void
-DiagGaussian::emIncrement(RandomVariable* rv,
-			  logpr prob)
-{
-  error("not implemented");
+  accumulatedProbability += prob;
+  mean->emIncrement(prob,f,base,stride);
+  covar->emIncrement(prob,f,base,stride);
 }
 
 
 void
 DiagGaussian::emEndIteration()
 {
-  error("not implemented");
+  if (!GM_Parms.amTrainingDiagGaussians())
+    return;
+
+  if (!emOnGoingBitIsSet())
+    return;
+
+  if (accumulatedProbability == 0.0) {
+    warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+  }
+
+  mean->emEndIteration();
+  covar->emEndIteration();
+
+  emClearOnGoingBit();
+}
+
+
+void
+DiagGaussian::emSwapCurAndNew()
+{
+  if (!GM_Parms.amTrainingDiagGaussians())
+    return;
+
+  if (!emSwappableBitIsSet())
+    return;
+
+  mean->emSwapCurAndNew();
+  covar->emSwapCurAndNew();
+
+  emClearSwappableBit();
 }
 
 

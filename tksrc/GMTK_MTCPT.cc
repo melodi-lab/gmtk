@@ -32,6 +32,7 @@
 
 #include "GMTK_MTCPT.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_DiscreteRandomVariable.h"
 
 VCID("$Header$");
 
@@ -206,6 +207,96 @@ MTCPT::write(oDataStreamFile& os)
   os.write(dtIndex);
   os.nl();
 }
+
+
+
+////////////////////////////////////////////////////////////////////
+//        EM Routines
+////////////////////////////////////////////////////////////////////
+
+ 
+void
+MTCPT::emStartIteration()
+{
+  if(emOnGoingBitIsSet())
+    return; // already done
+
+  if (!emEmAllocatedBitIsSet()) {
+    emSetEmAllocatedBit();
+  }
+  // EM iteration is now going.
+  emSetOnGoingBit();
+  emSetSwappableBit();
+
+  accumulatedProbability = 0.0;  
+}
+
+
+void
+MTCPT::emIncrement(logpr prob,RandomVariable* rv)
+{
+  emStartIteration();
+
+  // this is an MTCPT, so rv must be discrete.a
+  assert ( rv -> discrete );
+
+  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+  // make sure, by checking that drv's curCPT points to this.
+  assert ( drv -> curCPT == this );
+
+  // TODO: This needs to be factored out of the inner most
+  // loop! (in an MTCPT can safely remove this).
+  becomeAwareOfParentValues(*(drv->curConditionalParents));
+
+  accumulatedProbability += prob;
+}
+
+void
+MTCPT::emEndIteration()
+{
+
+  if (!emOnGoingBitIsSet())
+    return;
+
+  if (accumulatedProbability.zero()) {
+    warning("WARNING: MTCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+
+}
+
+void
+MTCPT::emSwapCurAndNew()
+{
+  if (!emSwappableBitIsSet())
+    return;
+  emClearSwappableBit();
+}
+
+
+void
+MTCPT::emStoreAccumulators(oDataStreamFile& ofile)
+{
+  error("not implemented");
+}
+
+void
+MTCPT::emLoadAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+void
+MTCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+
 
 
 ////////////////////////////////////////////////////////////////////

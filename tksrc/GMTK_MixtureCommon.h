@@ -76,10 +76,6 @@ public:
   virtual void makeUniform() = 0;
   //////////////////////////////////
 
-  /////////////////////////////////////////////////////////
-  // precompute values so that evaluation is efficient.
-  virtual void preCompute() = 0;
-
 
   //////////////////////////////////
   // probability evaluation
@@ -91,6 +87,14 @@ public:
 		   const int stride)
   { return exp(log_p(x,base,stride).val()); }
   //////////////////////////////////
+
+  //////////////////////////////////
+  // EM Support                   //
+  //////////////////////////////////
+  virtual void emIncrement(logpr prob,
+			   const float*f,
+			   const Data32* const base,
+			   const int stride) = 0;
 
   //////////////////////////////////
   // Sample Generation            //

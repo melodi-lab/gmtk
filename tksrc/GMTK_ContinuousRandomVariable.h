@@ -108,7 +108,9 @@ public:
       warning("WARNING: clamping value of observation variable w/o observation matrix");
     findConditionalParents();
   }
-  // always the last value.
+  ////////////////////////////////////////////////////////////
+  // always the last value, since we do not support hidden
+  // continuous variables at this time.
   bool clampNextValue() { return false; }
   ////////////////////////////////////////////////////////////////
 
@@ -135,12 +137,13 @@ public:
 
   ///////////////////////////////////////////////////
   // EM Support
-  void emStartIteration() {}
-  void emIncrement(logpr posterior) {}
-  void emEndIteration() {}
-  void emClearAllocatedBit() { } 
-  void emClearSwappedBit() { }
-  void emSwapCurAndNew() { }
+  void emStartIteration();
+  void emIncrement(logpr prob);
+  void emEndIteration();
+  void emSwapCurAndNew();
+  void emClearEmAllocatedBit() {}
+  void emClearSwappedBit() {}
+
   ///////////////////////////////////////////////////
 
 

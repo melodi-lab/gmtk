@@ -22,6 +22,8 @@
 #include <set>
 #include <algorithm>
 
+#include "GMTK_GMParms.h"
+
 // the observation matrix is referred to in the functions for clamping examples
 extern ObservationMatrix globalObservationMatrix;
 
@@ -305,10 +307,8 @@ void GMTK_GM::emIncrement(logpr p)
 
 void GMTK_GM::emStartIteration()
 {
-    for (unsigned i=0; i<node.size(); i++)
-        node[i]->emClearEmAllocatedBit();
-    for (unsigned i=0; i<node.size(); i++)
-        node[i]->emStartIteration();
+  for (unsigned i=0; i<node.size(); i++)
+    node[i]->emStartIteration();
 }
 
 /*
@@ -325,16 +325,16 @@ void GMTK_GM::emStartIteration()
 
 void GMTK_GM::emEndIteration()
 {
-    for (unsigned i=0; i<node.size(); i++)
-        node[i]->emEndIteration();
-    for (unsigned i=0; i<node.size(); i++)
-        node[i]->emClearSwappedBit();
+  GM_Parms.emEndIteration();
+  for (unsigned i=0; i<node.size(); i++)
+    node[i]->emEndIteration();
 }
 
 void GMTK_GM::emSwapCurAndNew()
 {
-    for (unsigned i=0; i<node.size(); i++)
-        node[i]->emSwapCurAndNew();
+  GM_Parms.emSwapCurAndNew();
+  for (unsigned i=0; i<node.size(); i++)
+    node[i]->emSwapCurAndNew();
 }
 
 /*
@@ -355,7 +355,7 @@ void GMTK_GM::enumerativeEM(int iterations)
     logpr last_dp = 0.0;
     for (int i=0; i<iterations; i++)
     {
-        emStartIteration();
+      // emStartIteration();
         logpr total_data_prob = 1.0;
         clampFirstExample();
         do
@@ -396,7 +396,7 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
     logpr last_dp = 0.0;
     for (int i=0; i<iterations; i++)
     {
-        emStartIteration();
+      // emStartIteration();
         logpr total_data_prob = 1.0;
         clampFirstExample();
         do
