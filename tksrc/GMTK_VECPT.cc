@@ -129,6 +129,10 @@ VECPT::read(iDataStreamFile& is)
 	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,c);
   }
 
+  // Read Observation Matrix tranform string
+  is.read(preTransforms,"Can't read VirtualEvidenceCPT's obs file pre-transform string");
+  is.read(postTransforms,"Can't read VirtualEvidenceCPT's obs file post-transform string");
+
   const char*pr_str=pr_rs.c_str();
 
   // Now try opening the file:
@@ -143,7 +147,14 @@ VECPT::read(iDataStreamFile& is)
 	       globalObservationMatrix.endSkip(),
 	       false,  // ); // do not run CPP if ascii file.
 	       NULL,
-	       (const char**)&pr_str);
+	       (const char**)&pr_str,
+	       NULL,
+	       NULL,
+	       &preTransforms,
+	       postTransforms
+	       );
+
+
   // ultimately add this:  Added - Karim
   //      NULL, // CPP command options
   // pr_rs.c_str());
@@ -220,6 +231,8 @@ VECPT::write(oDataStreamFile& os)
   os.write(pr_rs);
   os.write(fmt);
   os.write((iswp?"T":"F"));
+  os.write(preTransforms);
+  os.write(postTransforms);
   os.nl();
   os.nl();
 }
