@@ -646,7 +646,7 @@ LinMeanCondDiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
   for (int i=0;i<(int)dLinkMat->zzAccumulatorLength();i++) {
     ofile.write((float)0.0,"LMDG store zero accums zz.");
   }
-  for (int i=0;i<covar->dim();i++) {
+  for (int i=0;i<(int)dLinkMat->totalNumberLinks();i++) {
     ofile.write((float)0.0,"LMDG store zero accums z.");
   }
 }
