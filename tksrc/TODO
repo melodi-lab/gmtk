@@ -1536,6 +1536,18 @@ Sat Feb 21 19:11:22 2004
    -  Look at Bob Jenkin's hash function
       and the FNV (Fowler/Noll/Vo) Hash. 
 
+Sun Feb 22 14:36:17 2004
+  - Allow soft evidence to come from an observation
+    file
+  - Allow probability distributions each frame to
+    come from an observation file, so that distributions
+    can come from NN output probabilities.
+      - variable w/o parents can get its distribution from
+        observation file. Define a new CPT that
+        obtains its probabilities in this way.
+      - NN probabilities in some sort of conditional distribution.
+  - This functionality should subsume that of hybrid decoders.
+
 
 
      
