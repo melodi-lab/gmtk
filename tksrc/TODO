@@ -1834,5 +1834,8 @@ Thu Apr 15 12:14:09 2004
   - make an option when reading triangulation files to ignore RV cardinality differences
     between trifiles and corresponding .str files.
 
+Fri Apr 16 11:36:36 2004
+  - add to documentation note about '-w' option to cpp to suppress warnings such as.
+     /homes/bilmes/g/tests_and_development/xwrd/str/masterFile.ears_decode_wordT:13:61: warning: pasting "/" and "stateTransition" does not give a valid preprocessing token
 
 
