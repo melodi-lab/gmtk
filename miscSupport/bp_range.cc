@@ -467,17 +467,18 @@ done:
 }
 
 
-bool BP_Range::overlap(BP_Range& r)
+bool BP_Range::overlapP(BP_Range& r)
 {
   // TODO: This is a very inefficient implementatio
   // of this operation. This should really be optimized.
   for (BP_Range::iterator it = r.begin();
-       it <=rg.max();
-       ;it++) {
+       it <=r.max();
+       it++) {
     if (contains(*it)) {
       return true;
     }
   }
+  return false;
 }
 
 

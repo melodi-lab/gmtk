@@ -54,6 +54,20 @@ warning(char *format, ...)
   (void) fprintf(stderr, "\n");
 }
 
+void
+ensure(bool condition,char *errorIfFail, ...)
+{
+  if (!condition) {
+    va_list ap;
+    va_start(ap,errorIfFail);
+    /* print out remainder of message */
+    (void) vfprintf(stderr, errorIfFail, ap);
+    va_end(ap);
+    (void) fprintf(stderr, "\n");
+    (void) exit(EXIT_FAILURE);
+  }
+}
+
 
 #ifdef MAIN
 
