@@ -81,7 +81,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all: libmiscSupport.a
+all: libmiscSupport.a string_err
 
 #----------------------------------------------------------------------------
 # Define the standard library modules
@@ -126,13 +126,13 @@ testsArray: sArray.cc
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc
+all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc string_err.cc
 
 all_hdrs = 
 
 all_objs = 
 
-all_exs = testError testBPRange testArguments testLogp testRand testsArray
+all_exs = testError testBPRange testArguments testLogp testRand testsArray string_err
 
 #----------------------------------------------------------------------------
 # installation
