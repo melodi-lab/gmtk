@@ -42,7 +42,7 @@ class Dense1DPMF : public EMable, public NamedObject {
 
   //////////////////////////////////
   // Data structures support for EM.
-  //   The previous probability mass function 
+  //   The next probability mass function 
   sArray <logpr> nextPmf;
   ///////////////////////////////////////////////////////////  
 
