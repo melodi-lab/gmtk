@@ -173,10 +173,10 @@ Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // Beam Options
-  Arg("cbeam",Arg::Opt,MaxClique::cliqueBeam,"Clique Beam"),
+  Arg("cbeam",Arg::Opt,MaxClique::cliqueBeam,"Clique beam width pruning log value"),
   Arg("ckbeam",Arg::Opt,MaxClique::cliqueBeamMaxNumStates,"Prune to this clique max state space (0 = no pruning)"),
   Arg("crbeam",Arg::Opt,MaxClique::cliqueBeamRetainFraction,"Fraction of clique state space to retain. Range: 0 < v <= 1. v = 1 means no pruning"),
-  Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator Beam"),
+  Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator beam width pruning log value"),
 
   /////////////////////////////////////////////////////////////
   // Memory management options
