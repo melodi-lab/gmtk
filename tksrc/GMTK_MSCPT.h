@@ -128,10 +128,12 @@ public:
   }
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
-    // don't increment past the last value.
-    if (it.internalState == spmf->length());
-      return false;
     it.internalState++;
+    // don't increment past the last value.
+    if (it.internalState >= spmf->length()) {
+      it.internalState = spmf->length();
+      return false;
+    }
     it.probVal = spmf->probAtEntry(it.internalState);
     return true;
   }
