@@ -61,10 +61,9 @@ DiscreteRandomVariable::findConditionalParents()
 //  printf("DiscreteRandomVariable::findConditionalParents called\n");
   cachedIntFromSwitchingState = intFromSwitchingState();
   if ( cachedIntFromSwitchingState < 0 ||
-       cachedIntFromSwitchingState >= conditionalCPTs.size()  ||
        cachedIntFromSwitchingState >= conditionalParentsList.size()) {
-    error("ERROR: DRV %s:%d using DT '%s' got invalid switching position %d\n",
-	  label.c_str(),timeIndex, (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedIntFromSwitchingState);
+    error("ERROR: DRV %s:%d using DT '%s' got invalid switching position %d. Must be between 0 and %d.\n",
+	  label.c_str(),timeIndex, (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedIntFromSwitchingState,conditionalParentsList.size());
   }
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
   curCPT = conditionalCPTs[cachedIntFromSwitchingState];
@@ -163,11 +162,44 @@ DiscreteRandomVariable::clone()
 {
   DiscreteRandomVariable* rv = 
     (DiscreteRandomVariable*) RandomVariable::clone();
-  // might as well set val, although probably won't be useful.
+  // make sure to set value since it might be an 
+  // inline 'value' observation 
   rv->val = val;
   rv->tieParametersWith(this);
   rv->featureElement = featureElement;
   return rv;
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * setCpts()
+ *      Set the current objects cpts and make sure
+ *      that cardinalities match.
+ * 
+ * Preconditions:
+ *      - self must be filled in (i.e., RV parent graph must be set).
+ *      - cardinalities of cpts and parents must are assumed
+ *        to match, and should be checked by caller.
+ *
+ * Postconditions:
+ *      same as preconditions.
+ *
+ * Side Effects:
+ *      changes internal cpts.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DiscreteRandomVariable::setCpts(vector<CPT*> &cpts)
+{
+  assert ( cpts.size() == 
+	   conditionalParentsList.size() );
+  conditionalCPTs = cpts; 
 }
 
 
