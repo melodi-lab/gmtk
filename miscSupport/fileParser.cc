@@ -51,7 +51,9 @@ iDataStreamFile::iDataStreamFile(char *_name, bool _Binary)
 {
   if (_name == NULL)
     error("Error: Can't open null file for reading.");
-  if ((fh=fopen(_name,"r")) == NULL) {
+  if (!strcmp("-",_name)) {
+    fh = stdin;
+  } else if ((fh=fopen(_name,"r")) == NULL) {
     error("Error: Can't open file (%s) for reading.",_name);
   }
   if (!Binary) {
@@ -242,7 +244,11 @@ oDataStreamFile::oDataStreamFile(char *_name,bool _Binary)
 {
   if (_name == NULL)
     error("Error: Can't open null file for reading.");
-  if ((fh=fopen(_name,"w")) == NULL) {
+  if (!strcmp("-",_name)) {
+    fh = stdout;
+  } else if (!strcmp("--",_name)) {
+    fh = stderr;
+  } else if ((fh=fopen(_name,"w")) == NULL) {
     error("Error: Can't open file (%s) for writing.",_name);
   }
   char buff[2048];
