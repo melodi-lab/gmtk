@@ -37,7 +37,7 @@
 #include <string>
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 #include "error.h"
 #include "rand.h"
 #include "lineqsolve.h"

@@ -27,7 +27,7 @@
 #include <assert.h>
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 #include "error.h"
 
 #include "GMTK_Component.h"

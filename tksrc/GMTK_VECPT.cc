@@ -99,7 +99,7 @@ sentRange:all
 #include "GMTK_DiscRV.h"
 #include "GMTK_ObservationMatrix.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 
 ////////////////////////////////////////////////////////////////////

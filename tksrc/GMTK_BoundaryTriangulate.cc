@@ -51,7 +51,7 @@
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_NetworkFlowTriangulate.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 #ifndef MAXFLOAT
 #define MAXFLOAT (3.40282347e+38F)

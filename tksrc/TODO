@@ -2757,4 +2757,12 @@ Sat Mar 26 18:44:34 2005
     incompatibilities.
   - try optimal separator order
 
+Tue Apr  5 13:47:10 2005
+  - for Gaussian splitting, it should be possible to also utilize the state posterior, since low 
+    state probs. should have less splitting, high state probs. should have more splitting.
+  - 
+
+
+
+ 
 

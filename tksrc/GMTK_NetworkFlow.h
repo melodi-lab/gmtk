@@ -91,7 +91,7 @@ namespace networkFlow {
   template<class NodeType>
     class NetworkEdge {
     public:
-    friend class NetworkPath;
+    // friend class NetworkPath;
     // Argument Summary.
     // ns       : source node
     // nt       : target node

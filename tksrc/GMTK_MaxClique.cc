@@ -70,7 +70,7 @@
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_JunctionTree.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 
 ////////////////////////////////////////////////////////////////////
@@ -141,7 +141,7 @@ namespace CliqueBuffer {
   // 128 words is *much* bigger than any possible packed clique value
   // will take on, but it is easy/fast to allocate on the stack right now.
   unsigned packedVal[128];
-};
+}
 
 
 

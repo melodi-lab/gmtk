@@ -36,7 +36,7 @@
 #include "GMTK_GMParms.h"
 
 
-VCID("$Header$");
+VCID("$Header$")
 
 
 

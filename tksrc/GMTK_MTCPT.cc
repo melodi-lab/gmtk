@@ -34,7 +34,7 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_DiscRV.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 
 

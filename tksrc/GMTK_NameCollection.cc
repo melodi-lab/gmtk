@@ -34,7 +34,7 @@
 #include "GMTK_Mixture.h"
 
 
-VCID("$Header$");
+VCID("$Header$")
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 

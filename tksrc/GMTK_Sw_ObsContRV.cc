@@ -24,7 +24,7 @@
  */
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 
 #include <math.h>
 #include <stdlib.h>

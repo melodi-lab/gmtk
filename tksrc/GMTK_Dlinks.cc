@@ -37,7 +37,7 @@
 #include "GMTK_Dlinks.h"
 #include "GMTK_DlinkMatrix.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 
 ////////////////////////////////////////////////////////////////////

@@ -22,7 +22,7 @@
 
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 
 #include <iostream>
 #include <fstream>

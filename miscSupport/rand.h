@@ -24,7 +24,7 @@
 extern "C" {
   extern double drand48(void) __THROW;
   unsigned short *seed48(unsigned short seed16v[3]) __THROW;
-};
+}
 
 class RAND {
  public:

@@ -38,7 +38,7 @@
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 
 ////////////////////////////////////////////////////////////////////

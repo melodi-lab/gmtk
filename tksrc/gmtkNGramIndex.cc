@@ -46,7 +46,7 @@
 #include "error.h"
 #include "version.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 
 /*

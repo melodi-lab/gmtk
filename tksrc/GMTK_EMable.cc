@@ -34,7 +34,7 @@
 #include "GMTK_EMable.h"
 #include "GMTK_GMParms.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 logpr
 // EMable::minIncrementProbabilty = logpr((void*)NULL,log_FLT_MIN);

@@ -33,7 +33,7 @@
 
 #include "GMTK_WordOrganization.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"
@@ -806,7 +806,7 @@ main(int argc,char*argv[])
       if (total_data_prob.val() == previous_dp.val())
 	llDiffPerc = 0.0;
       else {
-	previous_dp.valref() = std::exp((double)-20.0);
+	previous_dp.valref() = ::exp((double)-20.0);
 	llDiffPerc = 
 	  100.0*fabs((total_data_prob.val() - previous_dp.val())/previous_dp.val());
       }

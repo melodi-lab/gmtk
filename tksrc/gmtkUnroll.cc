@@ -30,7 +30,7 @@
 #include "ieeeFPsetup.h"
 //#include "spi.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"

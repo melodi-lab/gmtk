@@ -12,7 +12,7 @@
 #include <float.h>
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 
 #include "logp.h"
 
