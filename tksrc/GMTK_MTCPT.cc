@@ -161,7 +161,7 @@ MTCPT::read(iDataStreamFile& is)
   for (unsigned i=0;i<_numParents;i++) {
     is.read(cardinalities[i],"DeterministicCPT::read cardinality");
     if (cardinalities[i] <= 0)
-      error("ERROR: reading file '%s', MDCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+      error("ERROR: reading file '%s', DeterministicCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
 	    is.fileName(),name().c_str(),cardinalities[i],i);
   }
 

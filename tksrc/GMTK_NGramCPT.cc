@@ -244,26 +244,13 @@ logpr NGramCPT::probGivenParents(vector<RandomVariable *>& parents, const int va
  *
  *-----------------------------------------------------------------------
  */
-CPT::iterator NGramCPT::begin() {
-	// TODO: this will vanish.
-	iterator it(this);
-	*(&it.value) = 0;
-	it.probVal = probGivenParents(it.value);
+CPT::iterator NGramCPT::begin(DiscreteRandomVariable* drv) {
 
-	if ( it.probVal.essentially_zero() ) {
-		// go to first entry which is not zero.
-		do {
-			it.value++;
-			// We keep the following assertion as we
-			// must have that at least one entry is non-zero.
-			// The read code of the MDCPT should ensure this
-			// as sure all parameter update procedures.
-			assert(it.value < ucard());
-			it.probVal = probGivenParents(it.value);
-		} while (it.probVal.essentially_zero());
-	}
+  // TODO: this will vanish (presumably meaning, this routine will eventually be removed).
+  iterator it(this);
+  NGramCPT::begin(it,drv);
+  return it;
 
-	return it;
 }
 
 
@@ -280,22 +267,50 @@ CPT::iterator NGramCPT::begin() {
  *
  *-----------------------------------------------------------------------
  */
-void NGramCPT::begin(CPT::iterator& it) {
-	it.value = 0;
-	it.probVal = probGivenParents(it.value);
+void NGramCPT::begin(CPT::iterator& it,DiscreteRandomVariable* drv) {
+  it.drv = drv;
+  register RandomVariable::DiscreteVariableType value = 0;
+  it.probVal = probGivenParents(value);
+  while (it.probVal.essentially_zero()) {
+    value++;
+    // We keep the following assertion as we
+    // must have that at least one entry is non-zero.
+    // The read code of the MDCPT should ensure this
+    // as sure all parameter update procedures.
+    assert(value < (int)ucard());
+    it.probVal = probGivenParents(value);	  
+  }
+  drv->val = value;
+}
 
-	if (it.probVal.essentially_zero()) {
-		// go to first entry which is not zero.
-		do {
-			it.value++;
-			// We keep the following assertion as we
-			// must have that at least one entry is non-zero.
-			// The read code of the MDCPT should ensure this
-			// as sure all parameter update procedures.
-			assert (it.value < ucard());
-			it.probVal = probGivenParents(it.value);
-		} while (it.probVal.essentially_zero());
-	}
+
+/*-
+ *-----------------------------------------------------------------------
+ * NGramCPT::begin
+ *      Set an iterator to the begin (and sets the probability directly)
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void NGramCPT::begin(CPT::iterator& it,DiscreteRandomVariable* drv,logpr& p) {
+  it.drv = drv;
+  register RandomVariable::DiscreteVariableType value = 0;
+  p = probGivenParents(value);
+  while (p.essentially_zero()) {
+    value++;
+    // We keep the following assertion as we
+    // must have that at least one entry is non-zero.
+    // The read code of the MDCPT should ensure this
+    // as sure all parameter update procedures.
+    assert(value < (int)ucard());
+    p = probGivenParents(value);	  
+  }
+  drv->val = value;
 }
 
 
@@ -312,9 +327,15 @@ void NGramCPT::begin(CPT::iterator& it) {
  *
  *-----------------------------------------------------------------------
  */
-void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it) {
-	becomeAwareOfParentValues(parents);
-	begin(it);
+void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it,DiscreteRandomVariable* drv) {
+  // call functions in this class directly to avoid virtual dispatch.
+  NGramCPT::becomeAwareOfParentValues(parents);
+  NGramCPT::begin(it,drv);
+}
+void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it,DiscreteRandomVariable*drv,logpr& p) {
+  // call functions in this class directly to avoid virtual dispatch.
+  NGramCPT::becomeAwareOfParentValues(parents);
+  NGramCPT::begin(it,drv,p);
 }
 
 
@@ -332,14 +353,25 @@ void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& p
  *-----------------------------------------------------------------------
  */
 bool NGramCPT::next(iterator &it) {
-	do{
-		if ( (++it.value) >= ucard() )
-			return false;
-		it.probVal = probGivenParents(it.value);
-	} while ( it.probVal.essentially_zero() );
 
-	return true;
+  do{
+    if ( (++it.drv->val) >= (int)ucard() )
+      return false;
+    it.probVal = probGivenParents(it.drv->val);
+  } while ( it.probVal.essentially_zero() );
+  return true;
+
 }
+
+bool NGramCPT::next(iterator &it,logpr& p) {
+  do{
+    if ( (++it.drv->val) >= (int)ucard() )
+      return false;
+    p = probGivenParents(it.drv->val);
+  } while ( p.essentially_zero() );
+  return true;
+}
+
 
 
 /*-
@@ -357,9 +389,9 @@ bool NGramCPT::next(iterator &it) {
  *
  *-----------------------------------------------------------------------
  */
-int NGramCPT::randomSample() {
+int NGramCPT::randomSample(DiscreteRandomVariable* drv) {
 	iterator it;
-	begin(it);		// note that it = begin() will vanish.
+	begin(it,drv);		// note that it = begin() will vanish.
 	logpr prob = rnd.drand48();
 	logpr sum = 0.0;
 
@@ -371,7 +403,7 @@ int NGramCPT::randomSample() {
 		next(it);
 	} while ( ! NGramCPT::end(it) );
 
-	return it.value;
+	return drv->val;
 }
 
 

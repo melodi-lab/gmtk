@@ -29,6 +29,7 @@
 #include "GMTK_CPT.h"
 #include "GMTK_EMable.h"
 #include "GMTK_RandomVariable.h"
+#include "GMTK_DiscreteRandomVariable.h"
 #include "GMTK_NamedObject.h"
 
 class MDCPT : public CPT {
@@ -79,8 +80,14 @@ public:
   void becomeAwareOfParentValues( vector <int>& parentValues,
 				  vector <int>& cards);
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents );
-  void becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parents,
-					      iterator & it);
+  void becomeAwareOfParentValuesAndIterBegin
+  (  vector < RandomVariable *>& parents , iterator &it, 
+     DiscreteRandomVariable* drv);
+  void becomeAwareOfParentValuesAndIterBegin
+  (  vector < RandomVariable *>& parents , iterator &it, 
+     DiscreteRandomVariable* drv,logpr& p);
+
+
 
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
@@ -105,70 +112,102 @@ public:
 
 
   // returns an iterator for the first one that is not zero prob.
-  iterator begin() {
+  iterator begin(DiscreteRandomVariable* drv) {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
-    it.internalStatePtr = (void*)mdcpt_ptr;
-    it.value = 0;
-    it.probVal = *mdcpt_ptr;
-    if (it.probVal.essentially_zero()) {
-      // go to first entry which is not zero.
-      do {
-	it.value++;
-	// We keep the following assertion as we
-	// must have that at least one entry is non-zero.
-	// The read code of the MDCPT should ensure this
-	// as sure all parameter update procedures.
-	assert (it.value < ucard());
-      } while (mdcpt_ptr[it.value].essentially_zero());
-      it.probVal = mdcpt_ptr[it.value];
-    }
+    MDCPT::begin(it,drv);
     return it;
+  }
+
+
+  // returns an iterator for the first one that is not zero prob.
+  // Note that becomeAwareOfParentValues() must have
+  // been called before calling the begin iterator.
+  void begin(iterator& it,DiscreteRandomVariable* drv) {
+    assert ( bitmask & bm_basicAllocated );
+    it.setCPT(this);
+    it.internalStatePtr = (void*)mdcpt_ptr;
+    it.drv = drv;
+
+    register RandomVariable::DiscreteVariableType value = 0;
+    while (mdcpt_ptr[value].essentially_zero()) {
+      value++;
+      // We keep the following assertion as we
+      // must have that at least one entry is non-zero.
+      // The read code of the MDCPT should ensure this
+      // as sure all parameter update procedures.
+      // TODO: remove cast
+      assert (value < (int)ucard());
+    }
+    it.probVal = mdcpt_ptr[value];    
+    drv->val = value;
   }
 
   // returns an iterator for the first one that is not zero prob.
   // Note that becomeAwareOfParentValues() must have
   // been called before calling the begin iterator.
-  void begin(iterator& it) {
+  void begin(iterator& it,DiscreteRandomVariable* drv,logpr& p) {
     assert ( bitmask & bm_basicAllocated );
     it.setCPT(this);
     it.internalStatePtr = (void*)mdcpt_ptr;
-    it.value = 0;
-    it.probVal = *mdcpt_ptr;
-    if (it.probVal.essentially_zero()) {
-      // go to first entry which is not zero.
-      do {
-	it.value++;
-	// We keep the following assertion as we
-	// must have that at least one entry is non-zero.
-	// The read code of the MDCPT should ensure this
-	// as sure all parameter update procedures.
-	assert (it.value < ucard());
-      } while (mdcpt_ptr[it.value].essentially_zero());
-      it.probVal = mdcpt_ptr[it.value];
+    it.drv = drv;
+
+    register RandomVariable::DiscreteVariableType value = 0;
+    while (mdcpt_ptr[value].essentially_zero()) {
+      value++;
+      // We keep the following assertion as we
+      // must have that at least one entry is non-zero.
+      // The read code of the MDCPT should ensure this
+      // as sure all parameter update procedures.
+      // TODO: remove cast
+      assert (value < (int)ucard());
     }
+    p = mdcpt_ptr[value];    
+    drv->val = value;
   }
 
   // Given a current iterator, return the next one in the sequence.
   // Skip the zero probability ones.
   bool next(iterator &it) {
-    logpr* const loc_mdcpt_ptr = (logpr*)it.internalStatePtr;
+    register logpr* const loc_mdcpt_ptr = (logpr*)it.internalStatePtr;
+    register RandomVariable::DiscreteVariableType value = it.drv->val;
     // don't increment past the last value.
     do {
-      it.value++;
-      if (it.value == ucard())
+      value++;
+      // TODO: remove casts
+      if (value == (int)ucard()) {
+	it.drv->val = value;
 	return false;
-    } while (loc_mdcpt_ptr[it.value].essentially_zero());
-    it.probVal = loc_mdcpt_ptr[it.value];
+      }
+    } while (loc_mdcpt_ptr[value].essentially_zero());
+    it.probVal = loc_mdcpt_ptr[value];
+    it.drv->val = value;    
+    return true;
+  }
+
+  bool next(iterator &it,logpr& p) {
+    register logpr* const loc_mdcpt_ptr = (logpr*)it.internalStatePtr;
+    register RandomVariable::DiscreteVariableType value = it.drv->val;
+    // don't increment past the last value.
+    do {
+      value++;
+      // TODO: remove cast 
+      if (value == (int)ucard()) {
+	it.drv->val = value;
+	return false;
+      }
+    } while (loc_mdcpt_ptr[value].essentially_zero());
+    p = loc_mdcpt_ptr[value];
+    it.drv->val = value;    
     return true;
   }
 
   bool end(iterator& it) {
-    return (it.value == ucard());
+    return (it.drv->val == (int)ucard());
   }
 
   ///////////////////////////////////
-  int randomSample();
+  int randomSample(DiscreteRandomVariable* drv);
 
   ///////////////////////////////////
   unsigned totalNumberParameters() { return mdcpt.len(); }

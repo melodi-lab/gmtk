@@ -171,12 +171,12 @@ MDCPT::read(iDataStreamFile& is)
 
   NamedObject::read(is);
 
-  is.read(_numParents,"MDCPT::read numParents");
+  is.read(_numParents,"DenseCPT::read numParents");
 
   if (_numParents < 0) 
-    error("ERROR: reading file '%s', MDCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
+    error("ERROR: reading file '%s', DenseCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
-    warning("WARNING: creating MDCPT with %d parents in file '%s'",_numParents,
+    warning("WARNING: creating DenseCPT with %d parents in file '%s'",_numParents,
 	    is.fileName());
 
   cardinalities.resize(_numParents);
@@ -185,17 +185,17 @@ MDCPT::read(iDataStreamFile& is)
   // read the parent cardinalities
   int numValues = 1;
   for (unsigned i=0;i<_numParents;i++) {
-    is.read(cardinalities[i],"MDCPT::read cardinality");
+    is.read(cardinalities[i],"DenseCPT::read cardinality");
     if (cardinalities[i] <= 0)
-      error("ERROR: reading file '%s', MDCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+      error("ERROR: reading file '%s', DenseCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
 	    is.fileName(),name().c_str(),cardinalities[i],i);
     numValues *= cardinalities[i];
   }
 
   // read the self cardinalities
-  is.read(_card,"MDCPT::read cardinality");
+  is.read(_card,"DenseCPT::read cardinality");
   if (_card <= 0)
-    error("ERROR: reading file '%s', MDCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+    error("ERROR: reading file '%s', DenseCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
 	  is.fileName(),name().c_str(),_card,_numParents);
   numValues *= _card;
 
@@ -218,7 +218,7 @@ MDCPT::read(iDataStreamFile& is)
   for (int i=0;i<numValues;) {
 
     double val;  // sign bit below needs to be changed if we change this type.
-    is.readDouble(val,"MDCPT::read, reading value");
+    is.readDouble(val,"DenseCPT::read, reading value");
 
     // we support reading in both regular probability values
     // (in the range [+0,1] inclusive) and log probability 
@@ -230,7 +230,7 @@ MDCPT::read(iDataStreamFile& is)
     // ASCII read routines preserve ASCII string '-0.0' to be negative zero,
     // we consider -0.0 as log(1) , and +0.0 as real zero.
     if (val > 1)
-      error("ERROR: reading file '%s', MDCPT '%s' has invalid probability value (%e), table entry number %d",
+      error("ERROR: reading file '%s', DenseCPT '%s' has invalid probability value (%e), table entry number %d",
 	    is.fileName(),
 	    name().c_str(),
 	    val,
@@ -261,7 +261,7 @@ MDCPT::read(iDataStreamFile& is)
       double abs_diff = fabs(child_sum - 1.0);
       // be more forgiving as cardinality increases
       if (abs_diff > threshold) 
-	error("ERROR: reading file '%s', row %d of MDCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
+	error("ERROR: reading file '%s', row %d of DenseCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
 	      is.fileName(),
 	      row,
 	      name().c_str(),
@@ -296,12 +296,12 @@ MDCPT::write(oDataStreamFile& os)
   assert ( basicAllocatedBitIsSet() );
   NamedObject::write(os);
   os.nl();
-  os.write(_numParents,"MDCPT::write numParents"); 
+  os.write(_numParents,"DenseCPT::write numParents"); 
   os.writeComment("number parents");os.nl();
   for (unsigned i=0;i<_numParents;i++) {
-    os.write(cardinalities[i],"MDCPT::write cardinality");
+    os.write(cardinalities[i],"DenseCPT::write cardinality");
   }
-  os.write(card(),"MDCPT::write cardinality");
+  os.write(card(),"DenseCPT::write cardinality");
   os.writeComment("cardinalities");
   os.nl();
 
@@ -309,7 +309,7 @@ MDCPT::write(oDataStreamFile& os)
   normalize();
   int childCard = card();
   for (int i=0;i<mdcpt.len();i++) {
-    os.writeDouble(mdcpt[i].unlog(),"MDCPT::write, writing value");
+    os.writeDouble(mdcpt[i].unlog(),"DenseCPT::write, writing value");
     childCard --;
     if (childCard == 0) {
       os.nl();
@@ -351,7 +351,7 @@ MDCPT::becomeAwareOfParentValues( vector<int>& parentValues,
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
     if (parentValues[i] < 0 || parentValues[i] >= cardinalities[i]) 
-      error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
+      error("DenseCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
     offset += parentValues[i]*cumulativeCardinalities[i];
   }
   mdcpt_ptr = mdcpt.ptr + offset;
@@ -395,7 +395,8 @@ MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
 
 void
 MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parents,
-					      iterator & it)
+					      iterator & it,
+					      DiscreteRandomVariable* drv)
 {
 
   assert ( basicAllocatedBitIsSet() );
@@ -412,25 +413,65 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
     offset += parents[i]->val*cumulativeCardinalities[i];
   }
   register logpr* const mdcpt_ptr = mdcpt.ptr + offset;
-  assert ( bitmask & bm_basicAllocated );
+
   it.setCPT(this);
   it.internalStatePtr = (void*)mdcpt_ptr;
-  it.value = 0;
-  it.probVal = *mdcpt_ptr;
-  if (it.probVal.essentially_zero()) {
-    // go to first entry which is not zero.
-    do {
-      it.value++;
-      // We keep the following assertion as we
-      // must have that at least one entry is non-zero.
-      // The read code of the MDCPT should ensure this
-      // as sure all parameter update procedures.
-      assert (it.value < ucard());
-    } while (mdcpt_ptr[it.value].essentially_zero());
-    it.probVal = mdcpt_ptr[it.value];
-  }
+  it.drv = drv;
 
+  register RandomVariable::DiscreteVariableType value = 0;
+  while (mdcpt_ptr[value].essentially_zero()) {
+    value++;
+    // We keep the following assertion as we
+    // must have that at least one entry is non-zero.
+    // The read code of the MDCPT should ensure this
+    // as sure all parameter update procedures.
+    assert (value < (int)ucard());
+  }
+  it.probVal = mdcpt_ptr[value];    
+  drv->val = value;
 }
+
+
+
+void
+MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parents,
+					      iterator & it,
+					      DiscreteRandomVariable* drv,
+					      logpr& p)
+{
+
+  assert ( basicAllocatedBitIsSet() );
+  assert ( parents.size() == _numParents );
+  
+  int offset = 0;
+  for (unsigned i = 0; i < _numParents; i++) {
+    if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
+      error("ERROR:becomeAwareOfParentValues. Dense CPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
+	    name().c_str(),
+	    parents[i]->name().c_str(),parents[i]->frame(),
+	    i,
+	    parents[i]->val,cardinalities[i]);
+    offset += parents[i]->val*cumulativeCardinalities[i];
+  }
+  register logpr* const mdcpt_ptr = mdcpt.ptr + offset;
+
+  it.setCPT(this);
+  it.internalStatePtr = (void*)mdcpt_ptr;
+  it.drv = drv;
+
+  register RandomVariable::DiscreteVariableType value = 0;
+  while (mdcpt_ptr[value].essentially_zero()) {
+    value++;
+    // We keep the following assertion as we
+    // must have that at least one entry is non-zero.
+    // The read code of the MDCPT should ensure this
+    // as sure all parameter update procedures.
+    assert (value < (int)ucard());
+  }
+  p = mdcpt_ptr[value];    
+  drv->val = value;
+}
+
 
 
 
@@ -453,21 +494,22 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
  *-----------------------------------------------------------------------
  */
 int
-MDCPT::randomSample()
+MDCPT::randomSample(DiscreteRandomVariable*drv)
 {
   assert ( basicAllocatedBitIsSet() );
   
-  iterator it = begin();
+  logpr* mdcpt_ptr_p = mdcpt_ptr;
+  logpr* mdcpt_ptr_endp = mdcpt_ptr + ucard();
   logpr uniform = rnd.drand48();
   logpr sum = 0.0;
   do {
-    sum += it.probVal;
+    sum += (*mdcpt_ptr_p);
     if (uniform <= sum)
       break;
-    it++;
-  } while (!end(it));
+    mdcpt_ptr_p++;
+  } while (mdcpt_ptr_p != mdcpt_ptr_endp);
   
-  return it.val();
+  return (drv->val = (mdcpt_ptr_p - mdcpt_ptr));
 }
 
 
@@ -682,7 +724,7 @@ MDCPT::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minDiscAccumulatedProbability()) {
-    warning("WARNING: MDCPT named '%s' received only %e accumulated probability in EM iteration. Using previous iteraton values.",name().c_str(),accumulatedProbability.val());
+    warning("WARNING: DenseCPT named '%s' received only %e accumulated probability in EM iteration. Using previous iteraton values.",name().c_str(),accumulatedProbability.val());
     for (int i=0;i<nextMdcpt.len();i++) {
       nextMdcpt[i] = mdcpt[i];
     }
@@ -723,7 +765,7 @@ MDCPT::emEndIteration()
     }
 
     if (num_rows_with_zero_counts > 0) 
-      warning("WARNING: Ending EM iteration but %d rows of MDCPT '%s' had zero counts. Using previous values for those rows.\n",
+      warning("WARNING: Ending EM iteration but %d rows of DenseCPT '%s' had zero counts. Using previous values for those rows.\n",
 	      num_rows_with_zero_counts,
 	      _name.c_str());
 
@@ -766,7 +808,7 @@ void
 MDCPT::emStoreObjectsAccumulators(oDataStreamFile& ofile)
 {
   for (int i=0;i<nextMdcpt.len();i++) {
-    ofile.write(nextMdcpt[i].val(),"MDCPT store accums");
+    ofile.write(nextMdcpt[i].val(),"DenseCPT store accums");
   }
 }
 
@@ -776,7 +818,7 @@ MDCPT::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 {
   logpr tmp;
   for (int i=0;i<mdcpt.len();i++) {
-    ifile.read(tmp.valref(),"MDCPT load accums");
+    ifile.read(tmp.valref(),"DenseCPT load accums");
   }
 }
 
@@ -793,7 +835,7 @@ void
 MDCPT::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
   for (int i=0;i<nextMdcpt.len();i++) {
-    ifile.read(nextMdcpt[i].valref(),"MDCPT load accums");
+    ifile.read(nextMdcpt[i].valref(),"DenseCPT load accums");
   }
 }
 
@@ -803,7 +845,7 @@ MDCPT::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
   for (int i=0;i<nextMdcpt.len();i++) {
     logpr tmp;
-    ifile.read(tmp.valref(),"MDCPT accumulate accums");
+    ifile.read(tmp.valref(),"DenseCPT accumulate accums");
     nextMdcpt[i] += tmp;
   }
 }

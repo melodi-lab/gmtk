@@ -28,12 +28,14 @@
 
 #include "GMTK_RngDecisionTree.h"
 #include "GMTK_RandomVariable.h"
+#include "GMTK_DiscreteRandomVariable.h"
 #include "GMTK_CPT.h"
 #include "GMTK_Sparse1DPMF.h"
 
 #include "GMTK_EMable.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_NamedObject.h"
+#include "GMTK_DiscreteRandomVariable.h"
 
 
 class MTCPT : public CPT  {
@@ -48,7 +50,8 @@ class MTCPT : public CPT  {
   RngDecisionTree* dt;
 
   ////////////////
-  // the value
+  // the value that has prob one for current parent
+  // values. I.e., P(child = _val| Parents = par_vals) = 1.
   int _val;
 
 public:
@@ -124,29 +127,39 @@ public:
 
   // returns an iterator for the first one.  It *must* be that
   // becomeAwareOfParentValues has already been called
-  iterator begin() {
-    assert ( bitmask & bm_basicAllocated );
+  iterator begin(DiscreteRandomVariable* drv) {
     iterator it(this);
-    it.internalState = 0;
-    it.probVal = 1.0;
-    it.value = _val;
+    MTCPT::begin(it,drv);
     return it;
   }
 
-
   // returns an iterator for the first one.  It *must* be that
   // becomeAwareOfParentValues has already been called
-  void begin(iterator& it) {
+  void begin(iterator& it,DiscreteRandomVariable* drv) {
     assert ( bitmask & bm_basicAllocated );
     it.setCPT(this);
     // indicates internal state
     it.internalState = 0;
     it.probVal = 1.0;
-    it.value = _val;
+    drv->val = _val;
+    it.drv = drv;
+  }
+
+  // returns an iterator for the first one.  It *must* be that
+  // becomeAwareOfParentValues has already been called
+  void begin(iterator& it,DiscreteRandomVariable* drv,logpr& p) {
+    assert ( bitmask & bm_basicAllocated );
+    it.setCPT(this);
+    // indicates internal state
+    it.internalState = 0;
+    it.drv = drv;
+    p  = 1.0;
+    drv->val = _val;
   }
 
   void becomeAwareOfParentValuesAndIterBegin( vector <RandomVariable *>& parents,
-					      iterator & it) 
+					      iterator & it,
+					      DiscreteRandomVariable* drv)
   {
     _val = dt->query(parents);
     if (_val >= card()) {
@@ -169,7 +182,38 @@ public:
     // indicates internal state
     it.internalState = 0;
     it.probVal = 1.0;
-    it.value = _val;
+    it.drv = drv;
+    drv->val = _val;
+  }
+
+  void becomeAwareOfParentValuesAndIterBegin( vector <RandomVariable *>& parents,
+					      iterator & it,
+					      DiscreteRandomVariable* drv,
+					      logpr& p)
+  {
+    _val = dt->query(parents);
+    if (_val >= card()) {
+      warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
+	      name().c_str(),
+	      card(),
+	      dt->name().c_str(),
+	      _val);
+      fprintf(stderr,"Parents configuration :");
+      for (unsigned i=0;i<parents.size();i++) {
+	fprintf(stderr,"%s(%d)=%d,",
+		parents[i]->name().c_str(),
+		parents[i]->timeIndex,
+		parents[i]->val);
+      }
+      error("");
+    }
+    assert ( bitmask & bm_basicAllocated );
+    it.setCPT(this);
+    // indicates internal state
+    it.internalState = 0;
+    it.drv = drv;
+    p = 1.0;
+    drv->val = _val;
   }
 
   inline bool next(iterator &it) {
@@ -177,11 +221,18 @@ public:
     it.internalState = 1;
     return false;
   }
+  inline bool next(iterator &it,logpr& p) {
+    // this is an MTCPT so we end here immediately.  We need not set
+    // anything more of the iterators state nor adjust 'p' since we
+    // return false, so the caller should do no more with this cpt and
+    // the random variable values.
+    it.internalState = 1;
+    return false;
+  }
 
   bool end(iterator& it) {
     return (it.internalState == 1);
   }
-
 
   virtual int valueAtIt(const int internalState) { 
     assert ( internalState == 0);
@@ -194,7 +245,7 @@ public:
 
 
   // random sample given current parents value
-  int randomSample() { return _val; }
+  int randomSample(DiscreteRandomVariable* drv) { return (drv->val = _val); }
   
   //////////
   // these routines do nothing for an MTCPT since
