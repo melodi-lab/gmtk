@@ -146,6 +146,13 @@ main(int argc,char*argv[])
 	      (fp.lastChunkframe()-fp.firstChunkframe()+1));
       }
 
+      printf("Unrolling %d times\n",
+	     (globalObservationMatrix.numFrames 
+	      - fp.firstChunkframe()
+	      - (fp.maxFrame() - fp.lastChunkframe()))
+	     /
+	     (fp.lastChunkframe()-fp.firstChunkframe()+1));
+
       gm.unroll(fp.firstChunkframe(), fp.lastChunkframe(), 
 		(globalObservationMatrix.numFrames 
 		 - fp.firstChunkframe()
