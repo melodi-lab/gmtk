@@ -56,6 +56,8 @@ class RVInfo {
 
 public:
   ///////////////////////////////////////////////////
+  // TODO: change the name of this from rvParent to something like rvID (since
+  // this isn't nec. a parent, but a general ID of a random variable).
   typedef pair<string,int> rvParent;
 private:
 
