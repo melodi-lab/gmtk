@@ -101,6 +101,10 @@ class CliqueValueHolder  {
   // that we need to reallocate
   unsigned* curAllocationEnd;
 
+  // total number of values currently used (not really
+  // needed but kept anyway for debugging).
+  unsigned numAllocated;
+
 
 public:
 
@@ -394,15 +398,15 @@ public:
 // the number of words that can be stored directly as
 // a packed clique value before we resort to using
 // a shared hash table for all instances of this origin clique.
-#define IMC_NWWOH (1)
+#define IMC_NWWOH (2)
 // InferenceSeparatorClique Number Words WithOut a Hash: Namely,
 // the number of words that can be stored directly as
 // a packed clique value before we resort to using
 // a shared hash table for all instances of this origin clique.
 // One for the accumulated Intersection packed values
-#define ISC_NWWOH_AI (1)
+#define ISC_NWWOH_AI (2)
 // And for the remainder
-#define ISC_NWWOH_RM (1)
+#define ISC_NWWOH_RM (2)
 // -- 
 //////////////////////////////////////////////////////////////////////////////
 

@@ -72,6 +72,9 @@ public:
 
   void clear() { nodes.clear(); cliques.clear(); triMethod.clear(); }
 
+  void clearCliques() { cliques.clear(); triMethod.clear(); }
+
+
   void writeMaxCliques(oDataStreamFile& os);
   void readMaxCliques(iDataStreamFile& is);
   void triangulatePartitionsByCliqueCompletion();
@@ -255,6 +258,12 @@ public:
 			       unsigned& numUsableFrames,
 			       unsigned& frameStart,
 			       const JustifyType justifyType=leftJustify);
+
+
+  // support for removing/clearing already read in cliques.
+  void clear_P_Cliques() { P.clearCliques(); }
+  void clear_C_Cliques() { C.clearCliques(); }
+  void clear_E_Cliques() { E.clearCliques(); }
 
 
 };

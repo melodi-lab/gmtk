@@ -472,6 +472,8 @@ MaxClique::prepareForUnrolling()
   // estimate of the state space of this clique for a starting
   // allocation of the value holder.  Take 1/4 of the estimated weight
   // for now.
+  // TODO: note that this might FPE if weight() is too large, since
+  // we get larger than pow() range. Fix this.
   allocationUnitChunkSize =
     (unsigned)(::pow(10,weight() - ::log10(4.0)));
   // lower bound.
@@ -538,10 +540,11 @@ MaxClique::computeAssignedNodesToIterate()
   iterateSortedAssignedNodesP.resize(sortedAssignedNodes.size());
   for (unsigned i=0;i<sortedAssignedNodes.size();i++) {
     if ((precedingUnassignedIteratedNodes.find(sortedAssignedNodes[i]) != precedingUnassignedIteratedNodes.end())) {
-      // found, no need to iterate
+      // found, no need to iterate (which is bad since this means that
+      // we'll be iterating this assigned node via the separator).
       iterateSortedAssignedNodesP[i] = false;
     }  else {
-      // not found, need to iterate
+      // not found, need to iterate (which is good)
       iterateSortedAssignedNodesP[i] = true;
     }
   }
@@ -1087,7 +1090,7 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
     do {
       infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
-    // continue on, effectively multiplying p by unity.
+      // continue on, effectively multiplying p by unity.
       ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
     } while (++drv->val < drv->cardinality);
   } else {
@@ -1387,8 +1390,14 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
   // will take on, but it is easy/fast to allocate on the stack right now.
   unsigned packedVal[128];
   // but just in case, we assert.
-  assert ( sep.origin.accPacker.packedLen() < 128 );
-  assert ( sep.origin.remPacker.packedLen() < 128 );
+  assert ((sep.origin.hAccumulatedIntersection.size() == 0)
+	  ||
+	  (sep.origin.accPacker.packedLen() < 128)
+	  );
+  assert ((sep.origin.hRemainder.size() == 0) 
+	  ||
+	  (sep.origin.remPacker.packedLen() < 128 )
+	  );
   // If this assertion fails (at some time in the future, probably in
   // the year 2150), then it is fine to increase 128 to something larger.
 
@@ -2122,16 +2131,20 @@ CliqueValueHolder::prepare()
 {
   makeEmpty();
   values.resize(1);
+  // newSize *MUST* be a multiple of 'cliqueValueSize' or else
+  // this code will fail.
   unsigned newSize = cliqueValueSize*allocationUnitChunkSize;
   values[values.size()-1].resize(newSize);
   capacity = newSize;
+  numAllocated = 0;
   curAllocationPosition = values[values.size()-1].ptr;
   curAllocationEnd = values[values.size()-1].ptr + newSize;
 
 }
 
 
-// free up all memory, postcondition: make an invalid object
+// free up all memory, postcondition: make an invalid object until
+// next prepare is called.
 void
 CliqueValueHolder::makeEmpty()
 {
@@ -2139,6 +2152,8 @@ CliqueValueHolder::makeEmpty()
     values[i].clear();
   }
   values.clear();
+  capacity = 0;
+  numAllocated = 0;
 }
 
 
@@ -2148,6 +2163,7 @@ CliqueValueHolder::allocateCurCliqueValue()
 {
 
   curAllocationPosition += cliqueValueSize;
+  numAllocated++;
 
   // first to a cheap and fast allocation of new clique value storage
   if (curAllocationPosition != curAllocationEnd) {
@@ -2158,8 +2174,12 @@ CliqueValueHolder::allocateCurCliqueValue()
   // don't need to re-copy all the existing ones already.
   values.resizeAndCopy(values.size()+1);
 
-  unsigned newSize = unsigned(1+cliqueValueSize*allocationUnitChunkSize*
-			      ::pow(growthFactor,values.size()-1));
+  // newSize *MUST* be a multiple of 'cliqueValueSize' or else
+  // this code will fail.
+  // TODO: optimize this re-sizing.
+  unsigned newSize = cliqueValueSize*
+    unsigned(1+allocationUnitChunkSize*
+	     ::pow(growthFactor,values.size()-1));
 
   values[values.size()-1].resize(newSize);
 

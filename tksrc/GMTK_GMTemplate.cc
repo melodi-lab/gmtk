@@ -1292,7 +1292,6 @@ computeUnrollParamaters(const unsigned numFrames,
   // number of usable frames subtracts this off, assign to
   // T' = numUsableFrames
   numUsableFrames = numFrames - remainder;
-  printf("numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   // since T' - p - e - M*c = k*S*c for positive k,
   // then T' - p - e = M*c +k*S*c = (M+kS)*c = i*c, i = (M+kS)
   // as asked for above, so T' is a perfect number to use.

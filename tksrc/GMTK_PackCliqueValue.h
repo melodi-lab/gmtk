@@ -96,7 +96,7 @@ public:
   PackCliqueValue(const unsigned len, const unsigned *const cards); 
 
   // create an empty one for re-construction later
-  PackCliqueValue() : unpackedVectorLength(0) {}
+  PackCliqueValue() : numUnsignedInPackedVector(0),totalNumBits(0),unpackedVectorLength(0) {}
 
   ~PackCliqueValue() {}
 

@@ -275,7 +275,7 @@ deleteNodes(const set<RandomVariable*>& nodes)
  */
 void
 BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
-				    TriangulateHeuristics& tri_heur)
+					     TriangulateHeuristics& tri_heur)
 {
   tri_heur.init();
   if (tri_heur_str.size() == 0) {
@@ -297,13 +297,15 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
     if (!*endp || tri_heur.numberTrials <= 0)
       error("ERROR: bad triangulation heuristic string given in '%s'\n",startp);
 
-    if (strcmp(endp, "anneal") == 0) {
+    if (strncmp(endp, "anneal", strlen(endp)) == 0) {
       tri_heur.style = TS_ANNEALING;
-    } else if (strcmp(endp, "exhaustive") == 0) {
+    } else if (strncmp(endp, "exhaustive", strlen(endp)) == 0) {
       tri_heur.style = TS_EXHAUSTIVE;
-    } else if (strcmp(endp, "MCS") == 0) {
+    } else if (strcmp(endp, "MCS") == 0) { 
+      // MCS must be specified with full "MCS" string, so use strcmp
+      // rather than strncmp here.
       tri_heur.style = TS_MCS;
-    } else if (strcmp(endp, "completed") == 0) {
+    } else if (strncmp(endp, "completed", strlen(endp)) == 0) {
       tri_heur.style = TS_COMPLETED;
     } else {
       tri_heur.style = TS_BASIC;
@@ -1126,7 +1128,10 @@ findInterfacePartitions(
 void
 BoundaryTriangulate::
 triangulate(const string& tri_heur_str,
-	    GMTemplate& gm_template)
+	    GMTemplate& gm_template,
+	    bool doP,
+	    bool doC,
+	    bool doE)
 {
   TriangulateHeuristics tri_heur;
   vector<nghbrPairType> orgnl_P_nghbrs;
@@ -1141,21 +1146,30 @@ triangulate(const string& tri_heur_str,
 
   parseTriHeuristicString(tri_heur_str,tri_heur);
 
-  saveCurrentNeighbors(gm_template.P,orgnl_P_nghbrs);
-  saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
-  saveCurrentNeighbors(gm_template.E,orgnl_E_nghbrs);
+  if (doP)
+    saveCurrentNeighbors(gm_template.P,orgnl_P_nghbrs);
+  if (doC)
+    saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
+  if (doE)
+    saveCurrentNeighbors(gm_template.E,orgnl_E_nghbrs);
 
-  triangulate(gm_template.P.nodes,tri_heur,orgnl_P_nghbrs,gm_template.P.cliques,gm_template.P.triMethod,best_P_weight);
-  triangulate(gm_template.C.nodes,tri_heur,orgnl_C_nghbrs,gm_template.C.cliques,gm_template.C.triMethod,best_C_weight);
-  triangulate(gm_template.E.nodes,tri_heur,orgnl_E_nghbrs,gm_template.E.cliques,gm_template.E.triMethod,best_E_weight);
+  if (doP)
+    triangulate(gm_template.P.nodes,tri_heur,orgnl_P_nghbrs,gm_template.P.cliques,gm_template.P.triMethod,best_P_weight);
+  if (doC)
+    triangulate(gm_template.C.nodes,tri_heur,orgnl_C_nghbrs,gm_template.C.cliques,gm_template.C.triMethod,best_C_weight);
+  if (doE)
+    triangulate(gm_template.E.nodes,tri_heur,orgnl_E_nghbrs,gm_template.E.cliques,gm_template.E.triMethod,best_E_weight);
 
   ////////////////////////////////////////////////////////////////////////
   // Return with the best triangulations found, which is
   // be stored within the template at this point.
   ////////////////////////////////////////////////////////////////////////
-  restoreNeighbors(orgnl_P_nghbrs);
-  restoreNeighbors(orgnl_C_nghbrs);
-  restoreNeighbors(orgnl_E_nghbrs);
+  if (doP)
+    restoreNeighbors(orgnl_P_nghbrs);
+  if (doC)
+    restoreNeighbors(orgnl_C_nghbrs);
+  if (doE)
+    restoreNeighbors(orgnl_E_nghbrs);
   gm_template.triangulatePartitionsByCliqueCompletion();
 
 }
@@ -1211,6 +1225,13 @@ triangulate(// input: nodes to be triangulated
   vector<RandomVariable*> order;
   double                  weight;
   string                  meth_str;
+
+  // compute the real best weight for a set of current
+  // cliques, if the weight has not already been computed.
+  if (best_weight == HUGE_VAL && best_cliques.size() > 0) {
+    best_weight = graphWeight(best_cliques);
+  }
+
 
   for (unsigned trial = 0;trial<tri_heur.numberTrials;trial++) {
     string annealing_str;
@@ -3636,7 +3657,10 @@ ensurePartitionsAreChordal(GMTemplate& gm_template)
  */
 void
 BoundaryTriangulate::
-anyTimeTriangulate(GMTemplate& gm_template)
+anyTimeTriangulate(GMTemplate& gm_template,
+		   const bool doP,
+		   const bool doC,
+		   const bool doE)
 {
   assert (timer != NULL);
 
@@ -3655,9 +3679,9 @@ anyTimeTriangulate(GMTemplate& gm_template)
   // Save the untriangulated graphs so that they can be quickly restored
   // for multiple iterations
   ////////////////////////////////////////////////////////////////////////
-  saveCurrentNeighbors(gm_template.P,orgnl_P_nghbrs);
-  saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
-  saveCurrentNeighbors(gm_template.E,orgnl_E_nghbrs);
+  if (doP) saveCurrentNeighbors(gm_template.P,orgnl_P_nghbrs);
+  if (doC) saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
+  if (doE) saveCurrentNeighbors(gm_template.E,orgnl_E_nghbrs);
 
   ////////////////////////////////////////////////////////////////////////
   // Triangulate P and E partitions using a basic heuristic so that 
@@ -3665,28 +3689,32 @@ anyTimeTriangulate(GMTemplate& gm_template)
   // expires.
   ////////////////////////////////////////////////////////////////////////
 
-  triangulate( gm_template.P.nodes, "FWH", orgnl_P_nghbrs, gm_template.P.cliques,
-	       gm_template.P.triMethod, best_P_weight );
+  if (doP)
+    triangulate( gm_template.P.nodes, "FWH", orgnl_P_nghbrs, gm_template.P.cliques,
+		 gm_template.P.triMethod, best_P_weight );
 
-  triangulate( gm_template.E.nodes, "FWH", orgnl_E_nghbrs, gm_template.E.cliques, 
-	       gm_template.E.triMethod, best_E_weight ); 
+  if (doE)
+    triangulate( gm_template.E.nodes, "FWH", orgnl_E_nghbrs, gm_template.E.cliques, 
+		 gm_template.E.triMethod, best_E_weight ); 
 
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using a variety of heuristic searches 
   ////////////////////////////////////////////////////////////////////////
 
   // Like above, always do at least C, so we return something valid.
-  infoMsg(IM::Tiny, "---\nTriangulating C using Heuristics:\n");
-  best_C_weight = tryHeuristics(gm_template.C.nodes, orgnl_C_nghbrs, gm_template.C.cliques, 
-				gm_template.C.triMethod );
+  if (doC) {
+    infoMsg(IM::Tiny, "---\nTriangulating C using Heuristics:\n");
+    best_C_weight = tryHeuristics(gm_template.C.nodes, orgnl_C_nghbrs, gm_template.C.cliques, 
+				  gm_template.C.triMethod );
+  }
  
-  if (!timer->Expired()) { 
+  if (doP && !timer->Expired()) { 
     infoMsg(IM::Tiny, "---\nTriangulating P using Heuristics:\n");
     best_P_weight = tryHeuristics(gm_template.P.nodes, orgnl_P_nghbrs, gm_template.P.cliques, 
 				  gm_template.P.triMethod );
   }
   
-  if (!timer->Expired()) { 
+  if (doE && !timer->Expired()) { 
     infoMsg(IM::Tiny, "---\nTriangulating E using Heuristics:\n");
     best_E_weight = tryHeuristics(gm_template.E.nodes, orgnl_E_nghbrs, gm_template.E.cliques, 
 				  gm_template.E.triMethod );
@@ -3697,7 +3725,7 @@ anyTimeTriangulate(GMTemplate& gm_template)
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using simulated annealing 
   ////////////////////////////////////////////////////////////////////////
-  if (timer->SecondsLeft() > 10) {
+  if (doC && timer->SecondsLeft() > 10) {
     // Do C first since it is more important.
     infoMsg(IM::Tiny, "---\nTriangulating C using Simulated Annealing:\n");
 
@@ -3707,7 +3735,7 @@ anyTimeTriangulate(GMTemplate& gm_template)
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
 
-  if (timer->SecondsLeft() > 10) {
+  if (doP && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "---\nTriangulating P using Simulated Annealing:\n");
 
     triangulate( gm_template.P.nodes, "anneal", orgnl_P_nghbrs, gm_template.P.cliques, 
@@ -3717,7 +3745,7 @@ anyTimeTriangulate(GMTemplate& gm_template)
       (int)timer->SecondsLeft()); 
   }
 
-  if (timer->SecondsLeft() > 10) {
+  if (doE && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "---\nTriangulating E using Simulated Annealing:\n");
 
     triangulate( gm_template.E.nodes, "anneal", orgnl_E_nghbrs, gm_template.E.cliques, 
@@ -3730,16 +3758,16 @@ anyTimeTriangulate(GMTemplate& gm_template)
   // Triangulate using exhaustive search
   ////////////////////////////////////////////////////////////////////////
 
-  if (timer->SecondsLeft() > 10) {
+  if (doC && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating C using Exhaustive Search:\n");
-
+    
     triangulate( gm_template.C.nodes, "exhaustive", orgnl_C_nghbrs, gm_template.C.cliques, 
 		 gm_template.C.triMethod, best_C_weight ); 
 
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
 
-  if (timer->SecondsLeft() > 10) {
+  if (doP && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating P using Exhaustive Search:\n");
 
     triangulate( gm_template.P.nodes, "exhaustive", orgnl_P_nghbrs, gm_template.P.cliques, 
@@ -3748,7 +3776,7 @@ anyTimeTriangulate(GMTemplate& gm_template)
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
 
-  if (timer->SecondsLeft() > 10) {
+  if (doE && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating E using Exhaustive Search:\n");
 
     triangulate( gm_template.E.nodes, "exhaustive", orgnl_E_nghbrs, gm_template.E.cliques, 
@@ -3761,9 +3789,9 @@ anyTimeTriangulate(GMTemplate& gm_template)
   // Return with the best triangulations found, which is
   // be stored within the template at this point.
   ////////////////////////////////////////////////////////////////////////
-  restoreNeighbors(orgnl_P_nghbrs);
-  restoreNeighbors(orgnl_C_nghbrs);
-  restoreNeighbors(orgnl_E_nghbrs);
+  if (doP) restoreNeighbors(orgnl_P_nghbrs);
+  if (doC) restoreNeighbors(orgnl_C_nghbrs);
+  if (doE) restoreNeighbors(orgnl_E_nghbrs);
   gm_template.triangulatePartitionsByCliqueCompletion();
 
 }

@@ -31,7 +31,7 @@
 #define YY_NEVER_INTERACTIVE 1
 
 #ifndef _AIX
-extern "C" int fileno(FILE*) throw(); 
+  // extern "C" int fileno(FILE*) throw(); 
 #endif
 
 int debugLexer = 0;
