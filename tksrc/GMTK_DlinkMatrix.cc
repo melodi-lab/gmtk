@@ -350,8 +350,8 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
 
@@ -469,8 +469,8 @@ DlinkMatrix::emIncrement(const logpr prob,
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
 
@@ -573,8 +573,8 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
   
   if (!emAccInitializedBitIsSet()) {
     nextArr.growIfNeeded(dLinks->totalNumberLinks());
@@ -736,8 +736,8 @@ DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumu
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
   // if this isn't the case, something is wrong.
