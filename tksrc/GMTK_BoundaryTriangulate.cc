@@ -1245,7 +1245,12 @@ triangulate(// input: nodes to be triangulated
     weight = graphWeight(cliques);
     if (weight < best_weight) {
 
-      best_cliques.clear();
+      /////////////////////////////////////////////////////////////////////////
+      // @@@ There is a bug due to the stubbed out = operator in the MaxClique 
+      //   class the following line which clears the cliques appears to work 
+      //   around the bug. @@@
+      /////////////////////////////////////////////////////////////////////////
+      // best_cliques.clear();
       best_cliques = cliques;
       best_weight  = weight;
       best_meth_str = meth_str;
