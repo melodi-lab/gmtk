@@ -7,8 +7,11 @@
 # $Header$
 #
 # 
-
+				   
 SHELL = /bin/sh
+
+.EXPORT:
+.EXPORT: Linux AND !crane
 
 .SUFFIXES:
 .SUFFIXES: .c .o .dis .cc

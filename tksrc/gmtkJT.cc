@@ -22,6 +22,7 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
+#include <time.h>
 
 #include "general.h"
 #include "error.h"
@@ -393,6 +394,8 @@ main(int argc,char*argv[])
     exit_program_with_status(0);
   }
 
+  clock_t start_time = clock();
+
   GM_Parms.setFirstUtterance( dcdrng->min() ); 
   GM_Parms.clampFirstExample();
   BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
@@ -451,5 +454,9 @@ main(int argc,char*argv[])
     (*dcdrng_it)++;
   }
 
+  clock_t end_time = clock();
+  clock_t diff = end_time-start_time;
+
+  infoMsg(IM::Default,"### Final time just for inference: %ld clocks, %0.2f seconds\n",diff,(double)diff/(double)CLOCKS_PER_SEC);
   exit_program_with_status(0);
 }

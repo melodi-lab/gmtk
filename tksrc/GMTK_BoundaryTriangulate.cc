@@ -2056,7 +2056,7 @@ addEdgesToNode(
   float no_edge_weight, with_edge_weight;  
   set<RandomVariable*> parents_child, child_grandchild, all;  
   RAND rndm_nmbr(0);
-  bool add_edge;
+  bool add_edge = false;
 
   //////////////////////////////////////////////////////////////////////////
   // Choose if the edges should be added according to edge_heuristic
