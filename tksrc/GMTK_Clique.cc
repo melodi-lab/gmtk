@@ -176,7 +176,7 @@ vector<int> *in2gn, bool viterbi)
         if ((mi=instantiationAddress.find(clampedValues)) == 
         instantiationAddress.end())               // not seen before
         {
-            addInstantiation(inst=newCliqueValue());                
+            addInstantiation(inst=newCliqueValue());
             instantiationAddress[clampedValues] = inst;  
             cv = &gip[inst];
             cv->lambda = cv->pi = 0.0;
