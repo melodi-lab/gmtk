@@ -388,3 +388,14 @@ TODO:
 
 
 - change internal class names from ??CPT to the SparseCPT, DenseCPT, etc.
+
+- create a name index type so that DT's can be used for the following.
+    - in mappings to GM indexes, DT leaf specifies a relative
+      offset in a table rather than in the global collection of GMs. 
+
+    - in MSCPTs, so that row elements of the MSCPT point to
+      offsets in a table for the 1dPDFs rather than in the global
+      table. Add entry in MSCPT definition in data file.
+
+- a way of adding counts to discrete CPTs without needing to specify an entire accumulator
+  file.
