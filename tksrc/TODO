@@ -1158,3 +1158,8 @@ Sat Jul  5 17:30:27 2003
     are due to running out of memory.
   - Implement a fixed upper bound memory usage, and turn off memoize when
     that limit is reached, so that memory usage does not grow unboundedly. 
+
+Sat Jul  5 17:34:38 2003
+  - in timer code comments, give a bunch (lots) of examples of valid timer strings.
+  - include these examples in documentation.
+
