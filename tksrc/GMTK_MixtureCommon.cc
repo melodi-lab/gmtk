@@ -52,6 +52,12 @@ MixGaussiansCommon::mixCoeffVanishRatio = 1e20;
 double
 MixGaussiansCommon::mixCoeffSplitRatio = 1e10;
 
+unsigned
+MixGaussiansCommon::numTopToForceSplit = 0;
+
+unsigned 
+MixGaussiansCommon::numBottomToForceVanish = 0;
+
 
 void
 MixGaussiansCommon::checkForValidRatioValues() {
@@ -63,6 +69,7 @@ MixGaussiansCommon::checkForValidRatioValues() {
     error("ERROR: must have mixCoeffSplitRatio > 0.0");
   if (1.0/mixCoeffVanishRatio >= mixCoeffSplitRatio) 
     error("ERROR: must have 1.0/mixCoeffVanishRatio < mixCoeffSplitRatio");
+
 }
 
 
