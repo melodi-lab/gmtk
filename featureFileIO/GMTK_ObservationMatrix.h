@@ -74,7 +74,6 @@
 #include "logp.h"
 #include "sArray.h"
 #include "machine-dependent.h"
-#include "bp_range.h"
 #include "GMTK_Stream.h"
 #include "ieeeFPsetup.h"
 
@@ -205,8 +204,8 @@ class ObservationMatrix {
   bool readAsciiSentence(float* float_buffer, unsigned num_floats, Int32* int_buffer, unsigned num_ints,unsigned n_samples, FILE *f);
   
 
-  void copyToFinalBuffer(unsigned stream_no,float* ,Int32*,BP_Range* ,BP_Range*,BP_Range*);
-  void copyAndAdjustLengthToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,BP_Range* float_rng,BP_Range* int_rng,BP_Range* pr_rng,unsigned prrng_n_samps);
+  void copyToFinalBuffer(unsigned stream_no,float* ,Int32*,Range* ,Range*,Range*);
+  void copyAndAdjustLengthToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,Range* float_rng,Range* int_rng,Range* pr_rng,unsigned prrng_n_samps);
   
   
   /////////////////         data transformation routines      //////////////////  

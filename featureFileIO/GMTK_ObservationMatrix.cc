@@ -463,7 +463,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
 
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before setting up prrng.\n"));    
 
-    BP_Range* prrng=new BP_Range(_prrngStr==NULL?NULL:_prrngStr[i],0,cur_n_samps);
+    Range* prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[i],0,cur_n_samps);
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 1.\n"));    
     cur_prrng_n_samps=prrng->length();
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 2.\n"));    
@@ -558,7 +558,7 @@ unsigned ObservationMatrix::numFrames(unsigned segno) {
 void ObservationMatrix::loadSegment(unsigned segno) {
   DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: Loading segment no %d\n",segno));
 
-  BP_Range* prrng;
+  Range* prrng;
   StreamInfo *s;
   // max_n_samps and prrng_n_samps are initialized in the next fct call
   unsigned max_n_samps,prrng_n_samps;  
@@ -594,7 +594,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     // all checks were done in the function checkNumSamples
     
     DBGFPRINTF((stderr,"In loadSegment(): s->getAfterTransformCurNumFrames() = %d\n",s->getAfterTransformCurNumFrames()));
-    prrng=new BP_Range(_prrngStr==NULL?NULL:_prrngStr[i],0,s->getAfterTransformCurNumFrames());
+    prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[i],0,s->getAfterTransformCurNumFrames());
     assert(prrng != NULL);
 
     //delete prrng;
@@ -969,7 +969,7 @@ void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats
  * Side effects: none
  *
  * */
-void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,BP_Range* float_rng,BP_Range* int_rng,BP_Range* pr_rng) {
+void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,Range* float_rng,Range* int_rng,Range* pr_rng) {
 
   DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.\n"));
 
@@ -1051,9 +1051,9 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
   DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.  Copying floats (num_floats = %d).\n",num_floats));  
 
   if(num_floats>0) {
-    for (BP_Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_float_buf+=stride) {
+    for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_float_buf+=stride) {
       float_buf_ptr=start_float_buf;
-      for(BP_Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
+      for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	copy_swap_func_ptr(1,(const int *) &float_buf[*it+(*pr_it)*num_floats], (int *)float_buf_ptr++);
 	if(!finite(*(float_buf_ptr-1))) {
 #ifdef WARNING_ON_NAN
@@ -1069,9 +1069,9 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
   DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.  Copying ints (num_ints = %d).\n",num_ints));
 
   if(num_ints>0) {
-    for (BP_Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_int_buf+=stride) {
+    for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_int_buf+=stride) {
       int_buf_ptr=start_int_buf;
-      for(BP_Range::iterator it = int_rng->begin(); !it.at_end(); it++) {
+      for(Range::iterator it = int_rng->begin(); !it.at_end(); it++) {
 	copy_swap_func_ptr(1,(const int *) &int_buf[*it+(*pr_it)*num_ints], (int *)int_buf_ptr++);
       }
     }
@@ -1090,7 +1090,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
  * Side effects: none
  *
  * */
-void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,BP_Range* float_rng,BP_Range* int_rng,BP_Range* pr_rng,unsigned prrng_n_samps) {
+void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,Range* float_rng,Range* int_rng,Range* pr_rng,unsigned prrng_n_samps) {
 
   StreamInfo* s            = _inStreams[stream_no];
   unsigned num_floats      = s->getNumFloats();
@@ -1225,7 +1225,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
   if(num_floats>0) {
     int repeat, cnt=0;
     int* rep_ptr=_repeat.ptr;
-    for (BP_Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,cnt++) {
+    for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,cnt++) {
       if(cnt>=*rep_ptr) {
 	cnt=0;
 	rep_ptr+=2;
@@ -1234,7 +1234,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
       assert(*rep_ptr != -1);  // sanity check
       for(int i=0; i<repeat;++i) {
 	float_buf_ptr=start_float_buf;
-	for(BP_Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
+	for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	  copy_swap_func_ptr(1,(const int *) &float_buf[*it+(*pr_it)*num_floats], (int *)float_buf_ptr++);
 	  if(!finite(*(float_buf_ptr-1))) {
 #ifdef WARNING_ON_NAN
@@ -1251,7 +1251,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
   if(num_ints>0) {
     int repeat, cnt=0;
     int* rep_ptr=_repeat.ptr;
-    for (BP_Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,cnt++) {
+    for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,cnt++) {
       if(cnt>=*rep_ptr) {
 	cnt=0;
 	rep_ptr+=2;
@@ -1260,7 +1260,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
       assert(*rep_ptr != -1);  // sanity check
       for(int i=0; i<repeat;++i) {
 	int_buf_ptr=start_int_buf;
-	for(BP_Range::iterator it = int_rng->begin(); !it.at_end(); it++) {
+	for(Range::iterator it = int_rng->begin(); !it.at_end(); it++) {
 	  copy_swap_func_ptr(1,(const int *) &int_buf[*it+(*pr_it)*num_ints], (int *)int_buf_ptr++);
 	}
 	start_int_buf+=stride;

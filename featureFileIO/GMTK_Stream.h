@@ -23,7 +23,6 @@
 #define GMTK_Stream_h
 
 #include <ctype.h>
-#include "bp_range.h"
 #include "range.h"
 #include "pfile.h"
 
@@ -99,8 +98,8 @@ public:
  
   size_t curPos;           // index of current position in list of files
 
-  BP_Range *cont_rng;      // range of cont. features used
-  BP_Range *disc_rng;      // range of disc. features used
+  Range *cont_rng;      // range of cont. features used
+  Range *disc_rng;      // range of disc. features used
 
   StreamInfo(const char *,
 	     const char *, 
