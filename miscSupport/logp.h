@@ -198,6 +198,7 @@ public:
       return z;
     }
   }
+
   inline logp<FT,iFT>& operator +=(logp<FT,iFT> z)
   { *this = (*this + z); return *this; }
 
@@ -228,6 +229,7 @@ public:
       return z;
     }
   }
+
   inline logp<FT,iFT>& operator -=(logp<FT,iFT> z)
   { *this = (*this - z); return *this; }
   
@@ -241,6 +243,20 @@ public:
   inline logp<FT,iFT>& operator *=(logp<FT,iFT> z)
   { *this = (*this * z); return *this; }
 
+  friend inline 
+    logp<FT,iFT> max(logp<FT,iFT> x, logp<FT,iFT> y)  
+  { 
+    if (x.v > y.v)
+      return x;
+    else 
+      return y;
+  }
+  inline void assign_if_greater(logp<FT,iFT> z)
+  { 
+    if (z.v > v)
+      v = z.v;
+  }
+
   inline logp<FT,iFT> inverse() const {
     void *dummy=NULL;
     return logp<FT,iFT>(dummy,-v);
@@ -250,6 +266,8 @@ public:
     void *dummy=NULL;
     return logp<FT,iFT>(dummy,pwr*v);
   }
+
+
 
 
   friend inline
