@@ -153,7 +153,7 @@ class oDataStreamFile : public ioDataStreamFile {
   int double_space;
 
  public:
-  oDataStreamFile(const char *_name, bool _Binary = false);
+  oDataStreamFile(const char *_name, bool _Binary = false, bool _Append = false);
   ~oDataStreamFile();
 
   // type explicit

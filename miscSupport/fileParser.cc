@@ -421,7 +421,7 @@ iDataStreamFile::readDouble(double& d, char *msg)
 //////////////////////////////////////////////////////////////////////
 
 
-oDataStreamFile::oDataStreamFile(const char *const _name,bool _Binary)
+oDataStreamFile::oDataStreamFile(const char *const _name,bool _Binary, bool _Append)
   : ioDataStreamFile(_name,_Binary)
 {
   if (_name == NULL)
@@ -430,9 +430,14 @@ oDataStreamFile::oDataStreamFile(const char *const _name,bool _Binary)
     fh = stdout;
   } else if (!strcmp("--",_name)) {
     fh = stderr;
-  } else if ((fh=fopen(_name,"w")) == NULL) {
-    error("Error: Can't open file (%s) for writing.",_name);
+  } else if (_Append) {
+    if ((fh=fopen(_name,"a")) == NULL)
+      error("Error: Can't open file (%s) for appending.",_name);
+  } else { 
+    if ((fh=fopen(_name,"w")) == NULL)
+      error("Error: Can't open file (%s) for writing.",_name);
   }
+
   char buff[2048];
   sprintf(buff,FLOATWRITESTR,0.0);
   float_space = strlen(buff);
