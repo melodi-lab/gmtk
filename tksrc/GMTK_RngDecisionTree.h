@@ -168,6 +168,7 @@ protected:
       ///////////////////////////////////////////////////////////////////////    
       typedef enum {
 
+        TOKEN_ABSOLUTE_VALUE, 
         TOKEN_BITWISE_AND, 
         TOKEN_BITWISE_OR, 
         TOKEN_BITWISE_XOR,
@@ -227,6 +228,7 @@ protected:
         COMMAND_PUSH_PARENT, 
         COMMAND_PUSH_CARDINALITY,
         COMMAND_PUSH_CONSTANT,    
+        COMMAND_ABSOLUTE_VALUE, 
         COMMAND_BITWISE_AND, 
         COMMAND_BITWISE_OR, 
         COMMAND_BITWISE_XOR, 
@@ -284,6 +286,7 @@ protected:
 
       static map<tokenEnum, formulaCommand> infixToken;
       static map<tokenEnum, formulaCommand> functionToken;
+      static map<tokenEnum, formulaCommand> oneValFunctionToken;
       static map<tokenEnum, formulaCommand> twoValFunctionToken;
       static map<tokenEnum, unsigned>       tokenPriority;
 
