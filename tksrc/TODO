@@ -1567,5 +1567,15 @@ Mon Mar  1 23:09:05 2004
 Mon Mar  1 23:41:09 2004
   - in DT leaf formulas, add
      variables fp0 fp1 fp2 for frame numbers of parents 0 1 2, and fc for frame number of child.
- 
+  - also, be able to add cardinality of both parent and child.
+  - also, be able to add number of frames in current segment.
+   (this might make moot the need for special internal variables, as it
+    it is easy to have RVs with DTs to do this.) Make sure that we can have
+    RVs without parents and with a MTCPT that always returns a single value,
+    and that can have cardinality 1 (and so should never be placed in any clique
+    value, since it is essentially another way of doing an observation, but here
+    the observation changes each frame).
 
+Mon Mar  1 23:50:32 2004
+  - variables with card = 1 should be treated as observations, and triangulation
+    code and methods should pay attention to this. 
