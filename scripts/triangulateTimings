@@ -92,7 +92,10 @@ my $timing_thread_idle : shared;
 # State variables for comparing triangulation methods 
 ##############################################################################
 my $best_sem = new Thread::Semaphore;
+my $best_trifile    : shared = 0; 
 my $best_partitions : shared = 0; 
+my $best_vcap : shared = $initial_vcap; 
+my $best_vpap : shared = $initial_vpap; 
 my @best_time_per_boundary : shared;
 
 ##############################################################################
@@ -111,6 +114,9 @@ my $working_dir;
 my $delay_timings;
 my $use_existing_boundaries;
 my $maximum_boundary_searches;
+my $triangulateP;
+my $triangulateC;
+my $triangulateE;
 
 ##############################################################################
 # Run the program 
@@ -147,7 +153,10 @@ sub main
     "seconds:i"                 => \$timing_length,
     "useExistingBoundaries!"    => \$use_existing_boundaries,
     "maximumBoundarySearches:i" => \$maximum_boundary_searches,
-    "delayTimings!"             => \$delay_timings
+    "delayTimings!"             => \$delay_timings,
+    "triangulateP!"             => \$triangulateP,
+    "triangulateC!"             => \$triangulateC,
+    "triangulateE!"             => \$triangulateE
    );
 
   @input_triangulations = @ARGV;
@@ -208,6 +217,32 @@ sub main
     $valid_options = 0;
   }
 
+  if (! -d $output_directory)  
+  {
+    print "***ERROR:  '$output_directory' is not a valid directory\n";
+    $valid_options = 0;
+  }
+
+  if (!defined $use_existing_boundaries) 
+  {
+    $use_existing_boundaries = 0;  
+  }
+
+  if (!defined $triangulateP)
+  {
+    $triangulateP = 0;
+  }
+
+  if (!defined $triangulateC)
+  {
+    $triangulateC = 0;
+  }
+
+  if (!defined $triangulateE)
+  {
+    $triangulateE = 0;
+  }
+
   if (!defined $parallelism) 
   {
      $parallelism = 1;
@@ -217,12 +252,6 @@ sub main
   {
 die;
     $output_directory = './';
-  }
-
-  if (! -d $output_directory)  
-  {
-    print "***ERROR:  '$output_directory' is not a valid directory\n";
-    $valid_options = 0;
   }
 
   if (!defined $delay_timings) 
@@ -245,6 +274,11 @@ die;
   STDOUT->autoflush(1);
   $SIG{PIPE} = 'IGNORE';
 
+
+print "P:$triangulateP\n";
+print "C:$triangulateC\n";
+print "E:$triangulateE\n";
+
   #############################################################################
   # Start the threads 
   #############################################################################
@@ -255,7 +289,8 @@ die;
   ########################################################################### 
   # Start boundary searches 
   ########################################################################### 
-  if (!defined $use_existing_boundaries)
+  if ((!$use_existing_boundaries) &&
+      ($triangulateC))
   {
     $last_child = threads->new( \&start_boundary_searches );
   }
@@ -264,7 +299,8 @@ die;
   # If requested, delay the timing and triangulation threads to make sure 
   #  boundary searches have a chance to get processors 
   ########################################################################### 
-  if ((!defined $use_existing_boundaries) &&
+  if ((!$use_existing_boundaries) &&
+      ($triangulateC)             &&
       ($delay_timings)) 
   { 
     sleep(60);
@@ -279,7 +315,7 @@ die;
   #########################################################################
   # Get list of boundary files (if not generating boundaries) 
   #########################################################################
-  if (defined $use_existing_boundaries)
+  if ($use_existing_boundaries)
   {
     threads->yield;
     sleep(1);
@@ -294,6 +330,9 @@ die;
       $initial_vcap);
   }
 
+  #########################################################################
+  # Timing threads never return
+  #########################################################################
   $last_child->join;
 
 }
@@ -320,6 +359,11 @@ sub generate_triangulations
   my $boundary;
   my $method;
   my $method_name;
+  my $best_from_previous_section;
+  my $triangulation_mode;
+  my $vpap_index;
+  my $vcap_index;
+  my $trifile_name;
   my @boundary_list; 
   my @basic_methods; 
 
@@ -333,158 +377,233 @@ sub generate_triangulations
   #$needed_trifiles->up( $parallelism/2 );
   $needed_trifiles->up( 1 );
 
-  ###########################################################################
-  # Phase 1, put the input triangulations on the queue 
-  ###########################################################################
-  $i = 0;
-  foreach $input_triangulation (@input_triangulations) 
-  {
-    $input_basename = basename($input_triangulation); 
-
-    if (-e $input_triangulation) 
-    {
-      $output_triangulation = "$output_directory/input.$i.$input_basename";
-      copy( $input_triangulation, $output_triangulation ); 
-      push @input_trifile_names, $output_triangulation;
-
-      $trifile_queue->enqueue($output_triangulation);
-
-      $needed_trifiles->down;
-
-      $boundary_queue->enqueue( $output_triangulation );
-    }
-
-    $i++;
-  }
-
-  ###########################################################################
-  # Phase 2, run basic methods on all boundaries 
-  ###########################################################################
-  $boundary_count=0; 
-  while ( !$boundary_searches_done )
-  {
-    $boundary = $boundary_queue->dequeue;
+  #######################################################################
+  # Get list of basic methods for use later on 
+  #######################################################################
+  reset_basic_methods();
   
-    if ($boundary eq 'BOUNDARY_SEARCHES_DONE' ) 
-    {
-      $boundary_searches_done = 1;
-    }
-    else 
-    {
-      #########################################################################
-      # Check to see if the boundary is unique 
-      #########################################################################
-      $bndry_unique = 1;
+  ($method, $method_name) = get_basic_triangulation_method();
+  while ($method_name ne 'DONE')
+  {
+    push @basic_methods, $method_name;
+    ($method, $method_name) = get_basic_triangulation_method();
+  }
+  
+  #######################################################################
+  # Triangulate the Chunk 
+  #######################################################################
+  if ($triangulateC) 
+  {
+    $triangulation_mode = 'C'; 
 
-      if ($boundary_count >= (scalar @input_triangulations)) 
-      { 
-        for( $prvs_bndry = 0; 
-             ($prvs_bndry<(scalar @boundary_list)) && ($bndry_unique); 
-             $prvs_bndry++)
-        {
-          $bndry_unique = boundary_files_ne( 
-            $boundary_list[$prvs_bndry]->{NAME}, $boundary );
-        }
-      }
-
-      #########################################################################
-      # If the boundary is unique, add to list and run the basic methods 
-      #########################################################################
-      if ($bndry_unique) 
+    ###########################################################################
+    # Phase 1, put the input triangulations on the queue 
+    ###########################################################################
+    $i = 0;
+    foreach $input_triangulation (@input_triangulations) 
+    {
+      $input_basename = basename($input_triangulation); 
+  
+      if (-e $input_triangulation) 
       {
-        $boundary_name = "B$boundary_count";
-        push @boundary_list, my $bnd = {NAME=>$boundary, SPEED=>0, 
-          INDEX=>$boundary_count};
+        $output_triangulation = "$output_directory/input.$i.$input_basename";
+        copy( $input_triangulation, $output_triangulation ); 
+        push @input_trifile_names, $output_triangulation;
+  
+        $trifile_queue->enqueue($output_triangulation);
+  
+        $needed_trifiles->down;
+  
+        $boundary_queue->enqueue( $output_triangulation );
+      }
+  
+      $i++;
+    }
 
-        print "$boundary_name ==> Boundary from '$boundary'\n";
-
-        reset_basic_methods();
-
-        ($method, $method_name) = get_basic_triangulation_method();
-        while ($method_name ne 'DONE')
-        {
-          if ($boundary_count == 0) {
-            push @basic_methods, $method_name;
+    ###########################################################################
+    # Phase 2, run basic methods on all boundaries 
+    ###########################################################################
+    $boundary_count=0; 
+    while ( !$boundary_searches_done )
+    {
+      $boundary = $boundary_queue->dequeue;
+    
+      if ($boundary eq 'BOUNDARY_SEARCHES_DONE' ) 
+      {
+        $boundary_searches_done = 1;
+      }
+      else 
+      {
+        #####################################################################
+        # Check to see if the boundary is unique 
+        #####################################################################
+        $bndry_unique = 1;
+  
+        if ($boundary_count >= (scalar @input_triangulations)) 
+        { 
+          for( $prvs_bndry = 0; 
+               ($prvs_bndry<(scalar @boundary_list)) && ($bndry_unique); 
+               $prvs_bndry++)
+          {
+            $bndry_unique = boundary_files_ne( 
+              $boundary_list[$prvs_bndry]->{NAME}, $boundary );
           }
-
-          make_trifile( $boundary_name, $boundary, $method_name, $method );
-          ($method, $method_name) = get_basic_triangulation_method();
         }
-
-        $boundary_count++;
+  
+        #####################################################################
+        # If the boundary is unique, add to list and run the basic methods 
+        #####################################################################
+        if ($bndry_unique) 
+        {
+          $boundary_name = "B$boundary_count";
+          push @boundary_list, my $bnd = {NAME=>$boundary, SPEED=>0, 
+            INDEX=>$boundary_count};
+  
+          print "$boundary_name ==> Boundary from '$boundary'\n";
+  
+          reset_basic_methods();
+  
+          ($method, $method_name) = get_basic_triangulation_method();
+          while ($method_name ne 'DONE')
+          {
+            make_trifile( $boundary_name, $boundary, $method_name, $method, 
+              $triangulation_mode );
+            ($method, $method_name) = get_basic_triangulation_method();
+          }
+  
+          $boundary_count++;
+        }
       }
-    }
-  } # end while
-
-  ###########################################################################
-  # Wait for all triangulations in the queue to be triangulated 
-  #
-  # Lock the timing_thread_idle variable 
-  # Queue a copy of BECOME_IDLE for each timing thread
-  # Decrement the timing_thread_idle_sem once for each timing thread (the
-  #   timing threads will increment it as they process BECOME_IDLE)
-  # The timing_thread_idle variable is unlocked, telling the timing threads  
-  #   to they can continue
-  ###########################################################################
-  {
-    lock($timing_thread_idle);
-    for ($i=0; $i<$parallelism; $i++) {
-      $trifile_queue->enqueue('BECOME_IDLE');
-    }
-    $timing_thread_idle_sem->down($parallelism); 
-  }
-
-  print "Found $boundary_count unique boundaries\n";
-
-  print "---------- Beginning triangulation using advanced option set ----------\n";
-
-  ###########################################################################
-  # Sort the boundaries by their performance on the basic triangulations
-  ###########################################################################
-  for($i=0; $i<(scalar @boundary_list); $i++)
-  {
-    $boundary_list[$i]->{SPEED} = $best_time_per_boundary[$i];
-  }
-
-  @boundary_list = sort { $b->{SPEED} <=> $a->{SPEED} } @boundary_list;
-
-  ###########################################################################
-  # Phase 3, 
-  ###########################################################################
-  for ( $boundary_count = 0; 
-        $boundary_count < (scalar @boundary_list); 
-        $boundary_count++ )
-  {
-    $boundary = $boundary_list[$boundary_count]->{NAME};
-    $boundary_name = "B$boundary_list[$boundary_count]->{INDEX}";
-
-    print "------ Starting $boundary_name ------\n";
-
-    #######################################################################
-    # Run advanced methods (minus the basic methods) using initial vcap
-    #   and vpap  
-    #######################################################################
-    reset_advanced_methods();
-
-    ($method, $method_name) = get_advanced_triangulation_method();
-
-    while ($method_name ne 'DONE')
+    } # end while
+  
+    ###########################################################################
+    # Wait for all triangulations in the queue to be triangulated 
+    #
+    # Lock the timing_thread_idle variable 
+    # Queue a copy of BECOME_IDLE for each timing thread
+    # Decrement the timing_thread_idle_sem once for each timing thread (the
+    #   timing threads will increment it as they process BECOME_IDLE)
+    # The timing_thread_idle variable is unlocked, telling the timing threads  
+    #   to they can continue
+    ###########################################################################
     {
-      if (!grep /^$method_name$/, @basic_methods) 
-      {
-        make_trifile( $boundary_name, $boundary, $method_name, $method );
+      lock($timing_thread_idle);
+      for ($i=0; $i<$parallelism; $i++) {
+        $trifile_queue->enqueue('BECOME_IDLE');
       }
-
-      ($method, $method_name) = get_advanced_triangulation_method();
+      $timing_thread_idle_sem->down($parallelism); 
     }
+  
+    print "Found $boundary_count unique boundaries\n";
+  
+    print "---------- Beginning triangulation using advanced option set ----------\n";
+  
+    ###########################################################################
+    # Sort the boundaries by their performance on the basic triangulations
+    ###########################################################################
+    for($i=0; $i<(scalar @boundary_list); $i++)
+    {
+      $boundary_list[$i]->{SPEED} = $best_time_per_boundary[$i];
+    }
+  
+    @boundary_list = sort { $b->{SPEED} <=> $a->{SPEED} } @boundary_list;
+  
+    ###########################################################################
+    # Phase 3, 
+    ###########################################################################
+    for ( $boundary_count = 0; 
+          $boundary_count < (scalar @boundary_list); 
+          $boundary_count++ )
+    {
+      $boundary = $boundary_list[$boundary_count]->{NAME};
+      $boundary_name = "B$boundary_list[$boundary_count]->{INDEX}";
+  
+      print "------ Starting $boundary_name ------\n";
+  
+      #######################################################################
+      # Run advanced methods (minus the basic methods) using initial vcap
+      #   and vpap  
+      #######################################################################
+      reset_advanced_methods();
+  
+      ($method, $method_name) = get_advanced_triangulation_method();
+  
+      while ($method_name ne 'DONE')
+      {
+        if (!grep /^$method_name$/, @basic_methods) 
+        {
+          make_trifile( $boundary_name, $boundary, $method_name, $method, 
+            $triangulation_mode );
+        }
+  
+        ($method, $method_name) = get_advanced_triangulation_method();
+      }
+  
+      #######################################################################
+      # Now run all methods using various combinations of vpap and vcap
+      #######################################################################
+      for ($vpap_index=0; $vpap_index<(scalar @vpap_options); $vpap_index++)
+      {
+        for ($vcap_index=0; $vcap_index<(scalar @vcap_options); $vcap_index++)
+        {
+          if (($vpap_index == 0) && ($vcap_index == 0)) 
+          {
+            $vcap_index++;
+          }
+  
+          {
+            lock($timing_thread_idle);
+            for ($i=0; $i<$parallelism; $i++) {
+              $trifile_queue->enqueue("RESTART_${vpap_options[$vpap_index]}_${vcap_options[$vcap_index]}");
+            }
+            $timing_thread_idle_sem->down($parallelism); 
+          }
+  
+          ###############################################################
+          # Input triangulations  
+          ###############################################################
+          foreach $trifile_name (@input_trifile_names)
+          {
+            $trifile_queue->enqueue($trifile_name);
+            $needed_trifiles->down; 
+          }
+  
+          ###############################################################
+          # Advanced triangulation methods  
+          ###############################################################
+          reset_advanced_methods();
+  
+          ($method, $method_name) = get_advanced_triangulation_method();
+          while ($method_name ne 'DONE')
+          { 
+            $trifile_name = "$output_directory/$boundary_name.$method_name.$str_basename.trifile"; 
+            $trifile_queue->enqueue($trifile_name);
+            $needed_trifiles->down; 
+            ($method, $method_name) = get_advanced_triangulation_method();
+          } 
+        } 
+      } 
+  
+      #######################################################################
+      # Restart gmtkTime using initial vpap and vcap 
+      #######################################################################
+      {
+        lock($timing_thread_idle);
+        for ($i=0; $i<$parallelism; $i++) {
+          $trifile_queue->enqueue("RESTART_${initial_vpap}_${initial_vcap}");
+        }
+        $timing_thread_idle_sem->down($parallelism); 
+      }
+  
+    } # for boundary_list
+  } # if triangulate C
 
-    #######################################################################
-    # Now run all methods using various combinations of vpap and vcap
-    #######################################################################
-    my $vpap_index;
-    my $vcap_index;
-    my $trifile_name;
-
+  ###########################################################################
+  # If C wasn't triangulated on this run, find the fastest input 
+  # triangulation and fastest timing option  
+  ###########################################################################
+  if (!$triangulateC)
+  {
     for ($vpap_index=0; $vpap_index<(scalar @vpap_options); $vpap_index++)
     {
       for ($vcap_index=0; $vcap_index<(scalar @vcap_options); $vcap_index++)
@@ -494,6 +613,28 @@ sub generate_triangulations
           $vcap_index++;
         }
 
+        $i = 0; 
+        foreach $input_triangulation (@input_triangulations) 
+        {
+          $input_basename = basename($input_triangulation);
+ 
+          if (-e $input_triangulation) 
+          {
+            $output_triangulation = 
+              "$output_directory/input.$i.$input_basename";
+            copy( $input_triangulation, $output_triangulation ); 
+            push @input_trifile_names, $output_triangulation;
+      
+            $trifile_queue->enqueue($output_triangulation);
+            $needed_trifiles->down;
+            $boundary_queue->enqueue( $output_triangulation );
+          }
+          $i++ 
+        }
+
+        #######################################################################
+        # Restart gmtkTime using new vpap and vcap 
+        #######################################################################
         {
           lock($timing_thread_idle);
           for ($i=0; $i<$parallelism; $i++) {
@@ -502,43 +643,108 @@ sub generate_triangulations
           $timing_thread_idle_sem->down($parallelism); 
         }
 
-        ###############################################################
-        # Input triangulations  
-        ###############################################################
-        foreach $trifile_name (@input_trifile_names)
-        {
-          $trifile_queue->enqueue($trifile_name);
-          $needed_trifiles->down; 
-        }
-
-        ###############################################################
-        # Advanced triangulation methods  
-        ###############################################################
-        reset_advanced_methods();
-
-        ($method, $method_name) = get_advanced_triangulation_method();
-        while ($method_name ne 'DONE')
-        { 
-          $trifile_name = "$output_directory/$boundary_name.$method_name.$str_basename.trifile"; 
-          $trifile_queue->enqueue($trifile_name);
-          $needed_trifiles->down; 
-          ($method, $method_name) = get_advanced_triangulation_method();
-        } 
-      } 
-    } 
-
-    #######################################################################
-    # Restart gmtkTime using initial vpap and vcap 
-    #######################################################################
-    {
-      lock($timing_thread_idle);
-      for ($i=0; $i<$parallelism; $i++) {
-        $trifile_queue->enqueue("RESTART_${initial_vpap}_${initial_vcap}");
       }
-      $timing_thread_idle_sem->down($parallelism); 
+    }
+  }
+
+  $best_from_previous_section = "$output_directory/after_C_search.trifile";
+  copy( $best_trifile, $best_from_previous_section );
+ 
+  #######################################################################
+  # Restart gmtkTime using best vpap and vcap 
+  #######################################################################
+  {
+    lock($timing_thread_idle);
+    for ($i=0; $i<$parallelism; $i++) {
+      $trifile_queue->enqueue("RESTART_${best_vpap}_${best_vcap}");
+    }
+    $timing_thread_idle_sem->down($parallelism); 
+  }
+
+  #######################################################################
+  # Triangulate Epilogue  
+  #######################################################################
+  if ($triangulateE) 
+  {
+    print "------------- Triangulating E -------------\n"; 
+    $triangulation_mode = 'E';
+    $boundary      = $best_from_previous_section; 
+    $boundary_name = 'BE'; 
+
+    #######################################################################
+    # Run basic methods 
+    #######################################################################
+    reset_basic_methods();
+  
+    ($method, $method_name) = get_basic_triangulation_method();
+    while ($method_name ne 'DONE')
+    {
+      make_trifile( $boundary_name, $boundary, $method_name, $method, 
+        $triangulation_mode );
+      ($method, $method_name) = get_basic_triangulation_method();
     }
 
-  } # for boundary_list
+    #######################################################################
+    # Run advanced methods (minus the basic methods) using initial vcap
+    #   and vpap  
+    #######################################################################
+    reset_advanced_methods();
+
+    ($method, $method_name) = get_advanced_triangulation_method();
+    while ($method_name ne 'DONE')
+    {
+      if (!grep /^$method_name$/, @basic_methods) 
+      {
+        make_trifile( $boundary_name, $boundary, $method_name, $method, 
+          $triangulation_mode );
+      }
+      ($method, $method_name) = get_advanced_triangulation_method();
+    }
+  }
+
+  $best_from_previous_section = "$output_directory/after_E_search.trifile";
+  copy( $best_trifile, $best_from_previous_section );
+ 
+  #######################################################################
+  # Triangulate Prologue 
+  #######################################################################
+  if ($triangulateP) 
+  {
+    print "------------- Triangulating P -------------\n"; 
+    $triangulation_mode = 'P';
+    $boundary      = $best_from_previous_section; 
+    $boundary_name = 'BP'; 
+
+    #######################################################################
+    # Run basic methods 
+    #######################################################################
+    reset_basic_methods();
+  
+    ($method, $method_name) = get_basic_triangulation_method();
+    while ($method_name ne 'DONE')
+    {
+      make_trifile( $boundary_name, $boundary, $method_name, $method, 
+        $triangulation_mode );
+      ($method, $method_name) = get_basic_triangulation_method();
+    }
+
+    #######################################################################
+    # Run advanced methods (minus the basic methods) using initial vcap
+    #   and vpap  
+    #######################################################################
+    reset_advanced_methods();
+
+    ($method, $method_name) = get_advanced_triangulation_method();
+    while ($method_name ne 'DONE')
+    {
+      if (!grep /^$method_name$/, @basic_methods) 
+      {
+        make_trifile( $boundary_name, $boundary, $method_name, $method, 
+          $triangulation_mode );
+      }
+      ($method, $method_name) = get_advanced_triangulation_method();
+    }
+  }
 
   print "Done generating triangulations\n"; 
 }
@@ -698,7 +904,7 @@ sub get_existing_boundaries
   
   printf "%d boundary files found\n", $total_boundaries; 
 
-sleep(30); ### !!!!! turn this into a lock
+##sleep(30); ### !!!!! turn this into a lock
   $boundary_queue->enqueue( 'BOUNDARY_SEARCHES_DONE' ); 
 }
 
@@ -729,8 +935,9 @@ sub start_boundary_searches
   ############################################################################
   $boundary_job_list = "$output_directory/boundary_job_list";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '4hour' -noBoundaryMemoize T";
-
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '4hour' -noBoundaryMemoize T -jtWeight T";
+  ##$triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '4hour' -noBoundaryMemoize T -jtWeight F";
+ 
   open JOB_LIST, ">$boundary_job_list";
 
   $boundary_calls = 0;
@@ -799,12 +1006,29 @@ sub run_triangulation
   my $output;
   my $jt_weight;
   my $output_tri_file;
+  my $triangulation_mode;
+  my $triangulation_mode_string;
 
+  $triangulation_mode = pop;
   $output_tri_file = pop;
   $boundary        = pop;
   $method_options  = pop;
 
-  $output = `$triangulation_export_line $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options 2>&1`;
+  if ($triangulation_mode eq 'P') {
+    $triangulation_mode_string = '-noReTriP F -noReTriC T -noReTriE T'; 
+  }
+  elsif ($triangulation_mode eq 'C') {
+    $triangulation_mode_string = '-noReTriP T -noReTriC F -noReTriE T'; 
+  }
+  elsif ($triangulation_mode eq 'E') {
+    $triangulation_mode_string = '-noReTriP T -noReTriC T -noReTriE F'; 
+  }
+  else {
+    die "***INTERNAL ERROR, invalid triangulation_mode"; 
+  }
+
+  $output = `$triangulation_export_line $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options $triangulation_mode_string -jtWeight T 2>&1`;
+
   print STDERR "$output\n";
 
   ($jt_weight) = $output =~ /Chunk max clique weight =.* jt_weight = ([0-9.]+)/;
@@ -826,12 +1050,14 @@ sub run_triangulation
 #############################################################################
 sub make_trifile
 {
-  my $method_options;
-  my $method_name;
   my $boundary;
   my $boundary_name;
+  my $method_name;
+  my $method_options;
   my $thread_id;
+  my $triangulation_mode;
 
+  $triangulation_mode = pop;
   $method_options = pop;
   $method_name    = pop;
   $boundary       = pop;
@@ -840,10 +1066,11 @@ sub make_trifile
   $needed_trifiles->down;
 
   $thread_id = threads->new( \&make_trifile_thread, $boundary_name, $boundary, 
-    $method_name, $method_options );
+    $method_name, $method_options, $triangulation_mode );
   $thread_id->detach;  
   
-#  make_trifile_thread( $boundary_name, $boundary, $method_name, $method_options );
+#  make_trifile_thread( $boundary_name, $boundary, $method_name, $method_options, $triangulation_mode );
+
 }
 
 
@@ -852,14 +1079,16 @@ sub make_trifile
 #############################################################################
 sub make_trifile_thread
 {
-  my $method_options;
-  my $method_name;
   my $boundary;
   my $boundary_name;
   my $file_h;
+  my $method_options;
+  my $method_name;
   my $tmp_tri_file;
+  my $triangulation_mode;
   my $triangulation_status;
 
+  $triangulation_mode = pop;
   $method_options = pop;
   $method_name    = pop;
   $boundary       = pop;
@@ -869,7 +1098,7 @@ sub make_trifile_thread
 
   do {
     $triangulation_status = run_triangulation($method_options, $boundary, 
-      $tmp_tri_file);
+      $tmp_tri_file, $triangulation_mode );
     if ($triangulation_status < 0) {
       print "Triangulation failed\n";
       sleep(15);
@@ -1179,10 +1408,10 @@ sub check_best
 
   ($method) = $trifile_name =~ /(input\.\d+\.[^\/]+)$/; 
   if (! defined $method) {
-    ($method) = $trifile_name =~ /B\d+.([^\/]+)\.$str_basename/;
+    ($method) = $trifile_name =~ /B[0-9PE]+.([^\/]+)\.$str_basename/;
   }
 
-  ($tmp, $boundary_index) = $trifile_name =~ /(^|\/)B(\d+)\./;
+  ($tmp, $boundary_index) = $trifile_name =~ /(^|\/)B([0-9PE]+)\./;
   $tmp = '';
   if (!defined $boundary_index) {
     ($boundary_index) = $method =~ /input\.(\d+)\./;
@@ -1196,22 +1425,27 @@ sub check_best
   if ($nmbr_partitions > $best_partitions) {
     print " => BEST!!!";
     $best_partitions = $nmbr_partitions;
-    copy( $trifile_name, "$str_basename.best.trifile" );
+    $best_vpap = $vpap;
+    $best_vcap = $vcap;
+    $best_trifile = "$str_basename.best.trifile";
+    copy( $trifile_name, $best_trifile ); 
     $overall_best_flag = 1;
   }
   else {
     $overall_best_flag = 0;
   }
 
-  if ($nmbr_partitions > $best_time_per_boundary[$boundary_index])
+  if (($boundary_index ne 'P') && 
+      ($boundary_index ne 'E') && 
+      ($nmbr_partitions > $best_time_per_boundary[$boundary_index]))
   {
     if (!$overall_best_flag) {
       print " => bndry. best";
     }
-
+  
     $best_time_per_boundary[$boundary_index] = $nmbr_partitions;
   }
-  
+ 
   print "\n";
 
   $best_sem->up;
