@@ -645,6 +645,9 @@ void GMTK_GM::GM2CliqueChain()
             if (cl->member[j]->discrete)
                 cl->discreteMember.push_back(cl->member[j]);
 
+        // size the cached value array
+        cl->clampedValues.resize(cl->discreteMember.size());
+
         // the conditional probability nodes
         // set it up conservatively so it will work regardless of switching
         cl->conditionalProbabilityNode = cl->newMember;
