@@ -39,6 +39,7 @@ VCID("$Header$");
 #include "GMTK_RandomVariable.h"
 #include <string.h>
 
+
 /*-
  *-----------------------------------------------------------------------
  *  setParents
@@ -411,14 +412,20 @@ RandomVariable::identicalStructureWith(const RandomVariable& other)
 
 void RandomVariable::reveal(bool show_vals)
 {
-    cout << label << "-" << timeIndex << " : ";
-    if (discrete) cout << "discrete (" << cardinality << ") ";
-    if (hidden) cout << "hidden "; else cout << "observed ";
-    if (!hidden || show_vals) 
-        if (discrete)
-            cout << "val (" << val << ")";
-        else 
-            cout << "continuous";
+  // TEMPORARY::
+  // Tue Feb 24 23:21:13 2004
+  // commented out for some reason not compiling
+  // under cygwin 
+  // #if 0
+
+  cout << label << "-" << (unsigned)timeIndex << " : ";
+  if (discrete) cout << "discrete (" << (unsigned)cardinality << ") ";
+  if (hidden) cout << "hidden "; else cout << "observed ";
+  if (!hidden || show_vals)
+    if (discrete)
+      cout << "val (" << (unsigned)val << ")";
+    else 
+      cout << "continuous";
 
 /*
     cout << " possible parents: ";
@@ -426,7 +433,10 @@ void RandomVariable::reveal(bool show_vals)
         cout << allPossibleParents[i]->label << "-" 
              << allPossibleParents[i]->timeIndex << " ";
 */
+
     cout << endl;
+    // #endif
+
 }
 
 
@@ -468,3 +478,4 @@ double RandomVariable::log10ProductCardOfParentsNotContainedInSet(const set <Ran
 
   return weight;
 }
+

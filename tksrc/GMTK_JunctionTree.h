@@ -295,7 +295,7 @@ class JunctionTree {
 			       RandomVariable* rv,
 			       bool& alreadyAProbContributer,
 			       set<RandomVariable*>& parSet,
-			       multimap< vector<float>, unsigned >& scoreSet);
+			       multimap< vector<double>, unsigned >& scoreSet);
   static void createDirectedGraphOfCliquesRecurse(JT_Partition& part,
 					   const unsigned root,
 					   vector< bool >& visited);
@@ -369,7 +369,7 @@ public:
   struct Edge {
     unsigned clique1;
     unsigned clique2;
-    vector <float> weights;
+    vector <double> weights;
   };
 
   // for sorting edges in decreasing weight order.

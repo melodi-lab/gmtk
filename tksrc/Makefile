@@ -63,7 +63,7 @@ docdir = $(prefix)/man/man1
 # define only for sun
 # SUNLIBS=-lsunmath
 SUNLIBS=
-LIBS =  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport -ll $(SUNLIBS) -lm 
+LIBS =  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport -lfl $(SUNLIBS) -lm 
 # LIBS =  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport -lfl $(SUNLIBS) -lm 
 # LIBS =  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport $(SUNLIBS) -lm 
 INCLUDES =  $(includedirs)
