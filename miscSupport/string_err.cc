@@ -195,6 +195,7 @@ main(int argc, char *argv[])
     cout << refwrds << " reference words\n";
     cout << errs << " errors\n";
     cout << "WER: " << float(100*errs)/refwrds << "%\n";
+    cout << "ACC: " << 100*float(refwrds-errs)/refwrds << "%\n";
 
     in.close();
     ref.close();
