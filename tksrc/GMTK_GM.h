@@ -40,14 +40,7 @@ struct GMTK_GM
     void reveal(vector<RandomVariable *> order, bool show_vals = false);
     // Go through the nodes in the specified order and show them.
 
-    int numEquivalenceClasses;
-    // The variables in the network may be divided into equivalence classes,
-    // with the members of each equivalence class sharing the same parameters.
-
-    vector<RandomVariable *> representativeOfEquivalenceClass;
-    // All the members of an equivalence class will use the parameters 
-    // associated with this particular member. To save memory, the other
-    // member's parameter data structures simply point to this representative.
+    GMTK_GM() {example=NULL;}
 
     void makeRandom();
     // Goes over each variable in the graph and calls its makeRandom function.
@@ -67,7 +60,8 @@ struct GMTK_GM
     // Call with emMode=true and p=1/dataProb to do EM
 
     bool emMode;
-    // Is enumerateProb() being called as part of EM?
+    // when data probability is computed, this controls whether counts
+    // are accumulated. If emMode==true, they are accumulated
 
     void cacheValues();
     // Tells all the nodes int the graph to cache the values they are 
@@ -79,12 +73,25 @@ struct GMTK_GM
     // values.
     // Observation variables can ignore this.
 
+    void storeValues(vector<VariableValue> &vv);
+    // stores the values of all the observed variables
+
+    void setValues(vector<VariableValue> &vv);
+    // sets the values of all the observed variables
+
     void enumerateViterbiProb(int pos=0, logpr p=1.0);
     // Computes the probability of the likeliest instantiation of the hidden
     // variables, and stores it in logViterbiProb. 
     // Has the side effect that at termination, the network is clamped to its
-    // liekliest value.
+    // likeliest value.
 
+    void cliqueChainViterbiProb() 
+    {chain->doViterbi(); viterbiProb=chain->viterbiProb;}
+    // Computes the probability of the likeliest instantiation of the hidden
+    // variables, and stores it in logViterbiProb. 
+    // Has the side effect that at termination, the network is clamped to its
+    // likeliest value.
+    
     logpr dataProb, viterbiProb;
 
     int sliceSize;
@@ -93,21 +100,44 @@ struct GMTK_GM
     int numSlices; 
     // how many time slices there are in the network
 
-    void emIncrementStatistics(logpr posterior);
+    void emIncrement(logpr posterior);
     // Tells each variable to increment its counts by the posterior.
 
-    void emInitialize();
+    void emStartIteration();
     // Tells each variable to zero out its accumulators and get ready to 
     // start EM.
 
-    void emUpdate();
+    void emEndIteration();
     // Tells each variable to update its parameters at the end of an EM 
     // iteration.
 
-    void clampFirstExample() {error("can't clamp examples yet");}
-    // Clamps the observation variables according to the first example.
+    vector<vector<VariableValue> > *example;
+    // In EM there must be a way of iterating over the examples.
+    // This store the examples to look at.
+// need a file-based alternative too
 
-    bool clampNextExample() {error("can't clamp examples yet"); return false;}
+    // how far in the example array have we gotten?
+    unsigned expos; 
+
+    void setExampleStream(vector<vector<VariableValue> > *_example)
+    {example=_example;}
+    // The examples to be iterated over are held in here
+// need a file-based analog too
+
+    void clampFirstExample() 
+    { if (example==NULL) error("Example array not set.");
+      if (example->size()==0) error("No examples.");
+      setValues((*example)[0]);
+      expos=0;
+    }
+
+    // Clamps the observation variables according to the first example.
+// need to add a member that specifies if file-based or array-based example
+// reading is to be done.
+
+    bool clampNextExample() 
+    { if (expos==example->size()-1) return false; 
+      setValues((*example)[++expos]); return true; }
     // Clamps the observation variables according to the next example.
 
     void enumerativeEM(int iterations);
@@ -118,6 +148,14 @@ struct GMTK_GM
 
     void cliqueChainEM(int iterations, logpr beam=0.0);
     // Does EM using dynamic programming on a clique chain.
+
+    logpr enumerativeExampleProb(vector<vector<VariableValue > > &example);
+    // computes the likelihood of the examples
+
+    logpr cliqueChainExampleProb(vector<vector<VariableValue > > &example);
+    // computes the likelihood of the examples
+
+    map<pair<string, unsigned>, RandomVariable *> variableNamed;
 };
 
 #endif
