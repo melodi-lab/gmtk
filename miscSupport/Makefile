@@ -83,13 +83,13 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all: libmiscSupport.a string_err
+all: libmiscSupport.a 
 
 #----------------------------------------------------------------------------
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o lineqsolve.o
+objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o lineqsolve.o debug.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
@@ -110,6 +110,9 @@ string_err: string_err.o
 
 testError: error.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ error.cc $(LIBS)
+
+testDebug: debug.cc debug.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ debug.cc $(LIBS)
 
 
 testBPRange: bp_range.cc error.o
@@ -133,13 +136,13 @@ testsArray: sArray.cc
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc general.cc lineqsolve.cc string_err.cc
+all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc general.cc lineqsolve.cc string_err.cc debug.cc
 
-all_hdrs = 
+all_hdrs = error.h debug.h
 
 all_objs = 
 
-all_exs = testError testBPRange testArguments testLogp testRand testsArray string_err
+all_exs = testError testBPRange testArguments testLogp testRand testsArray string_err testDebug
 
 #----------------------------------------------------------------------------
 # installation
