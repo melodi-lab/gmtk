@@ -75,3 +75,7 @@ XXX- todo, make sure that chunk n:m is valid.
   re-randomizing, or something.
 
 - add a k-means mode for initialization.
+
+- add linear BMM links
+
+- add non-linear BMM links
