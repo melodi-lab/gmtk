@@ -110,6 +110,7 @@ MixGaussians::write(oDataStreamFile& os)
   for (unsigned i=0;i<numComponents;i++) {
     os.write(components[i]->name());
   }
+  os.nl();
 }
 
 
