@@ -153,14 +153,24 @@ MTCPT::read(iDataStreamFile& is)
   if (_numParents < 0) 
     error("ERROR: reading file '%s', MTCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
-    warning("MTCPT: read, creating MTCPT with %d parents",_numParents);
-  cardinalities.resize(_numParents+1);
+    warning("WARNING: creating MTCPT '%s' with %d parents in file '%s'",
+	    _numParents,name().c_str(),is.fileName());
+
+  cardinalities.resize(_numParents);
   // read the cardinalities
-  for (unsigned i=0;i<=_numParents;i++) {
+  for (unsigned i=0;i<_numParents;i++) {
     is.read(cardinalities[i],"MTCPT::read cardinality");
     if (cardinalities[i] <= 0)
-      error("ERROR: reading file '%s', MTCPT '%s' trying to use 0 or negative (%d) cardinality table.",is.fileName(),name().c_str(),cardinalities[i]);
+      error("ERROR: reading file '%s', MDCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	    is.fileName(),name().c_str(),cardinalities[i],i);
   }
+
+  // read the self cardinalities
+  is.read(_card,"MTCPT::read cardinality");
+  if (_card <= 0)
+    error("ERROR: reading file '%s', MTCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	  is.fileName(),name().c_str(),_card,i);
+
 
   // Finally read in the ID of the decision tree
   // that maps from parent values to an integer specifying
@@ -201,9 +211,10 @@ MTCPT::write(oDataStreamFile& os)
   NamedObject::write(os);
   os.write(_numParents,"MTCPT::write numParents");
   os.writeComment("number parents");os.nl();
-  for (unsigned i=0;i<=_numParents;i++) {
+  for (unsigned i=0;i<_numParents;i++) {
     os.write(cardinalities[i],"MTCPT::write cardinality");
   }
+  os.write(card(),"MTCPT::write cardinality");
   os.writeComment("cardinalities");
   os.nl();
   os.write(dt->name());

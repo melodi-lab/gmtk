@@ -79,6 +79,20 @@ public:
 	    name().c_str(),dt->name().c_str(),spmfIndex);
     }
     spmf = GM_Parms.sPmfs[spmfIndex];
+    if (spmf->card() != card()) {
+      warning("ERROR: MSCPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' having card %d",
+	      name().c_str(),
+	      card(),
+	      dt->name().c_str(),
+	      spmfIndex,
+	      spmf->name().c_str(),
+	      spmf->card());
+      fprintf(stderr,"Parent values:");
+      for (unsigned i=0;i<parentValues.size();i++) {
+	fprintf(stderr," %d", parentValues[i]);
+      }
+      error("");
+    }
   }
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
     spmfIndex = dt->query(parents);
@@ -87,10 +101,27 @@ public:
 	    name().c_str(),dt->name().c_str(),spmfIndex);
     }
     spmf = GM_Parms.sPmfs[spmfIndex];
+    if (spmf->card() != card()) {
+      warning("ERROR: MSCPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' having card %d",
+	      name().c_str(),
+	      card(),
+	      dt->name().c_str(),
+	      spmfIndex,
+	      spmf->name().c_str(),
+	      spmf->card());
+      fprintf(stderr,"Parents configuration :");
+      for (unsigned i=0;i<parents.size();i++) {
+	fprintf(stderr,"%s(%d)=%d,",
+		parents[i]->name().c_str(),
+		parents[i]->timeIndex,
+		parents[i]->val);
+      }
+      error("");
+    }
   }
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
-    assert ( val >= 0 && val <= cardinalities[_numParents] );
+    assert ( val >= 0 && val <= card() );
     return spmf->prob(val);
   }
   logpr probGivenParents(vector <int>& parentValues, 
@@ -105,10 +136,6 @@ public:
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents);
     return probGivenParents(val);
-  }
-  int numValsGivenParents() { 
-    assert ( bitmask & bm_basicAllocated );
-    return cardinalities[_numParents]; 
   }
 
   // returns an iterator for the first one.
