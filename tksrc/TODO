@@ -2471,3 +2471,6 @@ Mon Sep 27 15:07:26 2004
   - see Gang's message of 9/27/04
   - fix bug suggested in fix in response to Gang's message, 9/27 that I sent out 9/28 (having to
     do with re-writing gmtkViterbiNew).
+
+Sun Oct 10 20:27:38 2004
+  - add option to gmtktriangulat to add extra string in comment in trifile.
