@@ -113,7 +113,7 @@ EMable::emStoreAccumulators(oDataStreamFile& ofile)
   } else {
     // the training bit is set.
     if (accumulatedProbability.zero()) {
-      // then we indeed have no probability values, so lets emit a warning
+      // then we are training, but indeed have no probability values, so lets emit a warning
       infoMsg(IM::SoftWarning,"WARNING: zero accumulator values for %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
