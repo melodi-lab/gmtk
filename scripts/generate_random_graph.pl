@@ -518,11 +518,11 @@ if ($nmbr_frames == 1)
   print  "      conditionalparents: dummy(-1) using DeterministicCPT(\"dummy_1_DtrmnstcCPT\");\n";
   print  "   }\n";
 
-#  print  "   variable : dummy_2 {\n";
-#  print  "      type: discrete hidden cardinality 2;\n"; 
-#  print  "      switchingparents: nil;\n"; 
-#  print  "      conditionalparents: dummy(0) using DenseCPT(\"dummy_DenseCPT\");\n"; 
-#  print  "   }\n";
+  print  "   variable : dummy_2 {\n";
+  print  "      type: discrete hidden cardinality 2;\n"; 
+  print  "      switchingparents: nil;\n"; 
+  print  "      conditionalparents: dummy(0) using DeterministicCPT(\"dummy_1_DtrmnstcCPT\");\n"; 
+  print  "   }\n";
   print  "}\n\n";
 }
 
