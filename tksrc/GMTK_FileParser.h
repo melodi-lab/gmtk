@@ -374,7 +374,7 @@ public:
   unsigned firstChunkframe() { return _firstChunkframe; }
   unsigned lastChunkframe() { return _firstChunkframe; }
   unsigned maxFrame() { return _maxFrame; }
-
+  unsigned numFrames() { return _maxFrame+1; }
 };
 
 #endif
