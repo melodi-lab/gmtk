@@ -130,6 +130,52 @@ void printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSa
 
 }
 
+/**
+   Prints Observation file(s) info only.
+*/
+void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, bool print_sent_frames, bool print_stream_info, const bool quiet) {
+
+  unsigned num_segments      = obs_mat->numSegments();
+  unsigned num_streams       = obs_mat->numStreams();
+  unsigned total_num_frames  = 0;
+  StreamInfo* current_stream = NULL;
+
+  for (unsigned seg_no=0; seg_no < num_segments; ++seg_no) {
+    //    if (!quiet) {
+    //      if (seg_no % 100 == 0)
+    //	printf("Processing segment %u out of %u\n",seg_no,num_segments);
+    //    }
+
+    unsigned num_frames=obs_mat->numFrames(seg_no);
+    total_num_frames += num_frames;
+  }
+  
+  if (!dont_print_info) {
+    fprintf(out_fp,"%d stream(s), %d sentences, %d frames, %d discrete feature(s), %d continuous feature(s)\n",
+	    num_streams,
+	    num_segments,
+            total_num_frames,
+	    obs_mat->numDiscrete(),
+	    obs_mat->numContinuous());
+  }
+  
+  if(print_stream_info) {
+    for (unsigned stream_no=0; stream_no < num_streams; ++stream_no) {
+      current_stream = obs_mat->getStream(stream_no);
+      assert(current_stream != NULL);
+      fprintf(out_fp,"stream %d: %d discrete feature(s), %d continuous feature(s)\n",stream_no,current_stream->getNumInts(),current_stream->getNumFloats());
+    }
+  }
+
+  if (print_sent_frames) {
+      for (unsigned seg_no=0; seg_no < num_segments; ++seg_no) {
+	fprintf(out_fp,"%d %d\n",seg_no,obs_mat->numFrames(seg_no));
+      }
+  }
+
+}
+
+
 void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_continuous, UInt32* disc_buf, unsigned num_discrete, unsigned num_frames, const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap, OutFtrLabStream_PFile* out_stream) {
 
 
@@ -465,6 +511,12 @@ double   Add_Sil_MAF            = 0.0;
 double   Add_Sil_SMF            = 1.0;
 double   Add_Sil_SAF            = 0.0;
 
+bool     Info                   = false;
+bool     Info_Dont_Print_Info   = false;
+bool     Info_Print_Stream_Info = false;
+bool     Info_Print_Sent_Frames = false;
+
+
 char* Usage_Str = NULL;
 bool help=false;
 
@@ -496,6 +548,10 @@ Arg Arg::Args[] = {
   Arg("comb",      Arg::Opt, ftrcomboStr,"Combine float features (none: no combination, add, sub, mul,div"),
   Arg("cppifascii",Arg::Opt, cppIfAscii,"Pre-process ASCII files using CPP"),
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
+  Arg("info",      Arg::Tog, Info, "Print Observation files info ans exit"),
+  Arg("infoNoPrint",      Arg::Tog, Info_Dont_Print_Info, "Do not print anything.  Pretty useless but is here for historical reasons."),
+  Arg("infoStreams",      Arg::Tog, Info_Print_Stream_Info, "Also print individual stream info."),
+  Arg("infoNumFrames",      Arg::Tog, Info_Print_Sent_Frames, "Also print # frames for each sentence."),
   Arg("norm",      Arg::Tog, Normalize, "Normalize the observation file"),
   Arg("normMean",  Arg::Opt, Norm_Mean, "NORM: Mean of the resulting output file",Arg::SINGLE,0,true),
   Arg("normStd",   Arg::Opt, Norm_Std,  "NORM: Std of the resulting output file",Arg::SINGLE,0,true),
@@ -790,6 +846,12 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
     //////////////////////////////////////////////////////////////////////
     // Do the work.
     //////////////////////////////////////////////////////////////////////
+
+     if(Info) {
+       obsInfo(out_fp, &globalObservationMatrix,Info_Dont_Print_Info,Info_Print_Sent_Frames,Info_Print_Stream_Info,quiet);
+       exit(0);
+     }
+
 
      if(Get_Stats) {
        Range* fr_rng=new Range(NULL,0,globalObservationMatrix.numContinuous());
