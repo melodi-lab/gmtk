@@ -96,7 +96,9 @@ map<RngDecisionTree::EquationClass::tokenEnum,
  */
 RngDecisionTree::~RngDecisionTree()
 {
-  destructorRecurse(root);
+  if (root != NULL) {
+    destructorRecurse(root);
+  }
   delete root;
   delete dtFile;
 }
@@ -1875,15 +1877,137 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& 
 //////////////////////////////////////////////////////////////////////
 
 
-
-
-
-#ifdef MAIN
-
 ////////////////////////////////////////////////////////////////////
 //        test code Support
 ////////////////////////////////////////////////////////////////////
 
+#ifdef MAIN
+
+////////////////////////////////////////////////////////////////////
+// Test formulas 
+////////////////////////////////////////////////////////////////////
+
+class TestRandomVariable : public RandomVariable
+{
+  public:
+
+    TestRandomVariable( RVInfo new_info, string new_name, int new_cardinality ) 
+       : RandomVariable(new_info, new_name, Discrete, new_cardinality) {return;}
+    void findConditionalParents() { return; }
+    logpr probGivenParents() { return(0.0); }
+    logpr probGivenParentsWSetup() { return(0.0); }
+    void makeRandom() { return; }
+    void makeUniform()  { return; }
+    void tieParametersWith(RandomVariable*const other,
+                         bool checkStructure=true) { return; }
+    void clampFirstValue() { return; }
+    bool clampNextValue() { return(false); }
+    void begin() { return; }
+    bool next() { return(false); }
+    void instantiate() { return; }
+    void cacheValue() { return; }
+    void restoreCachedValue() { return; }
+    void storeValue(VariableValue &vv) {vv.ival = val;}
+    void setValue(VariableValue &vv) {val = vv.ival;}
+    void emIncrement(logpr posterior) { return; }
+    RandomVariable *create() { return(NULL); }
+
+};
+
+bool RngDecisionTree::testFormula(
+  string                           formula,
+  const vector< RandomVariable* >& variables, 
+  unsigned                         desired_answer 
+  )
+{
+  Node     node;
+  unsigned answer;
+  bool     correct;
+
+  printf("Formula: %s\n",   formula.c_str());
+  node.leafNode.equation.parseFormula(formula);
+  answer = node.leafNode.equation.evaluateFormula( variables );
+  printf("   Answer: %d\n", answer);
+
+  if (answer == desired_answer) {
+    correct = true;
+  }
+  else { 
+    printf("====>**** NOT CORRECT!!!\n");
+    correct = false;
+  }
+
+  return(correct);
+}
+
+void test_formula()
+{
+  RngDecisionTree         dt;
+  vector<RandomVariable*> vars;
+  string                  formula;
+  RVInfo                  dummy;
+  bool                    correct;
+
+  TestRandomVariable aa(dummy, "aa",  8 );
+  TestRandomVariable bb(dummy, "bb", 40 );
+  TestRandomVariable cc(dummy, "cc",  2 );
+
+  aa.val  = 7;
+  bb.val  = 3;
+  cc.val  = 0;
+  vars.push_back(&aa);
+  vars.push_back(&bb);
+  vars.push_back(&cc);
+
+  correct = true;
+
+  formula = "(1+1)";
+  correct &= dt.testFormula( formula, vars, 2 );
+
+  formula = "((p0&p1)|c0)";
+  correct &= dt.testFormula( formula, vars, 11 );
+
+  formula = "((c1/c0)*p1)";
+  correct &= dt.testFormula( formula, vars, 15 );
+
+  formula = "(c2^5)";
+  correct &= dt.testFormula( formula, vars, 32 );
+
+  formula = "(7>3)";
+  correct &= dt.testFormula( formula, vars, 1 );
+
+  formula = "(7<3)";
+  correct &= dt.testFormula( formula, vars, 0 );
+
+  formula = "((3>=3)&&(3==3)&&(3<=3))";
+  correct &= dt.testFormula( formula, vars, 1 );
+
+  formula = "(p0||(27<2)||(229<=1))";
+  correct &= dt.testFormula( formula, vars, 1 );
+
+  formula = "max(p0,p1,p2)";
+  correct &= dt.testFormula( formula, vars, 7 );
+
+  formula = "min(c0,c1,c2)";
+  correct &= dt.testFormula( formula, vars, 2 );
+
+  formula = "mod(8,3)";
+  correct &= dt.testFormula( formula, vars, 2 );
+
+  formula = "((12>3)?(p0*p1):(c0+p2))";
+  correct &= dt.testFormula( formula, vars, 21 );
+
+  formula = "((max((12/4),14,p2)+(c1-p1))*p0+27)";
+  correct &= dt.testFormula( formula, vars, 384 );
+
+  if (! correct) {
+    error("A formula is not giving the correct answer\n");
+  }
+}
+
+////////////////////////////////////////////////////////////////////
+// Test decision trees 
+////////////////////////////////////////////////////////////////////
 /*
  * A decision tree looks something like:
  * <numFtrs>
@@ -1905,11 +2029,11 @@ char *dtStr1 =
 "      -1 expand\n"
 "      -1 (p0+1)\n"
 "    2 2 0:5 default\n"
-"      -1 ( c0 + 1 )\n"
-"      -1 (m0 +1)\n"
+"      -1 (c0+1)\n"
+"      -1 (00+1)\n"
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
-"      -1 (p0+p1+ 5)\n"
+"      -1 (p0+p1+5)\n"
 "      -1 6\n"
 "    2 2 0:5 default\n"
 "      -1 7\n"
@@ -1971,6 +2095,8 @@ char *dtStr2 =
 int
 main(int argc,char *argv[])
 {
+  // Test the formula parser 
+  test_formula();
 
   // first write out the file
   if (argc == 1)
@@ -2026,6 +2152,5 @@ main(int argc,char *argv[])
 
 }
 
-
-
 #endif
+

@@ -199,7 +199,7 @@ testHashTree: GMTK_HashTree.cc GMTK_HashTree.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_HashTree.cc $(LIBS)
 
 testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_RngDecisionTree.cc $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_RngDecisionTree.cc GMTK_RandomVariable.o $(LIBS)
 
 testPackCliqueValue: GMTK_PackCliqueValue.cc  GMTK_PackCliqueValue.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_PackCliqueValue.cc $(LIBS)
