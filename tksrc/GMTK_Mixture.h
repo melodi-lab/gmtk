@@ -73,7 +73,7 @@ class MixGaussians : public MixGaussiansCommon {
   // this dummy variable apparently needs to be here so that gdb 5.0 on
   // Solaris can print out *this. If this is removed, that version of
   // gdb can't do that.
-  int _dummy;
+  // int _dummy;
  
 public:
 
