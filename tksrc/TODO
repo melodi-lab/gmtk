@@ -2692,3 +2692,21 @@ Thu Feb 10 09:22:32 2005
   called cpp which has already terminated, but the pipe doesn't get closed
   until the end of the process, and its a pain to close it earlier).
 
+Thu Feb 17 13:52:17 2005
+  - right now, log arithmetic is used to deal with the scaling problem. At some point
+    we should include optional compile time choices to use online scaling, where
+    probabilities are re-scaled at the output of each clique. This should be easy 
+    to do, it will mean that no matter how long the utterance, things will be
+    in range, and it might even speed things up since we no longer need to use
+    log arithmetic (so no log-add to do, but on the other hand we need to iterate
+    through each clique once again after it is constructed to do the scaling). Note
+    that since we already have the max clique value computed, we could perhaps
+    just scale by that value.
+
+    In fact, logp.h should have a #define option to use linear arithmetic, and then
+    this option is active, it activiates the scaling code in GMTK_MaxClique.cc
+
+
+
+
+
