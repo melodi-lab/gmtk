@@ -47,16 +47,17 @@ class MDCPT;
 class MSCPT;
 class MTCPT;
 
+class Component;
 class GaussianComponent;
 class DiagGaussian;
 class LinMeanCondDiagGaussian;
 class NLinMeanCondDiagGaussian;
 
-class MixGaussiansCommon;
-class MixGaussians;
-class GausSwitchingMixGaussians;
-class LogitSwitchingMixGaussians;
-class MLPSwitchingMixGaussians;
+class MixtureCommon;
+class Mixture;
+class GausSwitchingMixture;
+class LogitSwitchingMixture;
+class MLPSwitchingMixture;
 
 class RngDecisionTree;
 class Dlinks;
@@ -82,10 +83,10 @@ public:
     emTrainLinMeanCondDiagGaussians       = (1 << 7),
     emTrainMDCPTs                         = (1 << 8),
     emTrainMSCPTs                         = (1 << 9),
-    emTrainMixGaussians                   = (1 << 10),
-    emTrainGausSwitchingMixGaussians      = (1 << 11),
-    emTrainLogitSwitchingMixGaussians     = (1 << 12),
-    emTrainMLPSwitchingMixGaussians       = (1 << 13),
+    emTrainMixtures                   = (1 << 10),
+    emTrainGausSwitchingMixtures      = (1 << 11),
+    emTrainLogitSwitchingMixtures     = (1 << 12),
+    emTrainMLPSwitchingMixtures       = (1 << 13),
     emDefaultState                        = ~0x0
   };
 
@@ -101,13 +102,13 @@ public:
   bool amTrainingLinMeanCondDiagGaussians() { return (emTrainBitmask & emTrainLinMeanCondDiagGaussians); }
   bool amTrainingMDCPTs() { return (emTrainBitmask & emTrainMDCPTs); }
   bool amTrainingMSCPTs() { return (emTrainBitmask & emTrainMSCPTs); }
-  bool amTrainingMixGaussians() { return (emTrainBitmask & emTrainMixGaussians); }
-  bool amTrainingGausSwitchingMixGaussians() 
-  { return (emTrainBitmask & emTrainGausSwitchingMixGaussians); }
-  bool amTrainingLogitSwitchingMixGaussians() 
-  { return (emTrainBitmask & emTrainLogitSwitchingMixGaussians); }
-  bool amTrainingMLPSwitchingMixGaussians() 
-  { return (emTrainBitmask & emTrainMLPSwitchingMixGaussians); }
+  bool amTrainingMixtures() { return (emTrainBitmask & emTrainMixtures); }
+  bool amTrainingGausSwitchingMixtures() 
+  { return (emTrainBitmask & emTrainGausSwitchingMixtures); }
+  bool amTrainingLogitSwitchingMixtures() 
+  { return (emTrainBitmask & emTrainLogitSwitchingMixtures); }
+  bool amTrainingMLPSwitchingMixtures() 
+  { return (emTrainBitmask & emTrainMLPSwitchingMixtures); }
 
 
   class ParamFile {
@@ -184,9 +185,9 @@ public:
   // Basic Gaussian Components of various types. 
   //////////////////////////////////////////////////////////////////
 
-  vector< GaussianComponent* > gaussianComponents;
-  ObjectMapType gaussianComponentsMap;
-  void add(GaussianComponent*);
+  vector< Component* > components;
+  ObjectMapType componentsMap;
+  void add(Component*);
 
   /********************************************************************/
   /********************************************************************/
@@ -225,23 +226,23 @@ public:
   //////////////////////////////////////////////////////////////////
 
   ////////////////////////////////
-  // Mixtures of Gaussians (could be a heterogeneous mixutre of
+  // Mixture distributions (could be a heterogeneous mixutre of
   // different types above)
-  vector < MixGaussians* > mixGaussians;
-  ObjectMapType mixGaussiansMap;
-  void add(MixGaussians*);
+  vector < Mixture* > mixtures;
+  ObjectMapType mixturesMap;
+  void add(Mixture*);
 
-  vector < GausSwitchingMixGaussians* > gausSwitchingMixGaussians;
-  ObjectMapType gausSwitchingMixGaussiansMap;
-  void add(GausSwitchingMixGaussians*);
+  vector < GausSwitchingMixture* > gausSwitchingMixtures;
+  ObjectMapType gausSwitchingMixturesMap;
+  void add(GausSwitchingMixture*);
 
-  vector < LogitSwitchingMixGaussians* > logitSwitchingMixGaussians;
-  ObjectMapType logitSwitchingMixGaussiansMap;
-  void add(LogitSwitchingMixGaussians*);
+  vector < LogitSwitchingMixture* > logitSwitchingMixtures;
+  ObjectMapType logitSwitchingMixturesMap;
+  void add(LogitSwitchingMixture*);
 
-  vector < MLPSwitchingMixGaussians* > mlpSwitchingMixGaussians;
-  ObjectMapType  mlpSwitchingMixGaussiansMap;
-  void add(MLPSwitchingMixGaussians*);
+  vector < MLPSwitchingMixture* > mlpSwitchingMixtures;
+  ObjectMapType  mlpSwitchingMixturesMap;
+  void add(MLPSwitchingMixture*);
 
   /********************************************************************/
   /********************************************************************/
@@ -318,12 +319,12 @@ public:
   void readMsCpts(iDataStreamFile& is,bool reset = false);
   void readMtCpts(iDataStreamFile& is,bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
-  void readGaussianComponents(iDataStreamFile& is,bool reset = false);
-  void readMixGaussians(iDataStreamFile& is,bool reset = false);
+  void readComponents(iDataStreamFile& is,bool reset = false);
+  void readMixtures(iDataStreamFile& is,bool reset = false);
   void readNameCollections(iDataStreamFile& is,bool reset = false);
-  void readGausSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
-  void readLogitSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
-  void readMlpSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
+  void readGausSwitchMixtures(iDataStreamFile& is,bool reset = false);
+  void readLogitSwitchMixtures(iDataStreamFile& is,bool reset = false);
+  void readMlpSwitchMixtures(iDataStreamFile& is,bool reset = false);
 
   //
   void writeDPmfs(oDataStreamFile& os);
@@ -337,12 +338,12 @@ public:
   void writeMsCpts(oDataStreamFile& os);
   void writeMtCpts(oDataStreamFile& os);
   void writeDTs(oDataStreamFile& os);
-  void writeGaussianComponents(oDataStreamFile& os);
-  void writeMixGaussians(oDataStreamFile& os);
+  void writeComponents(oDataStreamFile& os);
+  void writeMixtures(oDataStreamFile& os);
   void writeNameCollections(oDataStreamFile& os);
-  void writeGausSwitchMixGaussians(oDataStreamFile& os);
-  void writeLogitSwitchMixGaussians(oDataStreamFile& os);
-  void writeMlpSwitchMixGaussians(oDataStreamFile& os);
+  void writeGausSwitchMixtures(oDataStreamFile& os);
+  void writeLogitSwitchMixtures(oDataStreamFile& os);
+  void writeMlpSwitchMixtures(oDataStreamFile& os);
 
 
   ///////////////////////////////////////////////////////////    

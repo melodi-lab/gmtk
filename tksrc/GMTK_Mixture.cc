@@ -1,6 +1,9 @@
 /*-
- * GMTK_MixGaussians.cc
- *        Code for mixtures of Gaussians of a variety of types.
+ * GMTK_Mixture.cc
+ *
+ *        Code for mixtures of components, where each component can be
+ *        one of a variety of different types (e.g., diagonal covariance Gaussian, 
+ *        linear conditional Gaussian, sparse inverse covariance Gaussian, etc.).
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -33,31 +36,31 @@ VCID("$Header$");
 #include "error.h"
 #include "rand.h"
 
-#include "GMTK_MixGaussians.h"
+#include "GMTK_Mixture.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
 
 
 
 void
-MixGaussians::read(iDataStreamFile& is)
+Mixture::read(iDataStreamFile& is)
 {
   // read name of self
   NamedObject::read(is);
   
   // read number of mixtures
-  is.read(numComponents,"MixGaussians::read numComponents");
+  is.read(numComponents,"Mixture::read numComponents");
   if (numComponents <= 0) 
-    error("Error: MixGaussians '%s' has number of components = %d\n",
+    error("Error: Mixture '%s' has negative or zero number of components = %d\n",
 	  _name.c_str(),numComponents);
 
   // read name of dense 1d PMF to use for mixtures
   string str;
   is.read(str);
   if (GM_Parms.dPmfsMap.find(str) == GM_Parms.dPmfsMap.end()) {
-    error("ERROR: Mix Gaussian '%s' in file '%s', can't find PMF named '%s'\n",
-	  is.fileName(),
-	  _name.c_str(),str.c_str());
+    error("ERROR: Mixture '%s' in file '%s', can't find PMF named '%s'\n",
+	  _name.c_str(),
+	  is.fileName(),str.c_str());
   }
 
   dense1DPMF = GM_Parms.dPmfs[
@@ -66,24 +69,24 @@ MixGaussians::read(iDataStreamFile& is)
 
   // now make sure that this one matches the number of components.
   if (numComponents != dense1DPMF->length()) {
-    error("ERROR: MixGaussians '%s' in file '%s', PMF named '%s' has %d elements but we need %d\n",
+    error("ERROR: Mixture '%s' in file '%s', PMF named '%s' has %d elements but we need %d\n",
 	  _name.c_str(),is.fileName(),
 	  str.c_str(),dense1DPMF->length(),numComponents);
   }
 
-  // now read 'name' pointers to all the Gaussians.
+  // now read 'name' pointers to all the Components
   components.resize(numComponents);
   for (unsigned i=0;i<numComponents;i++) {
     is.read(str);
-    if (GM_Parms.gaussianComponentsMap.find(str) == GM_Parms.gaussianComponentsMap.end()) {
-      error("ERROR: MixGaussians '%s' in file '%s', can't find Gaussian Component named '%s'\n",_name.c_str(),is.fileName(),str.c_str());
+    if (GM_Parms.componentsMap.find(str) == GM_Parms.componentsMap.end()) {
+      error("ERROR: Mixture '%s' in file '%s', can't find Component named '%s'\n",_name.c_str(),is.fileName(),str.c_str());
     }
-    GaussianComponent*gc = GM_Parms.gaussianComponents [
-	GM_Parms.gaussianComponentsMap[str]
+    Component*gc = GM_Parms.components [
+	GM_Parms.componentsMap[str]
     ];
     components[i] = gc;
     if (gc->dim() != dim()) {
-      error("ERROR: MixGaussians '%s' in file '%s' of dim %d trying to use component '%s' of dim %d\n",
+      error("ERROR: Mixture '%s' in file '%s' of dim %d trying to use component '%s' of dim %d\n",
 	    name().c_str(),is.fileName(),dim(),gc->name().c_str(),gc->dim());
     }
   }
@@ -94,14 +97,14 @@ MixGaussians::read(iDataStreamFile& is)
 }
 
 void
-MixGaussians::write(oDataStreamFile& os)
+Mixture::write(oDataStreamFile& os)
 {
   assert ( basicAllocatedBitIsSet() );
 
   NamedObject::write(os);
   os.nl();
   // read number of mixture components
-  os.write(numComponents,"MixGaussians::write numComponents");
+  os.write(numComponents,"Mixture::write numComponents");
 
   // write name of dense 1d PMF to use for mixtures
   os.write(dense1DPMF->name()); os.nl();
@@ -134,7 +137,7 @@ MixGaussians::write(oDataStreamFile& os)
  *
  *-----------------------------------------------------------------------
  */
-unsigned MixGaussians::totalNumberParameters()
+unsigned Mixture::totalNumberParameters()
 {
   unsigned sum=0;
   for (unsigned i=0;i<components.size();i++) 
@@ -144,7 +147,7 @@ unsigned MixGaussians::totalNumberParameters()
 
 
 void
-MixGaussians::makeUniform()
+Mixture::makeUniform()
 {
   if (!emAmTrainingBitIsSet())
     return;
@@ -157,7 +160,7 @@ MixGaussians::makeUniform()
 
 
 void
-MixGaussians::makeRandom()
+Mixture::makeRandom()
 {
   if (!emAmTrainingBitIsSet())
     return;
@@ -173,7 +176,7 @@ MixGaussians::makeRandom()
 // compute the log probability of x with stride 'stride'
 // 
 logpr
-MixGaussians::log_p(const float *const x,
+Mixture::log_p(const float *const x,
 		    const Data32* const base,
 		    const int stride)
 {
@@ -192,7 +195,7 @@ MixGaussians::log_p(const float *const x,
 // This version uses the current global observatio matrix directly,
 // and caches the result for EM.
 logpr
-MixGaussians::log_p(const unsigned frameIndex, 
+Mixture::log_p(const unsigned frameIndex, 
 		    const unsigned firstFeatureElement)
 
 {
@@ -202,7 +205,7 @@ MixGaussians::log_p(const unsigned frameIndex,
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride =  globalObservationMatrix.stride();
 
-  if (cacheGaussiansInEmTraining) {
+  if (cacheComponentsInEmTraining) {
 
     if (componentCache.size() < (frameIndex+1)) {
       // never have more than 25% more frames than needed while still
@@ -240,15 +243,15 @@ MixGaussians::log_p(const unsigned frameIndex,
 /////////////////
 
 ///////////////////////////////////////////////////////////////////
-// NOTES: on algorithm for splitting and vanishing Gaussians with sharing.
+// NOTES: on algorithm for splitting and vanishing Components with sharing.
 // 
 // J. Bilmes, $Header$
 // 
-// If a Gaussian component is split, it gets cloned meaning that its
-// mean and covariances are cloned.  If another Gaussian component is
-// split, and it shares either the mean/variance of another one that
-// was split, it will continue to share the mean/variance of the
-// cloned Gaussian.  The cloning relationships are forgotten once all
+// If a component component is split, it gets cloned meaning that its
+// parameters (e.g., mean and covariances) are cloned.  If another component is
+// split, and it shares either the parameters (mean/variance) of another one that
+// was split, it will continue to share the parameters (mean/variance) of the
+// cloned component.  The cloning relationships are forgotten once all
 // is done at the end of the epoch.
 //
 // First, two sets are used and cleared out at the end of each epoch.
@@ -272,7 +275,7 @@ MixGaussians::log_p(const unsigned frameIndex,
 //
 // Here are sketches of the algorithms.
 //
-// EM end of a MixGaussian
+// EM end of a Mixture
 //   end the DPMF
 //   for each entry i in the pmf
 //         end comp epoch i
@@ -317,7 +320,7 @@ MixGaussians::log_p(const unsigned frameIndex,
 
 
 void
-MixGaussians::emStartIteration()
+Mixture::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
@@ -334,13 +337,13 @@ MixGaussians::emStartIteration()
   
   // check the length here because
   //  1) it is cheap
-  //  2) we want to make sure that this Gaussians DPMF length
+  //  2) we want to make sure that this Mixture DPMF length
   //     hasn't changed while this mixture wasn't active (i.e.,
   //     it is possible that during pruning, this mixture
   //     never went through swap below, which is the routine
   //     which adjusts the components.
   if (dense1DPMF->length() != numComponents) {
-    error("ERROR: Gaussian mixture '%s' with '%d' components is trying to start an EM iteration with a dense PMF '%s' of length '%d'\n",
+    error("ERROR: mixture '%s' with '%d' components is trying to start an EM iteration with a dense PMF '%s' of length '%d'\n",
 	  name().c_str(),numComponents,dense1DPMF->name().c_str(),
 	  dense1DPMF->length());
   }
@@ -381,7 +384,7 @@ MixGaussians::emStartIteration()
  *-----------------------------------------------------------------------
  */
 void
-MixGaussians::emIncrement(logpr prob,
+Mixture::emIncrement(logpr prob,
 			  const unsigned frameIndex, 
 			  const unsigned firstFeatureElement)
 {
@@ -402,14 +405,14 @@ MixGaussians::emIncrement(logpr prob,
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride = globalObservationMatrix.stride();
 
-  if (cacheGaussiansInEmTraining) {
+  if (cacheComponentsInEmTraining) {
     logpr tmp = prob/componentCache[frameIndex].prob;
     for (unsigned i=0;i<numComponents;i++) {
       weightedPostDistribution[i] =
 	componentCache[frameIndex].cmpProbArray[i].prob*tmp;
     }
   } else { // no caching
-    // first compute the local Gaussian mixture posterior distribution.
+    // first compute the local mixture posterior distribution.
     logpr sum;
     sum.set_to_zero();
     for (unsigned i=0;i<numComponents;i++) {
@@ -438,7 +441,7 @@ MixGaussians::emIncrement(logpr prob,
 /*-
  *-----------------------------------------------------------------------
  * emEndIteration
- *      end the current iteration of the gaussian mixtures.
+ *      end the current iteration of the mixture.
  *      First this will end the component mixture.
  *      Next, we compute the mixture specific ratios.
  *      If we find any components that satisfy the tresholds,
@@ -460,7 +463,7 @@ MixGaussians::emIncrement(logpr prob,
  *-----------------------------------------------------------------------
  */
 void
-MixGaussians::emEndIteration()
+Mixture::emEndIteration()
 {
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
@@ -473,7 +476,7 @@ MixGaussians::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability.zero()) {
-    warning("WARNING: Gaussian mixture named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+    warning("WARNING: mixture named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
   dense1DPMF->emEndIteration();
@@ -510,10 +513,10 @@ MixGaussians::emEndIteration()
 	  dense1DPMF->np(i) < mixCoeffVanishThreshold) {
 	// make sure not to vanish everyone.
 	numVanishedSoFar++;
-	MixGaussiansCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
+	MixtureCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
       } else if (dense1DPMF->np(i) >= mixCoeffSplitThreshold) {
 	numSplitSoFar++;
-	MixGaussiansCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
+	MixtureCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
       }
     }
 
@@ -570,11 +573,11 @@ MixGaussians::emEndIteration()
 	       (numVanishedSoFar < (numComponents-1))
 	       ;i++) {
 	  const bool alreadyVanished =
-	    (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
-	     != MixGaussiansCommon::vanishingComponentSet.end());
+	    (MixtureCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
+	     != MixtureCommon::vanishingComponentSet.end());
 	  const bool alreadySplit =
-	    (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
-	     != MixGaussiansCommon::splittingComponentSet.end());
+	    (MixtureCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
+	     != MixtureCommon::splittingComponentSet.end());
 
 	  //////////////////////////////////////////////////////////
 	  // Make sure not to vanish if already requested to split
@@ -582,7 +585,7 @@ MixGaussians::emEndIteration()
 	  if (!alreadyVanished && !alreadySplit) {
 
 	    numVanishedSoFar++;
-	    MixGaussiansCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second));
+	    MixtureCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second));
 	  }
 	}
       }
@@ -593,18 +596,18 @@ MixGaussians::emEndIteration()
 	     j<localNumTopToForceSplit;
 	     j++,i--) {
 	  const bool alreadyVanished =
-	    (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
-	     != MixGaussiansCommon::vanishingComponentSet.end());
+	    (MixtureCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
+	     != MixtureCommon::vanishingComponentSet.end());
 	  const bool alreadySplit =
-	    (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
-	     != MixGaussiansCommon::splittingComponentSet.end());
+	    (MixtureCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
+	     != MixtureCommon::splittingComponentSet.end());
 
 	  //////////////////////////////////////////////////////////
 	  // Make sure not to split if already requested to split
 	  // and don't bother vanishing again if vanishing again.
 	  if (!alreadyVanished && !alreadySplit) {
 	    numSplitSoFar++;
-	    MixGaussiansCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second));
+	    MixtureCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second));
 	  }
 	}
       }
@@ -639,7 +642,7 @@ MixGaussians::emEndIteration()
  *      split or removed.
  *
  * Side Effects:
- *      Might drop the link to a Gaussian component
+ *      Might drop the link to a component
  *
  * Results:
  *      nil
@@ -647,7 +650,7 @@ MixGaussians::emEndIteration()
  *-----------------------------------------------------------------------
  */
 void
-MixGaussians::emSwapCurAndNew()
+Mixture::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
@@ -659,14 +662,14 @@ MixGaussians::emSwapCurAndNew()
   dense1DPMF->emSwapCurAndNew();
 
   const unsigned newNumComponents = dense1DPMF->length();
-  vector < GaussianComponent* > newComponents;
+  vector < Component* > newComponents;
   newComponents.resize(newNumComponents);
 
   unsigned newIndex = 0;  
   for (unsigned i=0;i<numComponents;i++) {
-    if (MixGaussiansCommon::vanishingComponentSet.
+    if (MixtureCommon::vanishingComponentSet.
 	find(pair<Dense1DPMF*,unsigned>(dense1DPMF,i))
-	!= MixGaussiansCommon::vanishingComponentSet.end()) {
+	!= MixtureCommon::vanishingComponentSet.end()) {
       // Do we swap in new values?? No, we keep
       // old values. If someone else needs them, however,
       // the new ones will get swapped in by whoever
@@ -674,9 +677,9 @@ MixGaussians::emSwapCurAndNew()
       // components[i]->emSwapCurAndNew();
       // Next, do nothing, i.e., don't copy it over to new components.
       ;
-    } else if (MixGaussiansCommon::splittingComponentSet.
+    } else if (MixtureCommon::splittingComponentSet.
 	       find(pair<Dense1DPMF*,unsigned>(dense1DPMF,i))
-	       != MixGaussiansCommon::splittingComponentSet.end()) {
+	       != MixtureCommon::splittingComponentSet.end()) {
       // first swap in new values
       components[i]->emSwapCurAndNew();
       // next copy it over,
@@ -712,7 +715,7 @@ MixGaussians::emSwapCurAndNew()
 
 
 
-void MixGaussians::sampleGenerate(float *const sample,
+void Mixture::sampleGenerate(float *const sample,
 				  const Data32* const base,
 				  const int stride)
 {

@@ -34,7 +34,7 @@
 #include "GMTK_Dlinks.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_GaussianComponent.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 
@@ -298,8 +298,8 @@ DlinkMatrix::noisyClone()
   DlinkMatrix* clone;
 
   map<DlinkMatrix*,DlinkMatrix*>::iterator it = 
-    MixGaussiansCommon::dLinkMatCloneMap.find(this);
-  if (it == MixGaussiansCommon::dLinkMatCloneMap.end()) {
+    MixtureCommon::dLinkMatCloneMap.find(this);
+  if (it == MixtureCommon::dLinkMatCloneMap.end()) {
     clone = new DlinkMatrix();
     // make sure we get a unique name
     unsigned cloneNo=0; do {
@@ -319,7 +319,7 @@ DlinkMatrix::noisyClone()
     }
 
     clone->setBasicAllocatedBit();
-    MixGaussiansCommon::dLinkMatCloneMap[this] = clone;
+    MixtureCommon::dLinkMatCloneMap[this] = clone;
 
     // also add self to GMParms object.
     GM_Parms.add(clone);

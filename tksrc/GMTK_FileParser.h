@@ -32,7 +32,7 @@
 #include "GMTK_GM.h" 
 #include "GMTK_CPT.h"
 // #include "GMTK_GMTemplate.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
 
@@ -131,10 +131,10 @@ public:
     KW_MDCPT=14,
     KW_MSCPT=15,
     KW_MTCPT=16,
-    KW_MixGaussian=17,
-    KW_GausSwitchMixGaussian=18,
-    KW_LogitSwitchMixGaussian=19,
-    KW_MlpSwitchMixGaussin=20,
+    KW_Mixture=17,
+    KW_GausSwitchMixture=18,
+    KW_LogitSwitchMixture=19,
+    KW_MlpSwitchMixture=20,
     KW_Chunk=21,
     KW_GRAPHICAL_MODEL=22,
     KW_Value=23,
@@ -289,6 +289,8 @@ public:
   ~FileParser();
   void parseGraphicalModel();
   void createRandomVariableGraph();
+  // ensure no loops in graph for all possible unrollings.
+  void ensureValidTemplate();
 
   enum MdcptAllocStatus { noAllocate, allocateRandom, allocateUniform };
   void associateWithDataParams(MdcptAllocStatus allocate = noAllocate);

@@ -40,7 +40,7 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
-#include "GMTK_MixGaussians.h"
+#include "GMTK_Mixture.h"
 #include "GMTK_ObservationMatrix.h"
 
 VCID("$Header$");

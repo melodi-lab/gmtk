@@ -33,7 +33,7 @@
 #include "GMTK_MeanVector.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_GaussianComponent.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
 
@@ -181,8 +181,8 @@ MeanVector::noisyClone()
   // first check if self is already cloned, and if so, return that.
   MeanVector* clone;
 
-  map<MeanVector*,MeanVector*>::iterator it = MixGaussiansCommon::meanCloneMap.find(this);
-  if (it == MixGaussiansCommon::meanCloneMap.end()) {
+  map<MeanVector*,MeanVector*>::iterator it = MixtureCommon::meanCloneMap.find(this);
+  if (it == MixtureCommon::meanCloneMap.end()) {
     clone = new MeanVector();
     // make sure we get a unique name
     unsigned cloneNo=0; do {
@@ -199,7 +199,7 @@ MeanVector::noisyClone()
 	cloneSTDfrac*means[i]*rnd.normal();
     }
     clone->setBasicAllocatedBit();
-    MixGaussiansCommon::meanCloneMap[this] = clone;
+    MixtureCommon::meanCloneMap[this] = clone;
 
     // also add self to GMParms object.
     GM_Parms.add(clone);

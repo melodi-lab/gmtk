@@ -30,8 +30,8 @@
 
 #include "GMTK_NameCollection.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_MixGaussiansCommon.h"
-#include "GMTK_MixGaussians.h"
+#include "GMTK_MixtureCommon.h"
+#include "GMTK_Mixture.h"
 
 
 VCID("$Header$");
@@ -128,12 +128,12 @@ NameCollection::write(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * NameCollection::fillMgTable
+ * NameCollection::fillMxTable
  *      fill the spmf table with entries from GM_Params
  *      This routine must be called to fill the table
  *      that allow a RV to go from an integer index value
  *      to a pointer to the appropriate object.
- *      Note that if mgTable is already filled (size greater 
+ *      Note that if mxTable is already filled (size greater 
  *      or equal to table), then nothing happens.
  *
  * 
@@ -141,24 +141,24 @@ NameCollection::write(oDataStreamFile& os)
  *      No results.
  *
  * Side Effects:
- *      fills the mgTable entry.
+ *      fills the mxTable entry.
  *
  *-----------------------------------------------------------------------
  */
 void
-NameCollection::fillMgTable()
+NameCollection::fillMxTable()
 {
-  if (mgTable.size() >= table.size())
+  if (mxTable.size() >= table.size())
     return;
 
-  mgTable.resize(table.size());
+  mxTable.resize(table.size());
   for (unsigned i=0;i<table.size();i++ ) {
     GMParms::ObjectMapType::iterator it;
-    if ((it = GM_Parms.mixGaussiansMap.find(table[i])) == GM_Parms.mixGaussiansMap.end())
-      error("Error: collection '%s' has named a Gaussian mixture '%s' (at table entry %d) that doesn't exist.",
+    if ((it = GM_Parms.mixturesMap.find(table[i])) == GM_Parms.mixturesMap.end())
+      error("Error: collection '%s' has named a mixture '%s' (at table entry %d) that doesn't exist.",
 	    name().c_str(),table[i].c_str(),i);
     unsigned indx = (*it).second;
-    mgTable[i] = GM_Parms.mixGaussians[indx];
+    mxTable[i] = GM_Parms.mixtures[indx];
   }
 }
 
@@ -167,18 +167,18 @@ NameCollection::fillMgTable()
 /*-
  *-----------------------------------------------------------------------
  * NameCollection::fillspmfTable
- *      fill the mg table with entries from GM_Params.
+ *      fill the mx table with entries from GM_Params.
  *      This routine must be called to fill the table
  *      that allow a RV to go from an integer index value
  *      to a pointer to the appropriate object.
- *      Note that if mgTable is already filled (size greater 
+ *      Note that if mxTable is already filled (size greater 
  *      or equal to table), then nothing happens.
  * 
  * Results:
  *      No results.
  *
  * Side Effects:
- *      fills the mgTable entry.
+ *      fills the mxTable entry.
  *
  *-----------------------------------------------------------------------
  */

@@ -102,15 +102,15 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixGaussiansCommon.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_GM.o  GMTK_CliqueChain.o GMTK_Clique.o GMTK_MixGaussians.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_EMable.o GMTK_LinMeanCondDiagGaussian.o GMTK_Hash.o GMTK_RngDecisionTree.o GMTK_NameCollection.o  GMTK_GMTemplate.o GMTK_GraphicalModel.o GMTK_MaxClique.o GMTK_BoundaryTriangulate.o GMTK_Timer.o GMTK_Signals.o
+objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixtureCommon.o GMTK_Component.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_GM.o  GMTK_CliqueChain.o GMTK_Clique.o GMTK_Mixture.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_EMable.o GMTK_LinMeanCondDiagGaussian.o GMTK_Hash.o GMTK_RngDecisionTree.o GMTK_NameCollection.o  GMTK_GMTemplate.o GMTK_GraphicalModel.o GMTK_MaxClique.o GMTK_BoundaryTriangulate.o GMTK_Timer.o GMTK_Signals.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
 
-all_srcs = gmtkScore.cc BN1.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixGaussiansCommon.cc GMTK_GaussianComponent.cc GMTK_MixGaussians.cc gmtkEMtrain.cc GMTK_EMable.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_Hash.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc gmtkTriangulate.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc
+all_srcs = gmtkScore.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixtureCommon.cc GMTK_Component.cc GMTK_GaussianComponent.cc GMTK_Mixture.cc gmtkEMtrain.cc GMTK_EMable.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_Hash.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc gmtkTriangulate.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc
 
-all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixGaussiansCommon.h GMTK_GaussianComponent.h GMTK_MixGaussians.h GMTK_LinMeanCondDiagGaussian.h GMTK_Hash.h GMTK_ProgramDefaultParms.h  GMTK_NameCollection.h GMTK_GMTemplate.h GMTK_GraphicalModel.h GMTK_ZeroScoreMixGaussian.h GMTK_UnityScoreMixGaussian.h GMTK_USCPT.h GMTK_RVInfo.h GMTK_BoundaryTriangulate.h GMTK_MaxClique.h GMTK_Timer.h GMTK_Signals.h
+all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixtureCommon.h GMTK_Component.h GMTK_GaussianComponent.h GMTK_Mixture.h GMTK_LinMeanCondDiagGaussian.h GMTK_Hash.h GMTK_ProgramDefaultParms.h  GMTK_NameCollection.h GMTK_GMTemplate.h GMTK_GraphicalModel.h GMTK_ZeroScoreMixture.h GMTK_UnityScoreMixture.h GMTK_USCPT.h GMTK_RVInfo.h GMTK_BoundaryTriangulate.h GMTK_MaxClique.h GMTK_Timer.h GMTK_Signals.h version.h
 
 all_objs = $(objs)
 
@@ -173,26 +173,6 @@ testGMParms: GMTK_GMParms.cc GMTK_GMParms.h $(objs)
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_GMParms.cc `sed s,GMTK_GMParms.o,, < /tmp/gmparms_depts` $(LIBS)
 
 
-testBN1: testBN1.o $(objs)
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ testBN1.o $(objs) $(LIBS)
-
-BN1: BN1.o $(objs)
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BN1.o $(objs) $(LIBS)
-
-BNU: BNU.o $(objs)
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BNU.o $(objs) $(LIBS)
-
-testBN2: testBN2.o $(objs)
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ testBN2.o $(objs) $(LIBS)
-
-BN2: BN2.cc BN2.o GMTK_GM.cc GMTK_GM.o GMTK_Clique.cc GMTK_Clique.o \
-GMTK_CliqueChain.cc GMTK_CliqueChain.o GMTK_RandomVariable.cc \
-GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.cc \
-GMTK_DiscreteRandomVariable.o $(objs)
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BN2.cc GMTK_GM.cc \
-GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc \
-GMTK_DiscreteRandomVariable.cc $(objs) $(LIBS)
-
 lex.yy: lex.yy.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ lex.yy.cc -lfl
 
@@ -237,7 +217,7 @@ uninstall:
 #config_files = $(srcdir)/configure.in $(srcdir)/aclocal.m4 \
 #		$(srcdir)/Makefile.in
 # Include this for now until we get configure running.
-config_files = Makefile TODO README data_items_needed
+config_files = Makefile TODO README notes
 #
 #----------------------------------------------------------------------------
 # TODO: Documentation.
@@ -326,7 +306,7 @@ maintainer-clean: distclean
 	@echo "it deletes files that may require special tools to rebuild."
 	rm -rf $(maintainer_junk)
 
-depend:
+depend: 
 	${CXX} ${INCLUDES} -MM ${CXXFLAGS} ${all_srcs} > depends.make
 
 depends: depend

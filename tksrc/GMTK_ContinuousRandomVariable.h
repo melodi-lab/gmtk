@@ -25,7 +25,7 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
 #include "GMTK_FileParser.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_NameCollection.h"
 
@@ -38,33 +38,34 @@ private:
 
   /////////////////////////////////////////////
   // A MappingOrDirect object is used to store either
-  // a direct pointer to a Gaussian Mixture object
+  // a direct pointer to a  Mixture object
   // (which occurrs when there are no ('nil') conditional parents)
   // or a pointer to a decision tree which is used to map from
   // the current set of conditional parent values an integer
-  // which then indexes into the GM_Parms Gaussian Mixture array
-  // to locate a particular gaussian.
+  // which then indexes into the GM_Parms Mixture array
+  // to locate a particular mixture.
+  struct MappingStruct {
+    // DT to map from parent values to an integer
+    RngDecisionTree* dtMapper;
+    // the resulting integer is an ofset in this table
+    // which points directly to one of the Mixture objects.
+    NameCollection* collection;
+  };
   class MappingOrDirect {
   public:
     // include an enum with the crv type.
     MappingOrDirect() {
       direct = false;
-      gaussian = NULL;
+      mixture = NULL;
       mapping.dtMapper = NULL;
       mapping.collection = NULL;
     };
     bool direct;
     union { 
-      // if direct, a direct pointer to a mixture Gaussian
-      MixGaussiansCommon* gaussian;
+      // if direct, a direct pointer to a mixture
+      MixtureCommon* mixture;
       // if not direct, a DT and a MG collection object.
-      struct MappingStruct {
-	// DT to map from parent values to an integer
-	RngDecisionTree* dtMapper;
-	// the resulting integer is an ofset in this table
-	// which points directly to one of the GaussianMixture objects.
-	NameCollection* collection;
-      } mapping;
+      struct MappingStruct mapping;
     };
   };
 
@@ -74,11 +75,11 @@ private:
   // possible conditional parents), and that equivalent to 
   // the number of regions carved out in the state space
   // of the switching parents.
-  vector <MappingOrDirect> conditionalGaussians;
+  vector <MappingOrDirect> conditionalMixtures;
 
 
   ////////////////////////////////////////////////////////////////////
-  // the current Gaussian after findConditionalParents() is called.
+  // the current mixture after findConditionalParents() is called.
   // It is "current" in the sence that it valid for the set
   // of parent values that are clamped. If the parent values
   // change, this CPT will no longer be valid until another

@@ -30,6 +30,7 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "spi.h"
+#include "version.h"
 
 VCID("$Header$");
 
@@ -40,7 +41,7 @@ VCID("$Header$");
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
@@ -221,7 +222,7 @@ main(int argc,char*argv[])
   (void) IM::setGlbMsgLevel(verbosity);
 
 
-  MixGaussiansCommon::checkForValidRatioValues();
+  MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
@@ -262,18 +263,8 @@ main(int argc,char*argv[])
   fp.parseGraphicalModel();
   // create the rv variable objects
   fp.createRandomVariableGraph();
-
   // Make sure that there are no directed loops in the graph.
-  {
-    vector <RandomVariable*> vars;
-    vector <RandomVariable*> vars2;
-    // just unroll it one time to make sure it is valid, and
-    // then make sure graph has no loops.
-    fp.unroll(1,vars);
-    if (!GraphicalModel::topologicalSort(vars,vars2))
-      // TODO: fix this error message, and give indication as to where loop is.
-      error("ERROR. Graph is not directed, contains a directed loop.\n");
-  }
+  fp.ensureValidTemplate();
 
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.

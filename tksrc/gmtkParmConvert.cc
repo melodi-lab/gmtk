@@ -57,7 +57,7 @@ VCID("$Header$");
 #include "GMTK_GM.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
@@ -144,7 +144,7 @@ main(int argc,char*argv[])
     printf("%s\n",gmtk_version_id);
 
 
-  MixGaussiansCommon::checkForValidRatioValues();
+  MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
