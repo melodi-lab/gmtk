@@ -251,8 +251,10 @@ public:
   //////////////////////////////////////////////////////////////////
 
   vector< RngDecisionTree<unsigned>* > dts;
+  vector< RngDecisionTree<unsigned>* > clampableDts;
   typedef map< string,  unsigned > DtsMapType;
   DtsMapType dtsMap;
+  
 
   //////////////////////////////////////////////////////////////////
   // Next, the structure between observations as a collection of
@@ -343,6 +345,11 @@ public:
   void write(oDataStreamFile& os);
 
   ////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////
+  // read in the next DTs from those DTs that get their
+  // definition from a file.
+  void clampNextDTs();
 
   ///////////////////////////////////////////////////////////    
   // Return the total number of parameters used by this
