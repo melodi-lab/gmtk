@@ -58,6 +58,306 @@ VCID("$Header$");
 ////////////////////////////////////////////////////////////////////
 
 
+struct binAssignment {
+
+  //////////////////////////
+  // input variables.
+  //////////////////////////
+
+  // the location in the original array
+  unsigned loc;
+  // number of bits in this entry (i.e., the int requires val=ceil(log2(card)) bits)
+  unsigned val;
+
+
+  //////////////////////////
+  // output variables.
+  //////////////////////////
+
+  // the bin number where this entry is assigned.
+  unsigned bin;
+  // if this is being split across bins 'bin' and 'bin+1' or not
+  bool split;
+
+  binAssignment() { split = false ; }
+  bool operator<(const binAssignment& other) const { return val < other.val; } 
+
+  struct descendByVal {
+    bool operator()(const binAssignment& x, const binAssignment& y) { return (x.val) > (y.val); }
+  };
+
+  struct ascendByBin {
+    bool operator()(const binAssignment& x, const binAssignment& y) {
+       if (x.bin < y.bin) {
+	 return true;
+       } else if (x.bin == y.bin) {
+	 if (  x.split == true  && x.split == y.split && x.loc != y.loc ) {
+	   error("ERROR: bin packing: x.bin==y.bin = %d and both splits are true\n",x.bin);
+	 }
+	 // if y is split, then it goes at the end of the bin, it is considered greater.
+	 return ( y.split ); 
+       } else
+	 return false;
+    }
+  };
+};
+
+
+void
+printBinAssignmentArray(vector <binAssignment>& ba) 
+{
+  for (unsigned i=0;i<ba.size();i++) {
+    printf("b=%d,s=%d,l=%d,v=%d, ",ba[i].bin,ba[i].split,ba[i].loc,ba[i].val);
+  }
+  printf("\n");
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * findNaive()
+ *   find an assignmnet of clique values storage locations (enough bits) to 
+ *   packed array locations. This uses a naive algorithm that is
+ *   always guaranteed to succeed.
+ *
+ * Preconditions:
+ *   bins must be of length so that all clique values can fit in packed
+ *   array of this length, and ints must be initialized with the number
+ *   of bits needed for each RV val, and the original array pointer.
+ * 
+ * Postconditions:
+ *   the remaining members of elemnets of ints are filled in giving
+ *   the locations of where packing should occur.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   number of splits (fewer is better)
+ *
+ *-----------------------------------------------------------------------
+ */
+unsigned
+findNaive(vector<unsigned> bins,
+	  vector<binAssignment>& ints)
+{
+  unsigned res = 0;
+  for (unsigned i=0;i<ints.size();i++) {
+    // find first non-empty bin.
+    unsigned j =0;
+    for (;j<bins.size();j++)
+      if (bins[j] > 0)
+	break;
+    assert (j < bins.size());
+    if (bins[j] >= ints[i].val) {
+      bins[j] -= ints[i].val;
+      ints[i].bin = j;
+      ints[i].split = false;
+    } else {
+      // use up all of first slot.
+      unsigned remainder = bins[j];
+      bins[j] = 0;
+      bins[j+1] -= (ints[i].val-remainder);
+      // where does it go
+      ints[i].bin = j;
+      ints[i].split = true;
+
+      res++;
+    }
+  }
+  return res;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * findApproximateBestRetry()
+ *   find an assignmnet of clique values storage locations (enough
+ *   bits) to packed array locations. This uses a smart algorithm that
+ *   first sorts descending by bits and then finds the first entry
+ *   where it fits.  This routine is not guaranteed to succeed (and
+ *   retries with a permutation of the vals if it doesn't at
+ *   first). If it fails, it returns ~0x0u.
+ *
+ * Preconditions:
+ *   bins must be of length so that all clique values can fit in packed
+ *   array of this length, and ints must be initialized with the number
+ *   of bits needed for each RV val, and the original array pointer.
+ * 
+ * Postconditions:
+ *   the remaining members of elemnets of ints are filled in giving
+ *   the locations of where packing should occur.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   number of splits (fewer is better)
+ *
+ *-----------------------------------------------------------------------
+ */
+unsigned
+findApproximateBestRetry(vector<unsigned> bins,
+		    vector<binAssignment>& ints)
+{
+  sort(ints.begin(),ints.end(),binAssignment::descendByVal());
+
+  unsigned secondTry = 0;
+ top:
+
+  unsigned res = 0;
+  for (unsigned i=0;i<ints.size();i++) {
+    // printf("ints[%d] = %d\n",i,ints[i].val);
+    // first try to find a bin where it fits.
+    bool found = false;
+    for (unsigned j=0;j<bins.size();j++) {
+      if (bins[j] >= ints[i].val) {
+	bins[j] -= ints[i].val;
+
+	ints[i].bin = j;
+	ints[i].split = false;
+
+	found = true;
+	break;
+      }
+    }
+    if (!found) {
+      // need to do a split.
+      for (unsigned j=0;(j+1)<bins.size();j++) {
+	if (bins[j]+bins[j+1] >= ints[i].val) {
+	  // use up all of first slot.
+	  unsigned remainder = bins[j];
+	  bins[j] = 0;
+	  bins[j+1] -= (ints[i].val-remainder);
+
+	  ints[i].bin = j;
+	  ints[i].split = true;
+
+	  found = true;
+	  res++;
+	  break;
+	}
+      }
+    }
+    if (!found) {
+      if (secondTry == 10000)
+	return ~0x0u;
+      secondTry++;
+      for (unsigned k=0;k<bins.size();k++)
+	bins[k] = 8*sizeof(unsigned);
+      random_shuffle(ints.begin(),ints.end());
+      goto top;
+    }
+
+  }
+  return res;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * findApproximateBest2Retry()
+ *   find an assignmnet of clique values storage locations (enough
+ *   bits) to packed array locations. This uses a smart algorithm that
+ *   first sorts descending by bits and then finds the best entry
+ *   where it fits.  This routine is not guaranteed to succeed (and
+ *   retries with a permutation of the vals if it doesn't at
+ *   first).. If it fails, it returns ~0x0u.
+ *
+ * Preconditions:
+ *   bins must be of length so that all clique values can fit in packed
+ *   array of this length, and ints must be initialized with the number
+ *   of bits needed for each RV val, and the original array pointer.
+ * 
+ * Postconditions:
+ *   the remaining members of elemnets of ints are filled in giving
+ *   the locations of where packing should occur.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   number of splits (fewer is better)
+ *
+ *-----------------------------------------------------------------------
+ */
+unsigned
+findApproximateBest2Retry(vector<unsigned> bins,
+		    vector<binAssignment>& ints)
+
+{
+
+  sort(ints.begin(),ints.end(),binAssignment::descendByVal());
+
+  unsigned secondTry = 0;
+
+ top:
+
+  unsigned res = 0;
+  for (unsigned i=0;i<ints.size();i++) {
+    // printf("ints[%d] = %d\n",i,ints[i].val);
+    // first try to find a bin where it best fits.
+    unsigned bestIndex = bins.size();
+    unsigned leastDiff = sizeof(unsigned)*8;
+    bool found = false;
+    for (unsigned j=0;j<bins.size();j++) {
+      if (bins[j] >= ints[i].val) {
+	unsigned diff = (bins[j] - ints[i].val);
+	if (diff < leastDiff) {
+	  leastDiff = diff;
+	  bestIndex = j;
+	}
+      }
+    }
+    if (bestIndex < bins.size()) {
+      // then found a place
+      bins[bestIndex] -= ints[i].val;
+
+      ints[i].bin = bestIndex;
+      ints[i].split = false;
+
+      found = true;
+    } else {
+      // need to do a split. Find a location
+      // where it best fits in a split.
+      leastDiff = 2*sizeof(unsigned)*8;
+      for (unsigned j=0;(j+1)<bins.size();j++) {
+	if (bins[j]+bins[j+1] >= ints[i].val) {
+	  unsigned diff = (bins[j] + bins[j+1] - ints[i].val);
+	  if (diff < leastDiff) {
+	    leastDiff = diff;
+	    bestIndex = j;
+	  }
+	}
+      }
+      if (bestIndex < bins.size()) {
+	// then found a place
+	unsigned remainder = bins[bestIndex];
+	bins[bestIndex] = 0;
+	bins[bestIndex+1] -= (ints[i].val-remainder);
+
+	ints[i].bin = bestIndex;
+	ints[i].split = true;
+
+	found = true;
+	res++;
+      }
+    }
+    if (!found) {
+      if (secondTry == 10000)
+	return ~0x0u;
+      secondTry++;
+      for (unsigned k=0;k<bins.size();k++)
+	bins[k] = 8*sizeof(unsigned);
+      random_shuffle(ints.begin(),ints.end());
+      goto top;
+    }
+
+  }
+  return res;
+}
+
 /*-
  *-----------------------------------------------------------------------
  * PackCliqueValue::init()
@@ -81,7 +381,7 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 void
-PackCliqueValue::init(const unsigned *const cards)
+PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
 {
   // for easy access
   unsigned len = unpackedVectorLength;
@@ -89,29 +389,102 @@ PackCliqueValue::init(const unsigned *const cards)
   const unsigned numBitsPerUnsigned = sizeof(unsigned)*8;
 
   totalNumBits = 0;
+  vector<binAssignment> ints(len);
+
   for (unsigned i = 0; i< len; i++) {
-    totalNumBits += bitsRequiredUptoNotIncluding(cards[i]);
+    unsigned bits = bitsRequiredUptoNotIncluding(cards[i]);
+    totalNumBits += bits;
+    ints[i].loc = i;
+    ints[i].val = bits;
   }
 
   numUnsignedInPackedVector = 
     (totalNumBits+numBitsPerUnsigned-1)/numBitsPerUnsigned;
 
-  valLocators.resize(len);
-  iterations.resize(len);
+  vector<unsigned> bins(numUnsignedInPackedVector);
 
-  unsigned curUnsignedLocation = 0;
+  for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
+    bins[i] = sizeof(unsigned)*8;
+  }
+  unsigned splits;
+  
+  if (useNaive || numUnsignedInPackedVector == 1) {
+    splits = findNaive(bins,ints);
+  } else {
+    vector<binAssignment> ints1 = ints;
+    for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
+      bins[i] = sizeof(unsigned)*8;
+    }
+    unsigned tr1 = findApproximateBestRetry(bins,ints1);
+    if (tr1 == 0) {
+      ints = ints1;
+      splits = tr1;
+    } else {
+      vector<binAssignment> ints2 = ints;
+      for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
+	bins[i] = sizeof(unsigned)*8;
+      }
+      unsigned tr2 = findApproximateBestRetry(bins,ints2);
+      if (tr2 == 0) {
+	ints = ints2;
+	splits = tr2;
+      } else {
+	// try naive case as well.
+	vector<binAssignment> ints_n = ints;	
+	for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
+	  bins[i] = sizeof(unsigned)*8;
+	}
+	unsigned trn = findNaive(bins,ints_n);
+
+	// printf("tr1=%d,tr2=%d,trn=%d\n",tr1,tr2,trn);
+	
+	// use one that has minimum.
+	if (tr1 <= tr2) {
+	  if (trn <= tr1) {
+	    // use naive
+	    ints = ints_n;
+	    splits = trn;
+	  } else {
+	    ints = ints1;
+	    splits = tr1;
+	  }
+	} else { // tr2  < tr1
+	  if (trn <= tr2) {
+	    // use naive
+	    ints = ints_n;
+	    splits = trn;
+	  } else {
+	    ints = ints2;
+	    splits = tr2;
+	  }
+	}
+      }
+    }
+  }
+  // sort ascending by bin in order to:
+  //  1) have close to unit stride during pack
+  //  2) the below algorithm settingi shifts/masks will work.
+  sort(ints.begin(),ints.end(),binAssignment::ascendByBin());
+
+  // 
+  // printBinAssignmentArray(ints);
+  // printf("splits = %d\n",splits);
+
+  valLocators.resize(len);
+
   // number of unused bits in the current packed word
   unsigned curNumberUnusedBits = numBitsPerUnsigned;
 
   unsigned wordBoundaryNoOverlapLocation = 0;
   wordBoundaryOverlapLocation = len;
+
   for (unsigned i=0; i<len; i++) {
 
-    unsigned curNumberBits = 
-      bitsRequiredUptoNotIncluding(cards[i]);
+    const unsigned curNumberBits = ints[i].val;
+    const unsigned curUnsignedLocation = ints[i].bin;
 
-
-    if (curNumberBits <= curNumberUnusedBits) {
+    if (ints[i].split == false) {
+      assert (curNumberBits <= curNumberUnusedBits);
       // use bits only in current word
       valLocators[wordBoundaryNoOverlapLocation].start = curUnsignedLocation;
       valLocators[wordBoundaryNoOverlapLocation].startRightShift = 
@@ -120,16 +493,23 @@ PackCliqueValue::init(const unsigned *const cards)
 	((1 << curNumberBits)-1) << 
 	valLocators[wordBoundaryNoOverlapLocation].startRightShift;
 
-      iterations[wordBoundaryNoOverlapLocation] = i;
+      valLocators[wordBoundaryNoOverlapLocation].loc = ints[i].loc;
 
-      curNumberUnusedBits -= curNumberBits;
-
-      if (curNumberUnusedBits == 0) {
-	curUnsignedLocation ++;
+      if (i+1 < len && ints[i].bin != ints[i+1].bin) {
 	curNumberUnusedBits = numBitsPerUnsigned;
-      }
+      } else 
+	curNumberUnusedBits -= curNumberBits;
+
       wordBoundaryNoOverlapLocation++;
+
     } else {
+
+      //if (curNumberBits <= curNumberUnusedBits) {
+      // printf("i=%d, curNumberBits=%d,curNumberUnusedBits=%d\n",i,curNumberBits,curNumberUnusedBits);
+      // fflush(stdout);
+      // }
+
+      assert (curNumberBits > curNumberUnusedBits);
       // use up remaining bits in this word
 
       wordBoundaryOverlapLocation--;
@@ -149,15 +529,16 @@ PackCliqueValue::init(const unsigned *const cards)
       valLocators[wordBoundaryOverlapLocation].nextMask = 
 	((1 << numBitsRemaining)-1);
 
-      iterations[wordBoundaryOverlapLocation] = i;
+      valLocators[wordBoundaryOverlapLocation].loc = ints[i].loc;
 
       curNumberUnusedBits = numBitsPerUnsigned - numBitsRemaining;
-      curUnsignedLocation ++;
 
     }
 
   }
   assert( wordBoundaryNoOverlapLocation == wordBoundaryOverlapLocation);
+
+
 }
 
 
@@ -183,11 +564,12 @@ PackCliqueValue::init(const unsigned *const cards)
  *-----------------------------------------------------------------------
  */
 PackCliqueValue::PackCliqueValue(const unsigned len, 
-				 const unsigned *const cards)
+				 const unsigned *const cards,
+				 bool useNaive)
   : unpackedVectorLength(len)
 {
   assert (unpackedVectorLength > 0);
-  init(cards);
+  init(cards,useNaive);
 }
 
 
@@ -267,7 +649,8 @@ PackCliqueValue::PackCliqueValue(vector<RV*>& nodes)
 int main(int argc,char*argv[])
 {
 
-  RAND myrnd(false);
+  RAND myrnd(true);
+  printf("sizeof(PackCliqueValue::ValLocator) = %d\n",sizeof(PackCliqueValue::ValLocator));
 
   const unsigned numEpochs = 50;
   for (unsigned epoch=0;epoch<numEpochs;epoch++) {
@@ -275,10 +658,10 @@ int main(int argc,char*argv[])
     const unsigned len = myrnd.uniform(1,22);
     sArray<unsigned> cards(len);
     for (unsigned i=0;i<len;i++) {
-      cards[i] = myrnd.uniform(2,500000);
+      cards[i] = myrnd.uniform(2,50000);
     }
     PackCliqueValue pcl(len,cards.ptr);
-    const unsigned numExamples = 100000;
+    const unsigned numExamples = 1000000;
 
     printf("Epoch %d: Testing %d examples, len = %d, plen = %d, cards:",
 	   epoch,numExamples,len,pcl.packedLen());

@@ -43,7 +43,7 @@ INSTALL_EXE = $(INSTALL) -m 755
 # Program options.
 #
 # OPTFLAGS = -O2 -DNDEBUG
-OPTFLAGS=-O3 -Wno-deprecated -march=pentium3 -mfpmath=sse
+OPTFLAGS=-O3 -Wno-deprecated -march=pentium4 -mfpmath=sse
 # OPTFLAGS=
 
 # extra flags via command line (e.g., -pg).

@@ -2662,3 +2662,4 @@ Sun Jan 30 11:30:02 2005
   - viterbi output shoudl allow:
      1) ascii.
      2) separate files per segment.
+  - space before 'hidden' or 'observed' keyword in showvitvals.

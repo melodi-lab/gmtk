@@ -600,11 +600,11 @@ main(int argc,char*argv[])
     } else {
 
       // 
-      // Utilize both the partition information and elimination order
-      // information already computed and contained in the file. This
-      // enables the program to use external triangulation programs,
-      // where this program ensures that the result is triangulated
-      // and where it reports the quality of the triangulation.
+      // Utilize both the partition information and clique information
+      // already computed and contained in the file. This enables the
+      // program to use external triangulation programs, where this
+      // program ensures that the result is triangulated and where it
+      // reports the quality of the triangulation.
 
 
       iDataStreamFile is(input_tri_file.c_str(),false,false);

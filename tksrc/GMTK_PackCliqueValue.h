@@ -8,7 +8,9 @@
  *     boundary and the second portion for those that cross word
  *     boundaries.  This will obtain better branch prediction behavior
  *     (since otherwise, it'll be harder for the processor to
- *     accurately predict branch outcomes).
+ *     accurately predict branch outcomes). The algorithm tries to
+ *     find a good allocation of vals to minimize those that cross
+ *     word boundaries (since that involves more code per unit).
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -48,11 +50,13 @@ class PackCliqueValue {
 
   friend class MaxClique;
 
+#ifdef MAIN
+  friend int main(int,char**);
+#endif
+
   unsigned numUnsignedInPackedVector;
 
-  unsigned totalNumBits;
-
-  // @@@ should be const
+  // Ideally, should be const.
   // const unsigned unpackedVectorLength;
   unsigned unpackedVectorLength;
 
@@ -64,6 +68,9 @@ class PackCliqueValue {
     // the amount to right-shift the packed word
     // to get an unpacked word
     unsigned startRightShift;
+    // location in unpacked array
+    unsigned loc;
+
     // the mask in this first word
     unsigned startMask;
 
@@ -74,8 +81,10 @@ class PackCliqueValue {
     // the amount to left shift these masked bits to
     // form the high order bits of the unpacked word.
     unsigned nextLeftShift;
-  };
 
+    // bool operator<(const ValLocator&o) { return start < o.start; }
+    
+  };
 
   sArray< ValLocator> valLocators;
 
@@ -83,22 +92,26 @@ class PackCliqueValue {
   // which there is no word-boundary overlap and
   // upper locations hold indices for which there
   // are word-boundary overlaps.
-  sArray< unsigned> iterations;
+  // sArray< unsigned> iterations;
 
   // index in 'iterations' where word-boundary overlaps occur.
   unsigned wordBoundaryOverlapLocation;
 
+  // total number of bits in this packed clique.
+  unsigned totalNumBits;
+
+
   // initialize
-  void init(const unsigned *const cards);
+  void init(const unsigned *const cards,bool useNaive = false);
 
 public:
 
   PackCliqueValue(vector<RV*>& nodes);
 
-  PackCliqueValue(const unsigned len, const unsigned *const cards); 
+  PackCliqueValue(const unsigned len, const unsigned *const cards, bool useNaive = false); 
 
   // create an empty one for re-construction later
-  PackCliqueValue() : numUnsignedInPackedVector(0),totalNumBits(0),unpackedVectorLength(0) {}
+  PackCliqueValue() : numUnsignedInPackedVector(0),unpackedVectorLength(0),totalNumBits(0) {}
 
   ~PackCliqueValue() {}
 
@@ -120,11 +133,11 @@ public:
   //         unpackedVectorLength > 0 
   // and that
   //      packedVectorLength > 0.
-  void pack(const unsigned *const unpacked_vec,
-	    unsigned *const packed_vec) {
+  inline void pack(const unsigned *const unpacked_vec,
+		   unsigned *const packed_vec) {
     // zero out packed vector
-    unsigned *packed_vecp = packed_vec;
-    const unsigned *const packed_vec_endp = 
+    register unsigned *packed_vecp = packed_vec;
+    register const unsigned *const packed_vec_endp = 
       packed_vec + numUnsignedInPackedVector;
     do {
       *packed_vecp++ = 0;
@@ -132,39 +145,35 @@ public:
 
     // do the packing, first the ones that do not
     // span a word boundaries
-    const unsigned *it = iterations.ptr;
-    ValLocator* vl_p = valLocators.ptr;
+    register ValLocator* vl_p = valLocators.ptr;
     {
-      const unsigned *it_endp = iterations.ptr+wordBoundaryOverlapLocation;
+      register const ValLocator *vl_endp = valLocators.ptr+wordBoundaryOverlapLocation;
       // assume that at least one case did not span a word boundary
       do {
-	const unsigned val = unpacked_vec[*it];
+	const unsigned val = unpacked_vec[vl_p->loc];
 	packed_vec[vl_p->start] |= (val << vl_p->startRightShift);
-	vl_p++;
-      } while (++it != it_endp);
+      } while (++vl_p != vl_endp);
     }
     // next the ones that span word boundaries
     {
-      const unsigned *it_endp = iterations.ptr+unpackedVectorLength;
+      register const ValLocator *vl_endp = valLocators.ptr+unpackedVectorLength;
       // assume that at least one case did not span a word boundary
-      while (it != it_endp) {
-	const unsigned val = unpacked_vec[*it];
+      while (vl_p != vl_endp) {
+	const unsigned val = unpacked_vec[vl_p->loc];
 	packed_vec[vl_p->start] |= (val << vl_p->startRightShift);
 	packed_vec[vl_p->start+1] |= 
 	  ((val&(vl_p->nextMask<<vl_p->nextLeftShift)) >> vl_p->nextLeftShift);
 	vl_p++;
-	it++;
       }
     }
   }
 
-
   // same as above, but that packs from an array of pointers to ints
-  void pack(const unsigned *const *const unpacked_vec,
-	    unsigned *const packed_vec) {
+  inline void pack(const unsigned *const *const unpacked_vec,
+		   unsigned *const packed_vec) {
     // zero out packed vector
-    unsigned *packed_vecp = packed_vec;
-    const unsigned *const packed_vec_endp = 
+    register unsigned *packed_vecp = packed_vec;
+    register const unsigned *const packed_vec_endp = 
       packed_vec + numUnsignedInPackedVector;
     do {
       *packed_vecp++ = 0;
@@ -172,28 +181,25 @@ public:
 
     // do the packing, first the ones that do not
     // span a word boundaries
-    const unsigned *it = iterations.ptr;
-    ValLocator* vl_p = valLocators.ptr;
+    register ValLocator* vl_p = valLocators.ptr;
     {
-      const unsigned *it_endp = iterations.ptr+wordBoundaryOverlapLocation;
+      register const ValLocator *vl_endp = valLocators.ptr+wordBoundaryOverlapLocation;
       // assume that at least one case did not span a word boundary
       do {
-	const unsigned val = (*unpacked_vec[*it]);
+	const unsigned val = (*unpacked_vec[vl_p->loc]);
 	packed_vec[vl_p->start] |= (val << vl_p->startRightShift);
-	vl_p++;
-      } while (++it != it_endp);
+      } while (++vl_p != vl_endp);
     }
     // next the ones that span word boundaries
     {
-      const unsigned *it_endp = iterations.ptr+unpackedVectorLength;
+      register const ValLocator *vl_endp = valLocators.ptr+unpackedVectorLength;
       // assume that at least one case did not span a word boundary
-      while (it != it_endp) {
-	const unsigned val = (*unpacked_vec[*it]);
+      while (vl_p != vl_endp) {
+	const unsigned val = (*unpacked_vec[vl_p->loc]);
 	packed_vec[vl_p->start] |= (val << vl_p->startRightShift);
 	packed_vec[vl_p->start+1] |= 
 	  ((val&(vl_p->nextMask<<vl_p->nextLeftShift)) >> vl_p->nextLeftShift);
 	vl_p++;
-	it++;
       }
     }
   }
@@ -205,70 +211,64 @@ public:
   //	 (unsigned*const)packed_vec);
   // }
 
-  void unpack(const unsigned *const packed_vec,
-	      unsigned *const unpacked_vec) {
-    unsigned *it = iterations.ptr;
-    ValLocator* vl_p = valLocators.ptr;
+  inline void unpack(const unsigned *const packed_vec,
+		     unsigned *const unpacked_vec) {
+    register ValLocator* vl_p = valLocators.ptr;
     // do the unpacking, first the ones
     // that do not span a word boundary
     {
-      const unsigned *const it_endp = iterations.ptr+wordBoundaryOverlapLocation;
+      register const ValLocator *const vl_endp = valLocators.ptr+wordBoundaryOverlapLocation;
       do {
-	unpacked_vec[*it] = 
+	unpacked_vec[vl_p->loc] = 
 	  (packed_vec[vl_p->start] & vl_p->startMask)
 	    >> vl_p->startRightShift;
 	vl_p++;
-	it++;
-      } while (it != it_endp);
+      } while (vl_p != vl_endp);
     }
     // next the ones that do span a word boundary
     {
-      const unsigned *const it_endp = iterations.ptr+unpackedVectorLength;
-      while (it != it_endp) {
+      register const ValLocator *const vl_endp = valLocators.ptr+unpackedVectorLength;
+      while (vl_p != vl_endp) {
 	register unsigned res =
 	  (packed_vec[vl_p->start] & vl_p->startMask)
 	    >> vl_p->startRightShift;
 	res |=
 	  ((packed_vec[vl_p->start+1] & vl_p->nextMask) <<
 	   vl_p->nextLeftShift);
-	unpacked_vec[*it] = res;	
+	unpacked_vec[vl_p->loc] = res;	
 	vl_p++;
-	it++;
       }
     }
   }
 
   // same as above, but version that unpacks to array of pointers to
   // ints.
-  void unpack(const unsigned *const packed_vec,
-	      unsigned **const unpacked_vec) {
-    unsigned *it = iterations.ptr;
-    ValLocator* vl_p = valLocators.ptr;
+  inline void unpack(const unsigned *const packed_vec,
+		     unsigned **const unpacked_vec) {
+    register ValLocator* vl_p = valLocators.ptr;
     // do the unpacking, first the ones
     // that do not span a word boundary
     {
-      const unsigned *const it_endp = iterations.ptr+wordBoundaryOverlapLocation;
+      register const ValLocator *const vl_endp = valLocators.ptr+wordBoundaryOverlapLocation;
       do {
-	(*unpacked_vec[*it]) = 
+	(*unpacked_vec[vl_p->loc]) = 
 	  (packed_vec[vl_p->start] & vl_p->startMask)
 	    >> vl_p->startRightShift;
 	vl_p++;
-	it++;
-      } while (it != it_endp);
+      } while (vl_p != vl_endp);
     }
     // next the ones that do span a word boundary
     {
-      const unsigned *const it_endp = iterations.ptr+unpackedVectorLength;
-      while (it != it_endp) {
+      register const ValLocator *const vl_endp = valLocators.ptr+unpackedVectorLength;
+      while (vl_p != vl_endp) {
 	register unsigned res =
 	  (packed_vec[vl_p->start] & vl_p->startMask)
 	    >> vl_p->startRightShift;
 	res |=
 	  ((packed_vec[vl_p->start+1] & vl_p->nextMask) <<
 	   vl_p->nextLeftShift);
-	(*unpacked_vec[*it]) = res;	
+	(*unpacked_vec[vl_p->loc]) = res;	
 	vl_p++;
-	it++;
       }
     }
   }
