@@ -47,7 +47,7 @@ ioDataStreamFile::errorReturn(char *from,char *msg)
 
 
 iDataStreamFile::iDataStreamFile(char *_name, bool _Binary)
-  : ioDataStreamFile(_Binary)
+  : ioDataStreamFile(_name,_Binary)
 {
   if (_name == NULL)
     error("Error: Can't open null file for reading.");
@@ -240,7 +240,7 @@ iDataStreamFile::readDouble(double& d, char *msg)
 
 
 oDataStreamFile::oDataStreamFile(char *_name,bool _Binary)
-  : ioDataStreamFile(_Binary)
+  : ioDataStreamFile(_name,_Binary)
 {
   if (_name == NULL)
     error("Error: Can't open null file for reading.");

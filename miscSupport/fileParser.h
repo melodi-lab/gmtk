@@ -15,17 +15,24 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "general.h"
+
 class ioDataStreamFile {
 
  protected:
   FILE *fh;
   bool Binary;
   bool errorReturn(char *from,char *msg);
+  char *const _fileName;
 
  public:
 
   void rewind() { ::rewind(fh); }
-  ioDataStreamFile(bool _Binary = false) : Binary(_Binary) {}
+  ioDataStreamFile(char *name,bool _Binary = false) : 
+    Binary(_Binary), _fileName(copyToNewStr(name)) {}
+  ~ioDataStreamFile() { delete [] _fileName; }
+
+  char *const fileName() { return _fileName; }
 
 };
 
