@@ -57,7 +57,6 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 Sparse1DPMF::Sparse1DPMF() 
-  : _name(NULL)
 {
 
 }
@@ -87,7 +86,7 @@ void
 Sparse1DPMF::read(iDataStreamFile& is)
 {
   int len;
-  is.read(_name,"Sparse1DPMF::read, name");
+  NamedObject::read(is);
   is.read(_card,"Sparse1DPMF::read, card");
   if (_card <= 0)
     error("Sparse1DPMF: read length (%d) < 0 in input",_card);
@@ -141,7 +140,7 @@ Sparse1DPMF::read(iDataStreamFile& is)
 void
 Sparse1DPMF::write(oDataStreamFile& os)
 {
-  os.write(_name,"Sparse1DPMF::read, name");
+  NamedObject::write(os);
   os.write(_card,"Sparse1DPMF::write, card");
   os.write(pmf.len(),"Sparse1DPMF::write, len");
   for (int i=0;i<pmf.len();i++) {

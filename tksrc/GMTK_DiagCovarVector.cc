@@ -77,7 +77,7 @@ DiagCovarVector::DiagCovarVector()
 void 
 DiagCovarVector::read(iDataStreamFile& is)
 {
-  is.read(_name,"DiagCovarVector::read name");
+  NamedObject::read(is);
   covariances.read(is); 
   for (int i=0;i<covariances.len();i++) {
     if (covariances[i] < GaussianCommon::varianceFloor()) {

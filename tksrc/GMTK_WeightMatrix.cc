@@ -55,7 +55,6 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 WeightMatrix::WeightMatrix() 
-  : _name(NULL)
 {
 }
 
@@ -78,7 +77,7 @@ WeightMatrix::WeightMatrix()
 void
 WeightMatrix::read(iDataStreamFile& is)
 {
-  is.read(_name,"WeightMatrix::read, name");
+  NamedObject::read(is);
   is.read(_rows,"WeightMatrix::read, distribution rows");
   if (_rows <= 0)
     error("WeightMatrix: read rows (%d) < 0 in input",_rows);
@@ -116,7 +115,7 @@ WeightMatrix::read(iDataStreamFile& is)
 void
 WeightMatrix::write(oDataStreamFile& os)
 {
-  os.write(_name,"WeightMatrix::write, name");
+  NamedObject::write(os);
   os.write(_rows,"WeightMatrix::write, distribution rows");
   os.write(_cols,"WeightMatrix::write, distribution cols");
   for (int i=0;i<_rows*_cols;i++) {

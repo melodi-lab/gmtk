@@ -19,8 +19,8 @@
  */
 
 
-#ifndef GMTK_SPARSE1DPMF_H
-#define GMTK_SPARSE1DPMF_H
+#ifndef GMTK_NAMEDOBJECT_H
+#define GMTK_NAMEDOBJECT_H
 
 #include <string>
 

@@ -27,13 +27,10 @@
 
 #include "GMTK_EMable.h"
 #include "GMTK_RealArray.h"
+#include "GMTK_NamedObject.h"
 
-class DiagCovarVector : public EMable {
+class DiagCovarVector : public EMable, public NamedObject {
 
-
-  //////////////////////////////////////////////////////  
-  // the name
-  string _name;
 
   //////////////////////////////////
   // The actual covariance "matrix"
@@ -67,7 +64,7 @@ public:
   // read/write basic parameters
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os) { 
-    os.write(_name,"DiagCovarVector::write name");
+    NamedObject::write(os);
     covariances.write(os); 
   }
 

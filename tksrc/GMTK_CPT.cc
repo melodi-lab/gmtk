@@ -39,7 +39,7 @@ VCID("$Header$");
 ////////////////////////////////////////////////////////////////////
 
 
-int CPT::warningNumParents = 50;
+unsigned CPT::warningNumParents = 50;
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -65,7 +65,7 @@ int CPT::warningNumParents = 50;
  *
  *-----------------------------------------------------------------------
  */
-void CPT::setNumParents(const int _nParents)
+void CPT::setNumParents(const unsigned _nParents)
 {
 
   if (_nParents < 0) 
@@ -92,7 +92,7 @@ void CPT::setNumParents(const int _nParents)
  *
  *-----------------------------------------------------------------------
  */
-void CPT::setNumCardinality(const int var, const int card)
+void CPT::setNumCardinality(const unsigned var, const int card)
 {
 
   if (var < 0)
@@ -107,7 +107,7 @@ void CPT::setNumCardinality(const int var, const int card)
 
   // assertion should be satisifed by the way that cardinalities
   // is allocated allong with setting num parents.
-  assert ( var < cardinalities.len() );
+  assert ( var < cardinalities.size() );
 
   cardinalities[var] = card;
 
@@ -132,10 +132,10 @@ void CPT::setNumCardinality(const int var, const int card)
 bool 
 CPT::compareCardinalities(CPT& cpt)
 {
-  if (cardinalities.len() != cpt.cardinalities.len())
+  if (cardinalities.size() != cpt.cardinalities.size())
     return false;
 
-  for (int i=0;i<cardinalities.len();i++) {
+  for (unsigned int i=0;i<cardinalities.size();i++) {
     if (cardinalities[i] != cpt.cardinalities[i])
       return false;
   }

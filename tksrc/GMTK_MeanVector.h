@@ -27,12 +27,9 @@
 
 #include "GMTK_RealArray.h"
 #include "GMTK_EMable.h"
+#include "GMTK_NamedObject.h"
 
-class MeanVector : public EMable {
-
-  ///////////////////////////////////////////////////////////  
-  // the name
-  char *_name;
+class MeanVector : public EMable, public NamedObject {
 
 
   //////////////////////////////////
@@ -49,7 +46,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   MeanVector();
-  ~MeanVector() { delete [] _name; }
+  ~MeanVector() { } 
 
   //////////////////////////////////
   // set all current parameters to random values
@@ -58,11 +55,11 @@ public:
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is) { 
-    is.read(_name,"MeanVector::read name");
+    NamedObject::read(is);
     means.read(is); 
   }
   void write(oDataStreamFile& os) { 
-    os.write(_name,"MeanVector::write name");
+    NamedObject::write(os);
     means.write(os); 
   }
 

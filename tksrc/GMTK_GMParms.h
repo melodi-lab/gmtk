@@ -24,6 +24,10 @@
 #define GMTK_GMPARMS_H
 
 
+#include <map>
+#include <string>
+#include <vector>
+
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
@@ -71,39 +75,47 @@ public:
 
   /////////////////////////////  
   // Collection of dense prob. mass functions
-  sArray< Dense1DPMF* > dPmfs;
+  vector< Dense1DPMF* > dPmfs;
+  map< string, Dense1DPMF* > dPmfsMap;
 
   /////////////////////////////  
   // Collection of sparse prob. mass functions
-  sArray< Sparse1DPMF* > sPmfs;
+  vector< Sparse1DPMF* > sPmfs;
+  map< string, Sparse1DPMF* > sPmfsMap;
 
   /////////////////////////////
   // Collection of means
-  sArray< MeanVector* > means;
+  vector< MeanVector* > means;
+  map< string, MeanVector* > meansMap;
 
   ////////////////////////////////
   // Collection of diag. covariances
-  sArray< DiagCovarVector* > covars;
+  vector< DiagCovarVector* > covars;
+  map< string, DiagCovarVector* > covarsMap;
 
   ////////////////////////////////
   // Collection of objects
   // used for linear dependencies via
   // a dlink topology structure.
-  sArray< DlinkMatrix* > dLinkMats;
+  vector< DlinkMatrix* > dLinkMats;
+  map< string, DlinkMatrix* > dLinkMatsMap;
 
   ////////////////////////////////
   // Collection of 2D Dense matrices, used
   // for weight matrices of MLPs, or 
   // for logistic regression.
-  sArray< WeightMatrix* > weightMats;
+  vector< WeightMatrix* > weightMats;
+  map< string, WeightMatrix* > weightMatsMap;
 
   ////////////////////////////////
   // Collection of multi-dimensional dense CPTs
-  sArray< MDCPT* > mdCpts;
+  vector< MDCPT* > mdCpts;
+  map< string, MDCPT* > mdCptsMap;
 
   ///////////////////////////////////
   // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
-  sArray< MSCPT* > msCpts;
+  vector< MSCPT* > msCpts;
+  map< string, MSCPT* > msCptsMap;
 
   /********************************************************************/
 
@@ -113,21 +125,23 @@ public:
 
   ///////////////////////////////////////////
   // Collection of diag. covariance Gaussians
-  sArray< DiagGaussian* > diagGaussians;
+  vector< DiagGaussian* > diagGaussians;
+  map< string, DiagGaussian* > diagGaussiansMap;
 
   ////////////////////////////////
   // Collection of diagonal covariance Gaussians with linear mean 
   // dependency links (these cover the case full Covariance 
   // Gaussians, plus other forms such as banded or block diagonal, 
   // factored sparse inverse covariances, and so on.
-  sArray< LinMeanCondDiagGaussian* > linMeanCondGaussians;
+  vector< LinMeanCondDiagGaussian* > linMeanCondGaussians;
+  map< string, LinMeanCondDiagGaussian* > linMeanCondGaussiansMap;
 
   ////////////////////////////////
   // Collection of diagonal covariance Gaussians with linear and/or 
   // non-linear mean dependency links (these cover the case 
   // of "non-linear" Gaussians, and so on).
-  sArray< NLinMeanCondDiagGaussian* > nLinMeanCondGaussians;
-
+  vector< NLinMeanCondDiagGaussian* > nLinMeanCondGaussians;
+  map< string, NLinMeanCondDiagGaussian* > nLinMeanCondGaussiansMap;
 
   /********************************************************************/
 
@@ -138,22 +152,27 @@ public:
   ////////////////////////////////
   // Mixtures of Gaussians (could be a heterogeneous mixutre of
   // different types above)
-  sArray < MixGaussians* > mixGaussians;
+  vector < MixGaussians* > mixGaussians;
+  map< string, MixGaussians* > mixGaussiansMap;
+
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with Gaussians.
-  sArray < GausSwitchingMixGaussians* > gausSwitchMixGaussians;
+  vector < GausSwitchingMixGaussians* > gausSwitchMixGaussians;
+  map< string, GausSwitchingMixGaussians* > gausSwitchMixGaussiansMap;
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with logistic regression (i.e., 1 layer MLP)
-  sArray< LogitSwitchingMixGaussians* > logitSwitchMixGaussians;
+  vector< LogitSwitchingMixGaussians* > logitSwitchMixGaussians;
+  map< string, LogitSwitchingMixGaussians* > logitSwitchMixGaussiansMap;
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with 2 layer (2 weight matrix) MLP
-  sArray< MLPSwitchingMixGaussians* > mlpSwitchMixGaussians;
+  vector< MLPSwitchingMixGaussians* > mlpSwitchMixGaussians;
+  map< string, MLPSwitchingMixGaussians* > mlpSwitchMixGaussiansMap;
 
 
   /********************************************************************/
@@ -166,7 +185,9 @@ public:
   // that live here).
   //////////////////////////////////////////////////////////////////
 
-  sArray< RngDecisionTree<int>* > dts;
+  vector< RngDecisionTree<int>* > dts;
+  map< string,  RngDecisionTree<int>* > dtsMap;
+
 
   /********************************************************************/
 
@@ -175,7 +196,8 @@ public:
   // DLINKs
   //////////////////////////////////////////////////////////////////
 
-  sArray< Dlinks* > dlinks;
+  vector< Dlinks* > dlinks;
+  map< string, Dlinks* > dlinksMap;
 
   /********************************************************************/
 
@@ -228,6 +250,14 @@ public:
   // all of the above) from a single file.
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
+
+  ////////////////////////////////////////////////////////////////
+
+  ///////////////////////////////////////////////////////////    
+  // Return the total number of parameters used by this
+  // program. Use this for reporting number of parameters
+  // for papers, etc.
+  unsigned totalNumberParameters();
 
 
 };
