@@ -443,10 +443,14 @@ main(int argc,char*argv[])
 
   logpr total_data_prob = 1.0;
 
-  oDataStreamFile* vitValsFile;
+  FILE* vitValsFile;
   if (showVitVals) {
-    vitValsFile = new oDataStreamFile(showVitVals,false);
-    if (vitValsFile == NULL) error("Can't open file %s for writing\n",showVitVals);
+    if (strcmp(showVitVals,"-") == 0)
+      vitValsFile = stdout;
+    else {
+      if ((vitValsFile = fopen(showVitVals, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",vitValsFile);
+    }
   } else {
     vitValsFile = NULL;
   }
@@ -566,8 +570,8 @@ main(int argc,char*argv[])
 	infoMsg(IM::Low,"Done Distributing Evidence\n");
       }
     }
-    //    if (vitValsFile)
-    //      myjt.printCurrentRVValues(*vitValsFile);
+    if (vitValsFile)
+      myjt.printCurrentRVValues(vitValsFile);
 
     if (dumpNames)
     {
@@ -630,6 +634,9 @@ main(int argc,char*argv[])
 
   infoMsg(IM::Default,"Total data log prob is: %1.9e\n",
 	  total_data_prob.val());
+
+  if (vitValsFile != stdout)
+    fclose(vitValsFile);
 
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
