@@ -567,6 +567,21 @@ writePartitions(oDataStreamFile& os)
   string buffer;
   char buff[2048];
 
+  // Write out current time/date.
+  os.nl();
+  os.writeComment("---\n");
+  {
+    time_t tloc;
+    struct tm*tms;
+    time(&tloc);
+    tms = localtime(&tloc);
+    strftime(buff,2048,"%A %B %d %Y, %H:%M:%S %Z",tms);
+  }
+  os.writeComment("File Created: %s\n",buff);
+  os.writeComment("---\n");
+  os.nl();
+
+
   // number of chunks in which to find interface boundary
   os.nl();
   os.writeComment("---\n");
