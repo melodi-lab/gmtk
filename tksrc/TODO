@@ -79,3 +79,9 @@ XXX- todo, make sure that chunk n:m is valid.
 - add linear BMM links
 
 - add non-linear BMM links
+
+- implement mixture component vanishing using the 
+  shared Dense1DPMF. If one GM decides that
+  its component should vanish based on a MCVR
+  then all of them should (and should check this
+  as well).
