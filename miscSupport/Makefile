@@ -35,7 +35,7 @@ INSTALL_EXE = $(INSTALL) -m 555
 # Program options.
 #
 # OPTFLAGS = -O
-OPTFLAGS = -O
+OPTFLAGS = -O3
 
 EXFLAGS =  # extra flags via command line (e.g., -pg).
 CXXFLAGS = -g $(OPTFLAGS) $(EXFLAGS) -Wall -ansi -pedantic
