@@ -20,7 +20,6 @@ fileSize(FILE *f) {
 char *
 skip_whitespace(char *s) {
 
-  int i;
   char *tmp,*endp;
   tmp = s;
   endp = &(s[strlen(s)-1]);
@@ -35,7 +34,6 @@ skip_whitespace(char *s) {
 char *
 skip_chars(char *s) {
 
-  int i;
 
   char *endp = &s[strlen(s)];
   char *tmp = s;

@@ -230,7 +230,7 @@ bool
 ObservationMatrix::readBinInts(unsigned n_ints, FILE *f, BP_Range *disc_rng, 
 			       bool bswap) {
 
-  int n_read;  
+  unsigned n_read;  
 
   if (_disc_p == NULL) {
     warning("ObservationMatrix::readBinInts: Data buffer is NULL");
@@ -271,7 +271,7 @@ ObservationMatrix::readBinInts(unsigned n_ints, FILE *f, BP_Range *disc_rng,
 bool
 ObservationMatrix::readAscInts(unsigned n_ints, FILE *f, BP_Range *disc_rng) {
 
-  int i;
+  unsigned i;
 
   if (_disc_p == NULL) {
     warning("ObservationMatrix::readAscInts: Data buffer is NULL");
@@ -391,7 +391,7 @@ ObservationMatrix::resize(size_t n_frames) {
 void
 ObservationMatrix::printFrame(FILE *stream, size_t frameno) {
   
-  int f;
+  unsigned f;
 
   Data32 *p = features.ptr + _stride*frameno;
 

@@ -205,7 +205,7 @@ size_t
 DataInStream::openPFile(FileDescription *f, size_t sentno) {
 
   if (f->pfile_istr == NULL) {
-    error("GMTK_io::openPFile: stream %i is NULL",fileno);
+    error("GMTK_io::openPFile: stream is NULL");
     return 0;
   }
   	
@@ -991,7 +991,6 @@ DataOutStream::writeAscFeatures(FILE *fp,
       
       if (f == NULL)
 	error("DataOutStream::writeAscFeatures: couldn't read %i'th feature in frame %i from buffer\n",*cit,*fit);
-      int len;
       
       if (!(fprintf(fp,"%e ",*f)))
 	error("DataOutStream::writeAscFeatures: couldn't write %i'th feature in frame %i\n",*cit,*fit);

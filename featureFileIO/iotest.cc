@@ -4,7 +4,7 @@
 
 #define MAXINPUTFILES 10
 
-
+int
 main(int argc, const char **argv) {
 
   DataInStream *in_str;
@@ -124,11 +124,11 @@ main(int argc, const char **argv) {
 
   for (size_t f = 0; f < in_str->numSegs() ; f++) {
 
-    printf("Utterance %li\n",f);
+    printf("Utterance %i\n",f);
 
     size_t num_frames = in_str->readFile(f);
 
-    printf("read  %li frames ok\n",num_frames);
+    printf("read  %i frames ok\n",num_frames);
 
     in_str->getFileNames(f,out_names);
     out_str->initFiles(out_names,out_ext,num_frames);
@@ -165,6 +165,7 @@ main(int argc, const char **argv) {
   delete [] n_floats;
   delete [] formats;
   
+  return 0;
 }
 
 
