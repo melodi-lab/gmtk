@@ -36,6 +36,8 @@ extern "C" void nonstandard_arithmetic();
 #include <sys/types.h>
 #include <time.h>
 
+#include "sArray.h"
+
 
 #ifdef HAVE_SYS_IEEEFP_H
 #  include <sys/ieeefp.h>
@@ -56,12 +58,12 @@ extern "C" void nonstandard_arithmetic();
 
 // for the mixture gaussian case, this is the
 // minimum amount of time between printing the number of active
-#define MINTIMEPERPRINTNUMACTIVE (60*2)
-
+#define MINTIMEPERPRINTNUMACTIVE (2)
 
 // for the mixture gaussian case, this is the
 // minimum amount of time between printing the iter I/II status msg.
-#define NUM_SECONDS_PER_PRINT (60*2)
+#define NUM_SECONDS_PER_PRINT (2)
+
 
 #include <assert.h>
 
@@ -87,6 +89,7 @@ usage(const char* message = 0)
 	 "Where <options> include:\n"
 	 "-help           print this message\n"
 	 "-i <file-name>  input pfile\n"
+	 "[-i2 <file-name>]  optional second input feature-only pfile to be merged with first\n"
 	 "-o <file-name>  output file ('-' for stdout)\n"
 	 "-sr range       sentence range\n"
 	 "-cfr bp-range   Temporal context range of frames to use.\n"
@@ -452,11 +455,11 @@ Cor_Col::printMI(Range& cfr_rng,
 // ======================================================================
 
 static void
-pfile_mi_cc(QN_InFtrLabStream* in_streamp,
+pfile_mi_cc(SPI_base* in_streamp,
 	    FILE *out_fp,
 	    Range& srrng,
 	    Range& lrrng,
-	    QN_InFtrLabStream* lab_streamp,
+	    SPI* lab_streamp,
 	    Range& cfr_rng,
 	    const bool printEntropies,
 	    const int min_labels_per_sentence)
@@ -469,9 +472,9 @@ pfile_mi_cc(QN_InFtrLabStream* in_streamp,
     // If lab_streamp != NULL, assume it is a different pfile containing
     // the labels we should use.
     const size_t n_labs = (lab_streamp == NULL ? 
-			   in_streamp->num_labs() :
-			   lab_streamp->num_labs());
-    const size_t n_ftrs = in_streamp->num_ftrs();
+			   in_streamp->n_labs() :
+			   lab_streamp->n_labs());
+    const size_t n_ftrs = in_streamp->n_ftrs();
 
     // true if we do not ignore the labels to produce MI
     // that is conditional on the state.
@@ -491,7 +494,7 @@ pfile_mi_cc(QN_InFtrLabStream* in_streamp,
     //
     // Go through input pfile to get the initial statistics,
     for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-      const size_t n_frames = in_streamp->num_frames((*srit));
+      const size_t n_frames = in_streamp->n_frms((*srit));
 
 
       if ((*srit) % 100 == 0)
@@ -507,64 +510,22 @@ pfile_mi_cc(QN_InFtrLabStream* in_streamp,
 	}
 
       if (stateCondMI && lab_streamp != NULL) {
-	const size_t n_lab_frames = lab_streamp->num_frames((*srit));
+	const size_t n_lab_frames = lab_streamp->n_frms((*srit));
 	if (n_lab_frames != n_frames) 
 	  error("Number of frames in sentence %d different between feature (%d) and label (%d) pfile.",(*srit),n_frames,n_lab_frames);
       }
 
-      // Increase size of buffers if needed.
-      if (n_frames > buf_size)
-	{
-	  // Free old buffers.
-	  delete ftr_buf;
-	  delete lab_buf;
-
-	  // Make twice as big to cut down on future reallocs.
-	  buf_size = n_frames * 2;
-
-	  // Allocate new larger buffers.
-	  ftr_buf = new float[buf_size * n_ftrs];
-	  lab_buf = new QNUInt32[buf_size * n_labs];
-	}
-
       if (!stateCondMI || lab_streamp == NULL) {
-	const QN_SegID seg_id = in_streamp->set_pos((*srit), 0);
-	if (seg_id == QN_SEGID_BAD)
-	  {
-	    fprintf(stderr,
-		    "%s: Couldn't seek to start of sentence %lu "
-		    "in input pfile.",
-		    program_name, (unsigned long) (*srit));
-	    error("Aborting.");
-	  }
 	const size_t n_read =
-	  in_streamp->read_ftrslabs(n_frames, ftr_buf, lab_buf);
-	if (n_read != n_frames)
-	  {
-	    fprintf(stderr, "%s: At sentence %lu in input pfile, "
-		    "only read %lu frames when should have read %lu.\n",
-		    program_name, (unsigned long) (*srit),
-		    (unsigned long) n_read, (unsigned long) n_frames);
-	    error("Aborting.");
-	  }
+	  in_streamp->read_ftrslabs((*srit), ftr_buf, lab_buf);
       } else {
-	  if (lab_streamp->set_pos((*srit),0) == QN_SEGID_BAD)
-	    error("Can't set proper position in label file.");
+
 	  size_t n_read =
-	    lab_streamp->read_labs(n_frames,lab_buf);
-	  if (n_read != n_frames)
-	    {
-	      fprintf(stderr, "%s: At sentence %lu in label pfile, "
-		      "only read %lu frames when should have read %lu.\n",
-		      program_name, (unsigned long) (*srit),
-		      (unsigned long) n_read, (unsigned long) n_frames);
-	      error("Aborting.");
-	    }
-	  
+	    lab_streamp->read_labs((*srit),lab_buf);
+
 	  // check if any of the labels in lrrng are in
 	  // the lab_buf. If there aren't any, don't bother to
 	  // read the features, and just continue.
-	  
 	  if (min_labels_per_sentence > 0) {
 	    int num_found=0;
 	    for (size_t li=0;li<n_read;li++) {
@@ -577,27 +538,19 @@ pfile_mi_cc(QN_InFtrLabStream* in_streamp,
 	      goto continue_with_next_sentence;
 	  }
 
-	  const QN_SegID seg_id = in_streamp->set_pos((*srit), 0);
-	  if (seg_id == QN_SEGID_BAD)
-	    {
-	      fprintf(stderr,
-		      "%s: Couldn't seek to start of sentence %lu "
-		      "in input pfile.",
-		      program_name, (unsigned long) (*srit));
-	      error("Aborting.");
-	    }
-
 	  n_read = 
-	    in_streamp->read_ftrs(n_frames, ftr_buf);
-	  if (n_read != n_frames)
-	    {
-	      fprintf(stderr, "%s: At sentence %lu in input pfile, "
-		      "only read %lu frames when should have read %lu.\n",
-		      program_name, (unsigned long) (*srit),
-		      (unsigned long) n_read, (unsigned long) n_frames);
-	      error("Aborting.");
-	    }
+	    in_streamp->read_ftrs((*srit),ftr_buf);
       }
+
+#if 0
+	{
+	  printf("Printing first 10\n");
+	  for (int i =0;i<10;i++) {
+	    printf("%f ",ftr_buf[i]);
+	  }
+	  printf("\n");
+	}
+#endif
       
       { // make the above 'goto' legal.
 	float *ftr_buf_cur = ftr_buf;
@@ -1106,7 +1059,6 @@ MBN_Col::endEpoch()
 
 
 
-
 int 
 MBN_Col::recomputeNumActive(double &max_dist, double &avg_dist, 
 			    double &min_dist,
@@ -1394,13 +1346,13 @@ void sigexit(int flag) {
 // 9. Compute MI, with current valid and already "prepared" parameters.
 // 
 static void
-pfile_mi_mg(QN_InFtrLabStream* in_streamp,
+pfile_mi_mg(SPI_base* in_streamp,
 	    FILE *out_fp, // where to put output MI values
 	    FILE *pi_fp,  // where to get input MG params
 	    FILE *po_fp,  // where to place output MG params
 	    Range& srrng, // sentence range
 	    Range& lrrng, // label range for conditional MI
-	    QN_InFtrLabStream* lab_streamp, // other stream to get labels
+	    SPI* lab_streamp, // other stream to get labels
 	    Range& cfr_rng, // context frame range
 	    Range& bfr_rng, // base feature element range
 	    Range& lfr_rng, // lag feature element range
@@ -1431,9 +1383,9 @@ pfile_mi_mg(QN_InFtrLabStream* in_streamp,
     // if lab_streamp is not null, we presumably use
     // the labels from there rather than from in_streamp.
     const size_t n_labs = (lab_streamp == NULL ? 
-			   in_streamp->num_labs() :
-			   lab_streamp->num_labs());
-    const size_t n_ftrs = in_streamp->num_ftrs();
+			   in_streamp->n_labs() :
+			   lab_streamp->n_labs());
+    const size_t n_ftrs = in_streamp->n_ftrs();
     // The number of MI values computed,
     const size_t n_mis =  compute_n_mis(cfr_rng,bfr_rng,lfr_rng);
 
@@ -1450,9 +1402,10 @@ pfile_mi_mg(QN_InFtrLabStream* in_streamp,
     int numActive = n_mis; // number of active pairs. 
     int prevNumActive = numActive;
 
-    float *ftr_buf = new float[buf_size * n_ftrs];
-    QNUInt32* lab_buf = new QNUInt32[buf_size * n_labs];
-    double *dftr_buf = new double[buf_size * n_ftrs];
+    float *ftr_buf;
+    QNUInt32* lab_buf;
+    sArray<double> dftr_buf;
+
 
     // The actual MI values.
     MBN_Col::setNumComps(n_comps);
@@ -1526,7 +1479,7 @@ pfile_mi_mg(QN_InFtrLabStream* in_streamp,
       ::memset(counts,0,cfr_rng.length()*sizeof(size_t));
       // Go through input pfile to get the initial statistics,
       for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-	const size_t n_frames = in_streamp->num_frames((*srit));
+	const size_t n_frames = in_streamp->n_frms((*srit));
 
 	if ((time(0)-timeOfLastPrint) > NUM_SECONDS_PER_PRINT) {
 	    printf("Iter %d, sentence %d\n",em_iter,(*srit));
@@ -1545,63 +1498,18 @@ pfile_mi_mg(QN_InFtrLabStream* in_streamp,
 
 
 	if (stateCondMI && lab_streamp != NULL) {
-	  const size_t n_lab_frames = lab_streamp->num_frames((*srit));
+	  const size_t n_lab_frames = lab_streamp->n_frms((*srit));
 	  if (n_lab_frames != n_frames) 
 	    error("Number of frames in sentence %d different between feature (%d) and label (%d) pfile.",(*srit),n_frames,n_lab_frames);
 	}
 
-	// Increase size of buffers if needed.
-	if (n_frames > buf_size)
-	  {
-	    // Free old buffers.
-	    delete ftr_buf;
-	    delete dftr_buf;
-	    delete lab_buf;
-
-	    // Make twice as big to cut down on future reallocs.
-	    buf_size = n_frames * 2;
-
-	    // Allocate new larger buffers.
-	    ftr_buf = new float[buf_size * n_ftrs];
-	    dftr_buf = new double[buf_size * n_ftrs];
-	    lab_buf = new QNUInt32[buf_size * n_labs];
-	  }
-
-
 	if (!stateCondMI || lab_streamp == NULL) {
-	  const QN_SegID seg_id = in_streamp->set_pos((*srit), 0);
-	  if (seg_id == QN_SEGID_BAD)
-	    {
-	      fprintf(stderr,
-		      "%s: Couldn't seek to start of sentence %lu "
-		      "in input pfile.",
-		      program_name, (unsigned long) (*srit));
-	      error("Aborting.");
-	    }
 	  const size_t n_read =
-	    in_streamp->read_ftrslabs(n_frames, ftr_buf, lab_buf);
-	  if (n_read != n_frames)
-	    {
-	      fprintf(stderr, "%s: At sentence %lu in input pfile, "
-		      "only read %lu frames when should have read %lu.\n",
-		      program_name, (unsigned long) (*srit),
-		      (unsigned long) n_read, (unsigned long) n_frames);
-	      error("Aborting.");
-	    }
+	    in_streamp->read_ftrslabs((*srit), ftr_buf, lab_buf);
 	} else {
 
-	  if (lab_streamp->set_pos((*srit),0) == QN_SEGID_BAD)
-	    error("Can't set proper position in label file.");
 	  size_t n_read =
-	    lab_streamp->read_labs(n_frames,lab_buf);
-	  if (n_read != n_frames)
-	    {
-	      fprintf(stderr, "%s: At sentence %lu in label pfile, "
-		      "only read %lu frames when should have read %lu.\n",
-		      program_name, (unsigned long) (*srit),
-		      (unsigned long) n_read, (unsigned long) n_frames);
-	      error("Aborting.");
-	    }
+	    lab_streamp->read_labs((*srit),lab_buf);
 	  
 	  // check if any of the labels in lrrng are in
 	  // the lab_buf. If there aren't any, don't bother to
@@ -1619,35 +1527,28 @@ pfile_mi_mg(QN_InFtrLabStream* in_streamp,
 	      goto continue_with_next_sentence;
 	  }
 
-	  const QN_SegID seg_id = in_streamp->set_pos((*srit), 0);
-	  if (seg_id == QN_SEGID_BAD)
-	    {
-	      fprintf(stderr,
-		      "%s: Couldn't seek to start of sentence %lu "
-		      "in input pfile.",
-		      program_name, (unsigned long) (*srit));
-	      error("Aborting.");
-	    }
-
 	  n_read = 
-	    in_streamp->read_ftrs(n_frames, ftr_buf);
-	  if (n_read != n_frames)
-	    {
-	      fprintf(stderr, "%s: At sentence %lu in input pfile, "
-		      "only read %lu frames when should have read %lu.\n",
-		      program_name, (unsigned long) (*srit),
-		      (unsigned long) n_read, (unsigned long) n_frames);
-	      error("Aborting.");
-	    }
+	    in_streamp->read_ftrs((*srit),ftr_buf);
 	}
 
+#if 0
+	{
+	  printf("Printing first 10\n");
+	  for (int i =0;i<10;i++) {
+	    printf("%f ",ftr_buf[i]);
+	  }
+	  printf("\n");
+	}
+#endif
+
 	// convert sentence to double precision and transpose matrix.
-	transposeAndConvertToDouble(ftr_buf,n_frames,n_ftrs,dftr_buf);
+	dftr_buf.growByNIfNeeded(2,n_frames*n_ftrs);
+	transposeAndConvertToDouble(ftr_buf,n_frames,n_ftrs,dftr_buf.ptr);
 
 	MixBiNormal::setScratchSize(n_frames,n_comps);
 
 	if (!stateCondMI) {
-	  mbn.addtoEpoch(dftr_buf,
+	  mbn.addtoEpoch(dftr_buf.ptr,
 			 n_ftrs,
 			 n_frames,
 			 n_frames,
@@ -1659,7 +1560,7 @@ pfile_mi_mg(QN_InFtrLabStream* in_streamp,
 	} else {
 	  QNUInt32 *lab_buf_cur = lab_buf;
 	  const QNUInt32 *lab_buf_cur_endp = lab_buf + n_frames;
-	  double *dftr_buf_cur = dftr_buf;
+	  double *dftr_buf_cur = dftr_buf.ptr;
 
 	  while (lab_buf_cur < lab_buf_cur_endp) {
 	    size_t num_samps;
@@ -1804,7 +1705,7 @@ pfile_mi_mg(QN_InFtrLabStream* in_streamp,
 
 
 static void
-pfile_mi_mg_ocaar(QN_InFtrLabStream* in_streamp,
+pfile_mi_mg_ocaar(SPI_base* in_streamp,
 		  FILE *out_fp, // where to put output MI values
 		  FILE *pi_fp,  // where to get input MG params
 		  FILE *po_fp,  // where to place output MG params
@@ -1813,7 +1714,7 @@ pfile_mi_mg_ocaar(QN_InFtrLabStream* in_streamp,
 		  const char *const ocaar)
 {
 
-  const size_t n_ftrs = in_streamp->num_ftrs();
+  const size_t n_ftrs = in_streamp->n_ftrs();
   const size_t n_mis =  n_ftrs*n_ftrs*(cfr_rng.length())
     - (cfr_rng.contains(0) ? n_ftrs*(n_ftrs+1)/2 : 0);
 
@@ -2271,14 +2172,6 @@ main(int argc, const char *argv[])
     }
 
 
-    // An input pfile name must be suppied.
-    if (input_fname==0)
-        usage("No input pfile name supplied.");
-    FILE *in_fp = fopen(input_fname, "r");
-    if (in_fp==NULL)
-        error("Couldn't open input pfile for reading.");
-
-
     // If an output pfile name is not supplied, we just
     // compute the statistics.
     FILE *out_fp=NULL;
@@ -2341,41 +2234,47 @@ main(int argc, const char *argv[])
     // Create objects.
     //////////////////////////////////////////////////////////////////////
 
-    QN_InFtrLabStream* in_streamp
-        = new QN_InFtrLabStream_PFile(debug_level, "", in_fp, 1);
+     SPI_base* in_streamp;
+     
+     if (input_fname == NULL) {
+       usage("No input pfile name supplied");
+     }
 
+     if (input_fname2 == NULL) {
+       in_streamp = new SPI(input_fname);
+     } else {
+       in_streamp = new SPI2(input_fname,input_fname2);
+       printf("NOTE: Merging multiple pfiles frame-by-frame, resulting num feats per frame = %d\n",in_streamp->n_ftrs());
+     }
 
-    sr_rng = new Range(sr_str,0,in_streamp->num_segs());
+    sr_rng = new Range(sr_str,0,in_streamp->n_segs());
     lr_rng = new Range(lr_str,0,MAX_LABEL_VAL);
 
     if (cfr_str == NULL) {
       error("Must specify a context frame range.");
     } else {
       cfr_rng = new Range(cfr_str,
-			  -(int)in_streamp->num_frames(),
-			  (int)in_streamp->num_frames());
+			  -(int)in_streamp->n_frms(),
+			  (int)in_streamp->n_frms());
       if (cfr_rng->length()==0) {
 	  error("Must specify a non-empty context frame range.");
       }
     }
 
-    bfr_rng = new Range(bfr_str,0,in_streamp->num_ftrs());
-    lfr_rng = new Range(lfr_str,0,in_streamp->num_ftrs());
+    bfr_rng = new Range(bfr_str,0,in_streamp->n_ftrs());
+    lfr_rng = new Range(lfr_str,0,in_streamp->n_ftrs());
 
     //////////////////////////////////////////////////////////////////////
     // Do the work.
     //////////////////////////////////////////////////////////////////////
 
-    QN_InFtrLabStream* lab_streamp=NULL;
+    SPI* lab_streamp=NULL;
     FILE *lab_fp=NULL;
     if (!lr_rng->full()) {
-	if (label_fname!=NULL) {
-	  if ((lab_fp = fopen(label_fname, "r")) == NULL) {
-	    error("Couldn't open label file for reading.");
-	  }
-	  lab_streamp =
-	    new QN_InFtrLabStream_PFile(debug_level, "", lab_fp, 1);
-	}
+      // only bother to open this if the label range isn't full.
+      if (label_fname!=NULL) {
+	lab_streamp = new SPI(label_fname);
+      }
     }
 
     if (!mg_mi) {
@@ -2476,8 +2375,6 @@ main(int argc, const char *argv[])
     delete cfr_rng;
     if (lr_rng != NULL)
       delete lr_rng;
-    if (in_fp && fclose(in_fp))
-        error("Couldn't close input pfile.");
     if (out_fp && fclose(out_fp))
         error("Couldn't close output file.");
     if (lab_fp && fclose(lab_fp))
