@@ -91,7 +91,11 @@ class VECPT : public CPT {
   string fmt;
   // Endian swap condition for observation files.
   bool iswp;
-  
+
+  // Observation Matrix transforms
+  char* preTransforms;
+  char* postTransforms;
+
   ////////////////
   // current parent value
   unsigned curParentValue;
