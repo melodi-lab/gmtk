@@ -54,7 +54,11 @@
 // The maximum "cardinality" of any of the integers 
 // used for making decisions on. This may
 // safely be increased if needed. 
-#define RNG_DECISION_TREE_MAX_CARDINALITY 512
+#define RNG_DECISION_TREE_MAX_CARDINALITY ((1<<(sizeof(short)*8-1))-1)
+
+/////////////////////////////////////////////////
+// The maximum range value
+#define MAX_BP_RANGE_VALUE 100000000
 
 
 /////////////////////////////////////////////////
@@ -564,7 +568,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 	node->nonLeafNode.rngs[i]
 	  = new BP_Range(str,
 			 0,
-			 RNG_DECISION_TREE_MAX_CARDINALITY);
+			 MAX_BP_RANGE_VALUE);
       }
       ///////////////////////////////////////////////////////////////
       // WARNING: We assume here that BP_Range will make
@@ -944,7 +948,7 @@ T RngDecisionTree<T>::queryRecurse(const vector < RandomVariable* >& arr,
 
     assert ( n->nonLeafNode.ftr < int(arr.size()) );
     assert ( arr[n->nonLeafNode.ftr]->val >= 0 &&
-	     arr[n->nonLeafNode.ftr]->val <= 
+	     arr[n->nonLeafNode.ftr]->val < 
 	     RNG_DECISION_TREE_MAX_CARDINALITY );
 
     const int val = arr[n->nonLeafNode.ftr]->val;
