@@ -1682,6 +1682,16 @@ Sat Mar 13 18:45:03 2004
    new version of obsfile).
 
 
+Sat Mar 13 22:24:53 2004
+  - implement another form of pruning, where you provide the
+    maximum number of clique or separator entries that survive.
+    Number should be able to be specified either as percent (relative
+    to the current total) or as an absolute number.
+    - Note: clique pruning will be easy, but separator pruning
+      in this case will be a bit more difficult.
+
+ 
+
 
 
 
