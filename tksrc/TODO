@@ -1621,5 +1621,11 @@ Sun Mar  7 19:41:24 2004
   - with '-verb 100' option, set up so that some form of indenting is
     working within a clique for RV assignment printing (easier to read).
 
+Mon Mar  8 01:47:26 2004
+  - fix two bugs that Karim found around this date (see gmtk mail)
+    1) DT leaves with p0 rather than (p0)
+    2) cliques with all obs, see karim learning string-edit distance example.
+
+
 
 
