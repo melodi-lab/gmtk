@@ -34,6 +34,16 @@ class sArray {
     if (size > 0)
       ptr = new T[size];
   }
+  // copy constructor
+  sArray(sArray<T> &arr) {
+    size = arr.size;
+    ptr = NULL;
+    if (size > 0) {
+      ptr = new T[size];
+      ::memcpy((void*)ptr,(void*)arr.ptr,sizeof(T)*size);
+    }
+  }
+
   ~sArray() {
     delete [] ptr;
   }
