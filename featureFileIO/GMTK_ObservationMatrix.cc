@@ -64,13 +64,13 @@ ObservationMatrix::openFiles(int n_files,
     error("ObservationMatrix::openFiles: list of file names is NULL\n");
 
   if (formats == NULL)
-    error("ERROR DataInStream: list of file formats is NULL\n");
+    error("ObservationMatrix::openFiles: list of file formats is NULL\n");
 
   if (n_floats == NULL)
-    error("DataInStream: list of number of floats is NULL\n");
+    error("ObservationMatrix::openFiles: list of number of floats is NULL\n");
 
   if (n_ints == NULL)
-    error("DataInStream: list of number of ints is NULL\n");
+    error("ObservationMatrix::openFiles: list of number of ints is NULL\n");
 
   _inStreams = new StreamInfo*[_numStreams];
 
@@ -120,7 +120,7 @@ ObservationMatrix::openFiles(int n_files,
       size_t b = _inStreams[i]->fofSize;
       
       if (a != b) {
-        warning("WARNING: DataInStream: different number of files in '%s' (%li) an\
+        warning("WARNING ObservationMatrix: different number of files in '%s' (%li) an\
 d '%s' (%li) - will only read minimum number\n",fof_names[i-1],a,
                 fof_names[i], b);
 	
@@ -183,7 +183,6 @@ ObservationMatrix::loadSegment(const unsigned segno) {
 
   if (segno < 0 || segno > _numSegments)
     error("ObservationMatrix::loadSegment: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
-
 
   reset();
 
@@ -274,7 +273,7 @@ ObservationMatrix::readBinFloats(unsigned n_floats, FILE *f,
   
   
   if (_cont_p == NULL) {
-    warning("ObservationMatrix::readBinFloats: Data buffer is NULL\n");
+    warning("ObservationMatrix::readBinFloats: data buffer is NULL\n");
     return 0;
   }
 
@@ -321,6 +320,62 @@ ObservationMatrix::readBinFloats(unsigned n_floats, FILE *f,
  */
 
 bool
+ObservationMatrix::readPFrame(InFtrLabStream_PFile *str, BP_Range *cont_rng,
+			      BP_Range *disc_rng) {
+
+
+
+  if (_cont_p == NULL) {
+    warning("ObservationMatrix::readPFrame: continuous data buffer is NULL\n");
+    return 0;
+  }
+
+  if (_disc_p == NULL) {
+    warning("ObservationMatrix::readPFrame: discrete data buffer is NULL");
+    return 0;
+  }
+
+  if (_contFea.ptr == NULL) {
+    warning("ObservationMatrix::readPFrame: Temporary continuous buffer is NULL");
+    return 0;
+  }
+
+  if (_discFea.ptr == NULL) {
+    warning("ObservationMatrix::readPFrame: Temporary discrete buffer is NULL");
+    return 0;
+  }
+
+  if (str->read_ftrslabs((size_t)1,(float *)_contFea.ptr,(UInt32 *)_discFea.ptr) != 1) {
+    warning("ObservationMatrix::readPFrame: read ftrslabs failed\n");
+    return 0;
+  }
+
+  for (BP_Range::iterator it = cont_rng->begin(); it <= cont_rng->end(); it++,_cont_p++) {
+    int i = (int) *it;
+    float *fp = (float *)_cont_p;
+
+    if (fp == NULL) {
+      warning("ObservationMatrix::readPFrame: memory error trying to read %i'th continuous feature",i);
+      return 0;
+    }
+
+    *fp = _contFea.ptr[i];
+  }
+
+  for (BP_Range::iterator it = disc_rng->begin(); it <= disc_rng->end(); it++,_disc_p++) {
+    int i = (int)*it;
+    
+    if ( _disc_p == NULL) {
+      warning("ObservationMatrix::readPFrame: memory error trying to read %i'th discrete feature",i);
+      return 0;
+    }
+    Int32 *ip = (Int32 *)_disc_p; 
+    *ip = _discFea.ptr[i];
+  }
+  return 1;
+}
+
+bool
 ObservationMatrix::readPFloats(InFtrLabStream_PFile *str, BP_Range *cont_rng) {
 
 
@@ -337,7 +392,7 @@ ObservationMatrix::readPFloats(InFtrLabStream_PFile *str, BP_Range *cont_rng) {
   }
   
   if ((n_read = str->read_ftrslabs((size_t)1,(float *)_contFea.ptr,NULL)) != 1) {
-    warning("ObservationMatrix::readPFLoats: read failed\n");
+    warning("ObservationMatrix::readPFloats: read failed\n");
     return 0;
   }
 
@@ -351,6 +406,7 @@ ObservationMatrix::readPFloats(InFtrLabStream_PFile *str, BP_Range *cont_rng) {
     }
 
     *fp = _contFea.ptr[i];
+    
   }
 
   return 1;
@@ -432,7 +488,15 @@ ObservationMatrix::readPInts(InFtrLabStream_PFile *str, BP_Range *disc_rng) {
       return 0;
     }
 
-    (Int32 *) _disc_p = _discFea.ptr[i];
+    Int32 *ip = (Int32 *) _disc_p;
+    if (ip == NULL) {
+      warning("ObservationMatrix::readPInts: memory error trying to read %i'the feature\
+",i);
+    return 0;
+    }
+
+
+    *ip = _discFea.ptr[i];
   }
   return 1;
 }
@@ -476,7 +540,7 @@ ObservationMatrix::readBinInts(unsigned n_ints, FILE *f, BP_Range *disc_rng,
     Int32 *ip = (Int32 *)_disc_p;
 
     if (ip == NULL) {
-      warning("ObservationMatrix:::readBinInts: memory error trying to read %i'th feature",i);
+      warning("ObservationMatrix::readBinInts: memory error trying to read %i'th feature",i);
       return 0;
     }
 
@@ -546,6 +610,8 @@ ObservationMatrix::readFrame(size_t frameno) {
   unsigned num_floats,num_ints;
   int i;
 
+  _cont_p = features.ptr + (stride*frameno);
+  _disc_p = _cont_p + numContinuous;
   
   for (i = 0; i < _numStreams; i++) {
     
@@ -561,17 +627,23 @@ ObservationMatrix::readFrame(size_t frameno) {
     num_ints = f->nInts;
 
     assert(num_ints <= _maxDiscrete);
+
 	
     switch(f->dataFormat) {
 
     case PFILE:
-      if (num_floats > 0)
+      if (num_floats > 0 && num_ints > 0) {
+	if (!(readPFrame(f->pfile_istr,f->cont_rng,f->disc_rng)))
+	  error("ObservationMatrix::readFrame: can't read frame %i from stream %li\n",frameno,i);
+      }
+      else if (num_floats > 0) {
 	if (!(readPFloats(f->pfile_istr,f->cont_rng)))
 	  error("ObservationMatrix::readFrame: can't read floats for frame %li from stream %i\n",frameno,i);
-      
-      if (num_ints > 0)
+      }
+      else if (num_ints > 0) {
 	if (!(readPInts(f->pfile_istr,f->disc_rng)))
 	  error("ObservationMatrix::readFrame: can't read ints for frame %li from stream %i\n",frameno,i);
+      }
       break;
 
     case RAWASC:
@@ -631,16 +703,18 @@ void
 ObservationMatrix::printFrame(FILE *stream, size_t frameno) {
   
   unsigned f;
+  unsigned offset = stride*frameno;
 
-  Data32 *p = features.ptr + stride*frameno;
+  Data32 *p = features.ptr + offset;
 
   for (f = 0; f < numContinuous; f++,p++) {
-	float *fp = (float *)p;
-	fprintf(stream,"%e ",*fp);
+    float *fp = (float *)p;
+    fprintf(stream,"%e ",*fp);
   }
-  for (f = 0; f < numDiscrete; f++,p++)
-     fprintf(stream,"%i ",(Int32)*p);
-
+  for (f = 0; f < numDiscrete; f++,p++) {
+    Int32 *ip = (Int32 *)p;
+    fprintf(stream,"%i ",*ip);
+  }
   fprintf(stream,"\n");
 
 }
@@ -669,7 +743,7 @@ ObservationMatrix::getDiscFea(unsigned short n) {
   assert (n < numFeatures);
 
   if (n > (numDiscrete-1))
-    warning("ObservationMatrix::getFeature: feature %i has type int but requested as float\n");
+    warning("ObservationMatrix::getDiscFea: feature %i has type int but requested as float\n");
 
   return (Int32 *)(_disc_p + n);
 }
