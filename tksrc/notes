@@ -882,6 +882,8 @@ III's right interface separator is alwyas to IV
 
 IV's left interface seperator is alwyas to III
 
+"ui:" = unrolling by "i".
+
 u0: P C E   (uses P_ri_to_C, C_li_to_P, C_ri_to_E, E_li_to_C)
 u1: P C C E  (uses P_ri_to_C, C_li_to_P, C_ri_to_C, C_li_to_C, C_ri_to_E, E_li_to_C)
 u2: P C C C E (uses the above guys).
@@ -927,14 +929,24 @@ What is needed for each operation:
            The root clique depends on the RI to the right partition.
         2) the left interface clique since we need to know
            who the assigned parents are for the left interface's previous clique.
+     Define: u1: P1 C1 C2 E1
      Consider case:      
          u2: P C C C E
       renamed as:      
          u2: P Ca Cb Cc E
-      P can use P1's assignments
+      P can use P1's assignments since it always has RI to a C. 
       Ca can use C1's assignments since C1 has LI to a P and RI to a C
-      Cb CAN NOT use C2's assignments since C2 has LI to a C and RI to an E
-        but Cb has a LI to a C and RI to a C (so maybe not same RI clique)
+      Cb *CAN NOT* use C2's assignments since C2 has LI to a C and RI to an E
+        but Cb has a LI to a C and ___RI to a C___ (so maybe not same RI clique)
+        (Fri Feb  6 19:36:35 2004, actually, I think this is not true,
+         since the E1 is really an E' and the LI of E' is really part of
+         a C, since the E' came from an (C^M,E) with a boundary through the C^M.
+         and an interface in E' always  comes from part of a C).
+        Sat Feb  7 17:40:16 2004: update again. Actually, this is true
+        when we find best right interface. I.e., Friday's comments    
+        are true only for the left interface method (When E' contains a C on left).
+        When we use the right interface method, it is P' that contains
+        a C on the right, and E' does not contain a C portion on left).           
       Cc can use C2's assignments since C2 has LI to a C and RI to an E 
      Consider case:
         u0: P Cu0 E 
@@ -942,18 +954,126 @@ What is needed for each operation:
        Cu0 can't use any of C1, C2, Ca, Cb, or Cc's assignments since
          none of them have a LI to a P and RI to an E 
        E can use E's assignments.
-    
+
    => Therefore, eed to unroll both 2x and 0x here.
     - Q: if we use Ca, Cb, Cc and Cu0 in the case
       of unrolling 0x or 1x, will it work.
-      A: 
+      A:
       Lets say we have P Cu1 E, the assignment depends on the
       interface of Cu1 to E (that's the root) and Cu1's interface
       to E (to get cum assigned nodes), so none of Ca, Cb, or Cc will do.
       But using Cu0 is fine for unrolling 0x clearly.
     - Q: if we do P Cu2_1 Cu2_2 E, we can use Ca for Cu2_1 and use
          Cc for Cu2_2.
-        
+    - Sat Feb  7 16:00:04 2004
+       update:
+      Plan is to create two temlates:
+       u0: P1 Cu0 E1
+       u1: P1 C1 C2 E1
+      Are C1 and Cu0 different?
+        For left interface case, no, since:
+           Cu0 las LI to an P and RI to an E' (really a C)
+           C1 las LI to an P and RI to an C (really a C)
+           (so C2 and Cu0 are the same).
+        For right interface case, yes, since:
+           Cu0 has LI to a P' (really a C) and RI to a real E
+           C1 has LI to a P' (really a C) and RI to a real C.
+      Are C2 and Cu0 different? 
+        For left interface case, Yes.
+           Cu0 las LI to an P and RI to an E' (really a C)
+           but C2 has LI to a C and RI to an E' (really a C)
+        For right interface case, no.
+           Cu0 has LI to a P (really a C) and RI to an E
+           C2 has LI to a C and RI to an E   
+       so we need to 
+           make Cu0 and C2 distinct (for left interface)
+       and make Cu0 and C1 distinct (for right interface). 
+      What about unrolling twice:
+       u0: P1 Cu0 E1
+       u1: P1 C1 C2 E1
+       u2: P1 Ca Cb Cc E1
+
+       C1 and Ca are same since:       
+         C1's LI is to a P1 and RI to a C
+         Ca's LI is to a P1 and RI to a C
+         (for left or right interface, P1 will change
+          but Ca or C1 interface to same) 
+       C2 and Cb are same since
+         C2's RI is to an E and LI is to a C
+         Cc's RI is to an E and LI is to a C. 
+       What about Cb, is it identical to either C1 or C2?
+         Left interface:
+            For LI, Cb is same as C2 since:
+               Cb's LI is to a C (like C2) and Cb's RI is to a C
+                     (C2's RI is to an E', a C portion).
+         Right interface:
+            For LI, Cb is same as a C1 since:
+               Cb's RI is to a C (like C1) and Cb's LI is to a C
+                     (C1's LI is to a P', a C portion). 
+       So, if we want to work with both left and right interface case,
+       need to have two templates:
+       u0: P1 Cu0 E1
+       u2: P1 C1 C2 C3 E1
+       Then unrolling 3 times becomes:
+       u3: P1 C1 C2 C2 C3 E1 
+       u4: etc.
+      Therefore, in the junction tree class, we keep
+       base partitions for P1, E1, Cu0, and C1,C2,C3.
+
+      How to compute interfaces:
+        option 1: do the N^2 algorithm finding the
+                  cliques between two partitions that have
+                  max overlap.
+        option 2: use the interfaces, finding
+               cliques that cover the interfaces.
+
+        Find P1's RI clique via the PC interface.
+          - works in left and right interface case.
+        Find Cu0's LI clique via the PC interface.
+          - works in left and right interface case.
+        Find Cu0's RI clique via the CE interface 
+          - works in left and right interface case.
+        Find C1's LI clique using PC interface
+          - works in left and right interface case.      
+        Find C1's RI clique:
+          - in left interface case:
+            can use time adjusted  CE interface
+            since here E' = portionof(C)|E
+          - in right interface case
+            can use time adjusted  PC interface
+            since here P' = P|portionof(C)
+        Find C2's LI clique:
+          - in left interface case:
+            can use time adjusted CE interface	
+          - in right interface case
+            can use time adjusted PC interface	
+        Find C2's RI clique:
+          - in left interface case:
+            can use time adjusted CE interface	
+          - in right interface case
+            can use time adjusted PC interface	
+        Find C3's LI clique 
+          - in left interface case:
+            can use time adjusted CE interface	
+          - in right interface case
+            can use time adjusted PC interface	
+        Find C3's RI clique via CE interface
+        Find E1's LI clique via CE interface
+
+        In other words:
+         - C-C interface comes from:
+             CE interface in left interface case
+             PC interface in right interface case. 
+
+        L or R interface needs to be stored in .trifile.
+
+      To score a junction tree:
+        Score based on u0: P1 Cu0 E1 since
+        the interface cliques can be calculated easily and
+        each partition's score can be calculated separately.
+
+
+
  5) setting up message passing orders
     (note that this really just does a recursion of the directed tree
      set up in step 3. It does choose an order of the children though).
