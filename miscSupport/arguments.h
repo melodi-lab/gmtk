@@ -14,7 +14,7 @@
 #ifndef ARGS_h
 #define ARGS_h
 
-#include <iostream.h>
+#include <iostream>
 #include <stdio.h>
 
 class MultiType {
