@@ -46,10 +46,10 @@
 class DiscreteRandomVariable : public RandomVariable
 {
 private:
-  friend CPT;
-  friend MDCPT;
-  friend MSCPT;
-  friend MTCPT;
+  friend class CPT;
+  friend class MDCPT;
+  friend class MSCPT;
+  friend class MTCPT;
   friend class FileParser;
 
   //////////////////////////////////////////////////////////////////////
