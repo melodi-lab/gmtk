@@ -315,7 +315,8 @@ main(int argc,char*argv[])
 				    (unsigned*)&ifmts,
 				    (bool*)&iswps,
 				    startSkip,
-				    endSkip);
+				    endSkip,
+				    false);
 
 #if 0
   // for debugging
