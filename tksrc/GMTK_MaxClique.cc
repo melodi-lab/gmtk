@@ -209,9 +209,9 @@ MaxClique::MaxClique(MaxClique& from_clique,
   }
 
   // and clone over assigned nodes and sorted assigned nodes
-  sortedAssignedProbNodes.reserve(from_clique.sortedAssignedProbNodes.size());
-  for (unsigned i=0;i<from_clique.sortedAssignedProbNodes.size();i++) {
-    RandomVariable* rv = from_clique.sortedAssignedProbNodes[i];
+  sortedAssignedNodes.reserve(from_clique.sortedAssignedNodes.size());
+  for (unsigned i=0;i<from_clique.sortedAssignedNodes.size();i++) {
+    RandomVariable* rv = from_clique.sortedAssignedNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -223,8 +223,8 @@ MaxClique::MaxClique(MaxClique& from_clique,
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
-    assignedProbNodes.insert(nrv);
-    sortedAssignedProbNodes.push_back(nrv);
+    assignedNodes.insert(nrv);
+    sortedAssignedNodes.push_back(nrv);
   }
 
   // do unassignedIteratedNodes
@@ -603,11 +603,13 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
 float
 MaxClique::
 computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-			    const set<RandomVariable*>& assignedProbNodes,
-			    const set<RandomVariable*>& unassignedIteratedNodes,
-			    const set<RandomVariable*>& separatorNodes,
+			    const set<RandomVariable*>& assignedNodes,
 			    const set<RandomVariable*>& cumulativeAssignedNodes,
+			    const set<RandomVariable*>& unassignedIteratedNodes,
+			    const set<RandomVariable*>& cumulativeUnassignedIteratedNodes,
+			    const set<RandomVariable*>& separatorNodes,
 			    const set<RandomVariable*>& unassignedInPartition,
+			    const bool upperBound,
 			    const bool useDeterminism)
 {
   // compute weight in log base 10 so that
@@ -628,42 +630,96 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
       // see comments above for description and rational of this algorithm
       if (!useDeterminism || !drv->sparse()) {
-	tmp_weight += log10((double)drv->cardinality);
-      } else if ((unassignedIteratedNodes.find(rv) != unassignedIteratedNodes.end())
-		 &&
-		 (unassignedInPartition.find(rv) == unassignedInPartition.end())) {
+	// charge full amount since not sparse.
 	tmp_weight += log10((double)drv->cardinality);
       } else if (separatorNodes.find(rv) != separatorNodes.end()) {
-	if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
-	  tmp_weight += log10((double)drv->cardinality);
-	} else {
-	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
-	    if (rv->allParentsContainedInSet(separatorNodes)) {
-	      tmp_weight += log10((double)drv->useCardinality());	
-	    } else {
-	      // @@@@ This is the problem case here. we need to
-	      // estimate the cost as accurately as possible!! It
-	      // should be as tight a possible upper bound (or a
-	      // *very* tight lower bound).
+	// separator node case.
+	if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
+	  // separator, unassigned in partition:
 
-	      // cludge/hack:
-	      // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
-	      tmp_weight += (min(rv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
-				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
-	      // tmp_weight += log10((double)drv->useCardinality());
-	    }
+	  if (upperBound)
+	    tmp_weight += log10((double)drv->cardinality);
+	  else {
+	    // Then unasigned in this partition. We assume that the node
+	    // has been assigned in another (say previous) partition and
+	    // we don't charge full amount. Note that this could cause
+	    // the estimate to be LOWER than the true weight.
+	    tmp_weight += log10((double)drv->useCardinality());
+	    // cludge/hack:
+	    // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
+	    // tmp_weight += (min(rv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
+	    // log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
+	    // tmp_weight += log10((double)drv->useCardinality());
+	  }
+
+
+	} else if (cumulativeUnassignedIteratedNodes.find(rv) !=
+		   cumulativeUnassignedIteratedNodes.end()) {
+	  if (assignedNodes.find(rv) == assignedNodes.end()) {
+	    // separator, unassigned previously, not assigned here:
+
+	    // Charge full amount since we do separator iteration over
+	    // something that is not assigned in any previous cliques.
+	    tmp_weight += log10((double)drv->cardinality);
 	  } else {
+	    // separator, unassigned previously, assigned here:
+
+	    // This is the case we would like to avoid since for
+	    // separator driven iteration, we are iterating over all
+	    // values of var, and don't remove the zeros until this
+	    // clique. If there are many of these cases, we might
+	    // consider doing clique driven rather than separator
+	    // driven clique potential instantiation.
+
+	    // While it will come into this clique without zeros being
+	    // removed, this clique will remove them (since it is
+	    // assigned), so from a memory point of view, we could
+	    // charge useCard. We be conservative here, however, and
+	    // charge full card (which is computational cost).
 	    tmp_weight += log10((double)drv->cardinality);
 	  }
+	} else {
+	  // separator, assigned previously
+
+	  if (upperBound) 
+	    tmp_weight += log10((double)drv->cardinality);
+	  else {
+	    // Charge low amount since it has been assigned in some
+	    // previous clique, and at least one of the separators will
+	    // kill off the zero prob entries. This could cause the
+	    // estimate to be LOWER than the true weight.
+	    tmp_weight += log10((double)drv->useCardinality());
+	  }
 	}
-      } else if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
-	// Then not assigned in partition, assume it was assigned in
-	// previous partition, and it costs nothing here.  NOTE: this
-	// is only a valid assumption for forward directed graphs, not
-	// for backward directed ones.
-	tmp_weight += log10((double)drv->useCardinality());		
       } else {
-	tmp_weight += log10((double)drv->useCardinality());	
+	// non separator node case.
+	if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
+	  // non separator, unassigned in partition.
+
+	  if (upperBound) 
+	    tmp_weight += log10((double)drv->cardinality);
+	  else {
+	    // Then unasigned in this partition. We assume that the
+	    // node has been assigned in another (say previous) partition
+	    // and we don't charge full amount. Note that
+	    // this could cause the estimate to be LOWER than
+	    // the true weight.
+	    tmp_weight += log10((double)drv->useCardinality());
+	  }
+	} else if (assignedNodes.find(rv) != assignedNodes.end()) {
+	  // non separator, assigned here:
+
+	  // Then assigned in this clique. Charge correct amount.
+	  tmp_weight += log10((double)drv->useCardinality());
+	} else {
+	  // non separator, not assigned here:
+
+	  // Not assigned in this clique. We know it can't be in
+	  // cumulativeAssignedNodes since it is not a sep node.
+	  assert ( cumulativeAssignedNodes.find(rv) == cumulativeAssignedNodes.end());
+	  // charge full amount.
+	  tmp_weight += log10((double)drv->cardinality);
+	}
       }
     }
   }
@@ -675,7 +731,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 float
 MaxClique::
 computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-			    const set<RandomVariable*>& assignedProbNodes,
+			    const set<RandomVariable*>& assignedNodes,
 			    const set<RandomVariable*>& unassignedIteratedNodes,
 			    const set<RandomVariable*>& separatorNodes,
 			    const set<RandomVariable*>& cumulativeAssignedNodes,
@@ -704,7 +760,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       } else if (unassignedIteratedNodes.find(rv) != unassignedIteratedNodes.end()) {
 	truly_sparse = false;
       } else if (separatorNodes.find(rv) != separatorNodes.end()) {
-	if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
+	if (assignedNodes.find(rv) != assignedNodes.end()) {
 	  truly_sparse = false;	  
 	} else {
 	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
@@ -823,13 +879,13 @@ MaxClique::prepareForUnrolling()
  *   by a separator driven iteration).
  *
  * Preconditions:
- *   assignedProbNodes, sortedAssignedProbNodes, and precedingUnassignedIteratedNodes members 
+ *   assignedNodes, sortedAssignedNodes, and cumulativeUnassignedIteratedNodes members 
  *   must have already been computed.
  *
  * Postconditions:
  *   If we iterate over all nodes, then iterateSortedAssignedNodesP is of size 0.
  *   If we iterate over some nodes, then iterateSortedAssignedNodesP is of same size
- *        as assignedProbNodes and indicates which nodes to iterate over.
+ *        as assignedNodes and indicates which nodes to iterate over.
  *
  * Side Effects:
  *     potentially modifies one member variable
@@ -841,11 +897,72 @@ MaxClique::prepareForUnrolling()
  *-----------------------------------------------------------------------
  */
 void
-MaxClique::computeAssignedNodesToIterate()
+MaxClique::computeAssignedNodesDispositions()
 {
+
+
+  dispositionSortedAssignedNodes.resize(sortedAssignedNodes.size());
+  for (unsigned i=0;i<sortedAssignedNodes.size();i++) {
+    RandomVariable*rv = sortedAssignedNodes[i];
+    if (!rv->hidden) {
+      // observed
+      if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
+	dispositionSortedAssignedNodes[i] = AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB;
+      } else {
+	if (rv->discrete) {
+	  // discrete observed variable. Prune here if sparse.
+	  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;	  
+	  if (drv->sparse())
+	    dispositionSortedAssignedNodes[i] = AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS;
+	  else 
+	    dispositionSortedAssignedNodes[i] = AN_CONTINUE;
+	} else {
+	  // continuous observed variable, but we get prob. in another clique, and
+	  // we don't want to do this again, so just continue here.
+	  dispositionSortedAssignedNodes[i] = AN_CONTINUE;
+	}
+      }      
+    } else {
+      // hidden node, must be discrete
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      if (unionIncommingCESeps.find(rv) == unionIncommingCESeps.end()) {
+	// not contained in any CE incomming separator
+	if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
+	  // probabilities from this node contribute to clique potential
+	  dispositionSortedAssignedNodes[i] = AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB;
+	} else {
+	  if (drv->sparse()) {
+	    dispositionSortedAssignedNodes[i] = AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS;
+	  } else {
+	    dispositionSortedAssignedNodes[i] = AN_CARD_ITERATION;
+	  }
+	}
+      } else {
+	// contained in an CE incomming separator
+	if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
+	  // probabilities from this node contribute to clique potential
+	  dispositionSortedAssignedNodes[i] = AN_COMPUTE_AND_APPLY_PROB;
+	} else {
+	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
+	    dispositionSortedAssignedNodes[i] = AN_CONTINUE;
+	  } else if (!drv->sparse()) {
+	    dispositionSortedAssignedNodes[i] = AN_CONTINUE;
+	  } else {
+	    dispositionSortedAssignedNodes[i] = AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS;
+	  }
+	}
+      }
+    }
+  }
+  
+
+
+#if 0
+
+
   set<RandomVariable*> res;
-  set_intersection(assignedProbNodes.begin(),assignedProbNodes.end(),
-		   precedingUnassignedIteratedNodes.begin(),precedingUnassignedIteratedNodes.end(),
+  set_intersection(assignedNodes.begin(),assignedNodes.end(),
+		   cumulativeUnassignedIteratedNodes.begin(),cumulativeUnassignedIteratedNodes.end(),
 		   inserter(res,res.end()));
   if (res.size() == 0)
     return;
@@ -853,9 +970,9 @@ MaxClique::computeAssignedNodesToIterate()
   // too bad, we've got assigned nodes in this clique that
   // we do not iterate, so we must add a check in iteration.
 
-  iterateSortedAssignedNodesP.resize(sortedAssignedProbNodes.size());
-  for (unsigned i=0;i<sortedAssignedProbNodes.size();i++) {
-    if ((precedingUnassignedIteratedNodes.find(sortedAssignedProbNodes[i]) != precedingUnassignedIteratedNodes.end())) {
+  iterateSortedAssignedNodesP.resize(sortedAssignedNodes.size());
+  for (unsigned i=0;i<sortedAssignedNodes.size();i++) {
+    if ((cumulativeUnassignedIteratedNodes.find(sortedAssignedNodes[i]) != cumulativeUnassignedIteratedNodes.end())) {
       // found, no need to iterate (which is bad since this means that
       // we'll be iterating this assigned node via the separator).
       iterateSortedAssignedNodesP[i] = false;
@@ -864,6 +981,7 @@ MaxClique::computeAssignedNodesToIterate()
       iterateSortedAssignedNodesP[i] = true;
     }
   }
+#endif
 }
 
 
@@ -891,35 +1009,54 @@ MaxClique::computeAssignedNodesToIterate()
  *-----------------------------------------------------------------------
  */
 void
-MaxClique::printAllJTInfo(FILE*f,const unsigned indent)
+MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RandomVariable*>& unassignedInPartition)
 {
 
   // TODO: also print out nubmer of bits for acc and rem.
 
   psp(f,indent*2);
-  fprintf(f,"Clique information: %d packed bits, %d unsigned words\n",
-	  packer.packedLenBits(),packer.packedLen());
+  fprintf(f,"Clique information: %d packed bits, %d unsigned words, weight = %f, jt_weight = %f\n",
+	  packer.packedLenBits(),packer.packedLen(),weight(),weightInJunctionTree(unassignedInPartition));
+
+
 
   psp(f,indent*2);
   fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
 
   psp(f,indent*2);
-  fprintf(f,"%d Assigned: ",assignedProbNodes.size()); printRVSet(f,assignedProbNodes);  
+  fprintf(f,"%d Assigned: ",assignedNodes.size()); printRVSet(f,assignedNodes);
 
   psp(f,indent*2);
-  fprintf(f,"%d Assigned Sorted: ",sortedAssignedProbNodes.size()); printRVSet(f,sortedAssignedProbNodes);  
+  fprintf(f,"%d Assigned Sorted: ",sortedAssignedNodes.size()); printRVSet(f,sortedAssignedNodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%d Dispositions:",dispositionSortedAssignedNodes.size());
+  for (unsigned i=0;i<dispositionSortedAssignedNodes.size();i++)
+    fprintf(f," %d",dispositionSortedAssignedNodes[i]);
+  fprintf(f,"\n");
+
+
+  psp(f,indent*2);
+  fprintf(f,"%d Assigned Prob: ",assignedProbNodes.size()); printRVSet(f,assignedProbNodes);  
+
+  psp(f,indent*2);
+  fprintf(f,"%d Cum Assigned Prob: ",cumulativeAssignedProbNodes.size()); printRVSet(f,cumulativeAssignedProbNodes);  
+
+  psp(f,indent*2);
+  fprintf(f,"%d Union Incomming Seps: ",unionIncommingCESeps.size()); printRVSet(f,unionIncommingCESeps);
 
   psp(f,indent*2);
   fprintf(f,"%d Unassigned Iterated: ",unassignedIteratedNodes.size()); printRVSet(f,unassignedIteratedNodes);
 
+
+
+  psp(f,indent*2);
+  fprintf(f,"%d Cumulative Unassigned: ",cumulativeUnassignedIteratedNodes.size()); printRVSet(f,cumulativeUnassignedIteratedNodes);
+
+
   psp(f,indent*2);
   fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSet(f,hiddenNodes);
 
-  psp(f,indent*2);
-  fprintf(f,"%d Preceding Unassigned: ",precedingUnassignedIteratedNodes.size()); printRVSet(f,precedingUnassignedIteratedNodes);
-
-  psp(f,indent*2);
-  fprintf(f,"%d Union Incomming Seps: ",accumSeps.size()); printRVSet(f,accumSeps);
 
   psp(f,indent*2);
   fprintf(f,"%d Clique Neighbors: ",neighbors.size());
@@ -1030,9 +1167,9 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   }
 
   // and clone over assigned nodes and sorted assigned nodes
-  fSortedAssignedNodes.resize(from_clique.sortedAssignedProbNodes.size());
-  for (i=0;i<from_clique.sortedAssignedProbNodes.size();i++) {
-    RandomVariable* rv = from_clique.sortedAssignedProbNodes[i];
+  fSortedAssignedNodes.resize(from_clique.sortedAssignedNodes.size());
+  for (i=0;i<from_clique.sortedAssignedNodes.size();i++) {
+    RandomVariable* rv = from_clique.sortedAssignedNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -1203,7 +1340,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // set above in a previous separator. Just continue on with single value.
 
     if (message(Giga)) {
-      fprintf(stdout,"   separator iteration nounpack, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+      fprintf(stdout,"Separator iteration nounpack, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
 	      sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
       printRVSetAndValues(stdout,sep.fNodes);
     }
@@ -1241,7 +1378,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	// } 
 
 	if (message(Giga)) {
-	  fprintf(stdout,"   separator iteration %d, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+	  fprintf(stdout,"Separator iteration %d, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
 		  i,
 		  sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
 	  printRVSetAndValues(stdout,sep.fNodes);
@@ -1263,7 +1400,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
 
 	if (message(Giga)) {
-	  fprintf(stdout,"   pseparator iteration %d, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+	  fprintf(stdout,"pSeparator iteration %d, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
 		  i,
 		  sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
 	  printRVSetAndValues(stdout,sep.fNodes);
@@ -1342,6 +1479,112 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
   RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
+  infoMsg(Giga,"Starting assigned iteration of rv %s(%d), nodeNumber=%d, p = %f\n",
+	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+
+  switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
+  case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
+    {
+      rv->clampFirstValue();
+      do {
+	// At each step, we compute probability
+	logpr cur_p = rv->probGivenParents();
+	if (message(Giga)) {
+	  if (!rv->discrete) {
+	    infoMsg(Giga,"  Assigned iteration and prob application of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+	  } else {
+	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    infoMsg(Giga,"  Assigned CPT iteration and prob application of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	  }
+	}
+	// if at any step, we get zero, then back out.
+	if (!cur_p.essentially_zero()) {
+	  // Continue, updating probability by cur_p, contributing this
+	  // probability to the clique potential.
+	  ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
+	}
+      } while (rv->clampNextValue());
+    }
+    break;
+
+  case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
+    {
+      rv->clampFirstValue();
+      do {
+	// At each step, we compute probability
+	logpr cur_p = rv->probGivenParents();
+	if (message(Giga)) {
+	  if (!rv->discrete) {
+	    infoMsg(Giga,"  Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+	  } else {
+	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    infoMsg(Giga,"  Assigned CPT iteration and zero removal of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	  }
+	}
+	// if at any step, we get zero, then back out.
+	if (!cur_p.essentially_zero()) {
+	  // Continue, do not update probability!!
+	  ceIterateAssignedNodes(part,nodeNumber+1,p);
+	}
+      } while (rv->clampNextValue());
+    }
+    break;
+
+
+  case MaxClique::AN_CARD_ITERATION:
+    {
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      // do the loop right here
+      drv->val = 0;
+      do {
+	infoMsg(Giga,"  Assigned card iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+		rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	// Continue, do not update probability!!
+	ceIterateAssignedNodes(part,nodeNumber+1,p);
+      } while (++drv->val < drv->cardinality);
+    }
+    break;
+
+  case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
+    {
+      // TODO: Make more efficient version of this, based on the type of
+      // RV.
+      logpr cur_p = rv->probGivenParentsWSetup();
+      // if at any step, we get zero, then back out.
+      if (!cur_p.essentially_zero()) {
+	// Continue, updating probability by cur_p.
+	ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
+      }
+    }
+    break;
+
+  case MaxClique::AN_CONTINUE:
+    ceIterateAssignedNodes(part,nodeNumber+1,p);
+    break;
+
+  case MaxClique::AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS:
+    {
+      // TODO: Make more efficient version of this, based on the type of
+      // RV.
+      logpr cur_p = rv->probGivenParentsWSetup();
+      if (!cur_p.essentially_zero()) {
+	// Continue, do not update probability!!
+	ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
+      }
+    }
+    break;
+
+  default:
+    assert(0);
+    break;
+  }
+
+
+#if 0
 
   // TODO: definitely optimize out this next check.
   if (origin.iterateSortedAssignedNodesP.size() == 0 || origin.iterateSortedAssignedNodesP[nodeNumber] == true) {
@@ -1387,6 +1630,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
     }
   }
+#endif
 
 }
 

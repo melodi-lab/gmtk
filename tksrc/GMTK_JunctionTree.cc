@@ -81,6 +81,25 @@ printRVSet(set<RandomVariable*>& locset)
 }
 #endif
 
+
+/*
+ * Take the union of A and B and place it in C.
+ */
+static void
+union_1_2_to_3(const set<RandomVariable*>& A,
+	       const set<RandomVariable*>& B,
+	       set<RandomVariable*>& C,
+	       bool do_not_clear = false)
+{
+  if (!do_not_clear)
+    C.clear();
+  set_union(A.begin(),A.end(),
+	    B.begin(),B.end(),
+	    inserter(C,C.end()));
+}
+
+bool JunctionTree::jtWeightUpperBound = false;
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        JT Partition support
@@ -369,10 +388,12 @@ JunctionTree::setUpDataStructures()
   computePartitionInterfaces();
   createDirectedGraphOfCliques();
   assignRVsToCliques();
+  // TODO: move this next one above by one.
   setUpMessagePassingOrders();
   createSeparators();
   computeSeparatorIterationOrders();
-  getPrecedingIteratedUnassignedNodes();
+  // the next routine also computes the dispositions
+  getCumulativeUnassignedIteratedNodes();
 }
 
 
@@ -964,7 +985,7 @@ JunctionTree::createDirectedGraphOfCliquesRecurse(JT_Partition& part,
  *
  * Postconditions:
  *     Each of the partitions so specified in the code below
- *     are now such that their cliques have their 'assignedProbNodes' 
+ *     are now such that their cliques have their 'assignedNodes' 
  *     member filled in.
  *
  * Side Effects:
@@ -978,43 +999,66 @@ JunctionTree::createDirectedGraphOfCliquesRecurse(JT_Partition& part,
 void
 JunctionTree::assignRVsToCliques()
 {
-
   infoMsg(IM::Med,"assigning rvs to P1 partition\n");
   assignRVsToCliques("P1",P1,P_ri_to_C);
 
   if (gm_template.leftInterface) {
     infoMsg(IM::Med,"assigning rvs to Cu0 partition\n");
-    Cu0.cliques[C_li_to_P].cumulativeAssignedNodes = 
-      P1.cliques[P_ri_to_C].cumulativeAssignedNodes;
+    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
+		   P1.cliques[P_ri_to_C].assignedNodes,
+		   Cu0.cliques[C_li_to_P].cumulativeAssignedNodes);
+    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
+		   P1.cliques[P_ri_to_C].assignedProbNodes,
+		   Cu0.cliques[C_li_to_P].cumulativeAssignedProbNodes);
     assignRVsToCliques("Cu0",Cu0,C_ri_to_C);
 
+
     infoMsg(IM::Med,"assigning rvs to Co partition\n");
-    Co.cliques[C_li_to_C].cumulativeAssignedNodes = 
-      Cu0.cliques[C_ri_to_C].cumulativeAssignedNodes;
+    union_1_2_to_3(Cu0.cliques[C_ri_to_C].cumulativeAssignedNodes,
+		   Cu0.cliques[C_ri_to_C].assignedNodes,
+		   Co.cliques[C_li_to_C].cumulativeAssignedNodes);
+    union_1_2_to_3(Cu0.cliques[C_ri_to_C].cumulativeAssignedProbNodes,
+		   Cu0.cliques[C_ri_to_C].assignedProbNodes,
+		   Co.cliques[C_li_to_C].cumulativeAssignedProbNodes);
     assignRVsToCliques("Co",Co,C_ri_to_C);
 
     infoMsg(IM::Med,"assigning rvs to E partition\n");
-    E1.cliques[E_li_to_C].cumulativeAssignedNodes =
-      Co.cliques[C_ri_to_E].cumulativeAssignedNodes;
+    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
+		   Co.cliques[C_ri_to_E].assignedNodes,
+		   E1.cliques[E_li_to_C].cumulativeAssignedNodes);
+    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
+		   Co.cliques[C_ri_to_E].assignedProbNodes,
+		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
     assignRVsToCliques("E1",E1,E_root_clique);
 
   } else { // right interface 
     infoMsg(IM::Med,"assigning rvs to Co partition\n");
-    Co.cliques[C_li_to_P].cumulativeAssignedNodes = 
-      P1.cliques[P_ri_to_C].cumulativeAssignedNodes;
+    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
+		   P1.cliques[P_ri_to_C].assignedNodes,
+		   Co.cliques[C_li_to_P].cumulativeAssignedNodes);
+    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
+		   P1.cliques[P_ri_to_C].assignedProbNodes,
+		   Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
     assignRVsToCliques("Co",Co,C_ri_to_C);
 
     infoMsg(IM::Med,"assigning rvs to Cu0 partition\n");
-    Cu0.cliques[C_li_to_C].cumulativeAssignedNodes = 
-      Co.cliques[C_ri_to_C].cumulativeAssignedNodes;
+    union_1_2_to_3(Co.cliques[C_ri_to_C].cumulativeAssignedNodes,
+		   Co.cliques[C_ri_to_C].assignedNodes,
+		   Cu0.cliques[C_li_to_C].cumulativeAssignedNodes);
+    union_1_2_to_3(Co.cliques[C_ri_to_C].cumulativeAssignedProbNodes,
+		   Co.cliques[C_ri_to_C].assignedProbNodes,
+		   Cu0.cliques[C_li_to_C].cumulativeAssignedProbNodes);
     assignRVsToCliques("Cu0",Cu0,C_ri_to_E);
 
     infoMsg(IM::Med,"assigning rvs to E partition\n");
-    E1.cliques[E_li_to_C].cumulativeAssignedNodes =
-      Cu0.cliques[C_ri_to_E].cumulativeAssignedNodes;
+    union_1_2_to_3(Cu0.cliques[C_ri_to_E].cumulativeAssignedNodes,
+		   Cu0.cliques[C_ri_to_E].assignedNodes,
+		   E1.cliques[E_li_to_C].cumulativeAssignedNodes);
+    union_1_2_to_3(Cu0.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
+		   Cu0.cliques[C_ri_to_E].assignedProbNodes,
+		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
     assignRVsToCliques("E1",E1,E_root_clique);
   }
-
 }
 
 
@@ -1048,7 +1092,7 @@ JunctionTree::assignRVsToCliques()
  *
  * Postconditions:
  *     the partition so specified in the code below
- *     are now such that their cliques have their 'assignedProbNodes' 
+ *     are now such that their cliques have their 'assignedNodes' 
  *     member filled in.
  *
  * Side Effects:
@@ -1065,6 +1109,14 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 				 const unsigned rootClique)
 {
   vector<RandomVariable*> sortedNodes;
+
+  // TODO: change topological sort so that among all possible sorts,
+  // the continuous observations come as early as possible in the
+  // ordering. This way, we are not repeatedly calling the computation
+  // of probability on those nodes (computing prob of a mixture is
+  // more expensive than that of a discrete variable). Also, possibly
+  // cache mixture probabilities if we find a mixture is in a big
+  // clique and forced to be at the end.
   GraphicalModel::topologicalSort(part.nodes,part.nodes,sortedNodes);
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),part.cliques.size());
@@ -1082,50 +1134,68 @@ JunctionTree::assignRVsToCliques(const char *const partName,
       // fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
       parSet.insert(rv->allPossibleParents[p]);
     }
-    bool assigned = false;
     multimap < vector<float>, unsigned> scoreSet;
+
+    bool alreadyAProbContributer = false;
     assignRVToClique(partName,
 		     part,rootClique,
 		     0,
 		     rv,
-		     parSet,assigned,
+		     alreadyAProbContributer,
+		     parSet,
 		     scoreSet);
     infoMsg(IM::High,
 	    "Part %s: random variable %s(%d) with its parents contained in %d cliques\n",
 	    partName,
 	    rv->name().c_str(),rv->frame(),scoreSet.size());
 
-    if (!assigned) {
-      if (scoreSet.size() > 0) {
-	// choose the first one to assign.
+    if (scoreSet.size() > 0) {
+      // Then the node was assigned, i.e., existed in at least one clique
+      // with all its parents.
+
+      if (!alreadyAProbContributer) {
+	// We choose one of those cliques to be the one the node
+	// contributes probabilty to.
 	unsigned clique_num = (*(scoreSet.begin())).second;
 	part.cliques[clique_num].assignedProbNodes.insert(rv);
-	part.cliques[clique_num].sortedAssignedProbNodes.push_back(rv);
-	assigned = true;
 	infoMsg(IM::Med,
-		"Part %s: random variable %s(%d) assigned to clique %d\n",
+		"Part %s: random variable %s(%d) giving probability to clique %d\n",
 		partName,
 		rv->name().c_str(),rv->frame(),clique_num);
-
-	// @@@ add to assignedIterNodes here.
-      } else {
-	// rv was not assigned to this partition, it must be the case
-	// that it will be assigned to a different partition. This
-	// could come from the partition before or the partition after
-	// the current partition. If there are only forward-directed
-	// arrows, it will come from the previous partition (and vice
-	// versa if there are only backwards going edges). If we have
-	// both directed edges, it could be assigned in either left or
-	// right partition.
-	infoMsg(IM::Med,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
-		rv->name().c_str(),rv->frame());
-	// in any event, keep track of this node.
-	part.unassignedInPartition.insert(rv);
       }
-    }
-    // update the cumulative RV assignments.
-    if (assigned)
+
+      // update the cumulative RV assignments.
       getCumulativeAssignedNodes(part,rootClique);
+
+    } else {
+      // rv was not assigned to this partition, it must be the case
+      // that it will be assigned to a different partition. This
+      // could come from the partition before or the partition after
+      // the current partition. If there are only forward-directed
+      // arrows, it will come from the previous partition (and vice
+      // versa if there are only backwards going edges). If we have
+      // both directed edges, it could be assigned in either left or
+      // right partition.
+
+      // Note that it is impossible for a node to be assigned in two
+      // partitions. The reason is the following. The only nodes that
+      // live in both partitions are the interface nodes.  Consider
+      // the left interface case. If the edges are right pointing,
+      // then the child and its parents are in the interface, but
+      // one of the nodes @@@ (is this true??).
+      // @@@@@@ THIS IS CURRENTLY A BUG AND NEEDS TO BE FIXED.
+      // the problem is that certain nodes in the interface
+      // between two partitions might get prob assigned to
+      // two partitions. Need to fix this. As an example,
+      // consider aurora_training when we do not run the boundary
+      // algorithm.
+
+      infoMsg(IM::Med,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
+	      rv->name().c_str(),rv->frame());
+      // in any event, keep track of this node.
+      part.unassignedInPartition.insert(rv);
+    }
+
   }
 
 }
@@ -1156,14 +1226,12 @@ void
 JunctionTree::assignRVToClique(const char *const partName,
 			       JT_Partition& part,
 			       const unsigned root,
-			       unsigned depth,
+			       const unsigned depth,
 			       RandomVariable* rv,
+			       bool& alreadyAProbContributer,
 			       set<RandomVariable*>& parSet,
-			       bool& assigned,
 			       multimap < vector<float>, unsigned >& scoreSet)
 {
-  depth++;
-
   // keep a reference for easy access
   MaxClique& curClique = part.cliques[root];
 
@@ -1183,163 +1251,146 @@ JunctionTree::assignRVToClique(const char *const partName,
     closure_in_clique = (res.size() == parSet.size());
   }
 
-  // printf("clique%d: from par(rv), closure_not_in_clique = %d, num children = %d\n",root,closure_not_in_clique,part.cliques[root].children.size());
+  // printf("clique%d: from par(rv), closure_not_in_clique = %d, num
+  // children =
+  // %d\n",root,closure_not_in_clique,part.cliques[root].children.size());
 
   if (closure_in_clique) {
     // So closure(rv) is in current clique, meaning rv and all its
     // parents are members of this clique, but it is not nec. the case
-    // that all of rv's parents are themselves assigned to this clique
-    // (i.e., the parents conditional probabilities might not be
-    // assigned to this clique).
+    // that all of rv's parents are themselves assigned to produce
+    // probabilities in this clique
+
+    // Since closure is in the clique, we "assign" this node to this
+    // clique. Note, this does not necessarily mean that the node will
+    // contribute probabilties to this clique's potential
+    // function. That is decided after we consider all possible such
+    // candidate cliques.
+    curClique.assignedNodes.insert(rv);
+    curClique.sortedAssignedNodes.push_back(rv);
 
     infoMsg(IM::Huge,
-	    "Part %s: found random variable %s(%d) in clique %d along with all its parents\n",
+	    "Part %s: RV and its parents in clique, assigning random variable %s(%d) to clique %d\n",
 	    partName,
 	    rv->name().c_str(),rv->frame(),root);
 
+    if (curClique.cumulativeAssignedProbNodes.find(rv) != curClique.cumulativeAssignedProbNodes.end()) {
+      alreadyAProbContributer = true;
+    }
 
-    // If parents(rv) are actually assigned to this clique already,
-    // then assign rv to this clique right now.
+    // Note: in this discussion, we make a distinction between node
+    // parents and children (i.e., original graph parents and
+    // children) and JT parents and children which are cliques in the
+    // JT. A child clique c of a parent p in the JT is one such that c
+    // ~ p and that depth(c) = depth(p)+1, where depth(root)=0 in the
+    // junction tree.
+
+    // The goal here is to figure out in which of a set of possible
+    // cliques the node should be producing probabilities.
+
+    // Compute (and ultimately push back) items in decreasing order of
+    // priority.  Lower numbers is better (e.g., more negative or less
+    // positive is higher priority).  First thing inserted has highest
+    // priority.  At some time later, the rv will be assigned to the
+    // clique with the *LOWEST* score.
+
+    // What we do, is continue on down. It may be the the case that we
+    // find a clique with rv and all of rv's node parents assigned (in
+    // which case we assign rv right then), but in the mean time we
+    // keep track of this clique's "score" using a set of
+    // heuristics. 
+
+    // TODO: change it so that only heuristics that are
+    // used are computed.
+
+    // Compute number of previous parents with their probability assigned.
+    // The heuristic here is, have this node contribute probabiltiy
+    // to this clique if many of its parents are already doing so, which
+    // might produce a clique with good pruning behavior.
     set<RandomVariable*> res;
     set_intersection(curClique.assignedProbNodes.begin(),
 		     curClique.assignedProbNodes.end(),
 		     parSet.begin(),parSet.end(),
 		     inserter(res,res.end()));
-    const bool parents_assigned_to_clique
-      = (res.size() == parSet.size());
-
-    vector<float> score;
-    if (parents_assigned_to_clique) {
-      // we've got all our parents assigned, so assign
-      // child to this clique right now.
-      // curClique.assignedProbNodes.insert(rv);
-      // curClique.sortedAssignedProbNodes.push_back(rv);
-      // assigned = true;
-      infoMsg(IM::Med,
-	      "Part %s: random variable %s(%d) assigned to clique %d with all its parents\n",partName,
-		rv->name().c_str(),rv->frame(),root);
-      // all done with this routine since rv has been assigned.
-      score.push_back(0);
-    } else {
-      score.push_back(1);
-    }
-
-    // Note: in this discussion, we make a distinction between node
-    // parents and children (i.e., original graph parents and
-    // children) and JT parents and children which are cliques in
-    // the JT. A child clique c of a parent p in the JT is one such
-    // that c ~ p and that depth(c) = depth(p)+1, where
-    // depth(root)=0 in the junction tree.
-
-    // While we have a clique that contains this rv and all of its
-    // node parents, it is not the case that all of rv's node
-    // parents are assigned to this clique. Moreover, it will never
-    // be the case that rv's node parents will be assigned to *this*
-    // clique since we are presumably assigning rv nodes to cliques
-    // in topological order, and at this point, we've already
-    // assigned rv's node parents somewhere else.
-
-    // Therefore, we have to do the best we can (i.e., we're now in
-    // a situation where rv will live in a clique without all of its
-    // node parents assigned).
-
-    // What we do, is continue on down. It may be the the case that
-    // we find a clique with rv and all of rv's node parents
-    // assigned (in which case we assign rv right then), but in the
-    // mean time we keep track of this clique's "score" using a set
-    // of heuristics. At some time later, the rv will be assigned to
-    // the clique with the *LOWEST* score.
-
-    // Heuristics: want to assign rv to a clique where it:
-    // 
-    //    A) has all of its node parents in clique (already satisfied here)
-    //
-    //    B) has its node parents actually assigned (not satisfied here)
-    //
-    //    C) be in a clique CL close enough to the root clique so
-    //    that all rv's node parents are assigned to cliques that
-    //    are JT decendants of CL in the JT rooted at root. This way
-    //    the separator driven iterations will preserve any
-    //    sparsity driven zeros in the CPTs.
-    //
-    //    D) has lots of node children whose other node parents are
-    //    already (or will be) assigned.
-    // 
-    //    E) is assign as far away from root as possible, to try
-    //    encourage it to have as much "influence" as possible in
-    //    JT parents (but this is only a poor heuristic)
-    //
-    //    F) (NOT DONE BELOW) is assigned to a clique where it has the greatest
-    //    number of node descendants (but this is only a heuristic
-    //    since to gain benefit, we would need to have it be such
-    //    that those node descendants have their node parents in
-    //    clique as well.
-    // 
-
-    // TODO: The variable being in a clique with its parents
-    // *assigned* is really only important for sparse or
-    // deterministic nodes. Ideally, this bit of info should also
-    // affect the assignment process.
-
-    // TODO: think this through as this code is only
-    // heuristic. There is most likely some theoretically best thing
-    // to do here.
-      
+    int num_parents_with_probability = (int) res.size();
+    // Previous Parents with their probabilities in Junction Tree.
+    // We add this to the above. 
+    res.clear();
+    set_intersection(curClique.cumulativeAssignedProbNodes.begin(),
+		     curClique.cumulativeAssignedProbNodes.end(),
+		     parSet.begin(),parSet.end(),
+		     inserter(res,res.end()));
+    num_parents_with_probability += (int) res.size();
+    // negate so that lower is preferable.
+    num_parents_with_probability *= -1;
 
 
-    // Push back items in decreasing order of priority.  Lower
-    // numbers is better (e.g., more negative or less positive is
-    // higher priority).  First thing inserted has highest priority.
-
-    // Previous Parents in Junction Tree.
-    // insert value:
-    //   0, if all parents have been assigned in the cummulative set, or
-    //   1, if not.
-    {
-      set<RandomVariable*> res;
-      set_intersection(curClique.cumulativeAssignedNodes.begin(),
-		       curClique.cumulativeAssignedNodes.end(),
-		       parSet.begin(),parSet.end(),
-		       inserter(res,res.end()));
-      bool parents_not_assigned = (res.size() != parSet.size());
-      score.push_back(parents_not_assigned);
-      if (!parents_not_assigned) {
-	// then this is good! we've found at least one.
-	infoMsg(IM::Med,
-		"Part %s: found random variable %s(%d) in clique %d with all parents in children cliques\n",partName,
-		rv->name().c_str(),rv->frame(),root);
-      }
-    }
-
-
-    // Distance from root, among the higher priorities that
-    // are equal, try to be as far away from the root as possible so
-    // as to prune away as much zero as possible as early as
-    // possible.
-    score.push_back(-depth);
+    // Distance from root, among the higher priorities that are equal,
+    // try to be as far away from the root as possible so as to prune
+    // away as much zero as possible as early as possible. I.e., try
+    // encourage it to have as much "influence" as possible in JT
+    // parents.
+    // negate so that lower is preferable.
+    const int distance_from_root = -(int)depth;
 
 
     // Number of children in current clique. If rv has lots of
     // children in this clique, it is hopeful that other parents of
     // those children might also be assigned to the same clique.
-    unsigned numChildren = 0;
+    int numChildren = 0;
     for (unsigned i=0;i<rv->allPossibleChildren.size();i++) {
       RandomVariable* child = rv->allPossibleChildren[i];
       if (curClique.nodes.find(child) != curClique.nodes.end())
 	numChildren++;
     }
-    score.push_back(-numChildren);
+    // negate so that lower is preferable.
+    numChildren *= -1;
+
+    
+    // when the node is continuous, assign it to a clique that is the
+    // smallest possible in terms of weight.
+    float weight = - curClique.weight();
 
 
-    // And so on. We can push back as many heuristics as we want.
-    // alternatively, perhaps take a weighted average of some of
-    // them??
+    // And so on. We can create as many heuristics as we want.
+    // alternatively, perhaps take a weighted average of some of them.
+    // TODO: add more heuristics here, and/or produce better
+    // prioritized order above.
 
-    // TODO: add more heuristics here, and/or produce better prioritized
-    // order above.
+    // Other possible heuristics:
+    //    1) a clique where it has the greatest number of node
+    //    descendants (but this is only a heuristic since to gain
+    //    benefit, we would need to have it be such that those node
+    //    descendants have their node parents in clique as well.
 
-    // ...
-      
+
+
+
+    // We've now computed a bunch of heursitcs, push them
+    // into an array in priority order to be scored later
+    vector<float> score;
+    if (rv->discrete) {
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      // 1st thing pushed has highest priority.
+      if (drv->sparse()) {
+	// if the RV is sparse, use distance from
+	// root as the higest priority, since a sparse
+	// node will have lots of zeros, regardless of beam width.
+	score.push_back(distance_from_root);
+	score.push_back(num_parents_with_probability);
+      } else {
+	// if the RV is not sparse, try to assign it to a node with its
+	// parents root as the higest priority, since a it will make for
+	// a clique that will prune more effectively
+	score.push_back(num_parents_with_probability);
+	score.push_back(distance_from_root);
+      }
+      score.push_back(numChildren);
+    } else {
+      score.push_back(weight);
+      score.push_back(num_parents_with_probability);      
+    }
+
     // done inserting heuristicss, now insert the score and the
     // current clique into the set.
     pair < vector<float>, unsigned> p(score,root);
@@ -1350,9 +1401,7 @@ JunctionTree::assignRVToClique(const char *const partName,
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
     const unsigned child = part.cliques[root].children[childNo];
-    assignRVToClique(partName,part,child,depth,rv,parSet,assigned,scoreSet);
-    if (assigned)
-      break;
+    assignRVToClique(partName,part,child,depth+1,rv,alreadyAProbContributer,parSet,scoreSet);
   }
 
 }
@@ -1385,29 +1434,23 @@ JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
 {
   MaxClique& curClique = part.cliques[root];
 
-  set<RandomVariable*> res;
-  const set<RandomVariable*> empty;
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
 
     const unsigned child = curClique.children[childNo];
-
     getCumulativeAssignedNodes(part,child);
-
     // Note: this will do a bunch of redundant work (i.e., inserting
     // elements into sets where the elements are already contained in
     // the sets), but it doesn't need to run that fast, so the
     // redundant work is not a big deal.
-    set_union(empty.begin(),empty.end(),
-	      part.cliques[child].cumulativeAssignedNodes.begin(),
-	      part.cliques[child].cumulativeAssignedNodes.end(),
-	      inserter(res,res.end()));
+    union_1_2_to_3(part.cliques[child].cumulativeAssignedNodes,
+		   part.cliques[child].assignedNodes,
+		   curClique.cumulativeAssignedNodes,true);
+    union_1_2_to_3(part.cliques[child].cumulativeAssignedProbNodes,
+		   part.cliques[child].assignedProbNodes,
+		   curClique.cumulativeAssignedProbNodes,true);
+
   }
-  set_union(curClique.assignedProbNodes.begin(),
-	    curClique.assignedProbNodes.end(),
-	    res.begin(),res.end(),
-	    inserter(curClique.cumulativeAssignedNodes,
-		     curClique.cumulativeAssignedNodes.end()));
 }
 
 
@@ -1781,24 +1824,34 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
   // Build up the partial and then ultimately the final union of of
   // all nodes in separators for incomming messages for this clique.
-  clique.accumSeps.clear();
+  clique.unionIncommingCESeps.clear();
 
   if (numSeparators == 0) {
     // This must be a leaf-node clique relatve to root.
-    // 'accumSeps' is already empty so no need to do anything there.
+    // 'unionIncommingCESeps' is already empty so no need to do anything there.
   } else if (numSeparators == 1) {
     // shortcut to separator 0
     SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
-    clique.accumSeps = s0.nodes;
+    clique.unionIncommingCESeps = s0.nodes;
     s0.accumulatedIntersection.clear();
     s0.remainder = s0.nodes;
     assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
   } else if (numSeparators == 2) {
-    
+
+
+    // iterate through smaller weight separator first. If no
+    // intersection, then this of course doesn't matter at all.
+    if (part.separators[clique.ceReceiveSeparators[0]].weight() <
+	part.separators[clique.ceReceiveSeparators[1]].weight()) {
+      // do nothing
+    } else {
+      swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
+    }
 
     // shortcuts to separator 0 and 1
     SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
     SeparatorClique& s1 = part.separators[clique.ceReceiveSeparators[1]];
+
 
     // intersection of the two separators
     set<RandomVariable*> sepIntersection;
@@ -1821,7 +1874,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     // compute union of all separators.
     set_union(s0.nodes.begin(),s0.nodes.end(),
 	      s1.nodes.begin(),s1.nodes.end(),
-	      inserter(clique.accumSeps,clique.accumSeps.end()));
+	      inserter(clique.unionIncommingCESeps,clique.unionIncommingCESeps.end()));
 
     assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
     assert ( s1.accumulatedIntersection.size() + s1.remainder.size() == s1.nodes.size() );
@@ -1836,6 +1889,9 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     // 
     // In otherwords, rerder clique.ceReceiveSeparators for maximal overlap.
     // 
+    
+    // sort based on increasing 
+
 
     // Compute the cummulative intersection of the sepsets
     // using the current sepset order.
@@ -1844,7 +1900,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
       // initialize union of all previous separators
 
-      clique.accumSeps = 
+      clique.unionIncommingCESeps = 
 	part.separators[clique.ceReceiveSeparators[0]].nodes;
       part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
       part.separators[clique.ceReceiveSeparators[0]].remainder
@@ -1862,7 +1918,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 	// create the intersection of 1) the union of all previous nodes in
 	// the sep order, and 2) the current sep nodes.
 	sepAccumInter.clear();
-	set_intersection(clique.accumSeps.begin(),clique.accumSeps.end(),
+	set_intersection(clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
 			 sepNodes.begin(),sepNodes.end(),
 			 inserter(sepAccumInter,sepAccumInter.end()));
 
@@ -1878,27 +1934,28 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 	// update the accumulated (union) of all previous sep nodes.
 	set<RandomVariable*> res;
 	set_union(sepNodes.begin(),sepNodes.end(),
-		  clique.accumSeps.begin(),clique.accumSeps.end(),
+		  clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
 		  inserter(res,res.end()));
-	clique.accumSeps = res;	
+	clique.unionIncommingCESeps = res;	
       }
     }
 
   }
 
+
   // lastly, assign unassignedIteratedNodes in this clique
   {
     // unassigned nodes, unassigned iterated nodes, 
-    // compute: unassignedIteratedNodes  = nodes - (assignedProbNodes U accumSeps)
-    // first: compute res = nodes - assignedProbNodes
+    // compute: unassignedIteratedNodes  = nodes - (assignedNodes U unionIncommingCESeps)
+    // first: compute res = nodes - assignedNodes
     set<RandomVariable*> res;
     set_difference(clique.nodes.begin(),clique.nodes.end(),
-		   clique.assignedProbNodes.begin(),clique.assignedProbNodes.end(),
+		   clique.assignedNodes.begin(),clique.assignedNodes.end(),
 		   inserter(res,res.end()));
-    // next: compute unassignedIteratedNodes = res - accumSeps
-    // note at this point accumSeps contains the union of all nodes in all separators
+    // next: compute unassignedIteratedNodes = res - unionIncommingCESeps
+    // note at this point unionIncommingCESeps contains the union of all nodes in all separators
     set_difference(res.begin(),res.end(),
-		   clique.accumSeps.begin(),clique.accumSeps.end(),
+		   clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
 		   inserter(clique.unassignedIteratedNodes,
 			    clique.unassignedIteratedNodes.end()));
   }
@@ -1911,7 +1968,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::getPrecedingIteratedUnassignedNodes()
+ * JunctionTree::getCumulativeUnassignedIteratedNodes()
  *
  *   Computes for each clique the union of the set of nodes which have
  *   been iterated unassigned in previous cliques in the JT. This is
@@ -1934,85 +1991,84 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::getPrecedingIteratedUnassignedNodes(JT_Partition& part,
-						  const unsigned root)
+JunctionTree::getCumulativeUnassignedIteratedNodes(JT_Partition& part,
+						   const unsigned root)
 {
-
   MaxClique& curClique = part.cliques[root];
-  set<RandomVariable*>& res = curClique.precedingUnassignedIteratedNodes;
+  set<RandomVariable*>& res = curClique.cumulativeUnassignedIteratedNodes;
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
 
     const unsigned child = curClique.children[childNo];
-    getPrecedingIteratedUnassignedNodes(part,child);
+    getCumulativeUnassignedIteratedNodes(part,child);
 
-    set_union(part.cliques[child].precedingUnassignedIteratedNodes.begin(),
-	      part.cliques[child].precedingUnassignedIteratedNodes.end(),
+    set_union(part.cliques[child].cumulativeUnassignedIteratedNodes.begin(),
+	      part.cliques[child].cumulativeUnassignedIteratedNodes.end(),
 	      part.cliques[child].unassignedIteratedNodes.begin(),
 	      part.cliques[child].unassignedIteratedNodes.end(),
 	      inserter(res,res.end()));
   }
-  curClique.computeAssignedNodesToIterate();
+  curClique.computeAssignedNodesDispositions();
 }
 void
-JunctionTree::getPrecedingIteratedUnassignedNodes()
+JunctionTree::getCumulativeUnassignedIteratedNodes()
 {
   set<RandomVariable*> res;
 
   // TODO: this should be a member function in P1.
-  getPrecedingIteratedUnassignedNodes(P1,P_ri_to_C);
+  getCumulativeUnassignedIteratedNodes(P1,P_ri_to_C);
   res.clear();
   set_union(P1.cliques[P_ri_to_C].unassignedIteratedNodes.begin(),
 	    P1.cliques[P_ri_to_C].unassignedIteratedNodes.end(),
-	    P1.cliques[P_ri_to_C].precedingUnassignedIteratedNodes.begin(),
-	    P1.cliques[P_ri_to_C].precedingUnassignedIteratedNodes.end(),	    
+	    P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
+	    P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.end(),	    
 	    inserter(res,res.end()));
 
   if (gm_template.leftInterface) {
     
-    Cu0.cliques[C_li_to_P].precedingUnassignedIteratedNodes = res;
-    getPrecedingIteratedUnassignedNodes(Cu0,C_ri_to_C);
+    Cu0.cliques[C_li_to_P].cumulativeUnassignedIteratedNodes = res;
+    getCumulativeUnassignedIteratedNodes(Cu0,C_ri_to_C);
 
     res.clear();
     set_union(Cu0.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
 	      Cu0.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	      Cu0.cliques[C_ri_to_C].precedingUnassignedIteratedNodes.begin(),
-	      Cu0.cliques[C_ri_to_C].precedingUnassignedIteratedNodes.begin(),	    
+	      Cu0.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
+	      Cu0.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),	    
 	      inserter(res,res.end()));
-    Co.cliques[C_li_to_C].precedingUnassignedIteratedNodes = res;
-    getPrecedingIteratedUnassignedNodes(Co,C_ri_to_E);
+    Co.cliques[C_li_to_C].cumulativeUnassignedIteratedNodes = res;
+    getCumulativeUnassignedIteratedNodes(Co,C_ri_to_E);
 
     res.clear();
     set_union(Co.cliques[C_ri_to_E].unassignedIteratedNodes.begin(),
 	      Co.cliques[C_ri_to_E].unassignedIteratedNodes.end(),
-	      Co.cliques[C_ri_to_E].precedingUnassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_E].precedingUnassignedIteratedNodes.end(),
+	      Co.cliques[C_ri_to_E].cumulativeUnassignedIteratedNodes.begin(),
+	      Co.cliques[C_ri_to_E].cumulativeUnassignedIteratedNodes.end(),
 	      inserter(res,res.end()));
-    E1.cliques[E_li_to_C].precedingUnassignedIteratedNodes = res;
-    getPrecedingIteratedUnassignedNodes(E1,E_root_clique);
+    E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
+    getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
 
   } else { // right interface 
 
-    Co.cliques[C_li_to_P].precedingUnassignedIteratedNodes = res;
-    getPrecedingIteratedUnassignedNodes(Co,C_ri_to_C);
+    Co.cliques[C_li_to_P].cumulativeUnassignedIteratedNodes = res;
+    getCumulativeUnassignedIteratedNodes(Co,C_ri_to_C);
 
     res.clear();
     set_union(Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
 	      Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_C].precedingUnassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_C].precedingUnassignedIteratedNodes.begin(),	    
+	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
+	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),	    
 	      inserter(res,res.end()));
-    Cu0.cliques[C_li_to_C].precedingUnassignedIteratedNodes = res;
-    getPrecedingIteratedUnassignedNodes(Cu0,C_ri_to_E);
+    Cu0.cliques[C_li_to_C].cumulativeUnassignedIteratedNodes = res;
+    getCumulativeUnassignedIteratedNodes(Cu0,C_ri_to_E);
 
     res.clear();
     set_union(Cu0.cliques[C_ri_to_E].unassignedIteratedNodes.begin(),
 	      Cu0.cliques[C_ri_to_E].unassignedIteratedNodes.end(),
-	      Cu0.cliques[C_ri_to_E].precedingUnassignedIteratedNodes.begin(),
-	      Cu0.cliques[C_ri_to_E].precedingUnassignedIteratedNodes.end(),
+	      Cu0.cliques[C_ri_to_E].cumulativeUnassignedIteratedNodes.begin(),
+	      Cu0.cliques[C_ri_to_E].cumulativeUnassignedIteratedNodes.end(),
 	      inserter(res,res.end()));
-    E1.cliques[E_li_to_C].precedingUnassignedIteratedNodes = res;
-    getPrecedingIteratedUnassignedNodes(E1,E_root_clique);
+    E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
+    getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
 
   }
 
@@ -2063,7 +2119,7 @@ JunctionTree::junctionTreeWeight(JT_Partition& part,
 
   set <RandomVariable*> empty;
   // @@ add in unassigned in partition information to next call
-  double weight = curClique.weightInJunctionTree(part.unassignedInPartition);
+  double weight = curClique.weightInJunctionTree(part.unassignedInPartition,jtWeightUpperBound);
   // double weight = curClique.weight();
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
@@ -2150,17 +2206,17 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 			   leaf_cliques);
   createSeparators(jt_part,message_order);
   computeSeparatorIterationOrders(jt_part);
-  getPrecedingIteratedUnassignedNodes(jt_part,root);
+  getCumulativeUnassignedIteratedNodes(jt_part,root);
   
-  // return jt_part.cliques[root].precedingUnassignedIteratedNodes.size();
+  // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
   double weight = junctionTreeWeight(jt_part,root);
 
 
 #if 0
   unsigned badness_count=0;
   set <RandomVariable*>::iterator it;
-  for (it = jt_part.cliques[root].precedingUnassignedIteratedNodes.begin();
-       it != jt_part.cliques[root].precedingUnassignedIteratedNodes.end();
+  for (it = jt_part.cliques[root].cumulativeUnassignedIteratedNodes.begin();
+       it != jt_part.cliques[root].cumulativeUnassignedIteratedNodes.end();
        it++) 
     {
       RandomVariable* rv = (*it);
@@ -2334,7 +2390,7 @@ JunctionTree::printAllJTInfoCliques(FILE* f,
   // print cliques information
   for (unsigned i=0;i<treeLevel;i++) fprintf(f,"  ");
   fprintf(f,"== Clique number: %d\n",root);
-  part.cliques[root].printAllJTInfo(f,treeLevel);
+  part.cliques[root].printAllJTInfo(f,treeLevel,part.unassignedInPartition);
   for (unsigned childNo=0;
        childNo<part.cliques[root].children.size();childNo++) {
     unsigned child = part.cliques[root].children[childNo];
@@ -2470,7 +2526,7 @@ JunctionTree::unroll(const unsigned int numFrames)
 
   // TODO: clear out the old and pre-allocate for new size.
 
-  // preallocate
+  // re-allocate.
   jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
 
   unsigned partNo = 0;
@@ -2552,10 +2608,8 @@ JunctionTree::ceSendToNextPartition(JT_InferencePartition& previous_part,
  * Postconditions:
  *
  * Side Effects:
-
  *
  * Results:
-
  *
  *-----------------------------------------------------------------------
  */
@@ -2622,6 +2676,128 @@ JunctionTree::collectEvidence()
 		   "E1",partNo);
 
 }
+
+
+/*
+ * const mem (i.e., indep. of T), combination of unroll and collect evidence, returns
+ * the prob evidence. 
+ */
+logpr 
+JunctionTree::probEvidence(const unsigned int numFrames,
+			   unsigned& numUsableFrames)
+{
+
+  // first create the unrolled set of random variables corresponding
+  // to this JT.
+
+  unsigned basicTemplateUnrollAmount;
+  unsigned modifiedTemplateUnrollAmount;
+  unsigned frameStart;
+  if (!gm_template.computeUnrollParamaters(numFrames,
+					   basicTemplateUnrollAmount,
+					   modifiedTemplateUnrollAmount,
+					   numUsableFrames,
+					   frameStart))
+    error("Can't unroll\n"); // TODO: fix this error.
+    // return 0
+
+  infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
+  infoMsg(IM::Default,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+	  numFrames,
+	  basicTemplateUnrollAmount,
+	  modifiedTemplateUnrollAmount);
+
+  // unrolled random variables
+  vector <RandomVariable*> unrolled_rvs;
+  // mapping from 'name+frame' to integer index into unrolled_rvs.
+  map < RVInfo::rvParent, unsigned > ppf;
+
+  fp.unroll(basicTemplateUnrollAmount,unrolled_rvs,ppf);
+
+  // re-allocate, but never use more than two partitions at a time.
+  clearDataMemory();
+  jtIPartitions.resize(2);
+
+  // actual absolute part numbers
+  unsigned partNo;
+  const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
+  // current relative partition numbers
+  unsigned curPart,prevPart;
+  // set up appropriate name for debugging output.
+  const char* prv_nm;
+
+  partNo = 0;
+  curPart = 0; prevPart = 1;
+  new (&jtIPartitions[curPart]) JT_InferencePartition(P1,unrolled_rvs,ppf,0*gm_template.S);
+  prv_nm = "P1";
+  ceGatherIntoRoot(jtIPartitions[partNo],
+		   P_ri_to_C,
+		   P1_message_order,
+		   prv_nm,partNo);
+  swap(curPart,prevPart);
+
+  if (gm_template.leftInterface) {
+    jtIPartitions[curPart].~JT_InferencePartition();
+    new (&jtIPartitions[curPart]) JT_InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S);
+    ceSendToNextPartition(jtIPartitions[prevPart],P_ri_to_C,"P1",partNo,
+			  jtIPartitions[curPart],C_li_to_P,"Cu0",partNo+1);
+    partNo++;
+    prv_nm = "Cu0";
+    ceGatherIntoRoot(jtIPartitions[curPart],
+		     C_ri_to_C,
+		     Cu0_message_order,
+		     prv_nm,partNo);
+    swap(curPart,prevPart);
+  }
+
+  for (unsigned p = 0; p < numCoPartitions; p++ ) {
+    jtIPartitions[curPart].~JT_InferencePartition();
+    new (&jtIPartitions[curPart]) JT_InferencePartition(Co,unrolled_rvs,ppf,p*gm_template.S);
+    ceSendToNextPartition(jtIPartitions[prevPart],C_ri_to_C,prv_nm,partNo,
+			  jtIPartitions[curPart],C_li_to_C,"Co",partNo+1);
+    partNo++;
+    prv_nm = "Co";
+    ceGatherIntoRoot(jtIPartitions[curPart],
+		     C_ri_to_C,
+		     Co_message_order,
+		     prv_nm,partNo);
+    swap(curPart,prevPart);
+  }
+
+  if (!gm_template.leftInterface) {
+    jtIPartitions[curPart].~JT_InferencePartition();
+    new (&jtIPartitions[curPart]) 
+      JT_InferencePartition(Cu0,unrolled_rvs,ppf,
+			    ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+
+    ceSendToNextPartition(jtIPartitions[prevPart],C_ri_to_C,prv_nm,partNo,
+			  jtIPartitions[curPart],C_li_to_C,"Cu0",partNo+1);
+    partNo++;
+    prv_nm = "Cu0";
+    ceGatherIntoRoot(jtIPartitions[curPart],
+		     C_ri_to_E,
+		     Cu0_message_order,
+		     prv_nm,partNo);
+    swap(curPart,prevPart);
+  }
+
+  jtIPartitions[curPart].~JT_InferencePartition();
+  new (&jtIPartitions[curPart]) 
+    JT_InferencePartition(E1,unrolled_rvs,ppf,
+			  ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+  ceSendToNextPartition(jtIPartitions[prevPart],C_ri_to_E,prv_nm,partNo,
+			jtIPartitions[curPart],E_li_to_C,"E1",partNo+1);
+  partNo++;
+  ceGatherIntoRoot(jtIPartitions[curPart],
+		   E_root_clique,
+		   E1_message_order,
+		   "E1",partNo);
+
+  return jtIPartitions[curPart].maxCliques[E_root_clique].sumProbabilities();
+
+}
+
+
 
 
 void

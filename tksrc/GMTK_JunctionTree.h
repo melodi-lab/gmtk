@@ -126,6 +126,13 @@ public:
   unsigned cliqueWithMinWeight();
 
 
+  void clearDataMemory() {
+    for (unsigned i=0;i<cliques.size();i++)
+      cliques[i].clearDataMemory();
+    for (unsigned i=0;i<separators.size();i++) 
+      separators[i].clearDataMemory();
+  }
+
 }; 
 
 // Still another version of a partition object. This one is used only
@@ -153,7 +160,7 @@ public:
 			map < RVInfo::rvParent, unsigned >& ppf,
 			const unsigned int frameDelta);
   // destructor
-  ~JT_InferencePartition() {}
+  // ~JT_InferencePartition() {}
 
 };
 
@@ -256,17 +263,17 @@ class JunctionTree {
   static void assignRVToClique(const char *const partName,
 			       JT_Partition&part,
 			       const unsigned root,
-			       unsigned depth,
+			       const unsigned depth,
 			       RandomVariable* rv,
+			       bool& alreadyAProbContributer,
 			       set<RandomVariable*>& parSet,
-			       bool& assigned,
 			       multimap< vector<float>, unsigned >& scoreSet);
   static void createDirectedGraphOfCliquesRecurse(JT_Partition& part,
 					   const unsigned root,
 					   vector< bool >& visited);
   static void getCumulativeAssignedNodes(JT_Partition& part,
 					 const unsigned root);
-  static void getPrecedingIteratedUnassignedNodes(JT_Partition& part,const unsigned root);
+  static void getCumulativeUnassignedIteratedNodes(JT_Partition& part,const unsigned root);
 
   void ceGatherIntoRoot(JT_InferencePartition& part,
 			 const unsigned root,
@@ -300,6 +307,9 @@ class JunctionTree {
 
   
 public:
+
+  static bool jtWeightUpperBound;
+
 
   // constructor
   JunctionTree(GMTemplate& arg_gm_template)
@@ -399,7 +409,7 @@ public:
   // Computes the preceding iterated unassigned nodes and therein the
   // set of assigned nodes in each clique that should/shouldn't be
   // iterated.
-  void getPrecedingIteratedUnassignedNodes();
+  void getCumulativeUnassignedIteratedNodes();
 
 
   // return an upper bound on the weight of the junction tree in the
@@ -453,9 +463,10 @@ public:
   // basic collect evidence phase on basic structures.
   void collectEvidence();
   void distributeEvidence();
-
-  // compute P(E), probability of the evidence
+  // compute P(E), probability of the evidence, after collect evidence has been run.
   logpr probEvidence();
+  // version that does unrolling, and const. memory.
+  logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames);
 
   // print P(E) to stdout using all cliques. After a ce,de stage,
   // all values should be the same.
@@ -482,6 +493,15 @@ public:
   // cliques *must* be a valid set of maxcliques of a junction tree --
   // if they are not, unexpected results are returned.
   double junctionTreeWeight(vector<MaxClique>& cliques);
+
+
+  // used to clear out hash table memory between segments
+  void clearDataMemory() {
+    P1.clearDataMemory();
+    Cu0.clearDataMemory();
+    Co.clearDataMemory();
+    E1.clearDataMemory();
+  }
 
 
 };
