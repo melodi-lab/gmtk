@@ -1556,10 +1556,10 @@ RV- RandomVariable
            SWNDO_RV - Normal Discrete Observed Random Variable
            PWNDO_RV - Normal Discrete Observed Random Variable  
            SPWNDO_RV - Normal Discrete Observed Random Variable  
-
-
    CO_RV - continuous observed random variable
       SCO_RV - Switching Continuous  Observed Random Variable
       NCO_RV - Normal Continuous Observed Random Variable
 
 
+(Alternatively, the switching/nonswitching distinction can be factored out to the
+  2nd level, since it is common to all subclasses???)
