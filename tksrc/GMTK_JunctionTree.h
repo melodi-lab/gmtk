@@ -238,14 +238,14 @@ public:
   struct Edge {
     unsigned clique1;
     unsigned clique2;
-    unsigned weight;
+    vector <float> weights;
   };
 
   // for sorting edges in decreasing weight order.
   struct EdgeCompare {  
     bool operator() (const Edge& a, 
 		     const Edge& b) {
-      return (a.weight) > (b.weight);
+      return (a.weights) > (b.weights);
     }
   };
 

@@ -179,6 +179,7 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
  *   This uses Kruskal's greedy (but optimal) algorithm for MST generation.
  *
  *   TODO: move this routine to a MaxClique class at some point.
+ *   TODO: do this during triangulation time.
  *
  * Preconditions:
  *   The partition must be instantiated with cliques 
@@ -245,9 +246,37 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 			 part.cliques[j].nodes.end(),
 			 inserter(sep_set,sep_set.end()));
 	Edge e;
-	e.clique1 = i; e.clique2 = j; e.weight = sep_set.size();
+	// define the edge
+	e.clique1 = i; e.clique2 = j; 
+	// first push sep set size. To get a JT, we must
+	// always choose from among the cliques that
+	// have the largest intersection size.
+	e.weights.push_back((float)sep_set.size());
+
+	// for ties, we next push back negative weight of separator
+	e.weights.push_back(-(float)MaxClique::computeWeight(sep_set));
+
+	// printf("weight of clique %d = %f, %d = %f\n",
+	// i,part.cliques[i].weight(),
+	// j,part.cliques[j].weight());
+
+	// if ties still, we next push back negative weight of two
+	// cliques together.
+	set<RandomVariable*> clique_union;
+	set_union(part.cliques[i].nodes.begin(),
+		  part.cliques[i].nodes.end(),
+		  part.cliques[j].nodes.begin(),
+		  part.cliques[j].nodes.end(),
+		  inserter(clique_union,clique_union.end()));
+	e.weights.push_back(-(float)MaxClique::computeWeight(clique_union));
+
+	// add the edge.
 	edges.push_back(e);
-	infoMsg(IM::Huge,"Edge (%d,%d) has weight %d\n",i,j,e.weight);
+	infoMsg(IM::Huge,"Edge (%d,%d) has sep size %.0f, log(sep state) %f, log(union state) %f \n",
+		i,j,
+		e.weights[0],
+		-e.weights[1],
+		-e.weights[2]);
       }
     }
   
@@ -257,7 +286,11 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 
     unsigned joinsPlusOne = 1;
     for (unsigned i=0;i<edges.size();i++) {
-      infoMsg(IM::Huge,"edge %d has weight %d\n",i,edges[i].weight);
+	infoMsg(IM::Huge,"Edge %d has sep size %.0f, log(sep state) %f, log(union state) %f \n",
+		i,
+		edges[i].weights[0],
+		-edges[i].weights[1],
+		-edges[i].weights[2]);
 
       // TODO: optimize this to deal with ties to make message
       // passing cheaper.
@@ -287,10 +320,10 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 	  const unsigned clique = *ns_iter;
 	  findSet[clique] = new_set;
 	}
-	infoMsg(IM::Med,"Joining cliques %d and %d with intersection size %d\n",
-		edges[i].clique1,edges[i].clique2,edges[i].weight);
+	infoMsg(IM::Med,"Joining cliques %d and %d (edge %d) with intersection size %.0f\n",
+		edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
 
-	if (edges[i].weight == 0) {
+	if (edges[i].weights[0] == 0.0) {
 	  warning("ERROR: junction tree creation trying to join two cliques (%d and %d) with size 0 set intersection. Possible non-triangulated graph.",
 		edges[i].clique1,edges[i].clique2);
 	  // TODO: print out two cliques that are trying to be joined.
@@ -310,7 +343,6 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
     }
   }
 }
-
 
 
 /*-
@@ -2102,7 +2134,7 @@ JunctionTree::distributeEvidence()
   // unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
 
   // start at the end, an E1 partition.
-  unsigned partNo = jtIPartitions.size()-1;
+  // unsigned partNo = jtIPartitions.size()-1;
   
   
 
