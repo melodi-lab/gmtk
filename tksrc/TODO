@@ -1564,5 +1564,8 @@ Mon Mar  1 23:09:05 2004
     Try to pre-pend the path to the file somehow (or add that to CPP's -I options by
     default)
 
-
+Mon Mar  1 23:41:09 2004
+  - in DT leaf formulas, add
+     variables fp0 fp1 fp2 for frame numbers of parents 0 1 2, and fc for frame number of child.
+ 
 
