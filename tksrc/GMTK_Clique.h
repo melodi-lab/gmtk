@@ -51,7 +51,7 @@ struct ValueHashTable
 	  unsigned long a = vec.size(); 
 	  // second hash key
 	  unsigned long r = 0;
-	  unsigned i=0; do {
+	  int i=vec.size()-1; do {
 	    // cache local value and convert
 	    const unsigned long tmp = vec[i];
 	    // update first hash key
@@ -62,7 +62,7 @@ struct ValueHashTable
 	      r ^= (r >> 24) & 0xf0;
 	      r &= 0x0fffffff;
 	    }
-	  } while (++i < vec.size());
+	  } while (i-- > 0);
 	  // return a mixture of the two keys
 	  return (a+r)% table_size;
 	}
