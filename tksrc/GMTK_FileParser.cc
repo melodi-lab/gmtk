@@ -1190,7 +1190,7 @@ FileParser::parseChunkSpecifier()
     parseError("first chunk integer");
   if (tokenInfo.int_val < 0) 
     parseError("non-negative chunk range");
-  firstChunkframe = (unsigned)tokenInfo.int_val;
+  _firstChunkframe = (unsigned)tokenInfo.int_val;
   consumeToken();
 
   ensureNotAtEOF("chunk colon");
@@ -1203,7 +1203,7 @@ FileParser::parseChunkSpecifier()
     parseError("expecting second chunk integer");
   if (tokenInfo.int_val < 0) 
     parseError("non-negative chunk range");
-  lastChunkframe = (unsigned)tokenInfo.int_val;
+  _lastChunkframe = (unsigned)tokenInfo.int_val;
   consumeToken();
 
 }
