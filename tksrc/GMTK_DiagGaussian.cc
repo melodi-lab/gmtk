@@ -326,7 +326,8 @@ DiagGaussian::emEndIteration()
   if (!emOnGoingBitIsSet())
     return; 
 
-  if (accumulatedProbability == 0.0) {
+  accumulatedProbability.floor();
+  if (accumulatedProbability.zero()) {
     // Note: we assume here that the mean and covar object will check for us that 
     // its accumulated probability is above threshold. Here, we just
     // check for zero, and then issue a warning if needed. This might not
@@ -375,10 +376,10 @@ DiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
   }
   EMable::emStoreAccumulators(ofile);
   for (int i=0;i<nextMeans.len();i++) {
-    ofile.write(nextMeans[i],"nxm");
+    ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
   }
   for (int i=0;i<nextDiagCovars.len();i++) {
-    ofile.write(nextDiagCovars[i],"ndc");
+    ofile.write(nextDiagCovars[i],"Diag Gaussian store accums nc.");
   }
 }
 
@@ -388,10 +389,10 @@ DiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
   assert ( basicAllocatedBitIsSet() );
   EMable::emStoreZeroAccumulators(ofile);
   for (int i=0;i<mean->dim();i++) {
-    ofile.write((float)0.0,"nxm");
+    ofile.write((float)0.0,"Diag Gaussian store zero accums nm.");
   }
   for (int i=0;i<covar->dim();i++) {
-    ofile.write((float)0.0,"ndc");
+    ofile.write((float)0.0,"Diag Gaussian store zero accums nc.");
   }
 }
 
@@ -402,10 +403,10 @@ DiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
   assert ( emEmAllocatedBitIsSet() );
   EMable::emLoadAccumulators(ifile);
   for (int i=0;i<nextMeans.len();i++) {
-    ifile.read(nextMeans[i],"nxm");
+    ifile.read(nextMeans[i],"Diag Gaussian load accums nm.");
   }
   for (int i=0;i<nextDiagCovars.len();i++) {
-    ifile.read(nextDiagCovars[i],"ndc");
+    ifile.read(nextDiagCovars[i],"Diag Gaussian load accums nc.");
   }
 }
 
@@ -418,12 +419,12 @@ DiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
   EMable::emAccumulateAccumulators(ifile);
   for (int i=0;i<nextMeans.len();i++) {
     float tmp;
-    ifile.read(tmp,"nxm");
+    ifile.read(tmp,"Diag Gaussian accumulate accums nm.");
     nextMeans[i] += tmp;
   }
   for (int i=0;i<nextDiagCovars.len();i++) {
     float tmp;
-    ifile.read(tmp,"ndc");
+    ifile.read(tmp,"Diag Gaussian accumulate accums nc.");
     nextDiagCovars[i] += tmp;
   }
 }
