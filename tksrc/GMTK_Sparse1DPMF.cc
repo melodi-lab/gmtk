@@ -1,6 +1,6 @@
 /*-
  * GMTK_Sparse1DPMF.cc
- *     Trainable (with say EM) 1D discrete probability
+ *     Trainable (with say EM) sparse 1D discrete probability
  *     distributions.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -82,20 +82,33 @@ Sparse1DPMF::Sparse1DPMF()
 void
 Sparse1DPMF::read(iDataStreamFile& is)
 {
+  int len;
+  is.read(card,"Sparse1DPMF::read, card");
+  if (card <= 0)
+    error("Sparse1DPMF: read length (%d) < 0 in input",card);
 
-  is.read(length,"Sparse1DPMF::read, distribution length");
+  is.read(len,"Sparse1DPMF::read, len");
+  if (len <= 0)
+    error("Sparse1DPMF: read length (%d) < 0 in input",len);
+  if (len > card)
+    error("Sparse1DPMF: read length (%d) > card (%d) in input",len,card);
 
-  if (length <= 0)
-    error("Sparse1DPMF: read length (%d) < 0 in input",length);
-
-  pmf.resize(length);
+  pmf.resize(len);
 
   for (int i=0;i<length;i++) {
-    double val;
-    is.readDouble(val,"Sparse1DPMF::read, reading value");
-    if (val < 0 || val > 1)
+    int val;
+    double prob;
+
+    is.read(val,"Sparse1DPMF::read, reading value");
+    if (val < 0 || val > card-1)
+      error("Sparse1DPMF::read, bad value = %d, must be in range [0:%d]",val,
+	    card-1);
+
+    is.readDouble(prob,"Sparse1DPMF::read, reading prob");
+    if (prob < 0.0 || prob > 1.0)
       error("Sparse1DPMF: read, invalid pmf value (%g)",val);
-    pmf[i] = val;
+    pmf[i].val = val;
+    pmf[i].prob = prob;
   }
 }
 
@@ -104,7 +117,7 @@ Sparse1DPMF::read(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
- * Sparse1DPMF::read(is)
+ * Sparse1DPMF::write(is)
  *      write out distribution to file 'os'. 
  *      the data probs are stored on disk as doubles,  NOT in log domain.
  * 
@@ -119,15 +132,13 @@ Sparse1DPMF::read(iDataStreamFile& is)
 void
 Sparse1DPMF::write(oDataStreamFile& os)
 {
-  assert (nFeats > 0);
-
-  os.write(length,"Sparse1DPMF::write, distribution length");
-  for (int i=0;i<length;i++) {
-    // convert out of log domain and write out.
-    os.writeDouble(pmf[i].unlog(),"Sparse1DPMF::write, writing value");
+  os.write(card,"Sparse1DPMF::write, card");
+  os.write(pmf.len(),"Sparse1DPMF::write, len");
+  for (int i=0;i<pmf.len();i++) {
+    os.write(pmf[i].val,"Sparse1DPMF::write, writing value");
+    os.writeDouble(pmf[i].prob,"Sparse1DPMF::write, writing prob");
   }
   os.nl();
-
 }
 
 

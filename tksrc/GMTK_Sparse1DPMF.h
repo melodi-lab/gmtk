@@ -30,15 +30,25 @@
 
 class Sparse1DPMF : public EMable {
 
+  //////////////////////////////////////
+  // The cardinality of this RV, i.e., 
+  // values may take value between [0:card-1]
+  int card;
+
+  struct Entry {
+    int val;
+    logpr prob;
+  };
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
-  sArray <logpr> pmf
+  sArray <Entry> pmf
   ///////////////////////////////////////////////////////////  
 
   //////////////////////////////////
   // Data structures support for EM.
   //   The previous probability mass function 
+  //   (we don't use 'Entrys' here as the vals are the same.
   sArray <logpr> nextPmf;
   ///////////////////////////////////////////////////////////  
 
