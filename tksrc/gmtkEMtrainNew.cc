@@ -608,7 +608,7 @@ main(int argc,char*argv[])
     } else {
       BP_Range lfrng(loadAccRange,0,1000);
       for (BP_Range::iterator lfit=lfrng.begin();
-	   lfit<=lfrng.max();
+	   !lfit.at_end();
 	   lfit++) {
 	const int bufsize = 2048;
 	char buff[bufsize];
@@ -650,7 +650,8 @@ main(int argc,char*argv[])
     if (trrng->length() > 0) {
       total_data_prob = 1.0;
       BP_Range::iterator* trrng_it = new BP_Range::iterator(trrng->begin());
-      while ((*trrng_it) <= trrng->max()) {
+      //      while ((*trrng_it) <= trrng->max()) {
+      while (!trrng_it->at_end()) {
 	const unsigned segment = (unsigned)(*(*trrng_it));
 	if (globalObservationMatrix.numSegments() < (segment+1)) 
 	  error("ERROR: only %d segments in file, training range must be in range [%d,%d] inclusive\n",
