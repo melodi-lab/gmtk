@@ -25,7 +25,7 @@ VECPT0  % name of VECPT
 1 % num par
 2 % par card
 2 % self card
-VECPT0_FILE
+VECPT0_FILE % file to read in.
 nfs:2 % nfloats
 nis:0 % nints
 frs:all % float range
@@ -36,23 +36,22 @@ swap:F % endian swapping condition
 preTransforms:X
 postTransforms:X
 sentRange:all
-EOF
+END
 
 1
 VECPT1
 1 % num par
 4 % par card
 2 % self card
-VECPT1_FILE
+VECPT1_FILE % file to read in
 nfs:4 % nfloats
 fmt:ascii
-EOF
+END
 
 Note the "EOF" at the end of each VECPT.  Also, parsing of the VECPTs is
 rudimentary and no spaces are allowed around the ":".
 
 Also the order in which the arguments are written is not important.
-
 
 The default values are:
 
@@ -146,9 +145,18 @@ VECPT::read(iDataStreamFile& is)
   string option_name;
   string option_value;
   unsigned lineNum=0;
+
+  ///////////////////////////////////////////////////////////////////////
+  // The first set of options match that of any other CPT. Namely,
+  // we have
+  //   1) a name, 
+  //   2) num parents (which must be 1 in this case), 
+  //   3) parent cardinality
+  //   4) self cardinaltiy (which must be 2 in this case).
+  //   5) file observation name for the VECPT
+
   // read the name of the object.
   NamedObject::read(is);
-
   is.read(_numParents,"Can't read VirtualEvidenceCPT's num parents");
   if (_numParents != 1)
     error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' must have exactly one(1) rather than %d parents",
@@ -165,97 +173,139 @@ VECPT::read(iDataStreamFile& is)
   
   // next read the file name from which this is going to get its probabilties.
   is.read(obsFileName,"Can't read VirtualEvidenceCPT's obs file name");
-  
+
+
+  ///////////////////////////////////////////////////////////////////////
+  // Next, we have a set of optional arguments that the user may give
+  // to the observation code. If an optional argument is not given,
+  // then the default value may be used.  These optional arguments
+  // consist of lines of a "flag : value" syntax, where "flag"
+  // indicates the current argument, and "value" is its value.
+  // The optional arguments must end with the string "END"
+
   //  bool done=false;
-  is.read(str);
-  while(! (is.isEOF() || str=="EOF")) {
-    lineNum++;
-    // parse the string we have just read
-    string::size_type len=str.length();
-    string::size_type pos=str.find(":",0);
-    if (pos == string::npos) error("ERROR: Invalid option format at line %u while reading the VECPT.  The format should be x:y where x is the option name and y the option value",is.lineNo());
-    option_value=str.substr(pos+1,len-pos-1);
-    option_name=str.substr(0,pos);
-    char * tmpString=new char[len];
-    strcpy(tmpString,option_value.c_str());
-    if(option_name == "nfs") {
-      sscanf(option_value.c_str(),"%u",&nfs);
-    }  
-    else if(option_name == "nis") {
-      sscanf(option_value.c_str(),"%u",&nis);
-    }  
-    else if(option_name == "frs") {
-      frs=option_value;
-    }  
-    else if(option_name == "irs") {
-      irs=option_value;
-    }  
-    else if(option_name == "pr") {
-      pr_rs=new char[option_value.length()];
-      strcpy(pr_rs,option_value.c_str());
-    }  
-    else if(option_name == "fmt") {
-      fmt=option_value;
-    }  
-    else if(option_name == "swap") {
-      char c = (option_value.c_str())[0];
-      if (c == 't' || c == 'T')
-	iswp = true;
-      else if (c == 'f' || c == 'F')
-	iswp = false;
-      else {
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' just before reading observation file '%s' with %d ints and %d floats. Endian swap condition is '%c', must be T or F",
-	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,c);
-      }
-    }  
-    else if(option_name == "preTransforms") {
-      sscanf(option_value.c_str(),"%s",preTransforms);
-    }  
-    else if(option_name == "postTransforms") {
-      sscanf(option_value.c_str(),"%s",postTransforms);
-    }  
-    else if(option_name == "sentRange") {
-      sentRange=new char[option_value.length()];
-      strcpy(sentRange,option_value.c_str());
-    }  
-    else {
-      error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s'.  Unknown option line '%s'",
-	    is.fileName(),is.lineNo(),name().c_str(),str.c_str());
+
+  try {
+
+    if(obsFileName.length()==0) {
+      string error_message;
+      stringprintf(error_message,"need to supply observation file name");
+      throw(error_message);
     }
 
-    delete [] tmpString;
+    if(cardinalities[0]==0) {
+      string error_message;
+      stringprintf(error_message,"must supply parent cardinality");
+      throw(error_message);
+    }
 
-    // is.read() returns (via errorReturn() in
-    // miscSupport/fileParser.{h,cc}) false when a problem occurs, in
-    // particular, when we reach the EOF.  Alternatively we could
-    // check for the end of file directly, feof(fh), which I am doing here
     is.read(str);
-  } 
+    while(! (is.isEOF() || str=="END")) {
+      lineNum++;
 
-  // check valid number of ints. 
-  if (!(nis == 0 || (nis == nfs))) {
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' just before reading observation file '%s' with %d ints and %d floats. Must have either 0 ints, or same number of ints as floats",
-	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs);
+      // parse the string we have just read
+      string::size_type len=str.length();
+      string::size_type pos=str.find(":",0);
+      if (pos == string::npos || len < 3 || pos == 0) {
+	string error_message;
+	stringprintf(error_message,"Invalid format '%s' which should be of form 'flag:value' where 'flag' is the option name and 'value' the option value",
+		     str.c_str());
+	throw(error_message);
+      }
+
+      option_name = str.substr(0,pos);
+      option_value = str.substr(pos+1,len-pos-1);
+
+
+      if(option_name == "nfs") {
+	if (!strIsInt(option_value.c_str(),&nfs)) {
+	  string error_message;
+	  stringprintf(error_message,"Invalid value '%s' for number floats option. Must be integer.",option_value.c_str());
+	  throw(error_message);
+	}
+      }
+      else if(option_name == "nis") {
+	if (!strIsInt(option_value.c_str(),&nis)) {
+	  string error_message;
+	  stringprintf(error_message,"Invalid value '%s' for number int option. Must be integer.",option_value.c_str());
+	  throw(error_message);
+	}
+      }  
+      else if(option_name == "frs") {
+	// range code needs to check this syntax.
+	frs=option_value;
+      }  
+      else if(option_name == "irs") {
+	// range code needs to check this syntax.
+	irs=option_value;
+      }  
+      else if(option_name == "pr") {
+	// range code needs to check this syntax.
+	pr_rs=new char[option_value.length()];
+	strcpy(pr_rs,option_value.c_str());
+      }  
+      else if(option_name == "fmt") {
+	// observation file code needs to check this syntax.
+	fmt=option_value;
+      }  
+      else if(option_name == "swap") {
+	char c = (option_value.c_str())[0];
+	if (c == 't' || c == 'T')
+	  iswp = true;
+	else if (c == 'f' || c == 'F')
+	  iswp = false;
+	else {
+	  string error_message;
+	  stringprintf(error_message,"Endian swap condition given as '%c', must be T or F",c);
+	  throw(error_message);
+	}
+      }
+      else if(option_name == "preTransforms") {
+	pr_rs=new char[option_value.length()];
+	strcpy(preTransforms,option_value.c_str());
+      }  
+      else if(option_name == "postTransforms") {
+	pr_rs=new char[option_value.length()];
+	strcpy(postTransforms,option_value.c_str());
+      }
+      else if(option_name == "sentRange") {
+	sentRange=new char[option_value.length()];
+	strcpy(sentRange,option_value.c_str());
+      }  
+      else {
+	string error_message;
+	stringprintf(error_message,"Unknown option:value pair '%s'",str.c_str());
+	throw(error_message);
+      }
+
+      // is.read() returns (via errorReturn() in
+      // miscSupport/fileParser.{h,cc}) false when a problem occurs, in
+      // particular, when we reach the EOF.  Alternatively we could
+      // check for the end of file directly, feof(fh), which I am doing here
+      is.read(str);
+    } 
+
+    // check valid number of ints. 
+    if (!(nis == 0 || (nis == nfs))) {
+      string error_message;
+      stringprintf(error_message,"specifies %d ints and %d floats, but must have either 0 ints, or same number of ints as floats",
+		   nis,nfs);
+      throw(error_message);
+    }
+    if (nfs == 0) {
+      string error_message;
+      stringprintf(error_message,"specifies %d ints and %d floats, but must have > 0 floats",
+		   nis,nfs);
+      throw(error_message);
+    }
+  } catch ( string error_message ) {
+    error("ERROR: reading file '%s' line %u, of VirtualEvidenceCPT spec '%s': %s",
+	  is.fileName(),is.lineNo(),name().c_str(),error_message.c_str());
+  } catch( const char * const error_message ) {
+    error("ERROR: reading file '%s' line %u, of VirtualEvidenceCPT spec '%s': %s",
+	  is.fileName(),is.lineNo(),name().c_str(),error_message);
   }
-  if (nfs == 0) {
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' just before reading observation file '%s' with %d ints and %d floats. Must have > 0 floats",
-	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs);
-  }
 
-
-
-  //  if (pr_rs.length() != 0) pr_str=(char*)pr_rs.c_str();
-
-  //  if(sentRange.length() !=0) sentRangeStr=(char*)sentRange.c_str();
-
-  if(obsFileName.length()==0) {
-    error("ERROR: need to supply the observation file name");
-  }
-
-  if(cardinalities[0]==0) {
-    error("ERROR: need to supply parent cardinality");
-  }
-  
   // Now try opening the file:
   obs.openFile(obsFileName.c_str(),
 	       frs.c_str(),
