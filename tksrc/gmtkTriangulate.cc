@@ -46,9 +46,7 @@ VCID("$Header$");
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_ProgramDefaultParms.h"
-#include "GMTK_AnyTimeTriangulation.h"
-#include "GMTK_GMTemplate.h"
-
+#include "GMTK_BoundaryTriangulate.h"
 
 /*
  * command line arguments
@@ -73,8 +71,10 @@ static bool findBestBoundary = true;
 static double traverseFraction = 1.0;
 
 static bool noBoundaryMemoize = false;
+static unsigned numBackupFiles = 5;
 static char* forceLeftRight="";
 static unsigned verbosity = IM::Default;
+static bool printResults = false;
 // uncomment when reading in for sparse CPTs
 // static char *inputMasterFile=NULL;
 // static char *inputTrainableParameters=NULL;
@@ -138,6 +138,10 @@ Arg Arg::Args[] = {
       Arg::Opt,rePartition,
       "Re-Run the boundary algorithm even if .str.trifile exists with existing partition ordering"),
 
+  Arg("numBackupFiles",Arg::Opt,numBackupFiles,"Number of backup .trifiles (_bak0,_bak1,etc.) to keep."),
+
+  Arg("printResults",Arg::Opt,printResults,"Print information about result of triangulation."),
+
 
   // eventually this next option will be removed.
   Arg("showFrCliques",Arg::Opt,showFrCliques,"Show frontier alg. cliques after the network has been unrolled k times and exit."),
@@ -154,12 +158,52 @@ Arg Arg::Args[] = {
 
 };
 
+
+
 /*
+ *
  * definition of needed global arguments
+ *
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
 ObservationMatrix globalObservationMatrix;
+
+/*
+ *
+ * backupTriFile:
+ *    Make a backup copys by renaming the file triFile since it might
+ *    be a mistake to delete it and since these file scan take
+ *    a while to generate.
+ *
+ */
+void
+backupTriFile(const string &triFile) 
+{
+  if (numBackupFiles == 0)
+    return;
+  for (unsigned bk_num=(numBackupFiles-1);bk_num>0;bk_num--) {
+    char buff[1024];
+    sprintf(buff,"%d",bk_num-1);
+    string curFile =  triFile + "_bak" + buff;
+    if (fsize(curFile.c_str()) == 0)
+      continue;
+
+    sprintf(buff,"%d",bk_num);
+    string backupFile = triFile + "_bak" + buff;
+    if (rename(curFile.c_str(),backupFile.c_str()) != 0)
+      infoMsg(IM::Warning,"Warning: could not create backup triangulation file %s.\n",
+	      backupFile.c_str());
+  }
+  if (fsize(triFile.c_str()) == 0)
+    return;
+  string backupFile = triFile + "_bak0";
+  if (rename(triFile.c_str(),backupFile.c_str()) != 0)
+    infoMsg(IM::Warning,"Warning: could not create backup triangulation file %s.\n",
+	    backupFile.c_str());
+}
+
+
 
 int
 main(int argc,char*argv[])
@@ -212,7 +256,7 @@ main(int argc,char*argv[])
   // read in the structure of the GM, this will
   // die if the file does not exist.
   FileParser fp(strFileName,cppCommandOptions);
-  printf("Finished reading in structure\n");
+  infoMsg(IM::Tiny,"Finished reading in structure\n");
 
   // parse the file
   fp.parseGraphicalModel();
@@ -266,42 +310,58 @@ main(int argc,char*argv[])
     exit(0);
   }
 
-  GMTemplate gm_template(fp,traverseFraction);
+  BoundaryTriangulate triangulator(fp,maxNumChunksInBoundary,chunkSkip,traverseFraction);
 
-  gm_template.noBoundaryMemoize = noBoundaryMemoize;
+  triangulator.noBoundaryMemoize = noBoundaryMemoize;
+
+  TimerClass* timer = NULL;
+  // Initialize the timer if anyTimeTriangulate is selected
+  if (anyTimeTriangulate != NULL) {
+    timer = new TimerClass;
+    time_t given_time;
+    given_time = timer->parseTimeString( string(anyTimeTriangulate) );
+    if (given_time == 0) {
+      error("ERROR: Must specify a non-zero amount of time for -anyTimeTriangulate"); 
+    }
+    infoMsg(IM::Low, "Triangulating for %d seconds\n", (int)given_time);
+    timer->Reset(given_time);
+    triangulator.useTimer(timer);
+  }
 
   if (jut >= 0) {
-    // then Just Unroll and Triangulate
-    gm_template.unrollAndTriangulate(string(triangulationHeuristic),
+    // then Just Unroll, Triangulate, and report on quality of triangulation.
+    triangulator.unrollAndTriangulate(string(triangulationHeuristic),
 				     jut);
   } else {
-    GMInfo gm_info;
 
-    gm_info.M = maxNumChunksInBoundary;
-    gm_info.S = chunkSkip;
+    GMTemplate gm_template(fp,maxNumChunksInBoundary,chunkSkip);
 
-    string tri_file = string(strFileName) + ".trifile";
+    string tri_file = string(strFileName) + GMTemplate::fileExtension;
     if (rePartition && !reTriangulate) {
-      infoMsg(IM::Warning,"Warning: rePartition=T option forces reTriangulate option to be true.\n");
+      infoMsg(IM::Warning,"Warning: rePartition=T option forces -reTriangulate option to be true.\n");
       reTriangulate = true;
     }
 
     // first check if tri_file exists
     if (rePartition || fsize(tri_file.c_str()) == 0) {
-      // then do everything (partition & triangulation)
+      // Then do everything (both partition & triangulation)
 
+      backupTriFile(tri_file);
       oDataStreamFile os(tri_file.c_str());
       fp.writeGMId(os);
+
+
+
       // run partition given options
-      gm_template.findPartitions(string(boundaryHeuristic),
-				 string(forceLeftRight),
-				 string(triangulationHeuristic),
-				 findBestBoundary,
-				 gm_info);
+      triangulator.findPartitions(string(boundaryHeuristic),
+				  string(forceLeftRight),
+				  string(triangulationHeuristic),
+				  findBestBoundary,
+				  gm_template);
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
-	gm_template.triangulatePartitions(string(triangulationHeuristic),
-					  gm_info);
+	triangulator.triangulate(string(triangulationHeuristic),
+				 gm_template);
       } else {
 	// run the anytime algorithm.
 
@@ -310,40 +370,31 @@ main(int argc,char*argv[])
 	// has passed, and we save the best triangulation. This 
 	// is seen as a separate step, and would be expected
 	// to run for a long while.
-	// AnyTimeTriangulation anyTime(string(anyTimeTriangulate),gm_template);
-	error("Anytime algorithm not yet implemented\n");
+
+	triangulator.anyTimeTriangulate(gm_template);
       }
 
-      gm_template.storePartitions(os,gm_info);
-      gm_template.storePartitionTriangulation(os,
-					      gm_info);
+      gm_template.writePartitions(os);
+      gm_template.writeMaxCliques(os);
 
     } else if (reTriangulate && !rePartition) {
       // utilize the parition information already there but still
       // run re-triangulation
+
       
       // first get the id and partition information.
       {
 	iDataStreamFile is(tri_file.c_str());
 	if (!fp.readAndVerifyGMId(is))
 	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
-	gm_template.findPartitions(is,
-				   gm_info);
-      }
-      if (gm_info.M != maxNumChunksInBoundary) {
-	error("ERROR: M given in partition file = %d, but M given on command line = %d\n",
-		gm_info.M,maxNumChunksInBoundary);
-      }
-      if (gm_info.S != chunkSkip) {
-	error("ERROR: S given in partition file = %d, but S given on command line = %d\n",
-		gm_info.S,chunkSkip);
+	gm_template.readPartitions(is);
       }
 
       // now using the partition triangulate
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
-	gm_template.triangulatePartitions(string(triangulationHeuristic),
-					  gm_info);
+	triangulator.triangulate(string(triangulationHeuristic),
+				 gm_template);
       } else {
 	// In this case, here we only run triangulation on the
 	// provided new P,C,E partitions until the given amount of time
@@ -351,53 +402,45 @@ main(int argc,char*argv[])
 	// is seen as a separate step, and would be expected
 	// to run for a long while.
 
-	AnyTimeTriangulation attr(gm_template,string(anyTimeTriangulate));
-	attr.triangulatePartitions(gm_info);
+	triangulator.anyTimeTriangulate(gm_template);
 
       }
       // write everything out anew
+      backupTriFile(tri_file);
       oDataStreamFile os(tri_file.c_str());
       fp.writeGMId(os);
-      gm_template.storePartitions(os,gm_info);
-      gm_template.storePartitionTriangulation(os,
-					      gm_info);
-
+      gm_template.writePartitions(os);
+      gm_template.writeMaxCliques(os);
     } else {
-      // utilize both the partition information and elimination order information
-      // already computed and contained in the file
+
+      // 
+      // Utilize both the partition information and elimination order
+      // information already computed and contained in the file. This
+      // enables the program to use external triangulation programs,
+      // where this program ensures that the result is triangulated
+      // and where it reports the quality of the triangulation.
 
       iDataStreamFile is(tri_file.c_str());
       if (!fp.readAndVerifyGMId(is))
 	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
 
-      gm_template.findPartitions(is,
-				 gm_info);
-
-      if (gm_info.M != maxNumChunksInBoundary) {
-	error("ERROR: M given in partition file = %d, but M given on command line = %d\n",
-		gm_info.M,maxNumChunksInBoundary);
-      }
-
-      if (gm_info.S != chunkSkip) {
-	error("ERROR: S given in partition file = %d, but S given on command line = %d\n",
-		gm_info.S,chunkSkip);
-      }
-
-      gm_template.triangulatePartitions(is,
-					gm_info);
-
+      gm_template.readPartitions(is);
+      gm_template.readMaxCliques(is);
+      gm_template.triangulatePartitionsByCliqueCompletion();
+      triangulator.ensurePartitionsAreChordal(gm_template);
     }
 
     // At this point, one way or another, we've got the fully triangulated graph in data structures.
     // We now just print this information and the triangulation quality out, and then exit.
 
-      {
+    if (printResults) {
 	printf("\n--- Printing final clique set and clique weights---\n");
 
 	float p_maxWeight = -1.0;
 	float p_totalWeight = -1.0; // starting flag
-	for (unsigned i=0;i<gm_info.Pcliques.size();i++) {
-	  float curWeight = gm_template.computeWeight(gm_info.Pcliques[i].nodes);
+	printf("  --- Prologue summary, %d cliques\n",gm_template.P.cliques.size());
+	for (unsigned i=0;i<gm_template.P.cliques.size();i++) {
+	  float curWeight = MaxClique::computeWeight(gm_template.P.cliques[i].nodes);
 	  printf("   --- P curWeight = %f\n",curWeight);
 	  if (curWeight > p_maxWeight) p_maxWeight = curWeight;
 	  if (p_totalWeight == -1.0)
@@ -410,8 +453,9 @@ main(int argc,char*argv[])
 
 	float c_maxWeight = -1.0;
 	float c_totalWeight = -1.0; // starting flag
-	for (unsigned i=0;i<gm_info.Ccliques.size();i++) {
-	  float curWeight = gm_template.computeWeight(gm_info.Ccliques[i].nodes);
+	printf("  --- Chunk summary, %d cliques\n",gm_template.C.cliques.size());
+	for (unsigned i=0;i<gm_template.C.cliques.size();i++) {
+	  float curWeight = MaxClique::computeWeight(gm_template.C.cliques[i].nodes);
 	  printf("   --- C curWeight = %f\n",curWeight);
 	  if (curWeight > c_maxWeight) c_maxWeight = curWeight;
 	  if (c_totalWeight == -1.0)
@@ -428,8 +472,9 @@ main(int argc,char*argv[])
 
 	float e_maxWeight = -1.0;
 	float e_totalWeight = -1.0; // starting flag
-	for (unsigned i=0;i<gm_info.Ecliques.size();i++) {
-	  float curWeight = gm_template.computeWeight(gm_info.Ecliques[i].nodes);
+	printf("  --- Epilogue summary, %d cliques\n",gm_template.E.cliques.size());
+	for (unsigned i=0;i<gm_template.E.cliques.size();i++) {
+	  float curWeight = MaxClique::computeWeight(gm_template.E.cliques[i].nodes);
 	  printf("   --- E curWeight = %f\n",curWeight);
 	  if (curWeight > e_maxWeight) e_maxWeight = curWeight;
 	  if (e_totalWeight == -1.0)
@@ -483,6 +528,7 @@ main(int argc,char*argv[])
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+1000*chunkSkip-1,totalWeight);
 
       }
+    delete timer;
   }
 
   exit_program_with_status(0);
