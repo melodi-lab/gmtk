@@ -246,7 +246,7 @@ DiagGaussian::log_p(const float *const x,
   // decreasing the program's mixCoeffVanishRatio at the beginning
   // of training should eliminate any component that produces
   // such low scores.
-#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE double
+#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE float
 
   ////////////////////
   // note: 
@@ -260,7 +260,7 @@ DiagGaussian::log_p(const float *const x,
   do {
     const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp
       = (*xp - *mean_p);
-    d += tmp*tmp*(*var_inv_p);
+    d += (tmp*(*var_inv_p))*tmp;
 
     xp++;
     mean_p++;
