@@ -916,6 +916,7 @@ v *
 void
 GMTemplate::
 storePartitionTriangulation(oDataStreamFile& os,
+			    const unsigned M,
 			    const set<RandomVariable*>& P,
 			    const set<RandomVariable*>& C,
 			    const set<RandomVariable*>& E,
@@ -932,9 +933,14 @@ storePartitionTriangulation(oDataStreamFile& os,
   os.writeComment("---\n");
   os.writeComment("---- P Partitions Cliques and their weights\n");
   float maxWeight = -1.0;
+  float totalWeight = -1.0; // starting flag
   for (unsigned i=0;i<Pcliques.size();i++) {
     float curWeight = computeWeight(Pcliques[i].nodes);
     if (curWeight > maxWeight) maxWeight = curWeight;
+    if (totalWeight == -1.0)
+      totalWeight = curWeight;
+    else
+      totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
     os.writeComment("%d : %d  %f\n",
 		    i,
 		    Pcliques[i].nodes.size(),curWeight);
@@ -944,7 +950,7 @@ storePartitionTriangulation(oDataStreamFile& os,
       os.writeComment("   %s(%d)\n",rv->name().c_str(),rv->frame());
     }
   }
-  os.writeComment("Maximum clique state space = 1e%f\n",maxWeight);
+  os.writeComment("Maximum clique state space = 1e%f, total state space = 1e%f\n",maxWeight,totalWeight);
   // Then write out the elimination order that achieves these
   // cliques.
   os.writeComment("P Parition Elimination Order\n");
@@ -964,9 +970,14 @@ storePartitionTriangulation(oDataStreamFile& os,
   os.writeComment("---\n");
   os.writeComment("---- C Partitions Cliques and their weights\n");
   maxWeight = -1.0;
+  totalWeight = -1.0;
   for (unsigned i=0;i<Ccliques.size();i++) {
     float curWeight = computeWeight(Ccliques[i].nodes);
     if (curWeight > maxWeight) maxWeight = curWeight;
+    if (totalWeight == -1.0)
+      totalWeight = curWeight;
+    else
+      totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
     os.writeComment("%d : %d  %f\n",
 		    i,
 		    Ccliques[i].nodes.size(),curWeight);
@@ -976,7 +987,11 @@ storePartitionTriangulation(oDataStreamFile& os,
       os.writeComment("   %s(%d)\n",rv->name().c_str(),rv->frame());
     }
   }
-  os.writeComment("Maximum clique state space = 1e%f\n",maxWeight);
+  os.writeComment("Max clique state space = 1e%f, total Cx%d state space = 1e%f, per-chunk total C state space = 1e%f\n",
+		  maxWeight,
+		  M,
+		  totalWeight,
+		  totalWeight - log10((double)M));
   // Then write out the elimination order that achieves these
   // cliques.
   os.writeComment("C Parition Elimination Order\n");
@@ -996,9 +1011,14 @@ storePartitionTriangulation(oDataStreamFile& os,
   os.writeComment("---\n");
   os.writeComment("---- E Partitions Cliques and their weights\n");
   maxWeight = -1.0;
+  totalWeight = -1.0;
   for (unsigned i=0;i<Ecliques.size();i++) {
     float curWeight = computeWeight(Ecliques[i].nodes);
     if (curWeight > maxWeight) maxWeight = curWeight;
+    if (totalWeight == -1.0)
+      totalWeight = curWeight;
+    else
+      totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
     os.writeComment("%d : %d  %f\n",
 		    i,
 		    Ecliques[i].nodes.size(),curWeight);
@@ -1008,7 +1028,7 @@ storePartitionTriangulation(oDataStreamFile& os,
       os.writeComment("   %s(%d)\n",rv->name().c_str(),rv->frame());
     }
   }
-  os.writeComment("Maximum clique state space = 1e%f\n",maxWeight);
+  os.writeComment("Maximum clique state space = 1e%f, total state space = 1e%f\n",maxWeight,totalWeight);
   // Then write out the elimination order that achieves these
   // cliques.
   os.writeComment("E Parition Elimination Order\n");
