@@ -54,6 +54,10 @@ class sArray {
     size = _size;
     ptr = new T[size];
   }
+  void resizeIfDifferent(int _size) {
+    if (_size != size)
+      resize(_size);
+  }
   void growIfNeeded(const int _size) {
     if (_size > size)
       resize(_size);
