@@ -1590,11 +1590,11 @@ sub run_triangulation
     die "***INTERNAL ERROR, invalid triangulation_mode"; 
   }
 
-  my $line_nmbr = `cat -n $boundary | egrep 'M, number of chunks' | awk '{ print $1 }'`;
+  my $line_nmbr = `cat -n $boundary | egrep 'M, number of chunks' | awk '{ print \$1 }'`;
   $line_nmbr++; 
   $bndry_M = `head -$line_nmbr $boundary | tail -1`;
-  #print "BNDRY:$boundary\n";
-  #print "BN_M: $bndry_M\n";
+  print "BNDRY:$boundary\n";
+  print "BN_M: $bndry_M\n";
   (defined $bndry_M) or die "Can't find M in boundary $boundary";
 
   $output = `$triangulation_export_line $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options $triangulation_mode_string -jtWeight T -M $bndry_M 2>&1`;
