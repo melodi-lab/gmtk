@@ -1976,6 +1976,7 @@ Sun Jun 13 15:14:51 2004
 Tue Jun 22 15:41:46 2004
   - design function to do log(1+exp(x))
   - make use of log1p() = log(1+x) when x is very small.
+  - check that log1p() is available, use HAVE_LOG1P config
  
 Tue Jun 22 18:36:23 2004
  new sequence CPTs
