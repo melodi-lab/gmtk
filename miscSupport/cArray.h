@@ -57,8 +57,11 @@ class cArray {
       error("Error: cArray::cArray arg_size < 0");
     if (_size == 0)
       return;
-    if (_size > 0)
+    if (_size > 0) {
       ptr = (T*) malloc(sizeof(T)*_size);
+      if (ptr == NULL)
+	error("Out of memory in cArray");
+    }
     // explicitly call default constructors
     T* ptr_p = ptr;
     T* ptr_endp = ptr + _size;
@@ -108,6 +111,8 @@ class cArray {
     }
 
     ptr = (T*) malloc(sizeof(T)*_size);
+    if (ptr == NULL)
+      error("Out of memory in cArray resize");
     // explicitly call default constructors for new
     T* ptr_p = ptr;
     T* ptr_endp = ptr + _size;
@@ -147,6 +152,8 @@ class cArray {
     if (arg_size > _size) {
       // allocate new larger size
       T* tmp = (T*) malloc(sizeof(T)*arg_size);
+      if (tmp == NULL)
+	error("Out of memory in cArray resize and copy");
       // bit-wise copy over old portion
       ::memcpy((void*)tmp,(void*)ptr,sizeof(T)*_size);
       // and call default constructors only for new portion
@@ -168,6 +175,8 @@ class cArray {
       if (arg_size > 0) {
 	// allocate new smaller size
 	tmp = (T*) malloc(sizeof(T)*arg_size);
+	if (tmp == NULL)
+	  error("Out of memory in cArray reduce resize and copy");
 	// bit-wise copy over portion that will remain
 	::memcpy((void*)tmp,(void*)ptr,sizeof(T)*arg_size);
       } else {
