@@ -172,8 +172,8 @@ class ObservationMatrix {
   // stride, which is the number of Data32's between
   // each frame, as it might be different than numFeatures
   unsigned      _stride;
-  unsigned      _maxContinuous;        // max number of cont. features in any stream
-  unsigned      _maxDiscrete;          // max number of disc. features in any stream
+  unsigned      _maxContinuous;        // max number of cont. features in any stream.  This takes into account whether we decrease or increase the number of float features using a float range (-fr)
+  unsigned      _maxDiscrete;          // max number of disc. features in any stream.  Idem for the range check above.
   unsigned      _numSegments;          // total number of segments in input streams (identical for all streams)
   size_t        _bufSize;              // maximum number of frames in buffer;  is dynamically increased when needed
   unsigned      _startSkip;            // number of frames to skip at the beginning
