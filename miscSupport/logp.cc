@@ -22,8 +22,8 @@ double logp_minLogExp = -log(-LZERO);
 // get to small to bother using them to multiply observations.
 // We add an additional constant on to account for potentially
 // small observations.
-#define LOG_FLT_MIN_CNST 20.0
-#define LOG_DBL_MIN_CNST 20.0
+#define LOG_FLT_MIN_CNST 2.0
+#define LOG_DBL_MIN_CNST 2.0
 double log_FLT_MIN = log(FLT_MIN)+LOG_FLT_MIN_CNST;
 double log_DBL_MIN = log(DBL_MIN)+LOG_DBL_MIN_CNST;
 
