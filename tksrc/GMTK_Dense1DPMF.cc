@@ -107,7 +107,7 @@ Dense1DPMF::read(iDataStreamFile& is)
   }
   double abs_diff = fabs(sum - 1.0);
   // be more forgiving as cardinality increases
-  if (abs_diff > length*1e-4) 
+  if (abs_diff > length*1e-3) 
     error("ERROR: reading file '%s', DPMF '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e.",
 	  is.fileName(),
 	  name().c_str(),
