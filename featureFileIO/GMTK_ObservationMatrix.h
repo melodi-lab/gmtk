@@ -277,7 +277,9 @@ class ObservationMatrix {
 		 unsigned*      actionIfDiffNumSents   = NULL,
 		 char**         perStreamPreTransforms = NULL,
 		 char*          postTransforms         = NULL,
-		 unsigned       ftrcombo               = FTROP_NONE);
+		 unsigned       ftrcombo               = FTROP_NONE,
+		 const char**   sr_range_str           = NULL
+);
 
   /////////////////////////////////////////////////////////////////////////
   // A version of the above that just opens one file.
@@ -297,11 +299,13 @@ class ObservationMatrix {
 		unsigned*      actionIfDiffNumSents   = NULL,
 		char**         perStreamPreTransforms = NULL,
 		char*          postTransforms         = NULL,
-		unsigned       ftrcombo               = FTROP_NONE) {
+		unsigned       ftrcombo               = FTROP_NONE,
+		const char**   sr_range_str           = NULL
+		) {
     openFiles(1,&f_name,&cont_range_str,&disc_range_str,&n_floats,&n_ints,&formats,&swapflags,
 	      _startSkip,_endSkip,cppIfAscii,cppCommandOptions,pr_range_str,
 	      actionIfDiffNumFrames,actionIfDiffNumSents,
-	      perStreamPreTransforms,postTransforms,ftrcombo);
+	      perStreamPreTransforms,postTransforms,ftrcombo,sr_range_str);
   }
 
   unsigned formatStrToNumber(const char * fmt) {

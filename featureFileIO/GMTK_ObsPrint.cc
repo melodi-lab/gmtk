@@ -393,6 +393,7 @@ unsigned int nfs[MAX_OBJECTS];
 
 char  *sr_str               = 0;   // sentence range string
 Range *sr_rng;
+char  *psr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per-stream sentence range string
 char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // feature range string    
 char  *lr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // label range string  
 char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string 
@@ -473,9 +474,10 @@ Arg Arg::Args[] = {
   Arg("nf",   Arg::Opt, nfs,"number of floats in input file",Arg::ARRAY,MAX_OBJECTS),
   Arg("ni",   Arg::Opt, nis,"number of ints (labels) in input file",Arg::ARRAY,MAX_OBJECTS),
   Arg("q",  Arg::Tog, quiet,"quiet mode"),
-  Arg("sr",   Arg::Opt, sr_str,"sentence range"),
+  Arg("psr",  Arg::Opt, psr_str,"per-stream sentence range",Arg::ARRAY,MAX_OBJECTS),
+  Arg("sr",   Arg::Opt, sr_str,"sentence range. Is applied on top of the per-stream sentence range above."),
   Arg("fr",   Arg::Opt, fr_str,"feature range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("spr",  Arg::Opt, spr_str,"per stream per-sentence range",Arg::ARRAY,MAX_OBJECTS),
+  Arg("spr",  Arg::Opt, spr_str,"per stream per-sentence frame range",Arg::ARRAY,MAX_OBJECTS),
   //  Arg("pr",   Arg::Opt, pr_str,"per-sentence range"),
   Arg("lr",   Arg::Opt, lr_str,"label range",Arg::ARRAY,MAX_OBJECTS),
   Arg("startskip",   Arg::Opt, startSkip,"start skip"),
@@ -747,7 +749,9 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 				   actionIfDiffNumSents,
 				   perStreamTransforms,
 				   postTransforms,
-				   ftrcombo);   
+				   ftrcombo,
+				   (const char**)& psr_str
+				   );   
 
 
      sr_rng = new Range(sr_str,0,globalObservationMatrix.numSegments());

@@ -40,11 +40,17 @@ extern "C" {
 #define CPP_DIRECTIVE_CHAR '#'
 #endif
 
+#ifdef DEBUG
+#define DBGFPRINTF(_x_) fprintf _x_
+#else
+#define DBGFPRINTF(_x_)
+#endif
+
 StreamInfo::StreamInfo(const char *name, const char *crng_str,
 		       const char *drng_str,
 		       unsigned *nfloats, unsigned *nints, 
-		       unsigned *format, bool swap, unsigned num,bool cppIfAscii,char* cppCommandOptions) 
-  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions),numFileNames(0),pfile_istr(NULL),dataNames(NULL),cont_rng(NULL),disc_rng(NULL)
+		       unsigned *format, bool swap, unsigned num,bool cppIfAscii,char* cppCommandOptions, const char* sr_range_str) 
+  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions),numFileNames(0),srRng(NULL), pfile_istr(NULL), dataNames(NULL), cont_rng(NULL),disc_rng(NULL)
 {
 
   if (name == NULL) 	
@@ -85,6 +91,8 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
    disc_rng = new BP_Range(drng_str,0,nInts);
    //}
 
+
+
    // If in the future we want to have the option to append deltas and
    // double deltas, it should be taken into account below.
 
@@ -104,7 +112,7 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
 
      pfile_istr = new InFtrLabStream_PFile(0,fofName,curDataFile,1,bswap);
      
-     fofSize = pfile_istr->num_segs();
+     fullFofSize = pfile_istr->num_segs();
      
      if (pfile_istr->num_ftrs() != nFloats) 
        error("StreamInfo: File %s has %i floats, expected %i",
@@ -147,7 +155,8 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
 	 error("StreamInfo: Can't open '%s' for input\n",fofName);
 #endif
 
-     fofSize = readFof(fofFile);
+     fullFofSize = readFof(fofFile);
+
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP     
      if(cppIfAscii) {
        if (pclose(fofFile) != 0)
@@ -159,6 +168,13 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
      fclose(fofFile);
 #endif
    }
+   
+   srRng= new Range(sr_range_str,0,fullFofSize);
+   assert(srRng != NULL);
+   if((unsigned) srRng->last() >= (unsigned) fullFofSize)
+     error("ERROR: Specified per-stream sentence range (%s) exceeds total number of sentences (%d).",srRng->GetDefStr(),fullFofSize);
+   
+   fofSize = srRng->length();
 }
 
 
@@ -181,6 +197,10 @@ StreamInfo::~StreamInfo() {
     delete cont_rng;   
   if (disc_rng != NULL)
     delete disc_rng;
+
+  if (srRng != NULL)
+    delete srRng;
+
 }
 
 
@@ -267,16 +287,4 @@ size_t StreamInfo::readFof(FILE *f) {
   assert(numFileNames==n_lines);
   return n_lines;
 }
-
-
-
-
-	
-
-
-
-
-
-
-
 
