@@ -450,38 +450,41 @@ GraphicalModel::topologicalSortRecurseRandom(const set<RandomVariable*>& sortSet
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSortContObsFirst(const set<RandomVariable*>& inputVarList,
+GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarList,
 					    const set<RandomVariable*>& sortSet,
 					    vector<RandomVariable*>& outputVarList)
-
 {
   outputVarList.clear();
   outputVarList.resize(inputVarList.size());
   set<RandomVariable*>::iterator it;
-  const   set<RandomVariable*>::iterator it_end = inputVarList.end();
-
-  sArray < unsigned > permutation(inputVarList.size());
-  vector< RandomVariable*> rv_vec(inputVarList.size());
-  unsigned i = 0;
-  for (it=inputVarList.begin();it != it_end;it++) {
+  for (it=inputVarList.begin();it != inputVarList.end();it++) {
     RandomVariable* rv = (*it);
     rv->tag = 0;
-    permutation.ptr[i] = i;
-    rv_vec[i] = rv;
-    i++;
   }
-  rnd.rpermute(permutation.ptr,inputVarList.size());
-  unsigned position=inputVarList.size();
-  for (i=0;i<inputVarList.size();i++) {
-    RandomVariable* rv = rv_vec[permutation.ptr[i]];
+  unsigned position=0;
+  // first do a pass doing just continuous variables
+  for (it=inputVarList.begin();it != inputVarList.end();it++) {
+    RandomVariable* rv = (*it);
+    if (rv->discrete == true)
+      continue;
     if (rv->tag == 0)
-      if (!topologicalSortRecurseRandom(sortSet,
-					outputVarList,
-					rv,
-					position))
+      if (!topologicalSortRecurseContFirst(sortSet,
+					      outputVarList,
+					      rv,
+					      position))
 	return false;
   }
-  assert (position == 0);
+  // next do a pass to hit any remainder.
+  for (it=inputVarList.begin();it != inputVarList.end();it++) {
+    RandomVariable* rv = (*it);
+    if (rv->tag == 0)
+      if (!topologicalSortRecurseContFirst(sortSet,
+					      outputVarList,
+					      rv,
+					      position))
+	return false;
+  }
+  assert (position == inputVarList.size());
   return true;
 }
 
@@ -507,26 +510,19 @@ GraphicalModel::topologicalSortContObsFirst(const set<RandomVariable*>& inputVar
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSortRecurseContObsFirst(const set<RandomVariable*>& sortSet,
+GraphicalModel::topologicalSortRecurseContFirst(const set<RandomVariable*>& sortSet,
 						   vector<RandomVariable*>& outputVarList,
 						   RandomVariable* node,
 						   unsigned& position)
 {
   node->tag = 1;
-
-  const unsigned nChildren = node->allPossibleChildren.size();
-  sArray <unsigned > permutation(nChildren);
-  for (unsigned i=0;i<nChildren;i++) {
-    permutation.ptr[i] = i;
-  }
-  rnd.rpermute(permutation.ptr,nChildren);
-  for (unsigned i=0;i<nChildren;i++) {
-    RandomVariable*rv = node->allPossibleChildren[permutation.ptr[i]];
-    // don't bother with children not in sort set.
+  for (unsigned i=0;i<node->allPossibleParents.size();i++) {
+    RandomVariable*rv = node->allPossibleParents[i];
+    // don't bother with parents not in sort set.
     if (sortSet.find(rv) == sortSet.end())
       continue;
     if (rv->tag == 0) {
-      bool res = topologicalSortRecurseRandom(sortSet,outputVarList,rv,position);
+      bool res = topologicalSortRecurseContFirst(sortSet,outputVarList,rv,position);
       if (!res)
 	// directed graph has a loop
 	return false;
@@ -535,11 +531,11 @@ GraphicalModel::topologicalSortRecurseContObsFirst(const set<RandomVariable*>& s
       return false;
     else
       ;
-      // tag == 2, meaning we've gone down this path before and need not
+      // tag == 2, meaning we've gone up this path before and need not
       // do it again.
   }
   node->tag = 2; // done with this node
-  outputVarList[--position] = node;
+  outputVarList[position++] = node;
   return true;
 }
 
