@@ -74,10 +74,18 @@ public:
   void becomeAwareOfParentValues( vector <int>& parentValues,
 				  vector <int>& cards ) {
     spmfIndex = dt->query(parentValues,cards);
+    if (spmfIndex < 0 || spmfIndex >=  GM_Parms.sPmfs.size()) {
+      error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d'\n",
+	    name().c_str(),dt->name().c_str(),spmfIndex);
+    }
     spmf = GM_Parms.sPmfs[spmfIndex];
   }
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
     spmfIndex = dt->query(parents);
+    if (spmfIndex < 0 || spmfIndex >=  GM_Parms.sPmfs.size()) {
+      error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d'\n",
+	    name().c_str(),dt->name().c_str(),spmfIndex);
+    }
     spmf = GM_Parms.sPmfs[spmfIndex];
   }
   logpr probGivenParents(const int val) {
@@ -106,7 +114,7 @@ public:
   // returns an iterator for the first one.
   iterator begin() {
     assert ( bitmask & bm_basicAllocated );
-    iterator it;
+    iterator it(this);
     it.internalState = 0;
     it.probVal = spmf->probAtEntry(0);
     return it;
