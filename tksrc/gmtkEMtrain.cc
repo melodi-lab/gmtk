@@ -231,7 +231,7 @@ Arg Arg::Args[] = {
   Arg("random",Arg::Opt,randomizeParams,"Randomize the parameters"),
   Arg("enem",Arg::Opt,enem,"Run enumerative EM"),
 
-Arg("showCliques",Arg::Opt,show_cliques,"Show the cliques after the netwok has been unrolled k times."),
+Arg("showCliques",Arg::Opt,show_cliques,"Show the cliques after the network has been unrolled k times."),
 
 
   Arg("numSplits",Arg::Opt,ns,"Number of splits to use in logspace recursion (>=2)."),
