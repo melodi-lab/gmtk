@@ -32,8 +32,11 @@
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RandomVariable.h"
+#include "GMTK_DiscreteVariable.h"
+#include "GMTK_ContinuousVariable.h"
 #include "GMTK_GM.h"
 #include "GMTK_GMParms.h"
+
 
 VCID("$Header$");
 
@@ -1244,79 +1247,10 @@ FileParser::RVInfo::RVInfo(const RVInfo& v)
 //
 // 
 // Check the consistency of the RV information
-// that couldn't be checked while it was parsing.
+// that couldn't be checked while it was parsing (if anything)
 void
 FileParser::RVInfo::checkConsistency()
-
 {
-  if (rvType == t_unknown)
-    error("Unknown type of random variable %s at frame %d, line %d\n",
-	  name.c_str(),frame,fileLineNumber);
-
-  //////////////////////////////////////////////////////////
-  // The following are assertions as we assume that the parser
-  // will ensure they are true. They are assertions as if the
-  // parser changess, these might also need to change.
-  // 
-  // we presume that the parser has ensured that the disposition is known.
-  assert ( rvDisp != RVInfo::d_unknown );
-  // 
-  // make sure that if there are switching parents, there
-  // is a valid switching mapping
-  assert ( 
-	   (switchingParents.size() > 0
-	    && switchMapping.liType != ListIndex::li_Unknown)
-	   || 
-	   (switchingParents.size() == 0
-	    && switchMapping.liType == ListIndex::li_Unknown)
-	    );
-  
-  // End of assertions about parser verified consistencies
-  //////////////////////////////////////////////////////////
-
-  // Now check stuff the parser can't check.
-  //  1) only discrete (resp. continuous) implementations
-  //     are defined for discrete (resp. continuous) RVs.
-  //  2) in the continuous case, that a nil parent
-  //     does not have a DT mapping, but that parents
-  //     have an associated mapping.
-  //  3) that we do not have any hidden continuous variables
-  //     which this package does not yet support.
-
-  if (rvType == t_discrete) {
-    if (rvDisp == d_hidden) {
-      // special checks for discrete hidden RV
-      ;
-    } else {
-      // special checks discrete observed RV
-      ;
-    }
-    // check that all implementations are discrete
-    if (contImplementations.size() > 0)
-      error("Error: continous implementations in discrete RV %s line %d",
-	    name.c_str(),fileLineNumber);
-  } else {
-    // type must be continuous
-    if (rvDisp == d_hidden) {
-      // continuous hidden RV
-      error("We do not support continuous hidden variables (just yet)");
-    } else {
-      // continuous observed RV
-
-      if (discImplementations.size() > 0)
-	error("Error: discrete implementations in continuous RV %s line %d",
-	      name.c_str(),fileLineNumber);
-
-      // now check that any nil conditional parents have a map.
-      
-
-      
-
-
-
-    }
-  } 
-
 }
 
 
