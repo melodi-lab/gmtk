@@ -164,7 +164,10 @@ public:
       //          could easily happen), then z = log(exp(x) + exp(y))
       //          would at best produce garbage.
       logp<FT,iFT> z((void*)0);
-      z.v = x.v+log(1.0+exp(diff)); // could use table lookup here
+      // could use table lookup here, or if we could
+      // write a function to do log(1+exp(x)) directly w/o two calls.
+      z.v = x.v+log(1.0+exp(diff)); 
+
       return z;
     }
   }
