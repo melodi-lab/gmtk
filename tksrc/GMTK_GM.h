@@ -42,7 +42,6 @@
 
 struct GMTK_GM
 {
-
     vector<RandomVariable *> node;
     // This holds all the variables in the graph.
     // The topology os determined by the Parent and Child arrays associated
@@ -67,7 +66,6 @@ struct GMTK_GM
     // VariableValues. This says which it is.
     bool using_files;
 
-
     CliqueChain *chain;
     // A pointer to a clique chain representation of the GM.
 
@@ -81,6 +79,8 @@ struct GMTK_GM
     // support for iterating through a subset of the training segments
     BP_Range* trrng;  
     BP_Range::iterator* trrng_it; // iterator
+
+    bool unrollCliqueChain;
 
     ///////////////////////////////////////////////////////////
     // The dividing line between member variables and member functions
@@ -99,6 +99,7 @@ struct GMTK_GM
       using_files=false;
       trrng = NULL;
       trrng_it = NULL;
+      unrollCliqueChain = true;  // appropriate for training and decoding
     }
 
     ~GMTK_GM() { 
