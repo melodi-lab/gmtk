@@ -211,19 +211,19 @@ public:
   inline logp<FT,iFT>& operator *=(logp<FT,iFT> z)
   { *this = (*this * z); return *this; }
 
-  inline logp<FT,iFT> inverse() {
+  inline logp<FT,iFT> inverse() const {
     void *dummy=NULL;
     return logp<FT,iFT>(dummy,-v);
   }
 
-  inline logp<FT,iFT> pow(double pwr) {
+  inline logp<FT,iFT> pow(double pwr) const {
     void *dummy=NULL;
     return logp<FT,iFT>(dummy,pwr*v);
   }
 
 
   friend inline
-    logp<FT,iFT> operator/(logp<FT,iFT> x, logp<FT,iFT> y)  
+    logp<FT,iFT> operator/(logp<FT,iFT> x, logp<FT,iFT> y) 
     { 
       if (y.zero()) coredump("logp: divide by zero.");
       if (x.zero()) return x;
@@ -284,7 +284,7 @@ public:
 /////////////////////////////////////////////////////
 // The default log probability type used by users 
 // of this class.
-typedef logp<float,double> logpr;
+typedef logp<double,double> logpr;
 /////////////////////////////////////////////////////
 
 #endif
