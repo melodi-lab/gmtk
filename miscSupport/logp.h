@@ -67,14 +67,13 @@ private:
   FT v;
 #ifdef _TABLE_
   static FT table[table_size];
-  static bool initialized;
   static double inc;
 #endif
 
 public:
 
 #ifdef _TABLE_
-  void table_init();
+  static bool table_init();
 #endif
 
   logp(const float p) { 
@@ -183,7 +182,6 @@ public:
       // could use table lookup here, or if we could
       // write a function to do log(1+exp(x)) directly w/o two calls.
 #ifdef _TABLE_
-      if (!z.initialized) {z.table_init(); z.initialized=true;}
       z.v = x.v + table[int(diff*inc)]; 
 #else
       z.v = x.v+log(1.0+exp(diff)); 
