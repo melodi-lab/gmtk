@@ -90,6 +90,59 @@ DiscreteRandomVariable::findConditionalParents()
 void
 DiscreteRandomVariable::allocateProbabiltyTables()
 {
-  
+  error("undefined");
 
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * tieParameters()
+ *      Ties the parameters of 'this' with whatever those of 'other' are. 
+ *      'other' and 'this' must be identical structuraly.
+ * 
+ * Preconditions:
+ *      other must be a fully instantiated RV with parameters, and 'this'
+ *      and 'other' must be structurally identical.
+ *
+ * Postconditions:
+ *      'this' has the identical _tied_ parameters with 'other'
+ *
+ * Side Effects:
+ *      Changes the internal parameter data structures, but does not delete anything.
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DiscreteRandomVariable::tieParameters(RandomVariable*const _other)
+{
+  assert ( _other -> discrete );
+  
+  DiscreteRandomVariable * other = (DiscreteRandomVariable*) _other;
+
+  if (!identicalStructureWith(*other))
+    error("Error, trying to tie parameters of RV '%s' with RV '%s' but they have different structure.",
+	  label.c_str(),other->label.c_str());
+
+  conditionalCPTs = other->conditionalCPTs;
+  curCPT = other->curCPT;
+  
+}
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+//                 EM ROUTINES                                            ///
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+
+/* defined in .h file until they get more complicated.a */
+
+/////////////////////////////////////////////////////////////////////////////

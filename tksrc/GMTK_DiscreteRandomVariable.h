@@ -22,10 +22,17 @@
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
+#include "GMTK_MDCPT.h"
+#include "GMTK_MSCPT.h"
+#include "GMTK_MTCPT.h"
 
 class DiscreteRandomVariable : public RandomVariable
 {
 private:
+  friend CPT;
+  friend MDCPT;
+  friend MSCPT;
+  friend MTCPT;
 
   //////////////////////////////////////////////////////////////////////
   // CPT array, one for each set of possible parents we might
@@ -34,7 +41,6 @@ private:
   vector < CPT* > conditionalCPTs;
 
   // the current CPT after findConditionalParents() is called.
-  // This variable is NULL if there are no parents of this node.
   CPT* curCPT;
 
   // iterator used between clamp functions.
@@ -90,13 +96,13 @@ public:
   void cacheValue() {cached_val=val;}
   void restoreCachedValue() {val=cached_val;}
 
-    /////////////////////////////////////////////////////////////////////////
-    // stores a variable's value elsewhere
-    virtual void storeValue(VariableValue &vv) {vv.ival = val;}
+  /////////////////////////////////////////////////////////////////////////
+  // stores a variable's value elsewhere
+  virtual void storeValue(VariableValue &vv) {vv.ival = val;}
 
-    /////////////////////////////////////////////////////////////////////////
-    // sets a variables value as specified
-    virtual void setValue(VariableValue &vv) {val = vv.ival;}
+  /////////////////////////////////////////////////////////////////////////
+  // sets a variables value as specified
+  virtual void setValue(VariableValue &vv) {val = vv.ival;}
 
   void makeRandom() { 
     for (unsigned i=0;i<conditionalCPTs.size();i++) 
@@ -108,15 +114,42 @@ public:
       conditionalCPTs[i]->makeUniform();
   }
 
+  void tieParameters(RandomVariable*const other);
+
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
-  void instantiate() { val = curCPT->randomSample(); }
+  void instantiate() { 
+    findConditionalParents(); 
+    curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    val = curCPT->randomSample(); 
+  }
 
   ///////////////////////////////////////////////////
   // EM Support
-  void emStartIteration() {error("zeroAccumulators undefined");}
-  void emIncrement(logpr posterior) {error("increment undefined");}
-  void emEndIteration() {error("update undefined");}
+  void emStartIteration() { 
+    for(unsigned i=0;i<conditionalCPTs.size();i++)
+      conditionalCPTs[i]->emStartIteration();
+  }
+  void emIncrement(logpr posterior) { 
+    findConditionalParents();
+    curCPT->emIncrement(this,posterior);
+  }
+  void emEndIteration() { 
+    for(unsigned i=0;i<conditionalCPTs.size();i++)
+      conditionalCPTs[i]->emEndIteration();
+  }
+  void emClearAllocatedBit() { 
+    for(unsigned i=0;i<conditionalCPTs.size();i++)
+      conditionalCPTs[i]->emClearAllocatedBit();
+  }
+  void emClearSwappedBit() { 
+    for(unsigned i=0;i<conditionalCPTs.size();i++)
+      conditionalCPTs[i]->emClearSwappedBit();
+  }
+  void emSwapCurAndNew() { 
+    for(unsigned i=0;i<conditionalCPTs.size();i++)
+      conditionalCPTs[i]->emSwapCurAndNew();
+  }
   ///////////////////////////////////////////////////
 
 
