@@ -2312,3 +2312,8 @@ Mon Aug 30 10:59:48 2004
  6) working viterbi island algorithm ??? (need to check)
   
  6) working viterbi island algorithm??
+
+Tue Aug 31 10:19:20 2004
+  - fix bug in error message bad parsing of cpp.
+ERROR: In file '"PARAMS/masterFile.Mar9_16" 2
+', DT 'endOfUtterance', invalid leaf node value '(p0)':  RngDecisionTree:: readRecurse leaf node value
