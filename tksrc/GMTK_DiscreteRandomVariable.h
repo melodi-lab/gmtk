@@ -45,7 +45,7 @@ private:
 public:
 
   DiscreteRandomVariable(string _label, vartype vt, int card=0)
-  {RandomVariable::RandomVariable(string _label, vartype vt, int card=0);}
+    : RandomVariable(_label, vt,card) {}
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
@@ -58,12 +58,12 @@ public:
   // 
   // compute the probability
   logpr probGivenParents() {
-    return curCPT->probGivenParents(curConditionalParents,val);
+    return curCPT->probGivenParents(*curConditionalParents,val);
   }
   // clamp this RV to its "first" value
-  void clampFirstValue() { it = curCPT->first(); val = it.val; }
+  void clampFirstValue() { it = curCPT->begin(); val = it.val(); }
   // continue on
-  bool clampNextValue() { curCPT->next(it); val = it.val; }
+  bool clampNextValue() { it++; return (it != curCPT->end()); }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
@@ -74,12 +74,12 @@ public:
 
   void makeRandom() { 
     for (int i=0;i<conditionalCPTs.len();i++) 
-      conditionalCPTs[i].makeRandom();
+      conditionalCPTs[i]->makeRandom();
   }
 
   void makeUniform()  { 
     for (int i=0;i<conditionalCPTs.len();i++) 
-      conditionalCPTs[i].makeUniform();
+      conditionalCPTs[i]->makeUniform();
   }
 
   ////////////////////////////////////////////////////////////////
