@@ -2100,6 +2100,8 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
       EMCLEARAMTRAININGBIT_CODE(mdCptsMap,mdCpts);
     } else if (objType == "MSCPT") {
       EMCLEARAMTRAININGBIT_CODE(msCptsMap,msCpts);
+    } else if (objType == "MTCPT") {
+      EMCLEARAMTRAININGBIT_CODE(mtCptsMap,mtCpts);
     } else if (objType == "MIXGAUSSIAN") {
       EMCLEARAMTRAININGBIT_CODE(mixGaussiansMap,mixGaussians);
     } else {
