@@ -29,7 +29,7 @@ private:
   // CPT array, one for each set of possible parents we might
   // have (so size of this array is the number of different
   // possible conditional parents).
-  sArray < CPT* > conditionalCPTs;
+  vector < CPT* > conditionalCPTs;
 
   // the current CPT after findConditionalParents() is called.
   CPT* curCPT;
@@ -83,12 +83,12 @@ public:
   void restoreCachedValue() {val=cached_val;}
 
   void makeRandom() { 
-    for (int i=0;i<conditionalCPTs.len();i++) 
+    for (unsigned i=0;i<conditionalCPTs.size();i++) 
       conditionalCPTs[i]->makeRandom();
   }
 
   void makeUniform()  { 
-    for (int i=0;i<conditionalCPTs.len();i++) 
+    for (unsigned i=0;i<conditionalCPTs.size();i++) 
       conditionalCPTs[i]->makeUniform();
   }
 
