@@ -320,4 +320,4 @@ no gaussian mixtures, does the master file still have to mention them?
 - add link checks
 
 - when no-one left uses a component after vanishing,
-  get rid of it.
+  get rid of it (add a 'used' bit perhaps in EMable.h).
