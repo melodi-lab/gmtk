@@ -108,8 +108,8 @@ void GMTK_GM::makeUniform()
  * simulate
  *
  * Results:
- * Each variable in the network sets its value according to the conditional
- * probability distribution appropriate to its parent values;
+ * Each hidden variable in the network sets its value according to the 
+ * conditional probability distribution appropriate to its parent values;
  *
  * Side Effects:
  * Each variable in the model is clamped to some value.
@@ -118,7 +118,10 @@ void GMTK_GM::makeUniform()
 void GMTK_GM::simulate()
 {
     for (unsigned i=0; i<node.size(); i++)
-        node[i]->instantiate();
+        if (node[i]->hidden)
+            node[i]->instantiate();
+        else
+            node[i]->clampFirstValue();  // and only value for an observation
 }
 
 /*
@@ -1164,7 +1167,8 @@ void GMTK_GM::setSize(int repeat_segs)
     unroll(firstChunkFrame, lastChunkFrame, repeat_segs);
 
     // make a clique chain to go with the new model
-    GM2CliqueChain();
+    if (unrollCliqueChain)
+        GM2CliqueChain();
 }
 
 void GMTK_GM::setExampleStream(const char *const obs_file_name,
@@ -1196,7 +1200,8 @@ void GMTK_GM::clampFirstExample()
 	const int seg_no = *(*trrng_it);
         globalObservationMatrix.loadSegment(seg_no);
         int frames = globalObservationMatrix.numFrames;
-	if ((frames-framesInTemplate)%framesInRepeatSeg != 0) {
+	if (((frames-framesInTemplate)%framesInRepeatSeg != 0)
+        || (frames-framesInTemplate<0) ) {
 	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",seg_no);
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
@@ -1225,7 +1230,8 @@ bool GMTK_GM::clampNextExample()
 	const int seg_no = *(*trrng_it);
         globalObservationMatrix.loadSegment(seg_no);
         int frames = globalObservationMatrix.numFrames;
-	if ((frames-framesInTemplate)%framesInRepeatSeg != 0) {
+	if (((frames-framesInTemplate)%framesInRepeatSeg != 0)
+        || (frames-framesInTemplate<0) ) {
 	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",seg_no);
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
