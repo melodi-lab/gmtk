@@ -121,6 +121,7 @@ public:
   void emEndIteration(const logpr prob,const float*const m,const float*const v);
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
+  void emStoreZeroAccumulators(oDataStreamFile& ofile);
   void emLoadAccumulators(iDataStreamFile& ifile);
   void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////

@@ -743,9 +743,24 @@ void
 DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for covar '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
 }
+
+
+
+void
+DiagCovarVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  EMable::emStoreZeroAccumulators(ofile);
+}
+
 
 void
 DiagCovarVector::emLoadAccumulators(iDataStreamFile& ifile)

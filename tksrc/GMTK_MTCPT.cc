@@ -293,8 +293,21 @@ void
 MTCPT::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for MTCPT '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
+}
+
+
+void
+MTCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  EMable::emStoreZeroAccumulators(ofile);
 }
 
 void

@@ -117,6 +117,7 @@ public:
   void emEndIteration();
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
+  void emStoreZeroAccumulators(oDataStreamFile& ofile);
   void emLoadAccumulators(iDataStreamFile& ifile);
   void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////

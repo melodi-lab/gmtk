@@ -322,11 +322,24 @@ MeanVector::emSwapCurAndNew()
 void
 MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
-
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for mean '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
 }
+
+
+void
+MeanVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  EMable::emStoreZeroAccumulators(ofile);
+}
+
 
 void
 MeanVector::emLoadAccumulators(iDataStreamFile& ifile)

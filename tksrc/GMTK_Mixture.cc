@@ -524,8 +524,20 @@ void
 MixGaussians::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for mix gaussian '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
+}
+
+void
+MixGaussians::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  EMable::emStoreZeroAccumulators(ofile);
 }
 
 void

@@ -187,14 +187,14 @@ Dlinks::preCompute(const unsigned stride)
 {
   // first go through and find out how long it needs to be
   unsigned len = 0;
-  zzAccumulatorLength = 0;
+  _zzAccumulatorLength = 0;
   unsigned maxDlinks = 0;
   for (int i=0;i<dim();i++) {
     if ((unsigned)numLinks(i) > maxDlinks)
       maxDlinks = numLinks(i);
     len += numLinks(i);
     // only storing upper triangular portion of symetric matrix
-    zzAccumulatorLength += numLinks(i)*(numLinks(i)+1)/2;
+    _zzAccumulatorLength += numLinks(i)*(numLinks(i)+1)/2;
   }
 
   preComputedOffsets.resize(len);
@@ -208,7 +208,7 @@ Dlinks::preCompute(const unsigned stride)
   assert ( len == entry );
 
   // now allocate the cache for dlink matrix
-  zzArrayCache.resize(zzAccumulatorLength);
+  zzArrayCache.resize(_zzAccumulatorLength);
   xzArrayCache.resize(len);
   zArrayCache.resize(len);
   clearArrayCache();

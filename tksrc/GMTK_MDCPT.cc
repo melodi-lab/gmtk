@@ -625,10 +625,26 @@ void
 MDCPT::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for MDCPT '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
   for (int i=0;i<nextMdcpt.len();i++) {
     ofile.write(nextMdcpt[i].val(),"mdcw");
+  }
+}
+
+void
+MDCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  EMable::emStoreZeroAccumulators(ofile);
+  for (int i=0;i<mdcpt.len();i++) {
+    const logpr p; 
+    ofile.write(p.val(),"mdcw");
   }
 }
 

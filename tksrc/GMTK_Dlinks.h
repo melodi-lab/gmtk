@@ -56,8 +56,6 @@ class Dlinks : public NamedObject {
   // use an sArray for speed
   sArray<int> preComputedOffsets;
 
-  unsigned totalNumberLinks() { return (unsigned) preComputedOffsets.len(); }
-
   int _minLag;
   int _maxLag;
 
@@ -76,7 +74,7 @@ class Dlinks : public NamedObject {
   void cacheArrays(const Data32* const base,
 		   const float*const f);
   // --- precomputed length support
-  unsigned zzAccumulatorLength;
+  unsigned _zzAccumulatorLength;
   /////////////////////////////////////////////////////////
   
 
@@ -90,6 +88,14 @@ public:
   // dim: return the number of features for this 
   // collection of links corresponds to.
   int dim() { return dIndices.size(); }
+
+  ///////////////////////////////////////////////////////////  
+  // return total number of dlinks refered to by this.
+  unsigned totalNumberLinks() { return (unsigned) preComputedOffsets.len(); }
+
+  ///////////////////////////////////////////////////////////  
+  // For EM, return the length of the z'z accumulators
+  unsigned zzAccumulatorLength() { return _zzAccumulatorLength; }
 
   ///////////////////////////////////////////////////////////  
   // numLinks: return the number of links for the ith

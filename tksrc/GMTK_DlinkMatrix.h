@@ -85,6 +85,8 @@ public:
   ///////////////////////////////////////////////////////////  
   // num number of features (dimensionality) for this 
   int dim() { return dLinks->dim(); }
+  unsigned totalNumberLinks() { return dLinks->totalNumberLinks(); }
+  unsigned zzAccumulatorLength() { return dLinks->zzAccumulatorLength(); }
 
   ///////////////////////////////////////////////////////////  
   // numLinks: return the number of links for the ith
@@ -111,6 +113,7 @@ public:
   void emEndIteration(const float*const xzAccumulators);
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
+  void emStoreZeroAccumulators(oDataStreamFile& ofile);
   void emLoadAccumulators(iDataStreamFile& ifile);
   void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////

@@ -367,13 +367,31 @@ void
 DiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for Diag Gaussian '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
   for (int i=0;i<nextMeans.len();i++) {
     ofile.write(nextMeans[i],"nxm");
   }
   for (int i=0;i<nextDiagCovars.len();i++) {
     ofile.write(nextDiagCovars[i],"ndc");
+  }
+}
+
+void
+DiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  EMable::emStoreZeroAccumulators(ofile);
+  for (int i=0;i<mean->dim();i++) {
+    ofile.write((float)0.0,"nxm");
+  }
+  for (int i=0;i<covar->dim();i++) {
+    ofile.write((float)0.0,"ndc");
   }
 }
 
