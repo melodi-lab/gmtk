@@ -69,6 +69,8 @@ class RVInfo {
   friend class ScPnSh_Sw_ObsContRV;
   friend class ScPnShRV;
   friend class ContRV;
+  friend class SwRV;
+  friend class SwDiscRV;
 
 public:
   ///////////////////////////////////////////////////

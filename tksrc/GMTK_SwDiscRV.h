@@ -61,6 +61,10 @@ public:
     conditionalCPTs = other->conditionalCPTs;
   }
 
+  unsigned averageCardinality(RVInfo& rv_info);
+  unsigned maxCardinality(RVInfo& rv_info);
+
+
 };
 
 #endif
