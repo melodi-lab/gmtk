@@ -94,7 +94,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkEMtrain gmtkViterbi gmtkParmConvert gmtkScore gmtkSample
+all_exs = gmtkEMtrain gmtkViterbi gmtkParmConvert gmtkScore gmtkSample gmtkTriangulate
 
 all: ${all_exs}
 
