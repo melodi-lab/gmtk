@@ -903,3 +903,21 @@ Mon Jan 13 13:32:31 2003$
   - get rid of MSCPT, MDCPT, and MTCPT messages. In sparce CPT
     error messages, it says MTCPT when it should refer to sparce CPTs.
 
+Mon Jan 13 16:54:33 2003
+  - make sure in documentation that it says that dlink feature index 
+    values are for absolute locations with respect to the
+    feature files and not relative locations, relative
+    to the feature range given in the .str file (if this
+    is not done already).
+      - parent variables are absolute, with absolute feature locations
+       given in dlink definition
+      - child variables are relative, where relative location is given
+        starting with feature range given in .str file.
+
+Mon Jan 13 17:18:17 2003
+  - Fix bad error message, 'Error: upper n >- limit n in range string' when training range does
+    not match the range of utterance numbers in the observation file.
+
+
+
+
