@@ -231,12 +231,17 @@ GMParms GM_Parms;
 int
 main()
 {
+
+  iDataStreamFile isdt("dataFiles/foo.dt",false);
+  GM_Parms.readDTs(isdt);
+
   iDataStreamFile is("dataFiles/test1.gmb",false);
   GM_Parms.readBasic(is);
 
-  // oDataStreamFile os("dataFiles/test1_out.gmb");
   oDataStreamFile os("-");
+  GM_Parms.writeDTs(os);
   GM_Parms.writeBasic(os);
+
 }
 
 

@@ -538,6 +538,10 @@ T RngDecisionTree<T>::queryRecurse(const sArray < int >& arr,
 
   const int val = arr[n->nonLeafNode.ftr];
   for (int i=0;i<n->nonLeafNode.rngs.len();i++ ) {
+    // TODO: turn this into a log(n) operation
+    // rather than linear. To do this, we'll need
+    // to make sure that the ranges are in order.
+    // To do this, define an operator < for bp_ranges.
     if (n->nonLeafNode.rngs[i]->contains(val))
       return queryRecurse(arr,n->nonLeafNode.children[i]);
   }
