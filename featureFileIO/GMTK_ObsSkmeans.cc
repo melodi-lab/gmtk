@@ -701,38 +701,6 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 }
 
 
-static long
-parse_long(const char*const s)
-{
-    size_t len = strlen(s);
-    char *ptr;
-    long val;
-
-    val = strtol(s, &ptr, 0);
-
-    if (ptr != (s+len))
-        error("Not an integer argument.");
-
-    return val;
-}
-
-static float
-parse_float(const char*const s)
-{
-    size_t len = strlen(s);
-    char *ptr;
-    double val;
-    val = strtod(s, &ptr);
-    if (ptr != (s+len))
-        error("Not an floating point argument.");
-    return val;
-}
-
-
-
-
-
-
 
 #define MAX_OBJECTS 5
 
