@@ -199,18 +199,20 @@ MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
     // TODO: need to check if this will overflow here
     // when dividing by it. This is more than just checking
     // for zero. Also need to do this in every such EM object.
-    warning("WARNING: Mean vector named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+    warning("WARNING: Mean vector named '%s' did not receive any accumulated probability in EM iteration, using previous means",name().c_str());
+    for (int i=0;i<nextMeans.len();i++) 
+      nextMeans[i] = means[i];
+  } else {
+    const double invRealAccumulatedProbability = 
+      accumulatedProbability.inverse().unlog();
+    // finish computing the next means.
+    float * nextMeans_p = nextMeans.ptr;
+    float * nextMeans_end_p = nextMeans.ptr + nextMeans.len();
+    do {
+      *nextMeans_p *= invRealAccumulatedProbability;
+      nextMeans_p++;
+    } while (nextMeans_p != nextMeans_end_p);
   }
-
-  const double invRealAccumulatedProbability = 
-    accumulatedProbability.inverse().unlog();
-  // finish computing the next means.
-  float * means_p = nextMeans.ptr;
-  float * means_end_p = nextMeans.ptr + nextMeans.len();
-  do {
-    *means_p *= invRealAccumulatedProbability;
-    means_p++;
-  } while (means_p != means_end_p);
 
   // stop EM
   emClearOnGoingBit();
