@@ -28,6 +28,15 @@
 
 class VariableParams {
 
+
+  //////////////////////////////////////////////////////////////////
+  // Basic shared low-level parameters: These are the objects that 
+  //  higher level objects (see below) might share together.
+  //  All of these objects are "EMable" in the sense that
+  //  they may be trained using EM (plus possibly some other gradient
+  //  based training method).
+  //////////////////////////////////////////////////////////////////
+
   /////////////////////////////  
   // Collection of prob. mass functions
   sArray< Discrete1DPDF* > pmfs;
@@ -45,22 +54,32 @@ class VariableParams {
   sArray< Dlinks* > dlinks;
 
   ////////////////////////////////
-  // Collection of packed sparse matrices
-  sArray< PackedSparseRealMatrix* > sparseMats;
+  // Collection of objects
+  // used for linear dependencies via
+  // a dlink topology structure.
+  sArray< DlinkMatrix* > dLinkMats;
 
   ////////////////////////////////
-  // Collection of 2D Dense matrices
-  sArray< RealMatrix* > denseMats;
+  // Collection of 2D Dense matrices, used
+  // for weight matrices of MLPs, or 
+  // for logistic regression.
+  sArray< WeightMatrix* > weightMats;
 
+  ////////////////////////////////
+  // Collection of multi-dimensional dense CPTs
+  sArray< MDCPT* > mdCpts;
+
+  ///////////////////////////////////
+  // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
+  sArray< SMDCPT* > sMdCpts;
+
+  //////////////////////////////////////////////////////////////////
+  // Basic Gaussian Components
   //////////////////////////////////////////////////////////////////
 
   ///////////////////////////////////////////
   // Collection of diag. covariance Gaussians
   sArray< DiagGaussian* > diagGaussians;
-
-  ////////////////////////////////
-  // Collection of DLINKS
-  sArray< Dlinks* > dlinks;
 
   ////////////////////////////////
   // Collection of diagonal covariance Gaussians with linear mean 
@@ -75,7 +94,40 @@ class VariableParams {
   // of "non-linear" Gaussians, and so on).
   sArray< NLinMeanCondDiagGaussian* > nLinMeanCondGaussians;
 
+
   //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+  // These are only the Possible OBSERVATION DISTRIBUTIONS 
+  //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////
+  // Mixtures of Gaussians (could be a heterogeneous mixutre of
+  // different types above)
+  sArray < GMTK_MixGaussians* > mixGaussians;
+
+  ////////////////////////////////
+  // Switching mixtures of Gaussians. The switching is
+  // implemented with Gaussians.
+  sArray < GMTK_GausSwitchingMixGaussians* > gausSwitchMixGaussians;
+
+  ////////////////////////////////
+  // Switching mixtures of Gaussians. The switching is
+  // implemented with logistic regression (i.e., 1 layer MLP)
+  sArray< GMTK_LogitSwitchingMixGaussians* > logitSwitchMixGaussians;
+
+
+  ////////////////////////////////
+  // Switching mixtures of Gaussians. The switching is
+  // implemented with 2 layer (2 weight matrix) MLP
+  sArray< GMTK_LogitSwitchingMixGaussians* > mlpSwitchMixGaussians;
+
+  // The following are for discrete observations
+
+  ...
+
+  ...
+
 
 
 public:
@@ -85,7 +137,7 @@ public:
   VariableParams(); 
 
   ///////////////////////////////////////////////////////////    
-  // read in the basic parameters, assuming file pointer 
+  // read in all the basic parameters, assuming file pointer 
   // is located at the correct position.
   void read(iDataStreamFile& is);
 

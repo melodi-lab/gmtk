@@ -1,6 +1,6 @@
 /*-
- * GMTK_1D_Dist.h
- *      .h file for GMTK_1D_Dist.cc, trainable 1D discrete probability
+ * GMTK_Discrete1DPDF.h
+ *      .h file for GMTK_Discrete1DPDF.h, trainable 1D discrete probability
  *      distributions.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -20,15 +20,15 @@
  */
 
 
-#ifndef GMTK_1D_DIST
-#define GMTK_1D_DIST
+#ifndef GMTK_DISCRETE1DPDF
+#define GMTK_DISCRETE1DPDF
 
 
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
 
-class Discrete1DPDF {
+class Discrete1DPDF : public EMable {
 
 
   ///////////////////////////////////////////////////////////  
@@ -36,18 +36,19 @@ class Discrete1DPDF {
   sArray <logpr> pmf
   ///////////////////////////////////////////////////////////  
 
-  ///////////////////////////////////////////////////////////  
-  // length of the distribution (separate from the memory
-  // allocated for pmf above).
-  int length;
+  //////////////////////////////////
+  // Data structures support for EM.
+  //   The previous probability mass function 
+  sArray <logpr> nextPmf;
   ///////////////////////////////////////////////////////////  
 
 public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  Discrete1DPDF() 
+  Discrete1DPDF();
 
+  int length() { return pmf.len(); }
 
   ///////////////////////////////////////////////////////////  
   // Re-normalize the distribution
@@ -68,4 +69,4 @@ public:
 
 
 
-#endif
+#endif // defined DISCRETE1DPDF

@@ -77,7 +77,6 @@ RealArray::RealArray()
 void
 RealArray::read(iDataStreamFile& is)
 {
-  assert (nFeats > 0);
 
   is.read(length,"RealArray::read, distribution length");
 

@@ -65,7 +65,11 @@ Discrete1DPDF::Discrete1DPDF()
  * Discrete1DPDF::read(is)
  *      read in a distribution from file 'is'. 
  *      The data probs are stored as doubles, but when they are read in
- *      they are converted to the log domain.
+ *      they are converted into the log domain (so discrete data on disk
+ *      is NOT represented as log probabilities. This is because 
+ *          1) discrete data typically doesn't need such a huge dynamic range
+ *              (like Gaussian probabilties do).
+ *          2) it is easier to examine data on disk when it is not in log domain.
  * 
  * Results:
  *      No results.
@@ -78,7 +82,6 @@ Discrete1DPDF::Discrete1DPDF()
 void
 Discrete1DPDF::read(iDataStreamFile& is)
 {
-  assert (nFeats > 0);
 
   is.read(length,"Discrete1DPDF::read, distribution length");
 
@@ -90,6 +93,8 @@ Discrete1DPDF::read(iDataStreamFile& is)
   for (int i=0;i<length;i++) {
     double val;
     is.readDouble(val,"Discrete1DPDF::read, reading value");
+    if (val < 0 || val > 1)
+      error("Discrete1DPDF: read, invalid pmf value (%g)",val);
     pmf[i] = val;
   }
 }
@@ -101,7 +106,7 @@ Discrete1DPDF::read(iDataStreamFile& is)
  *-----------------------------------------------------------------------
  * Discrete1DPDF::read(is)
  *      write out distribution to file 'os'. 
- *      The data probs are stored as doubles not in log domain.
+ *      the data probs are stored on disk as doubles,  NOT in log domain.
  * 
  * Results:
  *      No results.
@@ -118,7 +123,8 @@ Discrete1DPDF::write(oDataStreamFile& os)
 
   os.write(length,"Discrete1DPDF::write, distribution length");
   for (int i=0;i<length;i++) {
-    os.writeDouble(pmf[i].unlog(),"Discrete1DPDF::write, reading value");
+    // convert out of log domain and write out.
+    os.writeDouble(pmf[i].unlog(),"Discrete1DPDF::write, writing value");
   }
   os.nl();
 

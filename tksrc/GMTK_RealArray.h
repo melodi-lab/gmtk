@@ -1,5 +1,7 @@
 /*-
  * GMTK_RealArray.h
+ *    An array of real values with some functionality for 
+ *         reading, writing, and so on.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
@@ -42,13 +44,13 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  RealArray() 
+  RealArray();
 
-
+  float operator[] (int i) { return arr[i]; }
+    
   ///////////////////////////////////////////////////////////    
+  // reading and writing from/to disk.
   void read(iDataStreamFile& is);
-
-  ///////////////////////////////////////////////////////////    
   void write(oDataStreamFile& os);
 
 };
