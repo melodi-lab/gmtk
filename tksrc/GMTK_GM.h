@@ -156,7 +156,11 @@ struct GMTK_GM
     CliqueChain *chain;
     // A pointer to a clique chain representation of the GM.
 
-    void cliqueChainEM(int iterations, logpr beam=0.0);
+    void cliqueChainEM(int iterations, 
+		       logpr beam=0.0,
+		       const bool writeParametersBeforeEachEMIteration=true,
+		       const string outputParamFile = "outParms%d.gmp",
+		       const bool binOutFile=false);
     // Does EM using dynamic programming on a clique chain.
 
     logpr enumerativeExampleProb(vector<vector<VariableValue > > &example);
