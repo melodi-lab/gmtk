@@ -57,8 +57,8 @@ DiagGaussian::read(iDataStreamFile& is)
   is.read(str);
 
   if (GM_Parms.meansMap.find(str) ==  GM_Parms.meansMap.end()) 
-      error("Error: DiagGaussian '%s' specifies mean name '%s' that does not exist",
-	    _name.c_str(),str.c_str());
+      error("Error: DiagGaussian '%s' in file '%s' specifies mean name '%s' that does not exist",
+	    _name.c_str(),is.fileName(),str.c_str());
   meanIndex = GM_Parms.meansMap[str];
   mean = GM_Parms.means[meanIndex];
 
@@ -66,30 +66,31 @@ DiagGaussian::read(iDataStreamFile& is)
   // read covariance vector
   is.read(str);
   if (GM_Parms.covarsMap.find(str) == GM_Parms.covarsMap.end())
-    error("Error: DiagGaussian '%s' specifies covar name '%s' that does not exist",
-	  _name.c_str(),str.c_str());
+    error("Error: DiagGaussian '%s' in file '%s' specifies covar name '%s' that does not exist",
+	  _name.c_str(),is.fileName(),str.c_str());
   
   covarIndex = GM_Parms.covarsMap[str];
   covar = GM_Parms.covars[covarIndex];
 
   // check that lengths match, etc.
   if (covar->dim() != mean->dim()) {
-    error("Error: DiagGaussian '%s' specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
-	  _name.c_str(),
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
+	  _name.c_str(),is.fileName(),
 	  mean->name().c_str(),
 	  mean->dim(),
 	  covar->name().c_str(),
 	  covar->dim());
   }
   if (covar->dim() != _dim) {
-    error("Error: DiagGaussian '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
-	  _name.c_str(),
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
+	  _name.c_str(),is.fileName(),
 	  _dim,
 	  mean->name().c_str(),
 	  mean->dim(),
 	  covar->name().c_str(),
 	  covar->dim());
   }
+
   setBasicAllocatedBit();
 }
 
@@ -107,6 +108,7 @@ DiagGaussian::write(oDataStreamFile& os)
   // write mean vector
   os.write(mean->name());
   os.write(covar->name());
+  os.nl();
 }
 
 
