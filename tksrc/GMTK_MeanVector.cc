@@ -756,7 +756,11 @@ MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
     ofile.write(flag,"writing acc flag");
     return;
   } else {
-    // the training bit is set.
+    // either the training bit is set, or the training bit is not set
+    // but this object is being shared more than once. In the former
+    // case, we of course write out the accumulators. In the latter
+    // case, while this object won't change, it's accumulators might
+    // be needed by another object for which the training bit is set.
     if (accumulatedProbability.zero()) {
       // then we indeed have no probability values, so lets emit a warning
       warning("WARNING: zero accumulator values for %s '%s'\n",
