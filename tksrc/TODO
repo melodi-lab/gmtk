@@ -68,3 +68,7 @@ XXX- todo, make sure that chunk n:m is valid.
 - Check the results of all DT query() calls to make sure
   the index it returns is valid. Report great error messages
   if it doesn't.
+
+- if an object gets no probability, do something
+  more than just issuing a warning, like setting
+  to uniform probs, or something.
