@@ -325,7 +325,6 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 			      sArray<float>& zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingdLinkMats())
     return;
 
@@ -374,6 +373,29 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * emIncrement
+ *      Add the data item for the current f into the
+ *      partial accumulators for this dlink object.
+ *      NOTE: This routine lives in the inner most loop of
+ *      EM training, so it is important that this is as
+ *      fast as possible.
+ * 
+ * Preconditions:
+ *      basic structures must be allocated.
+ *
+ * Postconditions:
+ *      data has been accumulated
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 DlinkMatrix::emIncrement(const logpr prob,
 			 const float fprob,
@@ -385,10 +407,9 @@ DlinkMatrix::emIncrement(const logpr prob,
 			 float* zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingdLinkMats())
     return;
-  
+
   /////////////////////////////////////////////
   // Note: unlike the normal EM mode described
   // in GMTK_EMable.h, we do not call
@@ -397,7 +418,10 @@ DlinkMatrix::emIncrement(const logpr prob,
   // is using this mean. This is because
   // this object keeps a reference count (needed for
   // sharing), and calling that routine repeatedly 
-  // would result in an incorrect count.
+  // would result in an incorrect count. We do
+  // make sure that em has been allocated with the
+  // following assertion.
+  assert ( emEmAllocatedBitIsSet() );
 
   // we assume here that (prob > minIncrementProbabilty),
   // i.e., that this condition has been checked by the caller
@@ -443,12 +467,12 @@ void
 DlinkMatrix::emEndIteration(const float*const xzAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emOnGoingBitIsSet() );
-
   if (!GM_Parms.amTrainingdLinkMats())
     return;
 
   if (refCount > 0) {
+    // if this isn't the case, something is wrong.
+    assert ( emOnGoingBitIsSet() );
 
     for (int i=0;i<nextArr.len();i++) {
       nextArr[i] += xzAccumulators[i];
@@ -487,7 +511,6 @@ void
 DlinkMatrix::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingdLinkMats())
     return;
 
@@ -505,27 +528,30 @@ DlinkMatrix::emSwapCurAndNew()
   emClearSwappableBit();
 }
 
-
 void
 DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert (basicAllocatedBitIsSet());
+  assert (emEmAllocatedBitIsSet());
+  EMable::emStoreAccumulators(ofile);
 }
+
 
 void
 DlinkMatrix::emLoadAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert (basicAllocatedBitIsSet());
+  assert (emEmAllocatedBitIsSet());
+  EMable::emLoadAccumulators(ifile);
 }
 
 
 void
 DlinkMatrix::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert (basicAllocatedBitIsSet());
+  assert (emEmAllocatedBitIsSet());
+  EMable::emAccumulateAccumulators(ifile);
 }
 
 

@@ -163,7 +163,6 @@ void
 MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingMeans())
     return;
 
@@ -213,10 +212,8 @@ MeanVector::emIncrement(const logpr prob,
 			float *const partialAccumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingMeans())
     return;
-  
   
   /////////////////////////////////////////////
   // Note: unlike the normal EM mode described
@@ -226,8 +223,10 @@ MeanVector::emIncrement(const logpr prob,
   // is using this mean. This is because
   // this object keeps a reference count (needed for
   // sharing), and calling that routine repeatedly 
-  // would result in an incorrect count.
-
+  // would result in an incorrect count. We do
+  // make sure that em has been allocated with the
+  // following assertion.
+  assert ( emEmAllocatedBitIsSet() );
 
   // we assume here that (prob > minIncrementProbabilty),
   // i.e., that this condition has been checked by the caller
@@ -253,7 +252,6 @@ void
 MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingMeans())
     return;
 
@@ -303,7 +301,6 @@ void
 MeanVector::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-
   if (!GM_Parms.amTrainingMeans())
     return;
 
@@ -325,15 +322,18 @@ MeanVector::emSwapCurAndNew()
 void
 MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
+
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
 }
 
 void
 MeanVector::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emLoadAccumulators(ifile);
 }
 
 
@@ -341,7 +341,8 @@ void
 MeanVector::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
-  error("not implemented");
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
 }
 
 

@@ -547,6 +547,7 @@ MDCPT::emIncrement(logpr prob,RandomVariable* rv)
   accumulatedProbability += prob;
 }
 
+
 void
 MDCPT::emEndIteration()
 {
@@ -605,26 +606,41 @@ MDCPT::emSwapCurAndNew()
 }
 
 
-
 void
 MDCPT::emStoreAccumulators(oDataStreamFile& ofile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emStoreAccumulators(ofile);
+  for (int i=0;i<nextMdcpt.len();i++) {
+    ofile.write(nextMdcpt[i].val(),"mdcw");
+  }
 }
 
 void
 MDCPT::emLoadAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert (basicAllocatedBitIsSet());
+  assert (emEmAllocatedBitIsSet());
+  EMable::emLoadAccumulators(ifile);
+  for (int i=0;i<nextMdcpt.len();i++) {
+    ifile.read(nextMdcpt[i].valref(),"mdcr");
+  }
 }
 
 
 void
 MDCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
-  error("not implemented");
+  assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+  EMable::emAccumulateAccumulators(ifile);
+  for (int i=0;i<nextMdcpt.len();i++) {
+    logpr tmp;
+    ifile.read(tmp.valref(),"mdcr");
+    nextMdcpt[i] = tmp;
+  }
 }
-
 
 
 

@@ -53,15 +53,17 @@ class LinMeanCondDiagGaussian : public GaussianComponent {
 
   // Accumulators for EM training: First, a local mean & diagCov
   // accumulator, needed for sharing.
+  // EX 
   sArray<float> xAccumulators;
-  sArray<float> xxCovarAccumulators;
+  // E[x^2] accumulators
+  sArray<float> xxAccumulators;
   // Next, an array containing the accumulators for
   // the feature vector 'x' times the conditioning variables 'z'
-  // i.e., this is E[XZ].
+  // i.e., this is E[XZ'].
   sArray<float> xzAccumulators;
   // next, E[Z]
   sArray<float> zAccumulators;
-  //  E[ZZ^T]
+  //  E[ZZ']
   sArray<float> zzAccumulators;
 
 public:

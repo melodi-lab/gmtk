@@ -1317,133 +1317,6 @@ GMParms::setStride(const unsigned stride)
   }
 }
 
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-//        EM Routines
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-
-
-void
-GMParms::emEndIteration()
-{
-  // go through all EMable objects possibly
-  // used by any RV and make the call
-
-  //////////////////////////////////////////
-  // First, do the gaussian components. This
-  // will recursively call this for all
-  // mean-like objects, and covariance-like
-  // objects, so there is no need to do that here.
-  // Mean-like objects include:
-  //       means
-  //       linCondMeans
-  //       nonLinCondMeans
-  // variance-like objects include
-  //       covars
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emEndIteration();
-
-
-#if 0
-  for (unsigned i=0;i<means.size();i++)
-    means[i]->emEndIteration();
-  for (unsigned i=0;i<covars.size();i++)
-    covars[i]->emEndIteration();
-  for (unsigned i=0;i<dLinkMats.size();i++)
-    dLinkMats[i]->emEndIteration();
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emEndIteration();
-#endif
-
-
-  // do the basic discrete objects
-  for (unsigned i=0;i<dPmfs.size();i++)
-    dPmfs[i]->emEndIteration();
-  for (unsigned i=0;i<sPmfs.size();i++)
-    sPmfs[i]->emEndIteration();
-
-  // for discrete RVs
-  for (unsigned i=0;i<mdCpts.size();i++)
-    mdCpts[i]->emEndIteration();
-  for (unsigned i=0;i<msCpts.size();i++)
-    msCpts[i]->emEndIteration();
-  for (unsigned i=0;i<mtCpts.size();i++)
-    mtCpts[i]->emEndIteration();
-
-  // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emEndIteration();
-#if 0
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emEndIteration();
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emEndIteration();
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emEndIteration();
-#endif
-
-}
-
-
-void
-GMParms::emSwapCurAndNew()
-{
-  // go through all EMable objects possibly
-  // used by any RV and make the call
-
-  // first do the basic objects
-  for (unsigned i=0;i<dPmfs.size();i++)
-    dPmfs[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<sPmfs.size();i++)
-    sPmfs[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<means.size();i++)
-    means[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<covars.size();i++)
-    covars[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<dLinkMats.size();i++)
-    dLinkMats[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emSwapCurAndNew();
-
-  // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emSwapCurAndNew();
-
-  // for discrete RVs
-  for (unsigned i=0;i<mdCpts.size();i++)
-    mdCpts[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<msCpts.size();i++)
-    msCpts[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<mtCpts.size();i++)
-    mtCpts[i]->emSwapCurAndNew();
-
-  // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emSwapCurAndNew();
-#if 0
-  // fill this in later.
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emSwapCurAndNew();
-#endif
-
-  // clear out the cloning maps, under the assumption
-  // that all clones become 'real' objects.
-  MixGaussiansCommon::vanishingComponentSet.clear();
-  MixGaussiansCommon::splittingComponentSet.clear();
-
-  MixGaussiansCommon::meanCloneMap.clear();
-  MixGaussiansCommon::dLinkMatCloneMap.clear();
-  MixGaussiansCommon::diagCovarCloneMap.clear();
-  MixGaussiansCommon::gcCloneMap.clear();
-
-}
-
-
 void
 GMParms::makeRandom()
 {
@@ -1516,6 +1389,315 @@ GMParms::makeUniform()
 
 }
 
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        EM Routines
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+
+void
+GMParms::emEndIteration()
+{
+  // go through all EMable objects possibly
+  // used by any RV and make the call
+
+  /////////////////////////////////////////////////////////////////
+  // First, do the gaussian components. This will recursively call
+  // this for all mean-like objects, covariance-like objects, and so
+  // on, so there is no need to do that here.  
+  //
+  // Mean-like objects include:
+  //
+  //       means
+  //       linCondMeans
+  //       nonLinCondMeans
+  //       ...
+  // 
+  // Variance-like objects include
+  // 
+  //       covars
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emEndIteration();
+
+  //////////////////////////////////////////////////////////////
+  // While you might think that we would need something like the
+  // following code, we don't do this here because those objects use
+  // ref counts needed for sharing. The Gaussian components will
+  // themselves end the EM iteration for those objects, and will call
+  // it the appropriate number of times so that the ref counts are set
+  // properly.
+  //
+  //    for (unsigned i=0;i<means.size();i++)
+  //      means[i]->emEndIteration();
+  //    for (unsigned i=0;i<covars.size();i++)
+  //      covars[i]->emEndIteration();
+  //    for (unsigned i=0;i<dLinkMats.size();i++)
+  //      dLinkMats[i]->emEndIteration();
+  //    for (unsigned i=0;i<weightMats.size();i++)
+  //      weightMats[i]->emEndIteration();
+  //
+  //////////////////////////////////////////////////////////////
+
+  // do the basic discrete objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emEndIteration();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emEndIteration();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emEndIteration();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emEndIteration();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emEndIteration();
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emEndIteration();
+#if 0
+  // uncomment this when the objects get written.
+  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+    gausSwitchingMixGaussians[i]->emEndIteration();
+  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+    logitSwitchingMixGaussians[i]->emEndIteration();
+  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+    mlpSwitchingMixGaussians[i]->emEndIteration();
+#endif
+
+}
+
+
+void
+GMParms::emSwapCurAndNew()
+{
+  // go through all EMable objects possibly
+  // used by any RV and make the call
+
+  // first do the basic objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->emSwapCurAndNew();
+
+  // gaussian components
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emSwapCurAndNew();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emSwapCurAndNew();
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emSwapCurAndNew();
+#if 0
+  // uncomment this when the objects get written.
+  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+    gausSwitchingMixGaussians[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+    logitSwitchingMixGaussians[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+    mlpSwitchingMixGaussians[i]->emSwapCurAndNew();
+#endif
+
+  // clear out the cloning maps, under the assumption
+  // that all clones become 'real' objects.
+  MixGaussiansCommon::vanishingComponentSet.clear();
+  MixGaussiansCommon::splittingComponentSet.clear();
+
+  MixGaussiansCommon::meanCloneMap.clear();
+  MixGaussiansCommon::dLinkMatCloneMap.clear();
+  MixGaussiansCommon::diagCovarCloneMap.clear();
+  MixGaussiansCommon::gcCloneMap.clear();
+
+}
+
+void
+GMParms::emStoreAccumulators(oDataStreamFile& ofile)
+{
+  // first do the basic objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->emStoreAccumulators(ofile);
+
+  // gaussian components
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emStoreAccumulators(ofile);
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emStoreAccumulators(ofile);
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emStoreAccumulators(ofile);
+#if 0
+  // uncomment this when the objects get written.
+  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+    gausSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+    logitSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+    mlpSwitchingMixGaussians[i]->emStoreAccumulators(ofile);
+#endif
+
+}
+
+void
+GMParms::emLoadAccumulators(iDataStreamFile& ifile)
+{
+  /////////////////////////////////////////////////////////////
+  // First, make sure the EM iterations have been
+  // started. Like in the emEndIteration function above,
+  // we do not call this for all objects.
+
+  // components
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emStartIteration();
+
+  // do the basic discrete objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emStartIteration();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emStartIteration();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emStartIteration();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emStartIteration();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emStartIteration();
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emStartIteration();
+  /////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////////////
+  // Now, we actually load the accumulators.
+
+  // first do the basic objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->emLoadAccumulators(ifile);
+
+  // gaussian components
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emLoadAccumulators(ifile);
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emLoadAccumulators(ifile);
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emLoadAccumulators(ifile);
+#if 0
+  // uncomment this when the objects get written.
+  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+    gausSwitchingMixGaussians[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+    logitSwitchingMixGaussians[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+    mlpSwitchingMixGaussians[i]->emLoadAccumulators(ifile);
+#endif
+  /////////////////////////////////////////////////////////////
+}
+
+void
+GMParms::emAccumulateAccumulators(iDataStreamFile& ifile)
+{
+  // first do the basic objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->emAccumulateAccumulators(ifile);
+
+  // gaussian components
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emAccumulateAccumulators(ifile);
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emAccumulateAccumulators(ifile);
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emAccumulateAccumulators(ifile);
+#if 0
+  // uncomment this when the objects get written.
+  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+    gausSwitchingMixGaussians[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+    logitSwitchingMixGaussians[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+    mlpSwitchingMixGaussians[i]->emAccumulateAccumulators(ifile);
+#endif
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 
 
 
