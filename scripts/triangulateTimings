@@ -106,9 +106,7 @@ else {
 }
 
 $str_basename = basename($str_file); 
-#$working_dir = `pwd`;
-#$working_dir = '/homes/bartels/proj/crrnt_gmtk/gmtk_dev/scripts';
-$working_dir = '/homes/bartels/proj/switchboard/train_1';
+$working_dir = `pwd`;
 
 chomp($working_dir);
 
