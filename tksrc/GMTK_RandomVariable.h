@@ -165,6 +165,10 @@ public:
     // This indexes the set of conditional parents to use.
     int intFromSwitchingState() 
     {
+      // if dtMapper is NULL, we assume that
+      // there are no switching parrents, which means
+      // that there is only one set of conditional parents.
+      // Return the index in that case.
       if (dtMapper == NULL)
 	return 0;
       else
