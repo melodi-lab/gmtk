@@ -22,6 +22,11 @@
 // Written by: Jeff Bilmes
 //             bilmes@ee.washington.edu
 //
+//  Added a method that initializes an array to zero in addition to
+//  resizing it.  -- Karim Filali (karim@cs.washington.edu)
+//
+
+
 
 #ifndef SARRAY_H
 #define SARRAY_H
@@ -59,6 +64,18 @@ class sArray {
     _size = arg_size;
     ptr = new T[_size];
   }
+
+  void resizeAndZero(int arg_size) {
+    if (arg_size < 0)
+      error("Error: Sarray:resize arg_size < 0");
+    delete [] ptr;
+    _size = arg_size;
+    ptr = new T[_size];
+    for(int i=0; i < _size; ++i)
+      *(ptr+i)=0;
+  }
+
+
   void resizeIfDifferent(int arg_size) {
     if (arg_size != _size)
       resize(arg_size);
@@ -90,6 +107,8 @@ class sArray {
     _size = arg_size;
     ptr = tmp;
   }
+
+	
 
   void growIfNeededAndCopy(int arg_size) {
     if (arg_size > _size)
