@@ -1493,3 +1493,12 @@ So, we'll have three pruning thresholds:
               bother to update.
 
 
+Wed Feb 18 12:11:08 2004
+  - have a program that goes through and checks all DTs for all
+    values of all parents and ensures that all children are
+    valid values for each location a DT is used. Possibly
+    do this for all iterable DTs as well. 
+    this will
+      1) help reduce bugs by telling a user when DTs are problem
+         before running the program.
+      2) speed things up as dynamic checking can be removed.
