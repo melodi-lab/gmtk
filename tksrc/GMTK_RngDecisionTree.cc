@@ -396,7 +396,10 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
 	    (!((*node->nonLeafNode.rngs[j]) < (*node->nonLeafNode.rngs[i])))
 	    ) {
 	  // then it isn't ordered, and we'll have to do linear search
-	  // on a query.
+	  // on a query. 
+	  // 
+	  // TODO: check if it is ordered alread, and if
+	  // so, don't do the sort below.
 	  node->nonLeafNode.ordered = false;
 	}
       }
