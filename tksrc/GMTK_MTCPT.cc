@@ -121,7 +121,7 @@ void MTCPT::setNumCardinality(const int var, const int card)
  */
 void MTCPT::allocateBasicInternalStructures()
 {
-  error("MTCPT::allocateBasicInternalStructures() not implemented");
+  error("DeterministicCPT::allocateBasicInternalStructures() not implemented");
   // basic stuff is now allocated.
   bitmask |= bm_basicAllocated;
 }
@@ -148,27 +148,27 @@ MTCPT::read(iDataStreamFile& is)
 {
 
   NamedObject::read(is);
-  is.read(_numParents,"MTCPT::read numParents");
+  is.read(_numParents,"DeterministicCPT::read numParents");
 
   if (_numParents < 0) 
-    error("ERROR: reading file '%s', MTCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
+    error("ERROR: reading file '%s', DeterministicCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
-    warning("WARNING: creating MTCPT '%s' with %d parents in file '%s'",
+    warning("WARNING: creating DeterministicCPT '%s' with %d parents in file '%s'",
 	    _numParents,name().c_str(),is.fileName());
 
   cardinalities.resize(_numParents);
   // read the cardinalities
   for (unsigned i=0;i<_numParents;i++) {
-    is.read(cardinalities[i],"MTCPT::read cardinality");
+    is.read(cardinalities[i],"DeterministicCPT::read cardinality");
     if (cardinalities[i] <= 0)
       error("ERROR: reading file '%s', MDCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
 	    is.fileName(),name().c_str(),cardinalities[i],i);
   }
 
   // read the self cardinalities
-  is.read(_card,"MTCPT::read cardinality");
+  is.read(_card,"DeterministicCPT::read cardinality");
   if (_card <= 0)
-    error("ERROR: reading file '%s', MTCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+    error("ERROR: reading file '%s', DeterministicCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
 	  is.fileName(),name().c_str(),_card,_numParents);
 
 
@@ -178,13 +178,13 @@ MTCPT::read(iDataStreamFile& is)
   string str;
   is.read(str);
   if (GM_Parms.dtsMap.find(str) ==  GM_Parms.dtsMap.end()) 
-    error("ERROR: reading file '%s', MTCPT '%s' specifies DT name '%s' that does not exist",is.fileName(),_name.c_str(),str.c_str());
+    error("ERROR: reading file '%s', DeterministicCPT '%s' specifies DT name '%s' that does not exist",is.fileName(),_name.c_str(),str.c_str());
   dtIndex = GM_Parms.dtsMap[str];
 
   dt = GM_Parms.dts[dtIndex];
   
   if (_numParents != dt->numFeatures())
-    error("ERROR: reading file '%s', MTCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",is.fileName(),
+    error("ERROR: reading file '%s', DeterministicCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",is.fileName(),
 	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 
   // 
@@ -209,12 +209,12 @@ void
 MTCPT::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
-  os.write(_numParents,"MTCPT::write numParents");
+  os.write(_numParents,"DeterministicCPT::write numParents");
   os.writeComment("number parents");os.nl();
   for (unsigned i=0;i<_numParents;i++) {
-    os.write(cardinalities[i],"MTCPT::write cardinality");
+    os.write(cardinalities[i],"DeterministicCPT::write cardinality");
   }
-  os.write(card(),"MTCPT::write cardinality");
+  os.write(card(),"DeterministicCPT::write cardinality");
   os.writeComment("cardinalities");
   os.nl();
   os.write(dt->name());
@@ -282,7 +282,7 @@ MTCPT::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability.zero()) {
-    warning("WARNING: MTCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+    warning("WARNING: DeterministicCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
   // stop EM
@@ -310,7 +310,7 @@ MTCPT::emStoreAccumulators(oDataStreamFile& ofile)
 
   assert ( basicAllocatedBitIsSet() );
   if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for MTCPT '%s'\n",
+    warning("WARNING: storing zero accumulators for DeterministicCPT '%s'\n",
 	    name().c_str());
     emStoreZeroAccumulators(ofile);
     return;
