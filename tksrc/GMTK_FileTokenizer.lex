@@ -20,7 +20,7 @@
 %{
 /* need this for the call to atof() below */
 #include <math.h>
-
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -28,9 +28,10 @@
 
 #include "GMTK_FileParser.h"
 
+#define YY_NEVER_INTERACTIVE 1
 
 #ifndef _AIX
-extern "C" int fileno(FILE*); 
+extern "C" int fileno(FILE*) throw(); 
 #endif
 
 int debugLexer = 0;
