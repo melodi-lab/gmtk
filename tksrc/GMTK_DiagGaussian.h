@@ -39,8 +39,7 @@ class DiagGaussian : public GaussianComponent {
   // The means. 
   // This might be tied with multiple other distributions.
   MeanVector* mean;
-  // The index in the global mean array of this mean.
-  int meanIndex; 
+
   // For EM Training: Local copy of mean & diagCov accumulators for this DiagGaussian,
   // which is needed for sharing.
   sArray<float> nextMeans;
@@ -50,9 +49,6 @@ class DiagGaussian : public GaussianComponent {
   // The diagonal of the covariance matrix
   // This might be tied with multiple other distributions.
   DiagCovarVector* covar;
-  // The index in the global variance array of this variance vector
-  int covarIndex;
-
 
  
 public:
