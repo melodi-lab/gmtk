@@ -147,6 +147,8 @@ public:
     }
     // now y<=x
     iFT diff = y.v-x.v;
+    // We now have that (diff <= 0).
+    // TODO: fix zero + zero case, it should add exactly to zero. 
     if (diff<logp_minLogExp) {
       // logp_minLogExp == -log(-LZERO)
       // So, if y-x = log(Py/Px) < -log(-LZERO)
