@@ -58,6 +58,7 @@ VCID("$Header$");
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
+#include "GMTK_DlinkMatrix.h"
 
 
 /*
@@ -119,6 +120,8 @@ ARGS ARGS::Args[] = {
 
  ARGS("meanCloneSTDfrac",ARGS::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
  ARGS("covarCloneSTDfrac",ARGS::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+ ARGS("dlinkCloneSTDfrac",ARGS::Opt,DlinkMatrix::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+
 
  ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
  ARGS("lldp",ARGS::Opt,lldp,"Log Likelihood difference percentage for termination"),
@@ -168,6 +171,7 @@ main(int argc,char*argv[])
   MixGaussiansCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
+  DlinkMatrix::checkForValidValues();
   if (lldp < 0.0 || mnlldp < 0.0)
     error("lldp & mnlldp must be >= 0");
   if (pruneRatio < 0.0)
