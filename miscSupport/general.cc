@@ -124,7 +124,7 @@ void print_date_string(FILE*f)
   char buf[BUFSIZ];
   time(&tloc);
   tms = localtime(&tloc);
-  strftime(buf,BUFSIZ,"%A %B %d %Y, %T %Z",tms);
+  strftime(buf,BUFSIZ,"%A %B %d %Y, %H:%M:%S %Z",tms);
   fprintf(f,"%s",buf);
 }
  
