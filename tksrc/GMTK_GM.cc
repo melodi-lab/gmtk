@@ -668,6 +668,8 @@ void GMTK_GM::GM2CliqueChain()
 
         // the conditional probability nodes
         // set it up conservatively so it will work regardless of switching
+        // in all cases, separators should never have and conditional 
+        // probability nodes assigned to them!!
         cl->conditionalProbabilityNode = cl->newMember;
     }
     chain->postorder = chain->preorder;
