@@ -69,13 +69,40 @@ public:
   void becomeAwareOfParentValues( vector <int>& parentValues,
 				  vector <int>& cards ) {
     _val = dt->query(parentValues,cards);
+    if (_val >= card()) {
+      warning("ERROR: MTCPT '%s' of card %d querying DT '%s' received value %d",
+	      name().c_str(),
+	      card(),
+	      dt->name().c_str(),
+	      _val);
+      fprintf(stderr,"Parent values:");
+      for (unsigned i=0;i<parentValues.size();i++) {
+	fprintf(stderr," %d", parentValues[i]);
+      }
+      error("");
+    }
   }
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
     _val = dt->query(parents);
+    if (_val >= card()) {
+      warning("ERROR: MTCPT '%s' of card %d querying DT '%s' received value %d",
+	      name().c_str(),
+	      card(),
+	      dt->name().c_str(),
+	      _val);
+      fprintf(stderr,"Parents configuration :");
+      for (unsigned i=0;i<parents.size();i++) {
+	fprintf(stderr,"%s(%d)=%d,",
+		parents[i]->name().c_str(),
+		parents[i]->timeIndex,
+		parents[i]->val);
+      }
+      error("");
+    }
   }
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
-    assert ( val >= 0 && val <= cardinalities[_numParents] );
+    assert ( val >= 0 && val <= card() );
     if (val == _val)
       return 1.0;
     else
@@ -93,10 +120,6 @@ public:
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents);
     return probGivenParents(val);
-  }
-  int numValsGivenParents() { 
-    assert ( bitmask & bm_basicAllocated );
-    return cardinalities[_numParents]; 
   }
 
   // returns an iterator for the first one.

@@ -153,16 +153,26 @@ MSCPT::read(iDataStreamFile& is)
   is.read(_numParents,"MSCPT::read numParents");
 
   if (_numParents < 0) 
-    error("MSCPT: read, trying to use negative (%d) num parents.",_numParents);
+    error("ERROR: reading file '%s', MSCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
-    warning("MSCPT: read, creating MSCPT with %d parents",_numParents);
-  cardinalities.resize(_numParents+1);
+    warning("WARNING: creating MSCPT with %d parents in file '%s'",_numParents,
+	    is.fileName());
+
+  cardinalities.resize(_numParents);
   // read the cardinalities
-  for (unsigned i=0;i<=_numParents;i++) {
+  for (unsigned i=0;i<_numParents;i++) {
     is.read(cardinalities[i],"MSCPT::read cardinality");
     if (cardinalities[i] <= 0)
-      error("MSCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
+      error("ERROR: reading file '%s', MDCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	    is.fileName(),name().c_str(),cardinalities[i],i);
   }
+
+  // read the self cardinalities
+  is.read(_card,"MSCPT::read cardinality");
+  if (_card <= 0)
+    error("ERROR: reading file '%s', MSCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	  is.fileName(),name().c_str(),_card,_numParents);
+
 
   string str;
   is.read(str);
@@ -174,7 +184,8 @@ MSCPT::read(iDataStreamFile& is)
   dt = GM_Parms.dts[dtIndex];
   
   if (_numParents != dt->numFeatures())
-      error("Error: MTCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
+      error("ERROR: reading file '%s', MTCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
+	    is.fileName(),
 	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 
   //////////////////////////////////////////////////////////
@@ -187,11 +198,20 @@ MSCPT::read(iDataStreamFile& is)
       continue;
     const unsigned v = it.value();
     if ( v < 0 || v >= GM_Parms.sPmfs.size() )
-      error("MSCPT::read, dt leaf value %d refers to invalid Sparse 1D PMF",
+      error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d refers to invalid Sparse 1D PMF",
+	    is.fileName(),
+	    name().c_str(),
+	    str.c_str(),
 	    v);
     if (GM_Parms.sPmfs[v]->card() != card()) {
-      error("MSCPT::read, Sparse PMF %d has card %d but CPT has card %d",
-	    v,GM_Parms.sPmfs[v]->card(),card());
+      error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d refering to SPMF '%s' with card %d but MSCPT needs card %d",
+	    is.fileName(),
+	    name().c_str(),
+	    str.c_str(),
+	    v,
+	    GM_Parms.sPmfs[v]->name().c_str(),
+	    GM_Parms.sPmfs[v]->card(),
+	    card());
     }
   } while (++it != dt->end());
 
@@ -218,9 +238,10 @@ MSCPT::write(oDataStreamFile& os)
   NamedObject::write(os);
   os.write(_numParents,"MSCPT::write numParents");
   os.writeComment("number parents");os.nl();
-  for (unsigned i=0;i<=_numParents;i++) {
+  for (unsigned i=0;i<_numParents;i++) {
     os.write(cardinalities[i],"MSCPT::write cardinality");
   }
+  os.write(card(),"MSCPT::write cardinality");
   os.writeComment("cardinalities");
   os.nl();
   os.write(dt->name());
