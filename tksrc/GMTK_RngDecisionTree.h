@@ -53,7 +53,7 @@
 /////////////////////////////////////////////////
 // The maximum "cardinality" of any of the integers 
 // used for making decisions on. This may
-// safely be increased.
+// safely be increased if needed. 
 #define RNG_DECISION_TREE_MAX_CARDINALITY 512
 
 
