@@ -53,8 +53,8 @@ public:
   Dense1DPMF();
   ~Dense1DPMF() { }
 
-  int length() { return pmf.len(); }
-  int card() { return pmf.len(); }
+  unsigned length() { return (unsigned)pmf.len(); }
+  unsigned card() { return (unsigned)pmf.len(); }
 
   logpr p(unsigned i) { 
     assert ( i < (unsigned)pmf.len() );
