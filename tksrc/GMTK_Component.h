@@ -38,6 +38,13 @@ class GaussianComponent :  public EMable, public NamedObject {
   // depending on how probable this component is.
   static double _varianceFloor;
 
+  ///////////////////////////////////////////////////////
+  // The minimum accumulated probability of mean and covariance -like
+  // objects. If the accumulated probability falls below this
+  // value, then the mean or variance like object will not
+  // update its values.
+  static logpr _minAccumulatedProbability;
+
 protected:
   ///////////////////////////////////////////////////////
   // dim = dimensionality of this Gaussian.
@@ -58,8 +65,11 @@ public:
   GaussianComponent(const int dim);
   virtual ~GaussianComponent() { }
 
-  static double varianceFloor();
+  static double varianceFloor() { return _varianceFloor; }
   static double setVarianceFloor(const double floor);
+  static logpr minAccumulatedProbability()
+  { return _minAccumulatedProbability; }
+  static logpr setMinAccumulatedProbability(const logpr p);
 
   unsigned dim() const { return _dim; }
 
@@ -69,6 +79,12 @@ public:
   virtual void read(iDataStreamFile& is) = 0;
   virtual void write(oDataStreamFile& os) = 0;
   //////////////////////////////////////////////
+
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new parameters
+  // (so clone shares nothing), and with slightly (and 
+  // randomly) perturbed values.
+  virtual GaussianComponent* cloneUniquePerturbed() = 0;
 
   //////////////////////////////////
   // set all current parameters to valid but random values
