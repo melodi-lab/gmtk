@@ -229,8 +229,8 @@ public:
   
   friend inline 
     logp<FT,iFT> operator*(logp<FT,iFT> x, logp<FT,iFT> y)  
-    { // if (x.zero()) return LZERO; 
-      // if (y.zero()) return LZERO; 
+    { // if (x.zero()) return x; 
+      // if (y.zero()) return y; 
       // The above probably isn't needed since it will
       // eventually be floored to LZERO on a subsequent add.
       x.v += y.v; return x; }
