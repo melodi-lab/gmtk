@@ -1749,3 +1749,10 @@ Sun Apr  4 17:16:40 2004
     done offline, and stored on disk). 
  
 
+Tue Apr  6 19:27:48 2004
+  - make it such so that verb if set high enough will also print
+    out values of continuous observed RVs (rather than just C).
+    This means making the 90-100 range print out everything, but
+    higher 90s print out cont. observed vectors as well (this
+    might produce tons of output but it might be useful for debugging).
+
