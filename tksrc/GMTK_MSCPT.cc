@@ -195,7 +195,7 @@ MSCPT::read(iDataStreamFile& is)
     }
   } while (++it != dt->end());
 
-  bitmask |= bm_basicAllocated;
+  setBasicAllocatedBit();
 }
 
 

@@ -135,7 +135,7 @@ Sparse1DPMF::read(iDataStreamFile& is)
 	  name().c_str(),
 	  str.c_str(),dense1DPMF->length(),len);
   }
-
+  setBasicAllocatedBit();
 }
 
 

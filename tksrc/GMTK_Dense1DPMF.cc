@@ -102,6 +102,7 @@ Dense1DPMF::read(iDataStreamFile& is)
 	    is.fileName(),prob);
     pmf[i] = prob;
   }
+  setBasicAllocatedBit();
 }
 
 
@@ -124,6 +125,7 @@ Dense1DPMF::read(iDataStreamFile& is)
 void
 Dense1DPMF::write(oDataStreamFile& os)
 {
+  assert ( basicAllocatedBitIsSet() );
   NamedObject::write(os);
   os.write(pmf.len(),"Dense1DPMF::write, distribution length");
   for (int i=0;i<pmf.len();i++) {
@@ -164,6 +166,8 @@ Dense1DPMF::write(oDataStreamFile& os)
 void
 Dense1DPMF::normalize()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   logpr sum = 0.0;
   for (int i=0;i<pmf.len();i++) {
     sum += pmf[i];
@@ -176,6 +180,8 @@ Dense1DPMF::normalize()
 void
 Dense1DPMF::makeRandom()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   logpr sum = 0.0;
   for (int i=0;i<pmf.len();i++) {
     logpr tmp = rnd.drand48();
@@ -190,6 +196,8 @@ Dense1DPMF::makeRandom()
 void
 Dense1DPMF::makeUniform()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   logpr val = 1.0/pmf.len();
   for (int i=0;i<pmf.len();i++) {
     pmf[i] = val;

@@ -177,8 +177,8 @@ MTCPT::read(iDataStreamFile& is)
     error("ERROR: reading file '%s', MTCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",is.fileName(),
 	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 
-
-  bitmask |= bm_basicAllocated;
+  // 
+  setBasicAllocatedBit();
 }
 
 
