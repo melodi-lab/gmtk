@@ -350,3 +350,6 @@ no gaussian mixtures, does the master file still have to mention them?
 - include global missed increment count in accumulators.
 
 - arguments print default values
+
+- viterbi option so that it prints out max likelyhood of
+  one variable summing over all others.
