@@ -229,6 +229,12 @@ class sArray {
   // type must have assignment, comparison (operator <()), and be
   // swapable (i.e., copy constructor or writable)
   void sort() { internalSort(0,_size-1); }
+  // sort an subset range, inclusive [start,end]
+  void sort(unsigned start,unsigned end) { 
+    assert (start >= 0 && start < _size);
+    assert (end >= 0 && end < _size);
+    internalSort(start,end); 
+  }
 
 };
 
