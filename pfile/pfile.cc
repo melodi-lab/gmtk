@@ -2,6 +2,13 @@
 //static char* rcsid = "$Id$";
 // revised pfile code (withouth intvec,fltvec or quicknet) - KK
 
+// Added byte swapping/copying routines that also perform the four
+// operations, addition, substraction, multiplication and division.
+// In the case of division, no warning is given if the denominator is
+// zero; instead the division is not performed.  The routines are used
+// for feature stream combination in the GMTK Observation Matrix
+// library. -- Karim Filali (karim@cs.washington.edu)
+
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -94,6 +101,131 @@ copy_f_vf(size_t len, float from, float* to)
   for (i=0; i<len; i++)
     *to++ = from;
 }
+
+// karim@cs
+
+
+void copy_add_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
+{
+  size_t i;
+  float * flto=(float*) to;
+  float * flfrom=(float*) from;
+  for (i=0; i<len; i++) {
+    *flto += (*flfrom++);
+    ++flto;
+  }
+  
+}
+
+
+void copy_mul_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
+{
+  size_t i;
+  float * flto=(float*) to;
+  float * flfrom=(float*) from;
+  for (i=0; i<len; i++) {
+    *flto *= (*flfrom++);
+    ++flto;
+  }
+
+}
+
+
+void copy_sub_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
+{
+  size_t i;
+
+  float * flto=(float*) to;
+  float * flfrom=(float*) from;
+  for (i=0; i<len; i++) {
+    *flto -= (*flfrom++);
+    ++flto;
+  }
+
+}
+
+
+void copy_div_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
+{
+  size_t i;
+
+  float * flto=(float*) to;
+  float * flfrom=(float*) from;
+  for (i=0; i<len; i++) {
+    if(*flfrom !=0) {
+      *flto /= (*flfrom);
+    }
+    ++flto;++flfrom;
+  }
+}
+
+
+void swapb_add_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
+{
+  size_t i;
+  float * float_to=(float*) to;
+  intv_int32_t swapped_from;
+  float* float_from;
+  for (i=0; i<len; i++) {
+    swapped_from=swapb_i32_i32(*from++);
+    float_from =  (float*)&swapped_from;
+    *float_to += (float)*float_from;
+    ++float_to;
+  }
+}
+
+
+void swapb_mul_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
+{
+
+  size_t i;
+  float * float_to=(float*) to;
+  intv_int32_t swapped_from;
+  float* float_from;
+  for (i=0; i<len; i++) {
+    swapped_from=swapb_i32_i32(*from++);
+    float_from =  (float*)&swapped_from;
+    *float_to *= (float)*float_from;
+    ++float_to;
+  }
+
+}
+
+
+void swapb_sub_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
+{
+
+size_t i;
+  float * float_to=(float*) to;
+  intv_int32_t swapped_from;
+  float* float_from;
+  for (i=0; i<len; i++) {
+    swapped_from=swapb_i32_i32(*from++);
+    float_from =  (float*)&swapped_from;
+    *float_to -= (float)*float_from;
+    ++float_to;
+  }
+
+}
+
+
+void swapb_div_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
+{
+
+size_t i;
+  float * float_to=(float*) to;
+  intv_int32_t swapped_from;
+  float* float_from;
+  for (i=0; i<len; i++) {
+    swapped_from=swapb_i32_i32(*from++);
+    float_from =  (float*)&swapped_from;
+    if(float_from!=0)
+      *float_to /= (float)*float_from;
+    ++float_to;
+  }
+
+}
+
 
 
 static int
