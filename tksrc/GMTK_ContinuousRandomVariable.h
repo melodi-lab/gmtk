@@ -25,13 +25,39 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
 #include "GMTK_FileParser.h"
+#include "GMTK_MixGaussians.h"
+#include "GMTK_GMParms.h"
+
 
 class ContinuousRandomVariable : public RandomVariable
 {
 private:
 
   // include an enum with the crv type.
+  class MappingOrDirect {
+  public:
+    MappingOrDirect() {
+      direct = false;
+      gaussian = NULL;
+      dtMapper = NULL;
+    };
+    bool direct;
+    union { 
+      MixGaussians* gaussian;
+      RngDecisionTree<unsigned>* dtMapper;
+    };
+  };
 
+  //////////////////////////////////////////////////////////////////////
+  // array, one for each set of possible conditional parents we might
+  // have (so size of this array is the number of different
+  // possible conditional parents), and that is determined
+  // by the number of regions carved out in the state space
+  // of the switching parents.
+  vector <MappingOrDirect> conditionalGaussians;
+
+  // the current Gaussian after findConditionalParents() is called.
+  MappingOrDirect* curMappingOrDirect;
 
   //////////////////////////////////////////////////////////////
   // the feature range to which this random variable corresponds.

@@ -162,8 +162,8 @@ private:
 
   //////////////////////////////////////////////
   // the result of the chunk parse
-  unsigned firstChunkframe;
-  unsigned lastChunkframe;
+  unsigned _firstChunkframe;
+  unsigned _lastChunkframe;
   
 
 public:
@@ -372,6 +372,10 @@ public:
   // gm has not been added to yet.
   void addVariablesToGM(GMTK_GM& gm);
 
+  //////////////////////////////////////////////////////////////
+  // access to the chunk information.
+  unsigned firstChunkframe() { return _firstChunkframe; };
+  unsigned lastChunkframe() { return _firstChunkframe; };
 
 
 };

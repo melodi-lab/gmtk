@@ -1,5 +1,5 @@
 /*-
- * GMTK_GaussianCommon.cc
+ * GMTK_Mixgaussiancommon.cc
  *        Any of the common code for the family of Gaussian-like
  *        classes.
  *
@@ -31,25 +31,7 @@
 VCID("$Header$");
 #include "error.h"
 
-#include "GMTK_GaussianCommon.h"
+#include "GMTK_MixGaussiansCommon.h"
 #include "rand.h"
-
-////////////////////////////////////////////////////
-// The default value of the minimum possible variance of any
-// Gaussian. This must be >= FLT_MIN for numeric stability.
-double GaussianCommon::_varianceFloor = 1e-30; 
-
-double GaussianCommon::varianceFloor() 
-{ return _varianceFloor; }
-
-void GaussianCommon::setVarianceFloor(const double floor) 
-{ 
-  if (floor < FLT_MIN) 
-    _varianceFloor = FLT_MIN; 
-  else 
-    _varianceFloor = floor; 
-}
-
-
 
 

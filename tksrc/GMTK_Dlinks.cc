@@ -81,6 +81,7 @@ Dlinks::Dlinks()
 void
 Dlinks::read(iDataStreamFile& is)
 {
+  NamedObject::read(is);
   int nFeats;
   is.read(nFeats,"Dlinks::read, num feats");
   if (nFeats <= 0)
@@ -130,6 +131,7 @@ Dlinks::read(iDataStreamFile& is)
 void
 CPT::write(oDataStreamFile& os)
 {
+  NamedObject::write(os);
   os.write(numFeats(),"Dlinks::write, num feats");
   os.nl();
   for (int i=0;i<numFeats();i++) {

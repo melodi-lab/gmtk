@@ -46,11 +46,12 @@ class MDCPT;
 class MSCPT;
 class MTCPT;
 
+class GaussianComponent;
 class DiagGaussian;
 class LinMeanCondDiagGaussian;
 class NLinMeanCondDiagGaussian;
 
-class GaussianCommon;
+class MixGaussiansCommon;
 class MixGaussians;
 class GausSwitchingMixGaussians;
 class LogitSwitchingMixGaussians;
@@ -141,26 +142,10 @@ public:
 
   ///////////////////////////////////////////
   // Collection of diag. covariance Gaussians
-  vector< DiagGaussian* > diagGaussians;
-  typedef map< string, unsigned > DiagGaussiansMapType;
-  DiagGaussiansMapType diagGaussiansMap ;
 
-  ////////////////////////////////
-  // Collection of diagonal covariance Gaussians with linear mean 
-  // dependency links (these cover the case full Covariance 
-  // Gaussians, plus other forms such as banded or block diagonal, 
-  // factored sparse inverse covariances, and so on.
-  vector< LinMeanCondDiagGaussian* > linMeanCondGaussians;
-  typedef map< string, unsigned > LinMeanCondGaussiansMapType;
-  LinMeanCondGaussiansMapType linMeanCondGaussiansMap;
-
-  ////////////////////////////////
-  // Collection of diagonal covariance Gaussians with linear and/or 
-  // non-linear mean dependency links (these cover the case 
-  // of "non-linear" Gaussians, and so on).
-  vector< NLinMeanCondDiagGaussian* > nLinMeanCondGaussians;
-  typedef map< string, unsigned > NLinMeanCondGaussiansMapType;
-  NLinMeanCondGaussiansMapType nLinMeanCondGaussiansMap;
+  vector< GaussianComponent* > gaussianComponents;
+  typedef map< string, unsigned > GaussianComponentsMapType;
+  GaussianComponentsMapType gaussianComponentsMap;
 
   /********************************************************************/
 
@@ -171,31 +156,9 @@ public:
   ////////////////////////////////
   // Mixtures of Gaussians (could be a heterogeneous mixutre of
   // different types above)
-  vector < MixGaussians* > mixGaussians;
+  vector < MixGaussiansCommon* > mixGaussians;
   typedef map< string, unsigned > MixGaussiansMapType;
   MixGaussiansMapType mixGaussiansMap;
-
-  ////////////////////////////////
-  // Switching mixtures of Gaussians. The switching is
-  // implemented with Gaussians.
-  vector < GausSwitchingMixGaussians* > gausSwitchMixGaussians;
-  typedef map< string, unsigned > GausSwitchMixGaussiansMapType;
-  GausSwitchMixGaussiansMapType gausSwitchMixGaussiansMap;
-
-  ////////////////////////////////
-  // Switching mixtures of Gaussians. The switching is
-  // implemented with logistic regression (i.e., 1 layer MLP)
-  vector< LogitSwitchingMixGaussians* > logitSwitchMixGaussians;
-  typedef map< string, unsigned > LogitSwitchMixGaussiansMapType;
-  LogitSwitchMixGaussiansMapType logitSwitchMixGaussiansMap;
-
-  ////////////////////////////////
-  // Switching mixtures of Gaussians. The switching is
-  // implemented with 2 layer (2 weight matrix) MLP
-  vector< MLPSwitchingMixGaussians* > mlpSwitchMixGaussians;
-  typedef map< string, unsigned > MlpSwitchMixGaussiansMapType;
-  MlpSwitchMixGaussiansMapType mlpSwitchMixGaussiansMap;
-
 
   /********************************************************************/
 
@@ -252,13 +215,18 @@ public:
   void readDdCpts(iDataStreamFile& is,bool reset = false);
   void readMsCpts(iDataStreamFile& is,bool reset = false);
   void readMtCpts(iDataStreamFile& is,bool reset = false);
+
+  void readGaussianComponents(iDataStreamFile& is,bool reset = false);
   void readDiagGaussians(iDataStreamFile& is,bool reset = false);
   void readLinMeanCondGaussians(iDataStreamFile& is,bool reset = false);
   void readNLinMeanCondGaussians(iDataStreamFile& is,bool reset = false);
+
+  void readGaussianMixtures(iDataStreamFile& is,bool reset = false);
   void readMixGaussians(iDataStreamFile& is,bool reset = false);
   void readGausSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
   void readLogitSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
   void readMlpSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
+
   void readDts(iDataStreamFile& is,bool reset = false);
   void readDlinks(iDataStreamFile& is,bool reset = false);
 

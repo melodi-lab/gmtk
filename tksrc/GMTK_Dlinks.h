@@ -27,7 +27,8 @@
 #include "logp.h"
 #include "sArray.h"
 
-class Dlinks {
+
+class Dlinks : public NamedObject {
 
 
   ///////////////////////////////////////////////////////

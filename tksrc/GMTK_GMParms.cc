@@ -45,6 +45,11 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 
+#include "GMTK_GaussianComponent.h"
+#include "GMTK_DiagGaussian.h"
+
+#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixGaussians.h"
 
 
 VCID("$Header$");
@@ -62,6 +67,11 @@ VCID("$Header$");
 
 GMParms::GMParms()
 {}
+
+void GMParms::readDPmfs(iDataStreamFile& is,bool reset)
+{
+
+}
 
 
 void 
@@ -86,7 +96,7 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic,dpmfs, out of order count",cnt);
     dPmfs[i] = new Dense1DPMF;
     dPmfs[i]->read(is);
-    dPmfsMap[dPmfs[i]->name()] = dPmfs[i];
+    dPmfsMap[dPmfs[i]->name()] = i;
   }
 
 
@@ -99,7 +109,7 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic,spmfs, out of order count",cnt);
     sPmfs[i] = new Sparse1DPMF;
     sPmfs[i]->read(is);
-    sPmfsMap[sPmfs[i]->name()] = sPmfs[i];
+    sPmfsMap[sPmfs[i]->name()] = i;
   }
 
   is.read(num,"GMTK_GMParms::readBasic, means");
@@ -111,7 +121,7 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic,means,  out of order count",cnt);
     means[i] = new MeanVector;
     means[i]->read(is);
-    meansMap[means[i]->name()] = means[i];
+    meansMap[means[i]->name()] = i;
   }
 
   is.read(num,"GMTK_GMParms::readBasic, covars");
@@ -123,7 +133,7 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic,covars, out of order count",cnt);
     covars[i] = new DiagCovarVector;
     covars[i]->read(is);
-    covarsMap[covars[i]->name()] = covars[i];
+    covarsMap[covars[i]->name()] = i;
   }
 
   is.read(num,"GMTK_GMParms::readBasic, DlinkMatrix");
@@ -135,7 +145,7 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic,dlinks, out of order count",cnt);
     dLinkMats[i] = new DlinkMatrix;
     dLinkMats[i]->read(is);
-    dLinkMatsMap[dLinkMats[i]->name()] = dLinkMats[i];
+    dLinkMatsMap[dLinkMats[i]->name()] = i;
   }
 
   is.read(num,"GMTK_GMParms::readBasic, WeightMatrix");
@@ -147,7 +157,7 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic, weights, out of order count",cnt);
     weightMats[i] = new WeightMatrix;
     weightMats[i]->read(is);
-    weightMatsMap[weightMats[i]->name()] = weightMats[i];
+    weightMatsMap[weightMats[i]->name()] = i;
   }
 
 
@@ -160,7 +170,7 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic, MDCPTs, out of order count",cnt);
     mdCpts[i] = new MDCPT;
     mdCpts[i]->read(is);
-    mdCptsMap[mdCpts[i]->name()] = mdCpts[i];
+    mdCptsMap[mdCpts[i]->name()] = i;
   }
 
   is.read(num,"GMTK_GMParms::readBasic, MSCPT");
@@ -172,7 +182,7 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic, MSCPTs, out of order count",cnt);
     msCpts[i] = new MSCPT;
     msCpts[i]->read(is);
-    msCptsMap[msCpts[i]->name()] = msCpts[i];
+    msCptsMap[msCpts[i]->name()] = i;
   }
 
 
@@ -185,11 +195,8 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic, MTCPTs, out of order count",cnt);
     mtCpts[i] = new MTCPT;
     mtCpts[i]->read(is);
-    mtCptsMap[mtCpts[i]->name()] = mtCpts[i];
+    mtCptsMap[mtCpts[i]->name()] = i;
   }
-
-
-
 
 }
 
@@ -308,7 +315,7 @@ GMParms::readDTs(iDataStreamFile& is)
 
     dts[i] = new RngDecisionTree<unsigned>;
     dts[i]->read(is);
-    dtsMap[dts[i]->name()] = dts[i];
+    dtsMap[dts[i]->name()] = i;
   }
 }
 
@@ -326,6 +333,121 @@ GMParms::writeDTs(oDataStreamFile& os)
     dts[i]->write(os);
   }
 }
+
+
+void 
+GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+
+  unsigned start = 0;
+  is.read(num,"GMTK_GMParms::readGaussianComponents");
+  if (num < 0) error("GMTK_GMParms::readGaussianComponents num = %d",num);
+  if (reset) {
+    start = 0;
+    //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
+    // CHECK THAT THIS RESIZES THE ACTUAL ARRAY TO
+    // HAVE ALLOCATED THIS AMOUNT!!!!!!!!!!!!!!!
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
+    gaussianComponents.resize(num);
+  } else {
+    start = gaussianComponents.size();
+    gaussianComponents.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    GaussianComponent* gc;
+
+    is.read(cnt,"GMTK_GMParms::readGaussianComponents, cnt");
+    if (cnt != i) 
+      error("GMTK_GMParms::readGaussianComponents, out of order count",cnt);
+
+    // next read the dimension of this Gaussian
+    int dim;
+    is.read(dim,"GMTK_GMParms::readGaussianComponents, dim");
+
+    // read the Gaussian type
+    int t;
+    is.read(t,"GMTK_GMParms::readGaussianComponents, type");
+    if (t == GaussianComponent::Diag) {
+      gc = new DiagGaussian(dim);
+    } else if (t == GaussianComponent::LinMeanCondDiag) {
+      error("LinMeanCondDiag not implemented");
+      // gc = new LinMeanCondDiagGaussian(dim);
+    } else if (t == GaussianComponent::NLinMeanCondDiag) {
+      error("NLinMeanCondDiag not implemented");
+      // gc = new NLinMeanCondDiagGaussian(dim);
+    } else {
+      error("Error: unknown gaussian component type in file");
+    }
+    gc->read(is);
+    gaussianComponents[i+start] = gc;
+    gaussianComponentsMap[gc->name()] = i+start;
+  }
+}
+
+
+
+
+void 
+GMParms::readGaussianMixtures(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+
+  unsigned start = 0;
+  is.read(num,"GMTK_GMParms::readGaussianMixtures");
+  if (num < 0) error("GMTK_GMParms::readGaussianMixtures num = %d",num);
+  if (reset) {
+    start = 0;
+    //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
+    // CHECK THAT THIS RESIZES THE ACTUAL ARRAY TO
+    // HAVE ALLOCATED THIS AMOUNT!!!!!!!!!!!!!!!
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
+    mixGaussians.resize(num);
+  } else {
+    start = mixGaussians.size();
+    mixGaussians.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    MixGaussiansCommon* gm;
+
+    is.read(cnt,"GMTK_GMParms::readGaussianMixtures, cnt");
+    if (cnt != i) 
+      error("GMTK_GMParms::readGaussianMixtures, out of order count",cnt);
+
+    // next read the dimension of this Gaussian
+    int dim;
+    is.read(dim,"GMTK_GMParms::readGaussianMixtures, dim");
+
+    // read the Gaussian type
+    int t;
+    is.read(t,"GMTK_GMParms::readGaussianMixtures, type");
+    if (t == MixGaussiansCommon::mix) {
+      gm = new MixGaussians(dim);
+    } else if (t == MixGaussiansCommon::gausSwitchMix) {
+      error("GausSwitchMix not implemented");
+      // gm = new GausSwitchingMixGaussians();
+    } else if (t == MixGaussiansCommon::logitSwitchMix) {
+      error("LogitSwitchMix not implemented");
+      // gm = new LogitSwitchingMixGaussians();      
+    } else if (t == MixGaussiansCommon::mlpSwitchMix) {
+      error("MlpSwitchMix not implemented");
+      // gm = new MLPSwitchingMixGaussians(dim);
+    } else {
+      error("Error: unknown gaussian mixture type in file");
+    }
+    gm->read(is);
+    mixGaussians[i+start] = gm;
+    mixGaussiansMap[gm->name()] = i+start;
+  }
+}
+
+
 
 
 

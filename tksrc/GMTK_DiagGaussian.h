@@ -29,12 +29,11 @@
 
 
 #include "GMTK_RandomVariable.h"
-#include "GMTK_GaussianCommon.h"
-#include "GMTK_EMable.h"
+#include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 
-class DiagGaussian : public GaussianCommon, public EMable {
+class DiagGaussian : public GaussianComponent {
 
   ///////////////////////////////////////////////////////
   // The means. 
@@ -46,15 +45,16 @@ class DiagGaussian : public GaussianCommon, public EMable {
   ///////////////////////////////////////////////////////
   // The diagonal of the covariance matrix
   // This might be tied with multiple other distributions.
-  DiagCovarVector* variance;
+  DiagCovarVector* covar;
   // The index in the global variance array of this variance vector
-  int varianceIndex;
+  int covarIndex;
 
  
 public:
+
   
-  DiagGaussian() { bitmask = 0x0; }
-  ~DiagGaussian();
+  DiagGaussian(const int dim) : GaussianComponent(dim) { }
+  ~DiagGaussian() {}
 
   //////////////////////////////////////////////
   // read/write basic parameters
@@ -70,6 +70,8 @@ public:
   void makeUniform();
   //////////////////////////////////
 
+  void preCompute();
+
   //////////////////////////////////
   // probability evaluation
   logpr log_p(const float *const x,    // real-valued scoring obs at time t
@@ -81,20 +83,21 @@ public:
   //////////////////////////////////
   // Full Baum-Welch EM training  //
   //////////////////////////////////
-  void emStartIteration() {}
-  void emIncrement(RandomVariable*,logpr prob) {}
-  void emEndIteration() {}
-  void emSwapCurAndNew() {}
-  void emStoreAccumulators(oDataStreamFile& ofile) {}
-  void emLoadAccumulators(iDataStreamFile& ifile) {}
-  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void emStartIteration();
+  void emIncrement(RandomVariable*,logpr prob);
+  void emEndIteration();
+  void emSwapCurAndNew();
+  void emStoreAccumulators(oDataStreamFile& ofile);
+  void emLoadAccumulators(iDataStreamFile& ifile);
+  void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////
 
   //////////////////////////////////
   // Sample Generation            //
   //////////////////////////////////
-  void sampleGenerate(float *const sample,
-		      const Data32* const base);
+  void sampleGenerate(float *sample,
+		      const Data32* const base,
+		      const int stride);
   //////////////////////////////////
 
 
