@@ -3084,19 +3084,37 @@ triangulateExhaustiveSearch(
   double nmbr_cmbntns;
   unsigned crrnt_trial;
 
-  nmbr_cmbntns = pow(2.0, (double)nmbr_empty); 
+  if (nmbr_empty < 1024) {
+    nmbr_cmbntns = pow(2.0, (double)nmbr_empty);
+  }
+  else {
+    nmbr_cmbntns = -1; 
+  }
+ 
   crrnt_trial  = 0;
 
-  infoMsg(IM::Tiny, "%d nodes, %d missing edges, %0e combinations\n", 
-    nmbr_nodes , nmbr_empty, nmbr_cmbntns );
+  if (nmbr_empty < 1024) {
+    infoMsg(IM::Tiny, "%d nodes, %d missing edges, %0e combinations\n", 
+      nmbr_nodes , nmbr_empty, nmbr_cmbntns );
+  } 
+  else {
+    infoMsg(IM::Tiny, "%d nodes, %d missing edges, 2^%d combinations\n", 
+      nmbr_nodes , nmbr_empty, nmbr_empty );
+  } 
 
   while (!done) {
 
     crrnt_trial++;
-    if ((crrnt_trial % 0x10000) == 0) { 
-      infoMsg(IM::Tiny, "%e of %0e\n", (double)crrnt_trial, nmbr_cmbntns );
-    }
+    if ((crrnt_trial % 0x10000) == 0) {
 
+      if (nmbr_empty < 1024) { 
+        infoMsg(IM::Tiny, "%e of %0e\n", (double)crrnt_trial, nmbr_cmbntns );
+      }
+      else {
+        infoMsg(IM::Tiny, "%e of 2^%d\n", (double)crrnt_trial, nmbr_empty);
+      }
+    }
+ 
     //////////////////////////////////////////////////////////////////
     // Test current configuration  
     //////////////////////////////////////////////////////////////////
