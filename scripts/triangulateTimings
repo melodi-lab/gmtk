@@ -25,8 +25,9 @@ my $pmake            = 'pmake';
 ##############################################################################
 # Default amount to time each triangulation 
 ##############################################################################
-my $timing_length = 30; 
-#my $timing_length = 1; 
+#my $timing_length = 60; 
+#my $timing_length = 30; 
+my $timing_length = 3; 
 
 my $initial_vpap = 'COI';
 my $initial_vcap = 'COI';
@@ -597,17 +598,17 @@ sub start_boundary_searches
   my $output_name;
   my $total_boundaries;
 
-  #@boundary_heuristics = ('W' , 'Q', 'A', 'FWH', 'S', 'T', 'F', 'P', 'N', 'ST',
-    #'SF', 'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 'FT', 'FW', 'FTSW');
+  @boundary_heuristics = ('W' , 'Q', 'A', 'FWH', 'S', 'T', 'F', 'P', 'N', 'ST',
+    'SF', 'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 'FT', 'FW', 'FTSW');
 
-  @boundary_heuristics = ('W' ); 
+  #@boundary_heuristics = ('W' ); 
 
   ############################################################################
   # Create makefile for boundaries  
   ############################################################################
   $tmp_file = "$output_directory/boundaries.makefile";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '30s'";
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '3hour' -noBoundaryMemoize T";
 
   open PMAE, "| pmae > $tmp_file"; 
 
@@ -635,7 +636,7 @@ sub start_boundary_searches
   ############################################################################
   # Start searches with pmake, and enque the boundaries as they finish
   ############################################################################
-  open PMAKE, "pmake -L 0 -J 10 -f $tmp_file |";
+  open PMAKE, "pmake -L 0 -J 15 -f $tmp_file |";
 
   $total_boundaries = 0; 
   while (<PMAKE>) 
@@ -737,6 +738,7 @@ sub make_trifile
 #############################################################################
 sub reset_basic_methods 
 {
+  $basic_once_index = 0;
   $basic_iteration_index = 0;
   $basic_prefix_index    = 0;
   $basic_method_index    = 0;
@@ -816,6 +818,7 @@ sub get_basic_triangulation_method
 #############################################################################
 sub reset_advanced_methods 
 {
+  $advanced_once_index      = 0; 
   $advanced_UB_type_index   = 0;
   $advanced_iteration_index = 0;
   $advanced_prefix_index    = 0;
