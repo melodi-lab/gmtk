@@ -31,7 +31,7 @@
 // A constant consisting of a special feature element value to indicate
 // that this discrete RV should always use the value that it is currently
 // assigned to (i.e., it is a fixed clamped value).
-#define DRV_USE_FIXED_VALUE_FEATURE_ELEMENT (1 << (sizeof(unsigned)*8-1))
+#define DRV_USE_FIXED_VALUE_FEATURE_ELEMENT (unsigned)(1 << (sizeof(unsigned)*8-1))
 
 class DiscreteRandomVariable : public RandomVariable
 {
