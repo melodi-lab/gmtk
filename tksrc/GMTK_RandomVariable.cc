@@ -217,12 +217,18 @@ void RandomVariable::reveal(bool show_vals)
     cout << label << "-" << timeIndex << " : ";
     if (discrete) cout << "discrete (" << cardinality << ") ";
     if (hidden) cout << "hidden "; else cout << "observed ";
-    if (!hidden && discrete || show_vals) cout << "val (" << val << ")";
+    if (!hidden || show_vals) 
+        if (discrete)
+            cout << "val (" << val << ")";
+        else 
+            cout << "continuous";
 
+/*
     cout << " possible parents: ";
     for (unsigned i=0; i<allPossibleParents.size(); i++)
         cout << allPossibleParents[i]->label << "-" 
              << allPossibleParents[i]->timeIndex << " ";
+*/
     cout << endl;
 }
 
