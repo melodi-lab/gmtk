@@ -143,3 +143,15 @@ void memory_error()
   fprintf(stderr,"ERROR: memory_error called. Program ran out of memory.\n");
   exit_program_with_status(-1);
 }
+
+// returns log10(10^v1 + 10^v2)
+double log10add(double v1, double v2) 
+{
+  double small,big;
+  if (v1 < v2) {
+    small = v1; big = v2;
+  } else {
+    small = v2; big = v1;
+  }
+  return (big + ::log10(1+::pow(10.0,small-big)));
+}
