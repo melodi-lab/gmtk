@@ -227,3 +227,5 @@ X make sure that dlinkmatrix precompute is being
   mixture variables.
 
 - clean up source directories.
+
+- fix unrolling bug 
