@@ -101,8 +101,10 @@ ContinuousRandomVariable::findConditionalParents()
 logpr
 ContinuousRandomVariable::probGivenParents()
 {
-  // TODO: there should be some check to make sure
-  // that the resulting gaussian is the correct dimensionality.
+  ///////////////////
+  // We assume here that the resulting gaussian is the correct
+  // dimensionality (this is checked in GMTK_FileParser.cc, 
+  // in function FileParser::associateWithDataParams(bool)
 
   logpr _cachedProb;
   if (curMappingOrDirect->direct) {
