@@ -47,46 +47,54 @@ GM = "GRAPHICAL_MODEL" identifier Frame_List Chunk_Specifier
 
 Frame_List = Frame | Frame Frame_List
 
-Frame = "frame" integer RV_List
+Frame = "frame" integer "{" RV_List "}"
 
-RV_List = RV | RV RV_List;
+RV_List = RV | RV RV_List
 
+RV = "variable" ":" name "{" RV_Attribute_List "}"
 
-RV = "variable" name RV_Body;
+RV_Attribute_List = Attribute | Attribute RV_Attribute_List
 
-RV_Body = RV_Attribute_List;
+Attribute = 
+    "type" ":" RV_Type ";" |
+    "disposition" ":" RV_Disposition ";" |
+    "switchingparents" ":" Switching_Parent_LIST ";" |
+    "conditionalparents" ":" Conditional_Parent_LIST ";"
 
-
-RV_Attribute_List = Attribute | Attribute RV_Attribute_List;
-
-Attribute = Keyword ":" RV_Att_Arguments;
+Keyword ":" RV_Att_Arguments ";"
 
 keyword = "type" | "disposition" | "implementation" | 
-               "switchingparents" | 
-	 	"conditionalparents"
+               "parameters" | 
+                 "switchingparents" | 
+	 	  "conditionalparents"
+
+RV_Att_Arguments =  "nil" | RV_Type | RV_Disp | 
+        | Implementation | Parameters | Parent_List | Cond_Parent_List
 
 RV_Type = "discrete" | "continuous"
 
-RV_Disp = "hidden" | "observed"
+RV_Disp = "hidden" | "observed" int_range
 
+Implementation = Discrete_Implementation | Continous_Implementation
 
+Discrete_Implementation = "MDCPT" | "MSCPT" 
 
-RV_Att_Arguments = 
+Continuous_Implementation = "mixGaussian" | 
+         "gausSwitchMixGaussian" | "logitSwitchMixGaussian" |
+         "mlpSwitchMixGaussian"
+     
+Parameters = integer | 
 
+Cond_Parent_List = Parent_List
+       | Parent_List "|" Cond_Parent_List
 
-Identifier_List
+Parent_List = Parent | Parent Parent_List
 
-
-
-ConditionalParentsList = Identifier_List 
-       | Identifier_List "|" ConditionalParentsList
-
+Parent = identifier "(" integer ")" 
 
 Identifier_List = identifier | identifier Identifier_List
 
-
 Chunk_Specifier = integer ":" integer
-
 
 *********************************************************************** 
 *********************************************************************** 
