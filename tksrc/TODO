@@ -1389,3 +1389,11 @@ Tue Jan 27 15:56:38 2004
     hash tables were built using some vocabulary.
   - Perhaps look into "perfect" hashing functions for
     vocabularies.
+
+Tue Jan 27 18:31:29 2004
+  - add note in documentation about how cardinalities
+    of 2^n have the  least efficient use of bits
+    whereas cards of 2^n-1 have the most efficient
+    use of their allocated space (assuming in each
+    case tha the variables use all their values with
+    non-zero probability).
