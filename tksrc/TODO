@@ -2469,3 +2469,5 @@ Mon Sep 27 15:07:26 2004
   - Test a bunch of .str files, such as downsampling right within the structure file.
   - empty frames.
   - see Gang's message of 9/27/04
+  - fix bug suggested in fix in response to Gang's message, 9/27 that I sent out 9/28 (having to
+    do with re-writing gmtkViterbiNew).
