@@ -104,61 +104,96 @@ char *cppCommandOptions = NULL;
 int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
 int ns=GMTK_DEFAULT_NUM_SPLITS;
 
-ARGS ARGS::Args[] = {
+void makeArgs(Argument_List &args)
+{
+  bool optional=0,required=1;
+  args.add("of1",required,&ofs[0],
+           "Observation File 1");
+  args.add("nf1",optional,&nfs[0],
+           "Number of floats in observation file 1");
+  args.add("ni1",optional,&nis[0],
+           "Number of ints in observation file 1");
+  args.add("fr1",optional,&frs[0],
+           "Float range for observation file 1");
+  args.add("ir1",optional,&irs[0],
+           "Int range for observation file 1");
+  args.add("fmt1",optional,&fmts[0],
+           "Format (htk,bin,asc,pfile) for observation file 1");
+  args.add("iswp1",optional,&iswps[0],
+           "Endian swap condition for observation file 1");
 
-  ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
-  ARGS("nf1",ARGS::Opt,nfs[0],"Number of floats in observation file 1"),
-  ARGS("ni1",ARGS::Opt,nis[0],"Number of ints in observation file 1"),
-  ARGS("fr1",ARGS::Opt,frs[0],"Float range for observation file 1"),
-  ARGS("ir1",ARGS::Opt,irs[0],"Int range for observation file 1"),
-  ARGS("fmt1",ARGS::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
-  ARGS("iswp1",ARGS::Opt,iswps[0],"Endian swap condition for observation file 1"),
+  args.add("of2",optional,&ofs[1],
+           "Observation File 2");
+  args.add("nf2",optional,&nfs[1],
+           "Number of floats in observation file 2");
+  args.add("ni2",optional,&nis[1],
+           "Number of ints in observation file 2");
+  args.add("fr2",optional,&frs[1],
+           "Float range for observation file 2");
+  args.add("ir2",optional,&irs[1],
+           "Int range for observation file 2");
+  args.add("fmt2",optional,&fmts[1],
+           "Format (htk,bin,asc,pfile) for observation file 2");
+  args.add("iswp2",optional,&iswps[1],
+           "Endian swap condition for observation file 2");
 
+  args.add("of3",optional,&ofs[2],
+           "Observation File 3");
+  args.add("nf3",optional,&nfs[2],
+           "Number of floats in observation file 3");
+  args.add("ni3",optional,&nis[2],
+           "Number of ints in observation file 3");
+  args.add("fr3",optional,&frs[2],
+           "Float range for observation file 3");
+  args.add("ir3",optional,&irs[2],
+           "Int range for observation file 3");
+  args.add("fmt3",optional,&fmts[2],
+           "Format (htk,bin,asc,pfile) for observation file 3");
+  args.add("iswp3",optional,&iswps[2],
+           "Endian swap condition for observation file 3");
 
-  ARGS("of2",ARGS::Opt,ofs[1],"Observation File 2"),
-  ARGS("nf2",ARGS::Opt,nfs[1],"Number of floats in observation file 2"),
-  ARGS("ni2",ARGS::Opt,nis[1],"Number of ints in observation file 2"),
-  ARGS("fr2",ARGS::Opt,frs[1],"Float range for observation file 2"),
-  ARGS("ir2",ARGS::Opt,irs[1],"Int range for observation file 2"),
-  ARGS("fmt2",ARGS::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
-  ARGS("iswp2",ARGS::Opt,iswps[1],"Endian swap condition for observation file 2"),
-  ARGS("of3",ARGS::Opt,ofs[2],"Observation File 3"),
-  ARGS("nf3",ARGS::Opt,nfs[2],"Number of floats in observation file 3"),
-  ARGS("ni3",ARGS::Opt,nis[2],"Number of ints in observation file 3"),
-  ARGS("fr3",ARGS::Opt,frs[2],"Float range for observation file 3"),
-  ARGS("ir3",ARGS::Opt,irs[2],"Int range for observation file 3"),
-  ARGS("fmt3",ARGS::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
-  ARGS("iswp3",ARGS::Opt,iswps[2],"Endian swap condition for observation file 3"),
+  args.add("strFile",required,&strFileName,
+           "GM Structure File");
+  args.add("prmMasterFile",required,&prmMasterFile,
+           "Multi-level master CPP processed GM Parms File");
+  args.add("prmTrainableFile",optional,&prmTrainableFile,
+           "File containing Trainable Parameters");
+  args.add("binPrmTrainableFile",optional,&binPrmTrainableFile,
+           "Is Binary? File containing Trainable Parameters");
+  args.add("cppCommandOptions",optional,&cppCommandOptions,
+           "Command line options to give to cpp");
 
-  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
-  ARGS("prmMasterFile",ARGS::Req,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
-  ARGS("prmTrainableFile",ARGS::Opt,prmTrainableFile,"File containing Trainable Parameters"),
-  ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
-  ARGS("cppCommandOptions",ARGS::Opt,cppCommandOptions,"Command line options to give to cpp"),
+  args.add("varFloor",optional,&varFloor,
+           "Variance Floor");
+  args.add("floorVarOnRead",optional,
+           &DiagCovarVector::floorVariancesWhenReadIn,
+           "Floor the variances to varFloor when they are read in");
+  args.add("dcdrng",optional,&dcdrng_str,
+           "Range to decode over segment file");
 
+  args.add("beam",optional,&beam,
+           "Beam width (less than max*exp(-beam) are pruned away)");
 
-  ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
-  ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
-       "Floor the variances to varFloor when they are read in"),
-  ARGS("dcdrng",ARGS::Opt,dcdrng_str,"Range to decode over segment file"),
+  args.add("startSkip",optional,&startSkip,
+          "Frames to skip at beginning (i.e., first frame is buff[startSkip])");
+  args.add("endSkip",optional,&endSkip,
+           "Frames to skip at end (i.e., last frame is buff[len-1-endSkip])");
+  args.add("cptNormThreshold",optional,
+           &CPT::normalizationThreshold,
+           "Read error if |Sum-1.0|/card > norm_threshold");
 
-  ARGS("beam",ARGS::Opt,beam,"Beam width (less than max*exp(-beam) are pruned away)"),
+  args.add("showCliques",optional,&show_cliques,
+           "Show the cliques after the netwok has been unrolled k times.");
 
-  ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
-  ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
-  ARGS("cptNormThreshold",ARGS::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
-  ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
+  args.add("numSplits",optional,&ns,
+           "Number of splits to use in logspace recursion (>=2).");
 
-  ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
+  args.add("baseCaseThreshold",optional,&bct,
+           "Base case threshold to end recursion (>=2).");
 
- ARGS("numSplits",ARGS::Opt,ns,"Number of splits to use in logspace recursion (>=2)."),
-
-  ARGS("baseCaseThreshold",ARGS::Opt,bct,"Base case threshold to end recursion (>=2)."),
-
-  ARGS()
-
-};
-
+  args.add("argsFile",optional,&argsFile,
+           "File to get args from (overrides specified comand line args).");
+}
 
 RAND rnd(0);
 GMParms GM_Parms;
@@ -175,7 +210,9 @@ main(int argc,char*argv[])
   ieeeFPsetup();
   set_new_handler(memory_error);
 
-  ARGS::parse(argc,argv,argsFile);
+  Argument_List args;
+  makeArgs(args);
+  args.parse(argc, argv);
 
   ////////////////////////////////////////////
   // check for valid argument values.
