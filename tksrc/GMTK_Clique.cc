@@ -33,10 +33,12 @@
 VCID("$Header$");
 
 #include "GMTK_Clique.h"
-#include "GMTK_Hash.h"
 
+#ifndef NO_HASH_TABLE
+#include "GMTK_Hash.h"
 HashTable< vector<RandomVariable::DiscreteVariableType> >
 CliqueValue::global_val_set;
+#endif
 
 vector<CliqueValue> Clique::gip;  // the actual global instantiation pool
 vector<unsigned> Clique::freelist;     // and the freelist
@@ -176,7 +178,6 @@ vector<int> *in2gn, bool viterbi)
             addInstantiation(inst=newCliqueValue());                
             instantiationAddress[clampedValues] = inst;  
             cv = &gip[inst];
-            cv->values = NULL;  // will use the parent's 
             cv->lambda = cv->pi = 0.0;
             cv->pred = pred_val;
             cv->inum = numInstantiations-1;
@@ -219,7 +220,12 @@ vector<int> *in2gn, bool viterbi)
             CliqueValue *cv = &gip[ncv];
             cv->pi = cv->lambda = pi;  // cache value in lambda
             cv->pred = pred_val;
+#ifdef NO_HASH_TABLE
+            cv->values = clampedValues;
+#else
             cv->values = CliqueValue::global_val_set.insert(clampedValues);
+#endif
+
             if (pred_val!=-1)   // not doing root
                 cv->pi *= gip[(*in2gn)[pred_val]].pi;
             cv->inum = numInstantiations-1;

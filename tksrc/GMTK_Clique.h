@@ -29,13 +29,21 @@
 #ifndef GMTK_CLIQUE_H
 #define GMTK_CLIQUE_H 
 
+/*
+ * For extreme memory efficiency, uncomment the definition of NO_HASH_TABLE
+*/
+// #define NO_HASH_TABLE
+
 #include <vector>
 #include <map>
 #include <set>
 #include <algorithm>
 #include <numeric>
 #include "GMTK_RandomVariable.h"
+
+#ifndef NO_HASH_TABLE
 #include "GMTK_Hash.h"
+#endif
 
 struct CliqueValue
 {
@@ -52,30 +60,22 @@ struct CliqueValue
     // separators. 
     int pred, succ;
 
-    // The underlying variable values corresponding to a particular clique
-    // instantiation
-    const vector<RandomVariable::DiscreteVariableType> *values;
-
     // The instantiation number in the order that the instantiations were
     // enumerated.
     int inum; 
 
+    // The underlying variable values corresponding to a particular clique
+    // instantiation
+#ifdef NO_HASH_TABLE
+    vector<RandomVariable::DiscreteVariableType> values;
+#else
+    const vector<RandomVariable::DiscreteVariableType> *values;
     // In a dynamic network, the same set of values will occur over and
     // over again in different cliques. To avoid storing them over and over
     // again, keep a global pool. 
-    /**** 
-     * Note: With logspace in place, the overall memory requirements can 
-     * be significantly reduced by eliminating this hash table. Instead,
-     * the "values" field can be changed from a a pointer into the hash table 
-     * to a straight vector. The variable assignments associated with the
-     * instantiation can be stored directly in values. Since there are only
-     * a small number of instantiations, this is OK. This will help 
-     * especially in pruning. The drawback is that it will be horribly 
-     * memory-inefficient in the non-logspace case. Doing this will be 
-     * ultra-memory efficient, but force the use of the logspace recurions.
-    */
     static HashTable< vector<RandomVariable::DiscreteVariableType> >
          global_val_set;
+#endif
 };
 
 struct Clique

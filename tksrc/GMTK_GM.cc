@@ -1223,7 +1223,9 @@ void GMTK_GM::setExampleStream(const char *const obs_file_name,
 
 void GMTK_GM::clampFirstExample()
 {
+#ifndef NO_HASH_TABLE
     CliqueValue::global_val_set.clear();
+#endif
     if (using_files)
     {
         if (globalObservationMatrix.numSegments()==0)
@@ -1254,7 +1256,9 @@ void GMTK_GM::clampFirstExample()
 
 bool GMTK_GM::clampNextExample()
 {
+#ifndef NO_HASH_TABLE
     CliqueValue::global_val_set.clear();
+#endif
     if (using_files)
     {
         (*trrng_it)++;
