@@ -1363,3 +1363,7 @@ Wed Jan 21 23:22:18 2004
       size. Also, use 'beam' value to help guide how large the first
       allocation should be (if beam is large, we should allocate
       a smaller first size).
+
+
+Fri Jan 23 16:02:09 2004
+   - consider writing a parameter file format in XML.
