@@ -33,6 +33,8 @@
 #include <stdlib.h>
 
 class RandomVariable;
+class DiscreteRandomVariable;
+class ContinuousRandomVariable;
 class FileParser;
 class GMTemplate;
 
@@ -42,6 +44,8 @@ class GMTemplate;
 class RVInfo {
   friend class FileParser;
   friend class RandomVariable;
+  friend class DiscreteRandomVariable;
+  friend class ContinuousRandomVariable;
   friend class GMTemplate;
 
   ///////////////////////////////////////////////////
