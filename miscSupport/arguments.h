@@ -76,6 +76,14 @@
 
 #define DEFAULT_MAX_NUM_ARRAY_ELEMENTS 1
 
+enum Priorities {
+  HIGHEST_PRIORITY=1,
+  PRIORITY_2,
+  PRIORITY_3,
+  PRIORITY_4,
+  LOWEST_PRIORITY
+};
+
 class MultiType {
   friend class Arg;
   enum ArgumentType { 
@@ -117,7 +125,7 @@ class Arg {
  public:
 
   // the argument disposition, optional, required, or toggle
-  enum ArgDisposition { Opt, Req, Tog };
+  enum ArgDisposition { Opt, Req, Tog, Help };
   // the return codes, missing, ok, or in error.
   enum ArgsRetCode { ARG_MISSING, ARG_OK, ARG_ERROR };
   // the argument data structure type: single variable or array.
@@ -126,6 +134,10 @@ class Arg {
   static Arg Args[];
 
  private:
+
+  /////////////////////////////////////////////////////////
+  // Static members shared between all arumnet instances
+  /////////////////////////////////////////////////////////
 
   // This specifies whether we want to allow switches such as -i, -invert, and -input.
   // If the bool below is false, command line flags -i and -in are both ambiguous.
@@ -142,9 +154,10 @@ class Arg {
 
   // If true, cause an error if the user does not specify the index (e.g. -i
   // instead of -i1) for array type flags. If false -i is equivalent to -i1. 
-   static bool Error_If_No_Index_For_Array_Data_Struct_Type;
+  static bool Error_If_No_Index_For_Array_Data_Struct_Type;
 
   static char* const NOFLAG;
+  static char* const CATEG_FLAG;
   static char* const NOFL_FOUND;
   static const char COMMENTCHAR;  // for argument files.
   // the total number of arguments in a given program.
@@ -154,7 +167,16 @@ class Arg {
   // the program name, saved for usage messages.
   static char* Program_Name;
 
-  // instance data members.
+  // The priority level at which the user wants the information
+  // printed.  Arguments with priority greater or equal to the
+  // requesteted priority level will be printed. Other argumnets will
+  // not.
+  static unsigned Requested_Priority;
+
+  ////////////////////////////// 
+  // Instance data members.
+  //////////////////////////////
+
   char *flag; // name to match on command line, NULL when end.
   ArgDisposition arg_kind;  // optional, required, toggle
   MultiType mt;
@@ -170,11 +192,20 @@ class Arg {
   // entry for end of array.
   static bool EMPTY_ARGS_FLAG;
 
+  // determines if this argument gets printed in the usage information
+  // if a user provided priority number is higher than the below.
+  unsigned priority;
+
+  char* category;
+
+  unsigned count;  // keeps track of how many command line instances of this flag there are.  
+
  public:
   //Arg(char*,ArgDisposition,MultiType,char*d=NULL);
-  Arg(char*,ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false);
+  Arg(char*,ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false,unsigned priority=HIGHEST_PRIORITY);
   //Arg(ArgDisposition,MultiType,char*d=NULL);
-  Arg(ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false);
+  Arg(ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false, unsigned priority=HIGHEST_PRIORITY);
+  Arg(char*d);
   Arg(const Arg&);
   Arg();
   ~Arg();
@@ -185,11 +216,21 @@ class Arg {
   static void usage(char* filter=NULL);
   static void printArgs(Arg*args,FILE*f);
 
+  static unsigned getNumArguments() { return (unsigned) Num_Arguments; } 
+  static unsigned getNumSuppliedArguments() { 
+    unsigned cnt=0;
+    for(int i=0; i< Num_Arguments; ++i) {
+      if(Argument_Specified[i]) cnt++;
+    }
+    return cnt;
+  } 
+
  private:
   //void initialize(char*,ArgDisposition,char*);
-  void initialize(char*,ArgDisposition,char*,ArgDataStruct,unsigned,bool);
+  void initialize(char*,ArgDisposition,char*,ArgDataStruct,unsigned,bool,unsigned priority);
 
   static bool noFlagP(char *);
+  static bool categFlagP(char *);
   static ArgsRetCode argsSwitch(Arg*,char *,int&,bool&,char*);
   static Arg* searchArgs(Arg*,char*);
   static Arg* searchArgs(Arg* ag,char *flag, ArgDataStruct dataStructure);
@@ -198,6 +239,11 @@ class Arg {
   static bool checkMissing(bool printMessage=false);
   static bool validBoolean(char* string,bool&value);
   void print(FILE*);
+
+  void incCount() { this->count++; }
+  unsigned getCount() { return this->count; }
+
+  unsigned getPriority() { return this->priority; }
 
 };
 
