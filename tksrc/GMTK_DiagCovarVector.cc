@@ -260,11 +260,6 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
     // if this isn't the case, something is wrong.
     assert ( emOnGoingBitIsSet() );
 
-    // TODO: make this next condition an overflow condition
-    // rather than just check for zero. This should
-    // have been ensured by the caller.
-    assert ( parentsAccumulatedProbability != 0.0 );
-
     // NOTE: What are we doing here? We need to compute
     // the weighted average of the shared means and covariances
     // using the formula:
@@ -288,15 +283,23 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
     // The entire thing needs to be divided again by N, which
     // is done below after refCount hits zero.
 
-    // accumulate in the 1st and 2nd order statistics given
-    // by the mean object.
-    const double invRealAccumulatedProbability = 
-      parentsAccumulatedProbability.inverse().unlog();
+
+    // TODO: make this next condition an overflow condition
+    // rather than just check for zero. This should
+    // have been ensured by the caller.
+    if ( parentsAccumulatedProbability != 0.0 ) {
+      // only accumulate if there is something to accumlate.
+
+      // accumulate in the 1st and 2nd order statistics given
+      // by the mean object.
+      const double invRealAccumulatedProbability = 
+	parentsAccumulatedProbability.inverse().unlog();
     
-    for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] += 
-	(partialAccumulatedNextCovar[i] - 
-	 partialAccumulatedNextMeans[i]*partialAccumulatedNextMeans[i]*invRealAccumulatedProbability);
+      for (int i=0;i<covariances.len();i++) {
+	nextCovariances[i] += 
+	  (partialAccumulatedNextCovar[i] - 
+	   partialAccumulatedNextMeans[i]*partialAccumulatedNextMeans[i]*invRealAccumulatedProbability);
+      }
     }
 
     refCount--;
@@ -317,59 +320,65 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
     // TODO: need to check if this will overflow here
     // when dividing by it. This is more than just checking
     // for zero. Also need to do this in every such EM object.
-    warning("WARNING: Diagonal covariance vector named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
-  }
+    warning("WARNING: Diagonal covariance vector named '%s' did not receive any accumulated probability in EM iteration, using previous values instead.",name().c_str());
+    for (int i=0;i<covariances.len();i++) 
+      nextCovariances[i] = covariances[i];
+  } else {
+    // we have a non-zero accumulated prob.
+    // TODO: should check for possible overflow here of 
+    // accumulatedProbability when we do the inverse and unlog.
 
-  const double invRealAccumulatedProbability = 
-    accumulatedProbability.inverse().unlog();
-  // finish computing the next means.
+    const double invRealAccumulatedProbability = 
+      accumulatedProbability.inverse().unlog();
+    // finish computing the next means.
 
-  unsigned prevNumFlooredVariances = numFlooredVariances;
-  for (int i=0;i<covariances.len();i++) {
-    nextCovariances[i] *= invRealAccumulatedProbability;
+    unsigned prevNumFlooredVariances = numFlooredVariances;
+    for (int i=0;i<covariances.len();i++) {
+      nextCovariances[i] *= invRealAccumulatedProbability;
 
     
-    /////////////////////////////////////////////////////
-    // When variances hit zero or their floor:
-    // There could be several reasons for the variances hitting the floor:
-    //   1) The prediction of means is very good which leads to low
-    //      variances.  In this case, we shouldn't drop the component,
-    //      instead we should just hard-limit the variance (i.e., here
-    //      mixCoeffs[this] is not too small).  
-    //   2) Very small quantity of training data (i.e., mixCoeffs[this] is
-    //      very small). In this case we should remove the component
-    //      completely.
-    //   3) If there is only one mixture, and this happens, then it could be
-    //      that the prob of this Gaussian is small. In this case, there's 
-    //      probably a problem with the graph topology. 
-    //      I.e., really, we should remove the RV state leading to
-    //      this this Gaussian. For now,
-    //      however, if this happens, the variance will be floored like
-    //      in case 1.
+      /////////////////////////////////////////////////////
+      // When variances hit zero or their floor:
+      // There could be several reasons for the variances hitting the floor:
+      //   1) The prediction of means is very good which leads to low
+      //      variances.  In this case, we shouldn't drop the component,
+      //      instead we should just hard-limit the variance (i.e., here
+      //      mixCoeffs[this] is not too small).  
+      //   2) Very small quantity of training data (i.e., mixCoeffs[this] is
+      //      very small). In this case we should remove the component
+      //      completely.
+      //   3) If there is only one mixture, and this happens, then it could be
+      //      that the prob of this Gaussian is small. In this case, there's 
+      //      probably a problem with the graph topology. 
+      //      I.e., really, we should remove the RV state leading to
+      //      this this Gaussian. For now,
+      //      however, if this happens, the variance will be floored like
+      //      in case 1.
 
-    if (nextCovariances[i] < GaussianComponent::varianceFloor()) {
+      if (nextCovariances[i] < GaussianComponent::varianceFloor()) {
 
-      numFlooredVariances++;
+	numFlooredVariances++;
 
-      // Don't let variances go less than variance floor. 
+	// Don't let variances go less than variance floor. 
 
-      // At this point, we either could keep the old variance 
-      // values, or hard limit them to the varianceFloor. 
+	// At this point, we either could keep the old variance 
+	// values, or hard limit them to the varianceFloor. 
 
-      // either A or B but not both should be uncommented below.
+	// either A or B but not both should be uncommented below.
 
-      // A: keep old variance
-      nextCovariances[i] = covariances[i];
+	// A: keep old variance
+	nextCovariances[i] = covariances[i];
 
-      // B: hard limit the variances
-      // nextCovariances[i] = GaussianComponent::varianceFloor();
+	// B: hard limit the variances
+	// nextCovariances[i] = GaussianComponent::varianceFloor();
+      }
+    }
+    if (prevNumFlooredVariances < numFlooredVariances) {
+      warning("WARNING: covariance vector named '%s' had %d variances floored\n",
+	      name().c_str(),numFlooredVariances-prevNumFlooredVariances);
     }
   }
-  if (prevNumFlooredVariances < numFlooredVariances) {
-    warning("WARNING: covariance vector named '%s' had %d variances floored\n",
-	    name().c_str(),numFlooredVariances-prevNumFlooredVariances);
-  }
-  
+
   // stop EM
   emClearOnGoingBit();
 }
