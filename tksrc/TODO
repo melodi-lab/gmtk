@@ -71,7 +71,7 @@ X IMPORTANT: ability to train means and other dlinkmats in a dlinkmats structure
 - write sampling code
 
 X update make file so that -@ works for .o files.
-
+<
 X Check the results of all DT query() calls to make sure
   the index it returns is valid. Report great error messages
   if it doesn't.
@@ -460,6 +460,9 @@ Tue Jun 18 17:47:44 2002
 > to do that for you).
 ------------------------------------------------------------
 
+
+FIXED Wed Jun 19 19:27:26 2002
+
 Tue Jun 18 17:51:42 2002
 > >(1) I am training a new model, and am getting an error with the new version of gmtkEMtrain but not the old version.  The error occ
 > >urs when loading accumulators (but not when training without accumulators), and the message I get is:
@@ -493,7 +496,7 @@ Thanks!
 Karen
 
 ------------------------------------------------------------
-
+FIXED Wed Jun 19 19:27:26 2002
 
 Tue Jun 18 17:51:16 2002
 	
@@ -509,3 +512,33 @@ IOT/Abort trap (core dumped)
 
 This occurred while training a feature model with clustered features.  The only special thing I can think of about this model is that there were a number of Gaussians that I wasn't training (via -objsNotToTrain) because they correspond to impossible combinations of feature values.  I put all the files necessary to replicate the error on music in ~klivescu/aurora/articulatory7.  The NOTES file in that dir has the commands that I ran for both the old and new versions.
 
+-----------------------------------------------------------------
+FIXED Wed Jun 19 19:27:26 2002
+
+Wed Jun 19 11:34:25 2002
+
+At the moment, we are not checking for emAmTrainingBitIsSet() in
+GMTK_MeanVector.cc, GMTK_DlinkMatrix.cc, and GMTK_DiagCovarVector.cc
+in all of the EM routines, except for the swap routine (i.e., if the
+bit is not set, we don't swap). The reason for this is as follows.
+When sharing is not on, it is fine to check this bit before each EM
+routine, and if not set, do nothing. The problem is that with sharing,
+when we compute the updates for the shared means, we'll need the
+counts for not only the means but also for the covariances, and vice
+versa. A similar situation arrises when dlinks are involved. One
+solution might be to activate the accumulation if it is seen that
+sharing is occuring, the the problem with this is that, at the moment,
+we don't know if sharing is occuring until after emINcrement is called
+for the 2nd time on teh same mean object. If the bit is off the first
+time, we might miss the first accumulation.
+
+The solution now is to compute all the counts for the
+means/variances,etc. in all cases, even when the not_training bit is
+on, but this can be very wastefull. Another problem is that we need to
+save the accumulators when doing parallel training, even when the
+means are not being trained. This means that the training bit could be
+off, but we are accumulating accumulators for the shared object so the
+accumulators need to be saved even when the training bit is off.  This
+logic therefore needs to be rethought.
+
+-----------------------------------------------------------------
