@@ -222,7 +222,7 @@ main(int argc,char*argv[])
   fp.createRandomVariableGraph();
   // make sure that there are no directed loops in the graph
   // by imposing the S,SE,E,NE constrains
-  // fp.ensureS_SE_E_NE();
+  fp.ensureS_SE_E_NE();
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
   fp.associateWithDataParams();
