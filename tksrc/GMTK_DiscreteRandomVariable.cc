@@ -129,9 +129,7 @@ DiscreteRandomVariable::tieParametersWith(RandomVariable*const _other)
 	  label.c_str(),other->label.c_str());
 
   conditionalCPTs = other->conditionalCPTs;
-
-  // not necessary
-  // curCPT = other->curCPT;
+  curCPT = other->curCPT;
   
 }
 
