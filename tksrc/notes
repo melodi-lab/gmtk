@@ -1048,15 +1048,15 @@ no-weight / weight
 
   different types of weight:
      no weight
-     just value weight  p^\lambda(x)
-     weight and penalty  p^\lambda(x) + beta
-     switching weight
-     switching penalty
-     switching weight and penalty
-     just exponent from obs p^{\lambda(z)}(x)
-     just exponent and add from obs p^{\lambda(z)}(x) + \beta(z)
-     switching just exponent from obs p^{\lambda(z)}(x)
-     switching just exponent and add from obs p^{\lambda(z)}(x) + \beta(z)
+     just value weight  p(x)^\lambda
+     value weight and value penalty  p(x)^\lambda + beta
+     just switching weight
+     just switching penalty
+     just switching weight and penalty
+     just exponent from obs p(x)^{\lambda(z)}
+     just exponent and add from obs p(x)^{\lambda(z)} + \beta(z)
+     switching just exponent from obs p(x)^{\lambda(z)}
+     switching just exponent and add from obs p(x)^{\lambda(z)} + \beta(z)
 
 Number of combinations:
 
@@ -1066,14 +1066,18 @@ Number of combinations:
 Random Variable Hierarchy:
 
 RV- RandomVariable
+  - possibly place static functions here to avoid
+    duplicate code for common functions.
  HRV - Hidden Random Variable
    DHRV - Discrete Random Variable
-      SDHRV - Switching Discrete Random Variable
-      NDHRV - Normal Discrete Random Variable
-   CHRV - Continuous Random Variable
-      NCHRV - Normal Continuous random variable 
-      SCHRV - Switching continuous random variable 
+      SDHRV - Switching Discrete Hidden Random Variable
+      NDHRV - Normal Discrete Hidden Random Variable
+   CHRV - Continuous Hidden Random Variable (doesnt' exist)
  ORV - Observed Random Variable
-   ...
-
+   DORV - discrete observed random variable
+      SDORV - Switching Discrete Observed Random Variable
+      NDORV - Normal Discrete Observed Random Variable
+   CORV - continuous observed random variable
+      SCORV - Switching Continuous  Observed Random Variable
+      NCORV - Normal Continuous Observed Random Variable
 
