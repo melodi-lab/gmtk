@@ -2528,8 +2528,14 @@ Fri Nov 19 12:15:41 2004
     with value 1, and with an always 1 DT. Also, why it works.
 
 
+Wed Nov 24 12:43:32 2004
+  gmtkEMTrainNew
+ - parallel EM training, when no mor etraning jus tacc step, confusing to
+   need to do -trrng nil -maxE 1 (give option to do maxE 0)
+
 
 
  
+
 
 
