@@ -1713,4 +1713,8 @@ Fri Mar 26 14:17:15 2004
   - make output word strings compatible with NIST word error scoring tools.
     In general, look at NIST tools, and make GMTK output as compatible as possible with them.
 
+Fri Mar 26 17:38:32 2004
+  - script to convert from an easy rep. of a SparseCPT into single GMTK sparseCPT in one file.
+
+
 
