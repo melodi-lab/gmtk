@@ -85,24 +85,31 @@ DiagGaussian::read(iDataStreamFile& is)
 	  covar->name().c_str(),
 	  covar->dim());
   }
-  emSetEmAllocatedBit();
+  setBasicAllocatedBit();
 }
 
 
 void
 DiagGaussian::write(oDataStreamFile& os)
 {
-  // first write the type
+  assert ( basicAllocatedBitIsSet() );
 
-  // next write the name
+  // write the type of self and the name
+  os.write((int)GaussianComponent::Diag);
+  NamedObject::write(os);
+  os.nl();
 
-  error("DiagGaussian::write not implemented");
+  // write mean vector
+  os.write(mean->name());
+  os.write(covar->name());
 }
 
 
 void
 DiagGaussian::makeRandom()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   mean->makeRandom();
   covar->makeRandom();
 }
@@ -111,6 +118,8 @@ DiagGaussian::makeRandom()
 void
 DiagGaussian::makeUniform()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   mean->makeUniform();
   covar->makeUniform();
 }
@@ -141,6 +150,8 @@ DiagGaussian::log_p(const float *const x,
 		    const Data32* const base,
 		    const int stride)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   logpr rc;
   rc.set_to_zero();
 
@@ -204,8 +215,8 @@ DiagGaussian::emStartIteration()
   emSetSwappableBit();
 
   accumulatedProbability = 0.0;
-  mean->emStartIteration();
-  covar->emStartIteration();
+  mean->emStartIteration(nextMeans);
+  covar->emStartIteration(nextDiagCovars);
 }
 
 
@@ -220,9 +231,20 @@ DiagGaussian::emIncrement(logpr prob,
 
   emStartIteration();
 
+  if (prob < minIncrementProbabilty) {
+    missedIncrementCount++;
+    return;
+    // don't accumulate anything since this one is so small and
+    // if we did an unlog() and converted to a single precision
+    // floating point number, it would be a denomral.
+  }
+
   accumulatedProbability += prob;
-  mean->emIncrement(prob,f,base,stride);
-  covar->emIncrement(prob,f,base,stride);
+  // prob.unlog() here so it doesn't need to be done
+  // twice by the callees.
+  const float fprob = prob.unlog();
+  mean->emIncrement(prob,fprob,f,base,stride,nextMeans.ptr);
+  covar->emIncrement(prob,fprob,f,base,stride,nextDiagCovars.ptr);
 }
 
 
@@ -236,11 +258,14 @@ DiagGaussian::emEndIteration()
     return;
 
   if (accumulatedProbability == 0.0) {
+    // TODO: need to check if this will overflow here
+    // when dividing by it. This is more than just checking
+    // for zero. Also need to do this in every such EM object.
     warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
-  mean->emEndIteration();
-  covar->emEndIteration();
+  mean->emEndIteration(nextMeans.ptr);
+  covar->emEndIteration(accumulatedProbability,nextMeans.ptr,nextDiagCovars.ptr);
 
   emClearOnGoingBit();
 }

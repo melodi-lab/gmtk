@@ -26,7 +26,7 @@
 #include "fileParser.h"
 #include "logp.h"
 #include "machine-dependent.h"
-
+#include "sArray.h"
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_GaussianComponent.h"
@@ -41,6 +41,10 @@ class DiagGaussian : public GaussianComponent {
   MeanVector* mean;
   // The index in the global mean array of this mean.
   int meanIndex; 
+  // For EM Training: Local copy of mean & diagCov accumulators for this DiagGaussian,
+  // which is needed for sharing.
+  sArray<float> nextMeans;
+  sArray<float> nextDiagCovars;
 
   ///////////////////////////////////////////////////////
   // The diagonal of the covariance matrix

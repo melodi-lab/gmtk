@@ -160,79 +160,158 @@ DiagCovarVector::preCompute()
 
 
 void
-DiagCovarVector::emStartIteration()
+DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
 {
   if (!GM_Parms.amTrainingCovars())
     return;
 
-  if(emOnGoingBitIsSet())
-    return; // already done
+  /////////////////////////////////////////////
+  // make sure our caller has its covar accumulator resized
+  // and initialized.
+  componentsNextCovars.growIfNeeded(covariances.len());
+  for (int i=0;i<covariances.len();i++) {
+    componentsNextCovars[i] = 0.0;
+  }
+
+  if(emOnGoingBitIsSet()) {
+    // EM already on going.
+    // Increment the count of number of Gaussian Components using this mean.
+    refCount++; 
+    return; 
+  }
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
-    nextCovariances.resize(covariances.len());
-    nextMeans.resize(covariances.len());
     emSetEmAllocatedBit();
+    // allocate the final covars means if needed
+    nextCovariances.growIfNeeded(covariances.len());
+    // allocate the final next means if needed
+    // nextMeans.growIfNeeded(covariances.len());
   }
   // EM iteration is now going.
   emSetOnGoingBit();
-  emSetSwappableBit();
   
   accumulatedProbability = 0.0;
   numFlooredVariances = 0;
+  refCount=1;
   for (int i=0;i<covariances.len();i++) {
-    nextCovariances[i] = nextMeans[i] = 0.0;
+    // nextMeans[i] = 0.0;
+    nextCovariances[i] = 0.0;
   }
+
+
+  // make it swapable, although at this point
+  // it would swap in the unaccumulated values.
+  emSetSwappableBit();
 }
 
 
 void
-DiagCovarVector::emIncrement(logpr prob,
+DiagCovarVector::emIncrement(const logpr prob,
+			     const float fprob,
 			     const float*f,
 			     const Data32* const base,
-			     const int stride)
+			     const int stride,
+			     float *const partialAccumulatedNextCovar)
 {
   if (!GM_Parms.amTrainingCovars())
     return;
+  
+  /////////////////////////////////////////////
+  // Note: unlike the normal EM mode described
+  // in GMTK_EMable.h, we do not call
+  // emStartIteration() here and assume that it
+  // was called by the Gaussian component that
+  // is using this mean.
 
-  emStartIteration();
-
-  if (prob < minIncrementProbabilty) {
-    missedIncrementCount++;
-    return;
-    // don't accumulate anything since this one is so small and
-    // if we did an unlog() and converted to a single precision
-    // floating point number, it would be a denomral or underflow.
-  } 
+  // we assume here that (prob > minIncrementProbabilty),
+  // i.e., that this condition has been checked by the caller
+  // of this routine (meaning that fprob is valid)
+  assert (prob >= minIncrementProbabilty);
 
   accumulatedProbability += prob;
-  const float f_prob = prob.unlog();
 
-  float * means_p = nextMeans.ptr;
-  float * covars_p = nextCovariances.ptr;
-  float * means_end_p = nextMeans.ptr + nextMeans.len();
+  float * covars_p = partialAccumulatedNextCovar;
+  float * covars_end_p = partialAccumulatedNextCovar + covariances.len();
   const float * f_p = f;
   do {
-    const float tmp = (*f_p)*f_prob;
-    *covars_p += (*f_p)*tmp;
-    *means_p += tmp;
+    const float tmp = (*f_p)*(*f_p)*fprob;
+    *covars_p += tmp;
 
     covars_p++;
-    means_p++;
     f_p++;
-  } while (means_p != means_end_p);
+  } while (covars_p != covars_end_p);
 
 }
 
 
 void
-DiagCovarVector::emEndIteration()
+DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
+				const float*const partialAccumulatedNextMeans,
+				const float *const partialAccumulatedNextCovar)
 {
   if (!GM_Parms.amTrainingCovars())
     return;
 
-  if (!emOnGoingBitIsSet())
+  if (refCount > 0) {
+    // then we just accumulate in the covariance
+    // shared by the parent.
+
+    // if this isn't the case, something is wrong.
+    assert ( emOnGoingBitIsSet() );
+
+    // TODO: make this next condition an overflow condition
+    // rather than just check for zero. This should
+    // have been ensured by the caller.
+    assert ( parentsAccumulatedProbability != 0.0 );
+
+    // NOTE: What are we doing here? We need to compute
+    // the weighted average of the shared means and covariances
+    // using the formula:
+    // 
+    // 
+    //                              \sum p(j|x_i) (x_i-m_j)^2
+    //        1.0                     i
+    // C =  ------- \sum E[I(j)] --------------------------------------
+    //         N      j             \sum p(j|x_i)
+    //                                i
+    // where N = \sum E[I(j)]
+    //             j
+    // and where I(j) is the indicator of class j so 
+    // E[I(j)] = \sum_i p(j|x_i) are the expected counts.
+    // 
+    // The complication is that the means and covariances might be shared.
+    // What we are doing here is, using the EM version
+    // of the formula cov(X) = EX^2 - (EX)^2
+    // accumulating the partially weighted EX^2 and (EX)^2,
+    // since in the above formula E[I(j)] cancels out the denominator.
+    // The entire thing needs to be divided again by N, which
+    // is done below after refCount hits zero.
+
+    // accumulate in the 1st and 2nd order statistics given
+    // by the mean object.
+    const double invRealAccumulatedProbability = 
+      parentsAccumulatedProbability.inverse().unlog();
+    
+    for (int i=0;i<covariances.len();i++) {
+      nextCovariances[i] += 
+	(partialAccumulatedNextCovar[i] - 
+	 partialAccumulatedNextMeans[i]*partialAccumulatedNextMeans[i]*invRealAccumulatedProbability);
+    }
+
+    refCount--;
+  }
+
+
+  /////////////////////////////////////////////
+  // if there is still someone who
+  // has not given us his/her 1st order stats,
+  // then we return w/o finishing.
+  if (refCount > 0)
     return;
+
+  // otherwise, we're ready to finish and
+  // compute the next covariances.
 
   if (accumulatedProbability.zero()) {
     // TODO: need to check if this will overflow here
@@ -246,12 +325,8 @@ DiagCovarVector::emEndIteration()
   // finish computing the next means.
 
   unsigned prevNumFlooredVariances = numFlooredVariances;
-  for (int i=0;i<nextMeans.len();i++) {
-    nextMeans[i] *= invRealAccumulatedProbability;
+  for (int i=0;i<covariances.len();i++) {
     nextCovariances[i] *= invRealAccumulatedProbability;
-    
-    nextCovariances[i] = 
-      nextCovariances[i]  - nextMeans[i]*nextMeans[i];
 
     
     /////////////////////////////////////////////////////
@@ -305,6 +380,11 @@ DiagCovarVector::emSwapCurAndNew()
 {
   if (!GM_Parms.amTrainingCovars())
     return;
+
+  // we should have that the number of calls
+  // to emStartIteration and emEndIteration are
+  // the same.
+  assert ( refCount == 0 );
 
   if (!emSwappableBitIsSet())
     return;

@@ -328,6 +328,12 @@ public:
   void readBasic(iDataStreamFile& is);
   void writeBasic(oDataStreamFile& os);
 
+  ///////////////////////////////////////////////////////////    
+  // read/write in all the all parameters for simple
+  // file format
+  void readAll(iDataStreamFile& is);
+  void writeAll(oDataStreamFile& os);
+
 
   ///////////////////////////////////////////////////////////    
   // read/write an entire GM (params + structure, i.e.,
