@@ -297,6 +297,8 @@ void GMTK_GM::emIncrement(logpr p)
 void GMTK_GM::emStartIteration()
 {
     for (unsigned i=0; i<node.size(); i++)
+        node[i]->emClearAllocatedBit();
+    for (unsigned i=0; i<node.size(); i++)
         node[i]->emStartIteration();
 }
 
@@ -316,6 +318,14 @@ void GMTK_GM::emEndIteration()
 {
     for (unsigned i=0; i<node.size(); i++)
         node[i]->emEndIteration();
+    for (unsigned i=0; i<node.size(); i++)
+        node[i]->emClearSwappedBit();
+}
+
+void GMTK_GM::emSwapCurAndNew()
+{
+    for (unsigned i=0; i<node.size(); i++)
+        node[i]->emSwapCurAndNew();
 }
 
 /*
@@ -333,6 +343,7 @@ void GMTK_GM::emEndIteration()
 
 void GMTK_GM::enumerativeEM(int iterations)
 {
+    logpr last_dp = 0.0;
     for (int i=0; i<iterations; i++)
     {
         emStartIteration();
@@ -351,6 +362,9 @@ void GMTK_GM::enumerativeEM(int iterations)
         } while (clampNextExample());
         cout << "Total data prob is: " << total_data_prob.val() << endl;
         emEndIteration();
+        if (total_data_prob > last_dp)
+            emSwapCurAndNew();
+        last_dp = total_data_prob;
     }
 }
 
@@ -370,6 +384,7 @@ void GMTK_GM::enumerativeEM(int iterations)
 
 void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
 {
+    logpr last_dp = 0.0;
     for (int i=0; i<iterations; i++)
     {
         emStartIteration();
@@ -390,6 +405,9 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
         } while (clampNextExample());
         cout << "Total data prob is: " << total_data_prob.val() << endl;
         emEndIteration();
+        if (total_data_prob > last_dp)
+            emSwapCurAndNew();
+        last_dp = total_data_prob;
     }
 }
 
@@ -697,4 +715,109 @@ void GMTK_GM::showCliques()
         cout << "Clique " << i << ":" << endl;
         chain->preorder[i]->reveal();
     }
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      unroll duplicates one or more time slices a specified number of times 
+ * 
+ * Preconditions:
+ *      The network up to the template slices must be fully set up
+ *      Variables from a time slice must be contiguous in the node array
+ *      node[i-period] must be analogous to node[i] in the existing network
+ *
+ * Postconditions:
+ *      The network is ready for inference
+ *
+ * Side Effects:
+ *      RandomVariables created and parent pointers set 
+ *
+ * Results:
+ *      nil 
+ *
+ *-----------------------------------------------------------------------
+ */
+
+GMTK_GM::unroll(int first_frame, int last_frame, int times)
+{
+/*
+    map<int,int> slice_size_for_frame;
+    map<int,vector<RandomVariable *>::iterator> start_of_slice, end_of_slice;
+
+    // find out how big each slice is
+    vector<RandomVariable *>::iterator vi;
+    vector<RandomVariable *>::reverse_iterator rvi;
+    for (vi=node.begin(); vi!=node.end(); vi++)
+        end_of_slice[vi->timeIndex] = vi; 
+    for (rvi=node.rbegin(); rvi!=node.rend(); rvi++)
+        start_of_slice[rvi->timeIndex] = rvi;
+    for (int i=first_frame; i<=last_frame; i++)
+        slice_size_for_frame[i] = end_of_slice[i]-start_of_slice[i];
+
+    cur_slices = node.rbegin()->timeIndex;
+
+    // for all existing variables, map their address to the slice and offset
+    map<RandomVariable *, pair<int,int> > slice_info_for;
+    for (int i=0; i<=cur_slices; i++)
+    {
+        int offset = 0;
+        for (vi=start_of_slice[i]; vi<=end_of_slice[i]; vi++)
+            slice_info_for[*vi] = pair<int,int>(i, offset++);
+    }
+    
+    // duplicate the range over and over again
+    map<pair<int, int>, RandomVariable *> rv_for_slice;
+    int cs = last_frame+1;
+    for (int i=0; i<times; i++)
+    {
+        // make the analogous variables in the new slices
+        vi = start_of_slice[first_frame];
+        for (int j=first_frame; j<=last_frame; j++, cs++)
+            for (int k=0; k<slice_size_for_frame[j]; k++, vi++)    
+            {
+                RandomVariable *nrv = vi->clone();
+                nrv->timeIndex = cs;
+                rv_for_slice[pair<int,int>(cs, k)] = nrv; 
+                node.push_back(nrv);  // ok because no pointers
+            }
+        assert(vi==end_of_slice[last_frame]+1);
+    }
+
+    // clear the child arrays
+    for (int i=0; i<node.size(); i++)
+        node[i]->allPossibleChildren.clear(); 
+
+    // update all the parents in the network
+    int period = last_frame-first_frame+1;
+    for (int i=0; i<node.size(); i++)
+        if (node[i]->timeIndex <= last_frame)
+            continue;  // parents unchanged
+        else if (node[i]->timeIndex <= last_frame + period*times)
+        {
+            // how many periods ahead are we?
+            int periods = (node[i]->timeIndex-last_frame-1)/period + 1; 
+
+            for (int j=0; j<node[i]->switchingParents.size(); j++)
+            {
+                pair<int, int> slice_info = 
+                    slice_info_for[node[i]->switchingParents[j]];
+                int pslice = slice_info.first + periods*period;
+                int poffset = slice_info.second;
+                node[i]->switchingParents[j] = 
+                    rv_for_slice[pair<int,int>(pslice, poffset);
+            }
+// repeat for all the other parents
+        }
+        else  
+        // parents point to original block; must be advanced by
+        // period * times        
+// remember to change (increase) time index of last slice's nodes!!
+        {
+        }
+    
+        // update all the allPossibleChildren arrays -- add the parents 
+        // all over again
+
+*/
 }
