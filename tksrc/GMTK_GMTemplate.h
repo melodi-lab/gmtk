@@ -124,7 +124,8 @@ public:
 			      /* P */ TH_MIN_POSITION_IN_FILE = 6,
 			      // use triangulation hint of variables
 			      // in .str file given by user.
-			      /* H */ TH_MIN_HINT = 7
+			      /* H */ TH_MIN_HINT = 7,
+			      /* N */ TH_MIN_WEIGHT_NO_D = 8
   };
 
   enum InterfaceHeuristic { /* S */ IH_MIN_SIZE = 1,        
@@ -133,7 +134,8 @@ public:
 			    // use average entropy in CPTs
 			    /* E */ IH_MIN_ENTROPY = 4,
 			    /* C */ IH_MIN_MAX_C_CLIQUE = 5,
-			    /* M */ IH_MIN_MAX_CLIQUE = 6
+			    /* M */ IH_MIN_MAX_CLIQUE = 6,
+			    /* N */ IH_MIN_WEIGHT_NO_D = 7
   };
 
 
@@ -338,7 +340,8 @@ public:
   // compute the weight (log10(state space)) of a set
   // of variables if they were to be placed within one clique.
   float computeWeight(const set<RandomVariable*>& nodes,
-		      const RandomVariable* node = NULL);
+		      const RandomVariable* node = NULL,
+		      const bool useDeterminism = true);
 
   // computes the fill in of a set of variables.
   int computeFillIn(const set<RandomVariable*>& nodes);
