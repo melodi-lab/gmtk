@@ -56,20 +56,31 @@ prefix = .
 exec_prefix = .
 install_prefix = .
 
-libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L/g/rcs/sw/lib
-includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint
+#libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../lowLevelFileIO -L$(prefix)/../pfile -L$(prefix)/../IEEEFloatingpoint -L/g/rcs/sw/lib
+libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../IEEEFloatingpoint -L/g/rcs/sw/lib
+#includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../lowLevelFileIO -I$(prefix)/../pfile -I$(prefix)/../IEEEFloatingpoint
+includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../IEEEFloatingpoint
 docdir = $(prefix)/man/man1
 
 #
 # Libraries.
 #
-LIBS = -lfileParser  -lmiscSupport -lpfile -lIEEEsupport -lfl -lsunmath -lm 
-GMTEST_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm 
-OBS_PRINT_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
-OBS_INFO_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
-OBS_SKMEANS_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
-OBS_CONCAT_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
-OBS_DIFF_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+# LIBS = -lfileParser  -lmiscSupport -lpfile -lIEEEsupport -lfl -lsunmath -lm 
+# GMTEST_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm 
+# OBS_PRINT_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+# OBS_INFO_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+# OBS_SKMEANS_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+# OBS_CONCAT_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+# OBS_DIFF_LIBS = -lmiscSupport -lpfile -lIEEEsupport -lfl -lm
+
+LIBS = -lfileParser  -lmiscSupport  -lIEEEsupport -lfl -lsunmath -lm 
+GMTEST_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm 
+OBS_PRINT_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
+OBS_INFO_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
+OBS_SKMEANS_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
+OBS_CONCAT_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
+OBS_DIFF_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
+
 
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
@@ -109,7 +120,7 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_ObservationMatrix.o GMTK_Stream.o GMTK_DataTransformations.o GMTK_WordOrganization.o GMTK_ObsStats.o
+objs = GMTK_ObservationMatrix.o GMTK_Stream.o GMTK_DataTransformations.o GMTK_WordOrganization.o GMTK_ObsStats.o pfile.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
