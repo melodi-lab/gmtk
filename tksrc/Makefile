@@ -70,7 +70,7 @@ compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CCFLAGS)
 compile.c = $(CC) $(DEFS) $(INCLUDES) $(CXXFLAGS)
 link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
-compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
+compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 
 #----------------------------------------------------------------------------
 # Default build rules.
