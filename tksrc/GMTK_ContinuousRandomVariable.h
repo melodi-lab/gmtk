@@ -108,10 +108,16 @@ public:
 
   // compute the probability
   logpr probGivenParents();
+  void probGivenParents(logpr& p);
   logpr probGivenParentsWSetup() {
     findConditionalParents();
-    return probGivenParents();
+    return ContinuousRandomVariable::probGivenParents();
   }
+  void probGivenParentsWSetup(logpr& p) {
+    findConditionalParents();
+    return ContinuousRandomVariable::probGivenParents(p);
+  }
+
 
   ////////////////////////////////////////////////
   // clamp this RV to its "first" value,
@@ -140,11 +146,18 @@ public:
       warning("WARNING: clamping value of observation variable w/o observation matrix");
     findConditionalParents();
   }
+  void begin(logpr& p) {
+    findConditionalParents();
+    ContinuousRandomVariable::probGivenParents(p);
+  }
   ////////////////////////////////////////////////////////////
   // always the last value, since we do not support hidden
   // continuous variables at this time (but soon)
   bool next() { return false; }
+  bool next(logpr& p) { return false;  }
   ////////////////////////////////////////////////////////////////
+
+
 
 
   ////////////////////////////////////////////////////////////////

@@ -240,6 +240,8 @@ Mixture::log_p(const unsigned frameIndex,
       // having log number of allocations in the ultimate size of the observation vectors.
       componentCache.resize( ((frameIndex+1)*5)>>2 );
     }
+    // TODO: this stuff is needed only for EM, don't cache components
+    // when just doing decoding.
     if (componentCache[frameIndex].cmpProbArray.size() < numComponents)
       componentCache[frameIndex].cmpProbArray.resize(numComponents);
 
@@ -252,12 +254,15 @@ Mixture::log_p(const unsigned frameIndex,
     }
 
     logpr rc;
+    // TODO: this stuff is needed only for EM, don't cache components
+    // when just doing decoding.
     for (unsigned i=0;i<numComponents;i++) {
       logpr tmp = dense1DPMF->p(i)* components[i]->log_p(x,base,stride);
       // store each component prob value
       componentCache[frameIndex].cmpProbArray[i].prob = tmp;
       rc += tmp;
     }
+
     // and store the sum as well.
     componentCache[frameIndex].prob = rc;
     return rc;

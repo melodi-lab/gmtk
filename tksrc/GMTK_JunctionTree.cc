@@ -57,8 +57,8 @@
 
 VCID("$Header$");
 bool JunctionTree::jtWeightUpperBound = false;
-bool JunctionTree::separatorIntersection = true;
 bool JunctionTree::probEvidenceTimeExpired = false;
+bool JunctionTree::viterbiScore = false;
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -2054,7 +2054,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
   // all nodes in separators for incomming messages for this clique.
   clique.unionIncommingCESeps.clear();
 
-  if (MaxClique::ceSeparatorDrivenInference && separatorIntersection) {
+  if (MaxClique::ceSeparatorDrivenInference) {
     if (numSeparators == 0) {
       // This must be a leaf-node clique relatve to root.
       // 'unionIncommingCESeps' is already empty so no need to do anything there.
@@ -2171,8 +2171,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
     }
   } else {
-    // Either we are doing clique driven iteration or we do not wish
-    // to do separator Intersection for separator driven. 
+    // we are doing clique driven iteration 
 
     // In the case of CLIQUE-DRIVEN inference: while we could use the
     // same code as above (producing both accumulated intersection and

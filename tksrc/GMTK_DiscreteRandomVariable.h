@@ -232,13 +232,35 @@ public:
     }
     return _cachedProb;
   }
+  void probGivenParents(logpr& p) {
+    logpr _cachedProb = curCPT->probGivenParents(*curConditionalParents,val);
+    // 
+    // TODO: make this weight stuff part of a subclass with a new version
+    // of this function, same speed since probGivenParents is virtual anyway.
+    if (wtStatus != wt_NoWeight) {
+      if (wtStatus == wt_Constant)
+	_cachedProb.valref() *= wtWeight;
+      else // get weight from observation matrix at current time frame
+	_cachedProb.valref() *= 
+	  (*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
+    }
+    p = _cachedProb;
+  }
+
 
   logpr probGivenParentsWSetup() {
-    findConditionalParents();
+    DiscreteRandomVariable::findConditionalParents();
     // this isn't necessary.
     // curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    return probGivenParents();
+    return DiscreteRandomVariable::probGivenParents();
   }
+  void probGivenParentsWSetup(logpr& p) {
+    DiscreteRandomVariable::findConditionalParents();
+    // this isn't necessary.
+    // curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    return DiscreteRandomVariable::probGivenParents(p);
+  }
+
 
 
   // set the RV (which must be 
@@ -321,8 +343,34 @@ public:
     return (it != curCPT->end()); 
   }
 
+  // clamp this RV to its "first" value
+  void begin(logpr& p) {
+    findConditionalParents();
+    if (!hidden) {
+      // Observed value must be already set via setToObservedValue();
+      DiscreteRandomVariable::probGivenParents(p);      
+      return;
+    }
+    // a hidden variable, so we set up the iterator.
+    curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    it = curCPT->begin(); 
+    val = it.val();
+    DiscreteRandomVariable::probGivenParents(p);
+    // assert ( val >= 0 );
+  }
 
-
+  // continue on
+  bool next(logpr& p) { 
+    if (!hidden) 
+      return false;
+    it++; 
+    const bool unfinished = (it != curCPT->end());
+    if (unfinished) {
+      val = it.val();
+      DiscreteRandomVariable::probGivenParents(p);
+    }
+    return unfinished;
+  }
 
 
   ////////////////////////////////////////////////////////////////

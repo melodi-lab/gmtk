@@ -939,6 +939,10 @@ MaxClique::prepareForUnrolling()
     // clique) or we store nothing at all (in the case when
     // there are only observed variables).
   }
+
+  // allocate storage for the non-recursive clique iteration code.
+  probArrayStorage.resize( sortedAssignedNodes.size() + 1 );
+
 }
 
 
@@ -1625,7 +1629,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
 /*-
  *-----------------------------------------------------------------------
- * MaxClique::ceIterateAssignedNodes()
+ * MaxClique::ceIterateAssignedNodesRecurse()
  *
  *    Collect Evidence, Iterate Separators: This routine
  *    is part of separator driven clique instantiation. 
@@ -1669,16 +1673,16 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
  *-----------------------------------------------------------------------
  */
 void
-InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
-					   const unsigned nodeNumber,
-					   const logpr p)
+InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
+						  const unsigned nodeNumber,
+						  const logpr p)
 {
 
   if (nodeNumber == fSortedAssignedNodes.size()) {
     // time to store clique value and total probability, p is
     // current clique probability.
 
-    // printf("ceIterateAssignedNodes: nodeNumber = %d, p = %f,",nodeNumber,p.val());
+    // printf("ceIterateAssignedNodesRecurse: nodeNumber = %d, p = %f,",nodeNumber,p.val());
     // printRVSet(fNodes);
 
     // keep track of the max clique probability right here.
@@ -1734,6 +1738,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
   switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
   case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
     {
+#if 1
       rv->begin();
       do {
 	// At each step, we compute probability
@@ -1752,9 +1757,31 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 	if (!cur_p.essentially_zero()) {
 	  // Continue, updating probability by cur_p, contributing this
 	  // probability to the clique potential.
-	  ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
+	  ceIterateAssignedNodesRecurse(part,nodeNumber+1,p*cur_p);
 	}
       } while (rv->next());
+#else
+      logpr cur_p;
+      rv->begin(cur_p);
+      do {
+	if (message(Giga)) {
+	  if (!rv->discrete) {
+	    infoMsg(Giga,"  Assigned iteration and prob application of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+	  } else {
+	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    infoMsg(Giga,"  Assigned CPT iteration and prob application of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	  }
+	}
+	// if at any step, we get zero, then back out.
+	if (!cur_p.essentially_zero()) {
+	  // Continue, updating probability by cur_p, contributing this
+	  // probability to the clique potential.
+	  ceIterateAssignedNodesRecurse(part,nodeNumber+1,p*cur_p);
+	}
+      } while (rv->next(cur_p));
+#endif
     }
     break;
 
@@ -1777,7 +1804,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 	// if at any step, we get zero, then back out.
 	if (!cur_p.essentially_zero()) {
 	  // Continue, do not update probability!!
-	  ceIterateAssignedNodes(part,nodeNumber+1,p);
+	  ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
 	}
       } while (rv->next());
     }
@@ -1793,7 +1820,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 	infoMsg(Giga,"  Assigned card iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
 		rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
 	// Continue, do not update probability!!
-	ceIterateAssignedNodes(part,nodeNumber+1,p);
+	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
       } while (++drv->val < drv->cardinality);
     }
     break;
@@ -1806,13 +1833,13 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       // if at any step, we get zero, then back out.
       if (!cur_p.essentially_zero()) {
 	// Continue, updating probability by cur_p.
-	ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
+	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p*cur_p);
       }
     }
     break;
 
   case MaxClique::AN_CONTINUE:
-    ceIterateAssignedNodes(part,nodeNumber+1,p);
+    ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
     break;
 
   case MaxClique::AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS:
@@ -1822,7 +1849,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       logpr cur_p = rv->probGivenParentsWSetup();
       if (!cur_p.essentially_zero()) {
 	// Continue, do not update probability!!
-	ceIterateAssignedNodes(part,nodeNumber+1,p);
+	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
       }
     }
     break;
@@ -1834,6 +1861,361 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::ceIterateAssignedNodesNoRecurse()
+ *
+ *    This is a non-recursive version of
+ *    ceIterateAssignedNodesRecurse(). The reason for this routine is
+ *    to try to produce code that has better branch prediction
+ *    behavior and that also creates fewer temporary variables.
+ *
+ *    This routine is a bit more involved than the recursive version, as
+ *    it uses customize loops (with some goto statements). Note that
+ *    the recursive version is called as a backup when there are no
+ *    assigned nodes in a clique. For that reason, and also for
+ *    pedagogical reasons, the recursive version is still in place.
+ *
+ * Preconditions:
+ *
+ *   Same as ceIterateAssignedNodesRecurse()
+ *
+ * Postconditions:
+ *
+ *   Same as ceIterateAssignedNodesRecurse()
+ *
+ * Side Effects:
+ *
+ *   Same as ceIterateAssignedNodesRecurse()
+ *
+ * Results:
+ *
+ *   Same as ceIterateAssignedNodesRecurse()
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
+						    const logpr p)
+{
+
+  if (fSortedAssignedNodes.size() == 0) {
+    // let recursive version handle degenerate case
+    return ceIterateAssignedNodesRecurse(part,0,p);
+  }
+
+  // parray has to be 1 offset, storing p in entry -1
+  logpr* parray = origin.probArrayStorage.ptr + 1;
+  parray[-1] = p;
+
+  int nodeNumber;
+  logpr cur_p;
+  for (nodeNumber=0;nodeNumber<(int)fSortedAssignedNodes.size();nodeNumber++) {
+    RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
+    switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
+    case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
+      {
+	rv->begin(cur_p);
+	// check for possible zero (could occur with
+	// zero score or observations).
+	if (cur_p.essentially_zero()) {
+	  // Since we have zero here, we cancel iterations of all
+	  // subsequent variables right now, rather than iterate them
+	  // with what will end up being zero probability.
+	  parray[nodeNumber].set_to_zero();
+	  nodeNumber++;
+	  goto end_of_initial_clique_value;
+	} else 
+	  parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
+      }
+      break;
+
+    case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
+      {
+	rv->begin(cur_p);
+	// check for possible zero (could occur with
+	// zero score or observations).
+	if (cur_p.essentially_zero()) {
+	  // Since we have zero here, we cancel iterations of all
+	  // subsequent variables right now, rather than iterate them
+	  // with what will end up being zero probability.
+	  parray[nodeNumber].set_to_zero();
+	  nodeNumber++;
+	  goto end_of_initial_clique_value;
+	} else 
+	  parray[nodeNumber] = parray[nodeNumber-1];
+      }
+      break;
+
+
+    case MaxClique::AN_CARD_ITERATION:
+      {
+	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	drv->val = 0;
+	parray[nodeNumber] = parray[nodeNumber-1];
+      }
+      break;
+
+    case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
+      {
+	// TODO: Make more efficient version of this, based on the type of
+	// RV.
+	rv->probGivenParentsWSetup(cur_p);
+	// might get a zero probability, check condition here.
+	if (cur_p.essentially_zero()) {
+	  // Since we have zero here, we cancel iterations of all
+	  // subsequent variables right now, rather than iterate them
+	  // with what will end up being zero probability.
+	  parray[nodeNumber].set_to_zero();
+	  nodeNumber++;
+	  goto end_of_initial_clique_value;
+	} else 
+	  parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
+      }
+      break;
+
+    case MaxClique::AN_CONTINUE:
+      parray[nodeNumber] = parray[nodeNumber-1];
+      break;
+
+    case MaxClique::AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS:
+      {
+	// TODO: Make more efficient version of this, based on the type of
+	// RV.
+	rv->probGivenParentsWSetup(cur_p);
+	// might get a zero probability check condition here.
+	if (cur_p.essentially_zero()) {
+	  // Since we have zero here, we cancel iterations of all
+	  // subsequent variables right now, rather than iterate them
+	  // with what will end up being zero probability.
+	  parray[nodeNumber].set_to_zero();
+	  nodeNumber++;
+	  goto end_of_initial_clique_value;
+	} else 
+	  parray[nodeNumber] = parray[nodeNumber-1];
+      }
+      break;
+    }
+  }
+  
+ end_of_initial_clique_value:
+  
+  // get ready for main loop
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const int maxNodeNumber = (int)fSortedAssignedNodes.size()-1;
+  nodeNumber--;
+
+  // check if zero probability, and if so, skip the first one and
+  // continue on.
+  if (parray[nodeNumber].essentially_zero())
+    goto next_iteration;
+
+
+  // main loop, iterate through all assigned nodes in this clique.
+  do {
+
+    // add a clique value to the clique.
+    {
+      const logpr final_p = parray[nodeNumber];
+
+      // time to store clique value and total probability, p is current
+      // clique probability.
+      // keep track of the max clique probability right here.
+
+      if (final_p > maxCEValue)
+	maxCEValue = final_p;
+
+      if (numCliqueValuesUsed >= cliqueValues.size()) {
+	// TODO: optimize this.
+	cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+      }
+
+      // Possibly remove this check if possible. It's probably ok though
+      // since as long as this loop runs several times, branch
+      // predictions should handle it (so 1 cycle latency).
+      if (imc_nwwoh_p) {
+	// pack the clique values directly into place
+	origin.packer.pack(
+			   (unsigned**)discreteValuePtrs.ptr,
+			   (unsigned*)&(cliqueValues.ptr[numCliqueValuesUsed].val[0]));
+      } else {
+	// Deal with the hash table to re-use clique values.
+	// First, grab pointer to storge where next clique value would
+	// be stored if it ends up being used.
+	unsigned *pcv = origin.valueHolder.curCliqueValuePtr();
+	// Next, pack the clique values into this position.
+	origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
+	// Look it up in the hash table.
+	bool foundp;
+	unsigned *key;
+	key = origin.cliqueValueHashSet.insert(pcv,foundp);
+	if (!foundp) {
+	  // if it was not found, need to claim this storage that we
+	  // just used.
+	  origin.valueHolder.allocateCurCliqueValue();
+	}
+	// Save the pointer to whatever the hash table decided to use.
+	cliqueValues.ptr[numCliqueValuesUsed].ptr = key;
+      }
+      // save the probability
+      cliqueValues.ptr[numCliqueValuesUsed].p = final_p;
+      numCliqueValuesUsed++;
+    }
+
+  next_iteration:
+    // Now we need to move to next clique value. This bunch of next
+    // code is like an inlined iterator over clique values. It is done
+    // as "inline" in an attempt to avoid branch mis-predicts.
+    do {
+
+      bool unfinished;
+      RandomVariable* rv = fSortedAssignedNodes.ptr[nodeNumber];
+      switch (origin.dispositionSortedAssignedNodes.ptr[nodeNumber]) {
+      case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
+	{
+	  unfinished = rv->next(cur_p);
+	  // assert ( !unfinished || cur_p.not_essentially_zero() );
+	  parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
+	}
+	break;
+
+      case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
+	{
+	  // guaranteed not to get zero prob here.
+	  unfinished = rv->next();
+	}
+	break;
+
+      case MaxClique::AN_CARD_ITERATION:
+	{
+	  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	  unfinished = (++drv->val < drv->cardinality);
+	}
+	break;
+
+      default:
+	// these cases are handeled by 'default':
+	// case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
+	// case MaxClique::AN_CONTINUE:
+	// case MaxClique::AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS:
+	{
+	  unfinished = false;
+	}
+	break;
+      }
+      
+      if (unfinished) {
+	// Best case, we continue on to next outer iteration filling
+	// in next clique value.
+	break;
+      } else {
+	// we're finished with the current variable.
+	if (nodeNumber == 0) {
+	  // then we're really done.
+	  goto done_with_clique_iteration;
+	} else {
+	  nodeNumber--;
+	}
+      }
+
+      // still here? Continue on incrementing previous variable.
+    } while (1);
+
+    while (nodeNumber < maxNodeNumber) {
+      nodeNumber++;
+
+      // need to fill up the rest of the table.
+      RandomVariable* rv = fSortedAssignedNodes.ptr[nodeNumber];
+      switch (origin.dispositionSortedAssignedNodes.ptr[nodeNumber]) {
+      case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
+	{
+	  rv->begin(cur_p);
+	  // might get a zero probability, check condition here.
+	  if (cur_p.essentially_zero()) {
+	    // Since we have zero here, we cancel iterations of all
+	    // subsequent variables right now, rather than iterate
+	    // them with what will end up being zero probability.
+	    nodeNumber--;
+	    goto next_iteration;
+	  } else 
+	    parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
+	}
+	break;
+
+      case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
+	{
+	  rv->begin(cur_p);
+	  // might get a zero probability, check condition here.
+	  if (cur_p.essentially_zero()) {
+	    // Since we have zero here, we cancel iterations of all
+	    // subsequent variables right now, rather than iterate them
+	    // with what will end up being zero probability.
+	    nodeNumber--;
+	    goto next_iteration;
+	  } else {
+	    // TODO: update post-condition comments in RV and CPT iterators as
+	    // to when a zero RV can occur and when not.
+	    parray[nodeNumber] = parray[nodeNumber-1];
+	  }
+	}
+	break;
+
+      case MaxClique::AN_CARD_ITERATION:
+	{
+	  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	  drv->val = 0;
+	  parray[nodeNumber] = parray[nodeNumber-1];
+	}
+	break;
+
+      case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
+	{
+	  // TODO: Make more efficient version of this, based on the type of
+	  // RV.
+	  rv->probGivenParentsWSetup(cur_p);
+	  // might get a zero probability, check condition here.
+	  if (cur_p.essentially_zero()) {
+	    // Since we have zero here, we cancel iterations of all
+	    // subsequent variables right now, rather than iterate them
+	    // with what will end up being zero probability.
+	    nodeNumber--;
+	    goto next_iteration;
+	  } else 
+	    parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
+	}
+	break;
+
+      case MaxClique::AN_CONTINUE:
+	parray[nodeNumber] = parray[nodeNumber-1];
+	break;
+
+      case MaxClique::AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS:
+	{
+	  // TODO: Make more efficient version of this, based on the type of
+	  // RV.
+	  rv->probGivenParentsWSetup(cur_p);
+	  // might get a zero probability check condition here.
+	  if (cur_p.essentially_zero()) {
+	    // Since we have zero here, we cancel iterations of all
+	    // subsequent variables right now, rather than iterate them
+	    // with what will end up being zero probability.
+	    nodeNumber--;
+	    goto next_iteration;
+	  } else 
+	    parray[nodeNumber] = parray[nodeNumber-1];
+	}
+	break;
+      }
+    }
+
+  } while (1);
+
+ done_with_clique_iteration:
+  ;
+
+}
 
 
 /*-
@@ -2344,7 +2726,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
  *
  *   2) clique table must be created, meaning that either:
  *
- *        InferenceMaxClique::ceIterateAssignedNodes()
+ *        InferenceMaxClique::ceIterateAssignedNodesRecurse()
  *   or
  *        InferenceMaxClique::ceIterateAssignedNodesCliqueDriven
  *   must have just been called.

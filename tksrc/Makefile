@@ -237,7 +237,7 @@ install: $(all_exs)
 	(for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i; done)
 
 installd: $(all_exs)
-	(STR=`date +%a%b%d_%k_%Y | sed -e 's, ,,g'`; echo Installing with postfix $$STR; for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i.$$STR; strip $(install_prefix)/bin/$$i.$$STR; done)
+	(STR=`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`; echo Installing with postfix $$STR; for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i.$$STR; strip $(install_prefix)/bin/$$i.$$STR; done)
 
 uninstall:
 	rm -f $(exec_prefix)/bin/foo
