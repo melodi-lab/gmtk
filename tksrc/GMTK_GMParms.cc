@@ -85,10 +85,52 @@ GMParms::GMParms()
 
 GMParms::~GMParms()
 {
-  // need to free up all the memory that was allocated.
-  // Need to implement this.
-  // ...
+  deleteObsInVector(dPmfs);
+  deleteObsInVector(sPmfs);
+  deleteObsInVector(means);
+  deleteObsInVector(covars);
+  deleteObsInVector(dLinkMats);
+  deleteObsInVector(weightMats);
+  deleteObsInVector(gaussianComponents);
+  deleteObsInVector(mdCpts);
+  deleteObsInVector(msCpts);
+  deleteObsInVector(mtCpts);
+  deleteObsInVector(mixGaussians);
+  // deleteObsInVector(gausSwitchingMixGaussians);
+  // deleteObsInVector(logitSwitchingMixGaussians);
+  // deleteObsInVector(mlpSwitchingMixGaussians);
+  deleteObsInVector(dts);
+  deleteObsInVector(dLinks);
 }
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        Adding  Routines
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+void GMParms::add(Dense1DPMF* ob) { add(ob,dPmfs,dPmfsMap); }
+void GMParms::add(Sparse1DPMF* ob) { add(ob,sPmfs,sPmfsMap); } 
+void GMParms::add(MeanVector* ob){ add(ob,means,meansMap); }
+void GMParms::add(DiagCovarVector* ob){ add(ob,covars,covarsMap); }
+void GMParms::add(DlinkMatrix* ob) { add(ob,dLinkMats,dLinkMatsMap); }
+void GMParms::add(WeightMatrix*ob) { add(ob,weightMats,weightMatsMap); }
+void GMParms::add(GaussianComponent*ob){ add(ob,
+					     gaussianComponents,
+					     gaussianComponentsMap); }
+void GMParms::add(MDCPT*ob) { add(ob,mdCpts,mdCptsMap); }
+void GMParms::add(MSCPT*ob) { add(ob,msCpts,msCptsMap); }
+void GMParms::add(MTCPT*ob) { add(ob,mtCpts,mtCptsMap); }
+void GMParms::add(MixGaussians*ob) { add(ob,mixGaussians,mixGaussiansMap); }
+void GMParms::add(GausSwitchingMixGaussians*ob) { assert (0); }
+void GMParms::add(LogitSwitchingMixGaussians*ob) { assert (0); }
+void GMParms::add(MLPSwitchingMixGaussians*ob) { assert (0); }
+void GMParms::add(RngDecisionTree<unsigned>*ob) { 
+  add(ob,dts,dtsMap);
+  if (ob->clampable())
+    clampableDts.push_back(ob);
+}
+void GMParms::add(Dlinks* ob) { add(ob,dLinks,dLinksMap); }
 
 
 ////////////////////////////////////////////////////////////////////
@@ -534,12 +576,12 @@ GMParms::readDTs(iDataStreamFile& is, bool reset)
 	    cnt,is.fileName(),i);
 
     ob = new RngDecisionTree<unsigned>;
-    bool clampable = ob->read(is);
+    ob->read(is);
     if (dtsMap.find(ob->name()) != dtsMap.end())
       error("ERROR: DT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
     dts[i+start] = ob;
     dtsMap[ob->name()] = i+start;
-    if (clampable)
+    if (ob->clampable())
       clampableDts.push_back(ob);
   }
 }
