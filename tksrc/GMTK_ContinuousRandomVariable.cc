@@ -70,8 +70,8 @@ ContinuousRandomVariable::findConditionalParents()
 
   if ( cachedIntFromSwitchingState < 0 ||
        cachedIntFromSwitchingState >= conditionalParentsList.size()) {
-    error("ERROR: CRV %s:%d using DT '%s' got invliad switching position %d\n",
-	  label.c_str(),timeIndex, (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedIntFromSwitchingState);
+    error("ERROR: CRV %s:%d using DT '%s' got invalid switching position %d. Must be between 0 and %d.\n",
+	  label.c_str(),timeIndex, (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedIntFromSwitchingState,conditionalParentsList.size());
   }
 
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
