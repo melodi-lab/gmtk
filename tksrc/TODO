@@ -2518,4 +2518,6 @@ Thu Oct 28 13:21:03 2004
   - timing limit arguments to gmtkTriangulate for boundary and triangulate.
     
 
+Mon Nov 15 13:55:16 2004
+  - make sure we are compatible with quicknet for NN-based VE.
 
