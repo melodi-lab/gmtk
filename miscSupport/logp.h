@@ -52,7 +52,7 @@ extern double log_FLT_MIN;
 extern double log_DBL_MIN;
 
 #ifdef _TABLE_
-  const int table_size = 500000;
+  const int table_size = 50000;
 #endif
 
 //
