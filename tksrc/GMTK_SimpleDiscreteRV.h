@@ -153,6 +153,10 @@ public:
     // END OF SUPPORT FOR EM  VARIABLES /////
     /////////////////////////////////////////
     /////////////////////////////////////////
+
+    void emClearAllocatedBit() {;}
+    void emClearSwappedBit() {;}
+    void emSwapCurAndNew() {;}
 };
 
 #endif
