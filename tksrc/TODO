@@ -851,3 +851,12 @@ Thu Dec 26 03:18:13 2002
   - include something indocumentation about
     cpp0: ....
     errors, and that these are generated from cpp not gmtk.
+
+
+Mon Dec 30 05:16:04 2002
+  - this is probably mentioned somewhere above, but
+    change fileParser.{cc,h} to print out line numbers when
+    there is an error message, and also to understand
+    cpp's filename and line number mechanism (for ascii files
+    and when they are processed with cpp).
+
