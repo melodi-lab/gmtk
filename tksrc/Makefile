@@ -97,15 +97,15 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixGaussiansCommon.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_SimpleDiscreteRV.o GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_GM.o  GMTK_CliqueChain.o GMTK_Clique.o GMTK_MixGaussians.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_EMable.o GMTK_LinMeanCondDiagGaussian.o
+objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_DlinkMatrix.o GMTK_WeightMatrix.o GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixGaussiansCommon.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_RandomVariable.o GMTK_DiscreteRandomVariable.o  GMTK_SimpleDiscreteRV.o GMTK_ContinuousRandomVariable.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_GM.o  GMTK_CliqueChain.o GMTK_Clique.o GMTK_MixGaussians.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_EMable.o GMTK_LinMeanCondDiagGaussian.o GMTK_Hash.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
 
-all_srcs = gmtkScore.cc BN1.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixGaussiansCommon.cc GMTK_GaussianComponent.cc GMTK_MixGaussians.cc gmtkEMtrain.cc GMTK_EMable.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc
+all_srcs = gmtkScore.cc BN1.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DiscreteRandomVariable.cc GMTK_ContinuousRandomVariable.cc GMTK_DlinkMatrix.cc GMTK_GM.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RandomVariable.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_WeightMatrix.cc GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixGaussiansCommon.cc GMTK_GaussianComponent.cc GMTK_MixGaussians.cc gmtkEMtrain.cc GMTK_EMable.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_Hash.cc
 
-all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixGaussiansCommon.h GMTK_GaussianComponent.h GMTK_MixGaussians.h GMTK_LinMeanCondDiagGaussian.h
+all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixGaussiansCommon.h GMTK_GaussianComponent.h GMTK_MixGaussians.h GMTK_LinMeanCondDiagGaussian.h GMTK_Hash.h
 
 all_objs = $(objs)
 
@@ -147,6 +147,10 @@ testMDCPT: GMTK_MDCPT.cc GMTK_MDCPT.h  GMTK_CPT.o
 
 testMTCPT: GMTK_MTCPT.cc GMTK_MTCPT.h  $(objs)
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_MTCPT.cc $(objs) $(LIBS)
+
+
+testHash: GMTK_Hash.cc GMTK_Hash.h 
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_Hash.cc $(LIBS)
 
 
 testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h
