@@ -25,6 +25,7 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+#include "GMTK_ObservationMatrix.h"
 
 class DiscreteRandomVariable : public RandomVariable
 {
@@ -33,6 +34,7 @@ private:
   friend MDCPT;
   friend MSCPT;
   friend MTCPT;
+  friend class FileParser;
 
   //////////////////////////////////////////////////////////////////////
   // CPT array, one for each set of possible parents we might
@@ -45,6 +47,9 @@ private:
 
   // iterator used between clamp functions.
   CPT::iterator it;
+
+  // the feature file element corresponding to this RV.
+  unsigned featureElement;
 
 public:
 
@@ -78,7 +83,16 @@ public:
   }
   // clamp this RV to its "first" value
   void clampFirstValue() { 
-    if (!hidden) return;
+    if (!hidden) {
+      // observed, so set value from observation matrix
+      assert ( featureElement >= globalObservationMatrix.numContinuous 
+	       &&
+	       featureElement < globalObservationMatrix.numFeatures );
+      val = 
+	*((int*)
+	  (featureElement+globalObservationMatrix.baseAtFrame(timeIndex)));
+      return;
+    }
     findConditionalParents(); 
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
     it = curCPT->begin(); val = it.val(); 

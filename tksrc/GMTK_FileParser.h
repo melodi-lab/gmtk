@@ -54,8 +54,8 @@ private:
     enum Disposition { d_hidden, d_observed, d_unknown };
     struct FeatureRange {
       bool filled;
-      unsigned start;
-      unsigned stop;
+      unsigned firstFeatureElement;
+      unsigned lastFeatureElement;
       FeatureRange() { filled = false; }
       void clear() { filled = false; }
     };
@@ -161,7 +161,7 @@ private:
   // the result of the chunk parse
   unsigned _firstChunkframe;
   unsigned _lastChunkframe;
-  
+  unsigned _maxFrame;  
 
 public:
 
@@ -371,9 +371,9 @@ public:
 
   //////////////////////////////////////////////////////////////
   // access to the chunk information.
-  unsigned firstChunkframe() { return _firstChunkframe; };
-  unsigned lastChunkframe() { return _firstChunkframe; };
-
+  unsigned firstChunkframe() { return _firstChunkframe; }
+  unsigned lastChunkframe() { return _firstChunkframe; }
+  unsigned maxFrame() { return _maxFrame; }
 
 };
 

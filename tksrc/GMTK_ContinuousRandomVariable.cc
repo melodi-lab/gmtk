@@ -100,7 +100,7 @@ ContinuousRandomVariable::probGivenParents()
     _cachedProb = 
       curMappingOrDirect->gaussian->log_p
       (
-       firstFeature+globalObservationMatrix.floatAtFrame(timeIndex),
+       firstFeatureElement+globalObservationMatrix.floatAtFrame(timeIndex),
        globalObservationMatrix.baseAtFrame(timeIndex),
        globalObservationMatrix.stride
        );
@@ -114,7 +114,7 @@ ContinuousRandomVariable::probGivenParents()
     // different types of mixtures of Gaussians.
     _cachedProb = GM_Parms.mixGaussians[gaussianIndex]->log_p
       (
-       firstFeature+globalObservationMatrix.floatAtFrame(timeIndex),
+       firstFeatureElement+globalObservationMatrix.floatAtFrame(timeIndex),
        globalObservationMatrix.baseAtFrame(timeIndex),
        globalObservationMatrix.stride
        );
