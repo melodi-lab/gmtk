@@ -60,6 +60,7 @@ static const double gZoomMap[] = {
 
 // some sizes of things
 #define NODE_RADIUS (10*ACTUAL_SCALE)
+#define GRID_SIZE (10*ACTUAL_SCALE)
 #define NEW_CP_OFFSET (10*ACTUAL_SCALE)
 #define ARROW_LEN (12*ACTUAL_SCALE)
 #define ARROW_WID (4*ACTUAL_SCALE)
@@ -104,6 +105,7 @@ public:
     void setEndpointsSelected( bool newSelected, RVInfo::rvParent );
     void toggleSelectedInRect( const wxRect& rect );
     void moveSelected( int dx, int dy );
+    void snapSelectedToGrid( void );
 
     // general stats
     int getWidth( void ) { return canvasWidth; }
@@ -126,6 +128,7 @@ public:
     wxPen chunkBorderPen;
     wxPen controlPointPen;
     wxPen nodePen;
+    wxPen gridPen;
     wxFont labelFont;
 
     // Are we drawing ... ?
@@ -134,6 +137,7 @@ public:
     bool getViewSplines( void ) { return drawSplines; }
     bool getViewArrowHeads( void ) { return drawArrowHeads; }
     bool getViewNodes( void ) { return drawNodes; }
+    bool getViewGrids( void ) { return drawGrids; }
     bool getViewDirectLines( void ) { return drawDirectLines; }
     bool getViewFrameSeps( void ) { return drawFrameSeps; }
     bool getViewNodeNames( void ) { return drawNodeNames; }
@@ -145,6 +149,7 @@ public:
     void toggleViewSplines( void );
     void toggleViewArrowHeads( void );
     void toggleViewNodes( void );
+    void toggleViewGrids( void );
     void toggleViewDirectLines( void );
     void toggleViewFrameSeps( void );
     void toggleViewNodeNames( void );
@@ -152,6 +157,9 @@ public:
 
     // Ask the user what font they want to use.
     void changeFont( void );
+
+    bool getSnapToGrid( void ) { return snapToGrid; }
+    void toggleSnapToGrid( void );
 
     //DECLARE_DYNAMIC_CLASS(StructPage)
     DECLARE_EVENT_TABLE()
@@ -169,6 +177,7 @@ private:
     bool drawSplines;
     bool drawArrowHeads;
     bool drawNodes;
+    bool drawGrids;
     bool drawDirectLines;
     bool drawFrameSeps;
     bool drawNodeNames;
@@ -178,6 +187,8 @@ private:
     int displayScale;
     long canvasWidth;
     long canvasHeight;
+
+    bool snapToGrid;
 
     void initNodes( void );
     void initArcs( void );
@@ -381,6 +392,7 @@ public:
 	MENU_VIEW_SPLINES,
 	MENU_VIEW_ARROW_HEADS,
 	MENU_VIEW_NODES,
+	MENU_VIEW_GRIDS,
 	MENU_VIEW_DIRECT_LINES,
 	MENU_VIEW_FRAME_SEPS,
 	MENU_VIEW_NODE_NAMES,
@@ -403,6 +415,7 @@ public:
 	MENU_ZOOM_2_pow_pos_4dot000,
 	MENU_ZOOM_END,
 	MENU_CUSTOMIZE_FONT,
+	MENU_CUSTOMIZE_SNAP,
 	MENU_CUSTOMIZE_PENS_BEGIN,
 	MENU_CUSTOMIZE_SWITCHING_PEN,
 	MENU_CUSTOMIZE_SWITCHING_PEN_COLOR,
@@ -432,6 +445,10 @@ public:
 	MENU_CUSTOMIZE_NODE_PEN_COLOR,
 	MENU_CUSTOMIZE_NODE_PEN_WIDTH,
 	MENU_CUSTOMIZE_NODE_PEN_STYLE,
+	MENU_CUSTOMIZE_GRID_PEN,
+	MENU_CUSTOMIZE_GRID_PEN_COLOR,
+	MENU_CUSTOMIZE_GRID_PEN_WIDTH,
+	MENU_CUSTOMIZE_GRID_PEN_STYLE,
 	MENU_CUSTOMIZE_PENS_END
     };
 
@@ -496,6 +513,7 @@ public:
     void OnMenuViewSplines(wxCommandEvent &event);
     void OnMenuViewArrowHeads(wxCommandEvent &event);
     void OnMenuViewNodes(wxCommandEvent &event);
+    void OnMenuViewGrids(wxCommandEvent &event);
     void OnMenuViewDirectLines(wxCommandEvent &event);
     void OnMenuViewFrameSeps(wxCommandEvent &event);
     void OnMenuViewNodeNames(wxCommandEvent &event);
@@ -506,6 +524,7 @@ public:
 
     // Handle events from the Customize menu to alter how items are drawn
     void OnMenuCustomizeFont(wxCommandEvent &event);
+    void OnMenuCustomizeSnap(wxCommandEvent &event);
     void OnMenuCustomizePen(wxCommandEvent &event);
 
     // Do this when a different notebook page is chosen
@@ -670,6 +689,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     menu_view->Append(MENU_VIEW_SPLINES, wxT("Draw Arc Splines"), wxT("Toggle display of arc splines"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_ARROW_HEADS, wxT("Draw Arrow Heads"), wxT("Toggle display of arrow heads on arcs"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_NODES, wxT("Draw Nodes"), wxT("Toggle display of nodes"), wxITEM_CHECK);
+    menu_view->Append(MENU_VIEW_GRIDS, wxT("Draw Grids"), wxT("Toggle display of grids"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_DIRECT_LINES, wxT("Draw Direct Lines"), wxT("Toggle display of direct straight lines for arcs"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_FRAME_SEPS, wxT("Draw Frame Separators"), wxT("Toggle display of frame separators"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_NODE_NAMES, wxT("Draw Node Names"), wxT("Toggle display of node names"), wxITEM_CHECK);
@@ -692,6 +712,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     wxMenu* menu_customize = new wxMenu();
     menu_customize->Append( MENU_CUSTOMIZE_FONT, wxT("Change Font..."),
 			    wxEmptyString, wxITEM_NORMAL );
+    menu_customize->Append(MENU_CUSTOMIZE_SNAP, wxT("Snap To Grid"), wxT("Toggle whether items snap to the grids when they are moved"), wxITEM_CHECK);
     wxMenu* menu_customize_switching = new wxMenu();
     menu_customize_switching->Append( MENU_CUSTOMIZE_SWITCHING_PEN_COLOR,
 				      wxT("Change Color..."),
@@ -815,6 +836,22 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     menu_customize->Append( MENU_CUSTOMIZE_NODE_PEN,
 			    wxT("Node Pen"),
 			    menu_customize_node );
+    wxMenu* menu_customize_grid = new wxMenu();
+    menu_customize_grid->Append( MENU_CUSTOMIZE_GRID_PEN_COLOR,
+				      wxT("Change Color..."),
+				      wxT("Change the color of grids" ),
+				      wxITEM_NORMAL );
+    menu_customize_grid->Append( MENU_CUSTOMIZE_GRID_PEN_WIDTH,
+				      wxT("Change Width..."),
+				      wxT("Change the width of grids"),
+				      wxITEM_NORMAL );
+    menu_customize_grid->Append( MENU_CUSTOMIZE_GRID_PEN_STYLE,
+				      wxT("Change Style..."),
+				      wxT("Change the style of grids"),
+				      wxITEM_NORMAL );
+    menu_customize->Append( MENU_CUSTOMIZE_GRID_PEN,
+			    wxT("Grid Pen"),
+			    menu_customize_grid );
     MainVizWindow_menubar->Append(menu_customize, wxT("Customize"));
     // Again, needs a document to make sense.
     MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
@@ -888,14 +925,14 @@ void GFrame::do_layout()
     about_sizer->Add(about_info, 2, wxALL|wxEXPAND, 2);
     about_pane->SetAutoLayout(true);
     about_pane->SetSizer(about_sizer);
-    about_sizer->FitInside(about_pane);
-    about_sizer->SetVirtualSizeHints(about_pane);
+    about_sizer->Fit(about_pane);
+    about_sizer->SetSizeHints(about_pane);
     struct_notebook->AddPage(about_pane, wxT("About"));
     MainVizWindow_sizer->Add(new wxNotebookSizer(struct_notebook), 1, wxEXPAND, 0);
     SetAutoLayout(true);
     SetSizer(MainVizWindow_sizer);
-    MainVizWindow_sizer->FitInside(this);
-    MainVizWindow_sizer->SetVirtualSizeHints(this);
+    MainVizWindow_sizer->Fit(this);
+    MainVizWindow_sizer->SetSizeHints(this);
     Layout();
 }
 
@@ -915,12 +952,14 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_VIEW_SPLINES, GFrame::OnMenuViewSplines)
     EVT_MENU(MENU_VIEW_ARROW_HEADS, GFrame::OnMenuViewArrowHeads)
     EVT_MENU(MENU_VIEW_NODES, GFrame::OnMenuViewNodes)
+    EVT_MENU(MENU_VIEW_GRIDS, GFrame::OnMenuViewGrids)
     EVT_MENU(MENU_VIEW_DIRECT_LINES, GFrame::OnMenuViewDirectLines)
     EVT_MENU(MENU_VIEW_FRAME_SEPS, GFrame::OnMenuViewFrameSeps)
     EVT_MENU(MENU_VIEW_NODE_NAMES, GFrame::OnMenuViewNodeNames)
     EVT_MENU(MENU_VIEW_TOOLTIPS, GFrame::OnMenuViewToolTips)
     EVT_MENU_RANGE(MENU_ZOOM_BEGIN+1, MENU_ZOOM_END-1, GFrame::OnMenuZoom)
     EVT_MENU(MENU_CUSTOMIZE_FONT, GFrame::OnMenuCustomizeFont)
+    EVT_MENU(MENU_CUSTOMIZE_SNAP, GFrame::OnMenuCustomizeSnap)
     EVT_MENU_RANGE(MENU_CUSTOMIZE_PENS_BEGIN+1, MENU_CUSTOMIZE_PENS_END-1, GFrame::OnMenuCustomizePen)
     EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, GFrame::OnNotebookPageChanged)
     EVT_CLOSE(GFrame::OnClose)
@@ -946,8 +985,14 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 {
     // This will add itself to the notebook and be destroyed when
     // the notebook is destroyed.
-    new StructPage( struct_notebook, -1, this, struct_notebook,
-		    fileName, gvpFormat );
+    StructPage *page = new StructPage( struct_notebook, -1, this,
+				       struct_notebook, fileName, gvpFormat );
+    int w, h;
+    GetSize(&w, &h);
+    SetSize( w<page->getWidth()/ACTUAL_SCALE+25 ?
+	     page->getWidth()/ACTUAL_SCALE+25 : w,
+	     h<page->getHeight()/ACTUAL_SCALE+100 ?
+	     page->getHeight()/ACTUAL_SCALE+100 : h );
     // We won't get an event for this new notebook page coming to
     // the front, so we'll just pretend we did
     wxCommandEvent dummy;
@@ -1434,6 +1479,37 @@ GFrame::OnMenuViewNodes(wxCommandEvent &event)
 /**
  *******************************************************************
  * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of grids
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      draws grids and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      draws grids and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuViewGrids(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->toggleViewGrids();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
  * toggle the drawing of direct lines from node to node
  *
  * \param event Ignored.
@@ -1628,6 +1704,37 @@ GFrame::OnMenuCustomizeFont(wxCommandEvent &event)
 
 /**
  *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle snapping to the grids.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      snaps to the grids.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      snaps to the grids.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuCustomizeSnap(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->toggleSnapToGrid();
+}
+
+/**
+ *******************************************************************
  * Modify the StructPage's pen and tell it to repaint.
  *
  * \param event The event caused by selecting one of the Customize menu
@@ -1693,6 +1800,11 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 	case MENU_CUSTOMIZE_NODE_PEN_STYLE:
 	    thePen = &curPage->nodePen;
 	    break;
+	case MENU_CUSTOMIZE_GRID_PEN_COLOR:
+	case MENU_CUSTOMIZE_GRID_PEN_WIDTH:
+	case MENU_CUSTOMIZE_GRID_PEN_STYLE:
+	    thePen = &curPage->gridPen;
+	    break;
 	default:
 	    return;
 	}
@@ -1714,6 +1826,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_COLOR:
 	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_COLOR:
 	case MENU_CUSTOMIZE_NODE_PEN_COLOR:
+	case MENU_CUSTOMIZE_GRID_PEN_COLOR:
 	    newColor = wxGetColourFromUser(this, thePen->GetColour());
 	    if (newColor.Ok())
 		thePen->SetColour(newColor);
@@ -1726,6 +1839,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_WIDTH:
 	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_WIDTH:
 	case MENU_CUSTOMIZE_NODE_PEN_WIDTH:
+	case MENU_CUSTOMIZE_GRID_PEN_WIDTH:
 	    penStyle = thePen->GetStyle();
 	    if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
 		 penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
@@ -1747,6 +1861,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 	case MENU_CUSTOMIZE_CHUNKBORDER_PEN_STYLE:
 	case MENU_CUSTOMIZE_CONTROLPOINT_PEN_STYLE:
 	case MENU_CUSTOMIZE_NODE_PEN_STYLE:
+	case MENU_CUSTOMIZE_GRID_PEN_STYLE:
 	    newStyleNum = wxGetSingleChoiceIndex( wxT("What style would you like?"),
 						  wxT("Change Pen Style"),
 						  6, choices, this );
@@ -1851,6 +1966,8 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 				      curPage->getViewArrowHeads() );
 	MainVizWindow_menubar->Check( MENU_VIEW_NODES,
 				      curPage->getViewNodes() );
+	MainVizWindow_menubar->Check( MENU_VIEW_GRIDS,
+				      curPage->getViewGrids() );
 	MainVizWindow_menubar->Check( MENU_VIEW_DIRECT_LINES,
 				      curPage->getViewDirectLines() );
 	MainVizWindow_menubar->Check( MENU_VIEW_FRAME_SEPS,
@@ -1872,6 +1989,8 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 				      true );
 	// and the Customize menu should be shown for documents as well
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
+	MainVizWindow_menubar->Check( MENU_CUSTOMIZE_SNAP,
+				      curPage->getSnapToGrid() );
     }
     else {
 	// otherwise we set the status bar to some default values
@@ -1940,7 +2059,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
       switchingPen(*wxCYAN_PEN), conditionalPen(*wxBLACK_PEN),
       bothPen(*wxRED_PEN), frameBorderPen(*wxLIGHT_GREY_PEN),
       chunkBorderPen(*wxBLACK_PEN), controlPointPen(*wxRED_PEN),
-      nodePen(*wxBLACK_PEN),
+      nodePen(*wxBLACK_PEN), gridPen(*wxLIGHT_GREY_PEN),
       labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL, wxNORMAL)
 {
     // This is used later to update the status bar
@@ -1962,33 +2081,36 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
     drawSplines = true;
     drawArrowHeads = true;
     drawNodes = true;
+    drawGrids = false;
     drawDirectLines = false;
     drawFrameSeps = true;
     drawNodeNames = true;
     // Has no real effect since our tooltips don't work
     drawToolTips = true;
 
+    snapToGrid = false;
+
     // The drawing area. If we don't make sure it's NULL, we might
     // accidentally delete it later (cause a segfault).
     content = NULL;
 
-    /* Ever since I started drawing at 16x and then scaling down 16x,
-     * dotted and dashed lines have stopped working. */
-    //switchingPen.SetStyle(wxDOT);
-    //conditionalPen.SetStyle(wxSOLID);
-    //bothPen.SetStyle(wxLONG_DASH);
-    //frameBorderPen.SetStyle(wxDOT);
-    //chunkBorderPen.SetStyle(wxSOLID);
+    /* Dots and dashes require width to be one. */
+    switchingPen.SetStyle(wxDOT);
+    conditionalPen.SetStyle(wxSOLID);
+    bothPen.SetStyle(wxLONG_DASH);
+    frameBorderPen.SetStyle(wxDOT);
+    chunkBorderPen.SetStyle(wxSOLID);
     // Scale all these lines up.
-    switchingPen.SetWidth(ACTUAL_SCALE);
+    //switchingPen.SetWidth(ACTUAL_SCALE);
     conditionalPen.SetWidth(ACTUAL_SCALE);
-    bothPen.SetWidth(ACTUAL_SCALE);
-    frameBorderPen.SetWidth(ACTUAL_SCALE);
+    //bothPen.SetWidth(ACTUAL_SCALE);
+    //frameBorderPen.SetWidth(ACTUAL_SCALE);
     chunkBorderPen.SetWidth(ACTUAL_SCALE);
     controlPointPen.SetWidth(ACTUAL_SCALE);
     // Make the corners sharp
     controlPointPen.SetJoin(wxJOIN_MITER);
     nodePen.SetWidth(ACTUAL_SCALE);
+    gridPen.SetStyle(wxDOT);
 
     // scroll 10 pixels at a time
     SetScrollRate( 10, 10 );
@@ -2733,6 +2855,10 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 	    }
 	    toggleSelectedInRect(selectBox);
 	    screenDirty = true;
+	} else if (dragging && snapToGrid) {
+	    // LeftUp + dragging + snap to grid = do grid snapping
+	    snapSelectedToGrid();
+	    screenDirty = true;
 	}
 	// Whatever we were doing, we're done.
 	boxSelecting = shifted = dragging = drawSelectBox = false;
@@ -3090,6 +3216,104 @@ StructPage::moveSelected( int dx, int dy )
 
 /**
  *******************************************************************
+ * Snap all selected items to the grids.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Selected items may be moved.
+ *
+ * \note Selected items may be moved.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::snapSelectedToGrid( void )
+{
+    int numNodes = nodes.size();
+
+    // frame separators
+    int dx, dy;
+    for (unsigned int i = 0; i < frameEnds.size(); i++) {
+	dx = -(frameEnds[i]->x % GRID_SIZE);
+	if (dx <= -GRID_SIZE/2)
+	    dx += GRID_SIZE;
+	if ( frameEnds[i]->getSelected() && inBounds(frameEnds[i]->x + dx, 1)
+	     && !crossesNode(frameEnds[i]->x, frameEnds[i]->x + dx) ) {
+	    frameEnds[i]->x += dx;
+	}
+    }
+    // node name tags
+    for (int i = 0; i < numNodes; i++) {
+	dx = -(nodeNameTags[i]->pos.x % GRID_SIZE);
+	if (dx <= -GRID_SIZE/2)
+	    dx += GRID_SIZE;
+	dy = -(nodeNameTags[i]->pos.y % GRID_SIZE);
+	if (dy <= -GRID_SIZE/2)
+	    dy += GRID_SIZE;
+	if ( nodeNameTags[i]->getSelected()
+	     && inBounds( nodeNameTags[i]->pos.x
+			  + nodeNameTags[i]->size.x/2 + dx,
+			  nodeNameTags[i]->pos.y
+			  + nodeNameTags[i]->size.y/2 + dy ) ) {
+	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x
+				   + nodeNameTags[i]->size.x/2,
+				   nodeNameTags[i]->pos.x + dx
+				   + nodeNameTags[i]->size.x/2 ) )
+		nodeNameTags[i]->pos.x += dx;
+	    nodeNameTags[i]->pos.y += dy;
+	}
+    }
+    // nodes
+    for (int i = 0; i < numNodes; i++) {
+	dx = -(nodes[i]->center.x % GRID_SIZE);
+	if (dx <= -GRID_SIZE/2)
+	    dx += GRID_SIZE;
+	dy = -(nodes[i]->center.y % GRID_SIZE);
+	if (dy <= -GRID_SIZE/2)
+	    dy += GRID_SIZE;
+	if ( nodes[i]->getSelected()
+	     && inBounds(nodes[i]->center.x + dx, nodes[i]->center.y + dy) ) {
+	    if (!crossesFrameEnd(nodes[i]->center.x, nodes[i]->center.x + dx))
+		nodes[i]->center.x += dx;
+	    nodes[i]->center.y += dy;
+	    nodes[i]->tipWin->Move( nodes[i]->center.x - NODE_RADIUS,
+				   nodes[i]->center.y - NODE_RADIUS );
+	}
+    }
+    // then arcs
+    for (int i = 0; i < numNodes; i++) {
+	for (int j = 0; j < numNodes; j++) {
+	    if (arcs[i][j]) {
+		int end = arcs[i][j]->cps->size();
+		assert(end > 1);
+		for ( int k = 0; k < end; k++ ) {
+		    dx = -((*arcs[i][j]->cps)[k]->pos.x % GRID_SIZE);
+		    if (dx <= -GRID_SIZE/2)
+			dx += GRID_SIZE;
+		    dy = -((*arcs[i][j]->cps)[k]->pos.y % GRID_SIZE);
+		    if (dy <= -GRID_SIZE/2)
+			dy += GRID_SIZE;
+		    if ( (*arcs[i][j]->cps)[k]->getSelected()
+			 && inBounds( (*arcs[i][j]->cps)[k]->pos.x+dx,
+				      (*arcs[i][j]->cps)[k]->pos.y+dy ) ) {
+			if ((k && !(k == end-1)) ||
+			    !crossesFrameEnd((*arcs[i][j]->cps)[k]->pos.x,
+					     (*arcs[i][j]->cps)[k]->pos.x+dx))
+			    (*arcs[i][j]->cps)[k]->pos.x += dx;
+			(*arcs[i][j]->cps)[k]->pos.y += dy;
+		    }
+		}
+	    }
+	}
+    }
+    // Things are almost definitely dirty.
+    gvpDirty = true;
+    // Update the status bar to reflect the dirt.
+    onComeForward();
+}
+
+/**
+ *******************************************************************
  * Return whatever item is at the given point (or NULL if there's
  * nothing there).
  *
@@ -3224,8 +3448,21 @@ StructPage::draw( wxDC& dc )
 
     int numNodes = nodes.size();
 
+    if (drawGrids) {
+	// draw a grid to help align things
+	wxPen oldPen = dc.GetPen();
+	dc.SetPen(gridPen);
+	for (int x = GRID_SIZE; x < getWidth(); x += GRID_SIZE) {
+	    dc.DrawLine(x, 0, x, getHeight());
+	}
+	for (int y = GRID_SIZE; y < getHeight(); y += GRID_SIZE) {
+	    dc.DrawLine(0, y, getWidth(), y);
+	}
+	dc.SetPen(oldPen);
+    }
+
     if (drawFrameSeps) {
-	// first draw frame/chunk separators
+	// draw frame/chunk separators
 	if ( frameEnds[0]->sepType == VizSep::PROLOGUE ||
 	     frameEnds[0]->sepType == VizSep::BEGIN_CHUNK )
 	    dc.DrawText(wxT("frame 0 (P)"), 10*ACTUAL_SCALE, 10*ACTUAL_SCALE);
@@ -3733,6 +3970,28 @@ StructPage::toggleViewNodes( void )
 
 /**
  *******************************************************************
+ * Toggle whether grids are drawn and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether grids will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether grids will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::toggleViewGrids( void )
+{
+    drawGrids = !drawGrids;
+    redraw();
+    blit();
+}
+
+/**
+ *******************************************************************
  * Toggle whether direct lines are drawn and redraw.
  *
  * \pre The StructPage should be fully initialized.
@@ -3841,6 +4100,24 @@ StructPage::changeFont( void )
 	redraw();
 	blit();
     }
+}
+
+/**
+ *******************************************************************
+ * Toggle whether to snap to grid when things are moved.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether things are snapped to grid or not will be toggled.
+ *
+ * \note Whether things are snapped to grid or not will be toggled.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::toggleSnapToGrid( void )
+{
+    snapToGrid = !snapToGrid;
 }
 
 /**
