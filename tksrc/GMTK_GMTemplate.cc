@@ -1215,3 +1215,85 @@ triangulatePartitionsByCliqueCompletion()
   E.triangulatePartitionsByCliqueCompletion();
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::computeUnrollParamaters()
+ *   compute the unrolling amount for the number of frames in an observation matrix.
+ *
+ *
+ * Preconditions:
+ *   None.
+ *
+ * Postconditions:
+ *   None.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   computes the correct unrolling amount in non-const arguments.
+ *   Returns 'true' if success and 'false' otherwise.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool
+GMTemplate::
+computeUnrollParamaters(const unsigned numFrames,
+			unsigned& basicTemplateUnrollAmount,
+			unsigned& modifiedTemplateUnrollAmount,
+			unsigned& numUsableFrames,
+			unsigned& frameStart,
+			const JustifyType justifyType)
+
+{
+  // useful facts:
+  // T = number of frames.
+  const unsigned T = numFrames;
+  // p = number of frames in basic template prologue (as read by file parser)
+  const int p = fp.numFramesInP();
+  // c = number of frames in basic template chunk (as read by file parser)
+  const int c = fp.numFramesInC();
+  // e = number of frames in basic template epilogue (as read by file parser)
+  const int e = fp.numFramesInE();
+
+  // we have relationships:
+  // from basic template:
+  //     T = p + i*c + e  for some i = positive integer.
+  // from modified template:
+  //     T = p + e + (M+jS)*c for j = positive integer.
+  // check both here:
+  if ( T < p + e + (M+S)*c )
+    return false;
+  // Ok, it's possible to use this sentence.
+  // The above puts constraints:
+  //    (T - p - e) = i*c
+  //    (T - p - e) = (M+jS)*c = l*c, with l = (M+jS)
+  // which means that we must have:
+  //    (T - p - e - M*c) = jS*c  for j = positive integer.
+
+  // compute T-p-e-M*c % S*c, the remainder.
+  const unsigned remainder = (T-p-e-M*c) % S*c;
+  // number of usable frames subtracts this off, assign to
+  // T' = numUsableFrames
+  numUsableFrames = numFrames - remainder;
+  printf("numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
+  // since T' - p - e - M*c = k*S*c for positive k,
+  // then T' - p - e = M*c +k*S*c = (M+kS)*c = i*c, i = (M+kS)
+  // as asked for above, so T' is a perfect number to use.
+
+  if (justifyType == leftJustify)
+    frameStart = 0;
+  else if (justifyType == rightJustify)
+    frameStart = remainder;
+  else // center
+    frameStart = remainder/2; // (round to left if not even)
+  
+  // all else should work
+  assert ( (numUsableFrames - p - e) % c == 0 );
+  basicTemplateUnrollAmount = (numUsableFrames-p-e)/c - 1;
+  assert ( ((numUsableFrames-p-e)/c - M) % S == 0 );
+  modifiedTemplateUnrollAmount = ((numUsableFrames-p-e)/c - M)/S - 1;
+
+  return true;
+}

@@ -1405,6 +1405,9 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     // 'accumSeps' is already empty so no need to do anything there.
   } else if (numSeparators == 1) {
     accumSeps = part.separators[clique.ceReceiveSeparators[0]].nodes;
+    part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
+    part.separators[clique.ceReceiveSeparators[0]].remainder =
+      part.separators[clique.ceReceiveSeparators[0]].nodes;
   } else if (numSeparators == 2) {
     
 
@@ -1434,6 +1437,9 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     set_union(s0.nodes.begin(),s0.nodes.end(),
 	      s1.nodes.begin(),s1.nodes.end(),
 	      inserter(accumSeps,accumSeps.end()));
+
+    assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
+    assert ( s1.accumulatedIntersection.size() + s1.remainder.size() == s1.nodes.size() );
 
   } else {
     // there are 3 or more separators, determine proper order and then
@@ -1597,43 +1603,60 @@ JunctionTree::unroll(const unsigned int k)
   // first create the unrolled set of random variables corresponding
   // to this JT.
 
+  unsigned basicTemplateUnrollAmount;
+  unsigned modifiedTemplateUnrollAmount;
+  unsigned numUsableFrames;
+  unsigned frameStart;
+  if (!gm_template.computeUnrollParamaters(k,
+					   basicTemplateUnrollAmount,
+					   modifiedTemplateUnrollAmount,
+					   numUsableFrames,
+					   frameStart))
+    error("Can't unroll\n"); // TODO: fix this error.
+
+  fprintf(stderr,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+	  k,
+	  basicTemplateUnrollAmount,
+	  modifiedTemplateUnrollAmount);
+
   // unrolled random variables
   vector <RandomVariable*> unrolled_rvs;
   // mapping from 'name+frame' to integer index into unrolled_rvs.
   map < RVInfo::rvParent, unsigned > ppf;
-  // number of C repetitions is M + (k+1)*S, so
-  // we unroll one less than that.
-  fprintf(stderr,"   start: unrolling nodes\n");
-  fp.unroll(gm_template.M + (k+1)*gm_template.S - 1,
-	    unrolled_rvs,ppf);
-  fprintf(stderr,"   end: unrolling nodes\n");
 
-  // printf("unrolled variables %d times\n",gm_template.M + (k+1)*gm_template.S - 1);
+  fp.unroll(basicTemplateUnrollAmount,unrolled_rvs,ppf);
 
-  // clear out the old and pre-allocate for new size.
-  jtIPartitions.resize(k+3);
+
+  // TODO: clear out the old and pre-allocate for new size.
+
+  // preallocate
+  jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
 
   // printf("unroll: doing P\n");
   // copy P partition into partitions[0]
   new (&jtIPartitions[0]) JT_InferencePartition(P1,unrolled_rvs,ppf,0);
 
 
-  if (k == 0) {
+  if (modifiedTemplateUnrollAmount == 0) {
     new (&jtIPartitions[1]) JT_InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S);
     new (&jtIPartitions[2]) JT_InferencePartition(E1,unrolled_rvs,ppf,-2*gm_template.S);
-  } else if (k == 1) {
+  } else if (modifiedTemplateUnrollAmount == 1) {
     new (&jtIPartitions[1]) JT_InferencePartition(C1,unrolled_rvs,ppf, 0*gm_template.S);
     new (&jtIPartitions[2]) JT_InferencePartition(C3,unrolled_rvs,ppf,-1*gm_template.S);
     new (&jtIPartitions[3]) JT_InferencePartition(E1,unrolled_rvs,ppf,-1*gm_template.S);
   } else {
     new (&jtIPartitions[1]) JT_InferencePartition(C1,unrolled_rvs,ppf, 0*gm_template.S);
 
-    for (unsigned i = 1; i < k; i++) {
+    for (unsigned i = 1; i < modifiedTemplateUnrollAmount; i++) {
       new (&jtIPartitions[i+1]) JT_InferencePartition(C2,unrolled_rvs,ppf, (i-1)*gm_template.S);
     }
 
-    new (&jtIPartitions[k+1]) JT_InferencePartition(C3,unrolled_rvs,ppf, ((int)k-2)*gm_template.S);
-    new (&jtIPartitions[k+2]) JT_InferencePartition(E1,unrolled_rvs,ppf, ((int)k-2)*gm_template.S);
+    new (&jtIPartitions[modifiedTemplateUnrollAmount+1]) 
+      JT_InferencePartition(C3,unrolled_rvs,ppf, 
+			    ((int)modifiedTemplateUnrollAmount-2)*gm_template.S);
+    new (&jtIPartitions[modifiedTemplateUnrollAmount+2]) 
+      JT_InferencePartition(E1,unrolled_rvs,ppf, 
+			    ((int)modifiedTemplateUnrollAmount-2)*gm_template.S);
 
   }
 }
@@ -1753,6 +1776,31 @@ JunctionTree::collectEvidence()
 
 
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::probEvidence()
+ *
+ * Preconditions:
+ *    collectEvidence must have been called.
+ * Postconditions:
+ *
+ * Side Effects:
+
+ *
+ * Results:
+
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr
+JunctionTree::probEvidence()
+{
+  return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
+    sumProbabilities();
+}
 
 
 
