@@ -22,7 +22,7 @@ X add a MTCPT type, for deterministic cpt
   which just points to one of the decision trees
   in the DT table.
 
-- add error check message if two low level objects
+X add error check message if two low level objects
   have the same name and kill the program.
    
 X discrete observed variables have only one cardinality,
@@ -41,9 +41,11 @@ X Include gaussian objects for special situations.
   sizes are and that they might want to adjust the 
   structure to reduce clique sizes if they become too large.
 
-- the inference procedure works both with clique chains and clique trees?
+- the inference procedure should work both with clique chains and clique trees
     - no, but basic data structures are ok.
     - at some point, add tree stuff, for single frame applications
+
+- the inference procedure should work with disconnected networks
 
 X Allocate data structures for CPTS, etc. automatically, if not explicitly 
   specified in a file. 
@@ -55,11 +57,13 @@ X- include check to make sure that names for each section in parms are unique
 
 X- todo, make sure that chunk n:m is valid.
 
-- IMPORTANT: ability to train means and other dlinkmats in a dlinkmats structure
+X IMPORTANT: ability to train means and other dlinkmats in a dlinkmats structure
   independently.
 
 - to through and start using setBasicAllocatedBit() on read, and add
   assertions to that effect on all routines that need it.
+  (later) started doing this, but need to do a sweep to make sure all use
+  this mechanism.
 
 - IMPORTANT: look at and get rid of purify memory lost message
      - write destructors
@@ -80,30 +84,38 @@ X if an object gets no probability, do something
   re-randomizing, or something.
   done: set to previous values.
 
-- add a k-means mode for initialization.
+X add a k-means mode for initialization.
     - keep covariances at unity for a while.
     - first iteration just use random assignments
       (pick a random component who gives unity probability,
        everyone else gives zero probability)
+    - done essentially since the splitting stuff
+      is working and we can start with a single Gaussian
+      and path counting.
 
-- Add gaussian split program
+X Add gaussian split program
 
-- add linear BMM links
+X add linear BMM links
 
 - add non-linear BMM links
 
-- implement mixture component vanishing using the 
+X implement mixture component vanishing using the 
   shared Dense1DPMF. If one GM decides that
   its component should vanish based on a MCVR
   then all of them should (and should check this
   as well).
 
-- when reading in definitions for each utterance:
+X when reading in definitions for each utterance:
     we could change the DTs with a particular name
     (e.g., read in a DT file and have a read
      mode that changes the pointer if it is there).
     This would need to have objects that use DTs
     use the integer index rater than the pointer directly.
+   Essentially done, DTs can now specify a file
+   containing a number of DTs one per segment.
+
+- Re-think the 1 DT per utterance stuff so that
+  we can seemlessly do parallelism.
 
 - rethink DT format numbering
 
@@ -113,7 +125,6 @@ X pass .str files through cpp before reading.
 
 - make sure that all files passed through cpp that
   line numbering error messages is done right.
-
 
 X GMTK_GMParms::read(), keeps open all files
   until the end. If it encounters the same name again,
@@ -151,7 +162,7 @@ X change sparse PMF so that it just contains a list
 - get the parameter writing stuff finalized.
    (get working after workshop, use simple global write in binary for now).
 
-- get MCVR working
+X get MCVR working
 
 - if last component (or entire mixture) has no probability, 
    either 1) die
@@ -160,7 +171,6 @@ X change sparse PMF so that it just contains a list
           2) force to uniform parameters
           3) For now, **** force to impossible Gaussian *** 
              and issue a loud warning.
-
 
 - prior counts
     - need routine makeAccumulatorsPrior
@@ -178,9 +188,9 @@ X add VCID everywhere.
 
 - add a binary/ascii parameter file conversion program.
 
-- export internal variables to command line changes
+- export all internal program variables to command line (e.g., var floor, etc)
 
-- check on memory leak stuff
+X check on memory leak stuff
 
 - make sure that all gaussians use means/variances that are the right dimensionality
   in read file.
@@ -194,13 +204,16 @@ X add VCID everywhere.
 - add simple multiplication onto decision tree leafs. (or better, make it
   use real integer formulas with parens, etc.).
 
+- export the optional training stuff (i.e., don't train means, just covars, etc)
+  to command line.
+
 - create new objects, integer to name mappings
   to map to decision tree leaves (corresponding to integers) to either
      1) Gaussian mixture objects
      2) Switching gaussian mixture objects
      3) sparse PMFs
 
-- make sure that dlinkmatrix precompute is being
+X make sure that dlinkmatrix precompute is being
   called once the global observation matrix is ready.
 
 - check for cardinalties in str file
