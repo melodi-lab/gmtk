@@ -1,7 +1,14 @@
 /*-
+ * 
  * GMTK_LinMeanCondDiagGaussian.cc
- *        Code for plain vanilla diagonal Gaussians.
- *
+ * 
+ *        Code for linear mean conditioanl diagonal Gaussians.
+ *        This code also supports
+ *             - linear BMMs (linear buried Markov models)
+ *                 (with dependencies coming from the past and/or the future)
+ *             - full covariance matrices
+ *             - semi-tied shared factored sparse inverse covariance matrices
+ *             - covariances viewed as a directed graphical model
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
