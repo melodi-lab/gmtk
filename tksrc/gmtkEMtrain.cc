@@ -55,7 +55,7 @@ VCID("$Header$");
 #include "GMTK_GM.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
@@ -192,11 +192,11 @@ Arg Arg::Args[] = {
   Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
 
   // support for splitting and vanishing
-  Arg("mcvr",Arg::Opt,MixGaussiansCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
-  Arg("botForceVanish",Arg::Opt,MixGaussiansCommon::numBottomToForceVanish,"Number of bottom mixture components to force vanish"),
+  Arg("mcvr",Arg::Opt,MixtureCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
+  Arg("botForceVanish",Arg::Opt,MixtureCommon::numBottomToForceVanish,"Number of bottom mixture components to force vanish"),
   
-  Arg("mcsr",Arg::Opt,MixGaussiansCommon::mixCoeffSplitRatio,"Mixture Coefficient Splitting Ratio"),
-  Arg("topForceSplit",Arg::Opt,MixGaussiansCommon::numTopToForceSplit,"Number of top mixture components to force split"),
+  Arg("mcsr",Arg::Opt,MixtureCommon::mixCoeffSplitRatio,"Mixture Coefficient Splitting Ratio"),
+  Arg("topForceSplit",Arg::Opt,MixtureCommon::numTopToForceSplit,"Number of top mixture components to force split"),
 
   Arg("meanCloneSTDfrac",Arg::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
   Arg("covarCloneSTDfrac",Arg::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
@@ -238,7 +238,7 @@ Arg("showCliques",Arg::Opt,show_cliques,"Show the cliques after the network has 
 
   Arg("baseCaseThreshold",Arg::Opt,bct,"Base case threshold to end recursion (>=2)."),
 
-  Arg("gaussianCache",Arg::Opt,MixGaussiansCommon::cacheGaussiansInEmTraining,"Cache Gaussians evaluations during EM training. true will speeds things up, but uses more memory."),
+  Arg("componentCache",Arg::Opt,MixtureCommon::cacheComponentsInEmTraining,"Cache component probabilities during EM training, speeds things up but uses more memory."),
 
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 
@@ -311,7 +311,7 @@ main(int argc,char*argv[])
   }
 #endif
 
-  MixGaussiansCommon::checkForValidRatioValues();
+  MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
