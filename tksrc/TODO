@@ -258,3 +258,8 @@ X make sure that dlinkmatrix precompute is being
 - fix bug with small parallel chunks and accumulators being zero
 
 - add option to pass definitions to cpp with cpp arg.
+
+- add some way for DTs to refer to other DTs (i.e., a leaf
+  of a DT an continue on using another DT, to make sharing
+  easier, and save memory for big DTs).
+
