@@ -54,11 +54,13 @@ class iDataStreamFile : public ioDataStreamFile {
   char *buff;
   char *buffp;
   enum State { GetNextLine, UseCurLine } state;
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
   const bool cppIfAscii;
+#endif
 
  public:
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
-  iDataStreamFile(const char *_name, bool _Binary = false, bool _cppIfAscii = true);
+  iDataStreamFile(const char *_name, bool _Binary = false, bool _cppIfAscii = true, const char * const _cppCommandOptions = NULL);
 #else
   iDataStreamFile(const char *_name, bool _Binary = false);
 #endif

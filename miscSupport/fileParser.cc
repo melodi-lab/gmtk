@@ -14,6 +14,7 @@
 #include <strings.h>
 #include <ctype.h>
 #include <errno.h>
+#include <string>
 
 #include "general.h"
 VCID("$Header$");
@@ -62,7 +63,7 @@ extern "C" {
 #endif
 
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
-iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii)
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii, const char *const _cppCommandOptions)
   : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii)
 #else
 iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
@@ -74,18 +75,23 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   if (!Binary) {
     if (cppIfAscii) {
+      string cppCommand = string("cpp");
+      if (_cppCommandOptions != NULL) {
+	cppCommand = cppCommand + string(" ") + string(_cppCommandOptions);
+      }
       if (!strcmp("-",_name)) {
-	fh = ::popen("cpp","r");
+	fh = ::popen(cppCommand.c_str(),"r");
 	if (fh == NULL) {
 	  error("ERROR: unable to open standard input via cpp");
 	}
       }  else {
+	// make sure the file  exists first.
 	if ((fh = ::fopen(_name,"r")) == NULL) {
 	  error("ERROR: unable to open file (%s) for reading",_name);
 	}
 	fclose(fh);
-	string str = (string)"cpp " + (string)_name;
-	fh = ::popen(str.c_str(),"r");    
+	cppCommand = cppCommand + string(" ") + string(_name);
+	fh = ::popen(cppCommand.c_str(),"r");    
 	if (fh == NULL)
 	  error("ERROR, can't open file stream from (%s)",_name);
       }
@@ -629,7 +635,7 @@ int main()
   float f;
   double d;
   char *str;
-  string cppstr = "This_is_a_stupid_slow_C++_string.";
+  string cppstr = "This_is_a_C++_string.";
 
   float far1[] = { 0.1, 0.2, 0.3, 0.4, 0.5 };
 
