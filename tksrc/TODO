@@ -204,3 +204,5 @@ X add VCID everywhere.
   called once the global observation matrix is ready.
 
 - check for cardinalties in str file
+
+- make sure dlinks are checked somewhere for validity wrt a file
