@@ -26,7 +26,9 @@
 
 #include "GMTK_FileParser.h"
 
+#ifndef _AIX
 extern "C" int fileno(FILE*); 
+#endif
 
 int debugLexer = 0;
 
