@@ -103,7 +103,7 @@ bool show_cliques=false;
 
 ARGS ARGS::Args[] = {
 
-   ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
+  ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
   ARGS("nf1",ARGS::Opt,nfs[0],"Number of floats in observation file 1"),
   ARGS("ni1",ARGS::Opt,nis[0],"Number of ints in observation file 1"),
   ARGS("fr1",ARGS::Opt,frs[0],"Float range for observation file 1"),
@@ -119,7 +119,7 @@ ARGS ARGS::Args[] = {
   ARGS("ir2",ARGS::Opt,irs[1],"Int range for observation file 2"),
   ARGS("fmt2",ARGS::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
   ARGS("iswp2",ARGS::Opt,iswps[1],"Endian swap condition for observation file 2"),
-    ARGS("of3",ARGS::Opt,ofs[2],"Observation File 3"),
+  ARGS("of3",ARGS::Opt,ofs[2],"Observation File 3"),
   ARGS("nf3",ARGS::Opt,nfs[2],"Number of floats in observation file 3"),
   ARGS("ni3",ARGS::Opt,nis[2],"Number of ints in observation file 3"),
   ARGS("fr3",ARGS::Opt,frs[2],"Float range for observation file 3"),
@@ -132,21 +132,22 @@ ARGS ARGS::Args[] = {
   ARGS("prmTrainableFile",ARGS::Opt,prmTrainableFile,"File containing Trainable Parameters"),
   ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
   ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
+  ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
+       "Floor the variances to varFloor when they are read in"),
   ARGS("dcdrng",ARGS::Opt,dcdrng_str,"Range to decode over segment file"),
 
- ARGS("beam",ARGS::Opt,beam,"Pruning Ratio, values less than this*max are pruned"),
- ARGS("showVitVals",ARGS::Opt,showVitVals,"Print the viterbi values??"),
+  ARGS("beam",ARGS::Opt,beam,"Pruning Ratio, values less than this*max are pruned"),
+  ARGS("showVitVals",ARGS::Opt,showVitVals,"Print the viterbi values??"),
 
- // These 3 must be used together or not at all
- ARGS("printWordVar",ARGS::Opt,wordVar,"Print the word var - which has this label"),
- ARGS("varMap",ARGS::Opt,varMapFile,"Use this file to map from word-index to string"),
- ARGS("transitionLabel",ARGS::Opt,transitionLabel,"The label of the word transition variable"),
-   ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
+  // These 3 must be used together or not at all
+  ARGS("printWordVar",ARGS::Opt,wordVar,"Print the word var - which has this label"),
+  ARGS("varMap",ARGS::Opt,varMapFile,"Use this file to map from word-index to string"),
+  ARGS("transitionLabel",ARGS::Opt,transitionLabel,"The label of the word transition variable"),
+  ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
   ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
-ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
   ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
 
- ARGS()
+  ARGS()
 
 };
 
@@ -187,7 +188,7 @@ main(int argc,char*argv[])
     in.close();
   }
 
-    ////////////////////////////////////////////
+  ////////////////////////////////////////////
   // check for valid argument values.
   int nfiles = 0;
   unsigned ifmts[MAX_NUM_OBS_FILES];
@@ -217,18 +218,19 @@ main(int argc,char*argv[])
                                       (bool*)&iswps);
   }
 
-    MixGaussiansCommon::checkForValidRatioValues();
-    MeanVector::checkForValidValues();
-    DiagCovarVector::checkForValidValues();
-    DlinkMatrix::checkForValidValues();
-    if (beam < 0.0)
-      error("beam must be >= 0");
-    if (startSkip < 0 || endSkip < 0)
-      error("startSkip/endSkip must be >= 0");
+  MixGaussiansCommon::checkForValidRatioValues();
+  MeanVector::checkForValidValues();
+  DiagCovarVector::checkForValidValues();
+  DlinkMatrix::checkForValidValues();
+  if (beam < 0.0)
+    error("beam must be >= 0");
+  if (startSkip < 0 || endSkip < 0)
+    error("startSkip/endSkip must be >= 0");
 
-    ////////////////////////////////////////////
-    // set global variables/change global state from args
-    GaussianComponent::setVarianceFloor(varFloor);
+  ////////////////////////////////////////////
+  // set global variables/change global state from args
+  GaussianComponent::setVarianceFloor(varFloor);
+
 
   /////////////////////////////////////////////
   // read in all the parameters
@@ -280,8 +282,8 @@ main(int argc,char*argv[])
 
   // and away we go
   gm.clampFirstExample();
-  do
-  {
+  do {
+
     logpr pruneRatio;
     pruneRatio.valref() = -beam;
     gm.cliqueChainViterbiProb(pruneRatio);
