@@ -1,4 +1,4 @@
-[>
+
 
 $Header$
 
@@ -2717,6 +2717,17 @@ Fri Feb 18 20:14:44 2005
     variables in the clique constructing an array of begin() and next() function pointers
     for each variable in the clique.
 
+
+Sat Feb 26 18:31:27 2005
+  - docs, for -cpbeam, it is important for this to work not to have
+    any positive log likelihoods
+    (which can arrise using either Gaussians or VECPTs which provide positive log likelihoods).
+    For Gaussians, this can arrise when the variance is small and an x value falls close to
+    the mean. The solution for Gaussians is to multiply each value by >1 quantity during training and testing
+    (and how this is easy to do using observation distribution) by a
+    constant to scale out (and therefore reduce value of)
+    probabilities. Give example
+    of distribution of P(Y) = P(F(x)) in terms of P(x).
 
 
 
