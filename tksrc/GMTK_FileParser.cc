@@ -2242,8 +2242,8 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	  cptType = "MSCPT";
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
 	  cptType = "MTCPT";
-    } else if (rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT) {
-      cptType = "NGramCPT";
+	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT) {
+	  cptType = "NGramCPT";
 	}
 
 	// check to make sure this cpt matches this

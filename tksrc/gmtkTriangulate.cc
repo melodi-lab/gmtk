@@ -627,7 +627,7 @@ main(int argc,char*argv[])
 	       p_maxWeight,p_totalWeight,
 	       JunctionTree::junctionTreeWeight(gm_template.P.cliques,
 						gm_template.PCInterface_in_P,
-						NULL,&gm_template.C.nodes));
+						NULL,&gm_template.PCInterface_in_P));
 
 	double c_maxWeight = -1.0;
 	double c_totalWeight = -1.0; // starting flag
@@ -648,8 +648,8 @@ main(int argc,char*argv[])
 	       c_totalWeight - log10((double)chunkSkip),
 	       JunctionTree::junctionTreeWeight(gm_template.C.cliques,
 						gm_template.CEInterface_in_C,
-						&gm_template.P.nodes,
-						&gm_template.E.nodes));
+						&gm_template.PCInterface_in_C,
+						&gm_template.CEInterface_in_C));
 
 	double e_maxWeight = -1.0;
 	double e_totalWeight = -1.0; // starting flag
@@ -668,7 +668,7 @@ main(int argc,char*argv[])
 	       e_maxWeight,e_totalWeight,
 	       JunctionTree::junctionTreeWeight(gm_template.E.cliques,
 						emptySet,
-						&gm_template.C.nodes,NULL));
+						&gm_template.CEInterface_in_E,NULL));
 
 	double maxWeight
 	  = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);

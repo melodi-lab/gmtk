@@ -450,12 +450,29 @@ setUpClonedPartitionGraph(const set<RandomVariable*>& P,
 			  map < RandomVariable*, RandomVariable* >& E_in_to_out)
 {
 
-  // just do neighbors for now, don't bother with parents, children,
+  // Just do neighbors for now, don't bother with parents, children,
   // and so on.
-  // Set the neighbors of out to be the correctly associated
-  // variables, but do not include neighbors that are not in the
-  // current set (i.e., dissociate with any other possible portion of
-  // the network)
+
+  // These routine calls set the neighbors of the output form (e.g.,
+  // PC, Cc, and Ec) to be the correctly associated variables, but it
+  // does not include neighbors that are not in the current set (i.e.,
+  // dissociate with any other possible portion of the network).  This
+  // means that the rvs themselves in the intersection between
+  // partitions need to be unique. Meaning, the intersection I =
+  // intersection(P,C) is contained both in P, and C, but since P[I]
+  // should have neighbors only in P and C[I] should have neighbors
+  // only in C, we must use different random variables for P[I] and
+  // C[I] (otherwise, the triangulation code won't work). Note that
+  // this is a little weird, however, since a variable v in C with
+  // a parent p in P will not have p as v's neighbor.
+
+  // Note further that the variables PCInterface_in_P,
+  // PCInterface_in_C, CEInterface_in_C, and CEInterface_in_E will
+  // have the unique interface variables in each partition since they
+  // will sometimes be useful. I.e., even though PCInterface_in_P and
+  // PCInterface_in_C correspond to the same variables, they are STL
+  // sets with differnt pointers (so their STL set intersection will
+  // be empty).
 
   cloneWithoutParents(P,Pc,P_in_to_out);
   cloneWithoutParents(C,Cc,C_in_to_out);
@@ -1338,7 +1355,7 @@ writeCliqueInformation(oDataStreamFile& os)
 	   p_maxWeight,p_totalWeight,
 		    JunctionTree::junctionTreeWeight(P.cliques,
 						     PCInterface_in_P,
-						     NULL,&C.nodes));
+						     NULL,&PCInterface_in_P));
 
 
     double c_maxWeight = -1.0;
@@ -1360,7 +1377,7 @@ writeCliqueInformation(oDataStreamFile& os)
 	   c_totalWeight - log10((double)S),
            JunctionTree::junctionTreeWeight(C.cliques,
 					    CEInterface_in_C,
-					    &P.nodes,&E.nodes));
+					    &PCInterface_in_C,&CEInterface_in_C));
 
 
     double e_maxWeight = -1.0;
@@ -1380,7 +1397,7 @@ writeCliqueInformation(oDataStreamFile& os)
 	   e_maxWeight,e_totalWeight,
            JunctionTree::junctionTreeWeight(E.cliques,
 					    emptySet,
-					    &C.nodes,NULL));
+					    &CEInterface_in_E,NULL));
 
     double maxWeight
       = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);
