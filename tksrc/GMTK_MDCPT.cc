@@ -32,6 +32,7 @@
 
 #include "GMTK_MDCPT.h"
 #include "GMTK_RandomVariable.h"
+#include "GMTK_DiscreteRandomVariable.h"
 
 VCID("$Header$");
 
@@ -481,6 +482,72 @@ MDCPT::makeUniform()
   }
 }
 
+
+////////////////////////////////////////////////////////////////////
+//        EM Routines
+////////////////////////////////////////////////////////////////////
+
+void
+MDCPT::emStartIteration()
+{
+  if (!(bitmask & bm_emAllocated)) {
+    nextMdcpt.resize(mdcpt.len());
+    emSetAllocatedBit();
+  }
+  
+  // zero the accumulators
+  // or if we want to add priors here, we can do that at this point.
+  for (int i=0;i<nextMdcpt.len();i++) {
+    nextMdcpt[i].set_to_zero();
+  }
+  accumulator = 0.0;
+}
+
+
+void
+MDCPT::emIncrement(RandomVariable* rv, logpr prob)
+{
+  // this is an MDCPT, so rv must be discrete.a
+  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+  // make sure, by checking that drv's curCPT points to this.
+  assert ( drv -> curCPT == this );
+
+  // 
+  // TODO: This needs to be factored out of the inner most
+  // loop!
+  becomeAwareOfParentValues(*(drv->curConditionalParents));
+
+  int offset = mdcpt_ptr-mdcpt.ptr;
+
+  *(nextMdcpt.ptr + offset + drv->val) += prob;
+
+  accumulator += prob;
+}
+
+void
+MDCPT::emEndIteration()
+{
+  if (accumulator == 0.0) 
+    error("Ending EM iteration but CPT %s has zero probability of occurance\n",
+	  _name.c_str());
+
+  logpr* p_ptr = nextMdcpt.ptr;
+  for (int i=0;i<condAccumulator.len();i++) {
+    if (condAccumulator[i] == 0.0)
+      error("Ending EM iteration, CPT %s has zero prob for certain parents\n",
+	    _name.c_str());
+    for (int j=0;j<cardinalities[_numParents];j++) {
+      *p_ptr /= condAccumulator[i];
+      p_ptr++;
+    }
+  }
+}
+
+void
+MDCPT::emSwapCurAndNew()
+{
+  mdcpt.swapPtrs(nextMdcpt);
+}
 
 
 
