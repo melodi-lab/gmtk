@@ -177,7 +177,7 @@ public:
       return rv;
     } 
 
-    void tieParametersWith(RandomVariable *other) 
+    void tieParametersWith(RandomVariable *other,bool checkStructure=true) 
     {SimpleDiscreteRV *p = (SimpleDiscreteRV *) other;
      dist_given_parents=p->dist_given_parents;
      counts_given_parents=p->counts_given_parents;}
