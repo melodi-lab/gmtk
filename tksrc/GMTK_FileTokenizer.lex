@@ -57,7 +57,7 @@ int_rng {int}:{int}
 
 
 /* all valid keywords */
-keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|nil|using|mapping|MDCPT|MSCPT|MTCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
+keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|value|nil|using|mapping|MDCPT|MSCPT|MTCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 
