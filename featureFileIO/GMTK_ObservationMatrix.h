@@ -79,6 +79,7 @@
 #include "ieeeFPsetup.h"
 
 
+#define NONE_LETTER 'X'
 #define TRANS_NORMALIZATION_LETTER 'N'
 #define TRANS_MEAN_SUB_LETTER 'E'
 #define TRANS_UPSAMPLING_LETTER 'U'
