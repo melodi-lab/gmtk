@@ -417,7 +417,7 @@ int main()
     of.writeFloat(10003.043); of.nl();
     of.indent(1,false); of.writeDouble(10003.043343434); of.nl();
     of.writeStr("This_is_a_String"); of.nl();
-    of.write(sizeof(far1)/sizeof(float),far1,"writing array");
+    of.write(far1,sizeof(far1)/sizeof(float),"writing array");
   }
 
   bin=false;
@@ -428,9 +428,9 @@ int main()
     inf.readFloat(f);
     inf.readDouble(d);
     inf.readStr(str);
-    inf.read(sizeof(far1)/sizeof(float),far2,"reading array");
+    inf.read(far2,sizeof(far1)/sizeof(float),"reading array");
     printf("%c %d %f %f %s\n",c,i,f,d,str);
-    for (int i=0;i<(int)sizeof(far1)/sizeof(float);i++) {
+    for (int i=0;i<(int)(sizeof(far1)/sizeof(float));i++) {
       printf("%f ",far2[i]);
     }
     printf("\n");
@@ -444,7 +444,7 @@ int main()
     of.writeFloat(f); of.nl();
     of.indent(1,false); of.writeDouble(d); of.nl();
     of.writeStr(str); of.nl();
-    of.write(sizeof(far1)/sizeof(float),far1,"writing array");
+    of.write(far1,sizeof(far1)/sizeof(float),"writing array");
   }
 
   bin=true;
@@ -455,9 +455,9 @@ int main()
     inf.readFloat(f);
     inf.readDouble(d);
     inf.readStr(str);
-    inf.read(sizeof(far1)/sizeof(float),far2,"reading array");
+    inf.read(far2,sizeof(far2)/sizeof(float),"reading array");
     printf("%c %d %f %f %s\n",c,i,f,d,str);
-    for (int i=0;i<(int)sizeof(far1)/sizeof(float);i++) {
+    for (int i=0;i<(int)(sizeof(far1)/sizeof(float));i++) {
       printf("%f ",far2[i]);
     }
     printf("\n");
