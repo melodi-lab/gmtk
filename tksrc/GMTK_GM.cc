@@ -503,11 +503,22 @@ void GMTK_GM::cliqueChainEM(const int iterations,
     if (llStoreFile != NULL) {
       oDataStreamFile of(llStoreFile,false);
       of.write(total_data_prob.val());
-    }
+				  }
 
     // compute the log likelihood difference percentage
-    llDiffPerc = 
-      100.0*fabs((total_data_prob.val() - previous_dp.val())/previous_dp.val());
+    if (previous_dp.val() == 0) {
+      // this means that the data has probability 1, since log(1) = 0
+      if (total_data_prob.val() == previous_dp.val())
+	llDiffPerc = 0.0;
+      else {
+	previous_dp.valref() = exp(-20);
+	llDiffPerc = 
+	  100.0*fabs((total_data_prob.val() - previous_dp.val())/previous_dp.val());
+      }
+    } else {
+      llDiffPerc = 
+	100.0*fabs((total_data_prob.val() - previous_dp.val())/previous_dp.val());
+    }
     previous_dp = total_data_prob;
 
     if (llDiffPerc < lldp) {
