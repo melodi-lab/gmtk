@@ -895,6 +895,8 @@ void ObservationMatrix::applyTransforms(char* trans_str, unsigned num_floats, un
     case OFFSET:
       addOffset(_tmpFloatSenBuffer.ptr,num_floats,num_floats,num_frames,magic_double);
       break;
+    case NONE:
+      break;  // nothing to do here.  There is no transform
     case UNRECOGNIZED_TRANSFORM:
       error("ERROR: ObservationMatrix::applyTransforms: Unrecognized transformation substring (%s)\n",trans_str_ptr);
     default:
