@@ -1529,3 +1529,13 @@ Thu Feb 19 23:41:00 2004
   - tree-structured lexicon: it should be possible to code
     this up using sparse CPTs, and use the same standard inference procedure.
     Should investigate this.
+
+
+Sat Feb 21 19:11:22 2004
+  - investigate and use faster hash functions for the vhash stuff.
+   -  Look at Bob Jenkin's hash function
+      and the FNV (Fowler/Noll/Vo) Hash. 
+
+
+
+     
