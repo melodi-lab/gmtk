@@ -57,7 +57,6 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 DiagCovarVector::DiagCovarVector() 
-  : _name(NULL)
 {
 }
 
