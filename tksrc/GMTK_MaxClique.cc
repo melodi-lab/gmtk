@@ -1721,8 +1721,9 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
   InferenceSeparatorClique& sep = 
     part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
 
-  if (message(Giga)) {
-    fprintf(stdout,"Starting separator iteration, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+  if (message(High)) {
+    psp(stdout,2*sepNumber);    
+    infoMsg(High,"Starting separator iteration, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
 	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
     printRVSet(stdout,sep.fNodes);
   }
@@ -1786,8 +1787,9 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // of 0 and a hreminder size of 0 -- nothing to unpack here either
     // (no hash tables even exist), so we just continue along.
 
-    if (message(Giga)) {
-      fprintf(stdout,"Separator iteration no-unpack, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+    if (message(High+5)) {
+      psp(stdout,2*sepNumber);
+      infoMsg(High+5,"Separator iteration no-unpack, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
 	      sepNumber,origin.ceReceiveSeparators[sepNumber],
 	      p.val(),
 	      sep.separatorValues.ptr[sepValueNumber].remValues.ptr[0].p.val());
@@ -1831,8 +1833,9 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	// printf("here2");
 	// } 
 
-	if (message(Giga)) {
-	  fprintf(stdout,"Separator iteration %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+	if (message(High+5)) {
+	  psp(stdout,2*sepNumber);
+	  infoMsg(High+5,"Separator iteration %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
 		  i,
 		  sepNumber,origin.ceReceiveSeparators[sepNumber],
 		  p.val(),
@@ -1854,8 +1857,9 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 		  (unsigned*)sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].ptr,
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
 
-	if (message(Giga)) {
-	  fprintf(stdout,"pSeparator iteration %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
+	if (message(High+5)) {
+	  psp(stdout,2*sepNumber);
+	  infoMsg(High+5,"Separator iteration %d, sepNumber =%d, part sepNo = %d,p=%f, sp=%f, nodes:",
 		  i,
 		  sepNumber,origin.ceReceiveSeparators[sepNumber],
 		  p.val(),
@@ -1979,24 +1983,23 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
     cliqueValues.ptr[numCliqueValuesUsed].p = p;
     numCliqueValuesUsed++;
 
-    if (message(Mega)) {
-      psp(stdout,2*nodeNumber);
-      infoMsg(Mega,"%d:Inserting New Clique Value. prob = %f, sum = %f: ",
+    if (message(High)) {
+      if (message(Huge))
+	psp(stdout,2*nodeNumber);
+      infoMsg(High,"%d:Inserting New Clique Value. prob = %f, sum = %f: ",
 	      nodeNumber,
 	      cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
       printRVSetAndValues(stdout,fNodes);
     }
-
-
 
     return;
   }
   RV* rv = fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
-  if (message(Giga)) {
+  if (message(Huge)) {
     psp(stdout,2*nodeNumber);
-    infoMsg(Giga,"%d:Starting assigned iteration of rv %s(%d), p = %f\n",
+    infoMsg(Huge,"%d:Starting assigned iteration of rv %s(%d), crClqPr=%f\n",
 	    nodeNumber,
 	    rv->name().c_str(),rv->frame(),p.val());
   }
@@ -2007,24 +2010,37 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       logpr cur_p;
       rv->begin(cur_p);
       do {
-	if (message(Giga)) {
+	if (message(Huge)) {
+	  psp(stdout,2*nodeNumber);
+	  printf("%d:assigned iter/prob app, Pr[",nodeNumber);
+	  rv->printNameFrameValue(stdout,false);
+	  if (message(Mega)) {
+	    printf("|");
+	    printRVSetAndValues(stdout,rv->allParents,false);
+	    printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  } else {
+	    printf("|parents]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  }
+
+#if 0
 	  if (!rv->discrete()) {
 	    psp(stdout,2*nodeNumber);
-	    infoMsg(Giga,"%d:assigned iter/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",nodeNumber,
+	    infoMsg(Huge,"%d:assigned iter/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",nodeNumber,
 		    rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
 
 	  } else {
 	    DiscRV* drv = (DiscRV*)rv;
 	    psp(stdout,2*nodeNumber);
-	    infoMsg(Giga,"%d:assigned CPT iter/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
+	    infoMsg(High,"%d:assigned CPT iter/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
 		    nodeNumber,
 		    rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
 	  }
-	  if (message(Max)) {
+	  if (message(Mega)) {
 	    psp(stdout,2*nodeNumber);
-	    infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
+	    infoMsg(Mega,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
 	    printRVSetAndValues(stdout,rv->allParents);
 	  }
+#endif
 	}
 	// if at any step, we get zero, then back out.
 	if (!cur_p.essentially_zero()) {
@@ -2042,25 +2058,39 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       rv->begin(cur_p);
       do {
 	// At each step, we compute probability
-	if (message(Giga)) {
+	if (message(Huge)) {
+	  psp(stdout,2*nodeNumber);
+	  printf("%d:assigned iter/zero rmv, Pr[",nodeNumber);
+	  rv->printNameFrameValue(stdout,false);
+	  if (message(Mega)) {
+	    printf("|");
+	    printRVSetAndValues(stdout,rv->allParents,false);
+	    printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  } else {
+	    printf("|parents]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	  }
+	}
+#if 0
+	if (message(Huge)) {
 	  if (!rv->discrete()) {
 	    psp(stdout,2*nodeNumber);
-	    infoMsg(Giga,"%d:assigned iter rv %s(%d)=C,p=%f,cur_p=%f\n",
+	    infoMsg(Huge,"%d:assigned iter rv %s(%d)=C,p=%f,cur_p=%f\n",
 		    nodeNumber,
 		    rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
 	  } else {
 	    DiscRV* drv = (DiscRV*)rv;
 	    psp(stdout,2*nodeNumber);
-	    infoMsg(Giga,"%d:assigned CPT iter/zero removal rv %s(%d)=%d,p=%f,cur_p=%f\n",
+	    infoMsg(Huge,"%d:assigned CPT iter/zero removal rv %s(%d)=%d,p=%f,cur_p=%f\n",
 		    nodeNumber,
 		    rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
 	  }
-	  if (message(Max)) {
+	  if (message(Mega)) {
 	    psp(stdout,2*nodeNumber);
-	    infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
+	    infoMsg(Mega,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
 	    printRVSetAndValues(stdout,rv->allParents);
 	  }
 	}
+#endif
 	// if at any step, we get zero, then back out.
 	if (!cur_p.essentially_zero()) {
 	  // Continue, do not update probability!!
@@ -2077,17 +2107,31 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       // do the loop right here
       drv->val = 0;
       do {
-	if (message(Giga)) {
+	if (message(Huge)) {
 	  psp(stdout,2*nodeNumber);
-	  infoMsg(Giga,"%d:assigned card iter rv %s(%d)=%d,p=%f\n",
+	  printf("%d:assigned card iter, Pr[",nodeNumber);
+	  rv->printNameFrameValue(stdout,false);
+	  if (message(Mega)) {
+	    printf("|");
+	    printRVSetAndValues(stdout,rv->allParents,false);
+	    printf("]=???, crClqPr=%f\n",p.val());
+	  } else {
+	    printf("|parents]=???, crClqPr=%f\n",p.val());
+	  }
+	}
+#if 0
+	if (message(Huge)) {
+	  psp(stdout,2*nodeNumber);
+	  infoMsg(Huge,"%d:assigned card iter rv %s(%d)=%d,p=%f\n",
 		  nodeNumber,
 		  rv->name().c_str(),rv->frame(),drv->val,p.val());
-	  if (message(Max)) {
+	  if (message(Mega)) {
 	    psp(stdout,2*nodeNumber);
 	    infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
 	    printRVSetAndValues(stdout,rv->allParents);
 	  }
 	}
+#endif
 	// Continue, do not update probability!!
 	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
       } while (++drv->val < drv->cardinality);
@@ -2100,24 +2144,38 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       // RV.
       logpr cur_p = rv->probGivenParents();
       // if at any step, we get zero, then back out.
-      if (message(Giga)) {
+      if (message(Huge)) {
+	psp(stdout,2*nodeNumber);
+	printf("%d:assigned compute appl prob, Pr[",nodeNumber);
+	rv->printNameFrameValue(stdout,false);
+	if (message(Mega)) {
+	  printf("|");
+	  printRVSetAndValues(stdout,rv->allParents,false);
+	  printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	} else {
+	  printf("|parents]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	}
+      }
+#if 0
+      if (message(Huge)) {
 	psp(stdout,2*nodeNumber);
 	if (!rv->discrete()) {
-	  infoMsg(Giga,"%d:assigned compute/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",
+	  infoMsg(Huge,"%d:assigned compute/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",
 		  nodeNumber,
 		  rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
 	} else {
 	  DiscRV* drv = (DiscRV*)rv;
-	  infoMsg(Giga,"%d:assigned compute/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
+	  infoMsg(Huge,"%d:assigned compute/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
 		  nodeNumber,
 		  rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
 	}
-	if (message(Max)) {
+	if (message(Mega)) {
 	  psp(stdout,2*nodeNumber);
-	  infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
+	  infoMsg(Mega,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
 	  printRVSetAndValues(stdout,rv->allParents);
 	}
       }
+#endif
       if (!cur_p.essentially_zero()) {
 	// Continue, updating probability by cur_p.
 	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p*cur_p);
@@ -2134,24 +2192,37 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       // TODO: Make more efficient version of this, based on the type of
       // RV.
       logpr cur_p = rv->probGivenParents();
-      if (message(Giga)) {
+      if (message(Huge)) {
+	psp(stdout,2*nodeNumber);
+	printf("%d:assigned compute continue, Pr[",nodeNumber);
+	rv->printNameFrameValue(stdout,false);
+	if (message(Mega)) {
+	  printf("|");
+	  printRVSetAndValues(stdout,rv->allParents,false);
+	  printf("]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	} else {
+	  printf("|parents]=%f, crClqPr=%f\n",cur_p.val(),p.val());
+	}
+      }
+#if 0
+      if (message(Huge)) {
 	psp(stdout,2*nodeNumber);
 	if (rv->discrete()) {
-	  infoMsg(Giga,"%d:assigned compute continue rv %s(%d)=%d,p=%f,cur_p=%f\n",
+	  infoMsg(Huge,"%d:assigned compute continue rv %s(%d)=%d,p=%f,cur_p=%f\n",
 		  nodeNumber,
 		  rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,p.val(),cur_p.val());
 	} else {
-	  infoMsg(Giga,"%d:assigned compute continue rv %s(%d)=C,p=%f,cur_p=%f\n",
+	  infoMsg(Huge,"%d:assigned compute continue rv %s(%d)=C,p=%f,cur_p=%f\n",
 		  nodeNumber,
 		  rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
 	}
-	if (message(Max)) {
+	if (message(Mega)) {
 	  psp(stdout,2*nodeNumber);
 	  infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
 	  printRVSetAndValues(stdout,rv->allParents);
 	}
       }
-
+#endif
       if (!cur_p.essentially_zero()) {
 	// Continue, do not update probability!!
 	ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
@@ -2206,7 +2277,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 						    const logpr p)
 {
 
-  if (fSortedAssignedNodes.size() == 0 || message(Giga)) {
+  if (fSortedAssignedNodes.size() == 0 || message(High)) {
     // let recursive version handle degenerate or message full case
     return ceIterateAssignedNodesRecurse(part,0,p);
   }

@@ -101,6 +101,7 @@ public:
     TT_Identifier=11,
     TT_Comma=12,
     TT_String=13,
+    TT_multiLineString=14,
     TT_Undefined=15
   };
 
@@ -237,8 +238,11 @@ private:
 
   // parse error thing.
   void parseError(const char *const str = NULL);
+  void parseErrorExpecting(const char *const str = NULL);
   // special parse error for key words
   void parseError(const TokenKeyword kw);
+
+
 
   ////////////////////////////////////////////////////////////
   // the actual routines for the recursive descent parser 

@@ -591,20 +591,20 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 {
   const unsigned numMaxCliques = part.cliques.size();
 
-  infoMsg(IM::Med,"Starting create JT\n");
+  infoMsg(IM::Giga,"Starting create JT\n");
 
   if (numMaxCliques == 0) {
     // this shouldn't happen
     assert(0);
-    infoMsg(IM::Med,"Partition is empty\n");
+    infoMsg(IM::Giga,"Partition is empty\n");
     return;
   } else if (numMaxCliques == 1) {
     // then nothing to do
-    infoMsg(IM::Med,"Partition has only one clique\n");
+    infoMsg(IM::Giga,"Partition has only one clique\n");
     return;
   } else if (numMaxCliques == 2) {
     // then JT is easy, just connect the two cliques.
-    infoMsg(IM::Med,"Partition has only two cliques\n");
+    infoMsg(IM::Giga,"Partition has only two cliques\n");
     part.cliques[0].neighbors.push_back(1);
     part.cliques[1].neighbors.push_back(0);
   } else {
@@ -677,7 +677,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 
 	// add the edge.
 	edges.push_back(e);
-	infoMsg(IM::Huge,"Edge (%d,%d) has sep size %.0f, log(sep state) %f, log(union state) %f \n",
+	infoMsg(IM::Giga,"Edge (%d,%d) has sep size %.0f, log(sep state) %f, log(union state) %f \n",
 		i,j,
 		e.weights[0],
 		-e.weights[1],
@@ -691,7 +691,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 
     unsigned joinsPlusOne = 1;
     for (unsigned i=0;i<edges.size();i++) {
-	infoMsg(IM::Huge,"Edge %d has sep size %.0f, log(sep state) %f, log(union state) %f \n",
+	infoMsg(IM::Giga,"Edge %d has sep size %.0f, log(sep state) %f, log(union state) %f \n",
 		i,
 		edges[i].weights[0],
 		-edges[i].weights[1],
@@ -725,7 +725,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 	  const unsigned clique = *ns_iter;
 	  findSet[clique] = new_set;
 	}
-	infoMsg(IM::Med,"Joining cliques %d and %d (edge %d) with intersection size %.0f\n",
+	infoMsg(IM::Giga,"Joining cliques %d and %d (edge %d) with intersection size %.0f\n",
 		edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
 
 	if (edges[i].weights[0] == 0.0) {
@@ -991,7 +991,7 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
   // set is not guaranteed to be the same at this point, we need to
   // compute intersection by (name,frame) equivalance.
 
-  infoMsg(IM::Med,"Starting create partition interface\n");
+  infoMsg(IM::Giga,"Starting create partition interface\n");
   
   unsigned max_sep_set_size = 0;
   unsigned part1_clique=0,part2_clique=0;
@@ -1009,7 +1009,7 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
 	for (it2 = part2.cliques[j].nodes.begin(); it2 != it2_end ; it2++) {
 	  RV* rv1 = (*it1);
 	  RV* rv2 = (*it2);
-	  infoMsg(IM::Huge,"comparing %s(%d) with %s(%d)\n",
+	  infoMsg(IM::Giga,"comparing %s(%d) with %s(%d)\n",
 		  rv1->name().c_str(),rv1->frame(),		  
 		  rv2->name().c_str(),rv2->frame());
 	  if (rv1->frame() == rv2->frame() && rv1->name() == rv2->name()) {
@@ -1017,7 +1017,7 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
 	  }
 	}
       }
-      infoMsg(IM::Huge,"clique %d of part1 and clique %d of part2 has overlap %d\n",i,j,sep_set_size);
+      infoMsg(IM::Giga,"clique %d of part1 and clique %d of part2 has overlap %d\n",i,j,sep_set_size);
       if (sep_set_size > max_sep_set_size) {
 	part1_clique = i;
 	part1_clique_size = part1.cliques[i].nodes.size();
@@ -1027,7 +1027,7 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
       }
     }
   }
-  infoMsg(IM::Med,"clique %d of part1 (size %d) and clique %d of part2 (size %d) has max overlap of %d\n",
+  infoMsg(IM::Giga,"clique %d of part1 (size %d) and clique %d of part2 (size %d) has max overlap of %d\n",
 	  part1_clique,part1_clique_size,
 	  part2_clique,part2_clique_size,
 	  max_sep_set_size);
@@ -1178,11 +1178,11 @@ void
 JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 				 const char *varCliqueAssignmentPrior)
 {
-  infoMsg(IM::Med,"assigning rvs to P1 partition\n");
+  infoMsg(IM::Giga,"assigning rvs to P1 partition\n");
   assignRVsToCliques("P1",P1,P_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
   if (gm_template.leftInterface) {
-    infoMsg(IM::Med,"assigning rvs to Cu0 partition\n");
+    infoMsg(IM::Max,"assigning rvs to Cu0 partition\n");
     union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
 		   P1.cliques[P_ri_to_C].assignedNodes,
 		   Cu0.cliques[C_li_to_P].cumulativeAssignedNodes);
@@ -1192,7 +1192,7 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
     assignRVsToCliques("Cu0",Cu0,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
 
-    infoMsg(IM::Med,"assigning rvs to Co partition\n");
+    infoMsg(IM::Max,"assigning rvs to Co partition\n");
     union_1_2_to_3(Cu0.cliques[C_ri_to_C].cumulativeAssignedNodes,
 		   Cu0.cliques[C_ri_to_C].assignedNodes,
 		   Co.cliques[C_li_to_C].cumulativeAssignedNodes);
@@ -1201,7 +1201,7 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 		   Co.cliques[C_li_to_C].cumulativeAssignedProbNodes);
     assignRVsToCliques("Co",Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
-    infoMsg(IM::Med,"assigning rvs to E partition\n");
+    infoMsg(IM::Max,"assigning rvs to E partition\n");
     union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
 		   Co.cliques[C_ri_to_E].assignedNodes,
 		   E1.cliques[E_li_to_C].cumulativeAssignedNodes);
@@ -1211,7 +1211,7 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
     assignRVsToCliques("E1",E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
   } else { // right interface 
-    infoMsg(IM::Med,"assigning rvs to Co partition\n");
+    infoMsg(IM::Max,"assigning rvs to Co partition\n");
     union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
 		   P1.cliques[P_ri_to_C].assignedNodes,
 		   Co.cliques[C_li_to_P].cumulativeAssignedNodes);
@@ -1220,7 +1220,7 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 		   Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
     assignRVsToCliques("Co",Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
-    infoMsg(IM::Med,"assigning rvs to Cu0 partition\n");
+    infoMsg(IM::Max,"assigning rvs to Cu0 partition\n");
     union_1_2_to_3(Co.cliques[C_ri_to_C].cumulativeAssignedNodes,
 		   Co.cliques[C_ri_to_C].assignedNodes,
 		   Cu0.cliques[C_li_to_C].cumulativeAssignedNodes);
@@ -1229,7 +1229,7 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 		   Cu0.cliques[C_li_to_C].cumulativeAssignedProbNodes);
     assignRVsToCliques("Cu0",Cu0,C_ri_to_E,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
-    infoMsg(IM::Med,"assigning rvs to E partition\n");
+    infoMsg(IM::Max,"assigning rvs to E partition\n");
     union_1_2_to_3(Cu0.cliques[C_ri_to_E].cumulativeAssignedNodes,
 		   Cu0.cliques[C_ri_to_E].assignedNodes,
 		   E1.cliques[E_li_to_C].cumulativeAssignedNodes);
@@ -1326,7 +1326,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 		     alreadyAProbContributer,
 		     parSet,
 		     scoreSet);
-    infoMsg(IM::High,
+    infoMsg(IM::Max,
 	    "Part %s: random variable %s(%d) with its parents contained in %d cliques\n",
 	    partName,
 	    rv->name().c_str(),rv->frame(),scoreSet.size());
@@ -1340,7 +1340,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 	// contributes probabilty to.
 	unsigned clique_num = (*(scoreSet.begin())).second;
 	part.cliques[clique_num].assignedProbNodes.insert(rv);
-	infoMsg(IM::Med,
+	infoMsg(IM::Max,
 		"Part %s: random variable %s(%d) giving probability to clique %d\n",
 		partName,
 		rv->name().c_str(),rv->frame(),clique_num);
@@ -1365,7 +1365,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
       // have been special cased above using the
       // 'alreadyAProbContributer' variable.
 
-      infoMsg(IM::Med,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
+      infoMsg(IM::Max,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
 	      rv->name().c_str(),rv->frame());
       // in any event, keep track of this node.
       part.unassignedInPartition.insert(rv);
@@ -1462,7 +1462,7 @@ JunctionTree::assignRVToClique(const char *const partName,
     curClique.assignedNodes.insert(rv);
     curClique.sortedAssignedNodes.push_back(rv);
 
-    infoMsg(IM::Huge,
+    infoMsg(IM::Max,
 	    "Part %s: RV and its parents in clique, assigning random variable %s(%d) to clique %d\n",
 	    partName,
 	    rv->name().c_str(),rv->frame(),root);
@@ -2882,8 +2882,8 @@ JunctionTree::unroll(const unsigned int numFrames)
 					   frameStart))
     error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
 
-  infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
-  infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+  infoMsg(IM::Info,"Number of Current Frames = %d, Number of Currently Usable Frames = %d\n",numFrames,numUsableFrames);
+  infoMsg(IM::Tiny,"Number Of Frames = %d, Unrolling Basic Template %d times, Modified Template %d times\n",
 	  numFrames,
 	  basicTemplateUnrollAmount,
 	  modifiedTemplateUnrollAmount);

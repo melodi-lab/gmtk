@@ -61,6 +61,7 @@ public:
     printNameFrameValue(f,true);
     fprintf(f,"From line %d in file %s\n",rv_info.fileLineNumber,rv_info.rvFileName.c_str());
     fprintf(f,"RV has cardinality = %d\n",cardinality);
+    ScPnShRV::printSelfVerbose(rv_info.rvWeightInfo[0],f);
   }
   
   void begin(logpr& p) {
@@ -83,7 +84,7 @@ public:
   }
 
   ScPnSh_Sw_ObsDiscRV* cloneRVShell() {
-    return (ScPnSh_Sw_ObsDiscRV*)ObsDiscRV::cloneRVShell();
+    return (ScPnSh_Sw_ObsDiscRV*)Sw_ObsDiscRV::cloneRVShell();
   }
   ScPnSh_Sw_ObsDiscRV* create() {
     ScPnSh_Sw_ObsDiscRV*rv = new ScPnSh_Sw_ObsDiscRV(rv_info,frame(),cardinality);

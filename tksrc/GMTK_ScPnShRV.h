@@ -22,6 +22,25 @@
  *
  */
 
+/*
+  Support shift, scale, and penalty. 
+  given a probabilty p, we to modify it, we do: penalty*p^scale+shift
+  Or logged:
+         log(penalty*p^scale+shift)
+      =  log(penalty*p^scale) ++ log(shift)
+      =  (log(penalty) + scale*log(p)) ++ log(shift)
+  
+  Example syntax:
+       weight: 
+         scale 1.0 0:0 shift 0.5 ;
+       | scale 0:0 penalty 1:1
+       | scale 2:2
+       | nil;
+
+*/
+
+
+
 #ifndef GMTK_SC_PN_SH_RV_H
 #define GMTK_SC_PN_SH_RV_H
 
@@ -49,22 +68,22 @@ public:
 
   // Version with branches.
   // Given a p, modify p according to:
-  //         scale*p^penalty+shift
+  //         penalty*p^scale+shift
   // or alternatively:
-  //  (log(scale) + penalty*log(p)) ++ log(shift)
+  //  (log(penalty) + scale*log(p)) ++ log(shift)
   // where ++ is the log_add operator.
   inline void modifyProbability(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
     if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
-      p.valref() *= wi.penalty.weight_value;
+      p.valref() += wi.penalty.weight_value;
     } else if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-      p.valref() *= 
+      p.valref() += 
 	(*globalObservationMatrix.floatVecAtFrame(rv->frame(),
 						  wi.penalty.firstFeatureElement));
     }
     if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
-      p.valref() += wi.scale.weight_value;
+      p.valref() *= wi.scale.weight_value;
     } else if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-      p.valref() += 
+      p.valref() *= 
 	(*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
 						  wi.scale.firstFeatureElement));
     }
@@ -91,18 +110,18 @@ public:
   // 26 since we don't include the do nothing routine).
 
   inline void modifyProbabilityCP(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    p.valref() *= wi.penalty.weight_value;
+    p.valref() += wi.penalty.weight_value;
   }
   inline void modifyProbabilityOP(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-      p.valref() *= 
+      p.valref() += 
 	(*globalObservationMatrix.floatVecAtFrame(rv->frame(),
 						  wi.penalty.firstFeatureElement));
   }
   inline void modifyProbabilityCS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-      p.valref() += wi.scale.weight_value;
+      p.valref() *= wi.scale.weight_value;
   }
   inline void modifyProbabilityOS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-      p.valref() += 
+      p.valref() *= 
 	(*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
 						  wi.scale.firstFeatureElement));
   }

@@ -57,7 +57,7 @@ public:
   virtual void printSelfVerbose(FILE *f) 
   {
     ObsContRV::printSelfVerbose(f);
-    ScPnShRV::printSelf(rv_info.rvWeightInfo[0],f,false);
+    ScPnShRV::printSelfVerbose(rv_info.rvWeightInfo[0],f);
   }
 
   virtual void begin(logpr& p) {
