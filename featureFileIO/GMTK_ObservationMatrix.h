@@ -132,15 +132,44 @@ public:
     assert (f >= 0 && f < _numFrames);
     return features.ptr + _stride*f;
   }
+
+  float*const floatVecAtFrame(unsigned f) {
+    assert (f >= 0 && f < _numFrames);
+    return (float*)(features.ptr + _stride*f);
+  }
   
   float*const floatAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
     return (float*)(features.ptr + _stride*f);
   }
 
+  float*const floatVecAtFrame(unsigned f, 
+			      const unsigned startFeature,
+			      const unsigned len) {
+    assert (f >= 0 && f < _numFrames);
+    assert (startFeature >= 0 && startFeature + len <= _numContinuous);
+    return (float*)(features.ptr + _stride*f + startFeature);
+  }
+
+
+  float*const floatVecAtFrame(unsigned f, 
+			      const unsigned startFeature) {
+    assert (f >= 0 && f < _numFrames);
+    return (float*)(features.ptr + _stride*f + startFeature);
+  }
+
+
   unsigned*const unsignedAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
     return (unsigned*)(features.ptr + _stride*f + _numContinuous);
+  }
+
+  unsigned& unsignedAtFrame(const unsigned frame, const unsigned feature) {
+    assert (frame >= 0 && frame < _numFrames);
+    assert (feature >= _numContinuous
+	    &&
+	    feature < _numFeatures);
+    return *(unsigned*)(features.ptr+stride*frame+feature);
   }
 
   bool elementIsDiscrete(unsigned el) {
