@@ -73,46 +73,6 @@ class PackCliqueValue {
     unsigned nextLeftShift;
   };
 
-  typedef void (PackCliqueValue::*PackFunction)(const unsigned val,
-						    unsigned* const,
-						    ValLocator&);
-  typedef unsigned (PackCliqueValue::*UnPackFunction)(const unsigned* const,
-						      ValLocator&);
-
-
-  void packToSingleWord(const unsigned val,
-			unsigned* const pack_vec, 
-			ValLocator& vl) 
-  {
-    pack_vec[vl.start] |= (val << vl.startRightShift);
-  }
-
-  void packToDoubleWord(const unsigned val,
-			unsigned *const pack_vec, 
-			ValLocator& vl)
-  {
-    // high order bits will fall off top of word so no need to 'and' here.
-    pack_vec[vl.start]   |= (val << vl.startRightShift);
-    pack_vec[vl.start+1] |= 
-      ((val&(vl.nextMask<<vl.nextLeftShift)) >> vl.nextLeftShift);
-  }
-
-
-  unsigned unPackFromSingleWord(const unsigned* const pack_vec, 
-				ValLocator& vl) 
-  {
-    return ( (pack_vec[vl.start] & vl.startMask) >> vl.startRightShift );
-  }
-
-
-  unsigned unPackFromDoubleWord(const unsigned* const pack_vec,
-				ValLocator& vl) 
-  {
-    register unsigned res = 
-      ( (pack_vec[vl.start] & vl.startMask) >> vl.startRightShift );
-    res |= ( (pack_vec[vl.start+1] & vl.nextMask) << vl.nextLeftShift );
-    return res;
-  }
 
   sArray< ValLocator> valLocators;
 
@@ -123,11 +83,8 @@ class PackCliqueValue {
   sArray< unsigned> iterations;
 
   // index in 'iterations' where word-boundary overlaps occur.
-  unsigned wordBoundayOverlapLocation;
+  unsigned wordBoundaryOverlapLocation;
 
-
-  sArray< PackFunction> packFunctions;
-  sArray< UnPackFunction> unPackFunctions;
 
 public:
 
@@ -157,31 +114,80 @@ public:
     do {
       *packed_vecp++ = 0;
     } while (packed_vecp != packed_vec_endp);
-    // do the packing.
-    const unsigned *vecp = unpacked_vec;
-    const unsigned *vec_endp = unpacked_vec+unpackedVectorLength;
+
+    // do the packing, first the ones that do not
+    // span a word boundaries
+    const unsigned *it = iterations.ptr;
     ValLocator* vl_p = valLocators.ptr;
-    PackFunction* pf_p = packFunctions.ptr;
-    do {
-      (this->*(*pf_p))(*vecp,packed_vec,*vl_p);
-      pf_p++;
-      vecp++;
-      vl_p++;
-    } while (vecp != vec_endp);
+    {
+      const unsigned *it_endp = iterations.ptr+wordBoundaryOverlapLocation;
+      // assume that at least one case did not span a word boundary
+      do {
+	const unsigned val = unpacked_vec[*it];
+	packed_vec[vl_p->start] |= (val << vl_p->startRightShift);
+	vl_p++;
+      } while (++it != it_endp);
+    }
+    // next the ones that span word boundaries
+    {
+      const unsigned *it_endp = iterations.ptr+unpackedVectorLength;
+      // assume that at least one case did not span a word boundary
+      while (it != it_endp) {
+	const unsigned val = unpacked_vec[*it];
+	packed_vec[vl_p->start] |= (val << vl_p->startRightShift);
+	packed_vec[vl_p->start+1] |= 
+	  ((val&(vl_p->nextMask<<vl_p->nextLeftShift)) >> vl_p->nextLeftShift);
+	vl_p++;
+	it++;
+      }
+    }
   }
 
+  // same as above, but that packs from an array of pointers to ints
+  void pack(const unsigned **const unpacked_vec,
+	    unsigned *const packed_vec);
+
+
   void unpack(const unsigned *const packed_vec,
-	      unsigned *unpacked_vec) {
-    unsigned *vecp = unpacked_vec;
-    const unsigned *const vec_endp = unpacked_vec+unpackedVectorLength;
+	      unsigned *const unpacked_vec) {
+    unsigned *it = iterations.ptr;
     ValLocator* vl_p = valLocators.ptr;
-    UnPackFunction* upf_p = unPackFunctions.ptr;
-    do {
-      *vecp++ = (this->*(*upf_p))(packed_vec,*vl_p);
-      upf_p++;
-      vl_p++;
-    } while (vecp != vec_endp);
+    // do the unpacking, first the ones
+    // that do not span a word boundary
+    {
+      const unsigned *const it_endp = iterations.ptr+wordBoundaryOverlapLocation;
+      do {
+	unpacked_vec[*it] = 
+	  (packed_vec[vl_p->start] & vl_p->startMask)
+	    >> vl_p->startRightShift;
+	vl_p++;
+	it++;
+      } while (it != it_endp);
+    }
+    // next the ones that do span a word boundary
+    {
+      const unsigned *const it_endp = iterations.ptr+unpackedVectorLength;
+      while (it != it_endp) {
+	register unsigned res =
+	  (packed_vec[vl_p->start] & vl_p->startMask)
+	    >> vl_p->startRightShift;
+	res |=
+	  ((packed_vec[vl_p->start+1] & vl_p->nextMask) <<
+	   vl_p->nextLeftShift);
+	unpacked_vec[*it] = res;	
+	vl_p++;
+	it++;
+      }
+    }
   }
+
+  // same as above, but version that unpacks to array of pointers to
+  // ints.
+  void unpack(const unsigned **const packed_vec,
+	      unsigned *const unpacked_vec);
+
+
+
 
 
 };
