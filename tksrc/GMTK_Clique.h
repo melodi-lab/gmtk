@@ -36,10 +36,8 @@
 #include <numeric>
 #include "GMTK_RandomVariable.h"
 
-#include "general.h"
-
-
-#define MAX_VALUE_HASH_TABLE_SIZE 200000
+const int min_value_hash_table_size = 200000;
+const float value_hash_mem_factor = 1.2;
 
 struct ValueHashTable
 {
@@ -55,24 +53,25 @@ struct ValueHashTable
     vector<RandomVariable::DiscreteVariableType> *insert(
         vector<RandomVariable::DiscreteVariableType> &vec)
         {
-	  // if (count >= MAX_VALUE_HASH_TABLE_SIZE/2)
-	  //   warning("WARNING: hash table getting large, causing multiple resizes");
-	  // if (count >= MAX_VALUE_HASH_TABLE_SIZE)
-	  // error("ERROR: hash table too large, needing > %d entries",
-	  // MAX_VALUE_HASH_TABLE_SIZE);
-
-	  if (++count>=table_size/2)
-	    resize(max(2*table_size,MAX_VALUE_HASH_TABLE_SIZE)); 
+          if (table_size == 0) resize(min_value_hash_table_size);
 	  int a = addr(vec);
 	  while (table[a] && *table[a]!=vec) a=(a+1)%table_size;
+          vector<RandomVariable::DiscreteVariableType> *nv = table[a];
 	  if (!table[a])
-	    table[a] = new vector<RandomVariable::DiscreteVariableType>(vec);
-	  return table[a];
+          {
+	    table[a]=nv=new vector<RandomVariable::DiscreteVariableType>(vec);
+	    if (++count>=table_size/2)
+	      resize(max(int(value_hash_mem_factor*table_size),
+                         min_value_hash_table_size)); 
+          }
+	  return nv;
 	}
 
     void clear() 
-        {for (unsigned i=0; i<table.size(); i++) if (table[i]) delete table[i];
-         table.clear(); table_size=count=0;}
+    {
+       for (unsigned i=0; i<table.size(); i++) if (table[i]) delete table[i];
+         table.clear(); nt.clear(); table_size=count=0;
+    }
     ~ValueHashTable() {clear();} 
     ValueHashTable() {count=table_size=0;}
     void resize(int size) 
