@@ -44,6 +44,11 @@ VCID("$Header$");
 void
 DiagGaussian::read(iDataStreamFile& is)
 {
+  // The index in the global mean array of this mean.
+  int meanIndex; 
+  // The index in the global variance array of this variance vector
+  int covarIndex;
+
   // read name
   NamedObject::read(is);
 
