@@ -74,7 +74,10 @@ private:
 
 public:
 
-  DiscreteRandomVariable(string _label, int card);
+  DiscreteRandomVariable(RVInfo&,
+			 string _label, 
+			 int card);
+
 
   ////////////////////////////////////////////////
   // Assuming the parents have been allocated, this forces
@@ -86,12 +89,58 @@ public:
 
   // returns true if all cpts are determinstic.
   bool deterministic() {
+    // first check if we have any cpts. If not
+    // we be conservative and return false (this
+    // case might arrise when doing elimination
+    // experiments without needing any parameters).
+    if (conditionalCPTs.size() == 0)
+      return false;
     for (unsigned i=0;i<conditionalCPTs.size();i++) {
       if (conditionalCPTs[i]->cptType != CPT::di_MTCPT)
 	return false; 
     }
     return true;
   }
+
+
+  // Various heuristics that return several forms
+  // of cardinality, used for elimination/triangulation.
+  unsigned averageCardinality() {
+    unsigned res;
+    for (unsigned i=0;i<conditionalCPTs.size();i++) {
+      if (conditionalCPTs[i]->cptType == CPT::di_MDCPT)
+	res += cardinality;
+      else if (conditionalCPTs[i]->cptType == CPT::di_MTCPT)
+	res += 1;
+      else { // sparce CPT
+	res += conditionalCPTs[i]->averageCardinality();
+      }
+    }
+    if (res == 0)
+      return cardinality;
+    else 
+      return res/conditionalCPTs.size();
+  }
+  unsigned maxCardinality() {
+    unsigned res = 0;
+    for (unsigned i=0;i<conditionalCPTs.size();i++) {
+      if (conditionalCPTs[i]->cptType == CPT::di_MDCPT) {
+	if ((unsigned)cardinality > res) res = cardinality;
+      } else if (conditionalCPTs[i]->cptType == CPT::di_MTCPT) {
+	if (res == 0) res = 1;
+      } else { // sparce CPT
+	unsigned tmp = conditionalCPTs[i]->maxCardinality();
+	if (tmp > res) res = tmp;
+      }
+    }
+    if (res == 0)
+      return cardinality;
+    else
+      return res;
+  }
+  unsigned useCardinality() { return maxCardinality(); }  
+
+
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
@@ -215,7 +264,7 @@ public:
   // reproduction routines.
 
   RandomVariable *create() { 
-    return new DiscreteRandomVariable(label,cardinality);
+    return new DiscreteRandomVariable(rv_info,label,cardinality);
   }
   RandomVariable *clone();
   RandomVariable *cloneWithoutParents();
