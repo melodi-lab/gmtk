@@ -10,8 +10,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <alloca.h>
 
+#define LINEQSOLVE_USE_MALLOC
+
+#ifndef LINEQSOLVE_USE_MALLOC
+#include <alloca.h>
+#endif
 
 #include "general.h"
 VCID("$Header$");
@@ -39,9 +43,7 @@ void ludcmp(float *a, // nXn matrix
       if ((temp=fabs(a[i*n+j])) > big) 
 	big=temp;
     if (big == 0.0) {
-      fprintf(stderr,"ludcmp: Singular matrix in routine ludcmp");
-      abort();
-      exit(-1);
+      error("ERROR: LU Decomposition routine given a singular matrix");
     }
     vv[i]=1.0/big;
   }
@@ -133,7 +135,6 @@ lineqsolve(const int n, const int nrhs,
   int i;
   float *bp;
 
-#define LINEQSOLVE_USE_MALLOC
 #ifdef LINEQSOLVE_USE_MALLOC
   static int *indx = NULL;
   static int indx_len = 0;
