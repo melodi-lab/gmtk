@@ -1,6 +1,6 @@
 /*
  * gmtkTriangulate.cc
- * Unroll a graph
+ * triangulate a graph
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -45,6 +45,9 @@ VCID("$Header$");
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_ProgramDefaultParms.h"
+#include "GMTK_AnyTimeTriangulation.h"
+#include "GMTK_GMTemplate.h"
+
 
 /*
  * command line arguments
@@ -83,9 +86,19 @@ bool accFileIsBinary = true;
 // file to store log likelihood of this iteration.
 char *llStoreFile = NULL;
 
+int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
+int ns=GMTK_DEFAULT_NUM_SPLITS;
+
 int startSkip = 0;
 int endSkip = 0;
 
+int showFrCliques = 0;
+int jut = 0;
+char* anyTimeTriangulate = NULL;
+bool reTriangulate = false;
+bool rePartition = false;
+
+int allocateDenseCpts=-1;
 // observation file support
 
 char *obsFileName;
@@ -99,13 +112,15 @@ char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
 char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
 bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
-unsigned num_times=5;
-
-
 char *cppCommandOptions = NULL;
 
-int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
-int ns=GMTK_DEFAULT_NUM_SPLITS;
+
+char* triangulationHeuristic="WFS";
+char* faceHeuristic="SFWC";
+
+bool findBestFace = true;
+
+char* forceLeftRight="";
 
 Arg Arg::Args[] = {
 
@@ -114,35 +129,30 @@ Arg Arg::Args[] = {
   // input parameter/structure file handling
 
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
-
-  Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
-  Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
-
-  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
-  Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
-
-  Arg("objsNotToTrain",Arg::Opt,objsToNotTrainFile,"File listing trainable parameter objects to not train."),
-
-  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
-  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
-
-
-  Arg("wpaeei",Arg::Opt,writeParametersAfterEachEMIteration,
-      "Write Parameters After Each EM Iteration Completes"),
-
-
   Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
 
+  /////////////////////////////////////////////////////////////
+  // Triangulation Options
+  Arg("triangulationHeuristic",Arg::Opt,triangulationHeuristic,"Elimination heuristic, one+ of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint"),
+
+  Arg("findBestFace",Arg::Opt,findBestFace,"Run find-best-face (exponential time) algorithm or not."),
+  Arg("forceLeftRight",Arg::Opt,forceLeftRight,"Use only either left (L) or right (R) face heuristic, rather than best of both"),
+  Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, one+ of S=size,F=fill,W=wght,C=min(max(C-clique)),M=min(max(clique))"),
+
+  Arg("unroll",Arg::Opt,jut,"Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
+  Arg("anyTimeTriangulate",Arg::Opt,anyTimeTriangulate,"Run the any-time triangulation algorithm for given duration."),
+  Arg("reTriangulate",Arg::Opt,reTriangulate,"Re-Run triangluation algorithm even if .str.trifile exists with existing partition elimination ordering"),
+  Arg("rePartition",Arg::Opt,rePartition,"Re-Run the exponential partition finding algorithm even if .str.trifile exists with existing partition ordering"),
+
+  // eventually this next option will be removed.
+  Arg("showFrCliques",Arg::Opt,showFrCliques,"Show frontier alg. cliques after the network has been unrolled k times and exit."),
 
   /////////////////////////////////////////////////////////////
-  // general files
+  // General Options
 
-  Arg("varFloor",Arg::Opt,varFloor,"Variance Floor"),
-  Arg("floorVarOnRead",Arg::Opt,DiagCovarVector::floorVariancesWhenReadIn,
-       "Floor the variances to varFloor when they are read in"),
+  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
 
-  Arg("numTimes",Arg::Opt,num_times,"Number of times to unroll"),
-
+  Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   // final one to signal the end of the list
   Arg()
 
@@ -194,6 +204,8 @@ main(int argc,char*argv[])
   if (seedme)
     rnd.seed();
 
+#if 0
+  // don't read in parameters for now
   /////////////////////////////////////////////
   // read in all the parameters
   if (inputMasterFile) {
@@ -208,41 +220,195 @@ main(int argc,char*argv[])
   }
   GM_Parms.loadGlobal();
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
+#endif
 
   /////////////////////////////
   // read in the structure of the GM, this will
   // die if the file does not exist.
   FileParser fp(strFileName,cppCommandOptions);
 
-  printf("Finished reading in all parameters and structures\n");
+  printf("Finished reading in structure\n");
 
   // parse the file
   fp.parseGraphicalModel();
   // create the rv variable objects
   fp.createRandomVariableGraph();
-  // make sure that there are no directed loops in the graph
-  // by imposing the S,SE,E,NE constrains
-  fp.ensureS_SE_E_NE();
+
+  // Make sure that there are no directed loops in the graph.
+  {
+    vector <RandomVariable*> vars;
+    vector <RandomVariable*> vars2;
+    // just unroll it one time to make sure it is valid, and
+    // then make sure graph has no loops.
+    fp.unroll(1,vars);
+    if (!GraphicalModel::topologicalSort(vars,vars2))
+      // TODO: fix this error message.
+      error("ERROR. Graph is not directed and contains has a directed loop.\n");
+  }
+
+  
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
-  fp.associateWithDataParams();
+  if (allocateDenseCpts >= 0) {
+    if (allocateDenseCpts == 0)
+      fp.associateWithDataParams(FileParser::noAllocate);
+    else if (allocateDenseCpts == 1)
+      fp.associateWithDataParams(FileParser::allocateRandom);
+    else if (allocateDenseCpts == 2)
+      fp.associateWithDataParams(FileParser::allocateUniform);
+    else
+      error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
+  }
+
   // make sure that all observation variables work
   // with the global observation stream.
   // fp.checkConsistentWithGlobalObservationStream();
 
-  // GMTemplate gm_template;
-  // fp.addVariablesToTemplate(gm_template);
-  // gm_template.print();
-  vector <RandomVariable*> vars;
+  if (showFrCliques) {
+    // if this option is set, just run the frontier algorithm
+    // and then quite. TODO: remove all of this.
+    GMTK_GM gm(&fp);
+    fp.addVariablesToGM(gm);
+    gm.verifyTopologicalOrder();
 
-  fp.unroll(num_times,vars);
+    gm.setCliqueChainRecursion(ns, bct);
 
-  for (unsigned i=0;i<vars.size();i++) {
-    printf("frame %d, variable %s\n",
-	   vars[i]->timeIndex,
-	   vars[i]->name().c_str());
+    gm.GM2CliqueChain();
+    gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
+    printf("Frontier cliques in the unrolled network are:\n");
+    gm.setSize(showFrCliques);
+    gm.showCliques();
+    exit(0);
   }
 
+
+  GMTemplate gm_template(fp);
+
+
+  if (jut > 0) {
+    gm_template.unrollAndTriangulate(string(triangulationHeuristic),
+				     jut);
+  } else {
+    GMInfo gm_info;
+
+    set<RandomVariable*> P;
+    set<RandomVariable*> C;
+    set<RandomVariable*> E;
+    vector<MaxClique> Pcliques;
+    vector<MaxClique> Ccliques;
+    vector<MaxClique> Ecliques;
+    vector<RandomVariable*> Pordered;
+    vector<RandomVariable*> Cordered;
+    vector<RandomVariable*> Eordered;
+
+    string tri_file = string(strFileName) + ".trifile";
+    if (rePartition && !reTriangulate) {
+      warning("Warning: rePartition=T option forces reTriangulate option to be true.\n");
+      reTriangulate = true;
+    }
+
+    // first check of tri_file exists
+    if (rePartition || fsize(tri_file.c_str()) == 0) {
+      // then do everything (partition & triangulation)
+
+      oDataStreamFile os(tri_file.c_str());
+      fp.writeGMId(os);
+      // run partition given options
+      gm_template.findPartitions(string(faceHeuristic),
+				 string(forceLeftRight),
+				 string(triangulationHeuristic),
+				 findBestFace,
+				 gm_info);
+      if (anyTimeTriangulate == NULL) {
+	// just run simple triangulation.
+	gm_template.triangulatePartitions(string(triangulationHeuristic),
+					  gm_info);
+      } else {
+	// run the anytime algorithm.
+
+	// In this case, here we only run triangulation on the
+	// provided new P,C,E partitions until the given amount of time
+	// has passed, and we save the best triangulation. This 
+	// is seen as a separate step, and would be expected
+	// to run for a long while.
+	// AnyTimeTriangulation anyTime(string(anyTimeTriangulate),gm_template);
+	error("Anytime algorithm not yet implemented\n");
+      }
+      {
+	printf("\n--- Printing final clique set and clique weights---\n");
+	float maxWeight = -1.0;
+	for (unsigned i=0;i<gm_info.Pcliques.size();i++) {
+	  float curWeight = gm_template.computeWeight(gm_info.Pcliques[i].nodes);
+	  printf("   --- P curWeight = %f\n",curWeight);
+	  if (curWeight > maxWeight) maxWeight = curWeight;
+	}
+	for (unsigned i=0;i<gm_info.Ccliques.size();i++) {
+	  float curWeight = gm_template.computeWeight(gm_info.Ccliques[i].nodes);
+	  printf("   --- C curWeight = %f\n",curWeight);
+	  if (curWeight > maxWeight) maxWeight = curWeight;
+	}
+	for (unsigned i=0;i<gm_info.Ecliques.size();i++) {
+	  float curWeight = gm_template.computeWeight(gm_info.Ecliques[i].nodes);
+	  printf("   --- E curWeight = %f\n",curWeight);
+	  if (curWeight > maxWeight) maxWeight = curWeight;
+	}
+	printf("--- Final set has max clique weight = %f ---\n",maxWeight);
+      }
+      
+
+      gm_template.storePartitions(os,gm_info);
+      gm_template.storePartitionTriangulation(os,
+					      gm_info);
+
+    } else if (reTriangulate && !rePartition) {
+      // utilize the parition information already there but still
+      // run re-triangulation
+      
+      // first get the id and partition information.
+      {
+	iDataStreamFile is(tri_file.c_str());
+	if (!fp.readAndVerifyGMId(is))
+	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+	gm_template.findPartitions(is,
+				   gm_info);
+      }
+      // now using the partition triangulate
+      if (anyTimeTriangulate == NULL) {
+	// just run simple triangulation.
+	gm_template.triangulatePartitions(string(triangulationHeuristic),
+					  gm_info);
+      } else {
+	// In this case, here we only run triangulation on the
+	// provided new P,C,E partitions until the given amount of time
+	// has passed, and we save the best triangulation. This 
+	// is seen as a separate step, and would be expected
+	// to run for a long while.
+
+	AnyTimeTriangulation attr(gm_template,string(anyTimeTriangulate));
+	attr.triangulatePartitions(gm_info);
+
+      }
+      // write everything out anew
+      oDataStreamFile os(tri_file.c_str());
+      fp.writeGMId(os);
+      gm_template.storePartitions(os,gm_info);
+      gm_template.storePartitionTriangulation(os,
+					      gm_info);
+
+    } else {
+      // utilize both the partition information and elimination order information
+      // already computed and contained in the file
+
+      iDataStreamFile is(tri_file.c_str());
+      if (!fp.readAndVerifyGMId(is))
+	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+
+      gm_template.findPartitions(is,
+				 gm_info);
+      gm_template.triangulatePartitions(is,
+					gm_info);
+    }
+  }
 
   exit_program_with_status(0);
 }
