@@ -50,7 +50,12 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
         preorder[i]->instantiationAddress.clear();  
 
         // prune the low probability entries in preorder[i]
-        preorder[i]->prune(beam);
+        // do not prune separators
+        // this ensures that each entry on the instantaition list of a
+        // non-separator clique will have a successor, and that li->succ->lambda
+        // can  be dereferenced on the backward pass without an extra check.
+        if (!preorder[i]->separator)
+            preorder[i]->prune(beam);
 
         // propagate the surviving entries to preorder[i+1]
         list<CliqueValue>::iterator li;
@@ -142,7 +147,7 @@ void CliqueChain::backwardPass()
     // now do the middle cliques, whose instantiations must pull in a lambda 
     // from the instantiations derived from them, and push a lambda to the 
     // instantiations they derive from.
-    for (int i=2; i<int(postorder.size())-2; i++)
+    for (int i=2; i<int(postorder.size())-2; i+=2)
     {
         Clique *cl = postorder[i];
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
