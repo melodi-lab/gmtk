@@ -145,7 +145,7 @@ class RVInfo {
   // variables that correspond exactly to the structure file. If you
   // will, you can consider rv here to be the Adam&Eve random
   // variable since all instances of this are going to be clones of
-  // rv.
+  // 'rv' (or clones of clones of 'rv', etc.).
   RandomVariable* rv;
 
 public:
