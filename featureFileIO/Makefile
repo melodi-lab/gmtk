@@ -39,9 +39,11 @@ INSTALL_EXE = $(INSTALL) -m 555
 # OPTFLAGS = -O2 -DNDEBUG
 OPTFLAGS=-O3
 
-EXFLAGS =  # extra flags via command line (e.g., -pg).
-CXXFLAGS = -g $(OPTFLAGS) $(EXFLAGS) -Wall -ansi -pedantic
-CCFLAGS = -g $(OPTFLAGS)  $(EXFLAGS) -Wall -ansi -pedantic
+# extra flags via command line (e.g., -pg).
+EXCFLAGS =  
+EXLDFLAGS =  
+CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -pedantic
+CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic
 LDFLAGS = 
 DEFS = 
 
@@ -65,7 +67,7 @@ LDFLAGS= $(libdirs)
 PURE =
 compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CCFLAGS)
 compile.c = $(CC) $(DEFS) $(INCLUDES) $(CXXFLAGS)
-link = $(PURE) $(LD) $(LDFLAGS) $(CXXFLAGS)
+link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
 compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 

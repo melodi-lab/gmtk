@@ -38,8 +38,11 @@ LD = $(CXX)
 OPTFLAGS=-O3
 
 
-CFLAGS = -g $(OPTFLAGS)
-CXXFLAGS = -g $(OPTFLAGS)
+# extra flags via command line (e.g., -pg).
+EXCFLAGS =  
+EXLDFLAGS =  
+CFLAGS = -g $(OPTFLAGS) $(EXCFLAGS)
+CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS)
 LDFLAGS = $(LIBDIR)
 #PUR=$(PURIFYDIR)/$(PURIFY)
 PUR=
@@ -48,7 +51,7 @@ compile.c =  $(PUR) $(CC) $(CFLAGS) $(DFLAGS) $(INCLUDES)
 compile.cxx =  $(PUR) $(CXX) $(CXXFLAGS) $(DFLAGS) $(INCLUDES)
 
 pure = 
-link = $(PUR) $(LD) $(LDFLAGS) $(CXXFLAGS)
+link = $(PUR) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 
 .c.o:
 	$(compile.c) -c $<

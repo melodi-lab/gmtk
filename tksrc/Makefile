@@ -39,9 +39,11 @@ INSTALL_EXE = $(INSTALL) -m 755
 # OPTFLAGS = -O2 -DNDEBUG
 OPTFLAGS=-O3
 
-EXFLAGS =  # extra flags via command line (e.g., -pg).
-CXXFLAGS = -g $(OPTFLAGS) $(EXFLAGS) -Wall -ansi -pedantic
-CCFLAGS = -g $(OPTFLAGS)  $(EXFLAGS) -Wall -ansi -pedantic
+# extra flags via command line (e.g., -pg).
+EXCFLAGS =  
+EXLDFLAGS =  
+CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -pedantic
+CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic
 LDFLAGS = 
 DEFS = 
 
@@ -66,7 +68,7 @@ LDFLAGS= $(libdirs)
 PURE =
 compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CCFLAGS)
 compile.c = $(CC) $(DEFS) $(INCLUDES) $(CXXFLAGS)
-link = $(PURE) $(LD) $(LDFLAGS) $(CXXFLAGS)
+link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
 compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 
@@ -188,7 +190,7 @@ lex.yy: lex.yy.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ lex.yy.cc -lfl
 
 lex.yy.cc: GMTK_FileTokenizer.lex
-	${LEX} GMTK_FileTokenizer.lex
+	${LEX} -B GMTK_FileTokenizer.lex
 	mv lex.yy.c lex.yy.cc	
 
 testFileParser: GMTK_FileParser.cc GMTK_FileParser.h lex.yy.o $(objs)
