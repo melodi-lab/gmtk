@@ -41,7 +41,6 @@ void GMTK_GM::verifyTopologicalOrder()
         for (unsigned j=0; j<node[i]->allPossibleParents.size(); j++)
             if (position_of[node[i]->allPossibleParents[j]] >= i)
                 error("topological ordering violated");
-    topologicalOrder = node;
 }
 
 /*
@@ -96,7 +95,7 @@ void GMTK_GM::makeUniform()
 void GMTK_GM::simulate()
 {
     for (unsigned i=0; i<node.size(); i++)
-        topologicalOrder[i]->instantiate();
+        node[i]->instantiate();
 }
 
 /*
@@ -127,7 +126,7 @@ void GMTK_GM::enumerateProb(int pos, logpr p)
         return;
     }
 
-    RandomVariable *rv = topologicalOrder[pos];
+    RandomVariable *rv = node[pos];
     rv->clampFirstValue();
     do
     {
@@ -249,7 +248,7 @@ void GMTK_GM::enumerateViterbiProb(int pos, logpr p)
         return;
     }
 
-    RandomVariable *rv = topologicalOrder[pos];
+    RandomVariable *rv = node[pos];
     rv->clampFirstValue();
     do
     {
@@ -717,6 +716,41 @@ void GMTK_GM::showCliques()
     }
 }
 
+void GMTK_GM::cloneVariables(vector<RandomVariable *> &from,
+vector<RandomVariable *> &to)
+{
+    if (to.size() > 0)
+        error("Cloning variables into a non-empty array. Memory Leak.");
+
+    map<RandomVariable *, RandomVariable *> analogue_for;
+    for (unsigned i=0; i<from.size(); i++)
+    {
+        RandomVariable *rv = from[i]->clone();
+        analogue_for[from[i]] = rv;
+        to.push_back(rv);
+    }
+
+    // adjust the internal pointers to point to the new set of variables
+    for (unsigned i=0; i<to.size(); i++)
+    {
+        RandomVariable *rv = to[i];
+        for (unsigned j=0; j<rv->switchingParents.size(); j++)
+            rv->switchingParents[j] = 
+                analogue_for[rv->switchingParents[j]];
+        for (unsigned j=0; j<rv->allPossibleParents.size(); j++)
+            rv->allPossibleParents[j] = 
+                analogue_for[rv->allPossibleParents[j]];
+        for (unsigned j=0; j<rv->allPossibleChildren.size(); j++)
+            rv->allPossibleChildren[j] = 
+                analogue_for[rv->allPossibleChildren[j]];
+        for (unsigned j=0; j<rv->conditionalParentsList.size(); j++)
+            for (unsigned k=0; k<rv->conditionalParentsList[j].size(); k++)
+                rv->conditionalParentsList[j][k] =
+                    analogue_for[rv->conditionalParentsList[j][k]];
+    } 
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * Function
@@ -750,6 +784,34 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     // first frame is the first frame of the repeating segment
     // last frame is the last frame of the repeating segment
 
+    if (gmTemplate.size() == 0)  
+    {
+        // first call to unroll()
+        // create the template of the GM to be used by future calls
+
+        cloneVariables(node, gmTemplate);
+        firstChunkFrame = first_frame;
+        lastChunkFrame = last_frame;
+
+        obsInTemplate=obsInRepeatSeg=0;
+        for (unsigned i=0; i<=node.size(); i++)
+        {
+            if (node[i]->timeIndex>=first_frame 
+            && node[i]->timeIndex<=last_frame && !node[i]->hidden)
+                obsInRepeatSeg++;
+            if (!node[i]->hidden)
+                obsInTemplate++;
+        }
+    }
+    else
+    { 
+        // restore the template in preparation for the unrolling
+        for (unsigned i=0; i<node.size();i++)
+            delete node[i];
+        node.clear();
+        cloneVariables(gmTemplate, node);
+    }
+
     map<int,int> slice_size_for_frame;
     map<int,vector<RandomVariable *>::iterator> start_of_slice, end_of_slice;
 
@@ -776,7 +838,6 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     map<pair<int, int>, RandomVariable *> rv_for_slice;
     int cur_slices = (*node.rbegin())->timeIndex;
     int period = last_frame-first_frame+1;  // over which segments repeat
-    repeatPeriod = period;  // store
     for (int i=0; i<=cur_slices; i++)
     {
         int offset = 0;
@@ -804,14 +865,8 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
 
     // duplicate the range over and over again
     int cs = last_frame+1;  // slice being created
-    unsigned start_of_last_repeated_seg=0, end_of_last_repeated_seg=0;
     for (int i=0; i<times; i++)
     {
-        if (i==times-1)
-        {
-            start_of_last_repeated_seg = unrolled.size();
-            startTimeOfLastSegment = cs;
-        }
         // make the analogous variables in the new slices
         vi = start_of_slice[first_frame];
         for (int j=first_frame; j<=last_frame; j++, cs++)
@@ -819,15 +874,14 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
             {
                 RandomVariable *nrv = (*vi)->clone();  // new random variable
                 nrv->timeIndex = cs;
+                nrv->allPossibleParents.clear();  // will set parents again
+                nrv->allPossibleChildren.clear(); // ditto 
                 assert(rv_for_slice.find(pair<int,int>(cs, k)) ==
                        rv_for_slice.end());  // should not add twice
                 rv_for_slice[pair<int,int>(cs, k)] = nrv; 
                 slice_info_for[nrv] = pair<int,int>(cs, k);
                 unrolled.push_back(nrv);  
             }
-        assert(vi==end_of_slice[last_frame]+1);
-        if (i==times-1)
-            end_of_last_repeated_seg = unrolled.size()-1;
     }
 
     // add the tail nodes in the network
@@ -873,22 +927,6 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                     rv_for_slice[pair<int,int>(pslice, poffset)];
                 if (unrolled[i]->switchingParents[j]==NULL)
                     error("Inconsistency in unrolling. Structure OK?\n");
-
-                // update the data structure for fast splicing
-                if (i>=start_of_last_repeated_seg &&i<=end_of_last_repeated_seg)
-                {
-                    RandomVariable *this_parent = 
-                        unrolled[i]->switchingParents[j];
-                    parentsToUpdate.push_back(
-                        &(unrolled[i]->switchingParents[j]));
-                    for (int s=1; s<=times-1; s++)
-                    {
-                        int slice = this_parent->timeIndex - s*period;
-                        pair<RandomVariable *,int> p(this_parent, s);
-                        pair<int,int> v(slice, poffset);
-                        analogue_k_past[p] = rv_for_slice[v];
-                    }
-                }
             }
 
             for (unsigned j=0; j<unrolled[i]->conditionalParentsList.size();j++)
@@ -904,22 +942,6 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                     if (unrolled[i]->conditionalParentsList[j][k]==NULL)
                         error("Inconsistency in unrolling. Structure OK?\n");
 
-                    // update the data structure for fast splicing
-                    if (i>=start_of_last_repeated_seg 
-                    && i<=end_of_last_repeated_seg)
-                    {
-                        RandomVariable *this_parent = 
-                            unrolled[i]->conditionalParentsList[j][k];
-                        parentsToUpdate.push_back(
-                            &(unrolled[i]->conditionalParentsList[j][k]));
-                        for (int s=1; s<=times-1; s++)
-                        {
-                            int slice = this_parent->timeIndex - s*period;
-                            pair<RandomVariable *,int> p(this_parent, s);
-                            pair<int,int> v(slice, poffset);
-                            analogue_k_past[p] = rv_for_slice[v];
-                        }
-                    }
                 }
         }
     
@@ -932,39 +954,17 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     node = unrolled;
 }
 
-void GMTK_GM::spliceOut(int segments)
+void GMTK_GM::setSize(int repeat_segs)
 {
-    parentUpdates.clear();
-    vector<RandomVariable **>::iterator si;
-    for (si=parentsToUpdate.begin(); si!=parentsToUpdate.end(); si++)         
-    {
-        RandomVariable ** ptr_adr = *si;
-        RandomVariable * ptr_val = *ptr_adr;
-        pair<RandomVariable **, RandomVariable *> old_values(ptr_adr, ptr_val);
-        parentUpdates.push_back(old_values);
-        ptr_val = analogue_k_past[pair<RandomVariable *,int>(ptr_val,segments)];
-    }
-    tempNode = node;
-    tempTopo = topologicalOrder;
+cout << "setting size " << repeat_segs << endl;
+    // delete the old clique chain -- we're going to make a new one
+    if (chain)
+        delete chain;
 
-    int start_purge = startTimeOfLastSegment - segments*repeatPeriod;
-    int end_purge = startTimeOfLastSegment-1;
-    node.clear();
-    for (unsigned i=0; i<tempNode.size(); i++)
-        if (tempNode[i]->timeIndex < start_purge 
-        || tempNode[i]->timeIndex > end_purge)
-            node.push_back(node[i]);
-    topologicalOrder.clear();
-    for (unsigned i=0; i<tempTopo.size(); i++)
-        if (tempTopo[i]->timeIndex < start_purge 
-        || tempTopo[i]->timeIndex > end_purge)
-            topologicalOrder.push_back(node[i]);
-}
+    // unroll the model to the correct length
+    unroll(firstChunkFrame, lastChunkFrame, repeat_segs);
 
-void GMTK_GM::restoreNet()
-{
-    for (unsigned i=0; i<parentUpdates.size(); i++)
-        *parentUpdates[i].first = parentUpdates[i].second;
-    node = tempNode;
-    topologicalOrder = tempTopo;
+    // make a clique chain to go with the new model
+    GM2CliqueChain();
+cout << "size set" << endl;
 }
