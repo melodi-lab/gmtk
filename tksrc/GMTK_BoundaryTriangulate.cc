@@ -4695,7 +4695,6 @@ anyTimeTriangulate(GMTemplate& gm_template,
 		 gm_template.E.triMethod, best_E_weight ); 
   }
 
-/*
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using a variety of heuristic searches 
   ////////////////////////////////////////////////////////////////////////
@@ -4757,8 +4756,6 @@ anyTimeTriangulate(GMTemplate& gm_template,
 
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
-
-*/
 
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using exhaustive search
