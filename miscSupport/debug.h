@@ -57,7 +57,7 @@ public:
                  // threshold at which things get sent to stderr.
 
     Nano = 10,   // This should be the default.
-    Default = 10,
+    Default = 10, // Another name for default. Prints using default command line option.
     Tiny = 20,
     Low  = 30,
     Moderate = 40,
