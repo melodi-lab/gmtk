@@ -177,6 +177,10 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
         newMember[new_member_num]->clampFirstValue();
         do
         {
+cout << "Clamping " <<
+newMember[new_member_num]->label << "-" << newMember[new_member_num]->timeIndex
+<< " " << newMember[new_member_num]->val << " of " << 
+newMember[new_member_num]->cardinality << endl;
             enumerateValues(new_member_num+1, pred_val, viterbi);
         } while (newMember[new_member_num]->clampNextValue());
     }

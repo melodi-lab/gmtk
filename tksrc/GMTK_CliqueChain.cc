@@ -49,6 +49,7 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
     preorder(0)->enumerateValues(0, -1, viterbi);
     for (unsigned i=0; i<preorderSize()-1; i++)
     {
+cout << "Just enumerated values for clique " << i << endl;
         // we are done enumerating the values for preorder(i), and can
         // free the memory used in its instantiationAddress
         if (i%2)  // a separator; instantiationAddress only used in separators
