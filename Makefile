@@ -53,6 +53,29 @@ EXCLUDE: force
 force:
 
 
+
+#
+#----------------------------------------------------------------------------
+# CVS management.
+#----------------------------------------------------------------------------
+
+update:
+	cvs update
+
+# make current version a development version
+dev:
+	cvs tag -F development
+
+diff:
+	cvs diff
+
+# to make a new version, do something like:
+#	make VERSION='June12Working' version	
+version :
+	cvs tag -F "$(VERSION)"
+
+
+
 #----------------------------------------------------------------------------
 # Source Distribution Creation
 #----------------------------------------------------------------------------
