@@ -112,6 +112,7 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
 {
     if (separator)
     {
+// cout << "entering sep\n";
         cacheClampedValues();
      
         // Make sure we have a clique value to work with
@@ -144,10 +145,12 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
             cv->pi = gip[pred_val].pi;
             cv->pred = pred_val;
         }
+// cout << "exiting sep\n";
     }
     else if (new_member_num == int(newMember.size())) 
     // base case: all members fixed
     {
+// cout << "entering non-sep\n";
 	// Then all members of this clique have their values clamped,
 	// and we are ready to compute the probablity of this clique.
 	// Each variable and its parents are guaranteed to be in this
@@ -169,6 +172,7 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
             if (pred_val!=-1)   // not doing root
                 cv->pi *= gip[pred_val].pi;
         }
+// cout << "exiting non-sep\n";
     }
     else
     {
@@ -177,10 +181,12 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
         newMember[new_member_num]->clampFirstValue();
         do
         {
+/*
 cout << "Clamping " <<
 newMember[new_member_num]->label << "-" << newMember[new_member_num]->timeIndex
 << " " << newMember[new_member_num]->val << " of " << 
 newMember[new_member_num]->cardinality << endl;
+*/
             enumerateValues(new_member_num+1, pred_val, viterbi);
         } while (newMember[new_member_num]->clampNextValue());
     }
