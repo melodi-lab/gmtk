@@ -151,6 +151,8 @@ public:
     // to map from the current set of switching parent values
     // to an integer, which indicates which set of conditional
     // parents should be active for those switching parent values.
+    // This variable is NULL if there are no Switching 
+    // parents of this node.
     RngDecisionTree<int> *dtMapper;
 
     ////////////////////////////////////////////////////////////////////////
