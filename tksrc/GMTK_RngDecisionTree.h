@@ -1045,10 +1045,52 @@ T RngDecisionTree<T>::queryRecurse(const vector < RandomVariable* >& arr,
 	     RNG_DECISION_TREE_MAX_CARDINALITY );
 
     const int val = arr[n->nonLeafNode.ftr]->val;
-    for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++ ) {
-      if (n->nonLeafNode.rngs[i]->contains(val))
-	return queryRecurse(arr,n->nonLeafNode.children[i]);
+
+    // use a switch to knock off the short cases for
+    // which we use simple linear search with little bookkeeping.
+    if (n->nonLeafNode.rngs.size() < DT_SPLIT_SORT_THRESHOLD) {
+      for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
+	// Do a linear search.
+	if (n->nonLeafNode.rngs[i]->contains(val))
+	  return queryRecurse(arr,n->nonLeafNode.children[i]);
+      }
+    } else {
+      const int maxRngNum = n->nonLeafNode.rngs.size()-1;
+      if (*(n->nonLeafNode.rngs[0]) > val)
+	goto failedQuery;
+      if (*(n->nonLeafNode.rngs[maxRngNum]) < val)
+	goto failedQuery;
+
+      // do binary search
+      int l=0,u=maxRngNum;
+      int m=0;
+      while (l<=u) {
+	// all these are conditional on the val being contained in the rng.
+	// rngs[l] <= val && val <= rngs[u]  
+	m = (l+u)/2; 
+	if (*(n->nonLeafNode.rngs[m]) > val) 
+	  // rngs[l] <= val && val < rngs[m]
+	  u = m-1;
+	// rngs[l] <= val && val <= rngs[u]
+	else if (*(n->nonLeafNode.rngs[m]) < val)
+	  // rngs[m] < val && val < rngs[u]
+	  l=m+1;
+	// rngs[l] < val && val < rngs[u]
+	else {
+	  // found potential value range
+	  // rngs[l] = val && val = rngs[u] or anything inbetween.
+	  // do linear search on the remainder.
+	  for (int i=l;i<=u;i++) {
+	    if (n->nonLeafNode.rngs[i]->contains(val))
+	      return queryRecurse(arr,n->nonLeafNode.children[i]);
+	  }
+	}
+      }
     }
+    
+    // failed lookup, so return must be the default one.
+  failedQuery:
+
     // failed lookup, so return must be the default one.
     return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
   } else if (n->nodeType == LeafNodeFullExpand) {
