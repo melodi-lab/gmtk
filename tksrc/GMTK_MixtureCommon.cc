@@ -75,5 +75,6 @@ set<pair<Dense1DPMF*,unsigned> > MixGaussiansCommon::splittingComponentSet;
 
 map<MeanVector*,MeanVector*> MixGaussiansCommon::meanCloneMap;
 map<DiagCovarVector*,DiagCovarVector*> MixGaussiansCommon::diagCovarCloneMap;
+map<DlinkMatrix*,DlinkMatrix*> MixGaussiansCommon::dLinkMatCloneMap;
 map<GaussianComponent*,GaussianComponent*> MixGaussiansCommon::gcCloneMap;
 
