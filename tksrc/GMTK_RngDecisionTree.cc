@@ -29,6 +29,7 @@
 
 #include "error.h"
 #include "general.h"
+#include "rand.h"
 #include "sArray.h"
 
 #include "GMTK_DiscRV.h"
@@ -80,6 +81,10 @@ map<RngDecisionTree::EquationClass::tokenEnum,
 
 map<RngDecisionTree::EquationClass::tokenEnum, unsigned> 
   RngDecisionTree::EquationClass::tokenPriority;
+
+#ifdef MAIN
+RAND rnd(true);
+#endif 
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -618,11 +623,12 @@ RngDecisionTree::EquationClass::EquationClass()
     function["ceil_divide"]  = TOKEN_DIVIDE_CEIL_FUNCTION;
     function["floor_divide"] = TOKEN_DIVIDE_FLOOR_FUNCTION;
     function["round_divide"] = TOKEN_DIVIDE_ROUND_FUNCTION;
-    function["max"] = TOKEN_MAX;
-    function["min"] = TOKEN_MIN;
-    function["mod"] = TOKEN_MOD;
+    function["max"]    = TOKEN_MAX;
+    function["median"] = TOKEN_MEDIAN;
+    function["min"]    = TOKEN_MIN;
+    function["mod"]    = TOKEN_MOD;
     function["rotate"] = TOKEN_ROTATE;
-    function["xor"] = TOKEN_BITWISE_XOR;
+    function["xor"]    = TOKEN_BITWISE_XOR;
 
     variable["cardinality_child"]   = TOKEN_CARDINALITY_CHILD;
     variable["cc"]                  = TOKEN_CARDINALITY_CHILD;
@@ -677,6 +683,10 @@ RngDecisionTree::EquationClass::EquationClass()
     twoValFunctionToken[TOKEN_DIVIDE_FLOOR_FUNCTION] = COMMAND_DIVIDE_FLOOR;
     twoValFunctionToken[TOKEN_DIVIDE_ROUND_FUNCTION] = COMMAND_DIVIDE_ROUND;
     twoValFunctionToken[TOKEN_MOD]          = COMMAND_MOD;
+
+    // Special cases
+    // TOKEN_MEDIAN => COMMAND_MEDIAN
+    // TOKEN_ROTATE => COMMAND_ROTATE
 
     variableToken[TOKEN_CARDINALITY_CHILD]  = COMMAND_PUSH_CARDINALITY_CHILD;
     variableToken[TOKEN_CARDINALITY_PARENT] = COMMAND_PUSH_CARDINALITY_PARENT;
@@ -950,6 +960,186 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack.pop_back();
         break;
 
+      //////////////////////////////////////////////////////////////////////
+      // Calculate the median
+      //////////////////////////////////////////////////////////////////////
+      case COMMAND_MEDIAN:
+
+        stack_element_t pivot_value;
+        stack_element_t high_value;
+        unsigned pivot_index;
+        unsigned index;
+        unsigned first;
+        unsigned lower_bound_index, upper_bound_index;
+        unsigned pivot_lb, pivot_ub;  
+        unsigned not_eq_pivot_index;  
+        unsigned median_index;  
+        bool     odd_nmbr_vls;
+        bool     high_value_found;
+
+        operand = GET_OPERAND(commands[crrnt_cmnd]); 
+
+        first = stack.stackSize() - operand;
+        last  = stack.stackSize() - 1;
+
+        median_index = (first+last)/2;
+
+        if (operand & 1) {
+          odd_nmbr_vls = true;
+        }
+        else {
+          odd_nmbr_vls = false;
+        }
+
+        // Entries with index <  lower_bound_index are <= pivot_value
+        // Entries with index >= upper_bound_index are >= pivot_value
+        lower_bound_index = first;
+        upper_bound_index = last; 
+
+        high_value = 0;
+        high_value_found = false;
+        do {
+
+          //////////////////////////////////////////////////////////////////// 
+          // Partial sort:  One of the elements is randomly chosen as a pivot,
+          // the array is then shuffled so that all values <= pivot_value are
+          // at the bottom of the array, and all values > pivot_value are
+          // at the top of the array.
+          ////////////////////////////////////////////////////////////////////  
+
+          // Randomly choose a pivot 
+          pivot_index = rnd.uniform(lower_bound_index, upper_bound_index);
+          pivot_value = stack[pivot_index];
+
+          // Put pivot at the lower_bound_index  
+          swap(stack[lower_bound_index], stack[pivot_index]);
+
+          // Entries with an index < pivot_lb have values <= pivot_value
+          // Entries with an index > pivot_ub have values >  pivot_value
+          // Entries with index s.t. (pivot_lb>=index>= pivot_ub) are unknown 
+          // 
+          // Move entries that have values>pivot_value to spots above the 
+          // upper bound.
+          pivot_lb = lower_bound_index+1;
+          pivot_ub = upper_bound_index;
+
+          while (pivot_lb<pivot_ub) { 
+            if (stack[pivot_lb] <= pivot_value) {
+              pivot_lb++;
+            }
+            else {          
+              swap(stack[pivot_lb], stack[pivot_ub]);
+              pivot_ub--; 
+            }
+          }
+
+          // Now pivot_lb=pivot_ub, so look at the value at pivot_lb to
+          // determine which side of the pivot it should be on.
+          // pivot_ub might be an invalid index
+          if (stack[pivot_lb] <= pivot_value) {
+            pivot_ub++; 
+          }
+          else {
+            pivot_lb--;
+          }
+
+          ////////////////////////////////////////////////////////////////////  
+          // Deal with ties:  When there are values equal to the pivot this
+          // can cause problems because the lower_bound_index and 
+          // upper_bound_index will never converge.  This moves the 
+          // pivot_value and all entries equal to it so they sit together 
+          // at the pivot boundary 
+          ////////////////////////////////////////////////////////////////////  
+
+          // Put pivot itself (still stored at lower_bound_index) at pivot 
+          // boundary 
+          swap(stack[lower_bound_index],stack[pivot_lb]);
+
+          // Now find and move other entries that equal pivot_value to the 
+          // center.  If the pivot_lb==lower_bound_index we know that there
+          // are not any ties (or any values <= to it).
+          // The variable not_eq_pivot_index will store the largest index of 
+          // a value strictly less than the pivot 
+          if (pivot_lb <= lower_bound_index) {
+            not_eq_pivot_index = pivot_lb;
+          }
+          else {
+            not_eq_pivot_index = pivot_lb-1;   
+            index = lower_bound_index;
+            while ((not_eq_pivot_index > 0) && (index <= not_eq_pivot_index)) {
+              if (stack[index] == pivot_value) {
+                swap(stack[index], stack[not_eq_pivot_index]);
+                if (not_eq_pivot_index > 0 ) {
+                  not_eq_pivot_index--;
+                }
+              }
+              else {
+                index++;
+              }
+            }
+          }
+
+          ////////////////////////////////////////////////////////////////////  
+          // Move upper and lower bounds and check stoppping conditions
+          ////////////////////////////////////////////////////////////////////  
+
+          //////////////////////////////////////////////////////////////////  
+          // Note that:
+          //   (pivot_lb+1)=pivot_ub
+          //   Entries with an index <= pivot_lb have values <= pivot_value
+          //   Entries s.t. (not_eq_pivot_index<=index<pivot_ub) = pivot_value
+          //   Entries with an index >= pivot_ub have values >  pivot_value
+          //////////////////////////////////////////////////////////////////  
+
+          if (median_index <= not_eq_pivot_index) {
+            upper_bound_index = not_eq_pivot_index; 
+          }
+          else if (median_index < pivot_ub) {
+            upper_bound_index = lower_bound_index = median_index;
+          }
+          else { 
+            lower_bound_index = pivot_ub;
+
+            // Should never be the case that median_index > not_eq_pivot_index 
+            // and pivot_ub is invalid, but protect this with an assert 
+            assert(lower_bound_index<=last);
+          }
+
+          //////////////////////////////////////////////////////////////////  
+          // When there are an even number of entries, do a second search
+          // to find the entry with the median_index+1'th value 
+          //////////////////////////////////////////////////////////////////  
+          if ((lower_bound_index >= upper_bound_index) && 
+              (high_value_found == false) &&
+              (!odd_nmbr_vls)) {
+            high_value_found = true;
+            high_value = stack[median_index];
+            median_index++;
+            lower_bound_index = median_index;
+            upper_bound_index = last;
+          }
+
+        } while (lower_bound_index < upper_bound_index);
+
+        /////////////////////////////////////////////////////////////////////
+        // With an odd number of values median is middle value
+        // With an even number of values, median is average of the two values
+        //   straddling the middle
+        /////////////////////////////////////////////////////////////////////
+        if (odd_nmbr_vls) {
+          stack[first] = stack[median_index];
+        }
+        else {
+          stack[first] = (high_value+stack[median_index]+1)>>1;
+        }
+
+        stack.pop_back(operand-1);
+
+        break;
+        ////////////////////////////////////////////////////////////////////  
+        // End of MEDIAN 
+        ////////////////////////////////////////////////////////////////////  
+
       case COMMAND_MIN:
         last = stack.stackSize() - 1;
         if (stack[last] < stack[last-1]) {
@@ -1020,9 +1210,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
         }
 
         stack[last-3] = val;          
-        stack.pop_back();
-        stack.pop_back();
-        stack.pop_back();
+        stack.pop_back(3);
         break;
 
       case COMMAND_SHIFT_LEFT:
@@ -1446,7 +1634,7 @@ RngDecisionTree::EquationClass::parseFactor(
 
         new_command = MAKE_COMMAND( oneValFunctionToken[next_token], 0 );
         commands.push_back(new_command);
-        getToken(formula , token); 
+        getToken(formula, token); 
       }
       //////////////////////////////////////////////////////////////////////
       // Functions which take exactly two operands 
@@ -1481,6 +1669,61 @@ RngDecisionTree::EquationClass::parseFactor(
         new_command = MAKE_COMMAND( twoValFunctionToken[next_token], 0 );
         commands.push_back(new_command);
         changeDepth( -1, depth );
+        getToken(formula, token); 
+      }
+      //////////////////////////////////////////////////////////////////////
+      // Handle to median function separately
+      //    median(a,b,...)
+      //////////////////////////////////////////////////////////////////////
+      else if (token.token == TOKEN_MEDIAN) {
+
+        unsigned nmbr_operands = 0;
+
+        next_token = token.token;
+
+        getToken(formula, token); 
+        if (token.token != TOKEN_LEFT_PAREN) {
+          string error_message = "Expecting left parenthesis at '" + 
+            formula + "'";
+          throw(error_message);
+        }
+
+        getToken(formula , token); 
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+        nmbr_operands++; 
+        if (token.token != TOKEN_COMMA) {
+          string error_message = "Median requires at least three operands"; 
+          throw(error_message);
+        }
+
+        getToken(formula , token); 
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+        nmbr_operands++; 
+        if (token.token != TOKEN_COMMA) {
+          string error_message = "Median requires at least three operands"; 
+          throw(error_message);
+        }
+
+        getToken(formula, token);
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+        nmbr_operands++; 
+
+        while (token.token == TOKEN_COMMA) {
+
+          getToken(formula, token);
+          parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+          nmbr_operands++; 
+        }
+
+        if (token.token != TOKEN_RIGHT_PAREN) {
+          string error_message = "Expecting right parenthesis at '" + 
+            formula + "'";
+          throw(error_message);
+        }
+
+        new_command = MAKE_COMMAND( COMMAND_MEDIAN, nmbr_operands );
+        commands.push_back(new_command);
+        changeDepth( -(nmbr_operands-1), depth );
         getToken(formula , token); 
       }
       //////////////////////////////////////////////////////////////////////
@@ -2257,8 +2500,7 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
 
 #ifdef MAIN
 
-// TODO: get this test code working again since change of some
-// of the interface routines on Sat Aug 28 05:16:09 2004.
+#include <algorithm>
 
 ////////////////////////////////////////////////////////////////////
 // Test formulas 
@@ -2466,6 +2708,18 @@ void test_formula()
   formula = "abs((p2-p1-p0))";
   correct &= dt.testFormula( formula, vars, &child, 10 );
 
+  formula = "!0";
+  correct &= dt.testFormula( formula, vars, &child, 1 );
+
+  formula = "~10&15";
+  correct &= dt.testFormula( formula, vars, &child, 5 );
+
+  formula = "-(3-12)";
+  correct &= dt.testFormula( formula, vars, &child, 9 );
+
+  formula = "-3--12-4*-2";
+  correct &= dt.testFormula( formula, vars, &child, 17 );
+
   ////////////////////////////////////////////////////////////////////// 
   // rotate(val,num,pos,bitwidth)
   ////////////////////////////////////////////////////////////////////// 
@@ -2490,19 +2744,62 @@ void test_formula()
   formula = "rotate(255, 0-3, 2, 16)";
   correct &= dt.testFormula( formula, vars, &child, 2019 );
 
-  formula = "!0";
-  correct &= dt.testFormula( formula, vars, &child, 1 );
+  ////////////////////////////////////////////////////////////////////// 
+  // median 
+  ////////////////////////////////////////////////////////////////////// 
+  formula = "median(8,12,37)";
+  correct &= dt.testFormula( formula, vars, &child, 12 );
 
-  formula = "~10&15";
-  correct &= dt.testFormula( formula, vars, &child, 5 );
+  formula = "median(7,4,4,7,4,7)";
+  correct &= dt.testFormula( formula, vars, &child, 6 );
 
-  formula = "-(3-12)";
-  correct &= dt.testFormula( formula, vars, &child, 9 );
+  formula = "median(4,4,4,4,4,4)";
+  correct &= dt.testFormula( formula, vars, &child, 4 );
 
-  formula = "-3--12-4*-2";
-  correct &= dt.testFormula( formula, vars, &child, 17 );
+  formula = "median(4,4,4,2,4)";
+  correct &= dt.testFormula( formula, vars, &child, 4 );
+
+  formula = "median(p0,max(p1*8-12,0)+3, 2*p2)";
+  correct &= dt.testFormula( formula, vars, &child, 7 );
+
+  for (int nmbr_tests=0; nmbr_tests<10; nmbr_tests++) {
+    vector<int> some_numbers;
+    int nmbr_operands;
+    int random;
+    int answer;
+    char number_string[128]; 
+
+    some_numbers.clear();
+    nmbr_operands = rnd.uniform(3, 20);
+    formula = "median(";
+    for (int i=0; i<nmbr_operands; i++) {
+      if (i != 0) {
+        formula = formula + ",";
+      }
+      random = rnd.uniform(0, 15);
+      some_numbers.push_back(random);
+      sprintf(number_string, "%d", random);
+      formula = formula + number_string;
+    }
+    formula = formula + ")"; 
+
+    sort(some_numbers.begin(), some_numbers.end());
+    
+    if (nmbr_operands & 1) {
+      answer = some_numbers[nmbr_operands/2];
+    }
+    else {
+      answer = (some_numbers[nmbr_operands/2] + 
+                some_numbers[nmbr_operands/2-1] + 1) / 2;
+    }
+
+    correct &= dt.testFormula( formula, vars, &child, answer );
+  }
 
 
+  ////////////////////////////////////////////////////////////////////// 
+  // Finish 
+  ////////////////////////////////////////////////////////////////////// 
   if (correct) {
     printf("All formulas gave the correct answer\n"); 
   }
