@@ -20,7 +20,6 @@ VCID("$Header$");
 #include "error.h"
 
 #include "rand.h"
-#include "alloca.h"
 
 #ifndef M_SQRT2
 #define M_SQRT2        1.41421356237309504880  /* sqrt(2) */
@@ -52,14 +51,12 @@ RAND::sample(const int u, const float *const dist)
 {
 
   int i;
-  double * arr = (double*)alloca(sizeof(double)*u);
   double sum = 0.0;
   for (i=0;i<u;i++) {
-    arr[i] = dist[i];
     sum += dist[i];
   }
   double tmp = ::drand48()*sum;
-  double *arr_p = arr;
+  const float *arr_p = dist;
   i = 0;
   // do a dumb linear search for now.
   do {
