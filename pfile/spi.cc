@@ -13,7 +13,9 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#ifndef __CYGWIN__
 #include <values.h>
+#endif
 #include <math.h>
 /*#include <ieeefp.h> */
 #include <float.h>

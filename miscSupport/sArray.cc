@@ -11,7 +11,9 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#ifndef __CYGWIN__
 #include <values.h>
+#endif
 #include <math.h>
 #include <float.h>
 #include <assert.h>

@@ -16,6 +16,11 @@
 #include <errno.h>
 #include <string>
 
+#ifdef __CYGWIN__
+// added for cygwin Tue May 14 12:30:46 2002
+extern "C" { char *index(const char* str, int c); }
+#endif
+
 #include "general.h"
 VCID("$Header$");
 #include "error.h"
