@@ -34,6 +34,7 @@
 #include "general.h"
 #include "error.h"
 
+#include "GMTK_Dlinks.h"
 
 VCID("$Header$");
 
@@ -99,7 +100,7 @@ Dlinks::read(iDataStreamFile& is)
       error("Dlinks::read, read nLinks (%d) < 0 in input",nLinks);
     dIndices[i].resize(nLinks);
 
-    for (j=0;j<nLinks;j++) {
+    for (int j=0;j<nLinks;j++) {
       int l,o;
       // lags can be pos or negative
       is.read(l,"Dlinks::read, lag");      
@@ -107,8 +108,8 @@ Dlinks::read(iDataStreamFile& is)
       is.read(o,"Dlinks::read, offset");
       if (o < 0)
 	error("Dlinks::read, read offset (%d) < 0 in input",o);
-      dIndices[i].[j].lag = l;
-      dIndices[i].[j].offset = o;
+      dIndices[i][j].lag = l;
+      dIndices[i][j].offset = o;
     }
   }
 }
@@ -136,9 +137,9 @@ Dlinks::write(oDataStreamFile& os)
   os.nl();
   for (int i=0;i<numFeats();i++) {
     os.write(numLinks(i),"Dlinks::write, nLinks");
-    for (j=0;j<numLinks(i);j++) {
-      os.write(dIndices[i].[j].lag,"Dlinks::write, lag");      
-      os.write(dIndices[i].[j].offset,"Dlinks::write, offset");
+    for (int j=0;j<numLinks(i);j++) {
+      os.write(dIndices[i][j].lag,"Dlinks::write, lag");      
+      os.write(dIndices[i][j].offset,"Dlinks::write, offset");
     }
     os.nl();
   }
