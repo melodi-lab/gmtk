@@ -30,11 +30,12 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
 #include "GMTK_Sparse1DPMF.h"
+#include "GMTK_NameCollection.h"
 
 #include "GMTK_EMable.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_NamedObject.h"
-
+#include "GMTK_NameCollection.h"
 
 class MSCPT : public CPT {
 
@@ -48,6 +49,15 @@ class MSCPT : public CPT {
   RngDecisionTree* dt;
 
   ///////////////////////////////////////
+  // Direct pointer to collection (indirect
+  // mapping to spmfs).
+  NameCollection* ncl;
+
+  ///////////////////////////////////////
+  // mapping from DT leaves to SPMFs
+  NameCollection* spmfCollection;
+
+  ///////////////////////////////////////
   // Index of world's sparse mass function,
   // cached for current value of parents.
   unsigned spmfIndex;
@@ -55,6 +65,8 @@ class MSCPT : public CPT {
   ///////////////////////////////////////
   // Direct index to the Sparse PMF
   Sparse1DPMF* spmf;
+
+
 
 public:
 
