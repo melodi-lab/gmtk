@@ -2842,7 +2842,7 @@ JunctionTree::unroll(const unsigned int numFrames)
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Can't unroll\n"); // TODO: fix this error.
+    error("Can't unroll with this template (NEED TO FIX THIS ERROR MESSAGE).\n"); // TODO: fix this error.
     // return 0
 
   infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
@@ -2861,11 +2861,11 @@ JunctionTree::unroll(const unsigned int numFrames)
 
   // TODO: clear out the old and pre-allocate for new size.
   jtIPartitions.clear();
+  // re-allocate.
+  jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
   // this clears the shared caches. 
   clearDataMemory();
 
-  // re-allocate.
-  jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
 
 
   unsigned partNo = 0;

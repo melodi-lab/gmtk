@@ -181,11 +181,13 @@ public:
 // lots of memory). The number of bits required for a packed clique
 // value is equal to:
 //
-//    num_bits_required = \sum_{v \in C} ceil(log2(card(v)))
+//    num_bits_required = \sum_{v \in h(C)} ceil(log2(card(v)))
 //
-// where C is a clique, v is all hidden variables in the clique,
-// and card(v) is the cardinality of the variable v (the
-// card is taken from the structure file).
+// where C is a clique, h(C) is all *hidden* variables in the clique C
+// (i.e., vars with card > 1), and card(v) is the cardinality of the
+// variable v (the card is taken from the structure file). Note, we
+// use h(C) so that observed variables (or vars with card = 1) are not
+// needlessly stored in the clique value.
 // --
 // InferenceMaxClique Number Words WithOut a Hash (IMC_NWWOH): Namely,
 // the number of words that can be stored directly as a packed clique
