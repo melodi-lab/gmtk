@@ -41,6 +41,10 @@ int debugLexer = 0;
 /* General string separated by "" characters, on a single line. */
 string  \"[^\n"]+\"
 
+/* General string separated by "" characters, on possibly multiple line. */
+multiLineString  \"[^"]+\"
+
+
 /* White space */
 ws      [ \t]+
 
@@ -155,6 +159,14 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"|","
             FileParser::tokenInfo.tokenType = FileParser::TT_String;
             if (debugLexer)
               printf( "A string: %s\n", yytext);
+	    return FileParser::tokenInfo.tokenType;
+            }
+
+{multiLineString}     {
+            FileParser::tokenInfo.tokenStr = yytext;
+            FileParser::tokenInfo.tokenType = FileParser::TT_multiLineString;
+            if (debugLexer)
+              printf( "A multi-line string: (%s)\n", yytext);
 	    return FileParser::tokenInfo.tokenType;
             }
 

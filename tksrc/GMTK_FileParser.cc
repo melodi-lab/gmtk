@@ -102,7 +102,7 @@ RandomVariableAttribute = TypeAttribute |
                           WeightAttribute | 
                           ParentsAttribute
 
-WeightAttribute = "weight" : WeightAttributeSpecList
+WeightAttribute = "weight" : WeightAttributeSpecList ";"
 
 WeightAttributeSpecList =
     WeightAttributeSpec "|" WeightAttributeSpecList
@@ -120,7 +120,7 @@ WeightType =  "scale" | "penalty" | "shift"
 WeightOption = ( "value" number )
              | ( integer ":" integer )
 
-EliminationHintAttribute = "elimination_hint" : number ;
+EliminationHintAttribute = "elimination_hint" : number ";"
 
 
 TypeAttribute = "type" ":" RandomVariableType ";"
@@ -282,6 +282,7 @@ frame:1 {
           type: discrete hidden cardinality 3 ;
           switchingparents: nil ;
           conditionalparents: word(-1) using DenseCPT("wordbigram") ;
+          weight: penalty -10.0 ; 
         }
 
      variable : phone {
@@ -634,6 +635,16 @@ FileParser::parseError(const char* const str)
 	  tokenInfo.tokenStr);
   error("Exiting Program");
 }
+void
+FileParser::parseErrorExpecting(const char* const str)
+{
+  fprintf(stderr,"Parse Error in file '%s': expecting %s at or before line %d, near (%s)\n",
+	  fileNameParsing.c_str(),
+	  str,
+	  tokenInfo.srcLine,
+	  tokenInfo.tokenStr);
+  error("Exiting Program");
+}
 
 void
 FileParser::parseError(const TokenKeyword kw)
@@ -677,7 +688,7 @@ FileParser::parseGraphicalModel()
 
   ensureNotAtEOF("GM name");
   if (tokenInfo != TT_Identifier)
-    parseError("expecting GM name identifier");
+    parseErrorExpecting("GM name identifier");
   consumeToken();
 
   // look ahead to make sure it is a frame
@@ -726,12 +737,12 @@ FileParser::parseFrame()
 
   ensureNotAtEOF("frame colon");
   if (tokenInfo != TT_Colon)
-    parseError("frame colon");
+    parseErrorExpecting("frame colon");
   consumeToken();
 
   ensureNotAtEOF("frame number");
   if (tokenInfo != TT_Integer)
-    parseError("frame number");
+    parseErrorExpecting("frame number");
   if (tokenInfo.int_val != (curFrame+1)) {
     parseError("frame number out of order");
   }
@@ -741,14 +752,14 @@ FileParser::parseFrame()
 
   ensureNotAtEOF("open frame {");
   if (tokenInfo != TT_LeftBrace)
-    parseError("open frame {");
+    parseErrorExpecting("open frame {");
   consumeToken();
 
   parseRandomVariableList();
 
   ensureNotAtEOF("close frame }");
   if (tokenInfo != TT_RightBrace)
-    parseError("close frame }");
+    parseErrorExpecting("close frame }");
   consumeToken();
 }
 
@@ -847,25 +858,25 @@ FileParser::parseRandomVariable()
 
   ensureNotAtEOF(":");
   if (tokenInfo != TT_Colon)
-    parseError(":");
+    parseErrorExpecting("':'");
   consumeToken();
 
   ensureNotAtEOF("variable name");
   if (tokenInfo != TT_Identifier)
-    parseError("variable name");
+    parseErrorExpecting("variable name");
   curRV.name = tokenInfo.tokenStr;
   consumeToken();
 
   ensureNotAtEOF("open RV {");
   if (tokenInfo != TT_LeftBrace)
-    parseError("open RV {");
+    parseErrorExpecting("open RV {");
   consumeToken();
 
   parseRandomVariableAttributeList();
 
   ensureNotAtEOF("close frame }");
   if (tokenInfo != TT_RightBrace)
-    parseError("close RV }");
+    parseErrorExpecting("close RV }");
   consumeToken();
 
 }
@@ -901,7 +912,7 @@ FileParser::parseRandomVariableAttribute()
       parseError("type must be first attribute");
     return parseRandomVariableParentAttribute();
   }  else
-    parseError("variable attribute");
+    parseErrorExpecting("variable attribute");
 }
 
 void
@@ -915,14 +926,14 @@ FileParser::parseRandomVariableTypeAttribute()
 
   ensureNotAtEOF(":");
   if (tokenInfo != TT_Colon)
-    parseError(":");
+    parseErrorExpecting("':'");
   consumeToken();
 
   parseRandomVariableType();
 
   ensureNotAtEOF(";");
   if (tokenInfo != TT_SemiColon)
-    parseError(";");
+    parseErrorExpecting("';'");
   consumeToken();
 
 }
@@ -936,7 +947,7 @@ FileParser::parseRandomVariableType()
   else if (tokenInfo == KW_Continuous)
     parseRandomVariableContinuousType();
   else 
-    parseError("variable type");
+    parseErrorExpecting("variable type");
 }
 
 
@@ -970,18 +981,18 @@ FileParser::parseRandomVariableDiscreteType()
       // should be n:m syntax, so values come from file
 
       if (tokenInfo != TT_Integer)
-	parseError("first feature range");
+	parseErrorExpecting("first feature range");
       curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
       consumeToken();
 
       ensureNotAtEOF("feature range separator");
       if (tokenInfo != TT_Colon)
-	parseError("feature range separator");
+	parseErrorExpecting("feature range separator");
       consumeToken();
     
       ensureNotAtEOF("second feature range");
       if (tokenInfo != TT_Integer)
-	parseError("second feature range");
+	parseErrorExpecting("second feature range");
       curRV.rvFeatureRange.lastFeatureElement = tokenInfo.int_val;
       if (curRV.rvFeatureRange.lastFeatureElement < curRV.rvFeatureRange.firstFeatureElement)
 	parseError("first range num must be < second range num");
@@ -1012,17 +1023,17 @@ FileParser::parseRandomVariableDiscreteType()
       } else if (tokenInfo == KW_NumSegments) {
 	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_NumSegmentsIsValue;
       } else {
-	parseError("value {integer|frameNum|numFrames|segmentNum|numSegments}");
+	parseErrorExpecting("value {integer|frameNum|numFrames|segmentNum|numSegments}");
       }
       // consume whatever the value was.
       consumeToken();
 
     } else {
       // parse error
-      parseError("first feature range n:m | value keyword");
+      parseErrorExpecting("first feature range n:m | value keyword");
     }
   } else 
-    parseError("variable disposition (hidden|discrete)");
+    parseErrorExpecting("variable disposition (hidden|discrete)");
 
   ensureNotAtEOF(KW_Cardinality);
   if (tokenInfo != KW_Cardinality)
@@ -1031,7 +1042,7 @@ FileParser::parseRandomVariableDiscreteType()
 
   ensureNotAtEOF("cardinality value");
   if (tokenInfo != TT_Integer)
-    parseError("cardinality value");
+    parseErrorExpecting("cardinality value");
   curRV.rvCard = tokenInfo.int_val;
   if (curRV.rvCard <= 1)
     parseError("cardinality must be greater than one (1), for cardinality 1 use an observed variable,");
@@ -1087,18 +1098,18 @@ FileParser::parseRandomVariableContinuousType()
     
     ensureNotAtEOF("first feature range");
     if (tokenInfo != TT_Integer)
-      parseError("first feature range");
+      parseErrorExpecting("first feature range");
     curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
     consumeToken();
 
     ensureNotAtEOF("feature range separator");
     if (tokenInfo != TT_Colon)
-      parseError("feature range separator");
+      parseErrorExpecting("feature range separator");
     consumeToken();
     
     ensureNotAtEOF("second feature range");
     if (tokenInfo != TT_Integer)
-      parseError("second feature range");
+      parseErrorExpecting("second feature range");
     curRV.rvFeatureRange.lastFeatureElement = tokenInfo.int_val;
     if (curRV.rvFeatureRange.lastFeatureElement < curRV.rvFeatureRange.firstFeatureElement)
       parseError("first range num must be <= second range num");
@@ -1106,7 +1117,7 @@ FileParser::parseRandomVariableContinuousType()
     consumeToken();
 
   } else
-    parseError("variable disposition (hidden|discrete)");
+    parseErrorExpecting("variable disposition (hidden|discrete)");
 
 }
 
@@ -1120,14 +1131,14 @@ FileParser::parseRandomVariableEliminationHintAttribute()
 
   ensureNotAtEOF(":");
   if (tokenInfo != TT_Colon)
-    parseError(":");
+    parseErrorExpecting("':'");
   consumeToken();
 
   static const char *const tmp_str = "elimination hint numeric value";
   ensureNotAtEOF(tmp_str);
   // allow an int to be treated as a float value.
   if (tokenInfo != TT_Real && tokenInfo != TT_Integer)
-    parseError(tmp_str);
+    parseErrorExpecting(tmp_str);
   if (tokenInfo == TT_Real)
     curRV.eliminationOrderHint = tokenInfo.doub_val;
   else 
@@ -1136,7 +1147,7 @@ FileParser::parseRandomVariableEliminationHintAttribute()
 
   ensureNotAtEOF(";");
   if (tokenInfo != TT_SemiColon)
-    parseError(";");
+    parseErrorExpecting("';'");
   consumeToken();
 
 
@@ -1157,9 +1168,18 @@ FileParser::parseRandomVariableWeightAttribute()
 
   ensureNotAtEOF(":");
   if (tokenInfo != TT_Colon)
-    parseError(":");
+    parseErrorExpecting("':'");
   consumeToken();
   parseRandomVariableWeightAttributeSpecList();
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon) {
+    parseErrorExpecting("'}'");
+  } else {
+    // we've got a semi, so time to end the option list.
+    consumeToken();
+  }
+
 }
 
 
@@ -1187,6 +1207,8 @@ FileParser::parseRandomVariableWeightAttributeSpec()
     // there is actual weight application here.
     parseRandomVariableWeightOptionList();
   }
+
+
 }
 
 
@@ -1201,15 +1223,14 @@ FileParser::parseRandomVariableWeightOptionList()
 
   RVInfo::WeightInfo::WeightItem* curWtItem = NULL;
   if (tokenInfo == KW_Scale) {
-    consumeToken();
     curWtItem = &curRV.rvWeightInfo[curWI].scale;
   } else if (tokenInfo == KW_Penalty) {
     curWtItem = &curRV.rvWeightInfo[curWI].penalty;
   } else if (tokenInfo == KW_Shift) {
     curWtItem = &curRV.rvWeightInfo[curWI].shift;
   } else
-    parseError("scale, penalty, or shift");
-
+    parseErrorExpecting("scale, penalty, or shift");
+  consumeToken();
   
   ensureNotAtEOF("integer or floating-point value");
   // we now either have an int which is part of an int:int
@@ -1235,7 +1256,7 @@ FileParser::parseRandomVariableWeightOptionList()
       consumeToken();
 
       if (tokenInfo != TT_Integer)
-	parseError("integer value int:int");	
+	parseErrorExpecting("integer value int:int");	
 
       // ok, we've got the int:int form.
       curWtItem->wt_Status =RVInfo::WeightInfo::WeightItem::wt_Observation;	
@@ -1256,7 +1277,7 @@ FileParser::parseRandomVariableWeightOptionList()
       // we do not consume current token since it is part of the next lexeme.
     }
   } else 
-    parseError("integer or floating-point value");
+    parseErrorExpecting("integer or floating-point value");
   
   ensureNotAtEOF("; or another weight option");
   if (tokenInfo != TT_SemiColon) {
@@ -1264,7 +1285,6 @@ FileParser::parseRandomVariableWeightOptionList()
     parseRandomVariableWeightOptionList();
   } else {
     // we've got a semi, so time to end the option list.
-    consumeToken();
   }
 }
 
@@ -1279,14 +1299,14 @@ FileParser::parseRandomVariableParentAttribute()
 
     ensureNotAtEOF("attribute seperator");
     if (tokenInfo != TT_Colon)
-      parseError("attribute separator");
+      parseErrorExpecting("attribute separator");
     consumeToken();
 
     parseSwitchingParentAttribute();
 
     ensureNotAtEOF(";");
     if (tokenInfo != TT_SemiColon)
-      parseError(";");
+      parseErrorExpecting("';'");
     consumeToken();
 
   } else if (tokenInfo == KW_Conditionalparents) {
@@ -1294,18 +1314,18 @@ FileParser::parseRandomVariableParentAttribute()
 
     ensureNotAtEOF("attribute seperator");
     if (tokenInfo != TT_Colon)
-      parseError("attribute separator");
+      parseErrorExpecting("attribute separator");
     consumeToken();
 
     parseConditionalParentSpecList(); 
 
     ensureNotAtEOF(";");
     if (tokenInfo != TT_SemiColon)
-      parseError(";");
+      parseErrorExpecting("';'");
     consumeToken();
 
   } else 
-    parseError("parent attribute");
+    parseErrorExpecting("parent attribute");
 
 }
 
@@ -1388,18 +1408,18 @@ FileParser::parseParent()
 
   ensureNotAtEOF("parent RV name");
   if (tokenInfo != TT_Identifier) 
-    parseError("parent RV name");
+    parseErrorExpecting("parent RV name");
   p.first = tokenInfo.tokenStr;
   consumeToken();
 
   ensureNotAtEOF("(");
   if (tokenInfo != TT_LeftParen) 
-    parseError("(");
+    parseErrorExpecting("'('");
   consumeToken();
 
   ensureNotAtEOF("parent RV offset");
   if (tokenInfo != TT_Integer) 
-    parseError("parent RV offset");
+    parseErrorExpecting("parent RV offset");
   p.second = tokenInfo.int_val;;
   // Simple topology check right here, make
   // sure we are not pointing to ourselves.
@@ -1422,7 +1442,7 @@ FileParser::parseParent()
 
   ensureNotAtEOF(")");
   if (tokenInfo != TT_RightParen) 
-    parseError(")");
+    parseErrorExpecting("')'");
   consumeToken();
 
 }
@@ -1465,7 +1485,7 @@ FileParser::parseDiscreteImplementation()
 
     ensureNotAtEOF("(");
     if (tokenInfo != TT_LeftParen) {
-      parseError("(");
+      parseErrorExpecting("'('");
     }
     consumeToken();
 
@@ -1474,7 +1494,7 @@ FileParser::parseDiscreteImplementation()
 
     ensureNotAtEOF(")");
     if (tokenInfo != TT_RightParen) {
-      parseError(")");
+      parseErrorExpecting("')'");
     }
     consumeToken();
 
@@ -1502,7 +1522,7 @@ FileParser::parseContinuousImplementation()
 
     ensureNotAtEOF(")");
     if (tokenInfo != TT_RightParen) {
-      parseError(")");
+      parseErrorExpecting("')'");
     }
     consumeToken();
 
@@ -1540,7 +1560,7 @@ FileParser::parseContinuousImplementation()
 
     ensureNotAtEOF("(");
     if (tokenInfo != TT_LeftParen) {
-      parseError("(");
+      parseErrorExpecting("'('");
     }
     consumeToken();
 
@@ -1553,11 +1573,11 @@ FileParser::parseContinuousImplementation()
       collectionName.replace(collectionName.length()-1,1,"");
       consumeToken();
     } else
-      parseError("expecting collection name");
+      parseErrorExpecting("collection name");
 
     ensureNotAtEOF(")");
     if (tokenInfo != TT_RightParen) {
-      parseError(")");
+      parseErrorExpecting("')'");
     }
     consumeToken();
 
@@ -1595,7 +1615,7 @@ FileParser::parseContObsDistType()
     curRV.contImplementations.push_back(MixtureCommon::ci_mlpSwitchMixture);
     consumeToken();
   } else 
-    parseError("continuous observation distribution type");
+    parseErrorExpecting("continuous observation distribution type");
 }
 
 void
@@ -1608,7 +1628,7 @@ FileParser::parseChunkSpecifier()
 
   ensureNotAtEOF("first chunk integer");
   if (tokenInfo != TT_Integer)
-    parseError("first chunk integer");
+    parseErrorExpecting("first chunk integer");
   if (tokenInfo.int_val < 0) 
     parseError("non-negative chunk range");
   _firstChunkframe = (unsigned)tokenInfo.int_val;
@@ -1616,12 +1636,12 @@ FileParser::parseChunkSpecifier()
 
   ensureNotAtEOF("chunk colon");
   if (tokenInfo != TT_Colon) 
-    parseError("expecting chunk colon");
+    parseErrorExpecting("chunk colon");
   consumeToken();
 
   ensureNotAtEOF("second chunk integer");
   if (tokenInfo != TT_Integer) 
-    parseError("expecting second chunk integer");
+    parseErrorExpecting("second chunk integer");
   if (tokenInfo.int_val < 0) 
     parseError("non-negative chunk range");
   _lastChunkframe = (unsigned)tokenInfo.int_val;
@@ -1646,7 +1666,7 @@ FileParser::parseMappingSpec()
 
   ensureNotAtEOF("(");
   if (tokenInfo != TT_LeftParen) {
-    parseError("(");
+    parseErrorExpecting("'('");
   }
   consumeToken();
 
@@ -1654,7 +1674,7 @@ FileParser::parseMappingSpec()
 
   ensureNotAtEOF(")");
   if (tokenInfo != TT_RightParen) {
-    parseError(")");
+    parseErrorExpecting("')'");
   }
   consumeToken();
 
@@ -1678,7 +1698,7 @@ FileParser::parseListIndex()
     listIndex.nameIndex.replace(listIndex.nameIndex.length()-1,1,"");
     consumeToken();
   } else
-    parseError("expecting list index");
+    parseErrorExpecting("list index");
 }
 
 

@@ -60,6 +60,7 @@ public:
     printNameFrameValue(f,true);
     fprintf(f,"From line %d in file %s\n",rv_info.fileLineNumber,rv_info.rvFileName.c_str());
     fprintf(f,"RV has cardinality = %d\n",cardinality);
+    ScPnShRV::printSelf(rv_info.rvWeightInfo[0],f);
   }
   
   virtual void begin(logpr& p) {

@@ -515,6 +515,13 @@ main(int argc,char*argv[])
   total_data_prob = 1.0;
   BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
 
+  if (island) {
+    if (MixtureCommon::cacheMixtureProbabilities == true) {
+      infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
+      fflush(stdout);
+    }
+  }
+    
   while ((*dcdrng_it) <= dcdrng->max()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
     if (globalObservationMatrix.numSegments() < (segment+1)) 
@@ -529,11 +536,7 @@ main(int argc,char*argv[])
 
     logpr probe;
     if (island) {
-      warning("WARNING:: Island algorithm for decoding not yet debugged (but almost). Use at your own risk!!\n");
-      if (MixtureCommon::cacheMixtureProbabilities == true) {
-	infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
-	fflush(stdout);
-      }
+      // warning("WARNING:: Island algorithm for decoding not yet debugged (but almost). Use at your own risk!!\n");
       unsigned numUsableFrames;
       myjt.collectDistributeIsland(numFrames,
 				   numUsableFrames,

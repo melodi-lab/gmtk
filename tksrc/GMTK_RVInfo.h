@@ -88,7 +88,7 @@ private:
     // Given a probability p, the weight info modifies the
     // probability according to the following formula:
     //
-    //        scale*p^penalty+shift
+    //        penalty*p^scale+shift
     // 
     // each of penalty, scale, and shift might be an immediate value
     // or might come from the observation file at a frame given by the

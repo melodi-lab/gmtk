@@ -84,7 +84,7 @@ protected:
 
 public:
 
-  SwRV() {}
+  SwRV() { dtMapper = NULL; }
   virtual ~SwRV() {}
 
   // Cached value of the most recent swithcing parents query via the

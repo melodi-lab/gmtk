@@ -50,17 +50,19 @@ X Include gaussian objects for special situations.
   sizes are and that they might want to adjust the 
   structure to reduce clique sizes if they become too large.
 
-- the inference procedure should work both with clique chains and clique trees
+X the inference procedure should work both with clique chains and clique trees
     - no, but basic data structures are ok.
     - at some point, add tree stuff, for single frame applications
+  DONE: Wed Sep  1 11:29:25 2004
 
 - the inference procedure should work with disconnected networks
 
 X Allocate data structures for CPTS, etc. automatically, if not explicitly 
   specified in a file. 
 
-- use namedobject for randomvariable and any other object that
+X use namedobject for randomvariable and any other object that
   has a string name
+  DONE: Wed Sep  1 11:29:33 2004
 
 X- include check to make sure that names for each section in parms are unique
 
@@ -80,7 +82,7 @@ X IMPORTANT: ability to train means and other dlinkmats in a dlinkmats structure
 - write sampling code
 
 X update make file so that -@ works for .o files.
-<
+
 X Check the results of all DT query() calls to make sure
   the index it returns is valid. Report great error messages
   if it doesn't.
@@ -123,9 +125,10 @@ X when reading in definitions for each utterance:
    Essentially done, DTs can now specify a file
    containing a number of DTs one per segment.
 
-- Re-think the 1 DT per utterance stuff so that
+X Re-think the 1 DT per utterance stuff so that
   we can seemlessly do parallelism.
    (dt file indexes?)
+  DONE: Wed Sep  1 11:30:09 2004
 
 - rethink DT format numbering
 
@@ -148,13 +151,14 @@ X Allow the file parser to pass ASCII files through cpp
   range used by the cont. parents match that used by
   the gaussian, perhaps add a length check as well.
 
-- Fri Jun 15 12:43:49 2001, 
+X Fri Jun 15 12:43:49 2001, 
   MEMORY SAVINGS:
   RandomVariables and their discrete and continuous children
   have lots of redundant information when they are unrolled, thereby
   wasting lots of memory. This could be changed so that
   RV's keep a pointer to a RV common structure which when the RV is cloned
   uses the same common data.
+  DONE: Wed Sep  1 11:30:38 2004
 
 - Short term: evaulate float/double for logp on Aurora
 
@@ -2234,13 +2238,12 @@ DONE: Tue Aug 24 17:50:48 2004
         1) penalty*p^scale+shift
         2) scale*p^penalty+shift
 
-   We choose 2, since higher "penalty" seems to gel with
-    word-insertion penalty in speech recognition. 
+   We choose 1, since it corresponds to HTK.
 
       Or logged:
-         log(scale*p^penalty+shift)
-      =  log(scale*p^penalty) ++ log(shift)
-      =  (log(scale) + penalty*log(p)) ++ log(shift)
+         log(penalty*p^scale+shift)
+      =  log(penalty*p^scale) ++ log(shift)
+      =  (log(penalty) + scale*log(p)) ++ log(shift)
 
        weight: 
          scale value 1.0 penalty 0:0 shift value 0.5 ;
@@ -2310,10 +2313,20 @@ Mon Aug 30 10:59:48 2004
  4) virtual evidence CPTs.
  5) better and more informative error messages (many now include line number location).
  6) working viterbi island algorithm ??? (need to check)
-  
  6) working viterbi island algorithm??
+ 7) better use of -debug values. 60,65,70,80 for inference are the three levels of increasing 
+    verbosity + better printing format.
 
-Tue Aug 31 10:19:20 2004
+DONE: Tue Aug 31 10:19:20 2004
   - fix bug in error message bad parsing of cpp.
 ERROR: In file '"PARAMS/masterFile.Mar9_16" 2
 ', DT 'endOfUtterance', invalid leaf node value '(p0)':  RngDecisionTree:: readRecurse leaf node value
+
+Wed Sep  1 07:20:49 2004
+   for DOCS, nice equation to describe penalty:
+   W* = argmax_W ( log p(X|W) + \alpha \log p(W) + n(W)*\beta )
+    where \alpha is the scale, and \beta is the word insertion penalty,
+     and n(W) is number of words in W (so the more words we choose,
+     the more the penalty if we choose \beta to be negative).
+
+

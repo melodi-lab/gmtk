@@ -57,7 +57,7 @@ public:
   virtual void printSelfVerbose(FILE *f) 
   {
     Sw_ObsContRV::printSelfVerbose(f);
-    ScPnShRV::printSelf(rv_info.rvWeightInfo[0],f,false);
+    ScPnShRV::printSelfVerbose(rv_info.rvWeightInfo[0],f);
   }
 
   virtual void begin(logpr& p) {
@@ -78,7 +78,7 @@ public:
   }
 
   virtual ScPnSh_Sw_ObsContRV* cloneRVShell() {
-    return (ScPnSh_Sw_ObsContRV*)ObsContRV::cloneRVShell();
+    return (ScPnSh_Sw_ObsContRV*)Sw_ObsContRV::cloneRVShell();
   }
   virtual ScPnSh_Sw_ObsContRV* create() {
     ScPnSh_Sw_ObsContRV*rv = new ScPnSh_Sw_ObsContRV(rv_info,frame());
