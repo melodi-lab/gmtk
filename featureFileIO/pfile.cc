@@ -10,7 +10,7 @@
 // library. -- Karim Filali (karim@cs.washington.edu)
 
 #include <assert.h>
-#include <ctype.h>
+#include <cctype>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
