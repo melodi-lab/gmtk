@@ -400,13 +400,7 @@ LinMeanCondDiagGaussian::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability.zero()) {
-    // Note: we assume here that the mean and covar object will check
-    // for us that its accumulated probability is above
-    // threshold. Here, we just check for zero, and then issue a
-    // warning. This might not indicate a real problem as the
-    // mean and covar of this object might be shared and might have
-    // received plenty of count.
-    warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration, check child mean '%s', covar '%s', and dlink matrix '%s'",name().c_str(),mean->name().c_str(),covar->name().c_str(),dLinkMat->name().c_str());
+    error("ERROR: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration, check child mean '%s', covar '%s', and dlink matrix '%s'",name().c_str(),mean->name().c_str(),covar->name().c_str(),dLinkMat->name().c_str());
   }
 
   const double realAccumulatedProbability =
