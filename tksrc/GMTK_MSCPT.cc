@@ -451,7 +451,7 @@ MSCPT::emSwapCurAndNew()
   // which depend on parent values. We assume that this
   // happens via the global object.
 
-  emSetSwappableBit();
+  emClearSwappableBit();
 }
 
 
