@@ -4,8 +4,6 @@
 # $Header$
 #
 
-.EXPORT:
-.EXPORT: nikola2 Linux
 
 # other flags
 EXLDFLAGS=
@@ -45,12 +43,16 @@ TAR = /bin/tar
 package:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE ../gmtk-`cat RELEASE`.tar.gz .
 
+# always remake this target when called.
 EXCLUDE: force
 	(find $(EXCLUDE) -type d -print -prune ; \
-	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "#*" -o -name ".#*" \) -print; \
+	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
+	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \
 	find . -name CVS -print; \
 	find . -name RCS -print) | \
 	sed 's,^\./,,' > $@
+
+
 
 force:
 
