@@ -44,7 +44,7 @@ public:
 
   UnityScoreMixGaussian() 
     : MixGaussians(0,ci_unityScoreMixGaussian)
-  { _name = UNITYSCOREMIXGAUSSIAN_NAME; }
+  { _name = UNITYSCOREMIXGAUSSIAN_NAME; setBasicAllocatedBit(); }
   ~UnityScoreMixGaussian() {}
 
   //////////////////////////////////////////////
