@@ -607,6 +607,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 			    const set<RandomVariable*>& unassignedIteratedNodes,
 			    const set<RandomVariable*>& separatorNodes,
 			    const set<RandomVariable*>& cumulativeAssignedNodes,
+			    const set<RandomVariable*>& unassignedInPartition,
 			    const bool useDeterminism)
 {
   // compute weight in log base 10 so that
@@ -628,7 +629,9 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       // see comments above for description and rational of this algorithm
       if (!useDeterminism || !drv->sparse()) {
 	tmp_weight += log10((double)drv->cardinality);
-      } else if (unassignedIteratedNodes.find(rv) != unassignedIteratedNodes.end()) {
+      } else if ((unassignedIteratedNodes.find(rv) != unassignedIteratedNodes.end())
+		 &&
+		 (unassignedInPartition.find(rv) == unassignedInPartition.end())) {
 	tmp_weight += log10((double)drv->cardinality);
       } else if (separatorNodes.find(rv) != separatorNodes.end()) {
 	if (assignedNodes.find(rv) != assignedNodes.end()) {
@@ -642,16 +645,23 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	      // estimate the cost as accurately as possible!! It
 	      // should be as tight a possible upper bound (or a
 	      // *very* tight lower bound).
-	      tmp_weight += (min(rv->productCardOfParentsNotContainedInSet(separatorNodes),
+
+	      // cludge/hack:
+	      // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
+	      tmp_weight += (min(rv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
 				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
-
 	      // tmp_weight += log10((double)drv->useCardinality());
-
 	    }
 	  } else {
 	    tmp_weight += log10((double)drv->cardinality);
 	  }
 	}
+      } else if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
+	// Then not assigned in partition, assume it was assigned in
+	// previous partition, and it costs nothing here.  NOTE: this
+	// is only a valid assumption for forward directed graphs, not
+	// for backward directed ones.
+	tmp_weight += log10((double)drv->useCardinality());		
       } else {
 	tmp_weight += log10((double)drv->useCardinality());	
       }

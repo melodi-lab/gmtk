@@ -458,7 +458,7 @@ public:
   // return true if all parents of this rv are contained
   // within given set.
   bool allParentsContainedInSet(const set <RandomVariable*> givenSet);
-  double productCardOfParentsNotContainedInSet(const set <RandomVariable*> givenSet);
+  double log10ProductCardOfParentsNotContainedInSet(const set <RandomVariable*> givenSet);
 
 };
 

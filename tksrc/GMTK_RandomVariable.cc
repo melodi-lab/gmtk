@@ -441,7 +441,7 @@ bool RandomVariable::allParentsContainedInSet(const set <RandomVariable*> givenS
 
 
 // return log_10 product card of parents not contained in given set.
-double RandomVariable::productCardOfParentsNotContainedInSet(const set <RandomVariable*> givenSet)
+double RandomVariable::log10ProductCardOfParentsNotContainedInSet(const set <RandomVariable*> givenSet)
 {
   // first get parents not contained in set.
   set <RandomVariable*> res;
