@@ -118,28 +118,25 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
         // instantiationAddress tells if the instantiation was seen before
         map<vector<RandomVariable::DiscreteVariableType>, int>::iterator mi;
         CliqueValue *cv;
+        int inst;
         if ((mi=instantiationAddress.find(clampedValues)) == 
         instantiationAddress.end())               // not seen before
         {
-            int ncv = newCliqueValue();
-            cv = &gip[ncv];
-            instantiation.push_back(ncv);                
-            instantiationAddress[clampedValues] = ncv;  
-            // instead of storing the underlying variable values, set the pred
-            // pointer, and use the previous non-separators values --
-            // they are guaranteed to be consistent
+            instantiation.push_back(inst=newCliqueValue());                
+            instantiationAddress[clampedValues] = inst;  
+            cv = &gip[inst];
             cv->values = NULL;  // will use the parent's 
             cv->lambda = cv->pi = 0.0;
             cv->pred = pred_val;
         }
         else
-            cv = &gip[(*mi).second];              // will word with old value
+            cv = &gip[(inst=(*mi).second)];       // will word with old value
 
         if (!viterbi)
         {
 	    // accumulate in probability
             cv->pi += gip[pred_val].pi;
-            gip[pred_val].succ = instantiationAddress[clampedValues];
+            gip[pred_val].succ = inst;
         }
         else if (gip[pred_val].pi >= cv->pi)
         {
