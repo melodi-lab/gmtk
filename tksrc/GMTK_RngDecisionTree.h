@@ -157,7 +157,8 @@ protected:
 
     protected:
 
-      static sArrayStack<int> stack;
+      typedef int stack_element_t;
+      static sArrayStack<stack_element_t> stack;
 
       // Vector of commands 
       formulaCommandContainer commands;
@@ -172,10 +173,14 @@ protected:
         TOKEN_BITWISE_OR, 
         TOKEN_BITWISE_NOT, 
         TOKEN_BITWISE_XOR,
-        TOKEN_CARDINALITY, 
         TOKEN_COLON, 
         TOKEN_COMMA, 
-        TOKEN_DIVIDE, 
+        TOKEN_DIVIDE_CEIL, 
+        TOKEN_DIVIDE_FLOOR, 
+        TOKEN_DIVIDE_ROUND, 
+        TOKEN_DIVIDE_CEIL_FUNCTION, 
+        TOKEN_DIVIDE_FLOOR_FUNCTION, 
+        TOKEN_DIVIDE_ROUND_FUNCTION, 
         TOKEN_EQUALS, 
         TOKEN_EXPONENT, 
         TOKEN_GREATER_THAN, 
@@ -191,7 +196,6 @@ protected:
         TOKEN_MINUS, 
         TOKEN_MOD,
         TOKEN_NOT,
-        TOKEN_PARENT, 
         TOKEN_PLUS, 
         TOKEN_QUESTION_MARK, 
         TOKEN_RIGHT_PAREN, 
@@ -200,6 +204,14 @@ protected:
         TOKEN_SHIFT_RIGHT, 
         TOKEN_SPACE, 
         TOKEN_TIMES, 
+
+        TOKEN_CARDINALITY_CHILD, 
+        TOKEN_CARDINALITY_PARENT, 
+        TOKEN_MAX_VALUE_CHILD, 
+        TOKEN_MAX_VALUE_PARENT, 
+        TOKEN_PARENT_VALUE, 
+        TOKEN_PARENT_VALUE_MINUS_ONE, 
+        TOKEN_PARENT_VALUE_PLUS_ONE, 
 
         TOKEN_END, 
         LAST_TOKEN_INDEX
@@ -220,13 +232,18 @@ protected:
       // Commands used in equation evaluation 
       ///////////////////////////////////////////////////////////////////////    
       enum {
-        OPERAND_SHIFT = 5,
-        COMMAND_MASK  = 0x1f, 
+        OPERAND_SHIFT = 6,
+        COMMAND_MASK  = 0x3f, 
         OPERAND_MASK  = ~COMMAND_MASK,
 
         COMMAND_INVALID = 0,
-        COMMAND_PUSH_PARENT, 
-        COMMAND_PUSH_CARDINALITY,
+        COMMAND_PUSH_CARDINALITY_CHILD, 
+        COMMAND_PUSH_CARDINALITY_PARENT, 
+        COMMAND_PUSH_PARENT_VALUE, 
+        COMMAND_PUSH_PARENT_VALUE_MINUS_ONE, 
+        COMMAND_PUSH_PARENT_VALUE_PLUS_ONE, 
+        COMMAND_PUSH_MAX_VALUE_CHILD, 
+        COMMAND_PUSH_MAX_VALUE_PARENT, 
         COMMAND_PUSH_CONSTANT,    
         COMMAND_ABSOLUTE_VALUE, 
         COMMAND_BITWISE_AND, 
@@ -235,7 +252,9 @@ protected:
         COMMAND_BITWISE_XOR, 
         COMMAND_BRANCH,
         COMMAND_BRANCH_IF_FALSE,
-        COMMAND_DIVIDE, 
+        COMMAND_DIVIDE_CEIL, 
+        COMMAND_DIVIDE_FLOOR, 
+        COMMAND_DIVIDE_ROUND, 
         COMMAND_EQUALS, 
         COMMAND_EXPONENT, 
         COMMAND_GREATER_THAN, 
@@ -286,12 +305,14 @@ protected:
 
       static map<string, tokenEnum> delimiter;
       static map<string, tokenEnum> function;
+      static map<string, tokenEnum> variable;
 
       static map<tokenEnum, formulaCommand> infixToken;
       static map<tokenEnum, formulaCommand> unaryToken;
       static map<tokenEnum, formulaCommand> functionToken;
       static map<tokenEnum, formulaCommand> oneValFunctionToken;
       static map<tokenEnum, formulaCommand> twoValFunctionToken;
+      static map<tokenEnum, formulaCommand> variableToken;
       static map<tokenEnum, unsigned>       tokenPriority;
 
       typedef vector<formulaCommand> parsingCommandContainer;
@@ -488,9 +509,10 @@ public:
   ///////////////////////////////////////////////////////////    
   // Function only used for testing 
   bool testFormula(
-    string                           formula,
-    const vector< DiscRV* >& variables, 
-    unsigned                         desired_answer 
+    string               formula,
+    const vector< RV* >& variables, 
+    RV*                  child, 
+    unsigned             desired_answer 
     );
 
   ///////////////////////////////////////////////////////////    
