@@ -244,7 +244,7 @@ X make sure that dlinkmatrix precompute is being
 
 - write MDCPT parameters out in nice order with smart comments.
 
-- dlinkmats, normalize by "previous" covariance matrix.
+- dlinkmats, normalize by "previous" covariance matrix, GEM alg
 
 - more triangulation procedures to reduce large clique sizes.
 
@@ -253,9 +253,9 @@ X make sure that dlinkmatrix precompute is being
 - print message at start with largest clique (members, and upper bound on
   joint state space)
 
-- reading ascii files should not be by line.
+- reading ascii feature files should not be by line.
 
-- fix bug with small parallel chunks and accumulators being zero
+X fix bug with small parallel chunks and accumulators being zero
 
 - add option to pass definitions to cpp with cpp arg.
 
@@ -263,15 +263,13 @@ X make sure that dlinkmatrix precompute is being
   of a DT an continue on using another DT, to make sharing
   easier, and save memory for big DTs).
 
-- option to floor variances when they are read in.
+X option to floor variances when they are read in.
   (for all programs including ascii/binary conversion)
 
-- ascii/binary conversion program can go both ways.
+X ascii/binary conversion program can go both ways.
 
 - dynamic DTs, error messages should print cur name as well as base name. 
 
-- sorted DT splits, when range found, search down and up
-  while < and > are both not true (so sort will have put
-  them next to each other).
+- make DT such taht even if overlap exists, binsearch will occur.
   
 - add option to split/vanish top/bottom N mixtures irregardless of that.
