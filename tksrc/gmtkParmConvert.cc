@@ -46,6 +46,7 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "spi.h"
+#include "version.h"
 
 VCID("$Header$");
 
@@ -79,12 +80,19 @@ bool binInputTrainableParameters=false;
 double varFloor = 1e-10;
 char *cppCommandOptions = NULL;
 
+unsigned allocateDenseCpts=0;
+bool seedme = false;
+
+char *strFileName=NULL;
+
+bool print_version_and_exit = false;
 
 Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
 
+  Arg("strFile",Arg::Opt,strFileName,"Optional Graphical Model Structure File"),
   Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
   Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
 
@@ -100,6 +108,12 @@ Arg Arg::Args[] = {
   Arg("floorVarOnRead",Arg::Opt,DiagCovarVector::floorVariancesWhenReadIn,
        "Floor the variances to varFloor when they are read in"),
   Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
+
+
+  Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
+  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
+
+  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 
   // final one to signal the end of the list
   Arg()
@@ -126,6 +140,10 @@ main(int argc,char*argv[])
   // parse arguments
   Arg::parse(argc,argv);
 
+  if (print_version_and_exit)
+    printf("%s\n",gmtk_version_id);
+
+
   MixGaussiansCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
@@ -134,13 +152,22 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // set global variables/change global state from args
   GaussianComponent::setVarianceFloor(varFloor);
+  if (seedme)
+    rnd.seed();
   /////////////////////////////////////////////
 
-  if ((inputMasterFile == NULL) && (inputTrainableParameters == NULL)) {
-    warning("ERROR: need to specify command line parameters inputMasterFile or inputTrainableParameters (or both)");
-    Arg::usage();
-    error("");
+  if (strFileName == NULL || allocateDenseCpts == 0) {
+    // check this only if the structure file is not given or
+    // if we are not allocating Dense CPTs, since
+    // in that case there is no way the user could specify
+    // automatic allocation of such CPTs.
+    if ((inputMasterFile == NULL) && (inputTrainableParameters == NULL)) {
+      warning("ERROR: need to specify command line parameters inputMasterFile or inputTrainableParameters (or both) when no structure file is given");
+      Arg::usage();
+      error("");
+    }
   }
+
   ////////////////////////////////////////////
   if (inputMasterFile != NULL) {
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
@@ -152,6 +179,32 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.loadGlobal();
+
+  if (strFileName != NULL) {
+    // load up the structure file as we might want
+    // it to allocate some Dense CPTs.
+    FileParser fp(strFileName,cppCommandOptions);
+
+    // parse the file
+    fp.parseGraphicalModel();
+    // create the rv variable objects
+    fp.createRandomVariableGraph();
+    // make sure that there are no directed loops in the graph
+    // by imposing the S,SE,E,NE constrains
+    fp.ensureS_SE_E_NE();
+    // link the RVs with the parameters that are contained in
+    // the bn1_gm.dt file.
+    if (allocateDenseCpts == 0)
+      fp.associateWithDataParams(FileParser::noAllocate);
+    else if (allocateDenseCpts == 1)
+      fp.associateWithDataParams(FileParser::allocateRandom);
+    else if (allocateDenseCpts == 2)
+      fp.associateWithDataParams(FileParser::allocateUniform);
+    else
+      error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
+  }
+
+  printf("Finished reading in all parameters and structures\n");
   printf("Total number of trainable parameters in input files = %u\n",
 	 GM_Parms.totalNumberParameters());
 
