@@ -96,6 +96,9 @@ GMParms::readBasic(iDataStreamFile& is)
       error("GMTK_GMParms::readBasic,dpmfs, out of order count",cnt);
     dPmfs[i] = new Dense1DPMF;
     dPmfs[i]->read(is);
+    if (dPmfsMap.find(dPmfs[i]->name()) != dPmfsMap.end())
+      error("GMTK_GMParms::readBasic,dpmfs, multiple use of name '%s'",
+	    dPmfs[i]->name().c_str());
     dPmfsMap[dPmfs[i]->name()] = i;
   }
 
@@ -346,11 +349,6 @@ GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
   if (num < 0) error("GMTK_GMParms::readGaussianComponents num = %d",num);
   if (reset) {
     start = 0;
-    //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
-    // CHECK THAT THIS RESIZES THE ACTUAL ARRAY TO
-    // HAVE ALLOCATED THIS AMOUNT!!!!!!!!!!!!!!!
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
     gaussianComponents.resize(num);
   } else {
     start = gaussianComponents.size();
@@ -402,11 +400,6 @@ GMParms::readGaussianMixtures(iDataStreamFile& is, bool reset)
   if (num < 0) error("GMTK_GMParms::readGaussianMixtures num = %d",num);
   if (reset) {
     start = 0;
-    //////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
-    // CHECK THAT THIS RESIZES THE ACTUAL ARRAY TO
-    // HAVE ALLOCATED THIS AMOUNT!!!!!!!!!!!!!!!
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
     mixGaussians.resize(num);
   } else {
     start = mixGaussians.size();
