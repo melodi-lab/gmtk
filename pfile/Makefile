@@ -77,8 +77,8 @@ all: libpfile.a pfile_gaussian pfile_info pfile_merge pfile_diff pfile_print \
 # Build pfile_utils programs.
 #----------------------------------------------------------------------------
 
-libpfile.a: pfile.o spi.o Range.o error.o 
-	ar rv libpfile.a pfile.o spi.o Range.o 
+libpfile.a: pfile.o spi.o error.o 
+	ar rv libpfile.a pfile.o spi.o
 	-ranlib libpfile.a
 
 pfile_skmeans : pfile_skmeans.o Range.o libpfile.a
