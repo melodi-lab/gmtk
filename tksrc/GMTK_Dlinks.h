@@ -32,9 +32,11 @@
 #include "GMTK_NamedObject.h"
 
 class DlinkMatrix;
+class LinMeanCondDiagGaussian;
 
 class Dlinks : public NamedObject {
-
+  friend class DlinkMatrix;
+  friend class LinMeanCondDiagGaussian;
 
   ///////////////////////////////////////////////////////
   // Structure for representing the dependency links to
@@ -43,7 +45,6 @@ class Dlinks : public NamedObject {
     int lag;
     int offset;
   };
-
 
   ///////////////////////////////////////
   // an array of arrays of Dlinks. Each
@@ -55,6 +56,9 @@ class Dlinks : public NamedObject {
   // use an sArray for speed
   sArray<int> preComputedOffsets;
 
+  int _minLag;
+  int _maxLag;
+
 public:
 
   ///////////////////////////////////////////////////////////  
@@ -62,15 +66,15 @@ public:
   Dlinks(); 
 
   ///////////////////////////////////////////////////////////  
-  // numFeats: return the number of features for this 
+  // dim: return the number of features for this 
   // collection of links corresponds to.
-  int numFeats() { return dIndices.size(); }
+  int dim() { return dIndices.size(); }
 
   ///////////////////////////////////////////////////////////  
   // numLinks: return the number of links for the ith
   // feature.
   int numLinks(const int i) { 
-    assert ( i >= 0 && i < numFeats() );
+    assert ( i >= 0 && i < dim() );
     return dIndices[i].size(); 
   }
 
@@ -92,6 +96,9 @@ public:
   // file position.
   void write(oDataStreamFile& os);
 
+  // return the min and maximum lags respectively.
+  int minLag() { return _minLag; }
+  int maxLag() { return _maxLag; }
 
 };
 
