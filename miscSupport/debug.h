@@ -12,6 +12,8 @@
     2) A global info message handler, just call infoMsg(IM::Low,"message");
        (see below).
 
+    TODO: change the name of this from debug.h to infoMesg.h
+
     Jeff Bilmes <bilmes@ee.washington.edu>
 */
 
@@ -65,8 +67,7 @@ public:
     High = 60,
     Huge = 70,
     Mega = 80,
-    Rediculous = 90,
-    Foolish = 100,
+    Giga = 90,
     Max  = 100,    //  Maximum setable level.
 
     // We also define an "increment" variable here, so that a user
@@ -81,11 +82,19 @@ public:
 
 
   inline bool message(unsigned v) {
+#if INFO_MESSAGES_ON
     return (messagesOn && ((v <= messageLevel) || (v <= globalMessageLevel)));
+#else 
+    return false;
+#endif
   }
 
   static inline bool messageGlb(unsigned v) {
+#if INFO_MESSAGES_ON
     return (v <= globalMessageLevel);
+#else
+    return false;
+#endif    
   }
 
   inline void infoMsg(unsigned v,char*format, ...) 
