@@ -116,6 +116,7 @@ X when reading in definitions for each utterance:
 
 - Re-think the 1 DT per utterance stuff so that
   we can seemlessly do parallelism.
+   (dt file indexes?)
 
 - rethink DT format numbering
 
@@ -340,3 +341,6 @@ no gaussian mixtures, does the master file still have to mention them?
   Once tables are in place, we can make sure
   that the tables point to all matching gaussians
   at start time.
+
+- write our own pre-processor (doesn't have space problem
+  that cpp has, and also will give standard #line/#file directives).
