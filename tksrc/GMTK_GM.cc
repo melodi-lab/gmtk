@@ -851,24 +851,58 @@ void GMTK_GM::GM2CliqueChain()
 
 void GMTK_GM::showCliques()
 {
-    double maxi = 0;
+    double maxi=0, szsum=0;
     unsigned lc = 0;
     for (unsigned i=0; i<chain->preorderSize(); i++)
     {
         cout << "Clique " << i << ":" << endl;
-        chain->preorder(i)->reveal();
-
         Clique *cl = chain->preorder(i);
+        map<RandomVariable *, bool> counts;
+        for (unsigned m=0; m<cl->member.size(); m++)
+        {
+            bool has_parents = true;
+            for (unsigned p=0; p<cl->member[m]->allPossibleParents.size();p++)
+            {
+                bool gotp=false;
+                for (unsigned w=0; w<cl->member.size() && gotp==false; w++)
+                    if (cl->member[w] == cl->member[m]->allPossibleParents[p])
+                        gotp = true;
+                if (gotp==false)
+                {
+                    has_parents = false;
+                    break;
+                }
+            }
+                
+            counts[cl->member[m]] = false;
+            if (!has_parents || !cl->member[m]->deterministic())
+            {
+                cout << "*";
+                counts[cl->member[m]] = true;
+            }
+
+            cout << cl->member[m]->label << "-" << cl->member[m]->timeIndex 
+                 << " " ;
+            if (cl->member[m]->hidden) 
+                cout << "[" << cl->member[m]->cardinality << "] ";
+        }
+
+        cl = chain->preorder(i);
         double sz = 1;
         for (unsigned i=0; i<cl->member.size(); i++)
-            if (cl->member[i]->hidden) sz *= cl->member[i]->cardinality;
+            if (cl->member[i]->hidden && counts[cl->member[i]]) 
+                sz *= cl->member[i]->cardinality;
         maxi = max(maxi, sz);
+        szsum += sz;
         lc = max(unsigned(cl->member.size()), lc);
+
+        cout << ": " << (sz/1000000) << "M" << endl;
     }
     maxi /= 1000000;
     cout << "Max variables in a clique is " << lc << " elements" << endl;
     cout << "Upper bound on instantiations of a single clique is " << maxi
          << "M" << endl;
+    cout << "Upper bound for sum of cliques is " << szsum << endl;
 }
 
 void GMTK_GM::cloneVariables(vector<RandomVariable *> &from,
