@@ -75,6 +75,13 @@ protected:
     // live in other objects). This bit is meant for those
     // objects who initializet their accumulators at the end.
     bm_accInitialized    = (1 << 8),
+    // some emable objects, such as a mixture of gaussians,
+    // might want to cache the computation of probabilities
+    // after it evaluates them for inference, so that
+    // they can be used again for learning. This next bit
+    // is for those such objects. If the bit is set,
+    // the probabilities will be cached. 
+    bm_cacheProbs    = (1 << 9),
 
     // Initial State, where no data structures have been allocated.
     bm_initState      = 0x0
@@ -376,6 +383,12 @@ public:
   void emClearAccInitializedBit() { bitmask &= ~bm_accInitialized; }
   void emSetAccInitializedBit() { bitmask |= bm_accInitialized; }
   bool emAccInitializedBitIsSet() { return (bitmask & bm_accInitialized); }
+
+  /////////////////////////////////////////////////////////////////
+  void emClearCacheProbsBit() { bitmask &= ~bm_cacheProbs; }
+  void emSetCacheProbsBit() { bitmask |= bm_cacheProbs; }
+  bool emCacheProbsBitIsSet() { return (bitmask & bm_cacheProbs); }
+
 
   // return the number of parameters for object.
   virtual unsigned totalNumberParameters() = 0;
