@@ -369,23 +369,25 @@ computeWeight(const set<RandomVariable*>& nodes,
     if (node->discrete && node->hidden) {
       DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)node;
       // weight changes only if node is not deterministic (Lauritzen CG inference).
-      if (useDeterminism && drv->deterministic()) {
-	// then there is a possibility that this node
-	// does not affect the state space, as long
-	// as all of this nodes parents are in the clique.
-	bool truly_deterministic = true;
+      if (useDeterminism && drv->sparse()) {
+	// then there is a possibility that this node does not affect
+	// the state space, as long as all of this nodes parents are
+	// in the clique.  The variable 'truly_sparse' indicates that.
+	bool truly_sparse = true;
 	for (unsigned i=0;i<drv->allPossibleParents.size();i++) {
 	  if (nodes.find(drv->allPossibleParents[i]) == nodes.end()) {
-	    // found a parent that is not in 'node' set so the
-	    // node would not truly be deterministic here.
-	    truly_deterministic = false;
+	    // found a parent of drv that is not in 'nodes' set so the
+	    // node would not truly be sparse/deterministic here.
+	    truly_sparse = false;
 	    break;
 	  }
 	}
-	if (!truly_deterministic)
+	if (truly_sparse)
 	  tmp_weight += log10((double)drv->useCardinality());	
+	else 
+	  tmp_weight += log10((double)drv->cardinality);
       } else
-	tmp_weight += log10((double)drv->useCardinality());
+	tmp_weight += log10((double)drv->cardinality);
     }
   }
   // Next, get weight of all 'nodes'
@@ -399,25 +401,27 @@ computeWeight(const set<RandomVariable*>& nodes,
     // are observed. This will change in a future version (Lauritzen CG inference).
     if (rv->discrete && rv->hidden) {
       DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
-      if (useDeterminism && drv->deterministic()) {
-	// then there is a possibility that this node
-	// does not affect the state space, as long
-	// as all of this nodes parents are in the clique.
-	bool truly_deterministic = true;
+      if (useDeterminism && drv->sparse()) {
+	// then there is a possibility that this node does not affect
+	// the state space, as long as all of this nodes parents are
+	// in the clique.  The variable 'truly_sparse' indicates that.
+	bool truly_sparse = true;
 	for (unsigned i=0;i<drv->allPossibleParents.size();i++) {
 	  if ((nodes.find(drv->allPossibleParents[i]) == nodes.end())
 	      &&
 	      (drv->allPossibleParents[i] != node)) {
-	    // found a parent that is not in 'node' set so the
-	    // node would not truly be deterministic here.
-	    truly_deterministic = false;
+	    // found a parent that is not in 'node' set so the node
+	    // would not truly be sparse/deterministic here.
+	    truly_sparse = false;
 	    break;
 	  }
 	}
-	if (!truly_deterministic)
-	  tmp_weight += log10((double)drv->useCardinality());
+	if (truly_sparse)
+	  tmp_weight += log10((double)drv->useCardinality());	
+	else 
+	  tmp_weight += log10((double)drv->cardinality);
       } else
-	tmp_weight += log10((double)drv->useCardinality());
+	tmp_weight += log10((double)drv->cardinality);
     }
   }
   return tmp_weight;
@@ -924,6 +928,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	}
 
 	// continue down with new probability value.
+	// TOOD: prune here.
 	ceIterateSeparators(part,sepNumber+1,
 		    p*
 		    sep.separatorValues[sepValueNumber].remValues[i].p);
@@ -944,6 +949,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	}
 
 	// continue down with new probability value.
+	// TOOD: prune here.
 	ceIterateSeparators(part,sepNumber+1,
 		  p*
 		  sep.separatorValues[sepValueNumber].remValues[i].p);
