@@ -194,7 +194,7 @@ iDataStreamFile::prepareNext()
 	  }
 	  // scan filename until next ws or eol.
 	  ss = s;
-	  while (*ss && !isspace(*s))
+	  while (*ss && !isspace(*s) && (*ss != '\n'))
 	    ss++;
 	  // end the line if not ended already.
 	  *ss = '\0';
@@ -202,6 +202,13 @@ iDataStreamFile::prepareNext()
 	  // of string the presumably new file name.
 	  _curLineNo = newLineNo;
 	  _fileName = s;
+	  // now remove any " characters from filename.
+	  if (_fileName[0] == '"') {
+	    _fileName.erase(0,1);
+	  }
+	  if (_fileName[_fileName.size()-1] == '"') {	  
+	    _fileName.erase(_fileName.size()-1,1);
+	  }
 	}
 	continue;
       }
