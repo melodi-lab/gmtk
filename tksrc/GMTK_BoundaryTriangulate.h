@@ -293,8 +293,9 @@ public:
 
   // Triangulate an entire template at once, putting cliques in the template.
   void triangulate(const string& tri_heur_str,
-		   GMTemplate& gm_template);
-
+		   GMTemplate& gm_template,
+		   bool doP = true, bool doC = true, bool doE = true);
+  
   // High-level generic graph triangulation using optionally all methods below.
   void triangulate(// input: nodes to be triangulated
 		   const set<RandomVariable*> nodes,
@@ -412,7 +413,8 @@ public:
 
   // a simple one-stop shop for good triangulation for a
   // given amount of time.
-  void anyTimeTriangulate(GMTemplate& gm_template);
+  void anyTimeTriangulate(GMTemplate& gm_template,
+			  bool doP = true, bool doC = true, bool doE = true);
 
   // triangulate using a number of basic heuristics, returning
   // the best.

@@ -66,9 +66,10 @@ public:
   //////////////////////////////////
   // various forms of probability calculation
   void becomeAwareOfParentValues( vector <int>& parentValues,
-				   vector <int>& cards) { assert(0); }
+    vector <int>& cards) 
+  { /* a USCPT has no parents so do nothing */ }
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) 
-     { assert (0); }
+  { /* a USCPT has no parents so do nothing */ }
 
 
   logpr probGivenParents(const int _val) {

@@ -720,7 +720,8 @@ for i = 1 .. num_nodes
 	   //
            // Note that because we are producing a "deletion"
            // by searching for any parents who are such that
-           // all their children are in the current frontier clique
+           // all their children are "in the current frontier clique"
+	   // (or were once in the frontier clique), 
 	   // cl[i-1].members, it is possible that the "deletion" might 
            // happen multiple times for diff m. But in each case the same 
            // maximal clique cl[i-1].members will arise. 

@@ -78,6 +78,10 @@ static char *inputTrainableParameters=NULL;
 static bool binInputTrainableParameters=false;
 // static char *objsToNotTrainFile=NULL;
 
+static bool noReTriP = false;
+static bool noReTriC = false;
+static bool noReTriE = false;
+static bool continueTriangulating = false;
 
 static bool noBoundaryMemoize = false;
 static unsigned numBackupFiles = 5;
@@ -142,13 +146,28 @@ Arg Arg::Args[] = {
       Arg::Opt,anyTimeTriangulate,
       "Run the any-time triangulation algorithm for given duration."),
 
-  Arg("reTriangulate",
-      Arg::Opt,reTriangulate,
-      "Re-Run triangluation algorithm even if .str.trifile exists with existing partition elimination ordering"),
-
   Arg("rePartition",
       Arg::Opt,rePartition,
-      "Re-Run the boundary algorithm even if .str.trifile exists with existing partition ordering"),
+      "Re-Run the boundary algorithm even if .str.trifile exists to produce new partition and new triangulation."),
+
+  Arg("reTriangulate",
+      Arg::Opt,reTriangulate,
+      "Re-Run only triangluation using existing partition given in .trifile."),
+
+  Arg("continueTriangulating",
+      Arg::Opt,continueTriangulating,
+      "When re-triangulating existing .tri file, continue besting existing triangulations"),
+
+  Arg("noReTriP",
+      Arg::Opt,noReTriP,
+      "When re-triangulating existing .tri file, don't re-triangulate P, keep old"),
+  Arg("noReTriC",
+      Arg::Opt,noReTriC,
+      "When re-triangulating existing .tri file, don't re-triangulate C, keep old"),
+  Arg("noReTriE",
+      Arg::Opt,noReTriE,
+      "When re-triangulating existing .tri file, don't re-triangulate E, keep old"),
+
 
   Arg("numBackupFiles",Arg::Opt,numBackupFiles,"Number of backup .trifiles (_bak0,_bak1,etc.) to keep."),
 
@@ -384,23 +403,36 @@ main(int argc,char*argv[])
       triangulator.ensurePartitionsAreChordal(gm_template);
 
     } else if (reTriangulate && !rePartition) {
-      // utilize the parition information already there but still
-      // run re-triangulation
 
-      
       // first get the id and partition information.
       {
-	iDataStreamFile is(tri_file.c_str());
+	iDataStreamFile is(tri_file.c_str(),false,false);
 	if (!fp.readAndVerifyGMId(is))
 	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
 	gm_template.readPartitions(is);
+	gm_template.readMaxCliques(is);
+	// read the max cliques but don't triangulate with
+	// them here.
       }
 
+      if (!continueTriangulating) {
+	// If we are *not* continuing on with old triangulation, then
+	// we need to check if the user wants us to save *some* of the
+	// previous partition triangulations.
+	if (!noReTriP)
+	  gm_template.clear_P_Cliques();
+	if (!noReTriC)
+	  gm_template.clear_C_Cliques();
+	if (!noReTriE)
+	  gm_template.clear_E_Cliques();
+      }
+	
       // now using the partition triangulate
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
 	triangulator.triangulate(string(triangulationHeuristic),
-				 gm_template);
+				 gm_template,
+				 !noReTriP,!noReTriC,!noReTriE);
       } else {
 	// In this case, here we only run triangulation on the
 	// provided new P,C,E partitions until the given amount of time
@@ -408,8 +440,8 @@ main(int argc,char*argv[])
 	// is seen as a separate step, and would be expected
 	// to run for a long while.
 
-	triangulator.anyTimeTriangulate(gm_template);
-
+	triangulator.anyTimeTriangulate(gm_template,
+					!noReTriP,!noReTriC,!noReTriE);
       }
       // write everything out anew
       backupTriFile(tri_file);
@@ -418,6 +450,7 @@ main(int argc,char*argv[])
       gm_template.writePartitions(os);
       gm_template.writeMaxCliques(os);
       triangulator.ensurePartitionsAreChordal(gm_template);
+
     } else {
 
       // 
@@ -427,7 +460,7 @@ main(int argc,char*argv[])
       // where this program ensures that the result is triangulated
       // and where it reports the quality of the triangulation.
 
-      iDataStreamFile is(tri_file.c_str());
+      iDataStreamFile is(tri_file.c_str(),false,false);
       if (!fp.readAndVerifyGMId(is))
 	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
 

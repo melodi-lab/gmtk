@@ -466,6 +466,7 @@ JunctionTree::computePartitionInterfaces()
 
   // E order, clique 0 is choosen as root arbitrarily for now.
   // TODO: see if it is possible to choose a better root for E.
+  // Perhaps use the maximum weight clique???
   E_root_clique = 0;
   
 }
@@ -994,7 +995,7 @@ JunctionTree::assignRVToClique(const char *const partName,
       // numbers is better (e.g., more negative or less positive is
       // higher priority).  First thing inserted has highest priority.
 
-      // First (top priority), 
+      // Previous Parents in Junction Tree.
       // insert value:
       //   0, if all parents have been assigned in the cummulative set, or
       //   1, if not.
@@ -1014,10 +1015,9 @@ JunctionTree::assignRVToClique(const char *const partName,
 	}
       }
 
-      // Next, add number of children in current clique. If rv
-      // has lots of children in this clique, it is hopeful that
-      // other parents of those children might also be assigned
-      // to the same clique.
+      // Number of children in current clique. If rv has lots of
+      // children in this clique, it is hopeful that other parents of
+      // those children might also be assigned to the same clique.
       unsigned numChildren = 0;
       for (unsigned i=0;i<rv->allPossibleChildren.size();i++) {
 	RandomVariable* child = rv->allPossibleChildren[i];
@@ -1026,11 +1026,13 @@ JunctionTree::assignRVToClique(const char *const partName,
       }
       score.push_back(-numChildren);
 
-      // Next, distance from root, among the higher priorities that
+
+      // Distance from root, among the higher priorities that
       // are equal, try to be as far away from the root as possible so
       // as to prune away as much zero as possible as early as
       // possible.
       score.push_back(-depth);
+
 
       // And so on. We can push back as many heuristics as we want.
       // alternatively, perhaps take a weighted average of some of
@@ -1920,7 +1922,7 @@ JunctionTree::prepareForUnrolling(JT_Partition& part)
  *-----------------------------------------------------------------------
  */
 unsigned
-JunctionTree::unroll(const unsigned int k)
+JunctionTree::unroll(const unsigned int numFrames)
 {
 
   // first create the unrolled set of random variables corresponding
@@ -1930,7 +1932,7 @@ JunctionTree::unroll(const unsigned int k)
   unsigned modifiedTemplateUnrollAmount;
   unsigned numUsableFrames;
   unsigned frameStart;
-  if (!gm_template.computeUnrollParamaters(k,
+  if (!gm_template.computeUnrollParamaters(numFrames,
 					   basicTemplateUnrollAmount,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
@@ -1938,8 +1940,9 @@ JunctionTree::unroll(const unsigned int k)
     error("Can't unroll\n"); // TODO: fix this error.
     // return 0
 
-  fprintf(stderr,"numFrames = %d, unrolling BT %d times, MT %d times\n",
-	  k,
+  infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
+  infoMsg(IM::Default,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+	  numFrames,
 	  basicTemplateUnrollAmount,
 	  modifiedTemplateUnrollAmount);
 
@@ -2021,7 +2024,7 @@ JunctionTree::collectEvidence()
     const unsigned to = P1_message_order[msgNo].second;
     jtIPartitions[0].maxCliques[from].
       ceGatherFromIncommingSeparators(jtIPartitions[0]);
-    infoMsg(IM::Med,"CE: message P1,part[0],clique %d --> clique %d\n",
+    infoMsg(IM::Mod,"CE: message P1,part[0],clique %d --> clique %d\n",
 	    from,to);
     jtIPartitions[0].maxCliques[from].
       ceSendToOutgoingSeparator(jtIPartitions[0]);
@@ -2029,7 +2032,7 @@ JunctionTree::collectEvidence()
   // do P1-C1 interface 
   jtIPartitions[0].maxCliques[P_ri_to_C].
     ceGatherFromIncommingSeparators(jtIPartitions[0]);
-  infoMsg(IM::Med,"CE: message P1,part[0],clique %d --> C1,part[1], clique %d\n",
+  infoMsg(IM::Mod,"CE: message P1,part[0],clique %d --> C1,part[1], clique %d\n",
 	    P_ri_to_C,C_li_to_P);
   jtIPartitions[0].maxCliques[P_ri_to_C].
     ceSendToOutgoingSeparator(jtIPartitions[0],
@@ -2045,7 +2048,7 @@ JunctionTree::collectEvidence()
       const unsigned to = C1_message_order[msgNo].second;
       jtIPartitions[partNo].maxCliques[from].
 	ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
-      infoMsg(IM::Med,"CE: message C,part[%d],clique %d --> clique %d\n",
+      infoMsg(IM::Mod,"CE: message C,part[%d],clique %d --> clique %d\n",
 	      partNo,from,to);
       jtIPartitions[partNo].maxCliques[from].
 	ceSendToOutgoingSeparator(jtIPartitions[partNo]);
@@ -2054,7 +2057,7 @@ JunctionTree::collectEvidence()
     // do C1-nextC interface
     jtIPartitions[partNo].maxCliques[C_ri_to_C].
       ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
-    infoMsg(IM::Med,"CE: message C,part[%d],clique %d --> C,part[%d],clique %d\n",
+    infoMsg(IM::Mod,"CE: message C,part[%d],clique %d --> C,part[%d],clique %d\n",
 	    partNo,C_ri_to_C,partNo+1,C_li_to_C);
     jtIPartitions[partNo].maxCliques[C_ri_to_C].
       ceSendToOutgoingSeparator(jtIPartitions[partNo],
@@ -2069,7 +2072,7 @@ JunctionTree::collectEvidence()
     const unsigned to = C3_message_order[msgNo].second;
     jtIPartitions[partNo].maxCliques[from].
       ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
-    infoMsg(IM::Med,"CE: message in C3,part[%d], clique %d --> clique %d\n",
+    infoMsg(IM::Mod,"CE: message in C3,part[%d], clique %d --> clique %d\n",
 	    partNo,from,to);
     jtIPartitions[partNo].maxCliques[from].
       ceSendToOutgoingSeparator(jtIPartitions[partNo]);
@@ -2077,7 +2080,7 @@ JunctionTree::collectEvidence()
   // do C3-E1 interface
   jtIPartitions[partNo].maxCliques[C_ri_to_E].
     ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
-  infoMsg(IM::Med,"CE: message C3,part[%d],clique %d --> E,part[%d],clique %d\n",
+  infoMsg(IM::Mod,"CE: message C3,part[%d],clique %d --> E,part[%d],clique %d\n",
 	  partNo,C_ri_to_E,partNo+1,E_li_to_C);
   jtIPartitions[partNo].maxCliques[C_ri_to_E].
     ceSendToOutgoingSeparator(jtIPartitions[partNo],
@@ -2093,12 +2096,12 @@ JunctionTree::collectEvidence()
     const unsigned to = E1_message_order[msgNo].second;
     jtIPartitions[partNo].maxCliques[from].
       ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
-    infoMsg(IM::Med,"CE: message E1,part[%d], clique %d --> clique %d\n",
+    infoMsg(IM::Mod,"CE: message E1,part[%d], clique %d --> clique %d\n",
 	    partNo,from,to);
     jtIPartitions[partNo].maxCliques[from].
       ceSendToOutgoingSeparator(jtIPartitions[partNo]);
   }
-  infoMsg(IM::Med,"CE: final collect in E1,part[%d] to root clique %d\n",
+  infoMsg(IM::Mod,"CE: final collect in E1,part[%d] to root clique %d\n",
 	  partNo,E_root_clique);
   jtIPartitions[partNo].maxCliques[E_root_clique].
     ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
@@ -2138,7 +2141,7 @@ JunctionTree::distributeEvidence()
   unsigned partNo = jtIPartitions.size()-1;
 
   // start at E1 partition
-  infoMsg(IM::Med,"DE: initial distribute in E1,part[%d] from root clique %d\n",
+  infoMsg(IM::Mod,"DE: initial distribute in E1,part[%d] from root clique %d\n",
 	  partNo,E_root_clique);
   jtIPartitions[partNo].maxCliques[E_root_clique].
     deScatterToOutgoingSeparators(jtIPartitions[partNo]);
@@ -2146,7 +2149,7 @@ JunctionTree::distributeEvidence()
   for (unsigned msgNo=(E1_message_order.size()-1);msgNo != stopVal; msgNo --) {
     const unsigned to = E1_message_order[msgNo].first;
     const unsigned from = E1_message_order[msgNo].second;
-    infoMsg(IM::Med,"DE: message E1,part[%d], clique %d --> clique %d\n",
+    infoMsg(IM::Mod,"DE: message E1,part[%d], clique %d --> clique %d\n",
 	    partNo,from,to);
     jtIPartitions[partNo].maxCliques[to].
       deReceiveFromIncommingSeparator(jtIPartitions[partNo]);
@@ -2156,7 +2159,7 @@ JunctionTree::distributeEvidence()
   partNo--;
 
   // do E1->C3 interface
-  infoMsg(IM::Med,"DE: message E1,part[%d]clique %d -> C3,part[%d],clique %d\n",
+  infoMsg(IM::Mod,"DE: message E1,part[%d]clique %d -> C3,part[%d],clique %d\n",
 	  partNo+1,E_li_to_C,partNo,C_ri_to_E);
   jtIPartitions[partNo].maxCliques[C_ri_to_E].
     deReceiveFromIncommingSeparator(jtIPartitions[partNo],
@@ -2170,7 +2173,7 @@ JunctionTree::distributeEvidence()
   for (unsigned msgNo=(C3_message_order.size()-1);msgNo != stopVal ; msgNo --) {
     const unsigned to = C3_message_order[msgNo].first;
     const unsigned from = C3_message_order[msgNo].second;
-    infoMsg(IM::Med,"DE: message C3,part[%d], clique %d --> clique %d\n",
+    infoMsg(IM::Mod,"DE: message C3,part[%d], clique %d --> clique %d\n",
 	    partNo,from,to);
     jtIPartitions[partNo].maxCliques[to].
       deReceiveFromIncommingSeparator(jtIPartitions[partNo]);
@@ -2181,7 +2184,7 @@ JunctionTree::distributeEvidence()
   // then do [C2 ... ] C1  messages
   for (partNo--; partNo > 0 ; partNo -- ) {
     // do prevC -> C interface
-    infoMsg(IM::Med,"DE: message C,part[%d],clique %d --> C,part[%d],clique %d\n",
+    infoMsg(IM::Mod,"DE: message C,part[%d],clique %d --> C,part[%d],clique %d\n",
 	    partNo+1,C_li_to_C,partNo,C_ri_to_C);
     jtIPartitions[partNo].maxCliques[C_ri_to_C].
       deReceiveFromIncommingSeparator(jtIPartitions[partNo],
@@ -2194,7 +2197,7 @@ JunctionTree::distributeEvidence()
     for (unsigned msgNo=(C1_message_order.size()-1);msgNo != stopVal; msgNo --) {
       const unsigned to = C1_message_order[msgNo].first;
       const unsigned from = C1_message_order[msgNo].second;      
-      infoMsg(IM::Med,"DE: message C,part[%d],clique %d --> clique %d\n",
+      infoMsg(IM::Mod,"DE: message C,part[%d],clique %d --> clique %d\n",
 	      partNo,from,to);
       jtIPartitions[partNo].maxCliques[to].
 	deReceiveFromIncommingSeparator(jtIPartitions[partNo]);
@@ -2205,7 +2208,7 @@ JunctionTree::distributeEvidence()
   }
 
   // do C1-P1 interface 
-  infoMsg(IM::Med,"DE: message C1,part[1],clique %d --> P1,part[0], clique %d\n",
+  infoMsg(IM::Mod,"DE: message C1,part[1],clique %d --> P1,part[0], clique %d\n",
 	  C_li_to_P,P_ri_to_C);
   jtIPartitions[0].maxCliques[P_ri_to_C].
     deReceiveFromIncommingSeparator(jtIPartitions[0],
@@ -2220,7 +2223,7 @@ JunctionTree::distributeEvidence()
     const unsigned to = P1_message_order[msgNo].first;
     const unsigned from = P1_message_order[msgNo].second;
 
-    infoMsg(IM::Med,"DE: message P1,part[0],clique %d --> clique %d\n",
+    infoMsg(IM::Mod,"DE: message P1,part[0],clique %d --> clique %d\n",
 	    from,to);
     jtIPartitions[0].maxCliques[to].
       deReceiveFromIncommingSeparator(jtIPartitions[0]);

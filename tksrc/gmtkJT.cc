@@ -70,6 +70,8 @@ float lldp = 0.001;
 float mnlldp = 0.01;
 float beam=-LZERO;
 
+bool doDistributeEvidence=false;
+
 // char *outputTrainableParameters="outParms%d.gmp";
 char *outputTrainableParameters=NULL;
 bool binOutputTrainableParameters=false;
@@ -107,6 +109,17 @@ Arg Arg::Args[] = {
   Arg("ir1",Arg::Opt,irs[0],"Int range for observation file 1"),
   Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
   Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
+
+
+  Arg("of2",Arg::Opt,ofs[1],"Observation File 1"),
+  Arg("nf2",Arg::Opt,nfs[1],"Number of floats in observation file 1"),
+  Arg("ni2",Arg::Opt,nis[1],"Number of ints in observation file 1"),
+  Arg("fr2",Arg::Opt,frs[1],"Float range for observation file 1"),
+  Arg("ir2",Arg::Opt,irs[1],"Int range for observation file 1"),
+  Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 1"),
+  Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 1"),
+
+  Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Do distribute evidence also"),
 
   Arg("segment",Arg::Opt,segment,"Which segment to do"),
 
@@ -252,6 +265,7 @@ main(int argc,char*argv[])
   // read in the structure of the GM, this will
   // die if the file does not exist.
   FileParser fp(strFileName,cppCommandOptions);
+  printf("Finished reading in all parameters and structures\n");
   infoMsg(IM::Tiny,"Finished reading in structure\n");
 
   // parse the file
@@ -278,6 +292,7 @@ main(int argc,char*argv[])
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
+  GM_Parms.setStride(globalObservationMatrix.stride());
 
   /////
   // TODO: check that beam is a valid value.
@@ -316,6 +331,7 @@ main(int argc,char*argv[])
     triangulator.ensurePartitionsAreChordal(gm_template);
   }
 
+  printf("Creating Junction Tree\n"); fflush(stdout);
   JunctionTree myjt(gm_template);
   myjt.createPartitionJunctionTrees();
   myjt.computePartitionInterfaces();
@@ -331,7 +347,7 @@ main(int argc,char*argv[])
   myjt.prepareForUnrolling();
   // TODO: allow user input file name
   myjt.printAllJTInfo("jt_info.txt");
-
+  printf("DONE creating Junction Tree\n"); fflush(stdout);
 
   // fprintf(stderr,"starting unrolling\n");
   // myjt.unroll(unroll_k);
@@ -339,52 +355,46 @@ main(int argc,char*argv[])
 
   if (globalObservationMatrix.numSegments()==0)
     error("ERROR: no segments are available in observation file");
+
+  if (globalObservationMatrix.numSegments() < (segment+1)) 
+    error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+	  globalObservationMatrix.numSegments(),
+	  0,globalObservationMatrix.numSegments()-1);
+
   GM_Parms.clampFirstExample();
+  for (unsigned i=0;i<segment;i++) {
+    GM_Parms.clampNextExample();
+  }
 
   globalObservationMatrix.loadSegment(segment);
 
   int frames = globalObservationMatrix.numFrames();
 
-#if 0
-  int partition_unroll_amount
-    = frames - gm_template.prologueNumFrames() - gm_template.epilogueNumFrames();
-  if (partition_unroll_amount % gm_template.chunkNumFrames() != 0) {
-    int adj = partition_unroll_amount % gm_template.chunkNumFrames();
-    frames -= adj;
-    partition_unroll_amount -= adj;
-    warning("Warning: using only %d frames out of %d\n",frames,frames+adj);
-    // TODO: do left, right center adjustment, etc.
-  }
-  partition_unroll_amount /= gm_template.chunkNumFrames();
-
-  partition_unroll_amount -= gm_template.maxNumChunksInBoundary();
-  if (partition_unroll_amount % gm_template.chunkSkip() != 0) {
-    error("incompatible number of frames (for now)\n");
-  }
-  partition_unroll_amount /= gm_template.chunkSkip();
-  partition_unroll_amount --;
-#endif
-
-  // assume size(P) = 1, size(C) = 1, and size(E) = 1 for now.
-  // unsigned unroll_k = (frames-4);
-  // assume size(P) = 1, size(C) = 1, and size(E) = 0 for now.
-  // unsigned unroll_k = (frames-3);
-
   // myjt.unroll(partition_unroll_amount);
   unsigned numUsableFrames = myjt.unroll(frames);
-  printf("Collecting Evidence\n");
+  printf("Collecting Evidence\n"); fflush(stdout);
   myjt.collectEvidence();
+  printf("Done Collecting Evidence\n"); fflush(stdout);
   // myjt.printAllCliquesProbEvidence();
 
-  printf("Distributing Evidence\n");
-  myjt.distributeEvidence();
-  myjt.printAllCliquesProbEvidence();
-  
   logpr probe = myjt.probEvidence();
-  printf("log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+  printf("after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	 probe.val(),
 	 probe.val()/frames,
 	 probe.val()/numUsableFrames);
+
+  if (doDistributeEvidence) {
+    printf("Distributing Evidence\n");
+    myjt.distributeEvidence();
+    printf("DONE Distributing Evidence\n");
+    myjt.printAllCliquesProbEvidence();
+  
+    probe = myjt.probEvidence();
+    printf("after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	   probe.val(),
+	   probe.val()/frames,
+	   probe.val()/numUsableFrames);
+  }
 
   
 #if 0
