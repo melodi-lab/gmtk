@@ -137,7 +137,32 @@ public:
     }
     // a hidden variable, so we set up the iterator.
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    it = curCPT->begin(); val = it.val(); 
+
+    it = curCPT->begin(); 
+
+    val = it.val();
+
+    const int tmp_val = it.val();
+
+    if (it.val() < 0) {
+      printf("1: it.val() = %d, val = %d, tmp_val=%d\n",it.val(),val,tmp_val);
+    }
+
+    if (tmp_val < 0) {
+      printf("2: it.val() = %d, val = %d, tmp_val=%d\n",it.val(),val,tmp_val);
+    }
+
+    val = tmp_val;
+
+    if (it.val() < 0) {
+      printf("1: it.val() = %d, val = %d, tmp_val=%d\n",it.val(),val,tmp_val);
+    }
+
+    if (val < 0) {
+      printf("2: it.val() = %d, val = %d, tmp_val=%d\n",it.val(),val,tmp_val);
+    }
+
+    assert ( val >= 0 );
   }
 
   // continue on
@@ -147,6 +172,9 @@ public:
     it++; 
     if (it!=curCPT->end()) 
       val = it.val();
+
+    assert ( val >= 0 );
+
     return (it != curCPT->end()); 
   }
   ////////////////////////////////////////////////////////////////
