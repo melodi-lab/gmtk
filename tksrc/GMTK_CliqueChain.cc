@@ -44,6 +44,7 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
         preorder[i]->recycleAllCliqueValues();
         preorder[i]->instantiation.clear();
     }
+    assert(Clique::nextfree == int(Clique::gip.size())-1);
 
     preorder[0]->enumerateValues(0, -1, viterbi);
     for (unsigned i=0; i<preorder.size()-1; i++)

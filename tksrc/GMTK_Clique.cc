@@ -16,6 +16,7 @@
  *
  */ 
 
+#include "general.h"
 VCID("$Header$");
 
 #include "GMTK_Clique.h"
@@ -24,27 +25,33 @@ set<vector<RandomVariable::DiscreteVariableType> > CliqueValue::global_val_set;
 
 vector<CliqueValue> Clique::gip;  // the actual global instantiation pool
 vector<unsigned> Clique::freelist;     // and the freelist
-unsigned Clique::nextfree=0;
+int Clique::nextfree=-1;
 
 unsigned Clique::newCliqueValue()
 {
-    if (nextfree==freelist.size())
+    if (nextfree==-1)         // nothing more left
     {
-        assert(freelist.size() == gip.size());
+        freelist.clear();     // the previous entries have all been used
         int oldsize = gip.size(), newsize = 2*gip.size();
         newsize = max(newsize, 100000);  // don't mess around at the beginning
-        gip.resize(newsize);
+        gip.resize(newsize);  // make more CliqueValues
         for (int i=oldsize; i<newsize; i++)
-            freelist.push_back(i);
-        nextfree = oldsize;
+            freelist.push_back(i);  // add the indexes of the new CliqueValues
+        nextfree = freelist.size()-1;  // initialize the nextfree pointer
     }
-    return freelist[nextfree++];
+    return freelist[nextfree--];
 }
 
 void Clique::recycleCliqueValue(unsigned idx)
 {
-    assert(nextfree>0);
-    swap(freelist[idx], freelist[--nextfree]);
+    // resizing the gip changes its size. 
+    // after a resize, the freelist's size is equal to the number of 
+    // CliqueValues added; not the size of the gip. Therefore, it may be 
+    // necessary to make it bigger, e.g. when absolutely everything is freed up
+    if (nextfree == int(freelist.size())-1)  
+        freelist.resize(2*freelist.size());
+
+    freelist[++nextfree] = idx;
 }
 
 void Clique::cacheClampedValues()

@@ -106,7 +106,7 @@ struct Clique
     // not simply be the next entry in the gip, because pruning frees up
     // CliqueValues everywhere.
 
-    static unsigned nextfree;  // next free thing on the freelist
+    static int nextfree;  // next free thing on the freelist
 
     static unsigned newCliqueValue();  // return a clique value (index) to use
 
