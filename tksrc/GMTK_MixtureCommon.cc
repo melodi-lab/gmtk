@@ -43,3 +43,10 @@ double
 MixGaussiansCommon::mixCoeffVanishRatio = 1e20;
 
 
+/////////////////////////////////////////////////
+// set the mcsr. By default it is set to a large
+// value meaning that mixtures are not split.
+double
+MixGaussiansCommon::mixCoeffSplitRatio = 1e10;
+
+
