@@ -93,7 +93,8 @@ Mixture::read(iDataStreamFile& is)
   }
 
   // make ready for probability evaluation.
-  componentCache.resize(10);
+  if (cacheMixtureProbabilities)
+    componentCache.resize(10);
   setBasicAllocatedBit();
 }
 
@@ -233,24 +234,27 @@ Mixture::log_p(const unsigned frameIndex,
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride =  globalObservationMatrix.stride();
 
-  if (cacheComponentsInEmTraining) {
+  if (cacheMixtureProbabilities) {
 
-    if (componentCache.size() < (frameIndex+1)) {
+    if (componentCache.size() <= frameIndex) {
       // never have more than 25% more frames than needed while still
       // having log number of allocations in the ultimate size of the observation vectors.
-      componentCache.resize( ((frameIndex+1)*5)>>2 );
+      componentCache.resizeAndCopy( ((frameIndex+1)*5)>>2 );
     }
-    // TODO: this stuff is needed only for EM, don't cache components
-    // when just doing decoding.
-    if (componentCache[frameIndex].cmpProbArray.size() < numComponents)
-      componentCache[frameIndex].cmpProbArray.resize(numComponents);
 
-    if (componentCache[frameIndex].prob.valref() != (-LZERO)) {
-      // already done for this mixture
+    // This stuff is needed only for EM, don't cache components when
+    // just doing decoding and not EM training.
+    if (cacheComponentsInEmTraining && componentCache.ptr[frameIndex].cmpProbArray.size() < numComponents)
+      componentCache.ptr[frameIndex].cmpProbArray.resize(numComponents);
+
+    // Note: we need to check firstFeatureElement to make sure the
+    // cache entry doesn't correspond to the same object but shared
+    // over multiple firstFeatureElements. If so, we re-cache the
+    // value.
+    if (componentCache.ptr[frameIndex].prob.valref() != (-LZERO) && componentCache.ptr[frameIndex].firstFeatureElement == firstFeatureElement) {
+      // already done for this mixture and firstFeatureElement
       // infoMsg(IM::Mega,"Using cached value for Gaussian component\n");
-      // TODO: fix bug here where if firstFeatureElement is not used to check the cache entry
-      //       and if this object is shared over multiple firstFeatureElements.
-      return componentCache[frameIndex].prob;
+      return componentCache.ptr[frameIndex].prob;
     }
 
     logpr rc;
@@ -258,13 +262,17 @@ Mixture::log_p(const unsigned frameIndex,
     // when just doing decoding.
     for (unsigned i=0;i<numComponents;i++) {
       logpr tmp = dense1DPMF->p(i)* components[i]->log_p(x,base,stride);
-      // store each component prob value
-      componentCache[frameIndex].cmpProbArray[i].prob = tmp;
+      // this stuff is needed only for EM, so don't cache components
+      // when just doing decoding.
+      if (cacheComponentsInEmTraining) {
+	// store each component prob value as well in this case.
+	componentCache.ptr[frameIndex].cmpProbArray.ptr[i].prob = tmp;
+      }
       rc += tmp;
     }
 
     // and store the sum as well.
-    componentCache[frameIndex].prob = rc;
+    componentCache.ptr[frameIndex].prob = rc;
     return rc;
   } else {
     // don't cache our probabilities.
@@ -446,11 +454,14 @@ Mixture::emIncrement(logpr prob,
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride = globalObservationMatrix.stride();
 
-  if (cacheComponentsInEmTraining) {
-    logpr tmp = prob/componentCache[frameIndex].prob;
+  if (cacheMixtureProbabilities) {
+    logpr tmp = prob/componentCache.ptr[frameIndex].prob;
+    // we never do EM training caching the mixture prob but not
+    // caching the component probabilities.
+    assert(cacheComponentsInEmTraining);
     for (unsigned i=0;i<numComponents;i++) {
       weightedPostDistribution[i] =
-	componentCache[frameIndex].cmpProbArray[i].prob*tmp;
+	componentCache.ptr[frameIndex].cmpProbArray.ptr[i].prob*tmp;
     }
   } else { // no caching
     // first compute the local mixture posterior distribution.

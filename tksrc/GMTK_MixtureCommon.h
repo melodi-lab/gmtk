@@ -123,6 +123,12 @@ public:
   static void checkForValidRatioValues();
 
   ///////////////////////////////////////////////////////////
+  // set to true if we are to cache the mixture output probabilities
+  // (either during EM training or just during inference to avoid
+  // re-computing Gaussian mixtures multiple times).
+  static bool cacheMixtureProbabilities;
+
+  ///////////////////////////////////////////////////////////
   // set to true if we are supposed to cache the component probabilities
   // during EM training.
   static bool cacheComponentsInEmTraining;

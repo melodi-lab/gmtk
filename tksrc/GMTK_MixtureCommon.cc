@@ -61,6 +61,9 @@ MixtureCommon::numBottomToForceVanish = 0;
 bool
 MixtureCommon::cacheComponentsInEmTraining = true;
 
+bool
+MixtureCommon::cacheMixtureProbabilities = true;
+
 void
 MixtureCommon::checkForValidRatioValues() {
   // this next check guarantees that we will never eliminate
