@@ -163,7 +163,7 @@ protected:
 
     protected:
 
-      static sArrayStack<formulaCommand> stack;
+      static sArrayStack<int> stack;
 
       // Vector of commands 
       formulaCommandContainer commands;
@@ -177,10 +177,11 @@ protected:
         TOKEN_BITWISE_OR, 
         TOKEN_BITWISE_XOR,
         TOKEN_CARDINALITY, 
+        TOKEN_COLON, 
         TOKEN_COMMA, 
         TOKEN_DIVIDE, 
-        TOKEN_EXPONENT, 
         TOKEN_EQUALS, 
+        TOKEN_EXPONENT, 
         TOKEN_GREATER_THAN, 
         TOKEN_GREATER_THAN_EQ, 
         TOKEN_INTEGER, 
@@ -198,6 +199,7 @@ protected:
         TOKEN_RIGHT_PAREN, 
         TOKEN_SPACE, 
         TOKEN_TIMES, 
+        TOKEN_QUESTION_MARK, 
 
         TOKEN_END, 
         LAST_TOKEN_INDEX
@@ -230,8 +232,8 @@ protected:
         COMMAND_BITWISE_OR, 
         COMMAND_BITWISE_XOR, 
         COMMAND_DIVIDE, 
-        COMMAND_EXPONENT, 
         COMMAND_EQUALS, 
+        COMMAND_EXPONENT, 
         COMMAND_GREATER_THAN, 
         COMMAND_GREATER_THAN_EQ, 
         COMMAND_LESS_THAN, 
@@ -244,6 +246,7 @@ protected:
         COMMAND_MOD, 
         COMMAND_PLUS, 
         COMMAND_TIMES, 
+        COMMAND_QUESTION_MARK,
 
         LAST_COMMAND_INDEX
       };
