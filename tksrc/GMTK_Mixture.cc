@@ -88,8 +88,18 @@ MixGaussians::read(iDataStreamFile& is)
 void
 MixGaussians::write(oDataStreamFile& os)
 {
-  error("MixGaussians::write not implemented");
   NamedObject::write(os);
+  os.nl();
+  // read number of mixture components
+  os.write(numComponents,"MixGaussians::write numComponents");
+
+  // write name of dense 1d PMF to use for mixtures
+  os.write(dense1DPMF->name()); os.nl();
+
+  // and the component names
+  for (unsigned i=0;i<numComponents;i++) {
+    os.write(components[i]->name());
+  }
 }
 
 
