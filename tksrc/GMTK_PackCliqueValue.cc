@@ -538,6 +538,10 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
   }
   assert( wordBoundaryNoOverlapLocation == wordBoundaryOverlapLocation);
 
+  // lastly, initialize member pointer endpointers so 
+  // that the need not be recomputed each time.
+  member_vl_nwb_endp = valLocators.ptr+wordBoundaryOverlapLocation;
+  member_vl_endp = valLocators.ptr+unpackedVectorLength;
 
 }
 
