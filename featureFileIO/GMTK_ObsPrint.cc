@@ -518,20 +518,36 @@ bool     Info_Print_Sent_Frames = false;
 
 
 char* Usage_Str = NULL;
-bool help=false;
+//bool help=false;
+unsigned help=0;  // help=0...5 depending on the amount of info we want printed
+
+//unsigned Usage_Info_Level=0;
 
 Arg Arg::Args[] = {
+
+  Arg("\n*** Input arguments ***\n"),
+
   Arg("i",    Arg::Req, input_fname,"input file. Replace X with the file number",Arg::ARRAY,MAX_OBJECTS),
   Arg("ifmt", Arg::Opt,ifmtStr ,"format of input file X",Arg::ARRAY,MAX_OBJECTS),
-  Arg("iswp", Arg::Opt, iswap,"do byte swapping on the input file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("iswp", Arg::Opt, iswap,"do byte swapping on the input file X",Arg::ARRAY,MAX_OBJECTS,false,PRIORITY_2),
   Arg("nf",   Arg::Opt, nfs,"number of floats in input file X",Arg::ARRAY,MAX_OBJECTS),
   Arg("ni",   Arg::Opt, nis,"number of ints (labels) in input file X",Arg::ARRAY,MAX_OBJECTS),
+  Arg("cppifascii",Arg::Opt, cppIfAscii,"Pre-process ASCII files using CPP",Arg::SINGLE,0,false,PRIORITY_2),
+  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line",Arg::SINGLE,0,false,PRIORITY_2),
+
+  Arg("\n*** Output arguments ***\n"),
+
   Arg("o",    Arg::Opt, output_fname,"output file"),
   Arg("ofmt", Arg::Opt, ofmtStr,"format of output file"),
   Arg("olist",Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
-  Arg("sep",  Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file)."),
-  Arg("oswp", Arg::Opt, oswap,"do byte swapping on the output file"),
+  Arg("sep",  Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file).",Arg::SINGLE,0,false,PRIORITY_2),
+  Arg("oswp", Arg::Opt, oswap,"do byte swapping on the output file",Arg::SINGLE,0,false,PRIORITY_2),
   Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
+  Arg("oHtkKind",         Arg::Opt, HTK_Param_Kind,"Kind of output HTK parameters",Arg::SINGLE,0,false,PRIORITY_3),
+  Arg("oHtkSamplePeriod", Arg::Opt, HTK_Sample_Period,"Output HTK Sample Period",Arg::SINGLE,0,false,PRIORITY_3),
+
+  Arg("\n*** Selection arguments ***\n"),
+
   Arg("fr",   Arg::Opt, fr_str,"float range for obs file X",Arg::ARRAY,MAX_OBJECTS),
   Arg("ir",   Arg::Opt, ir_str,"int range for obs file X",Arg::ARRAY,MAX_OBJECTS),
   Arg("sr",   Arg::Opt, sr_str,"per-stream sentence range",Arg::ARRAY,MAX_OBJECTS),
@@ -539,37 +555,49 @@ Arg Arg::Args[] = {
   Arg("prepr",  Arg::Opt, prepr_str,"frame range for obs file X before any transformations are applied",Arg::ARRAY,MAX_OBJECTS),
   Arg("postpr", Arg::Opt, postpr_str,"frame range for obs file X after per-stream transformations are applied",Arg::ARRAY,MAX_OBJECTS),
   Arg("gpr",    Arg::Opt, gpr_str,"global final frame range"),
-  Arg("startskip",   Arg::Opt, startSkip,"start skip"),
-  Arg("endskip",   Arg::Opt, endSkip,"end skip"),
+  Arg("startskip",   Arg::Opt, startSkip,"start skip",Arg::SINGLE,0,false,PRIORITY_2),
+  Arg("endskip",   Arg::Opt, endSkip,"end skip",Arg::SINGLE,0,false,PRIORITY_2),
+
+  Arg("\n*** Matching arguments ***\n"),
+
   Arg("fdiffact",  Arg::Opt,actionIfDiffNumFramesStr ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_OBJECTS),
   Arg("sdiffact",  Arg::Opt,actionIfDiffNumSentsStr ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_OBJECTS),
+
+  Arg("\n*** Transformation arguments ***\n"),
+
   Arg("trans",     Arg::Opt,perStreamTransforms ,"transformations string for obs file X",Arg::ARRAY,MAX_OBJECTS),
   Arg("posttrans", Arg::Opt,postTransforms ,"Final global transformations string"),
   Arg("comb",      Arg::Opt, ftrcomboStr,"Combine float features (none: no combination, add, sub, mul,div"),
-  Arg("cppifascii",Arg::Opt, cppIfAscii,"Pre-process ASCII files using CPP"),
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
+
+  Arg("\n*** Special ops arguments ***\n"),
+
   Arg("info",      Arg::Tog, Info, "Print Observation files info ans exit"),
-  Arg("infoNoPrint",      Arg::Tog, Info_Dont_Print_Info, "Do not print anything.  Pretty useless but is here for historical reasons."),
-  Arg("infoStreams",      Arg::Tog, Info_Print_Stream_Info, "Also print individual stream info."),
-  Arg("infoNumFrames",      Arg::Tog, Info_Print_Sent_Frames, "Also print # frames for each sentence."),
+  Arg("infoNoPrint",      Arg::Tog, Info_Dont_Print_Info, "Do not print anything.  Pretty useless but is here for historical reasons.",Arg::SINGLE,0,true),
+  Arg("infoStreams",      Arg::Tog, Info_Print_Stream_Info, "Also print individual stream info.",Arg::SINGLE,0,true),
+  Arg("infoNumFrames",      Arg::Tog, Info_Print_Sent_Frames, "Also print # frames for each sentence.",Arg::SINGLE,0,true),
+
   Arg("norm",      Arg::Tog, Normalize, "Normalize the observation file"),
   Arg("normMean",  Arg::Opt, Norm_Mean, "NORM: Mean of the resulting output file",Arg::SINGLE,0,true),
   Arg("normStd",   Arg::Opt, Norm_Std,  "NORM: Std of the resulting output file",Arg::SINGLE,0,true),
   Arg("normSl",    Arg::Opt, Norm_Segment_Group_Len,      "NORM: Segment group length",Arg::SINGLE,0,true),
   Arg("normSlf",   Arg::Opt, Norm_Segment_Group_Len_File, "NORM: Ascii file with segment group lengths",Arg::SINGLE,0,true),
+
   Arg("gauss",           Arg::Tog, Gaussian_Norm, "Normalize the observation file to be Gaussian distributed with zzero mean and unit variance. The features are scaled to be within +/- gaussNumStds standard deviations"),
   Arg("gaussNumStds",    Arg::Opt, Gaussian_Num_Stds, "GAUSS: Number of Gaussian standard deviations",Arg::SINGLE,0,true),
   Arg("gaussUniform",    Arg::Opt, Gaussian_Uniform,  "GAUSS: Output is uniform[0,1] distributed rather than Gaussian",Arg::SINGLE,0,true),
   Arg("gaussOutputStat", Arg::Opt, Gauss_Norm_Output_Stat_File_Name, "GAUSS: Output statistics file",Arg::SINGLE,0,true),
   Arg("gaussInputStat",  Arg::Opt, Gauss_Norm_Input_Stat_File_Name,  "GAUSS: Input statistics file",Arg::SINGLE,0,true),
+
   Arg("klt",               Arg::Tog, Perform_KLT,"Perform a KLT transform"),
   Arg("kltUnityVar",       Arg::Opt, KLT_Unity_Variance,"KLT: multiply features by inverse eigenvalues (to have unity variance)",Arg::SINGLE,0,true),
   Arg("kltOutputStat",     Arg::Opt,KLT_Output_Stat_File_Name ,"KLT: output stats (covariance, mean, eigenvectors, eigenvalues) matrices binary double precision ('-' for stdout)",Arg::SINGLE,0,true),
   Arg("kltInputStat",      Arg::Opt,KLT_Input_Stat_File_Name ,"KLT: input stats (covariance, mean, eigenvectors, eigenvalues) matrices (i.e., do not compute them)",Arg::SINGLE,0,true),
   Arg("kltAsciiStat",      Arg::Opt,KLT_Ascii_Stat_Files ,"KLT: stat matrices written/read in ascii rather than binary doubles",Arg::SINGLE,0,true),
   Arg("kltOutputFtrRange", Arg::Opt, KLT_Output_Ftr_Range,"KLT: output feature range",Arg::SINGLE,0,true),
+
   Arg("stats",           Arg::Tog, Get_Stats,"Output statistics of the form:\nfeatnum mean std max @sent# @frame# min @sent# @frame# max/stds min/stds [histogram]"),
-  Arg("histBins",   Arg::Opt, Num_Hist_Bins,"STATS/GAUSS: number of histogram bins"),
+  Arg("bins",   Arg::Opt, Num_Hist_Bins,"STATS/GAUSS: number of histogram bins",Arg::SINGLE,0,false,PRIORITY_2),
+
   Arg("addsil",          Arg::Tog, Add_Sil,"Add silence frames at the begining and end each sentence"), 
   Arg("addsilNumBeg",    Arg::Opt, Add_Sil_Num_Beg_Frames,"Number of new beginning silence frames",Arg::SINGLE,0,true), 
   Arg("addsilPrb",       Arg::Opt, Add_Sil_Beg_Rng_Str,"Per-sentence range to compute beginning silence",Arg::SINGLE,0,true), 
@@ -579,12 +607,15 @@ Arg Arg::Args[] = {
   Arg("addsilMAF",       Arg::Opt, Add_Sil_MAF,"Mean additive factor",Arg::SINGLE,0,true),
   Arg("addsilSMF",       Arg::Opt, Add_Sil_SMF,"Standard deviation multiplicative factor",Arg::SINGLE,0,true),  
   Arg("addsilSAF",       Arg::Opt, Add_Sil_SAF,"Standard deviation additive factor",Arg::SINGLE,0,true),  
-  Arg("htkKind",         Arg::Opt, HTK_Param_Kind,"Kind of output HTK parameters"),
-  Arg("htkSamplePeriod", Arg::Opt, HTK_Sample_Period,"Output HTK Sample Period"),
-  Arg("debug", Arg::Opt, debug_level,"Number giving level of debugging output to produce 0=none"),
+
+  Arg("\n*** Misc arguments ***\n"),
+
+  Arg("debug", Arg::Opt, debug_level,"Number giving level of debugging output to produce 0=none",Arg::SINGLE,0,false,PRIORITY_3),
   Arg("q",     Arg::Tog, quiet,"quiet mode"),
-  Arg("usage", Arg::Opt, Usage_Str, "Print usage information about one of the follwoing topics: {norm, gauss, klt, addsil}"),
-  Arg("help",  Arg::Tog, help,  "Print this message"),
+  Arg("usage", Arg::Opt, Usage_Str, "Print usage information about one of the following topics: {norm, gauss, klt, addsil}"),
+  //  Arg("help",  Arg::Tog, help,  "Print this message. Repeat this flag for more info."),
+  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
+  //  Arg("usageInfoLevel",  Arg::Opt, Usage_Info_Level,  "Amount of help information to print on a scale from 1 to 5 ranked by importance. (0 means this value is not used)"),
   // The argumentless argument marks the end of the above list.
   Arg()
 };
