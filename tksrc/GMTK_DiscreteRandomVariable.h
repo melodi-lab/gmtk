@@ -42,7 +42,12 @@ private:
   // possible conditional parents).
   vector < CPT* > conditionalCPTs;
 
-  // the current CPT after findConditionalParents() is called.
+  ////////////////////////////////////////////////////////////////
+  // The current CPT after findConditionalParents() is called.
+  // It is "current" in the sence that it valid for the set
+  // of parent values that are clamped. If the parent values
+  // change, this CPT will no longer be valid until another
+  // findConditionalParents() is called.
   CPT* curCPT;
 
   // iterator used between clamp functions.
