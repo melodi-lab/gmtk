@@ -67,6 +67,15 @@ VCID("$Header$");
  * command line arguments
  */
 
+char *inputMasterFile=NULL;
+char *outputMasterFile=NULL;
+
+char *outputTrainableParameters=NULL;
+bool binOutputTrainableParameters=false;
+
+char *inputTrainableParameters=NULL;
+bool binInputTrainableParameters=false;
+
 char *prmTrainableFile=NULL;
 bool binPrmTrainableFile=false;
 
@@ -83,14 +92,15 @@ Arg Arg::Args[] = {
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
 
-  Arg("prmMasterFile",Arg::Opt,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
+  Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
+  Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
 
-  Arg("prmTrainableFile",Arg::Req,prmTrainableFile,"File containing Trainable Parameters"),
-  Arg("binPrmTrainableFile",Arg::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
+  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
+  Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
 
+  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
+  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
 
-  Arg("prmOutFile",Arg::Req,prmOutFile,"File to place *TRAINABLE* output parametes"),
-  Arg("binPrmOutFile",Arg::Opt,binPrmOutFile,"Output parametes binary? (def=false)"),
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to cpp"),
 
   Arg("varFloor",Arg::Opt,varFloor,"Variance Floor"),
@@ -133,22 +143,30 @@ main(int argc,char*argv[])
   GaussianComponent::setVarianceFloor(varFloor);
   /////////////////////////////////////////////
 
-
+  if ((inputMasterFile == NULL) && (inputTrainableParameters == NULL)) {
+    error("ERROR: need to specify either inputMasterFile or inputTrainableParameters command line arguments");
+  }
   ////////////////////////////////////////////
-  // finally, pull any trainable parameters out
-  // of a master file and send them to a trainable file. 
-  if (prmMasterFile != NULL) {
-    iDataStreamFile pf(prmMasterFile,false,true,cppCommandOptions);
+  if (inputMasterFile != NULL) {
+    iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
   }
-  iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
-  GM_Parms.readTrainable(pf);
-  printf("Trainable file '%s' has '%u' total parameters\n",
-	 prmTrainableFile,
+  if (inputTrainableParameters != NULL) {
+    // flat, where everything is contained in one file
+    iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
+    GM_Parms.readTrainable(pf);
+  }
+
+  printf("Input files have a total of '%u' parameters\n",
 	 GM_Parms.totalNumberParameters());
 
-  oDataStreamFile of(prmOutFile,binPrmOutFile);
-  GM_Parms.writeTrainable(of);
+  if (outputMasterFile != NULL) {
+    GM_Parms.write(outputMasterFile);
+  }
+  if (outputTrainableParameters != NULL) {
+    oDataStreamFile of(outputTrainableParameters,binOutputTrainableParameters);
+    GM_Parms.writeTrainable(of);
+  }
 
   exit_program_with_status(0);
 }
