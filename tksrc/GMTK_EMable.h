@@ -29,9 +29,9 @@
 #include "machine-dependent.h"
 #include "sArray.h"
 
-
-#include "GMTK_RandomVariable.h"
 #include "GMTK_NamedObject.h"
+
+class RandomVariable;
 
 class EMable : public NamedObject {
 
