@@ -133,11 +133,11 @@ Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // Triangulation Options
-  Arg("triangulationHeuristic",Arg::Opt,triangulationHeuristic,"Elimination heuristic, one+ of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint"),
+  Arg("triangulationHeuristic",Arg::Opt,triangulationHeuristic,"Elimination heuristic, one+ of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint,N=wght-w/o-det"),
 
   Arg("findBestFace",Arg::Opt,findBestFace,"Run find-best-face (exponential time) algorithm or not."),
   Arg("forceLeftRight",Arg::Opt,forceLeftRight,"Use only either left (L) or right (R) face heuristic, rather than best of both"),
-  Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, one+ of S=size,F=fill,W=wght,C=min(max(C-clique)),M=min(max(clique))"),
+  Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, one+ of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,T=C-st-spc"),
 
   Arg("unroll",Arg::Opt,jut,"Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
   Arg("anyTimeTriangulate",Arg::Opt,anyTimeTriangulate,"Run the any-time triangulation algorithm for given duration."),
