@@ -92,6 +92,7 @@ public:
   //////////////////////////////////
   void emStartIteration();
   void emIncrement(logpr prob,sArray<logpr>&);
+  void emIncrement(logpr prob,const int val);
   void emEndIteration();
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
