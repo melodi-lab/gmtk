@@ -46,3 +46,5 @@ incorporated into the package at some point.
 - Q: the inference procedure works both with clique chains
   and clique trees???
 
+- Allocate data structures for CPTS, etc. automatically, if not explicitly 
+  specified in a file. 
