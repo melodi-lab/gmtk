@@ -461,6 +461,7 @@ main(int argc,char*argv[])
     while (!in.eof())
     {
       in >> val >> name >> ws;
+      // printf("reading %d word = (%s)\n",val,name.c_str());
       word_map[val] = name;
     }
     in.close();
@@ -483,7 +484,6 @@ main(int argc,char*argv[])
       din.close();
   }
 
-
   vector<string> ofiles;
   if (ofilelist)
   {
@@ -497,7 +497,6 @@ main(int argc,char*argv[])
       }
       oin.close();
   }
-
   // We always do viterbi scoring/option in this program.
   JunctionTree::viterbiScore = true;
 
@@ -544,11 +543,11 @@ main(int argc,char*argv[])
     } else {
       // linear space inference
       unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Low,"Collecting Evidence\n");
+      infoMsg(IM::Med,"Collecting Evidence\n");
       myjt.collectEvidence();
-      infoMsg(IM::Low,"Done Collecting Evidence\n");
+      infoMsg(IM::Med,"Done Collecting Evidence\n");
       probe = myjt.probEvidence();
-      infoMsg(IM::Low,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+      infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	     segment,
 	     probe.val(),
 	     probe.val()/numFrames,
@@ -606,7 +605,7 @@ main(int argc,char*argv[])
           if (!myjt.curNodes()[i]->discrete) 
             error("Can only print Viterbi values for discrete variables");
           if (myjt.curNodes()[i]->cardinality != int(word_map.size()))
-            error("Word-val to string map does not match the number of words.");
+            error("Word-val to string map file size %d does not match the number of words %d.",int(word_map.size()),myjt.curNodes()[i]->cardinality);
           lv = myjt.curNodes()[i]->val;
         }
         else if (myjt.curNodes()[i]->label==tl)
