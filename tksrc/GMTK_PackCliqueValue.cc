@@ -101,12 +101,14 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
     ceil((double)totalNumBits/(double)numBitsPerUnsigned);
 
   valLocators.resize(len);
-  packFunctions.resize(len);
-  unPackFunctions.resize(len);
+  iterations.resize(len);
 
   unsigned curUnsignedLocation = 0;
   // number of unused bits in the current packed word
   unsigned curNumberUnusedBits = numBitsPerUnsigned;
+
+  unsigned wordBoundaryNoOverlapLocation = 0;
+  wordBoundaryOverlapLocation = len;
   for (unsigned i=0; i<len; i++) {
 
     unsigned curNumberBits = 
@@ -114,41 +116,49 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
 
     if (curNumberBits <= curNumberUnusedBits) {
       // use bits only in current word
-      valLocators[i].start = curUnsignedLocation;
-      valLocators[i].startRightShift = 
+      valLocators[wordBoundaryNoOverlapLocation].start = curUnsignedLocation;
+      valLocators[wordBoundaryNoOverlapLocation].startRightShift = 
 	(numBitsPerUnsigned - curNumberUnusedBits);
-      valLocators[i].startMask =
-	((1 << curNumberBits)-1) << valLocators[i].startRightShift;
-      packFunctions[i] = &PackCliqueValue::packToSingleWord;
-      unPackFunctions[i] = &PackCliqueValue::unPackFromSingleWord;
+      valLocators[wordBoundaryNoOverlapLocation].startMask =
+	((1 << curNumberBits)-1) << 
+	valLocators[wordBoundaryNoOverlapLocation].startRightShift;
+
+      iterations[wordBoundaryNoOverlapLocation] = i;
+
       curNumberUnusedBits -= curNumberBits;
 
       if (curNumberUnusedBits == 0) {
 	curUnsignedLocation ++;
 	curNumberUnusedBits = numBitsPerUnsigned;
       }
+      wordBoundaryNoOverlapLocation++;
     } else {
       // use up remaining bits in this word
+
+      wordBoundaryOverlapLocation--;
       
-      valLocators[i].start = curUnsignedLocation;
-      valLocators[i].startRightShift = 
+      valLocators[wordBoundaryOverlapLocation].start = curUnsignedLocation;
+      valLocators[wordBoundaryOverlapLocation].startRightShift = 
 	(numBitsPerUnsigned - curNumberUnusedBits);
-      valLocators[i].startMask =
-	((1 << curNumberUnusedBits)-1) << valLocators[i].startRightShift;
+      valLocators[wordBoundaryOverlapLocation].startMask =
+	((1 << curNumberUnusedBits)-1) << 
+	valLocators[wordBoundaryOverlapLocation].startRightShift;
 
       const unsigned numBitsRemaining = curNumberBits - curNumberUnusedBits;
 
-      valLocators[i].nextLeftShift = curNumberUnusedBits;
-      valLocators[i].nextMask = 
+      valLocators[wordBoundaryOverlapLocation].nextLeftShift = curNumberUnusedBits;
+      valLocators[wordBoundaryOverlapLocation].nextMask = 
 	((1 << numBitsRemaining)-1);
 
-      packFunctions[i] = &PackCliqueValue::packToDoubleWord;
-      unPackFunctions[i] = &PackCliqueValue::unPackFromDoubleWord;
+      iterations[wordBoundaryOverlapLocation] = i;
+
       curNumberUnusedBits = numBitsPerUnsigned - numBitsRemaining;
       curUnsignedLocation ++;
+
     }
 
   }
+  assert( wordBoundaryNoOverlapLocation == wordBoundaryOverlapLocation);
 
 } 
 
@@ -184,7 +194,7 @@ int main(int argc,char*argv[])
     for (unsigned i=0;i<len;i++) {
       printf(" %d",cards[i]);
     }
-    printf("\n");
+    printf("\n"); fflush(stdout);
 
 
     sArray<unsigned> vec(len);
