@@ -200,3 +200,5 @@ X add VCID everywhere.
      2) Switching gaussian mixture objects
      3) sparse PMFs
 
+- make sure that dlinkmatrix precompute is being
+  called once the global observation matrix is ready.
