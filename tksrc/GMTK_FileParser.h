@@ -32,8 +32,88 @@
 #include "GMTK_GM.h" 
 */
 
+class RandomVariable;
+
 class FileParser
 {
+
+
+private:
+
+
+  ///////////////////////////////////////////////////
+  // A class where information about a RV can
+  // be placed as it is being parsed. 
+  class RVInfo {
+    friend class FileParser;
+
+    enum Type { t_discrete, t_continuous, t_unknown };
+    enum Disposition { d_hidden, d_observed, d_unknown };
+    struct FeatureRange {
+      bool filled;
+      unsigned start;
+      unsigned stop;
+      FeatureRange() { filled = false; }
+    };
+    enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_unknown }; 
+    enum ContinuousImplementation { ci_mixGaussian,
+				    ci_gausSwitchMixGaussian ,
+				    ci_logitSwitchMixGaussian,
+				    ci_mlpSwitchMixGaussian,
+                                    ci_unknown };
+
+
+    string name;    
+    Type rvType;
+    Disposition rvDisp;
+    unsigned rvCard;
+    unsigned frame;
+    FeatureRange rvFeatureRange;
+    // switching parents stuff
+    vector< pair<string, int> > switchingParents;
+    string switchMapping;
+    // conditional parents stuff
+    vector<vector<pair<string,int> > > conditionalParents;
+    // if discrete, then the list if discrete implementations
+    vector< DiscreteImplementaton > discImplementations;
+    // if continuous, the list of continuous implementations
+    vector< ContinuousImplementation > contImplementations;
+    // in either case, a low-level parameter index
+    vector< FeatureRange > listIndices;
+    // if this is for a continuous implementation,
+    // and there are conditional parents (as apposed to
+    // "nil" parents), this indicates mapping keyword
+    // was present. Needed by semantic analysis so that
+    // we can check that this occurs only when there are
+    // not "nil" parents.
+    vector< bool > dtMaps;
+
+    // constructor
+    RVInfo() { rvType = t_unknown; };
+    // copy constructor
+    RVInfo(RVInfo&);
+
+    // clear out the current RV structure when we 
+    // are parsing and encounter a new RV.
+    void clear();
+
+  };
+
+  //////////////////////////////////////////////
+  // This is where the parser puts partially 
+  // completed RVs as it is parsing them.
+  vector < RVInfo > RVs;
+
+  ////////////////////////////////////////////////////////////////
+  // The current pre-allocated random variable that is being
+  // parsed and filled in as we go. 
+  RVInfo curRV;
+
+  ///////////////////////////////////////////////////
+  // Mapping from the name of the random variable
+  // to its pointer.
+  // map<pair<string, unsigned>, RandomVariable *> variableNamed;
+  // map < pair<string,unsigned> , RandomVariable* > nameRVmap;
 
 
 public:
@@ -189,7 +269,7 @@ private:
   void parseRandomVariableDiscreteType();
   void parseRandomVariableContinuousType();
   void parseRandomVariableParentAttribute();
-  void parseSwitchingParentList();
+  void parseSwitchingParentAttribute();
   void parseConditionalParentSpecList();
   void parseConditionalParentSpec();
   void parseConditionalParentList();
