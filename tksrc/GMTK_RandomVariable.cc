@@ -17,6 +17,8 @@
  *
  */ 
 
+#include <set>
+#include "GMTK_RandomVariable.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -34,9 +36,7 @@
  *-----------------------------------------------------------------------
  */
 
-#include <set>
-
-void GMTK_RandomVariable::setParents(sArray<RandomVariable *> &sparents,
+void RandomVariable::setParents(sArray<RandomVariable *> &sparents,
          sArray<sArray<RandomVariable *> > &cpl)
 {
     switchingParents = sparents;
@@ -55,10 +55,10 @@ void GMTK_RandomVariable::setParents(sArray<RandomVariable *> &sparents,
     
     for (int i=0; i<cpl.len(); i++)
         for (int j=0; j<cpl[i].len(); j++)
-            if (parents.find(cpl[i].[j]) == parents.end())
+            if (parents.find(cpl[i][j]) == parents.end())
             {
-                cpl[i].[j]->allPossibleChildren.push_back(this);
-                parents.insert(cpl[i].[j]);
+                cpl[i][j]->allPossibleChildren.push_back(this);
+                parents.insert(cpl[i][j]);
             }
 
     // set up the all possible parents array.
@@ -69,7 +69,7 @@ void GMTK_RandomVariable::setParents(sArray<RandomVariable *> &sparents,
         allPossibleParents[p++] = *si;
 }
 
-void GMTK_RandomVariable::reveal()
+void RandomVariable::reveal()
 {
     cout << label << " : ";
     if (discrete) cout << "discrete (" << cardinality << ") ";

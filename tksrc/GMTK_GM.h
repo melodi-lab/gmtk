@@ -108,10 +108,10 @@ struct GMTK_GM
     // Tells each variable to update its parameters at the end of an EM 
     // iteration.
 
-    void clampFirstExample();
+    void clampFirstExample() {error("can't clamp examples yet");}
     // Clamps the observation variables according to the first example.
 
-    bool clampNextExample();
+    bool clampNextExample() {error("can't clamp examples yet"); return false;}
     // Clamps the observation variables according to the next example.
 
     void enumerativeEM(int iterations);

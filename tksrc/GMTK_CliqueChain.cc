@@ -36,7 +36,7 @@
  *
  *-----------------------------------------------------------------------
  */
-bool CliqueChain::forwardPass(logpr beam=0, bool viterbi=false)
+bool CliqueChain::forwardPass(logpr beam, bool viterbi)
 {
     // zero  out the clique instantiations.
     for (int i=0; i<preorder.len(); i++)
@@ -55,16 +55,16 @@ bool CliqueChain::forwardPass(logpr beam=0, bool viterbi=false)
         // propagate the surviving entries to preorder[i+1]
         list<CliqueValue>::iterator li;
         for (li=preorder[i]->instantiation.begin(); 
-        li!=preorder[i]->instantiation.end(); mi++) 
+        li!=preorder[i]->instantiation.end(); li++) 
         {
             // clamp the values of the variables in the parent clique
-            assert(li->values.size() == preorder[i]->discreteMember.len());
+            assert(int(li->values.size()) == preorder[i]->discreteMember.len());
             for (int j=0; j<preorder[i]->discreteMember.len(); j++)
                 preorder[i]->discreteMember[j]->val = li->values[j];
 
             // compute the clique values of the child clique that are 
             // consistent with this parent instantiation.
-            preorder[i+1]->enumerateValues(0, &(*mi).second, viterbi);
+            preorder[i+1]->enumerateValues(0, &(*li), viterbi);
         }
     }
 
@@ -77,14 +77,15 @@ bool CliqueChain::forwardPass(logpr beam=0, bool viterbi=false)
         return false; 
 
     // look at the probabilities
-    logpr<float> sum=0, max=0;
+    logpr sum=0.0, max=0.0;
+    list<CliqueValue>::iterator li;
     for (li=postorder[0]->instantiation.begin(); 
     li!=postorder[0]->instantiation.end(); li++)
     {
         sum += li->pi;
-        if (li->pi > max) max = li=>pi;
+        if (li->pi > max) max = li->pi;
     }
-    dataProb=viterbiProb=0;
+    dataProb=viterbiProb=0.0;
     if (viterbi)
         viterbiProb=max;
     else
@@ -114,7 +115,7 @@ void CliqueChain::backwardPass()
     {
         Clique *cl = postorder[i];
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
-            li->lambda = 0;
+            li->lambda = 0.0;
     }
 
     // compute the lambdas 
@@ -130,7 +131,7 @@ void CliqueChain::backwardPass()
     for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
     {
         logpr t = li->lambda;  // retrieve the cached probGivenParents
-        li->lambda = 1;
+        li->lambda = 1.0;
         if (postorder.len() > 1)  // watch out for degenerate case
             li->pred->lambda += t;
     }
@@ -152,7 +153,7 @@ void CliqueChain::backwardPass()
     // now do the root, which does not do any pushing
     cl = preorder[0];
     if (preorder.len() > 1)
-        for (li=cl->instantiation.begin(); li!=cl->instantiation.end); li++)
+        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
             li->lambda =  li->succ->lambda;
 }
 
@@ -179,7 +180,7 @@ bool CliqueChain::doViterbi(logpr beam)
         return false;
 
     // first find the likeliest instantiation of the last clique
-    logpr maxprob = 0;
+    logpr maxprob = 0.0;
     CliqueValue *best;
     Clique *cl = postorder[0];
     list<CliqueValue>::iterator li;
@@ -194,9 +195,10 @@ bool CliqueChain::doViterbi(logpr beam)
     // then trace backwards and clamp the best values
     for (int i=0; i<postorder.len(); i++)
     {
+        cl = postorder[i];
         // clamp the values
-        for (int j=0; j<discreteMember.size(); j++)
-            discreteMember[j]->val = best->values[j];
+        for (int j=0; j<cl->discreteMember.len(); j++)
+            cl->discreteMember[j]->val = best->values[j];
         // set best to the best instantiation of the predecessor clique
         best = best->pred;
     }
@@ -220,7 +222,7 @@ bool CliqueChain::doViterbi(logpr beam)
  *-----------------------------------------------------------------------
  */
 
-void CliqueChain::computePosteriors(logpr beam=0)
+void CliqueChain::computePosteriors(logpr beam)
 {
     if (!forwardPass(beam))
 // really need to throw an exception so that the program can continue with the
@@ -258,15 +260,15 @@ void CliqueChain::incrementEMStatistics()
         {
             // clamp the instantiation values
             for (int j=0; j<cl->discreteMember.len(); j++)
-                discreteMember[j]->val = li->values[j];
+                cl->discreteMember[j]->val = li->values[j];
 
             // find the conditional families, given the switching parent values
-            findConditionalProbabilityNodes();
+            cl->findConditionalProbabilityNodes();
             
             // do the updates
             logpr posterior = li->lambda*li->pi/dataProb;
-            for (int j=0; j<conditionalProbabilityNode.len(); j++)
-                conditionalProbabilityNode[j]->increment(posterior);
+            for (int j=0; j<cl->conditionalProbabilityNode.len(); j++)
+                cl->conditionalProbabilityNode[j]->increment(posterior);
         }
     }
 }
