@@ -26,7 +26,7 @@ void Clique::cacheClampedValues()
 
 logpr Clique::probGivenParents()
 {
-    logpr p(1.0);
+    logpr p = 1.0;
     findConditionalProbabilityNodes();
     for (unsigned i=0; i<conditionalProbabilityNode.size(); i++)
         p *= conditionalProbabilityNode[i]->probGivenParents();
@@ -71,7 +71,6 @@ void Clique::prune(logpr beam)
 void Clique::enumerateValues(int new_member_num, CliqueValue *pred_val,
 bool viterbi)
 {
-    CliqueValue *cv;
     if (separator)
     {
         cacheClampedValues();
@@ -79,19 +78,18 @@ bool viterbi)
         // Make sure we have a clique value to work with
         // instantiationAddress tells if the instantiation was seen before
         map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue *>::iterator mi;
+        CliqueValue *cv;
         if ((mi=instantiationAddress.find(clampedValues)) == 
-        instantiationAddress.end()) // not seen before
+        instantiationAddress.end())                  // not seen before
         {
-            instantiation.push_back(CliqueValue()); // add a new value
-            cv = &instantiation.back();           // will work with new value
+            instantiation.push_back(CliqueValue());  // auto-init pi to 0.0
+            cv = &instantiation.back();              // work with new value
             instantiationAddress[clampedValues] = cv;   // store
-            cv->pi = 0.0;
             // store the underlying variable values with the instantiation
             cv->values = clampedValues;   
         }
         else
             cv = (*mi).second;                    // will word with old value
-     
 
         if (!viterbi)
         {
@@ -114,20 +112,20 @@ bool viterbi)
 	// Each variable and its parents are guaranteed to be in this
 	// clique and all such variables are clamped, so making this
 	// possible.
-        cacheClampedValues();
 
-        logpr pi(probGivenParents());  // cache value in lambda
+        logpr pi = probGivenParents();
 	// copy in the clique value -- if it has a nonzero probability
         // otherwise, discard it to avoid further propagation
-        if (pi != 0.0)
+        if (pi != 0.0)    
         {
+            cacheClampedValues();
             instantiation.push_back(CliqueValue());
-            cv = &instantiation.back();           // will work with new value
-            if (pred_val)   // not doing root
-                pi *= pred_val->pi;
+            CliqueValue *cv = &instantiation.back();
+            cv->pi = cv->lambda = probGivenParents();  // cache value in lambda
             cv->pred = pred_val;
             cv->values = clampedValues;
-            cv->pi = cv->lambda = pi;  // cache value in lambda
+            if (pred_val)   // not doing root
+                cv->pi *= pred_val->pi;
         }
     }
     else
