@@ -28,6 +28,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "bp_range.h"
+
 #include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_GMTemplate.h"
