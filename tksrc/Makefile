@@ -210,8 +210,8 @@ testHash: GMTK_Hash.cc GMTK_Hash.h
 testHashTree: GMTK_HashTree.cc GMTK_HashTree.h 
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_HashTree.cc $(LIBS)
 
-testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h GMTK_RandomVariable.o
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_RngDecisionTree.cc GMTK_RandomVariable.o $(LIBS)
+testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h GMTK_RV.cc GMTK_RV.h GMTK_DiscRV.cc GMTK_DiscRV.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_RngDecisionTree.cc GMTK_RV.o GMTK_DiscRV.o $(LIBS)
 
 testPackCliqueValue: GMTK_PackCliqueValue.cc  GMTK_PackCliqueValue.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_PackCliqueValue.cc $(LIBS)
