@@ -998,6 +998,7 @@ void GMTK_GM::clampFirstExample()
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
         expos = 0;
+	GM_Parms.clampNextDTs();
     }
     else
     {
@@ -1023,6 +1024,7 @@ bool GMTK_GM::clampNextExample()
 	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",expos);
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
+	GM_Parms.clampNextDTs();
     }
     else
     {
