@@ -32,6 +32,10 @@
 // I.e., exp(z) where z < MINEARG results in 0
 #define MINEARG (-708.3)
 
+// Largest exp() arg, i.e., if v is much
+// greater than this, then we'll get an infinity.
+#define MAXEARG (700)
+
 // lowest log() arg  = exp(MINEARG)
 // I..e, log(z) where z < MINLARG results in -Infinity
 #define MINLARG 2.45E-308  
@@ -47,7 +51,6 @@
 // considered to be zero.
 
 extern double logp_minLogExp;
-
 extern double log_FLT_MIN;
 extern double log_DBL_MIN;
 
@@ -255,9 +258,17 @@ public:
     { *this = (*this / z); return *this; }
   
 
-  // unlog: Convert log(x) to double, result is
+  // unlog support: Convert log(x) to double, result is
   // floored to 0.0 if x < MINEARG
   inline iFT unlog() const { return (v<MINEARG) ? 0.0 : exp(v); }
+  // return true if we can safely call unlog() on this object.
+  bool unlogable() { return (v < MAXEARG); }
+  // return true if we can safely call unlog() on the inverse of
+  // this object. This can also be used as a weaker check for zero
+  // than the zero() function (i.e., if zero(), then 
+  // inverseUnlogable() will be true)
+  bool inverseUnlogable() { return (-v < MAXEARG); }
+
   inline FT val() const { return v; }
 
   // this routine breaks all protection of 'v'
