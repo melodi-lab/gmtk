@@ -285,23 +285,64 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
   if (tri_heur_str.size() == 0) {
     return;
   } else {
-    // first see if tri_heur_str starts with '<num>-'
-    // to get number of trials.
-    char *endp;
-    long numTrials = -1;
-    const char *startp = tri_heur_str.c_str();
-    numTrials = strtol(startp,&endp,10);
-    if (endp != startp)
-      // then there is an iteration number
-      tri_heur.numberTrials = numTrials;
-    else
-      tri_heur.numberTrials = 1;
-    // skip optional '-' character.
-    if (*endp == '-')
-      endp++;
-    if (!*endp || tri_heur.numberTrials <= 0)
-      error("ERROR: bad triangulation heuristic string given in '%s'\n",startp);
 
+    ////////////////////////////////////////////////////////////////////////// 
+    // Parse the prefix
+    ////////////////////////////////////////////////////////////////////////// 
+    char *endp;
+    long number_1 = -1;
+    long number_2 = -1;
+    long number_3 = -1;
+    const char *startp = tri_heur_str.c_str();
+
+    tri_heur.seconds      = -1;
+    tri_heur.numberTrials = -1;
+
+    number_1 = strtol(startp, &endp, 10);
+
+    if (endp != startp) {
+      ////////////////////////////////////////////////////////////////// 
+      // If string begins with 'N-' then N is number of iterations 
+      ////////////////////////////////////////////////////////////////// 
+      if (*endp == '-') {
+        tri_heur.numberTrials = number_1;
+        endp++;
+      }
+      ////////////////////////////////////////////////////////////////// 
+      // If string is 'm:s' or 'h:m:s' then number is a time string 
+      ////////////////////////////////////////////////////////////////// 
+      else if (*endp == ':') {
+        endp++;
+        number_2 = strtol(endp, &endp, 10);
+        
+        ////////////////////////////////////////////////////////////////// 
+        // Separate cases for minutes:seconds and hours:minutes:seconds 
+        ////////////////////////////////////////////////////////////////// 
+        if (*endp == ':') {
+          endp++;
+          number_3 = strtol(endp, &endp, 10);
+          tri_heur.seconds = 60*60*number_1 + 60*number_2 + number_3;
+          endp++;
+        }
+        else {
+          tri_heur.seconds = 60*number_1 + number_2; 
+          endp++;
+        }
+
+      }
+    }
+    else {
+      tri_heur.numberTrials = 1;
+    }
+
+    if ( (endp == NULL) || 
+         ((tri_heur.numberTrials < 0) && (tri_heur.seconds < 0)) ) {
+      error("ERROR: bad triangulation heuristic string given in '%s'\n",startp);
+    }
+
+    ////////////////////////////////////////////////////////////////////////// 
+    // Parse the heuristic type 
+    ////////////////////////////////////////////////////////////////////////// 
     if (strncmp(endp, "anneal", strlen(endp)) == 0) {
       tri_heur.style = TS_ANNEALING;
     } else if (strncmp(endp, "exhaustive", strlen(endp)) == 0) {
@@ -1447,14 +1488,16 @@ BoundaryTriangulate
   )
 {
   vector<MaxClique>       cliques;
-  vector<RV*> order;
+  vector<RV*>             order;
+  TimerClass              type_timer;
   double                  prvs_best_weight;
   double                  weight;
   string                  meth_str;
   char                    buff[64];
   SavedGraph              nghbrs_with_extra;
   TriangulateHeuristics   ea_tri_heur;
-  
+  int                     trial;
+
   if (!(timer && timer->Expired())) {
 
     ////////////////////////////////////////////////////////////////////////
@@ -1486,7 +1529,12 @@ BoundaryTriangulate
     ////////////////////////////////////////////////////////////////////////
     // Repeat triangulation specified number of times 
     ////////////////////////////////////////////////////////////////////////
-    for (unsigned trial = 0; trial<tri_heur.numberTrials; trial++) {
+    trial = 0;
+    type_timer.Reset( tri_heur.seconds );
+    for (; 
+      ((tri_heur.numberTrials>0) && (trial<tri_heur.numberTrials)) ||
+      ((tri_heur.seconds>0)      && (!type_timer.Expired()));
+      trial++) {
 
       ////////////////////////////////////////////////////////////////////////
       // Initialize graph for new triangulation 
