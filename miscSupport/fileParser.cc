@@ -163,6 +163,35 @@ iDataStreamFile::readStr(char*& str, char *msg)
 
 
 bool 
+iDataStreamFile::readString(string& str, char *msg) 
+{
+  str.erase();
+  if (Binary) {
+    char c;
+    // read a string up to the next NULL character.
+    do {
+      size_t rc = fread(&c, sizeof(char), 1,fh);
+      if (rc != 1)
+	return errorReturn("readChar",msg);
+      str += c;
+    } while (c != '\0');
+  } else {
+    if (!prepareNext())
+      return errorReturn("readChar",msg);
+    // read until a space. Add a null character
+    // onto the end of the string.
+    char c = *buffp++;
+    while (!isspace(c) &&  c != '\n') {
+      str += c;
+      c = *buffp++;
+    }
+  }
+  return true;
+}
+
+
+
+bool 
 iDataStreamFile::readInt(int& i, char *msg) 
 {
   if (Binary) {
@@ -279,6 +308,23 @@ bool oDataStreamFile::writeStr(const char *const str,char *msg)
     return true;
   }
 }
+
+
+bool oDataStreamFile::writeString(string& str,char *msg)
+{
+  if (Binary) {
+    const int len = str.length()+1;
+    size_t rc = fwrite(str.c_str(), sizeof(char), len,fh);
+    if ((int)rc != len)
+      return errorReturn("writeStr",msg);
+    return true;
+  } else {
+    if (fprintf(fh,"%s ",str.c_str()) == 0) 
+      return errorReturn("writeStr",msg);
+    return true;
+  }
+}
+
 
 bool oDataStreamFile::writeChar(const char c,char *msg)
 {
@@ -429,6 +475,7 @@ int main()
   float f;
   double d;
   char *str;
+  string cppstr = "This_is_a_stupid_slow_C++_string.";
 
   float far1[] = { 0.1, 0.2, 0.3, 0.4, 0.5 };
 
@@ -443,21 +490,25 @@ int main()
     of.indent(1,false); of.writeDouble(10003.043343434); of.nl();
     of.writeStr("This_is_a_String"); of.nl();
     of.write(far1,sizeof(far1)/sizeof(float),"writing array");
+    of.write(cppstr);
   }
 
   bin=false;
   {
     iDataStreamFile inf("/tmp/foo_ascii",bin);
-    inf.readChar(c);;
+    inf.readChar(c);
     inf.readInt(i);
     inf.readFloat(f);
     inf.readDouble(d);
     inf.readStr(str);
     inf.read(far2,sizeof(far1)/sizeof(float),"reading array");
+    inf.read(cppstr);
     printf("%c %d %f %f %s\n",c,i,f,d,str);
     for (int i=0;i<(int)(sizeof(far1)/sizeof(float));i++) {
       printf("%f ",far2[i]);
     }
+    printf("\n");
+    printf("cppstr=(%s)\n",cppstr.c_str());
     printf("\n");
   }
 
@@ -470,6 +521,7 @@ int main()
     of.indent(1,false); of.writeDouble(d); of.nl();
     of.writeStr(str); of.nl();
     of.write(far1,sizeof(far1)/sizeof(float),"writing array");
+    of.write(cppstr);
   }
 
   bin=true;
@@ -481,10 +533,13 @@ int main()
     inf.readDouble(d);
     inf.readStr(str);
     inf.read(far2,sizeof(far2)/sizeof(float),"reading array");
+    inf.read(cppstr);
     printf("%c %d %f %f %s\n",c,i,f,d,str);
     for (int i=0;i<(int)(sizeof(far1)/sizeof(float));i++) {
       printf("%f ",far2[i]);
     }
+    printf("\n");
+    printf("cppstr=(%s)\n",cppstr.c_str());
     printf("\n");
 
   }

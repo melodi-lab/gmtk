@@ -11,6 +11,9 @@
 #ifndef FILEPARSER_H
 #define FILEPARSER_H
 
+#include <string>
+#include <vector>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -59,6 +62,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool readInt(int& i,char *msg=NULL);
   bool readFloat(float& f,char *msg=NULL);
   bool readDouble(double& d,char *msg=NULL);
+  bool readString(string& str,char *msg=NULL);
 
 
   // type implicit
@@ -68,6 +72,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool read(unsigned& i,char *msg=NULL) { return readInt((int&)i,msg); }
   bool read(float& f,char *msg=NULL) { return readFloat(f,msg); }
   bool read(double& d,char *msg=NULL) { return readDouble(d,msg); }
+  bool read(string& str,char *msg=NULL) { return readString(str,msg); }
 
 
   template <class T>
@@ -90,6 +95,30 @@ class iDataStreamFile : public ioDataStreamFile {
   bool read(T* location, const int length, char *msg = NULL)
   { return readArray(location,length,msg); }
 
+
+  template <class T>
+  bool readVector(vector<T>& location, const int length, char *msg = NULL) 
+  {
+    assert ( length >= 0 );
+    
+    if (length == 0)
+      return true;
+
+    bool rc;
+    location.reserve(length);
+    int i=0; do {
+      rc = read(location[i],msg);
+      i++;
+    } while (rc == true && i < length );
+    return rc;
+  }
+
+  template <class T>
+  bool read(vector<T>& location, const int length, char *msg = NULL)
+  { return readVector(location,length,msg); }
+
+
+
 };
 
 
@@ -104,6 +133,7 @@ class oDataStreamFile : public ioDataStreamFile {
 
   // type explicit
   bool writeStr(const char * const str, char *msg=NULL);
+  bool writeString(string& str,char *msg=NULL);
   bool writeChar(const char c, char *msg=NULL);
   bool writeInt(const int i,char *msg=NULL);
   bool writeFloat(const float f,char *msg=NULL);
@@ -117,6 +147,7 @@ class oDataStreamFile : public ioDataStreamFile {
 
   // type implicit
   bool write(const char *const str,char *msg=NULL) { return writeStr(str,msg); }
+  bool write(string& str,char *msg=NULL) { return writeString(str,msg); }
   bool write(const char c, char *msg=NULL) { return writeChar(c,msg); }
   bool write(const int i,char *msg=NULL) { return writeInt(i,msg); }
   bool write(const unsigned i,char *msg=NULL) { return writeInt((int)i,msg); }
@@ -143,6 +174,25 @@ class oDataStreamFile : public ioDataStreamFile {
   template <class T>
   bool write(T* location, const int length, char *msg = NULL)
   { return writeArray(location,length,msg); }
+
+
+  template <class T>
+  bool writeVector(vector<T> location, char *msg = NULL) 
+  {
+    if (location.length() == 0)
+      return true;
+
+    bool rc;
+    int i=0; do {
+      rc = write(location[i],msg);
+      i++;
+    } while (rc == true && i < location.length() );
+    return rc;
+  }
+
+  template <class T>
+  bool write(vector<T> location, char *msg = NULL)
+  { return writeVector(location,msg); }
 
 
 
