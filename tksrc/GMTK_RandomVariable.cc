@@ -30,12 +30,14 @@
 #include "general.h"
 VCID("$Header$");
 
-#include <iostream.h>
-#include <fstream.h>
+#include <iostream>
+#include <fstream>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <set>
 #include "GMTK_RandomVariable.h"
+#include <string.h>
 
 /*-
  *-----------------------------------------------------------------------
@@ -126,6 +128,8 @@ RandomVariable* RandomVariable::clone()
   // leave cachedIntFromSwitchingState uninitialized since
   // it will be changed individually for each rv.
 
+  // TODO: neighbors also here??
+
   return rv;
 }
 
@@ -172,8 +176,143 @@ RandomVariable* RandomVariable::cloneWithoutParents()
   rv->wtWeight = wtWeight;
   rv->wtFeatureElement = wtFeatureElement;
 
+  // TODO: ??? neighbors also here ???
+
+
   return rv;
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * createNeighborsFromParentsChildren()
+ *      initializes the neighbors member set with
+ *      entries from all parents and all children.
+ *
+ * Preconditions:
+ *      all parents and all children member variables must already
+ *      be initialized with a valid graph
+ *
+ * Postconditions:
+ *      graph now has undirected representation, where neighbors
+ *      represents the undirected edges.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      neighbors is changed.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void RandomVariable::createNeighborsFromParentsChildren()
+{
+  // make sure it is clear first
+  neighbors.clear();
+  // a neighbor is a parent or a child at this point.
+  for (unsigned i=0;i<allPossibleParents.size();i++) {
+    neighbors.insert(allPossibleParents[i]);
+  }
+  for (unsigned i=0;i<allPossibleChildren.size();i++) {
+    neighbors.insert(allPossibleChildren[i]);
+  }
+
+  assert ( neighbors.find(this) == neighbors.end() );
+
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * connectNeighbors()
+ *      Makes it such that all neighbors of self are
+ *      connected (but does not touch the varibles in the
+ *      'exclude' argument. This function can therefore be used
+ *      as part of a node 'elimination' process.
+ *
+ * Preconditions:
+ *      createNeighborsFromParentsChildren() must have been
+ *      called at some point before.
+ *
+ * Postconditions:
+ *      node is now such that self and all neighbors form
+ *      a complete set.
+ *
+ * Side Effects:
+ *      will change the neighbors member variables of other variables.
+ *
+ * Results:
+ *      none.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void RandomVariable::connectNeighbors(set<RandomVariable*> exclude)
+{
+  set<RandomVariable*> nodes;
+
+  set_difference(neighbors.begin(),neighbors.end(),
+		 exclude.begin(),exclude.end(),
+		 inserter(nodes,nodes.end()));
+  for (set<RandomVariable*>::iterator n = nodes.begin();
+       n != nodes.end();
+       n++) {
+    // just union together each nodes's neighbor variable
+    // with self nodes
+    set<RandomVariable*> tmp;
+    set_union((*n)->neighbors.begin(),(*n)->neighbors.end(),
+	      nodes.begin(),nodes.end(),
+	      inserter(tmp,tmp.end()));
+    // make sure self is not its own neighbor
+    tmp.erase((*n));
+    (*n)->neighbors = tmp;
+  }
+
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * moralize()
+ *      moralize the node, i.e., make sure that all parents of
+ *      this node are neighbors of each other.
+ *
+ * Preconditions:
+ *      createNeighborsFromParentsChildren() must have
+ *      been run for *all* parents of this node.
+ *
+ * Postconditions:
+ *      all parents are now neighbors.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      parent's neighbors member variable is changed.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void RandomVariable::moralize()
+{
+  for (unsigned i=0;i<allPossibleParents.size();i++) {
+    for (unsigned j=i+1;j<allPossibleParents.size();j++) {
+      if (allPossibleParents[i]->neighbors.find(allPossibleParents[j])
+	  == allPossibleParents[i]->neighbors.end()) {
+	allPossibleParents[i]->neighbors.insert(allPossibleParents[j]);
+	allPossibleParents[j]->neighbors.insert(allPossibleParents[i]);
+      }
+    }
+  }
+}
+
+
 
 
 
@@ -289,4 +428,3 @@ void RandomVariable::reveal(bool show_vals)
 */
     cout << endl;
 }
-
