@@ -129,7 +129,7 @@ GMParms::~GMParms()
 ////////////////////////////////////////////////////////////////////
 
 void GMParms::add(Dense1DPMF* ob) { add(ob,dPmfs,dPmfsMap); }
-void GMParms::add(Sparse1DPMF* ob) { add(ob,sPmfs,sPmfsMap); } 
+void GMParms::add(Sparse1DPMF* ob) { add(ob,sPmfs,sPmfsMap); }
 void GMParms::add(MeanVector* ob){ add(ob,means,meansMap); }
 void GMParms::add(DiagCovarVector* ob){ add(ob,covars,covarsMap); }
 void GMParms::add(DlinkMatrix* ob) { add(ob,dLinkMats,dLinkMatsMap); }
@@ -141,14 +141,15 @@ void GMParms::add(MDCPT*ob) { add(ob,mdCpts,mdCptsMap); }
 void GMParms::add(MSCPT*ob) { add(ob,msCpts,msCptsMap); }
 void GMParms::add(MTCPT*ob) { add(ob,mtCpts,mtCptsMap); }
 void GMParms::add(Vocab* ob) { add(ob, vocabs, vocabsMap); }
-void GMParms::add(NGramCPT*ob) { add(ob,ngramCpts,ngramCptsMap); }
-void GMParms::add(FNGramCPT*ob) { add(ob,fngramCpts,fngramCptsMap); }
+void GMParms::add(NGramCPT* ob) { add(ob,ngramCpts,ngramCptsMap); }
+void GMParms::add(FNGramCPT* ob) { add(ob,fngramCpts,fngramCptsMap); }
+void GMParms::add(FNGramImp* ob) { add(ob,fngramImps,fngramImpsMap); }
 void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
 void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
 void GMParms::add(MLPSwitchingMixture*ob) { assert (0); }
-void GMParms::add(RngDecisionTree*ob) { 
+void GMParms::add(RngDecisionTree*ob) {
   add(ob,dts,dtsMap);
   if (ob->clampable())
     clampableDts.push_back(ob);
@@ -167,7 +168,7 @@ void GMParms::add(Dlinks* ob) { add(ob,dLinks,dLinksMap); }
  *-----------------------------------------------------------------------
  * readDPmfs
  *      Read in the dense PMF functions from a file.
- * 
+ *
  * Preconditions:
  *      No conditions.
  *
@@ -182,7 +183,7 @@ void GMParms::add(Dlinks* ob) { add(ob,dLinks,dLinksMap); }
  *
  *-----------------------------------------------------------------------
  */
-void 
+void
 GMParms::readDPmfs(iDataStreamFile& is, bool reset)
 {
   unsigned num;
@@ -662,7 +663,7 @@ void GMParms::readNgramCpts(iDataStreamFile& is, bool reset)
 }
 
 
-void GMParms::readFNgramCpts(iDataStreamFile& is, bool reset)
+void GMParms::readFNgramImps(iDataStreamFile& is, bool reset)
 {
 	unsigned num;
 	unsigned cnt;
@@ -673,27 +674,27 @@ void GMParms::readFNgramCpts(iDataStreamFile& is, bool reset)
 		error("ERROR: number of FNGram CPTs (%d) exceeds maximum", num);
 	if ( reset ) {
 		start = 0;
-		fngramCpts.resize(num);
+		fngramImps.resize(num);
 	} else {
-		start = fngramCpts.size();
-		fngramCpts.resize(start + num);
+		start = fngramImps.size();
+		fngramImps.resize(start + num);
 	}
 	for ( unsigned i = 0; i <num; i++ ) {
 		// first read the count
-		FNGramCPT* ob;
+		FNGramImp* ob;
 
 		is.read(cnt, "Can't read FNGramCPT num");
 		if ( cnt != i )
-			error("ERROR: FNGramCPT count (%d), out of order in file '%s' line %d, expecting %d", 
+			error("ERROR: FNGramCPT count (%d), out of order in file '%s' line %d, expecting %d",
 			      cnt, is.fileName(),is.lineNo(), i);
 
-		ob = new FNGramCPT();
+		ob = new FNGramImp();
 		ob->read(is);
-		if ( fngramCptsMap.find(ob->name()) != fngramCptsMap.end() )
+		if ( fngramImpsMap.find(ob->name()) != fngramImpsMap.end() )
 			error("ERROR: FNGramCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
 				ob->name().c_str(), is.fileName(),is.lineNo());
-		fngramCpts[i + start] = ob;
-		fngramCptsMap[ob->name()] = i + start;
+		fngramImps[i + start] = ob;
+		fngramImpsMap[ob->name()] = i + start;
 	}
 }
 
@@ -1008,7 +1009,7 @@ GMParms::readBasic(iDataStreamFile& is)
   readMtCpts(is);
   readVocabs(is);
   readNgramCpts(is);
-  readFNgramCpts(is);
+  readFNgramImps(is);
   readVECpts(is);
 }
 
@@ -1032,7 +1033,7 @@ GMParms::readBasic(iDataStreamFile& is)
  *
  *-----------------------------------------------------------------------
  */
-void 
+void
 GMParms::readAll(iDataStreamFile& is)
 {
   // just read everything in one go.
@@ -1047,13 +1048,13 @@ GMParms::readAll(iDataStreamFile& is)
   readMeans(is);
   readCovars(is);
   readDLinkMats(is);
-  readWeightMats(is);  
+  readWeightMats(is);
   readMdCpts(is);
   readMsCpts(is);
   readMtCpts(is);
   readVocabs(is);
   readNgramCpts(is);
-  readFNgramCpts(is);
+  readFNgramImps(is);
   readVECpts(is);
 
   // next read definitional items
@@ -1150,7 +1151,7 @@ GMParms::readNonTrainable(iDataStreamFile& is)
   readMtCpts(is);
   readVocabs(is);
   readNgramCpts(is);
-  readFNgramCpts(is);
+  readFNgramImps(is);
   readVECpts(is);
 }
 
@@ -1243,7 +1244,7 @@ GMParms::read(
       readNgramCpts(*((*it).second),false);
 
     } else if (keyword == "FNGRAM_CPT_IN_FILE") {
-      readFNgramCpts(*((*it).second),false);
+      readFNgramImps(*((*it).second),false);
 
     } else if (keyword == "VE_CPT_IN_FILE") {
       readVECpts(*((*it).second),false);

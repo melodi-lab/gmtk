@@ -48,6 +48,7 @@ class MSCPT;
 class MTCPT;
 class NGramCPT;
 class FNGramCPT;
+class FNGramImp;
 class VECPT;
 class Vocab;
 
@@ -236,6 +237,9 @@ public:
   vector<FNGramCPT*> fngramCpts;
   ObjectMapType fngramCptsMap;
   void add(FNGramCPT*);
+  vector<FNGramImp*> fngramImps;
+  ObjectMapType fngramImpsMap;
+  void add(FNGramImp*);
 
   ///////////////////////////////////
   // Collection of Virtual Evidence "CPTs"
@@ -347,7 +351,7 @@ public:
   void readMtCpts(iDataStreamFile& is,bool reset = false);
   void readVocabs(iDataStreamFile& is, bool reset = false);
   void readNgramCpts(iDataStreamFile& is, bool reset = false);
-  void readFNgramCpts(iDataStreamFile& is, bool reset = false);
+  void readFNgramImps(iDataStreamFile& is, bool reset = false);
   void readVECpts(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);

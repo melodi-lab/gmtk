@@ -54,6 +54,8 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+#include "GMTK_NGramCPT.h"
+#include "GMTK_FNGramCPT.h"
 #include "GMTK_USCPT.h"
 #include "GMTK_VECPT.h"
 #include "GMTK_Mixture.h"
@@ -141,7 +143,7 @@ RandomVariableDiscreteType =
      "cardinality" integer
 
 RandomVariableContinuousType = 
-       "continuous" 
+       "continuous"
        ("hidden" | "observed" integer ":" integer)
 
 SwitchingParentAttribute = "nil" | ParentList "using" MappingSpec
@@ -2029,7 +2031,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	  GM_Parms.dts[
 		       GM_Parms.dtsMap[rvInfoVector[i].switchMapping.nameIndex
 		       ]];
-      } else if  (rvInfoVector[i].switchMapping.liType == 
+      } else if  (rvInfoVector[i].switchMapping.liType ==
 		  RVInfo::ListIndex::li_Index) {
 	if ((rvInfoVector[i].switchMapping.intIndex < 0) ||
 	    (rvInfoVector[i].switchMapping.intIndex > GM_Parms.dts.size()))
@@ -2181,7 +2183,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 #endif
 	  }
 
-	} else 
+	} else
 	  if (rvInfoVector[i].discImplementations[j] == CPT::di_MSCPT) {
 
 	    /////////////////////////////////////////////////////////
@@ -2233,7 +2235,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 #endif
 	    }
 
-	} else 
+	} else
 	  if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
 
 	    /////////////////////////////////////////////////////////
@@ -2339,33 +2341,74 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 
 	} else
 	  if (rvInfoVector[i].discImplementations[j] == CPT::di_FNGramCPT) {
-
 	    /////////////////////////////////////////////////////////
 	    // Once again, same code as above, but using FNGramCPTs rather
 	    // then MDCPTs, MSCPTs or MTCPTs.
 
 	    //////////////////////////////////////////////////////
-	    // set the CPT to a NGramCPT, depending on if a string
+	    // set the CPT to a FNGramCPT, depending on if a string
 	    // or integer index was used in the file.
-	    if (rvInfoVector[i].listIndices[j].liType
-		== RVInfo::ListIndex::li_String) {
-	      if (GM_Parms.fngramCptsMap.find(
-					  rvInfoVector[i].listIndices[j].nameIndex) ==
-		  GM_Parms.fngramCptsMap.end()) {
-		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent FNGramCPT \"%s\" doesn't exist\n",
-			rvInfoVector[i].name.c_str(),
-			rvInfoVector[i].frame,
-			rvInfoVector[i].fileLineNumber,
-			rvInfoVector[i].listIndices[j].nameIndex.c_str());
-	      } else {
-		// otherwise add it
-		cpts[j] = (CPT*)
-		  GM_Parms.fngramCpts[
-				  GM_Parms.fngramCptsMap[
-						     rvInfoVector[i].listIndices[j].nameIndex
-				  ]
-		  ];
-	      }
+		if (rvInfoVector[i].listIndices[j].liType == RVInfo::ListIndex::li_String) {
+			if ( GM_Parms.fngramCptsMap.find(rvInfoVector[i].listIndices[j].nameIndex) == GM_Parms.fngramCptsMap.end() ) {
+				// Here we will contruct the object for FNGramCPT based on FNGramImp
+				// we will check whether it is "ftrigram" or "ftrigram:0,1"
+				if ( strchr(rvInfoVector[i].listIndices[j].nameIndex.c_str(), ':') == NULL ) {
+					// check whether we have FNGramImp available
+					if ( GM_Parms.fngramImpsMap.find(rvInfoVector[i].listIndices[j].nameIndex) == GM_Parms.fngramImpsMap.end() ) {
+						error("Error: RV \"%s\" at frame %d (line %d), conditional parent FNGramCPT \"%s\" doesn't exist\n",
+							rvInfoVector[i].name.c_str(), rvInfoVector[i].frame, rvInfoVector[i].fileLineNumber,
+							rvInfoVector[i].listIndices[j].nameIndex.c_str());
+					}
+
+					// create new FNGramCPT
+					FNGramCPT *ob = new FNGramCPT();
+					ob->setNumParents(rvInfoVector[i].conditionalParents[j].size());
+					ob->setFNGramImp(GM_Parms.fngramImps[GM_Parms.fngramImpsMap[rvInfoVector[i].listIndices[j].nameIndex]]);
+					ob->setName(rvInfoVector[i].listIndices[j].nameIndex);
+
+					// add it to the map list
+					GM_Parms.fngramCptsMap[rvInfoVector[i].listIndices[j].nameIndex] = GM_Parms.fngramCpts.size();
+					GM_Parms.fngramCpts.push_back(ob);
+					cpts[j] = (CPT*)ob;
+				} else {
+					// we need to look what is fngram name and which parents set is using
+					char *tok;
+					const char seps[] = ":,";
+					char *tmp = new char [rvInfoVector[i].listIndices[j].nameIndex.size() + 1];
+					strcpy(tmp,rvInfoVector[i].listIndices[j].nameIndex.c_str());
+
+					tok = strtok(tmp, seps);
+					string fngramImpName(tok);
+					if ( GM_Parms.fngramImpsMap.find(fngramImpName) == GM_Parms.fngramImpsMap.end() ) {
+						error("Error: RV \"%s\" at frame %d (line %d), conditional parent FNGramCPT \"%s\" doesn't exist\n",
+							rvInfoVector[i].name.c_str(), rvInfoVector[i].frame, rvInfoVector[i].fileLineNumber, fngramImpName.c_str());
+					}
+
+					// create new FNGramCPT
+					FNGramCPT *ob = new FNGramCPT();
+					ob->setNumParents(rvInfoVector[i].conditionalParents[j].size());
+					ob->setFNGramImp(GM_Parms.fngramImps[GM_Parms.fngramImpsMap[rvInfoVector[i].listIndices[j].nameIndex]]);
+
+					// get the parent index
+					vector<unsigned> parentsPositions;
+					while ( (tok = strtok(NULL, seps)) != NULL ) {
+						unsigned pos = atoi(tok);
+						parentsPositions.push_back(pos);
+					}
+					ob->setParentsPositions(parentsPositions);
+
+					// add it into the map list
+					GM_Parms.fngramCptsMap[rvInfoVector[i].listIndices[j].nameIndex] = GM_Parms.fngramCpts.size();
+					GM_Parms.fngramCpts.push_back(ob);
+					cpts[j] = (CPT*)ob;
+
+					delete [] tmp;
+				}
+			} else {
+				// otherwise add it
+				cpts[j] = (CPT*)GM_Parms.fngramCpts[GM_Parms.fngramCptsMap[rvInfoVector[i].listIndices[j].nameIndex]];
+			}
+
 	    } else {
 	      // TODO: need to remove the integer index code.
 	      assert(0);
@@ -2456,7 +2499,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 			error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
 				rvInfoVector[i].name.c_str(), rvInfoVector[i].frame, rvInfoVector[i].fileLineNumber, j, cptType.c_str(), cpts[j]->name().c_str());
 		}
-	} else if (cpts[j]->numParents() != 
+	} else if (cpts[j]->numParents() !=
 	    rvInfoVector[i].conditionalParents[j].size()) {
 	  error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
 		rvInfoVector[i].name.c_str(),
