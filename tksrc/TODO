@@ -2418,6 +2418,15 @@ Tue Sep 14 01:19:08 2004
   - new DT types
     - sequence  - successive sorted sequence of integers,no gaps, can start/end at any int, implemented
                   as an array lookup. 
+       Options can be things like:
+           sequence 11  0 ... 9 default (would be 0 1 2 3 4 5 6 7 8 9)
+       same as:
+           sequence 11  0 1 2 3 4 5 6 7 8 9 default (would be 0 1 2 3 4 5 6 7 8 9)
+       skipby option???
+           sequence 11  0 ... 9  skipby 1 default (would be 0 1 2 3 4 5 6 7 8 9)
+           sequence 11  0 ... 19 skipby 2 default (would be 0 2 4 6 8 10 12 14 16 18)
+           sequence 11  0 ... 29 skipby 3 default ( would be 0 3 6 9 ...)
+
     - set - arbitrary set of individual integers, implemented with a hash table.
     - ranges - arbitray set of integer sets. Imlemented with a hash table for the single integers,
                and an (sorted if possible) array of bp_range objects for the remainder. 
