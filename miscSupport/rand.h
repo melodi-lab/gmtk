@@ -26,8 +26,10 @@ unsigned short *seed48(unsigned short seed16v[3]);
 
 class RAND {
  public:
-
   static unsigned short seedv[3];
+
+  double inverse_error_func(double p);
+  double inverse_normal_func(double p);
 
   RAND(bool seed = false) { 
     if (seed) {
@@ -64,16 +66,20 @@ class RAND {
     return rc;
   }
 
+  // simple interface to drand
   double drand48() { return ::drand48(); }
 
-  // choose from [0:(u-1)] according to a length u 'dist', assume sum(dist) = 1.0
+  // choose from [0:(u-1)] according to a length u 'dist', 
+  // assume sum(dist) = 1.0
   int sample(const int u,const float *const dist);
 
+  // return a sample from a N(0,1) zero mean unity variance
+  // Gaussian
+  double normal() {
+    return inverse_normal_func(drand48pe());
+  }
 
 };
-
-extern double inverse_error_func(double p);
-extern double inverse_normal_func(double p);
 
 
 extern RAND rnd;

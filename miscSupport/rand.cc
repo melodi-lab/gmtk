@@ -88,7 +88,7 @@ RAND::sample(const int u, const float *const dist)
  *-----------------------------------------------------------------------
  */
 double 
-inverse_error_func(double p) 
+RAND::inverse_error_func(double p) 
 {
 	/* 
            Source: This routine was derived (using f2c) from the 
@@ -221,7 +221,7 @@ inverse_error_func(double p)
  *-----------------------------------------------------------------------
  */
 double 
-inverse_normal_func(double p)
+RAND::inverse_normal_func(double p)
 {
 	/* 
            Source: This routine was derived (using f2c) from the 
