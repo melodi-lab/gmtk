@@ -952,7 +952,8 @@ public:
 
   void inline ceIterateSeparators(JT_InferencePartition& part,
 				  const unsigned sepNumber,
-				  const logpr p) {
+				  const logpr p) 
+  {
     if (sepNumber == origin.ceReceiveSeparators.size()) {
       // move on to the iterated nodes.
       ceIterateUnassignedIteratedNodes(part,0,p);

@@ -1408,8 +1408,8 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
   // TODO: also print out nubmer of bits for acc and rem.
 
   psp(f,indent*2);
-  fprintf(f,"Clique information: %d packed bits, %d unsigned words, weight = %f, jt_weight = %f\n",
-	  packer.packedLenBits(),packer.packedLen(),weight(),
+  fprintf(f,"Clique information: %d packed bits, %d unsigned words (%d splits), weight = %f, jt_weight = %f\n",
+	  packer.packedLenBits(),packer.packedLen(),packer.numSplits(),weight(),
 	  weightInJunctionTree(unassignedInPartition,
 			       upperBound,
 			       moreConservative,
@@ -2054,6 +2054,10 @@ InferenceMaxClique::ceIterateSeparatorsRecurse(JT_InferencePartition& part,
 					       const unsigned sepNumber,
 					       const logpr p)
 {
+
+  if (p <= cliqueBeamThresholdEstimate)
+    return;
+
   // get a handy reference to the current separator
   InferenceSeparatorClique& sep = 
     part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
@@ -6797,10 +6801,10 @@ void
 SeparatorClique::printAllJTInfo(FILE*f)
 {
   // TODO: also print out nubmer of bits for acc and rem.
-  fprintf(f,"%sSeparator information: %d acc packed bits (%d words), %d rem packed bits (%d words)\n",
+  fprintf(f,"%sSeparator information: %d acc packed bits (%d words, %d splits), %d rem packed bits (%d words, %d splits)\n",
 	  (veSeparator?"VE ":""),
-	  accPacker.packedLenBits(),accPacker.packedLen(),
-	  remPacker.packedLenBits(),remPacker.packedLen());
+	  accPacker.packedLenBits(),accPacker.packedLen(),accPacker.numSplits(),
+	  remPacker.packedLenBits(),remPacker.packedLen(),remPacker.numSplits());
 
   fprintf(f,"%d Nodes: ",nodes.size()); printRVSetAndCards(f,nodes);
   fprintf(f,"%d Acc Inter: ",accumulatedIntersection.size()); printRVSet(f,accumulatedIntersection);  
