@@ -473,8 +473,11 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
   //    O: observed
   //    B: binary
   //    I: ever increasing cardinality of variables.
+  //    A: alphabetical (for debugging purposes)
+  //    F: by frame number (for debugging purposes)
+  //    N: first by alpha name and next by frame.
   // 
-  // Some good ones to try: 
+  // Some good ones to try for speed:  
   //   COB, 
   //   CDOI or CODI (good when no continuous vars)
   //   DOI
@@ -500,7 +503,6 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 	    return false;
       }
     } else if (curCase == 'D') {
-
 
       // Do a pass for discrete *deterministic* (meaning really
       // determinisitc, not sparse) observed variable.  Getting these in
@@ -551,6 +553,76 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 	RV* rv = (*m).second;
 	// DiscRV* drv = (DiscRV*)rv;
 	// printf("Doing node %s(%d) with card %d\n",(*m).second->name().c_str(),(*m).second->frame(),drv->cardinality);
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
+	    return false;
+      }
+    } else if (curCase == 'F') {
+
+      // Sort the reminaing variables in increasing order of
+      // frame and do a pass in that increasing order.
+      multimap< unsigned ,RV*> cardSortedNodes;
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RV* rv = (*it);
+	if (!rv->discrete())
+	  continue;
+	DiscRV* drv = RV2DRV(rv);
+	pair< unsigned , RV*> pr (drv->frame(), rv );
+	cardSortedNodes.insert(pr);    
+      }
+      for (multimap< unsigned, RV*>::iterator m = cardSortedNodes.begin();
+	   m != cardSortedNodes.end(); m++) {
+	// unsigned lcard = (*m).first;
+	RV* rv = (*m).second;
+	// DiscRV* drv = (DiscRV*)rv;
+	// printf("Doing node %s(%d) with frame %d\n",(*m).second->name().c_str(),(*m).second->frame(),drv->cardinality);
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
+	    return false;
+      }
+    } else if (curCase == 'A') {
+      // Sort the reminaing variables in increasing alphabetical order of
+      // name and do a pass in that increasing order.
+      multimap< string ,RV*> cardSortedNodes;
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RV* rv = (*it);
+	pair< string , RV*> pr (rv->name(), rv );
+	cardSortedNodes.insert(pr);    
+      }
+      for (multimap< string, RV*>::iterator m = cardSortedNodes.begin();
+	   m != cardSortedNodes.end(); m++) {
+	// unsigned lcard = (*m).first;
+	RV* rv = (*m).second;
+	// DiscRV* drv = (DiscRV*)rv;
+	// printf("Doing node %s(%d) with name\n",(*m).second->name().c_str(),(*m).second->frame());
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
+	    return false;
+      }
+    } else if (curCase == 'N') {
+      // Sort the reminaing variables in increasing lexicographic  order of
+      // string name and frame number, and do a pass in that increasing order.
+      multimap< pair<string,unsigned> ,RV*> cardSortedNodes;
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RV* rv = (*it);
+	pair< pair<string,unsigned> , RV*> pr ( pair<string,unsigned> (rv->name(),rv->frame()), rv );
+	cardSortedNodes.insert(pr);    
+      }
+      for (multimap< pair<string,unsigned>, RV*>::iterator m = cardSortedNodes.begin();
+	   m != cardSortedNodes.end(); m++) {
+	// unsigned lcard = (*m).first;
+	RV* rv = (*m).second;
+	// DiscRV* drv = (DiscRV*)rv;
+	printf("Doing node %s(%d) with name,frame\n",(*m).second->name().c_str(),(*m).second->frame());
 	if (tag[rv] == 0)
 	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
 						      outputVarList,
