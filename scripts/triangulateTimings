@@ -25,9 +25,9 @@ my $pmake            = 'pmake';
 ##############################################################################
 # Default amount to time each triangulation 
 ##############################################################################
-#my $timing_length = 60; 
+my $timing_length = 60; 
 #my $timing_length = 30; 
-my $timing_length = 3; 
+#my $timing_length = 3; 
 
 my $initial_vpap = 'COI';
 my $initial_vcap = 'COI';
@@ -381,7 +381,9 @@ sub generate_triangulations
     $timing_thread_idle_sem->down($parallelism); 
   }
 
-  print "---- Beginning triangulation using advanced option set ----\n";
+  print "Found $boundary_count unique boundaries\n";
+
+  print "---------- Beginning triangulation using advanced option set ----------\n";
 
   ###########################################################################
   # Sort the boundaries by their performance on the basic triangulations
@@ -400,6 +402,7 @@ sub generate_triangulations
         $boundary_count < (scalar @boundary_list); 
         $boundary_count++ )
   {
+    print "------ Starting $boundary_name ------\n";
     $boundary = $boundary_list[$boundary_count]->{NAME};
     $boundary_name = "B$boundary_list[$boundary_count]->{INDEX}";
 
@@ -608,7 +611,7 @@ sub start_boundary_searches
   ############################################################################
   $tmp_file = "$output_directory/boundaries.makefile";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '3hour' -noBoundaryMemoize T";
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '4hour' -noBoundaryMemoize T";
 
   open PMAE, "| pmae > $tmp_file"; 
 
@@ -652,7 +655,7 @@ sub start_boundary_searches
     }
   }
   
-  printf "%d boundaries found\n", $total_boundaries; 
+  printf "%d boundary seraces completed\n", $total_boundaries; 
 
   $boundary_queue->enqueue( 'BOUNDARY_SEARCHES_DONE' ); 
 }
