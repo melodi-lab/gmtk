@@ -314,3 +314,7 @@ no gaussian mixtures, does the master file still have to mention them?
 
 
 - check that there are no self loops in dlink strcutres
+
+- add startskip/endskip check
+
+- add link checks
