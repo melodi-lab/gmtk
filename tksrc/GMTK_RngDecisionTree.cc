@@ -79,14 +79,14 @@ char *dtStr =
 "0 10 0:5 6:9 10 11 12 13 14 15 50: default\n"
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
-"      -1 1\n"
-"      -1 2\n"
+"      -1 expand\n"
+"      -1 p0+1\n"
 "    2 2 0:5 default\n"
-"      -1 3\n"
-"      -1 4\n"
+"      -1 c0+1\n"
+"      -1 m0+1\n"
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
-"      -1 5\n"
+"      -1 p0+p1+5\n"
 "      -1 6\n"
 "    2 2 0:5 default\n"
 "      -1 7\n"
@@ -127,7 +127,9 @@ main()
   dt.write(os);
 
   vector<int> vec;
+  vector<int> card;
   vec.resize(dt.numFeatures());
+  card.resize(dt.numFeatures());
   iDataStreamFile stin ("-",false);
 
   // first test iterating through all leaf values.
@@ -139,11 +141,15 @@ main()
   while (1) {
     printf("Enter a length %d intvec:",dt.numFeatures());
     stin.read(vec,dt.numFeatures());
-    printf("Result of querying with vector: ");
-    for (int i=0;i<dt.numFeatures();i++) {
-      printf(" %d",vec[i]);
+    printf("Enter a length %d set of cardinalities:",dt.numFeatures());
+    stin.read(card,dt.numFeatures());
+
+    printf("Result of querying with vector and cards: ");
+    for (unsigned i=0;i<dt.numFeatures();i++) {
+      printf(" %d:%d",vec[i],card[i]);
     }
-    printf("\n is %d\n",dt.query(vec));
+
+    printf("\n is %d\n",dt.query(vec,card));
   }
 }
 
