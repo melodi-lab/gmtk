@@ -22,7 +22,7 @@ VCID("$Header$");
 
 
 #define MAXLINSIZE 131072
-#define COMMENTCHAR '#'
+#define COMMENTCHAR '%'
 
 #define FLOATWRITESTR   "%0.10e "
 #define DOUBLEWRITESTR   "%0.17e "
@@ -33,7 +33,7 @@ VCID("$Header$");
 // files through the C pre-processor to
 // get to use it's macro facilities. Might
 // need to change the comment character above.
-// #define PIPE_ASCII_FILES_THROUGH_CPP
+#define PIPE_ASCII_FILES_THROUGH_CPP
 
 bool 
 ioDataStreamFile::errorReturn(char *from,char *msg)
