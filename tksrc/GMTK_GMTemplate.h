@@ -29,9 +29,12 @@
 #include "GMTK_FileParser.h"
 #include "GMTK_MaxClique.h"
 
+// class mention for forward references.
 class GraphicalModel;
 class AnyTimeTriangulation;
 
+
+// structure to package useful information together.
 struct GMInfo {
   // the modified prologue, chunk, and epilogue
   set<RandomVariable*> P;
@@ -57,6 +60,15 @@ struct GMInfo {
   vector<RandomVariable*> Pordered;
   vector<RandomVariable*> Cordered;
   vector<RandomVariable*> Eordered;
+
+  // clear up everything.
+  void clear() {
+    P.clear(); C.clear(); E.clear();
+    PCInterface.clear(); CEInterface.clear();
+    Pcliques.clear(); Ccliques.clear(); Ecliques.clear();
+    Pordered.clear(); Cordered.clear(); Eordered.clear();
+  }
+
 };
 
 
