@@ -140,7 +140,7 @@ cygwin:
 
 all_srcs = ieeeFPsetup.cc
 
-all_hdrs = 
+all_hdrs = ieeeFPsetup.h
 
 all_objs = 
 
@@ -259,7 +259,7 @@ maintainer-clean: distclean
 	rm -rf $(maintainer_junk)
 
 depend:
-	${CXX} ${INCLUDES} -MM ${CXXFLAGS} *.cc *.c > depends.make
+	${CXX} ${INCLUDES} -MM ${CXXFLAGS} ${all_srcs} > depends.make
 
 
 ##################
