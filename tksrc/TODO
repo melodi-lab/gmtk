@@ -368,3 +368,5 @@ x fix arg description of beam
 
 
 - support no training names such as gmMx* for foobar*
+
+- state clustering, ala HTK, occupancy counts.
