@@ -33,7 +33,6 @@
 #include "rand.h"
 #include "arguments.h"
 #include "ieeeFPsetup.h"
-//#include "spi.h"
 #include "version.h"
 
 #include "GMTK_WordOrganization.h"
@@ -64,14 +63,18 @@ VCID("$Header$");
 /////////////////////////////////////////////////////////////
 // observation input file handling
 #define MAX_NUM_OBS_FILES (5)
-char *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL };
+char    *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL }; 
 unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
 unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-char *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-char *psr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
-bool iswps[MAX_NUM_OBS_FILES] = { false, false, false,false,false };
+char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
+bool   iswps[MAX_NUM_OBS_FILES] = { false, false, false,false,false };
+char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+// per stream frame range string before any tranformations are applied
+char  *prepr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
+// per stream frame range string after per-stream transformations are applied
+char *postpr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};
 
 /////////////////////////////////////////////////////////////
 // input parameter/structure file handling
@@ -131,7 +134,6 @@ static char* showVitVals = NULL;
 ////////////////////////////////////
 // Observation matrix options
 bool     Cpp_If_Ascii        = false;
-char     *pr_str[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string
 
 char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};
 unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={ERROR,ERROR,ERROR,ERROR,ERROR};
@@ -153,15 +155,18 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////
   // observation input file handling
-  Arg("of",Arg::Req,ofs,"Observation File.  Replace X with the file number.",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("nf",Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ni",Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fr",Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ir",Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("psr",Arg::Opt,irs,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fmt",Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("of",  Arg::Req,ofs,"Observation File.  Replace X with the file number",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("nf",  Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("fmt", Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("iswp",Arg::Opt,iswps,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("fr",  Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("prepr", Arg::Opt, prepr,"Frame range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("postpr",Arg::Opt, postpr,"Frame range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
@@ -233,8 +238,7 @@ Arg Arg::Args[] = {
   Arg("transitionLabel",Arg::Opt,transitionLabel,"The label of the word transition variable"),
   Arg("showVitVals",Arg::Opt,showVitVals,"File to print viterbi values, '-' for stdout"),
    
-   // Observation Matrix options
-  Arg("pr",  Arg::Opt, pr_str,"per stream per-sentence range",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  // Observation Matrix transformation options
   Arg("fdiffact", Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("sdiffact", Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("cppifascii",        Arg::Tog, Cpp_If_Ascii,"Pre-process ASCII files using CPP"),
@@ -402,13 +406,14 @@ main(int argc,char*argv[])
 				    endSkip,
 				    Cpp_If_Ascii,
 				    cppCommandOptions,
-				    (const char**)&pr_str,  //Frame_Range_Str,
+				    (const char**)&postpr,  //Frame_Range_Str,
 				    Action_If_Diff_Num_Frames,
 				    Action_If_Diff_Num_Sents,
 				    Per_Stream_Transforms,
 				    Post_Transforms,
 				    Ftr_Combo,
-				    (const char**)&psr
+				    (const char**)&sr,
+				    (const char**)&prepr
 				    );
 
 
