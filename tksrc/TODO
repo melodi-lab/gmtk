@@ -348,3 +348,5 @@ no gaussian mixtures, does the master file still have to mention them?
 - add tag to command line to add to all cloned objects.
 
 - include global missed increment count in accumulators.
+
+- arguments print default values
