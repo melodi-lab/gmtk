@@ -24,6 +24,7 @@
 
 #include <ctype.h>
 #include "bp_range.h"
+#include "range.h"
 #include "pfile.h"
 
 // possible file formats
@@ -81,7 +82,11 @@ public:
 
   char *   fofName;                    // this file's file name (name of list of file names)
   FILE *   fofFile;                    // this file (list of file names)
-  size_t   fofSize;                    // size of list of file names
+  size_t   fullFofSize;                // full size of list of file names, i.e., before the sentence range is applied
+  Range *  srRng;                      // sentence range
+  size_t   fofSize;                    // size of list of file names, after the sentence range is applied
+
+
 
   bool bswap;              // true if file needs to be byte-swapped
 
@@ -106,11 +111,15 @@ public:
 	     bool,
 	     unsigned,
 	     bool cppIfAscii=false,
-	     char* cppCommandOptions=NULL);
+	     char* cppCommandOptions=NULL,
+	     const char* sr_range_str=NULL);
 
   ~StreamInfo();
 
   size_t   readFof(FILE *);       // read file of file names
+
+  size_t   getFofSize()            { return fofSize; } 
+  void     setFofSize(size_t size) { fofSize = size; } 
 
   size_t   getNumFileNames()  { return numFileNames; }
   unsigned getNumFloatsUsed() { return nFloatsUsed;  }
@@ -126,6 +135,8 @@ public:
   unsigned getDataFormat() { return dataFormat; }
   bool     swap()             { return bswap;   }
   void     setSwap(bool swap) { bswap = swap;   }
+
+  unsigned mapToValueInRange(unsigned segno) { return (unsigned) srRng->index(segno); }
 };
 
 #endif

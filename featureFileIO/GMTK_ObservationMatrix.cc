@@ -69,7 +69,7 @@
  *
  *   TODO: 
  *    1- Add deltas and deltas
- *    2- Add flatascii and flatbin formats
+v *    2- Add flatascii and flatbin formats
  *   (could treat them as single sentences or have each frame prefixed
  *   by the sentence number and maybe the frame number)
  *    3- Add support for the WAVEFORM HTK paramter kind 
@@ -173,7 +173,8 @@ void ObservationMatrix::openFiles(int n_files,
 			     unsigned* actionIfDiffNumSents,
 			     char** perStreamPreTransforms,
 			     char* postTransforms,
-			     unsigned ftrcombo) 
+			     unsigned ftrcombo,
+				const char **sr_range_str  ) 
 {
   
   assert (n_files > 0);
@@ -218,7 +219,7 @@ void ObservationMatrix::openFiles(int n_files,
 
     // when range string is missing, assume default = all features
 
-    const char *crng, *drng;
+    const char *crng, *drng, *srrng;
     
     if (cont_range_str == NULL || cont_range_str[i] == NULL )
       crng = "all"; 
@@ -229,6 +230,11 @@ void ObservationMatrix::openFiles(int n_files,
       drng = "all";
     else
       drng = disc_range_str[i];
+
+    if (sr_range_str == NULL || sr_range_str[i] == NULL)
+      srrng = "all";
+    else
+      srrng = sr_range_str[i];
 
 
     // assume default = no swapping
@@ -245,13 +251,13 @@ void ObservationMatrix::openFiles(int n_files,
     // the deltas for example.  Therefore we need to know about
     // delats at this point already
 
-    _inStreams[i] = new StreamInfo(fof_names[i],crng,drng,&n_floats[i],&n_ints[i],&formats[i],sflag,i,cppIfAscii,cppCommandOptions);
+    _inStreams[i] = new StreamInfo(fof_names[i],crng,drng,&n_floats[i],&n_ints[i],&formats[i],sflag,i,cppIfAscii,cppCommandOptions,srrng);
 
     // check stream sizes and take action according to the value of _actionIfDiffNumSents
     if(_actionIfDiffNumSents==NULL || _actionIfDiffNumSents[i]==ERROR  || _actionIfDiffNumSents[i]==TRUNCATE_FROM_END) {
       if (i > 0 ) {
-	size_t a = _inStreams[i-1]->fofSize;
-	size_t b = _inStreams[i]->fofSize;
+	size_t a = _inStreams[i-1]->getFofSize();
+	size_t b = _inStreams[i]->getFofSize();
 	if (a != b) {
 	  if(_actionIfDiffNumSents!=NULL && _actionIfDiffNumSents[i]==ERROR) {
 	    error("ERROR: ObservationMatrix: different number of files in '%s' (%li) and '%s' (%li)\n",fof_names[i-1],a,fof_names[i], b);
@@ -259,16 +265,16 @@ void ObservationMatrix::openFiles(int n_files,
 	  else {
 	    warning("WARNING ObservationMatrix: different number of files in '%s' (%li) and '%s' (%li) - will only read minimum number\n",fof_names[i-1],a,fof_names[i], b);
 	  
-	    a < b ? _inStreams[i]->fofSize = a : _inStreams[i-1]->fofSize = b;
+	    a < b ? _inStreams[i]->setFofSize(a) : _inStreams[i-1]->setFofSize(b);
 	  }
 	}
       }
-      max_num_segments =  _inStreams[0]->fofSize; // same for all streams;
+      max_num_segments =  _inStreams[0]->getFofSize(); // same for all streams;
     }
     else {
       //find maximumm number of sentences/segments
-      if(_inStreams[i]->fofSize > max_num_segments)
-	max_num_segments=_inStreams[i]->fofSize;
+      if(_inStreams[i]->getFofSize() > max_num_segments)
+	max_num_segments=_inStreams[i]->getFofSize();
     }
 
     if (n_floats[i] > _maxContinuous)
@@ -325,13 +331,6 @@ void ObservationMatrix::openFiles(int n_files,
 
   _repeat.resize(_bufSize);
 
-  //  _contFea.resize(_maxContinuous); // temporary buffers for 1 frame of input
-  //_discFea.resize(_maxDiscrete);   
-  
-  //_cont_p = features.ptr;  // pointer to continuous block 
-  //_disc_p = features.ptr + _numContinuous; // pointer to discrete block
-
-  // karim - 29aug2003
   _cppIfAscii=cppIfAscii;
   _cppCommandOptions=cppCommandOptions;
 }
@@ -353,7 +352,7 @@ ObservationMatrix::~ObservationMatrix() {
  * max_num_samples get the maximum number of frames over all streams.
  *
  * prrng_num_samples gets either the maximum or the minimum number of
- * frames over all rangers AFTER the per-sentence range has been
+ * frames over all ranges AFTER the per-sentence range has been
  * applied.  
  * */
 
@@ -374,32 +373,31 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   prrng_max_num_samples=cur_prrng_n_samps;  // i.e. 0
 
   if (segno < 0 || segno >= _numSegments)  
-    error("ObservationMatrix::loadSegment: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
+    error("ObservationMatrix:::checkIfSameNumSamples: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
 
   for (i = 0; i < _numStreams; i++) {
     s = _inStreams[i];
     if (s == NULL)
-      error("ObservationMatrix::loadSegment: stream %i is NULL\n",i);
+      error("ObservationMatrix::checkIfSameNumSamples: stream %i is NULL\n",i);
     
     if (s->fofName == NULL)
       sname = "(unset)";
     else
       sname = s->fofName;
 
-    if(_actionIfDiffNumSents!=NULL &&  segno > s->fofSize-1) {
+    if(_actionIfDiffNumSents!=NULL &&  segno > s->getFofSize()-1) {
       if(_actionIfDiffNumSents[i]==REPEAT_LAST) {
-	segno=s->fofSize-1;
+	segno=s->getFofSize()-1;
       }
       else if(_actionIfDiffNumSents[i]==WRAP_AROUND) {
-	segno= segno % s->fofSize;
+	segno= segno % s->getFofSize();
       }
     }
 
-    if (s->dataFormat != PFILE) {
-       if(segno >= s->getNumFileNames()) {  // segno starts a 0, hence the >= rather than >
-	 error("ObservationMatrix::loadSegment: segment number requested is %d, but list of filenames has only  %d  entries.\n",segno,s->getNumFileNames());
-      }
+    // Apply the sentence range to the segment number
+    segno = s->mapToValueInRange(segno);
 
+    if (s->dataFormat != PFILE) {
       if (s->dataNames == NULL)
         error("ObservationMatrix::loadSegment: List of file names for stream %i (%s) is NULL\n",i,sname);
 
@@ -564,8 +562,9 @@ void ObservationMatrix::loadSegment(unsigned segno) {
   StreamInfo *s;
   // max_n_samps and prrng_n_samps are initialized in the next fct call
   unsigned max_n_samps,prrng_n_samps;  
+  DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: before call to checkIfSameNumSamples\n"));
   bool same_num_samples = checkIfSameNumSamples(segno,max_n_samps,prrng_n_samps);
-
+  DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: after call to checkIfSameNumSamples\n"));
   //reset();  // reset the observation buffer to the beginning.
    
 
