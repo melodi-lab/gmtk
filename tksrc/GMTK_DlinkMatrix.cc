@@ -32,6 +32,8 @@
 
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
+#include "GMTK_GMParms.h"
+#include "GMTK_GaussianComponent.h"
 
 VCID("$Header$");
 
@@ -108,7 +110,11 @@ DlinkMatrix::read(iDataStreamFile& is)
   if (_dim <= 0)
     error("ERROR: reading DlinkMatrix '%s' from file '%s', dim (%d) must be positive",name().c_str(),is.fileName(),_dim);
 
-  _numLinks.resize(_dim);
+  if (_dim != dLinks->dim())
+    error("Error: Dlink matrix '%s' in file '%s' specifices a dlink structure '%s' with incompatible dimensions\n",
+	  name().c_str(),is.fileName(),
+	  dLinks->name().c_str());
+
 
   for (int i=0;i<_dim;i++) {
     int nlinks;
@@ -117,7 +123,10 @@ DlinkMatrix::read(iDataStreamFile& is)
     if (nlinks < 0) 
       error("ERROR: reading DlinkMatrix '%s' from file '%s', # dlinks (%d) must be >= 0",name().c_str(),is.fileName(),nlinks);
 
-    _numLinks[i] = nlinks;
+    if (nlinks != dLinks->numLinks(i))
+      error("Error: Dlink matrix '%s' in file '%s' specifices a dlink structure '%s' with incompatible number of links\n",
+	    name().c_str(),is.fileName(),
+	    dLinks->name().c_str());
 
     int oldLen = arr.len();
     arr.resizeAndCopy(oldLen+nlinks);
@@ -126,11 +135,6 @@ DlinkMatrix::read(iDataStreamFile& is)
       is.read(arr[oldLen+j],"DlinkMatrix::read, v");
     }
   }
-
-  if (!compatibleWith(*dLinks))
-    error("Error: Dlink matrix '%s' in file '%s' specifices a dlink structure '%s' is incompatible\n",
-	  name().c_str(),is.fileName(),
-	  dLinks->name().c_str());
 
   setBasicAllocatedBit();
 }
@@ -159,56 +163,14 @@ DlinkMatrix::write(oDataStreamFile& os)
   os.nl();
   int ptr = 0;
   for (int i=0;i<dim();i++) {
-    os.write(_numLinks[i],"DlinkMatrix::write, nlinks");
-    for (int j=0;j<_numLinks[i];j++) {
+    os.write(dLinks->numLinks(i),"DlinkMatrix::write, nlinks");
+    for (int j=0;j<dLinks->numLinks(i);j++) {
       os.write(arr[ptr++],"DlinkMatrix::write val ");
     }
     os.nl();
   }
 }
 
-
-/*-
- *-----------------------------------------------------------------------
- * preCompute()
- *      precompute the offset array.
- * 
- * Preconditions:
- *      basic object should be read in.
- *
- * Postconditions:
- *      offset array is computed.
- *
- * Side Effects:
- *      destroys old offset array
- *
- * Results:
- *      retunrs nil
- *
- *-----------------------------------------------------------------------
- */
-void
-DlinkMatrix::preCompute(const unsigned stride)
-{
-  dLinks->preCompute(stride);
-
-  unsigned len = 0;
-  zzAccumulatorLength = 0;
-  unsigned maxDlinks = 0;
-  for (int i=0;i<dim();i++) {
-    if (numLinks(i) > maxDlinks)
-      maxDlinks = numLinks(i);
-    len += numLinks(i);
-    // only storing upper triangular portion of symetric matrix
-    zzAccumulatorLength += numLinks(i)*(numLinks(i)+1)/2;
-  }
-
-  // now allocate the cache
-  zArray.resize(maxDlinks);
-  zzArrayCache.resize(zzAccumulatorLength);
-  xzArrayCache.resize(len);
-  clearArrayCache();
-}
 
 
 
@@ -299,85 +261,70 @@ DlinkMatrix::makeUniform()
 }
 
 
-
 /*-
  *-----------------------------------------------------------------------
- * Function
- *      What the function does.
+ * noisyClone()
+ *      Create a copy of self, but perturb the mean vector
+ *      a bit with some noise.
  * 
  * Preconditions:
- *      What must be true before the function is called.
+ *      The mean must be read in, and basicAllocatedBitIsSet() must be true.
  *
  * Postconditions:
- *      What is true after the function is called.
+ *      none.
  *
  * Side Effects:
- *      Any exernal side effects
+ *      'this' is not changed at all. Allocates new memory though.
  *
  * Results:
- *      What does the function return, if anything. 
+ *      returns the new noisy mean.
  *
  *-----------------------------------------------------------------------
  */
-void
-DlinkMatrix::clearArrayCache()
+DlinkMatrix*
+DlinkMatrix::noisyClone()
 {
-  // assume that a NULL pointer won't match anything.
-  arrayCacheTag = NULL;
-}
+  assert ( basicAllocatedBitIsSet() );
 
+  // first check if self is already cloned, and if so, return that.
+  DlinkMatrix* clone;
 
-/*-
- *-----------------------------------------------------------------------
- * Function
- *      What the function does.
- * 
- * Preconditions:
- *      What must be true before the function is called.
- *
- * Postconditions:
- *      What is true after the function is called.
- *
- * Side Effects:
- *      Any exernal side effects
- *
- * Results:
- *      What does the function return, if anything. 
- *
- *-----------------------------------------------------------------------
- */
-void
-DlinkMatrix::cacheArrays(const Data32* const base, const float *const f)
-{
-  if (base == arrayCacheTag)
-    return;
+  map<DlinkMatrix*,DlinkMatrix*>::iterator it = 
+    MixGaussiansCommon::dLinkMatCloneMap.find(this);
+  if (it == MixGaussiansCommon::dLinkMatCloneMap.end()) {
+    clone = new DlinkMatrix();
+    // make sure we get a unique name
+    unsigned cloneNo=0; do {
+      char buff[256];
+      sprintf(buff,"%d",cloneNo);
+      clone->_name = _name + string("_cl") + buff;
+      cloneNo++;
+    } while (GM_Parms.dLinkMatsMap.find(clone->_name) != GM_Parms.dLinkMatsMap.end());
+    clone->refCount = 0;
+    clone->dLinks = dLinks;
+    ####
 
-  // refill the cache.
-
-  const int* lagStrideOffsetsp = dLinks->preComputedOffsets.ptr;
-  float *zzArrayCachep = zzArrayCache.ptr;
-  float *xzArrayCachep = xzArrayCache.ptr;
-  const float *fp = f;
-  int i=0; do {
-    const int nLinks = numLinks(i);
-    if (nLinks > 0) {
-      const float feat = *fp;
-      float *zArray_p = zArray.ptr;
-      const int *const lagStrideOffsets_endp = 
-	lagStrideOffsetsp + nLinks;
-      do { 
-	const float zval = *((float*)base + *lagStrideOffsetsp++);
-	*zArray_p++ = zval;
-	*xzArrayCachep++ = feat*zval;
-      } while (lagStrideOffsetsp != lagStrideOffsets_endp);
-      matrixSelfOuterProduct(zArray,nLinks,zzArrayCachep);
-      zzArrayCachep += nLinks*(nLinks+1)/2;
+    clone->means.resize(means.len());
+    for (int i=0;i<means.len();i++) {
+      clone->means[i] = means[i] + 
+	cloneSTDfrac*means[i]*rnd.normal();
     }
-    fp++;
-  } while (++i != dim());
 
-  arrayCacheTag = base;
+
+
+    clone->setBasicAllocatedBit();
+    MixGaussiansCommon::dLinkMatCloneMap[this] = clone;
+
+    // also add self to GMParms object.
+    GM_Parms.add(clone);
+
+  } else {
+    clone = (*it).second;
+  }
+  return clone;
 }
+
+
 
 
 /////////////////
@@ -392,7 +339,7 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 {
   assert ( basicAllocatedBitIsSet() );
 
-  if (!GM_Parms.amTrainingMeans())
+  if (!GM_Parms.amTrainingdLinkMats())
     return;
 
   /////////////////////////////////////////////
@@ -447,7 +394,7 @@ DlinkMatrix::emIncrement(const logpr prob,
 {
   assert ( basicAllocatedBitIsSet() );
 
-  if (!GM_Parms.amTrainingMeans())
+  if (!GM_Parms.amTrainingdLinkMats())
     return;
   
   /////////////////////////////////////////////
@@ -467,36 +414,42 @@ DlinkMatrix::emIncrement(const logpr prob,
 
   accumulatedProbability += prob;
 
-  // compute the possibly shared cache arrays
-  cacheArrays(base,f);
+  // compute the (possibly) shared cache arrays
+  dLinks->cacheArrays(base,f);
 
   // This routine is called often so we use pointer arithmetic where possible.
-  const int* lagStrideOffsetsp = dLinks->preComputedOffsets.ptr;
   float *xzAccumulators_p = xzAccumulators;
+  float *xzArrayCache_p = dLinks->xzArrayCache.ptr;
+  float *xzArrayCache_endp = xzArrayCache_p + 
+    dLinks->totalNumberLinks();
+  do {
+    (*xzAccumulators_p++) += (*xzArrayCache_p++) * fprob;
+  } while (xzArrayCache_p != xzArrayCache_endp);
+  
   float *zzAccumulators_p = zzAccumulators;
-
-
-
+  float *zzArrayCache_p = dLinks->zzArrayCache.ptr;
+  float *zzArrayCache_endp = zzArrayCache_p + 
+    dLinks->zzAccumulatorLength;
+  do {
+    (*zzAccumulators_p++) += (*zzArrayCache_p++) * fprob;
+  } while (zzArrayCache_p != zzArrayCache_endp);
 
 }
 
 
 void
-DlinkMatrix::emEndIteration(const float*const partialAccumulatedNextMeans)
+DlinkMatrix::emEndIteration(const float*const xzAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emOnGoingBitIsSet() );
 
-  if (!GM_Parms.amTrainingMeans())
+  if (!GM_Parms.amTrainingdLinkMats())
     return;
 
   if (refCount > 0) {
-    // if this isn't the case, something is wrong.
-    assert ( emOnGoingBitIsSet() );
 
-    // accumulate in the 1st order statistics given
-    // by the mean object.
-    for (int i=0;i<means.len();i++) {
-      nextMeans[i] += partialAccumulatedNextMeans[i];
+    for (int i=0;i<nextArr.len();i++) {
+      nextArr[i] += xzAccumulators[i];
     }
 
     refCount--;
@@ -504,26 +457,23 @@ DlinkMatrix::emEndIteration(const float*const partialAccumulatedNextMeans)
 
   /////////////////////////////////////////////
   // if there is still someone who
-  // has not given us his/her 1st order stats,
+  // has not given us his/her accumulators
   // then we return w/o finishing.
   if (refCount > 0)
     return;
 
   if (accumulatedProbability < GaussianComponent::minAccumulatedProbability()) {
-    warning("WARNING: Mean vec '%s' received only %e accumulated log probability in EM iteration, using previous means",
+    warning("WARNING: dLink matrx '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
 	    accumulatedProbability.val(),name().c_str());
-    for (int i=0;i<nextMeans.len();i++)
-      nextMeans[i] = means[i];
+    for (int i=0;i<nextArr.len();i++)
+      nextArr[i] = arr[i];
   } else {
     const double invRealAccumulatedProbability =
       accumulatedProbability.inverse().unlog();
     // finish computing the next means.
-    float * nextMeans_p = nextMeans.ptr;
-    float * nextMeans_end_p = nextMeans.ptr + nextMeans.len();
-    do {
-      *nextMeans_p *= invRealAccumulatedProbability;
-      nextMeans_p++;
-    } while (nextMeans_p != nextMeans_end_p);
+    for (int i=0;i<nextArr.len();i++) {
+      nextArr[i] *= invRealAccumulatedProbability;
+    }
   }
 
   // stop EM
@@ -536,7 +486,7 @@ DlinkMatrix::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
 
-  if (!GM_Parms.amTrainingMeans())
+  if (!GM_Parms.amTrainingdLinkMats())
     return;
 
   // we should have that the number of calls
@@ -546,8 +496,8 @@ DlinkMatrix::emSwapCurAndNew()
 
   if (!emSwappableBitIsSet())
     return;
-  for (int i=0;i<means.len();i++) {
-    genSwap(means[i],nextMeans[i]);
+  for (int i=0;i<arr.len();i++) {
+    genSwap(arr[i],nextArr[i]);
   }
   // make no longer swappable
   emClearSwappableBit();

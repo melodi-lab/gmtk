@@ -56,8 +56,29 @@ class Dlinks : public NamedObject {
   // use an sArray for speed
   sArray<int> preComputedOffsets;
 
+  unsigned totalNumberLinks() { return (unsigned) preComputedOffsets.len(); }
+
   int _minLag;
   int _maxLag;
+
+  
+  /////////////////////////////////////////////////////////
+  // Support for a DlinkMatrix objects who share
+  // this dlink structure. Rather than needing to compute
+  // the xz and zz arrays multiple times, we compute
+  // it only once here, and cache it according to the current
+  // feature base.
+  // --- cache support
+  const Data32* arrayCacheTag;
+  sArray <float> zzArrayCache;
+  sArray <float> xzArrayCache;
+  sArray <float> zArray;
+  void cacheArrays(const Data32* const base,
+		   const float*const f);
+  // --- precomputed length support
+  unsigned zzAccumulatorLength;
+  /////////////////////////////////////////////////////////
+  
 
 public:
 
@@ -86,6 +107,10 @@ public:
   // precomputes the offset array 
   void preCompute(const unsigned stride);
 
+  ////////////////////////////////////////////////
+  // clear the internal cache
+  void clearArrayCache();
+
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 
   // is located at the correct position.
@@ -104,3 +129,4 @@ public:
 
 
 #endif
+
