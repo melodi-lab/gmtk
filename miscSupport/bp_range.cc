@@ -20,6 +20,8 @@
 const int MAX_INT = INT_MAX;
 const int MIN_INT = INT_MIN;
 
+// unsigned mycount = 0;
+
 BP_Range::BP_Range(const char *range_str_a,
 	     const int lower_limit_a,
 	     const int upper_limit_a) 
@@ -31,12 +33,14 @@ BP_Range::BP_Range(const char *range_str_a,
   // the special case of only a "null" or "full" range being a valid 
   // range spec, in either case the spec designates a null range.
 {
+  // printf("::BP_Range(a,b,c), ct=%d\n",mycount++);
 
   if (range_str_a == NULL) 
     range_str_a = "all";
+
+
   range_str = new char[::strlen(range_str_a)+1];
   ::strcpy(range_str,range_str_a);
-
 
   if (upper_limit < lower_limit)
     error("Error upper_limit=%d < lower_limit=%d.",upper_limit,lower_limit);
@@ -46,9 +50,11 @@ BP_Range::BP_Range(const char *range_str_a,
   // }
 
 
-  range_array_length = 20; 
   range_size = 0;
-  range = new sub_range[range_array_length];
+  // default starting length is 1
+  range.resize(1);
+
+
   parse_range();
   _max = (int)end();
   _min = (int)begin();
@@ -65,9 +71,40 @@ BP_Range::BP_Range(const char *range_str_a,
 
 }
 
+BP_Range::BP_Range(const BP_Range& o)
+  : range_str(NULL) 
+{
+  // printf("::BP_Range(o), ct=%d\n",mycount++);
+  *this = o;
+}
+
+BP_Range& BP_Range::operator=(const BP_Range& o) 
+{
+  // printf("-- BP_Range op =, cnt = %d\n",mycount);
+
+  // only allocate what is needed rather than
+  // the same size of the array.
+  range.resizeIfDifferent(o.range_size);
+  ::memcpy(range.ptr,o.range.ptr,o.range_size*sizeof(sub_range));
+
+  range_size = o.range_size;
+  delete [] range_str;
+  range_str = new char[::strlen(o.range_str)+1];
+  ::strcpy(range_str,o.range_str);
+  lower_limit = o.lower_limit; 
+  upper_limit = o.upper_limit;
+  range_set_size = o.range_set_size;
+  _min = o._min;
+  _max = o._max; 
+
+  return *this;
+
+}
+
+
 BP_Range::~BP_Range()
 {
-  delete [] range;
+  // printf("::~BP_Range(), ct=%d\n",--mycount);
   delete [] range_str;
 }
 
@@ -279,7 +316,7 @@ void BP_Range::parse_range()
       s = 1;
     }
 
-    make_range_safe_to_add_one();
+    range.growByNIfNeededAndCopy(2,range_size+1);
     range[range_size].lower = l;
     range[range_size].upper = u;    
     range[range_size].step = s;
@@ -324,20 +361,6 @@ void BP_Range::parse_range()
 
 
 
-
-void
-BP_Range::make_range_safe_to_add_one()
-{
-  if (range_size+1 > range_array_length) {
-    range_array_length *= 2;
-    sub_range *tmp = new sub_range[range_array_length];
-    ::memcpy((void*)tmp,(void*)range,
-	     sizeof(*range)*range_size);
-    delete [] range;
-    range = tmp;
-  }
-}
-
 BP_Range::iterator BP_Range::begin() const
 {
   iterator rc(*this);
@@ -349,9 +372,9 @@ BP_Range::iterator BP_Range::end() const
   iterator rc(*this);
   rc.array_pos = range_size-1;
 
-  rc.cur_lower = range[rc.array_pos].lower;
-  rc.cur_upper = range[rc.array_pos].upper;
-  rc.cur_value = range[rc.array_pos].max();
+  rc.cur_lower = range.ptr[rc.array_pos].lower;
+  rc.cur_upper = range.ptr[rc.array_pos].upper;
+  rc.cur_value = range.ptr[rc.array_pos].max();
 
   return rc;
 }
@@ -369,9 +392,9 @@ BP_Range::iterator::iterator(const BP_Range& rng)
   : myrange(rng)
 {
   array_pos = 0;
-  cur_value = myrange.range[array_pos].lower;
-  cur_lower = myrange.range[array_pos].lower;
-  cur_upper = myrange.range[array_pos].upper;
+  cur_value = myrange.range.ptr[array_pos].lower;
+  cur_lower = myrange.range.ptr[array_pos].lower;
+  cur_upper = myrange.range.ptr[array_pos].upper;
 }
 
 BP_Range::iterator::iterator(const BP_Range::iterator& it)
@@ -387,15 +410,15 @@ BP_Range::iterator::iterator(const BP_Range::iterator& it)
 BP_Range::iterator&
 BP_Range::iterator::operator++()
 {
-  int s = myrange.range[array_pos].step;
+  int s = myrange.range.ptr[array_pos].step;
   if (cur_value+s <= cur_upper)
     cur_value += s;
   else {
     if (array_pos+1 < myrange.range_size) {
       array_pos ++;
-      cur_lower = myrange.range[array_pos].lower;
-      cur_upper = myrange.range[array_pos].upper;      
-      cur_value = myrange.range[array_pos].lower;
+      cur_lower = myrange.range.ptr[array_pos].lower;
+      cur_upper = myrange.range.ptr[array_pos].upper;      
+      cur_value = myrange.range.ptr[array_pos].lower;
     } else {
       // attempting to iterate off the bounds,
       cur_value = MAX_INT;
@@ -408,7 +431,7 @@ BP_Range::iterator::operator++()
 BP_Range::iterator&
 BP_Range::iterator::operator--()
 {
-  int s = myrange.range[array_pos].step;
+  int s = myrange.range.ptr[array_pos].step;
   if (cur_value == MAX_INT)
     cur_value = myrange._max;
   else if (cur_value > cur_lower+s)
@@ -416,9 +439,9 @@ BP_Range::iterator::operator--()
   else {
     if (array_pos > 0) {
       array_pos --;
-      cur_lower = myrange.range[array_pos].lower;
-      cur_upper = myrange.range[array_pos].upper;      
-      const int s = myrange.range[array_pos].step;
+      cur_lower = myrange.range.ptr[array_pos].lower;
+      cur_upper = myrange.range.ptr[array_pos].upper;      
+      const int s = myrange.range.ptr[array_pos].step;
       const int n = (cur_upper-cur_lower+s)/s;
       cur_value = cur_lower + s*(n-1);
     } else {
@@ -450,13 +473,13 @@ bool BP_Range::contains(const int value) const
   l = 0; r = range_size -1;
   while (l<r) {
     int m = (l+r+1)/2;
-    if (value == range[m].lower) {
+    if (value == range.ptr[m].lower) {
       i = m;
       goto done;
     }
-    if (value < range[m].lower)
+    if (value < range.ptr[m].lower)
       r = m-1;
-    else if (value > range[m].lower)
+    else if (value > range.ptr[m].lower)
       l = m;
   }
   i = l;
@@ -464,14 +487,14 @@ done:
   
   // so now, if value is contained in the set, then
   // we must have: range[i].lower <= value
-  if (value > range[i].upper)
+  if (value > range.ptr[i].upper)
     return false;
 
   // We must have range[i].lower <= value <= range[i].upper 
-  if (range[i].step == 1)
+  if (range.ptr[i].step == 1)
     return true;
   else
-    return (((value-range[i].lower)%range[i].step) == 0);
+    return (((value-range.ptr[i].lower)%range.ptr[i].step) == 0);
 }
 
 

@@ -599,7 +599,7 @@ oDataStreamFile::~oDataStreamFile()
   }
 }
 
-bool oDataStreamFile::writeStr(const char *const str,char *msg)
+bool oDataStreamFile::writeStr(const char *const str,char *msg,const bool writeSpaceSuffixAscii)
 {
   if (Binary) {
     const int len = strlen(str)+1;
@@ -608,14 +608,14 @@ bool oDataStreamFile::writeStr(const char *const str,char *msg)
       return errorReturn("writeStr",msg);
     return true;
   } else {
-    if (fprintf(fh,"%s ",str) == 0) 
+    if (fprintf(fh,(writeSpaceSuffixAscii?("%s "):("%s")),str) == 0) 
       return errorReturn("writeStr",msg);
     return true;
   }
 }
 
 
-bool oDataStreamFile::writeString(const string& str,char *msg)
+bool oDataStreamFile::writeString(const string& str,char *msg,const bool writeSpaceSuffixAscii)
 {
   if (Binary) {
     const int len = str.length()+1;
@@ -624,14 +624,14 @@ bool oDataStreamFile::writeString(const string& str,char *msg)
       return errorReturn("writeStr",msg);
     return true;
   } else {
-    if (fprintf(fh,"%s ",str.c_str()) == 0) 
+    if (fprintf(fh,(writeSpaceSuffixAscii?("%s "):("%s")),str.c_str()) == 0) 
       return errorReturn("writeStr",msg);
     return true;
   }
 }
 
 
-bool oDataStreamFile::writeChar(const char c,char *msg)
+bool oDataStreamFile::writeChar(const char c,char *msg,const bool writeSpaceSuffixAscii)
 {
   if (Binary) {
     size_t rc = fwrite(&c, sizeof(char), 1,fh);
@@ -639,7 +639,7 @@ bool oDataStreamFile::writeChar(const char c,char *msg)
       return errorReturn("writeChar",msg);
     return true;
   } else {
-    if (fprintf(fh,"%c ",c) == 0) 
+    if (fprintf(fh,(writeSpaceSuffixAscii?("%c "):("%c")),c) == 0) 
       return errorReturn("writeChar",msg);
     return true;
   }

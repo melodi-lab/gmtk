@@ -170,9 +170,9 @@ class oDataStreamFile : public ioDataStreamFile {
   ~oDataStreamFile();
 
   // type explicit
-  bool writeStr(const char * const str, char *msg=NULL);
-  bool writeString(const string& str,char *msg=NULL);
-  bool writeChar(const char c, char *msg=NULL);
+  bool writeStr(const char * const str, char *msg=NULL,const bool writeSpaceSuffixAscii=true);
+  bool writeString(const string& str,char *msg=NULL,const bool writeSpaceSuffixAscii=true);
+  bool writeChar(const char c, char *msg=NULL,const bool writeSpaceSuffixAscii=true);
   bool writeInt(const int i,char *msg=NULL);
   bool writeUnsigned(const unsigned int u,char *msg=NULL);
   bool writeFloat(const float f,char *msg=NULL);
@@ -185,9 +185,10 @@ class oDataStreamFile : public ioDataStreamFile {
   void rewind();
 
   // type implicit
-  bool write(const char *const str,char *msg=NULL) { return writeStr(str,msg); }
-  bool write(const string& str,char *msg=NULL) { return writeString(str,msg); }
-  bool write(const char c, char *msg=NULL) { return writeChar(c,msg); }
+  bool write(const char *const str,char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeStr(str,msg,writeSpaceSuffixAscii); }
+  bool write(const string& str,char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeString(str,msg,writeSpaceSuffixAscii); }
+  bool write(const char c, char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeChar(c,msg,writeSpaceSuffixAscii); }
+
   bool write(const int i,char *msg=NULL) { return writeInt(i,msg); }
   bool write(const unsigned int u,char *msg=NULL) { return writeUnsigned(u,msg); }
 #ifdef _AIX
