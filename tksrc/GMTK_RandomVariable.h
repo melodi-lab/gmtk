@@ -275,7 +275,8 @@ public:
   // unsigned long, and so on. Note, if this changes,
   // then might need to change Decision tree code as well.
   // TODO: ultimately change this to unsigned (or better ub4 or
-  // something that makes specific its presumed size).
+  // something that makes specific its presumed size). 
+  /// TODO: when changed to unsigned, go through and remove any < 0 dynamic checks on this variable.
   typedef int DiscreteVariableType;
 
 

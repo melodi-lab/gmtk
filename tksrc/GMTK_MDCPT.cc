@@ -239,6 +239,7 @@ MDCPT::read(iDataStreamFile& is)
   logpr child_sum;
   child_sum.set_to_zero();
   int row=0;;
+  // be more forgiving as cardinality increases
   const double threshold = _card*normalizationThreshold;
   for (int i=0;i<numValues;) {
 
@@ -284,7 +285,6 @@ MDCPT::read(iDataStreamFile& is)
       // check that child sum is approximately one if (normalizationThreshold != 0)
       // which otherwise would turn it off.
       double abs_diff = fabs(child_sum.unlog() - 1.0);
-      // be more forgiving as cardinality increases
       if (abs_diff > threshold) 
 	error("ERROR: reading file '%s', row %d of DenseCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
 	      is.fileName(),
@@ -429,6 +429,8 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
   
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
+    // TODO: when RV vals are unsigned this becomes one check rather than two.
+    // TODO: also speed this up with an endp on cardinalities and use an sArray via ptr.
     if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
       error("ERROR:becomeAwareOfParentValues. DenseCPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
 	    name().c_str(),
