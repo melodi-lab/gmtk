@@ -11,7 +11,7 @@
  * software and its documentation for any non-commercial purpose
  * and without fee is hereby granted, provided that the above copyright
  * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
+ * Seattle, make no representations about
  * the suitability of this software for any purpose.  It is provided
  * "as is" without express or implied warranty.
  *
@@ -83,26 +83,30 @@ void
 Sparse1DPMF::read(iDataStreamFile& is)
 {
   int len;
-  is.read(card,"Sparse1DPMF::read, card");
-  if (card <= 0)
-    error("Sparse1DPMF: read length (%d) < 0 in input",card);
+  is.read(_card,"Sparse1DPMF::read, card");
+  if (_card <= 0)
+    error("Sparse1DPMF: read length (%d) < 0 in input",_card);
 
   is.read(len,"Sparse1DPMF::read, len");
   if (len <= 0)
     error("Sparse1DPMF: read length (%d) < 0 in input",len);
-  if (len > card)
-    error("Sparse1DPMF: read length (%d) > card (%d) in input",len,card);
+  if (len > _card)
+    error("Sparse1DPMF: read length (%d) > card (%d) in input",len,_card);
 
   pmf.resize(len);
 
+  int prev_val = -1;
   for (int i=0;i<length;i++) {
     int val;
     double prob;
 
     is.read(val,"Sparse1DPMF::read, reading value");
-    if (val < 0 || val > card-1)
+    if (val < 0 || val > _card-1)
       error("Sparse1DPMF::read, bad value = %d, must be in range [0:%d]",val,
-	    card-1);
+	    _card-1);
+    if (val <= prev_val)
+      error("Sparse1DPMF::read, values must be unique and in sorted order");
+    prev_val = val;
 
     is.readDouble(prob,"Sparse1DPMF::read, reading prob");
     if (prob < 0.0 || prob > 1.0)
@@ -132,7 +136,7 @@ Sparse1DPMF::read(iDataStreamFile& is)
 void
 Sparse1DPMF::write(oDataStreamFile& os)
 {
-  os.write(card,"Sparse1DPMF::write, card");
+  os.write(_card,"Sparse1DPMF::write, card");
   os.write(pmf.len(),"Sparse1DPMF::write, len");
   for (int i=0;i<pmf.len();i++) {
     os.write(pmf[i].val,"Sparse1DPMF::write, writing value");
@@ -148,4 +152,61 @@ Sparse1DPMF::write(oDataStreamFile& os)
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
 ////////////////////////////////////////////////////////////////////
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * prob
+ *      Return the probability for value val
+ * 
+ * Preconditions:
+ *      Must be filled in.
+ *
+ * Postconditions:
+ *      same as preconditions.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      returns the probability.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+logpr
+Sparse1DPMF::prob(const int val)
+{
+  assert ( pmf.len() > 0 );
+  assert ( val >= 0 && val < _card );
+  const int last = pmf.len()-1;
+  if (val > pmf[last].val)
+    return LZERO;
+
+  int l,u;
+  l = 0;
+  u = last;
+  while (l<=u) {
+    // pmf[l] <= val <= pmf[u]
+    int m = (l+u)/2;
+    // if l = u, 
+    //      then  m = l = u
+    // if even(u), even(l)
+    //      then l < m < u
+    // if one even, one odd, and l+1 = u
+    //      then  m = l = u-1
+    // if one even, one odd, and l+1 < u
+    //      then l < m < u
+
+    if (val < pmf[m].val)
+      u = m-1;
+    else if (val > pmf[m].val)
+      l = m+1;
+    else
+      return pmf[m].prob;
+  }
+
+
+  return LZERO;
+}
 
