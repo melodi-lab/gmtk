@@ -376,6 +376,8 @@ public:
   // matrix. Set this here.
   void setStride(const unsigned stride);
 
+  // check that dlinks etc. are good w.r.t. observation stream
+  void checkConsistentWithGlobalObservationStream();
 
   ///////////////////////////////////////////////////////////    
   // Return the total number of parameters used by this
@@ -388,6 +390,15 @@ public:
   // Remove parameters that are not used by anyone. Return
   // true if any were removed.
   void markUsedMixtureComponents();
+
+
+  ///////////////////////////////////////////////////////////    
+  // using the file given by name file, set
+  // all the objects given in that file so that
+  // they are not trained.
+  void markObjectsToNotTrain(const char*const fileName,
+			     const char*const cppOptions=NULL);
+
 
   ///////////////////////////////////////////////////////////    
   // Support for EM, applies to all EMable objects contained herein.
