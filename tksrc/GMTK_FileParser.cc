@@ -1942,23 +1942,36 @@ FileParser::createRandomVariableGraph()
  *-----------------------------------------------------------------------
  */
 void
-FileParser::ensureValidTemplate()
+FileParser::ensureValidTemplate(bool longCheck)
 {
   vector <RV*> vars;
   vector <RV*> vars2;
 
-  // TODO: fix error messages to give indication as to where loop is.
-  unroll(0,vars);
-  if (!GraphicalModel::topologicalSort(vars,vars2))
-    error("ERROR. Graph is not directed, contains a directed loop when unrolled 0 times.\n");
-  vars.clear(); vars2.clear();
-  unroll(1,vars);
-  if (!GraphicalModel::topologicalSort(vars,vars2))
-    error("ERROR. Graph is not directed, contains a directed loop when unrolled 1 time.\n");
-  vars.clear(); vars2.clear();
-  unroll(2,vars);
-  if (!GraphicalModel::topologicalSort(vars,vars2))
-    error("ERROR. Graph is not directed, contains a directed loop when unrolled 2 times.\n");
+  const unsigned longCheckStart = 3;
+
+  // always do short check
+  for (unsigned unrollAmount=0;unrollAmount<longCheckStart;unrollAmount++) {
+    infoMsg(Max,"Ensuring Valid Template when unrolling %d out of %d times\n",unrollAmount,longCheckStart-1);
+    unroll(unrollAmount,vars);
+    // TODO: fix error messages to give indication as to where loop is.
+    if (!GraphicalModel::topologicalSort(vars,vars2))
+      error("ERROR. Graph is not directed, contains a directed loop when unrolled %d times.\n",unrollAmount);
+    vars.clear(); vars2.clear();
+  }
+
+  if (longCheck) {
+    // note that it is possible for the directed loop to show up only when the graph is unrolled numVarsInChunk
+    // times. Unrolling this amount is sufficient for any further unrolling though.
+    for (unsigned unrollAmount=longCheckStart;unrollAmount<=numVarsInChunk;unrollAmount++) 
+      {
+	infoMsg(Max,"Ensuring Valid Template when unrolling %d out of %d times\n",unrollAmount,numVarsInChunk);
+	unroll(unrollAmount,vars);
+	// TODO: fix error messages to give indication as to where loop is.
+	if (!GraphicalModel::topologicalSort(vars,vars2))
+	  error("ERROR. Graph is not directed, contains a directed loop when unrolled %d times.\n",unrollAmount);
+	vars.clear(); vars2.clear();
+      }
+  }
 }
 
 

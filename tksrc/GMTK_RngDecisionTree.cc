@@ -483,6 +483,8 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
 
     //////////////////////////////////////////////
     // check for overlap and order errors in the strings
+    // TODO: this is way inefficient, see if it is possible not to do
+    // an N^2 algorithm.
     for (unsigned i=0;i<numSplits-1;i++) {
       for (unsigned j=i+1;j<numSplits-1;j++) {
 	if (node->nonLeafNode.rngs[i]

@@ -95,7 +95,7 @@ Dense1DPMF::read(iDataStreamFile& is)
   int length;
   is.read(length,"Can't read Dense1DPMF's distribution length");
   if (length <= 0)
-    error("ERROR: reading file '%s' line %d, DPMF '%s' has bad length (%d) < 0 in input",
+    error("ERROR: reading file '%s' line %d, DPMF '%s' has a bad length of (%d) <= 0 in input",
 	  is.fileName(),is.lineNo(),name().c_str(),length);
   pmf.resize(length);
   logpr sum;
