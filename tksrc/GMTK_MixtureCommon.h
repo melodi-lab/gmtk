@@ -62,6 +62,15 @@ public:
     : _dim(dim),mixType(_mixType) {}
   virtual ~MixGaussiansCommon() {}
 
+  //////////////////////////////////////////////////////
+  // support for mixture vanishing
+  static double mixCoeffVanishRatio;
+  // The value that, if any mixture coef gets smaller than,
+  // causes that component to vanish.
+  // mixCoeffVanishThreshold = 
+  // 1/(curNumComponents*mixCoeffVanishRatio).
+  logpr mixCoeffVanishThreshold;
+
   /////////////////////////////////////
   // return the dimensionality
   unsigned dim() { return _dim; }
