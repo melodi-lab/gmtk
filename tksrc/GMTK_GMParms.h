@@ -156,9 +156,21 @@ public:
   ////////////////////////////////
   // Mixtures of Gaussians (could be a heterogeneous mixutre of
   // different types above)
-  vector < MixGaussiansCommon* > mixGaussians;
+  vector < MixGaussians* > mixGaussians;
   typedef map< string, unsigned > MixGaussiansMapType;
   MixGaussiansMapType mixGaussiansMap;
+
+  vector < GausSwitchingMixGaussians* > gausSwitchingMixGaussians;
+  typedef map< string, unsigned > GausSwitchingMixGaussiansMapType;
+  GausSwitchingMixGaussiansMapType gausSwitchingMixGaussiansMap;
+
+  vector < LogitSwitchingMixGaussians* > logitSwitchingMixGaussians;
+  typedef map< string, unsigned > LogitSwitchingMixGaussiansMapType;
+  LogitSwitchingMixGaussiansMapType logitSwitchingMixGaussiansMap;
+
+  vector < MLPSwitchingMixGaussians* > mlpSwitchingMixGaussians;
+  typedef map< string, unsigned > MlpSwitchingMixGaussiansMapType;
+  MlpSwitchingMixGaussiansMapType   MlpSwitchingMixGaussiansMap;
 
   /********************************************************************/
 
