@@ -6,7 +6,7 @@
 // of Solaris).
 // 
 // Written by: Jeff Bilmes
-//             bilmes@icsi.berkeley.edu
+//             bilmes@ee.washington.edu
 
 
 

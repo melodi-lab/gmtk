@@ -5,7 +5,7 @@
 //
 //
 // Written by: Jeff Bilmes
-//             bilmes@icsi.berkeley.edu
+//             bilmes@ee.washington.edu
 
 
 #ifndef FILEPARSER_H
