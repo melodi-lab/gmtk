@@ -57,3 +57,6 @@ XXX- todo, make sure that chunk n:m is valid.
 
 - ability to train means and other dlinkmats in a dlinkmats structure
   independently.
+
+- to through and start using setBasicAllocatedBit() on read, and add
+  assertions, etc.
