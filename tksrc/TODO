@@ -1214,3 +1214,15 @@ Sun Oct 12 23:06:28 2003
         obs matrix has done upsampling, etc.
   - Make a general module to add such variables.
 
+Wed Oct 15 19:18:58 2003
+  - allow for frames without variables to do multirate and 
+    automatic downsampling.
+
+Sun Oct 19 13:36:47 2003
+  - Should either add "noisy-or" and "noisy-and" implementations 
+    of CPTs, and their multivariate generalizations, or
+    mention in documentation how they can easily be obtained  
+    using a deterministic 'or' function with grand-parents
+    the original variables.
+    Add variational training to this sort of model.
+
