@@ -1246,11 +1246,18 @@ triangulate(// input: nodes to be triangulated
     if (weight < best_weight) {
 
       /////////////////////////////////////////////////////////////////////////
+      /////////////////////////////////////////////////////////////////////////
       // @@@ There is a bug due to the stubbed out = operator in the MaxClique 
       //   class the following line which clears the cliques appears to work 
       //   around the bug. @@@
+      // TODO: ultimately take this out, but keep in for now until
+      // we do code restructuring (1/20/2004).
+      best_cliques.clear();
       /////////////////////////////////////////////////////////////////////////
-      // best_cliques.clear();
+      /////////////////////////////////////////////////////////////////////////
+
+
+
       best_cliques = cliques;
       best_weight  = weight;
       best_meth_str = meth_str;

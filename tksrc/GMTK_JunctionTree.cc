@@ -178,6 +178,8 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
  *   Create a mini-junction tree from the cliques in the given partition.
  *   This uses Kruskal's greedy (but optimal) algorithm for MST generation.
  *
+ *   TODO: move this routine to a MaxClique class at some point.
+ *
  * Preconditions:
  *   The partition must be instantiated with cliques 
  *
@@ -194,7 +196,6 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
  *
  *-----------------------------------------------------------------------
  */
-
 void
 JunctionTree::createPartitionJunctionTree(Partition& part)
 {

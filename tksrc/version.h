@@ -18,6 +18,7 @@
  *
  */
 
-static char * gmtk_version_id = "GMTK Version 0.2a Sat Jul  5 21:28:33 2003";
+// TODO: automate the process of updating this string.a
+static char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
 
 
