@@ -48,3 +48,6 @@ incorporated into the package at some point.
 
 - Allocate data structures for CPTS, etc. automatically, if not explicitly 
   specified in a file. 
+
+- use namedobject for randomvariable and any other object that
+  has a string name

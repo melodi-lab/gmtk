@@ -131,10 +131,10 @@ GMTK_RandomVariable.o GMTK_SimpleDiscreteRV.cc GMTK_SimpleDiscreteRV.o
 GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc \
 GMTK_SimpleDiscreteRV.cc $(LIBS)
 
-BN3: BN3.cc BN3.o GMTK_GM.cc GMTK_GM.o GMTK_Clique.cc GMTK_Clique.o \
+BNU: BNU.cc BNU.o GMTK_GM.cc GMTK_GM.o GMTK_Clique.cc GMTK_Clique.o \
 GMTK_CliqueChain.cc GMTK_CliqueChain.o GMTK_RandomVariable.cc \
 GMTK_RandomVariable.o GMTK_SimpleDiscreteRV.cc GMTK_SimpleDiscreteRV.o
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BN3.cc GMTK_GM.cc \
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BNU.cc GMTK_GM.cc \
 GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc \
 GMTK_SimpleDiscreteRV.cc $(LIBS)
 
