@@ -70,6 +70,8 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
         // free the memory used in its instantiationAddress
         if (i%2)  // a separator; instantiationAddress only used in separators
             preorder(i)->instantiationAddress.clear();  
+        else
+            assert(preorder(i)->instantiationAddress.size() == 0);
 
         // prune the low probability entries in preorder(i)
         // do not prune separators
