@@ -504,10 +504,10 @@ MixGaussians::emEndIteration()
 	     &&
 	     (numVanishedSoFar < (numComponents-1))
 	     ;i++) {
-	bool alreadyVanished =
+	const bool alreadyVanished =
 	  (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
 	   != MixGaussiansCommon::vanishingComponentSet.end());
-	bool alreadySplit =
+	const bool alreadySplit =
 	  (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
 	   != MixGaussiansCommon::splittingComponentSet.end());
 	if (!alreadyVanished && !alreadySplit) {
@@ -523,10 +523,10 @@ MixGaussians::emEndIteration()
       for (unsigned j=0,i=(coefs.size()-1);
 	   j<localNumTopToForceSplit;
 	   j++,i--) {
-	bool alreadyVanished =
+	const bool alreadyVanished =
 	  (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
 	   != MixGaussiansCommon::vanishingComponentSet.end());
-	bool alreadySplit =
+	const bool alreadySplit =
 	  (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
 	   != MixGaussiansCommon::splittingComponentSet.end());
 
