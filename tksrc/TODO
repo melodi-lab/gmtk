@@ -356,3 +356,5 @@ no gaussian mixtures, does the master file still have to mention them?
 
 - clean up virtual functions in GMTK_EMable since some of
   the EM ones need not be virtual.
+
+- fix arg description of beam
