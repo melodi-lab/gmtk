@@ -1351,4 +1351,12 @@ Sun Jan 18 02:11:09 2004
   - in boundary search, traverse to parents of children
     in next partition first, to try to find something useful sooner.
 
-
+Wed Jan 21 23:22:18 2004
+  - pre-allocation size
+    - have a function that computes the clique weight relative to the
+      junction tree and the JT root, one that includes the
+      notion of separator driven clique iterations.
+    - Use this notion of weight to compute a value for initial allocation
+      size. Also, use 'beam' value to help guide how large the first
+      allocation should be (if beam is large, we should allocate
+      a smaller first size).
