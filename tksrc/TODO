@@ -773,4 +773,27 @@ Tue Dec 24 00:25:18 2002
     to judge the quality of the interface not by size
     but also by weight (which includes deterministic 
     variables).
-  
+
+
+Tue Dec 24 08:02:50 2002  
+   for min weight heuristic
+	    // TODO: should also look at if this is a sparse CPT,
+	    // and if so, multiply by the average density (number of non-zeros)
+	    // of the CPT rather than the entire cardinality. For a very
+	    // sparse CPT, for example, using just the cardinality
+	    // is *very* conservative. 
+   a sparce CPT can provide this estimate itself of the
+   average cardinality. E.g., it can compute over
+   all parent values number of columns that are non-zero,
+   and take average, that is the 'effective' cardinality.
+   Can do this by looking at sparcePMF.length() field
+   on line 228 of GMTK_MSCPT.cc.
+
+
+Tue Dec 24 08:26:10 2002
+   define a cardinality of a CPT baesd on the
+   average 2^entropy of the node, under the
+   assumption that pruning will remove stuff below
+   those values that are not significant.
+   This is another heuristic to add (and should be
+   controllable via command line parameter).
