@@ -90,6 +90,26 @@ bool
 MaxClique::ceSeparatorDrivenInference = true;
 
 
+/*
+ *
+ * clique beam width, for clique-based beam pruning.  Default value is
+ * very large (1.0/0.0 = est. of infty) meaning that we do no beam
+ * pruning.
+ *
+ */
+double
+MaxClique::cliqueBeam=(-LZERO);
+
+/*
+ *
+ * separator beam width, for separator-based beam pruning.  Default value is
+ * very large (1.0/0.0 = est. of infty) meaning that we do no beam
+ * pruning.
+ *
+ */
+double
+SeparatorClique::separatorBeam=(-LZERO);
+
 
 // TODO: put this function somewhere more generally available.
 static void
@@ -1145,6 +1165,40 @@ MaxClique::printCliqueNodes(FILE*f)
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::computeUnassignedCliqueNodes()
+ *   Compute the unassignedNodes variable
+ *
+ * Preconditions:
+ *   Nodes and assignedNodes must be filled in.
+ *   Note that this routine is a nop if we're doing separator driven inference.
+ *
+ * Postconditions:
+ *   Unassigned nodes udpated.
+ *
+ * Side Effects:
+ *   changes member variable unasssignedNodes
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+MaxClique::computeUnassignedCliqueNodes()
+{
+  if (ceSeparatorDrivenInference)
+    return; // don't compute if we're doing separator driven.
+  unassignedNodes.clear();
+  set_difference(nodes.begin(),nodes.end(),
+		 assignedNodes.begin(),assignedNodes.end(),
+		 inserter(unassignedNodes,unassignedNodes.end()));
+}
+
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        InferenceMaxClique support
@@ -1306,13 +1360,61 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 
 /*-
  *-----------------------------------------------------------------------
- * MaxClique::CollectEvidenceFromSeparators()
+ * MaxClique::ceGatherFromIncommingSeparators()
+ *
+ *    Collect Evidence, Gather from Incomming Separators: This routine
+ *    is the main driver for creating a clique table during the
+ *    collect evidence stage of inference. It assumes that all
+ *    separators have been created, based on that the clique will be created.
+ *    There are two forms of clique table creation here, the one that
+ *    is used is decided at the top of the routine.
+ *    
+ *        1) clique driven clique creation: Here, we iterate through
+ *        all clique values of a cliuqe (based on the unassigned and
+ *        assigned nodes in that clique), and for each one, check all
+ *        incomming separators to make sure that the separators have
+ *        entries for the corresponding intersected variables at the
+ *        current clique value. The separator scores are then
+ *        multiplied together with the scoring assigned variables,
+ *        all of which becomes the clique value score. The clique
+ *        value and its score are assigned to the clique.
+ *
+ *        2) separator driven clique instantiation: Here, the
+ *        separators are iterated directly, and later separators are
+ *        iterated over only those values which are "compatible" with
+ *        earlier separators (meaning any zero probability entries are
+ *        skipped entirely, this is done using the separator data
+ *        structures which were set up prior to this routine). Once an
+ *        entry survives each separator (meaning the separator
+ *        intersection is non zero for that entry), it is subjected to
+ *        assigned clique nodes, and if it survies them as well
+ *        (meaning not zero prob), then the score is multiplied and
+ *        added to the clique.
+ *
+ *        Note that this version first iterates through separators,
+ *        then through unassigned clique nodes, and finally assigned
+ *        clique nodes.
+ *
+ *    Inference method 1 is good because normal weight tells you
+ *    exactly how computationally costly it is. Inference method 1 is
+ *    bad because it is apparentlly *much* slower then method 2 when
+ *    we have either many deterministic variables, or 2 when there is
+ *    much pruning. Unfortunately, the computational cost of method 2
+ *    is much more difficult to predict a-priori since it depends on
+ *    pruning, and the degree of sparse/deterministic CPTs. Junction
+ *    Tree weight (jtweight) is an attempt to predict this cost.
  *
  * Preconditions:
  *
+ *   All the cliques incomming separators *must* have been created and are ready
+ *   to be used to produce the clique table.
+ *     
+ *
  * Postconditions:
+ *    Clique table has been created.
  *
  * Side Effects:
+ *    Will significantly affect member variables in cliques.
  *
  * Results:
  *     nothing
@@ -1339,6 +1441,41 @@ InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::ceIterateSeparators()
+ *
+ *    Collect Evidence, Iterate Separators: This routine
+ *    is part of separator driven clique instantiation. It 
+ *    iterates through each separator and moves on to the next
+ *    separator checking it based on the accumulated set of variables
+ *    that have been assigned in previous separators. This routine
+ *    might therefore be called a 'sparse join', since it does a join
+ *    of a bunch of separator tables each of which might be very sparse. 
+ *
+ *    If we have reached the last separator in this clique, we move
+ *    directly on to the unassigned nodes (if any). 
+ *
+ * Preconditions:
+ *
+ *   All the cliques incomming separators *must* have been created and are ready
+ *   to be used to produce the clique table.
+ *     
+ *
+ * Postconditions:
+ *    We move on to the unasssigned nodes with a probabilty value that
+ *    includes the multiplication of all compatible separator entries for this var
+ *    value set.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 					const unsigned sepNumber,
@@ -1416,15 +1553,15 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     }
 
     // we should have one entry only.
-    assert ( sep.separatorValues[sepValueNumber].remValues.size() == 1 );
+    assert ( sep.separatorValues.ptr[sepValueNumber].remValues.size() == 1 );
 
     // Continue down with new probability value.
     // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
-    // more info why remValues[0] exists.
+    // more info why remValues.ptr[0] exists.
     // TODO: separator prune here.
     ceIterateSeparators(part,sepNumber+1,
 			p*
-			sep.separatorValues[sepValueNumber].remValues[0].p);
+			sep.separatorValues.ptr[sepValueNumber].remValues.ptr[0].p);
 
   } else {
 
@@ -1432,7 +1569,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     assert ( sep.origin.remPacker.packedLen() > 0 );
 
     if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-      for (unsigned i=0;i< sep.separatorValues[sepValueNumber].numRemValuesUsed; i++) {
+      for (unsigned i=0;i< sep.separatorValues.ptr[sepValueNumber].numRemValuesUsed; i++) {
 
 	// if (i == 0 && sep.fNodes[0]->timeIndex == 5 && sep.fNodes[0]->label == "state") {
 	// printf("here1");
@@ -1440,7 +1577,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
 	// TODO: optimize this, pre-compute base array outside of loop.
 	sep.origin.remPacker.unpack(
-		  (unsigned*)&(sep.separatorValues[sepValueNumber].remValues[i].val[0]),
+		  (unsigned*)&(sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].val[0]),
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
 
 	// if (i == 0 && sep.fNodes[0]->timeIndex == 5 && sep.fNodes[0]->label == "state") {
@@ -1459,14 +1596,14 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	// TODO: separator prune here.
 	ceIterateSeparators(part,sepNumber+1,
 		    p*
-		    sep.separatorValues[sepValueNumber].remValues[i].p);
+		    sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].p);
       }
     } else {
-      for (unsigned i=0;i< sep.separatorValues[sepValueNumber].numRemValuesUsed; i++) {
+      for (unsigned i=0;i< sep.separatorValues.ptr[sepValueNumber].numRemValuesUsed; i++) {
 
 	// TODO: optimize this, pre-compute base array outside of loop.
 	sep.origin.remPacker.unpack(
-		  (unsigned*)sep.separatorValues[sepValueNumber].remValues[i].ptr,
+		  (unsigned*)sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].ptr,
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
 
 	if (message(Giga)) {
@@ -1479,8 +1616,8 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	// continue down with new probability value.
 	// TODO: separator prune here.
 	ceIterateSeparators(part,sepNumber+1,
-		  p*
-		  sep.separatorValues[sepValueNumber].remValues[i].p);
+			    p*
+			    sep.separatorValues.ptr[sepValueNumber].remValues.ptr[i].p);
       }
     }
   }
@@ -1489,6 +1626,50 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::ceIterateAssignedNodes()
+ *
+ *    Collect Evidence, Iterate Separators: This routine
+ *    is part of separator driven clique instantiation. 
+ *  
+ *    This routine is a main workhorse of inference. Once we have a
+ *    partial clique value that has survied the separators, and has
+ *    (possibly) unassigned variable values, the next thing we need to
+ *    do is iterate through the assigned nodes in this cliuqe.
+ *
+ *
+ *    If we have reached the last unassigned node in this clique, we
+ *    go ahead and assign the value to this clique if it is non-zero.
+ *
+ *    If we have not reached the last, we 'iterate' over the assigned
+ *    node depending on its type (see MaxClique.h for a definition of
+ *    the different types of assigned nodes).
+ *    
+ *    Note: this routine will *never* knowingly add a zero-probability
+ *    clique value to the clique. I.e., all current zeros are not
+ *    added. This way, during backward pass if anyway, we never need
+ *    to check for divide by zero.
+ *
+ *
+ * Preconditions:
+ *
+ *   All the cliques incomming separators *must* have been iterated, and
+ *   same for the unassigned nodes (if any).
+ *
+ * Postconditions:
+ *    We move on to the asssigned nodes with an probabilty. The prob. has
+ *    not been updated from what is passed in since these nodes are unassigned
+ *    and so never contribute score to this clique.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 					   const unsigned nodeNumber,
@@ -1520,7 +1701,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       // pack the clique values directly into place
       origin.packer.pack(
 			 (unsigned**)discreteValuePtrs.ptr,
-			 (unsigned*)&(cliqueValues[numCliqueValuesUsed].val[0]));
+			 (unsigned*)&(cliqueValues.ptr[numCliqueValuesUsed].val[0]));
     } else {
       // Deal with the hash table to re-use clique values.
       // First, grab pointer to storge where next clique value would
@@ -1538,10 +1719,10 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 	origin.valueHolder.allocateCurCliqueValue();
       }
       // Save the pointer to whatever the hash table decided to use.
-      cliqueValues[numCliqueValuesUsed].ptr = key;
+      cliqueValues.ptr[numCliqueValuesUsed].ptr = key;
     }
     // save the probability
-    cliqueValues[numCliqueValuesUsed].p = p;
+    cliqueValues.ptr[numCliqueValuesUsed].p = p;
     numCliqueValuesUsed++;
 
     return;
@@ -1653,57 +1834,44 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
     break;
   }
 
-
-#if 0
-
-  // TODO: definitely optimize out this next check.
-  if (origin.iterateSortedAssignedNodesP.size() == 0 || origin.iterateSortedAssignedNodesP[nodeNumber] == true) {
-    infoMsg(Giga,"Starting Assigned iteration of rv %s(%d), nodeNumber =%d, p = %f\n",
-	    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
-    rv->clampFirstValue();
-    do {
-      // At each step, we compute probability
-      logpr cur_p = rv->probGivenParents();
-
-      if (message(Giga)) {
-	if (!rv->discrete) {
-	  infoMsg(Giga,"  Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
-		  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
-	} else {
-	  // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-	  infoMsg(Giga,"  Assigned iteration of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
-		  rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
-	}
-      }
-
-      // if at any step, we get zero, then back out.
-      if (!cur_p.essentially_zero()) {
-	// Q: could do more severe pruning here as well as beam?
-	// 
-	// Continue, updating probability by cur_p.
-	ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
-      }
-    } while (rv->clampNextValue());
-  } else {
-    infoMsg(Giga,"Already in iteration of rv %s(%d), nodeNumber =%d, p = %f\n",
-	    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
-    // already assigned.
-
-    // TODO: Make more efficient version of this, based on the type of
-    // RV.
-    logpr cur_p = rv->probGivenParentsWSetup();
-    // if at any step, we get zero, then back out.
-    if (!cur_p.essentially_zero()) {
-      // Q: could do more severe pruning here as well as beam?
-      // 
-      // Continue, updating probability by cur_p.
-      ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
-    }
-  }
-#endif
-
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::ceIterateUnassignedIteratedNodes()
+ *
+ *    Collect Evidence, Iterate Separators: This routine
+ *    is part of separator driven clique instantiation. Once
+ *    we have a partial clique value that has survied the separators,
+ *    the next thing we need to do is iterate through any unassigned
+ *    nodes in this cliuqe (if any, hopefully not since these can be costly
+ *    and might indicate a poor triangulation, depending on pruning and/or
+ *    the sparse/deterministic variables).
+ *
+ *    If we have reached the last unassigned node in this clique, we
+ *    move directly on to the assigned nodes.
+ *
+ * Preconditions:
+ *
+ *   All the cliques incomming separators *must* have been created and are ready
+ *   to be used to produce the clique table.
+ *     
+ *
+ * Postconditions:
+ *    We move on to the asssigned nodes with an probabilty. The prob. has
+ *    not been updated from what is passed in since these nodes are unassigned
+ *    and so never contribute score to this clique.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
 
 void
 InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
@@ -1749,13 +1917,44 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
   }
 }
 
-/*
- * we have now a fully instantiated clique. Iterate
- * through the values that are above beam and instantiate
- * the outgoing separator with those values.
- *
- */
 
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::ceSendToOutgoingSeparator()
+ *
+ *    Collect Evidence, Send to outgoing separator.
+ *
+ *    We have now a fully instantiated clique. This routine Iterates
+ *    through the values that are above beam in the clique table, and
+ *    instantiates the outgoing separator with those values. If a separator
+ *    value has multiple clique values, then values are accumulated into
+ *    the separator (in a Veterbi approach, we would take the max, see
+ *    veterbi code). 
+ *
+ *    This code also combine clique pruning right here, rather than needing
+ *    to do a separate pruning stage by calling ceCliquePrune(). It also
+ * 
+ *
+ * Preconditions:
+ *
+ *   The clique table must be fully instantiated, and contain entries
+ *   for this clique.  The outgoing separator must have been created,
+ *   setup, and ready to accept a message (projection down) from a
+ *   clique
+ *
+ * Postconditions:
+ *    The outgoing separator has been instantiated.
+ *
+ * Side Effects:
+ *    Changes 
+ *      1) the clique table, since with pruning, it will potentially shrink the clique table
+ *      2) the outgoing separator table, since it is being created.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 InferenceMaxClique::
 ceSendToOutgoingSeparator(JT_InferencePartition& part)
@@ -1768,20 +1967,38 @@ InferenceMaxClique::
 ceSendToOutgoingSeparator(JT_InferencePartition& part,
 		     InferenceSeparatorClique& sep)
 {
-  
-  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {{
-    // TODO: beam pruning
-    //if (cliqueValues[cvn].p < beamThreshold) {
-    //     continue; swap with last entry, and decrease numCliqueValuesUsed by one.
-    //}
+
+  // create an ininitialized variable using dummy argument
+  logpr beamThreshold((void*)0);
+
+  if (origin.cliqueBeam != (-LZERO)) {
+    // then we do clique table pruning right here.
+    // break into the logp to avoid unnecessary zero checking.
+    beamThreshold.valref() = maxCEValue.valref() - origin.cliqueBeam;
+  } else {
+    // set beam threshold to a value that will never cause pruning.
+    beamThreshold.set_to_zero();
+  }
+
+  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;  
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {{
+
+    if (cliqueValues.ptr[cvn].p < beamThreshold) {
+      // swap with last entry, and decrease numCliqueValuesUsed by
+      // one.
+      swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
+      numCliqueValuesUsed--;
+      // continue on to next iteration without incrementing cvn
+      continue;
+    }
 
     // TODO: optimize away this conditional check. (and/or use const
     // local variable to indicate it wont change)
     if (origin.packer.packedLen() <= IMC_NWWOH) {
-      origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val[0]),
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
 			   (unsigned**)discreteValuePtrs.ptr);
     } else {
-      origin.packer.unpack((unsigned*)cliqueValues[cvn].ptr,
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
     }
 
@@ -1815,7 +2032,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	  for (unsigned i=0;i<sep.iAccHashMap.tableSize();i++) {
 	    if (!sep.iAccHashMap.tableEmpty(i)) {
 	      sep.iAccHashMap.tableKey(i)
-		= &(sep.separatorValues[sep.iAccHashMap.tableItem(i)].val[0]);
+		= &(sep.separatorValues.ptr[sep.iAccHashMap.tableItem(i)].val[0]);
 	    }
 	  }
 	}
@@ -1823,10 +2040,10 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	if (sep.remDiscreteValuePtrs.size() > 0) {
 	  for (unsigned i=old_size;i<new_size;i++) {
 	    // re-construct hash tables only for new entries.
-	    new (&sep.separatorValues[i].iRemHashMap)
+	    new (&sep.separatorValues.ptr[i].iRemHashMap)
 	      VHashMapUnsignedUnsignedKeyUpdatable
 	      (sep.origin.remPacker.packedLen(),2);
-	    // TODO: potentially preallocate default size of  separatorValues[i].remValues.resize(default);
+	    // TODO: potentially preallocate default size of  separatorValues.ptr[i].remValues.resize(default);
 	  }
 	}
       }
@@ -1834,7 +2051,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
       unsigned *accKey;
       // TODO: optimize this check out of loop.
       if (sep.origin.accPacker.packedLen() <= ISC_NWWOH_AI) {
-	accKey = &(sep.separatorValues[sep.numSeparatorValuesUsed].val[0]);
+	accKey = &(sep.separatorValues.ptr[sep.numSeparatorValuesUsed].val[0]);
 	sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
 				  accKey);
       } else {
@@ -1850,7 +2067,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	  sep.origin.accValueHolder.allocateCurCliqueValue();
 	}
 	// store the pointer in case we use it.
-	sep.separatorValues[sep.numSeparatorValuesUsed].ptr = accKey;
+	sep.separatorValues.ptr[sep.numSeparatorValuesUsed].ptr = accKey;
       }
       
       bool foundp;
@@ -1875,7 +2092,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
 	// handy reference for readability.
 	InferenceSeparatorClique::AISeparatorValue& sv
-	  = sep.separatorValues[accIndex];
+	  = sep.separatorValues.ptr[accIndex];
 
 	// Accumulate the clique's
 	// probability into this separator's probability.
@@ -1886,11 +2103,11 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	  sv.remValues.resize(1);
 	  sv.numRemValuesUsed = 1;	  
 	  // initialize and assign.
-	  sv.remValues[0].p = cliqueValues[cvn].p;
+	  sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
 	} else {
 	  // already there so must have hit before.
 	  // we thus accumulate.
-	  sv.remValues[0].p += cliqueValues[cvn].p;
+	  sv.remValues.ptr[0].p += cliqueValues.ptr[cvn].p;
 	}
 
 	goto next_iteration;
@@ -1915,7 +2132,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
     // keep handy reference for readability.
     InferenceSeparatorClique::AISeparatorValue& sv
-      = sep.separatorValues[accIndex];
+      = sep.separatorValues.ptr[accIndex];
     
     // make sure there is at least one available entry
     assert (sv.numRemValuesUsed <= sv.remValues.size());
@@ -1931,7 +2148,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	for (unsigned i=0;i<sv.iRemHashMap.tableSize();i++) {
 	  if (!sv.iRemHashMap.tableEmpty(i)) {
 	    sv.iRemHashMap.tableKey(i)
-	      = &(sv.remValues[sv.iRemHashMap.tableItem(i)].val[0]);
+	      = &(sv.remValues.ptr[sv.iRemHashMap.tableItem(i)].val[0]);
 	  }
 	}
       }
@@ -1942,7 +2159,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // TODO: optimize away this check.
     if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
       // grab pointer to next location to be used in this case.
-      remKey = &(sv.remValues[sv.numRemValuesUsed].val[0]);
+      remKey = &(sv.remValues.ptr[sv.numRemValuesUsed].val[0]);
       // pack the remainder pointers
       sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 				remKey);
@@ -1960,7 +2177,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	sep.origin.remValueHolder.allocateCurCliqueValue();
       }
       // store the pointer in case we use it.
-      sv.remValues[sv.numRemValuesUsed].ptr = remKey;
+      sv.remValues.ptr[sv.numRemValuesUsed].ptr = remKey;
     }
 
     bool foundp;
@@ -1975,14 +2192,121 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
     // We've finally got the entry, so accumulate the clique's
     // probability into this separator's probability.
-    sv.remValues[*remIndexp].p += cliqueValues[cvn].p;
+    sv.remValues.ptr[*remIndexp].p += cliqueValues.ptr[cvn].p;
 
   }
   next_iteration:
-  ;
+  cvn++;
   }
 
+  
+  // To reallocate or not to reallocate, that is the question.  here,
+  // we just reallocate for now.
+  // 
+  // TODO: reallocate only if change is > some percentage (say 5%),
+  // and export to command line.
+  // 
+  if (numCliqueValuesUsed < origNumCliqueValuesUsed)
+    cliqueValues.resizeAndCopy(numCliqueValuesUsed);
+
+  // Keep this out of previous check so we can also use large beams to
+  // take a look at what state space size is with large verbosity
+  // value.
+  if (origin.cliqueBeam != (-LZERO)) {
+    infoMsg(IM::Huge,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
+	    maxCEValue.valref(),
+	    beamThreshold.valref(),
+	    origNumCliqueValuesUsed,
+	    numCliqueValuesUsed);
+  }
+
+
+  /////////////////////////////////////
+  // And prune the separator as well.
+  sep.ceSeparatorPrune();
+
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceCliquePrune()
+ *
+ *    Collect Evidence, Clique Prune: This routine will prune away
+ *    part of a previously instantiated clique based on the current
+ *    clique beam width.
+ *    
+ *    Note that InferenceMaxClique::ceSendToOutgoingSeparator() does
+ *    its own pruning, so when using ceSendToOutgoingSeparator(), this
+ *    pruning routine does not need to be called (at least with the
+ *    same beam width).
+ *
+ * Preconditions:
+ *   1) the value of the max clique 'maxCEValue' must have been
+ *      computed already.
+ *
+ *   2) clique table must be created, meaning that either:
+ *
+ *        InferenceMaxClique::ceIterateAssignedNodes()
+ *   or
+ *        InferenceMaxClique::ceIterateAssignedNodesCliqueDriven
+ *   must have just been called.
+ *
+ * Postconditions:
+ *    Clique table has been pruned, and memory for it has been re-allocated to
+ *    fit the smaller size.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void 
+InferenceMaxClique::ceCliquePrune()
+{
+  // return immediately if beam pruning is turned off.
+  if (origin.cliqueBeam == (-LZERO))
+    return;
+  
+  // create an ininitialized variable
+  logpr beamThreshold((void*)0);
+  // break into the logp to avoid unnecessary zero checking.
+  beamThreshold.valref() = maxCEValue.valref() - origin.cliqueBeam;
+
+  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
+    if (cliqueValues.ptr[cvn].p < beamThreshold) {
+      // swap with last entry, and decrease numCliqueValuesUsed by one.
+      swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
+      numCliqueValuesUsed--;
+    } else {
+      cvn++;
+    }
+  }
+
+  infoMsg(IM::Huge,"Clique beam pruning: Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
+	  maxCEValue.valref(),
+	  beamThreshold.valref(),
+	  origNumCliqueValuesUsed,
+	  numCliqueValuesUsed);
+  
+  // To reallocate or not to reallocate, that is the question.  here,
+  // we just reallocate for now.
+  // 
+  // TODO: reallocate only if change is > some percentage (say 5%),
+  // and export to command line.
+  // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
+  // 
+  if (numCliqueValuesUsed < origNumCliqueValuesUsed)
+    cliqueValues.resizeAndCopy(numCliqueValuesUsed);
+
+}
+
+
 
 //////////////
 // Clique driven version of gather from incomming separators
@@ -2062,10 +2386,10 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
 	  // handy reference for readability.
 	  InferenceSeparatorClique::AISeparatorValue& sv
-	    = sep.separatorValues[accIndex];
+	    = sep.separatorValues.ptr[accIndex];
 
 	  // Multiply in the separator values probability into the clique value's current entry.
-	  p *= sv.remValues[0].p;
+	  p *= sv.remValues.ptr[0].p;
 	  // done, move on to next separator.
 	  continue; 
 	}
@@ -2090,7 +2414,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
       // keep handy reference for readability.
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues[accIndex];
+	= sep.separatorValues.ptr[accIndex];
 
       sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 				&packedVal[0]);
@@ -2106,7 +2430,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
       // We've finally got the sep entry.  Multiply in the separator
       // values probability into the clique value's current entry.
-      p *= sv.remValues[*remIndexp].p;
+      p *= sv.remValues.ptr[*remIndexp].p;
     }
 
 
@@ -2128,7 +2452,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
       // pack the clique values directly into place
       origin.packer.pack(
 			 (unsigned**)discreteValuePtrs.ptr,
-			 (unsigned*)&(cliqueValues[numCliqueValuesUsed].val[0]));
+			 (unsigned*)&(cliqueValues.ptr[numCliqueValuesUsed].val[0]));
     } else {
       // Deal with the hash table to re-use clique values.
       // First, grab pointer to storge where next clique value would
@@ -2146,10 +2470,10 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 	origin.valueHolder.allocateCurCliqueValue();
       }
       // Save the pointer to whatever the hash table decided to use.
-      cliqueValues[numCliqueValuesUsed].ptr = key;
+      cliqueValues.ptr[numCliqueValuesUsed].ptr = key;
     }
     // save the probability
-    cliqueValues[numCliqueValuesUsed].p = p;
+    cliqueValues.ptr[numCliqueValuesUsed].p = p;
     numCliqueValuesUsed++;
 
     return;
@@ -2293,7 +2617,7 @@ sumProbabilities()
 {
   logpr p;
   for (unsigned i=0;i<numCliqueValuesUsed;i++) {
-    p += cliqueValues[i].p;
+    p += cliqueValues.ptr[i].p;
   }
   return p;
 }
@@ -2343,7 +2667,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {{
     // TODO: beam pruning
     // Prune away based on forward computed beam
-    //if (cliqueValues[cvn].p < beamThreshold) {
+    //if (cliqueValues.ptr[cvn].p < beamThreshold) {
     //     continue;
     //}
 
@@ -2351,10 +2675,10 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
     // TODO: optimize away this conditional check. (and/or use const
     // local variable to indicate it wont change)
     if (origin.packer.packedLen() <= IMC_NWWOH) {
-      origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val[0]),
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
 			   (unsigned**)discreteValuePtrs.ptr);
     } else {
-      origin.packer.unpack((unsigned*)cliqueValues[cvn].ptr,
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
     }
 
@@ -2394,10 +2718,10 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 
 	// handy reference for readability.
 	InferenceSeparatorClique::AISeparatorValue& sv
-	  = sep.separatorValues[accIndex];
+	  = sep.separatorValues.ptr[accIndex];
 
 	// Multiply in this separator value's probability.
-	cliqueValues[cvn].p *= sv.remValues[0].bp;
+	cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp;
 	// done
 	goto next_iteration;
       }
@@ -2422,7 +2746,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 
     // keep handy reference for readability.
     InferenceSeparatorClique::AISeparatorValue& sv
-      = sep.separatorValues[accIndex];
+      = sep.separatorValues.ptr[accIndex];
 
     sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 			      &packedVal[0]);
@@ -2435,7 +2759,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 
     // We've finally got the sep entry. Multiply it it into the
     // current clique value.
-    cliqueValues[cvn].p *= sv.remValues[*remIndexp].bp;
+    cliqueValues.ptr[cvn].p *= sv.remValues.ptr[*remIndexp].bp;
 
   }
   next_iteration:
@@ -2477,10 +2801,10 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
     // TODO: optimize away this conditional check. (and/or use const
     // local variable to indicate it wont change)
     if (origin.packer.packedLen() <= IMC_NWWOH) {
-      origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val[0]),
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
 			   (unsigned**)discreteValuePtrs.ptr);
     } else {
-      origin.packer.unpack((unsigned*)cliqueValues[cvn].ptr,
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
     }
 
@@ -2529,11 +2853,11 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 
 	  // handy reference for readability.
 	  InferenceSeparatorClique::AISeparatorValue& sv
-	    = sep.separatorValues[accIndex];
+	    = sep.separatorValues.ptr[accIndex];
 
 	  // Add in this clique value's probability.  Note that bp was
 	  // initialized during forward pass.
-	  sv.remValues[0].bp += cliqueValues[cvn].p;
+	  sv.remValues.ptr[0].bp += cliqueValues.ptr[cvn].p;
 	  // done, move on to next separator.
 	  continue; 
 	}
@@ -2558,7 +2882,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 
       // keep handy reference for readability.
       InferenceSeparatorClique::AISeparatorValue& sv
-	= sep.separatorValues[accIndex];
+	= sep.separatorValues.ptr[accIndex];
 
       sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 				&packedVal[0]);
@@ -2572,7 +2896,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
       // We've finally got the sep entry.  Add in this clique value's
       // probability.  Note that bp was initialized during forward
       // pass.
-      sv.remValues[*remIndexp].bp += cliqueValues[cvn].p;
+      sv.remValues.ptr[*remIndexp].bp += cliqueValues.ptr[cvn].p;
     }
   }
 
@@ -2800,6 +3124,9 @@ SeparatorClique::prepareForUnrolling()
 
 
 
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * SeparatorClique::printAllJTInfo()
@@ -3001,7 +3328,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     separatorValues.resize(1);
     // there will always be one used value here.
     numSeparatorValuesUsed = 1;
-    new (&separatorValues[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
+    new (&separatorValues.ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
       (origin.remPacker.packedLen(),2);
   } else {
     // start with something a bit larger
@@ -3011,12 +3338,12 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     if (origin.hRemainder.size() > 0) {
       for (unsigned i=0;i<starting_size;i++) {
 	// need to re-construct individual hash tables.
-	new (&separatorValues[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
+	new (&separatorValues.ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
 	  (origin.remPacker.packedLen(),2);
-	// TODO: potentially preallocate default size of  separatorValues[i].remValues.resize(default);
+	// TODO: potentially preallocate default size of  separatorValues.ptr[i].remValues.resize(default);
       }
     } else {
-      // things such as array separatorValues[i].remValues will be sized as needed later.
+      // things such as array separatorValues.ptr[i].remValues will be sized as needed later.
       // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for where it is allocated.
     }
     // need to re-construct the hash table.
@@ -3028,15 +3355,27 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 }
 
 
+
 /*-
  *-----------------------------------------------------------------------
- * MaxClique::CollectEvidenceToSeparator()
+ * InferenceSeparatorClique::ceSeparatorPrune()
+ *
+ *    Collect Evidence, Separator Prune: This routine will prune away
+ *    part of a previously instantiated separator based on the current
+ *    separator beam width.
  *
  * Preconditions:
+ *   1) separator table must be created, meaning that either:
+ *
+ *        InferenceMaxClique::ceSendToOutgoingSeparator()
+ *      must have been called sending a message (projection downto) this separator.
  *
  * Postconditions:
+ *    Separator table has been pruned, and memory for it has been re-allocated to
+ *    fit the smaller size. All hash tables adjusted.
  *
  * Side Effects:
+ *    potential memory allocations and hash table adjustments.
  *
  * Results:
  *     nothing
@@ -3044,38 +3383,119 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
  *-----------------------------------------------------------------------
  */
 
-
-
-/*-
- *-----------------------------------------------------------------------
- * MaxClique::computeUnassignedCliqueNodes()
- *   Compute the unassignedNodes variable
- *
- * Preconditions:
- *   Nodes and assignedNodes must be filled in.
- *   Note that this routine is a nop if we're doing separator driven inference.
- *
- * Postconditions:
- *   Unassigned nodes udpated.
- *
- * Side Effects:
- *   changes member variable unasssignedNodes
- *
- * Results:
- *     nothing
- *
- *-----------------------------------------------------------------------
- */
 void 
-MaxClique::computeUnassignedCliqueNodes()
+InferenceSeparatorClique::ceSeparatorPrune()
 {
-  if (ceSeparatorDrivenInference)
-    return; // don't compute if we're doing separator driven.
-  unassignedNodes.clear();
-  set_difference(nodes.begin(),nodes.end(),
-		 assignedNodes.begin(),assignedNodes.end(),
-		 inserter(unassignedNodes,unassignedNodes.end()));
+  // return immediately if separator beam pruning is turned off.
+  if (origin.separatorBeam == (-LZERO))
+    return;
+
+  // compute max
+  logpr maxCEsepValue;
+  unsigned originalTotalStateSpace = 0;
+  for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
+    originalTotalStateSpace += separatorValues.ptr[asv].numRemValuesUsed;
+    for (unsigned rsv=0;rsv<separatorValues.ptr[asv].numRemValuesUsed;rsv++) {
+      if (separatorValues.ptr[asv].remValues.ptr[rsv].p > maxCEsepValue)
+	maxCEsepValue = separatorValues.ptr[asv].remValues.ptr[rsv].p;
+    }
+  }
+
+  // create an ininitialized variable
+  logpr beamThreshold((void*)0);
+  // break into the logp to avoid unnecessary zero checking.
+  beamThreshold.valref() = maxCEsepValue.valref() - origin.separatorBeam;
+
+  // go through and shrink guys less than maximum.
+  unsigned newTotalStateSpace = 0;  
+  for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
+    const unsigned origNumRemValuesUsed = separatorValues.ptr[asv].numRemValuesUsed;
+    for (unsigned rsv=0;rsv<separatorValues.ptr[asv].numRemValuesUsed;) {
+      if (separatorValues.ptr[asv].remValues.ptr[rsv].p < beamThreshold) {
+
+	// We prune away entry for rsv, by swapping it in last
+	// position. Here, however, it is not as easy as with a clique
+	// separator as we have also to deal with the hash
+	// table. Specifically, we need to swap index entries in hash
+	// table as well. Note that we can not remove the hash table
+	// entry for the one that got pruned away without re-hashing
+	// the entire hash table. The reason is that if the entry that
+	// got removed was a collision for another entry that is in
+	// the table, then removing the collision will make the other
+	// entry inaccessible.
+	// TODO: test if it is better to just prune here and just
+	// rehash everything.
+
+	// the index of the entry being swapped with the
+	// one that is being pruned.
+	const unsigned swap_index = separatorValues.ptr[asv].numRemValuesUsed-1;
+
+	// First, get pointers to hash table index values for the two
+	// entries corresponding to the one we are prunning
+	// and the one ware swapping it with.
+	unsigned* prune_index_p;
+	unsigned* swap_index_p;
+
+	// the keys for the two entries.
+	unsigned* prune_key_p;
+	unsigned* swap_key_p;
+
+	// pointers to the ht keys for the two entries.
+	unsigned** ht_prune_key_p;
+	unsigned** ht_swap_key_p;
+
+	if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
+	  prune_key_p = &(separatorValues.ptr[asv].remValues.ptr[rsv].val[0]);
+	  swap_key_p = &(separatorValues.ptr[asv].remValues.ptr[swap_index].val[0]);
+	} else {
+	  prune_key_p = separatorValues.ptr[asv].remValues.ptr[rsv].ptr;
+	  swap_key_p = separatorValues.ptr[asv].remValues.ptr[swap_index].ptr;
+	}
+	
+	prune_index_p =  separatorValues.ptr[asv].iRemHashMap.find(prune_key_p,ht_prune_key_p);
+	// it must exist
+	assert ( prune_index_p != NULL );
+	swap_index_p =  separatorValues.ptr[asv].iRemHashMap.find(swap_key_p,ht_swap_key_p);
+	// it must exist
+	assert ( swap_index_p != NULL );
+
+	// swap the entries
+	swap(separatorValues.ptr[asv].remValues.ptr[rsv],
+	     separatorValues.ptr[asv].remValues.ptr[swap_index]);
+	// and swap the hash table pointers
+	swap((*prune_index_p),(*swap_index_p));
+	// and swap the hash table keys if they are pointers to the arrays which
+	// just got swapped.
+	if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
+	  // printf("foobarbaz");
+	  swap((*ht_prune_key_p),(*ht_swap_key_p));
+	}
+
+	// decrease values
+	separatorValues.ptr[asv].numRemValuesUsed--;
+
+      } else {
+	rsv++;
+      }
+    }
+    newTotalStateSpace += separatorValues.ptr[asv].numRemValuesUsed;
+    if (separatorValues.ptr[asv].numRemValuesUsed < origNumRemValuesUsed) {
+      if (separatorValues.ptr[asv].numRemValuesUsed == 0 ) {
+	// should/could remove accumulator entry here as well. 
+      }
+      // - re-allocate memory & adjust hash table.
+      // - separatorValues.ptr[asv].remValues
+      // - possibly re-hash hash tables if necessary.
+    }
+  }
+
+  infoMsg(IM::Huge,"Separator beam pruning, Max cv = %f, thres = %f. Original sep state space = %d, new sep state space = %d\n",
+	  maxCEsepValue.valref(),
+	  beamThreshold.valref(),
+	  originalTotalStateSpace,newTotalStateSpace);
+
 }
+
 
 
 ////////////////////////////////////////////////////////////////////

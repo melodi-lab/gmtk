@@ -1196,7 +1196,56 @@ GMParms::loadGlobal()
   mdCpts.push_back(uscpt);
   mdCptsMap[uscpt->name()] = mdCpts.size()-1;
 
-				  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMParms::finalizeParameters()
+ *   Some additional cleanup & setting of global parameters needs
+ *   to be done *after* all other parameters are loaded in, and
+ *   assigned to random variables, but before the parameters are used.
+ *   This routine does this.
+ *
+ * Preconditions:
+ *
+ *      Should be called after all internal objects have been read in
+ *      and assigned to RVs. This routine should not be called before
+ *      other GMTK objects have been loaded.
+ *
+ * Postconditions:
+ *      New globals are set up and ready to use. 
+ *
+ * Side Effects:
+ *      changes internal GMTK object arrays. Note that this routine
+ *      will add to the internal GMKT object arrays.  This routine
+ *      should be called last, after all other objects have been
+ *      allocated.
+ *      
+ *      
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::finalizeParameters()
+{
+
+  // reset the global named collection to point to all
+  // existing parameters, so that it can be used properly.
+
+  assert ( nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) != nclsMap.end() );
+  NameCollection* gnc = ncls[nclsMap[string(NAMED_COLLECTION_GLOBAL_NAME)]];
+  // TODO: figure out a better way than copying the entire collection
+  // to global. Perhaps, however, STL does the right thing and will
+  // share the internal array, but check this.
+  gnc->mxTable = mixtures;
+  gnc->spmfTable = sPmfs;
+
+}
+
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////

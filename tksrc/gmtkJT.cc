@@ -94,8 +94,8 @@ static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
 
 /////////////////////////////////////////////////////////////
 // Beam Options
-static double cliqueBeam=-LZERO;
-static double separatorBeam=-LZERO;
+// static double cliqueBeam=-LZERO;
+// static double separatorBeam=-LZERO;
 
 /////////////////////////////////////////////////////////////
 // File Range Options
@@ -168,8 +168,8 @@ Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // Beam Options
-  Arg("cbeam",Arg::Opt,cliqueBeam,"Clique Beam"),
-  Arg("sbeam",Arg::Opt,separatorBeam,"Separator Beam"),
+  Arg("cbeam",Arg::Opt,MaxClique::cliqueBeam,"Clique Beam"),
+  Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator Beam"),
 
   /////////////////////////////////////////////////////////////
   // File Range Options
@@ -268,9 +268,9 @@ main(int argc,char*argv[])
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
-  if (cliqueBeam < 0.0)
-    error("cliqueBeam must be >= 0");
-  if (separatorBeam < 0.0)
+  if (MaxClique::cliqueBeam < 0.0)
+    error("cliqueBeam argument must be >= 0");
+  if (SeparatorClique::separatorBeam < 0.0)
     error("separatorBeam must be >= 0");
   if (startSkip < 0 || endSkip < 0)
     error("startSkip/endSkip must be >= 0");
@@ -324,6 +324,8 @@ main(int argc,char*argv[])
     else
       error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   }
+  GM_Parms.finalizeParameters();
+
 
   // make sure that all observation variables work
   // with the global observation stream.

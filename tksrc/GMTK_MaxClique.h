@@ -155,6 +155,16 @@ public:
 				       unsigned approximateStartingSize = 
 				       HashTableDefaultApproxStartingSize);
 
+  //
+  // Direct access to tables and keys (made available for speed).  Use
+  // sparingly, and only if you know what you are doing about the
+  // internals of a hash table. Note also that this breaks
+  // encapsulation, meaning that if the implementation of the
+  // internals of the parent hash table change, this code might break.
+  unsigned*& tableKey(const unsigned i) { return table[i].key; }
+  unsigned& tableItem(const unsigned i) { return table[i].item; }
+  bool tableEmpty(const unsigned i) { return empty(table[i]); }
+  unsigned tableSize() { return table.size(); }
 
 
 };
@@ -209,6 +219,9 @@ public:
   // pruning is turned on. Clique driven is good when you want
   // inference cost to directly correspond to normal weight.
   static bool ceSeparatorDrivenInference;
+
+  // beam width for clique-based beam pruning.
+  static double cliqueBeam;
 
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
@@ -799,6 +812,7 @@ public:
   void ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			    InferenceSeparatorClique& sep); 
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
+  void ceCliquePrune();
 
   // support for collect evidence clique driven operations.
   void ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePartition& part);
@@ -826,7 +840,6 @@ public:
 
 
 
-
 class SeparatorClique : public IM
 {
   friend class FileParser;
@@ -834,6 +847,9 @@ class SeparatorClique : public IM
   friend class GMTemplate;
 
 public:
+
+  // beam width for separator-based beam pruning.
+  static double separatorBeam;
 
   // the set of nodes which forms the separator
   set<RandomVariable*> nodes;
@@ -1054,6 +1070,8 @@ public:
   // destructor
   ~InferenceSeparatorClique() {}
 
+  // separator based pruning
+  void ceSeparatorPrune();
 
 };
 

@@ -112,6 +112,37 @@ bool JunctionTree::jtWeightUpperBound = false;
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JT_Partition constructor.
+ *
+ *   This one creates a JT_Parititon from a partition and is used as
+ *   part of the JT unroll function. It creates a set of cliques
+ *   isomorphic to the Parititon, but all RVs in the new cliques have
+ *   had their frame number adjusted by a frame delta. The constructor
+ *   also includes arguments for the left interface variables (liVars)
+ *   and right interface variables (riVars) and appropriate frame
+ *   deltas for those. The reason for having two frame deltas is that
+ *   the from interfaces might actually be the same, the only
+ *   difference in this partition is if it is on the left or right of
+ *   the new partition, something determined only by the frame delta.
+ *
+ *
+ * Preconditions:
+ *   None.
+ *
+ * Postconditions:
+ *   JT_Partition is created and set up.
+ *
+ * Side Effects:
+ *   Adjusts member variables.
+ *
+ * Results:
+ *   none.
+ *
+ *-----------------------------------------------------------------------
+ */
 JT_Partition::JT_Partition(
 		       Partition& from_part,
 		       const unsigned int frameDelta,
@@ -206,8 +237,33 @@ JT_Partition::JT_Partition(
 }
 
 
-// bear-bones constructor to quickly compute
-// JT weight.
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JT_Partition constructor.
+ *
+ *   A bear-bones constructor that does no frame adjustment and is
+ *   here for the sake of quickly being able to compute JT weight from
+ *   within a triangulation routine (before we really have the full JT
+ *   set up). This routine should only be called from
+ *   junctionTreeWeight().
+ *
+ *
+ * Preconditions:
+ *   None.
+ *
+ * Postconditions:
+ *   JT_Partition is created and set up, but for a specific purpose (see above comment).
+ *
+ * Side Effects:
+ *   Adjusts member variables.
+ *
+ * Results:
+ *   none.
+ *
+ *-----------------------------------------------------------------------
+ */
 JT_Partition::JT_Partition(
  Partition& from_part,
  // Left interface:
@@ -225,6 +281,35 @@ JT_Partition::JT_Partition(
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * JT_Partition::findInterfaceCliques()
+ *
+ *   This routine looks in the current JT_Partition and finds a clique
+ *   that overlaps the iNodes. It is assumed, for example, that iNodes
+ *   are the partition interface nodes (either left or right) and the goal
+ *   is to find a clique in the current partition that could serve as an
+ *   interface clique. If there are more than one candiate interface clique
+ *   available, then the one with the smallest normal weight is chosen.
+ *
+ *
+ * Preconditions:
+ *   JT_partition tree must have been created and all set up.
+ *
+ * Postconditions:
+ *   none.
+ *
+ *
+ * Side Effects:
+ *   None
+ *
+ * Results:
+ *   - candiate interface clique number in this JT_Partition via iCliques.
+ *   - if the clique returned is the exact same set of nodes as the interface
+ *     nodes, then iCliqueSameAsInterface is set to true on return.
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
 				   unsigned& iClique,
@@ -278,19 +363,64 @@ JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JT_Partition::find{L,R}InterfaceCliques()
+ *
+ *   Two quick routiens to find left/right interface cliques. See
+ *   the called routine for documentation.
+ *
+ * Preconditions:
+ *   JT_partition tree must have been created and all set up.
+ *
+ * Postconditions:
+ *   none.
+ *
+ *
+ * Side Effects:
+ *   None
+ *
+ * Results:
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 JT_Partition::findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface)
 {
   findInterfaceCliques(liNodes,liClique,liCliqueSameAsInterface);
 }
-
-
 void
 JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface)
 {
   findInterfaceCliques(riNodes,riClique,riCliqueSameAsInterface);
 }
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JT_Partition::cliqueWith{Max,Min}Weight()
+ *
+ *   Return the clique in the current junction tree with maximum {minimum} 
+ *   normal weight. 
+ *
+ * Preconditions:
+ *   JT_partition tree must have been created and all set up.
+ *
+ * Postconditions:
+ *   none.
+ *
+ * Side Effects:
+ *   None
+ *
+ * Results:
+ *   returns the index of the max/min weight clique in this JT Part.
+ *
+ *-----------------------------------------------------------------------
+ */
 unsigned
 JT_Partition::cliqueWithMaxWeight()
 {
@@ -304,8 +434,6 @@ JT_Partition::cliqueWithMaxWeight()
   }
   return res;
 }
-
-
 unsigned
 JT_Partition::cliqueWithMinWeight()
 {
@@ -321,11 +449,14 @@ JT_Partition::cliqueWithMinWeight()
 }
 
 
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        JT Inference Partition support
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
+
+
 
 JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
 					     vector <RandomVariable*>& newRvs,
@@ -1629,10 +1760,11 @@ JunctionTree::setUpMessagePassingOrder(JT_Partition& part,
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::setUpMessagePassingOrderRecurse()
+ *
  *   Recursive support routine for setUpMessagePassingOrder() and
  *   should only be called from there. See that
  *   routine for documentation.
-d * 
+ * 
  *-----------------------------------------------------------------------
  */					
 void
@@ -2439,6 +2571,30 @@ JunctionTree::printAllJTInfo(char *fileName)
   fclose(f);
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::printAllJTInfo()
+ *
+ *   Prints all information to a file that has been computed
+ *   for this junction tree for a particular given partition and given root clique.
+ *
+ * Preconditions:
+ *   All JT creation functions, ending in
+ *   computeSeparatorIterationOrders() must have been
+ *   called. If not, this function will print garbage (or will crash).
+ *
+ * Postconditions:
+ *   All stuff printed to given file.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 JunctionTree::printAllJTInfo(FILE* f,
 			     JT_Partition& part,
@@ -2459,6 +2615,31 @@ JunctionTree::printAllJTInfo(FILE* f,
 
 }
 
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::printAllJTInfo()
+ *
+ *   Recursive version that prints all junction tree information to a
+ *   file that has been computed for this junction tree for a
+ *   particular given partition and given root clique. It is recursive
+ *   so that it can print the JT info to a file in tree-traversal order.
+ *
+ * Preconditions:
+ *   All JT creation functions, ending in
+ *   computeSeparatorIterationOrders() must have been
+ *   called. If not, this function will print garbage (or will crash).
+ *
+ * Postconditions:
+ *   All stuff printed to given file.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 JunctionTree::printAllJTInfoCliques(FILE* f,
 				    JT_Partition& part,
@@ -2476,6 +2657,30 @@ JunctionTree::printAllJTInfoCliques(FILE* f,
   }
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::printAllJTInfo()
+ *
+ *   Print the given message_order to the given file.
+ *
+ * Preconditions:
+ *   All JT creation functions, ending in
+ *   computeSeparatorIterationOrders() must have been
+ *   called. If not, this function will print garbage (or will crash).
+ *
+ * Postconditions:
+ *   All stuff printed to given file.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 JunctionTree::printMessageOrder(FILE *f,
 				vector< pair<unsigned,unsigned> >& message_order)
@@ -2629,11 +2834,51 @@ JunctionTree::unroll(const unsigned int numFrames)
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::ceGatherIntoRoot
+ *   
+ *   Collect Evidence Gather Into Root: This routine does a collect
+ *   evidence pass for this partition, and gathers all messages into
+ *   the root within the current partition. It does so using the
+ *   message order given in the argument 'message_order', and gathers
+ *   into the provided root clique.  
+ *
+ * See Also:
+ *   Dual routine: JunctionTree::deScatterOutofRoot()
+ *
+ *
+ * Preconditions:
+ *   It is assumed that either:
+ *     1) this is the left-most partition
+ *  or 2) that the left interface clique within this partition has had a message
+ *        sent to it from the left neighbor partition.
+ *
+ * Postconditions:
+ *     All cliques in the partition have all messages but one sent to it.
+ *
+ * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
-JunctionTree::ceGatherIntoRoot(JT_InferencePartition& part,
+JunctionTree::ceGatherIntoRoot(// partition
+			       JT_InferencePartition& part,
+			       // index of root clique in the partition
 			       const unsigned root,
+			       // message order of the JT in this partition
 			       vector< pair<unsigned,unsigned> >& message_order,
+			       // the name of the partition (for debugging/status msgs)
 			       const char*const part_type_name,
+			       // number of the partition in unrolled graph 
+			       // (for debugging/status msgs)
 			       const unsigned part_num)
 {
   // do partition messages
@@ -2653,14 +2898,58 @@ JunctionTree::ceGatherIntoRoot(JT_InferencePartition& part,
     ceGatherFromIncommingSeparators(part);
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::ceSendToNextPartition
+ *   
+ *   Collect Evidence Send To Next Partition: This routine sends a
+ *   message from the right interface clique of a left (or previous)
+ *   partition to the left interface clique of a right (or next)
+ *   partition in the partition series. It is assumed that the right
+ *   interface clique has had all its incomming messages sent to it.
+ *
+ * See Also:
+ *   Dual routine: JunctionTree::deReceiveToPreviousPartition()
+ *
+ *
+ * Preconditions:
+ *   It is assumed that:
+ *     1) the right interface of the previous partition must have had
+ *        all messages sent to it.
+ * 
+ * Postconditions:
+ *     the left interface of the next partition is now set up.
+ *
+ * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
-JunctionTree::ceSendToNextPartition(JT_InferencePartition& previous_part,
+JunctionTree::ceSendToNextPartition(// previous partition
+				    JT_InferencePartition& previous_part,
+				    // root clique of the previous partition (i.e., the
+				    // right interface clique) 
 				    const unsigned previous_part_root,
+				    // name of previous partition (for debugging/status msgs)
 				    const char*const previous_part_type_name,
+				    // sequence number (in unrolling) of previous partition
+				    // (for debugging/status msgs)
 				    const unsigned previous_part_num,
+				    // next partition
 				    JT_InferencePartition& next_part,
+				    // leaf clique of next partition (i.e., index number
+				    // of the left interface clique of next partition)
 				    const unsigned next_part_leaf,
+				    // name (debugging/status msgs)
 				    const char*const next_part_type_name,
+				    // partitiiton number (debugging/status msgs)
 				    const unsigned next_part_num)
 {
   infoMsg(IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
@@ -2677,28 +2966,58 @@ JunctionTree::ceSendToNextPartition(JT_InferencePartition& previous_part,
 }
 
 
+
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::collectEvidence()
+ *   
+ *   Collect Evidence: This routine performes a complete collect
+ *   evidence pass for this series of partitions that have been
+ *   unrolled a certain amount, given by the jtIPartitions array. It
+ *   sets the appropriate names, etc. of the partitions depending on
+ *   if this is a left-interface or right-interface form of inference.
+ *   the root within the current partition. 
+ *  
+ *   This routine demonstrates a simple version of linear space
+ *   collect evidence inference. It keeps everything in memory at the
+ *   same time when doing going forward, so it is suitable for use in
+ *   a collect evidence/distribute evidence (forward/backward)
+ *   framework.  A companion routine (aptly named
+ *   'distributeEvidence') will, assuming collect evidence has been
+ *   called, do the distribute evidence stage, thereby leaving all
+ *   cliques in all partitions locally and therefore globally
+ *   consistent, ready to be used say in EM training.
+ *
+ * See Also:
+ *    1) contant memory (not dept. on time T) version of collect evidence
+ *       JunctionTree::probEvidence()
+ *    2) log space version of collect/distribute evidence  
+ *       JunctionTree::collectDistributeIsland()
  *
  * Preconditions:
+ *   The parititons must have been created and placed in the array jtIPartitions.
  *
  * Postconditions:
+ *     All cliques in the partition have all messages but one sent to it.
  *
  * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
  *
  * Results:
+ *   none
  *
  *-----------------------------------------------------------------------
  */
 void
 JunctionTree::collectEvidence()
 {
-
-  // this routine handles all of:
-  // unrolled 0 times: (so there is a single P1,Cu0, and E1)  
-  // unrolled 1 time: so there is a P1, C1, C3, E1
-  // unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
+  // This routine handles all of:
+  // 
+  //    unrolled 0 times: (so there is a single P1,Cu0, and E1)  
+  //    unrolled 1 time: so there is a P1, C1, C3, E1
+  //    unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
+  //    etc.
 
   const unsigned numCoPartitions = jtIPartitions.size()-3;
   unsigned partNo = 0;
@@ -2758,12 +3077,51 @@ JunctionTree::collectEvidence()
 
 
 
-
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::deScatterOutofRoot
+ *   
+ *   Distribute Evidence Scatter Outof Root: This routine does a
+ *   distribute evidence pass for this partition, and scatters all
+ *   messages outof the root within the current partition. It does so
+ *   using the message order given in the argument 'message_order',
+ *   and scatters out of the provided root clique (which is the right
+ *   interface clique of this partition). By "Scatter", I mean it
+ *   sends messages from the root clique distributing everything
+ *   ultimately to all leaf cliques in this partition.
+ *
+ * See Also:
+ *   Dual routine: JunctionTree::ceGatherIntoRoot()
+ *
+ *
+ * Preconditions:
+ *   It is assumed that either:
+ *     1) this is the ritht-most partition
+ *  or 2) that the right interface clique within this partition has had a message
+ *        sent to it from the right neighbor partition.
+ *
+ * Postconditions:
+ *     All cliques in the partition have all messages but one sent to it.
+ *
+ * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
-JunctionTree::deScatterOutofRoot(JT_InferencePartition& part,
+JunctionTree::deScatterOutofRoot(// the partition
+				 JT_InferencePartition& part,
+				 // root (right interface clique) of this partition
 				 const unsigned root,
+				 // message order
 				 vector< pair<unsigned,unsigned> >& message_order,
+				 // name (debugging/status msgs)
 				 const char*const part_type_name,
+				 // partition number (debugging/status msgs)
 				 const unsigned part_num)
 {
   const unsigned stopVal = (unsigned)(-1);
@@ -2782,14 +3140,54 @@ JunctionTree::deScatterOutofRoot(JT_InferencePartition& part,
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::deReceiveToPreviousPartition()
+ *   
+ *   Distribute Evidence Receive To Previous Partition: This routine
+ *   sends a message from the left interface clique of a right (or
+ *   next) partition to the right interface clique of a left (or
+ *   previous) partition in the partition series. It is assumed that
+ *   the left interface clique has had all its messages sent to it.
+ *
+ * See Also:
+ *   Dual routine: JunctionTree::ceSendToNextPartition()
+ *
+ * Preconditions:
+ *   It is assumed that:
+ *     1) the left interface of the next partition must have had
+ *        all messages sent to it.
+ * 
+ * Postconditions:
+ *     the right interface of the previous partition is now set up.
+ *
+ * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
-JunctionTree::deReceiveToPreviousPartition(JT_InferencePartition& next_part,
+JunctionTree::deReceiveToPreviousPartition(// the next partition
+					   JT_InferencePartition& next_part,
+					   // leaf (left interface cliuqe) of next partition
 					   const unsigned next_part_leaf,
+					   // name of next part (debugging/status msgs)
 					   const char*const next_part_type_name,
+					   // number of next part (debugging/status msgs)
 					   const unsigned next_part_num,
+					   // previous partition
 					   JT_InferencePartition& previous_part,
+					   // root (right interface clique) of previous partition 
 					   const unsigned previous_part_root,
+					   // name of prev part (debugging/status msgs)
 					   const char*const previous_part_type_name,
+					   // number of prev part (debugging/status msgs)
 					   const unsigned previous_part_num)
 {
   infoMsg(IM::Mod,"DE: message %s,part[%d],clique(%d) -> %s,part[%d],clique(%d)\n",
@@ -2803,19 +3201,51 @@ JunctionTree::deReceiveToPreviousPartition(JT_InferencePartition& next_part,
 }
 
 
+
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::distributeEvidence()
+ *   
+ *   Distribute Evidence: This routine performs a complete distribute
+ *   evidence pass for this series of partitions that have been
+ *   unrolled a certain amount, given by the jtIPartitions array. It
+ *   sets the appropriate names, etc. of the partitions depending on
+ *   if this is a left-interface or right-interface form of inference.
+ *   the root within the current partition.
+ *  
+ *   This routine demonstrates a simple version of linear space
+ *   distribute evidence inference. It uses data kept in memory when
+ *   doing going backwards, and it is assumed that it will be used in
+ *   tandem with a previous collect evidence call.  A companion
+ *   routine ('collectEvidence') will, do collect evidence appropriately
+ *   leaving all data structures set up for distributeEvidence() to be called.
+ *
+ *   After distributeEvidence() is called, all cliques in all
+ *   partitions will be locally (& globally if it is a JT) consistant, and so will
+ *   be ready for EM training, etc.
+ *
+ * See Also:
+ *    0) collectEvidence()
+ *    1) contant memory (not dept. on time T) version of collect evidence
+ *       JunctionTree::probEvidence()
+ *    2) log space version of collect/distribute evidence  
+ *       JunctionTree::collectDistributeIsland()
  *
  * Preconditions:
+ *   - collectEvidence() must have been called right before this.
+ *   - The parititons must have been created and placed in the array jtIPartitions.
+ * 
  *
  * Postconditions:
+ *     All cliques are now locally consistant, and will be globally consistant
+ *     if we have a junction tree. 
  *
  * Side Effects:
-
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
  *
  * Results:
-
+ *   none
  *
  *-----------------------------------------------------------------------
  */
@@ -2893,9 +3323,15 @@ JunctionTree::distributeEvidence()
  *-----------------------------------------------------------------------
  * JunctionTree::probEvidence()
  *
- *    A const mem (i.e., indep. of T), combination of unroll and
- *    collect evidence. It returns the prob evidence. It keeps
- *    only two partitions in memory at the same time.
+ *    A constant memory (i.e., indep. of T), combination of unroll and
+ *    collectEvidence() above. It is constnat memory in that
+ *    it keeps no more than two partitions in memory simultaneously.
+ *
+ * See Also:
+ *    0) collectEvidence()
+ *    1) distributeEvidence()
+ *    2) log space version of collect/distribute evidence  
+ *       JunctionTree::collectDistributeIsland()
  *
  * Preconditions:
  *    same as unroll() above.
@@ -2905,7 +3341,9 @@ JunctionTree::distributeEvidence()
  *
  * Side Effects:
  *   This will update the space managers averages and statistics.
- *   TODO: hash table usage, etc.
+ *
+ *   TODO: hash table usage, sharingetc. so that hash tables are not re-used 
+ *         for the entire length.
  *
  * Results:
  *
@@ -3439,6 +3877,11 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
  *  worth it to set these so that it takes any less than main memory,
  *  as that will slow things down further than necessary.
  *
+ * See Also:
+ *    0) collectEvidence()
+ *    1) distributeEvidence()
+ *    2) probEvidence()
+ *
  * Preconditions:
  *   Same as unroll()
  *
@@ -3506,7 +3949,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   // re-allocate.
   partPArray.resize(numPartitions);
   // Redundantly store partition information in an array both for
-  // debug messages and easy access to simplify the island code above.
+  // debug messages and easy access to *significantly* simplify the
+  // island code above.
   partPArray[partNo].JT = &P1;
   partPArray[partNo].offset = 0*gm_template.S;
   partPArray[partNo].p = NULL;
@@ -3566,28 +4010,32 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 }
 
 
-
-
-
-
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::probEvidence()
- *   Sum up the entries in E's root clique and 
- *   return the result. This, if collect evidence has
- *   been called all the way to E's root clique, this function
- *   will return the probabilty of the evidence prob(E).
+ *   
+ *   This version of probEvidence() merely sums up the entries in E's
+ *   root clique and return the result. This, if collect evidence has
+ *   been called all the way to E's root clique, this function will
+ *   return the probabilty of the evidence prob(E).
+ *
+ * See Also:
+ *   probEvidence() above, the other (overloaded) version which is
+ *   a const. mem version of collectEvidence().
  *
  * Preconditions:
- *    The E partition must exist in the jtIPartitions array
- *    and must have been called for this to work right.
- *
+ *   - collectEvidence() (or the other probEvidence()) must have been called
+ *   - The E partition must exist in the jtIPartitions array
+ *     and must have been called for this to work right.
  *
  * Postconditions:
+ *   none
  *
  * Side Effects:
+ *   none 
  *
  * Results:
+ *   The probability of the evidence
  *
  *-----------------------------------------------------------------------
  */
@@ -3599,6 +4047,34 @@ JunctionTree::probEvidence()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::printAllCliquesProbEvidence()
+ *   
+ *   This routine will cycle through all cliques of all partitions and will
+ *   print out the sums of the probs. of each cliuqe. Therefore, if 
+ *   collect/distribute evidence has been called (and it is working)
+ *   this routine should print out exactly the same value for all
+ *   cliques (to within numerical precision and logp.h table error roundoff).
+ *
+ *   This routine really is only used for debugging/status messages.
+ *
+ * Preconditions:
+ *   - collectEvidence() and distributeEvidence() should have been called
+ *     and the jtIPartitions array left set up.
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 JunctionTree::printAllCliquesProbEvidence()
 {
