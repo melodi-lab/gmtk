@@ -99,7 +99,7 @@ private:
 
 public:
 
-  ContinuousRandomVariable(string _label);
+  ContinuousRandomVariable(RVInfo& _rv_info,string _label);
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
@@ -167,7 +167,7 @@ public:
   // reproduction routines.
 
   RandomVariable *create() { 
-    return new ContinuousRandomVariable(label);
+    return new ContinuousRandomVariable(rv_info,label);
   }
   RandomVariable *clone();
   RandomVariable *cloneWithoutParents();
