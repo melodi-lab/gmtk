@@ -151,7 +151,7 @@ public:
   // parents should be active for those switching parent values.
   // This variable is NULL if there are no Switching 
   // parents of this node.
-  RngDecisionTree<int> *dtMapper;
+  RngDecisionTree<unsigned> *dtMapper;
 
   ////////////////////////////////////////////////////////////////////////
   // A method to make it easy to set up the graph topology
