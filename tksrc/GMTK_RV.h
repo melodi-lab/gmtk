@@ -124,6 +124,7 @@ Each routine has:
 #include "GMTK_RVInfo.h"
 #include "GMTK_NamedObject.h"
 
+
 // There are many types of RVs. This structure encodes the various
 // options in a current RV. Note that each different set of objects
 // might or might not correspond to a different sub-class. In general,
@@ -428,8 +429,6 @@ public:
   // set the value of the RV, if it happens to be observed, to the
   // appropriate observed value, otherwise a noop.
   virtual void setToObservedValue() {}
-
-
 
 
 };
