@@ -3310,7 +3310,7 @@ void
 InferenceMaxClique::ceCliquePrune(const unsigned k)
 {
   // k can't be larger than the number of clique entries.
-  if (k == 0 || k > numCliqueValuesUsed)
+  if (k == 0 || k >= numCliqueValuesUsed)
     return;
 
   // inclusive range to process.
@@ -3340,34 +3340,34 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
     unsigned pl3 = rnd.uniform(lower,upper);
     unsigned pl;
     // find rough median
-    if (cliqueValues.ptr[pl1].p < cliqueValues.ptr[pl2].p) {
-      if (cliqueValues.ptr[pl2].p < cliqueValues.ptr[pl3].p) {
+    if (cliqueValues[pl1].p < cliqueValues[pl2].p) {
+      if (cliqueValues[pl2].p < cliqueValues[pl3].p) {
 	pl = pl2;
       } else {
 	pl = pl3;
       }
     } else {
-      if (cliqueValues.ptr[pl1].p < cliqueValues.ptr[pl3].p) {
+      if (cliqueValues[pl1].p < cliqueValues[pl3].p) {
 	pl = pl1;
       } else {
 	pl = pl3;
       }
     }
 
-    logpr pivot = cliqueValues.ptr[pl].p;
+    logpr pivot = cliqueValues[pl].p;
     // printf("pivot location = %d, pivot = %f\n",pl,pivot);
 
     // swap pivot into first position, which is a valid position for
     // pivot, since pivot >= pivot.
-    swap(cliqueValues.ptr[pl],cliqueValues.ptr[lower]);
+    swap(cliqueValues[pl],cliqueValues[lower]);
 
     unsigned l = lower+1;
     unsigned u = upper;
     while (l < u) {
-      if (cliqueValues.ptr[l].p >= pivot) {
+      if (cliqueValues[l].p >= pivot) {
 	l++;
       } else {
-	swap(cliqueValues.ptr[l],cliqueValues.ptr[u]);
+	swap(cliqueValues[l],cliqueValues[u]);
 	u--;
       }
     }
@@ -3380,7 +3380,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
     // 4) The entry at index u==l is unknown however.
 
 
-    if (cliqueValues.ptr[l].p >= pivot) {
+    if (cliqueValues[l].p >= pivot) {
       l++;
       u++;
     }
@@ -3392,7 +3392,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 
     // put pivot in its appropriate place.
     l--;
-    swap(cliqueValues.ptr[lower],cliqueValues.ptr[l]);
+    swap(cliqueValues[lower],cliqueValues[l]);
     // 1) Now all entries with index <= l are >= pivot,
     //   which means at this point we know we have
     //   the top l entries at indices [0,l]
@@ -3406,8 +3406,8 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
       ll = l-1; // left of left-most known pivot value.
       unsigned i = lower;
       while (i < ll) {
-	if (cliqueValues.ptr[i].p == pivot) {
-	  swap(cliqueValues.ptr[i],cliqueValues.ptr[ll]);
+	if (cliqueValues[i].p == pivot) {
+	  swap(cliqueValues[i],cliqueValues[ll]);
 	  ll--;
 	} else {
 	  i++;
