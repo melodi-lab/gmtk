@@ -790,7 +790,7 @@ main(int argc,char*argv[])
       GM_Parms.writeTrainable(of);
     }
     // also write according to output master
-    GM_Parms.write(outputMasterFile,i);  
+    GM_Parms.write(outputMasterFile,cppCommandOptions,i);  
 
     // store the current total data probability to a file.
     if (llStoreFile != NULL) {
@@ -831,7 +831,7 @@ main(int argc,char*argv[])
     GM_Parms.writeTrainable(of);
   }
   // also write according to output master
-  GM_Parms.write(outputMasterFile);  
+  GM_Parms.write(outputMasterFile,cppCommandOptions);  
 
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 

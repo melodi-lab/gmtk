@@ -216,7 +216,7 @@ main(int argc,char*argv[])
   GM_Parms.markUsedMixtureComponents();
 
   if (outputMasterFile != NULL) {
-    GM_Parms.write(outputMasterFile);
+    GM_Parms.write(outputMasterFile,cppCommandOptions);
   }
   if (outputTrainableParameters != NULL) {
     oDataStreamFile of(outputTrainableParameters,binOutputTrainableParameters);

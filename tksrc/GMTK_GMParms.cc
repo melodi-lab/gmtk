@@ -593,145 +593,145 @@ GMParms::readMtCpts(iDataStreamFile& is, bool reset)
 
 void GMParms::readVocabs(iDataStreamFile& is, bool reset)
 {
-	unsigned num;
-	unsigned cnt;
-	unsigned start = 0;
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
 
-	is.read(num,"Can't read num Vocabs");
-	if ( num > GMPARMS_MAX_NUM )
-		error("ERROR: number of Vocabs (%d) exceeds maximum", num);
-	if ( reset ) {
-		start = 0;
-		vocabs.resize(num);
-	} else {
-		start = vocabs.size();
-		vocabs.resize(start + num);
-	}
-	for ( unsigned i = 0; i <num;i++ ) {
-		// first read the count
-		Vocab* ob;
+  is.read(num,"Can't read num Vocabs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of Vocabs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    vocabs.resize(num);
+  } else {
+    start = vocabs.size();
+    vocabs.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num;i++ ) {
+    // first read the count
+    Vocab* ob;
 
-		is.read(cnt, "Can't read Vocab num");
-		if ( cnt != i ) 
-			error("ERROR: Vocab count (%d), out of order in file '%s' line %d, expecting %d", 
-			      cnt,is.fileName(),is.lineNo(),i);
+    is.read(cnt, "Can't read Vocab num");
+    if ( cnt != i ) 
+      error("ERROR: Vocab count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt,is.fileName(),is.lineNo(),i);
 
-		ob = new Vocab();
-		ob->read(is);
-		if ( vocabsMap.find(ob->name()) != vocabsMap.end() )
-			error("ERROR: Vocab named '%s' already defined but is specified for a second time in file '%s' line %d",
-			      ob->name().c_str(),is.fileName(),is.lineNo());
-		vocabs[i + start] = ob;
-		vocabsMap[ob->name()] = i + start;
+    ob = new Vocab();
+    ob->read(is);
+    if ( vocabsMap.find(ob->name()) != vocabsMap.end() )
+      error("ERROR: Vocab named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
+    vocabs[i + start] = ob;
+    vocabsMap[ob->name()] = i + start;
   }
 }
 
 
 void GMParms::readNgramCpts(iDataStreamFile& is, bool reset)
 {
-	unsigned num;
-	unsigned cnt;
-	unsigned start = 0;
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
 
-	is.read(num,"Cant' read num NgramCPTs");
-	if ( num > GMPARMS_MAX_NUM )
-		error("ERROR: number of NGram CPTs (%d) exceeds maximum", num);
-	if ( reset ) {
-		start = 0;
-		ngramCpts.resize(num);
-	} else {
-		start = ngramCpts.size();
-		ngramCpts.resize(start + num);
-	}
-	for ( unsigned i = 0; i <num;i++ ) {
-		// first read the count
-		NGramCPT* ob;
+  is.read(num,"Cant' read num NgramCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of NGram CPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    ngramCpts.resize(num);
+  } else {
+    start = ngramCpts.size();
+    ngramCpts.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num;i++ ) {
+    // first read the count
+    NGramCPT* ob;
 
-		is.read(cnt, "Can't read NgramCPT num");
-		if ( cnt != i )
-			error("ERROR: NGramCPT count (%d), out of order in file '%s' line %d, expecting %d", 
-			      cnt,is.fileName(),is.lineNo(),i);
+    is.read(cnt, "Can't read NgramCPT num");
+    if ( cnt != i )
+      error("ERROR: NGramCPT count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt,is.fileName(),is.lineNo(),i);
 
-		ob = new NGramCPT();
-		ob->read(is);
-		if ( ngramCptsMap.find(ob->name()) != ngramCptsMap.end() )
-			error("ERROR: NGramCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
-			      ob->name().c_str(),is.fileName(),is.lineNo());
-		ngramCpts[i + start] = ob;
-		ngramCptsMap[ob->name()] = i + start;
+    ob = new NGramCPT();
+    ob->read(is);
+    if ( ngramCptsMap.find(ob->name()) != ngramCptsMap.end() )
+      error("ERROR: NGramCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
+    ngramCpts[i + start] = ob;
+    ngramCptsMap[ob->name()] = i + start;
   }
 }
 
 
 void GMParms::readFNgramImps(iDataStreamFile& is, bool reset)
 {
-	unsigned num;
-	unsigned cnt;
-	unsigned start = 0;
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
 
-	is.read(num, "Cant' read num FNgramCPTs");
-	if ( num > GMPARMS_MAX_NUM )
-		error("ERROR: number of FNGram CPTs (%d) exceeds maximum", num);
-	if ( reset ) {
-		start = 0;
-		fngramImps.resize(num);
-	} else {
-		start = fngramImps.size();
-		fngramImps.resize(start + num);
-	}
-	for ( unsigned i = 0; i <num; i++ ) {
-		// first read the count
-		FNGramImp* ob;
+  is.read(num, "Cant' read num FNgramCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of FNGram CPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    fngramImps.resize(num);
+  } else {
+    start = fngramImps.size();
+    fngramImps.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    FNGramImp* ob;
 
-		is.read(cnt, "Can't read FNGramCPT num");
-		if ( cnt != i )
-			error("ERROR: FNGramCPT count (%d), out of order in file '%s' line %d, expecting %d",
-			      cnt, is.fileName(),is.lineNo(), i);
+    is.read(cnt, "Can't read FNGramCPT num");
+    if ( cnt != i )
+      error("ERROR: FNGramCPT count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt, is.fileName(),is.lineNo(), i);
 
-		ob = new FNGramImp();
-		ob->read(is);
-		if ( fngramImpsMap.find(ob->name()) != fngramImpsMap.end() )
-			error("ERROR: FNGramCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
-				ob->name().c_str(), is.fileName(),is.lineNo());
-		fngramImps[i + start] = ob;
-		fngramImpsMap[ob->name()] = i + start;
-	}
+    ob = new FNGramImp();
+    ob->read(is);
+    if ( fngramImpsMap.find(ob->name()) != fngramImpsMap.end() )
+      error("ERROR: FNGramCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    fngramImps[i + start] = ob;
+    fngramImpsMap[ob->name()] = i + start;
+  }
 }
 
 
 void GMParms::readVECpts(iDataStreamFile& is, bool reset)
 {
-	unsigned num;
-	unsigned cnt;
-	unsigned start = 0;
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
 
-	is.read(num, "Can't read num VirtualEvidenceCPTs");
-	if ( num > GMPARMS_MAX_NUM )
-		error("ERROR: number of Ve CPTs (%d) exceeds maximum", num);
-	if ( reset ) {
-		start = 0;
-		veCpts.resize(num);
-	} else {
-		start = veCpts.size();
-		veCpts.resize(start + num);
-	}
-	for ( unsigned i = 0; i <num; i++ ) {
-		// first read the count
-		VECPT* ob;
+  is.read(num, "Can't read num VirtualEvidenceCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of Ve CPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    veCpts.resize(num);
+  } else {
+    start = veCpts.size();
+    veCpts.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    VECPT* ob;
 
-		is.read(cnt, "Can't read VirtualEvidenceCPT num");
-		if ( cnt != i )
-			error("ERROR: VECPT count (%d), out of order in file '%s' line %d, expecting %d", 
-			      cnt, is.fileName(), is.lineNo(),i);
+    is.read(cnt, "Can't read VirtualEvidenceCPT num");
+    if ( cnt != i )
+      error("ERROR: VECPT count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
 
-		ob = new VECPT();
-		ob->read(is);
-		if ( veCptsMap.find(ob->name()) != veCptsMap.end() )
-			error("ERROR: VECPT named '%s' already defined but is specified for a second time in file '%s' line %d",
-				ob->name().c_str(), is.fileName(),is.lineNo());
-		veCpts[i + start] = ob;
-		veCptsMap[ob->name()] = i + start;
-	}
+    ob = new VECPT();
+    ob->read(is);
+    if ( veCptsMap.find(ob->name()) != veCptsMap.end() )
+      error("ERROR: VECPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    veCpts[i + start] = ob;
+    veCptsMap[ob->name()] = i + start;
+  }
 }
 
 
@@ -2286,7 +2286,7 @@ GMParms::writeNonTrainable(oDataStreamFile& os)
 
 
 void 
-GMParms::write(const char *const outputFileFormat, const int intTag)
+GMParms::write(const char *const outputFileFormat, const char * const cppCommandOptions, const int intTag)
 {
   //
   // read a file consisting of a list of 
@@ -2309,7 +2309,7 @@ GMParms::write(const char *const outputFileFormat, const int intTag)
 
   map<string,oDataStreamFile*> fileNameMap;
   char buff[2048];
-  iDataStreamFile is(outputFileFormat,false);
+  iDataStreamFile is(outputFileFormat,false,true,cppCommandOptions);
 
   while (is.readString(keyword)) {
 
