@@ -131,7 +131,8 @@ testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_RngDecisionTree.cc $(LIBS)
 
 testGMParms: GMTK_GMParms.cc GMTK_GMParms.h $(objs)
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_GMParms.cc $(objs) $(LIBS)
+	echo $(objs) > /tmp/gmparms_depts
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_GMParms.cc `sed s,GMTK_GMParms.o,, < /tmp/gmparms_depts` $(LIBS)
 
 
 testBN1: testBN1.o $(objs)

@@ -48,6 +48,8 @@ class MixGaussians : public MixGaussiansCommon {
   ///////////////////////////////////////////
   // the (possibly) shared 1DPMFs used for the mixture weights.
   Dense1DPMF* dense1DPMF;
+
+  int dummy;
  
 public:
 

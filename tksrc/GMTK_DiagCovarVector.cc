@@ -286,7 +286,7 @@ DiagCovarVector::emEndIteration()
     }
   }
   if (prevNumFlooredVariances < numFlooredVariances) {
-    warning("WARNING: covariance vector named '%d' had %d variances floored\n",
+    warning("WARNING: covariance vector named '%s' had %d variances floored\n",
 	    name().c_str(),numFlooredVariances-prevNumFlooredVariances);
   }
   
