@@ -676,3 +676,10 @@ Wed Jul 31 22:04:27 2002
 Tue Aug  6 22:49:42 2002
   - email to chiaping on Tue Aug  6 22:49:46 2002 about unity
    score Gaussian -> docs    
+
+
+Wed Aug  7 13:46:35 2002
+ - LM scale factors,
+   for vit decoding, give the option to raise the prob of 
+   a rand var prob to a power (keep it static for now in
+   the structure file).
