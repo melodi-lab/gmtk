@@ -51,15 +51,18 @@ class LinMeanCondDiagGaussian : public GaussianComponent {
   // parameters for the dlink structure
   DlinkMatrix* dLinkMat;
 
-  ///////////////////////////////////////////////////////
-  // The actual dlink structure
-  Dlinks* dLinks;
-
-  // For EM Training: Local copy of mean & diagCov accumulators for 
-  // this LinMeanCondDiagGaussian, which is needed to support sharing.
-  sArray<float> nextMeans;
-  sArray<float> nextDiagCovars;
-  sArray<float> nextDlinkMat;
+  // Accumulators for EM training: First, a local mean & diagCov
+  // accumulator, needed for sharing.
+  sArray<float> xAccumulators;
+  sArray<float> xxCovarAccumulators;
+  // Next, an array containing the accumulators for
+  // the feature vector 'x' times the conditioning variables 'z'
+  // i.e., this is E[XZ].
+  sArray<float> xzAccumulators;
+  // next, E[Z]
+  sArray<float> zAccumulators;
+  //  E[ZZ^T]
+  sArray<float> zzAccumulators;
 
 public:
 
@@ -73,7 +76,7 @@ public:
 
   // create a copy of self, but with slightly perturbed
   // means/variance values.
-  GaussianComponent* noisyClone() { error("not implemented"); return (GaussianComponent*)NULL; }
+  GaussianComponent* noisyClone();
 
 
   //////////////////////////////////
@@ -83,7 +86,6 @@ public:
   // (for Gaussians this means N(0,1))
   void makeUniform();
   //////////////////////////////////
-
 
   //////////////////////////////////
   // probability evaluation
