@@ -60,6 +60,7 @@ DiagGaussian::read(iDataStreamFile& is)
 	    _name.c_str(),is.fileName(),str.c_str());
   meanIndex = GM_Parms.meansMap[str];
   mean = GM_Parms.means[meanIndex];
+  mean->numTimesShared++;
 
 
   // read covariance vector
@@ -70,6 +71,7 @@ DiagGaussian::read(iDataStreamFile& is)
   
   covarIndex = GM_Parms.covarsMap[str];
   covar = GM_Parms.covars[covarIndex];
+  covar->numTimesShared++;
 
   // check that lengths match, etc.
   if (covar->dim() != mean->dim()) {
@@ -421,19 +423,10 @@ DiagGaussian::emSwapCurAndNew()
 // Parallel EM support
 ////////////////////////////////////////////////////////////
 
+
 void
-DiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
+DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for Diag Gaussian '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
-    return;
-  }
-  EMable::emStoreAccumulators(ofile);
   for (int i=0;i<nextMeans.len();i++) {
     ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
   }
@@ -442,29 +435,37 @@ DiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
   }
 }
 
+
 void
-DiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
+DiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  EMable::emStoreZeroAccumulators(ofile);
+  //
+  // ASSUME MEANS AND COVARIANCES ARE OF TYPE FLOAT
+  // See the MeanVector.h and DiagcovarVector.h for specifics.
+  float tmp;
+  for (int i=0;i<mean->dim();i++) {
+    ifile.read(tmp,"Diag Gaussian load accums nm.");
+  }
+  for (int i=0;i<covar->dim();i++) {
+    ifile.read(tmp,"Diag Gaussian load accums nc.");
+  }
+}
+
+
+void
+DiagGaussian::emZeroOutObjectsAccumulators()
+{
   for (int i=0;i<nextMeans.len();i++) {
-    ofile.write((float)0.0,"Diag Gaussian store zero accums nm.");
+    nextMeans[i] = 0.0;
   }
   for (int i=0;i<nextDiagCovars.len();i++) {
-    ofile.write((float)0.0,"Diag Gaussian store zero accums nc.");
+    nextDiagCovars[i] = 0.0;
   }
 }
 
 void
-DiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
+DiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emLoadAccumulators(ifile);
   for (int i=0;i<nextMeans.len();i++) {
     ifile.read(nextMeans[i],"Diag Gaussian load accums nm.");
   }
@@ -475,13 +476,11 @@ DiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
 
 
 void
-DiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
+DiagGaussian::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emAccumulateAccumulators(ifile);
+  //
+  // ASSUME MEANS AND COVARIANCES ARE OF TYPE FLOAT
+  // See the MeanVector.h and DiagcovarVector.h for specifics.
   for (int i=0;i<nextMeans.len();i++) {
     float tmp;
     ifile.read(tmp,"Diag Gaussian accumulate accums nm.");

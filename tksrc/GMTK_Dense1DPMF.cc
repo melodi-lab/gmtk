@@ -443,10 +443,54 @@ Dense1DPMF::emSwapCurAndNew()
  *-----------------------------------------------------------------------
  *
  * Accumulator loading/storing routines for parallel training support.
+ * These routines are virtual, and are called from the EMable object
+ * which has the code containing the logic and checks about which one
+ * to call when.
  *
- *-----------------------------------------------------------------------
- */
+ *----------------------------------------------------------------------- 
+*/
 
+
+void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile)
+{
+  for (int i=0;i<nextPmf.len();i++) {
+    ofile.write(nextPmf[i].val(),"DPMF store accums");
+  }
+}
+
+void Dense1DPMF::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
+{
+  logpr tmp;
+  for (int i=0;i<pmf.len();i++) {
+    ifile.read(tmp.valref(),"DPMF load accums");
+  }
+}
+
+void Dense1DPMF::emZeroOutObjectsAccumulators()
+{
+  for (int i=0;i<nextPmf.len();i++) {
+    nextPmf[i].set_to_zero();
+  }
+}
+
+void Dense1DPMF::emLoadObjectsAccumulators(iDataStreamFile& ifile)
+{
+  for (int i=0;i<nextPmf.len();i++) {
+    ifile.read(nextPmf[i].valref(),"DPMF load accums");
+  }
+}
+
+void Dense1DPMF::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
+{
+  for (int i=0;i<nextPmf.len();i++) {
+    logpr tmp;
+    ifile.read(tmp.valref(),"DPMF accumulate accums");
+    nextPmf[i] += tmp;
+  }
+}
+
+
+#if 0
 
 void
 Dense1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
@@ -473,20 +517,6 @@ Dense1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
   EMable::emStoreAccumulators(ofile);
   for (int i=0;i<pmf.len();i++) {
     ofile.write(nextPmf[i].val(),"DPMF store accums");
-  }
-}
-
-
-void
-Dense1DPMF::emStoreZeroAccumulators(oDataStreamFile& ofile)
-{
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  EMable::emStoreZeroAccumulators(ofile);
-  const logpr p;
-  for (int i=0;i<pmf.len();i++) {
-    ofile.write(p.val(),"DPMF store zero accums");
   }
 }
 
@@ -594,6 +624,7 @@ Dense1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
   }
 }
 
+#endif
 
 ////////////////////////////////////////////////////////////
 // Sample generation

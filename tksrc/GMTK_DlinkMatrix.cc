@@ -163,8 +163,8 @@ DlinkMatrix::read(iDataStreamFile& is)
       is.read(arr[oldLen+j],"DlinkMatrix::read, v");
     }
   }
-
   setBasicAllocatedBit();
+  numTimesShared = 0;
 }
 
 
@@ -329,12 +329,9 @@ DlinkMatrix::noisyClone()
 }
 
 
-
-
 /////////////////
 // EM routines //
 /////////////////
-
 
 
 void
@@ -343,24 +340,18 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 			      sArray<float>& zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
 
-  /////////////////////////////////////////////
-  // make sure our caller has its accumulator resized
-  // and initialized.
-  xzAccumulators.growIfNeeded(dLinks->totalNumberLinks());
-  for (int i=0;i<xzAccumulators.len();i++) {
-    xzAccumulators[i] = 0.0;
-  }
-  zzAccumulators.growIfNeeded(dLinks->zzAccumulatorLength());
-  for (int i=0;i<zzAccumulators.len();i++) {
-    zzAccumulators[i] = 0.0;
-  }
-  zAccumulators.growIfNeeded(dLinks->totalNumberLinks());
-  for (int i=0;i<zAccumulators.len();i++) {
-    zAccumulators[i] = 0.0;
-  }
+
 
   if(emOnGoingBitIsSet()) {
     // EM already on going.
@@ -385,6 +376,24 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
   accumulatedProbability = 0.0;
   refCount = 1;
   emClearSharedBit();
+
+  /////////////////////////////////////////////
+  // make sure our caller has its accumulator resized
+  // and initialized.
+  xzAccumulators.growIfNeeded(dLinks->totalNumberLinks());
+  for (int i=0;i<xzAccumulators.len();i++) {
+    xzAccumulators[i] = 0.0;
+  }
+  zzAccumulators.growIfNeeded(dLinks->zzAccumulatorLength());
+  for (int i=0;i<zzAccumulators.len();i++) {
+    zzAccumulators[i] = 0.0;
+  }
+  zAccumulators.growIfNeeded(dLinks->totalNumberLinks());
+  for (int i=0;i<zAccumulators.len();i++) {
+    zAccumulators[i] = 0.0;
+  }
+
+
 }
 
 
@@ -422,8 +431,20 @@ DlinkMatrix::emIncrement(const logpr prob,
 			 float* zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
+
+
 
   /////////////////////////////////////////////
   // Note: unlike the normal EM mode described
@@ -514,8 +535,17 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 						   const DiagCovarVector* covar)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
   
   if (!emAccInitializedBitIsSet()) {
     nextArr.growIfNeeded(dLinks->totalNumberLinks());
@@ -668,8 +698,18 @@ void
 DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -732,52 +772,49 @@ DlinkMatrix::emSwapCurAndNew()
   emClearSwappableBit();
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ *
+ * Accumulator loading/storing routines for parallel training support.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
 void
 DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 {
-  assert (basicAllocatedBitIsSet());
-  // if (!emAmTrainingBitIsSet())
-  // return;
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for dlink matrix '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
+  assert ( basicAllocatedBitIsSet() );
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet()) {
+    // then we are not training, because
+    // we have turned off training of this object.
+    // We write out '0' to state that 
+    // there are no values stored for this object.
+    unsigned flag = 0;
+    ofile.write(flag,"writing acc flag");
     return;
+  } else {
+    // the training bit is set or we are sharing, in either
+    // case, we must write out something.
+    if (accumulatedProbability.zero()) {
+      // then we indeed have no probability values, so lets emit a warning
+      warning("WARNING: zero accumulator values for %s '%s'\n",
+	      typeName().c_str(),
+	      name().c_str());
+      // We write out '0' to state that 
+      // there are no values stored for this object.
+      unsigned flag = 0;
+      ofile.write(flag,"writing acc flag");
+    } else {
+      // we write a 1 to indicate that there are accumulators
+      // stored for this object.
+      unsigned flag = 1;
+      ofile.write(flag,"writing acc flag");
+      // store the accumulators as normal.
+      ofile.write(accumulatedProbability.val(),"EM store accums");
+      // call virtual function to do actual work for object.
+      emStoreObjectsAccumulators(ofile);
+    }
   }
-  EMable::emStoreAccumulators(ofile);
 }
-
-
-void
-DlinkMatrix::emStoreZeroAccumulators(oDataStreamFile& ofile)
-{
-  assert (basicAllocatedBitIsSet());
-  // if (!emAmTrainingBitIsSet())
-  // return;
-  EMable::emStoreZeroAccumulators(ofile);
-}
-
-
-void
-DlinkMatrix::emLoadAccumulators(iDataStreamFile& ifile)
-{
-  assert (basicAllocatedBitIsSet());
-  // if (!emAmTrainingBitIsSet())
-  // return;
-  assert (emEmAllocatedBitIsSet());
-  EMable::emLoadAccumulators(ifile);
-}
-
-
-void
-DlinkMatrix::emAccumulateAccumulators(iDataStreamFile& ifile)
-{
-  assert (basicAllocatedBitIsSet());
-  // if (!emAmTrainingBitIsSet())
-  // return;
-  assert (emEmAllocatedBitIsSet());
-  EMable::emAccumulateAccumulators(ifile);
-}
-
-
-

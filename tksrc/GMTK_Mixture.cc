@@ -706,52 +706,6 @@ MixGaussians::emSwapCurAndNew()
 
 
 
-void
-MixGaussians::emStoreAccumulators(oDataStreamFile& ofile)
-{
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for mix gaussian '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
-    return;
-  }
-  EMable::emStoreAccumulators(ofile);
-}
-
-void
-MixGaussians::emStoreZeroAccumulators(oDataStreamFile& ofile)
-{
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  EMable::emStoreZeroAccumulators(ofile);
-}
-
-void
-MixGaussians::emLoadAccumulators(iDataStreamFile& ifile)
-{
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emLoadAccumulators(ifile);
-}
-
-
-void
-MixGaussians::emAccumulateAccumulators(iDataStreamFile& ifile)
-{
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emAccumulateAccumulators(ifile);
-}
-
-
 ////////////////////////////////////////////////////////////
 // Sample generation
 ////////////////////////////////////////////////////////////

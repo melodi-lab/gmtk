@@ -29,10 +29,11 @@
 #include "machine-dependent.h"
 #include "sArray.h"
 
+
 #include "GMTK_RandomVariable.h"
+#include "GMTK_NamedObject.h"
 
-class EMable {
-
+class EMable : public NamedObject {
 
 protected:
 
@@ -109,6 +110,11 @@ protected:
   static logpr _minContAccumulatedProbability;
   // same thing as above but for discrete objects.
   static logpr _minDiscAccumulatedProbability;
+
+  // returns the type of the sub-object in string
+  // form that is suitable for printing and identifying
+  // the type of the object.
+  virtual const string typeName() = 0;
  
 public:
 
@@ -393,33 +399,34 @@ public:
   // return the number of parameters for object.
   virtual unsigned totalNumberParameters() = 0;
 
-  //////////////////////////////////////////////
-  // For parallel EM training.
+  /////////////////////////////////////////////////////////////
+  // For parallel EM training, a number of routines
+  // to support the loading and storing of objects accumulators.
+  // These routines are a bit tricky only because they
+  // need to work with 
+  //    1) parameter sharing
+  //    2) objects which are not trained for an iteration
+  //    3) parallelism.
 
   ///////////////////////////////////////////////////////////////
   // store the current set of accumulators to a file.
-  virtual void emStoreAccumulators(oDataStreamFile& ofile) {
-    ofile.write(accumulatedProbability.val(),"EM store accums");
-  }
-  virtual void emStoreZeroAccumulators(oDataStreamFile& ofile) {
-    const logpr p;
-    ofile.write(p.val(),"EM store zero accums");
-  }
+  virtual void emStoreAccumulators(oDataStreamFile& ofile);
 
   ///////////////////////////////////////////////////////////////
   // load the current set of accumulators from a file.
-  virtual void emLoadAccumulators(iDataStreamFile& ifile) {
-    ifile.read(accumulatedProbability.valref(),
-	       "EM load accums");
-  }
+  virtual void emLoadAccumulators(iDataStreamFile& ifile);
 
   //////////////////////////////////////////////////////////////////////
   // accumulate (add to) the current set of accumulators from a file.
-  virtual void emAccumulateAccumulators(iDataStreamFile& ifile) {
-    logpr tmp;
-    ifile.read(tmp.valref(),"EM accumulate accums");
-    accumulatedProbability += tmp;
-  }
+  virtual void emAccumulateAccumulators(iDataStreamFile& ifile);
+
+  ///////////////////////////////////////////////////////////////
+  // virtual functions for objects to do the actual work.
+  virtual void emStoreObjectsAccumulators(oDataStreamFile& ofile) = 0;
+  virtual void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) = 0;
+  virtual void emZeroOutObjectsAccumulators() = 0;
+  virtual void emLoadObjectsAccumulators(iDataStreamFile& ifile) = 0;
+  virtual void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) = 0;
 
   //////////////////////////////////////////////
 

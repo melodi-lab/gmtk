@@ -672,45 +672,50 @@ MDCPT::emSwapCurAndNew()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ *
+ * Accumulator loading/storing routines for parallel training support.
+ * These routines are virtual, and are called from the EMable object
+ * which has the code containing the logic and checks about which one
+ * to call when.
+ *
+ *----------------------------------------------------------------------- 
+*/
+
+
+
 void
-MDCPT::emStoreAccumulators(oDataStreamFile& ofile)
+MDCPT::emStoreObjectsAccumulators(oDataStreamFile& ofile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for MDCPT '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
-    return;
-  }
-  EMable::emStoreAccumulators(ofile);
   for (int i=0;i<nextMdcpt.len();i++) {
     ofile.write(nextMdcpt[i].val(),"MDCPT store accums");
   }
 }
 
+
 void
-MDCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
+MDCPT::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  EMable::emStoreZeroAccumulators(ofile);
+  logpr tmp;
   for (int i=0;i<mdcpt.len();i++) {
-    const logpr p; 
-    ofile.write(p.val(),"MDCPT store zero accums");
+    ifile.read(tmp.valref(),"MDCPT load accums");
+  }
+}
+
+
+void
+MDCPT::emZeroOutObjectsAccumulators()
+{
+  for (int i=0;i<nextMdcpt.len();i++) {
+    nextMdcpt[i].set_to_zero();
   }
 }
 
 void
-MDCPT::emLoadAccumulators(iDataStreamFile& ifile)
+MDCPT::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
-  assert (basicAllocatedBitIsSet());
-  if (!emAmTrainingBitIsSet())
-    return;
-  assert (emEmAllocatedBitIsSet());
-  EMable::emLoadAccumulators(ifile);
   for (int i=0;i<nextMdcpt.len();i++) {
     ifile.read(nextMdcpt[i].valref(),"MDCPT load accums");
   }
@@ -718,13 +723,8 @@ MDCPT::emLoadAccumulators(iDataStreamFile& ifile)
 
 
 void
-MDCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
+MDCPT::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emAccumulateAccumulators(ifile);
   for (int i=0;i<nextMdcpt.len();i++) {
     logpr tmp;
     ifile.read(tmp.valref(),"MDCPT accumulate accums");

@@ -302,56 +302,6 @@ MTCPT::emSwapCurAndNew()
 }
 
 
-void
-MTCPT::emStoreAccumulators(oDataStreamFile& ofile)
-{
-  if (!emAmTrainingBitIsSet())
-    return;
-
-  assert ( basicAllocatedBitIsSet() );
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for DeterministicCPT '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
-    return;
-  }
-  EMable::emStoreAccumulators(ofile);
-}
-
-
-void
-MTCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
-{
-  if (!emAmTrainingBitIsSet())
-    return;
-
-  assert ( basicAllocatedBitIsSet() );
-  EMable::emStoreZeroAccumulators(ofile);
-}
-
-void
-MTCPT::emLoadAccumulators(iDataStreamFile& ifile)
-{
-  if (!emAmTrainingBitIsSet())
-    return;
-
-  assert (basicAllocatedBitIsSet());
-  assert (emEmAllocatedBitIsSet());
-  EMable::emLoadAccumulators(ifile);
-}
-
-
-void
-MTCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
-{
-  if (!emAmTrainingBitIsSet())
-    return;
-
-  assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emAccumulateAccumulators(ifile);
-}
-
 
 ////////////////////////////////////////////////////////////////////
 //        Test Driver

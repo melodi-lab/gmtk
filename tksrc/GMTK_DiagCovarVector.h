@@ -32,9 +32,10 @@
 
 class MeanVector;
 
-class DiagCovarVector : public EMable, public NamedObject {
+class DiagCovarVector : public EMable {
 
   friend class DiagGaussian;
+  friend class LinMeanCondDiagGaussian;
   friend class MeanVector;
   friend class DlinkMatrix;
 
@@ -44,6 +45,9 @@ class DiagCovarVector : public EMable, public NamedObject {
 
   //////////////////////////////////
   // Data structures support for EM
+  // NOTE: if we change from type float, to type double,
+  //   we will need to check the load/store accumulator code
+  //   for subclasses of GaussianComponent.
   sArray<float> nextCovariances;
 
   ///////////////////////////////////////////////////////
@@ -55,9 +59,22 @@ class DiagCovarVector : public EMable, public NamedObject {
   float _log_inv_normConst;
   ///////////////////////////////////////////////////////
 
+
   /////////////////////////////////////////////////
   // counts the number of gaussian components
-  // that are sharing this covariance
+  // that are sharing this mean at all. This is a static
+  // count, and is computed as any object that
+  // might use a mean (such as a Gaussian component)
+  // is read in.
+  unsigned numTimesShared;
+
+  /////////////////////////////////////////////////
+  // counts the number of gaussian components
+  // that are sharing this covariance at EM training time. This is a dynamic
+  // count, and is computed as EM training is run. This
+  // value does not necessarily equal the number of
+  // objects that have specified this object in
+  // the object files.
   unsigned refCount;
 
   /////////////////////////////////////////////////////////////
@@ -148,10 +165,18 @@ public:
 				  const float *const partialAccumulatedNextCovar);
   void emEndIterationSharedCovars(const float*const c);
   void emSwapCurAndNew();
+
+
+  // parallel training
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile) {};
+  void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {};
+  void emZeroOutObjectsAccumulators() {};
+  void emLoadObjectsAccumulators(iDataStreamFile& ifile) {};
+  void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {};
+  const string typeName() { return "covariance vector"; }
+  // need to override parent class's routine in this case.
   void emStoreAccumulators(oDataStreamFile& ofile);
-  void emStoreZeroAccumulators(oDataStreamFile& ofile);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
+
   //////////////////////////////////
 
 };

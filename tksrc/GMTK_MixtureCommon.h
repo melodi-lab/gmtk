@@ -40,7 +40,7 @@ class DlinkMatrix;
 class GaussianComponent;
 
 
-class MixGaussiansCommon : public NamedObject, public EMable {
+class MixGaussiansCommon : public EMable {
 
 protected:
 

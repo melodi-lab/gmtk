@@ -53,6 +53,8 @@ class LinMeanCondDiagGaussian : public GaussianComponent {
 
   // Accumulators for EM training: First, a local mean & diagCov
   // accumulator, needed for sharing.
+  // WARNING: If changed from float -> double, accumulator
+  // writing routines will also need to change.
   // EX 
   sArray<float> xAccumulators;
   // E[x^2] accumulators
@@ -137,10 +139,15 @@ public:
   void emEndIterationSharedCovars();
   void emEndIterationSharedAll();
   void emSwapCurAndNew();
-  void emStoreAccumulators(oDataStreamFile& ofile);
-  void emStoreZeroAccumulators(oDataStreamFile& ofile);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
+
+
+  // parallel training
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile);
+  void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile);
+  void emZeroOutObjectsAccumulators();
+  void emLoadObjectsAccumulators(iDataStreamFile& ifile);
+  void emAccumulateObjectsAccumulators(iDataStreamFile& ifile);
+  const string typeName() { return "Linear mean-conditional Gaussian"; }
   //////////////////////////////////
 
   //////////////////////////////////
