@@ -133,7 +133,6 @@ public:
   vector< Dense1DPMF* > dPmfs;
   typedef map< string, unsigned > DPmfsMapType;
   DPmfsMapType dPmfsMap;
-  ParamFileVector dPmfsParamFiles;
 
   /////////////////////////////  
   // Collection of sparse prob. mass functions
@@ -280,6 +279,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   GMParms(); 
+  ~GMParms(); 
 
   /////////////////////////////////////////////////
   // Support for "accumulative" reading into 

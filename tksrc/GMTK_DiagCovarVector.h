@@ -73,6 +73,19 @@ public:
   void makeRandom();
   void makeUniform();
 
+  ///////////////////////////////////////
+  int dim() { return covariances.len(); }
+
+  // easy access to internal pointers for efficient reading.
+  const float* basePtr() { return &covariances[0]; }
+  const float* baseVarInvPtr() { return &variances_inv[0]; }
+  float log_inv_normConst() { return _log_inv_normConst; }
+
+  ///////////////////////////////////////
+  // preCompute: should be called anytime the parameters
+  // change.
+  void preCompute();
+
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is);
@@ -80,16 +93,6 @@ public:
     NamedObject::write(os);
     covariances.write(os); 
   }
-
-  ///////////////////////////////////////
-  void preCompute();
-  // easy access to internal pointers for efficient reading.
-  const float* basePtr() { return &covariances[0]; }
-  const float* baseVarInvPtr() { return &variances_inv[0]; }
-  float log_inv_normConst() { return _log_inv_normConst; }
-
-  ///////////////////////////////////////
-  int dim() { return covariances.len(); }
 
 
   //////////////////////////////////

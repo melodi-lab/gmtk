@@ -74,10 +74,20 @@ const unsigned GMPARMS_MAX_NUM = 100000;
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
 
+
 GMParms::GMParms()
 {
   emTrainBitmask = emDefaultState;
 }
+
+
+GMParms::~GMParms()
+{
+  // need to free up all the memory that was allocated.
+  // Need to implement this.
+  // ...
+}
+
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -238,8 +248,9 @@ GMParms::readMeans(iDataStreamFile& is, bool reset)
       error("ERROR: mean count (%d), out of order in file '%s', expecting %d",
 	    cnt,is.fileName(),i);
 
-    ob = new MeanVector;
+    ob = new MeanVector();
     ob->read(is);
+    // printf("New mean, ob's name = %s\n",ob->name().c_str());
     if (meansMap.find(ob->name()) != meansMap.end())
       error("ERROR: mean named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
     means[i+start] = ob;
@@ -1361,16 +1372,38 @@ GMParms::makeUniform()
 
 #ifdef MAIN
 
+#include "rand.h"
+#include "GMTK_ObservationMatrix.h"
+
+RAND rnd(false);
 GMParms GM_Parms;
+ObservationMatrix globalObservationMatrix;
+
+
 
 int
 main()
 {
 
   // read in a file of decision trees
-  iDataStreamFile isdt("dataFiles/foo.dt",false);
-  GM_Parms.readDTs(isdt);
+  {
+  iDataStreamFile isdt("ex.means",false);
+  GM_Parms.readMeans(isdt);
 
+  oDataStreamFile os("-");
+  GM_Parms.writeMeans(os);  
+  }
+  {
+  iDataStreamFile isdt("ex.covars",false);
+  GM_Parms.readCovars(isdt);
+
+  oDataStreamFile os("-");
+  GM_Parms.writeCovars(os);  
+  }
+
+
+
+#if 0
   // read in basic structures
   iDataStreamFile is("dataFiles/test1.gmb",false);
   GM_Parms.readBasic(is);
@@ -1379,6 +1412,7 @@ main()
   oDataStreamFile os("-");
   GM_Parms.writeDTs(os);
   GM_Parms.writeBasic(os);
+#endif
 
 }
 
