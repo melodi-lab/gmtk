@@ -206,7 +206,6 @@ main(int argc,char*argv[])
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
-  GM_Parms.loadGlobal();
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 
   /////////////////////////////

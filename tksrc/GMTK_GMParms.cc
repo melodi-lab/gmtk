@@ -91,6 +91,8 @@ const unsigned GMPARMS_MAX_NUM = 900000000;
 GMParms::GMParms()
 {
   emTrainBitmask = emDefaultState;
+  // load all internal global objects.
+  loadGlobal();
 }
 
 
@@ -481,8 +483,12 @@ GMParms::readMdCpts(iDataStreamFile& is, bool reset)
 
     ob = new MDCPT;
     ob->read(is);
-    if (mdCptsMap.find(ob->name()) != mdCptsMap.end())
-      error("ERROR: Dense CPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+    if (mdCptsMap.find(ob->name()) != mdCptsMap.end()) {
+      if (ob->name() == string(USMDCPT_NAME))
+	error("ERROR: special internal unity score MDCPT named '%s' must not be used in parameter files, as it is used internally",USMDCPT_NAME);
+      else
+	error("ERROR: Dense CPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+    }
     mdCpts[i+start] = ob;
     mdCptsMap[ob->name()] = i+start;
   }
@@ -706,8 +712,15 @@ GMParms::readMixtures(iDataStreamFile& is, bool reset)
       error("ERROR: mixture named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gm->name().c_str(),is.fileName(),dim);
 
     if (mixturesMap.find(gm->name()) != mixturesMap.end()) {
-      error("ERROR: mixture named '%s' already defined but is specified for a second time in file '%s'",gm->name().c_str(),is.fileName());
+      if (gm->name() == string(ZEROSCOREMIXTURE_NAME))
+	error("ERROR: special internal mixture named '%s' must not be used in parameter files, as it is used internally",ZEROSCOREMIXTURE_NAME);
+      else if (gm->name() == string(UNITYSCOREMIXTURE_NAME))
+	error("ERROR: special internal mixture named '%s' must not be used in parameter files, as it is used internally",UNITYSCOREMIXTURE_NAME);
+      else
+	error("ERROR: mixture named '%s' already defined but is specified for a second time in file '%s'",gm->name().c_str(),is.fileName());
     }
+
+
     mixtures[i+start] = gm;
     mixturesMap[gm->name()] = i+start;
   }
@@ -746,8 +759,12 @@ GMParms::readNameCollections(iDataStreamFile& is, bool reset)
     }
 
     if (nclsMap.find(nc->name()) != nclsMap.end()) {
-      error("ERROR: collection named '%s' already defined but is specified for a second time in file '%s'",nc->name().c_str(),is.fileName());
+      if (nc->name() == string(NAMED_COLLECTION_GLOBAL_NAME))
+	error("ERROR: special internal collection named '%s' must not be used in parameter files, as it is used internally to refer to global table.",NAMED_COLLECTION_GLOBAL_NAME);
+      else
+	error("ERROR: collection named '%s' already defined but is specified for a second time in file '%s'",nc->name().c_str(),is.fileName());
     }
+
     ncls[i+start] = nc;
     nclsMap[nc->name()] = i+start;
   }
@@ -1102,8 +1119,8 @@ writeDecisionTreeIndexFiles()
  *   have been read in.
  *
  * Preconditions:
- *      All internal objects have been read in. This routine
- *      should not be called until after *ALL* other GMTK objects have
+ *      Should be called before any internal objects have been read in. This routine
+ *      should not be called after other GMTK objects have
  *      been loaded.
  *
  * Postconditions:
@@ -1112,8 +1129,8 @@ writeDecisionTreeIndexFiles()
  * Side Effects:
  *      changes internal GMTK object arrays. Note that
  *      this routine will add to the internal GMKT object arrays
- *      by appending to the end. This routine should be called last,
- *      after all other objects have been allocated. Also, when
+ *      by pre-pending to the beginning. This routine should be called first,
+ *      before any other objects have been allocated. Also, when
  *      writing out any of these objects, we should be sure
  *      not to write out any of the objects which are being
  *      stored here.
@@ -1132,13 +1149,11 @@ GMParms::loadGlobal()
   //     1) a named collection which references the global arrays.
   //     2) special scoring mixtures
 
-  // Load the global named collection.
-  // first, make sure that the name hasn't already been defined,
-  // meaning that this routine has already been called.
-  if (nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) != nclsMap.end()) {
-    error("ERROR: special internal collection named '%s' must not be used in parameter files, as it is used internally to refer to global table.",
-	  NAMED_COLLECTION_GLOBAL_NAME);
-  }
+  // Load the global named collection.  first, make sure that the name
+  // hasn't already been defined, meaning that this routine has
+  // already been called (meaning this routine wasn't called first)
+  assert (nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) == nclsMap.end());
+
   NameCollection* nc = new NameCollection();
   nc->_name = NAMED_COLLECTION_GLOBAL_NAME;
   // copy the tables:
@@ -1148,25 +1163,23 @@ GMParms::loadGlobal()
   ncls.push_back(nc);
   nclsMap[nc->name()] = ncls.size()-1;
 
-
+  /////////////////////////////////////////////////////////////////////
   // now we load 2 extra mixtures.
 
   // Load the zero scoring Mixture
-  if (mixturesMap.find(string(ZEROSCOREMIXTURE_NAME)) != mixturesMap.end()) {
-    error("ERROR: special internal mixture named '%s' must not be used in parameter files, as it is used internally",ZEROSCOREMIXTURE_NAME);
-  }
+  assert (mixturesMap.find(string(ZEROSCOREMIXTURE_NAME)) == mixturesMap.end());
   ZeroScoreMixture* zs = new ZeroScoreMixture();
   mixtures.push_back(zs);
   mixturesMap[zs->name()] = mixtures.size()-1;
 
   // Load the zero scoring Mixture
-  if (mixturesMap.find(string(UNITYSCOREMIXTURE_NAME)) != mixturesMap.end()) {
-    error("ERROR: special internal mixture named '%s' must not be used in parameter files, as it is used internally",UNITYSCOREMIXTURE_NAME);
-  }
+  assert (mixturesMap.find(string(UNITYSCOREMIXTURE_NAME)) == mixturesMap.end());
   UnityScoreMixture* us = new UnityScoreMixture();
   mixtures.push_back(us);
   mixturesMap[us->name()] = mixtures.size()-1;
 
+
+  /////////////////////////////////////////////////////////////////////
   // and we load 1 extra MDCPT
 
   // load the unity scoring MDCPT.  Note, this CPT corresponds to
@@ -1178,14 +1191,12 @@ GMParms::loadGlobal()
   //      observed value, so that this is a conditional rather than
   //      a scoring observation, similar to the way conditional
   //      floating point observations work.
-  if (mdCptsMap.find(string(USMDCPT_NAME)) != mdCptsMap.end()) {
-    error("ERROR: special internal unity score MDCPT named '%s' must not be used in parameter files, as it is used internally",USMDCPT_NAME);
-  }
+  assert (mdCptsMap.find(string(USMDCPT_NAME)) == mdCptsMap.end());
   USCPT *uscpt = new USCPT();
   mdCpts.push_back(uscpt);
   mdCptsMap[uscpt->name()] = mdCpts.size()-1;
 
-}
+				  }
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -1473,7 +1484,13 @@ GMParms::writeWeightMats(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * writecpts
+ * writeMdCpts
+ *
+ *   Writes out all the MDCPTs in the global object. If there are
+ *   any internal pre-defined CPTs in this set, then they are
+ *   assumed to be kept at the beginning of the array, and are 
+ *   not written out (since they are automatically created anew each
+ *   time the program loads). See routine loadGlobal() for more details.
  * 
  * Preconditions:
  *      nil
@@ -1493,14 +1510,14 @@ void
 GMParms::writeMdCpts(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Dense CPTs");os.nl();
-  // leave out the last one (ie., the -1) as it is an internal
+  // leave out the 1st one (ie., the -1) as it is an internal
   // object. See routine loadGlobal()
   os.write(mdCpts.size()-1,"num Dense CPTs"); os.nl();
-  for (unsigned i=0;i<mdCpts.size()-1;i++) {
+  for (unsigned i=1;i<mdCpts.size();i++) {
     // first write the count
-    os.write(i,"Dense CPT cnt");
+    os.write(i-1,"Dense CPT cnt");
     os.nl();
-    mdCpts[i]->write(os);
+    mdCpts[i-1]->write(os);
   }
   os.nl();
 }
@@ -1659,10 +1676,15 @@ GMParms::writeComponents(oDataStreamFile& os)
 }
 
 
-
 /*-
  *-----------------------------------------------------------------------
  * writeMixtures
+ *
+ *   Writes out all the mixtures in the global object. If there are
+ *   any internal pre-defined mixtures in this set, then they are assumed
+ *   to be kept at the beginning of the array, and are not written out
+ *   (since they are automatically created anew each time the program
+ *   loads). See routine loadGlobal() for more details.
  * 
  * Preconditions:
  *      nil
@@ -1671,7 +1693,7 @@ GMParms::writeComponents(oDataStreamFile& os)
  *      one
  *
  * Side Effects:
- *      all "used" parameters are written out.
+ *      all "used" parameters are written out, so moves file pointers.
  *
  * Results:
  *      nil.
@@ -1682,19 +1704,19 @@ void
 GMParms::writeMixtures(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Mixtures of components");os.nl();
-  // leave out the last two (ie., the -2) as they are internal
-  // objects. See routine loadGlobal()
+  // Leave out the first two (ie., the -2) as they are internal
+  // objects. See routine loadGlobal().
   os.write(mixtures.size()-2,"num MIXCOMPONENTS"); os.nl();
-  for (unsigned i=0;i<mixtures.size()-2;i++) {
+  for (unsigned i=2;i<mixtures.size();i++) {
     // first write the count
-    os.write(i,"MIXCOMPONENTS cnt");
+    os.write(i-2,"MIXCOMPONENTS cnt");
     os.nl();
 
     // next write the dimension of this mixture
-    os.write(mixtures[i]->dim(),"MG dim");
+    os.write(mixtures[i-2]->dim(),"MG dim");
     os.nl();
 
-    mixtures[i]->write(os);
+    mixtures[i-2]->write(os);
   }
   os.nl();
 }

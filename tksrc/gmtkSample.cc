@@ -231,7 +231,6 @@ main(int argc,char*argv[])
     iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
-  GM_Parms.loadGlobal();
 
   /////////////////////////////
   // read in the structure
