@@ -41,6 +41,18 @@ Break definitions into two grand sections,
 
 struct RandomVariable
 {
+    const bool discrete;
+    // Is the variable discrete?
+    // Inference conditions on this; cliques keep track of the values of 
+    // their discrete members.
+
+    short val;
+    // in the discrete case, the actual value of the variable.
+    // Cliques keep track of the values of their discrete members.
+
+    const bool hidden;
+    // Is the node hidden, or is it an observation.
+
     // The probability of a variable taking a particular value depends on
     // the values of its parents. There come in two varieties: switching 
     // parents and conditional parents. The values of the switching parents
@@ -70,29 +82,9 @@ struct RandomVariable
     // parents and unions together the parents. Stores the result in the
     // allPossibleParents array.
 
-    sarray<sparseCPT> discreteCPT;
-    // entry i of the sArray gives the CPT to use when the switching parents
-    // have instantiation i. i is determined by a multidimensional array
-    // indexing function.
-
-    /* These next members are used to control the inference loops in a
-       clique tree. (The constituents of each clique are random variables.)
-    */
-
-    const bool hidden;
-    // If a variable is not hidden, inference has no choices to make about
-    // its value.
-
-    const bool discrete;
-    // If not hidden then inference has no choices to make.
-    // If hidden and discrete, inference will loop over all possible values.
-    // If hidden and continuous, something else is done.
-
-    int val;
-    // in the discrete case, the actual value of the variable
-
-    int cachedVal;
-    // again, for the discrete case.
+    int address(sArray<randomVariable *>);
+    // Looks up the values of a vector of parents and computes an
+    // integer index into a 1 dimensional array.
 
     virtual logpr probGivenParents() {error("probGivenParents() Undefined\n");}
     // For continuous variables.
@@ -101,28 +93,16 @@ struct RandomVariable
     // The virtualness of this function is expected to be negligible comared
     // to the other work done for continuous variables.
 
-    int address(sArray<randomVariable *>);
-    // Looks up the values of a vector of parents and computes an
-    // integer index into a 1 dimensional array.
+    virtual void clampFirstValue() = 0;
+    // Sets a variable to the first value that is possible.
+    // Values with 0 probability can be ignored, as long as some value is set.
+    // This function must always do a clamping.
+    // Observation variables (already clamped do nothing).
 
-    inline logpr discreteProbGivenParents() 
-    {findConditionalParents(); 
-     return discreteCPT[address(conditionalParents)][val];}
-    // For discrete variables.
-    // The inference algorithm guarantees that when this is called, the
-    // variable and its parents will be clamped to appropriate values.
-    // This does a table lookup in the discrete case.  
-
-    sArray< int > possibleDiscreteValues;
-    // The set of possible discrete values for whatever the
-    // parents are currently set to. One may just iterate over this
-    // array to obtain the set of values that this random variable
-    // may be set to.
-
-    virtual void findPossibleDiscreteValues();
-    // Fills the table possibleDiscreteValues based on the set of
-    // current parent values. Called only once for each 
-    // set of parent values.
+    virtual bool clampNextValue() = 0;
+    // Sets a variable to the next possible value.
+    // Returns false when there are no more values or the variable is an
+    // observation.
 
     virtual void makeRandom() = 0;
     // Sets the parameters determining probGivenParents() to random values.
@@ -155,10 +135,6 @@ struct RandomVariable
     // Then the count of seeing the variable and its parents with those values
     // is incremented by the posterior amount.
     // For continuous variables, statistics are accumulated.
-
-    inline void discreteIncrement();
-    // For discrete variables, incrementing can be done with a table lookup.
-    // Avoid a virtual function call.
 
     virtual void update() = 0;
     // At the end of each EM iteration, this is called to convert the 
