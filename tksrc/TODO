@@ -1850,3 +1850,9 @@ Sun Apr 18 20:02:59 2004
     Set it up so that it has a min number of unrollings case (say 4 or 5) since it won't
     help at all for short numbers of unrollings.
 
+
+Thu Apr 22 14:40:34 2004
+  - support filtering p(x_t | y_{1:t}), prediction p(x_t | y_{1:s}) s < t,
+    as well as smoothing p(x_t| y_{1:T}), where y is observed, and x are
+    the hidden variables in the DBN.
+
