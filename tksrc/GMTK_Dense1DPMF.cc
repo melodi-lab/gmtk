@@ -42,7 +42,7 @@ VCID("$Header$");
  * This routine copies the magnitude of x, the sign of y, and returns the result, i.e.,
  *  copysign(x,y) = fabs(x)*sign(y)
  */      
-extern "C" double copysign(double x, double y);
+extern "C" double copysign(double x, double y) __THROW;
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -134,7 +134,6 @@ Dense1DPMF::read(iDataStreamFile& is)
 	pmf[i].set_to_one();
       }
     }
-    pmf[i] = prob;
     sum += prob;
   }
   if (CPT::normalizationThreshold != 0) {
