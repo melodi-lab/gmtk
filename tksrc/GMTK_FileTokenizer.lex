@@ -62,8 +62,12 @@ flt     {flt1}|{flt2}
 int_rng {int}:{int}
 
 
-/* all valid keywords */
-keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
+/* all valid keywords 
+ * This set must be consistent with the enum TokenKeyword in FileParser.h 
+ * and with kw_table[] in FileParser.cc   
+*/
+
+keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 
@@ -169,7 +173,7 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 {flt}       {
             FileParser::tokenInfo.tokenStr = yytext;
             FileParser::tokenInfo.tokenType = FileParser::TT_Real;
-            FileParser::tokenInfo.float_val = atof( yytext );
+            FileParser::tokenInfo.doub_val = atof( yytext );
             if (debugLexer)
               printf( "A float: %s (%g)\n", yytext,
                     atof( yytext ) );

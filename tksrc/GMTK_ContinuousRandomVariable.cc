@@ -1,3 +1,4 @@
+
 /*-
  * GMTK_ContinuousRandomVariable.cc
  *     Support code for continuous random variables.
@@ -140,6 +141,13 @@ ContinuousRandomVariable::probGivenParents()
     _cachedProb = 
       curMappingOrDirect->mapping.collection->mg(gaussianIndex)->log_p
       ((unsigned)timeIndex,firstFeatureElement);
+  }
+  if (wtStatus != wt_NoWeight) {
+    if (wtStatus == wt_Constant)
+      _cachedProb.valref() *= wtWeight;
+    else // get weight from observation matrix at current time frame
+      _cachedProb.valref() *= 
+	(*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
   }
   return _cachedProb;
 }
