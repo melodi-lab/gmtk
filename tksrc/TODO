@@ -1826,4 +1826,8 @@ Thu Apr  8 00:05:03 2004
   is called at the time C3 is at its true max value).
   
 
+Mon Apr 12 10:31:10 2004
+  - convert all CPT cards and vals to unsigned rather than int.
+
+
 
