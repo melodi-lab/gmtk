@@ -20,7 +20,6 @@
 
 void Clique::cacheClampedValues()
 {
-    clampedValues.resize(discreteMember.size());
     for (unsigned i=0; i<discreteMember.size(); i++)
         clampedValues[i] = discreteMember[i]->val;
 }
@@ -96,7 +95,7 @@ bool viterbi)
         map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue *>::iterator mi;
         CliqueValue *cv;
         if ((mi=instantiationAddress.find(clampedValues)) == 
-        instantiationAddress.end())                  // not seen before
+        instantiationAddress.end()) // not seen before
         {
             CliqueValue c;
             c.pi = 0.0;
@@ -142,7 +141,6 @@ bool viterbi)
 	// copy in the clique value -- if it has a nonzero probability
         // otherwise, discard it to avoid further propagation
         if (cv.pi != 0.0)
-// does logpr know what 0 is??
             instantiation.push_back(cv);
     }
     else
