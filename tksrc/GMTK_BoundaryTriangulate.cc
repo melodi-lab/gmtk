@@ -2953,10 +2953,10 @@ testZeroFillIn(
  *-----------------------------------------------------------------------
  * triangulateMaximumCardinalitySearch
  *
- *    This routine will triangulate the graph, but is * guaranteedfasfaldskfjaldfjafguarguaraslfjakdl
-
-GUARANTEED
- *    not to change a graph if it is already triangulated.
+ *   The graph is triangulated with an elimination order as determined by 
+ *   maximum cardinality search,  The maximal cliques are stored in RIP 
+ *   order.  If the input graph is already triangulated it will not be
+ *   changed by this function. 
  *
  * Preconditions:
  *   Each variable in the set of nodes must have valid parent and 
@@ -2964,14 +2964,12 @@ testZeroFillIn(
  *   nodes in the set. 
  *
  * Postconditions:
- *   A triangulation with an elimination order as determined by maximum 
- *   cardinality search is stored via the maximal cliques in the
- *   cliques variable in RIP order.  The elimination order used is stored 
- *   in order and the graph is triangulated.  
+ *   The graph is triangulated, the maximal cliques of the triangulated
+ *   graph are stored in the parameter 'cliques', and the elimination order 
+ *   used is stored in the parameter 'order'.
  *
  * Side Effects:
- *   Neighbor members of each random variable can be changed. If graph is already
- *   triangulated, then no side effects.
+ *   none 
  *
  * Results:
  *   none 
@@ -2980,7 +2978,7 @@ testZeroFillIn(
  *   This procedure runs O((N^2)log(N)), the cost of converting the 
  *   list of vector cliques to the vector of set cliques. 
  * 
- * (For more details see maximumCardinalitySearch) 
+ * (Also see triangulateMCSIfNotTriangulated and maximumCardinalitySearch) 
  *-----------------------------------------------------------------------
  */
 void 
@@ -3076,7 +3074,7 @@ chordalityTest(
   bool                            chordal;
 
   fillTriangulateNodeStructures( nodes, triangulate_nodes );
-  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, true);
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false);
   chordal = testZeroFillIn( order );
 
   return(chordal);
@@ -3121,11 +3119,96 @@ getCliques(
   bool                            chordal;
 
   fillTriangulateNodeStructures( nodes, triangulate_nodes );
-  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, true);
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false);
   chordal = testZeroFillIn( order );
 
   if (chordal) {
     listVectorCliquetoVectorSetClique( list_cliques, cliques );
+  }
+
+  return(chordal);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateMCSIfNotTriangulated
+ *
+ *   The graph is triangulated with an elimination order as determined by 
+ *   maximum cardinality search,  The maximal cliques are stored in RIP 
+ *   order.  If the input graph is already triangulated it will not be
+ *   changed by this function. 
+ *
+ *   This procedure performs almost the same function as 
+ *   triangulateMaximumCardinalitySearch.  This version has a return 
+ *   value telling the user if the original graph was triangulated, does 
+ *   not return the elimination order, will be a bit faster if the 
+ *   input graph is already triangualted.  This version will always 
+ *   return the same triangulation, whereas 
+ *   triangulateMaximumCardinalitySearch will randomize if possible. 
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   The graph is triangulated, and the maximal cliques of the triangulated
+ *   graph are stored in the parameter 'cliques'.
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   true if input graph is chordal, false if not 
+ *
+ * Complexity:
+ *   This procedure runs O((N^2)log(N)), the cost of converting the 
+ *   list of vector cliques to the vector of set cliques. 
+ *-----------------------------------------------------------------------
+ */
+bool
+BoundaryTriangulate::
+triangulateMCSIfNotTriangulated( 
+  const set<RandomVariable*>& nodes,
+  vector<MaxClique>&          cliques
+  )
+{
+  vector<triangulateNode>         triangulate_nodes; 
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        order; 
+  vector<MaxClique>::iterator     crrnt_clique; 
+  vector<MaxClique>::iterator     end_clique; 
+  bool                            chordal;
+
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false);
+  chordal = testZeroFillIn( order );
+
+  if (!chordal) {
+    ////////////////////////////////////////////////////////////////////////// 
+    // Triangulate the graph according to the order found using MCS 
+    ////////////////////////////////////////////////////////////////////////// 
+    fillInComputation( order );
+
+    ////////////////////////////////////////////////////////////////////////// 
+    // Use maximum cardinality search to get the cliques of the 
+    // triangulated graph 
+    ////////////////////////////////////////////////////////////////////////// 
+    maximumCardinalitySearch( triangulate_nodes, list_cliques, order, 
+      false);
+  }
+
+  listVectorCliquetoVectorSetClique( list_cliques, cliques );
+
+  ////////////////////////////////////////////////////////////////////////// 
+  // Convert to MaxCliques and triangulate the RandomVariable structures 
+  ////////////////////////////////////////////////////////////////////////// 
+  listVectorCliquetoVectorSetClique( list_cliques, cliques );
+  for ( crrnt_clique = cliques.begin(), end_clique   = cliques.end();
+        crrnt_clique != end_clique;
+        ++crrnt_clique ) {
+    MaxClique::makeComplete((*crrnt_clique).nodes);
   }
 
   return(chordal);
