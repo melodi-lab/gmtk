@@ -29,8 +29,9 @@
 #ifndef CLIQUECHAIN_H
 #define CLIQUECHAIN_H
 
-#include <list>
 #include "GMTK_Clique.h"
+
+enum compute_mode {statistics,viterbi,data_probs};
 
 struct CliqueChain
 {
@@ -46,33 +47,38 @@ struct CliqueChain
          { return _preorder[_preorder.size()-i-1]; }
     unsigned postorderSize() { return _preorder.size(); }
 
-    bool forwardPass(logpr beam=0.0, bool viterbi=false);
-    // Computes the alpha probabilities and/or viterbi clique value pointers.
-    // Prunes away entries that are less than beam*max.
+    CliqueChain() {numSplits=3; baseCaseThreshold=10;}
 
-    void backwardPass();
-    // In the backward pass, lambdas are computed for each of the CliqueValues
-    // stored in the forward pass. When these are multiplied with the 
-    // corresponding pis, and divided by the data prob, the poserior of each
-    // clique instantiation results.
+    void setRecursion(int ns, int bct) {numSplits=ns; baseCaseThreshold=bct;}
 
-    bool doViterbi(logpr beam=0.0);
-    // Computes the likeliest value of each clique, and clamps the variables
-    // in the underlying network correspondingly.
-    // Prunes away entries that are less than beam*max.
-    // returns false of the forwards pass fails (0 prob after pruning)
+    void initializeForwardPass();
 
-    bool computePosteriors(logpr beam=0.0);
-    // Calculates the lambdas and pis for all the cliques.
-    // Prunes away entries that are less than beam*max.
-    // returns false of the forwards pass fails (0 prob after pruning)
+    bool finishForwardPass();
 
-    void incrementEMStatistics();
-    // Multiplies the lambdas and pis for each clique instantiation, clamps
-    // the network, and increments the EM statistics for each node assigned
-    // to a clique.
+    void advancePis(unsigned first_clique, unsigned last_clique, 
+    bool erase=false);
+
+    void initializeBackwardPass();
+
+    void recedeLambdas(unsigned right, unsigned left);
+
+    void finishBackwardPass();
+   
+    void incrementEMStatistics(Clique *cl);
+
+    bool recProcess(unsigned left, unsigned right);
+
+    bool compute(compute_mode mode, logpr _beam);
 
     logpr dataProb, viterbiProb, backwardDataProb;
+
+    int best;  // used in the Viterbi computation to store the best predecessor
+
+    bool doingEM, doingViterbi;
+
+    logpr beam;
+
+    int baseCaseThreshold, numSplits;
 };
 
 #endif

@@ -444,7 +444,8 @@ void GMTK_GM::cliqueChainEM(const int iterations,
 	    ::fflush(stdout);
 	  }
 	  // first compute the probabilities
-	  if (!chain->computePosteriors(beam))
+          chain->doingEM = true;
+	  if (!chain->compute(statistics, beam))
 	    {
 	      cout << "Skipping example due to 0 probability\n";
 	      continue;
@@ -453,9 +454,6 @@ void GMTK_GM::cliqueChainEM(const int iterations,
 	  frames += globalObservationMatrix.numFrames();
           cout << "Data prob per frame: " 
                << chain->dataProb.val()/globalObservationMatrix.numFrames() << endl;
-
-	  // then increment the em counts
-	  chain->incrementEMStatistics();
 	} while (clampNextExample());
       printf("Total data prob from %d frames processed is: %1.9e\n",
 	     frames,total_data_prob.val());
@@ -615,7 +613,7 @@ logpr beam)
     clampFirstExample();
     do
     {
-        if (!chain->computePosteriors(beam))
+        if (!chain->compute(data_probs, beam))
         {
             cout << "Skipping example due to 0 probability\n";
             continue;
@@ -696,6 +694,7 @@ void GMTK_GM::GM2CliqueChain()
     map<RandomVariable *, unsigned> num_children_added_for;
 
     chain = new CliqueChain;
+    chain->setRecursion(numSplits, baseCaseThreshold);
 
     unsigned maxops = 2*node.size()-1;  // This many add/removes
     vector<Clique> cl(maxops);

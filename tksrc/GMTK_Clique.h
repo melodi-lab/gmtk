@@ -56,6 +56,10 @@ struct CliqueValue
     // instantiation
     const vector<RandomVariable::DiscreteVariableType> *values;
 
+    // The instantiation number in the order that the instantiations were
+    // enumerated.
+    int inum; 
+
     // In a dynamic network, the same set of values will occur over and
     // over again in different cliques. To avoid storing them over and over
     // again, keep a global pool. 
@@ -99,17 +103,33 @@ struct Clique
     bool separator;
     // Is the clique a separator?
 
-    vector<int> instantiation;
+    int *instantiation;
     // This stores all the possible instantiations of a clique.
     // Pruning occurs by removing low probability instantiations.
     // The storage is indirect: the integer refers to the index of the
     // instantiation in the global instantiation pool
 
-    map<vector<RandomVariable::DiscreteVariableType>, int>instantiationAddress;
+    int numInstantiations;  // how many are there?
+    int instantiation_capacity;  // how big is the instantiation vector?
+
+    void addInstantiation(int inum);  // adds an instantiation
+
+    void clearInstantiationList(); // deletes it
+
+    vector<int> *inum2gnum;
+    // A mapping from instantiation number X (before pruning) to 
+    // the index in the gip where it's stored
+    // Using a self-managed int * would be OK too.
+    // It's a vector * here because deleting one gets the memory back,
+    // whereas clear()ing one doesn't
+
+    static map<vector<RandomVariable::DiscreteVariableType>, int>
+           instantiationAddress;
     // A separator clique sums over multiple values from its non-separator
     // parent. instantiationAddress keeps track of the index of the 
     // unique CliqueValue that all the parent values with the same 
     // underlying variable values sum into.
+    // Static because only one copy is needed at a time.
 
     static vector<CliqueValue> gip;  // the global instantiation pool
 
@@ -124,7 +144,7 @@ struct Clique
 
     static void recycleCliqueValue(unsigned idx); // frees this one for reuse
 
-    void recycleAllCliqueValues() {for (unsigned i=0;i<instantiation.size();i++)
+    void recycleAllCliqueValues() {for (int i=0;i<numInstantiations; i++)
                                        recycleCliqueValue(instantiation[i]);}
 
     logpr probGivenParents();
@@ -132,7 +152,8 @@ struct Clique
     // It calls findConditionalProbabilityNodes(), and then for each
     // member of conditionalProbabilityNode it invokes probGivenParents()
     
-    void enumerateValues(int new_member_num, int pred_val, bool viterbi=false);
+    void enumerateValues(int new_member_num, int pred_val, vector<int> *in2gn,
+    bool viterbi=false);
     // This is a recursive function that enumerates all the possible
     // instantiations of a clique.  For consistency with the value of
     // the parent clique, only the new members are instantiated.
@@ -144,7 +165,13 @@ struct Clique
     void reveal();
     // shows who the members and newMembers are
 
-    ~Clique() {recycleAllCliqueValues();}
+    Clique() {instantiation=NULL; numInstantiations=0;
+    instantiation_capacity=0; inum2gnum=NULL;}
+
+    ~Clique() {recycleAllCliqueValues(); assert(inum2gnum==NULL);}
+
+     // for incremental use in the logspace algorithm
+     void reclaimMemory();
 };
 
 #endif

@@ -100,6 +100,7 @@ bool show_cliques=false;
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
 
+int bct=10, ns=3;
 
 ARGS ARGS::Args[] = {
 
@@ -147,6 +148,10 @@ ARGS ARGS::Args[] = {
   ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
 
   ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
+
+ ARGS("numSplits",ARGS::Opt,ns,"Number of splits to use in logspace recursion (>=2)."),
+
+  ARGS("baseCaseThreshold",ARGS::Opt,bct,"Base case threshold to end recursion (>=2)."),
 
   ARGS()
 
@@ -251,13 +256,14 @@ main(int argc,char*argv[])
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();
 
-
   // now associate the RVs with a GM
   GMTK_GM gm;
   fp.addVariablesToGM(gm);
 
   gm.setExampleStream(obsFileName,dcdrng_str);
   GM_Parms.checkConsistentWithGlobalObservationStream();
+
+  gm.setCliqueChainRecursion(ns, bct);
 
   gm.verifyTopologicalOrder();
 
@@ -282,7 +288,7 @@ main(int argc,char*argv[])
 
     logpr pruneRatio;
     pruneRatio.valref() = -beam;
-    gm.chain->computePosteriors(pruneRatio);
+    gm.chain->compute(data_probs, pruneRatio);
     cout << "Data prob: " << gm.chain->dataProb.val() << endl;
   } while (gm.clampNextExample());
 
