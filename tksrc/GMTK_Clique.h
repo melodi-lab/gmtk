@@ -63,6 +63,17 @@ struct CliqueValue
     // In a dynamic network, the same set of values will occur over and
     // over again in different cliques. To avoid storing them over and over
     // again, keep a global pool. 
+    /**** 
+     * Note: With logspace in place, the overall memory requirements can 
+     * be significantly reduced by eliminating this hash table. Instead,
+     * the "values" field can be changed from a a pointer into the hash table 
+     * to a straight vector. The variable assignments associated with the
+     * instantiation can be stored directly in values. Since there are only
+     * a small number of instantiations, this is OK. This will help 
+     * especially in pruning. The drawback is that it will be horribly 
+     * memory-inefficient in the non-logspace case. Doing this will be 
+     * ultra-memory efficient, but force the use of the logspace recurions.
+    */
     static HashTable< vector<RandomVariable::DiscreteVariableType> >
          global_val_set;
 };
