@@ -186,7 +186,7 @@ GMParms::readDPmfs(iDataStreamFile& is, bool reset)
     ob = new Dense1DPMF;
     ob->read(is);
     if (dPmfsMap.find(ob->name()) != dPmfsMap.end())
-      error("ERROR: dense PMF named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: dense PMF named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     dPmfs[i+start] = ob;
     dPmfsMap[ob->name()] = i+start;
   }
@@ -240,7 +240,7 @@ GMParms::readSPmfs(iDataStreamFile& is, bool reset)
     ob = new Sparse1DPMF;
     ob->read(is);
     if (sPmfsMap.find(ob->name()) != sPmfsMap.end())
-      error("ERROR: sparse PMF named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: sparse PMF named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     sPmfs[i+start] = ob;
     sPmfsMap[ob->name()] = i+start;
   }
@@ -295,7 +295,7 @@ GMParms::readMeans(iDataStreamFile& is, bool reset)
     ob->read(is);
     // printf("New mean, ob's name = %s\n",ob->name().c_str());
     if (meansMap.find(ob->name()) != meansMap.end())
-      error("ERROR: mean named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: mean named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     means[i+start] = ob;
     meansMap[ob->name()] = i+start;
   }
@@ -330,7 +330,7 @@ GMParms::readCovars(iDataStreamFile& is, bool reset)
     ob = new DiagCovarVector;
     ob->read(is);
     if (covarsMap.find(ob->name()) != covarsMap.end())
-      error("ERROR: covar named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: covar named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     covars[i+start] = ob;
     covarsMap[ob->name()] = i+start;
   }
@@ -365,7 +365,7 @@ GMParms::readDLinkMats(iDataStreamFile& is, bool reset)
     ob = new DlinkMatrix;
     ob->read(is);
     if (dLinkMatsMap.find(ob->name()) != dLinkMatsMap.end())
-      error("ERROR: dlink matrix named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: dlink matrix named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     dLinkMats[i+start] = ob;
     dLinkMatsMap[ob->name()] = i+start;
   }
@@ -400,7 +400,7 @@ GMParms::readDLinks(iDataStreamFile& is, bool reset)
     ob = new Dlinks;
     ob->read(is);
     if (dLinksMap.find(ob->name()) != dLinksMap.end())
-      error("ERROR: dlink structure named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: dlink structure named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     dLinks[i+start] = ob;
     dLinksMap[ob->name()] = i+start;
   }
@@ -435,7 +435,7 @@ GMParms::readWeightMats(iDataStreamFile& is, bool reset)
     ob = new WeightMatrix;
     ob->read(is);
     if (weightMatsMap.find(ob->name()) != weightMatsMap.end())
-      error("ERROR: weight matrix named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: weight matrix named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     weightMats[i+start] = ob;
     weightMatsMap[ob->name()] = i+start;
   }
@@ -470,7 +470,7 @@ GMParms::readMdCpts(iDataStreamFile& is, bool reset)
     ob = new MDCPT;
     ob->read(is);
     if (mdCptsMap.find(ob->name()) != mdCptsMap.end())
-      error("ERROR: MDCPT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: MDCPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     mdCpts[i+start] = ob;
     mdCptsMap[ob->name()] = i+start;
   }
@@ -505,7 +505,7 @@ GMParms::readMsCpts(iDataStreamFile& is, bool reset)
     ob = new MSCPT;
     ob->read(is);
     if (msCptsMap.find(ob->name()) != msCptsMap.end())
-      error("ERROR: MSCPT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: MSCPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     msCpts[i+start] = ob;
     msCptsMap[ob->name()] = i+start;
   }
@@ -541,7 +541,7 @@ GMParms::readMtCpts(iDataStreamFile& is, bool reset)
     ob = new MTCPT;
     ob->read(is);
     if (mtCptsMap.find(ob->name()) != mtCptsMap.end())
-      error("ERROR: MTCPT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: MTCPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     mtCpts[i+start] = ob;
     mtCptsMap[ob->name()] = i+start;
   }
@@ -577,7 +577,7 @@ GMParms::readDTs(iDataStreamFile& is, bool reset)
     ob = new RngDecisionTree<unsigned>;
     ob->read(is);
     if (dtsMap.find(ob->name()) != dtsMap.end())
-      error("ERROR: DT named '%s' specified more than once in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: DT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     dts[i+start] = ob;
     dtsMap[ob->name()] = i+start;
     if (ob->clampable())
@@ -630,7 +630,7 @@ GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
     }
     gc->read(is);
     if (gaussianComponentsMap.find(gc->name()) != gaussianComponentsMap.end())
-      error("ERROR: Gaussian component named '%s' specified more than once in file '%s'",gc->name().c_str(),is.fileName());
+      error("ERROR: Gaussian component named '%s' already defined but is specified for a second time in file '%s'",gc->name().c_str(),is.fileName());
     gaussianComponents[i+start] = gc;
     gaussianComponentsMap[gc->name()] = i+start;
   }
@@ -669,7 +669,7 @@ GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
     gm = new MixGaussians(dim);
     gm->read(is);
     if (mixGaussiansMap.find(gm->name()) != mixGaussiansMap.end()) {
-      error("ERROR: mixture of Gaussian named '%s' specified more than once in file '%s'",gm->name().c_str(),is.fileName());
+      error("ERROR: mixture of Gaussian named '%s' already defined but is specified for a second time in file '%s'",gm->name().c_str(),is.fileName());
     }
     mixGaussians[i+start] = gm;
     mixGaussiansMap[gm->name()] = i+start;
