@@ -37,6 +37,7 @@ class LinMeanCondDiagGaussian;
 class Dlinks : public NamedObject {
   friend class DlinkMatrix;
   friend class LinMeanCondDiagGaussian;
+  friend class GMParms;
 
   ///////////////////////////////////////////////////////
   // Structure for representing the dependency links to
@@ -56,9 +57,15 @@ class Dlinks : public NamedObject {
   // use an sArray for speed
   sArray<int> preComputedOffsets;
 
+  // object specific min/max lags
   int _minLag;
   int _maxLag;
 
+  // global min/max lags and min/max link offsets in feature vectors.
+  static int _globalMinLag;
+  static int _globalMaxLag;
+  static int _globalMinOffset;
+  static int _globalMaxOffset;
   
   /////////////////////////////////////////////////////////
   // Support for a DlinkMatrix objects who share
