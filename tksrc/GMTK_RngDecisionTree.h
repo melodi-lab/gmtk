@@ -362,7 +362,7 @@ RngDecisionTree<T>::read(iDataStreamFile& is)
   // a string which gives the name of the DT file to obtain
   // multiple instances of the internals of this decision tree.
   is.read(dtFileName,"RngDecisionTree:: read file/numFeatures");
-  if (!strIsInt(dtFileName.c_str(),&(int)_numFeatures)) {
+  if (!strIsInt(dtFileName.c_str(),(int*)&_numFeatures)) {
     if (clampable())
       error("ERROR: in DT named '%s', can't have DTs defined recursively from files",name().c_str());
     // then this must be a file name, turn off cpp pipe since we need to
