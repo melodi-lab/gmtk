@@ -6,9 +6,11 @@
  *   observed file.  Also, this gives GMTK the ability to do Hybrid
  *   ANN/HMM speech recognition (ANN = artificial neural network), aka
  *   Morgan/Bourlard. I.e., with this CPT, GMTK can act as a hybrid
- *   system decoder. See the GMTK documentation for more details.
+ *   system decoder. This CPT also allows GMTK to support hybrid
+ *   ANN/DBN and/or hybird SVM/DBN systems. See the GMTK documentation
+ *   for more details.
  *
- *   Essentially, this CPT can be used for a binary variable C that
+ *   Specifically, this CPT can be used for a binary variable C that
  *   has exactly one parent A.  The CPT takes probabilities from a
  *   file which correspond to P(C=1|A=a). The file (a standard
  *   observation file, so it can be a pfile, htk file, ascii, etc.)
@@ -20,9 +22,9 @@
  *   virtual online evidence to variable A.  In this way, the actual
  *   floats in the file need not even be probabilties, they can be
  *   arbitrary scores. If C is hidden, however, then the values of
- *   P(C=0|A=a) are taken to be 1-P(C=0|A=a), so in such cases it is
- *   better for the scores for each a to be actual values between 0
- *   and 1.
+ *   P(C=0|A=a) are taken to be 1-P(C=0|A=a), so in such a case (when
+ *   C is hidden) it is more sensible for the scores for each a to be
+ *   actual values between 0 and 1.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
