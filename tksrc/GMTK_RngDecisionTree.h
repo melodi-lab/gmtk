@@ -441,6 +441,14 @@ public:
   void clampNextDecisionTree();
 
   ///////////////////////////////////////////////////////////    
+  // Function only used for testing 
+  bool testFormula(
+    string                           formula,
+    const vector< RandomVariable* >& variables, 
+    unsigned                         desired_answer 
+    );
+
+  ///////////////////////////////////////////////////////////    
   // iterators for iterating through leaf values.
 
   class iterator {
