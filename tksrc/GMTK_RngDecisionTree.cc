@@ -113,7 +113,7 @@ char *dtStr =
 "% this is a decision tree file\n"
 "%\n"
 "dt_name 1  % number of features\n"
-"0 14 10 17,19 11 12 13 0:5 6:9 14 50: 15 18,20 23,25,27 22,24,26 default\n"
+"0 14 10 17 11 12 13 0:5 6:9 14 50: 15 18,20 23,25,27 21:22 default\n"
 "  -1 2\n"
 "  -1 3\n"
 "  -1 4\n"
