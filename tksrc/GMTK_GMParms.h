@@ -200,6 +200,16 @@ public:
   // file position.
   void writeBasic(oDataStreamFile& os);
 
+
+
+  ///////////////////////////////////////////////////////////    
+  // read and write all the DTs.
+  void readDTs(iDataStreamFile& is);
+  void writeDTs(oDataStreamFile& os);
+
+
+
+
 };
 
 ////////////////////////////////////////////////

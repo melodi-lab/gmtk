@@ -1,6 +1,7 @@
 #
 # Makefile 
-#   for low level file IO classes.
+#   General Makefile for GMTK
+#   J. Bilmes
 #
 #
 # $Header$
@@ -121,8 +122,7 @@ all_srcs = BN1.cc GMTK_CPT.cc GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_DLINKS.cc 
 
 all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_DLINKS.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h GMTK_GM.h GMTK_GMParms.h GMTK_GaussianCommon.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_PackedSparseRealMatrix.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_WeightMatrix.h
 
-
-all_objs = 
+all_objs = $(objs)
 
 all_exs = 
 
