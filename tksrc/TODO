@@ -658,3 +658,9 @@ Thu Jul 25 19:57:48 2002
   - Update the pfile tools to use the new file format.
   
 
+Fri Jul 26 14:52:53 2002
+  - add appropriate waring/informational message mechanism,
+    so that users can se more/less of the warning information, with
+    command line option (e.g., for dets hitting zero, and any
+    other funny hacks that occur).
+
