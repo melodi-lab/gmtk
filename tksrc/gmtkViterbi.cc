@@ -99,6 +99,8 @@ char *varMapFile=NULL;
 char *transitionLabel=NULL;
 double varFloor = 1e-10;
 
+bool show_cliques=false;
+
 ARGS ARGS::Args[] = {
 
    ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
@@ -142,6 +144,7 @@ ARGS ARGS::Args[] = {
    ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
   ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
 ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
+  ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
 
  ARGS()
 
@@ -267,7 +270,11 @@ main(int argc,char*argv[])
   gm.verifyTopologicalOrder();
 
   gm.GM2CliqueChain();
-  // gm.showCliques();
+  if (show_cliques)
+  {
+    cout << "The cliques in the template network are:\n";
+    gm.showCliques();
+  }
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
 
