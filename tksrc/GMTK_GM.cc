@@ -719,6 +719,7 @@ void GMTK_GM::GM2CliqueChain()
     {
         unsigned i=num_adds;
 
+
         // inherit the new nodes of the predecessor
         // accumulate new nodes up to a maximal clique
         // note that they are guaranteed to be in topological order
@@ -726,7 +727,7 @@ void GMTK_GM::GM2CliqueChain()
 
         // do all the removes possible
         for (unsigned j=0; j<cl[i-1].member.size(); j++)
-	  if (num_children_added_for[cl[i-1].member[j]] != 
+	  if (num_children_added_for[cl[i-1].member[j]] !=
 	      cl[i-1].member[j]->allPossibleChildren.size())
 	    {
 	      cl[i].member.push_back(cl[i-1].member[j]);
