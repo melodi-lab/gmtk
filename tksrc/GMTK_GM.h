@@ -113,6 +113,12 @@ struct GMTK_GM
 
     void enumerativeEM(int iterations);
     // Does EM using brute force inference.
+
+    cliqueChain *chain;
+    // A pointer to a clique chain representation of the GM.
+
+    void cliqueChainEM(int iterations, logpr beam=0);
+    // Does EM using dynamic programming on a clique chain.
 };
 
 #endif

@@ -358,3 +358,38 @@ void GMTK_GM::enumerativeEM(int iterations)
         emUpdate();
     }
 }
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *    cliqueChainEM does EM using dynamic programming on a clique chain
+ *
+ * Results:
+ *
+ * Side Effects:
+ *    parameters are updated
+ *    hidden variables are left set in an undifined way.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
+{
+    emInitialize();
+    for (int i=0; i<iterations; i++)
+    {
+        logpr total_data_prob = 0;
+        clampFirstExample();
+        do
+        {
+            // first compute the probabilities
+            chain->computePosteriors(beam);
+            total_data_prob *= dataProb;
+
+            // then increment the em counts
+            chain->incrementEMStatistics();
+        } while (clampNextExample);
+        cout << "Total data prob is: " << total_data_prob << endl;
+        emUpdate();
+    }
+}
