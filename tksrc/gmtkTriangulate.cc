@@ -78,6 +78,7 @@ static char *inputMasterFile=NULL;
 // static char *outputMasterFile=NULL;
 static char *inputTrainableParameters=NULL;
 static char *inputTriangulatedFile=NULL;
+static char *outputTriangulatedFile=NULL;
 static bool binInputTrainableParameters=false;
 // static char *objsToNotTrainFile=NULL;
 
@@ -106,6 +107,7 @@ Arg Arg::Args[] = {
   Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
   Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
   Arg("inputTriangulatedFile",Arg::Opt,inputTriangulatedFile,"Non-default previous triangulated file to start with"),
+  Arg("outputTriangulatedFile",Arg::Opt,outputTriangulatedFile,"File name to write resulting triangulation to"),
 
 
   /////////////////////////////////////////////////////////////
@@ -427,12 +429,21 @@ main(int argc,char*argv[])
   } else {
 
     GMTemplate gm_template(fp,maxNumChunksInBoundary,chunkSkip);
+    string input_tri_file, output_tri_file;
 
-    string tri_file;
-    if (inputTriangulatedFile == NULL)
-      tri_file = string(strFileName) + GMTemplate::fileExtension;
-    else 
-      tri_file = string(inputTriangulatedFile);
+    if (inputTriangulatedFile == NULL) {
+      input_tri_file = string(strFileName) + GMTemplate::fileExtension;
+    }
+    else {
+      input_tri_file = string(inputTriangulatedFile);
+    }
+
+    if (outputTriangulatedFile == NULL) {
+      output_tri_file = string(strFileName) + GMTemplate::fileExtension;
+    }
+    else {
+      output_tri_file = string(outputTriangulatedFile);
+    }
 
     if (rePartition && !reTriangulate) {
       infoMsg(IM::Warning,"Warning: rePartition=T option forces -reTriangulate option to be true.\n");
@@ -440,7 +451,7 @@ main(int argc,char*argv[])
     }
 
     // first check if tri_file exists
-    if (rePartition || fsize(tri_file.c_str()) == 0) {
+    if (rePartition || fsize(input_tri_file.c_str()) == 0) {
       // Then do everything (both partition & triangulation)
 
       // run partition given options
@@ -466,8 +477,8 @@ main(int argc,char*argv[])
 	triangulator.anyTimeTriangulate(gm_template,jtWeight);
       }
 
-      backupTriFile(tri_file);
-      oDataStreamFile os(tri_file.c_str());
+      backupTriFile(output_tri_file);
+      oDataStreamFile os(output_tri_file.c_str());
       fp.writeGMId(os);
       string clStr;
       createCommandLineOptionString(clStr);
@@ -479,9 +490,9 @@ main(int argc,char*argv[])
 
       // first get the id and partition information.
       {
-	iDataStreamFile is(tri_file.c_str(),false,false);
+	iDataStreamFile is(input_tri_file.c_str(),false,false);
 	if (!fp.readAndVerifyGMId(is))
-	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",input_tri_file.c_str(),strFileName);
 	gm_template.readPartitions(is);
 	gm_template.readMaxCliques(is);
 	// read the max cliques but don't triangulate with
@@ -520,8 +531,8 @@ main(int argc,char*argv[])
       }
 
       // write everything out anew
-      backupTriFile(tri_file);
-      oDataStreamFile os(tri_file.c_str());
+      backupTriFile(output_tri_file);
+      oDataStreamFile os(output_tri_file.c_str());
 
       fp.writeGMId(os);
       string clStr;
@@ -539,9 +550,9 @@ main(int argc,char*argv[])
       // where this program ensures that the result is triangulated
       // and where it reports the quality of the triangulation.
 
-      iDataStreamFile is(tri_file.c_str(),false,false);
+      iDataStreamFile is(input_tri_file.c_str(),false,false);
       if (!fp.readAndVerifyGMId(is))
-	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",input_tri_file.c_str(),strFileName);
 
       gm_template.readPartitions(is);
       gm_template.readMaxCliques(is);
