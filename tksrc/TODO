@@ -649,7 +649,7 @@ Mon Jul 22 13:40:06 2002
 
 Mon Jul 22 15:15:04 2002
   - when strcutre contains no observations in file, shouldn't
-    require obs file.
+    require obs file (but how to determine unrolling in that case?)
 
 Thu Jul 25 19:57:48 2002
   - add a per sentence like range option to all programs, like
