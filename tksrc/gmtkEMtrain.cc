@@ -56,6 +56,7 @@ char *strFileName;
 char *parmsFileName;
 unsigned maxEMIterations=30;
 bool randomizeParams = true;
+bool enem = false;
 
 ARGS ARGS::Args[] = {
 
@@ -67,6 +68,7 @@ ARGS ARGS::Args[] = {
  ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
  ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
  ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
+ ARGS("enem",ARGS::Opt,enem,"Run enumerative EM"),
 
  ARGS()
 
@@ -136,9 +138,12 @@ GM_Parms.writeBasic(of);
   }
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
-  gm.cliqueChainEM(maxEMIterations, pruneRatio);
-// cout << "\n\n\n Doing enumerative EM!!! \n\n";
-//   gm.enumerativeEM(maxEMIterations);
+  if (enem) {
+    cout << "\n\n\n WARNING: Doing enumerative EM!!! \n\n";
+    gm.enumerativeEM(maxEMIterations);
+  } else {
+    gm.cliqueChainEM(maxEMIterations, pruneRatio);
+  }
 
   return 0;  
 
