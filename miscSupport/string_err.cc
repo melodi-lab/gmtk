@@ -1,5 +1,33 @@
 
+/*
+ * "Copyright 2001, International Business Machines Corporation and University
+ * of Washington. All Rights Reserved
+ *
+ *    Written by Geoffrey Zweig and Jeff Bilmes
+ *
+ * NO WARRANTY
+ * THE PROGRAM IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED INCLUDING, WITHOUT
+ * LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Each Recipient is
+ * solely responsible for determining the appropriateness of using the Program
+ * and assumes all risks associated with such use, including but not limited
+ * to the risks and costs of program errors, compliance with applicable laws,
+ * damage to or loss of data, programs or equipment, and unavailability or
+ * interruption of operations.
+
+ * DISCLAIMER OF LIABILITY
+ * THE UNIVERSITY OF WASHINGTON, INTERNATIONAL BUSINESS MACHINES CORPORATION,
+ * GEOFFREY ZWEIG AND JEFF BILMES SHALL NOT HAVE ANY LIABILITY FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING WITHOUT LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE  OF
+ * THE PROGRAM, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES."
+*/
+
 #include <iostream.h>
+#include <fstream.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -112,6 +140,64 @@ display=false)
      return cost[actual_words][reference_words];
 }
 
+main(int argc, char *argv[])
+{
+    if (argc!=3 && argc!=4) 
+        {cout << "Usage: string_err infile reference [show-align]\n"; exit(1);}
+ 
+    /* This program takes two files that have utterances separated by #.
+       It computes the string WER on an utterance by utterance basis, and
+       prints out the alignments, number of errors, and overall error rate.
+    */
 
+    ifstream in(argv[1]);
+    if (!in) {cerr << "Unable to open " << argv[1] << endl; exit(1);}
+
+    ifstream ref(argv[2]);
+    if (!ref) {cerr << "Unable to open " << argv[2] << endl; exit(1);}
+
+    bool show_align = false;
+    if (argc==4 && !strcmp(argv[3],"show-align"))
+        show_align = true;
+
+    int errs=0,refwrds=0;
+    while (!in.eof())
+    {
+        string s;
+        vector<string> instr, refstr;
+
+        // read the decoded string
+        while (1)
+        {
+            in >> s >> ws;
+            assert(in.good());
+            if (s == "#")
+               break;
+            instr.push_back(s);
+        }
+        assert(s=="#");
+
+        // read the reference string
+        while (1)
+        {
+            ref >> s >> ws;
+            assert(ref.good());
+            if (s == "#")
+               break;
+            refstr.push_back(s);
+        }
+        assert(s=="#");
+    
+        refwrds += refstr.size(); 
+        errs += score(refstr, instr, show_align);    
+    }
+        
+    cout << refwrds << " reference words\n";
+    cout << errs << " errors\n";
+    cout << "WER: " << float(100*errs)/refwrds << "%\n";
+
+    in.close();
+    ref.close();
+}
 
 
