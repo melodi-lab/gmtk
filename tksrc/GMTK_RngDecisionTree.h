@@ -191,10 +191,14 @@ protected:
         TOKEN_MOD,
         TOKEN_PARENT, 
         TOKEN_PLUS, 
+        TOKEN_QUESTION_MARK, 
         TOKEN_RIGHT_PAREN, 
+        TOKEN_ROTATE_LEFT, 
+        TOKEN_ROTATE_RIGHT, 
+        TOKEN_SHIFT_LEFT, 
+        TOKEN_SHIFT_RIGHT, 
         TOKEN_SPACE, 
         TOKEN_TIMES, 
-        TOKEN_QUESTION_MARK, 
 
         TOKEN_END, 
         LAST_TOKEN_INDEX
@@ -226,6 +230,8 @@ protected:
         COMMAND_BITWISE_AND, 
         COMMAND_BITWISE_OR, 
         COMMAND_BITWISE_XOR, 
+        COMMAND_BRANCH,
+        COMMAND_BRANCH_IF_FALSE,
         COMMAND_DIVIDE, 
         COMMAND_EQUALS, 
         COMMAND_EXPONENT, 
@@ -240,9 +246,11 @@ protected:
         COMMAND_MINUS, 
         COMMAND_MOD, 
         COMMAND_PLUS, 
+        COMMAND_ROTATE_LEFT, 
+        COMMAND_ROTATE_RIGHT, 
+        COMMAND_SHIFT_LEFT, 
+        COMMAND_SHIFT_RIGHT, 
         COMMAND_TIMES, 
-        COMMAND_BRANCH_IF_FALSE,
-        COMMAND_BRANCH,
 
         LAST_COMMAND_INDEX
       };
@@ -259,6 +267,7 @@ protected:
         EXPONENT_PRCDNC,  
         MULT_PRCDNC,  
         ADDITIVE_PRCDNC,  
+        SHIFT_PRCDNC,  
         RELATIONAL_PRCDNC,  
         EQUALITY_PRCDNC,  
         BITWISE_AND_PRCDNC,  
