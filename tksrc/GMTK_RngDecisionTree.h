@@ -38,13 +38,14 @@
 #ifndef GMTK_RNG_DECISION_TREE_H
 #define GMTK_RNG_DECISION_TREE_H
 
-#include "fileParser.h"
-#include "logp.h"
 #include "bp_range.h"
+#include "fileParser.h"
 #include "GMTK_NamedObject.h"
+#include "logp.h"
+#include "sArray.h"
 
-#include <vector>
 #include <algorithm>
+#include <vector>
 
 /////////////////////////////////////////////////
 // The maximum branching factor on any decision tree node.
@@ -102,13 +103,48 @@ protected:
   string           curName;    // the current DT name
   unsigned         firstDT;    // index of the first decision tree
  
-  ///////////////////////////////////////////////////////////////////////////    
+  ///////////////////////////////////////////////////////////////////////////   
   // Equation Parsing 
-  ///////////////////////////////////////////////////////////////////////////    
+  ///////////////////////////////////////////////////////////////////////////
+
+  template <class T>
+  class sArrayStack : public sArray<T>
+  {
+    public:
+      sArrayStack(int size) {
+        stack_top = -1;
+        resize(size);
+      }
+      
+      inline void push_back(T item) {
+        ++stack_top;
+        ptr[stack_top] = item;
+      }
+
+      inline void pop_back() {
+        --stack_top;
+        assert(stack_top >= -1);
+      }
+
+      inline void clear() {
+        stack_top = -1;
+      }
+
+      inline T stackSize() const {
+        return(stack_top+1);
+      }
+
+    private:
+      int stack_top;
+  };
+
+  typedef unsigned formulaCommand;
+  typedef sArray<formulaCommand> formulaCommandContainer;
+
+  static sArrayStack<formulaCommand> stack;
 
   class EquationClass
   {
-
     public:
 
       void parseFormula(
@@ -126,13 +162,8 @@ protected:
 
     protected:
 
-      struct commandStruct { 
-        unsigned command;
-        unsigned immediate;
-      };
-
-      // Vector of commands with immediates 
-      vector<commandStruct> commands;
+      // Vector of commands 
+      formulaCommandContainer commands;
 
       ///////////////////////////////////////////////////////////////////////
       // Tokens used by the equation parsing function  
@@ -179,10 +210,13 @@ protected:
       // Commands used in equation evaluation 
       ///////////////////////////////////////////////////////////////////////    
       enum {
+        OPERAND_SHIFT = 5,
+        COMMAND_MASK  = 0x1f, 
+        OPERAND_MASK  = ~COMMAND_MASK,
 
-        COMMAND_PUSH_PARENT,      
+        COMMAND_PUSH_PARENT = 0,    
         COMMAND_PUSH_CARDINALITY,
-        COMMAND_PUSH_CONSTANT, 
+        COMMAND_PUSH_CONSTANT,    
         COMMAND_PLUS, 
         COMMAND_MINUS, 
         COMMAND_TIMES, 
@@ -195,24 +229,32 @@ protected:
         COMMAND_LOGICAL_OR, 
         COMMAND_MOD, 
         COMMAND_MIN, 
-        COMMAND_MAX, 
+        COMMAND_MAX,
 
         LAST_COMMAND_INDEX
       };
 
+      #define MAKE_COMMAND(command, operand)     \
+        (command | (operand << OPERAND_SHIFT))
+      #define GET_COMMAND(command) (command & COMMAND_MASK) 
+      #define GET_OPERAND(command) ((command & OPERAND_MASK) >> OPERAND_SHIFT)
+
       void parseExpression(
         tokenStruct& token,
-        string&      leafNodeVal 
+        string&      leafNodeVal, 
+        unsigned&    depth  
       );
  
       void parseTerm(
         tokenStruct& token,
-        string&      leafNodeVal 
+        string&      leafNodeVal, 
+        unsigned&    depth  
       );
 
       void parseFactor(
         tokenStruct& token,
-        string&      leafNodeVal 
+        string&      leafNodeVal, 
+        unsigned&    depth  
       );
 
       void getToken(
@@ -224,6 +266,12 @@ protected:
         const string& expression, 
         int&   number 
       );
+
+      void changeDepth(
+        const int change, 
+        unsigned& depth 
+      );
+
   };
 
   ///////////////////////////////////////////////////////////////    
