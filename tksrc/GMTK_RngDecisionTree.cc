@@ -360,7 +360,6 @@ RngDecisionTree::Node*
 RngDecisionTree::readRecurse(iDataStreamFile& is,
 			     Node* &prevLeaf)
 {
-
   int curFeat;
   is.read(curFeat,"RngDecisionTree:: readRecurse curFeat");
   if (curFeat < -1) 
@@ -369,23 +368,36 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
     error("ERROR: DT '%s', file '%s', feature number (=%d) must be < numFeatures (=%d)",name().c_str(),is.fileName(),curFeat,
 	  _numFeatures);
   Node *node = new Node;
+
   if (curFeat == -1) {
-    // then this is a leaf node.
-    node->leafNode.value = 0;
-    // leaf node, now read the next bit of leaf node as a string to determine what it is.
+
     string leafNodeVal;
-    is.read(leafNodeVal,"RngDecisionTree:: readRecurse leaf node value");
-    int val;
-    if (strIsInt(leafNodeVal.c_str(),&val)) {
-      node->nodeType = LeafNodeVal;
-      node->leafNode.value = val;
-      node->leafNode.leafNodeString = leafNodeVal;
-    } else if (leafNodeVal == "expand") {
-      node->nodeType = LeafNodeFullExpand;
-      node->leafNode.leafNodeString = leafNodeVal;
-    } else if (leafNodeVal[0] == '(') {
+    int    val;
+
+    //////////////////////////////////////////////////////////////////////
+    // This is a leaf node
+    //////////////////////////////////////////////////////////////////////
+    node->leafNode.value = 0;
+
+    //////////////////////////////////////////////////////////////////////
+    // Skip leading spaces, then read until a { or a space is found 
+    //////////////////////////////////////////////////////////////////////
+    is.readStringUntil(leafNodeVal, '{', true,
+        "RngDecisionTree:: readRecurse leaf node value");
+
+    //////////////////////////////////////////////////////////////////////
+    // Check if leaf node is a formula
+    //////////////////////////////////////////////////////////////////////
+    if (leafNodeVal.size() == 0) {
+
+      //////////////////////////////////////////////////////////////////////
+      // Read until another " is found (will not stop at spaces) 
+      //////////////////////////////////////////////////////////////////////
+      is.readStringUntil(leafNodeVal, '}', false, 
+        "RngDecisionTree:: readRecurse leaf node value");
+
       node->nodeType = LeafNodeFormula;
-      // TODO: remove exceptions
+      
       try {
         node->leafNode.equation.parseFormula(leafNodeVal);
       }
@@ -399,14 +411,31 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
           is.fileName(), name().c_str(), leafNodeVal.c_str(), 
 	  error_message );
       }
-    } else {
-      error("ERROR: In file '%s', DT '%s', invalid leaf node value '%s':  %s", 
-	    is.fileName(), name().c_str(), leafNodeVal.c_str() ); 
     }
+    //////////////////////////////////////////////////////////////////////
+    // Check for integer 
+    //////////////////////////////////////////////////////////////////////
+    else if (strIsInt(leafNodeVal.c_str(),&val)) {
+      node->nodeType = LeafNodeVal;
+      node->leafNode.value = val;
+      node->leafNode.leafNodeString = leafNodeVal;
+    } 
+    //////////////////////////////////////////////////////////////////////
+    // Check for full expand 
+    //////////////////////////////////////////////////////////////////////
+    else if (leafNodeVal == "expand") {
+      node->nodeType = LeafNodeFullExpand;
+      node->leafNode.leafNodeString = leafNodeVal;
+    }
+    else {
+      error("ERROR: In file '%s', DT '%s', invalid leaf node value '%s':  %s",
+        is.fileName(), name().c_str(), leafNodeVal.c_str() ); 
+    } 
 
     node->leafNode.prevLeaf = prevLeaf;
     prevLeaf = node;
-  } else {
+  } 
+  else {
     node->nodeType = NonLeafNode;
     node->nonLeafNode.ftr = (leafNodeValType)curFeat;
     node->nonLeafNode.ordered = true;
@@ -2225,13 +2254,13 @@ char *dtStr1 =
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
 "      -1 expand\n"
-"      -1 (p0+1)\n"
+"      -1 {  (  p0  \n  +   1    )    }\n"
 "    2 2 0:5 default\n"
-"      -1 (c0+1)\n"
-"      -1 (00+1)\n"
+"      -1 {(c0+1)}\n"
+"      -1 {(00+1)}\n"
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
-"      -1 (p0+p1+5)\n"
+"      -1 {(p0+p1+5)}\n"
 "      -1 6\n"
 "    2 2 0:5 default\n"
 "      -1 7\n"
@@ -2296,7 +2325,6 @@ main(int argc,char *argv[])
   // Test the formula parser 
   test_formula();
 
-/*
   // first write out the file
   if (argc == 1)
     {
@@ -2348,7 +2376,6 @@ main(int argc,char *argv[])
     printf("\n");
     printf("### RESULT ==> %d\n",dt.query(vec,card));
   }
-*/
 
 }
 
