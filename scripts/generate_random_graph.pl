@@ -114,7 +114,8 @@ if (!defined $max_in_degree) {
 }
 
 if (!defined $total_iterations) {
-  $total_iterations = 500;
+#  $total_iterations = 500;
+  $total_iterations = 10000;
 } 
 
 if (!defined $deterministic) {
@@ -221,7 +222,9 @@ my @changed_edges;
 my $moves_accepted;
 
 $moves_accepted = 0;
-while($moves_accepted<$total_iterations)
+my $moves_attempted = 0;
+#while($moves_accepted<$total_iterations)
+while($moves_attempted < $total_iterations)
 {
   @changed_edges = change_edge($G);
 
@@ -238,6 +241,7 @@ while($moves_accepted<$total_iterations)
     restore_changed_edges( @changed_edges ); 
   }
 
+  $moves_attempted++; 
 }
 
 print  "% $G\n";
@@ -318,27 +322,27 @@ for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
 ##############################################################################
 # Make sure one node is observed 
 ##############################################################################
-if ($nmbr_observed == 0)
-{
-  if ($continuous_obs)
-  {
-    ##########################################################################
-    # Choose from sink nodes for continuous observation 
-    ##########################################################################
-    $rndm_nmbr = int(rand(scalar @sinks));
-    $vertex = $sinks[$rndm_nmbr];
-  }
-  else 
-  {
-    ##########################################################################
-    # Choose any node for discrete observation 
-    ##########################################################################
-    $rndm_nmbr = int(rand($nodes_per_frame));
-    $vertex = $V[$rndm_nmbr];
-  }
-
-  set_observed($vertex); 
-}
+#if ($nmbr_observed == 0)
+#{
+#  if ($continuous_obs)
+#  {
+#    ##########################################################################
+#    # Choose from sink nodes for continuous observation 
+#    ##########################################################################
+#    $rndm_nmbr = int(rand(scalar @sinks));
+#    $vertex = $sinks[$rndm_nmbr];
+#  }
+#  else 
+#  {
+#    ##########################################################################
+#    # Choose any node for discrete observation 
+#    ##########################################################################
+#    $rndm_nmbr = int(rand($nodes_per_frame));
+#    $vertex = $V[$rndm_nmbr];
+#  }
+#
+#  set_observed($vertex); 
+#}
 
 ##############################################################################
 # Possibly increase state space of determistic nodes when parent 
@@ -416,7 +420,7 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
     print  "      type: discrete hidden cardinality 2;\n"; 
     print  "      switchingparents: nil;\n"; 
     printf "      conditionalparents: nil\n"; 
-    print "         using DeterministicCPT(\"dummy_DtrmnstcCPT\");\n";
+    print "         using DeterministicCPT(\"dummy_0_DtrmnstcCPT\");\n";
     print "   }\n\n";
   }
 
@@ -437,7 +441,8 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
           ($G->get_attribute('cardinality', $vertex)-1); 
       }
       else {
-        printf "      type: discrete observed 0:0 cardinality %d;\n",
+        printf "      type: discrete observed value %d cardinality %d;\n",
+          rand($G->get_attribute('cardinality', $vertex)), 
           $G->get_attribute('cardinality', $vertex); 
       }
     }
@@ -510,13 +515,14 @@ if ($nmbr_frames == 1)
   print  "   variable : dummy {\n";
   print  "      type: discrete hidden cardinality 2;\n"; 
   print  "      switchingparents: nil;\n"; 
-  print  "      conditionalparents: dummy(-1) using DenseCPT(\"dummy_DenseCPT\");\n"; 
-  print  "   }\n\n";
-  print  "   variable : dummy_2 {\n";
-  print  "      type: discrete hidden cardinality 2;\n"; 
-  print  "      switchingparents: nil;\n"; 
-  print  "      conditionalparents: dummy(0) using DenseCPT(\"dummy_DenseCPT\");\n"; 
+  print  "      conditionalparents: dummy(-1) using DeterministicCPT(\"dummy_1_DtrmnstcCPT\");\n";
   print  "   }\n";
+
+#  print  "   variable : dummy_2 {\n";
+#  print  "      type: discrete hidden cardinality 2;\n"; 
+#  print  "      switchingparents: nil;\n"; 
+#  print  "      conditionalparents: dummy(0) using DenseCPT(\"dummy_DenseCPT\");\n"; 
+#  print  "   }\n";
   print  "}\n\n";
 }
 
@@ -549,7 +555,7 @@ if (defined $master_file_name)
   print MASTER "DT_IN_FILE inline\n\n";
 
   if ($nmbr_frames == 1) {
-    $nmbr_deterministic_CPT++; 
+    $nmbr_deterministic_CPT += 2; 
   }
 
   print MASTER "$nmbr_deterministic_CPT  % Number of decision trees\n\n";
@@ -560,8 +566,14 @@ if (defined $master_file_name)
   if ($nmbr_frames == 1) {
     print  MASTER "$DT_count  % DT number\n";
     $DT_count++; 
-    print  MASTER "dummy_DT\n";
+    print  MASTER "dummy_0_DT\n";
     printf MASTER "0 %% Number of parents\n";
+    printf MASTER "   -1 0\n\n";
+
+    print  MASTER "$DT_count  % DT number\n";
+    $DT_count++; 
+    print  MASTER "dummy_1_DT\n";
+    printf MASTER "1 %% Number of parents\n";
     printf MASTER "   -1 0\n\n";
   }
 
@@ -580,19 +592,19 @@ if (defined $master_file_name)
       }
       else
       {   
-        print MASTER "   -1 (mod((1+";
+        print MASTER "   -1 {mod((1+";
         for($i=0; $i<(scalar @parents); $i++)
         {
           print MASTER "p$i";
           for($j=0; $j<$i; $j++) {
-            print MASTER "*c$j";
+            print MASTER "*cp$j";
           }
           if ($i!=(scalar @parents)-1) {
             print MASTER "+";
           }
         }
 
-        printf MASTER "),%d))\n", $G->get_attribute('cardinality', $vertex);
+        printf MASTER "),%d)}\n", $G->get_attribute('cardinality', $vertex);
       } 
       print MASTER "\n";  
     } 
@@ -610,10 +622,17 @@ if (defined $master_file_name)
   if ($nmbr_frames == 1) {
     print  MASTER "$DT_count  % DT number\n";
     $DT_count++; 
-    print  MASTER "dummy_DtrmnstcCPT\n";
+    print  MASTER "dummy_0_DtrmnstcCPT\n";
     printf MASTER "0 %% Number of parents\n";
     printf MASTER "2\n"; 
-    print  MASTER "dummy_DT\n\n";
+    print  MASTER "dummy_0_DT\n\n";
+
+    print  MASTER "$DT_count  % DT number\n";
+    $DT_count++; 
+    print  MASTER "dummy_1_DtrmnstcCPT\n";
+    printf MASTER "1 %% Number of parents\n";
+    printf MASTER "2 2\n"; 
+    print  MASTER "dummy_1_DT\n\n";
   }
 
   foreach $vertex (@sorted_vertices)
@@ -774,7 +793,7 @@ sub change_edge
 
   do { 
     $rndm_v_2 = int(rand($nmbr_verticies));
-  } while($rndm_v_1 == $rndm_v_2);
+  } while($rndm_v_1 == $rndm_v_2); 
 
   if ($G->has_edge($V[$rndm_v_1], $V[$rndm_v_2])) 
   {
