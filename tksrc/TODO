@@ -1305,5 +1305,36 @@ Tue Jan 13 00:07:02 2004
     (i.e., if we're paying the cost of a virtual
      function, we might as well switch right
      to a function that does exactly what we want).
- 
-   
+ - make a packed bit length member function for GMTK_PackedCliqueValue.h  
+ - for hash tables and dynamic arrays, and when doing multiple iterations, use simple 
+   learning algorithm to decide starting size (rather than fixed constants), 
+   to avoid extraneous memory accesses.
+
+
+Sat Jan 17 14:38:59 2004
+  - rewrite RV class hierarchy so that virtual function cost
+    is all we pay for prob, begin(), next(), etc.
+  - all RVs currently use STL, change to use sarrays.
+  - summary: new features to add:
+     - inference features
+          - viterbi decoder and word only (or variable only) 
+            backtrace, generalizing LVCSR decoders (see decoder papers).
+          - n-best and lattice
+          - loopy
+          - importance sampling
+          - variational inference
+
+     - usability features
+          - ARPA LMs and FLMs
+          - non-linear BMMs (Ozgur??)
+          - smoothing for CPTs in EM
+          - parameter adaptation directly within GMTK
+          - ??? (something I'm forgetting).
+          - generalized probability weights/exponents
+          - decision tree formulas (Chris)
+          - integrate in new obs code.
+     - theory/algorithms
+          - switching parents in inference in forward/backward
+          - characterize nets which require particular M and S
+          - triangulation for nets with sparse CPTs (Chris)       
+
