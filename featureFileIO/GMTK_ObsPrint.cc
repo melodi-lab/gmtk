@@ -34,15 +34,15 @@
 
 */
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
 #include <values.h>
 #include <cmath>
 #include <cassert>
+
 #include "pfile.h"
-//#include "parse_subset.h"
 #include "error.h"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
