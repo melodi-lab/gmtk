@@ -44,6 +44,7 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "spi.h"
+#include "version.h"
 
 VCID("$Header$");
 
@@ -54,7 +55,7 @@ VCID("$Header$");
 #include "GMTK_GM.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
-#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
@@ -69,17 +70,19 @@ float beam=-LZERO;
 
 char *strFileName=NULL;
 
-char *prmOutFile="outParms%d.gmp";
-bool binPrmOutFile=false;
+// char *outputTrainableParameters="outParms%d.gmp";
+char *outputTrainableParameters=NULL;
+bool binOutputTrainableParameters=false;
 bool writeParametersAfterEachEMIteration=true;
 
-char *prmMasterFile=NULL;
-char *prmTrainableFile=NULL;
-bool binPrmTrainableFile=false;
+char *inputMasterFile=NULL;
+char *outputMasterFile=NULL;
+char *inputTrainableParameters=NULL;
+bool binInputTrainableParameters=false;
 char *objsToNotTrainFile=NULL;
 
 unsigned maxEMIterations=3;
-bool randomizeParams = true;
+bool randomizeParams = false;
 bool enem = false;
 double mcvr = 1e20;
 double mcsr = 1e10;
@@ -114,187 +117,135 @@ bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
 int show_cliques=0;
 
-char *argsFile = NULL;
 char *cppCommandOptions = NULL;
 
 int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
 int ns=GMTK_DEFAULT_NUM_SPLITS;
 
-void makeArgs(Argument_List &args)
-{
-  bool required=1,optional=0;
+unsigned allocateDenseCpts=0;
+
+bool print_version_and_exit = false;
+
+Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // observation input file handling
 
-  args.add("of1",required,&ofs[0],
-           "Observation File 1");
-  args.add("nf1",optional,&nfs[0],
-           "Number of floats in observation file 1");
-  args.add("ni1",optional,&nis[0],
-           "Number of ints in observation file 1");
-  args.add("fr1",optional,&frs[0],
-           "Float range for observation file 1");
-  args.add("ir1",optional,&irs[0],
-           "Int range for observation file 1");
-  args.add("fmt1",optional,&fmts[0],
-           "Format (htk,bin,asc,pfile) for observation file 1");
-  args.add("iswp1",optional,&iswps[0],
-           "Endian swap condition for observation file 1");
+  Arg("of1",Arg::Req,ofs[0],"Observation File 1"),
+  Arg("nf1",Arg::Opt,nfs[0],"Number of floats in observation file 1"),
+  Arg("ni1",Arg::Opt,nis[0],"Number of ints in observation file 1"),
+  Arg("fr1",Arg::Opt,frs[0],"Float range for observation file 1"),
+  Arg("ir1",Arg::Opt,irs[0],"Int range for observation file 1"),
+  Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
+  Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
 
-  args.add("of2",optional,&ofs[1],
-           "Observation File 2");
-  args.add("nf2",optional,&nfs[1],
-           "Number of floats in observation file 2");
-  args.add("ni2",optional,&nis[1],
-           "Number of ints in observation file 2");
-  args.add("fr2",optional,&frs[1],
-           "Float range for observation file 2");
-  args.add("ir2",optional,&irs[1],
-           "Int range for observation file 2");
-  args.add("fmt2",optional,&fmts[1],
-           "Format (htk,bin,asc,pfile) for observation file 2");
-  args.add("iswp2",optional,&iswps[1],
-           "Endian swap condition for observation file 2");
 
-  args.add("of3",optional,&ofs[2],
-           "Observation File 3");
-  args.add("nf3",optional,&nfs[2],
-           "Number of floats in observation file 3");
-  args.add("ni3",optional,&nis[2],
-           "Number of ints in observation file 3");
-  args.add("fr3",optional,&frs[2],
-           "Float range for observation file 3");
-  args.add("ir3",optional,&irs[2],
-           "Int range for observation file 3");
-  args.add("fmt3",optional,&fmts[2],
-           "Format (htk,bin,asc,pfile) for observation file 3");
-  args.add("iswp3",optional,&iswps[2],
-           "Endian swap condition for observation file 3");
+  Arg("of2",Arg::Opt,ofs[1],"Observation File 2"),
+  Arg("nf2",Arg::Opt,nfs[1],"Number of floats in observation file 2"),
+  Arg("ni2",Arg::Opt,nis[1],"Number of ints in observation file 2"),
+  Arg("fr2",Arg::Opt,frs[1],"Float range for observation file 2"),
+  Arg("ir2",Arg::Opt,irs[1],"Int range for observation file 2"),
+  Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
+  Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 2"),
+
+
+  Arg("of3",Arg::Opt,ofs[2],"Observation File 3"),
+  Arg("nf3",Arg::Opt,nfs[2],"Number of floats in observation file 3"),
+  Arg("ni3",Arg::Opt,nis[2],"Number of ints in observation file 3"),
+  Arg("fr3",Arg::Opt,frs[2],"Float range for observation file 3"),
+  Arg("ir3",Arg::Opt,irs[2],"Int range for observation file 3"),
+  Arg("fmt3",Arg::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
+  Arg("iswp3",Arg::Opt,iswps[2],"Endian swap condition for observation file 3"),
+
 
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
 
-  args.add("strFile",required,&strFileName,
-           "GM Structure File");
-  args.add("prmMasterFile",required,&prmMasterFile,
-           "Multi-level master CPP processed GM Parms File");
-  args.add("prmTrainableFile",optional,&prmTrainableFile,
-           "File containing Trainable Parameters");
-  args.add("binPrmTrainableFile",optional,&binPrmTrainableFile,
-           "Is Binary? File containing Trainable Parameters");
-  args.add("cppCommandOptions",optional,&cppCommandOptions,
-           "Command line options to give to cpp");
+  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
 
-  args.add("objsToNotTrainFile",optional,&objsToNotTrainFile,
-           "File list list trainable parm objs not train.");
+  Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
+  Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
 
+  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
+  Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
 
-  args.add("prmOutFile",optional,&prmOutFile,
-           "File to place *TRAINABLE* output parametes");
-  args.add("binPrmOutFile",optional,&binPrmOutFile,
-           "Output parametes binary? (def=false)");
+  Arg("objsNotToTrain",Arg::Opt,objsToNotTrainFile,"File listing trainable parameter objects to not train."),
+
+  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
+  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
 
 
-  args.add("wpaeei",optional,&writeParametersAfterEachEMIteration,
-           "Write Parameters *After* Each EM Iteration? (def=true)");
+  Arg("wpaeei",Arg::Opt,writeParametersAfterEachEMIteration,
+      "Write Parameters After Each EM Iteration Completes"),
+
+
+  Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
+
+
 
   /////////////////////////////////////////////////////////////
   // general files
 
-  args.add("seed",optional,&seedme,
-           "Seed the RN generator");
-  args.add("maxEmIters",optional,&maxEMIterations,
-           "Max number of EM iterations to do");
-  args.add("beam",optional,&beam,
-           "Beam width (less than max*exp(-beam) are pruned away)");
+  Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
+  Arg("maxEmIters",Arg::Opt,maxEMIterations,"Max number of EM iterations to do"),
+  Arg("beam",Arg::Opt,beam,"Beam width (less than max*exp(-beam) are pruned away)"),
+  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
 
   // support for splitting and vanishing
-  args.add("mcvr",optional,&MixGaussiansCommon::mixCoeffVanishRatio,
-           "Mixture Coefficient Vanishing Ratio");
-  args.add("botForceVanish",optional,
-           &MixGaussiansCommon::numBottomToForceVanish,
-           "Number of bottom mixture components to force vanish");
+  Arg("mcvr",Arg::Opt,MixtureCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
+  Arg("botForceVanish",Arg::Opt,MixtureCommon::numBottomToForceVanish,"Number of bottom mixture components to force vanish"),
   
-  args.add("mcsr",optional,&MixGaussiansCommon::mixCoeffSplitRatio,
-           "Mixture Coefficient Splitting Ratio");
-  args.add("topForceSplit",optional,
-           &MixGaussiansCommon::numTopToForceSplit,
-           "Number of top mixture components to force split");
+  Arg("mcsr",Arg::Opt,MixtureCommon::mixCoeffSplitRatio,"Mixture Coefficient Splitting Ratio"),
+  Arg("topForceSplit",Arg::Opt,MixtureCommon::numTopToForceSplit,"Number of top mixture components to force split"),
 
-  args.add("meanCloneSTDfrac",optional,&MeanVector::cloneSTDfrac,
-           "Fraction of mean to use for STD in mean clone");
-  args.add("covarCloneSTDfrac",optional,
-           &DiagCovarVector::cloneSTDfrac,
-           "Fraction of var to use for STD in covar clone");
-  args.add("dlinkCloneSTDfrac",optional,&DlinkMatrix::cloneSTDfrac,
-           "Fraction of var to use for STD in covar clone");
+  Arg("meanCloneSTDfrac",Arg::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
+  Arg("covarCloneSTDfrac",Arg::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
+  Arg("dlinkCloneSTDfrac",Arg::Opt,DlinkMatrix::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
 
-  args.add("cloneShareMeans",optional,
-           &GaussianComponent::cloneShareMeans,
-           "Gaussian component clone shares parent mean");
-  args.add("cloneShareCovars",optional,
-           &GaussianComponent::cloneShareCovars,
-           "Gaussian component clone shares parent covars");
-  args.add("cloneShareDlinks",optional,
-           &GaussianComponent::cloneShareDlinks,
-           "Gaussian component clone shares parent dlinks");
+  Arg("cloneShareMeans",Arg::Opt,GaussianComponent::cloneShareMeans,"Gaussian component clone shares parent mean"),
+  Arg("cloneShareCovars",Arg::Opt,GaussianComponent::cloneShareCovars,"Gaussian component clone shares parent covars"),
+  Arg("cloneShareDlinks",Arg::Opt,GaussianComponent::cloneShareDlinks,"Gaussian component clone shares parent dlinks"),
 
 
-  args.add("varFloor",optional,&varFloor,
-           "Variance Floor");
-  args.add("floorVarOnRead",optional,
-           &DiagCovarVector::floorVariancesWhenReadIn,
-           "Floor the variances to varFloor when they are read in");
+  Arg("varFloor",Arg::Opt,varFloor,"Variance Floor"),
+  Arg("floorVarOnRead",Arg::Opt,DiagCovarVector::floorVariancesWhenReadIn,
+       "Floor the variances to varFloor when they are read in"),
 
 
 
-  args.add("lldp",optional,&lldp,
-           "Log Likelihood difference percentage for termination");
-  args.add("mnlldp",optional,&mnlldp,
-           "Absolute value of max negative Log Likelihood difference percentage for termination");
+  Arg("lldp",Arg::Opt,lldp,"Log Likelihood difference percentage for termination"),
+  Arg("mnlldp",Arg::Opt,mnlldp,"Absolute value of max negative Log Likelihood difference percentage for termination"),
 
-  args.add("trrng",optional,&trrng_str,
-           "Range to train over segment file");
+  Arg("trrng",Arg::Opt,trrng_str,"Range to train over segment file"),
 
-  args.add("storeAccFile",optional,&storeAccFile,
-           "Store accumulators file");
-  args.add("loadAccFile",optional,&loadAccFile,
-           "Load accumulators file"); 
-  args.add("loadAccRange",optional,&loadAccRange,
-           "Load accumulators file range"); 
-  args.add("llStoreFile",optional,&llStoreFile,
-           "File to store previous sum LL's"); 
-  args.add("accFileIsBinary",optional,&accFileIsBinary,
-           "Binary accumulator files (def true)"); 
+  Arg("storeAccFile",Arg::Opt,storeAccFile,"Store accumulators file"),
+  Arg("loadAccFile",Arg::Opt,loadAccFile,"Load accumulators file"), 
+  Arg("loadAccRange",Arg::Opt,loadAccRange,"Load accumulators file range"), 
+  Arg("llStoreFile",Arg::Opt,llStoreFile,"File to store previous sum LL's"), 
+  Arg("accFileIsBinary",Arg::Opt,accFileIsBinary,"Binary accumulator files (def true)"), 
 
-  args.add("startSkip",optional,&startSkip,
-           "Frames to skip at beginning (i.e., first frame is buff[startSkip])");
-  args.add("endSkip",optional,&endSkip,
-           "Frames to skip at end (i.e., last frame is buff[len-1-endSkip])");
+  Arg("startSkip",Arg::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
+  Arg("endSkip",Arg::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
   
-  args.add("cptNormThreshold",optional,&CPT::normalizationThreshold,
-           "Read error if |Sum-1.0|/card > norm_threshold");
-  args.add("random",optional,&randomizeParams,
-           "Randomize the parameters");
-  args.add("enem",optional,&enem,"Run enumerative EM");
+  Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
+  Arg("random",Arg::Opt,randomizeParams,"Randomize the parameters"),
+  Arg("enem",Arg::Opt,enem,"Run enumerative EM"),
 
-  args.add("showCliques",optional,&show_cliques,
-           "Show the cliques after the netwok has been unrolled k times.");
+Arg("showCliques",Arg::Opt,show_cliques,"Show the cliques after the network has been unrolled k times."),
 
-  args.add("argsFile",optional,&argsFile,
-           "File to get args from (overrides specified comand line args).");
 
-  args.add("numSplits",optional,&ns,
-           "Number of splits to use in logspace recursion (>=2).");
+  Arg("numSplits",Arg::Opt,ns,"Number of splits to use in logspace recursion (>=2)."),
 
-  args.add("baseCaseThreshold",optional,&bct,
-           "Base case threshold to end recursion (>=2).");
+  Arg("baseCaseThreshold",Arg::Opt,bct,"Base case threshold to end recursion (>=2)."),
 
-  args.add("gaussianCache",optional,
-           &MixGaussiansCommon::cacheGaussiansInEmTraining,
-           "Cache Gaussians evaluations during EM training. true will speeds things up, but uses more memory.");
-}
+  Arg("componentCache",Arg::Opt,MixtureCommon::cacheComponentsInEmTraining,"Cache component probabilities during EM training, speeds things up but uses more memory."),
+
+  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
+
+  // final one to signal the end of the list
+  Arg()
+
+};
 
 /*
  * definition of needed global arguments
@@ -315,9 +266,10 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  Argument_List args;
-  makeArgs(args);
-  args.parse(argc, argv);
+  Arg::parse(argc,argv);
+
+  if (print_version_and_exit)
+    printf("%s\n",gmtk_version_id);
 
   ////////////////////////////////////////////
   // check for valid argument values.
@@ -325,7 +277,7 @@ main(int argc,char*argv[])
   unsigned ifmts[MAX_NUM_OBS_FILES];
   for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
     if (ofs[i] != NULL && nfs[i] == 0 && nis[i] == 0)
-      error("ERROR: command line must specify one of nf%d and ni%d not zero",
+      error("ERROR: command line parameters must specify one of nf%d and ni%d as not zero",
 	    i+1,i+1);
     nfiles += (ofs[i] != NULL);
     if (strcmp(fmts[i],"htk") == 0)
@@ -359,7 +311,7 @@ main(int argc,char*argv[])
   }
 #endif
 
-  MixGaussiansCommon::checkForValidRatioValues();
+  MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
@@ -378,22 +330,26 @@ main(int argc,char*argv[])
 
   /////////////////////////////////////////////
   // read in all the parameters
-  if (prmMasterFile) {
+  if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(prmMasterFile,false,true,cppCommandOptions);
+    iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
   }
-  if (prmTrainableFile) {
+  if (inputTrainableParameters) {
     // flat, where everything is contained in one file
-    iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
+    iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+  GM_Parms.loadGlobal();
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 
   /////////////////////////////
   // read in the structure of the GM, this will
   // die if the file does not exist.
   FileParser fp(strFileName,cppCommandOptions);
+
+  printf("Finished reading in all parameters and structures\n");
+
   // parse the file
   fp.parseGraphicalModel();
   // create the rv variable objects
@@ -403,12 +359,19 @@ main(int argc,char*argv[])
   fp.ensureS_SE_E_NE();
   // link the RVs with the parameters that are contained in
   // the bn1_gm.dt file.
-  fp.associateWithDataParams();
+  if (allocateDenseCpts == 0)
+    fp.associateWithDataParams(FileParser::noAllocate);
+  else if (allocateDenseCpts == 1)
+    fp.associateWithDataParams(FileParser::allocateRandom);
+  else if (allocateDenseCpts == 2)
+    fp.associateWithDataParams(FileParser::allocateUniform);
+  else
+    error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   // make sure that all observation variables work
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();
   // now associate the RVs with a GM
-  GMTK_GM gm;
+  GMTK_GM gm(&fp);
   fp.addVariablesToGM(gm);
   gm.verifyTopologicalOrder();
 
@@ -416,6 +379,8 @@ main(int argc,char*argv[])
   // set up the observation stream
   gm.setExampleStream(obsFileName,trrng_str);
   GM_Parms.checkConsistentWithGlobalObservationStream();
+
+  GM_Parms.setFirstUtterance( gm.trrng->min() ); 
 
   gm.setCliqueChainRecursion(ns, bct);
 
@@ -429,11 +394,10 @@ main(int argc,char*argv[])
   }
 
   if (randomizeParams) {
-    printf("NOTE: Randomizing initial parameters\n");
+    printf("### GMTK is randomizing all trainable parameters and writing them to random.gmp ####\n");
     GM_Parms.makeRandom();
-    printf("NOTE: Writing iniial randomized parameters to random.gmp\n");
     oDataStreamFile of("random.gmp");
-    GM_Parms.writeAll(of);
+    GM_Parms.writeTrainable(of);
   }
 
   /////////////////////////////////////
@@ -449,8 +413,9 @@ main(int argc,char*argv[])
     gm.cliqueChainEM(maxEMIterations, 
 		     pruneRatio,
 		     writeParametersAfterEachEMIteration,
-		     prmOutFile,
-		     binPrmOutFile,
+		     outputTrainableParameters,
+		     binOutputTrainableParameters,
+		     outputMasterFile,
 		     loadAccFile,
 		     loadAccRange,
 		     storeAccFile,
