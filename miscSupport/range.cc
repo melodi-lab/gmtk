@@ -876,7 +876,8 @@ Range::Range(const char *defstr /*=NULL*/, int minval /*=0*/,
   //  -- Karim Oct,13, 2004
 #if ENFORCE_LOWER_UPPER_LIMITS
   DBGFPRINTF((stderr,"defstr=%s, min_val=%d, max_val=%d\n",defstr,min_val,max_val));
-  if(defstr!=NULL && strcmp(defstr,"all")!=0) {  // we cannot call first() and last() on an empty list
+  if(rangeList) { // we cannot call first() and last() on an empty list
+  //if(defstr!=NULL && strcmp(defstr,"all")!=0) {  
     if(first() < minval) {
       error("ERROR: First value of range specification '%s' is below the minimum possible value '%d'",defstr,minval);
       }
