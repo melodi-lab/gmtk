@@ -105,9 +105,9 @@ public:
 
   ///////////////////////////////////////////////////
   // EM Support
-  void zeroAccumulators();
-  void increment(logpr posterior);
-  void update();
+  void zeroAccumulators() {error("zeroAccumulators undefined");}
+  void increment(logpr posterior) {error("increment undefined");}
+  void update() {error("update undefined");}
   ///////////////////////////////////////////////////
 
 
