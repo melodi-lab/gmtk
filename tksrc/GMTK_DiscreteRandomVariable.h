@@ -42,7 +42,7 @@ struct RandomVariable
 
     virtual void update() = 0;
 
-    short cached_val;
+    DISCRETE_VARIABLE_TYPE cached_val;
     virtual void cacheValue() = {cached_val=val;}
 
     virtual void restoreCachedValue() = {val=cached_val;}

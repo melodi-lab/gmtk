@@ -36,7 +36,7 @@ struct RandomVariable
     // Inference conditions on this; cliques keep track of the values of 
     // their discrete members.
 
-    short val;
+    DISCRETE_VARIABLE_TYPE val;
     // in the discrete case, the actual value of the variable.
     // Cliques keep track of the values of their discrete members.
 
