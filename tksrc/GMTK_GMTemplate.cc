@@ -34,6 +34,7 @@
 
 #include "general.h"
 #include "error.h"
+#include "debug.h"
 #include "rand.h"
 
 #include "GMTK_FileParser.h"
@@ -126,7 +127,6 @@ findPartitions(// face quality heuristic
 	       // interface between C and E
 	       set<RandomVariable*>& CEInterface)
 {
-  const int debug = 1;
 
   // M = number of chunks in which interface/pipeline algorithm can operate.
   // i.e., a boundary is searched for in M repeated chunks, where M >= 1.
@@ -183,9 +183,8 @@ findPartitions(// face quality heuristic
 
   assert (M*C1_u2.size() == C2_u2.size());
   assert (C2_u2.size() == M*C3_u2.size());
-  if (debug > 0) 
-    printf("Size of (P,C1,C2,C3,E) = (%d,%d,%d,%d,%d)\n",
-	   P_u2.size(),C1_u2.size(),C2_u2.size(),C3_u2.size(),E_u2.size());
+  infoMsg(Low,"Size of (P,C1,C2,C3,E) = (%d,%d,%d,%d,%d)\n",
+	  P_u2.size(),C1_u2.size(),C2_u2.size(),C3_u2.size(),E_u2.size());
 
 
   // create sets P', C1', C2', and E', from graph unrolled 2*M-1 time(s)
@@ -252,8 +251,7 @@ findPartitions(// face quality heuristic
 
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'R')) {
     // find best left interface
-    if (debug > 0)
-      printf("---\nFinding best left interface\n");
+    infoMsg(Tiny,"---\nFinding BEST LEFT interface\n");
 
     set<RandomVariable*> C2_1_u2; // first chunk in C2_u2
     if (M == 1) {
@@ -282,8 +280,7 @@ findPartitions(// face quality heuristic
   }
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
     // find best right interface
-    if (debug > 0)
-      printf("---\nFinding best right interface\n");
+    infoMsg(Tiny,"---\nFinding BEST RIGHT interface\n");
 
     set<RandomVariable*> C2_l_u2; // last chunk of C2_u2
     if (M == 1) {
@@ -321,8 +318,7 @@ findPartitions(// face quality heuristic
     // exists from within the chunk C2_u2 and places
     // it in C_l_u2, and everything to the 'left' of C_l_u2
     // that still lies within C2_u2 is placed in left_C_l_u2
-    if (debug > 0)
-      printf("---\nUsing left interface to define partitions\n");
+    infoMsg(Nano,"---\nUsing left interface to define partitions\n");
     findInterfacePartitions(P_u1,
 			    C1_u1,
 			    C2_u1,
@@ -338,8 +334,7 @@ findPartitions(// face quality heuristic
 			    CEInterface);
   } else {
     // find right interface partitions
-    if (debug > 0)
-      printf("---\nUsing right interface to define partitions\n");
+    infoMsg(Nano,"---\nUsing right interface to define partitions\n");
     findInterfacePartitions(E_u1,
 			    C2_u1,
 			    C1_u1,
@@ -1233,13 +1228,11 @@ basicTriangulate(// input: nodes to triangulate
 		 const bool findCliques
 		 )
 {
-  const int debug = 0;
   const unsigned num_nodes = nodes.size();
 
 
 
-  if (debug > 0)
-    printf("\nBEGINNING TRIANGULATION --- \n");
+  infoMsg(Huge,"\nBEGINNING TRIANGULATION --- \n");
 
   // need to use some form of heuristic
   assert ( th_v.size() != 0 );
@@ -1285,9 +1278,8 @@ basicTriangulate(// input: nodes to triangulate
 	 i != nodesToUpdate.end();
 	 i++) {
 
-      if (debug > 0)
-	printf("TR: computing weight of node %s(%d)\n",
-	       (*i)->name().c_str(),(*i)->frame());
+      infoMsg(Huge,"TR: computing weight of node %s(%d)\n",
+	      (*i)->name().c_str(),(*i)->frame());
 
       // Create a vector with (weight,fillin,timeframe, etc.)
       // and choose in increasing lexigraphic order in that
@@ -1309,37 +1301,30 @@ basicTriangulate(// input: nodes to triangulate
 	  float tmp_weight = computeWeight(activeNeighbors,(*i),
 					   (th == TH_MIN_WEIGHT));
 	  weight.push_back(tmp_weight);
-	  if (debug > 0)
-	    printf("  node has weight = %f\n",tmp_weight);
+	  infoMsg(Huge,"  node has weight = %f\n",tmp_weight);
 	} else if (th == TH_MIN_FILLIN) {
 	  int fill_in = computeFillIn(activeNeighbors);
 	  weight.push_back((float)fill_in);
-	  if (debug > 0)
-	    printf("  node has fill_in = %d\n",fill_in);
+	  infoMsg(Huge,"  node has fill_in = %d\n",fill_in);
 	} else if (th == TH_MIN_TIMEFRAME) {
 	  weight.push_back((*i)->frame());
-	  if (debug > 0)
-	    printf("  node has time frame = %d\n",(*i)->frame());
+	  infoMsg(Huge,"  node has time frame = %d\n",(*i)->frame());
 	} else if (th == TH_MIN_SIZE) {
 	  weight.push_back((float)activeNeighbors.size());
-	  if (debug > 0)
-	    printf("  node has active neighbor size = %d\n",
-		   activeNeighbors.size());
+	  infoMsg(Huge,"  node has active neighbor size = %d\n",
+		  activeNeighbors.size());
 	} else if (th == TH_MIN_POSITION_IN_FILE) {
 	  weight.push_back((float)(*i)->rv_info.variablePositionInStrFile);
-	  if (debug > 0)
-	    printf("  node has position in file = %d\n",
-		   (*i)->rv_info.variablePositionInStrFile);
+	  infoMsg(Huge,"  node has position in file = %d\n",
+		  (*i)->rv_info.variablePositionInStrFile);
 	} else if (th == TH_MIN_HINT) {
 	  weight.push_back((float)(*i)->rv_info.eliminationOrderHint);
-	  if (debug > 0)
-	    printf("  node has elimination order hint = %f\n",
-		   (*i)->rv_info.eliminationOrderHint);
+	  infoMsg(Huge,"  node has elimination order hint = %f\n",
+		  (*i)->rv_info.eliminationOrderHint);
 	} else if (th == TH_RANDOM) {
 	  float tmp = rnd.drand48();
 	  weight.push_back(tmp);
-	  if (debug > 0)
-	    printf("  node has random value = %f\n",tmp);
+	  infoMsg(Huge,"  node has random value = %f\n",tmp);
 	} else
 	  warning("Warning: unimplemented triangulation heuristic (ignored)\n");
       }
@@ -1348,7 +1333,7 @@ basicTriangulate(// input: nodes to triangulate
       rv2unNodesMap[(*i)] = (unorderedNodes.insert(p));
     }
 
-    if (debug > 0) {
+    if (message(Huge)) {
       // go through and print sorted guys.
       printf("Order of nodes to be eliminated\n");
       for (multimap< vector<float> ,RandomVariable*>::iterator m
@@ -1392,7 +1377,7 @@ basicTriangulate(// input: nodes to triangulate
     // we eliminate.
     RandomVariable *rv = (*(ip.first)).second;
 
-    if (debug > 0) {
+    if (message(Huge)) {
       printf("\nEliminating node %s(%d) with weights:",
 	     rv->name().c_str(),rv->frame());
       for (unsigned l = 0; l < (*(ip.first)).first.size(); l++ )
@@ -1878,8 +1863,6 @@ GMTemplate::variableSetScore(const vector<InterfaceHeuristic>& fh_v,
 			     const set<RandomVariable*>& varSet,
 			     vector<float>& score)
 {
-  const int debug=0;
-
   score.clear();
   for (unsigned fhi=0;fhi<fh_v.size();fhi++) {
     const InterfaceHeuristic fh = fh_v[fhi];
@@ -1887,18 +1870,15 @@ GMTemplate::variableSetScore(const vector<InterfaceHeuristic>& fh_v,
       float tmp_weight = computeWeight(varSet,NULL,
 				       (fh == IH_MIN_WEIGHT));
       score.push_back(tmp_weight);
-      if (debug > 0)
-	printf("  variableSetScore: set has weight = %f\n",tmp_weight);
+      infoMsg(Huge,"  variableSetScore: set has weight = %f\n",tmp_weight);
     } else if (fh == IH_MIN_FILLIN) {
       int fill_in = computeFillIn(varSet);
       score.push_back((float)fill_in);
-      if (debug > 0)
-	printf("  variableSetScore: set has fill_in = %d\n",fill_in);
+      infoMsg(Huge,"  variableSetScore: set has fill_in = %d\n",fill_in);
     } else if (fh == IH_MIN_SIZE) {
       score.push_back((float)varSet.size());
-      if (debug > 0)
-	printf("  variableSetScore: set has size = %d\n",
-	       varSet.size());
+      infoMsg(Huge,"  variableSetScore: set has size = %d\n",
+	      varSet.size());
     } else
       warning("Warning: invalid variable set score given. Ignored\n");
   }
@@ -1963,7 +1943,6 @@ GMTemplate::interfaceScore(
  // output score
  vector<float>& score)
 {
-  const int debug=1;
   score.clear();
   for (unsigned fhi=0;fhi<fh_v.size();fhi++) {
     const InterfaceHeuristic fh = fh_v[fhi];
@@ -1971,18 +1950,15 @@ GMTemplate::interfaceScore(
       float tmp_weight = computeWeight(C_l,NULL,
 				       (fh == IH_MIN_WEIGHT));
       score.push_back(tmp_weight);
-      if (debug > 0)
-	printf("  Interface Score: set has weight = %f\n",tmp_weight);
+      infoMsg(Low,"  Interface Score: set has weight = %f\n",tmp_weight);
     } else if (fh == IH_MIN_FILLIN) {
       int fill_in = computeFillIn(C_l);
       score.push_back((float)fill_in);
-      if (debug > 0)
-	printf("  Interface Score: set has fill_in = %d\n",fill_in);
+      infoMsg(Low,"  Interface Score: set has fill_in = %d\n",fill_in);
     } else if (fh == IH_MIN_SIZE) {
       score.push_back((float)C_l.size());
-      if (debug > 0)
-	printf("  Interface Score: set has size = %d\n",
-	       C_l.size());
+      infoMsg(Low,"  Interface Score: set has size = %d\n",
+	      C_l.size());
     } else if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_MAX_C_CLIQUE ||
 	       fh == IH_MIN_STATE_SPACE || fh == IH_MIN_C_STATE_SPACE) {
       // This is the expensive one, need to form a set of partitions,
@@ -2052,16 +2028,14 @@ GMTemplate::interfaceScore(
       }
       if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_MAX_C_CLIQUE) {
 	score.push_back(maxWeight);
-	if (debug > 0)
-	  printf("  Interface Score: set has max %sclique weight = %f\n",
-		 (fh == IH_MIN_MAX_C_CLIQUE ?"C ":""),
-		 maxWeight);
+	infoMsg(Low,"  Interface Score: set has max %sclique weight = %f\n",
+		(fh == IH_MIN_MAX_C_CLIQUE ?"C ":""),
+		maxWeight);
       } else {
 	score.push_back(totalWeight);
-	if (debug > 0)
-	  printf("  Interface Score: set has total %sweight = %f\n",
-		 (fh == IH_MIN_C_STATE_SPACE?"C ":""),
-		 totalWeight);
+	infoMsg(Low,"  Interface Score: set has total %sweight = %f\n",
+		(fh == IH_MIN_C_STATE_SPACE?"C ":""),
+		totalWeight);
       }
 
       deleteNodes(Pc);
@@ -2630,7 +2604,6 @@ GMTemplate::findBestInterface(
  // end of input arguments (finally)
  )
 {
-  const int debug = 1;
 
   // left interface
   C_l.clear();
@@ -2667,7 +2640,7 @@ GMTemplate::findBestInterface(
 		 C2_u2_to_C1_u1,C2_u2_to_C2_u1,
 		 best_score);
 
-  if (debug > 0) {
+  if (message(Tiny)) {
     printf("Size of basic interface C_l = %d\n",C_l.size());
     printf("Score of basic interface C_l =");
     for (unsigned i=0;i<best_score.size();i++)
@@ -2705,7 +2678,7 @@ GMTemplate::findBestInterface(
 		      th_v,
 		      P_u1,C1_u1,C2_u1,E_u1,
 		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
-    if (debug > 0) {
+    if (message(Tiny)) {
       printf("Size of best interface = %d\n",best_C_l.size());
       printf("Score of best interface =");
       for (unsigned i=0;i<best_score.size();i++)

@@ -25,6 +25,7 @@
 
 #include "general.h"
 #include "error.h"
+#include "debug.h"
 #include "rand.h"
 #include "arguments.h"
 #include "ieeeFPsetup.h"
@@ -74,6 +75,7 @@ static char* triangulationHeuristic="WFS";
 static char* faceHeuristic="SFW";
 static bool findBestFace = true;
 static char* forceLeftRight="";
+static unsigned verbosity = IM::Default;
 // uncomment when reading in for sparse CPTs
 // static char *inputMasterFile=NULL;
 // static char *inputTrainableParameters=NULL;
@@ -110,6 +112,7 @@ Arg Arg::Args[] = {
   Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
 
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
+  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
   // final one to signal the end of the list
   Arg()
 
@@ -135,6 +138,8 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   Arg::parse(argc,argv);
+  (void) IM::setGlbMsgLevel(verbosity);
+
 
   MixGaussiansCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
@@ -243,7 +248,7 @@ main(int argc,char*argv[])
 
     string tri_file = string(strFileName) + ".trifile";
     if (rePartition && !reTriangulate) {
-      warning("Warning: rePartition=T option forces reTriangulate option to be true.\n");
+      infoMsg(IM::Warning,"Warning: rePartition=T option forces reTriangulate option to be true.\n");
       reTriangulate = true;
     }
 
