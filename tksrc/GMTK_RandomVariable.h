@@ -23,16 +23,16 @@
 #include "logp.h"
 
 #include "GMTK_RngDecisionTree.h"
-
-
+#include <vector>
+#include <string>
 
 //////////////////////////////////////////////////////////////////////////////
 // This is the integer type of the values that a discrete random variable
 // may take on. Possibilities include unsigned char, char, short, int, 
 // unsigned long, and so on.
-#define DISCRETE_VARIABLE_TYPE Int16
-//
+#define DISCRETE_VARIABLE_TYPE short 
 
+enum vartype {continuous,discrete};
 
 /*
  * The random variable class defines the basic functions that random
@@ -46,17 +46,17 @@ class RandomVariable
 {
 public:
 
-    RandomVariable();
+    /////////////////////////////////////////////////////////////////////////
+    // Initialize with the variable type.
+    // The default timeIndex value of -1 indicates a static network.
+    // The default value of "hidden" is true.
+    // Discrete nodes must be specified with their cardinalities.
+    RandomVariable(string _label, vartype vt, int card=0)
+    {hidden=true; discrete=(vt==discrete); timeIndex=-1;
+     cardinality=card; if (discrete) assert(card!=0);
+     label=_label;}
+
     virtual ~RandomVariable() {}
-
-    /////////////////////////////////////////////////////////////////////////
-    // A unique node index. nodes in a GM are numbered consecutively from 0.
-    int nodeNum;  
-
-    /////////////////////////////////////////////////////////////////////////
-    // What time frame does the node belong to?
-    // Counting starts from 0.
-    int timeIndex;
 
     /////////////////////////////////////////////////////////////////////////
     // Is the node hidden, or is it an observation.
@@ -67,6 +67,11 @@ public:
     // Inference conditions on this; cliques keep track of the values of 
     // their discrete members.
     bool discrete;
+
+    /////////////////////////////////////////////////////////////////////////
+    // What time frame does the node belong to?
+    // Counting starts from 0.
+    int timeIndex;
 
     //////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////
@@ -82,12 +87,16 @@ public:
     // Cliques keep track of the values of their discrete members.
     DISCRETE_VARIABLE_TYPE val;
   
-    ///////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////
     // Again in the discrete case.
     // The maximum number of possible values this RV may take in, irrespective
     // of the values of the parents. So, we must
     // have that 0 <= val < cardinality
-    const int cardinality;
+    int cardinality;
+
+    ////////////////////////////////////////////////////////////////////////
+    // What is my name?
+    string label;
 
     ////////////////////////////////////////////////////////////////////////
     // The set of switching parents, if any.
@@ -102,7 +111,7 @@ public:
     ////////////////////////////////////////////////////////////////////////
     // The set of variables that use this variable either as a switching
     // parent or as a (possible) conditional parent.
-    sArray<RandomVariable *> allPossibleChildren;
+    vector<RandomVariable *> allPossibleChildren;
 
     ////////////////////////////////////////////////////////////////////////
     // For each possible different list of
@@ -116,7 +125,6 @@ public:
     // that exist for all values of the switching parents, this
     // list is of size two. 
     sArray< sArray < RandomVariable* > > conditionalParentsList;
-
 
     ////////////////////////////////////////////////////////////////////////
     // This is set to the current set of conditional parents,
@@ -140,9 +148,16 @@ public:
     // is conditioned on these conditional parents. Note that a switching 
     // parent may also be a conditional parent.
     // A node's switching and conditional parents must all be lower numbered 
-    // than the node itself, thus allowing a topological ordering of 
-    void setParents(sArray<RandomVariable *> &sparents, 
+    // than the node itself, thus allowing a topological ordering  
+    // This sets the following arrays:
+    // switchingParents, conditionalParentsList, allPossibleParents, and
+    // (for the parents of the variable) it updates allPossibleChildren
+    void setParents(sArray<RandomVariable *> &sparents,
          sArray<sArray<RandomVariable *> > &cpl);
+
+    ///////////////////////////////////////////////////////////////////////
+    // Show all the pertinent information about the node
+    virtual void reveal();
 
     ////////////////////////////////////////////////////////////////////////
     // Looks at the currently (presumably clamped) values of the
@@ -157,18 +172,6 @@ public:
     // Looks at the values of the switching parents, and sets the 
     // conditionalParents array pointer appropriately.
     virtual void findConditionalParents() = 0;
-
-    ////////////////////////////////////////////////////////////////////////
-    // Iterates through all possible instantiations of the conditional
-    // parents and unions together the parents. Stores the result in the
-    // allPossibleParents array (in what order?)
-    void findAllPossibleParents();
-
-    ////////////////////////////////////////////////////////////////////////
-    // Looks up the values of a vector of parents and computes an
-    // integer index into a 1 dimensional array. 
-    //  (not sure what this is for?)
-    int address(sArray<RandomVariable *>);
 
     //////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////
@@ -217,7 +220,6 @@ public:
     // tells a variable to use the data structures associated with just one
     // member of its equivalence class.
     virtual void tieWith(RandomVariable *rv) = 0;
-
 
     ////////////////////////////////////////////////////////////////////////
     // It can be useful to tell a variable to cache the value it's currently

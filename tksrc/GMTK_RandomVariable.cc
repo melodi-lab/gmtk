@@ -28,7 +28,8 @@
  * Side Effects:
  *     sets the switchingParents array
  *     sets the conditionalParentsList array
- *     adds to the allPossibleChildren array
+ *     sets the allPossibleParents Array
+ *     adds to the allPossibleChildren array of the variable's parents
  *
  *-----------------------------------------------------------------------
  */
@@ -45,18 +46,38 @@ void GMTK_RandomVariable::setParents(sArray<RandomVariable *> &sparents,
     // note that a parent may occur twice, e.g. as a switching and conditional
     // parent, or on twqo different conditional parent lists
     // avoid adding this to the child list twice
-    set<RandomVariable> parents;  // the set of parents this is a child of
+    set<RandomVariable *> parents;  // the set of parents this is a child of
     for (int i=0; i<sparents.len(); i++)
     {
          parents.insert(sparents[i]);
-         sparents[i]->allPossibleChildren.push(this);
+         sparents[i]->allPossibleChildren.push_back(this);
     }
     
     for (int i=0; i<cpl.len(); i++)
         for (int j=0; j<cpl[i].len(); j++)
             if (parents.find(cpl[i].[j]) == parents.end())
             {
-                cpl[i].[j]->allPossibleChildren.push(this);
-                parents.push(cpl[i].[j]);
+                cpl[i].[j]->allPossibleChildren.push_back(this);
+                parents.insert(cpl[i].[j]);
             }
+
+    // set up the all possible parents array.
+    allPossibleParents.resize(parents.size());
+    set<RandomVariable *>::iterator si;
+    int p=0;
+    for (si = parents.begin(); si != parents.end(); si++)
+        allPossibleParents[p++] = *si;
+}
+
+void GMTK_RandomVariable::reveal()
+{
+    cout << label << " : ";
+    if (discrete) cout << "discrete (" << cardinality << ") ";
+    if (hidden) cout << "hidden "; else cout << "observed ";
+    if (!hidden && discrete) cout << val << endl;
+
+    cout << "    possible parents: ";
+    for (int i=0; i<allPossibleParents.len(); i++)
+        cout << allPossibleParents[i]->label << " ";
+    cout << endl;
 }
