@@ -19,8 +19,7 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
   StreamInfo* current_stream = NULL;
 
   for (unsigned seg_no=0; seg_no < num_segments; ++seg_no) {
-    obs_mat->loadSegment(seg_no);
-    total_num_frames += obs_mat->numFrames();
+    total_num_frames += obs_mat->numFrames(seg_no);
   }
   
   if (!dont_print_info) {
@@ -42,8 +41,7 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
 
   if (print_sent_frames) {
       for (unsigned seg_no=0; seg_no < num_segments; ++seg_no) {
-	obs_mat->loadSegment(seg_no);
-	fprintf(out_fp,"%d %d\n",seg_no,obs_mat->numFrames());
+	fprintf(out_fp,"%d %d\n",seg_no,obs_mat->numFrames(seg_no));
       }
   }
 
