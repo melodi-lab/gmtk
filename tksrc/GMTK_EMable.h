@@ -30,6 +30,7 @@
 class EMable {
 
 
+protected:
 
   //////////////////////////////////////////////////////////////////
   // A bitmask giving the "state" of the object. Used for
@@ -54,19 +55,18 @@ class EMable {
     // Initial State, where no data structures have been allocated.
     bm_initState      = 0x0
   };
-  unsigned int bitmask;
 
+  unsigned int bitmask;
  
 public:
 
   
   EMable() { bitmask = 0x0; }
-  ~EMable() {}
-
+  virtual ~EMable() {}
 
   //////////////////////////////////
   // swap the old and the new parameters.
-  virtual void swapCurAndNew();
+  virtual void swapCurAndNew() = 0;
   // clear the swap bit, needed for sharing.
   void clearSwap() { bitmask &= ~bm_swapped; }
   //////////////////////////////////
@@ -75,21 +75,14 @@ public:
   //////////////////////////////////
   // Full Baum-Welch EM training  //
   //////////////////////////////////
-  void emInit();
-  void startEmEpoch();
-  void emAccumulate(const float prob,
-		    const float *const oo_array);
-  void endEmEpoch(logpr cmpSop_acc);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emStoreAccumulators(oDataStreamFile& ofile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
-  //////////////////////////////////
-
-
-  //////////////////////////////////
-  // Sample Generation            //
-  //////////////////////////////////
-  void sampleGenerate(float *const sample);
+  virtual void emInit() = 0;
+  virtual void startEmEpoch() = 0;
+  virtual void emAccumulate(const float prob,
+		    const float *const oo_array) = 0;
+  virtual void endEmEpoch(logpr cmpSop_acc) = 0;
+  virtual void emLoadAccumulators(iDataStreamFile& ifile) = 0;
+  virtual void emStoreAccumulators(oDataStreamFile& ofile) = 0;
+  virtual void emAccumulateAccumulators(iDataStreamFile& ifile) = 0;
   //////////////////////////////////
 
 
