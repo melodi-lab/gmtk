@@ -887,3 +887,7 @@ Sat Jan  4 17:39:20 2003$
     vice versa. See the 
     Bayesian Network Repository page.
         
+
+Tue Jan  7 12:24:16 2003
+  - remove 'observation' as keyword for weight and just use
+    observed.
