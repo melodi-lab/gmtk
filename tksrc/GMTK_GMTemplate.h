@@ -32,6 +32,34 @@
 class GraphicalModel;
 class AnyTimeTriangulation;
 
+struct GMInfo {
+  // the modified prologue, chunk, and epilogue
+  set<RandomVariable*> P;
+  set<RandomVariable*> C;
+  set<RandomVariable*> E;
+  // Interface between P and C. The set could contain
+  // variables within either P or C depending
+  // on if left or right interface is created.
+  set<RandomVariable*> PCInterface;
+  // Interface between C and E. The set could contain
+  // variables within either C or E depending
+  // on if the left or right interface is created.
+  set<RandomVariable*> CEInterface;
+  // cliques of prologue, chunk, and epilogue respectively
+  vector<MaxClique> Pcliques;
+  vector<MaxClique> Ccliques;
+  vector<MaxClique> Ecliques;
+  // elimination order of prologue, chunk, and epilogue 
+  // respectively, but *after* interfaces have already
+  // been made complete (i.e., the elimination order
+  // won't necessarily produce a triangulated graph
+  // unless the interfaces are made complete).
+  vector<RandomVariable*> Pordered;
+  vector<RandomVariable*> Cordered;
+  vector<RandomVariable*> Eordered;
+};
+
+
 class GMTemplate
 {
   friend class FileParser;
@@ -55,6 +83,7 @@ class GMTemplate
 
   
 public:
+
 
   ////////////////////////////////////////////////////////////
   // constructors/destructors
@@ -91,7 +120,8 @@ public:
 			    /* W */ IH_MIN_WEIGHT = 3,
 			    // use average entropy in CPTs
 			    /* E */ IH_MIN_ENTROPY = 4,
-			    /* C */ IH_MIN_MAX_CLIQUE = 5
+			    /* C */ IH_MIN_MAX_C_CLIQUE = 5,
+			    /* M */ IH_MIN_MAX_CLIQUE = 6
   };
 
 
@@ -115,22 +145,40 @@ public:
 		      const bool findBestFace,
 		      set<RandomVariable*>& P,
 		      set<RandomVariable*>& C,
-		      set<RandomVariable*>& E);
+		      set<RandomVariable*>& E,
+		      set<RandomVariable*>& PCI,
+		      set<RandomVariable*>& CEI);
+  void findPartitions(const string& faceHeuristic,
+		      const string& forceLeftRight,
+		      const string& triHeuristic,
+		      const bool findBestFace,
+		      GMInfo& info) {
+    findPartitions(faceHeuristic,forceLeftRight,triHeuristic,
+		   findBestFace,
+		   info.P,info.C,info.E,
+		   info.PCInterface,info.CEInterface);
+  }
+
+
 
   // Find partitions using the information that
   // has been pre-computed and stored in file 'is'
   void findPartitions(iDataStreamFile& is,
 		      set<RandomVariable*>& P,
 		      set<RandomVariable*>& C,
-		      set<RandomVariable*>& E);
+		      set<RandomVariable*>& E,
+		      set<RandomVariable*>& PCI,
+		      set<RandomVariable*>& CEI);
+  void findPartitions(iDataStreamFile& is,GMInfo& info) {
+    findPartitions(is,
+		   info.P,info.C,info.E,
+		   info.PCInterface,info.CEInterface);
+  }
+
 
   // Store partition information into file
-  void storePartitions(oDataStreamFile& os,
-		       const set<RandomVariable*>& P,
-		       const set<RandomVariable*>& C,
-		       const set<RandomVariable*>& E);
-
-
+  void storePartitions(oDataStreamFile& os,const GMInfo& info);
+		       
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
   // The Main Triangulation Routines
@@ -150,7 +198,13 @@ public:
 			     vector<RandomVariable*>& Pordered,
 			     vector<RandomVariable*>& Cordered,
 			     vector<RandomVariable*>& Eordered);
-  void triangulatePartitions(const vector<TriangulateHeuristic> th_v,
+  void triangulatePartitions(const string& th,GMInfo& info) {
+    triangulatePartitions(th,
+			  info.P,info.C,info.E,
+			  info.Pcliques,info.Ccliques,info.Ecliques,
+			  info.Pordered,info.Cordered,info.Eordered);
+  }
+  void triangulatePartitions(const vector<TriangulateHeuristic>& th_v,
 			     set<RandomVariable*>& P,
 			     set<RandomVariable*>& C,
 			     set<RandomVariable*>& E,
@@ -160,6 +214,13 @@ public:
 			     vector<RandomVariable*>& Pordered,
 			     vector<RandomVariable*>& Cordered,
 			     vector<RandomVariable*>& Eordered);
+  void triangulatePartitions(const vector<TriangulateHeuristic>& th_v,
+			     GMInfo& info) {
+    triangulatePartitions(th_v,
+			  info.P,info.C,info.E,
+			  info.Pcliques,info.Ccliques,info.Ecliques,
+			  info.Pordered,info.Cordered,info.Eordered);
+  }
 
   // Given a set of partitions, triangulate them using
   // the elimination order that is given in file 'is' at
@@ -174,6 +235,12 @@ public:
 			     vector<RandomVariable*>& Pordered,
 			     vector<RandomVariable*>& Cordered,
 			     vector<RandomVariable*>& Eordered);
+  void triangulatePartitions(iDataStreamFile& is,GMInfo& info) {
+    triangulatePartitions(is,
+			  info.P,info.C,info.E,
+			  info.Pcliques,info.Ccliques,info.Ecliques,
+			  info.Pordered,info.Cordered,info.Eordered);
+  }
 
 
   // Given a set of partitions and a triangulation (elimination
@@ -189,6 +256,13 @@ public:
 				   const vector<RandomVariable*>& Pordered,
 				   const vector<RandomVariable*>& Cordered,
 				   const vector<RandomVariable*>& Eordered);
+  void storePartitionTriangulation(oDataStreamFile& os,GMInfo& info) {
+    storePartitionTriangulation(os,
+				info.P,info.C,info.E,
+				info.Pcliques,info.Ccliques,info.Ecliques,
+				info.Pordered,info.Cordered,info.Eordered);
+  }
+
   // a version that doesn't write out clique information.
   void storePartitionTriangulation(oDataStreamFile& os,
 				   const set<RandomVariable*>& P,
@@ -218,7 +292,7 @@ public:
   // where the caller chooses the results with the best cliques --
   // this is because each call might produce a different clique set
   // via the internal randomness that can occur if a tie occurs.
-  void basicTriangulate(set<RandomVariable*> nodes,
+  void basicTriangulate(const set<RandomVariable*> nodes,
 			const vector<TriangulateHeuristic>& th_v,
 			vector<RandomVariable*>& orderedNodes,
 			vector<MaxClique>& cliques);
@@ -230,12 +304,12 @@ public:
   // return the resuting set of cliques in no particular order (i.e.,
   // not in RIP order)
   void basicTriangulate(iDataStreamFile& is,
-			set<RandomVariable*> nodes,
+			const set<RandomVariable*> nodes,
 			vector<RandomVariable*>& orderedNodes,
 			vector<MaxClique>& cliques);
 
 
-private:
+  //private:
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
   // General Internal Support Routines
@@ -280,6 +354,8 @@ private:
 
   // clone a set of variables
   void clone(const set<RandomVariable*>& in, set<RandomVariable*>& out); 
+  void clone(const set<RandomVariable*>& in, set<RandomVariable*>& out,
+	     map < RandomVariable*, RandomVariable* >& in_to_out);
 
   // delete a set of variables
   void deleteNodes(const set<RandomVariable*>& nodes);
@@ -298,83 +374,8 @@ private:
 
   ////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////
-  // Support Routines for P,C,E Triangulation
+  // Support Routines for P,C,E Interface 
   ////////////////////////////////////////////////////////////
-
-  // exponential time routines to find best left interfaces
-  // and corresponding partitions
-  void findBestLeftInterface(
-	     const set<RandomVariable*> &C1,
-	     const set<RandomVariable*> &C2,
-	     const set<RandomVariable*> &C3,
-	     set<RandomVariable*> &left_C_l,
-	     set<RandomVariable*> &C_l,
-	     const vector<InterfaceHeuristic>& fh_v,
-	     const bool recurse = true);
-  void findBestLeftInterface(
-             const set<RandomVariable*> &left_C_l,
-	     const set<RandomVariable*> &C_l,
-	     const set<RandomVariable*> &C2,
-	     const set<RandomVariable*> &C3,
-	     set< set<RandomVariable*> >& setset,
-	     set<RandomVariable*> &best_left_C_l,
-	     set<RandomVariable*> &best_C_l,
-	     vector<float>& best_score,
-	     const vector<InterfaceHeuristic>& fh_v);
-  void findLeftInterfacePartitions(
-   // input params
-   const set<RandomVariable*>& P_u1,
-   const set<RandomVariable*>& C1_u1,
-   const set<RandomVariable*>& C2_u1,
-   const set<RandomVariable*>& E_u1,
-   map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
-   map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
-   const set<RandomVariable*>& left_C_l_u2C2,
-   const set<RandomVariable*>& C_l_u2C2,
-   // output params
-   set<RandomVariable*>& Pc,
-   set<RandomVariable*>& Cc,
-   set<RandomVariable*>& Ec
-   );
-
-
-  // exponential time routines to find best right interfaces
-  // and corresponding partitions
-  void findBestRightInterface(
-             const set<RandomVariable*> &C1,
-	     const set<RandomVariable*> &C2,
-	     const set<RandomVariable*> &C3,
-	     set<RandomVariable*> &right_C_r,
-	     set<RandomVariable*> &C_r,
-	     const vector<InterfaceHeuristic>& fh_v,
-	     const bool recurse = true);
-  void findBestRightInterface(
-	     const set<RandomVariable*> &right_C_r,
-	     const set<RandomVariable*> &C_r,
-	     const set<RandomVariable*> &C2,
-	     const set<RandomVariable*> &C1,
-	     set< set<RandomVariable*> >& setset,
-	     set<RandomVariable*> &best_right_C_r,
-	     set<RandomVariable*> &best_C_r,
-	     vector<float>& best_score,
-	     const vector<InterfaceHeuristic>& fh_v);
-  void findRightInterfacePartitions(
-   // input params
-   const set<RandomVariable*>& P_u1,
-   const set<RandomVariable*>& C1_u1,
-   const set<RandomVariable*>& C2_u1,
-   const set<RandomVariable*>& E_u1,
-   map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
-   map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
-   const set<RandomVariable*>& right_C_r_u2C2,
-   const set<RandomVariable*>& C_r_u2C2,
-   // output params
-   set<RandomVariable*>& Pc,
-   set<RandomVariable*>& Cc,
-   set<RandomVariable*>& Ec
-   );
-
-
 
 
   // exponential time routines to find best left/right interfaces
@@ -434,7 +435,9 @@ private:
    // output params
    set<RandomVariable*>& Pc,
    set<RandomVariable*>& Cc,
-   set<RandomVariable*>& Ec
+   set<RandomVariable*>& Ec,
+   set<RandomVariable*>& PCI,
+   set<RandomVariable*>& CEI
    );
 
 
