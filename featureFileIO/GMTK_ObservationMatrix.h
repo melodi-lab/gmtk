@@ -276,6 +276,31 @@ class ObservationMatrix {
 		 char*          postTransforms         = NULL,
 		 unsigned       ftrcombo               = FTROP_NONE);
 
+  /////////////////////////////////////////////////////////////////////////
+  // A version of the above that just opens one file.
+  void openFile(const char *   f_name,
+		const char *   cont_range_str,
+		const char *   disc_range_str,
+		unsigned       n_floats,
+		unsigned       n_ints,
+		unsigned       formats,
+		bool           swapflags,
+		const unsigned _startSkip = 0,
+		const unsigned _endSkip   = 0,
+		bool           cppIfAscii = true,
+		char *         cppCommandOptions      = NULL,
+		const char **  pr_range_str           = NULL,
+		unsigned*      actionIfDiffNumFrames  = NULL,
+		unsigned*      actionIfDiffNumSents   = NULL,
+		char**         perStreamPreTransforms = NULL,
+		char*          postTransforms         = NULL,
+		unsigned       ftrcombo               = FTROP_NONE) {
+    openFiles(1,&f_name,&cont_range_str,&disc_range_str,&n_floats,&n_ints,&formats,&swapflags,
+	      _startSkip,_endSkip,cppIfAscii,cppCommandOptions,pr_range_str,
+	      actionIfDiffNumFrames,actionIfDiffNumSents,
+	      perStreamPreTransforms,postTransforms,ftrcombo);
+  }
+
   
   ///////////////////////////////////////////////////////////
   // returns true if the current observation matrix
@@ -347,7 +372,7 @@ class ObservationMatrix {
   }
 
 
-  unsigned*const unsignedAtFrame(unsigned f) {
+  unsigned*const unsignedVecAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
     return (unsigned*)(featuresBase + _stride*f + _numContinuous);
   }
