@@ -21,6 +21,7 @@
  */
 
 
+
 #ifndef GMTK_RNG_DECISION_TREE_H
 #define GMTK_RNG_DECISION_TREE_H
 
@@ -42,6 +43,8 @@
 // safely be increased.
 #define RNG_DECISION_TREE_MAX_CARDINALITY 512
 
+#define RNG_DECISION_TREE_DEF_STR "default"
+
 template <class T = int>
 class RngDecisionTree {
 
@@ -51,16 +54,14 @@ protected:
 
   struct Node {
     bool leaf;
-    union {
-      struct {
-	int ftr;
-	sArray< Node* > children;
-	sArray< BP_Range* > rngs;
-      } nonLeafNode;
-      struct {
-	T value;
-      } leafNode;
-    } data;
+    struct NonLeafNode {
+      int ftr;
+      sArray< Node* > children;
+      sArray< BP_Range* > rngs;
+    } nonLeafNode;
+    struct LeafNode {
+      T value;
+    } leafNode;
   };
 
   ///////////////////////////////////////////////////////////    
@@ -88,7 +89,7 @@ protected:
 
 public:
 
-  RngDecisionTree(int maxCardinality = RNG_DECISION_TREE_MAX_CARDINALITY);
+  RngDecisionTree() {}
   ~RngDecisionTree();
 
   ///////////////////////////////////////////////////////////    
@@ -133,7 +134,7 @@ public:
  *-----------------------------------------------------------------------
  */
 template <class T>
-RngDecisionTree<T>::~RngDecisionTree<T>()
+RngDecisionTree<T>::~RngDecisionTree()
 {
   destructorRecurse(root);
   delete root;
@@ -166,10 +167,11 @@ RngDecisionTree<T>::destructorRecurse(RngDecisionTree<T>::Node* node)
   if (node->leaf) {
     // do nothing
   } else {
-    for (int i=0;i<node->data.nonLeafNode;i++) {
-      destructorRecurse(node->data.nonLeafNode.children[i]);
-      delete node->data.nonLeafNode.children[i];
-      delete node->data.nonLeafNode.rngs[i];
+    for (int i=0;i<node->nonLeafNode.children.len();i++) {
+      destructorRecurse(node->nonLeafNode.children[i]);
+      delete node->nonLeafNode.children[i];
+      if (i<node->nonLeafNode.children.len()-1)
+	delete node->nonLeafNode.rngs[i];
     }
   }
 }
@@ -234,7 +236,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
 
   int curFeat;
   is.read(curFeat,"RngDecisionTree:: readRecurse curFeat");
-  if (curFeat < 0) 
+  if (curFeat < -1) 
     error("RngDecisionTree::readRecurse, feature number (=%d) must be non-negative",curFeat);
   if (curFeat >= _numFeatures) 
     error("RngDecisionTree::readRecurse, feature number (=%d) must be < numFeatures (=%d)",
@@ -243,10 +245,10 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
   if (curFeat == -1) {
     // leaf node
     node->leaf = true;
-    is.read(node->data.leafNode.value,"RngDecisionTree:: readRecurse value");
+    is.read(node->leafNode.value,"RngDecisionTree:: readRecurse value");
   } else {
     node->leaf = false;
-    node->data.nonLeafNode.ftr = curFeat;
+    node->nonLeafNode.ftr = curFeat;
     int numSplits;
     is.read(numSplits,"RngDecisionTree:: readRecurse numSplits");
     if (numSplits <= 1)
@@ -254,15 +256,22 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
     if (numSplits > RNG_DECISION_TREE_MAX_ARY)
       error("RngDecisionTree:: readRecurse, can't have > %d splits",
 	    RNG_DECISION_TREE_MAX_ARY);
-    node->data.nonLeafNode.children.resize(numSplits);
-    node->data.nonLeafNode.rngs.resize(numSplits);
-    for (i=0;i<numSplits;i++) {
+    node->nonLeafNode.children.resize(numSplits);
+    // rngs is smaller since last string is always the default catch-all.
+    node->nonLeafNode.rngs.resize(numSplits-1);
+    for (int i=0;i<numSplits;i++) {
       char *str;
       is.read(str,"RngDecisionTree:: readRecurse, reading range");
-      node->data.nonLeafNode.rngs[i]
-	= new BP_Range(str,
-		       0,
-		       RNG_DECISION_TREE_MAX_CARDINALITY);
+      if (i==(numSplits-1)) {
+	if (strcmp(RNG_DECISION_TREE_DEF_STR,str))
+	  error("RngDecisionTree::readRecurse, expecting default str (%s) got (%s)",
+		RNG_DECISION_TREE_DEF_STR,str);
+      } else {
+	node->nonLeafNode.rngs[i]
+	  = new BP_Range(str,
+			 0,
+			 RNG_DECISION_TREE_MAX_CARDINALITY);
+      }
       ///////////////////////////////////////////////////////////////
       // WARNING: We assume here that BP_Range will make
       // its own copy of the string, so we delete it here.
@@ -271,17 +280,19 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
       ///////////////////////////////////////////////////////////////
     }
     // check for overlap errors in the strings
-    for (int i=0;i<numSplits;i++) {
-      for (int j=0;j<numSplits;j++) {
-	if (node->data.nonLeafNode.rngs[i]
+    for (int i=0;i<numSplits-1;i++) {
+      for (int j=i+1;j<numSplits-1;j++) {
+	if (node->nonLeafNode.rngs[i]
 	    ->overlapP(
-		       node->data.nonLeafNode.rngs[j]))
-	  error("RngDecisionTree:: readRecurse, range %d and %d have a non-empty intersection.",i,j);
+		       node->nonLeafNode.rngs[j]))
+	  error("RngDecisionTree:: readRecurse, range %d (%s) and %d (%s) have a non-empty intersection.",i,
+		node->nonLeafNode.rngs[i]->rangeStr(),j,
+		node->nonLeafNode.rngs[j]->rangeStr());
       }
     }
 
-    for (i=0;i<numSplits;i++)
-      node->data.nonLeafNode.children[i] =
+    for (int i=0;i<numSplits;i++)
+      node->nonLeafNode.children[i] =
 	readRecurse(is);
   }
   return node;
@@ -311,7 +322,6 @@ template <class T>
 T RngDecisionTree<T>::query(const sArray < int >& arr)
 {
   assert ( arr.len() == _numFeatures );
-
   return queryRecurse(arr,root);
 }
 
@@ -341,19 +351,20 @@ T RngDecisionTree<T>::queryRecurse(const sArray < int >& arr,
 				RngDecisionTree<T>::Node *n)
 {
   if (n->leaf)
-    return n->data.leafNode.value;
+    return n->leafNode.value;
 
-  assert ( n->data.nonLeafNode.ftr < arr.len() );
-  assert ( arr[n->data.nonLeafNode.ftr] >= 0 &&
-	   arr[n->data.nonLeafNode.ftr] <= 
+  assert ( n->nonLeafNode.ftr < arr.len() );
+  assert ( arr[n->nonLeafNode.ftr] >= 0 &&
+	   arr[n->nonLeafNode.ftr] <= 
 	   RNG_DECISION_TREE_MAX_CARDINALITY );
 
-  const int val = arr[n->data.nonLeafNode.ftr];
-  for (i=0;i<n->data.nonLeafNode.rngs.len();i++ ) {
-    if (n->data.nonLeafNode.rngs[i].contains(val))
-      return queryRecurse(arr,n->data.nonLeafNode.children[i]);
+  const int val = arr[n->nonLeafNode.ftr];
+  for (int i=0;i<n->nonLeafNode.rngs.len();i++ ) {
+    if (n->nonLeafNode.rngs[i]->contains(val))
+      return queryRecurse(arr,n->nonLeafNode.children[i]);
   }
-
+  // failed lookup, so return must be the default one.
+  return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.len()]);
 }
 
 
