@@ -482,6 +482,48 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
 
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JT_InferencePartition::emIncrement()
+ *
+ *    Go through each clique in the partition and update the assigned probabiltiy
+ *    variables for all entries in each clique, based on global probability of evidence
+ *    given as the argument.
+ *    If 'localNormalization' == true, then we ignore the evidence provided by probE
+ *    and sum the clique first to get the local normalization constant.
+ *
+ * See Also:
+ *    0) JunctionTree::collectEvidence()
+ *    1) JunctionTree::distributeEvidence()
+ *    2) JunctionTree::emIncrement()
+ *       
+ *
+ * Preconditions:
+ *    The cliques must be an instantiated table. All data structures must be set up.
+ *
+ * Postconditions:
+ *   The accumulators are increment accordingly.
+ *
+ * Side Effects:
+ *   This will update the accumulators of all trainable parameter objects.
+ *
+ * Results:
+ *   None
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JT_InferencePartition::emIncrement(const logpr probE,
+				   const bool localCliqueNormalization)
+{
+  for (unsigned cliqueNo=0;cliqueNo < maxCliques.size(); cliqueNo++ ) {
+    maxCliques[cliqueNo].emIncrement(probE,localCliqueNormalization);
+  }
+}
+
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Support for building a tree from clique graph
@@ -2793,6 +2835,8 @@ JunctionTree::unroll(const unsigned int numFrames)
   unsigned modifiedTemplateUnrollAmount;
   unsigned numUsableFrames;
   unsigned frameStart;
+
+
   if (!gm_template.computeUnrollParamaters(numFrames,
 					   basicTemplateUnrollAmount,
 					   modifiedTemplateUnrollAmount,
@@ -2816,6 +2860,9 @@ JunctionTree::unroll(const unsigned int numFrames)
   setObservedRVs(unrolled_rvs);
 
   // TODO: clear out the old and pre-allocate for new size.
+  jtIPartitions.clear();
+  // this clears the shared caches. 
+  clearDataMemory();
 
   // re-allocate.
   jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
@@ -3365,6 +3412,48 @@ JunctionTree::distributeEvidence()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::emIncrement()
+ *
+ *    A version of emIncrement that works with the data structures set up by 
+ *    collectEvidence() and distributeEvidence() above. Note, EM training
+ *    can also be performed with the island algorithm.
+ *
+ * See Also:
+ *    0) collectEvidence()
+ *    1) distributeEvidence()
+ *    2) log space version of collect/distribute evidence  
+ *       JunctionTree::collectDistributeIsland()
+ *
+ * Preconditions:
+ *    collectEvidence() AND distributeEvidence() must have just been
+ *    called setting up the data structures. All cliques must exist and
+ *    must have their clique tables filled out and ready.
+ *    Also, all parametr accumulators must be set up and ready to go.
+ *
+ * Postconditions:
+ *   The accumulators are increment accordingly.
+ *
+ * Side Effects:
+ *   This will update the accumulators of all trainable parameter objects.
+ *
+ * Results:
+ *   None
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::emIncrement(const logpr probE,
+			  const bool localCliqueNormalization)
+{
+  // Quite simply, just iterate through all partitions and call emIncrement
+  // therein.
+  for (unsigned partNo = 0; partNo < jtIPartitions.size() ; partNo ++ ) {
+    jtIPartitions[partNo].emIncrement(probE,localCliqueNormalization);
+  }
+}
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -3413,7 +3502,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 					   numUsableFrames,
 					   frameStart))
     error("Can't unroll\n"); // TODO: fix this error.
-    // return 0
+  // return 0
 
   infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Default,"numFrames = %d, unrolling BT %d times, MT %d times\n",
@@ -3485,7 +3574,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   if (!gm_template.leftInterface) {
     delete curPart;
     curPart = new JT_InferencePartition(Cu0,unrolled_rvs,ppf,
-				       ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+					((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
 
     ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
 			  *curPart,C_li_to_C,"Cu0",partNo+1);

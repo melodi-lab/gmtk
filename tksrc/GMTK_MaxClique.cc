@@ -2866,6 +2866,72 @@ sumProbabilities()
 }
 
 
+void
+InferenceMaxClique::
+emIncrement(const logpr probE,
+	    const bool localCliqueNormalization)
+{
+  // recompute here each time, shouldn't take too long
+  // TODO: re-compute this once for each inference clique.
+  sArray< RandomVariable*> fAssignedProbNodes;
+  unsigned numAssignedProbNodes = 0;
+  for (unsigned nodeNumber = 0; nodeNumber < fSortedAssignedNodes.size(); nodeNumber ++ ) {
+    if (origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB ||
+	origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_COMPUTE_AND_APPLY_PROB) {
+      numAssignedProbNodes++;
+    }
+  }
+  if (numAssignedProbNodes == 0)
+    return; // nothing to do for this clique
+
+  infoMsg(Huge,"EM Incrementing for clique\n");
+
+  fAssignedProbNodes.resize(numAssignedProbNodes);
+  numAssignedProbNodes = 0;
+  for (unsigned nodeNumber = 0; nodeNumber < fSortedAssignedNodes.size(); nodeNumber ++ ) {
+    if (origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB ||
+	origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_COMPUTE_AND_APPLY_PROB) {
+      RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
+      fAssignedProbNodes[numAssignedProbNodes++] = rv;
+    }
+  }
+
+  logpr locProbE((void*)0);
+  if (localCliqueNormalization) {
+    locProbE = sumProbabilities();
+  } else {
+    locProbE = probE;
+  }
+
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+
+  // now go through updating each thing
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+    logpr posterior = cliqueValues.ptr[cvn].p/locProbE;
+    // TODO: EM pruning here based on posterior.
+
+    // Increment all assigned probability nodes.  
+    // 
+    // TODO: integerate out all but cont. variables parents so we
+    // don't multiply increment those varialbes for the same parent
+    // values (waisting time).
+    for (unsigned nodeNumber = 0; nodeNumber < fAssignedProbNodes.size(); nodeNumber ++ ) {
+      RandomVariable* rv = fAssignedProbNodes[nodeNumber];
+      // TODO: optimize away this conditional check. (and/or use const
+      // local variable to indicate it wont change)
+      if (imc_nwwoh_p) {
+	origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
+			     (unsigned**)discreteValuePtrs.ptr);
+      } else {
+	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
+			     (unsigned**)discreteValuePtrs.ptr);
+      }
+      rv->emIncrement(posterior);
+    }
+  }
+
+}
+
 
 
 /*
@@ -3193,18 +3259,24 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	InferenceSeparatorClique::RemainderValue* rv = &(aisep->remValues.ptr[remNo]);
 	// We remove p from bp since bp will already have a factor of
 	// p in it. We do this by dividing it out.
-
-	// Could do direct value reference subtraction in log domain
-	// (corresponding to divison in original domain) to ensure
-	// that compiler creates no temporaries. In other words, this
-	// operation could be "rv->bp = rv->bp / rv->p;"
-	// rv->bp.valref() = rv->bp.valref() - rv->p.valref(); Do
-	// slower version for now until debugged: We assume here that
-	// (!rv->p.zero()) is true since we pruned all zero p's
-	// above. If we didn't prune, then rv->p == zero would imply
-	// that rv->bp == zero, and we would need to do a check. Note
-	// that this pruning always occurs, regardless of beam.
+	// -
+	// We must make sure that if CE stage is zero, we do not run
+	// DE stage, as in that case it might be the case that rv->p
+	// == 0.
+	// -
+	// In the normal case (CE != 0), we could do direct value
+	// reference subtraction in log domain (corresponding to
+	// divison in original domain) to ensure that compiler creates
+	// no temporaries. In other words, this operation could be
+	// "rv->bp = rv->bp / rv->p;" rv->bp.valref() =
+	// rv->bp.valref() - rv->p.valref(); Do slower version for now
+	// until debugged: We assume here that (!rv->p.zero()) is true
+	// since we pruned all zero p's above. If we didn't prune,
+	// then rv->p == zero would imply that rv->bp == zero, and we
+	// would need to do a check. Note that this pruning always
+	// occurs, regardless of beam.
 	rv->bp /= rv->p;
+
       }
     }
   }

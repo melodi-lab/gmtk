@@ -439,7 +439,7 @@ void GMTK_GM::cliqueChainEM(const int iterations,
 
   double llDiffPerc = 100.0;
   for (int i=0; i<iterations; i++)  {
-
+    logpr total_data_prob = 1.0;
     int frames = 0;
 
     if (trrng->length() > 0) {
