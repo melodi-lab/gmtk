@@ -50,6 +50,7 @@ class DiagGaussian;
 class LinMeanCondDiagGaussian;
 class NLinMeanCondDiagGaussian;
 
+class GaussianCommon;
 class MixGaussians;
 class GausSwitchingMixGaussians;
 class LogitSwitchingMixGaussians;
@@ -77,53 +78,60 @@ public:
   /////////////////////////////  
   // Collection of dense prob. mass functions
   vector< Dense1DPMF* > dPmfs;
-  map< string, Dense1DPMF* > dPmfsMap;
+  typedef map< string, unsigned > DPmfsMapType;
+  DPmfsMapType dPmfsMap;
 
   /////////////////////////////  
   // Collection of sparse prob. mass functions
   vector< Sparse1DPMF* > sPmfs;
-  map< string, Sparse1DPMF* > sPmfsMap;
+  typedef map< string, unsigned  > SPmfsMapType;
+  SPmfsMapType sPmfsMap;
 
   /////////////////////////////
   // Collection of means
   vector< MeanVector* > means;
-  map< string, MeanVector* > meansMap;
+  typedef map< string, unsigned > MeansMapType;
+  MeansMapType meansMap;
 
   ////////////////////////////////
   // Collection of diag. covariances
   vector< DiagCovarVector* > covars;
-  map< string, DiagCovarVector* > covarsMap;
+  typedef map< string, unsigned > CovarsMapType;
+  CovarsMapType covarsMap;
 
   ////////////////////////////////
   // Collection of objects
   // used for linear dependencies via
   // a dlink topology structure.
   vector< DlinkMatrix* > dLinkMats;
-  map< string, DlinkMatrix* > dLinkMatsMap;
+  typedef map< string, unsigned > DLinkMatsMapType;
+  DLinkMatsMapType dLinkMatsMap;
 
   ////////////////////////////////
   // Collection of 2D Dense matrices, used
   // for weight matrices of MLPs, or 
   // for logistic regression.
   vector< WeightMatrix* > weightMats;
-  map< string, WeightMatrix* > weightMatsMap;
+  typedef map< string, unsigned > WeightMatsMapType;
+  WeightMatsMapType weightMatsMap;
 
   ////////////////////////////////
   // Collection of multi-dimensional dense CPTs
   vector< MDCPT* > mdCpts;
-  map< string, MDCPT* > mdCptsMap;
+  typedef map< string, unsigned > MdCptsMapType;
+  MdCptsMapType mdCptsMap;
 
   ///////////////////////////////////
   // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
   vector< MSCPT* > msCpts;
-  map< string, MSCPT* > msCptsMap;
-
+  typedef map< string, unsigned > MsCptsMapType;
+  MsCptsMapType msCptsMap;
 
   ///////////////////////////////////
   // Collection of deterministic "CPTs" 
   vector< MTCPT* > mtCpts;
-  map< string, MTCPT* > mtCptsMap;
-
+  typedef map< string, unsigned > mtCptsMapType;
+  mtCptsMapType mtCptsMap;
 
   /********************************************************************/
 
@@ -134,7 +142,8 @@ public:
   ///////////////////////////////////////////
   // Collection of diag. covariance Gaussians
   vector< DiagGaussian* > diagGaussians;
-  map< string, DiagGaussian* > diagGaussiansMap;
+  typedef map< string, unsigned > DiagGaussiansMapType;
+  DiagGaussiansMapType diagGaussiansMap ;
 
   ////////////////////////////////
   // Collection of diagonal covariance Gaussians with linear mean 
@@ -142,14 +151,16 @@ public:
   // Gaussians, plus other forms such as banded or block diagonal, 
   // factored sparse inverse covariances, and so on.
   vector< LinMeanCondDiagGaussian* > linMeanCondGaussians;
-  map< string, LinMeanCondDiagGaussian* > linMeanCondGaussiansMap;
+  typedef map< string, unsigned > LinMeanCondGaussiansMapType;
+  LinMeanCondGaussiansMapType linMeanCondGaussiansMap;
 
   ////////////////////////////////
   // Collection of diagonal covariance Gaussians with linear and/or 
   // non-linear mean dependency links (these cover the case 
   // of "non-linear" Gaussians, and so on).
   vector< NLinMeanCondDiagGaussian* > nLinMeanCondGaussians;
-  map< string, NLinMeanCondDiagGaussian* > nLinMeanCondGaussiansMap;
+  typedef map< string, unsigned > NLinMeanCondGaussiansMapType;
+  NLinMeanCondGaussiansMapType nLinMeanCondGaussiansMap;
 
   /********************************************************************/
 
@@ -161,26 +172,29 @@ public:
   // Mixtures of Gaussians (could be a heterogeneous mixutre of
   // different types above)
   vector < MixGaussians* > mixGaussians;
-  map< string, MixGaussians* > mixGaussiansMap;
-
+  typedef map< string, unsigned > MixGaussiansMapType;
+  MixGaussiansMapType mixGaussiansMap;
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with Gaussians.
   vector < GausSwitchingMixGaussians* > gausSwitchMixGaussians;
-  map< string, GausSwitchingMixGaussians* > gausSwitchMixGaussiansMap;
+  typedef map< string, unsigned > GausSwitchMixGaussiansMapType;
+  GausSwitchMixGaussiansMapType gausSwitchMixGaussiansMap;
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with logistic regression (i.e., 1 layer MLP)
   vector< LogitSwitchingMixGaussians* > logitSwitchMixGaussians;
-  map< string, LogitSwitchingMixGaussians* > logitSwitchMixGaussiansMap;
+  typedef map< string, unsigned > LogitSwitchMixGaussiansMapType;
+  LogitSwitchMixGaussiansMapType logitSwitchMixGaussiansMap;
 
   ////////////////////////////////
   // Switching mixtures of Gaussians. The switching is
   // implemented with 2 layer (2 weight matrix) MLP
   vector< MLPSwitchingMixGaussians* > mlpSwitchMixGaussians;
-  map< string, MLPSwitchingMixGaussians* > mlpSwitchMixGaussiansMap;
+  typedef map< string, unsigned > MlpSwitchMixGaussiansMapType;
+  MlpSwitchMixGaussiansMapType mlpSwitchMixGaussiansMap;
 
 
   /********************************************************************/
@@ -194,8 +208,8 @@ public:
   //////////////////////////////////////////////////////////////////
 
   vector< RngDecisionTree<unsigned>* > dts;
-  map< string,  RngDecisionTree<unsigned>* > dtsMap;
-
+  typedef map< string,  unsigned > DtsMapType;
+  DtsMapType dtsMap;
 
   /********************************************************************/
 
@@ -205,7 +219,8 @@ public:
   //////////////////////////////////////////////////////////////////
 
   vector< Dlinks* > dlinks;
-  map< string, Dlinks* > dlinksMap;
+  typedef map< string, unsigned > DlinksMapType;
+  DlinksMapType dlinksMap;
 
   /********************************************************************/
 
@@ -221,6 +236,51 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   GMParms(); 
+
+
+  /////////////////////////////////////////////////
+  // Support for "accumulative" reading into 
+  // the various data structures. If 'reset' is true
+  // then we clear out the arrays and maps before we
+  // read them in.
+  void readDPmfs(iDataStreamFile& is,bool reset = false);
+  void readSPmfs(iDataStreamFile& is,bool reset = false);
+  void readMeans(iDataStreamFile& is,bool reset = false);
+  void readCovars(iDataStreamFile& is,bool reset = false);
+  void readDLinkMats(iDataStreamFile& is,bool reset = false);
+  void readWeightMats(iDataStreamFile& is,bool reset = false);
+  void readDdCpts(iDataStreamFile& is,bool reset = false);
+  void readMsCpts(iDataStreamFile& is,bool reset = false);
+  void readMtCpts(iDataStreamFile& is,bool reset = false);
+  void readDiagGaussians(iDataStreamFile& is,bool reset = false);
+  void readLinMeanCondGaussians(iDataStreamFile& is,bool reset = false);
+  void readNLinMeanCondGaussians(iDataStreamFile& is,bool reset = false);
+  void readMixGaussians(iDataStreamFile& is,bool reset = false);
+  void readGausSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
+  void readLogitSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
+  void readMlpSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
+  void readDts(iDataStreamFile& is,bool reset = false);
+  void readDlinks(iDataStreamFile& is,bool reset = false);
+
+  void writeDPmfs(oDataStreamFile& os);
+  void writeSPmfs(oDataStreamFile& os);
+  void writeMeans(oDataStreamFile& os);
+  void writeCovars(oDataStreamFile& os);
+  void writeDLinkMats(oDataStreamFile& os);
+  void writeWeightMats(oDataStreamFile& os);
+  void writeDdCpts(oDataStreamFile& os);
+  void writeMsCpts(oDataStreamFile& os);
+  void writeMtCpts(oDataStreamFile& os);
+  void writeDiagGaussians(oDataStreamFile& os);
+  void writeLinMeanCondGaussians(oDataStreamFile& os);
+  void writeNLinMeanCondGaussians(oDataStreamFile& os);
+  void writeMixGaussians(oDataStreamFile& os);
+  void writeGausSwitchMixGaussians(oDataStreamFile& os);
+  void writeLogitSwitchMixGaussians(oDataStreamFile& os);
+  void writeMlpSwitchMixGaussians(oDataStreamFile& os);
+  void writeDts(oDataStreamFile& os);
+  void writeDlinks(oDataStreamFile& os);
+
 
   ///////////////////////////////////////////////////////////    
   // read/write in all the basic parameters, assuming file pointer 
