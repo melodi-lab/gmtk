@@ -1903,3 +1903,7 @@ The 'clean' Makefile targets should probably also remove the
 depends.make files - otherwise these can still contain references to
 files that have been removed or have moved to another directory, such
 as pfile.h
+
+Sat Jun  5 19:14:59 2004
+  - covert binary dump variables in gmtkViterbiNew to ascii as well, redo all such
+    outputs.
