@@ -61,15 +61,17 @@ struct Clique
     vector<RandomVariable *> conditionalProbabilityNode;
     // Each clique has a set of nodes assigned to it, that contribute to
     // its conditional probability. This array stores them.
+    // it is set on demand by findConditionalProbabilityNodes()
 
     vector<DISCRETE_VARIABLE_TYPE> clampedValues;
     // What are the values of the discrete variables (which should be clamped)
-// be sure to make this big enough in the constructor
+    // set in the course of inference
 
     void cacheClampedValues();
     // Reads the values of the discrete members and stores them in clampedValues
 
-    void findConditionalProbabilityNodes() {error("can't find cp nodes yet");}
+    void findConditionalProbabilityNodes() 
+    {; /* current implementation ignores possible switching efficiencies */}
     // With switching parents, the set of variables assigned to a clique 
     // depends on the value of the clique. This function is called after all
     // the variables have been clamped, and stores the appropriate 
@@ -77,9 +79,6 @@ struct Clique
 
     bool separator;
     // Is the clique a separator?
-
-    Clique *parent, *child;
-    // In a clique chain, that's all there is.
 
     list<CliqueValue> instantiation;
     // This stores all the possible instantiations of a clique.
@@ -105,6 +104,9 @@ struct Clique
     void prune(logpr beam);
     // Removes all instantiations whose forwards probability is less than
     // beam*max.
+
+    void reveal();
+    // shows who the members and newMembers are
 };
 
 #endif

@@ -59,6 +59,11 @@ struct GMTK_GM
     // Call with emMode=false to get the data probability.
     // Call with emMode=true and p=1/dataProb to do EM
 
+    void cliqueChainProb()
+    { chain->computePosteriors(); dataProb = chain->dataProb; }
+    // Computes the likelihood of the observed variable values with
+    // dynamic programming on a clique chain
+
     bool emMode;
     // when data probability is computed, this controls whether counts
     // are accumulated. If emMode==true, they are accumulated
@@ -156,6 +161,12 @@ struct GMTK_GM
     // computes the likelihood of the examples
 
     map<pair<string, unsigned>, RandomVariable *> variableNamed;
+
+    void GM2CliqueChain();
+    // this creates and initializes a clique chain corresponding to the GM
+
+    void showCliques();
+    // shows the cliques in preorder
 };
 
 #endif
