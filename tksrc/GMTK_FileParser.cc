@@ -912,6 +912,7 @@ FileParser::parseRandomVariableDiscreteType()
 	parseError("value integer");
       if (tokenInfo.int_val < 0)
 	parseError("non-negative value integer");
+      
       curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
       curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_FirstIsValue;
       consumeToken();
@@ -1409,6 +1410,14 @@ FileParser::createRandomVariableGraph()
 	  rv->featureElement = 
 	    rvInfoVector[i].rvFeatureRange.firstFeatureElement;
 	} else if (rvInfoVector[i].rvFeatureRange.filled == RVInfo::FeatureRange::fr_FirstIsValue) {
+	  if (rvInfoVector[i].rvFeatureRange.firstFeatureElement >=
+	      rvInfoVector[i].rvCard)
+	    error("Error: RV \"%s\" at frame %d (line %d) specifies a value observation (%d) incompatible with its cardinality (%d)\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rvInfoVector[i].rvFeatureRange.firstFeatureElement,
+		  rvInfoVector[i].rvCard);
 	  rv->val = rvInfoVector[i].rvFeatureRange.firstFeatureElement;
 	  rv->featureElement = DRV_USE_FIXED_VALUE_FEATURE_ELEMENT;
 	} else {
