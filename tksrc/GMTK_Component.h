@@ -38,13 +38,6 @@ class GaussianComponent :  public EMable, public NamedObject {
   // depending on how probable this component is.
   static double _varianceFloor;
 
-  ///////////////////////////////////////////////////////
-  // The minimum accumulated probability of mean and covariance -like
-  // objects. If the accumulated probability falls below this
-  // value, then the mean or variance like object will not
-  // update its values.
-  static logpr _minAccumulatedProbability;
-
 protected:
   ///////////////////////////////////////////////////////
   // dim = dimensionality of this Gaussian.
@@ -67,9 +60,6 @@ public:
 
   static double varianceFloor() { return _varianceFloor; }
   static double setVarianceFloor(const double floor);
-  static logpr minAccumulatedProbability()
-  { return _minAccumulatedProbability; }
-  static logpr setMinAccumulatedProbability(const logpr p);
 
   unsigned dim() const { return _dim; }
 
