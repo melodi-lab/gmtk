@@ -76,6 +76,8 @@ struct GMTK_GM
 
     int obsInTemplate, obsInRepeatSeg, framesInTemplate, framesInRepeatSeg;
 
+    int numSplits, baseCaseThreshold;  // for clique chain logspace recursion
+
     // support for iterating through a subset of the training segments
     BP_Range* trrng;  
     BP_Range::iterator* trrng_it; // iterator
@@ -100,6 +102,8 @@ struct GMTK_GM
       trrng = NULL;
       trrng_it = NULL;
       unrollCliqueChain = true;  // appropriate for training and decoding
+      numSplits=3;
+      baseCaseThreshold=10;
     }
 
     ~GMTK_GM() { 
@@ -130,7 +134,7 @@ struct GMTK_GM
     // Call with emMode=true and p=1/dataProb to do EM
 
     void cliqueChainProb(logpr beam=0.0)
-    { chain->computePosteriors(beam); dataProb = chain->dataProb; }
+    { chain->compute(data_probs, beam); dataProb = chain->dataProb; }
     // Computes the likelihood of the observed variable values with
     // dynamic programming on a clique chain
 
@@ -157,7 +161,7 @@ struct GMTK_GM
     // likeliest value.
 
     void cliqueChainViterbiProb(logpr beam=0.0) 
-    {chain->doViterbi(beam); viterbiProb=chain->viterbiProb;}
+    {chain->compute(viterbi, beam); viterbiProb=chain->viterbiProb;}
     // Computes the probability of the likeliest instantiation of the hidden
     // variables, and stores it in logViterbiProb. 
     // Has the side effect that at termination, the network is clamped to its
@@ -226,6 +230,9 @@ struct GMTK_GM
     // is time_frames long
 
     void setupForVariableLengthUnrolling(int first_frame, int last_frame);
+
+    void setCliqueChainRecursion(int ns, int bct) 
+         {numSplits=ns; baseCaseThreshold=bct;}
 };
 
 #endif
