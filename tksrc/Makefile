@@ -192,7 +192,7 @@ install: $(all_exs)
 	(for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i; done)
 
 installd: $(all_exs)
-	(for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i.`date +%a%b%d_%k_%Y`; done)
+	(for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i.`date +%a%b%d_%k_%Y | sed -e 's, ,,g'`; strip $(install_prefix)/bin/$$i.`date +%a%b%d_%k_%Y | sed -e 's, ,,g'`; done)
 
 uninstall:
 	rm -f $(exec_prefix)/bin/foo
