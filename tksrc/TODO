@@ -1473,3 +1473,10 @@ Mon Feb  9 21:11:40 2004
      
   This should probably check that unrolled graph produces a connected graph.
   (or allow for unconnected graphs).
+
+
+Thu Feb 12 11:59:35 2004
+  - also allow triangulation routine to take a SIGUSR1 to stop searching
+    and report back what it has found so far.
+  - add check pointing in triangulation code (say every 10 minutes, save  
+    the best .trifile so far found).
