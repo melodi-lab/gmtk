@@ -1993,7 +1993,8 @@ Tue Jun 22 18:36:23 2004
   The sequences should be read-inable using HTK's MLF format. 
 
 
-
+Wed Jun 23 00:24:01 2004
+ DT formula reading errors when {} characters are not there, causes core dump. 
       
 
    
