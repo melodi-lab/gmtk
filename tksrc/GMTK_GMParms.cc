@@ -43,6 +43,7 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+#include "GMTK_USCPT.h"
 #include "GMTK_NameCollection.h"
 
 #include "GMTK_GaussianComponent.h"
@@ -51,6 +52,8 @@
 
 #include "GMTK_MixGaussiansCommon.h"
 #include "GMTK_MixGaussians.h"
+#include "GMTK_ZeroScoreMixGaussian.h"
+#include "GMTK_UnityScoreMixGaussian.h"
 
 #include "GMTK_ObservationMatrix.h"
 
@@ -637,6 +640,14 @@ GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
       error("Error: unknown gaussian component type in file");
     }
     gc->read(is);
+
+    // this next check is redundant since the dim > 0 check is
+    // already done by the mean, variance, etc. objects. We leave
+    // it here, however, since 1) it costs almost nothing, and 2) as new object types 
+    // are added, we might need such a check here.
+    if (dim <= 0)
+      error("ERROR: Gaussian component named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gc->name().c_str(),is.fileName(),dim);
+
     if (gaussianComponentsMap.find(gc->name()) != gaussianComponentsMap.end())
       error("ERROR: Gaussian component named '%s' already defined but is specified for a second time in file '%s'",gc->name().c_str(),is.fileName());
     gaussianComponents[i+start] = gc;
@@ -655,12 +666,16 @@ GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
   is.read(num,"num MGs");
   if (num > GMPARMS_MAX_NUM) error("ERROR: number of mixtures of Gaussians (%d) in file '%s' exceeds maximum",num,is.fileName());
   if (reset) {
-    start = 0;
-    mixGaussians.resize(num);
+    // this isn't implemented at the moment.
+    assert(0);
+    // start = 0;
+    // mixGaussians.resize(num);
   } else {
     start = mixGaussians.size();
     mixGaussians.resize(start+num);
   }
+
+
   for (unsigned i=0;i<num;i++) {
     // first read the count
     MixGaussians* gm;
@@ -676,6 +691,14 @@ GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
 
     gm = new MixGaussians(dim);
     gm->read(is);
+
+    // this next check is redundant since the dim > 0 check is
+    // already done by the mean, variance, and component objects. We leave
+    // it here, however, since 1) it costs almost nothing, and 2) as new object types 
+    // are added, we might need such a check here.
+    if (dim <= 0)
+      error("ERROR: mixture of Gaussian named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gm->name().c_str(),is.fileName(),dim);
+
     if (mixGaussiansMap.find(gm->name()) != mixGaussiansMap.end()) {
       error("ERROR: mixture of Gaussian named '%s' already defined but is specified for a second time in file '%s'",gm->name().c_str(),is.fileName());
     }
@@ -1029,18 +1052,49 @@ GMParms::read(iDataStreamFile& is)
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMParms::loadGlobal()
+ *   load internal global objects, after all other parameters
+ *   have been read in.
+ *
+ * Preconditions:
+ *      All internal objects have been read in. This routine
+ *      should not be called until after *ALL* other GMTK objects have
+ *      been loaded.
+ *
+ * Postconditions:
+ *      New global 
+ *
+ * Side Effects:
+ *      changes internal GMTK object arrays. Note that
+ *      this routine will add to the internal GMKT object arrays
+ *      by appending to the end. This routine should be called last,
+ *      after all other objects have been allocated. Also, when
+ *      writing out any of these objects, we should be sure
+ *      not to write out any of the objects which are being
+ *      stored here.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::loadGlobal()
 {
   ///////////////////////////////////////////////////////
   // Now that presumably everything has been read in,
-  // we insert the global named collection which references
-  // the global arrays.
-  //
+  // we insert the global internal objects:
+  //     1) a named collection which references the global arrays.
+  //     2) special scoring Gaussians
+
+  // Load the global named collection.
   // first, make sure that the name hasn't already been defined,
   // meaning that this routine has already been called.
   if (nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) != nclsMap.end()) {
-    error("PROGRAM INTERNAL ERROR: collection named '%s' already defined but is specified for a second time in file",
+    error("ERROR: special internal collection named '%s' must not be used in parameter files, as it is used internally to refer to global table.",
 	  NAMED_COLLECTION_GLOBAL_NAME);
   }
   NameCollection* nc = new NameCollection();
@@ -1051,6 +1105,43 @@ GMParms::loadGlobal()
   nc->spmfTable = sPmfs;
   ncls.push_back(nc);
   nclsMap[nc->name()] = ncls.size()-1;
+
+
+  // now we load 2 extra Gaussian mixtures.
+
+  // Load the zero scoring Gaussian Mixture
+  if (mixGaussiansMap.find(string(ZEROSCOREMIXGAUSSIAN_NAME)) != mixGaussiansMap.end()) {
+    error("ERROR: special internal Gaussian mixture named '%s' must not be used in parameter files, as it is used internally",ZEROSCOREMIXGAUSSIAN_NAME);
+  }
+  ZeroScoreMixGaussian* zs = new ZeroScoreMixGaussian();
+  mixGaussians.push_back(zs);
+  mixGaussiansMap[zs->name()] = mixGaussians.size()-1;
+
+  // Load the zero scoring Gaussian Mixture
+  if (mixGaussiansMap.find(string(UNITYSCOREMIXGAUSSIAN_NAME)) != mixGaussiansMap.end()) {
+    error("ERROR: special internal Gaussian mixture named '%s' must not be used in parameter files, as it is used internally",UNITYSCOREMIXGAUSSIAN_NAME);
+  }
+  UnityScoreMixGaussian* us = new UnityScoreMixGaussian();
+  mixGaussians.push_back(us);
+  mixGaussiansMap[us->name()] = mixGaussians.size()-1;
+
+  // and we load 1 extra MDCPT
+
+  // load the unity scoring MDCPT.  Note, this CPT corresponds to
+  // a random variable:
+  //   1) of any cardinality
+  //   2) with no switching or conditional parents
+  //   3) that is observed
+  //   4) that has probability = 1 regardless of the
+  //      observed value, so that this is a conditional rather than
+  //      a scoring observation, similar to the way conditional
+  //      floating point observations work.
+  if (mdCptsMap.find(string(USMDCPT_NAME)) != mdCptsMap.end()) {
+    error("ERROR: special internal unity score MDCPT named '%s' must not be used in parameter files, as it is used internally",USMDCPT_NAME);
+  }
+  USCPT *uscpt = new USCPT();
+  mdCpts.push_back(uscpt);
+  mdCptsMap[uscpt->name()] = mdCpts.size()-1;
 
 }
 
@@ -1360,8 +1451,10 @@ void
 GMParms::writeMdCpts(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Dense CPTs");os.nl();
-  os.write(mdCpts.size(),"num Dense CPTs"); os.nl();
-  for (unsigned i=0;i<mdCpts.size();i++) {
+  // leave out the last one (ie., the -1) as it is an internal
+  // object. See routine loadGlobal()
+  os.write(mdCpts.size()-1,"num Dense CPTs"); os.nl();
+  for (unsigned i=0;i<mdCpts.size()-1;i++) {
     // first write the count
     os.write(i,"Dense CPT cnt");
     os.nl();
@@ -1547,8 +1640,10 @@ void
 GMParms::writeMixGaussians(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Mixtures of Gaussians");os.nl();
-  os.write(mixGaussians.size(),"num MIXGAUSSIANS"); os.nl();
-  for (unsigned i=0;i<mixGaussians.size();i++) {
+  // leave out the last two (ie., the -2) as they are internal
+  // objects. See routine loadGlobal()
+  os.write(mixGaussians.size()-2,"num MIXGAUSSIANS"); os.nl();
+  for (unsigned i=0;i<mixGaussians.size()-2;i++) {
     // first write the count
     os.write(i,"MIXGAUSSIANS cnt");
     os.nl();
