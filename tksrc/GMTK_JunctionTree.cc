@@ -975,7 +975,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 		edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
 
 	if (edges[i].weights[0] == 0.0) {
-	  if (IM::messageGlb(IM::Info)) {
+	  if (IM::messageGlb(IM::High)) {
 	    // there is no way to know the difference here if the
 	    // graph is non-triangualted or is simply disconnected
 	    // (which is ok). A non-triangulated graph might have
@@ -983,7 +983,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
 	    // presume that MCS has already checked for this when
 	    // reading in the trifiles. We just issue an informative
 	    // message just in case.
-	    infoMsg(IM::Info,"NOTE: junction tree creation joining two cliques (%d and %d) with size 0 set intersection. Either disconnected or non-triangulated graph.",
+	    infoMsg(IM::High,"NOTE: junction tree creation joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.",
 		    edges[i].clique1,edges[i].clique2);
 	    // TODO: print out two cliques that are trying to be joined.
 	    printf("Clique %d: ",edges[i].clique1);
@@ -1773,7 +1773,9 @@ JunctionTree::assignRVToClique(const char *const partName,
       // if no *hidden* parents are out of the clique, since that is
       // all we need to assign this node to this clique. In other
       // words, if all parents that are out of clique are observed, we
-      // can still go.
+      // can still go. In fact, assuming moralization doesn't moralize
+      // w.r.t. an observed parent, this step is necessary sometimes
+      // to get the child assigned.
 
       assert ( parentsInClique.size() < parSet.size() );
 
