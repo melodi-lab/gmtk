@@ -2,6 +2,31 @@
 $Header$
 
 
+function header template
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      What the function does.
+ * 
+ * Preconditions:
+ *      What must be true before the function is called.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
+ *
+ * Side Effects:
+ *      Any exernal side effects
+ *
+ * Results:
+ *      What does the function return, if anything. 
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
+
+
 Naming Conventions:
 
 
