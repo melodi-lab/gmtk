@@ -351,7 +351,6 @@ main(int argc,char*argv[])
       iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
       GM_Parms.readTrainable(pf);
     }
-    GM_Parms.loadGlobal();
   }
 
   /////////////////////////////
@@ -381,6 +380,7 @@ main(int argc,char*argv[])
 	error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
     }
   }
+  GM_Parms.loadGlobal();
 
   // make sure that all observation variables work
   // with the global observation stream.
