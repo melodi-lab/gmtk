@@ -159,7 +159,6 @@ DiscreteRandomVariable::clone()
 {
   DiscreteRandomVariable* rv = 
     (DiscreteRandomVariable*) RandomVariable::clone();
-  rv->cardinality = cardinality;
   // might as well set val, although probably won't be useful.
   rv->val = val;
   rv->tieParametersWith(this);
