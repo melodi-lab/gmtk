@@ -116,12 +116,9 @@ public:
   }
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
-    // don't increment past the last value.
-    if (it.internalState == 1)
-      return false;
     it.internalState = 1;
     it.probVal = 0.0;
-    return true;
+    return false;
   }
   virtual int valueAtIt(const int internalState) { 
     assert ( internalState == 0);
