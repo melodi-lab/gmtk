@@ -74,6 +74,7 @@ static char *cppCommandOptions = NULL;
 static char* triangulationHeuristic="WFS";
 static char* faceHeuristic="SFW";
 static bool findBestFace = true;
+static bool noBoundaryMemoize = false;
 static char* forceLeftRight="";
 static unsigned verbosity = IM::Default;
 // uncomment when reading in for sparse CPTs
@@ -94,6 +95,8 @@ Arg Arg::Args[] = {
   Arg("triangulationHeuristic",Arg::Opt,triangulationHeuristic,"Elim heuristic, >1 of S=size,T=time,F=fill,W=wght,E=entr,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
 
   Arg("findBestFace",Arg::Opt,findBestFace,"Run find-best-face (exponential time) algorithm or not."),
+  Arg("noBoundaryMemoize",Arg::Opt,noBoundaryMemoize,"Do not memoize boundaries (less memory but runs slower)"),
+
   Arg("forceLeftRight",Arg::Opt,forceLeftRight,"Use only either left (L) or right (R) face heuristic, rather than best of both"),
   Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
   Arg("M",Arg::Opt,M,"Mumber of chunks in which to find interface boundary"),
@@ -237,6 +240,7 @@ main(int argc,char*argv[])
 
   GMTemplate gm_template(fp);
 
+  gm_template.noBoundaryMemoize = noBoundaryMemoize;
 
   if (jut >= 0) {
     gm_template.unrollAndTriangulate(string(triangulationHeuristic),

@@ -1943,6 +1943,18 @@ GMTemplate::interfaceScore(
  // output score
  vector<float>& score)
 {
+
+  if (message(Moderate)) {
+    set<RandomVariable*>::iterator i;    
+    printf("  Cur Interface:");
+    for (i=C_l.begin();i!=C_l.end();i++) {
+      printf(" %s(%d)",
+	     (*i)->name().c_str(),
+	     (*i)->frame());
+      
+    }
+    printf("\n");
+  }
   score.clear();
   for (unsigned fhi=0;fhi<fh_v.size();fhi++) {
     const InterfaceHeuristic fh = fh_v[fhi];
@@ -2826,11 +2838,14 @@ findBestInterface(
 	      inserter(next_C_l,next_C_l.end()));
     next_C_l.erase((*v));
 
-    if (setset.find(next_C_l) != setset.end())
-      continue; // check if memoized, if so, no need to go further.
 
-    // memoize
-    setset.insert(next_C_l);
+    if (!noBoundaryMemoize) {
+      if (setset.find(next_C_l) != setset.end())
+	continue; // check if memoized, if so, no need to go further.
+
+      // memoize
+      setset.insert(next_C_l);
+    }
 
     vector<float> next_score;
     interfaceScore(fh_v,next_C_l,next_left_C_l,
