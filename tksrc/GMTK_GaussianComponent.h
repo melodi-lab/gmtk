@@ -84,7 +84,7 @@ public:
   // create a copy of self, with entirely new parameters
   // (so clone shares nothing), and with slightly (and 
   // randomly) perturbed values.
-  virtual GaussianComponent* cloneUniquePerturbed() = 0;
+  virtual GaussianComponent* noisyClone() = 0;
 
   //////////////////////////////////
   // set all current parameters to valid but random values

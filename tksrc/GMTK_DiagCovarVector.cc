@@ -35,6 +35,7 @@
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_MixGaussiansCommon.h"
 
 #ifndef M_PI
 #define M_PI               3.14159265358979323846  /* pi */
@@ -123,6 +124,59 @@ DiagCovarVector::makeUniform()
   }
   preCompute();
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * noisyClone()
+ *      Create a copy of self, but perturb the mean vector
+ *      a bit with some noise.
+ * 
+ * Preconditions:
+ *      The mean must be read in, and basicAllocatedBitIsSet() must be true.
+ *
+ * Postconditions:
+ *      none.
+ *
+ * Side Effects:
+ *      'this' is not changed at all. Allocates new memory though.
+ *
+ * Results:
+ *      returns the new noisy mean.
+ *
+ *-----------------------------------------------------------------------
+ */
+DiagCovarVector*
+DiagCovarVector::noisyClone()
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  // first check if self is already cloned, and if so, return that.
+  DiagCovarVector* clone;
+
+  map<DiagCovarVector*,DiagCovarVector*>::iterator it = MixGaussiansCommon::diagCovarCloneMap.find(this);
+  if (it == MixGaussiansCommon::diagCovarCloneMap.end()) {
+    clone = new DiagCovarVector();
+    clone->_name = _name + string("_cl");
+    clone->refCount = 0;
+    clone->covariances.resize(covariances.len());
+    for (int i=0;i<covariances.len();i++) {
+      clone->covariances[i] = covariances[i] + 
+	0.05*covariances[i]*rnd.normal();
+    }
+    clone->setBasicAllocatedBit();
+    MixGaussiansCommon::diagCovarCloneMap[this] = clone;
+
+    // also add self to GMParms object.
+    GM_Parms.add(clone);
+
+  } else {
+    clone = (*it).second;
+  }
+  return clone;
+}
+
+
 
 
 void

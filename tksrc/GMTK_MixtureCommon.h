@@ -22,13 +22,22 @@
 #ifndef GMTK_MIXGAUSSIANCOMMON_H
 #define GMTK_MIXGAUSSIANCOMMON_H
 
+#include <map>
+#include <set>
+
 #include "fileParser.h"
 #include "logp.h"
-
 #include "machine-dependent.h"
 
 #include "GMTK_NamedObject.h"
 #include "GMTK_EMable.h"
+
+
+class Dense1DPMF;
+class MeanVector;
+class DiagCovarVector;
+class GaussianComponent;
+
 
 class MixGaussiansCommon : public NamedObject, public EMable {
 
@@ -45,6 +54,16 @@ protected:
   unsigned numComponents;
   
 public:
+
+  /////////////////////////////////////////////////////////
+  // support for component vanishing & splitting with multiple
+  // potentially shared objects.
+  static set<pair<Dense1DPMF*,unsigned> > vanishingComponentSet;
+  static set<pair<Dense1DPMF*,unsigned> > splittingComponentSet;
+
+  static map<MeanVector*,MeanVector*> meanCloneMap;
+  static map<DiagCovarVector*,DiagCovarVector*> diagCovarCloneMap;
+  static map<GaussianComponent*,GaussianComponent*> gcCloneMap;
 
   ///////////////////////////////////////////////////////////
   // This object must be aware of types of its derived

@@ -62,8 +62,9 @@ public:
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
 
-  // 
-  GaussianComponent* cloneUniquePerturbed() { assert(0); return NULL; }
+  // create a copy of self, but with slightly perturbed
+  // means/variance values.
+  GaussianComponent* noisyClone();
 
   //////////////////////////////////
   // set all current parameters to valid but random values

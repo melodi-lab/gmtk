@@ -34,6 +34,7 @@
 #include "GMTK_MeanVector.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_GaussianComponent.h"
+#include "GMTK_MixGaussiansCommon.h"
 
 VCID("$Header$");
 
@@ -81,6 +82,57 @@ MeanVector::makeUniform()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * noisyClone()
+ *      Create a copy of self, but perturb the mean vector
+ *      a bit with some noise.
+ * 
+ * Preconditions:
+ *      The mean must be read in, and basicAllocatedBitIsSet() must be true.
+ *
+ * Postconditions:
+ *      none.
+ *
+ * Side Effects:
+ *      'this' is not changed at all. Allocates new memory though.
+ *
+ * Results:
+ *      returns the new noisy mean.
+ *
+ *-----------------------------------------------------------------------
+ */
+MeanVector*
+MeanVector::noisyClone()
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  // first check if self is already cloned, and if so, return that.
+  MeanVector* clone;
+
+  map<MeanVector*,MeanVector*>::iterator it = MixGaussiansCommon::meanCloneMap.find(this);
+  if (it == MixGaussiansCommon::meanCloneMap.end()) {
+    clone = new MeanVector();
+    clone->_name = _name + string("_cl");
+    clone->refCount = 0;
+    clone->means.resize(means.len());
+    for (int i=0;i<means.len();i++) {
+      clone->means[i] = means[i] + 
+	0.05*means[i]*rnd.normal();
+    }
+    clone->setBasicAllocatedBit();
+    MixGaussiansCommon::meanCloneMap[this] = clone;
+
+    // also add self to GMParms object.
+    GM_Parms.add(clone);
+
+  } else {
+    clone = (*it).second;
+  }
+  return clone;
+}
+
+
 
 
 /////////////////
@@ -92,6 +144,8 @@ MeanVector::makeUniform()
 void
 MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingMeans())
     return;
 
@@ -140,6 +194,8 @@ MeanVector::emIncrement(const logpr prob,
 			const int stride,
 			float *const partialAccumulatedNextMeans)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingMeans())
     return;
   
@@ -173,6 +229,8 @@ MeanVector::emIncrement(const logpr prob,
 void
 MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingMeans())
     return;
 
@@ -221,6 +279,8 @@ MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
 void
 MeanVector::emSwapCurAndNew()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingMeans())
     return;
 
@@ -242,12 +302,14 @@ MeanVector::emSwapCurAndNew()
 void
 MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
 void
 MeanVector::emLoadAccumulators(iDataStreamFile& ifile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
@@ -255,6 +317,7 @@ MeanVector::emLoadAccumulators(iDataStreamFile& ifile)
 void
 MeanVector::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 

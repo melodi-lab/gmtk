@@ -1,5 +1,5 @@
 /*-
- * GMTK_DiagGaussian.cc
+ * GMTK_LinMeanCondDiagGaussian.cc
  *        Code for plain vanilla diagonal Gaussians.
  *
  *
@@ -35,15 +35,20 @@ VCID("$Header$");
 #include "error.h"
 #include "rand.h"
 
-#include "GMTK_DiagGaussian.h"
+#include "GMTK_LinMeanCondDiagGaussian.h"
 #include "GMTK_GMParms.h"
 
 
 
 
 void
-DiagGaussian::read(iDataStreamFile& is)
+LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 {
+  // The index in the global mean array of this mean.
+  int meanIndex; 
+  // The index in the global variance array of this variance vector
+  int covarIndex;
+
   // read name
   NamedObject::read(is);
 
@@ -52,8 +57,8 @@ DiagGaussian::read(iDataStreamFile& is)
   is.read(str);
 
   if (GM_Parms.meansMap.find(str) ==  GM_Parms.meansMap.end()) 
-      error("Error: DiagGaussian '%s' specifies mean name '%s' that does not exist",
-	    _name.c_str(),str.c_str());
+      error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies mean name '%s' that does not exist",
+	    _name.c_str(),is.fileName(),str.c_str());
   meanIndex = GM_Parms.meansMap[str];
   mean = GM_Parms.means[meanIndex];
 
@@ -61,36 +66,69 @@ DiagGaussian::read(iDataStreamFile& is)
   // read covariance vector
   is.read(str);
   if (GM_Parms.covarsMap.find(str) == GM_Parms.covarsMap.end())
-    error("Error: DiagGaussian '%s' specifies covar name '%s' that does not exist",
-	  _name.c_str(),str.c_str());
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies covar name '%s' that does not exist",
+	  _name.c_str(),is.fileName(),str.c_str());
   
   covarIndex = GM_Parms.covarsMap[str];
   covar = GM_Parms.covars[covarIndex];
 
+
+  // read the dlink structure 
+  is.read(str);
+  if (GM_Parms.dLinks.find(str) == GM_Parms.dLinks.end())
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies dlink name '%s' that does not exist",
+	  _name.c_str(),is.fileName(),str.c_str());
+  
+  dLinks = GM_Parms.dLinks[GM_Parms.dLinksMap[str]];
+
+
+  // read the dlink matrix parameter values
+  is.read(str);
+  if (GM_Parms.dLinkMats.find(str) == GM_Parms.dLinkMats.end())
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies dlink matrix name '%s' that does not exist",
+	  _name.c_str(),is.fileName(),str.c_str());
+  
+  dLinkMat = GM_Parms.dLinkMats[GM_Parms.dLinkMatsMap[str]];
+
+  if (!dLinks->compatibleWith(*dLinkMats))
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifices a dlink structure '%s' and matrix '%s' that are not compatible with each other\n",
+	  _name.c_str(),is.fileName(),
+	  dLinks->name().c_str(),
+	  dLinkMat->name().c_str());
+
   // check that lengths match, etc.
   if (covar->dim() != mean->dim()) {
-    error("Error: DiagGaussian '%s' specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
-	  _name.c_str(),
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
+	  _name.c_str(),is.fileName(),
 	  mean->name().c_str(),
 	  mean->dim(),
 	  covar->name().c_str(),
 	  covar->dim());
   }
   if (covar->dim() != _dim) {
-    error("Error: DiagGaussian '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
-	  _name.c_str(),
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
+	  _name.c_str(),is.fileName(),
 	  _dim,
 	  mean->name().c_str(),
 	  mean->dim(),
 	  covar->name().c_str(),
 	  covar->dim());
   }
+
+
+  if (dLinks->numFeats() != _dim)
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies a dlink structure '%s'(matrix '%s') that does not match its mean and covariance with dim '%d'\n",
+	  _name.c_str(),is.fileName(),
+	  dLinks->name().c_str(),
+	  dLinkMat->name().c_str(),
+	  _dim);
+
   setBasicAllocatedBit();
 }
 
 
 void
-DiagGaussian::write(oDataStreamFile& os)
+LinMeanCondDiagGaussian::write(oDataStreamFile& os)
 {
   assert ( basicAllocatedBitIsSet() );
 
@@ -100,28 +138,33 @@ DiagGaussian::write(oDataStreamFile& os)
   os.nl();
 
   // write mean vector
-  os.write(mean->name());
+  os.write(mean->name()); 
   os.write(covar->name());
+  os.write(dLinks->name());
+  os.write(dLinkMat->name());
+  os.nl();
 }
 
 
 void
-DiagGaussian::makeRandom()
+LinMeanCondDiagGaussian::makeRandom()
 {
   assert ( basicAllocatedBitIsSet() );
 
   mean->makeRandom();
   covar->makeRandom();
+  dLinkMat->makeRandom();
 }
 
 
 void
-DiagGaussian::makeUniform()
+LinMeanCondDiagGaussian::makeUniform()
 {
   assert ( basicAllocatedBitIsSet() );
 
   mean->makeUniform();
   covar->makeUniform();
+  dLinkMat->makeUniform();  
 }
 
 
@@ -146,9 +189,9 @@ DiagGaussian::makeUniform()
  */
 
 logpr
-DiagGaussian::log_p(const float *const x,
-		    const Data32* const base,
-		    const int stride)
+LinMeanCondDiagGaussian::log_p(const float *const x,
+			       const Data32* const base,
+			       const int stride)
 {
   assert ( basicAllocatedBitIsSet() );
 
@@ -197,7 +240,7 @@ DiagGaussian::log_p(const float *const x,
 
 
 void
-DiagGaussian::emStartIteration()
+LinMeanCondDiagGaussian::emStartIteration()
 {
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
@@ -221,7 +264,7 @@ DiagGaussian::emStartIteration()
 
 
 void
-DiagGaussian::emIncrement(logpr prob,
+LinMeanCondDiagGaussian::emIncrement(logpr prob,
 			  const float*f,
 			  const Data32* const base,
 			  const int stride)
@@ -249,7 +292,7 @@ DiagGaussian::emIncrement(logpr prob,
 
 
 void
-DiagGaussian::emEndIteration()
+LinMeanCondDiagGaussian::emEndIteration()
 {
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
@@ -272,7 +315,7 @@ DiagGaussian::emEndIteration()
 
 
 void
-DiagGaussian::emSwapCurAndNew()
+LinMeanCondDiagGaussian::emSwapCurAndNew()
 {
   if (!GM_Parms.amTrainingDiagGaussians())
     return;
@@ -288,20 +331,20 @@ DiagGaussian::emSwapCurAndNew()
 
 
 void
-DiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
+LinMeanCondDiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 {
   error("not implemented");
 }
 
 void
-DiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
+LinMeanCondDiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
 {
   error("not implemented");
 }
 
 
 void
-DiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
+LinMeanCondDiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   error("not implemented");
 }
@@ -313,7 +356,7 @@ DiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
 
 
 
-void DiagGaussian::sampleGenerate(float *const sample,
+void LinMeanCondDiagGaussian::sampleGenerate(float *const sample,
 				  const Data32* const base,
 				  const int stride)
 {

@@ -1355,6 +1355,15 @@ GMParms::emSwapCurAndNew()
     mlpSwitchingMixGaussians[i]->emSwapCurAndNew();
 #endif
 
+  // clear out the cloning maps, under the assumption
+  // that all clones become 'real' objects.
+  MixGaussiansCommon::vanishingComponentSet.clear();
+  MixGaussiansCommon::splittingComponentSet.clear();
+
+  MixGaussiansCommon::meanCloneMap.clear();
+  MixGaussiansCommon::diagCovarCloneMap.clear();
+  MixGaussiansCommon::gcCloneMap.clear();
+
 }
 
 

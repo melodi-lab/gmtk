@@ -34,6 +34,8 @@
 
 #include "GMTK_Dense1DPMF.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_MixGaussiansCommon.h"
+
 
 VCID("$Header$");
 
@@ -356,14 +358,24 @@ Dense1DPMF::emSwapCurAndNew()
   if (!emSwappableBitIsSet())
     return;
 
+  unsigned newLen = nextPmf.len();
+  for (unsigned i=0;i<(unsigned)nextPmf.len();i++) {
+    if (MixGaussiansCommon::vanishingComponentSet.find(pair<Dense1DPMF*,unsigned>(this,i))
+	!= MixGaussiansCommon::vanishingComponentSet.end())
+      newLen--;
+    else if (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(this,i))
+	     != MixGaussiansCommon::splittingComponentSet.end())
+      newLen++;
+  }
+
+  // @@@@ need to finish this.
+  
   for (int i=0;i<nextPmf.len();i++) {
     genSwap(nextPmf[i],pmf[i]);
   }
 
   emClearSwappableBit();
 }
-
-
 
 
 void

@@ -39,6 +39,7 @@ VCID("$Header$");
 #include "GMTK_ObservationMatrix.h"
 
 
+
 void
 MixGaussians::read(iDataStreamFile& is)
 {
@@ -321,9 +322,6 @@ MixGaussians::emIncrement(logpr prob,
   // increment the mixture weights
   dense1DPMF->emIncrement(prob,weightedPostDistribution);
 
-  const logpr mixCoeffVanishThreshold =   
-    logpr((double)1.0/numComponents)/logpr(mixCoeffVanishRatio);
-
   // and the components themselves.
   for (unsigned i=0;i<numComponents;i++) {
     components[i]->emIncrement(weightedPostDistribution[i],
@@ -348,19 +346,30 @@ MixGaussians::emEndIteration()
 
   dense1DPMF->emEndIteration();
 
-  for (unsigned i=0;i<numComponents;i++)
+  const logpr mixCoeffVanishThreshold =   
+    logpr((double)1.0/numComponents)/logpr(mixCoeffVanishRatio);
+  const logpr mixCoeffSplitThreshold =   
+    logpr(mixCoeffSplitRatio)/logpr((double)numComponents);
+
+  assert ( mixCoeffVanishThreshold < mixCoeffSplitThreshold ); 
+
+  for (unsigned i=0;i<numComponents;i++) {
+    if (dense1DPMF->np(i) < mixCoeffVanishThreshold)
+      MixGaussiansCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
+    else if (dense1DPMF->np(i) >= mixCoeffSplitThreshold)
+      MixGaussiansCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,i));
+    // need to end component iteration in both cases.
     components[i]->emEndIteration();
+  }
 
   // stop EM
   emClearOnGoingBit();
 }
 
 
-
 void
 MixGaussians::emSwapCurAndNew()
 {
-
   if (!GM_Parms.amTrainingMixGaussians())
     return;
 
@@ -373,7 +382,6 @@ MixGaussians::emSwapCurAndNew()
   }
   emClearSwappableBit();
 }
-
 
 
 
