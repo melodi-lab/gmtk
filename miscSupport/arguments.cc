@@ -311,9 +311,9 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
       return ARG_ERROR;
     }
     int n;
-    // istrstream ist(arg);
-    // if (!(ist >> n)) {
-    if ( sscanf(arg,"%d",&n) != 1) {
+    char *endp;
+    n = (int)strtol(arg,&endp,0); 
+    if ( endp == arg ) {
       warning("%s Integer argument needed: %s %s",
 	      ArgsErrStr,
 	      flag,
@@ -333,9 +333,9 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
       return ARG_ERROR;
     }
     unsigned int n;
-    // istrstream ist(arg);
-    // if (!(ist >> n)) {
-    if ( sscanf(arg,"%u",&n) != 1) {
+    char *endp;
+    n = (unsigned)strtoul(arg,&endp,0);
+    if ( endp == arg) {
       warning("%s Unsigned integer argument needed: %s %s",
 	      ArgsErrStr,
 	      flag,
@@ -355,9 +355,9 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
       return ARG_ERROR;
     }
     float f;
-    // istrstream ist(arg);
-    // if (!(ist >> f)) {
-    if ( sscanf(arg,"%f",&f) != 1) {
+    char *endp;
+    f = strtof(arg,&endp);
+    if ( arg == endp ) {
       warning("%s Floating point number argument needed: %s %s",
 	      ArgsErrStr,
 	      flag,
@@ -377,9 +377,9 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
       return ARG_ERROR;
     }
     double d;
-    // istrstream ist(arg);
-    // if (!(ist >> d)) {
-    if ( sscanf(arg,"%F",&d) != 1) {
+    char *endp;
+    d = strtod(arg,&endp);
+    if (arg == endp) {
       warning("%s Integer argument needed: %s %s",
 	      ArgsErrStr,
 	      flag,
