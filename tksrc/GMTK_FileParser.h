@@ -39,21 +39,39 @@ class FileParser
   // The file we are currently parsing.
   FILE *ifile;
 
+
+
+  //////////////////////////////////////////////
+  // prepares the next input token and fills the
+  // structure
+  void prepareNextToken();
+
+  //////////////////////////////////////////////
+  // ensures that we are not at EOF, and dies with
+  // a parse error message if we are.
+  void ensureNotEOF(const char *const str = NULL);
+  // returns true if we're at EOF
+  bool endOfFile() { return (tokenInfo.rc == 0); }
+
+  // parse error thing.
+  void parseError(const char *const str = NULL);
+
 public:
 
   enum TokenType {
-    Token_Integer=0,
-    Token_Real=1,
-    Token_Colon=2,
-    Token_SemiColon=3,
-    Token_LeftBrace=4,
-    Token_RightBrace=5,
-    Token_LeftParen=6,
-    Token_RightParen=7,
-    Token_VirtBar=8,
-    Token_Keyword=9,
-    Token_Identifier=10,
-    Token_Undefined=11
+    Token_EOF=0,
+    Token_Integer=1,
+    Token_Real=2,
+    Token_Colon=3,
+    Token_SemiColon=4,
+    Token_LeftBrace=5,
+    Token_RightBrace=6,
+    Token_LeftParen=7,
+    Token_RightParen=8,
+    Token_VirtBar=9,
+    Token_Keyword=10,
+    Token_Identifier=11,
+    Token_Undefined=12
   };
 
   struct TokenInfo {
@@ -61,6 +79,9 @@ public:
     int srcLine; 
     // the char on the current line of most rec. proc. token
     int srcChar; 
+
+    // the previously returned yylex return code
+    int rc;
 
     // the token in string form
     char *tokenStr; 
@@ -106,8 +127,8 @@ public:
   FileParser(const char *const fileName);
 
   void parseGraphicalModel();
-  void parseFrameList() {}
-  void parseFrame() {}
+  void parseFrameList();
+  void parseFrame();
   void parseRandomVariableList();
   void parseRandomVariable();
   void parseRandomVariableAttributeList();
@@ -123,7 +144,7 @@ public:
   void parseCPT_TYPE();
   void parseParent();
   void parseContinousImplementation();
-  void parseChunkSpecifier() {}
+  void parseChunkSpecifier();
 
 };
 

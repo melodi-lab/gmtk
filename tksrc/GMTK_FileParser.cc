@@ -42,62 +42,6 @@ VCID("$Header$");
 ***********************************************************************
 ***********************************************************************
 
-The GM Grammar:
--------------------
-
-GM = "GRAPHICAL_MODEL" identifier Frame_List Chunk_Specifier
-
-Frame_List = Frame | Frame Frame_List
-
-Frame = "frame" ":"  integer "{" RV_List "}"
-
-RV_List = RV | RV RV_List
-
-RV = "variable" ":" name "{" RV_Attribute_List "}"
-
-RV_Attribute_List = Attribute | Attribute RV_Attribute_List
-
-Attribute = 
-    "type" ":" RV_Type ";" |
-    "disposition" ":" RV_Disposition ";" |
-    "cardinality" ":" integer ";" |
-    "switchingparents" ":" Switching_Parent_LIST ";" |
-    "conditionalparents" ":" 
-              Conditional_Parent_List_List  ";"
-
-RV_Type = "discrete" | "continuous"
-
-RV_Disp = "hidden" | "observed" int_range Continous_Implementation
-
-Switching_Parent_LIST = "nil" | Parent_List "using" Mapping_Spec
-
-Mapping_Spec = "mapping" "(" integer ")"
-     # the integer is used to index into to the decision tree
-     # that maps from the switching parents to one of the
-     # conditional parent lists.
-
-Conditional_Parent_List_List = 
-    Conditional_Parent_List using CPT_SPEC |
-    Conditional_Parent_List using CPT_SPEC "|" Conditional_Parent_List_List
-
-Cond_Parent_List = "nil" | Parent_List 
-
-CPT_SPEC = CPT_TYPE "(" integer ")"
-
-CPT_TYPE = "MDCPT" | "MSCPT" 
-
-Parent_List = Parent | Parent "," Parent_List
-
-Parent = identifier "(" integer ")" 
-
-Continuous_Implementation = "mixGaussian" | 
-         "gausSwitchMixGaussian" | "logitSwitchMixGaussian" |
-         "mlpSwitchMixGaussian"
-     
-Chunk_Specifier = "chunk"  integer ":" integer
-
-==========================================================================
-
 # The GM Grammar:
 
 GM = "GRAPHICAL_MODEL" identifier Frame_List Chunk_Specifier
@@ -159,11 +103,11 @@ ContObsDistType = "mixGaussian" | "gausSwitchMixGaussian"
   | "logitSwitchMixGaussian" | "mlpSwitchMixGaussian"
 
 Mapping_Spec = "mapping" "(" List_Index ")"
-     # the integer (or string) is used to index into a table
+     # A Mapping_Spec always indexes into one of the decision trees.
+     # The integer (or string) is used to index into a table
      # of decision trees to choose the decision tree
      # that will map from the switching parents to one of the
      # conditional parent lists.
-
 
 Chunk_Specifier = "chunk"  integer ":" integer
 
@@ -177,7 +121,8 @@ Example of a grammatical GM file
 
 # Actual model definition
 GRAPHICAL_MODEL FHMM
-frame:1 {
+
+frame:0 {
      variable : word {
           type: discrete hidden cardinality 3 ;
           switchingparents: nil ;
@@ -218,14 +163,62 @@ frame:1 {
                 state1(0) using mlpSwitchMixGaussian
                           mapping("gaussmapping3") ;
        }
-
 }
 
-frame:2 {
-     (similar changes here)
+frame:1 {
+
+     variable : word {
+          type: discrete hidden cardinality 3 ;
+          switchingparents: nil ;
+          conditionalparents: word(-1) using MDCPT("wordbigram") ;
+        }
+
+     variable : phone {
+          type: discrete hidden cardinality 4 ;
+          switchingparents : nil ;
+          conditionalparents :
+                phone(-1),word(0) using MDCPT("dep_on_word_phone") ;
+        }
+
+     variable : state1 {
+          type: discrete hidden cardinality 4 ;
+          switchingparents: phone(0) using mapping("phone2state1") ;
+          conditionalparents :
+	          # in this first case, state1 is dep on prev time
+                  state1(-1) using MSCPT("f3")
+	          # in this second case, it is cond. indep. of prev. time.
+                | nil using MDCPT("f2") ;
+       }
+
+       variable : state2 {
+          type: discrete hidden cardinality 4 ;
+          switchingparents: nil ;
+          conditionalparents:
+	             # this is a sep. hidden markov chain
+                     state2(-1) using MDCPT("f9") ;
+       }
+
+       # like in the first frame, the obs. are only dep.
+       # on RVs from the current frame.
+       variable : obs1 {
+          type: continous observed features 0:5 ;
+          switchingparents: state1(0), state2(0) 
+                   using mapping("state2obs6") ;
+          conditionalparents: 
+                 nil using mixGaussian("the_forth_gaussian");
+               | state1(0) using mixGaussian mapping("gausmapping");
+       }
+
+       variable : obs2 {
+          type: continous observed features 6:25  ;
+          switchingparents: nil ;
+          conditionalparents: 
+                state1(0) using mlpSwitchMixGaussian
+                          mapping("gaussmapping3") ;
+       }
 }
 
-chunk: 2:2
+chunk: 1:1
 
 
 
@@ -254,6 +247,76 @@ FileParser::TokenInfo FileParser::tokenInfo;
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * prepareNextToken
+ *   prepares the next input token and fills the tokeninfo structure.
+ * 
+ * Preconditions:
+ *      Object must be in the midst of parsing a file.
+ *
+ * Postconditions:
+ *      Same as before, new token parsed, possible EOF condition.
+ *
+ * Side Effects:
+ *      Changes the interal token info function.
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+FileParser::prepareNextToken()
+{
+  tokenInfo.rc = yylex();
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * ensureNotEOF:
+ *   makes sure that we are not at the EOF.
+ * 
+ * Preconditions:
+ *      Object must be in the midst of parsing a file.
+ *
+ * Postconditions:
+ *      same as before.
+ *
+ * Side Effects:
+ *      program might die as result of error.
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+FileParser::ensureNotEOF(const char *const msg)
+{
+  if (tokenInfo.rc == Token_EOF) {
+    fprintf(stderr,"Unexpected EOF Error: expecting %s at line %d\n",
+	    msg,
+	    tokenInfo.srcLine);
+    error("Exiting Program");
+  }
+}
+
+
+void
+FileParser::parseError(const char* const str)
+{
+  fprintf(stderr,"Parse Error: %s at line %d, near (%s)\n",
+	  str,
+	  tokenInfo.srcLine,
+	  tokenInfo.tokenStr);
+  error("Exiting Program");
+}
+
+
+
 FileParser::FileParser(const char*const file)
 {
   if (file == NULL)
@@ -264,23 +327,92 @@ FileParser::FileParser(const char*const file)
     if ((yyin = fopen (file,"r")) == NULL)
       error("FileParser::FileParser, can't open file (%s)",file);
   }
-
+  tokenInfo.srcLine = 1;
   parseGraphicalModel();
 }
+
 
 void
 FileParser::parseGraphicalModel()
 {
-  int rc;
 
-  rc = yylex();
+  prepareNextToken();
+  ensureNotEOF("GM magic keyword");
   if (tokenInfo != "GRAPHICAL_MODEL")
-    error("parse error, expecting key word GRAPHICAL_MODEL");
-  rc = yylex();
-  printf("rc = %d, lineno = %d\n",rc,tokenInfo.srcLine);
+    parseError("expecting key word GRAPHICAL_MODEL");
 
+  prepareNextToken();
+  ensureNotEOF("GM name");
+  if (tokenInfo != Token_Identifier)
+    parseError("expecting GM name ID");
+
+  prepareNextToken();
+  ensureNotEOF("frame keyword");
+
+
+  if (tokenInfo != "frame")
+    parseError("expecting frame keyword");
   parseFrameList();
   parseChunkSpecifier();
+
+}
+
+
+void
+FileParser::parseFrameList()
+{
+  if (tokenInfo != "frame")
+    return;
+  parseFrame();
+  parseFrameList();
+}
+
+
+
+void
+FileParser::parseFrame()
+{
+
+  prepareNextToken();
+  ensureNotEOF("frame colon");
+  if (tokenInfo != Token_Colon)
+    parseError("frame colon");
+
+
+  prepareNextToken();
+  ensureNotEOF("frame number");
+  if (tokenInfo != Token_Integer)
+    parseError("frame number");
+
+  prepareNextToken();
+
+}
+
+
+
+void
+FileParser::parseChunkSpecifier()
+{
+  if (tokenInfo != "chunk") 
+    parseError("expecting chunk keyword");
+
+  prepareNextToken();
+  ensureNotEOF("first chunk integer");
+
+  if (tokenInfo != Token_Integer)
+    parseError("expecting first chunk integer");
+
+  prepareNextToken();
+  ensureNotEOF("chunk colon");
+
+  if (tokenInfo != Token_Colon) 
+    parseError("expecting chunk colon");
+
+  prepareNextToken();
+  ensureNotEOF("second chunk integer");
+
+  if (tokenInfo != Token_Integer) 
+    parseError("expecting second chunk integer");
 
 }
 
@@ -295,9 +427,12 @@ FileParser::parseGraphicalModel()
 GMParms GM_Parms;
 
 int
-main()
+main(int argc,char*argv[])
 {
-  FileParser fp("-");
+  if (argc > 1) 
+    FileParser fp(argv[1]);    
+  else 
+    FileParser fp("-");
 }
 
 
