@@ -71,8 +71,9 @@ public:
 
   //////////////////////////////////
   // various forms of probability calculation
-  void becomeAwareOfParentValues( vector <int>& parentValues ) {
-    spmfIndex = dt->query(parentValues);
+  void becomeAwareOfParentValues( vector <int>& parentValues,
+				  vector <int>& cards ) {
+    spmfIndex = dt->query(parentValues,cards);
     spmf = GM_Parms.sPmfs[spmfIndex];
   }
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
@@ -85,9 +86,10 @@ public:
     return spmf->prob(val);
   }
   logpr probGivenParents(vector <int>& parentValues, 
+			 vector <int>& cards,
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parentValues);
+    becomeAwareOfParentValues(parentValues,cards);
     return probGivenParents(val);
   }
   logpr probGivenParents(vector <RandomVariable *>& parents,
