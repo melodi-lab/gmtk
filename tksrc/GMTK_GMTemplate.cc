@@ -264,10 +264,18 @@ readMaxCliques(iDataStreamFile& is)
     
     unsigned cliqueSize;
     is.read(cliqueSize,"cliqueSize value");
+
+#if 0
+    // remove check for min clique size of 1.
     if (cliqueSize <= 1)
       error("ERROR: reading file %s line %d, cliqueSize %d must be >= 2\n",
 	    is.fileName(),is.lineNo(),cliqueSize);
-    
+#endif    
+    if (cliqueSize <= 0)
+      error("ERROR: reading file %s line %d, reading clique number %d, but clique size %d must be >= 1\n",
+	    is.fileName(),is.lineNo(),i,cliqueSize);
+
+
     for (unsigned j=0;j<cliqueSize;j++) {
 
       RVInfo::rvParent par;
