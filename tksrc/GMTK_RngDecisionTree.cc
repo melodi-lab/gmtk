@@ -518,7 +518,7 @@ RngDecisionTree::clampNextDecisionTree()
   dtFile->read(curName,"cur name");
   dtFile->read(_numFeatures,"num feats");
   if (_numFeatures <= 0)
-    error("ERROR: reading dynamic decision tree '%s' with current name '%s' from file '%s', but decision tree must have >= 0 features",
+    error("ERROR: reading dynamic decision tree '%s' with current name '%s' from file '%s', but decision tree must have > 0 features",
 	  name().c_str(),
 	  curName.c_str(),
 	  dtFile->fileName());
