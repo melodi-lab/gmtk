@@ -199,7 +199,7 @@ uninstall:
 #config_files = $(srcdir)/configure.in $(srcdir)/aclocal.m4 \
 #		$(srcdir)/Makefile.in
 # Include this for now until we get configure running.
-config_files = Makefile
+config_files = Makefile TODO
 #
 #----------------------------------------------------------------------------
 # TODO: Documentation.
