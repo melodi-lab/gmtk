@@ -71,4 +71,7 @@ XXX- todo, make sure that chunk n:m is valid.
 
 - if an object gets no probability, do something
   more than just issuing a warning, like setting
-  to uniform probs, or something.
+  to uniform probs, removing the component,
+  re-randomizing, or something.
+
+- add a k-means mode for initialization.
