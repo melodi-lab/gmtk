@@ -72,12 +72,31 @@ public:
   // set all current parameters to valid but "uniform" values 
   // (for Gaussians this means N(0,1))
   void makeUniform();
-  //////////////////////////////////
+  ///////////////////////////////////
 
   ///////////////////////////////////
   unsigned totalNumberParameters() { return 
-				       mean->totalNumberParameters()+
+				       mean->totalNumberParameters() +
 				       covar->totalNumberParameters(); }
+
+
+  // these routines are used to not save gaussian
+  // components (and their means, variances, etc.) 
+  // that are not actively used in a parameter file (such
+  // as those that have vanished away).
+  void recursivelyClearUsedBit() { 
+    emClearUsedBit();
+    mean->recursivelyClearUsedBit();
+    covar->recursivelyClearUsedBit();
+  }
+  void recursivelySetUsedBit() {
+    emSetUsedBit();    
+    mean->recursivelySetUsedBit();
+    covar->recursivelySetUsedBit();
+  }
+
+
+
 
   //////////////////////////////////
   // probability evaluation
