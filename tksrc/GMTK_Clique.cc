@@ -158,6 +158,7 @@ void Clique::prune(logpr beam)
     for (int i=0; i<numInstantiations; i++) temp[i] = instantiation[i];
     swap(temp, instantiation);
     delete [] temp;
+    instantiation_capacity = numInstantiations;  // actually unnecessary
 }
 
 void Clique::enumerateValues(int new_member_num, int pred_val, 
