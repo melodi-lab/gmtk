@@ -76,13 +76,6 @@ class RandomVariable
 public:
 
 
-  //////////////////////////////////////////////////////////////////////////////
-  // This is the integer type of the values that a discrete random variable
-  // may take on. Possibilities include unsigned char, char, short, int, 
-  // unsigned long, and so on. Note, if this changes,
-  // then might need to change Decision tree code as well.
-  typedef short DiscreteVariableType;
-
   ////////////////////////////////////////////////////////////////////////
   // What is my name?
   string label;
@@ -93,9 +86,9 @@ public:
   bool hidden;
 
   /////////////////////////////////////////////////////////////////////////
-  // Is the variable discrete?
+  // Is the variable discrete or is it continuous valued.
   // Inference conditions on this; cliques keep track of the values of 
-  // their discrete members.
+  // their discrete members, and this might be used for a type cast.
   bool discrete;
 
   /////////////////////////////////////////////////////////////////////////
@@ -222,6 +215,14 @@ public:
   /*
    * TODO: move this stuff to the child class.  
    */
+
+  //////////////////////////////////////////////////////////////////////////
+  // This is the integer type of the values that a discrete random variable
+  // may take on. Possibilities include unsigned char, char, short, int, 
+  // unsigned long, and so on. Note, if this changes,
+  // then might need to change Decision tree code as well.
+  typedef int DiscreteVariableType;
+
 
   /////////////////////////////////////////////////////////////////
   // in the discrete case, the actual value of the variable.
