@@ -796,23 +796,29 @@ void GMTK_GM::GM2CliqueChain()
     }
 
 /*
-cout << "Num cliques: " << chain->cliques.size() << endl;
-unsigned pi=0, maxi=0, lc=0;
-for (unsigned i=0; i<chain->cliques.size(); i++)
-{
-Clique *cl = &chain->cliques[i];
-unsigned sz = 1;
-for (unsigned i=0; i<cl->member.size(); i++)
-if (cl->member[i]->hidden) sz *= cl->member[i]->cardinality;
-pi += sz;
-maxi = max(maxi, sz);
-lc = max(cl->member.size(), lc);
-}
-cout << "Max clique size is " << maxi << endl;
-cout << "Total possible instantiations: " << pi << endl;
-cout << "Max variables in a clique is " << lc << " elements" << endl;
-*/
+    // Print information about upper bounds on clique sizes
+    cout << "Num cliques: " << chain->cliques.size() << endl;
+    double pi=0, maxi=0; 
+    unsigned lc=0;
+    for (unsigned i=0; i<chain->cliques.size(); i++)
+    {
+        Clique *cl = &chain->cliques[i];
+        double sz = 1;
+        for (unsigned i=0; i<cl->member.size(); i++)
+            if (cl->member[i]->hidden) sz *= cl->member[i]->cardinality;
+        pi += sz;
+        maxi = max(maxi, sz);
+        lc = max(cl->member.size(), lc);
+    }
 
+    pi /= 1000000;
+    maxi /= 1000000;
+    cout << "Max variables in a clique is " << lc << " elements" << endl;
+    cout << "Upper bound on instantiations of a single clique is " << maxi 
+         << "M" << endl;
+    cout << "** Upper bound on instantiations in entire network: " << pi 
+         << "M" << endl;
+*/
 }
 
 /*-
