@@ -31,7 +31,7 @@ LEX = flex
 RANLIB = :
 INSTALL = /usr/ucb/install -c
 INSTALL_DATA = ${INSTALL} -m 555
-INSTALL_EXE = $(INSTALL) -m 555
+INSTALL_EXE = $(INSTALL) -m 755
 
 #
 # Program options.
