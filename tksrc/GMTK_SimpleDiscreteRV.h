@@ -28,7 +28,7 @@ class SimpleDiscreteRV : public RandomVariable
 {
 public:
 
-    SimpleDiscreteRV(char * _label, vartype vt, int card)
+    SimpleDiscreteRV(string _label, vartype vt, int card)
     : RandomVariable(_label, vt, card) {;}
 
     // distribution over own values, given parents values
@@ -157,6 +157,17 @@ public:
     void emClearAllocatedBit() {;}
     void emClearSwappedBit() {;}
     void emSwapCurAndNew() {;}
+
+    RandomVariable * clone() 
+    { RandomVariable *rv = new SimpleDiscreteRV(label, 
+      ((discrete)?(Discrete):(Continuous)), cardinality);
+      rv->basicClone(this);
+      rv->tieParameters(this);
+      return rv;
+    } 
+
+    void tieParameters(RandomVariable *other)
+    { cout << "Can't tie parameters for simple RVs\n"; }
 };
 
 #endif

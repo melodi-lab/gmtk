@@ -360,6 +360,23 @@ public:
   // END OF SUPPORT FOR EM  VARIABLES /////
   /////////////////////////////////////////
   /////////////////////////////////////////
+
+ 
+  /////////////////////////////////////////
+  /////////////////////////////////////////
+  // SUPPORT FOR REPRODUCTION /////////////
+  /////////////////////////////////////////
+  /////////////////////////////////////////
+
+  virtual RandomVariable *clone() = 0;
+  // to unroll the network, the variables in the repreating segments are 
+  // cloned. Cloning must:
+  // - copy the parent arrays (child arrays will be reset)
+  // - copy the member data - cardinality, dtMapper, hidden, discrete
+
+  void basicClone(RandomVariable *caller);
+  // This copies the above mentioned members.
+  // It is meant to be called by the implementation of clone in a derived class
 };
 
 #endif
