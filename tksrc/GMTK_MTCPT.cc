@@ -162,19 +162,22 @@ MTCPT::read(iDataStreamFile& is)
       error("MTCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
   }
 
-  // Finally read in the integer ID of the decision tree
+  // Finally read in the ID of the decision tree
   // that maps from parent values to an integer specifying
   // the sparse CPT. 
-  is.read(dtIndex);
-  if (dtIndex < 0 || dtIndex >= GM_Parms.dts.size())
-    error("MTCPT::read, invalid DT index %d\n",dtIndex);
+  string str;
+  is.read(str);
+  if (GM_Parms.dtsMap.find(str) ==  GM_Parms.dtsMap.end()) 
+      error("Error: MTCPT '%s' specifies DT name '%s' that does not exist",
+	    _name.c_str(),str.c_str());
+  dtIndex = GM_Parms.dtsMap[str];
 
-  // TODO: check that the cardinalities of self match
-  // with that of the dt.
-
-  //////////////////////////////////////////////////////////
-  // set the DT
   dt = GM_Parms.dts[dtIndex];
+  
+  if (_numParents != dt->numFeatures())
+      error("Error: MTCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
+	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());
+
 
   bitmask |= bm_basicAllocated;
 }
@@ -204,7 +207,7 @@ MTCPT::write(oDataStreamFile& os)
   }
   os.writeComment("cardinalities");
   os.nl();
-  os.write(dtIndex);
+  os.write(dt->name());
   os.nl();
 }
 
