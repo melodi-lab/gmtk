@@ -329,6 +329,9 @@ MeanVector::emIncrement(const logpr prob,
 
   accumulatedProbability += prob;
 
+#if 0
+  // this accumulation is now done by caller in conjunction
+  // with the covar vector.
   // This routine is called often so we use pointer arith.
   float * nextMeans_p = partialAccumulatedNextMeans;
   float * nextMeans_end_p = partialAccumulatedNextMeans + means.len();
@@ -338,6 +341,7 @@ MeanVector::emIncrement(const logpr prob,
     nextMeans_p++;
     f_p++;
   } while (nextMeans_p != nextMeans_end_p);
+#endif
 
 }
 

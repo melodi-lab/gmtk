@@ -1736,7 +1736,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
   switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
   case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
     {
-      rv->clampFirstValue();
+      rv->begin();
       do {
 	// At each step, we compute probability
 	logpr cur_p = rv->probGivenParents();
@@ -1756,13 +1756,13 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 	  // probability to the clique potential.
 	  ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
 	}
-      } while (rv->clampNextValue());
+      } while (rv->next());
     }
     break;
 
   case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
     {
-      rv->clampFirstValue();
+      rv->begin();
       do {
 	// At each step, we compute probability
 	logpr cur_p = rv->probGivenParents();
@@ -1781,7 +1781,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 	  // Continue, do not update probability!!
 	  ceIterateAssignedNodes(part,nodeNumber+1,p);
 	}
-      } while (rv->clampNextValue());
+      } while (rv->next());
     }
     break;
 
@@ -1900,10 +1900,10 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
   } else {
     // observed, either discrete or continuous
     if (rv->discrete) {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
       // TODO: for observed variables, do this once at the begining
       // before any looping here.
-      drv->setToObservedValue();
+      // drv->setToObservedValue();
       infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
     } else {
@@ -2310,6 +2310,7 @@ InferenceMaxClique::ceCliquePrune()
 
 //////////////
 // Clique driven version of gather from incomming separators
+// TODO: add comments
 /////////////
 
 void
@@ -2488,7 +2489,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
   case MaxClique::AN_NOTSEP_PROB_SPARSEDENSE:
   case MaxClique::AN_SEP_PROB_SPARSEDENSE:
     {
-      rv->clampFirstValue();
+      rv->begin();
       do {
 	// At each step, we compute probability
 	logpr cur_p = rv->probGivenParents();
@@ -2508,7 +2509,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 	  // probability to the clique potential.
 	  ceIterateAssignedNodesCliqueDriven(part,nodeNumber+1,p*cur_p);
 	}
-      } while (rv->clampNextValue());
+      } while (rv->next());
     }
     break;
 
@@ -2530,7 +2531,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
   default: // all other cases, we do CPT iteration removing zeros without updating probabilities.
     {
-      rv->clampFirstValue();
+      rv->begin();
       do {
 	// At each step, we compute probability
 	logpr cur_p = rv->probGivenParents();
@@ -2549,7 +2550,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 	  // Continue, do not update probability!!
 	  ceIterateAssignedNodesCliqueDriven(part,nodeNumber+1,p);
 	}
-      } while (rv->clampNextValue());
+      } while (rv->next());
     }
     break;
   }
@@ -2587,10 +2588,10 @@ InferenceMaxClique::ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& 
   } else {
     // observed, either discrete or continuous
     if (rv->discrete) {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
       // TODO: for observed variables, do this once at the begining
       // before any looping here.
-      drv->setToObservedValue();
+      // drv->setToObservedValue();
       infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
     } else {
@@ -3287,6 +3288,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     RandomVariable* nrv = newRvs[ppf[rvp]];
 
     // hidden nodes are always discrete (in this version).
+    // TODO: add hidden continuous variable
     DiscreteRandomVariable* drv = 
       (DiscreteRandomVariable*)nrv;
 

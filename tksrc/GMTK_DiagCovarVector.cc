@@ -472,6 +472,9 @@ DiagCovarVector::emIncrement(const logpr prob,
 
   accumulatedProbability += prob;
 
+#if 0
+  // this accumulation is now done by caller in conjunction
+  // with the mean vector.
   float * covars_p = partialAccumulatedNextCovar;
   float * covars_end_p = partialAccumulatedNextCovar + covariances.len();
   const float * f_p = f;
@@ -482,6 +485,8 @@ DiagCovarVector::emIncrement(const logpr prob,
     covars_p++;
     f_p++;
   } while (covars_p != covars_end_p);
+#endif
+
 }
 
 

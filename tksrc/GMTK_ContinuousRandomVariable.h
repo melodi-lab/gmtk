@@ -129,6 +129,24 @@ public:
   bool clampNextValue() { return false; }
   ////////////////////////////////////////////////////////////////
 
+
+  ////////////////////////////////////////////////
+  // set this RV to its "first" value,
+  // presumably this is an observation and contains only one value.
+  void begin() {
+    // we do not support hidden continuous variables just yet.
+    assert ( !hidden );
+    if (!globalObservationMatrix.active())
+      warning("WARNING: clamping value of observation variable w/o observation matrix");
+    findConditionalParents();
+  }
+  ////////////////////////////////////////////////////////////
+  // always the last value, since we do not support hidden
+  // continuous variables at this time (but soon)
+  bool next() { return false; }
+  ////////////////////////////////////////////////////////////////
+
+
   ////////////////////////////////////////////////////////////////
   // Value caching support.
   void cacheValue() { error("not implemented"); }

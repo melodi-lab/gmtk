@@ -351,7 +351,16 @@ class JunctionTree {
   
 public:
 
+  // Set to true if the JT weight that we compute should be an upper
+  // bound.  It is not guaranteed to be a tight upper bound, but is
+  // guaranteed to at least be *an* upper bound.
   static bool jtWeightUpperBound;
+
+  // When doing separator driven clique instantiation, if this
+  // variable is true, we intersect the separators first before we
+  // create the clique. If set to false, we take the product of the
+  // cliques irrespective of clique intersection.
+  static bool separatorIntersection;
 
 
   // constructor
@@ -503,6 +512,12 @@ public:
   // Unrolling only affects the non-STL data structures.
   // Returns number of frames actually used, or 0 if invalid num frames.
   unsigned unroll(unsigned numFrames);
+
+  // Set all random variables to their observed values either from an
+  // observation matrix or to the values given in the file. unroll()
+  // must be called first!!
+  void setObservedRVs(vector <RandomVariable*>& rvs);
+
 
   // Perhaps make different unrolls for decoding, unroll for EM
   // training unroll for viterbi training, etc.

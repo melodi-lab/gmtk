@@ -240,7 +240,6 @@ public:
   }
 
 
-
   // set the RV (which must be 
   void setToObservedValue() {
     // assert (!hidden);
@@ -266,6 +265,9 @@ public:
     return;
   }
 
+
+
+
   // clamp this RV to its "first" value
   void clampFirstValue() {
     findConditionalParents();
@@ -287,11 +289,41 @@ public:
     it++; 
     if (it!=curCPT->end()) 
       val = it.val();
-
     // assert ( val >= 0 );
-
     return (it != curCPT->end()); 
   }
+
+
+  // clamp this RV to its "first" value
+  void begin() {
+    findConditionalParents();
+    if (!hidden) {
+      // must be done externally
+      // setToObservedValue();
+      return;
+    }
+    // a hidden variable, so we set up the iterator.
+    curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    it = curCPT->begin(); 
+    val = it.val();
+    // assert ( val >= 0 );
+  }
+
+  // continue on
+  bool next() { 
+    if (!hidden) 
+      return false;
+    it++; 
+    if (it!=curCPT->end()) 
+      val = it.val();
+    // assert ( val >= 0 );
+    return (it != curCPT->end()); 
+  }
+
+
+
+
+
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
