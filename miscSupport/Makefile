@@ -259,10 +259,10 @@ depend:
 ####  DEPENDS ####
 # To make dependencies, first do:
 #     make depend
-# if the file doesn't exist, do a 'touch depends.make' first.
+# when the file doesn't exist, do a 'touch depends.make' first.
 depends: depend
 
-# include the dependencies
+# also include the dependencies
 include depends.make
 
 
