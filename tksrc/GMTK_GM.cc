@@ -413,7 +413,7 @@ void GMTK_GM::cliqueChainEM(const int iterations,
 	  printf("Accumulating accumulators from '%s'\n",buff);
 	  logpr tmp;
 	  inf.read(tmp.valref());
-	  total_data_prob += tmp;
+	  total_data_prob *= tmp;
 	  GM_Parms.emAccumulateAccumulators(inf);
 	}
       }
