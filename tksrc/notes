@@ -1527,3 +1527,39 @@ forwardBackwardRecurseIsland(start,end)
 
 + ================================================================================
 + ================================================================================
+
+
+Fri Jun 18 20:05:58 2004
+New Random Variable Hierarchy:
+
+RV- RandomVariable
+  - possibly place static functions here to avoid
+    duplicate code for common functions.
+ H_RV - Hidden Random Variable
+   DH_RV - Discrete Random Variable
+      SDH_RV - Switching Discrete Hidden Random Variable
+         SWDH_RV - Scale Weighted Switching Discrete Hidden Random Variable
+         PWDH_RV - Penalty Weighted Switching Discrete Hidden Random Variable
+         SPWDH_RV - Scale & Penalty Weighted Switching Discrete Hidden Random Variable
+      NDH_RV - Normal Discrete Hidden Random Variable
+         SNDH_RV - Scale Weighted Normal Discrete Hidden Random Variable           
+         PNDH_RV - Penalty Weighted Normal Discrete Hidden Random Variable           
+         SPNDH_RV - Scale Penalty Weighted Normal Discrete Hidden Random Variable           
+   CH_RV - Continuous Hidden Random Variable (doesn't yet exist)
+ O_RV - Observed Random Variable
+   DO_RV - discrete observed random variable
+      SDO_RV - Switching Discrete Observed Random Variable
+           SWSDO_RV - Scale Weighted Switching Discrete Observed Random Variable   
+           PWSDO_RV - Penalty Weighted Switching Discrete Observed Random Variable   
+           SPWSDO_RV - Scale & Penalty Weighted Switching Discrete Observed Random Variable   
+      NDO_RV - Normal Discrete Observed Random Variable
+           SWNDO_RV - Normal Discrete Observed Random Variable
+           PWNDO_RV - Normal Discrete Observed Random Variable  
+           SPWNDO_RV - Normal Discrete Observed Random Variable  
+
+
+   CO_RV - continuous observed random variable
+      SCO_RV - Switching Continuous  Observed Random Variable
+      NCO_RV - Normal Continuous Observed Random Variable
+
+
