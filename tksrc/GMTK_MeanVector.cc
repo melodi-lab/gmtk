@@ -406,7 +406,7 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
 	 minContAccumulatedProbability()) {
       // Only accumulate here if there is something significant 
       // to accumlate.
-
+      
       // grab a pointer to the previous inverse variances
       // needed for normalization.
       const float* previous_variances_inv_ptr = covar->variances_inv.ptr;

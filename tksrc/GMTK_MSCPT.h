@@ -211,6 +211,58 @@ public:
     it.value = spmf->valueAtEntry(it.internalState); 
   }
 
+
+  void becomeAwareOfParentValuesAndIterBegin( vector <RandomVariable *>& parents ,
+					      iterator &it ) {
+    spmfIndex = dt->query(parents);
+    if (!ncl->validSpmfIndex(spmfIndex)) {
+      error("ERROR: Sparse CPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
+	    name().c_str(),dt->name().c_str(),spmfIndex,
+	    ncl->name().c_str(),ncl->spmfSize());
+    }
+    Sparse1DPMF* const spmf = ncl->spmf(spmfIndex);
+    if (spmf->card() != card()) {
+      warning("ERROR: Sparse CPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' (offset %d in collection '%s') having card %d",
+	      name().c_str(),
+	      card(),
+	      dt->name().c_str(),
+	      spmfIndex,
+	      spmf->name().c_str(),
+	      spmfIndex,ncl->name().c_str(),
+	      spmf->card());
+      fprintf(stderr,"Parents configuration :");
+      for (unsigned i=0;i<parents.size();i++) {
+	fprintf(stderr,"%s(%d)=%d,",
+		parents[i]->name().c_str(),
+		parents[i]->timeIndex,
+		parents[i]->val);
+      }
+      error("");
+    }
+    assert ( bitmask & bm_basicAllocated );
+    it.setCPT(this);
+    it.internalState = -1;
+    // store the current spmf
+    it.internalStatePtr = (void*) spmf;
+    do {
+      it.internalState++;
+      // We keep the following assertion as we
+      // must have that at least one entry is non-zero.
+      // The read code of the MDCPT should ensure this
+      // as sure all parameter update procedures.
+      assert (it.internalState < spmf->length());
+
+      it.probVal = spmf->probAtEntry(it.internalState);
+      // NOTE: this is a sparse CPT, so the user really shouldn't
+      // be placing zeros in a sparse CPT. It might be the case,
+      // however, that during parameter training, some CPT entry
+      // converges to zero, so we keep this check here, and once
+      // it essentially becomes zero, we just skip it over, never
+      // placing it in a clique entry.
+    } while (it.probVal.essentially_zero());
+    it.value = spmf->valueAtEntry(it.internalState); 
+  }
+
   bool next(iterator &it) {
     Sparse1DPMF* const cur_spmf = (Sparse1DPMF*)it.internalStatePtr;
     do {
@@ -228,7 +280,7 @@ public:
       // it essentially becomes zero, we just skip it over, never
       // placing it in a clique entry.
     } while (it.probVal.essentially_zero());
-    it.value = spmf->valueAtEntry(it.internalState); 
+    it.value = cur_spmf->valueAtEntry(it.internalState); 
     return true;
   }
 

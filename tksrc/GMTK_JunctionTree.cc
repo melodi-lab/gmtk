@@ -57,6 +57,7 @@
 
 VCID("$Header$");
 bool JunctionTree::jtWeightUpperBound = false;
+bool JunctionTree::jtWeightPenalizeUnassignedIterated = false;
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
 
@@ -2462,31 +2463,33 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
   // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
   double weight = junctionTreeWeight(jt_part,root);
 
-#if 0
-  unsigned badness_count=0;
-  set <RandomVariable*>::iterator it;
-  for (it = jt_part.cliques[root].cumulativeUnassignedIteratedNodes.begin();
-       it != jt_part.cliques[root].cumulativeUnassignedIteratedNodes.end();
-       it++) 
-    {
-      RandomVariable* rv = (*it);
+  if (jtWeightPenalizeUnassignedIterated) {
+    unsigned badness_count=0;
+    set <RandomVariable*>::iterator it;
+    for (it = jt_part.cliques[root].cumulativeUnassignedIteratedNodes.begin();
+	 it != jt_part.cliques[root].cumulativeUnassignedIteratedNodes.end();
+	 it++) 
+      {
+	RandomVariable* rv = (*it);
+	
+	assert ( rv-> discrete );
+	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	if (!drv->sparse())
+	  continue;
 
-      assert ( rv-> discrete );
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-      if (!drv->sparse())
-	continue;
-
-      // if it has not at all been assigned in this partition, we
-      // assume it has been assigned in previous partition, and dont'
-      // count it's cost.
-      if (jt_part.unassignedInPartition.find(rv) ==
-	  jt_part.unassignedInPartition.end())
-	continue;
-      
-      badness_count ++;
-    }
-#endif
+	// if it has not at all been assigned in this partition, we
+	// assume it has been assigned in previous partition, and dont'
+	// count it's cost.
+	if (jt_part.unassignedInPartition.find(rv) ==
+	    jt_part.unassignedInPartition.end())
+	  continue;
+	
+	badness_count ++;
+      }
+    weight = badness_count*1000 + weight;
+  }
   return weight;
+
   // return badness_count*1000 + weight;
   // return badness_count;
 
@@ -2844,7 +2847,7 @@ JunctionTree::unroll(const unsigned int numFrames)
     error("Can't unroll with this template (NEED TO FIX THIS ERROR MESSAGE).\n"); // TODO: fix this error.
     // return 0
 
-  infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
+  infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
 	  numFrames,
 	  basicTemplateUnrollAmount,
@@ -3116,30 +3119,32 @@ JunctionTree::collectEvidence()
   unsigned partNo = 0;
   // set up appropriate name for debugging output.
   const char* prv_nm;
-
   prv_nm = "P1";
+  unsigned prv_ri = P_ri_to_C;
   ceGatherIntoRoot(jtIPartitions[partNo],
 		   P_ri_to_C,
 		   P1_message_order,
 		   prv_nm,partNo);
 
-
   if (gm_template.leftInterface) {
-    ceSendToNextPartition(jtIPartitions[partNo],P_ri_to_C,"P1",partNo,
+    ceSendToNextPartition(jtIPartitions[partNo],prv_ri,"P1",partNo,
 			  jtIPartitions[partNo+1],C_li_to_P,"Cu0",partNo+1);
     partNo++;
     prv_nm = "Cu0";
+    prv_ri = C_ri_to_C;
     ceGatherIntoRoot(jtIPartitions[partNo],
 		     C_ri_to_C,
 		     Cu0_message_order,
 		     prv_nm,partNo);
   }
 
+
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
-    ceSendToNextPartition(jtIPartitions[partNo],C_ri_to_C,prv_nm,partNo,
+    ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
 			  jtIPartitions[partNo+1],C_li_to_C,"Co",partNo+1);
     partNo++;
     prv_nm = "Co";
+    prv_ri = C_ri_to_C;
     ceGatherIntoRoot(jtIPartitions[partNo],
 		     C_ri_to_C,
 		     Co_message_order,
@@ -3147,17 +3152,18 @@ JunctionTree::collectEvidence()
   }
 
   if (!gm_template.leftInterface) {
-    ceSendToNextPartition(jtIPartitions[partNo],C_ri_to_C,prv_nm,partNo,
+    ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
 			  jtIPartitions[partNo+1],C_li_to_C,"Cu0",partNo+1);
     partNo++;
     prv_nm = "Cu0";
+    prv_ri = C_ri_to_E;
     ceGatherIntoRoot(jtIPartitions[partNo],
 		     C_ri_to_E,
 		     Cu0_message_order,
 		     prv_nm,partNo);
   }
 
-  ceSendToNextPartition(jtIPartitions[partNo],C_ri_to_E,prv_nm,partNo,
+  ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
 			jtIPartitions[partNo+1],E_li_to_C,"E1",partNo+1);
   partNo++;
   ceGatherIntoRoot(jtIPartitions[partNo],
@@ -3387,8 +3393,17 @@ JunctionTree::distributeEvidence()
 		       "Co",partNo);
     partNo--;
     prv_nm = ((p == 1)?frst_name:"Co");
+    unsigned prv_ri;
+    if (p > 1) 
+      prv_ri = C_ri_to_C;
+    else {
+      if (gm_template.leftInterface)
+	prv_ri = C_ri_to_C;
+      else
+	prv_ri = P_ri_to_C;
+    }
     deReceiveToPreviousPartition(jtIPartitions[partNo+1],C_li_to_C,"Co",partNo+1,
-				 jtIPartitions[partNo],C_ri_to_C,prv_nm,partNo);
+				 jtIPartitions[partNo],prv_ri,prv_nm,partNo);
   }
 
 
@@ -3503,8 +3518,8 @@ JunctionTree::probEvidence(const unsigned int numFrames,
     error("Can't unroll\n"); // TODO: fix this error.
   // return 0
 
-  infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
-  infoMsg(IM::Default,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+  infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
+  infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
 	  numFrames,
 	  basicTemplateUnrollAmount,
 	  modifiedTemplateUnrollAmount);
@@ -3530,6 +3545,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   JT_InferencePartition *curPart, *prevPart;
   // set up appropriate name for debugging output.
   const char* prv_nm;
+  unsigned prv_ri;
 
   // NOTE, if this isn't done in some way every partition, we will
   // continue growing memory via the shared hash tables
@@ -3542,6 +3558,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   prevPart = NULL;
   prv_nm = "P1";
+  prv_ri = P_ri_to_C;
   ceGatherIntoRoot(*curPart,
 		   P_ri_to_C,
 		   P1_message_order,
@@ -3555,6 +3572,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 			  *curPart,C_li_to_P,"Cu0",partNo+1);
     partNo++;
     prv_nm = "Cu0";
+    prv_ri = C_ri_to_C;
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Cu0_message_order,
@@ -3565,10 +3583,11 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
     delete curPart;
     curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
-    ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
+    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,C_li_to_C,"Co",partNo+1);
     partNo++;
     prv_nm = "Co";
+    prv_ri = C_ri_to_C;
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Co_message_order,
@@ -3581,10 +3600,11 @@ JunctionTree::probEvidence(const unsigned int numFrames,
     curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,
 					((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
 
-    ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
+    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,C_li_to_C,"Cu0",partNo+1);
     partNo++;
     prv_nm = "Cu0";
+    prv_ri = C_ri_to_E;
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_E,
 		     Cu0_message_order,
@@ -3595,7 +3615,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   delete curPart;
   curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
 				      ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
-  ceSendToNextPartition(*prevPart,C_ri_to_E,prv_nm,partNo,
+  ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			*curPart,E_li_to_C,"E1",partNo+1);
   partNo++;
   ceGatherIntoRoot(*curPart,
@@ -3658,8 +3678,8 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
     error("Can't unroll\n"); // TODO: fix this error.
   // return 0
 
-  infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
-  infoMsg(IM::Default,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+  infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
+  infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
 	  numFrames,
 	  basicTemplateUnrollAmount,
 	  modifiedTemplateUnrollAmount);
@@ -3685,6 +3705,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   JT_InferencePartition *curPart, *prevPart;
   // set up appropriate name for debugging output.
   const char* prv_nm;
+  unsigned prv_ri;
 
   // NOTE, if this isn't done in some way every partition, we will
   // continue growing memory via the shared hash tables
@@ -3697,6 +3718,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   prevPart = NULL;
   prv_nm = "P1";
+  prv_ri = P_ri_to_C;
   ceGatherIntoRoot(*curPart,
 		   P_ri_to_C,
 		   P1_message_order,
@@ -3714,6 +3736,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
     partNo++;
 
     prv_nm = "Cu0";
+    prv_ri = C_ri_to_C;
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Cu0_message_order,
@@ -3726,10 +3749,11 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
     delete curPart;
     curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
-    ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
+    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,C_li_to_C,"Co",partNo+1);
     partNo++;
     prv_nm = "Co";
+    prv_ri = C_ri_to_C;
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Co_message_order,
@@ -3744,10 +3768,11 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
     curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,
 					((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
 
-    ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
+    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,C_li_to_C,"Cu0",partNo+1);
     partNo++;
     prv_nm = "Cu0";
+    prv_ri = C_ri_to_E;
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_E,
 		     Cu0_message_order,
@@ -3760,7 +3785,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   delete curPart;
   curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
 				      ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
-  ceSendToNextPartition(*prevPart,C_ri_to_E,prv_nm,partNo,
+  ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			*curPart,E_li_to_C,"E1",partNo+1);
   partNo++;
   ceGatherIntoRoot(*curPart,
@@ -4001,6 +4026,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 	} else
 	  setRootToMaxCliqueValue(part);
       }
+      // TODO: put in an info message flag just so that we can get the score out.
     }
     // 
     if (part != end) {
@@ -4326,8 +4352,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
     error("Can't unroll\n"); // TODO: fix this error.
     // return 0
 
-  infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
-  infoMsg(IM::Default,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+  infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
+  infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
 	  numFrames,
 	  basicTemplateUnrollAmount,
 	  modifiedTemplateUnrollAmount);

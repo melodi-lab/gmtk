@@ -145,6 +145,33 @@ public:
     it.value = _val;
   }
 
+  void becomeAwareOfParentValuesAndIterBegin( vector <RandomVariable *>& parents,
+					      iterator & it) 
+  {
+    _val = dt->query(parents);
+    if (_val >= card()) {
+      warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
+	      name().c_str(),
+	      card(),
+	      dt->name().c_str(),
+	      _val);
+      fprintf(stderr,"Parents configuration :");
+      for (unsigned i=0;i<parents.size();i++) {
+	fprintf(stderr,"%s(%d)=%d,",
+		parents[i]->name().c_str(),
+		parents[i]->timeIndex,
+		parents[i]->val);
+      }
+      error("");
+    }
+    assert ( bitmask & bm_basicAllocated );
+    it.setCPT(this);
+    // indicates internal state
+    it.internalState = 0;
+    it.probVal = 1.0;
+    it.value = _val;
+  }
+
   inline bool next(iterator &it) {
     // this is an MTCPT so we end here immediately.
     it.internalState = 1;

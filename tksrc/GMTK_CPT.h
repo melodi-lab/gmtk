@@ -221,6 +221,8 @@ public:
 
   // creates an iterator for the first one.
   virtual void begin(iterator& it) = 0;
+  virtual void becomeAwareOfParentValuesAndIterBegin
+  (  vector < RandomVariable *>& parents , iterator &it ) = 0;
   // returns true if iterate is at end state
   virtual bool end(iterator &it) = 0;
   // Given a current iterator, return true if it

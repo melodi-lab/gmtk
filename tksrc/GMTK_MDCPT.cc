@@ -393,6 +393,45 @@ MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
   mdcpt_ptr = mdcpt.ptr + offset;
 }
 
+void
+MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parents,
+					      iterator & it)
+{
+
+  assert ( basicAllocatedBitIsSet() );
+  assert ( parents.size() == _numParents );
+  
+  int offset = 0;
+  for (unsigned i = 0; i < _numParents; i++) {
+    if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
+      error("ERROR:becomeAwareOfParentValues. Dense CPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
+	    name().c_str(),
+	    parents[i]->name().c_str(),parents[i]->frame(),
+	    i,
+	    parents[i]->val,cardinalities[i]);
+    offset += parents[i]->val*cumulativeCardinalities[i];
+  }
+  register logpr* const mdcpt_ptr = mdcpt.ptr + offset;
+  assert ( bitmask & bm_basicAllocated );
+  it.setCPT(this);
+  it.internalStatePtr = (void*)mdcpt_ptr;
+  it.value = 0;
+  it.probVal = *mdcpt_ptr;
+  if (it.probVal.essentially_zero()) {
+    // go to first entry which is not zero.
+    do {
+      it.value++;
+      // We keep the following assertion as we
+      // must have that at least one entry is non-zero.
+      // The read code of the MDCPT should ensure this
+      // as sure all parameter update procedures.
+      assert (it.value < ucard());
+    } while (mdcpt_ptr[it.value].essentially_zero());
+    it.probVal = mdcpt_ptr[it.value];
+  }
+
+}
+
 
 
 ////////////////////////////////////////////////////////////////////

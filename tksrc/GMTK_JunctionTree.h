@@ -371,11 +371,16 @@ public:
   // guaranteed to at least be *an* upper bound.
   static bool jtWeightUpperBound;
 
+  // Set to true if the JT weight that we compute should heavily
+  // penalize any unassigned iterated nodes.
+  static bool jtWeightPenalizeUnassignedIterated;
+
   // When doing separator driven clique instantiation, if this
   // variable is true, we intersect the separators first before we
   // create the clique. If set to false, we take the product of the
   // cliques irrespective of clique intersection.
   static bool separatorIntersection;
+
 
 
   // When doing scoring (prob(evidence)), do we make compute the 'viterbi'

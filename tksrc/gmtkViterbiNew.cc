@@ -317,8 +317,7 @@ main(int argc,char*argv[])
   // read in the structure of the GM, this will
   // die if the file does not exist.
   FileParser fp(strFileName,cppCommandOptions);
-  printf("Finished reading in all parameters and structures\n");
-  infoMsg(IM::Tiny,"Finished reading in structure\n");
+  infoMsg(IM::Tiny,"Finished reading in all parameters and structures\n");
 
   // parse the file
   fp.parseGraphicalModel();
@@ -361,12 +360,15 @@ main(int argc,char*argv[])
   else 
     tri_file = string(triFileName);
   GMTemplate gm_template(fp);
-  iDataStreamFile is(tri_file.c_str());
-  if (!fp.readAndVerifyGMId(is))
-    error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
-  
-  gm_template.readPartitions(is);
-  gm_template.readMaxCliques(is);
+  {
+    // do this in scope so that is gets deleted now rather than later.
+    iDataStreamFile is(tri_file.c_str());
+    if (!fp.readAndVerifyGMId(is))
+      error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+    
+    gm_template.readPartitions(is);
+    gm_template.readMaxCliques(is);
+  }
   gm_template.triangulatePartitionsByCliqueCompletion();
   if (1) { 
     // check that graph is indeed triangulated.
