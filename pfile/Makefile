@@ -22,11 +22,11 @@ MKINSTALLDIRS =	$(srcdir)/mkinstalldirs
 
 #directories
 INCLUDES= -I. -I../miscSupport -I../IEEEFloatingpoint
-LIBDIR= -L. -L../miscSupport
+LIBDIR= -L. -L../miscSupport -L../IEEEFloatingpoint
 PURIFYDIR=/g/ssli/commercial/rational/releases/DeveloperTools.DE17/sun4_solaris2/bin/
 
 #new pfile library 
-LIBS=-lm -lpfile  -lmiscSupport
+LIBS=-lm -lpfile  -lmiscSupport -lIEEEsupport
 
 #compilers and flags
 CC=gcc
