@@ -106,51 +106,82 @@ char *dumpNames = NULL;
 
 double varFloor = 1e-10;
 
-ARGS ARGS::Args[] = {
+void makeArgs(Argument_List &args)
+{
+  bool optional=0,required=1;
+  args.add("of1",required,&ofs[0],
+           "Observation File 1");
+  args.add("nf1",optional,&nfs[0],
+           "Number of floats in observation file 1");
+  args.add("ni1",optional,&nis[0],
+           "Number of ints in observation file 1");
+  args.add("fr1",optional,&frs[0],
+           "Float range for observation file 1");
+  args.add("ir1",optional,&irs[0],
+           "Int range for observation file 1");
+  args.add("fmt1",optional,&fmts[0],
+           "Format (htk,bin,asc,pfile) for observation file 1");
+  args.add("iswp1",optional,&iswps[0],
+           "Endian swap condition for observation file 1");
 
-  ARGS("of1",ARGS::Req,ofs[0],"Observation File 1"),
-  ARGS("nf1",ARGS::Opt,nfs[0],"Number of floats in observation file 1"),
-  ARGS("ni1",ARGS::Opt,nis[0],"Number of ints in observation file 1"),
-  ARGS("fr1",ARGS::Opt,frs[0],"Float range for observation file 1"),
-  ARGS("ir1",ARGS::Opt,irs[0],"Int range for observation file 1"),
-  ARGS("fmt1",ARGS::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
-  ARGS("iswp1",ARGS::Opt,iswps[0],"Endian swap condition for observation file 1"),
+  args.add("of2",optional,&ofs[1],
+           "Observation File 2");
+  args.add("nf2",optional,&nfs[1],
+           "Number of floats in observation file 2");
+  args.add("ni2",optional,&nis[1],
+           "Number of ints in observation file 2");
+  args.add("fr2",optional,&frs[1],
+           "Float range for observation file 2");
+  args.add("ir2",optional,&irs[1],
+           "Int range for observation file 2");
+  args.add("fmt2",optional,&fmts[1],
+           "Format (htk,bin,asc,pfile) for observation file 2");
+  args.add("iswp2",optional,&iswps[1],
+           "Endian swap condition for observation file 2");
+
+  args.add("of3",optional,&ofs[2],
+           "Observation File 3");
+  args.add("nf3",optional,&nfs[2],
+           "Number of floats in observation file 3");
+  args.add("ni3",optional,&nis[2],
+           "Number of ints in observation file 3");
+  args.add("fr3",optional,&frs[2],
+           "Float range for observation file 3");
+  args.add("ir3",optional,&irs[2],
+           "Int range for observation file 3");
+  args.add("fmt3",optional,&fmts[2],
+           "Format (htk,bin,asc,pfile) for observation file 3");
+  args.add("iswp3",optional,&iswps[2],
+           "Endian swap condition for observation file 3");
+
+  args.add("strFile",required,&strFileName,
+           "GM Structure File");
+  args.add("prmMasterFile",required,&prmMasterFile,
+           "Multi-level master CPP processed GM Parms File");
+  args.add("prmTrainableFile",optional,&prmTrainableFile,
+           "File containing Trainable Parameters");
+  args.add("binPrmTrainableFile",optional,&binPrmTrainableFile,
+           "Is Binary? File containing Trainable Parameters");
+  args.add("cppCommandOptions",optional,&cppCommandOptions,
+           "Command line options to give to cpp");
+
+  args.add("samplerng",optional,&samplerng_str,
+           "Range to decode over segment file");
+
+  args.add("startSkip",optional,&startSkip,
+          "Frames to skip at beginning (i.e., first frame is buff[startSkip])");
+  args.add("endSkip",optional,&endSkip,
+           "Frames to skip at end (i.e., last frame is buff[len-1-endSkip])");
 
 
-  ARGS("of2",ARGS::Opt,ofs[1],"Observation File 2"),
-  ARGS("nf2",ARGS::Opt,nfs[1],"Number of floats in observation file 2"),
-  ARGS("ni2",ARGS::Opt,nis[1],"Number of ints in observation file 2"),
-  ARGS("fr2",ARGS::Opt,frs[1],"Float range for observation file 2"),
-  ARGS("ir2",ARGS::Opt,irs[1],"Int range for observation file 2"),
-  ARGS("fmt2",ARGS::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
-  ARGS("iswp2",ARGS::Opt,iswps[1],"Endian swap condition for observation file 2"),
-  ARGS("of3",ARGS::Opt,ofs[2],"Observation File 3"),
-  ARGS("nf3",ARGS::Opt,nfs[2],"Number of floats in observation file 3"),
-  ARGS("ni3",ARGS::Opt,nis[2],"Number of ints in observation file 3"),
-  ARGS("fr3",ARGS::Opt,frs[2],"Float range for observation file 3"),
-  ARGS("ir3",ARGS::Opt,irs[2],"Int range for observation file 3"),
-  ARGS("fmt3",ARGS::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
-  ARGS("iswp3",ARGS::Opt,iswps[2],"Endian swap condition for observation file 3"),
+  args.add("dumpNames",required,&dumpNames,
+           "File containing the names of the variables to save to a file");
+  args.add("ofilelist",required,&ofilelist,
+           "List of filenames to dump the hidden variable values to");
 
-  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
-  ARGS("prmMasterFile",ARGS::Req,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
-  ARGS("prmTrainableFile",ARGS::Opt,prmTrainableFile,"File containing Trainable Parameters"),
-  ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
-  ARGS("cppCommandOptions",ARGS::Opt,cppCommandOptions,"Command line options to give to cpp"),
-
-
-  ARGS("samplerng",ARGS::Opt,samplerng_str,"Range to decode over segment file"),
-
-  ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
-  ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
-
-  ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
-
-  ARGS("dumpNames",ARGS::Req,dumpNames,"File containing the names of the variables to save to a file"),
-  ARGS("ofilelist",ARGS::Req,ofilelist,"List of filenames to dump the hidden variable values to"),
-  ARGS()
-
-};
+  args.add("argsFile",optional,&argsFile,
+           "File to get args from (overrides specified comand line args).");
+}
 
 
 RAND rnd(0);
@@ -168,7 +199,9 @@ main(int argc,char*argv[])
   ieeeFPsetup();
   set_new_handler(memory_error);
 
-  ARGS::parse(argc,argv,argsFile);
+  Argument_List args;
+  makeArgs(args);
+  args.parse(argc, argv);
 
   ////////////////////////////////////////////
   // check for valid argument values.
