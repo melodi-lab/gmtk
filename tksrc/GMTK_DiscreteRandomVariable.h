@@ -102,6 +102,7 @@ public:
   logpr probGivenParents() {
     return curCPT->probGivenParents(*curConditionalParents,val);
   }
+
   // clamp this RV to its "first" value
   void clampFirstValue() { 
     findConditionalParents(); 
@@ -119,10 +120,14 @@ public:
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
     it = curCPT->begin(); val = it.val(); 
   }
+
   // continue on
   bool clampNextValue() { 
-    if (!hidden) return false;
-    it++; if (it!=curCPT->end()) val = it.val();
+    if (!hidden) 
+      return false;
+    it++; 
+    if (it!=curCPT->end()) 
+      val = it.val();
     return (it != curCPT->end()); 
   }
   ////////////////////////////////////////////////////////////////
