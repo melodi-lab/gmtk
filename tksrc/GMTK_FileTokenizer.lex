@@ -59,27 +59,31 @@ int_rng {int}:{int}
 
 
 /* all valid keywords */
-keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|value|nil|using|mapping|MDCPT|MSCPT|MTCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
+keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|mixGaussian|gausSwitchMixGaussian|logitSwitchMixGaussian|mlpSwitchMixGaussian|chunk
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 
 %%
 
-
 "%"[^\n]*   /* eat up one-line comments */
 
-            /* support for cpp line directives */
+  /*
+     ***************************************
+     ** support for cpp line directives    *
+     ***************************************
+  */
+
+   /* parse CPP file/line directives to get the #include correct */
+   /* ^"#"{ws}{int}{ws}{string}{ws}{int} { } */
+
+
 ^"#".* {
-            /* eat up cpp any and all possible file/line directives for now. Ultimately parse this */
+            /* eat up cpp any and all possible file/line directives for now. 
+               Ultimately parse this */
                 ;
 }
-   /*
-      ^"#"{ws}{int}{ws}{string}{ws}{int} {
-             }
-   */
 
-
-[ \t]+    /* eat up whitespace */
+[ \t]+    /* eat up just whitespace */
 
 \n        { FileParser::tokenInfo.srcLine++; }
 

@@ -174,6 +174,7 @@ MSCPT::read(iDataStreamFile& is)
 	  is.fileName(),name().c_str(),_card,_numParents);
 
 
+  // read the name of the decision tree
   string str;
   is.read(str);
   if (GM_Parms.dtsMap.find(str) ==  GM_Parms.dtsMap.end()) 
@@ -188,29 +189,45 @@ MSCPT::read(iDataStreamFile& is)
 	    is.fileName(),
 	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 
+  // read the name of the collection giving a list of SPMFs
+  string clstr;
+  is.read(clstr);
+  if (GM_Parms.nclsMap.find(clstr) ==  GM_Parms.nclsMap.end()) 
+      error("Error: MTCPT '%s' specifies collection name '%s' that does not exist",
+	    _name.c_str(),clstr.c_str());
+  ncl = GM_Parms.ncls[GM_Parms.nclsMap[clstr]];
+  ncl->fillSpmfTable();
+
   //////////////////////////////////////////////////////////
   // now go through the dt and make sure each dt leaf
   // node points to a Sparse1DPMF that has the same
   // cardinality as self.
   RngDecisionTree::iterator it = dt->begin();
   do {
-    if (!it.valueNode())
-      continue;
-    const unsigned v = it.value();
-    if ( v < 0 || v >= GM_Parms.sPmfs.size() )
-      error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d refers to invalid Sparse 1D PMF",
-	    is.fileName(),
+    if (!it.valueNode()) {
+      // must have a value node for MSCPT DT so we don't
+      // need to have run time checks.
+      error("Error: MTCPT '%s' uses a DT '%s' that has non-constant (i.e., integer expression) leaf nodes",
 	    name().c_str(),
-	    str.c_str(),
-	    v);
-    if (GM_Parms.sPmfs[v]->card() != card()) {
-      error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d refering to SPMF '%s' with card %d but MSCPT needs card %d",
+	    str.c_str());
+    }
+    const unsigned v = it.value();
+    if (!ncl->validSpmfIndex(v))
+      error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d is out of range of collection '%s'",
 	    is.fileName(),
 	    name().c_str(),
 	    str.c_str(),
 	    v,
-	    GM_Parms.sPmfs[v]->name().c_str(),
-	    GM_Parms.sPmfs[v]->card(),
+	    ncl->name().c_str());
+    if (ncl->spmf(v)->card() != card()) {
+      error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d referring to SPMF '%s' (position %d within collection '%s') with card %d but MSCPT needs card %d",
+	    is.fileName(),
+	    name().c_str(),
+	    str.c_str(),
+	    v,
+	    ncl->spmf(v)->name().c_str(),
+	    v,ncl->name().c_str(),
+	    ncl->spmf(v)->card(),
 	    card());
     }
   } while (++it != dt->end());
@@ -245,6 +262,8 @@ MSCPT::write(oDataStreamFile& os)
   os.writeComment("cardinalities");
   os.nl();
   os.write(dt->name());
+  os.nl();
+  os.write(ncl->name());
   os.nl();
 }
 
@@ -314,11 +333,20 @@ MSCPT::normalize()
   RngDecisionTree::iterator it = dt->begin();
   do {
     const int v = it.value();
-    if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
-      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) to a SPMF, of which there are only %d.\n",
-	    name().c_str(),dt->name().c_str(),v,GM_Parms.sPmfs.size());
+
+    // TODO: this runtime check isn't needed if
+    // we do not allow integer expression leaf nodes for MSCPT
+    // DTs and if we check at read time above.
+    if (!ncl->validSpmfIndex(v)) {
+      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
+	    name().c_str(),
+	    dt->name().c_str(),
+	    v,
+	    ncl->name().c_str(),
+	    ncl->spmfSize());
     }
-    GM_Parms.sPmfs[v]->normalize();
+
+    ncl->spmf(v)->normalize();
     it++;
   } while (it != dt->end());
 }
@@ -349,11 +377,12 @@ MSCPT::makeRandom()
   RngDecisionTree::iterator it = dt->begin();
   do {
     const int v = it.value();
-    if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
-      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) to a SPMF, of which there are only %d.\n",
-	    name().c_str(),dt->name().c_str(),v,GM_Parms.sPmfs.size());
+    if (!ncl->validSpmfIndex(v)) {
+      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
+	    name().c_str(),dt->name().c_str(),v,
+	    ncl->name().c_str(),ncl->spmfSize());
     }
-    GM_Parms.sPmfs[v]->makeRandom();
+    ncl->spmf(v)->normalize();
     it++;
   } while (it != dt->end());
 }
@@ -386,11 +415,13 @@ MSCPT::makeUniform()
   RngDecisionTree::iterator it = dt->begin();
   do {
     const int v = it.value();
-    if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
-      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) to a SPMF, of which there are only %d.\n",
-	    name().c_str(),dt->name().c_str(),v,GM_Parms.sPmfs.size());
+    if (!ncl->validSpmfIndex(v)) {
+      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
+	    name().c_str(),dt->name().c_str(),v,
+	    ncl->name().c_str(),
+	    ncl->spmfSize());
     }
-    GM_Parms.sPmfs[v]->makeUniform();
+    ncl->spmf(v)->normalize();
     it++;
   } while (it != dt->end());
 }

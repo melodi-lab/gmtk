@@ -86,18 +86,20 @@ public:
   void becomeAwareOfParentValues( vector <int>& parentValues,
 				  vector <int>& cards ) {
     spmfIndex = dt->query(parentValues,cards);
-    if (spmfIndex < 0 || spmfIndex >=  GM_Parms.sPmfs.size()) {
-      error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d'\n",
-	    name().c_str(),dt->name().c_str(),spmfIndex);
+    if (!ncl->validSpmfIndex(spmfIndex)) {
+      error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
+	    name().c_str(),dt->name().c_str(),spmfIndex,
+	    ncl->name().c_str(),ncl->spmfSize());
     }
-    spmf = GM_Parms.sPmfs[spmfIndex];
+    spmf = ncl->spmf(spmfIndex);
     if (spmf->card() != card()) {
-      warning("ERROR: MSCPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' having card %d",
+      warning("ERROR: MSCPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' (offset %d in collection '%s') having card %d",
 	      name().c_str(),
 	      card(),
 	      dt->name().c_str(),
 	      spmfIndex,
 	      spmf->name().c_str(),
+	      spmfIndex,ncl->name().c_str(),
 	      spmf->card());
       fprintf(stderr,"Parent values:");
       for (unsigned i=0;i<parentValues.size();i++) {
@@ -108,18 +110,20 @@ public:
   }
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
     spmfIndex = dt->query(parents);
-    if (spmfIndex < 0 || spmfIndex >=  GM_Parms.sPmfs.size()) {
-      error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d'\n",
-	    name().c_str(),dt->name().c_str(),spmfIndex);
+    if (!ncl->validSpmfIndex(spmfIndex)) {
+      error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
+	    name().c_str(),dt->name().c_str(),spmfIndex,
+	    ncl->name().c_str(),ncl->spmfSize());
     }
-    spmf = GM_Parms.sPmfs[spmfIndex];
+    spmf = ncl->spmf(spmfIndex);
     if (spmf->card() != card()) {
-      warning("ERROR: MSCPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' having card %d",
+      warning("ERROR: MSCPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' (offset %d in collection '%s') having card %d",
 	      name().c_str(),
 	      card(),
 	      dt->name().c_str(),
 	      spmfIndex,
 	      spmf->name().c_str(),
+	      spmfIndex,ncl->name().c_str(),
 	      spmf->card());
       fprintf(stderr,"Parents configuration :");
       for (unsigned i=0;i<parents.size();i++) {

@@ -66,6 +66,10 @@ private:
       unsigned intIndex;
       // Otherwise, if this is an string index, this is used.
       string nameIndex;
+      // in cases where this is a reference to a DT that
+      // is supposed to reference via a collection, here
+      // is the name of the collection.
+      string collectionName;
       void clear() { liType = li_Unknown; }
     };
 
@@ -209,16 +213,17 @@ public:
     KW_Nil=10,
     KW_Using=11,
     KW_Mapping=12,
-    KW_MDCPT=13,
-    KW_MSCPT=14,
-    KW_MTCPT=15,
-    KW_MixGaussian=16,
-    KW_GausSwitchMixGaussian=17,
-    KW_LogitSwitchMixGaussian=18,
-    KW_MlpSwitchMixGaussin=19,
-    KW_Chunk=20,
-    KW_GRAPHICAL_MODEL=21,
-    KW_Value=22
+    KW_Collection=13,
+    KW_MDCPT=14,
+    KW_MSCPT=15,
+    KW_MTCPT=16,
+    KW_MixGaussian=17,
+    KW_GausSwitchMixGaussian=18,
+    KW_LogitSwitchMixGaussian=19,
+    KW_MlpSwitchMixGaussin=20,
+    KW_Chunk=21,
+    KW_GRAPHICAL_MODEL=22,
+    KW_Value=23
   };
 
   // list of token keyword strings.

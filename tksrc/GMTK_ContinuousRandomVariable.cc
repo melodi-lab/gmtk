@@ -70,7 +70,7 @@ ContinuousRandomVariable::findConditionalParents()
 
   if ( cachedIntFromSwitchingState < 0 ||
        cachedIntFromSwitchingState >= conditionalParentsList.size()) {
-    error("ERROR: CRV %s:%d using DT '%s' got invalid switching position %d. Must be between 0 and %d.\n",
+    error("ERROR: CRV %s:%d using DT '%s' yielded an invalid switching position %d. Must be between 0 and %d.\n",
 	  label.c_str(),timeIndex, (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedIntFromSwitchingState,conditionalParentsList.size());
   }
 
@@ -112,7 +112,7 @@ ContinuousRandomVariable::probGivenParents()
   } else {
     // need to find which gaussian this will be.
     const unsigned gaussianIndex =
-      curMappingOrDirect->dtMapper->query(*curConditionalParents);
+      curMappingOrDirect->mapping.dtMapper->query(*curConditionalParents);
 
     ///////////////////////////////////////////////////////////
     // Dynamic error checking:
@@ -120,11 +120,13 @@ ContinuousRandomVariable::probGivenParents()
     // have formulas in their leaves and there is no way
     // to check this statically w/o enumerating through all possible
     // values of the parents of this RV.
-    if ( gaussianIndex >= GM_Parms.mixGaussians.size()) {
+    if (!curMappingOrDirect->mapping.collection->validMgIndex(gaussianIndex)) {
       error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants GM "
-            "with index %d but there are only %d GMs",
-	    label.c_str(),timeIndex,curMappingOrDirect->dtMapper->name().c_str(),
-	    gaussianIndex,GM_Parms.mixGaussians.size());
+            "with index %d but there are only %d GMs in collection '%s'",
+	    label.c_str(),timeIndex,curMappingOrDirect->mapping.dtMapper->name().c_str(),
+	    gaussianIndex,
+	    curMappingOrDirect->mapping.collection->mgSize(),
+	    curMappingOrDirect->mapping.collection->name().c_str());
     }
     ////////////////////////////////////////////////////////////
 
@@ -133,7 +135,8 @@ ContinuousRandomVariable::probGivenParents()
     // different types of mixtures of Gaussians.
     // printf("CRV: '%s', par val %d, gi = %d\n",
     // label.c_str(),(*curConditionalParents)[0]->val,gaussianIndex);
-    _cachedProb = GM_Parms.mixGaussians[gaussianIndex]->log_p
+    _cachedProb = 
+      curMappingOrDirect->mapping.collection->mg(gaussianIndex)->log_p
       ((unsigned)timeIndex,firstFeatureElement);
   }
   return _cachedProb;
@@ -238,7 +241,7 @@ ContinuousRandomVariable::emIncrement(logpr posterior)
   } else {
     // need to find which gaussian this will be.
     const unsigned gaussianIndex =
-      curMappingOrDirect->dtMapper->query(*curConditionalParents);
+      curMappingOrDirect->mapping.dtMapper->query(*curConditionalParents);
 
     ///////////////////////////////////////////////////////////
     // Dynamic error checking:
@@ -246,16 +249,18 @@ ContinuousRandomVariable::emIncrement(logpr posterior)
     // have formulas in their leaves and there is no way
     // to check this statically w/o enumerating through all possible
     // values of the parents of this RV.
-    if ( gaussianIndex >= GM_Parms.mixGaussians.size()) {
+    if (!curMappingOrDirect->mapping.collection->validMgIndex(gaussianIndex)) {
       error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants GM "
-            "with index %d but there are only %d GMs",
-	    label.c_str(),timeIndex,curMappingOrDirect->dtMapper->name().c_str(),
-	    gaussianIndex,GM_Parms.mixGaussians.size());
+            "with index %d but there are only %d GMs in collection '%s'",
+	    label.c_str(),timeIndex,curMappingOrDirect->mapping.dtMapper->name().c_str(),
+	    gaussianIndex,
+	    curMappingOrDirect->mapping.collection->mgSize(),
+	    curMappingOrDirect->mapping.collection->name().c_str());
     }
 
     // TODO: this needs to be changed when we have
     // different types of mixtures of Gaussians.
-    GM_Parms.mixGaussians[gaussianIndex]->emIncrement
+    curMappingOrDirect->mapping.collection->mg(gaussianIndex)->emIncrement
       (posterior,(unsigned)timeIndex,firstFeatureElement);
   }
 }

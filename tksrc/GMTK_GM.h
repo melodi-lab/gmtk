@@ -195,6 +195,7 @@ struct GMTK_GM
 		       const bool writeParametersAfterEachEMIteration=true,
 		       const char* const outputParamFile=NULL,
 		       const bool binOutFile=false,
+		       const char* const outputMasterFile=NULL,
 		       const char* const loadAccFile=NULL,
 		       const char* const loadAccRange=NULL,
 		       const char* const storeAccFile=NULL,

@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 
+#include "general.h"
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
@@ -59,6 +60,7 @@ class MLPSwitchingMixGaussians;
 
 class RngDecisionTree;
 class Dlinks;
+class NameCollection;
 class GMTK_GM;
 
 
@@ -279,6 +281,14 @@ public:
   /********************************************************************/
 
   //////////////////////////////////////////////////////////////////
+  // OTHER OBJECTS (i.e., objects not in any of the above categories)
+  //////////////////////////////////////////////////////////////////
+
+  vector< NameCollection* > ncls;
+  ObjectMapType nclsMap;
+  void add(NameCollection*);
+
+  //////////////////////////////////////////////////////////////////
   // Structure of model between hidden variables
   // and between hidden and observed variables.
   //////////////////////////////////////////////////////////////////
@@ -310,6 +320,7 @@ public:
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readGaussianComponents(iDataStreamFile& is,bool reset = false);
   void readMixGaussians(iDataStreamFile& is,bool reset = false);
+  void readNameCollections(iDataStreamFile& is,bool reset = false);
   void readGausSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
   void readLogitSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
   void readMlpSwitchMixGaussians(iDataStreamFile& is,bool reset = false);
@@ -328,6 +339,7 @@ public:
   void writeDTs(oDataStreamFile& os);
   void writeGaussianComponents(oDataStreamFile& os);
   void writeMixGaussians(oDataStreamFile& os);
+  void writeNameCollections(oDataStreamFile& os);
   void writeGausSwitchMixGaussians(oDataStreamFile& os);
   void writeLogitSwitchMixGaussians(oDataStreamFile& os);
   void writeMlpSwitchMixGaussians(oDataStreamFile& os);
@@ -350,8 +362,8 @@ public:
   // read/write an entire GM (params + structure, i.e.,
   // all of the above) from a single file consisting
   // of sets of <keyword,fileName> pairs
-  void read(iDataStreamFile& is,bool dataFilesAreBinary=false);
-  void write(oDataStreamFile& os);
+  void read(iDataStreamFile& is);
+  void write(const char *const outputFileFormat, const int intTag=CSWT_EMPTY_TAG);
 
   ///////////////////////////////////////////////////////////    
   // read/write the trainable parameters, i.e., the ones that this program

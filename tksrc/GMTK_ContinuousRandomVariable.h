@@ -27,6 +27,7 @@
 #include "GMTK_FileParser.h"
 #include "GMTK_MixGaussiansCommon.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_NameCollection.h"
 
 #include "GMTK_ObservationMatrix.h"
 
@@ -49,12 +50,21 @@ private:
     MappingOrDirect() {
       direct = false;
       gaussian = NULL;
-      dtMapper = NULL;
+      mapping.dtMapper = NULL;
+      mapping.collection = NULL;
     };
     bool direct;
     union { 
+      // if direct, a direct pointer to a mixture Gaussian
       MixGaussiansCommon* gaussian;
-      RngDecisionTree* dtMapper;
+      // if not direct, a DT and a MG collection object.
+      struct MappingStruct {
+	// DT to map from parent values to an integer
+	RngDecisionTree* dtMapper;
+	// the resulting integer is an ofset in this table
+	// which points directly to one of the GaussianMixture objects.
+	NameCollection* collection;
+      } mapping;
     };
   };
 
