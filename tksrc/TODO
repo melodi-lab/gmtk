@@ -1705,7 +1705,7 @@ Sun Mar 14 23:04:25 2004
   - make 1-page reference card for GMTK DTs with everything from syntax, rules, tips for speeding up,
     and all possible formulas, etc.
 
-Sun Mar 21 05:24:38 2004
+DONE: Sun Mar 21 05:24:38 2004
   - in inner inference loops, rather than have:
         rv->begin()
             computeProb
@@ -1733,6 +1733,8 @@ Sat Mar 27 20:57:04 2004
  - island algorithm should interact with gaussian component cache, in that
    cache memory should be re-claimed for different islands so that
    we don't use O(T) mem for cache but rather O(log T) mem.
+ - Mon Aug 30 19:11:30 2004: for now, issue message saying that
+   user might want to turn off caching when using island.
 
 Sat Mar 27 21:08:06 2004
  - add bit about gaussian component cache to docs. 
@@ -2110,7 +2112,7 @@ other minor things mentioned above).
           - ability to max/sum variables (max over some variables, sum over others,
             for hybrid decoding).
           - gmtkFlatten
-          - gmtkDecode
+          - gmtkDecode, and support for n-best and lattice generation.
           - option for inward/outward inference rather than forward-backwards.
             This can significantly speed things up since we don't keep things
             around that are zero (try to have a picture explaining this).
@@ -2143,6 +2145,7 @@ other minor things mentioned above).
         - sparse inverse covariance matrices (corresponding to sparse undirected graphical
           models as Gaussians). To avoid needing to do an iterative scheme, triangulate
           this mdoel giving chordal Gaussians.
+        - ancestral graphs and Gaussians.
 
 
      - usability features
@@ -2219,10 +2222,93 @@ other minor things mentioned above).
             test things out to ensure compiled version works.  
 
 
-Fri Aug 20 15:01:48 2004
+DONE: Fri Aug 20 15:01:48 2004
   - remove wrong copyright note from gmtkNGramIndex.cc
 
 
+DONE: Tue Aug 24 17:50:48 2004
+  shift, scale, and penalty definitions:
+  given a probabilty p, we do:
+
+   Two options:
+        1) penalty*p^scale+shift
+        2) scale*p^penalty+shift
+
+   We choose 2, since higher "penalty" seems to gel with
+    word-insertion penalty in speech recognition. 
+
+      Or logged:
+         log(scale*p^penalty+shift)
+      =  log(scale*p^penalty) ++ log(shift)
+      =  (log(scale) + penalty*log(p)) ++ log(shift)
+
+       weight: 
+         scale value 1.0 penalty 0:0 shift value 0.5 ;
+       | scale 0:0 penalty 1:1
+       | scale 2:2;
 
 
+Wed Aug 25 14:54:03 2004
+  - change makefile so that all RV objects in one library.
 
+Fri Aug 27 05:15:25 2004
+  - Add to docs. In DT formulas, the 'card' of a continous random variable
+    evaluates to '0'. 
+
+Sat Aug 28 15:54:29 2004
+  Remove all the extraneous "f >=0" for typeof f  == unsigned in ObservationMatrix
+  as in:
+  float*const floatVecAtFrame(unsigned f, 
+			      const unsigned startFeature) {
+    assert (f >= 0 && f < _numFrames);
+    return (float*)(featuresBase + _stride*f + startFeature);
+  }
+
+Sun Aug 29 07:53:40 2004
+  - perhaps modify syntax so that you can specify just 'parents' rather than
+    'conditionalparents'
+
+DONE: Sun Aug 29 08:01:18 2004
+  - allow immediate value observed RV to have a special value 'frame' which
+    is the frame of the RV.
+ 
+Mon Aug 30 04:03:05 2004
+  - Time to spend triangulating should be, most on C, then E is often
+    much more important to trianglate well than P since in P, we often are starting with
+    smaller state spaces, but by the time we get to E, everything has been expanded.
+  - DONE in BoundaryTriangulate,
+  - TODO: do in scripts.
+
+DONE: Mon Aug 30 06:36:52 2004
+  - for immediate observed RV, other constants to add:
+     frame - returns frame value of var
+     numFrames - returns number of frames in current segment
+     segmentNum - returns current segment number
+     numSegments - returns number of segments
+  - also add to DT leaf formulas.
+
+Mon Aug 30 09:04:32 2004
+  - change gmtkTime -multi to use fork() set/getrlimits to avoid blowing up on
+    bad triangulations.
+
+Mon Aug 30 10:08:14 2004
+  - Speedup: In, MaxClique::ceIterateAssignedNodesNoRecurse(), consider
+    adding ability to the clique packing code to update one RV's value directly
+    in the packed clique value. That way, at the innermost iteration, rather than
+    needing to sweep through all the RVs reconstructing the entire packed clique value,
+    we just update a few bits, and copy the packed clique value to its appropriate
+    place in the clique value list.
+
+
+Mon Aug 30 10:59:48 2004
+- New things since europe:
+ 1) new RV hierarchy, much code changed.
+ 2) new immediate constants
+       frameNum, numFrames, segmentNum, numSegments
+ 3) switching weights
+ 3.3) new simplified but more flexible CPT interface
+ 4) virtual evidence CPTs.
+ 5) better and more informative error messages (many now include line number location).
+ 6) working viterbi island algorithm ??? (need to check)
+  
+ 6) working viterbi island algorithm??

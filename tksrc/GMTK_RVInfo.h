@@ -32,27 +32,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-class RandomVariable;
-class DiscreteRandomVariable;
-class ContinuousRandomVariable;
+class RV;
+class DiscRV;
+class ContRV;
 class FileParser;
 class GMTemplate;
 class Partition;
 class BoundaryTriangulate;
 
+class RV;
+class DiscRV;
 
 #include "GMTK_CPT.h"
 #include "GMTK_MixtureCommon.h"
 
 class RVInfo {
   friend class FileParser;
-  friend class RandomVariable;
-  friend class DiscreteRandomVariable;
-  friend class ContinuousRandomVariable;
   friend class GMTemplate;
   friend class Partition;
   friend class BoundaryTriangulate;
   friend class JunctionTree;
+
+  friend class RV;
+  friend class DiscRV;
+  friend class ObsDiscRV;
+  friend class Sw_ObsDiscRV;
+  friend class ScPnSh_ObsDiscRV;
+  friend class ScPnSh_Sw_ObsDiscRV;
+  friend class HidDiscRV;
+  friend class Sw_HidDiscRV;
+  friend class ScPnSh_HidDiscRV;
+  friend class ScPnSh_Sw_HidDiscRV;
+  friend class ObsContRV;
+  friend class Sw_ObsContRV;
+  friend class ScPnSh_ObsContRV;
+  friend class ScPnSh_Sw_ObsContRV;
+  friend class ScPnShRV;
+  friend class ContRV;
 
 public:
   ///////////////////////////////////////////////////
@@ -68,17 +84,42 @@ private:
   enum Disposition { d_hidden, d_observed, d_unknown };
 
   struct WeightInfo {
-    enum wtEnum { wt_NoWeight, wt_Constant, wt_Observation };
-    double weight_value;
-    wtEnum wt_Status;
-    unsigned firstFeatureElement;
-    unsigned lastFeatureElement;
+
+    // Given a probability p, the weight info modifies the
+    // probability according to the following formula:
+    //
+    //        scale*p^penalty+shift
+    // 
+    // each of penalty, scale, and shift might be an immediate value
+    // or might come from the observation file at a frame given by the
+    // child class. 
+    
+    struct WeightItem { 
+      enum wtEnum { wt_NoWeight, wt_Constant, wt_Observation };
+      wtEnum wt_Status;
+      // the values of scale,penalty, or shift depending on the
+      // particular case. Note that the value stored is the
+      // natural_log(value), where value is scale, penalty, or shift
+      // above.
+      double weight_value;
+      unsigned firstFeatureElement;
+      unsigned lastFeatureElement;
+      void clear() { wt_Status = wt_NoWeight; }
+    };
+    
+    WeightItem penalty;
+    WeightItem scale;
+    WeightItem shift;
     WeightInfo() { clear(); }
-    void clear() { wt_Status = wt_NoWeight; weight_value = 1.0; }
+    void clear() { penalty.clear(); scale.clear(); shift.clear(); }
+
   };
 
   struct FeatureRange {
-    enum frEnum { fr_UnFilled, fr_Range, fr_FirstIsValue };
+    enum frEnum { fr_UnFilled, fr_Range, fr_FirstIsValue, 
+		  fr_FrameNumIsValue, fr_NumFramesIsValue,
+		  fr_SegmentNumIsValue, fr_NumSegmentsIsValue 
+    };
     frEnum filled;
     unsigned firstFeatureElement;
     unsigned lastFeatureElement;
@@ -115,6 +156,8 @@ private:
   ///////////////////////////////////////////////////////////
   // data associated with a RV
 
+  // TODO: remove some of the friends above and make public interfaces to 
+  //        these as read only.
   // the frame where it was defined (so is part of name really)
   unsigned frame;
   // line number of file where this RV was first declared
@@ -131,11 +174,9 @@ private:
   // if it is an observed variable, it must have a feature range.
   FeatureRange rvFeatureRange;
 
-  // if it is an observed continuous, it might have a weight
-  WeightInfo rvWeightInfo;
-
-  // switching parents stuff
+  // switching parents and weight stuff
   vector< rvParent > switchingParents;
+
   ListIndex switchMapping;
 
   // conditional parents stuff
@@ -147,6 +188,11 @@ private:
   // in either case, a low-level parameter index
   vector< ListIndex > listIndices;
 
+  // (possibly switching) weight information.  Note that either
+  // (rvWeightInfo.size() == 1), or (rvWeightInfo.size() ==
+  // conditionalParents.size()).
+  vector <WeightInfo> rvWeightInfo;
+
   /////////////////////////////////////////////////////////
   // An actual pointer to the RV once we instantiate it.  Note that
   // in general, there is a many-to-one mapping from random variable
@@ -156,7 +202,7 @@ private:
   // will, you can consider rv here to be the Adam&Eve random
   // variable since all instances of this are going to be clones of
   // 'rv' (or clones of clones of 'rv', etc.).
-  RandomVariable* rv;
+  RV* rv;
 
 public:
 

@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "GMTK_RandomVariable.h"
+#include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_MaxClique.h"
@@ -60,15 +60,15 @@ private:
     // create sets P, C1, C2, C3, and E, from graph 
     // unrolled M+1 times .
     // prologue
-    set<RandomVariable*> P;
+    set<RV*> P;
     // 1st chunk, 1 chunk long
-    set<RandomVariable*> C1;
+    set<RV*> C1;
     // 2nd chunk, M chunks long
-    set<RandomVariable*> C2;
+    set<RV*> C2;
     // 3rd chunk, 1 chunk long
-    set<RandomVariable*> C3;
+    set<RV*> C3;
     // epilogue
-    set<RandomVariable*> E;
+    set<RV*> E;
   };
 
   // Structures used to form partitions from a given
@@ -78,14 +78,14 @@ private:
     // create sets P, C1, C2, C3, and E, from graph 
     // unrolled M+S-1 times .
     // prologue
-    set<RandomVariable*> P;
+    set<RV*> P;
     // 1st chunk
-    set<RandomVariable*> C1;
+    set<RV*> C1;
     // 2nd chunk
-    set<RandomVariable*> C2;
-    set<RandomVariable*> Cextra;
+    set<RV*> C2;
+    set<RV*> Cextra;
     // epilogue
-    set<RandomVariable*> E;
+    set<RV*> E;
   };
 
   ////////////////////////////////////////////////////////////
@@ -202,7 +202,7 @@ private:
   // since Partitiona and GMTemplate will most often be used
   // for inference, and where a triangulation will simply
   // come from a set of maxcliques.
-  typedef pair<RandomVariable*, set<RandomVariable*> > nghbrPairType; 
+  typedef pair<RV*, set<RV*> > nghbrPairType; 
 
   // original neighbors of nodes so that deTriangulate() will work.
   vector<nghbrPairType>  orgnl_P_nghbrs;
@@ -225,7 +225,7 @@ private:
   /////////////////////////////////////////////////////
 
   // delete a set of variables
-  void deleteNodes(const set<RandomVariable*>& nodes);
+  void deleteNodes(const set<RV*>& nodes);
 
   // given a string, create a vector of triangulation heuristics
   void parseTriHeuristicString(const string& tri_heur_str,TriangulateHeuristics& th);
@@ -233,7 +233,7 @@ private:
 				     vector<BoundaryHeuristic>& th_v);
 
   // computes the fill in of a set of variables.
-  int computeFillIn(const set<RandomVariable*>& nodes);
+  int computeFillIn(const set<RV*>& nodes);
 
   // compute the weight of a vector of cliques
   double graphWeight(vector<MaxClique>& cliques);
@@ -242,7 +242,7 @@ private:
 		     const bool useJTWeight,
 		     // if useJTWeight is true, this gives nodes that
 		     // root must cover.
-		     const set<RandomVariable*>& interfaceNodes);
+		     const set<RV*>& interfaceNodes);
   
   void fillAccordingToCliques(
     const vector<MaxClique>& cliques 
@@ -267,15 +267,15 @@ private:
 
   void findInterfacePartitions(
    // input params
-   const set<RandomVariable*>& P_u1,
-   const set<RandomVariable*>& C1_u1,
-   const set<RandomVariable*>& Cextra_u1, // non-empty only when S > M
-   const set<RandomVariable*>& C2_u1,
-   const set<RandomVariable*>& E_u1,
-   map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
-   map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
-   const set<RandomVariable*>& left_C_l_u2C2,
-   const set<RandomVariable*>& C_l_u2C2,
+   const set<RV*>& P_u1,
+   const set<RV*>& C1_u1,
+   const set<RV*>& Cextra_u1, // non-empty only when S > M
+   const set<RV*>& C2_u1,
+   const set<RV*>& E_u1,
+   map < RV*, RV* >& C2_u2_to_C1_u1,
+   map < RV*, RV* >& C2_u2_to_C2_u1,
+   const set<RV*>& left_C_l_u2C2,
+   const set<RV*>& C_l_u2C2,
    // output params
    GMTemplate& gm_template);
 
@@ -292,9 +292,9 @@ private:
   // are availalbe). These variables, if not set to NULL, contain
   // pointers to these. These are set in the main public triangulation routine.
   // Left-partition nodes (NULL if no left partition relative to current partition)
-  set<RandomVariable*> *lp_nodes;
+  set<RV*> *lp_nodes;
   // right partition nodes.
-  set<RandomVariable*> *rp_nodes;  
+  set<RV*> *rp_nodes;  
 
   void setUpForP(GMTemplate& gm_template) {
     lp_nodes = NULL;
@@ -312,11 +312,11 @@ private:
 
   // Calls method which triangulates once, support routine for triangulate 
   void triangulateOnce(// input: nodes to be triangulated
-  		       const set<RandomVariable*>& nodes,
+  		       const set<RV*>& nodes,
                        // use JT weight rather than sum of weight
 		       const bool jtWeight,
 		       // nodes that a JT root must contain (ok to be empty).
-		       const set<RandomVariable*>& nodesRootMustContain,
+		       const set<RV*>& nodesRootMustContain,
 		       // triangulation heuristic method
 		       const TriangulateHeuristics& tri_heur,
 		       // original neighbor structures
@@ -328,11 +328,11 @@ private:
   
   // High-level generic graph triangulation using optionally all methods below.
   void triangulatePartition(// input: nodes to be triangulated
-			    const set<RandomVariable*>& nodes,
+			    const set<RV*>& nodes,
 			    // use JT weight rather than sum of weight
 			    const bool jtWeight,
 			    // nodes that a JT root must contain (ok to be empty).
-			    const set<RandomVariable*>& nodesRootMustContain,
+			    const set<RV*>& nodesRootMustContain,
 			    // triangulation heuristic method
 			    const TriangulateHeuristics& tri_heur,
 			    // original neighbor structures
@@ -350,11 +350,11 @@ private:
   // version of triangulatePartition() above that takes triangulation
   // heuristic strings.
   void triangulatePartition(// input: nodes to be triangulated
-			    const set<RandomVariable*>& nodes,
+			    const set<RV*>& nodes,
 			    // use JT weight rather than sum of weight
 			    const bool jtWeight,
 			    // nodes that a JT root must contain (ok to be empty).
-			    const set<RandomVariable*>& nodesRootMustContain,
+			    const set<RV*>& nodesRootMustContain,
 			    // triangulation heuristic method
 			    const string& tri_heur_str,
 			    // original neighbor structures
@@ -379,7 +379,7 @@ private:
   // include version that always uses the standard weight measure
   // (i.e., does not use jt-weight).
   void triangulatePartitionWeight(// input: nodes to be triangulated
-				  const set<RandomVariable*>& nodes,
+				  const set<RV*>& nodes,
 				  // triangulation heuristic method
 				  const TriangulateHeuristics& tri_heur,
 				  // original neighbor structures
@@ -391,7 +391,7 @@ private:
 				  // weight to best
 				  double& best_weight)
   {
-    const set <RandomVariable*> emptySet;
+    const set <RV*> emptySet;
     triangulatePartition(nodes, false, emptySet, tri_heur, orgnl_nghbrs,
 			 best_cliques, best_meth_str, best_weight);
   }
@@ -409,72 +409,72 @@ private:
   // where the caller chooses the results with the best cliques --
   // this is because each call might produce a different clique set
   // via the internal randomness that can occur if a tie occurs.
-  void basicTriangulate(const set<RandomVariable*>& nodes,
+  void basicTriangulate(const set<RV*>& nodes,
 			const vector<BasicTriangulateHeuristic>& th_v,
 			const unsigned numRandomTop,
-			vector<RandomVariable*>& orderedNodes,
+			vector<RV*>& orderedNodes,
 			vector<MaxClique>& cliques,
 			const bool findCliques = true);
 
   // triangulate by simulated annealing
   void triangulateSimulatedAnnealing(
-    const set<RandomVariable*>& nodes,
+    const set<RV*>& nodes,
     const bool                  jtWeight,
-    const set<RandomVariable*>& nodesRootMustContain,
+    const set<RV*>& nodesRootMustContain,
     vector<MaxClique>&          best_cliques,
-    vector<RandomVariable*>&    best_order,
+    vector<RV*>&    best_order,
     string&                     comment 
     );
 
   // Triangulate by maximum cardinality search
   void triangulateMaximumCardinalitySearch( 
-    const set<RandomVariable*>& nodes,
+    const set<RV*>& nodes,
     vector<MaxClique>&          cliques,
-    vector<RandomVariable*>&    order
+    vector<RV*>&    order
     );
 
   // This procedure is like triangulateMaximumCardinalitySearch except
   // that it tests if the original graph was triangulated
   bool triangulateMCSIfNotTriangulated( 
-    const set<RandomVariable*>& nodes,
+    const set<RV*>& nodes,
     vector<MaxClique>&          cliques
   );
 
   // Check if graph is chordal 
   bool chordalityTest( 
-    const set<RandomVariable*>& nodes
+    const set<RV*>& nodes
   );
 
   // Check chordality and get cliques in RIP order
   bool getCliques( 
-    const set<RandomVariable*>& nodes,
+    const set<RV*>& nodes,
     vector<MaxClique>&          cliques
   );
 
   // triangulation by simple completion
-  void triangulateCompletePartition(const set<RandomVariable*>& nodes,
+  void triangulateCompletePartition(const set<RV*>& nodes,
 				    vector<MaxClique>&          cliques
 				    );
 
   // triangulation by frontier algorithm
-  void triangulateFrontier(const set<RandomVariable*>& nodes,
+  void triangulateFrontier(const set<RV*>& nodes,
 			   vector<MaxClique>&          cliques
 			   );
 
 
   // triangulate by exhaustive search, takes a *LONG* time.
-  void triangulateExhaustiveSearch(const set<RandomVariable*>&  nodes,
+  void triangulateExhaustiveSearch(const set<RV*>&  nodes,
 				   const bool jtWeight,
-				   const set<RandomVariable*>& nodesRootMustContain,
+				   const set<RV*>& nodesRootMustContain,
 				   const vector<nghbrPairType>& orgnl_nghbrs,
 				   vector<MaxClique>&           cliques
 				   );
 
   // Triangulate by pre-specified elimination order
   void triangulateElimination(// input: nodes to be triangulated
-			      const set<RandomVariable*> nodes,
+			      const set<RV*> nodes,
 			      // elimination order 
-			      vector<RandomVariable*> orderedNodes,  
+			      vector<RV*> orderedNodes,  
 			      // output: resulting max cliques
 			      vector<MaxClique>& cliques);
 
@@ -483,9 +483,9 @@ private:
   // triangulate using elimination with a number of basic heuristics, 
   // returning the best.
   double tryEliminationHeuristics(
-    const set<RandomVariable*>& nodes,
+    const set<RV*>& nodes,
     const bool                  jtWeight,
-    const set<RandomVariable*>& nodesRootMustContain,
+    const set<RV*>& nodesRootMustContain,
     vector<nghbrPairType>&      orgnl_nghbrs,
     vector<MaxClique>&          best_cliques,
     string&                     best_method,
@@ -497,9 +497,9 @@ private:
   // triangulate using using a number of non-elimination based heuristics, 
   // returning the best.
   double tryNonEliminationHeuristics(
-    const set<RandomVariable*>& nodes,
+    const set<RV*>& nodes,
     const bool                  jtWeight,
-    const set<RandomVariable*>& nrmc,         // nrmc = nodes root must contain
+    const set<RV*>& nrmc,         // nrmc = nodes root must contain
     vector<nghbrPairType>&      orgnl_nghbrs,
     vector<MaxClique>&          best_cliques,
     string&                     best_method,
@@ -514,18 +514,18 @@ private:
   // general routine to compute the score of a candidate interface.
   void interfaceScore(
 	 const vector<BoundaryHeuristic>& bnd_heur_v,
-	 const set<RandomVariable*>& C_l,
+	 const set<RV*>& C_l,
 	 // more input variables for use when MIN_CLIQUE is active
-	 const set<RandomVariable*>& left_C_l,
+	 const set<RV*>& left_C_l,
 	 const TriangulateHeuristics& tri_heur,
-	 const set<RandomVariable*>& P_u1,
-	 const set<RandomVariable*>& C1_u1,
-	 const set<RandomVariable*>& Cextra_u1,
-	 const set<RandomVariable*>& C2_u1,
-	 const set<RandomVariable*>& E_u1,
+	 const set<RV*>& P_u1,
+	 const set<RV*>& C1_u1,
+	 const set<RV*>& Cextra_u1,
+	 const set<RV*>& C2_u1,
+	 const set<RV*>& E_u1,
 	 // these next 2 should be const, but there is no "op[] const"
-	 map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
-	 map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
+	 map < RV*, RV* >& C2_u2_to_C1_u1,
+	 map < RV*, RV* >& C2_u2_to_C2_u1,
 	 // output score
 	 vector<float>& score);
 
@@ -539,45 +539,45 @@ private:
   // in terms of the left interface, but that is only for ease of
   // understanding.
   void findBestInterface(
-	     const set<RandomVariable*> &C1,
-	     const set<RandomVariable*> &C2,
-	     const set<RandomVariable*> &C2_1,
-	     const set<RandomVariable*> &C3,
-	     set<RandomVariable*> &left_C_l,
-	     set<RandomVariable*> &C_l,
+	     const set<RV*> &C1,
+	     const set<RV*> &C2,
+	     const set<RV*> &C2_1,
+	     const set<RV*> &C3,
+	     set<RV*> &left_C_l,
+	     set<RV*> &C_l,
 	     vector<float>& best_score,
 	     const vector<BoundaryHeuristic>& bnd_heur_v,
 	     const bool recurse,
 	     const TriangulateHeuristics& tri_heur,
-	     const set<RandomVariable*>& P_u1,
-	     const set<RandomVariable*>& C1_u1,
-	     const set<RandomVariable*>& Cextra_u1,
-	     const set<RandomVariable*>& C2_u1,
-	     const set<RandomVariable*>& E_u1,
+	     const set<RV*>& P_u1,
+	     const set<RV*>& C1_u1,
+	     const set<RV*>& Cextra_u1,
+	     const set<RV*>& C2_u1,
+	     const set<RV*>& E_u1,
 	     // these next 2 should be const, but there is no "op[] const"
-	     map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
-	     map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1);
+	     map < RV*, RV* >& C2_u2_to_C1_u1,
+	     map < RV*, RV* >& C2_u2_to_C2_u1);
 
   void findBestInterface(
-             const set<RandomVariable*> &left_C_l,
-	     const set<RandomVariable*> &C_l,
-	     const set<RandomVariable*> &C2,
-	     const set<RandomVariable*> &C2_1,
-	     const set<RandomVariable*> &C3,
-	     set< set<RandomVariable*> >& setset,
-	     set<RandomVariable*> &best_left_C_l,
-	     set<RandomVariable*> &best_C_l,
+             const set<RV*> &left_C_l,
+	     const set<RV*> &C_l,
+	     const set<RV*> &C2,
+	     const set<RV*> &C2_1,
+	     const set<RV*> &C3,
+	     set< set<RV*> >& setset,
+	     set<RV*> &best_left_C_l,
+	     set<RV*> &best_C_l,
 	     vector<float>& best_score,
 	     const vector<BoundaryHeuristic>& bnd_heur_v,
 	     const TriangulateHeuristics& tri_heur,
-	     const set<RandomVariable*>& P_u1,
-	     const set<RandomVariable*>& C1_u1,
-	     const set<RandomVariable*>& Cextra_u1,
-	     const set<RandomVariable*>& C2_u1,
-	     const set<RandomVariable*>& E_u1,
+	     const set<RV*>& P_u1,
+	     const set<RV*>& C1_u1,
+	     const set<RV*>& Cextra_u1,
+	     const set<RV*>& C2_u1,
+	     const set<RV*>& E_u1,
 	     // these next 2 should be const, but there is no "op[] const"
-	     map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
-	     map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1);
+	     map < RV*, RV* >& C2_u2_to_C1_u1,
+	     map < RV*, RV* >& C2_u2_to_C2_u1);
 
 
   //////////////////////////////////////////////////////////////////////////// 
@@ -595,9 +595,9 @@ private:
 
     public:
       triangulateNode();
-      triangulateNode(RandomVariable* random_variable);
+      triangulateNode(RV* random_variable);
 
-      RandomVariable*          randomVariable;
+      RV*          randomVariable;
       triangulateNeighborType  neighbors;
       triangulateNodeList*     nodeList; 
       unsigned                 cardinality;
@@ -632,7 +632,7 @@ private:
   }; 
 
   void fillTriangulateNodeStructures( 
-    const set<RandomVariable*>& orgnl_nodes,
+    const set<RV*>& orgnl_nodes,
     vector<triangulateNode>&    new_nodes 
   );
 
@@ -711,7 +711,7 @@ private:
   //////////////////////////////////////////////////////////////////////////// 
 
   void saveCurrentNeighbors(
-    const set<RandomVariable*> nodes,
+    const set<RV*> nodes,
     vector<nghbrPairType>& orgnl_nghbrs
   );
 
@@ -745,7 +745,7 @@ private:
   );
 
   void addExtraEdgesToGraph(
-    const set<RandomVariable*>&  nodes,
+    const set<RV*>&  nodes,
     const extraEdgeHeuristicType edge_heuristic
   );
 
@@ -772,7 +772,7 @@ private:
   unsigned annealChain(
     vector<triangulateNode>&  nodes,
     const bool jtWeight,
-    const set<RandomVariable*>& nodesRootMustContain,
+    const set<RV*>& nodesRootMustContain,
     vector<triangulateNode*>& crrnt_order,
     vector<triangulateNode*>& triangulate_best_order,
     double&                   best_graph_weight,

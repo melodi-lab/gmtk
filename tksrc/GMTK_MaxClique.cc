@@ -1,6 +1,8 @@
 /*-
  * GMTK_MaxClique.cc
- *     maxClique support
+ *
+ *     maxClique support and JT probabilistic inference. Includes the
+ *     implementation of a message in the message passing algorithm.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -54,10 +56,9 @@
 #include "rand.h"
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
-#include "GMTK_GM.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_MDCPT.h"
@@ -156,109 +157,6 @@ double
 SeparatorClique::separatorBeam=(-LZERO);
 
 
-// TODO: put this function somewhere more generally available.
-static void
-printRVSetAndValues(FILE*f,sArray<RandomVariable*>& locset) 
-{
-  bool first = true;
-  for (unsigned i=0;i<locset.size();i++) {
-    RandomVariable* rv = locset[i];
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)=",rv->name().c_str(),rv->frame());
-    if (!rv->discrete) {
-      fprintf(f,"C");
-    } else {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-      fprintf(f,"%d",drv->val);
-    }
-    first = false;
-  }
-  fprintf(f,"\n");
-}
-
-static void
-printRVSetAndValues(FILE*f,vector<RandomVariable*>& locset) 
-{
-  bool first = true;
-  for (unsigned i=0;i<locset.size();i++) {
-    RandomVariable* rv = locset[i];
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)=",rv->name().c_str(),rv->frame());
-    if (!rv->discrete) {
-      fprintf(f,"C");
-    } else {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-      fprintf(f,"%d",drv->val);
-    }
-    first = false;
-  }
-  fprintf(f,"\n");
-}
-
-
-static void
-printRVSet(FILE*f,sArray<RandomVariable*>& locset) 
-{
-  bool first = true;
-  for (unsigned i=0;i<locset.size();i++) {
-    RandomVariable* rv = locset[i];
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
-    first = false;
-  }
-  fprintf(f,"\n");
-}
-static void
-printRVSet(FILE*f,set<RandomVariable*>& locset)
-{
-  bool first = true;
-  set<RandomVariable*>::iterator it;
-  for (it = locset.begin();
-       it != locset.end();it++) {
-    RandomVariable* rv = (*it);
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
-    first = false;
-  }
-  fprintf(f,"\n");
-}
-#if 0
-static void
-printRVSetPtr(FILE*f,set<RandomVariable*>& locset)
-{
-  bool first = true;
-  set<RandomVariable*>::iterator it;
-  for (it = locset.begin();
-       it != locset.end();it++) {
-    RandomVariable* rv = (*it);
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)=0x%X",rv->name().c_str(),rv->frame(),(unsigned)rv);
-    first = false;
-  }
-  fprintf(f,"\n");
-}
-#endif
-
-static void
-printRVSet(FILE*f,vector<RandomVariable*>& locvec)
-{
-  bool first = true;
-  for (unsigned i=0;i<locvec.size();i++) {
-    RandomVariable* rv = locvec[i];
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
-    first = false;
-  }
-  fprintf(f,"\n");
-}
-
-
 
 // TODO: put this in misc support
 static void
@@ -301,7 +199,7 @@ psp(FILE*f,const int numSpaceChars,const char c = ' ')
  *-----------------------------------------------------------------------
  */
 MaxClique::MaxClique(MaxClique& from_clique,
-			   vector <RandomVariable*>& newRvs,
+			   vector <RV*>& newRvs,
 			   map < RVInfo::rvParent, unsigned >& ppf,
 			   const unsigned int frameDelta)
 
@@ -310,14 +208,14 @@ MaxClique::MaxClique(MaxClique& from_clique,
 			     1,     // growth addition
 			     0.90)  // decay rate 
 {
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
   
 
   // clone over nodes RVs.
   for (it = from_clique.nodes.begin();
        it != from_clique.nodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -328,14 +226,14 @@ MaxClique::MaxClique(MaxClique& from_clique,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     nodes.insert(nrv);
   }
 
   // and clone over assigned nodes and sorted assigned nodes
   sortedAssignedNodes.reserve(from_clique.sortedAssignedNodes.size());
   for (unsigned i=0;i<from_clique.sortedAssignedNodes.size();i++) {
-    RandomVariable* rv = from_clique.sortedAssignedNodes[i];
+    RV* rv = from_clique.sortedAssignedNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -346,7 +244,7 @@ MaxClique::MaxClique(MaxClique& from_clique,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     assignedNodes.insert(nrv);
     sortedAssignedNodes.push_back(nrv);
   }
@@ -355,7 +253,7 @@ MaxClique::MaxClique(MaxClique& from_clique,
   for (it = from_clique.unassignedIteratedNodes.begin();
        it != from_clique.unassignedIteratedNodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -365,7 +263,7 @@ MaxClique::MaxClique(MaxClique& from_clique,
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     unassignedIteratedNodes.insert(nrv);
   }
 
@@ -373,7 +271,7 @@ MaxClique::MaxClique(MaxClique& from_clique,
   for (it = from_clique.cumulativeAssignedNodes.begin();
        it != from_clique.cumulativeAssignedNodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -383,7 +281,7 @@ MaxClique::MaxClique(MaxClique& from_clique,
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     cumulativeAssignedNodes.insert(nrv);
   }
 
@@ -420,14 +318,14 @@ MaxClique::MaxClique(MaxClique& from_clique,
  *-----------------------------------------------------------------------
  */
 void
-MaxClique::makeComplete(const set<RandomVariable*> &rvs)
+MaxClique::makeComplete(const set<RV*> &rvs)
 {
   // just go through each rv and union its neighbors
   // set with all of rvs.
 
-  for (set<RandomVariable*>::iterator i=rvs.begin();
+  for (set<RV*>::iterator i=rvs.begin();
        i != rvs.end(); i++) {
-    set<RandomVariable*> res;
+    set<RV*> res;
     set_union(rvs.begin(),rvs.end(),
 	      (*i)->neighbors.begin(),
 	      (*i)->neighbors.end(),
@@ -469,8 +367,8 @@ MaxClique::makeComplete(const set<RandomVariable*> &rvs)
  */
 float
 MaxClique::
-computeWeight(const set<RandomVariable*>& nodes,
-	      const RandomVariable* node,
+computeWeight(const set<RV*>& nodes,
+	      const RV* node,
 	      const bool useDeterminism)
 {
   // compute weight in log base 10 so that
@@ -483,16 +381,16 @@ computeWeight(const set<RandomVariable*>& nodes,
   // TODO: The assumption here (for now) is that all continuous variables
   // are observed. This will change in a future version.
   if (node != NULL) {
-    if (node->discrete && node->hidden) {
-      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)node;
+    if (node->discrete() && node->hidden()) {
+      DiscRV *const drv = (DiscRV*)node;
       // weight changes only if node is not deterministic (Lauritzen CG inference).
       if (useDeterminism && drv->sparse()) {
 	// then there is a possibility that this node does not affect
 	// the state space, as long as all of this nodes parents are
 	// in the clique.  The variable 'truly_sparse' indicates that.
 	bool truly_sparse = true;
-	for (unsigned i=0;i<drv->allPossibleParents.size();i++) {
-	  if (nodes.find(drv->allPossibleParents[i]) == nodes.end()) {
+	for (unsigned i=0;i<drv->allParents.size();i++) {
+	  if (nodes.find(drv->allParents[i]) == nodes.end()) {
 	    // found a parent of drv that is not in 'nodes' set so the
 	    // node would not truly be sparse/deterministic here.
 	    truly_sparse = false;
@@ -505,32 +403,32 @@ computeWeight(const set<RandomVariable*>& nodes,
 	  tmp_weight += log10((double)drv->cardinality);
       } else
 	tmp_weight += log10((double)drv->cardinality);
-    } else if (!node->discrete) {
+    } else if (!node->discrete()) {
       // node is continuous observed.
-      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)node;
+      ContRV *crv = (ContRV*)node;
       tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
     }
   }
   // Next, get weight of all 'nodes'
-  for (set<RandomVariable*>::iterator j=nodes.begin();
+  for (set<RV*>::iterator j=nodes.begin();
        j != nodes.end();
        j++) {
-    RandomVariable *const rv = (*j);
+    RV *const rv = (*j);
     // First get cardinality of 'node', but if
     // it is continuous or observed, it does not change the weight.
     // TODO: The assumption here (for now) is that all continuous variables
     // are observed. This will change in a future version (Lauritzen CG inference).
-    if (rv->discrete && rv->hidden) {
-      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+    if (rv->discrete() && rv->hidden()) {
+      DiscRV *const drv = (DiscRV*)rv;
       if (useDeterminism && drv->sparse()) {
 	// then there is a possibility that this node does not affect
 	// the state space, as long as all of this nodes parents are
 	// in the clique.  The variable 'truly_sparse' indicates that.
 	bool truly_sparse = true;
-	for (unsigned i=0;i<drv->allPossibleParents.size();i++) {
-	  if ((nodes.find(drv->allPossibleParents[i]) == nodes.end())
+	for (unsigned i=0;i<drv->allParents.size();i++) {
+	  if ((nodes.find(drv->allParents[i]) == nodes.end())
 	      &&
-	      (drv->allPossibleParents[i] != node)) {
+	      (drv->allParents[i] != node)) {
 	    // found a parent that is not in 'node' set so the node
 	    // would not truly be sparse/deterministic here.
 	    truly_sparse = false;
@@ -543,9 +441,9 @@ computeWeight(const set<RandomVariable*>& nodes,
 	  tmp_weight += log10((double)drv->cardinality);
       } else
 	tmp_weight += log10((double)drv->cardinality);
-    } else if (!rv->discrete) {
+    } else if (!rv->discrete()) {
       // node is continuous observed.
-      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
+      ContRV *crv = (ContRV*)rv;
       tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
     } 
   }
@@ -583,9 +481,9 @@ computeWeight(const set<RandomVariable*>& nodes,
  */
 float
 MaxClique::
-computeWeightWithExclusion(const set<RandomVariable*>& nodes,
-			   const set<RandomVariable*>& unassignedIteratedNodes,
-			   const set<RandomVariable*>& unionSepNodes,
+computeWeightWithExclusion(const set<RV*>& nodes,
+			   const set<RV*>& unassignedIteratedNodes,
+			   const set<RV*>& unionSepNodes,
 			   const bool useDeterminism)
 {
   // compute weight in log base 10 so that
@@ -594,16 +492,16 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
 
   float tmp_weight = 0;
   // Next, get weight of all 'nodes'
-  for (set<RandomVariable*>::iterator j=nodes.begin();
+  for (set<RV*>::iterator j=nodes.begin();
        j != nodes.end();
        j++) {
-    RandomVariable *const rv = (*j);
+    RV *const rv = (*j);
     // First get cardinality of 'node', but if
     // it is continuous or observed, it does not change the weight.
     // TODO: The assumption here (for now) is that all continuous variables
     // are observed. This will change in a future version (Lauritzen CG inference).
-    if (rv->discrete && rv->hidden) {
-      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+    if (rv->discrete() && rv->hidden()) {
+      DiscRV *const drv = (DiscRV*)rv;
       bool truly_sparse = true;
       if (!useDeterminism || !drv->sparse()) {
 	truly_sparse = false;
@@ -614,8 +512,8 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
 	  // then there is a possibility that this node does not affect
 	  // the state space, as long as all of this nodes parents are
 	  // in the clique.  The variable 'truly_sparse' indicates that.
-	  for (unsigned i=0;i<drv->allPossibleParents.size();i++) {
-	    if (nodes.find(drv->allPossibleParents[i]) == nodes.end()) {
+	  for (unsigned i=0;i<drv->allParents.size();i++) {
+	    if (nodes.find(drv->allParents[i]) == nodes.end()) {
 	      // found a parent that is not in 'node' set so the node
 	      // would not truly be sparse/deterministic here.
 	      truly_sparse = false;
@@ -631,9 +529,9 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
 	tmp_weight += log10((double)drv->useCardinality());	
       else 
 	tmp_weight += log10((double)drv->cardinality);
-    } else if (!rv->discrete) {
+    } else if (!rv->discrete()) {
       // node is continuous observed.
-      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
+      ContRV *crv = (ContRV*)rv;
       tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
     } 
   }
@@ -741,15 +639,15 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
 
 float
 MaxClique
-::computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-			      const set<RandomVariable*>& assignedNodes,
-			      const set<RandomVariable*>& cumulativeAssignedNodes,
-			      const set<RandomVariable*>& unassignedIteratedNodes,
-			      const set<RandomVariable*>& cumulativeUnassignedIteratedNodes,
-			      const set<RandomVariable*>& separatorNodes,
-			      const set<RandomVariable*>& unassignedInPartition,
-			      set<RandomVariable*>* lp_nodes,
-			      set<RandomVariable*>* rp_nodes,
+::computeWeightInJunctionTree(const set<RV*>& nodes,
+			      const set<RV*>& assignedNodes,
+			      const set<RV*>& cumulativeAssignedNodes,
+			      const set<RV*>& unassignedIteratedNodes,
+			      const set<RV*>& cumulativeUnassignedIteratedNodes,
+			      const set<RV*>& separatorNodes,
+			      const set<RV*>& unassignedInPartition,
+			      set<RV*>* lp_nodes,
+			      set<RV*>* rp_nodes,
 			      const bool upperBound,
 			      const bool moreConservative,
 			      const bool useDeterminism)
@@ -779,10 +677,10 @@ MaxClique
   float weight_remainder = 0;
 
   // Next, get weight of all 'nodes'
-  for (set<RandomVariable*>::iterator j=nodes.begin();
+  for (set<RV*>::iterator j=nodes.begin();
        j != nodes.end();
        j++) {
-    RandomVariable *const rv = (*j);
+    RV *const rv = (*j);
 
     //     printf("computing charge for RV %s(%d)=0x%X\n",
     // 	   rv->name().c_str(),
@@ -793,8 +691,8 @@ MaxClique
     // it is continuous or observed, it does not change the weight.
     // TODO: The assumption here (for now) is that all continuous variables
     // are observed. This will change in a future version (Lauritzen CG inference).
-    if (rv->discrete && rv->hidden) {
-      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+    if (rv->discrete() && rv->hidden()) {
+      DiscRV *const drv = (DiscRV*)rv;
       if (!drv->sparse()) {
 	// printf("   RV %s(%d) is dense\n",rv->name().c_str(),rv->frame());
 	// node is dense.
@@ -954,9 +852,9 @@ MaxClique
 	   }
 	}
       }
-    } else if (!rv->discrete) {
+    } else if (!rv->discrete()) {
       // node is continuous observed.
-      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
+      ContRV *crv = (ContRV*)rv;
       weight_remainder += crv->dimensionality()*continuousObservationPerFeaturePenalty;
     } else {
       // node is discrete observed, charge nothing.
@@ -1100,9 +998,9 @@ MaxClique
 	  tmp_weight += log10((double)drv->cardinality);
 	}
       }
-    } else if (!rv->discrete) {
+    } else if (!rv->discrete()) {
       // node is continuous observed.
-      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
+      ContRV *crv = (ContRV*)rv;
       tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
     } else {
       // node is discrete observed.
@@ -1115,11 +1013,11 @@ MaxClique
 #if 0
 float
 MaxClique::
-computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-			    const set<RandomVariable*>& assignedNodes,
-			    const set<RandomVariable*>& unassignedIteratedNodes,
-			    const set<RandomVariable*>& separatorNodes,
-			    const set<RandomVariable*>& cumulativeAssignedNodes,
+computeWeightInJunctionTree(const set<RV*>& nodes,
+			    const set<RV*>& assignedNodes,
+			    const set<RV*>& unassignedIteratedNodes,
+			    const set<RV*>& separatorNodes,
+			    const set<RV*>& cumulativeAssignedNodes,
 			    const bool useDeterminism)
 {
   // compute weight in log base 10 so that
@@ -1128,16 +1026,16 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 
   float tmp_weight = 0;
   // Next, get weight of all 'nodes'
-  for (set<RandomVariable*>::iterator j=nodes.begin();
+  for (set<RV*>::iterator j=nodes.begin();
        j != nodes.end();
        j++) {
-    RandomVariable *const rv = (*j);
+    RV *const rv = (*j);
     // First get cardinality of 'node', but if
     // it is continuous or observed, it does not change the weight.
     // TODO: The assumption here (for now) is that all continuous variables
     // are observed. This will change in a future version (Lauritzen CG inference).
-    if (rv->discrete && rv->hidden) {
-      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+    if (rv->discrete() && rv->hidden()) {
+      DiscRV *const drv = (DiscRV*)rv;
       bool truly_sparse = true;
       // see comments above for description and rational of this algorithm
       if (!useDeterminism || !drv->sparse()) {
@@ -1209,12 +1107,12 @@ MaxClique::prepareForUnrolling()
 {
 
   // set up number of hidden ndoes
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
   for (it = nodes.begin();
        it != nodes.end();
        it++) {
-    RandomVariable* rv = (*it);
-    if (rv->hidden)
+    RV* rv = (*it);
+    if (rv->hidden())
       hiddenNodes.push_back(rv);
   }
 
@@ -1306,15 +1204,15 @@ MaxClique::computeAssignedNodesDispositions()
 
   dispositionSortedAssignedNodes.resize(sortedAssignedNodes.size());
   for (unsigned i=0;i<sortedAssignedNodes.size();i++) {
-    RandomVariable*rv = sortedAssignedNodes[i];
-    if (!rv->hidden) {
+    RV*rv = sortedAssignedNodes[i];
+    if (!rv->hidden()) {
       // observed
       if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
 	dispositionSortedAssignedNodes[i] = AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB;
       } else {
-	if (rv->discrete) {
+	if (rv->discrete()) {
 	  // discrete observed variable. Prune here if sparse.
-	  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;	  
+	  DiscRV* drv = (DiscRV*)rv;	  
 	  if (drv->sparse())
 	    dispositionSortedAssignedNodes[i] = AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS;
 	  else 
@@ -1327,7 +1225,7 @@ MaxClique::computeAssignedNodesDispositions()
       }      
     } else {
       // hidden node, must be discrete
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      DiscRV* drv = (DiscRV*)rv;
       if (unionIncommingCESeps.find(rv) == unionIncommingCESeps.end()) {
 	// not contained in any CE incomming separator
 	if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
@@ -1385,11 +1283,11 @@ MaxClique::computeAssignedNodesDispositions()
  *-----------------------------------------------------------------------
  */
 void
-MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RandomVariable*>& unassignedInPartition,
+MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassignedInPartition,
 			  const bool upperBound,
 			  const bool moreConservative,
 			  const bool useDeterminism,
-			  set<RandomVariable*>* lp_nodes,set<RandomVariable*>* rp_nodes)
+			  set<RV*>* lp_nodes,set<RV*>* rp_nodes)
 {
 
   // TODO: also print out nubmer of bits for acc and rem.
@@ -1555,14 +1453,14 @@ MaxClique::computeUnassignedCliqueNodes()
  *-----------------------------------------------------------------------
  */
 InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
-				       vector <RandomVariable*>& newRvs,
+				       vector <RV*>& newRvs,
 				       map < RVInfo::rvParent, unsigned >& ppf,
 				       const unsigned int frameDelta)
   : origin(from_clique)
 
 {
 
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
 
   // clone over nodes RVs.
   fNodes.resize(origin.nodes.size());
@@ -1570,7 +1468,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   for (it = origin.nodes.begin();
        it != origin.nodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -1581,14 +1479,14 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     fNodes[i++] = nrv;
   }
 
   // and clone over assigned nodes and sorted assigned nodes
   fSortedAssignedNodes.resize(origin.sortedAssignedNodes.size());
   for (i=0;i<origin.sortedAssignedNodes.size();i++) {
-    RandomVariable* rv = origin.sortedAssignedNodes[i];
+    RV* rv = origin.sortedAssignedNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -1599,7 +1497,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     fSortedAssignedNodes[i] = nrv;
   }
 
@@ -1609,7 +1507,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   for (it = origin.unassignedIteratedNodes.begin();
        it != origin.unassignedIteratedNodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -1619,7 +1517,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     fUnassignedIteratedNodes[i++] = nrv;
   }
 
@@ -1631,7 +1529,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
     for (it = origin.unassignedNodes.begin();
 	 it != origin.unassignedNodes.end();
 	 it++) {
-      RandomVariable* rv = (*it);
+      RV* rv = (*it);
       RVInfo::rvParent rvp;
       rvp.first = rv->name();
       rvp.second = rv->frame()+frameDelta;    
@@ -1641,7 +1539,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 		 rv->name().c_str(),rv->frame(),frameDelta,
 		 rvp.first.c_str(),rvp.second);
       }
-      RandomVariable* nrv = newRvs[ppf[rvp]];
+      RV* nrv = newRvs[ppf[rvp]];
       fUnassignedNodes[i++] = nrv;
     }
   }
@@ -1652,7 +1550,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   discreteValuePtrs.resize(origin.hiddenNodes.size());
   for (i=0;i<discreteValuePtrs.size();i++) {
     // get the unrolled rv for this hidden node
-    RandomVariable* rv = origin.hiddenNodes[i];
+    RV* rv = origin.hiddenNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -1662,11 +1560,11 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 	    rvp.first.c_str(),rvp.second);
       assert ( ppf.find(rvp) != ppf.end() );
     }
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
 
     // hidden nodes are always discrete (in this version).
-    DiscreteRandomVariable* drv = 
-      (DiscreteRandomVariable*)nrv;
+    DiscRV* drv = 
+      (DiscRV*)nrv;
     // grab a pointer directly to its value for easy access later.
     discreteValuePtrs[i] = &(drv->val);
   }
@@ -2093,7 +1991,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 
     return;
   }
-  RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
+  RV* rv = fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
   if (message(Giga)) {
@@ -2106,58 +2004,26 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
   switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
   case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
     {
-#if 0
-      rv->begin();
-      do {
-	// At each step, we compute probability
-	logpr cur_p = rv->probGivenParents();
-	if (message(Giga)) {
-	  if (!rv->discrete) {
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Giga,"%d:assigned iter/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",nodeNumber,
-		    rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
-	  } else {
-	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Giga,"%d:assigned CPT iter/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
-		    nodeNumber,
-		    rv->name().c_str(),rv->frame(),rv->val,p.val(),cur_p.val());
-
-	  }
-	  if (message(Max)) {
-	    psp(stdout,2*nodeNumber);
-	    infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	    printRVSetAndValues(stdout,rv->allPossibleParents);
-	  }
-	}
-	// if at any step, we get zero, then back out.
-	if (!cur_p.essentially_zero()) {
-	  // Continue, updating probability by cur_p, contributing this
-	  // probability to the clique potential.
-	  ceIterateAssignedNodesRecurse(part,nodeNumber+1,p*cur_p);
-	}
-      } while (rv->next());
-#else
       logpr cur_p;
       rv->begin(cur_p);
       do {
 	if (message(Giga)) {
-	  if (!rv->discrete) {
+	  if (!rv->discrete()) {
 	    psp(stdout,2*nodeNumber);
 	    infoMsg(Giga,"%d:assigned iter/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",nodeNumber,
 		    rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
 
 	  } else {
-	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    DiscRV* drv = (DiscRV*)rv;
 	    psp(stdout,2*nodeNumber);
 	    infoMsg(Giga,"%d:assigned CPT iter/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
 		    nodeNumber,
-		    rv->name().c_str(),rv->frame(),rv->val,p.val(),cur_p.val());
+		    rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
 	  }
 	  if (message(Max)) {
 	    psp(stdout,2*nodeNumber);
 	    infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	    printRVSetAndValues(stdout,rv->allPossibleParents);
+	    printRVSetAndValues(stdout,rv->allParents);
 	  }
 	}
 	// if at any step, we get zero, then back out.
@@ -2167,33 +2033,32 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	  ceIterateAssignedNodesRecurse(part,nodeNumber+1,p*cur_p);
 	}
       } while (rv->next(cur_p));
-#endif
     }
     break;
 
   case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
     {
-      rv->begin();
+      logpr cur_p;
+      rv->begin(cur_p);
       do {
 	// At each step, we compute probability
-	logpr cur_p = rv->probGivenParents();
 	if (message(Giga)) {
-	  if (!rv->discrete) {
+	  if (!rv->discrete()) {
 	    psp(stdout,2*nodeNumber);
 	    infoMsg(Giga,"%d:assigned iter rv %s(%d)=C,p=%f,cur_p=%f\n",
 		    nodeNumber,
 		    rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
 	  } else {
-	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    DiscRV* drv = (DiscRV*)rv;
 	    psp(stdout,2*nodeNumber);
 	    infoMsg(Giga,"%d:assigned CPT iter/zero removal rv %s(%d)=%d,p=%f,cur_p=%f\n",
 		    nodeNumber,
-		    rv->name().c_str(),rv->frame(),rv->val,p.val(),cur_p.val());
+		    rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
 	  }
 	  if (message(Max)) {
 	    psp(stdout,2*nodeNumber);
 	    infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	    printRVSetAndValues(stdout,rv->allPossibleParents);
+	    printRVSetAndValues(stdout,rv->allParents);
 	  }
 	}
 	// if at any step, we get zero, then back out.
@@ -2201,14 +2066,14 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	  // Continue, do not update probability!!
 	  ceIterateAssignedNodesRecurse(part,nodeNumber+1,p);
 	}
-      } while (rv->next());
+      } while (rv->next(cur_p));
     }
     break;
 
 
   case MaxClique::AN_CARD_ITERATION:
     {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      DiscRV* drv = (DiscRV*)rv;
       // do the loop right here
       drv->val = 0;
       do {
@@ -2216,11 +2081,11 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 	  psp(stdout,2*nodeNumber);
 	  infoMsg(Giga,"%d:assigned card iter rv %s(%d)=%d,p=%f\n",
 		  nodeNumber,
-		  rv->name().c_str(),rv->frame(),rv->val,p.val());
+		  rv->name().c_str(),rv->frame(),drv->val,p.val());
 	  if (message(Max)) {
 	    psp(stdout,2*nodeNumber);
 	    infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	    printRVSetAndValues(stdout,rv->allPossibleParents);
+	    printRVSetAndValues(stdout,rv->allParents);
 	  }
 	}
 	// Continue, do not update probability!!
@@ -2233,17 +2098,24 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
     {
       // TODO: Make more efficient version of this, based on the type of
       // RV.
-      logpr cur_p = rv->probGivenParentsWSetup();
+      logpr cur_p = rv->probGivenParents();
       // if at any step, we get zero, then back out.
       if (message(Giga)) {
 	psp(stdout,2*nodeNumber);
-	infoMsg(Giga,"%d:assigned compute/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
-		nodeNumber,
-		rv->name().c_str(),rv->frame(),rv->val,p.val(),cur_p.val());
+	if (!rv->discrete()) {
+	  infoMsg(Giga,"%d:assigned compute/prob app rv %s(%d)=C,p=%f,cur_p=%f\n",
+		  nodeNumber,
+		  rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
+	} else {
+	  DiscRV* drv = (DiscRV*)rv;
+	  infoMsg(Giga,"%d:assigned compute/prob app rv %s(%d)=%d,p=%f,cur_p=%f\n",
+		  nodeNumber,
+		  rv->name().c_str(),rv->frame(),drv->val,p.val(),cur_p.val());
+	}
 	if (message(Max)) {
 	  psp(stdout,2*nodeNumber);
 	  infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	  printRVSetAndValues(stdout,rv->allPossibleParents);
+	  printRVSetAndValues(stdout,rv->allParents);
 	}
       }
       if (!cur_p.essentially_zero()) {
@@ -2261,16 +2133,22 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
     {
       // TODO: Make more efficient version of this, based on the type of
       // RV.
-      logpr cur_p = rv->probGivenParentsWSetup();
+      logpr cur_p = rv->probGivenParents();
       if (message(Giga)) {
 	psp(stdout,2*nodeNumber);
-	infoMsg(Giga,"%d:assigned compute continue rv %s(%d)=%d,p=%f,cur_p=%f\n",
-		nodeNumber,
-		rv->name().c_str(),rv->frame(),rv->val,p.val(),cur_p.val());
+	if (rv->discrete()) {
+	  infoMsg(Giga,"%d:assigned compute continue rv %s(%d)=%d,p=%f,cur_p=%f\n",
+		  nodeNumber,
+		  rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,p.val(),cur_p.val());
+	} else {
+	  infoMsg(Giga,"%d:assigned compute continue rv %s(%d)=C,p=%f,cur_p=%f\n",
+		  nodeNumber,
+		  rv->name().c_str(),rv->frame(),p.val(),cur_p.val());
+	}
 	if (message(Max)) {
 	  psp(stdout,2*nodeNumber);
 	  infoMsg(Max,"%d:RV %s(%d)'s parents:",nodeNumber,rv->name().c_str(),rv->frame());
-	  printRVSetAndValues(stdout,rv->allPossibleParents);
+	  printRVSetAndValues(stdout,rv->allParents);
 	}
       }
 
@@ -2340,7 +2218,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
   int nodeNumber;
   logpr cur_p;
   for (nodeNumber=0;nodeNumber<(int)fSortedAssignedNodes.size();nodeNumber++) {
-    RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
+    RV* rv = fSortedAssignedNodes[nodeNumber];
     switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
     case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
       {
@@ -2379,7 +2257,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
     case MaxClique::AN_CARD_ITERATION:
       {
-	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	DiscRV* drv = (DiscRV*)rv;
 	drv->val = 0;
 	parray[nodeNumber] = parray[nodeNumber-1];
       }
@@ -2389,7 +2267,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
       {
 	// TODO: Make more efficient version of this, based on the type of
 	// RV.
-	rv->probGivenParentsWSetup(cur_p);
+	rv->probGivenParents(cur_p);
 	// might get a zero probability, check condition here.
 	if (cur_p.essentially_zero()) {
 	  // Since we have zero here, we cancel iterations of all
@@ -2411,7 +2289,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
       {
 	// TODO: Make more efficient version of this, based on the type of
 	// RV.
-	rv->probGivenParentsWSetup(cur_p);
+	rv->probGivenParents(cur_p);
 	// might get a zero probability check condition here.
 	if (cur_p.essentially_zero()) {
 	  // Since we have zero here, we cancel iterations of all
@@ -2435,7 +2313,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
   nodeNumber--;
 
   MaxClique::AssignedNodeDisposition cur_disp = origin.dispositionSortedAssignedNodes.ptr[nodeNumber];
-  RandomVariable* cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
+  RV* cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
 
   // check if zero probability, and if so, skip the first one and
   // continue on.
@@ -2515,7 +2393,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
   next_iteration:
     // Now we need to move to next clique value. This bunch of next
     // code is like an inlined iterator over clique values. It is done
-    // as "inline" in an attempt to avoid branch mis-predicts.
+    // as "inline" in an attempt to avoid branch mis-predicts and since
+    // this code appears only one time.
     do {
 
       bool unfinished;
@@ -2530,14 +2409,18 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
       case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
 	{
-	  // guaranteed not to get zero prob here.
-	  unfinished = cur_rv->next();
+	  // guaranteed not to get zero prob here. Note that
+	  // we get the probability into cur_p, but we do not
+	  // use it in this case.
+	  unfinished = cur_rv->next(cur_p);
+	  // we could include:
+	  // assert ( !cur_p.essentially_zero() );
 	}
 	break;
 
       case MaxClique::AN_CARD_ITERATION:
 	{
-	  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)cur_rv;
+	  DiscRV* drv = (DiscRV*)cur_rv;
 	  unfinished = (++drv->val < drv->cardinality);
 	}
 	break;
@@ -2619,7 +2502,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
       case MaxClique::AN_CARD_ITERATION:
 	{
-	  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)cur_rv;
+	  DiscRV* drv = (DiscRV*)cur_rv;
 	  drv->val = 0;
 	  parray[nodeNumber] = parray[nodeNumber-1];
 	}
@@ -2629,7 +2512,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 	{
 	  // TODO: Make more efficient version of this, based on the type of
 	  // RV.
-	  cur_rv->probGivenParentsWSetup(cur_p);
+	  cur_rv->probGivenParents(cur_p);
 	  // might get a zero probability, check condition here.
 	  if (cur_p.essentially_zero()) {
 	    // Since we have zero here, we cancel iterations of all
@@ -2652,7 +2535,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 	{
 	  // TODO: Make more efficient version of this, based on the type of
 	  // RV.
-	  cur_rv->probGivenParentsWSetup(cur_p);
+	  cur_rv->probGivenParents(cur_p);
 	  // might get a zero probability check condition here.
 	  if (cur_p.essentially_zero()) {
 	    // Since we have zero here, we cancel iterations of all
@@ -2720,18 +2603,18 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
     ceIterateAssignedNodes(part,0,p);
     return;
   }
-  RandomVariable* rv = fUnassignedIteratedNodes[nodeNumber];
+  RV* rv = fUnassignedIteratedNodes[nodeNumber];
   infoMsg(Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
 	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
 
-  if (rv->hidden) {
+  if (rv->hidden()) {
     // only discrete RVs can be hidden for now.
-    DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+    DiscRV* drv = (DiscRV*)rv;
     // do the loop right here
     drv->val = 0;
     do {
       infoMsg(Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	      rv->name().c_str(),rv->frame(),drv->val,nodeNumber,p.val());
       // continue on, effectively multiplying p by unity.
       ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
     } while (++drv->val < drv->cardinality);
@@ -2741,13 +2624,13 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
     // probability here anyway.
 
     // observed, either discrete or continuous
-    if (rv->discrete) {
-      // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+    if (rv->discrete()) {
+      // DiscRV* drv = (DiscRV*)rv;
       // TODO: for observed variables, do this once at the begining
       // before any looping here.
       // drv->setToObservedValue();
       infoMsg(Giga,"Unassigned pass through of observed rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	      rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,nodeNumber,p.val());
     } else {
       // nothing to do since we get continuous observed
       // value indirectly
@@ -3530,18 +3413,18 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
   logpr p = 1.0;
   bool zero = false;
   for (nodeNumber = 0; nodeNumber < fSortedAssignedNodes.size(); nodeNumber ++ ) {
-    RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
+    RV* rv = fSortedAssignedNodes[nodeNumber];
     if (origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_NOTSEP_PROB_SPARSEDENSE || 
 	origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_NOTSEP_PROB_SPARSEDENSE) {
       // apply the probabiltiy
-      logpr cur_p = rv->probGivenParentsWSetup();
+      logpr cur_p = rv->probGivenParents();
 
       if (message(Giga)) {
-	if (!rv->discrete) {
+	if (!rv->discrete()) {
 	  infoMsg(Giga,"Observed Clique prob application of rv %s(%d)=C, nodeNumber =%d, cur_p = %f, p = %f\n",
 		  rv->name().c_str(),rv->frame(),nodeNumber,cur_p.val(),p.val());
 	} else {
-	  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	  DiscRV* drv = (DiscRV*)rv;
 	  infoMsg(Giga,"Observed Clique prob application of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
 		  drv->name().c_str(),drv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
 	}
@@ -3558,14 +3441,14 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
     } else { 
       // in none of the other cases do we apply the probability. We
       // still check for zeros though.
-      logpr cur_p = rv->probGivenParentsWSetup();
+      logpr cur_p = rv->probGivenParents();
 
       if (message(Giga)) {
-	if (!rv->discrete) {
+	if (!rv->discrete()) {
 	  infoMsg(Giga,"Observed Clique prob non-application of rv %s(%d)=C, nodeNumber =%d, cur_p = %f, p = %f\n",
 		  rv->name().c_str(),rv->frame(),nodeNumber,cur_p.val(),p.val());
 	} else {
-	  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	  DiscRV* drv = (DiscRV*)rv;
 	  infoMsg(Giga,"Observed Clique prob non-application of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
 		  drv->name().c_str(),drv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
 	}
@@ -3818,7 +3701,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
     return;
   }
 
-  RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
+  RV* rv = fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
   infoMsg(Giga,"Starting assigned iteration of rv %s(%d), nodeNumber=%d, p = %f\n",
@@ -3828,18 +3711,18 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
   case MaxClique::AN_NOTSEP_PROB_SPARSEDENSE:
   case MaxClique::AN_SEP_PROB_SPARSEDENSE:
     {
-      rv->begin();
+      logpr cur_p;
+      rv->begin(cur_p);
       do {
 	// At each step, we compute probability
-	logpr cur_p = rv->probGivenParents();
 	if (message(Giga)) {
-	  if (!rv->discrete) {
+	  if (!rv->discrete()) {
 	    infoMsg(Giga,"Assigned iteration and prob application of rv %s(%d)=C, nodeNumber =%d, cur_p = %f, p = %f\n",
 		    rv->name().c_str(),rv->frame(),nodeNumber,cur_p.val(),p.val());
 	  } else {
-	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    DiscRV* drv = (DiscRV*)rv;
 	    infoMsg(Giga,"Assigned CPT iteration and prob application of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
-		    rv->name().c_str(),rv->frame(),rv->val,nodeNumber,cur_p.val(),p.val());
+		    rv->name().c_str(),rv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
 	  }
 	}
 	// if at any step, we get zero, then back out.
@@ -3848,19 +3731,19 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 	  // probability to the clique potential.
 	  ceIterateAssignedNodesCliqueDriven(part,nodeNumber+1,p*cur_p);
 	}
-      } while (rv->next());
+      } while (rv->next(cur_p));
     }
     break;
 
 
   case MaxClique::AN_NOTSEP_NOTPROB_DENSE:
     {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      DiscRV* drv = (DiscRV*)rv;
       // do the loop right here
       drv->val = 0;
       do {
 	infoMsg(Giga,"Assigned card iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
-		rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+		rv->name().c_str(),rv->frame(),drv->val,nodeNumber,p.val());
 	// Continue, do not update probability!!
 	ceIterateAssignedNodesCliqueDriven(part,nodeNumber+1,p);
       } while (++drv->val < drv->cardinality);
@@ -3870,18 +3753,18 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
   default: // all other cases, we do CPT iteration removing zeros without updating probabilities.
     {
-      rv->begin();
+      logpr cur_p;
+      rv->begin(cur_p);
       do {
 	// At each step, we compute probability
-	logpr cur_p = rv->probGivenParents();
 	if (message(Giga)) {
-	  if (!rv->discrete) {
+	  if (!rv->discrete()) {
 	    infoMsg(Giga,"Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
 		    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
 	  } else {
-	    // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	    DiscRV* drv = (DiscRV*)rv;
 	    infoMsg(Giga,"Assigned CPT iteration and zero removal of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
-		    rv->name().c_str(),rv->frame(),rv->val,nodeNumber,cur_p.val(),p.val());
+		    rv->name().c_str(),rv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
 	  }
 	}
 	// if at any step, we get zero, then back out.
@@ -3889,7 +3772,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 	  // Continue, do not update probability!!
 	  ceIterateAssignedNodesCliqueDriven(part,nodeNumber+1,p);
 	}
-      } while (rv->next());
+      } while (rv->next(cur_p));
     }
     break;
   }
@@ -3908,30 +3791,30 @@ InferenceMaxClique::ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& 
     ceIterateAssignedNodesCliqueDriven(part,0,p);
     return;
   }
-  RandomVariable* rv = fUnassignedNodes[nodeNumber];
+  RV* rv = fUnassignedNodes[nodeNumber];
   infoMsg(Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
 	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
 
-  if (rv->hidden) {
+  if (rv->hidden()) {
     // only discrete RVs can be hidden for now.
-    DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+    DiscRV* drv = (DiscRV*)rv;
     // do the loop right here
     drv->val = 0;
     do {
       infoMsg(Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	      rv->name().c_str(),rv->frame(),drv->val,nodeNumber,p.val());
       // continue on, effectively multiplying p by unity.
       ceIterateUnassignedNodesCliqueDriven(part,nodeNumber+1,p);
     } while (++drv->val < drv->cardinality);
   } else {
     // observed, either discrete or continuous
-    if (rv->discrete) {
-      // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+    if (rv->discrete()) {
+      // DiscRV* drv = (DiscRV*)rv;
       // TODO: for observed variables, do this once at the begining
       // before any looping here.
       // drv->setToObservedValue();
       infoMsg(Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	      rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,nodeNumber,p.val());
     } else {
       // nothing to do since we get continuous observed
       // value indirectly
@@ -3972,7 +3855,7 @@ emIncrement(const logpr probE,
 {
   // recompute here each time, shouldn't take too long
   // TODO: re-compute this once for each inference clique.
-  sArray< RandomVariable*> fAssignedProbNodes;
+  sArray< RV*> fAssignedProbNodes;
   unsigned numAssignedProbNodes = 0;
   for (unsigned nodeNumber = 0; nodeNumber < fSortedAssignedNodes.size(); nodeNumber ++ ) {
     if (origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB ||
@@ -3990,7 +3873,7 @@ emIncrement(const logpr probE,
   for (unsigned nodeNumber = 0; nodeNumber < fSortedAssignedNodes.size(); nodeNumber ++ ) {
     if (origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB ||
 	origin.dispositionSortedAssignedNodes[nodeNumber] == MaxClique::AN_COMPUTE_AND_APPLY_PROB) {
-      RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
+      RV* rv = fSortedAssignedNodes[nodeNumber];
       fAssignedProbNodes[numAssignedProbNodes++] = rv;
     }
   }
@@ -4045,7 +3928,7 @@ emIncrement(const logpr probE,
     // don't multiply increment those varialbes for the same parent
     // values (waisting time).
     for (unsigned nodeNumber = 0; nodeNumber < fAssignedProbNodes.size(); nodeNumber ++ ) {
-      RandomVariable* rv = fAssignedProbNodes[nodeNumber];
+      RV* rv = fAssignedProbNodes[nodeNumber];
       rv->emIncrement(posterior);
     }
   }
@@ -4233,10 +4116,28 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
 {
 
   if (origin.hiddenNodes.size() == 0) {
-    // Values already set to their max (and only) setting,
+    // All clique values already set to their max (and only) settings,
     // so no need to do anything.
     return;
   }
+
+
+  // cache check here.
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  // grab backpointer from seps forward pointer entry directly.
+  InferenceSeparatorClique::AISeparatorValue& sv
+    = sep.separatorValues.ptr[sep.forwPointer.viterbiAccIndex];
+  unsigned cvn = sv.remValues.ptr[sep.forwPointer.viterbiRemIndex].backPointer;
+
+  if (imc_nwwoh_p) {
+    origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
+			 (unsigned**)discreteValuePtrs.ptr);
+  } else {
+    origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
+			 (unsigned**)discreteValuePtrs.ptr);
+  }
+
+#if 0
 
   // allocate some temporary storage for packed separator values.
   // 128 words is *much* bigger than any possible packed clique value
@@ -4255,8 +4156,6 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
   // the year 2150), then it is fine to increase 128 to something larger.
 
 
-  // cache check here.
-  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
 
   // We assume here that the RVs according to the separator are
   // already set to the appropriate value. Get appropriate sep entry
@@ -4377,6 +4276,7 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
   }
  done:
   ;
+#endif
 }
 
 
@@ -4390,12 +4290,50 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 {
 
   if (JunctionTree::viterbiScore) {
-    // there is nothing to do in this case since if the RVs associated
-    // with the current clique have been set to the appropriate clique
-    // table entry, the associated separator RVs have also been set.
+    // While we might think that there is nothing to do in this case
+    // since if the RVs associated with the current clique have been
+    // set to the appropriate clique table entry, the associated
+    // separator RVs have also been set. But in some cases (namely the
+    // island algorithm) it is possible for the separator to get
+    // changed by an additional forward pass in which case we would be
+    // using the wrong value.
+
+    // Specifically, to get island decoding working, we need to have
+    // separator keep track of which entry is current max rather than
+    // having it assume that its values are set from right most
+    // clique.
+    // Consider the following:
+    //  
+    //    C0 -- s0 -- C1 -- s1 -- C2 -- s2 -- C3 --
+    //             1>    2>    3>    <4          <b  
+    // 
+    //  1> and 3> are ceGatherIntoRoot msgs
+    //  2> is a ceSendToNextPartition msg
+    //  <4 is a deReceveFromIncommingSep msg
+    //      and deScatterOutofRoot is (currently) a nop
+    //  <b is a deReceveFromIncommingSep msg from before.
+    // 
+    // The potential problem is that <4 might assume that it's 's2' is currently
+    // set to appropriate values (max of C3 done by <b), but message 3>
+    // changes clique C2 and thus changes s2 so that it no longer
+    // holds max value.
+    // 
+    // One solution is to add two variables in InferenceSep, i.e., 
+    // two indices to get at the veterbi values for current separator.
+    //      unsigned viterbiAccIndex;
+    //      unsigned viterbiRemIndex;
+    // to keep track of which entries in seps (such as s2) are max.
+    // Then <4 would restore those values for each separator.  and
+    // deScatterOutofRoot would compute them (since deScatterOutofRoot
+    // is called at the time C3 is at its true max value). Note that
+    // this works between partitions since the separator between
+    // two partitions is contained in the right partition.
+    //
+    // Note also that this can probably be easily extended to the
+    // N-best list case.
+    deScatterToOutgoingSeparatorsViterbi(part);
     return; 
   }
-
 
   if (origin.ceReceiveSeparators.size() == 0)
     return;
@@ -4576,12 +4514,100 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	// would need to do a check. Note that this pruning always
 	// occurs, regardless of beam.
 	rv->bp() /= rv->p;
-
       }
     }
   }
-
 }
+
+
+// Viterbi version. 
+// Since all sep value are currently set to appropriate max
+// value from cur clique, through each sep and find the index to
+// re-set the sep to that value so it can be restored later. We
+// do this since the seps otherwise might change their value.
+void 
+InferenceMaxClique::
+deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part)
+{
+
+  // allocate some temporary storage for packed separator values.
+  // 128 words is *much* bigger than any possible packed clique value
+  // will take on, but it is easy/fast to allocate on the stack right now.
+  unsigned packedVal[128];
+
+  // now we iterate through all the separators.
+  for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
+    // get a handy reference to the current separator
+    InferenceSeparatorClique& sep = 
+      part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+    
+    /*
+     * There are 3 cases.
+     * 1) AI exists and REM exist
+     * 2) AI exists and REM doesnt exist
+     * 3) AI does not exist, but REM exists
+     * AI not exist and REM not exist can't occur.
+     */
+
+    unsigned accIndex;
+    // TODO: optimize this check away out of loop.
+    if (sep.origin.hAccumulatedIntersection.size() > 0) {
+      // an accumulated intersection exists.
+
+      sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
+				&packedVal[0]);
+      unsigned* accIndexp =
+	sep.iAccHashMap.find(&packedVal[0]);
+
+      // we should always find something or else something is wrong.
+      assert ( accIndexp != NULL ); 
+      accIndex = *accIndexp;
+
+    } else {
+      // no accumulated intersection exists, everything
+      // is in the remainder.
+      accIndex = 0;
+    }
+
+    if (sep.remDiscreteValuePtrs.size() == 0) {
+      // 2) AI exists and REM doesnt exist
+      // Then this separator is entirely covered by one or 
+      // more other separators earlier in the order.
+      sep.forwPointer.viterbiAccIndex = accIndex;
+      sep.forwPointer.viterbiRemIndex = 0;
+    } else {
+      // if we're here, then we must have some remainder
+      // pointers.
+
+      // Do the remainder exists in this separator.
+      // 
+      // either:
+      //   1) AI exists and REM exist
+      //     or
+      //   3) AI does not exist (accIndex == 0), but REM exists
+      // 
+	
+      // keep handy reference for readability.
+      InferenceSeparatorClique::AISeparatorValue& sv
+	= sep.separatorValues.ptr[accIndex];
+	
+      sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
+				&packedVal[0]);
+
+      unsigned* remIndexp =
+	sv.iRemHashMap.find(&packedVal[0]);
+
+      // it must exist
+      assert ( remIndexp != NULL );
+	
+      // We've finally got the sep entry.  Store the sep entry's id.
+      sep.forwPointer.viterbiAccIndex = accIndex;
+      sep.forwPointer.viterbiRemIndex = *remIndexp;
+    }
+  }
+}
+
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -4682,7 +4708,7 @@ SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
 
 
 SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
-				 vector <RandomVariable*>& newRvs,
+				 vector <RV*>& newRvs,
 				 map < RVInfo::rvParent, unsigned >& ppf,
 				 const unsigned int frameDelta)
   :  separatorValueSpaceManager(1,     // starting size
@@ -4694,13 +4720,13 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 				1,     // growth addition
 				0.90)  // decay rate 
 {
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
 
   // clone over nodes RVs and accumulated intersection.
   for (it = from_sep.nodes.begin();
        it != from_sep.nodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -4711,7 +4737,7 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     nodes.insert(nrv);
   }
 
@@ -4719,7 +4745,7 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
   for (it=from_sep.accumulatedIntersection.begin();
        it != from_sep.accumulatedIntersection.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -4731,7 +4757,7 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     accumulatedIntersection.insert(nrv);
   }
 
@@ -4739,7 +4765,7 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
   for (it=from_sep.remainder.begin();
        it != from_sep.remainder.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -4750,7 +4776,7 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     remainder.insert(nrv);
   }
 
@@ -4788,12 +4814,12 @@ SeparatorClique::prepareForUnrolling()
   // set up number of hidden ndoes within accumulated intersection.
 
   // create a vector form of the variables.
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
   for (it = accumulatedIntersection.begin();
        it != accumulatedIntersection.end();
        it++) {
-    RandomVariable* rv = (*it);
-    if (rv->hidden)
+    RV* rv = (*it);
+    if (rv->hidden())
       hAccumulatedIntersection.push_back(rv);
   }
 
@@ -4817,8 +4843,8 @@ SeparatorClique::prepareForUnrolling()
   for (it = remainder.begin();
        it != remainder.end();
        it++) {
-    RandomVariable* rv = (*it);
-    if (rv->hidden)
+    RV* rv = (*it);
+    if (rv->hidden())
       hRemainder.push_back(rv);
   }
 
@@ -4915,13 +4941,13 @@ SeparatorClique::printAllJTInfo(FILE*f)
  *-----------------------------------------------------------------------
  */
 InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
-						   vector <RandomVariable*>& newRvs,
+						   vector <RV*>& newRvs,
 						   map < RVInfo::rvParent, unsigned >& ppf,
 						   const unsigned int frameDelta)
   : origin(from_clique)
 {
 
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
 
   // clone over nodes RVs.
   fNodes.resize(origin.nodes.size());
@@ -4929,7 +4955,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   for (it = origin.nodes.begin();
        it != origin.nodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -4941,7 +4967,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     fNodes[i++] = nrv;
   }
 
@@ -4950,7 +4976,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   for (it = origin.accumulatedIntersection.begin();
        it != origin.accumulatedIntersection.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -4962,7 +4988,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     fAccumulatedIntersection[i] = nrv;
   }
 
@@ -4971,7 +4997,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   for (it = origin.remainder.begin();
        it != origin.remainder.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -4982,7 +5008,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     fRemainder[i++] = nrv;
   }
 
@@ -4992,7 +5018,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   accDiscreteValuePtrs.resize(origin.hAccumulatedIntersection.size());
   for (i=0;i<accDiscreteValuePtrs.size();i++) {
     // get the hidden rv for this location
-    RandomVariable* rv = origin.hAccumulatedIntersection[i];;
+    RV* rv = origin.hAccumulatedIntersection[i];;
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -5002,12 +5028,12 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
 
     // hidden nodes are always discrete (in this version).
     // TODO: add hidden continuous variable
-    DiscreteRandomVariable* drv = 
-      (DiscreteRandomVariable*)nrv;
+    DiscRV* drv = 
+      (DiscRV*)nrv;
 
     // grab a pointer directly to its value for easy access later.
     accDiscreteValuePtrs[i] = &(drv->val);
@@ -5019,7 +5045,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   remDiscreteValuePtrs.resize(origin.hRemainder.size());
   for (i=0;i<remDiscreteValuePtrs.size();i++) {
     // get the hidden rv for this location
-    RandomVariable* rv = origin.hRemainder[i];
+    RV* rv = origin.hRemainder[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -5029,11 +5055,11 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
 
     // hidden nodes are always discrete (in this version).
-    DiscreteRandomVariable* drv = 
-      (DiscreteRandomVariable*)nrv;
+    DiscRV* drv = 
+      (DiscRV*)nrv;
 
     // grab a pointer directly to its value for easy access later.
     remDiscreteValuePtrs[i] = &(drv->val);

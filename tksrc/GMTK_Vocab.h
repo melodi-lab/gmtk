@@ -49,11 +49,12 @@ public:
 
 	///////////////////////////////////////////////////////////
 	// Misc methods
+        // returns number of vocab items
 	unsigned size() const {return _size;}
 	void resize(unsigned size);
 
 	///////////////////////////////////////////////////////////
-	// Check whether <unk> is a word or not.
+	// Return whether <unk> is a word or not.
 	bool unkIsWord() const {
 		return _unkIndex < _size;
 	}
@@ -63,8 +64,8 @@ protected:
 	 * entry in the array
 	 */
 	struct HashEntry {
-		char *key;     /// key for the entry
-		int wid;       /// data for the entry
+		char *key;     /// key for the entry (i.e., the vocab string).
+		int wid;       /// data for the entry (i.e., the word or vocab int id).
 
 		// constructors and destructor
 		HashEntry() : key(NULL) {}
@@ -78,9 +79,9 @@ protected:
 	// hash function
 	inline unsigned hash(const char* key) const {
 		register unsigned hashValue = 0;
-
+		// a simple string hash function.
 		while ( *key )
-			hashValue += (hashValue << 7) + *key++;   // this is more efficient
+		  hashValue += (hashValue << 7) + *key++;   // this is more efficient
 
 		return hashValue % _tableSize;
 	}
@@ -100,8 +101,10 @@ protected:
 	HashEntry *_indexTable;		// index hash table
 	char **_stringTable;		// string array table
 
-	// <unk> is a special token in language modeling
-	// for unknonw words.
+	// <unk> is a special token in a language model as is used to
+	// represent all unknown words. All such words get the same
+        // probability (and are considered similar in a context). This
+        // is the index for <unk>.
 	unsigned _unkIndex;			// index for <unk>
 };
 

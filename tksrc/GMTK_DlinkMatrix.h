@@ -27,7 +27,6 @@
 
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
-#include "GMTK_RandomVariable.h"
 #include "GMTK_Dlinks.h"
 
 class LinMeanCondDiagGaussian;

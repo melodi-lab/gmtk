@@ -39,9 +39,9 @@
 VCID("$Header$");
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"

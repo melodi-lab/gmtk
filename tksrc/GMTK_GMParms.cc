@@ -46,6 +46,7 @@
 #include "GMTK_USCPT.h"
 #include "GMTK_NGramCPT.h"
 #include "GMTK_FNGramCPT.h"
+#include "GMTK_VECPT.h"
 #include "GMTK_Vocab.h"
 #include "GMTK_NameCollection.h"
 
@@ -112,6 +113,7 @@ GMParms::~GMParms()
   deleteObsInVector(vocabs);
   deleteObsInVector(ngramCpts);
   deleteObsInVector(fngramCpts);
+  deleteObsInVector(veCpts);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
   // deleteObsInVector(logitSwitchingMixtures);
@@ -141,6 +143,7 @@ void GMParms::add(MTCPT*ob) { add(ob,mtCpts,mtCptsMap); }
 void GMParms::add(Vocab* ob) { add(ob, vocabs, vocabsMap); }
 void GMParms::add(NGramCPT*ob) { add(ob,ngramCpts,ngramCptsMap); }
 void GMParms::add(FNGramCPT*ob) { add(ob,fngramCpts,fngramCptsMap); }
+void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
 void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
@@ -186,8 +189,8 @@ GMParms::readDPmfs(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num dPMFs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dense PMFs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num Dense PMFs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dense PMFs (%d) in file '%s' line %d exceeds maximum",num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     dPmfs.resize(num);
@@ -199,15 +202,15 @@ GMParms::readDPmfs(iDataStreamFile& is, bool reset)
     // first read the count
     Dense1DPMF* ob;
 
-    is.read(cnt,"DPMF cnt");
+    is.read(cnt,"Can't read DPMF number");
     if (cnt != i) 
-      error("ERROR: dense PMF count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: dense PMF count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new Dense1DPMF;
     ob->read(is);
     if (dPmfsMap.find(ob->name()) != dPmfsMap.end())
-      error("ERROR: dense PMF named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: dense PMF named '%s' already defined but is specified for a second time in file '%s' line %d",ob->name().c_str(),is.fileName(),is.lineNo());
     dPmfs[i+start] = ob;
     dPmfsMap[ob->name()] = i+start;
   }
@@ -240,8 +243,8 @@ GMParms::readSPmfs(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num sPMFs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of sparse PMFs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num Sparse PMFs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of sparse PMFs (%d) in file '%s' line %d exceeds maximum",num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     sPmfs.resize(num);
@@ -253,15 +256,15 @@ GMParms::readSPmfs(iDataStreamFile& is, bool reset)
     // first read the count
     Sparse1DPMF* ob;
 
-    is.read(cnt,"SPMF cnt");
+    is.read(cnt,"Can't read SPMF number");
     if (cnt != i) 
-      error("ERROR: dense PMF count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: dense PMF count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new Sparse1DPMF;
     ob->read(is);
     if (sPmfsMap.find(ob->name()) != sPmfsMap.end())
-      error("ERROR: sparse PMF named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: sparse PMF named '%s' already defined but is specified for a second time in file '%s' line %d",ob->name().c_str(),is.fileName(),is.lineNo());
     sPmfs[i+start] = ob;
     sPmfsMap[ob->name()] = i+start;
   }
@@ -294,8 +297,8 @@ GMParms::readMeans(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num means");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of means (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num means");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of means (%d) in file '%s' line %d exceeds maximum",num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     means.resize(num);
@@ -307,16 +310,17 @@ GMParms::readMeans(iDataStreamFile& is, bool reset)
     // first read the count
     MeanVector* ob;
 
-    is.read(cnt,"mean cnt");
+    is.read(cnt,"Can't read mean number");
     if (cnt != i) 
-      error("ERROR: mean count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: mean count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new MeanVector();
     ob->read(is);
     // printf("New mean, ob's name = %s\n",ob->name().c_str());
     if (meansMap.find(ob->name()) != meansMap.end())
-      error("ERROR: mean named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: mean named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
     means[i+start] = ob;
     meansMap[ob->name()] = i+start;
   }
@@ -330,8 +334,9 @@ GMParms::readCovars(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num covars");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of covars (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num covars");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of covars (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     covars.resize(num);
@@ -343,15 +348,16 @@ GMParms::readCovars(iDataStreamFile& is, bool reset)
     // first read the count
     DiagCovarVector* ob;
 
-    is.read(cnt,"cova cnt");
+    is.read(cnt,"Can't read covar num");
     if (cnt != i) 
-      error("ERROR: covar count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: covar count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new DiagCovarVector;
     ob->read(is);
     if (covarsMap.find(ob->name()) != covarsMap.end())
-      error("ERROR: covar named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: covar named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
     covars[i+start] = ob;
     covarsMap[ob->name()] = i+start;
   }
@@ -365,8 +371,9 @@ GMParms::readDLinkMats(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num dlinkmats");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dlink matrices (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num dlink matrices");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dlink matrices (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     dLinkMats.resize(num);
@@ -378,15 +385,16 @@ GMParms::readDLinkMats(iDataStreamFile& is, bool reset)
     // first read the count
     DlinkMatrix* ob;
 
-    is.read(cnt,"dlink cnt");
+    is.read(cnt,"Can't read dlink matrix number");
     if (cnt != i) 
-      error("ERROR: dlink matrix count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: dlink matrix count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new DlinkMatrix;
     ob->read(is);
     if (dLinkMatsMap.find(ob->name()) != dLinkMatsMap.end())
-      error("ERROR: dlink matrix named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: dlink matrix named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
     dLinkMats[i+start] = ob;
     dLinkMatsMap[ob->name()] = i+start;
   }
@@ -400,8 +408,9 @@ GMParms::readDLinks(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num dlinks");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dlinks (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't rad num dlinks");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dlinks (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     dLinks.resize(num);
@@ -413,15 +422,16 @@ GMParms::readDLinks(iDataStreamFile& is, bool reset)
     // first read the count
     Dlinks* ob;
 
-    is.read(cnt,"dlinks cnt");
+    is.read(cnt,"Can't read dlinks num");
     if (cnt != i) 
-      error("ERROR: dlink count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: dlink count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new Dlinks;
     ob->read(is);
     if (dLinksMap.find(ob->name()) != dLinksMap.end())
-      error("ERROR: dlink structure named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: dlink structure named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
     dLinks[i+start] = ob;
     dLinksMap[ob->name()] = i+start;
   }
@@ -435,8 +445,9 @@ GMParms::readWeightMats(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num weight matrices");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of weight matrices (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Cant' read num weight matrices");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of weight matrices (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     weightMats.resize(num);
@@ -448,15 +459,16 @@ GMParms::readWeightMats(iDataStreamFile& is, bool reset)
     // first read the count
     WeightMatrix* ob;
 
-    is.read(cnt,"weight mat cnt");
+    is.read(cnt,"Can't read weight mat num");
     if (cnt != i) 
-      error("ERROR: weight matrix count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: weight matrix count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new WeightMatrix;
     ob->read(is);
     if (weightMatsMap.find(ob->name()) != weightMatsMap.end())
-      error("ERROR: weight matrix named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: weight matrix named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
     weightMats[i+start] = ob;
     weightMatsMap[ob->name()] = i+start;
   }
@@ -470,8 +482,9 @@ GMParms::readMdCpts(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num Dense CPTs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of Dense CPTs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num DenseCPTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of Dense CPTs (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     mdCpts.resize(num);
@@ -483,18 +496,19 @@ GMParms::readMdCpts(iDataStreamFile& is, bool reset)
     // first read the count
     MDCPT* ob;
 
-    is.read(cnt,"Dense CPT cnt");
+    is.read(cnt,"Can't read DenseCPT num");
     if (cnt != i) 
-      error("ERROR: Dense CPT count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: Dense CPT count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new MDCPT;
     ob->read(is);
     if (mdCptsMap.find(ob->name()) != mdCptsMap.end()) {
       if (ob->name() == string(USMDCPT_NAME))
-	error("ERROR: special internal unity score MDCPT named '%s' must not be used in parameter files, as it is used internally",USMDCPT_NAME);
+	error("ERROR: special internal unity score DenseCPT named '%s' must not be used in parameter files, as it is used internally",USMDCPT_NAME);
       else
-	error("ERROR: Dense CPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+	error("ERROR: Dense CPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	      ob->name().c_str(),is.fileName(),is.lineNo());
     }
     mdCpts[i+start] = ob;
     mdCptsMap[ob->name()] = i+start;
@@ -509,8 +523,9 @@ GMParms::readMsCpts(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num Sparse CPTs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of Sparse CPTs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num SparseCPTs");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of Sparse CPTs (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     msCpts.resize(num);
@@ -522,15 +537,16 @@ GMParms::readMsCpts(iDataStreamFile& is, bool reset)
     // first read the count
     MSCPT* ob;
 
-    is.read(cnt,"Sparse CPT cnt");
+    is.read(cnt,"Can't read SparseCPT num");
     if (cnt != i) 
-      error("ERROR: Sparse CPT count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: Sparse CPT count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new MSCPT;
     ob->read(is);
     if (msCptsMap.find(ob->name()) != msCptsMap.end())
-      error("ERROR: Sparse CPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: Sparse CPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
     msCpts[i+start] = ob;
     msCptsMap[ob->name()] = i+start;
   }
@@ -545,7 +561,7 @@ GMParms::readMtCpts(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num DETERMINISTIC CPTs");
+  is.read(num,"Can't read num DeterministicCPTs");
   if (num > GMPARMS_MAX_NUM) error("ERROR: number of deterministic CPTs (%d) exceeds maximum",num);
   if (reset) {
     start = 0;
@@ -558,15 +574,16 @@ GMParms::readMtCpts(iDataStreamFile& is, bool reset)
     // first read the count
     MTCPT* ob;
 
-    is.read(cnt,"Deterministic CPT cnt");
+    is.read(cnt,"Can't read DeterministicCPT num");
     if (cnt != i) 
-      error("ERROR: deterministic CPT count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: deterministic CPT count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new MTCPT;
     ob->read(is);
     if (mtCptsMap.find(ob->name()) != mtCptsMap.end())
-      error("ERROR: deterministic CPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: deterministic CPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
     mtCpts[i+start] = ob;
     mtCptsMap[ob->name()] = i+start;
   }
@@ -579,7 +596,7 @@ void GMParms::readVocabs(iDataStreamFile& is, bool reset)
 	unsigned cnt;
 	unsigned start = 0;
 
-	is.read(num,"num NGRAM Vocabs");
+	is.read(num,"Can't read num Vocabs");
 	if ( num > GMPARMS_MAX_NUM )
 		error("ERROR: number of Vocabs (%d) exceeds maximum", num);
 	if ( reset ) {
@@ -593,14 +610,16 @@ void GMParms::readVocabs(iDataStreamFile& is, bool reset)
 		// first read the count
 		Vocab* ob;
 
-		is.read(cnt, "Vocab cnt");
+		is.read(cnt, "Can't read Vocab num");
 		if ( cnt != i ) 
-			error("ERROR: Vocab count (%d), out of order in file '%s', expecting %d", cnt,is.fileName(),i);
+			error("ERROR: Vocab count (%d), out of order in file '%s' line %d, expecting %d", 
+			      cnt,is.fileName(),is.lineNo(),i);
 
 		ob = new Vocab();
 		ob->read(is);
 		if ( vocabsMap.find(ob->name()) != vocabsMap.end() )
-			error("ERROR: Vocab named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+			error("ERROR: Vocab named '%s' already defined but is specified for a second time in file '%s' line %d",
+			      ob->name().c_str(),is.fileName(),is.lineNo());
 		vocabs[i + start] = ob;
 		vocabsMap[ob->name()] = i + start;
   }
@@ -613,7 +632,7 @@ void GMParms::readNgramCpts(iDataStreamFile& is, bool reset)
 	unsigned cnt;
 	unsigned start = 0;
 
-	is.read(num,"num NGRAM CPTs");
+	is.read(num,"Cant' read num NgramCPTs");
 	if ( num > GMPARMS_MAX_NUM )
 		error("ERROR: number of NGram CPTs (%d) exceeds maximum", num);
 	if ( reset ) {
@@ -627,14 +646,16 @@ void GMParms::readNgramCpts(iDataStreamFile& is, bool reset)
 		// first read the count
 		NGramCPT* ob;
 
-		is.read(cnt, "NGram CPT cnt");
+		is.read(cnt, "Can't read NgramCPT num");
 		if ( cnt != i )
-			error("ERROR: NGramCPT count (%d), out of order in file '%s', expecting %d", cnt,is.fileName(),i);
+			error("ERROR: NGramCPT count (%d), out of order in file '%s' line %d, expecting %d", 
+			      cnt,is.fileName(),is.lineNo(),i);
 
 		ob = new NGramCPT();
 		ob->read(is);
 		if ( ngramCptsMap.find(ob->name()) != ngramCptsMap.end() )
-			error("ERROR: NGramCPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+			error("ERROR: NGramCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+			      ob->name().c_str(),is.fileName(),is.lineNo());
 		ngramCpts[i + start] = ob;
 		ngramCptsMap[ob->name()] = i + start;
   }
@@ -647,7 +668,7 @@ void GMParms::readFNgramCpts(iDataStreamFile& is, bool reset)
 	unsigned cnt;
 	unsigned start = 0;
 
-	is.read(num, "num FNGRAM CPTs");
+	is.read(num, "Cant' read num FNgramCPTs");
 	if ( num > GMPARMS_MAX_NUM )
 		error("ERROR: number of FNGram CPTs (%d) exceeds maximum", num);
 	if ( reset ) {
@@ -661,19 +682,58 @@ void GMParms::readFNgramCpts(iDataStreamFile& is, bool reset)
 		// first read the count
 		FNGramCPT* ob;
 
-		is.read(cnt, "FNGram CPT cnt");
+		is.read(cnt, "Can't read FNGramCPT num");
 		if ( cnt != i )
-			error("ERROR: FNGramCPT count (%d), out of order in file '%s', expecting %d", cnt, is.fileName(), i);
+			error("ERROR: FNGramCPT count (%d), out of order in file '%s' line %d, expecting %d", 
+			      cnt, is.fileName(),is.lineNo(), i);
 
 		ob = new FNGramCPT();
 		ob->read(is);
 		if ( fngramCptsMap.find(ob->name()) != fngramCptsMap.end() )
-			error("ERROR: FNGramCPT named '%s' already defined but is specified for a second time in file '%s'",
-				ob->name().c_str(), is.fileName());
+			error("ERROR: FNGramCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+				ob->name().c_str(), is.fileName(),is.lineNo());
 		fngramCpts[i + start] = ob;
 		fngramCptsMap[ob->name()] = i + start;
 	}
 }
+
+
+void GMParms::readVECpts(iDataStreamFile& is, bool reset)
+{
+	unsigned num;
+	unsigned cnt;
+	unsigned start = 0;
+
+	is.read(num, "Can't read num VirtualEvidenceCPTs");
+	if ( num > GMPARMS_MAX_NUM )
+		error("ERROR: number of Ve CPTs (%d) exceeds maximum", num);
+	if ( reset ) {
+		start = 0;
+		veCpts.resize(num);
+	} else {
+		start = veCpts.size();
+		veCpts.resize(start + num);
+	}
+	for ( unsigned i = 0; i <num; i++ ) {
+		// first read the count
+		VECPT* ob;
+
+		is.read(cnt, "Can't read VirtualEvidenceCPT num");
+		if ( cnt != i )
+			error("ERROR: VECPT count (%d), out of order in file '%s' line %d, expecting %d", 
+			      cnt, is.fileName(), is.lineNo(),i);
+
+		ob = new VECPT();
+		ob->read(is);
+		if ( veCptsMap.find(ob->name()) != veCptsMap.end() )
+			error("ERROR: VECPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+				ob->name().c_str(), is.fileName(),is.lineNo());
+		veCpts[i + start] = ob;
+		veCptsMap[ob->name()] = i + start;
+	}
+}
+
+
 
 
 void
@@ -686,8 +746,9 @@ GMParms::readDTs(
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num DTs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of DTs (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num Decision Trees");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of DTs (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     dts.resize(num);
@@ -700,15 +761,16 @@ GMParms::readDTs(
     // first read the count
     RngDecisionTree* ob;
 
-    is.read(cnt,"DT cnt");
+    is.read(cnt,"Can't read DecisionTree num");
     if (cnt != i) 
-      error("ERROR: DT count (%d), out of order in file '%s', expecting %d",
-	    cnt,is.fileName(),i);
+      error("ERROR: DT count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     ob = new RngDecisionTree;
     ob->read(is);
     if (dtsMap.find(ob->name()) != dtsMap.end())
-      error("ERROR: DT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+      error("ERROR: DT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
     dts[i+start] = ob;
     dtsMap[ob->name()] = i+start;
     if (ob->clampable()) {
@@ -725,8 +787,9 @@ GMParms::readComponents(iDataStreamFile& is, bool reset)
   unsigned cnt;
 
   unsigned start = 0;
-  is.read(num,"num components");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of components (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num components");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of components (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
     components.resize(num);
@@ -738,18 +801,19 @@ GMParms::readComponents(iDataStreamFile& is, bool reset)
     // first read the count
     Component* gc = NULL;
 
-    is.read(cnt,"comp cnt");
+    is.read(cnt,"Can't read component num");
     if (cnt != i) 
-      error("ERROR: component count (%d), out of order in file '%s', expecting %d",cnt,is.fileName(),i);
+      error("ERROR: component count (%d), out of order in file '%s' line %d , expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     // next read the dimension of this component
     int dim;
-    is.read(dim,"comp dim");
+    is.read(dim,"Can't read component dimension");
 
     // read the Gaussian type, note that when
     // this is written, the object itself will write the type.
     int t;
-    is.read(t,"comp type");
+    is.read(t,"Can't read component type");
     if (t == Component::DiagGaussian) {
       gc = new DiagGaussian(dim);
     } else if (t == Component::LinMeanCondDiagGaussian) {
@@ -758,7 +822,8 @@ GMParms::readComponents(iDataStreamFile& is, bool reset)
       error("PolyNLinMeanCondDiag not implemented");
       // gc = new PolyNLinMeanCondDiagGaussian(dim);
     } else {
-      error("Error: reading file %s, unknown component type %d in file",is.fileName(),t);
+      error("Error: reading file %s line %d, unknown component type %d in file",
+	    is.fileName(),is.lineNo(),t);
     }
     gc->read(is);
 
@@ -767,10 +832,12 @@ GMParms::readComponents(iDataStreamFile& is, bool reset)
     // it here, however, since 1) it costs almost nothing, and 2) as new object types 
     // are added, we might need such a check here.
     if (dim <= 0)
-      error("ERROR: component named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gc->name().c_str(),is.fileName(),dim);
+      error("ERROR: component named '%s' in file '%s' line %d specifies a non-positive dimension (%d). Must be > 0.",
+	    gc->name().c_str(),is.fileName(),is.lineNo(),dim);
 
     if (componentsMap.find(gc->name()) != componentsMap.end())
-      error("ERROR: component named '%s' already defined but is specified for a second time in file '%s'",gc->name().c_str(),is.fileName());
+      error("ERROR: component named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    gc->name().c_str(),is.fileName(),is.lineNo());
     components[i+start] = gc;
     componentsMap[gc->name()] = i+start;
   }
@@ -784,8 +851,9 @@ GMParms::readMixtures(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num MGs");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of mixtures (%d) in file '%s' exceeds maximum",num,is.fileName());
+  is.read(num,"Can't read num mixtures");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of mixtures (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
   if (reset) {
     // this isn't implemented at the moment.
     assert(0);
@@ -801,15 +869,15 @@ GMParms::readMixtures(iDataStreamFile& is, bool reset)
     // first read the count
     Mixture* gm;
 
-    is.read(cnt,"MG cnt");
+    is.read(cnt,"Can't read mixture num");
     if (cnt != i) 
-      error("ERROR: reading file %s, mixture count (%d), out of order, expecting %d",
-	    is.fileName(),cnt,i);
+      error("ERROR: reading file %s line %d, mixture count (%d), out of order, expecting %d",
+	    is.fileName(),is.lineNo(),cnt,i);
 
 
     // next read the dimension of this mixture
     int dim;
-    is.read(dim,"MG dim");
+    is.read(dim,"Can't read mixture dimension");
 
     gm = new Mixture(dim);
     gm->read(is);
@@ -819,7 +887,8 @@ GMParms::readMixtures(iDataStreamFile& is, bool reset)
     // it here, however, since 1) it costs almost nothing, and 2) as new object types 
     // are added, we might need such a check here.
     if (dim <= 0)
-      error("ERROR: mixture named '%s' in file '%s' specifies a non-positive dimension (%d). Must be > 0.",gm->name().c_str(),is.fileName(),dim);
+      error("ERROR: mixture named '%s' in file '%s' line %d specifies a non-positive dimension (%d). Must be > 0.",
+	    gm->name().c_str(),is.fileName(),is.lineNo(),dim);
 
     if (mixturesMap.find(gm->name()) != mixturesMap.end()) {
       if (gm->name() == string(ZEROSCOREMIXTURE_NAME))
@@ -827,7 +896,8 @@ GMParms::readMixtures(iDataStreamFile& is, bool reset)
       else if (gm->name() == string(UNITYSCOREMIXTURE_NAME))
 	error("ERROR: special internal mixture named '%s' must not be used in parameter files, as it is used internally",UNITYSCOREMIXTURE_NAME);
       else
-	error("ERROR: mixture named '%s' already defined but is specified for a second time in file '%s'",gm->name().c_str(),is.fileName());
+	error("ERROR: mixture named '%s' already defined but is specified for a second time in file '%s' line %d",
+	      gm->name().c_str(),is.fileName(),is.lineNo());
     }
 
 
@@ -844,7 +914,7 @@ GMParms::readNameCollections(iDataStreamFile& is, bool reset)
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"num NCs");
+  is.read(num,"Can't read num NamedCollections");
   if (reset) {
     start = 0;
     ncls.resize(num);
@@ -856,15 +926,17 @@ GMParms::readNameCollections(iDataStreamFile& is, bool reset)
     // first read the count
     NameCollection* nc;
 
-    is.read(cnt,"NC cnt");
+    is.read(cnt,"Can't read NameCollection num");
     if (cnt != i) 
-      error("ERROR: collection order count (%d), out of order in file '%s', expecting %d",cnt,is.fileName(),i);
+      error("ERROR: collection order count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
 
     nc = new NameCollection();
     nc->read(is);
 
     if (nc->name() == NAMED_COLLECTION_GLOBAL_NAME) {
-      error("ERROR: special internal collection name '%s' can not be defined in file '%s'",nc->name().c_str(),is.fileName());
+      error("ERROR: special internal collection name '%s' can not be defined in file '%s' line %d",
+	    nc->name().c_str(),is.fileName(),is.lineNo());
 
     }
 
@@ -872,7 +944,8 @@ GMParms::readNameCollections(iDataStreamFile& is, bool reset)
       if (nc->name() == string(NAMED_COLLECTION_GLOBAL_NAME))
 	error("ERROR: special internal collection named '%s' must not be used in parameter files, as it is used internally to refer to global table.",NAMED_COLLECTION_GLOBAL_NAME);
       else
-	error("ERROR: collection named '%s' already defined but is specified for a second time in file '%s'",nc->name().c_str(),is.fileName());
+	error("ERROR: collection named '%s' already defined but is specified for a second time in file '%s' line %d",
+	      nc->name().c_str(),is.fileName(),is.lineNo());
     }
 
     ncls[i+start] = nc;
@@ -886,27 +959,30 @@ void
 GMParms::readGausSwitchMixtures(iDataStreamFile& is, bool reset)
 {
   unsigned num;
-  is.read(num,"num GSMGs");
+  is.read(num,"Can't read num GSMGs");
   if (num > 0)
-    error("ERROR: reading file '%s', GausSwitchMixtures not implemented just yet",is.fileName());
+    error("ERROR: reading file '%s' line %d, GausSwitchMixtures not implemented just yet",
+	  is.fileName(),is.lineNo());
 }
 
 void 
 GMParms::readLogitSwitchMixtures(iDataStreamFile& is, bool reset)
 {
   unsigned num;
-  is.read(num,"num LSMGs");
+  is.read(num,"Can't read num LSMGs");
   if (num > 0)
-    error("ERROR: reading file '%s', LogitSwitchMixtures not implemented just yet",is.fileName());
+    error("ERROR: reading file '%s' line %d, LogitSwitchMixtures not implemented just yet",
+	  is.fileName(),is.lineNo());
 }
 
 void 
 GMParms::readMlpSwitchMixtures(iDataStreamFile& is, bool reset)
 {
   unsigned num;
-  is.read(num,"num MSMGs");
+  is.read(num,"Can't read num MSMGs");
   if (num > 0)
-    error("ERROR: reading file '%s', MLPSwitchMixtures not implemented just yet",is.fileName());
+    error("ERROR: reading file '%s' line %d, MLPSwitchMixtures not implemented just yet",
+	  is.fileName(),is.lineNo());
 }
 
 
@@ -916,9 +992,10 @@ GMParms::readBasic(iDataStreamFile& is)
 
   string str;
 
-  is.read(str,"GMTK_GMParms::readBasic, magic");
+  is.read(str,"Can't read GM parameter magic string");
   if (str != MAGIC_PRM_FILE)
-    error("GMTK_GMParms::readBasic. Expecting basic param file, got (%s) in file (%s)",str.c_str(),is.fileName());
+    error("GMTK_GMParms::readBasic. Expecting basic param file, got (%s) in file (%s) line %d",
+	  str.c_str(),is.fileName(),is.lineNo());
 
   readDPmfs(is);
   readSPmfs(is);
@@ -932,6 +1009,7 @@ GMParms::readBasic(iDataStreamFile& is)
   readVocabs(is);
   readNgramCpts(is);
   readFNgramCpts(is);
+  readVECpts(is);
 }
 
 
@@ -976,6 +1054,7 @@ GMParms::readAll(iDataStreamFile& is)
   readVocabs(is);
   readNgramCpts(is);
   readFNgramCpts(is);
+  readVECpts(is);
 
   // next read definitional items
   readComponents(is);
@@ -1072,6 +1151,7 @@ GMParms::readNonTrainable(iDataStreamFile& is)
   readVocabs(is);
   readNgramCpts(is);
   readFNgramCpts(is);
+  readVECpts(is);
 }
 
 
@@ -1095,21 +1175,24 @@ GMParms::read(
 
   while (is.readString(keyword)) {
     if (!is.readString(fileName)) {
-      error("ERROR: while reading file '%s', got keyword '%s' without a filename",is.fileName(),keyword.c_str());
+      error("ERROR: while reading file '%s' line %d , got keyword '%s' without a filename",
+	    is.fileName(),is.lineNo(),keyword.c_str());
     }
 
     bool binary_p = is.binary();
     if (fileName != INLINE_FILE_KEYWORD) {
       // read binary status of file if this is not an inline declarator
       if (!is.readString(binStatus)) {
-	error("ERROR: while reading file '%s', got keyword '%s' and filename '%s' without a binary status",is.fileName(),keyword.c_str(),fileName.c_str());
+	error("ERROR: while reading file '%s' line %d, got keyword '%s' and filename '%s' without a binary status",
+	      is.fileName(),is.lineNo(),keyword.c_str(),fileName.c_str());
       }
       if (binStatus == "ascii" || binStatus == "ASCII")
 	binary_p = false;
       else if (binStatus == "binary" || binStatus == "BINARY")
 	binary_p = true;
       else {
-	error("ERROR: while reading file '%s', got string '%s' when expecting 'ascii'/'binary' keyword",is.fileName(),binStatus.c_str());
+	error("ERROR: while reading file '%s' line %d, got string '%s' when expecting 'ascii'/'binary' keyword",
+	      is.fileName(),is.lineNo(),binStatus.c_str());
       }
     }
 
@@ -1118,7 +1201,8 @@ GMParms::read(
       fileNameMap[fileName] = new iDataStreamFile(fileName.c_str(),binary_p);
       it = fileNameMap.find(fileName);
     } else if (((*it).second)->binary() != binary_p) {
-      error("ERROR: reading '%s'. File '%s' had binary status = %d, now binary status = %d. Can't mix binary and ASCII files",is.fileName(),fileName.c_str(),((*it).second)->binary(),binary_p);
+      error("ERROR: reading '%s'. File '%s' line %d had binary status = %d, now binary status = %d. Can't mix binary and ASCII files",
+	    is.fileName(),is.lineNo(),fileName.c_str(),((*it).second)->binary(),binary_p);
     }
 
 
@@ -1152,14 +1236,17 @@ GMParms::read(
     } else if (keyword == "DETERMINISTIC_CPT_IN_FILE") {
       readMtCpts(*((*it).second),false);
 
-	} else if (keyword == "VOCAB_IN_FILE") {
-	  readVocabs(*((*it).second),false);
+    } else if (keyword == "VOCAB_IN_FILE") {
+      readVocabs(*((*it).second),false);
 
-	} else if (keyword == "NGRAM_CPT_IN_FILE") {
-	  readNgramCpts(*((*it).second),false);
+    } else if (keyword == "NGRAM_CPT_IN_FILE") {
+      readNgramCpts(*((*it).second),false);
 
-	} else if (keyword == "FNGRAM_CPT_IN_FILE") {
-	  readFNgramCpts(*((*it).second),false);
+    } else if (keyword == "FNGRAM_CPT_IN_FILE") {
+      readFNgramCpts(*((*it).second),false);
+
+    } else if (keyword == "VE_CPT_IN_FILE") {
+      readVECpts(*((*it).second),false);
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
@@ -1174,20 +1261,20 @@ GMParms::read(
       readNameCollections(*((*it).second),false);
 
     } else if (keyword == "GSMG_IN_FILE") {
-      error("GSMG_IN_FILE in file '%s', not implemented",
-	    is.fileName());
+      error("GSMG_IN_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
 
     } else if (keyword == "LSMG_IN_FILE") {
-      error("LSMG_IN_FILE in file '%s', not implemented",
-	    is.fileName());
+      error("LSMG_IN_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
 
     } else if (keyword == "MSMG_IN_FILE") {
-      error("MSMG_IN_FILE in file '%s', not implemented",
-	    is.fileName());
+      error("MSMG_IN_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
 
     } else {
-      error("ERROR: encountered unknown file type '%s' in file '%s'",
-	    keyword.c_str(),is.fileName());
+      error("ERROR: encountered unknown file type '%s' in file '%s' line %d",
+	    keyword.c_str(),is.fileName(),is.lineNo());
     }
   }
 
@@ -2206,21 +2293,24 @@ GMParms::write(const char *const outputFileFormat, const int intTag)
   while (is.readString(keyword)) {
 
     if (!is.readString(fileName)) {
-      error("ERROR: while reading file '%s', got keyword '%s' without a filename",is.fileName(),keyword.c_str());
+      error("ERROR: while reading file '%s' line %d, got keyword '%s' without a filename",
+	    is.fileName(),is.lineNo(),keyword.c_str());
     }
     
 
     bool binary_p = is.binary();
     // read binary status of file
     if (!is.readString(binStatus)) {
-      error("ERROR: while reading file '%s', got keyword '%s' and filename '%s' without a binary status",is.fileName(),keyword.c_str(),fileName.c_str());
+      error("ERROR: while reading file '%s' line %d, got keyword '%s' and filename '%s' without a binary status",
+	    is.fileName(),is.lineNo(),keyword.c_str(),fileName.c_str());
     }
     if (binStatus == "ascii" || binStatus == "ASCII")
       binary_p = false;
     else if (binStatus == "binary" || binStatus == "BINARY")
       binary_p = true;
     else {
-      error("ERROR: while reading file '%s', got string '%s' when expecting 'ascii'/'binary' keyword",is.fileName(),binStatus.c_str());
+      error("ERROR: while reading file '%s' line %d, got string '%s' when expecting 'ascii'/'binary' keyword",
+	    is.fileName(),is.lineNo(),binStatus.c_str());
     }
 
     copyStringWithTag(buff,fileName.c_str(),intTag,sizeof(buff));
@@ -2237,7 +2327,8 @@ GMParms::write(const char *const outputFileFormat, const int intTag)
       // delete ((*it).second);
       // fileNameMap[fileName] = new oDataStreamFile(fileName.c_str(),binary_p,true);
       // it = fileNameMap.find(fileName);
-      error("ERROR: reading '%s'. File '%s' had binary status = %d, now binary status = %d. Can't mix binary and ASCII files",is.fileName(),fileName.c_str(),((*it).second)->binary(),binary_p);
+      error("ERROR: reading '%s' line %d. File '%s' had binary status = %d, now binary status = %d. Can't mix binary and ASCII files",
+	    is.fileName(),is.lineNo(),fileName.c_str(),((*it).second)->binary(),binary_p);
     }
 
     if (keyword == "DPMF_OUT_FILE") {
@@ -2283,20 +2374,20 @@ GMParms::write(const char *const outputFileFormat, const int intTag)
       writeNameCollections(*((*it).second));
 
     } else if (keyword == "GSMG_OUT_FILE") {
-      error("GSMG_OUT_FILE in file '%s', not implemented",
-	    is.fileName());
+      error("GSMG_OUT_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
 
     } else if (keyword == "LSMG_OUT_FILE") {
-      error("LSMG_OUT_FILE in file '%s', not implemented",
-	    is.fileName());
+      error("LSMG_OUT_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
 
     } else if (keyword == "MSMG_OUT_FILE") {
-      error("MSMG_OUT_FILE in file '%s', not implemented",
-	    is.fileName());
+      error("MSMG_OUT_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
 
     } else {
-      error("ERROR: encountered unknown file type '%s' in file '%s'",
-	    keyword.c_str(),is.fileName());
+      error("ERROR: encountered unknown file type '%s' in file '%s' line %d",
+	    keyword.c_str(),is.fileName(),is.lineNo());
     }
   }
 
@@ -2424,6 +2515,9 @@ GMParms::setSegment(const unsigned segmentNo)
     clampableDts[i]->seek(segmentNo);
     clampableDts[i]->clampNextDecisionTree();
   }
+  for (unsigned i=0; i< veCpts.size(); i++) {
+    veCpts[i]->setSegment(segmentNo);
+  }
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
@@ -2431,6 +2525,7 @@ GMParms::setSegment(const unsigned segmentNo)
   for (unsigned i=0;i<mixtures.size();i++) {
     mixtures[i]->emptyComponentCache();
   }
+
 
 }
 
@@ -2555,6 +2650,8 @@ unsigned GMParms::totalNumberParameters()
     sum += ngramCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<fngramCpts.size();i++)
     sum += fngramCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<veCpts.size();i++)
+    sum += veCpts[i]->totalNumberParameters();
   return sum;
 
 }
@@ -2652,8 +2749,8 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
   string objName;
   while (is.readString(objType)) {
     if (!is.readString(objName)) {
-      error("ERROR: while reading file '%s', got object type '%s' without an object name",
-	    is.fileName(),
+      error("ERROR: while reading file '%s' line %d, got object type '%s' without an object name",
+	    is.fileName(),is.lineNo(),
 	    objType.c_str());
     }
 
@@ -2663,10 +2760,10 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
             name[i]->emClearAmTrainingBit(); \
       } else { \
 	if ((it=mapName.find(objName)) == mapName.end()) \
-	  error("ERROR: can't find object '%s' of type '%s' listed in file '%s' of objects to not train.", \
+	  error("ERROR: can't find object '%s' of type '%s' listed in file '%s' line %d of objects to not train.", \
 	      objName.c_str(), \
 	      objType.c_str(), \
-	      is.fileName()); \
+	      is.fileName(),is.lineNo()); \
         name[(*it).second]->emClearAmTrainingBit(); }
 
 
@@ -2694,9 +2791,9 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
     } else if (objType == "MIXTURE") {
       EMCLEARAMTRAININGBIT_CODE(mixturesMap,mixtures);
     } else {
-      error("ERROR: bad object type name '%s' in file '%s' of objects to not train.",
+      error("ERROR: bad object type name '%s' in file '%s' line %d of objects to not train.",
 	    objType.c_str(),
-	    is.fileName());
+	    is.fileName(),is.lineNo());
     }
 
   }

@@ -37,7 +37,8 @@
 #include "debug.h"
 #include "rand.h"
 
-#include "GMTK_RandomVariable.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_MaxClique.h"
 #include "GMTK_PackCliqueValue.h"
 
@@ -223,30 +224,33 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
 
 //   sArray < unsigned > cards(maxClique.nodes.size());
 
-//   set<RandomVariable*>::iterator it;
+//   set<RV*>::iterator it;
 //   unsigned i=0;
 //   for (it=maxClique.nodes.begin();
 //        it != maxClique.nodes.end();it++) {
-//     RandomVariable*rv = (*it);
+//     RV*rv = (*it);
 //     cards.ptr[i] = rv->cardinality;
 //     i++;
 //   }
 //   init(cards.ptr);
 // }
 
-PackCliqueValue::PackCliqueValue(vector<RandomVariable*>& nodes)
+PackCliqueValue::PackCliqueValue(vector<RV*>& nodes)
   : unpackedVectorLength(nodes.size())
 {
   assert (nodes.size() > 0);
 
   sArray < unsigned > cards(nodes.size());
 
-  vector<RandomVariable*>::iterator it;
+  vector<RV*>::iterator it;
   unsigned i=0;
   for (it=nodes.begin();
        it != nodes.end();it++) {
-    RandomVariable*rv = (*it);
-    cards.ptr[i] = rv->cardinality;
+
+    RV*rv = (*it);
+    assert ( rv->discrete() );
+    DiscRV*drv = RV2DRV(rv);
+    cards.ptr[i] = drv->cardinality;
     i++;
   }
   init(cards.ptr);

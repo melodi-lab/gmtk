@@ -1609,3 +1609,14 @@ RV
        + RV_ObsCon_Sw_Pn
        + RV_ObsCon_Sw_ScPn
 
+
+The new three ways to cmpute rv probs are:
+
+   logpr probGivenParents (like the old probGivenParentsWSetup())
+   void begin(logpr& p)
+   bool next(logpr& p);
+
+
+Wed Aug 25 08:14:12 2004
+new RV hierarcy names:
+

@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "GMTK_RandomVariable.h"
+#include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_MaxClique.h"
@@ -53,7 +53,7 @@ class JT_Partition : public Partition {
 
   friend class JunctionTree;
 
-  void findInterfaceCliques(const set <RandomVariable*>& iNodes,
+  void findInterfaceCliques(const set <RV*>& iNodes,
 			    unsigned& iClique,
 			    bool& iCliqueSameAsInterface);
 public:
@@ -63,13 +63,13 @@ public:
   // the left interface clique, find a clique that is a superset of
   // these nodes. Empty if there is no such set (e.g., for a P
   // partition)
-  set <RandomVariable*> liNodes;
+  set <RV*> liNodes;
 
   // Interface nodes on the "right" of this partition. I.e., to
   // compute the root clique of this partition, we find a clique that
   // is a superset of these nodes. Empty if there is no such set
   // (e.g., for an E partition).
-  set <RandomVariable*> riNodes;
+  set <RV*> riNodes;
 
   // Nodes that are not assigned in this partition. If all nodes are
   // forward-time directed, we are guaranteed that they will be
@@ -77,7 +77,7 @@ public:
   // are backward-time directed, the nodes are assigned in the right
   // adjacent partition. With a bi-directional graph, the nodes could
   // be assigned in either the left or right adjacent partition.
-  set <RandomVariable*> unassignedInPartition;
+  set <RV*> unassignedInPartition;
   
   // The separators for this partition.  If this is a P partition,
   // then all of the separators in this partition are between cliques
@@ -104,17 +104,17 @@ public:
 	       // (say for an P or E partition). These have
 	       // their own frame deltas since they might be
 	       // different.
-	       const set <RandomVariable*>& from_liVars,
+	       const set <RV*>& from_liVars,
 	       const unsigned int liFrameDelta,
-	       const set <RandomVariable*>& from_riVars,
+	       const set <RV*>& from_riVars,
 	       const unsigned int riFrameDelta,
 	       // Information todo the mapping.
-	       vector <RandomVariable*>& newRvs,
+	       vector <RV*>& newRvs,
 	       map < RVInfo::rvParent, unsigned >& ppf);
 
   JT_Partition(Partition& from_part,
-	       const set <RandomVariable*>& from_liVars,
-	       const set <RandomVariable*>& from_riVars);
+	       const set <RV*>& from_liVars,
+	       const set <RV*>& from_riVars);
   
 
   // returns the left and right interface clique. If not defined,
@@ -157,7 +157,7 @@ public:
   JT_InferencePartition() : origin(*((JT_Partition*)NULL)) {}
   // normal (or re-)constructor
   JT_InferencePartition(JT_Partition& _origin,
-			vector <RandomVariable*>& newRvs,
+			vector <RV*>& newRvs,
 			map < RVInfo::rvParent, unsigned >& ppf,
 			const unsigned int frameDelta);
   // destructor
@@ -234,7 +234,7 @@ class JunctionTree  {
   // Partition Pointer Array of IPartitionInfo used by recursive Island algorithm.
   sArray <PartitionInfo> partPArray;
   // current set of unrolled random variables
-  vector <RandomVariable*> cur_unrolled_rvs;
+  vector <RV*> cur_unrolled_rvs;
   // current mapping from 'name+frame' to integer index into unrolled_rvs.
   map < RVInfo::rvParent, unsigned > cur_ppf;
   // the evidence probability used during island algorithm.
@@ -302,9 +302,9 @@ class JunctionTree  {
 			       JT_Partition&part,
 			       const unsigned root,
 			       const unsigned depth,
-			       RandomVariable* rv,
+			       RV* rv,
 			       bool& alreadyAProbContributer,
-			       set<RandomVariable*>& parSet,
+			       set<RV*>& parSet,
 			       multimap< vector<double>, unsigned >& scoreSet);
   static void createDirectedGraphOfCliquesRecurse(JT_Partition& part,
 					   const unsigned root,
@@ -524,8 +524,8 @@ public:
   // doing collect evidence on this JT.
   static double junctionTreeWeight(JT_Partition& part,
 				   const unsigned rootClique,
-				   set<RandomVariable*>* lp_nodes,
-				   set<RandomVariable*>* rp_nodes);
+				   set<RV*>* lp_nodes,
+				   set<RV*>* rp_nodes);
 
   // Given a set of maxcliques for a partition, and an interface for
   // this (can be left right, or any set including empty, the only
@@ -534,9 +534,9 @@ public:
   // estimated JT cost. This is a static routine so can be called from
   // anywhere.
   static double junctionTreeWeight(vector<MaxClique>& cliques,
-				   const set<RandomVariable*>& interfaceNodes,
-				   set<RandomVariable*>* lp_nodes,
-				   set<RandomVariable*>* rp_nodes);
+				   const set<RV*>& interfaceNodes,
+				   set<RV*>* lp_nodes,
+				   set<RV*>* rp_nodes);
 				   
   // 
   // Print all information about the JT. Must
@@ -544,9 +544,9 @@ public:
   // already.
   void printAllJTInfo(char* fileName);
   void printAllJTInfo(FILE* f,JT_Partition& part,const unsigned root,
-		      set <RandomVariable*>* lp_nodes,set <RandomVariable*>* rp_nodes);
+		      set <RV*>* lp_nodes,set <RV*>* rp_nodes);
   void printAllJTInfoCliques(FILE* f,JT_Partition& part,const unsigned root,const unsigned treeLevel,
-			     set <RandomVariable*>* lp_nodes,set <RandomVariable*>* rp_nodes);
+			     set <RV*>* lp_nodes,set <RV*>* rp_nodes);
   void printMessageOrder(FILE *f,vector< pair<unsigned,unsigned> >& message_order);
   void printCurrentRVValues(FILE* f);
 
@@ -572,7 +572,7 @@ public:
   // Set all random variables to their observed values either from an
   // observation matrix or to the values given in the file. unroll()
   // must be called first!!
-  void setObservedRVs(vector <RandomVariable*>& rvs);
+  void setObservedRVs(vector <RV*>& rvs);
 
 
   // Perhaps make different unrolls for decoding, unroll for EM
@@ -653,7 +653,7 @@ public:
   }
 
   // access to the current set of nodes.
-  inline vector <RandomVariable*>& curNodes() { return cur_unrolled_rvs; }
+  inline vector <RV*>& curNodes() { return cur_unrolled_rvs; }
 
 
 };

@@ -31,16 +31,31 @@
 #include "rand.h"
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
-#include "GMTK_GM.h"
+
+// include all random variable classes.
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_HidDiscRV.h"
+#include "GMTK_Sw_HidDiscRV.h"
+#include "GMTK_ScPnSh_HidDiscRV.h"
+#include "GMTK_ScPnSh_Sw_HidDiscRV.h"
+#include "GMTK_ObsDiscRV.h"
+#include "GMTK_Sw_ObsDiscRV.h"
+#include "GMTK_ScPnSh_ObsDiscRV.h"
+#include "GMTK_ScPnSh_Sw_ObsDiscRV.h"
+#include "GMTK_ContRV.h"
+#include "GMTK_ObsContRV.h"
+#include "GMTK_Sw_ObsContRV.h"
+#include "GMTK_ScPnSh_ObsContRV.h"
+#include "GMTK_ScPnSh_Sw_ObsContRV.h"
+
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_USCPT.h"
+#include "GMTK_VECPT.h"
 #include "GMTK_Mixture.h"
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_GraphicalModel.h"
@@ -50,8 +65,8 @@ VCID("$Header$");
 
 #ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
 extern "C" {
-  //  FILE     *popen(const char *, const char *) __THROW;
-  //  int pclose(FILE *stream) __THROW;
+   FILE     *popen(const char *, const char *) __THROW;
+   int pclose(FILE *stream) __THROW;
 };
 #endif
 
@@ -60,9 +75,14 @@ extern "C" {
 ***********************************************************************
 
 The GM Grammar: 
-        This is a valid grammer for the parser below.
-	Please try to keep this grammer up to date if any
-	changes are made to the parser.
+
+     This is a valid grammer for the parser below. The grammar
+     specifies the language that is excepted by the parser, but other
+     "semantic" errors are checked either after parsing, or sometimes
+     while parsing when possible.
+
+     NOTE: Please keep this grammer up to date if any changes are made
+     to the parser.
 
 GM = "GRAPHICAL_MODEL" identifier FrameList ChunkSpecifier
 
@@ -82,10 +102,23 @@ RandomVariableAttribute = TypeAttribute |
                           WeightAttribute | 
                           ParentsAttribute
 
-WeightAttribute = "weight" : 
-               ( "value" number )
-          | ( "observed" integer ":" integer )
+WeightAttribute = "weight" : WeightAttributeSpecList
 
+WeightAttributeSpecList =
+    WeightAttributeSpec "|" WeightAttributeSpecList
+  | WeightAttributeSpec
+
+WeightAttributeSpec =  WeightOptionList
+                     | "nil"   
+
+WeightOptionList = 
+     ( WeightType WeightOption ) WeightOptionList
+   | ( WeightType WeightOption )
+
+WeightType =  "scale" | "penalty" | "shift"
+
+WeightOption = ( "value" number )
+             | ( integer ":" integer )
 
 EliminationHintAttribute = "elimination_hint" : number ;
 
@@ -129,7 +162,8 @@ Parent = identifier "(" integer ")"
 
 Implementation = DiscreteImplementation | ContinuousImplementation
 
-DiscreteImplementation = ( "DenseCPT" | "SparseCPT" | "DeterministicCPT" )  "(" ListIndex ")"
+DiscreteImplementation = ( "DenseCPT" | "SparseCPT" | "DeterministicCPT" | 
+                           "NGramCPT" | "FNGramCPT" )  "(" ListIndex ")"
 
 ContinuousImplementation = ContObsDistType
         (
@@ -335,7 +369,7 @@ FileParser::fillKeywordTable()
   // the .h file and consistent with 'keyword' in the .lex file.
   // ******************************************************************
   const char*const kw_table[] = {
-    /* 0  */    "frame",
+    /* 0  */ "frame",
     /* 1  */ "variable",
     /* 2  */ "type",
     /* 3  */ "cardinality",
@@ -362,7 +396,15 @@ FileParser::fillKeywordTable()
     /* 24 */ "GRAPHICAL_MODEL",
     /* 25 */ "value",
     /* 26 */ "weight",
-    /* 27 */ "elimination_hint",
+    /* 27 */ "scale",
+    /* 28 */ "penalty",
+    /* 29 */ "shift",
+    /* 30 */ "elimination_hint",
+    /* 31 */ "frameNum",
+    /* 32 */ "numFrames",
+    /* 33 */ "segmentNum",
+    /* 34 */ "numSegments",
+    /* 35 */ "VirtualEvidenceCPT",
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -719,6 +761,11 @@ FileParser::parseRandomVariableList()
   curRV.clear();
   parseRandomVariable();
 
+  ////////////////////////////////////////////////////////////
+  // A number of "semantic" errors can be checked right
+  // here before going on, so we do that.
+  ///////////////////////////////////////////////////////////////
+
   //////////////////////////////
   // make sure that there was a type and switching/cont parents
   if (curRV.rvType == RVInfo::t_unknown)
@@ -728,9 +775,38 @@ FileParser::parseRandomVariableList()
   // we need to at least have specified one conditional parents set,
   // which might be 'nil' 
   if (curRV.conditionalParents.size() == 0)  
-    error("Conditional parents unknown for random variable %s at frame %d, line %d\n",
+    error("Conditional parents unknown/unspecified for random variable %s at frame %d, line %d\n",
 	  curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
 
+  // Make sure that if we have switching weights, then we also have a
+  // sets of conditional parents, and that we either
+  //    1) have only one weight (scale,penalty,shift)
+  // or 2) have as many weights as we have sets of conditional parents.
+  if (curRV.rvWeightInfo.size() > 1) {
+    // then we have switching weights, make sure that we have
+    // switching parents and list of conditional parent sets, where
+    // the list is the same length.
+    if (curRV.conditionalParents.size() != curRV.rvWeightInfo.size()) {
+      error("Random variable %s, frame %d, line %d of file %s has %d switching weights but "
+	    "only %d set(s) of conditional parents. Must either have the same number, or a single weight item.\n",
+	    curRV.name.c_str(),
+	    curRV.frame,
+	    curRV.fileLineNumber,
+	    curRV.rvFileName.c_str(),
+	    curRV.rvWeightInfo.size(),
+	    curRV.conditionalParents.size());
+    }
+  }
+
+  // check that if we have conditionalparents > 1 we also have switching parents. 
+  if (curRV.conditionalParents.size() > 1 && curRV.switchingParents.size() == 0) {
+      error("Random variable %s, frame %d, line %d of file %s has %d sets of conditional parents but does not list any switching parents.\n",
+	    curRV.name.c_str(),
+	    curRV.frame,
+	    curRV.fileLineNumber,
+	    curRV.rvFileName.c_str(),
+	    curRV.conditionalParents.size());
+  }
 
   // check if we've already seen this RV
   map < RVInfo::rvParent , unsigned >::iterator it;
@@ -922,13 +998,23 @@ FileParser::parseRandomVariableDiscreteType()
       // should be "value n" syntax
       consumeToken(); // consume the 'value' token
 
-      if (tokenInfo != TT_Integer)
-	parseError("value integer");
-      if (tokenInfo.int_val < 0)
-	parseError("non-negative value integer");
-      
-      curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
-      curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_FirstIsValue;
+      if (tokenInfo == TT_Integer) {
+	if (tokenInfo.int_val < 0)
+	  parseError("non-negative value integer");
+	curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
+	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_FirstIsValue;
+      } else if (tokenInfo == KW_FrameNum) {
+	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_FrameNumIsValue;
+      } else if (tokenInfo == KW_NumFrames) {
+	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_NumFramesIsValue;
+      } else if (tokenInfo == KW_SegmentNum) {
+	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_SegmentNumIsValue;
+      } else if (tokenInfo == KW_NumSegments) {
+	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_NumSegmentsIsValue;
+      } else {
+	parseError("value {integer|frameNum|numFrames|segmentNum|numSegments}");
+      }
+      // consume whatever the value was.
       consumeToken();
 
     } else {
@@ -948,7 +1034,16 @@ FileParser::parseRandomVariableDiscreteType()
     parseError("cardinality value");
   curRV.rvCard = tokenInfo.int_val;
   if (curRV.rvCard <= 1)
-    parseError("cardinality must be greater than one (1), for cardinality 1 use observed variable");
+    parseError("cardinality must be greater than one (1), for cardinality 1 use an observed variable,");
+
+  if (curRV.rvDisp == RVInfo::d_observed &&
+      curRV.rvFeatureRange.filled == RVInfo::FeatureRange::fr_FirstIsValue) {
+    // check here that observed value is within cardinality.
+    if (curRV.rvFeatureRange.firstFeatureElement >= curRV.rvCard) {
+      parseError("given cardinality not large enough for immediate observed value");
+    }
+  }
+
   // TODO: allow cardinality 1 variables, and check here for zero
   // cardinality.  cardinality 1 might be reasonable to have
   // "observations" which use a DT that alwyas returns a fixed value
@@ -1047,15 +1142,16 @@ FileParser::parseRandomVariableEliminationHintAttribute()
 
 }
 
+
 void
 FileParser::parseRandomVariableWeightAttribute()
 {
-
   ensureNotAtEOF(KW_Weight);
   if (tokenInfo != KW_Weight)
     parseError(KW_Weight);
-  if (curRV.rvWeightInfo.wt_Status != RVInfo::WeightInfo::wt_NoWeight) {
-    parseError("RV already has weight attribute");
+
+  if (curRV.rvWeightInfo.size() > 0 ) {
+    parseError("RV already has previously specified weight attribute");
   }
   consumeToken();
 
@@ -1063,59 +1159,114 @@ FileParser::parseRandomVariableWeightAttribute()
   if (tokenInfo != TT_Colon)
     parseError(":");
   consumeToken();
-
-  ensureNotAtEOF("weight value or observation");
-  if (tokenInfo == KW_Value) {
-    consumeToken();
-
-    ensureNotAtEOF("weight floating-point value");
-    // allow an int to be treated as a float value.
-    if (tokenInfo != TT_Real && tokenInfo != TT_Integer)
-      parseError("weight floating-point value");
-    if (tokenInfo == TT_Real)
-      curRV.rvWeightInfo.weight_value = tokenInfo.doub_val;
-    else 
-      curRV.rvWeightInfo.weight_value = (double)tokenInfo.int_val;
-    consumeToken();
-
-    curRV.rvWeightInfo.wt_Status = RVInfo::WeightInfo::wt_Constant;    
-    
-  } else if (tokenInfo == KW_Observed) {
-    consumeToken();
-    
-    ensureNotAtEOF("first feature range");
-    if (tokenInfo != TT_Integer)
-      parseError("first feature range");
-    curRV.rvWeightInfo.firstFeatureElement = tokenInfo.int_val;
-    consumeToken();
-
-    ensureNotAtEOF("feature range separator");
-    if (tokenInfo != TT_Colon)
-      parseError("feature range separator");
-    consumeToken();
-    
-    ensureNotAtEOF("second feature range");
-    if (tokenInfo != TT_Integer)
-      parseError("second feature range");
-    curRV.rvWeightInfo.lastFeatureElement = tokenInfo.int_val;
-    if (curRV.rvWeightInfo.lastFeatureElement != curRV.rvWeightInfo.firstFeatureElement
-	|| (curRV.rvWeightInfo.lastFeatureElement < 0))
-      parseError("first range num must be == second range num for observation scalar weight");
-    consumeToken();
-
-    curRV.rvWeightInfo.wt_Status = RVInfo::WeightInfo::wt_Observation;
-
-  } else 
-    parseError("weight value or observation");
-
-
-  ensureNotAtEOF(";");
-  if (tokenInfo != TT_SemiColon)
-    parseError(";");
-  consumeToken();
-
+  parseRandomVariableWeightAttributeSpecList();
 }
 
+
+void
+FileParser::parseRandomVariableWeightAttributeSpecList()
+{
+  parseRandomVariableWeightAttributeSpec();
+  if (tokenInfo == TT_VirtBar) {
+    consumeToken();
+    parseRandomVariableWeightAttributeSpecList();
+  }
+}
+
+void
+FileParser::parseRandomVariableWeightAttributeSpec()
+{
+  // create a new empty weight spec and push
+  // it on the list.
+  curRV.rvWeightInfo.push_back(RVInfo::WeightInfo());
+  ensureNotAtEOF("nil | scale, penalty, or shift");
+  if (tokenInfo == KW_Nil) {
+    // We've just inserted a weight type that always does nothing.
+    consumeToken();
+  } else {
+    // there is actual weight application here.
+    parseRandomVariableWeightOptionList();
+  }
+}
+
+
+void
+FileParser::parseRandomVariableWeightOptionList()
+{
+  
+  assert ( curRV.rvWeightInfo.size() > 0 );
+  const unsigned curWI = curRV.rvWeightInfo.size()-1;
+
+  ensureNotAtEOF("scale, penalty, or shift");
+
+  RVInfo::WeightInfo::WeightItem* curWtItem = NULL;
+  if (tokenInfo == KW_Scale) {
+    consumeToken();
+    curWtItem = &curRV.rvWeightInfo[curWI].scale;
+  } else if (tokenInfo == KW_Penalty) {
+    curWtItem = &curRV.rvWeightInfo[curWI].penalty;
+  } else if (tokenInfo == KW_Shift) {
+    curWtItem = &curRV.rvWeightInfo[curWI].shift;
+  } else
+    parseError("scale, penalty, or shift");
+
+  
+  ensureNotAtEOF("integer or floating-point value");
+  // we now either have an int which is part of an int:int
+  // observation file specification, or we have an int or a float
+  // which is an immediate value specification. 
+  if (tokenInfo == TT_Real) {
+    // we definitely have an immediate value since a real
+    // value can never specify a feature position in an observation file.
+    curWtItem->wt_Status =RVInfo::WeightInfo::WeightItem::wt_Constant;
+    curWtItem->weight_value = tokenInfo.doub_val;;
+    consumeToken();
+  } else if (tokenInfo == TT_Integer) {
+    // we now either have an int which is part of an int:int
+    // observation file specification, or we have an int 
+    // which is an immediate value specification. 
+      
+    // store int value for now.
+    int firstElement = tokenInfo.int_val;
+    consumeToken();
+
+    if (tokenInfo == TT_Colon) {
+      // then assume we have a feature range separator
+      consumeToken();
+
+      if (tokenInfo != TT_Integer)
+	parseError("integer value int:int");	
+
+      // ok, we've got the int:int form.
+      curWtItem->wt_Status =RVInfo::WeightInfo::WeightItem::wt_Observation;	
+
+      curWtItem->firstFeatureElement = firstElement;
+      curWtItem->lastFeatureElement = tokenInfo.int_val;	
+
+      if ((curWtItem->firstFeatureElement !=
+	   curWtItem->lastFeatureElement)
+	  || (curWtItem->lastFeatureElement < 0))
+	parseError("first range num must be == second range num for observation file weight");
+      
+      consumeToken();
+    } else {
+      // then the integer was really the immedate value
+      curWtItem->wt_Status =RVInfo::WeightInfo::WeightItem::wt_Constant;
+      curWtItem->weight_value  = (double)firstElement;
+      // we do not consume current token since it is part of the next lexeme.
+    }
+  } else 
+    parseError("integer or floating-point value");
+  
+  ensureNotAtEOF("; or another weight option");
+  if (tokenInfo != TT_SemiColon) {
+    // assume it is another weight option.
+    parseRandomVariableWeightOptionList();
+  } else {
+    // we've got a semi, so time to end the option list.
+    consumeToken();
+  }
+}
 
 
 void
@@ -1257,6 +1408,15 @@ FileParser::parseParent()
     parseError("parent variable must not refer to self");
   }
 
+  // make sure that the parent wasn't given before.
+  for (unsigned pp=0;pp<parentList.size();pp++) {
+    if ((p.first == parentList[pp].first)
+	&&
+	(p.second == parentList[pp].second)) {
+      parseError("parent name and frame specified in parent list more than one time");
+    }
+  }
+
   parentList.push_back(p);
   consumeToken();
 
@@ -1276,20 +1436,6 @@ FileParser::parseImplementation()
   else
     parseContinuousImplementation();
 
-#if 0
-
-  if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT 
-      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT) {
-    if (curRV.rvType != RVInfo::t_discrete) 
-      parseError("need discrete implementations in discrete RV");
-    parseDiscreteImplementation();
-  } else {
-    if (curRV.rvType != RVInfo::t_continuous) 
-      parseError("need continuous implementations in continuous RV");
-    parseContinuousImplementation();
-  }
-#endif
-
 }
 
 
@@ -1298,7 +1444,8 @@ FileParser::parseDiscreteImplementation()
 {
   ensureNotAtEOF("discrete implementation");  
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
-      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT ) {
+      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT 
+      || tokenInfo == KW_VECPT  ) {
 
     if (tokenInfo == KW_MDCPT)
       curRV.discImplementations.push_back(CPT::di_MDCPT);
@@ -1308,8 +1455,11 @@ FileParser::parseDiscreteImplementation()
       curRV.discImplementations.push_back(CPT::di_MTCPT);
     else if (tokenInfo == KW_NGRAMCPT)
       curRV.discImplementations.push_back(CPT::di_NGramCPT);
-    else // tokenInfo == KW_FNGRAMCPT
+    else if (tokenInfo == KW_FNGRAMCPT)
       curRV.discImplementations.push_back(CPT::di_FNGramCPT);
+    else if (tokenInfo == KW_VECPT)
+      curRV.discImplementations.push_back(CPT::di_VECPT);
+
     consumeToken();
 
 
@@ -1565,6 +1715,7 @@ FileParser::parseListIndex()
  *-----------------------------------------------------------------------
  */
 
+
 void
 FileParser::createRandomVariableGraph()
 {
@@ -1584,68 +1735,92 @@ FileParser::createRandomVariableGraph()
     else // shouldn't happen
       assert(0);
 
+    RV*rv;
+    // go through and consider all possible RV types instantiating the
+    // currect one here.
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
-      DiscreteRandomVariable*rv = 
-	new DiscreteRandomVariable(rvInfoVector[i],
-				   rvInfoVector[i].name,
-				   rvInfoVector[i].rvCard);
-      rv->hidden = (rvInfoVector[i].rvDisp == RVInfo::d_hidden);
-      if (!rv->hidden) {
-	if (rvInfoVector[i].rvFeatureRange.filled == RVInfo::FeatureRange::fr_Range) {
-	  rv->featureElement = 
-	    rvInfoVector[i].rvFeatureRange.firstFeatureElement;
-	} else if (rvInfoVector[i].rvFeatureRange.filled == RVInfo::FeatureRange::fr_FirstIsValue) {
-	  if (rvInfoVector[i].rvFeatureRange.firstFeatureElement >=
-	      rvInfoVector[i].rvCard)
-	    error("Error: RV \"%s\" at frame %d (line %d) specifies a value observation (%d) incompatible with its cardinality (%d)\n",
-		  rvInfoVector[i].name.c_str(),
-		  rvInfoVector[i].frame,
-		  rvInfoVector[i].fileLineNumber,
-		  rvInfoVector[i].rvFeatureRange.firstFeatureElement,
-		  rvInfoVector[i].rvCard);
-	  rv->val = rvInfoVector[i].rvFeatureRange.firstFeatureElement;
-	  rv->featureElement = DRV_USE_FIXED_VALUE_FEATURE_ELEMENT;
+      // discrete
+      if (rvInfoVector[i].rvDisp == RVInfo::d_hidden) {
+	// discrete hidden
+	if (rvInfoVector[i].conditionalParents.size() > 0) {
+	  // discrete hidden switching
+	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
+	    // discrete hidden switching weighted
+	    rv = new ScPnSh_Sw_HidDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
+	  } else {
+	    // discrete hidden switching not-weighted
+	    rv = new Sw_HidDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
+	  }
 	} else {
-	  // this shouldn't happen (the parser should not let this case occur) 
-	  // but we keep the check just in case.
-	  error("ERROR: internal parser error, feature range is not filled in");
+	  // discrete hidden no-switching
+	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
+	    // discrete hidden no-switching weighted
+	    rv = new ScPnSh_HidDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
+	  } else {
+	    // discrete hidden no-switching not-weighted
+	    rv = new HidDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
+	  }
+	}
+      } else {
+	// discrete observed
+	if (rvInfoVector[i].conditionalParents.size() > 0) {
+	  // discrete observed switching
+	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
+	    // discrete observed switching weighted
+	    rv = new ScPnSh_Sw_ObsDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
+	  } else {
+	    // discrete observed switching not-weighted
+	    rv = new Sw_ObsDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
+	  }
+	} else {
+	  // discrete observed no-switching
+	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
+	    // discrete observed no-switching weighted
+	    rv = new ScPnSh_ObsDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
+	  } else {
+	    // discrete observed no-switching not-weighted
+	    rv = new ObsDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
+	  }
 	}
       }
-      rvInfoVector[i].rv = rv;
     } else {
-      ContinuousRandomVariable*rv = 
-	new ContinuousRandomVariable(rvInfoVector[i],
-				     rvInfoVector[i].name);
-      rv->hidden = (rvInfoVector[i].rvDisp == RVInfo::d_hidden);
-      if (!rv->hidden) {
-	rv->firstFeatureElement = 
-	  rvInfoVector[i].rvFeatureRange.firstFeatureElement;
-	rv->lastFeatureElement = 
-	  rvInfoVector[i].rvFeatureRange.lastFeatureElement;
+      // continuous
+      if (rvInfoVector[i].rvDisp == RVInfo::d_hidden) {
+	// continuous hidden
+	error("ERROR: GMTK does not yet support hidden continuous RVs.");
+	rv = NULL; // suppress compiler warning.
+      } else {
+	// continuous observed
+	if (rvInfoVector[i].conditionalParents.size() > 0) {
+	  // continuous observed switching
+	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
+	    // continuous observed switching weighted
+	    rv = new ScPnSh_Sw_ObsContRV(rvInfoVector[i],rvInfoVector[i].frame);
+	  } else {
+	    // continuous observed switching not-weighted
+	    rv = new Sw_ObsContRV(rvInfoVector[i],rvInfoVector[i].frame);
+	  }
+	} else {
+	  // continuous observed no-switching
+	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
+	    // continuous observed no-switching weighted
+	    rv = new ScPnSh_ObsContRV(rvInfoVector[i],rvInfoVector[i].frame);
+	  } else {
+	    // continuous observed no-switching not-weighted
+	    rv = new ObsContRV(rvInfoVector[i],rvInfoVector[i].frame);
+	  }
+	}
       }
-      rvInfoVector[i].rv = rv;
     }
-    rvInfoVector[i].rv->timeIndex = rvInfoVector[i].frame;
-
-    // add weight value stuff
-    rvInfoVector[i].rv->wtStatus = RandomVariable::wt_NoWeight;
-    if (rvInfoVector[i].rvWeightInfo.wt_Status == RVInfo::WeightInfo::wt_Constant) {
-      rvInfoVector[i].rv->wtStatus = RandomVariable::wt_Constant;
-      rvInfoVector[i].rv->wtWeight = rvInfoVector[i].rvWeightInfo.weight_value;
-    } else if (rvInfoVector[i].rvWeightInfo.wt_Status == RVInfo::WeightInfo::wt_Observation) {
-      rvInfoVector[i].rv->wtStatus = RandomVariable::wt_Observation;
-      rvInfoVector[i].rv->wtFeatureElement = rvInfoVector[i].rvWeightInfo.firstFeatureElement;
-    }
-
+    rvInfoVector[i].rv = rv;    
   }
-
   // now set up all the parents of each random variable.
   for (unsigned i=0;i<rvInfoVector.size();i++) {
 
     const unsigned frame = rvInfoVector[i].frame;
 
-    // build the switching parents list.
-    vector<RandomVariable *> sparents;
+    // build the (possibly empty) switching parents list.
+    vector<RV *> sparents;
     for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
 
       RVInfo::rvParent pp(rvInfoVector[i].switchingParents[j].first,
@@ -1681,7 +1856,7 @@ FileParser::createRandomVariableGraph()
     }
     
     // now build conditional parent list
-    vector<vector<RandomVariable * > > cpl(rvInfoVector[i].conditionalParents.size());
+    vector<vector<RV * > > cpl(rvInfoVector[i].conditionalParents.size());
     for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
       for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
 
@@ -1715,14 +1890,12 @@ FileParser::createRandomVariableGraph()
 	// add
 	cpl[j].push_back(par.rv);
       }
-
     }
 
     // finally, add all the parents.
     rvInfoVector[i].rv->setParents(sparents,cpl);
   }
 }
-
 
 
 
@@ -1751,8 +1924,8 @@ FileParser::createRandomVariableGraph()
 void
 FileParser::ensureValidTemplate()
 {
-  vector <RandomVariable*> vars;
-  vector <RandomVariable*> vars2;
+  vector <RV*> vars;
+  vector <RV*> vars2;
 
   // TODO: fix error messages to give indication as to where loop is.
   unroll(0,vars);
@@ -1770,106 +1943,6 @@ FileParser::ensureValidTemplate()
 
 
 
-/*-
- *-----------------------------------------------------------------------
- * ensureS_SE_E_NE,
- *    ensure links are "south", "south east",
- *    "east", or "north east", meaning that there
- *    is a numeric ordering on the nodes such that 
- *    any parents of a node at a particular
- *    numeric position have their position
- *    earlier in the ordering.
- *
- * Preconditions:
- *      parseGraphicalModel() must have been called.
- *
- * Postconditions:
- *      ordering exists if program is still running.
- *
- * Side Effects:
- *      none other than possibly killing the program.
- *
- * Results:
- *      nothing.
- *
- *-----------------------------------------------------------------------
- */
-
-void
-FileParser::ensureS_SE_E_NE()
-{
-
-  // now set up all the parents of each random variable.
-  for (unsigned i=0;i<rvInfoVector.size();i++) {
-    for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
-
-      RVInfo::rvParent pp(rvInfoVector[i].switchingParents[j].first,
-		  rvInfoVector[i].frame
-		  +rvInfoVector[i].switchingParents[j].second);
-
-      ////////////////////////////////////////////////////
-      // Make sure the rv at the time delta from the current
-      // frame exists.
-      if (nameRVmap.find(pp) == nameRVmap.end())
-	error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
-	      rvInfoVector[i].name.c_str(),
-	      rvInfoVector[i].frame,
-	      rvInfoVector[i].fileLineNumber,
-	      pp.first.c_str(),pp.second);
-      // error("Error: parent random variable \"%s\" at frame %d does not exist\n",
-      // pp.first.c_str(),pp.second);
-
-      unsigned parent_position = nameRVmap[ pp ];
-
-      if (parent_position > i) {
-	const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
-	error("Error: parent variable \"%s\", frame %d (line %d) is later than child \"%s\" frame %d (line %d)",
-	      par.name.c_str(),
-	      par.frame,
-	      par.fileLineNumber,
-	      rvInfoVector[i].name.c_str(),
-	      rvInfoVector[i].frame,
-	      rvInfoVector[i].fileLineNumber
-	      );
-      }
-    }
-
-    for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
-      for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
-
-	RVInfo::rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
-		    rvInfoVector[i].frame		    
-		    +rvInfoVector[i].conditionalParents[j][k].second);
-
-	////////////////////////////////////////////////////
-	// Make sure the rv at the time delta from the current
-	// frame exists.
-	if (nameRVmap.find(pp) == nameRVmap.end())
-	  error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
-		rvInfoVector[i].name.c_str(),
-		rvInfoVector[i].frame,
-		rvInfoVector[i].fileLineNumber,
-		pp.first.c_str(),pp.second);
-	// error("Error: parent random variable \"%s\" at frame %d does not exist\n",
-	// pp.first.c_str(),pp.second);
-	unsigned parent_position = nameRVmap[ pp ];
-
-	if (parent_position > i) {
-	  const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
-	  error("Error: parent variable \"%s\", frame %d (line %d) is later than child \"%s\" frame %d (line %d)",
-		par.name.c_str(),
-		par.frame,
-		par.fileLineNumber,
-		rvInfoVector[i].name.c_str(),
-		rvInfoVector[i].frame,
-		rvInfoVector[i].fileLineNumber
-		);
-	}
-      }
-    }
-  }
-
-}
 
 
 /*-
@@ -1906,8 +1979,10 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 
     // first set up the switching parent's DT mapper.
     if (rvInfoVector[i].switchingParents.size() == 0) {
-      rvInfoVector[i].rv->dtMapper = NULL;
+      // do nothing, since there is no switching going on.
     } else {
+
+      RngDecisionTree *dtMapper;
       if (rvInfoVector[i].switchMapping.liType == 
 	  RVInfo::ListIndex::li_String) {
 	if (GM_Parms.dtsMap.find(rvInfoVector[i].switchMapping.nameIndex) == GM_Parms.dtsMap.end())
@@ -1917,7 +1992,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		rvInfoVector[i].fileLineNumber,
 		rvInfoVector[i].switchMapping.nameIndex.c_str());
 
-	rvInfoVector[i].rv->dtMapper = 
+	dtMapper = 
 	  GM_Parms.dts[
 		       GM_Parms.dtsMap[rvInfoVector[i].switchMapping.nameIndex
 		       ]];
@@ -1930,22 +2005,25 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		rvInfoVector[i].frame,
 		rvInfoVector[i].fileLineNumber,
 		rvInfoVector[i].switchMapping.intIndex);
-	rvInfoVector[i].rv->dtMapper = GM_Parms.dts[rvInfoVector[i].switchMapping.intIndex];
+	dtMapper = GM_Parms.dts[rvInfoVector[i].switchMapping.intIndex];
       } else {
 	// this shouldn't happen, unless the parser has a bug.
 	assert ( 0 );
+	dtMapper = NULL; // to avoid compiler warning.
       }
 
       // now check to make sure that the decision tree matches
       // the set of parents that were set up as the switching parents.
-      if (rvInfoVector[i].rv->dtMapper->numFeatures() != 
-	  rvInfoVector[i].switchingParents.size()) {
+      if (dtMapper->numFeatures() != rvInfoVector[i].switchingParents.size()) {
 	error("Error: RV \"%s\" at frame %d (line %d), num switching parents different than required by decision tree named \"%s\".\n",
 	      rvInfoVector[i].name.c_str(),
 	      rvInfoVector[i].frame,
 	      rvInfoVector[i].fileLineNumber,
-	      rvInfoVector[i].rv->dtMapper->name().c_str());
+	      dtMapper->name().c_str());
       }
+      // everything ok, so we set it. If this is not a RV that accepts
+      // a DT, this will cause a dynamic error.
+      rvInfoVector[i].rv->setDTMapper(dtMapper);
     }
 
     //////////////////////////////////////////////////////////
@@ -1957,8 +2035,8 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
       // DISCRETE form of the current rv
       //
       ///////////////////////////////////////////////////////
-      DiscreteRandomVariable* rv = 
-	(DiscreteRandomVariable*) rvInfoVector[i].rv;
+      DiscRV* rv = 
+	(DiscRV*) rvInfoVector[i].rv;
 
       vector<CPT*> cpts(rvInfoVector[i].conditionalParents.size());
       for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
@@ -1981,7 +2059,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		      rvInfoVector[i].listIndices[j].nameIndex) ==
 		GM_Parms.mdCptsMap.end()) {
 	      if (allocate == noAllocate) {
-		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MDCPT \"%s\" doesn't exist\n",
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent DenseCPT \"%s\" doesn't exist\n",
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
 		      rvInfoVector[i].fileLineNumber,
@@ -2048,7 +2126,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 
 	    }
 	  } else {
-	    // need to remove the integer index code.
+	    // TODO: need to remove the integer index code.
 	    assert (0);
 #if 0
 	    if (rvInfoVector[i].listIndices[j].intIndex >= 
@@ -2085,7 +2163,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      if (GM_Parms.msCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
 		  GM_Parms.msCptsMap.end()) {
-		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MSCPT \"%s\" doesn't exist\n",
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent SparseCPT \"%s\" doesn't exist\n",
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
 		      rvInfoVector[i].fileLineNumber,
@@ -2100,7 +2178,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  ];
 	      }
 	    } else {
-	      // need to remove the integer index code.
+	      // TODO: need to remove the integer index code.
 	      assert(0);
 #if 0
 	      if (rvInfoVector[i].listIndices[j].intIndex >= 
@@ -2137,7 +2215,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      if (GM_Parms.mtCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
 		  GM_Parms.mtCptsMap.end()) {
-		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent MTCPT \"%s\" doesn't exist\n",
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent DeterministicCPT \"%s\" doesn't exist\n",
 			rvInfoVector[i].name.c_str(),
 			rvInfoVector[i].frame,
 			rvInfoVector[i].fileLineNumber,
@@ -2152,7 +2230,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  ];
 	      }
 	    } else {
-	      // need to remove the integer index code.
+	      // TODO: need to remove the integer index code.
 	      assert(0);
 #if 0
 	      if (rvInfoVector[i].listIndices[j].intIndex >= 
@@ -2204,7 +2282,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  ];
 	      }
 	    } else {
-	      // need to remove the integer index code.
+	      // TODO: need to remove the integer index code.
 	      assert(0);
 #if 0
 	      if (rvInfoVector[i].listIndices[j].intIndex >=
@@ -2256,7 +2334,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  ];
 	      }
 	    } else {
-	      // need to remove the integer index code.
+	      // TODO: need to remove the integer index code.
 	      assert(0);
 #if 0
 	      if (rvInfoVector[i].listIndices[j].intIndex >=
@@ -2278,6 +2356,38 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 #endif
 	    }
 
+	} else 
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_VECPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using VECPTs.
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a VECPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType 
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.veCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.veCptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent VirtualEvidenceCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.veCpts[
+				  GM_Parms.veCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // TODO: need to remove the integer index code.
+	      assert(0);
+	    }
 	} else {
 	  // Again, this shouldn't happen. If it does, something is wrong
 	  // with the parser code or some earlier code, and it didn't correctly
@@ -2292,15 +2402,17 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	// first get the name for better error reporting.
 	string cptType;
 	if (rvInfoVector[i].discImplementations[j] == CPT::di_MDCPT) {
-	  cptType = "MDCPT";
+	  cptType = "DenseCPT";
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_MSCPT) {
-	  cptType = "MSCPT";
+	  cptType = "SparseCPT";
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
-	  cptType = "MTCPT";
+	  cptType = "DeterministicCPT";
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT) {
 		cptType = "NGramCPT";
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_FNGramCPT) {
 		cptType = "FNGramCPT";
+	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_VECPT) {
+		cptType = "VirtualEvidenceCPT";
 	}
 
 	// check to make sure this cpt matches this
@@ -2337,7 +2449,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  rvInfoVector[i].name.c_str());
 	  }
 	} else if ( cpts[j]->cptType == CPT::di_NGramCPT ) {
-		// Because we allow fewer parents in using ngram cpt, we use cpts[j]->numParents() instead.
+	  // Because we allow fewer parents in using ngram cpt, we use cpts[j]->numParents() instead.
 	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
 	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
 		  rvInfoVector[i].name.c_str(),
@@ -2348,21 +2460,21 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  cpts[j]->name().c_str(),
 		  cpts[j]->card());
 	  }
-	  for ( unsigned par = 0; par < rv->conditionalParentsList[j].size(); par++ ) {
-	    if ( rv->conditionalParentsList[j][par]->cardinality != cpts[j]->parentCardinality(par) )
+	  for ( unsigned par = 0; par < rv->condParentsVec(j).size(); par++ ) {
+	    if ( RV2DRV(rv->condParentsVec(j)[par])->cardinality != cpts[j]->parentCardinality(par) )
 	      error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
 		    rvInfoVector[i].fileLineNumber,
-		    rv->conditionalParentsList[j][par]->name().c_str(),
-		    rv->conditionalParentsList[j][par]->cardinality,
+		    rv->condParentsVec(j)[par]->name().c_str(),
+		    RV2DRV(rv->condParentsVec(j)[par])->cardinality,
 		    par,
 		    cptType.c_str(),
 		    cpts[j]->name().c_str(),
 		    cpts[j]->parentCardinality(par));
 	  }
 	} else {
-	  // regular non USCPT/NGramCPT checking below.
+	  // regular general case checking below.
 	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
 	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
 		  rvInfoVector[i].name.c_str(),
@@ -2374,14 +2486,14 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  cpts[j]->card());
 	  }
 	  for (unsigned par=0;par<cpts[j]->numParents();par++) {
-	    if (rv->conditionalParentsList[j][par]->cardinality !=
+	    if (RV2DRV(rv->condParentsVec(j)[par])->cardinality !=
 		cpts[j]->parentCardinality(par))
 	      error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
 		    rvInfoVector[i].fileLineNumber,
-		    rv->conditionalParentsList[j][par]->name().c_str(),
-		    rv->conditionalParentsList[j][par]->cardinality,
+		    rv->condParentsVec(j)[par]->name().c_str(),
+		    RV2DRV(rv->condParentsVec(j)[par])->cardinality,
 		    par,
 		    cptType.c_str(),
 		    cpts[j]->name().c_str(),
@@ -2400,8 +2512,8 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
       // get a cont. form of the current rv
       ///////////////////////////////////////////////////////////
       ///////////////////////////////////////////////////////////
-      ContinuousRandomVariable* rv = 
-	(ContinuousRandomVariable*) rvInfoVector[i].rv;
+      ContRV* rv = 
+	(ContRV*) rvInfoVector[i].rv;
 
       rv->conditionalMixtures.resize
 	(
@@ -2443,7 +2555,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		      ]];
 	    }
 	  } else {
-	    // need to remove the integer index code.
+	    // TODO: need to remove the integer index code.
 	    assert(0);
 #if 0
 	    // the list index is an integer
@@ -2467,7 +2579,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      }
 #endif
 	  }
-	} else {
+ 	} else {
 	  // there are > 0 conditional parents for this
 	  // set of switching values. The index should
 	  // specify a DT which maps from the set of
@@ -2529,7 +2641,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      rv->conditionalMixtures[j].mapping.collection->fillMxTable();
 	      // Might as well do this here. Check that all Gaussians
 	      // in the collection are of the right dimensionality.
-	      // This check is important for ContinuousRandomVariable::probGivenParents().
+	      // This check is important for ContRV::probGivenParents().
 	      const unsigned rvDim = 
 		(rvInfoVector[i].rvFeatureRange.lastFeatureElement - 
 		 rvInfoVector[i].rvFeatureRange.firstFeatureElement)+1;
@@ -2567,6 +2679,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 }
 
 
+
 /*-
  *-----------------------------------------------------------------------
  * checkConsistentWithGlobalObservationStream
@@ -2594,18 +2707,19 @@ FileParser::checkConsistentWithGlobalObservationStream()
 {
   for (unsigned i=0;i<rvInfoVector.size();i++) { 
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
-      DiscreteRandomVariable* rv = 
-	(DiscreteRandomVariable*) rvInfoVector[i].rv;
-      if (!rv->hidden) {
-	if (rv->featureElement != DRV_USE_FIXED_VALUE_FEATURE_ELEMENT) {
-	  if (!globalObservationMatrix.elementIsDiscrete(rv->featureElement)) {
+      if (rvInfoVector[i].rvDisp != RVInfo::d_hidden) {
+	// then observed
+	if (rvInfoVector[i].rvFeatureRange.filled == RVInfo::FeatureRange::fr_Range) {
+	  // then observed, value from a feature range. Need to check to make sure
+	  // it corresponds to a true discrete value.
+	  if (!globalObservationMatrix.elementIsDiscrete(rvInfoVector[i].rvFeatureRange.firstFeatureElement)) {
 	    if (globalObservationMatrix.numDiscrete() > 0) 
 	      error("ERROR: discrete observed random variable '%s', frame %d, line %d, specifies a feature element %d:%d that is out of discrete range ([%d:%d] inclusive) of observation matrix",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
 		    rvInfoVector[i].fileLineNumber,
-		    rv->featureElement,
-		    rv->featureElement,
+		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
+		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
 		    globalObservationMatrix.numContinuous(),
 		    globalObservationMatrix.numFeatures()-1);
 	    else
@@ -2613,24 +2727,22 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
 		    rvInfoVector[i].fileLineNumber,
-		    rv->featureElement,
-		    rv->featureElement,
+		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
+		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
 		    globalObservationMatrix.numContinuous(),
 		    globalObservationMatrix.numFeatures()-1);
 	  }
 	}
       }
     } else { // (rvInfoVector[i].rvType == RVInfo::t_continuous) {
-      ContinuousRandomVariable* rv = 
-	(ContinuousRandomVariable*) rvInfoVector[i].rv;
-      if (!rv->hidden) {
-	if (rv->lastFeatureElement >=  globalObservationMatrix.numContinuous())
+      if (rvInfoVector[i].rvDisp != RVInfo::d_hidden) {
+	if (rvInfoVector[i].rvFeatureRange.lastFeatureElement >=  globalObservationMatrix.numContinuous())
 	      error("ERROR: continuous observed random variable '%s', frame %d, line %d, specifies feature elements %d:%d that are out of continuous range ([%d:%d] inclusive) of observation matrix",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
 		    rvInfoVector[i].fileLineNumber,
-		    rv->firstFeatureElement,
-		    rv->lastFeatureElement,
+		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
+		    rvInfoVector[i].rvFeatureRange.lastFeatureElement,
 		    0,
 		    globalObservationMatrix.numContinuous()-1);
       }
@@ -2640,57 +2752,56 @@ FileParser::checkConsistentWithGlobalObservationStream()
 
     // if weight comes from observation matrix, make sure it indexes into
     // a valid index and a float value.
-    if (rvInfoVector[i].rvWeightInfo.wt_Status == RVInfo::WeightInfo::wt_Observation) {
-      if (rvInfoVector[i].rvWeightInfo.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
-	error("ERROR: random variable '%s', frame %d, line %d, specifies weight's observation feature element %d:%d that are out of continuous range ([%d:%d] inclusive) of observation matrix",
-	      rvInfoVector[i].name.c_str(),
-	      rvInfoVector[i].frame,
-	      rvInfoVector[i].fileLineNumber,
-	      rvInfoVector[i].rvWeightInfo.firstFeatureElement,
-	      rvInfoVector[i].rvWeightInfo.lastFeatureElement,
-	      0,
-	      globalObservationMatrix.numContinuous()-1);
+    for (unsigned wt=0;wt<rvInfoVector[i].rvWeightInfo.size();wt++) {
+
+      if (rvInfoVector[i].rvWeightInfo[wt].penalty.wt_Status 
+	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+	if (rvInfoVector[i].rvWeightInfo[wt].penalty.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has penalty observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		wt,
+		rvInfoVector[i].rvWeightInfo[wt].penalty.firstFeatureElement,
+		rvInfoVector[i].rvWeightInfo[wt].penalty.lastFeatureElement,
+		0,
+		globalObservationMatrix.numContinuous()-1);
+	}
       }
+      if (rvInfoVector[i].rvWeightInfo[wt].scale.wt_Status 
+	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+	if (rvInfoVector[i].rvWeightInfo[wt].scale.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has scale observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		wt,
+		rvInfoVector[i].rvWeightInfo[wt].scale.firstFeatureElement,
+		rvInfoVector[i].rvWeightInfo[wt].scale.lastFeatureElement,
+		0,
+		globalObservationMatrix.numContinuous()-1);
+	}
+      }
+      if (rvInfoVector[i].rvWeightInfo[wt].shift.wt_Status 
+	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+	if (rvInfoVector[i].rvWeightInfo[wt].shift.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has shift observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		wt,
+		rvInfoVector[i].rvWeightInfo[wt].shift.firstFeatureElement,
+		rvInfoVector[i].rvWeightInfo[wt].shift.lastFeatureElement,
+		0,
+		globalObservationMatrix.numContinuous()-1);
+	}
+      }
+
     }
   }
 }
 
 
-
-/*-
- *-----------------------------------------------------------------------
- * addVariablesToGM()
- *      Adds all the variables that have been created by the
- *      parser to the GM.
- *
- * Preconditions:
- *      createRandomVariableGraph() and parseGraphicalModel(),
- *      and associateWithDataParams() must have been called.
- *
- * Postconditions:
- *      GM object contains all of the RVs.
- *
- * Side Effects:
- *      none internally, but changes gm object.
- *
- * Results:
- *      nothing.
- *
- *-----------------------------------------------------------------------
- */
-void
-FileParser::addVariablesToGM(GMTK_GM& gm)
-{
-  gm.node.resize(rvInfoVector.size());
-  for (unsigned i=0;i<rvInfoVector.size();i++) {
-    gm.node[i] = rvInfoVector[i].rv;
-  }
-  // set some of the GMs variables.
-  gm.firstChunkFrame = firstChunkFrame();
-  gm.lastChunkFrame = lastChunkFrame();
-  gm.framesInTemplate = numFrames();
-  gm.framesInRepeatSeg = lastChunkFrame()- firstChunkFrame() + 1;
-}
 
 
 
@@ -2754,7 +2865,7 @@ FileParser::addVariablesToGM(GMTK_GM& gm)
  */
 void
 FileParser::unroll(unsigned timesToUnroll,
-		   vector<RandomVariable*> &unrolledVarSet)
+		   vector<RV*> &unrolledVarSet)
 {
   // a map from the r.v. name and new frame number to
   // position in the new unrolled array of r.v.'s
@@ -2763,13 +2874,13 @@ FileParser::unroll(unsigned timesToUnroll,
 }
 void
 FileParser::unroll(unsigned timesToUnroll,
-		   vector<RandomVariable*> &unrolledVarSet,
+		   vector<RV*> &unrolledVarSet,
 		   map < RVInfo::rvParent, unsigned >& posOfParentAtFrame)
 {
 
   // a map from the new r.v. to the corresponding rv info
   // vector position in the template.
-  map < RandomVariable *, unsigned > infoOf;
+  map < RV *, unsigned > infoOf;
 
   // first go though and create all of the new r.v., without parents,
   // but with parameters shared
@@ -2789,7 +2900,7 @@ FileParser::unroll(unsigned timesToUnroll,
 
     const unsigned frame = rvInfoVector[tvi].frame;
 
-    unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneWithoutParents();
+    unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneRVShell();
 
     // not necessary for prologue variables, since
     // time index retained in clone.
@@ -2809,8 +2920,8 @@ FileParser::unroll(unsigned timesToUnroll,
       const unsigned frame = 
 	i*numFramesInChunk+rvInfoVector[tvi].frame;
 
-      unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneWithoutParents();
-      unrolledVarSet[uvsi]->timeIndex = frame;
+      unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneRVShell();
+      unrolledVarSet[uvsi]->timeFrame = frame;
 
       infoOf[unrolledVarSet[uvsi]] = tvi;
       RVInfo::rvParent p(unrolledVarSet[uvsi]->name(),frame);
@@ -2825,8 +2936,8 @@ FileParser::unroll(unsigned timesToUnroll,
     const unsigned frame = 
       timesToUnroll*numFramesInChunk+rvInfoVector[tvi].frame;
 
-    unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneWithoutParents();
-    unrolledVarSet[uvsi]->timeIndex = frame;
+    unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneRVShell();
+    unrolledVarSet[uvsi]->timeFrame = frame;
 
     infoOf[unrolledVarSet[uvsi]] = tvi;
     RVInfo::rvParent p(unrolledVarSet[uvsi]->name(),frame);
@@ -2840,18 +2951,18 @@ FileParser::unroll(unsigned timesToUnroll,
 
   for (uvsi=0;uvsi<unrolledVarSet.size();uvsi++) {
 
-    const unsigned frame = unrolledVarSet[uvsi]->timeIndex;
+    const unsigned frame = unrolledVarSet[uvsi]->timeFrame;
 
     // get the info objectd for this one.
     RVInfo* info = &rvInfoVector[infoOf[unrolledVarSet[uvsi]]];
     
     // build the switching parents list.
-    vector<RandomVariable *> sparents;
+    vector<RV *> sparents;
     for (unsigned j=0;j<info->switchingParents.size();j++) {
 
       // grab a pointer to the parent in the template
-      RandomVariable* template_parent_rv =
-	info->rv->switchingParents[j];
+      RV* template_parent_rv =
+	info->rv->switchingParentsVec()[j];
 
       // pointer to parent in unrolled network
       RVInfo::rvParent pp(info->switchingParents[j].first,
@@ -2881,8 +2992,8 @@ FileParser::unroll(unsigned timesToUnroll,
 
       ///////////////////////////////////////////
       // 2. next the type compatibility check
-      RandomVariable *unrolled_parent_rv = unrolledVarSet[(*it).second];
-      if (!unrolled_parent_rv->discrete) {
+      RV *unrolled_parent_rv = unrolledVarSet[(*it).second];
+      if (!unrolled_parent_rv->discrete()) {
 	error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that is continous when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which is continuous)\n",
 	      info->name.c_str(),
 	      info->frame,
@@ -2898,11 +3009,11 @@ FileParser::unroll(unsigned timesToUnroll,
       //////////////////////////////////////////////////////////////
       // 3. lastly, check that the cardinality of the parent matches 
       // since it is a discrete r.v.
-      DiscreteRandomVariable* dunrolled_parent_rv = 
-	(DiscreteRandomVariable*) unrolled_parent_rv;
+      DiscRV* dunrolled_parent_rv = 
+	(DiscRV*) unrolled_parent_rv;
       
       if (dunrolled_parent_rv->cardinality != 
-	  template_parent_rv->cardinality) {
+	  RV2DRV(template_parent_rv)->cardinality) {
 	error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that has the wrong cardinality when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which is has cardinality %d, but cardinality in template parent is %d)\n",
 	      info->name.c_str(),
 	      info->frame,
@@ -2913,8 +3024,8 @@ FileParser::unroll(unsigned timesToUnroll,
 	      frame,
 	      info->switchingParents[j].first.c_str(),
 	      frame+info->switchingParents[j].second,
-	      unrolled_parent_rv->cardinality,
-	      template_parent_rv->cardinality);
+	      dunrolled_parent_rv->cardinality,
+	      RV2DRV(template_parent_rv)->cardinality);
       }
 
       // add
@@ -2923,14 +3034,14 @@ FileParser::unroll(unsigned timesToUnroll,
     }
 
     // now build the conditional parents list.
-    vector<vector<RandomVariable * > > cpl(info->conditionalParents.size());
+    vector<vector<RV * > > cpl(info->conditionalParents.size());
     for (unsigned j=0;j<info->conditionalParents.size();j++) {
       for (unsigned k=0;k<info->conditionalParents[j].size();k++) {
 
 
 	// grab a pointer to the parent in the template
-	RandomVariable* template_parent_rv =
-	  info->rv->conditionalParentsList[j][k];
+	RV* template_parent_rv =
+	  info->rv->condParentsVec(j)[k];
 
 	RVInfo::rvParent pp(info->conditionalParents[j][k].first,
 		    frame+info->conditionalParents[j][k].second);
@@ -2959,8 +3070,8 @@ FileParser::unroll(unsigned timesToUnroll,
 
 	///////////////////////////////////////////
 	// 2. next the type compatibility check
-	RandomVariable *unrolled_parent_rv = unrolledVarSet[(*it).second];
-	if (!unrolled_parent_rv->discrete) {
+	RV *unrolled_parent_rv = unrolledVarSet[(*it).second];
+	if (!unrolled_parent_rv->discrete()) {
 	  error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that is continous when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which is continuous)\n",
 		info->name.c_str(),
 		info->frame,
@@ -2976,11 +3087,11 @@ FileParser::unroll(unsigned timesToUnroll,
 	//////////////////////////////////////////////////////////////
 	// 3. lastly, check that the cardinality of the parent matches 
 	// since it is a discrete r.v.
-	DiscreteRandomVariable* dunrolled_parent_rv = 
-	  (DiscreteRandomVariable*) unrolled_parent_rv;
+	DiscRV* dunrolled_parent_rv = 
+	  (DiscRV*) unrolled_parent_rv;
       
 	if (dunrolled_parent_rv->cardinality != 
-	    template_parent_rv->cardinality) {
+	    RV2DRV(template_parent_rv)->cardinality) {
 	  error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that has the wrong cardinality when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which is has cardinality %d, but cardinality in template parent is %d)\n",
 		info->name.c_str(),
 		info->frame,
@@ -2991,8 +3102,8 @@ FileParser::unroll(unsigned timesToUnroll,
 		frame,
 		info->conditionalParents[j][k].first.c_str(),
 		frame+info->conditionalParents[j][k].second,
-		unrolled_parent_rv->cardinality,
-		template_parent_rv->cardinality);
+		dunrolled_parent_rv->cardinality,
+		RV2DRV(template_parent_rv)->cardinality);
 	}
 
 	// add
@@ -3006,7 +3117,7 @@ FileParser::unroll(unsigned timesToUnroll,
   // can't call topological sort for now since clique
   // sizes get too big for frontier algorithm.
 
-  // vector<RandomVariable*> res;
+  // vector<RV*> res;
   // GraphicalModel::topologicalSort(unrolledVarSet,res);
   // unrolledVarSet = res;
 
@@ -3192,6 +3303,108 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is)
   return true;
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * ensureS_SE_E_NE,
+ *
+ *    ensure links are "south", "south east", "east", or "north east",
+ *    meaning that there is a numeric ordering on the nodes such that
+ *    any parents of a node at a particular numeric position have
+ *    their position earlier in the ordering. Note that this routine
+ *    is not necessary, as the variables in a .str file may be in any
+ *    order (as long as there are no directed cycles).
+ *
+ * Preconditions:
+ *      parseGraphicalModel() must have been called.
+ *
+ * Postconditions:
+ *      ordering exists if program is still running.
+ *
+ * Side Effects:
+ *      none other than possibly killing the program.
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+FileParser::ensureS_SE_E_NE()
+{
+
+  // now set up all the parents of each random variable.
+  for (unsigned i=0;i<rvInfoVector.size();i++) {
+    for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
+
+      RVInfo::rvParent pp(rvInfoVector[i].switchingParents[j].first,
+		  rvInfoVector[i].frame
+		  +rvInfoVector[i].switchingParents[j].second);
+
+      ////////////////////////////////////////////////////
+      // Make sure the rv at the time delta from the current
+      // frame exists.
+      if (nameRVmap.find(pp) == nameRVmap.end())
+	error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber,
+	      pp.first.c_str(),pp.second);
+      // error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+      // pp.first.c_str(),pp.second);
+
+      unsigned parent_position = nameRVmap[ pp ];
+
+      if (parent_position > i) {
+	const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
+	error("Error: parent variable \"%s\", frame %d (line %d) is later than child \"%s\" frame %d (line %d)",
+	      par.name.c_str(),
+	      par.frame,
+	      par.fileLineNumber,
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber
+	      );
+      }
+    }
+
+    for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
+      for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+
+	RVInfo::rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+		    rvInfoVector[i].frame		    
+		    +rvInfoVector[i].conditionalParents[j][k].second);
+
+	////////////////////////////////////////////////////
+	// Make sure the rv at the time delta from the current
+	// frame exists.
+	if (nameRVmap.find(pp) == nameRVmap.end())
+	  error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		pp.first.c_str(),pp.second);
+	// error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+	// pp.first.c_str(),pp.second);
+	unsigned parent_position = nameRVmap[ pp ];
+
+	if (parent_position > i) {
+	  const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
+	  error("Error: parent variable \"%s\", frame %d (line %d) is later than child \"%s\" frame %d (line %d)",
+		par.name.c_str(),
+		par.frame,
+		par.fileLineNumber,
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber
+		);
+	}
+      }
+    }
+  }
+
+}
 
 
 

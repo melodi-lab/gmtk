@@ -30,7 +30,6 @@
 
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
-#include "GMTK_RandomVariable.h"
 
 
 class Dense1DPMF : public EMable {

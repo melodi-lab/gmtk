@@ -39,10 +39,8 @@
 #include "rand.h"
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
-#include "GMTK_GM.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
@@ -72,32 +70,13 @@ bool JunctionTree::viterbiScore = false;
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-#if 0
-// TODO: put this function somewhere more generally available.
-static void
-printRVSet(set<RandomVariable*>& locset)
-{
-  set<RandomVariable*>::iterator it;
-  bool first = true;
-  for (it=locset.begin();it!=locset.end();it++) {
-    RandomVariable* rv = (*it);
-    if (!first)
-      printf(", ");
-    printf("%s(%d)",rv->name().c_str(),rv->frame());
-    first = false;
-  }
-  printf("\n");
-}
-#endif
-
-
 /*
  * Take the union of A and B and place it in C.
  */
 static void
-union_1_2_to_3(const set<RandomVariable*>& A,
-	       const set<RandomVariable*>& B,
-	       set<RandomVariable*>& C,
+union_1_2_to_3(const set<RV*>& A,
+	       const set<RV*>& B,
+	       set<RV*>& C,
 	       bool do_not_clear = false)
 {
   if (!do_not_clear)
@@ -159,20 +138,20 @@ JT_Partition::JT_Partition(
 		       // their own frame deltas since they might be
 		       // different.
 		       // Left interface:
-		       const set <RandomVariable*>& from_liVars,
+		       const set <RV*>& from_liVars,
 		       const unsigned int liFrameDelta,
 		       // Right interface:
-		       const set <RandomVariable*>& from_riVars,
+		       const set <RV*>& from_riVars,
 		       const unsigned int riFrameDelta,
 		       // Information todo the mapping.
-		       vector <RandomVariable*>& newRvs,
+		       vector <RV*>& newRvs,
 		       map < RVInfo::rvParent, unsigned >& ppf)
 
 {
 
   triMethod = from_part.triMethod;
 
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
 
   // clone over nodes RVs.  
   // TODO: make this next code a routine
@@ -180,7 +159,7 @@ JT_Partition::JT_Partition(
   for (it = from_part.nodes.begin();
        it != from_part.nodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -191,14 +170,14 @@ JT_Partition::JT_Partition(
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     nodes.insert(nrv);
   }
   liNodes.clear();
   for (it = from_liVars.begin();
        it != from_liVars.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+liFrameDelta;    
@@ -209,14 +188,14 @@ JT_Partition::JT_Partition(
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     liNodes.insert(nrv);
   }
   riNodes.clear();
   for (it = from_riVars.begin();
        it != from_riVars.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+riFrameDelta;    
@@ -227,7 +206,7 @@ JT_Partition::JT_Partition(
 	    rvp.first.c_str(),rvp.second);
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     riNodes.insert(nrv);
   }
 
@@ -274,9 +253,9 @@ JT_Partition::JT_Partition(
 JT_Partition::JT_Partition(
  Partition& from_part,
  // Left interface:
- const set <RandomVariable*>& from_liVars,
+ const set <RV*>& from_liVars,
  // Right interface:
- const set <RandomVariable*>& from_riVars
+ const set <RV*>& from_riVars
  )
 {
   nodes = from_part.nodes;
@@ -318,7 +297,7 @@ JT_Partition::JT_Partition(
  *-----------------------------------------------------------------------
  */
 void
-JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
+JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
 				   unsigned& iClique,
 				   bool& iCliqueSameAsInterface)
 {
@@ -331,7 +310,7 @@ JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
 
     for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
       // check that clique fully covers iNodes 
-      set<RandomVariable*> res;
+      set<RV*> res;
       set_intersection(cliques[cliqueNo].nodes.begin(),
 		       cliques[cliqueNo].nodes.end(),
 		       iNodes.begin(),
@@ -466,7 +445,7 @@ JT_Partition::cliqueWithMinWeight()
 
 
 JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
-					     vector <RandomVariable*>& newRvs,
+					     vector <RV*>& newRvs,
 					     map < RVInfo::rvParent, unsigned >& ppf,
 					     const unsigned int frameDelta)
   : origin(from_part)
@@ -649,7 +628,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
   
     for (unsigned i=0;i<numMaxCliques;i++) {
       for (unsigned j=i+1;j<numMaxCliques;j++) {
-	set<RandomVariable*> sep_set;
+	set<RV*> sep_set;
 	set_intersection(part.cliques[i].nodes.begin(),
 			 part.cliques[i].nodes.end(),
 			 part.cliques[j].nodes.begin(),
@@ -669,12 +648,12 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 
 	// push back number of deterministic nodes in
 	// the separator
-	set<RandomVariable*>::iterator it;
-	set<RandomVariable*>::iterator it_end = sep_set.end();
+	set<RV*>::iterator it;
+	set<RV*>::iterator it_end = sep_set.end();
 	unsigned numDeterministicNodes = 0;
 	for (it = sep_set.begin(); it != it_end; it++) {
-	  RandomVariable* rv = (*it);
-	  if (!rv->hidden)
+	  RV* rv = (*it);
+	  if (!rv->hidden())
 	    numDeterministicNodes++;
 	}
 	e.weights.push_back((double)numDeterministicNodes);
@@ -688,7 +667,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 	// j,part.cliques[j].weight());
 
 	// push back negative weight of two cliques together.
-	set<RandomVariable*> clique_union;
+	set<RV*> clique_union;
 	set_union(part.cliques[i].nodes.begin(),
 		  part.cliques[i].nodes.end(),
 		  part.cliques[j].nodes.begin(),
@@ -814,7 +793,7 @@ JunctionTree::base_unroll()
   // to this JT.
 
   // unrolled random variables
-  vector <RandomVariable*> unrolled_rvs;
+  vector <RV*> unrolled_rvs;
   // mapping from name(frame) to integer index into unrolled_rvs.
   map < RVInfo::rvParent, unsigned > ppf;
   // number of C repetitions is M + (k+1)*S, so
@@ -823,7 +802,7 @@ JunctionTree::base_unroll()
 	    unrolled_rvs,ppf);
   
 
-  set <RandomVariable*> empty;
+  set <RV*> empty;
   // copy P partition 
   new (&P1) JT_Partition(gm_template.P,0*gm_template.S,
 			 empty,0*gm_template.S,
@@ -1020,16 +999,16 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
   for (unsigned i=0;i<numMaxCliques1;i++) {
     for (unsigned j=0;j<numMaxCliques2;j++) {
 
-      set< RandomVariable*>::iterator it1;
-      const set< RandomVariable*>::iterator it1_end = part1.cliques[i].nodes.end();
-      set< RandomVariable*>::iterator it2;
-      const set< RandomVariable*>::iterator it2_end = part2.cliques[j].nodes.end();
+      set< RV*>::iterator it1;
+      const set< RV*>::iterator it1_end = part1.cliques[i].nodes.end();
+      set< RV*>::iterator it2;
+      const set< RV*>::iterator it2_end = part2.cliques[j].nodes.end();
 
       unsigned sep_set_size = 0;
       for (it1 = part1.cliques[i].nodes.begin(); it1 != it1_end ; it1++) {
 	for (it2 = part2.cliques[j].nodes.begin(); it2 != it2_end ; it2++) {
-	  RandomVariable* rv1 = (*it1);
-	  RandomVariable* rv2 = (*it2);
+	  RV* rv1 = (*it1);
+	  RV* rv2 = (*it2);
 	  infoMsg(IM::Huge,"comparing %s(%d) with %s(%d)\n",
 		  rv1->name().c_str(),rv1->frame(),		  
 		  rv2->name().c_str(),rv2->frame());
@@ -1310,7 +1289,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 				 const char* varPartitionAssignmentPrior,
 				 const char *varCliqueAssignmentPrior)
 {
-  vector<RandomVariable*> sortedNodes;
+  vector<RV*> sortedNodes;
 
   // We use a topological sort so that among all possible sorts, so
   // that variables come in an appropraite order (e.g., might have it
@@ -1319,22 +1298,23 @@ JunctionTree::assignRVsToCliques(const char *const partName,
   // when sampling hidden continuous nodes.
   infoMsg(IM::Giga,"Sorting partition variables using priority order (%s)\n",
 	  (varPartitionAssignmentPrior?varPartitionAssignmentPrior:"NULL"));
-  GraphicalModel::topologicalSortContFirst(part.nodes,part.nodes,sortedNodes,varPartitionAssignmentPrior);
+
+  GraphicalModel::topologicalSortWPriority(part.nodes,part.nodes,sortedNodes,varPartitionAssignmentPrior);
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),part.cliques.size());
 
   for (unsigned n=0;n<sortedNodes.size();n++) {
 
-    RandomVariable* rv = sortedNodes[n];
+    RV* rv = sortedNodes[n];
 
     // precompute the parents set for set intersection operations.
     // The one stored in the rv is a vector, but we need a set, so we
     // pre-compute it here.
-    set<RandomVariable*> parSet;
-    for (unsigned p=0;p<rv->allPossibleParents.size();p++) {
+    set<RV*> parSet;
+    for (unsigned p=0;p<rv->allParents.size();p++) {
       // TODO: see if there is a faster STL way to go from vector to set.
       // fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
-      parSet.insert(rv->allPossibleParents[p]);
+      parSet.insert(rv->allParents[p]);
     }
     multimap < vector<double>, unsigned> scoreSet;
 
@@ -1400,7 +1380,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
     // according to a designated (and hopefully good) topological
     // order.
     for (unsigned clique_num=0;clique_num<part.cliques.size(); clique_num++ ) {
-      GraphicalModel::topologicalSortContFirst(part.cliques[clique_num].assignedNodes,
+      GraphicalModel::topologicalSortWPriority(part.cliques[clique_num].assignedNodes,
 					       part.cliques[clique_num].assignedNodes,
 					       sortedNodes,
 					       varCliqueAssignmentPrior);
@@ -1440,9 +1420,9 @@ JunctionTree::assignRVToClique(const char *const partName,
 			       JT_Partition& part,
 			       const unsigned root,
 			       const unsigned depth,
-			       RandomVariable* rv,
+			       RV* rv,
 			       bool& alreadyAProbContributer,
-			       set<RandomVariable*>& parSet,
+			       set<RV*>& parSet,
 			       multimap < vector<double>, unsigned >& scoreSet)
 {
   // keep a reference for easy access
@@ -1456,7 +1436,7 @@ JunctionTree::assignRVToClique(const char *const partName,
 
   if (closure_in_clique) {
     // need to further check that parents are in clique
-    set<RandomVariable*> res;
+    set<RV*> res;
     set_intersection(curClique.nodes.begin(),
 		     curClique.nodes.end(),
 		     parSet.begin(),parSet.end(),
@@ -1520,7 +1500,7 @@ JunctionTree::assignRVToClique(const char *const partName,
     // The heuristic here is, have this node contribute probabiltiy
     // to this clique if many of its parents are already doing so, which
     // might produce a clique with good pruning behavior.
-    set<RandomVariable*> res;
+    set<RV*> res;
     set_intersection(curClique.assignedProbNodes.begin(),
 		     curClique.assignedProbNodes.end(),
 		     parSet.begin(),parSet.end(),
@@ -1551,8 +1531,8 @@ JunctionTree::assignRVToClique(const char *const partName,
     // children in this clique, it is hopeful that other parents of
     // those children might also be assigned to the same clique.
     int numChildren = 0;
-    for (unsigned i=0;i<rv->allPossibleChildren.size();i++) {
-      RandomVariable* child = rv->allPossibleChildren[i];
+    for (unsigned i=0;i<rv->allChildren.size();i++) {
+      RV* child = rv->allChildren[i];
       if (curClique.nodes.find(child) != curClique.nodes.end())
 	numChildren++;
     }
@@ -1582,8 +1562,8 @@ JunctionTree::assignRVToClique(const char *const partName,
     // We've now computed a bunch of heursitcs, push them
     // into an array in priority order to be scored later
     vector<double> score;
-    if (rv->discrete) {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+    if (rv->discrete()) {
+      DiscRV* drv = (DiscRV*)rv;
       // 1st thing pushed has highest priority.
       if (drv->sparse()) {
 	// if the RV is sparse, use distance from
@@ -2108,7 +2088,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
 
       // intersection of the two separators
-      set<RandomVariable*> sepIntersection;
+      set<RV*> sepIntersection;
       set_intersection(s0.nodes.begin(),s0.nodes.end(),
 		       s1.nodes.begin(),s1.nodes.end(),
 		       inserter(sepIntersection,sepIntersection.end()));
@@ -2165,9 +2145,9 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 	for (unsigned sep=1;sep<numSeparators;sep++) {
       
 	  // reference variables for easy access
-	  set<RandomVariable*>& sepNodes
+	  set<RV*>& sepNodes
 	    = part.separators[clique.ceReceiveSeparators[sep]].nodes;
-	  set<RandomVariable*>& sepAccumInter
+	  set<RV*>& sepAccumInter
 	    = part.separators[clique.ceReceiveSeparators[sep]].accumulatedIntersection;
 
 
@@ -2188,7 +2168,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
 
 	  // update the accumulated (union) of all previous sep nodes.
-	  set<RandomVariable*> res;
+	  set<RV*> res;
 	  set_union(sepNodes.begin(),sepNodes.end(),
 		    clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
 		    inserter(res,res.end()));
@@ -2208,7 +2188,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     // this case will be everything). Note also that the order of the
     // separators no longer matters.
 
-    const set < RandomVariable* > empty;
+    const set < RV* > empty;
     for (unsigned i=0;i<numSeparators;i++) {
       SeparatorClique& sep = part.separators[clique.ceReceiveSeparators[i]];
       sep.accumulatedIntersection.clear();
@@ -2226,7 +2206,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     // unassigned nodes, unassigned iterated nodes, 
     // compute: unassignedIteratedNodes  = nodes - (assignedNodes U unionIncommingCESeps)
     // first: compute res = nodes - assignedNodes
-    set<RandomVariable*> res;
+    set<RV*> res;
     set_difference(clique.nodes.begin(),clique.nodes.end(),
 		   clique.assignedNodes.begin(),clique.assignedNodes.end(),
 		   inserter(res,res.end()));
@@ -2273,7 +2253,7 @@ JunctionTree::getCumulativeUnassignedIteratedNodes(JT_Partition& part,
 						   const unsigned root)
 {
   MaxClique& curClique = part.cliques[root];
-  set<RandomVariable*>& res = curClique.cumulativeUnassignedIteratedNodes;
+  set<RV*>& res = curClique.cumulativeUnassignedIteratedNodes;
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
 
@@ -2291,7 +2271,7 @@ JunctionTree::getCumulativeUnassignedIteratedNodes(JT_Partition& part,
 void
 JunctionTree::getCumulativeUnassignedIteratedNodes()
 {
-  set<RandomVariable*> res;
+  set<RV*> res;
 
   // TODO: this should be a member function in P1.
   getCumulativeUnassignedIteratedNodes(P1,P_ri_to_C);
@@ -2392,12 +2372,12 @@ JunctionTree::getCumulativeUnassignedIteratedNodes()
 double
 JunctionTree::junctionTreeWeight(JT_Partition& part,
 				 const unsigned rootClique,
-				 set<RandomVariable*>* lp_nodes,
-				 set<RandomVariable*>* rp_nodes)
+				 set<RV*>* lp_nodes,
+				 set<RV*>* rp_nodes)
 {
   MaxClique& curClique = part.cliques[rootClique];
 
-  set <RandomVariable*> empty;
+  set <RV*> empty;
   // @@ add in unassigned in partition information to next call
   double weight = curClique.weightInJunctionTree(part.unassignedInPartition,
 						 jtWeightUpperBound,
@@ -2446,14 +2426,14 @@ JunctionTree::junctionTreeWeight(JT_Partition& part,
  */
 double
 JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
-				 const set<RandomVariable*>& interfaceNodes,
-				 set<RandomVariable*>* lp_nodes,
-				 set<RandomVariable*>* rp_nodes)
+				 const set<RV*>& interfaceNodes,
+				 set<RV*>* lp_nodes,
+				 set<RV*>* rp_nodes)
 
 {
 
   Partition part;
-  const set <RandomVariable*> emptySet;
+  const set <RV*> emptySet;
   part.cliques = cliques;
 
   // set up the nodes into part
@@ -2505,15 +2485,15 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 
   if (jtWeightPenalizeUnassignedIterated > 0.0) {
     unsigned badness_count=0;
-    set <RandomVariable*>::iterator it;
+    set <RV*>::iterator it;
     for (it = jt_part.cliques[root].cumulativeUnassignedIteratedNodes.begin();
 	 it != jt_part.cliques[root].cumulativeUnassignedIteratedNodes.end();
 	 it++) 
       {
-	RandomVariable* rv = (*it);
+	RV* rv = (*it);
 	
-	assert ( rv-> discrete );
-	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	assert ( rv-> discrete() );
+	DiscRV* drv = (DiscRV*)rv;
 	if (!drv->sparse())
 	  continue;
 
@@ -2687,8 +2667,8 @@ void
 JunctionTree::printAllJTInfo(FILE* f,
 			     JT_Partition& part,
 			     const unsigned root,
-			     set <RandomVariable*>* lp_nodes,
-			     set <RandomVariable*>* rp_nodes)
+			     set <RV*>* lp_nodes,
+			     set <RV*>* rp_nodes)
 			     
 {
   // print cliques information
@@ -2736,8 +2716,8 @@ JunctionTree::printAllJTInfoCliques(FILE* f,
 				    JT_Partition& part,
 				    const unsigned root,
 				    const unsigned treeLevel,
-				    set <RandomVariable*>* lp_nodes,
-				    set <RandomVariable*>* rp_nodes)
+				    set <RV*>* lp_nodes,
+				    set <RV*>* rp_nodes)
 {
   // print cliques information
   for (unsigned i=0;i<treeLevel;i++) fprintf(f,"  ");
@@ -2909,7 +2889,7 @@ JunctionTree::unroll(const unsigned int numFrames)
 	  modifiedTemplateUnrollAmount);
 
   // unrolled random variables
-  // vector <RandomVariable*> unrolled_rvs;
+  // vector <RV*> unrolled_rvs;
   // mapping from 'name+frame' to integer index into unrolled_rvs.
   // map < RVInfo::rvParent, unsigned > ppf;
 
@@ -2969,14 +2949,14 @@ JunctionTree::unroll(const unsigned int numFrames)
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::setObservedRVs(vector <RandomVariable*>& rvs)
+JunctionTree::setObservedRVs(vector <RV*>& rvs)
 {
   // Set all discrete observed variables to their values here
-  vector <RandomVariable*>::iterator it;
+  vector <RV*>::iterator it;
   for (it = rvs.begin(); it!= rvs.end(); it++) {
-    RandomVariable *rv = (*it);
-    if (rv->discrete && !rv->hidden) {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+    RV *rv = (*it);
+    if (rv->discrete() && !rv->hidden()) {
+      DiscRV* drv = (DiscRV*)rv;
       drv->setToObservedValue();
     }
   }
@@ -3579,7 +3559,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 	  modifiedTemplateUnrollAmount);
 
   // unrolled random variables
-  // vector <RandomVariable*> unrolled_rvs;
+  // vector <RV*> unrolled_rvs;
   // mapping from 'name+frame' to integer index into unrolled_rvs.
   // map < RVInfo::rvParent, unsigned > ppf;
 
@@ -3732,7 +3712,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
 	  modifiedTemplateUnrollAmount);
 
   // unrolled random variables
-  // vector <RandomVariable*> unrolled_rvs;
+  // vector <RV*> unrolled_rvs;
   // mapping from 'name+frame' to integer index into unrolled_rvs.
   // map < RVInfo::rvParent, unsigned > ppf;
 
@@ -4678,13 +4658,13 @@ spare code:
     vector< Edge > edges;
     edges.reserve((numSeparators*(numSeparators-1))/2);
 
-    set<RandomVariable*> sep_intr_set;
+    set<RV*> sep_intr_set;
     for (unsigned i=0;i<numSeparators;i++) {
       for (unsigned j=i+1;j<numSeparators;j++) {
 
-	const set<RandomVariable*>& sep_i =
+	const set<RV*>& sep_i =
 	  part.separators[clique.ceReceiveSeparators[i]];
-	const set<RandomVariable*>& sep_j =
+	const set<RV*>& sep_j =
 	  part.separators[clique.ceReceiveSeparators[j]];
 	sep_intr_set.clear();
 	set_intersection(sep_i.begin(),sep_i.end(),

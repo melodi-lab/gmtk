@@ -31,7 +31,7 @@
 
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
-#include "GMTK_RandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_Dense1DPMF.h"
 
 
@@ -41,7 +41,7 @@ class Sparse1DPMF : public EMable {
   //////////////////////////////////////
   // The cardinality of this RV, i.e., 
   // values may take value between [0:card-1]
-  int _card;
+  unsigned _card;
 
   ///////////////////////////////////////////
   // the (possibly) shared 1DPMFs used for the prob values
@@ -49,7 +49,7 @@ class Sparse1DPMF : public EMable {
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
-  sArray <RandomVariable::DiscreteVariableType> pmf;
+  sArray < DiscRVType > pmf;
   ///////////////////////////////////////////////////////////  
 
   //////////////////////////////////
@@ -68,27 +68,27 @@ public:
 
   //////////////////////////////////////
   // Return the number of valid values
-  int length() { return pmf.len(); }
+  unsigned length() { return pmf.size(); }
 
   ///////////////////////////////////////
   // return the cardinality of the RV
-  int card() { return _card; }
+  unsigned card() { return _card; }
 
   ///////////////////////////////////////
   // return the probability that for value 'val'
   // This will do a search for RV value val
-  logpr prob(const int val);
+  logpr prob(const unsigned val);
 
   ///////////////////////////////////////
   // return the probability at entry i
-  logpr probAtEntry(const int i) {
-    assert ( i >= 0 && i < pmf.len() );
+  logpr probAtEntry(const unsigned i) {
+    assert ( i < pmf.size() );
     return dense1DPMF->p(i);
   }
   ///////////////////////////////////////
   // return the value at entry i
-  RandomVariable::DiscreteVariableType valueAtEntry(const int i) {
-    assert ( i >= 0 && i < pmf.len() );
+  DiscRVType valueAtEntry(const unsigned i) {
+    assert ( i < pmf.size() );
     return pmf.ptr[i];
   }
 
@@ -120,7 +120,7 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration();
-  void emIncrement(logpr prob,const int val);
+  void emIncrement(logpr prob,const unsigned val);
   void emEndIteration();
   void emSwapCurAndNew();
 

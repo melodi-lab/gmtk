@@ -39,17 +39,14 @@
 #include "rand.h"
 
 #include "GMTK_BoundaryTriangulate.h"
-#include "GMTK_ContinuousRandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_Mixture.h"
-#include "GMTK_GM.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_ObservationMatrix.h"
-#include "GMTK_RandomVariable.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GraphicalModel.h"
 
@@ -69,36 +66,6 @@ VCID("$Header$");
  *******************************************************************************
  *******************************************************************************
  */
-
-// TODO: move this somewhere else, generally accessible.
-static void
-printRVSet(FILE*f,set<RandomVariable*>& locset)
-{
-  bool first = true;
-  set<RandomVariable*>::iterator it;
-  for (it = locset.begin();
-       it != locset.end();it++) {
-    RandomVariable* rv = (*it);
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
-    first = false;
-  }
-  fprintf(f,"\n");
-}
-static void
-printRVSet(FILE*f,vector<RandomVariable*>& locvec)
-{
-  bool first = true;
-  for (unsigned i=0;i<locvec.size();i++) {
-    RandomVariable* rv = locvec[i];
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
-    first = false;
-  }
-  fprintf(f,"\n");
-}
 
 
 
@@ -123,10 +90,10 @@ printRVSet(FILE*f,vector<RandomVariable*>& locvec)
  */
 void
 BoundaryTriangulate::
-saveCurrentNeighbors(const set<RandomVariable*> nodes,vector<nghbrPairType>& orgnl_nghbrs)
+saveCurrentNeighbors(const set<RV*> nodes,vector<nghbrPairType>& orgnl_nghbrs)
 {
-  set<RandomVariable*>::iterator crrnt_node; 
-  set<RandomVariable*>::iterator end_node; 
+  set<RV*>::iterator crrnt_node; 
+  set<RV*>::iterator end_node; 
   orgnl_nghbrs.clear();
   for ( crrnt_node=nodes.begin(), end_node=nodes.end();
         crrnt_node != end_node;
@@ -202,8 +169,8 @@ void
 BoundaryTriangulate::
 restoreNeighbors(vector<nghbrPairType>& orgnl_nghbrs)
 {
-  vector<pair<RandomVariable*, set<RandomVariable*> > >::iterator crrnt_node;
-  vector<pair<RandomVariable*, set<RandomVariable*> > >::iterator end_node;
+  vector<pair<RV*, set<RV*> > >::iterator crrnt_node;
+  vector<pair<RV*, set<RV*> > >::iterator end_node;
   for( end_node=orgnl_nghbrs.end(), crrnt_node=orgnl_nghbrs.begin();
        crrnt_node!=end_node;
        ++crrnt_node )
@@ -277,9 +244,9 @@ restoreNeighbors(vector<triangulateNghbrPairType>& orgnl_nghbrs)
  */
 void
 BoundaryTriangulate::
-deleteNodes(const set<RandomVariable*>& nodes)
+deleteNodes(const set<RV*>& nodes)
 {
-  for (set<RandomVariable*>::iterator i = nodes.begin();
+  for (set<RV*>::iterator i = nodes.begin();
        i != nodes.end(); i++) 
     delete (*i);
 }
@@ -544,18 +511,18 @@ BoundaryTriangulate::createVectorBoundaryHeuristic(const string& bnd_heur_str,
  */
 int
 BoundaryTriangulate::
-computeFillIn(const set<RandomVariable*>& nodes) 
+computeFillIn(const set<RV*>& nodes) 
 {
 
   int fill_in = 0;
-  for (set<RandomVariable*>::iterator j=nodes.begin();
+  for (set<RV*>::iterator j=nodes.begin();
        j != nodes.end();
        j++) {
 
     // TODO: figure out if there is a way to just to compute
     // the size of the set intersection rather than to
     // actually produce the set intersection and then use its size.
-    set<RandomVariable*> tmp;
+    set<RV*> tmp;
     set_intersection(nodes.begin(),nodes.end(),
 		     (*j)->neighbors.begin(),(*j)->neighbors.end(),
 		     inserter(tmp,tmp.end()));
@@ -652,7 +619,7 @@ double
 BoundaryTriangulate::
 graphWeight(vector<MaxClique>& cliques,		     
 	    const bool useJTWeight,
-	    const set<RandomVariable*>& interfaceNodes)
+	    const set<RV*>& interfaceNodes)
 {
   if (!useJTWeight)
     return graphWeight(cliques);
@@ -735,7 +702,7 @@ BoundaryTriangulate
   // guaranteed that P or E will exist), and the middle M chunks are
   // used to find the boundary.
 
-  vector <RandomVariable*> unroll2_rvs;
+  vector <RV*> unroll2_rvs;
   fp.unroll(M+1,unroll2_rvs);
   // drop all the edge directions
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
@@ -747,15 +714,15 @@ BoundaryTriangulate
   }
   // create sets P, C1, C2, C3, and E, from graph unrolled M+1 times
   // prologue
-  set<RandomVariable*> P_u2;
+  set<RV*> P_u2;
   // 1st chunk, 1 chunk long
-  set<RandomVariable*> C1_u2;
+  set<RV*> C1_u2;
   // 2nd chunk, M chunks long
-  set<RandomVariable*> C2_u2;
+  set<RV*> C2_u2;
   // 3rd chunk, 1 chunk long
-  set<RandomVariable*> C3_u2;
+  set<RV*> C3_u2;
   // epilogue
-  set<RandomVariable*> E_u2;
+  set<RV*> E_u2;
   int start_index_of_C1_u2 = -1;
   int start_index_of_C2_u2 = -1;
   int start_index_of_C3_u2 = -1;
@@ -811,7 +778,7 @@ BoundaryTriangulate
   //    3) if S > M, C1' and C2' will not overlap, and there will be chunks 
   //       between C1' and C2', and they'll be placed in Cextra
 
-  vector <RandomVariable*> unroll1_rvs;
+  vector <RV*> unroll1_rvs;
   fp.unroll(M+S-1,unroll1_rvs);
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->createNeighborsFromParentsChildren();
@@ -819,11 +786,11 @@ BoundaryTriangulate
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->moralize();
   }
-  set<RandomVariable*> P_u1;
-  set<RandomVariable*> C1_u1;
-  set<RandomVariable*> C2_u1;
-  set<RandomVariable*> Cextra_u1;
-  set<RandomVariable*> E_u1;
+  set<RV*> P_u1;
+  set<RV*> C1_u1;
+  set<RV*> C2_u1;
+  set<RV*> Cextra_u1;
+  set<RV*> E_u1;
   int start_index_of_C1_u1 = -1;
   int start_index_of_C2_u1 = -1;
   int start_index_of_E_u1 = -1;
@@ -872,8 +839,8 @@ BoundaryTriangulate
   // have an appropriate interface vars) to nodes C1_u1 and C2_u1
   // which we are going to use to set up the 3-way partition
   // to ultimately triangulate.
-  map < RandomVariable*, RandomVariable* > C2_u2_to_C1_u1;
-  map < RandomVariable*, RandomVariable* > C2_u2_to_C2_u1;
+  map < RV*, RV* > C2_u2_to_C1_u1;
+  map < RV*, RV* > C2_u2_to_C2_u1;
   for (unsigned i=0;i<C2_u2.size();i++) {
     C2_u2_to_C1_u1[unroll2_rvs[i+start_index_of_C2_u2]]
       = unroll1_rvs[i+start_index_of_C1_u1];
@@ -883,13 +850,13 @@ BoundaryTriangulate
 
   // allocate space for results
   // left of the left interface in u2C2
-  set<RandomVariable*> left_C_l_u2C2;
+  set<RV*> left_C_l_u2C2;
   // the left interface in u2C2
-  set<RandomVariable*> C_l_u2C2;
+  set<RV*> C_l_u2C2;
   // right of the right interface in u2C2
-  set<RandomVariable*> right_C_r_u2C2;
+  set<RV*> right_C_r_u2C2;
   // the right interface in u2C2
-  set<RandomVariable*> C_r_u2C2;
+  set<RV*> C_r_u2C2;
 
   vector<BoundaryHeuristic> bnd_heur_v;
   createVectorBoundaryHeuristic(bnd_heur_str,bnd_heur_v);
@@ -906,7 +873,7 @@ BoundaryTriangulate
     infoMsg(Tiny,"---\nFinding BEST LEFT interface\n");
     
 
-    set<RandomVariable*> C2_1_u2; // first chunk in C2_u2
+    set<RV*> C2_1_u2; // first chunk in C2_u2
     if (M == 0) {
       // TODO: remove this, as we require M >= 1
       // find interface in basic template
@@ -930,7 +897,7 @@ BoundaryTriangulate
 	// make it empty signaling that we don't bother to check it in this case.
 	C2_1_u2.clear();
       } else {
-	for (set<RandomVariable*>::iterator i=C2_u2.begin();
+	for (set<RV*>::iterator i=C2_u2.begin();
 	     i != C2_u2.end();i++) {
 	  if ((*i)->frame() > fp.lastChunkFrame() && (*i)->frame() <= fp.lastChunkFrame()+fp.numFramesInC())
 	    C2_1_u2.insert((*i));
@@ -957,7 +924,7 @@ BoundaryTriangulate
     findingLeftInterface = false;
     infoMsg(Tiny,"---\nFinding BEST RIGHT interface\n");
 
-    set<RandomVariable*> C2_l_u2; // last chunk of C2_u2
+    set<RV*> C2_l_u2; // last chunk of C2_u2
     if (M == 0) {
       // TODO: remove this, as we require M >= 1
       // find interface in basic template
@@ -981,7 +948,7 @@ BoundaryTriangulate
 	// make it empty signaling that we don't bother to check it in this case.
 	C2_l_u2.clear();
       } else {
-	for (set<RandomVariable*>::iterator i=C2_u2.begin();
+	for (set<RV*>::iterator i=C2_u2.begin();
 	     i != C2_u2.end();i++) {
 	  if ((*i)->frame() > (fp.lastChunkFrame()+(M-1)*fp.numFramesInC()) 
 	      && (*i)->frame() <= (fp.lastChunkFrame()+M*fp.numFramesInC()))
@@ -1103,29 +1070,29 @@ void
 BoundaryTriangulate
 ::findInterfacePartitions(
  // input variables
- const set<RandomVariable*>& P_u1,
- const set<RandomVariable*>& C1_u1,
- const set<RandomVariable*>& Cextra_u1, // non-empty only when S > M
- const set<RandomVariable*>& C2_u1,
- const set<RandomVariable*>& E_u1,
+ const set<RV*>& P_u1,
+ const set<RV*>& C1_u1,
+ const set<RV*>& Cextra_u1, // non-empty only when S > M
+ const set<RV*>& C2_u1,
+ const set<RV*>& E_u1,
  // these next 2 should be const, but there is no "op[] const"
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
- const set<RandomVariable*>& left_C_l_u2C2,
- const set<RandomVariable*>& C_l_u2C2,
+ map < RV*, RV* >& C2_u2_to_C1_u1,
+ map < RV*, RV* >& C2_u2_to_C2_u1,
+ const set<RV*>& left_C_l_u2C2,
+ const set<RV*>& C_l_u2C2,
  // output variables
  GMTemplate& gm_template)
 
 {
   // now we need to make a bunch of sets to be unioned
   // together to get the partitions.
-  set<RandomVariable*> C_l_u1C1;
-  set<RandomVariable*> C_l_u1C2;
+  set<RV*> C_l_u1C1;
+  set<RV*> C_l_u1C2;
 
-  set<RandomVariable*> left_C_l_u1C1;
-  set<RandomVariable*> left_C_l_u1C2;
+  set<RV*> left_C_l_u1C1;
+  set<RV*> left_C_l_u1C2;
   if (M > 0) {
-    for (set<RandomVariable*>::iterator i = C_l_u2C2.begin();
+    for (set<RV*>::iterator i = C_l_u2C2.begin();
 	 i!= C_l_u2C2.end(); i++) {
 
       assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
@@ -1135,7 +1102,7 @@ BoundaryTriangulate
       C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
     }
 
-    for (set<RandomVariable*>::iterator i = left_C_l_u2C2.begin();
+    for (set<RV*>::iterator i = left_C_l_u2C2.begin();
 	 i != left_C_l_u2C2.end(); i++) {
       
       assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
@@ -1170,22 +1137,22 @@ BoundaryTriangulate
   // to get the right interface behavior.
 
   // Finish P
-  set<RandomVariable*> P = P_u1;
+  set<RV*> P = P_u1;
   set_union(left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
 	    C_l_u1C1.begin(),C_l_u1C1.end(),
 	    inserter(P,P.end()));
 
   // Finish E
-  set<RandomVariable*> E = E_u1;
+  set<RV*> E = E_u1;
   set_difference(C2_u1.begin(),C2_u1.end(),
 		 left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
 		 inserter(E,E.end()));
 
   // Finish C
-  set<RandomVariable*> C;
-  set<RandomVariable*> tmp1;
-  set<RandomVariable*> tmp2;
-  set<RandomVariable*> tmp3;
+  set<RV*> C;
+  set<RV*> tmp1;
+  set<RV*> tmp2;
+  set<RV*> tmp3;
   set_union(C1_u1.begin(),C1_u1.end(),
 	    C2_u1.begin(),C2_u1.end(),
 	    inserter(tmp1,tmp1.end()));
@@ -1272,7 +1239,7 @@ BoundaryTriangulate
   double best_P_weight = DBL_MAX;
   double best_C_weight = DBL_MAX;
   double best_E_weight = DBL_MAX;
-  const set <RandomVariable*> emptySet;
+  const set <RV*> emptySet;
 
   parseTriHeuristicString(tri_heur_str,tri_heur);
 
@@ -1341,11 +1308,11 @@ BoundaryTriangulate
 void
 BoundaryTriangulate::
 triangulateOnce(// input: nodes to be triangulated
-	    const set<RandomVariable*>& nodes,
+	    const set<RV*>& nodes,
 	    // use JT weight rather than sum of weight
 	    const bool jtWeight,
 	    // nodes that a JT root must contain (ok to be empty).
-	    const set<RandomVariable*>& nodesRootMustContain,
+	    const set<RV*>& nodesRootMustContain,
 	    // triangulation heuristic method
 	    const TriangulateHeuristics& tri_heur,
 	    // original neighbor structures
@@ -1355,7 +1322,7 @@ triangulateOnce(// input: nodes to be triangulated
 	    // output: string giving resulting method used
 	    string& meth_str)
 {
-  vector<RandomVariable*> order;
+  vector<RV*> order;
   string                  annealing_str;
 
   switch (tri_heur.style) {
@@ -1433,9 +1400,9 @@ triangulateOnce(// input: nodes to be triangulated
 void
 BoundaryTriangulate
 ::triangulatePartition(
-  const set<RandomVariable*>& nodes,  // nodes to be triangulated
+  const set<RV*>& nodes,  // nodes to be triangulated
   const bool jtWeight,                // use JT weight rather than sum of weight
-  const set<RandomVariable*>& nodesRootMustContain, // nodes that a JT root must
+  const set<RV*>& nodesRootMustContain, // nodes that a JT root must
                                                     // contain (ok to be empty).
   const TriangulateHeuristics& tri_heur,    // triangulation method
   vector<nghbrPairType>& orgnl_nghbrs,   // original neighbor structures
@@ -1446,7 +1413,7 @@ BoundaryTriangulate
   )
 {
   vector<MaxClique>       cliques;
-  vector<RandomVariable*> order;
+  vector<RV*> order;
   double                  prvs_best_weight;
   double                  weight;
   string                  meth_str;
@@ -1634,13 +1601,13 @@ BoundaryTriangulate
 void
 BoundaryTriangulate
 ::basicTriangulate(// input: nodes to triangulate
-		 const set<RandomVariable*>& nodes,
+		 const set<RV*>& nodes,
 		 // input: triangulation heuristic
 		 const vector<BasicTriangulateHeuristic>& th_v,
 		 // choose randomly from N-best scored nodes
 		 const unsigned numRandomTop,
 		 // output: nodes ordered according to resulting elimination
-		 vector<RandomVariable*>& orderedNodes,  
+		 vector<RV*>& orderedNodes,  
 		 // output: resulting max cliques
 		 vector<MaxClique>& cliques,
 		 // input: find the cliques as well
@@ -1661,7 +1628,7 @@ BoundaryTriangulate
 
   // Also keep ordered (eliminated) nodes as a set for easy
   // intersection, with other node sets.
-  set<RandomVariable*> orderedNodesSet;
+  set<RV*> orderedNodesSet;
 
   
   // Approach: essentially, create a priority queue data structure
@@ -1673,7 +1640,7 @@ BoundaryTriangulate
   // efficient to do so. This is because a multimap (used to simulate
   // a priority queue) has the ability to efficiently remove stuff
   // from the middle.
-  multimap< vector<float> ,RandomVariable*> unorderedNodes;
+  multimap< vector<float> ,RV*> unorderedNodes;
 
   // We also need to keep a map to be able to remove elements of
   // 'unorderedNodes' when a node is eliminated. I.e., we need to be
@@ -1681,17 +1648,17 @@ BoundaryTriangulate
   // queue so that when a node is eliminated, its neighbors can be
   // removed from the queue (since their weight is now invalid) and
   // then (only) their weight can be recalculated anew.
-  map<RandomVariable*, multimap< vector<float>,RandomVariable*>::iterator > 
+  map<RV*, multimap< vector<float>,RV*>::iterator > 
     rv2unNodesMap;
 
   // Also, create a set of nodes which are the ones whose weight
   // needs to be updated in the priority queue 'unorderedNodes'.
   // We begin by updating the weights of all nodes.
-  set<RandomVariable*> nodesToUpdate = nodes;
+  set<RV*> nodesToUpdate = nodes;
 
   do {
 
-    for (set<RandomVariable*>::iterator i = nodesToUpdate.begin();
+    for (set<RV*>::iterator i = nodesToUpdate.begin();
 	 i != nodesToUpdate.end();
 	 i++) {
 
@@ -1705,7 +1672,7 @@ BoundaryTriangulate
 
       // Create activeNeighbors, which contains only those neighbors
       // that are active and are not yet eliminated.
-      set<RandomVariable*> activeNeighbors;
+      set<RV*> activeNeighbors;
       set_difference((*i)->neighbors.begin(),(*i)->neighbors.end(),
 		     orderedNodesSet.begin(),orderedNodesSet.end(),
 		     inserter(activeNeighbors,activeNeighbors.end()));
@@ -1753,14 +1720,14 @@ BoundaryTriangulate
 	  warning("Warning: unimplemented triangulation heuristic (ignored)\n");
       }
 
-      pair< vector<float>,RandomVariable*> p(weight,(*i));
+      pair< vector<float>,RV*> p(weight,(*i));
       rv2unNodesMap[(*i)] = (unorderedNodes.insert(p));
     }
 
     if (message(Huge)) {
       // go through and print sorted guys.
       printf("Order of nodes to be eliminated\n");
-      for (multimap< vector<float> ,RandomVariable*>::iterator m
+      for (multimap< vector<float> ,RV*>::iterator m
 	     = unorderedNodes.begin();
 	   m != unorderedNodes.end(); m++) {
 	printf("Node %s(%d) with weights:",
@@ -1778,8 +1745,8 @@ BoundaryTriangulate
     // order based on key (in this case the weight), and so the first
     // one (i.e., mm.begin() ) should have the lowest weight.
     pair< 
-      multimap< vector<float>,RandomVariable*>::iterator, 
-      multimap< vector<float>,RandomVariable*>::iterator 
+      multimap< vector<float>,RV*>::iterator, 
+      multimap< vector<float>,RV*>::iterator 
       > ip = unorderedNodes.equal_range( (*(unorderedNodes.begin())).first );
 
     const unsigned d = distance(ip.first,ip.second);
@@ -1808,7 +1775,7 @@ BoundaryTriangulate
 
     // ip.first now points to the pair containing the random variable that
     // we eliminate.
-    RandomVariable *rv = (*(ip.first)).second;
+    RV *rv = (*(ip.first)).second;
 
     if (message(Huge)) {
       printf("\nEliminating node %s(%d) with weights:",
@@ -1828,7 +1795,7 @@ BoundaryTriangulate
       // previous maxcliques. If it is not a subset of any previous
       // maxclique, then this node and its neighbors is a new
       // maxclique.
-      set<RandomVariable*> candidateMaxClique;
+      set<RV*> candidateMaxClique;
       set_difference(rv->neighbors.begin(),rv->neighbors.end(),
 		     orderedNodesSet.begin(),orderedNodesSet.end(),
 		     inserter(candidateMaxClique,candidateMaxClique.end()));
@@ -1849,9 +1816,9 @@ BoundaryTriangulate
 	  printf("Found a max clique of size %d while eliminating node %s(%d):",
 		 candidateMaxClique.size(),
 		 rv->name().c_str(),rv->frame());
-	  for (set<RandomVariable*>::iterator j=candidateMaxClique.begin();
+	  for (set<RV*>::iterator j=candidateMaxClique.begin();
 	       j != candidateMaxClique.end(); j++) {
-	    RandomVariable* rv = (*j);
+	    RV* rv = (*j);
 	    printf(" %s(%d)",rv->name().c_str(), rv->frame());
 	  }
 	  printf("\n");
@@ -1879,7 +1846,7 @@ BoundaryTriangulate
 
     // erase active neighbors of nodes since they will need to be
     // recomputed above.
-    for (set<RandomVariable*>::iterator n = nodesToUpdate.begin();
+    for (set<RV*>::iterator n = nodesToUpdate.begin();
 	 n != nodesToUpdate.end();
 	 n++) {
       unorderedNodes.erase(rv2unNodesMap[(*n)]);
@@ -1969,7 +1936,7 @@ fillParentChildLists(
   vector<triangulateNode>::iterator end_node;
   triangulateNeighborType::iterator crrnt_nghbr;
   triangulateNeighborType::iterator end_nghbr;
-  vector<RandomVariable*>::iterator found_node;
+  vector<RV*>::iterator found_node;
 
   for( crrnt_node = nodes.begin(),
        end_node   = nodes.end();
@@ -1982,15 +1949,15 @@ fillParentChildLists(
          ++crrnt_nghbr ) {
 
       found_node = find( 
-        (*crrnt_node).randomVariable->allPossibleParents.begin(), 
-        (*crrnt_node).randomVariable->allPossibleParents.end(),
+        (*crrnt_node).randomVariable->allParents.begin(), 
+        (*crrnt_node).randomVariable->allParents.end(),
         (*crrnt_nghbr)->randomVariable );
  
       //////////////////////////////////////////////////////////////
       // If a parent, add to both parents and non-children
       //////////////////////////////////////////////////////////////
       if (found_node != 
-          (*crrnt_node).randomVariable->allPossibleParents.end()) {
+          (*crrnt_node).randomVariable->allParents.end()) {
         (*crrnt_node).parents.push_back( *crrnt_nghbr );
         (*crrnt_node).nonChildren.push_back( *crrnt_nghbr );
       }
@@ -1999,12 +1966,12 @@ fillParentChildLists(
       //////////////////////////////////////////////////////////////
       else {
         found_node = find( 
-          (*crrnt_node).randomVariable->allPossibleChildren.begin(), 
-          (*crrnt_node).randomVariable->allPossibleChildren.end(),
+          (*crrnt_node).randomVariable->allChildren.begin(), 
+          (*crrnt_node).randomVariable->allChildren.end(),
           (*crrnt_nghbr)->randomVariable ); 
 
         if (found_node == 
-            (*crrnt_node).randomVariable->allPossibleChildren.end()) {
+            (*crrnt_node).randomVariable->allChildren.end()) {
           (*crrnt_node).nonChildren.push_back( *crrnt_nghbr );
         }
       }
@@ -2038,7 +2005,7 @@ fillParentChildLists(
 void
 BoundaryTriangulate::
 addExtraEdgesToGraph(
-  const set<RandomVariable*>&  nodes,  
+  const set<RV*>&  nodes,  
   const extraEdgeHeuristicType edge_heuristic 
   )
 {
@@ -2118,10 +2085,16 @@ addExtraEdgesToGraph(
       (*crrnt_nghbr)->marked = true;
 
       if  ((*crrnt_nghbr)->parents.size() > 0)  { 
-        if ( ((*crrnt_nghbr)->randomVariable->deterministic()) || 
-             (((*crrnt_nghbr)->randomVariable->discrete) && 
-              (((DiscreteRandomVariable*)
-               ((*crrnt_nghbr)->randomVariable))->sparse())) ) {
+        if ( 
+             (((*crrnt_nghbr)->randomVariable->discrete()) && 
+              (((DiscRV*)
+		((*crrnt_nghbr)->randomVariable))->deterministic()))
+	     || 
+             (((*crrnt_nghbr)->randomVariable->discrete()) && 
+              (((DiscRV*)
+		((*crrnt_nghbr)->randomVariable))->sparse()))
+	     ) 
+	  {
 
           addEdgesToNode((*crrnt_nghbr)->parents, *crrnt_nghbr, &(*crrnt_node), 
             edge_heuristic, extra_edges);
@@ -2173,9 +2146,9 @@ addEdgesToNode(
   triangulateNeighborType::iterator end_prnt;
   float parent_weight, child_weight; 
   float no_edge_weight, with_edge_weight;  
-  set<RandomVariable*> parents_child, child_grandchild, all;  
+  set<RV*> parents_child, child_grandchild, all;  
   RAND rndm_nmbr(0);
-  bool add_edge;
+  bool add_edge = false;
 
   //////////////////////////////////////////////////////////////////////////
   // Choose if the edges should be added according to edge_heuristic
@@ -2243,10 +2216,15 @@ addEdgesToNode(
       // the parent is deterministic or sparse. 
       ////////////////////////////////////////////////////////////////////////
       if  ((*crrnt_prnt)->parents.size() > 0)  { 
-        if ( ((*crrnt_prnt)->randomVariable->deterministic()) || 
-             (((*crrnt_prnt)->randomVariable->discrete) && 
-              (((DiscreteRandomVariable*)
-               ((*crrnt_prnt)->randomVariable))->sparse())) ) {
+        if ( 
+             (((*crrnt_prnt)->randomVariable->discrete()) && 
+              (((DiscRV*)
+               ((*crrnt_prnt)->randomVariable))->deterministic()))
+	    || 
+             (((*crrnt_prnt)->randomVariable->discrete()) && 
+              (((DiscRV*)
+               ((*crrnt_prnt)->randomVariable))->sparse())) 
+	     ) {
           addEdgesToNode( (*crrnt_prnt)->parents, *crrnt_prnt, grandchild, 
             edge_heuristic, extra_edges );        
         }
@@ -2355,11 +2333,11 @@ addEdges(
 void
 BoundaryTriangulate::
 triangulateSimulatedAnnealing(
-  const set<RandomVariable*>& nodes,
+  const set<RV*>& nodes,
   const bool jtWeight,
-  const set<RandomVariable*>& nodesRootMustContain,
+  const set<RV*>& nodesRootMustContain,
   vector<MaxClique>&          best_cliques,
-  vector<RandomVariable*>&    best_order,
+  vector<RV*>&    best_order,
   string&                     parameter_string 
   )
 {
@@ -2635,7 +2613,7 @@ BoundaryTriangulate::
 annealChain(
   vector<triangulateNode>&          nodes,
   const bool jtWeight,
-  const set<RandomVariable*>& nodesRootMustContain,
+  const set<RV*>& nodesRootMustContain,
   vector<triangulateNode*>&         crrnt_order,
   vector<triangulateNode*>&         best_order,
   double&                           best_graph_weight,
@@ -2797,7 +2775,7 @@ triangulateNode(
 BoundaryTriangulate::
 triangulateNode::
 triangulateNode(
-  RandomVariable* random_variable 
+  RV* random_variable 
   )
   : randomVariable( random_variable ), 
     nodeList( NULL ),
@@ -3014,7 +2992,7 @@ operator[] (
  *   none 
  *
  * Postconditions:
- *   The graph structure given by a set of RandomVariable*'s is copied 
+ *   The graph structure given by a set of RV*'s is copied 
  *   into a set of triangulateNode's.  
  *
  * Side Effects:
@@ -3031,13 +3009,13 @@ operator[] (
 void
 BoundaryTriangulate::
 fillTriangulateNodeStructures( 
-  const set<RandomVariable*>& orgnl_nodes,
+  const set<RV*>& orgnl_nodes,
   vector<triangulateNode>&    new_nodes 
   )
 {
-  map<RandomVariable*, triangulateNode*> rv_to_mcs; 
-  set<RandomVariable*>::iterator         crrnt_node;
-  set<RandomVariable*>::iterator         end_node; 
+  map<RV*, triangulateNode*> rv_to_mcs; 
+  set<RV*>::iterator         crrnt_node;
+  set<RV*>::iterator         end_node; 
   vector<triangulateNode>::iterator      crrnt_triangulate; 
   vector<triangulateNode>::iterator      end_triangulate; 
   triangulateNode                        new_node;
@@ -3070,10 +3048,10 @@ fillTriangulateNodeStructures(
 
   ////////////////////////////////////////////////////////////////////////
   // Create neighbor sets composed of triangulateNode's which match the 
-  // original sets of RandomVariable*'s    
+  // original sets of RV*'s    
   ////////////////////////////////////////////////////////////////////////
-  set<RandomVariable*>::iterator crrnt_nghbr;
-  set<RandomVariable*>::iterator end_nghbr; 
+  set<RV*>::iterator crrnt_nghbr;
+  set<RV*>::iterator end_nghbr; 
 
   for (crrnt_node = orgnl_nodes.begin(),  
        end_node   = orgnl_nodes.end();  
@@ -3599,9 +3577,9 @@ testZeroFillIn(
 void 
 BoundaryTriangulate::
 triangulateMaximumCardinalitySearch( 
-  const set<RandomVariable*>& nodes,
+  const set<RV*>& nodes,
   vector<MaxClique>&          cliques,
-  vector<RandomVariable*>&    order
+  vector<RV*>&    order
   )
 {
   vector<triangulateNode>           triangulate_nodes; 
@@ -3628,7 +3606,7 @@ triangulateMaximumCardinalitySearch(
     false);
 
   ////////////////////////////////////////////////////////////////////////// 
-  // Convert to MaxCliques and triangulate the RandomVariable structures 
+  // Convert to MaxCliques and triangulate the RV structures 
   ////////////////////////////////////////////////////////////////////////// 
   listVectorCliquetoVectorSetClique( list_cliques, cliques );
   fillAccordingToCliques( cliques );
@@ -3667,14 +3645,14 @@ triangulateMaximumCardinalitySearch(
  *   true if graph is chordal, false if not 
  *
  * Complexity:
- *   O(N+E*log(N)), the cost of converting the RandomVariables to 
+ *   O(N+E*log(N)), the cost of converting the RVs to 
  *   triangulateNodes.  
  *-----------------------------------------------------------------------
  */
 bool
 BoundaryTriangulate::
 chordalityTest( 
-  const set<RandomVariable*>& nodes
+  const set<RV*>& nodes
   )
 {
   vector<triangulateNode>         triangulate_nodes; 
@@ -3718,7 +3696,7 @@ chordalityTest(
 bool
 BoundaryTriangulate::
 getCliques( 
-  const set<RandomVariable*>& nodes,
+  const set<RV*>& nodes,
   vector<MaxClique>&          cliques
   )
 {
@@ -3779,7 +3757,7 @@ getCliques(
 bool
 BoundaryTriangulate::
 triangulateMCSIfNotTriangulated( 
-  const set<RandomVariable*>& nodes,
+  const set<RV*>& nodes,
   vector<MaxClique>&          cliques
   )
 {
@@ -3809,7 +3787,7 @@ triangulateMCSIfNotTriangulated(
   listVectorCliquetoVectorSetClique( list_cliques, cliques );
 
   ////////////////////////////////////////////////////////////////////////// 
-  // Convert to MaxCliques and triangulate the RandomVariable structures 
+  // Convert to MaxCliques and triangulate the RV structures 
   ////////////////////////////////////////////////////////////////////////// 
   listVectorCliquetoVectorSetClique( list_cliques, cliques );
   fillAccordingToCliques( cliques );
@@ -3842,7 +3820,7 @@ triangulateMCSIfNotTriangulated(
 void
 BoundaryTriangulate::
 triangulateCompletePartition( 
-  const set<RandomVariable*>& nodes,
+  const set<RV*>& nodes,
   vector<MaxClique>&          cliques
   )
 {
@@ -3916,12 +3894,12 @@ triangulateCompletePartition(
  */
 void
 BoundaryTriangulate
-::triangulateFrontier(const set<RandomVariable*>& nodes,
+::triangulateFrontier(const set<RV*>& nodes,
 		      vector<MaxClique>&          cliques
 		      )
 {
   cliques.clear();
-  vector <RandomVariable*> sortedNodes;
+  vector <RV*> sortedNodes;
 
   GraphicalModel::topologicalSortRandom(nodes,nodes,sortedNodes);
   if (message(High)) {
@@ -3929,28 +3907,28 @@ BoundaryTriangulate
     printRVSet(stdout,sortedNodes);
   }
 
-  set <RandomVariable*> frontier;
-  set <RandomVariable*> cumulativeFrontier;
+  set <RV*> frontier;
+  set <RV*> cumulativeFrontier;
   for (unsigned i=0;i<sortedNodes.size();i++) {
-    RandomVariable*nrv = sortedNodes[i];
+    RV*nrv = sortedNodes[i];
     if (message(High)) {
       infoMsg(High,"Frontier: Current nodes");
       printRVSet(stdout,frontier);
     }
     
-    set <RandomVariable*>::iterator it;
-    set <RandomVariable*>::iterator it_end = frontier.end();
-    set <RandomVariable*> toRemove;
+    set <RV*>::iterator it;
+    set <RV*>::iterator it_end = frontier.end();
+    set <RV*> toRemove;
     for (it=frontier.begin();it!=it_end;it++) {
-      RandomVariable*rv = (*it);
+      RV*rv = (*it);
       bool childrenInFrontier = true;
       // Check if all of rv's children are in the
       // cumulative frontier.
       infoMsg(High,"Frontier: Node %s(%d) has %d children\n",
-	      rv->name().c_str(),rv->frame(),rv->allPossibleChildren.size());
+	      rv->name().c_str(),rv->frame(),rv->allChildren.size());
 
-      for (unsigned c=0;c<rv->allPossibleChildren.size();c++) {
-	RandomVariable* child = rv->allPossibleChildren[c];
+      for (unsigned c=0;c<rv->allChildren.size();c++) {
+	RV* child = rv->allChildren[c];
 	// only consider nodes within this partition set.
 	if (nodes.find(child) == nodes.end()) {
 	  infoMsg(High,"Frontier: Child %d %s(%d) not in nodes\n",
@@ -3974,7 +3952,7 @@ BoundaryTriangulate
 	printRVSet(stdout,frontier);
       }
       MaxClique::makeComplete(frontier);
-      set <RandomVariable*> res;
+      set <RV*> res;
       if (message(High)) {
 	infoMsg(High,"Frontier: Removing:");
 	printRVSet(stdout,toRemove);
@@ -4029,7 +4007,7 @@ BoundaryTriangulate
  * Postconditions:
  *   The vector of MaxCliques matches the list of vectors of 
  *   triangulateNode pointers.  This is useful for converting a graph 
- *   defined by triangulateNode's into a graph defined by RandomVariable's
+ *   defined by triangulateNode's into a graph defined by RV's
  *
  * Side Effects:
  *   none
@@ -4056,7 +4034,7 @@ listVectorCliquetoVectorSetClique(
   vector<triangulateNode*>::const_iterator crrnt_node;
   vector<triangulateNode*>::const_iterator end_node;
  
-  set<RandomVariable*> empty_RV_set;
+  set<RV*> empty_RV_set;
   MaxClique empty_MaxClique( empty_RV_set );
 
   ////////////////////////////////////////////////////////////////////
@@ -4110,9 +4088,9 @@ listVectorCliquetoVectorSetClique(
 void
 BoundaryTriangulate::
 triangulateExhaustiveSearch( 
-  const set<RandomVariable*>&  nodes,
+  const set<RV*>&  nodes,
   const bool                   jtWeight,
-  const set<RandomVariable*>&  nodesRootMustContain,
+  const set<RV*>&  nodesRootMustContain,
   const vector<nghbrPairType>& orgnl_nghbrs,
   vector<MaxClique>&           best_cliques   
   )
@@ -4152,7 +4130,7 @@ triangulateExhaustiveSearch(
   order.reserve( nodes.size() ); 
 
   ////////////////////////////////////////////////////////////////////
-  // Create triagulateNode object from the RandomVariable set 
+  // Create triagulateNode object from the RV set 
   ////////////////////////////////////////////////////////////////////
   fillTriangulateNodeStructures( nodes, triangulate_nodes );
 
@@ -4190,7 +4168,7 @@ triangulateExhaustiveSearch(
   for( i=0; i<nmbr_nodes; i++) {
     infoMsg(IM::Moderate, "[%d] %s(%d)\n", i, 
       triangulate_nodes[i].randomVariable->name().c_str(), 
-      triangulate_nodes[i].randomVariable->timeIndex );
+      triangulate_nodes[i].randomVariable->frame() );
   } 
   infoMsg(IM::Moderate, "\n");
 
@@ -4291,7 +4269,7 @@ triangulateExhaustiveSearch(
 	       crrnt_node++ ) { 
             infoMsg(IM::Moderate, "%s(%d)\n", 
               (*crrnt_node)->randomVariable->name().c_str(), 
-              (*crrnt_node)->randomVariable->timeIndex); 
+              (*crrnt_node)->randomVariable->frame()); 
           }
         } 
         infoMsg(IM::Moderate, "--------------------------\n");
@@ -4369,13 +4347,13 @@ triangulateExhaustiveSearch(
   }
 
   //////////////////////////////////////////////////////////////////////////
-  // Convert to MaxClique and triangulate the RandomVariable structures
+  // Convert to MaxClique and triangulate the RV structures
   //////////////////////////////////////////////////////////////////////////
   listVectorCliquetoVectorSetClique( best_list_cliques, best_cliques );
   fillAccordingToCliques( best_cliques );
 
   if (!triangulation_found) {
-    vector<RandomVariable*> order;
+    vector<RV*> order;
     infoMsg(IM::Tiny, 
       "Exhaustive search exited before finding any triangulations\n");
     triangulateMaximumCardinalitySearch(nodes, best_cliques, order );
@@ -4412,20 +4390,20 @@ triangulateExhaustiveSearch(
 void
 BoundaryTriangulate::
 triangulateElimination(// input: nodes to be triangulated
-                       const set<RandomVariable*> nodes,
+                       const set<RV*> nodes,
                        // elimination order 
-                       vector<RandomVariable*> orderedNodes,  
+                       vector<RV*> orderedNodes,  
                        // output: resulting max cliques
                        vector<MaxClique>& cliques
                        )
 {
   // Keep ordered eliminated nodes as a set for easy
   // intersection, with other node sets.
-  set<RandomVariable*> orderedNodesSet;
+  set<RV*> orderedNodesSet;
 
   // Triangulate and make cliques
   for (unsigned i=0;i<orderedNodes.size();i++) {
-    RandomVariable* rv = orderedNodes[i];
+    RV* rv = orderedNodes[i];
 
     
     // connect all neighbors of r.v. excluding nodes in 'orderedNodesSet'.
@@ -4436,7 +4414,7 @@ triangulateElimination(// input: nodes to be triangulated
     // of previous maxcliques. If it is not a subset of any previous
     // maxclique, then this node and its neighbors is a 
     // new maxclique.
-    set<RandomVariable*> candidateMaxClique;
+    set<RV*> candidateMaxClique;
     set_difference(rv->neighbors.begin(),rv->neighbors.end(),
                    orderedNodesSet.begin(),orderedNodesSet.end(),
                    inserter(candidateMaxClique,candidateMaxClique.end()));
@@ -4488,11 +4466,11 @@ unrollAndTriangulate(// triangulate heuristics
 {
   TriangulateHeuristics tri_heur;
   parseTriHeuristicString(tri_heur_str,tri_heur);
-  const set <RandomVariable*> emptySet;
+  const set <RV*> emptySet;
 
   if (numTimes >= 0) {
-    vector <RandomVariable*> rvs;
-    set <RandomVariable*> rvsSet;
+    vector <RV*> rvs;
+    set <RV*> rvsSet;
     fp.unroll(numTimes,rvs);
     for (unsigned i=0;i<rvs.size();i++) {
       rvs[i]->createNeighborsFromParentsChildren();
@@ -4534,9 +4512,9 @@ unrollAndTriangulate(// triangulate heuristics
       }
       printf("%d : %d  %f\n",i,
 	     cliques[i].nodes.size(),curWeight);
-      for (set<RandomVariable*>::iterator j=cliques[i].nodes.begin();
+      for (set<RV*>::iterator j=cliques[i].nodes.begin();
 	   j != cliques[i].nodes.end(); j++) {
-	RandomVariable* rv = (*j);
+	RV* rv = (*j);
 	printf("   %s(%d)\n",rv->name().c_str(),rv->frame());
       }
     }
@@ -4664,7 +4642,7 @@ BoundaryTriangulate
   double best_P_weight = DBL_MAX;
   double best_C_weight = DBL_MAX;
   double best_E_weight = DBL_MAX;
-  const set <RandomVariable*> emptySet;
+  const set <RV*> emptySet;
 
   ////////////////////////////////////////////////////////////////////////
   // Save the untriangulated graphs so that they can be quickly restored
@@ -4721,12 +4699,28 @@ BoundaryTriangulate
   // Triangulate using a variety of heuristic searches 
   ////////////////////////////////////////////////////////////////////////
 
+  // triangulate C first since that is the thing that gets unrolled.
   if (doC) {
     infoMsg(IM::Tiny, "---\nTriangulating C using Heuristics:\n");
     setUpForC(gm_template);
     triangulatePartition( gm_template.C.nodes, jtWeight, gm_template.CEInterface_in_C,
 			  "heuristics", orgnl_C_nghbrs, gm_template.C.cliques, 
 			  gm_template.C.triMethod, best_C_weight );
+  }
+
+  // we do E first since having a good E triangulation is often more
+  // important than a good P. This is because we are doing
+  // left-to-right based inference, starting at P, going through a
+  // number of Cs, and ending at E. It is likely that the state space
+  // of P will naturally be smaller since it is the start of
+  // inference, but by the time we get to E, we are at full state
+  // space. Therefore, we put a bit of priority on E over P.
+  if (doE) { 
+    infoMsg(IM::Tiny, "---\nTriangulating E using Heuristics:\n");
+    setUpForE(gm_template);
+    triangulatePartition( gm_template.E.nodes, jtWeight, emptySet, 
+			  "heuristics", orgnl_E_nghbrs, gm_template.E.cliques, 
+			  gm_template.E.triMethod, best_E_weight );
   }
  
   if (doP) { 
@@ -4735,14 +4729,6 @@ BoundaryTriangulate
     triangulatePartition( gm_template.P.nodes, jtWeight, gm_template.PCInterface_in_P, 
 			  "heuristics", orgnl_P_nghbrs, gm_template.P.cliques, 
 			  gm_template.P.triMethod, best_P_weight );
-  }
-  
-  if (doE) { 
-    infoMsg(IM::Tiny, "---\nTriangulating E using Heuristics:\n");
-    setUpForE(gm_template);
-    triangulatePartition( gm_template.E.nodes, jtWeight, emptySet, 
-			  "heuristics", orgnl_E_nghbrs, gm_template.E.cliques, 
-			  gm_template.E.triMethod, best_E_weight );
   }
   
   infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
@@ -4761,6 +4747,16 @@ BoundaryTriangulate
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
 
+  if (doE && timer->SecondsLeft() > 10) {
+    infoMsg(IM::Tiny, "---\nTriangulating E using Simulated Annealing:\n");
+    setUpForE(gm_template);
+    triangulatePartition( gm_template.E.nodes, jtWeight, emptySet,
+			  "anneal", orgnl_E_nghbrs, gm_template.E.cliques, 
+			  gm_template.E.triMethod, best_E_weight ); 
+
+    infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
+  }
+
   if (doP && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "---\nTriangulating P using Simulated Annealing:\n");
     setUpForP(gm_template);
@@ -4772,15 +4768,6 @@ BoundaryTriangulate
       (int)timer->SecondsLeft()); 
   }
 
-  if (doE && timer->SecondsLeft() > 10) {
-    infoMsg(IM::Tiny, "---\nTriangulating E using Simulated Annealing:\n");
-    setUpForE(gm_template);
-    triangulatePartition( gm_template.E.nodes, jtWeight, emptySet,
-			  "anneal", orgnl_E_nghbrs, gm_template.E.cliques, 
-			  gm_template.E.triMethod, best_E_weight ); 
-
-    infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
-  }
 
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using exhaustive search
@@ -4796,6 +4783,17 @@ BoundaryTriangulate
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
 
+  if (doE && timer->SecondsLeft() > 10) {
+    infoMsg(IM::Tiny, "Triangulating E using Exhaustive Search:\n");
+    setUpForE(gm_template);
+    triangulatePartition( gm_template.E.nodes, jtWeight, emptySet,
+			  "exhaustive", orgnl_E_nghbrs, gm_template.E.cliques, 
+			  gm_template.E.triMethod, best_E_weight ); 
+
+    infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
+  }
+
+
   if (doP && timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating P using Exhaustive Search:\n");
     setUpForP(gm_template);
@@ -4806,15 +4804,6 @@ BoundaryTriangulate
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
 
-  if (doE && timer->SecondsLeft() > 10) {
-    infoMsg(IM::Tiny, "Triangulating E using Exhaustive Search:\n");
-    setUpForE(gm_template);
-    triangulatePartition( gm_template.E.nodes, jtWeight, emptySet,
-			  "exhaustive", orgnl_E_nghbrs, gm_template.E.cliques, 
-			  gm_template.E.triMethod, best_E_weight ); 
-
-    infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
-  }
 
   ////////////////////////////////////////////////////////////////////////
   // Return with the best triangulations found, which is
@@ -4860,9 +4849,9 @@ BoundaryTriangulate
 double 
 BoundaryTriangulate::
 tryEliminationHeuristics(
-  const set<RandomVariable*>&  nodes,
+  const set<RV*>&  nodes,
   const bool                   jtWeight,
-  const set<RandomVariable*>&  nrmc,         // nrmc = nodes root must contain
+  const set<RV*>&  nrmc,         // nrmc = nodes root must contain
   vector<nghbrPairType>&       orgnl_nghbrs,
   vector<MaxClique>&           best_cliques, // output: resulting max cliques
   string&                      best_method,  // output: best method name 
@@ -5010,9 +4999,9 @@ tryEliminationHeuristics(
 double 
 BoundaryTriangulate::
 tryNonEliminationHeuristics(
-  const set<RandomVariable*>& nodes,
+  const set<RV*>& nodes,
   const bool                  jtWeight,
-  const set<RandomVariable*>& nrmc,         // nrmc = nodes root must contain
+  const set<RV*>& nrmc,         // nrmc = nodes root must contain
   vector<nghbrPairType>&      orgnl_nghbrs,
   vector<MaxClique>&          cliques,
   string&                     best_method,
@@ -5101,34 +5090,34 @@ BoundaryTriangulate::interfaceScore(
  // the interface heuristic used to score the interface
  const vector<BoundaryHeuristic>& bnd_heur_v,
  // the interface itself
- const set<RandomVariable*>& C_l,
+ const set<RV*>& C_l,
  // --------------------------------------------------------------
  // The next 8 input arguments are used only with the optimal
  // interface algorithm when the IH_MIN_MAX_C_CLIQUE or
  // IH_MIN_MAX_CLIQUE heuristics are used:
  // triangulation heuristic
  // Variables to the left (or right) of the interface
- const set<RandomVariable*>& left_C_l,
+ const set<RV*>& left_C_l,
  // the triangulation heuristic 
  const TriangulateHeuristics& tri_heur,
  // The network unrolled 1 time
- const set<RandomVariable*>& P_u1,
- const set<RandomVariable*>& C1_u1,
- const set<RandomVariable*>& Cextra_u1,
- const set<RandomVariable*>& C2_u1,
- const set<RandomVariable*>& E_u1,
+ const set<RV*>& P_u1,
+ const set<RV*>& C1_u1,
+ const set<RV*>& Cextra_u1,
+ const set<RV*>& C2_u1,
+ const set<RV*>& E_u1,
  // Mappings from C2 in the twice unrolled network to C1 and C2
  // in the once unrolled network.
  // (these next 2 should be const, but there is no "op[] const")
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1,
+ map < RV*, RV* >& C2_u2_to_C1_u1,
+ map < RV*, RV* >& C2_u2_to_C2_u1,
  // --------------------------------------------------------------
  // output score
  vector<float>& score)
 {
 
   if (message(Moderate)) {
-    set<RandomVariable*>::iterator i;    
+    set<RV*>::iterator i;    
     printf("  --- Cur Interface:");
     for (i=C_l.begin();i!=C_l.end();i++) {
       printf(" %s(%d)",
@@ -5164,7 +5153,7 @@ BoundaryTriangulate::interfaceScore(
       infoMsg(Low,"  Interface Score: set has size = %d\n",
 	      C_l.size());
     } else if (fh == IH_MIN_MIN_POSITION_IN_FILE) {
-      set<RandomVariable*>::iterator i;    
+      set<RV*>::iterator i;    
       unsigned val = ~0x0;
       for (i=C_l.begin();i!=C_l.end();i++) {
 	if (unsigned((*i)->rv_info.variablePositionInStrFile) < val)
@@ -5173,7 +5162,7 @@ BoundaryTriangulate::interfaceScore(
       score.push_back((float)val);
       infoMsg(Low,"  Interface Score: set has min pos = %d\n",val);
     } else if (fh == IH_MIN_MAX_POSITION_IN_FILE) {
-      set<RandomVariable*>::iterator i;    
+      set<RV*>::iterator i;    
       unsigned val = 0;
       for (i=C_l.begin();i!=C_l.end();i++) {
 	if (unsigned((*i)->rv_info.variablePositionInStrFile) > val)
@@ -5182,7 +5171,7 @@ BoundaryTriangulate::interfaceScore(
       score.push_back((float)val);
       infoMsg(Low,"  Interface Score: set has max pos = %d\n",val);
     } else if (fh == IH_MIN_MIN_TIMEFRAME) {
-      set<RandomVariable*>::iterator i;    
+      set<RV*>::iterator i;    
       unsigned val = ~0x0;
       for (i=C_l.begin();i!=C_l.end();i++) {
 	if ((*i)->frame() < val)
@@ -5191,7 +5180,7 @@ BoundaryTriangulate::interfaceScore(
       score.push_back((float)val);
       infoMsg(Low,"  Interface Score: set has min timeframe = %d\n",val);
     } else if (fh == IH_MIN_MAX_TIMEFRAME) {
-      set<RandomVariable*>::iterator i;    
+      set<RV*>::iterator i;    
       unsigned val = 0;
       for (i=C_l.begin();i!=C_l.end();i++) {
 	if ((*i)->frame() > val)
@@ -5200,7 +5189,7 @@ BoundaryTriangulate::interfaceScore(
       score.push_back((float)val);
       infoMsg(Low,"  Interface Score: set has max timeframe = %d\n",val);
     } else if (fh == IH_MIN_MIN_HINT) {
-      set<RandomVariable*>::iterator i;    
+      set<RV*>::iterator i;    
       float val = MAXFLOAT;
       for (i=C_l.begin();i!=C_l.end();i++) {
 	if ((*i)->rv_info.eliminationOrderHint < val)
@@ -5209,7 +5198,7 @@ BoundaryTriangulate::interfaceScore(
       score.push_back(val);
       infoMsg(Low,"  Interface Score: set has min hint = %f\n",val);
     } else if (fh == IH_MIN_MAX_HINT) {
-      set<RandomVariable*>::iterator i;    
+      set<RV*>::iterator i;    
       float val = -MAXFLOAT;
       for (i=C_l.begin();i!=C_l.end();i++) {
 	if ((*i)->rv_info.eliminationOrderHint > val)
@@ -5404,17 +5393,17 @@ BoundaryTriangulate::interfaceScore(
 void
 BoundaryTriangulate::findBestInterface(
  // first chunk of twice unrolled graph
- const set<RandomVariable*> &C1,
+ const set<RV*> &C1,
  // second chunk of twice unrolled graph
- const set<RandomVariable*> &C2,
+ const set<RV*> &C2,
  // first chunk of C2, empty when M=1
- const set<RandomVariable*> &C2_1,
+ const set<RV*> &C2_1,
  // third chunk of twice unrolled graph
- const set<RandomVariable*> &C3,
+ const set<RV*> &C3,
  // nodes to the "left" of the left interface within C2
- set<RandomVariable*> &left_C_l,
+ set<RV*> &left_C_l,
  // the starting left interface
- set<RandomVariable*> &C_l,
+ set<RV*> &C_l,
  // the resulting score of the best interface
  vector<float>& best_score,
  // what should be used to judge the quality of the interface
@@ -5428,16 +5417,16 @@ BoundaryTriangulate::findBestInterface(
  // triangulation heuristic
  const TriangulateHeuristics& tri_heur,
  // The network unrolled 1 time (TODO: change to M+S-1)
- const set<RandomVariable*>& P_u1,
- const set<RandomVariable*>& C1_u1,
- const set<RandomVariable*>& Cextra_u1,
- const set<RandomVariable*>& C2_u1,
- const set<RandomVariable*>& E_u1,
+ const set<RV*>& P_u1,
+ const set<RV*>& C1_u1,
+ const set<RV*>& Cextra_u1,
+ const set<RV*>& C2_u1,
+ const set<RV*>& E_u1,
  // Mappings from C2 in the twice unrolled network to C1 and C2
  // in the once unrolled network.
  // (these next 2 should be const, but there is no "op[] const" in STL)
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
- map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1
+ map < RV*, RV* >& C2_u2_to_C1_u1,
+ map < RV*, RV* >& C2_u2_to_C2_u1
  // end of input arguments (finally)
  )
 {
@@ -5451,12 +5440,12 @@ BoundaryTriangulate::findBestInterface(
   // go through through set C1, and pick out all neighbors
   // of variables in set C1 that live in C2, and these neighbors
   // become the initial left interface C_l
- set<RandomVariable*>::iterator c1_iter;
+ set<RV*>::iterator c1_iter;
   for (c1_iter = C1.begin(); c1_iter != C1.end(); c1_iter ++) {
     // go through all neighbors of nodes in C1
-    RandomVariable *cur_rv = (*c1_iter);
+    RV *cur_rv = (*c1_iter);
     // neighbor iterator
-    set<RandomVariable*>::iterator n_iter;
+    set<RV*>::iterator n_iter;
     for (n_iter = cur_rv->neighbors.begin();
 	 n_iter != cur_rv->neighbors.end();
 	 n_iter ++) {
@@ -5494,7 +5483,7 @@ BoundaryTriangulate::findBestInterface(
     infoMsg(Med,"  Size of left_C_l = %d\n",left_C_l.size());
     {
       printf("  Interface nodes include:");
-      set<RandomVariable*>::iterator i;    
+      set<RV*>::iterator i;    
       for (i=C_l.begin();i!=C_l.end();i++) {
 	printf(" %s(%d)",
 	       (*i)->name().c_str(),
@@ -5508,9 +5497,9 @@ BoundaryTriangulate::findBestInterface(
   // start exponential recursion to find the truly best interface.
   if (recurse) {
     // best ones found so far
-    set<RandomVariable*> best_left_C_l = left_C_l;
-    set<RandomVariable*> best_C_l = C_l;
-    set< set<RandomVariable*> > setset;
+    set<RV*> best_left_C_l = left_C_l;
+    set<RV*> best_C_l = C_l;
+    set< set<RV*> > setset;
     // call recursive routine.
     boundaryRecursionDepth = 0;
     findBestInterface(left_C_l,
@@ -5535,7 +5524,7 @@ BoundaryTriangulate::findBestInterface(
       infoMsg(Med,"  Size of best_left_C_l = %d\n",best_left_C_l.size());
       {
 	printf("  Best interface nodes include:");
-	set<RandomVariable*>::iterator i;    
+	set<RV*>::iterator i;    
 	for (i=best_C_l.begin();i!=best_C_l.end();i++) {
 	  printf(" %s(%d)",
 		 (*i)->name().c_str(),
@@ -5568,14 +5557,14 @@ BoundaryTriangulate::findBestInterface(
 void
 BoundaryTriangulate::
 findBestInterface(
-  const set<RandomVariable*> &left_C_l,
-  const set<RandomVariable*> &C_l,
-  const set<RandomVariable*> &C2,
-  const set<RandomVariable*> &C2_1,
-  const set<RandomVariable*> &C3,
-  set< set<RandomVariable*> >& setset,
-  set<RandomVariable*> &best_left_C_l,
-  set<RandomVariable*> &best_C_l,
+  const set<RV*> &left_C_l,
+  const set<RV*> &C_l,
+  const set<RV*> &C2,
+  const set<RV*> &C2_1,
+  const set<RV*> &C3,
+  set< set<RV*> >& setset,
+  set<RV*> &best_left_C_l,
+  set<RV*> &best_C_l,
   vector<float>& best_score,
   const vector<BoundaryHeuristic>& bnd_heur_v,
   // --------------------------------------------------------------
@@ -5583,14 +5572,14 @@ findBestInterface(
   // interface algorithm when the IH_MIN_MAX_C_CLIQUE or
   // IH_MIN_MAX_CLIQUE heuristics are used:
   const TriangulateHeuristics& tri_heur,
-  const set<RandomVariable*>& P_u1,
-  const set<RandomVariable*>& C1_u1,
-  const set<RandomVariable*>& Cextra_u1,
-  const set<RandomVariable*>& C2_u1,
-  const set<RandomVariable*>& E_u1,
+  const set<RV*>& P_u1,
+  const set<RV*>& C1_u1,
+  const set<RV*>& Cextra_u1,
+  const set<RV*>& C2_u1,
+  const set<RV*>& E_u1,
   // these next 2 should be const, but there is no "op[] const"
-  map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
-  map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1
+  map < RV*, RV* >& C2_u2_to_C1_u1,
+  map < RV*, RV* >& C2_u2_to_C2_u1
 )
 {
   if (timer && timer->Expired()) {
@@ -5598,7 +5587,7 @@ findBestInterface(
     return;
   }
   boundaryRecursionDepth++;
-  set<RandomVariable*>::iterator v;  // vertex
+  set<RV*>::iterator v;  // vertex
   // consider all v in the current C_l as candidates to be moved
   // left. Essentially, we advance the "partition boundary" to the right
   // by taking nodes that are right of the boundary and moving those
@@ -5644,7 +5633,7 @@ findBestInterface(
     if (!rnd.coin(boundaryTraverseFraction))
       continue;
 
-    set<RandomVariable*> res;
+    set<RV*> res;
 
     // Condition ***: if v has neighbors in C3 (via set intersection),
     // then continue since if v was moved left, we would end up with a
@@ -5662,7 +5651,7 @@ findBestInterface(
 
     // Then it is ok to remove v from C_l and move v to the left.
     // take v from C_l and place it in left_C_l
-    set<RandomVariable*> next_left_C_l = left_C_l;
+    set<RV*> next_left_C_l = left_C_l;
     next_left_C_l.insert((*v));
 
     // Only do this check if C2_1 is non-empty. If it is empty, we
@@ -5682,7 +5671,7 @@ findBestInterface(
       // We ensure this condition by making sure that C2_1 is not a
       // proper subset of (left_C_l U {v}) = next_left_C_l.
 
-      set<RandomVariable*> tmp;      
+      set<RV*> tmp;      
       set_difference(C2_1.begin(),C2_1.end(),
 		     next_left_C_l.begin(),next_left_C_l.end(),
 		     inserter(tmp,tmp.end()));
@@ -5699,8 +5688,8 @@ findBestInterface(
     // Next, create the new left interface, next_C_l by adding all
     // neighbors of v that are in C3 U C2\next_left_C_l to an
     // initially empty next_C_l.
-    set<RandomVariable*> next_C_l;
-    set<RandomVariable*> tmp;
+    set<RV*> next_C_l;
+    set<RV*> tmp;
 
     // TODO: remove this next check and fix comments above, since the
     // check is redundant now.
@@ -5735,7 +5724,7 @@ findBestInterface(
       if (setset.find(next_C_l) != setset.end()) {
 	if (message(VerbosityLevels(High))) {
 	  printf("  Continuing: found existing interface:");
-	  set<RandomVariable*>::iterator i;    
+	  set<RV*>::iterator i;    
 	  for (i=next_C_l.begin();i!=next_C_l.end();i++) {
 	    printf(" %s(%d)",
 		   (*i)->name().c_str(),

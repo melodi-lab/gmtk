@@ -28,8 +28,7 @@
 
 #include "GMTK_CPT.h"
 #include "GMTK_EMable.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_NamedObject.h"
 
 class MDCPT : public CPT {
@@ -76,98 +75,26 @@ public:
   void setNumCardinality(const int var, const int card);
   void allocateBasicInternalStructures();
 
-  //////////////////////////////////
-  // various forms of probability calculation
-  void becomeAwareOfParentValues( vector <int>& parentValues,
-				  vector <int>& cards);
-  void becomeAwareOfParentValues( vector <RandomVariable *>& parents );
-  void becomeAwareOfParentValuesAndIterBegin
-  (  vector < RandomVariable *>& parents , iterator &it, 
-     DiscreteRandomVariable* drv);
-  void becomeAwareOfParentValuesAndIterBegin
-  (  vector < RandomVariable *>& parents , iterator &it, 
-     DiscreteRandomVariable* drv,logpr& p);
 
-
-
-  logpr probGivenParents(DiscreteRandomVariable* drv) {
-    assert ( bitmask & bm_basicAllocated );
-    register RandomVariable::DiscreteVariableType val = drv->val;
-    assert ( val >= 0 && val < card() );
-    return *(mdcpt_ptr + val);
-  }
-
-  logpr probGivenParents(vector <RandomVariable *>& parents,
-			 DiscreteRandomVariable* drv) {
-    assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parents);
-    register RandomVariable::DiscreteVariableType val = drv->val;
-    assert ( val >= 0 && val < card() );
-    return *(mdcpt_ptr + val);
-  }
-
-  logpr probGivenParents(vector <int>& parentValues, 
-			 vector <int>& cards, 
-			 const int val) {
-    assert ( bitmask & bm_basicAllocated );
-    assert ( val >= 0 && val < card() );
-    becomeAwareOfParentValues(parentValues,cards);
-    return *(mdcpt_ptr + val);
-  }
-
-  // returns an iterator for the first one that is not zero prob.
-  iterator begin(DiscreteRandomVariable* drv) {
-    assert ( bitmask & bm_basicAllocated );
-    iterator it(this);
-    MDCPT::begin(it,drv);
-    return it;
-  }
-
-
-  // returns an iterator for the first one that is not zero prob.
-  // Note that becomeAwareOfParentValues() must have
-  // been called before calling the begin iterator.
-  void begin(iterator& it,DiscreteRandomVariable* drv) {
+  ///////////////////////////////////////////////////////////  
+  // Probability evaluation, compute Pr( child | parents ), and
+  // iterator support. See GMTK_CPT.h for documentation.
+  void becomeAwareOfParentValues( vector <RV*>& parents,
+				  const RV* rv);
+  void begin(iterator& it,DiscRV* drv,logpr& p) {
     assert ( bitmask & bm_basicAllocated );
     it.setCPT(this);
     it.internalStatePtr = (void*)mdcpt_ptr;
     it.drv = drv;
 
-    register RandomVariable::DiscreteVariableType value = 0;
+    register DiscRVType value = 0;
     while (mdcpt_ptr[value].essentially_zero()) {
       value++;
       // We keep the following check as we must have that at least one
       // entry is non-zero.  The read code of the MDCPT should ensure
       // this as sure all parameter update procedures, as long as
       // normalizationThreshold is not set to large.
-      // TODO: remove cast
-      if (value >= (int)ucard()) {
-	error("ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Program Exiting ...\n",
-	      name().c_str(),drv->name().c_str(),drv->frame());
-      }
-    }
-    it.probVal = mdcpt_ptr[value];    
-    drv->val = value;
-  }
-
-  // returns an iterator for the first one that is not zero prob.
-  // Note that becomeAwareOfParentValues() must have
-  // been called before calling the begin iterator.
-  void begin(iterator& it,DiscreteRandomVariable* drv,logpr& p) {
-    assert ( bitmask & bm_basicAllocated );
-    it.setCPT(this);
-    it.internalStatePtr = (void*)mdcpt_ptr;
-    it.drv = drv;
-
-    register RandomVariable::DiscreteVariableType value = 0;
-    while (mdcpt_ptr[value].essentially_zero()) {
-      value++;
-      // We keep the following check as we must have that at least one
-      // entry is non-zero.  The read code of the MDCPT should ensure
-      // this as sure all parameter update procedures, as long as
-      // normalizationThreshold is not set to large.
-      // TODO: remove cast
-      if (value >= (int)ucard()) {
+      if (value >= card()) {
 	error("ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Program Exiting ...\n",
 	      name().c_str(),drv->name().c_str(),drv->frame());
       }
@@ -175,35 +102,25 @@ public:
     p = mdcpt_ptr[value];    
     drv->val = value;
   }
-
-  // Given a current iterator, return the next one in the sequence.
-  // Skip the zero probability ones.
-  bool next(iterator &it) {
-    register logpr* const loc_mdcpt_ptr = (logpr*)it.internalStatePtr;
-    register RandomVariable::DiscreteVariableType value = it.drv->val;
-    // don't increment past the last value.
-    do {
-      value++;
-      // TODO: remove casts
-      if (value == (int)ucard()) {
-	it.drv->val = value;
-	return false;
-      }
-    } while (loc_mdcpt_ptr[value].essentially_zero());
-    it.probVal = loc_mdcpt_ptr[value];
-    it.drv->val = value;    
-    return true;
+  void becomeAwareOfParentValuesAndIterBegin(vector < RV *>& parents, 
+					     iterator &it, 
+					     DiscRV* drv,
+					     logpr& p);
+  logpr probGivenParents(vector < RV* >& parents,
+			 DiscRV* drv) {
+    assert ( bitmask & bm_basicAllocated );
+    MDCPT::becomeAwareOfParentValues(parents,drv);
+    register DiscRVType val = drv->val;
+    assert ( val < card() );
+    return *(mdcpt_ptr + val);
   }
-
   bool next(iterator &it,logpr& p) {
     register logpr* const loc_mdcpt_ptr = (logpr*)it.internalStatePtr;
-    register RandomVariable::DiscreteVariableType value = it.drv->val;
-    // don't increment past the last value.
+    register DiscRVType value = it.drv->val;
     do {
       value++;
-      // TODO: remove cast 
-      if (value == (int)ucard()) {
-	it.drv->val = value;
+      // don't increment past the last value.
+      if (value == card()) {
 	return false;
       }
     } while (loc_mdcpt_ptr[value].essentially_zero());
@@ -212,12 +129,8 @@ public:
     return true;
   }
 
-  bool end(iterator& it) {
-    return (it.drv->val == (int)ucard());
-  }
-
   ///////////////////////////////////
-  int randomSample(DiscreteRandomVariable* drv);
+  int randomSample(DiscRV* drv);
 
   ///////////////////////////////////
   unsigned totalNumberParameters() { return mdcpt.len(); }
@@ -239,10 +152,9 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration();
-  void emIncrement(logpr p,RandomVariable*rv);
+  void emIncrement(logpr p,vector <RV*>& parents,RV*rv);
   void emEndIteration();
   void emSwapCurAndNew();
-
 
   // parallel training
   void emStoreObjectsAccumulators(oDataStreamFile& ofile);

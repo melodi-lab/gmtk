@@ -50,7 +50,7 @@ Mixture::read(iDataStreamFile& is)
   NamedObject::read(is);
   
   // read number of mixtures
-  is.read(numComponents,"Mixture::read numComponents");
+  is.read(numComponents,"Can't read Mixture's number of components");
   if (numComponents <= 0) 
     error("Error: Mixture '%s' has negative or zero number of components = %d\n",
 	  _name.c_str(),numComponents);
@@ -59,9 +59,9 @@ Mixture::read(iDataStreamFile& is)
   string str;
   is.read(str);
   if (GM_Parms.dPmfsMap.find(str) == GM_Parms.dPmfsMap.end()) {
-    error("ERROR: Mixture '%s' in file '%s', can't find PMF named '%s'\n",
+    error("ERROR: Mixture '%s' in file '%s' line %d, can't find PMF named '%s'\n",
 	  _name.c_str(),
-	  is.fileName(),str.c_str());
+	  is.fileName(),is.lineNo(),str.c_str());
   }
 
   dense1DPMF = GM_Parms.dPmfs[
@@ -80,15 +80,16 @@ Mixture::read(iDataStreamFile& is)
   for (unsigned i=0;i<numComponents;i++) {
     is.read(str);
     if (GM_Parms.componentsMap.find(str) == GM_Parms.componentsMap.end()) {
-      error("ERROR: Mixture '%s' in file '%s', can't find Component named '%s'\n",_name.c_str(),is.fileName(),str.c_str());
+      error("ERROR: Mixture '%s' in file '%s' line %d, can't find Component named '%s'\n",
+	    _name.c_str(),is.fileName(),is.lineNo(),str.c_str());
     }
     Component*gc = GM_Parms.components [
 	GM_Parms.componentsMap[str]
     ];
     components[i] = gc;
     if (gc->dim() != dim()) {
-      error("ERROR: Mixture '%s' in file '%s' of dim %d trying to use component '%s' of dim %d\n",
-	    name().c_str(),is.fileName(),dim(),gc->name().c_str(),gc->dim());
+      error("ERROR: Mixture '%s' in file '%s' line %d of dim %d trying to use component '%s' of dim %d\n",
+	    name().c_str(),is.fileName(),is.lineNo(),dim(),gc->name().c_str(),gc->dim());
     }
   }
 

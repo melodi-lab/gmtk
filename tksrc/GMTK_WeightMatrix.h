@@ -27,7 +27,8 @@
 
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
-#include "GMTK_RandomVariable.h"
+
+class RV;
 
 class WeightMatrix : public EMable  {
 
@@ -79,7 +80,7 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration() {}
-  void emIncrement(RandomVariable*,logpr prob) {}
+  void emIncrement(RV*,logpr prob) {}
   void emEndIteration() {}
   void emSwapCurAndNew() {}
 

@@ -93,14 +93,15 @@ Dense1DPMF::read(iDataStreamFile& is)
 
   NamedObject::read(is);
   int length;
-  is.read(length,"Dense1DPMF::read, distribution length");
+  is.read(length,"Can't read Dense1DPMF's distribution length");
   if (length <= 0)
-    error("ERROR: reading file '%s', DPMF '%s' has bad length (%d) < 0 in input",is.fileName(),name().c_str(),length);
+    error("ERROR: reading file '%s' line %d, DPMF '%s' has bad length (%d) < 0 in input",
+	  is.fileName(),is.lineNo(),name().c_str(),length);
   pmf.resize(length);
   logpr sum;
   for (int i=0;i<length;i++) {
     double prob;
-    is.readDouble(prob,"Dense1DPMF::read, reading prob");
+    is.readDouble(prob,"Can't read Dense1DPMF's prob");
 
     // we support reading in both regular probability values
     // (in the range [+0,1] inclusive) and log probability 
@@ -112,8 +113,8 @@ Dense1DPMF::read(iDataStreamFile& is)
     // ASCII read routines preserve ASCII string '-0.0' to be negative zero,
     // we consider -0.0 as log(1) , and +0.0 as real zero.
     if (prob > 1)
-      error("ERROR: reading file '%s', DPMF '%s' has invalid probability value (%e), entry %d",
-	    is.fileName(),
+      error("ERROR: reading file '%s' line %d, DPMF '%s' has invalid probability value (%e), entry %d",
+	    is.fileName(),is.lineNo(),
 	    name().c_str(),
 	    prob,
 	    i);
@@ -140,8 +141,8 @@ Dense1DPMF::read(iDataStreamFile& is)
     double abs_diff = fabs(sum.unlog() - 1.0);
     // be more forgiving as cardinality increases
     if (abs_diff > length*CPT::normalizationThreshold) 
-      error("ERROR: reading file '%s', DPMF '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
-	    is.fileName(),
+      error("ERROR: reading file '%s' line %d, DPMF '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
+	    is.fileName(),is.lineNo(),
 	    name().c_str(),
 	    sum.unlog(),
 	    abs_diff,

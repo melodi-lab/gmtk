@@ -68,7 +68,7 @@ int_rng {int}:{int}
 */
 
 
-keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|NGramCPT|FNGramCPT|mixture|gausSwitchMixture|logitSwitchMixture|mlpSwitchMixture|chunk|elimination_hint
+keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|scale|penalty|shift|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|NGramCPT|FNGramCPT|VirtualEvidenceCPT|mixture|gausSwitchMixture|logitSwitchMixture|mlpSwitchMixture|chunk|elimination_hint|frameNum|numFrames|segmentNum|numSegments
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 

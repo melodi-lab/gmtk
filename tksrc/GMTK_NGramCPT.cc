@@ -2,9 +2,10 @@
  * GMTK_NGramCPT.cc
  *
  * Written by Gang Ji <gang@ee.washington.edu>
+ * Modifications by J. Bilmes. <bilmes@ee.washington.edu>
  *
- *   This part of the code has the implementation of class NGramCPT for gmtk.
- * Please see GMTK_NGramCPT.h for more information.
+ * This part of the code has the implementation of class NGramCPT for
+ * gmtk.  Please see GMTK_NGramCPT.h for more information.
  *
  * Copyright (c) 2001, < fill in later >
  *
@@ -33,7 +34,7 @@
 #include "shash_map.h"
 #include "rand.h"
 #include "error.h"
-
+#include "GMTK_DiscRV.h"
 
 #define MAX_LINE_LENGTH 1024
 
@@ -93,40 +94,6 @@ void NGramCPT::setNumParents(const unsigned nParents) {
 }
 
 
-/*-
- *-----------------------------------------------------------------------
- * NGramCPT::becomeAwareOfParentValues
- *      Record the value of parents.
- *
- * Results:
- *
- * Side Effects:
- *      Unlike other CPTs, n-gram models requirs backing-off support.
- *      In this case, only the value of parents are recorded.
- *
- *-----------------------------------------------------------------------
- */
-void NGramCPT::becomeAwareOfParentValues(vector<int>& parentValues, vector<int>& cards) {
-	// TODO: This will vanish.
-	_numExistParents = parentValues.size();
-	assert(_numExistParents <= _numParents);		// This is not a "==" so that lower order ngram can use it.
-	assert(cards.size() == _numExistParents);
-
-	_contextPointers.clear();
-	if ( _numExistParents > 0 ) {
-		int i = _numExistParents - 1;
-		ContextHashEntry *ce = _contextTable.find(parentValues[i], 0, _contextStartBlockSize);
-		_contextPointers.push_back(ce);
-	
-		while ( ce != NULL && --i >= 0 ) {
-			ce = _contextTable.find(parentValues[i], ce->nextContextOffset, ce->nextContextBlockSize);
-			_contextPointers.push_back(ce);
-		}
-	}
-
-	_contextPointers.push_back(NULL);
-}
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -141,151 +108,27 @@ void NGramCPT::becomeAwareOfParentValues(vector<int>& parentValues, vector<int>&
  *
  *-----------------------------------------------------------------------
  */
-void NGramCPT::becomeAwareOfParentValues(vector<RandomVariable *>& parents) {
-	// TODO: instead of copy the parents values, record the hash entry pointers.
-	_numExistParents = parents.size();
-	assert(_numExistParents <= _numParents);		// This is not a "==" so that lower order ngram can use it.
-
-	_contextPointers.clear();
-	if ( _numExistParents > 0 ) {
-		int i = _numExistParents - 1;
-		ContextHashEntry *ce = _contextTable.find(parents[i]->val, 0, _contextStartBlockSize);
-		_contextPointers.push_back(ce);
-
-		while ( ce != NULL && --i >= 0 ) {
-			ce = _contextTable.find(parents[i]->val, ce->nextContextOffset, ce->nextContextBlockSize);
-			_contextPointers.push_back(ce);
-		}
-	}
-
-	_contextPointers.push_back(NULL);
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * NGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-inline logpr NGramCPT::probGivenParents(const int val) {
-
-	double *p = _probTable.find(val, 0, _probStartBlockSize);
-
-	double prob;
-
-	if ( p != NULL )
-		prob = *p;
-	else
-		return logpr(0.0);
-
-	for ( std::vector<ContextHashEntry*>::const_iterator it = _contextPointers.begin(); it != _contextPointers.end() && *it != NULL; ++it ) {
-		p = _probTable.find(val, (*it)->probOffset, (*it)->probBlockSize);
-		if ( p != NULL )
-			prob = *p;
-		else
-			prob += (*it)->bow;
-	}
-
-	return logpr(NULL, prob); // this will create a logp with log value
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * NGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-logpr NGramCPT::probGivenParents(vector<RandomVariable *>& parents, DiscreteRandomVariable* drv) 
+void NGramCPT::becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv) 
 {
-	becomeAwareOfParentValues(parents);
-	return probGivenParents(drv->val);
-}
+  // TODO: instead of copy the parents values, record the hash entry pointers.
+  _numExistParents = parents.size();
+  // This is not a "==" so that lower order ngram can use it.
+  assert(_numExistParents <= _numParents);		
 
-
-/*-
- *-----------------------------------------------------------------------
- * NGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-logpr NGramCPT::probGivenParents(vector<int>& parentValues, vector<int>& cards, const int val) {
-	becomeAwareOfParentValues(parentValues, cards);
-	return probGivenParents(val);
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * NGramCPT::begin
- *      Beginning of an iterator.
- *
- * Results:
- *      Return the iterator from the begin of the ngram.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-CPT::iterator NGramCPT::begin(DiscreteRandomVariable* drv) {
-
-  // TODO: this will vanish (presumably meaning, this routine will eventually be removed).
-  iterator it(this);
-  NGramCPT::begin(it,drv);
-  return it;
-
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * NGramCPT::begin
- *      Set an iterator to the begin.
- *
- * Results:
- *      None.
- *
- * Side Effects:
- *      None.
- *
- *-----------------------------------------------------------------------
- */
-void NGramCPT::begin(CPT::iterator& it,DiscreteRandomVariable* drv) {
-  it.drv = drv;
-  register RandomVariable::DiscreteVariableType value = 0;
-  it.probVal = probGivenParents(value);
-  while (it.probVal.essentially_zero()) {
-    value++;
-    // We keep the following assertion as we
-    // must have that at least one entry is non-zero.
-    // The read code of the MDCPT should ensure this
-    // as sure all parameter update procedures.
-    assert(value < (int)ucard());
-    it.probVal = probGivenParents(value);	  
+  _contextPointers.clear();
+  if ( _numExistParents > 0 ) {
+    int i = _numExistParents - 1;
+    ContextHashEntry *ce = _contextTable.find(RV2DRV(parents[i])->val, 0, _contextStartBlockSize);
+    _contextPointers.push_back(ce);
+    
+    while ( ce != NULL && --i >= 0 ) {
+      ce = _contextTable.find(RV2DRV(parents[i])->val, ce->nextContextOffset, ce->nextContextBlockSize);
+      _contextPointers.push_back(ce);
+    }
   }
-  drv->val = value;
+  _contextPointers.push_back(NULL);
 }
+
 
 
 /*-
@@ -301,9 +144,9 @@ void NGramCPT::begin(CPT::iterator& it,DiscreteRandomVariable* drv) {
  *
  *-----------------------------------------------------------------------
  */
-void NGramCPT::begin(CPT::iterator& it,DiscreteRandomVariable* drv,logpr& p) {
+void NGramCPT::begin(CPT::iterator& it,DiscRV* drv,logpr& p) {
   it.drv = drv;
-  register RandomVariable::DiscreteVariableType value = 0;
+  register DiscRVType value = 0;
   p = probGivenParents(value);
   while (p.essentially_zero()) {
     value++;
@@ -311,7 +154,7 @@ void NGramCPT::begin(CPT::iterator& it,DiscreteRandomVariable* drv,logpr& p) {
     // must have that at least one entry is non-zero.
     // The read code of the MDCPT should ensure this
     // as sure all parameter update procedures.
-    assert(value < (int)ucard());
+    assert(value < card());
     p = probGivenParents(value);	  
   }
   drv->val = value;
@@ -331,16 +174,91 @@ void NGramCPT::begin(CPT::iterator& it,DiscreteRandomVariable* drv,logpr& p) {
  *
  *-----------------------------------------------------------------------
  */
-void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it,DiscreteRandomVariable* drv) {
+void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, 
+						     iterator &it,
+						     DiscRV*drv,
+						     logpr& p) 
+{
   // call functions in this class directly to avoid virtual dispatch.
-  NGramCPT::becomeAwareOfParentValues(parents);
-  NGramCPT::begin(it,drv);
-}
-void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it,DiscreteRandomVariable*drv,logpr& p) {
-  // call functions in this class directly to avoid virtual dispatch.
-  NGramCPT::becomeAwareOfParentValues(parents);
+  NGramCPT::becomeAwareOfParentValues(parents,drv);
   NGramCPT::begin(it,drv,p);
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * NGramCPT::probGivenParents
+ *      Retrieve the probability for a given value.
+ *
+ * Results:
+ *      Return the probability given the parents.
+ *
+ * Side Effects:
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr NGramCPT::probGivenParents(vector<RV *>& parents, DiscRV* drv) 
+{
+  becomeAwareOfParentValues(parents,drv);
+  const register DiscRVType val = drv->val;
+  double *p = _probTable.find(val, 0, _probStartBlockSize);
+  double prob;
+  if ( p != NULL )
+    prob = *p;
+  else
+    return logpr(0.0);
+
+  for ( std::vector<ContextHashEntry*>::const_iterator it = _contextPointers.begin(); 
+	it != _contextPointers.end() && *it != NULL; 
+	++it ) 
+    {
+      p = _probTable.find(val, (*it)->probOffset, (*it)->probBlockSize);
+      if ( p != NULL )
+	prob = *p;
+      else
+	prob += (*it)->bow;
+    }
+  return logpr(NULL, prob); // this will create a logp with log value
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * NGramCPT::probGivenParents
+ *      Retrieve the probability for a given value.
+ *
+ * Results:
+ *      Return the probability given the parents.
+ *
+ * Side Effects:
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr NGramCPT::probGivenParents(const int val) 
+{
+
+  double *p = _probTable.find(val, 0, _probStartBlockSize);
+  double prob;
+
+  if ( p != NULL )
+    prob = *p;
+  else
+    return logpr(0.0);
+
+  for ( std::vector<ContextHashEntry*>::const_iterator it = _contextPointers.begin(); it != _contextPointers.end() && *it != NULL; ++it ) {
+    p = _probTable.find(val, (*it)->probOffset, (*it)->probBlockSize);
+    if ( p != NULL )
+      prob = *p;
+    else
+      prob += (*it)->bow;
+  }
+
+  return logpr(NULL, prob); // this will create a logp with log value
+}
+
+
 
 
 /*-
@@ -356,20 +274,9 @@ void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& p
  *
  *-----------------------------------------------------------------------
  */
-bool NGramCPT::next(iterator &it) {
-
-  do{
-    if ( (++it.drv->val) >= (int)ucard() )
-      return false;
-    it.probVal = probGivenParents(it.drv->val);
-  } while ( it.probVal.essentially_zero() );
-  return true;
-
-}
-
 bool NGramCPT::next(iterator &it,logpr& p) {
   do{
-    if ( (++it.drv->val) >= (int)ucard() )
+    if ( (++it.drv->val) >= card() )
       return false;
     p = probGivenParents(it.drv->val);
   } while ( p.essentially_zero() );
@@ -393,21 +300,20 @@ bool NGramCPT::next(iterator &it,logpr& p) {
  *
  *-----------------------------------------------------------------------
  */
-int NGramCPT::randomSample(DiscreteRandomVariable* drv) {
-	iterator it;
-	begin(it,drv);		// note that it = begin() will vanish.
-	logpr prob = rnd.drand48();
-	logpr sum = 0.0;
-
-	do {
-		sum += it.probVal;
-		if ( prob <= sum )
-			break;
-
-		next(it);
-	} while ( ! NGramCPT::end(it) );
-
-	return drv->val;
+int NGramCPT::randomSample(DiscRV* drv) 
+{
+  // TODO: figure out a faster way to do this!!
+  logpr prob = rnd.drand48();
+  iterator it;
+  logpr p;
+  begin(it,drv,p);
+  logpr sum;
+  do {
+    sum += p;
+    if ( prob <= sum )
+      break;
+  } while ( next(it,p) );
+  return drv->val;
 }
 
 
@@ -439,33 +345,39 @@ int NGramCPT::randomSample(DiscreteRandomVariable* drv) {
  */
 void NGramCPT::read(iDataStreamFile &is) {
 	NamedObject::read(is);
-	is.read(_numParents,"NGramCPT::read numParents");
+	is.read(_numParents,"Can't read NGramCPT's num parents");
 
 	if ( _numParents < 0 ) 
-		error("ERROR: reading file '%s', NGramCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
+		error("ERROR: reading file '%s' line %d, NGramCPT '%s' trying to use negative (%d) num parents.",
+		      is.fileName(),is.lineNo(),name().c_str(),_numParents);
 	if ( _numParents >= warningNumParents )
-		warning("WARNING: creating NGramCPT '%s' with %d parents in file '%s'", _numParents,name().c_str(),is.fileName());
+		warning("WARNING: creating NGramCPT '%s' with %d parents in file '%s' line %d", 
+			_numParents,name().c_str(),is.fileName(),is.lineNo());
 
 	cardinalities.resize(_numParents);
 	// read the cardinalities
 	for ( unsigned i = 0; i < _numParents; i++ ) {
-		is.read(cardinalities[i], "NGramCPT::read cardinality");
+		is.read(cardinalities[i], "Can't read NGramCPT's parent cardinality");
 		if ( cardinalities[i] <= 0 )
-			error("ERROR: reading file '%s', NGramCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.", is.fileName(),name().c_str(),cardinalities[i],i);
+			error("ERROR: reading file '%s' line %d, NGramCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.", 
+			      is.fileName(),is.lineNo(),name().c_str(),cardinalities[i],i);
 	}
 
 	// read the self cardinalities
-	is.read(_card, "NGramCPT::read cardinality");
+	is.read(_card, "Can't read NGramCPT's self cardinality");
 	if ( _card <= 0 )
-		error("ERROR: reading file '%s', NGramCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.", is.fileName(),name().c_str(),_card,_numParents);
+		error("ERROR: reading file '%s' line %d, NGramCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.", 
+		      is.fileName(),is.lineNo(),name().c_str(),_card,_numParents);
 
 	// read in the string for ARPA language model file name and vocabulary file name
 	char *lmFile;
 	string vocabName;
 	if ( ! is.readStr(lmFile) )
-		error("ERROR: reading file '%s', NGramCPT '%s' trying to find ARPA LM filename", is.fileName(), name().c_str());
+		error("ERROR: reading file '%s' line %d, NGramCPT '%s' trying to find ARPA LM filename", 
+		      is.fileName(), is.lineNo(),name().c_str());
 	if ( ! is.read(vocabName) )
-		error("ERROR: reading file '%s', NGramCPT '%s' trying to find vocab name", is.fileName(), name().c_str());
+		error("ERROR: reading file '%s' line %d, NGramCPT '%s' trying to find vocab name", 
+		      is.fileName(), is.lineNo(),name().c_str());
 
 	delete [] _lmIndexFile;
 	//_lmIndexFile = new char [strlen(lmFile) + 10];
@@ -481,7 +393,8 @@ void NGramCPT::read(iDataStreamFile &is) {
 		readNGramIndexFile(sis);
 	} else {
 		if ( GM_Parms.vocabsMap.find(vocabName) ==  GM_Parms.vocabsMap.end())
-			error("ERROR: reading file '%s', NGramCPT '%s' specifies Vobab name '%s' that does not exist", is.fileName(), _name.c_str(), vocabName.c_str());
+			error("ERROR: reading file '%s' line %d, NGramCPT '%s' specifies Vobab name '%s' that does not exist", 
+			      is.fileName(), is.lineNo(),_name.c_str(), vocabName.c_str());
 
 		Vocab *vocab = GM_Parms.vocabs[GM_Parms.vocabsMap[vocabName]];
 		read(lmFile, *vocab);
@@ -509,8 +422,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	// collect information for hash table sizes
 	
 	// check cardinalities
-	if ( vocab.size() != ucard() )
-		error("Error: ngram card %d does not equal vocab card %d", ucard(), vocab.size());
+	if ( vocab.size() != card() )
+		error("Error: ngram card %d does not equal vocab card %d", card(), vocab.size());
  
 	ContextTreeEntry startEntry;
 
@@ -587,7 +500,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 		// read in word
 		if ( (tok = strtok(NULL, seps)) == NULL )
 			error("Error: error reading line %s", line);
-		if ( (wid = vocab.index(tok)) >= (int)ucard() )
+		if ( (wid = vocab.index(tok)) >= card() )
 				error("Error: unknown word %s in vocabulary in NGramCPT::read", tok);
 
 		ContextTreeEntry contextEntry;
@@ -628,7 +541,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			for ( k = 0; k < index - 1; ++k ) {
 				if ( (tok = strtok(NULL, seps)) == NULL )
 					error("error reading line %s", line);
-				if ( (context[k] = vocab.index(tok)) >= (int)ucard() )
+				if ( (context[k] = vocab.index(tok)) >= card() )
 					error("Error: unknown word %s in vocabulary in NGramCPT::read", tok);
 			}
 
@@ -654,7 +567,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			// read in word
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("error reading line %s", line);
-			if ( (context[index-1] = vocab.index(tok)) >= (int)ucard() )
+			if ( (context[index-1] = vocab.index(tok)) >= card() )
 					error("Error: unknown word %s in vocabulary in NGramCPT::read", tok);
 
 			ContextTreeEntry entry;
@@ -715,7 +628,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			for ( k = 0; k < index - 1; ++k ) {
 				if ( (tok = strtok(NULL, seps)) == NULL )
 					error("error reading line %s", line);
-				if ( (context[k] = vocab.index(tok)) >= (int)ucard() )
+				if ( (context[k] = vocab.index(tok)) >= card() )
 					error("Error: unknown word %s in vocabulary in NGramCPT::read", tok);
 			}
 	

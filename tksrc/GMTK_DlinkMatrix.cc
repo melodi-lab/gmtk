@@ -117,50 +117,50 @@ DlinkMatrix::read(iDataStreamFile& is)
   // read the dlink structure 
   is.read(str);
   if (GM_Parms.dLinksMap.find(str) == GM_Parms.dLinksMap.end())
-    error("Error: Dlink matrix '%s' in file '%s' specifies dlink structure name '%s' that does not exist",
+    error("Error: Dlink matrix '%s' in file '%s' line %d specifies dlink structure name '%s' that does not exist",
 	  name().c_str(),
-	  is.fileName(),
+	  is.fileName(),is.lineNo(),
 	  str.c_str());
   
   dLinks = GM_Parms.dLinks[GM_Parms.dLinksMap[str]];
 
   int _dim;
 
-  is.read(_dim,"DlinkMatrix::read, _dim");
+  is.read(_dim,"Can't read DlinkMatrix's dimension");
   if (_dim <= 0)
-    error("ERROR: reading DlinkMatrix '%s' from file '%s', dim (%d) must be positive",
+    error("ERROR: reading DlinkMatrix '%s' from file '%s' line %d , dim (%d) must be positive",
 	  name().c_str(),
-	  is.fileName(),
+	  is.fileName(),is.lineNo(),
 	  _dim);
 
   if (_dim != dLinks->dim())
-    error("Error: Dlink matrix '%s' in file '%s' specifices a dlink structure '%s' with incompatible dimensions\n",
+    error("Error: Dlink matrix '%s' in file '%s' line %d specifices a dlink structure '%s' with incompatible dimensions\n",
 	  name().c_str(),
-	  is.fileName(),
+	  is.fileName(),is.lineNo(),
 	  dLinks->name().c_str());
 
 
   for (int i=0;i<_dim;i++) {
     int nlinks;
-    is.read(nlinks,"DlinkMatrix::read, nlinks");
+    is.read(nlinks,"Can't read DlinkMatrix's number links");
 
     if (nlinks < 0) 
-      error("ERROR: reading DlinkMatrix '%s' from file '%s', # dlinks (%d) must be >= 0",
+      error("ERROR: reading DlinkMatrix '%s' from file '%s' line %d, # dlinks (%d) must be >= 0",
 	    name().c_str(),
-	    is.fileName(),
+	    is.fileName(),is.lineNo(),
 	    nlinks);
 
     if (nlinks != dLinks->numLinks(i))
-      error("Error: Dlink matrix '%s' in file '%s' specifices a dlink structure '%s' with incompatible number of links\n",
+      error("Error: Dlink matrix '%s' in file '%s' line %d specifices a dlink structure '%s' with incompatible number of links\n",
 	    name().c_str(),
-	    is.fileName(),
+	    is.fileName(),is.lineNo(),
 	    dLinks->name().c_str());
 
     int oldLen = arr.len();
     arr.resizeAndCopy(oldLen+nlinks);
 
     for (int j=0;j<nlinks;j++) {
-      is.read(arr[oldLen+j],"DlinkMatrix::read, v");
+      is.read(arr[oldLen+j],"Can't read DlinkMatrix's link value");
     }
   }
   setBasicAllocatedBit();
