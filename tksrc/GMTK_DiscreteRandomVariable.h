@@ -95,6 +95,9 @@ public:
     // experiments without needing any parameters).
     // if (conditionalCPTs.size() == 0)
     // return false;
+
+    // TODO: make this a member of the rv_info (so that we don't
+    // re-compute this over and over).
     for (unsigned i=0;i<rv_info.discImplementations.size();i++) {
       if (rv_info.discImplementations[i] != CPT::di_MTCPT)
 	return false; 
@@ -106,44 +109,98 @@ public:
     return true;
   }
 
+  // returns true if all cpts are sparse or determinstic.
+  bool sparse() {
+    // TODO: make this a member of the rv_info (so that we don't
+    // re-compute this over and over).
+    for (unsigned i=0;i<rv_info.discImplementations.size();i++) {
+      if ((rv_info.discImplementations[i] != CPT::di_MTCPT)
+	  &&
+	  (rv_info.discImplementations[i] != CPT::di_MSCPT))
+	return false; 
+    }
+    return true;
+  }
 
-  // Various heuristics that return several forms
-  // of cardinality, used for elimination/triangulation.
+
+
+  // This routine returns the average cardinality (average number of
+  // possible child random variable values with non-zero probability)
+  // for the current random variable.  This routines assume that the
+  // RV's parents are in the same clique (or an earlier clique
+  // relative to the JT root) so that we only consider the child
+  // values with non-zero probability.
   unsigned averageCardinality() {
     unsigned res;
-    for (unsigned i=0;i<conditionalCPTs.size();i++) {
-      if (conditionalCPTs[i]->cptType == CPT::di_MDCPT)
+    for (unsigned i=0;i<rv_info.discImplementations.size();i++) {
+      if (rv_info.discImplementations[i] == CPT::di_MDCPT)
 	res += cardinality;
-      else if (conditionalCPTs[i]->cptType == CPT::di_MTCPT)
+      else if (rv_info.discImplementations[i] == CPT::di_MTCPT)
 	res += 1;
       else { // sparce CPT
-	res += conditionalCPTs[i]->averageCardinality();
+	// we only get the sparse CPT cardinality if it has
+	// been read in, otherwise, we just take card.
+	unsigned tmp;
+	if (i < conditionalCPTs.size())
+	  tmp = conditionalCPTs[i]->averageCardinality();
+	else 
+	  tmp = cardinality;
+	res += tmp;
       }
     }
-    if (res == 0)
+    if (res == 0) {
+      // if there are no CPTs (i.e., if we didn't load in the
+      // parameters during say a triangulation procedure, then we just
+      // return the cardinality.
       return cardinality;
-    else 
-      return res/conditionalCPTs.size();
+    } else {
+      // otherwise, we return what we've got.
+      return res/rv_info.discImplementations.size();
+    }
   }
+
+  // This routine returns the maximum possible cardinality (max number
+  // of possible child random variable values with non-zero
+  // probability) for the current random variable.  This routines
+  // assume that the RV's parents are in the same clique (or an
+  // earlier clique relative to the JT root) so that we only consider
+  // the child values with non-zero probability.
   unsigned maxCardinality() {
     unsigned res = 0;
-    for (unsigned i=0;i<conditionalCPTs.size();i++) {
-      if (conditionalCPTs[i]->cptType == CPT::di_MDCPT) {
-	if ((unsigned)cardinality > res) res = cardinality;
-      } else if (conditionalCPTs[i]->cptType == CPT::di_MTCPT) {
+    for (unsigned i=0;i<rv_info.discImplementations.size();i++) {
+      if (rv_info.discImplementations[i] == CPT::di_MDCPT) {
+	res = cardinality;
+	// it'll never get bigger than this so we 
+	// might as well leave the loop
+	break;
+      } else if (rv_info.discImplementations[i] == CPT::di_MTCPT) {
 	if (res == 0) res = 1;
       } else { // sparce CPT
-	unsigned tmp = conditionalCPTs[i]->maxCardinality();
+	// we only get the sparse CPT cardinality if it has
+	// been read in, otherwise, we just take card.
+	unsigned tmp;
+	if (i < conditionalCPTs.size())
+	  tmp = conditionalCPTs[i]->maxCardinality();
+	else 
+	  tmp = cardinality;
 	if (tmp > res) res = tmp;
       }
     }
-    if (res == 0)
+    if (res == 0) {
+      // if there are no CPTs (i.e., if we didn't load in the
+      // parameters during say a triangulation procedure, then we just
+      // return the cardinality.
       return cardinality;
-    else
+    } else {
+      // otherwise, we return the maximum.
       return res;
+    }
   }
-  unsigned useCardinality() { return maxCardinality(); }  
 
+  // various other routines want a cardinality to 'use'.  they use the
+  // routine useCardinality() which can be defined either as the avg
+  // or max cardinality above.
+  unsigned useCardinality() { return maxCardinality(); }  
 
 
   ////////////////////////////////////////////////////////////////
