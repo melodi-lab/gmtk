@@ -24,11 +24,20 @@
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
-
+#include "GMTK_FileParser.h"
 
 class ContinuousRandomVariable : public RandomVariable
 {
 private:
+
+  // include an enum with the crv type.
+
+
+  //////////////////////////////////////////////////////////////
+  // the feature range to which this random variable corresponds.
+  // it corresponds to [firstFeature:lastFeature] inclusive
+  unsigned firstFeature;
+  unsigned lastFeature;
 
 
 public:
