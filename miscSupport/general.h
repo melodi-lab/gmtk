@@ -75,5 +75,7 @@ unsigned long fsize(const char* const filename);
 
 void print_date_string(FILE* f);
 
+void exit_program_with_status(const int stat);
+
 
 #endif
