@@ -31,7 +31,6 @@
  *
  */
 
-#define JunctionTree__viterbiScore 0
 
 #include <math.h>
 #include <stdlib.h>
@@ -2491,7 +2490,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	// continue on to next iteration without incrementing cvn
 	continue;
       } else {
-	if (JunctionTree__viterbiScore) {
+	if (JunctionTree::viterbiScore) {
 	  // sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 	  if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
 	    sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
@@ -2648,7 +2647,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	  } else {
 	    // already there so must have hit before.
 	    // we thus accumulate.
-	    if (JunctionTree__viterbiScore) {
+	    if (JunctionTree::viterbiScore) {
 	      // sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 	      if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
 		sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
@@ -2738,7 +2737,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
       // We've finally got the entry, so accumulate the clique's
       // probability into this separator's probability.
-      if (JunctionTree__viterbiScore) {
+      if (JunctionTree::viterbiScore) {
 	// sv.remValues.ptr[*remIndexp].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 	if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[*remIndexp].p) {
 	  sv.remValues.ptr[*remIndexp].p = cliqueValues.ptr[cvn].p;
@@ -3417,7 +3416,7 @@ InferenceMaxClique::
 deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 				InferenceSeparatorClique& sep)
 {
-  if (JunctionTree__viterbiScore) {
+  if (JunctionTree::viterbiScore) {
     return deReceiveFromIncommingSeparatorViterbi(part,sep);
   }
 
@@ -3717,7 +3716,7 @@ InferenceMaxClique::
 deScatterToOutgoingSeparators(JT_InferencePartition& part)
 {
 
-  if (JunctionTree__viterbiScore) {
+  if (JunctionTree::viterbiScore) {
     // there is nothing to do in this case since if the RVs associated
     // with the current clique have been set to the appropriate clique
     // table entry, the associated separator RVs have also been set.
