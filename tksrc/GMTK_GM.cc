@@ -202,7 +202,10 @@ void GMTK_GM::storeValues(vector<VariableValue> &vv)
     int p=0;
     for (unsigned i=0; i<node.size(); i++)
         if (!node[i]->hidden)
+        {
+            assert(node[i]->val < node[i]->cardinality);
             node[i]->storeValue(vv[p++]);
+        }
 }
 
 /*
@@ -221,7 +224,10 @@ void GMTK_GM::setValues(vector<VariableValue> &vv)
 {
     for (unsigned i=0,p=0; i<node.size(); i++)
         if (!node[i]->hidden)
+        {
             node[i]->setValue(vv[p++]);
+            assert(node[i]->val < node[i]->cardinality);
+        }
 }
 
 /*
@@ -300,7 +306,7 @@ void GMTK_GM::emIncrement(logpr p)
 void GMTK_GM::emStartIteration()
 {
     for (unsigned i=0; i<node.size(); i++)
-        node[i]->emClearAllocatedBit();
+        node[i]->emClearEmAllocatedBit();
     for (unsigned i=0; i<node.size(); i++)
         node[i]->emStartIteration();
 }
@@ -755,6 +761,44 @@ vector<RandomVariable *> &to)
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      SetupForVariableLengthUnrolling() initializes some data structures
+ *      that are used to do unrolling. 
+ * 
+ * Preconditions:
+ *      The initial network template must be fully initialized, including
+ *      parent arrays, CPTs, gaussians, etc.
+ *
+ * Postconditions:
+ *      gmTemplate array set up.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void GMTK_GM::setupForVariableLengthUnrolling(int first_frame, int last_frame)
+{
+    // create the template of the GM to be used for unrolling
+
+    cloneVariables(node, gmTemplate);
+
+    firstChunkFrame = first_frame;
+    lastChunkFrame = last_frame;
+
+    obsInTemplate=obsInRepeatSeg=0;
+    for (unsigned i=0; i<node.size(); i++)
+    {
+        if (node[i]->timeIndex>=first_frame 
+        && node[i]->timeIndex<=last_frame && !node[i]->hidden)
+            obsInRepeatSeg++;
+        if (!node[i]->hidden)
+            obsInTemplate++;
+    }
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * Function
@@ -762,6 +806,7 @@ vector<RandomVariable *> &to)
  * 
  * Preconditions:
  *      # The network up to the template slices must be fully set up
+ *      # This includes setting up the CPTs 
  *      # Variables from a time slice must be contiguous in the node array
  *      # node[i-period] must be analogous to node[i] in the existing network
  *      # timeIndex numbering starts at 0
@@ -789,32 +834,13 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     // last frame is the last frame of the repeating segment
 
     if (gmTemplate.size() == 0)  
-    {
-        // first call to unroll()
-        // create the template of the GM to be used by future calls
+        error("Must call setupForVariableLengthUnrolling() before unroll");
 
-        cloneVariables(node, gmTemplate);
-        firstChunkFrame = first_frame;
-        lastChunkFrame = last_frame;
-
-        obsInTemplate=obsInRepeatSeg=0;
-        for (unsigned i=0; i<node.size(); i++)
-        {
-            if (node[i]->timeIndex>=first_frame 
-            && node[i]->timeIndex<=last_frame && !node[i]->hidden)
-                obsInRepeatSeg++;
-            if (!node[i]->hidden)
-                obsInTemplate++;
-        }
-    }
-    else
-    { 
-        // restore the template in preparation for the unrolling
-        for (unsigned i=0; i<node.size();i++)
-            delete node[i];
-        node.clear();
-        cloneVariables(gmTemplate, node);
-    }
+    // restore the template in preparation for the unrolling
+    for (unsigned i=0; i<node.size();i++)
+        delete node[i];
+    node.clear();
+    cloneVariables(gmTemplate, node);
 
     map<int,int> slice_size_for_frame;
     map<int,vector<RandomVariable *>::iterator> start_of_slice, end_of_slice;
@@ -863,9 +889,13 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     
     // will need to know which nodes are in the tail segment. record it now
     set<RandomVariable *> in_tail;
+    vector<RandomVariable *> tail_node;
     for (unsigned i=0; i<node.size(); i++)
         if (node[i]->timeIndex > last_frame)
+        {
             in_tail.insert(node[i]);
+            tail_node.push_back(node[i]);
+        }
 
     // duplicate the range over and over again
     int cs = last_frame+1;  // slice being created
@@ -889,9 +919,8 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     }
 
     // add the tail nodes in the network
-    set<RandomVariable *>::iterator si;
-    for (si=in_tail.begin(); si!=in_tail.end(); si++)
-        unrolled.push_back(*si);
+    for (unsigned i=0; i<tail_node.size(); i++)
+        unrolled.push_back(tail_node[i]);
 
     // will add the parents again to set up the allPossibleChildren and 
     // allPossibleParents arrays, so clear them out now
