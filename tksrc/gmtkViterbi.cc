@@ -27,6 +27,10 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
+#include <iostream.h>
+#include <fstream.h>
+#include <map>
+#include <string>
 
 #include "general.h"
 #include "error.h"
@@ -49,14 +53,16 @@ VCID("$Header$");
 
 // the file of observation
 
-bool seedme = false;
 float pruneRatio=0.0;
 char *obsFileName;
 char *strFileName;
 char *parmsFileName=NULL;
 char *parmsPtrFileName=NULL;
-bool randomizeParams = true;
 bool showVitVals = false;
+
+char *wordVar=NULL;
+char *varMapFile=NULL;
+char *transitionLabel=NULL;
 
 ARGS ARGS::Args[] = {
 
@@ -64,16 +70,20 @@ ARGS ARGS::Args[] = {
  ARGS("parmsFile",ARGS::Opt,parmsFileName,"GM Parms File"), 
  ARGS("parmsPtrFile",ARGS::Opt,parmsPtrFileName,"GM Parms File"), 
  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
- ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
  ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
- ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
  ARGS("showVitVals",ARGS::Opt,showVitVals,"Print the viterbi values??"),
+
+ // These 3 must be used together or not at all
+ ARGS("printWordVar",ARGS::Opt,wordVar,"Print the word var - which has this label"),
+ ARGS("varMap",ARGS::Opt,varMapFile,"Use this file to map from word-index to string"),
+ ARGS("transitionLabel",ARGS::Opt,transitionLabel,"The label of the word transition variable"),
+
  ARGS()
 
 };
 
 
-RAND rnd(seedme);
+RAND rnd(0);
 GMParms GM_Parms;
 ObservationMatrix globalObservationMatrix;
 
@@ -87,12 +97,26 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
 
-
   ARGS::parse(argc,argv);
 
-
-  if (seedme)
-    rnd.seed();
+  map<int, string> word_map;
+  if (wordVar != NULL)
+  {
+    if (varMapFile==NULL)
+      error("File to map from word index to string not specified.");
+    if(transitionLabel == NULL)
+      error("The label of the transition variable was not specified.");
+    ifstream in(varMapFile);
+    if (!in) { cout << "Unable to open " << varMapFile << endl; exit(1); }
+    string name;
+    int val;
+    while (!in.eof())
+    {
+      in >> val >> name >> ws;
+      word_map[val] = name;
+    }
+    in.close();
+  }
 
   /////////
   // read in all parameters
@@ -134,11 +158,6 @@ main(int argc,char*argv[])
   gm.GM2CliqueChain();
   // gm.showCliques();
 
-  if (randomizeParams) {
-    printf("randomizing parameters\n");
-    GM_Parms.makeRandom();
-  }
-
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
 
   // and away we go
@@ -146,12 +165,42 @@ main(int argc,char*argv[])
   do
   {
     gm.cliqueChainViterbiProb(pruneRatio);
-    cout << "Example prob: " << gm.viterbiProb.val() << endl;
+    cout << "Example prob: " << gm.viterbiProb.val() << " : "
+         << ((*gm.node.rbegin())->timeIndex+1) << " frames\n";
     if (showVitVals)
       gm.reveal(gm.node, true);
+    if (wordVar)
+    {
+      // print the sequence of values for this variable
+      // compress consecutive values into a single instance
+      // the times are right if a word transition at time t means there is
+      // a new word at t+1
+      string pvn = string(wordVar);
+      string tl = string(transitionLabel);
+      for (int i=0, lv=-1, lf=0; i<int(gm.node.size()); i++)
+      {
+        if (gm.node[i]->label == pvn)
+        {
+          if (!gm.node[i]->discrete) 
+            error("Can only print Viterbi values for discrete variables");
+          if (gm.node[i]->cardinality != int(word_map.size()))
+            error("Word-val to string map does not match the number of words.");
+          lv = gm.node[i]->val;
+        }
+        else if (gm.node[i]->label==tl)
+        {
+          if (gm.node[i]->cardinality != 2) 
+            error("Word transition variable should have two values");
+          if (gm.node[i]->val==1)  // a word transition
+          {
+            cout << word_map[lv] << " (" << lf << "-" 
+                 << gm.node[i]->timeIndex << ")\n";  
+            lf = gm.node[i]->timeIndex+1;
+          }
+        }
+      }
+    }
   } while (gm.clampNextExample());
 
-
   return 0;  
-
 }
