@@ -211,7 +211,7 @@ X check on memory leak stuff
 
 - write C++ program to print number of free parameters for a system.
 
-- add simple multiplication onto decision tree leafs. (or better, make it
+X add simple multiplication onto decision tree leafs. (or better, make it
   use real integer formulas with parens, etc.).
 
 - export the optional training stuff (i.e., don't train means, just covars, etc)
@@ -306,6 +306,8 @@ X ascii/binary conversion program can go both ways.
   using the gaussian mixture objects.
 
 - write a vector version of log(1 + exp(x))
+   Wed Aug 18 19:43:41 2004: write a specific version of 
+   log(1 + exp(x)) in one function log1pexp(x).
 
 - clean up swap and end EM in gmparams
 
@@ -807,7 +809,8 @@ Sun Dec 22 21:09:32 2002
        perhaps allow for this to occur when using
        the unroll graph and then triangulation mode (e..g,
        the same mode that works for snakes will work for here as well).
-
+    - update: Wed Aug 18 20:11:08 2004
+       also, allow this when dealing with static template graph case.
 
 Sun Dec 22 21:12:43 2002
   - idea: wrap-around mode?
@@ -815,7 +818,7 @@ Sun Dec 22 21:12:43 2002
      to link into the end (i.e., P can link to E using negative)?? 
   - but this would have same problems as linking from P to E
     in note above.
-
+  - Wed Aug 18 20:11:34 2004: this relate to loopy BP?
 
 Tue Dec 24 00:25:18 2002
   - find best {left,right} interface should have the option
@@ -966,7 +969,7 @@ Mon Jan 13 17:18:17 2003
     not match the range of utterance numbers in the observation file.
 
 
-Thu Jan 30 19:15:59 2003
+DONE: Thu Jan 30 19:15:59 2003
   - optimization
    right now, updating of Gausisans during mean and variance updating as follows:
     *covars_p += (*f_p)*(*f_p)*fprob;
@@ -979,11 +982,11 @@ Thu Jan 30 19:15:59 2003
 
 
 
-Fri Jan 31 00:30:30 2003
+DONE: Fri Jan 31 00:30:30 2003
   - add a '-debug' option that prints various status
     messages depending on the '-debug' number.
 
-Mon Feb 03 14:45:49 2003
+DONE: Mon Feb 03 14:45:49 2003
   - might be above, but add the option to
     unroll more times of the C chunk and triangulate that
     rather than just one time (this would put more constraints
@@ -1163,7 +1166,7 @@ Tue Jul 01 17:36:05 2003
   - go through all file reading code and insert the is.fileName()  (and ideally a line number
     as well) for all error reports about that file.
 
-Fri Jul 04 00:39:18 2003
+DONE: Fri Jul 04 00:39:18 2003
   - make the MCS implementation truely O(n+e) raather than O(N^2)
 
 Sat Jul  5 17:30:27 2003
@@ -1245,7 +1248,7 @@ Sun Nov  2 21:49:43 2003
     - total number of frames in current utterance.
     - 
 
-Sun Nov  4 22:32:50 2003:
+DONE: Sun Nov  4 22:32:50 2003:
 Triangulation idea: 
   - add all deterministic ancestors as neighbors when going from DN to UGM.
 Before triangulation:
@@ -1442,6 +1445,10 @@ Mon Feb  2 23:41:53 2004
     from the observation file for a given utterance in
     some nice way). This would need to gel with
     the new RV class hierarchy. 
+  - Wed Aug 18 20:34:24 2004: update, this is incompatible
+    with new RV hierarchy, since in the new hierarchy,
+    the hidden/observed status is determined by the RV type
+    (but perhaps unroll() could pay attention to this).    
 
 Mon Feb  9 21:07:55 2004
   - fix bug where
@@ -1515,7 +1522,8 @@ Wed Feb 18 12:11:08 2004
       1) help reduce bugs by telling a user when DTs are problem
          before running the program.
       2) speed things up as dynamic checking can be removed.
-
+   - Wed Aug 18 20:36:32 2004 update: if we switch ot unsigned, we need only check
+      upper bound, and no longer check for < 0 condition.
 
 Wed Feb 18 15:12:25 2004
   - add mention of Chiaping email from today about splitting
@@ -1655,10 +1663,10 @@ Mon Mar  8 20:48:40 2004
   This should be easy to get working with new inference code.
 
 Wed Mar 10 21:56:35 2004
-  - change to allow cliques with all observations, and all observed graphs. T?his
+  - DONE: change to allow cliques with all observations, and all observed graphs. T?his
     should be fairly easy, just do less "error" checking.
   - change to allow disconnected frames (i.e., just don't send a message between partitions).
-  - add a feature where we topologically sort nodes in a clique based on
+  - DONE: add a feature where we topologically sort nodes in a clique based on
     expected cost. I.e., if a deterministic node uses a complicated DT, then
     it should come as early as possible in a clique to avoid redundantly calling
     the expensive DT. Cheap DTs can go later in the clique order (i.e., extend
@@ -1686,17 +1694,16 @@ Sat Mar 13 18:45:03 2004
 
 
 Sat Mar 13 22:24:53 2004
-  - implement another form of pruning, where you provide the
+  - DONE (Wed Aug 18 20:48:12 2004): implement another form of pruning, where you provide the
     maximum number of clique or separator entries that survive.
     Number should be able to be specified either as percent (relative
     to the current total) or as an absolute number.
-    - Note: clique pruning will be easy, but separator pruning
-      in this case will be a bit more difficult.
+  - Note: clique pruning will be easy, but separator pruning
+    in this case will be a bit more difficult.
 
 Sun Mar 14 23:04:25 2004
   - make 1-page reference card for GMTK DTs with everything from syntax, rules, tips for speeding up,
     and all possible formulas, etc.
-
 
 Sun Mar 21 05:24:38 2004
   - in inner inference loops, rather than have:
@@ -1830,6 +1837,7 @@ Thu Apr  8 00:05:03 2004
 
 Mon Apr 12 10:31:10 2004
   - convert all CPT cards and vals to unsigned rather than int.
+    (and thus convert all checks from 0<=v && v<card to just v<card 
 
 Thu Apr 15 12:14:09 2004
   - make an option when reading triangulation files to ignore RV cardinality differences
@@ -1864,7 +1872,6 @@ Thu Apr 22 14:40:34 2004
 
 Fri Apr 23 19:02:36 2004
   - arguments.cc, when string argument is given "" it shouldn't give warning.
-
 
 Sat Apr 24 20:57:47 2004
   - look at log/exp implementations
@@ -1976,10 +1983,11 @@ Sun Jun 13 15:14:51 2004
 Tue Jun 22 15:41:46 2004
   - design function to do log(1+exp(x))
   - make use of log1p() = log(1+x) when x is very small.
+      (just include source code of log1p() for portability).
   - check that log1p() is available, use HAVE_LOG1P config
  
 Tue Jun 22 18:36:23 2004
- new sequence CPTs
+ new sequence CPTs (and lattice CPTs).
    one case for just A -> B
       where B has prob 1 for having value in position A of some list
    another case 
@@ -2049,5 +2057,172 @@ Thu Aug 12 12:21:15 2004
     how to shift values around so that we minimize the number of values that cross word boundaries
     since they cost more to pack and unpack, while staying within the contraint of using the same number
     of words.
+
+
+Wed Aug 18 18:36:47 2004
+  - add support for immediate parameters in str file, i.e., ability to give
+    immediate DTs  as in:
+           DeterministicCPT(" decision tree")
+           DenseCPT("etc.")
+           FNGramCPT("fngram spec.")
+    etc.
+
+Wed Aug 18 18:44:42 2004
+ - Figure out some way to allow for a variable number of variables per frame
+   rather than a fixed number of variables (this is a simple version of switching
+   existance, update inference algorithms for this).
+
+Wed Aug 18 19:30:28 2004
+  - DT formulas:
+     add functions for mapping together lots of functions, i.e.,:
+         -  add(e1,e2,...,eN) // adds three expressions together
+         -  and(e1,e2,...,eN) // ands three together
+         -  or(e1,e2,...,eN) // ands three together   
+         -  median(e1,e2,...,eN) // ands three together   
+         -  max(), min(), 
+    
+
+Wed Aug 18 19:42:28 2004
+  - trifiles include username of creator as well as time of creation.
+
+Wed Aug 18 20:23:43 2004
+  - add fixed meory usage command line option so that we exit with an error
+    if a certain amount of memory is exceeded (rather than just swapping and
+    killing the machine). Integrate this with gmtkTime -multi so that
+    if the fixed memory (or time) is exceeded, we free-up everything
+    done so far in current inerence pass, and return to beginning state.
+
+
+Wed Aug 18 21:05:31 2004
+Summary of many of the new features compiled from the above up to the
+current date (this includes major new features, but not the bugs or
+other minor things mentioned above).
+
+     - fast inference and other inference features 
+          - viterbi decoder and word only (or variable only) 
+            backtrace, generalizing LVCSR decoders (see decoder papers).
+          - n-best and lattice generation
+          - loopy propagation
+          - importance sampling
+          - variational and mean-field inference
+          - sampling and hidden continuous mixture Gaussians.
+          - fast boundary search, using max-flow/min-cut algorithms.
+          - ability to max/sum variables (max over some variables, sum over others,
+            for hybrid decoding).
+          - gmtkFlatten
+          - gmtkDecode
+          - option for inward/outward inference rather than forward-backwards.
+            This can significantly speed things up since we don't keep things
+            around that are zero (try to have a picture explaining this).
+         - support filtering p(x_t | y_{1:t}), prediction p(x_t |
+           y_{1:s}) s < t, as well as smoothing p(x_t| y_{1:T}), where
+           y is observed, and x are the hidden variables in the DBN.
+         - island algorithm interacts with Gaussian caching, so that we cache current island only.
+         - virtual evidence extended to separator driven inference so that
+           the virtual evidence in a clique acts like a separator, thereby effectively
+           pruning away what is not necessary.
+
+     - underlying different models
+        - native support for time-inhomogeneous DBNs
+        - non-linear Gaussians and non-linear BMMs w. pseudo-2nd-order training methods.
+          non-linear regression models, lasso, etc.
+        - smoothing for CPTs in EM
+             Laplace smoothing, Good Turing within EM training, false counts.
+        - generalized parameter adaptation directly within GMTK
+        -  (Sat Apr 24 22:21:09 2004, probably "decision tree"
+           (or some form of) state clustering, generalized to
+           graphical models). Clustering of two distributions when they
+           get very similar (presumably, p(a|b), when two values of b yield
+           the same dist over a, we cluster bs together.
+        - generalized probability weights/exponents
+        - switching weight and penalty.
+        - native mode for virtual evidence 
+            - enables native-mode hybrid DBN/ANNs and DBN/SVMs.
+        - hidden continuous nodes, both GC models, and also non-linear hidden
+          continuous nodes, trained using sampling approaches.
+        - sparse inverse covariance matrices (corresponding to sparse undirected graphical
+          models as Gaussians). To avoid needing to do an iterative scheme, triangulate
+          this mdoel giving chordal Gaussians.
+
+
+     - usability features
+          - ARPA LMs and FLMs
+          - sequence and lattice CPTs (that iterates through
+            a lattice depending on a specific set of parents).
+            Like a sparse CPT but easier to specify since it keeps track
+            of where it is. 
+          - decision tree formulas (Chris)
+          - integrate in new obs code.
+          - disconnected and static networks
+          - add own cpp-like GMTK pre-processor
+               (with many but not all of the features of cpp).
+
+          - much better user-level error message reporting, 
+          - much improved and more complete documentation with many examples.
+               - not only that there is a cycle but which vars are in cycle 
+               - quick reference cards (1 page for decision trees).
+          - tools for easy automatic parameter creation and structure creation.
+            (meta level description of parameters rather than needing to specify
+             them all). Also meta tools for Gaussians & continuous densities.
+             (converting from dense to sparse cpt).
+          - graphical user inferface for graph specification parameter specification
+          - regular expressions to determine objects not to train.
+          - symbolic observations such as support for language files, etc.
+          - Arbitrary sets of variable values, including strings, rather than [0..card-1] 
+            so that user interacts with variable values as strings (even though
+            internally they are unsigned integers).
+          - utilities to convert to and from other standard formats:
+             - other GM systems and other speech systems.
+             - other systems, HTK, etc.
+             - compatibliity with all NIST word scoring tools.
+          - emacs editing mode for GMTK structure files.
+          - user debugging features
+              - (see Sat Mar 15 22:33:27 2003 in TODO file)
+              - gmtk user-level debugger to help users figure out why they
+                get zero probabilities (i.e., bugs in their determinisitc cpt specifications).
+          - fixed upper bounded memory usage.
+          - allow for empty frames to do instant down-sampling and multi-rate
+            processing.
+          - dynamic beam pruning (so that beam widths or counts can come from global
+            observation file). beam comes from obs frame corresponding to first 
+            variable in the clique. Also, allow beam formulas on command line,
+            to adjust variable beams. (might want to have wider beams at beginning
+            of segment, an smaller in the middle).
+          - allow parameters to be read in in any order, rather than in
+            an order that requires any dependencies to have been read in beforehand.
+            Do final pass to ensure all is there.
+          - set up GMTK wiki page.
+
+
+     - software speedups
+         - custom floating point routines to implement log(1+exp(x)) as a
+           single function.
+         - much better hash tables
+
+
+     - theory/algorithms
+          - optimal separator iteration orders
+          - switching parents in inference in forward/backward
+          - characterize nets which require particular M and S
+          - triangulation for nets with sparse CPTs (Chris)       
+
+     - tutorials
+          - many tutorials and examples to be created and released on the web.
+              (list different types).
+          - update and get aurora tutorial into CVS
+          - get Karim's fully implicit tutorial integrated in
+          - write other tutorials for
+              - language modeling
+              - pronunciation modeling
+          - integrate in small test suite examples (exp1, exp2, etc.) which will
+            both serve as tutorial material and something to
+            test things out to ensure compiled version works.  
+
+
+Fri Aug 20 15:01:48 2004
+  - remove wrong copyright note from gmtkNGramIndex.cc
+
+
+
 
 
