@@ -125,6 +125,10 @@ Arg Arg::Args[] = {
       Arg::Opt,JunctionTree::jtWeightUpperBound,
       "True means jtWeight is allways an upper bound on true JT weight, false means jtWeight is estimate"),
 
+  Arg("jtwPUI",
+      Arg::Opt,JunctionTree::jtWeightPenalizeUnassignedIterated,
+      "True means jtWeight should heavily penalize cliques with unassigned iterated nodes"),
+
   Arg("pfCobWeight",
       Arg::Opt,MaxClique::continuousObservationPerFeaturePenalty,
       "Per-Feature Dimension Continuous Observation Log penalty to use in clique weight calc"),

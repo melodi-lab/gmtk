@@ -335,8 +335,9 @@ public:
       return;
     }
     // a hidden variable, so we set up the iterator.
-    curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    curCPT->begin(it); 
+    curCPT->becomeAwareOfParentValuesAndIterBegin(*curConditionalParents,it);
+    // curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    // curCPT->begin(it); 
     val = it.val();
     // assert ( val >= 0 );
   }
@@ -351,8 +352,9 @@ public:
       return;
     }
     // a hidden variable, so we set up the iterator.
-    curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    curCPT->begin(it); 
+    curCPT->becomeAwareOfParentValuesAndIterBegin(*curConditionalParents,it);
+    // curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    // curCPT->begin(it); 
     val = it.val();
     p = it.probVal;
     if (wtStatus != wt_NoWeight) {

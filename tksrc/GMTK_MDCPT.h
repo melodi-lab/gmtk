@@ -79,12 +79,15 @@ public:
   void becomeAwareOfParentValues( vector <int>& parentValues,
 				  vector <int>& cards);
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents );
+  void becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parents,
+					      iterator & it);
 
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
     assert ( val >= 0 && val < card() );
     return *(mdcpt_ptr + val);
   }
+
   logpr probGivenParents(vector <int>& parentValues, 
 			 vector <int>& cards, 
 			 const int val) {
@@ -92,6 +95,7 @@ public:
     becomeAwareOfParentValues(parentValues,cards);
     return probGivenParents(val);
   }
+
   logpr probGivenParents(vector <RandomVariable *>& parents,
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
@@ -99,10 +103,12 @@ public:
     return probGivenParents(val);
   }
 
+
   // returns an iterator for the first one that is not zero prob.
   iterator begin() {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
+    it.internalStatePtr = (void*)mdcpt_ptr;
     it.value = 0;
     it.probVal = *mdcpt_ptr;
     if (it.probVal.essentially_zero()) {
@@ -121,9 +127,12 @@ public:
   }
 
   // returns an iterator for the first one that is not zero prob.
+  // Note that becomeAwareOfParentValues() must have
+  // been called before calling the begin iterator.
   void begin(iterator& it) {
     assert ( bitmask & bm_basicAllocated );
     it.setCPT(this);
+    it.internalStatePtr = (void*)mdcpt_ptr;
     it.value = 0;
     it.probVal = *mdcpt_ptr;
     if (it.probVal.essentially_zero()) {
@@ -143,16 +152,16 @@ public:
   // Given a current iterator, return the next one in the sequence.
   // Skip the zero probability ones.
   bool next(iterator &it) {
+    logpr* const loc_mdcpt_ptr = (logpr*)it.internalStatePtr;
     // don't increment past the last value.
     do {
       it.value++;
       if (it.value == ucard())
 	return false;
-    } while (mdcpt_ptr[it.value].essentially_zero());
-    it.probVal = mdcpt_ptr[it.value];
+    } while (loc_mdcpt_ptr[it.value].essentially_zero());
+    it.probVal = loc_mdcpt_ptr[it.value];
     return true;
   }
-
 
   bool end(iterator& it) {
     return (it.value == ucard());
