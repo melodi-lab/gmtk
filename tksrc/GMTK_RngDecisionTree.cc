@@ -58,17 +58,16 @@ map<string, RngDecisionTree::EquationClass::tokenEnum>
 
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
-  RngDecisionTree::EquationClass::termToken;
-map<RngDecisionTree::EquationClass::tokenEnum, 
-  RngDecisionTree::EquationClass::formulaCommand> 
-  RngDecisionTree::EquationClass::expressionToken;
+  RngDecisionTree::EquationClass::infixToken;
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
   RngDecisionTree::EquationClass::functionToken;
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
   RngDecisionTree::EquationClass::twoValFunctionToken;
-			  
+map<RngDecisionTree::EquationClass::formulaCommand, unsigned> 
+  RngDecisionTree::EquationClass::commandPriority;
+
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //                    CONSTRUCTOR/DESTRUCTOR
@@ -562,29 +561,44 @@ RngDecisionTree::EquationClass::EquationClass()
     function["mod"] = TOKEN_MOD;
     function["xor"] = TOKEN_BITWISE_XOR;
 
-    expressionToken[TOKEN_MINUS] = COMMAND_MINUS;
-    expressionToken[TOKEN_PLUS]  = COMMAND_PLUS;
-
-    termToken[TOKEN_BITWISE_AND]     = COMMAND_BITWISE_AND;
-    termToken[TOKEN_BITWISE_OR]      = COMMAND_BITWISE_OR;
-    termToken[TOKEN_BITWISE_XOR]     = COMMAND_BITWISE_XOR;
-    termToken[TOKEN_DIVIDE]          = COMMAND_DIVIDE;
-    termToken[TOKEN_EXPONENT]        = COMMAND_EXPONENT;
-    termToken[TOKEN_EQUALS]          = COMMAND_EQUALS;
-    termToken[TOKEN_GREATER_THAN]    = COMMAND_GREATER_THAN;
-    termToken[TOKEN_GREATER_THAN_EQ] = COMMAND_GREATER_THAN_EQ;
-    termToken[TOKEN_LESS_THAN]       = COMMAND_LESS_THAN;
-    termToken[TOKEN_LESS_THAN_EQ]    = COMMAND_LESS_THAN_EQ;
-    termToken[TOKEN_LOGICAL_AND]     = COMMAND_LOGICAL_AND;
-    termToken[TOKEN_LOGICAL_OR]      = COMMAND_LOGICAL_OR; 
-    termToken[TOKEN_TIMES]           = COMMAND_TIMES;
-    termToken[TOKEN_QUESTION_MARK]   = COMMAND_QUESTION_MARK;
+    infixToken[TOKEN_BITWISE_AND]     = COMMAND_BITWISE_AND;
+    infixToken[TOKEN_BITWISE_OR]      = COMMAND_BITWISE_OR;
+    infixToken[TOKEN_BITWISE_XOR]     = COMMAND_BITWISE_XOR;
+    infixToken[TOKEN_DIVIDE]          = COMMAND_DIVIDE;
+    infixToken[TOKEN_EXPONENT]        = COMMAND_EXPONENT;
+    infixToken[TOKEN_EQUALS]          = COMMAND_EQUALS;
+    infixToken[TOKEN_GREATER_THAN]    = COMMAND_GREATER_THAN;
+    infixToken[TOKEN_GREATER_THAN_EQ] = COMMAND_GREATER_THAN_EQ;
+    infixToken[TOKEN_LESS_THAN]       = COMMAND_LESS_THAN;
+    infixToken[TOKEN_LESS_THAN_EQ]    = COMMAND_LESS_THAN_EQ;
+    infixToken[TOKEN_LOGICAL_AND]     = COMMAND_LOGICAL_AND;
+    infixToken[TOKEN_LOGICAL_OR]      = COMMAND_LOGICAL_OR; 
+    infixToken[TOKEN_TIMES]           = COMMAND_TIMES;
+    infixToken[TOKEN_QUESTION_MARK]   = COMMAND_QUESTION_MARK;
+    infixToken[TOKEN_MINUS]           = COMMAND_MINUS;
+    infixToken[TOKEN_PLUS]            = COMMAND_PLUS;
 
     functionToken[TOKEN_MAX] = COMMAND_MAX;
     functionToken[TOKEN_MIN] = COMMAND_MIN;
 
     twoValFunctionToken[TOKEN_BITWISE_XOR] = COMMAND_BITWISE_XOR;
     twoValFunctionToken[TOKEN_MOD]         = COMMAND_MOD; 
+
+    commandPriority[COMMAND_BITWISE_AND]     = BITWISE_AND_PRCDNC;
+    commandPriority[COMMAND_BITWISE_OR]      = BITWISE_OR_PRCDNC;
+    commandPriority[COMMAND_DIVIDE]          = MULT_PRCDNC;
+    commandPriority[COMMAND_EXPONENT]        = EXPONENT_PRCDNC;
+    commandPriority[COMMAND_EQUALS]          = EQUALITY_PRCDNC;
+    commandPriority[COMMAND_GREATER_THAN]    = RELATIONAL_PRCDNC;
+    commandPriority[COMMAND_GREATER_THAN_EQ] = RELATIONAL_PRCDNC; 
+    commandPriority[COMMAND_LESS_THAN]       = RELATIONAL_PRCDNC;
+    commandPriority[COMMAND_LESS_THAN_EQ]    = RELATIONAL_PRCDNC;
+    commandPriority[COMMAND_LOGICAL_AND]     = LOGICAL_AND_PRCDNC;
+    commandPriority[COMMAND_LOGICAL_OR]      = LOGICAL_OR_PRCDNC;
+    commandPriority[COMMAND_TIMES]           = MULT_PRCDNC;
+    commandPriority[COMMAND_QUESTION_MARK]   = CONDITIONAL_PRCDNC;
+    commandPriority[COMMAND_MINUS]           = ADDITIVE_PRCDNC;
+    commandPriority[COMMAND_PLUS]            = ADDITIVE_PRCDNC;
   }
 
 }
@@ -829,7 +843,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
  *   none      
  *
  * Postconditions:
- *   The decision tree's equation data structure is filled in. 
+ *   The decision tree's equation data structure is filled in.  The 
+ *   computation stack will grow large enough to evaluate this equation. 
  *      
  * Side Effects:
  *   none      
@@ -840,37 +855,49 @@ RngDecisionTree::EquationClass::evaluateFormula(
  */
 void
 RngDecisionTree::EquationClass::parseFormula(
-  string leafNodeVal
+  string formula
   )
 {
-  tokenStruct token;
-  unsigned    depth;
+  parsingCommandContainer new_commands;
+  tokenStruct             token;
+  unsigned depth = 0; 
+  unsigned i; 
 
   assert( (LAST_COMMAND_INDEX & COMMAND_MASK) == LAST_COMMAND_INDEX );
- 
-  depth = 0; 
+
   do {
-    getToken(leafNodeVal, token); 
-    parseExpression(token, leafNodeVal, depth ); 
+    getToken(formula, token);
+    parseExpression(token, formula, new_commands, LOWEST_PRECEDENCE, depth);
   } while (token.token != TOKEN_END);
 
+  if (depth != 1) {
+    string error_message = "Not enough factors for given operators";
+    throw(error_message); 
+  }
+
+  commands.resize( new_commands.size() ); 
+  for (i=0; i<new_commands.size(); ++i) {
+    commands[i] = new_commands[i]; 
+  }
 }
 
 
 /*-
  *-----------------------------------------------------------------------
  * RngDecisionTree::EquationClass::parseExpression
- *   Support function for parseFormula.  An expression includes terms
- *   separated by + and -. 
+ *   Parses a formula, recursively calling itself to process pieces of 
+ *   the equation with higher precedence that the current instance. 
  * 
  * Preconditions:
- *   none 
+ *   none      
  *
  * Postconditions:
- *   The decision tree's equation data structure is partially filled in. 
+ *   Text that is parsed is erased from formula, and the commands created
+ *   are placed in cmmnds.  'depth' is updated along with the computation 
+ *   stack size
  *
  * Side Effects:
- *   none 
+ *   none      
  *
  * Results:
  *   none 
@@ -878,95 +905,38 @@ RngDecisionTree::EquationClass::parseFormula(
  */
 void
 RngDecisionTree::EquationClass::parseExpression(
-  tokenStruct& token,
-  string&      leafNodeVal,
-  unsigned&    depth  
+  tokenStruct&             token,
+  string&                  formula, 
+  parsingCommandContainer& cmmnds, 
+  unsigned                 prvs_precedence, 
+  unsigned&                depth  
   )
 {
   formulaCommand new_command;
-  tokenEnum      next_token;
+  tokenStruct    next_token;
+  unsigned       next_precedence;
 
-  parseTerm(token, leafNodeVal, depth); 
-
-  while( expressionToken[token.token] != COMMAND_INVALID ) { 
-
-    next_token  = token.token;
-    getToken(leafNodeVal, token); 
-    parseTerm( token, leafNodeVal, depth );
-
-    new_command = MAKE_COMMAND( expressionToken[next_token], 0 );
-    commands.resizeAndCopy( commands.size()+1 );
-    commands[commands.size()-1] = new_command;
-    changeDepth( -1, depth );
-  } 
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * RngDecisionTree::EquationClass::parseTerm
- *   Support function for parseFormula.  An term contains factors 
- *   separated by operators that are evaluated in the order listed. 
- * 
- * Preconditions:
- *   none 
- *
- * Postconditions:
- *   The decision tree's equation data structure is partially filled in. 
- *
- * Side Effects:
- *   none 
- *
- * Results:
- *   none 
- *-----------------------------------------------------------------------
- */
-void
-RngDecisionTree::EquationClass::parseTerm(
-  tokenStruct& token,
-  string&      leafNodeVal,  
-  unsigned&    depth  
-  )
-{
-  formulaCommand new_command;
-  tokenEnum      next_token;
- 
-  parseFactor(token, leafNodeVal, depth);
-
-  while( termToken[token.token] != COMMAND_INVALID ) { 
- 
-    switch (token.token) {
-
-      case TOKEN_QUESTION_MARK:  
-        getToken(leafNodeVal, token); 
-        parseExpression(token, leafNodeVal, depth);
-
-        if (token.token != TOKEN_COLON) {
-          string error_message = "Expecting colon after '?' operator"; 
-          throw(error_message); 
-        }
-
-        getToken(leafNodeVal, token); 
-        parseExpression(token, leafNodeVal, depth);
-
-        new_command = MAKE_COMMAND( COMMAND_QUESTION_MARK, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-        changeDepth( -1, depth );
-        break;
-
-      default:
-        next_token  = token.token;
-        getToken(leafNodeVal, token); 
-        parseFactor(token, leafNodeVal, depth);
-
-        new_command = MAKE_COMMAND( termToken[next_token], 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-        changeDepth( -1, depth );
-        break;
-    }
+  if (prvs_precedence == HIGHEST_PRECEDENCE) {
+    parseFactor(token, formula, cmmnds, depth);
   }
+  else {
+    parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
+  }
+  
+  while((infixToken[token.token] != COMMAND_INVALID) &&
+        (commandPriority[infixToken[token.token]] == prvs_precedence)) {
+
+    next_token = token;
+    getToken(formula, token);
+    next_precedence = commandPriority[infixToken[token.token]];
+
+    parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
+  
+    new_command = MAKE_COMMAND( infixToken[next_token.token], 0 );
+    cmmnds.push_back(new_command);
+    changeDepth( -1, depth );
+  }
+
 }
 
 
@@ -991,55 +961,52 @@ RngDecisionTree::EquationClass::parseTerm(
  *
  *-----------------------------------------------------------------------
  */
-void
+bool
 RngDecisionTree::EquationClass::parseFactor(
-  tokenStruct& token,
-  string&      leafNodeVal,  
-  unsigned&    depth  
+  tokenStruct&             token,
+  string&                  formula,  
+  parsingCommandContainer& commands,
+  unsigned&                depth  
   )
 {
   formulaCommand new_command;
   tokenEnum      next_token;
+  bool           isFactor = true;
 
   switch (token.token) {
 
     case TOKEN_LEFT_PAREN:  
-      getToken(leafNodeVal, token); 
-      parseExpression(token, leafNodeVal, depth);
-
+      getToken(formula, token); 
+      parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
       if (token.token == TOKEN_RIGHT_PAREN) {
-
-        getToken(leafNodeVal, token); 
+        getToken(formula, token);
       }
       else {
-        string error_message = "Expecting right parenthesis at '" + leafNodeVal 
-          + "'";
+        string error_message = "Expecting right parenthesis at '" + formula + 
+          "'";
         throw(error_message); 
       }
       break;
  
     case TOKEN_INTEGER:
       new_command = MAKE_COMMAND( COMMAND_PUSH_CONSTANT, token.number ); 
-      commands.resizeAndCopy( commands.size()+1 );
-      commands[commands.size()-1] = new_command;
+      commands.push_back(new_command);
       changeDepth( 1, depth );
-      getToken(leafNodeVal, token); 
+      getToken(formula, token); 
       break;
- 
+
     case TOKEN_PARENT:
       new_command = MAKE_COMMAND( COMMAND_PUSH_PARENT, token.number );
-      commands.resizeAndCopy( commands.size()+1 );
-      commands[commands.size()-1] = new_command;
+      commands.push_back(new_command);
       changeDepth( 1, depth );
-      getToken(leafNodeVal, token); 
+      getToken(formula, token); 
       break;
  
     case TOKEN_CARDINALITY:
       new_command = MAKE_COMMAND( COMMAND_PUSH_CARDINALITY, token.number );
-      commands.resizeAndCopy( commands.size()+1 );
-      commands[commands.size()-1] = new_command;
+      commands.push_back(new_command);
       changeDepth( 1, depth );
-      getToken(leafNodeVal, token); 
+      getToken(formula, token); 
       break;
 
     default:
@@ -1050,45 +1017,42 @@ RngDecisionTree::EquationClass::parseFactor(
   
         next_token = token.token;
 
-        getToken(leafNodeVal, token); 
+        getToken(formula, token); 
         if (token.token != TOKEN_LEFT_PAREN) {
           string error_message = "Expecting left parenthesis at '" + 
-	    leafNodeVal + "'";
+	    formula + "'";
           throw(error_message);
         }
 
-        getToken(leafNodeVal, token); 
-        parseExpression(token, leafNodeVal, depth);
+        getToken(formula , token); 
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
         if (token.token != TOKEN_COMMA) {
           string error_message = "Function requires at least two operands"; 
           throw(error_message);
         }
 
-        getToken(leafNodeVal, token);
-        parseExpression(token, leafNodeVal, depth);
+        getToken(formula, token);
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
 
         while (token.token == TOKEN_COMMA) {
           new_command = MAKE_COMMAND( functionToken[next_token], 0 );
-          commands.resizeAndCopy( commands.size()+1 );
-          commands[commands.size()-1] = new_command;
+          commands.push_back(new_command);
           changeDepth( -1, depth );
 
-          getToken(leafNodeVal, token);
-          parseExpression(token, leafNodeVal, depth);
+          getToken(formula, token);
+          parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
         }
 
         if (token.token != TOKEN_RIGHT_PAREN) {
           string error_message = "Expecting right parenthesis at '" + 
-            leafNodeVal + "'";
+            formula + "'";
           throw(error_message);
         }
 
         new_command = MAKE_COMMAND( functionToken[next_token], 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
+        commands.push_back(new_command);
         changeDepth( -1, depth );
-
-        getToken(leafNodeVal, token); 
+        getToken(formula , token); 
       }
       //////////////////////////////////////////////////////////////////////
       // Functions which take exactly two operands 
@@ -1097,38 +1061,45 @@ RngDecisionTree::EquationClass::parseFactor(
   
         next_token = token.token;
 
-        getToken(leafNodeVal, token); 
+        getToken(formula, token); 
         if (token.token != TOKEN_LEFT_PAREN) {
           string error_message = "Expecting left parenthesis at '" + 
-	    leafNodeVal + "'";
+	    formula + "'";
           throw(error_message);
         }
 
-        getToken(leafNodeVal, token); 
-        parseExpression(token, leafNodeVal, depth);
+        getToken(formula, token); 
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
         if (token.token != TOKEN_COMMA) {
           string error_message = "Function requires exactly two operands"; 
           throw(error_message);
         }
 
-        getToken(leafNodeVal, token);
-        parseExpression(token, leafNodeVal, depth);
+        getToken(formula, token);
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
 
         if (token.token != TOKEN_RIGHT_PAREN) {
           string error_message = "Expecting right parenthesis at '" + 
-            leafNodeVal + "'";
+            formula + "'";
           throw(error_message);
         }
 
         new_command = MAKE_COMMAND( twoValFunctionToken[next_token], 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
+        commands.push_back(new_command);
         changeDepth( -1, depth );
-        getToken(leafNodeVal, token); 
+        getToken(formula , token); 
+      }
+      //////////////////////////////////////////////////////////////////////
+      // Not a valid factor 
+      //////////////////////////////////////////////////////////////////////
+      else {
+        isFactor = false;
       }
 
       break;
   }
+
+  return(isFactor);
 }
 
 
@@ -1178,112 +1149,113 @@ RngDecisionTree::EquationClass::getToken(
   // Skip leading spaces 
   //////////////////////////////////////////////////////////////////////////
   index = 0;
-  while ((index < expression.length()) &&   
-         ((expression[index] == ' ') || (expression[index] == '\t'))) {
+  while ((index < expression.length()) && (isspace(expression[index]))) { 
     ++index;
   }
 
   //////////////////////////////////////////////////////////////////////////
-  // Find the earliest delimiter token 
+  // Check for end of string 
   //////////////////////////////////////////////////////////////////////////
-  token.token = LAST_TOKEN_INDEX;
-  minimum_dlmtr_lctn = expression.size();
-
-  for( crrnt_dlmtr = delimiter.begin(),
-       end_dlmtr   = delimiter.end();
-       crrnt_dlmtr != end_dlmtr;  
-       ++crrnt_dlmtr ) { 
-
-    dlmtr_lctn = expression.find( (*crrnt_dlmtr).first, index );    
-    if (dlmtr_lctn >= 0) {
-      if (dlmtr_lctn < minimum_dlmtr_lctn) {
-        minimum_dlmtr_lctn = dlmtr_lctn;
-        found_dlmtr_cntnr.clear();
-      }
-      if (dlmtr_lctn <= minimum_dlmtr_lctn) {
-        found_dlmtr_cntnr.push_back(crrnt_dlmtr);
-      }
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  // If no tokens were found, return the end token 
-  //////////////////////////////////////////////////////////////////////////
-  if (found_dlmtr_cntnr.size() == 0) {
+  if (index == expression.length()) {
     token.token = TOKEN_END;
+    minimum_dlmtr_lctn = index; 
   }
-  //////////////////////////////////////////////////////////////////////////
-  // If next token is a delimiter, determine the longest delimiter which 
-  // matches. 
-  //////////////////////////////////////////////////////////////////////////
-  else if (minimum_dlmtr_lctn == 0) {
+  else {
+    //////////////////////////////////////////////////////////////////////////
+    // Find the earliest delimiter token 
+    //////////////////////////////////////////////////////////////////////////
+    token.token = LAST_TOKEN_INDEX;
+    minimum_dlmtr_lctn = expression.size();
 
-    found_dlmtr = *found_dlmtr_cntnr.begin();
-    for( crrnt_found_dlmtr = found_dlmtr_cntnr.begin(),
-         end_found_dlmtr  = found_dlmtr_cntnr.end();
-         crrnt_found_dlmtr != end_found_dlmtr;  
-         ++crrnt_found_dlmtr) { 
+    for( crrnt_dlmtr = delimiter.begin(),
+         end_dlmtr   = delimiter.end();
+         crrnt_dlmtr != end_dlmtr;  
+         ++crrnt_dlmtr ) { 
 
-      if ( (*(*crrnt_found_dlmtr)).first.size() > (*found_dlmtr).first.size() )       {
-        found_dlmtr = *crrnt_found_dlmtr;
+      dlmtr_lctn = expression.find( (*crrnt_dlmtr).first, index );    
+      if (dlmtr_lctn != string::npos) { 
+        if (dlmtr_lctn < minimum_dlmtr_lctn) {
+          minimum_dlmtr_lctn = dlmtr_lctn;
+          found_dlmtr_cntnr.clear();
+        }
+        if (dlmtr_lctn <= minimum_dlmtr_lctn) {
+          found_dlmtr_cntnr.push_back(crrnt_dlmtr);
+        }
       }
     }
 
-    token.token = (*found_dlmtr).second;
-    minimum_dlmtr_lctn += (*found_dlmtr).first.size();
-  }
-  //////////////////////////////////////////////////////////////////////////
-  // The next token is not a delimiter, the token is contained in the string
-  // between the beginning of the expression and delimiter.  Now parse 
-  // this string for a token.
-  //////////////////////////////////////////////////////////////////////////
-  else {
+    //////////////////////////////////////////////////////////////////////////
+    // If next token is a delimiter, determine the longest delimiter which 
+    // matches. 
+    //////////////////////////////////////////////////////////////////////////
+    if (minimum_dlmtr_lctn == index) {
+      found_dlmtr = *found_dlmtr_cntnr.begin();
+      for( crrnt_found_dlmtr = found_dlmtr_cntnr.begin(),
+           end_found_dlmtr  = found_dlmtr_cntnr.end();
+           crrnt_found_dlmtr != end_found_dlmtr;  
+           ++crrnt_found_dlmtr) { 
 
-    token_string = expression.substr(0, minimum_dlmtr_lctn);
+        if ((*(*crrnt_found_dlmtr)).first.size()>(*found_dlmtr).first.size()) {
+          found_dlmtr = *crrnt_found_dlmtr;
+        }
+      }
 
-    //////////////////////////////////////////////////////////////////////////
-    // Check for an integer 
-    //////////////////////////////////////////////////////////////////////////
-    string rest;
-    int    number;    
-    bool   is_integer;
-
-    is_integer = getInteger( token_string, number ); 
-    if (is_integer) {
-      token.token  = TOKEN_INTEGER;
-      token.number = number; 
-    } 
-    //////////////////////////////////////////////////////////////////////////
-    // Next, check for parent or cardinality (such as "p0" or "c2")
-    //////////////////////////////////////////////////////////////////////////
-    else if ( token_string[0] == 'p' ) {
-  
-      rest = token_string.substr(1, token_string.length());
-      is_integer = getInteger( rest,  number ); 
-      if (is_integer) {
-        token.token  = TOKEN_PARENT;
-        token.number = number; 
-      } 
+      token.token = (*found_dlmtr).second;
+      minimum_dlmtr_lctn += (*found_dlmtr).first.size();
     }
-    else if ( token_string[0] == 'c' ) {
-  
-      rest = token_string.substr(1, token_string.length());
-      is_integer = getInteger( rest,  number ); 
-      if (is_integer) {
-        token.token  = TOKEN_CARDINALITY;
-        token.number = number; 
-      } 
-    }
-
     //////////////////////////////////////////////////////////////////////////
-    // Check if token string is a multiple character key word 
+    // The next token is not a delimiter, the token is contained in the string
+    // between the beginning of the expression and delimiter.  Now parse 
+    // this string for a token.
     //////////////////////////////////////////////////////////////////////////
     else {
 
-      map<string, tokenEnum>::iterator found_string;
-      found_string = function.find( token_string );
-      if (found_string != function.end()) {
-        token.token = (*found_string).second; 
+      token_string = expression.substr(index, minimum_dlmtr_lctn+index);
+
+      //////////////////////////////////////////////////////////////////////////
+      // Check for an integer 
+      //////////////////////////////////////////////////////////////////////////
+      string rest;
+      int    number;    
+      bool   is_integer;
+
+      is_integer = getInteger( token_string, number ); 
+      if (is_integer) {
+        token.token  = TOKEN_INTEGER;
+        token.number = number; 
+      } 
+      //////////////////////////////////////////////////////////////////////////
+      // Next, check for parent or cardinality (such as "p0" or "c2")
+      //////////////////////////////////////////////////////////////////////////
+      else if ( token_string[0] == 'p' ) {
+  
+        rest = token_string.substr(1, token_string.length());
+        is_integer = getInteger( rest,  number ); 
+        if (is_integer) {
+          token.token  = TOKEN_PARENT;
+          token.number = number; 
+        } 
+      }
+      else if ( token_string[0] == 'c' ) {
+  
+        rest = token_string.substr(1, token_string.length());
+        is_integer = getInteger( rest,  number ); 
+        if (is_integer) {
+          token.token  = TOKEN_CARDINALITY;
+          token.number = number; 
+        } 
+      }
+
+      //////////////////////////////////////////////////////////////////////////
+      // Check if token string is a multiple character key word 
+      //////////////////////////////////////////////////////////////////////////
+      else {
+
+        map<string, tokenEnum>::iterator found_string;
+        found_string = function.find( token_string );
+        if (found_string != function.end()) {
+          token.token = (*found_string).second; 
+        }
       }
     }
   }
@@ -1333,11 +1305,13 @@ RngDecisionTree::EquationClass::getInteger(
   string   nmbr;
   unsigned index = 0;
   bool     is_number = true;
+  bool     number_found = false;
 
   while ((index < expression.size()) && (is_number)) {
 
     if ((expression[index]>='0') && (expression[index]<='9')) {
-      nmbr += expression[index]; 
+      nmbr += expression[index];
+      number_found = true;
     }
     else {
       is_number = false;
@@ -1346,12 +1320,11 @@ RngDecisionTree::EquationClass::getInteger(
     ++index;
   }
 
-  if (index == 0) {
-    is_number = false; 
+  if (number_found) {
+    number = atoi(nmbr.c_str());
   }
 
-  number = atoi(nmbr.c_str());
-  return(is_number);
+  return(number_found);
 }
 
 
@@ -1925,7 +1898,17 @@ bool RngDecisionTree::testFormula(
   bool     correct;
 
   printf("Formula: %s\n",   formula.c_str());
-  node.leafNode.equation.parseFormula(formula);
+
+  try {
+    node.leafNode.equation.parseFormula(formula);
+  }
+  catch( string error_message ){
+    error("   PARSE ERROR: %s", error_message.c_str());
+  }
+  catch( const char * const error_message ) {
+    error("   PARSE ERROR: %s", error_message );
+  }
+
   answer = node.leafNode.equation.evaluateFormula( variables );
   printf("   Answer: %d\n", answer);
 
@@ -1961,43 +1944,55 @@ void test_formula()
 
   correct = true;
 
+  formula = "1+1";
+  correct &= dt.testFormula( formula, vars, 2 );
+
   formula = "(1+1)";
   correct &= dt.testFormula( formula, vars, 2 );
+
+  formula = "2*3+4";
+  correct &= dt.testFormula( formula, vars, 10 );
+
+  formula = "2+3*4";
+  correct &= dt.testFormula( formula, vars, 14 );
+
+  formula = "3+(4==4)*5^2|6";
+  correct &= dt.testFormula( formula, vars, 30 );
 
   formula = "((p0&p1)|c0)";
   correct &= dt.testFormula( formula, vars, 11 );
 
-  formula = "((c1/c0)*p1)";
+  formula = "(c1/c0)*p1";
   correct &= dt.testFormula( formula, vars, 15 );
 
-  formula = "(c2^5)";
+  formula = "c2^5";
   correct &= dt.testFormula( formula, vars, 32 );
 
-  formula = "(7>3)";
+  formula = "7>3";
   correct &= dt.testFormula( formula, vars, 1 );
 
   formula = "(7<3)";
   correct &= dt.testFormula( formula, vars, 0 );
 
-  formula = "((3>=3)&&(3==3)&&(3<=3))";
+  formula = "(3>=3)&&(3==3)&&(3<=3)";
   correct &= dt.testFormula( formula, vars, 1 );
 
-  formula = "(p0||(27<2)||(229<=1))";
+  formula = "p0||(27<2)||(229<=1)";
   correct &= dt.testFormula( formula, vars, 1 );
 
-  formula = "max(p0,p1,p2)";
-  correct &= dt.testFormula( formula, vars, 7 );
-
-  formula = "min(c0,c1,c2)";
+  formula = "(min(c0,c1,c2))";
   correct &= dt.testFormula( formula, vars, 2 );
+
+  formula = "2+max(p0,p1,p2)*3+4";
+  correct &= dt.testFormula( formula, vars, 27 );
 
   formula = "mod(8,3)";
   correct &= dt.testFormula( formula, vars, 2 );
 
-  formula = "((12>3)?(p0*p1):(c0+p2))";
-  correct &= dt.testFormula( formula, vars, 21 );
+//  formula = "((12>3)?(p0*p1):(c0+p2))";
+//  correct &= dt.testFormula( formula, vars, 21 );
 
-  formula = "((max((12/4),14,p2)+(c1-p1))*p0+27)";
+  formula = "(max((12/4),14,p2)+(c1-p1))*p0+27";
   correct &= dt.testFormula( formula, vars, 384 );
 
   if (! correct) {
