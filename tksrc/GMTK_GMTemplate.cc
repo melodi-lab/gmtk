@@ -460,38 +460,39 @@ findPartitions(iDataStreamFile& is,
   // finally create a new variable set for each, make
   // the interfaces complete, and finish up.
 
-  map < RandomVariable*, RandomVariable* > in_to_out;
+  map < RandomVariable*, RandomVariable* > P_in_to_out;
+  map < RandomVariable*, RandomVariable* > C_in_to_out;
+  map < RandomVariable*, RandomVariable* > E_in_to_out;
   set < RandomVariable* > tmp;
 
-  clone(P,Pc,in_to_out);
+  setUpClonedPartitionGraph(P,C,E,Pc,Cc,Ec,P_in_to_out,C_in_to_out,E_in_to_out);
+
   tmp.clear();
   for (set<RandomVariable*>::iterator i=PCInterface.begin();
        i != PCInterface.end();i++) {
-    tmp.insert(in_to_out[(*i)]);
+    tmp.insert(P_in_to_out[(*i)]);
   }
   makeComplete(tmp);
   PCIc = tmp;
 
-  clone(C,Cc,in_to_out);
   tmp.clear();
   for (set<RandomVariable*>::iterator i=PCInterface.begin();
        i != PCInterface.end();i++) {
-    tmp.insert(in_to_out[(*i)]);
+    tmp.insert(C_in_to_out[(*i)]);
   }
   makeComplete(tmp);
   tmp.clear();
   for (set<RandomVariable*>::iterator i=CEInterface.begin();
        i != CEInterface.end();i++) {
-    tmp.insert(in_to_out[(*i)]);
+    tmp.insert(C_in_to_out[(*i)]);
   }
   makeComplete(tmp);  
   CEIc = tmp;
 
-  clone(E,Ec,in_to_out);
   tmp.clear();
   for (set<RandomVariable*>::iterator i=CEInterface.begin();
        i != CEInterface.end();i++) {
-    tmp.insert(in_to_out[(*i)]);
+    tmp.insert(E_in_to_out[(*i)]);
   }
   makeComplete(tmp);  
 }
@@ -1944,9 +1945,161 @@ GMTemplate::interfaceScore(
 
 /*-
  *-----------------------------------------------------------------------
- * GMTemplate::clone()
+ * GMTemplate::cloneWithtoutParents()
  *   Clone a set of random variables from 'in' to 'out'. The cloned
- *   variables have parents, children, and neighbors consisting of
+ *   variables have only empty parents, children, and neighbors structures.
+
+ * Preconditions:
+ *   'in' is a set of random variables to be cloned.
+ *
+ * Postconditions:
+ *   'out' is a clone of 'in' but without parents,children,neighbors.
+ *   
+ *
+ * Side Effects:
+ *     none
+ *
+ * Results:
+ *     returns the in_to_out mapping
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMTemplate::
+cloneWithoutParents(const set<RandomVariable*>& in, 
+		    set<RandomVariable*>& out,
+		    map < RandomVariable*, RandomVariable* >& in_to_out)
+{
+  in_to_out.clear();
+  out.clear();
+
+  for (set<RandomVariable*>::iterator i=in.begin();
+       i != in.end(); i++) {
+
+    // sanity check, to ensure a node is not its own neighbor
+    assert ( (*i)->neighbors.find((*i)) == (*i)->neighbors.end() );
+
+    RandomVariable*rv = (*i)->cloneWithoutParents();
+    out.insert(rv);
+    in_to_out[(*i)] = rv;
+
+  }
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::setPartitionChildrenNeighbors()
+ *   This routine takes as input an original partition S from an unrolled
+ *   graph, and its unfinished cloned version Sc (unfinished in that
+ *   it has no parents, neighbors (and children) set up yet). It also
+ *   takes a mapping from S to Sc, and the corresponding mappings from
+ *   the other partitions whatever they are, called O1 and O1. 
+ *   
+ *   It then sets the neighbors structures for all of Sc from S. The neighbors
+ *   are variables that are forced to be part of the partition S itself.
+ *
+ *   It then sets the parents variables for each variable in Sc. The parents
+ *   (and also the children) might NOT be fully contained in Sc, so it needs
+ *   to use the mappings for O1 and O2 to get the location of the correspondly
+ *   cloned variables for those partitions.
+ *
+ * Preconditions:
+ *   Sc is unfishined, i.e., variables have been cloned without parents
+ *
+ * Postconditions:
+ *   Sc is finished, as described above.
+ *   
+ *
+ * Side Effects:
+ *   Changes parents, neighbors, and children of all variables in Sc
+ *
+ * Results:
+ *     results returned via output variable Sc and its parents, neighbors, children
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMTemplate::
+setPartitionParentsChildrenNeighbors(const set<RandomVariable*>& S,
+				     set<RandomVariable*>& Sc,
+				     // next 3 should be const but ther eis no "op[] const"
+				     map < RandomVariable*, RandomVariable* >& S_in_to_out,
+				     map < RandomVariable*, RandomVariable* >& O1_in_to_out,
+				     map < RandomVariable*, RandomVariable* >& O2_in_to_out)
+{
+
+  for (set<RandomVariable*>::iterator i=S.begin();i != S.end(); i++) {
+
+    RandomVariable*rv = (*i);
+
+    // first set up new neighbors for S_in_to_out[rv]
+    // Note: Neighbors are defined to point ONLY TO OTHER VARIABLES
+    // IN THE SET S_in_to_out (i.e., the members of the partition). Any
+    // other parents or children are not contained in that set are not included.
+    set<RandomVariable*> tmp;
+    for (set<RandomVariable*>::iterator j = rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {    
+      if (S_in_to_out.find((*j)) != S_in_to_out.end()) {
+	// then it is included in this set.
+	tmp.insert(S_in_to_out[(*j)]);
+      }
+    }
+    S_in_to_out[rv]->neighbors = tmp;
+    // assertion to make sure that no node has itself as neighbor.
+    assert( S_in_to_out[rv]->neighbors.find(S_in_to_out[rv])
+	    == S_in_to_out[rv]->neighbors.end() );
+
+    // next, set new sparents for in_to_out[rv].
+    // Note that the parents might be outside of the set S.
+    vector<RandomVariable *> sParents;
+    for (unsigned l=0;l<rv->switchingParents.size();l++) {
+      // grab a copy for readability
+      RandomVariable* const par = rv->switchingParents[l];
+      if (S_in_to_out.find(par) != S_in_to_out.end())
+	sParents.push_back(S_in_to_out[par]);
+      else if (O1_in_to_out.find(par) != O1_in_to_out.end())
+	sParents.push_back(O1_in_to_out[par]);
+      else if (O2_in_to_out.find(par) != O2_in_to_out.end())
+	sParents.push_back(O2_in_to_out[par]);
+      else
+	// this shouldn't happen since the parent should live
+	// in one of the three partitions.
+	assert ( 0 );
+    }
+
+    // next, set conditional parents
+    vector< vector < RandomVariable* > > cParentsList;
+    cParentsList.resize(rv->conditionalParentsList.size());
+    for (unsigned l=0;l<rv->conditionalParentsList.size();l++) {
+      for (unsigned m=0;m<rv->conditionalParentsList[l].size();m++) {
+	// grab a copy for readability
+	RandomVariable* const par = rv->conditionalParentsList[l][m];
+	if (S_in_to_out.find(par) != S_in_to_out.end())
+	  cParentsList[l].push_back(S_in_to_out[par]);
+	else if (O1_in_to_out.find(par) != O1_in_to_out.end())
+	  cParentsList[l].push_back(O1_in_to_out[par]);
+	else if (O2_in_to_out.find(par) != O2_in_to_out.end())
+	  cParentsList[l].push_back(O2_in_to_out[par]);
+	else
+	  // this shouldn't happen since the parent should live
+	  // in one of the three partitions.
+	  assert ( 0 );
+      }
+    }
+    S_in_to_out[rv]->setParents(sParents,cParentsList);
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMTemplate::setUpClonedPartitionGraph()
+ *   Given a P,C, and E that has been cloned without parents, this 
+ *   will set up the partitions as follows.
  *   only the members that are in the corresponding 'in' set (i.e., if
  *   any parents, children, neighbors, in 'in' pointed to variables
  *   outside of 'in', then the corresponding variables in 'out' do not
@@ -1959,47 +2112,33 @@ GMTemplate::interfaceScore(
  *   'in' is a set of random variables to be cloned.
  *
  * Postconditions:
- *   'out' is a clone of 'in' but parents,children,neighbors only
- *   point to members within the set 'out'
+ *   'out' is a clone of 'in' but without parents,children,neighbors.
+ *   
  *
  * Side Effects:
  *     none
  *
  * Results:
- *     none
+ *     returns the in_to_out mapping
  *
  *
  *-----------------------------------------------------------------------
  */
 void
 GMTemplate::
-clone(const set<RandomVariable*>& in, 
-      set<RandomVariable*>& out)
+setUpClonedPartitionGraph(const set<RandomVariable*>& P,
+			  const set<RandomVariable*>& C,
+			  const set<RandomVariable*>& E,
+			  // cloned variables
+			  set<RandomVariable*>& Pc,
+			  set<RandomVariable*>& Cc,
+			  set<RandomVariable*>& Ec,
+			  // next 3 should be const but ther eis no "op[] const"
+			  map < RandomVariable*, RandomVariable* >& P_in_to_out,
+			  map < RandomVariable*, RandomVariable* >& C_in_to_out,
+			  map < RandomVariable*, RandomVariable* >& E_in_to_out)
 {
-  map < RandomVariable*, RandomVariable* > in_to_out;
-  clone(in,out,in_to_out);
-}
-void
-GMTemplate::
-clone(const set<RandomVariable*>& in, 
-      set<RandomVariable*>& out,
-      map < RandomVariable*, RandomVariable* >& in_to_out)
-{
 
-  in_to_out.clear();
-  out.clear();
-
-  for (set<RandomVariable*>::iterator i=in.begin();
-       i != in.end(); i++) {
-
-    // sanity check
-    assert ( (*i)->neighbors.find((*i)) == (*i)->neighbors.end() );
-
-    RandomVariable*rv = (*i)->cloneWithoutParents();
-    out.insert(rv);
-    in_to_out[(*i)] = rv;
-
-  }
   // just do neighbors for now, don't bother with parents, children,
   // and so on.
   // Set the neighbors of out to be the correctly associated
@@ -2007,47 +2146,17 @@ clone(const set<RandomVariable*>& in,
   // current set (i.e., dissociate with any other possible portion of
   // the network)
 
-  for (set<RandomVariable*>::iterator i=in.begin();
-       i != in.end(); i++) {
+  cloneWithoutParents(P,Pc,P_in_to_out);
+  cloneWithoutParents(C,Cc,C_in_to_out);
+  cloneWithoutParents(E,Ec,E_in_to_out);
 
-    RandomVariable*rv = (*i);
+  setPartitionParentsChildrenNeighbors(P,Pc,P_in_to_out,C_in_to_out,E_in_to_out);
+  setPartitionParentsChildrenNeighbors(C,Cc,C_in_to_out,P_in_to_out,E_in_to_out);
+  setPartitionParentsChildrenNeighbors(E,Ec,E_in_to_out,P_in_to_out,C_in_to_out);
 
-    // first set up new neighbors for in_to_out[rv]
-    set<RandomVariable*> tmp;
-    for (set<RandomVariable*>::iterator j = rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {    
-      if (in_to_out.find((*j)) != in_to_out.end()) {
-	// then it is included in this set.
-	tmp.insert(in_to_out[(*j)]);
-      }
-    }
-    in_to_out[rv]->neighbors = tmp;
-    // assertion to make sure that no node has itself as neighbor.
-    assert( in_to_out[rv]->neighbors.find(in_to_out[rv])
-	    == in_to_out[rv]->neighbors.end() );
-
-    // next, set new sparents for in_to_out[rv]
-    vector<RandomVariable *> sParents;
-    for (unsigned l=0;l<rv->switchingParents.size();l++) {
-      if (in_to_out.find(rv->switchingParents[l]) != in_to_out.end())
-	sParents.push_back(in_to_out[rv->switchingParents[l]]);
-    }
-
-    // next, set conditional parents
-    vector< vector < RandomVariable* > > cParentsList;
-    cParentsList.resize(rv->conditionalParentsList.size());
-    for (unsigned l=0;l<rv->conditionalParentsList.size();l++) {
-      for (unsigned m=0;m<rv->conditionalParentsList[l].size();m++) {
-	if (in_to_out.find(rv->conditionalParentsList[l][m]) 
-	    != in_to_out.end())
-	  cParentsList[l].push_back(	
-              in_to_out[rv->conditionalParentsList[l][m]]
-	      );
-      }
-    }
-    in_to_out[rv]->setParents(sParents,cParentsList);
-  }
 }
+
+
 
 
 
@@ -2720,45 +2829,43 @@ findInterfacePartitions(
   // but we want to make them complete only after cloning so that
   // this routine can be called again. Therefore, we do:
 
-  map < RandomVariable*, RandomVariable* > in_to_out;
+  map < RandomVariable*, RandomVariable* > P_in_to_out;
+  map < RandomVariable*, RandomVariable* > C_in_to_out;
+  map < RandomVariable*, RandomVariable* > E_in_to_out;
   set < RandomVariable* > tmp;
 
-  // create the final output variable Pc
-  clone(P,Pc,in_to_out);
+  setUpClonedPartitionGraph(P,C,E,Pc,Cc,Ec,P_in_to_out,C_in_to_out,E_in_to_out);
+
   // next make the left interface that lives in Pc complete
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C1.begin();
        i != C_l_u1C1.end(); i++) {
-    tmp.insert(in_to_out[(*i)]);
+    tmp.insert(C_in_to_out[(*i)]);
   }
   makeComplete(tmp);
   PCInterface = tmp;
 
-  // create the final output variable Cc
-  clone(C,Cc,in_to_out);
   // next, make the left interface (part of P) that lives in Cc complete 
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C1.begin();
        i != C_l_u1C1.end(); i++) {
-    tmp.insert(in_to_out[(*i)]);
+    tmp.insert(C_in_to_out[(*i)]);
   }
   makeComplete(tmp);
   // next, make the left interface (part of C) that lives in Cc complete
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C2.begin();
        i != C_l_u1C2.end(); i++) {
-    tmp.insert(in_to_out[(*i)]);
+    tmp.insert(C_in_to_out[(*i)]);
   }
   makeComplete(tmp);
   CEInterface = tmp;
 
-  // create the final output variables Ec
-  clone(E,Ec,in_to_out);
   // next, make the left interface that lives in Ec complete
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C2.begin();
        i != C_l_u1C2.end(); i++) {
-    tmp.insert(in_to_out[(*i)]);
+    tmp.insert(E_in_to_out[(*i)]);
   }
   makeComplete(tmp);
 
