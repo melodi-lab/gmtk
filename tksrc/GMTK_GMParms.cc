@@ -727,53 +727,132 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
 
   string keyword;
   string fileName;
+  string binStatus;
+
+  
+  map<string,iDataStreamFile*> fileNameMap;
 
   while (is.readString(keyword)) {
     if (!is.readString(fileName)) {
       error("ERROR: while reading file '%s', got keyword '%s' without a filename",is.fileName(),keyword.c_str());
     }
 
-    iDataStreamFile isf(fileName.c_str(),dataFilesAreBinary);
-    if (keyword == "DPMF_FILE") {
-      readDPmfs(isf,false);
-    } else if (keyword == "SPMF_FILE") {
-      readSPmfs(isf,false);
-    } else if (keyword == "MEAN_FILE") {
-      readMeans(isf,false);
-    } else if (keyword == "COVAR_FILE") {
-      readCovars(isf,false);
-    } else if (keyword == "DLINK_MAT_FILE") {
-      readDLinkMats(isf,false);
-    } else if (keyword == "DLINK_FILE") {
-      readDLinks(isf,false);
-    } else if (keyword == "WEIGHT_MAT_FILE") {
-      readWeightMats(isf,false);
-    } else if (keyword == "MDCPT_FILE") {
-      readMdCpts(isf,false);
-    } else if (keyword == "MSCPT_FILE") {
-      readMsCpts(isf,false);
-    } else if (keyword == "MTCPT_FILE") {
-      readMtCpts(isf,false);
-    } else if (keyword == "DT_FILE") {
-      readDTs(isf,false);
-    } else if (keyword == "GC_FILE") {
-      readGaussianComponents(isf,false);
-    } else if (keyword == "MG_FILE") {
-      readMixGaussians(isf,false);
-    } else if (keyword == "GSMG_FILE") {
-      error("GSMG_FILE in file '%s', not implemented",
+    if (!is.readString(binStatus)) {
+      error("ERROR: while reading file '%s', got keyword '%s' without a filename",is.fileName(),keyword.c_str());
+    }
+
+    bool binary_p;
+    if (binStatus == "ascii" || binStatus == "ASCII")
+      binary_p = false;
+    else if (binStatus == "binary" || binStatus == "BINARY")
+      binary_p = true;
+    else {
+      error("ERROR: while reading file '%s', got keyword '%s' when expecting 'ascii'/'binary' keyword",is.fileName(),binStatus.c_str());
+    }
+
+    map<string,iDataStreamFile*>::iterator it = fileNameMap.find(fileName);
+    if (it == fileNameMap.end()) {
+      fileNameMap[fileName] = new iDataStreamFile(fileName.c_str(),binary_p);
+      it = fileNameMap.find(fileName);
+    }
+
+    if (keyword == "DPMF_IN_FILE") {
+      readDPmfs(*((*it).second),false);
+    } else if (keyword == "DPMF_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "SPMF_IN_FILE") {
+      readSPmfs(*((*it).second),false);
+    } else if (keyword == "SPMF_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "MEAN_IN_FILE") {
+      readMeans(*((*it).second),false);
+    } else if (keyword == "MEAN_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "COVAR_IN_FILE") {
+      readCovars(*((*it).second),false);
+    } else if (keyword == "COVAR_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "DLINK_MAT_IN_FILE") {
+      readDLinkMats(*((*it).second),false);
+    } else if (keyword == "DLINK_MAT_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "DLINK_IN_FILE") {
+      readDLinks(*((*it).second),false);
+    } else if (keyword == "DLINK_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "WEIGHT_MAT_IN_FILE") {
+      readWeightMats(*((*it).second),false);
+    } else if (keyword == "WEIGHT_MAT_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "MDCPT_IN_FILE") {
+      readMdCpts(*((*it).second),false);
+    } else if (keyword == "MDCPT_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "MSCPT_IN_FILE") {
+      readMsCpts(*((*it).second),false);
+    } else if (keyword == "MSCPT_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "MTCPT_IN_FILE") {
+      readMtCpts(*((*it).second),false);
+    } else if (keyword == "MTCPT_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "DT_IN_FILE") {
+      readDTs(*((*it).second),false);
+    } else if (keyword == "DT_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "GC_IN_FILE") {
+      readGaussianComponents(*((*it).second),false);
+    } else if (keyword == "GC_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "MG_IN_FILE") {
+      readMixGaussians(*((*it).second),false);
+    } else if (keyword == "MG_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "GSMG_IN_FILE") {
+      error("GSMG_IN_FILE in file '%s', not implemented",
 	    is.fileName());
-    } else if (keyword == "LSMG_FILE") {
-      error("LSMG_FILE in file '%s', not implemented",
+    } else if (keyword == "GSMG_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "LSMG_IN_FILE") {
+      error("LSMG_IN_FILE in file '%s', not implemented",
 	    is.fileName());
-    } else if (keyword == "MSMG_FILE") {
-      error("MSMG_FILE in file '%s', not implemented",
+    } else if (keyword == "LSMG_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+
+    } else if (keyword == "MSMG_IN_FILE") {
+      error("MSMG_IN_FILE in file '%s', not implemented",
 	    is.fileName());
+    } else if (keyword == "MSMG_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+
     } else {
       error("ERROR: encountered unknown file type '%s' in file '%s'",
 	    keyword.c_str(),is.fileName());
     }
   }
+
+  // now go through and delete all the input files
+  for (map<string,iDataStreamFile*>::iterator it = fileNameMap.begin();
+       it != fileNameMap.end(); it++) {
+    delete ((*it).second);
+  }
+
 
 }
 
