@@ -17,18 +17,18 @@
 
 #include "GMTK_SimpleDiscreteRV.h"
 
-void GMTK_SimpleDiscreteRV::recMakeRandom(int pos)
+void SimpleDiscreteRV::recMakeRandom(int pos)
 {
-    if (pos==curConditionalParents.len())  // at the end
+    if (unsigned(pos)==(*curConditionalParents).size())  // at the end
     {
         // store the parents values
         vector<int> pvals;
-        for (int i=0; i<curConditionalParents.len(); i++)
-            pvals.push_back(curConditionalParents[i];
+        for (unsigned i=0; i<(*curConditionalParents).size(); i++)
+            pvals.push_back((*curConditionalParents)[i]->val);
 
         // make a vector of random self values
         vector<logpr> vals;
-        logpr s=0;
+        logpr s=0.0;
         for (int i=0; i<cardinality; i++)
         {
             logpr v = logpr(float(rand())/RAND_MAX);
@@ -43,7 +43,7 @@ void GMTK_SimpleDiscreteRV::recMakeRandom(int pos)
         return; 
     }
 
-    RandomVariable *par = curConditionalParents[pos];
+    RandomVariable *par = (*curConditionalParents)[pos];
     assert(par->discrete);
     for (int i=0; i<par->cardinality; i++)
     {
