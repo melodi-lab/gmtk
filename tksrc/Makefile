@@ -89,7 +89,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkEMtrain gmtkViterbi
+all_exs = gmtkEMtrain gmtkViterbi gmtkM2T gmtkB2A
 
 all: ${all_exs}
 
@@ -292,6 +292,9 @@ target_junk = $(all_objs) $(all_exs) $(lib_name)
 
 clean:
 	rm -rf $(target_junk) *.o
+
+exsclean: 
+	rm -rf $(all_exs)
 
 distclean: clean
 	rm -f config.log config.status config.cache Makefile
