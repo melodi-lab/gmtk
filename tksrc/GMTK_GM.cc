@@ -155,7 +155,8 @@ void GMTK_GM::simulate()
  * enumerateProb 
  *
  * Results:
- * logDataProb is computed. 
+ * dataProb is computed if emMode=false
+ * em statistics are incremented for all variables if emMode=true 
  *
  * Side Effects:
  * The hidden variables in the network are left clamped to some arbitrary value
@@ -163,12 +164,16 @@ void GMTK_GM::simulate()
 
 void GMTK_GM::enumerateProb(unsigned pos, logpr p)
 {
-    if (pos == 0)         // first call
-        logDataProb = 0;  // initialize
+    if (pos == 0)             // first call
+        if (!emMode)          // computing the data prob
+            dataProb = 0;     // initialize
 
     if (pos == numNodes)  // all the nodes are instantiated
     {
-        logDataProb += p;
+        if (emMode)
+            emIncrementStatistics(p);
+        else
+            dataProb += p;
         return;
     }
 
@@ -191,5 +196,189 @@ void GMTK_GM::enumerateProb(unsigned pos, logpr p)
             enumerateProb(pos+1, p*rv->probGivenParents();
     }
 
+    if (pos == 0)  // all done with everything
+        if (dataProb == 0 && !emMode)
+            cout << "Warning: Data probability is 0\n";
+}
 
+/*
+ *---------------------------------------------------------------------------
+ * Function:
+ * cacheValues
+ *
+ * Results:
+ * The current value of each variable is stored in a cache associated with
+ * the variable.
+ *
+ * Side Effects:
+ * None.
+*/
+
+void GMTK_GM::cacheValues()
+{
+    for (int i=0; i<numNodes; i++)
+        node[i]->cacheValue();
+}
+
+/*
+ *---------------------------------------------------------------------------
+ * Function:
+ * restoreCachedValues
+ *
+ * Results:
+ * Each variable sets its value to its cached value.
+ *
+ * Side Effects:
+ * None.
+*/
+
+void GMTK_GM::restoreCachedValues()
+{
+    for (int i=0; i<numNodes; i++)
+        node[i]->restoreCachedValue();
+}
+
+/*
+ *---------------------------------------------------------------------------
+ * Function:
+ * viterbiProb 
+ *
+ * Results:
+ * viterbiProb is computed. 
+ * Each variable is left clamped with its likeliest value.
+ *
+ * Side Effects:
+ * Each variable is left clamped with its likeliest value.
+*/
+
+void GMTK_GM::enumerateViterbiProb(unsigned pos, logpr p)
+{
+    if (pos == 0)            // first call
+        viterbiProb = 0;     // initialize
+
+    if (pos == numNodes)  // all the nodes are instantiated
+    {
+        if (p > viterbiProb)
+        {
+            viterbiProb = p;
+            cacheValues();
+        }
+        return;
+    }
+
+    randomVariable *rv = topologicalOrder[pos];
+    if (rv->hidden)
+    {
+        assert(rv->discrete);
+	rv->findPossibleDiscreteValues();
+        for (int i=0; i<rv->possibleDiscreteValues.len(); i++)
+        {
+            rv->val = rv->possibleDiscreteValues[i];
+            enumerateViterbiProb(pos+1, p*rv->discreteProbGivenParents());
+        }
+    }
+    else
+    {
+        if (rv->discrete)
+            enumerateViterbiProb(pos+1, p*rv->discreteProbGivenParents();
+        else
+            enumerateViterbiProb(pos+1, p*rv->probGivenParents();
+    }
+
+    if (pos == 0)  // all done with everything
+        if (viterbiProb == 0)
+            cout << "Warning: All instantiations have 0 probability.\n"
+                 << "Network not clamped\n";
+        else
+       	    restoreCachedValues();
+}
+
+/*
+ *---------------------------------------------------------------------------
+ * Function:
+ * emIncrementStatistics 
+ *
+ * Results:
+ * Each variable increments its accumulators by the posterior.
+ *
+ * Side Effects:
+ * None.
+*/
+
+void GMTK_GM::emIncrementStatistics(logpr p)
+{
+    for (int i=0; i<numNodes; i++)
+        node[i]->increment(p);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ * Function:
+ * emInitialize 
+ *
+ * Results:
+ * Each variable zeros out its accumulators.
+ *
+ * Side Effects:
+ * None.
+*/
+
+void GMTK_GM::emInitialize()
+{
+    for (int i=0; i<numNodes; i++)
+        node[i]->zeroAccumulators();
+}
+
+/*
+ *---------------------------------------------------------------------------
+ * Function:
+ * emUpdate
+ *
+ * Results:
+ * Each variable updates its parameters at the end of an EM iteration.
+ *
+ * Side Effects:
+ * None.
+*/
+
+void GMTK_GM::emUpdate()
+{
+    for (int i=0; i<numNodes; i++)
+        node[i]->update();
+}
+
+/*
+ *---------------------------------------------------------------------------
+ * Function:
+ * enumerativeEM
+ *
+ * Results:
+ * Does EM and updates parameters of the network.
+ *
+ * Side Effects:
+ * Variable parameters are changed in accordance with EM.
+ * Hidden variables are left clamped in an arbitrary configuration.
+*/
+
+void GMTK_GM::enumerativeEM(int iterations)
+{
+    emInitialize();
+    for (int i=0; i<iterations; i++)
+    {
+        logpr total_data_prob = 0;
+        clampFirstExample();
+        do
+        {
+            // first get the total data probability
+            emMode=false;
+            enumerativeProb();  
+            total_data_prob *= dataProb;
+
+            // then increment the em counts
+            emMode=true;
+            enumerativeProb(0, 1.0/DataProb);
+        } while (clampNextExample);
+        cout << "Total data prob is: " << total_data_prob << endl;
+        emUpdate();
+    }
 }
