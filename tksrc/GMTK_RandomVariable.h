@@ -20,11 +20,10 @@
 #define GMTK_RANDOMVARIABLE_H
 
 #include <vector>
-#include <string>
 
-#include "sArray.h"
 #include "logp.h"
 #include "GMTK_RngDecisionTree.h"
+#include "general.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // This is the integer type of the values that a discrete random variable
@@ -32,7 +31,7 @@
 // unsigned long, and so on.
 #define DISCRETE_VARIABLE_TYPE short 
 
-enum vartype {continuous,discrete};
+enum vartype {Continuous,Discrete};
 
 /*
  * The random variable class defines the basic functions that random
@@ -51,12 +50,12 @@ public:
     // The default timeIndex value of -1 indicates a static network.
     // The default value of "hidden" is true.
     // Discrete nodes must be specified with their cardinalities.
-    RandomVariable(string _label, vartype vt, int card=0)
-    {hidden=true; discrete=(vt==discrete); timeIndex=-1;
+    RandomVariable(char *_label, vartype vt, int card=0)
+    {hidden=true; discrete=(vt==Discrete); timeIndex=-1;
      cardinality=card; if (discrete) assert(card!=0);
-     label=_label;dtMapper=NULL;}
+     label=copyToNewStr(_label);dtMapper=NULL;}
 
-    virtual ~RandomVariable() {}
+    virtual ~RandomVariable() {delete [] label;}
 
     /////////////////////////////////////////////////////////////////////////
     // Is the node hidden, or is it an observation.
@@ -96,17 +95,17 @@ public:
 
     ////////////////////////////////////////////////////////////////////////
     // What is my name?
-    string label;
+    char *label;
 
     ////////////////////////////////////////////////////////////////////////
     // The set of switching parents, if any.
-    sArray<RandomVariable *> switchingParents;
+    vector<RandomVariable *> switchingParents;
 
     ////////////////////////////////////////////////////////////////////////
     // allPossibleParents is the union of the switchingParents and the
     // all possible conditionalParents.
     // Used to determine topological orderings
-    sArray<RandomVariable *> allPossibleParents;
+    vector<RandomVariable *> allPossibleParents;
 
     ////////////////////////////////////////////////////////////////////////
     // The set of variables that use this variable either as a switching
@@ -124,13 +123,13 @@ public:
     // parents, and those are the only two set of conditional parents
     // that exist for all values of the switching parents, this
     // list is of size two. 
-    sArray< sArray < RandomVariable* > > conditionalParentsList;
+    vector< vector < RandomVariable* > > conditionalParentsList;
 
     ////////////////////////////////////////////////////////////////////////
     // This is set to the current set of conditional parents,
     // which is dependent on the current value of the switching parents.
     // Note that this points to one of the entries in conditionalParentsList
-    sArray<RandomVariable *> *curConditionalParents;
+    vector<RandomVariable *> *curConditionalParents;
 
     ////////////////////////////////////////////////////////////////////////
     // This decision tree is used by the intFromSwitchingState() routine
@@ -152,12 +151,12 @@ public:
     // This sets the following arrays:
     // switchingParents, conditionalParentsList, allPossibleParents, and
     // (for the parents of the variable) it updates allPossibleChildren
-    void setParents(sArray<RandomVariable *> &sparents,
-         sArray<sArray<RandomVariable *> > &cpl);
+    void setParents(vector<RandomVariable *> &sparents,
+         vector<vector<RandomVariable *> > &cpl);
 
     ///////////////////////////////////////////////////////////////////////
     // Show all the pertinent information about the node
-    virtual void reveal();
+    virtual void reveal(bool show_vals);
 
     ////////////////////////////////////////////////////////////////////////
     // Looks at the currently (presumably clamped) values of the

@@ -46,19 +46,19 @@ struct CliqueValue
 
 struct Clique
 {
-    sArray<RandomVariable *> member;
+    vector<RandomVariable *> member;
     // vector of pointers to the constituent variables in the underlying GM.
 
-    sArray<RandomVariable *> newMember;
+    vector<RandomVariable *> newMember;
     // vector of pointers to the variables that are present in the clique,
     // but not in its parent.
     // The entries must be organized so that a variable's parents occur
     // before the variable.
 
-    sArray<RandomVariable *> discreteMember;
+    vector<RandomVariable *> discreteMember;
     // A list of the discrete members of the clique.
 
-    sArray<RandomVariable *> conditionalProbabilityNode;
+    vector<RandomVariable *> conditionalProbabilityNode;
     // Each clique has a set of nodes assigned to it, that contribute to
     // its conditional probability. This array stores them.
 
