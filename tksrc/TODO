@@ -1144,3 +1144,8 @@ Tue Jun 03 23:19:31 2003
     (i.e., consider fig 7 graph in uai03 paper, if only a three frame
      template is used and graph is moralized, then unrolled
      chunk will have edges from P to E).
+
+
+Tue Jul 01 17:36:05 2003
+  - go through all file reading code and insert the is.fileName()  (and ideally a line number
+    as well) for all error reports about that file.
