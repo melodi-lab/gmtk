@@ -69,6 +69,8 @@ bool binInputTrainableParameters=false;
 
 double varFloor = 1e-10;
 char *cppCommandOptions = NULL;
+static unsigned verbosity = IM::Default;
+
 
 unsigned allocateDenseCpts=0;
 bool seedme = false;
@@ -104,6 +106,8 @@ Arg Arg::Args[] = {
   Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
 
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
+  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
+
 
   // final one to signal the end of the list
   Arg()
@@ -138,6 +142,10 @@ main(int argc,char*argv[])
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
+
+  (void) IM::setGlbMsgLevel(verbosity);
+  GM_Parms.setMsgLevel(verbosity);
+
 
 
   MixtureCommon::checkForValidRatioValues();

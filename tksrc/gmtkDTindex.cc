@@ -62,6 +62,7 @@ static char *DTFiles           = NULL;
 static char *inputMasterFile   = NULL;
 static char *cppCommandOptions = NULL;
 static bool print_version_and_exit = false;
+static unsigned verbosity = IM::Default;
 
 Arg Arg::Args[] = {
 
@@ -75,6 +76,7 @@ Arg Arg::Args[] = {
 
   Arg("cppCommandOptions", Arg::Opt, cppCommandOptions,
     "Command line options to give to cpp"),
+  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
 
   Arg("version", Arg::Opt, print_version_and_exit,
     "Print GMTK version number and exit."),
@@ -112,6 +114,10 @@ main(int argc,char*argv[])
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
+
+  (void) IM::setGlbMsgLevel(verbosity);
+  GM_Parms.setMsgLevel(verbosity);
+
 
 
   ////////////////////////////////////////////

@@ -905,9 +905,39 @@ public:
 
   // collect evidence functions.
   void ceGatherFromIncommingSeparators(JT_InferencePartition& part);
-  void ceIterateSeparators(JT_InferencePartition& part,
-			   const unsigned sepNumber,
-			   const logpr p);
+
+
+  void inline ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
+					const unsigned nodeNumber,
+					const logpr p) 
+  {
+    if (nodeNumber == fUnassignedIteratedNodes.size()) {
+      ceIterateAssignedNodes(part,0,p);
+      return;
+    }
+    ceIterateUnassignedIteratedNodesRecurse(part,nodeNumber,p);
+  }
+  void ceIterateUnassignedIteratedNodesRecurse(JT_InferencePartition& part,
+					       const unsigned nodeNumber,
+					       const logpr p);
+
+  void inline ceIterateSeparators(JT_InferencePartition& part,
+				  const unsigned sepNumber,
+				  const logpr p) {
+    if (sepNumber == origin.ceReceiveSeparators.size()) {
+      // move on to the iterated nodes.
+      ceIterateUnassignedIteratedNodes(part,0,p);
+      return;
+    }
+    ceIterateSeparatorsRecurse(part,sepNumber,p);
+  }
+  void ceIterateSeparatorsRecurse(JT_InferencePartition& part,
+				  const unsigned sepNumber,
+				  const logpr p);
+  void ceIterateSeparatorsRecurseDense(JT_InferencePartition& part,
+				       const unsigned sepNumber,
+				       const logpr p);
+
 
   void ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 				     const unsigned nodeNumber,
@@ -915,18 +945,18 @@ public:
   void ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 				       const logpr p);
 
-  inline void ceIterateAssignedNodes(JT_InferencePartition& part,
+  void inline ceIterateAssignedNodes(JT_InferencePartition& part,
 				     const unsigned nodeNumber,
 				     const logpr p)
   {
-    // ceIterateAssignedNodesRecurse(part,nodeNumber,p);
-    ceIterateAssignedNodesNoRecurse(part,p);
+    if (fSortedAssignedNodes.size() == 0 || message(High)) {
+      // let recursive version handle degenerate or message full case
+      return ceIterateAssignedNodesRecurse(part,0,p);
+    } else {
+      ceIterateAssignedNodesNoRecurse(part,p);
+    }
   }
 
-
-  void ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
-					const unsigned nodeNumber,
-					const logpr p);
   void ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			    InferenceSeparatorClique& sep); 
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
@@ -1057,6 +1087,12 @@ public:
   // greater than this (in log base 10), we don't use this VE sep.
   static float veSeparatorLogProdCardLimit;
 
+  // a boolean flag that the inference code uses to determine if it
+  // should skip this separator. This is used when a P partition is
+  // empty.
+  bool skipMe;
+
+  // copy constructor 
   SeparatorClique(const SeparatorClique& sep)
     : veSeparator(sep.veSeparator)
   { 
@@ -1070,6 +1106,7 @@ public:
     // deleted twice.
     assert ( sep.veSepClique == NULL );;
     veSepClique = NULL;
+    skipMe = sep.skipMe;
   }
 
   // constructor for VE separators.
@@ -1096,6 +1133,7 @@ public:
       // part of the separator.
     }
     veSepClique = NULL;
+    skipMe = false;
   }
 
   // construct a separator between two cliques
@@ -1110,12 +1148,15 @@ public:
 		  const unsigned int frameDelta = 0);
 #endif
   
-  // create an empty separator
+  // Create an empty separator, used for re-construction later.
+  // Hopefully STL doesn't allocate anything when using default
+  // constructor, as if it does, it will be lost. Note that we do not
+  // repeatedly construct one of these objects, so while we might have
+  // a bit of lost memory as a result of this, it won't constitute an
+  // ever-growing memory leak.
   SeparatorClique() : veSeparator(false),veSepClique(NULL) {}
 
-
   ~SeparatorClique();
-
 
   // compute the weight (log10 state space) of this separator clique.
   float weight(const bool useDeterminism = true) const { 
@@ -1192,10 +1233,10 @@ class InferenceSeparatorClique : public IM
   sArray< RV*> fAccumulatedIntersection;
   sArray< RV*> fRemainder;
 
-  // Direct pointers to the values within the discrete *HIDDEN* RVs
-  // within this sep clique.  Note, the observed discrete and
-  // continuous variables are not contained here.
-  // 1) one for the accumulated intersection
+  // Direct fast access pointers to the values within the discrete
+  // *HIDDEN* RVs within this sep clique.  Note, the observed discrete
+  // and continuous variables are not contained here.  1) one for the
+  // accumulated intersection
   sArray < DiscRVType*> accDiscreteValuePtrs;
   // 2) and one for the remainder variables.
   sArray < DiscRVType*> remDiscreteValuePtrs;

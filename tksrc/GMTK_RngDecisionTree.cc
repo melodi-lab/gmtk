@@ -2,7 +2,7 @@
  * GMTK_RngDecisionTree.cc
  *     General Class to map from vectors of integers to some basic type.
  *
- * Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ * Written by Jeff Bilmes <bilmes@ee.washington.edu> & Chris Bartels <bartels@ee.washington.edu>
  *
  * Copyright (c) 2001, < fill in later >
  *
@@ -720,6 +720,14 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,Node& node)
       }
     }
   doneWithSplits:
+    if (mode == 2) {
+      // TODO: we're in hash mode, but if the user
+      // has consecutive values, we should move to mode == 0
+      // to speed up querying. We sort the stored values to
+      // check if they are consecutive. If they are,
+      // we use array mode. If not, we use hash mode.
+    }
+
     if (mode == 0) {
       // still haven't done this.
       node.nodeType = NonLeafNodeArray;
@@ -728,6 +736,7 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,Node& node)
       node.nln_a().base = (leafNodeValType)firstUnsigned;
       node.nln_a().children.resize(numSplits);
     }
+
     
     // ranges are ok, now make sure we get default string.
     is.read(token,"Can't read DecisionTree's 'default'");

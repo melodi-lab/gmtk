@@ -111,6 +111,8 @@ public:
   unsigned unPackedLen() { return unpackedVectorLength; }
   // Return the number of bits needed to hold a packed clique value.
   unsigned packedLenBits() { return totalNumBits; }
+  // Return the number of bytes needed to hold a packed clique value.
+  unsigned packedLenBytes() { return (totalNumBits+7)/8; }
 
 
   // pack()

@@ -4,7 +4,7 @@
  *      basic type (such as int, float, etc.). Uses bp_ranges
  *      to form the queries.
  *
- *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ *  Written by Jeff Bilmes <bilmes@ee.washington.edu> & Chris Bartels <bartels@ee.washington.edu>
  * 
  *  $Header$
  * 

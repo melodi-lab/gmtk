@@ -2641,3 +2641,6 @@ Sat Jan  1 23:07:03 2005
      the last operation will be). When in doubt, load with a table
      or write out indivual parameters separately and then read back in jointly.
 
+Fri Jan  7 21:32:19 2005
+  - add verbose messages to parameter reading (to give status updates on reading
+    on long parameters).  

@@ -327,11 +327,13 @@ main(int argc,char*argv[])
     exit(0);
   }
 
+
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
 
   (void) IM::setGlbMsgLevel(verbosity);
+  GM_Parms.setMsgLevel(verbosity);
 
   // Make sure not to cache the mixture component probabilities as it
   // is only needed in EM training.
