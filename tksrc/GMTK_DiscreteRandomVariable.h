@@ -93,12 +93,16 @@ public:
     // we be conservative and return false (this
     // case might arrise when doing elimination
     // experiments without needing any parameters).
-    if (conditionalCPTs.size() == 0)
-      return false;
-    for (unsigned i=0;i<conditionalCPTs.size();i++) {
-      if (conditionalCPTs[i]->cptType != CPT::di_MTCPT)
+    // if (conditionalCPTs.size() == 0)
+    // return false;
+    for (unsigned i=0;i<rv_info.discImplementations.size();i++) {
+      if (rv_info.discImplementations[i] != CPT::di_MTCPT)
 	return false; 
     }
+    //    for (unsigned i=0;i<conditionalCPTs.size();i++) {
+    //      if (conditionalCPTs[i]->cptType != CPT::di_MTCPT)
+    //	return false; 
+    //    }
     return true;
   }
 
