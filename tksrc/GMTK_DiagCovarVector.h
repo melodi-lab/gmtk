@@ -67,7 +67,12 @@ class DiagCovarVector : public EMable, public NamedObject {
   // became very small.
   static unsigned numFlooredVariances;
 
+
 public:
+
+  /////////////////////////////////////////////////////////////
+  // Floor the variances to the variance floor when they are read in.
+  static bool floorVariancesWhenReadIn;
 
   ///////////////////////////////////////////////////////////  
   // General constructor
