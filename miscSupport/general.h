@@ -33,6 +33,25 @@ void genSwap(T& v1, T& v2)
    v2 = tmp;
 }
 
+// general max/min class
+template <class T>
+T& max(T& v1, T& v2)
+{
+  if (v1 > v2)
+    return v1;
+  else
+    return v2;
+}
+
+template <class T>
+T& min(T& v1, T& v2)
+{
+  if (v1 < v2)
+    return v1;
+  else
+    return v2;
+}
+
 
 template <class T>
 void deleteObsInVector(vector < T* >& v) {
@@ -54,6 +73,7 @@ unsigned long fsize(FILE*stream);
 unsigned long fsize(const char* const filename);
 
 
+void print_date_string(FILE* f);
 
 
 #endif
