@@ -884,8 +884,8 @@ MaxClique::prepareForUnrolling()
   // allocationUnitChunkSize = 16;
 
   // @@@ set to small size now to test out re-allocation schemes.
-  // allocationUnitChunkSize = 1;
-  allocationUnitChunkSize = 10000;
+  allocationUnitChunkSize = 1;
+  // allocationUnitChunkSize = 10000;
 
   if (packer.packedLen() > IMC_NWWOH) {
     // setup value hodler
@@ -895,7 +895,7 @@ MaxClique::prepareForUnrolling()
     // set up common clique hash tables 
     // TODO: add appropriate default staring hash sizes.
     // new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2);
-    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),10000);
+    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2); // 10000
   } else {
     // then no need to do a hash table at all, just store the packed
     // values in a local integer.
@@ -1265,7 +1265,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   maxCEValue.set_to_zero();
 
   // TODO: optimize this.
-  cliqueValues.resize(10000); // 3
+  cliqueValues.resize(3); // 10000
 
 }
 
@@ -1885,7 +1885,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     if (sv.numRemValuesUsed >= sv.remValues.size()) {
       // TODO: optimize this growth rate.
       // start small but grow fast.
-      sv.remValues.resizeAndCopy(1+sv.remValues.size()*3); // 2
+      sv.remValues.resizeAndCopy(1+sv.remValues.size()*2); // *3
       if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
 	// Then the above resize just invalided all sv.iRemHashMap's pointers to keys,
 	// but it did not invalidate its array indices. Go through
@@ -2413,10 +2413,10 @@ SeparatorClique::prepareForUnrolling()
       // set is larger than one machine word (unsigned).
       new (&accValueHolder) CliqueValueHolder(accPacker.packedLen(),
 					      // TODO: optimize this 1000 value.
-					      5000, // 2
+					      2, // 5000
 					      1.25);
       // TODO: optimize starting size.
-      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),5000); // 2
+      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),2); // 5000
     }
   }
 
@@ -2437,10 +2437,10 @@ SeparatorClique::prepareForUnrolling()
       // than one machine word (unsigned).
       new (&remValueHolder) CliqueValueHolder(remPacker.packedLen(),
 					      // TODO: optimize this starting sizse
-					      5000, // 2
+					      2, // 5000
 					      1.25);
       // TODO: optimize starting size
-      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),5000); // 2
+      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),2); // 5000
     }
   }
 
