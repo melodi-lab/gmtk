@@ -17,6 +17,14 @@
 #include <stdarg.h>
 #include "pfile.h"
 
+// Abbreviations for the sscanf/printf strings for signed and unsigned longs
+// or long-longs, compiler-dependent.
+// Note that the short versions of these are done here rather than in the
+// header as they are not namespace clean.
+#define LLU PF_LLU
+#define LLD PF_LLD
+
+
 // This is the verision string that appears in the PFile header
 
 static char* pfile_version0_string = 
@@ -287,7 +295,7 @@ InFtrLabStream_PFile::InFtrLabStream_PFile(int a_debug,
     sentind(NULL),
     bswap(swap)
 {
-    if (fseek(file, 0, SEEK_SET))
+    if (pfile_fseek(file, (pfile_off_t) 0, SEEK_SET))
     {
 	error("Failed to seek to start of pfile '%s' header - "
 		 "cannot read PFiles from streams.",
@@ -328,10 +336,10 @@ InFtrLabStream_PFile::read_header()
 {
     char* header;
     unsigned int ndim;		// Number of dimensions of data section
-    unsigned int size;		// Size of data section
+    pfile_ulonglong_t size;	// Size of data section
     unsigned int rows;		// Number of rows in section
     unsigned int cols;		// Number of columns in section
-    long offset;		// offset in data section
+    pfile_longlong_t offset;	// offset in data section
     char* p;			// Temporary pointer
     int ec;			// Error code
 
@@ -357,7 +365,7 @@ InFtrLabStream_PFile::read_header()
 	error("Cannot find pfile -data parameter in header of"
 		 " '%s'.", filename);
 
-    sscanf(p, "-data size %u offset %li ndim %u nrow %u ncol %u",
+    sscanf(p, "-data size " LLU " offset " LLD " ndim %u nrow %u ncol %u",
 	   &size, &offset, &ndim, &rows, &cols);
     if (offset!=0 || ndim!=2 || (rows*cols)!=size)
 	error("Bad or unrecognized pfile header -data args in"
@@ -486,7 +494,7 @@ InFtrLabStream_PFile::read_header()
     p = strstr(header, "-sent_table_data");
     if (p!=NULL)
     {
-	sscanf(p, "-sent_table_data size %u offset %li ndim %u",
+	sscanf(p, "-sent_table_data size " LLU " offset " LLD " ndim %u",
 	       &size, &offset, &ndim);
 	if (size!=total_sents+1 || ndim!=1)
 	{
@@ -518,10 +526,10 @@ InFtrLabStream_PFile::read_header()
 void
 InFtrLabStream_PFile::build_index_from_sentind_sect()
 {
-    if (fseek(file, sentind_offset, SEEK_SET)!=0)
+    if (pfile_fseek(file, (pfile_off_t) sentind_offset, SEEK_SET)!=0)
     {
         error("Failed to move to start of sentence index data, "
-		  "sentind_offset=%li - probably a corrupted PFile.",
+		  "sentind_offset=" LLD " - probably a corrupted PFile.",
 		  sentind_offset);
     }
     long size = sizeof(PFile_Val) * (total_sents + 1);
@@ -562,10 +570,10 @@ InFtrLabStream_PFile::build_index_from_data_sect()
     long next_frameno = -1;	// Number of the next frame within sentence.
     long abs_frameno = 0;	// Frame number from beginning of data.
 
-    if (fseek(file, data_offset, SEEK_SET)!=0)
+    if (pfile_fseek(file, (pfile_off_t) data_offset, SEEK_SET)!=0)
     {
         error("Failed to move to start of data in '%s',"
-		  " data_offset=%li - probably a corrupted PFile.",
+		  " data_offset=" LLD " - probably a corrupted PFile.",
 		  filename, data_offset);
     }
 
@@ -583,9 +591,9 @@ InFtrLabStream_PFile::build_index_from_data_sect()
 	    {
 		error("Failed to read pfile record from '%s',"
 			 "last_sentno=%li next_frameno=%li abs_frameno=%li "
-			 "filepos=%li - probably a corrupted PFile.",
+			 "filepos=" LLD " - probably a corrupted PFile.",
 			 filename,
-			 last_sentno, next_frameno, abs_frameno, ftell(file));
+			 last_sentno, next_frameno, abs_frameno, (pfile_longlong_t) pfile_ftell(file));
 	    }
 	}
 	// Convert from big endian to native
@@ -680,9 +688,9 @@ InFtrLabStream_PFile::read_frame()
 	else
 	{
 	    error("Failed to read frame from PFile"
-		     " '%s', sent=%li frame=%li row=%li file_offset=%li.",
+		     " '%s', sent=%li frame=%li row=%li file_offset=" LLD ".",
 		     filename, current_sent, current_frame,
-		     current_row, ftell(file));
+		     current_row, (pfile_longlong_t) pfile_ftell(file));
 	}
     }
     else
@@ -705,10 +713,10 @@ int
 InFtrLabStream_PFile::rewind()
 {
     // Move to the start of the data and initialise our own file offset.
-    if (fseek(file, data_offset, SEEK_SET)!=0)
+    if (pfile_fseek(file, (pfile_off_t) data_offset, SEEK_SET)!=0)
     {
 	error("Rewind failed to move to start of data in "
-		 "'%s', data_offset=%li - probably corrupted PFile.",
+		 "'%s', data_offset=" LLD " - probably corrupted PFile.",
 		 filename, data_offset);
     }
     current_sent = -1;
@@ -863,10 +871,10 @@ InFtrLabStream_PFile::set_pos(size_t segno, size_t frameno)
 	}
 	offset = bytes_in_row * row + data_offset;
 	
-	if (fseek(file, offset, SEEK_SET)!=0)
+	if (pfile_fseek(file, (pfile_off_t) offset, SEEK_SET)!=0)
 	{
 	    error("Seek failed in PFile "
-		     "'%s', offset=%li - file problem?",
+		     "'%s', offset=" LLD " - file problem?",
 		     filename, offset);
 	}
 	current_sent = segno;
@@ -971,7 +979,7 @@ OutFtrLabStream_PFile::OutFtrLabStream_PFile(int a_debug,
     int ec;			// Error code.
 
     // Move to the start of the PFile data section
-    ec = fseek(file, PFILE_HEADER_SIZE, SEEK_SET);
+    ec = pfile_fseek(file, (pfile_off_t) PFILE_HEADER_SIZE, SEEK_SET);
     if (ec!=0)
     {
 	error("Failed to seek to data section in output PFile "
@@ -1182,8 +1190,8 @@ OutFtrLabStream_PFile::write_header()
     // The details of the data sections.
     size_t cols = num_ftr_cols + num_lab_cols + 2;
     size_t data_size = cols * current_row;
-    sprintf(ptr, "-data size %lu offset %lu ndim %lu nrow %lu ncol %lu\n",
-	    (unsigned long) data_size, (unsigned long) 0, (unsigned long) 2,
+    sprintf(ptr, "-data size " LLU " offset %lu ndim %lu nrow %lu ncol %lu\n",
+	    (pfile_ulonglong_t) data_size, (unsigned long) 0, (unsigned long) 2,
 	    (unsigned long) current_row, (unsigned long) cols);
     chars = strlen(ptr);
     count += chars; ptr += chars;
@@ -1192,8 +1200,8 @@ OutFtrLabStream_PFile::write_header()
     if (indexed)
     {
 	size_t sentind_size = current_sent + 1;
-	sprintf(ptr, "-sent_table_data size %lu offset %lu ndim 1\n",
-		(unsigned long) sentind_size, (unsigned long) data_size);
+	sprintf(ptr, "-sent_table_data size %lu offset " LLU " ndim 1\n",
+		(unsigned long) sentind_size, (pfile_ulonglong_t) data_size);
 	chars = strlen(ptr);
 	count += chars; ptr += chars;
     }
