@@ -38,7 +38,7 @@ VCID("$Header$");
 // The default value of the minimum possible variance of any
 // Gaussian. This must be >= FLT_MIN for numeric stability,
 // and it should be made availalbe as a command line parameter at some point.
-double GaussianComponent::_varianceFloor = GaussianComponent::setVarianceFloor(1e-30);
+double GaussianComponent::_varianceFloor = GaussianComponent::setVarianceFloor(1e-5);
 
 double GaussianComponent::setVarianceFloor(const double floor) 
 { 
