@@ -1,4 +1,27 @@
 #!/usr/nikola/bin/perl -w 
+##################################################################################
+# triangulateParallel 
+# 
+# Runs the boundary algorithm and triangulates the resulting partitions in
+# parallel.
+#
+# Output:
+#  filename.L.partition - Output of boundary algorithm using left interface,
+#                         the triangulations given in this file should 
+#                         probably be ignored.
+#  filename.R.partition - Output of boundary algorithm using right interface,  
+#                         the triangulations given in this file should 
+#                         probably be ignored.
+#  filename.L.P         - Triangulation of the left interface prologue
+#  filename.L.C         - Triangulation of the left interface chunk 
+#  filename.L.E         - Triangulation of the left interface epilogue 
+#  filename.R.P         - Triangulation of the right interface prologue
+#  filename.R.C         - Triangulation of the right interface chunk 
+#  filename.R.E         - Triangulation of the right interface epilogue 
+#  filename.trifile     - The best left interface P,C,E triangulations merged
+#  filename.R.trifile   - The best right interface P,C,E triangulations merged
+##################################################################################
+
 # $Header$
 
 use strict;
@@ -136,7 +159,7 @@ close PMAE;
 #############################################################################
 print "Merging trifiles...\n";
 
-`$gmtk_tfmerge -strFile $str_file -outputTriangulatedFile $str_file.L.trifile -Ptrifile $str_file.L.P -Ctrifile $str_file.L.C -Etrifile $str_file.L.E 1>&2`; 
+`$gmtk_tfmerge -strFile $str_file -outputTriangulatedFile $str_file.trifile -Ptrifile $str_file.L.P -Ctrifile $str_file.L.C -Etrifile $str_file.L.E 1>&2`; 
 
 `$gmtk_tfmerge -strFile $str_file -outputTriangulatedFile $str_file.R.trifile -Ptrifile $str_file.R.P -Ctrifile $str_file.R.C -Etrifile $str_file.R.E 1>&2`; 
 
