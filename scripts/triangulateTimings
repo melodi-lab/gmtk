@@ -641,8 +641,8 @@ sub generate_triangulations
             make_trifile( $boundary_name, $boundary, $method_name, $method, 
               $triangulation_mode );
             ($method, $method_name) = get_basic_triangulation_method();
-          }
-  
+          } 
+
           $boundary_count++;
         }
       }
@@ -1373,7 +1373,7 @@ sub start_boundary_searches
 ##  @boundary_heuristics = ('W', 'S', 'F', 'FWH', 'T', 'P', 'N', 'ST', 'SF', 
 ##    'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 'FT', 'FW', 'FTSW');
 
-  @boundary_heuristics = ('S', 'N');
+  @boundary_heuristics = ('N', 'S');
 
   print "Starting boundary searches\n";
 
@@ -1383,8 +1383,6 @@ sub start_boundary_searches
   $boundary_job_list = "$output_directory/boundary_job_list";  
 
   $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -triangulationHeuristic heuristics -noBoundaryMemoize T -jtWeight T";
-
-##-disconnectFromObservedParent bool
 
   open JOB_LIST, ">$boundary_job_list";
 
@@ -1899,14 +1897,20 @@ sub boundary_files_ne
   if ((scalar @boundary_1) != (scalar @boundary_2)) {
     $boundaries_ne = 1;
   }
+  else {
 
-  for ( $i=0; 
-        ($i<(scalar @boundary_1)) && (!$boundaries_ne); 
-        $i++ ) 
-  {
-    if ($boundary_1[$i] ne $boundary_2[$i]) {
-      $boundaries_ne = 1;
+    @boundary_1 = remove_boundary_offset(@boundary_1);
+    @boundary_2 = remove_boundary_offset(@boundary_2);
+
+    for ( $i=0; 
+          ($i<(scalar @boundary_1)) && (!$boundaries_ne); 
+          $i++ ) 
+    {
+      if ($boundary_1[$i] ne $boundary_2[$i]) {
+        $boundaries_ne = 1;
+      }
     }
+
   }
 
   return($boundaries_ne);
@@ -1968,6 +1972,7 @@ sub load_boundary
       "Something is wrong with trifile $trifile";
  
     push @variables, "${variable_name}__${frame}";     
+    push @variables, "${variable_name}__${frame}";     
   }
 
   @variables = sort @variables;
@@ -1976,13 +1981,58 @@ sub load_boundary
 }
 
 
+#############################################################################
+# remove_boundary_offset 
+#
+# This removes the frame offset form a boundary.  For example,
+#   word 5 wordPosition 6 
+#
+# would be transformed to 
+#   word 0 wordPosition 1 
+# 
+# PARAMETERS:
+#   $trifile - name of trifile
+#############################################################################
+sub remove_boundary_offset 
+{
+  my @boundary = @_;
+  my @new_boundary; 
+  my $minimum_frame = 9e9;
+  my $variable;
+  my $name;
+  my $frame;
+
+  push @new_boundary, shift @boundary;
+
+  foreach $variable (@boundary)
+  {
+    ($frame) = $variable =~ /__(\d+)$/; 
+    if ($frame < $minimum_frame) {
+      $minimum_frame = $frame;
+    }
+  }
+
+  foreach $variable (@boundary)
+  {
+    ($name, $frame) = $variable =~ /(.+)__(\d+)$/; 
+    $frame -= $minimum_frame;
+    push @new_boundary, "${name}__${frame}";  
+  }
+
+  return(@new_boundary);
+}
+
+#############################################################################
+# POD 
+#############################################################################
+
 =head1 NAME
   
 triangulateTimings - generate and time GMTK triangulations
 
 =head1 SYNOPSIS
 
-triangulateTimings -strFile file -timingExportLine script [OPTIONS] [input triangulations] 
+triangulateTimings -strFile file -timingScript script [OPTIONS] [input triangulations] 
 
 The options are followed by an optional list of trifiles.  These input
 triangulations are timed and their boundaries are used in further
