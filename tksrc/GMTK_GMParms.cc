@@ -729,25 +729,29 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
   string fileName;
   string binStatus;
 
+  const string INLINE_FILE_KEYWORD("inline");
   
   map<string,iDataStreamFile*> fileNameMap;
+  fileNameMap[INLINE_FILE_KEYWORD] = &is;
 
   while (is.readString(keyword)) {
     if (!is.readString(fileName)) {
       error("ERROR: while reading file '%s', got keyword '%s' without a filename",is.fileName(),keyword.c_str());
     }
 
-    if (!is.readString(binStatus)) {
-      error("ERROR: while reading file '%s', got keyword '%s' and filename '%s' without a binary status",is.fileName(),keyword.c_str(),fileName.c_str());
-    }
-
-    bool binary_p = false;
-    if (binStatus == "ascii" || binStatus == "ASCII")
-      binary_p = false;
-    else if (binStatus == "binary" || binStatus == "BINARY")
-      binary_p = true;
-    else {
-      error("ERROR: while reading file '%s', got string '%s' when expecting 'ascii'/'binary' keyword",is.fileName(),binStatus.c_str());
+    bool binary_p = is.binary();
+    if (fileName != INLINE_FILE_KEYWORD) {
+      // read binary status of file if this is not an inline declarator
+      if (!is.readString(binStatus)) {
+	error("ERROR: while reading file '%s', got keyword '%s' and filename '%s' without a binary status",is.fileName(),keyword.c_str(),fileName.c_str());
+      }
+      if (binStatus == "ascii" || binStatus == "ASCII")
+	binary_p = false;
+      else if (binStatus == "binary" || binStatus == "BINARY")
+	binary_p = true;
+      else {
+	error("ERROR: while reading file '%s', got string '%s' when expecting 'ascii'/'binary' keyword",is.fileName(),binStatus.c_str());
+      }
     }
 
     map<string,iDataStreamFile*>::iterator it = fileNameMap.find(fileName);
@@ -850,9 +854,11 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
   // now go through and delete all the input files
   for (map<string,iDataStreamFile*>::iterator it = fileNameMap.begin();
        it != fileNameMap.end(); it++) {
-    delete ((*it).second);
+    if ((*it).first != INLINE_FILE_KEYWORD) {
+      // don't delete is
+      delete ((*it).second);
+    }
   }
-
 
 }
 
