@@ -318,3 +318,6 @@ no gaussian mixtures, does the master file still have to mention them?
 - add startskip/endskip check
 
 - add link checks
+
+- when no-one left uses a component after vanishing,
+  get rid of it.
