@@ -16,10 +16,14 @@
  *
  */ 
 
+#ifndef CLIQUE_H
+#define CLIQUE_H 
+
 #include <vector>
 #include <map>
+#include "GMTK_Constants.h"
 
-struct cliqueValue
+struct CliqueValue
 {
     // A clique has a bunch of possible values, depending on the possible
     // combinations of its constituent variables. With just discrete hidden
@@ -32,10 +36,10 @@ struct cliqueValue
     // to keep track of the clique values that are consistent in the surrounding
     // separators. Note that there is just one in each of the surrounding
     // separators. 
-    cliqueValue *pred, *succ;
+    CliqueValue *pred, *succ;
 };
 
-struct clique
+struct Clique
 {
     sArray<randomVariable *> member;
     // vector of pointers to the constituent variables in the underlying GM.
@@ -43,6 +47,8 @@ struct clique
     sArray<randomVariable *> newMember;
     // vector of pointers to the variables that are present in the clique,
     // but not in its parent.
+    // The entries must be organized so that a variable's parents occur
+    // before the variable.
 
     sArray<randomVariable *> discreteMember;
     // A list of the discrete members of the clique.
@@ -51,7 +57,7 @@ struct clique
     // Each clique has a set of nodes assigned to it, that contribute to
     // its conditional probability. This array stores them.
 
-    vector<short> clampedValues;
+    vector<DISCRETE_VARIABLE_TYPE> clampedValues;
     // What are the values of the discrete variables (which should be clamped)
 // be sure to make this big enough in the constructor
 
@@ -67,23 +73,30 @@ struct clique
     bool separator;
     // Is the clique a separator?
 
-    clique *parent, *child;
+    Clique *parent, *child;
     // In a clique chain, that's all there is.
 
-    map<vector<short>, cliqueValue> instantiation;
+    map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue> instantiation;
     // This stores all the possible instantiations of a clique.
     // Pruning occurs by removing low probability instantiations.
-    // The vector<short> stores the hidden variable assignments corresponding
-    // to the cliqueValue. 
+    // The vector<DISCRETE_VARIABLE_TYPE> stores the hidden variable 
+    // assignments corresponding
+    // to the CliqueValue. 
 
     logpr probGivenParents();
     // This computes the conditional probability of the clique.
     // It calls findConditionalProbabilityNodes(), and then for each
     // member of conditionalProbabilityNode it invokes probGivenParents()
     
-    void enumerateValues(int new_member_num, cliqueValue *pred_val,
+    void enumerateValues(int new_member_num, CliqueValue *pred_val,
     bool viterbi=false);
     // This is a recursive function that enumerates all the possible
     // instantiations of a clique.  For consistency with the value of
     // the parent clique, only the new members are instantiated.
+
+    void prune(logpr beam);
+    // Removes all instantiations whose forwards probability is less than
+    // beam*max.
 };
+
+#endif
