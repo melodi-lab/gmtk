@@ -21,11 +21,11 @@ VE_CPT_IN_FILE inline
 2  % num VECPTs 
 
 0
-VEL_VECPT  % name of VECPT
-numParents:1 % num par
-parentCard:2 % par card
-selfCard:2 % self card
-of:VE_FILE_VEL
+VECPT0  % name of VECPT
+1 % num par
+2 % par card
+2 % self card
+VECPT0_FILE
 nfs:2 % nfloats
 nis:0 % nints
 frs:all % float range
@@ -39,12 +39,12 @@ sentRange:all
 EOF
 
 1
-TB_LOC_VECPT
-numParents:1 % num par
-parentCard:TB_LOC_CARD % par card
-selfCard:2 % self card
-of:VE_FILE_TB_LOC
-nfs:TB_LOC_CARD % nfloats
+VECPT1
+1 % num par
+4 % par card
+2 % self card
+VECPT1_FILE
+nfs:4 % nfloats
 fmt:ascii
 EOF
 
@@ -56,10 +56,6 @@ Also the order in which the arguments are written is not important.
 
 The default values are:
 
-numParents:1
-parentCard:0 % will cause an error if not updated 
-selfCard:2
-of:""  % will cause an error if not updated
 nfs:0  % will cause an error if not updated
 nis:0
 frs:all
@@ -153,6 +149,23 @@ VECPT::read(iDataStreamFile& is)
   // read the name of the object.
   NamedObject::read(is);
 
+  is.read(_numParents,"Can't read VirtualEvidenceCPT's num parents");
+  if (_numParents != 1)
+    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' must have exactly one(1) rather than %d parents",
+          is.fileName(),is.lineNo(),name().c_str(),_numParents);
+  cardinalities.resize(_numParents);
+  // read the parent cardinality
+  is.read(cardinalities[0],"Can't read VirtualEvidenceCPT's parent cardinality");
+  
+  // read the self cardinality, must be binary
+  is.read(_card,"Can't read VirtualEvidenceCPT's self cardinality");
+  if (_card != 2)
+    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s', child cardinality must be two(2) rather than %d.",
+          is.fileName(),is.lineNo(),name().c_str(),_card);
+  
+  // next read the file name from which this is going to get its probabilties.
+  is.read(obsFileName,"Can't read VirtualEvidenceCPT's obs file name");
+  
   //  bool done=false;
   is.read(str);
   while(! (is.isEOF() || str=="EOF")) {
@@ -165,24 +178,7 @@ VECPT::read(iDataStreamFile& is)
     option_name=str.substr(0,pos);
     char * tmpString=new char[len];
     strcpy(tmpString,option_value.c_str());
-    if(option_name=="numParents") {
-      sscanf(option_value.c_str(),"%u",&_numParents);
-      if (_numParents != 1)
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' must have exactly one(1) rather than %d parents",is.fileName(),is.lineNo(),name().c_str(),_numParents);
-      cardinalities.resize(_numParents);
-    }
-    else if(option_name == "parentCard") {
-      sscanf(option_value.c_str(),"%u",&cardinalities[0]);
-    } 
-    else if(option_name == "selfCard") {
-      sscanf(option_value.c_str(),"%u",&_card);
-      if (_card != 2)
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s', child cardinality must be two(2) rather than %d.", is.fileName(),is.lineNo(),name().c_str(),_card);
-    }
-    else if(option_name == "of") {
-      obsFileName=option_value;
-    }  
-    else if(option_name == "nfs") {
+    if(option_name == "nfs") {
       sscanf(option_value.c_str(),"%u",&nfs);
     }  
     else if(option_name == "nis") {
