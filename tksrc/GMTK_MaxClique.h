@@ -159,6 +159,41 @@ public:
 
 };
 
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Number of words to exist in a packed clique without a hash. These
+// may be set to zero to turn on hashing even when packed clique
+// values take up less than 1 machine word. To turn off hashing
+// always, set to something larger than the largest packed clique
+// value in machine words (e.g., 2, 3, etc. but this might consume
+// lots of memory). The number of bits required for a packed clique
+// value is equal to:
+//
+//    num_bits_required = \sum_{v \in C} ceil(log2(card(v)))
+//
+// where C is a clique, v is all hidden variables in the clique,
+// and card(v) is the cardinality of the variable v (the
+// card is taken from the structure file).
+// --
+// InferenceMaxClique Number Words WithOut a Hash (IMC_NWWOH): Namely,
+// the number of words that can be stored directly as a packed clique
+// value before we resort to using a shared hash table for all
+// instances of this origin clique.
+#define IMC_NWWOH (1)
+// InferenceSeparatorClique Number Words WithOut a Hash (ISC_NWWOH):
+// Namely, the number of words that can be stored directly as a packed
+// clique value before we resort to using a shared hash table for all
+// instances of this origin clique.  One for the accumulated
+// Intersection packed values
+#define ISC_NWWOH_AI (1)
+// And the same for the remainder in a Separator.
+#define ISC_NWWOH_RM (1)
+// -- 
+//////////////////////////////////////////////////////////////////////////////
+
+
 class MaxClique : public IM {
 
   friend class FileParser;
@@ -594,44 +629,13 @@ public:
   // USED ONLY IN JUNCTION TREE INFERENCE
   // used to clear out hash table memory between segments
   void clearDataMemory() {
-    valueHolder.prepare();
-    cliqueValueHashSet.clear();    
+    if (packer.packedLen() > IMC_NWWOH) {
+      valueHolder.prepare();
+      cliqueValueHashSet.clear();    
+    }
   }
 
 };
-
-
-
-//////////////////////////////////////////////////////////////////////////////
-// Number of words to exist in a packed clique without a hash. These
-// may be set to zero to turn on hashing even when packed clique
-// values take up less than 1 machine word. To turn off hashing
-// always, set to something larger than the largest packed clique
-// value in machine words (e.g., 2, 3, etc. but this might consume
-// lots of memory). The number of bits required for a packed clique
-// value is equal to:
-//
-//    num_bits_required = \sum_{v \in C} ceil(log2(card(v)))
-//
-// where C is a clique, v is all hidden variables in the clique,
-// and card(v) is the cardinality of the variable v (the
-// card is taken from the structure file).
-// --
-// InferenceMaxClique Number Words WithOut a Hash (IMC_NWWOH): Namely,
-// the number of words that can be stored directly as a packed clique
-// value before we resort to using a shared hash table for all
-// instances of this origin clique.
-#define IMC_NWWOH (1)
-// InferenceSeparatorClique Number Words WithOut a Hash (ISC_NWWOH):
-// Namely, the number of words that can be stored directly as a packed
-// clique value before we resort to using a shared hash table for all
-// instances of this origin clique.  One for the accumulated
-// Intersection packed values
-#define ISC_NWWOH_AI (1)
-// And the same for the remainder in a Separator.
-#define ISC_NWWOH_RM (1)
-// -- 
-//////////////////////////////////////////////////////////////////////////////
 
 
 // A version of maxclique that:
@@ -846,10 +850,14 @@ public:
 
   // used to clear out hash table memory between segments
   void clearDataMemory() {
-    accValueHolder.prepare();
-    accSepValHashSet.clear();
-    remValueHolder.prepare();
-    remSepValHashSet.clear();
+    if (accPacker.packedLen() > ISC_NWWOH_AI) {
+      accValueHolder.prepare();
+      accSepValHashSet.clear();
+    }
+    if (remPacker.packedLen() > ISC_NWWOH_RM) { 
+      remValueHolder.prepare();
+      remSepValHashSet.clear();
+    }
   }
 
 

@@ -2714,36 +2714,35 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 
   fp.unroll(basicTemplateUnrollAmount,unrolled_rvs,ppf);
 
-  // re-allocate, but never use more than two partitions at a time.
-  clearDataMemory();
-  jtIPartitions.resize(2);
-
   // actual absolute part numbers
   unsigned partNo;
   const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
-  // current relative partition numbers
-  unsigned curPart,prevPart;
+  // never use more than two partitions at a time.
+  JT_InferencePartition *curPart, *prevPart;
   // set up appropriate name for debugging output.
   const char* prv_nm;
 
+
+  clearDataMemory();
+
   partNo = 0;
-  curPart = 0; prevPart = 1;
-  new (&jtIPartitions[curPart]) JT_InferencePartition(P1,unrolled_rvs,ppf,0*gm_template.S);
+  curPart = new JT_InferencePartition(P1,unrolled_rvs,ppf,0*gm_template.S);
+  prevPart = NULL;
   prv_nm = "P1";
-  ceGatherIntoRoot(jtIPartitions[partNo],
+  ceGatherIntoRoot(*curPart,
 		   P_ri_to_C,
 		   P1_message_order,
 		   prv_nm,partNo);
   swap(curPart,prevPart);
 
   if (gm_template.leftInterface) {
-    jtIPartitions[curPart].~JT_InferencePartition();
-    new (&jtIPartitions[curPart]) JT_InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S);
-    ceSendToNextPartition(jtIPartitions[prevPart],P_ri_to_C,"P1",partNo,
-			  jtIPartitions[curPart],C_li_to_P,"Cu0",partNo+1);
+    delete curPart;
+    curPart = new JT_InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S);
+    ceSendToNextPartition(*prevPart,P_ri_to_C,"P1",partNo,
+			  *curPart,C_li_to_P,"Cu0",partNo+1);
     partNo++;
     prv_nm = "Cu0";
-    ceGatherIntoRoot(jtIPartitions[curPart],
+    ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Cu0_message_order,
 		     prv_nm,partNo);
@@ -2751,13 +2750,13 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   }
 
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
-    jtIPartitions[curPart].~JT_InferencePartition();
-    new (&jtIPartitions[curPart]) JT_InferencePartition(Co,unrolled_rvs,ppf,p*gm_template.S);
-    ceSendToNextPartition(jtIPartitions[prevPart],C_ri_to_C,prv_nm,partNo,
-			  jtIPartitions[curPart],C_li_to_C,"Co",partNo+1);
+    delete curPart;
+    curPart = new JT_InferencePartition(Co,unrolled_rvs,ppf,p*gm_template.S);
+    ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
+			  *curPart,C_li_to_C,"Co",partNo+1);
     partNo++;
     prv_nm = "Co";
-    ceGatherIntoRoot(jtIPartitions[curPart],
+    ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Co_message_order,
 		     prv_nm,partNo);
@@ -2765,35 +2764,36 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   }
 
   if (!gm_template.leftInterface) {
-    jtIPartitions[curPart].~JT_InferencePartition();
-    new (&jtIPartitions[curPart]) 
-      JT_InferencePartition(Cu0,unrolled_rvs,ppf,
-			    ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+    delete curPart;
+    curPart = new JT_InferencePartition(Cu0,unrolled_rvs,ppf,
+				       ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
 
-    ceSendToNextPartition(jtIPartitions[prevPart],C_ri_to_C,prv_nm,partNo,
-			  jtIPartitions[curPart],C_li_to_C,"Cu0",partNo+1);
+    ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
+			  *curPart,C_li_to_C,"Cu0",partNo+1);
     partNo++;
     prv_nm = "Cu0";
-    ceGatherIntoRoot(jtIPartitions[curPart],
+    ceGatherIntoRoot(*curPart,
 		     C_ri_to_E,
 		     Cu0_message_order,
 		     prv_nm,partNo);
     swap(curPart,prevPart);
   }
 
-  jtIPartitions[curPart].~JT_InferencePartition();
-  new (&jtIPartitions[curPart]) 
-    JT_InferencePartition(E1,unrolled_rvs,ppf,
-			  ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
-  ceSendToNextPartition(jtIPartitions[prevPart],C_ri_to_E,prv_nm,partNo,
-			jtIPartitions[curPart],E_li_to_C,"E1",partNo+1);
+  delete curPart;
+  curPart = new JT_InferencePartition(E1,unrolled_rvs,ppf,
+				      ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+  ceSendToNextPartition(*prevPart,C_ri_to_E,prv_nm,partNo,
+			*curPart,E_li_to_C,"E1",partNo+1);
   partNo++;
-  ceGatherIntoRoot(jtIPartitions[curPart],
+  ceGatherIntoRoot(*curPart,
 		   E_root_clique,
 		   E1_message_order,
 		   "E1",partNo);
 
-  return jtIPartitions[curPart].maxCliques[E_root_clique].sumProbabilities();
+  return curPart->maxCliques[E_root_clique].sumProbabilities();
+  
+  delete curPart;
+  delete prevPart;
 
 }
 
