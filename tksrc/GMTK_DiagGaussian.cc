@@ -239,10 +239,6 @@ DiagGaussian::log_p(const float *const x,
 {
   assert ( basicAllocatedBitIsSet() );
 
-  logpr rc;
-  rc.set_to_zero();
-
-
   //////////////////////////////////////////////////////////////////
   // The local accumulator type in this routine.
   // This can be changed from 'float' to 'double' to

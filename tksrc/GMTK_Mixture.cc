@@ -35,6 +35,7 @@
 VCID("$Header$");
 #include "error.h"
 #include "rand.h"
+#include "debug.h"
 
 #include "GMTK_Mixture.h"
 #include "GMTK_GMParms.h"
@@ -172,13 +173,41 @@ Mixture::makeRandom()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * emptyComponentCache()
+ *      For all allocated entries in the component cache, set the
+ *      cache so that the element is empty.
+ * 
+ * Preconditions:
+ *      none (i.e., component cache can be allocated or deallocated).
+ *
+ * Postconditions:
+ *      component cache is essentially empty (i.e., mixture probabilities will be re-computed)
+ *
+ * Side Effects:
+ *      changes component cache status, but does no memory allocation.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Mixture::emptyComponentCache()
+{
+  for (unsigned i=0;i<componentCache.size();i++) {
+    componentCache[i].prob.valref() = (-LZERO);
+  }
+}
+
 //
 // compute the log probability of x with stride 'stride'
 // 
 logpr
 Mixture::log_p(const float *const x,
-		    const Data32* const base,
-		    const int stride)
+	       const Data32* const base,
+	       const int stride)
 {
   // printf("Computing prob for name '%s'\n",
   // name().c_str());
@@ -196,8 +225,7 @@ Mixture::log_p(const float *const x,
 // and caches the result for EM.
 logpr
 Mixture::log_p(const unsigned frameIndex, 
-		    const unsigned firstFeatureElement)
-
+	       const unsigned firstFeatureElement)
 {
   assert ( basicAllocatedBitIsSet() );
 
@@ -214,6 +242,14 @@ Mixture::log_p(const unsigned frameIndex,
     }
     if (componentCache[frameIndex].cmpProbArray.size() < numComponents)
       componentCache[frameIndex].cmpProbArray.resize(numComponents);
+
+    if (componentCache[frameIndex].prob.valref() != (-LZERO)) {
+      // already done for this mixture
+      // infoMsg(IM::Mega,"Using cached value for Gaussian component\n");
+      // TODO: fix bug here where if firstFeatureElement is not used to check the cache entry
+      //       and if this object is shared over multiple firstFeatureElements.
+      return componentCache[frameIndex].prob;
+    }
 
     logpr rc;
     for (unsigned i=0;i<numComponents;i++) {

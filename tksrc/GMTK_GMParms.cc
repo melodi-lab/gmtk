@@ -2252,6 +2252,10 @@ GMParms::clampFirstExample()
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
+  // clear any mixtures component cache
+  for (unsigned i=0;i<mixtures.size();i++) {
+    mixtures[i]->emptyComponentCache();
+  }
 }
 
 
@@ -2285,6 +2289,11 @@ GMParms::clampNextExample()
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
+  // clear any mixtures component cache
+  for (unsigned i=0;i<mixtures.size();i++) {
+    mixtures[i]->emptyComponentCache();
+  }
+
 }
 
 
@@ -2321,6 +2330,11 @@ GMParms::setSegment(const unsigned segmentNo)
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
+  // clear any mixtures component cache
+  for (unsigned i=0;i<mixtures.size();i++) {
+    mixtures[i]->emptyComponentCache();
+  }
+
 }
 
 

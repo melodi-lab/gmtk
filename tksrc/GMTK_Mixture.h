@@ -52,11 +52,19 @@ class Mixture : public MixtureCommon {
   // be doing pruning to save memory).
   struct CompProb {
     logpr prob;
+    CompProb() : prob((void*)0) {
+      // include constructor to avoid unnecessary initialization.
+    }
     // unsigned componentNum; to be used soon.
   };
   struct CompCacheArray {
     vector < CompProb > cmpProbArray;
     logpr prob;
+    CompCacheArray() : prob((void*)0) {
+      // initial value is special value indicating that this
+      // entry is empty.
+      prob.valref() = (-LZERO);
+    }
     // might want to add more fields later.
   };
 
@@ -89,6 +97,12 @@ public:
   void write(oDataStreamFile& os);
 
   unsigned totalNumberParameters();
+
+  // component cache support
+  // make all component cache entries effectively empty.
+  void emptyComponentCache();
+  // clear the memory associated with the component cache.
+  void freeComponentCache();
 
   // these routines are used to not save 
   // components (and their means, variances, parms, etc.) 
