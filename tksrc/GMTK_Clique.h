@@ -40,9 +40,23 @@ struct clique
     sArray<randomVariable *> member;
     // vector of pointers to the constituent variables in the underlying GM.
 
+    sArray<randomVariable *> newMember;
+    // vector of pointers to the variables that are present in the clique,
+    // but not in its parent.
+
+    sArray<randomVariable *> discreteMember;
+    // A list of the discrete members of the clique.
+
     sArray<randomVariable *> conditionalProbabilityNode;
     // Each clique has a set of nodes assigned to it, that contribute to
     // its conditional probability. This array stores them.
+
+    vector<short> clampedValues;
+    // What are the values of the discrete variables (which should be clamped)
+// be sure to make this big enough in the constructor
+
+    void cacheClampedValues();
+    // Reads the values of the discrete members and stores them in clampedValues
 
     void findConditionalProbabilityNodes();
     // With switching parents, the set of variables assigned to a clique 
@@ -67,4 +81,9 @@ struct clique
     // It calls findConditionalProbabilityNodes(), and then for each
     // member of conditionalProbabilityNode it invokes probGivenParents()
     
+    void enumerateValues(int new_member_num, cliqueValue *pred_val,
+    bool viterbi=false);
+    // This is a recursive function that enumerates all the possible
+    // instantiations of a clique.  For consistency with the value of
+    // the parent clique, only the new members are instantiated.
 };
