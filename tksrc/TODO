@@ -1,0 +1,31 @@
+
+$Header$
+
+Other things that need to be done.
+
+
+- low level file parser should support
+  both integer and named pointers to
+  the parameters that they share.
+  (when they write out the parameters, they
+   should write out the form that was written in).
+    
+- simple +* equations in decision tree leaf nodes,
+  using variables vi and ci (e.g.,
+  v0, v1, v2, ... , and c0, c1, c2, ...) for values
+  and cardinalities of parent variables.
+  exs:  c0*v0 + v1
+        c0 + 1
+        3
+
+- add a MTCPT type, for deterministic cpt
+  which just points to one of the decision trees
+  in the DT table.
+
+- add warning or "NOTE" message if two low level objects
+  have the same name. (but not more than one
+  warning message to this effect in case user 
+  doesn't care).
+   
+- 
+
