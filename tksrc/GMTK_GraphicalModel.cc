@@ -474,15 +474,20 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
   //    B: binary
   //    S: switching
   //    I: ever increasing cardinality of variables.
+  //    M: ever increasing smart cardinality of variables, tie breaking by number of children.
+  //    T: ever increasing smart cardinality of variables, tie breaking by number of deterministic children.
   //    A: alphabetical (for debugging purposes)
   //    F: by frame number (for debugging purposes)
-  //    N: first by alpha name and next by frame.
+  //    N: first by alpha name and next by frame (for debugging purposes)
+  //    _: by order that they are in according to the set iterator (for debugging purposes)
+  //    .: by order that they occur in the .str file  (for debugging purposes).
   // 
   // Some good ones to try for speed:  
   //   COB, 
   //   CDOI or CODI (good when no continuous vars)
   //   DOI
-  //
+  //   COI
+  //   COT or COM
 
   for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
     const char curCase = toupper(priorityStr[charNo]);
@@ -561,7 +566,7 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 
     } else if (curCase == 'O') {
 
-      // Next do a pass for any other observed variables.
+      // Do a pass for any observed variables.
       for (it=inputVarList.begin();it != inputVarList.end();it++) {
 	RV* rv = (*it);
 	if (rv->hidden())
@@ -599,6 +604,59 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 						      position,tag))
 	    return false;
       }
+    } else if (curCase == 'M' || curCase == 'T') {
+
+      // Sort the reminaing discrete variables in increasing order of
+      // cardinality and do a pass in that increasing
+      // order. 'Cardinality' is smart, meaning that if the var is
+      // deterministic or observed, we use a cardinality of unity. We
+      // break ties by number of (under option T, deterministic)
+      // children that each variable has (prefer ones that have more
+      // children, so use negative of that number).
+      multimap< pair<unsigned,int> ,RV*> cardSortedNodes;
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RV* rv = (*it);
+	if (!rv->discrete())
+	  continue;
+	DiscRV* drv = RV2DRV(rv);
+
+	unsigned useCard;
+	if (drv->deterministic() || drv->observed())
+	  useCard = 1; // TODO: possibly use rv's useCardinality() routine.
+	else 
+	  useCard = drv->cardinality;
+	// find number of children of drv within the current set.
+	unsigned numChildrenInSet = 0;
+	for (unsigned c=0;c<rv->allChildren.size();c++) {
+	  if (inputVarList.find(rv->allChildren[c]) != inputVarList.end())
+	    if (curCase == 'M') {
+	      // then we count all children, ignore the deterministic condition of the child.
+	      numChildrenInSet++;
+	    } else {
+	      // then we count only deterministic children.
+	      if (rv->allChildren[c]->discrete() && RV2DRV(rv->allChildren[c])->deterministic())
+		numChildrenInSet++;
+	    }
+	}
+	pair< pair<unsigned,int> , RV*> pr ( pair<unsigned,int>(useCard,-(int)numChildrenInSet), rv );
+	cardSortedNodes.insert(pr);    
+      }
+      for (multimap< pair<unsigned,int>, RV*>::iterator m = cardSortedNodes.begin();
+	   m != cardSortedNodes.end(); m++) {
+	RV* rv = (*m).second;
+
+	pair<unsigned,int> pr = (*m).first;
+	// rv->printNameFrame(stdout,false);
+	// printf(",%d,%d;\n",pr.first,pr.second);
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
+	    return false;
+      }
+      // printf("\n");
+
     } else if (curCase == 'F') {
 
       // Sort the reminaing variables in increasing order of
@@ -685,7 +743,40 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 						      position,tag))
 	    return false;
       }
+    } else if (curCase == '_') {
+      // by order that the iterator provides.
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RV* rv = (*it);
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
+	    return false;
+      }
+    } else if (curCase == '.') {
+      // by order that they occur in the .str file.
+      multimap< unsigned ,RV*> posSortNodes;
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RV* rv = (*it);
+	pair< unsigned , RV*> pr (rv->rv_info.variablePositionInStrFile, rv );
+	posSortNodes.insert(pr);    
+      }
+      for (multimap< unsigned, RV*>::iterator m = posSortNodes.begin();
+	   m != posSortNodes.end(); m++) {
+	// unsigned lcard = (*m).first;
+	RV* rv = (*m).second;
+	// DiscRV* drv = (DiscRV*)rv;
+	// printf("Doing node %s(%d) with card %d\n",(*m).second->name().c_str(),(*m).second->frame(),drv->cardinality);
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
+	    return false;
+      }
     }
+
   }
 
   // Last do a pass to hit any remainder that the above might not have

@@ -1847,6 +1847,8 @@ JunctionTree::assignRVToClique(const char *const partName,
     // parents have been assigned (as long as the RV doesn't come in
     // as a separator that is).
     curClique.assignedNodes.insert(rv);
+    // we include this in the sorted assigned nodes for now, even though
+    // it probably will be re-sorted at a later time.
     curClique.sortedAssignedNodes.push_back(rv);
     numberOfTimesAssigned++;
 
@@ -3098,8 +3100,11 @@ JunctionTree::sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& part,
 void
 JunctionTree::sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior)
 {
+  // printf("sorting P1\n");
   sortCliqueAssignedNodesAndComputeDispositions(P1,varCliqueAssignmentPrior);
+  // printf("sorting Co\n");
   sortCliqueAssignedNodesAndComputeDispositions(Co,varCliqueAssignmentPrior);
+  // printf("sorting E1\n");
   sortCliqueAssignedNodesAndComputeDispositions(E1,varCliqueAssignmentPrior);
 }
 
