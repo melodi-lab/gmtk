@@ -449,7 +449,7 @@ void FNGramImp::readLMFile(std::vector<Vocab*> vocabs) {
 	for ( unsigned i = 0; i < _numberOfBGNodes; i++ ) {
 		ifs.readLine(line, MAX_LINE_LENGTH);
 		// TODO: fix compiler warning here about "warning: int format, unsigned int arg (arg 4)"
-		if ( sscanf(line, "ngram %x=%d", &nodeId, &number) < 2 )
+		if ( sscanf(line, "ngram %x=%u", &nodeId, &number) < 2 )
 			error("Error: reading lm file %s in %s", _lmFileName, line);
 		if ( nodeId > _numberOfBGNodes )
 			error("Error: node id %x should be smaller than %x in %s", nodeId, _numberOfBGNodes, _lmFileName);
@@ -1021,18 +1021,18 @@ void FNGramImp::readBackoffGraphNode(iDataStreamFile &ifs, BackoffGraphNode &bgN
 		if ( strcmp(tok, "gtmin") == 0 ) {
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("Error: gtmin argument needs a value reading factored spec file in %s", line);
-			if ( sscanf(tok, "%d", &bgNode.gtmin) != 1 )
+			if ( sscanf(tok, "%u", &bgNode.gtmin) != 1 )
 				error("Error: gtmin argument needs integer value in %s", line);
 		} else if ( strcmp(tok, "gtmax") == 0 ) {
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("Error: gtmax argument needs a value reading factored spec file in %s", line);
-			if ( sscanf(tok, "%d", &bgNode.gtmax) != 1 )
+			if ( sscanf(tok, "%u", &bgNode.gtmax) != 1 )
 				error("Error: gtmax argument needs integer value in %s", line);
 		} else if ( strcmp(tok, "gt") == 0 ) {
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("Error: gt argument needs a value reading factored spec file in %s", line);
 			delete [] bgNode.gtFile;
-			bgNode.gtFile = strdup(tok);
+			bgNode.gtFile = copyToNewStr(tok);
 		} else if ( strcmp(tok, "cdiscount") == 0 ) {
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("Error: cdiscount argument needs a value in %s", line);
@@ -1062,14 +1062,14 @@ void FNGramImp::readBackoffGraphNode(iDataStreamFile &ifs, BackoffGraphNode &bgN
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("Error: kn argument needs a value reading factored spec file in %s", line);
 			delete [] bgNode.knFile;
-			bgNode.knFile = strdup(tok);
+			bgNode.knFile = copyToNewStr(tok);
 		} else if ( strcmp(tok, "interpolate") == 0 ) {
 			bgNode.interpolate = true;
 		} else if ( strcmp(tok, "write") == 0 ) {
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("Error: write argument needs a value reading factored spec file in %s", line);
 			delete [] bgNode.countFile;
-			bgNode.countFile = strdup(tok);
+			bgNode.countFile = copyToNewStr(tok);
 		} else if ( strcmp(tok, "strategy") == 0 ) {
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("Error: strategy argument needs a value reading factored spec file in %s", line);

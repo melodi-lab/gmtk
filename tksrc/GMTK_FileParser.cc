@@ -2527,12 +2527,12 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	// Special case for NGramCPT because we only restrict number of parents is less than ngram order.
 	if ( rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT ) {
 		if ( cpts[j]->numParents() < rvInfoVector[i].conditionalParents[j].size()) {
-			error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
+			error("Error: RV \"%s\" at frame %d (line %d), number of parents (at switching condition %d) different than what is required by %s \"%s\".\n",
 				rvInfoVector[i].name.c_str(), rvInfoVector[i].frame, rvInfoVector[i].fileLineNumber, j, cptType.c_str(), cpts[j]->name().c_str());
 		}
 	} else if (cpts[j]->numParents() !=
 	    rvInfoVector[i].conditionalParents[j].size()) {
-	  error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
+	  error("Error: RV \"%s\" at frame %d (line %d), number of parents (at switching condition %d) different than required by %s \"%s\".\n",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
 		rvInfoVector[i].fileLineNumber,

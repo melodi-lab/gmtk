@@ -125,6 +125,7 @@ static bool seedme = false;
 static unsigned verbosity = DEF_VERBOSITY;
 static bool print_version_and_exit = false;
 static unsigned seconds = 10;
+static unsigned numTimes = 1;
 static bool multiTest = false;
 static int rlimitSlop = 2;
 // static bool limitBest = true;
@@ -228,6 +229,7 @@ Arg Arg::Args[] = {
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
   Arg("seconds",Arg::Opt,seconds,"Number of seconds to run and then exit."),
+  Arg("times",Arg::Opt,numTimes,"Number of times to run program seconds seconds long (not multitest mode)."),
   Arg("multiTest",Arg::Opt,multiTest,"Run gmtkTime in multi-test mode, taking triangulation file names from command line."),
   Arg("slop",Arg::Opt,rlimitSlop,"In multiTest mode, number of additional seconds before fail-terminate is forced."),
   // Arg("limitBest",Arg::Opt,limitBest,"Limit running time to be approximately best seen so far.."),
@@ -574,71 +576,76 @@ main(int argc,char*argv[])
     JunctionTree::probEvidenceTimeExpired = false;
     signal(SIGALRM,jtExpiredSigHandler);
 
-    printf("Running program for approximately %d seconds\n",seconds);
-    fflush(stdout);
+    unsigned curTime;
+    for (curTime = 0; curTime < numTimes; curTime ++) {
 
-    alarm(seconds);
-    struct rusage rus; /* starting time */
-    struct rusage rue; /* ending time */
-    getrusage(RUSAGE_SELF,&rus);
+      JunctionTree::probEvidenceTimeExpired = false;
+      printf("Run %d: Running program for approximately %d seconds\n",curTime,seconds);
+      fflush(stdout);
 
-    unsigned totalNumberPartitionsDone = 0;
-    unsigned totalNumberSegmentsDone = 0;
-    unsigned numCurPartitionsDone = 0;
-    while (1) {
-      Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
-      while (!dcdrng_it->at_end()) {
-	const unsigned segment = (unsigned)(*(*dcdrng_it));
-	if (globalObservationMatrix.numSegments() < (segment+1)) 
-	  error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-		globalObservationMatrix.numSegments(),
-		0,globalObservationMatrix.numSegments()-1);
+      alarm(seconds);
+      struct rusage rus; /* starting time */
+      struct rusage rue; /* ending time */
+      getrusage(RUSAGE_SELF,&rus);
 
-	const unsigned numFrames = GM_Parms.setSegment(segment);
+      unsigned totalNumberPartitionsDone = 0;
+      unsigned totalNumberSegmentsDone = 0;
+      unsigned numCurPartitionsDone = 0;
+      while (1) {
+	Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
+	while (!dcdrng_it->at_end()) {
+	  const unsigned segment = (unsigned)(*(*dcdrng_it));
+	  if (globalObservationMatrix.numSegments() < (segment+1)) 
+	    error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+		  globalObservationMatrix.numSegments(),
+		  0,globalObservationMatrix.numSegments()-1);
 
-	unsigned numUsableFrames;
-	numCurPartitionsDone = 0;
-	if (probE && !island) {
-	  logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone);
-	  totalNumberPartitionsDone += numCurPartitionsDone;
-	  infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		  segment,
-		  probe.val(),
-		  probe.val()/numFrames,
-		  probe.val()/numUsableFrames);
-	} else if (island) {
-	  myjt.collectDistributeIsland(numFrames,
-				       numUsableFrames,
-				       base,
-				       lst);
-	  // TODO: note that frames not always equal to partitions but
-	  // do this for now. Ultimately fix this.
-	  totalNumberPartitionsDone += numUsableFrames;
-	} else {
-	  error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence\n");
-	}
+	  const unsigned numFrames = GM_Parms.setSegment(segment);
+
+	  unsigned numUsableFrames;
+	  numCurPartitionsDone = 0;
+	  if (probE && !island) {
+	    logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone);
+	    totalNumberPartitionsDone += numCurPartitionsDone;
+	    infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		    segment,
+		    probe.val(),
+		    probe.val()/numFrames,
+		    probe.val()/numUsableFrames);
+	  } else if (island) {
+	    myjt.collectDistributeIsland(numFrames,
+					 numUsableFrames,
+					 base,
+					 lst);
+	    // TODO: note that frames not always equal to partitions but
+	    // do this for now. Ultimately fix this.
+	    totalNumberPartitionsDone += numUsableFrames;
+	  } else {
+	    error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence\n");
+	  }
       
+	  if (JunctionTree::probEvidenceTimeExpired)
+	    break;
+
+	  (*dcdrng_it)++;
+	  totalNumberSegmentsDone ++;
+	}
+	delete dcdrng_it;
 	if (JunctionTree::probEvidenceTimeExpired)
 	  break;
-
-	(*dcdrng_it)++;
-	totalNumberSegmentsDone ++;
       }
-      delete dcdrng_it;
-      if (JunctionTree::probEvidenceTimeExpired)
-	break;
-    }
   
-    getrusage(RUSAGE_SELF,&rue);
-    alarm(0);
-    double userTime,sysTime;
-    reportTiming(rus,rue,userTime,sysTime,stdout);
-    printf("Inference stats: %0.2f seconds, %d segments + %d residual partitions, %d total partitions, %0.3e partitions/sec\n",
-	   userTime,
-	   totalNumberSegmentsDone,
-	   numCurPartitionsDone,
-	   totalNumberPartitionsDone,
-	   (double)totalNumberPartitionsDone/userTime);
+      getrusage(RUSAGE_SELF,&rue);
+      alarm(0);
+      double userTime,sysTime;
+      reportTiming(rus,rue,userTime,sysTime,stdout);
+      printf("Inference stats: %0.2f seconds, %d segments + %d residual partitions, %d total partitions, %0.3e partitions/sec\n",
+	     userTime,
+	     totalNumberSegmentsDone,
+	     numCurPartitionsDone,
+	     totalNumberPartitionsDone,
+	     (double)totalNumberPartitionsDone/userTime);
+    }
 
   } else {
     // we're in multitest mode.

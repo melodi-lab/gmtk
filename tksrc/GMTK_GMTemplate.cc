@@ -1543,7 +1543,7 @@ triangulatePartitionsByCliqueCompletion()
 
 /*-
  *-----------------------------------------------------------------------
- * GMTemplate::computeUnrollParamaters()
+ * GMTemplate::computeUnrollParameters()
  *   compute the unrolling amount for the number of frames in an observation matrix.
  *
  *
@@ -1551,7 +1551,8 @@ triangulatePartitionsByCliqueCompletion()
  *   None.
  *
  * Postconditions:
- *   None.
+ *   None. Note that modifiedTemplateUnrollAmount might be (-1) which means
+ *   that this corresponds to the basic template P C E  (or equivalently, P' E').
  *
  * Side Effects:
  *   none
@@ -1564,9 +1565,9 @@ triangulatePartitionsByCliqueCompletion()
  */
 bool
 GMTemplate::
-computeUnrollParamaters(const unsigned numFrames,
+computeUnrollParameters(const unsigned numFrames,
 			unsigned& basicTemplateUnrollAmount,
-			unsigned& modifiedTemplateUnrollAmount,
+			int& modifiedTemplateUnrollAmount,
 			unsigned& numUsableFrames,
 			unsigned& frameStart,
 			const JustifyType justifyType)
@@ -1584,22 +1585,23 @@ computeUnrollParamaters(const unsigned numFrames,
 
   // we have relationships:
   // from basic template:
-  //     T = p + i*c + e  for some i = positive integer.
+  //     T = p + i*c + e  for some i = *positive* integer.
   // from modified template:
-  //     T = p + e + (M+jS)*c for j = positive integer.
-  // check both here:
-  if ( T < p + e + (M+S)*c ) {
-    infoMsg(Info,"Unrolling Incompatibility: Unrolling segment with %d frames with template of [P=%d,C=%d,E=%d] frames, but with M=%d,S=%d, minimum segment frame length is %d\n",T,p,c,e,M,S,p+e+(M+S)*c );
+  //     T = p + e + (M+jS)*c for j = non-negative integer (meaning minimum length is p+e+M*c
+  //     with M=1 this is the basic template).
+  // Since M>=1 and S>=1 check both here by making sure that T is at least p+e+M*c
+  if ( T < p + e + M*c ) {
+    infoMsg(Info,"Unrolling Incompatibility: Trying to unroll segment with only %d frames using template of [P=%d,C=%d,E=%d] frames, but with M=%d,S=%d, minimum segment frame length is P+M*C+E=%d\n",T,p,c,e,M,S,p+e+(M+S)*c );
     return false;
   }
-  // Ok, it's possible to use this sentence.
+  // Ok, it's possible to use this segment.
   // The above puts constraints:
-  //    (T - p - e) = i*c
-  //    (T - p - e) = (M+jS)*c = l*c, with l = (M+jS)
+  //    (T - p - e) = i*c,  i >= 1 
+  //    (T - p - e) = (M+jS)*c = l*c, with l = (M+jS), j>=0
   // which means that we must have:
-  //    (T - p - e - M*c) = jS*c  for j = positive integer.
+  //    (T - p - e - M*c) = jS*c  for j = non-negative integer.
 
-  // compute T-p-e-M*c % S*c, the remainder.
+  // compute (T-p-e-M*c) % (S*c), the remainder.
   const unsigned remainder = (T-p-e-M*c) % (S*c);
   // number of usable frames subtracts this off, assign to
   // T' = numUsableFrames

@@ -12,8 +12,8 @@ SHELL = /bin/sh
 
 # .EXPORT:
 # .EXPORT: Linux AND !crane
-.EXPORT:
-.EXPORT: nikola2 Linux
+# .EXPORT:
+# .EXPORT: nikola2 Linux
 
 
 .SUFFIXES:
@@ -52,7 +52,7 @@ EXLDFLAGS =
 # CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall  -Wno-deprecated -ansi -pedantic
 # CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -Wno-deprecated -ansi -pedantic
 CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall  -Wno-deprecated  -pedantic
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -Wno-deprecated  -pedantic
+CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -pedantic
 LDFLAGS = 
 DEFS = 
 
@@ -73,7 +73,7 @@ docdir = $(prefix)/man/man1
 # define only for sun
 # SUNLIBS=-lsunmath
 SUNLIBS=
-LIBS =    -lgmtkio -lmiscSupport -lIEEEsupport -lfl $(SUNLIBS) -lm 
+LIBS =    -lGMTK -lgmtkio -lmiscSupport -lIEEEsupport -lfl $(SUNLIBS) -lm 
 # LIBS =  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport -lfl $(SUNLIBS) -lm 
 # LIBS =  -lmiscSupport  -lgmtkio -lpfile -lIEEEsupport $(SUNLIBS) -lm 
 INCLUDES =  $(includedirs)
@@ -81,8 +81,8 @@ LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
 # This can be done easily by doing 'make -DPURE=purify' 
 PURE =
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CCFLAGS)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CXXFLAGS)
+compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS)
+compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS)
 link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
 compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
@@ -141,56 +141,61 @@ programname: $(objs)
 	$(link) -Wall -g  -o $@ $(bmm_objs) $@.o $(LIBS)
 
 
-gmtkEMtrainNew: gmtkEMtrainNew.o $(objs)
+libGMTK.a: $(objs)
+	rm -f $@
+	$(archive) $@ $(objs)
+
+
+gmtkEMtrainNew: gmtkEMtrainNew.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkEMtrainNew.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkEMtrainNew.o $(LIBS)
 
-gmtkUnroll: gmtkUnroll.o $(objs)
+gmtkUnroll: gmtkUnroll.o  libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkUnroll.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkUnroll.o $(LIBS)
 
-gmtkJT: gmtkJT.o $(objs)
+gmtkJT: gmtkJT.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkJT.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkJT.o $(LIBS)
 
-gmtkTime: gmtkTime.o $(objs)
+gmtkTime: gmtkTime.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTime.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTime.o $(LIBS)
 
 
-gmtkTriangulate: gmtkTriangulate.o $(objs)
+gmtkTriangulate: gmtkTriangulate.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTriangulate.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTriangulate.o $(LIBS)
 
 
-gmtkTFmerge: gmtkTFmerge.o $(objs)
+gmtkTFmerge: gmtkTFmerge.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTFmerge.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTFmerge.o $(LIBS)
 
 
-gmtkViterbiNew: gmtkViterbiNew.o $(objs)
+gmtkViterbiNew: gmtkViterbiNew.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkViterbiNew.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkViterbiNew.o $(LIBS)
 
-gmtkParmConvert: gmtkParmConvert.o $(objs)
+gmtkParmConvert: gmtkParmConvert.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkParmConvert.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkParmConvert.o $(LIBS)
 
-gmtkDTindex: gmtkDTindex.o $(objs)
+gmtkDTindex: gmtkDTindex.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkDTindex.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkDTindex.o $(LIBS)
 
-gmtkNGramIndex: gmtkNGramIndex.o $(objs)
+gmtkNGramIndex: gmtkNGramIndex.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkNGramIndex.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkNGramIndex.o $(LIBS)
 
-gmtkViz.o: gmtkViz.cc
+gmtkViz.o: gmtkViz.cc 
 	-@rm -f $@
 	$(CXX) $(DEFS) $(INCLUDES) -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -Wno-deprecated `wx-config --cxxflags` -Wall -g -c gmtkViz.cc
 
-gmtkViz: gmtkViz.o $(objs)
+gmtkViz: gmtkViz.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) `wx-config --libs` `wx-config --cxxflags` -Wall -g -o $@ gmtkViz.o $(objs) $(LIBS)
+	$(compile.cc.link) `wx-config --libs` `wx-config --cxxflags` -Wall -g -o $@ gmtkViz.o $(LIBS)
 
 #----------------------------------------------------------------------------
 # Test driver programs (defines a -DMAIN to test each .cc file)

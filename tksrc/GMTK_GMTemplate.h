@@ -267,9 +267,9 @@ public:
   // and modified template P',C',E') and any adjustments to
   // the observation matrix needed (to define where start is).
   enum JustifyType { leftJustify, rightJustify, centerJustify };
-  bool computeUnrollParamaters(const unsigned numFrames,
+  bool computeUnrollParameters(const unsigned numFrames,
 			       unsigned& basicTemplateUnrollAmount,
-			       unsigned& modifiedTemplateUnrollAmount,
+			       int& modifiedTemplateUnrollAmount,
 			       unsigned& numUsableFrames,
 			       unsigned& frameStart,
 			       const JustifyType justifyType=leftJustify);

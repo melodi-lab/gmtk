@@ -67,6 +67,82 @@ VCID("$Header$");
  *******************************************************************************
  */
 
+#if 0
+/*
+ * Take the union of A and B and place it in C.
+ */
+static void
+union_1_2_to_3(const set<RV*>& A,
+	       const set<RV*>& B,
+	       set<RV*>& C,
+	       bool do_not_clear = false)
+{
+  if (!do_not_clear)
+    C.clear();
+  set_union(A.begin(),A.end(),
+	    B.begin(),B.end(),
+	    inserter(C,C.end()));
+}
+#endif
+
+
+
+// TODO: this routine is probably generally useful, place it in an
+// appropriate place. Note that this routine does not require rv to be
+// in rvs since it only depends on rv via its name and frame. This means we use
+// this routine to easily grab a corresponding rv from one unrolling using
+// a rv from another unrolling using this routine.
+
+static RV *
+getRV(const vector <RV*>& rvs, // a set of RVs
+      map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
+      const RVInfo::rvParent& pp) // the variable to get
+{
+
+  map < RVInfo::rvParent , unsigned >::iterator it;
+  if ((it = pos.find(pp)) == pos.end()) {
+    // this could be an assertion failure as well, but we need
+    // to set 'it'
+    error("INTERNAL ERROR: getRV: Can't find random variable %s(%d) in unrolled collection.\n",
+	  pp.first.c_str(),pp.second);
+  }
+  return rvs[(*it).second];
+}
+
+static RV *
+shiftedRV(const vector <RV*>& rvs, // a set of RVs
+	  map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
+	  RV* rv, // the variable to be shifted
+	  const int shift=0 // the shift amount in frames
+	  )
+{
+  RVInfo::rvParent p(rv->name(),rv->frame()+shift);
+  map < RVInfo::rvParent , unsigned >::iterator it;      
+  if ((it = pos.find(p)) == pos.end()) {
+    // this could be an assertion failure as well, but we need
+    // to set 'it'
+    error("INTERNAL ERROR: Can't find random variable %s(%d) shifted by %d frames.\n",
+	  rv->name().c_str(),rv->frame(),
+	  shift);
+  }
+  return rvs[(*it).second];
+}
+static set<RV*>
+shiftedRVSet(const vector <RV*>& rvs, // a set of RVs
+	     map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
+	     set<RV*>& rvs_to_shift, // the variable to be shifted
+	     const int shift // the shift amount in frames
+	     )
+{
+  set <RV*> res;
+  set<RV*>::iterator i;
+  for (i=rvs_to_shift.begin(); i!= rvs_to_shift.end(); i++) {
+    RV *rv = (*i);
+    RV *srv = shiftedRV(rvs,pos,rv,shift);
+    res.insert(srv);
+  }
+  return res;
+}
 
 
 /*-
@@ -723,22 +799,22 @@ BoundaryTriangulate
 		 // the resulting template
 		 GMTemplate& gm_template)
 {
-
   //
-  // M = number of chunks in which boundary algorithm is allowed to exist
-  // i.e., a boundary is searched for within M repeated chunks, where M >= 1.
-  // Note that M and S put constraints on the number of time frames
-  // of the observations (i.e., the utterance length in time frames).
-  // Specificaly, if N = number of frames of utterance, 
-  //   then we must have N = length(P) + length(E) + (M+k*S)*length(C)
-  //   where k = 1,2,3,4, ... is some integer >= 1.
-  // Therefore, making M and/or S larger reduces the number valid possible utterance lengths.
+  // M = number of chunks in which boundary algorithm is allowed to
+  // exist i.e., a boundary is searched for within M repeated chunks,
+  // where M >= 1.  Note that M and S put constraints on the number of
+  // time frames of the observations (i.e., the utterance length in
+  // time frames).  Specificaly, if N = number of frames of utterance,
+  // then we must have N = length(P) + length(E) + (M+k*S)*length(C)
+  // where k = 0,1,2,3,4, ... is some integer >= 0.  Therefore, making M
+  // and/or S larger reduces the number valid possible utterance
+  // lengths.
 
-
+  infoMsg(High,"Finding Partitions under M=%d,S=%d with template of [P=%d,C=%d,E=%d] %d total frames\n",M,S,fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),fp.numFrames());
 
   ///////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////
-  // First create a network (called u2, but could be called "find
+  // create a network (called u2, but could be called "find
   // boundary" or "boundary search") that is used to find the boundary
   // in. This network is the template unrolled M+1 times. M = Max
   // number simultaneous chunks in which interface boundary may
@@ -755,7 +831,8 @@ BoundaryTriangulate
   // set of nodes consitituting the boundary is not allowed to exist in more than M chunks.
 
   vector <RV*> unroll2_rvs;
-  fp.unroll(M+1,unroll2_rvs);
+  map < RVInfo::rvParent, unsigned > unroll2_pos;
+  fp.unroll(M+1,unroll2_rvs,unroll2_pos);
   // drop all the edge directions
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
     unroll2_rvs[i]->createNeighborsFromParentsChildren();
@@ -777,6 +854,7 @@ BoundaryTriangulate
   set<RV*> E_u2;
   int start_index_of_C1_u2 = -1;
   int start_index_of_C2_u2 = -1;
+  int first_frame_of_C2_u2 = -1;
   int start_index_of_C3_u2 = -1;
   int start_index_of_E_u2 = -1;
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
@@ -793,6 +871,8 @@ BoundaryTriangulate
       C2_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C2_u2 == -1)
 	start_index_of_C2_u2 = i;
+      if (first_frame_of_C2_u2 == -1)
+	first_frame_of_C2_u2 = unroll2_rvs[i]->frame();
     } else if (unroll2_rvs[i]->frame() <= fp.lastChunkFrame()+(M+1)*fp.numFramesInC()) {
       // 3rd chunk, 1 chunk long
       C3_u2.insert(unroll2_rvs[i]);
@@ -814,44 +894,149 @@ BoundaryTriangulate
 
   ///////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////
-  // Next, create the network from which the new P, C, and E will
-  // be formed. I.e., this new P, C, and E will be the graph partitions
-  // that are ultimately triangulated, where the new C will
-  // be unrolled as appropriate to get a full network. We
-  // call the network from which P, C, and E are created u1 (but
-  // could call it "partition")
-
-  // When we have an S and an M parameter, number of chunks needed
-  // is M + S, so we should unroll (M+S-1) times.  We start by
-  // creating sets P', C1', C2', and E', from the graph unrolled
-  // (S+M-1) time(s), where each hyper-chunk C1' and C2' are M frames long
-  // Note that 
-  //    1) if S==M, Cextra will be empty, and C1' and C2' will not overlap.
-  //    2) if M > S, then C1' and C2' will overlap certain variables.
-  //    3) if S > M, C1' and C2' will not overlap, and there will be chunks 
-  //       between C1' and C2', and they'll be placed in Cextra
+  // Third, create the network from which the new P', C', and E'
+  // partitions will be formed out of the original P,C, and E in the
+  // structure file. P', C', E' are formed based on both the current
+  // settings of M and S, and also based on the resulting boundary
+  // that is used. I.e., this new P', C', and E' will be the graph
+  // partitions that are ultimately triangulated, where the new C'
+  // will be unrolled as appropriate to get a full network. We call
+  // the network from which P', C', and E' are created u1 (but could
+  // call it "partition"). We place the new network in variables P_u1,
+  // C1_u1, Cextra_u1, C2_u1, and E_u1 from which the final true
+  // template is formed. Note that some of these might have variable
+  // overlap (depending on M and S, and depending on the underlying order 
+  // with respect to C of the DBN Markov property).
   //
-  // From this unrolled graph, new partitions P', C', and E' will ultimately be formed.
-  // Examples (all in the left interface initial-boundary case):
+  // Examples of creating P_u1, C1_u1, Cextra_u1, C2_u1, and E_u1:
+  // 
+  //   M=1,S=1:  
+  //       unrolled: P  C   C   E
+  //                 |  |   |   |
+  //       named:    P  C1  C2  E
+  //
+  //   M=1,S=2:  
+  //       unrolled: P  C   C    C   E
+  //                 |  |   |    |   |
+  //       named:    P  C1 Cxtr  C2  E
+  //
+  //   M=2,S=1:  
+  //       unrolled: P  C   C   C  E
+  //                 |   \ / \ /   |
+  //       named:    P    C1  C2   E
+  //    (note that here C1 and C2 overlap in the 2nd chunk, i.e.,
+  //     intersect(C1,C2) = 2nd C
+  //
+  //   M=2,S=2:
+  //       unrolled: P  C   C   C  C   E
+  //                 |   \ /     \ /   |
+  //       named:    P    C1      C2   E
+  //   (here, since M=S, there is no C1 C2 overlap).
+  //
+  //   M=3,S=2:
+  //       unrolled: P  C   C   C   C  C   E
+  //                 |   \ /   / \   \/    |
+  //                 |    |  /    \ /      | 
+  //       named:    P    C1       C2      E
+  //   (here, since M>S, there is again a C1 C2 overlap of (M-S) chunks).
+  //
+  //   M=3,S=1:
+  //       unrolled: P  C   C   C   C  E
+  //                 |   \ / \ / \ /   |
+  //                 |    |  / \  /    | 
+  //       named:    P    C1    C2     E
+  //   (here, since M>S, there is again a C1 C2 overlap of (M-S) chunks).
+  // 
+  //   M=2,S=3:
+  //          P  C  C   C   C  C   E
+  //          |   \ /   |    \ /   |
+  //          P    C1   Cxtr  C2   E
+  //    (here, again there is no intersection between C1 and C2, but
+  //     since S>M, we put the middel in Cextra.
+  // 
+  // The number of chunks needed is M + S, so we should unroll (M+S-1)
+  // time(s).  We ultimately create sets P', C1', C2', and E', from the
+  // above graph unrolled (S+M-1) time(s), where each hyper-chunk C1'
+  // and C2' are M frames long, and the difference in start frames
+  // between chunk C1' and C2' is S frames.
+  // Note also that:
+  //      1) if S==M, Cextra will be empty, and C1' and C2' will not overlap.  
+  //      2) if M > S, then C1' and C2' will overlap certain variables.  
+  //      3) if S > M, C1' and C2' will not overlap, and there will be chunks 
+  //         between C1' and C2', and they'll be placed in Cextra.
+  // 
+  // Examples. Note that ALL ARE IN THE LEFT INTERFACE
+  // INITIAL-BOUNDARY CASE (i.e., before the boundary algorithm is
+  // run). To get the right-interface case, just swap the E's with the
+  // P's, and do a temporal inversion. In each case, the boundary is
+  // constrained to lie entirely within M chunks, and when we unroll,
+  // we skip by S chunks.  Examples (corresponding to the cases
+  // above):
+  // 
   //   M=1,S=1:  
   //          P  C  C E
   //          |  |   \/
   //          P' C'  E' 
+  // 
+  //   M=1,S=2:  
+  //          P  C  C  C E
+  //          |  | /    \/
+  //          P' C'     E' 
   //
   //   M=2,S=1:
-  //          P  C  C C E
+  //          P  C  C C  E
   //          |  |   \|_/
   //          P' C'   E' 
   //
   //   M=2,S=2:
-  //          P  C C C C E
-  //          |  |/   \|_/
-  //          P' C'    E'  
+  //        P  C C C C E
+  //        |  |/   \|_/
+  //        P' C'    E'  
+  // 
+  //   M=3,S=2:
+  //      P  C  C  C  C  C E
+  //      |  | /    \ |  / /
+  //      |   |      \| //
+  //      P'  C'      E'  
+  //        
+  // 
+  //   M=3,S=1:
+  //        P  C   C  C  C  E
+  //        |  |    \ |  / /
+  //        |  |     \| // 
+  //       P'  C'     E'
+  // 
   //
   //   M=2,S=3:
   //          P  C C C C C E
   //          |   \|/   \|_/
   //          P'   C'    E'  
+  //
+  // Note that in the basic interface (not running the boundary
+  // algorithm):
+  //      1) C' has S C-chunks, 
+  //      2) E' contains an E and an extra M C-chunks. 
+  // The reason for the extra M C-chunks in E' is that the
+  // boundary may span M chunks into E.
+  // 
+  // Note also that it is only in the M=1,S=1 case above can we
+  // recover the basic template P,C,E by using P'E' (i.e., not using
+  // C'). Therefore it is crucial that the following three have the same interfaces
+  // (again in the left interface case):
+  //     1) between P' and C'E'
+  //     2) between P'C' and E'
+  //     3) between P' and E'
+  // This is the only graphical restriction paced on the template
+  // (other than the obvious no directed cycles), so that we can use
+  // the case of unrolling by zero (i.e., by not using C'). 
+  // 
+  // For a static network, one should use M=S=1, and make P empty, and
+  // use a quick dummy triangulation for C', and spending all the time
+  // triangulating E'.
+  // 
+  // Note that P or E (but not both) can be empty. When P is empty,
+  // there are no interface restrictions (since there is only one
+  // possible interface, between C' and E'). 
   //
 
   vector <RV*> unroll1_rvs;
@@ -871,6 +1056,8 @@ BoundaryTriangulate
   int start_index_of_C1_u1 = -1;
   int start_index_of_C2_u1 = -1;
   int start_index_of_E_u1 = -1;
+  int first_frame_of_C1_u1 = -1;
+  int first_frame_of_C2_u1 = -1;
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     // Note that there are some casts to (int) in the below below
     // since it might be the case that M = 0, and if unsigned
@@ -882,6 +1069,8 @@ BoundaryTriangulate
       C1_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C1_u1 == -1)
 	start_index_of_C1_u1 = i;
+      if (first_frame_of_C1_u1 == -1)
+	first_frame_of_C1_u1 = unroll1_rvs[i]->frame();
     }
     if (((int)unroll1_rvs[i]->frame() > (int)fp.lastChunkFrame() + ((int)M-1)*(int)fp.numFramesInC()) &&
 	(unroll1_rvs[i]->frame() < fp.firstChunkFrame() + S*fp.numFramesInC())) {
@@ -894,6 +1083,8 @@ BoundaryTriangulate
       C2_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C2_u1 == -1)
 	start_index_of_C2_u1 = i;
+      if (first_frame_of_C2_u1 == -1)
+	first_frame_of_C2_u1 = unroll1_rvs[i]->frame();
     }
     if ((int)unroll1_rvs[i]->frame() > (int)fp.lastChunkFrame() + ((int)M+(int)S-1)*(int)fp.numFramesInC()) {
       E_u1.insert(unroll1_rvs[i]);
@@ -909,9 +1100,123 @@ BoundaryTriangulate
   infoMsg(High,"Size of (P,C1,Cextra,C2,E) = (%d,%d,%d,%d,%d)\n",
 	  P_u1.size(),C1_u1.size(),Cextra_u1.size(),C2_u1.size(),E_u1.size());
 
-  
 
 
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
+  // Next, create a network unrolled 0 times in the modified partition (corresponding exactly to
+  // the basic user defined modified template), and used unfortunately only for
+  // interface error checks, E' to P'
+  vector <RV*> unroll0_rvs;
+  map < RVInfo::rvParent, unsigned > unroll0_pos;
+  fp.unroll(M-1,unroll0_rvs,unroll0_pos);
+  // drop all the edge directions
+  for (unsigned i=0;i<unroll0_rvs.size();i++) {
+    unroll0_rvs[i]->createNeighborsFromParentsChildren();
+  }
+  // moralize graph
+  for (unsigned i=0;i<unroll0_rvs.size();i++) {
+    unroll0_rvs[i]->moralize();
+  }
+  // create sets P0, C0, E0, from graph unrolled 0 times
+  // In left interface case, P' = P0, C = empty, and E' = [C0 E0]
+  // In right interface case, P' = [P0 C0], C = empty, and E' = E0
+  set<RV*> P0;
+  set<RV*> C0;
+  set<RV*> E0;
+
+  for (unsigned i=0;i<unroll0_rvs.size();i++) {
+    if (unroll0_rvs[i]->frame() < fp.firstChunkFrame()) {
+      // prologue
+      P0.insert(unroll0_rvs[i]);
+    } else if (unroll0_rvs[i]->frame() <= fp.lastChunkFrame()+(M-1)*fp.numFramesInC()) {
+      // middle section, M chunks long.
+      C0.insert(unroll0_rvs[i]);
+    } else {
+      // epilogue
+      E0.insert(unroll0_rvs[i]);
+    }
+  }
+  // augmentToAbideBySMarkov(unroll0_rvs,unroll0_pos,augmentation2,C0,fp.firstChunkFrame());
+
+
+
+  // figure out which interfaces to compute.
+  bool do_left_interface=false;
+  bool do_right_interface=false;  
+  if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'R')) {
+    // then user asked to do left interface.
+    if (!validInterfaceDefinition(P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,S,unroll1_rvs,unroll1_pos,
+				  P0,C0,E0,unroll0_rvs,unroll0_pos,true))
+      infoMsg(Warning,"WARNING: Can't compute left interface since structure template not compatible with this case.\n");
+    else
+      do_left_interface=true;
+  }
+  if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
+    // then user asked to do right interface.
+    if (!validInterfaceDefinition(E_u1,C2_u1,Cextra_u1,C1_u1,P_u1,S,unroll1_rvs,unroll1_pos,
+				  E0,C0,P0,unroll0_rvs,unroll0_pos,false))
+      infoMsg(Warning,"WARNING: Can't compute right interface since strcture template not compatible with this case.\n");
+    else
+      do_right_interface=true;
+  }
+  if (do_left_interface == false && do_right_interface == false) {
+    // then neither left nor right interface approach is valid. This
+    // results when we have a template such that neither the interface
+    // between P and C, nor the interface between C and E is
+    // compatible with the interface between C and C. Since we run the
+    // boundary algorithm only one time (for interface between C and
+    // C), we don't deal with this situation (i.e., it is a constraint
+    // on the .str file), so we die with an error here.
+    error("ERROR: Can not successfully compute either a left or a right interface.\n"
+	  "Either structure file is not valid for both left & right interface or\n"
+          "under current force L/R options.  Check if P contains extra\n"
+	  "backwards-time links from C to P (that don't exist between neighboring\n"
+          "Cs) and/or if E contains extra forwards-time links from C to E (that\n"
+          "don't exist between neighboring Cs) In left interface case, interface\n"
+          "edges must be compatible between 3 following cases ('|' denotes\n"
+          "interface cut between left and right half in each case):\n"
+	  "   P | C(1) C(2) ... C(M) E\n"
+	  "   P | C(1)  C(2)   ...     C(M+S) E\n"
+	  "   P  C(1) ...  C(S) | C(S+1) ... C(M+S) E\n"
+	  "In right interface case, interface edges must be compatible between 3\n"
+          "following cases:\n"
+	  "   P C(1) C(2) ... C(M) | E\n"
+	  "   P C(1)  C(2)   ...     C(M+S) | E\n"
+	  "   P C(1) ...  C(S) | C(S+1) ... C(M+S) E\n"
+	  "Currently, M=%d,S=%d.",M,S);
+  }
+
+
+  // now, augment the network to partition.
+  set < RVInfo::rvParent > augmentation2;
+  computeSMarkovAugmentation(unroll1_rvs,unroll1_pos,
+			     P_u1,
+			     C1_u1,first_frame_of_C1_u1,
+			     Cextra_u1,
+			     C2_u1,first_frame_of_C2_u1,
+			     E_u1,
+			     augmentation2);
+
+  // printf("C1_u1:");printRVSet(stdout,C1_u1);
+  // printf("C2_u1:");printRVSet(stdout,C2_u1);
+  assert ( C1_u1.size() == C2_u1.size() );
+
+  if (message(Max)) {
+    printf("Relative C*S augmentation2 is: ");
+    set < RVInfo::rvParent >::iterator it;
+    for (it = augmentation2.begin();it != augmentation2.end(); it ++) {
+      RVInfo::rvParent p = (*it);
+      printf("%s(%d),",p.first.c_str(),p.second);
+    }
+    printf("\n");
+  }
+
+  augmentToAbideBySMarkov(unroll2_rvs,unroll2_pos,augmentation2,C2_u2,first_frame_of_C2_u2);
+
+
+  // printf("C2_u2:");printRVSet(stdout,C2_u2);
+  assert (C2_u2.size() == C1_u1.size());
 
   ///////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////
@@ -922,12 +1227,19 @@ BoundaryTriangulate
   // to ultimately triangulate.
   map < RV*, RV* > C2_u2_to_C1_u1;
   map < RV*, RV* > C2_u2_to_C2_u1;
-  for (unsigned i=0;i<C2_u2.size();i++) {
-    C2_u2_to_C1_u1[unroll2_rvs[i+start_index_of_C2_u2]]
-      = unroll1_rvs[i+start_index_of_C1_u1];
-    C2_u2_to_C2_u1[unroll2_rvs[i+start_index_of_C2_u2]]
-      = unroll1_rvs[i+start_index_of_C2_u1];
+  //   for (unsigned i=0;i<C2_u2.size();i++) {
+  //     C2_u2_to_C1_u1[unroll2_rvs[i+start_index_of_C2_u2]]
+  //       = unroll1_rvs[i+start_index_of_C1_u1];
+  //     C2_u2_to_C2_u1[unroll2_rvs[i+start_index_of_C2_u2]]
+  //       = unroll1_rvs[i+start_index_of_C2_u1];
+  //   }
+  set<RV*>::iterator c2_u2_iter;
+  for (c2_u2_iter = C2_u2.begin(); c2_u2_iter != C2_u2.end(); c2_u2_iter ++) {  
+    RV* rv = (*c2_u2_iter);
+    C2_u2_to_C1_u1[rv] = shiftedRV(unroll1_rvs,unroll1_pos,(rv),-fp.numFramesInC());
+    C2_u2_to_C2_u1[rv] = shiftedRV(unroll1_rvs,unroll1_pos,(rv),(S-1)*fp.numFramesInC());
   }
+
 
   // allocate space for results
   // left of the left interface in u2C2
@@ -948,95 +1260,76 @@ BoundaryTriangulate
   vector<float> best_L_score;
   vector<float> best_R_score;
 
-  if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'R')) {
+  if (do_left_interface) {
     infoMsg(Tiny,"---\nFinding BEST LEFT interface\n");
-    if (!validInterfaceDefinition(P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,S,unroll1_rvs,unroll1_pos)) {
-      infoMsg(Warning,"WARNING: Can't compute left interface since strcture template not compatible with this case.\n");
-    } else {
-      // find best left interface
-      findingLeftInterface = true;
-
+    // find best left interface
+    findingLeftInterface = true;
     
 
-      set<RV*> C2_1_u2; // first chunk in C2_u2
-      if (M == 1) {
-	// make it empty signaling that we don't bother to check it in this case.
-	C2_1_u2.clear();
-      } else {
-	for (set<RV*>::iterator i=C2_u2.begin();
-	     i != C2_u2.end();i++) {
-	  if ((*i)->frame() > fp.lastChunkFrame() && (*i)->frame() <= fp.lastChunkFrame()+fp.numFramesInC())
-	    C2_1_u2.insert((*i));
-	}
-      }
-      findBestInterface(C1_u2,C2_u2,C2_1_u2,C3_u2,
-			left_C_l_u2C2,C_l_u2C2,best_L_score,
-			bnd_heur_v,
-			findBestBoundary,
-			// find best boundary args
-			tri_heur,
-			P_u1,
-			C1_u1,
-			Cextra_u1,
-			C2_u1,
-			E_u1,
-			C2_u2_to_C1_u1,
-			C2_u2_to_C2_u1
-			);
-    }
-  }
-  if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
-    infoMsg(Tiny,"---\nFinding BEST RIGHT interface\n");
-    if (!validInterfaceDefinition(E_u1,C2_u1,Cextra_u1,C1_u1,P_u1,-S,unroll1_rvs,unroll1_pos)) {
-      infoMsg(Warning,"WARNING: Can't compute right interface since strcture template not compatible with this case.\n");
+    set<RV*> C2_1_u2; // first chunk in C2_u2
+    if (M == 1) {
+      // make it empty signaling that we don't bother to check it in this case.
+      C2_1_u2.clear();
     } else {
-      // find best right interface
-      findingLeftInterface = false;
-
-
-      set<RV*> C2_l_u2; // last chunk of C2_u2
-      if (M == 1) {
-	// make it empty signaling that we don't bother to check it in this case.
-	C2_l_u2.clear();
-      } else {
-	for (set<RV*>::iterator i=C2_u2.begin();
-	     i != C2_u2.end();i++) {
-	  if ((*i)->frame() > (fp.lastChunkFrame()+(M-1)*fp.numFramesInC()) 
-	      && (*i)->frame() <= (fp.lastChunkFrame()+M*fp.numFramesInC()))
-	    C2_l_u2.insert((*i));
-	}
+      for (set<RV*>::iterator i=C2_u2.begin();
+	   i != C2_u2.end();i++) {
+	if ((*i)->frame() > fp.lastChunkFrame() && (*i)->frame() <= fp.lastChunkFrame()+fp.numFramesInC())
+	  C2_1_u2.insert((*i));
       }
-      findBestInterface(C3_u2,C2_u2,C2_l_u2,C1_u2,
-			right_C_r_u2C2,C_r_u2C2,best_R_score,
-			bnd_heur_v,
-			findBestBoundary,
-			// find best boundary args
-			tri_heur,
-			E_u1,
-			C2_u1,
-			Cextra_u1,
-			C1_u1,
-			P_u1,
-			C2_u2_to_C2_u1,
-			C2_u2_to_C1_u1
-			);
     }
+    findBestInterface(P_u2,C1_u2,C2_u2,C2_1_u2,C3_u2,E_u2,
+		      left_C_l_u2C2,C_l_u2C2,best_L_score,
+		      bnd_heur_v,
+		      findBestBoundary,
+		      // find best boundary args
+		      tri_heur,
+		      P_u1,
+		      C1_u1,
+		      Cextra_u1,
+		      C2_u1,
+		      E_u1,
+		      C2_u2_to_C1_u1,
+		      C2_u2_to_C2_u1
+		      );
+  }
+  if (do_right_interface) {
+    infoMsg(Tiny,"---\nFinding BEST RIGHT interface\n");
+    // find best right interface
+    findingLeftInterface = false;
+
+    set<RV*> C2_l_u2; // last chunk of C2_u2
+    if (M == 1) {
+      // make it empty signaling that we don't bother to check it in this case.
+      C2_l_u2.clear();
+    } else {
+      for (set<RV*>::iterator i=C2_u2.begin();
+	   i != C2_u2.end();i++) {
+	if ((*i)->frame() > (fp.lastChunkFrame()+(M-1)*fp.numFramesInC()) 
+	    && (*i)->frame() <= (fp.lastChunkFrame()+M*fp.numFramesInC()))
+	  C2_l_u2.insert((*i));
+      }
+    }
+    findBestInterface(E_u2,C3_u2,C2_u2,C2_l_u2,C1_u2,P_u2,
+		      right_C_r_u2C2,C_r_u2C2,best_R_score,
+		      bnd_heur_v,
+		      findBestBoundary,
+		      // find best boundary args
+		      tri_heur,
+		      E_u1,
+		      C2_u1,
+		      Cextra_u1,
+		      C1_u1,
+		      P_u1,
+		      C2_u2_to_C2_u1,
+		      C2_u2_to_C1_u1
+		      );
   }
 
-  if (best_L_score.size() == 0 && best_R_score.size() == 0) {
-    // then neither left nor right interface approach is valid. This
-    // results when we have a template such that neither the interface
-    // between P and C, nor the interface between C and E is
-    // compatible with the interface between C and C. Since we run the
-    // boundary algorithm only one time (for interface between C and
-    // C), we don't deal with this situation (i.e., it is a constraint
-    // on the .str file), so we die with an error here.
-    error("ERROR: Successfully computed neither left nor right interface. Either structure file not valid for both left & right interface, or under current force L/R options. Check if both P contains extra backwards-time links from C to P, & where E contains extra forwards-time links from C to E\n");
-  }
 
   // Now find the partitions (i.e., left or right) corresponding
   // the interface which had minimum size, prefering the left
   // interface if there is a tie.
+#if 0
   if ((best_L_score.size() > 0) &&
       ((best_R_score.size() == 0) // not valid structure file for right interface
        ||
@@ -1045,6 +1338,12 @@ BoundaryTriangulate
        (flr.size() == 0 && best_L_score <= best_R_score) // both were scored and left is better or tied
        )
       ) {
+#endif
+  if ((!do_right_interface
+       || 
+       (do_left_interface
+	&& (best_L_score <= best_R_score)))) {
+
     findingLeftInterface = true;
     infoMsg(Tiny,"---\nUsing left interface to define partitions\n");
 
@@ -1106,6 +1405,11 @@ BoundaryTriangulate
     gm_template.leftInterface = false; 
 
   }
+
+  // TODO: delete everything.
+  // for (unsigned i=0;i<unroll_s_markov_rvs.size();i++)
+  // delete unroll_s_markov_rvs[i];
+
 }
 
 
@@ -1159,33 +1463,27 @@ BoundaryTriangulate
 
   set<RV*> left_C_l_u1C1;
   set<RV*> left_C_l_u1C2;
-  if (M > 0) {
-    for (set<RV*>::iterator i = C_l_u2C2.begin();
-	 i!= C_l_u2C2.end(); i++) {
 
-      assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
-      assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
+  assert (M > 0);
 
-      C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-      C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
-    }
+  for (set<RV*>::iterator i = C_l_u2C2.begin();
+       i!= C_l_u2C2.end(); i++) {
 
-    for (set<RV*>::iterator i = left_C_l_u2C2.begin();
-	 i != left_C_l_u2C2.end(); i++) {
+    assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
+    assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
+
+    C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
+    C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
+  }
+
+  for (set<RV*>::iterator i = left_C_l_u2C2.begin();
+       i != left_C_l_u2C2.end(); i++) {
       
-      assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
-      assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
+    assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
+    assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
     
-      left_C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-      left_C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
-    }
-  } else {
-    // M == 0
-    error("constructInterfacePartitions: M==0 case not implemented, use unroll and triangulate\n");
-    // this case is needed presumably because we want to do something
-    // where the original GMTK template is unrolled 0 times. Rather
-    // than doing this here, we will just use the unroll and triangulate
-    // method and then do inference on the resulting cliques.
+    left_C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
+    left_C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
   }
   
   // Finally, create the modified sets P, C, and E
@@ -1227,15 +1525,19 @@ BoundaryTriangulate
   set_union(C1_u1.begin(),C1_u1.end(),
 	    C2_u1.begin(),C2_u1.end(),
 	    inserter(tmp1,tmp1.end()));
+  // printf("tmp1=:");printRVSet(stdout,tmp1);
   set_union(P.begin(),P.end(),
 	    E.begin(),E.end(),
 	    inserter(tmp2,tmp2.end()));
+  // printf("tmp2=:");printRVSet(stdout,tmp2);
   set_union(C_l_u1C2.begin(),C_l_u1C2.end(),
 	    C_l_u1C1.begin(),C_l_u1C1.end(),
 	    inserter(tmp3,tmp3.end()));
+  // printf("tmp3=:");printRVSet(stdout,tmp3);
   set_union(Cextra_u1.begin(),Cextra_u1.end(),
 	    tmp3.begin(),tmp3.end(),
 	    inserter(C,C.end()));
+  // printf("C=:");printRVSet(stdout,C);
   set_difference(tmp1.begin(),tmp1.end(),
 		 tmp2.begin(),tmp2.end(),
 		 inserter(C,C.end()));
@@ -5400,20 +5702,11 @@ BoundaryTriangulate::interfaceScore(
   if (message(Moderate)) {
     set<RV*>::iterator i;    
     printf("  --- Cur Interface:");
-    for (i=C_l.begin();i!=C_l.end();i++) {
-      printf(" %s(%d)",
-	     (*i)->name().c_str(),
-	     (*i)->frame());
-      
-    }
+    printRVSet(stdout,C_l);
     if (message(VerbosityLevels(Moderate + (Increment>>1)))) {
       // also print out left_C_l
       printf("  Left of C_l:");
-      for (i=left_C_l.begin();i!=left_C_l.end();i++) {
-	printf(" %s(%d)",
-	       (*i)->name().c_str(),
-	       (*i)->frame());
-      }
+      printRVSet(stdout,left_C_l);
     }
     printf("\n");
   }
@@ -5602,12 +5895,62 @@ BoundaryTriangulate::interfaceScore(
  * bool BoundaryTriangulate::validInterfaceDefinition()
  *
  * check that the basic definitions (as given by the template) will be
- * valid for the boundary that will be computed for this particular partitioning
- * set. In other words, the boundary that the boundary algorithm returns is used
- * to compute the interface for the P-C boundary, the C-C boundary, and the C-E
- * boundary. This routine checks that this will be valid (routine defined
- * for the left interface case, call with mirrored arguments for the right
- * interface case).
+ * valid for the boundary that will be computed for this particular
+ * partitioning set.  Specifically, we make sure that the following
+ * will have the same interfaces (in the left interface case):
+ *   1) between P' and C'E'
+ *   2) between P'C' and E'
+ *   3) between P' and E'
+ *
+ *  A simple way to write this is to say that:
+ *  For left interface
+ *    P | C E == P | C C E == P C | C E 
+ *  What this means is this. The vertical bar '|' cuts the graph (via
+ *  edges) into a left and a right portion.  In the left interface
+ *  case, the nodes on the right of the edge cut must be the same
+ *  (relatively) with respect to each other (i.e., they are the same
+ *  nodes, perhaps all related by a shift by S*numframes(C)).  Note
+ *  that when P is empty, we don't need to check the interface at all
+ *  since we are guaranteed E does not reach to the left beyond one C,
+ *  so there is only one total interface, The C C interface, in C | C
+ *  E.
+ *
+ *  For right interface (checked by reversing arguments).
+ *    P C | E == P C C | E == P C | C E 
+ *  Here, we check that the nodes on the left of the cut are relatively the same.
+ *
+ * The above is the only graphical restriction paced on the template
+ * (other than the obvious no directed cycles), so that we can use the
+ * case of unrolling by zero (i.e., by not using C').  This is done so
+ * that the boundary that the boundary algorithm returns,used to
+ * compute the interface for the P-C boundary, the C-C boundary, and
+ * the C-E boundary, will be valid.
+ * 
+ * NOTE: This routine checks that this will be valid template defined
+ * for the LEFT INTERFACE CASE ONLY. Call with mirrored arguments for the
+ * right interface case.
+ *
+ *
+ * Preconditions:
+ *     - P, C1, Cextra,C2, and E must be validlly defined for a
+ *     template unrolled (M+S-1) times. These correspond to the
+ *     partitions before any new boundary information has been
+ *     computed. See documentation in
+ *     BoundaryTriangulate::findPartitions().
+ *    - all of P,C1,Cextra,C2, and 2 set arguments *must* contain RVs that come from the
+ *      same basic unrolling, and that unrolling must correspond to
+ *      what unroll returns in args 'rvs' and 'pos'.
+ *    - all of P0, C0, and E0 are from the same unrolling (0 unrolling of the partitions)
+ *      with RVs corresponding to rvs0,pos0 returned by unroll().
+ *
+ * Postconditions:
+ *      - none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *     - condition of valid template.
  *
  */
 bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
@@ -5618,88 +5961,348 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
 						   const int S,
 						   const vector <RV*>& rvs,
 						   // should be const, but need member pos.find().
-						   map < RVInfo::rvParent, unsigned >& pos)
+						   map < RVInfo::rvParent, unsigned >& pos,
+						   const set<RV*> &P0,
+						   const set<RV*> &C0,
+						   const set<RV*> &E0,
+						   const vector <RV*>& rvs0,
+						   map < RVInfo::rvParent, unsigned >& pos0,
+						   const bool leftInterface)
 {
-  // check that C1's left interface to P matches C2's left interface
-  // to union(P,C1,Cextra)
-  
-  /*
-  printf("P:");printRVSet(stdout,P);
-  printf("C1:");printRVSet(stdout,C1);
-  printf("Cextra:");printRVSet(stdout,Cextra);
-  printf("C2:");printRVSet(stdout,C2);
-  printf("E:");printRVSet(stdout,E);
-  */
 
-  // Compute C1's left interface to P
-  set<RV*> C1s_li;
-  // go through through set P, and pick out all neighbors of variables
-  // in set P that live in C1, and these neighbors are C1s_li.
+  if (message(Max)) {
+    printf("Checking that template has valid interface\nP:");printRVSet(stdout,P);
+    // printf("P:");printRVSet(stdout,P);
+    printf("C1:");printRVSet(stdout,C1);
+    printf("Cextra:");printRVSet(stdout,Cextra);
+    printf("C2:");printRVSet(stdout,C2);
+    printf("E:");printRVSet(stdout,E);
+  }
+
+  // If P is empty, then there is only one interface, and it will
+  // always be valid as long as the network is valid.
+  if (P.size() == 0)
+    return true;
+
+  // First compute P', C', and E', the basic non-boundary partitions.
+  // Note: 
+  //   P' = P
+  //   C' = (C1 \ C2) U Cxtra
+  //   E' = C2 U E
+  const set<RV*>& Pp = P;
+  set<RV*> Cp;
+  if (Cextra.size() > 0) {
+    // if Cextra has anything in it,
+    // we are guaranteed that C1 has no intersection with C2
+    set_union(C1.begin(),C1.end(),
+	      Cextra.begin(),Cextra.end(),
+	      inserter(Cp,Cp.end()));
+  } else {
+    set_difference(C1.begin(),C1.end(),
+		   C2.begin(),C2.end(),
+		   inserter(Cp,Cp.end()));
+  }
+  set<RV*> Ep;
+  set_union(C2.begin(),C2.end(),
+	    E.begin(),E.end(),
+	    inserter(Ep,Ep.end()));
+
+  if (message(Max)) {
+    printf("P':");printRVSet(stdout,Pp);
+    printf("C':");printRVSet(stdout,Cp);
+    printf("E':");printRVSet(stdout,Ep);
+  }
+
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
+  // Compute union(Cp,Ep)'s left interface to Pp
+  set<RV*> UR_pli;
+  // first compute union
+  set<RV*> union_right;
+  set_union(Cp.begin(),Cp.end(),
+	    Ep.begin(),Ep.end(),
+	    inserter(union_right,union_right.end()));
+  // go through through set Pp, and pick out all neighbors of variables
+  // in set Pp that live in union_right, and these neighbors are UR_pli.
   set<RV*>::iterator p_iter;
-  for (p_iter = P.begin(); p_iter != P.end(); p_iter ++) {
-    // go through all neighbors of nodes in P
+  for (p_iter = Pp.begin(); p_iter != Pp.end(); p_iter ++) {
     RV *cur_rv = (*p_iter);
     set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
-		     C1.begin(),C1.end(),
-		     inserter(C1s_li, C1s_li.end()));
+		     union_right.begin(),union_right.end(),
+		     inserter(UR_pli, UR_pli.end()));
   }
 
-  /*
-  printf("C1s li:");
-  printRVSet(stdout,C1s_li);
-  */
+  if (message(Max)) {
+    printf("Union(Cp,Ep)'s li to Pp: ");
+    printRVSet(stdout,UR_pli);
+  }
 
-  // Compute C2's left interface to union(P,C1,Cextra)
-  set<RV*> C2s_li;
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
+  // Compute Ep's left interface to union(Pp,Cp) (both Pp and Cp)
+  set<RV*> Ep_uli;
   // first compute union
-  set<RV*> union_left = P;
-  set_union(C1.begin(),C1.end(),
-	    Cextra.begin(),Cextra.end(),
+  set<RV*> union_left;
+  set_union(Cp.begin(),Cp.end(),
+	    Pp.begin(),Pp.end(),
 	    inserter(union_left,union_left.end()));
   // go through through set union_left, and pick out all neighbors of variables
-  // in set union_left that live in C2, and these neighbors are C2s_li.
+  // in set union_left that live in Ep, and these neighbors are Ep_uli.
   set<RV*>::iterator u_iter;
   for (u_iter = union_left.begin(); u_iter != union_left.end(); u_iter ++) {
-    // go through all neighbors of nodes in P
     RV *cur_rv = (*u_iter);
     set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
-		     C2.begin(),C2.end(),
-		     inserter(C2s_li, C2s_li.end()));
+		     Ep.begin(),Ep.end(),
+		     inserter(Ep_uli,Ep_uli.end()));
   }
 
-  /*
-  printf("C2s li:");
-  printRVSet(stdout,C2s_li);
-  */
-  
-  if (C1s_li.size() != C2s_li.size())
-    return false;
+  if (message(Max)) {
+    printf("Ep's li to Union(Cp,Pp): ");
+    printRVSet(stdout,Ep_uli);
+  }
 
-  // they have same size so need to check that they are same 
-  // variables separated by S (i.e., C1s_li + S == C2s_li) 
-  set<RV*>::iterator c1iter;
-  for (c1iter = C1s_li.begin(); c1iter != C1s_li.end(); c1iter ++) {
-    // get the name & frame, look up name & frame+S and make
-    // sure RV lives in C2s_li.
-    RV *cur_rv = (*c1iter);
-    RVInfo::rvParent p(cur_rv->name(),cur_rv->frame()+S);
-    map < RVInfo::rvParent , unsigned >::iterator it;      
-    if ((it = pos.find(p)) == pos.end()) {
-      // this could be an assertion failure as well, but we need
-      // to set 'it'
-      error("INTERNAL ERROR: C1+S contains variable %s(%d) not in unrolled network. S = %d.\n",
-	    cur_rv->name().c_str(),
-	    cur_rv->frame()+S,
-	    S);
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
+  // Compute Ep's interface to P' directly. We do this by
+  // using the 0-unrolled RVs that have been passed in.
+  set<RV*> Ep0;
+  set_union(C0.begin(),C0.end(),
+	    E0.begin(),E0.end(),
+	    inserter(Ep0,Ep0.end()));
+  set<RV*> Ep0_pli;
+  // go through through set P0, and pick out all neighbors of variables
+  // in set P0 that live in Ep0, and these neighbors are Ep0_pli.
+  for (p_iter = P0.begin(); p_iter != P0.end(); p_iter ++) {
+    RV *cur_rv = (*p_iter);
+    set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
+		     Ep0.begin(),Ep0.end(),
+		     inserter(Ep0_pli, Ep0_pli.end()));
+  }
+  if (message(Max)) {
+    printf("Ep0's li to Cp: ");
+    printRVSet(stdout,Ep0_pli);
+  }
+
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
+
+  if (UR_pli.size() != Ep_uli.size() || 
+      Ep_uli.size() != Ep0_pli.size()) {
+    if (message(Max)) {
+      printf("INTERFACE FAILED: size(UR_pli)=%d, size(Ep_uli)=%d, size(Ep0_pli)=%d\n",
+	     UR_pli.size(),Ep_uli.size(),Ep0_pli.size());
     }
-    RV *correponding_C2_rv = rvs[(*it).second];
-    if (C2s_li.find(correponding_C2_rv) == C2s_li.end())
-      return false;
+    return false;
   }
-  // so now we've gone through all of C1s_li and found corresponding variable (+S)
-  // in C2s_li, and they're the same size, so then we can return true. 
+
+  // they have the same size, so now need to make sure they
+  // are the same variables.
+
+  // Checking that the union_right <-> Pp interface is the
+  // same as the Ep <--> union_left interface is easy, since
+  // we can just shift the first one to the right and check
+  // for set equality.
+  set<RV*> UR_pli_r_shifted = shiftedRVSet(rvs,pos,UR_pli,(leftInterface?(1):(-1))*S*fp.numFramesInC());
+  if (UR_pli_r_shifted != Ep_uli) {
+    if (message(Max)) {
+      printf("INTERFACE FAILED (UR_pli_r_shifted(by %d,%d) != Ep_uli)\n",(leftInterface?(1):(-1))*S*fp.numFramesInC(),leftInterface);
+      printf("UR_pli_r_shifted:");
+      printRVSet(stdout,UR_pli_r_shifted);
+    }
+    return false;
+  }
+
+  // Next, we must check that Ep's direct LI to Pp is the same as Ep's
+  // left interface to union left. We do this by creating a version of
+  // Ep0_pli but shifted right and in the right space, and then
+  // compare.
+  set<RV*> Ep0_pli_shifted = shiftedRVSet(rvs,pos,Ep0_pli,(leftInterface?1:0)*S*fp.numFramesInC());
+  // next check that they are the same.
+  if (Ep0_pli_shifted != Ep_uli) {
+    if (message(Max)) {
+      printf("INTERFACE FAILED (Ep0_pli_shifted(by %d,%d) != Ep_uli)\n",(leftInterface?(1):(0))*S*fp.numFramesInC(),leftInterface);
+      printf("Ep0_pli_shifted:");
+      printRVSet(stdout,Ep0_pli_shifted);
+    }
+    return false;
+  }
+
+
   return true;
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::computeSMarkovAugmentation()
+ *      Given the partitions Ps, Cs1, Cs2, and Es, where Cs1 and Cs2 are 
+ *      both S chunks long, and where these partitions come from a graph
+ *      unrolled by 2*S-1 frames, compute the augmentation to Cs so
+ *      that the S-Markov property holds, namely that we are guaranteed
+ *      that:
+ *              Cs1 \indep Es | Cs2 
+ *              Cs2 \indep Ps | Cs1
+ *
+ *      once the augmentation is computed and applied to each of Cs1 and Cs2.
+ * 
+ * Preconditions:
+ *      Graph must be from unrolled 2*S-1 times, and each partition
+ *      must come from the same underlying unrolling.
+ *
+ * Postconditions:
+ *      Adjustment is placed in argument.
+ *
+ * Side Effects:
+ *      Could modify Cs1 and Cs2.
+ *
+ * Results:
+ *      returns augmentation.
+ *
+ *-----------------------------------------------------------------------
+ */
+void BoundaryTriangulate::computeSMarkovAugmentation(const vector <RV*>& rvs,
+						     map < RVInfo::rvParent, unsigned >& pos,
+						     const set<RV*>& Ps,
+						     set<RV*>& Cs1,
+						     const unsigned firstFrameCs1,
+						     set<RV*>& Cextra,
+						     set<RV*>& Cs2,
+						     const unsigned firstFrameCs2,
+						     const set<RV*>& Es,
+						     set < RVInfo::rvParent >& augmentation)
+{
+
+  // first, go through Cs1 and any neighbors that are in Es that are
+  // not in Cs2, we add them to Cs2 and to augmentation (relative to the
+  // beginning of Cs2).
+  if (Es.size() > 0) {
+    set<RV*> Cunion;
+    set_union(Cs1.begin(),Cs1.end(),
+	      Cextra.begin(),Cextra.end(),
+	      inserter(Cunion,Cunion.end()));
+    set<RV*>::iterator cs1_it;
+    for (cs1_it = Cunion.begin();cs1_it != Cunion.end(); cs1_it++) {
+      RV* rv = (*cs1_it);
+      set<RV*> tmp;
+      set_intersection(rv->neighbors.begin(),rv->neighbors.end(),
+		       Es.begin(),Es.end(),
+		       inserter(tmp,tmp.end()));
+      // printf("tmp.size() = %d\n",tmp.size());
+
+      if (tmp.size() == 0)
+	continue;
+      set<RV*> rvEsinter;    
+      set_difference(tmp.begin(),tmp.end(),
+		     Cs2.begin(),Cs2.end(),
+		     inserter(rvEsinter,rvEsinter.end()));
+      // printf("rvEsinter.size()=%d\n",rvEsinter.size());
+
+      if (rvEsinter.size() > 0) {
+	// ok, then there is stuff that needs to be augmented.
+	set<RV*>::iterator intr_it;
+	for (intr_it = rvEsinter.begin(); intr_it != rvEsinter.end(); intr_it ++) {
+	  RV* intr_rv = (*intr_it);
+	  // compute the position relative to the beginning of Cs2 and added it
+	  // to the augmentation.
+	  RVInfo::rvParent pp(intr_rv->name(),intr_rv->frame()-firstFrameCs2);
+	  infoMsg(Max,"Cu1<->Es: Adding %s(%d) to augmentation\n",pp.first.c_str(),pp.second);
+	  augmentation.insert(pp);
+	  // now we need to add it to Cs2 so that we don't add the same augmentation
+	  // (but a different STL object) to 'augmentation' again. Add the absolute
+	  // position.
+	  Cs2.insert(intr_rv);
+	}
+      }
+    }
+  
+    // add augmentation to Cs1
+    augmentToAbideBySMarkov(rvs,pos,augmentation,Cs1,firstFrameCs1);
+  }
+
+  // Next, go through Cs2 and any neighbors that are in Ps that are not
+  // in Cs1, we add them to cs1 and to augmentation (relative to the beginning
+  // of Cs1)
+  if (Ps.size() > 0) {
+    set<RV*> Cunion;
+    set_union(Cs2.begin(),Cs2.end(),
+	      Cextra.begin(),Cextra.end(),
+	      inserter(Cunion,Cunion.end()));
+    set<RV*>::iterator cs2_it;
+    for (cs2_it = Cunion.begin();cs2_it != Cunion.end(); cs2_it++) {
+      RV* rv = (*cs2_it);
+      set<RV*> tmp;
+      set_intersection(rv->neighbors.begin(),rv->neighbors.end(),
+		       Ps.begin(),Ps.end(),
+		       inserter(tmp,tmp.end()));
+      if (tmp.size() == 0)
+	continue;
+      set <RV*> rvPsinter;
+      set_difference(tmp.begin(),tmp.end(),
+		     Cs1.begin(),Cs1.end(),
+		     inserter(rvPsinter,rvPsinter.end()));
+      if (rvPsinter.size() > 0) {
+	// ok, then there is stuff that needs to be augmented.
+	set<RV*>::iterator intr_it;
+	for (intr_it = rvPsinter.begin(); intr_it != rvPsinter.end(); intr_it ++) {
+	  RV* intr_rv = (*intr_it);
+	  // compute the position relative to the beginning of Cs1 and added it
+	  // to the augmentation.
+	  RVInfo::rvParent pp(intr_rv->name(),intr_rv->frame()-firstFrameCs1);
+	  augmentation.insert(pp);
+	  infoMsg(Max,"Ps<->Cu2: Adding %s(%d) to augmentation\n",pp.first.c_str(),pp.second);
+	  // add it to Cs1 so that we don't add the same augmentation
+	  // (but a different STL object) to 'augmentation' again. Add the absolute
+	  // position.
+	  Cs1.insert(intr_rv);
+	}
+      }
+    }
+
+    // for symmetry, we add any additions to Cs2.
+    augmentToAbideBySMarkov(rvs,pos,augmentation,Cs2,firstFrameCs2);
+  }
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::augmentToAbideBySMarkov
+ *      For the set of RVs in (rvs,pos), add the augmentation
+ *      given in relative terms in the 'augmentation' argument
+ *      to the argument Cs, which has starting frame 'firstFrameCs'
+ * 
+ * Preconditions:
+ *      Set 'Cs' must contain RVs that are part of 'rvs'. 
+ *      Must have that firstFrameCs = argframemin (Cs)
+ *
+ * Postconditions:
+ *      Adjustment is placed in Cs
+ *
+ * Side Effects:
+ *      Could modify Cs if augmentation is non-empty.
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void BoundaryTriangulate::augmentToAbideBySMarkov(const vector <RV*>& rvs,
+						  map < RVInfo::rvParent, unsigned >& pos,
+						  const set < RVInfo::rvParent >& augmentation,
+						  set<RV*>& Cs,
+						  const unsigned firstFrameCs)
+{
+  set < RVInfo::rvParent >::iterator adj_iter;
+  for (adj_iter = augmentation.begin(); adj_iter != augmentation.end(); adj_iter ++) {
+    RVInfo::rvParent pp = (*adj_iter);
+    pp.second += firstFrameCs;
+    RV* rv = getRV(rvs,pos,pp); 
+    Cs.insert(rv);
+  }
+}
+
 
 
 
@@ -5778,6 +6381,8 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
  */
 void
 BoundaryTriangulate::findBestInterface(
+ // prologue
+ const set<RV*> &P,
  // first chunk, 1 chunk long
  const set<RV*> &C1,
  // second chunk, M chunks long (where the boundary is located)
@@ -5786,6 +6391,8 @@ BoundaryTriangulate::findBestInterface(
  const set<RV*> &C2_1,
  // third chunk, 1 chunk long
  const set<RV*> &C3,
+ // epilogue
+ const set<RV*> &E,
  // nodes to the "left" of the left interface within C2
  set<RV*> &left_C_l,
  // the starting left interface
@@ -5823,7 +6430,8 @@ BoundaryTriangulate::findBestInterface(
   // First, construct the basic left interface (i.e., left
   // interface of C2).
 
-  // go through through set C1, and pick out all neighbors
+#if 0
+  // Go through through set C1, and pick out all neighbors
   // of variables in set C1 that live in C2, and these neighbors
   // become the initial left interface C_l
   set<RV*>::iterator c1_iter;
@@ -5842,6 +6450,96 @@ BoundaryTriangulate::findBestInterface(
       }
     }
   }
+#endif
+
+  // initial left interface of C2 consists of all nodes in C2 either that
+  // 1) have a neighbor in union(P,C1), or that are contained
+  // in union(P,C1).
+  // first, insert intersection(C2,union(P,C1)) == union(intersection(C2,P),intersection(C2,C1))
+  set_intersection(C2.begin(),C2.end(),
+		   C1.begin(),C1.end(),
+		   inserter(C_l,C_l.end()));
+  set_intersection(C2.begin(),C2.end(),
+		   P.begin(),P.end(),
+		   inserter(C_l,C_l.end()));
+  // printf("LI intersection =");printRVSet(stdout,C_l); 
+  // next, if any v \in C2 has a neighbor in union(P,C1) and that
+  // neighbor is not already in C2, it also goes in.
+  set<RV*>::iterator c2_iter;
+  for (c2_iter = C2.begin(); c2_iter != C2.end(); c2_iter ++) {
+    RV *cur_rv = (*c2_iter);
+    set<RV*> res;
+    set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
+		     C1.begin(),C1.end(),
+		     inserter(res,res.end()));
+    set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
+		     P.begin(),P.end(),
+		     inserter(res,res.end()));
+    if (res.size() > 0) {
+      // ok, we have neighbors in union(P,C1) that are in res, now check to
+      // sure that res is not already in C2.
+      set<RV*> tmp;
+      set_intersection(res.begin(),res.end(),
+		       C2.begin(),C2.end(),
+		       inserter(tmp,tmp.end()));
+      if (tmp.size() != res.size())
+	C_l.insert(cur_rv);
+    }
+  }
+
+
+  // final left interface of C2 consists of all nodes in C2 either that
+  // 1) have a neighbor in union(C3,E) or that are contained in
+  // union(C3,E). These are the nodes that the l-interface might contain,
+  // but we can't go beyond.
+
+  // left interface
+  set <RV*> finalLI;
+  set_intersection(C2.begin(),C2.end(),
+		   C3.begin(),C3.end(),
+		   inserter(finalLI,finalLI.end()));
+  set_intersection(C2.begin(),C2.end(),
+		   E.begin(),E.end(),
+		   inserter(finalLI,finalLI.end()));
+  // next, if any v \in C2 has a neighbor in union(C3,E) that is not
+  // already contained within C2, it also goes in.
+  for (c2_iter = C2.begin(); c2_iter != C2.end(); c2_iter ++) {
+    RV *cur_rv = (*c2_iter);
+    set<RV*> res;
+    set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
+		     C3.begin(),C3.end(),
+		     inserter(res,res.end()));
+    set_intersection(cur_rv->neighbors.begin(),cur_rv->neighbors.end(),
+		     E.begin(),E.end(),
+		     inserter(res,res.end()));
+    if (res.size() > 0) {
+      // ok, we have neighbors in union(C3,E) that are in res, now check to
+      // sure that res is not already in C2.
+      set<RV*> tmp;
+      set_intersection(res.begin(),res.end(),
+		       C2.begin(),C2.end(),
+		       inserter(tmp,tmp.end()));
+      if (tmp.size() != res.size())
+	finalLI.insert(cur_rv);
+    }
+  }
+
+  
+  if ((bnd_heur_v.size() == 1) &&
+      ((bnd_heur_v[0] == IH_MIN_SIZE) 
+       || (bnd_heur_v[0] == IH_MIN_FILLIN) 
+       || (bnd_heur_v[0] == IH_MIN_WEIGHT)
+       || (bnd_heur_v[0] == IH_MIN_WEIGHT_NO_D))) 
+    {
+      // TODO: then call max-flow or submodular optimization routine
+      // to find best boundary. We have that C_l are the nodes connected
+      // to the source, and finalLI are the nodes connected to the sync.
+      // findBestInterfaceSubmodular();
+    }
+
+  // Still here? Call exponential routine.
+
+
   // Since the interface is currently the first one, 
   // the set left of the left interface within C2 is now empty.
   left_C_l.clear();
@@ -5857,8 +6555,8 @@ BoundaryTriangulate::findBestInterface(
 		 best_score);
 
   if (message(Tiny)) {
-    printf("  Size of basic interface = %d\n",C_l.size());
-    printf("  Score of basic interface =");
+    printf("  Initial interface size = %d\n",C_l.size());
+    printf("  Initial interface score =");
     for (unsigned i=0;i<best_score.size();i++)
       printf(" %f ",best_score[i]);
     printf("\n");
@@ -5866,9 +6564,9 @@ BoundaryTriangulate::findBestInterface(
     // but if we are running the right interface version, it should
     // print the string "right_C_l" instead. The algorithm however
     // does not know if it is running left or right interface.
-    infoMsg(Med,"  Size of left_C_l = %d\n",left_C_l.size());
+    infoMsg(Med,"  Initial left_C_l size = %d\n",left_C_l.size());
     {
-      printf("  Interface nodes include:");
+      printf("  Initial Interface:");
       set<RV*>::iterator i;    
       for (i=C_l.begin();i!=C_l.end();i++) {
 	printf(" %s(%d)",
@@ -5878,7 +6576,12 @@ BoundaryTriangulate::findBestInterface(
       }
       printf("\n");
     }
+    if (message(Med)) {
+      infoMsg(Med,"  Final interface: "); 
+      printRVSet(stdout,finalLI);
+    }
   }
+
 
   // start exponential recursion to find the truly best interface.
   if (recurse) {
@@ -5892,7 +6595,7 @@ BoundaryTriangulate::findBestInterface(
 			     C_l,
 			     C2,
 			     C2_1,
-			     C3,
+			     finalLI,
 			     setset,
 			     best_left_C_l,
 			     best_C_l,
@@ -5947,7 +6650,7 @@ findBestInterfaceRecurse(
   const set<RV*> &C_l,
   const set<RV*> &C2,
   const set<RV*> &C2_1,
-  const set<RV*> &C3,
+  const set<RV*> &finalLI,
   set< set<RV*> >& setset,
   set<RV*> &best_left_C_l,
   set<RV*> &best_C_l,
@@ -5987,6 +6690,7 @@ findBestInterfaceRecurse(
   //  3) left_C_l are the nodes to the left of the current boundary (i.e., they
   //     are former interface nodes that have been shifted left accross the boundary).
 
+  // old comment:
   // All nodes in C1 must be to the left of the boundary (ensured by
   // start condition and by the nature of the algoritm).  All nodes to
   // the right of the boundary must still be in C2, or otherwise
@@ -6019,21 +6723,21 @@ findBestInterfaceRecurse(
     if (!rnd.coin(boundaryTraverseFraction))
       continue;
 
-    set<RV*> res;
+    // Condition ***: if v is in finalLI, then continue since if v was
+    // moved left, we would end up with a boundary > M chunks. This
+    // would be invalid since there would be a node left of C_l that
+    // connects directly to the right of C_l. 
+    if (finalLI.find((*v)) != finalLI.end())
+      continue;
 
-    // Condition ***: if v has neighbors in C3 (via set intersection),
-    // then continue since if v was moved left, we would end up with a
-    // boundary > M chunks. This would be invalid since there
-    // would be a node left of C_l that connects directly to the right
-    // of C_l. This might also lead to problems since we are not guaranteed
-    // that the basic left interface in E is the same as the basic left interface
-    // in C.
+#if 0
     set_intersection((*v)->neighbors.begin(),
 		     (*v)->neighbors.end(),
 		     C3.begin(),C3.end(),
 		     inserter(res, res.end()));
     if (res.size() != 0)
       continue;
+#endif
 
     // Then it is ok to remove v from C_l and move v to the left.
     // take v from C_l and place it in left_C_l
@@ -6071,12 +6775,20 @@ findBestInterfaceRecurse(
 	     (*v)->name().c_str(),(*v)->frame());
     }
 
+#if 0
+    // Next, create the new left interface, next_C_l by adding all
+    // neighbors of v that are in C3 U C2\next_left_C_l to an
+    // initially empty next_C_l.
+#endif
+
+
     // Next, create the new left interface, next_C_l by adding all
     // neighbors of v that are in C3 U C2\next_left_C_l to an
     // initially empty next_C_l.
     set<RV*> next_C_l;
     set<RV*> tmp;
 
+#if 0
     // TODO: remove this next check and fix comments above, since the
     // check is redundant now.
     // add neighbors of v that are in C3
@@ -6085,6 +6797,7 @@ findBestInterfaceRecurse(
 		     C3.begin(),C3.end(),
 		     inserter(tmp,tmp.end()));
     assert ( tmp.size() == 0 );
+#endif
 
     // add neighbors of v that are in C2
     set_intersection((*v)->neighbors.begin(),
@@ -6093,7 +6806,7 @@ findBestInterfaceRecurse(
 		     inserter(tmp,tmp.end()));
 
     // remove nodes that are in next_left_C_l
-    res.clear();    
+    set<RV*> res;
     set_difference(tmp.begin(),tmp.end(),
 		   next_left_C_l.begin(),next_left_C_l.end(),
 		   inserter(res,res.end()));
@@ -6145,7 +6858,8 @@ findBestInterfaceRecurse(
     // recurse
     findBestInterfaceRecurse(next_left_C_l,
 			     next_C_l,
-			     C2,C2_1,C3,setset,
+			     C2,C2_1,finalLI,
+			     setset,
 			     best_left_C_l,best_C_l,best_score,
 			     bnd_heur_v,
 			     tri_heur,
@@ -6156,4 +6870,101 @@ findBestInterfaceRecurse(
 
   boundaryRecursionDepth--;
 }
+
+
+
+
+#if 0
+// code from findPartitions, no longer used. Remove after we've got a CVS stamp.
+
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
+  // First, create a network that is used to ensure that we have a
+  // temporal independence property (the S-Markov property) among
+  // chunk sequences of length M skipped by S chunks. I.e., in order for inference to work
+  // properly, we must change the graph so that:
+  //    1) each list of M chunks is conditionally independent of
+  //    earlier lists of M chunk given the previous list of M chunks,
+  //    where the latest previous list of M chunks is S chunks earlier.
+  //    2) each list of M chunks is conditionally independent of
+  //    later lists of M chunk given the next list of M chunks, where
+  //    the earlist next list of M chunks is S chunks later.
+  // We do this by creating a network with M+2S chunks in the middle, of the form:
+  //
+  // P C C ...  C  E
+  //   1 2 ...  K
+  //  |<- M ->|<S>|
+  //      |<- M ->|
+  //  |<S>|
+  //  |<---S+M--->|
+  // 
+  // where K = M+S
+  // 
+  // The list of M chunks in the middle the above S-Markov property
+  // holds. Note that in the modified template, each C' will be
+  // potentially M original chunks long and there will be S original
+  // chunks between each C'.
+  
+  vector <RV*> unroll_s_markov_rvs;
+  map < RVInfo::rvParent, unsigned > unroll_s_markov_pos;
+  fp.unroll(M+S-1,unroll_s_markov_rvs,unroll_s_markov_pos);
+  // drop all the edge directions
+  for (unsigned i=0;i<unroll_s_markov_rvs.size();i++) {
+    unroll_s_markov_rvs[i]->createNeighborsFromParentsChildren();
+  }
+  // moralize graph
+  for (unsigned i=0;i<unroll_s_markov_rvs.size();i++) {
+    unroll_s_markov_rvs[i]->moralize();
+  }
+  // create sets Ps, Cs1, Cs2, and Es, from graph unrolled 2S-1 times
+  set<RV*> Ps;
+  // 1st section, S chunks long
+  set<RV*> Cs1;
+  // 2nd section, S chunks long
+  set<RV*> Cs2;
+  // epilogue
+  set<RV*> Es;
+
+  int start_index_of_Cs1 = -1;
+  int start_index_of_Cs2 = -1;
+  int start_index_of_Es = -1;
+  for (unsigned i=0;i<unroll_s_markov_rvs.size();i++) {
+    if (unroll_s_markov_rvs[i]->frame() < fp.firstChunkFrame())
+      // prologue
+      Ps.insert(unroll_s_markov_rvs[i]);
+    else if (unroll_s_markov_rvs[i]->frame() <= fp.lastChunkFrame() + (S-1)*fp.numFramesInC()) {
+      // 1st section, S chunks long
+      Cs1.insert(unroll_s_markov_rvs[i]);
+      if (start_index_of_Cs1 == -1)
+	start_index_of_Cs1 = i;
+    } else if (unroll_s_markov_rvs[i]->frame() <= fp.lastChunkFrame()+(2*S-1)*fp.numFramesInC()) {
+      // 2nd section, S chunks long
+      Cs2.insert(unroll_s_markov_rvs[i]);
+      if (start_index_of_Cs2 == -1)
+	start_index_of_Cs2 = i;
+    } else {
+      // epilogue
+      Es.insert(unroll_s_markov_rvs[i]);
+      if (start_index_of_Es == -1)
+	start_index_of_Es = i;
+    }
+  }
+
+  assert (Cs1.size() == Cs2.size());
+  infoMsg(High,"Size of (P,Cs1,Cs2,E) = (%d,%d,%d,%d)\n",
+	  Ps.size(),Cs1.size(),Cs2.size(),Es.size());
+
+  set < RVInfo::rvParent > augmentation;
+  computeSMarkovAugmentation(unroll_s_markov_rvs,unroll_s_markov_pos,
+			     Ps,Cs1,first_frame_of_Cs1,Cs2,first_frame_of_Cs2,Es,augmentation);
+  if (message(Max)) {
+    printf("Relative C*S augmentation is: ");
+    set < RVInfo::rvParent >::iterator it;
+    for (it = augmentation.begin();it != augmentation.end(); it ++) {
+      RVInfo::rvParent p = (*it);
+      printf("%s(%d),",p.first.c_str(),p.second);
+    }
+    printf("\n");
+  }
+#endif
 

@@ -531,10 +531,12 @@ private:
   // in terms of the left interface, but that is only for ease of
   // understanding.
   void findBestInterface(
+	     const set<RV*> &P,
 	     const set<RV*> &C1,
 	     const set<RV*> &C2,
 	     const set<RV*> &C2_1,
 	     const set<RV*> &C3,
+	     const set<RV*> &E,
 	     set<RV*> &left_C_l,
 	     set<RV*> &C_l,
 	     vector<float>& best_score,
@@ -555,7 +557,7 @@ private:
 	     const set<RV*> &C_l,
 	     const set<RV*> &C2,
 	     const set<RV*> &C2_1,
-	     const set<RV*> &C3,
+	     const set<RV*> &finalLI,
 	     set< set<RV*> >& setset,
 	     set<RV*> &best_left_C_l,
 	     set<RV*> &best_C_l,
@@ -585,7 +587,31 @@ private:
 				const set<RV*> &E,
 				const int S,
 				const vector <RV*>& rvs,
-				map < RVInfo::rvParent, unsigned >& pos);
+				map < RVInfo::rvParent, unsigned >& pos,
+				const set<RV*> &P0,
+				const set<RV*> &C0,
+				const set<RV*> &E0,
+				const vector <RV*>& rvs0,
+				map < RVInfo::rvParent, unsigned >& pos0,
+				const bool leftInterface);
+
+  void computeSMarkovAugmentation(const vector <RV*>& rvs,
+				  map < RVInfo::rvParent, unsigned >& pos,
+				  const set<RV*>& Ps,
+				  set<RV*>& Cs1,
+				  const unsigned firstFrameCs1,
+				  set<RV*>& Cextra,
+				  set<RV*>& Cs2,
+				  const unsigned firstFrameCs2,
+				  const set<RV*>& Es,
+				  set < RVInfo::rvParent >& adjustment);
+				
+  void augmentToAbideBySMarkov(const vector <RV*>& rvs,
+			       map < RVInfo::rvParent, unsigned >& pos,
+			       const set < RVInfo::rvParent >& adjustment,
+			       set<RV*>& Cs,
+			       const unsigned firstFrameCs1);
+
   
   //////////////////////////////////////////////////////////////////////////// 
   // Custom data structures for fast Maximum Cardinality Search, fill-in 
