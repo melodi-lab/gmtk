@@ -96,6 +96,19 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
 	  error("ERROR: unable to open file (%s) for reading",_name);
 	}
 	fclose(fh);
+
+	// add path of file to include directory paths.
+	string path = _name;
+	unsigned slashPos = path.rfind("/");
+	if (slashPos != string::npos) {
+	  // then '/' is found
+	  cppCommand = cppCommand + " -I" + path.substr(0,slashPos);
+	}
+	// Lastly, add CWD to default CPP command options for include files
+	// (i.e., we look for include files in CWD only if all previous
+	// ones fail, cpp has this behavior.
+	cppCommand = cppCommand + " -I.";
+
 	cppCommand = cppCommand + string(" ") + string(_name);
 	fh = ::popen(cppCommand.c_str(),"r");    
 	if (fh == NULL)
