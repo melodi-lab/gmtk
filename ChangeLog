@@ -1,3 +1,12 @@
+2005-03-26  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
+
+	* fixed bug with dispositions not being re-sorted with variables in clique.
+	* removed extraneous var in clique packer structure.
+	
+2005-03-09  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
+
+	* gmtkTime supports file line version of vcap,vpap,jcap,icap, and trifile
+
 2005-03-08  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
 
 	* speedup: faster Gaussian evaluation

@@ -17,7 +17,7 @@ EXLDFLAGS=
 CC=gcc
 CXX=g++
 EXCOMFLAGS=
-OPTFLAGS = -g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse "$(EXCOMFLAGS)"
+OPTFLAGS = -g -O3 -Wno-deprecated -march=pentium4 -mfpmath=sse "$(EXCOMFLAGS)"
 
 # GMTK modules 
 MODULES = \
@@ -77,7 +77,7 @@ date:  EXCLUDE
 # always remake this target when called.
 EXCLUDE: force
 	(find $(EXCLUDE) -type d -print -prune ; \
-	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
+	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "*.a" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
 	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \
 	find . -name CVS -print; \
 	find . -name RCS -print) | \
