@@ -81,7 +81,7 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 void
-MaxClique::makeComplete(set<RandomVariable*> &rvs)
+MaxClique::makeComplete(const set<RandomVariable*> &rvs)
 {
   // just go through each rv and union its neighbors
   // set with all of rvs.
