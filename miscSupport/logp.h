@@ -284,7 +284,7 @@ public:
 /////////////////////////////////////////////////////
 // The default log probability type used by users 
 // of this class.
-#define logpr logp<float,double>
+typedef logp<float,double> logpr;
 /////////////////////////////////////////////////////
 
 #endif
