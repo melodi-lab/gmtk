@@ -202,7 +202,7 @@ MixGaussians::log_p(const unsigned frameIndex,
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride =  globalObservationMatrix.stride();
 
-  if (emCacheProbsBitIsSet()) {
+  if (cacheGaussiansInEmTraining) {
 
     if (componentCache.size() < (frameIndex+1)) {
       // never have more than 25% more frames than needed while still
@@ -348,9 +348,6 @@ MixGaussians::emStartIteration()
   // EM iteration is now going.
   emSetOnGoingBit();
   emSetSwappableBit();
-  // cache probabilities for later use.
-  if (cacheGaussiansInEmTraining)
-    emSetCacheProbsBit();
 
   accumulatedProbability = 0.0;
   dense1DPMF->emStartIteration();
@@ -405,7 +402,7 @@ MixGaussians::emIncrement(logpr prob,
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride = globalObservationMatrix.stride();
 
-  if (emCacheProbsBitIsSet()) {
+  if (cacheGaussiansInEmTraining) {
     logpr tmp = prob/componentCache[frameIndex].prob;
     for (unsigned i=0;i<numComponents;i++) {
       weightedPostDistribution[i] =
