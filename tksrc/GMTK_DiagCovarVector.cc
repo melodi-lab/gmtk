@@ -101,9 +101,15 @@ void
 DiagCovarVector::read(iDataStreamFile& is)
 {
   NamedObject::read(is);
-  covariances.read(is); 
+  int length;
+  is.read(length,"DiagCovarVector read length");
+  if (length <= 0)
+    error("ERROR: diag covariance matrix %s specifies length (%d) < 0 in input. Must be positive.",
+	  name().c_str(),length);
+  covariances.resize(length);
   unsigned numFloored=0;
-  for (int i=0;i<covariances.len();i++) {
+  for (int i=0;i<length;i++) {
+    is.read(covariances[i],":reading covar value");
     if (covariances[i] < (float)GaussianComponent::varianceFloor()) {
       if (!floorVariancesWhenReadIn) {
 	error("Error: reading diagonal covariance matrix '%s' (from file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
@@ -129,6 +135,29 @@ DiagCovarVector::read(iDataStreamFile& is)
   numTimesShared = 0;
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * DiagCovarVector::write()
+ *      write out
+ *
+ * Results:
+ *
+ * Side Effects:
+ *      None so far.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+DiagCovarVector::write(oDataStreamFile& os)
+{
+  NamedObject::write(os);
+  os.write(covariances.len(),"diag cov vector write length");
+  for (int i=0;i<covariances.len();i++) {
+    os.write(covariances[i],"diag cov vector write, values");
+  }
+  os.nl();
+}
 
 
 ////////////////////////////////////////////////////////////////////
@@ -200,8 +229,21 @@ DiagCovarVector::noisyClone()
     clone->refCount = 0;
     clone->covariances.resize(covariances.len());
     for (int i=0;i<covariances.len();i++) {
-      clone->covariances[i] = covariances[i] + 
-	cloneSTDfrac*covariances[i]*rnd.normal();
+
+      float tmp;
+      // try 10 times to get a covariance above the floor.
+      for (int j=0;j<10;j++) {
+	tmp = covariances[i] + cloneSTDfrac*covariances[i]*rnd.normal();
+	if (tmp >= (float)GaussianComponent::varianceFloor())
+	  break;
+      }
+      if (tmp < (float)GaussianComponent::varianceFloor()) {
+	// then we get something guaranteed above the floor
+	tmp = GaussianComponent::varianceFloor()+
+	  cloneSTDfrac*covariances[i]*fabs(rnd.normal());
+      }
+
+      clone->covariances[i] = tmp;
     }
     clone->setBasicAllocatedBit();
     MixGaussiansCommon::diagCovarCloneMap[this] = clone;
