@@ -27,5 +27,6 @@ Other things that need to be done.
   warning message to this effect in case user 
   doesn't care).
    
-- 
+- discrete observed variables have only one cardinality,
+  card needs to be a vector.
 
