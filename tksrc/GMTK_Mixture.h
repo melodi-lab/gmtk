@@ -77,9 +77,10 @@ class MixGaussians : public MixGaussiansCommon {
  
 public:
 
-  MixGaussians(const int dim) 
-    : MixGaussiansCommon(dim,ci_mixGaussian)
+  MixGaussians(const int dim,ContinuousImplementation mtype=ci_mixGaussian)
+    : MixGaussiansCommon(dim,mtype)
   { }
+  //  MixGaussians() {}
   ~MixGaussians() {}
 
   //////////////////////////////////////////////

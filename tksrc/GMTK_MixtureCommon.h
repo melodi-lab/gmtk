@@ -74,7 +74,9 @@ public:
 				  ci_mixGaussian=0,
 				  ci_gausSwitchMixGaussian=1,
 				  ci_logitSwitchMixGaussian=2,
-				  ci_mlpSwitchMixGaussian=3
+				  ci_mlpSwitchMixGaussian=3,
+				  ci_zeroScoreMixGaussian=4,
+				  ci_unityScoreMixGaussian=5
 				  };
   const ContinuousImplementation mixType;
 
