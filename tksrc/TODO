@@ -1728,3 +1728,7 @@ Sat Mar 27 20:57:04 2004
 Sat Mar 27 21:08:06 2004
  - add bit about gaussian component cache to docs. 
 
+
+Tue Mar 30 13:08:33 2004
+  - add a noCPTCheck option, to allow cpts to read in non-probabilties, etc.
+    Figure out how to get working with log probs, etc.
