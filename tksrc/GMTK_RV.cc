@@ -150,7 +150,10 @@ void RV::createNeighborsFromParentsChildren()
   neighbors.clear();
   // a neighbor is a parent or a child at this point.
   for (unsigned i=0;i<allParents.size();i++) {
-    neighbors.insert(allParents[i]);
+    if (allParents[i]->observed() && disconnectChildrenOfObservedParents) {
+      // do not connect parent since we are a child of an observed node.
+    } else
+      neighbors.insert(allParents[i]);
   }
   if (observed() && disconnectChildrenOfObservedParents) {
     // do nothing with the children.
