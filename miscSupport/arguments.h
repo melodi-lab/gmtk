@@ -1,100 +1,114 @@
-/*
- * "Copyright 2001, International Business Machines Corporation and University
- * of Washington. All Rights Reserved
+/*-
+ *-----------------------------------------------------------------------
+ * A simple library to parse command lines in C++ using
+ * an easy interface to quickly define arguments.
+ * 
+ *       Jeff Bilmes <bilmes@ee.washington.edu>
  *
- *    Written by Geoffrey Zweig and Jeff Bilmes
+ *  $Header$
  *
- * NO WARRANTY
- * THE PROGRAM IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED INCLUDING, WITHOUT
- * LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT,
- * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Each Recipient is
- * solely responsible for determining the appropriateness of using the Program
- * and assumes all risks associated with such use, including but not limited
- * to the risks and costs of program errors, compliance with applicable laws,
- * damage to or loss of data, programs or equipment, and unavailability or
- * interruption of operations.
+ *-----------------------------------------------------------------------
+ */
 
- * DISCLAIMER OF LIABILITY
- * THE UNIVERSITY OF WASHINGTON, INTERNATIONAL BUSINESS MACHINES CORPORATION,
- * GEOFFREY ZWEIG AND JEFF BILMES SHALL NOT HAVE ANY LIABILITY FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING WITHOUT LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE  OF
- * THE PROGRAM, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES."
-*/
 
-#ifndef ARGUMENTS_H
-#define ARGUMENTS_H
+#ifndef ARGS_h
+#define ARGS_h
 
-#include <vector>
-#include <string>
-#include <map>
+#include <iostream.h>
+#include <stdio.h>
 
-/* A class to read argument lists. 
-   The main structure is like this:
-   If the argument "-argsFile" is specified, 
-       then parameters are read from the file
-   If the argument "-argsFile" is specified more than once, 
-       then parameters are read from each file
-   (-argsFile must be the name of the file-reading flag)
-   The remaining arguments are read and parsed.
-   (This allows file-parameters to be "overrided" by the command line.)
-   If an argument is specified multiple times, then the last
-   specification is used, and a warning is printed.
-   Unambiguous flag prefixes may be used instead of the full name.
-   Checking:
-       If a required argument is not specifed an error results.
-       Some simple checking is done to verify that strings look like
-       the types they are supplosed to represent. for example, if "count"
-       is an integer, then "-count 1.0" will be identified as an error.
-       The use of ambiguous prefixes causes an error.
-       Recursive file specification signals an error.
-*/        
-
-/*
-   Known bug: quoted strings with spaces will not be properly interpreted if
-              read from a file.
-*/
-    
-struct Argument
-{
-    string name;
-    string type;
-    bool required;
-    void *storage;
-    string remark;
-    Argument(string n, string t, bool req, void *s, string r)
-        {name=n; type=t; required=req; storage=s; remark=r;}
+class MultiType {
+  friend class Arg;
+  enum ArgumentType { 
+    int_type,    // integer
+    uint_type,   // unsigned integer
+    float_type,  // single precision float
+    double_type, // double precision float
+    str_type,    // string precision float
+    char_type,   // char precision float
+    bool_type   // boolean precision float
+  };
+  union MultiArg {
+    int integer;
+    unsigned int uinteger;
+    float single_prec;
+    double double_prec;
+    char * string;
+    char ch;
+    bool boolean;
+  };
+  MultiArg* ptr;
+  ArgumentType type;
+  static char* printable(MultiType::ArgumentType);
+ public:
+  MultiType(bool& b) { ptr = (MultiArg*)&b; type = bool_type; }
+  MultiType(char& c) { ptr = (MultiArg*)&c; type = char_type; }
+  MultiType(char*& s) { ptr = (MultiArg*)&s; type = str_type; }
+  MultiType(int& i)  { ptr = (MultiArg*)&i; type = int_type; }
+  MultiType(unsigned int& i)  { ptr = (MultiArg*)&i; type = uint_type; }
+  MultiType(float& f) { ptr = (MultiArg*)&f; type = float_type; }
+  MultiType(double& d) { ptr = (MultiArg*)&d; type = double_type; }
+  void print(FILE*);
 };
 
-struct Argument_List
-{
-    vector<Argument> arguments;
-    map<string, int> countFor;
-    
-    void add(string _name, bool _required, int *s, string desc);
-    void add(string _name, bool _required, unsigned *s, string desc);
-    void add(string _name, bool _required, float *s, string desc);
-    void add(string _name, bool _required, double *s, string desc);
-    void add(string _name, bool _required, bool *s, string desc);
-    void add(string _name, bool _required, char **s, string desc);
- 
-    void parse(int count, char *args[]); 
 
-    string fullName(string n);  
-    // expands a name-prefix n into the full name
-    // e.g. baseCaseT => baseCaseThreshold
+class Arg {
+  friend class MultiType;
+ public:
 
-    Argument *argumentNamed(string s);
-    void getVal (Argument *arg, char *val);
-    void dumpArgs();
-    void check();
-    void getArgVals(int count, char *args[]);
-    void checkArgStructure(int count, char *args[]);
-    void readFile(char *fn, int &c, char ** &av);
-    void checkRedundancy(string n);
+  // the argument disposition, optional, required, or toggle
+  enum ArgDisposition { Opt, Req, Tog };
+  // the return codes, missing, ok, or in error.
+  enum ArgsRetCode { ARG_MISSING, ARG_OK, ARG_ERROR };
+  // the actual argument array itself.
+  static Arg Args[];
+
+ private:
+
+  static char* const NOFLAG;
+  static char* const NOFL_FOUND;
+  static const char COMMENTCHAR;  // for argument files.
+  // the total number of arguments in a given program.
+  static int Num_Arguments;
+  // an array of bits set if a particular argument is used
+  static bool* Argument_Specified;
+  // the program name, saved for usage messages.
+  static char* Program_Name;
+
+  // instance data members.
+  char *flag; // name to match on command line, NULL when end.
+  ArgDisposition arg_kind;  // optional, required, toggle
+  MultiType mt;
+  char *description;
+  
+  // special lvalue boolean to be able to construct empty argument
+  // entry for end of array.
+  static bool EMPTY_ARGS_FLAG;
+
+ public:
+  Arg(char*,ArgDisposition,MultiType,char*d=NULL);
+  Arg(ArgDisposition,MultiType,char*d=NULL);
+  Arg(const Arg&);
+  Arg();
+  ~Arg();
+
+  static ArgsRetCode parseArgsFromCommandLine(int,char**);
+  static ArgsRetCode parseArgsFromFile(char*f="argsFile");
+  static void parse(int i,char**c);
+  static void usage();
+  static void printArgs(Arg*args,FILE*f);
+
+ private:
+  void initialize(char*,ArgDisposition,char*);
+
+  static bool noFlagP(char *);
+  static ArgsRetCode argsSwitch(Arg*,char *,int&,bool&,char*);
+  static Arg* searchArgs(Arg*,char*);
+  static void countAndClearArgBits();
+  static bool checkMissing(bool printMessage=false);
+  static bool validBoolean(char* string,bool&value);
+  void print(FILE*);
+
 };
 
 #endif
