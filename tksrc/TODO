@@ -359,4 +359,8 @@ no gaussian mixtures, does the master file still have to mention them?
 
 - fix arg description of beam
 
-
+- for docs, when stdfracs are zero for D and B, and
+  when we clonesharemeans, we might make a copy of
+  the gaussians when cloning that are exactly the
+  same as the parent leading to redundant copy of
+  Gaussians. Make sure to mention this in docs.
