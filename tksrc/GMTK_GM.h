@@ -102,12 +102,6 @@ struct GMTK_GM
     
     logpr dataProb, viterbiProb;
 
-    int sliceSize;
-    // how many nodes in a time slice
-
-    int numSlices; 
-    // how many time slices there are in the network
-
     void emIncrement(logpr posterior);
     // Tells each variable to increment its counts by the posterior.
 
@@ -118,6 +112,11 @@ struct GMTK_GM
     void emEndIteration();
     // Tells each variable to update its parameters at the end of an EM 
     // iteration.
+
+    void emSwapCurAndNew();
+    // exchanges the newly estimated parameters with the old set, at the
+    // end of an em iteration.
+    // user has control to do this, or not
 
     vector<vector<VariableValue> > *example;
     // In EM there must be a way of iterating over the examples.
@@ -169,6 +168,10 @@ struct GMTK_GM
 
     void showCliques();
     // shows the cliques in preorder
+
+    void unroll(int first_frame, int last_frame, int times);
+    // duplicates the structure from first_frame to last_frame "times" times
+    // e.g. unroll(1,2,5) adds 10 frames -- 5 1,2 chunks
 };
 
 #endif
