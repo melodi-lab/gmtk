@@ -121,7 +121,7 @@ static bool island=false;
 static unsigned base=2;
 static unsigned lst=100;
 static char* varPartitionAssignmentPrior = "COI";
-static char* varCliqueAssignmentPrior = "";
+static char* varCliqueAssignmentPrior = "COI";
 
 
 Arg Arg::Args[] = {
