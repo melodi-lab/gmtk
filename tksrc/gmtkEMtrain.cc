@@ -69,17 +69,13 @@ float beam=1000;
 
 char *strFileName=NULL;
 
-char *outFileName="outParms%d.gmp";
-bool binOutFile=false;
+char *prmOutFile="outParms%d.gmp";
+bool binPrmOutFile=false;
 bool writeParametersAfterEachEMIteration=true;
 
 char *prmMasterFile=NULL;
 char *prmTrainableFile=NULL;
 bool binPrmTrainableFile=false;
-char *prmNonTrainableFile=NULL;
-bool binPrmNonTrainableFile=false;
-char *prmAllFile=NULL;
-bool binPrmAllFile=false;
 
 unsigned maxEMIterations=3;
 bool randomizeParams = true;
@@ -151,19 +147,14 @@ ARGS ARGS::Args[] = {
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
 
-  ARGS("prmMasterFile",ARGS::Opt,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
+  ARGS("prmMasterFile",ARGS::Req,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
 
   ARGS("prmTrainableFile",ARGS::Opt,prmTrainableFile,"File containing Trainable Parameters"),
   ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
 
-  ARGS("prmNonTrainableFile",ARGS::Opt,binPrmNonTrainableFile,"File containing *** NON *** Trainable Parameters (not modified)"),
-  ARGS("binPrmNonTrainableFile",ARGS::Opt,binPrmNonTrainableFile,"Is Binary? File containing *** NON *** Trainable Parameters (not modified)"),
 
-  ARGS("prmAllFile",ARGS::Opt,prmAllFile,"File containing All Parameters (both train&non-train)"),
-  ARGS("binPrmAllFile",ARGS::Opt,binPrmAllFile,"Is Binary? File containing All Parameters (both train&non-train)"),
-
-  ARGS("prmOutFile",ARGS::Opt,outFileName,"File to place *TRAINABLE* output parametes"),
-  ARGS("binPrmOutFile",ARGS::Opt,binOutFile,"Output parametes binary? (def=false)"),
+  ARGS("prmOutFile",ARGS::Opt,prmOutFile,"File to place *TRAINABLE* output parametes"),
+  ARGS("binPrmOutFile",ARGS::Opt,binPrmOutFile,"Output parametes binary? (def=false)"),
 
 
   ARGS("wpaeei",ARGS::Opt,writeParametersAfterEachEMIteration,
@@ -277,14 +268,6 @@ main(int argc,char*argv[])
     error("beam must be >= 0");
   if (startSkip < 0 || endSkip < 0)
     error("startSkip/endSkip must be >= 0");
-  if (!(
-      prmMasterFile
-      || 
-      (prmTrainableFile && prmNonTrainableFile)
-      ||
-      prmAllFile
-      ))
-    error("ERROR: must specify at least one of prmMasterFile, or pair prmTrainableFile,prmNonTrainableFile, or prmAllFile on command line");
 
   ////////////////////////////////////////////
   // set global variables/change global state from args
@@ -303,16 +286,6 @@ main(int argc,char*argv[])
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(prmTrainableFile,false);
     GM_Parms.readTrainable(pf);
-  }
-  if (prmNonTrainableFile) {
-    // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(prmNonTrainableFile,false);
-    GM_Parms.readNonTrainable(pf);
-  }
-  if (prmAllFile) {
-    // this file is always ASCII.
-    iDataStreamFile pf(prmAllFile);
-    GM_Parms.readAll(pf);
   }
 
   /////////////////////////////
@@ -364,8 +337,8 @@ main(int argc,char*argv[])
     gm.cliqueChainEM(maxEMIterations, 
 		     pruneRatio,
 		     writeParametersAfterEachEMIteration,
-		     outFileName,
-		     binOutFile,
+		     prmOutFile,
+		     binPrmOutFile,
 		     loadAccFile,
 		     loadAccRange,
 		     storeAccFile,
