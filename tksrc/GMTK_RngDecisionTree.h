@@ -285,6 +285,12 @@ public:
   int numLeaves();
 
   ///////////////////////////////////////////////////////////    
+  // ********************* 
+  void initializeIterableDT(
+    string& fileName
+  ); 
+
+  ///////////////////////////////////////////////////////////    
   // write index file for a clampable DT 
   void writeIndexFile();
 
