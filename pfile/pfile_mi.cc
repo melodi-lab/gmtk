@@ -37,7 +37,7 @@ extern "C" void nonstandard_arithmetic();
 #include <time.h>
 
 #include "sArray.h"
-
+#include "general.h"
 
 #ifdef HAVE_SYS_IEEEFP_H
 #  include <sys/ieeefp.h>
@@ -67,7 +67,7 @@ extern "C" void nonstandard_arithmetic();
 
 #include <assert.h>
 
-#include "QN_PFile.h"
+#include "pfile.h"
 #include "error.h"
 #include "Range.H"
 //#include "bp_range.h"
@@ -90,6 +90,9 @@ usage(const char* message = 0)
 	 "-help           print this message\n"
 	 "-i <file-name>  input pfile\n"
 	 "[-i2 <file-name>]  optional second input feature-only pfile to be merged with first\n"
+         "-iswap1         byte-swap input file 1\n"
+         "-iswap2         byte-swap input file 2\n"
+         "-lswap          byte-swap label file\n"
 	 "-o <file-name>  output file ('-' for stdout)\n"
 	 "-sr range       sentence range\n"
 	 "-cfr bp-range   Temporal context range of frames to use.\n"
@@ -487,7 +490,7 @@ pfile_mi_cc(SPI_base* in_streamp,
     }
 
     float *ftr_buf = new float[buf_size * n_ftrs];
-    QNUInt32* lab_buf = new QNUInt32[buf_size * n_labs];
+    UInt32* lab_buf = new UInt32[buf_size * n_labs];
 
     size_t total_windows = 0;
     printf("Computing correlations\n");
@@ -500,7 +503,7 @@ pfile_mi_cc(SPI_base* in_streamp,
       if ((*srit) % 100 == 0)
 	printf("Processing sentence %d\n",(*srit));
 
-      if (n_frames == QN_SIZET_BAD)
+      if (n_frames == SIZET_BAD)
 	{
 	  fprintf(stderr,
 		  "%s: Couldn't find number of frames "
@@ -554,8 +557,8 @@ pfile_mi_cc(SPI_base* in_streamp,
       
       { // make the above 'goto' legal.
 	float *ftr_buf_cur = ftr_buf;
-	QNUInt32 *lab_buf_cur = lab_buf;
-	QNUInt32 *lab_buf_cur_endp = lab_buf + n_frames;
+	UInt32 *lab_buf_cur = lab_buf;
+	UInt32 *lab_buf_cur_endp = lab_buf + n_frames;
 	size_t num_windows=0;
 	for (size_t i=0;i<n_frames;i++) {
 	  if (!stateCondMI || lrrng.contains(*lab_buf_cur)) {
@@ -596,7 +599,7 @@ pfile_mi_cc(SPI_base* in_streamp,
 // ======================================================================
 // ======================================================================
 
-
+#if 0
 //
 // Return the file size without moving the file
 // pointer.
@@ -610,7 +613,7 @@ fsize(FILE*stream)
   (void) fseek (stream, curpos, SEEK_SET);
   return filesize;
 }
-
+#endif
 
 //
 // transposeAndCovertToDouble:
@@ -1403,7 +1406,7 @@ pfile_mi_mg(SPI_base* in_streamp,
     int prevNumActive = numActive;
 
     float *ftr_buf;
-    QNUInt32* lab_buf;
+    UInt32* lab_buf;
     sArray<double> dftr_buf;
 
 
@@ -1487,7 +1490,7 @@ pfile_mi_mg(SPI_base* in_streamp,
 	    timeOfLastPrint = time(0);
 	}
 	  
-	if (n_frames == QN_SIZET_BAD)
+	if (n_frames == SIZET_BAD)
 	  {
 	    fprintf(stderr,
 		    "%s: Couldn't find number of frames "
@@ -1558,8 +1561,8 @@ pfile_mi_mg(SPI_base* in_streamp,
 			 lfr_rng,
 			 counts);
 	} else {
-	  QNUInt32 *lab_buf_cur = lab_buf;
-	  const QNUInt32 *lab_buf_cur_endp = lab_buf + n_frames;
+	  UInt32 *lab_buf_cur = lab_buf;
+	  const UInt32 *lab_buf_cur_endp = lab_buf + n_frames;
 	  double *dftr_buf_cur = dftr_buf.ptr;
 
 	  while (lab_buf_cur < lab_buf_cur_endp) {
@@ -1569,7 +1572,7 @@ pfile_mi_mg(SPI_base* in_streamp,
 	      dftr_buf_cur++;
 	      continue;
 	    } else {
-	      QNUInt32 *lab_buf_curp = lab_buf_cur+1;
+	      UInt32 *lab_buf_curp = lab_buf_cur+1;
 	      while (lab_buf_curp < lab_buf_cur_endp
 		     && lrrng.contains(*lab_buf_curp))
 		lab_buf_curp++;
@@ -1810,6 +1813,8 @@ main(int argc, const char *argv[])
     double term_dist=0.1;
 
     bool grid = true;
+    bool iswap1 = false, iswap2 = false, lswap = false; 
+
     int n_bins=100; // = nsamps if grid = false (i.e., law-of-large-nums = true)
     double n_stds=2;
 
@@ -1892,6 +1897,18 @@ main(int argc, const char *argv[])
             else
                 usage("No (2nd) input filename given.");
         }
+        else if (strcmp(argp,"-iswap1") == 0)
+	  {
+	    iswap1 = true;
+	  }
+        else if (strcmp(argp,"-iswap2") == 0)
+          {
+            iswap2 = true;
+	  }
+        else if (strcmp(argp,"-lswap") == 0)
+	  {
+	    lswap = true;
+	  }
         else if (strcmp(argp, "-o")==0)
         {
             // Output file name.
@@ -2241,9 +2258,9 @@ main(int argc, const char *argv[])
      }
 
      if (input_fname2 == NULL) {
-       in_streamp = new SPI(input_fname);
+       in_streamp = new SPI(input_fname,iswap1);
      } else {
-       in_streamp = new SPI2(input_fname,input_fname2);
+       in_streamp = new SPI2(input_fname,input_fname2,iswap1,iswap2);
        printf("NOTE: Merging multiple pfiles frame-by-frame, resulting num feats per frame = %d\n",in_streamp->n_ftrs());
      }
 
@@ -2273,7 +2290,7 @@ main(int argc, const char *argv[])
     if (!lr_rng->full()) {
       // only bother to open this if the label range isn't full.
       if (label_fname!=NULL) {
-	lab_streamp = new SPI(label_fname);
+	lab_streamp = new SPI(label_fname,lswap);
       }
     }
 

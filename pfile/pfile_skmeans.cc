@@ -21,9 +21,9 @@
 
 #include <sys/types.h>
 #include <unistd.h>
-#include <wait.h>
+#include <sys/wait.h>
 
-#include "QN_PFile.h"
+#include "pfile.h"
 #include "error.h"
 #include "Range.H"
 #include "rand.h"
@@ -56,6 +56,8 @@ usage(const char* message = 0)
 	    "[-i2 <file-name>]  optional second input feature-only pfile to be merged with first\n"
 	    "-o <file-name>  output file ('-' for stdout)\n"
 	    "-b              Binary rather than ASCII output\n"
+            "-iswap1         byte-swap first input pfile\n"
+            "-iswap2         byte-swap second input pfile\n"
 	    "-k #            number of clusters (i.e., K)\n"
 	    "-r #            Number of epoch random restarts to take best of\n"
 	    "-m #            Maximum number of re-inits before giving up\n"
@@ -70,6 +72,7 @@ usage(const char* message = 0)
             "Options under -v\n"
 	    "   -n #            Maximum number of labels (range [0:n-1])\n"
 	    "   -f <file-name>  input label pfile\n"
+            "-lswap          swap label file\n"
 	    "-pr range       per-sentence frame range\n"
 	    "-prefetch       Prefetch next sentence at each iteration\n"
 	    "-q              quite mode\n"
@@ -95,7 +98,7 @@ public:
                               // 0 if at end of file or error.
 
   operator char*() { return buf; }
-  operator size_t() { return index; }
+  operator size_t() { return idx; }
 
   size_t number_read() { return nread; }
 private:
@@ -103,7 +106,7 @@ private:
   size_t buf_size;
   char *buf;
   size_t nread;
-  size_t index;
+  size_t idx;
   int num_words;
 };
 
@@ -112,7 +115,7 @@ SentIdStream_File::SentIdStream_File(FILE *fp_arg,const int nw)
 {
     buf_size = 128;
     buf = new char[buf_size];
-    index = 0;
+    idx = 0;
     ::sprintf(buf,"0");
 }
 
@@ -153,8 +156,8 @@ SentIdStream_File::next()
       if (ptr == buf) 
 	error("No integer at position %d in file.",nread);
       if (tmp >= num_words) 
-	error("Word id (%d) > num_words (%d).",index,num_words);
-      index = (size_t)tmp;
+	error("Word id (%d) > num_words (%d).",idx,num_words);
+      idx = (size_t)tmp;
       nread++;
       return buf;
     }
@@ -220,7 +223,6 @@ public:
   // swap the new and current parameters.
   void swapCurNew() { float *tmp=cur_means;cur_means=new_means;new_means=tmp; }
 };
-
 
 int kmeans::kmeans_k = 5;
 int kmeans::kmeans_vl = 5;
@@ -527,7 +529,7 @@ pfile_uniform_skmeans(SPI_base* in_streamp,
     const size_t n_ftrs = in_streamp->n_ftrs();
 
     float *ftr_buf;
-    QNUInt32* lab_buf;
+    UInt32* lab_buf;
 
     kmeans::kmeans_k = num_clusters;
     kmeans::kmeans_vl = n_ftrs;
@@ -795,7 +797,7 @@ pfile_viterbi_skmeans(SPI_base *in_streamp,
       error("pfile must have more than 0 features.");
 
     float *ftr_buf;
-    QNUInt32* lab_buf;
+    UInt32* lab_buf;
 
     kmeans::kmeans_k = num_clusters;
     kmeans::kmeans_vl = n_ftrs;
@@ -1075,6 +1077,7 @@ main(int argc, const char *argv[])
     int debug_level = 0;
     bool quiet_mode = false;
 
+    bool iswap1 = false, iswap2 = false, lswap = false;
 
     // if not true, we do viterbi k-means
     bool uniform_skm = true;
@@ -1117,6 +1120,18 @@ main(int argc, const char *argv[])
             else
                 usage("No (2nd) input filename given.");
         }
+        else if (strcmp(argp,"-iswap1") == 0)
+        {
+             iswap1 = true;
+        }
+        else if (strcmp(argp,"-iswap2") == 0)
+        {
+             iswap2 = true;
+        }
+        else if (strcmp(argp,"-lswap") == 0)
+         {
+             lswap = true;
+         }
         else if (strcmp(argp, "-f")==0)
         {
             // Input file name.
@@ -1280,9 +1295,9 @@ main(int argc, const char *argv[])
      SPI_base* in_streamp;
 
      if (input_fname2 == NULL) {
-       in_streamp = new SPI(input_fname);
+       in_streamp = new SPI(input_fname,iswap1);
      } else {
-       in_streamp = new SPI2(input_fname,input_fname2);
+       in_streamp = new SPI2(input_fname,input_fname2,iswap1,iswap2);
        printf("NOTE: Merging multiple pfiles frame-by-frame, resulting num feats per frame = %d\n",in_streamp->n_ftrs());
      }
 
@@ -1328,7 +1343,7 @@ main(int argc, const char *argv[])
       SPI* in_lstreamp = NULL;
      
       if (input_uname != NULL) {
-        in_lstreamp = new SPI(input_uname);
+        in_lstreamp = new SPI(input_uname,lswap);
       } else {
 	// labels must be in the feature pfile.
 	if (in_streamp->n_labs() != 1)

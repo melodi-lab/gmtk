@@ -1,11 +1,3 @@
-// Very Simple PFILE interface. Does error checking for you.
-// 
-// Written by: Jeff Bilmes
-//             bilmes@icsi.berkeley.edu
-//
-// $Header$
-
-
 #ifndef spi_h
 #define spi_h
 
@@ -18,7 +10,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "sArray.h"
-#include "QN_PFile.h"
+#include "pfile.h"
 
 
 class SPI_base {
@@ -41,7 +33,8 @@ public:
 		   size_t*& lb) = 0;  
   virtual size_t read_ftrslabs(const size_t pos,
 		       float*& fb,
-		       QNUInt32*& lb) = 0;
+		       size_t*& lb) = 0;
+  
   virtual int read_ftrs(const int pos,
 		float*& fb) = 0;
   virtual int read_labs(const int pos,
@@ -56,16 +49,16 @@ class SPI : public SPI_base {
   size_t buf_size;
 
   sArray<float> ftr_buf;
-  sArray<QNUInt32> lab_buf;
+  sArray<UInt32> lab_buf;
 
   char *local_fname;
 
   FILE *inf;
-  QN_InFtrLabStream* in_streamp;
+  InFtrLabStream_PFile* in_streamp;
 
 public:
 
-  SPI(const char *const fname);
+  SPI(const char *const fname,bool swap);
   virtual ~SPI();
 
   virtual size_t n_ftrs() { return in_streamp->num_ftrs(); }
@@ -79,9 +72,11 @@ public:
 		   float*& fb);
   virtual size_t read_labs(const size_t pos,
 		   size_t*& lb);  
+  /*  virtual size_t read_labs(long unsigned int pos,
+      UInt32 *& lb); */
   virtual size_t read_ftrslabs(const size_t pos,
 		       float*& fb,
-		       QNUInt32*& lb);
+		       size_t*& lb);
   virtual int read_ftrs(const int pos,
 		float*& fb) 
     { return (int) read_ftrs((size_t)pos,fb); }
@@ -112,20 +107,21 @@ class SPI2 : public SPI_base {
   sArray<float> ftr_buf;
 
 
-  sArray<QNUInt32> lab_buf;
+  sArray<UInt32> lab_buf;
 
   char *local_fname;
   char *local_fname2;
 
   FILE *inf;
   FILE *inf2;
-  QN_InFtrLabStream* in_streamp;
-  QN_InFtrLabStream* in_streamp2;
+  InFtrLabStream_PFile* in_streamp;
+  InFtrLabStream_PFile* in_streamp2;
 
 public:
 
   SPI2(const char *const fname,
-      const char *const fname2);
+      const char *const fname2,
+      bool swap1, bool swap2);
   virtual ~SPI2();
 
   virtual size_t n_ftrs() { return in_streamp->num_ftrs() + 
@@ -142,11 +138,11 @@ public:
   // first pfile.
   virtual size_t read_labs(const size_t pos,
 		   size_t*& lb);  
+  /*  virtual size_t read_labs(long unsigned int pos,
+      UInt32*& lb); */
   virtual size_t read_ftrslabs(const size_t pos,
 		       float*& fb,
-		       QNUInt32*& lb);
-
-
+		       size_t*& lb);
 
   virtual int read_ftrs(const int pos,
 		float*& fb) 
@@ -169,7 +165,7 @@ class SPO {
   char *local_fname;
 
   FILE *ouf;
-  QN_OutFtrLabStream* out_streamp;
+  OutFtrLabStream_PFile* out_streamp;
   
   size_t pos;
 
@@ -177,17 +173,18 @@ public:
 
   SPO(const char *const fname,
       const size_t n_ftrs,
-      const size_t n_labs);
+      const size_t n_labs,
+      bool swap);
   ~SPO();
 
   // buffer write
   void write_ftrslabs(const size_t len,
 		      float* ftr_buf,
-		      QNUInt32* lab_buf);
+		      UInt32* lab_buf);
   void write_ftrslabs(const int len,
 		      float* ftr_buf,
 		      int* lab_buf)
-    {  write_ftrslabs((size_t)len,ftr_buf,(QNUInt32*)lab_buf); }
+    {  write_ftrslabs((size_t)len,ftr_buf,(UInt32*)lab_buf); }
 
 };
 

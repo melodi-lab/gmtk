@@ -13,7 +13,7 @@
 #include <values.h>
 #include <math.h>
 
-#include "QN_PFile.h"
+#include "pfile.h"
 #include "error.h"
 #include "Range.H"
 //#include "bp_range.h"
@@ -481,7 +481,7 @@ pfile_initmg(SPI_base* in_streamp,
     const int n_ftrs = (int)in_streamp->n_ftrs();
 
     float *ftr_buf;
-    QNUInt32* lab_buf;
+    UInt32* lab_buf;
 
     kmeans::kmeans_k = num_clusters;
     kmeans::kmeans_vl = 2;
@@ -612,7 +612,7 @@ pfile_initmg(SPI_base* in_streamp,
 	    printf("Processing sentence %d\n",(sent_no));
 	}
 
-	if (n_frames == QN_SIZET_BAD)
+	if (n_frames == SIZET_BAD)
 	  {
 	    fprintf(stderr,
 		    "%s: Couldn't find number of frames "
