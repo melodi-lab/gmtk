@@ -160,10 +160,10 @@ writeMaxCliques(oDataStreamFile& os)
     os.writeComment("---- Triangulation came from method: %s\n",triMethod.c_str());
 
 
-  float maxWeight = -1.0;
-  float totalWeight = -1.0; // starting flag
+  double maxWeight = -1.0;
+  double totalWeight = -1.0; // starting flag
   for (unsigned i=0;i<cliques.size();i++) {
-    float curWeight = cliques[i].weight();
+    double curWeight = cliques[i].weight();
     if (curWeight > maxWeight) maxWeight = curWeight;
     if (totalWeight == -1.0)
       totalWeight = curWeight;
@@ -583,7 +583,7 @@ cloneWithoutParents(const set<RandomVariable*>& in,
  */
 void
 GMTemplate::
-writePartitions(oDataStreamFile& os)
+writePartitions(oDataStreamFile& os, string& str)
 {
 
   string buffer;
@@ -600,6 +600,7 @@ writePartitions(oDataStreamFile& os)
     strftime(buff,2048,"%A %B %d %Y, %H:%M:%S %Z",tms);
   }
   os.writeComment("File Created: %s\n",buff);
+  os.writeComment("Options-: %s\n",str.c_str());
   os.writeComment("---\n");
   os.nl();
 
@@ -1128,11 +1129,11 @@ writeMaxCliques(oDataStreamFile& os)
     os.writeComment("----\n");
     os.writeComment("---- Printing final clique set and clique weights---\n");
 
-    float p_maxWeight = -1.0;
-    float p_totalWeight = -1.0; // starting flag
+    double p_maxWeight = -1.0;
+    double p_totalWeight = -1.0; // starting flag
     os.writeComment("  --- Prologue summary, %d cliques\n",P.cliques.size());
     for (unsigned i=0;i<P.cliques.size();i++) {
-      float curWeight = MaxClique::computeWeight(P.cliques[i].nodes);
+      double curWeight = MaxClique::computeWeight(P.cliques[i].nodes);
       os.writeComment("   --- P curWeight = %f\n",curWeight);
       if (curWeight > p_maxWeight) p_maxWeight = curWeight;
       if (p_totalWeight == -1.0)
@@ -1144,11 +1145,11 @@ writeMaxCliques(oDataStreamFile& os)
 	   p_maxWeight,p_totalWeight,
 		    JunctionTree::junctionTreeWeight(P.cliques,PCInterface_in_P));
 
-    float c_maxWeight = -1.0;
-    float c_totalWeight = -1.0; // starting flag
+    double c_maxWeight = -1.0;
+    double c_totalWeight = -1.0; // starting flag
     os.writeComment("  --- Chunk summary, %d cliques\n",C.cliques.size());
     for (unsigned i=0;i<C.cliques.size();i++) {
-      float curWeight = MaxClique::computeWeight(C.cliques[i].nodes);
+      double curWeight = MaxClique::computeWeight(C.cliques[i].nodes);
       os.writeComment("   --- C curWeight = %f\n",curWeight);
       if (curWeight > c_maxWeight) c_maxWeight = curWeight;
       if (c_totalWeight == -1.0)
@@ -1164,11 +1165,11 @@ writeMaxCliques(oDataStreamFile& os)
            JunctionTree::junctionTreeWeight(C.cliques,CEInterface_in_C));
 
 
-    float e_maxWeight = -1.0;
-    float e_totalWeight = -1.0; // starting flag
+    double e_maxWeight = -1.0;
+    double e_totalWeight = -1.0; // starting flag
     os.writeComment("  --- Epilogue summary, %d cliques\n",E.cliques.size());
     for (unsigned i=0;i<E.cliques.size();i++) {
-      float curWeight = MaxClique::computeWeight(E.cliques[i].nodes);
+      double curWeight = MaxClique::computeWeight(E.cliques[i].nodes);
       os.writeComment("   --- E curWeight = %f\n",curWeight);
       if (curWeight > e_maxWeight) e_maxWeight = curWeight;
       if (e_totalWeight == -1.0)
@@ -1181,11 +1182,11 @@ writeMaxCliques(oDataStreamFile& os)
 	   e_maxWeight,e_totalWeight,
            JunctionTree::junctionTreeWeight(E.cliques,emptySet));
 
-    float maxWeight
+    double maxWeight
       = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);
     maxWeight =
       (maxWeight>e_maxWeight?maxWeight:e_maxWeight);
-    float totalWeight = p_totalWeight;
+    double totalWeight = p_totalWeight;
     // log version of: totalWeight += c_totalWeight
     totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));
     // log version of: totalWeight += e_totalWeight

@@ -122,6 +122,10 @@ Arg Arg::Args[] = {
       Arg::Opt,JunctionTree::jtWeightUpperBound,
       "True means jtWeight is allways an upper bound on true JT weight, false means jtWeight is estimate"),
 
+  Arg("pfCobWeight",
+      Arg::Opt,MaxClique::continuousObservationPerFeaturePenalty,
+      "Per-Feature Dimension Continuous Observation Log penalty to use in clique weight calc"),
+
   Arg("findBestBoundary",
       Arg::Opt,findBestBoundary,
       "Run the (exponential time) boundary algorithm or not."),
@@ -202,6 +206,51 @@ Arg Arg::Args[] = {
 
 };
 
+#define MYBS(x) ((x)?"T":"F")
+
+/*
+ * A routine to create a string that contains all
+ * relevant command line options to the current triangulation.
+ * This string will be saved in the .trifile as a comment
+ * so the user will know how the trifile was generated.
+ *
+ */
+void createCommandLineOptionString(string& res)
+{
+  char buff[2048];
+
+  res.clear();
+
+  sprintf(buff,"triangulationHeuristic: %s, ",triangulationHeuristic);
+  res += buff;
+  
+  sprintf(buff,"jtWeight: %s, ",MYBS(jtWeight));
+  res += buff;
+
+  sprintf(buff,"pfCobWeight: %f, ",MaxClique::continuousObservationPerFeaturePenalty);
+  res += buff;
+  
+  sprintf(buff,"findBestBoundary: %s, ",MYBS(findBestBoundary));
+  res += buff;
+  
+  sprintf(buff,"traverseFraction: %f, ",traverseFraction);
+  res += buff;
+
+  sprintf(buff,"noBoundaryMemoize: %s, ",MYBS(noBoundaryMemoize));
+  res += buff;
+
+  sprintf(buff,"forceLeftRight: %s, ",MYBS(forceLeftRight));  
+  res += buff;
+
+  sprintf(buff,"boundaryHeuristic: %s, ",boundaryHeuristic);
+  res += buff;
+
+  if (anyTimeTriangulate != NULL) {
+    sprintf(buff,"anyTimeTriangulate: %s, ",anyTimeTriangulate);
+    res += buff;
+  }
+}
+
 
 
 /*
@@ -268,6 +317,10 @@ main(int argc,char*argv[])
     error("Argument error: chunk skip parameter S must be >= 1\n");
   if (maxNumChunksInBoundary < 1)
     error("Argument error: max number chunks in boundary parameter M must be >= 1\n");
+
+  if (abs(MaxClique::continuousObservationPerFeaturePenalty) > 1.0) {
+    infoMsg(IM::Warning,"###\n### !!!DANGER WILL ROBINSON!! LARGE -pfCobWeight VALUE %f MIGHT CAUSE FLOATING POINT EXCEPTION. SUGGEST REDUCE IT IF FPE OCCURS!! ###\n###\n",MaxClique::continuousObservationPerFeaturePenalty);
+  }
 
   MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
@@ -416,7 +469,9 @@ main(int argc,char*argv[])
       backupTriFile(tri_file);
       oDataStreamFile os(tri_file.c_str());
       fp.writeGMId(os);
-      gm_template.writePartitions(os);
+      string clStr;
+      createCommandLineOptionString(clStr);
+      gm_template.writePartitions(os,clStr);
       gm_template.writeMaxCliques(os);
       triangulator.ensurePartitionsAreChordal(gm_template);
 
@@ -469,7 +524,9 @@ main(int argc,char*argv[])
       oDataStreamFile os(tri_file.c_str());
 
       fp.writeGMId(os);
-      gm_template.writePartitions(os);
+      string clStr;
+      createCommandLineOptionString(clStr);
+      gm_template.writePartitions(os,clStr);
       gm_template.writeMaxCliques(os);
       triangulator.ensurePartitionsAreChordal(gm_template);
 
@@ -498,11 +555,11 @@ main(int argc,char*argv[])
     if (printResults) {
 	printf("\n--- Printing final clique set and clique weights---\n");
 
-	float p_maxWeight = -1.0;
-	float p_totalWeight = -1.0; // starting flag
+	double p_maxWeight = -1.0;
+	double p_totalWeight = -1.0; // starting flag
 	printf("  --- Prologue summary, %d cliques\n",gm_template.P.cliques.size());
 	for (unsigned i=0;i<gm_template.P.cliques.size();i++) {
-	  float curWeight = MaxClique::computeWeight(gm_template.P.cliques[i].nodes);
+	  double curWeight = MaxClique::computeWeight(gm_template.P.cliques[i].nodes);
 	  printf("   --- P curWeight = %f\n",curWeight);
 	  if (curWeight > p_maxWeight) p_maxWeight = curWeight;
 	  if (p_totalWeight == -1.0)
@@ -514,11 +571,11 @@ main(int argc,char*argv[])
 	       p_maxWeight,p_totalWeight,
 	       JunctionTree::junctionTreeWeight(gm_template.P.cliques,gm_template.PCInterface_in_P));
 
-	float c_maxWeight = -1.0;
-	float c_totalWeight = -1.0; // starting flag
+	double c_maxWeight = -1.0;
+	double c_totalWeight = -1.0; // starting flag
 	printf("  --- Chunk summary, %d cliques\n",gm_template.C.cliques.size());
 	for (unsigned i=0;i<gm_template.C.cliques.size();i++) {
-	  float curWeight = MaxClique::computeWeight(gm_template.C.cliques[i].nodes);
+	  double curWeight = MaxClique::computeWeight(gm_template.C.cliques[i].nodes);
 	  printf("   --- C curWeight = %f\n",curWeight);
 	  if (curWeight > c_maxWeight) c_maxWeight = curWeight;
 	  if (c_totalWeight == -1.0)
@@ -533,11 +590,11 @@ main(int argc,char*argv[])
 	       c_totalWeight - log10((double)chunkSkip),
 	       JunctionTree::junctionTreeWeight(gm_template.C.cliques,gm_template.CEInterface_in_C));
 
-	float e_maxWeight = -1.0;
-	float e_totalWeight = -1.0; // starting flag
+	double e_maxWeight = -1.0;
+	double e_totalWeight = -1.0; // starting flag
 	printf("  --- Epilogue summary, %d cliques\n",gm_template.E.cliques.size());
 	for (unsigned i=0;i<gm_template.E.cliques.size();i++) {
-	  float curWeight = MaxClique::computeWeight(gm_template.E.cliques[i].nodes);
+	  double curWeight = MaxClique::computeWeight(gm_template.E.cliques[i].nodes);
 	  printf("   --- E curWeight = %f\n",curWeight);
 	  if (curWeight > e_maxWeight) e_maxWeight = curWeight;
 	  if (e_totalWeight == -1.0)
@@ -550,11 +607,11 @@ main(int argc,char*argv[])
 	       e_maxWeight,e_totalWeight,
 	       JunctionTree::junctionTreeWeight(gm_template.E.cliques,emptySet));
 
-	float maxWeight
+	double maxWeight
 	  = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);
 	maxWeight =
 	  (maxWeight>e_maxWeight?maxWeight:e_maxWeight);
-	float totalWeight = p_totalWeight;
+	double totalWeight = p_totalWeight;
 	// log version of: totalWeight += c_totalWeight
 	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));
 	// log version of: totalWeight += e_totalWeight

@@ -154,7 +154,8 @@ public:
   // what is the dimensionality of this variable?
   // intended for indexing fval() after sampling 
   int dimensionality() 
-      {error("dimensionality function not implemented"); return 0;}
+  {  return (rv_info.rvFeatureRange.lastFeatureElement - 
+	     rv_info.rvFeatureRange.firstFeatureElement + 1); }
 
   // return a pointer to the actual array of values
   // intended for use after sampling

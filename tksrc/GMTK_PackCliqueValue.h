@@ -103,11 +103,13 @@ public:
   ~PackCliqueValue() {}
 
 
-  // return the number of unsigneds that
-  // hold a packed clique value
+  // Return the number of unsigned words that are required to hold a
+  // packed clique value.
   unsigned packedLen() { return numUnsignedInPackedVector; }
+  // Return the number of words needed to hold an unpacked clique
+  // value (i.e., the number of hidden variables in the clique).
   unsigned unPackedLen() { return unpackedVectorLength; }
-  // return the number of bits
+  // Return the number of bits needed to hold a packed clique value.
   unsigned packedLenBits() { return totalNumBits; }
 
 

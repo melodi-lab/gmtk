@@ -475,20 +475,36 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 	Edge e;
 	// define the edge
 	e.clique1 = i; e.clique2 = j; 
-	// first push sep set size. To get a JT, we must
+	// !!!MUST DO THIS FIRST!!!
+	// First push sep set size. To get a JT, we must
 	// always choose from among the cliques that
 	// have the largest intersection size.
 	e.weights.push_back((float)sep_set.size());
 
-	// for ties, we next push back negative weight of separator
+	// The remaining items we push back in the case of ties.
+	// Larger numbers are prefered.
+
+	// push back number of deterministic nodes in
+	// the separator
+	set<RandomVariable*>::iterator it;
+	set<RandomVariable*>::iterator it_end = sep_set.end();
+	unsigned numDeterministicNodes = 0;
+	for (it = sep_set.begin(); it != it_end; it++) {
+	  RandomVariable* rv = (*it);
+	  if (!rv->hidden)
+	    numDeterministicNodes++;
+	}
+	e.weights.push_back((float)numDeterministicNodes);
+
+	// push back negative weight of separator, to prefer
+	// least negative (smallest)  weight.
 	e.weights.push_back(-(float)MaxClique::computeWeight(sep_set));
 
 	// printf("weight of clique %d = %f, %d = %f\n",
 	// i,part.cliques[i].weight(),
 	// j,part.cliques[j].weight());
 
-	// if ties still, we next push back negative weight of two
-	// cliques together.
+	// push back negative weight of two cliques together.
 	set<RandomVariable*> clique_union;
 	set_union(part.cliques[i].nodes.begin(),
 		  part.cliques[i].nodes.end(),
@@ -2722,7 +2738,11 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   // set up appropriate name for debugging output.
   const char* prv_nm;
 
-
+  // NOTE, if this isn't done in some way every partition, we will
+  // continue growing memory via the shared hash tables
+  // 
+  // TODO: change cliques so that in this case they have the ability
+  //       to use their own memory areana.
   clearDataMemory();
 
   partNo = 0;

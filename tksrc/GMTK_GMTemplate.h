@@ -242,7 +242,7 @@ public:
 			const set<RandomVariable*>& CEInterface);
 
   // Write partition information into file
-  void writePartitions(oDataStreamFile& os);
+  void writePartitions(oDataStreamFile& os,string& str);
 
   // Read partition information into file
   void readPartitions(iDataStreamFile& is);
