@@ -50,7 +50,7 @@
 // The maximum branching factor on any decision tree node.
 // This may be safely increased, and is here just for
 // debugging during reading to help enforce sanity.
-#define RNG_DECISION_TREE_MAX_ARY 10000
+#define RNG_DECISION_TREE_MAX_ARY 100000
 
 /////////////////////////////////////////////////
 // The maximum "cardinality" of any of the integers 
