@@ -75,7 +75,7 @@ VCID("$Header$");
 char *dtStr =
 "# this is a decision tree file\n"
 "#\n"
-"3  # number of features\n"
+"dt_name 3  # number of features\n"
 "0 10 0:5 6:9 10 11 12 13 14 15 50: default\n"
 "  1 2 0:10 default\n"
 "    2 2 0:10 default\n"
@@ -138,7 +138,7 @@ main()
 
   while (1) {
     printf("Enter a length %d intvec:",dt.numFeatures());
-    stin.readArray(vec.ptr,dt.numFeatures());
+    stin.read(vec,dt.numFeatures());
     printf("Result of querying with vector: ");
     for (int i=0;i<dt.numFeatures();i++) {
       printf(" %d",vec[i]);
