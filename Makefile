@@ -9,8 +9,10 @@
 
 # other flags
 EXLDFLAGS=
-GCC=/usr/nikola/pkgs/gcc/.3.2/bin/gcc
-GPP=/usr/nikola/pkgs/gcc/.3.2/bin/g++
+# GCC=/usr/nikola/pkgs/gcc/.3.2/bin/gcc
+# GPP=/usr/nikola/pkgs/gcc/.3.2/bin/g++
+GCC=gcc
+GPP=g++
 OPTFLAGS = -g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse
 
 # GMTK modules 
