@@ -465,23 +465,29 @@ MixGaussians::emEndIteration()
   if ((localNumTopToForceSplit + localNumBottomToForceVanish) >= 
       dense1DPMF->length()) {
     // need to adjust the top/bottom ones to match
-    // the local number of mixtures. Do it proportionally.
+    // the local number of mixtures. Do it "roughly" proportionally.
     double splitFrac = localNumTopToForceSplit/
       (localNumTopToForceSplit + localNumBottomToForceVanish);
     double vanishFrac = 1.0 - splitFrac;
     localNumTopToForceSplit = 
-      (unsigned)floor(splitFrac*(dense1DPMF->length()-1));
+      (unsigned)floor(splitFrac*(dense1DPMF->length()));
     localNumBottomToForceVanish = 
       (unsigned)floor(vanishFrac*(dense1DPMF->length()-1));
   }
 
-  assert ( localNumTopToForceSplit < dense1DPMF->length() );
+  assert ( localNumTopToForceSplit <= dense1DPMF->length() );
   assert ( localNumBottomToForceVanish < dense1DPMF->length() );
+
 
   if (localNumTopToForceSplit > 0 
       ||
       localNumBottomToForceVanish > 0) {
     // more work
+
+    // if request is such that everything should be split,
+    // we make sure that nothing is vanished.
+    if (localNumTopToForceSplit == dense1DPMF->length())
+      localNumBottomToForceVanish = 0;      
 
     vector< pair<logpr,unsigned> > coefs;
     coefs.resize(dense1DPMF->length());
@@ -494,7 +500,7 @@ MixGaussians::emEndIteration()
     LogpUnsignedPairCompare lupc;
     sort(coefs.begin(),coefs.end(),lupc);
 
-    /////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////
     // Add new split/vanish occurances to appropriate set.
     // Make sure we don't vanish too many, as the vanishing ratio might have
     // already vanished some of the ones that we want to vanish here.
@@ -510,8 +516,12 @@ MixGaussians::emEndIteration()
 	const bool alreadySplit =
 	  (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
 	   != MixGaussiansCommon::splittingComponentSet.end());
+
+	//////////////////////////////////////////////////////////
+	// Make sure not to vanish if already requested to split
+	// and don't bother vanishing again if vanishing again.
 	if (!alreadyVanished && !alreadySplit) {
-	  // then ok to vanish
+
 	  numVanishedSoFar++;
 	  MixGaussiansCommon::vanishingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second));
 	}
@@ -530,6 +540,9 @@ MixGaussians::emEndIteration()
 	  (MixGaussiansCommon::splittingComponentSet.find(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second))
 	   != MixGaussiansCommon::splittingComponentSet.end());
 
+	//////////////////////////////////////////////////////////
+	// Make sure not to split if already requested to split
+	// and don't bother vanishing again if vanishing again.
 	if (!alreadyVanished && !alreadySplit) {
 	  numSplitSoFar++;
 	  MixGaussiansCommon::splittingComponentSet.insert(pair<Dense1DPMF*,unsigned>(dense1DPMF,coefs[i].second));
