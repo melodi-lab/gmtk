@@ -29,7 +29,9 @@
 #include "sArray.h"
 #include "hash_abstract.h"
 
-// _Key must be a basic type.
+// _Key must be a basic type. This is a hash map, mapping from vectors (_Key*)
+// which are all the same length (given by object constructor). We map
+// from these vectors of _Key's to objects given by _Data.
 template <class _Key, class _Data> 
 class vhash_map : public hash_abstract {
 
@@ -209,7 +211,7 @@ public:
   //    by the argument arg_vsize.
   vhash_map(const unsigned arg_vsize,
 	    unsigned approximateStartingSize = 
-	    hash_abstract::HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE)
+	    hash_abstract::HashTableDefaultApproxStartingSize)
     : vsize(arg_vsize) 
   {
     _totalNumberEntries=0;
@@ -226,12 +228,18 @@ public:
 
   }
 
+  //////////////////////
+  // constructor for empty invalid object. 
+  // WARNING: this will create an invalid object. It is assumed
+  // that this object will re-reconstructed later.
+  vhash_map() {}
+
 
   /////////////////////////////////////////////////////////
   // clear out the table entirely, including deleting
   // all memory pointed to by the T* pointers. 
   void clear(unsigned approximateStartingSize = 
-	     hash_abstract::HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE) 
+	     hash_abstract::HashTableDefaultApproxStartingSize) 
   {
     table.clear();
     _totalNumberEntries=0;

@@ -90,7 +90,7 @@ all: libmiscSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o
+objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o
 
 #----------------------------------------------------------------------------
 # Main build programs.

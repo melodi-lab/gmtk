@@ -29,7 +29,8 @@
 #include "sArray.h"
 #include "hash_abstract.h"
 
-// _Key must be a basic type.
+// _Key must be a basic type. This is a hash set containing vectors (_Key*).
+// All elements of the set have the same length, given by object constructor.
 template <class _Key> 
 class vhash_set : public hash_abstract {
 
@@ -211,7 +212,7 @@ public:
   //    by the argument arg_vsize.
   vhash_set(const unsigned arg_vsize,
 	    unsigned approximateStartingSize = 
-	    hash_abstract::HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE)
+	    hash_abstract::HashTableDefaultApproxStartingSize)
     : vsize(arg_vsize) 
   {
     _totalNumberEntries=0;
@@ -233,7 +234,7 @@ public:
   // clear out the table entirely, including deleting
   // all memory pointed to by the T* pointers. 
   void clear(unsigned approximateStartingSize = 
-	     hash_abstract::HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE) 
+	     hash_abstract::HashTableDefaultApproxStartingSize) 
   {
     table.clear();
     _totalNumberEntries=0;
