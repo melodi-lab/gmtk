@@ -2061,6 +2061,7 @@ fillTriangulateNodeStructures(
   set<RandomVariable*>::iterator         end_node; 
   vector<triangulateNode>::iterator      crrnt_triangulate; 
   vector<triangulateNode>::iterator      end_triangulate; 
+  triangulateNode                        new_node;
 
   ////////////////////////////////////////////////////////////////////////
   // Create a triangulateNode instance for each random variable 
@@ -2072,7 +2073,7 @@ fillTriangulateNodeStructures(
        crrnt_node != end_node;
        ++crrnt_node) { 
 
-    triangulateNode new_node( *crrnt_node );
+    new_node.randomVariable = *crrnt_node;
     new_nodes.push_back( new_node );
   }
 
@@ -2408,9 +2409,7 @@ fillInComputation(
   vector<triangulateNode*>& ordered_nodes 
   )
 {
-  enum {
-    invalid_index = ~0
-  };
+  const unsigned invalid_index = ~0;
 
   typedef pair<triangulateNode*, triangulateNode*> edge; 
   
@@ -2548,9 +2547,7 @@ testZeroFillIn(
   vector<triangulateNode*>& ordered_nodes 
   )
 {
-  enum {
-    invalid_index = ~0
-  };
+  const unsigned invalid_index = ~0;
 
   vector<triangulateNode*> follower; 
   vector<unsigned> index;
@@ -2586,7 +2583,7 @@ testZeroFillIn(
        (crrnt_node != end_node) && (chordal == true); 
        ++i, ++crrnt_node ) {
 
-    assert( (*crrnt_nghbr)->position == i ); 
+    assert( (*crrnt_node)->position == i ); 
     follower[i] = *crrnt_node; 
     index[i]    = i;
 
@@ -2598,7 +2595,7 @@ testZeroFillIn(
          crrnt_nghbr != end_nghbr; 
          ++crrnt_nghbr ) {
 
-      assert( (*crrnt_nghbr)->position] != invalid_index ); 
+      assert( (*crrnt_nghbr)->position != invalid_index ); 
 
       if ((*crrnt_nghbr)->position < i) {
 
@@ -2859,8 +2856,6 @@ triangulateExhaustiveSearch(
   ////////////////////////////////////////////////////////////////////
   // Begin Search 
   ////////////////////////////////////////////////////////////////////
-
-  //vector<RandomVariable*> order;
   double best_weight = HUGE_VAL; 
   double weight; 
   bool done = false;
