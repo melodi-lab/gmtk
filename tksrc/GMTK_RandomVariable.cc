@@ -100,9 +100,10 @@ RandomVariable* RandomVariable::clone()
   rv->label = label;
   rv->hidden = hidden;
   rv->discrete = discrete;
-  // leave time index undefined
+  rv->timeIndex = timeIndex;
   rv->switchingParents = switchingParents;
-  // leave allPossibleParents and allPossibleChildren empty
+  rv->allPossibleParents = allPossibleParents;
+  rv->allPossibleChildren = allPossibleChildren;
   rv->conditionalParentsList = conditionalParentsList;
   // leave curConditionalParents empty
   rv->dtMapper = dtMapper; 
