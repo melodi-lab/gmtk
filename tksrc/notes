@@ -1228,3 +1228,10 @@ RV- RandomVariable
       SCORV - Switching Continuous  Observed Random Variable
       NCORV - Normal Continuous Observed Random Variable
 
+
+
+----
+
+ two things:
+    1) look inside DT to decide how much they cost
+    2) judge JT quality by number of deterministic unassigned nodes.

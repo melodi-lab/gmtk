@@ -52,6 +52,7 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
 #include "GMTK_ObservationMatrix.h"
+#include "GMTK_JunctionTree.h"
 
 VCID("$Header$");
 
@@ -1139,8 +1140,9 @@ writeMaxCliques(oDataStreamFile& os)
       else
 	p_totalWeight = p_totalWeight + log10(1+pow(10,curWeight-p_totalWeight));
     }
-    os.writeComment("  --- Prologue max clique weight = %f, total weight = %f\n",
-	   p_maxWeight,p_totalWeight);
+    os.writeComment("  --- Prologue max clique weight = %f, total weight = %f, jt weight = %f\n",
+	   p_maxWeight,p_totalWeight,
+		    JunctionTree::junctionTreeWeight(P.cliques,PCInterface_in_P));
 
     float c_maxWeight = -1.0;
     float c_totalWeight = -1.0; // starting flag
@@ -1154,11 +1156,12 @@ writeMaxCliques(oDataStreamFile& os)
       else
 	c_totalWeight = c_totalWeight + log10(1+pow(10,curWeight-c_totalWeight));
     }
-    os.writeComment("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f\n",
+    os.writeComment("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f, jt weight = %f\n",
 	   c_maxWeight,
 	   S,
 	   c_totalWeight,
-	   c_totalWeight - log10((double)S));
+	   c_totalWeight - log10((double)S),
+           JunctionTree::junctionTreeWeight(C.cliques,CEInterface_in_C));
 
 
     float e_maxWeight = -1.0;
@@ -1173,8 +1176,10 @@ writeMaxCliques(oDataStreamFile& os)
       else
 	e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
     }
-    os.writeComment("  --- Epilogue max clique weight = %f, total weight = %f\n",
-	   e_maxWeight,e_totalWeight);
+    const set <RandomVariable*> emptySet;
+    os.writeComment("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
+	   e_maxWeight,e_totalWeight,
+           JunctionTree::junctionTreeWeight(E.cliques,emptySet));
 
     float maxWeight
       = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);

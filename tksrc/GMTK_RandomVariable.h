@@ -453,6 +453,13 @@ public:
   // for whatever derived class this routine lives in).
   virtual RandomVariable *create() = 0;
 
+
+  ////////////////////////////////////////////////////////
+  // return true if all parents of this rv are contained
+  // within given set.
+  bool allParentsContainedInSet(const set <RandomVariable*> givenSet);
+  double productCardOfParentsNotContainedInSet(const set <RandomVariable*> givenSet);
+
 };
 
 #endif

@@ -428,3 +428,43 @@ void RandomVariable::reveal(bool show_vals)
 */
     cout << endl;
 }
+
+
+bool RandomVariable::allParentsContainedInSet(const set <RandomVariable*> givenSet)
+{
+  set <RandomVariable*> res;
+  set_intersection(givenSet.begin(),givenSet.end(),
+		   allPossibleParents.begin(),allPossibleParents.end(),
+		   inserter(res,res.end()));
+  return (res.size() == allPossibleParents.size());
+}
+
+
+// return log_10 product card of parents not contained in given set.
+double RandomVariable::productCardOfParentsNotContainedInSet(const set <RandomVariable*> givenSet)
+{
+  // first get parents not contained in set.
+  set <RandomVariable*> res;
+  set_difference(allPossibleParents.begin(),allPossibleParents.end(),
+		 givenSet.begin(),givenSet.end(),
+		 inserter(res,res.end()));
+
+  if (res.size() == 0)
+    // all parents are contained in the given set
+    return 0;
+
+  set<RandomVariable*>::iterator it;
+  double weight = -1;
+  for (it = res.begin(); it != res.end(); it++) {
+    // if it is a parent, it must be discrete
+    RandomVariable* rv = (*it);
+    assert ( rv->discrete );
+    double log_card = ::log10(rv->cardinality);
+    if (weight == -1)
+      weight = log_card;
+    else
+      weight = weight + ::log10(1+::pow(10,log_card - weight));
+  } 
+
+  return weight;
+}

@@ -187,6 +187,25 @@ JT_Partition::JT_Partition(
 }
 
 
+// bear-bones constructor to quickly compute
+// JT weight.
+JT_Partition::JT_Partition(
+ Partition& from_part,
+ // Left interface:
+ const set <RandomVariable*>& from_liVars,
+ // Right interface:
+ const set <RandomVariable*>& from_riVars
+ )
+{
+  nodes = from_part.nodes;
+  liNodes = from_liVars;
+  riNodes = from_riVars;
+  // make the cliques.
+  cliques = from_part.cliques;
+}
+
+
+
 void
 JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
 				   unsigned& iClique,
@@ -197,7 +216,7 @@ JT_Partition::findInterfaceCliques(const set <RandomVariable*>& iNodes,
     // starting invalid clique.
     iClique = ~0x0u; 
     // the weight of the interface clique, to break ties.
-    float interfaceCliqueWeight;
+    float interfaceCliqueWeight=HUGE;
 
     for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
       // check that clique fully covers iNodes 
@@ -253,7 +272,34 @@ JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterf
   findInterfaceCliques(riNodes,riClique,riCliqueSameAsInterface);
 }
 
+unsigned
+JT_Partition::cliqueWithMaxWeight()
+{
+  float weight = -1.0;
+  unsigned res= ~0x0;
+  assert ( cliques.size() > 0 );
+  for (unsigned i=0;i<cliques.size();i++) {
+    if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
+      res = i;
+    }
+  }
+  return res;
+}
 
+
+unsigned
+JT_Partition::cliqueWithMinWeight()
+{
+  float weight = HUGE;
+  unsigned res = ~0x0;
+  assert ( cliques.size() > 0 );
+  for (unsigned i=0;i<cliques.size();i++) {
+    if (MaxClique::computeWeight(cliques[i].nodes) < weight) {
+      res = i;
+    }
+  }
+  return res;
+}
 
 
 ////////////////////////////////////////////////////////////////////
@@ -651,6 +697,7 @@ JunctionTree::computePartitionInterfaces()
   // TODO: see if it is possible to choose a better root for E.
   // Perhaps use the maximum weight clique???
   E_root_clique = 0;
+  // E_root_clique = E1.cliqueWithMinWeight();
   
 }
 
@@ -979,7 +1026,6 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),part.cliques.size());
 
-  unsigned numUnassigned = 0;
   for (unsigned n=0;n<sortedNodes.size();n++) {
 
     RandomVariable* rv = sortedNodes[n];
@@ -1012,12 +1058,18 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 		partName,
 		rv->name().c_str(),rv->frame(),clique_num);
       } else {
-	// rv was not assigned to this partition, it must
-	// be the case that it will be assigned to a different
-	// partition.
+	// rv was not assigned to this partition, it must be the case
+	// that it will be assigned to a different partition. This
+	// could come from the partition before or the partition after
+	// the current partition. If there are only forward-directed
+	// arrows, it will come from the previous partition (and vice
+	// versa if there are only backwards going edges). If we have
+	// both directed edges, it could be assigned in either left or
+	// right partition.
 	infoMsg(IM::Med,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
 		rv->name().c_str(),rv->frame());
-	numUnassigned++;
+	// in any event, keep track of this node.
+	part.unassignedInPartition.insert(rv);
       }
     }
     // update the cumulative RV assignments.
@@ -1302,7 +1354,6 @@ JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
 	    res.begin(),res.end(),
 	    inserter(curClique.cumulativeAssignedNodes,
 		     curClique.cumulativeAssignedNodes.end()));
-
 }
 
 
@@ -1452,7 +1503,6 @@ JunctionTree::setUpMessagePassingOrderRecurse(JT_Partition& part,
       order.push_back(msg);
     }
   }
-  
 }
 
 
@@ -1957,7 +2007,9 @@ JunctionTree::junctionTreeWeight(JT_Partition& part,
   MaxClique& curClique = part.cliques[rootClique];
 
   set <RandomVariable*> empty;
+  // @@ add in unassigned in partition information to next call
   double weight = curClique.weightInJunctionTree();
+  // double weight = curClique.weight();
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
     double child_weight = junctionTreeWeight(part,
@@ -1967,6 +2019,106 @@ JunctionTree::junctionTreeWeight(JT_Partition& part,
   }
   return weight;
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::junctionTreeWeight()
+ *
+ * Given a set of maxcliques for a partition, and an interface for
+ * this (can be left right, or any set including empty, the only
+ * condition is that it must be covered by at least one of the
+ * cliques), compute the junction tree for this set and return the
+ * estimated JT cost. This is a static routine so can be called from
+ * anywhere.
+ *
+ * Preconditions:
+ *   one of the cliques must cover interface nodes. I.e.,
+ *   there must be an i such that cliques[i].nodes >= interfaceNodes.
+ *
+ * Postconditions:
+ *   An estimate of the weight, as in inference, of this clique set is 
+ *   computed and returned.
+ *
+ * Side Effects:
+ *   none.
+ *
+ * Results:
+ *   the weight
+ *
+ *-----------------------------------------------------------------------
+ */
+double
+JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
+				 const set<RandomVariable*>& interfaceNodes)
+{
+  Partition part;
+  const set <RandomVariable*> emptySet;
+  part.cliques = cliques;
+
+  // set up the nodes into part
+  for (unsigned i=0;i<cliques.size();i++) {
+    // while we're at it, clear up the JT structures we're
+    // about to create.
+    cliques[i].clearJTStructures();
+    set_union(emptySet.begin(),emptySet.end(),
+	      cliques[i].nodes.begin(),cliques[i].nodes.end(),
+	      inserter(part.nodes,part.nodes.end()));
+  }
+  createPartitionJunctionTree(part);
+
+  // a JT version of this partition.
+  JT_Partition jt_part(part,emptySet,interfaceNodes);
+
+  bool tmp;
+  unsigned root;
+  if (interfaceNodes.size() > 0)
+    jt_part.findRInterfaceClique(root,tmp);
+  else {
+    // Presumably, this is an E partition, so the root should be done
+    // same as E_root_clique computed above.
+    root = 0; 
+  }
+    
+  createDirectedGraphOfCliques(jt_part,root);
+  assignRVsToCliques("candidate partition",jt_part,root);
+
+  vector< pair<unsigned,unsigned> > message_order;
+  vector< unsigned > leaf_cliques;
+  setUpMessagePassingOrder(jt_part,
+			   root,
+			   message_order,
+			   ~0x0,
+			   leaf_cliques);
+  createSeparators(jt_part,message_order);
+  computeSeparatorIterationOrders(jt_part);
+  getPrecedingIteratedUnassignedNodes(jt_part,root);
+  
+  // return jt_part.cliques[root].precedingUnassignedIteratedNodes.size();
+  double weight = junctionTreeWeight(jt_part,root);
+
+#if 0
+  unsigned badness_count=0;
+  set <RandomVariable*>::iterator it;
+  for (it = jt_part.cliques[root].precedingUnassignedIteratedNodes.begin();
+       it != jt_part.cliques[root].precedingUnassignedIteratedNodes.end();
+       it++) 
+    {
+      RandomVariable* rv = (*it);
+      assert ( rv-> discrete );
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+
+      if (drv->sparse())
+	badness_count ++;
+    }
+#endif
+
+  return weight;
+
+}
+
+
 
 
 

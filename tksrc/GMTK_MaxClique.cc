@@ -187,6 +187,7 @@ MaxClique::MaxClique(MaxClique& from_clique,
 {
 
   set<RandomVariable*>::iterator it;
+  
 
   // clone over nodes RVs.
   for (it = from_clique.nodes.begin();
@@ -560,15 +561,20 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
               multiply by card since wasn't assigned before and
               we need to iterate over all separator values.
            else
-              if cumulativeAssignedNodes(v)
-                  multiply by use_card (assigned earlier in JT).
-                  While it might be that this node costs more than
-                  use_card here, we are not penalizing for this case
-                  since we assume that the node will only come into
-                  this clique with parent values (if any) such that
-                  p(node|parents) > 0. This will in some cases
-                  give us a lower bound on the weight though.
-              else
+             if cumulativeAssignedNodes(v)
+                    if parents(v) <= separator_nodes
+                        multiply by use_card, since all of v's 
+                        parents are in the separator, and v will 
+                        cost nothing.
+                    else
+                        multiply by use_card (assigned earlier in JT).
+                        While it might be that this node costs more than
+                        use_card here, we are not penalizing for this case
+                        since we assume that the node will only come into
+                        this clique with parent values (if any) such that
+                        p(node|parents) > 0. This will in some cases
+                        give us a lower bound on the weight though.
+             else
                   multiply by card, since in this case it must
                   be comming in as a previous unassignediterated node.
                   This is a bad case.
@@ -593,6 +599,69 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
  *
  *-----------------------------------------------------------------------
  */
+
+float
+MaxClique::
+computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
+			    const set<RandomVariable*>& assignedNodes,
+			    const set<RandomVariable*>& unassignedIteratedNodes,
+			    const set<RandomVariable*>& separatorNodes,
+			    const set<RandomVariable*>& cumulativeAssignedNodes,
+			    const bool useDeterminism)
+{
+  // compute weight in log base 10 so that
+  //   1) we don't overflow
+  //   2) base 10 is an easy to understand magnitude rating of state space.
+
+  float tmp_weight = 0;
+  // Next, get weight of all 'nodes'
+  for (set<RandomVariable*>::iterator j=nodes.begin();
+       j != nodes.end();
+       j++) {
+    RandomVariable *const rv = (*j);
+    // First get cardinality of 'node', but if
+    // it is continuous or observed, it does not change the weight.
+    // TODO: The assumption here (for now) is that all continuous variables
+    // are observed. This will change in a future version (Lauritzen CG inference).
+    if (rv->discrete && rv->hidden) {
+      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+      // see comments above for description and rational of this algorithm
+      if (!useDeterminism || !drv->sparse()) {
+	tmp_weight += log10((double)drv->cardinality);
+      } else if (unassignedIteratedNodes.find(rv) != unassignedIteratedNodes.end()) {
+	tmp_weight += log10((double)drv->cardinality);
+      } else if (separatorNodes.find(rv) != separatorNodes.end()) {
+	if (assignedNodes.find(rv) != assignedNodes.end()) {
+	  tmp_weight += log10((double)drv->cardinality);
+	} else {
+	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
+	    if (rv->allParentsContainedInSet(separatorNodes)) {
+	      tmp_weight += log10((double)drv->useCardinality());	
+	    } else {
+	      // @@@@ This is the problem case here. we need to
+	      // estimate the cost as accurately as possible!! It
+	      // should be as tight a possible upper bound (or a
+	      // *very* tight lower bound).
+	      tmp_weight += (min(rv->productCardOfParentsNotContainedInSet(separatorNodes),
+				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
+
+	      // tmp_weight += log10((double)drv->useCardinality());
+
+	    }
+	  } else {
+	    tmp_weight += log10((double)drv->cardinality);
+	  }
+	}
+      } else {
+	tmp_weight += log10((double)drv->useCardinality());	
+      }
+    }
+  }
+  return tmp_weight;
+}
+
+
+#if 0
 float
 MaxClique::
 computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
@@ -629,9 +698,13 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	  truly_sparse = false;	  
 	} else {
 	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
-	    // @@@@ This is the problem case here. we need to estimate the
-	    // cost.
-	    ; // do nothing, we can multiply by use card.
+	    if (rv->allParentsContainedInSet(separatorNodes)) {
+	      ; // do nothing, we can multiply by use_card.
+	    } else {
+	      // @@@@ This is the problem case here. we need to estimate the
+	      // cost.
+	      truly_sparse = true;;
+	    }
 	  } else {
 	    truly_sparse = false;
 	  }
@@ -649,6 +722,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
   }
   return tmp_weight;
 }
+#endif
 
 
 
@@ -706,11 +780,11 @@ MaxClique::prepareForUnrolling()
   // for now.
   // TODO: note that this might FPE if weight() is too large, since
   // we get larger than pow() range. Fix this.
-  allocationUnitChunkSize =
-    (unsigned)(::pow(10,weight() - ::log10(4.0)));
+  //   allocationUnitChunkSize =
+  //     (unsigned)(::pow(10,weight() - ::log10(4.0)));
   // lower bound.
-  if (allocationUnitChunkSize < 16)
-    allocationUnitChunkSize = 16;
+  // if (allocationUnitChunkSize < 16)
+  // allocationUnitChunkSize = 16;
 
   // @@@ set to small size now to test out re-allocation schemes.
   allocationUnitChunkSize = 1;
