@@ -1708,3 +1708,8 @@ Sun Mar 21 05:24:38 2004
 Thu Mar 25 17:04:41 2004
   - define a pre-defined CPP variable that gives the major and minor version of GMTK.
 
+Fri Mar 26 14:17:15 2004
+  - make output word strings compatible with NIST word error scoring tools.
+    In general, look at NIST tools, and make GMTK output as compatible as possible with them.
+
+
