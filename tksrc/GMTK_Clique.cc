@@ -107,7 +107,10 @@ vector<RandomVariable::DiscreteVariableType> &vec)
     if (table_size == 0) resize(primes[size_index]);
     int a = addr(vec);
     int inc=addr2(vec)+1;
-    while (table[a] && *table[a]!=vec) {a=(a+inc)%table_size;}
+    while (table[a] && *table[a]!=vec) 
+      {
+	a=(a+inc)%table_size;
+      }
     vector<RandomVariable::DiscreteVariableType> *nv = table[a];
     if (!table[a])
     {
