@@ -383,6 +383,12 @@ public:
   // for papers, etc.
   unsigned totalNumberParameters();
 
+
+  ///////////////////////////////////////////////////////////    
+  // Remove parameters that are not used by anyone. Return
+  // true if any were removed.
+  void markUsedMixtureComponents();
+
   ///////////////////////////////////////////////////////////    
   // Support for EM, applies to all EMable objects contained herein.
   ///////////////////////////////////////////////////////////

@@ -95,6 +95,10 @@ public:
   MeanVector* noisyClone();
 
   unsigned totalNumberParameters() { return means.len(); }
+  void recursivelyClearUsedBit() {  emClearUsedBit();  }
+  void recursivelySetUsedBit() { emSetUsedBit();  }
+
+
 
   //////////////////////////////////
   // Public interface support for EM

@@ -84,6 +84,9 @@ public:
   virtual void makeUniform() = 0;
   //////////////////////////////////
 
+  virtual void recursivelyClearUsedBit() = 0;
+  virtual void recursivelySetUsedBit() = 0;
+
   //////////////////////////////////
   // probability evaluation
   virtual logpr log_p(const float *const x,     // real-valued scoring obs at time t

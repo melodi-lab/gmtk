@@ -91,6 +91,9 @@ public:
 
   ///////////////////////////////////
   unsigned totalNumberParameters() { return covariances.len(); }
+  void recursivelyClearUsedBit() {  emClearUsedBit();  }
+  void recursivelySetUsedBit() { emSetUsedBit();  }
+
 
   ///////////////////////////////////////
   int dim() { return covariances.len(); }
