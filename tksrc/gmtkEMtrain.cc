@@ -52,7 +52,7 @@ float pruneRatio=0.0;
 char *obsFileName;
 char *strFileName;
 char *parmsFileName;
-unsigned maxEmIterations=30;
+unsigned maxEMIterations=30;
 
 ARGS ARGS::Args[] = {
 
@@ -61,8 +61,8 @@ ARGS ARGS::Args[] = {
  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
 
  ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
- ARGS("maxEmIters",ARGS::Opt,maxEmIterations,"Number of EM iterations to do"),
- ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio"),
+ ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Number of EM iterations to do"),
+ ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
  ARGS()
 
 };
