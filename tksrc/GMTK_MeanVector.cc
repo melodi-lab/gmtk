@@ -217,12 +217,17 @@ MeanVector::emIncrement(const logpr prob,
   if (!GM_Parms.amTrainingMeans())
     return;
   
+  
   /////////////////////////////////////////////
   // Note: unlike the normal EM mode described
   // in GMTK_EMable.h, we do not call
   // emStartIteration() here and assume that it
   // was called by the Gaussian component that
-  // is using this mean.
+  // is using this mean. This is because
+  // this object keeps a reference count (needed for
+  // sharing), and calling that routine repeatedly 
+  // would result in an incorrect count.
+
 
   // we assume here that (prob > minIncrementProbabilty),
   // i.e., that this condition has been checked by the caller
@@ -273,8 +278,8 @@ MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
     return;
 
   if (accumulatedProbability < GaussianComponent::minAccumulatedProbability()) {
-    warning("WARNING: Mean vec '%s' received only %e accumulated log probability in EM iteration, using previous means",
-	    accumulatedProbability.val(),name().c_str());
+    warning("WARNING: Mean vec '%s' received only %e accumulated log probability in EM iteration, using previous means",name().c_str(),
+	    accumulatedProbability.val());
     for (int i=0;i<nextMeans.len();i++)
       nextMeans[i] = means[i];
   } else {
