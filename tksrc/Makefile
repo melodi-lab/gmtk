@@ -23,8 +23,8 @@ VPATH = .
 #
 # Compilng programs to use.
 #
-CXX = /g/rcs/sw/bin/g++
-CC = /g/rcs/sw/bin/gcc
+CXX = g++
+CC = gcc
 LD = $(CXX)
 AR = ar
 LEX = flex
