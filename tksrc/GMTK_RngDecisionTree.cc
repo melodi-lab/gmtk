@@ -62,11 +62,63 @@ VCID("$Header$");
 //        test code Support
 ////////////////////////////////////////////////////////////////////
 
+/*
+ * A decision tree looks something like:
+ * <numFtrs>
+ * <ftr> <num_splits> r1 r2 ... rs 
+ * <ftr> <num_splits> r1 r2 ... rs # split 1
+ * <ftr> <num_splits> r1 r2 ... rs # split 2
+ * -1 value
+ * <ftr> <num_splits> r1 r2 ... rs # split s
+ */
+
+char *dtStr =
+"# this is a decision tree file\n"
+"#\n"
+"3  # number of features\n"
+"0 10 0:5 6:9 10 11 12 13 14 15 50: default\n"
+"  1 2 0:10 default\n"
+"    2 2 0:10 default\n"
+"      -1 1\n"
+"      -1 2\n"
+"    2 2 0:5 default\n"
+"      -1 3\n"
+"      -1 4\n"
+"  1 2 0:10 default\n"
+"    2 2 0:10 default\n"
+"      -1 5\n"
+"      -1 6\n"
+"    2 2 0:5 default\n"
+"      -1 7\n"
+"      -1 8\n"
+"  -1 10 # when feature[0] = 10, map to 10 regardless of all else\n"
+"  -1 11 # when feature[0] = 11, map to 11 regardless of all else\n"
+"  -1 12 # when feature[0] = 12, map to 12 regardless of all else\n"
+"  -1 13 # when feature[0] = 13, map to 13 regardless of all else\n"
+"  -1 14 # when feature[0] = 14, map to 14 regardless of all else\n"
+"  -1 15 # when feature[0] = 15, map to 15 regardless of all else\n"
+"  -1 16 # when feature[0] >= 50, map to 16 regardless of all else\n"
+"  1 2 0:10 default\n"
+"    2 2 0:10 default\n"
+"      -1 9\n"
+"      -1 10\n"
+"    2 2 0:5 default\n"
+"      -1 11\n"
+"      -1 12\n";
+
+
 int
 main()
 {
-  // read in a file
-  iDataStreamFile is ("foo.dt",false);
+
+  // first write out the file
+  {
+    oDataStreamFile dtfile ("/tmp/foo.dt",false);
+    dtfile.write(dtStr);
+  }
+
+  // read it in again
+  iDataStreamFile is ("/tmp/foo.dt",false);
   RngDecisionTree<int> dt;
   dt.read(is);
 
