@@ -682,7 +682,7 @@ GMParms::readGausSwitchMixGaussians(iDataStreamFile& is, bool reset)
   unsigned num;
   is.read(num,"num GSMGs");
   if (num > 0)
-    error("ERROR: GausSwitchMixGaussians not implemented just yet");
+    error("ERROR: reading file '%s', GausSwitchMixGaussians not implemented just yet",is.fileName());
 }
 
 void 
@@ -691,7 +691,7 @@ GMParms::readLogitSwitchMixGaussians(iDataStreamFile& is, bool reset)
   unsigned num;
   is.read(num,"num LSMGs");
   if (num > 0)
-    error("ERROR: LogitSwitchMixGaussians not implemented just yet");
+    error("ERROR: reading file '%s', LogitSwitchMixGaussians not implemented just yet",is.fileName());
 }
 
 void 
@@ -700,7 +700,7 @@ GMParms::readMlpSwitchMixGaussians(iDataStreamFile& is, bool reset)
   unsigned num;
   is.read(num,"num MSMGs");
   if (num > 0)
-    error("ERROR: MLPSwitchMixGaussians not implemented just yet");
+    error("ERROR: reading file '%s', MLPSwitchMixGaussians not implemented just yet",is.fileName());
 }
 
 
@@ -713,7 +713,6 @@ GMParms::readBasic(iDataStreamFile& is)
   is.read(str,"GMTK_GMParms::readBasic, magic");
   if (str != MAGIC_PRM_FILE)
     error("GMTK_GMParms::readBasic. Expecting basic param file, got (%s) in file (%s)",str.c_str(),is.fileName());
-
 
   readDPmfs(is);
   readSPmfs(is);
@@ -728,6 +727,25 @@ GMParms::readBasic(iDataStreamFile& is)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * readAll
+ *   read in everything (all parameters) in one go.
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      files read in
+ *
+ * Side Effects:
+ *      changes internal arrays.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::readAll(iDataStreamFile& is)
 {
@@ -754,6 +772,93 @@ GMParms::readAll(iDataStreamFile& is)
   readGausSwitchMixGaussians(is);
   readLogitSwitchMixGaussians(is);
   readMlpSwitchMixGaussians(is);  
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * readTrainable
+ *   read in just the trainable parameters, i.e.,
+ *   the things that might be modified by the
+ *   program when training is occuring.
+ *
+ *   Note that the union of this routine
+ *   and readNonTrainable should be the same as 
+ *   readAll
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      files read in
+ *
+ * Side Effects:
+ *      changes internal arrays.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::readTrainable(iDataStreamFile& is)
+{
+
+  readDPmfs(is);
+  readSPmfs(is);
+  readMeans(is);
+  readCovars(is);
+  readDLinkMats(is);
+  readWeightMats(is);  
+  readMdCpts(is);
+
+  // next read definitional items
+  readGaussianComponents(is);
+  readMixGaussians(is);
+  readGausSwitchMixGaussians(is);
+  readLogitSwitchMixGaussians(is);
+  readMlpSwitchMixGaussians(is);  
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * readnonTrainable
+ *   read in just the *NON*-trainable parameters, i.e.,
+ *   the things that, guaranteed, will not be
+ *   modified when the program is training.
+ *
+ *   Note that the union of this routine
+ *   and readTrainable should be the same as 
+ *   readAll
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      files read in
+ *
+ * Side Effects:
+ *      changes internal arrays.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::readNonTrainable(iDataStreamFile& is)
+{
+
+
+  // first read structural items
+  readDTs(is);
+  readDLinks(is);
+
+  readMsCpts(is);
+  readMtCpts(is);
+
 }
 
 
@@ -1182,6 +1287,25 @@ GMParms::writeBasic(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * writeAll
+ *   write out everything (all parameters) in one go.
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      files write out are written.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::writeAll(oDataStreamFile& os)
 {
@@ -1211,6 +1335,82 @@ GMParms::writeAll(oDataStreamFile& os)
 
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeTrainable
+ *   write out trainable parameters, see readTrainable for docs. 
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      files write out are written.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeTrainable(oDataStreamFile& os)
+{
+  // just write everything in one go.
+
+  // then write basic numeric items.
+  writeDPmfs(os);
+  writeSPmfs(os);
+  writeMeans(os);
+  writeCovars(os);
+  writeDLinkMats(os);
+  writeWeightMats(os);  
+  writeMdCpts(os);
+
+  // next write definitional items
+  writeGaussianComponents(os);
+  writeMixGaussians(os);
+  writeGausSwitchMixGaussians(os);
+  writeLogitSwitchMixGaussians(os);
+  writeMlpSwitchMixGaussians(os);
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeNonTrainable
+ *   write out non-trainable parameters, see readNonTrainable for docs. 
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      files write out are written.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeNonTrainable(oDataStreamFile& os)
+{
+  // just write everything in one go.
+
+  // write structural items
+  writeDTs(os);
+  writeDLinks(os);
+
+  writeMsCpts(os);
+  writeMtCpts(os);
+
+}
 
 
 
