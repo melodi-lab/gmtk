@@ -41,6 +41,8 @@ class FileParser
 
 private:
 
+  ///////////////////////////////////////////////////
+  typedef pair<string,int> rvParent;
 
   ///////////////////////////////////////////////////
   // A class where information about a RV can
@@ -66,7 +68,7 @@ private:
 				    ci_logitSwitchMixGaussian,
 				    ci_mlpSwitchMixGaussian,
                                     ci_unknown };
-    typedef pair<string,int> rvParent;
+
     struct ListIndex {
       enum ListIndexType { li_String, li_Index, li_Unknown } liType;
       unsigned intIndex;
@@ -156,7 +158,7 @@ private:
   // Mapping from the name of the random variable
   // to its pointer.
   // map<pair<string, unsigned>, RandomVariable *> variableNamed;
-  map < pair<string,unsigned> , RVInfo* > nameRVmap;
+  map < rvParent , unsigned > nameRVmap;
 
   //////////////////////////////////////////////
   // This is where the parser puts partially 
@@ -342,7 +344,7 @@ private:
 
   void parseParentList();
   void parseParent();
-  vector < RVInfo::rvParent > parentList;
+  vector < rvParent > parentList;
 
   void parseMappingSpec();
   void parseListIndex();
@@ -361,6 +363,9 @@ public:
   // error occurs.
   FileParser(const char *const fileName);
   void parseGraphicalModel();
+  void createRandomVariableGraph();
+  void associateWithDataParams();
+
 
 
 };

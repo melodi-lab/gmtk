@@ -32,8 +32,8 @@
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteVariable.h"
-#include "GMTK_ContinuousVariable.h"
+#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_ContinuousRandomVariable.h"
 #include "GMTK_GM.h"
 #include "GMTK_GMParms.h"
 
@@ -319,6 +319,40 @@ FileParser::fillKeywordTable()
 
 
 ////////////////////////////////////////////////////////////////////
+//        RVInfo functions
+////////////////////////////////////////////////////////////////////
+
+
+FileParser::RVInfo::RVInfo(const RVInfo& v)
+{
+  frame = v.frame;
+  fileLineNumber = v.fileLineNumber;
+  name = v.name;
+  rvType = v.rvType;
+  rvDisp = v.rvDisp;
+  rvCard = v.rvCard;
+  rvFeatureRange = v.rvFeatureRange;
+  switchingParents = v.switchingParents;
+  switchMapping = v.switchMapping;
+  conditionalParents = v.conditionalParents;
+  discImplementations = v.discImplementations;
+  contImplementations = v.contImplementations;
+  listIndices = v.listIndices;
+  rv = v.rv;
+}
+
+
+//
+// 
+// Check the consistency of the RV information
+// that couldn't be checked while it was parsing (if anything)
+void
+FileParser::RVInfo::checkConsistency()
+{
+}
+
+
+////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
 
@@ -408,8 +442,10 @@ FileParser::prepareNextToken()
 void
 FileParser::consumeToken()
 {
+#if 0  
   printf("Consuming token (%s) of type %d from src line (%d)\n",
 	 tokenInfo.tokenStr,tokenInfo.tokenType,tokenInfo.srcLine);
+#endif
   prepareNextToken();
 }
 
@@ -619,23 +655,24 @@ FileParser::parseRandomVariableList()
 
 
   // check if we've already seen this RV
-  map < pair<string,unsigned> , RVInfo* >::iterator it;
-  it = nameRVmap.find(pair<string,unsigned>(curRV.name,curRV.frame));
+  map < rvParent , unsigned >::iterator it;
+  it = nameRVmap.find(rvParent(curRV.name,curRV.frame));
   if (it != nameRVmap.end()) {
     error("Error: random variable (%s) at frame (%d) defined twice, "
 	  "on both line %d and %d\n",curRV.name.c_str(),
 	  curRV.frame,
 	  curRV.fileLineNumber,
-	  (*it).second->fileLineNumber);
+	  rvInfoVector[(*it).second].fileLineNumber);
   }
   
 
   // everything looks ok, insert it in our tables.
   rvInfoVector.push_back(curRV);
-  // add to map with invalid pointers for now.
+  // add to map
   nameRVmap[
-	    pair<string,unsigned>(curRV.name,curRV.frame)
-  ] = &rvInfoVector[rvInfoVector.size()-1];
+	    rvParent(curRV.name,curRV.frame)
+            ] 
+    = rvInfoVector.size()-1;
 
   parseRandomVariableList();
 }
@@ -971,7 +1008,7 @@ FileParser::parseParentList()
 void
 FileParser::parseParent()
 {
-  RVInfo::rvParent p;
+  rvParent p;
 
   ensureNotAtEOF("parent RV name");
   if (tokenInfo != TT_Identifier) 
@@ -1222,39 +1259,195 @@ FileParser::parseListIndex()
 
 
 ////////////////////////////////////////////////////////////////////
-//        RVInfo functions
+//        Create Random Variables
 ////////////////////////////////////////////////////////////////////
 
 
-FileParser::RVInfo::RVInfo(const RVInfo& v)
-{
-  frame = v.frame;
-  fileLineNumber = v.fileLineNumber;
-  name = v.name;
-  rvType = v.rvType;
-  rvDisp = v.rvDisp;
-  rvCard = v.rvCard;
-  rvFeatureRange = v.rvFeatureRange;
-  switchingParents = v.switchingParents;
-  switchMapping = v.switchMapping;
-  conditionalParents = v.conditionalParents;
-  discImplementations = v.discImplementations;
-  contImplementations = v.contImplementations;
-  listIndices = v.listIndices;
-}
 
+/*-
+ *-----------------------------------------------------------------------
+ * createRandomVariableGraph()
+ *      Takes the list of random variables that have been created
+ *      by the parser and produces a valid fully linked 
+ *      RV graph.
+ *
+ * Preconditions:
+ *      successful parse from before.
+ *      parseGraphicalModel() must have been called.
+ *
+ * Postconditions:
+ *      New RV graph created.
+ *
+ * Side Effects:
+ *      Changes the internal structure of the parser
+ *      objects to create random variables.
+ *
+ * Results:
+ *      nothing
+ *
+ *-----------------------------------------------------------------------
+ */
 
-//
-// 
-// Check the consistency of the RV information
-// that couldn't be checked while it was parsing (if anything)
 void
-FileParser::RVInfo::checkConsistency()
+FileParser::createRandomVariableGraph()
 {
+  for (unsigned i=0;i<rvInfoVector.size();i++) {
+    if (rvInfoVector[i].rvType == RVInfo::t_discrete)
+      rvInfoVector[i].rv = 
+	new DiscreteRandomVariable(rvInfoVector[i].name,
+				   rvInfoVector[i].rvCard);
+    else 
+      rvInfoVector[i].rv = 
+	new ContinuousRandomVariable(rvInfoVector[i].name);
+    rvInfoVector[i].rv->timeIndex = rvInfoVector[i].frame;
+  }
+
+  // now set up all the parents of each random variable.
+  for (unsigned i=0;i<rvInfoVector.size();i++) {
+
+    unsigned frame = rvInfoVector[i].frame;
+
+    // build the switching parents list.
+    vector<RandomVariable *> sparents;
+    for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
+
+      rvParent pp(rvInfoVector[i].switchingParents[j].first,
+		  frame+rvInfoVector[i].switchingParents[j].second);
+
+      ////////////////////////////////////////////////////
+      // Make sure the rv at the time delta from the current
+      // frame exists.
+      if (nameRVmap.find(pp) == nameRVmap.end())
+	error("Error: parent random variable %s at frame %d does not exist\n",
+	      pp.first.c_str(),pp.second);
+
+      const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
+
+      ////////////////////////////////////////////////////
+      // make sure we have no continuous parents.
+      if (par.rvType == RVInfo::t_continuous)
+	error("Error: RV %s at frame %d (line %d) specifies a continuous parent %s at frame %d (line %d)\n",
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber,
+	      par.name.c_str(),
+	      par.frame,
+	      par.fileLineNumber);
+
+      // add
+      sparents.push_back(par.rv);
+    }
+    
+    // now build continous parent list
+    vector<vector<RandomVariable * > > cpl(rvInfoVector[i].conditionalParents.size());
+    for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
+      for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+
+	rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+		    frame+rvInfoVector[i].conditionalParents[j][k].second);
+
+	////////////////////////////////////////////////////
+	// Make sure the rv at the time delta from the current
+	// frame exists.
+	if (nameRVmap.find(pp) == nameRVmap.end())
+	  error("Error: parent random variable %s at frame %d does not exist\n",
+		pp.first.c_str(),pp.second);
+
+	const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
+
+	////////////////////////////////////////////////////
+	// make sure we have no continuous parents.
+	if (par.rvType == RVInfo::t_continuous)
+	  error("Error: RV %s at frame %d (line %d) specifies a continuous parent %s at frame %d (line %d)\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		par.name.c_str(),
+		par.frame,
+		par.fileLineNumber);
+	// add
+	cpl[j].push_back(par.rv);
+      }
+    }
+
+    // finally, add all the parents.
+    rvInfoVector[i].rv->setParents(sparents,cpl);
+  }
 }
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * associateWithDataParams 
+ *      This sets up the set of random variables 
+ *      were created in createRandomVariableGraph() and associates their
+ *      paramers with that which is contained in GM_Params.
+ *
+ * Preconditions:
+ *      createRandomVariableGraph() and parseGraphicalModel() must have been called.
+ *
+ * Postconditions:
+ *      All RVs have parameters now.
+ *
+ * Side Effects:
+ *      changes all RV objects.
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+FileParser::associateWithDataParams()
+{
+  // now set up rest of info about RV such as
+  // - feature range
+  // - implementations
+  // - pointers to global parameter arrays & checks that they are consistent
+  //   with each other.
+  // Note that all the other data in GMParms must be allocated.
+  for (unsigned i=0;i<rvInfoVector.size();i++) {
+
+    if (rvInfoVector[i].switchingParents.size() == 0) {
+      rvInfoVector[i].rv->dtMapper = NULL;
+    } else {
+      if (rvInfoVector[i].switchMapping.liType == 
+	  RVInfo::ListIndex::li_String) {
+	if (GM_Parms.dtsMap.find(rvInfoVector[i].switchMapping.nameIndex) == GM_Parms.dtsMap.end())
+	  error("Error: RV %s at frame %d (line %d), switching parent DT %s doesn't exist\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		rvInfoVector[i].switchMapping.nameIndex.c_str());
+	rvInfoVector[i].rv->dtMapper = GM_Parms.dtsMap[rvInfoVector[i].switchMapping.nameIndex];
+      } else if  (rvInfoVector[i].switchMapping.liType == 
+		  RVInfo::ListIndex::li_Index) {
+	if ((rvInfoVector[i].switchMapping.intIndex < 0) ||
+	    (rvInfoVector[i].switchMapping.intIndex > GM_Parms.dts.size()))
+	  error("Error: RV %s at frame %d (line %d), switching parent num %d out of range\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		rvInfoVector[i].switchMapping.intIndex);
+	rvInfoVector[i].rv->dtMapper = GM_Parms.dts[rvInfoVector[i].switchMapping.intIndex];
+      } else {
+	// this shouldn't happen, unless the parser has a bug.
+	assert ( 0 );
+      }
+    }
+
+    if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
+      // get a discrete form of the current rv
+      DiscreteRandomVariable* rv = 
+	(DiscreteRandomVariable*) rvInfoVector[i].rv;
+      error("not finished coding yet");
+    } else { // continuous
+      error("not finished coding yet");
+    }
+  }
+}
 
 
 
@@ -1272,10 +1465,13 @@ main(int argc,char*argv[])
   if (argc > 1) {
     FileParser fp(argv[1]);    
     fp.parseGraphicalModel();
+    fp.createRandomVariableGraph();
   } else {
     FileParser fp("-");
     fp.parseGraphicalModel();
+    fp.createRandomVariableGraph();
   }
+
 
 }
 
