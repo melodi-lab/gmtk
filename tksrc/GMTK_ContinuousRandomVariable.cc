@@ -66,7 +66,7 @@ ContinuousRandomVariable::ContinuousRandomVariable(string _label)
 void
 ContinuousRandomVariable::findConditionalParents()
 {
-  printf("ContinuousRandomVariable::findConditionalParents called\n");
+//  printf("ContinuousRandomVariable::findConditionalParents called\n");
 
   cachedIntFromSwitchingState = intFromSwitchingState();
   assert ( cachedIntFromSwitchingState >= 0 && 
