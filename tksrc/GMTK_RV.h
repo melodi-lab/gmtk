@@ -232,6 +232,15 @@ protected:
 
 public:
 
+
+  // If this is true, then when going from the directed to the
+  // undirected model, we do not have children become neighbors if
+  // this RV is observed since in that case, this observed RV renders
+  // the parents independent of the children. Having the undirected
+  // graph respect this additional factorization can sometimes speed
+  // up inference.
+  static bool disconnectChildrenOfObservedParents;
+
   // return the name
   const string& name() const { return rv_info.name; }
 

@@ -95,11 +95,20 @@ int main(int argc, char *argv[]) {
 
 	////////////////////////////////////////////
 	// parse arguments
-	Arg::parse(argc,argv);
+	bool parse_was_ok = Arg::parse(argc,argv);
+
+	if(!parse_was_ok) {
+	  Arg::usage(); exit(-1);
+	}
+
+	(void) IM::setGlbMsgLevel(verbosity);
+	GM_Parms.setMsgLevel(verbosity);
 
 	if (print_version_and_exit) {
 		printf("%s\n",gmtk_version_id);
 	}
+
+
 	
 	// figure out how many words in the vocab file
 	unsigned card = 0;
