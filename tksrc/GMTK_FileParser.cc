@@ -32,7 +32,8 @@
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RandomVariable.h"
-#include "GMTK_GMTK.h"
+#include "GMTK_GM.h"
+#include "GMTK_GMParms.h"
 
 VCID("$Header$");
 
@@ -47,7 +48,7 @@ GM = "GRAPHICAL_MODEL" identifier Frame_List Chunk_Specifier
 
 Frame_List = Frame | Frame Frame_List
 
-Frame = "frame" integer "{" RV_List "}"
+Frame = "frame" ":"  integer "{" RV_List "}"
 
 RV_List = RV | RV RV_List
 
@@ -58,494 +59,96 @@ RV_Attribute_List = Attribute | Attribute RV_Attribute_List
 Attribute = 
     "type" ":" RV_Type ";" |
     "disposition" ":" RV_Disposition ";" |
+    "cardinality" ":" integer ";" |
     "switchingparents" ":" Switching_Parent_LIST ";" |
-    "conditionalparents" ":" Conditional_Parent_LIST ";"
-
-Keyword ":" RV_Att_Arguments ";"
-
-keyword = "type" | "disposition" | "implementation" | 
-               "parameters" | 
-                 "switchingparents" | 
-	 	  "conditionalparents"
-
-RV_Att_Arguments =  "nil" | RV_Type | RV_Disp | 
-        | Implementation | Parameters | Parent_List | Cond_Parent_List
+    "conditionalparents" ":" 
+              Conditional_Parent_List_List  ";"
 
 RV_Type = "discrete" | "continuous"
 
-RV_Disp = "hidden" | "observed" int_range
+RV_Disp = "hidden" | "observed" int_range Continous_Implementation
 
-Implementation = Discrete_Implementation | Continous_Implementation
+Switching_Parent_LIST = "nil" | Parent_List "using" Mapping_Spec
 
-Discrete_Implementation = "MDCPT" | "MSCPT" 
+Mapping_Spec = "mapping" "(" integer ")"
+     # the integer is used to index into to the decision tree
+     # that maps from the switching parents to one of the
+     # conditional parent lists.
+
+Conditional_Parent_List_List = 
+    Conditional_Parent_List using CPT_SPEC |
+    Conditional_Parent_List using CPT_SPEC "|" Conditional_Parent_List_List
+
+Cond_Parent_List = "nil" | Parent_List 
+
+CPT_SPEC = CPT_TYPE "(" integer ")"
+
+CPT_TYPE = "MDCPT" | "MSCPT" 
+
+Parent_List = Parent | Parent "," Parent_List
+
+Parent = identifier "(" integer ")" 
 
 Continuous_Implementation = "mixGaussian" | 
          "gausSwitchMixGaussian" | "logitSwitchMixGaussian" |
          "mlpSwitchMixGaussian"
      
-Parameters = integer | 
-
-Cond_Parent_List = Parent_List
-       | Parent_List "|" Cond_Parent_List
-
-Parent_List = Parent | Parent Parent_List
-
-Parent = identifier "(" integer ")" 
-
-Identifier_List = identifier | identifier Identifier_List
-
-Chunk_Specifier = integer ":" integer
+Chunk_Specifier = "chunk"  integer ":" integer
 
 *********************************************************************** 
 *********************************************************************** 
 */
 
 
+////////////////////////////////////////////////////////////////////
+//        lex declarations
+////////////////////////////////////////////////////////////////////
+
+extern FILE *yyin, *yyout;
+extern int yylex();
 
 
+////////////////////////////////////////////////////////////////////
+//        static data declarations
+////////////////////////////////////////////////////////////////////
 
+FileParser::TokenInfo FileParser::tokenInfo;
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
 
 
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::MDCPT()
- *      Constructor
- *
- * Results:
- *      Constructs the object.
- *
- * Side Effects:
- *      None so far.
- *
- *-----------------------------------------------------------------------
- */
-MDCPT::MDCPT()
+
+FileParser::FileParser(const char*const file)
 {
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::setNumParents()
- *      Just sets the number of parents and resizes arrays as appropriate.
- *
- * Results:
- *      no results.
- *
- * Side Effects:
- *      Will change internal arrays of this object.
- *
- *-----------------------------------------------------------------------
- */
-void MDCPT::setNumParents(const int _nParents)
-{
-  CPT::setNumParents(_nParents);
-
-  // assume that the basic stuff is no longer allocated.
-  bitmask &= ~bm_basicAllocated;
-  cumulativeCardinalities.resize(numParents);
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::setNumCardinality(var,card)
- *      sets the cardinality of var to card
- *
- * Results:
- *      no results.
- *
- * Side Effects:
- *      Will change internal array content of this object.
- *
- *-----------------------------------------------------------------------
- */
-void MDCPT::setNumCardinality(const int var, const int card)
-{
-  CPT::setNumCardinality(var,card);
-  // assume that the basic stuff is not allocated.
-  bitmask &= ~bm_basicAllocated;
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::allocateBasicInternalStructures()
- *      Allocates remainder of internal data structures assuming
- *      that numParents and cardinalities are called.
- *
- * Results:
- *      no results.
- *
- * Side Effects:
- *      Will change internal content of this object.
- *
- *-----------------------------------------------------------------------
- */
-void MDCPT::allocateBasicInternalStructures()
-{
-  int numValues = 1;
-  for (int i=0;i<=numParents;i++) {
-    numValues *= cardinalities[i];
+  if (file == NULL)
+    error("FileParser::FileParser, can't open NULL file");
+  if (!strcmp("-",file))
+    yyin = stdin;
+  else {
+    if ((yyin = fopen (file,"r")) == NULL)
+      error("FileParser::FileParser, can't open file (%s)",file);
   }
 
-  mdcpt.resize(numValues);
-
-  if (numParents > 0) {
-    cumulativeCardinalities[numParents-1] = cardinalities[numParents];
-    for (int i=numParents-2; i>=0; i--) {
-      cumulativeCardinalities[i] = 
-	cumulativeCardinalities[i+1]*cardinalities[i+1];
-    }
-  }
-
-  // basic stuff is now allocated.
-  bitmask |= bm_basicAllocated;
+  parseGraphicalModel();
 }
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::read(is)
- *      read in the table.
- * 
- * Results:
- *      No results.
- *
- * Side Effects:
- *      Changes the 'mdcpt' member function in the object.
- *
- *-----------------------------------------------------------------------
- */
 
 void
-MDCPT::read(iDataStreamFile& is)
+FileParser::parseGraphicalModel()
 {
+  int rc;
 
-  is.read(numParents,"MDCPT::read numParents");
+  rc = yylex();
+  if (tokenInfo != "GRAPHICAL_MODEL")
+    error("parse error, expecting key word GRAPHICAL_MODEL");
+  rc = yylex();
+  printf("rc = %d, lineno = %d\n",rc,tokenInfo.srcLine);
 
-  if (numParents < 0) 
-    error("MDCPT: read, trying to use negative (%d) num parents.",numParents);
-  if (numParents >= warningNumParents)
-    warning("MDCPT: read, creating MDCPT with %d parents",numParents);
-
-  cardinalities.resize(numParents+1);
-  cumulativeCardinalities.resize(numParents);
-
-  // read the cardinalities
-  int numValues = 1;
-  for (int i=0;i<=numParents;i++) {
-    is.read(cardinalities[i],"MDCPT::read cardinality");
-    if (cardinalities[i] <= 0)
-      error("MDCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
-    numValues *= cardinalities[i];
-  }
-
-  // cumulativeCardinalities gets set to the
-  // reverse cumulative cardinalities of the random
-  // variables.
-  if (numParents > 0) {
-    cumulativeCardinalities[numParents-1] = cardinalities[numParents];
-    for (int i=numParents-2;i>=0;i--) {
-      cumulativeCardinalities[i] = 
-	cumulativeCardinalities[i+1]*cardinalities[i+1];
-    }
-  }
-
-  // Finally read in the probability values (stored as doubles).
-  // NOTE: We could check that things sum to approximately 1.0 here
-  // (if we didn't use a large 1D loop).
-  mdcpt.resize(numValues);
-  for (int i=0;i<numValues;i++) {
-    double val;
-    is.readDouble(val,"MDCPT::read, reading value");
-    if (val < 0 || val > 1)
-      error("MDCPT: read, invalid pmf value (%g)",val);
-    mdcpt[i] = val;
-  }
-  bitmask |= bm_basicAllocated;
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::write(os)
- *      write out data to file 'os'. 
- * 
- * Results:
- *      No results.
- *
- * Side Effects:
- *      No effects other than  moving the file pointer of os.
- *
- *-----------------------------------------------------------------------
- */
-void
-MDCPT::write(oDataStreamFile& os)
-{
-  os.write(numParents,"MDCPT::write numParents"); 
-  os.writeComment("number parents");os.nl();
-  for (int i=0;i<=numParents;i++) {
-    os.write(cardinalities[i],"MDCPT::write cardinality");
-  }
-  os.writeComment("cardinalities");
-  os.nl();
-
-  // Finally write in the probability values (stored as doubles).
-  // NOTE: We could check that things sum to approximately 1 here, if
-  // we didn't use a large 1D loop. 
-  int childCard = cardinalities[numParents];
-  for (int i=0;i<mdcpt.len();i++) {
-    os.writeDouble(mdcpt[i].unlog(),"MDCPT::write, writing value");
-    childCard --;
-    if (childCard == 0) {
-      os.nl();
-      childCard = cardinalities[numParents];
-    }
-  }
-}
-
-
-////////////////////////////////////////////////////////////////////
-//        Probability Evaluation
-////////////////////////////////////////////////////////////////////
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::becomeAwareOfParentValues()
- *      Adjusts the current structure so that subsequent calls of
- *      probability routines will be conditioned on the given
- *      assigment to parent values.
- *  
- * Results:
- *      No results.
- *
- * Side Effects:
- *      Changes the mdcpt_ptr
- *
- *-----------------------------------------------------------------------
- */
-void
-MDCPT::becomeAwareOfParentValues( sArray<int>& parentValues)
-{
-
-  assert ( parentValues.len() == numParents );
-  assert ( bitmask & bm_basicAllocated );
-  
-  int offset = 0;
-  for (int i = 0; i < numParents; i++) {
-    if (parentValues[i] < 0 || parentValues[i] >= cardinalities[i]) 
-      error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
-    offset += parentValues[i]*cumulativeCardinalities[i];
-  }
-  mdcpt_ptr = mdcpt.ptr + offset;
+  parseFrameList();
+  parseChunkSpecifier();
 
 }
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::becomeAwareOfParentValues()
- *      Like above, but uses the explicit array of parents.
- *  
- * Results:
- *      No results.
- *
- * Side Effects:
- *      Changes the mdcpt_ptr
- *
- *-----------------------------------------------------------------------
- */
-void
-MDCPT::becomeAwareOfParentValues( sArray< RandomVariable * >& parents)
-{
-
-  assert ( parents.len() == numParents );
-  assert ( bitmask & bm_basicAllocated );
-  
-  int offset = 0;
-  for (int i = 0; i < numParents; i++) {
-    if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i]) 
-      error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parents[i]->val,cardinalities[i]);
-    offset += parents[i]->val*cumulativeCardinalities[i];
-  }
-  mdcpt_ptr = mdcpt.ptr + offset;
-}
-
-
-
-////////////////////////////////////////////////////////////////////
-//        Misc Support
-////////////////////////////////////////////////////////////////////
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::randomSample()
- *      Takes a random sample given current parent values.
- *  
- * Results:
- *      the sample
- *
- * Side Effects:
- *      none.
- *
- *-----------------------------------------------------------------------
- */
-int
-MDCPT::randomSample()
-{
-  assert ( bitmask & bm_basicAllocated );
-  
-  iterator it = begin();
-  logpr uniform = rnd.drand48();
-  logpr sum = 0.0;
-  do {
-    sum += it.probVal;
-    if (uniform <= sum)
-      break;
-    it++;
-  } while (it != end());
-  
-  return it.val();
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::normalize()
- *      Re-normalize all the distributions
- *  
- * Results:
- *      No results.
- *
- * Side Effects:
- *      Changes the values of all tables.
- *
- *-----------------------------------------------------------------------
- */
-void
-MDCPT::normalize()
-{
-  assert ( bitmask & bm_basicAllocated );
-
-  // Use the inherent structure of the multi-D array
-  // so to loop over the final distributions on the child.
-
-  const int child_card = cardinalities[numParents];
-  const int num_parent_assignments = mdcpt.len()/child_card;
-  logpr *loc_ptr = mdcpt.ptr;
-  for (int parent_assignment =0; 
-       parent_assignment < num_parent_assignments; 
-       parent_assignment ++) {
-    logpr sum = 0.0;
-    logpr *tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
-      sum += *tmp_loc_ptr++;
-    }
-    tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
-      *tmp_loc_ptr /= sum;
-      tmp_loc_ptr++;
-    }
-    loc_ptr += child_card;
-  }
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::makeRandom()
- *      Assign random but valid values to the CPT distribution.
- *  
- * Results:
- *      No results.
- *
- * Side Effects:
- *      Changes the values of all tables.
- *
- *-----------------------------------------------------------------------
- */
-void
-MDCPT::makeRandom()
-{
-  assert ( bitmask & bm_basicAllocated );
-
-  // Use the inherent structure of the multi-D array
-  // so to loop over the final distributions on the child.
-
-  const int child_card = cardinalities[numParents];
-  const int num_parent_assignments = mdcpt.len()/child_card;
-  logpr *loc_ptr = mdcpt.ptr;
-  for (int parent_assignment =0; 
-       parent_assignment < num_parent_assignments; 
-       parent_assignment ++) {
-    logpr sum = 0.0;
-    logpr *tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
-      logpr tmp = rnd.drand48();
-      sum += tmp;
-      *tmp_loc_ptr ++ = tmp;
-    }
-    tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
-      *tmp_loc_ptr /= sum;
-      tmp_loc_ptr++;
-    }
-    loc_ptr += child_card;
-  }
-}
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::makeUnifrom()
- *      Have distribution be entirely uniform.
- *  
- * Results:
- *      No results.
- *
- * Side Effects:
- *      Changes the values of all tables.
- *
- *-----------------------------------------------------------------------
- */
-void
-MDCPT::makeUniform()
-{
-  assert ( bitmask & bm_basicAllocated );
-
-  // Use the inherent structure of the multi-D array
-  // so to loop over the final distributions on the child.
-
-  const int child_card = cardinalities[numParents];
-  double u_val = 1.0/(double)child_card;
-  const int num_parent_assignments = mdcpt.len()/child_card;
-  logpr *loc_ptr = mdcpt.ptr;
-  for (int parent_assignment =0; 
-       parent_assignment < num_parent_assignments; 
-       parent_assignment ++) {
-    logpr *tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
-      *tmp_loc_ptr ++ = u_val;
-    }
-    loc_ptr += child_card;
-  }
-}
-
-
-
 
 
 
@@ -555,104 +158,12 @@ MDCPT::makeUniform()
 
 #ifdef MAIN
 
-#include "fileParser.h"
+GMParms GM_Parms;
 
 int
 main()
 {
-
-  MDCPT mdcpt;
-
-  // this is a binary variable with three parents
-  // the first one is binary, the second one is ternary,
-  // and the third one is binary.
-
-  mdcpt.setNumParents(3);
-  mdcpt.setNumCardinality(0,2);
-  mdcpt.setNumCardinality(1,3);
-  mdcpt.setNumCardinality(2,2);
-  mdcpt.setNumCardinality(3,3);
-  mdcpt.allocateBasicInternalStructures();
-
-  // set to random values
-  mdcpt.makeRandom();
-  
-  // write values to a data file in ASCII.
-  oDataStreamFile od ("/tmp/foo.mdcpt",false);
-
-  mdcpt.write(od);
-
-  // now print out some probabilities.
-  sArray < int > parentVals;
-  parentVals.resize(3);
-
-  parentVals[0] = 0;
-  parentVals[1] = 0;
-  parentVals[2] = 0;
-
-  for (int i =0; i<3;i++) {
-    printf("Prob(%d) Given cur Par = %f\n",
-	   i,mdcpt.probGivenParents(parentVals,i).unlog());
-  }
-
-  parentVals[0] = 0;
-  parentVals[1] = 0;
-  parentVals[2] = 1;
-
-  for (int i =0; i<3;i++) {
-    printf("Prob(%d) Given cur Par = %f\n",
-	   i,mdcpt.probGivenParents(parentVals,i).unlog());
-  }
-
-  parentVals[0] = 0;
-  parentVals[1] = 1;
-  parentVals[2] = 1;
-
-  for (int i =0; i<3;i++) {
-    printf("Prob(%d) Given cur Par = %f\n",
-	   i,mdcpt.probGivenParents(parentVals,i).unlog());
-  }
-
-  parentVals[0] = 1;
-  parentVals[1] = 2;
-  parentVals[2] = 1;
-
-  for (int i =0; i<3;i++) {
-    printf("Prob(%d) Given cur Par = %f\n",
-	   i,mdcpt.probGivenParents(parentVals,i).unlog());
-  }
-
-  // Now iterate over valid values.
-  MDCPT::iterator it = mdcpt.begin();
-  do {
-    printf("Prob of %d is %f\n",
-	   it.val(),it.probVal.unlog());
-    it++;
-  } while (it != mdcpt.end());
-
-
-  parentVals[0] = 0;
-  parentVals[1] = 0;
-  parentVals[2] = 1;
-  mdcpt.becomeAwareOfParentValues(parentVals);
-
-  it = mdcpt.begin();
-  do {
-    printf("Prob of %d is %f\n",
-	   it.val(),it.probVal.unlog());
-    it++;
-  } while (it != mdcpt.end());
-
-  mdcpt.makeRandom();
-  printf("After randomization\n");
-  it = mdcpt.begin();
-  do {
-    printf("Prob of %d is %f\n",
-	   it.val(),it.probVal.unlog());
-    it++;
-  } while (it != mdcpt.end());
-
-
+  FileParser fp("-");
 }
 
 
