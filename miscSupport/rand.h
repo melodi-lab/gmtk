@@ -79,9 +79,14 @@ class RAND {
     return inverse_normal_func(drand48pe());
   }
 
+  // randomly permute the integers in vec of lenght len
+  void rpermute(int * vec, const unsigned len);
+
+  // randomly permute the unsigned integers in vec of length len
+  void rpermute(unsigned * vec, const unsigned len);
+
 };
 
 
 extern RAND rnd;
-
 #endif

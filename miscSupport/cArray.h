@@ -140,7 +140,7 @@ class cArray {
       resize((int)(f*arg_size+1.0));
   }
 
-  // bit-copy old entries, call default constructors for new entries.
+  // bit-copy old entries, call default constructors only for new entries.
   void resizeAndCopy(const int arg_size) {
     if (arg_size < 0)
       error("Error: cArray:resize arg_size < 0");
