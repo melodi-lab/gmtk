@@ -2334,4 +2334,7 @@ Fri Sep  3 16:10:39 2004
     current utterance length either from a file of lengths, or from the VECPTs themselves.
   - add back in the .active() checks for the global observation files.
 
+Fri Sep  3 21:21:22 2004
+  - make sure bug in DT formulas, donj't accept 'p2' as avariable when there are only 2 parents (i.e.,
+    in formula should check that p_k, that k is valid for current number of parents).  
 
