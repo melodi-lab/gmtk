@@ -1080,7 +1080,8 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
   unsigned stride          = numFeatures(); 
   unsigned start_float_pos = 0;
   unsigned start_int_pos   = 0;
-  bool swap                = s->swap();
+  //  bool swap                = s->swap();
+  bool swap                = false;  // all swapping is already done.  At some point should get rid of all the swapping code that is no longer needed.
   unsigned fmt             = s->getDataFormat();
   if(fmt == PFILE || fmt == RAWASC) swap=false;  // byte swapping is already taken care of for pfiles and is not needed for ascii 
 
@@ -1209,7 +1210,8 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
   unsigned stride          = numFeatures(); 
   unsigned start_float_pos = 0;
   unsigned start_int_pos   = 0;
-  bool swap                = s->swap();
+  //  bool swap                = s->swap();
+  bool swap                = false; // all swapping is already done.  At some point should get rid of all the swapping code that is no longer needed.
   unsigned fmt             = s->getDataFormat();
   if(fmt == PFILE || fmt == RAWASC) swap=false;  // byte swapping is already taken care of for pfiles and is not needed for ascii 
 
@@ -1875,7 +1877,7 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
   short stmp1,stmp2;
 
-  bool bswap = f->bswap;
+  bool bswap = f->swap();
   int nints = f->nInts;
   int nfloats = f->nFloats;
 
@@ -2030,8 +2032,9 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
   unsigned total_num_floats=num_floats*n_samples;
   unsigned total_num_ints=num_ints*n_samples;
 
-  if(swap) s->setSwap(false);  // we are doing all the byte swapping here.
-  //We don't want to repeat it later on.
+  //  Turned off the swap/copy optimization, so there is no need now
+  //  to know if swapping was performed. Also commented out the setSwap method.
+  //  if(swap) s->setSwap(false);
 
   // if we have only one type read complete sentence
   if(num_ints==0) {
