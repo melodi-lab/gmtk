@@ -66,20 +66,56 @@ public:
 
 
   //////////////////////////////////
-  // Full Baum-Welch EM training  //
+  // EM training                  //
   //////////////////////////////////
+
+  // an "iteration" is an entire pass through the data.
+
+  ////////////////////////////////////////////////////////////////////
+  // if emAllocatd not set, initilizes data and set emAllocated
+  // otherwise do nothing.
   virtual void emInit() = 0;
-  virtual void startEmEpoch() = 0;
-  virtual void emAccumulate(const float prob,
-		    const float *const oo_array) = 0;
-  virtual void endEmEpoch(logpr cmpSop_acc) = 0;
-  virtual void emLoadAccumulators(iDataStreamFile& ifile) = 0;
-  virtual void emStoreAccumulators(oDataStreamFile& ofile) = 0;
-  virtual void emAccumulateAccumulators(iDataStreamFile& ifile) = 0;
-  virtual void swapCurAndNew() = 0;
+
+  ////////////////////////////////////////////////////////////////////
+  // begins a new epoch. Also ensures that data is allocated.
+  virtual void emStartIteration() = 0;
+
+  ////////////////////////////////////////////////////////////////////
+  // Accumulate new data into the internal structures for eam.
+  virtual void emIncrement(logpr prob) = 0;
+
+  ////////////////////////////////////////////////////////////////////
+  // Accumulate new data into the internal structures for this 
+  // em iteration
+  virtual void emEndIteration() = 0;
+
+  ////////////////////////////////////////////////////////////////////////////
+  // if swap bit not set, swaps the current and new parameters, set swap bit.
+  // otherwise does nothing.
+  virtual void emSwapCurAndNew() = 0;
+
+  /////////////////////////////////////////////////////////////////
   // clear the swap bit, needed for sharing.
   void clearSwap() { bitmask &= ~bm_swapped; }
-  //////////////////////////////////
+
+  //////////////////////////////////////////////
+  // For parallel EM training.
+
+  ///////////////////////////////////////////////////////////////
+  // store the current set of accumulators to a file.
+  virtual void emStoreAccumulators(oDataStreamFile& ofile) = 0;
+
+  ///////////////////////////////////////////////////////////////
+  // load the current set of accumulators from a file.
+  virtual void emLoadAccumulators(iDataStreamFile& ifile) = 0;
+
+  //////////////////////////////////////////////////////////////////////
+  // accumulate (add to) the current set of accumulators from a file.
+  virtual void emAccumulateAccumulators(iDataStreamFile& ifile) = 0;
+
+
+  //////////////////////////////////////////////
+
 
 
 };

@@ -227,7 +227,7 @@ ensure-ci:
 	@if [ `rlog -L -l -R $(rcs_files) | wc -w` -ne 0 ]; \
 	then \
 		echo "ERROR: The following files are not checked in:"; \
-		rlog -L -l -R $(rcs_files); \
+		rlog -L -l -h $(rcs_files) | egrep 'Working file|bilmes|zweig' ; \
 		exit 1; \
 	fi
 
