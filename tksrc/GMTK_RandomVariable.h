@@ -19,7 +19,6 @@
 #ifndef GMTK_RANDOMVARIABLE
 #define GMTK_RANDOMVARIABLE
 
-#include "error.h"
 #include "sArray.h"
 #include "logp.h"
 
@@ -77,7 +76,7 @@ struct RandomVariable
     // Looks up the values of a vector of parents and computes an
     // integer index into a 1 dimensional array.
 
-    virtual logpr probGivenParents() {error("probGivenParents() Undefined\n");}
+    virtual logpr probGivenParents() = 0;
     // The inference algorithm guarantees that when this is called, the
     // variable and its parents will be clamped to appropriate values.
 
