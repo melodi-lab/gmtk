@@ -30,6 +30,7 @@
  *
  */
 
+
 #ifndef GMTK_MAXCLIQUE_H
 #define GMTK_MAXCLIQUE_H
 
@@ -112,6 +113,8 @@ class CliqueValueHolder  {
   // total number of values currently used (not really
   // needed but kept anyway for debugging).
   unsigned numAllocated;
+
+
 
 
 public:
