@@ -60,3 +60,5 @@ XXX- todo, make sure that chunk n:m is valid.
 
 - to through and start using setBasicAllocatedBit() on read, and add
   assertions, etc.
+
+- look at and get rid of purify memory lost message
