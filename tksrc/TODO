@@ -1616,3 +1616,10 @@ Sun Mar  7 14:13:59 2004
   - allow parameters to be read in in any order, and do not only backward
     but forward reference to items not yet defined. Do a final pass
     over parameters to resolve all references.
+
+Sun Mar  7 19:41:24 2004
+  - with '-verb 100' option, set up so that some form of indenting is
+    working within a clique for RV assignment printing (easier to read).
+
+
+
