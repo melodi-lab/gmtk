@@ -59,7 +59,7 @@ public:
   virtual ~GaussianComponent() { }
 
   static double varianceFloor();
-  static void setVarianceFloor(const double floor);
+  static double setVarianceFloor(const double floor);
 
   int dim() const { return _dim; }
 
