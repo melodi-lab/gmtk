@@ -5,6 +5,27 @@
  *
  *  Written by Gang Ji <gang@ee.washington.edu>
  *
+ *    This contains the implementation for ngrams data type.  There are
+ * three ways to use an ARPA language model in GMTK.
+ *
+ * 1. use lm file with Vocab object
+ *          bigram
+ *          1 % number of parents
+ *          VOCAB_SIZE VOCAB_SIZE % cards
+ *          ./DATA/bigram.arpa vocab % ARPA lm file and vocabulary object
+ *
+ * 2. use ascii indexing file created by gmtkNGramIndex
+ *          bigram
+ *          1 % number of parents
+ *          VOCAB_SIZE VOCAB_SIZE % cards
+ *          ./DATA/bigram.arpa.idx [ascii] % ARPA lm indexing file
+ *
+ * 3. use binary indexing file created by gmtkNGramIndex
+ *          bigram
+ *          1 % number of parents
+ *          VOCAB_SIZE VOCAB_SIZE % cards
+ *          ./DATA/bigram.arpa.idx [binary] % ARPA lm indexing file
+ *
  *  $Header$
  *
  * Copyright (c) 2001, < fill in later >
