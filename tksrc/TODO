@@ -263,3 +263,4 @@ X make sure that dlinkmatrix precompute is being
   of a DT an continue on using another DT, to make sharing
   easier, and save memory for big DTs).
 
+- option to floor variances when they are read in.
