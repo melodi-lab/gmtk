@@ -261,9 +261,8 @@ DiagCovarVector::preCompute()
     variances_inv[i] = 1.0/covariances[i];
     det *= covariances[i];
     if (det <= DBL_MIN) {
-      warning("WARNING: determinant of diagonal covariance matrix '%s' is hiting minimum after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",
-	      name().c_str(),
-	      i);
+      warning("WARNING: determinant of diagonal covariance matrix '%s' (=%e) is hiting minimum (=%e) after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",
+	      name().c_str(),det,DBL_MIN,i);
     }
   }
   if (det <= DBL_MIN) {
