@@ -1180,5 +1180,30 @@ Thu Jul 10 16:25:33 2003
 Thu Jul 10 16:25:33 2003
   - Adding FLM Language Model CPTs
 
+Sat Aug 23 15:52:47 2003
+  - see if it helps to do log(size)+weight rather than just weight
+    in triangulation code. 10^weight is just number of "rows" in the 
+    table, but 10^(log(size)+weight) is full table size (with zeros 
+    removed).
 
+Sat Sep  6 18:24:29 2003
+  - add a flush buffer mode to debug.h so that output when error
+    occurs doesn't get lost.
+
+Sun Sep  7 00:34:12 2003
+  - fix bug with partition algorithm
+    with graph parents_before_after.str and similar such things.
+
+
+Sun Oct 12 23:06:28 2003
+  - add an extra internal variable that is constant and
+    gives an integer corresponding to the total number of frames
+    in an utterance. It is available at every frame, but
+    is always the same value for an utterance.
+  - Possibly tie this in with the observation matrix by having
+    variables that:
+      - give number of changes in a discrete stream of features
+      - length of original unexpanded number of frames, before
+        obs matrix has done upsampling, etc.
+  - Make a general module to add such variables.
 
