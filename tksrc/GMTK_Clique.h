@@ -55,8 +55,8 @@ struct ValueHashTable
     vector<RandomVariable::DiscreteVariableType> *insert(
         vector<RandomVariable::DiscreteVariableType> &vec)
         {
-	  if (count >= MAX_VALUE_HASH_TABLE_SIZE/2)
-	    warning("WARNING: hash table getting large, causing multiple resizes");
+	  // if (count >= MAX_VALUE_HASH_TABLE_SIZE/2)
+	  //   warning("WARNING: hash table getting large, causing multiple resizes");
 	  if (count >= MAX_VALUE_HASH_TABLE_SIZE)
 	    error("ERROR: hash table too large, needing > %d entries",
 		  MAX_VALUE_HASH_TABLE_SIZE);
