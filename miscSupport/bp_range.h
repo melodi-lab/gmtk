@@ -107,11 +107,11 @@ public:
     bool operator <=(const iterator& it){ return (cur_value <= it.cur_value);}
     bool operator >(const iterator& it) { return (cur_value > it.cur_value);}
     bool operator >=(const iterator& it){ return (cur_value >= it.cur_value);}
-
     
-  // karim -- just a place holder for now, so that other programs
-  // start using isAtEnd instead of BP_Ragne::end()
-    bool isAtEnd() { return (*this > myrange.end()); }
+    
+    // Just a place holder for now, so that other programs start using
+    // at_end instead of BP_Ragne::end() -- Karim
+    bool at_end() { return (*this > myrange.end()); }
 
   };
   friend class iterator;
