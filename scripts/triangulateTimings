@@ -141,9 +141,13 @@ my $single_processor_current_pid;
 my $single_processor_vpap;
 my $single_processor_vcap;
 
+my $start_time; 
+
 ##############################################################################
 # Run the program 
 ##############################################################################
+
+$start_time = time();
 
 main();
 print "Done Triangulating\n";
@@ -488,7 +492,7 @@ sub main
   #########################################################################
   # Start thread to generate triangulations 
   #########################################################################
-  printf "%-4s%-39s%-5s%-5s%4s\n", '', 'method', 'vpap', 'vcap',
+  printf "%-8s%-3s%-39s%-5s%-5s%4s\n", 'time', 'B', 'method', 'vpap', 'vcap', 
     'partitions';
 
   push @children, threads->new( \&generate_triangulations );
@@ -1213,6 +1217,7 @@ sub check_best
   my $vcap;
   my $trifile_name;
   my $overall_best_flag;
+  my $crrnt_time;
 
   $trifile_name    = pop;
   $vcap            = pop;
@@ -1234,7 +1239,9 @@ sub check_best
 
   $boundary = "B$boundary_index";
 
-  printf "%-4s%-39s%-5s%-5s%4e", $boundary, $method, $vpap, $vcap, 
+  $crrnt_time = time() - $start_time;
+
+  printf "%-8d%-3s%-39s%-5s%-5s%4e", $crrnt_time, $boundary, $method, $vpap, $vcap, 
     $nmbr_partitions;
 
   if ($nmbr_partitions > $best_partitions) {
@@ -1384,7 +1391,7 @@ sub start_boundary_searches
   ############################################################################
   $boundary_job_list = "$output_directory/boundary_job_list";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -triangulationHeuristic 100-pre-edge-lo-W-2 -noBoundaryMemoize T -jtWeight T";
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -triangulationHeuristic 100-pre-edge-lo-W-2 -noBoundaryMemoize T -jtWeight T -anyTimeTriangulate $boundary_time -noBoundaryMemoize T -jtWeight T";
 
   open JOB_LIST, ">$boundary_job_list";
   $boundary_calls = 0;
@@ -1409,7 +1416,7 @@ sub start_boundary_searches
               ($boundary_calls < $maximum_boundary_searches))
           { 
             $output_name = "$output_directory/$boundary_heuristic.$left_right.M$boundary_M.UB_$weight_UB_type.D_$disconnect_type.$str_basename.boundary";
-            print JOB_LIST "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M -anyTimeTriangulate $boundary_time -noBoundaryMemoize T -jtWeight T 2>&1 ; echo DONE WITH $output_name\n";
+            print JOB_LIST "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1 ; echo DONE WITH $output_name\n";
             $boundary_calls++;
           }
         }
