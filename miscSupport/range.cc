@@ -1,21 +1,22 @@
 //
 // range.cc
 //
-// Another implementation of the range specification
-// based on Jeff's and Eric's.
+// Another implementation of the integer range specification, this one
+// allows repetitions, reverse ranges, and a number of other features
+// that are useful when operating on observation feature vector files.
+// See also bp_range.{h,cc} for "bi-polar" ranges (no repeates, but neg. values).
 //
-// 1998sep29 dpwe@icsi.berkeley.edu
-//
-// Modified to allow repetition of terms as in 0:1r3, which equivalent to 0:1,0:1,0:1
-// See RANGEREPEATTERM -> RANGETERM[rNUMBER] in syntax below
+// - Originally written by Dan Ellis based on the bp_range spec by Bilmes/Fosler.
+//          1998sep29 dpwe@icsi.berkeley.edu
+// - Modified to allow repetition of terms as in 0:1r3, which equivalent to 0:1,0:1,0:1
+//   See RANGEREPEATTERM -> RANGETERM[rNUMBER] in syntax below
 //   02sep2003 karim@cs.washington.edu
-//
-// Added some error checking the supplied range bounds are exceeded.
-// This functionality can be turned off by defining
-// ENFORCE_LOWER_UPPER_LIMITS to be 0 (this can be useful if we want
-// to report the error higher up, when we have more information about
-// the specific range that is causing the problem) 
-//   13oct2004 karim@cs.washington
+// - Added some error checking the supplied range bounds are exceeded.
+//   This functionality can be turned off by defining
+//   ENFORCE_LOWER_UPPER_LIMITS to be 0 (this can be useful if we want
+//   to report the error higher up, when we have more information about
+//   the specific range that is causing the problem) 
+//     13oct2004 karim@cs.washington
 //
 // $Header$
 
@@ -31,7 +32,7 @@
 //   5,5,5,4,4,4,3,3,3
 // although the definitions after a slash are repetition- and 
 // order-insensitive.
-
+//
 // The full syntax is:
 //      RANGESPEC -> @FILENAME|RANGELIST	Top level can be file of ixs
 //  	RANGELIST -> RANGEREPEATTERM[;RANGELIST]	Semicolon-separated terms
@@ -47,6 +48,12 @@
 #include <cstring>
 #include <cstdlib>
 
+#include <string.h>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "general.h"
 #include "range.h"
 #include "error.h"
 
@@ -778,9 +785,10 @@ int Range::SetDefStr(const char *spec) {
     int rc = 0;
 
     if (spec != def_string) {
-	if (def_string) free(def_string);
+	if (def_string) 
+	  delete [] def_string;
 	if (spec) {
-	    def_string = strdup(spec);
+	    def_string = copyToNewStr(spec);
 	} else {
 	    def_string = NULL;
 	}
@@ -793,7 +801,7 @@ int Range::SetDefStr(const char *spec) {
     }
     //    if (def_string == NULL) {
     //	// NULL def_str equivalent to ALL? (to be like Jeff's range)
-    //def_string = strdup("all");
+    //def_string = copyToNewStr("all");
     //}
     if (def_string) {
 	// Is it a file name, or a true range?
@@ -889,8 +897,10 @@ Range::Range(const char *defstr /*=NULL*/, int minval /*=0*/,
 }
 
 Range::~Range() {
-    if(def_string) free(def_string);
-    if(rangeList)  FreeRangeList(rangeList);
+  if(def_string) 
+    delete [] def_string;
+  if(rangeList)  
+    FreeRangeList(rangeList);
 }
 
 Range::iterator::iterator (const Range& rng) 
