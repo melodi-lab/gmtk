@@ -106,7 +106,7 @@ all_hdrs = GMTK_CPT.h GMTK_Clique.h GMTK_CliqueChain.h GMTK_Constants.h GMTK_Dli
 
 all_objs = $(objs)
 
-all_exs = 
+all_exs = gmtkEMtrain gmtkViterbi gmtkSplitGaussians
 
 #----------------------------------------------------------------------------
 # Main build programs.
