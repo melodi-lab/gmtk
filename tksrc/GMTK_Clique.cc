@@ -76,6 +76,7 @@ void Clique::recycleCliqueValue(unsigned idx)
 int addr2(vector<RandomVariable::DiscreteVariableType> &vec)
 {
     unsigned r=0;
+    assert (vec.size() > 0); 
     int i=int(vec.size())-1; do {
     r = (r << 4) + vec[i] + 1;
     if (r > 0x0fffffff) {
@@ -103,7 +104,6 @@ const unsigned primes[14] =
 vector<RandomVariable::DiscreteVariableType> *ValueHashTable::insert(
 vector<RandomVariable::DiscreteVariableType> &vec)
 {
-    int size_index=0;
     if (table_size == 0) resize(primes[size_index]);
     int a = addr(vec);
     int inc=addr2(vec)+1;
@@ -124,6 +124,7 @@ vector<RandomVariable::DiscreteVariableType> &vec)
 void ValueHashTable::resize(int size)
 {
     table_size = size;  // used for addressing; not same as table.size()
+    printf("table size is %d\n",table_size);
     nt.resize(table_size);
     for (int i=0; i<table_size; i++) nt[i] = NULL;
     for (unsigned i=0; i<table.size(); i++)
