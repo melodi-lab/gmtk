@@ -197,7 +197,9 @@ main(int argc,char*argv[])
                                       (unsigned*)&nfs,
                                       (unsigned*)&nis,
                                       (unsigned*)&ifmts,
-                                      (bool*)&iswps);
+                                      (bool*)&iswps,
+				      startSkip,
+				      endSkip);
   }
 
   MixGaussiansCommon::checkForValidRatioValues();

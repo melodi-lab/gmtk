@@ -450,9 +450,9 @@ void GMTK_GM::cliqueChainEM(const int iterations,
 	      continue;
 	    }
 	  total_data_prob *= chain->dataProb;
-	  frames += globalObservationMatrix.numFrames;
+	  frames += globalObservationMatrix.numFrames();
           cout << "Data prob per frame: " 
-               << chain->dataProb.val()/globalObservationMatrix.numFrames << endl;
+               << chain->dataProb.val()/globalObservationMatrix.numFrames() << endl;
 
 	  // then increment the em counts
 	  chain->incrementEMStatistics();
@@ -1184,7 +1184,7 @@ void GMTK_GM::setExampleStream(const char *const obs_file_name,
   }
 #endif
 
-  GM_Parms.setStride(globalObservationMatrix.stride);
+  GM_Parms.setStride(globalObservationMatrix.stride());
   using_files = true;
 }
 
@@ -1199,7 +1199,7 @@ void GMTK_GM::clampFirstExample()
 	// we are assured it is not an empty range from an earlier check.
 	const int seg_no = *(*trrng_it);
         globalObservationMatrix.loadSegment(seg_no);
-        int frames = globalObservationMatrix.numFrames;
+        int frames = globalObservationMatrix.numFrames();
 	if (((frames-framesInTemplate)%framesInRepeatSeg != 0)
         || (frames-framesInTemplate<0) ) {
 	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",seg_no);
@@ -1229,7 +1229,7 @@ bool GMTK_GM::clampNextExample()
 	  return false;
 	const int seg_no = *(*trrng_it);
         globalObservationMatrix.loadSegment(seg_no);
-        int frames = globalObservationMatrix.numFrames;
+        int frames = globalObservationMatrix.numFrames();
 	if (((frames-framesInTemplate)%framesInRepeatSeg != 0)
         || (frames-framesInTemplate<0) ) {
 	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",seg_no);

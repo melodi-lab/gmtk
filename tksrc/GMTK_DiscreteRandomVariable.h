@@ -120,7 +120,7 @@ public:
 		   cardinality,
 		   featureElement,
 		   timeIndex,
-		   globalObservationMatrix.segmentNumber,
+		   globalObservationMatrix.segmentNumber(),
 		   tmp);
 	val = tmp;
       }
