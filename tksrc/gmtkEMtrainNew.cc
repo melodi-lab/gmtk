@@ -549,9 +549,7 @@ main(int argc,char*argv[])
 		globalObservationMatrix.numSegments(),
 		0,globalObservationMatrix.numSegments()-1);
 
-	globalObservationMatrix.loadSegment(segment);
-	GM_Parms.setSegment(segment);
-
+	const unsigned numFrames = GM_Parms.setSegment(segment);
 #if 0
 	if (globalObservationMatrix.active()) {
 	  globalObservationMatrix.printSegmentInfo();
@@ -559,7 +557,6 @@ main(int argc,char*argv[])
 	}
 #endif
 
-	const int numFrames = globalObservationMatrix.numFrames();
 
 	if (island) {
 	  if (MixtureCommon::cacheMixtureProbabilities == true) {

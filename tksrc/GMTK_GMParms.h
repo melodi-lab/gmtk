@@ -421,7 +421,7 @@ public:
   ////////////////////////////////////////////////////////////////
   void clampFirstExample();
   void clampNextExample();
-  void setSegment(const unsigned segmentNo);
+  unsigned setSegment(const unsigned segmentNo);
 
   // some parameter objects require the stride in the observation
   // matrix. Set this here.

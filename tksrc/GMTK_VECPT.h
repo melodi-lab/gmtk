@@ -193,7 +193,10 @@ public:
   void setSegment(const unsigned segNo) {
     obs.loadSegment(segNo);
   }
-
+  unsigned numFrames() {
+    // return the number of frames in the current segment.
+    return obs.numFrames();
+  }
 
 };
 

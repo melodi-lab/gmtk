@@ -4552,9 +4552,10 @@ unrollAndTriangulate(// triangulate heuristics
  *   none
  *-----------------------------------------------------------------------
  */
-void
+bool
 BoundaryTriangulate::
-ensurePartitionsAreChordal(GMTemplate& gm_template)
+ensurePartitionsAreChordal(GMTemplate& gm_template,
+			   const bool dieIfNot)
 {
   vector<triangulateNode>         triangulate_nodes; 
   list<vector<triangulateNode*> > list_cliques;
@@ -4578,11 +4579,20 @@ ensurePartitionsAreChordal(GMTemplate& gm_template)
   e_chordal = testZeroFillIn( order );
 
   if (!p_chordal || !c_chordal || !e_chordal) {
-    error("ERROR: Program exiting since the following partitions are not chordal:%s%s%s",
-	  (p_chordal?"":" P"),
-	  (c_chordal?"":" C"),
-	  (e_chordal?"":" E"));
+    if (dieIfNot) {
+      error("ERROR: Program exiting since the following partitions are not chordal:%s%s%s",
+	    (p_chordal?"":" P"),
+	    (c_chordal?"":" C"),
+	    (e_chordal?"":" E"));
+    } else {
+      warning("ERROR: Program exiting since the following partitions are not chordal:%s%s%s",
+	    (p_chordal?"":" P"),
+	    (c_chordal?"":" C"),
+	    (e_chordal?"":" E"));
+    }
+    return false;
   }
+  return true;
 }
 
 

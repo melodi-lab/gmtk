@@ -2508,15 +2508,20 @@ GMParms::clampNextExample()
  *
  *-----------------------------------------------------------------------
  */
-void
+unsigned
 GMParms::setSegment(const unsigned segmentNo)
 {
+  globalObservationMatrix.loadSegment(segmentNo);
+  const unsigned numFrames = globalObservationMatrix.numFrames();
+
   for(unsigned i = 0; i<clampableDts.size(); i++) {
     clampableDts[i]->seek(segmentNo);
     clampableDts[i]->clampNextDecisionTree();
   }
   for (unsigned i=0; i< veCpts.size(); i++) {
     veCpts[i]->setSegment(segmentNo);
+    if (veCpts[i]->numFrames() != numFrames) 
+      error("ERROR: number of frames in segment %d for main observation matrix is %d, but VirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
   }
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
@@ -2526,7 +2531,7 @@ GMParms::setSegment(const unsigned segmentNo)
     mixtures[i]->emptyComponentCache();
   }
 
-
+  return numFrames;
 }
 
 
