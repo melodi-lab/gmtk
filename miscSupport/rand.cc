@@ -20,7 +20,7 @@ VCID("$Header$");
 #include "error.h"
 
 #include "rand.h"
-// #include "alloca.h"
+#include "alloca.h"
 
 #ifndef M_SQRT2
 #define M_SQRT2        1.41421356237309504880  /* sqrt(2) */
