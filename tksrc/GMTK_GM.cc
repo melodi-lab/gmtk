@@ -448,6 +448,8 @@ void GMTK_GM::cliqueChainEM(const int iterations,
 	    }
 	  total_data_prob *= chain->dataProb;
 	  frames += globalObservationMatrix.numFrames;
+          cout << "Data prob per frame: " 
+               << chain->dataProb.val()/globalObservationMatrix.numFrames << endl;
 
 	  // then increment the em counts
 	  chain->incrementEMStatistics();
@@ -980,26 +982,25 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     // number of slices before unrolling
 
     // for all existing variables, map their address to the slice and offset
-    map<RandomVariable *, pair<int,int> > slice_info_for;
-    map<pair<int, int>, RandomVariable *> rv_for_slice;
+    map<RandomVariable *, pair<int,string> > slice_info_for;
+    map<pair<int, string>, RandomVariable *> rv_for_slice;
     int cur_slices = (*node.rbegin())->timeIndex;
     int period = last_frame-first_frame+1;  // over which segments repeat
     for (int i=0; i<=cur_slices; i++)
     {
-        int offset = 0;
-        for (vi=start_of_slice[i]; vi<=end_of_slice[i]; vi++,offset++)
+        for (vi=start_of_slice[i]; vi<=end_of_slice[i]; vi++)
         {
             int new_slice = i;
             if ((*vi)->timeIndex > last_frame) // part of the tail
                new_slice += times*period; // this is where the tail node will be
 
             // note where the variable is before unrolling 
-            slice_info_for[*vi] = pair<int,int>(i, offset);
+            slice_info_for[*vi] = pair<int,string>(i, (*vi)->label);
  
             // note where it will be after unrolling. 
             // variables in slices up to lasft_frame stay put
             // variables in the tail advance by times*period slices
-            rv_for_slice[pair<int,int>(new_slice,offset)] = *vi;
+            rv_for_slice[pair<int,string>(new_slice, (*vi)->label)] = *vi;
         }
     }
     
@@ -1026,10 +1027,10 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                 nrv->timeIndex = cs;
                 nrv->allPossibleParents.clear();  // will set parents again
                 nrv->allPossibleChildren.clear(); // ditto 
-                assert(rv_for_slice.find(pair<int,int>(cs, k)) ==
+                assert(rv_for_slice.find(pair<int,string>(cs, (*vi)->label)) ==
                        rv_for_slice.end());  // should not add twice
-                rv_for_slice[pair<int,int>(cs, k)] = nrv; 
-                slice_info_for[nrv] = pair<int,int>(cs, k);
+                rv_for_slice[pair<int,string>(cs, (*vi)->label)] = nrv; 
+                slice_info_for[nrv] = pair<int,string>(cs, (*vi)->label);
                 unrolled.push_back(nrv);  
             }
     }
@@ -1068,29 +1069,55 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
 
             for (unsigned j=0; j<unrolled[i]->switchingParents.size(); j++)
             {
-                pair<int, int> slice_info = 
+                if (slice_info_for.find(unrolled[i]->switchingParents[j]) ==
+                slice_info_for.end())
+                {
+                    cout << "Unable to find slice information for "
+                         << unrolled[i]->switchingParents[j]->label
+                         <<"in slice " 
+                         << unrolled[i]->switchingParents[j]->timeIndex << endl;
+                    exit(1);
+                }
+
+                pair<int, string> slice_info = 
                     slice_info_for[unrolled[i]->switchingParents[j]];
                 int pslice = slice_info.first + periods*period;
-                int poffset = slice_info.second;
+                string pname = slice_info.second;
                 unrolled[i]->switchingParents[j] = 
-                    rv_for_slice[pair<int,int>(pslice, poffset)];
+                    rv_for_slice[pair<int,string>(pslice, pname)];
                 if (unrolled[i]->switchingParents[j]==NULL)
-                    error("Inconsistency in unrolling. Structure OK?\n");
+                {
+                    cout << "Variable " << unrolled[i]->label << "\n";
+                    error("An unrolled variable has no switching parents but its template variable does.\n");
+                }
             }
 
             for (unsigned j=0; j<unrolled[i]->conditionalParentsList.size();j++)
                 for (unsigned k=0; 
                 k<unrolled[i]->conditionalParentsList[j].size(); k++)
                 {
-                    pair<int, int> slice_info = 
+                    if (slice_info_for.find(
+                    unrolled[i]->conditionalParentsList[j][k]) ==
+                    slice_info_for.end())
+                    {
+                        cout << "Unable to find slice information for "
+                             << unrolled[i]->conditionalParentsList[j][k]->label
+                             <<"in slice " 
+                        << unrolled[i]->conditionalParentsList[j][k]->timeIndex 
+                             << endl;
+                        exit(1);
+                    }
+                    pair<int, string> slice_info = 
                     slice_info_for[unrolled[i]->conditionalParentsList[j][k]];
                     int pslice = slice_info.first + periods*period;
-                    int poffset = slice_info.second;
+                    string pname = slice_info.second;
                     unrolled[i]->conditionalParentsList[j][k] =
-                        rv_for_slice[pair<int,int>(pslice, poffset)];
+                        rv_for_slice[pair<int,string>(pslice, pname)];
                     if (unrolled[i]->conditionalParentsList[j][k]==NULL)
-                        error("Inconsistency in unrolling. Structure OK?\n");
-
+                    {
+                        cout << "Variable " << unrolled[i]->label << "\n";
+                        error("An unrolled variable has no conditional parents but its template variable does.\n");
+                    }
                 }
         }
     
