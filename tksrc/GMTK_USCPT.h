@@ -146,6 +146,10 @@ public:
 
 
   // parallel training
+  void emStoreAccumulators(oDataStreamFile& ofile) {}
+  void emLoadAccumulators(iDataStreamFile& ifile) {}
+  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+
   void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
   void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
   void emZeroOutObjectsAccumulators() {}
