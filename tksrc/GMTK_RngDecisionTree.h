@@ -44,8 +44,16 @@
 // safely be increased.
 #define RNG_DECISION_TREE_MAX_CARDINALITY 512
 
+
+/////////////////////////////////////////////////
+// The string that is used to specify the 'fail' case
+// in a decision tree. This condition will
+// succeed only if none of the other rng conditions succeed.
 #define RNG_DECISION_TREE_DEF_STR "default"
 
+/////////////////////////////////////////////////
+// Forward declare a RandomVariable so we can
+// use pointers to it in this class.
 class RandomVariable;
 
 template <class T = int>
