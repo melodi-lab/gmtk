@@ -100,20 +100,23 @@ DiagCovarVector::read(iDataStreamFile& is)
 {
   NamedObject::read(is);
   covariances.read(is); 
+  unsigned numFloored=0;
   for (int i=0;i<covariances.len();i++) {
-    if (covariances[i] < GaussianComponent::varianceFloor()) {
+    if (covariances[i] < (float)GaussianComponent::varianceFloor()) {
       if (!floorVariancesWhenReadIn) {
 	error("Error: reading diagonal covariance matrix '%s' (from file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
 	      name().c_str(),is.fileName(),
 	      i,covariances[i],GaussianComponent::varianceFloor());
       } else {
-	warning("WARNING: reading diagonal covariance matrix '%s' (from file '%s'), and covariance[%d] = (%e) < current Floor = (%e), forcing to var to floor.",
-	      name().c_str(),is.fileName(),
-	      i,covariances[i],GaussianComponent::varianceFloor());
+	numFloored++;
 	covariances[i] = GaussianComponent::varianceFloor();
       }
     }
   }
+  if (numFloored > 0)
+    warning("WARNING: reading diagonal covariance matrix '%s' (from file '%s'), and %d variance values (out of %d) were  < current Floor = (%e), forcing them to floor.",
+	    name().c_str(),is.fileName(),numFloored,covariances.len(),
+	    GaussianComponent::varianceFloor());
   setBasicAllocatedBit();
   preCompute();
 }
@@ -233,20 +236,24 @@ DiagCovarVector::preCompute()
   variances_inv.growIfNeeded(covariances.len());
   double det = 1.0;
   for (int i=0;i<covariances.len();i++) {
-    if (covariances[i] <= GaussianComponent::varianceFloor()) {
+    if (covariances[i] < (float)GaussianComponent::varianceFloor()) {
       // Theoretically, this shouldn't happen unless you are reading
       // in a file that was computed from a previous run with a different threshold.
-      coredump("ERROR: element %i of diagonal covariance matrix '%s' is at or below floor value",i,name().c_str());
+      error("ERROR: element %i of diagonal covariance matrix '%s' has value %.16e which is below floor value of %.16e.",
+	    i,
+	    name().c_str(),
+	    covariances[i],
+	    GaussianComponent::varianceFloor());
     }
     variances_inv[i] = 1.0/covariances[i];
     det *= covariances[i];
   }
   if (det <= DBL_MIN) {
-    coredump("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations.",name().c_str());
+    error("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",name().c_str());
   }
   const double tmp = (::pow(2*M_PI,covariances.len()/2.0)*::sqrt(det));
   if (tmp <= DBL_MIN)
-    coredump("ERROR:  norm const has hit maximum of diagonal covariance matrix '%s'",name().c_str());
+    coredump("ERROR: norm const has hit maximum of diagonal covariance matrix '%s'",name().c_str());
   _log_inv_normConst = -0.5*(covariances.len()*::log(2*M_PI) + ::log(det));
 }
 
@@ -555,7 +562,7 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
       //      however, if this happens, the variance will be floored like
       //      in case 1.
 
-      if (nextCovariances[i] < GaussianComponent::varianceFloor()) {
+      if (nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
 
 	numFlooredVariances++;
 
@@ -691,7 +698,7 @@ DiagCovarVector::emEndIteration(const float *const parentsAccumulatedNextCovar)
       //      however, if this happens, the variance will be floored like
       //      in case 1.
 
-      if (nextCovariances[i] < GaussianComponent::varianceFloor()) {
+      if (nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
 
 	numFlooredVariances++;
 
