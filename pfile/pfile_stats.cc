@@ -404,7 +404,7 @@ main(int argc, const char *argv[])
     int debug_level = 0;
     bool quiet_mode = false;
 
-    bool bswap = true;
+    bool bswap = false;
 
     program_name = *argv++;
     argc--;
