@@ -37,6 +37,10 @@ struct CliqueValue
     // separators. Note that there is just one in each of the surrounding
     // separators. 
     CliqueValue *pred, *succ;
+
+    // The underlying variable values corresponding to a particular clique
+    // instantiation
+    vector<DISCRETE_VARIABLE_TYPE> values;
 };
 
 struct Clique
@@ -76,12 +80,15 @@ struct Clique
     Clique *parent, *child;
     // In a clique chain, that's all there is.
 
-    map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue> instantiation;
+    list<CliqueValue> instantiation;
     // This stores all the possible instantiations of a clique.
     // Pruning occurs by removing low probability instantiations.
-    // The vector<DISCRETE_VARIABLE_TYPE> stores the hidden variable 
-    // assignments corresponding
-    // to the CliqueValue. 
+
+    map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue *> instantiationAddress;
+    // A separator clique sums over multiple values from its non-separator
+    // parent. instantiationAddress keeps track of the address of the 
+    // unique CliqueValue that all the parent values with the same 
+    // underlying variable values sum into.
 
     logpr probGivenParents();
     // This computes the conditional probability of the clique.

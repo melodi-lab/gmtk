@@ -62,24 +62,23 @@ logpr GMTK_Clique::probGivenParents()
  */
 void GMTK_Clique::prune(logpr beam)
 {
-    // Can't prune separators because their clique entries have pointers
-    // pointing to them => can't move.
-    if (separator)   
-        return;
-
+    // find the maximum probability instantiation
     logpr maxv = 0;
-    map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue>::iterator mi;
-    for (mi=instantiation.begin(); mi!=instantiation.end(); mi++)
-        if ((*mi).second.pi > maxv)
-            maxv = (*mi).second.pi;
+    list<CliqueValue>::iterator li;
+    for (li=instantiation.begin(); li!=instantiation.end(); li++)
+        if (li->pi > maxv)
+            maxv = li->pi;
         
+    // make a list of all the low probability entries
     logpr threshold = maxv*beam;
-    map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue> pruned;
-    for (mi=instantiation.begin(); mi!=instantiation.end(); mi++)
-        if ((*mi).second.pi >= threshold)
-            pruned.insert(*mi);
+    vector<list<CliqueValue>::iterator> kill;
+    for (li=instantiation.begin(); li!=instantiation.end(); li++)
+        if (li->pi < threshold)
+            kill.insert(li);
 
-    instantiation = pruned;
+    // delete them
+    for (int i=0; i<kill.size(); i++)
+        instantiation.remove(kill[i]);
 }
 
 void GMTK_Clique::enumerateValues(int new_member_num, CliqueValue *pred_val,
@@ -89,30 +88,35 @@ bool viterbi)
     {
         cacheClampedValues();
      
-        // make sure something is in the table.
-	// this occurs here for separators only because all
-	// values of all variables are clamped at this point (since
-	// a separator is a subset of the previous non-separator clique)
-        if (instantiation.find(campedValues) == instantiation.end())
+        // Make sure we have a clique value to work with
+        // instantiationAddress tells if the instantiation was seen before
+        map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue>::iterator mi;
+        CliqueValue *cv;
+        if ((mi=instantiationAddress.find(cachedValues)) == 
+        instantiationAddress.end())                  // not seen before
         {
-            CliqueValue cv;
-            cv.pi = 0;
-            instantiation[clampedValues] = cv;
+            CliqueValue c;
+            c.pi = 0;
+            instantiation.push_back(c);              // add a new value
+            cv = &(*instantiation.back());           // will work with new value
         }
-        
+        else
+            cv = &(*mi);                             // will word with old value
+     
+        // store the underlying variable values with the instantiation
+        cv->values = cachedValues;   
+
         if (!viterbi)
         {
 	    // accumulate in probability
-            instantiation[clampedValues].pi += pred_val->pi;
-// We are relying on the address of instantiation[clampedValues] not to
-// change as new entries are added to the map
-            pred_val->succ = &instantiation[clampedValues];
+            cv->pi += pred_val->pi;
+            pred_val->succ = cv;
         }
-        else if (pred_val->pi >= instantiation[clampedValues].pi)
+        else if (pred_val->pi >= cv->pi)
         {
 	    // replace value since it is greater
-            instantiation[clampedValues].pi = pred_val->pi;
-            instantiation[clampedValues].pred = pred_val;
+            cv->pi = pred_val->pi;
+            cv->pred = pred_val;
         }
     }
     else if (new_member_num == newMember.len())  // base case: all members fixed
@@ -127,13 +131,14 @@ bool viterbi)
         CliqueValue cv;
         cv.pi = cv.lambda = probGivenParents();  // cache value in lambda
         cv.pred = pred_val;
+        cv.values = cachedValues;
         if (pred_val)   // not doing root
             cv.pi *= pred_val->pi;
 	// copy in the clique value -- if it has a nonzero probability
         // otherwise, discard it to avoid further propagation
         if (cv.pi != 0)
 // does logpr know what 0 is??
-            instantiation[clampedValues] = cv;
+            instantiation.push_back(cv);
     }
     else
     {
