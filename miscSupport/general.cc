@@ -237,3 +237,21 @@ int stringprintf(string& str,char *format, ...)
   return rc;
 }
 
+
+
+/*
+ * returns number of bits required to represent
+ * a value v between [0 <= v < val], where val > 0..
+ */
+unsigned
+bitsRequiredUptoNotIncluding(unsigned val) 
+{
+  assert ( val > 0 );
+  val --;
+  unsigned res = 0;
+  while (val) {
+    res++;
+    val >>= 1;
+  }
+  return res;
+}

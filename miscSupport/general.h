@@ -109,4 +109,10 @@ void reportTiming(// input
 int stringprintf(string& str,char *format, ...);
 
 
+/*
+ * returns number of bits required to represent
+ * a value v between [0 <= v < val], where val > 0..
+ */
+unsigned bitsRequiredUptoNotIncluding(unsigned val); 
+
 #endif
