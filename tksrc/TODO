@@ -1118,5 +1118,8 @@ Fri May 09 18:52:17 2003
     we accumulate them rather than the other way around.
     
     
-  
+Fri May 23 15:42:30 2003
+  - fix argument code so that rather than giving warnings on argument type errors, it
+    gives true errors.
+ 
 
