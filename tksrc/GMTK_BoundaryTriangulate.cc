@@ -1957,7 +1957,6 @@ pop_back()
  *
  * Results:
  *   none
- *
  *-----------------------------------------------------------------------
  */
 void
@@ -2003,9 +2002,10 @@ erase(
  *   none
  *
  * Results:
- *   A pointer to the i'th node in the list.  Note that this is a O(N) 
- *   operation. 
+ *   A pointer to the i'th node in the list.  
  *
+ * Complexity:
+ *   This is a O(N) operation. 
  *-----------------------------------------------------------------------
  */
 BoundaryTriangulate::triangulateNode* 
@@ -2039,14 +2039,17 @@ operator[] (
  *
  * Postconditions:
  *   The graph structure given by a set of RandomVariable*'s is copied 
- *   into a set of triangulateNode's.  This O(N+E*log(N)) where E is the
- *   number of edges and N is the number of nodes.
+ *   into a set of triangulateNode's.  
  *
  * Side Effects:
  *   none 
  *
  * Results:
- *   none 
+ *   none
+ *
+ * Complexity:
+ *   O(N+E*log(N)) where E is the number of edges and N is the number 
+ *   of nodes.
  *-----------------------------------------------------------------------
  */
 void
@@ -2330,50 +2333,6 @@ maximumCardinalitySearch(
 
 /*-
  *-----------------------------------------------------------------------
- * triangulateMaximumCardinalitySearch
- *   
- * Preconditions:
- *   Each variable in the set of nodes must have valid parent and 
- *   neighbor members and the parents/neighbors must only point to other 
- *   nodes in the set. 
- *
- * Postconditions:
- *   The graph is triangulated with an elimination order as determined by 
- *   maximum cardinality search.  This procedure is O(N^2). 
- *
- * Side Effects:
- *   Neighbor members of each random variable can be changed.
- *
- * Results:
- *   none 
- *
- * (For more details see maximumCardinalitySearch) 
- *-----------------------------------------------------------------------
- */
-void 
-BoundaryTriangulate::
-triangulateMaximumCardinalitySearch( 
-  const set<RandomVariable*>& nodes,
-  vector<MaxClique>&          cliques,
-  vector<RandomVariable*>&    order
-  )
-{
-  vector<triangulateNode>         triangulate_nodes; 
-  list<vector<triangulateNode*> > list_cliques;
-  vector<triangulateNode*>        triangulate_order; 
-
-  fillTriangulateNodeStructures( nodes, triangulate_nodes );
-  maximumCardinalitySearch( triangulate_nodes, list_cliques, triangulate_order, 
-    true);
-  fillInComputation( triangulate_order );
- 
-  listVectorCliquetoVectorSetClique( list_cliques, cliques );
-  triangulateCompletePartition( nodes, cliques );
-}
-
-
-/*-
- *-----------------------------------------------------------------------
  * fillInComputation
  *  
  *   Triangulates a graph according to a given elimination order in 
@@ -2628,6 +2587,149 @@ testZeroFillIn(
   return(chordal);
 }
 
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateMaximumCardinalitySearch
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   The graph is triangulated with an elimination order as determined by 
+ *   maximum cardinality search.  The maximal cliques are stored in the
+ *   cliques variable in RIP order.  The elimination order used is stored 
+ *   in order. 
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *   none 
+ *
+ * Complexity:
+ *   This procedure runs O((N^2)log(N)), the cost of converting the 
+ *   list of vector cliques to the vector of set cliques. 
+ * 
+ * (For more details see maximumCardinalitySearch) 
+ *-----------------------------------------------------------------------
+ */
+void 
+BoundaryTriangulate::
+triangulateMaximumCardinalitySearch( 
+  const set<RandomVariable*>& nodes,
+  vector<MaxClique>&          cliques,
+  vector<RandomVariable*>&    order
+  )
+{
+  vector<triangulateNode>         triangulate_nodes; 
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        triangulate_order; 
+
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, triangulate_order, 
+    true);
+  fillInComputation( triangulate_order );
+ 
+  listVectorCliquetoVectorSetClique( list_cliques, cliques );
+  triangulateCompletePartition( nodes, cliques );
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * chordalityTest 
+ *   
+ * Runs in O(N+E*log(N)), the cost of converting from random variables to 
+ * triangulateNodes
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   none 
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   true if graph is chordal, false if not 
+ *
+ * Complexity:
+ *   O(N+E*log(N)), the cost of converting the RandomVariables to 
+ *   triangulateNodes.  
+ *-----------------------------------------------------------------------
+ */
+bool
+BoundaryTriangulate::
+chordalityTest( 
+  const set<RandomVariable*>& nodes
+  )
+{
+  vector<triangulateNode>         triangulate_nodes; 
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        order; 
+  bool                            chordal;
+
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, true);
+  chordal = testZeroFillIn( order );
+
+  return(chordal);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * getCliques 
+ *   
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   If the graph is chordal, the maximal cliques are stored in the 
+ *   cliques variable in RIP order.  If the graph is not chordal, the 
+ *   cliques are not modified. 
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   true if graph is chordal, false if not 
+ *
+ * Complexity:
+ *   This procedure runs O((N^2)log(N)), the cost of converting the 
+ *   list of vector cliques to the vector of set cliques. 
+ *-----------------------------------------------------------------------
+ */
+bool
+BoundaryTriangulate::
+getCliques( 
+  const set<RandomVariable*>& nodes,
+  vector<MaxClique>&          cliques
+  )
+{
+  vector<triangulateNode>         triangulate_nodes; 
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        order; 
+  bool                            chordal;
+
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, true);
+  chordal = testZeroFillIn( order );
+
+  if (chordal) {
+    listVectorCliquetoVectorSetClique( list_cliques, cliques );
+  }
+
+  return(chordal);
+}
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -2686,6 +2788,9 @@ triangulateCompletePartition(
  *
  * Results:
  *   none
+ *
+ * Complexity:
+ *   O((N^2)log(N))
  *-----------------------------------------------------------------------
  */
 void  
