@@ -31,7 +31,8 @@
  *
  * Side Effects:
  *     The instantiation lists of the cliques are filled up.
- *     gm->dataProb gets the data probability
+ *     dataProb gets the data probability  
+ *     viterbiProb gets the viterbi probability
  *
  *-----------------------------------------------------------------------
  */
@@ -75,11 +76,19 @@ bool CliqueChain::forwardPass(logpr beam=0, bool viterbi=false)
     if (postorder[0]->instantiation.size() == 0) 
         return false; 
 
-    // the data probability is the sum of the pi values in the last clique
-    gm->dataProb = 0;
+    // look at the probabilities
+    logpr<float> sum=0, max=0;
     for (li=postorder[0]->instantiation.begin(); 
     li!=postorder[0]->instantiation.end(); li++)
-        gm->dataProb += li->pi;
+    {
+        sum += li->pi;
+        if (li->pi > max) max = li=>pi;
+    }
+    dataProb=viterbiProb=0;
+    if (viterbi)
+        viterbiProb=max;
+    else
+        dataProb=sum;
 
     return true;
 }
@@ -180,7 +189,7 @@ bool CliqueChain::doViterbi(logpr beam)
             maxprob = li->pi;
             best = &(*li);
         }
-    gm->viterbiProb = maxprob;
+    assert(maxprob==viterbiProb); // already computed on forward pass
             
     // then trace backwards and clamp the best values
     for (int i=0; i<postorder.len(); i++)
@@ -255,7 +264,7 @@ void CliqueChain::incrementEMStatistics()
             findConditionalProbabilityNodes();
             
             // do the updates
-            logpr posterior = li->lambda*li->pi/gm->dataProb;
+            logpr posterior = li->lambda*li->pi/dataProb;
             for (int j=0; j<conditionalProbabilityNode.len(); j++)
                 conditionalProbabilityNode[j]->increment(posterior);
         }

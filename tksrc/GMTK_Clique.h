@@ -21,7 +21,8 @@
 
 #include <vector>
 #include <map>
-#include "GMTK_Constants.h"
+#include <list>
+#include "GMTK_RandomVariable.h"
 
 struct CliqueValue
 {
@@ -45,19 +46,19 @@ struct CliqueValue
 
 struct Clique
 {
-    sArray<randomVariable *> member;
+    sArray<RandomVariable *> member;
     // vector of pointers to the constituent variables in the underlying GM.
 
-    sArray<randomVariable *> newMember;
+    sArray<RandomVariable *> newMember;
     // vector of pointers to the variables that are present in the clique,
     // but not in its parent.
     // The entries must be organized so that a variable's parents occur
     // before the variable.
 
-    sArray<randomVariable *> discreteMember;
+    sArray<RandomVariable *> discreteMember;
     // A list of the discrete members of the clique.
 
-    sArray<randomVariable *> conditionalProbabilityNode;
+    sArray<RandomVariable *> conditionalProbabilityNode;
     // Each clique has a set of nodes assigned to it, that contribute to
     // its conditional probability. This array stores them.
 
@@ -72,7 +73,7 @@ struct Clique
     // With switching parents, the set of variables assigned to a clique 
     // depends on the value of the clique. This function is called after all
     // the variables have been clamped, and stores the appropriate 
-    // randomVariable pointers in conditionalProbabilityNode.
+    // RandomVariable pointers in conditionalProbabilityNode.
 
     bool separator;
     // Is the clique a separator?
