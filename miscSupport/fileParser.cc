@@ -462,6 +462,37 @@ iDataStreamFile::readDouble(double& d, char *msg)
 }
 
 
+bool
+iDataStreamFile::readLine(char *&line, size_t n, char *msg) {
+  if ( Binary )
+    error("getline: Can't getline in a binary file.");
+
+  /*
+  ssize_t rc = ::getline(&line, &n, fh);
+  if ( rc < 0 )
+	error("getline", msg);
+  
+  buffp += rc;
+  */
+
+  int len=0;
+
+  if (!prepareNext())
+    return errorReturn("getline",msg);
+
+  // read until '\n'. Add a null character
+  // onto the end of the string.
+  char c;
+  do {
+    line[len++] = c = *buffp++;
+  } while ( c != '\n' );
+  line[len-1] = '\n';
+  line[len] = '\0';
+
+  return true;
+}
+
+
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////  oDataStreamFile //////////////////////////////
