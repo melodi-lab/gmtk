@@ -37,6 +37,8 @@ swapb_i32_i32(intv_int32_t val)
   return (intv_int32_t) res;
 }
 
+
+// TODO: this should be changed to i16 at some point.
 short
 swapb_short_short(short sval) {
  
