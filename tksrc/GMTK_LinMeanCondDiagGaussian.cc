@@ -398,173 +398,189 @@ LinMeanCondDiagGaussian::emEndIteration()
   if (!emOnGoingBitIsSet())
     return;
 
-  accumulatedProbability.floor();
+  // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    error("ERROR: Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, also check child mean '%s', covar '%s', and dlink matrix '%s'",
+    warning("WARNING: Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
 	  name().c_str(),
 	  accumulatedProbability.val(),
 	  minContAccumulatedProbability().val(),
+	  missedIncrementCount,
 	  mean->name().c_str(),
 	  covar->name().c_str(),
 	  dLinkMat->name().c_str());
+    //////////////////////////////////////////////////////////
+    // Since the probability is so small, it is likely
+    // that the accumulators are tiny or zero anyway. We
+    // pass them on in this form to the child object accumulators
+    // (mean, covar, dlinkmat), which will increment them as is (but it
+    // shouldn't do much since they are zero). We expect that the child objects
+    // should notice that their accumulated probability is small
+    // and hence use the previous iterations parameter values.
+    goto finishup;
   }
 
-  const double realAccumulatedProbability =
-    accumulatedProbability.unlog();
+  /////////////////////////////////////////////////////////
+  // make this a {} block so that we can jump over it
+  // above in the goto.
+  { 
+    const double realAccumulatedProbability =
+      accumulatedProbability.unlog();
 
-  // Now we need the fully expanded forms of 
-  // xz, zz, and B. These are used because we need to
-  // compute the inverse matrix in the formula B = (XZ)(ZZ)^(-1).
-  // It is assumed that since this routine is not called often (relative
-  // to emIncrement), we can do all the memory allocation/reclaimation here.
+    // Now we need the fully expanded forms of 
+    // xz, zz, and B. These are used because we need to
+    // compute the inverse matrix in the formula B = (XZ)(ZZ)^(-1).
+    // It is assumed that since this routine is not called often (relative
+    // to emIncrement), we can do all the memory allocation/reclaimation here.
   
   /////////////////////////////////////////////////////////
   // xzExpAccumulators (expanded accumulators) contains the same
   // information as xzAccumulators but includes the accumulated mean
   // xAccumulators in the right-most position of each vector.
-  sArray<double> xzExpAccumulators;
+    sArray<double> xzExpAccumulators;
 
-  xzExpAccumulators.resize( dLinkMat->dLinks->totalNumberLinks() + mean->dim() );
+    xzExpAccumulators.resize( dLinkMat->dLinks->totalNumberLinks() + mean->dim() );
 
   // now copy xz and x over to expanded xz
-  double *xzExpAccumulators_p = xzExpAccumulators.ptr;
-  float *xzAccumulators_p = xzAccumulators.ptr;
-  for (int feat=0;feat<mean->dim();feat++) {
-    const int nLinks = dLinkMat->numLinks(feat);
+    double *xzExpAccumulators_p = xzExpAccumulators.ptr;
+    float *xzAccumulators_p = xzAccumulators.ptr;
+    for (int feat=0;feat<mean->dim();feat++) {
+      const int nLinks = dLinkMat->numLinks(feat);
 
-    for (int dlink=0;dlink<nLinks;dlink++) {
-      *xzExpAccumulators_p++ =
-	*xzAccumulators_p++;
-    }
-
-    *xzExpAccumulators_p++ =
-      xAccumulators[feat];
-  }
-
-  ///////////////////////////////////////////////////////////////////////////
-  // zzExpAccumulators contains the same information as
-  // zzAccumulators, but includes the extra right most column and
-  // bottom most row containing the value accumulatedProbability.
-  sArray<double> zzExpAccumulators;  
-  // resize matrix, going from a size of just upper triangular
-  // representation to one where we include the extra z=1 variable at
-  // the end and represent a full matrix (needed for computing matrix
-  // inverse below). 7/2/01 notes.
-  zzExpAccumulators.resize (
-			    2*dLinkMat->zzAccumulatorLength()
-			    + dLinkMat->totalNumberLinks()
-			    + mean->dim()
-			    );
-  // now expand out. This code does two things simultaneously:
-  // 1) it turns the triangular matrix into a full matrix, and
-  // 2) it adds an extra row&col to the full matrix for the final z value
-  // which wasn't represented during the EM increment stage.
-  float *zzAccumulators_p = zzAccumulators.ptr;
-  float *zAccumulators_p = zAccumulators.ptr;
-  double *zzExpAccumulators_p = zzExpAccumulators.ptr;
-  for (int feat=0;feat<mean->dim();feat++) {
-    const int nLinks = dLinkMat->numLinks(feat);
-    
-    float *zzp = zzAccumulators_p; // ptr to current zz
-    double *zzep = zzExpAccumulators_p; // ptr to current exp zz
-
-    for (int dlink=0;dlink<=nLinks;dlink++) {
-      double *zze_rp = zzep; // row ptr to expanded zz
-      double *zze_cp = zzep; // col ptr to expanded zz
-      for (int j=0;j<(nLinks-dlink);j++) {
-	*zze_rp = *zze_cp = *zzp++;
-	zze_rp ++;            // increment by one value
-	zze_cp += (nLinks+1); // increment by stride
+      for (int dlink=0;dlink<nLinks;dlink++) {
+	*xzExpAccumulators_p++ =
+	  *xzAccumulators_p++;
       }
-      if (dlink < nLinks) 
-	*zze_rp = *zze_cp = *zAccumulators_p++;
-      else 
-	*zze_rp = *zze_cp = 
-	  realAccumulatedProbability;
 
-      zzep += (nLinks+2);
+      *xzExpAccumulators_p++ =
+	xAccumulators[feat];
     }
 
-    zzAccumulators_p += nLinks*(nLinks+1)/2;
-    zzExpAccumulators_p += (nLinks+1)*(nLinks+1);
+    ///////////////////////////////////////////////////////////////////////////
+    // zzExpAccumulators contains the same information as
+    // zzAccumulators, but includes the extra right most column and
+    // bottom most row containing the value accumulatedProbability.
+    sArray<double> zzExpAccumulators;  
+    // resize matrix, going from a size of just upper triangular
+    // representation to one where we include the extra z=1 variable at
+    // the end and represent a full matrix (needed for computing matrix
+    // inverse below). 7/2/01 notes.
+    zzExpAccumulators.resize (
+			      2*dLinkMat->zzAccumulatorLength()
+			      + dLinkMat->totalNumberLinks()
+			      + mean->dim()
+			      );
+    // now expand out. This code does two things simultaneously:
+    // 1) it turns the triangular matrix into a full matrix, and
+    // 2) it adds an extra row&col to the full matrix for the final z value
+    // which wasn't represented during the EM increment stage.
+    float *zzAccumulators_p = zzAccumulators.ptr;
+    float *zAccumulators_p = zAccumulators.ptr;
+    double *zzExpAccumulators_p = zzExpAccumulators.ptr;
+    for (int feat=0;feat<mean->dim();feat++) {
+      const int nLinks = dLinkMat->numLinks(feat);
+    
+      float *zzp = zzAccumulators_p; // ptr to current zz
+      double *zzep = zzExpAccumulators_p; // ptr to current exp zz
 
-    // sanity assertions
-    assert ( zzp == zzAccumulators_p );
-    assert ( (zzep - nLinks - 1) == zzExpAccumulators_p );
-  }
+      for (int dlink=0;dlink<=nLinks;dlink++) {
+	double *zze_rp = zzep; // row ptr to expanded zz
+	double *zze_cp = zzep; // col ptr to expanded zz
+	for (int j=0;j<(nLinks-dlink);j++) {
+	  *zze_rp = *zze_cp = *zzp++;
+	  zze_rp ++;            // increment by one value
+	  zze_cp += (nLinks+1); // increment by stride
+	}
+	if (dlink < nLinks) 
+	  *zze_rp = *zze_cp = *zAccumulators_p++;
+	else 
+	  *zze_rp = *zze_cp = 
+	    realAccumulatedProbability;
 
-  ////////////////////////////////////////////////////////////////////////////
-  // Now go through and compute the next dlink coefficients (which
-  // includes the coefficients AND the means which will be contained
-  // in the right most position of the sparse array.)
-  sArray<double> nextDlinkMat;
-  nextDlinkMat.resize( dLinkMat->dLinks->totalNumberLinks() + mean->dim() );
-  double *nextDlinkMat_p =  nextDlinkMat.ptr;
-  zzExpAccumulators_p = zzExpAccumulators.ptr;
-  xzExpAccumulators_p = xzExpAccumulators.ptr;
-  for (int feat=0;feat<mean->dim();feat++) {
-    const int nLinks = dLinkMat->numLinks(feat);
+	zzep += (nLinks+2);
+      }
 
-    // Solve for the burying coefficients using
-    // a routine which solves Ax = b for x where
-    // A is nXn, x is nX1, and b is nX1
-    // here,
-    //     A = zzExpAccumulators_p,
-    //     x = the output
-    //     b = xzExpAccumulators_p (which gets destroyed)
+      zzAccumulators_p += nLinks*(nLinks+1)/2;
+      zzExpAccumulators_p += (nLinks+1)*(nLinks+1);
 
-    // First, copy xzAccumulators over to nextDlinkMat since
-    // we will need the values of xzAccumulators later.
-    ::memcpy(nextDlinkMat_p,xzExpAccumulators_p,sizeof(double)*(nLinks+1));
-    // Finally, solve for the link values putting the results
-    // in nextDlinkMat_p (the current values get destroyed).
-    ::lineqsolve(nLinks+1,1,
-		 zzExpAccumulators_p,nextDlinkMat_p);
-
-    // now solve for the variances
-    double tmp = 0.0;
-    for (int i=0;i<(nLinks+1);i++) {
-      tmp += ( nextDlinkMat_p[i] * xzExpAccumulators_p[i]);
+      // sanity assertions
+      assert ( zzp == zzAccumulators_p );
+      assert ( (zzep - nLinks - 1) == zzExpAccumulators_p );
     }
 
-    // finally solve for the variance, putting the result back in
-    // the xx accumulator. Do *NOT* normalize by the posterior
-    // accumulator here as that will be done by the covariance
-    // object when we give this to it, below. Note also that
-    // we do not check for variances being too small here, that
-    // is done below as well, since when sharing occurs, the
-    // individual covars might be small, but the shared covariances
-    // might be fine.
-    xxAccumulators[feat] = 
-      (xxAccumulators[feat] - tmp);
+    ////////////////////////////////////////////////////////////////////////////
+    // Now go through and compute the next dlink coefficients (which
+    // includes the coefficients AND the means which will be contained
+    // in the right most position of the sparse array.)
+    sArray<double> nextDlinkMat;
+    nextDlinkMat.resize( dLinkMat->dLinks->totalNumberLinks() + mean->dim() );
+    double *nextDlinkMat_p =  nextDlinkMat.ptr;
+    zzExpAccumulators_p = zzExpAccumulators.ptr;
+    xzExpAccumulators_p = xzExpAccumulators.ptr;
+    for (int feat=0;feat<mean->dim();feat++) {
+      const int nLinks = dLinkMat->numLinks(feat);
 
-    xzExpAccumulators_p += (nLinks+1);
-    nextDlinkMat_p += (nLinks+1);
-    zzExpAccumulators_p += (nLinks+1)*(nLinks+1);
+      // Solve for the burying coefficients using
+      // a routine which solves Ax = b for x where
+      // A is nXn, x is nX1, and b is nX1
+      // here,
+      //     A = zzExpAccumulators_p,
+      //     x = the output
+      //     b = xzExpAccumulators_p (which gets destroyed)
 
-  }
+      // First, copy xzAccumulators over to nextDlinkMat since
+      // we will need the values of xzAccumulators later.
+      ::memcpy(nextDlinkMat_p,xzExpAccumulators_p,sizeof(double)*(nLinks+1));
+      // Finally, solve for the link values putting the results
+      // in nextDlinkMat_p (the current values get destroyed).
+      ::lineqsolve(nLinks+1,1,
+		   zzExpAccumulators_p,nextDlinkMat_p);
 
-  // finally, copy out the means and dlinks in 
-  // *NON* normalized form. Renormalization will occur
-  // (with the (shared if any) sum posteriors) by the objects
-  // that handle those guys, below.
+      // now solve for the variances
+      double tmp = 0.0;
+      for (int i=0;i<(nLinks+1);i++) {
+	tmp += ( nextDlinkMat_p[i] * xzExpAccumulators_p[i]);
+      }
 
-  // Store the next means in xAccumulators and
-  // store the dlinks in xzAccumulators.
+      // finally solve for the variance, putting the result back in
+      // the xx accumulator. Do *NOT* normalize by the posterior
+      // accumulator here as that will be done by the covariance
+      // object when we give this to it, below. Note also that
+      // we do not check for variances being too small here, that
+      // is done below as well, since when sharing occurs, the
+      // individual covars might be small, but the shared covariances
+      // might be fine.
+      xxAccumulators[feat] = 
+	(xxAccumulators[feat] - tmp);
 
-  // now copy it and means over.
-  nextDlinkMat_p = nextDlinkMat.ptr;
-  xzAccumulators_p = xzAccumulators.ptr;
-  for (int feat=0;feat<mean->dim();feat++) {
-    const int nLinks = dLinkMat->numLinks(feat);
-    for (int dlink=0;dlink<nLinks;dlink++) {
-      *xzAccumulators_p++ = // unnormalize
+      xzExpAccumulators_p += (nLinks+1);
+      nextDlinkMat_p += (nLinks+1);
+      zzExpAccumulators_p += (nLinks+1)*(nLinks+1);
+
+    }
+
+    // finally, copy out the means and dlinks in 
+    // *NON* normalized form. Renormalization will occur
+    // (with the (shared if any) sum posteriors) by the objects
+    // that handle those guys, below.
+
+    // Store the next means in xAccumulators and
+    // store the dlinks in xzAccumulators.
+
+    // now copy it and means over.
+    nextDlinkMat_p = nextDlinkMat.ptr;
+    xzAccumulators_p = xzAccumulators.ptr;
+    for (int feat=0;feat<mean->dim();feat++) {
+      const int nLinks = dLinkMat->numLinks(feat);
+      for (int dlink=0;dlink<nLinks;dlink++) {
+	*xzAccumulators_p++ = // unnormalize
+	  (*nextDlinkMat_p++) * realAccumulatedProbability; 
+      }
+      xAccumulators[feat] = // unnormalize
 	(*nextDlinkMat_p++) * realAccumulatedProbability; 
     }
-    xAccumulators[feat] = // unnormalize
-      (*nextDlinkMat_p++) * realAccumulatedProbability; 
   }
 
+ finishup:
   // Finally, incorporate our hard work into the 
   // (respectively) shared objects who will do any
   // normalization
