@@ -28,7 +28,7 @@
 #include "error.h"
 #include "rand.h"
 
-#include "GMTK_DiscreteRandomVariable.cc"
+#include "GMTK_DiscreteRandomVariable.h"
 
 VCID("$Header$");
 
@@ -51,11 +51,12 @@ int card)
  *
  *-----------------------------------------------------------------------
  */
+void
 DiscreteRandomVariable::findConditionalParents()
 {
   cachedIntFromSwitchingState = intFromSwitchingState();
   assert (cachedIntFromSwitchingState >= 0 && 
-	  cachedIntFromSwitchingState < conditionalCPTs.len());
+	  cachedIntFromSwitchingState < conditionalCPTs.size());
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
   curCPT = conditionalCPTs[cachedIntFromSwitchingState];
 }
@@ -77,6 +78,7 @@ DiscreteRandomVariable::findConditionalParents()
  *
  *-----------------------------------------------------------------------
  */
+void
 DiscreteRandomVariable::tieWith(RandomVariable* rv)
 {
 
@@ -85,28 +87,16 @@ DiscreteRandomVariable::tieWith(RandomVariable* rv)
   // that everything is kosher.
   assert ( rv->discrete );
   assert ( cardinality == rv->cardinality );
-  assert ( switchingParents.len() == rv->switchingParents().len() );
-  for (int i=0;i<switchingParents.len();i++) {
-    assert ( switchingParents[i]->cardinality == 
-	      rv->switchingParents[i]->cardinality );
-  }
-  assert ( conditionalParentsList.len() == rv->conditionalParentsList.len() );
-  for (int i=0;i<conditionalParentsList.len();i++) {
-    assert ( conditionalParentsList[i] == 
-	     rv->conditionalParentsList[i] );
-    for (int j=0;j<conditionalParentsList[i].len();j++) {
-      assert (
-	      conditionalParentsList[i].[j].len() ==
-	      rv->conditionalParentsList[i].[j].len()
-	      );
-    }
-  }
+  assert ( switchingParents.size() == rv->switchingParents.size() );
+
 #endif
 
-  // everything checks out, now set our CPS to have same as others.
-  for (int i = 0; i < conditionalCPTs.len(); i++) {
-    conditionalCPTs[i] = rv.conditionalCPTs[i];
-  }
+  // everything checks out, now set our CPS to have same pointers
+  // as rv has. Assume it is discrete and cast.
+  conditionalCPTs = ((DiscreteRandomVariable*)rv)->conditionalCPTs;
+
+  // TODO: finish this function.
+  error("function tieWith not finished");
 
 }
 
