@@ -22,11 +22,14 @@
 #ifndef GMTK_DLINKS_H
 #define GMTK_DLINKS_H
 
+#include <vector>
+
 
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
 
+#include "GMTK_NamedObject.h"
 
 class Dlinks : public NamedObject {
 
@@ -45,25 +48,25 @@ class Dlinks : public NamedObject {
   // member of the outer array corresponds to the dependencies
   // of one feature. The inner arrays point to the positions
   // in a feature vector of where the dependencies come from.
-  sArray< sArray<Dlink> > dIndices;
+  vector< vector<Dlink> > dIndices;
 
 public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  Dlinks() 
+  Dlinks(); 
 
   ///////////////////////////////////////////////////////////  
   // numFeats: return the number of features for this 
   // collection of links corresponds to.
-  int numFeats() { return dIndices.len(); }
+  int numFeats() { return dIndices.size(); }
 
   ///////////////////////////////////////////////////////////  
   // numLinks: return the number of links for the ith
   // feature.
   int numLinks(const int i) { 
     assert ( i >= 0 && i < numFeats() );
-    return dIndices[i].len(); 
+    return dIndices[i].size(); 
   }
 
 
