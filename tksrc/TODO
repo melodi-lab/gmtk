@@ -1626,5 +1626,7 @@ Mon Mar  8 01:47:26 2004
     1) DT leaves with p0 rather than (p0)
     2) cliques with all obs, see karim learning string-edit distance example.
 
+Mon Mar  8 12:27:41 2004
+  - in DT leaves, add an abs() function.
 
 
