@@ -286,6 +286,9 @@ inline DiscRV* RV2DRV(RV* rv) {
 inline DiscRV& RV2DRV(RV& rv) { 
   return *((DiscRV*)&rv);
 }
+inline const DiscRV* const RV2DRV(const RV* const rv) { 
+  return ((const DiscRV* const)rv);
+}
 
 
 // TODO: make a special subclass DummyDiscRV where RVs are easily
