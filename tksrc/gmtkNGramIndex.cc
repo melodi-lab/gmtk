@@ -3,6 +3,23 @@
  *
  *    Written by Gang Ji <gang@ee.washington.edu>
  *
+ *    The goal of this code is to provide files for fast loading of an ARPA language file.
+ * Instead of using
+ *          bigram
+ *          1 % number of parents
+ *          VOCAB_SIZE VOCAB_SIZE % cards
+ *          ./DATA/bigram.arpa vocab % ARPA lm file and vocabulary object
+ * the user can use
+ *          bigram
+ *          1 % number of parents
+ *          VOCAB_SIZE VOCAB_SIZE % cards
+ *          ./DATA/bigram.arpa.idx [ascii] % ARPA lm indexing file
+ * or
+ *          bigram
+ *          1 % number of parents
+ *          VOCAB_SIZE VOCAB_SIZE % cards
+ *          ./DATA/bigram.arpa.idx [binary] % ARPA lm indexing file
+ *
  * NO WARRANTY
  * THE PROGRAM IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR
  * CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED INCLUDING, WITHOUT
@@ -104,7 +121,7 @@ int main(int argc, char *argv[]) {
 			++card;
 	}
 	fclose(fp);
-	
+
 	// figure out ngram order
 	unsigned order = 0;
 	if ( (fp = fopen(lmFile, "r")) == NULL )
@@ -113,10 +130,8 @@ int main(int argc, char *argv[]) {
 	do {
 		if ( getline(&word, &len, fp) < 0 )
 			error("wrong ARPA format in %s", lmFile);
-	} while ( word[0] != '\\' );
-	if ( strstr(word, "\\data\\") == NULL )
-		error("wrong ARPA format in %s", lmFile);
-	
+	} while ( strstr(word, "\\data\\") != word );
+
 	do {
 		if ( getline(&word, &len, fp) < 0 )
 			error("wrong ARPA format in %s", lmFile);
@@ -138,7 +153,7 @@ int main(int argc, char *argv[]) {
 		ngram.setNumCardinality(i, card);
 	}
 
-	fprintf(stderr, "reading lm file...\n");
+	fprintf(stderr, "reading %d-order lm file...\n", order);
 	ngram.read(lmFile, vocab);
 
 	// save the n-gram into data for next fast reading

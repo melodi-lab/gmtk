@@ -1,8 +1,10 @@
 /*-
  * GMTK_NGramCPT.cc
- *     N-Gram CPT
  *
  * Written by Gang Ji <gang@ee.washington.edu>
+ *
+ *   This part of the code has the implementation of class NGramCPT for gmtk.
+ * Please see GMTK_NGramCPT.h for more information.
  *
  * Copyright (c) 2001, < fill in later >
  *
@@ -494,7 +496,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	// readin '\data\'
 	do {
 		ifs.readLine(line, MAX_LINE_LENGTH);
-	} while ( strstr(line, "\\data\\") == NULL );
+	} while ( strstr(line, "\\data\\") != line );
 
 	// read in number of ngrams
 	unsigned *numNGrams = new unsigned [_numParents + 2];
