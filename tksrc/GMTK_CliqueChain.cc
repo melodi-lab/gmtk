@@ -192,7 +192,7 @@ bool CliqueChain::doViterbi(logpr beam)
 
     // first find the likeliest instantiation of the last clique
     logpr maxprob = 0.0;
-    CliqueValue *best;
+    CliqueValue *best = NULL;
     Clique *cl = postorder[0];
     list<CliqueValue>::iterator li;
     for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
