@@ -18,6 +18,8 @@
 #ifndef GMTK_DISCRETERANDOMVARIABLE_H
 #define GMTK_DISCRETERANDOMVARIABLE_H
 
+#include <vector>
+
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
 
@@ -40,7 +42,7 @@ private:
   // Cached value of findConditionalParents(). Can reuse
   // this value w/o needing to do the integer map lookup
   // again.
-  int cachedIntFromSwitchingState;
+  unsigned cachedIntFromSwitchingState;
 
 public:
 
