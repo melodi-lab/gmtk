@@ -36,8 +36,8 @@
  *-----------------------------------------------------------------------
  */
 
-void RandomVariable::setParents(sArray<RandomVariable *> &sparents,
-         sArray<sArray<RandomVariable *> > &cpl)
+void RandomVariable::setParents(vector<RandomVariable *> &sparents,
+         vector<vector<RandomVariable *> > &cpl)
 {
     switchingParents = sparents;
     conditionalParentsList = cpl;
@@ -47,14 +47,14 @@ void RandomVariable::setParents(sArray<RandomVariable *> &sparents,
     // parent, or on twqo different conditional parent lists
     // avoid adding this to the child list twice
     set<RandomVariable *> parents;  // the set of parents this is a child of
-    for (int i=0; i<sparents.len(); i++)
+    for (unsigned i=0; i<sparents.size(); i++)
     {
          parents.insert(sparents[i]);
          sparents[i]->allPossibleChildren.push_back(this);
     }
     
-    for (int i=0; i<cpl.len(); i++)
-        for (int j=0; j<cpl[i].len(); j++)
+    for (unsigned i=0; i<cpl.size(); i++)
+        for (unsigned j=0; j<cpl[i].size(); j++)
             if (parents.find(cpl[i][j]) == parents.end())
             {
                 cpl[i][j]->allPossibleChildren.push_back(this);
@@ -69,15 +69,15 @@ void RandomVariable::setParents(sArray<RandomVariable *> &sparents,
         allPossibleParents[p++] = *si;
 }
 
-void RandomVariable::reveal()
+void RandomVariable::reveal(bool show_vals)
 {
     cout << label << " : ";
     if (discrete) cout << "discrete (" << cardinality << ") ";
     if (hidden) cout << "hidden "; else cout << "observed ";
-    if (!hidden && discrete) cout << val << endl;
+    if (!hidden && discrete || show_vals) cout << "val (" << val << ")";
 
-    cout << "    possible parents: ";
-    for (int i=0; i<allPossibleParents.len(); i++)
+    cout << " possible parents: ";
+    for (unsigned i=0; i<allPossibleParents.size(); i++)
         cout << allPossibleParents[i]->label << " ";
     cout << endl;
 }

@@ -22,73 +22,24 @@
 /*
  *-------------------------------------------------------------------------
  * Function:
- * findTopologicalOrder
+ * verifyTopologicalOrder
  *    
  * Results:
- * The topologicalOrder array is filled with pointers to the random variables
- * in the graph, in topological order.
- * It is guaranteed that all nodes from time slice i appear in this ordering
- * before any nodes from slice i+1.
+ * This verifies that the nodes were declared in topological order
  *
  * Side Effects:
- * None.
+ * The node ordering is copied to the topological array.
 */
-void GMTK_GM::findTopologicalOrder(RandomVariable *rv)
+void GMTK_GM::verifyTopologicalOrder()
 {
-
-    /* Finds a topological order of the random variables.
-       The first call is made with no parameters.
-    */
-
-    static map<RandomVariable *, int> constraints_for;
-    static RandomVariable **temp_topo_order;
-    static int topo_pos;
-    if (rv == NULL)  // the first call
-    {
-        constraints_for.clear();
-        temp_topo_order = new RandomVariable *[numNodes];
-        topo_pos = 0;
-        for (int i=0; i<numNodes; i++)
-            constraints_for[node[i]] += node[i]->allPossibleParents.len();
-
-        // now start processing all nodes w/o and predecessors
-        for (int i=0; i<numNodes; i++)
-            if (constraints_for[node[i]] == 0)
-                findTopologicalOrder(node[i]);
-
-        assert(topo_pos == numNodes);
-
-        // Now "pack" the ordering so that all the nodes from time t occur
-        // before any nodes from time t+1. 
-        // Since variables are only conditioned on variables earlier in 
-        // time, this will be possible.
-        assert((numNodes % sliceSize) == 0);
-        int *pos = new int[numSlices];   // position in the ith slice
-        for (int i=0; i<numSlices; i++)
-            pos[i] = 0;
-        for (int i=0; i<numNodes; i++)
-        {
-            int slice = temp_topo_order[i]->timeIndex;
-            topologicalOrder[sliceSize*slice + pos[slice]++] = 
-                temp_topo_order[i];
-        }
-
-        delete [] pos;
-        delete [] temp_topo_order;
-        return;
-    }
-
-    // not a first call
-    // we have a node with no predecessors
-    assert(constraints_for[rv] == 0);
-    temp_topo_order[topo_pos++] = rv; 
-    constraints_for[rv] = -1;  // mark as processed
-    for (unsigned i=0; i<rv->allPossibleChildren.size(); i++)
-    {
-        assert(constraints_for[rv->allPossibleChildren[i]] > 0);
-        if (--constraints_for[rv->allPossibleChildren[i]] == 0)
-            findTopologicalOrder(rv->allPossibleChildren[i]);
-    }
+    map<RandomVariable *, unsigned> position_of;
+    for (unsigned i=0; i<node.size(); i++)
+        position_of[node[i]] = i;
+    for (unsigned i=0; i<node.size(); i++)
+        for (unsigned j=0; j<node[i]->allPossibleParents.size(); j++)
+            if (position_of[node[i]->allPossibleParents[j]] >= i)
+                error("topological ordering violated");
+    topologicalOrder = node;
 }
 
 /*
@@ -142,7 +93,7 @@ void GMTK_GM::makeUniform()
 
 void GMTK_GM::simulate()
 {
-    for (int i=0; i<numNodes; i++)
+    for (unsigned i=0; i<node.size(); i++)
         topologicalOrder[i]->instantiate();
 }
 
@@ -165,7 +116,7 @@ void GMTK_GM::enumerateProb(int pos, logpr p)
         if (!emMode)          // computing the data prob
             dataProb = 0.0;     // initialize
 
-    if (pos == numNodes)  // all the nodes are instantiated
+    if (unsigned(pos) == node.size())  // all the nodes are instantiated
     {
         if (emMode)
             emIncrementStatistics(p);
@@ -201,7 +152,7 @@ void GMTK_GM::enumerateProb(int pos, logpr p)
 
 void GMTK_GM::cacheValues()
 {
-    for (int i=0; i<numNodes; i++)
+    for (unsigned i=0; i<node.size(); i++)
         node[i]->cacheValue();
 }
 
@@ -219,7 +170,7 @@ void GMTK_GM::cacheValues()
 
 void GMTK_GM::restoreCachedValues()
 {
-    for (int i=0; i<numNodes; i++)
+    for (unsigned i=0; i<node.size(); i++)
         node[i]->restoreCachedValue();
 }
 
@@ -238,10 +189,10 @@ void GMTK_GM::restoreCachedValues()
 
 void GMTK_GM::enumerateViterbiProb(int pos, logpr p)
 {
-    if (pos == 0)            // first call
+    if (pos == 0)              // first call
         viterbiProb = 0.0;     // initialize
 
-    if (pos == numNodes)  // all the nodes are instantiated
+    if (unsigned(pos) == node.size())  // all the nodes are instantiated
     {
         if (p > viterbiProb)
         {
@@ -280,7 +231,7 @@ void GMTK_GM::enumerateViterbiProb(int pos, logpr p)
 
 void GMTK_GM::emIncrementStatistics(logpr p)
 {
-    for (int i=0; i<numNodes; i++)
+    for (unsigned i=0; i<node.size(); i++)
         node[i]->increment(p);
 }
 
@@ -298,7 +249,7 @@ void GMTK_GM::emIncrementStatistics(logpr p)
 
 void GMTK_GM::emInitialize()
 {
-    for (int i=0; i<numNodes; i++)
+    for (unsigned i=0; i<node.size(); i++)
         node[i]->zeroAccumulators();
 }
 
@@ -316,7 +267,7 @@ void GMTK_GM::emInitialize()
 
 void GMTK_GM::emUpdate()
 {
-    for (int i=0; i<numNodes; i++)
+    for (unsigned i=0; i<node.size(); i++)
         node[i]->update();
 }
 
@@ -391,8 +342,8 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
     }
 }
 
-void GMTK_GM::reveal(sArray<RandomVariable *> order)
+void GMTK_GM::reveal(vector<RandomVariable *> order, bool show_vals)
 {
-    for (int i=0; i<order.len(); i++)
-        order[i]->reveal();
+    for (unsigned i=0; i<order.size(); i++)
+        order[i]->reveal(show_vals);
 }
