@@ -54,3 +54,6 @@ incorporated into the package at some point.
 - include check to make sure that names for each section in parms are unique
 
 - todo, make sure that chunk n:m is valid.
+
+- ability to train means and other dlinkmats in a dlinkmats structure
+  independently.
