@@ -168,8 +168,8 @@ void
 MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   /////////////////////////////////////////////
   // make sure our caller has its mean accumulator resized
@@ -215,8 +215,8 @@ MeanVector::emIncrement(const logpr prob,
 			float *const partialAccumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   
   /////////////////////////////////////////////
   // Note: unlike the normal EM mode described
@@ -278,8 +278,8 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
 						  const DiagCovarVector* covar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   if (!emAccInitializedBitIsSet()) {
     // make sure next-means are set up
@@ -421,8 +421,8 @@ MeanVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbab
 						  const DiagCovarVector* covar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
 
   if (!emAccInitializedBitIsSet()) {
@@ -537,8 +537,8 @@ void
 MeanVector::emEndIterationNoSharing(const float*const partialAccumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -610,8 +610,8 @@ void
 MeanVector::emEndIterationNoSharingAlreadyNormalized(const float*const accumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -684,8 +684,8 @@ void
 MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for mean '%s'\n",
@@ -700,8 +700,8 @@ MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
 void
 MeanVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   assert ( basicAllocatedBitIsSet() );
   EMable::emStoreZeroAccumulators(ofile);
@@ -711,8 +711,8 @@ MeanVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
 void
 MeanVector::emLoadAccumulators(iDataStreamFile& ifile)
 {
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   assert ( basicAllocatedBitIsSet() );
   assert ( emEmAllocatedBitIsSet() );
@@ -723,8 +723,8 @@ MeanVector::emLoadAccumulators(iDataStreamFile& ifile)
 void
 MeanVector::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   assert ( basicAllocatedBitIsSet() );
   assert ( emEmAllocatedBitIsSet() );

@@ -343,8 +343,8 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 			      sArray<float>& zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   /////////////////////////////////////////////
   // make sure our caller has its accumulator resized
@@ -422,8 +422,8 @@ DlinkMatrix::emIncrement(const logpr prob,
 			 float* zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   /////////////////////////////////////////////
   // Note: unlike the normal EM mode described
@@ -514,8 +514,8 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 						   const DiagCovarVector* covar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   
   if (!emAccInitializedBitIsSet()) {
     nextArr.growIfNeeded(dLinks->totalNumberLinks());
@@ -668,8 +668,8 @@ void
 DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -736,8 +736,8 @@ void
 DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert (basicAllocatedBitIsSet());
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for dlink matrix '%s'\n",
 	    name().c_str());
@@ -752,8 +752,8 @@ void
 DlinkMatrix::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert (basicAllocatedBitIsSet());
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   EMable::emStoreZeroAccumulators(ofile);
 }
 
@@ -762,8 +762,8 @@ void
 DlinkMatrix::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet());
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
 }
@@ -773,8 +773,8 @@ void
 DlinkMatrix::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet());
-  if (!emAmTrainingBitIsSet())
-    return;
+  // if (!emAmTrainingBitIsSet())
+  // return;
   assert (emEmAllocatedBitIsSet());
   EMable::emAccumulateAccumulators(ifile);
 }
