@@ -339,6 +339,7 @@ class JunctionTree {
 			       RV* rv,
 			       unsigned& numberOfTimesAssigned,
 			       set<RV*>& parSet,
+			       const bool allParentsObserved,
 			       multimap< vector<double>, unsigned >& scoreSet);
   static void createDirectedGraphOfCliquesRecurse(JT_Partition& part,
 					   const unsigned root,
