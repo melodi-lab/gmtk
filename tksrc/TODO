@@ -2542,7 +2542,27 @@ Thu Nov 25 19:24:08 2004
     but try not to do that. Isssue informational warning (debug level 11) if this is done.
 
 
+Sat Nov 27 09:44:40 2004
+  - for docs: talk about how unrolling works. I.e., that vars are first duplicated in unrolled graph parentless,
+    and that edges are determined by children (i.e., after duplication, parents are added
+    for each corresponding child, not vice versa).
+    Example graph:
 
+                c1 -> b
+                ^
+                |
+          x0 -> x1 -> x2
+          |     |     | 
+          v     v     v     
+         o0     o1    o2
+
+          P      C     E
+
+     I.e., The C partition is duplicated without the link to b, and it is only the very last partition that
+     has a link to the E partition (since that is where the b variable has the parent).
+ 
+    Way to explain it: parents are determined to satisfy CPTs (e.g., b's CPT needs a parent).
+ 
 
  
 
