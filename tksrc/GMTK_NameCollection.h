@@ -60,8 +60,6 @@ class NameCollection : public NamedObject  {
   vector<MixGaussians*> mgTable;
   vector<Sparse1DPMF*> spmfTable;
 
-  // keep a separate field because there might be times that some of
-  // the above arrays are empty, but we still want a size.
 
 public:
 
