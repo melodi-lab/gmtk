@@ -271,6 +271,8 @@ ObservationMatrix globalObservationMatrix;
  *    be a mistake to delete it and since these file scan take
  *    a while to generate.
  *
+ *  TODO: move this to general.{cc,h}
+ *
  */
 void
 backupTriFile(const string &triFile) 
