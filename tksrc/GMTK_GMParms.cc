@@ -2217,6 +2217,43 @@ GMParms::clampNextExample()
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * setSegment
+ *      do any necessary bookkeeping work with regard to the
+ *      parameters in order that we properly move to the segment
+ *      given by the argument to this function.
+ *
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      nil
+ *
+ * Side Effects:
+ *      might change internal objects.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMParms::setSegment(const unsigned segmentNo)
+{
+  for(unsigned i = 0; i<clampableDts.size(); i++) {
+    clampableDts[i]->seek(segmentNo);
+  }
+  for (unsigned i=0;i<dLinks.size();i++) {
+    dLinks[i]->clearArrayCache();
+  }
+}
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * setStride()
