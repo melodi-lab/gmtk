@@ -403,13 +403,17 @@ FileParser::RVInfo::checkConsistency()
  *
  *-----------------------------------------------------------------------
  */
-FileParser::FileParser(const char*const file)
+FileParser::FileParser(const char*const file,
+		       const char*const cppCommandOptions)
 {
   FILE* f;
   if (file == NULL)
     error("FileParser::FileParser, can't open NULL file");
+  string cppCommand = string("cpp");
+  if (cppCommandOptions != NULL)
+    cppCommand = cppCommand + string(" ") + cppCommandOptions;
   if (!strcmp("-",file)) {
-    f = ::popen("cpp","r");
+    f = ::popen(cppCommand.c_str(),"r");
     if (f == NULL) {
       error("ERROR: unable to open with standard input structure file");
     }
@@ -418,9 +422,8 @@ FileParser::FileParser(const char*const file)
       error("ERROR: unable to open file (%s) for reading",file);
     }
     fclose(f);
-
-    string str = (string)"cpp " + (string)file;
-    f = ::popen(str.c_str(),"r");    
+    cppCommand = cppCommand + string(" ") + (string)file;
+    f = ::popen(cppCommand.c_str(),"r");
     if (f == NULL)
       error("FileParser::FileParser, can't open file stream from (%s)",file);
   }

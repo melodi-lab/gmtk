@@ -361,7 +361,8 @@ public:
   // constructor opens and parses file, or dies if an
   // error occurs.
   string fileNameParsing;
-  FileParser(const char *const fileName);
+  FileParser(const char *const fileName, 
+	     const char *const cppCommandOptions = NULL);
   ~FileParser();
   void parseGraphicalModel();
   void createRandomVariableGraph();
