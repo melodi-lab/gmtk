@@ -645,6 +645,9 @@ bool GMTKStructVizApp::OnInit()
 	return false;
     }
 
+    (void) IM::setGlbMsgLevel(verbosity);
+    GM_Parms.setMsgLevel(verbosity);
+
     wxInitAllImageHandlers();
     // MainVizWindow has no parent...
     GFrame* MainVizWindow = new GFrame( 0, -1,
