@@ -582,7 +582,7 @@ FileParser::ensureNotAtEOF(const TokenKeyword kw)
 void
 FileParser::parseError(const char* const str)
 {
-  fprintf(stderr,"Parse Error in file '%s': %s at line %d, near (%s)\n",
+  fprintf(stderr,"Parse Error in file '%s': %s at or before line %d, near (%s)\n",
 	  fileNameParsing.c_str(),
 	  str,
 	  tokenInfo.srcLine,
@@ -593,7 +593,7 @@ FileParser::parseError(const char* const str)
 void
 FileParser::parseError(const TokenKeyword kw)
 {
-  fprintf(stderr,"Parse Error in file '%s': expecting keyword (%s) at line %d, near (%s)\n",
+  fprintf(stderr,"Parse Error in file '%s': expecting keyword (%s) at or before line %d, near (%s)\n",
 	  fileNameParsing.c_str(),
 	  KeywordTable[kw].c_str(),
 	  tokenInfo.srcLine,
