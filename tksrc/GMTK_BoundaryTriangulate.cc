@@ -1843,9 +1843,10 @@ BoundaryTriangulate
     ////////////////////////////////////////////////////////////////////////
     trial = 0;
     type_timer.Reset( tri_heur.seconds );
-    for (; 
-      ((tri_heur.numberTrials>0) && (trial<tri_heur.numberTrials)) ||
-      ((tri_heur.seconds>0)      && (!type_timer.Expired()));
+    for (;
+      ((!timer) || (!timer->Expired())) && 
+      (((tri_heur.numberTrials>0) && (trial<tri_heur.numberTrials)) ||
+       ((tri_heur.seconds>0)      && (!type_timer.Expired())));
       trial++) {
 
       ////////////////////////////////////////////////////////////////////////
@@ -1879,11 +1880,11 @@ BoundaryTriangulate
           break;
 
         case TS_ALL_HEURISTICS:
+          tryNonEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
+            nghbrs_with_extra, best_cliques, best_method, best_weight);
           tryEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
             nghbrs_with_extra, best_cliques, best_method, best_weight, 
             best_method_prefix );
-          tryNonEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
-            nghbrs_with_extra, best_cliques, best_method, best_weight);
           break;
 
         case TS_PRE_EDGE_ALL:
@@ -2155,7 +2156,7 @@ BoundaryTriangulate
     // nodes tie, we still randomly choose from among all the tied
     // nodes.
     const unsigned curNumRandomTop = 
-      max(min(numRandomTop,unorderedNodes.size()),d);
+      max(min(numRandomTop,(unsigned)unorderedNodes.size()),d);
 
     if (curNumRandomTop == 1) {
       // then there is only one node and we eliminate that
@@ -5601,6 +5602,13 @@ tryNonEliminationHeuristics(
   )
 {
   ///////////////////////////////////////////////////////////////////////////// 
+  // Try simply completing the partition (this can work well if many 
+  // deterministic nodes exist in the partition)
+  triangulatePartition( nodes, jtWeight, nrmc, 
+			"completed", orgnl_nghbrs, cliques, 
+			best_method, best_weight );
+
+  ///////////////////////////////////////////////////////////////////////////// 
   // Try adding all ancestral edges, followed by elimination heuristics 
   triangulatePartition( nodes, jtWeight, nrmc, 
 			"pre-edge-all-elimination-heuristics", 
@@ -5625,13 +5633,6 @@ tryNonEliminationHeuristics(
   triangulatePartition( nodes, jtWeight, nrmc, 
 			"500-frontier", 
 			orgnl_nghbrs, cliques, best_method, best_weight );
-
-  ///////////////////////////////////////////////////////////////////////////// 
-  // Try simply completing the partition (this can work well if many 
-  // deterministic nodes exist in the partition)
-  triangulatePartition( nodes, jtWeight, nrmc, 
-			"completed", orgnl_nghbrs, cliques, 
-			best_method, best_weight );
 
   return(best_weight);
 }
