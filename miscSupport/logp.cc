@@ -32,17 +32,24 @@ double log_DBL_MIN = log(DBL_MIN)+LOG_DBL_MIN_CNST;
 template <class FT, class iFT = double>
   FT logp<FT, iFT>::table[table_size];
 template <class FT, class iFT = double>
-  bool logp<FT, iFT>::initialized=false;
-template <class FT, class iFT = double>
   double logp<FT, iFT>::inc;
 
 template <class FT, class iFT>
-void logp<FT, iFT>::table_init()
+bool logp<FT, iFT>::table_init()
 {
     inc = (table_size-1)/logp_minLogExp;
     for (int i=0; i<table_size; i++)
         table[i] = log(1.0 + exp(logp_minLogExp*i/table_size));
+    return true;
 }
+/////////////////////////////////////////////////////////////////
+// Add a dummy addition to ensure that the above stuff gets
+// defined here in the .cc file even when MAIN below isn't
+// defined.
+static logpr __dummy_logpr__ = logpr(0.5) + logpr(0.75);
+/////////////////////////////////////////////////////////////////
+// Make sure that the table is called before the program starts.
+static bool __dummy_logpr_table_init__ = logpr::table_init();
 #endif
 
 #ifdef MAIN
