@@ -1,0 +1,282 @@
+#!/usr/nikola/bin/perl -w 
+
+use strict;
+use Getopt::Long;
+use File::Basename;
+use File::Copy;
+
+my $valid_options; 
+my $str_file; 
+my $timing_script;
+my $export_line;
+my $input_triangulation;
+my $timing_length; 
+my $best_partitions; 
+my @run_once; 
+my @run_many; 
+my @iterations; 
+my $str_basename;
+my $tmp_tri_file;
+my $crrnt_weight;
+my $crrnt_partitions;
+my $method;
+my $working_dir;
+my $number;
+
+my $gmtk_triangulate;
+my $pmae;
+my $pmake;
+
+##############################################################################
+# GMTK tool names
+# -Do not add paths to these definitons, alter your path instead
+##############################################################################
+$gmtk_triangulate = 'gmtkTriangulate'; 
+#$gmtk_tfmerge     = 'gmtkTFmerge'; 
+$pmae             = 'pmae'; 
+$pmake            = 'pmake'; 
+
+$timing_length = 7.5; 
+
+@run_once = ( 'completed', 'heuristics' );
+@run_many = ( 'R', 'W', 'MCS', 'F' );
+@iterations = ( 100, 10, 1 ); 
+
+##############################################################################
+# Get command line parameters 
+##############################################################################
+$valid_options = &GetOptions( 
+  "strFile:s"               => \$str_file, 
+  "exportLine:s"            => \$export_line,
+  "inputTriangulatedFile:s" => \$input_triangulation, 
+  "timingScript:s"          => \$timing_script
+ );
+
+##########################################################################
+# Process command line parameters
+##########################################################################
+
+if (!defined $str_file)
+{
+  print "***ERROR:  Must supply a structure file name\n";
+  $valid_options = 0;
+}
+else 
+{
+  (-e $str_file) or die "***ERROR:  '$str_file' does not exist\n"; 
+}
+
+if (!defined $export_line) 
+{
+  print "***ERROR:  Must supply a pmake export line\n";
+  $valid_options = 0;
+}
+
+if (!defined $timing_script) 
+{ 
+  print "***ERROR:  Must supply a script which runs gmtkTime\n";
+  $valid_options = 0;
+}
+
+if (!$valid_options) 
+{
+  print "Must give:\n";
+  print "  1) Structure file which already has a triangulation\n"; 
+  print "  2) An export line specifying a particular speed of processor for inference\n";
+  print "  3) Scripts which runs gmtkTime (-inputTriangulatedFile, -strFile, and\n";
+  print "     -seconds are passed in as parameters)\n"; 
+  print "      -strFile                Structure file name\n";
+  print "      -exportLine             pmake export line\n";
+  print "      -timingScript           Script running gmtkTime\n";
+  print "      -inputTriangulatedFile  Starting triangulation\n";
+  die "\n";
+}
+
+if (!defined $input_triangulation)
+{
+  $input_triangulation = "$str_file.trifile";
+}
+else {
+  (-e $input_triangulation) or die "***ERROR:  '$input_triangulation' does not exist\n"; 
+}
+
+$str_basename = basename($str_file); 
+$working_dir = `pwd`;
+chomp($working_dir);
+
+$tmp_tri_file = "$working_dir/$str_basename.tmp.trifile";
+
+#$tmp_tri_file = `mktemp $str_basename.tmp.XXXXXX`;
+#chomp($tmp_tri_file);
+
+
+#############################################################################
+# Time the methods that only need to be run once  
+#############################################################################
+print "Triangulating $str_file\n"; 
+
+$best_partitions = 0; 
+$crrnt_partitions = run_timing( $input_triangulation );
+print "Initial:  $input_triangulation  Partitions: $crrnt_partitions";
+check_best( $crrnt_partitions );
+
+foreach $method (@run_once)
+{
+  $crrnt_weight = run_triangulation( $method );
+  $crrnt_partitions = run_timing( $tmp_tri_file );
+  printf "Method: %-10s  Weight: %8f  Partitions: %6d", $method, $crrnt_weight, 
+    $crrnt_partitions;
+  check_best($crrnt_partitions);
+}
+
+#############################################################################
+# Repeat the other methods indefinitely 
+#############################################################################
+
+while (1)
+{
+  foreach $number (@iterations)
+  {
+    foreach $method (@run_many)
+    {
+      $crrnt_weight = run_triangulation( "$number-$method" );
+      $crrnt_partitions = run_timing( $tmp_tri_file );
+      printf "Method: %-10s  Weight: %8f  Partitions: %6d", "$number-$method", 
+        $crrnt_weight, $crrnt_partitions;
+      check_best($crrnt_partitions);
+    }
+  }
+}
+
+unlink $tmp_tri_file;
+
+
+#############################################################################
+# run_triangulation( method );
+#
+#############################################################################
+sub run_triangulation
+{
+  my $method;
+  my $output;
+  my $jt_weight;
+
+  $method   = pop;
+
+  $output = `echo \'$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $input_triangulation -findBestBoundary F -seed T -triangulationHeuristic $method -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $tmp_tri_file -printResults T -numBackupFiles 0\' | $pmae | $pmake -f- 1>&2`;
+
+  ($jt_weight) = $output =~ /--- Chunk max clique weight = .*, jt_weight = ([0-9.]+)/; 
+
+  return($jt_weight); 
+}
+
+
+#############################################################################
+# run_timing 
+#
+#############################################################################
+sub run_timing 
+{
+  my $tri_file;
+  my $output;
+  my $partitions;
+
+  $tri_file = pop;
+
+  $output = `echo \'. $timing_script -strFile $str_file -seconds $timing_length -triFile $tri_file\' | $pmae \'$export_line\' | $pmake -f- `;
+
+  print STDERR "$output";
+
+  ($partitions) = $output =~ /% Program stats: .* residual partitions, ([0-9]+) total partitions,/;
+
+  #print "\n'$output'\n\n";
+  #print " PART: '$partitions'\n";
+
+  return($partitions);
+}
+
+
+#############################################################################
+# check_best 
+#
+#############################################################################
+sub check_best 
+{
+  my $nmbr_partitions;
+
+  $nmbr_partitions = pop;
+
+  #print "NP:$nmbr_partitions \n";
+  #print "BP:$best_partitions \n";
+
+
+  if ($nmbr_partitions > $best_partitions)
+  {
+    print " ==> NEW BEST!!!\n";
+    $best_partitions = $nmbr_partitions;
+    copy( $tmp_tri_file, "$str_basename.best.trifile" );
+  }
+  else 
+  {
+    print "\n";
+  }
+
+}
+
+#############################################################################
+# get_seconds(timestring)
+#
+# The input is a time string specifying:  seconds, minutes, hours, days, 
+#    weeks.  Examples: 
+#    '3 seconds 4 minutes 1 hour'  
+#    '4min 1 hour 2 days'  
+#    '1w3s1h'  
+#
+# Output is the integer number of seconds represented by the string.
+#############################################################################
+sub get_seconds 
+{
+  my $time_string;
+  my @strings;
+  my $total;
+  my $string;
+  my $numbers;
+  my $letters;
+  my $scnds;
+  
+  $time_string = pop;
+
+  (@strings) = split /(\d+\s*\w+)/, $time_string;
+
+  $total = 0;
+
+  foreach $string (@strings)
+  {
+    ($numbers, $letters) = $string =~ /(\d+)\s*(\w+)/;
+
+    if ((defined $letters) && (defined $numbers) &&  
+        ('seconds' =~ /$letters/)) {
+      $total = $total + $numbers;
+    }
+    elsif ((defined $letters) && (defined $numbers) &&  
+           ('minutes' =~ /$letters/)) {
+      $total = $total + 60*$numbers;
+    }
+    elsif ((defined $letters) && (defined $numbers) &&  
+           ('hours' =~ /$letters/)) {
+      $total = $total + 60*60*$numbers;
+    }
+    elsif ((defined $letters) && (defined $numbers) &&  
+           ('days' =~ /$letters/)) {
+      $total = $total + 24*60*60*$numbers;
+    }
+    elsif ((defined $letters) && (defined $numbers) &&  
+           ('weeks' =~ /$letters/)) {
+      $total = $total + 7*24*60*60*$numbers;
+    }
+  }
+
+  return $total;
+}
+
+
