@@ -69,6 +69,12 @@ protected:
     // by a mixture. Again, this field might not be needed
     // by all EM objects.
     bm_isUsed    = (1 << 7),
+    // some objects will initialize their accumlators at
+    // the beginning of an EM epoch, while others will
+    // initialize them at the end (since the real accumulators
+    // live in other objects). This bit is meant for those
+    // objects who initializet their accumulators at the end.
+    bm_accInitialized    = (1 << 8),
 
     // Initial State, where no data structures have been allocated.
     bm_initState      = 0x0
@@ -325,8 +331,8 @@ public:
   virtual void emEndIteration() { assert(0); }
   // This second two is for mean/covariance objects who need the
   // corresponding accumulated stats from its shared components.
-  virtual void emEndIteration(const float*const m) { assert(0); }
-  virtual void emEndIteration(const logpr prob,const float*const m,const float*const v) { assert(0); }
+  // virtual void emEndIteration(const float*const m) { assert(0); }
+  // virtual void emEndIteration(const logpr prob,const float*const m,const float*const v) { assert(0); }
 
   ////////////////////////////////////////////////////////////////////////////
   // if swap bit not set, swaps the current and new parameters, set swap bit.
@@ -365,6 +371,11 @@ public:
   void emClearUsedBit() { bitmask &= ~bm_isUsed; }
   void emSetUsedBit() { bitmask |= bm_isUsed; }
   bool emUsedBitIsSet() { return (bitmask & bm_isUsed); }
+
+  /////////////////////////////////////////////////////////////////
+  void emClearAccInitializedBit() { bitmask &= ~bm_accInitialized; }
+  void emSetAccInitializedBit() { bitmask |= bm_accInitialized; }
+  bool emAccInitializedBitIsSet() { return (bitmask & bm_accInitialized); }
 
   // return the number of parameters for object.
   virtual unsigned totalNumberParameters() = 0;
