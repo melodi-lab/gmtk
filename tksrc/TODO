@@ -274,3 +274,4 @@ X make sure that dlinkmatrix precompute is being
   while < and > are both not true (so sort will have put
   them next to each other).
   
+- add option to split/vanish top/bottom N mixtures irregardless of that.
