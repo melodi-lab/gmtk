@@ -64,7 +64,7 @@ VCID("$Header$");
 
 // the file of observation
 
-float beam=-1000;
+float beam=1000;
 char *obsFileName;
 char *strFileName;
 char *parmsFileName=NULL;
@@ -176,7 +176,7 @@ main(int argc,char*argv[])
   do
   {
     logpr pruneRatio;
-    pruneRatio.valref() = beam;
+    pruneRatio.valref() = -beam;
     gm.cliqueChainViterbiProb(pruneRatio);
     cout << "Example prob: " << gm.viterbiProb.val() << " : "
          << ((*gm.node.rbegin())->timeIndex+1) << " frames\n";

@@ -65,7 +65,7 @@ VCID("$Header$");
  * command line arguments
  */
 bool seedme = false;
-float pruneRatio=0.0;
+float beam=1000;
 char *obsFileName=NULL;
 char *strFileName=NULL;
 char *outFileName=NULL;
@@ -112,7 +112,7 @@ ARGS ARGS::Args[] = {
 
  ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
 
- ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
+ ARGS("beam",ARGS::Opt,beam,"Beam, values less than this*max are pruned"),
 
  // support for splitting and vanishing
  ARGS("mcvr",ARGS::Opt,MixGaussiansCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
@@ -174,8 +174,8 @@ main(int argc,char*argv[])
   DlinkMatrix::checkForValidValues();
   if (lldp < 0.0 || mnlldp < 0.0)
     error("lldp & mnlldp must be >= 0");
-  if (pruneRatio < 0.0)
-    error("pruneRatio must be >= 0");
+  if (beam < 0.0)
+    error("beam must be >= 0");
   if (startSkip < 0 || endSkip < 0)
     error("startSkip/endSkip must be >= 0");
   if (!parmsFileName && !parmsPtrFileName) 
@@ -239,6 +239,8 @@ main(int argc,char*argv[])
   /////////////////////////////////////
   // finaly, start training.
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
+  logpr pruneRatio;
+  pruneRatio.valref() = -beam;
   if (enem) {
     warning("**** WARNING: Doing enumerative EM!!! ****");
     gm.enumerativeEM(maxEMIterations);
