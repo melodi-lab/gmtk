@@ -239,6 +239,7 @@ DiagCovarVector::emEndIteration()
     accumulatedProbability.inverse().unlog();
   // finish computing the next means.
 
+  unsigned prevNumFlooredVariances = numFlooredVariances;
   for (int i=0;i<nextMeans.len();i++) {
     nextMeans[i] *= invRealAccumulatedProbability;
     nextCovariances[i] *= invRealAccumulatedProbability;
@@ -264,6 +265,7 @@ DiagCovarVector::emEndIteration()
     //      this this Gaussian. For now,
     //      however, if this happens, the variance will be floored like
     //      in case 1.
+
     if (nextCovariances[i] < GaussianComponent::varianceFloor()) {
 
       numFlooredVariances++;
@@ -282,7 +284,11 @@ DiagCovarVector::emEndIteration()
       // nextCovariances[i] = GaussianComponent::varianceFloor();
     }
   }
-
+  if (prevNumFlooredVariances < numFlooredVariances) {
+    warning("WARNING: covariance vector named '%d' had %d variances floored\n",
+	    name().c_str(),numFlooredVariances-prevNumFlooredVariances);
+  }
+  
   // stop EM
   emClearOnGoingBit();
 }
