@@ -334,7 +334,7 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
   for (int i=0;i<xzAccumulators.len();i++) {
     xzAccumulators[i] = 0.0;
   }
-  zzAccumulators.growIfNeeded(dLinks->zzAccumulatorLength);
+  zzAccumulators.growIfNeeded(dLinks->zzAccumulatorLength());
   for (int i=0;i<zzAccumulators.len();i++) {
     zzAccumulators[i] = 0.0;
   }
@@ -453,7 +453,7 @@ DlinkMatrix::emIncrement(const logpr prob,
   float *zzAccumulators_p = zzAccumulators;
   float *zzArrayCache_p = dLinks->zzArrayCache.ptr;
   float *zzArrayCache_endp = zzArrayCache_p + 
-    dLinks->zzAccumulatorLength;
+    dLinks->zzAccumulatorLength();
   do {
     (*zzAccumulators_p++) += (*zzArrayCache_p++) * fprob;
   } while (zzArrayCache_p != zzArrayCache_endp);
@@ -531,8 +531,21 @@ void
 DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert (basicAllocatedBitIsSet());
-  assert (emEmAllocatedBitIsSet());
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for dlink matrix '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
+}
+
+
+void
+DlinkMatrix::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert (basicAllocatedBitIsSet());
+  EMable::emStoreZeroAccumulators(ofile);
 }
 
 

@@ -329,6 +329,10 @@ public:
   virtual void emStoreAccumulators(oDataStreamFile& ofile) {
     ofile.write(accumulatedProbability.val());
   }
+  virtual void emStoreZeroAccumulators(oDataStreamFile& ofile) {
+    const logpr p;
+    ofile.write(p.val());
+  }
 
   ///////////////////////////////////////////////////////////////
   // load the current set of accumulators from a file.

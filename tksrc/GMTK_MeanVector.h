@@ -107,6 +107,7 @@ public:
   void emEndIteration(const float *const partialAccumulatedNextMeans);
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
+  void emStoreZeroAccumulators(oDataStreamFile& ofile);
   void emLoadAccumulators(iDataStreamFile& ifile);
   void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////

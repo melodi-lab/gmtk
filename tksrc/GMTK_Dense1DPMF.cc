@@ -414,12 +414,30 @@ void
 Dense1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for DPMF '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
-  for (int i=0;i<nextPmf.len();i++) {
+  for (int i=0;i<pmf.len();i++) {
     ofile.write(nextPmf[i].val());
   }
 }
+
+
+void
+Dense1DPMF::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  EMable::emStoreZeroAccumulators(ofile);
+  const logpr p;
+  for (int i=0;i<pmf.len();i++) {
+    ofile.write(p.val());
+  }
+}
+
 
 void
 Dense1DPMF::emLoadAccumulators(iDataStreamFile& ifile)

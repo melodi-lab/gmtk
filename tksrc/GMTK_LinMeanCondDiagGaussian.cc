@@ -450,8 +450,8 @@ LinMeanCondDiagGaussian::emEndIteration()
   // the end and represent a full matrix (needed for computing matrix
   // inverse below). 7/2/01 notes.
   zzExpAccumulators.resize (
-			    2*dLinkMat->dLinks->zzAccumulatorLength
-			    + dLinkMat->dLinks->totalNumberLinks()
+			    2*dLinkMat->zzAccumulatorLength()
+			    + dLinkMat->totalNumberLinks()
 			    + mean->dim()
 			    );
   // now expand out. This code does two things simultaneously:
@@ -603,7 +603,12 @@ void
 LinMeanCondDiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+  if ( !emEmAllocatedBitIsSet() ) {
+    warning("WARNING: storing zero accumulators for lin mean cond Gaussian '%s'\n",
+	    name().c_str());
+    emStoreZeroAccumulators(ofile);
+    return;
+  }
   EMable::emStoreAccumulators(ofile);
   for (int i=0;i<xAccumulators.len();i++) {
     ofile.write(xAccumulators[i],"nxm");
@@ -621,6 +626,31 @@ LinMeanCondDiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
     ofile.write(zAccumulators[i],"ndc");
   }
 }
+
+
+
+void
+LinMeanCondDiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  EMable::emStoreZeroAccumulators(ofile);
+  for (int i=0;i<mean->dim();i++) {
+    ofile.write((float)0.0,"nxm");
+  }
+  for (int i=0;i<covar->dim();i++) {
+    ofile.write((float)0.0,"ndc");
+  }
+  for (int i=0;i<(int)dLinkMat->totalNumberLinks();i++) {
+    ofile.write((float)0.0,"ndc");
+  }
+  for (int i=0;i<(int)dLinkMat->zzAccumulatorLength();i++) {
+    ofile.write((float)0.0,"ndc");
+  }
+  for (int i=0;i<covar->dim();i++) {
+    ofile.write((float)0.0,"ndc");
+  }
+}
+
 
 void
 LinMeanCondDiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
