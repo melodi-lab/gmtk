@@ -1,0 +1,12 @@
+An example run of the multivariate program is in run_multivariate_mi.sh
+
+The output of the multivariate program consists, in order, of
+
+- the tuple specification as specified in the input specification using the -tupleFile switch,
+- the corresponding MI or entropy value depending on whether two sets of tuples are specified or only a single one respectively,
+- the # of data samples used, 
+- the # of EM iterations
+- the entropies of the X, Y and (X,Y) sets respectively in the MI case
+
+If the -o switch is supplied output goes to the specified file,
+otherwise it goes to standard output.
