@@ -142,7 +142,7 @@ ARGS ARGS::Args[] = {
        "Floor the variances to varFloor when they are read in"),
   ARGS("dcdrng",ARGS::Opt,dcdrng_str,"Range to decode over segment file"),
 
-  ARGS("beam",ARGS::Opt,beam,"Pruning Ratio, values less than this*max are pruned"),
+  ARGS("beam",ARGS::Opt,beam,"Beam width (less than max*exp(-beam) are pruned away)"),
 
   ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
   ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),

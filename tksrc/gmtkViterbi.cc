@@ -149,7 +149,7 @@ ARGS ARGS::Args[] = {
        "Floor the variances to varFloor when they are read in"),
   ARGS("dcdrng",ARGS::Opt,dcdrng_str,"Range to decode over segment file"),
 
-  ARGS("beam",ARGS::Opt,beam,"Pruning Ratio, values less than this*max are pruned"),
+  ARGS("beam",ARGS::Opt,beam,"Beam width (less than max*exp(-beam) are pruned away)"),
   ARGS("showVitVals",ARGS::Opt,showVitVals,"Print the viterbi values??"),
 
   // These 3 must be used together or not at all
