@@ -238,7 +238,7 @@ public:
   // constructor for empty invalid object. 
   // WARNING: this will create an invalid object. It is assumed
   // that this object will re-reconstructed later.
-  vhash_map() {}
+  vhash_map(): vsize(0) {}
 
 
   /////////////////////////////////////////////////////////

@@ -222,7 +222,7 @@ public:
   }
 
   GMTemplate(GMTemplate& t)
-    : fp(t.fp)
+    : fp(t.fp),M(0),S(0)
   {
     error("not yet implemented");
   }
