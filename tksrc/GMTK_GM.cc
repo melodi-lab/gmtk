@@ -1,4 +1,3 @@
-
 /*
  * GMTK_GM.cc
  * Basic Graphical Model functions.
@@ -15,6 +14,10 @@
  * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
+
+#include "general.h"
+
+VCID("$Header$");
 
 #include "GMTK_GM.h"
 #include "GMTK_ObservationMatrix.h"

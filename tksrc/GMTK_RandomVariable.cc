@@ -17,6 +17,10 @@
  *
  */ 
 
+#include "general.h"
+VCID("$Header$");
+
+
 #include <set>
 #include "GMTK_RandomVariable.h"
 
