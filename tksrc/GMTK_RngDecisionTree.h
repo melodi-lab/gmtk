@@ -45,6 +45,7 @@
 #include "sArray.h"
 
 #include <algorithm>
+#include <map>
 #include <vector>
 
 /////////////////////////////////////////////////
@@ -138,14 +139,14 @@ protected:
       int stack_top;
   };
 
-  typedef unsigned formulaCommand;
-  typedef sArray<formulaCommand> formulaCommandContainer;
-
-  static sArrayStack<formulaCommand> stack;
-
   class EquationClass
   {
     public:
+
+      typedef unsigned formulaCommand;
+      typedef sArray<formulaCommand> formulaCommandContainer;
+
+      EquationClass();
 
       void parseFormula(
         string leafNodeVal 
@@ -162,6 +163,8 @@ protected:
 
     protected:
 
+      static sArrayStack<formulaCommand> stack;
+
       // Vector of commands 
       formulaCommandContainer commands;
 
@@ -170,26 +173,31 @@ protected:
       ///////////////////////////////////////////////////////////////////////    
       typedef enum {
 
-        TOKEN_SPACE, 
-        TOKEN_PARENT, 
-        TOKEN_CARDINALITY, 
-        TOKEN_INTEGER, 
-        TOKEN_PLUS, 
-        TOKEN_MINUS, 
-        TOKEN_TIMES, 
-        TOKEN_DIVIDE, 
-        TOKEN_LEFT_PAREN, 
-        TOKEN_RIGHT_PAREN, 
-        TOKEN_COMMA, 
-        TOKEN_EXPONENT, 
         TOKEN_BITWISE_AND, 
         TOKEN_BITWISE_OR, 
-        TOKEN_XOR,
+        TOKEN_BITWISE_XOR,
+        TOKEN_CARDINALITY, 
+        TOKEN_COMMA, 
+        TOKEN_DIVIDE, 
+        TOKEN_EXPONENT, 
+        TOKEN_EQUALS, 
+        TOKEN_GREATER_THAN, 
+        TOKEN_GREATER_THAN_EQ, 
+        TOKEN_INTEGER, 
+        TOKEN_LEFT_PAREN, 
+        TOKEN_LESS_THAN, 
+        TOKEN_LESS_THAN_EQ, 
         TOKEN_LOGICAL_AND, 
         TOKEN_LOGICAL_OR, 
-        TOKEN_MOD,
-        TOKEN_MIN,
         TOKEN_MAX,
+        TOKEN_MIN,
+        TOKEN_MINUS, 
+        TOKEN_MOD,
+        TOKEN_PARENT, 
+        TOKEN_PLUS, 
+        TOKEN_RIGHT_PAREN, 
+        TOKEN_SPACE, 
+        TOKEN_TIMES, 
 
         TOKEN_END, 
         LAST_TOKEN_INDEX
@@ -214,22 +222,28 @@ protected:
         COMMAND_MASK  = 0x1f, 
         OPERAND_MASK  = ~COMMAND_MASK,
 
-        COMMAND_PUSH_PARENT = 0,    
+        COMMAND_INVALID = 0,    
+        COMMAND_PUSH_PARENT,
         COMMAND_PUSH_CARDINALITY,
         COMMAND_PUSH_CONSTANT,    
-        COMMAND_PLUS, 
-        COMMAND_MINUS, 
-        COMMAND_TIMES, 
-        COMMAND_DIVIDE, 
-        COMMAND_EXPONENT, 
         COMMAND_BITWISE_AND, 
         COMMAND_BITWISE_OR, 
-        COMMAND_XOR, 
+        COMMAND_BITWISE_XOR, 
+        COMMAND_DIVIDE, 
+        COMMAND_EXPONENT, 
+        COMMAND_EQUALS, 
+        COMMAND_GREATER_THAN, 
+        COMMAND_GREATER_THAN_EQ, 
+        COMMAND_LESS_THAN, 
+        COMMAND_LESS_THAN_EQ, 
         COMMAND_LOGICAL_AND, 
         COMMAND_LOGICAL_OR, 
-        COMMAND_MOD, 
-        COMMAND_MIN, 
         COMMAND_MAX,
+        COMMAND_MIN, 
+        COMMAND_MINUS, 
+        COMMAND_MOD, 
+        COMMAND_PLUS, 
+        COMMAND_TIMES, 
 
         LAST_COMMAND_INDEX
       };
@@ -238,6 +252,14 @@ protected:
         (command | (operand << OPERAND_SHIFT))
       #define GET_COMMAND(command) (command & COMMAND_MASK) 
       #define GET_OPERAND(command) ((command & OPERAND_MASK) >> OPERAND_SHIFT)
+
+      static map<string, tokenEnum> delimiter;
+      static map<string, tokenEnum> function;
+
+      static map<tokenEnum, formulaCommand> termToken;
+      static map<tokenEnum, formulaCommand> expressionToken;
+      static map<tokenEnum, formulaCommand> functionToken;
+      static map<tokenEnum, formulaCommand> twoValFunctionToken;
 
       void parseExpression(
         tokenStruct& token,
