@@ -130,6 +130,9 @@ main(int argc,char*argv[])
   if (randomizeParams) {
     printf("randomizing parameters\n");
     GM_Parms.makeRandom();
+cout << "writing the random parameters to random.gmp\n";
+oDataStreamFile of("random.gmp");
+GM_Parms.writeBasic(of);
   }
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
