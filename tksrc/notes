@@ -673,6 +673,7 @@ General (left interface) algorithm to find the chunks of graph to triangulate.
 
 ---------------------------------
 
+old triangulation algorithm
 
 n[] is array of nodes in topological order
      (meaning a variable never appears before
@@ -1034,3 +1035,45 @@ need 48 bits, still two 32-bit machine words.
 
 
 ==================================================
+
+Separate class for each RV, virtual functions do their task directly.
+
+Attributes of a random variables:
+
+hidden/observed
+discrete/continuous
+switching parents/just normal parents
+
+no-weight / weight 
+
+  different types of weight:
+     no weight
+     just value weight  p^\lambda(x)
+     weight and penalty  p^\lambda(x) + beta
+     switching weight
+     switching penalty
+     switching weight and penalty
+     just exponent from obs p^{\lambda(z)}(x)
+     just exponent and add from obs p^{\lambda(z)}(x) + \beta(z)
+     switching just exponent from obs p^{\lambda(z)}(x)
+     switching just exponent and add from obs p^{\lambda(z)}(x) + \beta(z)
+
+Number of combinations:
+
+{ obs weight, value weight, no weight } x { obs penalty, value penalty, no penalty } x 
+
+
+Random Variable Hierarchy:
+
+RV- RandomVariable
+ HRV - Hidden Random Variable
+   DHRV - Discrete Random Variable
+      SDHRV - Switching Discrete Random Variable
+      NDHRV - Normal Discrete Random Variable
+   CHRV - Continuous Random Variable
+      NCHRV - Normal Continuous random variable 
+      SCHRV - Switching continuous random variable 
+ ORV - Observed Random Variable
+   ...
+
+
