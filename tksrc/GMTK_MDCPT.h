@@ -24,25 +24,23 @@
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
+#include "CPT.h"
 
-
-class MDCPT : public EMable {
+class MDCPT : public CPT {
 
   //////////////////////////////////
   // The acutal cpt. This is the table for
-
   // Pr( variable at mdcpt.len()-1 |  variables from 0 to mdcpt.len()-1 )
   sArray < logpr > mdcpt;
 
-  ////////////////////////////////////
-  // The dimensionality, i.e., p(XN|XN-1,XN-2, ..., X1)
-  // means this is an N dimensional table.
-  int dimensionality;
-  // issue a warning if the dimensionality is greater than this.
-  static int warningDimensionality;
-  // The cardinality of each variable
-  sArray < int > cardinalities;
-
+  //////////////////////////////////
+  // Support for computing probabilities as below.
+  // This indices the section of the table mdcpt above
+  // for a particular set of parent values. 
+  logpr* mdcpt_ptr; 
+  // The accumulative cardinalities to help index into
+  // the table above.
+  sArray <int> cumulativeCardinalities;
 
   //////////////////////////////////
   // Data structures support for EM
@@ -62,6 +60,15 @@ public:
 
   //////////////////////////////////
   // various forms of probability calculation
+  void setParentValues( sArray <int>& parentValues );
+  logpr probGivenParents(const int val);
+  logpr probGivenParents(sArray <int>& parentValues, 
+				 const int val);
+  int numValsGivenParents();
+  // returns an iterator for the first one.
+  iterator first();
+  // Given a current iterator, return the next one in the sequence.
+  iterator next(iterator &);
 
 
 

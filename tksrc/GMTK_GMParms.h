@@ -73,6 +73,12 @@ class VariableParams {
   // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
   sArray< SMDCPT* > sMdCpts;
 
+
+  ///////////////////////////////////
+  // Collection of multi-dimensional decision-tree based sparse CPTs 
+  sArray< DTMDCPT* > dtMdCpts;
+  
+
   //////////////////////////////////////////////////////////////////
   // Basic Gaussian Components
   //////////////////////////////////////////////////////////////////
