@@ -31,9 +31,10 @@ bool
 ioDataStreamFile::errorReturn(char *from,char *msg)
 {
   if (msg != NULL) {
-    error("%s occurred in %s: %s\n",
+    error("%s occurred in %s, file '%s': %s\n",
 	  (feof(fh) ? "EOF" : (ferror(fh) ? "Error" : "Strange Error")),
-	  from,msg);
+	  from,fileName(),
+	  msg);
   }
   return false;
 }
