@@ -57,14 +57,14 @@ Vocab::Vocab() : _size(0), _tableSize(0), _indexTable(NULL), _stringTable(NULL),
 }
 
 
-Vocab::Vocab(unsigned size) : _size(0), _unkIndex(size) {
-	_tableSize = nextPrime(size << 1 );
+Vocab::Vocab(unsigned size) : _size(size), _unkIndex(size) {
+	_tableSize = nextPrime(_size << 1 );
 	if ( ! (_indexTable = new HashEntry [_tableSize]) )
 		error("out of memory");
 
-	if ( ! (_stringTable = new char * [size]) )
+	if ( ! (_stringTable = new char * [_size]) )
 		error("out of memory");
-	::memset(_stringTable, 0, sizeof(char *) * size);
+	::memset(_stringTable, 0, sizeof(char *) * _size);
 }
 
 
@@ -122,9 +122,9 @@ int Vocab::index(const char* word) const {
  *-----------------------------------------------------------------------
  */
 char * Vocab::word(unsigned index) const {
-	if ( index > _size )
-		error("ERROR: in Vocab::word index %d should be smaller than size %d.", index, _size);
-	
+	if ( index >= _size )
+		return "<unk>";
+
 	return _stringTable[index];
 }
 
@@ -145,35 +145,32 @@ char * Vocab::word(unsigned index) const {
 void Vocab::read(const char *filename) {
 	iDataStreamFile ifs(filename, false, false);	// ascii, no cpp
 
-	int wid = 0;
+	unsigned wid = 0;
 	while ( ifs.prepareNext() ) {
 		char *word = NULL;
 		if ( ! ifs.readStr(word) )
-			error("ERROR: cannot read string in vocab file.");
+			error("Error: cannot read string in vocab file.");
 		insert(word, wid++);
 		if ( wid > _size )
 			error("Error: reading more words than size (%d) in Vocab::read", _size);
 		delete [] word;		// Jeff's readStr will create a new buffer
 	}
 
-	if ( _unkIndex > _size )
-		_unkIndex = _size;
+	if ( wid < _size )
+		error("Error: in vocab with card %d read only %d from file %s.", _size, wid, filename);
 }
 
 
 void Vocab::read(iDataStreamFile& is) {
-	int card;
 	NamedObject::read(is);
-	is.read(card, "Vocab::read cardinality");
+	is.read(_size, "Vocab::read cardinality");
 
-	if ( card < 0 )
-		error("Error: reading file %s, Vocab %s cardinality %d is negative", is.fileName(), name().c_str(), card);
-	resize(card);
+	resize(_size);
 
 	char *vocabFile;
 	if ( ! is.readStr(vocabFile) )
 		error("ERROR: reading file '%s', Vocab '%s' trying to find vocab filename", is.fileName(), name().c_str());
-	
+
 	read(vocabFile);
 
 	delete [] vocabFile;
@@ -193,19 +190,18 @@ void Vocab::read(iDataStreamFile& is) {
  *
  *-----------------------------------------------------------------------
  */
-void Vocab::resize(unsigned size) {
-	_size = 0;
-	_unkIndex = size;
+void Vocab::resize(unsigned card) {
+	_unkIndex = _size = card;
 
 	delete [] _indexTable;
-	_tableSize = nextPrime(size << 1 );
+	_tableSize = nextPrime(_size << 1 );
 	if ( ! (_indexTable = new HashEntry [_tableSize]) )
 		error("out of memory");
 
 	delete [] _stringTable;
-	if ( ! (_stringTable = new char * [size]) )
+	if ( ! (_stringTable = new char * [_size]) )
 		error("out of memory");
-	::memset(_stringTable, 0, sizeof(char *) * size);
+	::memset(_stringTable, 0, sizeof(char *) * _size);
 }
 
 
@@ -223,15 +219,14 @@ void Vocab::resize(unsigned size) {
  *-----------------------------------------------------------------------
  */
 void Vocab::insert(const char* key, int wid) {
-	if ( wid >= (int)_tableSize )
-		error("Error: vocab table is full.");
+	if ( wid >= (int)_size )
+		error("Error: word id %d exeeds size %d in Vocab::read", wid, _size);
 
 	// Insert x as active
 	HashEntry *pos = findPos(key);
 
-	if ( pos->key == NULL ) {          // not exist
-		++_size;
-	}
+	if ( pos->key != NULL )		// duplicates
+		error("Error: in vocab inserting word %s more than once", key);
 
 	pos->wid = wid;
 	delete [] pos->key;

@@ -224,7 +224,7 @@ protected:
 	unsigned _probStartBlockSize;
 
 	// parents values
-	std::vector<int> _parentValues;
+	std::vector<ContextHashEntry*> _contextPointers;
 	unsigned _numExistParents;		// The size of _parentValues is fixed.  This is added so that lower order ngram can share the table.
 
 	// total number of probabilities and backing-off weights
