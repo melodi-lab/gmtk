@@ -475,8 +475,7 @@ sub main
     $single_processor_caching = $initial_component_cache;
 
     ($single_processor_current_pid, $single_processor_timing_script_input, 
-      $single_processor_timing_script_output) = open_time( 
-      "-vcap $single_processor_vcap -componentCache $single_processor_caching");
+      $single_processor_timing_script_output) = open_time(); 
   }
 
   #########################################################################
@@ -567,10 +566,10 @@ sub generate_triangulations
   my $vcap_option;
   my $component_cache_option;
   my $trifile_name;
+  my $boundary_item;
   my @boundary_list; 
   my @basic_methods; 
 
-  #my @vcap_options : shared = ('COI', 'COB', 'CDOI', 'CODI', 'DOI', 'I' );
   my @vcap_options;
   my @component_cache_options;
 
@@ -866,7 +865,6 @@ sub generate_triangulations
     }
   }
   
-  my $boundary_item;
   foreach $boundary_item (@boundary_list)
   {
     if ($best_boundary_index eq $boundary_item->{INDEX})
@@ -929,7 +927,6 @@ sub generate_triangulations
     }
   }
 
-  my $boundary_item;
   foreach $boundary_item (@boundary_list)
   {
     if ($best_boundary_index eq $boundary_item->{INDEX})
@@ -1017,8 +1014,7 @@ sub time_triangulation_thread
   $timing_script_input  = gensym;
   $timing_script_output = gensym;
 
-  ($current_pid, $timing_script_input, $timing_script_output) = open_time(
-    "-vcap $vcap -componentCache $caching_option" );
+  ($current_pid, $timing_script_input, $timing_script_output) = open_time();
 
   #####################################################################
   # Generate and time triangulations 
@@ -1114,13 +1110,6 @@ sub dequeue_and_time_triangulation
     elsif ($trifile_name =~ /RESTART_/) 
     {
       ($vcap, $caching) = $trifile_name =~ /RESTART_(.+)_(.+)/; 
-
-      close $timing_script_input;
-      close $timing_script_output;
-      waitpid $crrnt_pid, 0; 
-      ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time(
-        "-vcap $vcap -componentCache $caching" );
-
       $processing_command = 1;
     }
     elsif ($trifile_name =~ /EXIT/) 
@@ -1145,7 +1134,7 @@ sub dequeue_and_time_triangulation
     ($crrnt_pid, $timing_script_input, $timing_script_output, 
     $crrnt_partitions) = run_timing( $trifile_name, $crrnt_pid, 
     $timing_script_input, $timing_script_output, 
-    "-vcap $vcap -componentCache $caching" );
+    "vcap=\"$vcap\" componentCache=\"$caching\"" );
 
     check_best($crrnt_partitions, $vcap, $caching, $trifile_name);
   }
@@ -1186,7 +1175,7 @@ sub run_timing
   do { 
     $error_found = 0;
     eval {
-      print $timing_script_input "$tri_file\n";
+      print $timing_script_input "trifile=\"$tri_file\" $timing_options \n";
     
       ##########################################################################
       # Read in pre timing output:
@@ -1203,6 +1192,9 @@ sub run_timing
         chomp($output);
       } while($output ne '--------');
     
+      $output = <$timing_script_output>;
+      (defined $output) or die;
+      print STDERR "$output";
       $output = <$timing_script_output>;
       (defined $output) or die;
       print STDERR "$output";
@@ -1336,7 +1328,7 @@ sub check_best
 # Opens an instance of gmtkTime using the $timing_export_line.
 # 
 # PARAMETERS:
-#   $options - A single string containing command line arguments for gmtkTime 
+#   none 
 #############################################################################
 sub open_time
 {
@@ -1348,13 +1340,11 @@ sub open_time
   my $timing_script_output;
   my $timing_command_line;
 
-  $options = pop;
-
   do {
     $error = 0;
     eval 
     {
-      $timing_command_line = "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T $options 2>&1 ";
+      $timing_command_line = "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ";
       print STDERR "OPENING:$timing_command_line\n"; 
 
       $pid = open2( $timing_script_output, $timing_script_input, 
