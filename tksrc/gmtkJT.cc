@@ -193,6 +193,7 @@ Arg Arg::Args[] = {
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
   Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
   Arg("componentCache",Arg::Opt,MixtureCommon::cacheComponentsInEmTraining,"Cache mixture probabilities, faster but uses more memory."),
+  Arg("viterbiScore",Arg::Opt,JunctionTree::viterbiScore,"Compute p(o,h_max) (rather than sum_h p(o,h))"),
 
   // final one to signal the end of the list
   Arg()

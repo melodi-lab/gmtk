@@ -175,13 +175,21 @@ public:
   }
   bool next(iterator &it) {
     assert ( bitmask & bm_basicAllocated );
-    it.internalState++;
-    // don't increment past the last value.
-    if (it.internalState >= spmf->length()) {
-      it.internalState = spmf->length();
-      return false;
-    }
-    it.probVal = spmf->probAtEntry(it.internalState);
+    do {
+      it.internalState++;
+      // don't increment past the last value.
+      if (it.internalState >= spmf->length()) {
+	it.internalState = spmf->length();
+	return false;
+      }
+      it.probVal = spmf->probAtEntry(it.internalState);
+      // NOTE: this is a sparse CPT, so the user really shouldn't
+      // be placing zeros in a sparse CPT. It might be the case,
+      // however, that during parameter training, some CPT entry
+      // converges to zero, so we keep this check here, and once
+      // it essentially becomes zero, we just skip it over, never
+      // placing it in a clique entry.
+    } while (it.probVal.essentially_zero());
     return true;
   }
   virtual int valueAtIt(const int internalState) { 

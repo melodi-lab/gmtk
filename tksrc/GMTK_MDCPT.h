@@ -109,9 +109,9 @@ public:
       // go to first entry which is not zero.
       do {
 	it.internalState++;
-	// keep the following assertion as we
+	// We keep the following assertion as we
 	// must have that at least one entry is non-zero.
-	// the read code of the MDCPT should ensure this
+	// The read code of the MDCPT should ensure this
 	// as sure all parameter update procedures.
 	assert (it.internalState < card());
 	it.probVal = mdcpt_ptr[it.internalState];

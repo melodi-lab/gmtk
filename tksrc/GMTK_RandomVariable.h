@@ -324,6 +324,11 @@ public:
   virtual logpr probGivenParents() = 0;
   virtual logpr probGivenParentsWSetup() = 0;
 
+  // Versions that place the probability right in ref. argument.
+  // avoids more temporary creation via virtual function calls.
+  virtual void probGivenParents(logpr& p) = 0;
+  virtual void probGivenParentsWSetup(logpr& p) = 0;
+
 
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
@@ -374,6 +379,9 @@ public:
   // iterators for this RV.
   virtual void begin() = 0;
   virtual bool next() = 0;
+  // iterators with probabilities for this RV.
+  virtual void begin(logpr& p) = 0;
+  virtual bool next(logpr& p) = 0;
 
 
   ////////////////////////////////////////////////////////////////////////

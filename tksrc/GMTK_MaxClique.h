@@ -467,7 +467,7 @@ public:
     //   v is not in sepNodes, and v is not a prob node, and V is
     //   sparse. We still use CPT iteration to iterate over v given
     //   parents, but do not multiply clique potential by
-    //   probabilties. By using CPT iteration, we remove any zeros
+    //   probabilties. By using CPT iteration, we automatically remove any zeros
     //   now.
     AN_NOTSEP_NOTPROB_SPARSE=1,
     AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS=1,
@@ -630,6 +630,16 @@ public:
   // sizeof(unsigned) bytes, then this isn't used since the direct
   // storage (overlaped with pointer) can be used instead.
   vhash_set< unsigned > cliqueValueHashSet;
+
+
+  // USED ONLY IN JUNCTION TREE INFERENCE An array containing the
+  // partial/cumulative probabilities of partial clique values and is
+  // used by the non-recursive version of the clique value iterationt
+  // through clique assigned nodes. In particular, used in:
+  //    void ceIterateAssignedNodesNoRecurse()
+  // Should be one greater than the size of: sortedAssignedNodes.size()
+  sArray< logpr > probArrayStorage;
+
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // a value that is roughly equal to the order of the state space of
@@ -805,9 +815,22 @@ public:
   void ceIterateSeparators(JT_InferencePartition& part,
 			   const unsigned sepNumber,
 			   const logpr p);
-  void ceIterateAssignedNodes(JT_InferencePartition& part,
-			      const unsigned nodeNumber,
-			      const logpr p);
+
+  void ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
+				     const unsigned nodeNumber,
+				     const logpr p);
+  void ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
+				       const logpr p);
+
+  inline void ceIterateAssignedNodes(JT_InferencePartition& part,
+				     const unsigned nodeNumber,
+				     const logpr p)
+  {
+    // ceIterateAssignedNodesRecurse(part,nodeNumber,p);
+    ceIterateAssignedNodesNoRecurse(part,p);
+  }
+
+
   void ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
 					const unsigned nodeNumber,
 					const logpr p);

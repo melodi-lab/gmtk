@@ -152,6 +152,62 @@ ContinuousRandomVariable::probGivenParents()
   }
   return _cachedProb;
 }
+void
+ContinuousRandomVariable::probGivenParents(logpr& p)
+{
+  ///////////////////
+  // We assume here that the resulting mixture is the correct
+  // dimensionality (this is checked in GMTK_FileParser.cc, 
+  // in function FileParser::associateWithDataParams(bool)
+
+  // create uninitialized logpr.
+  logpr _cachedProb((void*)0);
+
+  if (curMappingOrDirect->direct) {
+    _cachedProb = 
+      curMappingOrDirect->mixture->log_p
+      ((unsigned)timeIndex,firstFeatureElement);
+  } else {
+    // need to find which gaussian this will be.
+    const unsigned gaussianIndex =
+      curMappingOrDirect->mapping.dtMapper->query(*curConditionalParents);
+
+    ///////////////////////////////////////////////////////////
+    // Dynamic error checking:
+    // the following check needs to be here because DTs might
+    // have formulas in their leaves and there is no way
+    // to check this statically w/o enumerating through all possible
+    // values of the parents of this RV.
+    if (!curMappingOrDirect->mapping.collection->validMxIndex(gaussianIndex)) {
+      error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants GM "
+            "with index %d but there are only %d GMs in collection '%s'",
+	    label.c_str(),timeIndex,curMappingOrDirect->mapping.dtMapper->name().c_str(),
+	    gaussianIndex,
+	    curMappingOrDirect->mapping.collection->mxSize(),
+	    curMappingOrDirect->mapping.collection->name().c_str());
+    }
+    ////////////////////////////////////////////////////////////
+
+    //
+    // TODO: this needs to be changed when we have
+    // different types of mixtures.
+    // printf("CRV: '%s', par val %d, gi = %d\n",
+    // label.c_str(),(*curConditionalParents)[0]->val,gaussianIndex);
+    _cachedProb = 
+      curMappingOrDirect->mapping.collection->mx(gaussianIndex)->log_p
+      ((unsigned)timeIndex,firstFeatureElement);
+  }
+  if (wtStatus != wt_NoWeight) {
+    if (wtStatus == wt_Constant)
+      _cachedProb.valref() *= wtWeight;
+    else // get weight from observation matrix at current time frame
+      _cachedProb.valref() *= 
+	(*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
+  }
+  p = _cachedProb;
+}
+
+
 
 void
 ContinuousRandomVariable::makeRandom()

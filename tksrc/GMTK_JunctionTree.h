@@ -375,6 +375,13 @@ public:
   static bool separatorIntersection;
 
 
+  // When doing scoring (prob(evidence)), do we make compute the 'viterbi'
+  // score (meaning the score of the most probable set of variables
+  // or P(evidence,best_hidden)), or the full inference score,
+  // namely \sum_hidden P(evidence,hidden)
+  static bool viterbiScore;
+
+
   // constructor
   JunctionTree(GMTemplate& arg_gm_template)
     : fp(arg_gm_template.fp),
