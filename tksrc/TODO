@@ -1641,11 +1641,12 @@ Mon Mar  8 12:27:41 2004
   1) absolute value function abs(expression)
   2) unary negation
   3) floor, ceil, round (implement without floating point)
-  2) new variables: 
+  4) new variables: 
        - cardinality of child: c
        - current frame number of parent: fp0, fp1, fp2, etc.
        - current frame number of children: fc
        - number of frames in current utterance: nframes
+  5) right shift / left shift, rotate left, rotate right.
         
 Mon Mar  8 20:48:40 2004
   Allow hidden continuous mixtures, and do inference simply
