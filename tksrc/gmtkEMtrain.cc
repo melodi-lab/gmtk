@@ -68,8 +68,8 @@ bool seedme = false;
 float beam=1000;
 char *obsFileName=NULL;
 char *strFileName=NULL;
-char *outFileName=NULL;
-bool writeParametersBeforeEachEMIteration=true;
+char *outFileName="outParms%d.gmp";
+bool writeParametersAfterEachEMIteration=true;
 bool binOutFile=false;
 char *parmsFileName=NULL;
 bool binParmsFile=false;
@@ -81,16 +81,20 @@ double mcvr = 1e20;
 double mcsr = 1e10;
 double varFloor = 1e-10;
 char *trrng_str="all";
-float lldp = 0.0;
+float lldp = 0.001;
 float mnlldp = 0.01;
-char *storeAccFile = NULL;
-char *progStoreAccFile = NULL;
+
 char *loadAccFile = NULL;
 char *loadAccRange = NULL;
-char *llStoreFile = NULL;
+char *storeAccFile = NULL;
 bool accFileIsBinary = true;
+
+// file to store log likelihood of this iteration.
+char *llStoreFile = NULL;
+
 int startSkip = 0;
 int endSkip = 0;
+
 
 ARGS ARGS::Args[] = {
 
@@ -103,8 +107,8 @@ ARGS ARGS::Args[] = {
 
  ARGS("outFileName",ARGS::Opt,outFileName,"File to place output parametes"),
  ARGS("binOutFile",ARGS::Opt,binOutFile,"Output parametes binary? (def=false)"),
- ARGS("wpbeei",ARGS::Opt,writeParametersBeforeEachEMIteration,
-      "Write Paramaeters Before Each EM Iteration? (def=true)"),
+ ARGS("wpaeei",ARGS::Opt,writeParametersAfterEachEMIteration,
+      "Write Parameters *After* Each EM Iteration? (def=true)"),
 
  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
 
@@ -242,17 +246,23 @@ main(int argc,char*argv[])
   logpr pruneRatio;
   pruneRatio.valref() = -beam;
   if (enem) {
+    warning("******************************************");
     warning("**** WARNING: Doing enumerative EM!!! ****");
+    warning("******************************************");
     gm.enumerativeEM(maxEMIterations);
   } else {
-    gm.cliqueChainEM(maxEMIterations, pruneRatio,
-		     writeParametersBeforeEachEMIteration,
-		     ((outFileName)?(string(outFileName)):("")),
-		     binOutFile);
+    gm.cliqueChainEM(maxEMIterations, 
+		     pruneRatio,
+		     writeParametersAfterEachEMIteration,
+		     outFileName,
+		     binOutFile,
+		     loadAccFile,
+		     loadAccRange,
+		     storeAccFile,
+		     accFileIsBinary,
+		     llStoreFile,
+		     lldp);
   }
 
-  printf("____ PROGRAM ENDED SUCCESSFULLY AT ");
-  print_date_string(stdout);
-  printf(" ____\n");
-  return 0;
+  exit_program_with_status(0);
 }
