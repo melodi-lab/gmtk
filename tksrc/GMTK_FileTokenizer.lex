@@ -24,7 +24,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "general.h"
+
 #include "GMTK_FileParser.h"
+
 
 #ifndef _AIX
 extern "C" int fileno(FILE*); 
@@ -67,25 +70,79 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 
 "%"[^\n]*   /* eat up one-line comments */
 
+
   /*
      ***************************************
-     ** support for cpp line directives    *
+     ** support for cpp line directives   **
      ***************************************
   */
 
-   /* parse CPP file/line directives to get the #include correct */
-   /* ^"#"{ws}{int}{ws}{string}{ws}{int} { } */
 
+^"#line"{ws}{int}{ws}{string}.* {
+            if (debugLexer)
+              printf( "A CPP line directive with 'line': %s\n", yytext);
+            /* get the line number and file name */
+            char *ptr = yytext;
+            ptr += 6; /* skip over '#line' to first white space */
+            while (*ptr && isspace(*ptr)) ptr++;
+            /* ptr now points to start of integer. */
+            char *p;
+            long l = strtol(ptr,&p,0);
+            if (p == ptr)
+              error("ERROR: tokenizer couldn't obtain line number.");
+            ptr = p;
+            while (*ptr && isspace(*ptr)) ptr++;
+            if (*ptr != '\"')
+              error("ERROR: tokenizer expecting file name.");
+            p = ++ptr;
+            while (*ptr && *ptr != '\"') ptr++;
+            if (*ptr != '\"')
+              error("ERROR: tokenizer expecting end of file name.");
+            *ptr = '\0';
+            FileParser::fileNameParsing = p;
+            FileParser::tokenInfo.srcLine = l-1;
+}
+
+^"#"{ws}{int}{ws}{string}.* {
+            if (debugLexer)
+              printf( "A CPP line directive: %s\n", yytext);               
+            /* get the line number and file name */
+            char *ptr = yytext;
+            ptr++; /* skip over '#' to first white space */
+            while (*ptr && isspace(*ptr)) ptr++;
+            /* ptr now points to start of integer. */
+            char *p;
+            long l = strtol(ptr,&p,0);
+            if (p == ptr)
+              error("ERROR: tokenizer couldn't obtain line number.");
+            ptr = p;
+            while (*ptr && isspace(*ptr)) ptr++;
+            if (*ptr != '\"')
+              error("ERROR: tokenizer expecting file name.");
+            p = ++ptr;
+            while (*ptr && *ptr != '\"') ptr++;
+            if (*ptr != '\"')
+              error("ERROR: tokenizer expecting end of file name.");
+            *ptr = '\0';
+            FileParser::fileNameParsing = p;
+            FileParser::tokenInfo.srcLine = l-1;
+}
 
 ^"#".* {
-            /* eat up cpp any and all possible file/line directives for now. 
-               Ultimately parse this */
-                ;
+            if (debugLexer)
+              printf("Blank line\n");
+            /*  eat up cpp any and all possible file/line directives for now. 
+             *  Ultimately parse this 
+             */
 }
 
 [ \t]+    /* eat up just whitespace */
 
-\n        { FileParser::tokenInfo.srcLine++; }
+\n        { FileParser::tokenInfo.srcLine++; 
+            /* "." eats up all chars except for newline, so
+               we count lines here.
+             */
+          }
 
 {string}     {
             FileParser::tokenInfo.tokenStr = yytext;
@@ -201,5 +258,4 @@ main( int argc, char **argv )
     }
 
 }
-
 #endif

@@ -297,7 +297,7 @@ extern int yylex();
 ////////////////////////////////////////////////////////////////////
 
 FileParser::TokenInfo FileParser::tokenInfo;
-
+string FileParser::fileNameParsing;
 
 ////////////////////////////////////////////////////////////////////
 //        Internal Keyword Symbols
@@ -395,6 +395,11 @@ FileParser::RVInfo::checkConsistency()
  * FileParser
  *      constructor of an object, takes file argument, program
  *      dies if there is an error or file does not parse.
+ *
+ *      *******************************************************
+ *      NOTE: CAN ONLY PARSE ONE FILE AT A TIME since static
+ *      members are used to hold current state of object.
+ *      *******************************************************
  *
  * Preconditions:
  *      file should contain a valid GM structure file.
