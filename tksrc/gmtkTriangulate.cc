@@ -32,7 +32,7 @@
 //#include "spi.h"
 #include "version.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"
@@ -370,7 +370,7 @@ main(int argc,char*argv[])
   if (maxNumChunksInBoundary < 1)
     error("Argument error: max number chunks in boundary parameter M must be >= 1\n");
 
-  if (abs(MaxClique::continuousObservationPerFeaturePenalty) > 1.0) {
+  if (fabs(MaxClique::continuousObservationPerFeaturePenalty) > 1.0) {
     infoMsg(IM::Warning,"###\n### !!!DANGER WILL ROBINSON!! LARGE -pfCobWeight VALUE %f MIGHT CAUSE FLOATING POINT EXCEPTION. SUGGEST REDUCE IT IF FPE OCCURS!! ###\n###\n",MaxClique::continuousObservationPerFeaturePenalty);
   }
 

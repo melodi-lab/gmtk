@@ -36,7 +36,7 @@
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_CPT.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 /*
  * This routine copies the magnitude of x, the sign of y, and returns the result, i.e.,

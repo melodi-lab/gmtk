@@ -34,7 +34,7 @@
 #include "GMTK_DiscRV.h"
 #include "GMTK_GMParms.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 /*
  * This routine copies the magnitude of x, the sign of y, and returns the result, i.e.,

@@ -29,7 +29,7 @@ using namespace std;
 
 #include "machine-dependent.h"
 
-#define VCID(x) static char * version_control_id = x; static char *___tmp___ = version_control_id;
+#define VCID(x) static const char * const version_control_id = x;
 
 char *copyToNewStr(const char *const str);
 

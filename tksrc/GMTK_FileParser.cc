@@ -63,13 +63,13 @@
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 #ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
 extern "C" {
   //   FILE     *popen(const char *, const char *) __THROW;
   //   int pclose(FILE *stream) __THROW;
-};
+}
 #endif
 
 #define TRIFILE_END_OF_ID_STRING "@@@!!!TRIFILE_END_OF_ID_STRING!!!@@@"

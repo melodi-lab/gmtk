@@ -19,7 +19,7 @@
 #include "error.h"
 
 
-VCID("$Header$");
+VCID("$Header$")
 
 char *copyToNewStr(const char *const str)
 {

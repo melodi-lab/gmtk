@@ -22,7 +22,7 @@ extern "C" { char *index(const char* str, int c); }
 #endif
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 #include "error.h"
 #include "fileParser.h"
 #include "sArray.h"
@@ -66,7 +66,7 @@ extern "C" {
  FILE     *popen(const char *, const char *) __THROW;
  int pclose(FILE *stream) __THROW;
 #endif
-};
+}
 #endif
 #endif
 

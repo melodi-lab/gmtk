@@ -18,7 +18,7 @@
 #endif
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 #include "error.h"
 #include "lineqsolve.h"
 

@@ -36,7 +36,7 @@
 #include "GMTK_ContRV.h"
 #include "GMTK_GraphicalModel.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 

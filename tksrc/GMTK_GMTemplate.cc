@@ -53,7 +53,7 @@
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_JunctionTree.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -975,7 +975,7 @@ readPartitions(iDataStreamFile& is)
     // is declared constant, in cases where we create an object with
     // an uninitialized M.  Perhaps the right thing to do is to
     // undeclare M constant.
-    unsigned* Mp = &(unsigned)M;
+    unsigned* Mp = (unsigned*)&M;
     *Mp = loc_M;
   } else {
     if (loc_M != M)
@@ -989,7 +989,7 @@ readPartitions(iDataStreamFile& is)
 	  is.fileName(),is.lineNo());
 
   if (S == GMTEMPLATE_UNINITIALIZED_MS) {
-    unsigned *Sp = &(unsigned)S;
+    unsigned *Sp = (unsigned*)&S;
     *Sp = loc_S;
   } else {
     if (loc_S != S)

@@ -62,7 +62,7 @@
 
 #include "GMTK_ObservationMatrix.h"
 
-VCID("$Header$");
+VCID("$Header$")
 
 /////////////////////////////////
 // an integer that specifies the maximum number of objects (such
