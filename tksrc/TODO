@@ -100,3 +100,5 @@ XXX- todo, make sure that chunk n:m is valid.
     use the integer index rater than the pointer directly.
 
 - add a 'fail' tag to DT leaves.
+
+- pass .str files through cpp before reading.
