@@ -111,6 +111,7 @@ char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
 char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
 bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
+bool show_cliques=false;
 
 ARGS ARGS::Args[] = {
 
@@ -195,6 +196,8 @@ ARGS ARGS::Args[] = {
   ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
   ARGS("enem",ARGS::Opt,enem,"Run enumerative EM"),
 
+  ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
+
   // final one to signal the end of the list
   ARGS()
 
@@ -206,8 +209,6 @@ ARGS ARGS::Args[] = {
 RAND rnd(seedme);
 GMParms GM_Parms;
 ObservationMatrix globalObservationMatrix;
-
-
 
 int
 main(int argc,char*argv[])
@@ -316,7 +317,11 @@ main(int argc,char*argv[])
 
 
   gm.GM2CliqueChain();
-  // gm.showCliques();
+  if (show_cliques)
+  {
+    cout << "The cliques in the template network are:\n";
+    gm.showCliques();
+  }
 
   if (randomizeParams) {
     printf("NOTE: Randomizing initial parameters\n");
