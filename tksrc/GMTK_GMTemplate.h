@@ -370,10 +370,27 @@ public:
 	 // output score
 	 vector<float>& score);
 
-  // clone a set of variables
-  void clone(const set<RandomVariable*>& in, set<RandomVariable*>& out); 
-  void clone(const set<RandomVariable*>& in, set<RandomVariable*>& out,
-	     map < RandomVariable*, RandomVariable* >& in_to_out);
+  // the next three routines are support for finding hte P,C, and E interfaces.
+  void cloneWithoutParents(const set<RandomVariable*>& in, 
+			    set<RandomVariable*>& out,
+			    map < RandomVariable*, RandomVariable* >& in_to_out);
+  void setPartitionParentsChildrenNeighbors(const set<RandomVariable*>& S,
+					    set<RandomVariable*>& Sc,
+					    // next 3 should be const but ther eis no "op[] const"
+					    map < RandomVariable*, RandomVariable* >& S_in_to_out,
+					    map < RandomVariable*, RandomVariable* >& O1_in_to_out,
+					    map < RandomVariable*, RandomVariable* >& O2_in_to_out);
+  void setUpClonedPartitionGraph(const set<RandomVariable*>& P,
+				 const set<RandomVariable*>& C,
+				 const set<RandomVariable*>& E,
+				 // cloned variables
+				 set<RandomVariable*>& Pc,
+				 set<RandomVariable*>& Cc,
+				 set<RandomVariable*>& Ec,
+				 // next 3 should be const but ther eis no "op[] const"
+				 map < RandomVariable*, RandomVariable* >& P_in_to_out,
+				 map < RandomVariable*, RandomVariable* >& C_in_to_out,
+				 map < RandomVariable*, RandomVariable* >& E_in_to_out);
 
   // delete a set of variables
   void deleteNodes(const set<RandomVariable*>& nodes);
