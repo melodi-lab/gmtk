@@ -424,7 +424,7 @@ main(int argc,char*argv[])
     GMTemplate gm_template(fp);
     {
       // do this in scope so that is gets deleted now rather than later.
-      iDataStreamFile is(tri_file.c_str());
+      iDataStreamFile is(tri_file.c_str(),false,false);
       if (!fp.readAndVerifyGMId(is))
 	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
     
@@ -469,7 +469,13 @@ main(int argc,char*argv[])
 
     JunctionTree::probEvidenceTimeExpired = false;
     signal(SIGALRM,jtExpiredSigHandler);
-    infoMsg(DEF_VERBOSITY,"-----\nRunning program for approximately %d seconds\n",seconds);
+
+    if (multiTest) {
+      printf("--------\n%d: Operating on trifile '%s'\n",iteration,tri_file.c_str());
+      printf("%d: ",iteration); 
+    }
+    printf("Running program for approximately %d seconds\n",seconds);
+
     alarm(seconds);
     struct rusage rus; /* starting time */
     struct rusage rue; /* ending time */
@@ -528,15 +534,13 @@ main(int argc,char*argv[])
     getrusage(RUSAGE_SELF,&rue);
     alarm(0);
 
-    if (multiTest) {
-      printf("%d: Time for trifile '%s'\n",iteration,tri_file.c_str());
-    }
 
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
 
-    printf("%d: Program stats: %0.2f seconds, %d segments + %d residual partitions, %d total partitions, %0.3e partitions/sec\n",
-	   iteration,
+    if (multiTest)
+      printf("%d: ",iteration);
+    printf("Inference stats: %0.2f seconds, %d segments + %d residual partitions, %d total partitions, %0.3e partitions/sec\n",
 	   userTime,
 	   totalNumberSegmentsDone,
 	   numCurPartitionsDone,
