@@ -370,8 +370,19 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
         } while (clampNextExample());
 	printf("Total data prob is: %1.9e\n",total_data_prob.val());
         GM_Parms.emEndIteration();
-        if (total_data_prob > last_dp)
-            GM_Parms.emSwapCurAndNew();
+        // if (total_data_prob > last_dp)
+	GM_Parms.emSwapCurAndNew();
+
+	/////////////////////////////////////////////////////////
+	// write out the basic parameters after each iteration 
+	// for debugging purposes. 
+	{
+	  char buff[1024];
+	  ::sprintf(buff,"%d",i);
+	  string fname = string("gmparms_it") + buff + string(".gmp");
+	  oDataStreamFile of(fname.c_str());
+	  GM_Parms.writeBasic(of);
+	}
         last_dp = total_data_prob;
     }
 }

@@ -309,7 +309,7 @@ public:
   void writeMeans(oDataStreamFile& os);
   void writeCovars(oDataStreamFile& os);
   void writeDLinkMats(oDataStreamFile& os);
-  void writeDlinks(oDataStreamFile& os);
+  void writeDLinks(oDataStreamFile& os);
   void writeWeightMats(oDataStreamFile& os);
   void writeMdCpts(oDataStreamFile& os);
   void writeMsCpts(oDataStreamFile& os);
