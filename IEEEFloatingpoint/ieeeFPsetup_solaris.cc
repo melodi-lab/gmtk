@@ -16,7 +16,9 @@
 
 // Explicitly define '__EXTENSIONS__' so that struct sigaction is defined
 // in the following include files.
+#ifndef __EXTENSIONS__
 #define __EXTENSIONS__
+#endif
 
 #include <signal.h>
 #include <sys/signal.h>
