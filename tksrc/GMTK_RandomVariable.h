@@ -31,9 +31,7 @@ Break definitions into two grand sections,
 #include "logp.h"
 
 /* The random variable class defines the basic functions that random
-   variables must implement. For speed, there are some special non-virtual
-   functions for discrete and deterministic variables, which can be handled
-   with table lookups.
+   variables must implement. 
 
    Switching parents are guaranteed to be discrete.
    A nodes conditioning parents must be lower indexed than it.
