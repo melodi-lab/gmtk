@@ -334,14 +334,18 @@ bool oDataStreamFile::writeDouble(const double d,char *msg)
 }
 
 
-bool oDataStreamFile::writeComment(char *comment)
+bool oDataStreamFile::writeComment(char *comment, ...)
 {
   if (Binary) {
     // do nothing.
     return true;
   } else {
-    if (fprintf(fh,"%c %s",COMMENTCHAR,comment) == 0)
+    if (fprintf(fh,"%c ",COMMENTCHAR) == 0)
       return errorReturn("writeComment",comment);
+    va_list ap;
+    va_start(ap,comment);
+    (void) vfprintf(fh, comment, ap);
+    va_end(ap);
     return true;
   }
 }
