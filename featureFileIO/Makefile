@@ -246,7 +246,7 @@ maintainer-clean: distclean
 	rm -rf $(maintainer_junk)
 
 depend:
-	${CXX} ${INCLUDES} -MM ${CXXFLAGS} *.cc *.c > depends.make
+	${CXX} ${INCLUDES} -MM ${CXXFLAGS} ${all_srcs} > depends.make
 
 depends: depend
 

@@ -131,7 +131,7 @@ testsArray: sArray.cc
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc string_err.cc
+all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc general.cc lineqsolve.cc string_err.cc
 
 all_hdrs = 
 
@@ -252,7 +252,7 @@ maintainer-clean: distclean
 	rm -rf $(maintainer_junk)
 
 depend:
-	${CXX} ${INCLUDES} -MM ${CXXFLAGS} *.cc *.c > depends.make
+	${CXX} ${INCLUDES} -MM ${CXXFLAGS} ${all_srcs} > depends.make
 
 
 ##################
