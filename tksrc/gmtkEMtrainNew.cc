@@ -32,6 +32,8 @@
 //#include "spi.h"
 #include "version.h"
 
+#include "GMTK_WordOrganization.h"
+
 VCID("$Header$");
 
 #include "GMTK_FileParser.h"
@@ -57,14 +59,14 @@ VCID("$Header$");
 
 /////////////////////////////////////////////////////////////
 // observation input file handling
-#define MAX_NUM_OBS_FILES (3)
-char *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL }; 
-unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
-unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0 };
-char *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
-char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
-char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
-bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
+#define MAX_NUM_OBS_FILES (5)
+char *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL }; 
+unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
+unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
+char *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
+bool iswps[MAX_NUM_OBS_FILES] = { false, false, false,false,false };
 
 
 /////////////////////////////////////////////////////////////
@@ -132,37 +134,41 @@ static char *llStoreFile = NULL;
 static char *objsToNotTrainFile=NULL;
 static bool localCliqueNormalization = false;
 
+//////////////////////////////////////////////////////////////
+// Observation matrix options
+
+bool     Cpp_If_Ascii        = false;
+char     *pr_str[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string 
+
+char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   // 
+unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={ERROR,ERROR,ERROR,ERROR,ERROR};   // 
+char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"}; 
+unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END};   // 
+
+char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};   // 
+char    *Post_Transforms=NULL;
+
+char    *Ftr_Combo_Str="none";
+unsigned Ftr_Combo=FTROP_NONE;
+ 
+#ifdef INTV_WORDS_BIGENDIAN
+bool iswp[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
+#else
+bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
+#endif 
 
 
 Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // observation input file handling
-  Arg("of1",Arg::Req,ofs[0],"Observation File 1"),
-  Arg("nf1",Arg::Opt,nfs[0],"Number of floats in observation file 1"),
-  Arg("ni1",Arg::Opt,nis[0],"Number of ints in observation file 1"),
-  Arg("fr1",Arg::Opt,frs[0],"Float range for observation file 1"),
-  Arg("ir1",Arg::Opt,irs[0],"Int range for observation file 1"),
-  Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,binary,ascii,pfile) for observation file 1"),
-  Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
-
-  Arg("of2",Arg::Opt,ofs[1],"Observation File 2"),
-  Arg("nf2",Arg::Opt,nfs[1],"Number of floats in observation file 2"),
-  Arg("ni2",Arg::Opt,nis[1],"Number of ints in observation file 2"),
-  Arg("fr2",Arg::Opt,frs[1],"Float range for observation file 2"),
-  Arg("ir2",Arg::Opt,irs[1],"Int range for observation file 2"),
-  Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
-  Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 2"),
-
-  Arg("of3",Arg::Opt,ofs[2],"Observation File 3"),
-  Arg("nf3",Arg::Opt,nfs[2],"Number of floats in observation file 3"),
-  Arg("ni3",Arg::Opt,nis[2],"Number of ints in observation file 3"),
-  Arg("fr3",Arg::Opt,frs[2],"Float range for observation file 3"),
-  Arg("ir3",Arg::Opt,irs[2],"Int range for observation file 3"),
-  Arg("fmt3",Arg::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
-  Arg("iswp3",Arg::Opt,iswps[2],"Endian swap condition for observation file 3"),
-
-
+  Arg("of",Arg::Req,ofs,"Observation File.  Replace X with the file number.",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("nf",Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("ni",Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("fr",Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("ir",Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("fmt",Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("iswp",Arg::Opt,iswps,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
 
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
@@ -259,6 +265,14 @@ Arg Arg::Args[] = {
   Arg("objsNotToTrain",Arg::Opt,objsToNotTrainFile,"File listing trainable parameter objects to not train."),
   Arg("localCliqueNorm",Arg::Opt,localCliqueNormalization,"Use local clique sum for posterior normalization."),
 
+  // Observation Matrix options
+  Arg("pr",  Arg::Opt, pr_str,"per stream per-sentence range",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("fdiffact", Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("sdiffact", Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("cppifascii",        Arg::Tog, Cpp_If_Ascii,"Pre-process ASCII files using CPP"),
+  Arg("trans",  Arg::Opt,Per_Stream_Transforms ,"per stream transformations string",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("posttrans",  Arg::Opt,Post_Transforms ,"Final global transformations string"),
+  Arg("comb",      Arg::Opt, Ftr_Combo_Str,"Combine float features (none: no combination, add, sub, mul,div"),
   // final one to signal the end of the list
   Arg()
 
@@ -285,6 +299,31 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
   set_new_handler(memory_error);
+
+  ////////////////////////////////////////////
+  // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
+  bool doWeSwap;
+
+  ByteEndian byteEndian = getWordOrganization();
+  switch(byteEndian) {
+  case BYTE_BIG_ENDIAN:
+    doWeSwap=false;
+    break;
+  case BYTE_LITTLE_ENDIAN:
+    doWeSwap=true;
+    break;
+  default:
+    // We weren't able to figure the Endian out.  Leave the swap defaults as they are.
+#ifdef INTV_WORDS_BIGENDIAN
+    doWeSwap=true;
+#else
+    doWeSwap=false;
+#endif
+  }
+  
+  for(int i=0; i<MAX_NUM_OBS_FILES; ++i) {
+    iswp[i]=doWeSwap;
+  }
 
   ////////////////////////////////////////////
   // parse arguments
@@ -316,10 +355,7 @@ main(int argc,char*argv[])
   int nfiles = 0;
   unsigned ifmts[MAX_NUM_OBS_FILES];
   for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
-    if (ofs[i] != NULL && nfs[i] == 0 && nis[i] == 0)
-      error("ERROR: command line parameters must specify one of nf%d and ni%d as not zero",
-	    i+1,i+1);
-    nfiles += (ofs[i] != NULL);
+
     if (strcmp(fmts[i],"htk") == 0)
       ifmts[i] = HTK;
     else if (strcmp(fmts[i],"binary") == 0)
@@ -330,7 +366,61 @@ main(int argc,char*argv[])
       ifmts[i] = PFILE;
     else
       error("ERROR: Unknown observation file format type: '%s'\n",fmts[i]);
+
+    if (ofs[i] != NULL && ifmts[i]!=PFILE && nfs[i] == 0 && nis[i] == 0)
+      error("ERROR: command line parameters must specify one of nf%d and ni%d as not zero",
+	    i+1,i+1);
+    
+    if(ofs[i] != NULL && ifmts[i]==PFILE) {
+      FILE *in_fp = fopen(ofs[i], "r");
+      if (in_fp==NULL) error("Couldn't open input pfile for reading.");
+      bool debug_level=0;
+      InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswp[i]);
+      unsigned num_labs=in_streamp->num_labs();
+      unsigned num_ftrs=in_streamp->num_ftrs();
+      if(nis[i] != 0 && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
+      if(nfs[i] != 0 && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
+      nis[i]=num_labs;
+      nfs[i]=num_ftrs;
+
+      if (fclose(in_fp)) error("Couldn't close input pfile.");
+      delete in_streamp;
+    }
+    
+    nfiles += (ofs[i] != NULL);
   }
+
+  if (strcmp(Ftr_Combo_Str,"none") == 0)     Ftr_Combo = FTROP_NONE;
+  else if (strcmp(Ftr_Combo_Str,"add") == 0) Ftr_Combo = FTROP_ADD;
+  else if (strcmp(Ftr_Combo_Str,"sub") == 0) Ftr_Combo = FTROP_SUB;
+  else if (strcmp(Ftr_Combo_Str,"mul") == 0) Ftr_Combo = FTROP_MUL;
+  else if (strcmp(Ftr_Combo_Str,"div") == 0) Ftr_Combo = FTROP_DIV;
+  else error("ERROR: Unknown feature combination type: '%s'\n",Ftr_Combo_Str);
+  
+  for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
+    if(ofs[i]!=NULL) {
+      if (strcmp(Action_If_Diff_Num_Frames_Str[i],"er") == 0)      Action_If_Diff_Num_Frames[i] = ERROR;
+      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rl") == 0) Action_If_Diff_Num_Frames[i] = REPEAT_LAST;
+      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rf") == 0) Action_If_Diff_Num_Frames[i] = REPEAT_FIRST;
+      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0) Action_If_Diff_Num_Frames[i] = EXPAND_SEGMENTALLY;
+      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0) Action_If_Diff_Num_Frames[i] = TRUNCATE_FROM_START;
+      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0) Action_If_Diff_Num_Frames[i] = TRUNCATE_FROM_END;
+      else error("ERROR: Unknown action when diff num of frames: '%s'\n",Action_If_Diff_Num_Frames_Str[i]);
+    }
+  }
+  
+  for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
+    if(ofs[i]!=NULL) {
+      if (strcmp(Action_If_Diff_Num_Sents_Str[i],"er") == 0)      Action_If_Diff_Num_Sents[i] = ERROR;
+      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0) Action_If_Diff_Num_Sents[i] = REPEAT_LAST;
+      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0) Action_If_Diff_Num_Sents[i] = WRAP_AROUND;
+      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0) Action_If_Diff_Num_Sents[i] = TRUNCATE_FROM_END;
+      else error("ERROR: Unknown action when diff num of sentences: '%s'\n",Action_If_Diff_Num_Sents_Str[i]);
+    }
+  }
+
+  if (startSkip < 0 || endSkip < 0)
+    error("startSkip/endSkip must be >= 0");
 
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,
@@ -342,8 +432,14 @@ main(int argc,char*argv[])
 				    (bool*)&iswps,
 				    startSkip,
 				    endSkip,
-				    false);
-
+				    Cpp_If_Ascii,
+				    cppCommandOptions,
+				    (const char**)&pr_str,  //Frame_Range_Str,
+				    Action_If_Diff_Num_Frames,
+				    Action_If_Diff_Num_Sents,
+				    Per_Stream_Transforms,
+				    Post_Transforms,
+				    Ftr_Combo);
 
 
   MixtureCommon::checkForValidRatioValues();
@@ -356,8 +452,6 @@ main(int argc,char*argv[])
     error("crbeam argument must be: 0.0 < v <= 1.0");
   if (SeparatorClique::separatorBeam < 0.0)
     error("separatorBeam must be >= 0");
-  if (startSkip < 0 || endSkip < 0)
-    error("startSkip/endSkip must be >= 0");
 
 
   ////////////////////////////////////////////
