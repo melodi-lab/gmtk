@@ -34,6 +34,7 @@ private:
   vector < CPT* > conditionalCPTs;
 
   // the current CPT after findConditionalParents() is called.
+  // This variable is NULL if there are no parents of this node.
   CPT* curCPT;
 
   // iterator used between clamp functions.
