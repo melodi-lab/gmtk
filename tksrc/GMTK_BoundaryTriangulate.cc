@@ -1215,12 +1215,18 @@ triangulate(const string& tri_heur_str,
   if (doE)
     saveCurrentNeighbors(gm_template.E,orgnl_E_nghbrs);
 
-  if (doP)
+  if (doP) {
+    infoMsg(IM::Tiny, "---\nTriangulating P:\n");
     triangulate(gm_template.P.nodes,jtWeight,gm_template.PCInterface_in_P,tri_heur,orgnl_P_nghbrs,gm_template.P.cliques,gm_template.P.triMethod,best_P_weight);
-  if (doC)
+  }
+  if (doC) {
+    infoMsg(IM::Tiny, "---\nTriangulating C:\n");
     triangulate(gm_template.C.nodes,jtWeight,gm_template.CEInterface_in_C,tri_heur,orgnl_C_nghbrs,gm_template.C.cliques,gm_template.C.triMethod,best_C_weight);
-  if (doE)
+  }
+  if (doE) {
+    infoMsg(IM::Tiny, "---\nTriangulating E:\n");
     triangulate(gm_template.E.nodes,jtWeight,emptySet,tri_heur,orgnl_E_nghbrs,gm_template.E.cliques,gm_template.E.triMethod,best_E_weight);
+  }
 
   ////////////////////////////////////////////////////////////////////////
   // Return with the best triangulations found, which is
