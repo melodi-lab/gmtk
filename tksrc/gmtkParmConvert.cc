@@ -151,9 +151,11 @@ main(int argc,char*argv[])
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
-
+  GM_Parms.loadGlobal();
   printf("Total number of trainable parameters in input files = %u\n",
 	 GM_Parms.totalNumberParameters());
+
+  GM_Parms.markUsedMixtureComponents();
 
   if (outputMasterFile != NULL) {
     GM_Parms.write(outputMasterFile);
