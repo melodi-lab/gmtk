@@ -3740,8 +3740,19 @@ triangulateExhaustiveSearch(
 
   }
 
+  //////////////////////////////////////////////////////////////////////////
+  // Convert to MaxCliques and triangulate the RandomVariable structures
+  //////////////////////////////////////////////////////////////////////////
+  vector<MaxClique>::iterator crrnt_v_clique; 
+  vector<MaxClique>::iterator end_v_clique;
+
   listVectorCliquetoVectorSetClique( best_list_cliques, best_cliques );
-  triangulateCompletePartition( nodes, best_cliques );
+
+  for ( crrnt_v_clique = best_cliques.begin(), end_v_clique = best_cliques.end();
+        crrnt_v_clique != end_v_clique;
+        ++crrnt_v_clique ) {
+    MaxClique::makeComplete((*crrnt_v_clique).nodes);
+  }
 
   infoMsg(IM::Tiny, "---->Tested:  %d\n", crrnt_trial); 
 }
