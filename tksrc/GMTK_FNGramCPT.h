@@ -7,10 +7,11 @@
  * Written by Gang Ji <gang@ee.washington.edu>
  * Modifications by J. Bilmes. <bilmes@ee.washington.edu>
  *
- * Portions of this code were borrowed from the SRI language model
- * toolkit, but only those parts that were written by Jeff Bilmes
- * <bilmes@ee.washington.edu> as part of the JHU CLSP 2002 workshop.  
- * NO OTHER PORTIONS OF SRI CODE ARE CONTAINED HERE!! THEREFORE, THISb
+ * Portions of this code were borrowed from the FLM extensions to the
+ * SRI language model toolkit, but only those parts that were written
+ * by Jeff Bilmes <bilmes@ee.washington.edu> as part of and during the
+ * JHU CLSP 2002 summer workshop.  All such code is public domain.  NO
+ * SRI PORTIONS OF SRILM CODE ARE CONTAINED HERE!! THEREFORE, THIS
  * CODE IS NOT UNDER SRI COPYRIGHT.
  *
  * This part of the code has the implementation of class FNGramCPT for
