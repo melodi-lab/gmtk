@@ -40,13 +40,9 @@ my $advanced_once_index : shared = 0;
 my @run_once = ( 'completed', 'elimination-heuristics', 
   'non-elimination-heuristics' );
 
-#my @basic_iterations : shared = ( '100-', '10-' ); 
-#my @basic_prefix     : shared = ( 'pre-edge-lo-', 'pre-edge-all-', 
-#  'pre-edge-random-');
-
-my @basic_iterations : shared = ( '100-' );
-my @basic_prefix     : shared = ( 'pre-edge-lo-' );
-
+my @basic_iterations : shared = ( '100-', '10-' ); 
+my @basic_prefix     : shared = ( 'pre-edge-lo-', 'pre-edge-all-', 
+  'pre-edge-random-');
 my @basic_method     : shared = ( 'MCS', 'R', 'W', 'F' );
 my @basic_suffix     : shared = ( '-1', '-3' );
 my $basic_suffix_threshold : shared = 2;
