@@ -216,16 +216,9 @@ sub time_triangulation
     $initial_tri_timed = 1;
     $initial_sem->down;
 
-    eval {
-      $crrnt_partitions = run_timing( $timing_script_input, 
-        $timing_script_output, $input_triangulation);
-    };
-  
-    if ($@) { 
-      waitpid $crrnt_pid, 0; 
-      ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
-      $crrnt_partitions = -1;
-    }
+    ($crrnt_pid, $timing_script_input, $timing_script_output, $crrnt_partitions)
+      = run_timing( $crrnt_pid, $timing_script_input, $timing_script_output, 
+      $input_triangulation);
 
     check_best($crrnt_partitions, 'Initial', 0, $tmp_tri_file);
   }
@@ -240,27 +233,20 @@ sub time_triangulation
 
     $method = get_triangulation_method();
     threads->yield;
-    $crrnt_weight = run_triangulation($method, $tmp_tri_file);
 
-    if ($crrnt_weight > 0) {
-     
-      $crrnt_partitions = -1;
-      eval {
-        $crrnt_partitions = run_timing( $timing_script_input, 
-          $timing_script_output, $tmp_tri_file );
-      };
-    
-      if ($@) {
-        waitpid $crrnt_pid, 0; 
-        ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
+    do {
+      $crrnt_weight = run_triangulation($method, $tmp_tri_file);
+      if ($crrnt_weight < 0) {
+        print "Triangulation failed\n";
+        sleep(15);
       }
+    } while($crrnt_weight < 0);
+     
+    ($crrnt_pid, $timing_script_input, $timing_script_output, $crrnt_partitions)
+      = run_timing( $crrnt_pid, $timing_script_input, $timing_script_output, 
+      $input_triangulation);
 
-      check_best($crrnt_partitions, $method, $crrnt_weight, $tmp_tri_file);
-    }
-    else {
-      print "Triangulation failed\n";
-      sleep(15);
-    }
+    check_best($crrnt_partitions, $method, $crrnt_weight, $tmp_tri_file);
   }
 
   unlink $tmp_tri_file;
@@ -402,54 +388,76 @@ sub run_timing
   my $output;
   my $partitions;
 
+  my $crrnt_pid; 
   my $timing_script_input; 
   my $timing_script_output; 
+  my $error_found; 
 
   $tri_file = pop;
   $timing_script_output = pop; 
   $timing_script_input  = pop; 
+  $crrnt_pid            = pop; 
 
-  print $timing_script_input "$tri_file\n";
+  do { 
+    $error_found = 0;
+    eval {
+      print $timing_script_input "$tri_file\n";
+    
+      ##########################################################################
+      # Read in pre timing output:
+      #   cpp warnings ....        
+      #   exported to ....        # not needed if not exporting  
+      #   --------
+      #   0: Operating on trifile ''
+      #   0: Running program for approximately 7 seconds
+      ##########################################################################
+      do {
+        $output = <$timing_script_output>;
+        (defined $output) or die;
+        print STDERR "$output";
+        chomp($output);
+      } while($output ne '--------');
+    
+      $output = <$timing_script_output>;
+      (defined $output) or die;
+      print STDERR "$output";
+      $output = <$timing_script_output>;
+      (defined $output) or die;
+      print STDERR "$output";
+    };
+   
+    ###########################################################################
+    # An error at this point means that the trifile can't be sent to gmtkTime,
+    # so restart the process
+    ###########################################################################
+    if ($@) {
+      waitpid $crrnt_pid, 0; 
+      ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
+      $error_found = 1;
+    } 
 
-  ###########################################################################
-  # Read in pre timing output:
-  #   exported to ....        # not needed if not exporting  
-  #   --------
-  #   0: Operating on trifile ''
-  #   0: Running program for approximately 7 seconds
-  ###########################################################################
-
-  do {
-    $output = <$timing_script_output>;
-    (defined $output) or die;
-    print STDERR "$output";
-    chomp($output);
-  } while($output ne '--------');
-
-  $output = <$timing_script_output>;
-  (defined $output) or die;
-  print STDERR "$output";
-  $output = <$timing_script_output>;
-  (defined $output) or die;
-  print STDERR "$output";
-
+  } while($error_found);
+ 
   ###########################################################################
   # Read in timing results:
   #   User: 6.980000, System: 0.030000, CPU 7.010000
   #   0: Inference stats: 6.98...
   ###########################################################################
-  $output = <$timing_script_output>;
-  (defined $output) or die;
-  print STDERR "$output";
-  $output = <$timing_script_output>;
-  (defined $output) or die;
-  print STDERR "$output";
+  eval {
+    $output = <$timing_script_output>;
+    (defined $output) or die;
+    print STDERR "$output";
+    $output = <$timing_script_output>;
+    (defined $output) or die;
+    print STDERR "$output";
 
-  ($partitions) = $output =~ /residual partitions, ([0-9]+) total partitions,/;
+    ($partitions) = $output =~ 
+      /residual partitions, ([0-9]+) total partitions,/;
+  };
 
   (defined $partitions) or $partitions = -1; 
 
-  return($partitions);
+  return($crrnt_pid, $timing_script_input, $timing_script_output, $partitions );
 }
 
 
