@@ -1,5 +1,5 @@
 /*
- * GMTK_GM.h
+ * GMTK_FileParser.h
  * Parses a text file giving the basic GM structure
  * over hidden varialbes.
  *
@@ -31,15 +31,17 @@
 
 #include "GMTK_GM.h" 
 #include "GMTK_CPT.h"
-#include "GMTK_GMTemplate.h"
+// #include "GMTK_GMTemplate.h"
 #include "GMTK_MixGaussiansCommon.h"
 #include "GMTK_GraphicalModel.h"
+#include "GMTK_RVInfo.h"
 
 class RandomVariable;
 
 class FileParser
 {
  private:
+  friend class RandomVariable;
 
   ///////////////////////////////////////////////////
   typedef pair<string,int> rvParent;
@@ -49,7 +51,6 @@ class FileParser
   // be placed as it is being parsed. 
   class RVInfo {
     friend class FileParser;
-
 
     ////////////////////////////////////////////////////////////
     // define a bunch of types that are used in RVs
@@ -89,6 +90,12 @@ class FileParser
       void clear() { liType = li_Unknown; }
     };
 
+
+    // A hint given to the triangulation algorithm.
+    // this is something that can be specified in the structure
+    // file and can be used as a selector during triangulation.
+    float triangulationHint;
+
     ///////////////////////////////////////////////////////////
     // data associated with a RV
 
@@ -96,6 +103,8 @@ class FileParser
     unsigned frame;
     // line number of file where this RV was first declared
     unsigned fileLineNumber;
+    // file name where this r.v. is first defined.
+    string rvFileName;
     // rv's name
     string name;    
 
@@ -130,7 +139,8 @@ class FileParser
   public:
     /////////////////////////////////////////////////////////
     // constructor
-    RVInfo() { rvType = t_unknown; rv = NULL; };
+    RVInfo() { clear(); }
+
     // copy constructor
     RVInfo(const RVInfo&);
 
@@ -143,6 +153,7 @@ class FileParser
       rvDisp = d_unknown;
       rvFeatureRange.clear();
       rvWeightInfo.clear();
+      triangulationHint = 0.0;
 
       switchingParents.clear();
       switchMapping.clear();
@@ -432,7 +443,7 @@ public:
   // add all the variables to a template, essentially
   // keeping all the rv information but removing the
   // file specific information.
-  void addVariablesToTemplate(GMTemplate&);
+  // void addVariablesToTemplate(GMTemplate&);
 
   void checkConsistentWithGlobalObservationStream();
 
