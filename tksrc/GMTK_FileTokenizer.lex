@@ -1,4 +1,4 @@
-/* 
+/*
  * A lex file for scanning a GM structure file
  * 
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -68,7 +68,7 @@ int_rng {int}:{int}
 */
 
 
-keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|NGramCPT|mixture|gausSwitchMixture|logitSwitchMixture|mlpSwitchMixture|chunk|elimination_hint
+keyword GRAPHICAL_MODEL|frame|variable|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|NGramCPT|FNGramCPT|mixture|gausSwitchMixture|logitSwitchMixture|mlpSwitchMixture|chunk|elimination_hint
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 

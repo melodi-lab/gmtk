@@ -54,7 +54,9 @@ class DiscreteRandomVariable;
  *  |     +-- USCPT - special unity (1) score CPT for discrete features.
  *  |
  *  +-- NGramCPT - ngram language model with backing-off support
- * 
+ *  |
+ *  +-- FNGramCPT - factored language model as in SRILM 1.4+
+ *
  */
 
 class MDCPT;
@@ -102,6 +104,7 @@ public:
     di_MTCPT, // Deterministic CPT
     di_USCPT, // Unity Score CPT 
     di_NGramCPT, // Ngram "language model" CPT
+    di_FNGramCPT, // factored ngram "language model" CPT
     di_VECPT,    // Virtual Evidence CPT
     di_unknown
   };

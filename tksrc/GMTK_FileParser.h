@@ -132,15 +132,16 @@ public:
     KW_MSCPT=15,
     KW_MTCPT=16,
     KW_NGRAMCPT=17,
-    KW_Mixture=18,
-    KW_GausSwitchMixture=19,
-    KW_LogitSwitchMixture=20,
-    KW_MlpSwitchMixture=21,
-    KW_Chunk=22,
-    KW_GRAPHICAL_MODEL=23,
-    KW_Value=24,
-    KW_Weight=25,
-    KW_EliminationHint=26
+    KW_FNGRAMCPT=18,
+    KW_Mixture=19,
+    KW_GausSwitchMixture=20,
+    KW_LogitSwitchMixture=21,
+    KW_MlpSwitchMixture=22,
+    KW_Chunk=23,
+    KW_GRAPHICAL_MODEL=24,
+    KW_Value=25,
+    KW_Weight=26,
+    KW_EliminationHint=27
   };
 
   // list of token keyword strings.
