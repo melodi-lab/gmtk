@@ -607,7 +607,11 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 		i,
 		node->nonLeafNode.rngs[i]->rangeStr(),j,
 		node->nonLeafNode.rngs[j]->rangeStr());
-
+	
+	////////////////////////////////////////////////////////
+	// this next check is required to ensure there is
+	// an ordering of the ranges. If we remove this check,
+	// binary search (below) might not work.
 	if ( 
 	    (!((*node->nonLeafNode.rngs[i]) < (*node->nonLeafNode.rngs[j])))
 	    &&
@@ -617,7 +621,6 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 		i,
 		node->nonLeafNode.rngs[i]->rangeStr(),j,
 		node->nonLeafNode.rngs[j]->rangeStr());
-
       }
     }
 
@@ -940,13 +943,11 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
 	  l=m+1;
 	// rngs[l] < val && val < rngs[u]
 	else {
-	  // found potential value range
-	  // rngs[l] = val && val = rngs[u] or anything inbetween.
-	  // do linear search on the remainder.
-	  for (int i=l;i<=u;i++) {
-	    if (n->nonLeafNode.rngs[i]->contains(val))
-	      return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
-	  }
+	  // found potential range that might contain value
+	  // since neither val < rng nor val > rng. 
+	  if (n->nonLeafNode.rngs[m]->contains(val))
+	    return queryRecurse(arr,cards,n->nonLeafNode.children[m]);
+	  break;
 	}
       }
     }
@@ -1077,13 +1078,11 @@ T RngDecisionTree<T>::queryRecurse(const vector < RandomVariable* >& arr,
 	  l=m+1;
 	// rngs[l] < val && val < rngs[u]
 	else {
-	  // found potential value range
-	  // rngs[l] = val && val = rngs[u] or anything inbetween.
-	  // do linear search on the remainder.
-	  for (int i=l;i<=u;i++) {
-	    if (n->nonLeafNode.rngs[i]->contains(val))
-	      return queryRecurse(arr,n->nonLeafNode.children[i]);
-	  }
+	  // found potential range that might contain value
+	  // since neither val < rng nor val > rng. 
+	  if (n->nonLeafNode.rngs[m]->contains(val))
+	    return queryRecurse(arr,n->nonLeafNode.children[m]);
+	  break;
 	}
       }
     }
