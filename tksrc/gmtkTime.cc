@@ -622,6 +622,9 @@ main(int argc,char*argv[])
   } else {
     // we're in multitest mode.
 
+    printf("Running in multi-test mode\n");
+    fflush(stdout);
+
     unsigned iteration = 0;
 
     bool first = true;
