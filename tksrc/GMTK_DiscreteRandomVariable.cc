@@ -60,58 +60,11 @@ void
 DiscreteRandomVariable::findConditionalParents()
 {
   cachedIntFromSwitchingState = intFromSwitchingState();
-  if (conditionalCPTs.size() == 0) {
-    // then this variable has no parents.
-    assert ( curConditionalParents != NULL );
-    assert ( *curConditionalParents.size() == 0 );
-    assert ( curCPT == NULL );
-  } else {
-    assert ( cachedIntFromSwitchingState >= 0 && 
-	     cachedIntFromSwitchingState < conditionalCPTs.size() );
-    curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
-    curCPT = conditionalCPTs[cachedIntFromSwitchingState];
-  }
+  assert ( cachedIntFromSwitchingState >= 0 && 
+     cachedIntFromSwitchingState < conditionalCPTs.size() );
+  curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
+  curCPT = conditionalCPTs[cachedIntFromSwitchingState];
 }
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * Function
- *     tieWith(RandomVariable *rv)
- *     Sets things up so that this random variable has all parameters
- *     that are tied with the argument.
- *  
- * Results:
- *      none
- *
- * Side Effects:
- *      Has a significant effect on the internal structures.
- *
- *-----------------------------------------------------------------------
- */
-void
-DiscreteRandomVariable::tieWith(RandomVariable* rv)
-{
-
-#ifndef NDEBUG
-  // first do massive amounts of checking to make sure
-  // that everything is kosher.
-  assert ( rv->discrete );
-  assert ( cardinality == rv->cardinality );
-  assert ( switchingParents.size() == rv->switchingParents.size() );
-
-#endif
-
-  // everything checks out, now set our CPS to have same pointers
-  // as rv has. Assume it is discrete and cast.
-  conditionalCPTs = ((DiscreteRandomVariable*)rv)->conditionalCPTs;
-
-  // TODO: finish this function.
-  error("function tieWith not finished");
-
-}
-
 
 
 /*-
