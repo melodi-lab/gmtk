@@ -35,9 +35,11 @@
 
 #include <vector>
 #include <string>
+#include <set>
 
 #include "logp.h"
 #include "GMTK_RngDecisionTree.h"
+#include "GMTK_RVInfo.h"
 
 // Variables come in these basic varieties.
 enum vartype {Continuous,Discrete};
@@ -95,12 +97,17 @@ public:
   // What time frame does the node belong to?
   // Counting starts from 0.
   int timeIndex;
+  unsigned frame() { return (unsigned) timeIndex; }
 
   /////////////////////////////////////////////////////////////////////////
   // General tag variable that is used for a variety of purposes,
   // such as topological sort, etc. Having this variable avoids
-  // needing to use maps for certain operations.
+  // needing to use STL maps for certain operations.
   unsigned tag;
+
+  /////////////////////////////////////////////////////////////////////////
+  // Pointer back to original R.V. file parser information structure.
+  // FileParser::RVInfo* rvInfo;
 
   /////////////////////////////////////////////////////////////////////////
   // Random variable weight value. This value is applied to
@@ -114,13 +121,19 @@ public:
     unsigned wtFeatureElement; // feature element of weight value if wt_Observation is active.
   };
 
+  RVInfo& rv_info;
+
   /////////////////////////////////////////////////////////////////////////
   // Initialize with the variable type.
   // The default timeIndex value of -1 indicates a static network.
   // The default value of "hidden" is true.
   // Discrete nodes must be specified with their cardinalities.
-  RandomVariable(string _label, vartype vt, int card=0) {
-
+  RandomVariable(RVInfo& _rv_info,
+		 string _label, 
+		 vartype vt, 
+		 int card=0)
+    : rv_info(_rv_info) 
+  {
     hidden = true; 
     discrete = (vt==Discrete); 
     timeIndex = -1;
@@ -133,7 +146,6 @@ public:
     // give some sensible values to these
     wtWeight = 1.0;
     wtFeatureElement = 0;
-    
   }
 
   virtual ~RandomVariable() {;}
@@ -143,6 +155,11 @@ public:
   // PARENT MEMBER SUPPORT                      ////////////
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
+
+
+  ////////////////////////////////////////////////////////////////////////
+  // The set of neighbors, for undirected graph formulation.
+  set<RandomVariable *> neighbors;
 
   ////////////////////////////////////////////////////////////////////////
   // The set of switching parents, if any.
@@ -202,6 +219,15 @@ public:
   // (for the parents of the variable) it updates allPossibleChildren
   void setParents(vector<RandomVariable *> &sparents,
 		  vector<vector<RandomVariable *> > &cpl);
+
+  // set up the 'neighbors' member.
+  void createNeighborsFromParentsChildren();
+
+  // connect all neighbors
+  void connectNeighbors(set<RandomVariable*> exclude);
+
+  // moralize the node's parents
+  void moralize();
 
 
   // Cached value of findConditionalParents(). Can reuse
