@@ -518,10 +518,11 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
  */
 void
 JT_InferencePartition::emIncrement(const logpr probE,
-				   const bool localCliqueNormalization)
+				   const bool localCliqueNormalization,
+				   const double emTrainingBeam)
 {
   for (unsigned cliqueNo=0;cliqueNo < maxCliques.size(); cliqueNo++ ) {
-    maxCliques[cliqueNo].emIncrement(probE,localCliqueNormalization);
+    maxCliques[cliqueNo].emIncrement(probE,localCliqueNormalization,emTrainingBeam);
   }
 }
 
@@ -558,12 +559,13 @@ JT_InferencePartition::emIncrement(const logpr probE,
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::setUpDataStructures()
+JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
+				  const char *varCliqueAssignmentPrior)
 {
   createPartitionJunctionTrees();
   computePartitionInterfaces();
   createDirectedGraphOfCliques();
-  assignRVsToCliques();
+  assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
   computeUnassignedCliqueNodes();
   // TODO: move this next one above by one.
   setUpMessagePassingOrders();
@@ -1190,10 +1192,11 @@ JunctionTree::createDirectedGraphOfCliquesRecurse(JT_Partition& part,
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::assignRVsToCliques()
+JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
+				 const char *varCliqueAssignmentPrior)
 {
   infoMsg(IM::Med,"assigning rvs to P1 partition\n");
-  assignRVsToCliques("P1",P1,P_ri_to_C);
+  assignRVsToCliques("P1",P1,P_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
   if (gm_template.leftInterface) {
     infoMsg(IM::Med,"assigning rvs to Cu0 partition\n");
@@ -1203,7 +1206,7 @@ JunctionTree::assignRVsToCliques()
     union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
 		   P1.cliques[P_ri_to_C].assignedProbNodes,
 		   Cu0.cliques[C_li_to_P].cumulativeAssignedProbNodes);
-    assignRVsToCliques("Cu0",Cu0,C_ri_to_C);
+    assignRVsToCliques("Cu0",Cu0,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
 
     infoMsg(IM::Med,"assigning rvs to Co partition\n");
@@ -1213,7 +1216,7 @@ JunctionTree::assignRVsToCliques()
     union_1_2_to_3(Cu0.cliques[C_ri_to_C].cumulativeAssignedProbNodes,
 		   Cu0.cliques[C_ri_to_C].assignedProbNodes,
 		   Co.cliques[C_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques("Co",Co,C_ri_to_C);
+    assignRVsToCliques("Co",Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
     infoMsg(IM::Med,"assigning rvs to E partition\n");
     union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
@@ -1222,7 +1225,7 @@ JunctionTree::assignRVsToCliques()
     union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
 		   Co.cliques[C_ri_to_E].assignedProbNodes,
 		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques("E1",E1,E_root_clique);
+    assignRVsToCliques("E1",E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
   } else { // right interface 
     infoMsg(IM::Med,"assigning rvs to Co partition\n");
@@ -1232,7 +1235,7 @@ JunctionTree::assignRVsToCliques()
     union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
 		   P1.cliques[P_ri_to_C].assignedProbNodes,
 		   Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
-    assignRVsToCliques("Co",Co,C_ri_to_C);
+    assignRVsToCliques("Co",Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
     infoMsg(IM::Med,"assigning rvs to Cu0 partition\n");
     union_1_2_to_3(Co.cliques[C_ri_to_C].cumulativeAssignedNodes,
@@ -1241,7 +1244,7 @@ JunctionTree::assignRVsToCliques()
     union_1_2_to_3(Co.cliques[C_ri_to_C].cumulativeAssignedProbNodes,
 		   Co.cliques[C_ri_to_C].assignedProbNodes,
 		   Cu0.cliques[C_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques("Cu0",Cu0,C_ri_to_E);
+    assignRVsToCliques("Cu0",Cu0,C_ri_to_E,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
     infoMsg(IM::Med,"assigning rvs to E partition\n");
     union_1_2_to_3(Cu0.cliques[C_ri_to_E].cumulativeAssignedNodes,
@@ -1250,7 +1253,7 @@ JunctionTree::assignRVsToCliques()
     union_1_2_to_3(Cu0.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
 		   Cu0.cliques[C_ri_to_E].assignedProbNodes,
 		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques("E1",E1,E_root_clique);
+    assignRVsToCliques("E1",E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
   }
 }
 
@@ -1299,19 +1302,20 @@ JunctionTree::assignRVsToCliques()
 void
 JunctionTree::assignRVsToCliques(const char *const partName,
 				 JT_Partition& part,
-				 const unsigned rootClique)
+				 const unsigned rootClique,
+				 const char* varPartitionAssignmentPrior,
+				 const char *varCliqueAssignmentPrior)
 {
   vector<RandomVariable*> sortedNodes;
 
-  // We use a topological sort so that among all possible sorts, the
-  // continuous variables come as early as possible in the
-  // ordering. This way, we are not repeatedly calling the computation
-  // of probability on those nodes (computing prob of a continuous
-  // variable is more expensive than that of a discrete
-  // variable). Also, possibly cache mixture probabilities if we find
-  // a mixture is in a big clique and forced to be at the end. This
-  // will also be beneficial when sampling hidden continuous nodes.
-  GraphicalModel::topologicalSortContFirst(part.nodes,part.nodes,sortedNodes);
+  // We use a topological sort so that among all possible sorts, so
+  // that variables come in an appropraite order (e.g., might have it
+  // such that continuous variables or discrete observations come as
+  // early as possible in the ordering).  This will also be beneficial
+  // when sampling hidden continuous nodes.
+  infoMsg(IM::Giga,"Sorting partition variables using priority order (%s)\n",
+	  (varPartitionAssignmentPrior?varPartitionAssignmentPrior:"NULL"));
+  GraphicalModel::topologicalSortContFirst(part.nodes,part.nodes,sortedNodes,varPartitionAssignmentPrior);
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),part.cliques.size());
 
@@ -1383,6 +1387,21 @@ JunctionTree::assignRVsToCliques(const char *const partName,
       part.unassignedInPartition.insert(rv);
     }
 
+  }
+
+  if (varCliqueAssignmentPrior && strlen(varCliqueAssignmentPrior) > 0) {
+    infoMsg(IM::Giga,"Sorting cliques variables using priority order (%s)\n",varCliqueAssignmentPrior);
+    
+    // Lastly, we re-sort the original sorted nodes in each clique
+    // according to a designated (and hopefully good) topological
+    // order.
+    for (unsigned clique_num=0;clique_num<part.cliques.size(); clique_num++ ) {
+      GraphicalModel::topologicalSortContFirst(part.cliques[clique_num].assignedNodes,
+					       part.cliques[clique_num].assignedNodes,
+					       sortedNodes,
+					       varCliqueAssignmentPrior);
+      part.cliques[clique_num].sortedAssignedNodes = sortedNodes;
+    }
   }
 
 }
@@ -2448,7 +2467,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
   }
     
   createDirectedGraphOfCliques(jt_part,root);
-  assignRVsToCliques("candidate partition",jt_part,root);
+  assignRVsToCliques("candidate partition",jt_part,root,"","");
 
   vector< pair<unsigned,unsigned> > message_order;
   vector< unsigned > leaf_cliques;
@@ -2845,8 +2864,7 @@ JunctionTree::unroll(const unsigned int numFrames)
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Can't unroll with this template (NEED TO FIX THIS ERROR MESSAGE).\n"); // TODO: fix this error.
-    // return 0
+    error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
@@ -3458,12 +3476,13 @@ JunctionTree::distributeEvidence()
  */
 void
 JunctionTree::emIncrement(const logpr probE,
-			  const bool localCliqueNormalization)
+			  const bool localCliqueNormalization,
+			  const double emTrainingBeam)
 {
   // Quite simply, just iterate through all partitions and call emIncrement
   // therein.
   for (unsigned partNo = 0; partNo < jtIPartitions.size() ; partNo ++ ) {
-    jtIPartitions[partNo].emIncrement(probE,localCliqueNormalization);
+    jtIPartitions[partNo].emIncrement(probE,localCliqueNormalization,emTrainingBeam);
   }
 }
 
@@ -3514,8 +3533,8 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Can't unroll\n"); // TODO: fix this error.
-  // return 0
+    error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
+
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
@@ -3667,8 +3686,8 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Can't unroll\n"); // TODO: fix this error.
-  // return 0
+    error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
+
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
@@ -3910,7 +3929,7 @@ JunctionTree::emIncrementIsland(const unsigned part,
   // increment for this partition.
   infoMsg(IM::Mod,"^^^ incrementing EM: part = %d (%s)\n",
 	  part,partPArray[part].nm);
-  return partPArray[part].p->emIncrement(cur_prob_evidence,localCliqueNormalization);
+  return partPArray[part].p->emIncrement(cur_prob_evidence,localCliqueNormalization,curEMTrainingBeam);
 }
 
 
@@ -4331,8 +4350,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Can't unroll\n"); // TODO: fix this error.
-    // return 0
+    error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
+
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",

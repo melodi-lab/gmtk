@@ -69,6 +69,7 @@ private:
 					      RandomVariable* node,
 					      unsigned& position);
 
+
 public:
 
   GraphicalModel() {}
@@ -102,7 +103,8 @@ public:
   // being equal.
   static bool topologicalSortContFirst(const set<RandomVariable*> &inputVarList,
 				       const set<RandomVariable*> &sortSet,
-				       vector<RandomVariable*> &outputVarList);
+				       vector<RandomVariable*> &outputVarList,
+				       const string priorityStr = "COB");
 
   ///////////////////////////////////////////
   // print this graphical model

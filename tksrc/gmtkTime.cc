@@ -123,6 +123,10 @@ static bool probE=true;
 static bool island=false;
 static unsigned base=2;
 static unsigned lst=100;
+static char* varPartitionAssignmentPrior = "COI";
+static char* varCliqueAssignmentPrior = "COI";
+
+
 
 Arg Arg::Args[] = {
 
@@ -206,6 +210,8 @@ Arg Arg::Args[] = {
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
   Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
   Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture probabilities, faster but uses more memory."),
+  Arg("vpap",Arg::Opt,varPartitionAssignmentPrior,"Variable partition assignment priority. Sequence of chars in set [C,D,O,B,I]"),  
+  Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,I]"),
 
   // final one to signal the end of the list
   Arg()
@@ -403,7 +409,7 @@ main(int argc,char*argv[])
   // CREATE JUNCTION TREE DATA STRUCTURES
   infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
   JunctionTree myjt(gm_template);
-  myjt.setUpDataStructures();
+  myjt.setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
   myjt.prepareForUnrolling();
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);

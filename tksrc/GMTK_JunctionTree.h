@@ -164,7 +164,8 @@ public:
   
   // EM updating.
   void emIncrement(const logpr probE, 
-		   const bool localCliqueNormalization = false);
+		   const bool localCliqueNormalization = false,
+		   const double emTrainingBeam = -LZERO);
 
 };
 
@@ -237,6 +238,8 @@ class JunctionTree  {
   map < RVInfo::rvParent, unsigned > cur_ppf;
   // the evidence probability used during island algorithm.
   logpr cur_prob_evidence;
+  // the EM training beam used for island training
+  double curEMTrainingBeam;
   ////////////////////////////////////////////////////////////////////////
 
   // Identities of cliques in junction trees: 
@@ -349,8 +352,9 @@ class JunctionTree  {
   logpr probEvidenceRoot(const unsigned part);
   logpr setRootToMaxCliqueValue(const unsigned part);
   void emIncrementIsland(const unsigned part,
-			  const logpr probE, 
-			  const bool localCliqueNormalization);
+			 const logpr probE, 
+			 const bool localCliqueNormalization);
+
   void collectDistributeIslandRecurse(const unsigned start,
 				      const unsigned end,
 				      const unsigned base,
@@ -392,7 +396,8 @@ public:
 
   // constructor
   JunctionTree(GMTemplate& arg_gm_template)
-    : fp(arg_gm_template.fp),
+    : curEMTrainingBeam(-LZERO),
+      fp(arg_gm_template.fp),
       gm_template(arg_gm_template) {}
 
   // the fixed file parser for this model, for RV unrolling, etc.
@@ -418,7 +423,8 @@ public:
 
 
   // Call many of the routines below in the right order.
-  void setUpDataStructures();
+  void setUpDataStructures(const char* varPartitionAssignmentPrior,
+			   const char *varCliqueAssignmentPrior);
 
   // create the three junction trees for the basic partitions.
   void createPartitionJunctionTrees() {
@@ -451,10 +457,14 @@ public:
   // and *all* their parents live in the clique, plus some other
   // criterion in order to make message passing as efficient as
   // possible).
-  void assignRVsToCliques();
+  void assignRVsToCliques(const char* varPartitionAssignmentPrior,
+			  const char *varCliqueAssignmentPrior);
   static void assignRVsToCliques(const char *const partName,
 				 JT_Partition&part,
-				 const unsigned rootClique);
+				 const unsigned rootClique,
+				 const char* varPartitionAssignmentPrior,
+				 const char *varCliqueAssignmentPrior);
+
 
   // determine and set the unassignedNodes in each clique
   // in each partition
@@ -563,11 +573,13 @@ public:
 
   // return the island's idea of the current prob of evidence
   logpr curProbEvidenceIsland() { return cur_prob_evidence; }
-
+  // set island's EM beam.
+  void setCurEMTrainingBeam(const double b) { curEMTrainingBeam = b; }
 
   // EM training increment, for use with collectEvidence and distributeEvidence.
   void emIncrement(const logpr probEvidence,
-		   const bool localCliqueNormalization = false);
+		   const bool localCliqueNormalization = false,
+		   const double emTrainingBeam = -LZERO);
 
   // print P(E) to stdout using all cliques. After a ce,de stage,
   // all values should be the same.

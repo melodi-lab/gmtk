@@ -93,8 +93,7 @@ static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
 
 /////////////////////////////////////////////////////////////
 // Beam Options
-// static double cliqueBeam=-LZERO;
-// static double separatorBeam=-LZERO;
+static double emTrainingBeam=-LZERO;
 
 /////////////////////////////////////////////////////////////
 // File Range Options
@@ -113,6 +112,10 @@ static bool print_version_and_exit = false;
 static bool island=false;
 static unsigned base=2;
 static unsigned lst=100;
+static char* varPartitionAssignmentPrior = "COI";
+static char* varCliqueAssignmentPrior = "COI";
+
+
 
 /////////////////////////////////////////////////////////////
 // EM Training Options
@@ -183,6 +186,7 @@ Arg Arg::Args[] = {
   // Beam Options
   Arg("cbeam",Arg::Opt,MaxClique::cliqueBeam,"Clique Beam"),
   Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator Beam"),
+  Arg("ebeam",Arg::Opt,emTrainingBeam,"EM Training Beam"),
 
   /////////////////////////////////////////////////////////////
   // Memory management options
@@ -208,6 +212,9 @@ Arg Arg::Args[] = {
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
   Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
   Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture and component probabilities, faster but uses more memory."),
+  Arg("vpap",Arg::Opt,varPartitionAssignmentPrior,"Variable partition assignment priority. Sequence of chars in set [C,D,O,B,I]"),  
+  Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,I]"),
+
 
   /////////////////////////////////////////////////////////////
   // EM Training Options
@@ -421,7 +428,7 @@ main(int argc,char*argv[])
   // CREATE JUNCTION TREE DATA STRUCTURES
   infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
   JunctionTree myjt(gm_template);
-  myjt.setUpDataStructures();
+  myjt.setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
   myjt.prepareForUnrolling();
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
@@ -452,6 +459,12 @@ main(int argc,char*argv[])
   if (trrng->length() == 0 && loadAccFile == NULL) {
     error("ERROR: with EM training. Either must specify segments to train or must load accumulatores (or both).");
   }
+
+  if (island) {
+    // island needs to know about this internally.
+    myjt.setCurEMTrainingBeam(emTrainingBeam);
+  }
+
 
   logpr total_data_prob = 1.0;
 
@@ -577,7 +590,7 @@ main(int argc,char*argv[])
 	    }
 	    // And actually train with EM.
 	    infoMsg(IM::Low,"Incrementing EM Accumulators\n");
-	    myjt.emIncrement(probe,localCliqueNormalization);
+	    myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
 	  }
 	}
 	(*trrng_it)++;

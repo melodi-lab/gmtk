@@ -76,15 +76,18 @@ class CliqueValueHolder  {
 
   // The amount that successive allocation chunks grow in size.  Must
   // be >= 1.0.
-  // @@@ sould be const
+  // Ideally, should be a const.
   float growthFactor;
 
   // The size of the initial allocation unit. A chunk is an
   // array of packed clique values. When we allocate the n'th
   // chunk, we allocate k(n) new packed clique values, 
   // where k(n) = allocationUnitChunkSize*growthFactor^(n-1)
-  // @@@ sould be const
+  // Ideally, should be a const.
   unsigned allocationUnitChunkSize;
+
+  // manage the space here.
+  // SpaceManager spaceManager;
 
   // Current capacity, total number of packed clique values that this
   // object can currently potentially hold max without a resize.
@@ -539,7 +542,7 @@ public:
   // enum also defined above. Note that if this
   // array is of size 0, then the default case is assumed
   // to be AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB
-  // computed in MaxClique::computeAssignedNodesToIterate()
+  // computed in MaxClique::computeAssignedNodesDispositions()
   // Used to:
   //   1) determine way in which fSortedAssignedNodes in inf clique should be iterated.
   sArray < AssignedNodeDisposition > dispositionSortedAssignedNodes;
@@ -669,7 +672,7 @@ public:
   // by this clique object and clones of this clique object.
   // It is only usable after we have prepared for unrolling.
   // TODO: add proper allocation statistics object and use that.
-  unsigned allocationUnitChunkSize;
+  // unsigned allocationUnitChunkSize;
 
 
   // Clear up the things that are just to create and hold information
@@ -891,7 +894,8 @@ public:
 
   // EM accumulation support.
   void emIncrement(const logpr probE, 
-		   const bool localCliqueNormalization = false);
+		   const bool localCliqueNormalization = false,
+		   const double emTrainingBeam = -LZERO);
 
 };
 
@@ -982,6 +986,13 @@ public:
   // asked for rather than something too small.
   SpaceManager separatorValueSpaceManager;
 
+  // TODO: Manages and memorizes space for the remainder portion of a
+  // separator. Note that this is used quite differently as the
+  // 'separatorValueSpaceManager' variable, as a potentially different
+  // sized remainder exists for all accumulated intersection
+  // size. This therefore only keeps track of the maximum size.
+  SpaceManager remainderValueSpaceManager; 
+
   // used to clear out hash table memory between segments
   void clearSeparatorValueCache(bool force=false) {
     if ((force || MaxClique::perSegmentClearCliqueValueCache) && accPacker.packedLen() > ISC_NWWOH_AI) {
@@ -994,6 +1005,7 @@ public:
     }
     // shrink space asked for by clique values. 
     separatorValueSpaceManager.decay();
+    remainderValueSpaceManager.decay(); 
   }
 
 

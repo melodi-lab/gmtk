@@ -70,9 +70,29 @@ VCID("$Header$");
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
+//        Constants
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+
+// set to 1 to test
+#define CLIQUE_VALUE_HOLDER_STARTING_SIZE 23
+#define CLIQUE_VALUE_HOLDER_GROWTH_RATE   2.0
+
+#define AI_SEP_VALUE_HOLDER_STARTING_SIZE 23
+#define AI_SEP_VALUE_HOLDER_GROWTH_RATE   2.0
+
+#define REM_SEP_VALUE_HOLDER_STARTING_SIZE 23
+#define REM_SEP_VALUE_HOLDER_GROWTH_RATE   2.0
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 //        Static variables and functions
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
+
+
 
 /*
  *
@@ -948,18 +968,18 @@ MaxClique::prepareForUnrolling()
   // allocationUnitChunkSize = 16;
 
   // set to small size now to test out re-allocation schemes.
-  allocationUnitChunkSize = 1;
+  // allocationUnitChunkSize = 1;
   // allocationUnitChunkSize = 10000;
 
   if (packer.packedLen() > IMC_NWWOH) {
     // setup value hodler
     new (&valueHolder) CliqueValueHolder(packer.packedLen(),
-					 allocationUnitChunkSize,
-					 1.25);
+					 CLIQUE_VALUE_HOLDER_STARTING_SIZE, // set to 1 to test.
+					 CLIQUE_VALUE_HOLDER_GROWTH_RATE); // 1.25
     // set up common clique hash tables 
     // TODO: add appropriate default staring hash sizes.
     // new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2);
-    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2); // 10000
+    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),CLIQUE_VALUE_HOLDER_STARTING_SIZE);
   } else {
     // then no need to do a hash table at all, either
     // we just store the packed values in a local integer
@@ -976,7 +996,7 @@ MaxClique::prepareForUnrolling()
 
 /*-
  *-----------------------------------------------------------------------
- * MaxClique::computeAssignedNodesToIterate()
+ * MaxClique::computeAssignedNodesDispositions()
  *   
  *   computes the number and set of nodes that are assigned to this clique
  *   that we are actually to iterate over (rather than have them be iterated
@@ -2640,7 +2660,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
       if (sep_origin_hAccumulatedIntersection_exists_p) { 
 	// an accumulated intersection exists.
 
-	// make sure there is at least one available entry
+	// make sure there is at least one available accumulated intersection entry
 	assert ( sep.numSeparatorValuesUsed <= sep.separatorValues.size());
 	if (sep.numSeparatorValuesUsed >= sep.separatorValues.size()) {
 	  const unsigned old_size = sep.separatorValues.size();
@@ -2773,7 +2793,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
       if (sv.numRemValuesUsed >= sv.remValues.size()) {
 	// TODO: optimize this growth rate.
 	// start small but grow fast.
-	sv.remValues.resizeAndCopy(1+sv.remValues.size()*2); // *3
+	// sv.remValues.resizeAndCopy(1+sv.remValues.size()*2); // *3
+	sv.remValues.resizeAndCopy(sep.origin.remainderValueSpaceManager.nextSizeFrom(sv.remValues.size()));
+	sep.origin.remainderValueSpaceManager.setCurrentAllocationSizeIfLarger(sv.remValues.size());
 	if (isc_nwwoh_rm_p) {
 	  // Then the above resize just invalided all sv.iRemHashMap's pointers to keys,
 	  // but it did not invalidate its array indices. Go through
@@ -3413,6 +3435,8 @@ sumProbabilities()
 {
   logpr p;
   if (numCliqueValuesUsed > 0) {
+    // We directly assign first one rather than adding to initialized
+    // zero so that logpr's log(0) floating point value is preserved.
     p = cliqueValues.ptr[0].p;
     for (unsigned i=1;i<numCliqueValuesUsed;i++)
       p += cliqueValues.ptr[i].p;
@@ -3424,7 +3448,8 @@ sumProbabilities()
 void
 InferenceMaxClique::
 emIncrement(const logpr probE,
-	    const bool localCliqueNormalization)
+	    const bool localCliqueNormalization,
+	    const double emTrainingBeam)
 {
   // recompute here each time, shouldn't take too long
   // TODO: re-compute this once for each inference clique.
@@ -3459,21 +3484,34 @@ emIncrement(const logpr probE,
   }
 
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const bool clique_has_hidden_vars = (origin.hiddenNodes.size() > 0);
+  
+  logpr beamThreshold((void*)0);
+  if (origin.cliqueBeam != (-LZERO)) {
+    // then we do clique table pruning right here rather
+    // than a separate call to ceCliquePrune().
+    // break into the logp to avoid unnecessary zero checking.
+    beamThreshold.valref() = - emTrainingBeam;
+  } else {
+    // set beam threshold to a value that will never cause pruning.
+    beamThreshold.set_to_zero();
+  }
+  // create unnormalized beam threshold.
+  beamThreshold *= locProbE;
 
   // now go through updating each thing
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
-    logpr posterior = cliqueValues.ptr[cvn].p/locProbE;
-    // TODO: EM pruning here based on posterior.
 
-    // Increment all assigned probability nodes.  
-    // 
-    // TODO: integerate out all but cont. variables parents so we
-    // don't multiply increment those varialbes for the same parent
-    // values (waisting time).
-    for (unsigned nodeNumber = 0; nodeNumber < fAssignedProbNodes.size(); nodeNumber ++ ) {
-      RandomVariable* rv = fAssignedProbNodes[nodeNumber];
-      // TODO: optimize away this conditional check. (and/or use const
-      // local variable to indicate it wont change)
+    // EM pruning here based on unnormalized posterior. Don't bother
+    // with things that are below threshold.
+    if (cliqueValues.ptr[cvn].p < beamThreshold)
+      continue;
+
+    // if still here, then create the posterior to update the
+    // parameters.
+    logpr posterior = cliqueValues.ptr[cvn].p/locProbE;
+
+    if (clique_has_hidden_vars) {
       if (imc_nwwoh_p) {
 	origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
 			     (unsigned**)discreteValuePtrs.ptr);
@@ -3481,6 +3519,14 @@ emIncrement(const logpr probE,
 	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			     (unsigned**)discreteValuePtrs.ptr);
       }
+    }
+    // Increment all assigned probability nodes.  
+    // 
+    // TODO: integerate out all but cont. variables parents so we
+    // don't multiply increment those varialbes for the same parent
+    // values (waisting time).
+    for (unsigned nodeNumber = 0; nodeNumber < fAssignedProbNodes.size(); nodeNumber ++ ) {
+      RandomVariable* rv = fAssignedProbNodes[nodeNumber];
       rv->emIncrement(posterior);
     }
   }
@@ -4085,7 +4131,11 @@ SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
   :  separatorValueSpaceManager(1,     // starting size
 				2.0,   // growth rate
 				1,     // growth addition
-				0.90)  // decay rate 
+				0.90),  // decay rate 
+     remainderValueSpaceManager(1,     // starting size
+				2.0,   // growth rate
+				1,     // growth addition
+				0.90)  // decay rate
 {
   nodes.clear();
 
@@ -4102,7 +4152,11 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 				 vector <RandomVariable*>& newRvs,
 				 map < RVInfo::rvParent, unsigned >& ppf,
 				 const unsigned int frameDelta)
-  :  separatorValueSpaceManager(3,     // starting size
+  :  separatorValueSpaceManager(1,     // starting size
+				2.0,   // growth rate
+				1,     // growth addition
+				0.90),  // decay rate 
+     remainderValueSpaceManager(1,     // starting size
 				2.0,   // growth rate
 				1,     // growth addition
 				0.90)  // decay rate 
@@ -4219,10 +4273,10 @@ SeparatorClique::prepareForUnrolling()
       // set is larger than one machine word (unsigned).
       new (&accValueHolder) CliqueValueHolder(accPacker.packedLen(),
 					      // TODO: optimize this 1000 value.
-					      2, // 5000
-					      1.25);
+					      AI_SEP_VALUE_HOLDER_STARTING_SIZE,
+					      AI_SEP_VALUE_HOLDER_GROWTH_RATE); // 1.25
       // TODO: optimize starting size.
-      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),2); // 5000
+      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),AI_SEP_VALUE_HOLDER_STARTING_SIZE);
     }
   }
 
@@ -4243,27 +4297,11 @@ SeparatorClique::prepareForUnrolling()
       // than one machine word (unsigned).
       new (&remValueHolder) CliqueValueHolder(remPacker.packedLen(),
 					      // TODO: optimize this starting sizse
-					      2, // 5000
-					      1.25);
-      // TODO: optimize starting size
-      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),2); // 5000
+					      REM_SEP_VALUE_HOLDER_STARTING_SIZE, // 2
+					      REM_SEP_VALUE_HOLDER_GROWTH_RATE); // 1.25
+      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),REM_SEP_VALUE_HOLDER_STARTING_SIZE);
     }
   }
-
-#if 0
-  // make sure we have at least one hidden variable in separator.
-  if (hAccumulatedIntersection.size() == 0 && hRemainder.size() == 0) {
-    // We should never have a separator clique consisting of only and
-    // entirely observed variables. If we do, it means that one part
-    // of the JT is entirely cut off from the rest since cliques are
-    // independent of each other given sep sets.  TODO: put an error
-    // message in JT creation code if this case occurs.
-    warning("ERROR: separator clique in junction tree consists entirely of observed values. Invalid graph.");
-    warning("Separator clique has %d nodes:",nodes.size()); 
-    printRVSet(stderr,nodes);
-    error("...EXITING...");
-  }
-#endif
 
 }
 
@@ -4475,13 +4513,20 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     // there will always be one used value here.
     numSeparatorValuesUsed = 1;
     if (origin.hRemainder.size() > 0) {
+      // So we have no accumulated intersection, and a remainder which
+      // means we are in a good position to predict the size of the
+      // (necessarily single) remainder vectors from the previous
+      // times we used it. Therefore, we do just that, but only in
+      // this case.
+      separatorValues.ptr[0].remValues.resize(origin.remainderValueSpaceManager.currentSize());
       new (&separatorValues.ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
-	(origin.remPacker.packedLen(),2);
+	(origin.remPacker.packedLen(),origin.remainderValueSpaceManager.currentSize());
+      // new (&separatorValues.ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable(origin.remPacker.packedLen(),2);
     } else {
-      // the separator consists of all observed nodes. 
+      // The separator consists of all observed nodes. 
       // Search in file for key string
       // "ALLOCATE_REMVALUES_ALL_OBSERVED'
-      // to find where this is allocated.
+      // to find where the nec. single entry is allocated.
     }
   } else {
     // start with something a bit larger
@@ -4493,7 +4538,17 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	// need to re-construct individual hash tables.
 	new (&separatorValues.ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
 	  (origin.remPacker.packedLen(),2);
-	// TODO: potentially preallocate default size of  separatorValues.ptr[i].remValues.resize(default);
+	// TODO: while we potentially could preallocate default size
+	// of separatorValues.ptr[i].remValues.resize(default); here,
+	// we don't really know what it should be. Since there are
+	// multiple remainders here, and each might be drastically
+	// different in size (some even being zero length), it is not
+	// a good idea to allocate anything at all and we let it
+	// lazily be sized as needed. The TODO is to come up with a
+	// better scheme (e.g., keep a counter array to keep track of
+	// the number at each allocation level, and then allocate this
+	// to the min size of the previous time that that a non-zero
+	// number of cases.
       }
     } else {
       // things such as array separatorValues.ptr[i].remValues will be sized as needed later.
@@ -4666,7 +4721,8 @@ InferenceSeparatorClique::ceSeparatorPrune()
 CliqueValueHolder::CliqueValueHolder(unsigned _cliqueValueSize,
 				     unsigned _allocationUnitChunkSize,
 				     float _growthFactor)
-  : cliqueValueSize(_cliqueValueSize),growthFactor(_growthFactor),
+  : cliqueValueSize(_cliqueValueSize),
+    growthFactor(_growthFactor),
     allocationUnitChunkSize(_allocationUnitChunkSize)
 {
   assert ( allocationUnitChunkSize > 0 );

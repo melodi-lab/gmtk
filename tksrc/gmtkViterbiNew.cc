@@ -112,6 +112,9 @@ static bool print_version_and_exit = false;
 static bool island=false;
 static unsigned base=2;
 static unsigned lst=100;
+static char* varPartitionAssignmentPrior = "COI";
+static char* varCliqueAssignmentPrior = "COI";
+
 
 /////////////////////////////////////////////////////////////
 // Decoding Options
@@ -195,6 +198,9 @@ Arg Arg::Args[] = {
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
   Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
   Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture and component probabilities, faster but uses more memory."),
+  Arg("vpap",Arg::Opt,varPartitionAssignmentPrior,"Variable partition assignment priority. Sequence of chars in set [C,D,O,B,I]"),  
+  Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,I]"),
+
 
   /////////////////////////////////////////////////////////////
   // Decoding Options
@@ -205,6 +211,7 @@ Arg Arg::Args[] = {
   Arg("varMap",Arg::Opt,varMapFile,"Use this file to map from word-index to string"),
   Arg("transitionLabel",Arg::Opt,transitionLabel,"The label of the word transition variable"),
   Arg("showVitVals",Arg::Opt,showVitVals,"File to print viterbi values, '-' for stdout"),
+
 
   // final one to signal the end of the list
   Arg()
@@ -391,7 +398,7 @@ main(int argc,char*argv[])
   // CREATE JUNCTION TREE DATA STRUCTURES
   infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
   JunctionTree myjt(gm_template);
-  myjt.setUpDataStructures();
+  myjt.setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
   myjt.prepareForUnrolling();
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
