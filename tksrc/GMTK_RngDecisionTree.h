@@ -359,7 +359,7 @@ RngDecisionTree<T>::read(iDataStreamFile& is)
   is.read(dtFileName,"RngDecisionTree:: read file/numFeatures");
   if (!strIsInt(dtFileName.c_str(),&(int)_numFeatures)) {
     if (dtFile != NULL)
-      error("ERROR: can't have DTs defined recursively from files");
+      error("ERROR: in DT named '%s', can't have DTs defined recursively from files",name().c_str());
     // then this must be a file name, turn off cpp pipe since we need to
     // rewind later.
     dtFile = new iDataStreamFile(dtFileName.c_str(),is.binary(),false);
@@ -369,12 +369,11 @@ RngDecisionTree<T>::read(iDataStreamFile& is)
     // even before clamping.
     dtFile->read(numDTs,"num DTs");
     if (numDTs == 0)
-      error("ERROR: File '%s' specifies an invalid number of DTs\n",
-	    dtFileName.c_str());
+      error("ERROR: in DT named '%s', File '%s' specifies an invalid number of DTs\n",name().c_str(),dtFileName.c_str());
     return true;
   }
-  if (_numFeatures <= 0)
-    error("RngDecisionTree::read decision tree must have >= 0 features");
+  if (_numFeatures < 0)
+    error("ERROR: in DT named '%s', file '%s', decision tree must have >= 0 features",name().c_str(),is.fileName());
   rightMostLeaf = NULL;
   root = readRecurse(is,rightMostLeaf);
   Node *tmp = rightMostLeaf;
@@ -419,9 +418,9 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
   int curFeat;
   is.read(curFeat,"RngDecisionTree:: readRecurse curFeat");
   if (curFeat < -1) 
-    error("RngDecisionTree::readRecurse, feature number (=%d) must be non-negative",curFeat);
+    error("ERROR: DT '%s', file '%s', feature number (=%d) must be non-negative",name().c_str(),is.fileName(),curFeat);
   if (curFeat >= (int)_numFeatures) 
-    error("RngDecisionTree::readRecurse, feature number (=%d) must be < numFeatures (=%d)",curFeat,
+    error("ERROR: DT '%s', file '%s', feature number (=%d) must be < numFeatures (=%d)",name().c_str(),is.fileName(),curFeat,
 	  _numFeatures);
   Node *node = new Node;
   if (curFeat == -1) {
@@ -433,13 +432,15 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
     if (strIsInt(leafNodeVal.c_str(),&val)) {
       node->nodeType = LeafNodeVal;
       node->leafNode.value = val;
+      node->leafNode.leafNodeString = leafNodeVal;
     } else if (leafNodeVal == "expand") {
       node->nodeType = LeafNodeFullExpand;
-    } else {
+      node->leafNode.leafNodeString = leafNodeVal;
+    } else if (leafNodeVal[0] = '(') {
       node->nodeType = LeafNodeFormula;
       //
       // try and parse it. It should be
-      // a string of the form A1+A2+A3+A4+... where there are NO SPACES
+      // a string of the form (A1+A2+A3+A4+...An) 
       // where Ai is either:
       //    1) a single integer
       //    2) the string "pj" where j is the j'th parent's value
@@ -453,16 +454,26 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 
 
       // start parsing the string
-      unsigned pos = 0;
+      unsigned pos = 1;
       bool expectingPlus = false;
-      while (pos < leafNodeVal.size()) {
+      node->leafNode.leafNodeString = leafNodeVal;
+      while (1) {
+	while (pos < leafNodeVal.size() && (leafNodeVal[pos] == ' ' || leafNodeVal[pos] == '\t'))
+	  pos++;
+	if (pos == leafNodeVal.size()) {
+	  // get next portion
+	  is.read(leafNodeVal,"RngDecisionTree:: readRecurse leaf node value");
+	  node->leafNode.leafNodeString += leafNodeVal;
+	  pos = 0;
+	  continue;
+	}
 	int val;
 	int len;
 	if (leafNodeVal[pos] == 'p' || 
 	    leafNodeVal[pos] == 'c' || 
 	    leafNodeVal[pos] == 'm') {
 	  if (expectingPlus) {
-	    error("Error parsing DT named '%s' in file '%s': Expecting '+' at position %d in string '%s'\n",
+	    error("ERROR: DT '%s', file '%s': Expecting '+' at position %d in string '%s'\n",
 		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
 	  }
 	  FormEntry fe;
@@ -475,7 +486,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 
 	  pos++;
 	  if (!strIsInt(leafNodeVal.c_str()+pos,&val,&len)) {
-	    error("Error parsing DT named '%s' in file '%s': Expecting integer at position %d in string '%s'\n",
+	    error("ERROR: DT '%s', file '%s': Expecting integer at position %d in string '%s'\n",
 		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
 	  }
 	  // we have an int value
@@ -485,14 +496,14 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 	  expectingPlus = true;
 	} else if (leafNodeVal[pos] == '+') {
 	  if (!expectingPlus)
-	    error("Error parsing DT named '%s' in file '%s': Not expecting '+' at position %d in string '%s'\n",
+	    error("ERROR: DT '%s', file '%s': Not expecting '+' at position %d in string '%s'\n",
 		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
 	  // consume token
 	  pos++;
 	  expectingPlus = false;
 	} else if (strIsInt(leafNodeVal.c_str()+pos,&val,&len)) {
 	  if (expectingPlus) {
-	    error("Error parsing DT named '%s' in file '%s': Expecting '+' at position %d in string '%s'\n",
+	    error("ERROR: DT '%s', file '%s': Expecting '+' at position %d in string '%s'\n",
 		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
 	  }
 	  FormEntry fe;
@@ -501,17 +512,24 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 	  node->leafNode.formula.push_back(fe);
 	  pos += len;
 	  expectingPlus = true;
+	} else if (leafNodeVal[pos] == ')') {
+	  // the end of the formula
+	  break;
 	} else {
-	  error("Error parsing DT named '%s' in file '%s': Parse error at position %d in string '%s'\n",
+	  error("ERROR: DT '%s', file '%s': Parse error at position %d in string '%s'\n",
 		name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
 	}
       }
       // make sure we didnt' have string such as "p1+p2+"
       if (!expectingPlus) 
-	error("Error parsing DT named '%s' in file '%s': Must not end with a '+' at position %d in string '%s'\n",
+	error("ERROR: DT '%s', file '%s': Must not end with a '+' at position %d in string '%s'\n",
 	      name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
+      if (node->leafNode.formula.size() == 0) {
+	error("ERROR: DT '%s', file '%s': Must have formula between '()' in '%s'\n",
+	      name().c_str(),is.fileName(),leafNodeVal.c_str());
+      }
     }
-    node->leafNode.leafNodeString = leafNodeVal;
+
     node->leafNode.prevLeaf = prevLeaf;
     prevLeaf = node;
   } else {
@@ -519,11 +537,11 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
     node->nonLeafNode.ftr = (T)curFeat;
     unsigned numSplits;
     is.read(numSplits,"RngDecisionTree:: readRecurse numSplits");
-    if (numSplits <= 1)
-      error("RngDecisionTree:: readRecurse, can't have < 1 split");
+    if (numSplits < 1)
+      error("ERROR: DT '%s', file '%s', can't have < 1 node splits",name().c_str(),is.fileName());
     if (numSplits > RNG_DECISION_TREE_MAX_ARY)
-      error("RngDecisionTree:: readRecurse, can't have > %d splits",
-	    RNG_DECISION_TREE_MAX_ARY);
+      error("ERROR: DT '%s', file '%s': can't have > %d splits",
+	    name().c_str(),is.fileName(),RNG_DECISION_TREE_MAX_ARY);
     node->nonLeafNode.children.resize(numSplits);
     // rngs is smaller since last string is always the default catch-all.
     node->nonLeafNode.rngs.resize(numSplits-1);
@@ -532,8 +550,8 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
       is.read(str,"RngDecisionTree:: readRecurse, reading range");
       if (i==(numSplits-1)) {
 	if (strcmp(RNG_DECISION_TREE_DEF_STR,str))
-	  error("RngDecisionTree::readRecurse, expecting default str (%s) got (%s)",
-		RNG_DECISION_TREE_DEF_STR,str);
+	  error("ERROR: DT '%s', file '%s': expecting default str (%s) got (%s)",
+		name().c_str(),is.fileName(),RNG_DECISION_TREE_DEF_STR,str);
       } else {
 	node->nonLeafNode.rngs[i]
 	  = new BP_Range(str,
@@ -553,7 +571,8 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 	if (node->nonLeafNode.rngs[i]
 	    ->overlapP(
 		       node->nonLeafNode.rngs[j]))
-	  error("RngDecisionTree:: readRecurse, range %d (%s) and %d (%s) have a non-empty intersection.",i,
+	  error("ERROR: DT '%s', file '%s': range %d (%s) and %d (%s) have a non-empty intersection.",name().c_str(),is.fileName(),
+		i,
 		node->nonLeafNode.rngs[i]->rangeStr(),j,
 		node->nonLeafNode.rngs[j]->rangeStr());
       }
