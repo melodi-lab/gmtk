@@ -20,10 +20,12 @@
 #include <ctype.h>
 #include <errno.h>
 #include <float.h>
+#include <map>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #include "error.h"
 #include "general.h"
@@ -34,17 +36,40 @@
 
 VCID("$Header$");
 
-/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 // File extension for compiled DT files 
-/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 const string DTFileExtension = ".index";
 
-/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 // Static computation stack for formula evaluation 
-/////////////////////////////////////////////////////////////
-RngDecisionTree::sArrayStack<RngDecisionTree::formulaCommand> 
-  RngDecisionTree::stack(0);
+/////////////////////////////////////////////////////////////////////
+RngDecisionTree::sArrayStack<RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::stack(0);
 
+/////////////////////////////////////////////////////////////////////
+// Arrays to classify formula tokens and map their strings to their 
+// enumerations 
+/////////////////////////////////////////////////////////////////////
+
+map<string, RngDecisionTree::EquationClass::tokenEnum> 
+  RngDecisionTree::EquationClass::delimiter;
+map<string, RngDecisionTree::EquationClass::tokenEnum> 
+  RngDecisionTree::EquationClass::function;
+
+map<RngDecisionTree::EquationClass::tokenEnum, 
+  RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::termToken;
+map<RngDecisionTree::EquationClass::tokenEnum, 
+  RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::expressionToken;
+map<RngDecisionTree::EquationClass::tokenEnum, 
+  RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::functionToken;
+map<RngDecisionTree::EquationClass::tokenEnum, 
+  RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::twoValFunctionToken;
+			  
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //                    CONSTRUCTOR/DESTRUCTOR
@@ -361,12 +386,14 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
         node->leafNode.equation.parseFormula(leafNodeVal);
       }
       catch( string error_message ){
-        error("ERROR: file '%s', DT '%s', equation '%s':  %s\n", name().c_str(), 
-          is.fileName(), leafNodeVal.c_str(), error_message.c_str());
+        error("ERROR: In file '%s', DT '%s', equation '%s':  %s", 
+          is.fileName(), name().c_str(), leafNodeVal.c_str(), 
+	  error_message.c_str());
       }
       catch( const char * const error_message ) {
-        error("ERROR: file '%s', DT '%s', equation '%s':  %s\n", name().c_str(), 
-          is.fileName(), leafNodeVal.c_str(), error_message);
+        error("ERROR: In file '%s', DT '%s', equation '%s':  %s", 
+          is.fileName(), name().c_str(), leafNodeVal.c_str(), 
+	  error_message );
       }
     }
 
@@ -481,6 +508,83 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
 
 /*-
  *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::EquationClass
+ *   Constructor 
+ *
+ * Preconditions:
+ *   none 
+ *
+ * Postconditions:
+ *   Initializes static members if not already done 
+ *
+ * Side Effects:
+ *   none   
+ *
+ * Results:
+ *   none   
+ *-----------------------------------------------------------------------
+ */
+RngDecisionTree::EquationClass::EquationClass()
+{
+  //////////////////////////////////////////////////////////////////////////
+  // Initialize the static maps of tokens 
+  //////////////////////////////////////////////////////////////////////////
+  if (delimiter.size() == 0) {
+
+    delimiter["&"]  = TOKEN_BITWISE_AND;
+    delimiter["|"]  = TOKEN_BITWISE_OR;
+    delimiter[","]  = TOKEN_COMMA;
+    delimiter["/"]  = TOKEN_DIVIDE;
+    delimiter["^"]  = TOKEN_EXPONENT;
+    delimiter["=="] = TOKEN_EQUALS;
+    delimiter[">"]  = TOKEN_GREATER_THAN;
+    delimiter[">="] = TOKEN_GREATER_THAN_EQ;
+    delimiter["<"]  = TOKEN_LESS_THAN;
+    delimiter["<="] = TOKEN_LESS_THAN_EQ;
+    delimiter["&&"] = TOKEN_LOGICAL_AND;
+    delimiter["||"] = TOKEN_LOGICAL_OR;
+    delimiter["-"]  = TOKEN_MINUS;
+    delimiter["+"]  = TOKEN_PLUS;
+    delimiter[" "]  = TOKEN_SPACE;
+    delimiter["\t"] = TOKEN_SPACE;
+    delimiter["("]  = TOKEN_LEFT_PAREN;
+    delimiter["*"]  = TOKEN_TIMES;
+    delimiter[")"]  = TOKEN_RIGHT_PAREN;
+
+    function["max"] = TOKEN_MAX;
+    function["min"] = TOKEN_MIN;
+    function["mod"] = TOKEN_MOD;
+    function["xor"] = TOKEN_BITWISE_XOR;
+
+    expressionToken[TOKEN_MINUS] = COMMAND_MINUS;
+    expressionToken[TOKEN_PLUS]  = COMMAND_PLUS;
+
+    termToken[TOKEN_BITWISE_AND]     = COMMAND_BITWISE_AND;
+    termToken[TOKEN_BITWISE_OR]      = COMMAND_BITWISE_OR;
+    termToken[TOKEN_BITWISE_XOR]     = COMMAND_BITWISE_XOR;
+    termToken[TOKEN_DIVIDE]          = COMMAND_DIVIDE;
+    termToken[TOKEN_EXPONENT]        = COMMAND_EXPONENT;
+    termToken[TOKEN_EQUALS]          = COMMAND_EQUALS;
+    termToken[TOKEN_GREATER_THAN]    = COMMAND_GREATER_THAN;
+    termToken[TOKEN_GREATER_THAN_EQ] = COMMAND_GREATER_THAN_EQ;
+    termToken[TOKEN_LESS_THAN]       = COMMAND_LESS_THAN;
+    termToken[TOKEN_LESS_THAN_EQ]    = COMMAND_LESS_THAN_EQ;
+    termToken[TOKEN_LOGICAL_AND]     = COMMAND_LOGICAL_AND;
+    termToken[TOKEN_LOGICAL_OR]      = COMMAND_LOGICAL_OR; 
+    termToken[TOKEN_TIMES]           = COMMAND_TIMES;
+
+    functionToken[TOKEN_MAX] = COMMAND_MAX;
+    functionToken[TOKEN_MIN] = COMMAND_MIN;
+
+    twoValFunctionToken[TOKEN_MOD]         = COMMAND_MOD; 
+    twoValFunctionToken[TOKEN_BITWISE_XOR] = COMMAND_BITWISE_XOR;
+  }
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
  * RngDecisionTree::EquationClass::evaluateFormula
  *   Calculate an equation's value given a set parent variables 
  *
@@ -537,25 +641,22 @@ RngDecisionTree::EquationClass::evaluateFormula(
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         stack.push_back(operand); 
         break;
-       
-      case COMMAND_PLUS:
+
+      case COMMAND_BITWISE_AND: 
         last = stack.stackSize() - 1;
-        stack[last-1] = stack[last-1] + stack[last];
+        stack[last-1] = stack[last-1] & stack[last];
         stack.pop_back();
         break;
  
-      case COMMAND_MINUS:
+      case COMMAND_BITWISE_OR: 
         last = stack.stackSize() - 1;
-        if (stack[last-1] < stack[last]) {
-          error("ERROR:  Result of subtraction is negative\n"); 
-        }
-        stack[last-1] = stack[last-1] - stack[last];
+        stack[last-1] = stack[last-1] | stack[last];
         stack.pop_back();
         break;
  
-      case COMMAND_TIMES: 
+      case COMMAND_BITWISE_XOR: 
         last = stack.stackSize() - 1;
-        stack[last-1] = stack[last-1] * stack[last];
+        stack[last-1] = stack[last-1] ^ stack[last];
         stack.pop_back();
         break;
  
@@ -579,22 +680,34 @@ RngDecisionTree::EquationClass::evaluateFormula(
 	stack[last-1] = value;
         stack.pop_back();
         break;
- 
-      case COMMAND_BITWISE_AND: 
+
+      case COMMAND_EQUALS: 
         last = stack.stackSize() - 1;
-        stack[last-1] = stack[last-1] & stack[last];
+        stack[last-1] = stack[last-1] == stack[last];
         stack.pop_back();
         break;
- 
-      case COMMAND_BITWISE_OR: 
+
+      case COMMAND_GREATER_THAN: 
         last = stack.stackSize() - 1;
-        stack[last-1] = stack[last-1] | stack[last];
+        stack[last-1] = stack[last-1] > stack[last];
         stack.pop_back();
         break;
- 
-      case COMMAND_XOR: 
+
+      case COMMAND_GREATER_THAN_EQ: 
         last = stack.stackSize() - 1;
-        stack[last-1] = stack[last-1] ^ stack[last];
+        stack[last-1] = stack[last-1] >= stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_LESS_THAN: 
+        last = stack.stackSize() - 1;
+        stack[last-1] = stack[last-1] < stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_LESS_THAN_EQ: 
+        last = stack.stackSize() - 1;
+        stack[last-1] = stack[last-1] <= stack[last];
         stack.pop_back();
         break;
  
@@ -610,12 +723,11 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack.pop_back();
         break;
 
-      case COMMAND_MOD:
+      case COMMAND_MAX:
         last = stack.stackSize() - 1;
-        if (stack[last] == 0) {
-          error("ERROR:  Mod by zero error\n"); 
-        }
-        stack[last-1] = stack[last-1] % stack[last];
+        if (stack[last] > stack[last-1]) {
+          stack[last-1] = stack[last];
+	}
         stack.pop_back();
         break;
 
@@ -626,12 +738,34 @@ RngDecisionTree::EquationClass::evaluateFormula(
 	}
         stack.pop_back();
         break;
-
-      case COMMAND_MAX:
+ 
+      case COMMAND_MINUS:
         last = stack.stackSize() - 1;
-        if (stack[last] > stack[last-1]) {
-          stack[last-1] = stack[last];
-	}
+        if (stack[last-1] < stack[last]) {
+          error("ERROR:  Result of subtraction is negative\n"); 
+        }
+        stack[last-1] = stack[last-1] - stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_MOD:
+        last = stack.stackSize() - 1;
+        if (stack[last] == 0) {
+          error("ERROR:  Mod by zero error\n"); 
+        }
+        stack[last-1] = stack[last-1] % stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_PLUS:
+        last = stack.stackSize() - 1;
+        stack[last-1] = stack[last-1] + stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_TIMES: 
+        last = stack.stackSize() - 1;
+        stack[last-1] = stack[last-1] * stack[last];
         stack.pop_back();
         break;
 
@@ -699,7 +833,6 @@ RngDecisionTree::EquationClass::parseFormula(
   string leafNodeVal
   )
 {
-  string      equation; 
   tokenStruct token;
   unsigned    depth;
 
@@ -710,6 +843,7 @@ RngDecisionTree::EquationClass::parseFormula(
     getToken(leafNodeVal, token); 
     parseExpression(token, leafNodeVal, depth ); 
   } while (token.token != TOKEN_END);
+
 }
 
 
@@ -740,34 +874,20 @@ RngDecisionTree::EquationClass::parseExpression(
   )
 {
   formulaCommand new_command;
-  unsigned       next_token;
+  tokenEnum      next_token;
 
   parseTerm(token, leafNodeVal, depth); 
 
-  while( (token.token == TOKEN_PLUS) || (token.token == TOKEN_MINUS)) {
+  while( expressionToken[token.token] != COMMAND_INVALID ) { 
 
     next_token  = token.token;
     getToken(leafNodeVal, token); 
     parseTerm( token, leafNodeVal, depth );
 
-    switch (next_token) {
-      case TOKEN_PLUS:
-	new_command = MAKE_COMMAND( COMMAND_PLUS, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
- 
-      case TOKEN_MINUS: 
-	new_command = MAKE_COMMAND( COMMAND_MINUS, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
-    
-      default:
-        break;
-    }
+    new_command = MAKE_COMMAND( expressionToken[next_token], 0 );
+    commands.resizeAndCopy( commands.size()+1 );
+    commands[commands.size()-1] = new_command;
+    changeDepth( -1, depth );
   } 
 }
 
@@ -799,86 +919,23 @@ RngDecisionTree::EquationClass::parseTerm(
   )
 {
   formulaCommand new_command;
-  unsigned       next_token;
+  tokenEnum      next_token;
  
   parseFactor(token, leafNodeVal, depth);
 
-  while( (token.token == TOKEN_TIMES)    || 
-         (token.token == TOKEN_DIVIDE)   ||
-         (token.token == TOKEN_EXPONENT) ||
-         (token.token == TOKEN_BITWISE_AND) ||
-         (token.token == TOKEN_BITWISE_OR)  || 
-         (token.token == TOKEN_XOR)         || 
-         (token.token == TOKEN_LOGICAL_AND) ||
-         (token.token == TOKEN_LOGICAL_OR) ) { 
+  while( termToken[token.token] != COMMAND_INVALID ) { 
  
     next_token  = token.token;
     getToken(leafNodeVal, token); 
     parseFactor(token, leafNodeVal, depth);
 
-    switch (next_token) {
- 
-      case TOKEN_TIMES:
-	new_command = MAKE_COMMAND( COMMAND_TIMES, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
- 
-      case TOKEN_DIVIDE:
-	new_command = MAKE_COMMAND( COMMAND_DIVIDE, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
-
-      case TOKEN_EXPONENT:
-	new_command = MAKE_COMMAND( COMMAND_EXPONENT, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
-
-      case TOKEN_BITWISE_AND:
-	new_command = MAKE_COMMAND( COMMAND_BITWISE_AND, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
-
-      case TOKEN_BITWISE_OR:
-	new_command = MAKE_COMMAND( COMMAND_BITWISE_OR, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
- 
-      case TOKEN_XOR:
-	new_command = MAKE_COMMAND( COMMAND_XOR, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
-
-      case TOKEN_LOGICAL_AND:
-	new_command = MAKE_COMMAND( COMMAND_LOGICAL_AND, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
-
-      case TOKEN_LOGICAL_OR:
-	new_command = MAKE_COMMAND( COMMAND_LOGICAL_OR, 0 );
-        commands.resizeAndCopy( commands.size()+1 );
-        commands[commands.size()-1] = new_command;
-	changeDepth( -1, depth );
-        break;
- 
-      default: 
-        break;
-    }
+    new_command = MAKE_COMMAND( termToken[next_token], 0 );
+    commands.resizeAndCopy( commands.size()+1 );
+    commands[commands.size()-1] = new_command;
+    changeDepth( -1, depth );
   }
 }
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -909,6 +966,7 @@ RngDecisionTree::EquationClass::parseFactor(
   )
 {
   formulaCommand new_command;
+  tokenEnum      next_token;
 
   switch (token.token) {
 
@@ -950,97 +1008,91 @@ RngDecisionTree::EquationClass::parseFactor(
       getToken(leafNodeVal, token); 
       break;
 
-    case TOKEN_MOD:
-      getToken(leafNodeVal, token); 
-      if (token.token != TOKEN_LEFT_PAREN) {
-        string error_message = "Expecting left parenthesis at '" + leafNodeVal 
-          + "'";
-        throw(error_message);
-      }
-
-      getToken(leafNodeVal, token); 
-      parseExpression(token, leafNodeVal, depth);
-      if (token.token != TOKEN_COMMA) {
-        throw("'mod' requires two operands"); 
-      }
-
-      getToken(leafNodeVal, token);
-      parseExpression(token, leafNodeVal, depth);
-
-      if (token.token != TOKEN_RIGHT_PAREN) {
-        string error_message = "Expecting right parenthesis at '" + leafNodeVal 
-          + "'";
-        throw(error_message);
-      }
-
-      new_command = MAKE_COMMAND( COMMAND_MOD, 0 );
-      commands.resizeAndCopy( commands.size()+1 );
-      commands[commands.size()-1] = new_command;
-      changeDepth( -1, depth );
-      getToken(leafNodeVal, token); 
-      break;
-
-    case TOKEN_MIN:
-      getToken(leafNodeVal, token); 
-      if (token.token != TOKEN_LEFT_PAREN) {
-        string error_message = "Expecting left parenthesis at '" + leafNodeVal 
-          + "'";
-        throw(error_message);
-      }
-
-      getToken(leafNodeVal, token); 
-      parseExpression(token, leafNodeVal, depth);
-      if (token.token != TOKEN_COMMA) {
-        throw("'min' requires two operands"); 
-      }
-
-      getToken(leafNodeVal, token);
-      parseExpression(token, leafNodeVal, depth);
-
-      if (token.token != TOKEN_RIGHT_PAREN) {
-        string error_message = "Expecting right parenthesis at '" + leafNodeVal 
-          + "'";
-        throw(error_message);
-      }
-
-      new_command = MAKE_COMMAND( COMMAND_MIN, 0 );
-      commands.resizeAndCopy( commands.size()+1 );
-      commands[commands.size()-1] = new_command;
-      changeDepth( -1, depth );
-      getToken(leafNodeVal, token); 
-      break;
-
-    case TOKEN_MAX:
-      getToken(leafNodeVal, token); 
-      if (token.token != TOKEN_LEFT_PAREN) {
-        string error_message = "Expecting left parenthesis at '" + leafNodeVal 
-          + "'";
-        throw(error_message);
-      }
-
-      getToken(leafNodeVal, token); 
-      parseExpression(token, leafNodeVal, depth);
-      if (token.token != TOKEN_COMMA) {
-        throw("'max' requires two operands"); 
-      }
-
-      getToken(leafNodeVal, token);
-      parseExpression(token, leafNodeVal, depth);
-
-      if (token.token != TOKEN_RIGHT_PAREN) {
-        string error_message = "Expecting right parenthesis at '" + leafNodeVal 
-          + "'";
-        throw(error_message);
-      }
-
-      new_command = MAKE_COMMAND( COMMAND_MAX, 0 );
-      commands.resizeAndCopy( commands.size()+1 );
-      commands[commands.size()-1] = new_command;
-      changeDepth( -1, depth );
-      getToken(leafNodeVal, token); 
-      break;
-  
     default:
+      //////////////////////////////////////////////////////////////////////
+      // Functions which take two or more operands 
+      //////////////////////////////////////////////////////////////////////
+      if (functionToken[token.token] != COMMAND_INVALID) {
+  
+	next_token = token.token;
+
+        getToken(leafNodeVal, token); 
+        if (token.token != TOKEN_LEFT_PAREN) {
+          string error_message = "Expecting left parenthesis at '" + 
+	    leafNodeVal + "'";
+          throw(error_message);
+        }
+
+        getToken(leafNodeVal, token); 
+        parseExpression(token, leafNodeVal, depth);
+        if (token.token != TOKEN_COMMA) {
+          string error_message = "Function requires at least two operands"; 
+          throw(error_message);
+        }
+
+        getToken(leafNodeVal, token);
+        parseExpression(token, leafNodeVal, depth);
+
+        while (token.token == TOKEN_COMMA) {
+          new_command = MAKE_COMMAND( functionToken[next_token], 0 );
+          commands.resizeAndCopy( commands.size()+1 );
+          commands[commands.size()-1] = new_command;
+          changeDepth( -1, depth );
+
+          getToken(leafNodeVal, token);
+          parseExpression(token, leafNodeVal, depth);
+        }
+
+        if (token.token != TOKEN_RIGHT_PAREN) {
+          string error_message = "Expecting right parenthesis at '" + 
+            leafNodeVal + "'";
+          throw(error_message);
+        }
+
+        new_command = MAKE_COMMAND( functionToken[next_token], 0 );
+        commands.resizeAndCopy( commands.size()+1 );
+        commands[commands.size()-1] = new_command;
+        changeDepth( -1, depth );
+
+        getToken(leafNodeVal, token); 
+      }
+      //////////////////////////////////////////////////////////////////////
+      // Functions which take exactly two operands 
+      //////////////////////////////////////////////////////////////////////
+      else if (twoValFunctionToken[token.token] != COMMAND_INVALID) {
+  
+	next_token = token.token;
+
+        getToken(leafNodeVal, token); 
+        if (token.token != TOKEN_LEFT_PAREN) {
+          string error_message = "Expecting left parenthesis at '" + 
+	    leafNodeVal + "'";
+          throw(error_message);
+        }
+
+        getToken(leafNodeVal, token); 
+        parseExpression(token, leafNodeVal, depth);
+        if (token.token != TOKEN_COMMA) {
+          string error_message = "Function requires exactly two operands"; 
+          throw(error_message);
+        }
+
+        getToken(leafNodeVal, token);
+        parseExpression(token, leafNodeVal, depth);
+
+        if (token.token != TOKEN_RIGHT_PAREN) {
+          string error_message = "Expecting right parenthesis at '" + 
+            leafNodeVal + "'";
+          throw(error_message);
+        }
+
+        new_command = MAKE_COMMAND( twoValFunctionToken[next_token], 0 );
+        commands.resizeAndCopy( commands.size()+1 );
+        commands[commands.size()-1] = new_command;
+        changeDepth( -1, depth );
+        getToken(leafNodeVal, token); 
+      }
+
       break;
   }
 }
@@ -1072,34 +1124,9 @@ RngDecisionTree::EquationClass::getToken(
   tokenStruct& token 
   )
 {
-  //////////////////////////////////////////////////////////////////////////
-  // Initialize the maps of tokens 
-  //////////////////////////////////////////////////////////////////////////
-  map<string, tokenEnum> delimiter; 
-  map<string, tokenEnum> function; 
-
-  delimiter[" "]  = TOKEN_SPACE;
-  delimiter["\t"] = TOKEN_SPACE;
-  delimiter["+"]  = TOKEN_PLUS;
-  delimiter["-"]  = TOKEN_MINUS;
-  delimiter["*"]  = TOKEN_TIMES;
-  delimiter["/"]  = TOKEN_DIVIDE;
-  delimiter["("]  = TOKEN_LEFT_PAREN;
-  delimiter[")"]  = TOKEN_RIGHT_PAREN;
-  delimiter[","]  = TOKEN_COMMA;
-  delimiter["^"]  = TOKEN_EXPONENT;
-  delimiter["&"]  = TOKEN_BITWISE_AND;
-  delimiter["|"]  = TOKEN_BITWISE_OR;
-  delimiter["&&"] = TOKEN_LOGICAL_AND;
-  delimiter["||"] = TOKEN_LOGICAL_OR;
-
-  function["mod"] = TOKEN_MOD;
-  function["min"] = TOKEN_MIN;
-  function["max"] = TOKEN_MAX;
-  function["xor"] = TOKEN_XOR;
 
   //////////////////////////////////////////////////////////////////////////
-  // Other local variables 
+  // Local variables 
   //////////////////////////////////////////////////////////////////////////
   string   token_string;
   unsigned index;
