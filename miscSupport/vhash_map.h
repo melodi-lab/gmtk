@@ -73,6 +73,7 @@ public:
     do {
       if (*k1++ != *k2++)
 	return false;
+      // TODO: do the increments here rather than above.
     } while (k1 != k1_endp);
     return true;
   }
