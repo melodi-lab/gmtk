@@ -282,3 +282,4 @@ X ascii/binary conversion program can go both ways.
     vanishing will keep that from happening (and will keep the
     variances from being large).
  
+- option to turn off all warnings and notes.
