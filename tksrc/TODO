@@ -229,3 +229,5 @@ X make sure that dlinkmatrix precompute is being
 - clean up source directories.
 
 - fix unrolling bug 
+
+- dlinks, make sure we do not point to self
