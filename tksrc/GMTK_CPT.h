@@ -50,7 +50,7 @@
  * 
  * 
  */
-class CPT : public NamedObject, public EMable {
+class CPT : public EMable {
 
 protected:
 

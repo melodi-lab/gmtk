@@ -103,49 +103,53 @@ EMable::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet()) {
-    // then we are not training, either because
-    // 1) this object obtained no probability during training or
-    // 2) we have turned off training of this object.
-    // In either case, we write out '0' to state that 
+    // then we are not training, because
+    // we have turned off training of this object.
+    // We write out '0' to state that 
     // there are no values stored for this object.
     unsigned flag = 0;
     ofile.write(flag,"writing acc flag");
-    if ( !emEmAllocatedBitIsSet() ) {
+    return;
+  } else {
+    // the training bit is set.
+    if (accumulatedProbability.zero()) {
       // then we indeed have no probability values, so lets emit a warning
       warning("WARNING: zero accumulator values for %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
-    }
-    return;
-  }
+      // We write out '0' to state that 
+      // there are no values stored for this object.
+      unsigned flag = 0;
+      ofile.write(flag,"writing acc flag");
+    } else {
+      // if we have accumulated probability, em structures
+      // should have been allocated. This ensures
+      // that when we write a 1 before the accumulators,
+      // we will always have the full set of accumulators written.
+      assert (emEmAllocatedBitIsSet());
 
-  if ( !emEmAllocatedBitIsSet() ) {
-    // then we indeed have no probability values, so lets emit a warning
-    warning("WARNING: zero accumulator values for %s '%s'\n",
-	    typeName().c_str(),
-	    name().c_str());
-    unsigned flag = 0;
-    ofile.write(flag,"writing acc flag");
-  } else {
-    // em has been allocated, which means we must have had
-    /
-    unsigned flag = 1;
-    ofile.write(flag,"writing acc flag");
-    // store the accumulators as normal.
-    ofile.write(accumulatedProbability.val(),"EM store accums");
-    // call virtual function to do actual work for object.
-    emStoreObjectsAccumulators(ofile);
+      // we write a 1 to indicate that there are accumulators
+      // stored for this object.
+      unsigned flag = 1;
+      ofile.write(flag,"writing acc flag");
+      // store the accumulators as normal.
+      ofile.write(accumulatedProbability.val(),"EM store accums");
+      // call virtual function to do actual work for object.
+      emStoreObjectsAccumulators(ofile);
+    }
   }
 }
 
 
 
 void
-Dense1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
+EMable::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet()); 
+  // first read the stored flag.
   unsigned flag;
   ifile.read(flag,"DPMF load flag");
+
   if (!emAmTrainingBitIsSet()) {
     // then we are not adjusting this object here.
     if (flag == 0) {
@@ -170,32 +174,33 @@ Dense1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
       emLoadObjectsDummyAccumulators(ifile);
       return;
     }
-  }
-  // so we are training. This next assertion
-  // is needed, since it shouldn't be possible that
-  // we're training, but the EM data structures have not
-  // been allocated.
-  assert (emEmAllocatedBitIsSet());
-  
-  if (flag == 0) {
-    // then we don't have any accumulator values for this object, but
-    // still need to initizlie the accumulators.
-    // EMable::emZeroOutAccumulators();
-    accumulatedProbability.set_to_zero();
-    // call virtual function to do actual work for object.
-    emZeroOutObjectsAccumulators();
   } else {
-    // load up the real accumulators.
-    // EMable::emLoadAccumulators(ifile);
-    ifile.read(accumulatedProbability.valref(),"EM load accums");
-    // call virtual function to do actual work for object.
-    emLoadObjectsAccumulators(ifile);
+    // so we are training. This next assertion
+    // is needed, since it shouldn't be possible that
+    // we're training, but the EM data structures have not
+    // been allocated.
+    assert (emEmAllocatedBitIsSet());
+  
+    if (flag == 0) {
+      // then we don't have any accumulator values for this object, but
+      // still need to initizlie the accumulators.
+      // EMable::emZeroOutAccumulators();
+      accumulatedProbability.set_to_zero();
+      // call virtual function to do actual work for object.
+      emZeroOutObjectsAccumulators();
+    } else {
+      // load up the real accumulators.
+      // EMable::emLoadAccumulators(ifile);
+      ifile.read(accumulatedProbability.valref(),"EM load accums");
+      // call virtual function to do actual work for object.
+      emLoadObjectsAccumulators(ifile);
+    }
   }
 }
 
 
 void
-Dense1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
+EMable::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
   unsigned flag;
@@ -225,23 +230,24 @@ Dense1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
       emLoadObjectsDummyAccumulators(ifile);
       return;
     }
-  }
-  // so we are training. This next assertion
-  // is needed, since it shouldn't be possible that
-  // we're training, but the EM data structures have not
-  // been allocated.
-  assert (emEmAllocatedBitIsSet());
-
-  if (flag == 0) {
-    // then we don't have any accumulator values for this object, and
-    // there is nothing to do.
   } else {
-    // accumulate up the real accumulators.
-    // EMable::emAccumulateAccumulators(ifile);
-    logpr tmp;
-    ifile.read(tmp.valref(),"EM accumulate accums");
-    accumulatedProbability += tmp;
-    // call virtual function to do actual work for object.
-    emAccumulateObjectsAccumulators(ifile);
+    // so we are training. This next assertion
+    // is needed, since it shouldn't be possible that
+    // we're training, but the EM data structures have not
+    // been allocated.
+    assert (emEmAllocatedBitIsSet());
+
+    if (flag == 0) {
+      // then we don't have any accumulator values for this object, and
+      // there is nothing to do.
+    } else {
+      // accumulate up the real accumulators.
+      // EMable::emAccumulateAccumulators(ifile);
+      logpr tmp;
+      ifile.read(tmp.valref(),"EM accumulate accums");
+      accumulatedProbability += tmp;
+      // call virtual function to do actual work for object.
+      emAccumulateObjectsAccumulators(ifile);
+    }
   }
 }

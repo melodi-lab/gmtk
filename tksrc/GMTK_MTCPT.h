@@ -179,10 +179,15 @@ public:
   void emIncrement(logpr p,RandomVariable*);
   void emEndIteration();
   void emSwapCurAndNew();
-  void emStoreAccumulators(oDataStreamFile& ofile);
-  void emStoreZeroAccumulators(oDataStreamFile& ofile);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
+
+
+  // parallel training
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
+  void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
+  void emZeroOutObjectsAccumulators() {}
+  void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}
+  void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {}
+  const string typeName() { return "DeterministicCPT"; }
   //////////////////////////////////
 
 };

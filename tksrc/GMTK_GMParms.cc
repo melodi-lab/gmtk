@@ -2672,7 +2672,9 @@ GMParms::emLoadAccumulators(iDataStreamFile& ifile)
   /////////////////////////////////////////////////////////////
   // First, make sure the EM iterations have been
   // started. Like in the emEndIteration function above,
-  // we do not call this for all objects.
+  // we do not call this for all objects. This call
+  // ensure that all objects internal EM data structures
+  // have been allocated, so that they can be accumulated to.
 
   // components
   for (unsigned i=0;i<gaussianComponents.size();i++)

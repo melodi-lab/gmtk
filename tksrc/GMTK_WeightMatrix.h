@@ -29,9 +29,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_RandomVariable.h"
 
-
-class WeightMatrix : public EMable, public NamedObject  {
-
+class WeightMatrix : public EMable  {
 
   ///////////////////////////////////////////////////////////  
   // The data values
@@ -84,12 +82,15 @@ public:
   void emIncrement(RandomVariable*,logpr prob) {}
   void emEndIteration() {}
   void emSwapCurAndNew() {}
-  void emStoreAccumulators(oDataStreamFile& ofile) {}
-  void emLoadAccumulators(iDataStreamFile& ifile) {}
-  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+
+  // parallel training
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
+  void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
+  void emZeroOutObjectsAccumulators() {}
+  void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}
+  void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {}
+  const string typeName() { return "Weight matrix"; }
   //////////////////////////////////
-
-
 
 };
 

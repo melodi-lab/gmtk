@@ -158,7 +158,6 @@ MeanVector::noisyClone()
 }
 
 
-
 /////////////////
 // EM routines //
 /////////////////
@@ -168,16 +167,17 @@ void
 MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
 
-  /////////////////////////////////////////////
-  // make sure our caller has its mean accumulator resized
-  // and initialized.
-  componentsNextMeans.growIfNeeded(means.len());
-  for (int i=0;i<means.len();i++) {
-    componentsNextMeans[i] = 0.0;
-  }
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
 
   if(emOnGoingBitIsSet()) {
     // EM already on going.
@@ -203,6 +203,14 @@ MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
   refCount = 1;
   emClearSharedBit();
 
+  /////////////////////////////////////////////
+  // make sure our caller has its mean accumulator resized
+  // and initialized.
+  componentsNextMeans.growIfNeeded(means.len());
+  for (int i=0;i<means.len();i++) {
+    componentsNextMeans[i] = 0.0;
+  }
+
 }
 
 
@@ -215,9 +223,20 @@ MeanVector::emIncrement(const logpr prob,
 			float *const partialAccumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
-  
+
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
+
   /////////////////////////////////////////////
   // Note: unlike the normal EM mode described
   // in GMTK_EMable.h, we do not call
@@ -278,8 +297,17 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
 						  const DiagCovarVector* covar)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
 
   if (!emAccInitializedBitIsSet()) {
     // make sure next-means are set up
@@ -421,9 +449,17 @@ MeanVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbab
 						  const DiagCovarVector* covar)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
 
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
 
   if (!emAccInitializedBitIsSet()) {
     // make sure next-means are set up
@@ -537,8 +573,17 @@ void
 MeanVector::emEndIterationNoSharing(const float*const partialAccumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -610,8 +655,18 @@ void
 MeanVector::emEndIterationNoSharingAlreadyNormalized(const float*const accumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -656,7 +711,6 @@ MeanVector::emEndIterationNoSharingAlreadyNormalized(const float*const accumulat
 
 
 
-
 void
 MeanVector::emSwapCurAndNew()
 {
@@ -680,55 +734,48 @@ MeanVector::emSwapCurAndNew()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ *
+ * Accumulator loading/storing routines for parallel training support.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
 void
 MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
-
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for mean '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet()) {
+    // then we are not training, because
+    // we have turned off training of this object.
+    // We write out '0' to state that 
+    // there are no values stored for this object.
+    unsigned flag = 0;
+    ofile.write(flag,"writing acc flag");
     return;
+  } else {
+    // the training bit is set.
+    if (accumulatedProbability.zero()) {
+      // then we indeed have no probability values, so lets emit a warning
+      warning("WARNING: zero accumulator values for %s '%s'\n",
+	      typeName().c_str(),
+	      name().c_str());
+      // We write out '0' to state that 
+      // there are no values stored for this object.
+      unsigned flag = 0;
+      ofile.write(flag,"writing acc flag");
+    } else {
+      // we write a 1 to indicate that there are accumulators
+      // stored for this object.
+      unsigned flag = 1;
+      ofile.write(flag,"writing acc flag");
+      // store the accumulators as normal.
+      ofile.write(accumulatedProbability.val(),"EM store accums");
+      // call virtual function to do actual work for object.
+      emStoreObjectsAccumulators(ofile);
+    }
   }
-  EMable::emStoreAccumulators(ofile);
 }
-
-
-void
-MeanVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
-{
-  // if (!emAmTrainingBitIsSet())
-  // return;
-
-  assert ( basicAllocatedBitIsSet() );
-  EMable::emStoreZeroAccumulators(ofile);
-}
-
-
-void
-MeanVector::emLoadAccumulators(iDataStreamFile& ifile)
-{
-  // if (!emAmTrainingBitIsSet())
-  // return;
-
-  assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emLoadAccumulators(ifile);
-}
-
-
-void
-MeanVector::emAccumulateAccumulators(iDataStreamFile& ifile)
-{
-  // if (!emAmTrainingBitIsSet())
-  // return;
-
-  assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emAccumulateAccumulators(ifile);
-}
-
 

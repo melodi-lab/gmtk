@@ -421,18 +421,39 @@ Sparse1DPMF::emSwapCurAndNew()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ *
+ * Accumulator loading/storing routines for parallel training support.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
+#if 0
+
 void
 Sparse1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for SPMF '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
+  if (!emAmTrainingBitIsSet()) {
+    // then we are not training, either because
+    // 1) this object obtained no probability during training or
+    // 2) we have turned off training of this object.
+    // In either case, we write out '0' to state that 
+    // there are no values stored for this object.
+    unsigned flag = 0;
+    ofile.write(flag,"DPMF writing flag");
+    if ( !emEmAllocatedBitIsSet() ) {
+      // then we indeed have no probability values, so lets emit a warning
+      warning("WARNING: zero accumulator values for SPMF '%s'\n",
+	      name().c_str());
+    }
     return;
   }
+  // in this case, we are guaranteed that emEmAllocatedBitIsSet() is true
+  // since if we are training, the em structures have at least been allocated.
+  // store the accumulators as normal.
   EMable::emStoreAccumulators(ofile);
 }
 
@@ -451,10 +472,41 @@ void
 Sparse1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet());
-  if (!emAmTrainingBitIsSet())
-    return;
+  unsigned flag;
+  ifile.read(flag,"DPMF load flag");
+  if (!emAmTrainingBitIsSet()) {
+    // then we are not adjusting this object here.
+    if (flag == 0) {
+      // then not only are we not training, but
+      // we also have nothing here to load, so we move on.
+      return;
+    } else {
+      // this means that the accumulator file has data for this object
+      // (which must have occured during the production of the
+      // accumulator files) , but the user must have specified on the
+      // final command line during the accumulate-the-accumulator
+      // stage that this object should not be trained. Therefore,
+      // we emit a warning, read in the accumulators into dummy locations.
+      warning("WARNING: loading into dummy accumulators for fixed SPMF '%s'\n",
+	      name().c_str());
+      EMable::emLoadDummyAccumulators(ifile);
+      return;
+    }
+  }
+  // so we are training. This next assertion
+  // is needed, since it shouldn't be possible that
+  // we're training, but the EM data structures have not
+  // been allocated.
   assert (emEmAllocatedBitIsSet());
-  EMable::emLoadAccumulators(ifile);
+  
+  if (flag == 0) {
+    // then we don't have any accumulator values for this object, but
+    // still need to initialize the accumulators.
+    EMable::emZeroOutAccumulators();
+  } else {
+    // load up the real accumulators.
+    EMable::emLoadAccumulators(ifile);
+  }
 }
 
 
@@ -469,3 +521,4 @@ Sparse1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
 }
 
 
+#endif

@@ -34,7 +34,7 @@ class LinMeanCondDiagGaussian;
 class MeanVector;
 class DiagCovarVector;
 
-class DlinkMatrix : public EMable, public NamedObject  {
+class DlinkMatrix : public EMable  {
 
   friend class Dlinks;
   friend class LinMeanCondDiagGaussian;
@@ -61,7 +61,19 @@ class DlinkMatrix : public EMable, public NamedObject  {
 
   /////////////////////////////////////////////////
   // counts the number of gaussian components
-  // that are sharing this mean.
+  // that are sharing this mean at all. This is a static
+  // count, and is computed as any object that
+  // might use a mean (such as a Gaussian component)
+  // is read in.
+  unsigned numTimesShared;
+
+  /////////////////////////////////////////////////
+  // counts the number of gaussian components
+  // that are sharing this mean at EM training time. This is a dynamic
+  // count, and is computed as EM training is run. This
+  // value does not necessarily equal the number of
+  // objects that have specified this object in
+  // the object files.
   unsigned refCount;
 
 public:
@@ -132,10 +144,16 @@ public:
 					     const DiagCovarVector* covar);
 
   void emSwapCurAndNew();
+
+  // parallel training
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile) {};
+  void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {};
+  void emZeroOutObjectsAccumulators() {};
+  void emLoadObjectsAccumulators(iDataStreamFile& ifile) {};
+  void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {};
+  const string typeName() { return "dlink matrix"; }
+  // need to override parent class's routine in this case.
   void emStoreAccumulators(oDataStreamFile& ofile);
-  void emStoreZeroAccumulators(oDataStreamFile& ofile);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////
 
 

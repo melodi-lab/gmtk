@@ -126,6 +126,7 @@ DiagCovarVector::read(iDataStreamFile& is)
 	    GaussianComponent::varianceFloor());
   setBasicAllocatedBit();
   preCompute();
+  numTimesShared = 0;
 }
 
 
@@ -290,16 +291,17 @@ void
 DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
 
-  /////////////////////////////////////////////
-  // make sure our caller has its covar accumulator resized
-  // and initialized.
-  componentsNextCovars.growIfNeeded(covariances.len());
-  for (int i=0;i<covariances.len();i++) {
-    componentsNextCovars[i] = 0.0;
-  }
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
 
   if(emOnGoingBitIsSet()) {
     // EM already on going.
@@ -324,6 +326,15 @@ DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
   numFlooredVariances = 0;
   refCount=1;
   emClearSharedBit();
+
+  /////////////////////////////////////////////
+  // make sure our caller has its covar accumulator resized
+  // and initialized.
+  componentsNextCovars.growIfNeeded(covariances.len());
+  for (int i=0;i<covariances.len();i++) {
+    componentsNextCovars[i] = 0.0;
+  }
+
 }
 
 
@@ -362,8 +373,19 @@ DiagCovarVector::emIncrement(const logpr prob,
 			     float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
+
 
   
   /////////////////////////////////////////////
@@ -428,8 +450,17 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
 {
   assert ( basicAllocatedBitIsSet() );
 
-  // if (!emAmTrainingBitIsSet())
-  // return;
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -559,8 +590,20 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
 						 const MeanVector* mean)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
+
 
   if (!emAccInitializedBitIsSet()) {
     nextCovariances.growIfNeeded(covariances.len());
@@ -727,8 +770,19 @@ void
 DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
+
 
   if (!emAccInitializedBitIsSet()) {
     nextCovariances.growIfNeeded(covariances.len());
@@ -884,8 +938,18 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 						       const DlinkMatrix* dLinkMat)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
 
   if (!emAccInitializedBitIsSet()) {
     nextCovariances.growIfNeeded(covariances.len());
@@ -1110,8 +1174,19 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
 					    const float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
 
   if (!emAccInitializedBitIsSet()) {
     nextCovariances.growIfNeeded(covariances.len());
@@ -1264,8 +1339,18 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
 					 const float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+    return;
+
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -1400,54 +1485,51 @@ DiagCovarVector::emSwapCurAndNew()
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ *
+ * Accumulator loading/storing routines for parallel training support.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
 void
 DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
-
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for covar '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
+  if (numTimesShared == 1 && !emAmTrainingBitIsSet()) {
+    // then we are not training, because
+    // we have turned off training of this object.
+    // We write out '0' to state that 
+    // there are no values stored for this object.
+    unsigned flag = 0;
+    ofile.write(flag,"writing acc flag");
     return;
+  } else {
+    // the training bit is set.
+    if (accumulatedProbability.zero()) {
+      // then we indeed have no probability values, so lets emit a warning
+      warning("WARNING: zero accumulator values for %s '%s'\n",
+	      typeName().c_str(),
+	      name().c_str());
+      // We write out '0' to state that 
+      // there are no values stored for this object.
+      unsigned flag = 0;
+      ofile.write(flag,"writing acc flag");
+    } else {
+      // we write a 1 to indicate that there are accumulators
+      // stored for this object.
+      unsigned flag = 1;
+      ofile.write(flag,"writing acc flag");
+      // store the accumulators as normal.
+      ofile.write(accumulatedProbability.val(),"EM store accums");
+      // call virtual function to do actual work for object.
+      emStoreObjectsAccumulators(ofile);
+    }
   }
-  EMable::emStoreAccumulators(ofile);
 }
 
-
-
-void
-DiagCovarVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
-{
-  assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
-  EMable::emStoreZeroAccumulators(ofile);
-}
-
-
-void
-DiagCovarVector::emLoadAccumulators(iDataStreamFile& ifile)
-{
-  assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emLoadAccumulators(ifile);
-}
-
-
-void
-DiagCovarVector::emAccumulateAccumulators(iDataStreamFile& ifile)
-{
-  assert ( basicAllocatedBitIsSet() );
-  // if (!emAmTrainingBitIsSet())
-  // return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emAccumulateAccumulators(ifile);
-}
 
 
 

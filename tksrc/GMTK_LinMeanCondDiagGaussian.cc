@@ -67,6 +67,7 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 	    _name.c_str(),is.fileName(),str.c_str());
   meanIndex = GM_Parms.meansMap[str];
   mean = GM_Parms.means[meanIndex];
+  mean->numTimesShared++;
 
 
   // read covariance vector
@@ -77,6 +78,7 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   
   covarIndex = GM_Parms.covarsMap[str];
   covar = GM_Parms.covars[covarIndex];
+  covar->numTimesShared++;
 
   // read the dlink matrix parameter values
   is.read(str);
@@ -85,6 +87,8 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 	  _name.c_str(),is.fileName(),str.c_str());
   
   dLinkMat = GM_Parms.dLinkMats[GM_Parms.dLinkMatsMap[str]];
+  dLinkMat->numTimesShared++;
+
 
   // check that lengths match, etc.
   if (covar->dim() != mean->dim()) {
@@ -1007,18 +1011,8 @@ LinMeanCondDiagGaussian::emSwapCurAndNew()
 
 
 void
-LinMeanCondDiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
+LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  if ( !emEmAllocatedBitIsSet() ) {
-    warning("WARNING: storing zero accumulators for lin mean cond Gaussian '%s'\n",
-	    name().c_str());
-    emStoreZeroAccumulators(ofile);
-    return;
-  }
-  EMable::emStoreAccumulators(ofile);
   for (int i=0;i<xAccumulators.len();i++) {
     ofile.write(xAccumulators[i],"LMDG store accums x.");
   }
@@ -1037,40 +1031,54 @@ LinMeanCondDiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 }
 
 
-
 void
-LinMeanCondDiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
+LinMeanCondDiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  EMable::emStoreZeroAccumulators(ofile);
+  // ASSUME ACCUMULATOR TYPE IS 'float'
+  float tmp;
   for (int i=0;i<mean->dim();i++) {
-    ofile.write((float)0.0,"LMDG store zero accums x.");
+    ifile.read(tmp,"LMDG load accums x.");
   }
   for (int i=0;i<covar->dim();i++) {
-    ofile.write((float)0.0,"LMDG store zero accums xx.");
+    ifile.read(tmp,"LMDG load accums xx.");
   }
   for (int i=0;i<(int)dLinkMat->totalNumberLinks();i++) {
-    ofile.write((float)0.0,"LMDG store zero accums xz.");
+    ifile.read(tmp,"LMDG load accums xz.");
   }
   for (int i=0;i<(int)dLinkMat->zzAccumulatorLength();i++) {
-    ofile.write((float)0.0,"LMDG store zero accums zz.");
+    ifile.read(tmp,"LMDG load accums zz.");
   }
   for (int i=0;i<(int)dLinkMat->totalNumberLinks();i++) {
-    ofile.write((float)0.0,"LMDG store zero accums z.");
+    ifile.read(tmp,"LMDG load accums z.");
+  }
+
+}
+
+
+void
+LinMeanCondDiagGaussian::emZeroOutObjectsAccumulators()
+{
+  for (int i=0;i<xAccumulators.len();i++) {
+    xAccumulators[i] = 0.0;
+  }
+  for (int i=0;i<xxAccumulators.len();i++) {
+    xxAccumulators[i] = 0.0;
+  }
+  for (int i=0;i<xzAccumulators.len();i++) {
+    xzAccumulators[i] = 0.0;
+  }
+  for (int i=0;i<zzAccumulators.len();i++) {
+    zzAccumulators[i] = 0.0;
+  }
+  for (int i=0;i<zAccumulators.len();i++) {
+    zAccumulators[i] = 0.0;
   }
 }
 
 
 void
-LinMeanCondDiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
+LinMeanCondDiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emLoadAccumulators(ifile);
   for (int i=0;i<xAccumulators.len();i++) {
     ifile.read(xAccumulators[i],"LMDG load accums x.");
   }
@@ -1086,18 +1094,13 @@ LinMeanCondDiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
   for (int i=0;i<zAccumulators.len();i++) {
     ifile.read(zAccumulators[i],"LMDG load accums z.");
   }
-
 }
 
 
 void
-LinMeanCondDiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
+LinMeanCondDiagGaussian::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-  assert ( emEmAllocatedBitIsSet() );
-  EMable::emAccumulateAccumulators(ifile);
+  // ASSUME ACCUMULATOR TYPE IS 'float'
   for (int i=0;i<xAccumulators.len();i++) {
     float tmp;
     ifile.read(tmp,"LMDG accumulate accums x.");

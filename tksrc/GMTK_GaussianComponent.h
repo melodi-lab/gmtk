@@ -30,7 +30,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_EMable.h"
 
-class GaussianComponent :  public EMable, public NamedObject {
+class GaussianComponent :  public EMable {
 
   ///////////////////////////////////////////////////////
   // The value that, if any variances go below, cause

@@ -33,7 +33,7 @@
 #include "GMTK_RandomVariable.h"
 
 
-class Dense1DPMF : public EMable, public NamedObject {
+class Dense1DPMF : public EMable {
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
@@ -51,7 +51,7 @@ class Dense1DPMF : public EMable, public NamedObject {
   // this dummy variable apparently needs to be here so that gdb 5.0 on
   // Solaris can print out *this. If this is removed, that version of
   // gdb can't do that.
-  int _dummy;
+  // int _dummy;
 
 public:
 
@@ -106,10 +106,14 @@ public:
   void emIncrement(logpr prob,const int val);
   void emEndIteration();
   void emSwapCurAndNew();
-  void emStoreAccumulators(oDataStreamFile& ofile);
-  void emStoreZeroAccumulators(oDataStreamFile& ofile);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
+
+  // parallel training
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile);
+  void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile);
+  void emZeroOutObjectsAccumulators();
+  void emLoadObjectsAccumulators(iDataStreamFile& ifile);
+  void emAccumulateObjectsAccumulators(iDataStreamFile& ifile);
+  const string typeName() { return "DPMF"; }
   //////////////////////////////////
 
 
