@@ -365,7 +365,13 @@ public:
   void parseGraphicalModel();
   void createRandomVariableGraph();
   void associateWithDataParams();
-
+  // ensure links are "south", "south east",
+  // "east", or "north east", meaning that there
+  // is a numeric ordering on the nodes such that 
+  // any parents of a node at a particular
+  // numeric position have their position
+  // earlier in the ordering.
+  void ensureS_SE_E_NE();
 
 
 };
