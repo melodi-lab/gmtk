@@ -68,7 +68,22 @@ public:
 
   ///////////////////////////////////////
   // return the probability that for value 'val'
+  // This will do a search for RV value val
   logpr prob(const int val);
+
+  ///////////////////////////////////////
+  // return the probability at entry i
+  logpr probAtEntry(const int i) {
+    assert ( i >= 0 && i < pmf.len() );
+    return pmf[i].prob;
+  }
+  ///////////////////////////////////////
+  // return the value at entry i
+  logpr valueAtEntry(const int i) {
+    assert ( i >= 0 && i < pmf.len() );
+    return pmf[i].val;
+  }
+
 
   ///////////////////////////////////////////////////////////  
   // Re-normalize the distribution
