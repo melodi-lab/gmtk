@@ -35,23 +35,7 @@
 #include <algorithm>
 #include <numeric>
 #include "GMTK_RandomVariable.h"
-
-struct ValueHashTable
-{
-    vector<vector<RandomVariable::DiscreteVariableType> *> table, nt;
-    int table_size,count,size_index;
-    int addr(vector<RandomVariable::DiscreteVariableType> &vec);
-    vector<RandomVariable::DiscreteVariableType> *insert(
-        vector<RandomVariable::DiscreteVariableType> &vec);
-    void clear() 
-    {
-       for (unsigned i=0; i<table.size(); i++) if (table[i]) delete table[i];
-         table.clear(); nt.clear(); table_size=count=size_index=0;
-    }
-    ~ValueHashTable() {clear();} 
-    ValueHashTable() {count=table_size=size_index=0;}
-    void resize(int size); 
-};
+#include "GMTK_Hash.h"
 
 struct CliqueValue
 {
@@ -75,7 +59,8 @@ struct CliqueValue
     // In a dynamic network, the same set of values will occur over and
     // over again in different cliques. To avoid storing them over and over
     // again, keep a global pool. 
-    static ValueHashTable global_val_set;
+    static HashTable< vector<RandomVariable::DiscreteVariableType> >
+         global_val_set;
 };
 
 struct Clique
