@@ -77,7 +77,7 @@ bool viterbi)
      
         // Make sure we have a clique value to work with
         // instantiationAddress tells if the instantiation was seen before
-        map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue *>::iterator mi;
+        map<vector<RandomVariable::DiscreteVariableType>, CliqueValue *>::iterator mi;
         CliqueValue *cv;
         if ((mi=instantiationAddress.find(clampedValues)) == 
         instantiationAddress.end())                  // not seen before
