@@ -1973,3 +1973,26 @@ Sun Jun 13 15:14:51 2004
   - make quick reference card for decision trees 
   - make quick reference card for sparse CPTs 
 
+Tue Jun 22 15:41:46 2004
+  - design function to do log(1+exp(x))
+  - make use of log1p() = log(1+x) when x is very small.
+ 
+Tue Jun 22 18:36:23 2004
+ new sequence CPTs
+   one case for just A -> B
+      where B has prob 1 for having value in position A of some list
+   another case 
+                    C
+                    | 
+                    v
+              A --> B
+      where B retains A's value if C = 0, and B is next value in
+      sequence when C = 1.
+
+  The sequences should be read-inable using HTK's MLF format. 
+
+
+
+      
+
+   
