@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <string>
+#include <map>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +48,9 @@ private:
   class RVInfo {
     friend class FileParser;
 
+
+    ////////////////////////////////////////////////////////////
+    // define a bunch of types that are used in RVs
     enum Type { t_discrete, t_continuous, t_unknown };
     enum Disposition { d_hidden, d_observed, d_unknown };
     struct FeatureRange {
@@ -54,67 +58,116 @@ private:
       unsigned start;
       unsigned stop;
       FeatureRange() { filled = false; }
+      void clear() { filled = false; }
     };
-    enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_unknown }; 
+    enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_MTCPT, di_unknown }; 
     enum ContinuousImplementation { ci_mixGaussian,
 				    ci_gausSwitchMixGaussian ,
 				    ci_logitSwitchMixGaussian,
 				    ci_mlpSwitchMixGaussian,
                                     ci_unknown };
+    typedef pair<string,int> rvParent;
+    struct ListIndex {
+      enum ListIndexType { li_String, li_Index, li_Unknown } liType;
+      unsigned intIndex;
+      string nameIndex;
+      void clear() { liType = li_Unknown; }
+    };
 
+    ///////////////////////////////////////////////////////////
+    // data associated with a RV
 
+    // the frame where it was defined (so is part of name really)
+    unsigned frame;
+    // line number of file where this RV was first declared
+    unsigned fileLineNumber;
+    // rv's name
     string name;    
+
+    // fields from type
     Type rvType;
     Disposition rvDisp;
     unsigned rvCard;
-    unsigned frame;
+    // if it is an observed variable, it must have a feature range.
     FeatureRange rvFeatureRange;
+
     // switching parents stuff
-    vector< pair<string, int> > switchingParents;
-    string switchMapping;
+    vector< rvParent > switchingParents;
+    ListIndex switchMapping;
+
     // conditional parents stuff
-    vector<vector<pair<string,int> > > conditionalParents;
+    vector<vector< rvParent > > conditionalParents;
     // if discrete, then the list if discrete implementations
     vector< DiscreteImplementaton > discImplementations;
     // if continuous, the list of continuous implementations
     vector< ContinuousImplementation > contImplementations;
     // in either case, a low-level parameter index
-    vector< FeatureRange > listIndices;
-    // if this is for a continuous implementation,
-    // and there are conditional parents (as apposed to
-    // "nil" parents), this indicates mapping keyword
-    // was present. Needed by semantic analysis so that
-    // we can check that this occurs only when there are
-    // not "nil" parents.
-    vector< bool > dtMaps;
+    vector< ListIndex > listIndices;
 
+    /////////////////////////////////////////////////////////
+    // An actual pointer to the RV once we instantiate it. 
+    RandomVariable* rv;
+
+  public:
+    /////////////////////////////////////////////////////////
     // constructor
-    RVInfo() { rvType = t_unknown; };
+    RVInfo() { rvType = t_unknown; rv = NULL; };
     // copy constructor
-    RVInfo(RVInfo&);
+    RVInfo(const RVInfo&);
 
     // clear out the current RV structure when we 
     // are parsing and encounter a new RV.
-    void clear();
+    void clear() { 
+      name.erase();
+
+      rvType = t_unknown;
+      rvDisp = d_unknown;
+      rvFeatureRange.clear();
+
+      switchingParents.clear();
+      switchMapping.clear();
+
+      conditionalParents.clear();
+      discImplementations.clear();
+      contImplementations.clear();
+      listIndices.clear();
+
+    }
+
+    // checks the contents of the object to ensure
+    // that this is a validly instantiated RV (i.e.,
+    // all the information is there, it all makes sense, etc.)
+    // Die if there is a problem.
+    void checkConsistency();
 
   };
-
-  //////////////////////////////////////////////
-  // This is where the parser puts partially 
-  // completed RVs as it is parsing them.
-  vector < RVInfo > RVs;
 
   ////////////////////////////////////////////////////////////////
   // The current pre-allocated random variable that is being
   // parsed and filled in as we go. 
   RVInfo curRV;
 
+
+  ///////////////////////////////////
+  // the current frame we are parsing.
+  int curFrame;
+
   ///////////////////////////////////////////////////
   // Mapping from the name of the random variable
   // to its pointer.
   // map<pair<string, unsigned>, RandomVariable *> variableNamed;
-  // map < pair<string,unsigned> , RandomVariable* > nameRVmap;
+  map < pair<string,unsigned> , RVInfo* > nameRVmap;
 
+  //////////////////////////////////////////////
+  // This is where the parser puts partially 
+  // completed RVs as it is parsing them.
+  vector < RVInfo > rvInfoVector;
+
+  //////////////////////////////////////////////
+  // the result of the chunk parse
+  unsigned firstChunkframe;
+  unsigned lastChunkframe;
+  
 
 public:
 
@@ -138,7 +191,7 @@ public:
     TT_Identifier=11,
     TT_Comma=12,
     TT_String=13,
-    TT_Undefined=14
+    TT_Undefined=15
   };
 
   // when token type is a keyword, the different types of keywords
@@ -158,12 +211,13 @@ public:
     KW_Mapping=12,
     KW_MDCPT=13,
     KW_MSCPT=14,
-    KW_MixGaussian=15,
-    KW_GausSwitchMixGaussian=16,
-    KW_LogitSwitchMixGaussian=17,
-    KW_MlpSwitchMixGaussin=18,
-    KW_Chunk=19,
-    KW_GRAPHICAL_MODEL=20
+    KW_MTCPT=15,
+    KW_MixGaussian=16,
+    KW_GausSwitchMixGaussian=17,
+    KW_LogitSwitchMixGaussian=18,
+    KW_MlpSwitchMixGaussin=19,
+    KW_Chunk=20,
+    KW_GRAPHICAL_MODEL=21
   };
 
   // list of token keyword strings.
@@ -273,15 +327,26 @@ private:
   void parseConditionalParentSpecList();
   void parseConditionalParentSpec();
   void parseConditionalParentList();
-  void parseParentList();
-  void parseParent();
+
   void parseImplementation();
   void parseDiscreteImplementation();
   void parseContinuousImplementation();
   void parseContObsDistType();
-  void parseMappingSpec();
+
   void parseChunkSpecifier();
+
+  ///////////////////////////////////////////////////////////
+  // parsing routines that are used by multiple
+  // other parsing routines and therefore need their
+  // own location to place data.
+
+  void parseParentList();
+  void parseParent();
+  vector < RVInfo::rvParent > parentList;
+
+  void parseMappingSpec();
   void parseListIndex();
+  RVInfo::ListIndex listIndex;
 
 public:
 

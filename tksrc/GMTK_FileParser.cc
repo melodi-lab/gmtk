@@ -98,7 +98,7 @@ Parent = identifier "(" integer ")"
 
 Implementation = DiscreteImplementation | ContinousImplementation
 
-DiscreteImplementation = ( "MDCPT" | "MSCPT" )  "(" ListIndex ")"
+DiscreteImplementation = ( "MDCPT" | "MSCPT" | "MTCPT" )  "(" ListIndex ")"
 
 ContinousImplementation = ContObsDistType
         (
@@ -297,6 +297,7 @@ FileParser::fillKeywordTable()
     "mapping",
     "MDCPT",
     "MSCPT",
+    "MTCPT",
     "mixGaussian",
     "gausSwitchMixGaussian",
     "logitSwitchMixGaussian",
@@ -349,8 +350,7 @@ FileParser::FileParser(const char*const file)
     if ((yyin = fopen (file,"r")) == NULL)
       error("FileParser::FileParser, can't open file (%s)",file);
   }
-  tokenInfo.srcLine = 1;
-  tokenInfo.srcChar = 1;
+
 }
 
 
@@ -509,6 +509,11 @@ FileParser::parseError(const TokenKeyword kw)
 void
 FileParser::parseGraphicalModel()
 {
+  tokenInfo.srcLine = 1;
+  tokenInfo.srcChar = 1;
+  curFrame = -1;
+  rvInfoVector.clear();
+
   // prepare the first lookahead token
   prepareNextToken();
 
@@ -531,6 +536,15 @@ FileParser::parseGraphicalModel()
   parseFrameList();
 
   parseChunkSpecifier();
+
+  printf("Found %d random variables.\n",
+	 rvInfoVector.size());
+  for (unsigned i=0;i<rvInfoVector.size();i++ ) {
+    printf("RV(%d) is named (%s)\n",
+	   i,rvInfoVector[i].name.c_str());
+  }
+
+
 }
 
 
@@ -560,6 +574,10 @@ FileParser::parseFrame()
   ensureNotAtEOF("frame number");
   if (tokenInfo != TT_Integer)
     parseError("frame number");
+  if (tokenInfo.int_val != (curFrame+1)) {
+    parseError("frame number out of order");
+  }
+  curFrame++;
   consumeToken();
 
   ensureNotAtEOF("open frame {");
@@ -580,7 +598,42 @@ FileParser::parseRandomVariableList()
 {
   if (tokenInfo != KW_Variable)
     return;
+
+  curRV.clear();
   parseRandomVariable();
+
+  //////////////////////////////
+  // make sure that there was a type and switching/cont parents
+  if (curRV.rvType == RVInfo::t_unknown)
+    error("Random variable type unknown for variable %s at frame %d, line %d\n",
+	  curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
+
+  // we need to at least have specified one conditional parents set,
+  // which might be 'nil' 
+  if (curRV.conditionalParents.size() == 0)  
+    error("Conditional parents unknown for random variable %s at frame %d, line %d\n",
+	  curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
+
+
+  // check if we've already seen this RV
+  map < pair<string,unsigned> , RVInfo* >::iterator it;
+  it = nameRVmap.find(pair<string,unsigned>(curRV.name,curRV.frame));
+  if (it != nameRVmap.end()) {
+    error("Error: random variable (%s) at frame (%d) defined twice, "
+	  "on both line %d and %d\n",curRV.name.c_str(),
+	  curRV.frame,
+	  curRV.fileLineNumber,
+	  (*it).second->fileLineNumber);
+  }
+  
+
+  // everything looks ok, insert it in our tables.
+  rvInfoVector.push_back(curRV);
+  // add to map with invalid pointers for now.
+  nameRVmap[
+	    pair<string,unsigned>(curRV.name,curRV.frame)
+  ] = &rvInfoVector[rvInfoVector.size()-1];
+
   parseRandomVariableList();
 }
 
@@ -591,6 +644,8 @@ FileParser::parseRandomVariable()
   ensureNotAtEOF(KW_Variable);
   if (tokenInfo != KW_Variable)
     parseError(KW_Variable);
+  curRV.frame = curFrame;
+  curRV.fileLineNumber = tokenInfo.srcLine;
   consumeToken();
 
   ensureNotAtEOF(":");
@@ -601,6 +656,7 @@ FileParser::parseRandomVariable()
   ensureNotAtEOF("variable name");
   if (tokenInfo != TT_Identifier)
     parseError("variable name");
+  curRV.name = tokenInfo.tokenStr;
   consumeToken();
 
   ensureNotAtEOF("open RV {");
@@ -637,9 +693,11 @@ FileParser::parseRandomVariableAttribute()
   if (tokenInfo == KW_Type)
     return parseRandomVariableTypeAttribute();
   else if (tokenInfo == KW_Switchingparents ||
-	   tokenInfo == KW_Conditionalparents)
+	   tokenInfo == KW_Conditionalparents) {
+    if (curRV.rvType == RVInfo::t_unknown)
+      parseError("type must be first attribute");
     return parseRandomVariableParentAttribute();
-  else
+  }  else
     parseError("variable attribute");
 }
 
@@ -686,19 +744,28 @@ FileParser::parseRandomVariableDiscreteType()
   ensureNotAtEOF(KW_Discrete);
   if (tokenInfo != KW_Discrete)
     parseError(KW_Discrete);
+  if (curRV.rvType != RVInfo::t_unknown)
+    error("Error parsing file: RV (%s) already has a type, frame %d, line %d",
+	  curRV.name.c_str(),
+	  curRV.frame,
+	  curRV.fileLineNumber);
+  curRV.rvType = RVInfo::t_discrete;
   consumeToken();
 
   ensureNotAtEOF("variable disposition (hidden|discrete)");
   if (tokenInfo == KW_Hidden) {
     // hidden discrete RV
+    curRV.rvDisp = RVInfo::d_hidden;
     consumeToken();
   } else if (tokenInfo == KW_Observed) {
     // observed discrete RV    
+    curRV.rvDisp = RVInfo::d_observed;
     consumeToken();
     
     ensureNotAtEOF("first feature range");
     if (tokenInfo != TT_Integer)
       parseError("first feature range");
+    curRV.rvFeatureRange.start = tokenInfo.int_val;
     consumeToken();
 
     ensureNotAtEOF("feature range separator");
@@ -709,6 +776,10 @@ FileParser::parseRandomVariableDiscreteType()
     ensureNotAtEOF("second feature range");
     if (tokenInfo != TT_Integer)
       parseError("second feature range");
+    curRV.rvFeatureRange.stop = tokenInfo.int_val;
+    if (curRV.rvFeatureRange.stop < curRV.rvFeatureRange.start)
+      parseError("first range num must be < second range num");
+    curRV.rvFeatureRange.filled = true;
     consumeToken();
 
   } else 
@@ -722,6 +793,9 @@ FileParser::parseRandomVariableDiscreteType()
   ensureNotAtEOF("cardinality value");
   if (tokenInfo != TT_Integer)
     parseError("cardinality value");
+  curRV.rvCard = tokenInfo.int_val;
+  if (curRV.rvCard == 0)
+    parseError("positive cardinality value");
   consumeToken();
 }
 
@@ -732,19 +806,34 @@ FileParser::parseRandomVariableContinuousType()
   ensureNotAtEOF(KW_Continous);
   if (tokenInfo != KW_Continous)
     parseError(KW_Continous);
+  if (curRV.rvType != RVInfo::t_unknown)
+    error("Error parsing file: RV (%s) already has a type, frame %d, line %d",
+	  curRV.name.c_str(),
+	  curRV.frame,
+	  curRV.fileLineNumber);
+  curRV.rvType = RVInfo::t_continuous;
   consumeToken();
 
   ensureNotAtEOF("variable disposition (hidden|discrete)");
   if (tokenInfo == KW_Hidden) {
-    // hidden discrete RV
+    // hidden continuous RV
+    curRV.rvDisp = RVInfo::d_hidden;
     consumeToken();
+
+    ///////////////////////////////////////////////
+    // TODO: removing the following is safe when
+    // hidden continuous variables are implemented.
+    parseError("sorry, hidden continuous RVs not yet implemented");
+
   } else if (tokenInfo == KW_Observed) {
-    // observed discrete RV    
+    // observed continuous RV    
+    curRV.rvDisp = RVInfo::d_observed;
     consumeToken();
     
     ensureNotAtEOF("first feature range");
     if (tokenInfo != TT_Integer)
       parseError("first feature range");
+    curRV.rvFeatureRange.start = tokenInfo.int_val;
     consumeToken();
 
     ensureNotAtEOF("feature range separator");
@@ -755,6 +844,8 @@ FileParser::parseRandomVariableContinuousType()
     ensureNotAtEOF("second feature range");
     if (tokenInfo != TT_Integer)
       parseError("second feature range");
+    curRV.rvFeatureRange.stop = tokenInfo.int_val;
+    curRV.rvFeatureRange.filled = true;
     consumeToken();
 
   } else
@@ -807,17 +898,22 @@ FileParser::parseSwitchingParentAttribute()
 {
 
   ensureNotAtEOF("list of switching parents");
+  parentList.clear();
   if (tokenInfo == KW_Nil) {
+    // set parent list to the empty array.
+    curRV.switchingParents = parentList;
     consumeToken();
   } else {
-    parseParentList();
 
+    parseParentList();
+    curRV.switchingParents = parentList;
     ensureNotAtEOF(KW_Using);
     if (tokenInfo != KW_Using)
       parseError(KW_Using);
     consumeToken();
 
     parseMappingSpec();
+    curRV.switchMapping = listIndex;
   }
 }
 
@@ -835,6 +931,7 @@ void
 FileParser::parseConditionalParentSpec()
 {
   parseConditionalParentList();
+  curRV.conditionalParents.push_back(parentList);
 
   ensureNotAtEOF(KW_Using);
   if (tokenInfo != KW_Using)
@@ -842,11 +939,15 @@ FileParser::parseConditionalParentSpec()
   consumeToken();
 
   parseImplementation();
+
+
+
 }
 
 void
 FileParser::parseConditionalParentList()
 {
+  parentList.clear();
   if (tokenInfo == KW_Nil) {
     consumeToken();
   } else {
@@ -867,9 +968,12 @@ FileParser::parseParentList()
 void
 FileParser::parseParent()
 {
+  RVInfo::rvParent p;
+
   ensureNotAtEOF("parent RV name");
   if (tokenInfo != TT_Identifier) 
     parseError("parent RV name");
+  p.first = tokenInfo.tokenStr;
   consumeToken();
 
   ensureNotAtEOF("(");
@@ -880,6 +984,14 @@ FileParser::parseParent()
   ensureNotAtEOF("parent RV offset");
   if (tokenInfo != TT_Integer) 
     parseError("parent RV offset");
+  p.second = tokenInfo.int_val;;
+  // make sure we are not pointing to ourselves.
+  if ((p.first == curRV.name) &&
+      (p.second == 0)) {
+    parseError("parent variable must not refer to self");
+  }
+
+  parentList.push_back(p);
   consumeToken();
 
   ensureNotAtEOF(")");
@@ -892,11 +1004,15 @@ FileParser::parseParent()
 void
 FileParser::parseImplementation()
 {
-  
   ensureNotAtEOF("implementation");  
-  if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT) {
+  if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT 
+      || tokenInfo == KW_MTCPT) {
+    if (curRV.rvType != RVInfo::t_discrete) 
+      parseError("need discrete implementations in discrete RV");
     parseDiscreteImplementation();
   } else {
+    if (curRV.rvType != RVInfo::t_continuous) 
+      parseError("need continuous implementations in continuous RV");
     parseContinuousImplementation();
   }
 }
@@ -906,16 +1022,26 @@ void
 FileParser::parseDiscreteImplementation()
 {
   ensureNotAtEOF("discrete implementation");  
-  if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT) {
+  if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
+      || tokenInfo == KW_MTCPT) {
+
+    if (tokenInfo == KW_MDCPT)
+      curRV.discImplementations.push_back(RVInfo::di_MDCPT);
+    else if (tokenInfo == KW_MSCPT)
+      curRV.discImplementations.push_back(RVInfo::di_MSCPT);
+    else // (tokenInfo == KW_MTCPT)
+      curRV.discImplementations.push_back(RVInfo::di_MTCPT);
     consumeToken();
+
 
     ensureNotAtEOF("(");
     if (tokenInfo != TT_LeftParen) {
       parseError("(");
     }
     consumeToken();
-  
+
     parseListIndex();
+    curRV.listIndices.push_back(listIndex);
 
     ensureNotAtEOF(")");
     if (tokenInfo != TT_RightParen) {
@@ -939,10 +1065,11 @@ FileParser::parseContinuousImplementation()
 
   ensureNotAtEOF("remainder of continuous random variable spec");  
   if (tokenInfo == TT_LeftParen) {
-    // this presumably comes from a RV with nil conditional parents.
+
     consumeToken();
 
     parseListIndex();
+    curRV.listIndices.push_back(listIndex);
 
     ensureNotAtEOF(")");
     if (tokenInfo != TT_RightParen) {
@@ -950,8 +1077,39 @@ FileParser::parseContinuousImplementation()
     }
     consumeToken();
 
+    //////////////////////////////////////
+    // AAA: some semantic checking here.
+    // The current implementation presumably comes from a RV 
+    // with nil conditional parents, as in:
+    //
+    // ... | nil using mixGaussian("the_forth_gaussian") | ...
+    //
+    // this means that we are specifying one and only one particular
+    // gaussian "the_forth_gaussian" in the gaussian file,
+    // since there are no conditional parents. Note that
+    // this situation doesn't arrise in the discrete case here
+    // because it is assumed that the pointer to the CPT will
+    // be such that, if nil exists, then the CPT will not
+    // have any "parents".
+    // 
+    // In any case, we need to make sure here that there is indeed
+    // 'nil' as the current parents. Do this by checking the length
+    // of the most recently pushed parrent list, and making
+    // sure that it is zero.
+    if (curRV.conditionalParents[curRV.conditionalParents.size()-1].size() > 0)
+      parseError("decision tree 'mapping' needed when conditional parents are given");
+
+
   } else {
+
     parseMappingSpec();
+    curRV.listIndices.push_back(listIndex);
+
+    //////////////////////////////////////////////////////////////////
+    // semantic check, this is the dual check of the
+    // check at AAA above.
+    if (curRV.conditionalParents[curRV.conditionalParents.size()-1].size() == 0)
+      parseError("decision tree 'mapping' needs > 0 conditional parents");
   }
 }
 
@@ -961,15 +1119,50 @@ FileParser::parseContObsDistType()
 {
   ensureNotAtEOF("continuous observation distribution type");
   if (tokenInfo == KW_MixGaussian) {
+    curRV.contImplementations.push_back(RVInfo::ci_mixGaussian);
     consumeToken();
   } else if (tokenInfo == KW_GausSwitchMixGaussian) {
+    curRV.contImplementations.push_back(RVInfo::ci_gausSwitchMixGaussian);
     consumeToken();
   }  else if (tokenInfo == KW_LogitSwitchMixGaussian) {
+    curRV.contImplementations.push_back(RVInfo::ci_logitSwitchMixGaussian);
     consumeToken();
   }  else if (tokenInfo == KW_MlpSwitchMixGaussin) {
+    curRV.contImplementations.push_back(RVInfo::ci_mlpSwitchMixGaussian);
     consumeToken();
   } else 
     parseError("continuous observation distribution type");
+}
+
+void
+FileParser::parseChunkSpecifier()
+{
+  ensureNotAtEOF(KW_Chunk);
+  if (tokenInfo != KW_Chunk) 
+    parseError(KW_Chunk);
+  consumeToken();
+
+  ensureNotAtEOF("first chunk integer");
+  if (tokenInfo != TT_Integer)
+    parseError("first chunk integer");
+  if (tokenInfo.int_val < 0) 
+    parseError("non-negative chunk range");
+  firstChunkframe = (unsigned)tokenInfo.int_val;
+  consumeToken();
+
+  ensureNotAtEOF("chunk colon");
+  if (tokenInfo != TT_Colon) 
+    parseError("expecting chunk colon");
+  consumeToken();
+
+  ensureNotAtEOF("second chunk integer");
+  if (tokenInfo != TT_Integer) 
+    parseError("expecting second chunk integer");
+  if (tokenInfo.int_val < 0) 
+    parseError("non-negative chunk range");
+  lastChunkframe = (unsigned)tokenInfo.int_val;
+  consumeToken();
+
 }
 
 
@@ -986,8 +1179,9 @@ FileParser::parseMappingSpec()
   if (tokenInfo != TT_LeftParen) {
     parseError("(");
   }
+
   consumeToken();
-  
+
   parseListIndex();
 
   ensureNotAtEOF(")");
@@ -999,43 +1193,134 @@ FileParser::parseMappingSpec()
 }
 
 void
-FileParser::parseChunkSpecifier()
-{
-  ensureNotAtEOF(KW_Chunk);
-  if (tokenInfo != KW_Chunk) 
-    parseError(KW_Chunk);
-  consumeToken();
-
-  ensureNotAtEOF("first chunk integer");
-  if (tokenInfo != TT_Integer)
-    parseError("first chunk integer");
-  consumeToken();
-
-  ensureNotAtEOF("chunk colon");
-  if (tokenInfo != TT_Colon) 
-    parseError("expecting chunk colon");
-  consumeToken();
-
-  ensureNotAtEOF("second chunk integer");
-  if (tokenInfo != TT_Integer) 
-    parseError("expecting second chunk integer");
-  consumeToken();
-
-}
-
-
-void
 FileParser::parseListIndex()
 {
 
   ensureNotAtEOF("list index");
   if (tokenInfo == TT_Integer) {
+    listIndex.liType = RVInfo::ListIndex::li_Index;
+    listIndex.intIndex = tokenInfo.int_val;
     consumeToken();
   } else if (tokenInfo == TT_String) {
+    listIndex.liType = RVInfo::ListIndex::li_String;
+    listIndex.nameIndex = tokenInfo.tokenStr;
+    // remove the double quotes
+    // listIndex.nameIndex.replace(listIndex.nameIndex.find("\""),1,"");
+    // listIndex.nameIndex.replace(listIndex.nameIndex.find("\""),1,"");
+    listIndex.nameIndex.replace(0,1,"");
+    listIndex.nameIndex.replace(listIndex.nameIndex.length()-1,1,"");
     consumeToken();
   } else
     parseError("expecting list index");
 }
+
+
+
+
+
+////////////////////////////////////////////////////////////////////
+//        RVInfo functions
+////////////////////////////////////////////////////////////////////
+
+
+FileParser::RVInfo::RVInfo(const RVInfo& v)
+{
+  frame = v.frame;
+  fileLineNumber = v.fileLineNumber;
+  name = v.name;
+  rvType = v.rvType;
+  rvDisp = v.rvDisp;
+  rvCard = v.rvCard;
+  rvFeatureRange = v.rvFeatureRange;
+  switchingParents = v.switchingParents;
+  switchMapping = v.switchMapping;
+  conditionalParents = v.conditionalParents;
+  discImplementations = v.discImplementations;
+  contImplementations = v.contImplementations;
+  listIndices = v.listIndices;
+}
+
+
+//
+// 
+// Check the consistency of the RV information
+// that couldn't be checked while it was parsing.
+void
+FileParser::RVInfo::checkConsistency()
+
+{
+  if (rvType == t_unknown)
+    error("Unknown type of random variable %s at frame %d, line %d\n",
+	  name.c_str(),frame,fileLineNumber);
+
+  //////////////////////////////////////////////////////////
+  // The following are assertions as we assume that the parser
+  // will ensure they are true. They are assertions as if the
+  // parser changess, these might also need to change.
+  // 
+  // we presume that the parser has ensured that the disposition is known.
+  assert ( rvDisp != RVInfo::d_unknown );
+  // 
+  // make sure that if there are switching parents, there
+  // is a valid switching mapping
+  assert ( 
+	   (switchingParents.size() > 0
+	    && switchMapping.liType != ListIndex::li_Unknown)
+	   || 
+	   (switchingParents.size() == 0
+	    && switchMapping.liType == ListIndex::li_Unknown)
+	    );
+  
+  // End of assertions about parser verified consistencies
+  //////////////////////////////////////////////////////////
+
+  // Now check stuff the parser can't check.
+  //  1) only discrete (resp. continuous) implementations
+  //     are defined for discrete (resp. continuous) RVs.
+  //  2) in the continuous case, that a nil parent
+  //     does not have a DT mapping, but that parents
+  //     have an associated mapping.
+  //  3) that we do not have any hidden continuous variables
+  //     which this package does not yet support.
+
+  if (rvType == t_discrete) {
+    if (rvDisp == d_hidden) {
+      // special checks for discrete hidden RV
+      ;
+    } else {
+      // special checks discrete observed RV
+      ;
+    }
+    // check that all implementations are discrete
+    if (contImplementations.size() > 0)
+      error("Error: continous implementations in discrete RV %s line %d",
+	    name.c_str(),fileLineNumber);
+  } else {
+    // type must be continuous
+    if (rvDisp == d_hidden) {
+      // continuous hidden RV
+      error("We do not support continuous hidden variables (just yet)");
+    } else {
+      // continuous observed RV
+
+      if (discImplementations.size() > 0)
+	error("Error: discrete implementations in continuous RV %s line %d",
+	      name.c_str(),fileLineNumber);
+
+      // now check that any nil conditional parents have a map.
+      
+
+      
+
+
+
+    }
+  } 
+
+}
+
+
+
 
 
 
