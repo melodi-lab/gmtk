@@ -34,6 +34,7 @@
 // from these vectors of _Key's to objects given by _Data.
 template <class _Key, class _Data> 
 class vhash_map : public hash_abstract {
+protected:
 
 #ifdef COLLECT_COLLISION_STATISTICS
 public:
@@ -50,6 +51,7 @@ public:
   struct Bucket {
     _Key* key;
     _Data item;
+    // start off with an empty one.
     Bucket() :key(NULL) {}
   };
 
@@ -68,10 +70,10 @@ public:
   // return true if the two keys are equal.
   bool keyEqual(const _Key* k1,const _Key* k2) {
     const _Key* k1_endp = k1+vsize;
-    while (k1 != k1_endp) {
+    do {
       if (*k1++ != *k2++)
 	return false;
-    }
+    } while (k1 != k1_endp);
     return true;
   }
 
@@ -214,6 +216,10 @@ public:
 	    hash_abstract::HashTableDefaultApproxStartingSize)
     : vsize(arg_vsize) 
   {
+
+    // make sure we hash at least one element, otherwise do {} while()'s won't work.
+    assert (vsize > 0);
+
     _totalNumberEntries=0;
     findPrimesArrayIndex(approximateStartingSize);
     initialPrimesArrayIndex = primesArrayIndex;
@@ -284,6 +290,9 @@ public:
 	    error("ERROR: Hash table error, table size exceeds max size of %lu",
 		  HashTable_PrimesArray[primesArrayIndex]);
 	  resize(HashTable_PrimesArray[++primesArrayIndex]);
+	  // need to re-get location
+	  a = entryOf(key,table);
+	  assert (!empty(table[a]));
       }
     } else {
       foundp = true;
@@ -317,6 +326,13 @@ public:
     // of if it was found or not.
     return *resp;
   }
+
+  // Direct access to tables and keys (made available for speed).
+  // Use sparingly, and only if you know what you are doing.
+  _Key*& tableKey(const unsigned i) { return table[i].key; }
+  _Data& tableItem(const unsigned i) { return table[i].item; }
+  bool tableEmpty(const unsigned i) { return empty(table[i]); }
+  unsigned tableSize() { return table.size(); }
 
 };
 
