@@ -30,6 +30,9 @@
 
 #include "general.h"
 #include "error.h"
+#include "rand.h"
+
+#include "GMTK_Sparse1DPMF.h"
 
 
 VCID("$Header$");
@@ -96,7 +99,7 @@ Sparse1DPMF::read(iDataStreamFile& is)
   pmf.resize(len);
 
   int prev_val = -1;
-  for (int i=0;i<length;i++) {
+  for (int i=0;i<len;i++) {
     int val;
     double prob;
 
@@ -140,7 +143,7 @@ Sparse1DPMF::write(oDataStreamFile& os)
   os.write(pmf.len(),"Sparse1DPMF::write, len");
   for (int i=0;i<pmf.len();i++) {
     os.write(pmf[i].val,"Sparse1DPMF::write, writing value");
-    os.writeDouble(pmf[i].prob,"Sparse1DPMF::write, writing prob");
+    os.writeDouble(pmf[i].prob.unlog(),"Sparse1DPMF::write, writing prob");
   }
   os.nl();
 }
@@ -239,39 +242,39 @@ Sparse1DPMF::prob(const int val)
  *-----------------------------------------------------------------------
  */
 void
-Dense1DPMF::normalize()
+Sparse1DPMF::normalize()
 {
   logpr sum = 0.0;
   for (int i=0;i<pmf.len();i++) {
-    sum += pmf[i].val;
+    sum += pmf[i].prob;
   }
   for (int i=0;i<pmf.len();i++) {
-    pmf[i].val = pmf[i].val / sum;
+    pmf[i].prob = pmf[i].prob / sum;
   }
 }
 
 void
-Dense1DPMF::makeRandom()
+Sparse1DPMF::makeRandom()
 {
   logpr sum = 0.0;
   for (int i=0;i<pmf.len();i++) {
     logpr tmp = rnd.drand48();
     sum += tmp;
-    pmf[i].val = tmp;
+    pmf[i].prob = tmp;
   }
   for (int i=0;i<pmf.len();i++) {
-    pmf[i].val = pmf[i].val / sum;
+    pmf[i].prob = pmf[i].prob / sum;
   }
 }
 
 void
-Dense1DPMF::makeUniform()
+Sparse1DPMF::makeUniform()
 {
   // NOTE: this doesn't assign non-zero values to "holes"
   // in the table (which are forced to be zero).
-  logpr val = 1.0/pmf.len();
+  logpr p = 1.0/pmf.len();
   for (int i=0;i<pmf.len();i++) {
-    pmf[i].val = val;
+    pmf[i].prob = p;
   }
 }
 

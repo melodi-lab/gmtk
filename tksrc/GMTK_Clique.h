@@ -16,8 +16,8 @@
  *
  */ 
 
-#ifndef CLIQUE_H
-#define CLIQUE_H 
+#ifndef GMTK_CLIQUE_H
+#define GMTK_CLIQUE_H 
 
 #include <vector>
 #include <map>
