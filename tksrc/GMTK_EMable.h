@@ -182,6 +182,7 @@ public:
    *
    *  if (accumulatedProbability.zero()) {
    *    warning("...");
+   *    // TODO: also check if this when inverted will explode.
    *  }
    *
    *  // Next, do any obect specific ending, which might include
