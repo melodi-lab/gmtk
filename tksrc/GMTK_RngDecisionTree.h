@@ -609,20 +609,11 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
     }
 
     //////////////////////////////////////////////////////////
-    //
+    // sort the entries so we can do binsearch later.
     RngCompare rc;
     sort(node->nonLeafNode.rngs.begin(),
 	 node->nonLeafNode.rngs.end(),
 	 rc);
-
-#if 0
-
-    BP_Range *tmp;
-    binary_search(node->nonLeafNode.rngs.begin(),
-		  node->nonLeafNode.rngs.end()-1,
-		  tmp,rc);
-
-#endif
 
     for (unsigned i=0; i<numSplits; i++)
       node->nonLeafNode.children[i] =
@@ -898,22 +889,79 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
     }
 #else 
 
-    // @@@ don't forget to update the RV version of this.
+    // use a switch to knock off the short cases for
+    // which we use simple linear search with little bookkeeping.
+    switch(n->nonLeafNode.rngs.size()) {
+    case 1:
+      if (n->nonLeafNode.rngs[0]->contains(val))
+	return queryRecurse(arr,cards,n->nonLeafNode.children[0]);
+      break;
+    case 2:
+      if (n->nonLeafNode.rngs[0]->contains(val))
+	return queryRecurse(arr,cards,n->nonLeafNode.children[0]);
+      if (n->nonLeafNode.rngs[1]->contains(val))
+	return queryRecurse(arr,cards,n->nonLeafNode.children[1]);
+      break;
+    case 3:
+      if (n->nonLeafNode.rngs[0]->contains(val))
+	return queryRecurse(arr,cards,n->nonLeafNode.children[0]);
+      if (n->nonLeafNode.rngs[1]->contains(val))
+	return queryRecurse(arr,cards,n->nonLeafNode.children[1]);
+      if (n->nonLeafNode.rngs[2]->contains(val))
+	return queryRecurse(arr,cards,n->nonLeafNode.children[2]);
+      break;
+    default: {
+	const int maxRngNum = n->nonLeafNode.rngs.size()-1;
+	if (*(n->nonLeafNode.rngs[0]) > val)
+	  break;
+	if (*(n->nonLeafNode.rngs[maxRngNum]) < val)
+	  break;
 
-    printf("\n");
-    printf("Querying with val %d\n",val);
-    RngCompare rc;
-    vector <BP_Range*>::iterator it =
-      lower_bound(n->nonLeafNode.rngs.begin(),
-		  n->nonLeafNode.rngs.end(),
-		  val,rc);
+	// do binary search
+	int l=0,u=maxRngNum;
+	int m=0;
+	while (l<=u) {
+	  // all these are conditional on the val being contained in the rng.
+	  // rngs[l] <= val && val <= rngs[u]  
+	  m = (l+u)/2; 
+	  if (*(n->nonLeafNode.rngs[m]) > val) 
+	    // rngs[l] <= val && val < rngs[m]
+	    u = m-1;
+	    // rngs[l] <= val && val <= rngs[u]
+	  else if (*(n->nonLeafNode.rngs[m]) < val)
+	    // rngs[m] < val && val < rngs[u]
+	    l=m+1;
+	    // rngs[l] < val && val < rngs[u]
+	  else {
+	    // found potential value range
+	    // rngs[l] = val && val <= rngs[u]  
+	    // so need to do linear search.
+	    for (int i=l;i<=u;i++) {
+	      if (n->nonLeafNode.rngs[i]->contains(val))
+		return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
+	    }
+	    break;
+	  }
+	}
+      }
+      break;
+    }
+
+//      printf("\n");
+//      printf("Querying with val %d\n",val);
+//      RngCompare rc;
+//      vector <BP_Range*>::iterator it =
+//        lower_bound(n->nonLeafNode.rngs.begin(),
+//  		  n->nonLeafNode.rngs.end(),
+//  		  val,
+//  		  rc);
    
-    if (it != n->nonLeafNode.rngs.end() && (*it)->contains(val))
-      return queryRecurse(arr,cards,
-			  n->nonLeafNode.children[it - n->nonLeafNode.rngs.begin()]);
+//      if (it != n->nonLeafNode.rngs.end() && (*it)->contains(val))
+//        return queryRecurse(arr,cards,
+//  			  n->nonLeafNode.children[it - n->nonLeafNode.rngs.begin()]);
 
-    if (it == n->nonLeafNode.rngs.end())
-      printf("didn't find value\n");
+//      if (it == n->nonLeafNode.rngs.end())
+//        printf("didn't find value\n");
 
 
 #endif
