@@ -1098,6 +1098,12 @@ Thu Apr 24 13:36:20 2003
     distribution is still hidden). Distribution can for example
     come from a NN.
 
-   
+Fri May 09 17:42:07 2003
+  - add automaticly existing observed variable frame, so users
+    can condition on frame(0), frame(-1), etc. which gives 
+    the frame number in an utterance (and so users don't need 
+    to have a counter for this).
+
+
 
   
