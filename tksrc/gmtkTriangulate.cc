@@ -68,7 +68,7 @@ static int jut = -1;
 static char* anyTimeTriangulate = NULL;
 static bool reTriangulate = false;
 static bool rePartition = false;
-static unsigned M = 1; 
+static unsigned maxNumChunksInBoundary = 1; 
 static int allocateDenseCpts=-1;
 static char *cppCommandOptions = NULL;
 static char* triangulationHeuristic="WFS";
@@ -99,7 +99,7 @@ Arg Arg::Args[] = {
 
   Arg("forceLeftRight",Arg::Opt,forceLeftRight,"Use only either left (L) or right (R) face heuristic, rather than best of both"),
   Arg("faceHeuristic",Arg::Opt,faceHeuristic,"Face heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,E=entr,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
-  Arg("M",Arg::Opt,M,"Mumber of chunks in which to find interface boundary"),
+  Arg("M",Arg::Opt,maxNumChunksInBoundary,"Max number simultaneous chunks in which interface boundary may exist"),
 
   Arg("unroll",Arg::Opt,jut,"Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
   Arg("anyTimeTriangulate",Arg::Opt,anyTimeTriangulate,"Run the any-time triangulation algorithm for given duration."),
@@ -248,7 +248,7 @@ main(int argc,char*argv[])
   } else {
     GMInfo gm_info;
 
-    gm_info.M = M;
+    gm_info.M = maxNumChunksInBoundary;
 
     string tri_file = string(strFileName) + ".trifile";
     if (rePartition && !reTriangulate) {
@@ -303,9 +303,9 @@ main(int argc,char*argv[])
 	gm_template.findPartitions(is,
 				   gm_info);
       }
-      if (gm_info.M != M) {
+      if (gm_info.M != maxNumChunksInBoundary) {
 	error("ERROR: M given in partition file = %d, but M given on command line = %d\n",
-		gm_info.M,M);
+		gm_info.M,maxNumChunksInBoundary);
       }
 
       // now using the partition triangulate
@@ -342,9 +342,9 @@ main(int argc,char*argv[])
       gm_template.findPartitions(is,
 				 gm_info);
 
-      if (gm_info.M != M) {
+      if (gm_info.M != maxNumChunksInBoundary) {
 	error("ERROR: M given in partition file = %d, but M given on command line = %d\n",
-		gm_info.M,M);
+		gm_info.M,maxNumChunksInBoundary);
       }
       gm_template.triangulatePartitions(is,
 					gm_info);
@@ -380,9 +380,9 @@ main(int argc,char*argv[])
 	}
 	printf("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f\n",
 	       c_maxWeight,
-	       M,
+	       maxNumChunksInBoundary,
 	       c_totalWeight,
-	       c_totalWeight - log10((double)M));
+	       c_totalWeight - log10((double)maxNumChunksInBoundary));
 
 
 	float e_maxWeight = -1.0;
@@ -408,36 +408,36 @@ main(int argc,char*argv[])
 	totalWeight += log10(1+pow(10,e_totalWeight-totalWeight));
 
 	printf("--- Final set (P,Cx%d,E) has max clique weight = %f, total state space = %f ---\n",
-	       M,
+	       maxNumChunksInBoundary,
 	       maxWeight,
 	       totalWeight);
 
 	// print out a couple of total state spaces for various unrollings
-	printf("--- Total weight when unrolling %dx = %f ---\n",2*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",2*maxNumChunksInBoundary-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));	
-	printf("--- Total weight when unrolling %dx = %f ---\n",3*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",3*maxNumChunksInBoundary-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(3.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",6*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",6*maxNumChunksInBoundary-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(5.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",11*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",11*maxNumChunksInBoundary-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(10.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",21*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",21*maxNumChunksInBoundary-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(30.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",51*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",51*maxNumChunksInBoundary-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(50.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",101*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",101*maxNumChunksInBoundary-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(400.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",501*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",501*maxNumChunksInBoundary-1,totalWeight);
 
 	totalWeight += log10(1+pow(10,log10(500.0) + c_totalWeight-totalWeight));
-	printf("--- Total weight when unrolling %dx = %f ---\n",1001*M-1,totalWeight);
+	printf("--- Total weight when unrolling %dx = %f ---\n",1001*maxNumChunksInBoundary-1,totalWeight);
 
       }
   }
