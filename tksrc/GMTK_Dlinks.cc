@@ -33,6 +33,7 @@
 
 #include "general.h"
 #include "error.h"
+#include "matrix.h"
 
 #include "GMTK_Dlinks.h"
 #include "GMTK_DlinkMatrix.h"
@@ -120,6 +121,7 @@ Dlinks::read(iDataStreamFile& is)
       dIndices[i][j].offset = o;
     }
   }
+
 }
 
 
@@ -217,11 +219,11 @@ Dlinks::preCompute(const unsigned stride)
 {
   // first go through and find out how long it needs to be
   unsigned len = 0;
-  for (int i=0;i<dim();i++) 
+  zzAccumulatorLength = 0;
+  for (int i=0;i<dim();i++) {
     len += numLinks(i);
-
+  }
   preComputedOffsets.resize(len);
-
   unsigned entry = 0;
   for (int i=0;i<dim();i++)
     for (int j=0;j<numLinks(i);j++) {
@@ -229,5 +231,191 @@ Dlinks::preCompute(const unsigned stride)
 	dIndices[i][j].lag*stride+dIndices[i][j].offset;
     }
   assert ( len == entry );
-
 }
+
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      What the function does.
+ * 
+ * Preconditions:
+ *      What must be true before the function is called.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
+ *
+ * Side Effects:
+ *      Any exernal side effects
+ *
+ * Results:
+ *      What does the function return, if anything. 
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::clearArrayCache()
+{
+  // assume that a NULL pointer won't match anything.
+  arrayCacheTag = NULL;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      What the function does.
+ * 
+ * Preconditions:
+ *      What must be true before the function is called.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
+ *
+ * Side Effects:
+ *      Any exernal side effects
+ *
+ * Results:
+ *      What does the function return, if anything. 
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::cacheArrays(const Data32* const base, const float *const f)
+{
+  if (base == arrayCacheTag)
+    return;
+
+  // refill the cache.
+
+  const int* lagStrideOffsetsp = dLinks->preComputedOffsets.ptr;
+  float *zzArrayCachep = zzArrayCache.ptr;
+  float *xzArrayCachep = xzArrayCache.ptr;
+  const float *fp = f;
+  int i=0; do {
+    const int nLinks = numLinks(i);
+    if (nLinks > 0) {
+      const float feat = *fp;
+      float *zArray_p = zArray.ptr;
+      const int *const lagStrideOffsets_endp = 
+	lagStrideOffsetsp + nLinks;
+      do { 
+	const float zval = *((float*)base + *lagStrideOffsetsp++);
+	*zArray_p++ = zval;
+	*xzArrayCachep++ = feat*zval;
+      } while (lagStrideOffsetsp != lagStrideOffsets_endp);
+      matrixSelfOuterProduct(zArray,nLinks,zzArrayCachep);
+      zzArrayCachep += nLinks*(nLinks+1)/2;
+    }
+    fp++;
+  } while (++i != dim());
+
+  arrayCacheTag = base;
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      What the function does.
+ * 
+ * Preconditions:
+ *      What must be true before the function is called.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
+ *
+ * Side Effects:
+ *      Any exernal side effects
+ *
+ * Results:
+ *      What does the function return, if anything. 
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Dlinks::clearZZArrayCache()
+{
+  // assume that a NULL pointer won't match anything.
+  zzArrayCacheTag = NULL;
+}
+
+void
+Dlinks::clearXZArrayCache()
+{
+  // assume that a NULL pointer won't match anything.
+  xzArrayCacheTag = NULL;
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      What the function does.
+ * 
+ * Preconditions:
+ *      What must be true before the function is called.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
+ *
+ * Side Effects:
+ *      Any exernal side effects
+ *
+ * Results:
+ *      What does the function return, if anything. 
+ *
+ *-----------------------------------------------------------------------
+ */
+const float *const 
+Dlinks::cachedZZArrayPtr(const Data32* const base)
+{
+  if (base == zzArrayCacheTag)
+    return zzArrayCache.ptr;
+
+  const int* lagStrideOffsetsp = dLinks->preComputedOffsets.ptr;
+  float *zzArrayCachep = zzArrayCache.ptr;
+  int i=0; do {
+    const int nLinks = numLinks(i);
+    float *zArray_p = zArray.ptr;
+    for (int j=0;j<nLinks;j++) {
+      *zArray_p++ =  *((float*)base + *lagStrideOffsetsp++);
+    }
+    matrixSelfOuterProduct(zArray,nLinks,zzArrayCachep);
+    zzArrayCachep += nLinks*(nLinks+1)/2;
+  } while (++i != dim());
+
+  zzArrayCacheTag = base;
+  return zzArrayCache.ptr;
+}
+
+
+const float *const 
+Dlinks::cachedXZArrayPtr(const float* const f)
+{
+  if (base == xzArrayCacheTag)
+    return xzArrayCache.ptr;
+
+  const int* lagStrideOffsetsp = dLinks->preComputedOffsets.ptr;
+  float *zzArrayCachep = zzArrayCache.ptr;
+  int i=0; do {
+    const int nLinks = numLinks(i);
+    float *zArray_p = zArray.ptr;
+    for (int j=0;j<nLinks;j++) {
+      *zArray_p++ =  *((float*)base + *lagStrideOffsetsp++);
+    }
+    matrixSelfOuterProduct(zArray,nLinks,zzArrayCachep);
+    zzArrayCachep += nLinks*(nLinks+1)/2;
+  } while (++i != dim());
+
+  zzArrayCacheTag = base;
+  return zzArrayCache.ptr;
+}
+
+
