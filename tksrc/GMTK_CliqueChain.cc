@@ -286,10 +286,11 @@ void CliqueChain::incrementEMStatistics()
 	// for debugging, sum up the posteriors
         logpr sum;
 
-        // if using floats, the forward and backward data probs may not be
-        // the same. it might be better to use an average.
-        void *dummy;
-        logpr aveDataProb(dummy, (dataProb.val()+backwardDataProb.val())/2);
+        // If using floats, the forward and backward data probs may
+        // not be the same. it might be better to use an average. When
+	// using doubles, this shouldn't be necessary (or in fact
+	// have any effect).
+        logpr aveDataProb = logpr((void*)NULL, (dataProb.val()+backwardDataProb.val())/2);
 
         // consider the contribution of each instantiation of the clique
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
@@ -304,6 +305,7 @@ void CliqueChain::incrementEMStatistics()
             // do the updates
             logpr posterior = li->lambda*li->pi/aveDataProb;
 
+	    // 
 	    // for debugging, sum up the posteriors
 	    sum += posterior;
 
