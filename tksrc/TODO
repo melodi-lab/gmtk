@@ -716,3 +716,11 @@ Wed Dec  4 19:39:41 2002
     (see email from Au@hk).
 
 
+Tue Dec 17 13:31:36 2002
+>2. Usually LM scale factor is accompanied with the insertion penalty, i.e.
+>
+>		scale * log P + penalty
+>
+>  I think, including insertion penalty would be quite useful for 
+>  incorporating LMs with GMTK.
+ (actually, do the switching variable scale/penalty stuff).
