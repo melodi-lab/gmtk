@@ -840,6 +840,7 @@ public:
 		      const string& triHeuristic,
 		      const bool findBestBoundary,
 		      GMTemplate& gm_template);
+  void checkPartitions();
 
 
 

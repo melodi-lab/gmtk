@@ -1617,7 +1617,12 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 					       sortedNodes,
 					       varCliqueAssignmentPrior);
       part.cliques[clique_num].sortedAssignedNodes = sortedNodes;
+      if (IM::messageGlb(IM::Max)) {
+	printf("Clique %d variables after sort:",clique_num);
+	printRVSet(stdout,part.cliques[clique_num].sortedAssignedNodes,true);
+      }
     }
+
   }
 
 }
