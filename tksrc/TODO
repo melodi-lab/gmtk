@@ -399,3 +399,5 @@ TODO:
 
 - a way of adding counts to discrete CPTs without needing to specify an entire accumulator
   file.
+
+- cpp program is determined by environment variable if it exists.
