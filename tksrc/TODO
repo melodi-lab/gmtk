@@ -307,11 +307,9 @@ no gaussian mixtures, does the master file still have to mention them?
   we have splits w/o a default, then it will have a run-time
   error if we ever get a case that doesn't match the guys in the split
 
-
 - change range error messages to indcate where the error is
   in the file, etc. where the error occurs (add an extra 
   string argument, etc.).
-
 
 - check that there are no self loops in dlink strcutres
 
@@ -321,3 +319,14 @@ no gaussian mixtures, does the master file still have to mention them?
 
 - when no-one left uses a component after vanishing,
   get rid of it (add a 'used' bit perhaps in EMable.h).
+
+- make vanishing stuff vanish w/o a trace (i.e., unused
+  component is gone).
+
+- make more conise all the warning messages about vanishing
+  (don't need to report all of them, report single summary
+   message).   
+
+- check on error check messages, arguments out of order
+  in dlink matrix message??? (check with Geoff)
+
