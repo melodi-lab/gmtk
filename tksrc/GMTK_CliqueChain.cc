@@ -126,10 +126,10 @@ void CliqueChain::backwardPass()
             li->lambda = 0.0;
     }
 
-    // compute the lambdas 
-    // non-separator clique values simply get the lambda of the separator
+    // compute the lambdas:
+    // Non-separator clique values simply get the lambda of the separator
     // clique value that is descended from them.
-    // separator clique values get the sum of the lambdas of the non-separator
+    // Separator clique values get the sum of the lambdas of the non-separator
     // clique values descended from them, multiplied by the probGivenParents
     // of those descended values. Note that this was cleverly cached on the
     // forward pass.
@@ -152,17 +152,21 @@ void CliqueChain::backwardPass()
         Clique *cl = postorder[i];
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
         {
+            // retrieve the cached probGivenParents
             logpr t = li->lambda;
+	    // update non-separator clique value
             li->lambda = li->succ->lambda;
-            li->pred->lambda += li->lambda*t;
+	    // update separator clique value
+	    li->pred->lambda += li->lambda*t;
         }
     }
 
     // now do the root, which does not do any pushing
-    cl = preorder[0];
-    if (preorder.size() > 1)
+    if (preorder.size() > 1) {
+        cl = preorder[0];
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
             li->lambda =  li->succ->lambda;
+    }
 }
 
 /*-
