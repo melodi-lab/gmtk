@@ -70,8 +70,8 @@ Mixture::read(iDataStreamFile& is)
 
   // now make sure that this one matches the number of components.
   if (numComponents != dense1DPMF->length()) {
-    error("ERROR: Mixture '%s' in file '%s', PMF named '%s' has %d elements but we need %d\n",
-	  _name.c_str(),is.fileName(),
+    error("ERROR: Mixture '%s' in file '%s' line %d, PMF named '%s' has %d elements but we need %d\n",
+	  _name.c_str(),is.fileName(),is.lineNo(),
 	  str.c_str(),dense1DPMF->length(),numComponents);
   }
 
