@@ -2340,14 +2340,15 @@ Fri Sep  3 21:21:22 2004
     in formula should check that p_k, that k is valid for current number of parents).  
 
 Mon Sep  6 11:02:55 2004
-  - get cliques of size 1 working (there is no reason they should not work as they are valid cliques). 
+  - DONE: get cliques of size 1 working (there is no reason they should not work as they are valid cliques). 
 Tue Sep  7 13:42:48 2004
   - for DOCS: include discussion about difference between observed RV and RV with no parents and
     a DT that always returns the same value, and tha tobserved is better and why.
 
-Tue Sep  7 18:14:56 2004
+DONE: Tue Sep  7 18:14:56 2004
   - bug:
   - cd ~bartels/A/word_baseline 
   - run -of1 ../DATA/testing_2.scp -nf1 39 -ni1 0 -fmt1 htk -iswp1 true -inputMasterFile PARAMS/masterFile.decoding -inputTrainable ./LEARNED_PARAMS/initial.gmp -str ./PARAMS/acoustic_decoding.str -printWordVar Word -varMap ../dictionary/word_list_2 -transitionLabel Word_Transition -island T -base 2 -ckbeam 5000 -dcdrng 0:0 -verb 50
 
-
+Sat Sep 11 14:36:36 2004
+  - gmtkTime, report performance also in number frames/second.
