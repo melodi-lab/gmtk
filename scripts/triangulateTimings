@@ -21,10 +21,7 @@ my $gmtk_triangulate = 'gmtkTriangulate';
 ##############################################################################
 # Default amount to time each triangulation 
 ##############################################################################
-my $timing_length = 60; 
-#my $timing_length = 30; 
-#my $timing_length = 3; 
-#my $timing_length = 1; 
+my $timing_length = 30; 
 
 my $initial_vpap = 'COI';
 my $initial_vcap = 'COI';
@@ -41,9 +38,9 @@ my @run_once = ( 'completed', 'elimination-heuristics',
 my @basic_iterations : shared = ( '100-', '10-', '1-' ); 
 my @basic_prefix     : shared = ( '', 'pre-edge-lo-', 'pre-edge-all-', 
   'pre-edge-random-');
-my @basic_method     : shared = ( 'MCS', 'R', 'W', 'F' );
+my @basic_method     : shared = ( 'MCS', 'R', 'W', 'F', 'S' );
 my @basic_suffix     : shared = ( '-1', '-2', '-3' );
-my $basic_suffix_threshold : shared = 2;
+my $basic_suffix_threshold : shared = 1;
 
 my $basic_iteration_index : shared = 0;
 my $basic_prefix_index    : shared = 0;
@@ -64,7 +61,7 @@ my @advanced_method     : shared = ( 'frontier', 'MCS', 'R', 'T', 'X', 'S',
   'F', 'W', 'P', 'N', 'ST', 'SF', 'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 
   'FT', 'FW', 'FTSW' );
 my @advanced_suffix     : shared = ( '-1', '-2', '-3' );
-my $advanced_suffix_threshold : shared = 5;
+my $advanced_suffix_threshold : shared = 2;
 
 my $advanced_UB_type_index   : shared = 0;
 my $advanced_iteration_index : shared = 0;
@@ -157,7 +154,7 @@ sub main
   }
   else 
   {
-    (-e $str_file) or die "***ERROR:  '$str_file' does not exist\n"; 
+    (-e $str_file) or die "***ERROR:  Stucture file '$str_file' does not exist\n"; 
   }
 
   if (!defined $timing_export_line) 
@@ -297,8 +294,8 @@ sub generate_triangulations
   my @boundary_list; 
   my @basic_methods; 
 
-  my @vpap_options : shared = ('COB', 'CDOI', 'CODI', 'DOI', 'I');
-  my @vcap_options : shared = ('COB', 'CDOI', 'CODI', 'DOI', 'I');
+  my @vpap_options : shared = ('COB', 'CDOI', 'CODI', 'DOI', 'I', 'C', 'B', 'D', 'O' );
+  my @vcap_options : shared = ('COB', 'CDOI', 'CODI', 'DOI', 'I', 'C', 'B', 'D', 'O' );
 
   ###########################################################################
   # Generate more trifiles than the timing parallelism so one is always
@@ -669,7 +666,7 @@ sub start_boundary_searches
   ############################################################################
   $boundary_job_list = "$output_directory/boundary_job_list";  
 
-  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '4hour' -noBoundaryMemoize T";
+  $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '5hour' -noBoundaryMemoize T";
 
   open JOB_LIST, ">$boundary_job_list";
 
