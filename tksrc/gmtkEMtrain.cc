@@ -117,7 +117,7 @@ int show_cliques=0;
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
 
-int bct=10, ns=3;
+int bct=750, ns=3;
 
 ARGS ARGS::Args[] = {
 
