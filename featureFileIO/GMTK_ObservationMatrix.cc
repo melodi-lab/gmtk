@@ -318,7 +318,7 @@ unsigned ObservationMatrix::checkNumSegments(StreamInfo* streams[], unsigned n_s
       error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: Streams have different # of segments (min=%d, max=%d)",min_len,max_len);
     
     if(got_truncate && got_expand)
-      error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: Cannot specify both truncate and expand actions when using streams of different lengths");
+      error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: Cannot specify both truncate and expand actions when using observation files of different lengths");
   }
 
   if(got_truncate) {
@@ -536,11 +536,11 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
     // unless we adjust the number of frames, report an error
     if (stream_no > 0 && cur_prrng_n_samps != _inStreams[stream_no-1]->getPrrngCurNumFrames()) {
       if(_actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]==FRAMEMATCH_ERROR && _actionIfDiffNumFrames[stream_no-1]==FRAMEMATCH_ERROR)) {
-	error("ObservationMatrix::checkIfSameNumSamples: Number of samples for sentence %i don't match for streams %s and %s (%li vs. %li)\n",segno,_inStreams[stream_no-1]->fofName,s->fofName,_inStreams[stream_no-1]->getPrrngCurNumFrames(),cur_prrng_n_samps);
+	error("ERROR: The number of frames for segment %i is not the same for observation files '%s' and '%s' (%li vs. %li).  Use the -fdiff option.\n",segno,_inStreams[stream_no-1]->fofName,s->fofName,_inStreams[stream_no-1]->getPrrngCurNumFrames(),cur_prrng_n_samps);
       }
       else {
 	if(gotATruncate && gotAnExpand)
-	  error("ObservationMatrix: Cannot specify both truncate AND expand actions for when the number of frames is different\n");
+	  error("ERROR: Cannot specify both truncate AND expand actions for when the number of frames in the observation files is different.  Check the supplied and default -fdiff options.\n");
 	sameNumSamples=false;
       }
     }
@@ -565,10 +565,10 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
     s = _inStreams[stream_no];
     if(gotAnExpand && s->getPrrngCurNumFrames() < prrng_max_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_REPEAT_FIRST && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_REPEAT_LAST && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_EXPAND_SEGMENTALLY))  ) {
-      error("ERROR: Stream no %d does not have expand action associated with it and its number of frames, %d, is less than the maximum, %d, across streams",stream_no,s->getPrrngCurNumFrames(),prrng_max_num_samples);
+      error("ERROR: Observation file '%s' does not have an expand action associated with it and its number of frames, %d, is less than the maximum, %d, across streams",_inStreams[stream_no-1]->fofName,s->getPrrngCurNumFrames(),prrng_max_num_samples);
     }
     if(gotATruncate && s->getPrrngCurNumFrames() > prrng_min_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_TRUNCATE_FROM_START && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_TRUNCATE_FROM_END))) { 
-      error("ERROR: Stream no %d does not have truncate action associated with it and its number of frames, %d, is larger than the minimum, %d, across streams",stream_no,s->getPrrngCurNumFrames(),prrng_min_num_samples);
+      error("ERROR: Observation file '%s' does not have a truncate action associated with it and its number of frames, %d, is larger than the minimum, %d, across streams",_inStreams[stream_no-1]->fofName,s->getPrrngCurNumFrames(),prrng_min_num_samples);
     }
   }
 
@@ -592,7 +592,7 @@ unsigned ObservationMatrix::numFrames(unsigned segno) {
 
   // maybe move this to the end after potential upsampling takes place
   if (_totalSkip >= prrng_n_samps)
-    error("ERROR: number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
+    error("ERROR: The number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
   
   num_frames = prrng_n_samps - _totalSkip;
 
@@ -618,7 +618,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
 
   // maybe move this to the end after potential upsampling takes place
   if (_totalSkip >= prrng_n_samps)
-    error("ERROR: number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
+    error("ERROR: The number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
   
 
   /////////////////////////////////////////////
@@ -785,7 +785,7 @@ double conv2double(char* str, unsigned& len, char delimiter,bool conv2int=false)
   while(*str_ptr!='_' && *str_ptr!='\0') { 
     new_str[i]=*str_ptr; str_ptr++; i++;
     if(i>=NUMBER_STRING_MAX_LEN) 
-      error("ERROR: Number string too long while converting to float\n");
+      error("ERROR: While reading observation files, a number string was too long while converting to float\n");
   }
   
   new_str[i]='\0';
@@ -840,7 +840,7 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     //DBGFPRINTF((stderr,"trans_str=%s\n",trans_str));
     magic_double=conv2double(trans_str,len,'_');
     if(len==0) 
-      error("ERROR: parseTransform: Need to supply multiplicative factor with 'M' transformation.\n");
+      error("ERROR: In parsing tranforms: Need to supply multiplicative factor with the 'M' transformation.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return MULTIPLY;
@@ -849,7 +849,7 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     // get offset
     magic_double=conv2double(trans_str,len,'_');
     if(len==0) 
-      error("ERROR: parseTransform: Need to supply offset with 'O' transformation.\n");
+      error("ERROR: In parsing tranforms: Need to supply offset with 'O' transformation.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return OFFSET;
@@ -866,7 +866,7 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     ++trans_str;
     magic_double=conv2double(trans_str,len,'_');
     if(len==0) 
-      error("ERROR: parseTransform: Need to supply upsampling factor with 'UH' or 'US' transformations.\n");
+      error("ERROR: In parsing tranforms: Need to supply upsampling factor with 'UH' or 'US' transformations.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return return_val;
@@ -876,7 +876,7 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     // get order of ARMA filter
     magic_int=(int)conv2double(trans_str,len,'_',true); // conv2int is true
     if(len==0) 
-      error("ERROR: parseTransform: Need to supply order of arma filter with 'R' transformation.\n");
+      error("ERROR: In parsing tranforms: Need to supply order of arma filter with 'R' transformation.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str; 
     return ARMA;
@@ -892,10 +892,13 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
 	tmpString[i++]=*trans_str;
 	++trans_str;
       } 
+      tmpString[i]='\0';
+      DBGFPRINTF((stderr,"Read filter file name '%s'\n",tmpString));
       unsigned tmpStringLen=strlen(tmpString);
-      if(tmpStringLen==0) error("ERROR: parseTransform: no filter file name specified\n");
+      if(tmpStringLen==0) error("ERROR: In parsing tranforms: no filter file name specified\n");
       _filterFileName=new char[tmpStringLen];
       strcpy(_filterFileName,tmpString);
+      if(*trans_str=='_') ++trans_str; 
     }
     else if(*trans_str=='_') ++trans_str;
     
@@ -905,7 +908,7 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     if(*trans_str=='_') ++trans_str; 
     return NONE;
   default:
-    error("ERROR: parseTransform: Unrecognized transformation substring (%s)\n",trans_str);
+    error("ERROR: In parsing tranforms: Unrecognized transformation substring (%s)\n",trans_str);
     //DBGFPRINTF((stderr,"In parseTransform: Unrecognized transform @ trans_str=%s\n",trans_str));
     //return UNRECOGNIZED_TRANSFORM;
     
@@ -958,7 +961,7 @@ void ObservationMatrix::applyTransforms(char* trans_str, unsigned num_floats, un
       multiply(_tmpFloatSenBuffer.ptr,num_floats,num_floats,num_frames,magic_double);
       break;
     case ARMA:
-      if((unsigned) magic_int > num_frames/2) error("ERROR: applyTransformation: ARMA filter order (%d) has to be less than half the number of frames (%d).",magic_int, num_frames);
+      if((unsigned) magic_int > num_frames/2) error("ERROR: In applying tranforms: ARMA filter order (%d) has to be less than half the number of frames (%d).",magic_int, num_frames);
       arma(_tmpFloatSenBuffer.ptr,num_floats,num_floats,num_frames,magic_int);
       break;
     case FILTER:
@@ -1154,9 +1157,9 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
 	copy_swap_func_ptr(1,(const int *) &float_buf[*it+(*pr_it)*num_floats], (int *)float_buf_ptr++);
 	if(!finite(*(float_buf_ptr-1))) {
 #ifdef WARNING_ON_NAN
-	  warning("WARNING: ObservationMatrix::copyToFinalBuffer: found NaN or +/-INF at %i'th float in frame %i, sentence %i  and stream %i\n",*it,*pr_it,_segmentNumber,stream_no);
+	  warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, sentence %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #else
-	  error("ERROR: ObservationMatrix::copyToFinalBuffer: found NaN or +/-INF at %i'th float in frame %i, sentence %i and stream %i\n",*it,*pr_it,_segmentNumber,stream_no);
+	  error("ERROR: Found NaN or +/-INF at %i'th float in frame %i, segment %i and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #endif
 	}
       }
