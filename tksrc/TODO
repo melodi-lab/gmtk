@@ -2628,10 +2628,11 @@ Fri Dec 31 01:54:39 2004
 Fri Dec 31 22:03:17 2004
   - iterate unassigned nodes, should iterate in order of increasing cardinality.
 
+
 Fri Dec 31 22:21:42 2004
   - change names of P1, Co, and E1 to P', C', and E' (or somethign).
-  - have one global place for their names and use everywhere (rather than
-    multiple strings).
+  - DONE: have one global place for their names and use everywhere (rather than
+          multiple strings).
 
 
 Sat Jan  1 23:07:03 2005
@@ -2642,5 +2643,15 @@ Sat Jan  1 23:07:03 2005
      or write out indivual parameters separately and then read back in jointly.
 
 Fri Jan  7 21:32:19 2005
-  - add verbose messages to parameter reading (to give status updates on reading
-    on long parameters).  
+  - DONE: add verbose messages to parameter reading (to give status updates on reading
+         on long parameters).  
+
+Fri Jan 14 17:52:24 2005
+  - system speedups
+      - hash tables
+      - diagGAussian:log_p
+      - remove sArray operator [] when possible
+      - logp log add operations
+      - PackCliqueValue, pack and unpack
+      - ceIterateAssignedNodesNoRecurse
+      - 

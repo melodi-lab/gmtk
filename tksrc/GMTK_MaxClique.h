@@ -523,7 +523,7 @@ public:
     AN_COMPUTE_AND_APPLY_PROB=3,
 
     //
-    // 4) 
+    // 4)
     //   A) v is in sepNodes, v is not a probability node, v either
     //   sparse or dense, but v *WAS* assigned in some previous JT
     //   clique. In this case, we just continue on since we know at

@@ -559,7 +559,12 @@ Mixture::emEndIteration()
     logpr mixCoeffSplitThreshold =
       logpr(mixCoeffSplitRatio)/logpr((double)numComponents);
 
-    assert ( mixCoeffVanishThreshold < mixCoeffSplitThreshold );
+    // assert ( mixCoeffVanishThreshold < mixCoeffSplitThreshold );
+    if (mixCoeffVanishThreshold >= mixCoeffSplitThreshold ) {
+      infoMsg(IM::Warning,"WARNING: mixture coef. vanish ratio = %f & splitting ratio = %f, but with %d components in mixture '%s', this leads not to a lesser vanishing threshold (ln=%f) than splitting threshold (ln=%f). Doing no splitting/vanishing.",mixCoeffVanishRatio,mixCoeffSplitRatio,numComponents,name().c_str(),mixCoeffVanishThreshold.valref(),mixCoeffSplitThreshold.valref());
+      // do no splitting vanishing.
+      goto doneWithSplittingVanishing;
+    }
 
     unsigned numVanishedSoFar = 0;
     unsigned numSplitSoFar = 0;
@@ -668,6 +673,8 @@ Mixture::emEndIteration()
       }
     }
   }
+
+ doneWithSplittingVanishing:
 
   // finally end the components iteration.
   for (unsigned i=0;i<numComponents;i++) {
