@@ -699,6 +699,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     menu_view->Append(MENU_VIEW_DIRECT_LINES, wxT("Draw Direct Lines"), wxT("Toggle display of direct straight lines for arcs"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_FRAME_SEPS, wxT("Draw Frame Separators"), wxT("Toggle display of frame separators"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_NODE_NAMES, wxT("Draw Node Names"), wxT("Toggle display of node names"), wxITEM_CHECK);
+    menu_view->Append(MENU_VIEW_FRAME_NAMES, wxT("Draw Frame Names"), wxT("Toggle display of frame names"), wxITEM_CHECK);
     // XXX: menu_view->Append(MENU_VIEW_TOOLTIPS, wxT("Draw Tool Tips"), wxT("Toggle display of tool tips for node names"), wxITEM_CHECK);
     MainVizWindow_menubar->Append(menu_view, wxT("View"));
     // Doesn't make sense unless a document is active, so disable it for now.
@@ -3408,8 +3409,8 @@ StructPage::snapSelectedToGrid( void )
 	if ( frameNameTags[i]->getSelected()
 	     && inBounds( frameNameTags[i]->pos.x + dx,
 			  frameNameTags[i]->pos.y + dy ) ) {
-	    if ( !crossesFrameEnd( frameNameTags[i]->pos.x,
-				   frameNameTags[i]->pos.x + dx ) )
+	    if ( !crossesFrameEnd( frameNameTags[i]->pos.x + NODE_RADIUS,
+				   frameNameTags[i]->pos.x + NODE_RADIUS+dx ) )
 		frameNameTags[i]->pos.x += dx;
 	    frameNameTags[i]->pos.y += dy;
 	}
@@ -3425,8 +3426,8 @@ StructPage::snapSelectedToGrid( void )
 	if ( nodeNameTags[i]->getSelected()
 	     && inBounds( nodeNameTags[i]->pos.x + dx,
 			  nodeNameTags[i]->pos.y + dy ) ) {
-	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x,
-				   nodeNameTags[i]->pos.x + dx ) )
+	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
+				   nodeNameTags[i]->pos.x + NODE_RADIUS+dx ) )
 		nodeNameTags[i]->pos.x += dx;
 	    nodeNameTags[i]->pos.y += dy;
 	}
