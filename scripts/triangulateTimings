@@ -190,6 +190,16 @@ sub main
 
   @input_triangulations = @ARGV;
 
+  my $input_triangulation;
+  foreach $input_triangulation (@input_triangulations)
+  {
+    if (! -e $input_triangulation)
+    {
+      pod2usage(-message=>"${error_message}Input triangulation '$input_triangulation' does not exist\n", -verbose=>0 );
+    }
+  }
+
+
   ##########################################################################
   # Process command line parameters
   ##########################################################################
