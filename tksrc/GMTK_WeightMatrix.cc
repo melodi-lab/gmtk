@@ -120,6 +120,7 @@ RealMatrix::write(oDataStreamFile& os)
 
   for (int i=0;i<_rows*_cols;i++) {
     os.write(weights[i],"RealMatrix::write, writeing value");
+    if (i 
   }
 }
 
