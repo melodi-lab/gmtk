@@ -52,6 +52,12 @@ public:
   SwContRV() {}
   ~SwContRV() {}
 
+  ////////////////////////////////////////////////////////////////////////
+  // Ties the parameters of 'this' with whatever those of 'other' are. 
+  void tieParametersWith(SwContRV* other) {
+    SwRV::tieParametersWith(other);
+  }
+
 };
 
 #endif

@@ -1742,7 +1742,7 @@ FileParser::createRandomVariableGraph()
       // discrete
       if (rvInfoVector[i].rvDisp == RVInfo::d_hidden) {
 	// discrete hidden
-	if (rvInfoVector[i].conditionalParents.size() > 0) {
+	if (rvInfoVector[i].conditionalParents.size() > 1) {
 	  // discrete hidden switching
 	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
 	    // discrete hidden switching weighted
@@ -1763,7 +1763,7 @@ FileParser::createRandomVariableGraph()
 	}
       } else {
 	// discrete observed
-	if (rvInfoVector[i].conditionalParents.size() > 0) {
+	if (rvInfoVector[i].conditionalParents.size() > 1) {
 	  // discrete observed switching
 	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
 	    // discrete observed switching weighted
@@ -1791,7 +1791,7 @@ FileParser::createRandomVariableGraph()
 	rv = NULL; // suppress compiler warning.
       } else {
 	// continuous observed
-	if (rvInfoVector[i].conditionalParents.size() > 0) {
+	if (rvInfoVector[i].conditionalParents.size() > 1) {
 	  // continuous observed switching
 	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
 	    // continuous observed switching weighted
@@ -1813,6 +1813,7 @@ FileParser::createRandomVariableGraph()
       }
     }
     rvInfoVector[i].rv = rv;    
+    // rv->printSelf(stdout,true);
   }
   // now set up all the parents of each random variable.
   for (unsigned i=0;i<rvInfoVector.size();i++) {
@@ -2519,10 +2520,14 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	(
 	 rvInfoVector[i].conditionalParents.size()
 	 );
+      // set the current one to position 0. This will for for
+      // non-switching variables, and switching variables will modify
+      // it as appropriate.
+      rv->curMappingOrDirect = &rv->conditionalMixtures[0];
       for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
 
-	// TODO:: implement the other continuous implementations
-	// and allow the other cases here.
+	// TODO:: implement the other continuous implementations and
+	// allow the other cases here.
 	if (rvInfoVector[i].contImplementations[j] !=
 	    MixtureCommon::ci_mixture) {
 	  error("ERROR: Only supports mixture implementations for now");

@@ -86,6 +86,7 @@ ContRV* ContRV::cloneRVShell()
 {
   ContRV*rv = (ContRV*)RV::cloneRVShell();
   rv->conditionalMixtures = conditionalMixtures;
+  rv->curMappingOrDirect = &rv->conditionalMixtures[0];
   return rv;
 }
 
