@@ -71,7 +71,7 @@ char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
 char  *prepr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
 // per stream frame range string after per-stream transformations are applied
 char *postpr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
-
+char *gpr_str                   = NULL;   // global final frame range string
 
 /////////////////////////////////////////////////////////////
 // input parameter/structure file handling
@@ -175,7 +175,7 @@ Arg Arg::Args[] = {
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("prepr", Arg::Opt, prepr,"Frame range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("postpr",Arg::Opt, postpr,"Frame range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-
+  Arg("gpr",   Arg::Opt, gpr_str,"Global final frame range"),
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
@@ -461,7 +461,8 @@ main(int argc,char*argv[])
 				    Post_Transforms,
 				    Ftr_Combo,
 				    (const char**)&sr,
-				    (const char**)&prepr
+				    (const char**)&prepr,
+				    gpr_str
 				    );
 
 
