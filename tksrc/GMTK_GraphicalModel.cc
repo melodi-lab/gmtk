@@ -472,6 +472,7 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
   //    D: discrete, observed, deterministic
   //    O: observed
   //    B: binary
+  //    S: switching
   //    I: ever increasing cardinality of variables.
   //    A: alphabetical (for debugging purposes)
   //    F: by frame number (for debugging purposes)
@@ -512,6 +513,44 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 	RV* rv = (*it);
 	if (!(rv->discrete() && RV2DRV(rv)->deterministic() && !rv->hidden()))
 	  continue;
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
+	    return false;
+      }
+
+    } else if (curCase == 'S') {
+
+      // Do a pass for switching parents, namely variables whose children
+      // use these as switching parents. These must be discrete
+      // at the moment.
+
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RV* rv = (*it);
+	if (!rv->discrete() || rv->allChildren.size() == 0)
+	  continue;
+	// ok, so discrete, but is it used as a switching parent by at
+	// least one of its children?
+
+	bool sw_parent = false;
+	for (unsigned c=0;c<rv->allChildren.size();c++) {
+	  RV* chld = rv->allChildren[c];
+	  if (chld->switching()) {
+	    for (unsigned p=0;p<chld->switchingParentsVec().size();p++) {
+	      if (chld->switchingParentsVec()[p] == rv) {
+		sw_parent = true;
+		goto foundSwParent;
+	      }
+	    }
+	  }
+	}
+      foundSwParent:
+	
+	if (!sw_parent)
+	  continue;
+
 	if (tag[rv] == 0)
 	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
 						      outputVarList,
