@@ -27,9 +27,15 @@
 */
 
 /*-
- * gmtkViterbi.cc
- *     Get the viterbi instantiation for each example in a data set 
- */
+ * gmtkSample.cc
+ * Draws samples from a fully trained network.
+ * The input may include an observation file that contains user-specified
+ * values for some variables. 
+ * (e.g. if a specific alignment is to be maintained.)
+ * Values are assigned to the hidden variables.
+ * The fully instantiated network is dumped in binary to a file.
+ * A list of output filenames is supplied on the command line.
+*/
 
 #include <math.h>
 #include <stdlib.h>
@@ -70,7 +76,6 @@ VCID("$Header$");
 
 // the file of observation
 
-float beam=1000;
 char *strFileName;
 char *prmMasterFile=NULL;
 char *prmTrainableFile=NULL;
@@ -91,15 +96,15 @@ bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
 int startSkip = 0;
 int endSkip = 0;
-char *dcdrng_str="all";
-
-double varFloor = 1e-10;
-
-bool show_cliques=false;
+char *samplerng_str="all";
 
 char *argsFile = NULL;
 char *cppCommandOptions = NULL;
 
+char *ofilelist = NULL;
+char *dumpNames = NULL;
+
+double varFloor = 1e-10;
 
 ARGS ARGS::Args[] = {
 
@@ -134,20 +139,15 @@ ARGS ARGS::Args[] = {
   ARGS("cppCommandOptions",ARGS::Opt,cppCommandOptions,"Command line options to give to cpp"),
 
 
-  ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
-  ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
-       "Floor the variances to varFloor when they are read in"),
-  ARGS("dcdrng",ARGS::Opt,dcdrng_str,"Range to decode over segment file"),
-
-  ARGS("beam",ARGS::Opt,beam,"Pruning Ratio, values less than this*max are pruned"),
+  ARGS("samplerng",ARGS::Opt,samplerng_str,"Range to decode over segment file"),
 
   ARGS("startSkip",ARGS::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
   ARGS("endSkip",ARGS::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
-  ARGS("cptNormThreshold",ARGS::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
-  ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
 
   ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
 
+  ARGS("dumpNames",ARGS::Req,dumpNames,"File containing the names of the variables to save to a file"),
+  ARGS("ofilelist",ARGS::Req,ofilelist,"List of filenames to dump the hidden variable values to"),
   ARGS()
 
 };
@@ -204,15 +204,12 @@ main(int argc,char*argv[])
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
-  if (beam < 0.0)
-    error("beam must be >= 0");
   if (startSkip < 0 || endSkip < 0)
     error("startSkip/endSkip must be >= 0");
 
   ////////////////////////////////////////////
   // set global variables/change global state from args
   GaussianComponent::setVarianceFloor(varFloor);
-
 
   /////////////////////////////////////////////
   // read in all the parameters
@@ -249,33 +246,90 @@ main(int argc,char*argv[])
   GMTK_GM gm;
   fp.addVariablesToGM(gm);
 
-  gm.setExampleStream(obsFileName,dcdrng_str);
+  gm.setExampleStream(obsFileName,samplerng_str);
 
   gm.verifyTopologicalOrder();
 
-  gm.GM2CliqueChain();
-  if (show_cliques)
+  gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
+  gm.unrollCliqueChain = false;  // only going to unroll the model itself
+
+  set<string> dumpVars;
+  map<string,int> posFor;
+  int ndv=0;
+  if (dumpNames)
   {
-    cout << "The cliques in the template network are:\n";
-    gm.showCliques();
+      ifstream din(dumpNames);
+      if (!din) {cout << "Unable to open " << dumpNames << endl; exit(1);}
+      string s;
+      while (!din.eof())
+      {
+          din >> s >> ws;
+          dumpVars.insert(s);
+          posFor[s] = ndv++;  // which position within a frame to put it
+      }
+      din.close();
   }
 
-  gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
+  vector<string> ofiles;
+  if (ofilelist)
+  {
+      ifstream oin(ofilelist);
+      if (!oin) {cout << "Unable to open " << ofilelist << endl; exit(1);}
+      string s;
+      while (!oin.eof())
+      {
+          oin >> s >> ws;
+          ofiles.push_back(s);
+      }
+      oin.close();
+  }
 
   // and away we go
+  int ne = 0;
   gm.clampFirstExample();
   do {
-
     if (globalObservationMatrix.active()) 
     {
         globalObservationMatrix.printSegmentInfo();
         ::fflush(stdout);
     }
 
-    logpr pruneRatio;
-    pruneRatio.valref() = -beam;
-    gm.chain->computePosteriors(pruneRatio);
-    cout << "Data prob: " << gm.chain->dataProb.val() << endl;
+    gm.simulate();
+    
+    // open up the output file
+    if (ne==int(ofiles.size())) error("More utterances than output files");
+    FILE *fp = fopen(ofiles[ne++].c_str(), "wb");
+    if (!fp) {cout << "Unable to open " << ofiles[ne-1] << endl; exit(1);}
+
+    // get ready to reorder the clamped values as desired
+    map<int, void *> vals;
+
+    // collect up the variable values
+    map<void *, int> dimsfor;
+    map<void *, int> sizefor;
+
+    int nv=0;
+    for (int i=0; i<int(gm.node.size()); i++)
+        if (dumpVars.count(gm.node[i]->label))
+        {
+            int p = gm.node[i]->timeIndex*dumpVars.size()
+                    + posFor[gm.node[i]->label];
+            assert(p<int(gm.node.size()));
+            vals[p] = (gm.node[i]->discrete) ?
+                      ((void *)(&(gm.node[i]->val))) : 
+                      (((ContinuousRandomVariable *)gm.node[i])->fval());
+            dimsfor[vals[p]] = 
+              (gm.node[i]->discrete) ? 
+              (1) : 
+              (((ContinuousRandomVariable *)gm.node[i])->dimensionality());
+
+             sizefor[vals[p]] = (gm.node[i]->discrete) ?
+             (sizeof(RandomVariable::DiscreteVariableType)) : sizeof(float);
+            nv++;
+        }
+    for (int i=0; i<nv; i++)
+        fwrite(vals[i], sizefor[vals[i]], dimsfor[vals[i]], fp);
+    fclose(fp);
   } while (gm.clampNextExample());
 
   exit_program_with_status(0);
