@@ -79,7 +79,6 @@ public:
   // TODO: change the name of this from rvParent to something like rvID (since
   // this isn't nec. a parent, but a general ID of a random variable).
   typedef pair<string,int> rvParent;
-private:
 
   ////////////////////////////////////////////////////////////
   // define a bunch of types that are used in RVs
@@ -149,6 +148,7 @@ private:
     void clear() { liType = li_Unknown; }
   };
 
+private:
 
   // A hint given to the triangulation algorithm.
   // this is something that can be specified in the structure
@@ -219,6 +219,46 @@ public:
   // constructor
   RVInfo() { clear(); }
 
+  // copy constructor
+  RVInfo(
+    float        new_eliminationOrderHint,
+    int          new_variablePositionInStrFile,
+    unsigned     new_frame,
+    unsigned     new_fileLineNumber,
+    string       new_rvFileName,
+    string       new_name,
+    Type         new_rvType,
+    Disposition  new_rvDisp,
+    unsigned     new_rvCard,
+    FeatureRange new_rvFeatureRange,
+    RV*          new_rv,
+    ListIndex    new_switchMapping,
+    vector< rvParent >          new_switchingParents,
+    vector<vector< rvParent > > new_conditionalParents,
+    vector< CPT::DiscreteImplementaton > new_discImplementations,
+    vector< MixtureCommon::ContinuousImplementation > new_contImplementations,
+    vector< ListIndex > new_listIndices,
+    vector <WeightInfo> new_rvWeightInfo
+  ) :
+  eliminationOrderHint( new_eliminationOrderHint ), 
+  variablePositionInStrFile( new_variablePositionInStrFile ), 
+  frame( new_frame ),
+  fileLineNumber( new_fileLineNumber ),
+  rvFileName( new_rvFileName ), 
+  name( new_name ), 
+  rvType( new_rvType ), 
+  rvDisp( new_rvDisp ), 
+  rvCard( new_rvCard ), 
+  rvFeatureRange( new_rvFeatureRange ), 
+  switchingParents( new_switchingParents ), 
+  switchMapping( new_switchMapping ), 
+  conditionalParents( new_conditionalParents ), 
+  discImplementations( new_discImplementations ), 
+  contImplementations( new_contImplementations ), 
+  listIndices( new_listIndices ), 
+  rvWeightInfo( new_rvWeightInfo ), 
+  rv( new_rv )
+  { return; }; 
 
   // copy constructor
   RVInfo(const RVInfo&v) {
