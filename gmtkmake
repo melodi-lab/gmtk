@@ -10,7 +10,7 @@ set -e
 set -x
 
 remakedepends() {
-  rm depends.make
+  rm -f depends.make
   touch depends.make
   make depends
 }
@@ -35,8 +35,10 @@ if [ "$ARCH" = "ibm" ]; then
 OF='-O3 -Wl,-bmaxdata:0x80000000'
 
 cd IEEEFloatingpoint
+rm -f depends.make
+touch depends.make
 make $ARCH
-remakedepends
+make depends
 make clean
 make OPTFLAGS="$OF"
 cd ..
@@ -48,12 +50,6 @@ make clean
 make OPTFLAGS="$OF"
 cd ..
 
-
-cd lowLevelFileIO
-remakedepends
-make clean
-make OPTFLAGS="$OF"
-cd ..
 
 
 cd miscSupport
@@ -86,8 +82,10 @@ OF='-g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse'
 
 
 cd IEEEFloatingpoint
+rm -f depends.make
+touch depends.make
 make $ARCH
-remakedepends
+make depends
 make clean
 make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
 cd ..
@@ -100,11 +98,6 @@ make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
 cd ..
 
 
-cd lowLevelFileIO
-remakedepends
-make clean
-make  CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS OPTFLAGS="$OF"
-cd ..
 
 
 cd miscSupport
@@ -137,8 +130,10 @@ EXLDFLAGS=-static
 
 
 cd IEEEFloatingpoint
+rm -f depends.make
+touch depends.make
 make $ARCH
-remakedepends
+make depends
 make clean
 make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
@@ -150,12 +145,6 @@ make clean
 make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
-
-cd lowLevelFileIO
-remakedepends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
-cd ..
 
 
 cd miscSupport
@@ -186,21 +175,16 @@ GPP=g++
 EXLDFLAGS=-static
 
 cd IEEEFloatingpoint
+rm -f depends.make
+touch depends.make
 make $ARCH
-remakedepends
+make depends
 make clean
 make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
 cd ..
 
 
 cd featureFileIO
-remakedepends
-make clean
-make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
-cd ..
-
-
-cd lowLevelFileIO
 remakedepends
 make clean
 make CC=$GCC CXX=$GPP EXLDFLAGS=$EXLDFLAGS
