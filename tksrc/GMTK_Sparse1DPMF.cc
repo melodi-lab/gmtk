@@ -306,6 +306,12 @@ Sparse1DPMF::emStartIteration()
 
   accumulatedProbability = 0.0;  
 
+  if (dense1DPMF->length() != (unsigned)length()) {
+    error("ERROR: Sparse PMF '%s' with '%d' possible values is trying to start an EM iteration using a dense PMF '%s' of length '%d'\n",
+	  name().c_str(),length(),dense1DPMF->name().c_str(),
+	  dense1DPMF->length());
+  }
+
   dense1DPMF->emStartIteration();
 
 }
