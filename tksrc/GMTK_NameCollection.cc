@@ -85,14 +85,14 @@ NameCollection::read(iDataStreamFile& is)
 
   NamedObject::read(is);
   int length;
-  is.read(length,"NameCollection::read length");
+  is.read(length,"Can't read NameCollection's length");
 
   if (length <= 0) 
-    error("ERROR: reading file '%s', NameCollection '%s', must have positive number of entries.",
-	  is.fileName(),name().c_str(),length);
+    error("ERROR: reading file '%s' line %d, NameCollection '%s', must have positive number of entries.",
+	  is.fileName(),is.lineNo(),name().c_str(),length);
   table.resize(length);
   for (int i=0;i<length;i++) {
-    is.read(table[i],"Collection::read table entry");
+    is.read(table[i],"Can't read NameCollection's table entry");
   }
 }
 

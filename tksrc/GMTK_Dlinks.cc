@@ -96,7 +96,7 @@ Dlinks::read(iDataStreamFile& is)
 {
   NamedObject::read(is);
   int nFeats;
-  is.read(nFeats,"Dlinks::read, num feats");
+  is.read(nFeats,"Can't read Dlinks's num feats");
   if (nFeats <= 0)
     error("Dlinks::read, read num feats (%d) < 0 in input",nFeats);
 
@@ -106,7 +106,7 @@ Dlinks::read(iDataStreamFile& is)
   _maxLag = -1000000;
   for (int i=0;i<nFeats;i++) {
     int nLinks;
-    is.read(nLinks,"Dlinks::read, nLinks");
+    is.read(nLinks,"Can't read Dlinks's num links");
 
     // Note we explicitely allow for there to be 0 links here.
     // If so, the array size will be set to have zero length.
@@ -117,14 +117,14 @@ Dlinks::read(iDataStreamFile& is)
     for (int j=0;j<nLinks;j++) {
       int l,o;
       // lags can be pos or negative
-      is.read(l,"Dlinks::read, lag");      
+      is.read(l,"Cant' read Dlinks's lag value");
       if (l < _minLag)
 	_minLag = l;
       if (l > _maxLag)
 	_maxLag = l;
 
       // offsets must be >= 0
-      is.read(o,"Dlinks::read, offset");
+      is.read(o,"Can't read Dlinks's offset");
       if (o < 0)
 	error("Dlinks::read, read offset (%d) < 0 in input",o);
       if (o < _globalMinOffset)

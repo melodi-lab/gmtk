@@ -39,9 +39,9 @@
 VCID("$Header$");
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
@@ -530,6 +530,10 @@ main(int argc,char*argv[])
     logpr probe;
     if (island) {
       warning("WARNING:: Island algorithm for decoding not yet debugged (but almost). Use at your own risk!!\n");
+      if (MixtureCommon::cacheMixtureProbabilities == true) {
+	infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
+	fflush(stdout);
+      }
       unsigned numUsableFrames;
       myjt.collectDistributeIsland(numFrames,
 				   numUsableFrames,
@@ -584,14 +588,14 @@ main(int argc,char*argv[])
         for (int i=0; i<int(myjt.curNodes().size()); i++) vals[i] = -1;
         int nv=0;
         for (int i=0; i<int(myjt.curNodes().size()); i++)
-            if (dumpVars.count(myjt.curNodes()[i]->label)) 
+            if (dumpVars.count(myjt.curNodes()[i]->name())) 
             {
-                if (!myjt.curNodes()[i]->discrete || !myjt.curNodes()[i]->hidden) 
+                if (!myjt.curNodes()[i]->discrete() || !myjt.curNodes()[i]->hidden()) 
                     error("variables to dump must be discrete and hidden");
-                int p = myjt.curNodes()[i]->timeIndex*dumpVars.size() 
-                        + posFor[myjt.curNodes()[i]->label];
+                int p = myjt.curNodes()[i]->frame()*dumpVars.size() 
+                        + posFor[myjt.curNodes()[i]->name()];
                 assert(p<int(myjt.curNodes().size()));
-                vals[p] = myjt.curNodes()[i]->val; 
+                vals[p] = RV2DRV(myjt.curNodes()[i])->val; 
                 nv++;
             }
         fwrite((void *) vals, sizeof(int), nv, fp); 
@@ -608,23 +612,25 @@ main(int argc,char*argv[])
       string tl = string(transitionLabel);
       for (int i=0, lv=-1, lf=0; i<int(myjt.curNodes().size()); i++)
       {
-        if (myjt.curNodes()[i]->label == pvn)
+        if (myjt.curNodes()[i]->name() == pvn)
         {
-          if (!myjt.curNodes()[i]->discrete) 
+          if (!myjt.curNodes()[i]->discrete()) 
             error("Can only print Viterbi values for discrete variables");
-          if (myjt.curNodes()[i]->cardinality != int(word_map.size()))
-            error("Word-val to string map file size %d does not match the number of words %d.",int(word_map.size()),myjt.curNodes()[i]->cardinality);
-          lv = myjt.curNodes()[i]->val;
+          if (RV2DRV(myjt.curNodes()[i])->cardinality != word_map.size())
+            error("Word-val to string map file size %d does not match the number of words %d.",int(word_map.size()),RV2DRV(myjt.curNodes()[i])->cardinality);
+          lv = RV2DRV(myjt.curNodes()[i])->val;
         }
-        else if (myjt.curNodes()[i]->label==tl)
+        else if (myjt.curNodes()[i]->name()==tl)
         {
-          if (myjt.curNodes()[i]->cardinality != 2) 
+          if (!myjt.curNodes()[i]->discrete()) 
+            error("Word transition variable should be discrete");
+          if (RV2DRV(myjt.curNodes()[i])->cardinality != 2) 
             error("Word transition variable should have two values");
-          if (myjt.curNodes()[i]->val==1)  // a word transition
+          if (RV2DRV(myjt.curNodes()[i])->val==1)  // a word transition
           {
             cout << word_map[lv] << " (" << lf << "-" 
-                 << myjt.curNodes()[i]->timeIndex << ")\n" << flush;  
-            lf = myjt.curNodes()[i]->timeIndex+1;
+                 << myjt.curNodes()[i]->frame() << ")\n" << flush;  
+            lf = myjt.curNodes()[i]->frame()+1;
           }
         }
       }

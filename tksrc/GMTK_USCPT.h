@@ -31,8 +31,7 @@
 
 #include "GMTK_MDCPT.h"
 #include "GMTK_EMable.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_NamedObject.h"
 
 
@@ -64,75 +63,22 @@ public:
   void setNumCardinality(const int var, const int card) {}
   void allocateBasicInternalStructures() {}
 
-  //////////////////////////////////
-  // various forms of probability calculation
-  void becomeAwareOfParentValues( vector <int>& parentValues,
-    vector <int>& cards) 
+  ///////////////////////////////////////////////////////////  
+  // Probability evaluation, compute Pr( child | parents ), and
+  // iterator support.  See GMTK_CPT.h for documentation.
+  void becomeAwareOfParentValues( vector <RV *>& parents, const RV* rv ) 
   { /* a USCPT has no parents so do nothing */ }
-  void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) 
-  { /* a USCPT has no parents so do nothing */ }
-
-
-  logpr probGivenParents(DiscreteRandomVariable* drv) {
-    logpr val((void*)NULL);
-    val.set_to_one();
-    return val; 
-  }
-
-  logpr probGivenParents(vector <RandomVariable *>& parents,
-			 DiscreteRandomVariable* drv) {
-    logpr val((void*)NULL);
-    val.set_to_one();
-    return val; 
-  }
-
-  logpr probGivenParents(vector <int>& parentValues, 
-			 vector <int>& cards, 
-			 const int _val) {
-    logpr val((void*)NULL);
-    val.set_to_one();
-    return val; 
-  }
-
-
-
-  // returns an iterator for the first one that is not zero prob.
-  iterator begin(DiscreteRandomVariable* drv) {
-    // this routine should never be called for this object, since the
-    // variable is always observed.
-    assert ( 0 );
-    // include code to keep compiler happy
-    iterator it(this);
-    it.drv = drv;
-    return it;
-  }
-
-  // returns an iterator for the first one that is not zero prob.
-  void begin(iterator& it,DiscreteRandomVariable* drv) {
-    // this routine should never be called for this object, since the variable
-    // is always observed.
-    assert ( 0 );
-    // include code to keep compiler happy
-    it.drv = drv;
-    it.setCPT(this);
-  }
-  void begin(iterator& it,DiscreteRandomVariable* drv,logpr* p) {
+  void begin(iterator& it,DiscRV* drv,logpr* p) {
     // this routine should never be called for this object, since the variable
     // is always observed.
     assert ( 0 );
     // include code to keep compiler happy
     it.setCPT(this);
   }
-
-  virtual void becomeAwareOfParentValuesAndIterBegin(vector < RandomVariable *>& parents , iterator &it, DiscreteRandomVariable* drv){
-    // this routine should never be called for this object, since the variable
-    // is always observed.
-    assert ( 0 );
-    // include code to keep compiler happy
-    it.drv = drv;
-    it.setCPT(this);
-  }
-  virtual void becomeAwareOfParentValuesAndIterBegin(vector < RandomVariable *>& parents, iterator &it, DiscreteRandomVariable* drv,logpr& p)
+  void becomeAwareOfParentValuesAndIterBegin(vector < RV *>& parents, 
+					     iterator &it, 
+					     DiscRV* drv,
+					     logpr& p)
   {
     // this routine should never be called for this object, since the variable
     // is always observed.
@@ -141,14 +87,12 @@ public:
     it.drv = drv;
     it.setCPT(this);
   }
-
-  // Given a current iterator, return the next one in the sequence.
-  bool next(iterator &_it) {
-    // this routine should never be called for this object, since the variable
-    // is always observed.
-    assert ( 0 );
-    // include code to keep compiler happy
-    return false;
+  logpr probGivenParents(vector < RV*>& parents,
+			 DiscRV* drv) 
+  {
+    logpr val((void*)NULL);
+    val.set_to_one();
+    return val; 
   }
   bool next(iterator &_it,logpr& p) {
     // this routine should never be called for this object, since the variable
@@ -159,18 +103,9 @@ public:
   }
 
 
-  bool end(iterator &it) {
-    // this routine should never be called for this object, since the variable
-    // is always observed.
-    assert ( 0 );
-    // include code to keep compiler happy
-    return true;
-  }
-
-
   ///////////////////////////////////
   // don't set drv's value since it is observed.
-  int randomSample(DiscreteRandomVariable*drv) { return 0; }
+  int randomSample(DiscRV*drv) { return 0; }
 
   ///////////////////////////////////
   unsigned totalNumberParameters() { return 0; }
@@ -192,7 +127,7 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration() {}
-  void emIncrement(logpr p,RandomVariable*rv) {}
+  void emIncrement(logpr p,vector <RV*>& parents,RV*rv) {}
   void emEndIteration() {}
   void emSwapCurAndNew() {}
 

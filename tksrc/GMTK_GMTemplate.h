@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "GMTK_RandomVariable.h"
+#include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_MaxClique.h"
 
@@ -51,7 +51,7 @@ class Partition : public IM {
 public:
 
   // variables comprising this partition.
-  set<RandomVariable*> nodes;  
+  set<RV*> nodes;  
 
   // The cliques themselves, used to store the current triangulation
   // of each of the partitions.
@@ -66,7 +66,7 @@ public:
   // of random variables, and adjusts the frame of each new set of
   // random variable with offset
   Partition(Partition& from_part,
-	    vector <RandomVariable*>& newRvs,
+	    vector <RV*>& newRvs,
 	    map < RVInfo::rvParent, unsigned >& ppf,
 	    const unsigned int frameDelta = 0);
 
@@ -136,29 +136,29 @@ private:
 
 
   // TODO: put this next routine in the RV .cc file.
-  void makeComplete(set<RandomVariable*> &rvs);
+  void makeComplete(set<RV*> &rvs);
 
   // support for P,C,and E partitions.
-  void setUpClonedPartitionGraph(const set<RandomVariable*>& P,
-				 const set<RandomVariable*>& C,
-				 const set<RandomVariable*>& E,
+  void setUpClonedPartitionGraph(const set<RV*>& P,
+				 const set<RV*>& C,
+				 const set<RV*>& E,
 				 // cloned variables
-				 set<RandomVariable*>& Pc,
-				 set<RandomVariable*>& Cc,
-				 set<RandomVariable*>& Ec,
+				 set<RV*>& Pc,
+				 set<RV*>& Cc,
+				 set<RV*>& Ec,
 				 // next 3 should be const but ther eis no "op[] const"
-				 map < RandomVariable*, RandomVariable* >& P_in_to_out,
-				 map < RandomVariable*, RandomVariable* >& C_in_to_out,
-				 map < RandomVariable*, RandomVariable* >& E_in_to_out);
-  void setPartitionParentsChildrenNeighbors(const set<RandomVariable*>& S,
-					    set<RandomVariable*>& Sc,
+				 map < RV*, RV* >& P_in_to_out,
+				 map < RV*, RV* >& C_in_to_out,
+				 map < RV*, RV* >& E_in_to_out);
+  void setPartitionParentsChildrenNeighbors(const set<RV*>& S,
+					    set<RV*>& Sc,
 					    // next 3 should be const but ther eis no "op[] const"
-					    map < RandomVariable*, RandomVariable* >& S_in_to_out,
-					    map < RandomVariable*, RandomVariable* >& O1_in_to_out,
-					    map < RandomVariable*, RandomVariable* >& O2_in_to_out);
-  void cloneWithoutParents(const set<RandomVariable*>& in, 
-			   set<RandomVariable*>& out,
-			   map < RandomVariable*, RandomVariable* >& in_to_out);
+					    map < RV*, RV* >& S_in_to_out,
+					    map < RV*, RV* >& O1_in_to_out,
+					    map < RV*, RV* >& O2_in_to_out);
+  void cloneRVShell(const set<RV*>& in, 
+		    set<RV*>& out,
+		    map < RV*, RV* >& in_to_out);
 
   void writePMaxCliques(oDataStreamFile& os);
   void writeCMaxCliques(oDataStreamFile& os);
@@ -166,7 +166,7 @@ private:
   void writeCliqueInformation(oDataStreamFile& os);
 
   void writeMaxCliques(oDataStreamFile& os, const vector<MaxClique>& cliques);
-  void readMaxCliques(iDataStreamFile& is, const set<RandomVariable*> nodes, vector<MaxClique>& cliques);
+  void readMaxCliques(iDataStreamFile& is, const set<RV*> nodes, vector<MaxClique>& cliques);
 
   void triangulatePartitionsByCliqueCompletion(vector<MaxClique>& cliques);
 
@@ -187,13 +187,13 @@ public:
   Partition E;
 
   // Interface between P and C, variables in P
-  set<RandomVariable*> PCInterface_in_P;
+  set<RV*> PCInterface_in_P;
   // Interface between P and C, variables in C
-  set<RandomVariable*> PCInterface_in_C;
+  set<RV*> PCInterface_in_C;
   // Interface between C and E, variables in C
-  set<RandomVariable*> CEInterface_in_C;
+  set<RV*> CEInterface_in_C;
   // Interface between C and E, variables in E
-  set<RandomVariable*> CEInterface_in_E;
+  set<RV*> CEInterface_in_E;
 
   // public interface
 
@@ -241,11 +241,11 @@ public:
   unsigned chunkSkip() { return S; }
 
   // Read partition information into file
-  void createPartitions(const set<RandomVariable*>& P,
-			const set<RandomVariable*>& C,
-			const set<RandomVariable*>& E,
-			const set<RandomVariable*>& PCInterface,
-			const set<RandomVariable*>& CEInterface);
+  void createPartitions(const set<RV*>& P,
+			const set<RV*>& C,
+			const set<RV*>& E,
+			const set<RV*>& PCInterface,
+			const set<RV*>& CEInterface);
 
   // Write partition information into file
   void writePartitions(oDataStreamFile& os,string& str);

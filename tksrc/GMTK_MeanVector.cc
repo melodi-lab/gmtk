@@ -90,13 +90,13 @@ MeanVector::MeanVector()
 void MeanVector::read(iDataStreamFile& is) { 
   NamedObject::read(is);
   int length;
-  is.read(length,"MeanVector::read, distribution length");
+  is.read(length,"Can't read MeanVector's distribution length");
   if (length <= 0)
     error("ERROR: mean vector %s specifies length (%d) < 0 in input. Must be positive.",
 	    name().c_str(),length);
   means.resize(length);
   for (int i=0;i<length;i++) {
-    is.read(means[i],":reading mean values");
+    is.read(means[i],"Can't read MeanVector's mean values");
   }
   setBasicAllocatedBit();
   numTimesShared = 0;

@@ -2,11 +2,16 @@
  * GMTK_FNGramCPT.cc
  *
  * Written by Gang Ji <gang@ee.washington.edu>
- * Borrowed some part from SRI language model toolkit with the factored
- * language model support written by Jeff Bilmes <bilmes@ee.washington.edu>
+ * Modifications by J. Bilmes. <bilmes@ee.washington.edu>
  *
- *   This part of the code has the implementation of class FNGramCPT for gmtk.
- * Please see GMTK_FNGramCPT.h for more information.
+ * Portions of this code were borrowed from the SRI language model
+ * toolkit, but only those parts that were written by Jeff Bilmes
+ * <bilmes@ee.washington.edu> as part of the JHU CLSP 2002 workshop.
+ * NO OTHER PORTIONS OF SRI CODE ARE CONTAINED HERE!! THEREFORE, THIS
+ * CODE IS NOT UNDER SRI COPYRIGHT.
+ *
+ * This part of the code has the implementation of class FNGramCPT for
+ * gmtk.  Please see GMTK_FNGramCPT.h for more information.
  *
  * Copyright (c) 2001, < fill in later >
  *
@@ -28,7 +33,7 @@
 #include <vector>
 
 #include "GMTK_FNGramCPT.h"
-#include "GMTK_RandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_GMParms.h"
 #include "fileParser.h"
 #include "rand.h"
@@ -176,52 +181,8 @@ void FNGramCPT::setNumParents(const unsigned nParents) {
  *
  *-----------------------------------------------------------------------
  */
- void FNGramCPT::becomeAwareOfParentValues(std::vector<int>& parentValues, std::vector<int>& cards) {
- 	assert(cards.size() == _numParents);
-	assert(parentValues.size() == _numParents);
-
-	memset(_contextEntries, 0, sizeof(BackoffGraphNode::HashEntry*) * _numberOfBGNodes);
-
-	unsigned * context = new unsigned [_numParents];
-
-	// descend down the BG, level by level except buttom (0)
-	for ( int level = _numParents; level > 0; level-- ) {
-		LevelIter liter(_numParents, level);
-		for ( unsigned nodeAtLevel; liter.next(nodeAtLevel); ) {
-			if ( _bgNodes[nodeAtLevel].valid ) {
-				// figure out which bits are on
-				std::vector<unsigned> onPos = bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
-				for ( unsigned i = 0; i < _bgNodes[nodeAtLevel].order - 1; i++ ) {
-					context[i] = parentValues[onPos[i]];
-				}
-				_contextEntries[nodeAtLevel] = _bgNodes[nodeAtLevel].contextTable->find(context);
-			}
-		}
-	}
-
-	delete [] context;
-
-#ifdef FNGRAM_BOW_GROW_DYNA
-	for ( unsigned i = 0; i < _numParents; i++ )
-		_parentsValues[i] = parentValues[i];
-#endif
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::becomeAwareOfParentValues
- *      Set context entry pointers when parents values are known.
- *
- * Results:
- *      None.
- *
- * Side Effects:
- *      None.
- *
- *-----------------------------------------------------------------------
- */
-void FNGramCPT::becomeAwareOfParentValues(vector<RandomVariable *>& parents) {
+void FNGramCPT::becomeAwareOfParentValues(vector< RV* >& parents,
+					  const RV* rv) {
 	assert(parents.size() == _numParents);
 
 	memset(_contextEntries, 0, sizeof(BackoffGraphNode::HashEntry*) * _numberOfBGNodes);
@@ -236,7 +197,7 @@ void FNGramCPT::becomeAwareOfParentValues(vector<RandomVariable *>& parents) {
 				// figure out which bits are on
 				std::vector<unsigned> onPos = bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
 				for ( unsigned i = 0; i < _bgNodes[nodeAtLevel].order - 1; i++ ) {
-					context[i] = parents[onPos[i]]->val;
+					context[i] = RV2DRV(parents[onPos[i]])->val;
 				}
 				_contextEntries[nodeAtLevel] = _bgNodes[nodeAtLevel].contextTable->find(context);
 			}
@@ -247,149 +208,10 @@ void FNGramCPT::becomeAwareOfParentValues(vector<RandomVariable *>& parents) {
 
 #ifdef FNGRAM_BOW_GROW_DYNA
 	for ( unsigned i = 0; i < _numParents; i++ )
-		_parentsValues[i] = parents[i]->val;
+		_parentsValues[i] = RV2DRV(parents[i])->val;
 #endif
 }
 
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-inline logpr FNGramCPT::probGivenParents(const int val) {
-	return probBackingOff(val, _numberOfBGNodes - 1);
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-logpr FNGramCPT::probGivenParents(vector<int>& parentValues, vector<int>& cards, const int val) {
-	becomeAwareOfParentValues(parentValues, cards);
-	return probGivenParents(val);
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-logpr FNGramCPT::probGivenParents(vector<RandomVariable *>& parents, const int val) {
-	becomeAwareOfParentValues(parents);
-	return probGivenParents(val);
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-logpr FNGramCPT::probGivenParents(DiscreteRandomVariable* drv) {
-	return probBackingOff(drv->val, _numberOfBGNodes - 1);
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-logpr FNGramCPT::probGivenParents(vector < RandomVariable *>& parents, DiscreteRandomVariable* drv) {
-	becomeAwareOfParentValues(parents);
-	return probGivenParents(drv);
-}
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::begin
- *      Beginning of an iterator.
- *
- * Results:
- *      Return the iterator from the begin of the ngram.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-CPT::iterator FNGramCPT::begin(DiscreteRandomVariable* drv) {
-	// TODO: this will vanish (presumably meaning, this routine will eventually be removed).
-	iterator it(this);
-	FNGramCPT::begin(it,drv);
-
-	return it;
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * NGramCPT::begin
- *      Set an iterator to the begin.
- *
- * Results:
- *      None.
- *
- * Side Effects:
- *      None.
- *
- *-----------------------------------------------------------------------
- */
-void FNGramCPT::begin(CPT::iterator& it, DiscreteRandomVariable* drv) {
-	it.drv = drv;
-	register RandomVariable::DiscreteVariableType value = 0;
-	it.probVal = probGivenParents(value);
-
-	while ( it.probVal.essentially_zero() ) {
-		value++;
-		// We keep the following assertion as we
-		// must have that at least one entry is non-zero.
-		// The read code of the FNGramCPT should ensure this
-		// as sure all parameter update procedures.
-		assert(value < (int)ucard());
-		it.probVal = probGivenParents(value);
-	}
-
-	drv->val = value;
-}
 
 
 /*-
@@ -405,10 +227,10 @@ void FNGramCPT::begin(CPT::iterator& it, DiscreteRandomVariable* drv) {
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::begin(CPT::iterator& it, DiscreteRandomVariable* drv, logpr& p) {
+void FNGramCPT::begin(CPT::iterator& it, DiscRV* drv, logpr& p) {
 	it.drv = drv;
-	register RandomVariable::DiscreteVariableType value = 0;
-	p = probGivenParents(value);
+	register DiscRVType value = 0;
+	p = probBackingOff(value, _numberOfBGNodes - 1);
 
 	while ( p.essentially_zero() ) {
 		value++;
@@ -416,12 +238,11 @@ void FNGramCPT::begin(CPT::iterator& it, DiscreteRandomVariable* drv, logpr& p) 
 		// must have that at least one entry is non-zero.
 		// The read code of the FNGramCPT should ensure this
 		// as sure all parameter update procedures.
-		assert(value < (int)ucard());
-		p = probGivenParents(value);
+		assert(value < card());
+		p = probBackingOff(value, _numberOfBGNodes - 1);
 	}
 	drv->val = value;
 }
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -436,18 +257,36 @@ void FNGramCPT::begin(CPT::iterator& it, DiscreteRandomVariable* drv, logpr& p) 
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it, DiscreteRandomVariable* drv) {
-	// call functions in this class directly to avoid virtual dispatch.
-	FNGramCPT::becomeAwareOfParentValues(parents);
-	FNGramCPT::begin(it, drv);
+void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents, 
+						      iterator &it, 
+						      DiscRV*drv, 
+						      logpr& p) 
+{
+  // call functions in this class directly to avoid virtual dispatch.
+  FNGramCPT::becomeAwareOfParentValues(parents,drv);
+  FNGramCPT::begin(it, drv, p);
 }
 
 
-void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it, DiscreteRandomVariable*drv, logpr& p) {
-	// call functions in this class directly to avoid virtual dispatch.
-	FNGramCPT::becomeAwareOfParentValues(parents);
-	FNGramCPT::begin(it, drv, p);
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::probGivenParents
+ *      Retrieve the probability for a given value.
+ *
+ * Results:
+ *      Return the probability given the parents.
+ *
+ * Side Effects:
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr FNGramCPT::probGivenParents(vector < RV* >& parents, 
+				  DiscRV* drv) 
+{
+  FNGramCPT::becomeAwareOfParentValues(parents,drv);
+  return probBackingOff(drv->val, _numberOfBGNodes - 1);
 }
+
 
 
 /*-
@@ -463,27 +302,14 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& 
  *
  *-----------------------------------------------------------------------
  */
-bool FNGramCPT::next(iterator &it) {
-	do{
-		if ( (++it.drv->val) >= (int)ucard() )
-			return false;
-
-		it.probVal = probGivenParents(it.drv->val);
-	} while ( it.probVal.essentially_zero() );
-
-	return true;
-}
-
-
-bool FNGramCPT::next(iterator &it, logpr& p) {
-	do{
-		if ( (++it.drv->val) >= (int)ucard() )
-			return false;
-
-		p = probGivenParents(it.drv->val);
-	} while ( p.essentially_zero() );
-
-	return true;
+bool FNGramCPT::next(iterator &it, logpr& p) 
+{
+  do{
+    if ( (++it.drv->val) >= card() )
+      return false;
+    p = probBackingOff(it.drv->val, _numberOfBGNodes - 1);
+  } while ( p.essentially_zero() );
+  return true;
 }
 
 
@@ -502,21 +328,19 @@ bool FNGramCPT::next(iterator &it, logpr& p) {
  *
  *-----------------------------------------------------------------------
  */
-int FNGramCPT::randomSample(DiscreteRandomVariable* drv) {
-	iterator it;
-	FNGramCPT::begin(it, drv);		// note that it = begin() will vanish.
-	logpr prob = rnd.drand48();
-	logpr sum = 0.0;
-
-	do {
-		sum += it.probVal;
-		if ( prob <= sum )
-			break;
-
-		FNGramCPT::next(it);
-	} while ( ! FNGramCPT::end(it) );
-
-	return drv->val;
+int FNGramCPT::randomSample(DiscRV* drv) 
+{
+  logpr prob = rnd.drand48();
+  iterator it;
+  logpr p;
+  FNGramCPT::begin(it,drv,p);
+  logpr sum;
+  do {
+    sum += p;
+    if ( prob <= sum )
+      break;
+  } while ( FNGramCPT::next(it,p) );
+  return drv->val;
 }
 
 
@@ -533,7 +357,8 @@ int FNGramCPT::randomSample(DiscreteRandomVariable* drv) {
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::read(iDataStreamFile &is) {
+void FNGramCPT::read(iDataStreamFile &is) 
+{
 	// step 1:
 	// read in information from master file
 
@@ -542,34 +367,34 @@ void FNGramCPT::read(iDataStreamFile &is) {
 
 	// read in number of parents
 	int numParents;
-	is.read(numParents, "FNGramCPT::read number of parents");
+	is.read(numParents, "Can't read FNGramCPT's number of parents");
 	if ( numParents < 0 )
-		error("Error: reading file '%s', FNGramCPT '%s' trying to use negative (%d) num parents.", is.fileName(), name().c_str(), numParents);
+		error("Error: reading file '%s' line %d, FNGramCPT '%s' trying to use negative (%d) num parents.", is.fileName(),is.lineNo(), name().c_str(), numParents);
 	if ( (unsigned)numParents >= warningNumParents )
-		warning("Warning: creating FNGramCPT '%s' with %d parents in file '%s'", numParents, name().c_str(), is.fileName());
+		warning("Warning: creating FNGramCPT '%s' with %d parents in file '%s' line %d", numParents, name().c_str(), is.fileName(),is.lineNo());
 	setNumParents(numParents);
 
 	// read the cardinalities of parents
 	for ( unsigned i = 0; i < _numParents; i++ ) {
-		is.read(cardinalities[i], "FNGramCPT::read cardinality");
+		is.read(cardinalities[i], "Can't read FNGramCPT's parent cardinality");
 		if ( cardinalities[i] <= 0 )
-			error("Error: reading file '%s', FNGramCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-				is.fileName(), name().c_str(), cardinalities[i], i);
+			error("Error: reading file '%s' line %d, FNGramCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+				is.fileName(), is.lineNo(),name().c_str(), cardinalities[i], i);
 	}
 
 	// read the self cardinalities
-	is.read(_card, "FNGramCPT::read cardinality");
+	is.read(_card, "Cant' read FNGramCPT self cardinality");
 	if ( _card <= 0 )
-		error("Error: reading file '%s', FNGramCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-			is.fileName(), name().c_str(), _card, _numParents);
+		error("Error: reading file '%s' line %d, FNGramCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+			is.fileName(), is.lineNo(),name().c_str(), _card, _numParents);
 
 	// read in flm filename
 	char* flmFilename = NULL;
-	is.readStr(flmFilename, "FNGramCPT::read flm filename");
+	is.readStr(flmFilename, "Can't read FNGramCPT FLM filename");
 
 	// read in vocab mapping
 	char* tag = NULL;
-	is.readStr(tag, "FNGramCPT::read vocab map");
+	is.readStr(tag, "Can't read FNGramCPT vocab map");
 	const char seps[] = "-:";
 	char* tok = strtok(tag, seps);
 	char tagChar;
@@ -579,16 +404,19 @@ void FNGramCPT::read(iDataStreamFile &is) {
 		// get the tag char
 		tagChar = tok[0];
 		if ( _tagMap.find(tagChar) != NULL )
-			error("Warning: tag %c was defined before in %s", tagChar, is.fileName());
+			error("Warning: tag %c was defined before in file %s, 2nd-time at line %d", 
+			      tagChar, 
+			      is.fileName(),is.lineNo());
 
 		// read in the vocab object name
 		if ( (tok = strtok(NULL, seps)) == NULL )
-			error("Error: tag %c should followed by vocab name in %s", tagChar, is.fileName());
+			error("Error: tag %c should followed by vocab name in %s line %d", 
+			      tagChar, is.fileName(),is.lineNo());
 
 		std::string vocabName = std::string(tok);
 
 		if ( GM_Parms.vocabsMap.find(vocabName) ==  GM_Parms.vocabsMap.end())
-			error("ERROR: reading file '%s', NGramCPT '%s' specifies Vobab name '%s' that does not exist", is.fileName(), _name.c_str(), vocabName.c_str());
+			error("ERROR: reading file '%s' line %d, NGramCPT '%s' specifies Vobab name '%s' that does not exist", is.fileName(),is.lineNo(), _name.c_str(), vocabName.c_str());
 		vocabPtrs.push_back(GM_Parms.vocabs[GM_Parms.vocabsMap[vocabName]]);
 		_tagMap.insert(tagChar, tagId++);
 
@@ -1738,7 +1566,7 @@ inline logpr FNGramCPT::bgChildProbBackingOff(unsigned val, unsigned nodeId) {
 inline logpr FNGramCPT::bgChildProbSum(unsigned nodeId) {
 	logpr total;
 
-	for ( unsigned i = 0; i < ucard(); i++ ) {
+	for ( unsigned i = 0; i < card(); i++ ) {
 		total += bgChildProbBackingOff(i, nodeId);
 	}
 

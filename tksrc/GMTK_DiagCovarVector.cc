@@ -102,19 +102,19 @@ DiagCovarVector::read(iDataStreamFile& is)
 {
   NamedObject::read(is);
   int length;
-  is.read(length,"DiagCovarVector read length");
+  is.read(length,"Can't read DiagCovarVector's vector length");
   if (length <= 0)
     error("ERROR: diag covariance matrix %s specifies length (%d) < 0 in input. Must be positive.",
 	  name().c_str(),length);
   covariances.resize(length);
   unsigned numFloored=0;
   for (int i=0;i<length;i++) {
-    is.read(covariances[i],":reading covar value");
+    is.read(covariances[i],"Can't read DiagCovarVector's covar value");
     if (covariances[i] < (float)GaussianComponent::varianceFloor()) {
       if (!floorVariancesWhenReadIn) {
-	error("Error: reading diagonal covariance matrix '%s' (from file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
+	error("Error: reading diagonal covariance matrix '%s' (from file '%s' line %d), but covariance[%d] = (%e) < current Floor = (%e)",
 	      name().c_str(),
-	      is.fileName(),
+	      is.fileName(),is.lineNo(),
 	      i,covariances[i],
 	      GaussianComponent::varianceFloor());
       } else {
@@ -124,9 +124,9 @@ DiagCovarVector::read(iDataStreamFile& is)
     }
   }
   if (numFloored > 0)
-    infoMsg(IM::Warning,"WARNING: reading diagonal covariance matrix '%s' (from file '%s'), and %d variance values (out of %d) were  < current Floor = (%e), forcing them to floor.",
+    infoMsg(IM::Warning,"WARNING: reading diagonal covariance matrix '%s' (from file '%s' line %d), and %d variance values (out of %d) were  < current Floor = (%e), forcing them to floor.",
 	    name().c_str(),
-	    is.fileName(),
+	    is.fileName(),is.lineNo(),
 	    numFloored,
 	    covariances.len(),
 	    GaussianComponent::varianceFloor());

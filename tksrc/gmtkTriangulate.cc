@@ -35,9 +35,9 @@
 VCID("$Header$");
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
@@ -57,9 +57,6 @@ VCID("$Header$");
 static bool seedme = false;
 static char *strFileName=NULL;
 static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
-static int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
-static int ns=GMTK_DEFAULT_NUM_SPLITS;
-static int showFrCliques = 0;
 static int jut = -1;
 static char* anyTimeTriangulate = NULL;
 static bool reTriangulate = false;
@@ -209,9 +206,6 @@ Arg Arg::Args[] = {
   Arg("printResults",Arg::Opt,printResults,"Print information about result of triangulation."),
 
   Arg("loadParameters",Arg::Opt,loadParameters,"Also load in all trainable parameters."),
-
-  // eventually this next option will be removed.
-  Arg("showFrCliques",Arg::Opt,showFrCliques,"Show frontier alg. cliques after the network has been unrolled k times and exit."),
 
   /////////////////////////////////////////////////////////////
   // General Options
@@ -426,24 +420,6 @@ main(int argc,char*argv[])
   // make sure that all observation variables work
   // with the global observation stream.
   // fp.checkConsistentWithGlobalObservationStream();
-
-  if (showFrCliques) {
-    // if this option is set, just run the frontier algorithm
-    // and then quite. TODO: remove all of this.
-    GMTK_GM gm(&fp);
-    fp.addVariablesToGM(gm);
-    gm.verifyTopologicalOrder();
-
-    gm.setCliqueChainRecursion(ns, bct);
-
-    gm.GM2CliqueChain();
-    gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
-    printf("Frontier cliques in the unrolled network are:\n");
-    gm.setSize(showFrCliques);
-    gm.showCliques();
-    // do nothing else if this option is given
-    exit(0);
-  }
 
   BoundaryTriangulate triangulator(fp,maxNumChunksInBoundary,chunkSkip,traverseFraction);
 
@@ -663,7 +639,7 @@ main(int argc,char*argv[])
 	  else
 	    e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
 	}
-	const set <RandomVariable*> emptySet;
+	const set <RV*> emptySet;
 	printf("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	       e_maxWeight,e_totalWeight,
 	       JunctionTree::junctionTreeWeight(gm_template.E.cliques,

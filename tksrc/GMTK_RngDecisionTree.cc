@@ -31,7 +31,7 @@
 #include "general.h"
 #include "sArray.h"
 
-#include "GMTK_RandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_RngDecisionTree.h"
 
 VCID("$Header$");
@@ -182,7 +182,7 @@ RngDecisionTree::read(iDataStreamFile& is)
   //////////////////////////////////////////////////////////////////////
   // Read the beginning of the next decision tree 
   //////////////////////////////////////////////////////////////////////
-  is.read(dtFileName,"RngDecisionTree:: read file/numFeatures");
+  is.read(dtFileName,"Can't read Decision Tree's either file or numFeatures");
 
   //////////////////////////////////////////////////////////////////////
   // Entry is the name of a file containing multiple instances of the 
@@ -195,8 +195,8 @@ RngDecisionTree::read(iDataStreamFile& is)
     // iterable decision tree 
     //////////////////////////////////////////////////////////////////////
     if (clampable()) {
-      error("ERROR: in DT named '%s' in file '%s', can't have DTs defined recursively in files",
-        name().c_str(),is.fileName());
+      error("ERROR: in DT named '%s' in file '%s' line %d, can't have DTs defined recursively in files",
+        name().c_str(),is.fileName(),is.lineNo());
     }
 
     initializeIterableDT(dtFileName); 
@@ -207,8 +207,8 @@ RngDecisionTree::read(iDataStreamFile& is)
   else {
 
     if (_numFeatures < 0) {
-      error("ERROR: in DT named '%s', file '%s', decision tree must have >= 0 features",
-      name().c_str(), is.fileName());
+      error("ERROR: in DT named '%s', file '%s' line %d, decision tree must have >= 0 features",
+      name().c_str(), is.fileName(),is.lineNo());
     }
 
     rightMostLeaf = NULL;
@@ -364,11 +364,13 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
 			     Node* &prevLeaf)
 {
   int curFeat;
-  is.read(curFeat,"RngDecisionTree:: readRecurse curFeat");
+  is.read(curFeat,"Can't read DecisionTree's feature value");
   if (curFeat < -1) 
-    error("ERROR: DT '%s', file '%s', feature number (=%d) must be non-negative",name().c_str(),is.fileName(),curFeat);
+    error("ERROR: DT '%s', file '%s' line %d, feature number (=%d) must be non-negative",
+	  name().c_str(),is.fileName(),is.lineNo(),curFeat);
   if (curFeat >= (int)_numFeatures) 
-    error("ERROR: DT '%s', file '%s', feature number (=%d) must be < numFeatures (=%d)",name().c_str(),is.fileName(),curFeat,
+    error("ERROR: DT '%s', file '%s' line %d, feature number (=%d) must be < numFeatures (=%d)",
+	  name().c_str(),is.fileName(),is.lineNo(),curFeat,
 	  _numFeatures);
   Node *node = new Node;
 
@@ -386,7 +388,7 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
     // Skip leading spaces, then read until a { or a space is found 
     //////////////////////////////////////////////////////////////////////
     is.readStringUntil(leafNodeVal, '{', true,
-        "RngDecisionTree:: readRecurse leaf node value");
+        "Can't read RngDecisionTree's '{' character");
 
     //////////////////////////////////////////////////////////////////////
     // Check if leaf node is a formula
@@ -397,7 +399,7 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
       // Read until another " is found (will not stop at spaces) 
       //////////////////////////////////////////////////////////////////////
       is.readStringUntil(leafNodeVal, '}', false, 
-        "RngDecisionTree:: readRecurse leaf node value");
+        "Can't read RngDecisionTree's '}' character");
 
       node->nodeType = LeafNodeFormula;
       
@@ -405,13 +407,13 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
         node->leafNode.equation.parseFormula(leafNodeVal);
       }
       catch( string error_message ){
-        error("ERROR: In file '%s', DT '%s', equation '%s':  %s", 
-          is.fileName(), name().c_str(), leafNodeVal.c_str(), 
+        error("ERROR: In file '%s' line %d, DT '%s', equation '%s':  %s", 
+          is.fileName(), is.lineNo(),name().c_str(), leafNodeVal.c_str(), 
 	  error_message.c_str());
       }
       catch( const char * const error_message ) {
-        error("ERROR: In file '%s', DT '%s', equation '%s':  %s", 
-          is.fileName(), name().c_str(), leafNodeVal.c_str(), 
+        error("ERROR: In file '%s' line %d, DT '%s', equation '%s':  %s", 
+          is.fileName(), is.lineNo(),name().c_str(), leafNodeVal.c_str(), 
 	  error_message );
       }
     }
@@ -431,8 +433,8 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
       node->leafNode.leafNodeString = leafNodeVal;
     }
     else {
-      error("ERROR: In file '%s', DT '%s', invalid leaf node value '%s':  %s",
-        is.fileName(), name().c_str(), leafNodeVal.c_str() ); 
+      error("ERROR: In file '%s' line %d, DT '%s', invalid leaf node value '%s'.",
+        is.fileName(), is.lineNo(),name().c_str(), leafNodeVal.c_str() ); 
     } 
 
     node->leafNode.prevLeaf = prevLeaf;
@@ -443,22 +445,23 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
     node->nonLeafNode.ftr = (leafNodeValType)curFeat;
     node->nonLeafNode.ordered = true;
     unsigned numSplits;
-    is.read(numSplits,"RngDecisionTree:: readRecurse numSplits");
+    is.read(numSplits,"Can't read DecisionTree's number of splits");
     if (numSplits < 1)
-      error("ERROR: DT '%s', file '%s', can't have < 1 node splits",name().c_str(),is.fileName());
+      error("ERROR: DT '%s', file '%s' line %d, can't have < 1 node splits",
+	    name().c_str(),is.fileName(),is.lineNo());
     if (numSplits > RNG_DECISION_TREE_MAX_ARY)
-      error("ERROR: DT '%s', file '%s': can't have > %d splits",
-	    name().c_str(),is.fileName(),RNG_DECISION_TREE_MAX_ARY);
+      error("ERROR: DT '%s', file '%s' line %d: can't have > %d splits",
+	    name().c_str(),is.fileName(),is.lineNo(),RNG_DECISION_TREE_MAX_ARY);
     node->nonLeafNode.children.resize(numSplits);
     // rngs is smaller since last string is always the default catch-all.
     node->nonLeafNode.rngs.resize(numSplits-1);
     for (unsigned i=0;i<numSplits;i++) {
       char *str;
-      is.read(str,"RngDecisionTree:: readRecurse, reading range");
+      is.read(str,"Can't read DecisionTree's integer set");
       if (i==(numSplits-1)) {
 	if (strcmp(RNG_DECISION_TREE_DEF_STR,str))
-	  error("ERROR: DT '%s', file '%s': expecting default str (%s) got (%s)",
-		name().c_str(),is.fileName(),RNG_DECISION_TREE_DEF_STR,str);
+	  error("ERROR: DT '%s', file '%s' line %d: expecting default str (%s) got (%s)",
+		name().c_str(),is.fileName(),is.lineNo(),RNG_DECISION_TREE_DEF_STR,str);
       } else {
 	// note: ideally, we would limit the maximum range
 	// value to be equal to the cardinality of the random
@@ -484,7 +487,8 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
       for (unsigned j=i+1;j<numSplits-1;j++) {
 	if (node->nonLeafNode.rngs[i]
 	    ->overlapP(node->nonLeafNode.rngs[j]))
-	  error("ERROR: DT '%s', file '%s': range %d (%s) and %d (%s) have a non-empty intersection.",name().c_str(),is.fileName(),
+	  error("ERROR: DT '%s', file '%s' line %d: range %d (%s) and %d (%s) have a non-empty intersection.",
+		name().c_str(),is.fileName(),is.lineNo(),
 		i,
 		node->nonLeafNode.rngs[i]->rangeStr(),j,
 		node->nonLeafNode.rngs[j]->rangeStr());
@@ -689,9 +693,18 @@ RngDecisionTree::EquationClass::EquationClass()
  */
 leafNodeValType 
 RngDecisionTree::EquationClass::evaluateFormula(
-  const vector< RandomVariable* >& variables 
-  )
+	const vector< RV* >& variables,
+	const RV* rv
+)
 {
+
+  // TODO: 
+  // to get the cardinality of rv, do:
+  //    (rv->discrete() ? RV2DRV(rv)->cardinality : 0)
+  // to get framem of rv, do:
+  //    rv->frame()
+
+
   unsigned crrnt_cmnd, end_cmnd;
   unsigned last; 
   unsigned command, operand; 
@@ -716,7 +729,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
         if (operand >= variables.size()) {	
           error("ERROR:  Reference to non-existant parent\n"); 	
         }
-        stack.push_back( variables[operand]->val );	
+        stack.push_back( RV2DRV(variables[operand])->val );	
         break;	
 
       case COMMAND_PUSH_CARDINALITY:
@@ -724,7 +737,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
         if (operand >= variables.size()) {
           error("ERROR:  Reference to non-existant parent cardinality\n"); 
         }
-        stack.push_back( variables[operand]->cardinality ); 
+        stack.push_back( RV2DRV(variables[operand])->cardinality ); 
         break;
 
       case COMMAND_PUSH_CONSTANT:
@@ -2003,74 +2016,20 @@ RngDecisionTree::writeRecurse(oDataStreamFile& os,
 
 /*-
  *-----------------------------------------------------------------------
- * query
- *      queries the decision tree
- *      NOTE: Any update here should also be done in the
- *      version that takes arrays of random variables below.
- * 
- * Preconditions:
- *      Must be a filled in DC structure.
- *
- * Postconditions:
- *      same as before.
- *
- * Side Effects:
- *      none.
- *
- * Results:
- *      The resulting value of the query.
- *
- *-----------------------------------------------------------------------
- */
-leafNodeValType RngDecisionTree::query(const vector <int >& arr,
-				       const vector <int > &cards)
-{
-  assert(0);
-  assert ( unsigned(arr.size()) == _numFeatures );
-  return queryRecurse(arr,cards,root);
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * queryRecurse
- *      support for querying the decision tree
- *      NOTE: Any update here should also be done in the
- *      version that takes arrays of random variables below.
- * 
- * Preconditions:
- *      Must be a filled in DC structure.
- *
- * Postconditions:
- *      same as query
- *
- * Side Effects:
- *      none.
- *
- * Results:
- *      The resulting value of the query starting at node.
- *
- *-----------------------------------------------------------------------
- */
-leafNodeValType RngDecisionTree::queryRecurse(const vector < int >& arr,
-					      const vector < int >& cards,
-					      RngDecisionTree::Node *n)
-{
-  // this is not implemented for now, so just die if it gets called. 
-  assert(0); 
-  leafNodeValType dummy;
-  return(dummy); 
-}
-
-
-/*-
- *-----------------------------------------------------------------------
  *  queryRecurse
  *      Exact same routine as above but for arrays of random variables.
  *      This code is duplicated here for simplicity and efficiency.
  *      NOTE: Any update here should also be done in the
  *      version that takes arrays of integers above.
- * 
+ *
+ *   Note that this routine assumes that all RV's may be safely cast
+ *   into DiscRVs. If this is not the case, arbitrary results will
+ *   follow. If 'drv' is non-NULL, then any DT formulas will have
+ *   access to features of the current child random variable (such
+ *   as child's cardinality, frame number, and so on). Otherwise, if
+ *   'drv' is NULL, then both child cardinality and child frame will
+ *   evaluate to 0.
+ *
  * Preconditions:
  *      same as above
  *
@@ -2085,9 +2044,13 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < int >& arr,
  *
  *-----------------------------------------------------------------------
  */
-leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& arr,
-					      RngDecisionTree::Node *n)
+leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
+					      RngDecisionTree::Node *n,
+					      const RV* rv)
 {
+
+  // include label here to implement tail recursion with gotos.
+ topOfRoutine:
 
   if (n->nodeType == LeafNodeVal) {
     return n->leafNode.value;
@@ -2095,12 +2058,7 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& 
 
     assert ( n->nonLeafNode.ftr < int(arr.size()) );
 
-    /*
-     * assert ( arr[n->nonLeafNode.ftr]->val < 
-     * RNG_DECISION_TREE_MAX_CARDINALITY );
-     */
-
-    const int val = arr[n->nonLeafNode.ftr]->val;
+    const int val = RV2DRV(arr[n->nonLeafNode.ftr])->val;
 
     // use a switch to knock off the short cases for
     // which we use simple linear search with little bookkeeping.
@@ -2109,8 +2067,11 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& 
 	!n->nonLeafNode.ordered) {
       for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
 	// Do a linear search.
-	if (n->nonLeafNode.rngs[i]->contains(val))
-	  return queryRecurse(arr,n->nonLeafNode.children[i]);
+	if (n->nonLeafNode.rngs[i]->contains(val)) {
+	  // return queryRecurse(arr,n->nonLeafNode.children[i],rv);
+	  n = n->nonLeafNode.children[i];
+	  goto topOfRoutine;
+	}
       }
     } else {
       // eliminate simple boundary conditions.
@@ -2138,8 +2099,11 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& 
 	else {
 	  // found potential range that might contain value
 	  // since neither val < rng nor val > rng. 
-	  if (n->nonLeafNode.rngs[m]->contains(val))
-	    return queryRecurse(arr,n->nonLeafNode.children[m]);
+	  if (n->nonLeafNode.rngs[m]->contains(val)) {
+	    // return queryRecurse(arr,n->nonLeafNode.children[m],rv);
+	    n = n->nonLeafNode.children[m];
+	    goto topOfRoutine;
+	  }
 	  break;
 	}
       }
@@ -2148,23 +2112,25 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& 
     // failed lookup, so return must be the default one.
   failedQuery:
 
-    // failed lookup, so return must be the default one.
-    return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
+    // failed lookup, so return must be the default one. 
+    // return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()],rv);
+    n = n->nonLeafNode.children[n->nonLeafNode.rngs.size()];
+    goto topOfRoutine;
   } else if (n->nodeType == LeafNodeFullExpand) {
 
     leafNodeValType res = 0;
     for (unsigned i=0;i<arr.size()-1;i++) {
-      unsigned val = arr[i]->val;
-      unsigned card = arr[i]->cardinality;
+      unsigned val = RV2DRV(arr[i])->val;
+      unsigned card = RV2DRV(arr[i])->cardinality;
       res = card*(res + val);
     }
-    res += arr[arr.size()-1]->val;
+    res += RV2DRV(arr[arr.size()-1])->val;
     return res;
 
   } else {
     leafNodeValType answer;
 
-    answer = n->leafNode.equation.evaluateFormula( arr );
+    answer = n->leafNode.equation.evaluateFormula( arr, rv );
     return(answer);
   }
 
@@ -2184,11 +2150,14 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& 
 
 #ifdef MAIN
 
+// TODO: get this test code working again since change of some
+// of the interface routines on Sat Aug 28 05:16:09 2004.
+
 ////////////////////////////////////////////////////////////////////
 // Test formulas 
 ////////////////////////////////////////////////////////////////////
 
-class TestRandomVariable : public RandomVariable
+class TestRandomVariable : public DiscRV
 {
   public:
 

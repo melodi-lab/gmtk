@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "GMTK_GM.h" 
 #include "GMTK_CPT.h"
 // #include "GMTK_GMTemplate.h"
 #include "GMTK_MixtureCommon.h"
@@ -38,12 +37,12 @@
 
 #include "fileParser.h"
 
-class RandomVariable;
+class RV;
 
 class FileParser
 {
  private:
-  friend class RandomVariable;
+  friend class RV;
 
   ////////////////////////////////////////////////////////////////
   // The current pre-allocated random variable that is being
@@ -57,7 +56,6 @@ class FileParser
   ///////////////////////////////////////////////////
   // Mapping from the name of the random variable
   // to its pointer.
-  // map<pair<string, unsigned>, RandomVariable *> variableNamed;
   map < RVInfo::rvParent , unsigned > nameRVmap;
 
   //////////////////////////////////////////////
@@ -141,7 +139,15 @@ public:
     KW_GRAPHICAL_MODEL=24,
     KW_Value=25,
     KW_Weight=26,
-    KW_EliminationHint=27
+    KW_Scale=27,
+    KW_Penalty=28,
+    KW_Shift=29,
+    KW_EliminationHint=30,
+    KW_FrameNum=31,
+    KW_NumFrames=32,
+    KW_SegmentNum=33,
+    KW_NumSegments=34,
+    KW_VECPT=35
   };
 
   // list of token keyword strings.
@@ -243,7 +249,12 @@ private:
   void parseRandomVariableAttributeList();
   void parseRandomVariableAttribute();
   void parseRandomVariableTypeAttribute();
+
   void parseRandomVariableWeightAttribute();
+  void parseRandomVariableWeightAttributeSpecList();
+  void parseRandomVariableWeightAttributeSpec();
+  void parseRandomVariableWeightOptionList();
+
   void parseRandomVariableEliminationHintAttribute();
   void parseRandomVariableType();
   void parseRandomVariableDiscreteType();
@@ -313,10 +324,6 @@ public:
   // triangulated, this routine is not required.
   void ensureVariablesDoNotReachAcrossRegion() {}
 
-  // add all the variables inself to the GM. Presumably
-  // gm has not been added to yet.
-  void addVariablesToGM(GMTK_GM& gm);
-
   // add all the variables to a template, essentially
   // keeping all the rv information but removing the
   // file specific information.
@@ -327,9 +334,9 @@ public:
   // unroll the template chunk k times, and place
   // the result in the existing vector of random
   // variables node.
-  void unroll(unsigned k,vector<RandomVariable*> &unrolledVarSet);
+  void unroll(unsigned k,vector<RV*> &unrolledVarSet);
   void unroll(unsigned k,
-	      vector<RandomVariable*> &unrolledVarSet,
+	      vector<RV*> &unrolledVarSet,
 	      map < RVInfo::rvParent, unsigned >& ppf);
 
   // A routine to write out the graph template (P,C,E) in condensed

@@ -28,7 +28,6 @@
 #include "machine-dependent.h"
 #include "sArray.h"
 
-#include "GMTK_RandomVariable.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"

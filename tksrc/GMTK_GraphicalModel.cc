@@ -26,22 +26,15 @@
 #include <float.h>
 #include <assert.h>
 
+
 #include "general.h"
 #include "error.h"
 #include "rand.h"
 
-#include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
-#include "GMTK_GM.h"
-#include "GMTK_GMTemplate.h"
-#include "GMTK_GMParms.h"
-#include "GMTK_MDCPT.h"
-#include "GMTK_MSCPT.h"
-#include "GMTK_MTCPT.h"
-#include "GMTK_Mixture.h"
-#include "GMTK_ObservationMatrix.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_ContRV.h"
+#include "GMTK_GraphicalModel.h"
 
 VCID("$Header$");
 
@@ -84,19 +77,21 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSort(vector<RandomVariable*>& inputVarList,
-				vector<RandomVariable*>& outputVarList)
+GraphicalModel::topologicalSort(vector<RV*>& inputVarList,
+				vector<RV*>& outputVarList)
 
 {
+  map<RV *, unsigned> tag;
+
   outputVarList.clear();
   outputVarList.resize(inputVarList.size());
   for (unsigned i=0;i<inputVarList.size();i++)
-    inputVarList[i]->tag = 0;
+    tag[inputVarList[i]] = 0;
   unsigned position=inputVarList.size();
   for (unsigned i=0;i<inputVarList.size();i++) {
-    if (inputVarList[i]->tag == 0)
+    if (tag[inputVarList[i]] == 0)
       if (!topologicalSortRecurse(outputVarList,
-				  inputVarList[i],position))
+				  inputVarList[i],position,tag))
 	return false;
   }
   assert (position == 0);
@@ -124,19 +119,20 @@ GraphicalModel::topologicalSort(vector<RandomVariable*>& inputVarList,
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSortRecurse(vector<RandomVariable*>& outputVarList,
-				       RandomVariable* node,
-				       unsigned& position)
+GraphicalModel::topologicalSortRecurse(vector<RV*>& outputVarList,
+				       RV* node,
+				       unsigned& position,
+				       map<RV*,unsigned>& tag)
 {
-  node->tag = 1;
-  for (unsigned i=0;i<node->allPossibleChildren.size();i++) {
-    RandomVariable*rv = node->allPossibleChildren[i];
-    if (rv->tag == 0) {
-      bool res = topologicalSortRecurse(outputVarList,rv,position);
+  tag[node] = 1;
+  for (unsigned i=0;i<node->allChildren.size();i++) {
+    RV*rv = node->allChildren[i];
+    if (tag[rv] == 0) {
+      bool res = topologicalSortRecurse(outputVarList,rv,position,tag);
       if (!res)
 	// directed graph has a loop
 	return false;
-    } else if (rv->tag == 1)
+    } else if (tag[rv] == 1)
       // directed graph has a loop
       return false;
     else
@@ -144,7 +140,7 @@ GraphicalModel::topologicalSortRecurse(vector<RandomVariable*>& outputVarList,
       // tag == 2, meaning we've gone down this path before and need not
       // do it again.
   }
-  node->tag = 2; // done with this node
+  tag[node] = 2; // done with this node
   outputVarList[--position] = node;
   return true;
 }
@@ -192,26 +188,27 @@ GraphicalModel::topologicalSortRecurse(vector<RandomVariable*>& outputVarList,
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSort(const set<RandomVariable*>& inputVarList,
-				const set<RandomVariable*>& sortSet,
-				vector<RandomVariable*>& outputVarList)
+GraphicalModel::topologicalSort(const set<RV*>& inputVarList,
+				const set<RV*>& sortSet,
+				vector<RV*>& outputVarList)
 
 {
+  map<RV *, unsigned> tag;
   outputVarList.clear();
   outputVarList.resize(inputVarList.size());
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
-    RandomVariable* rv = (*it);
-    rv->tag = 0;
+    RV* rv = (*it);
+    tag[rv] = 0;
   }
   unsigned position=inputVarList.size();
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
-    RandomVariable* rv = (*it);
-    if (rv->tag == 0)
+    RV* rv = (*it);
+    if (tag[rv] == 0)
       if (!topologicalSortRecurse(sortSet,
 				  outputVarList,
 				  rv,
-				  position))
+				  position,tag))
 	return false;
   }
   assert (position == 0);
@@ -240,23 +237,24 @@ GraphicalModel::topologicalSort(const set<RandomVariable*>& inputVarList,
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSortRecurse(const set<RandomVariable*>& sortSet,
-				       vector<RandomVariable*>& outputVarList,
-				       RandomVariable* node,
-				       unsigned& position)
+GraphicalModel::topologicalSortRecurse(const set<RV*>& sortSet,
+				       vector<RV*>& outputVarList,
+				       RV* node,
+				       unsigned& position,
+				       map<RV*,unsigned>& tag)
 {
-  node->tag = 1;
-  for (unsigned i=0;i<node->allPossibleChildren.size();i++) {
-    RandomVariable*rv = node->allPossibleChildren[i];
+  tag[node] = 1;
+  for (unsigned i=0;i<node->allChildren.size();i++) {
+    RV*rv = node->allChildren[i];
     // don't bother with children not in sort set.
     if (sortSet.find(rv) == sortSet.end())
       continue;
-    if (rv->tag == 0) {
-      bool res = topologicalSortRecurse(sortSet,outputVarList,rv,position);
+    if (tag[rv] == 0) {
+      bool res = topologicalSortRecurse(sortSet,outputVarList,rv,position,tag);
       if (!res)
 	// directed graph has a loop
 	return false;
-    } else if (rv->tag == 1)
+    } else if (tag[rv] == 1)
       // directed graph has a loop
       return false;
     else
@@ -264,7 +262,7 @@ GraphicalModel::topologicalSortRecurse(const set<RandomVariable*>& sortSet,
       // tag == 2, meaning we've gone down this path before and need not
       // do it again.
   }
-  node->tag = 2; // done with this node
+  tag[node] = 2; // done with this node
   outputVarList[--position] = node;
   return true;
 }
@@ -318,22 +316,23 @@ GraphicalModel::topologicalSortRecurse(const set<RandomVariable*>& sortSet,
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSortRandom(const set<RandomVariable*>& inputVarList,
-				      const set<RandomVariable*>& sortSet,
-				      vector<RandomVariable*>& outputVarList)
+GraphicalModel::topologicalSortRandom(const set<RV*>& inputVarList,
+				      const set<RV*>& sortSet,
+				      vector<RV*>& outputVarList)
 
 {
+  map<RV *, unsigned> tag;
   outputVarList.clear();
   outputVarList.resize(inputVarList.size());
-  set<RandomVariable*>::iterator it;
-  const   set<RandomVariable*>::iterator it_end = inputVarList.end();
+  set<RV*>::iterator it;
+  const   set<RV*>::iterator it_end = inputVarList.end();
 
   sArray < unsigned > permutation(inputVarList.size());
-  vector< RandomVariable*> rv_vec(inputVarList.size());
+  vector< RV*> rv_vec(inputVarList.size());
   unsigned i = 0;
   for (it=inputVarList.begin();it != it_end;it++) {
-    RandomVariable* rv = (*it);
-    rv->tag = 0;
+    RV* rv = (*it);
+    tag[rv] = 0;
     permutation.ptr[i] = i;
     rv_vec[i] = rv;
     i++;
@@ -341,12 +340,12 @@ GraphicalModel::topologicalSortRandom(const set<RandomVariable*>& inputVarList,
   rnd.rpermute(permutation.ptr,inputVarList.size());
   unsigned position=inputVarList.size();
   for (i=0;i<inputVarList.size();i++) {
-    RandomVariable* rv = rv_vec[permutation.ptr[i]];
-    if (rv->tag == 0)
+    RV* rv = rv_vec[permutation.ptr[i]];
+    if (tag[rv] == 0)
       if (!topologicalSortRecurseRandom(sortSet,
 					outputVarList,
 					rv,
-					position))
+					position,tag))
 	return false;
   }
   assert (position == 0);
@@ -375,30 +374,32 @@ GraphicalModel::topologicalSortRandom(const set<RandomVariable*>& inputVarList,
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSortRecurseRandom(const set<RandomVariable*>& sortSet,
-					     vector<RandomVariable*>& outputVarList,
-					     RandomVariable* node,
-					     unsigned& position)
+GraphicalModel::topologicalSortRecurseRandom(const set<RV*>& sortSet,
+					     vector<RV*>& outputVarList,
+					     RV* node,
+					     unsigned& position,
+					     map<RV*,unsigned>& tag)
 {
-  node->tag = 1;
 
-  const unsigned nChildren = node->allPossibleChildren.size();
+  tag[node] = 1;
+
+  const unsigned nChildren = node->allChildren.size();
   sArray <unsigned > permutation(nChildren);
   for (unsigned i=0;i<nChildren;i++) {
     permutation.ptr[i] = i;
   }
   rnd.rpermute(permutation.ptr,nChildren);
   for (unsigned i=0;i<nChildren;i++) {
-    RandomVariable*rv = node->allPossibleChildren[permutation.ptr[i]];
+    RV*rv = node->allChildren[permutation.ptr[i]];
     // don't bother with children not in sort set.
     if (sortSet.find(rv) == sortSet.end())
       continue;
-    if (rv->tag == 0) {
-      bool res = topologicalSortRecurseRandom(sortSet,outputVarList,rv,position);
+    if (tag[rv] == 0) {
+      bool res = topologicalSortRecurseRandom(sortSet,outputVarList,rv,position,tag);
       if (!res)
 	// directed graph has a loop
 	return false;
-    } else if (rv->tag == 1)
+    } else if (tag[rv] == 1)
       // directed graph has a loop
       return false;
     else
@@ -406,7 +407,7 @@ GraphicalModel::topologicalSortRecurseRandom(const set<RandomVariable*>& sortSet
       // tag == 2, meaning we've gone down this path before and need not
       // do it again.
   }
-  node->tag = 2; // done with this node
+  tag[node] = 2; // done with this node
   outputVarList[--position] = node;
   return true;
 }
@@ -450,70 +451,21 @@ GraphicalModel::topologicalSortRecurseRandom(const set<RandomVariable*>& sortSet
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarList,
-					 const set<RandomVariable*>& sortSet,
-					 vector<RandomVariable*>& outputVarList,
+GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
+					 const set<RV*>& sortSet,
+					 vector<RV*>& outputVarList,
 					 const string priorityStr)
 {
+  map<RV *, unsigned> tag;
+
   outputVarList.clear();
   outputVarList.resize(inputVarList.size());
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
-    RandomVariable* rv = (*it);
-    rv->tag = 0;
+    RV* rv = (*it);
+    tag[rv] = 0;
   }
   unsigned position=0;
-
-#if 0
-  // original code (with fixed COB priority)
-
-  // first do a pass doing just continuous variables
-  for (it=inputVarList.begin();it != inputVarList.end();it++) {
-    RandomVariable* rv = (*it);
-    if (rv->discrete == true)
-      continue;
-    if (rv->tag == 0)
-      if (!topologicalSortRecurseContFirst(sortSet,
-					      outputVarList,
-					      rv,
-					      position))
-	return false;
-  }
-
-  // sort using other criterion as well.
-  // next do a pass for any observed variables.
-  for (it=inputVarList.begin();it != inputVarList.end();it++) {
-    RandomVariable* rv = (*it);
-    if (rv->hidden == true)
-      continue;
-    if (rv->tag == 0)
-      if (!topologicalSortRecurseContFirst(sortSet,
-					      outputVarList,
-					      rv,
-					      position))
-	return false;
-  }
-
-  // next do a pass for any binary variables.
-  for (it=inputVarList.begin();it != inputVarList.end();it++) {
-    RandomVariable* rv = (*it);
-    if (!rv->discrete == true)
-      continue;
-    DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-    if (drv->cardinality > 2)
-      continue;
-    if (rv->tag == 0)
-      if (!topologicalSortRecurseContFirst(sortSet,
-					   outputVarList,
-					   rv,
-					   position))
-	return false;
-  }
-
-  // could continue here doing ternary, etc. variables depending
-  // on what exists in set of nodes.
-
-#endif
 
   // Different cases of sort to be prioritized by position in string:
   //    C: continuous, observed
@@ -537,14 +489,14 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
       // here to avoid having to re-compute them many times (in case
       // caching is turned off).
       for (it=inputVarList.begin();it != inputVarList.end();it++) {
-	RandomVariable* rv = (*it);
-	if (rv->discrete || rv->hidden)
+	RV* rv = (*it);
+	if (rv->discrete() || rv->hidden())
 	  continue;
-	if (rv->tag == 0)
-	  if (!topologicalSortRecurseContFirst(sortSet,
-					       outputVarList,
-					       rv,
-					       position))
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
 	    return false;
       }
     } else if (curCase == 'D') {
@@ -555,14 +507,14 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
       // early are likely to kill off a large chunk of unnecessary
       // computation.
       for (it=inputVarList.begin();it != inputVarList.end();it++) {
-	RandomVariable* rv = (*it);
-	if (!(rv->discrete && rv->deterministic() && !rv->hidden))
+	RV* rv = (*it);
+	if (!(rv->discrete() && RV2DRV(rv)->deterministic() && !rv->hidden()))
 	  continue;
-	if (rv->tag == 0)
-	  if (!topologicalSortRecurseContFirst(sortSet,
-					       outputVarList,
-					       rv,
-					       position))
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
 	    return false;
       }
 
@@ -570,56 +522,56 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
 
       // Next do a pass for any other observed variables.
       for (it=inputVarList.begin();it != inputVarList.end();it++) {
-	RandomVariable* rv = (*it);
-	if (rv->hidden)
+	RV* rv = (*it);
+	if (rv->hidden())
 	  continue;
-	if (rv->tag == 0)
-	  if (!topologicalSortRecurseContFirst(sortSet,
-					       outputVarList,
-					       rv,
-					       position))
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
 	    return false;
       }
     } else if (curCase == 'I') {
 
       // Sort the reminaing discrete variables in increasing order of
       // cardinality and do a pass in that increasing order.
-      multimap< unsigned ,RandomVariable*> cardSortedNodes;
+      multimap< unsigned ,RV*> cardSortedNodes;
       for (it=inputVarList.begin();it != inputVarList.end();it++) {
-	RandomVariable* rv = (*it);
-	if (!rv->discrete)
+	RV* rv = (*it);
+	if (!rv->discrete())
 	  continue;
-	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-	pair< unsigned , RandomVariable*> pr (drv->cardinality, rv );
+	DiscRV* drv = RV2DRV(rv);
+	pair< unsigned , RV*> pr (drv->cardinality, rv );
 	cardSortedNodes.insert(pr);    
       }
-      for (multimap< unsigned, RandomVariable*>::iterator m = cardSortedNodes.begin();
+      for (multimap< unsigned, RV*>::iterator m = cardSortedNodes.begin();
 	   m != cardSortedNodes.end(); m++) {
 	// unsigned lcard = (*m).first;
-	RandomVariable* rv = (*m).second;
-	// DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	RV* rv = (*m).second;
+	// DiscRV* drv = (DiscRV*)rv;
 	// printf("Doing node %s(%d) with card %d\n",(*m).second->name().c_str(),(*m).second->frame(),drv->cardinality);
-	if (rv->tag == 0)
-	  if (!topologicalSortRecurseContFirst(sortSet,
-					       outputVarList,
-					       rv,
-					       position))
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
 	    return false;
       }
     } else if (curCase == 'B') {
       // next do a pass for any binary variables.
       for (it=inputVarList.begin();it != inputVarList.end();it++) {
-	RandomVariable* rv = (*it);
-	if (!rv->discrete)
+	RV* rv = (*it);
+	if (!rv->discrete())
 	  continue;
-	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	DiscRV* drv = RV2DRV(rv);
 	if (drv->cardinality > 2)
 	  continue;
-	if (rv->tag == 0)
-	  if (!topologicalSortRecurseContFirst(sortSet,
-					       outputVarList,
-					       rv,
-					       position))
+	if (tag[rv] == 0)
+	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						      outputVarList,
+						      rv,
+						      position,tag))
 	    return false;
       }
     }
@@ -628,12 +580,12 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
   // Last do a pass to hit any remainder that the above might not have
   // done.
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
-    RandomVariable* rv = (*it);
-    if (rv->tag == 0)
-      if (!topologicalSortRecurseContFirst(sortSet,
-					      outputVarList,
-					      rv,
-					      position))
+    RV* rv = (*it);
+    if (tag[rv] == 0)
+      if (!topologicalSortRecurseWPriorityRecurse(sortSet,
+						  outputVarList,
+						  rv,
+						  position,tag))
 	return false;
   }
 
@@ -663,23 +615,24 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSortRecurseContFirst(const set<RandomVariable*>& sortSet,
-						   vector<RandomVariable*>& outputVarList,
-						   RandomVariable* node,
-						   unsigned& position)
+GraphicalModel::topologicalSortRecurseWPriorityRecurse(const set<RV*>& sortSet,
+						       vector<RV*>& outputVarList,
+						       RV* node,
+						       unsigned& position,
+						       map<RV*,unsigned>& tag)
 {
-  node->tag = 1;
-  for (unsigned i=0;i<node->allPossibleParents.size();i++) {
-    RandomVariable*rv = node->allPossibleParents[i];
+  tag[node] = 1;
+  for (unsigned i=0;i<node->allParents.size();i++) {
+    RV*rv = node->allParents[i];
     // don't bother with parents not in sort set.
     if (sortSet.find(rv) == sortSet.end())
       continue;
-    if (rv->tag == 0) {
-      bool res = topologicalSortRecurseContFirst(sortSet,outputVarList,rv,position);
+    if (tag[rv] == 0) {
+      bool res = topologicalSortRecurseWPriorityRecurse(sortSet,outputVarList,rv,position,tag);
       if (!res)
 	// directed graph has a loop
 	return false;
-    } else if (rv->tag == 1)
+    } else if (tag[rv] == 1)
       // directed graph has a loop
       return false;
     else
@@ -687,7 +640,7 @@ GraphicalModel::topologicalSortRecurseContFirst(const set<RandomVariable*>& sort
       // tag == 2, meaning we've gone up this path before and need not
       // do it again.
   }
-  node->tag = 2; // done with this node
+  tag[node] = 2; // done with this node
   outputVarList[position++] = node;
   return true;
 }

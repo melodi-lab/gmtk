@@ -32,7 +32,7 @@
 
 #include "GMTK_MSCPT.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_GMParms.h"
 
 
@@ -150,50 +150,51 @@ MSCPT::read(iDataStreamFile& is)
 {
 
   NamedObject::read(is);
-  is.read(_numParents,"MSCPT::read numParents");
+  is.read(_numParents,"Can't read SparseCPT number parents");
 
   if (_numParents < 0) 
-    error("ERROR: reading file '%s', MSCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
+    error("ERROR: reading file '%s' line %d, SparseCPT '%s' trying to use negative (%d) num parents.",
+	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
-    warning("WARNING: creating MSCPT with %d parents in file '%s'",_numParents,
-	    is.fileName());
+    warning("WARNING: creating SparseCPT with %d parents in file '%s' line %d",_numParents,
+	    is.fileName(),is.lineNo());
 
   cardinalities.resize(_numParents);
   // read the cardinalities
   for (unsigned i=0;i<_numParents;i++) {
-    is.read(cardinalities[i],"MSCPT::read cardinality");
+    is.read(cardinalities[i],"Can't read SparseCPT parent cardinality");
     if (cardinalities[i] <= 0)
-      error("ERROR: reading file '%s', MDCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-	    is.fileName(),name().c_str(),cardinalities[i],i);
+      error("ERROR: reading file '%s' line %d, SparseCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	    is.fileName(),is.lineNo(),name().c_str(),cardinalities[i],i);
   }
 
   // read the self cardinalities
-  is.read(_card,"MSCPT::read cardinality");
+  is.read(_card,"Can't read SparseCPT self cardinality");
   if (_card <= 0)
-    error("ERROR: reading file '%s', MSCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-	  is.fileName(),name().c_str(),_card,_numParents);
+    error("ERROR: reading file '%s' line %d, SparseCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	  is.fileName(),is.lineNo(),name().c_str(),_card,_numParents);
 
 
   // read the name of the decision tree
   string str;
   is.read(str);
   if (GM_Parms.dtsMap.find(str) ==  GM_Parms.dtsMap.end()) 
-      error("Error: MTCPT '%s' specifies DT name '%s' that does not exist",
+      error("Error: SparseCPT '%s' specifies DT name '%s' that does not exist",
 	    _name.c_str(),str.c_str());
   dtIndex = GM_Parms.dtsMap[str];
 
   dt = GM_Parms.dts[dtIndex];
   
   if (_numParents != dt->numFeatures())
-      error("ERROR: reading file '%s', MTCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
-	    is.fileName(),
+      error("ERROR: reading file '%s' line %d, SparseCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
+	    is.fileName(),is.lineNo(),
 	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 
   // read the name of the collection giving a list of SPMFs
   string clstr;
   is.read(clstr);
   if (GM_Parms.nclsMap.find(clstr) ==  GM_Parms.nclsMap.end()) 
-      error("Error: MTCPT '%s' specifies collection name '%s' that does not exist",
+      error("Error: SparseCPT '%s' specifies collection name '%s' that does not exist",
 	    _name.c_str(),clstr.c_str());
   ncl = GM_Parms.ncls[GM_Parms.nclsMap[clstr]];
   ncl->fillSpmfTable();
@@ -211,8 +212,8 @@ MSCPT::read(iDataStreamFile& is)
       // of problems earlier on than during run-time.
       const unsigned v = it.value();
       if (!ncl->validSpmfIndex(v))
-	error("ERROR: reading file '%s', MSCPT '%s' has DT '%s' with leaf value %d is out of range of collection '%s'",
-	      is.fileName(),
+	error("ERROR: reading file '%s' line %d, SparseCPT '%s' has DT '%s' with leaf value %d is out of range of collection '%s'",
+	      is.fileName(),is.lineNo(),
 	      name().c_str(),
 	      str.c_str(),
 	      v,
@@ -229,8 +230,8 @@ MSCPT::read(iDataStreamFile& is)
   _averageCardinality = _maxCardinality = 0;
   for (unsigned u=0;u<ncl->spmfSize();u++) {
     if (ncl->spmf(u)->card() != card()) {
-      error("ERROR: reading file '%s', MSCPT '%s' uses collection '%s' referring to SPMF '%s' (position %d within collection) with card %d but MSCPT needs card %d",
-	    is.fileName(),
+      error("ERROR: reading file '%s' line %d, SparseCPT '%s' uses collection '%s' referring to SPMF '%s' (position %d within collection) with card %d but SparseCPT needs card %d",
+	    is.fileName(),is.lineNo(),
 	    name().c_str(),
 	    ncl->name().c_str(),
 	    ncl->spmf(u)->name().c_str(),
@@ -307,13 +308,13 @@ MSCPT::write(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 int
-MSCPT::randomSample(DiscreteRandomVariable*drv)
+MSCPT::randomSample(DiscRV*drv)
 {
   assert ( bitmask & bm_basicAllocated );
 
   logpr uniform = rnd.drand48();
   logpr sum = 0.0;
-  int i;
+  unsigned i;
   for (i=0;i<spmf->length();i++) {
     sum += spmf->probAtEntry(i);
     if (uniform <= sum)
@@ -350,7 +351,7 @@ MSCPT::normalize()
     // we do not allow integer expression leaf nodes for MSCPT
     // DTs and if we check at read time above.
     if (!ncl->validSpmfIndex(v)) {
-      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
+      error("ERROR: SparseCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
 	    name().c_str(),
 	    dt->name().c_str(),
 	    v,
@@ -390,7 +391,7 @@ MSCPT::makeRandom()
   do {
     const int v = it.value();
     if (!ncl->validSpmfIndex(v)) {
-      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
+      error("ERROR: SparseCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
 	    name().c_str(),dt->name().c_str(),v,
 	    ncl->name().c_str(),ncl->spmfSize());
     }
@@ -428,7 +429,7 @@ MSCPT::makeUniform()
   do {
     const int v = it.value();
     if (!ncl->validSpmfIndex(v)) {
-      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
+      error("ERROR: SparseCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) in collection '%s' to a SPMF, of which there are only %d.\n",
 	    name().c_str(),dt->name().c_str(),v,
 	    ncl->name().c_str(),
 	    ncl->spmfSize());
@@ -468,7 +469,7 @@ MSCPT::emStartIteration()
 
 
 void
-MSCPT::emIncrement(logpr prob,RandomVariable* rv)
+MSCPT::emIncrement(logpr prob,vector <RV*>& parents,RV* rv)
 {
   if (!emAmTrainingBitIsSet())
     return;
@@ -477,16 +478,13 @@ MSCPT::emIncrement(logpr prob,RandomVariable* rv)
     emStartIteration();
 
   // this is an MSCPT, so rv must be discrete.a
-  assert ( rv -> discrete );
+  assert ( rv -> discrete() );
 
-  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+  DiscRV* drv = RV2DRV(rv);
   // make sure, by checking that drv's curCPT points to this.
   assert ( drv -> curCPT == this );
 
-  // 
-  // TODO: This needs to be factored out of the inner most
-  // loop!
-  becomeAwareOfParentValues(*(drv->curConditionalParents));
+  MSCPT::becomeAwareOfParentValues(parents,rv);
 
   spmf->emIncrement(prob,drv->val);
 
@@ -504,7 +502,7 @@ MSCPT::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability.zero()) {
-    warning("WARNING: MSCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+    warning("WARNING: SparseCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
   ////////////////////////////////////////////////////////////

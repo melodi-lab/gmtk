@@ -143,37 +143,60 @@ char * Vocab::word(unsigned index) const {
  *-----------------------------------------------------------------------
  */
 void Vocab::read(const char *filename) {
-	iDataStreamFile ifs(filename, false, false);	// ascii, no cpp
 
-	unsigned wid = 0;
-	while ( ifs.prepareNext() ) {
-		char *word = NULL;
-		if ( ! ifs.readStr(word) )
-			error("Error: cannot read string in vocab file.");
-		insert(word, wid++);
-		if ( wid > _size )
-			error("Error: reading more words than size (%d) in Vocab::read", _size);
-		delete [] word;		// Jeff's readStr will create a new buffer
-	}
+  iDataStreamFile ifs(filename, false, false);	// ascii, no cpp
 
-	if ( wid < _size )
-		error("Error: in vocab with card %d read only %d from file %s.", _size, wid, filename);
+  // start allocating wids at 0 (so the first word in the
+  // file has 0, the next has 1, and so on).
+  unsigned wid = 0;
+  // ????????????????????
+  // TODO: why is ifs.prepareNext() being called? why not just call readStr()?????
+  //
+  while ( ifs.prepareNext() ) {
+    char *word = NULL;
+    if ( ! ifs.readStr(word) )
+      error("Error: cannot read string when reading vocab file '%s'.",filename);
+    insert(word, wid++);
+    if ( wid > _size )
+      error("Error: vocab file file '%s' contains more words than specified vocab size of %d",
+	    filename,_size);
+    // readStr() allocates its own buffer, so we free it here.
+    delete [] word;		
+  }
+  
+  if ( wid < _size )
+    error("Error: in vocab with cardinality %d, read only %d words from file '%s'.", _size, wid, filename);
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * Vocab::read
+ *      read in a new vocab specification into the object.
+ *
+ * Results:
+ *      none
+ *
+ * Side Effects:
+ *      The new object 'this' is now instantiated if no error occurs.
+ *
+ *-----------------------------------------------------------------------
+ */
 void Vocab::read(iDataStreamFile& is) {
-	NamedObject::read(is);
-	is.read(_size, "Vocab::read cardinality");
+  NamedObject::read(is);
+  is.read(_size, "Can't read Vocab's cardinality (i.e., the lexicon size)");
 
-	resize(_size);
+  resize(_size);
 
-	char *vocabFile;
-	if ( ! is.readStr(vocabFile) )
-		error("ERROR: reading file '%s', Vocab '%s' trying to find vocab filename", is.fileName(), name().c_str());
+  char *vocabFile;
+  if ( !is.readStr(vocabFile) )
+    error("ERROR: reading file '%s' line %d, Vocab '%s' can't read vocab filename", 
+	  is.fileName(), is.lineNo(),name().c_str());
+  
+  read(vocabFile);
 
-	read(vocabFile);
-
-	delete [] vocabFile;
+  delete [] vocabFile;
 }
 
 
@@ -196,7 +219,7 @@ void Vocab::resize(unsigned card) {
 	delete [] _indexTable;
 	_tableSize = nextPrime(_size << 1 );
 	if ( ! (_indexTable = new HashEntry [_tableSize]) )
-		error("out of memory");
+		error("trying to resize vocab to be of size %d, but out of memory",_tableSize);
 
 	delete [] _stringTable;
 	if ( ! (_stringTable = new char * [_size]) )
@@ -219,24 +242,26 @@ void Vocab::resize(unsigned card) {
  *-----------------------------------------------------------------------
  */
 void Vocab::insert(const char* key, int wid) {
-	if ( wid >= (int)_size )
-		error("Error: word id %d exeeds size %d in Vocab::read", wid, _size);
 
-	// Insert x as active
-	HashEntry *pos = findPos(key);
+  if ( wid >= (int)_size )
+    error("Error: word id %d exeeds size %d in Vocab object", wid, _size);
 
-	if ( pos->key != NULL )		// duplicates
-		error("Error: in vocab inserting word %s more than once", key);
+  // Insert x as active
+  HashEntry *pos = findPos(key);
 
-	pos->wid = wid;
-	delete [] pos->key;
-	pos->key = new char [strlen(key) + 1];
-	strcpy(pos->key, key);
+  // check for duplicates
+  if ( pos->key != NULL )		
+    error("Error: in vocab inserting word %s more than once", key);
 
-	if ( strcmp(key, "<unk>") == 0 )
-		_unkIndex = wid;
-
-	_stringTable[wid] = pos->key;
+  pos->wid = wid;
+  // delete [] pos->key; no need
+  pos->key = new char [strlen(key) + 1];
+  strcpy(pos->key, key);
+  
+  if ( strcmp(key, "<unk>") == 0 )
+    _unkIndex = wid;
+  
+  _stringTable[wid] = pos->key;
 }
 
 
@@ -340,6 +365,8 @@ bool isPrime(unsigned n) {
  *-----------------------------------------------------------------------
  * Function
  *      Find a prime number just bigger than 2 * n
+ *
+ *      TODO: this could be very slow -- do this with a table instead.
  *
  * Results:
  *      Find a prime number just bigger than 2 * n

@@ -27,8 +27,7 @@
 #include "logp.h"
 
 #include "GMTK_RngDecisionTree.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_CPT.h"
 #include "GMTK_Sparse1DPMF.h"
 #include "GMTK_NameCollection.h"
@@ -88,33 +87,12 @@ public:
 
   ///////////////////////////////////////////////////////////    
 
-  //////////////////////////////////
-  // various forms of probability calculation
-  void becomeAwareOfParentValues( vector <int>& parentValues,
-				  vector <int>& cards ) {
-    spmfIndex = dt->query(parentValues,cards);
-
-    ////////////////////////////////////////////////////////////////
-    // Include this run-time check for index validity since the
-    // decision tree might have integer expression leaf nodes.
-    // If the tree only had constant leaf expressions, we wouldn't
-    // need this check here.
-    if (!ncl->validSpmfIndex(spmfIndex)) {
-      error("ERROR: Sparse CPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
-	    name().c_str(),dt->name().c_str(),spmfIndex,
-	    ncl->name().c_str(),ncl->spmfSize());
-    }
-
-    spmf = ncl->spmf(spmfIndex);
-
-    // No need for cardinality checking of SPMF here
-    // since that is done statically when the MSCPT is
-    // read in, for all the SPMF entries of the 
-    // collection.
-
-  }
-  void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
-    spmfIndex = dt->query(parents);
+  ///////////////////////////////////////////////////////////  
+  // Probability evaluation, compute Pr( child | parents ), and
+  // iterator support. See GMTK_CPT.h for documentation.
+  void becomeAwareOfParentValues( vector < RV *>& parents,
+				  const RV* rv ) {
+    spmfIndex = dt->query(parents,rv);
     if (!ncl->validSpmfIndex(spmfIndex)) {
       error("ERROR: Sparse CPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
 	    name().c_str(),dt->name().c_str(),spmfIndex,
@@ -131,48 +109,11 @@ public:
 	      spmfIndex,ncl->name().c_str(),
 	      spmf->card());
       fprintf(stderr,"Parents configuration :");
-      for (unsigned i=0;i<parents.size();i++) {
-	fprintf(stderr,"%s(%d)=%d,",
-		parents[i]->name().c_str(),
-		parents[i]->timeIndex,
-		parents[i]->val);
-      }
+      printRVSetAndValues(stderr,parents);
       error("");
     }
   }
-  logpr probGivenParents(DiscreteRandomVariable* drv) {
-    assert ( bitmask & bm_basicAllocated );
-    register RandomVariable::DiscreteVariableType val = drv->val;
-    assert ( val >= 0 && val <= card() );
-    return spmf->prob(val);
-  }
-  logpr probGivenParents(vector <RandomVariable *>& parents,
-			 DiscreteRandomVariable* drv) {
-    assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parents);
-    register RandomVariable::DiscreteVariableType val = drv->val;
-    assert ( val >= 0 && val <= card() );
-    return spmf->prob(val);
-  }
-
-  logpr probGivenParents(vector <int>& parentValues, 
-			 vector <int>& cards,
-			 const int val) {
-    assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parentValues,cards);
-    return spmf->prob(val);
-  }
-
-  // returns an iterator for the first one.
-  iterator begin(DiscreteRandomVariable* drv) {
-    iterator it(this);
-    MSCPT::begin(it,drv);
-    return it;
-  }
-
-
-  // returns an iterator for the first one.
-  void begin(iterator& it,DiscreteRandomVariable* drv) {
+  void begin(iterator& it, DiscRV* drv,logpr& p) {
     assert ( bitmask & bm_basicAllocated );
     it.setCPT(this);
     it.internalState = -1;
@@ -184,34 +125,7 @@ public:
       // must have that at least one entry is non-zero.
       // The read code of the MDCPT should ensure this
       // as sure all parameter update procedures.
-      assert (it.internalState < spmf->length());
-
-      it.probVal = spmf->probAtEntry(it.internalState);
-      // NOTE: this is a sparse CPT, so the user really shouldn't
-      // be placing zeros in a sparse CPT. It might be the case,
-      // however, that during parameter training, some CPT entry
-      // converges to zero, so we keep this check here, and once
-      // it essentially becomes zero, we just skip it over, never
-      // placing it in a clique entry.
-    } while (it.probVal.essentially_zero());
-    drv->val = spmf->valueAtEntry(it.internalState); 
-    it.drv = drv;
-  }
-
-  // returns an iterator for the first one.
-  void begin(iterator& it,DiscreteRandomVariable* drv,logpr& p) {
-    assert ( bitmask & bm_basicAllocated );
-    it.setCPT(this);
-    it.internalState = -1;
-    // store the current spmf
-    it.internalStatePtr = (void*) spmf;
-    do {
-      it.internalState++;
-      // We keep the following assertion as we
-      // must have that at least one entry is non-zero.
-      // The read code of the MDCPT should ensure this
-      // as sure all parameter update procedures.
-      assert (it.internalState < spmf->length());
+      assert (it.internalState < (int)spmf->length());
 
       p = spmf->probAtEntry(it.internalState);
       // NOTE: this is a sparse CPT, so the user really shouldn't
@@ -224,13 +138,11 @@ public:
     drv->val = spmf->valueAtEntry(it.internalState); 
     it.drv = drv;
   }
-
-
-
-  void becomeAwareOfParentValuesAndIterBegin( vector <RandomVariable *>& parents,
-					      iterator &it,
-					      DiscreteRandomVariable* drv) {
-    spmfIndex = dt->query(parents);
+  void becomeAwareOfParentValuesAndIterBegin(vector < RV *>& parents ,
+					     iterator &it,
+					     DiscRV* drv,
+					     logpr& p) {
+    spmfIndex = dt->query(parents,drv);
     if (!ncl->validSpmfIndex(spmfIndex)) {
       error("ERROR: Sparse CPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
 	    name().c_str(),dt->name().c_str(),spmfIndex,
@@ -247,12 +159,7 @@ public:
 	      spmfIndex,ncl->name().c_str(),
 	      spmf->card());
       fprintf(stderr,"Parents configuration :");
-      for (unsigned i=0;i<parents.size();i++) {
-	fprintf(stderr,"%s(%d)=%d,",
-		parents[i]->name().c_str(),
-		parents[i]->timeIndex,
-		parents[i]->val);
-      }
+      printRVSetAndValues(stderr,parents);
       error("");
     }
     assert ( bitmask & bm_basicAllocated );
@@ -266,62 +173,7 @@ public:
       // must have that at least one entry is non-zero.
       // The read code of the MDCPT should ensure this
       // as sure all parameter update procedures.
-      assert (it.internalState < spmf->length());
-
-      it.probVal = spmf->probAtEntry(it.internalState);
-      // NOTE: this is a sparse CPT, so the user really shouldn't
-      // be placing zeros in a sparse CPT. It might be the case,
-      // however, that during parameter training, some CPT entry
-      // converges to zero, so we keep this check here, and once
-      // it essentially becomes zero, we just skip it over, never
-      // placing it in a clique entry.
-    } while (it.probVal.essentially_zero());
-    drv->val = spmf->valueAtEntry(it.internalState); 
-    it.drv = drv;
-  }
-
-
-  void becomeAwareOfParentValuesAndIterBegin( vector <RandomVariable *>& parents ,
-					      iterator &it,
-					      DiscreteRandomVariable* drv,
-					      logpr& p) {
-    spmfIndex = dt->query(parents);
-    if (!ncl->validSpmfIndex(spmfIndex)) {
-      error("ERROR: Sparse CPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
-	    name().c_str(),dt->name().c_str(),spmfIndex,
-	    ncl->name().c_str(),ncl->spmfSize());
-    }
-    Sparse1DPMF* const spmf = ncl->spmf(spmfIndex);
-    if (spmf->card() != card()) {
-      warning("ERROR: Sparse CPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' (offset %d in collection '%s') having card %d",
-	      name().c_str(),
-	      card(),
-	      dt->name().c_str(),
-	      spmfIndex,
-	      spmf->name().c_str(),
-	      spmfIndex,ncl->name().c_str(),
-	      spmf->card());
-      fprintf(stderr,"Parents configuration :");
-      for (unsigned i=0;i<parents.size();i++) {
-	fprintf(stderr,"%s(%d)=%d,",
-		parents[i]->name().c_str(),
-		parents[i]->timeIndex,
-		parents[i]->val);
-      }
-      error("");
-    }
-    assert ( bitmask & bm_basicAllocated );
-    it.setCPT(this);
-    it.internalState = -1;
-    // store the current spmf
-    it.internalStatePtr = (void*) spmf;
-    do {
-      it.internalState++;
-      // We keep the following assertion as we
-      // must have that at least one entry is non-zero.
-      // The read code of the MDCPT should ensure this
-      // as sure all parameter update procedures.
-      assert (it.internalState < spmf->length());
+      assert (it.internalState < (int)spmf->length());
 
       p = spmf->probAtEntry(it.internalState);
       // NOTE: this is a sparse CPT, so the user really shouldn't
@@ -334,36 +186,20 @@ public:
     drv->val = spmf->valueAtEntry(it.internalState); 
     it.drv = drv;
   }
-
-
-
-  bool next(iterator &it) {
-    Sparse1DPMF* const cur_spmf = (Sparse1DPMF*)it.internalStatePtr;
-    do {
-      it.internalState++;
-      // don't increment past the last value.
-      if (it.internalState >= cur_spmf->length()) {
-	it.internalState = cur_spmf->length();
-	return false;
-      }
-      it.probVal = cur_spmf->probAtEntry(it.internalState);
-      // NOTE: this is a sparse CPT, so the user really shouldn't
-      // be placing zeros in a sparse CPT. It might be the case,
-      // however, that during parameter training, some CPT entry
-      // converges to zero, so we keep this check here, and once
-      // it essentially becomes zero, we just skip it over, never
-      // placing it in a clique entry.
-    } while (it.probVal.essentially_zero());
-    it.drv->val = cur_spmf->valueAtEntry(it.internalState); 
-    return true;
+  logpr probGivenParents(vector < RV* >& parents,
+			 DiscRV* drv) {
+    assert ( bitmask & bm_basicAllocated );
+    becomeAwareOfParentValues(parents,drv);
+    register DiscRVType val = drv->val;
+    assert ( val <= card() );
+    return spmf->prob(val);
   }
-
   bool next(iterator &it,logpr& p) {
     Sparse1DPMF* const cur_spmf = (Sparse1DPMF*)it.internalStatePtr;
     do {
       it.internalState++;
       // don't increment past the last value.
-      if (it.internalState >= cur_spmf->length()) {
+      if (it.internalState >= (int)cur_spmf->length()) {
 	it.internalState = cur_spmf->length();
 	return false;
       }
@@ -379,17 +215,7 @@ public:
     return true;
   }
 
-  bool end(iterator &it) {
-    Sparse1DPMF* const cur_spmf = (Sparse1DPMF*)it.internalStatePtr;
-    return (it.internalState == cur_spmf->length());
-  }
-
-  virtual int valueAtIt(const int internalState) { 
-    assert ( internalState >= 0 && internalState < spmf->length() );
-    return spmf->valueAtEntry(internalState); 
-  }
-
-  int randomSample(DiscreteRandomVariable*drv);
+  int randomSample(DiscRV*drv);
 
   ///////////////////////////////////////////////////////////  
   // Re-normalize the output distributions
@@ -413,7 +239,7 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration();
-  void emIncrement(logpr p,RandomVariable*rv);
+  void emIncrement(logpr p,vector <RV*>& parents,RV*rv);
   void emEndIteration();
   void emSwapCurAndNew();
 

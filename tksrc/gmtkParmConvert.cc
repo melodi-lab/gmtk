@@ -1,28 +1,19 @@
 /*
- * "Copyright 2001, University of Washington and International Business Machines Corporation. All Rights Reserved
+ * gmtkJT.cc
+ * produce a junction tree
  *
- *    Written by Jeff Bilmes and Geoffrey Zweig
+ * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * NO WARRANTY
- * THE PROGRAM IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED INCLUDING, WITHOUT
- * LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT,
- * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Each Recipient is
- * solely responsible for determining the appropriateness of using the Program
- * and assumes all risks associated with such use, including but not limited
- * to the risks and costs of program errors, compliance with applicable laws,
- * damage to or loss of data, programs or equipment, and unavailability or
- * interruption of operations.
-
- * DISCLAIMER OF LIABILITY
- * THE UNIVERSITY OF WASHINGTON, INTERNATIONAL BUSINESS MACHINES CORPORATION,
- * JEFF BILMES AND GEOFFREY ZWEIG SHALL NOT HAVE ANY LIABILITY FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING WITHOUT LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE  OF
- * THE PROGRAM, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES."
-*/
+ * Copyright (c) 2001, < fill in later >
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software and its documentation for any non-commercial purpose
+ * and without fee is hereby granted, provided that the above copyright
+ * notice appears in all copies.  The University of Washington,
+ * Seattle make no representations about the suitability of this software
+ * for any purpose. It is provided "as is" without express or implied warranty.
+ *
+ */
 
 /*
  * This program converts from ascii trainable parameters to binary
@@ -51,10 +42,9 @@
 VCID("$Header$");
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
-#include "GMTK_GM.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_ContRV.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_MixtureCommon.h"

@@ -20,25 +20,16 @@
  *          VOCAB_SIZE VOCAB_SIZE % cards
  *          ./DATA/bigram.arpa.idx [binary] % ARPA lm indexing file
  *
- * NO WARRANTY
- * THE PROGRAM IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED INCLUDING, WITHOUT
- * LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT,
- * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Each Recipient is
- * solely responsible for determining the appropriateness of using the Program
- * and assumes all risks associated with such use, including but not limited
- * to the risks and costs of program errors, compliance with applicable laws,
- * damage to or loss of data, programs or equipment, and unavailability or
- * interruption of operations.
-
- * DISCLAIMER OF LIABILITY
- * THE UNIVERSITY OF WASHINGTON, INTERNATIONAL BUSINESS MACHINES CORPORATION,
- * JEFF BILMES AND GEOFFREY ZWEIG SHALL NOT HAVE ANY LIABILITY FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING WITHOUT LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE  OF
- * THE PROGRAM, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES."
+ *
+ * Copyright (c) 2001, < fill in later >
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software and its documentation for any non-commercial purpose
+ * and without fee is hereby granted, provided that the above copyright
+ * notice appears in all copies.  The University of Washington,
+ * Seattle make no representations about the suitability of this software
+ * for any purpose. It is provided "as is" without express or implied warranty.
+ *
 */
 
 
@@ -95,6 +86,7 @@ ObservationMatrix globalObservationMatrix;
 
 
 int main(int argc, char *argv[]) {
+#if 0
 	////////////////////////////////////////////
 	// set things up so that if an FP exception
 	// occurs such as an "invalid" (NaN), overflow
@@ -125,7 +117,7 @@ int main(int argc, char *argv[]) {
 	// figure out ngram order
 	unsigned order = 0;
 	if ( (fp = fopen(lmFile, "r")) == NULL )
-		error("cannot open file %s", lmFile);
+		qerror("cannot open file %s", lmFile);
 
 	do {
 		if ( getline(&word, &len, fp) < 0 )
@@ -168,4 +160,5 @@ int main(int argc, char *argv[]) {
 	delete [] indexFile;
 
 	return 0;
+#endif
 }

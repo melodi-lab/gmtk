@@ -2,11 +2,19 @@
  * GMTK_FNGramCPT
  *      .h file for the GMTK_FNGramCPT.cc file.
  *
- *    This is the data type for factored langauge models in GMTK.
+ * The data type for factored langauge models in GMTK.
  *
  * Written by Gang Ji <gang@ee.washington.edu>
- * Borrowed some part from SRI language model toolkit with the factored
- * language model support written by Jeff Bilmes <bilmes@ee.washington.edu>
+ * Modifications by J. Bilmes. <bilmes@ee.washington.edu>
+ *
+ * Portions of this code were borrowed from the SRI language model
+ * toolkit, but only those parts that were written by Jeff Bilmes
+ * <bilmes@ee.washington.edu> as part of the JHU CLSP 2002 workshop.  
+ * NO OTHER PORTIONS OF SRI CODE ARE CONTAINED HERE!! THEREFORE, THISb
+ * CODE IS NOT UNDER SRI COPYRIGHT.
+ *
+ * This part of the code has the implementation of class FNGramCPT for
+ * gmtk.  Please see GMTK_FNGramCPT.h for more information.
  *
  *  $Header$
  *
@@ -31,8 +39,7 @@
 
 #include "GMTK_CPT.h"
 #include "GMTK_Vocab.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "fileParser.h"
 #include "vshash_map.h"
 #include "shash_map.h"
@@ -68,52 +75,23 @@ public:
 	// for this CPT, depending on current _numParents & cardinalities.
 	virtual void allocateBasicInternalStructures() {}
 
-	///////////////////////////////////////////////////////////
-	// Probability evaluation, compute Pr( child | parents )
-	//
-	// becomeAwareOfParentValues: sets the parent values to a particular
-	// assignment. All subsequent calls to to probGivenParents
-	// will return the probability of the RV given that the
-	// parents are at the particular value.
-	virtual void becomeAwareOfParentValues(vector<int>& parentValues, vector<int>& cards);
-	// Another version of becomeAwareOfParentValues but this
-	// one explicitely takes an array of random variable parents.
-	virtual void becomeAwareOfParentValues(vector<RandomVariable *>& parents);
-	// return the probability of 'val' given the parents are the
-	// assigned to the set of values set during the most previous call to
-	// becomeAwareOfParentValues.
-	virtual logpr probGivenParents(const int val);
-	// Similar to the above two. This is convenient for one time
-	// probability evaluation.
-	virtual logpr probGivenParents(vector<int>& parentValues, vector<int>& cards, const int val);
-	virtual logpr probGivenParents(vector<RandomVariable *>& parents, const int val);
-	// return the probability of 'val' given the parents are the
-	// assigned to the set of values set during the most previous call
-	// to becomeAwareOfParentValues.
-	virtual logpr probGivenParents(DiscreteRandomVariable* drv);
-	// Similar to the above, but convenient for one time probability
-	// evaluation.
-	virtual logpr probGivenParents(vector < RandomVariable *>& parents, DiscreteRandomVariable* drv);
 
-	// returns an iterator for the first one.
-	virtual iterator begin(DiscreteRandomVariable* drv);
-
-	virtual void begin(iterator& it, DiscreteRandomVariable* drv);
-	virtual void begin(iterator& it, DiscreteRandomVariable* drv, logpr& p);
-	virtual void becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it, DiscreteRandomVariable* drv);
-	virtual void becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it, DiscreteRandomVariable* drv, logpr& p);
-
-	// Given a current iterator, return true if it is a valid next
-	// value, otherwise return false so a loop can terminate.
-	virtual bool next(iterator &it);
+        ///////////////////////////////////////////////////////////  
+        // Probability evaluation, compute Pr( child | parents ), and
+        // iterator support. See GMTK_CPT.h for documentation.
+	virtual void becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv);
+	virtual void begin(iterator& it, DiscRV* drv,logpr& p);
+        virtual void becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, 
+							   iterator &it, 
+							   DiscRV* drv, 
+							   logpr& p);
+	virtual logpr probGivenParents(vector< RV* >& parents, 
+				       DiscRV* drv);
 	virtual bool next(iterator &it,logpr& p);
-
-	// returns true if iterate is at end state
-	virtual bool end(iterator &it) {return it.drv->val >= (int)ucard();}
 
 	///////////////////////////////////////////////////////////
 	// Given the current parent values, generate a random sample.
-	virtual int randomSample(DiscreteRandomVariable*drv);
+	virtual int randomSample(DiscRV*drv);
 
 	///////////////////////////////////////////////////////////
 	// Re-normalize the output distributions
@@ -138,11 +116,10 @@ public:
 
 	////////////////////////////////////////////////////////////////////////////
 	// from base class EMable
-
-	////////////////////////////////////////////////////////////////////////////
-	// if swap bit not set, swaps the current and new parameters, set swap bit.
-	// otherwise does nothing.
-	virtual void emSwapCurAndNew() {}
+        void emStartIteration() {}
+        void emIncrement(logpr prob,vector < RV* >& parents, RV*r) {}
+        void emEndIteration() {}
+        void emSwapCurAndNew() {}
 
 	// return the number of parameters for object.
 	virtual unsigned totalNumberParameters() {return _totalNumberOfParameters;}

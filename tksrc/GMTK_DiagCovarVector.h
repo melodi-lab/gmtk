@@ -28,7 +28,6 @@
 #include "GMTK_EMable.h"
 #include "GMTK_RealArray.h"
 #include "GMTK_NamedObject.h"
-#include "GMTK_RandomVariable.h"
 
 class MeanVector;
 

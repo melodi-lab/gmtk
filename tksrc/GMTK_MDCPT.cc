@@ -31,8 +31,7 @@
 #include "rand.h"
 
 #include "GMTK_MDCPT.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_GMParms.h"
 
 VCID("$Header$");
@@ -42,29 +41,6 @@ VCID("$Header$");
  *  copysign(x,y) = fabs(x)*sign(y)
  */      
 extern "C" double copysign(double x, double y) __THROW;
-
-// TODO: move this to one file, for printing random variables. 
-
-static void
-printRVSetAndValues(FILE*f,vector<RandomVariable*>& locset) 
-{
-  bool first = true;
-  for (unsigned i=0;i<locset.size();i++) {
-    RandomVariable* rv = locset[i];
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)=",rv->name().c_str(),rv->frame());
-    if (!rv->discrete) {
-      fprintf(f,"C");
-    } else {
-      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-      fprintf(f,"%d",drv->val);
-    }
-    first = false;
-  }
-  fprintf(f,"\n");
-}
-
 
 
 ////////////////////////////////////////////////////////////////////
@@ -195,13 +171,14 @@ MDCPT::read(iDataStreamFile& is)
 
   NamedObject::read(is);
 
-  is.read(_numParents,"DenseCPT::read numParents");
+  is.read(_numParents,"Can't read DenseCPT numParents");
 
   if (_numParents < 0) 
-    error("ERROR: reading file '%s', DenseCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
+    error("ERROR: reading file '%s' line %d, DenseCPT '%s' trying to use negative (%d) num parents.",
+	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
-    warning("WARNING: creating DenseCPT with %d parents in file '%s'",_numParents,
-	    is.fileName());
+    warning("WARNING: creating DenseCPT with %d parents in file '%s' line %d",
+	    _numParents,is.fileName(),is.lineNo());
 
   cardinalities.resize(_numParents);
   cumulativeCardinalities.resize(_numParents);
@@ -209,18 +186,18 @@ MDCPT::read(iDataStreamFile& is)
   // read the parent cardinalities
   int numValues = 1;
   for (unsigned i=0;i<_numParents;i++) {
-    is.read(cardinalities[i],"DenseCPT::read cardinality");
+    is.read(cardinalities[i],"Can't read DenseCPT parent cardinality");
     if (cardinalities[i] <= 0)
-      error("ERROR: reading file '%s', DenseCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-	    is.fileName(),name().c_str(),cardinalities[i],i);
+      error("ERROR: reading file '%s' line %d, DenseCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	    is.fileName(),is.lineNo(),name().c_str(),cardinalities[i],i);
     numValues *= cardinalities[i];
   }
 
   // read the self cardinalities
-  is.read(_card,"DenseCPT::read cardinality");
+  is.read(_card,"Can't read DenseCPT self cardinality");
   if (_card <= 0)
-    error("ERROR: reading file '%s', DenseCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-	  is.fileName(),name().c_str(),_card,_numParents);
+    error("ERROR: reading file '%s' line %d, DenseCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	  is.fileName(),is.lineNo(),name().c_str(),_card,_numParents);
   numValues *= _card;
 
   // cumulativeCardinalities gets set to the
@@ -244,7 +221,7 @@ MDCPT::read(iDataStreamFile& is)
   for (int i=0;i<numValues;) {
 
     double val;  // sign bit below needs to be changed if we change this type.
-    is.readDouble(val,"DenseCPT::read, reading value");
+    is.readDouble(val,"Can't read DenseCPT double value");
 
     // we support reading in both regular probability values
     // (in the range [+0,1] inclusive) and log probability 
@@ -256,8 +233,8 @@ MDCPT::read(iDataStreamFile& is)
     // ASCII read routines preserve ASCII string '-0.0' to be negative zero,
     // we consider -0.0 as log(1) , and +0.0 as real zero.
     if (val > 1)
-      error("ERROR: reading file '%s', DenseCPT '%s' has invalid probability value (%e), table entry number %d",
-	    is.fileName(),
+      error("ERROR: reading file '%s' line %d, DenseCPT '%s' has invalid probability value (%e), table entry number %d",
+	    is.fileName(),is.lineNo(),
 	    name().c_str(),
 	    val,
 	    i);
@@ -286,8 +263,8 @@ MDCPT::read(iDataStreamFile& is)
       // which otherwise would turn it off.
       double abs_diff = fabs(child_sum.unlog() - 1.0);
       if (abs_diff > threshold) 
-	error("ERROR: reading file '%s', row %d of DenseCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
-	      is.fileName(),
+	error("ERROR: reading file '%s' line %d, row %d of DenseCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
+	      is.fileName(),is.lineNo(),
 	      row,
 	      name().c_str(),
 	      child_sum.unlog(),
@@ -350,13 +327,23 @@ MDCPT::write(oDataStreamFile& os)
 
 
 
+
 /*-
  *-----------------------------------------------------------------------
  * MDCPT::becomeAwareOfParentValues()
  *      Adjusts the current structure so that subsequent calls of
  *      probability routines will be conditioned on the given
  *      assigment to parent values.
- *  
+ *
+ *
+ * Preconditions:
+ *      parents must be an array of parents, and actually must
+ *      really be an array of DiscRVs. This condition is not
+ *      checked, and if it is not true, random results will occur.
+ *
+ * Postconditions:
+ *      we are aware of the parent values.
+ *
  * Results:
  *      No results.
  *
@@ -366,40 +353,8 @@ MDCPT::write(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void
-MDCPT::becomeAwareOfParentValues( vector<int>& parentValues,
-				  vector<int>& cards)
-{
-  assert ( basicAllocatedBitIsSet() );
-  assert ( parentValues.size() == _numParents );
-
-  
-  int offset = 0;
-  for (unsigned i = 0; i < _numParents; i++) {
-    if (parentValues[i] < 0 || parentValues[i] >= cardinalities[i]) 
-      error("DenseCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
-    offset += parentValues[i]*cumulativeCardinalities[i];
-  }
-  mdcpt_ptr = mdcpt.ptr + offset;
-
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * MDCPT::becomeAwareOfParentValues()
- *      Like above, but uses the explicit array of parents.
- *  
- * Results:
- *      No results.
- *
- * Side Effects:
- *      Changes the mdcpt_ptr
- *
- *-----------------------------------------------------------------------
- */
-void
-MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
+MDCPT::becomeAwareOfParentValues( vector< RV * >& parents,
+				  const RV* rv)
 {
 
   assert ( basicAllocatedBitIsSet() );
@@ -407,69 +362,21 @@ MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
   
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
-    if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
-      error("ERROR:becomeAwareOfParentValues. DenseCPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
+    if (((DiscRV*)parents[i])->val >= cardinalities[i])
+      error("ERROR: DenseCPT %s used by RV %s(%d), invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but parent RV cardinality = %d\n",
 	    name().c_str(),
+	    rv->name().c_str(),rv->frame(),
 	    parents[i]->name().c_str(),parents[i]->frame(),
 	    i,
-	    parents[i]->val,cardinalities[i]);
-    offset += parents[i]->val*cumulativeCardinalities[i];
+	    ((DiscRV*)parents[i])->val,cardinalities[i]);
+    offset += ((DiscRV*)parents[i])->val*cumulativeCardinalities[i];
   }
   mdcpt_ptr = mdcpt.ptr + offset;
 }
-
 void
-MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parents,
+MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RV * >& parents,
 					      iterator & it,
-					      DiscreteRandomVariable* drv)
-{
-
-  assert ( basicAllocatedBitIsSet() );
-  assert ( parents.size() == _numParents );
-  
-  int offset = 0;
-  for (unsigned i = 0; i < _numParents; i++) {
-    // TODO: when RV vals are unsigned this becomes one check rather than two.
-    // TODO: also speed this up with an endp on cardinalities and use an sArray via ptr.
-    if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
-      error("ERROR:becomeAwareOfParentValues. DenseCPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
-	    name().c_str(),
-	    parents[i]->name().c_str(),parents[i]->frame(),
-	    i,
-	    parents[i]->val,cardinalities[i]);
-    offset += parents[i]->val*cumulativeCardinalities[i];
-  }
-  register logpr* const mdcpt_ptr = mdcpt.ptr + offset;
-
-  it.setCPT(this);
-  it.internalStatePtr = (void*)mdcpt_ptr;
-  it.drv = drv;
-
-  register RandomVariable::DiscreteVariableType value = 0;
-  while (mdcpt_ptr[value].essentially_zero()) {
-    value++;
-    // We keep the following check as we must have that at least one
-    // entry is non-zero.  The read code of the MDCPT should ensure
-    // this as sure all parameter update procedures, as long as
-    // normalizationThreshold is not set to large.
-    // TODO: remove cast
-    if (value >= (int)ucard()) {
-      fprintf(stderr,"ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Parents and values are: ",
-	      name().c_str(),drv->name().c_str(),drv->frame());
-      printRVSetAndValues(stderr,parents);
-      error("Program Exiting...\n"); 
-    }
-  }
-  it.probVal = mdcpt_ptr[value];    
-  drv->val = value;
-}
-
-
-
-void
-MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parents,
-					      iterator & it,
-					      DiscreteRandomVariable* drv,
+					      DiscRV* drv,
 					      logpr& p)
 {
 
@@ -478,13 +385,13 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
   
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
-    if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
+    if ( ((DiscRV*)parents[i])->val >= cardinalities[i])
       error("ERROR:becomeAwareOfParentValues. DenseCPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
 	    name().c_str(),
 	    parents[i]->name().c_str(),parents[i]->frame(),
 	    i,
-	    parents[i]->val,cardinalities[i]);
-    offset += parents[i]->val*cumulativeCardinalities[i];
+	    ((DiscRV*)parents[i])->val,cardinalities[i]);
+    offset += ((DiscRV*)parents[i])->val*cumulativeCardinalities[i];
   }
   register logpr* const mdcpt_ptr = mdcpt.ptr + offset;
 
@@ -492,15 +399,14 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
   it.internalStatePtr = (void*)mdcpt_ptr;
   it.drv = drv;
 
-  register RandomVariable::DiscreteVariableType value = 0;
+  register DiscRVType value = 0;
   while (mdcpt_ptr[value].essentially_zero()) {
     value++;
     // We keep the following check as we must have that at least one
     // entry is non-zero.  The read code of the MDCPT should ensure
     // this as sure all parameter update procedures, as long as
     // normalizationThreshold is not set to large.
-    // TODO: remove cast
-    if (value >= (int)ucard()) {
+    if (value >= card()) {
       fprintf(stderr,"ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Parents and values are: ",
 	      name().c_str(),drv->name().c_str(),drv->frame());
       printRVSetAndValues(stderr,parents);
@@ -533,12 +439,12 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
  *-----------------------------------------------------------------------
  */
 int
-MDCPT::randomSample(DiscreteRandomVariable*drv)
+MDCPT::randomSample(DiscRV*drv)
 {
   assert ( basicAllocatedBitIsSet() );
   
   logpr* mdcpt_ptr_p = mdcpt_ptr;
-  logpr* mdcpt_ptr_endp = mdcpt_ptr + ucard();
+  logpr* mdcpt_ptr_endp = mdcpt_ptr + card();
   logpr uniform = rnd.drand48();
   logpr sum = 0.0;
   do {
@@ -720,7 +626,7 @@ MDCPT::emStartIteration()
 
 
 void
-MDCPT::emIncrement(logpr prob,RandomVariable* rv)
+MDCPT::emIncrement(logpr prob,vector <RV*>& parents,RV* rv)
 {
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
@@ -730,16 +636,13 @@ MDCPT::emIncrement(logpr prob,RandomVariable* rv)
     emStartIteration();
 
   // this is an MDCPT, so rv must be discrete.a
-  assert ( rv -> discrete );
+  assert ( rv -> discrete() );
 
-  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+  DiscRV* drv = RV2DRV(rv);
   // make sure, by checking that drv's curCPT points to this.
   assert ( drv -> curCPT == this );
 
-  // 
-  // TODO: This needs to be factored out of the inner most
-  // loop!
-  becomeAwareOfParentValues(*(drv->curConditionalParents));
+  MDCPT::becomeAwareOfParentValues(parents,rv);
 
   // Grab the current offset ...
   int offset = mdcpt_ptr-mdcpt.ptr;

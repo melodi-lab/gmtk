@@ -34,7 +34,6 @@
  */
 
 
-
 #ifndef GMTK_RNG_DECISION_TREE_H
 #define GMTK_RNG_DECISION_TREE_H
 
@@ -81,7 +80,8 @@
 /////////////////////////////////////////////////
 // Forward declare a RandomVariable so we can
 // use pointers to it in this class.
-class RandomVariable;
+class RV;
+class DiscRV;
 
 /////////////////////////////////////////////////
 typedef unsigned leafNodeValType;
@@ -152,9 +152,8 @@ protected:
         string leafNodeVal 
         );
 
-      leafNodeValType evaluateFormula(
-        const vector< RandomVariable* >& variables 
-      );
+      leafNodeValType evaluateFormula(const vector< RV* >& variables,
+				      const RV* rv = NULL);
 
     protected:
 
@@ -434,12 +433,15 @@ protected:
 		     const int depth);
 
   ///////////////////////////////////////////////////////////    
-  // support for querying
-  leafNodeValType queryRecurse(const vector < int >& arr,
-		 const vector < int >& cards,
-		 Node *n);
-  leafNodeValType queryRecurse(const vector < RandomVariable* >& arr,
-		 Node *n);
+  // support for querying:
+  // This routine assumes that all parent RV's may be safely cast into
+  // DiscRVs. If this is not the case, arbitrary results will
+  // follow. The child random variable "rv" may be any type of random
+  // variable, but if it is actually continous, then any DT formula
+  // asking for the child's cardinality will evaluate to 0.
+  leafNodeValType queryRecurse(const vector < RV* >& arr,
+			       Node *n,
+			       const RV* rv);
 
 
   ///////////////////////////////////////////////////////////    
@@ -487,7 +489,7 @@ public:
   // Function only used for testing 
   bool testFormula(
     string                           formula,
-    const vector< RandomVariable* >& variables, 
+    const vector< DiscRV* >& variables, 
     unsigned                         desired_answer 
     );
 
@@ -520,18 +522,20 @@ public:
 
 
   ///////////////////////////////////////////////////////////    
-  // Make a query and return the value corresponding to
-  // the array of integers.
-  leafNodeValType query(const vector < int >& arr,
-	  const vector <int > & cards);
-
-
   ///////////////////////////////////////////////////////////    
-  // Make a query and return the value corresponding to
-  // the array of integers, from an array of random variables.
-  leafNodeValType query(const vector < RandomVariable* >& arr) {
+  // Make a query and return the value corresponding to the array of
+  // integers, from an array of random variables.  Note that this
+  // routine assumes that all parent RVs may be safely cast into
+  // DiscRVs. If this is not the case, arbitrary results will
+  // follow. If the child 'rv' is discrete, then any DT formulas will
+  // have access to features of the current child random variable
+  // (such as child's cardinality, frame number, and so
+  // on). Otherwise, if 'drv' is continous, then the child cardinality
+  // will evaluate to 0.
+  leafNodeValType query(const vector < RV* >& arr,
+			const RV* rv) {
     assert ( unsigned(arr.size()) == _numFeatures );
-    return queryRecurse(arr,root);
+    return queryRecurse(arr,root,rv);
   }
 
 

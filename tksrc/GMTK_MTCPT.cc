@@ -30,9 +30,9 @@
 #include "error.h"
 #include "rand.h"
 
-#include "GMTK_MTCPT.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_MTCPT.h"
+#include "GMTK_DiscRV.h"
 
 VCID("$Header$");
 
@@ -148,28 +148,29 @@ MTCPT::read(iDataStreamFile& is)
 {
 
   NamedObject::read(is);
-  is.read(_numParents,"DeterministicCPT::read numParents");
+  is.read(_numParents,"Can't read DeterministicCPT numParents");
 
   if (_numParents < 0) 
-    error("ERROR: reading file '%s', DeterministicCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
+    error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' trying to use negative (%d) num parents.",
+	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
-    warning("WARNING: creating DeterministicCPT '%s' with %d parents in file '%s'",
-	    _numParents,name().c_str(),is.fileName());
+    warning("WARNING: creating DeterministicCPT '%s' with %d parents in file '%s' line %d",
+	    _numParents,name().c_str(),is.fileName(),is.lineNo());
 
   cardinalities.resize(_numParents);
   // read the cardinalities
   for (unsigned i=0;i<_numParents;i++) {
-    is.read(cardinalities[i],"DeterministicCPT::read cardinality");
+    is.read(cardinalities[i],"Can't read DeterministicCPT parent cardinality");
     if (cardinalities[i] <= 0)
-      error("ERROR: reading file '%s', DeterministicCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-	    is.fileName(),name().c_str(),cardinalities[i],i);
+      error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	    is.fileName(),is.lineNo(),name().c_str(),cardinalities[i],i);
   }
 
   // read the self cardinalities
-  is.read(_card,"DeterministicCPT::read cardinality");
+  is.read(_card,"Can't read DeterministicCPT self cardinality");
   if (_card <= 0)
-    error("ERROR: reading file '%s', DeterministicCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-	  is.fileName(),name().c_str(),_card,_numParents);
+    error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
+	  is.fileName(),is.lineNo(),name().c_str(),_card,_numParents);
 
 
   // Finally read in the ID of the decision tree
@@ -178,14 +179,15 @@ MTCPT::read(iDataStreamFile& is)
   string str;
   is.read(str);
   if (GM_Parms.dtsMap.find(str) ==  GM_Parms.dtsMap.end()) 
-    error("ERROR: reading file '%s', DeterministicCPT '%s' specifies DT name '%s' that does not exist",is.fileName(),_name.c_str(),str.c_str());
+    error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' specifies DT name '%s' that does not exist",
+	  is.fileName(),is.lineNo(),_name.c_str(),str.c_str());
   dtIndex = GM_Parms.dtsMap[str];
 
   dt = GM_Parms.dts[dtIndex];
   
   if (_numParents != dt->numFeatures())
-    error("ERROR: reading file '%s', DeterministicCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",is.fileName(),
-	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());
+    error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
+	  is.fileName(),is.lineNo(),_name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 
   // 
   setBasicAllocatedBit();
@@ -249,7 +251,7 @@ MTCPT::emStartIteration()
 
 
 void
-MTCPT::emIncrement(logpr prob,RandomVariable* rv)
+MTCPT::emIncrement(logpr prob, vector <RV*>& parents,RV* rv)
 {
   if (!emAmTrainingBitIsSet())
     return;
@@ -258,15 +260,11 @@ MTCPT::emIncrement(logpr prob,RandomVariable* rv)
     emStartIteration();
 
   // this is an MTCPT, so rv must be discrete.a
-  assert ( rv -> discrete );
+  assert ( rv -> discrete() );
 
-  DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+  DiscRV* drv = (DiscRV*)rv;
   // make sure, by checking that drv's curCPT points to this.
   assert ( drv -> curCPT == this );
-
-  // TODO: This needs to be factored out of the inner most
-  // loop! (in an MTCPT can safely remove this).
-  // becomeAwareOfParentValues(*(drv->curConditionalParents));
 
   accumulatedProbability += prob;
 }

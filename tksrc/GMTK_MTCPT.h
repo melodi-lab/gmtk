@@ -27,15 +27,13 @@
 #include "logp.h"
 
 #include "GMTK_RngDecisionTree.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_CPT.h"
 #include "GMTK_Sparse1DPMF.h"
 
 #include "GMTK_EMable.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_NamedObject.h"
-#include "GMTK_DiscreteRandomVariable.h"
 
 
 class MTCPT : public CPT  {
@@ -52,7 +50,7 @@ class MTCPT : public CPT  {
   ////////////////
   // the value that has prob one for current parent
   // values. I.e., P(child = _val| Parents = par_vals) = 1.
-  int _val;
+  unsigned _val;
 
 public:
 
@@ -69,143 +67,38 @@ public:
 
   //////////////////////////////////
   // various forms of probability calculation
-  void becomeAwareOfParentValues( vector <int>& parentValues,
-				  vector <int>& cards ) {
-    _val = dt->query(parentValues,cards);
+
+  ///////////////////////////////////////////////////////////  
+  // Probability evaluation, compute Pr( child | parents ), and
+  // iterator support.  See GMTK_CPT.h for documentation.
+  void becomeAwareOfParentValues( vector < RV *>& parents,
+				  const RV* rv ) {
+    _val = dt->query(parents,rv);
     if (_val >= card()) {
-      warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
+      warning("ERROR: Deterministic CPT '%s' of card %d used by RV %s(%d) querying DT '%s' received value %d",
 	      name().c_str(),
 	      card(),
-	      dt->name().c_str(),
-	      _val);
-      fprintf(stderr,"Parent values:");
-      for (unsigned i=0;i<parentValues.size();i++) {
-	fprintf(stderr," %d", parentValues[i]);
-      }
-      error("");
-    }
-  }
-  void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
-    _val = dt->query(parents);
-    if (_val >= card()) {
-      warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
-	      name().c_str(),
-	      card(),
+	      rv->name().c_str(),rv->frame(),
 	      dt->name().c_str(),
 	      _val);
       fprintf(stderr,"Parents configuration :");
-      for (unsigned i=0;i<parents.size();i++) {
-	fprintf(stderr,"%s(%d)=%d,",
-		parents[i]->name().c_str(),
-		parents[i]->timeIndex,
-		parents[i]->val);
-      }
+      printRVSetAndValues(stderr,parents);
       error("");
     }
   }
-
-
-  logpr probGivenParents(DiscreteRandomVariable* drv) {
-    assert ( bitmask & bm_basicAllocated );
-    register RandomVariable::DiscreteVariableType val = drv->val;
-    assert ( val >= 0 && val <= card() );
-    if (val == _val)
-      return 1.0;
-    else
-      return 0.0;
-  }
-  logpr probGivenParents(vector <RandomVariable *>& parents,
-			 DiscreteRandomVariable* drv) {
-    assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parents);
-    register RandomVariable::DiscreteVariableType val = drv->val;
-    assert ( val >= 0 && val <= card() );
-    if (val == _val)
-      return 1.0;
-    else
-      return 0.0;
-  }
-  logpr probGivenParents(vector <int>& parentValues, 
-			 vector <int>& cards,
-			 const int val) {
-    assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parentValues,cards);
-    assert ( val >= 0 && val <= card() );
-    if (val == _val)
-      return 1.0;
-    else
-      return 0.0;
-  }
-
-
-
-  // returns an iterator for the first one.  It *must* be that
-  // becomeAwareOfParentValues has already been called
-  iterator begin(DiscreteRandomVariable* drv) {
-    iterator it(this);
-    MTCPT::begin(it,drv);
-    return it;
-  }
-
-  // returns an iterator for the first one.  It *must* be that
-  // becomeAwareOfParentValues has already been called
-  void begin(iterator& it,DiscreteRandomVariable* drv) {
+  void begin(iterator& it,DiscRV* drv,logpr& p) {
     assert ( bitmask & bm_basicAllocated );
     it.setCPT(this);
-    // indicates internal state
-    it.internalState = 0;
-    it.probVal = 1.0;
-    drv->val = _val;
-    it.drv = drv;
-  }
-
-  // returns an iterator for the first one.  It *must* be that
-  // becomeAwareOfParentValues has already been called
-  void begin(iterator& it,DiscreteRandomVariable* drv,logpr& p) {
-    assert ( bitmask & bm_basicAllocated );
-    it.setCPT(this);
-    // indicates internal state
-    it.internalState = 0;
     it.drv = drv;
     p  = 1.0;
     drv->val = _val;
   }
-
-  void becomeAwareOfParentValuesAndIterBegin( vector <RandomVariable *>& parents,
+  void becomeAwareOfParentValuesAndIterBegin( vector < RV* >& parents,
 					      iterator & it,
-					      DiscreteRandomVariable* drv)
-  {
-    _val = dt->query(parents);
-    if (_val >= card()) {
-      warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
-	      name().c_str(),
-	      card(),
-	      dt->name().c_str(),
-	      _val);
-      fprintf(stderr,"Parents configuration :");
-      for (unsigned i=0;i<parents.size();i++) {
-	fprintf(stderr,"%s(%d)=%d,",
-		parents[i]->name().c_str(),
-		parents[i]->timeIndex,
-		parents[i]->val);
-      }
-      error("");
-    }
-    assert ( bitmask & bm_basicAllocated );
-    it.setCPT(this);
-    // indicates internal state
-    it.internalState = 0;
-    it.probVal = 1.0;
-    it.drv = drv;
-    drv->val = _val;
-  }
-
-  void becomeAwareOfParentValuesAndIterBegin( vector <RandomVariable *>& parents,
-					      iterator & it,
-					      DiscreteRandomVariable* drv,
+					      DiscRV* drv,
 					      logpr& p)
   {
-    _val = dt->query(parents);
+    _val = dt->query(parents,drv);
     if (_val >= card()) {
       warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
 	      name().c_str(),
@@ -213,44 +106,32 @@ public:
 	      dt->name().c_str(),
 	      _val);
       fprintf(stderr,"Parents configuration :");
-      for (unsigned i=0;i<parents.size();i++) {
-	fprintf(stderr,"%s(%d)=%d,",
-		parents[i]->name().c_str(),
-		parents[i]->timeIndex,
-		parents[i]->val);
-      }
+      printRVSetAndValues(stderr,parents);
       error("");
     }
     assert ( bitmask & bm_basicAllocated );
     it.setCPT(this);
-    // indicates internal state
-    it.internalState = 0;
     it.drv = drv;
     p = 1.0;
     drv->val = _val;
   }
-
-  inline bool next(iterator &it) {
-    // this is an MTCPT so we end here immediately.
-    it.internalState = 1;
-    return false;
+  logpr probGivenParents(vector < RV* >& parents,
+			 DiscRV* drv) {
+    assert ( bitmask & bm_basicAllocated );
+    becomeAwareOfParentValues(parents,drv);
+    register DiscRVType val = drv->val;
+    assert ( val <= card() );
+    if (val == _val)
+      return 1.0;
+    else
+      return 0.0;
   }
   inline bool next(iterator &it,logpr& p) {
     // this is an MTCPT so we end here immediately.  We need not set
     // anything more of the iterators state nor adjust 'p' since we
     // return false, so the caller should do no more with this cpt and
     // the random variable values.
-    it.internalState = 1;
     return false;
-  }
-
-  bool end(iterator& it) {
-    return (it.internalState == 1);
-  }
-
-  virtual int valueAtIt(const int internalState) { 
-    assert ( internalState == 0);
-    return _val;
   }
 
   // used for elimination/triangulation
@@ -259,7 +140,7 @@ public:
 
 
   // random sample given current parents value
-  int randomSample(DiscreteRandomVariable* drv) { return (drv->val = _val); }
+  int randomSample(DiscRV* drv) { return (drv->val = _val); }
   
   //////////
   // these routines do nothing for an MTCPT since
@@ -286,7 +167,7 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration();
-  void emIncrement(logpr p,RandomVariable*);
+  void emIncrement(logpr p,vector <RV*>& parents,RV*rv);
   void emEndIteration();
   void emSwapCurAndNew();
 

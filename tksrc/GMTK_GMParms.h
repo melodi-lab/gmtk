@@ -48,6 +48,7 @@ class MSCPT;
 class MTCPT;
 class NGramCPT;
 class FNGramCPT;
+class VECPT;
 class Vocab;
 
 class Component;
@@ -231,10 +232,16 @@ public:
   void add(NGramCPT*);
 
   ///////////////////////////////////
-  // Collection of n-gram "CPTs"
+  // Collection of FNgram "CPTs"
   vector<FNGramCPT*> fngramCpts;
   ObjectMapType fngramCptsMap;
   void add(FNGramCPT*);
+
+  ///////////////////////////////////
+  // Collection of Virtual Evidence "CPTs"
+  vector<VECPT*> veCpts;
+  ObjectMapType veCptsMap;
+  void add(VECPT*);
 
   /********************************************************************/
   /********************************************************************/
@@ -341,6 +348,7 @@ public:
   void readVocabs(iDataStreamFile& is, bool reset = false);
   void readNgramCpts(iDataStreamFile& is, bool reset = false);
   void readFNgramCpts(iDataStreamFile& is, bool reset = false);
+  void readVECpts(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);
   void readMixtures(iDataStreamFile& is,bool reset = false);
@@ -363,6 +371,7 @@ public:
   //void writeVocabs(oDataStreamFile& os);
   //void writeNgramCpts(oDataStreamFile& os);
   //void writeFNgramCpts(oDataStreamFile& os);
+  //void writeVECpts(oDataStreamFile& os);
   void writeDTs(oDataStreamFile& os);
   void writeComponents(oDataStreamFile& os);
   void writeMixtures(oDataStreamFile& os);

@@ -86,29 +86,29 @@ Sparse1DPMF::read(iDataStreamFile& is)
 {
   int len;
   NamedObject::read(is);
-  is.read(_card,"Sparse1DPMF::read, card");
+  is.read(_card,"Can't read Sparse1DPMF's cardinality");
   if (_card <= 0)
-    error("ERROR: invalid read cardinality (%d) < 0 in SPMF '%s' in file '%s'",
-	  _card,name().c_str(),is.fileName());
+    error("ERROR: invalid read cardinality (%d) < 0 in SPMF '%s' in file '%s' line %d",
+	  _card,name().c_str(),is.fileName(),is.lineNo());
 
-  is.read(len,"Sparse1DPMF::read, len");
+  is.read(len,"Can't read Sparse1DPMF's length");
   if (len <= 0)
-    error("ERROR: invalid length of %d (which is <= 0) when reading SPMF '%s' of cardinality %d in file '%s'",
-	  len,name().c_str(),_card,is.fileName());
+    error("ERROR: invalid length of %d (which is <= 0) when reading SPMF '%s' of cardinality %d in file '%s' line %d",
+	  len,name().c_str(),_card,is.fileName(),is.lineNo());
 
   pmf.resize(len);
 
-  int prev_val = -1;
+  unsigned prev_val = 0;
   for (int i=0;i<len;i++) {
-    int val;
+    unsigned val;
 
-    is.read(val,"Sparse1DPMF::read, reading value");
-    if (val < 0 || val > _card-1)
-      error("ERROR: invalid value (%d) in SPMF '%s' of cardinality %d in file '%s'",
-	  val,name().c_str(),_card,is.fileName());
-    if (val <= prev_val)
-      error("ERROR: values must be sorted (%d) in SPMF '%s' of cardinality %d in file '%s'",
-	  val,name().c_str(),_card,is.fileName());
+    is.read(val,"Can't read Sparse1DPMF's value");
+    if (val+1 > _card)
+      error("ERROR: invalid value (%d) in SPMF '%s' of cardinality %u in file '%s' line %d",
+	  val,name().c_str(),_card,is.fileName(),is.lineNo());
+    if (i > 0 && val <= prev_val)
+      error("ERROR: values must be sorted (%d) in SPMF '%s' of cardinality %d in file '%s' line %d",
+	  val,name().c_str(),_card,is.fileName(),is.lineNo());
 
     prev_val = val;
 
@@ -120,8 +120,8 @@ Sparse1DPMF::read(iDataStreamFile& is)
   string str;
   is.read(str);
   if (GM_Parms.dPmfsMap.find(str) == GM_Parms.dPmfsMap.end()) {
-    error("ERROR: in SPMF '%s', can't find DPMF named '%s' when reading file '%s'\n",
-	  name().c_str(),str.c_str(),is.fileName());
+    error("ERROR: in SPMF '%s', can't find DPMF named '%s' when reading file '%s' line %d\n",
+	  name().c_str(),str.c_str(),is.fileName(),is.lineNo());
   }
 
   dense1DPMF = GM_Parms.dPmfs[
@@ -198,7 +198,7 @@ Sparse1DPMF::write(oDataStreamFile& os)
  */
 
 logpr
-Sparse1DPMF::prob(const int val)
+Sparse1DPMF::prob(const unsigned val)
 {
   assert ( basicAllocatedBitIsSet() );
   assert ( pmf.len() > 0 );
@@ -329,7 +329,7 @@ Sparse1DPMF::emStartIteration()
 
 
 void
-Sparse1DPMF::emIncrement(logpr prob,const int val)
+Sparse1DPMF::emIncrement(logpr prob,const unsigned val)
 {
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())

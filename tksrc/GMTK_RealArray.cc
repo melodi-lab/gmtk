@@ -79,14 +79,14 @@ RealArray::read(iDataStreamFile& is)
 {
   int length;
 
-  is.read(length,"RealArray::read, distribution length");
+  is.read(length,"Can't read array length");
   if (length <= 0)
     error("RealArray: read length (%d) < 0 in input",length);
 
   resize(length);
 
   for (int i=0;i<length;i++) {
-    is.read(operator[](i),"RealArray::read, reading value");
+    is.read(operator[](i),"Can't read array value");
   }
 }
 

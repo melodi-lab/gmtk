@@ -31,10 +31,10 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_EMable.h"
 
+class RV;
+class DiscRV;
 
-class RandomVariable;
-class DiscreteRandomVariable;
-
+class DiscRV;
 
 /*
  * Generic interface class to all CPT random variables.
@@ -78,7 +78,6 @@ protected:
   // issue a warning if the number of parents becomes greater than this.
   static unsigned warningNumParents;
 
-
   ///////////////////////////////////////////////////////////  
   // The cardinality of each variable, this array is
   // of size (_numParents).
@@ -86,11 +85,10 @@ protected:
   // cardinality[1] = the cardinality of the 2nd parent
   //    ...
   // cardinality[_nuParents-1] = cardinality of the last parent
-  vector < int > cardinalities;
+  vector < unsigned > cardinalities;
 
   // cardinality of self (the child)
-  // TODO: turn into unsigned.
-  int _card;
+  unsigned _card;
 
 public:
 
@@ -122,18 +120,15 @@ public:
   // Returns the cardinality of this CPT (i.e.,
   // the number of possible values (either with zero or non zero
   // probab) that a RV with this CPT may take on.
-  int card() {
+  unsigned card() {
     return _card;
-  }
-  unsigned ucard() {
-    return (unsigned)_card;
   }
 
   // used for elimination/triangulation
   virtual unsigned averageCardinality() { return (unsigned)card(); }
   virtual unsigned maxCardinality() { return (unsigned)card(); }
 
-  int parentCardinality(const unsigned int par) {
+  unsigned parentCardinality(const unsigned int par) {
     assert ( par < numParents() );
     return cardinalities[par];
   }
@@ -155,35 +150,6 @@ public:
   bool compareCardinalities(CPT& cpt);
 
 
-  ///////////////////////////////////////////////////////////  
-  // Probability evaluation, compute Pr( child | parents )
-  // 
-  // becomeAwareOfParentValues: sets the parent values to a particular
-  // assignment. All subsequent calls to to probGivenParents
-  // will return the probability of the RV given that the
-  // parents are at the particular value.
-  virtual void becomeAwareOfParentValues( vector < RandomVariable *>& parents ) = 0;
-  // A version that doesn't use any random variables, useful for
-  // debugging, but guaranteed not to be called by any random variable
-  // and/or GMTK inference code.
-  virtual void becomeAwareOfParentValues( vector <int>& parentValues,
-					  vector <int>& cards) = 0;
-
-  // return the probability of 'val' given the parents are the
-  // assigned to the set of values set during the most previous call
-  // to becomeAwareOfParentValues.
-  virtual logpr probGivenParents(DiscreteRandomVariable* drv) = 0;
-  // Similar to the above, but convenient for one time probability
-  // evaluation.
-  virtual logpr probGivenParents(vector < RandomVariable *>& parents,
-				 DiscreteRandomVariable* drv) = 0;
-  // A version that doesn't use any random variables, useful for debugging,
-  // but guaranteed not to be called by any random variable and/or GMTK inference
-  // code.
-  virtual logpr probGivenParents(vector <int>& parentValues, 
-				 vector <int>& cards, 
-				 const int val) = 0;
-
 
   class iterator {
     friend class CPT;
@@ -192,6 +158,8 @@ public:
     friend class MTCPT;
     friend class USCPT;
     friend class NGramCPT;
+    friend class FNGramCPT;
+    friend class VECPT;
 
 
     // The cpt for this iterator.
@@ -204,61 +172,76 @@ public:
     // The actual discrete random variable that this
     // iterator affects. It will use this to set the RVs
     // value and get its cardinality, etc. 
-    DiscreteRandomVariable* drv;
+    DiscRV* drv;
     // some internal state pointer to be used.
     void* internalStatePtr;
-    // some general scratch internal state.
-    int internalState;
-
-    // The probability of the variable being value 'val()'. CPT
-    // subclasses must make sure it is set correctly.
-    logpr probVal;
+    // some general scratch internal state, usable
+    // as an int or unsigned.
+    union {
+      int internalState;
+      unsigned uInternalState;
+    };
 
     iterator(CPT* _cpt) : cpt(_cpt) {}
     iterator(const iterator& it) :cpt(it.cpt) 
     { internalState = it.internalState; 
       drv = it.drv;
       internalStatePtr = it.internalStatePtr; 
-      probVal = it.probVal; }
+    }
     // allow to construct an empty iterator, to be filled in later
     iterator() : cpt(NULL) {}
 
   };
 
 
+  ///////////////////////////////////////////////////////////  
+  // Probability evaluation, compute Pr( child | parents ), and
+  // iterator support.
+
+  // becomeAwareOfParentValues: sets the parent values to a particular
+  // assignment. All subsequent calls to to probGivenParents will
+  // return the probability of the RV given that the parents are at
+  // the particular value. This routine assumes (as does similar ones
+  // below) that all RVs are really DiscRVs.
+  virtual void becomeAwareOfParentValues( vector < RV *>& parents,
+					  const RV* rv) = 0;
   // Creates an iterator for the first value of a random variable
-  // using this CPT.
-  virtual iterator begin(DiscreteRandomVariable* drv) = 0;
-  virtual void begin(iterator& it,DiscreteRandomVariable* drv) = 0;
-  virtual void begin(iterator& it,DiscreteRandomVariable* drv,logpr& p) = 0;
-  // TODO: remove this next routine and always use the version with p as argument.  
-  virtual void becomeAwareOfParentValuesAndIterBegin
-  (  vector < RandomVariable *>& parents , iterator &it, 
-     DiscreteRandomVariable* drv) = 0;
-  virtual void becomeAwareOfParentValuesAndIterBegin
-  (  vector < RandomVariable *>& parents , iterator &it, 
-     DiscreteRandomVariable* drv,logpr& p) = 0;
+  // using this CPT. Note that becomeAwareOfParentValues() MUST have
+  // been called before calling the begin iterator.
+  virtual void begin(iterator& it,DiscRV* drv,logpr& p) = 0;
+  // The above two together in one call with only one virtual dispatch.
+  virtual void becomeAwareOfParentValuesAndIterBegin(vector < RV *>& parents, 
+						     iterator &it, 
+						     DiscRV* drv,
+						     logpr& p) = 0;
+
+
+  // Returns the probability of 'drv->val' given the current values of
+  // the parent RVs.  Note that this routine re-evaluates parent
+  // values (and does not need becomeAwareOfParentValues to be
+  // called), so it is convenient for one time probability evaluation.
+  virtual logpr probGivenParents(vector < RV* >& parents,
+				 DiscRV* drv) = 0;
 
   // Given a current iterator, return true if it is a valid next
-  // value, otherwise return false so a loop can terminate. Sets
-  // the probability in the iterator state. 
-  virtual bool next(iterator &) = 0;
-  // a version that also sets an argument probability and
-  // does *NOT* set the probability value in the iterator.
+  // value, otherwise return false so a loop can terminate. If next()
+  // returns true, then it also sets the argument p to the next
+  // probability value, and otherwise does nothing to p. If next()
+  // returns false, then nothing more should be assumed about either
+  // the CPT or the value of the caller RV.
   virtual bool next(iterator &,logpr& p) = 0;
-
-  // returns true if iterate is at end state
-  virtual bool end(iterator &it) = 0;
-
-  // given an internal state of an iterator, return
-  // the value corresponding to this random variable.
-  virtual int valueAtIt(const int internalState) { return internalState; }
-
 
   ///////////////////////////////////////////////////////////  
   // Given the current parent values, generate a random sample.
-  virtual int randomSample(DiscreteRandomVariable* drv) = 0;
+  virtual int randomSample(DiscRV* drv) = 0;
 
+  //////////////////////////////////
+  // Public interface support for EM that subclasses must support.
+  //////////////////////////////////
+  void emStartIteration() = 0;
+  void emIncrement(logpr p,vector <RV*>& parents,RV*rv) = 0;
+  void emEndIteration() = 0;
+  void emSwapCurAndNew() = 0;
 
   ///////////////////////////////////////////////////////////  
   // Re-normalize the output distributions

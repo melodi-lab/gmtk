@@ -36,9 +36,9 @@
 VCID("$Header$");
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
@@ -457,6 +457,10 @@ main(int argc,char*argv[])
 	     probe.val()/numFrames,
 	     probe.val()/numUsableFrames);
     } else if (island) {
+      if (MixtureCommon::cacheMixtureProbabilities == true) {
+	infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
+	fflush(stdout);
+      }
       unsigned numUsableFrames;
       myjt.collectDistributeIsland(numFrames,
 				   numUsableFrames,

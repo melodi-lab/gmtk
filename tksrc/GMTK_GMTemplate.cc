@@ -41,10 +41,9 @@
 #include "rand.h"
 
 #include "GMTK_FileParser.h"
-#include "GMTK_RandomVariable.h"
-#include "GMTK_DiscreteRandomVariable.h"
-#include "GMTK_ContinuousRandomVariable.h"
-#include "GMTK_GM.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
+#include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_MDCPT.h"
@@ -79,14 +78,14 @@ const string GMTemplate::fileExtension(".trifile");
 ////////////////////////////////////////////////////////////////////
 
 Partition::Partition(Partition& from_part,
-		     vector <RandomVariable*>& newRvs,
+		     vector <RV*>& newRvs,
 		     map < RVInfo::rvParent, unsigned >& ppf,
 		     const unsigned int frameDelta)
 {
 
   triMethod = from_part.triMethod;
 
-  set<RandomVariable*>::iterator it;
+  set<RV*>::iterator it;
 
   // clone over nodes RVs.  
   // TODO: make this next code a routine
@@ -94,7 +93,7 @@ Partition::Partition(Partition& from_part,
   for (it = from_part.nodes.begin();
        it != from_part.nodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -107,7 +106,7 @@ Partition::Partition(Partition& from_part,
       assert ( ppf.find(rvp) != ppf.end() );
     }
 
-    RandomVariable* nrv = newRvs[ppf[rvp]];
+    RV* nrv = newRvs[ppf[rvp]];
     nodes.insert(nrv);
   }
   cliques.reserve(from_part.cliques.size());
@@ -172,9 +171,9 @@ writeMaxCliques(oDataStreamFile& os)
     os.writeComment("%d : %d  %f\n",
 		    i,
 		    cliques[i].nodes.size(),curWeight);
-    for (set<RandomVariable*>::iterator j=cliques[i].nodes.begin();
+    for (set<RV*>::iterator j=cliques[i].nodes.begin();
 	 j != cliques[i].nodes.end(); j++) {
-      RandomVariable* rv = (*j);
+      RV* rv = (*j);
       os.writeComment("   %s(%d)\n",rv->name().c_str(),rv->frame());
     }
   }
@@ -199,9 +198,9 @@ writeMaxCliques(oDataStreamFile& os)
   for (unsigned i=0;i<cliques.size();i++) {
     os.write(i); // clique number i
     os.write(cliques[i].nodes.size());  // number of nodes in clique number i
-    for (set<RandomVariable*>::iterator j=cliques[i].nodes.begin();
+    for (set<RV*>::iterator j=cliques[i].nodes.begin();
 	 j != cliques[i].nodes.end(); j++) {
-      RandomVariable* rv = (*j);
+      RV* rv = (*j);
       os.write(rv->name().c_str());
       os.write(rv->frame());
     }
@@ -240,13 +239,14 @@ readMaxCliques(iDataStreamFile& is)
   unsigned numCliques;
   is.read(numCliques,"numCliques value");
   if (numCliques == 0)
-    error("ERROR: reading file %s, numCliques must be >= 1\n",is.fileName());
+    error("ERROR: reading file '%s' line %d, numCliques must be >= 1\n",
+	  is.fileName(),is.lineNo());
 
   // create a map for easy access to set of nodes
-  map < RVInfo::rvParent, RandomVariable* > namePos2Var;
-  for (set<RandomVariable*>::iterator i=nodes.begin();
+  map < RVInfo::rvParent, RV* > namePos2Var;
+  for (set<RV*>::iterator i=nodes.begin();
        i != nodes.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     RVInfo::rvParent par;
     par.first = rv->name();
     par.second = rv->frame();
@@ -254,18 +254,19 @@ readMaxCliques(iDataStreamFile& is)
   }
 
   for (unsigned i=0;i<numCliques;i++) {
-    set<RandomVariable*> clique;
+    set<RV*> clique;
     
     unsigned cliqueNo;
     is.read(cliqueNo,"cliqueNo value");
     if (cliqueNo != i)
-      error("ERROR: reading file %s, bad cliqueNo (= %d) when reading cliques, out of sequence, should be = %d, file %s\n",is.fileName(),cliqueNo,i);
+      error("ERROR: reading file %s, bad cliqueNo (= %d) when reading cliques, out of sequence, should be = %d, file '%s' line %d\n",
+	    is.fileName(),is.lineNo(),cliqueNo,i);
     
     unsigned cliqueSize;
     is.read(cliqueSize,"cliqueSize value");
     if (cliqueSize <= 1)
-      error("ERROR: reading file %s, cliqueSize %d must be >= 2\n",
-	    is.fileName(),cliqueSize);
+      error("ERROR: reading file %s line %d, cliqueSize %d must be >= 2\n",
+	    is.fileName(),is.lineNo(),cliqueSize);
     
     for (unsigned j=0;j<cliqueSize;j++) {
 
@@ -273,12 +274,12 @@ readMaxCliques(iDataStreamFile& is)
       is.read(par.first,"parent name");
       is.read(par.second,"parent position");
 
-      map < RVInfo::rvParent, RandomVariable* >::iterator loc;
+      map < RVInfo::rvParent, RV* >::iterator loc;
       loc = namePos2Var.find(par);
       if (loc == namePos2Var.end())
-	error("ERROR: reading file %s, clique specification %d has %d'th variable %s(%d) that does not exist in partition.\n",
-	      is.fileName(),i,j,par.first.c_str(),par.second);
-      RandomVariable* rv = (*loc).second;
+	error("ERROR: reading file %s line %d, clique specification %d has %d'th variable %s(%d) that does not exist in partition.\n",
+	      is.fileName(),is.lineNo(),i,j,par.first.c_str(),par.second);
+      RV* rv = (*loc).second;
       clique.insert(rv);
     }
 
@@ -355,15 +356,15 @@ Partition::setCliquesFromAnotherPartition(Partition& from_part)
 
   // create a rv set of just the IDs for the dest
   map < RVInfo::rvParent, unsigned > ppf;
-  vector <RandomVariable*> newRvs;
-  set<RandomVariable*>::iterator it;
+  vector <RV*> newRvs;
+  set<RV*>::iterator it;
 
   newRvs.reserve(nodes.size());
   unsigned i;
   for (i=0,it = nodes.begin();
        it != nodes.end();
        i++,it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame();
@@ -375,7 +376,7 @@ Partition::setCliquesFromAnotherPartition(Partition& from_part)
   for (it = from_part.nodes.begin();
        it != from_part.nodes.end();
        it++) {
-    RandomVariable* rv = (*it);
+    RV* rv = (*it);
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame();
@@ -437,17 +438,17 @@ Partition::setCliquesFromAnotherPartition(Partition& from_part)
  */
 void
 GMTemplate::
-setUpClonedPartitionGraph(const set<RandomVariable*>& P,
-			  const set<RandomVariable*>& C,
-			  const set<RandomVariable*>& E,
+setUpClonedPartitionGraph(const set<RV*>& P,
+			  const set<RV*>& C,
+			  const set<RV*>& E,
 			  // cloned variables
-			  set<RandomVariable*>& Pc,
-			  set<RandomVariable*>& Cc,
-			  set<RandomVariable*>& Ec,
+			  set<RV*>& Pc,
+			  set<RV*>& Cc,
+			  set<RV*>& Ec,
 			  // next 3 should be const but ther eis no "op[] const"
-			  map < RandomVariable*, RandomVariable* >& P_in_to_out,
-			  map < RandomVariable*, RandomVariable* >& C_in_to_out,
-			  map < RandomVariable*, RandomVariable* >& E_in_to_out)
+			  map < RV*, RV* >& P_in_to_out,
+			  map < RV*, RV* >& C_in_to_out,
+			  map < RV*, RV* >& E_in_to_out)
 {
 
   // Just do neighbors for now, don't bother with parents, children,
@@ -474,9 +475,9 @@ setUpClonedPartitionGraph(const set<RandomVariable*>& P,
   // sets with differnt pointers (so their STL set intersection will
   // be empty).
 
-  cloneWithoutParents(P,Pc,P_in_to_out);
-  cloneWithoutParents(C,Cc,C_in_to_out);
-  cloneWithoutParents(E,Ec,E_in_to_out);
+  cloneRVShell(P,Pc,P_in_to_out);
+  cloneRVShell(C,Cc,C_in_to_out);
+  cloneRVShell(E,Ec,E_in_to_out);
 
   setPartitionParentsChildrenNeighbors(P,Pc,P_in_to_out,C_in_to_out,E_in_to_out);
   setPartitionParentsChildrenNeighbors(C,Cc,C_in_to_out,P_in_to_out,E_in_to_out);
@@ -520,24 +521,24 @@ setUpClonedPartitionGraph(const set<RandomVariable*>& P,
  */
 void
 GMTemplate::
-setPartitionParentsChildrenNeighbors(const set<RandomVariable*>& S,
-				     set<RandomVariable*>& Sc,
+setPartitionParentsChildrenNeighbors(const set<RV*>& S,
+				     set<RV*>& Sc,
 				     // next 3 should be const but there is no "op[] const" in STL
-				     map < RandomVariable*, RandomVariable* >& S_in_to_out,
-				     map < RandomVariable*, RandomVariable* >& O1_in_to_out,
-				     map < RandomVariable*, RandomVariable* >& O2_in_to_out)
+				     map < RV*, RV* >& S_in_to_out,
+				     map < RV*, RV* >& O1_in_to_out,
+				     map < RV*, RV* >& O2_in_to_out)
 {
 
-  for (set<RandomVariable*>::iterator i=S.begin();i != S.end(); i++) {
+  for (set<RV*>::iterator i=S.begin();i != S.end(); i++) {
 
-    RandomVariable*rv = (*i);
+    RV*rv = (*i);
 
     // first set up new neighbors for S_in_to_out[rv]
     // Note: Neighbors are defined to point ONLY TO OTHER VARIABLES
     // IN THE SET S_in_to_out (i.e., the members of the partition). Any
     // other parents or children are not contained in that set are not included.
-    set<RandomVariable*> tmp;
-    for (set<RandomVariable*>::iterator j = rv->neighbors.begin();
+    set<RV*> tmp;
+    for (set<RV*>::iterator j = rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {    
       if (S_in_to_out.find((*j)) != S_in_to_out.end()) {
 	// then it is included in this set.
@@ -551,10 +552,10 @@ setPartitionParentsChildrenNeighbors(const set<RandomVariable*>& S,
 
     // next, set new sparents for in_to_out[rv].
     // Note that the parents might be outside of the set S.
-    vector<RandomVariable *> sParents;
-    for (unsigned l=0;l<rv->switchingParents.size();l++) {
+    vector<RV *> sParents;
+    for (unsigned l=0;l<rv->rv_info.switchingParents.size(); l++) {
       // grab a copy for readability
-      RandomVariable* const par = rv->switchingParents[l];
+      RV* const par = rv->switchingParentsVec()[l];
       if (S_in_to_out.find(par) != S_in_to_out.end())
 	sParents.push_back(S_in_to_out[par]);
       else if (O1_in_to_out.find(par) != O1_in_to_out.end())
@@ -568,12 +569,12 @@ setPartitionParentsChildrenNeighbors(const set<RandomVariable*>& S,
     }
 
     // next, set conditional parents
-    vector< vector < RandomVariable* > > cParentsList;
-    cParentsList.resize(rv->conditionalParentsList.size());
-    for (unsigned l=0;l<rv->conditionalParentsList.size();l++) {
-      for (unsigned m=0;m<rv->conditionalParentsList[l].size();m++) {
+    vector< vector < RV* > > cParentsList;
+    cParentsList.resize(rv->rv_info.conditionalParents.size());
+    for (unsigned l=0;l<rv->rv_info.conditionalParents.size();l++) {
+      for (unsigned m=0;m<rv->condParentsVec(l).size();m++) {
 	// grab a copy for readability
-	RandomVariable* const par = rv->conditionalParentsList[l][m];
+	RV* const par = rv->condParentsVec(l)[m];
 	if (S_in_to_out.find(par) != S_in_to_out.end())
 	  cParentsList[l].push_back(S_in_to_out[par]);
 	else if (O1_in_to_out.find(par) != O1_in_to_out.end())
@@ -615,20 +616,20 @@ setPartitionParentsChildrenNeighbors(const set<RandomVariable*>& S,
  */
 void
 GMTemplate::
-cloneWithoutParents(const set<RandomVariable*>& in, 
-		    set<RandomVariable*>& out,
-		    map < RandomVariable*, RandomVariable* >& in_to_out)
+cloneRVShell(const set<RV*>& in, 
+	     set<RV*>& out,
+	     map < RV*, RV* >& in_to_out)
 {
   in_to_out.clear();
   out.clear();
 
-  for (set<RandomVariable*>::iterator i=in.begin();
+  for (set<RV*>::iterator i=in.begin();
        i != in.end(); i++) {
 
     // sanity check, to ensure a node is not its own neighbor
     assert ( (*i)->neighbors.find((*i)) == (*i)->neighbors.end() );
 
-    RandomVariable*rv = (*i)->cloneWithoutParents();
+    RV*rv = (*i)->cloneRVShell();
     out.insert(rv);
     in_to_out[(*i)] = rv;
 
@@ -749,12 +750,12 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("---\n");
   os.writeComment("--- P partition information: variables and their neighbors\n");
   buffer.clear();
-  for (set<RandomVariable*>::iterator i=P.nodes.begin();
+  for (set<RV*>::iterator i=P.nodes.begin();
        i != P.nodes.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
     buffer = buff;
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+    for (set<RV*>::iterator j=rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {
       sprintf(buff," %s(%d),",
 	      (*j)->name().c_str(),(*j)->frame());
@@ -766,9 +767,9 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("--- P partition definition\n");
   os.write(P_partition_name);
   os.write(P.nodes.size());
-  for (set<RandomVariable*>::iterator i = P.nodes.begin();
+  for (set<RV*>::iterator i = P.nodes.begin();
        i != P.nodes.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     os.write(rv->name().c_str(),"rv name");
     os.write(rv->frame(),"rv frame");
   }
@@ -779,12 +780,12 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("---\n");
   os.writeComment("--- C partition information: variables and their neighbors\n");
   buffer.clear();
-  for (set<RandomVariable*>::iterator i=C.nodes.begin();
+  for (set<RV*>::iterator i=C.nodes.begin();
        i != C.nodes.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
     buffer = buff;
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+    for (set<RV*>::iterator j=rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {
       sprintf(buff," %s(%d),",
 	      (*j)->name().c_str(),(*j)->frame());
@@ -796,9 +797,9 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("--- C partition definition\n");
   os.write(C_partition_name);
   os.write(C.nodes.size());
-  for (set<RandomVariable*>::iterator i = C.nodes.begin();
+  for (set<RV*>::iterator i = C.nodes.begin();
        i != C.nodes.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     os.write(rv->name().c_str(),"rv name");
     os.write(rv->frame(),"rv frame");
   }
@@ -810,12 +811,12 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("---\n");
   os.writeComment("--- E partition information: variables and their neighbors\n");
   buffer.clear();
-  for (set<RandomVariable*>::iterator i=E.nodes.begin();
+  for (set<RV*>::iterator i=E.nodes.begin();
        i != E.nodes.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
     buffer = buff;
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+    for (set<RV*>::iterator j=rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {
       sprintf(buff," %s(%d),",
 	      (*j)->name().c_str(),(*j)->frame());
@@ -827,9 +828,9 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("--- E partition definition\n");
   os.write(E_partition_name);
   os.write(E.nodes.size());
-  for (set<RandomVariable*>::iterator i = E.nodes.begin();
+  for (set<RV*>::iterator i = E.nodes.begin();
        i != E.nodes.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     os.write(rv->name().c_str(),"rv name");
     os.write(rv->frame(),"rv frame");
   }
@@ -841,12 +842,12 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("---\n");
   os.writeComment("--- PC information : variables and their neighbors\n");
   buffer.clear();
-  for (set<RandomVariable*>::iterator i=PCInterface_in_C.begin();
+  for (set<RV*>::iterator i=PCInterface_in_C.begin();
        i != PCInterface_in_C.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
     buffer = buff;
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+    for (set<RV*>::iterator j=rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {
       sprintf(buff," %s(%d),",
 	      (*j)->name().c_str(),(*j)->frame());
@@ -858,9 +859,9 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("--- PC interface definition\n");
   os.write(PC_interface_name);
   os.write(PCInterface_in_C.size());
-  for (set<RandomVariable*>::iterator i = PCInterface_in_C.begin();
+  for (set<RV*>::iterator i = PCInterface_in_C.begin();
        i != PCInterface_in_C.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     os.write(rv->name().c_str(),"rv name");
     os.write(rv->frame(),"rv frame");
   }
@@ -872,12 +873,12 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("---\n");
   os.writeComment("--- CE information : variables and their neighbors\n");
   buffer.clear();
-  for (set<RandomVariable*>::iterator i=CEInterface_in_C.begin();
+  for (set<RV*>::iterator i=CEInterface_in_C.begin();
        i != CEInterface_in_C.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
     buffer = buff;
-    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+    for (set<RV*>::iterator j=rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {
       sprintf(buff," %s(%d),",
 	      (*j)->name().c_str(),(*j)->frame());
@@ -889,9 +890,9 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("--- CE interface definition\n");
   os.write(CE_interface_name);
   os.write(CEInterface_in_C.size());
-  for (set<RandomVariable*>::iterator i = CEInterface_in_C.begin();
+  for (set<RV*>::iterator i = CEInterface_in_C.begin();
        i != CEInterface_in_C.end(); i++) {
-    RandomVariable* rv = (*i);
+    RV* rv = (*i);
     os.write(rv->name().c_str(),"rv name");
     os.write(rv->frame(),"rv frame");
   }
@@ -935,8 +936,8 @@ readPartitions(iDataStreamFile& is)
   is.read(loc_M,"M value");
 
   if (loc_M == 0)
-    error("ERROR: reading file %s, M (number of chunks in which to find interface boundary) must be >= 1\n",
-	  is.fileName());
+    error("ERROR: reading file '%s' line %d, M (number of chunks in which to find interface boundary) must be >= 1\n",
+	  is.fileName(),is.lineNo());
 
   if (M == GMTEMPLATE_UNINITIALIZED_MS) {
     // This is a const cast hack to get around the fact that member M
@@ -947,22 +948,22 @@ readPartitions(iDataStreamFile& is)
     *Mp = loc_M;
   } else {
     if (loc_M != M)
-      error("ERROR: reading file %s, M (=%d) given in tri-file does not equal %d\n",
-	    is.fileName(),loc_M,M);
+      error("ERROR: reading file '%s' line %d, M (=%d) given in tri-file does not equal %d\n",
+	    is.fileName(),is.lineNo(),loc_M,M);
   }
 
   is.read(loc_S,"S value");
   if (loc_S == 0)
-    error("ERROR: reading file %s, S (chunk skip) must be >= 1\n",
-	  is.fileName());
+    error("ERROR: reading file '%s' line %d, S (chunk skip) must be >= 1\n",
+	  is.fileName(),is.lineNo());
 
   if (S == GMTEMPLATE_UNINITIALIZED_MS) {
     unsigned *Sp = &(unsigned)S;
     *Sp = loc_S;
   } else {
     if (loc_S != S)
-      error("ERROR: reading file %s, S in file (%d) does not equal %d\n",
-	    is.fileName(),loc_S,S);
+      error("ERROR: reading file '%s' line %d, S in file (%d) does not equal %d\n",
+	    is.fileName(),is.lineNo(),loc_S,S);
   }
 
   // interface method
@@ -972,14 +973,14 @@ readPartitions(iDataStreamFile& is)
   } else if  (loc_I == "RIGHT") {
     leftInterface = false;
   } else {
-      error("ERROR: reading file %s, interface in file must be 'LEFT' or 'RIGHT' but got string '%s'\n",
-	    is.fileName(),loc_I.c_str());
+      error("ERROR: reading file '%s' line %d, interface in file must be 'LEFT' or 'RIGHT' but got string '%s'\n",
+	    is.fileName(),is.lineNo(),loc_I.c_str());
   }
 
   // read in information about method used to create current boundary
   is.read(boundaryMethod,"boundary method string");
 
-  vector <RandomVariable*> unrolled_rvs;
+  vector <RV*> unrolled_rvs;
   map < RVInfo::rvParent, unsigned > positions;
   fp.unroll(M+S-1,unrolled_rvs,positions);
 
@@ -992,16 +993,17 @@ readPartitions(iDataStreamFile& is)
   }
 
   // create temporary local variables.
-  set<RandomVariable*> loc_P;
-  set<RandomVariable*> loc_C;
-  set<RandomVariable*> loc_E;
+  set<RV*> loc_P;
+  set<RV*> loc_C;
+  set<RV*> loc_E;
 
   unsigned setSize;
   string str_tmp;
 
   is.read(str_tmp,"name");
   if (str_tmp != P_partition_name)
-    error("ERROR: P partition information in file %s is invalid for given graph structure\n",is.fileName());
+    error("ERROR: P partition information in file '%s' line %d is invalid for given graph structure\n",
+	  is.fileName(),is.lineNo());
   is.read(setSize,"set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
@@ -1011,14 +1013,15 @@ readPartitions(iDataStreamFile& is)
     map < RVInfo::rvParent, unsigned >::iterator loc;
     loc = positions.find(par);
     if (loc == positions.end())
-      error("ERROR: P partition information in file %s is invalid for given graph structure\n",
-	    is.fileName());
+      error("ERROR: P partition information in file '%s' line %d is invalid for given graph structure\n",
+	    is.fileName(),is.lineNo());
     loc_P.insert(unrolled_rvs[(*loc).second]);
   }
 
   is.read(str_tmp,"name");
   if (str_tmp != C_partition_name)
-    error("ERROR: C partition information in file %s is invalid for given graph structure\n",is.fileName());
+    error("ERROR: C partition information in file '%s' line %d is invalid for given graph structure\n",
+	  is.fileName(),is.lineNo());
   is.read(setSize,"set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
@@ -1028,14 +1031,15 @@ readPartitions(iDataStreamFile& is)
     map < RVInfo::rvParent, unsigned >::iterator loc;
     loc = positions.find(par);
     if (loc == positions.end())
-      error("ERROR: C partition information in file %s is invalid for given graph structure\n",
-	    is.fileName());
+      error("ERROR: C partition information in file '%s' line %d is invalid for given graph structure\n",
+	    is.fileName(),is.lineNo());
     loc_C.insert(unrolled_rvs[(*loc).second]);
   }
 
   is.read(str_tmp,"name");
   if (str_tmp != E_partition_name)
-    error("ERROR: E partition information in file %s is invalid for given graph structure\n",is.fileName());
+    error("ERROR: E partition information in file '%s' line %d is invalid for given graph structure\n",
+	  is.fileName(),is.lineNo());
   is.read(setSize,"set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
@@ -1045,21 +1049,22 @@ readPartitions(iDataStreamFile& is)
     map < RVInfo::rvParent, unsigned >::iterator loc;
     loc = positions.find(par);
     if (loc == positions.end())
-      error("ERROR: E partition information in file %s is invalid for given graph structure\n",
-	    is.fileName());
+      error("ERROR: E partition information in file '%s' line %d is invalid for given graph structure\n",
+	    is.fileName(),is.lineNo());
     loc_E.insert(unrolled_rvs[(*loc).second]);
   }
 
   //////////////////////////////////////////////
   // next, read in the interface definitions. //
   //////////////////////////////////////////////
-  set<RandomVariable*> loc_PCInterface;
-  set<RandomVariable*> loc_CEInterface;
+  set<RV*> loc_PCInterface;
+  set<RV*> loc_CEInterface;
 
   // get PC interface
   is.read(str_tmp,"name");
   if (str_tmp != PC_interface_name)
-    error("ERROR: PC interface information in file %s is invalid for given graph structure\n",is.fileName());
+    error("ERROR: PC interface information in file '%s' line %d is invalid for given graph structure\n",
+	  is.fileName(),is.lineNo());
   is.read(setSize,"set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
@@ -1069,15 +1074,16 @@ readPartitions(iDataStreamFile& is)
     map < RVInfo::rvParent, unsigned >::iterator loc;
     loc = positions.find(par);
     if (loc == positions.end())
-      error("ERROR: PC interface information in file %s is invalid for given graph structure\n",
-	    is.fileName());
+      error("ERROR: PC interface information in file '%s' line %d is invalid for given graph structure\n",
+	    is.fileName(),is.lineNo());
     loc_PCInterface.insert(unrolled_rvs[(*loc).second]);
   }
 
   // get CE interface
   is.read(str_tmp,"name");
   if (str_tmp != CE_interface_name)
-    error("ERROR: CE interface information in file %s is invalid for given graph structure\n",is.fileName());
+    error("ERROR: CE interface information in file '%s' line %d is invalid for given graph structure\n",
+	  is.fileName(),is.lineNo());
   is.read(setSize,"set size");
   for (unsigned i=0;i<setSize;i++) {
     RVInfo::rvParent par;
@@ -1087,8 +1093,8 @@ readPartitions(iDataStreamFile& is)
     map < RVInfo::rvParent, unsigned >::iterator loc;
     loc = positions.find(par);
     if (loc == positions.end())
-      error("ERROR: CE interface information in file %s is invalid for given graph structure\n",
-	    is.fileName());
+      error("ERROR: CE interface information in file '%s' line %d is invalid for given graph structure\n",
+	    is.fileName(),is.lineNo());
     loc_CEInterface.insert(unrolled_rvs[(*loc).second]);
   }
 
@@ -1123,11 +1129,11 @@ readPartitions(iDataStreamFile& is)
  */
 void
 GMTemplate::
-createPartitions(const set<RandomVariable*>& arg_P,
-		 const set<RandomVariable*>& arg_C,
-		 const set<RandomVariable*>& arg_E,
-		 const set<RandomVariable*>& arg_PCInterface,
-		 const set<RandomVariable*>& arg_CEInterface)
+createPartitions(const set<RV*>& arg_P,
+		 const set<RV*>& arg_C,
+		 const set<RV*>& arg_E,
+		 const set<RV*>& arg_PCInterface,
+		 const set<RV*>& arg_CEInterface)
 {
 
   // delete old stuff
@@ -1137,15 +1143,15 @@ createPartitions(const set<RandomVariable*>& arg_P,
   // create a new variable set for each, make the interfaces
   // complete, and finish up.
 
-  map < RandomVariable*, RandomVariable* > P_in_to_out;
-  map < RandomVariable*, RandomVariable* > C_in_to_out;
-  map < RandomVariable*, RandomVariable* > E_in_to_out;
+  map < RV*, RV* > P_in_to_out;
+  map < RV*, RV* > C_in_to_out;
+  map < RV*, RV* > E_in_to_out;
 
   setUpClonedPartitionGraph(arg_P,arg_C,arg_E,P.nodes,C.nodes,E.nodes,P_in_to_out,C_in_to_out,E_in_to_out);
 
   // complete the PC interface in P
   PCInterface_in_P.clear();
-  for (set<RandomVariable*>::iterator i=arg_PCInterface.begin();
+  for (set<RV*>::iterator i=arg_PCInterface.begin();
        i != arg_PCInterface.end();i++) {
     PCInterface_in_P.insert(P_in_to_out[(*i)]);
   }
@@ -1153,7 +1159,7 @@ createPartitions(const set<RandomVariable*>& arg_P,
 
   // complete the PC interface in C
   PCInterface_in_C.clear();
-  for (set<RandomVariable*>::iterator i=arg_PCInterface.begin();
+  for (set<RV*>::iterator i=arg_PCInterface.begin();
        i != arg_PCInterface.end();i++) {
     PCInterface_in_C.insert(C_in_to_out[(*i)]);
   }
@@ -1161,7 +1167,7 @@ createPartitions(const set<RandomVariable*>& arg_P,
 
   // complete the CE interface in C
   CEInterface_in_C.clear();
-  for (set<RandomVariable*>::iterator i=arg_CEInterface.begin();
+  for (set<RV*>::iterator i=arg_CEInterface.begin();
        i != arg_CEInterface.end();i++) {
     CEInterface_in_C.insert(C_in_to_out[(*i)]);
   }
@@ -1169,7 +1175,7 @@ createPartitions(const set<RandomVariable*>& arg_P,
 
   // complete the CE interface in E
   CEInterface_in_E.clear();
-  for (set<RandomVariable*>::iterator i=arg_CEInterface.begin();
+  for (set<RV*>::iterator i=arg_CEInterface.begin();
        i != arg_CEInterface.end();i++) {
     CEInterface_in_E.insert(E_in_to_out[(*i)]);
   }
@@ -1392,7 +1398,7 @@ writeCliqueInformation(oDataStreamFile& os)
       else
 	e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
     }
-    const set <RandomVariable*> emptySet;
+    const set <RV*> emptySet;
     os.writeComment("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	   e_maxWeight,e_totalWeight,
            JunctionTree::junctionTreeWeight(E.cliques,

@@ -28,46 +28,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "GMTK_RandomVariable.h"
-#include "GMTK_GM.h" 
+#include "GMTK_RV.h"
 #include "GMTK_CPT.h"
 #include "GMTK_MixtureCommon.h"
 
-class RandomVariable;
+class RV;
 
 class GraphicalModel
 {
 private:
 
 
+  static bool topologicalSortRecurse(vector<RV*>& outputVarList,
+				     RV* node,
+				     unsigned& position,
+				     map<RV*,unsigned>&);
 
-  struct frame {
-    // list of random variables for this frame
-    vector <RandomVariable*> rvs;
-  };
+  static bool topologicalSortRecurse(const set<RV*>& sortSet,
+				     vector<RV*>& outputVarList,
+				     RV* node,
+				     unsigned& position,
+				     map<RV*,unsigned>&);
 
-  // the set of frames for this graphical model
-  vector < frame > frames;
+  static bool topologicalSortRecurseRandom(const set<RV*>& sortSet,
+					   vector<RV*>& outputVarList,
+					   RV* node,
+					   unsigned& position,
+					   map<RV*,unsigned>&);
 
-
-  static bool topologicalSortRecurse(vector<RandomVariable*>& outputVarList,
-				     RandomVariable* node,
-				     unsigned& position);
-
-  static bool topologicalSortRecurse(const set<RandomVariable*>& sortSet,
-				     vector<RandomVariable*>& outputVarList,
-				     RandomVariable* node,
-				     unsigned& position);
-
-  static bool topologicalSortRecurseRandom(const set<RandomVariable*>& sortSet,
-					   vector<RandomVariable*>& outputVarList,
-					   RandomVariable* node,
-					   unsigned& position);
-
-  static bool topologicalSortRecurseContFirst(const set<RandomVariable*>& sortSet,
-					      vector<RandomVariable*>& outputVarList,
-					      RandomVariable* node,
-					      unsigned& position);
+  static bool topologicalSortRecurseWPriorityRecurse(const set<RV*>& sortSet,
+						     vector<RV*>& outputVarList,
+						     RV* node,
+						     unsigned& position,
+						     map<RV*,unsigned>&);
 
 
 public:
@@ -75,8 +68,8 @@ public:
   GraphicalModel() {}
   ~GraphicalModel() {}
 
-  static bool topologicalSort(vector<RandomVariable*> &inputVarList,
-			      vector<RandomVariable*> &outputVarList);
+  static bool topologicalSort(vector<RV*> &inputVarList,
+			      vector<RV*> &outputVarList);
 
 
 
@@ -84,9 +77,9 @@ public:
   //  1) input is a set
   //  2) constrain sort to be only variables in sortSet (which
   //     might be a subset of the ancestral or 'descendal' set.
-  static bool topologicalSort(const set<RandomVariable*> &inputVarList,
-			      const set<RandomVariable*> &sortSet,
-			      vector<RandomVariable*> &outputVarList);
+  static bool topologicalSort(const set<RV*> &inputVarList,
+			      const set<RV*> &sortSet,
+			      vector<RV*> &outputVarList);
 
 
   // topoligical sort where 
@@ -94,16 +87,16 @@ public:
   //  2) constrain sort to be only variables in sortSet (which
   //     might be a subset of the ancestral or 'descendal' set.
   //  3) we do a random order
-  static bool topologicalSortRandom(const set<RandomVariable*> &inputVarList,
-				    const set<RandomVariable*> &sortSet,
-				    vector<RandomVariable*> &outputVarList);
+  static bool topologicalSortRandom(const set<RV*> &inputVarList,
+				    const set<RV*> &sortSet,
+				    vector<RV*> &outputVarList);
 
   // A version of topological sort that places the continuous
   // variables as *early* in the sort as possible, all other things
   // being equal.
-  static bool topologicalSortContFirst(const set<RandomVariable*> &inputVarList,
-				       const set<RandomVariable*> &sortSet,
-				       vector<RandomVariable*> &outputVarList,
+  static bool topologicalSortWPriority(const set<RV*> &inputVarList,
+				       const set<RV*> &sortSet,
+				       vector<RV*> &outputVarList,
 				       const string priorityStr = "COB");
 
   ///////////////////////////////////////////

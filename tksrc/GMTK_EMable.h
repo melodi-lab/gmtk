@@ -32,7 +32,7 @@
 
 #include "GMTK_NamedObject.h"
 
-class RandomVariable;
+class RV;
 
 class EMable : public NamedObject, public IM {
 
@@ -318,7 +318,8 @@ public:
   // though (i.e., "=0") because we want the option to need not define them
   // for a particular child class.
   virtual void emIncrement(logpr prob) { assert(0); }
-  virtual void emIncrement(logpr prob,RandomVariable*r) { assert(0); }
+  virtual void emIncrement(logpr prob,RV*r) { assert(0); }
+  virtual void emIncrement(logpr prob,vector < RV* >& parents, RV*r) { assert(0); }
   // for real-valued things.
   virtual void emIncrement(const logpr prob,
 			   const float*f,

@@ -63,8 +63,8 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   is.read(str);
 
   if (GM_Parms.meansMap.find(str) ==  GM_Parms.meansMap.end()) 
-      error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies mean name '%s' that does not exist",
-	    _name.c_str(),is.fileName(),str.c_str());
+      error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, specifies mean name '%s' that does not exist",
+	    _name.c_str(),is.fileName(),is.lineNo(),str.c_str());
   meanIndex = GM_Parms.meansMap[str];
   mean = GM_Parms.means[meanIndex];
   mean->numTimesShared++;
@@ -73,8 +73,8 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   // read covariance vector
   is.read(str);
   if (GM_Parms.covarsMap.find(str) == GM_Parms.covarsMap.end())
-    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies covar name '%s' that does not exist",
-	  _name.c_str(),is.fileName(),str.c_str());
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, specifies covar name '%s' that does not exist",
+	  _name.c_str(),is.fileName(),is.lineNo(),str.c_str());
   
   covarIndex = GM_Parms.covarsMap[str];
   covar = GM_Parms.covars[covarIndex];
@@ -83,8 +83,8 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   // read the dlink matrix parameter values
   is.read(str);
   if (GM_Parms.dLinkMatsMap.find(str) == GM_Parms.dLinkMatsMap.end())
-    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies dlink matrix name '%s' that does not exist",
-	  _name.c_str(),is.fileName(),str.c_str());
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, specifies dlink matrix name '%s' that does not exist",
+	  _name.c_str(),is.fileName(),is.lineNo(),str.c_str());
   
   dLinkMat = GM_Parms.dLinkMats[GM_Parms.dLinkMatsMap[str]];
   dLinkMat->numTimesShared++;
@@ -92,17 +92,17 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 
   // check that lengths match, etc.
   if (covar->dim() != mean->dim()) {
-    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
-	  _name.c_str(),is.fileName(),
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
+	  _name.c_str(),is.fileName(),is.lineNo(),
 	  mean->name().c_str(),
 	  mean->dim(),
 	  covar->name().c_str(),
 	  covar->dim());
   }
   if ((unsigned)covar->dim() != dim()) {
-    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
 	  _name.c_str(),
-	  is.fileName(),
+	  is.fileName(),is.lineNo(),
 	  _dim,
 	  mean->name().c_str(),
 	  mean->dim(),
@@ -112,9 +112,9 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 
 
   if ((unsigned)dLinkMat->dim() != _dim)
-    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies a dlink matrix '%s' that does not match its mean and covariance having dim '%d'\n",
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d specifies a dlink matrix '%s' that does not match its mean and covariance having dim '%d'\n",
 	  _name.c_str(),
-	  is.fileName(),
+	  is.fileName(),is.lineNo(),
 	  dLinkMat->name().c_str(),
 	  _dim);
 

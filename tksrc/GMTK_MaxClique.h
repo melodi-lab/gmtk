@@ -43,7 +43,8 @@
 #include "debug.h"
 
 
-#include "GMTK_RandomVariable.h"
+#include "GMTK_RV.h"
+#include "GMTK_DiscRV.h"
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_SpaceManager.h"
 
@@ -65,7 +66,6 @@ class InferenceMaxClique;
 // are only in the objects when they are used. (perhaps one base class
 // with two children will work).
 /////////////////////////////
-
 
 
 class CliqueValueHolder  {
@@ -177,8 +177,6 @@ public:
 };
 
 
-
-
 //////////////////////////////////////////////////////////////////////////////
 // Number of words to exist in a packed clique without a hash. These
 // may be set to zero to turn on hashing even when packed clique
@@ -256,7 +254,7 @@ public:
 #endif
 
   // the set of nodes which form a max clique, in arbitrary order.
-  set<RandomVariable*> nodes;
+  set<RV*> nodes;
 
   // weight of this clique, keep pre-computed here.
   float cliqueWeight;
@@ -267,7 +265,7 @@ public:
   ///////////////////////////////////////////////////////
 
   // basic constructor with a set of nodes
-  MaxClique(set<RandomVariable*> arg) {
+  MaxClique(set<RV*> arg) {
     nodes = arg;
   }
 
@@ -275,7 +273,7 @@ public:
   // of random variables, and adjusts the frame of each new set of
   // random variable with offset
   MaxClique(MaxClique& from_clique,
-	    vector <RandomVariable*>& newRvs,
+	    vector <RV*>& newRvs,
 	    map < RVInfo::rvParent, unsigned >& ppf,
 	    const unsigned int frameDelta = 0);
 
@@ -288,7 +286,7 @@ public:
   void makeComplete() { makeComplete(nodes); }
   // Static version of variable set completion, to complete set of
   // random variables passed in.
-  static void makeComplete(const set<RandomVariable*> &rvs);
+  static void makeComplete(const set<RV*> &rvs);
 
 
 
@@ -303,22 +301,22 @@ public:
   // Static version of various compute weight routines, useful in
   // certain places outside this class where we just have a collection
   // of nodes to compute the weight of.
-  static float computeWeight(const set<RandomVariable*>& nodes,
-			     const RandomVariable* node = NULL,
+  static float computeWeight(const set<RV*>& nodes,
+			     const RV* node = NULL,
 			     const bool useDeterminism = true);
-  static float computeWeightWithExclusion(const set<RandomVariable*>& nodes,
-					  const set<RandomVariable*>& unassignedIteratedNodes,
-					  const set<RandomVariable*>& unionSepNodes,
+  static float computeWeightWithExclusion(const set<RV*>& nodes,
+					  const set<RV*>& unassignedIteratedNodes,
+					  const set<RV*>& unionSepNodes,
 					  const bool useDeterminism = true);
-  static float computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-					   const set<RandomVariable*>& assignedNodes,
-					   const set<RandomVariable*>& cumulativeAssignedNodes,
-					   const set<RandomVariable*>& unassignedIteratedNodes,
-					   const set<RandomVariable*>& cumulativeUnassignedIteratedNodes,
-					   const set<RandomVariable*>& separatorNodes,
-					   const set<RandomVariable*>& unassignedInPartition,
-					   set<RandomVariable*>* lp_nodes,
-					   set<RandomVariable*>* rp_nodes,
+  static float computeWeightInJunctionTree(const set<RV*>& nodes,
+					   const set<RV*>& assignedNodes,
+					   const set<RV*>& cumulativeAssignedNodes,
+					   const set<RV*>& unassignedIteratedNodes,
+					   const set<RV*>& cumulativeUnassignedIteratedNodes,
+					   const set<RV*>& separatorNodes,
+					   const set<RV*>& unassignedInPartition,
+					   set<RV*>* lp_nodes,
+					   set<RV*>* rp_nodes,
 					   const bool upperBound,
 					   const bool moreConservative,
 					   const bool useDeterminism);
@@ -327,12 +325,12 @@ public:
   float weight(const bool useDeterminism = true) const { 
     return computeWeight(nodes,NULL,useDeterminism); 
   }
-  float weightInJunctionTree(const set<RandomVariable*>& unassignedInPartition,
+  float weightInJunctionTree(const set<RV*>& unassignedInPartition,
 			     const bool upperBound,
 			     const bool moreConservative,
 			     const bool useDeterminism,
-			     set<RandomVariable*>* lp_nodes,
-			     set<RandomVariable*>* rp_nodes) const { 
+			     set<RV*>* lp_nodes,
+			     set<RV*>* rp_nodes) const { 
     // We pass in all the arguments needed to the static routine that
     // actually does the work.
     return computeWeightInJunctionTree(nodes,
@@ -371,7 +369,7 @@ public:
   //   1) compute cumulativeAssignedNodes
   //   2) compute unassignedIteratedNodes (and its cumulative verison)
   //   3) compute jt weight
-  set<RandomVariable*> assignedNodes;
+  set<RV*> assignedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // A topologically sorted vector version of assignedNodes.
@@ -382,7 +380,7 @@ public:
   // Used to:
   //   1) compute assigned nodes dispositions (in appropriate order)
   //   2) compute fSortedAssignedNodes in an inference clique
-  vector<RandomVariable*> sortedAssignedNodes;
+  vector<RV*> sortedAssignedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // These are the nodes in this clique that are used to
@@ -394,7 +392,7 @@ public:
   //   2) determine nodes to assign to clique
   //   3) compute assigned nodes dispositions 
   //   4) which nodes in cliques during EM get sent posterior probability.
-  set<RandomVariable*> assignedProbNodes;
+  set<RV*> assignedProbNodes;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -413,7 +411,7 @@ public:
   // Used to:
   //   1) compute JT weight
   //   2) compute assigned nodes dispositions 
-  set<RandomVariable*> cumulativeAssignedNodes;
+  set<RV*> cumulativeAssignedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of assigned probability nodes cummulative in the JT relative to root
@@ -425,7 +423,7 @@ public:
   //    via JunctionTree::assignRVsToCliques()
   // Used to:
   //     1) select clique for later nodes to be assigned to.
-  set<RandomVariable*> cumulativeAssignedProbNodes;
+  set<RV*> cumulativeAssignedProbNodes;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -442,7 +440,7 @@ public:
   //      (other than printing).
   //   2) computing  unassignedIteratedNodes
   //   3) compute assigned nodes dispositions 
-  set<RandomVariable*> unionIncommingCESeps;
+  set<RV*> unionIncommingCESeps;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of nodes that are not assigned to this clique but that
@@ -460,7 +458,7 @@ public:
   //  2) compute fUnassignedIteratedNodes in inference clique (which says
   //     which nodes in a clique are unassigend so iterated [0,card-1]
   //  3) in CE, choose which routine to call first.
-  set<RandomVariable*> unassignedIteratedNodes;
+  set<RV*> unassignedIteratedNodes;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE 
@@ -473,7 +471,7 @@ public:
   // Used to:
   //  1) These nodes are used for iteration when doing
   //     clique driven inference.
-  set<RandomVariable*> unassignedNodes;
+  set<RV*> unassignedNodes;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE 
@@ -583,7 +581,7 @@ public:
   // Used to:
   //    1) comptue jt weight
   // Note: should be replaced by unionIncommingCESeps, perhaps remove.
-  set<RandomVariable*> cumulativeUnassignedIteratedNodes;
+  set<RV*> cumulativeUnassignedIteratedNodes;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -595,7 +593,7 @@ public:
   //   1) set the size of the clique packer
   //   2) set the size of discreteValuePtrs in inference clique
   //      to get quick access to the set of RV vals.
-  vector<RandomVariable*> hiddenNodes;
+  vector<RV*> hiddenNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // Clique neighbors in a junction tree, integer indexes into a table
@@ -730,11 +728,11 @@ public:
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // print out everything in this junction tree clique to a file.
-  void printAllJTInfo(FILE* f,const unsigned indent,const set<RandomVariable*>& unassignedInPartition,
+  void printAllJTInfo(FILE* f,const unsigned indent,const set<RV*>& unassignedInPartition,
 		      const bool upperBound,
 		      const bool moreConservative,
 		      const bool useDeterminism,
-		      set<RandomVariable*>* lp_nodes,set<RandomVariable*>* rp_nodes);
+		      set<RV*>* lp_nodes,set<RV*>* rp_nodes);
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // used to clear out hash table memory between segments
@@ -770,14 +768,14 @@ class InferenceMaxClique  : public IM
   // Non-STL "fast" versions of arrays that exist in the final
   // unrolled versions of the cliques. These give rapid access
   // to the random variables involved in this clique.
-  sArray< RandomVariable*> fNodes;
-  sArray< RandomVariable*> fSortedAssignedNodes;
-  sArray< RandomVariable*> fUnassignedIteratedNodes;
-  sArray< RandomVariable*> fUnassignedNodes;
+  sArray< RV*> fNodes;
+  sArray< RV*> fSortedAssignedNodes;
+  sArray< RV*> fUnassignedIteratedNodes;
+  sArray< RV*> fUnassignedNodes;
   // Direct pointers to the values within the discrete hidden RVs
   // within this clique.  Note, the observed discrete and continuous
   // variables are not contained here.
-  sArray < RandomVariable::DiscreteVariableType* > discreteValuePtrs;
+  sArray < DiscRVType* > discreteValuePtrs;
 
   // Data structure holding a clique value, i.e., a set of random
   // variable values and a probability for that set of values.
@@ -856,7 +854,7 @@ public:
   InferenceMaxClique() : origin(*((MaxClique*)NULL)) {}
   // normal constructor (i.e., re-constructor).
   InferenceMaxClique(MaxClique& _origin,
-		     vector <RandomVariable*>& newRvs,
+		     vector <RV*>& newRvs,
 		     map < RVInfo::rvParent, unsigned >& ppf,
 		     const unsigned int frameDelta);
   // destructor
@@ -905,6 +903,7 @@ public:
 
   // distribute evidence functions.
   void deScatterToOutgoingSeparators(JT_InferencePartition& part);
+  void deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part);
   void deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 				       InferenceSeparatorClique& sep);
   void deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
@@ -939,14 +938,14 @@ public:
   static double separatorBeam;
 
   // the set of nodes which forms the separator
-  set<RandomVariable*> nodes;
+  set<RV*> nodes;
 
   //////////////////////////////////////////////////////////////////////
   // For a given iteration order, the intersection of 'nodes' with all
   // nodes in previous seperators according to the iteration.
-  set<RandomVariable*> accumulatedIntersection;
+  set<RV*> accumulatedIntersection;
   // hidden version of above
-  vector<RandomVariable*> hAccumulatedIntersection;
+  vector<RV*> hAccumulatedIntersection;
   // structure used to pack and unpack clique values
   PackCliqueValue accPacker;
   // structure to allocate clique values from.  These things are
@@ -962,9 +961,9 @@ public:
   //////////////////////////////////////////////////////////////////////
   // remainder = nodes - accumulatedIntersection which is precomputed
   // in the non-unrolled version of a separator.
-  set<RandomVariable*> remainder;
+  set<RV*> remainder;
   // hidden version of above
-  vector<RandomVariable*> hRemainder;
+  vector<RV*> hRemainder;
   // structure used to pack and unpack clique values
   PackCliqueValue remPacker;
   // structure to allocate clique values from.  These things are
@@ -984,7 +983,7 @@ public:
   SeparatorClique(MaxClique& c1, MaxClique& c2);
 
   SeparatorClique(SeparatorClique& from_sep,
-		  vector <RandomVariable*>& newRvs,
+		  vector <RV*>& newRvs,
 		  map < RVInfo::rvParent, unsigned >& ppf,
 		  const unsigned int frameDelta = 0);
   
@@ -1060,25 +1059,28 @@ class InferenceSeparatorClique : public IM
 
   // Non-STL "f=fast" versions of arrays that are instantiated
   // only in the final unrolled versions of the separator cliques.
-  sArray< RandomVariable*> fNodes;
-  sArray< RandomVariable*> fAccumulatedIntersection;
-  sArray< RandomVariable*> fRemainder;
+  sArray< RV*> fNodes;
+  sArray< RV*> fAccumulatedIntersection;
+  sArray< RV*> fRemainder;
 
   // Direct pointers to the values within the discrete *HIDDEN* RVs
   // within this sep clique.  Note, the observed discrete and
   // continuous variables are not contained here.
   // 1) one for the accumulated intersection
-  sArray < RandomVariable::DiscreteVariableType*> accDiscreteValuePtrs;
+  sArray < DiscRVType*> accDiscreteValuePtrs;
   // 2) and one for the remainder variables.
-  sArray < RandomVariable::DiscreteVariableType*> remDiscreteValuePtrs;
+  sArray < DiscRVType*> remDiscreteValuePtrs;
 
   // the original separator clique from which this object has been cloned.
   SeparatorClique& origin;
   
   // Two indices to get at the veterbi values for current separator.
-  // unsigned viterbiAccIndex;
-  // unsigned viterbiRemIndex;
-
+  struct ForwardPointer {
+    unsigned viterbiAccIndex;
+    unsigned viterbiRemIndex;
+  };
+  // TODO: make an array for N-best decoding.
+  ForwardPointer forwPointer;
 
   class RemainderValue {
   public:
@@ -1186,7 +1188,7 @@ public:
   InferenceSeparatorClique() : origin(*((SeparatorClique*)NULL)) {}
   // normal (or re-)constructor
   InferenceSeparatorClique(SeparatorClique& _origin,
-			   vector <RandomVariable*>& newRvs,
+			   vector <RV*>& newRvs,
 			   map < RVInfo::rvParent, unsigned >& ppf,
 			   const unsigned int frameDelta);
   // destructor

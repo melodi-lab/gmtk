@@ -36,7 +36,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "GMTK_RandomVariable.h"
 #include "GMTK_MaxClique.h"
 
 #include "debug.h"
@@ -44,6 +43,7 @@
 // class mention for forward references.
 class Partition;
 class GMTemplate;
+class RV;
 
 class PackCliqueValue {
 
@@ -94,7 +94,7 @@ class PackCliqueValue {
 
 public:
 
-  PackCliqueValue(vector<RandomVariable*>& nodes);
+  PackCliqueValue(vector<RV*>& nodes);
 
   PackCliqueValue(const unsigned len, const unsigned *const cards); 
 
