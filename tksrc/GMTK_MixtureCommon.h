@@ -113,6 +113,23 @@ public:
   //                         1/(curNumComponents*mixCoeffVanishRatio)
   static void checkForValidRatioValues();
 
+  //////////////////////////////////////////////////////
+  // force splitting of the number of top mixture componets
+  // regardless of all else. Zero to turn off.
+  static unsigned numTopToForceSplit;
+  //////////////////////////////////////////////////////
+  // Force vanishing of the number of bottom  mixture componets
+  // regardless of all else. Zero to turn off.
+  static unsigned numBottomToForceVanish;
+  ////////////////////////////////////////////////////////////////
+  // structure for comparing, needed for splitting/vanishing  
+  struct LogpUnsignedPairCompare {  
+    bool operator() (const pair<logpr,unsigned>& a, 
+		     const pair<logpr,unsigned>& b) {
+      return (a.first) < (b.first);
+    }
+  };
+
   /////////////////////////////////////
   // return the dimensionality
   unsigned dim() { return _dim; }
