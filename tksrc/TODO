@@ -2267,12 +2267,13 @@ other minor things mentioned above).
            single function.
          - much better hash tables
 
-
      - theory/algorithms
+          - better boundary search algorithms & predicting of when boundary
+            will and won't be useful.
           - optimal separator iteration orders
           - switching parents in inference in forward/backward
           - characterize nets which require particular M and S
-          - triangulation for nets with sparse CPTs (Chris)       
+          - triangulation for nets with sparse CPTs (Chris)
 
      - tutorials
           - many tutorials and examples to be created and released on the web.
@@ -2513,7 +2514,8 @@ Thu Oct 28 00:21:20 2004
   - in separator sort, put least intersection last. 
     - when a tie occurs, put the bigger (more variables) separator earlier.
 
-
+Thu Oct 28 13:21:03 2004
+  - timing limit arguments to gmtkTriangulate for boundary and triangulate.
     
 
 
