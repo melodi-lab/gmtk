@@ -26,12 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//  #include "sArray.h"
-//  #include "logp.h"
-
-/*
 #include "GMTK_GM.h" 
-*/
 
 class RandomVariable;
 
@@ -372,6 +367,11 @@ public:
   // numeric position have their position
   // earlier in the ordering.
   void ensureS_SE_E_NE();
+
+  // add all the variables inself to the GM. Presumably
+  // gm has not been added to yet.
+  void addVariablesToGM(GMTK_GM& gm);
+
 
 
 };

@@ -146,15 +146,15 @@ MTCPT::read(iDataStreamFile& is)
 {
 
   NamedObject::read(is);
-  is.read(numParents,"MTCPT::read numParents");
+  is.read(_numParents,"MTCPT::read numParents");
 
-  if (numParents < 0) 
-    error("MTCPT: read, trying to use negative (%d) num parents.",numParents);
-  if (numParents >= warningNumParents)
-    warning("MTCPT: read, creating MTCPT with %d parents",numParents);
-  cardinalities.resize(numParents+1);
+  if (_numParents < 0) 
+    error("MTCPT: read, trying to use negative (%d) num parents.",_numParents);
+  if (_numParents >= warningNumParents)
+    warning("MTCPT: read, creating MTCPT with %d parents",_numParents);
+  cardinalities.resize(_numParents+1);
   // read the cardinalities
-  for (unsigned i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=_numParents;i++) {
     is.read(cardinalities[i],"MTCPT::read cardinality");
     if (cardinalities[i] <= 0)
       error("MTCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
@@ -195,9 +195,9 @@ void
 MTCPT::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
-  os.write(numParents,"MTCPT::write numParents");
+  os.write(_numParents,"MTCPT::write numParents");
   os.writeComment("number parents");os.nl();
-  for (unsigned i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=_numParents;i++) {
     os.write(cardinalities[i],"MTCPT::write cardinality");
   }
   os.writeComment("cardinalities");
