@@ -184,7 +184,8 @@ Arg Arg::Args[] = {
   /////////////////////////////////////////////////////////////
   // Beam Options
   Arg("cbeam",Arg::Opt,MaxClique::cliqueBeam,"Clique beam pruning log value"),
-  Arg("ckbeam",Arg::Opt,MaxClique::cliqueBeamMaxNumStates,"Clique max state space pruning value (0 = no pruning)"),
+  Arg("ckbeam",Arg::Opt,MaxClique::cliqueBeamMaxNumStates,"Prune to this clique max state space (0 = no pruning)"),
+  Arg("crbeam",Arg::Opt,MaxClique::cliqueBeamRetainFraction,"Fraction of clique state space to retain. Range: 0 < v <= 1. v = 1 means no pruning"),
   Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator beam pruning log value"),
 
 
@@ -298,13 +299,15 @@ main(int argc,char*argv[])
                                     );
 
 
-
+  // TODO: put this parameter checking in one routine somewhere.
   MixtureCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
   DiagCovarVector::checkForValidValues();
   DlinkMatrix::checkForValidValues();
   if (MaxClique::cliqueBeam < 0.0)
     error("cliqueBeam argument must be >= 0");
+  if (MaxClique::cliqueBeamRetainFraction <= 0.0 || MaxClique::cliqueBeamRetainFraction > 1.0)
+    error("crbeam argument must be: 0.0 < v <= 1.0");
   if (SeparatorClique::separatorBeam < 0.0)
     error("separatorBeam must be >= 0");
   if (startSkip < 0 || endSkip < 0)
