@@ -91,7 +91,6 @@ public:
 	    sArray < unsigned >& packedParentVals,
 	    unsigned& num);
 
-
 };
 
 
