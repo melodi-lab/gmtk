@@ -188,3 +188,5 @@ X add VCID everywhere.
 - rethink sparse CPT and make it such that sparseCPTs don't use the Dense1DPMF which
   have become tailored to Gaussian mixtures (so lengths might change).
    sparse CPTs should use dense CPTs somehow.
+
+- write C++ program to print number of free parameters for a system.
