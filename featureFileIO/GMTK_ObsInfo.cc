@@ -60,9 +60,9 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
 #include <math.h>
 #include <assert.h>
 #include "pfile.h"
-#include "parse_subset.h"
+//#include "parse_subset.h"
 #include "error.h"
-#include "Range.H"
+//#include "Range.H"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
 

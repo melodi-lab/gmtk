@@ -24,12 +24,12 @@
 
 #include "range.h"
 #include "rand.h"
-#include "spi.h"
+//#include "spi.h"
 
 #include "GMTK_ObservationMatrix.h"
 
 #include "pfile.h"
-#include "parse_subset.h"
+//#include "parse_subset.h"
 #include "error.h"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
