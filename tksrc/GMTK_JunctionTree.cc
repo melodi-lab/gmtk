@@ -388,6 +388,7 @@ JunctionTree::setUpDataStructures()
   computePartitionInterfaces();
   createDirectedGraphOfCliques();
   assignRVsToCliques();
+  computeUnassignedCliqueNodes();
   // TODO: move this next one above by one.
   setUpMessagePassingOrders();
   createSeparators();
@@ -1218,6 +1219,9 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 
 
 
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::assignRVToClique()
@@ -1472,6 +1476,45 @@ JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::computeUnassignedCliqueNodes()
+ *    Go through each clique and compute the unassigned nodes.
+ *    This is only done when ceSeparatorDrivenInference == false.
+ *
+ * Preconditions:
+ *     Must be called in appropriate order (setUpDataStructures).
+ *
+ * Postconditions:
+ *     Cliques have this member variable filled in.
+ *
+ * Side Effects:
+ *     Will change the clique data member variables
+ *
+ * Results:
+ *     None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::computeUnassignedCliqueNodes(JT_Partition& part)
+{
+  if (MaxClique::ceSeparatorDrivenInference == false) {
+    // these are only needed by clique driven inference.
+    for (unsigned cliqueNum=0;cliqueNum<part.cliques.size();cliqueNum++) {
+      part.cliques[cliqueNum].computeUnassignedCliqueNodes();
+    }
+  }
+}
+void
+JunctionTree::computeUnassignedCliqueNodes()
+{
+  computeUnassignedCliqueNodes(P1);
+  computeUnassignedCliqueNodes(Cu0);
+  computeUnassignedCliqueNodes(Co);
+  computeUnassignedCliqueNodes(E1);
+}
 
 
 
@@ -2227,7 +2270,6 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
   // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
   double weight = junctionTreeWeight(jt_part,root);
 
-
 #if 0
   unsigned badness_count=0;
   set <RandomVariable*>::iterator it;
@@ -2252,9 +2294,9 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
       badness_count ++;
     }
 #endif
-
   return weight;
   // return badness_count*1000 + weight;
+  // return badness_count;
 
 }
 

@@ -420,6 +420,11 @@ public:
 				 JT_Partition&part,
 				 const unsigned rootClique);
 
+  // determine and set the unassignedNodes in each clique
+  // in each partition
+  void computeUnassignedCliqueNodes();
+  static void computeUnassignedCliqueNodes(JT_Partition& part);
+
 
   // For the three partitions, set up the different message passing
   // orders that are to be used. This basically just does a tree
