@@ -741,7 +741,7 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
       error("ERROR: while reading file '%s', got keyword '%s' and filename '%s' without a binary status",is.fileName(),keyword.c_str(),fileName.c_str());
     }
 
-    bool binary_p;
+    bool binary_p = false;
     if (binStatus == "ascii" || binStatus == "ASCII")
       binary_p = false;
     else if (binStatus == "binary" || binStatus == "BINARY")
@@ -1180,6 +1180,15 @@ GMParms::clampNextDTs()
 {
   for(unsigned i = 0; i<clampableDts.size(); i++) {
     clampableDts[i]->clampNextDecisionTree();
+  }
+}
+
+
+void
+GMParms::clampFirstDTs()
+{
+  for(unsigned i = 0; i<clampableDts.size(); i++) {
+    clampableDts[i]->clampFirstDecisionTree();
   }
 }
 
