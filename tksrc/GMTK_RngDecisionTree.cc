@@ -354,7 +354,18 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
       node->leafNode.leafNodeString = leafNodeVal;
     } else if (leafNodeVal[0] == '(') {
       node->nodeType = LeafNodeFormula;
-      node->leafNode.equation.parseFormula(leafNodeVal);
+
+      try {
+        node->leafNode.equation.parseFormula(leafNodeVal);
+      }
+      catch( string error_message ){
+        error("ERROR: file '%s', DT '%s', equation '%s':  %s\n", name().c_str(), 
+          is.fileName(), leafNodeVal.c_str(), error_message.c_str());
+      }
+      catch( const char * const error_message ) {
+        error("ERROR: file '%s', DT '%s', equation '%s':  %s\n", name().c_str(), 
+          is.fileName(), leafNodeVal.c_str(), error_message);
+      }
     }
 
     node->leafNode.prevLeaf = prevLeaf;
@@ -681,9 +692,10 @@ RngDecisionTree::EquationClass::evaluateFormula(
  */
 void
 RngDecisionTree::EquationClass::parseFormula(
-  string& leafNodeVal
+  string leafNodeVal
   )
 {
+  string      equation; 
   tokenStruct token;
  
   do {
@@ -887,7 +899,9 @@ RngDecisionTree::EquationClass::parseFactor(
         getToken(leafNodeVal, token); 
       }
       else {
-        error("ERROR:  Missing right parenthesis\n"); 
+        string error_message = "Expecting right parenthesis at '" + leafNodeVal 
+          + "'";
+        throw(error_message); 
       }
       break;
  
@@ -915,20 +929,24 @@ RngDecisionTree::EquationClass::parseFactor(
     case TOKEN_MOD:
       getToken(leafNodeVal, token); 
       if (token.token != TOKEN_LEFT_PAREN) {
-        error("ERROR:  Missing left parenthesis\n"); 
+        string error_message = "Expecting left parenthesis at '" + leafNodeVal 
+          + "'";
+        throw(error_message);
       }
 
       getToken(leafNodeVal, token); 
       parseExpression(token, leafNodeVal);
       if (token.token != TOKEN_COMMA) {
-        error("ERROR:  mod requires exactly two operands\n"); 
+        throw("'mod' requires two operands"); 
       }
 
       getToken(leafNodeVal, token);
       parseExpression(token, leafNodeVal);
 
       if (token.token != TOKEN_RIGHT_PAREN) {
-        error("ERROR:  Missing right parenthesis\n"); 
+        string error_message = "Expecting right parenthesis at '" + leafNodeVal 
+          + "'";
+        throw(error_message);
       }
 
       new_command.command   = COMMAND_MOD;
@@ -940,20 +958,24 @@ RngDecisionTree::EquationClass::parseFactor(
     case TOKEN_MIN:
       getToken(leafNodeVal, token); 
       if (token.token != TOKEN_LEFT_PAREN) {
-        error("ERROR:  Missing left parenthesis\n"); 
+        string error_message = "Expecting left parenthesis at '" + leafNodeVal 
+          + "'";
+        throw(error_message);
       }
 
       getToken(leafNodeVal, token); 
       parseExpression(token, leafNodeVal);
       if (token.token != TOKEN_COMMA) {
-        error("ERROR:  min requires exactly two operands\n"); 
+        throw("'min' requires two operands"); 
       }
 
       getToken(leafNodeVal, token);
       parseExpression(token, leafNodeVal);
 
       if (token.token != TOKEN_RIGHT_PAREN) {
-        error("ERROR:  Missing right parenthesis\n"); 
+        string error_message = "Expecting right parenthesis at '" + leafNodeVal 
+          + "'";
+        throw(error_message);
       }
 
       new_command.command   = COMMAND_MIN;
@@ -965,20 +987,24 @@ RngDecisionTree::EquationClass::parseFactor(
     case TOKEN_MAX:
       getToken(leafNodeVal, token); 
       if (token.token != TOKEN_LEFT_PAREN) {
-        error("ERROR:  Missing left parenthesis\n"); 
+        string error_message = "Expecting left parenthesis at '" + leafNodeVal 
+          + "'";
+        throw(error_message);
       }
 
       getToken(leafNodeVal, token); 
       parseExpression(token, leafNodeVal);
       if (token.token != TOKEN_COMMA) {
-        error("ERROR:  min requires exactly two operands\n"); 
+        throw("'max' requires two operands"); 
       }
 
       getToken(leafNodeVal, token);
       parseExpression(token, leafNodeVal);
 
       if (token.token != TOKEN_RIGHT_PAREN) {
-        error("ERROR:  Missing right parenthesis\n"); 
+        string error_message = "Expecting right parenthesis at '" + leafNodeVal 
+          + "'";
+        throw(error_message);
       }
 
       new_command.command   = COMMAND_MAX;
@@ -1174,13 +1200,20 @@ RngDecisionTree::EquationClass::getToken(
       }
     }
   }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Exit with error message if no token was found 
+  //////////////////////////////////////////////////////////////////////////
+  if (token.token == LAST_TOKEN_INDEX) {
+    string error_message = "Invalid symbol at '" + expression + "'";
+    throw(error_message); 
+  }
  
   //////////////////////////////////////////////////////////////////////////
   // Erase portion of string that was parsed 
   //////////////////////////////////////////////////////////////////////////
   expression.erase(0, minimum_dlmtr_lctn ); 
 
-  assert(token.token != LAST_TOKEN_INDEX);
 }
 
 
