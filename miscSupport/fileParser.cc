@@ -233,7 +233,7 @@ iDataStreamFile::prepareNext()
 
       if (::strlen(s) == (MAXLINSIZEPLUS1-1))
 	error("ERROR: maximum line length of %d reached in ASCII file '%s', line %d\n",
-	      fileName(),lineNo());
+	      (MAXLINSIZEPLUS1-1),fileName(),lineNo());
 
       char *cstart = ::index(s,COMMENTCHAR);
       if (cstart != NULL) {

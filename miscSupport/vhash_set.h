@@ -84,6 +84,7 @@ public:
     const _Key* keyp = key + vsize;
 
     unsigned long a = vsize;
+    // unsigned long a = 0;
     do {
       --keyp;
       // a =65599*a + (*keyp) + 1;
