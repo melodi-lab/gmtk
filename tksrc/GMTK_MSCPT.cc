@@ -293,7 +293,11 @@ MSCPT::normalize()
   RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const int v = it.value();
-    GM_Parms.msCpts[v]->normalize();
+    if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
+      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) to a SPMF, of which there are only %d.\n",
+	    name().c_str(),dt->name().c_str(),v,GM_Parms.sPmfs.size());
+    }
+    GM_Parms.sPmfs[v]->normalize();
     it++;
   } while (it != dt->end());
 }
@@ -321,7 +325,11 @@ MSCPT::makeRandom()
   RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const int v = it.value();
-    GM_Parms.msCpts[v]->makeRandom();
+    if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
+      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) to a SPMF, of which there are only %d.\n",
+	    name().c_str(),dt->name().c_str(),v,GM_Parms.sPmfs.size());
+    }
+    GM_Parms.sPmfs[v]->makeRandom();
     it++;
   } while (it != dt->end());
 }
@@ -351,7 +359,11 @@ MSCPT::makeUniform()
   RngDecisionTree<unsigned>::iterator it = dt->begin();
   do {
     const int v = it.value();
-    GM_Parms.msCpts[v]->makeUniform();
+    if (v < 0 || (unsigned)v >= GM_Parms.sPmfs.size()) {
+      error("ERROR: MSCPT '%s' uses a DT named '%s' that resulted in an invalid index (%d) to a SPMF, of which there are only %d.\n",
+	    name().c_str(),dt->name().c_str(),v,GM_Parms.sPmfs.size());
+    }
+    GM_Parms.sPmfs[v]->makeUniform();
     it++;
   } while (it != dt->end());
 }
