@@ -53,7 +53,7 @@ VCID("$Header$");
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
-//        Support for building a tree from clique graph
+//        Support for finding good binary packing arrangement 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
@@ -476,7 +476,9 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
   unsigned curNumberUnusedBits = numBitsPerUnsigned;
 
   unsigned wordBoundaryNoOverlapLocation = 0;
-  wordBoundaryOverlapLocation = len;
+
+  // index in 'iterations' where word-boundary overlaps occur.
+  unsigned wordBoundaryOverlapLocation = len;
 
   for (unsigned i=0; i<len; i++) {
 
