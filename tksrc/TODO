@@ -3,12 +3,11 @@ $Header$
 
 Other things that need to be done.
 
-
-- low level file parser should support
-  both integer and named pointers to
-  the parameters that they share.
-  (when they write out the parameters, they
-   should write out the form that was written in).
+- Low level file parser should support
+   both integer and named pointers to
+   the parameters that they share.
+   (when they write out the parameters, they
+    should write out the form that was written in).
     
 - simple +* equations in decision tree leaf nodes,
   using variables vi and ci (e.g.,
@@ -30,3 +29,8 @@ Other things that need to be done.
 - discrete observed variables have only one cardinality,
   card needs to be a vector.
 
+- Include gaussian objects for special situations.
+    index -1 corresponds to, with probability 1, gaussian
+    index -2 corresponds to, with probability 0, gaussian
+
+- 
