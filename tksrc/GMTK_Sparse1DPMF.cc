@@ -232,8 +232,9 @@ Sparse1DPMF::prob(const int val)
       return dense1DPMF->p(m);
   }
 
+  logpr p;
+  return p;
 
-  return LZERO;
 }
 
 
