@@ -79,23 +79,31 @@ void
 MDCPT::read(iDataStreamFile& is)
 {
 
-  is.read(dimensionality,"MDCPT::read dimensionality");
+  is.read(numParents,"MDCPT::read numParents");
 
-  if (dimensionality <= 0) 
-    error("MDCPT: read, trying to use 0 or negative (%d) dimensional table.",dimensionality);
-  if (dimensionality >= warningDimensionality)
-    warning("MDCPT: read, creating a %d-dimensional array.",dimensionality);
+  if (numParents < 0) 
+    error("MDCPT: read, trying to use negative (%d) num parents.",numParents);
+  if (numParents >= warningNumParents)
+    warning("MDCPT: read, creating MDCPT with %d parents",numParents);
 
-  cardinalities.resize(dimensionality);
+  cardinalities.resize(numParents+1);
+  cumulativeCardinalities.resize(numParents);
 
   // read the cardinalities
   int numValues = 1;
-  for (int i=0;i<dimensionality;i++) {
+  for (i=0;i<=numParents;i++) {
     is.read(cardinalities[i],"MDCPT::read cardinality");
     if (cardinality[i] <= 0)
       error("MDCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinality[i]);
     numValues *= cardinality[i];
   }
+  for (int i=(numParents-1);i>=0;i--)
+    cumulativeCardinalities[i] = 
+      cumulativeCardinalities[i+1]*cardinality[i]
+
+      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  }
+
 
   // Finally read in the probability values (stored as doubles).
   // NOTE: We could check that things sum to approximately 1 here, if
@@ -114,7 +122,7 @@ MDCPT::read(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
- * RealArray::write(os)
+ * MDCPT::write(os)
  *      write out data to file 'os'. 
  * 
  * Results:
@@ -126,10 +134,10 @@ MDCPT::read(iDataStreamFile& is)
  *-----------------------------------------------------------------------
  */
 void
-RealArray::write(oDataStreamFile& os)
+MDCPT::write(oDataStreamFile& os)
 {
-  os.write(dimensionality,"MDCPT::write dimensionality");
-  for (int i=0;i<dimensionality;i++) {
+  os.write(numParents,"MDCPT::write numParents");
+  for (int i=0;i<=numParents;i++) {
     os.write(cardinalities[i],"MDCPT::write cardinality");
   }
 
@@ -142,6 +150,41 @@ RealArray::write(oDataStreamFile& os)
 
 }
 
+
+////////////////////////////////////////////////////////////////////
+//        Probability Evaluation
+////////////////////////////////////////////////////////////////////
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MDCPT::setParentValues()
+ *      Adjusts the current structure so that subsequent calls of
+ *      probability routines will be conditioned on the given
+ *      assigment to parent values.
+ *  
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      Changes the mdcpt_ptr
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MDCPT::setParentValues( sArray<int>& parentValues)
+{
+
+  assert ( parentValues.len() == numParents );
+  
+  
+
+
+
+
+
+}
 
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
