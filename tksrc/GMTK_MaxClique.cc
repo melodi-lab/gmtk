@@ -207,7 +207,23 @@ printRVSet(FILE*f,set<RandomVariable*>& locset)
   }
   fprintf(f,"\n");
 }
-
+#if 0
+static void
+printRVSetPtr(FILE*f,set<RandomVariable*>& locset)
+{
+  bool first = true;
+  set<RandomVariable*>::iterator it;
+  for (it = locset.begin();
+       it != locset.end();it++) {
+    RandomVariable* rv = (*it);
+    if (!first)
+      fprintf(f,",");
+    fprintf(f,"%s(%d)=0x%X",rv->name().c_str(),rv->frame(),(unsigned)rv);
+    first = false;
+  }
+  fprintf(f,"\n");
+}
+#endif
 
 static void
 printRVSet(FILE*f,vector<RandomVariable*>& locvec)
@@ -705,27 +721,37 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
  */
 
 float
-MaxClique::
-computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-			    const set<RandomVariable*>& assignedNodes,
-			    const set<RandomVariable*>& cumulativeAssignedNodes,
-			    const set<RandomVariable*>& unassignedIteratedNodes,
-			    const set<RandomVariable*>& cumulativeUnassignedIteratedNodes,
-			    const set<RandomVariable*>& separatorNodes,
-			    const set<RandomVariable*>& unassignedInPartition,
-			    set<RandomVariable*>* lp_nodes,
-			    set<RandomVariable*>* rp_nodes,
-			    const bool upperBound,
-			    const bool moreConservative,
-			    const bool useDeterminism)
+MaxClique
+::computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
+			      const set<RandomVariable*>& assignedNodes,
+			      const set<RandomVariable*>& cumulativeAssignedNodes,
+			      const set<RandomVariable*>& unassignedIteratedNodes,
+			      const set<RandomVariable*>& cumulativeUnassignedIteratedNodes,
+			      const set<RandomVariable*>& separatorNodes,
+			      const set<RandomVariable*>& unassignedInPartition,
+			      set<RandomVariable*>* lp_nodes,
+			      set<RandomVariable*>* rp_nodes,
+			      const bool upperBound,
+			      const bool moreConservative,
+			      const bool useDeterminism)
 {
   // compute weight in log base 10 so that
   //   1) we don't overflow
   //   2) base 10 is an easy to understand magnitude rating of state space.
-
-//   printf("separatorNodes.size() = %d, lp_nodes = 0x%X, rp_nodes = 0x%X\n",separatorNodes.size(),
-// 	 lp_nodes,rp_nodes);
-
+  
+  // printf("separatorNodes.size() = %d, lp_nodes = 0x%X, rp_nodes = 0x%X\n",separatorNodes.size(),
+  // 	 lp_nodes,rp_nodes);
+  //   if (lp_nodes) {
+  //     printf("lp_nodes = ");
+  //     printRVSetPtr(stdout,(*lp_nodes));
+  //     printf("\n");
+  //   }
+  //   if (rp_nodes) {
+  //     printf("rp_nodes = ");
+  //     printRVSetPtr(stdout,(*rp_nodes));
+  //     printf("\n");
+  //   }
+    
   // weight for the sparse separator nodes
   float weight_sep_sparse = 0;
   // weight for the dense separator nodes
@@ -739,7 +765,10 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
        j++) {
     RandomVariable *const rv = (*j);
 
-    // printf("computing charge for RV %s(%d)\n",rv->name().c_str(),rv->frame());
+    //     printf("computing charge for RV %s(%d)=0x%X\n",
+    // 	   rv->name().c_str(),
+    // 	   rv->frame(),
+    // 	   (unsigned)rv);
 
     // First get cardinality of 'node', but if
     // it is continuous or observed, it does not change the weight.
@@ -749,7 +778,6 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
       if (!drv->sparse()) {
 	// printf("   RV %s(%d) is dense\n",rv->name().c_str(),rv->frame());
-
 	// node is dense.
 	if (separatorNodes.find(rv) != separatorNodes.end()) {
 	  // then node lives in separator.
@@ -772,7 +800,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	  }
 	} else {
 	  // we are using determinism/sparsity for node charging.
-	  if (separatorNodes.find(rv) != separatorNodes.end() 
+	  if ((separatorNodes.find(rv) != separatorNodes.end())
 	      ||
 	      // if this is not a separator node, but if we are given the the nodes in
 	      // the left partition and rv is in the left partition, then it is still a
@@ -788,9 +816,9 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 		weight_sep_sparse += log10((double)drv->cardinality);
 	      else {
 		// Then variable is unasigned in this partition. We assume
-		 // that the node has been assigned in another (say
-		 // previous) partition, but it could have been assigned in
-		 // the next partition (if there are backwards time links).
+		// that the node has been assigned in another (say
+		// previous) partition, but it could have been assigned in
+		// the next partition (if there are backwards time links).
 
 		 if (moreConservative) {
 		   // now you know that more conservative really means try a cludge/hack.
@@ -915,11 +943,12 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       // node is discrete observed, charge nothing.
     }
   }
-//   printf("weight_sep_sparse = %f, weight_sep_dense = %f, weight_remainder = %f\n",
-// 	 weight_sep_sparse,
-// 	 weight_sep_dense,
-// 	 weight_remainder);
 
+//   printf("weight_sep_sparse = %f, weight_sep_dense = %f, weight_remainder = %f\n",
+// 	  weight_sep_sparse,
+// 	  weight_sep_dense,
+// 	  weight_remainder);
+  
   return JunctionTree::jtWeightSparseNodeSepScale*weight_sep_sparse + 
     JunctionTree::jtWeightDenseNodeSepScale*weight_sep_dense 
     + weight_remainder;

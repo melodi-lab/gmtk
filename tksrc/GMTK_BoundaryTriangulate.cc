@@ -703,17 +703,17 @@ graphWeight(vector<MaxClique>& cliques,
  *-----------------------------------------------------------------------
  */
 void
-BoundaryTriangulate::
-findPartitions(// boundary quality heuristic
-	       const string& bnd_heur_str,  
-	       // force use of only left or right interface
-	       const string& flr, 
-	       // triangualtion heuristic to use
-	       const string& tri_heur_str, 
-	       // should we run the exponential find best interface
-	       const bool findBestBoundary,
-	       // the resulting template
-	       GMTemplate& gm_template)
+BoundaryTriangulate
+::findPartitions(// boundary quality heuristic
+		 const string& bnd_heur_str,  
+		 // force use of only left or right interface
+		 const string& flr, 
+		 // triangualtion heuristic to use
+		 const string& tri_heur_str, 
+		 // should we run the exponential find best interface
+		 const bool findBestBoundary,
+		 // the resulting template
+		 GMTemplate& gm_template)
 {
 
   //
@@ -1100,8 +1100,8 @@ findPartitions(// boundary quality heuristic
  *-----------------------------------------------------------------------
  */
 void
-BoundaryTriangulate::
-findInterfacePartitions(
+BoundaryTriangulate
+::findInterfacePartitions(
  // input variables
  const set<RandomVariable*>& P_u1,
  const set<RandomVariable*>& C1_u1,
@@ -1286,18 +1286,18 @@ BoundaryTriangulate
   if (doP) {
     infoMsg(IM::Tiny, "---\nTriangulating P:\n");
     lp_nodes = NULL;
-    rp_nodes = &gm_template.C.nodes;
+    rp_nodes = &gm_template.PCInterface_in_P;
     triangulatePartition(gm_template.P.nodes,jtWeight,gm_template.PCInterface_in_P,tri_heur,orgnl_P_nghbrs,gm_template.P.cliques,gm_template.P.triMethod,best_P_weight);
   }
   if (doC) {
     infoMsg(IM::Tiny, "---\nTriangulating C:\n");
-    lp_nodes = &gm_template.P.nodes;
-    rp_nodes = &gm_template.E.nodes;
+    lp_nodes = &gm_template.PCInterface_in_C;
+    rp_nodes = &gm_template.CEInterface_in_C;
     triangulatePartition(gm_template.C.nodes,jtWeight,gm_template.CEInterface_in_C,tri_heur,orgnl_C_nghbrs,gm_template.C.cliques,gm_template.C.triMethod,best_C_weight);
   }
   if (doE) {
     infoMsg(IM::Tiny, "---\nTriangulating E:\n");
-    lp_nodes = &gm_template.C.nodes;
+    lp_nodes = &gm_template.CEInterface_in_E;
     rp_nodes = NULL;
     triangulatePartition(gm_template.E.nodes,jtWeight,emptySet,tri_heur,orgnl_E_nghbrs,gm_template.E.cliques,gm_template.E.triMethod,best_E_weight);
   }
@@ -1635,8 +1635,8 @@ BoundaryTriangulate
  *-----------------------------------------------------------------------
  */
 void
-BoundaryTriangulate::
-basicTriangulate(// input: nodes to triangulate
+BoundaryTriangulate
+::basicTriangulate(// input: nodes to triangulate
 		 const set<RandomVariable*>& nodes,
 		 // input: triangulation heuristic
 		 const vector<BasicTriangulateHeuristic>& th_v,
@@ -3918,10 +3918,10 @@ triangulateCompletePartition(
  *-----------------------------------------------------------------------
  */
 void
-BoundaryTriangulate::
-triangulateFrontier(const set<RandomVariable*>& nodes,
-		    vector<MaxClique>&          cliques
-		    )
+BoundaryTriangulate
+::triangulateFrontier(const set<RandomVariable*>& nodes,
+		      vector<MaxClique>&          cliques
+		      )
 {
   cliques.clear();
   vector <RandomVariable*> sortedNodes;
