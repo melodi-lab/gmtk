@@ -475,8 +475,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	unsigned j, k;
 	char seps[] = " \t\r\n";
 	char *tok;
-	int *context = new int [_numParents];
-	int wid;
+	unsigned *context = new unsigned [_numParents];
+	unsigned wid;
 
 	// step 1: readin unigram as this is the easy case
 	// looking for \1-gram

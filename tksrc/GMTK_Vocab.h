@@ -41,8 +41,8 @@ public:
 
 	///////////////////////////////////////////////////////////
 	// indexing and retreving string
-	int index(const char *word) const;
-	char * word(unsigned index) const;
+	unsigned index(const char *word) const;
+	const char * word(unsigned index) const;
 
 	void read(const char *filename);
 	void read(iDataStreamFile& is);
@@ -64,8 +64,8 @@ protected:
 	 * entry in the array
 	 */
 	struct HashEntry {
-		char *key;     /// key for the entry (i.e., the vocab string).
-		int wid;       /// data for the entry (i.e., the word or vocab int id).
+		char *key;		/// key for the entry (i.e., the vocab string).
+		unsigned wid;	/// data for the entry (i.e., the word or vocab int id).
 
 		// constructors and destructor
 		HashEntry() : key(NULL) {}
@@ -90,21 +90,21 @@ protected:
 	// form that is suitable for printing and identifying
 	// the type of the object.
 	virtual const string typeName() {return std::string("Vocab");}
- 
+
 	///////////////////////////////////////////////////////////
 	// insertion and location
-	void insert(const char *word, int wid);
+	void insert(const char *word, unsigned wid);
 	HashEntry* findPos(const char* key) const;
 
 	unsigned _size;				// number of words
 	unsigned _tableSize;		// table size
 	HashEntry *_indexTable;		// index hash table
-	char **_stringTable;		// string array table
+	const char **_stringTable;		// string array table
 
 	// <unk> is a special token in a language model as is used to
 	// represent all unknown words. All such words get the same
-        // probability (and are considered similar in a context). This
-        // is the index for <unk>.
+	// probability (and are considered similar in a context). This
+	// is the index for <unk>.
 	unsigned _unkIndex;			// index for <unk>
 };
 

@@ -211,7 +211,7 @@ protected:
 	 *
 	 *-----------------------------------------------------------------------
 	 */
-	inline ContextHashEntry* findContextHashEntry(int *context, unsigned length) {
+	inline ContextHashEntry* findContextHashEntry(unsigned *context, unsigned length) {
 		if ( length == 0 )
 			error("cannot refer to unigram in context search");
 

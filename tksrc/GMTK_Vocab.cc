@@ -53,7 +53,7 @@ unsigned nextPrime(unsigned n);
  *
  *-----------------------------------------------------------------------
  */
-Vocab::Vocab() : _size(0), _tableSize(0), _indexTable(NULL), _stringTable(NULL), _unkIndex(0) {
+Vocab::Vocab() : _size(0), _tableSize(0), _indexTable(NULL), _stringTable(NULL), _unkIndex(~0x0) {
 }
 
 
@@ -62,7 +62,7 @@ Vocab::Vocab(unsigned size) : _size(size), _unkIndex(size) {
 	if ( ! (_indexTable = new HashEntry [_tableSize]) )
 		error("out of memory");
 
-	if ( ! (_stringTable = new char * [_size]) )
+	if ( ! (_stringTable = new const char * [_size]) )
 		error("out of memory");
 	::memset(_stringTable, 0, sizeof(char *) * _size);
 }
@@ -97,7 +97,7 @@ Vocab::~Vocab() {
  *
  *-----------------------------------------------------------------------
  */
-int Vocab::index(const char* word) const {
+unsigned Vocab::index(const char* word) const {
 	const HashEntry *pos = findPos(word);
 
 	if ( pos && pos->key != NULL )
@@ -121,7 +121,7 @@ int Vocab::index(const char* word) const {
  *
  *-----------------------------------------------------------------------
  */
-char * Vocab::word(unsigned index) const {
+const char * Vocab::word(unsigned index) const {
 	if ( index >= _size )
 		return "<unk>";
 
@@ -222,7 +222,7 @@ void Vocab::resize(unsigned card) {
 		error("trying to resize vocab to be of size %d, but out of memory",_tableSize);
 
 	delete [] _stringTable;
-	if ( ! (_stringTable = new char * [_size]) )
+	if ( ! (_stringTable = new const char * [_size]) )
 		error("out of memory");
 	::memset(_stringTable, 0, sizeof(char *) * _size);
 }
@@ -241,9 +241,9 @@ void Vocab::resize(unsigned card) {
  *
  *-----------------------------------------------------------------------
  */
-void Vocab::insert(const char* key, int wid) {
+void Vocab::insert(const char* key, unsigned wid) {
 
-  if ( wid >= (int)_size )
+  if ( wid >= _size )
     error("Error: word id %d exeeds size %d in Vocab object", wid, _size);
 
   // Insert x as active
@@ -257,7 +257,7 @@ void Vocab::insert(const char* key, int wid) {
   // delete [] pos->key; no need
   pos->key = new char [strlen(key) + 1];
   strcpy(pos->key, key);
-  
+
   if ( strcmp(key, "<unk>") == 0 )
     _unkIndex = wid;
   
