@@ -987,3 +987,11 @@ Sat Mar  8 16:56:48 2003
 Sun Mar  9 14:42:11 2003 
   - fix arguments.cc to not use C++ iostream
     and give usage() an optional message.
+
+Sun Mar 09 19:00:59 2003
+  - random variable should be super class, and 
+    subclasses should add things like neighbors, etc.
+    I.e., might make parent class of random variable is all the parser
+    should want to deal with.
+
+
