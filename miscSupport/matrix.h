@@ -13,15 +13,31 @@
 #include "general.h"
 
 
-////////////////////////////////////////////////////
-// MATRIX TRANSPOSE: mTranspose
-//   Transposes the m X n matrix 'in' and
-//   places the result into 'out'.
-// ASSUMPTIONS:
-//     m > 0 
-//     n > 0
-// If these are not met, unpredictable results will occur.
-////////////////////////////////////////////////////
+/*-
+ *-----------------------------------------------------------------------
+ * mTranspose()
+ *      A general template version of a 
+ *      function to transpose a matrix.
+ *      Transposes the m X n matrix 'in' and
+ *      places the result into 'out'.
+ * 
+ * Preconditions:
+ *      m > 0
+ *      n > 0
+ *  (these conditions are assumed, and if they are not true, errors
+ *   will result)
+ *
+ * Postconditions:
+ *  out has the transpose      
+ *
+ * Side Effects:
+ *      nil
+ *
+ * Results:
+ *      the transposed matrix in out, returns nil
+ *
+ *-----------------------------------------------------------------------
+ */
 template <class inType, class outType>
 void
 mTranspose(const inType *const in,
@@ -53,7 +69,7 @@ mTranspose(const inType *const in,
 ////////////////////////////////////////////////////
 // matrixSelfOuterProduct: compute Z = VV'
 // 
-// Note that result is a symetric part, so we only compute
+// Note that result is a symetric matrix, so we only compute
 // the upper triangular portion.
 // Assume that:
 //     n > 0
@@ -262,8 +278,9 @@ void matrixSelfOuterProduct(const mType *const v,
       z[35] = t7*t7;
     }
     break;
-  default:
+  default:       // the non-unrolled version.
     {
+
       const mType *v_rp=v; // v's row pointer
       const mType *const v_endp = &v[n]; // v end pointer
       mType *zp = z;
