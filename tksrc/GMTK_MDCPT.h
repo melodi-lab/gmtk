@@ -90,8 +90,18 @@ public:
 
 
 
-  logpr probGivenParents(const int val) {
+  logpr probGivenParents(DiscreteRandomVariable* drv) {
     assert ( bitmask & bm_basicAllocated );
+    register RandomVariable::DiscreteVariableType val = drv->val;
+    assert ( val >= 0 && val < card() );
+    return *(mdcpt_ptr + val);
+  }
+
+  logpr probGivenParents(vector <RandomVariable *>& parents,
+			 DiscreteRandomVariable* drv) {
+    assert ( bitmask & bm_basicAllocated );
+    becomeAwareOfParentValues(parents);
+    register RandomVariable::DiscreteVariableType val = drv->val;
     assert ( val >= 0 && val < card() );
     return *(mdcpt_ptr + val);
   }
@@ -100,17 +110,10 @@ public:
 			 vector <int>& cards, 
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
+    assert ( val >= 0 && val < card() );
     becomeAwareOfParentValues(parentValues,cards);
-    return probGivenParents(val);
+    return *(mdcpt_ptr + val);
   }
-
-  logpr probGivenParents(vector <RandomVariable *>& parents,
-			 const int val) {
-    assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parents);
-    return probGivenParents(val);
-  }
-
 
   // returns an iterator for the first one that is not zero prob.
   iterator begin(DiscreteRandomVariable* drv) {

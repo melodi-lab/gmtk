@@ -103,8 +103,22 @@ public:
       error("");
     }
   }
-  logpr probGivenParents(const int val) {
+
+
+  logpr probGivenParents(DiscreteRandomVariable* drv) {
     assert ( bitmask & bm_basicAllocated );
+    register RandomVariable::DiscreteVariableType val = drv->val;
+    assert ( val >= 0 && val <= card() );
+    if (val == _val)
+      return 1.0;
+    else
+      return 0.0;
+  }
+  logpr probGivenParents(vector <RandomVariable *>& parents,
+			 DiscreteRandomVariable* drv) {
+    assert ( bitmask & bm_basicAllocated );
+    becomeAwareOfParentValues(parents);
+    register RandomVariable::DiscreteVariableType val = drv->val;
     assert ( val >= 0 && val <= card() );
     if (val == _val)
       return 1.0;
@@ -116,14 +130,14 @@ public:
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parentValues,cards);
-    return probGivenParents(val);
+    assert ( val >= 0 && val <= card() );
+    if (val == _val)
+      return 1.0;
+    else
+      return 0.0;
   }
-  logpr probGivenParents(vector <RandomVariable *>& parents,
-			 const int val) {
-    assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parents);
-    return probGivenParents(val);
-  }
+
+
 
   // returns an iterator for the first one.  It *must* be that
   // becomeAwareOfParentValues has already been called

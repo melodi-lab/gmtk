@@ -175,6 +175,7 @@ void NGramCPT::becomeAwareOfParentValues(vector<RandomVariable *>& parents) {
  *-----------------------------------------------------------------------
  */
 inline logpr NGramCPT::probGivenParents(const int val) {
+
 	double *p = _probTable.find(val, 0, _probStartBlockSize);
 
 	double prob;
@@ -196,6 +197,26 @@ inline logpr NGramCPT::probGivenParents(const int val) {
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * NGramCPT::probGivenParents
+ *      Retrieve the probability for a given value.
+ *
+ * Results:
+ *      Return the probability given the parents.
+ *
+ * Side Effects:
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr NGramCPT::probGivenParents(vector<RandomVariable *>& parents, DiscreteRandomVariable* drv) 
+{
+	becomeAwareOfParentValues(parents);
+	return probGivenParents(drv->val);
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * NGramCPT::probGivenParents
@@ -213,23 +234,6 @@ logpr NGramCPT::probGivenParents(vector<int>& parentValues, vector<int>& cards, 
 	return probGivenParents(val);
 }
 
-
-/*-
- *-----------------------------------------------------------------------
- * NGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-logpr NGramCPT::probGivenParents(vector<RandomVariable *>& parents, const int val) {
-	becomeAwareOfParentValues(parents);
-	return probGivenParents(val);
-}
 
 
 /*-

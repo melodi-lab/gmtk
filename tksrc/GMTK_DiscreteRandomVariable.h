@@ -222,7 +222,7 @@ public:
   // 
   // compute the probability
   logpr probGivenParents() {
-    logpr _cachedProb = curCPT->probGivenParents(*curConditionalParents,val);
+    logpr _cachedProb = curCPT->probGivenParents(*curConditionalParents,this);
     // 
     // TODO: make this weight stuff part of a subclass with a new version
     // of this function, same speed since probGivenParents is virtual anyway.
@@ -237,7 +237,7 @@ public:
   }
 
   void probGivenParents(logpr& p) {
-    logpr _cachedProb = curCPT->probGivenParents(*curConditionalParents,val);
+    logpr _cachedProb = curCPT->probGivenParents(*curConditionalParents,this);
     // 
     // TODO: make this weight stuff part of a subclass with a new version
     // of this function, same speed since probGivenParents is virtual anyway.
@@ -353,7 +353,6 @@ public:
 	  (*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
     }
   }
-
 
   // continue on
   bool next() { 

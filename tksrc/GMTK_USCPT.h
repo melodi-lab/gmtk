@@ -73,7 +73,14 @@ public:
   { /* a USCPT has no parents so do nothing */ }
 
 
-  logpr probGivenParents(const int _val) {
+  logpr probGivenParents(DiscreteRandomVariable* drv) {
+    logpr val((void*)NULL);
+    val.set_to_one();
+    return val; 
+  }
+
+  logpr probGivenParents(vector <RandomVariable *>& parents,
+			 DiscreteRandomVariable* drv) {
     logpr val((void*)NULL);
     val.set_to_one();
     return val; 
@@ -87,12 +94,7 @@ public:
     return val; 
   }
 
-  logpr probGivenParents(vector <RandomVariable *>& parents,
-			 const int _val) {
-    logpr val((void*)NULL);
-    val.set_to_one();
-    return val; 
-  }
+
 
   // returns an iterator for the first one that is not zero prob.
   iterator begin(DiscreteRandomVariable* drv) {
