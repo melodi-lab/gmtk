@@ -126,13 +126,12 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
             cv = &gip[ncv];
             instantiation.push_back(ncv);                
             instantiationAddress[clampedValues] = ncv;  
-            // store the underlying variable values with the instantiation
-            set<vector<RandomVariable::DiscreteVariableType>,
-                VecCompare >::iterator si;
-            si = CliqueValue::global_val_set.insert(
-                CliqueValue::global_val_set.begin(), clampedValues);
-            cv->values = &(*si);   
+            // instead of storing the underlying variable values, set the pred
+            // pointer, and use the previous non-separators values --
+            // they are guaranteed to be consistent
+            cv->values = NULL;  // will use the parent's 
             cv->lambda = cv->pi = 0.0;
+            cv->pred = pred_val;
         }
         else
             cv = &gip[(*mi).second];              // will word with old value
