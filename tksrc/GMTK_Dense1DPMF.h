@@ -28,12 +28,14 @@
 #include "logp.h"
 #include "sArray.h"
 
+#include "GMTK_EMable.h"
+
 class Dense1DPMF : public EMable {
 
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
-  sArray <logpr> pmf
+  sArray <logpr> pmf;
   ///////////////////////////////////////////////////////////  
 
   //////////////////////////////////

@@ -32,6 +32,7 @@
 #include "error.h"
 #include "rand.h"
 
+#include "GMTK_Dense1DPMF.h"
 
 VCID("$Header$");
 
@@ -117,9 +118,8 @@ Dense1DPMF::read(iDataStreamFile& is)
 void
 Dense1DPMF::write(oDataStreamFile& os)
 {
-  assert (nFeats > 0);
   os.write(pmf.len(),"Dense1DPMF::write, distribution length");
-  for (int i=0;i<length;i++) {
+  for (int i=0;i<pmf.len();i++) {
     // convert out of log domain and write out.
     os.writeDouble(pmf[i].unlog(),"Dense1DPMF::write, writing prob");
   }
