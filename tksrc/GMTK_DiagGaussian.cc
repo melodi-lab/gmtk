@@ -449,10 +449,10 @@ DiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
   if (!emAmTrainingBitIsSet())
     return;
   EMable::emStoreZeroAccumulators(ofile);
-  for (int i=0;i<mean->dim();i++) {
+  for (int i=0;i<nextMeans.len();i++) {
     ofile.write((float)0.0,"Diag Gaussian store zero accums nm.");
   }
-  for (int i=0;i<covar->dim();i++) {
+  for (int i=0;i<nextDiagCovars.len();i++) {
     ofile.write((float)0.0,"Diag Gaussian store zero accums nc.");
   }
 }
