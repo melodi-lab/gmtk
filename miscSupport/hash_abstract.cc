@@ -52,7 +52,7 @@ VCID("$Header$");
  */
 
 const unsigned
-hash_abstract::HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE = 20000;
+hash_abstract::HashTableDefaultApproxStartingSize = 20000;
 
 
 // the possible sizes for the has table, a list of prime

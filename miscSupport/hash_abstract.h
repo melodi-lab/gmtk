@@ -28,7 +28,7 @@ class hash_abstract {
 
 protected:
 
-  static const unsigned HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE;
+  static const unsigned HashTableDefaultApproxStartingSize;
   static const unsigned HashTable_SizePrimesArray;
   static const unsigned HashTable_PrimesArray[];
   

@@ -202,7 +202,7 @@ public:
   ////////////////////
   // constructor
   hash_map_list(unsigned approximateStartingSize = 
-		hash_abstract::HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE) {
+		hash_abstract::HashTableDefaultApproxStartingSize) {
     _totalNumberEntries=0;
     findPrimesArrayIndex(approximateStartingSize);
     initialPrimesArrayIndex = primesArrayIndex;
@@ -222,7 +222,7 @@ public:
   // clear out the table entirely, including deleting
   // all memory pointed to by the T* pointers. 
   void clear(unsigned approximateStartingSize = 
-	     hash_abstract::HASH_TABLE_DEFAULT_APPROX_STARTING_SIZE) {
+	     hash_abstract::HashTableDefaultApproxStartingSize) {
     table.clear();
     _totalNumberEntries=0;
     primesArrayIndex=initialPrimesArrayIndex;
