@@ -47,6 +47,7 @@
 #include "error.h"
 #include "rand.h"
 #include "arguments.h"
+#include "version.h"
 
 #include "ieeeFPsetup.h"
 
@@ -110,6 +111,8 @@ char *cppCommandOptions = NULL;
 int bct=GMTK_DEFAULT_BASECASETHRESHOLD;
 int ns=GMTK_DEFAULT_NUM_SPLITS;
 
+bool print_version_and_exit = false;
+
 Arg Arg::Args[] = {
 
   Arg("of1",Arg::Req,ofs[0],"Observation File 1"),
@@ -169,6 +172,8 @@ Arg Arg::Args[] = {
 
   Arg("baseCaseThreshold",Arg::Opt,bct,"Base case threshold to end recursion (>=2)."),
 
+  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
+
   Arg()
 
 };
@@ -190,6 +195,9 @@ main(int argc,char*argv[])
   set_new_handler(memory_error);
 
   Arg::parse(argc,argv);
+
+  if (print_version_and_exit)
+    printf("%s\n",gmtk_version_id);
 
   map<int, string> word_map;
   if (wordVar != NULL)
