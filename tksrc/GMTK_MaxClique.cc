@@ -723,8 +723,8 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
   //   1) we don't overflow
   //   2) base 10 is an easy to understand magnitude rating of state space.
 
-  printf("separatorNodes.size() = %d, lp_nodes = 0x%X, rp_nodes = 0x%X\n",separatorNodes.size(),
-	 lp_nodes,rp_nodes);
+//   printf("separatorNodes.size() = %d, lp_nodes = 0x%X, rp_nodes = 0x%X\n",separatorNodes.size(),
+// 	 lp_nodes,rp_nodes);
 
   // weight for the sparse separator nodes
   float weight_sep_sparse = 0;
@@ -739,7 +739,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
        j++) {
     RandomVariable *const rv = (*j);
 
-    printf("computing charge for RV %s(%d)\n",rv->name().c_str(),rv->frame());
+    // printf("computing charge for RV %s(%d)\n",rv->name().c_str(),rv->frame());
 
     // First get cardinality of 'node', but if
     // it is continuous or observed, it does not change the weight.
@@ -748,7 +748,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
     if (rv->discrete && rv->hidden) {
       DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
       if (!drv->sparse()) {
-	printf("   RV %s(%d) is dense\n",rv->name().c_str(),rv->frame());
+	// printf("   RV %s(%d) is dense\n",rv->name().c_str(),rv->frame());
 
 	// node is dense.
 	if (separatorNodes.find(rv) != separatorNodes.end()) {
@@ -758,16 +758,16 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	  weight_remainder += log10((double)drv->cardinality);
 	}
       } else {
-	printf("   RV %s(%d) is sparse\n",rv->name().c_str(),rv->frame());
+	// printf("   RV %s(%d) is sparse\n",rv->name().c_str(),rv->frame());
 	// node is sparse
 	if (!useDeterminism) {
 	  // we're not using determinism/sparsity for node charging
 	  if (separatorNodes.find(rv) != separatorNodes.end()) {
-	    printf("   RV %s(%d) charged to weight_sep_sparse, full since not using det.\n",rv->name().c_str(),rv->frame());
+	    // printf("   RV %s(%d) charged to weight_sep_sparse, full since not using det.\n",rv->name().c_str(),rv->frame());
 	    // then node lives in separator.
 	    weight_sep_sparse += log10((double)drv->cardinality);
 	  } else {
-	    printf("   RV %s(%d) charged to weight_remainder, full since not using det.\n",rv->name().c_str(),rv->frame());
+	    // printf("   RV %s(%d) charged to weight_remainder, full since not using det.\n",rv->name().c_str(),rv->frame());
 	    weight_remainder += log10((double)drv->cardinality);
 	  }
 	} else {
@@ -778,7 +778,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	      // the left partition and rv is in the left partition, then it is still a
 	      // separator node.
 	      ((lp_nodes != NULL) && ((*lp_nodes).find(rv) != (*lp_nodes).end()))) {
-	    printf("   RV %s(%d) is a separator\n",rv->name().c_str(),rv->frame());
+	    // printf("   RV %s(%d) is a separator\n",rv->name().c_str(),rv->frame());
 	    // node in separator case.
 	    if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
 	      // node in separator, UNassigned in the current partition (so either
@@ -867,7 +867,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	       }
 	     }
 	   } else {
-	     printf("   RV %s(%d) is NOT a separator\n",rv->name().c_str(),rv->frame());
+	     // printf("   RV %s(%d) is NOT a separator\n",rv->name().c_str(),rv->frame());
 	     // node NOT in separator case.
 	     if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
 	       // node NOT in separator, unassigned in partition (probably assigned
@@ -915,10 +915,10 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       // node is discrete observed, charge nothing.
     }
   }
-  printf("weight_sep_sparse = %f, weight_sep_dense = %f, weight_remainder = %f\n",
-	 weight_sep_sparse,
-	 weight_sep_dense,
-	 weight_remainder);
+//   printf("weight_sep_sparse = %f, weight_sep_dense = %f, weight_remainder = %f\n",
+// 	 weight_sep_sparse,
+// 	 weight_sep_dense,
+// 	 weight_remainder);
 
   return JunctionTree::jtWeightSparseNodeSepScale*weight_sep_sparse + 
     JunctionTree::jtWeightDenseNodeSepScale*weight_sep_dense 
