@@ -96,6 +96,8 @@ public:
     curCPT->emIncrement(posterior,*curConditionalParents,this);
   }
 
+  unsigned averageCardinality() { return SwDiscRV::averageCardinality(rv_info); }
+  unsigned maxCardinality() { return SwDiscRV::maxCardinality(rv_info); }
 
 
   virtual Sw_ObsDiscRV* cloneRVShell();

@@ -64,17 +64,30 @@ Main RV hierarchy:
         + HidDiscRV
            + ScPnSh_HidDiscRV
            + Sw_HidDiscRV (also inherits from SwDiscRV)
-              + ScPnSh_Sw_HidDiscRV
+              + ScPnSh_Sw_HidDiscRV (also inherits from ScPnShRV)
         + ObsDiscRV
            + ScPnSh_ObsDiscRV
            + Sw_ObsDiscRV  (also inherits from SwDiscRV)
-              + ScPnSh_Sw_ObsDiscRV
+              + ScPnSh_Sw_ObsDiscRV  (also inherits from ScPnShRV)
    - ContRV
         - HidContRV
         + ObsContRV
            + ScPnSh_ObsContRV
            + Sw_ObsContRV  (also inherits from SwObsRV)
-              + ScPnSh_Sw_ObsContRV
+              + ScPnSh_Sw_ObsContRV  (also inherits from ScPnShRV)
+
+
+Please finish this if anyone cares to.
+
+                               RV
+                             /    \
+                       ContRV       DiscRV
+                     /    \
+                          |
+                         ObsContRV
+                          /     \
+
+ 
 
 Each routine has:
 
