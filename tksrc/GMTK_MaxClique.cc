@@ -181,9 +181,9 @@ psp(FILE*f,const int numSpaceChars)
  *-----------------------------------------------------------------------
  */
 MaxClique::MaxClique(MaxClique& from_clique,
-		     vector <RandomVariable*>& newRvs,
-		     map < RVInfo::rvParent, unsigned >& ppf,
-		     const unsigned int frameDelta)
+			   vector <RandomVariable*>& newRvs,
+			   map < RVInfo::rvParent, unsigned >& ppf,
+			   const unsigned int frameDelta)
 {
 
   set<RandomVariable*>::iterator it;
@@ -468,6 +468,8 @@ MaxClique::prepareForUnrolling()
   // setup and re-construct packer
   assert (packer.unPackedLen() == 0); // make sure it is empty.
   new (&packer) PackCliqueValue(hiddenNodes);
+
+  // ensure that we have something to store.
   assert (packer.packedLen() > 0);
 
   // TODO: optimize initial size and growth factor.  Compute an
@@ -652,7 +654,7 @@ MaxClique::printCliqueNodes(FILE*f)
 
 /*-
  *-----------------------------------------------------------------------
- * MaxClique::MaxClique()
+ * InferenceMaxClique::InferenceMaxClique()
  *    Clone constructor with frame delta to create a clone but under an unrolling.
  *    I.e., this isn't really a normal constructor, this is a contructor that
  *    sets up a clone of the MaxClique given by the argument from_clique. The
@@ -886,7 +888,8 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
     assert ( sep.separatorValues[sepValueNumber].remValues.size() == 1 );
     // Continue down with new probability value.
-    // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for more info why remValues[0] is there.
+    // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
+    // more info why remValues[0] exists.
     ceIterateSeparators(part,sepNumber+1,
 			p*
 			sep.separatorValues[sepValueNumber].remValues[0].p);

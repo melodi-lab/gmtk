@@ -146,19 +146,73 @@ public:
 };
 
 
+class MaxClique : public IM {
 
-class MaxClique : public IM
-{
   friend class FileParser;
   friend class GraphicalModel;
   friend class GMTemplate;
   friend class SeperatorClique;
 
+
 public:
+
+
+  // @@@ need to take out, here for now to satisify STL call of vector.clear().
+  MaxClique& operator=(const MaxClique& f) {
+    return *this;
+  }
 
   // the set of nodes which form a max clique, in arbitrary order.
   set<RandomVariable*> nodes;
 
+
+  ///////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////
+
+  // basic constructor with a set of nodes
+  MaxClique(set<RandomVariable*> arg) {
+    nodes = arg;
+  }
+
+  // Clone constructor from another MaxClique, but that uses a new set
+  // of random variables, and adjusts the frame of each new set of
+  // random variable with offset
+  MaxClique(MaxClique& from_clique,
+	    vector <RandomVariable*>& newRvs,
+	    map < RVInfo::rvParent, unsigned >& ppf,
+	    const unsigned int frameDelta = 0);
+
+
+  ~MaxClique() {}
+
+
+  // Complete the max clique by adjusting the random variables
+  // themselves.
+  void makeComplete() { makeComplete(nodes); }
+  // Static version of variable set completion, to complete set of
+  // random variables passed in.
+  static void makeComplete(const set<RandomVariable*> &rvs);
+
+
+  // compute the weight (log10 state space) of this clique.
+  float weight(const bool useDeterminism = true) const { 
+    return computeWeight(nodes,NULL,useDeterminism); 
+  }
+  // Static version of routine, useful in certain places outside this
+  // class where we just have a collection of nodes to compute the
+  // weight of.
+  static float computeWeight(const set<RandomVariable*>& nodes,
+			     const RandomVariable* node = NULL,
+			     const bool useDeterminism = true);
+
+  // print just the clique nodes
+  void printCliqueNodes(FILE* f);
+
+
+  
+  //////////////////////////////////////////////
   // TODO: figure out a way so that the member variables below exist only in
   // a subclass since all of the below is not needed for basic
   // triangulation.
@@ -297,64 +351,18 @@ public:
   ///////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////
 
-
-  // basic constructor with a set of nodes
-  MaxClique(set<RandomVariable*> arg) {
-    nodes = arg;
-  }
-
-
-  // Clone constructor from another MaxClique, but that uses a new set
-  // of random variables, and adjusts the frame of each new set of
-  // random variable with offset
-  MaxClique(MaxClique& from_clique,
-	    vector <RandomVariable*>& newRvs,
-	    map < RVInfo::rvParent, unsigned >& ppf,
-	    const unsigned int frameDelta = 0);
-
-
-  ~MaxClique() {}
-
-
-  // compute the weight (log10 state space) of this clique.
-  float weight(const bool useDeterminism = true) const { 
-    return computeWeight(nodes,NULL,useDeterminism); 
-  }
-  // Static version of routine, useful in certain places outside this
-  // class where we just have a collection of nodes to compute the
-  // weight of.
-  static float computeWeight(const set<RandomVariable*>& nodes,
-			     const RandomVariable* node = NULL,
-			     const bool useDeterminism = true);
-
-
-  // Complete the max clique by adjusting the random variables
-  // themselves.
-  void makeComplete() { makeComplete(nodes); }
-  // Static version of variable set completion, to complete set of
-  // random variables passed in.
-  static void makeComplete(const set<RandomVariable*> &rvs);
-
   // USED ONLY IN JUNCTION TREE INFERENCE
   // Prepare the last set of data structures so that JT inference
   // 'clones' of this object can be unrolled and inference can occur.
   void prepareForUnrolling();
 
-  // print out everything in this clique to a file.
-  void printAllJTInfo(FILE* f,const unsigned indent);
-
-  // print just the clique nodes
-  void printCliqueNodes(FILE* f);
-
+  // USED ONLY IN JUNCTION TREE INFERENCE
   // compute which assigned nodes to iterate over or not.
   void computeAssignedNodesToIterate();
 
-
-  // @@@ need to take out, here for now to satisify STL call of vector.clear().
-  MaxClique& operator=(const MaxClique& f) {
-    return *this;
-  }
-
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // print out everything in this junction tree clique to a file.
+  void printAllJTInfo(FILE* f,const unsigned indent);
 
 };
 
