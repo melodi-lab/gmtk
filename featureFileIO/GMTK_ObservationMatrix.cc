@@ -720,7 +720,8 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     // efficient to combine all transformations as it is done in the
     // copy...() functions below
     if(_perStreamPreTransforms!=NULL && _perStreamPreTransforms[i] != NULL) {
-      // if binary or HTK, we need to swap if needed before applying the transforms
+      // if binary or HTK, we need to swap if needed before applying the transforms. 
+      // -> Taken care when reading bin/HTK files
       applyTransforms(_perStreamPreTransforms[i],num_floats, num_ints, s->curNumFrames);
     }
 
@@ -2024,6 +2025,9 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
   unsigned total_num_floats=num_floats*n_samples;
   unsigned total_num_ints=num_ints*n_samples;
 
+  if(swap) s->setSwap(false);  // we are doing all the byte swapping here.
+  //We don't want to repeat it later on.
+
   // if we have only one type read complete sentence
   if(num_ints==0) {
     assert(float_buffer !=NULL);
@@ -2033,6 +2037,14 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
 	      n_read,total_num_floats);
       return false;
     }
+    // swap if needed.  
+    if(swap) {
+      float tmp_float[1];
+      for (unsigned i=0; i<total_num_floats; ++i) {
+	swapb_vi32_vi32(1,(const int*)(float_buffer+i),(int*)tmp_float);
+	float_buffer[i]=tmp_float[0];
+      }
+    }
   } 
   else if(num_floats==0) {
     assert(int_buffer != NULL);
@@ -2040,9 +2052,9 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
       short* tmp_short_buffer = new short[total_num_ints];
       n_read = fread((short*)tmp_short_buffer,sizeof(short),total_num_ints,f);
       for (unsigned i=0; i<total_num_ints; ++i) {
+	// should get this swap check out of the loop.  It's wasteful.
 	if(swap) {
 	  tmp_short_buffer[i]=swapb_short_short(tmp_short_buffer[i]); 
-	  s->setSwap(false);  // we did the swap here. We don't want to repeat it later on.
 	}
 	int_buffer[i]=(int)tmp_short_buffer[i];
       }
@@ -2050,6 +2062,13 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
     }
     else {
       n_read = fread((Int32*)int_buffer,sizeof(Int32),total_num_ints,f);
+      // swap if needed
+      if(swap) {
+	for (unsigned i=0; i<total_num_ints; ++i) {
+	  int_buffer[i]=swapb_i32_i32(int_buffer[i]);
+	}
+      }
+      //////////////////
     }
     if (n_read != total_num_ints) {
       warning("ObservationMatrix::readBinFloats: read %i items, expected %i",n_read,total_num_ints);
@@ -2062,7 +2081,21 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
     Int32* int_buffer_ptr   = int_buffer;
     for(unsigned s=0; s < n_samples; ++s) {
       n_read += fread((float*)float_buffer_ptr,sizeof(float), num_floats, f);
+      // swap if needed.  
+      if(swap) {
+	float tmp_float[1];
+	for (unsigned i=0; i<num_floats; ++i) {
+	  swapb_vi32_vi32(1,(const int*)(float_buffer_ptr+i),(int*)tmp_float);
+	  float_buffer_ptr[i]=tmp_float[0];
+	}
+      }
       n_read += fread((Int32*)int_buffer_ptr,  sizeof(Int32), num_ints,   f);
+      // swap if needed
+      if(swap) {
+	for (unsigned i=0; i<num_ints; ++i) {
+	  int_buffer_ptr[i]=swapb_i32_i32(int_buffer_ptr[i]);
+	}
+      }
       float_buffer_ptr += num_floats;
       int_buffer_ptr   += num_ints;
     }
@@ -2071,9 +2104,6 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
       return false;
     }
   }
-
-  // we could do byte swapping here but since we are gonna be copying
-  // the buffer anyway later, we can do it at the same time
 
   return true;
 }
