@@ -158,8 +158,6 @@ main(int argc,char*argv[])
     }
   }
 
-  printf("Finished reading in all parameters and structures\n");
-
   exit_program_with_status(0);
 }
 
