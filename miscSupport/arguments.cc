@@ -92,6 +92,7 @@ bool Arg::Error_If_No_Index_For_Array_Data_Struct_Type=true;
 
 bool Arg::EMPTY_ARGS_FLAG;
 char* const Arg::NOFLAG = "noflg";
+char* const Arg::CATEG_FLAG = "categflg"; // special flag that indicates the argument is for printing category heading information only
 char* const Arg::NOFL_FOUND = "nofl_fnd";
 const char Arg::COMMENTCHAR = '#';
 int Arg::Num_Arguments = 0;
@@ -99,6 +100,8 @@ bool* Arg::Argument_Specified = NULL;
 char* Arg::Program_Name = "";
 const char* const ARGS_FILE_NAME = "argsFile";
 const char* const ArgsErrStr = "Argument Error:";
+
+unsigned Arg::Requested_Priority=HIGHEST_PRIORITY;
 
 /*-
  *-----------------------------------------------------------------------
@@ -116,7 +119,7 @@ const char* const ArgsErrStr = "Argument Error:";
  *
  *-----------------------------------------------------------------------
  */
-void Arg::initialize(char*m,ArgDisposition r,char *d,ArgDataStruct ds, unsigned maxArrayElmts, bool hidden) {
+void Arg::initialize(char*m,ArgDisposition r,char *d,ArgDataStruct ds, unsigned maxArrayElmts, bool hidden,unsigned priority) {
   flag = m;
   arg_kind = r;
   if (arg_kind == Tog) { 
@@ -125,11 +128,19 @@ void Arg::initialize(char*m,ArgDisposition r,char *d,ArgDataStruct ds, unsigned 
       error("%s A toggle argument must boolean",ArgsErrStr);
     }
   }
+  if(arg_kind == Help) {
+    // cannot be of array type.
+    if(ds == ARRAY) {
+      error("INTERNAL ERROR: Cannot have a flag of kind Help that is also of type ARRAY.");
+    }
+  }
   description = d;
   dataStructType=ds;
   this->maxArrayElmts=maxArrayElmts;
   arrayElmtIndex=0;
   this->hidden = hidden;
+  this->priority=priority;
+  this->count=0;
 }
 
 
@@ -145,7 +156,21 @@ void Arg::initialize(char*m,ArgDisposition r,char *d,ArgDataStruct ds, unsigned 
  *-----------------------------------------------------------------------
  */
 Arg::Arg() : mt(EMPTY_ARGS_FLAG) {
-  initialize(NULL,Arg::Opt,"",SINGLE,DEFAULT_MAX_NUM_ARRAY_ELEMENTS,false);
+  initialize(NULL,Arg::Opt,"",SINGLE,DEFAULT_MAX_NUM_ARRAY_ELEMENTS,false,HIGHEST_PRIORITY);
+}
+
+/**
+ *-----------------------------------------------------------------------
+ * Arg::Arg()
+ *      creates a special args oject to print category information
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ **/
+Arg::Arg(char* d) : mt(EMPTY_ARGS_FLAG) {
+  initialize(CATEG_FLAG,Arg::Opt,d,SINGLE,DEFAULT_MAX_NUM_ARRAY_ELEMENTS,false,HIGHEST_PRIORITY);
 }
 
 
@@ -159,8 +184,8 @@ Arg::Arg() : mt(EMPTY_ARGS_FLAG) {
  *
  *-----------------------------------------------------------------------
  */
-Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts, bool hidden) : mt(ucl) {
-  initialize(m,r,d,ds,maxArrayElmts,hidden);
+Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts, bool hidden, unsigned priority) : mt(ucl) {
+  initialize(m,r,d,ds,maxArrayElmts,hidden,priority);
 }
 
 
@@ -174,9 +199,9 @@ Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigne
  *
  *-----------------------------------------------------------------------
  */
-Arg::Arg(ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts,bool hidden): mt(ucl) {
+Arg::Arg(ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts,bool hidden,unsigned priority): mt(ucl) {
   //initialize(NOFLAG,r,d);
-  initialize(NOFLAG,r,d,ds,maxArrayElmts,hidden);
+  initialize(NOFLAG,r,d,ds,maxArrayElmts,hidden,priority);
 }
 
 
@@ -197,7 +222,12 @@ Arg::Arg(const Arg& a)
   description = a.description;
 }
 
-Arg::~Arg() {}
+Arg::~Arg() {
+  if(Argument_Specified != NULL) {
+      delete [] Argument_Specified;
+      Argument_Specified=NULL;
+  }
+}
 
 
 /**
@@ -528,6 +558,31 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
   break;
   // =============================================================
   case MultiType::uint_type: {
+
+    //////////////////////////////////////////////////////
+    // Special case: help flag
+    //////////////////////////////////////////////////////
+
+    if(arg_ptr->arg_kind == Help) {
+      if(arg==NULL || arg[0]=='-') { // end of arguments
+	*((unsigned int*)(arg_ptr->mt.ptr)) = HIGHEST_PRIORITY;
+	Requested_Priority = HIGHEST_PRIORITY; 
+      }
+      else { // there is something after the switch and it is not another switch
+	    unsigned int n;
+	    char *endp;
+	    n = (unsigned)strtoul(arg,&endp,0);
+	    if ( endp != arg ) {  // found an unsigned
+	      	*((unsigned int*)(arg_ptr->mt.ptr)) = n;
+		Requested_Priority = n; 
+	    }
+	    // else no unsigned follows our switch of kind Help
+	    // therefore that must be flagless argument, which we ignore
+      }
+      found=true;
+      break;
+    }
+    ///////////////////////////////////////////////////////
     if (arg == NULL) { // end of arguments.
       warning("%s Unsigned integer argument needed: %s",
 	      ArgsErrStr,
@@ -731,6 +786,13 @@ bool Arg::noFlagP(char *flg) {
     return false;
 }
 
+// return true if there is the falg is the special category flag.
+bool Arg::categFlagP(char *flg) {
+  if (flg == CATEG_FLAG)
+    return true;
+  else
+    return false;
+}
 
 
 /*-
@@ -904,6 +966,7 @@ void Arg::usage(char* filter) {
 
   while (arg_ptr->flag != NULL) {
     int len = 0;
+    if(categFlagP(arg_ptr->flag)) { arg_ptr++; continue;}
     if (!noFlagP(arg_ptr->flag)) {
       // add one for the '-', as in "-flag"
       len += ::strlen(arg_ptr->flag)+1;
@@ -911,60 +974,75 @@ void Arg::usage(char* filter) {
     }
     len += ::strlen(MultiType::printable(arg_ptr->mt.type));
     len += 2; // add two for brackets. '[',']', or '<','>' around type.
+    if(arg_ptr->arg_kind==Help)  // add [] around unsigned for the help flag
+      len+=2;
     if (len  > longest_variation)
       longest_variation = len;
     arg_ptr++;
   }
-
-  for (int printOptional=0;printOptional<2;printOptional++) {
-    arg_ptr = Args;
-    while (arg_ptr->flag != NULL) {
-      int this_variation = 0;
-      char brackets[2];
-      if(arg_ptr->hidden && filter==NULL) goto skip;
-      if(filter != NULL && ::strncmp(filter,arg_ptr->flag,strlen(filter))!=0) goto skip;
-      if (arg_ptr->arg_kind == Req) {
-	if (printOptional)
-	  goto skip;
-	brackets[0] = '<'; brackets[1] = '>';
-      } else {
-	if (!printOptional)
-	  goto skip;
-	brackets[0] = '['; brackets[1] = ']';
-      }
-      fprintf(stderr," %c",brackets[0]);
-
-      if (!noFlagP(arg_ptr->flag)) {
-	// add one for the '-', as in "-flag"
-	this_variation = ::strlen(arg_ptr->flag) + 1;
-	if(arg_ptr->dataStructType==ARRAY) {
-	  fprintf(stderr,"-%sX",arg_ptr->flag);
-	  this_variation ++;
-	}
-	else
-	  fprintf(stderr,"-%s",arg_ptr->flag);
-	fprintf(stderr," ");
-	this_variation ++; //  add one for the ' ' in "-flag "
-      }
-      fprintf(stderr,"%s",arg_ptr->mt.printable(arg_ptr->mt.type));
-
-      this_variation += ::strlen(MultiType::printable(arg_ptr->mt.type));
-      // add two for brackets. '[',']', or '<','>' around type.
-      this_variation += 2;
-
-      fprintf(stderr,"%c",brackets[1]);
-
-      while (this_variation++ < longest_variation)
-	fprintf(stderr," ");
-      fprintf(stderr,"   %s {",
+  
+  //  for (int printOptional=0;printOptional<2;printOptional++) {
+  arg_ptr = Args;
+  while (arg_ptr->flag != NULL) {
+    int this_variation = 0;
+    char brackets[2];
+    if(arg_ptr->hidden && filter==NULL) goto skip;
+    if(filter != NULL && ::strncmp(filter,arg_ptr->flag,strlen(filter))!=0) goto skip;
+    if(arg_ptr->getPriority() > Requested_Priority) goto skip;
+    
+    if(categFlagP(arg_ptr->flag)) {
+      fprintf(stderr,"%s\n",
 	      ((arg_ptr->description == NULL) ? "" : arg_ptr->description));
-      arg_ptr->mt.print(stderr);      
-      fprintf(stderr,"}\n");
-    skip:
-      arg_ptr++;
+      goto skip;
     }
+    
+    if (arg_ptr->arg_kind == Req) {
+      //	if (printOptional) goto skip;
+      brackets[0] = '<'; brackets[1] = '>';
+    } else {
+      //	if (!printOptional) goto skip;
+      brackets[0] = '['; brackets[1] = ']';
+    }
+    fprintf(stderr," %c",brackets[0]);
+    
+    if (!noFlagP(arg_ptr->flag)) {
+      // add one for the '-', as in "-flag"
+      this_variation = ::strlen(arg_ptr->flag) + 1;
+      if(arg_ptr->dataStructType==ARRAY) {
+	fprintf(stderr,"-%sX",arg_ptr->flag);
+	this_variation ++;
+      }
+      else
+	fprintf(stderr,"-%s",arg_ptr->flag);
+      fprintf(stderr," ");
+      this_variation ++; //  add one for the ' ' in "-flag "
+    }
+    
+    if(arg_ptr->arg_kind==Help)  {// add [] around unsigned for the help flag
+      fprintf(stderr,"[%s]",arg_ptr->mt.printable(arg_ptr->mt.type));
+      this_variation += 2;  // account for the extra []
+    }
+    else {
+      fprintf(stderr,"%s",arg_ptr->mt.printable(arg_ptr->mt.type));
+    }
+    this_variation += ::strlen(MultiType::printable(arg_ptr->mt.type));
+    // add two for brackets. '[',']', or '<','>' around type.
+    this_variation += 2;
+    
+    fprintf(stderr,"%c",brackets[1]);
+    
+    while (this_variation++ < longest_variation)
+      fprintf(stderr," ");
+    fprintf(stderr,"   %s {",
+	    ((arg_ptr->description == NULL) ? "" : arg_ptr->description));
+    arg_ptr->mt.print(stderr);      
+    fprintf(stderr,"}\n");
+    
+  skip:
+    arg_ptr++;
   }
-
+  //}
+  
   fprintf(stderr," [-%s <str>]",ARGS_FILE_NAME);
   int this_variation = 9 + strlen(ARGS_FILE_NAME);
   while (this_variation++ < longest_variation)
@@ -1145,6 +1223,8 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
 	  if ((i+1) >= argc) arg = NULL;
 	  else arg = argv[++i];
 	  argsSwitch(arg_ptr,arg,i,Argument_Specified[arg_ptr - Args],flag);
+	  // xxx
+	  arg_ptr->incCount();
 	}
       }
       else if (arg_ptr == (Arg*)(-1)) {
@@ -1170,14 +1250,18 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
 	    arg = NULL;
 	  else
 	    arg = argv[++i];
-	  if(arg_ptr->dataStructType == ARRAY) 
+	  if(arg_ptr->dataStructType == ARRAY) {
 	    if(Error_If_No_Index_For_Array_Data_Struct_Type) {
 	      warning("%s Need to supply index for array type flag: %s",ArgsErrStr,flag);
 	      return (ARG_ERROR);
 	    }
-	    else
-	      arg_ptr->arrayElmtIndex=0; // if the user specfies -i instead of -i1, we implicitly assume -i1, when the flag is of type array. Could also make this an eror.
+	    else {
+	      arg_ptr->arrayElmtIndex=0; // if the user specfies -i instead of -i1, we implicitly assume -i1, when the flag is of type array.
+	    }
+	  }
 	  argsSwitch(arg_ptr,arg,i,Argument_Specified[arg_ptr - Args],flag);
+	  // xxx
+	  arg_ptr->incCount();
 	}
       }
     } else { // Go through and look for no flag case, in order.
@@ -1224,9 +1308,52 @@ bool Arg::parse(int argc,char** argv)
 {
   ArgsRetCode rc;
   rc = parseArgsFromCommandLine(argc,argv);
-  if (rc == ARG_MISSING) { // still missing ??
+
+  // Don't print an error message if the help flag is supplied on the cmd line
+  Arg* arg_ptr=searchArgs(Args,"help");
+  unsigned cnt=0;
+  if(arg_ptr!=NULL) {
+    cnt=arg_ptr->getCount();
+  }
+  if (cnt==0 && rc == ARG_MISSING) {
     Arg::checkMissing(true);
   }
+
+
+//   ////////////////////////////////////////////////////////////////////
+//   // This section deals with help arguments and info level.  Should move to a subroutine
+//   ////////////////////////////////////////////////////////////////////
+
+//   // determine the requested priority by counting the number of times
+//   // the -help switch was specified on the command line
+//   // As a side effect we also learn whether the -help flag was used
+//   // and if so we do not print an error message along with the usage
+//   // information
+//   Arg* arg_ptr=searchArgs(Args,"help");
+//   if(arg_ptr==NULL) {  // the -help switch is not even defined
+//     if (rc == ARG_MISSING) 
+//       Arg::checkMissing(true);
+//     // warning("WARNING: -help flag not defined");
+//     // nothing to do; the required priority is set by default to the highest priority
+//   }
+//   else {
+//     unsigned cnt=arg_ptr->getCount();
+//     Requested_Priority=cnt;
+//     if(Requested_Priority == 0) Requested_Priority = HIGHEST_PRIORITY; // case when no -help flag is supplied
+
+//     if (cnt==0 && rc == ARG_MISSING) 
+//       Arg::checkMissing(true);
+//   }
+
+//   // Override the requested priority if an explicit flag -usageInfoLevel is supplied
+//   arg_ptr=searchArgs(Args,"usageInfoLevel");
+//   if(arg_ptr!=NULL) {  // the -usageInfoLevel switch is defined
+//     unsigned level=*((unsigned int*)(arg_ptr->mt.ptr));
+//     if (level > 0)  // because level==0 means that value wasn't set on the command line
+//       Requested_Priority=level;
+//   }
+//   /////////////////////////////////////////////////////////////////////
+
   if (rc != ARG_OK) {
     //Arg::usage();
     //::exit(1);
