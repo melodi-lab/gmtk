@@ -187,6 +187,7 @@ public:
   void write(oDataStreamFile& os);
   ///////////////////////////////////////////////////////////    
   // read in the next DT assuming this is a file.a
+  void clampFirstDecisionTree();
   void clampNextDecisionTree();
 
   ///////////////////////////////////////////////////////////    
@@ -207,6 +208,7 @@ public:
     // postfix
     iterator operator ++(int) { iterator tmp=*this; ++*this; return tmp; }
     T value() { return leaf->leafNode.value; }
+    bool valueNode() { return (leaf->nodeType == LeafNodeVal); }
     bool operator == (const iterator &it) { return it.leaf == leaf; } 
     bool operator != (const iterator &it) { return it.leaf != leaf; } 
   };
@@ -358,10 +360,13 @@ RngDecisionTree<T>::read(iDataStreamFile& is)
   if (!strIsInt(dtFileName.c_str(),&(int)_numFeatures)) {
     if (dtFile != NULL)
       error("ERROR: can't have DTs defined recursively from files");
-    // then this must be a file name
-    dtFile = new iDataStreamFile(dtFileName.c_str());
+    // then this must be a file name, turn off cpp pipe since we need to
+    // rewind later.
+    dtFile = new iDataStreamFile(dtFileName.c_str(),is.binary(),false);
     dtNum = -1;
     numDTs = 0;
+    // pre-read here, so we always have a valid DT, 
+    // even before clamping.
     dtFile->read(numDTs,"num DTs");
     if (numDTs == 0)
       error("ERROR: File '%s' specifies an invalid number of DTs\n",
@@ -562,6 +567,42 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * clampFirstDecisionTree
+ *      rewinds the DT file to the beginning.
+ * 
+ * Preconditions:
+ *      This must be a DT object that gets its DT instantiations
+ *      from a file.
+ *
+ * Postconditions:
+ *      next DT is read in.
+ *
+ * Side Effects:
+ *      changes internal structures.
+ *
+ * Results:
+ *      returns nil
+ *
+ *-----------------------------------------------------------------------
+ */
+template <class T> 
+void
+RngDecisionTree<T>::clampFirstDecisionTree()
+{
+  // first make sure this is a DT from file object
+  if (dtFile == NULL)
+    error("ERROR: can't call clampFirstDecisionTree() for non-file DT");
+  dtNum = -1;
+  dtFile->rewind();
+  dtFile->read(numDTs,"num DTs");
+  clampNextDecisionTree();
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * clampNextDecisionTree
@@ -603,7 +644,8 @@ RngDecisionTree<T>::clampNextDecisionTree()
   dtFile->read(curName,"cur name");
   dtFile->read(_numFeatures,"num feats");
   if (_numFeatures <= 0)
-    error("RngDecisionTree::read decision tree must have >= 0 features");
+    error("ERROR: reading decision tree from file '%s', but decision tree must have >= 0 features",
+	  dtFile->fileName());
   rightMostLeaf = NULL;
   root = readRecurse(*dtFile,rightMostLeaf);
   Node *tmp = rightMostLeaf;
