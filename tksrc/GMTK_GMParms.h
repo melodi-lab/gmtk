@@ -78,12 +78,13 @@ public:
     emTraindLinkMats                      = (1 << 4),
     emTrainWeightMats                     = (1 << 5),
     emTrainDiagGaussians                  = (1 << 6),
-    emTrainMDCPTs                         = (1 << 7),
-    emTrainMSCPTs                         = (1 << 8),
-    emTrainMixGaussians                   = (1 << 9),
-    emTrainGausSwitchingMixGaussians      = (1 << 10),
-    emTrainLogitSwitchingMixGaussians     = (1 << 11),
-    emTrainMLPSwitchingMixGaussians       = (1 << 12),
+    emTrainLinMeanCondDiagGaussians       = (1 << 7),
+    emTrainMDCPTs                         = (1 << 8),
+    emTrainMSCPTs                         = (1 << 9),
+    emTrainMixGaussians                   = (1 << 10),
+    emTrainGausSwitchingMixGaussians      = (1 << 11),
+    emTrainLogitSwitchingMixGaussians     = (1 << 12),
+    emTrainMLPSwitchingMixGaussians       = (1 << 13),
     emDefaultState                        = ~0x0
   };
 
@@ -96,6 +97,7 @@ public:
   bool amTrainingdLinkMats() { return (emTrainBitmask & emTraindLinkMats); }
   bool amTrainingWeightMats() { return (emTrainBitmask & emTrainWeightMats); }
   bool amTrainingDiagGaussians() { return (emTrainBitmask & emTrainDiagGaussians); }
+  bool amTrainingLinMeanCondDiagGaussians() { return (emTrainBitmask & emTrainLinMeanCondDiagGaussians); }
   bool amTrainingMDCPTs() { return (emTrainBitmask & emTrainMDCPTs); }
   bool amTrainingMSCPTs() { return (emTrainBitmask & emTrainMSCPTs); }
   bool amTrainingMixGaussians() { return (emTrainBitmask & emTrainMixGaussians); }
@@ -355,10 +357,13 @@ public:
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
-  // read in the next DTs from those DTs that get their
-  // definition from a file.
-  void clampFirstDTs();
-  void clampNextDTs();
+  void clampFirstExample();
+  void clampNextExample();
+
+  // some parameter objects require the stride in the observation
+  // matrix. Set this here.
+  void setStride(const unsigned stride);
+
 
   ///////////////////////////////////////////////////////////    
   // Return the total number of parameters used by this
