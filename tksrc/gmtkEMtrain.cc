@@ -55,6 +55,7 @@ char *obsFileName;
 char *strFileName;
 char *parmsFileName;
 unsigned maxEMIterations=30;
+bool randomizeParams = true;
 
 ARGS ARGS::Args[] = {
 
@@ -65,6 +66,8 @@ ARGS ARGS::Args[] = {
  ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
  ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
  ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
+ ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
+
  ARGS()
 
 };
@@ -124,8 +127,10 @@ main(int argc,char*argv[])
   gm.GM2CliqueChain();
   // gm.showCliques();
 
-  printf("randomizing parameters\n");
-  GM_Parms.makeRandom();
+  if (randomizeParams) {
+    printf("randomizing parameters\n");
+    GM_Parms.makeRandom();
+  }
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
   gm.cliqueChainEM(maxEMIterations, pruneRatio);
