@@ -62,7 +62,7 @@ RandomVariableAttribute = TypeAttribute | ParentsAttribute
 TypeAttribute = "type" ":" RandomVariableType ";"
 
 ParentsAttribute =
-      ( "switchingparents" ":" SwitchingParentList ";" )
+      ( "switchingparents" ":" SwitchingParentAttribute ";" )
    |  ( "conditionalparents" ":" ConditionalParentSpecList  ";" )
     # Semanatics requires that we have both
     # switchingparents & conditionalparents in a RV. Note that
@@ -80,7 +80,7 @@ RandomVariableContinuousType =
        "continuous" 
        ("hidden" | "observed" integer:integer)
 
-SwitchingParentList = "nil" | ParentList "using" MappingSpec
+SwitchingParentAttribute = "nil" | ParentList "using" MappingSpec
 
 ConditionalParentSpecList =
     ConditionalParentSpec "|" ConditionalParentSpecList
@@ -240,6 +240,14 @@ frame:1 {
 
 chunk: 1:1
 
+------------------------------------------------------------
+
+Notes on the semantic stuff:
+
+o   Check for unconnected RVs?
+o   Allow non DAGs (untimately for loopy inference) but include a routine 
+    that provides a DAG check.
+o   
 
 
 *********************************************************************** 
@@ -767,7 +775,7 @@ FileParser::parseRandomVariableParentAttribute()
       parseError("attribute separator");
     consumeToken();
 
-    parseSwitchingParentList();
+    parseSwitchingParentAttribute();
 
     ensureNotAtEOF(";");
     if (tokenInfo != TT_SemiColon)
@@ -795,7 +803,7 @@ FileParser::parseRandomVariableParentAttribute()
 }
 
 void
-FileParser::parseSwitchingParentList()
+FileParser::parseSwitchingParentAttribute()
 {
 
   ensureNotAtEOF("list of switching parents");
