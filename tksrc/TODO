@@ -1557,4 +1557,12 @@ Tue Feb 24 11:01:06 2004
     on the command line.
 
 
-     
+Mon Mar  1 23:09:05 2004
+  - cpp include files should be smarter about the current working directory.
+    Currently, if a file says include "foo.file", it uses the users
+    current working directory even if the file was specified using a long path name.
+    Try to pre-pend the path to the file somehow (or add that to CPP's -I options by
+    default)
+
+
+
