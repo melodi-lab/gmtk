@@ -384,3 +384,4 @@ TODO:
   files when numeric range doesn't work to support accumulators
    on different machines.
 
+- go through and making sure all the tying logic and not-training options work.
