@@ -171,6 +171,10 @@ public:
   // make available the number of featurse.
   int numFeatures() { return _numFeatures; }
 
+  ///////////////////////////////////////////////////////////    
+  // return the number of leaves.
+  int numLeaves();
+
 };
 
 
