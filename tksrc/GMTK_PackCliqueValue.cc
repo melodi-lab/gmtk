@@ -59,32 +59,31 @@ VCID("$Header$");
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::createPartitionJunctionTree()
- *   Create a mini-junction tree from the cliques in the given partition.
- *   This uses Kruskal's greedy (but optimal) algorithm for MST generation.
+ * PackCliqueValue::init()
+ *   create an object that can be used to pack the clique values
+ *   into a packed array of words.
  *
  * Preconditions:
- *   The partition must be instantiated with cliques 
- *
+ *   cards must be an length 'len' array of unsigned integers correspoinding
+ *   to the cardinalities of the corresponding random variables
+ *   in a clique.
+ * 
  * Postconditions:
- *   The cliques in the partition are now such that they
- *   form a junction tree over cliques within that partition.
+ *   Object is constructed. 
  *
  * Side Effects:
- *   Modifies all neighbors variables within the cliques within the
- *   partition.
+ *   none
  *
  * Results:
  *   none
  *
  *-----------------------------------------------------------------------
  */
-
-
-PackCliqueValue::PackCliqueValue(const unsigned len, 
-				 const unsigned *const cards)
-  : unpackedVectorLength(len)
+void
+PackCliqueValue::init(const unsigned *const cards)
 {
+  // for easy access
+  unsigned len = unpackedVectorLength;
 
   // 1.0/log10(2) pre-defined, as a 64-bit double
   const double inv_log_2_base_e = 1.4426950408889633870E0;
@@ -159,8 +158,78 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
 
   }
   assert( wordBoundaryNoOverlapLocation == wordBoundaryOverlapLocation);
-
 } 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * PackCliqueValue::PackCliqueValue()
+ *   Construct an object that can be used to pack the clique values
+ *   into a packed array of words. Uses an array of
+ *   cardinalities
+ *
+ * Preconditions:
+ *   see init()
+ * 
+ * Postconditions:
+ *   see above.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+PackCliqueValue::PackCliqueValue(const unsigned len, 
+				 const unsigned *const cards)
+  : unpackedVectorLength(len)
+{
+  init(cards);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * PackCliqueValue::PackCliqueValue()
+ *   Construct an object that can be used to pack the clique values
+ *   into a packed array of words. Same as above version
+ *   but works directly with cliques.
+ *
+ * Preconditions:
+ *   see above + maxClique's sortedNodes variable must have
+ *   been instantiated.
+ * 
+ * Postconditions:
+ *   see above.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+PackCliqueValue::PackCliqueValue(MaxClique& maxClique)
+  : unpackedVectorLength(maxClique.nodes.size())
+{
+  assert (maxClique.nodes.size() != 0);
+
+  sArray < unsigned > cards(maxClique.nodes.size());
+
+  set<RandomVariable*>::iterator it;
+  unsigned i=0;
+  for (it=maxClique.nodes.begin();
+       it != maxClique.nodes.end();it++) {
+    RandomVariable*rv = (*it);
+    cards.ptr[i] = rv->cardinality;
+    i++;
+  }
+  init(cards.ptr);
+}
 
 
 #ifdef MAIN
@@ -181,7 +250,7 @@ int main(int argc,char*argv[])
   const unsigned numEpochs = 50;
   for (unsigned epoch=0;epoch<numEpochs;epoch++) {
 
-    const unsigned len = myrnd.uniform(21)+1;
+    const unsigned len = myrnd.uniform(1,22);
     sArray<unsigned> cards(len);
     for (unsigned i=0;i<len;i++) {
       cards[i] = myrnd.uniform(2,500000);
@@ -206,7 +275,7 @@ int main(int argc,char*argv[])
 	vec.ptr[i] = myrnd.uniform(cards[i]-1);
       }
 
-      // #define TIME_PACK
+#define TIME_PACK
 
 #ifdef TIME_PACK
       pcl.pack(vec.ptr,packed_vec.ptr);
