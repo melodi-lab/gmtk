@@ -678,6 +678,9 @@ main(int argc,char*argv[])
     string orig_jcap_str = JunctionTree::junctionTreeMSTpriorityStr;
     string orig_icap_str = JunctionTree::interfaceCliquePriorityStr;
     string orig_tri_file;
+    unsigned orig_seconds = seconds;
+    bool orig_comp_cache = MixtureCommon::cacheMixtureProbabilities;
+
     if (triFileName == NULL) 
       orig_tri_file = string(strFileName) + GMTemplate::fileExtension;
     else 
@@ -689,6 +692,7 @@ main(int argc,char*argv[])
     string best_vcap_str;
     string best_jcap_str;
     string best_icap_str;
+    bool best_cc = MixtureCommon::cacheMixtureProbabilities;
 
 
     while (1) {
@@ -705,6 +709,8 @@ main(int argc,char*argv[])
       string vcap_str =  orig_vcap_str;
       string jcap_str =  orig_jcap_str;
       string icap_str =  orig_icap_str;
+      seconds = orig_seconds;
+      MixtureCommon::cacheMixtureProbabilities = orig_comp_cache;
 
       // get name of triangulation file (and other options) from the command line.
       //   If trifile is named 'end' then, stop processing.
@@ -722,7 +728,9 @@ main(int argc,char*argv[])
       if (strlen(buff) == 0) {
 	// do nothing since defaults are already set.
       } else if (strcmp(buff,"END") == 0 || 		 
-		 strcmp(buff,"end") == 0) {
+		 strcmp(buff,"end") == 0 ||
+		 strcmp(buff,"quit") == 0 ||
+		 strcmp(buff,".") == 0) {
 	multiTest = false;
 	break; // out of enclosing do loop 
       } else {
@@ -749,7 +757,8 @@ main(int argc,char*argv[])
 	  // end if this is the end of the string.
 	  if (!*buffp)
 	    break;
-	  
+
+	  // TODO: do this in a better way.
 	  if (!strncmp("vcap=\"",buffp,6)) {
 	    buffp += 6; // skip to option.
 	    char* buffpp = buffp+1;
@@ -803,7 +812,7 @@ main(int argc,char*argv[])
 	    icap_str = buffp;
 	    *buffpp = '"';
 	    buffp = buffpp+1;
-	  } else if (!strncmp("trifile=\"",buffp,6)) {
+	  } else if (!strncmp("trifile=\"",buffp,9)) {
 	    buffp += 9; // skip to option.
 	    char* buffpp = buffp+1;
 	    while (*buffpp && ((*buffpp != '"') || (buffpp[-1] == '\\'))) {
@@ -817,6 +826,50 @@ main(int argc,char*argv[])
 	    // printf("trifile=(%s)\n",tri_file.c_str());
 	    *buffpp = '"';
 	    buffp = buffpp+1;
+	  } else if (!strncmp("seconds=\"",buffp,9)) {
+	    buffp += 9; // skip to option.
+	    char* buffpp = buffp+1;
+	    while (*buffpp && ((*buffpp != '"') || (buffpp[-1] == '\\'))) {
+	      buffpp++;
+	    }
+	    if (!*buffpp)
+	      break; // missing end quote, so no option.
+	    
+	    *buffpp = '\0';
+
+	    char* endptr;
+	    unsigned val = (unsigned) strtol(buffp, &endptr, 0);
+	    if ( endptr == buffp ) {
+	      // fail
+	      fprintf(stderr,"WARNING: bad option to seconds=\"%s\"\n",buffp);
+	      buffp++;
+	    } else {
+	      seconds = val;
+	      buffp = buffpp+1;
+	    }
+	    *buffpp = '"';
+	  } else if (!strncmp("componentCache=\"",buffp,16)) {
+	    buffp += 16; // skip to option.
+	    char* buffpp = buffp+1;
+	    while (*buffpp && ((*buffpp != '"') || (buffpp[-1] == '\\'))) {
+	      buffpp++;
+	    }
+	    if (!*buffpp)
+	      break; // missing end quote, so no option.
+	    
+	    *buffpp = '\0';
+	    if (*buffp == 'T' || *buffp == 't') {
+	      MixtureCommon::cacheMixtureProbabilities = true;
+	      buffp+=2;
+	    } else if (*buffp == 'F' || *buffp == 'f') {
+	      MixtureCommon::cacheMixtureProbabilities = false;
+	      buffp+=2;
+	    } else {
+	      // fail
+	      fprintf(stderr,"WARNING: bad option to componentCache=\"%c\"",*buffp);
+	      buffp++;
+	    }
+	    *buffpp = '"';
 	  } else {
 	    fprintf(stderr,"WARNING: unrecognized string option (%s)\n",buffp);
 	    // skip
@@ -835,6 +888,7 @@ main(int argc,char*argv[])
 	best_vcap_str =	vcap_str;
 	best_jcap_str = jcap_str;
 	best_icap_str = icap_str;
+	best_cc = MixtureCommon::cacheMixtureProbabilities;
       }
 
 
@@ -911,10 +965,10 @@ main(int argc,char*argv[])
       const int limitTime = MAX(seconds+rlimitSlop,1);
 
       printf("--------\n%d: Operating on trifile '%s'\n",iteration,tri_file.c_str());
-      printf("%d: Other options: vpap=%s,vcap=%s,jcap=%s,icap=%s\n",
+      printf("%d: Other options: vpap=%s,vcap=%s,jcap=%s,icap=%s,cc=%d\n",
 	     iteration,
 	     vpap_str.c_str(),vcap_str.c_str(),
-	     jcap_str.c_str(),icap_str.c_str());
+	     jcap_str.c_str(),icap_str.c_str(),MixtureCommon::cacheMixtureProbabilities);
       printf("%d: ",iteration); 
       printf("Running program for approximately %d seconds, not to exceed %d CPU seconds.\n",seconds,limitTime);
       fflush(stdout);
@@ -1075,8 +1129,8 @@ main(int argc,char*argv[])
 
     printf("--------\n");
     printf("Best trifile found at %0.3e partitions/sec is '%s'\n",bestRate,best_tri_file.c_str());
-    printf("Best options: vpap=%s, vcap=%s, jcap=%s, icap=%s\n",best_vpap_str.c_str(),best_vcap_str.c_str(),
-	   best_jcap_str.c_str(),best_icap_str.c_str());
+    printf("Best options: vpap=%s, vcap=%s, jcap=%s, icap=%s, cc=%d\n",best_vpap_str.c_str(),best_vcap_str.c_str(),
+	   best_jcap_str.c_str(),best_icap_str.c_str(),best_cc);
     printf("--------\n");
 
   } // end of multi-test section.
