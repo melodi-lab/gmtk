@@ -3,18 +3,31 @@
  * GMTK_Clique.cc
  * The basic Clique data structure.
  *
- * Written by Geoffrey Zweig <gzweig@us.ibm.com>
- * 
- * Copyright (c) 2001, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software 
- * for any purpose. It is provided "as is" without express or implied warranty.
- *
- */ 
+ * "Copyright 2001, International Business Machines Corporation and University
+ * of Washington. All Rights Reserved
+
+ *    Written by Geoffrey Zweig and Jeff Bilmes
+
+ * NO WARRANTY
+ * THE PROGRAM IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED INCLUDING, WITHOUT
+ * LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Each Recipient is
+ * solely responsible for determining the appropriateness of using the Program
+ * and assumes all risks associated with such use, including but not limited
+ * to the risks and costs of program errors, compliance with applicable laws,
+ * damage to or loss of data, programs or equipment, and unavailability or
+ * interruption of operations.
+
+ * DISCLAIMER OF LIABILITY
+ * THE UNIVERSITY OF WASHINGTON, INTERNATIONAL BUSINESS MACHINES CORPORATION,
+ * GEOFFREY ZWEIG AND JEFF BILMES SHALL NOT HAVE ANY LIABILITY FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING WITHOUT LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE  OF
+ * THE PROGRAM, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES."
+*/
 
 #include "general.h"
 VCID("$Header$");
@@ -112,7 +125,6 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
 {
     if (separator)
     {
-// cout << "entering sep\n";
         cacheClampedValues();
      
         // Make sure we have a clique value to work with
@@ -145,12 +157,10 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
             cv->pi = gip[pred_val].pi;
             cv->pred = pred_val;
         }
-// cout << "exiting sep\n";
     }
     else if (new_member_num == int(newMember.size())) 
     // base case: all members fixed
     {
-// cout << "entering non-sep\n";
 	// Then all members of this clique have their values clamped,
 	// and we are ready to compute the probablity of this clique.
 	// Each variable and its parents are guaranteed to be in this
@@ -172,7 +182,6 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
             if (pred_val!=-1)   // not doing root
                 cv->pi *= gip[pred_val].pi;
         }
-// cout << "exiting non-sep\n";
     }
     else
     {
@@ -181,12 +190,6 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
         newMember[new_member_num]->clampFirstValue();
         do
         {
-/*
-cout << "Clamping " <<
-newMember[new_member_num]->label << "-" << newMember[new_member_num]->timeIndex
-<< " " << newMember[new_member_num]->val << " of " << 
-newMember[new_member_num]->cardinality << endl;
-*/
             enumerateValues(new_member_num+1, pred_val, viterbi);
         } while (newMember[new_member_num]->clampNextValue());
     }
