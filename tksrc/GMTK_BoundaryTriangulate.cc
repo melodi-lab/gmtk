@@ -793,10 +793,13 @@ findPartitions(// boundary quality heuristic
 
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'R')) {
     // find best left interface
+    findingLeftInterface = true;
     infoMsg(Tiny,"---\nFinding BEST LEFT interface\n");
+    
 
     set<RandomVariable*> C2_1_u2; // first chunk in C2_u2
     if (M == 0) {
+      // TODO: remove this, as we require M >= 1
       // find interface in basic template
       assert ( C2_u2.size() == 0 );
       findBestInterface(C1_u2,C3_u2,C2_1_u2,C3_u2,
@@ -842,10 +845,12 @@ findPartitions(// boundary quality heuristic
   }
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
     // find best right interface
+    findingLeftInterface = false;
     infoMsg(Tiny,"---\nFinding BEST RIGHT interface\n");
 
     set<RandomVariable*> C2_l_u2; // last chunk of C2_u2
     if (M == 0) {
+      // TODO: remove this, as we require M >= 1
       // find interface in basic template
       assert ( C2_u2.size() == 0 );
       findBestInterface(C3_u2,C1_u2,C2_l_u2,C1_u2,
@@ -901,6 +906,7 @@ findPartitions(// boundary quality heuristic
     // exists from within the chunk C2_u2 and places
     // it in C_l_u2, and everything to the 'left' of C_l_u2
     // that still lies within C2_u2 is placed in left_C_l_u2
+    findingLeftInterface = true;
     infoMsg(Tiny,"---\nUsing left interface to define partitions\n");
 
     findInterfacePartitions(P_u1,
@@ -914,8 +920,10 @@ findPartitions(// boundary quality heuristic
 			    C_l_u2C2,
 			    gm_template);
 
+    // Write information about how boundary was created to a string,
+    // but make sure there is no white space in the string.
     char buff[2048];
-    sprintf(buff,"Using left interface from: Run Bdry Alg = %c, Bnd Heurs = %s, Trav Frac = %f, Tri Heur = %s",
+    sprintf(buff,"Left_interface:Run_Bdry_Alg(%c),Bnd_Heurs(%s),TravFrac(%f),Tri_Heur(%s)",
 	    (findBestBoundary? 'T' : 'F'),
 	    bnd_heur_str.c_str(),
 	    boundaryTraverseFraction,
@@ -923,6 +931,7 @@ findPartitions(// boundary quality heuristic
     gm_template.boundaryMethod = buff;
   } else {
     // find right interface partitions
+    findingLeftInterface = false;
     infoMsg(Nano,"---\nUsing right interface to define partitions\n");
 
 
@@ -939,8 +948,11 @@ findPartitions(// boundary quality heuristic
 			    right_C_r_u2C2,
 			    C_r_u2C2,
 			    gm_template);
+
+    // Write information about how boundary was created to a string,
+    // but make sure there is no white space in the string.
     char buff[2048];
-    sprintf(buff,"Using right interface from: Run Bdry Alg = %c, Bnd Heurs = %s, Trav Frac = %f, Tri Heur = %s",
+    sprintf(buff,"Right_interface:Run_Bdry_Alg(%c),Bnd_Heurs(%s),TravFrac(%f),Tri_Heur(%s)",
 	    (findBestBoundary? 'T' : 'F'),
 	    bnd_heur_str.c_str(),
 	    boundaryTraverseFraction,
@@ -963,6 +975,8 @@ findPartitions(// boundary quality heuristic
  *  where E = modified epilogue to repeat
  *
  * Preconditions:
+ *   The variable findingLeftInterface must be set to
+ *   appropriate value before calling this routine.
  *
  * Postconditions:
  *
@@ -1078,7 +1092,10 @@ findInterfacePartitions(
 		 inserter(C,C.end()));
 
   // create the template with these partition definitions.
-  gm_template.createPartitions(P,C,E,C_l_u1C1,C_l_u1C2);
+  if (findingLeftInterface)
+    gm_template.createPartitions(P,C,E,C_l_u1C1,C_l_u1C2);
+  else // we are finding right interface, need to swap arguments. 
+    gm_template.createPartitions(E,C,P,C_l_u1C2,C_l_u1C1);
 
 }
 
@@ -4277,7 +4294,7 @@ BoundaryTriangulate::findBestInterface(
  const set<RandomVariable*>& E_u1,
  // Mappings from C2 in the twice unrolled network to C1 and C2
  // in the once unrolled network.
- // (these next 2 should be const, but there is no "op[] const")
+ // (these next 2 should be const, but there is no "op[] const" in STL)
  map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
  map < RandomVariable*, RandomVariable* >& C2_u2_to_C2_u1
  // end of input arguments (finally)

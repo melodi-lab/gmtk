@@ -102,6 +102,14 @@ class GMTemplate : public IM
   // chunk skip, Number of chunks that should exist between boundaries
   const unsigned S;
 
+  // Boolean for if this template correspond to the left interface method
+  // (meaning that the basic template P' C' E' is such that E'
+  // contains a portion of a C at its beginning and P' is just a P),
+  // or if this template correspond to the right interface method
+  // (meaning that the basic template P' C' E' is such that P'
+  // contains a portion of a C at its end and E' is just an E).
+  bool leftInterface;
+public:
   // a string with information about the boundary method
   string boundaryMethod;
 
@@ -123,7 +131,7 @@ private:
     PCInterface_in_C.clear(); 
     CEInterface_in_C.clear();
     CEInterface_in_E.clear();
-    boundaryMethod.clear();
+    // boundaryMethod.clear();
   }
 
 
@@ -192,8 +200,9 @@ public:
   ////////////////////////////////////////////////////////////
   GMTemplate(FileParser& arg_fp,
 	     const unsigned arg_M,
-	     const unsigned arg_S)
-    : fp(arg_fp),M(arg_M),S(arg_S)
+	     const unsigned arg_S,
+	     const bool arg_leftInterface=true)
+    : fp(arg_fp),M(arg_M),S(arg_S),leftInterface(arg_leftInterface)
   {
     clear(); 
   }
@@ -201,7 +210,8 @@ public:
   GMTemplate(FileParser& arg_fp)
     : fp(arg_fp),
       M(GMTEMPLATE_UNINITIALIZED_MS),
-      S(GMTEMPLATE_UNINITIALIZED_MS)
+      S(GMTEMPLATE_UNINITIALIZED_MS),
+      leftInterface(true) // default is left interface
   {
     clear();
   }

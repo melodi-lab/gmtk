@@ -75,6 +75,7 @@ static bool loadParameters = false;
 static char *inputMasterFile=NULL;
 // static char *outputMasterFile=NULL;
 static char *inputTrainableParameters=NULL;
+static char *inputTriangulatedFile=NULL;
 static bool binInputTrainableParameters=false;
 // static char *objsToNotTrainFile=NULL;
 
@@ -102,6 +103,7 @@ Arg Arg::Args[] = {
   Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
   Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
   Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
+  Arg("inputTriangulatedFile",Arg::Opt,inputTriangulatedFile,"Non-default previous triangulated file to start with"),
 
 
   /////////////////////////////////////////////////////////////
@@ -363,7 +365,12 @@ main(int argc,char*argv[])
 
     GMTemplate gm_template(fp,maxNumChunksInBoundary,chunkSkip);
 
-    string tri_file = string(strFileName) + GMTemplate::fileExtension;
+    string tri_file;
+    if (inputTriangulatedFile == NULL)
+      tri_file = string(strFileName) + GMTemplate::fileExtension;
+    else 
+      tri_file = string(inputTriangulatedFile);
+
     if (rePartition && !reTriangulate) {
       infoMsg(IM::Warning,"Warning: rePartition=T option forces -reTriangulate option to be true.\n");
       reTriangulate = true;
@@ -427,6 +434,7 @@ main(int argc,char*argv[])
 	  gm_template.clear_E_Cliques();
       }
 	
+
       // now using the partition triangulate
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
@@ -443,9 +451,11 @@ main(int argc,char*argv[])
 	triangulator.anyTimeTriangulate(gm_template,
 					!noReTriP,!noReTriC,!noReTriE);
       }
+
       // write everything out anew
       backupTriFile(tri_file);
       oDataStreamFile os(tri_file.c_str());
+
       fp.writeGMId(os);
       gm_template.writePartitions(os);
       gm_template.writeMaxCliques(os);

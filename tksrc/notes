@@ -998,7 +998,7 @@ What is needed for each operation:
          Ca's LI is to a P1 and RI to a C
          (for left or right interface, P1 will change
           but Ca or C1 interface to same) 
-       C2 and Cb are same since
+       C2 and Cc are same since
          C2's RI is to an E and LI is to a C
          Cc's RI is to an E and LI is to a C. 
        What about Cb, is it identical to either C1 or C2?
@@ -1017,6 +1017,20 @@ What is needed for each operation:
        Then unrolling 3 times becomes:
        u3: P1 C1 C2 C2 C3 E1 
        u4: etc.
+       (alternatively, could have
+             u0: P1 Cu0 E1
+         for left interface case, do:
+             u1: P1 Cu0 C2 E1
+             u2: P1 Cu0 C2 C2 E1
+             u3: P1 Cu0 C2 C2 C2 E1
+         for right interface case do:
+             u1: P1 C1 Cu0 E1
+             u2: P1 C1 C1 Cu0 E1
+             u3: P1 C1 C1 C1 Cu0 E1
+         this way, in either case, we only keep two C partitions
+         rather than four C partitions.
+       )
+
       Therefore, in the junction tree class, we keep
        base partitions for P1, E1, Cu0, and C1,C2,C3.
 
