@@ -344,8 +344,8 @@ DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
   if(emOnGoingBitIsSet()) {
     // EM already on going.
@@ -446,8 +446,8 @@ DiagCovarVector::emIncrement(const logpr prob,
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
 
@@ -522,8 +522,8 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  //if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
   // if this isn't the case, something is wrong.
@@ -664,8 +664,8 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
 
@@ -843,8 +843,8 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
 
@@ -1011,8 +1011,8 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
   if (!emAccInitializedBitIsSet()) {
@@ -1248,8 +1248,8 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
   if (!emAccInitializedBitIsSet()) {
@@ -1412,8 +1412,8 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  //return;
 
 
   // if this isn't the case, something is wrong.

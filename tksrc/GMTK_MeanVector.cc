@@ -229,8 +229,8 @@ MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
   if(emOnGoingBitIsSet()) {
     // EM already on going.
@@ -305,8 +305,8 @@ MeanVector::emIncrement(const logpr prob,
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  //    return;
 
 
   /////////////////////////////////////////////
@@ -378,8 +378,8 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
   if (!emAccInitializedBitIsSet()) {
     // make sure next-means are set up
@@ -530,8 +530,8 @@ MeanVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbab
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
   if (!emAccInitializedBitIsSet()) {
     // make sure next-means are set up
@@ -654,8 +654,8 @@ MeanVector::emEndIterationNoSharing(const float*const partialAccumulatedNextMean
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
   // if this isn't the case, something is wrong.
   assert ( emOnGoingBitIsSet() );
@@ -736,8 +736,8 @@ MeanVector::emEndIterationNoSharingAlreadyNormalized(const float*const accumulat
   // in this object's Gaussian component, so we'll need to compute them,
   // even though the parameters of this object will not be updated
   // when we swap them in.
-  if (numTimesShared == 1 && !emAmTrainingBitIsSet())
-    return;
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
 
 
   // if this isn't the case, something is wrong.
