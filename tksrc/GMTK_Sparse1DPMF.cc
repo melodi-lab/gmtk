@@ -204,8 +204,10 @@ Sparse1DPMF::prob(const int val)
   assert ( pmf.len() > 0 );
   assert ( val >= 0 && val < _card );
   const int last = pmf.len()-1;
-  if (val > pmf[last])
-    return LZERO;
+  if (val > pmf[last]) {
+    logpr p; // make a log(zero) value.
+    return p; // and return log(0).
+  }
 
   int l,u;
   l = 0;
