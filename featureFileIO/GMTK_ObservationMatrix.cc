@@ -760,16 +760,16 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
   char c=*trans_str;
   DBGFPRINTF((stderr,"In parseTransform: c=%c\n",c));
   switch(c) {
-
-  case 'N':
+    //see GMTK_ObservationMatrix.h for definitions of LETTERs below
+  case TRANS_NORMALIZATION_LETTER:   // 'N'
     ++trans_str; 
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return NORMALIZE;
-  case TRANS_MEAN_SUB_LETTER:
+  case TRANS_MEAN_SUB_LETTER:  // 'E'
     ++trans_str; 
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return MEAN_SUB;
-  case 'M':
+  case TRANS_MULTIPLICATION_LETTER: // 'M'
     ++trans_str; 
     // get multiplier
     //DBGFPRINTF((stderr,"trans_str=%s\n",trans_str));
@@ -777,19 +777,19 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return MULTIPLY;
-  case TRANS_OFFSET_LETTER:
+  case TRANS_OFFSET_LETTER: // 'O'
     ++trans_str; 
     // get offset
     magic_double=conv2double(trans_str,len,'_');
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return OFFSET;
-  case 'U':
+  case TRANS_UPSAMPLING_LETTER: // 'U' 
     // an upsampling style should follow
     ++trans_str;
-    if(*(trans_str)=='S')
+    if(*(trans_str)==TRANS_SMOOTH_LETTER)  // 'S'
       return_val=UPSAMPLE_SMOOTH;
-    else if(*(trans_str)=='H')
+    else if(*(trans_str)==TRANS_HOLD_LETTER)  // 'H'
       return_val=UPSAMPLE_HOLD;
     else
       return UNRECOGNIZED_TRANSFORM;
@@ -827,6 +827,10 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     else if(*trans_str=='_') ++trans_str;
     
     return FILTER;
+  case NONE_LETTER:
+    ++trans_str; 
+    if(*trans_str=='_') ++trans_str; 
+    return NONE;
   default:
     error("ERROR: parseTransform: Unrecognized transformation substring (%s)\n",trans_str);
     //DBGFPRINTF((stderr,"In parseTransform: Unrecognized transform @ trans_str=%s\n",trans_str));
