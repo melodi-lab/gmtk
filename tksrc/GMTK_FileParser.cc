@@ -42,13 +42,16 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_MixGaussians.h"
 #include "GMTK_ObservationMatrix.h"
+#include "GMTK_GraphicalModel.h"
 
 VCID("$Header$");
 
+#ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
 extern "C" {
-  FILE     *popen(const char *, const char *);
-  int pclose(FILE *stream);
+  FILE     *popen(const char *, const char *) __THROW;
+  int pclose(FILE *stream) __THROW;
 };
+#endif
 
 /*
 ***********************************************************************
@@ -1144,7 +1147,8 @@ FileParser::parseParent()
   if (tokenInfo != TT_Integer) 
     parseError("parent RV offset");
   p.second = tokenInfo.int_val;;
-  // make sure we are not pointing to ourselves.
+  // Simple topology check right here, make
+  // sure we are not pointing to ourselves.
   if ((p.first == curRV.name) &&
       (p.second == 0)) {
     parseError("parent variable must not refer to self");
@@ -1457,8 +1461,22 @@ FileParser::parseListIndex()
 void
 FileParser::createRandomVariableGraph()
 {
-  // first create the RV objects
+
+  // first create the RV objects and fill in var
+  // counts as we go.
+  numVarsInPrologue = numVarsInChunk = numVarsInEpilogue = 0;
   for (unsigned i=0;i<rvInfoVector.size();i++) {
+    const unsigned frame = rvInfoVector[i].frame;
+    if (frame < _firstChunkframe)
+      numVarsInPrologue++;
+    else if (frame >= _firstChunkframe &&
+	     frame <= _lastChunkframe)
+      numVarsInChunk++;
+    else if (frame <= _maxFrame)
+      numVarsInEpilogue++;
+    else // shouldn't happen
+      assert(0);
+
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
       DiscreteRandomVariable*rv = 
 	new DiscreteRandomVariable(rvInfoVector[i].name,
@@ -1504,7 +1522,7 @@ FileParser::createRandomVariableGraph()
   // now set up all the parents of each random variable.
   for (unsigned i=0;i<rvInfoVector.size();i++) {
 
-    unsigned frame = rvInfoVector[i].frame;
+    const unsigned frame = rvInfoVector[i].frame;
 
     // build the switching parents list.
     vector<RandomVariable *> sparents;
@@ -2408,6 +2426,315 @@ FileParser::addVariablesToTemplate(GMTemplate& gm_template)
     }
   }
 }
+
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * unroll()
+ *      Unrolls the internal stored template some number of times
+ *      and returns the result in the vector of random variables.
+ *      Note, this is a general unrolling routine, it allows
+ *      for variables to have parents both in the past and in
+ *      the future. It also allows for networks that have
+ *      cycles. It does not allow for 
+ *
+ *      In general, unrolling is valid only if all parent variables in
+ *      the unrolled network are {\em compatible} with those parents
+ *      that exist in the template. A variable is said to be
+ *      compatible if has 1) the same name, 2) the same type (i.e.,
+ *      discrete or continuous), and 3) the same cardinality (number
+ *      of possible values).  For example, suppose that $A$ is a
+ *      random variable in the template having $B$ as a parent that is
+ *      $k$ frames to the left of $A$ in the template. After
+ *      unrolling, each variable $A'$ in the unrolled network that is
+ *      derived from $A$ in the template must have a parent having the
+ *      same name as $B$, it must be $k$ frames to the left of each
+ *      $A'$, and must have the same type and (if discrete)
+ *      cardinality as $B$. If these conditions are not met, the
+ *      template is invalid.
+ *
+ *      Note: unrolling 0 times means return a structure like the
+ *      template. Unrolling 1 times means duplicate the chunk once.
+ *      
+ *      Note: This routine is part of FileParser becuase it uses
+ *      the parent offset information that is contained in 
+ *      the template.
+ *
+ * Preconditions:
+ *      createRandomVariableGraph() and parseGraphicalModel(),
+ *      and associateWithDataParams() must have been called.
+ *      Assumes that rvInfoVector exists and template r.v.s
+ *      have been stored in frame order (frame 0 first, 1 second, etc.)
+ *
+ * Postconditions:
+ *      argument contains unrolled network.
+ *
+ * Side Effects:
+ *      Nothing internal is changed, but changes argument.
+ *
+ * Results:
+ *      nothing.
+ *
+ *----------------------------------------------------------------------- */
+void
+FileParser::unroll(unsigned timesToUnroll,
+		   vector<RandomVariable*> &unrolledVarSet)
+{
+
+  // a map from the r.v. name and new frame number to
+  // position in the new unrolled array of r.v.'s
+  map < rvParent, unsigned > posOfParentAtFrame;
+
+  // a map from the new r.v. to the corresponding rv info
+  // vector position in the template.
+  map < RandomVariable *, unsigned > infoOf;
+
+
+  // first go though and create all of the new r.v., without parents,
+  // but with parameters shared
+
+  // clear out the old var set if any.
+  for (unsigned i=0;i<unrolledVarSet.size();i++)
+    delete unrolledVarSet[i];
+  unrolledVarSet.clear();
+  // set up the size for the new one in advance.
+  unrolledVarSet.resize(numVarsInPrologue+
+	      (timesToUnroll+1)*numVarsInChunk+numVarsInEpilogue);
+  // uvsi: unrolledVarSet index
+  unsigned uvsi=0;
+  // tvi: template variable index
+  unsigned tvi=0;
+  for (;tvi<numVarsInPrologue;tvi++) {
+
+    const unsigned frame = rvInfoVector[tvi].frame;
+
+    unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneWithoutParents();
+
+    // not necessary for prologue variables, since
+    // time index retained in clone.
+    // unrolledVarSet[uvsi]->timeIndex = frame;
+
+    infoOf[unrolledVarSet[uvsi]] = tvi;
+    rvParent p(unrolledVarSet[uvsi]->name(),frame);
+    posOfParentAtFrame[p] = uvsi;
+
+    uvsi++;
+  }
+
+  const unsigned numFramesInChunk = (_lastChunkframe-_firstChunkframe+1);
+  for (unsigned i=0;i<(timesToUnroll+1);i++) {
+    tvi = numVarsInPrologue;
+    for (unsigned j=0;j<numVarsInChunk;j++) {
+      const unsigned frame = 
+	i*numFramesInChunk+rvInfoVector[tvi].frame;
+
+      unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneWithoutParents();
+      unrolledVarSet[uvsi]->timeIndex = frame;
+
+      infoOf[unrolledVarSet[uvsi]] = tvi;
+      rvParent p(unrolledVarSet[uvsi]->name(),frame);
+      posOfParentAtFrame[p] = uvsi;
+
+      uvsi++;
+      tvi++;
+    }
+  }
+
+  for (unsigned i=0;i<numVarsInEpilogue;i++) {
+    const unsigned frame = 
+      timesToUnroll*numFramesInChunk+rvInfoVector[tvi].frame;
+
+    unrolledVarSet[uvsi] = rvInfoVector[tvi].rv->cloneWithoutParents();
+    unrolledVarSet[uvsi]->timeIndex = frame;
+
+    infoOf[unrolledVarSet[uvsi]] = tvi;
+    rvParent p(unrolledVarSet[uvsi]->name(),frame);
+    posOfParentAtFrame[p] = uvsi;
+
+    uvsi++;
+    tvi++;
+  }
+  
+  // now we have all the rv,s but with the wrong parents, fix that.
+
+  for (uvsi=0;uvsi<unrolledVarSet.size();uvsi++) {
+
+    const unsigned frame = unrolledVarSet[uvsi]->timeIndex;
+
+    // get the info objectd for this one.
+    RVInfo* info = &rvInfoVector[infoOf[unrolledVarSet[uvsi]]];
+    
+    // build the switching parents list.
+    vector<RandomVariable *> sparents;
+    for (unsigned j=0;j<info->switchingParents.size();j++) {
+
+      // grab a pointer to the parent in the template
+      RandomVariable* template_parent_rv =
+	info->rv->switchingParents[j];
+
+      // pointer to parent in unrolled network
+      rvParent pp(info->switchingParents[j].first,
+		  frame+info->switchingParents[j].second);
+
+
+      ///////////////////////////////////////////
+      // next set of checks ensure compatibility.
+      // 1. first the name check at that frame.
+
+      ////////////////////////////////////////////////////////
+      // Make sure the rv at the time delta from the current
+      // frame exists.
+      map < rvParent , unsigned >::iterator it;      
+      if ((it = posOfParentAtFrame.find(pp)) == posOfParentAtFrame.end()) {
+	error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that does not exist when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which does not exist)\n",
+	      info->name.c_str(),
+	      info->frame,
+	      info->fileLineNumber,
+	      info->switchingParents[j].first.c_str(),
+	      info->switchingParents[j].second,
+	      timesToUnroll,
+	      frame,
+	      info->switchingParents[j].first.c_str(),
+	      frame+info->switchingParents[j].second);
+      }
+
+      ///////////////////////////////////////////
+      // 2. next the type compatibility check
+      RandomVariable *unrolled_parent_rv = unrolledVarSet[(*it).second];
+      if (!unrolled_parent_rv->discrete) {
+	error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that is continous when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which is continuous)\n",
+	      info->name.c_str(),
+	      info->frame,
+	      info->fileLineNumber,
+	      info->switchingParents[j].first.c_str(),
+	      info->switchingParents[j].second,
+	      timesToUnroll,
+	      frame,
+	      info->switchingParents[j].first.c_str(),
+	      frame+info->switchingParents[j].second);
+      }
+
+      //////////////////////////////////////////////////////////////
+      // 3. lastly, check that the cardinality of the parent matches 
+      // since it is a discrete r.v.
+      DiscreteRandomVariable* dunrolled_parent_rv = 
+	(DiscreteRandomVariable*) unrolled_parent_rv;
+      
+      if (dunrolled_parent_rv->cardinality != 
+	  template_parent_rv->cardinality) {
+	error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that has the wrong cardinality when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which is has cardinality %d, but cardinality in template parent is %d)\n",
+	      info->name.c_str(),
+	      info->frame,
+	      info->fileLineNumber,
+	      info->switchingParents[j].first.c_str(),
+	      info->switchingParents[j].second,
+	      timesToUnroll,
+	      frame,
+	      info->switchingParents[j].first.c_str(),
+	      frame+info->switchingParents[j].second,
+	      unrolled_parent_rv->cardinality,
+	      template_parent_rv->cardinality);
+      }
+
+      // add
+      sparents.push_back(unrolled_parent_rv);
+
+    }
+
+    // now build the conditional parents list.
+    vector<vector<RandomVariable * > > cpl(info->conditionalParents.size());
+    for (unsigned j=0;j<info->conditionalParents.size();j++) {
+      for (unsigned k=0;k<info->conditionalParents[j].size();k++) {
+
+
+	// grab a pointer to the parent in the template
+	RandomVariable* template_parent_rv =
+	  info->rv->conditionalParentsList[j][k];
+
+	rvParent pp(info->conditionalParents[j][k].first,
+		    frame+info->conditionalParents[j][k].second);
+
+
+	///////////////////////////////////////////
+	// next set of checks ensure compatibility.
+	// 1. first the name check at that frame.
+
+	////////////////////////////////////////////////////////
+	// Make sure the rv at the time delta from the current
+	// frame exists.
+	map < rvParent , unsigned >::iterator it;      
+	if ((it = posOfParentAtFrame.find(pp)) == posOfParentAtFrame.end()) {
+	  error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that does not exist when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which does not exist)\n",
+		info->name.c_str(),
+		info->frame,
+		info->fileLineNumber,
+		info->conditionalParents[j][k].first.c_str(),
+		info->conditionalParents[j][k].second,
+		timesToUnroll,
+		frame,
+		info->conditionalParents[j][k].first.c_str(),
+		frame+info->conditionalParents[j][k].second);
+	}
+
+	///////////////////////////////////////////
+	// 2. next the type compatibility check
+	RandomVariable *unrolled_parent_rv = unrolledVarSet[(*it).second];
+	if (!unrolled_parent_rv->discrete) {
+	  error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that is continous when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which is continuous)\n",
+		info->name.c_str(),
+		info->frame,
+		info->fileLineNumber,
+		info->conditionalParents[j][k].first.c_str(),
+		info->conditionalParents[j][k].second,
+		timesToUnroll,
+		frame,
+		info->conditionalParents[j][k].first.c_str(),
+		frame+info->conditionalParents[j][k].second);
+	}
+
+	//////////////////////////////////////////////////////////////
+	// 3. lastly, check that the cardinality of the parent matches 
+	// since it is a discrete r.v.
+	DiscreteRandomVariable* dunrolled_parent_rv = 
+	  (DiscreteRandomVariable*) unrolled_parent_rv;
+      
+	if (dunrolled_parent_rv->cardinality != 
+	    template_parent_rv->cardinality) {
+	  error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that has the wrong cardinality when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which is has cardinality %d, but cardinality in template parent is %d)\n",
+		info->name.c_str(),
+		info->frame,
+		info->fileLineNumber,
+		info->conditionalParents[j][k].first.c_str(),
+		info->conditionalParents[j][k].second,
+		timesToUnroll,
+		frame,
+		info->conditionalParents[j][k].first.c_str(),
+		frame+info->conditionalParents[j][k].second,
+		unrolled_parent_rv->cardinality,
+		template_parent_rv->cardinality);
+	}
+
+	// add
+	cpl[j].push_back(unrolled_parent_rv);
+    
+      }
+    }
+    unrolledVarSet[uvsi]->setParents(sparents,cpl);
+  }
+
+  // can't call topological sort for now since clique
+  // sizes get too big for frontier algorithm.
+
+  // vector<RandomVariable*> res;
+  // GraphicalModel::topologicalSort(unrolledVarSet,res);
+  // unrolledVarSet = res;
+
+}
+
 
 
 

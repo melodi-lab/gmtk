@@ -52,7 +52,6 @@ VCID("$Header$");
  *
  *-----------------------------------------------------------------------
  */
-
 void RandomVariable::setParents(vector<RandomVariable *> &sparents,
          vector<vector<RandomVariable *> > &cpl)
 {
@@ -122,6 +121,48 @@ RandomVariable* RandomVariable::clone()
   rv->allPossibleParents = allPossibleParents;
   rv->allPossibleChildren = allPossibleChildren;
   rv->conditionalParentsList = conditionalParentsList;
+  // leave curConditionalParents empty
+  rv->dtMapper = dtMapper; 
+  // leave cachedIntFromSwitchingState uninitialized since
+  // it will be changed individually for each rv.
+
+  return rv;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * cloneWithoutParents()
+ *      copies the data structures necessary for unrolling
+ *      all random variables have these structures. Note that
+ *      this routine clones *ONLY* those attributes that
+ *      are abstract, in that they are associated with 
+ *      all derived classes of RandomVariable. 
+ *      This routine does *not* copy parents and children, leaving
+ *      them undefined. It does copy all parameters.
+ *
+ * Preconditions:
+ *      dtMapper and all parents lists must be set appropriately.
+ *
+ * Postconditions:
+ *      specified data members are copied
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      A cloned RV
+ *
+ *-----------------------------------------------------------------------
+ */
+
+RandomVariable* RandomVariable::cloneWithoutParents()
+{
+  RandomVariable* rv = create();
+  rv->label = label;
+  rv->hidden = hidden;
+  rv->discrete = discrete;
+  rv->timeIndex = timeIndex;
   // leave curConditionalParents empty
   rv->dtMapper = dtMapper; 
   // leave cachedIntFromSwitchingState uninitialized since

@@ -14,6 +14,9 @@
  * Seattle make no representations about the suitability of this software
  * for any purpose. It is provided "as is" without express or implied warranty.
  *
+ *
+ * $Header$
+ *
  */
 
 #ifndef GMTK_FILEPARSER_H
@@ -30,6 +33,7 @@
 #include "GMTK_CPT.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_GraphicalModel.h"
 
 class RandomVariable;
 
@@ -170,6 +174,12 @@ class FileParser
   unsigned _firstChunkframe;
   unsigned _lastChunkframe;
   unsigned _maxFrame;  
+
+  ////////////////////////////////////////////////
+  // more information filled in after the parse
+  unsigned numVarsInPrologue;
+  unsigned numVarsInChunk;
+  unsigned numVarsInEpilogue;
 
 public:
 
@@ -383,6 +393,15 @@ public:
   // earlier in the ordering.
   void ensureS_SE_E_NE();
 
+  // this function checks to make sure that variable parents do not
+  // span multiple regions.  I.e., variables in epilogue can't have
+  // parents in the prologue, parents in prolog can't have (future)
+  // parents in the epilogue. Note that in some cases, this would be
+  // valid, but it would break some constrained triangulation schemes.
+  // For example, if the network is fully unrolled for each T and then
+  // triangulated, this routine is not required.
+  void ensureVariablesDoNotReachAcrossRegion() {}
+
   // add all the variables inself to the GM. Presumably
   // gm has not been added to yet.
   void addVariablesToGM(GMTK_GM& gm);
@@ -393,6 +412,11 @@ public:
   void addVariablesToTemplate(GMTemplate&);
 
   void checkConsistentWithGlobalObservationStream();
+
+  // unroll the template chunk k times, and place
+  // the result in the existing vector of random
+  // variables node.
+  void unroll(unsigned k,vector<RandomVariable*> &unrolledVarSet);
 
   //////////////////////////////////////////////////////////////
   // access to the chunk information.
