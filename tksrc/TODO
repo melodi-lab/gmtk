@@ -2460,3 +2460,12 @@ Tue Sep 21 15:59:32 2004
 Wed Sep 22 20:34:42 2004
   - add check to MTCPT children that their card is not > \prod_i card(par_i) -1.
 
+Thu Sep 23 16:51:19 2004
+  DONE:  -cppCommandOptions, add default -I. and -I<dir_that_str_file_is_in>
+     last (after -cppCommandOptions) when calling cpp.
+  , need to add this to docs, that this is done behind the scenes.
+
+Mon Sep 27 15:07:26 2004
+  - Test a bunch of .str files, such as downsampling right within the structure file.
+  - empty frames.
+  - see Gang's message of 9/27/04
