@@ -12,7 +12,7 @@
 #include <limits.h>
 #include <string.h>
 
-#include "range.h"
+#include "rrange.h"
 #include "error.h"
 
 #define ALL_BUT_CHAR '/'
