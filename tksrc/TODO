@@ -1185,6 +1185,8 @@ Sat Aug 23 15:52:47 2003
     in triangulation code. 10^weight is just number of "rows" in the 
     table, but 10^(log(size)+weight) is full table size (with zeros 
     removed).
+        - this will probably be moot now that packed clique values
+          are used.
 
 Sat Sep  6 18:24:29 2003
   - add a flush buffer mode to debug.h so that output when error
