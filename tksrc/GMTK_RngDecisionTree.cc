@@ -70,6 +70,10 @@ main()
   RngDecisionTree<int> dt;
   dt.read(is);
 
+  printf("Found decision tree\n");
+  oDataStreamFile os("-",false);
+  dt.write(os);
+
   sArray<int> vec;
   vec.resize(dt.numFeatures());
   iDataStreamFile stin ("-",false);
