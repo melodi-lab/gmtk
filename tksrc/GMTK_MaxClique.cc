@@ -2941,7 +2941,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
       /*
        * uncomment this next code to produce lots of messages.
        * note above, if high verbosity is on, recursive version of this
-       * routine will print this message.
+       * routine will print this information.
        */
       /*
       if (message(Mega)) {
