@@ -65,7 +65,7 @@ bool JunctionTree::jtWeightMoreConservative = false;
 float JunctionTree::jtWeightPenalizeUnassignedIterated = 0.0;
 float JunctionTree::jtWeightSparseNodeSepScale = 1.0;
 float JunctionTree::jtWeightDenseNodeSepScale = 1.0;
-char* JunctionTree::priorityStr = "DSU";
+char* JunctionTree::junctionTreeMSTpriorityStr = "DSU";
 char* JunctionTree::interfaceCliquePriorityStr = "W";
 
 bool JunctionTree::probEvidenceTimeExpired = false;
@@ -644,7 +644,7 @@ JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
 				  const char *varCliqueAssignmentPrior)
 {
   // main() routine for this class.
-  createPartitionJunctionTrees(priorityStr);
+  createPartitionJunctionTrees(junctionTreeMSTpriorityStr);
   computePartitionInterfaces();
   createDirectedGraphOfCliques();
   assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
@@ -654,11 +654,9 @@ JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
   // create seps and VE seps.
   createSeparators(); 
   computeSeparatorIterationOrders();
-  // the next routine also computes the dispositions, and a bunch
-  // of other members of each MaxClique object.
   getCumulativeUnassignedIteratedNodes();
+  sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
 }
-
 
 
 
@@ -1002,6 +1000,39 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
     }
   }
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::prepareForNextInferenceRound()
+ *   does a bit if setup for next inference round.
+ *
+ * Preconditions:
+ *   The partitions must be validly instantiated with cliques, and
+ *   the routine assignRVsToCliques() must have been called.
+ *
+ * Postconditions:
+ *   initial values are re-initialized.
+ *
+ * Side Effects:
+ *   modifies a few variables in partitions.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::prepareForNextInferenceRound()
+{
+  for (unsigned c=0;c<P1.cliques.size();c++)
+    P1.cliques[c].prepareForNextInferenceRound();
+  for (unsigned c=0;c<Co.cliques.size();c++)
+    Co.cliques[c].prepareForNextInferenceRound();
+  for (unsigned c=0;c<E1.cliques.size();c++)
+    E1.cliques[c].prepareForNextInferenceRound();
+}
+
 
 
 /*-
@@ -1455,8 +1486,6 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 				 const char *varCliqueAssignmentPrior)
 {
 
-
-
   if (P1.nodes.size() > 0) {
     infoMsg(IM::Giga,"assigning rvs to P1 partition\n");
     assignRVsToCliques(P1_n,P1,P_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
@@ -1519,7 +1548,6 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
     printRVSet(stderr,nodesThatGiveNoProb);
     error("Possibly corrupt trifile. Exiting program ...");
   }
-
 
 }
 
@@ -1686,6 +1714,10 @@ JunctionTree::assignRVsToCliques(const char *const partName,
     }
   }
 
+#if 0
+  // This code is now done via sortCliqueAssignedNodesAndComputeDispositions(). Ultimately,
+  // delete this ...
+
   // Next, we compute the order that the assigned nodes in this clique
   // are iterated. This can have a dramatic effect on performance in
   // some cases. In general, we want to iterate over large cardinality
@@ -1693,9 +1725,8 @@ JunctionTree::assignRVsToCliques(const char *const partName,
   if (varCliqueAssignmentPrior && strlen(varCliqueAssignmentPrior) > 0) {
     infoMsg(IM::Giga,"Sorting cliques variables using priority order (%s)\n",varCliqueAssignmentPrior);
     
-    // Lastly, we re-sort the original sorted nodes in each clique
-    // according to a designated (and hopefully good) topological
-    // order.
+    // We re-sort the assigned nodes in each clique according to a
+    // designated (and hopefully good) topological order.
     for (unsigned clique_num=0;clique_num<part.cliques.size(); clique_num++ ) {
       GraphicalModel::topologicalSortWPriority(part.cliques[clique_num].assignedNodes,
 					       part.cliques[clique_num].assignedNodes,
@@ -1708,6 +1739,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
       }
     }
   }
+#endif
 
 }
 
@@ -2981,7 +3013,9 @@ JunctionTree::getCumulativeUnassignedIteratedNodes(JT_Partition& part,
 	      part.cliques[child].unassignedIteratedNodes.end(),
 	      inserter(res,res.end()));
   }
-  curClique.computeAssignedNodesDispositions();
+  // curClique.computeAssignedNodesDispositions();
+  // if there have been any changes, then we need to re-sort
+
 }
 void
 JunctionTree::getCumulativeUnassignedIteratedNodes()
@@ -3014,6 +3048,59 @@ JunctionTree::getCumulativeUnassignedIteratedNodes()
     getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
   }
 
+}
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::sortCliqueAssignedNodesAndComputeDispositions()
+ *
+ *   Computes for each clique the union of the set of nodes which have
+ *   been iterated unassigned in previous cliques in the JT. This is
+ *   used to determine which, in each clique, nodes should be iterated
+ *   over and which are already assigned by a separator driven
+ *   iteration.
+ *
+ * Preconditions:
+ *   computeSeparatorIterationOrder() must have been called. Partition
+ *   in argument 'part' must not be empty.
+ *
+ * Postconditions:
+ *   cliques know which nodes to iterate over or not.
+ *
+ * Side Effects:
+ *    Changes member variables within cliques of this partition.
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& part,
+							    const char *varCliqueAssignmentPrior)
+{
+  if (varCliqueAssignmentPrior && strlen(varCliqueAssignmentPrior) > 0) {
+    infoMsg(IM::Giga,"Sorting cliques variables using priority order (%s)\n",varCliqueAssignmentPrior);
+  }
+  for (unsigned i=0;i<part.cliques.size();i++) {
+    part.cliques[i].sortAndAssignDispositions(varCliqueAssignmentPrior);
+    if (IM::messageGlb(IM::Max)) {
+      printf("Clique %d variables after sort:",i);
+      printRVSet(stdout,part.cliques[i].sortedAssignedNodes,true);
+    }
+  }
+}
+
+void
+JunctionTree::sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior)
+{
+  sortCliqueAssignedNodesAndComputeDispositions(P1,varCliqueAssignmentPrior);
+  sortCliqueAssignedNodesAndComputeDispositions(Co,varCliqueAssignmentPrior);
+  sortCliqueAssignedNodesAndComputeDispositions(E1,varCliqueAssignmentPrior);
 }
 
 
@@ -3173,6 +3260,11 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 
   computeSeparatorIterationOrders(jt_part);
   getCumulativeUnassignedIteratedNodes(jt_part,root);
+  
+  // If the code is changed so that jt weight needs the sorted
+  // assigned nodes or the dispositions, we'll need to make a static version of
+  // the following routine and call it here.
+  // sortCliqueAssignedNodesAndComputeDispositions();
   
   // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
   double weight = junctionTreeWeight(jt_part,root,lp_nodes,rp_nodes);
@@ -3582,6 +3674,9 @@ JunctionTree::unroll(const unsigned int numFrames)
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
 	  gm_template.M,gm_template.S);
+
+  prepareForNextInferenceRound();
+
 
   infoMsg(IM::Info,"Number of Current Frames = %d, Number of Currently Usable Frames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"Number Of Frames = %d, Unrolling Basic Template %d times, Modified Template %d times\n",
@@ -4297,6 +4392,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 	  fp.numFrames(),
 	  gm_template.M,gm_template.S);
 
+  prepareForNextInferenceRound();
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
@@ -4314,7 +4410,6 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 
   // this clears the shared caches. 
   clearCliqueSepValueCache();
-
 
   // actual absolute part numbers
   unsigned partNo;
@@ -4430,6 +4525,8 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
 	  gm_template.M,gm_template.S);
+
+  prepareForNextInferenceRound();
 
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
@@ -5134,6 +5231,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
 	  gm_template.M,gm_template.S);
+
+  prepareForNextInferenceRound();
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",

@@ -320,6 +320,8 @@ class JunctionTree {
   vector< pair<unsigned,unsigned> > E1_message_order;  
   vector< unsigned > E1_leaf_cliques;
 
+  // do a bit of setup for the upcomming inference round.
+  void prepareForNextInferenceRound();
 
   // A version of unroll that starts with the gm_template and fills up
   // base partitions.
@@ -347,6 +349,10 @@ class JunctionTree {
   static void getCumulativeAssignedNodes(JT_Partition& part,
 					 const unsigned root);
   static void getCumulativeUnassignedIteratedNodes(JT_Partition& part,const unsigned root);
+
+
+
+
 
   void ceGatherIntoRoot(JT_InferencePartition& part,
 			 const unsigned root,
@@ -431,10 +437,10 @@ public:
   // node in a clique as much. See code for details.
   static bool jtWeightMoreConservative;
 
-  // The priority string for selecting the next edge when constructing the junction
-  // tree. Default is in .cc file, and see .cc file for what options are supported.
-  static char* priorityStr;
-
+  // The priority string for selecting the next edge when constructing
+  // the junction tree. Default is in .cc file, and see .cc file for
+  // what options are supported.
+  static char* junctionTreeMSTpriorityStr;
 
   // The priority string for selecting which clique of a partition
   // (from the set of valid ones) should be used as the partition
@@ -446,7 +452,7 @@ public:
   // penalize any unassigned iterated nodes. Penalty = factor
   // that gets multiplied by number of unassigned iterated.
   static float jtWeightPenalizeUnassignedIterated;
-
+  
   // scaling factors (must be > 0 and <= 1) corresponding
   // to how much the separator nodes' charge gets scaled. The more pruning
   // we do during inference, the lower this should go.
@@ -515,13 +521,14 @@ public:
 			   const char *varCliqueAssignmentPrior);
 
   // create the three junction trees for the basic partitions.
-  void createPartitionJunctionTrees(const string pStr = priorityStr) {
-    createPartitionJunctionTree(gm_template.P,priorityStr);
-    createPartitionJunctionTree(gm_template.C,priorityStr);
-    createPartitionJunctionTree(gm_template.E,priorityStr);
+  void createPartitionJunctionTrees(const string pStr = junctionTreeMSTpriorityStr) {
+    createPartitionJunctionTree(gm_template.P,pStr);
+    createPartitionJunctionTree(gm_template.C,pStr);
+    createPartitionJunctionTree(gm_template.E,pStr);
   }
   // create a junction tree within a partition.
-  static void createPartitionJunctionTree(Partition& part, const string pStr = priorityStr);
+  static void createPartitionJunctionTree(Partition& part, 
+					  const string pStr = junctionTreeMSTpriorityStr);
 
   // routine to find the interface cliques of the partitions
   void computePartitionInterfaces();
@@ -595,6 +602,14 @@ public:
   // set of assigned nodes in each clique that should/shouldn't be
   // iterated.
   void getCumulativeUnassignedIteratedNodes();
+
+  // compute the assignment order for nodes in this
+  // partition's cliques relative to each clique's incomming separators, and while
+  // doing so, also set the dispositions for each of the resulting
+  // nodes in each clique.
+  void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior);
+  void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& part,
+						     const char *varCliqueAssignmentPrior);
 
 
   // return an upper bound on the weight of the junction tree in the
