@@ -920,10 +920,10 @@ unsigned FNGramImp::parseNodeString(char *str) {
 		// if we see W1 it means W(-1)
 		int sign = -1;
 		if ( *p == '-' ) {
-			sign = 1;
+			sign = -1;
 			p++;
 		} else if ( *p == '+' ) {
-			sign = -1;
+			sign = +1;
 			p++;
 		}
 
