@@ -52,8 +52,8 @@ struct VariableValue
 {
     int ival;  // in the case of integer values, this gets used
 
-  // for continuous variables, the values can be stored in the fval array
-  // vector<float> fval;   
+    // for continuous variables, the values can be stored in the fval array
+    vector<float> fval;   
 };
 
 /*
