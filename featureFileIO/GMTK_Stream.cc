@@ -15,7 +15,12 @@
 
 #include <stdio.h>
 #include <string.h>
+
 #include "GMTK_Stream.h"
+
+#include "error.h"
+#include "general.h"
+
 
 StreamInfo::StreamInfo(const char *name, const char *crng_str,
 		       const char *drng_str,
