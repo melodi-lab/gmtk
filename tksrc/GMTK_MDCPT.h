@@ -46,6 +46,7 @@ class MDCPT : public CPT {
   logpr* mdcpt_ptr; 
   // The accumulative cardinalities to help index into
   // the table above.
+  // TODO: make this an sArray.
   vector <int> cumulativeCardinalities;
 
   //////////////////////////////////

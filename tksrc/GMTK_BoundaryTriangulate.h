@@ -296,6 +296,20 @@ private:
   // right partition nodes.
   set<RandomVariable*> *rp_nodes;  
 
+  void setUpForP(GMTemplate& gm_template) {
+    lp_nodes = NULL;
+    rp_nodes = &gm_template.PCInterface_in_P;
+  }
+  void setUpForC(GMTemplate& gm_template) {
+    lp_nodes = &gm_template.PCInterface_in_C;
+    rp_nodes = &gm_template.CEInterface_in_C;
+  }
+  void setUpForE(GMTemplate& gm_template) {
+    lp_nodes = &gm_template.CEInterface_in_E;
+    rp_nodes = NULL;
+  }
+
+
   // Calls method which triangulates once, support routine for triangulate 
   void triangulateOnce(// input: nodes to be triangulated
   		       const set<RandomVariable*>& nodes,
