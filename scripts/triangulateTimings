@@ -59,9 +59,11 @@ my @advanced_UB_types   : shared = ( 'F', 'T' );
 my @advanced_iterations : shared = ( '100-', '10-', '1-' ); 
 my @advanced_prefix     : shared = ( '', 'pre-edge-lo-', 'pre-edge-all-', 
   'pre-edge-random-');
+
 my @advanced_method     : shared = ( 'frontier', 'MCS', 'R', 'T', 'X', 'S', 
   'F', 'W', 'P', 'N', 'ST', 'SF', 'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 
   'FT', 'FW', 'FTSW' );
+
 my @advanced_suffix     : shared = ( '-1', '-2', '-3' );
 my $advanced_suffix_threshold : shared = 2;
 
@@ -80,8 +82,9 @@ my $error_message   = "***ERROR: ";
 ##############################################################################
 # Initial gmtkTime options 
 ##############################################################################
-my $initial_vpap = 'COI';
-my $initial_vcap = 'COI';
+my $initial_vcap = 'COT'; 
+my $initial_component_cache = 'T'; 
+my $graph_has_continuous_obs : shared = 0;
 
 ##############################################################################
 # Semaphores and thread safe queues  
@@ -102,8 +105,9 @@ my $advanced_method_queue_in_use : shared;
 my $best_sem = new Thread::Semaphore;
 my $best_trifile    : shared = 0; 
 my $best_partitions : shared = 0; 
+my $best_boundary_index : shared = 'B0'; 
 my $best_vcap : shared = $initial_vcap; 
-my $best_vpap : shared = $initial_vpap; 
+my $best_caching : shared = $initial_component_cache; 
 my @best_time_per_boundary : shared;
 
 ##############################################################################
@@ -138,8 +142,8 @@ my $triangulateE;
 my $single_processor_timing_script_input;  
 my $single_processor_timing_script_output;
 my $single_processor_current_pid;
-my $single_processor_vpap;
 my $single_processor_vcap;
+my $single_processor_caching;
 
 my $start_time; 
 
@@ -433,6 +437,25 @@ sub main
     $best_time_per_boundary[$i] = 0;
   }
 
+  ########################################################################
+  # Determine if the graph has continuous variables (this method isn't
+  #  completely reliable but should work most of the time and the search
+  #  will work even if it doesn't)  
+  ########################################################################
+  open STRFILE, "<$str_file" or die "${error_message}Couldn't open structure
+    file\n";
+  my @continuous = grep /continuous\s+observed/, <STRFILE>;
+  close STRFILE;
+  if (@continuous)
+  {
+    print "Graph appears to have continuous observations\n";
+    $graph_has_continuous_obs = 1; 
+  }
+  else 
+  { 
+    print "Graph does not appear to have any continuous observations\n";
+  }
+
   STDOUT->autoflush(1);
   $SIG{PIPE} = 'IGNORE';
 
@@ -448,12 +471,12 @@ sub main
   {
     $single_processor_timing_script_input  = gensym;
     $single_processor_timing_script_output = gensym;
-    $single_processor_vpap = $initial_vpap;
     $single_processor_vcap = $initial_vcap;
+    $single_processor_caching = $initial_component_cache;
 
     ($single_processor_current_pid, $single_processor_timing_script_input, 
       $single_processor_timing_script_output) = open_time( 
-      "-vpap $single_processor_vpap -vcap $single_processor_vcap" );
+      "-vcap $single_processor_vcap -componentCache $single_processor_caching");
   }
 
   #########################################################################
@@ -492,8 +515,8 @@ sub main
   #########################################################################
   # Start thread to generate triangulations 
   #########################################################################
-  printf "%-8s%-3s%-39s%-5s%-5s%4s\n", 'time', 'B', 'method', 'vpap', 'vcap', 
-    'partitions';
+  printf "%-8s%-3s%-39s%-5s%-2s %4s\n", 'Time', 'B', 'Method', 'vcap', 'C', 
+    'Partitions';
 
   push @children, threads->new( \&generate_triangulations );
 
@@ -503,8 +526,8 @@ sub main
   if ($parallelism > 1)
   {
     for (my $i=0; $i<$nmbr_timing_processes; $i++) {
-      push @children, threads->new(\&time_triangulation_thread, $initial_vpap, 
-        $initial_vcap);
+      push @children, threads->new(\&time_triangulation_thread, $initial_vcap, 
+        $initial_component_cache);
     }
   }
 
@@ -541,14 +564,27 @@ sub generate_triangulations
   my $method_name;
   my $best_from_previous_section;
   my $triangulation_mode;
-  my $vpap_index;
-  my $vcap_index;
+  my $vcap_option;
+  my $component_cache_option;
   my $trifile_name;
   my @boundary_list; 
   my @basic_methods; 
 
-  my @vpap_options : shared = ('COI', 'COB', 'CDOI', 'CODI', 'DOI', 'I' );
-  my @vcap_options : shared = ('COI', 'COB', 'CDOI', 'CODI', 'DOI', 'I' );
+  #my @vcap_options : shared = ('COI', 'COB', 'CDOI', 'CODI', 'DOI', 'I' );
+  my @vcap_options;
+  my @component_cache_options;
+
+  if ($graph_has_continuous_obs)
+  { 
+    @vcap_options = ( 'COT', 'COM', 'COI', 'CT', 'CM', 'CI', 'OT', 'OM', 'OI', 
+      'T', 'M', 'I');
+    @component_cache_options = ('T', 'F');
+  }
+  else
+  {
+    @vcap_options = ( 'OT', 'OM', 'OI', 'T', 'M', 'I');
+    @component_cache_options = ('T');
+  }
 
   ###########################################################################
   # Possibly allow an extra process for creating trifiles 
@@ -655,7 +691,8 @@ sub generate_triangulations
     } # end while
   
     print "Found $boundary_count unique boundaries\n";
-
+    sleep(5);
+ 
     if ((!defined $max_boundaries_with_advanced) || 
         ($max_boundaries_with_advanced > 0))
     {
@@ -705,7 +742,6 @@ sub generate_triangulations
     
         #######################################################################
         # Run advanced methods (minus the basic methods) using initial vcap
-        #   and vpap  
         #######################################################################
         reset_advanced_methods();
     
@@ -723,61 +759,60 @@ sub generate_triangulations
         }
     
         #######################################################################
-        # Now run all methods using various combinations of vpap and vcap
+        # Now run all methods using different vcaps 
         #######################################################################
-        for ($vpap_index=0; $vpap_index<(scalar @vpap_options); $vpap_index++)
+        foreach $component_cache_option (@component_cache_options)
         {
-          for ($vcap_index=0; $vcap_index<(scalar @vcap_options); $vcap_index++)
+          foreach $vcap_option (@vcap_options)
           {
-            if (($vpap_index == 0) && ($vcap_index == 0)) 
+            if (($vcap_option ne $initial_vcap) || 
+                ($component_cache_option ne $initial_component_cache))
             {
-              $vcap_index++;
-            }
-    
-            {
-              lock($timing_thread_idle);
-              for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-                enqueue_trifile("RESTART_${vpap_options[$vpap_index]}_${vcap_options[$vcap_index]}");
+              {
+                lock($timing_thread_idle);
+                for ($i=0; $i<$nmbr_timing_processes ; $i++) {
+                  enqueue_trifile("RESTART_${vcap_option}_${component_cache_option}");
+                }
+                $timing_thread_idle_sem->down($nmbr_timing_processes ); 
               }
-              $timing_thread_idle_sem->down($nmbr_timing_processes ); 
-            }
-    
-            ###############################################################
-            # Input triangulations  
-            ###############################################################
-            foreach $trifile_name (@input_trifile_names)
-            {
-              enqueue_trifile($trifile_name);
-              $needed_trifiles->down; 
-            }
-    
-            ###############################################################
-            # Advanced triangulation methods  
-            ###############################################################
-            reset_advanced_methods();
-    
-            ($method, $method_name) = get_advanced_triangulation_method();
-            while ($method_name ne 'DONE')
-            { 
-              $trifile_name = "$output_directory/$boundary_name.$method_name.$str_basename.trifile"; 
-              enqueue_trifile($trifile_name);
-              $needed_trifiles->down; 
+      
+              ###############################################################
+              # Input triangulations  
+              ###############################################################
+              foreach $trifile_name (@input_trifile_names)
+              {
+                enqueue_trifile($trifile_name);
+                $needed_trifiles->down; 
+              }
+      
+              ###############################################################
+              # Advanced triangulation methods  
+              ###############################################################
+              reset_advanced_methods();
+      
               ($method, $method_name) = get_advanced_triangulation_method();
-            } 
-          } 
-        } 
-    
+              while ($method_name ne 'DONE')
+              { 
+                $trifile_name = "$output_directory/$boundary_name.$method_name.$str_basename.trifile"; 
+                enqueue_trifile($trifile_name);
+                $needed_trifiles->down; 
+                ($method, $method_name) = get_advanced_triangulation_method();
+              } 
+            }
+          }
+        }
+ 
         #######################################################################
-        # Restart gmtkTime using initial vpap and vcap 
+        # Restart gmtkTime using initial vcap 
         #######################################################################
         {
           lock($timing_thread_idle);
           for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-            enqueue_trifile("RESTART_${initial_vpap}_${initial_vcap}");
+            enqueue_trifile("RESTART_${initial_vcap}_${initial_component_cache}");
           }
           $timing_thread_idle_sem->down($nmbr_timing_processes ); 
         }
-    
+
       } # for boundary_list
     } # if max_boundaries_with_advanced>0
 
@@ -789,59 +824,67 @@ sub generate_triangulations
   ###########################################################################
   if ((!$triangulateC) && (($triangulateP)  || ($triangulateE)))
   {
-    for ($vpap_index=0; $vpap_index<(scalar @vpap_options); $vpap_index++)
+    foreach $component_cache_option (@component_cache_options)
     {
-      for ($vcap_index=0; $vcap_index<(scalar @vcap_options); $vcap_index++)
+      foreach $vcap_option (@vcap_options)
       {
-        if (($vpap_index == 0) && ($vcap_index == 0)) 
+        if (($vcap_option ne $initial_vcap) &&
+            ($component_cache_option ne $initial_component_cache))
         {
-          $vcap_index++;
-        }
-
-        $i = 0; 
-        foreach $input_triangulation (@input_triangulations) 
-        {
-          $input_basename = basename($input_triangulation);
- 
-          if (-e $input_triangulation) 
+          $i = 0; 
+          foreach $input_triangulation (@input_triangulations) 
           {
-            $output_triangulation = 
-              "$output_directory/input.$i.$input_basename";
-            copy( $input_triangulation, $output_triangulation ); 
-            push @input_trifile_names, $output_triangulation;
-
-            enqueue_trifile($output_triangulation);
-            $needed_trifiles->down;
-            $boundary_queue->enqueue( $output_triangulation );
+            $input_basename = basename($input_triangulation);
+        
+            if (-e $input_triangulation) 
+            {
+              $output_triangulation = 
+                "$output_directory/input.$i.$input_basename";
+              copy( $input_triangulation, $output_triangulation ); 
+              push @input_trifile_names, $output_triangulation;
+        
+              enqueue_trifile($output_triangulation);
+              $needed_trifiles->down;
+              $boundary_queue->enqueue( $output_triangulation );
+            }
+            $i++ 
           }
-          $i++ 
-        }
-
-        #######################################################################
-        # Restart gmtkTime using new vpap and vcap 
-        #######################################################################
-        {
-          lock($timing_thread_idle);
-          for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-            enqueue_trifile("RESTART_${vpap_options[$vpap_index]}_${vcap_options[$vcap_index]}");
+        
+          #####################################################################
+          # Restart gmtkTime using new vcap 
+          ####################################################################
+          {
+            lock($timing_thread_idle);
+            for ($i=0; $i<$nmbr_timing_processes ; $i++) {
+              enqueue_trifile(
+                "RESTART_${vcap_option}_${component_cache_option}");
+            }
+            $timing_thread_idle_sem->down($nmbr_timing_processes ); 
           }
-          $timing_thread_idle_sem->down($nmbr_timing_processes ); 
         }
-
       }
     }
   }
-   
-  $best_from_previous_section = "$output_directory/after_C_search.trifile";
+  
+  my $boundary_item;
+  foreach $boundary_item (@boundary_list)
+  {
+    if ($best_boundary_index eq $boundary_item->{INDEX})
+    {
+      $best_from_previous_section = $boundary_item->{NAME}.
+        '.E.best_from_previous';
+    }
+  }
+  (defined $best_from_previous_section) or die "Problem finding boundary";
   copy( $best_trifile, $best_from_previous_section );
  
   #######################################################################
-  # Restart gmtkTime using best vpap and vcap 
+  # Restart gmtkTime using best vcap 
   #######################################################################
   {
     lock($timing_thread_idle);
     for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-      enqueue_trifile("RESTART_${best_vpap}_${best_vcap}");
+      enqueue_trifile("RESTART_${best_vcap}_${best_caching}");
     }
     $timing_thread_idle_sem->down($nmbr_timing_processes ); 
   }
@@ -870,8 +913,7 @@ sub generate_triangulations
     }
 
     #######################################################################
-    # Run advanced methods (minus the basic methods) using initial vcap
-    #   and vpap  
+    # Run advanced methods (minus the basic methods) using best vcap
     #######################################################################
     reset_advanced_methods();
 
@@ -887,7 +929,17 @@ sub generate_triangulations
     }
   }
 
-  $best_from_previous_section = "$output_directory/after_E_search.trifile";
+  my $boundary_item;
+  foreach $boundary_item (@boundary_list)
+  {
+    if ($best_boundary_index eq $boundary_item->{INDEX})
+    {
+      $best_from_previous_section = $boundary_item->{NAME}.
+        '.P.best_from_previous';
+    }
+  }
+
+  (defined $best_from_previous_section) or die "Problem finding boundary";
   copy( $best_trifile, $best_from_previous_section );
  
   #######################################################################
@@ -914,8 +966,7 @@ sub generate_triangulations
     }
 
     #######################################################################
-    # Run advanced methods (minus the basic methods) using initial vcap
-    #   and vpap  
+    # Run advanced methods (minus the basic methods) using best vcap
     #######################################################################
     reset_advanced_methods();
 
@@ -950,15 +1001,15 @@ sub generate_triangulations
 #############################################################################
 sub time_triangulation_thread 
 {
-  my $vpap;
   my $vcap;
+  my $caching_option;
   my $timing_script_input;  
   my $timing_script_output;
   my $current_pid;
   my $exit;
 
   $vcap = $initial_vcap;
-  $vpap = $initial_vpap;
+  $caching_option = $initial_component_cache;
 
   #####################################################################
   # Open a copy of gmtkTime in multiTest mode 
@@ -967,16 +1018,17 @@ sub time_triangulation_thread
   $timing_script_output = gensym;
 
   ($current_pid, $timing_script_input, $timing_script_output) = open_time(
-    "-vpap $vpap -vcap $vcap" );
+    "-vcap $vcap -componentCache $caching_option" );
 
   #####################################################################
   # Generate and time triangulations 
   #####################################################################
   while (!$exit) 
   {
-    ($timing_script_input, $timing_script_output, $current_pid, $vpap, $vcap, 
-     $exit) = dequeue_and_time_triangulation( $timing_script_input, 
-     $timing_script_output, $current_pid, $vpap, $vcap );
+    ($timing_script_input, $timing_script_output, $current_pid, $vcap, 
+      $caching_option, $exit) = dequeue_and_time_triangulation( 
+      $timing_script_input, $timing_script_output, $current_pid, $vcap,
+      $caching_option );
   } 
 
 }
@@ -1002,14 +1054,15 @@ sub enqueue_trifile
     ( $single_processor_timing_script_input, 
       $single_processor_timing_script_output, 
       $single_processor_current_pid, 
-      $single_processor_vpap, 
       $single_processor_vcap, 
+      $single_processor_caching, 
       $exit ) = 
       dequeue_and_time_triangulation( 
       $single_processor_timing_script_input, 
       $single_processor_timing_script_output, 
       $single_processor_current_pid, 
-      $single_processor_vpap, $single_processor_vcap);
+      $single_processor_vcap,
+      $single_processor_caching );
   }
 }
 
@@ -1020,13 +1073,13 @@ sub enqueue_trifile
 # the queue which are commands.  Then time the trifile.   
 #
 # PARAMETERS:
-#  $timing_script_input, $timing_script_output, $crrnt_pid, $vcap, $vpap -
+#  $timing_script_input, $timing_script_output, $crrnt_pid, $vcap, $cache  -
 #    details of the gmtkTime process in case it needs to be restarted.     
 #############################################################################
 sub dequeue_and_time_triangulation 
 {
-  my $vpap;
   my $vcap;
+  my $caching;
   my $crrnt_pid;
   my $timing_script_input;
   my $timing_script_output;
@@ -1037,8 +1090,8 @@ sub dequeue_and_time_triangulation
   my $method;
   my $exit = 0;
 
+  $caching = pop;
   $vcap = pop;
-  $vpap = pop;
   $crrnt_pid = pop;
   $timing_script_output = pop;
   $timing_script_input  = pop;
@@ -1060,13 +1113,13 @@ sub dequeue_and_time_triangulation
     }
     elsif ($trifile_name =~ /RESTART_/) 
     {
-      ($vpap, $vcap) = $trifile_name =~ /RESTART_(.+)_(.+)/; 
+      ($vcap, $caching) = $trifile_name =~ /RESTART_(.+)_(.+)/; 
 
       close $timing_script_input;
       close $timing_script_output;
       waitpid $crrnt_pid, 0; 
       ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time(
-        "-vpap $vpap -vcap $vcap" );
+        "-vcap $vcap -componentCache $caching" );
 
       $processing_command = 1;
     }
@@ -1091,13 +1144,14 @@ sub dequeue_and_time_triangulation
   if (!$exit) {
     ($crrnt_pid, $timing_script_input, $timing_script_output, 
     $crrnt_partitions) = run_timing( $trifile_name, $crrnt_pid, 
-    $timing_script_input, $timing_script_output, "-vpap $vpap -vcap $vcap" );
+    $timing_script_input, $timing_script_output, 
+    "-vcap $vcap -componentCache $caching" );
 
-    check_best($crrnt_partitions, $vpap, $vcap, $trifile_name);
+    check_best($crrnt_partitions, $vcap, $caching, $trifile_name);
   }
 
-  return($timing_script_input, $timing_script_output, $crrnt_pid, $vpap, 
-    $vcap, $exit);
+  return($timing_script_input, $timing_script_output, $crrnt_pid, 
+    $vcap, $caching, $exit);
 }
 
 #############################################################################
@@ -1203,7 +1257,8 @@ sub run_timing
 #
 # PARAMETERS:
 #   $nmbr_partitions - number of partitions finished when timing 
-#   $vcap, $vpap     - gmtkTime options used
+#   $vcap            - gmtkTime option
+#   $caching         - gmtkTime option
 #   $trifile_name    - Name of trifile
 #############################################################################
 sub check_best 
@@ -1213,15 +1268,15 @@ sub check_best
   my $boundary_index;
   my $tmp;
   my $nmbr_partitions;
-  my $vpap;
   my $vcap;
+  my $caching;
   my $trifile_name;
   my $overall_best_flag;
   my $crrnt_time;
 
   $trifile_name    = pop;
+  $caching         = pop;
   $vcap            = pop;
-  $vpap            = pop;
   $nmbr_partitions = pop;
 
   $best_sem->down;
@@ -1241,14 +1296,15 @@ sub check_best
 
   $crrnt_time = time() - $start_time;
 
-  printf "%-8d%-3s%-39s%-5s%-5s%4e", $crrnt_time, $boundary, $method, $vpap, $vcap, 
-    $nmbr_partitions;
+  printf "%-8d%-3s%-39s%-5s%-2s %4e", $crrnt_time, $boundary, $method, $vcap, 
+    $caching, $nmbr_partitions;
 
   if ($nmbr_partitions > $best_partitions) {
     print " => BEST!!!";
     $best_partitions = $nmbr_partitions;
-    $best_vpap = $vpap;
     $best_vcap = $vcap;
+    $best_caching = $caching;
+    $best_boundary_index = $boundary_index;
     $best_trifile = "$str_basename.best.trifile";
     copy( $trifile_name, $best_trifile ); 
     $overall_best_flag = 1;
@@ -1298,7 +1354,8 @@ sub open_time
     $error = 0;
     eval 
     {
-      $timing_command_line = "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ";
+      $timing_command_line = "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T $options 2>&1 ";
+      print STDERR "OPENING:$timing_command_line\n"; 
 
       $pid = open2( $timing_script_output, $timing_script_input, 
         $timing_command_line );
@@ -2078,11 +2135,11 @@ triangulateTimings - generate and time GMTK triangulations
 
 triangulateTimings -strFile file -timingScript script [OPTIONS] [input triangulations] 
 
-The options are followed by an optional list of trifiles.  These input
-triangulations are timed and their boundaries are used in further
-triangulations.  Typically these are the best triangulations from previous
-searches and are given as starting points for improvements and as points of
-comparison. 
+The options are followed by an optional list of trifiles.  Their filenames must follow the naming convention of the boundary file
+triangulations.  These input triangulations are timed and their boundaries are
+used in further triangulations.  Typically these are the best triangulations
+from previous searches and are given as starting points for improvements and as
+points of comparison. 
 
 The output from the GMTK processes is sent to standard error.  For a consise
 version of the script's progress only view standard out. 
