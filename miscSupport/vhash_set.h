@@ -273,6 +273,7 @@ public:
 
       // time to resize if getting too big.
       // TODO: probably should resize a bit later than 1/2 entries being used.
+      // TODO: precompute size at which we do a resize.
       if (++_totalNumberEntries >= table.size()/2) {
 	  if (primesArrayIndex == (HashTable_SizePrimesArray-1)) 
 	    error("ERROR: Hash table error, table size exceeds max size of %lu",
