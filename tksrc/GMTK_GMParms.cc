@@ -1097,7 +1097,7 @@ GMParms::writeMeans(oDataStreamFile& os)
     if (means[i]->emUsedBitIsSet())
       used++;
   if (used != means.size())
-    warning("NOTE: saving only %d used means out of a total of %d (hi Karen!! :-)",
+    warning("NOTE: saving only %d used means out of a total of %d",
 	    used,means.size());
   os.write(used,"num Means"); os.nl();
   unsigned index=0;
@@ -1145,7 +1145,7 @@ GMParms::writeCovars(oDataStreamFile& os)
     if (covars[i]->emUsedBitIsSet())
       used++;
   if (used != covars.size())
-    warning("NOTE: saving only %d used covariances out of a total of %d (hi Peng!! :-)",
+    warning("NOTE: saving only %d used covariances out of a total of %d",
 	    used,covars.size());
   os.write(used,"num covars"); os.nl();
   unsigned index=0;
@@ -1192,7 +1192,7 @@ GMParms::writeDLinkMats(oDataStreamFile& os)
       used++;
   }
   if (used != dLinkMats.size())
-    warning("NOTE: saving only %d used dlink matrices out of a total of %d (hi Karim!! :-)",
+    warning("NOTE: saving only %d used dlink matrices out of a total of %d",
 	    used,dLinkMats.size());
   os.write(used,"num dlink mats"); os.nl();
   unsigned index=0;
@@ -1454,7 +1454,7 @@ GMParms::writeGaussianComponents(oDataStreamFile& os)
       used++;
   }
   if (used != gaussianComponents.size())
-    warning("NOTE: saving only %d used gaussian components out of a total of %d (hi Geoff!! :-)",
+    warning("NOTE: saving only %d used gaussian components out of a total of %d",
 	    used,gaussianComponents.size());
   os.write(used,"num GCs"); os.nl();
   unsigned index = 0;  
