@@ -74,7 +74,7 @@ public:
   void makeRandom() {}
   void makeUniform() {}
 
-  void tieParameters(RandomVariable*const other) {}
+  void tieParametersWith(RandomVariable*const other) { error("not implemented"); }
 
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
@@ -90,7 +90,16 @@ public:
   void emSwapCurAndNew() { }
   ///////////////////////////////////////////////////
 
+
+  ///////////////////////////////////////////////////
+  // reproduction routines.
+
+  RandomVariable *create() { 
+    return new ContinuousRandomVariable(label);
+  }
   RandomVariable *clone() { error("not implemented"); return this; }
+
+  ///////////////////////////////////////////////////
 
 
 };

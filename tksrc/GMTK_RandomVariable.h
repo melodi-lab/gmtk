@@ -260,12 +260,11 @@ public:
   ////////////////////////////////////////////////////////////////////////
   // Ties the parameters of 'this' with whatever those of 'other' are. 
   // 'other' and 'this' must be identical structuraly.
-  virtual void tieParameters(RandomVariable*const other) = 0;
+  virtual void tieParametersWith(RandomVariable*const other) = 0;
 
   ////////////////////////////////////////////////////////////////////////
   // Returns true of 'this' and 'other' are structurally identical.
-  bool identicalStructureWith(const RandomVariable& other) { error("not implemented"); return false; }
-
+  bool identicalStructureWith(const RandomVariable& other);
 
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
@@ -368,15 +367,18 @@ public:
   /////////////////////////////////////////
   /////////////////////////////////////////
 
-  virtual RandomVariable *clone() = 0;
+  /////////////////////////////////////////  
   // to unroll the network, the variables in the repreating segments are 
   // cloned. Cloning must:
   // - copy the parent arrays (child arrays will be reset)
   // - copy the member data - cardinality, dtMapper, hidden, discrete
+  virtual RandomVariable *clone();
 
-  void basicClone(RandomVariable *caller);
-  // This copies the above mentioned members.
-  // It is meant to be called by the implementation of clone in a derived class
+  ////////////////////////////////////////////////////////
+  // create an empty object of the same type as this (or
+  // for whatever derived class this routine lives in).
+  virtual RandomVariable *create() = 0;
+
 };
 
 #endif

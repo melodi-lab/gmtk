@@ -98,7 +98,7 @@ DiscreteRandomVariable::allocateProbabiltyTables()
 
 /*-
  *-----------------------------------------------------------------------
- * tieParameters()
+ * tieParametersWith()
  *      Ties the parameters of 'this' with whatever those of 'other' are. 
  *      'other' and 'this' must be identical structuraly.
  * 
@@ -118,7 +118,7 @@ DiscreteRandomVariable::allocateProbabiltyTables()
  *-----------------------------------------------------------------------
  */
 void
-DiscreteRandomVariable::tieParameters(RandomVariable*const _other)
+DiscreteRandomVariable::tieParametersWith(RandomVariable*const _other)
 {
   assert ( _other -> discrete );
   
@@ -129,9 +129,45 @@ DiscreteRandomVariable::tieParameters(RandomVariable*const _other)
 	  label.c_str(),other->label.c_str());
 
   conditionalCPTs = other->conditionalCPTs;
-  curCPT = other->curCPT;
+
+  // not necessary
+  // curCPT = other->curCPT;
   
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * clone()
+ *      Returns a clone of self.
+ * 
+ * Preconditions:
+ *      self must be filled in.
+ *
+ * Postconditions:
+ *      same as preconditions.
+ *
+ * Side Effects:
+ *      No internal effects.
+ *
+ * Results:
+ *      returns a new random variable.
+ *
+ *-----------------------------------------------------------------------
+ */
+RandomVariable*
+DiscreteRandomVariable::clone()
+{
+  DiscreteRandomVariable* rv = 
+    (DiscreteRandomVariable*) RandomVariable::clone();
+  rv->cardinality = cardinality;
+  // might as well set val, although probably won't be useful.
+  rv->val = val;
+  rv->tieParametersWith(this);
+  return rv;
+}
+
 
 
 

@@ -98,11 +98,11 @@ public:
 
   /////////////////////////////////////////////////////////////////////////
   // stores a variable's value elsewhere
-  virtual void storeValue(VariableValue &vv) {vv.ival = val;}
+  void storeValue(VariableValue &vv) {vv.ival = val;}
 
   /////////////////////////////////////////////////////////////////////////
   // sets a variables value as specified
-  virtual void setValue(VariableValue &vv) {val = vv.ival;}
+  void setValue(VariableValue &vv) {val = vv.ival;}
 
   void makeRandom() { 
     for (unsigned i=0;i<conditionalCPTs.size();i++) 
@@ -114,7 +114,7 @@ public:
       conditionalCPTs[i]->makeUniform();
   }
 
-  void tieParameters(RandomVariable*const other);
+  void tieParametersWith(RandomVariable*const other);
 
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
@@ -152,6 +152,15 @@ public:
   }
   ///////////////////////////////////////////////////
 
+  ///////////////////////////////////////////////////
+  // reproduction routines.
+
+  RandomVariable *create() { 
+    return new DiscreteRandomVariable(label,cardinality);
+  }
+  RandomVariable *clone();
+
+  ///////////////////////////////////////////////////
 
 };
 
