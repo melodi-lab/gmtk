@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "general.h"
 VCID("$Header$");
@@ -27,13 +28,6 @@ VCID("$Header$");
 #define FLOATWRITESTR   "%0.10e "
 #define DOUBLEWRITESTR   "%0.17e "
 
-
-/////////////////////////////////////////
-// Define if you want to pipe all ASCII
-// files through the C pre-processor to
-// get to use it's macro facilities. Might
-// need to change the comment character above.
-#define PIPE_ASCII_FILES_THROUGH_CPP
 
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
 #define CPP_DIRECTIVE_CHAR '#'
@@ -67,28 +61,40 @@ extern "C" {
 };
 #endif
 
-
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii)
+  : ioDataStreamFile(_name,_Binary), cppIfAscii(_cppIfAscii)
+#else
 iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
   : ioDataStreamFile(_name,_Binary)
+#endif
 {
   if (_name == NULL)
     error("Error: Can't open null file for reading.");
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   if (!Binary) {
-    if (!strcmp("-",_name)) {
-      fh = ::popen("cpp","r");
-      if (fh == NULL) {
-	error("ERROR: unable to open standard input via cpp");
+    if (cppIfAscii) {
+      if (!strcmp("-",_name)) {
+	fh = ::popen("cpp","r");
+	if (fh == NULL) {
+	  error("ERROR: unable to open standard input via cpp");
+	}
+      }  else {
+	if ((fh = ::fopen(_name,"r")) == NULL) {
+	  error("ERROR: unable to open file (%s) for reading",_name);
+	}
+	fclose(fh);
+	string str = (string)"cpp " + (string)_name;
+	fh = ::popen(str.c_str(),"r");    
+	if (fh == NULL)
+	  error("ERROR, can't open file stream from (%s)",_name);
       }
-    }  else {
-      if ((fh = ::fopen(_name,"r")) == NULL) {
-	error("ERROR: unable to open file (%s) for reading",_name);
+    } else {
+      if (!strcmp("-",_name)) {
+	fh = stdin;
+      } else if ((fh=fopen(_name,"r")) == NULL) {
+	error("Error: Can't open file (%s) for reading.",_name);
       }
-      fclose(fh);
-      string str = (string)"cpp " + (string)_name;
-      fh = ::popen(str.c_str(),"r");    
-      if (fh == NULL)
-	error("ERROR, can't open file stream from (%s)",_name);
     }
   } else {
     if (!strcmp("-",_name)) {
@@ -171,7 +177,10 @@ iDataStreamFile::prepareNext()
 
 void iDataStreamFile::rewind()
 {
-  (void) fseek (fh, 0L, SEEK_SET);
+  assert ( ! cppIfAscii );
+  if (fseek (fh, 0L, SEEK_SET) != 0)
+    error("ERROR: trouble seeking to beginning of file '%s', %s\n",
+	  fileName(),strerror(errno));
   state = GetNextLine;
 }
 
@@ -553,7 +562,9 @@ bool oDataStreamFile::flush(char *msg)
 
 void oDataStreamFile::rewind()
 {
-  (void) fseek (fh, 0L, SEEK_SET);
+  if (fseek (fh, 0L, SEEK_SET) != 0)
+    error("ERROR: trouble seeking to beginning of file '%s', %s\n",
+	  fileName(),strerror(errno));
 }
 
 
