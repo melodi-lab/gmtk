@@ -1629,6 +1629,8 @@ Mon Mar  8 01:47:26 2004
 Mon Mar  8 12:27:41 2004
   - in DT leaves, add an abs() function.
   1) absolute value function abs(expression)
+  2) unary negation
+  3) floor, ceil, round (implement without floating point)
   2) new variables: 
        - cardinality of child: c
        - current frame number of parent: fp0, fp1, fp2, etc.
