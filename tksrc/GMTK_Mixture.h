@@ -118,7 +118,7 @@ public:
 	      const Data32* const base, // ptr to base obs at time t
 	      const int stride);       // stride
   // a version that uses the current global obervation matrix directly.
-  logpr log_p(const unsigned frameIndex, 
+  logpr log_p(const unsigned frameIndex,
 	      const unsigned firstFeatureElement);
   //////////////////////////////////
 
