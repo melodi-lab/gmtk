@@ -68,12 +68,12 @@ static unsigned maxNumChunksInBoundary = 1;
 static unsigned chunkSkip = 1; 
 static int allocateDenseCpts=0;
 static char *cppCommandOptions = NULL;
-static char* triangulationHeuristic="WFS";
+static char* triangulationHeuristic="completed";
 static char* boundaryHeuristic="SFW";
 static bool findBestBoundary = true;
 static double traverseFraction = 1.0;
 static bool loadParameters = false;
-static bool jtWeight = false;
+static bool jtWeight = true;
 
 static char *inputMasterFile=NULL;
 // static char *outputMasterFile=NULL;
