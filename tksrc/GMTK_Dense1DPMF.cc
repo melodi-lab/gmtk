@@ -38,6 +38,11 @@
 
 VCID("$Header$");
 
+/*
+ * This routine copies the magnitude of x, the sign of y, and returns the result, i.e.,
+ *  copysign(x,y) = fabs(x)*sign(y)
+ */      
+extern "C" double copysign(double x, double y);
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -96,23 +101,52 @@ Dense1DPMF::read(iDataStreamFile& is)
   for (int i=0;i<length;i++) {
     double prob;
     is.readDouble(prob,"Dense1DPMF::read, reading prob");
-    if (prob < 0 || prob > 1)
+
+    // we support reading in both regular probability values
+    // (in the range [+0,1] inclusive) and log probability 
+    // values (in the range (-infty,-0] inclusive. These
+    // ranges give distinct values for probabilties, except for
+    // the value 0 which can either be real probability zero (impossible
+    // event) or it could be log(1) = 0 (the certain event). Since
+    // the IEEE FP standard supports both +0 and -0, and since the
+    // ASCII read routines preserve ASCII string '-0.0' to be negative zero,
+    // we consider -0.0 as log(1) , and +0.0 as real zero.
+    if (prob > 1)
       error("ERROR: reading file '%s', DPMF '%s' has invalid probability value (%e), entry %d",
 	    is.fileName(),
 	    name().c_str(),
 	    prob,
 	    i);
+    if (prob > 0) {
+      // regular probability
+      pmf[i] = prob;
+    } else if (prob < 0) {
+      // log base e probability
+      pmf[i].setFromLogP(prob);
+    } else {
+      // is zero, so need to check sign bit for
+      // either -0 (log(1)) or +0 (true zero prob)
+      if (copysign(1.0,prob)==1.0) {      
+	// regular zero probability
+	pmf[i].set_to_zero();
+      } else {
+	// prob == -0, so set to log(1)
+	pmf[i].set_to_one();
+      }
+    }
     pmf[i] = prob;
     sum += prob;
   }
-  double abs_diff = fabs(sum - 1.0);
-  // be more forgiving as cardinality increases
-  if (abs_diff > length*CPT::normalizationThreshold) 
-    error("ERROR: reading file '%s', DPMF '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e.",
-	  is.fileName(),
-	  name().c_str(),
-	  sum,
-	  abs_diff);
+  if (CPT::normalizationThreshold != 0) {
+    double abs_diff = fabs(sum - 1.0);
+    // be more forgiving as cardinality increases
+    if (abs_diff > length*CPT::normalizationThreshold) 
+      error("ERROR: reading file '%s', DPMF '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e.",
+	    is.fileName(),
+	    name().c_str(),
+	    sum,
+	    abs_diff);
+  }
   setBasicAllocatedBit();
 }
 

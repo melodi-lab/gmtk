@@ -37,8 +37,11 @@
 
 VCID("$Header$");
 
-
-
+/*
+ * This routine copies the magnitude of x, the sign of y, and returns the result, i.e.,
+ *  copysign(x,y) = fabs(x)*sign(y)
+ */      
+extern "C" double copysign(double x, double y);
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -213,28 +216,58 @@ MDCPT::read(iDataStreamFile& is)
   int row=0;;
   const double threshold = _card*normalizationThreshold;
   for (int i=0;i<numValues;) {
-    double val;
+
+    double val;  // sign bit below needs to be changed if we change this type.
     is.readDouble(val,"MDCPT::read, reading value");
-    if (val < 0 || val > 1)
+
+    // we support reading in both regular probability values
+    // (in the range [+0,1] inclusive) and log probability 
+    // values (in the range (-infty,-0] inclusive. These
+    // ranges give distinct values for probabilties, except for
+    // the value 0 which can either be real probability zero (impossible
+    // event) or it could be log(1) = 0 (the certain event). Since
+    // the IEEE FP standard supports both +0 and -0, and since the
+    // ASCII read routines preserve ASCII string '-0.0' to be negative zero,
+    // we consider -0.0 as log(1) , and +0.0 as real zero.
+    if (val > 1)
       error("ERROR: reading file '%s', MDCPT '%s' has invalid probability value (%e), table entry number %d",
 	    is.fileName(),
 	    name().c_str(),
 	    val,
 	    i);
-    mdcpt[i] = val;
+    if (val > 0) { 
+      // regular probability
+      mdcpt[i] = val;
+    } else if (val < 0) {
+      // log base e probability
+      mdcpt[i].setFromLogP(val);
+    } else {
+      // is zero, so need to check sign bit for
+      // either -0 (log(1)) or +0 (true zero prob)
+      if (copysign(1.0,val)==1.0) {
+	// regular zero probability
+	mdcpt[i].set_to_zero();
+      } else {
+	// val == -0, so set to log(1)
+	mdcpt[i].set_to_one();	
+      }
+    }
+
     i++;
     child_sum += val;
-    if (i % _card == 0) {
-      // check that child sum is approximately one
+    if (i % _card == 0 && (normalizationThreshold != 0)) {
+      // check that child sum is approximately one if (normalizationThreshold != 0)
+      // which otherwise would turn it off.
       double abs_diff = fabs(child_sum - 1.0);
       // be more forgiving as cardinality increases
       if (abs_diff > threshold) 
-	error("ERROR: reading file '%s', row %d of MDCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e.",
+	error("ERROR: reading file '%s', row %d of MDCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
 	      is.fileName(),
 	      row,
 	      name().c_str(),
 	      child_sum,
-	      abs_diff);
+	      abs_diff,
+	      normalizationThreshold);
       // reset
       child_sum = 0.0;
       row++;
