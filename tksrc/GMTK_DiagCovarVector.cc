@@ -98,6 +98,7 @@ DiagCovarVector::read(iDataStreamFile& is)
 	    i,covariances[i],GaussianComponent::varianceFloor());
     }
   }
+  setBasicAllocatedBit();
   preCompute();
 }
 
@@ -157,7 +158,12 @@ DiagCovarVector::noisyClone()
   map<DiagCovarVector*,DiagCovarVector*>::iterator it = MixGaussiansCommon::diagCovarCloneMap.find(this);
   if (it == MixGaussiansCommon::diagCovarCloneMap.end()) {
     clone = new DiagCovarVector();
-    clone->_name = _name + string("_cl");
+    unsigned cloneNo=0; do {
+      char buff[256];
+      sprintf(buff,"%d",cloneNo);
+      clone->_name = _name + string("_cl") + buff;
+      cloneNo++;
+    } while (GM_Parms.covarsMap.find(clone->_name) != GM_Parms.covarsMap.end());
     clone->refCount = 0;
     clone->covariances.resize(covariances.len());
     for (int i=0;i<covariances.len();i++) {
@@ -169,7 +175,7 @@ DiagCovarVector::noisyClone()
 
     // also add self to GMParms object.
     GM_Parms.add(clone);
-
+    clone->preCompute();
   } else {
     clone = (*it).second;
   }
@@ -179,9 +185,35 @@ DiagCovarVector::noisyClone()
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * precompute()
+ *      Precompute a number of internal variables for speed.
+ *      This routine must be called ANYTIME the paramters
+ *      of this object change. If this routine is not called,
+ *      any Gaussian using this covariance will produce
+ *      invalid results.
+ * 
+ * Preconditions:
+ *      basicAllocatedBitIsSet() must be set
+ *
+ * Postconditions:
+ *      All internal variables are allocated, and the 
+ *      object is ready for computing probabilities.
+ *
+ * Side Effects:
+ *      nil
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 DiagCovarVector::preCompute()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   variances_inv.growIfNeeded(covariances.len());
   double det = 1.0;
   for (int i=0;i<covariances.len();i++) {
@@ -216,6 +248,8 @@ DiagCovarVector::preCompute()
 void
 DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingCovars())
     return;
 
@@ -268,6 +302,8 @@ DiagCovarVector::emIncrement(const logpr prob,
 			     const int stride,
 			     float *const partialAccumulatedNextCovar)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingCovars())
     return;
   
@@ -304,6 +340,8 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
 				const float*const partialAccumulatedNextMeans,
 				const float *const partialAccumulatedNextCovar)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingCovars())
     return;
 
@@ -438,6 +476,8 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
 void
 DiagCovarVector::emSwapCurAndNew()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingCovars())
     return;
 
@@ -462,12 +502,14 @@ DiagCovarVector::emSwapCurAndNew()
 void
 DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
 void
 DiagCovarVector::emLoadAccumulators(iDataStreamFile& ifile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
@@ -475,6 +517,7 @@ DiagCovarVector::emLoadAccumulators(iDataStreamFile& ifile)
 void
 DiagCovarVector::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 

@@ -161,7 +161,15 @@ DiagGaussian::noisyClone()
   if (it == MixGaussiansCommon::gcCloneMap.end()) {
     DiagGaussian* clone;
     clone = new DiagGaussian(dim());
-    clone->_name = _name + string("_cl");
+
+    unsigned cloneNo=0; do {
+      char buff[256];
+      sprintf(buff,"%d",cloneNo);
+      clone->_name = _name + string("_cl") + buff;
+      cloneNo++;
+    } while (GM_Parms.gaussianComponentsMap.find(clone->_name) 
+	     != GM_Parms.gaussianComponentsMap.end());
+
     clone->mean = mean->noisyClone();
     clone->covar = covar->noisyClone();
 
