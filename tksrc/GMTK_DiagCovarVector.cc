@@ -92,7 +92,7 @@ DiagCovarVector::read(iDataStreamFile& is)
   covariances.read(is); 
   for (int i=0;i<covariances.len();i++) {
     if (covariances[i] < GaussianComponent::varianceFloor()) {
-      error("Error: reading diagonal covariance matrix '%s' (file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
+      error("Error: reading diagonal covariance matrix '%s' (from file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
 	    name().c_str(),is.fileName(),
 	    i,covariances[i],GaussianComponent::varianceFloor());
     }
