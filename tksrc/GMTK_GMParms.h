@@ -46,6 +46,8 @@ class WeightMatrix;
 class MDCPT;
 class MSCPT;
 class MTCPT;
+class NGramCPT;
+class Vocab;
 
 class Component;
 class GaussianComponent;
@@ -215,6 +217,17 @@ public:
   ObjectMapType mtCptsMap;
   void add(MTCPT*);
 
+  ///////////////////////////////////
+  // Collection of Vocab objects
+  vector<Vocab*> vocabs;
+  ObjectMapType vocabsMap;
+  void add(Vocab*);
+
+  ///////////////////////////////////
+  // Collection of n-gram "CPTs"
+  vector<NGramCPT*> ngramCpts;
+  ObjectMapType ngramCptsMap;
+  void add(NGramCPT*);
 
   /********************************************************************/
   /********************************************************************/
@@ -318,6 +331,8 @@ public:
   void readMdCpts(iDataStreamFile& is,bool reset = false);
   void readMsCpts(iDataStreamFile& is,bool reset = false);
   void readMtCpts(iDataStreamFile& is,bool reset = false);
+  void readVocabs(iDataStreamFile& is, bool reset = false);
+  void readNgramCpts(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);
   void readMixtures(iDataStreamFile& is,bool reset = false);
@@ -337,6 +352,8 @@ public:
   void writeMdCpts(oDataStreamFile& os);
   void writeMsCpts(oDataStreamFile& os);
   void writeMtCpts(oDataStreamFile& os);
+  //void writeVocabs(oDataStreamFile& os);
+  //void writeNgramCpts(oDataStreamFile& os);
   void writeDTs(oDataStreamFile& os);
   void writeComponents(oDataStreamFile& os);
   void writeMixtures(oDataStreamFile& os);

@@ -352,15 +352,16 @@ FileParser::fillKeywordTable()
     /* 14 */ "DenseCPT",
     /* 15 */ "SparseCPT",
     /* 16 */ "DeterministicCPT",
-    /* 17 */ "mixture",
-    /* 18 */ "gausSwitchMixture",
-    /* 19 */ "logitSwitchMixture",
-    /* 20 */ "mlpSwitchMixture",
-    /* 21 */ "chunk",
-    /* 22 */ "GRAPHICAL_MODEL",
-    /* 23 */ "value",
-    /* 24 */ "weight",
-    /* 25 */ "elimination_hint",
+    /* 17 */ "NGramCPT",
+    /* 18 */ "mixture",
+    /* 19 */ "gausSwitchMixture",
+    /* 20 */ "logitSwitchMixture",
+    /* 21 */ "mlpSwitchMixture",
+    /* 22 */ "chunk",
+    /* 23 */ "GRAPHICAL_MODEL",
+    /* 24 */ "value",
+    /* 25 */ "weight",
+    /* 26 */ "elimination_hint",
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -1277,7 +1278,7 @@ FileParser::parseImplementation()
 #if 0
 
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT 
-      || tokenInfo == KW_MTCPT) {
+      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT) {
     if (curRV.rvType != RVInfo::t_discrete) 
       parseError("need discrete implementations in discrete RV");
     parseDiscreteImplementation();
@@ -1296,14 +1297,16 @@ FileParser::parseDiscreteImplementation()
 {
   ensureNotAtEOF("discrete implementation");  
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
-      || tokenInfo == KW_MTCPT) {
+      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT) {
 
     if (tokenInfo == KW_MDCPT)
       curRV.discImplementations.push_back(CPT::di_MDCPT);
     else if (tokenInfo == KW_MSCPT)
       curRV.discImplementations.push_back(CPT::di_MSCPT);
-    else // (tokenInfo == KW_MTCPT)
+    else if (tokenInfo == KW_MTCPT)
       curRV.discImplementations.push_back(CPT::di_MTCPT);
+    else // tokenInfo == KW_NGRAMCPT
+      curRV.discImplementations.push_back(CPT::di_NGramCPT);
     consumeToken();
 
 
@@ -2168,6 +2171,58 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 #endif
 	    }
 
+	} else 
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using NGramCPTs rather
+	    // then MDCPTs, MSCPTs or MTCPTs. 
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a NGramCPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType 
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.ngramCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.ngramCptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent MTCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = (CPT*)
+		  GM_Parms.ngramCpts[
+				  GM_Parms.ngramCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // need to remove the integer index code.
+	      assert(0);
+#if 0
+	      if (rvInfoVector[i].listIndices[j].intIndex >= 
+		  GM_Parms.ngramCpts.size()) {
+		if (!allocateIfNotThere) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].intIndex);
+		} else {
+		  error("Can't allocate with integer cpt index");
+		}
+	      } else {
+		// otherwise add it
+		cpts[j] =
+		  GM_Parms.ngramCpts[rvInfoVector[i].listIndices[j].intIndex];
+	      }
+#endif
+	    }
+
 	} else {
 	  // Again, this shouldn't happen. If it does, something is wrong
 	  // with the parser code or some earlier code, and it didn't correctly
@@ -2187,11 +2242,19 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	  cptType = "MSCPT";
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
 	  cptType = "MTCPT";
+    } else if (rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT) {
+      cptType = "NGramCPT";
 	}
 
 	// check to make sure this cpt matches this
 	// number of parents.
-	if (cpts[j]->numParents() != 
+	// Special case for NGramCPT because we only restrict number of parents is less than ngram order.
+	if ( rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT ) {
+		if ( cpts[j]->numParents() < rvInfoVector[i].conditionalParents[j].size()) {
+			error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
+				rvInfoVector[i].name.c_str(), rvInfoVector[i].frame, rvInfoVector[i].fileLineNumber, j, cptType.c_str(), cpts[j]->name().c_str());
+		}
+	} else if (cpts[j]->numParents() != 
 	    rvInfoVector[i].conditionalParents[j].size()) {
 	  error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
 		rvInfoVector[i].name.c_str(),
@@ -2216,8 +2279,33 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  rvInfoVector[i].fileLineNumber,
 		  rvInfoVector[i].name.c_str());
 	  }
+	} else if ( cpts[j]->cptType == CPT::di_NGramCPT ) {
+		// Because we allow fewer parents in using ngram cpt, we use cpts[j]->numParents() instead.
+	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
+	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rvInfoVector[i].rvCard,
+		  cptType.c_str(),		
+		  cpts[j]->name().c_str(),
+		  cpts[j]->card());
+	  }
+	  for ( unsigned par = 0; par < rv->conditionalParentsList[j].size(); par++ ) {
+	    if ( rv->conditionalParentsList[j][par]->cardinality != cpts[j]->parentCardinality(par) )
+	      error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rv->conditionalParentsList[j][par]->name().c_str(),
+		    rv->conditionalParentsList[j][par]->cardinality,
+		    par,
+		    cptType.c_str(),
+		    cpts[j]->name().c_str(),
+		    cpts[j]->parentCardinality(par));
+	  }
 	} else {
-	  // regular non USCPT checking below.
+	  // regular non USCPT/NGramCPT checking below.
 	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
 	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
 		  rvInfoVector[i].name.c_str(),
