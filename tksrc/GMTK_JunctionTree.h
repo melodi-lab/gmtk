@@ -347,6 +347,7 @@ class JunctionTree  {
   void ceGatherIntoRoot(const unsigned part);
   void createPartition(const unsigned part);
   void ceSendToNextPartition(const unsigned part,const unsigned nextPart);
+  void cePruneRootCliqueOfPartition(const unsigned part);
   void deReceiveToPreviousPartition(const unsigned part,const unsigned prevPart);
   void deletePartition(const unsigned part);
   void deScatterOutofRoot(const unsigned part);
