@@ -194,7 +194,7 @@ iDataStreamFile::prepareNext()
 	  }
 	  // scan filename until next ws or eol.
 	  ss = s;
-	  while (*ss && !isspace(*s) && (*ss != '\n'))
+	  while (*ss && !isspace(*ss) && (*ss != '\n'))
 	    ss++;
 	  // end the line if not ended already.
 	  *ss = '\0';
