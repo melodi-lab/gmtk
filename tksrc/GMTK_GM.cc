@@ -407,7 +407,7 @@ void GMTK_GM::cliqueChainEM(const int iterations,
     } else {
       BP_Range lfrng(loadAccRange,0,1000);
       for (BP_Range::iterator lfit=lfrng.begin();
-	   lfit<=lfrng.max();
+	   !lfit.at_end();
 	   lfit++) {
 	const int bufsize = 2048;
 	char buff[bufsize];
@@ -1297,7 +1297,7 @@ bool GMTK_GM::clampNextExample()
     if (using_files)
     {
         (*trrng_it)++;
-	if ((*trrng_it) > trrng->max())
+	if (trrng_it->at_end())
 	  return false;
 	const int seg_no = *(*trrng_it);
         globalObservationMatrix.loadSegment(seg_no);
