@@ -137,12 +137,7 @@ public:
 
   ///////////////////////////////////////////////////
   // EM Support
-  void emStartIteration();
   void emIncrement(logpr prob);
-  void emEndIteration();
-  void emSwapCurAndNew();
-  void emClearEmAllocatedBit() {}
-  void emClearSwappedBit() {}
 
   ///////////////////////////////////////////////////
 

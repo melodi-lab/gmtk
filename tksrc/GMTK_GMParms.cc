@@ -1044,6 +1044,79 @@ GMParms::emSwapCurAndNew()
 }
 
 
+void
+GMParms::makeRandom()
+{
+  // go through all EMable objects possibly
+  // used by any RV and make the call
+
+  // first do the basic objects
+  // which also does everything for continuous RVs
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->makeRandom();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->makeRandom();
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->makeRandom();
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->makeRandom();
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->makeRandom();
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->makeRandom();
+
+  // gaussian components
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->makeRandom();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->makeRandom();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->makeRandom();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->makeRandom();
+
+}
+
+
+
+void
+GMParms::makeUniform()
+{
+  // go through all EMable objects possibly
+  // used by any RV and make the call
+
+  // first do the basic objects
+  // which also does everything for continuous RVs
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->makeUniform();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->makeUniform();
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->makeUniform();
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->makeUniform();
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->makeUniform();
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->makeUniform();
+
+  // gaussian components
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->makeUniform();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->makeUniform();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->makeUniform();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->makeUniform();
+
+}
+
+
 
 
 

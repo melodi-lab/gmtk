@@ -66,8 +66,6 @@ ContinuousRandomVariable::ContinuousRandomVariable(string _label)
 void
 ContinuousRandomVariable::findConditionalParents()
 {
-  printf("ContinuousRandomVariable::findConditionalParents called\n");
-
   cachedIntFromSwitchingState = intFromSwitchingState();
   assert ( cachedIntFromSwitchingState >= 0 && 
      cachedIntFromSwitchingState < conditionalParentsList.size() );
@@ -200,6 +198,8 @@ ContinuousRandomVariable::clone()
     (ContinuousRandomVariable*) RandomVariable::clone();
   // might as well set val, although probably won't be useful.
   rv->tieParametersWith(this);
+  rv->firstFeatureElement = firstFeatureElement;
+  rv->lastFeatureElement = lastFeatureElement;
   return rv;
 }
 
@@ -208,18 +208,8 @@ ContinuousRandomVariable::clone()
 
 
 /////////////////
-// EM routines //
+// EM Support //
 /////////////////
-
-
-
-void
-ContinuousRandomVariable::emStartIteration()
-{
-  // do nothing, assuming that all objects
-  // that this RV might use are started globally.
-}
-
 
 void
 ContinuousRandomVariable::emIncrement(logpr posterior)
@@ -249,22 +239,6 @@ ContinuousRandomVariable::emIncrement(logpr posterior)
        globalObservationMatrix.stride
        );
   }
-}
-
-
-void
-ContinuousRandomVariable::emEndIteration()
-{
-  // again do nothing, assuming that all objects
-  // that this RV might use are started globally.
-}
-
-
-void
-ContinuousRandomVariable::emSwapCurAndNew()
-{
-  // again do nothing, assuming that all objects
-  // that this RV might use are started globally.
 }
 
 #if 0

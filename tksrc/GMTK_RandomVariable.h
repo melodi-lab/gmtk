@@ -323,8 +323,6 @@ public:
   /////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////////////
-  // Called at the beginning of an EM iteration.
-  virtual void emStartIteration() = 0;
 
   ////////////////////////////////////////////////////////////////////////
   // On the backward pass, this will be called with a posterior probability
@@ -339,20 +337,6 @@ public:
   // For continuous variables, statistics are accumulated.
   virtual void emIncrement(logpr posterior) = 0;
 
-
-  // At the end of each EM iteration, this is called to convert the 
-  // accumulated statistics into probability distributions.
-  virtual void emEndIteration() = 0;
-
-  ////////////////////////////////////////////////////////////////////////
-  // bit clearing routines for EM objectsa
-  virtual void emClearEmAllocatedBit() = 0;
-  virtual void emClearSwappedBit() = 0;
-
-  ////////////////////////////////////////////////////////////////////////
-  // this routine will swap hte current EM parameters
-  // and the new EM parameters which are presumably valid.
-  virtual void emSwapCurAndNew() = 0;
 
   /////////////////////////////////////////
   /////////////////////////////////////////

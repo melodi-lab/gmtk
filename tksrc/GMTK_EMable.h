@@ -81,11 +81,10 @@ public:
 
   /*
    *
-   * ////////////////////////////////////////
+   ***************************************************************
    * The following dummy routines describe the
-   * GENERIC EM Loop functionality for an EMable.
-   *  an "iteration" is an entire pass through the data.
-   *
+   * generic EM Loop functionality for an EMable.
+   * An "iteration" is an entire pass through the data.
    *
    *emStartIeration() {
    *  // First check if this type object (means, variances,

@@ -115,9 +115,10 @@ main(int argc,char*argv[])
   gm.GM2CliqueChain();
   // gm.showCliques();
 
-  // printf("randomizing parameters\n");
-  // gm.makeRandom();
+  printf("randomizing parameters\n");
+  GM_Parms.makeRandom();
 
+  gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
   gm.cliqueChainEM(maxEMIterations, pruneRatio);
 
   return 0;  
