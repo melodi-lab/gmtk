@@ -327,7 +327,8 @@ void GMTK_GM::enumerativeEM(int iterations)
             emMode=true;
             enumerateProb(0, 1.0/dataProb);
         } while (clampNextExample());
-        cout << "Total data prob is: " << total_data_prob.val() << endl;
+	printf("Total data prob is: %1.9e\n",total_data_prob.val());
+        ::fflush(stdout);
         GM_Parms.emEndIteration();
         if (total_data_prob > last_dp)
 	  GM_Parms.emSwapCurAndNew();

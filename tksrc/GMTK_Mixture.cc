@@ -171,6 +171,10 @@ MixGaussians::emIncrement(logpr prob,
 			  const Data32* const base,
 			  const int stride)
 {
+
+  // printf("In emIncrement, calling with log prob = %g, float = 0x%X\n",
+  // prob.val(),(void*)f);
+
   if (!GM_Parms.amTrainingMixGaussians())
     return;  
 

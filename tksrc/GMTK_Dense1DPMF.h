@@ -46,6 +46,13 @@ class Dense1DPMF : public EMable, public NamedObject {
   sArray <logpr> nextPmf;
   ///////////////////////////////////////////////////////////  
 
+
+  ////////////////////////////////////////////////////////////
+  // this dummy variable apparently needs to be here so that gdb 5.0 on
+  // Solaris can print out *this. If this is removed, that version of
+  // gdb can't do that.
+  int _dummy;
+
 public:
 
   ///////////////////////////////////////////////////////////  
