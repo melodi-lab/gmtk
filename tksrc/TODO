@@ -4,13 +4,13 @@ $Header$
 Other things that need to be done, or just other ideas that might be
 incorporated into the package at some point.
 
-- Low level file parser should support
+X Low level file parser should support
    both integer and named pointers to
    the parameters that they share.
    (when they write out the parameters, they
     should write out the form that was written in).
     
-- simple +* equations in decision tree leaf nodes,
+X simple +* equations in decision tree leaf nodes,
   using variables vi and ci (e.g.,
   v0, v1, v2, ... , and c0, c1, c2, ...) for values
   and cardinalities of parent variables.
@@ -18,18 +18,17 @@ incorporated into the package at some point.
         c0 + 1
         3
 
-- add a MTCPT type, for deterministic cpt
+X add a MTCPT type, for deterministic cpt
   which just points to one of the decision trees
   in the DT table.
 
 - add error check message if two low level objects
   have the same name and kill the program.
-
    
-- discrete observed variables have only one cardinality,
+X discrete observed variables have only one cardinality,
   card needs to be a vector.
 
-- Include gaussian objects for special situations.
+X Include gaussian objects for special situations.
     index -1 corresponds to, with probability 1, gaussian
     index -2 corresponds to, with probability 0, gaussian
 
@@ -42,45 +41,52 @@ incorporated into the package at some point.
   sizes are and that they might want to adjust the 
   structure to reduce clique sizes if they become too large.
 
-- Q: the inference procedure works both with clique chains
-  and clique trees???
+- the inference procedure works both with clique chains and clique trees?
+    - no, but basic data structures are ok.
+    - at some point, add tree stuff, for single frame applications
 
-- Allocate data structures for CPTS, etc. automatically, if not explicitly 
+X Allocate data structures for CPTS, etc. automatically, if not explicitly 
   specified in a file. 
 
 - use namedobject for randomvariable and any other object that
   has a string name
 
-XXX- include check to make sure that names for each section in parms are unique
+X- include check to make sure that names for each section in parms are unique
 
-XXX- todo, make sure that chunk n:m is valid.
+X- todo, make sure that chunk n:m is valid.
 
-- ability to train means and other dlinkmats in a dlinkmats structure
+- IMPORTANT: ability to train means and other dlinkmats in a dlinkmats structure
   independently.
 
 - to through and start using setBasicAllocatedBit() on read, and add
   assertions, etc.
 
-- look at and get rid of purify memory lost message
+- IMPORTANT: look at and get rid of purify memory lost message
+     - write destructors
 
-- update make file so that -@ works for .o files.
+- write sampling code
 
-- Check the results of all DT query() calls to make sure
+X update make file so that -@ works for .o files.
+
+X Check the results of all DT query() calls to make sure
   the index it returns is valid. Report great error messages
   if it doesn't.
+  Ultimately, some type of run-type check done once at the beginning
+  so this query doesn't need to take place.
 
-- if an object gets no probability, do something
+X if an object gets no probability, do something
   more than just issuing a warning, like setting
   to uniform probs, removing the component,
   re-randomizing, or something.
+  done: set to previous values.
 
 - add a k-means mode for initialization.
     - keep covariances at unity for a while.
     - first iteration just use random assignments
       (pick a random component who gives unity probability,
        everyone else gives zero probability)
-    - 
 
+- Add gaussian split program
 
 - add linear BMM links
 
@@ -99,17 +105,19 @@ XXX- todo, make sure that chunk n:m is valid.
     This would need to have objects that use DTs
     use the integer index rater than the pointer directly.
 
+- rethink DT format numbering
+
 - add a 'fail' tag to DT leaves.
 
-- pass .str files through cpp before reading.
+X pass .str files through cpp before reading.
   and make sure that file line numbering is done right.
 
-- GMTK_GMParms::read(), keeps open all files
+X GMTK_GMParms::read(), keeps open all files
   until the end. If it encounters the same name again,
   it keeps track of where it was and continues reading.
   Also, this should append rather than delete.
 
-- Allow the file parser to pass ascii files through cpp
+X Allow the file parser to pass ascii files through cpp
   (but not binary).
 
 - need to add a check that makes sure that the observation
@@ -124,17 +132,21 @@ XXX- todo, make sure that chunk n:m is valid.
   RV's keep a pointer to a RV common structure which when the RV is cloned
   uses the same common data.
 
+- Short term: evaulate float/double for logp on Aurora
+
+- Long term: 
+     have a log space algorithm option
 
 - in file parser, add checks to make sure that all ints read in
   are non-negative
 
-- change parser to keep track of multiple #include files via line directives.
+- change parser to keep track of multiple #include files via line directives
 
-
-- change sparse PMF so that it just contains a list
+X change sparse PMF so that it just contains a list
   of values, and then a pointer to a dense pmf
 
 - get the parameter writing stuff finalized.
+   (get working after workshop, use simple global write in binary for now).
 
 - get MCVR working
 
@@ -142,4 +154,19 @@ XXX- todo, make sure that chunk n:m is valid.
    either 1) die
           2) do nothing, and do not change anything, reverting
              to previous values.
-          2) force to uniform parameters.
+          2) force to uniform parameters
+          3) For now, **** force to impossible Gaussian *** 
+             and issue a loud warning.
+
+
+- prior counts
+    - need routine makeAccumulatorsPrior
+    - stand alone program for writing out accumulator file to be read in.
+
+- IMPORTANT: finish load/store/accumulate accumulators
+
+- Identify potential issues with release (ie.., bugs, slowness, obviously needed toolkit abilities,
+  thigns that are inconvenient, etc.).
+
+
+
