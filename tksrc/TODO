@@ -239,3 +239,5 @@ X make sure that dlinkmatrix precompute is being
 
 
 - write MDCPT parameters out in nice order with smart comments.
+
+- dlinkmats, normalize by "previous" covariance matrix.
