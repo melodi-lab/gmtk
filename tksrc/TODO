@@ -330,3 +330,6 @@ no gaussian mixtures, does the master file still have to mention them?
 - check on error check messages, arguments out of order
   in dlink matrix message??? (check with Geoff)
 
+- remove all the using_files stuff in GM.cc
+
+- clean up GM.cc with setExampleStream, and all of that.
