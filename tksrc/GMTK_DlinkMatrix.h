@@ -25,22 +25,32 @@
 #include "logp.h"
 #include "sArray.h"
 
-#include "GMTK_PackedSparseRealMatrix.h"
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
 #include "GMTK_RandomVariable.h"
 
 class Dlinks;
+class LinMeanCondDiagGaussian;
+
 
 class DlinkMatrix : public EMable, public NamedObject  {
 
+  friend class Dlinks;
+  friend class LinMeanCondDiagGaussian;
+
+  ///////////////////////////////////////////////////////////  
+  // the number of links per feature
+  sArray < int > _numLinks;
+
   //////////////////////////////////
-  // The acutal matrix.
-  PackedSparseRealMatrix mat;
+  // The acutal matrix data values, packed
+  // into one 1D array
+  sArray< float > arr;
+  ///////////////////////////////////////////////////////////  
 
   //////////////////////////////////
   // Data structures support for EM
-  PackedSparseRealMatrix nextMat;
+  sArray< float > nextArr;
 
 public:
 
@@ -53,36 +63,26 @@ public:
   // set all current parameters to random values
   void makeRandom();
 
-
   void makeUniform();
 
   //////////////////////////////////////////////
   // read/write basic parameters
-  void read(iDataStreamFile& is) { 
-    NamedObject::read(is);
-    mat.read(is); 
-    setBasicAllocatedBit();
-  }
-  void write(oDataStreamFile& os) { 
-    NamedObject::write(os);
-    mat.write(os); 
-  }
-
+  void read(iDataStreamFile& is);
+  void write(oDataStreamFile& os);
 
   ///////////////////////////////////////////////////////////  
-  // numFeats: return the number of features for this 
-  // collection.
-  int numFeats() { return mat.numRows(); }
+  // num number of features (dimensionality) for this 
+  int dim() { return _numLinks.len(); }
 
   ///////////////////////////////////////////////////////////  
   // numLinks: return the number of links for the ith
   // feature.
-  int numLinks(const int i) { return mat.numCols(i); }
-
+  int numLinks(const int i) { 
+    assert ( i >=0 && i < dim() );
+    return _numLinks[i];
+  }
 
   bool compatibleWith(Dlinks&d);
-
-
 
   //////////////////////////////////
   // Public interface support for EM
