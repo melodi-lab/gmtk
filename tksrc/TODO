@@ -1105,5 +1105,18 @@ Fri May 09 17:42:07 2003
     to have a counter for this).
 
 
-
+Fri May 09 18:52:17 2003
+  - assertion failed when dlink matrices exist but are not used by
+    a Gaussian component, but then the accumulator tries to accumulate
+    the dlink matrix but finds that it's em stuff has not been allocated.
+    this happens when accumulating externally from acc file. 
+    Should report an error when dlink matrices exist in data files
+    that are not being used by any gaussian component, since we might
+    get this error when tring to accumulate the dlink matrices without
+    their em stuff existing.
+    TODO: possibly have automatic allocation of em structures via when
+    we accumulate them rather than the other way around.
+    
+    
   
+
