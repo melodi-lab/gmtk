@@ -367,12 +367,12 @@ Dense1DPMF::emIncrement(logpr prob,
 			const int val)
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( val >= 0 && val < nextPmf.len() );
   if (!emAmTrainingBitIsSet())
     return;
-
   if (!emOnGoingBitIsSet()) 
     emStartIteration();
+
+  assert ( val >= 0 && val < nextPmf.len() );
 
   if (prob < minIncrementProbabilty) {
     missedIncrementCount++;
