@@ -47,6 +47,8 @@
  *  +-- MSCPT - Multi-d Sparse (decision tree based) CPT
  *  |
  *  +-- MTCPT - Multi-d deTerminisitc (decision tree based) CPT
+ *  |
+ *  +-- USCPT - special unity score CPT for discrete features.
  * 
  * 
  */
@@ -83,7 +85,7 @@ public:
   // threshold to ensure input data sums to approximately unity
   static double normalizationThreshold;
 
-  enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_MTCPT, di_unknown };
+  enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_MTCPT, di_USCPT, di_unknown };
   const DiscreteImplementaton cptType;
 
 
