@@ -1566,7 +1566,7 @@ GMParms::writeMdCpts(oDataStreamFile& os)
     // first write the count
     os.write(i-1,"Dense CPT cnt");
     os.nl();
-    mdCpts[i-1]->write(os);
+    mdCpts[i]->write(os);
   }
   os.nl();
 }
@@ -1762,10 +1762,10 @@ GMParms::writeMixtures(oDataStreamFile& os)
     os.nl();
 
     // next write the dimension of this mixture
-    os.write(mixtures[i-2]->dim(),"MG dim");
+    os.write(mixtures[i]->dim(),"MG dim");
     os.nl();
 
-    mixtures[i-2]->write(os);
+    mixtures[i]->write(os);
   }
   os.nl();
 }
