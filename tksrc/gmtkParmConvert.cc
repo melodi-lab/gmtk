@@ -70,6 +70,7 @@ VCID("$Header$");
 char *prmTrainableFile=NULL;
 bool binPrmTrainableFile=false;
 
+char *prmMasterFile=NULL;
 char *prmOutFile="outParms%d.gmp";
 bool binPrmOutFile=true;
 
@@ -81,6 +82,8 @@ ARGS ARGS::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
+
+  ARGS("prmMasterFile",ARGS::Opt,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
 
   ARGS("prmTrainableFile",ARGS::Req,prmTrainableFile,"File containing Trainable Parameters"),
   ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
@@ -134,8 +137,16 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // finally, pull any trainable parameters out
   // of a master file and send them to a trainable file. 
+  if (prmMasterFile != NULL) {
+    iDataStreamFile pf(prmMasterFile,false,true,cppCommandOptions);
+    GM_Parms.read(pf);
+  }
   iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
   GM_Parms.readTrainable(pf);
+  printf("Trainable file '%s' has '%u' total parameters\n",
+	 prmTrainableFile,
+	 GM_Parms.totalNumberParameters());
+
   oDataStreamFile of(prmOutFile,binPrmOutFile);
   GM_Parms.writeTrainable(of);
 
