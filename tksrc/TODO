@@ -313,3 +313,4 @@ no gaussian mixtures, does the master file still have to mention them?
   string argument, etc.).
 
 
+- check that there are no self loops in dlink strcutres
