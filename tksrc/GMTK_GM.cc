@@ -56,8 +56,8 @@ void GMTK_GM::verifyTopologicalOrder()
 
 void GMTK_GM::makeRandom()
 {
-    for (int i=0; i<numEquivalenceClasses; i++)
-        representativeOfEquivalenceClass[i]->makeRandom();
+    for (unsigned i=0; i<node.size(); i++)
+        node[i]->makeRandom();
 }
 
 /*
@@ -74,8 +74,8 @@ void GMTK_GM::makeRandom()
 
 void GMTK_GM::makeUniform()
 {
-    for (int i=0; i<numEquivalenceClasses; i++)
-        representativeOfEquivalenceClass[i]->makeUniform();
+    for (unsigned i=0; i<node.size(); i++)
+        node[i]->makeUniform();
 }
 
 /*
@@ -119,7 +119,7 @@ void GMTK_GM::enumerateProb(int pos, logpr p)
     if (unsigned(pos) == node.size())  // all the nodes are instantiated
     {
         if (emMode)
-            emIncrementStatistics(p);
+            emIncrement(p);
         else
             dataProb += p;
         return;
@@ -177,6 +177,51 @@ void GMTK_GM::restoreCachedValues()
 /*
  *---------------------------------------------------------------------------
  * Function:
+ * storeValues
+ *
+ * Results:
+ *
+ * Side Effects:
+ * The values of all the observed variables in the network are 
+ * put in the vv array
+*/
+
+void GMTK_GM::storeValues(vector<VariableValue> &vv)
+{
+    vv.clear();
+    int observations = 0;
+    for (unsigned i=0; i<node.size(); i++)
+        if (!node[i]->hidden)
+            observations++;
+    vv.resize(observations);
+    int p=0;
+    for (unsigned i=0; i<node.size(); i++)
+        if (!node[i]->hidden)
+            node[i]->storeValue(vv[p++]);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ * Function:
+ * setValues
+ *
+ * Results:
+ *
+ * Side Effects:
+ * The values of all the observed variables in the network are 
+ * set according to the values in the vv array
+*/
+
+void GMTK_GM::setValues(vector<VariableValue> &vv)
+{
+    for (unsigned i=0,p=0; i<node.size(); i++)
+        if (!node[i]->hidden)
+            node[i]->setValue(vv[p++]);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ * Function:
  * viterbiProb 
  *
  * Results:
@@ -220,7 +265,7 @@ void GMTK_GM::enumerateViterbiProb(int pos, logpr p)
 /*
  *---------------------------------------------------------------------------
  * Function:
- * emIncrementStatistics 
+ * emIncrement
  *
  * Results:
  * Each variable increments its accumulators by the posterior.
@@ -229,16 +274,16 @@ void GMTK_GM::enumerateViterbiProb(int pos, logpr p)
  * None.
 */
 
-void GMTK_GM::emIncrementStatistics(logpr p)
+void GMTK_GM::emIncrement(logpr p)
 {
     for (unsigned i=0; i<node.size(); i++)
-        node[i]->increment(p);
+        node[i]->emIncrement(p);
 }
 
 /*
  *---------------------------------------------------------------------------
  * Function:
- * emInitialize 
+ * emStartIteration 
  *
  * Results:
  * Each variable zeros out its accumulators.
@@ -247,16 +292,16 @@ void GMTK_GM::emIncrementStatistics(logpr p)
  * None.
 */
 
-void GMTK_GM::emInitialize()
+void GMTK_GM::emStartIteration()
 {
     for (unsigned i=0; i<node.size(); i++)
-        node[i]->zeroAccumulators();
+        node[i]->emStartIteration();
 }
 
 /*
  *---------------------------------------------------------------------------
  * Function:
- * emUpdate
+ * emEndIteration
  *
  * Results:
  * Each variable updates its parameters at the end of an EM iteration.
@@ -265,10 +310,10 @@ void GMTK_GM::emInitialize()
  * None.
 */
 
-void GMTK_GM::emUpdate()
+void GMTK_GM::emEndIteration()
 {
     for (unsigned i=0; i<node.size(); i++)
-        node[i]->update();
+        node[i]->emEndIteration();
 }
 
 /*
@@ -286,10 +331,10 @@ void GMTK_GM::emUpdate()
 
 void GMTK_GM::enumerativeEM(int iterations)
 {
-    emInitialize();
     for (int i=0; i<iterations; i++)
     {
-        logpr total_data_prob = 0.0;
+        emStartIteration();
+        logpr total_data_prob = 1.0;
         clampFirstExample();
         do
         {
@@ -303,7 +348,7 @@ void GMTK_GM::enumerativeEM(int iterations)
             enumerateProb(0, 1.0/dataProb);
         } while (clampNextExample());
         cout << "Total data prob is: " << total_data_prob.val() << endl;
-        emUpdate();
+        emEndIteration();
     }
 }
 
@@ -323,10 +368,10 @@ void GMTK_GM::enumerativeEM(int iterations)
 
 void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
 {
-    emInitialize();
     for (int i=0; i<iterations; i++)
     {
-        logpr total_data_prob = 0.0;
+        emStartIteration();
+        logpr total_data_prob = 1.0;
         clampFirstExample();
         do
         {
@@ -338,12 +383,106 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
             chain->incrementEMStatistics();
         } while (clampNextExample());
         cout << "Total data prob is: " << total_data_prob.val() << endl;
-        emUpdate();
+        emEndIteration();
     }
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      reveal 
+ * 
+ * Preconditions:
+ *      none 
+ *
+ * Postconditions:
+ *      none 
+ *
+ * Side Effects:
+ *      prints the state of the variables in the network 
+ *
+ * Results:
+ *      nil 
+ *
+ *-----------------------------------------------------------------------
+ */
 
 void GMTK_GM::reveal(vector<RandomVariable *> order, bool show_vals)
 {
     for (unsigned i=0; i<order.size(); i++)
         order[i]->reveal(show_vals);
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      enumerativeExamplProb 
+ * 
+ * Preconditions:
+ *      network must have initialized conditional probability representations 
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      hidden variable values are in an undefined state
+ *      observed variables have the values of the last example in the array 
+ *
+ * Results:
+ *      returns total data log-likelihood
+ *
+ *-----------------------------------------------------------------------
+ */
+
+logpr GMTK_GM::enumerativeExampleProb(vector<vector<VariableValue > > &example)
+{
+    setExampleStream(&example);
+    logpr tp = 1.0;
+    emMode=false;
+    clampFirstExample();
+    do
+    {
+        enumerateProb();
+        tp *= dataProb;
+    } while (clampNextExample());
+    return tp;
+}
+    
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      cliqueChainExampleProb computes the likelihood of a set of examples
+ *      using dynamic programming on a clique chain.
+ * 
+ * Preconditions:
+ *      network conditional probabilities must be initialized
+ *      clique chain must be set up
+ *      
+ * Postconditions:
+ *      none. 
+ *
+ * Side Effects:
+ *      hidden variable values are in an undefined state
+ *      observed variables have the values of the last example in the array 
+ *
+ * Results:
+ *      returns total data log-likelihood
+ *
+ *-----------------------------------------------------------------------
+ */
+
+logpr GMTK_GM::cliqueChainExampleProb(vector<vector<VariableValue > > &example)
+{
+    setExampleStream(&example);
+    logpr tp = 1.0;
+    clampFirstExample();
+    do
+    {
+        chain->computePosteriors();
+        tp *= chain->dataProb;
+    } while (clampNextExample());
+    return tp;
 }
