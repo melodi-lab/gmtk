@@ -158,11 +158,10 @@ if ((scalar @need_tag) == 0) {
 
 foreach $file (@need_tag) {
   if ($tag) {
-#    print `cvs tag -F development $file\n`;
+    print `cvs tag -F development $file\n`;
   }
   else {
-#    print "   $file\n";
-print "cvs tag -F development $file\n";
+    print "   $file\n";
   }
 }
 
