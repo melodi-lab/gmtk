@@ -333,6 +333,7 @@ main(int argc,char*argv[])
   }
 
   (void) IM::setGlbMsgLevel(verbosity);
+  (void) GM_Parms.setMsgLevel(verbosity);
 
   if (dumpNames)
     if (ofilelist==NULL) error("Must also specify output files for binary writing");
