@@ -71,7 +71,7 @@ void RandomVariable::setParents(vector<RandomVariable *> &sparents,
 
 void RandomVariable::reveal(bool show_vals)
 {
-    cout << label << " : ";
+    cout << label << "-" << timeIndex << " : ";
     if (discrete) cout << "discrete (" << cardinality << ") ";
     if (hidden) cout << "hidden "; else cout << "observed ";
     if (!hidden && discrete || show_vals) cout << "val (" << val << ")";

@@ -161,7 +161,7 @@ void Clique::reveal()
 {
     for (unsigned i=0; i<member.size(); i++)
     {
-        cout << member[i]->label << " ";
+        cout << member[i]->label << "-" << member[i]->timeIndex << " ";
         for (unsigned j=0; j<newMember.size(); j++)
             if (newMember[j] == member[i])
                 cout << "(new) ";
