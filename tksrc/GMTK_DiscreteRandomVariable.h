@@ -77,7 +77,8 @@ public:
     it = curCPT->begin(); val = it.val(); 
   }
   // continue on
-  bool clampNextValue() { it++; return (it != curCPT->end()); }
+  bool clampNextValue() { it++; if (it!=curCPT->end()) val = it.val();
+    return (it != curCPT->end()); }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
