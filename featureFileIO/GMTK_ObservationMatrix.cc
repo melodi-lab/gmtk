@@ -1035,6 +1035,8 @@ void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats
       break;
     case UNRECOGNIZED_TRANSFORM:
       error("ERROR: ObservationMatrix::applyPostTransforms: Unrecognized transformation substring (%s)\n",trans_str_ptr);
+    case NONE:
+      break;
     default:
       error("ERROR: ObservationMatrix::applyPostTransforms: Unrecognized transformation substring (%s)\n",trans_str_ptr);
     }
