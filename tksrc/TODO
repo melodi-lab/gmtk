@@ -102,3 +102,12 @@ XXX- todo, make sure that chunk n:m is valid.
 - add a 'fail' tag to DT leaves.
 
 - pass .str files through cpp before reading.
+
+- GMTK_GMParms::read(), keeps open all files
+  until the end. If it encounters the same name again,
+  it keeps track of where it was and continues reading.
+  Also, this should append rather than delete.
+
+- Allow the file parser to pass ascii files through cpp
+  (but not binary).
+
