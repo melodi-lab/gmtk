@@ -59,7 +59,7 @@ X- todo, make sure that chunk n:m is valid.
   independently.
 
 - to through and start using setBasicAllocatedBit() on read, and add
-  assertions, etc.
+  assertions to that effect on all routines that need it.
 
 - IMPORTANT: look at and get rid of purify memory lost message
      - write destructors
