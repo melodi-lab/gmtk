@@ -23,10 +23,9 @@
 #define GMTK_CPT
 
 
-#include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
-
+#include "fileParser.h"
 
 /*
  * Generic interface class to all CPT random variables.
@@ -45,7 +44,9 @@
  * 
  * 
  */
-class CPT : public EMable {
+class CPT {
+
+protected:
 
   ///////////////////////////////////////////////////////////  
   // The number of "parents" of this CPT, so if we were
@@ -70,8 +71,23 @@ class CPT : public EMable {
 public:
 
   ///////////////////////////////////////////////////////////  
-  // General constructor
-  CPT();
+  // General constructor, does nothing actually.
+  CPT() {}
+  virtual ~CPT() {}
+
+  ///////////////////////////////////////////////////////////    
+  // Semi-constructors: useful for debugging.
+  // Functions to force the internal structures to be particular values.
+  // Force the number of parents to be such.
+  virtual void setNumParents(const int _nParents) = 0;
+  // Set the cardinality. If var = numParents, this sets
+  // the cardinality of the child. Otherwise, it sets the
+  // cardinality of the parent. 
+  virtual void setNumCardinality(const int var, const int card) = 0;
+  // Allocate memory, etc. for the internal data structures
+  // for this CPT, depending on current numParents & cardinalities.
+  virtual void allocateBasicInternalStructures() = 0;
+
 
   ///////////////////////////////////////////////////////////  
   // Probability evaluation, compute Pr( child | parents )
@@ -96,33 +112,42 @@ public:
   virtual int numValsGivenParents() = 0;
   class iterator {
     friend class CPT;
+    // An integer internal state which "hopefully" will
+    // be enough for each derived class.
     int internalState;
   public:
-    // the value of the variable
+    iterator() {}
     int val;
     // the probability of the variable being value 'val'
     logpr probVal;
+    // change the iterator to be the next valid value.
+    void next();
+
   };
   // returns an iterator for the first one.
   virtual iterator first() = 0;
-  // Given a current iterator, return the next one in the sequence.
-  virtual iterator next(iterator &) = 0;
+  // Given a current iterator, return true if it
+  // is a valid next value, otherwise return false so
+  // a loop can terminate.
+  virtual bool next(iterator &) = 0;
 
   
   ///////////////////////////////////////////////////////////  
   // Re-normalize the output distributions
   virtual void normalize() = 0;
+  // set all values to random values.
+  virtual void makeRandom() = 0;
+  // set all values to uniform values.
+  virtual void makeUniform() = 0;
 
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 
   // is located at the correct position.
   virtual void read(iDataStreamFile& is) = 0;
-
   ///////////////////////////////////////////////////////////    
   // write out the basic parameters, starting at the current
   // file position.
   virtual void write(oDataStreamFile& os) = 0;
-
 
 };
 
