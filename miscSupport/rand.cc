@@ -28,8 +28,7 @@ VCID("$Header$");
 #endif
 
 // declare a default global rnd object.
-RAND rnd(false); // change to true at some point.
-
+// RAND rnd(false); // change to true at some point.
 //////////////////////////////
 // data needed for rand objects.
 unsigned short RAND::seedv[3];
