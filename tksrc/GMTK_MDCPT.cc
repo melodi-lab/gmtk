@@ -653,7 +653,7 @@ MDCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
   for (int i=0;i<nextMdcpt.len();i++) {
     logpr tmp;
     ifile.read(tmp.valref(),"mdcr");
-    nextMdcpt[i] = tmp;
+    nextMdcpt[i] += tmp;
   }
 }
 
