@@ -75,14 +75,14 @@ struct FNGramContextTreeNode {
 
 
 /*******************************
- * methods for class FNGramCPT *
+ * methods for class FNGramImp *
  *******************************/
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::FNGramCPT
- *      Default constructor for factored ngram CPT
+ * FNGramImp::FNGramImp
+ *      Default constructor for factored ngram internal representation
  *
  * Results:
  *      None.
@@ -92,16 +92,15 @@ struct FNGramContextTreeNode {
  *
  *-----------------------------------------------------------------------
  */
-FNGramCPT::FNGramCPT() : CPT(di_FNGramCPT), _parents(NULL), _numberOfBGNodes(0), _bgNodes(NULL), _countFileName(NULL),
-		_lmFileName(NULL), _probabilities(NULL), _counts(NULL), _probStartBlockSize(0), _contextEntries(NULL) {
-	_numParents = 0;
+FNGramImp::FNGramImp() : _numParents(0), _parents(NULL), _numberOfBGNodes(0), _bgNodes(NULL), _countFileName(NULL),
+		_lmFileName(NULL), _probabilities(NULL), _counts(NULL), _probStartBlockSize(0) {
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::~FNGramCPT
- *      Default destructor for factored ngram CPT
+ * FNGramImp::~FNGramImp
+ *      Default destructor for factored ngram CPT implementation
  *
  * Results:
  *      None.
@@ -111,21 +110,20 @@ FNGramCPT::FNGramCPT() : CPT(di_FNGramCPT), _parents(NULL), _numberOfBGNodes(0),
  *
  *-----------------------------------------------------------------------
  */
-FNGramCPT::~FNGramCPT() {
+FNGramImp::~FNGramImp() {
 	delete [] _parents;
 	delete [] _bgNodes;
 	delete [] _countFileName;
 	delete [] _lmFileName;
 	delete _probabilities;
 	delete _counts;
-	delete [] _contextEntries;
 }
 
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::setNumParents
+ * FNGramImp::setNumParents
  *      Set number of parents for this factored ngram
  *
  * Results:
@@ -136,19 +134,18 @@ FNGramCPT::~FNGramCPT() {
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::setNumParents(const unsigned nParents) {
+void FNGramImp::setNumParents(const unsigned nParents) {
 	if ( nParents > maxNumParentsPerChild )
 		error("Error: number of parents %d should be smaller than %d", nParents, maxNumParentsPerChild);
 
 	_numParents = nParents;
 
-	// reset cardinality size
-	cardinalities.resize(_numParents);
-
 	// create buffers
 	if ( _parents != NULL )
 		delete [] _parents;
 	_parents = new ParentType [_numParents];
+
+	cardinalities.resize(_numParents);
 
 	// this is how many possible nodes in total
 	_numberOfBGNodes = 1 << _numParents;
@@ -156,209 +153,22 @@ void FNGramCPT::setNumParents(const unsigned nParents) {
 	if ( _bgNodes != NULL )
 		delete [] _bgNodes;
 	_bgNodes = new BackoffGraphNode [_numberOfBGNodes];
-
-	if ( _contextEntries != NULL)
-		delete _contextEntries;
-	_contextEntries = new BackoffGraphNode::HashEntry * [_numberOfBGNodes];
-	memset(_contextEntries, 0, sizeof(BackoffGraphNode::HashEntry*) * _numberOfBGNodes);
-
-#ifdef FNGRAM_BOW_GROW_DYNA
-	_parentsValues.resize(_numParents);
-#endif
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::becomeAwareOfParentValues
- *      Set context entry pointers when parents values are known.
+ * FNGramImp::read
+ *      Read in the parameters from a master file
  *
  * Results:
  *      None.
  *
- * Side Effects:
+ * Side Effectes:
  *      None.
- *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::becomeAwareOfParentValues(vector< RV* >& parents,
-					  const RV* rv) {
-	assert(parents.size() == _numParents);
-
-	memset(_contextEntries, 0, sizeof(BackoffGraphNode::HashEntry*) * _numberOfBGNodes);
-
-	unsigned * context = new unsigned [_numParents];
-
-	// descend down the BG, level by level except buttom (0)
-	for ( int level = _numParents; level > 0; level-- ) {
-		LevelIter liter(_numParents, level);
-		for ( unsigned nodeAtLevel; liter.next(nodeAtLevel); ) {
-			if ( _bgNodes[nodeAtLevel].valid ) {
-				// figure out which bits are on
-				std::vector<unsigned> onPos = bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
-				for ( unsigned i = 0; i < _bgNodes[nodeAtLevel].order - 1; i++ ) {
-					context[i] = RV2DRV(parents[onPos[i]])->val;
-				}
-				_contextEntries[nodeAtLevel] = _bgNodes[nodeAtLevel].contextTable->find(context);
-			}
-		}
-	}
-
-	delete [] context;
-
-#ifdef FNGRAM_BOW_GROW_DYNA
-	for ( unsigned i = 0; i < _numParents; i++ )
-		_parentsValues[i] = RV2DRV(parents[i])->val;
-#endif
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::begin
- *      Set an iterator to the begin (and sets the probability directly)
- *
- * Results:
- *      None.
- *
- * Side Effects:
- *      None.
- *
- *-----------------------------------------------------------------------
- */
-void FNGramCPT::begin(CPT::iterator& it, DiscRV* drv, logpr& p) {
-	it.drv = drv;
-	register DiscRVType value = 0;
-	p = probBackingOff(value, _numberOfBGNodes - 1);
-
-	while ( p.essentially_zero() ) {
-		value++;
-		// We keep the following assertion as we
-		// must have that at least one entry is non-zero.
-		// The read code of the FNGramCPT should ensure this
-		// as sure all parameter update procedures.
-		assert(value < card());
-		p = probBackingOff(value, _numberOfBGNodes - 1);
-	}
-	drv->val = value;
-}
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::becomeAwareOfParentValuesAndIterBegin
- *      Set the parents and set an iterator to the begin.
- *
- * Results:
- *      None.
- *
- * Side Effects:
- *      None.
- *
- *-----------------------------------------------------------------------
- */
-void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents, 
-						      iterator &it, 
-						      DiscRV*drv, 
-						      logpr& p) 
-{
-  // call functions in this class directly to avoid virtual dispatch.
-  FNGramCPT::becomeAwareOfParentValues(parents,drv);
-  FNGramCPT::begin(it, drv, p);
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::probGivenParents
- *      Retrieve the probability for a given value.
- *
- * Results:
- *      Return the probability given the parents.
- *
- * Side Effects:
- *
- *-----------------------------------------------------------------------
- */
-logpr FNGramCPT::probGivenParents(vector < RV* >& parents, 
-				  DiscRV* drv) 
-{
-  FNGramCPT::becomeAwareOfParentValues(parents,drv);
-  return probBackingOff(drv->val, _numberOfBGNodes - 1);
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::next
- *      Advance an iterator.
- *
- * Results:
- *      Return true if the next exists.
- *
- * Side Effects:
- *      None.
- *
- *-----------------------------------------------------------------------
- */
-bool FNGramCPT::next(iterator &it, logpr& p) 
-{
-  do{
-    if ( (++it.drv->val) >= card() )
-      return false;
-    p = probBackingOff(it.drv->val, _numberOfBGNodes - 1);
-  } while ( p.essentially_zero() );
-  return true;
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::randomSample
- *      Generate a random sample according to the distribtution.
- *
- * Results:
- *      Return a random sample.
- *
- * Side Effects:
- *      This is using a inline function NGramCPT::end() rather
- *      than the virtual version due to speed reason.
- *      Please be carefult to override it for sub-classes.
- *
- *-----------------------------------------------------------------------
- */
-int FNGramCPT::randomSample(DiscRV* drv) 
-{
-  logpr prob = rnd.drand48();
-  iterator it;
-  logpr p;
-  FNGramCPT::begin(it,drv,p);
-  logpr sum;
-  do {
-    sum += p;
-    if ( prob <= sum )
-      break;
-  } while ( FNGramCPT::next(it,p) );
-  return drv->val;
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * FNGramCPT::read
- *      Read a language model file form ARPA file or index file.
- *
- * Results:
- *      None.
- *
- * Side Effects:
- *      None.
- *
- *-----------------------------------------------------------------------
- */
-void FNGramCPT::read(iDataStreamFile &is) 
-{
+void FNGramImp::read(iDataStreamFile &is) {
 	// step 1:
 	// read in information from master file
 
@@ -370,8 +180,6 @@ void FNGramCPT::read(iDataStreamFile &is)
 	is.read(numParents, "Can't read FNGramCPT's number of parents");
 	if ( numParents < 0 )
 		error("Error: reading file '%s' line %d, FNGramCPT '%s' trying to use negative (%d) num parents.", is.fileName(),is.lineNo(), name().c_str(), numParents);
-	if ( (unsigned)numParents >= warningNumParents )
-		warning("Warning: creating FNGramCPT '%s' with %d parents in file '%s' line %d", numParents, name().c_str(), is.fileName(),is.lineNo());
 	setNumParents(numParents);
 
 	// read the cardinalities of parents
@@ -404,13 +212,13 @@ void FNGramCPT::read(iDataStreamFile &is)
 		// get the tag char
 		tagChar = tok[0];
 		if ( _tagMap.find(tagChar) != NULL )
-			error("Warning: tag %c was defined before in file %s, 2nd-time at line %d", 
-			      tagChar, 
+			error("Warning: tag %c was defined before in file %s, 2nd-time at line %d",
+			      tagChar,
 			      is.fileName(),is.lineNo());
 
 		// read in the vocab object name
 		if ( (tok = strtok(NULL, seps)) == NULL )
-			error("Error: tag %c should followed by vocab name in %s line %d", 
+			error("Error: tag %c should followed by vocab name in %s line %d",
 			      tagChar, is.fileName(),is.lineNo());
 
 		std::string vocabName = std::string(tok);
@@ -478,7 +286,7 @@ void FNGramCPT::read(iDataStreamFile &is)
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::readFNGramSpec
+ * FNGramImp::readFNGramSpec
  *      Read factored ngram specification.
  *
  * Results:
@@ -489,7 +297,7 @@ void FNGramCPT::read(iDataStreamFile &is)
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::readFNGramSpec(iDataStreamFile &ifs) {
+void FNGramImp::readFNGramSpec(iDataStreamFile &ifs) {
 	char c;
 
 	// read in child node name
@@ -595,7 +403,7 @@ void FNGramCPT::readFNGramSpec(iDataStreamFile &ifs) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::readLMFile
+ * FNGramImp::readLMFile
  *      Read in the language model probabilities.
  *
  * Results:
@@ -606,7 +414,7 @@ void FNGramCPT::readFNGramSpec(iDataStreamFile &ifs) {
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::readLMFile(std::vector<Vocab*> vocabs) {
+void FNGramImp::readLMFile(std::vector<Vocab*> vocabs) {
 	// first, we create all objects
 	// descend down the BG, level by level
 	// for the last one, we keep it empty because there will be no context.
@@ -854,7 +662,7 @@ void FNGramCPT::readLMFile(std::vector<Vocab*> vocabs) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::readCountFile
+ * FNGramImp::readCountFile
  *      Read count file (after loading language models).
  *
  * Results:
@@ -865,7 +673,7 @@ void FNGramCPT::readLMFile(std::vector<Vocab*> vocabs) {
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::readCountFile(std::vector<Vocab*> vocabs) {
+void FNGramImp::readCountFile(std::vector<Vocab*> vocabs) {
 	assert(_probStartBlockSize > 0 );	// make sure language model is already loaded
 
 	if ( _counts == NULL )
@@ -959,7 +767,7 @@ void FNGramCPT::readCountFile(std::vector<Vocab*> vocabs) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::strtolplusb
+ * FNGramImp::strtolplusb
  *      John Henderson's extension to strtol with 0b prefix.
  *
  * Results:
@@ -970,7 +778,7 @@ void FNGramCPT::readCountFile(std::vector<Vocab*> vocabs) {
  *
  *-----------------------------------------------------------------------
  */
-long FNGramCPT::strtolplusb(const char *nptr, char **endptr, int base) {
+long FNGramImp::strtolplusb(const char *nptr, char **endptr, int base) {
 	const char *i;
 	long sign;
 
@@ -1012,7 +820,7 @@ long FNGramCPT::strtolplusb(const char *nptr, char **endptr, int base) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::numBitsSet
+ * FNGramImp::numBitsSet
  *      Calcualte how many bits are on.
  *
  * Results:
@@ -1023,7 +831,7 @@ long FNGramCPT::strtolplusb(const char *nptr, char **endptr, int base) {
  *
  *-----------------------------------------------------------------------
  */
-unsigned FNGramCPT::numBitsSet(unsigned u) {
+unsigned FNGramImp::numBitsSet(unsigned u) {
 	unsigned count = 0;
 
 	while ( u ) {
@@ -1035,7 +843,7 @@ unsigned FNGramCPT::numBitsSet(unsigned u) {
 }
 
 
-const std::vector<unsigned> FNGramCPT::bitsOn(unsigned n) {
+const std::vector<unsigned> FNGramImp::bitsOn(unsigned n) {
 	std::vector<unsigned> ons;
 	unsigned pos = 0;
 	while ( n != 0 ) {
@@ -1051,7 +859,7 @@ const std::vector<unsigned> FNGramCPT::bitsOn(unsigned n) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::parseNodeString
+ * FNGramImp::parseNodeString
  *      Read a node string such as 'M1,M0,S1,S2,S+2'
  *
  * Results:
@@ -1062,7 +870,7 @@ const std::vector<unsigned> FNGramCPT::bitsOn(unsigned n) {
  *
  *-----------------------------------------------------------------------
  */
-unsigned FNGramCPT::parseNodeString(char *str) {
+unsigned FNGramImp::parseNodeString(char *str) {
 	if ( str == NULL )
 		return 0;
 
@@ -1151,7 +959,7 @@ unsigned FNGramCPT::parseNodeString(char *str) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::readBackoffGraphNode
+ * FNGramImp::readBackoffGraphNode
  *      Read the node properties from a file stream.
  *
  * Results:
@@ -1162,7 +970,7 @@ unsigned FNGramCPT::parseNodeString(char *str) {
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::readBackoffGraphNode(iDataStreamFile &ifs, BackoffGraphNode &bgNode, unsigned nodeId) {
+void FNGramImp::readBackoffGraphNode(iDataStreamFile &ifs, BackoffGraphNode &bgNode, unsigned nodeId) {
 	// line should have the form
 	// NODE_NUM BACKOFFCONSTRAINT <options>
 	// options include what ngram-count.cc uses on comand line for
@@ -1365,7 +1173,7 @@ void FNGramCPT::readBackoffGraphNode(iDataStreamFile &ifs, BackoffGraphNode &bgN
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::computeCardinalityFunctions
+ * FNGramImp::computeCardinalityFunctions
  *      compute statics for calculating scores.
  *
  * Results:
@@ -1376,7 +1184,7 @@ void FNGramCPT::readBackoffGraphNode(iDataStreamFile &ifs, BackoffGraphNode &bgN
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::computeCardinalityFunctions() {
+void FNGramImp::computeCardinalityFunctions() {
 	assert(_numParents == cardinalities.size());
 
 	// descend down the BG, level by level
@@ -1403,7 +1211,7 @@ void FNGramCPT::computeCardinalityFunctions() {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::probBackingOff
+ * FNGramImp::probBackingOff
  *      calculate the probability with backing-off support
  *
  * Results:
@@ -1414,7 +1222,7 @@ void FNGramCPT::computeCardinalityFunctions() {
  *
  *-----------------------------------------------------------------------
  */
-inline logpr FNGramCPT::probBackingOff(unsigned val, unsigned nodeId) {
+inline logpr FNGramImp::probBackingOff(unsigned val, unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues) {
 	logpr* probPtr;
 
 	if ( nodeId == 0 ) {
@@ -1425,7 +1233,7 @@ inline logpr FNGramCPT::probBackingOff(unsigned val, unsigned nodeId) {
 	}
 
 	// at higher level nodes
-	BackoffGraphNode::HashEntry * contextEntry = _contextEntries[nodeId];
+	BackoffGraphNode::HashEntry * contextEntry = contextEntries[nodeId];
 	if ( contextEntry != NULL && (probPtr = _probabilities->find(val, contextEntry->probTableOffSet, contextEntry->probTableBlockSize)) != NULL ) {
 		// easy job, just return the value
 		return *probPtr;
@@ -1435,17 +1243,17 @@ inline logpr FNGramCPT::probBackingOff(unsigned val, unsigned nodeId) {
 	if ( (contextEntry != NULL) && (! contextEntry->backingOffWeight.essentially_zero()) ) {
 		// we already have backing-off weight
 		// back-off directly
-		return contextEntry->backingOffWeight * bgChildProbBackingOff(val, nodeId);
+		return contextEntry->backingOffWeight * bgChildProbBackingOff(val, nodeId, contextEntries, parentsValues);
 	}
 
 	// we don't have backing-off weight available
 	// do we need generalized backing-off?
 	if ( ! _bgNodes[nodeId].requiresGenBackoff() ) {
-		return bgChildProbBackingOff(val, nodeId);
+		return bgChildProbBackingOff(val, nodeId, contextEntries, parentsValues);
 	}
 
 	// now we really need to compute the backing-off weights
-	logpr sum = bgChildProbSum(nodeId);
+	logpr sum = bgChildProbSum(nodeId, contextEntries, parentsValues);
 
 	/*
 	right now, the following is not supported.
@@ -1459,27 +1267,27 @@ inline logpr FNGramCPT::probBackingOff(unsigned val, unsigned nodeId) {
 	*/
 #ifdef FNGRAM_BOW_GROW_DYNA
 	// in this case, we will store the calculated bow in the context table for later usage
-	if ( _contextEntries[nodeId] == NULL ) {
+	if ( contextEntries[nodeId] == NULL ) {
 		// construct the context value
 		unsigned *context = new unsigned [_bgNodes[nodeId].order - 1];
 		std::vector<unsigned> onPos = bitsOn(nodeId);	// this will be something like 0, 1, 3
 		for ( unsigned i = 0; i < _bgNodes[nodeId].order - 1; i++ ) {
-			context[i] = _parentsValues[onPos[i]];
+			context[i] = parentsValues[onPos[i]];
 		}
 
-		_contextEntries[nodeId] = _bgNodes[nodeId].contextTable->insert(context, BackoffGraphNode::HashEntry());
+		contextEntries[nodeId] = _bgNodes[nodeId].contextTable->insert(context, BackoffGraphNode::HashEntry());
 	}
 
-	_contextEntries[nodeId]->backingOffWeight.setFromLogP(-sum.val());
+	contextEntries[nodeId]->backingOffWeight.setFromLogP(-sum.val());
 #endif
 
-	return bgChildProbBackingOff(val, nodeId) / sum;
+	return bgChildProbBackingOff(val, nodeId, contextEntries, parentsValues) / sum;
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::bgChildProbBackingOff
+ * FNGramImp::bgChildProbBackingOff
  *      general graph backoff algorithm for multiple BG children.
  *
  * Results:
@@ -1490,7 +1298,7 @@ inline logpr FNGramCPT::probBackingOff(unsigned val, unsigned nodeId) {
  *
  *-----------------------------------------------------------------------
  */
-inline logpr FNGramCPT::bgChildProbBackingOff(unsigned val, unsigned nodeId) {
+inline logpr FNGramImp::bgChildProbBackingOff(unsigned val, unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues) {
 	// create a reference to speed up
 	BackoffGraphNode& bgNode = _bgNodes[nodeId];
 
@@ -1499,7 +1307,7 @@ inline logpr FNGramCPT::bgChildProbBackingOff(unsigned val, unsigned nodeId) {
 		// Jeff was using iterators here.  But I don't think its necessary
 		unsigned bg_child = nodeId & (~bgNode.backoffConstraint);
 		if ( _bgNodes[bg_child].valid )
-			return probBackingOff(val, bg_child);
+			return probBackingOff(val, bg_child, contextEntries, parentsValues);
 	}
 
 	// still here? Do the general case.
@@ -1511,7 +1319,7 @@ inline logpr FNGramCPT::bgChildProbBackingOff(unsigned val, unsigned nodeId) {
 		while ( citer.next(bg_child) ) {
 			if ( _bgNodes[bg_child].valid ) {
 				// multiply the probs (add the log probs)
-				bo_prob *= probBackingOff(val, bg_child);
+				bo_prob *= probBackingOff(val, bg_child, contextEntries, parentsValues);
 			}
 		}
 
@@ -1524,7 +1332,7 @@ inline logpr FNGramCPT::bgChildProbBackingOff(unsigned val, unsigned nodeId) {
 		while ( citer.next(bg_child) ) {
 			if ( _bgNodes[bg_child].valid ) {
 				// add the probs
-				bo_prob += probBackingOff(val, bg_child);
+				bo_prob += probBackingOff(val, bg_child, contextEntries, parentsValues);
 			}
 		}
 		if ( bgNode.backoffCombine == AvgBgChild )
@@ -1537,14 +1345,14 @@ inline logpr FNGramCPT::bgChildProbBackingOff(unsigned val, unsigned nodeId) {
 		while ( citer.next(bg_child) ) {
 			if ( _bgNodes[bg_child].valid ) {
 				// add the probs by weights
-				bo_prob += bgNode.wmean[cpos] * probBackingOff(val, bg_child);
+				bo_prob += bgNode.wmean[cpos] * probBackingOff(val, bg_child, contextEntries, parentsValues);
 				cpos++;
 			}
 		}
 	} else {
 		// choose only one backoff node
-		unsigned chosen_descendant = boNode(val, nodeId);
-		bo_prob = probBackingOff(val, chosen_descendant);
+		unsigned chosen_descendant = boNode(val, nodeId, contextEntries, parentsValues);
+		bo_prob = probBackingOff(val, chosen_descendant, contextEntries, parentsValues);
 	}
 
 	return bo_prob;
@@ -1553,7 +1361,7 @@ inline logpr FNGramCPT::bgChildProbBackingOff(unsigned val, unsigned nodeId) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::bgChildProbSum
+ * FNGramImp::bgChildProbSum
  *
  * Results:
  *      Return the sum of all sub nodes probabilities.
@@ -1563,11 +1371,11 @@ inline logpr FNGramCPT::bgChildProbBackingOff(unsigned val, unsigned nodeId) {
  *
  *-----------------------------------------------------------------------
  */
-inline logpr FNGramCPT::bgChildProbSum(unsigned nodeId) {
+inline logpr FNGramImp::bgChildProbSum(unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues) {
 	logpr total;
 
-	for ( unsigned i = 0; i < card(); i++ ) {
-		total += bgChildProbBackingOff(i, nodeId);
+	for ( unsigned i = 0; i < _card; i++ ) {
+		total += bgChildProbBackingOff(i, nodeId, contextEntries, parentsValues);
 	}
 
 	return total;
@@ -1576,7 +1384,7 @@ inline logpr FNGramCPT::bgChildProbSum(unsigned nodeId) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::boNode
+ * FNGramImp::boNode
  * For a given node in the BG, compute the child node that
  * we should backoff to. The 'context' argument is assumed
  * to be in reverse order with respect to the cound tries.
@@ -1589,7 +1397,7 @@ inline logpr FNGramCPT::bgChildProbSum(unsigned nodeId) {
  *
  *-----------------------------------------------------------------------
  */
-unsigned FNGramCPT::boNode(unsigned val, unsigned nodeId) {
+unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues) {
 	// all nodes with one parent back off to the unigram.
 	const unsigned nbitsSet = numBitsSet(nodeId);
 	if ( nbitsSet == 1 )
@@ -1613,7 +1421,7 @@ unsigned FNGramCPT::boNode(unsigned val, unsigned nodeId) {
 		// BO algorithm (i.e., counts, normalized counts, etc.)  in the
 		// specs object for this node.
 
-		double score = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_child);
+		double score = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_child, contextEntries, parentsValues);
 
 		if ( score == -1e200 )	// TODO: change this to NaN or Inf, and a #define (also see below)
 			continue;	// continue presumably because of a NULL counts object
@@ -1651,7 +1459,7 @@ unsigned FNGramCPT::boNode(unsigned val, unsigned nodeId) {
 					BGChildIter gciter(_numParents, bg_child, _bgNodes[bg_child].backoffConstraint);
 					unsigned bg_grandchild;
 					while ( gciter.next(bg_grandchild) ) {
-						double tmp = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_grandchild);
+						double tmp = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_grandchild, contextEntries, parentsValues);
 						// compute local max min of offspring
 						if ( domax && (tmp > score) || ! domax && (tmp < score) ) {
 							score = tmp;
@@ -1662,7 +1470,7 @@ unsigned FNGramCPT::boNode(unsigned val, unsigned nodeId) {
 					BGGrandChildIter descendant_iter(_numParents, bg_child, _bgNodes, great - 1);
 					unsigned bg_grandchild;
 					while ( descendant_iter.next(bg_grandchild) ) {
-						double tmp = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_grandchild);
+						double tmp = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_grandchild, contextEntries, parentsValues);
 						if ( domax && (tmp > score) || ! domax && (tmp < score) ) {
 							score = tmp;
 						}
@@ -1692,7 +1500,7 @@ unsigned FNGramCPT::boNode(unsigned val, unsigned nodeId) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::backoffValueRSubCtxW
+ * FNGramImp::backoffValueRSubCtxW
  *      general backoff node selection strategy.
  *
  * Results:
@@ -1703,7 +1511,7 @@ unsigned FNGramCPT::boNode(unsigned val, unsigned nodeId) {
  *
  *-----------------------------------------------------------------------
  */
-double FNGramCPT::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parentsStrategy, unsigned nodeId) {
+double FNGramImp::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parentsStrategy, unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues) {
 	// create a reference to speed up
 	BackoffGraphNode& bgNode = _bgNodes[nodeId];
 
@@ -1714,13 +1522,13 @@ double FNGramCPT::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parents
 
 	switch ( parentsStrategy ) {
 	case CountsNoNorm: {
-			if ( nodeId != 0 && _contextEntries[nodeId] == NULL )
+			if ( nodeId != 0 && contextEntries[nodeId] == NULL )
 				return 0.0;
 			unsigned *cnt;
 			if ( nodeId == 0 )
 				cnt = _counts->find(val, 0, _probStartBlockSize);
 			else
-				cnt = _counts->find(val, _contextEntries[nodeId]->probTableOffSet, _contextEntries[nodeId]->probTableBlockSize);
+				cnt = _counts->find(val, contextEntries[nodeId]->probTableOffSet, contextEntries[nodeId]->probTableBlockSize);
 			if ( cnt )
 				return (double)*cnt;
 			else
@@ -1731,20 +1539,20 @@ double FNGramCPT::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parents
 			// choose the node with the max normalized counts,
 			// this is equivalent to choosing the largest
 			// maximum-likelihod (ML) prob (a max MI criterion).
-			if ( nodeId != 0 && _contextEntries[nodeId] == NULL )
+			if ( nodeId != 0 && contextEntries[nodeId] == NULL )
 				return 0.0;
 			unsigned *cnt;
 			if ( nodeId == 0 )
 				cnt = _counts->find(val, 0, _probStartBlockSize);
 			else
-				cnt = _counts->find(val, _contextEntries[nodeId]->probTableOffSet, _contextEntries[nodeId]->probTableBlockSize);
+				cnt = _counts->find(val, contextEntries[nodeId]->probTableOffSet, contextEntries[nodeId]->probTableBlockSize);
 			if ( ! cnt )
 				return 0.0;
 
 			// get the counts of all entries
 			double denominator = 0;
 			unsigned key, count;
-			HashMTable<unsigned>::iterator it(*_counts, _contextEntries[nodeId]->probTableOffSet, _contextEntries[nodeId]->probTableBlockSize);
+			HashMTable<unsigned>::iterator it(*_counts, contextEntries[nodeId]->probTableOffSet, contextEntries[nodeId]->probTableBlockSize);
 			while ( it.next(key, count) ) {
 				denominator += count;
 			}
@@ -1754,29 +1562,29 @@ double FNGramCPT::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parents
 		break;
 	case CountsSumNumWordsNorm: {
 			// normalize by the number of words that have occured.
-			if ( nodeId != 0 && _contextEntries[nodeId] == NULL )
+			if ( nodeId != 0 && contextEntries[nodeId] == NULL )
 				return 0.0;
 			unsigned *cnt;
 			if ( nodeId == 0 )
 				cnt = _counts->find(val, 0, _probStartBlockSize);
 			else
-				cnt = _counts->find(val, _contextEntries[nodeId]->probTableOffSet, _contextEntries[nodeId]->probTableBlockSize);
+				cnt = _counts->find(val, contextEntries[nodeId]->probTableOffSet, contextEntries[nodeId]->probTableBlockSize);
 			if ( ! cnt )
 				return 0.0;
 
-			return (double)(*cnt) / ((double)_counts->size(_contextEntries[nodeId]->probTableOffSet, _contextEntries[nodeId]->probTableBlockSize));
+			return (double)(*cnt) / ((double)_counts->size(contextEntries[nodeId]->probTableOffSet, contextEntries[nodeId]->probTableBlockSize));
 		}
 		break;
 	case CountsProdCardinalityNorm:
 	case CountsSumCardinalityNorm:
 	case CountsSumLogCardinalityNorm: {
-			if ( nodeId != 0 && _contextEntries[nodeId] == NULL )
+			if ( nodeId != 0 && contextEntries[nodeId] == NULL )
 				return 0.0;
 			unsigned *cnt;
 			if ( nodeId == 0 )
 				cnt = _counts->find(val, 0, _probStartBlockSize);
 			else
-				cnt = _counts->find(val, _contextEntries[nodeId]->probTableOffSet, _contextEntries[nodeId]->probTableBlockSize);
+				cnt = _counts->find(val, contextEntries[nodeId]->probTableOffSet, contextEntries[nodeId]->probTableBlockSize);
 			if ( ! cnt )
 				return 0.0;
 
@@ -1794,7 +1602,7 @@ double FNGramCPT::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parents
 	case BogNodeProb:
 		// chose the one with the maximum smoothed probability
 		// this is also a max MI criterion.
-		return probBackingOff(val, nodeId).unlog();
+		return probBackingOff(val, nodeId, contextEntries, parentsValues).unlog();
 	default:
 		error("Error: unknown backoff strategy, value = %d\n", parentsStrategy);
 	}
@@ -1810,7 +1618,7 @@ double FNGramCPT::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parents
 
 /*-
  *-----------------------------------------------------------------------
- * FFNGramCPT::ParentType::read
+ * FFNGramImp::ParentType::read
  *      Read a parent specification such as W(-1).
  *
  * Results:
@@ -1821,7 +1629,7 @@ double FNGramCPT::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parents
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::ParentType::read(iDataStreamFile &ifs, shash_map<char, unsigned> &tagMap) {
+void FNGramImp::ParentType::read(iDataStreamFile &ifs, shash_map<char, unsigned> &tagMap) {
 	char c;
 	ifs.readChar(c);
 	unsigned* it = tagMap.find(c);
@@ -1841,7 +1649,7 @@ void FNGramCPT::ParentType::read(iDataStreamFile &ifs, shash_map<char, unsigned>
 }
 
 
-void FNGramCPT::ParentType::parseFromString(char* str, shash_map<char, unsigned> &tagMap) {
+void FNGramImp::ParentType::parseFromString(char* str, shash_map<char, unsigned> &tagMap) {
 	if ( str == NULL )
 		error("Error: string is null in FNGramCPT::ParentType::parseFromString");
 
@@ -1862,7 +1670,7 @@ void FNGramCPT::ParentType::parseFromString(char* str, shash_map<char, unsigned>
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::ParentType::operator ==
+ * FNGramImp::ParentType::operator ==
  *      Compare two parents.
  *
  * Results:
@@ -1873,19 +1681,19 @@ void FNGramCPT::ParentType::parseFromString(char* str, shash_map<char, unsigned>
  *
  *-----------------------------------------------------------------------
  */
-bool FNGramCPT::ParentType::operator == (const ParentType &parent) const {
+bool FNGramImp::ParentType::operator == (const ParentType &parent) const {
 	return index == parent.index && offset == parent.offset;
 }
 
 
 /*******************************************
- * methods for FNGramCPT::BackoffGraphNode *
+ * methods for FNGramImp::BackoffGraphNode *
  *******************************************/
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::BackoffGraphNode::BackoffGraphNode
+ * FNGramImp::BackoffGraphNode::BackoffGraphNode
  *      Default constructor.
  *
  * Results:
@@ -1896,7 +1704,7 @@ bool FNGramCPT::ParentType::operator == (const ParentType &parent) const {
  *
  *-----------------------------------------------------------------------
  */
-FNGramCPT::BackoffGraphNode::BackoffGraphNode() : gtFile(NULL),  knFile(NULL), countFile(NULL), wmean(NULL), contextTable(NULL) {
+FNGramImp::BackoffGraphNode::BackoffGraphNode() : gtFile(NULL),  knFile(NULL), countFile(NULL), wmean(NULL), contextTable(NULL) {
 	valid = false;
 	order = 0;
 	numBGChildren = 0;
@@ -1920,7 +1728,7 @@ FNGramCPT::BackoffGraphNode::BackoffGraphNode() : gtFile(NULL),  knFile(NULL), c
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::BackoffGraphNode::~BackoffGraphNode
+ * FNGramImp::BackoffGraphNode::~BackoffGraphNode
  *      Default destructor.
  *
  * Results:
@@ -1931,7 +1739,7 @@ FNGramCPT::BackoffGraphNode::BackoffGraphNode() : gtFile(NULL),  knFile(NULL), c
  *
  *-----------------------------------------------------------------------
  */
-FNGramCPT::BackoffGraphNode::~BackoffGraphNode() {
+FNGramImp::BackoffGraphNode::~BackoffGraphNode() {
 	delete [] gtFile;
 	delete [] knFile;
 	delete [] countFile;
@@ -1940,18 +1748,18 @@ FNGramCPT::BackoffGraphNode::~BackoffGraphNode() {
 }
 
 
-inline bool FNGramCPT::BackoffGraphNode::requiresGenBackoff() {
+inline bool FNGramImp::BackoffGraphNode::requiresGenBackoff() {
 	return ! ((numBGChildren <= 1) || (backoffCombine == AvgBgChild) || (backoffCombine == WmeanBgChild));
 }
 
 
 /************************************
- * methods for FNGramCPT::LevelIter *
+ * methods for FNGramImp::LevelIter *
  ************************************/
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::LevelIter::next
+ * FNGramImp::LevelIter::next
  *      Default constructor.
  *
  * Results:
@@ -1962,7 +1770,7 @@ inline bool FNGramCPT::BackoffGraphNode::requiresGenBackoff() {
  *
  *-----------------------------------------------------------------------
  */
-FNGramCPT::LevelIter::LevelIter(const unsigned int _numParents,const unsigned int _level)
+FNGramImp::LevelIter::LevelIter(const unsigned int _numParents,const unsigned int _level)
 : numParents(_numParents), numNodes(1 << _numParents), level(_level) {
 	init();
 }
@@ -1970,7 +1778,7 @@ FNGramCPT::LevelIter::LevelIter(const unsigned int _numParents,const unsigned in
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::LevelIter::init
+ * FNGramImp::LevelIter::init
  *      Initialize the iterator.
  *
  * Results:
@@ -1981,14 +1789,14 @@ FNGramCPT::LevelIter::LevelIter(const unsigned int _numParents,const unsigned in
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::LevelIter::init() {
+void FNGramImp::LevelIter::init() {
 	state = 0;
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::LevelIter::next
+ * FNGramImp::LevelIter::next
  *      Advance the iterator.
  *
  * Results:
@@ -1999,7 +1807,7 @@ void FNGramCPT::LevelIter::init() {
  *
  *-----------------------------------------------------------------------
  */
-bool FNGramCPT::LevelIter::next(unsigned int&node) {
+bool FNGramImp::LevelIter::next(unsigned int&node) {
 	for ( ; state < numNodes; state++ ) {
 		if ( numBitsSet(state) == level ) {
 			node = state++;
@@ -2011,13 +1819,13 @@ bool FNGramCPT::LevelIter::next(unsigned int&node) {
 
 
 /**************************************
- * methods for FNGramCPT::BGChildIter *
+ * methods for FNGramImp::BGChildIter *
  **************************************/
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::BGChildIter::BGChildIter
+ * FNGramImp::BGChildIter::BGChildIter
  *      Default constructor.
  *
  * Results:
@@ -2028,7 +1836,7 @@ bool FNGramCPT::LevelIter::next(unsigned int&node) {
  *
  *-----------------------------------------------------------------------
  */
-FNGramCPT::BGChildIter::BGChildIter(const unsigned int _numParents, const unsigned int _homeNode, const unsigned _constraint)
+FNGramImp::BGChildIter::BGChildIter(const unsigned int _numParents, const unsigned int _homeNode, const unsigned _constraint)
 : numParents(_numParents), homeNode(_homeNode), constraint(_constraint & homeNode) {	// remove extra 1's
 	init();
 }
@@ -2036,7 +1844,7 @@ FNGramCPT::BGChildIter::BGChildIter(const unsigned int _numParents, const unsign
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::BGChildIter::init
+ * FNGramImp::BGChildIter::init
  *      Initialize the iterator.
  *
  * Results:
@@ -2047,14 +1855,14 @@ FNGramCPT::BGChildIter::BGChildIter(const unsigned int _numParents, const unsign
  *
  *-----------------------------------------------------------------------
  */
-void FNGramCPT::BGChildIter::init() {
+void FNGramImp::BGChildIter::init() {
 	mask = 1 << (numParents - 1);
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::BGChildIter::next
+ * FNGramImp::BGChildIter::next
  *      Advance an iterator.
  *
  * Results:
@@ -2065,7 +1873,7 @@ void FNGramCPT::BGChildIter::init() {
  *
  *-----------------------------------------------------------------------
  */
-bool FNGramCPT::BGChildIter::next(unsigned int&node) {
+bool FNGramImp::BGChildIter::next(unsigned int&node) {
 	while ( mask != 0 ) {
 		if ( (mask & constraint) != 0 ) {
 			node = (~mask) & homeNode;
@@ -2081,7 +1889,7 @@ bool FNGramCPT::BGChildIter::next(unsigned int&node) {
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::BGGrandChildIter::BGGrandChildIter
+ * FNGramImp::BGGrandChildIter::BGGrandChildIter
  *      Default constructor.
  *
  * Results:
@@ -2092,7 +1900,7 @@ bool FNGramCPT::BGChildIter::next(unsigned int&node) {
  *
  *-----------------------------------------------------------------------
  */
-FNGramCPT::BGGrandChildIter::BGGrandChildIter(const unsigned _numParents, const unsigned _homeNode, BackoffGraphNode *_fngramNodes, const unsigned _great)
+FNGramImp::BGGrandChildIter::BGGrandChildIter(const unsigned _numParents, const unsigned _homeNode, BackoffGraphNode *_fngramNodes, const unsigned _great)
 : numParents(_numParents), numNodes(1<<_numParents), homeNode(_homeNode), numBitsSetOfHomeNode(numBitsSet(homeNode)), fngramNodes(_fngramNodes), great(_great) {
 	init();
 }
@@ -2100,7 +1908,7 @@ FNGramCPT::BGGrandChildIter::BGGrandChildIter(const unsigned _numParents, const 
 
 /*-
  *-----------------------------------------------------------------------
- * FNGramCPT::BGGrandChildIter::next
+ * FNGramImp::BGGrandChildIter::next
  *      Advance an iterator.
  *
  * Results:
@@ -2111,7 +1919,7 @@ FNGramCPT::BGGrandChildIter::BGGrandChildIter(const unsigned _numParents, const 
  *
  *-----------------------------------------------------------------------
  */
-bool FNGramCPT::BGGrandChildIter::next(unsigned int&node) {
+bool FNGramImp::BGGrandChildIter::next(unsigned int&node) {
 	// TODO make this faster
 	for ( ; state >= 0; state-- ) {
 		// all bits in child=state must also be on in homeNode
@@ -2125,4 +1933,293 @@ bool FNGramCPT::BGGrandChildIter::next(unsigned int&node) {
 }
 
 
-const unsigned FNGramCPT::maxNumParentsPerChild = 32;
+const unsigned FNGramImp::maxNumParentsPerChild = 32;
+
+
+/*************************
+ * methods for FNGramCPT *
+ *************************/
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::FNGramCPT
+ *      Default constructor for factored ngram CPT
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
+FNGramCPT::FNGramCPT() : CPT(di_FNGramCPT), _fngram(NULL), _startNode(0), _contextEntries(NULL) {
+	_numParents = 0;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::~FNGramCPT
+ *      Default destructor for factored ngram CPT
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      Clean up the memory.
+ *
+ *-----------------------------------------------------------------------
+ */
+FNGramCPT::~FNGramCPT() {
+	delete [] _contextEntries;
+}
+
+
+void FNGramCPT::setNumParents(unsigned nParents) {
+	_numParents = nParents;
+
+	// reset size
+	cardinalities.resize(_numParents);
+	_parentsPositions.resize(_numParents);
+}
+
+
+void FNGramCPT::setFNGramImp(FNGramImp *fngram) {
+	if ( _numParents > fngram->_numParents )
+		error("number of parents %d is bigger than internal fngram %d", _numParents, fngram->_numParents);
+
+	_fngram = fngram;
+	_card = _fngram->_card;
+	if ( _numParents == _fngram->_numParents ) {
+		for ( unsigned i = 0; i < _numParents; i++ ) {
+			_parentsPositions[i] = i;
+			cardinalities[i] = _fngram->cardinalities[i];
+		}
+	}
+
+	_startNode = (1 << _fngram->_numParents) - 1;
+
+#ifdef FNGRAM_BOW_GROW_DYNA
+	_parentsValues.resize(_fngram->_numParents);
+#endif
+
+	if ( _contextEntries != NULL)
+		delete _contextEntries;
+	_contextEntries = new FNGramImp::BackoffGraphNode::HashEntry * [_fngram->_numberOfBGNodes];
+	memset(_contextEntries, 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
+}
+
+
+void FNGramCPT::setParentsPositions(const vector<unsigned> &parentsPositions) {
+	if ( parentsPositions.size() != _numParents )
+		error("number of positions for parents %d is different from number of parents %d in FNGramCPT::setParentsPositions", parentsPositions.size(), _numParents);
+
+	_parentsPositions = parentsPositions;
+
+	// calculate the starting node
+	_startNode = 0x0U;
+
+	for ( unsigned i = 0; i < _numParents; i++ ) {
+		if ( _parentsPositions[i] > _numParents )
+			error("parent %d position %d is bigger or equal to number of parents %d in FNGramCPT::setParentsPositions", i, _parentsPositions[i], _numParents);
+		_startNode |= (1U << _parentsPositions[i]);
+		cardinalities[i] = _fngram->cardinalities[_parentsPositions[i]];
+	}
+
+	if ( ! _fngram->_bgNodes[_startNode].valid )
+		error("the node in FNGramCPT %x is not valid in backing-off path of FLM", _startNode);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::becomeAwareOfParentValues
+ *      Set context entry pointers when parents values are known.
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void FNGramCPT::becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv) {
+	assert(parents.size() == _numParents);
+
+	memset(_contextEntries, 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
+
+	unsigned * context = new unsigned [_numParents];
+
+	// descend down the BG, level by level except buttom (0)
+	for ( int level = _numParents; level > 0; level-- ) {
+		FNGramImp::LevelIter liter(_numParents, level);
+		for ( unsigned nodeAtLevel; liter.next(nodeAtLevel); ) {
+			// we make sure it is somewhere below startNode
+			if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+				// figure out which bits are on
+				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
+				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {
+					context[i] = RV2DRV(parents[onPos[i]])->val;
+				}
+				_contextEntries[nodeAtLevel] = _fngram->_bgNodes[nodeAtLevel].contextTable->find(context);
+			}
+		}
+	}
+
+	delete [] context;
+
+#ifdef FNGRAM_BOW_GROW_DYNA
+	for ( unsigned i = 0; i < _numParents; i++ )
+		_parentsValues[_parentsPositions[i]] = RV2DRV(parents[i])->val;
+#endif
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::begin
+ *      Set an iterator to the begin (and sets the probability directly)
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void FNGramCPT::begin(CPT::iterator& it, DiscRV* drv, logpr& p) {
+	it.drv = drv;
+	register DiscRVType value = 0;
+	p = _fngram->probBackingOff(value, _startNode, _contextEntries, _parentsValues);
+
+	while ( p.essentially_zero() ) {
+		value++;
+		// We keep the following assertion as we
+		// must have that at least one entry is non-zero.
+		// The read code of the FNGramCPT should ensure this
+		// as sure all parameter update procedures.
+		assert(value < card());
+		p = _fngram->probBackingOff(value, _startNode, _contextEntries, _parentsValues);
+	}
+	drv->val = value;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::becomeAwareOfParentValuesAndIterBegin
+ *      Set the parents and set an iterator to the begin.
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
+						      iterator &it,
+						      DiscRV*drv,
+						      logpr& p)
+{
+  // call functions in this class directly to avoid virtual dispatch.
+  FNGramCPT::becomeAwareOfParentValues(parents,drv);
+  FNGramCPT::begin(it, drv, p);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::probGivenParents
+ *      Retrieve the probability for a given value.
+ *
+ * Results:
+ *      Return the probability given the parents.
+ *
+ * Side Effects:
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr FNGramCPT::probGivenParents(vector < RV* >& parents, DiscRV* drv)
+{
+  FNGramCPT::becomeAwareOfParentValues(parents,drv);
+  return _fngram->probBackingOff(drv->val, _startNode, _contextEntries, _parentsValues);
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::next
+ *      Advance an iterator.
+ *
+ * Results:
+ *      Return true if the next exists.
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool FNGramCPT::next(iterator &it, logpr& p)
+{
+  do{
+    if ( (++it.drv->val) >= card() )
+      return false;
+    p = _fngram->probBackingOff(it.drv->val, _startNode, _contextEntries, _parentsValues);
+  } while ( p.essentially_zero() );
+  return true;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::randomSample
+ *      Generate a random sample according to the distribtution.
+ *
+ * Results:
+ *      Return a random sample.
+ *
+ * Side Effects:
+ *      This is using a inline function NGramCPT::end() rather
+ *      than the virtual version due to speed reason.
+ *      Please be carefult to override it for sub-classes.
+ *
+ *-----------------------------------------------------------------------
+ */
+int FNGramCPT::randomSample(DiscRV* drv)
+{
+  logpr prob = rnd.drand48();
+  iterator it;
+  logpr p;
+  FNGramCPT::begin(it,drv,p);
+  logpr sum;
+  do {
+    sum += p;
+    if ( prob <= sum )
+      break;
+  } while ( FNGramCPT::next(it,p) );
+  return drv->val;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * FNGramCPT::read
+ *      Read a language model file form ARPA file or index file.
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void FNGramCPT::read(iDataStreamFile &is)
+{
+}

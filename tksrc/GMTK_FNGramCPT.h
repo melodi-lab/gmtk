@@ -52,86 +52,11 @@
 #define FNGRAM_BOW_GROW_DYNA
 
 
-/*-
- * data type for factored language model CPT
+/**
+ * This is what's inside FNGramCPT
+ * This is seperated from FNGramCPT so that it can support fewer parents and the FLM itself.
  */
-class FNGramCPT : public CPT {
-
-public:
-	// constructors and destructor
-	FNGramCPT();
-	~FNGramCPT();
-
-	///////////////////////////////////////////////////////////
-	// virtual functions from class CPT
-
-	///////////////////////////////////////////////////////////
-	// Semi-constructors: useful for debugging.
-	// Functions to force the internal structures to be particular values.
-	// Force the number of parents to be such.
-	virtual void setNumParents(const unsigned nParents);
-
-	// Allocate memory, etc. for the internal data structures
-	// for this CPT, depending on current _numParents & cardinalities.
-	virtual void allocateBasicInternalStructures() {}
-
-
-        ///////////////////////////////////////////////////////////  
-        // Probability evaluation, compute Pr( child | parents ), and
-        // iterator support. See GMTK_CPT.h for documentation.
-	virtual void becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv);
-	virtual void begin(iterator& it, DiscRV* drv,logpr& p);
-        virtual void becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, 
-							   iterator &it, 
-							   DiscRV* drv, 
-							   logpr& p);
-	virtual logpr probGivenParents(vector< RV* >& parents, 
-				       DiscRV* drv);
-	virtual bool next(iterator &it,logpr& p);
-
-	///////////////////////////////////////////////////////////
-	// Given the current parent values, generate a random sample.
-	virtual int randomSample(DiscRV*drv);
-
-	///////////////////////////////////////////////////////////
-	// Re-normalize the output distributions
-	virtual void normalize() {}
-	// set all values to random values.
-	virtual void makeRandom() {}
-	// set all values to uniform values.
-	virtual void makeUniform() {}
-
-	///////////////////////////////////////////////////////////
-	// read in the basic parameters, assuming file pointer
-	// is located at the correct position.
-	virtual void read(iDataStreamFile& is);
-	///////////////////////////////////////////////////////////
-	// Do nothing.
-	virtual void write(oDataStreamFile& os) {}
-
-	void setTagMap(shash_map<char, unsigned> &tagMap) {_tagMap = tagMap;}
-	void readFNGramSpec(iDataStreamFile &ifs);
-	void readLMFile(std::vector<Vocab*> vocabs);
-	void readCountFile(std::vector<Vocab*> vocabs);
-
-	////////////////////////////////////////////////////////////////////////////
-	// from base class EMable
-        void emStartIteration() {}
-        void emIncrement(logpr prob,vector < RV* >& parents, RV*r) {}
-        void emEndIteration() {}
-        void emSwapCurAndNew() {}
-
-	// return the number of parameters for object.
-	virtual unsigned totalNumberParameters() {return _totalNumberOfParameters;}
-
-	///////////////////////////////////////////////////////////////
-	// virtual functions for objects to do the actual work.
-	virtual void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
-	virtual void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
-	virtual void emZeroOutObjectsAccumulators() {}
-	virtual void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}
-	virtual void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {}
-
+class FNGramImp : public NamedObject {
 protected:
 	// data structures
 
@@ -276,15 +201,30 @@ protected:
 		const unsigned great;
 	};
 
+public:
+	FNGramImp();
+	~FNGramImp();
+
+	void setNumParents(const unsigned nParents);
+
+	void setTagMap(shash_map<char, unsigned> &tagMap) {_tagMap = tagMap;}
+	void read(iDataStreamFile &ifs);
+	void readFNGramSpec(iDataStreamFile &ifs);
+	void readLMFile(std::vector<Vocab*> vocabs);
+	void readCountFile(std::vector<Vocab*> vocabs);
+
+	logpr probBackingOff(unsigned val, unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues);
+
+	// return the number of parameters for object.
+	unsigned totalNumberOfParameters() {return _totalNumberOfParameters;}
+
+protected:
+	friend class FNGramCPT;
+
 	// misc helping methods
 	static long strtolplusb(const char *nptr, char **endptr, int base);
 	static inline unsigned numBitsSet(unsigned u);
 	static const std::vector<unsigned> bitsOn(unsigned u);
-
-	// returns the type of the sub-object in string
-	// form that is suitable for printing and identifying
-	// the type of the object.
-	virtual const string typeName() {return std::string("FNGramCPT");}
 
 	// methods for parsing structure file
 	unsigned parseNodeString(char *str);
@@ -294,15 +234,18 @@ protected:
 	void computeCardinalityFunctions();
 
 	// following procedures are for calculating probabilities when parents are known
-	logpr probBackingOff(unsigned val, unsigned nodeId);
-	logpr bgChildProbBackingOff(unsigned val, unsigned nodeId);
-	logpr bgChildProbSum(unsigned nodeId);
-	unsigned boNode(unsigned val, unsigned nodeId);
-	double backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parentsStrategy, unsigned nodeId);
+	logpr bgChildProbBackingOff(unsigned val, unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues);
+	logpr bgChildProbSum(unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues);
+	unsigned boNode(unsigned val, unsigned nodeId, BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues);
+	double backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parentsStrategy, unsigned nodeId,
+		BackoffGraphNode::HashEntry **contextEntries, const std::vector<unsigned> &parentsValues);
 
 	// data fields
 	unsigned _childIndex;				// child id as W in P(W|F1, F2,...)
+	unsigned _card;
+	unsigned _numParents;				// number of parents
 	ParentType *_parents;				// parent specifications
+	std::vector<unsigned> cardinalities;
 	shash_map<char, unsigned> _tagMap;	// parents tag map
 
 	unsigned _numberOfBGNodes;			// total number of possible backing-off graph nodes
@@ -318,14 +261,100 @@ protected:
 	// total number of probabilities and backing-off weights
 	unsigned _totalNumberOfParameters;
 
-	// this will be set when parents value is known
-	BackoffGraphNode::HashEntry ** _contextEntries;
+	static const unsigned maxNumParentsPerChild;
+};
 
+
+/*-
+ * data type for factored language model CPT
+ */
+class FNGramCPT : public CPT {
+
+public:
+	// constructors and destructor
+	FNGramCPT();
+	~FNGramCPT();
+
+	void setFNGramImp(FNGramImp *fngram);
+	void setParentsPositions(const vector<unsigned> &parentsPositions);
+
+	///////////////////////////////////////////////////////////
+	// virtual functions from class CPT
+
+	///////////////////////////////////////////////////////////
+	// Semi-constructors: useful for debugging.
+	// Functions to force the internal structures to be particular values.
+	// Force the number of parents to be such.
+	virtual void setNumParents(const unsigned nParents);
+
+	// Allocate memory, etc. for the internal data structures
+	// for this CPT, depending on current _numParents & cardinalities.
+	virtual void allocateBasicInternalStructures() {}
+
+	///////////////////////////////////////////////////////////
+	// Probability evaluation, compute Pr( child | parents ), and
+	// iterator support. See GMTK_CPT.h for documentation.
+	virtual void becomeAwareOfParentValues(vector< RV* >& parents, const RV* rv);
+	virtual void begin(iterator& it, DiscRV* drv,logpr& p);
+	virtual void becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p);
+	virtual logpr probGivenParents(vector< RV* >& parents, DiscRV* drv);
+	virtual bool next(iterator &it,logpr& p);
+
+	///////////////////////////////////////////////////////////
+	// Given the current parent values, generate a random sample.
+	virtual int randomSample(DiscRV*drv);
+
+	///////////////////////////////////////////////////////////
+	// Re-normalize the output distributions
+	virtual void normalize() {}
+	// set all values to random values.
+	virtual void makeRandom() {}
+	// set all values to uniform values.
+	virtual void makeUniform() {}
+
+	///////////////////////////////////////////////////////////
+	// read in the basic parameters, assuming file pointer
+	// is located at the correct position.
+	virtual void read(iDataStreamFile& is);
+	///////////////////////////////////////////////////////////
+	// Do nothing.
+	virtual void write(oDataStreamFile& os) {}
+
+	////////////////////////////////////////////////////////////////////////////
+	// from base class EMable
+	void emStartIteration() {}
+	void emIncrement(logpr prob,vector < RV* >& parents, RV*r) {}
+	void emEndIteration() {}
+	void emSwapCurAndNew() {}
+
+	// return the number of parameters for object.
+	virtual unsigned totalNumberParameters() {return _fngram->totalNumberOfParameters();}
+
+	///////////////////////////////////////////////////////////////
+	// virtual functions for objects to do the actual work.
+	virtual void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
+	virtual void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
+	virtual void emZeroOutObjectsAccumulators() {}
+	virtual void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}
+	virtual void emAccumulateObjectsAccumulators(iDataStreamFile& ifile) {}
+
+protected:
+	// returns the type of the sub-object in string
+	// form that is suitable for printing and identifying
+	// the type of the object.
+	virtual const string typeName() {return std::string("FNGramCPT");}
+
+	FNGramImp *_fngram;
+
+	unsigned _startNode;
+	std::vector<unsigned> _parentsPositions;
+
+	// this will be set when parents value is known
 #ifdef FNGRAM_BOW_GROW_DYNA
 	std::vector<unsigned> _parentsValues;
 #endif
 
-	static const unsigned maxNumParentsPerChild;
+	FNGramImp::BackoffGraphNode::HashEntry ** _contextEntries;
 };
 
 
