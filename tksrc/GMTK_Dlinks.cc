@@ -35,6 +35,7 @@
 #include "error.h"
 
 #include "GMTK_Dlinks.h"
+#include "GMTK_DlinkMatrix.h"
 
 VCID("$Header$");
 
@@ -150,3 +151,74 @@ Dlinks::write(oDataStreamFile& os)
 //        Misc Support
 ////////////////////////////////////////////////////////////////////
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * compatibleWith()
+ *      returns true of this object is compatible with the argument function.
+ * 
+ * Preconditions:
+ *      Object must be read in.
+ *
+ * Postconditions:
+ *      --
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      true only if compatibility holds.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool 
+Dlinks::compatibleWith(DlinkMatrix& d)
+{
+  if (numFeats() != d.numFeats())
+    return false;
+  for (int i=0;i<numFeats();i++) {
+    if (numLinks(i) != d.numLinks(i))
+      return false;
+  }
+  return true;
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * preCompute()
+ *      precompute the offset array.
+ * 
+ * Preconditions:
+ *      basic object should be read in.
+ *
+ * Postconditions:
+ *      offset array is computed.
+ *
+ * Side Effects:
+ *      destroys old offset array
+ *
+ * Results:
+ *      retunrs nil
+ *
+ *-----------------------------------------------------------------------
+ */
+bool 
+Dlinks::preCompute(const unsigned stride)
+{
+  // first go through and find out how long it needs to be
+  unsigned len = 0;
+  for (int i=0;i<numFeats();i++) 
+    len += numLinks(i);
+
+  preComputedOffsets.resize(len);
+
+  int entry = 0;
+  for (int i=0;i<numFeats();i++)
+    for (int j=0;j<numLinks(i);j++) {
+      preComputedOffsets[entry] = 
+	dIndices[i][j].lag*stride+offset;
+    }
+}
