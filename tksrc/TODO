@@ -647,4 +647,6 @@ Mon Jul 22 13:40:06 2002
     random parent, entire clique weight = cardinality of
     that parent).
 
- 
+Mon Jul 22 15:15:04 2002
+  - when strcutre contains no observations in file, shouldn't
+    require obs file.
