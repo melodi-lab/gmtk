@@ -2367,10 +2367,13 @@ triangulateSimulatedAnnealing(
     weight_sqr_sum,
     orgnl_nghbrs);         
 
-  ++moves_accepted; 
   mean = weight_sum/moves_accepted; 
+  ++moves_accepted; 
   variance = (weight_sqr_sum-(weight_sum*weight_sum)/(double)moves_accepted)/
               (double)moves_accepted;
+  if (variance < 0) {
+    variance = 0;
+  }
   std_dev = sqrt(variance);
 
   crrnt_tmprtr = 1.0+std_dev;
@@ -2417,10 +2420,13 @@ triangulateSimulatedAnnealing(
     ////////////////////////////////////////////////////////////////
     if (moves_accepted > 0) {
 
-      ++moves_accepted; 
       mean = weight_sum/moves_accepted; 
+      ++moves_accepted; 
       variance = ( weight_sqr_sum - (weight_sum*weight_sum)/
                    (double)moves_accepted ) / (double)moves_accepted;
+      if (variance < 0) {
+        variance = 0;
+      }
 
       std_dev = sqrt(variance);
 
