@@ -28,12 +28,15 @@
 #include "general.h"
 #include "error.h"
 #include "rand.h"
+#include "lineqsolve.h"
 
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MeanVector.h"
+#include "GMTK_DiagCovarVector.h"
 
 VCID("$Header$");
 
@@ -359,12 +362,27 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
     zAccumulators[i] = 0.0;
   }
 
+  sharedZZDenominator.growIfNeeded(zzAccumulators.len());
+  for (int i=0;i<sharedZZDenominator.len();i++) {
+    sharedZZDenominator[i] = 0.0;
+  }
+
   if(emOnGoingBitIsSet()) {
     // EM already on going.
     // Increment the count of number of Gaussian Components using this mean.
     refCount++;
     // this object therefore is shared, set the bit saying so.
     emSetSharedBit();
+
+    if (refCount == 2) {
+      // initialize the denominator if this is the
+      // first time that we find out that this mean is shared
+      // (known by the fact that refCount == 2).
+      sharedZZDenominator.growIfNeeded(zzAccumulators.len());
+      for (int i=0;i<sharedZZDenominator.len();i++) {
+	sharedZZDenominator[i] = 0.0;
+      }
+    }
     return;
   }
 
@@ -480,6 +498,7 @@ DlinkMatrix::emIncrement(const logpr prob,
 
 }
 
+#if 0
 
 void
 DlinkMatrix::emEndIteration(const float*const xzAccumulators)
@@ -519,6 +538,217 @@ DlinkMatrix::emEndIteration(const float*const xzAccumulators)
     // finish computing the next means.
     for (int i=0;i<nextArr.len();i++) {
       nextArr[i] *= invRealAccumulatedProbability;
+    }
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+#endif
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIterationSharedMeansCovarsDlinks()
+ *      end the EM iteration for this var in the case that the
+ *      covariances, means, and dlinks are shared amongst multiple arbitrary 
+ *      Gaussians. 
+ *      
+ *      Note: this routine allows for an arbitrary set of
+ *      Gaussians to share another arbitrary set of Means and a
+ *      third arbitrary set of Covariances. It is more general
+ *      than tying multiple means & variances together identicaly.
+ *      In that case, state tieing should be used.
+ *
+ *      Note: this routine is probably a GEM rather than an EM.
+ * 
+ * Preconditions:
+ *      see the assertions
+ *
+ * Postconditions:
+ *      EM iteration has been ended.
+ *
+ * Side Effects:
+ *      internal parameters are changed.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulators,
+						   const float*const zAccumulators,
+						   const float*const zzAccumulators,
+						   const MeanVector* mean,
+						   const DiagCovarVector* covar)
+{
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
+  if (refCount > 0) {
+    // if this isn't the case, something is wrong.
+    assert ( emOnGoingBitIsSet() );
+
+    // grab a pointer to the previous inverse variances
+    // needed for normalization.
+    const float* previous_variances_inv_ptr = covar->variances_inv.ptr;
+    // previous mean
+    const float* prev_mean_ptr = mean->means.ptr;
+
+    const float* xzAccumulators_ptr = xzAccumulators;
+    const float* zAccumulators_ptr = zAccumulators;
+    const float* zzAccumulators_ptr = zzAccumulators;    
+
+    float *nextArr_ptr = nextArr.ptr;
+
+    double *sharedZZDenominator_ptr = sharedZZDenominator.ptr;
+
+    for (int i=0;i<dim();i++) {
+      
+      const int nLinks = numLinks(i);
+
+      for (int j=0;j<nLinks;j++) {
+	double tmp = 
+	  (double)previous_variances_inv_ptr[i]*
+	  (
+	   (double)(*xzAccumulators_ptr++)
+	   -
+	   ((double)(prev_mean_ptr[i])*(*zAccumulators_ptr++))
+	   );
+	*nextArr_ptr++ += tmp;
+
+	for (int k=0;k<nLinks;k++) {
+	  *sharedZZDenominator_ptr++ 
+	    +=
+	    previous_variances_inv_ptr[i]*
+	    (*zzAccumulators_ptr++);
+	}
+      }
+    }
+
+    refCount--;
+  }
+
+  /////////////////////////////////////////////
+  // if there is still someone who
+  // has not given us his/her accumulators
+  // then we return w/o finishing.
+  if (refCount > 0)
+    return;
+
+  // accumulatedProbability.floor();
+  if (accumulatedProbability < minContAccumulatedProbability()) {
+    warning("WARNING: shared dLink matrix '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
+	    name().c_str(),
+	    accumulatedProbability.val());
+    for (int i=0;i<nextArr.len();i++)
+      nextArr[i] = arr[i];
+  } else {
+
+    sArray<double> nextDlinkMat;
+
+    double *sharedZZDenominator_ptr = sharedZZDenominator.ptr;
+    float *nextArr_ptr = nextArr.ptr;
+
+    unsigned numFlooredDlinks = 0;
+    double minDlinkValue = DBL_MAX;
+    for (int i=0;i<dim();i++) {
+      const int nLinks = numLinks(i);
+
+      nextDlinkMat.growIfNeeded(nLinks);
+      // copy and convert to double
+      for (int j=0;j<nLinks;j++) {
+	nextDlinkMat[j] = nextArr_ptr[j];
+      }
+      
+      // solve for the link values putting the results in
+      // nextDlinkMat destroying the old values.
+      ::lineqsolve(nLinks,1,sharedZZDenominator_ptr,nextDlinkMat.ptr);
+
+      // copy out and convert back to single precision.
+      for (int j=0;j<nLinks;j++) {
+	if (nextDlinkMat[j] > FLT_MIN)
+	  nextArr_ptr[j] = nextDlinkMat[j];
+	else {
+	  nextArr_ptr[j] = FLT_MIN;
+	  numFlooredDlinks ++;
+	}
+	if (nextDlinkMat[j] < minDlinkValue)
+	  minDlinkValue = nextDlinkMat[j];
+      }
+
+      nextArr_ptr += nLinks;
+      sharedZZDenominator_ptr += (nLinks*nLinks);
+    }
+
+    if (numFlooredDlinks > 0) {
+      warning("WARNING: shared dlink matrix '%s' had %d dlinks floored to %e, minimum dlink value found was %e.\n",
+	      name().c_str(),
+	      numFlooredDlinks,
+	      FLT_MIN,
+	      minDlinkValue);
+    }
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIterationNoSharingAlreadyNormalized()
+ *      end the EM iteration for this mean object, where we have no
+ *      sharing, but the mean has already been normalized. We still
+ *      need to check for a small accumulator probability in which case we 
+ *      just use the previous dlinks (rather than the new ones).
+ * 
+ * Preconditions:
+ *      basic structures must be allocated, EM must be ongoing.
+ *
+ * Postconditions:
+ *      em iteration is ended.
+ *
+ * Side Effects:
+ *      possibly updates all next parameters
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumulators)
+{
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
+  // if this isn't the case, something is wrong.
+  assert ( emOnGoingBitIsSet() );
+
+  // shouldn't be called when sharing occurs, ensure this.
+  assert ( refCount == 1 );
+  assert (!emSharedBitIsSet());
+  refCount = 0;
+
+  // accumulatedProbability.floor();
+  if (accumulatedProbability < minContAccumulatedProbability()) {
+    warning("WARNING: dLink matrx '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
+	    name().c_str(),
+	    accumulatedProbability.val());
+    for (int i=0;i<nextArr.len();i++)
+      nextArr[i] = arr[i];
+  } else {
+    // finish computing the next means.
+    for (int i=0;i<nextArr.len();i++) {
+      nextArr[i] = xzAccumulators[i];
     }
   }
 
