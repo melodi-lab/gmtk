@@ -47,7 +47,7 @@ ioDataStreamFile::errorReturn(char *from,char *msg)
 //////////////////////////////////////////////////////////////////////
 
 
-iDataStreamFile::iDataStreamFile(char *_name, bool _Binary)
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
   : ioDataStreamFile(_name,_Binary)
 {
   if (_name == NULL)
@@ -269,7 +269,7 @@ iDataStreamFile::readDouble(double& d, char *msg)
 //////////////////////////////////////////////////////////////////////
 
 
-oDataStreamFile::oDataStreamFile(char *_name,bool _Binary)
+oDataStreamFile::oDataStreamFile(const char *const _name,bool _Binary)
   : ioDataStreamFile(_name,_Binary)
 {
   if (_name == NULL)
