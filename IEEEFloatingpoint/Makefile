@@ -37,8 +37,8 @@ INSTALL_EXE = $(INSTALL) -m 555
 # OPTFLAGS = -O
 OPTFLAGS =
 
-
-EXFLAGS =  # extra flags via command line (e.g., -pg).
+# extra flags via command line (e.g., -pg).
+EXFLAGS =  -DHAVE_NONSTANDARD_ARITHMETIC
 CXXFLAGS = -g $(OPTFLAGS) $(EXFLAGS) -Wall -ansi -pedantic
 CCFLAGS = -g $(OPTFLAGS)  $(EXFLAGS) -Wall -ansi -pedantic
 LDFLAGS = 
