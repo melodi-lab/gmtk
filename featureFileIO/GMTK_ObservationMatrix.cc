@@ -17,120 +17,250 @@
 #include <stdio.h>
 #include "GMTK_ObservationMatrix.h"
 
-
+// create ObservationMatrix object
 
 ObservationMatrix::ObservationMatrix() {
 
-  _numFrames = 0;
-  _numContinuous = 0;
-  _numDiscrete = 0;
-  _numFeatures = 0;
+  numFrames = 0;
+  numContinuous = 0;
+  numDiscrete = 0;
+  numFeatures = 0;
+  stride = 0;
+  segmentNumber = 0;
+
+  _totalContinuous = 0;
+  _totalDiscrete = 0;
   _maxContinuous = 0;
   _maxDiscrete = 0;
-  
-  _stride = 0;
-  
   _bufSize = 0;
-
-  // structure of observation matrix: in each frame, all continuous
-  // features come first, followed by all discrete features
+  _numSegments = 0;
+  _numStreams = 0;
   
   _cont_p = NULL;
   _disc_p = NULL;
+  _inStreams = NULL;
 
 }
 
-
-/* constructor for data buffer (= feature matrix)
- * n_frames: max number of frames in buffer
- * n_floats: number of continuous features
- * n_ints: number of discrete features
- * max_floats: max number of floats per frame in any of the input streams
- * max_ints: max number of ints per frame in any of the input streams
- */
-
-
-ObservationMatrix::ObservationMatrix(size_t n_frames, 
-				     unsigned n_floats, 
-				     unsigned n_ints,
-				     unsigned max_floats,
-				     unsigned max_ints) {
-				     
-
-  _numFrames = n_frames;
-  _numContinuous = n_floats;
-  _numDiscrete = n_ints;
-  _numFeatures = _numContinuous + _numDiscrete;
-  _maxContinuous = max_floats;
-  _maxDiscrete = max_ints;
-  
-  _stride = _numFeatures; 
-  
-  features.resize(_numFrames * _numFeatures); // actual observation buffer
-  
-  cont_fea.resize(_maxContinuous); // temporary buffers for 1 frame of input
-  disc_fea.resize(_maxDiscrete);   
-
-  _bufSize = _numFrames;
-
-  // structure of observation matrix: in each frame, all continuous
-  // features come first, followed by all discrete features
-  
-  _cont_p = features.ptr;  // pointer to continuous block 
-  _disc_p = features.ptr + _numContinuous; // pointer to discrete block
-}
+// initializes input streams, allocates feature buffer 
 
 void
-ObservationMatrix::reset(size_t n_frames, 
-			 unsigned n_floats, 
-			 unsigned n_ints,
-			 unsigned max_floats,
-			 unsigned max_ints) 
-{
-  _numFrames = n_frames;
-  _numContinuous = n_floats;
-  _numDiscrete = n_ints;
-  _numFeatures = _numContinuous + _numDiscrete;
-  _maxContinuous = max_floats;
-  _maxDiscrete = max_ints;
+ObservationMatrix::openFiles(int n_files,
+			     const char **fof_names,
+			     const char **cont_range_str,
+			     const char **disc_range_str,
+			     unsigned *n_floats,
+			     unsigned *n_ints,
+			     unsigned *formats,
+			     bool *swapflag) {
   
-  _stride = _numFeatures; 
-  
-  features.resize(_numFrames * _numFeatures); // actual observation buffer
-  
-  cont_fea.resize(_maxContinuous); // temporary buffers for 1 frame of input
-  disc_fea.resize(_maxDiscrete);   
+  assert (n_files > 0);
 
-  _bufSize = _numFrames;
+  _numStreams = n_files;
 
-  // structure of observation matrix: in each frame, all continuous
-  // features come first, followed by all discrete features
+  // obligatory info
+
+  if (fof_names == NULL)
+    error("ObservationMatrix::openFiles: list of file names is NULL\n");
+
+  if (formats == NULL)
+    error("ERROR DataInStream: list of file formats is NULL\n");
+
+  if (n_floats == NULL)
+    error("DataInStream: list of number of floats is NULL\n");
+
+  if (n_ints == NULL)
+    error("DataInStream: list of number of ints is NULL\n");
+
+  _inStreams = new StreamInfo*[_numStreams];
+
+  // create stream info for each stream
+
+  for (int i = 0; i < _numStreams; i++) {
+
+    if (fof_names[i] == NULL)
+      error("ObservationMatrix::openFiles: file list for stream %i is NULL\n",i);
+
+    // when range string is missing, assume default = all features
+
+    const char *crng, *drng;
+    
+    if (cont_range_str == NULL || cont_range_str[i] == NULL )
+      crng = "all"; 
+    else
+      crng = cont_range_str[i];
+
+    if (disc_range_str == NULL || disc_range_str[i] == NULL)
+      drng = "all";
+    else
+      drng = disc_range_str[i];
+
+    // assume default = no swapping
+
+    bool sflag;
+
+    if (swapflag == NULL || swapflag[i] == NULL)
+      sflag = 0; 
+    else
+      sflag = swapflag[i];
+
+    _inStreams[i] = new StreamInfo(fof_names[i],
+				  crng,
+				  drng,
+				  &n_floats[i],
+				  &n_ints[i],
+				  &formats[i],
+				  sflag,i);
+
+    // check stream sizes and set to smallest common value
+
+    if (i > 0 ) {
+
+      size_t a = _inStreams[i-1]->fofSize;
+      size_t b = _inStreams[i]->fofSize;
+      
+      if (a != b) {
+        warning("WARNING: DataInStream: different number of files in '%s' (%li) an\
+d '%s' (%li) - will only read minimum number\n",fof_names[i-1],a,
+                fof_names[i], b);
+	
+        a < b ? _inStreams[i]->fofSize = a : _inStreams[i-1]->fofSize = b;
+      }
+    }
+
+    // add up features used for observation matrix
+
+    numContinuous += _inStreams[i]->nFloatsUsed;
+    numDiscrete += _inStreams[i]->nIntsUsed;
+
+    if (n_floats[i] > _maxContinuous)
+      _maxContinuous = n_floats[i];
+
+    if (n_ints[i] > _maxDiscrete)
+      _maxDiscrete = n_ints[i];
+  }
+
+
+  _numSegments = _inStreams[0]->fofSize; // same for all streams
+
+  numFeatures = numContinuous + numDiscrete;
+
+  stride = numFeatures; 
+
+  // initialize feature buffer 
+
+  _bufSize = MAXBUFSIZE;
+  
+  features.resize(_bufSize * stride); 
+
+  _contFea.resize(_maxContinuous); // temporary buffers for 1 frame of input
+  _discFea.resize(_maxDiscrete);   
+
   
   _cont_p = features.ptr;  // pointer to continuous block 
-  _disc_p = features.ptr + _numContinuous; // pointer to discrete block
-}
+  _disc_p = features.ptr + numContinuous; // pointer to discrete block
 
+}
 
 ObservationMatrix::~ObservationMatrix() {
-  
-  ;
+
+  for (int i = 0; i < _numStreams; i++)
+    delete _inStreams[i];
+  delete [] _inStreams;
+
 }
 
-
-/* prepares data buffer for next frame to be read in
- * (advances pointers to current location in buffer)
- */
+/* read input for single segment 'segno' */
 
 void
-ObservationMatrix::next() {
+ObservationMatrix::loadSegment(const unsigned segno) {
+
+  int i;
+  size_t n_samps;
+  StreamInfo *s;
+  char *fname;
+
+
+  if (segno < 0 || segno > _numSegments)
+    error("ObservationMatrix::loadSegment: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
+
+
+  reset();
+
+  for (i = 0; i < _numStreams; i++) {
+
+    s = _inStreams[i];
+
+    char *sname = s->fofName;
+
+    if (s == NULL)
+      error("ObservationMatrix::loadSegment: stream %s is NULL\n",sname);
+
+    if (s->dataFormat != PFILE) {
+
+      if (s->dataNames == NULL)
+        error("ObservationMatrix::loadSegment: List of file names for stream %s is NULL\n",sname);
+
+      fname = s->dataNames[segno];
+
+      if (fname == NULL)
+        error("ObservationMatrix::loadSegment: Filename %li is NULL in stream %s\n",segno,sname);
+    }
+    else {
+      if (s->pfile_istr == NULL)
+        error("ObservationMatrix::loadSegment: pfile stream %s is NULL\n",
+              s->fofName);
+    }
   
-  _cont_p += _numDiscrete;
-  _disc_p += _numContinuous;
+    switch(s->dataFormat) {
+
+    case RAWBIN:
+      n_samps = openBinaryFile(s,segno);
+      break;
+    case RAWASC:
+      n_samps = openAsciiFile(s,segno);
+      break;
+    case HTK:
+      n_samps = openHTKFile(s,segno);
+      break;
+    case PFILE:
+      n_samps = openPFile(s,segno);
+      break;
+    default:
+      error("ObservationMatrix::loadSegment: Invalid file format specified for stream %i\n",i);
+    }
+
+    if (n_samps == 0)
+      error("ObservationMatrix::loadSegment: failure to read file '%s'\n",fname);
+
+    if (i > 0 && n_samps != _inStreams[i-1]->curNumFrames) {
+      error("ObservationMatrix::loadSegment: Number of samples for sentence %i don't match for streams %s and %s (%li vs. %li)\n",
+	    segno,
+	    _inStreams[i-1]->fofName,
+	    s->fofName,
+	    _inStreams[i-1]->curNumFrames,
+	    n_samps);
+    }
+  }
+  numFrames = n_samps;
+
+  // resize buffer if necessary
+
+  if (numFrames > _bufSize) 
+    resize(numFrames*2);
+
+  for (size_t n = 0; n < numFrames; n++) 
+    readFrame(n);
+  
+  segmentNumber = segno;
+
+  closeDataFiles();
 }
+  
 
 /* read binary floats into data buffer
  * n_floats: number of floats to be read
- * f: file to read from
+ * f: stream to read from
  * cont_rng: range of features to actually use (from total frame read)
  * bswap: bytes will be swapped if true
  * returns 1 if successful, else 0
@@ -148,14 +278,14 @@ ObservationMatrix::readBinFloats(unsigned n_floats, FILE *f,
     return 0;
   }
 
-  if (cont_fea.ptr == NULL) {
+  if (_contFea.ptr == NULL) {
     warning("ObservationMatrix::readBinFloats: Temporary buffer is NULL\n");
     return 0;
   }
 
   // read complete frame
   
-  n_read = fread((float *)cont_fea.ptr,sizeof(float),n_floats,f);
+  n_read = fread((float *)_contFea.ptr,sizeof(float),n_floats,f);
   
   if (n_read != n_floats) {
     warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
@@ -171,17 +301,16 @@ ObservationMatrix::readBinFloats(unsigned n_floats, FILE *f,
     float *fp = (float *)_cont_p;
 
     if (fp == NULL) {
-      warning("OvservationMatrix::readBinFloats: memory error reading %i'th feature",i);
+      warning("ObservationMatrix::readBinFloats: memory error reading %i'th feature",i);
       return 0;
     }
 
     if (bswap) 
-      swapb_vi32_vi32(1,(const int *)&cont_fea.ptr[i],(int *)fp);
+      swapb_vi32_vi32(1,(const int *)&_contFea.ptr[i],(int *)fp);
     else
-      *fp = cont_fea.ptr[i];
+      *fp = _contFea.ptr[i];
     
   }
-
   return 1;
 }
 
@@ -202,12 +331,12 @@ ObservationMatrix::readPFloats(InFtrLabStream_PFile *str, BP_Range *cont_rng) {
     return 0;
   }
   
-  if (cont_fea.ptr == NULL) {
+  if (_contFea.ptr == NULL) {
     warning("ObservationMatrix::readPFLoats: Temporary buffer is NULL\n");
     return 0;
   }
   
-  if ((n_read = str->read_ftrslabs((size_t)1,(float *)cont_fea.ptr,NULL)) != 1) {
+  if ((n_read = str->read_ftrslabs((size_t)1,(float *)_contFea.ptr,NULL)) != 1) {
     warning("ObservationMatrix::readPFLoats: read failed\n");
     return 0;
   }
@@ -221,7 +350,7 @@ ObservationMatrix::readPFloats(InFtrLabStream_PFile *str, BP_Range *cont_rng) {
       return 0;
     }
 
-    *fp = cont_fea.ptr[i];
+    *fp = _contFea.ptr[i];
   }
 
   return 1;
@@ -244,12 +373,12 @@ ObservationMatrix::readAscFloats(unsigned n_floats,
     return 0;
   }
 
-  if (cont_fea.ptr == NULL) {
+  if (_contFea.ptr == NULL) {
     warning("ObservationMatrix::readAscFloats: Temporary buffer is NULL\n");
     return 0;
   }
 	
-  float *fea_p = cont_fea.ptr;
+  float *fea_p = _contFea.ptr;
   
   for (unsigned n = 0; n < n_floats; n++,fea_p++)
     if (fscanf(f,"%e",fea_p) != 1) {
@@ -266,7 +395,7 @@ ObservationMatrix::readAscFloats(unsigned n_floats,
       return 0;
     }
 
-    *fp = cont_fea.ptr[i];
+    *fp = _contFea.ptr[i];
   }
   return 1;
 }
@@ -286,12 +415,12 @@ ObservationMatrix::readPInts(InFtrLabStream_PFile *str, BP_Range *disc_rng) {
     return 0;
   }
   
-  if (disc_fea.ptr == NULL) {
+  if (_discFea.ptr == NULL) {
     warning("ObservationMatrix::readPInts: Temporary buffer is NULL");
     return 0;
   }
   
-  if (str->read_labs((size_t)1,(UInt32 *)disc_fea.ptr) != 1) {
+  if (str->read_labs((size_t)1,(UInt32 *)_discFea.ptr) != 1) {
     warning("ObservationMatrix::readPInts: read failed\n");
     return 0;
   }
@@ -303,14 +432,14 @@ ObservationMatrix::readPInts(InFtrLabStream_PFile *str, BP_Range *disc_rng) {
       return 0;
     }
 
-    (Int32 *) _disc_p = disc_fea.ptr[i];
+    (Int32 *) _disc_p = _discFea.ptr[i];
   }
   return 1;
 }
 
 /* read binary integers 
  * n_ints: number of features to read
- * f: file to read from
+ * f: stream to read from
  * disc_rng: range of features to use
  * bswap: bytes will be swapped if true
  * returns 1 if successful, else 0
@@ -326,12 +455,12 @@ ObservationMatrix::readBinInts(unsigned n_ints, FILE *f, BP_Range *disc_rng,
     warning("ObservationMatrix::readBinInts: Data buffer is NULL");
     return 0;
   }
-  if (disc_fea.ptr == NULL) {
+  if (_discFea.ptr == NULL) {
     warning("ObservationMatrix::readBinInts: Temporary buffer is NULL");
     return 0;
   }
   
-  n_read = fread((Int32 *)disc_fea.ptr,sizeof(Int32),n_ints,f);
+  n_read = fread((Int32 *)_discFea.ptr,sizeof(Int32),n_ints,f);
 
   if (n_read != n_ints) {
     warning("ObservationMatrix::readBinInts: only read %i ints, expected %i\n",
@@ -352,16 +481,16 @@ ObservationMatrix::readBinInts(unsigned n_ints, FILE *f, BP_Range *disc_rng,
     }
 
     if (bswap) 
-      *ip  = swapb_i32_i32(disc_fea.ptr[i]);
+      *ip  = swapb_i32_i32(_discFea.ptr[i]);
     else 
-      *ip = disc_fea.ptr[i];
+      *ip = _discFea.ptr[i];
   }
   return 1;
 }
 
 /* read ascii integers 
  * n_ints: number of features to read
- * f: file to read from
+ * f: stream to read from
  * disc_rng: range of features to use
  * returns 1 if successful, else 0
  */
@@ -375,12 +504,12 @@ ObservationMatrix::readAscInts(unsigned n_ints, FILE *f, BP_Range *disc_rng) {
     return 0;
   }
 
-   if (disc_fea.ptr == NULL) {
+   if (_discFea.ptr == NULL) {
     warning("ObservationMatrix::readAscInts: Temporary buffer is NULL");
     return 0;
   }
 
-  Int32 *dp = disc_fea.ptr;
+  Int32 *dp = _discFea.ptr;
  
   for (unsigned a = 0; a < n_ints; a++,dp++) {
     if (fscanf(f,"%i",dp) != 1) {
@@ -399,39 +528,36 @@ ObservationMatrix::readAscInts(unsigned n_ints, FILE *f, BP_Range *disc_rng) {
       warning("ObservationMatrix:::readAscInts: memory error trying to read %i'th feature",i);
       return 0;
     } 
-    *ip = disc_fea.ptr[i];
+    *ip = _discFea.ptr[i];
   }
   return 1;
 }
 
 
-/* read single input frame, possibly using input from different files  
- * frameno: number of frame in file to read
- * fds: array of file descriptions
- * numFiles: number of files (length of fds)
+/* read single input frame  
+ * frameno: number of frame to be read
  */
 
 void
-ObservationMatrix::readFrame(size_t frameno, 
-			     FileDescription **fds, 
-                             int numFiles) {
+ObservationMatrix::readFrame(size_t frameno) {
 
-  FileDescription *f;
+  
+  StreamInfo *f;
   unsigned num_floats,num_ints;
   int i;
 
   
-  for (i = 0; i < numFiles; i++) {
+  for (i = 0; i < _numStreams; i++) {
     
-    f = fds[i];	
+    f = _inStreams[i];	
     
     if (f == NULL)
-      error("ObservationMatrix::readFrame: Cannot access file descriptor %i\n",i);
-
+      error("ObservationMatrix::readFrame: Cannot access info for stream %i\n",i);
+    
     num_floats = f->nFloats;
     
     assert(num_floats <= _maxContinuous);
-
+    
     num_ints = f->nInts;
 
     assert(num_ints <= _maxDiscrete);
@@ -472,7 +598,6 @@ ObservationMatrix::readFrame(size_t frameno,
       error("Unsupported data file format\n");	
     }
   }
-  next(); 
 }
 
 
@@ -482,7 +607,7 @@ void
 ObservationMatrix::reset() {
 
  _cont_p = features.ptr;
- _disc_p = features.ptr + _numContinuous;
+ _disc_p = features.ptr + numContinuous;
 }
 
 
@@ -493,7 +618,7 @@ ObservationMatrix::reset() {
 void
 ObservationMatrix::resize(size_t n_frames) {
 
-   features.growIfNeeded(n_frames * _stride);
+   features.growIfNeeded(n_frames * stride);
    _bufSize = n_frames;
 }
 
@@ -507,45 +632,276 @@ ObservationMatrix::printFrame(FILE *stream, size_t frameno) {
   
   unsigned f;
 
-  Data32 *p = features.ptr + _stride*frameno;
+  Data32 *p = features.ptr + stride*frameno;
 
-  for (f = 0; f < _numContinuous; f++,p++) {
+  for (f = 0; f < numContinuous; f++,p++) {
 	float *fp = (float *)p;
 	fprintf(stream,"%e ",*fp);
   }
-  for (f = 0; f < _numDiscrete; f++,p++)
+  for (f = 0; f < numDiscrete; f++,p++)
      fprintf(stream,"%i ",(Int32)*p);
 
   fprintf(stream,"\n");
 
 }
-  
+
+// get cont. feature number 'n' in current frame
 	
 float *
 ObservationMatrix::getContFea(unsigned short n) {
 
-  if (n > (_numContinuous-1))
+
+  assert(n < numFeatures);
+
+  if (n > (numContinuous-1))
     warning("ObservationMatrix::getFeature: feature %i has type int but requested as float\n");
+
 
   return (float *)(_cont_p + n);
 }
 
+// get disc. feature number 'n' in current frame
+
+
 Int32 *
 ObservationMatrix::getDiscFea(unsigned short n) {
 
-  if (n > (_numDiscrete-1))
+  assert (n < numFeatures);
+
+  if (n > (numDiscrete-1))
     warning("ObservationMatrix::getFeature: feature %i has type int but requested as float\n");
 
   return (Int32 *)(_disc_p + n);
 }
 
-/* set pointers to beginning of frame f */
+/* get info for segment 'sentno' from pfile stream 'f' */
 
-void
-ObservationMatrix::gotoFrame(size_t f) {
+size_t
+ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
 
-  _cont_p = features.ptr + (f*_stride);
-  _disc_p = _cont_p + _numDiscrete;
+  if (f->pfile_istr == NULL) {
+    error("ObservationMatrix::openPFile: stream is NULL");
+    return 0;
+  }
 
+  if (f->pfile_istr->set_pos(sentno,0) == SEGID_BAD) {
+    warning("ObservationMatrix::openPFile: Can't skip to sent %li frame 0",
+	    sentno);
+    return 0;
+  }
+
+  f->curNumFrames = f->pfile_istr->num_frames(sentno);
+
+  return f->curNumFrames;
 }
 
+/* open binary file for segment 'sentno' */
+
+
+size_t
+ObservationMatrix::openBinaryFile(StreamInfo *f, size_t sentno) {
+
+  char *fname = f->dataNames[sentno];
+  int nfloats = f->nFloats;
+  int nints = f->nInts;
+  size_t fsize;
+
+  if (fname == NULL) {
+    warning("ObservationMatrix::openBinaryFile: Filename is NULL for segment %li\n",sentno);
+    return 0;
+  }
+  
+  if ((f->curDataFile = fopen(fname,"rb")) == NULL) {
+    error("ObservationMatrix::openBinaryFile: Can't open '%s' for input\n",
+	  fname);
+	  
+  }
+    
+    //sanity check on number of bytes
+    
+    if (fseek(f->curDataFile,0L,SEEK_END) == -1) {
+      warning("ObservationMatrix::openBinaryFile: Can't skip to end of file %s",
+	      fname);
+    }
+    
+    fsize = ftell(f->curDataFile);
+    
+    rewind(f->curDataFile);
+    
+    int rec_size = nfloats * sizeof(float) + nints * sizeof(int);
+    
+    if ((fsize % rec_size) > 0)
+      error("ObservationMatrix::openBinaryFile: odd number of bytes in file %s\n",fname);
+    
+    int n_samples = fsize / rec_size;
+    
+    f->curNumFrames = n_samples;
+    
+    return n_samples;
+}
+
+/* open ascii file for segment 'sentno' */
+
+size_t
+ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
+
+  char *fname = f->dataNames[sentno];
+  size_t n_samples = 0;
+  char ch;
+
+  if (fname == NULL) {
+    warning("ObservationMatrix::openAsciiFile: Filename is NULL for segment %li\n",sentno);
+    return 0;
+  }
+
+  if ((f->curDataFile = fopen(fname,"r")) == NULL) {
+    warning("ObservationMatrix::openAsciiFile: Can't open '%s' for input\n",fname);
+    return 0;
+  }
+
+  /* for ascii, newline is record delimiter - additional or missing nl's will cause error messages */
+
+  while ((ch = fgetc(f->curDataFile)) != EOF) {
+    if (ch == '\n')
+      n_samples++;
+  }
+ rewind(f->curDataFile);
+ f->curNumFrames = n_samples;
+ 
+ return n_samples;
+}
+
+/* open htk file for segment 'sentno' */
+
+size_t
+ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
+
+  char *fname = f->dataNames[sentno];
+
+
+  // structure of HTK header
+  Int32 n_samples;
+  Int32 samp_period;
+  short samp_size;
+  short parm_kind;
+
+  Int32 tmp1,tmp2;
+
+  short stmp1,stmp2;
+
+  bool bswap = f->bswap;
+  int nints = f->nInts;
+  int nfloats = f->nFloats;
+
+  if (fname == NULL) {
+    warning("ObservationMatrix::openHTKFile: Filename is NULL for segment %li\n",sentno);
+    return 0;
+
+  }
+
+  if ((f->curDataFile = fopen(fname,"rb")) == NULL) {
+    warning("ObservationMatrix::openHTKFile: Can't open '%s' for input\n",fname);
+    return 0;
+  }
+
+  if (fread(&tmp1,sizeof(Int32),1,f->curDataFile) != 1) {
+    warning("ObservationMatrix::openHTKFile: Can't read number of samples\n");
+    return 0;
+  }
+
+  
+  if (fread((short *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
+    warning("ObservationMatrix::openHTKFile: Can't read sample period\n");
+    return 0;
+  }
+
+  if (fread((short *)&stmp1,sizeof(short),1,f->curDataFile) != 1) {
+    warning("ObservationMatrix::openHTKFile: Can't read sample size\n");
+    return 0;
+  }
+
+  if (fread(&stmp2,sizeof(short),1,f->curDataFile) != 1) {
+    warning("ObservationMatrix::openHTKFile: Can't read parm kind\n");
+    return 0;
+  }
+
+  if (bswap) {
+    n_samples = swapb_i32_i32(tmp1);
+    samp_period = swapb_i32_i32(tmp2);
+    samp_size = swapb_short_short(stmp1);
+    parm_kind = swapb_short_short(stmp2);
+  }
+  else {
+    n_samples = tmp1;
+    samp_period = tmp2;
+    samp_size = stmp1;
+    parm_kind = stmp2;
+  }
+
+  if (n_samples <= 0) {
+    warning("ObservationMatrix::openHTKFile: number of samples is %i\n",n_samples);
+    return 0;
+  }
+
+  if (samp_period <= 0 || samp_period > 1000000) {
+    warning("ObservationMatrix::openHTKFile: sample period is %i - must be between 0 and 1000000\n", samp_period);
+    return 0;
+  }
+
+  if (samp_size <= 0 || samp_size > 5000) {
+    warning("ObservationMatrix::openHTKFile: sample size is %i - must be between 0 and 5000\n",samp_size);
+    return 0;
+  }
+
+  short pk = parm_kind & BASEMASK;
+
+  if (pk <= WAVEFORM || pk > ANON) {
+    warning("Undefined parameter kind for HTK feature file: %i\n",pk);
+    return 0;
+  }
+
+  int n_fea;
+
+  // parameter kind DISCRETE = all discrete features
+
+  if (parm_kind == DISCRETE) {
+    n_fea = samp_size / sizeof(int) ;
+    if (n_fea != nints) {
+      warning("ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of ints specified (%i)\n", n_fea,nints);
+      return 0;
+    }
+  }
+  
+  // otherwise all continuous features
+
+  else {
+    n_fea = samp_size / sizeof(float);
+    if (n_fea != nfloats) {
+      warning("ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of floats specified (%i)\n", n_fea,nfloats);
+      return 0;
+    }
+  }
+
+  f->curNumFrames = n_samples;
+
+  return n_samples;
+}
+
+/* close individual data files */
+
+void
+ObservationMatrix::closeDataFiles() {
+
+  for (int i = 0; i < _numStreams; i++)
+    if (_inStreams[i]->dataFormat != PFILE)
+      fclose(_inStreams[i]->curDataFile);
+}
+
+
+
+void
+ObservationMatrix::printSegmentInfo() {
+
+  printf("Processing segment # %d. Number of frames = %d.\n",
+	segmentNumber,numFrames);
+}
