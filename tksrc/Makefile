@@ -118,9 +118,10 @@ testGMParms: GMTK_GMParms.cc GMTK_GMParms.h $(objs)
 
 BN1: BN1.cc BN1.o GMTK_GM.cc GMTK_GM.o GMTK_Clique.cc GMTK_Clique.o \
 GMTK_CliqueChain.cc GMTK_CliqueChain.o GMTK_RandomVariable.cc \
-GMTK_RandomVariable.o $(objs)
+GMTK_RandomVariable.o GMTK_SimpleDiscreteRV.cc GMTK_SimpleDiscreteRV.o
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BN1.cc GMTK_GM.cc \
-GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc $(objs) $(LIBS)
+GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc \
+GMTK_SimpleDiscreteRV.cc $(LIBS)
 
 
 lex.yy: lex.yy.cc
