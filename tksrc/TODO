@@ -663,4 +663,14 @@ Fri Jul 26 14:52:53 2002
     so that users can se more/less of the warning information, with
     command line option (e.g., for dets hitting zero, and any
     other funny hacks that occur).
+				   
 
+Wed Jul 31 22:04:27 2002
+  - actually, rather than laplace smoothing, add an object type 
+    that can include initial counts to use for MDCTPs and MSCPTs
+    (use  same file format as these, but just include pos integer or fp counts
+     rather than probabilities).
+
+
+
+    
