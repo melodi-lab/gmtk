@@ -26,19 +26,34 @@
 #include <numeric>
 #include "GMTK_RandomVariable.h"
 
-class VecCompare
+struct ValueHashTable
 {
-  public:
-    bool operator () (const vector<RandomVariable::DiscreteVariableType> &a,
-                      const vector<RandomVariable::DiscreteVariableType> &b)
-    const 
-    {if (a.size() < b.size()) return true;
-     if (a.size() > b.size()) return false;
-     for (unsigned i=0; i<a.size(); i++) 
-         if (a[i] < b[i]) return true;
-         else if (a[i] > b[i]) return false;
-     return false;
-    }
+    vector<vector<RandomVariable::DiscreteVariableType> *> table, nt;
+    int table_size, count;
+    int addr(vector<RandomVariable::DiscreteVariableType> &vec)
+        {unsigned long v = vec.size();
+         for (unsigned i=0; i<vec.size(); i++) v = 65599*v + vec[i];
+         return (v % table_size);}
+    vector<RandomVariable::DiscreteVariableType> *insert(
+        vector<RandomVariable::DiscreteVariableType> &vec)
+        {if (++count>=table_size/2) resize(max(2*table_size,100000)); 
+         int a = addr(vec);
+         while (table[a] && *table[a] != vec) a=(a+1)%table_size;
+         if (!table[a])
+             table[a] = new vector<RandomVariable::DiscreteVariableType>(vec);
+         return table[a];}
+    void clear() 
+        {for (unsigned i=0; i<table.size(); i++) if (table[i]) delete table[i];
+         table.clear(); table_size=count=0;}
+    ~ValueHashTable() {clear();} 
+    ValueHashTable() {count=table_size=0;}
+    void resize(int size) 
+        {table_size = size;  // used for addressing; not same as table.size()
+         nt.resize(table_size);
+         for (int i=0; i<table_size; i++) nt[i] = NULL;
+         for (unsigned i=0; i<table.size(); i++)
+             if (table[i]) nt[addr(*table[i])] = table[i];
+         table=nt;}
 };
 
 struct CliqueValue
@@ -62,9 +77,8 @@ struct CliqueValue
 
     // In a dynamic network, the same set of values will occur over and
     // over again in different cliques. To avoid storing them over and over
-    // again, keep a global pool. Also, this can persist across examples 
-    static set<vector<RandomVariable::DiscreteVariableType>, VecCompare> 
-        global_val_set; 
+    // again, keep a global pool. 
+    static ValueHashTable global_val_set;
 };
 
 struct Clique
