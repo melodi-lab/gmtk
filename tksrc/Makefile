@@ -89,7 +89,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkEMtrain gmtkViterbi gmtkM2T gmtkB2A
+all_exs = gmtkEMtrain gmtkViterbi gmtkM2T gmtkB2A gmtkScore
 
 all: ${all_exs}
 
