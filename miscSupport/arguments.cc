@@ -264,6 +264,11 @@ Arg* Arg::searchArgs(Arg* ag,char *flag) {
     }
     arg_ptr++;
   }
+  // include check for args file since we shouldn't
+  // be ambiguous with respect to this as well.
+  if (!::strncmp(ARGS_FILE_NAME,flag,flaglen))
+    numTaged++;
+
   if (numTaged == 0)
     return NULL;
   else if (numTaged > 1)
@@ -882,31 +887,30 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
     if (argv[i][0] == '-') {
       char *flag = argv[i];
       int flaglen = ::strlen(flag);
-
-      // first check to see if it is the special parse from file
-      // argument name, which is always valid.
-      if (!::strncmp(ARGS_FILE_NAME,&flag[1],flaglen-1)) {
-	// so argument is presumably a file name.
-	char *arg=NULL;
-	if ((i+1) >= argc)
-	  error("%s Expecting file name after %s argument flag\n",
+      arg_ptr = searchArgs(Args,&flag[1]);
+      if (arg_ptr == NULL) {
+	warning("%s Unknown switch: %s",
 		ArgsErrStr,
-		ARGS_FILE_NAME);
-	else
-	  arg = argv[++i];
-	parseArgsFromFile(arg);
+		argv[i]);
+	return (ARG_ERROR);
+      } else if (arg_ptr == (Arg*)(-1)) {
+	warning("%s Ambiguous switch: %s",
+		ArgsErrStr,
+		argv[i]);
+	return (ARG_ERROR);
       } else {
-	arg_ptr = searchArgs(Args,&flag[1]);
-	if (arg_ptr == NULL) {
-	  warning("%s Unknown switch: %s",
+	// first check to see if it is the special parse from file
+	// argument name, which is always valid.
+	if (!::strncmp(ARGS_FILE_NAME,&flag[1],flaglen-1)) {
+	  // so argument is presumably a file name.
+	  char *arg=NULL;
+	  if ((i+1) >= argc)
+	    error("%s Expecting file name after %s argument flag\n",
 		  ArgsErrStr,
-		  argv[i]);
-	  return (ARG_ERROR);
-	} else if (arg_ptr == (Arg*)(-1)) {
-	  warning("%s Ambiguous switch: %s",
-		  ArgsErrStr,
-		  argv[i]);
-	  return (ARG_ERROR);
+		  ARGS_FILE_NAME);
+	  else
+	    arg = argv[++i];
+	  parseArgsFromFile(arg);
 	} else {
 	  char *arg;
 	  if ((i+1) >= argc)
