@@ -367,7 +367,7 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
             // then increment the em counts
             chain->incrementEMStatistics();
         } while (clampNextExample());
-        cout << "Total data prob is: " << total_data_prob.val() << endl;
+	printf("Total data prob is: %1.9e\n",total_data_prob.val());
         GM_Parms.emEndIteration();
         if (total_data_prob > last_dp)
             GM_Parms.emSwapCurAndNew();
