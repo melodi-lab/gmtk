@@ -76,7 +76,7 @@ public:
   void probGivenParents(logpr& p) {
     setCurrentConditionalParents(this);
     curCPT = conditionalCPTs[cachedSwitchingState];
-    p = curCPT->probGivenParents(allParents,this);
+    p = curCPT->probGivenParents(*curConditionalParents,this);
     if (rv_info.rvWeightInfo.size() > 1) 
       modifyProbability(p,rv_info.rvWeightInfo[cachedSwitchingState],this);
     else 

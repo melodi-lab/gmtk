@@ -115,7 +115,7 @@ public:
 
   virtual void randomSample() {
     setCurrentConditionalParents(this);
-    curCPT->becomeAwareOfParentValues( allParents, this );
+    curCPT->becomeAwareOfParentValues( *curConditionalParents, this );
     curCPT->randomSample(this); 
   }
 

@@ -118,12 +118,9 @@ SwRV::setCurrentConditionalParents(RV* rv)
   if ( cachedSwitchingState >= conditionalParentsList.size()) {
     warning("ERROR: Random Variable %s:%d using Decision Tree '%s' yielded an invalid switching position %d. Must be between 0 and %d.\n",
 	    rv->name().c_str(),rv->frame(), (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedSwitchingState,conditionalParentsList.size());
-    fprintf(stderr,"Current values of switching parents: ");
-    // TODO: use vector RV print routine.
-    for (unsigned i=0;i<switchingParents.size();i++) {
-      switchingParents[i]->printNameFrameValue(stderr,false);
-    }
-    error("\n");
+    fprintf(stderr,"Current switching parents configuration: ");
+    printRVSetAndValues(stderr,switchingParents);
+    error("");
   }
   curConditionalParents = & conditionalParentsList[cachedSwitchingState];
 }
