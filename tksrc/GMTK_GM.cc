@@ -366,68 +366,153 @@ void GMTK_GM::enumerativeEM(int iterations)
  *-----------------------------------------------------------------------
  */
 
-void GMTK_GM::cliqueChainEM(int iterations, 
-			    logpr beam, 
-			    const bool writeParametersBeforeEachEMIteration,
-			    const string outputParamFile,
-			    const bool binOutFile)
+void GMTK_GM::cliqueChainEM(const int iterations, 
+			    const logpr beam, 
+			    const bool writeParametersAfterEachEMIteration,
+			    const char *const outputParamFile,
+			    const bool binOutFile,
+			    const char* const loadAccFile,
+			    const char* const loadAccRange,
+			    const char* const storeAccFile,
+			    const bool accFileIsBinary,
+			    const char* const llStoreFile,
+			    const double lldp)
 {
-    logpr last_dp = 0.0;
-    for (int i=0; i<iterations; i++)
-    {
-	/////////////////////////////////////////////////////////
-	// the basic parameters before each iteration 
-	if (writeParametersBeforeEachEMIteration 
-	    && outputParamFile.size() > 0) {
-	  char buff[2048];
-	  copyStringWithTag(buff,outputParamFile.c_str(),
-			    i,2048);
-	  oDataStreamFile of(buff,binOutFile);
-	  GM_Parms.writeAll(of);
+
+  if (trrng->length() == 0 && loadAccFile == NULL) {
+    error("ERROR: with EM training. Either must specify segments to train or must load accumulatores (or both).");
+  }
+
+  logpr total_data_prob = 1.0;
+
+  /////////////////////////////////////////////////////////
+  // first load any and all accumulators
+  if (loadAccFile != NULL) {
+    if (loadAccRange == NULL) {
+      printf("Loading accumulators from '%s'\n",loadAccFile);
+      iDataStreamFile inf(loadAccFile,accFileIsBinary);
+      inf.read(total_data_prob.valref());
+      GM_Parms.emLoadAccumulators(inf);
+    } else {
+      BP_Range lfrng(loadAccRange,0,1000);
+      for (BP_Range::iterator lfit=lfrng.begin();
+	   lfit<=lfrng.max();
+	   lfit++) {
+	const int bufsize = 2048;
+	char buff[bufsize];
+	copyStringWithTag(buff,loadAccFile,(*lfit),bufsize);
+	iDataStreamFile inf(buff,accFileIsBinary);
+	if (lfit == lfrng.begin()) {
+	  printf("Loading accumulators from '%s'\n",buff);
+	  inf.read(total_data_prob.valref());
+	  GM_Parms.emLoadAccumulators(inf);
+	} else {
+	  printf("Accumulating accumulators from '%s'\n",buff);
+	  logpr tmp;
+	  inf.read(tmp.valref());
+	  total_data_prob += tmp;
+	  GM_Parms.emAccumulateAccumulators(inf);
 	}
+      }
+    }
+  }
 
-        logpr total_data_prob = 1.0;
-        int frames = 0;
-        clampFirstExample();
-        do
-        {
-	     if (globalObservationMatrix.active()) {
-	        globalObservationMatrix.printSegmentInfo();
-                ::fflush(stdout);
-	     }
-            // first compute the probabilities
-            if (!chain->computePosteriors(beam))
-            {
-                cout << "Skipping example due to 0 probability\n";
-                continue;
-            }
-            total_data_prob *= chain->dataProb;
-            frames += globalObservationMatrix.numFrames;
-
-            // then increment the em counts
-            chain->incrementEMStatistics();
-        } while (clampNextExample());
-        cout << frames << " frames procesed\n";
-	printf("Total data prob is: %1.9e\n",total_data_prob.val());
-        ::fflush(stdout);
-        GM_Parms.emEndIteration();
-        // if (total_data_prob > last_dp)
-	GM_Parms.emSwapCurAndNew();
+  // Now, do EM training iterations
+  logpr previous_dp;
+  previous_dp.set_to_almost_zero();
+  if (fsize(llStoreFile) == sizeof(logpr)) {
+    iDataStreamFile inf(llStoreFile,false);
+    inf.read(previous_dp.valref());
+  }
 
 
-        last_dp = total_data_prob;
+  double llDiffPerc = 100.0;
+  for (int i=0; i<iterations; i++)  {
+
+    int frames = 0;
+
+    if (trrng->length() > 0) {
+      total_data_prob = 1.0;
+      clampFirstExample();
+      do
+	{
+	  if (globalObservationMatrix.active()) {
+	    globalObservationMatrix.printSegmentInfo();
+	    ::fflush(stdout);
+	  }
+	  // first compute the probabilities
+	  if (!chain->computePosteriors(beam))
+	    {
+	      cout << "Skipping example due to 0 probability\n";
+	      continue;
+	    }
+	  total_data_prob *= chain->dataProb;
+	  frames += globalObservationMatrix.numFrames;
+
+	  // then increment the em counts
+	  chain->incrementEMStatistics();
+	} while (clampNextExample());
+      printf("Total data prob from %d frames processed is: %1.9e\n",
+	     frames,total_data_prob.val());
+      ::fflush(stdout);
     }
 
+    if (storeAccFile != NULL) {
+      // just store the accumulators and exit.
+      warning("NOTE: storing current accumulators (from training %d segments) to file '%s' and exiting.",
+	      trrng->length(),storeAccFile);
+      oDataStreamFile outf(storeAccFile,accFileIsBinary);
+      outf.write(total_data_prob.val());
+      GM_Parms.emStoreAccumulators(outf);
+      exit_program_with_status(0);
+    }
+
+    // at this point, either we should have
+    // done some training or we should have
+    // accumulated something.
+
+    GM_Parms.emEndIteration();
+    // if (total_data_prob > previous_dp)
+    GM_Parms.emSwapCurAndNew();
+
     /////////////////////////////////////////////////////////
-    // finally, write out the final basic parameters
-    // w/o the tag.
-    if (outputParamFile.size() > 0) {
+    // the basic parameters after each iteration 
+    if (writeParametersAfterEachEMIteration 
+	&& outputParamFile != NULL) {
       char buff[2048];
-      copyStringWithTag(buff,outputParamFile.c_str(),
-			CSWT_EMPTY_TAG,2048);
+      copyStringWithTag(buff,outputParamFile,
+			i,2048);
       oDataStreamFile of(buff,binOutFile);
       GM_Parms.writeAll(of);
     }
+
+    // store the current total data probability to a file.
+    if (llStoreFile != NULL) {
+      oDataStreamFile of(llStoreFile,false);
+      of.write(total_data_prob.val());
+    }
+
+    // compute the log likelihood difference percentage
+    llDiffPerc = 
+      100.0*fabs((total_data_prob.val() - previous_dp.val())/previous_dp.val());
+    previous_dp = total_data_prob;
+
+    if (llDiffPerc < lldp) {
+      printf("Log likelihood difference percentage (%e) fell below threshold (%e). Ending EM training.\n",llDiffPerc,lldp);
+      break;
+    }
+  }
+
+  /////////////////////////////////////////////////////////
+  // finally, write out the final basic parameters
+  // w/o any numeric tag.
+  if (outputParamFile != NULL) {
+    char buff[2048];
+    copyStringWithTag(buff,outputParamFile,
+		      CSWT_EMPTY_TAG,2048);
+    oDataStreamFile of(buff,binOutFile);
+    GM_Parms.writeAll(of);
+  }
 }
 
 
@@ -1036,13 +1121,15 @@ void GMTK_GM::setExampleStream(const char *const obs_file_name,
 {
   globalObservationMatrix.openFile(obs_file_name);
   trrng = new BP_Range(trrng_str,0,globalObservationMatrix.numSegments());
+
+#if 0
   if (trrng->length() <= 0) {
     error("ERROR: training range '%s' must specify non-empty set.",
 	  trrng_str);
   }
+#endif
 
   GM_Parms.setStride(globalObservationMatrix.stride);
-
   using_files = true;
 }
 

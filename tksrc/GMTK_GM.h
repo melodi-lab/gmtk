@@ -181,15 +181,22 @@ struct GMTK_GM
     bool clampNextExample(); 
     // Clamps the observation variables according to the next example.
 
-    void enumerativeEM(int iterations);
     // Does EM using brute force inference.
+    void enumerativeEM(int iterations);
 
-    void cliqueChainEM(int iterations, 
-		       logpr beam=0.0,
-		       const bool writeParametersBeforeEachEMIteration=true,
-		       const string outputParamFile = "outParms%d.gmp",
-		       const bool binOutFile=false);
     // Does EM using dynamic programming on a clique chain.
+    void cliqueChainEM(const int iterations=1, 
+		       const logpr beam=0.0,
+		       const bool writeParametersAfterEachEMIteration=true,
+		       const char* const outputParamFile=NULL,
+		       const bool binOutFile=false,
+		       const char* const loadAccFile=NULL,
+		       const char* const loadAccRange=NULL,
+		       const char* const storeAccFile=NULL,
+		       const bool accFileIsBinary=true,
+		       const char* const llStoreFile=NULL,
+		       const double lldp=0.001);
+
 
     logpr enumerativeExampleProb(vector<vector<VariableValue > > &example);
     // computes the likelihood of the examples
