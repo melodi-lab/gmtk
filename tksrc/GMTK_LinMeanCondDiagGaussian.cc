@@ -34,11 +34,11 @@
 VCID("$Header$");
 #include "error.h"
 #include "rand.h"
+#include "lineqsolve.h"
 
 #include "GMTK_LinMeanCondDiagGaussian.h"
 #include "GMTK_GMParms.h"
-
-
+#include "GMTK_MixGaussiansCommon.h"
 
 
 void
@@ -72,16 +72,6 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   covarIndex = GM_Parms.covarsMap[str];
   covar = GM_Parms.covars[covarIndex];
 
-
-  // read the dlink structure 
-  is.read(str);
-  if (GM_Parms.dLinksMap.find(str) == GM_Parms.dLinksMap.end())
-    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies dlink name '%s' that does not exist",
-	  _name.c_str(),is.fileName(),str.c_str());
-  
-  dLinks = GM_Parms.dLinks[GM_Parms.dLinksMap[str]];
-
-
   // read the dlink matrix parameter values
   is.read(str);
   if (GM_Parms.dLinkMatsMap.find(str) == GM_Parms.dLinkMatsMap.end())
@@ -89,12 +79,6 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 	  _name.c_str(),is.fileName(),str.c_str());
   
   dLinkMat = GM_Parms.dLinkMats[GM_Parms.dLinkMatsMap[str]];
-
-  if (!dLinks->compatibleWith(*dLinkMat))
-    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifices a dlink structure '%s' and matrix '%s' that are not compatible with each other\n",
-	  _name.c_str(),is.fileName(),
-	  dLinks->name().c_str(),
-	  dLinkMat->name().c_str());
 
   // check that lengths match, etc.
   if (covar->dim() != mean->dim()) {
@@ -116,10 +100,9 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   }
 
 
-  if ((unsigned)dLinks->dim() != _dim)
-    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies a dlink structure '%s'(matrix '%s') that does not match its mean and covariance with dim '%d'\n",
+  if ((unsigned)dLinkMat->dim() != _dim)
+    error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies a dlink matrix '%s' that does not match its mean and covariance having dim '%d'\n",
 	  _name.c_str(),is.fileName(),
-	  dLinks->name().c_str(),
 	  dLinkMat->name().c_str(),
 	  _dim);
 
@@ -133,14 +116,13 @@ LinMeanCondDiagGaussian::write(oDataStreamFile& os)
   assert ( basicAllocatedBitIsSet() );
 
   // write the type of self and the name
-  os.write((int)GaussianComponent::Diag);
+  os.write((int)GaussianComponent::LinMeanCondDiag);
   NamedObject::write(os);
   os.nl();
 
   // write mean vector
   os.write(mean->name()); 
   os.write(covar->name());
-  os.write(dLinks->name());
   os.write(dLinkMat->name());
   os.nl();
 }
@@ -197,6 +179,7 @@ LinMeanCondDiagGaussian::log_p(const float *const x,
 
   logpr rc;
   rc.set_to_zero();
+  Dlinks* const dLinks = dLinkMat->dLinks;
 
 
   //////////////////////////////////////////////////////////////////
@@ -223,9 +206,9 @@ LinMeanCondDiagGaussian::log_p(const float *const x,
 
   int i=0; do {
     float u=0.0;
-    const int nComs = dLinks->numLinks(i);
-    if (nComs > 0) {
-      const int *lagStrideOffsets_endp = lagStrideOffsetsp+nComs;
+    const int nLinks = dLinks->numLinks(i);
+    if (nLinks > 0) {
+      const int *lagStrideOffsets_endp = lagStrideOffsetsp+nLinks;
       do {
 	u += (*buryValsp) *
 	  *((float*)base + *lagStrideOffsetsp);
@@ -251,6 +234,60 @@ LinMeanCondDiagGaussian::log_p(const float *const x,
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * noisyClone()
+ *      Create a copy of self, but with cloned perturbed the mean/variance vectors
+ * 
+ * Preconditions:
+ *      Obj must be read in, and basicAllocatedBitIsSet() must be true.
+ *
+ * Postconditions:
+ *      none.
+ *
+ * Side Effects:
+ *      'this' is not changed at all. Allocates new memory though.
+ *
+ * Results:
+ *      returns the new noisy mean.
+ *
+ *-----------------------------------------------------------------------
+ */
+GaussianComponent*
+LinMeanCondDiagGaussian::noisyClone()
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  map<GaussianComponent*,GaussianComponent*>::iterator it = MixGaussiansCommon::gcCloneMap.find(this);
+  // first check if self is already cloned, and if so, return that.
+  if (it == MixGaussiansCommon::gcCloneMap.end()) {
+    LinMeanCondDiagGaussian* clone;
+    clone = new LinMeanCondDiagGaussian(dim());
+
+    unsigned cloneNo=0; do {
+      char buff[256];
+      sprintf(buff,"%d",cloneNo);
+      clone->_name = _name + string("_cl") + buff;
+      cloneNo++;
+    } while (GM_Parms.gaussianComponentsMap.find(clone->_name) 
+	     != GM_Parms.gaussianComponentsMap.end());
+
+    clone->mean = mean->noisyClone();
+    clone->covar = covar->noisyClone();
+    clone->dLinkMat = dLinkMat->noisyClone();
+
+    clone->setBasicAllocatedBit();
+    MixGaussiansCommon::gcCloneMap[this] = clone;
+
+    // also add self to GMParms object.
+    GM_Parms.add(clone);
+
+    return clone;
+  } else {
+    return (*it).second;
+  }
+}
+
 
 /////////////////
 // EM routines //
@@ -263,7 +300,7 @@ LinMeanCondDiagGaussian::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
 
-  if (!GM_Parms.amTrainingDiagGaussians())
+  if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
     return;
 
   if (emOnGoingBitIsSet())
@@ -279,22 +316,22 @@ LinMeanCondDiagGaussian::emStartIteration()
   emSetSwappableBit();
 
   accumulatedProbability = 0.0;
-  mean->emStartIteration(nextMeans);
-  // dLinkMat->emStartIteration(nextDiagCovars);
-  covar->emStartIteration(nextDiagCovars);
+  mean->emStartIteration(xAccumulators);
+  dLinkMat->emStartIteration(xzAccumulators,zzAccumulators,zAccumulators);
+  covar->emStartIteration(xxCovarAccumulators);
 }
 
 
 void
 LinMeanCondDiagGaussian::emIncrement(logpr prob,
-			  const float*f,
-			  const Data32* const base,
-			  const int stride)
+				     const float*f,
+				     const Data32* const base,
+				     const int stride)
 {
-
+  
   assert ( basicAllocatedBitIsSet() );
-
-  if (!GM_Parms.amTrainingDiagGaussians())
+  
+  if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
     return;
 
   emStartIteration();
@@ -304,42 +341,232 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
     return;
     // don't accumulate anything since this one is so small and
     // if we did an unlog() and converted to a single precision
-    // floating point number, it would be a denomral.
+    // floating point number, it might be a denomral.
   }
 
   accumulatedProbability += prob;
   // prob.unlog() here so it doesn't need to be done
-  // twice by the callees.
+  // multiple times by the callees.
   const float fprob = prob.unlog();
-  mean->emIncrement(prob,fprob,f,base,stride,nextMeans.ptr);
-  // dLinkMat->emIncrement(prob,fprob,f,base,stride,
-  // dLinks,nextDlinkMat);
-  covar->emIncrement(prob,fprob,f,base,stride,nextDiagCovars.ptr);
+  mean->emIncrement(prob,fprob,f,base,stride,xAccumulators.ptr);
+  dLinkMat->emIncrement(prob,fprob,f,base,stride,
+			xzAccumulators.ptr,
+			zzAccumulators.ptr,
+			zAccumulators.ptr);
+  covar->emIncrement(prob,fprob,f,base,stride,xxCovarAccumulators.ptr);
 
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIteration	
+ *      This routine ends the EM iteration. This routine "merges"
+ *      together the means and dlink coefficients into a single matrix because 
+ *      it is in that domain where we must compute a matrix inverse.
+ * 
+ * Preconditions:
+ *      basic structures must be allocated.
+ *
+ * Postconditions:
+ *      next B matrix (consisting of burying coefficients and means) 
+ *      and covariances are computed.
+ *
+ * Side Effects:
+ *      allocates and then frees memory from the heap.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 LinMeanCondDiagGaussian::emEndIteration()
 {
   assert ( basicAllocatedBitIsSet() );
 
-  if (!GM_Parms.amTrainingDiagGaussians())
+  if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
     return;
 
   if (!emOnGoingBitIsSet())
     return;
 
   if (accumulatedProbability == 0.0) {
-    // TODO: need to check if this will overflow here
-    // when dividing by it. This is more than just checking
-    // for zero. Also need to do this in every such EM object.
-    warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+    // Note: we assume here that the mean and covar object will check
+    // for us that its accumulated probability is above
+    // threshold. Here, we just check for zero, and then issue a
+    // warning. This might not indicate a real problem as the
+    // mean and covar of this object might be shared and might have
+    // received plenty of count.
+    warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration, check child mean '%s', covar '%s', and dlink matrix '%s'",name().c_str(),mean->name().c_str(),covar->name().c_str(),dLinkMat->name().c_str());
   }
 
-  mean->emEndIteration(nextMeans.ptr);
-  covar->emEndIteration(accumulatedProbability,nextMeans.ptr,nextDiagCovars.ptr);
+  const double realAccumulatedProbability =
+    accumulatedProbability.unlog();
 
+  // Now we need the fully expanded forms of 
+  // xz, zz, and B. These are used because we need to
+  // compute the inverse matrix in the formula B = (XZ)(ZZ)^(-1).
+  // It is assumed that since this routine is not called often (relative
+  // to emIncrement), we can do all the memory allocation/reclaimation here.
+  
+  /////////////////////////////////////////////////////////
+  // xzExpAccumulators (expanded accumulators) contains the same
+  // information as xzAccumulators but includes the accumulated mean
+  // xAccumulators in the right-most position of each vector.
+  sArray<float> xzExpAccumulators;
+
+  xzExpAccumulators.resize( dLinkMat->dLinks->totalNumberLinks() + mean->dim() );
+
+  // now copy xz and x over to expanded xz
+  float *xzExpAccumulators_p = xzExpAccumulators.ptr;
+  float *xzAccumulators_p = xzAccumulators.ptr;
+  for (int feat=0;feat<mean->dim();feat++) {
+    const int nLinks = dLinkMat->numLinks(feat);
+
+    for (int dlink=0;dlink<nLinks;dlink++) {
+      *xzExpAccumulators_p++ =
+	*xzAccumulators_p++;
+    }
+
+    *xzExpAccumulators_p++ =
+      xAccumulators[feat];
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // zzExpAccumulators contains the same information as
+  // zzAccumulators, but includes the extra right most column and
+  // bottom most row containing the value accumulatedProbability.
+  sArray<float> zzExpAccumulators;  
+  // resize matrix, going from a size of just upper triangular
+  // representation to one where we include the extra z=1 variable at
+  // the end and represent a full matrix (needed for computing matrix
+  // inverse below). 7/2/01 notes.
+  zzExpAccumulators.resize (
+			    2*dLinkMat->dLinks->zzAccumulatorLength
+			    + dLinkMat->dLinks->totalNumberLinks()
+			    + mean->dim()
+			    );
+  // now expand out. This code does two things simultaneously:
+  // 1) it turns the triangular matrix into a full matrix, and
+  // 2) it adds an extra row&col to the full matrix for the final z value
+  // which wasn't represented during the EM increment stage.
+  float *zzAccumulators_p = zzAccumulators.ptr;
+  float *zAccumulators_p = zAccumulators.ptr;
+  float *zzExpAccumulators_p = zzExpAccumulators.ptr;
+  for (int feat=0;feat<mean->dim();feat++) {
+    const int nLinks = dLinkMat->numLinks(feat);
+    
+    float *zzp = zzAccumulators_p; // ptr to current zz
+    float *zzep = zzExpAccumulators_p; // ptr to current exp zz
+
+    for (int dlink=0;dlink<=nLinks;dlink++) {
+      float *zze_rp = zzep; // row ptr to expanded zz
+      float *zze_cp = zzep; // col ptr to expanded zz
+      for (int j=0;j<(nLinks-dlink);j++) {
+	*zze_rp = *zze_cp = *zzp++;
+	zze_rp ++;            // increment by one value
+	zze_cp += (nLinks+1); // increment by stride
+      }
+      if (dlink < nLinks) 
+	*zze_rp = *zze_cp = *zAccumulators_p++;
+      else 
+	*zze_rp = *zze_cp = 
+	  realAccumulatedProbability;
+
+      zzep += (nLinks+2);
+    }
+
+    zzAccumulators_p += nLinks*(nLinks+1)/2;
+    zzExpAccumulators_p += (nLinks+1)*(nLinks+1);
+
+    // sanity assertions
+    assert ( zzp == zzAccumulators_p );
+    assert ( (zzep - nLinks - 1) == zzExpAccumulators_p );
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  // Now go through and compute the next dlink coefficients (which
+  // includes the coefficients AND the means which will be contained
+  // in the right most position of the sparse array.)
+  sArray<float> nextDlinkMat;
+  nextDlinkMat.resize( dLinkMat->dLinks->totalNumberLinks() + mean->dim() );
+  float *nextDlinkMat_p =  nextDlinkMat.ptr;
+  zzExpAccumulators_p = zzExpAccumulators.ptr;
+  xzExpAccumulators_p = xzExpAccumulators.ptr;
+  for (int feat=0;feat<mean->dim();feat++) {
+    const int nLinks = dLinkMat->numLinks(feat);
+
+    // Solve for the burying coefficients using
+    // a routine which solves Ax = b for x where
+    // A is nXn, x is nX1, and b is nX1
+    // here,
+    //     A = zzExpAccumulators_p,
+    //     x = the output
+    //     b = xzExpAccumulators_p (which gets destroyed)
+
+    // First, copy xzAccumulators over to nextDlinkMat since
+    // we will need the values of xzAccumulators later.
+    ::memcpy(nextDlinkMat_p,xzExpAccumulators_p,sizeof(float)*(nLinks+1));
+    // Finally, solve for the link values putting the results
+    // in nextDlinkMat_p (the current values get destroyed).
+    ::lineqsolve(nLinks+1,1,
+		 zzExpAccumulators_p,nextDlinkMat_p);
+
+    // now solve for the variances
+    float tmp = 0;
+    for (int i=0;i<(nLinks+1);i++) {
+      tmp += ( nextDlinkMat_p[i] * xzExpAccumulators_p[i]);
+    }
+
+    // finally solve for the variance, putting the result back in
+    // the xx accumulator. Do *NOT* normalize by the posterior
+    // accumulator here as that will be done by the covariance
+    // object when we give this to it, below. Note also that
+    // we do not check for variances being too small here, that
+    // is done below as well, since when sharing occurs, the
+    // individual covars might be small, but the shared covariances
+    // might be fine.
+    xxCovarAccumulators[feat] = 
+      (xxCovarAccumulators[feat] - tmp);
+
+    xzExpAccumulators_p += (nLinks+1);
+    nextDlinkMat_p += (nLinks+1);
+    zzExpAccumulators_p += (nLinks+1)*(nLinks+1);
+
+  }
+
+  // finally, copy out the means and dlinks in 
+  // *NON* normalized form. Renormalization will occur
+  // (with the (shared if any) sum posteriors) by the objects
+  // that handle those guys, below.
+
+  // Store the next means in xAccumulators and
+  // store the dlinks in xzAccumulators.
+
+  // now copy it and means over.
+  nextDlinkMat_p = nextDlinkMat.ptr;
+  xzAccumulators_p = xzAccumulators.ptr;
+  for (int feat=0;feat<mean->dim();feat++) {
+    const int nLinks = dLinkMat->numLinks(feat);
+    for (int dlink=0;dlink<nLinks;dlink++) {
+      *xzAccumulators_p++ = // unnormalize
+	(*nextDlinkMat_p++) * realAccumulatedProbability; 
+    }
+    xAccumulators[feat] = // unnormalize
+      (*nextDlinkMat_p++) * realAccumulatedProbability; 
+  }
+
+  // Finally, incorporate our hard work into the 
+  // (respectively) shared objects who will do any
+  // normalization
+  mean->emEndIteration(xAccumulators.ptr);
+  dLinkMat->emEndIteration(xzAccumulators.ptr);
+  covar->emEndIteration(xxCovarAccumulators.ptr);
+
+  // Finally, end the EM epoch.
   emClearOnGoingBit();
 }
 
@@ -349,13 +576,14 @@ LinMeanCondDiagGaussian::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
 
-  if (!GM_Parms.amTrainingDiagGaussians())
+  if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
     return;
 
   if (!emSwappableBitIsSet())
     return;
 
   mean->emSwapCurAndNew();
+  dLinkMat->emSwapCurAndNew();
   covar->emSwapCurAndNew();
 
   emClearSwappableBit();
