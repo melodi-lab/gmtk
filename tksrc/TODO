@@ -22,10 +22,9 @@ incorporated into the package at some point.
   which just points to one of the decision trees
   in the DT table.
 
-- add warning or "NOTE" message if two low level objects
-  have the same name. (but not more than one
-  warning message to this effect in case user 
-  doesn't care).
+- add error check message if two low level objects
+  have the same name and kill the program.
+
    
 - discrete observed variables have only one cardinality,
   card needs to be a vector.
@@ -53,3 +52,4 @@ incorporated into the package at some point.
   has a string name
 
 - include check to make sure that names for each section in parms are unique
+
