@@ -112,7 +112,7 @@ void NGramCPT::becomeAwareOfParentValues(vector<int>& parentValues, vector<int>&
 
 	_contextPointers.clear();
 	if ( _numExistParents > 0 ) {
-		unsigned i = _numExistParents - 1;
+		int i = _numExistParents - 1;
 		ContextHashEntry *ce = _contextTable.find(parentValues[i], 0, _contextStartBlockSize);
 		_contextPointers.push_back(ce);
 	
@@ -146,7 +146,7 @@ void NGramCPT::becomeAwareOfParentValues(vector<RandomVariable *>& parents) {
 
 	_contextPointers.clear();
 	if ( _numExistParents > 0 ) {
-		unsigned i = _numExistParents - 1;
+		int i = _numExistParents - 1;
 		ContextHashEntry *ce = _contextTable.find(parents[i]->val, 0, _contextStartBlockSize);
 		_contextPointers.push_back(ce);
 
