@@ -58,7 +58,7 @@ DiscreteRandomVariable::DiscreteRandomVariable(string _label,int card)
 void
 DiscreteRandomVariable::findConditionalParents()
 {
-  printf("DiscreteRandomVariable::findConditionalParents called\n");
+//  printf("DiscreteRandomVariable::findConditionalParents called\n");
   cachedIntFromSwitchingState = intFromSwitchingState();
   assert ( cachedIntFromSwitchingState >= 0 && 
      cachedIntFromSwitchingState < conditionalCPTs.size() );
