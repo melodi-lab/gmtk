@@ -179,6 +179,8 @@ ARGS ARGS::Args[] = {
   ARGS("dlinkCloneSTDfrac",ARGS::Opt,DlinkMatrix::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
 
   ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
+  ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
+       "Floor the variances to varFloor when they are read in"),
   ARGS("lldp",ARGS::Opt,lldp,"Log Likelihood difference percentage for termination"),
   ARGS("mnlldp",ARGS::Opt,mnlldp,"Absolute value of max negative Log Likelihood difference percentage for termination"),
 
