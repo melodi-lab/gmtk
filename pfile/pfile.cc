@@ -41,10 +41,12 @@ short
 swapb_short_short(short sval) {
  
   short res;
-  short s0,s1,s2,s3;
-  
-  s0 = sval >> 8;
-  s1 = (sval >> 8) & 0x0000ff00;
+  short s0,s1;
+
+  usval = (unsigned short) sval;  
+
+  s0 = usval >> 8;
+  s1 = (usval << 8) & 0x0000ff00;
   res = s0 | s1 ;
   
   return res;
