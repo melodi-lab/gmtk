@@ -32,25 +32,34 @@
 
 class MixGaussiansCommon : public NamedObject, public EMable {
 
+protected:
+
   ///////////////////////////////////////////////////////
   // dim = dimensionality of this Gaussian.
   // Typically, this will be the number of features over which
   // this Gaussian applies.
-  const int _dim;
+  const unsigned _dim;
+
+  ////////////////////////////////////////////////////////////////////
+  // The number of mixture components for this mixture of Gaussians.
+  unsigned numComponents;
   
 public:
 
   ///////////////////////////////////////////////////////////
   // This object must be aware of types of its derived
   // classes for reading from file purposes. 
-  enum MixType { mix = 0, 
-		 gausSwitchMix = 1,
-		 logitSwitchMix = 2,
-                 mlpSwitchMix = 3};
+  enum ContinuousImplementation { ci_unknown=-1,
+				  ci_mixGaussian=0,
+				  ci_gausSwitchMixGaussian=1,
+				  ci_logitSwitchMixGaussian=2,
+				  ci_mlpSwitchMixGaussian=3
+				  };
+  const ContinuousImplementation mixType;
 
-
-  
-  MixGaussiansCommon(const int dim) : _dim(dim) {}
+  MixGaussiansCommon(const int dim, 
+		     const ContinuousImplementation _mixType) 
+    : _dim(dim),mixType(_mixType) {}
   virtual ~MixGaussiansCommon() {}
 
   //////////////////////////////////////////////

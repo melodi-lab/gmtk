@@ -27,6 +27,8 @@
 #include <stdlib.h>
 
 #include "GMTK_GM.h" 
+#include "GMTK_CPT.h"
+#include "GMTK_MixGaussiansCommon.h"
 
 class RandomVariable;
 
@@ -57,16 +59,11 @@ private:
       FeatureRange() { filled = false; }
       void clear() { filled = false; }
     };
-    enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_MTCPT, di_unknown }; 
-    enum ContinuousImplementation { ci_mixGaussian,
-				    ci_gausSwitchMixGaussian ,
-				    ci_logitSwitchMixGaussian,
-				    ci_mlpSwitchMixGaussian,
-                                    ci_unknown };
-
     struct ListIndex {
       enum ListIndexType { li_String, li_Index, li_Unknown } liType;
+      // if this is an integer index, this is used.
       unsigned intIndex;
+      // Otherwise, if this is an string index, this is used.
       string nameIndex;
       void clear() { liType = li_Unknown; }
     };
@@ -95,9 +92,9 @@ private:
     // conditional parents stuff
     vector<vector< rvParent > > conditionalParents;
     // if discrete, then the list if discrete implementations
-    vector< DiscreteImplementaton > discImplementations;
+    vector< CPT::DiscreteImplementaton > discImplementations;
     // if continuous, the list of continuous implementations
-    vector< ContinuousImplementation > contImplementations;
+    vector< MixGaussiansCommon::ContinuousImplementation > contImplementations;
     // in either case, a low-level parameter index
     vector< ListIndex > listIndices;
 
@@ -200,7 +197,7 @@ public:
     KW_Switchingparents=4,
     KW_Conditionalparents=5,
     KW_Discrete=6,
-    KW_Continous=7,
+    KW_Continuous=7,
     KW_Hidden=8,
     KW_Observed=9,
     KW_Nil=10,

@@ -61,7 +61,7 @@ public:
   static double varianceFloor();
   static void setVarianceFloor(const double floor);
 
-  int dimension() const { return _dim; }
+  int dim() const { return _dim; }
 
 
   //////////////////////////////////////////////

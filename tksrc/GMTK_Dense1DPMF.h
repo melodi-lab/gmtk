@@ -54,8 +54,12 @@ public:
   ~Dense1DPMF() { }
 
   int length() { return pmf.len(); }
-
   int card() { return pmf.len(); }
+
+  logpr p(unsigned i) { 
+    assert ( i < (unsigned)pmf.len() );
+    return pmf[i]; 
+  }
 
   ///////////////////////////////////////////////////////////  
   // Re-normalize the output distributions

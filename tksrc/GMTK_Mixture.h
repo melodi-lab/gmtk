@@ -37,11 +37,19 @@
 
 class MixGaussians : public MixGaussiansCommon {
 
+  ///////////////////////////////////////////
+  // the (possibly) shared components
   vector < GaussianComponent* > components;
+
+  ///////////////////////////////////////////
+  // the (possibly) shared 1DPMFs used for the mixture weights.
+  Dense1DPMF* dense1DPMF;
  
 public:
 
-  MixGaussians(const int dim) : MixGaussiansCommon(dim) { }
+  MixGaussians(const int dim) 
+    : MixGaussiansCommon(dim,ci_mixGaussian)
+  { }
   ~MixGaussians() {}
 
   void preCompute();
@@ -54,10 +62,10 @@ public:
 
   //////////////////////////////////
   // set all current parameters to valid but random values
-  void makeRandom() {}
+  void makeRandom();
   // set all current parameters to valid but "uniform" values 
   // (for Gaussians this means N(0,1))
-  void makeUniform() {}
+  void makeUniform();
   //////////////////////////////////
 
   //////////////////////////////////

@@ -29,13 +29,17 @@
 #include "rand.h"
 
 #include "GMTK_ContinuousRandomVariable.h"
+#include "GMTK_GMParms.h"
+#include "GMTK_ObservationMatrix.h"
+#include "GMTK_MixGaussiansCommon.h"
+#include "GMTK_MixGaussians.h"
+
 
 VCID("$Header$");
 
 ContinuousRandomVariable::ContinuousRandomVariable(string _label)
   : RandomVariable(_label,Continuous) 
 {
-
 
 }
 
@@ -66,5 +70,133 @@ ContinuousRandomVariable::findConditionalParents()
   assert ( cachedIntFromSwitchingState >= 0 && 
      cachedIntFromSwitchingState < conditionalParentsList.size() );
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
+  curMappingOrDirect = &conditionalGaussians[cachedIntFromSwitchingState];
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * probGivenParents()
+ *      Computes the probability given the current values of the parents.
+ * 
+ * Preconditions:
+ *      function must be filled in.
+ *
+ * Postconditions:
+ *      What is true after the function is called.
+ *
+ * Side Effects:
+ *      none.
+ *
+ * Results:
+ *      What does the function return, if anything. 
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr
+ContinuousRandomVariable::probGivenParents()
+{
+  if (curMappingOrDirect->direct) {
+    _cachedProb = 
+      curMappingOrDirect->gaussian->log_p
+      (
+       firstFeature+globalObservationMatrix.floatAtFrame(timeIndex),
+       globalObservationMatrix.baseAtFrame(timeIndex),
+       globalObservationMatrix.stride
+       );
+  } else {
+    // need to find which gaussian this will be.
+    const unsigned gaussianIndex =
+      curMappingOrDirect->dtMapper->query(*curConditionalParents);
+    assert ( gaussianIndex < GM_Parms.mixGaussians.size() );
+    //
+    // TODO: this needs to be changed when we have
+    // different types of mixtures of Gaussians.
+    _cachedProb = GM_Parms.mixGaussians[gaussianIndex]->log_p
+      (
+       firstFeature+globalObservationMatrix.floatAtFrame(timeIndex),
+       globalObservationMatrix.baseAtFrame(timeIndex),
+       globalObservationMatrix.stride
+       );
+  }
+  return _cachedProb;
+}
+
+void
+ContinuousRandomVariable::makeRandom()
+{
+  error("not implemented, this should be called to somewhere else");
+}
+
+void
+ContinuousRandomVariable::makeUniform()
+{
+  error("not implemented, this should be called to somewhere else");
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * tieParametersWith()
+ *      Ties the parameters of 'this' with whatever those of 'other' are. 
+ *      'other' and 'this' must be identical structuraly.
+ * 
+ * Preconditions:
+ *      other must be a fully instantiated RV with parameters, and 'this'
+ *      and 'other' must be structurally identical.
+ *
+ * Postconditions:
+ *      'this' has the identical _tied_ parameters with 'other'
+ *
+ * Side Effects:
+ *      Changes the internal parameter data structures, but does not delete anything.
+ *
+ * Results:
+ *      returns nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+ContinuousRandomVariable::tieParametersWith(RandomVariable*const _other)
+{
+  assert ( !(_other -> discrete) );
+  ContinuousRandomVariable* other = (ContinuousRandomVariable*)_other;
+
+  if (!identicalStructureWith(*other))
+    error("Error, trying to tie parameters of RV '%s' with RV '%s' but they have different structure.",
+	  label.c_str(),other->label.c_str());
+
+  conditionalGaussians = other->conditionalGaussians;
+  curMappingOrDirect = other->curMappingOrDirect;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * clone()
+ *      Returns a clone of self.
+ * 
+ * Preconditions:
+ *      self must be filled in.
+ *
+ * Postconditions:
+ *      same as preconditions.
+ *
+ * Side Effects:
+ *      No internal effects.
+ *
+ * Results:
+ *      returns a new random variable.
+ *
+ *-----------------------------------------------------------------------
+ */
+RandomVariable*
+ContinuousRandomVariable::clone()
+{
+  ContinuousRandomVariable* rv = 
+    (ContinuousRandomVariable*) RandomVariable::clone();
+  // might as well set val, although probably won't be useful.
+  rv->tieParametersWith(this);
+  return rv;
+}

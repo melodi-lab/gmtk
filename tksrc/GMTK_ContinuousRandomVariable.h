@@ -25,17 +25,26 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
 #include "GMTK_FileParser.h"
-#include "GMTK_MixGaussians.h"
+#include "GMTK_MixGaussiansCommon.h"
 #include "GMTK_GMParms.h"
 
 
 class ContinuousRandomVariable : public RandomVariable
 {
 private:
+  friend class FileParser;
 
-  // include an enum with the crv type.
+  /////////////////////////////////////////////
+  // A MappingOrDirect object is used to store either
+  // a direct pointer to a Gaussian Mixture object
+  // (which occurrs when there are no ('nil') conditional parents)
+  // or a pointer to a decision tree which is used to map from
+  // the current set of conditional parent values an integer
+  // which then indexes into the GM_Parms Gaussian Mixture array
+  // to locate a particular gaussian.
   class MappingOrDirect {
   public:
+    // include an enum with the crv type.
     MappingOrDirect() {
       direct = false;
       gaussian = NULL;
@@ -43,21 +52,25 @@ private:
     };
     bool direct;
     union { 
-      MixGaussians* gaussian;
+      MixGaussiansCommon* gaussian;
       RngDecisionTree<unsigned>* dtMapper;
     };
   };
 
   //////////////////////////////////////////////////////////////////////
-  // array, one for each set of possible conditional parents we might
-  // have (so size of this array is the number of different
-  // possible conditional parents), and that is determined
-  // by the number of regions carved out in the state space
+  // This array has one element for each set of possible conditional parents 
+  // we might have (so size of this array is the number of different
+  // possible conditional parents), and that equivalent to 
+  // the number of regions carved out in the state space
   // of the switching parents.
   vector <MappingOrDirect> conditionalGaussians;
 
   // the current Gaussian after findConditionalParents() is called.
   MappingOrDirect* curMappingOrDirect;
+
+  // cached probability
+  bool probIsCached;
+  logpr _cachedProb;
 
   //////////////////////////////////////////////////////////////
   // the feature range to which this random variable corresponds.
@@ -75,7 +88,7 @@ public:
   void findConditionalParents();
 
   // compute the probability
-  logpr probGivenParents() { return 0.0; }
+  logpr probGivenParents();
 
   ////////////////////////////////////////////////
   // clamp this RV to its "first" value,
@@ -97,10 +110,10 @@ public:
   void setValue(VariableValue &vv) { error("not implemented"); }
 
 
-  void makeRandom() {}
-  void makeUniform() {}
+  void makeRandom();
+  void makeUniform();
 
-  void tieParametersWith(RandomVariable*const other) { error("not implemented"); }
+  void tieParametersWith(RandomVariable*const other);
 
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
@@ -123,7 +136,7 @@ public:
   RandomVariable *create() { 
     return new ContinuousRandomVariable(label);
   }
-  RandomVariable *clone() { error("not implemented"); return this; }
+  RandomVariable *clone();
 
   ///////////////////////////////////////////////////
 
