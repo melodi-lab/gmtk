@@ -29,6 +29,7 @@
 #include <iterator>
 #include <map>
 #include <set>
+#include <algorithm>
 
 #include "general.h"
 #include "error.h"
@@ -152,6 +153,8 @@ GMTemplate::makeComplete(set<RandomVariable*> &rvs)
 	      (*i)->neighbors.begin(),
 	      (*i)->neighbors.end(),
 	      inserter(res,res.end()));
+    // make sure self is not its own neighbor
+    res.erase((*i));
     (*i)->neighbors = res;
   }
 
@@ -645,6 +648,8 @@ triangulatePartitions()
   findBestLeftInterface(C1_u2,C2_u2,C3_u2,left_C_l_u2C2,C_l_u2C2);
 
 
+
+
   // create sets P', C1', C2', and E', from graph unrolled 1 time
   vector <RandomVariable*> unroll1_rvs;
   fp.unroll(1,unroll1_rvs);
@@ -763,14 +768,28 @@ triangulatePartitions()
   for (set<RandomVariable*>::iterator i=A.begin();
        i != A.end(); i++) {
     RandomVariable* rv = (*i);
-    printf("%s(%d)\n",rv->name().c_str(),rv->frame());
+    printf("%s(%d) :",rv->name().c_str(),rv->frame());
+    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      printf(" %s(%d),",
+	     (*j)->name().c_str(),(*j)->frame());
+
+    }
+    printf("\n");
   }
 
   printf("---\nSet B is:\n");
   for (set<RandomVariable*>::iterator i=B.begin();
        i != B.end(); i++) {
     RandomVariable* rv = (*i);
-    printf("%s(%d)\n",rv->name().c_str(),rv->frame());
+    printf("%s(%d) :",rv->name().c_str(),rv->frame());
+    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      printf(" %s(%d),",
+	     (*j)->name().c_str(),(*j)->frame());
+
+    }
+    printf("\n");
   }
 
 
@@ -778,7 +797,14 @@ triangulatePartitions()
   for (set<RandomVariable*>::iterator i=C.begin();
        i != C.end(); i++) {
     RandomVariable* rv = (*i);
-    printf("%s(%d)\n",rv->name().c_str(),rv->frame());
+    printf("%s(%d) :",rv->name().c_str(),rv->frame());
+    for (set<RandomVariable*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      printf(" %s(%d),",
+	     (*j)->name().c_str(),(*j)->frame());
+
+    }
+    printf("\n");
   }
 
   set<RandomVariable*> Ac;
@@ -789,13 +815,62 @@ triangulatePartitions()
   clone(B,Bc);
   clone(C,Cc);
 
-  set<MaxClique> Acliques;
-  set<MaxClique> Bcliques;
-  set<MaxClique> Ccliques;
+  vector<MaxClique> Acliques;
+  vector<MaxClique> Bcliques;
+  vector<MaxClique> Ccliques;
 
-  triangulate(Ac,Acliques,MIN_WEIGHT);
-  triangulate(Bc,Bcliques,MIN_WEIGHT);
-  triangulate(Cc,Ccliques,MIN_WEIGHT);
+  vector<RandomVariable*> Aordered;
+  vector<RandomVariable*> Bordered;
+  vector<RandomVariable*> Cordered;
+
+  vector<TriangulateHeuristic> th_v;
+  th_v.push_back(MIN_WEIGHT); // first by weight
+  th_v.push_back(MIN_FILLIN); // then by fill in if weight in tie
+  th_v.push_back(MIN_TIMEFRAME); // and lastly by time frame (earliest first)
+
+  triangulate(Ac,th_v,
+	      Aordered,Acliques);
+  triangulate(Bc,th_v,
+	      Bordered,Bcliques);
+  triangulate(Cc,th_v,
+	      Cordered,Ccliques);
+
+  printf("A Cliques\n");  
+  for (unsigned i=0;i<Acliques.size();i++) {
+    printf("%d : %d\n",i,Acliques[i].nodes.size());
+    for (set<RandomVariable*>::iterator j=Acliques[i].nodes.begin();
+	 j != Acliques[i].nodes.end(); j++) {
+      RandomVariable* rv = (*j);
+      printf("   %s(%d)\n",rv->name().c_str(),rv->frame());
+    }
+  }
+  printf("\n");
+
+
+  printf("B Cliques\n");  
+  for (unsigned i=0;i<Bcliques.size();i++) {
+    printf("%d : %d\n",i,Bcliques[i].nodes.size());
+    for (set<RandomVariable*>::iterator j=Bcliques[i].nodes.begin();
+	 j != Bcliques[i].nodes.end(); j++) {
+      RandomVariable* rv = (*j);
+      printf("   %s(%d)\n",rv->name().c_str(),rv->frame());
+    }
+  }
+  printf("\n");
+
+
+  printf("C Cliques\n");  
+  for (unsigned i=0;i<Ccliques.size();i++) {
+    printf("%d : %d\n",i,Ccliques[i].nodes.size());
+    for (set<RandomVariable*>::iterator j=Ccliques[i].nodes.begin();
+	 j != Ccliques[i].nodes.end(); j++) {
+      RandomVariable* rv = (*j);
+      printf("   %s(%d)\n",rv->name().c_str(),rv->frame());
+    }
+  }
+  printf("\n");
+
+
 
 }
 
@@ -807,7 +882,7 @@ triangulatePartitions()
  *   Clone a set of random variables from 'in' to 'out'. The cloned
  *   variables have the same set of parents and children
  *   but the 'neighbors' member is entirely new and points
- *   only to the corresponding neighbors in the new 'out' set.
+ *   only to the corresponding 'in' neighbors in the new 'out' set.
  *   Therefore, parents,children should not be used
  *   among cloned set.
  *   TODO: this needs to be changed, and completed.  
@@ -836,9 +911,18 @@ clone(set<RandomVariable*>& in,
   map < RandomVariable*, RandomVariable* > in_to_out;
   for (set<RandomVariable*>::iterator i=in.begin();
        i != in.end(); i++) {
+
+    if ( (*i)->neighbors.find((*i)) != (*i)->neighbors.end() ) {
+      printf("WARNING: node %s(%d) has self as a neighbor\n",
+	     (*i)->name().c_str(),(*i)->frame());
+
+    }
+
+
     RandomVariable*rv = (*i)->cloneWithoutParents();
     out.insert(rv);
     in_to_out[(*i)] = rv;
+
   }
 
   // just do neighbors for now, don't bother with parents, children,
@@ -850,7 +934,7 @@ clone(set<RandomVariable*>& in,
 
   for (set<RandomVariable*>::iterator i=in.begin();
        i != in.end(); i++) {
-    RandomVariable*rv = in_to_out[(*i)];
+    RandomVariable*rv = (*i);
     set<RandomVariable*> tmp;
     for (set<RandomVariable*>::iterator j = rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {    
@@ -859,7 +943,11 @@ clone(set<RandomVariable*>& in,
 	tmp.insert(in_to_out[(*j)]);
       }
     }
-    rv->neighbors = tmp;
+    in_to_out[rv]->neighbors = tmp;
+    // assertion to make sure that no node has itself as neighbor.
+    assert( in_to_out[rv]->neighbors.find(in_to_out[rv])
+	    == in_to_out[rv]->neighbors.end() );
+
   }
 }
 
@@ -888,73 +976,293 @@ clone(set<RandomVariable*>& in,
  */
 void
 GMTemplate::
-triangulate(
-	    // input nodes to triangulate
+triangulate(// input: nodes to triangulate
 	    set<RandomVariable*> nodes,
-	    // nodes ordered according to resulting triangulation
-	    set<RandomVariable*>& orderedNodes,  
-	    // resulting max cliques
-	    set<MaxClique>& cliques,             
-	    // triangulation heuristic
-	    const TriangulateHeuristic th        
+	    // input: triangulation heuristic
+	    const vector<TriangulateHeuristic>& th_v,
+	    // output: nodes ordered according to resulting elimination
+	    vector<RandomVariable*>& orderedNodes,  
+	    // output: resulting max cliques
+	    vector<MaxClique>& cliques
 	    )
 {
-  
-  // Create a priority queue data structure using a multimap, so that
-  // those nodes with the lowest 'X' where 'X' is the heuristic
-  // can be accessed immediately in the front, and where
-  // whenever a node gets eliminated, only its neighbors weight
-  // can be recalculated easily.
 
-  set<RandomVariable*> unorderedNodes = nodes;
+  const int debug = 0;
+  const unsigned num_nodes = nodes.size();
+
+
+  if (debug > 0)
+    printf("\nBEGINNING TRIANGULATION --- \n");
+
+  // need to use some form of heuristic
+  assert ( th_v.size() != 0 );
+
+  cliques.clear();
+
+  // orderedNodes == already eliminated nodes. 
   orderedNodes.clear();
 
-  multimap<double,RandomVariable*> unorderedNodes;
-  // first go through and create initial data structure
+  // Also keep ordered (eliminated) nodes as a set for easy
+  // intersection, with other node sets.
+  set<RandomVariable*> orderedNodesSet;
 
-  for (set<RandomVariable*>::iterator i = nodes.begin();
-       i != nodes.end();
-       i++) {
-    double weight;
-    
-    // different Heuristics
-    if (th == MIN_SIZE) {
-      weight = (*i)->neighbors.size();
-    } else if (th == MIN_WEIGHT) {
-      weight = 1;
-      for (set<RandomVariable*>::iterator j=(*i)->neighbors.begin();
-	   j != (*i)->neighbors.end();
-	   j++) {
-	RandomVariable *const rv = (*j);
-	if (rv->discrete && rv->hidden) {
-	  DiscreteRandomVariable *const drv = rv;
-	  if (!drv->deterministic()) {
-	    weight *= drv->cardinality;
-	    // TODO: change to line below when
-	    // reading in parameters.
-	    // weight *= drv->averageCardinality();
+  
+  // Approach: essentially, create a priority queue data structure
+  // using a multimap. In this case, those nodes with the lowest 'X'
+  // where 'X' is the weight heuristic can be accessed immediately in
+  // the front of the map. Also, whenever a node gets eliminated, only
+  // its neighbor's weights are recalculated. With this
+  // data structure it is possible and efficient to do so. This
+  // is because a multimap (used to simulate a priority queue) has the
+  // ability to remove stuff from the middle.
+  multimap< vector<float> ,RandomVariable*> unorderedNodes;
+
+  // We also need to keep a map to be able to remove elements of
+  // 'unorderedNodes' when a node is eliminated. I.e., we need
+  // to be able to map back from a RV* directly to its entry
+  // in the priority queue so that when a node is eliminated, 
+  // its neighbors can be removed from the queue and then
+  // their weight can be recalculated.
+  map<RandomVariable*, multimap< vector<float>,RandomVariable*>::iterator > 
+    rv2unNodesMap;
+
+  // Also, create a set of nodes which are the ones whose weight
+  // needs to be updated in the priority queue 'unorderedNodes'
+  set<RandomVariable*> nodesToUpdate = nodes;
+
+  do {
+
+    for (set<RandomVariable*>::iterator i = nodesToUpdate.begin();
+	 i != nodesToUpdate.end();
+	 i++) {
+
+      if (debug > 0)
+	printf("TR: computing weight of node %s(%d)\n",
+	       (*i)->name().c_str(),(*i)->frame());
+
+      // create a vector with (weight,fillin,timeframe, etc.)
+      // and choose in increasing lexigraphic order in that
+      // tuple.
+      vector<float> weight;
+
+      // Create activeNeighbors, which contains only those neighbors
+      // that are active and are not yet eliminated.
+      set<RandomVariable*> activeNeighbors;
+      set_difference((*i)->neighbors.begin(),(*i)->neighbors.end(),
+		     orderedNodesSet.begin(),orderedNodesSet.end(),
+		     inserter(activeNeighbors,activeNeighbors.end()));
+
+      for (unsigned thi=0;thi<th_v.size();thi++) {
+
+	const TriangulateHeuristic th = th_v[thi];
+
+	if (th == MIN_WEIGHT) {
+	  float tmp_weight = 0;
+	  // first get cardinality of self node, but if
+	  // it is continuous or observed, it does not change the weight.
+	  if ((*i)->discrete && (*i)->hidden) {
+	    DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)(*i);
+	    // weight changes only if node is not deterministic.
+	    // if (!drv->deterministic())
+	    // TODO: change to tmp_weight *= drv->useCardinality();
+	    tmp_weight += log10((double)drv->cardinality);
 	  }
-	}
+	  // Next, get cardinality of all neighbors.
+	  for (set<RandomVariable*>::iterator j=activeNeighbors.begin();
+	       j != activeNeighbors.end();
+	       j++) {
+	    RandomVariable *const rv = (*j);
+	    if (rv->discrete && rv->hidden) {
+	      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+	      // if (!drv->deterministic())
+	      // TODO: change to line below when
+	      // parameters are read in, to get
+	      // sparse CPT cardinalities which could
+	      // be *much* less than dense CPT cardinality
+	      // and therefore significantly change triangulation.
+	      // tmp_weight *= drv->useCardinality();
+	      tmp_weight += log10((double)drv->cardinality);
+	    }
+	  }
+	  weight.push_back(tmp_weight);
+	  if (debug > 0)
+	    printf("  node has weight = %f\n",tmp_weight);
+	} else if (th == MIN_FILLIN) {
+	  // count the number of neighbors of this node
+	  // that are not joined together.
+	  int fill_in = 0;
+	  for (set<RandomVariable*>::iterator j=activeNeighbors.begin();
+	       j != activeNeighbors.end();
+	       j++) {
+
+	    // TODO: figure out if there is a way to just to compute
+	    // the size of the set intersection rather than to
+	    // actually produce the set intersection and then use its size.
+	    set<RandomVariable*> tmp;
+	    set_intersection(activeNeighbors.begin(),activeNeighbors.end(),
+			     (*j)->neighbors.begin(),(*j)->neighbors.end(),
+			     inserter(tmp,tmp.end()));
+
+	    // Nodes i and j should share the same neighbors except for
+	    // node i has j as a neighbor and node j has i as a
+	    // neighbor.  Therefore, if fill in is zero, then 
+	    //    tmp.size() == (*i)->neighbors.size() - 1
+	    // (we subtract 1 since we don't include the neighbor
+	    //  in the fill in, it is included in neighbors 
+	    //  but not tmp).
+	    // In otherwords, we have:
+
+	    /*
+	    printf("    Neighbor %s(%d) needs %d for fill in\n",
+		   (*j)->name().c_str(),(*j)->frame(),
+		   (activeNeighbors.size() - 1 - tmp.size()));
+	    printf("    Neighbors of %s(%d) are:",
+		   (*j)->name().c_str(),(*j)->frame());
+	    for (set<RandomVariable*>::iterator k=(*j)->neighbors.begin();
+		 k != (*j)->neighbors.end();
+		 k++) {
+	      printf("%s(%d) ",
+		   (*k)->name().c_str(),(*k)->frame());
+	    }
+	    printf("\n");
+	    */
+
+	    fill_in += (activeNeighbors.size() - 1 - tmp.size());
+
+	    
+
+	  }
+	  // counted each edge twice, so fix that (although not necessary really)
+	  fill_in /= 2;
+
+	  weight.push_back((float)fill_in);
+	  if (debug > 0)
+	    printf("  node has fill_in = %d\n",fill_in);
+
+	} else if (th == MIN_TIMEFRAME) {
+	  weight.push_back((*i)->frame());
+	  if (debug > 0)
+	    printf("  node has time frame = %d\n",(*i)->frame());
+	} else if (th == MIN_SIZE) {
+	  weight.push_back((float)activeNeighbors.size());
+	  if (debug > 0)
+	    printf("  node has active neighbor size = %d\n",
+		   activeNeighbors.size());
+	} else
+	  warning("Warning: unimplemented triangulation heuristic ignored\n");
       }
-    } else { // (th == MIN_FILLIN)
 
+      pair< vector<float>,RandomVariable*> p(weight,(*i));
+      rv2unNodesMap[(*i)] = (unorderedNodes.insert(p));
+    }
 
+    if (debug > 0) {
+      // go through and print sorted guys.
+      printf("Order of nodes to be eliminated\n");
+      for (multimap< vector<float> ,RandomVariable*>::iterator m
+	     = unorderedNodes.begin();
+	   m != unorderedNodes.end(); m++) {
+	printf("Node %s(%d) with weights:",
+	       (*m).second->name().c_str(),
+	       (*m).second->frame());
+	for (unsigned l = 0; l < (*m).first.size(); l++ )
+	  printf(" %f,",(*m).first[l]);
+	printf("\n");
+      }
     }
 
 
+    // go through the updated multi-map, 
+    // grab an iterator pair to iterate between
+    // all nodes that have the lowest weight. This utilizes
+    // the fact that the multimap stores values in ascending
+    // order based on key (in this case the weight), and so
+    // the first one (i.e., .begin())should have the lowest weight.
+    pair< 
+      multimap< vector<float>,RandomVariable*>::iterator, 
+      multimap< vector<float>,RandomVariable*>::iterator 
+      > ip = unorderedNodes.equal_range( (*(unorderedNodes.begin())).first );
+
+    const int d = distance(ip.first,ip.second);
+    if (d == 1) {
+      // then there is only one node and we eliminate that
+      // so do nothing
+    } else {
+      // choose a random one, don't re-seed rng as that
+      // should be done one time for the program via command line arguments.
+      RAND rnd(false);
+      int val = rnd.uniform(d-1);
+      // TODO: there must be a better way to do this.
+      while (val--)
+	ip.first++;
+    }
+
+    // ip.first now points to the random variable that
+    // we eliminate.
+    RandomVariable *rv = (*(ip.first)).second;
+
+    if (debug > 0) {
+      printf("\nEliminating node %s(%d) with weights:",
+	     rv->name().c_str(),rv->frame());
+      for (unsigned l = 0; l < (*(ip.first)).first.size(); l++ )
+	printf(" %f,",(*(ip.first)).first[l]);
+      printf("\n");
+    }
 
 
-  }
+    // connect all neighbors of r.v. excluding nodes in 'orderedNodesSet'.
+    rv->connectNeighbors(orderedNodesSet);
 
-  while (unorderedNodes.size() > 0) {
-    // go through and update multi-map
-    
+    // check here if this node + its neighbors is a subset
+    // of previous maxcliques. If it is not a subset of any previous
+    // maxclique, then this node and its neighbors is a 
+    // new maxclique.
+    set<RandomVariable*> candidateMaxClique;
+    set_difference(rv->neighbors.begin(),rv->neighbors.end(),
+		   orderedNodesSet.begin(),orderedNodesSet.end(),
+		   inserter(candidateMaxClique,candidateMaxClique.end()));
+    candidateMaxClique.insert(rv);
+    bool is_max_clique = true;
+    for (unsigned i=0;i < cliques.size(); i++) {
+      if (includes(cliques[i].nodes.begin(),cliques[i].nodes.end(),
+		   candidateMaxClique.begin(),candidateMaxClique.end())) {
+	// then found a 'proven' maxclique that includes our current
+	// candidate, so the candidate cannot be a maxclique
+	is_max_clique = false;
+	break;
+      }
+    }
+    if (is_max_clique) {
+      cliques.push_back(MaxClique(candidateMaxClique));
+    }
 
-  }
+    // insert node into ordered list
+    orderedNodes.push_back(rv);
 
+    // insert node into ordered set
+    orderedNodesSet.insert(rv);
 
+    // erase node from priority queue
+    unorderedNodes.erase(ip.first);
 
+    // only update not-yet-eliminated nodes that could possibly
+    // have been effected by the current node 'rv' being
+    // eliminated. I.e., create the set of active neighbors
+    // of rv.
+    nodesToUpdate.clear();
+    set_difference(rv->neighbors.begin(),rv->neighbors.end(),
+		   orderedNodesSet.begin(),orderedNodesSet.end(),
+		   inserter(nodesToUpdate,nodesToUpdate.end()));
 
+    // erase active neighbors of nodes since they
+    // will need to be recomputed above.
+    for (set<RandomVariable*>::iterator n = nodesToUpdate.begin();
+	 n != nodesToUpdate.end();
+	 n++) {
+      unorderedNodes.erase(rv2unNodesMap[(*n)]);
+    }
+
+  } while (orderedNodesSet.size() < num_nodes);
 
 }
 
