@@ -73,12 +73,15 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default build rules.
 #----------------------------------------------------------------------------
 .c.o:
+	-@rm echo $@
 	$(compile.c) -c $<
 
 .cc.o:
+	-@rm echo $@
 	$(compile.cc) -c $<
 
 .cc.s:
+	-@rm echo $@
 	$(compile.cc) -S -c $<
 
 #----------------------------------------------------------------------------
