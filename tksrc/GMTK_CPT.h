@@ -39,11 +39,9 @@
  * 
  * CPT
  *  |
- *  +-- MDCPT - dense
+ *  +-- MDCPT - Multi-d Dense CPT
  *  |
- *  +-- SMDCPT - sparse
- *  |
- *  +-- SD_CPT - decision tree
+ *  +-- MSCPT - Multi-d Sparse (decision tree based) CPT
  * 
  * 
  */
@@ -82,11 +80,11 @@ public:
   // Semi-constructors: useful for debugging.
   // Functions to force the internal structures to be particular values.
   // Force the number of parents to be such.
-  virtual void setNumParents(const int _nParents) = 0;
+  virtual void setNumParents(const int _nParents);
   // Set the cardinality. If var = numParents, this sets
   // the cardinality of the child. Otherwise, it sets the
   // cardinality of the parent. 
-  virtual void setNumCardinality(const int var, const int card) = 0;
+  virtual void setNumCardinality(const int var, const int card);
   // Allocate memory, etc. for the internal data structures
   // for this CPT, depending on current numParents & cardinalities.
   virtual void allocateBasicInternalStructures() = 0;
@@ -105,7 +103,7 @@ public:
   virtual void becomeAwareOfParentValues( sArray <int>& parentValues ) = 0;
   // Another version of becomeAwareOfParentValues but this
   // one explicitely takes an array of random variable parents.
-  virtual void becomeAwareOfParentValues( sArray < randomVariable *>& parents ) = 0;
+  virtual void becomeAwareOfParentValues( sArray < RandomVariable *>& parents ) = 0;
   // return the probability of 'val' given the parents are the
   // assigned to the set of values set during the most previous call to 
   // becomeAwareOfParentValues.
@@ -114,38 +112,55 @@ public:
   // probability evaluation.
   virtual logpr probGivenParents(sArray <int>& parentValues, 
 				 const int val) = 0;
-  virtual logpr probGivenParents(sArray < randomVariable *>& parents,
+  virtual logpr probGivenParents(sArray < RandomVariable *>& parents,
 				 const int val) = 0;
 
 
   // Returns an integer that gives, for the current parent assignment
   // the number of possible (i.e., with non-zero probability)
   // different values of this random variable.
-  virtual int numValsGivenParents() = 0;
+  virtual int numValsGivenParents() {
+    return cardinalities[numParents]; 
+  }
+
   class iterator {
     friend class CPT;
     // An integer internal state which "hopefully" will
     // be enough for each derived class.
     int internalState;
+    const CPT* cpt;
   public:
-    iterator() {}
-    int val;
-    // the probability of the variable being value 'val'
+    iterator(CPT* _cpt) : cpt(_cpt) {}
+    
+    int val() { return internalState; }
+    // the probability of the variable being value 'val()'
     logpr probVal;
     // change the iterator to be the next valid value.
+    // prefix
+    virtual iterator& operator ++() = 0;
+    // postfix
+    virtual iterator operator ++(int) = 0;
+    bool operator == (const iterator &it) 
+       { return it.internalState == internalState; } 
+    bool operator != (const iterator &it)
+       { return it.internalState != internalState; } 
     void next();
-
   };
 
   // returns an iterator for the first one.
-  virtual iterator first() = 0;
+  virtual iterator begin() = 0;
+  // returns an iterator for the first one.
+  virtual iterator end() = 0;
+
   // Given a current iterator, return true if it
   // is a valid next value, otherwise return false so
   // a loop can terminate.
   virtual bool next(iterator &) = 0;
 
+
+  ///////////////////////////////////////////////////////////  
   // Given the current parent values, generate a random sample.
-  virtual int randomSample();
+  virtual int randomSample() = 0;
 
 
   ///////////////////////////////////////////////////////////  

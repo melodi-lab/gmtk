@@ -33,7 +33,7 @@ class Sparse1DPMF : public EMable {
   //////////////////////////////////////
   // The cardinality of this RV, i.e., 
   // values may take value between [0:card-1]
-  int card;
+  int _card;
 
   struct Entry {
     int val;
@@ -58,7 +58,17 @@ public:
   // General constructor
   Sparse1DPMF();
 
+  //////////////////////////////////////
+  // Return the number of valid values
   int length() { return pmf.len(); }
+
+  ///////////////////////////////////////
+  // return the cardinality of the RV
+  int card() { return _card; }
+
+  ///////////////////////////////////////
+  // return the probability that for value 'val'
+  logpr prob(const int val);
 
   ///////////////////////////////////////////////////////////  
   // Re-normalize the distribution
