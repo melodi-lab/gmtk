@@ -208,10 +208,11 @@ MDCPT::read(iDataStreamFile& is)
   }
 
   // Finally read in the probability values (stored as doubles).
-  // NOTE: We could check that things sum to approximately 1.0 here
-  // (if we didn't use a large 1D loop).
   mdcpt.resize(numValues);
-  for (int i=0;i<numValues;i++) {
+  double child_sum = 0.0;
+  int row=0;;
+  const double threshold = _card*1e-4;
+  for (int i=0;i<numValues;) {
     double val;
     is.readDouble(val,"MDCPT::read, reading value");
     if (val < 0 || val > 1)
@@ -221,6 +222,23 @@ MDCPT::read(iDataStreamFile& is)
 	    val,
 	    i);
     mdcpt[i] = val;
+    i++;
+    child_sum += val;
+    if (i % _card == 0) {
+      // check that child sum is approximately one
+      double abs_diff = fabs(child_sum - 1.0);
+      // be more forgiving as cardinality increases
+      if (abs_diff > threshold) 
+	error("ERROR: reading file '%s', row %d of MDCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e.",
+	      is.fileName(),
+	      row,
+	      name().c_str(),
+	      child_sum,
+	      abs_diff);
+      // reset
+      child_sum = 0.0;
+      row++;
+    }
   }
   setBasicAllocatedBit();
 }
@@ -254,8 +272,7 @@ MDCPT::write(oDataStreamFile& os)
   os.nl();
 
   // Finally write in the probability values (stored as doubles).
-  // NOTE: We could check that things sum to approximately 1 here, if
-  // we didn't use a large 1D loop. 
+  normalize();
   int childCard = card();
   for (int i=0;i<mdcpt.len();i++) {
     os.writeDouble(mdcpt[i].unlog(),"MDCPT::write, writing value");
@@ -394,6 +411,7 @@ void
 MDCPT::normalize()
 {
   assert ( bitmask & bm_basicAllocated );
+  assert ( card() > 0 );
 
   // Use the inherent structure of the multi-D array
   // so to loop over the final distributions on the child.
@@ -401,19 +419,21 @@ MDCPT::normalize()
   const int child_card = card();
   const int num_parent_assignments = mdcpt.len()/child_card;
   logpr *loc_ptr = mdcpt.ptr;
-  for (int parent_assignment =0; 
+  for (int parent_assignment =0;
        parent_assignment < num_parent_assignments; 
        parent_assignment ++) {
     logpr sum = 0.0;
     logpr *tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
+    int i=0; do {
       sum += *tmp_loc_ptr++;
-    }
+    } while (++i < child_card);
+
     tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
+    i=0; do {
       *tmp_loc_ptr /= sum;
-      tmp_loc_ptr++;
-    }
+      tmp_loc_ptr++;   
+    } while (++i < child_card);
+
     loc_ptr += child_card;
   }
 }
@@ -572,15 +592,19 @@ MDCPT::emEndIteration()
   if (!emOnGoingBitIsSet())
     return;
 
-  if (accumulatedProbability.zero()) {
-    warning("WARNING: MDCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+  accumulatedProbability.floor();
+  if (accumulatedProbability < minDiscAccumulatedProbability()) {
+    warning("WARNING: MDCPT named '%s' received only %e accumulated probability in EM iteration. Using previous values.",name().c_str(),accumulatedProbability.val());
+    for (int i=0;i<nextMdcpt.len();i++) {
+      nextMdcpt[i] = mdcpt[i];
+    }
   }
 
   // now normalize the next ones
-
   const int child_card = card();
   const int num_parent_assignments = mdcpt.len()/child_card;
   logpr *loc_ptr = nextMdcpt.ptr;
+  int num_rows_with_zero_counts = 0;
   for (int parent_assignment =0; 
        parent_assignment < num_parent_assignments; 
        parent_assignment ++) {
@@ -590,17 +614,29 @@ MDCPT::emEndIteration()
       sum += *tmp_loc_ptr++;
     }
 
+    sum.floor();
     if (sum == 0.0) {
-      error("Ending EM iteration but a row of CPT %s has zero probability of occurance\n",
-	  _name.c_str());      
+      num_rows_with_zero_counts ++;
+      logpr *mdcpt_p = mdcpt.ptr + (loc_ptr - nextMdcpt.ptr);
+      tmp_loc_ptr = loc_ptr;
+      for (int i=0;i<child_card;i++) {
+	*tmp_loc_ptr++ = *mdcpt_p++; 
+      }
+    } else {
+      tmp_loc_ptr = loc_ptr;
+      for (int i=0;i<child_card;i++) {
+	*tmp_loc_ptr /= sum;
+	tmp_loc_ptr++;
+      }
     }
-    tmp_loc_ptr = loc_ptr;
-    for (int i=0;i<child_card;i++) {
-      *tmp_loc_ptr /= sum;
-      tmp_loc_ptr++;
-    }
+
     loc_ptr += child_card;
   }
+
+  if (num_rows_with_zero_counts > 0) 
+    warning("WARNING: Ending EM iteration but %d rows of MDCPT '%s' had zero counts. Using previous values for those rows.\n",
+	    num_rows_with_zero_counts,
+	    _name.c_str());
 
   // stop EM
   emClearOnGoingBit();
@@ -633,7 +669,7 @@ MDCPT::emStoreAccumulators(oDataStreamFile& ofile)
   }
   EMable::emStoreAccumulators(ofile);
   for (int i=0;i<nextMdcpt.len();i++) {
-    ofile.write(nextMdcpt[i].val(),"mdcw");
+    ofile.write(nextMdcpt[i].val(),"MDCPT store accums");
   }
 }
 
@@ -644,7 +680,7 @@ MDCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
   EMable::emStoreZeroAccumulators(ofile);
   for (int i=0;i<mdcpt.len();i++) {
     const logpr p; 
-    ofile.write(p.val(),"mdcw");
+    ofile.write(p.val(),"MDCPT store zero accums");
   }
 }
 
@@ -655,7 +691,7 @@ MDCPT::emLoadAccumulators(iDataStreamFile& ifile)
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
   for (int i=0;i<nextMdcpt.len();i++) {
-    ifile.read(nextMdcpt[i].valref(),"mdcr");
+    ifile.read(nextMdcpt[i].valref(),"MDCPT load accums");
   }
 }
 
@@ -668,7 +704,7 @@ MDCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
   EMable::emAccumulateAccumulators(ifile);
   for (int i=0;i<nextMdcpt.len();i++) {
     logpr tmp;
-    ifile.read(tmp.valref(),"mdcr");
+    ifile.read(tmp.valref(),"MDCPT accumulate accums");
     nextMdcpt[i] += tmp;
   }
 }
