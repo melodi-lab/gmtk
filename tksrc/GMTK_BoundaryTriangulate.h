@@ -435,6 +435,13 @@ public:
     vector<RandomVariable*>&    order
     );
 
+  // This procedure is like triangulateMaximumCardinalitySearch except that
+  // it tests if the original graph was triangulated 
+  bool triangulateMCSIfNotTriangulated( 
+    const set<RandomVariable*>& nodes,
+    vector<MaxClique>&          cliques
+  );
+
   // Check if graph is chordal 
   bool chordalityTest( 
     const set<RandomVariable*>& nodes
