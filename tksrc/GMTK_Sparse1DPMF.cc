@@ -405,7 +405,7 @@ Sparse1DPMF::emSwapCurAndNew()
   if (!emSwappableBitIsSet())
     return;
 
-  dense1DPMF->emEndIteration();
+  dense1DPMF->emSwapCurAndNew();
 
   emClearSwappableBit();
 }
