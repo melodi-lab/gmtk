@@ -265,14 +265,14 @@ frame:0 {
           type: continuous observed 0:5 ;
           switchingparents: state1(0), state2(0)
                    using mapping("state2obs6") ;
-          conditionalparents: 
+          conditionalparents:
                  nil using mixture("the_forth_gaussian_mixture")
                | state1(0) using mixture collection("gaussianCollection") mapping("gausmapping");
        }
        variable : obs2 {
           type: continuous observed 6:25  ;
           switchingparents: nil ;
-          conditionalparents: 
+          conditionalparents:
                 state1(0) using mlpSwitchMixture collection("mlpgaussianCollection")
                           mapping("gaussmapping3") ;
        }
@@ -318,7 +318,7 @@ frame:1 {
           type: continuous observed 0:5 ;
           switchingparents: state1(0), state2(0) 
                    using mapping("state2obs6") ;
-          conditionalparents: 
+          conditionalparents:
                  nil using mixture("the_forth_gaussian_mixture")
                | state1(0) using mixture collection("gaussianCollection") mapping("gausmapping");
        }
@@ -326,7 +326,7 @@ frame:1 {
        variable : obs2 {
           type: continuous observed 6:25  ;
           switchingparents: nil ;
-          conditionalparents: 
+          conditionalparents:
                 state1(0) using mlpSwitchMixture collection("gaussianCollection")
                           mapping("gaussmapping3") ;
        }
@@ -541,7 +541,7 @@ FileParser::prepareNextToken()
  *      Object must be in the midst of parsing a file.
  *
  * Postconditions:
- *      Same as before, new token parsed, possible new 
+ *      Same as before, new token parsed, possible new
  *      EOF condition might exist.
  *
  * Side Effects:
@@ -787,7 +787,7 @@ FileParser::parseRandomVariableList()
 
   // we need to at least have specified one conditional parents set,
   // which might be 'nil' 
-  if (curRV.conditionalParents.size() == 0)  
+  if (curRV.conditionalParents.size() == 0)
     error("Conditional parents unknown/unspecified for random variable '%s' at frame %d, line %d\n",
 	  curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
 
@@ -811,7 +811,7 @@ FileParser::parseRandomVariableList()
     }
   }
 
-  // check that if we have conditionalparents > 1 we also have switching parents. 
+  // check that if we have conditionalparents > 1 we also have switching parents.
   if (curRV.conditionalParents.size() > 1 && curRV.switchingParents.size() == 0) {
       error("Random variable '%s', frame %d, line %d of file %s has %d sets of conditional parents but does not list any switching parents.\n",
 	    curRV.name.c_str(),
@@ -831,7 +831,7 @@ FileParser::parseRandomVariableList()
 	  curRV.fileLineNumber,
 	  rvInfoVector[(*it).second].fileLineNumber);
   }
-  
+
   curRV.variablePositionInStrFile = rvInfoVector.size();
 
   // everything looks ok, insert it in our tables.
@@ -890,7 +890,7 @@ FileParser::parseRandomVariableAttributeList()
       tokenInfo == KW_Weight ||
       tokenInfo == KW_EliminationHint ||
       tokenInfo == KW_Switchingparents ||
-      tokenInfo == KW_Conditionalparents) 
+      tokenInfo == KW_Conditionalparents)
     {
       parseRandomVariableAttribute();
       parseRandomVariableAttributeList();
@@ -1277,7 +1277,7 @@ FileParser::parseRandomVariableWeightOptionList()
       curWtItem->weight_value  = (double)firstElement;
       // we do not consume current token since it is part of the next lexeme.
     }
-  } else 
+  } else
     parseErrorExpecting("integer or floating-point value");
   
   ensureNotAtEOF("; or another weight (scale,penalty,shift) option");
@@ -1318,14 +1318,14 @@ FileParser::parseRandomVariableParentAttribute()
       parseErrorExpecting("attribute separator");
     consumeToken();
 
-    parseConditionalParentSpecList(); 
+    parseConditionalParentSpecList();
 
     ensureNotAtEOF(";");
     if (tokenInfo != TT_SemiColon)
       parseErrorExpecting("';'");
     consumeToken();
 
-  } else 
+  } else
     parseErrorExpecting("parent attribute");
 
 }
@@ -1463,9 +1463,9 @@ FileParser::parseImplementation()
 void
 FileParser::parseDiscreteImplementation()
 {
-  ensureNotAtEOF("discrete implementation");  
+  ensureNotAtEOF("discrete implementation");
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
-      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT 
+      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT
       || tokenInfo == KW_VECPT  ) {
 
     if (tokenInfo == KW_MDCPT)
@@ -1491,29 +1491,56 @@ FileParser::parseDiscreteImplementation()
     consumeToken();
 
     parseListIndex();
+
+    ensureNotAtEOF(") or ,");
+
+	if (tokenInfo != TT_RightParen) {
+		if ( tokenInfo != TT_Comma )
+			parseErrorExpecting("')' or ','");
+		// parse CPT with fewer parents like
+		// using FNGramCPT("fngram", 0, 1);
+
+		while ( tokenInfo != TT_RightParen ) {
+			if ( tokenInfo != TT_Comma )
+				parseErrorExpecting("','");
+			consumeToken();
+
+			if ( tokenInfo != TT_Integer )
+				parseErrorExpecting("integer");
+			listIndex.fnparents.push_back(tokenInfo.int_val);
+			consumeToken();
+		}
+
+		// before push_back curRV.listIndices.size() is the last index which we are looking for
+		if ( listIndex.fnparents.size() != curRV.conditionalParents[curRV.listIndices.size()].size() ) {
+			error("Error: RV \"%s\" at frame %d (line %d) specifies different number of parents (%d) than parents indices (%d)\n",
+				curRV.name.c_str(),
+				curRV.frame,
+				curRV.conditionalParents.size(),
+				listIndex.fnparents.size());
+		}
+
+		consumeToken();
+    } else
+		consumeToken();
+
     curRV.listIndices.push_back(listIndex);
 
-    ensureNotAtEOF(")");
-    if (tokenInfo != TT_RightParen) {
-      parseErrorExpecting("')'");
-    }
-    consumeToken();
-
-
+	// we need to clear this up.
+	listIndex.fnparents.resize(0);
   } else {
     parseError("need discrete implementations in discrete RV");
   }
-
 }
 
 
 void
 FileParser::parseContinuousImplementation()
 {
-  
+
   parseContObsDistType();
 
-  ensureNotAtEOF("remainder of continuous random variable spec");  
+  ensureNotAtEOF("remainder of continuous random variable spec");
   if (tokenInfo == TT_LeftParen) {
 
     consumeToken();
@@ -1529,7 +1556,7 @@ FileParser::parseContinuousImplementation()
 
     //////////////////////////////////////
     // AAA: some semantic checking here.
-    // The current implementation presumably comes from a RV 
+    // The current implementation presumably comes from a RV
     // with nil conditional parents, as in:
     //
     // ... | nil using mixture("the_forth_gaussian_mixture") | ...
@@ -1541,7 +1568,7 @@ FileParser::parseContinuousImplementation()
     // because it is assumed that the pointer to the CPT will
     // be such that, if nil exists, then the CPT will not
     // have any "parents".
-    // 
+    //
     // In any case, we need to make sure here that there is indeed
     // 'nil' as the current parents. Do this by checking the length
     // of the most recently pushed parrent list, and making
@@ -1615,7 +1642,7 @@ FileParser::parseContObsDistType()
   }  else if (tokenInfo == KW_MlpSwitchMixture) {
     curRV.contImplementations.push_back(MixtureCommon::ci_mlpSwitchMixture);
     consumeToken();
-  } else 
+  } else
     parseErrorExpecting("continuous observation distribution type");
 }
 
@@ -1643,7 +1670,7 @@ FileParser::parseChunkSpecifier()
   ensureNotAtEOF("second chunk integer");
   if (tokenInfo != TT_Integer) 
     parseErrorExpecting("second chunk integer");
-  if (tokenInfo.int_val < 0) 
+  if (tokenInfo.int_val < 0)
     parseError("non-negative chunk range");
   _lastChunkframe = (unsigned)tokenInfo.int_val;
 
@@ -1757,10 +1784,8 @@ FileParser::createRandomVariableGraph()
       assert(0);
 
     RV*rv;
-    // Go through and consider all possible RV types instantiating the
-    // currect one here. The reason for the deep class hierarchy is
-    // that it is much better to do this here, at parse time, then to
-    // do it at run time during inference.
+    // go through and consider all possible RV types instantiating the
+    // currect one here.
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
       // discrete
       if (rvInfoVector[i].rvDisp == RVInfo::d_hidden) {
@@ -2129,7 +2154,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 			  pp.first.c_str(),pp.second,
 			  rvInfoVector[i].conditionalParents[j][k].first.c_str(),
 			  rvInfoVector[i].conditionalParents[j][k].second);
-		    // error("Error: parent random variable \"%s\" at" 
+		    // error("Error: parent random variable \"%s\" at"
 		    // "frame %d does not exist\n",
 		    // rvInfoVector[i].conditionalParents[j][k].first.c_str(),
 		    // rvInfoVector[i].conditionalParents[j][k].second);
@@ -2154,7 +2179,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      }
 	    } else {
 	      // otherwise add it
-	      cpts[j] = 
+	      cpts[j] =
 		GM_Parms.mdCpts[
 		 GM_Parms.mdCptsMap[
 			  rvInfoVector[i].listIndices[j].nameIndex
@@ -2247,7 +2272,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	    //////////////////////////////////////////////////////
 	    // set the CPT to a MTCPT, depending on if a string
 	    // or integer index was used in the file.
-	    if (rvInfoVector[i].listIndices[j].liType 
+	    if (rvInfoVector[i].listIndices[j].liType
 		== RVInfo::ListIndex::li_String) {
 	      if (GM_Parms.mtCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
@@ -2270,7 +2295,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      // TODO: need to remove the integer index code.
 	      assert(0);
 #if 0
-	      if (rvInfoVector[i].listIndices[j].intIndex >= 
+	      if (rvInfoVector[i].listIndices[j].intIndex >=
 		  GM_Parms.mtCpts.size()) {
 		if (!allocateIfNotThere) {
 		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
@@ -2351,17 +2376,25 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	    // set the CPT to a FNGramCPT, depending on if a string
 	    // or integer index was used in the file.
 		if (rvInfoVector[i].listIndices[j].liType == RVInfo::ListIndex::li_String) {
-			if ( GM_Parms.fngramCptsMap.find(rvInfoVector[i].listIndices[j].nameIndex) == GM_Parms.fngramCptsMap.end() ) {
+			// the naming convention is if there is full parents, then use fngramCPT name
+			// otherwise use name like "fngram:0,1,3"
+			string fngramCptName = rvInfoVector[i].listIndices[j].nameIndex;
+			if ( rvInfoVector[i].listIndices[j].fnparents.size() != 0 ) {
+				fngramCptName += ":";
+				for ( unsigned k = 0; k < rvInfoVector[i].listIndices[j].fnparents.size() - 1; k++ ) {
+					char tmp[20];
+					sprintf(tmp, "%d,", rvInfoVector[i].listIndices[j].fnparents[k]);
+					fngramCptName += string(tmp);
+				}
+				char tmp[20];
+				sprintf(tmp, "%d", rvInfoVector[i].listIndices[j].fnparents[rvInfoVector[i].listIndices[j].fnparents.size() - 1]);
+				fngramCptName += string(tmp);
+			}
+
+			if ( GM_Parms.fngramCptsMap.find(fngramCptName) == GM_Parms.fngramCptsMap.end() ) {
 				// Here we will contruct the object for FNGramCPT based on FNGramImp
 				// we will check whether it is "ftrigram" or "ftrigram:0,1"
-				if ( strchr(rvInfoVector[i].listIndices[j].nameIndex.c_str(), ':') == NULL ) {
-					// check whether we have FNGramImp available
-					if ( GM_Parms.fngramImpsMap.find(rvInfoVector[i].listIndices[j].nameIndex) == GM_Parms.fngramImpsMap.end() ) {
-						error("Error: RV \"%s\" at frame %d (line %d), conditional parent FNGramCPT \"%s\" doesn't exist\n",
-							rvInfoVector[i].name.c_str(), rvInfoVector[i].frame, rvInfoVector[i].fileLineNumber,
-							rvInfoVector[i].listIndices[j].nameIndex.c_str());
-					}
-
+				if ( rvInfoVector[i].listIndices[j].fnparents.size() == 0 ) {
 					// create new FNGramCPT
 					FNGramCPT *ob = new FNGramCPT();
 					ob->setNumParents(rvInfoVector[i].conditionalParents[j].size());
@@ -2369,42 +2402,23 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 					ob->setName(rvInfoVector[i].listIndices[j].nameIndex);
 
 					// add it to the map list
-					GM_Parms.fngramCptsMap[rvInfoVector[i].listIndices[j].nameIndex] = GM_Parms.fngramCpts.size();
+					GM_Parms.fngramCptsMap[fngramCptName] = GM_Parms.fngramCpts.size();
 					GM_Parms.fngramCpts.push_back(ob);
 					cpts[j] = (CPT*)ob;
 				} else {
-					// we need to look what is fngram name and which parents set is using
-					char *tok;
-					const char seps[] = ":,";
-					char *tmp = new char [rvInfoVector[i].listIndices[j].nameIndex.size() + 1];
-					strcpy(tmp,rvInfoVector[i].listIndices[j].nameIndex.c_str());
-
-					tok = strtok(tmp, seps);
-					string fngramImpName(tok);
-					if ( GM_Parms.fngramImpsMap.find(fngramImpName) == GM_Parms.fngramImpsMap.end() ) {
-						error("Error: RV \"%s\" at frame %d (line %d), conditional parent FNGramCPT \"%s\" doesn't exist\n",
-							rvInfoVector[i].name.c_str(), rvInfoVector[i].frame, rvInfoVector[i].fileLineNumber, fngramImpName.c_str());
-					}
-
 					// create new FNGramCPT
 					FNGramCPT *ob = new FNGramCPT();
 					ob->setNumParents(rvInfoVector[i].conditionalParents[j].size());
 					ob->setFNGramImp(GM_Parms.fngramImps[GM_Parms.fngramImpsMap[rvInfoVector[i].listIndices[j].nameIndex]]);
 
-					// get the parent index
-					vector<unsigned> parentsPositions;
-					while ( (tok = strtok(NULL, seps)) != NULL ) {
-						unsigned pos = atoi(tok);
-						parentsPositions.push_back(pos);
-					}
-					ob->setParentsPositions(parentsPositions);
+					// set the parent index
+					ob->setName(fngramCptName);
+					ob->setParentsPositions(rvInfoVector[i].listIndices[j].fnparents);
 
 					// add it into the map list
-					GM_Parms.fngramCptsMap[rvInfoVector[i].listIndices[j].nameIndex] = GM_Parms.fngramCpts.size();
+					GM_Parms.fngramCptsMap[fngramCptName] = GM_Parms.fngramCpts.size();
 					GM_Parms.fngramCpts.push_back(ob);
 					cpts[j] = (CPT*)ob;
-
-					delete [] tmp;
 				}
 			} else {
 				// otherwise add it
@@ -2434,7 +2448,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 #endif
 	    }
 
-	} else 
+	} else
 	  if (rvInfoVector[i].discImplementations[j] == CPT::di_VECPT) {
 
 	    /////////////////////////////////////////////////////////
@@ -2443,7 +2457,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	    //////////////////////////////////////////////////////
 	    // set the CPT to a VECPT, depending on if a string
 	    // or integer index was used in the file.
-	    if (rvInfoVector[i].listIndices[j].liType 
+	    if (rvInfoVector[i].listIndices[j].liType
 		== RVInfo::ListIndex::li_String) {
 	      if (GM_Parms.veCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
@@ -2469,7 +2483,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	} else {
 	  // Again, this shouldn't happen. If it does, something is wrong
 	  // with the parser code or some earlier code, and it didn't correctly
-	  // set the CPT type. 
+	  // set the CPT type.
 	  assert ( 0 );
 	}
 
@@ -2534,7 +2548,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  rvInfoVector[i].frame,
 		  rvInfoVector[i].fileLineNumber,
 		  rvInfoVector[i].rvCard,
-		  cptType.c_str(),		
+		  cptType.c_str(),
 		  cpts[j]->name().c_str(),
 		  cpts[j]->card());
 	  }
@@ -2559,7 +2573,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  rvInfoVector[i].frame,
 		  rvInfoVector[i].fileLineNumber,
 		  rvInfoVector[i].rvCard,
-		  cptType.c_str(),		
+		  cptType.c_str(),
 		  cpts[j]->name().c_str(),
 		  cpts[j]->card());
 	  }
@@ -2586,11 +2600,11 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
     } else {
       ///////////////////////////////////////////////////////////
       ///////////////////////////////////////////////////////////
-      // This is a CONTINUOUS RV, so 
+      // This is a CONTINUOUS RV, so
       // get a cont. form of the current rv
       ///////////////////////////////////////////////////////////
       ///////////////////////////////////////////////////////////
-      ContRV* rv = 
+      ContRV* rv =
 	(ContRV*) rvInfoVector[i].rv;
 
       rv->conditionalMixtures.resize
