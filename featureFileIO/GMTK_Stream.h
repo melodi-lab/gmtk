@@ -71,6 +71,9 @@ class StreamInfo {
   size_t   afterTransformCurNumFrames;
 
   size_t calcNumFileNames(FILE*&f);
+
+  bool bswap;              // true if file needs to be byte-swapped
+
 public:
 
   unsigned nFloats;                    // number of floats (cont. features) in file
@@ -88,7 +91,7 @@ public:
 
 
 
-  bool bswap;              // true if file needs to be byte-swapped
+
 
   InFtrLabStream_PFile *pfile_istr;  // pfile input stream
 
@@ -137,7 +140,7 @@ public:
   size_t   getAfterTransformCurNumFrames()         { return afterTransformCurNumFrames; }
   unsigned getDataFormat() { return dataFormat; }
   bool     swap()             { return bswap;   }
-  void     setSwap(bool swap) { bswap = swap;   }
+  //  void     setSwap(bool swap) { bswap = swap;   }
 
   unsigned mapToValueInRange(unsigned segno) { return (unsigned) srRng->index(segno); }
 };
