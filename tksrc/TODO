@@ -271,6 +271,7 @@ X ascii/binary conversion program can go both ways.
 - dynamic DTs, error messages should print cur name as well as base name. 
 
 - make DT such taht even if overlap exists, binsearch will occur.
+  (add option to search from the middle outward).
   
 - add option to split/vanish top/bottom N mixtures irregardless of that.
 
