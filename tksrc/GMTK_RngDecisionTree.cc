@@ -865,6 +865,8 @@ RngDecisionTree::EquationClass::parseFormula(
 
   assert( (LAST_COMMAND_INDEX & COMMAND_MASK) == LAST_COMMAND_INDEX );
 
+  preProcessFormula(formula);
+
   do {
     getToken(formula, token);
     parseExpression(token, formula, new_commands, LOWEST_PRECEDENCE, depth);
@@ -881,6 +883,45 @@ RngDecisionTree::EquationClass::parseFormula(
   }
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::preProcessFormula
+ * 
+ * Preconditions:
+ *   none      
+ *
+ * Postconditions:
+ *   Takes a formula as given by the user and outputs one which the 
+ *   parser can handle.  Specifically, it removes whitespace and changes
+ *   all characters to lower case.
+ *      
+ * Side Effects:
+ *   none      
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::EquationClass::preProcessFormula(
+  string& original 
+  )
+{
+  unsigned i;
+  string revised;
+  
+  //////////////////////////////////////////////////////////////////////////
+  // Build string without whitespace characters, and covert to lower case 
+  //////////////////////////////////////////////////////////////////////////
+  for (i=0; i<original.length(); ++i) {
+    if (!isspace(original[i])) {
+      revised.push_back(tolower(original[i]));
+    }
+  }
+
+  original = revised;
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -1133,7 +1174,6 @@ RngDecisionTree::EquationClass::getToken(
   // Local variables 
   //////////////////////////////////////////////////////////////////////////
   string   token_string;
-  unsigned index;
 
   map<string, tokenEnum>::iterator crrnt_dlmtr; 
   map<string, tokenEnum>::iterator end_dlmtr; 
@@ -1146,19 +1186,11 @@ RngDecisionTree::EquationClass::getToken(
   map<string, tokenEnum>::iterator found_dlmtr; 
 
   //////////////////////////////////////////////////////////////////////////
-  // Skip leading spaces 
-  //////////////////////////////////////////////////////////////////////////
-  index = 0;
-  while ((index < expression.length()) && (isspace(expression[index]))) { 
-    ++index;
-  }
-
-  //////////////////////////////////////////////////////////////////////////
   // Check for end of string 
   //////////////////////////////////////////////////////////////////////////
-  if (index == expression.length()) {
+  if (expression.length() == 0) {
     token.token = TOKEN_END;
-    minimum_dlmtr_lctn = index; 
+    minimum_dlmtr_lctn = 0; 
   }
   else {
     //////////////////////////////////////////////////////////////////////////
@@ -1172,7 +1204,7 @@ RngDecisionTree::EquationClass::getToken(
          crrnt_dlmtr != end_dlmtr;  
          ++crrnt_dlmtr ) { 
 
-      dlmtr_lctn = expression.find( (*crrnt_dlmtr).first, index );    
+      dlmtr_lctn = expression.find( (*crrnt_dlmtr).first, 0 );    
       if (dlmtr_lctn != string::npos) { 
         if (dlmtr_lctn < minimum_dlmtr_lctn) {
           minimum_dlmtr_lctn = dlmtr_lctn;
@@ -1188,7 +1220,7 @@ RngDecisionTree::EquationClass::getToken(
     // If next token is a delimiter, determine the longest delimiter which 
     // matches. 
     //////////////////////////////////////////////////////////////////////////
-    if (minimum_dlmtr_lctn == index) {
+    if (minimum_dlmtr_lctn == 0) {
       found_dlmtr = *found_dlmtr_cntnr.begin();
       for( crrnt_found_dlmtr = found_dlmtr_cntnr.begin(),
            end_found_dlmtr  = found_dlmtr_cntnr.end();
@@ -1210,7 +1242,7 @@ RngDecisionTree::EquationClass::getToken(
     //////////////////////////////////////////////////////////////////////////
     else {
 
-      token_string = expression.substr(index, minimum_dlmtr_lctn+index);
+      token_string = expression.substr(0, minimum_dlmtr_lctn);
 
       //////////////////////////////////////////////////////////////////////////
       // Check for an integer 
@@ -1259,7 +1291,7 @@ RngDecisionTree::EquationClass::getToken(
       }
     }
   }
-
+  
   //////////////////////////////////////////////////////////////////////////
   // Exit with error message if no token was found 
   //////////////////////////////////////////////////////////////////////////
@@ -1272,7 +1304,6 @@ RngDecisionTree::EquationClass::getToken(
   // Erase portion of string that was parsed 
   //////////////////////////////////////////////////////////////////////////
   expression.erase(0, minimum_dlmtr_lctn ); 
-
 }
 
 
@@ -1977,23 +2008,26 @@ void test_formula()
   formula = "(3>=3)&&(3==3)&&(3<=3)";
   correct &= dt.testFormula( formula, vars, 1 );
 
-  formula = "p0||(27<2)||(229<=1)";
+  formula = "p0 || (27<2) ||  (229<=1)";
   correct &= dt.testFormula( formula, vars, 1 );
 
-  formula = "(min(c0,c1,c2))";
+  formula = "(MIN(C0,C1,C2))";
   correct &= dt.testFormula( formula, vars, 2 );
 
-  formula = "2+max(p0,p1,p2)*3+4";
+  formula = "2+max(p0,  P1,p2)*3 + 4";
   correct &= dt.testFormula( formula, vars, 27 );
 
-  formula = "mod(8,3)";
+  formula = "  mod  (  8 , 3 ) ";
   correct &= dt.testFormula( formula, vars, 2 );
 
 //  formula = "((12>3)?(p0*p1):(c0+p2))";
 //  correct &= dt.testFormula( formula, vars, 21 );
 
-  formula = "(max((12/4),14,p2)+(c1-p1))*p0+27";
+  formula = "  (  max  (  ( 12/  4) , 14,p2  ) + ( c1   -p1))*   p0+27";
   correct &= dt.testFormula( formula, vars, 384 );
+
+  formula = " Mod(  c1  - p1 , 17 + P0  ) - 4";
+  correct &= dt.testFormula( formula, vars, 9 );
 
   if (! correct) {
     error("A formula is not giving the correct answer\n");

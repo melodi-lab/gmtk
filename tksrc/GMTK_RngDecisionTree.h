@@ -292,6 +292,10 @@ protected:
         unsigned&                depth  
       );
 
+      void preProcessFormula(
+        string& original 
+      );
+
       bool parseFactor(
         tokenStruct&             token,
         string&                  formula, 
