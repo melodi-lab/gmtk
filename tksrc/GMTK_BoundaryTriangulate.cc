@@ -90,7 +90,7 @@ VCID("$Header$");
  */
 void
 BoundaryTriangulate::
-saveCurrentNeighbors(const set<RV*> nodes,vector<nghbrPairType>& orgnl_nghbrs)
+saveCurrentNeighbors(const set<RV*> nodes,SavedGraph& orgnl_nghbrs)
 {
   set<RV*>::iterator crrnt_node; 
   set<RV*>::iterator end_node; 
@@ -99,7 +99,7 @@ saveCurrentNeighbors(const set<RV*> nodes,vector<nghbrPairType>& orgnl_nghbrs)
         crrnt_node != end_node;
         ++crrnt_node ) {
     orgnl_nghbrs.push_back(
-      nghbrPairType((*crrnt_node), (*crrnt_node)->neighbors) );
+      NghbrPairType((*crrnt_node), (*crrnt_node)->neighbors) );
   }
 }
 
@@ -167,7 +167,7 @@ saveCurrentNeighbors(
  */
 void
 BoundaryTriangulate::
-restoreNeighbors(vector<nghbrPairType>& orgnl_nghbrs)
+restoreNeighbors(SavedGraph& orgnl_nghbrs)
 {
   vector<pair<RV*, set<RV*> > >::iterator crrnt_node;
   vector<pair<RV*, set<RV*> > >::iterator end_node;
@@ -1264,9 +1264,9 @@ BoundaryTriangulate
 	      bool doE)
 {
   TriangulateHeuristics tri_heur;
-  vector<nghbrPairType> orgnl_P_nghbrs;
-  vector<nghbrPairType> orgnl_C_nghbrs;
-  vector<nghbrPairType> orgnl_E_nghbrs;
+  SavedGraph orgnl_P_nghbrs;
+  SavedGraph orgnl_C_nghbrs;
+  SavedGraph orgnl_E_nghbrs;
   string best_P_method_str;
   string best_C_method_str;
   string best_E_method_str;
@@ -1350,7 +1350,7 @@ triangulateOnce(// input: nodes to be triangulated
 	    // triangulation heuristic method
 	    const TriangulateHeuristics& tri_heur,
 	    // original neighbor structures
-	    vector<nghbrPairType>& orgnl_nghbrs,
+	    SavedGraph& orgnl_nghbrs,
 	    // output: resulting max cliques
 	    vector<MaxClique>& cliques,
 	    // output: string giving resulting method used
@@ -1439,7 +1439,7 @@ BoundaryTriangulate
   const set<RV*>& nodesRootMustContain, // nodes that a JT root must
                                                     // contain (ok to be empty).
   const TriangulateHeuristics& tri_heur,    // triangulation method
-  vector<nghbrPairType>& orgnl_nghbrs,   // original neighbor structures
+  SavedGraph& orgnl_nghbrs,   // original neighbor structures
   vector<MaxClique>& best_cliques,       // output: resulting max cliques
   string& best_method,            // output: string giving resulting method used
   double& best_weight,            // weight to best
@@ -1452,7 +1452,7 @@ BoundaryTriangulate
   double                  weight;
   string                  meth_str;
   char                    buff[64];
-  vector<nghbrPairType>   nghbrs_with_extra;
+  SavedGraph              nghbrs_with_extra;
   TriangulateHeuristics   ea_tri_heur;
   
   if (!(timer && timer->Expired())) {
@@ -1986,7 +1986,7 @@ fillParentChildLists(
         (*crrnt_node).randomVariable->allParents.begin(), 
         (*crrnt_node).randomVariable->allParents.end(),
         (*crrnt_nghbr)->randomVariable );
- 
+
       //////////////////////////////////////////////////////////////
       // If a parent, add to both parents and non-children
       //////////////////////////////////////////////////////////////
@@ -1996,7 +1996,7 @@ fillParentChildLists(
         (*crrnt_node).nonChildren.push_back( *crrnt_nghbr );
       }
       //////////////////////////////////////////////////////////////
-      // If not a parent, check if it is a non-child
+      // If not a parent, check if it is a child
       //////////////////////////////////////////////////////////////
       else {
         found_node = find( 
@@ -2004,10 +2004,10 @@ fillParentChildLists(
           (*crrnt_node).randomVariable->allChildren.end(),
           (*crrnt_nghbr)->randomVariable ); 
 
-        if (found_node == 
-            (*crrnt_node).randomVariable->allChildren.end()) {
+        if (found_node == (*crrnt_node).randomVariable->allChildren.end()) {
           (*crrnt_node).nonChildren.push_back( *crrnt_nghbr );
         }
+        
       }
     }
   } 
@@ -4125,7 +4125,7 @@ triangulateExhaustiveSearch(
   const set<RV*>&  nodes,
   const bool                   jtWeight,
   const set<RV*>&  nodesRootMustContain,
-  const vector<nghbrPairType>& orgnl_nghbrs,
+  const SavedGraph&            orgnl_nghbrs,
   vector<MaxClique>&           best_cliques   
   )
 {
@@ -4399,6 +4399,187 @@ triangulateExhaustiveSearch(
 
 /*-
  *-----------------------------------------------------------------------
+ * isEliminationGraph 
+ *   Determines if a triangulation is an elimination graph, this 
+ *   algorithm is described in "Elimination is Not Enough: Non-Minimal 
+ *   Triangulations for Graphical Models," by Chris Bartels and Jeff 
+ *   Bilmes, UWEETR-2004-0010, June 2004 
+ * 
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   Returns true if the triangulation in the current nodes can be created
+ *   from the SavedGraph through elimination, false if it can not.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool
+BoundaryTriangulate::
+isEliminationGraph
+  (
+  SavedGraph      orgnl_nghbrs,
+  const set<RV*>& nodes
+  )
+{
+  set<RV*> unprocessed_nodes;
+  set<RV*> unprocessed_TG_nghbrs;
+  set<RV*> unprocessed_G_nghbrs;
+  
+  set<RV*>::iterator crrnt_node;
+  set<RV*>::iterator end_node;
+  set<RV*>::iterator crrnt_unprcssd;
+  set<RV*>::iterator end_unprcssd;
+  SavedGraph::iterator crrnt_orgnl;
+  SavedGraph::iterator end_orgnl;
+  int      nmbr_fill_in; 
+  bool     same_neighbors; 
+  bool     elimination_graph; 
+
+  for ( crrnt_node = nodes.begin(), 
+        end_node = nodes.end();
+        crrnt_node != end_node;
+        crrnt_node++ ) {
+    unprocessed_nodes.insert( *crrnt_node );
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Iterate until all nodes except one has been eliminated 
+  //////////////////////////////////////////////////////////////////////
+  elimination_graph = true;
+  while ((unprocessed_nodes.size() > 1) &&
+         (elimination_graph == true)) {
+
+    //////////////////////////////////////////////////////////////////////
+    // Check all uneliminated nodes to see if any are simplicial in T(G) 
+    // and have the same neighbors in both G and T(G)
+    //////////////////////////////////////////////////////////////////////
+    for ( crrnt_unprcssd = unprocessed_nodes.begin(), 
+          end_unprcssd = unprocessed_nodes.end();
+          crrnt_unprcssd != end_unprcssd;
+          crrnt_unprcssd++ ) {
+
+      //////////////////////////////////////////////////////////////////////
+      // Check if the current node is simplicial in T(G)
+      //////////////////////////////////////////////////////////////////////
+      unprocessed_TG_nghbrs.clear();
+      set_intersection( (*crrnt_unprcssd)->neighbors.begin(),
+        (*crrnt_unprcssd)->neighbors.end(), unprocessed_nodes.begin(), 
+        unprocessed_nodes.end(), inserter(unprocessed_TG_nghbrs, 
+        unprocessed_TG_nghbrs.end()) );
+
+      nmbr_fill_in = computeFillIn( unprocessed_TG_nghbrs ); 
+
+      //////////////////////////////////////////////////////////////////////
+      // There will be zero fill in edges needed if node is simplicial, if 
+      // so check if the node has same neighbors in G and T(G)
+      //////////////////////////////////////////////////////////////////////
+      if (nmbr_fill_in == 0) {
+
+        //////////////////////////////////////////////////////////////////////
+        // Find the simplicial node in the SavedGraph 
+        //////////////////////////////////////////////////////////////////////
+        for ( crrnt_orgnl = orgnl_nghbrs.begin(), 
+              end_orgnl   = orgnl_nghbrs.end();
+              crrnt_orgnl != end_orgnl;
+              crrnt_orgnl++ ) {
+          if ((*crrnt_orgnl).first == (*crrnt_unprcssd)) {
+            break;
+          }
+        }
+        assert(crrnt_orgnl != end_orgnl);
+
+        //////////////////////////////////////////////////////////////////////
+        // Find the uneliminated neighbors 
+        //////////////////////////////////////////////////////////////////////
+        unprocessed_G_nghbrs.clear();
+        set_intersection( (*crrnt_orgnl).second.begin(),
+          (*crrnt_orgnl).second.end(), unprocessed_nodes.begin(), 
+          unprocessed_nodes.end(), inserter(unprocessed_G_nghbrs, 
+          unprocessed_G_nghbrs.end()) );
+
+        same_neighbors = equal( unprocessed_TG_nghbrs.begin(), 
+          unprocessed_TG_nghbrs.end(), unprocessed_G_nghbrs.begin() );
+
+        //////////////////////////////////////////////////////////////////////
+        // If the neighbors in T(G) and G match, eliminate the node in both
+        // graphs
+        //////////////////////////////////////////////////////////////////////
+        if (same_neighbors) {
+
+          ////////////////////////////////////////////////////////////////////
+          // Eliminate the node in T(G) by removing from unprocessed_nodes, 
+          // the node is simplicial in T(G) so no additional processing is
+          // needed
+          ////////////////////////////////////////////////////////////////////
+          unprocessed_nodes.erase( *crrnt_unprcssd ); 
+           
+          ////////////////////////////////////////////////////////////////////
+          // Eliminate the node in G by connecting all of its neighbors 
+          ////////////////////////////////////////////////////////////////////
+          for ( crrnt_node = unprocessed_G_nghbrs.begin(), 
+                end_node   = unprocessed_G_nghbrs.end(); 
+                crrnt_node != end_node;
+                crrnt_node++ ) {
+
+            ////////////////////////////////////////////////////////////////
+            // Find the current neighbor in the SavedGraph 
+            ////////////////////////////////////////////////////////////////
+            for ( crrnt_orgnl = orgnl_nghbrs.begin(), 
+                  end_orgnl   = orgnl_nghbrs.end();
+                  crrnt_orgnl != end_orgnl;
+                  crrnt_orgnl++ ) {
+              if ((*crrnt_orgnl).first == (*crrnt_node)) {
+                break;
+              }
+            }
+            assert(crrnt_orgnl != end_orgnl);
+
+            ////////////////////////////////////////////////////////////////
+            // Union the neighbors in the saved graph with the neighbors of 
+            // the node being eliminated
+            ////////////////////////////////////////////////////////////////
+            set<RV*> new_neighbors;
+
+            set_union( (*crrnt_orgnl).second.begin(), 
+              (*crrnt_orgnl).second.end(), unprocessed_G_nghbrs.begin(), 
+              unprocessed_G_nghbrs.end(), inserter(new_neighbors, 
+              new_neighbors.end()) );
+
+            new_neighbors.erase( *crrnt_node );
+            (*crrnt_orgnl).second = new_neighbors;
+          }
+
+          ////////////////////////////////////////////////////////////////
+          // Restart search of uneliminated nodes 
+          ////////////////////////////////////////////////////////////////
+          break;      
+        }
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    // If all nodes have been examined and none are both simplicial in T(G) 
+    // and have the same neighbors in G and T(G), then this is not an 
+    // elimination graph  
+    ////////////////////////////////////////////////////////////////////////
+    if (crrnt_unprcssd == end_unprcssd) {
+      elimination_graph = false;
+    }
+  }
+
+  return(elimination_graph);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
  * BoundaryTriangulate::triangulateElimination()
  *   Triangulate a set of nodes using an elimination order
  *    
@@ -4518,7 +4699,7 @@ unrollAndTriangulate(// triangulate heuristics
       rvsSet.insert(rvs[i]);
     }
     vector<MaxClique> cliques;
-    vector<nghbrPairType> orgnl_nghbrs;
+    SavedGraph orgnl_nghbrs;
     saveCurrentNeighbors(rvsSet,orgnl_nghbrs);
     string best_meth_str;
     double best_weight = DBL_MAX;
@@ -4680,10 +4861,10 @@ BoundaryTriangulate
 {
   assert (timer != NULL);
 
-  nghbrPairType nghbr_pair;
-  vector<nghbrPairType> orgnl_P_nghbrs;
-  vector<nghbrPairType> orgnl_C_nghbrs;
-  vector<nghbrPairType> orgnl_E_nghbrs;
+  NghbrPairType nghbr_pair;
+  SavedGraph orgnl_P_nghbrs;
+  SavedGraph orgnl_C_nghbrs;
+  SavedGraph orgnl_E_nghbrs;
   string best_P_method_str;
   string best_C_method_str;
   string best_E_method_str;
@@ -4900,7 +5081,7 @@ tryEliminationHeuristics(
   const set<RV*>&  nodes,
   const bool                   jtWeight,
   const set<RV*>&  nrmc,         // nrmc = nodes root must contain
-  vector<nghbrPairType>&       orgnl_nghbrs,
+  SavedGraph&                  orgnl_nghbrs,
   vector<MaxClique>&           best_cliques, // output: resulting max cliques
   string&                      best_method,  // output: best method name 
   double&                      best_weight,  // weight of best
@@ -5050,7 +5231,7 @@ tryNonEliminationHeuristics(
   const set<RV*>& nodes,
   const bool                  jtWeight,
   const set<RV*>& nrmc,         // nrmc = nodes root must contain
-  vector<nghbrPairType>&      orgnl_nghbrs,
+  SavedGraph&                 orgnl_nghbrs,
   vector<MaxClique>&          cliques,
   string&                     best_method,
   double&                     best_weight   
@@ -5279,9 +5460,9 @@ BoundaryTriangulate::interfaceScore(
 
       if (fh == IH_MIN_MAX_CLIQUE || IH_MIN_STATE_SPACE) {
 	// then we do the entire graph, all three partitions
-	vector<nghbrPairType> orgnl_P_nghbrs;
-	vector<nghbrPairType> orgnl_C_nghbrs;
-	vector<nghbrPairType> orgnl_E_nghbrs;
+	SavedGraph orgnl_P_nghbrs;
+	SavedGraph orgnl_C_nghbrs;
+	SavedGraph orgnl_E_nghbrs;
 	string best_P_method_str;
 	string best_C_method_str;
 	string best_E_method_str;
@@ -5330,7 +5511,7 @@ BoundaryTriangulate::interfaceScore(
 	}
       } else {
 	// then we do almost same, but just on C
-	vector<nghbrPairType> orgnl_C_nghbrs;
+	SavedGraph orgnl_C_nghbrs;
 	string best_C_method_str;
 	double best_C_weight;
 	saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
