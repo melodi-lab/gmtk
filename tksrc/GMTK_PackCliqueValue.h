@@ -132,7 +132,8 @@ public:
   unsigned packedLenBits() { return totalNumBits; }
   // Return the number of bytes needed to hold a packed clique value.
   unsigned packedLenBytes() { return (totalNumBits+7)/8; }
-
+  // Return the number of splits (word boundary crossings) in this packing.
+  unsigned numSplits() { return (member_vl_endp - member_vl_nwb_endp); }
 
   // pack()
   // this routine assumes that both

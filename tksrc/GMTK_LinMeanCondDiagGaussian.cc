@@ -165,91 +165,6 @@ LinMeanCondDiagGaussian::makeUniform()
   dLinkMat->makeUniform();  
 }
 
-
-/*-
- *-----------------------------------------------------------------------
- * log_p()
- *      Computes the probability of this Gaussian.
- * 
- * Preconditions:
- *      preCompute() must have been called before this.
- *
- * Postconditions:
- *      nil
- *
- * Side Effects:
- *      nil, other than possible FPEs if the values are garbage
- *
- * Results:
- *      Returns the probability.
- *
- *-----------------------------------------------------------------------
- */
-
-logpr
-LinMeanCondDiagGaussian::log_p(const float *const x,
-			       const Data32* const base,
-			       const int stride)
-{
-  assert ( basicAllocatedBitIsSet() );
-
-  logpr rc;
-  rc.set_to_zero();
-  Dlinks* const dLinks = dLinkMat->dLinks;
-
-
-  //////////////////////////////////////////////////////////////////
-  // The local accumulator type in this routine.
-  // This can be changed from 'float' to 'double' to
-  // provide extra range for temporary accumulators. Alternatively,
-  // decreasing the program's mixCoeffVanishRatio at the beginning
-  // of training should eliminate any component that produces
-  // such low scores.
-#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE double
-
-  ////////////////////
-  // note: 
-  // covariances must have been precomputed for this
-  // to work.
-  const float *xp = x;
-  const float *const x_endp = x + _dim;
-  const float *mean_p = mean->basePtr();
-  const float *var_inv_p = covar->baseVarInvPtr();
-  assert ( dLinks->preComputedOffsets.len() == dLinkMat->arr.len() );
-  const int* lagStrideOffsetsp = dLinks->preComputedOffsets.ptr;
-  const float* buryValsp = dLinkMat->arr.ptr;
-  DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE d=0.0;
-
-  int i=0; do {
-    float u=0.0;
-    const int nLinks = dLinks->numLinks(i);
-    if (nLinks > 0) {
-      const int *lagStrideOffsets_endp = lagStrideOffsetsp+nLinks;
-      do {
-	u += (*buryValsp) *
-	  *((float*)base + *lagStrideOffsetsp);
-	lagStrideOffsetsp++;
-	buryValsp++;
-      } while (lagStrideOffsetsp != lagStrideOffsets_endp);
-    }
-    u += *mean_p;
-
-    const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp
-      = (*xp - u);
-
-    d += tmp*tmp*(*var_inv_p);
-
-    xp++;
-    mean_p++;
-    var_inv_p++;
-    i++;
-  } while (xp != x_endp);
-  d *= -0.5;
-  return logpr(0,(covar->log_inv_normConst() + d));
-
-}
-
-
 /*-
  *-----------------------------------------------------------------------
  * noisyClone()
@@ -564,7 +479,7 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
     // resize matrix, going from a size of just upper triangular
     // representation to one where we include the extra z=1 variable at
     // the end and represent a full matrix (needed for computing matrix
-    // inverse below). 7/2/01 notes.
+    // inverse below). See 7/2/01 bilmes hand-written notes.
     zzExpAccumulators.resize (
 			      2*dLinkMat->zzAccumulatorLength()
 			      + dLinkMat->totalNumberLinks()

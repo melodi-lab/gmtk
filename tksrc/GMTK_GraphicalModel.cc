@@ -645,7 +645,7 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 	   m != cardSortedNodes.end(); m++) {
 	RV* rv = (*m).second;
 
-	pair<unsigned,int> pr = (*m).first;
+	// pair<unsigned,int> pr = (*m).first;
 	// rv->printNameFrame(stdout,false);
 	// printf(",%d,%d;\n",pr.first,pr.second);
 	if (tag[rv] == 0)
