@@ -225,6 +225,12 @@ public:
 
   // compute the weight of a vector of cliques
   double graphWeight(vector<MaxClique>& cliques);
+  double graphWeight(vector<MaxClique>& cliques, 
+		     // true if we should use JT rather than normal weight.
+		     const bool useJTWeight,
+		     // if useJTWeight is true, this gives nodes that
+		     // root must cover.
+		     const set<RandomVariable*>& interfaceNodes);
   
 public:
 
@@ -302,12 +308,17 @@ public:
 
   // Triangulate an entire template at once, putting cliques in the template.
   void triangulate(const string& tri_heur_str,
+		   const bool jtWeight,
 		   GMTemplate& gm_template,
 		   bool doP = true, bool doC = true, bool doE = true);
   
   // High-level generic graph triangulation using optionally all methods below.
   void triangulate(// input: nodes to be triangulated
-		   const set<RandomVariable*> nodes,
+		   const set<RandomVariable*>& nodes,
+		   // use JT weight rather than sum of weight
+		   const bool jtWeight,
+		   // nodes that a JT root must contain (ok to be empty).
+		   const set<RandomVariable*>& nodesRootMustContain,
 		   // triangulation heuristic method
 		   const TriangulateHeuristics& tri_heur,
 		   // original neighbor structures
@@ -319,9 +330,34 @@ public:
 		   // weight to best
 		   double& best_weight);
 
+
+  // include version that always uses sum weight.
+  void triangulate(// input: nodes to be triangulated
+		   const set<RandomVariable*>& nodes,
+		   // triangulation heuristic method
+		   const TriangulateHeuristics& tri_heur,
+		   // original neighbor structures
+		   vector<nghbrPairType>& orgnl_nghbrs,
+		   // output: resulting max cliques
+		   vector<MaxClique>& best_cliques,
+		   // output: string giving resulting method used
+		   string& best_meth_str,
+		   // weight to best
+		   double& best_weight)
+  {
+    const set <RandomVariable*> emptySet;
+    triangulate(nodes,false,emptySet,tri_heur,orgnl_nghbrs,best_cliques,
+		best_meth_str,best_weight);
+  }
+
+
   // version of above that takes triangulation heuristic strings.
   void triangulate(// input: nodes to be triangulated
-		   const set<RandomVariable*> nodes,
+		   const set<RandomVariable*>& nodes,
+		   // use JT weight rather than sum of weight
+		   const bool jtWeight,
+		   // nodes that a JT root must contain (ok to be empty).
+		   const set<RandomVariable*>& nodesRootMustContain,
 		   // triangulation heuristic method
 		   const string& tri_heur_str,
 		   // original neighbor structures
@@ -335,9 +371,31 @@ public:
   {
     TriangulateHeuristics tri_heur;
     parseTriHeuristicString(tri_heur_str,tri_heur);
-    triangulate(nodes,tri_heur,orgnl_nghbrs,best_cliques,best_meth_str,best_weight);
+    triangulate(nodes,jtWeight,nodesRootMustContain,
+		tri_heur,orgnl_nghbrs,
+		best_cliques,best_meth_str,best_weight);
   }
 
+#if 0
+  // include version that always uses sum weight.
+  void triangulate(// input: nodes to be triangulated
+		   const set<RandomVariable*>& nodes,
+		   // triangulation heuristic method
+		   const string& tri_heur_str,
+		   // original neighbor structures
+		   vector<nghbrPairType>& orgnl_nghbrs,
+		   // output: resulting max cliques
+		   vector<MaxClique>& best_cliques,
+		   // output: string giving resulting method used
+		   string& best_meth_str,
+		   // weight to best
+		   double& best_weight) 
+  {
+    const set <RandomVariable*> emptySet;
+    triangulate(nodes,false,emptySet,tri_heur_str,orgnl_nghbrs,
+		best_cliques,best_meth_str,best_weight);
+  }
+#endif
 
   // The basic triangulation heuristic routine. Given a set of nodes
   // (that have valid 'neighbors' members, triangulate it using the
@@ -351,7 +409,7 @@ public:
   // where the caller chooses the results with the best cliques --
   // this is because each call might produce a different clique set
   // via the internal randomness that can occur if a tie occurs.
-  void basicTriangulate(const set<RandomVariable*> nodes,
+  void basicTriangulate(const set<RandomVariable*>& nodes,
 			const vector<BasicTriangulateHeuristic>& th_v,
 			vector<RandomVariable*>& orderedNodes,
 			vector<MaxClique>& cliques,
@@ -361,6 +419,8 @@ public:
   // triangulate by simulated annealing
   void triangulateSimulatedAnnealing(
     const set<RandomVariable*>& nodes,
+    const bool jtWeight,
+    const set<RandomVariable*>& nodesRootMustContain,
     vector<MaxClique>&          best_cliques,
     vector<RandomVariable*>&    best_order,
     string&                     comment 
@@ -391,6 +451,8 @@ public:
 
   // triangulate by exhaustive search, takes a *LONG* time.
   void triangulateExhaustiveSearch(const set<RandomVariable*>&  nodes,
+				   const bool jtWeight,
+				   const set<RandomVariable*>& nodesRootMustContain,
 				   const vector<nghbrPairType>& orgnl_nghbrs,
 				   vector<MaxClique>&           cliques
 				   );
@@ -423,11 +485,14 @@ public:
   // a simple one-stop shop for good triangulation for a
   // given amount of time.
   void anyTimeTriangulate(GMTemplate& gm_template,
+			  const bool jtWeight,
 			  bool doP = true, bool doC = true, bool doE = true);
 
   // triangulate using a number of basic heuristics, returning
   // the best.
   double tryHeuristics(set<RandomVariable*>& nodes,
+		       const bool jtWeight,
+		       const set<RandomVariable*>& nodesRootMustContain,
 		       vector<nghbrPairType>& orgnl_nghbrs,
 		       vector<MaxClique>&     cliques,
 		       string& tri_method);
@@ -602,6 +667,8 @@ private:
   //////////////////////////////////////////////////////////////////////////// 
   unsigned annealChain(
     vector<triangulateNode>&  nodes,
+    const bool jtWeight,
+    const set<RandomVariable*>& nodesRootMustContain,
     vector<triangulateNode*>& crrnt_order,
     vector<triangulateNode*>& triangulate_best_order,
     double&                   best_graph_weight,

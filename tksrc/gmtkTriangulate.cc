@@ -48,6 +48,7 @@ VCID("$Header$");
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_ProgramDefaultParms.h"
 #include "GMTK_BoundaryTriangulate.h"
+#include "GMTK_JunctionTree.h"
 
 /*
  * command line arguments
@@ -71,6 +72,7 @@ static char* boundaryHeuristic="SFW";
 static bool findBestBoundary = true;
 static double traverseFraction = 1.0;
 static bool loadParameters = false;
+static bool jtWeight = false;
 
 static char *inputMasterFile=NULL;
 // static char *outputMasterFile=NULL;
@@ -111,6 +113,10 @@ Arg Arg::Args[] = {
   Arg("triangulationHeuristic",
       Arg::Opt,triangulationHeuristic,
       "Triang. heuristic, >1 of S=size,T=time,F=fill,W=wght,X=rev-time,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
+
+  Arg("jtWeight",
+      Arg::Opt,jtWeight,
+      "True means use an estimate of the JT weight to score triangulation rather than sum of weight"),
 
   Arg("findBestBoundary",
       Arg::Opt,findBestBoundary,
@@ -389,6 +395,7 @@ main(int argc,char*argv[])
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
 	triangulator.triangulate(string(triangulationHeuristic),
+				 jtWeight,
 				 gm_template);
       } else {
 	// run the anytime algorithm.
@@ -399,7 +406,7 @@ main(int argc,char*argv[])
 	// is seen as a separate step, and would be expected
 	// to run for a long while.
 
-	triangulator.anyTimeTriangulate(gm_template);
+	triangulator.anyTimeTriangulate(gm_template,jtWeight);
       }
 
       backupTriFile(tri_file);
@@ -439,6 +446,7 @@ main(int argc,char*argv[])
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
 	triangulator.triangulate(string(triangulationHeuristic),
+				 jtWeight,
 				 gm_template,
 				 !noReTriP,!noReTriC,!noReTriE);
       } else {
@@ -448,7 +456,7 @@ main(int argc,char*argv[])
 	// is seen as a separate step, and would be expected
 	// to run for a long while.
 
-	triangulator.anyTimeTriangulate(gm_template,
+	triangulator.anyTimeTriangulate(gm_template,jtWeight,
 					!noReTriP,!noReTriC,!noReTriE);
       }
 
@@ -498,8 +506,9 @@ main(int argc,char*argv[])
 	  else
 	    p_totalWeight = p_totalWeight + log10(1+pow(10,curWeight-p_totalWeight));
 	}
-	printf("  --- Prologue max clique weight = %f, total weight = %f\n",
-	       p_maxWeight,p_totalWeight);
+	printf("  --- Prologue max clique weight = %f, total weight = %f, jt_weight = %f\n",
+	       p_maxWeight,p_totalWeight,
+	       JunctionTree::junctionTreeWeight(gm_template.P.cliques,gm_template.PCInterface_in_P));
 
 	float c_maxWeight = -1.0;
 	float c_totalWeight = -1.0; // starting flag
@@ -513,12 +522,12 @@ main(int argc,char*argv[])
 	  else
 	    c_totalWeight = c_totalWeight + log10(1+pow(10,curWeight-c_totalWeight));
 	}
-	printf("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f\n",
+	printf("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f, jt_weight = %f\n",
 	       c_maxWeight,
 	       chunkSkip,
 	       c_totalWeight,
-	       c_totalWeight - log10((double)chunkSkip));
-
+	       c_totalWeight - log10((double)chunkSkip),
+	       JunctionTree::junctionTreeWeight(gm_template.C.cliques,gm_template.CEInterface_in_C));
 
 	float e_maxWeight = -1.0;
 	float e_totalWeight = -1.0; // starting flag
@@ -532,8 +541,10 @@ main(int argc,char*argv[])
 	  else
 	    e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
 	}
-	printf("  --- Epilogue max clique weight = %f, total weight = %f\n",
-	       e_maxWeight,e_totalWeight);
+	const set <RandomVariable*> emptySet;
+	printf("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
+	       e_maxWeight,e_totalWeight,
+	       JunctionTree::junctionTreeWeight(gm_template.E.cliques,emptySet));
 
 	float maxWeight
 	  = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);

@@ -70,6 +70,9 @@ public:
   // is a superset of these nodes. Empty if there is no such set
   // (e.g., for an E partition).
   set <RandomVariable*> riNodes;
+
+  // Nodes that are not assigned in this partition.
+  set <RandomVariable*> unassignedInPartition;
   
   // The separators for this partition.  If this is a P partition,
   // then all of the separators in this partition are between cliques
@@ -103,10 +106,20 @@ public:
 	       vector <RandomVariable*>& newRvs,
 	       map < RVInfo::rvParent, unsigned >& ppf);
 
+  JT_Partition(Partition& from_part,
+	       const set <RandomVariable*>& from_liVars,
+	       const set <RandomVariable*>& from_riVars);
+  
+
   // returns the left and right interface clique. If not defined,
   // sets the variable to ~0x0.
   void findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface);
   void findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface);
+
+  // return the index of the clique with max/min weight.
+  unsigned cliqueWithMaxWeight();
+  unsigned cliqueWithMinWeight();
+
 
 }; 
 
@@ -206,37 +219,14 @@ class JunctionTree {
   bool C_to_C_icliques_same;
   bool C_to_E_icliques_same;
 
-#if 0
   // Message passing orders for each partition.  Increasing index
-  // order is 'collect evidence' phase from left to right in directio
+  // order is 'collect evidence' phase from left to right in direction
   // of time, and decreasing order is 'distribute evidence' phase from
   // right to left in direction of time. Note that this assumes that
   // the overal root node in the JT is on the far right within E
   // (which might not be the best order).  NOTE: These are kept here
   // rather than in the partitions, since they are re-used for all
   // cloned partitions.
-  vector< pair<unsigned,unsigned> > P1_message_order;
-  vector< unsigned > P1_leaf_cliques;
-  vector< pair<unsigned,unsigned> > C1_message_order;
-  vector< unsigned > C1_leaf_cliques;
-  // C2's message order is the same as C1's message order since
-  ///   they have same root (RI) clique.
-  // C2's leaf cliques the same as C3's leaf cliques since
-  //    they have same left interface clique.
-  vector< pair<unsigned,unsigned> > C3_message_order;
-  vector< unsigned > C3_leaf_cliques;
-  vector< pair<unsigned,unsigned> > E1_message_order;  
-  vector< unsigned > E1_leaf_cliques;
-  // Cu0's message order is the same as C3's message order since
-  //    they have same root (RI) clique.
-  // Cu0's leaf cliques the same as C1's leaf cliques since
-  //    they have same left interface clique.
-
-  // Q: why is C3's message order not the same as C2's?
-  // A: because C3 might have a different root than C2.
-
-#endif
-
   vector< pair<unsigned,unsigned> > P1_message_order;
   vector< unsigned > P1_leaf_cliques;
   vector< pair<unsigned,unsigned> > Cu0_message_order;
@@ -253,25 +243,25 @@ class JunctionTree {
 
   // Helper routines that are private (only called by other member
   // functions of this class). 
-  void setUpMessagePassingOrderRecurse(JT_Partition& part,
-				       const unsigned root,
-				       vector< pair<unsigned,unsigned> >&order,
-				       const unsigned excludeFromLeafCliques,
-				       vector< unsigned>& leaf_cliques);
-  void assignRVToClique(const char *const partName,
-			JT_Partition&part,
-			const unsigned root,
-			unsigned depth,
-			RandomVariable* rv,
-			set<RandomVariable*>& parSet,
-			bool& assigned,
-			multimap< vector<float>, unsigned >& scoreSet);
-  void createDirectedGraphOfCliquesRecurse(JT_Partition& part,
+  static void setUpMessagePassingOrderRecurse(JT_Partition& part,
+					      const unsigned root,
+					      vector< pair<unsigned,unsigned> >&order,
+					      const unsigned excludeFromLeafCliques,
+					      vector< unsigned>& leaf_cliques);
+  static void assignRVToClique(const char *const partName,
+			       JT_Partition&part,
+			       const unsigned root,
+			       unsigned depth,
+			       RandomVariable* rv,
+			       set<RandomVariable*>& parSet,
+			       bool& assigned,
+			       multimap< vector<float>, unsigned >& scoreSet);
+  static void createDirectedGraphOfCliquesRecurse(JT_Partition& part,
 					   const unsigned root,
 					   vector< bool >& visited);
-  void getCumulativeAssignedNodes(JT_Partition& part,
-				  const unsigned root);
-  void getPrecedingIteratedUnassignedNodes(JT_Partition& part,const unsigned root);
+  static void getCumulativeAssignedNodes(JT_Partition& part,
+					 const unsigned root);
+  static void getPrecedingIteratedUnassignedNodes(JT_Partition& part,const unsigned root);
 
   void ceGatherIntoRoot(JT_InferencePartition& part,
 			 const unsigned root,
@@ -339,7 +329,7 @@ public:
     createPartitionJunctionTree(gm_template.E);
   }
   // create a junction tree within a partition.
-  void createPartitionJunctionTree(Partition& part);
+  static void createPartitionJunctionTree(Partition& part);
 
   // routine to find the interface cliques of the partitions
   void computePartitionInterfaces();
@@ -353,7 +343,7 @@ public:
 
   // root the JT
   void createDirectedGraphOfCliques();
-  void createDirectedGraphOfCliques(JT_Partition& part,
+  static void createDirectedGraphOfCliques(JT_Partition& part,
 				    const unsigned root);
 
 
@@ -364,27 +354,27 @@ public:
   // criterion in order to make message passing as efficient as
   // possible).
   void assignRVsToCliques();
-  void assignRVsToCliques(const char *const partName,
-			  JT_Partition&part,
-			  const unsigned rootClique);
+  static void assignRVsToCliques(const char *const partName,
+				 JT_Partition&part,
+				 const unsigned rootClique);
 
 
   // For the three partitions, set up the different message passing
   // orders that are to be used. This basically just does a tree
   // traversal using the previously selected root.
   void setUpMessagePassingOrders();
-  void setUpMessagePassingOrder(JT_Partition& part,
-				const unsigned root,
-				vector< pair<unsigned,unsigned> >&order,
-				const unsigned excludeFromLeafCliques,
-				vector< unsigned>& leaf_cliques);
+  static void setUpMessagePassingOrder(JT_Partition& part,
+				       const unsigned root,
+				       vector< pair<unsigned,unsigned> >&order,
+				       const unsigned excludeFromLeafCliques,
+				       vector< unsigned>& leaf_cliques);
 
   // Separator creation, meaning create the seperator objects
   // both within and between partitions. Given two neighboring
   // partitions L and R, the separator between the interface
   // cliques in L and R is contained in R.
-  void createSeparators(JT_Partition& part,
-			vector< pair<unsigned,unsigned> >&order);
+  static void createSeparators(JT_Partition& part,
+			       vector< pair<unsigned,unsigned> >&order);
   void createSeparators();
 
 
@@ -392,9 +382,9 @@ public:
   // creation for separator driven clique potential creation, and
   // also updates the seperators partial accumulator structure and
   // sets up cliques other variables.
-  void computeSeparatorIterationOrder(MaxClique& clique,
-				      JT_Partition& part);
-  void computeSeparatorIterationOrders(JT_Partition& part);
+  static void computeSeparatorIterationOrder(MaxClique& clique,
+					     JT_Partition& part);
+  static void computeSeparatorIterationOrders(JT_Partition& part);
   void computeSeparatorIterationOrders();
 
   // Computes the preceding iterated unassigned nodes and therein the
@@ -406,10 +396,19 @@ public:
   // return an upper bound on the weight of the junction tree in the
   // given partition, where the JT weight is defined as the cost of
   // doing collect evidence on this JT.
-  double junctionTreeWeight(JT_Partition& part,
-			  const unsigned rootClique);
+  static double junctionTreeWeight(JT_Partition& part,
+				   const unsigned rootClique);
 
 
+  // Given a set of maxcliques for a partition, and an interface for
+  // this (can be left right, or any set including empty, the only
+  // condition is that it must be covered by at least one of the
+  // cliques), compute the junction tree for this set and return the
+  // estimated JT cost. This is a static routine so can be called from
+  // anywhere.
+  static double junctionTreeWeight(vector<MaxClique>& cliques,
+				   const set<RandomVariable*>& interfaceNodes);
+				   
   // 
   // Print all information about the JT. Must
   // have had computeSeparatorIterationOrders() called
@@ -424,7 +423,7 @@ public:
   // Do some last-minute data structure setup to prepare for
   // unrolling to work (such as preliminary and pre work for
   // leaving STL, etc.)
-  void prepareForUnrolling(JT_Partition& part);
+  static void prepareForUnrolling(JT_Partition& part);
   void prepareForUnrolling();
 
   // Set up internal structures for unrolled network k>=0 times, where

@@ -179,6 +179,8 @@ public:
   // the set of nodes which form a max clique, in arbitrary order.
   set<RandomVariable*> nodes;
 
+  // weight of this clique, keep pre-computed here.
+  float cliqueWeight;
 
   ///////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////
@@ -393,6 +395,25 @@ public:
   // by this clique object and clones of this clique object.
   // It is only usable after we have prepared for unrolling.
   unsigned allocationUnitChunkSize;
+
+
+  // Clear up the things that are just to create and hold information
+  // about this maxclique being used in a junction tree.
+  void clearJTStructures() {
+    assignedNodes.clear();
+    sortedAssignedNodes.clear();
+    iterateSortedAssignedNodesP.clear();
+    unassignedIteratedNodes.clear();
+    cumulativeAssignedNodes.clear();
+    precedingUnassignedIteratedNodes.clear();
+    accumSeps.clear();
+    hiddenNodes.clear();
+    neighbors.clear();
+    children.clear();
+    ceReceiveSeparators.clear();
+    
+  }
+
 
   ///////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////

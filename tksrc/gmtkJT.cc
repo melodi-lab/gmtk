@@ -365,7 +365,7 @@ main(int argc,char*argv[])
   for (unsigned i=0;i<segment;i++) {
     GM_Parms.clampNextExample();
   }
-
+  
   globalObservationMatrix.loadSegment(segment);
 
   int frames = globalObservationMatrix.numFrames();
