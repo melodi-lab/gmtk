@@ -180,12 +180,12 @@ MSCPT::read(iDataStreamFile& is)
   RngDecisionTree<int>::iterator it = dt->begin();
   do {
     const int v = it.value();
-    if ( v < 0 || v > GM_Parms.msCpts.len() )
-      error("MSCPT::read, dt leaf value %d refers to invalid Sparse CPT",
+    if ( v < 0 || v >= GM_Parms.sPmfs.len() )
+      error("MSCPT::read, dt leaf value %d refers to invalid Sparse 1D PMF",
 	    v);
-    if (GM_Parms.msCpts[v]->card() != card()) {
+    if (GM_Parms.sPmfs[v]->card() != card()) {
       error("MSCPT::read, Sparse CPT %d has card %d but CPT has card %d",
-	    v,GM_Parms.msCpts[v]->card(),card());
+	    v,GM_Parms.sPmfs[v]->card(),card());
     }
     it++;
   } while (it != dt->end());
@@ -211,10 +211,13 @@ void
 MSCPT::write(oDataStreamFile& os)
 {
   os.write(numParents,"MSCPT::write numParents");
+  os.nl();
   for (int i=0;i<=numParents;i++) {
     os.write(cardinalities[i],"MSCPT::write cardinality");
   }
+  os.nl();
   os.write(dtIndex);
+  os.nl();
 }
 
 
