@@ -140,6 +140,8 @@ void
 LinMeanCondDiagGaussian::makeRandom()
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
 
   mean->makeRandom();
   covar->makeRandom();
@@ -151,6 +153,8 @@ void
 LinMeanCondDiagGaussian::makeUniform()
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
 
   mean->makeUniform();
   covar->makeUniform();

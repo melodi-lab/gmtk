@@ -274,14 +274,20 @@ Sparse1DPMF::normalize()
 void
 Sparse1DPMF::makeRandom()
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   dense1DPMF->makeRandom();
 }
 
 void
 Sparse1DPMF::makeUniform()
 {
-  // NOTE: this doesn't assign non-zero values to "holes"
+  // NOTE: this does NOT assign non-zero values to "holes"
   // in the table (which are forced to be zero).
+  if (!emAmTrainingBitIsSet())
+    return;
+
   dense1DPMF->makeUniform();
 }
 

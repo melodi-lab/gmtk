@@ -180,6 +180,7 @@ Dense1DPMF::normalize()
 {
   assert ( basicAllocatedBitIsSet() );
 
+
   logpr sum = 0.0;
   for (int i=0;i<pmf.len();i++) {
     sum += pmf[i];
@@ -193,6 +194,8 @@ void
 Dense1DPMF::makeRandom()
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
 
   logpr sum = 0.0;
   for (int i=0;i<pmf.len();i++) {
@@ -209,6 +212,8 @@ void
 Dense1DPMF::makeUniform()
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
 
   logpr val = 1.0/pmf.len();
   for (int i=0;i<pmf.len();i++) {
