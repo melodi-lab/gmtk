@@ -54,7 +54,10 @@ float pruneRatio=0.0;
 char *obsFileName;
 char *strFileName;
 char *parmsFileName;
+
 unsigned maxEMIterations=30;
+int EMLimit=3;
+
 bool randomizeParams = true;
 bool enem = false;
 
@@ -65,7 +68,11 @@ ARGS ARGS::Args[] = {
  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
 
  ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
+
+// why does this report an error??
  ARGS("maxEmIters",ARGS::Opt,maxEMIterations,"Max number of EM iterations to do"),
+ ARGS("emLimit",ARGS::Opt,EMLimit,"its to do"),  // well, this works.
+
  ARGS("pruneRatio",ARGS::Opt,pruneRatio,"Pruning Ratio, values less than this*max are pruned"),
  ARGS("random",ARGS::Opt,randomizeParams,"Randomize the parameters"),
  ARGS("enem",ARGS::Opt,enem,"Run enumerative EM"),
@@ -91,6 +98,8 @@ main(int argc,char*argv[])
 
 
   ARGS::parse(argc,argv);
+
+maxEMIterations = EMLimit;
 
   if (seedme)
     rnd.seed();
