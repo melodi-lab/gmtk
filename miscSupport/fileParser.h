@@ -26,16 +26,16 @@ class ioDataStreamFile {
   FILE *fh;
   bool Binary;
   bool errorReturn(char *from,char *msg);
-  char *const _fileName;
+  const char *const _fileName;
 
  public:
 
   void rewind() { ::rewind(fh); }
-  ioDataStreamFile(char *name,bool _Binary = false) : 
+  ioDataStreamFile(const char *name,bool _Binary = false) : 
     Binary(_Binary), _fileName(copyToNewStr(name)) {}
   ~ioDataStreamFile() { delete [] _fileName; }
 
-  char *const fileName() { return _fileName; }
+  const char *const fileName() { return _fileName; }
 
 };
 
@@ -47,7 +47,7 @@ class iDataStreamFile : public ioDataStreamFile {
   enum State { GetNextLine, UseCurLine } state;
 
  public:
-  iDataStreamFile(char *_name, bool _Binary = false);
+  iDataStreamFile(const char *_name, bool _Binary = false);
   ~iDataStreamFile();
 
   bool prepareNext();
@@ -128,7 +128,7 @@ class oDataStreamFile : public ioDataStreamFile {
   int double_space;
 
  public:
-  oDataStreamFile(char *_name, bool _Binary = false);
+  oDataStreamFile(const char *_name, bool _Binary = false);
   ~oDataStreamFile();
 
   // type explicit
