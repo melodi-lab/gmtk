@@ -127,6 +127,11 @@ gmtkM2T: gmtkM2T.o $(objs)
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkM2T.o $(objs) $(LIBS)
 
+
+gmtkB2A: gmtkB2A.o $(objs)
+	-@rm -f $@
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkB2A.o $(objs) $(LIBS)
+
 #----------------------------------------------------------------------------
 # Test driver programs (defines a -DMAIN to test each .cc file)
 #----------------------------------------------------------------------------
