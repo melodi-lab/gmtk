@@ -137,7 +137,9 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
 
   if ((inputMasterFile == NULL) && (inputTrainableParameters == NULL)) {
-    error("ERROR: need to specify command line parameters inputMasterFile or inputTrainableParameters (or both)");
+    warning("ERROR: need to specify command line parameters inputMasterFile or inputTrainableParameters (or both)");
+    Arg::usage();
+    error("");
   }
   ////////////////////////////////////////////
   if (inputMasterFile != NULL) {
