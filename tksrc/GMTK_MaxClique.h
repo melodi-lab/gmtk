@@ -69,7 +69,7 @@ public:
   void makeComplete() { makeComplete(nodes); }
   // static version of variable set completion, to
   // complete set of random variables passed in.
-  static void makeComplete(set<RandomVariable*> &rvs);
+  static void makeComplete(const set<RandomVariable*> &rvs);
 
 
 
