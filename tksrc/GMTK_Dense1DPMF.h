@@ -52,6 +52,8 @@ public:
 
   int length() { return pmf.len(); }
 
+  int card() { return pmf.len(); }
+
   ///////////////////////////////////////////////////////////  
   // Re-normalize the output distributions
   void normalize();
