@@ -28,6 +28,8 @@
  * TODO: make it such that a leaf node is some simple integer formula
  * on the parent values (or the result is an int that can be
  * type cast to a T).
+ * TODO: make this not a template class as it is only used with
+ * unsigned.
  * 
  */
 
@@ -71,21 +73,50 @@ class RngDecisionTree : public NamedObject {
 
 private:
 
-
 protected:
   
+  enum NodeType { NonLeafNode, LeafNodeVal, LeafNodeFormula, LeafNodeFullExpand };
+
+  enum FormulaType { Integer, ParentValue, ParentCardinality, ParentValCard };
+
+  struct FormEntry {
+    FormulaType fType;
+    union {
+      unsigned parentIndex;
+      T value;
+    };
+  };
 
   struct Node {
-    bool leaf;
+    NodeType nodeType;
+    // Ideally, this should be a union of
+    // the following two structs, but
+    // either the compiler or C++ doesn't let
+    // us keep a union of structs with templates as below.
     struct NonLeafNode {
+      // This is when nodeType == NonLeafNode.
       int ftr;
       vector< Node* > children;
       vector< BP_Range* > rngs;
     } nonLeafNode;
     struct LeafNode {
-      // if value
+      // The string form of the leaf node.
+      string leafNodeString;
+      // The value, if it is just a value,
+      // i.e., when nodeType == LeafNodeVal
       T value;
-      // doubly linked list of leaf nodes.
+      // The formula if it is a formula,
+      // i.e., when nodeType == LeafNodeFormula
+      vector <FormEntry> formula;
+      // Note: when nodeType == LeafNodeFullExpand,
+      // we just compute the one-to-one mapping
+      // from joint state space of the parents
+      // to the integers, so the above two things
+      // are not used.
+
+      // In order to have easy access to all of the
+      // leaf nodes, we also keep a 
+      // doubly linked list of these nodes.
       Node* prevLeaf;
       Node* nextLeaf;
     } leafNode;
@@ -253,8 +284,8 @@ template <class T>
 void
 RngDecisionTree<T>::destructorRecurse(RngDecisionTree<T>::Node* node)
 {
-  if (node->leaf) {
-    // do nothing
+  if (node->nodeType != NonLeafNode) {
+    // do nothing since this is a leaf
   } else {
     for (unsigned i=0;i<node->nonLeafNode.children.size();i++) {
       destructorRecurse(node->nonLeafNode.children[i]);
@@ -349,13 +380,97 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
 	  _numFeatures);
   Node *node = new Node;
   if (curFeat == -1) {
-    // leaf node
-    node->leaf = true;
-    is.read(node->leafNode.value,"RngDecisionTree:: readRecurse value");
+    node->leafNode.value = 0;
+    // leaf node, now read the next bit as a string to determine what it is.
+    string leafNodeVal;
+    is.read(leafNodeVal,"RngDecisionTree:: readRecurse leaf node value");
+    int val;
+    if (strIsInt(leafNodeVal.c_str(),&val)) {
+      node->nodeType = LeafNodeVal;
+      node->leafNode.value = val;
+    } else if (leafNodeVal == "expand") {
+      node->nodeType = LeafNodeFullExpand;
+    } else {
+      node->nodeType = LeafNodeFormula;
+      //
+      // try and parse it. It should be
+      // a string of the form A1+A2+A3+A4+... where there are NO SPACES
+      // where Ai is either:
+      //    1) a single integer
+      //    2) the string "pj" where j is the j'th parent's value
+      //    3) the string "cj" where j is the j'th parent's cardinality
+      //    4) the string "mj" where j is the j'th parent's cardinality*value (i.e., the product of value * card)
+      // 
+      //  So, an example might be m0+m1+p2+1
+      //    which will go from the joint product state space of parents 0, 1, and 2 but will add one 
+      //    to the current state.
+      // 
+
+
+      // start parsing the string
+      unsigned pos = 0;
+      bool expectingPlus = false;
+      while (pos < leafNodeVal.size()) {
+	int val;
+	int len;
+	if (leafNodeVal[pos] == 'p' || 
+	    leafNodeVal[pos] == 'c' || 
+	    leafNodeVal[pos] == 'm') {
+	  if (expectingPlus) {
+	    error("Error parsing DT named '%s' in file '%s': Expecting '+' at position %d in string '%s'\n",
+		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
+	  }
+	  FormEntry fe;
+	  if (leafNodeVal[pos] == 'p')
+	    fe.fType = ParentValue;
+	  else if (leafNodeVal[pos] == 'c')
+	    fe.fType = ParentCardinality;
+	  else
+	    fe.fType = ParentValCard;
+
+	  pos++;
+	  if (!strIsInt(leafNodeVal.c_str()+pos,&val,&len)) {
+	    error("Error parsing DT named '%s' in file '%s': Expecting integer at position %d in string '%s'\n",
+		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
+	  }
+	  // we have an int value
+	  pos += len;
+	  fe.parentIndex = val;
+	  node->leafNode.formula.push_back(fe);
+	  expectingPlus = true;
+	} else if (leafNodeVal[pos] == '+') {
+	  if (!expectingPlus)
+	    error("Error parsing DT named '%s' in file '%s': Not expecting '+' at position %d in string '%s'\n",
+		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
+	  // consume token
+	  pos++;
+	  expectingPlus = false;
+	} else if (strIsInt(leafNodeVal.c_str()+pos,&val,&len)) {
+	  if (expectingPlus) {
+	    error("Error parsing DT named '%s' in file '%s': Expecting '+' at position %d in string '%s'\n",
+		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
+	  }
+	  FormEntry fe;
+	  fe.fType = Integer;
+	  fe.value = val;
+	  node->leafNode.formula.push_back(fe);
+	  pos += len;
+	  expectingPlus = true;
+	} else {
+	  error("Error parsing DT named '%s' in file '%s': Parse error at position %d in string '%s'\n",
+		name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
+	}
+      }
+      // make sure we didnt' have string such as "p1+p2+"
+      if (!expectingPlus) 
+	error("Error parsing DT named '%s' in file '%s': Must not end with a '+' at position %d in string '%s'\n",
+	      name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
+    }
+    node->leafNode.leafNodeString = leafNodeVal;
     node->leafNode.prevLeaf = prevLeaf;
     prevLeaf = node;
   } else {
-    node->leaf = false;
+    node->nodeType = NonLeafNode;
     node->nonLeafNode.ftr = (T)curFeat;
     unsigned numSplits;
     is.read(numSplits,"RngDecisionTree:: readRecurse numSplits");
@@ -466,10 +581,10 @@ RngDecisionTree<T>::writeRecurse(oDataStreamFile& os,
 				 const int depth)
 {
 
-  if (n->leaf) {
+  if (n->nodeType != NonLeafNode) {
     os.space(depth*2);
     os.write(-1);
-    os.write(n->leafNode.value);
+    os.write(n->leafNode.leafNodeString);
     os.nl();
   } else {
     os.space(depth*2);
@@ -540,7 +655,7 @@ T RngDecisionTree<T>::query(const vector < int >& arr,
  * Side Effects:
  *      none.
  *
- * Results:
+ * Results:
  *      The resulting value of the query starting at node.
  *
  *-----------------------------------------------------------------------
@@ -550,25 +665,73 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
 				   const vector < int >& cards,
 				   RngDecisionTree<T>::Node *n)
 {
-  if (n->leaf)
+  assert ( arr.size() == cards.size() );
+
+  if (n->nodeType == LeafNodeVal) {
     return n->leafNode.value;
+  } else if (n->nodeType == NonLeafNode) {
 
-  assert ( n->nonLeafNode.ftr < int(arr.size()) );
-  assert ( arr[n->nonLeafNode.ftr] >= 0 &&
-	   arr[n->nonLeafNode.ftr] <= 
-	   RNG_DECISION_TREE_MAX_CARDINALITY );
+    assert ( n->nonLeafNode.ftr < int(arr.size()) );
+    assert ( arr[n->nonLeafNode.ftr] >= 0 &&
+	     arr[n->nonLeafNode.ftr] <= 
+	     RNG_DECISION_TREE_MAX_CARDINALITY );
 
-  const int val = arr[n->nonLeafNode.ftr];
-  for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++ ) {
-    // TODO: turn this into a log(n) operation
-    // rather than linear. To do this, we'll need
-    // to make sure that the ranges are in order.
-    // To do this, define an operator < for bp_ranges.
-    if (n->nonLeafNode.rngs[i]->contains(val))
-      return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
+    const int val = arr[n->nonLeafNode.ftr];
+    for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++ ) {
+      // TODO: turn this into a log(n) operation
+      // rather than linear. To do this, we'll need
+      // to make sure that the ranges are in order.
+      // To do this, define an operator < for bp_ranges.
+      if (n->nonLeafNode.rngs[i]->contains(val))
+	return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
+    }
+    // failed lookup, so return must be the default one.
+    return queryRecurse(arr,
+			cards,
+			n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
+  } else if (n->nodeType == LeafNodeFullExpand) {
+
+    T res = 0;
+    for (unsigned i=0;i<arr.size()-1;i++) {
+      res = cards[i]*(res + arr[i]);
+    }
+    res += arr[arr.size()-1];
+    return res;
+
+  } else {
+    // formula
+
+    T res = 0;
+    for (unsigned i=0;i<n->leafNode.formula.size();i++) {
+      if (n->leafNode.formula[i].fType == Integer)
+	res += n->leafNode.formula[i].value;
+      else if (n->leafNode.formula[i].fType == ParentValue) {
+	if (n->leafNode.formula[i].parentIndex >= arr.size())
+	  error("ERROR: Dynamic error, DT '%s' specifies a parent index (p%d) larger than number of parents (%d)\n",
+		name().c_str(),
+		n->leafNode.formula[i].parentIndex,
+		arr.size());
+	res += arr[n->leafNode.formula[i].parentIndex];
+      } else if (n->leafNode.formula[i].fType == ParentCardinality) {
+	if (n->leafNode.formula[i].parentIndex >= arr.size())
+	  error("ERROR: Dynamic error, DT '%s' specifies a card index (c%d) larger than number of parents (%d)\n",
+		name().c_str(),
+		n->leafNode.formula[i].parentIndex,
+		arr.size());
+	res += cards[n->leafNode.formula[i].parentIndex];
+      } else {
+	// we must have that (n->leafNode.formula[i].fType == ParentValCard)
+	if (n->leafNode.formula[i].parentIndex >= arr.size())
+	  error("ERROR: Dynamic error, DT '%s' specifies an index (m%d) larger than number of parents (%d)\n",
+		name().c_str(),
+		n->leafNode.formula[i].parentIndex,
+		arr.size());
+	res += cards[n->leafNode.formula[i].parentIndex]*
+	       arr[n->leafNode.formula[i].parentIndex];
+      }
+    }
+    return res;
   }
-  // failed lookup, so return must be the default one.
-  return queryRecurse(arr,cards,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
 }
 
 
@@ -604,21 +767,69 @@ template <class T>
 T RngDecisionTree<T>::queryRecurse(const vector < RandomVariable* >& arr,
 				   RngDecisionTree<T>::Node *n)
 {
-  if (n->leaf)
+
+  if (n->nodeType == LeafNodeVal) {
     return n->leafNode.value;
+  } else if (n->nodeType == NonLeafNode) {
 
-  assert ( n->nonLeafNode.ftr < int(arr.size()) );
-  assert ( arr[n->nonLeafNode.ftr]->val >= 0 &&
-	   arr[n->nonLeafNode.ftr]->val <= 
-	   RNG_DECISION_TREE_MAX_CARDINALITY );
+    assert ( n->nonLeafNode.ftr < int(arr.size()) );
+    assert ( arr[n->nonLeafNode.ftr]->val >= 0 &&
+	     arr[n->nonLeafNode.ftr]->val <= 
+	     RNG_DECISION_TREE_MAX_CARDINALITY );
 
-  const int val = arr[n->nonLeafNode.ftr]->val;
-  for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++ ) {
-    if (n->nonLeafNode.rngs[i]->contains(val))
-      return queryRecurse(arr,n->nonLeafNode.children[i]);
+    const int val = arr[n->nonLeafNode.ftr]->val;
+    for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++ ) {
+      if (n->nonLeafNode.rngs[i]->contains(val))
+	return queryRecurse(arr,n->nonLeafNode.children[i]);
+    }
+    // failed lookup, so return must be the default one.
+    return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
+  } else if (n->nodeType == LeafNodeFullExpand) {
+
+    T res = 0;
+    for (unsigned i=0;i<arr.size()-1;i++) {
+      unsigned val = arr[i]->val;
+      unsigned card = arr[i]->cardinality;
+      res = card*(res + val);
+    }
+    res += arr[arr.size()-1]->val;
+    return res;
+
+  } else {
+    // formula
+
+    T res = 0;
+    for (unsigned i=0;i<n->leafNode.formula.size();i++) {
+      if (n->leafNode.formula[i].fType == Integer)
+	res += n->leafNode.formula[i].value;
+      else if (n->leafNode.formula[i].fType == ParentValue) {
+	if (n->leafNode.formula[i].parentIndex >= arr.size())
+	  error("ERROR: Dynamic error, DT '%s' specifies a parent index (p%d) larger than number of parents (%d)\n",
+		name().c_str(),
+		n->leafNode.formula[i].parentIndex,
+		arr.size());
+	res += arr[n->leafNode.formula[i].parentIndex]->val;
+      } else if (n->leafNode.formula[i].fType == ParentCardinality) {
+	if (n->leafNode.formula[i].parentIndex >= arr.size())
+	  error("ERROR: Dynamic error, DT '%s' specifies a card index (c%d) larger than number of parents (%d)\n",
+		name().c_str(),
+		n->leafNode.formula[i].parentIndex,
+		arr.size());
+	res += arr[n->leafNode.formula[i].parentIndex]->cardinality;
+      } else {
+	// we must have that (n->leafNode.formula[i].fType == ParentValCard)
+	if (n->leafNode.formula[i].parentIndex >= arr.size())
+	  error("ERROR: Dynamic error, DT '%s' specifies an index (m%d) larger than number of parents (%d)\n",
+		name().c_str(),
+		n->leafNode.formula[i].parentIndex,
+		arr.size());
+	res += arr[n->leafNode.formula[i].parentIndex]->cardinality*
+	       arr[n->leafNode.formula[i].parentIndex]->val;
+      }
+    }
+    return res;
   }
-  // failed lookup, so return must be the default one.
-  return queryRecurse(arr,n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
+
 }
 
 
