@@ -45,7 +45,7 @@ private:
 
   //////////////////////////////////
   // The acutal mean vector
-  RealArray means;
+  sArray<float> means;
 
   //////////////////////////////////
   // Data structures support for EM
@@ -105,16 +105,8 @@ public:
 
   //////////////////////////////////////////////
   // read/write basic parameters
-  void read(iDataStreamFile& is) { 
-    NamedObject::read(is);
-    means.read(is); 
-    setBasicAllocatedBit();
-    numTimesShared = 0;
-  }
-  void write(oDataStreamFile& os) { 
-    NamedObject::write(os);
-    means.write(os); 
-  }
+  void read(iDataStreamFile& is);
+  void write(oDataStreamFile& os);
 
   // create a copy of self, but with slightly perturbed
   // means values.
