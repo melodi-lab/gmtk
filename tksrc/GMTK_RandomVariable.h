@@ -52,7 +52,7 @@ struct RandomVariable
     // A node's switching and conditional parents must all be lower numbered 
     // than the node itself, thus allowing a topological ordering of 
     // the graph induced by the union of all possible conditioning relationships
-    sArray<randomVariable *> switchingParents, conditionalParents;
+    sArray<randomVariable *> switchingParents, *conditionalParents;
   
     sArray<randomVariable *> allPossibleParents;
     // allPossibleParents is the union of the switchingParents and the
@@ -65,7 +65,7 @@ struct RandomVariable
 
     void findConditionalParents();
     // Looks at the values of the switching parents, and sets the 
-    // conditionalParents array appropriately.
+    // conditionalParents array pointer appropriately.
 
     void findAllPossibleParents();
     // Iterates through all possible instantiations of the conditioning 
