@@ -1596,6 +1596,27 @@ GMParms::makeUniform()
 ////////////////////////////////////////////////////////////////////
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIteration()
+ *      Call emEndIteration() for all top level objects (top level
+ *      objects are those who will not be pointed to by other objects).
+ *
+ * Preconditions:
+ *      em should be running.
+ *
+ * Postconditions:
+ *      EM iteration is finished.
+ *
+ * Side Effects:
+ *      Changes almost all of the parameter objects.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 GMParms::emEndIteration()
 {
@@ -1669,29 +1690,59 @@ GMParms::emEndIteration()
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emSwapCurAndNew()
+ *      Call emSwapCurAndNew() for all top level objects (top level
+ *      objects are those who will not be pointed to by other objects).
+ *
+ * Preconditions:
+ *      EM should not be running.
+ *
+ * Postconditions:
+ *      EM iteration is finished.
+ *
+ * Side Effects:
+ *      Changes almost all of the parameter objects.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 GMParms::emSwapCurAndNew()
 {
   // go through all EMable objects possibly
   // used by any RV and make the call
 
-  // first do the basic objects
+  // for continuous RVs, this will recursively
+  // call swap for all sub objects.
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emSwapCurAndNew();
+
+  // make sure that all dpmfs and spmfs have been swapped.
   for (unsigned i=0;i<dPmfs.size();i++)
     dPmfs[i]->emSwapCurAndNew();
   for (unsigned i=0;i<sPmfs.size();i++)
     sPmfs[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<means.size();i++)
-    means[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<covars.size();i++)
-    covars[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<dLinkMats.size();i++)
-    dLinkMats[i]->emSwapCurAndNew();
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emSwapCurAndNew();
 
-  // gaussian components
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emSwapCurAndNew();
+  // don't swap these since it should have
+  // been done by the mix gausisan swapping
+
+//    for (unsigned i=0;i<means.size();i++)
+//      means[i]->emSwapCurAndNew();
+//    for (unsigned i=0;i<covars.size();i++)
+//      covars[i]->emSwapCurAndNew();
+//    for (unsigned i=0;i<dLinkMats.size();i++)
+//      dLinkMats[i]->emSwapCurAndNew();
+//    for (unsigned i=0;i<weightMats.size();i++)
+//      weightMats[i]->emSwapCurAndNew();
+// gaussian components
+  //  for (unsigned i=0;i<gaussianComponents.size();i++)
+  //    gaussianComponents[i]->emSwapCurAndNew();
 
   // for discrete RVs
   for (unsigned i=0;i<mdCpts.size();i++)
@@ -1701,9 +1752,7 @@ GMParms::emSwapCurAndNew()
   for (unsigned i=0;i<mtCpts.size();i++)
     mtCpts[i]->emSwapCurAndNew();
 
-  // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emSwapCurAndNew();
+
 #if 0
   // uncomment this when the objects get written.
   for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
