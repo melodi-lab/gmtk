@@ -1,5 +1,5 @@
 /*-
- * GMTK_DiagGaussian
+ * GMTK_LinMeanCondDiagGaussian
  *        Diagonal Covariance Gaussian Distribution, no
  *        additional dependencies to other observation.
  *
@@ -20,8 +20,8 @@
  */
 
 
-#ifndef GMTK_DIAGGAUSSIAN_H
-#define GMTK_DIAGGAUSSIAN_H
+#ifndef GMTK_LINMEANCONDDIAGGAUSSIAN_H
+#define GMTK_LINMEANCONDDIAGGAUSSIAN_H
 
 #include "fileParser.h"
 #include "logp.h"
@@ -32,39 +32,48 @@
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
+#include "GMTK_DlinkMatrix.h"
+#include "GMTK_Dlinks.h"
 
-class DiagGaussian : public GaussianComponent {
+class LinMeanCondDiagGaussian : public GaussianComponent {
 
   ///////////////////////////////////////////////////////
   // The means. 
   // This might be tied with multiple other distributions.
   MeanVector* mean;
-  // The index in the global mean array of this mean.
-  int meanIndex; 
-  // For EM Training: Local copy of mean & diagCov accumulators for this DiagGaussian,
-  // which is needed for sharing.
-  sArray<float> nextMeans;
-  sArray<float> nextDiagCovars;
 
   ///////////////////////////////////////////////////////
   // The diagonal of the covariance matrix
   // This might be tied with multiple other distributions.
   DiagCovarVector* covar;
-  // The index in the global variance array of this variance vector
-  int covarIndex;
+  
+  ///////////////////////////////////////////////////////
+  // parameters for the dlink structure
+  DlinkMatrix* dLinkMat;
 
+  ///////////////////////////////////////////////////////
+  // The actual dlink structure
+  Dlinks* dLinks;
 
- 
+  // For EM Training: Local copy of mean & diagCov accumulators for 
+  // this LinMeanCondDiagGaussian, which is needed to support sharing.
+  sArray<float> nextMeans;
+  sArray<float> nextDiagCovars;
+  sArray<float> nextDlinkMat;
+
 public:
 
-  
-  DiagGaussian(const int dim) : GaussianComponent(dim) { }
-  ~DiagGaussian() {}
+  LinMeanCondDiagGaussian(const int dim) : GaussianComponent(dim) { }
+  ~LinMeanCondDiagGaussian() {}
 
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
+
+  // create a copy of self, but with slightly perturbed
+  // means/variance values.
+  GaussianComponent* noisyClone() { error("not implemented"); return (GaussianComponent*)NULL; }
 
 
   //////////////////////////////////
@@ -75,7 +84,6 @@ public:
   void makeUniform();
   //////////////////////////////////
 
-  void preCompute();
 
   //////////////////////////////////
   // probability evaluation
