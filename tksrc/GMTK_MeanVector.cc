@@ -164,7 +164,6 @@ MeanVector::noisyClone()
 /////////////////
 
 
-
 void
 MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
 {
@@ -186,39 +185,24 @@ MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
     refCount++; 
     // this object therefore is shared, set the bit saying so.
     emSetSharedBit();
-
-    if (refCount == 2) {
-      // initialize the denominator if this is the
-      // first time that we find out that this mean is shared
-      // (known by the fact that refCount == 2).
-      sharedMeansDenominator.growIfNeeded(means.len());
-      for (int i=0;i<means.len();i++) {
-	sharedMeansDenominator[i] = 0.0;
-      }
-    }
     return;
   }
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
     emSetEmAllocatedBit();
-    // allocate the final next means if needed
-    // nextMeans.growIfNeeded(means.len());
   }
 
   // EM iteration is now going.
   emSetOnGoingBit();
 
+  // accumulators are not initialized at this point.
+  emClearAccInitializedBit();
+
   accumulatedProbability = 0.0;
   refCount = 1;
   emClearSharedBit();
-  // for (int i=0;i<means.len();i++) {
-  // nextMeans[i] = 0.0;
-  // }
 
-  // make it swapable, although at this point
-  // it would swap in the unaccumulated values.
-  emSetSwappableBit();
 }
 
 
@@ -266,70 +250,6 @@ MeanVector::emIncrement(const logpr prob,
 
 }
 
-#if 0
-
-void
-MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
-{
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-
-  // make sure next-means is set up
-  if (nextMeans.size() < means.len()) {
-    nextMeans.resize(means.len());
-    for (int i=0;i<means.len();i++) {
-      nextMeans[i] = 0.0;
-    }
-  }
-
-  if (refCount > 0) {
-    // if this isn't the case, something is wrong.
-    assert ( emOnGoingBitIsSet() );
-
-    // accumulate in the 1st order statistics given
-    // by the mean object.
-    for (int i=0;i<means.len();i++) {
-      nextMeans[i] += partialAccumulatedNextMeans[i];
-    }
-
-    refCount--;
-  }
-
-  /////////////////////////////////////////////
-  // if there is still someone who
-  // has not given us his/her 1st order stats,
-  // then we return w/o finishing.
-  if (refCount > 0)
-    return;
-
-  accumulatedProbability.floor();
-  if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
-	    accumulatedProbability.val(),
-	    minContAccumulatedProbability().val());
-    for (int i=0;i<nextMeans.len();i++)
-      nextMeans[i] = means[i];
-  } else {
-    const double invRealAccumulatedProbability =
-      accumulatedProbability.inverse().unlog();
-    // finish computing the next means.
-    float * nextMeans_p = nextMeans.ptr;
-    float * nextMeans_end_p = nextMeans.ptr + nextMeans.len();
-    do {
-      *nextMeans_p *= invRealAccumulatedProbability;
-      nextMeans_p++;
-    } while (nextMeans_p != nextMeans_end_p);
-
-  }
-
-  // stop EM
-  emClearOnGoingBit();
-}
-
-#endif
-
-
 /*-
  *-----------------------------------------------------------------------
  * emEndIterationSharedMeansCovarsDlinks()
@@ -361,19 +281,17 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
   if (!emAmTrainingBitIsSet())
     return;
 
-  // make sure next-means is set up
-  if (nextMeans.len() < means.len()) {
-    nextMeans.resize(means.len());
+  if (!emAccInitializedBitIsSet()) {
+    // make sure next-means are set up
+    nextMeans.growIfNeeded(means.len());
     for (int i=0;i<means.len();i++) {
       nextMeans[i] = 0.0;
     }
-  }
-  
-  if (sharedMeansDenominator.len() < means.len()) {
-    sharedMeansDenominator.resize(means.len());
+    sharedMeansDenominator.growIfNeeded(means.len());
     for (int i=0;i<means.len();i++) {
       sharedMeansDenominator[i] = 0.0;
     }
+    emSetAccInitializedBit();
   }
   
   if (refCount > 0) {
@@ -461,6 +379,9 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
 	      previousMeansUsed);
   }
 
+  // make it swapable
+  emSetSwappableBit();
+
   // stop EM
   emClearOnGoingBit();
 }
@@ -497,13 +418,20 @@ MeanVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbab
   if (!emAmTrainingBitIsSet())
     return;
 
-  // make sure next-means is set up
-  if (nextMeans.len() < means.len()) {
-    nextMeans.resize(means.len());
+
+  if (!emAccInitializedBitIsSet()) {
+    // make sure next-means are set up
+    nextMeans.growIfNeeded(means.len());
     for (int i=0;i<means.len();i++) {
       nextMeans[i] = 0.0;
     }
+    sharedMeansDenominator.growIfNeeded(means.len());
+    for (int i=0;i<means.len();i++) {
+      sharedMeansDenominator[i] = 0.0;
+    }
+    emSetAccInitializedBit();
   }
+  
 
   if (refCount > 0) {
     // if this isn't the case, something is wrong.
@@ -570,6 +498,9 @@ MeanVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbab
 	      previousMeansUsed);
   }
 
+  // make it swapable
+  emSetSwappableBit();
+
   // stop EM
   emClearOnGoingBit();
 }
@@ -610,14 +541,16 @@ MeanVector::emEndIterationNoSharing(const float*const partialAccumulatedNextMean
   assert ( refCount == 1 );
   assert (!emSharedBitIsSet());
 
-  // make sure next-means is set up
-  if (nextMeans.len() < means.len()) {
-    nextMeans.resize(means.len());
+
+  if (!emAccInitializedBitIsSet()) {
+    // make sure next-means are set up
+    nextMeans.growIfNeeded(means.len());
     for (int i=0;i<means.len();i++) {
       nextMeans[i] = 0.0;
     }
+    emSetAccInitializedBit();
   }
-
+  
   refCount = 0;
 
   accumulatedProbability.floor();
@@ -635,6 +568,9 @@ MeanVector::emEndIterationNoSharing(const float*const partialAccumulatedNextMean
       nextMeans[i] = partialAccumulatedNextMeans[i]*invRealAccumulatedProbability;
     }
   }
+
+  // make it swapable
+  emSetSwappableBit();
 
   // stop EM
   emClearOnGoingBit();
@@ -678,12 +614,14 @@ MeanVector::emEndIterationNoSharingAlreadyNormalized(const float*const accumulat
   assert ( refCount == 1 );
   assert (!emSharedBitIsSet());
 
-  // make sure next-means is set up
-  if (nextMeans.len() < means.len()) {
-    nextMeans.resize(means.len());
+
+  if (!emAccInitializedBitIsSet()) {
+    // make sure next-means are set up
+    nextMeans.growIfNeeded(means.len());
     for (int i=0;i<means.len();i++) {
       nextMeans[i] = 0.0;
     }
+    emSetAccInitializedBit();
   }
 
   refCount = 0;
@@ -700,6 +638,10 @@ MeanVector::emEndIterationNoSharingAlreadyNormalized(const float*const accumulat
       nextMeans[i] = accumulatedNextMeans[i];
     }
   }
+
+
+  // make it swapable
+  emSetSwappableBit();
 
   // stop EM
   emClearOnGoingBit();
