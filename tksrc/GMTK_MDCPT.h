@@ -31,7 +31,7 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_NamedObject.h"
 
-class MDCPT : public CPT, public EMable {
+class MDCPT : public CPT {
 
   //////////////////////////////////
   // The acutal cpt. This is the table for
@@ -50,6 +50,9 @@ class MDCPT : public CPT, public EMable {
   //////////////////////////////////
   // Data structures support for EM
   sArray < logpr > nextMdcpt;
+
+  // the overall expected occurence of this CPT
+  logpr accumulator;
 
 
 public:
@@ -74,7 +77,7 @@ public:
 
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
-    assert ( val >= 0 && val <= cardinalities[_numParents] );
+    assert ( val >= 0 && val < cardinalities[_numParents] );
     return *(mdcpt_ptr + val);
   }
   logpr probGivenParents(vector <int>& parentValues, 
@@ -144,14 +147,13 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emInit() {}
-  void emStartIteration() {}
-  void emIncrement(logpr prob) {}
-  void emEndIteration() {}
-  void emSwapCurAndNew() {}
-  void emStoreAccumulators(oDataStreamFile& ofile) {}
-  void emLoadAccumulators(iDataStreamFile& ifile) {}
-  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void emStartIteration();
+  void emIncrement(RandomVariable*rv, logpr prob);
+  void emEndIteration();
+  void emSwapCurAndNew();
+  void emStoreAccumulators(oDataStreamFile& ofile) { error("not implemented");  }
+  void emLoadAccumulators(iDataStreamFile& ifile) { error("not implemented");  }
+  void emAccumulateAccumulators(iDataStreamFile& ifile) { error("not implemented");  }
   //////////////////////////////////
 
 

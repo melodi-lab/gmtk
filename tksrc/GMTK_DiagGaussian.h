@@ -26,6 +26,8 @@
 #include "fileParser.h"
 #include "logp.h"
 
+#include "GMTK_RandomVariable.h"
+
 class DiagGaussian : public GaussianCommon, public EMable {
 
   ///////////////////////////////////////////////////////
@@ -41,16 +43,6 @@ class DiagGaussian : public GaussianCommon, public EMable {
   DiagCovarVector* variance;
   // The index in the global variance array of this variance vector
   int varianceIndex;
-
-  // A bitmask giving the state of the object.
-  enum {
-    bm_basicAllocated = 0x1,
-    bm_emAllocated = 0x2,
-    bm_swapped = 0x4,
-
-    bm_initState = 0x0
-  };
-  unsigned int bitmask;
 
  
 public:
@@ -73,11 +65,6 @@ public:
   //////////////////////////////////
 
   //////////////////////////////////
-  // swap the old and the new parameters.
-  void swapCurAndNew();
-  //////////////////////////////////
-
-  //////////////////////////////////
   // probability evaluation
   logpr log_p(const float *const x,    // real-valued scoring obs at time t
 	      const ptr32* const base, // ptr to base obs at time t
@@ -88,16 +75,14 @@ public:
   //////////////////////////////////
   // Full Baum-Welch EM training  //
   //////////////////////////////////
-  void emInit() {}
   void emStartIteration() {}
-  void emIncrement(logpr prob) {}
+  void emIncrement(RandomVariable*,logpr prob) {}
   void emEndIteration() {}
   void emSwapCurAndNew() {}
   void emStoreAccumulators(oDataStreamFile& ofile) {}
   void emLoadAccumulators(iDataStreamFile& ifile) {}
   void emAccumulateAccumulators(iDataStreamFile& ifile) {}
   //////////////////////////////////
-
 
   //////////////////////////////////
   // Sample Generation            //

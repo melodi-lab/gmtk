@@ -1,6 +1,6 @@
 /*-
  * GMTK_DiagGaussian.cc
- *        Code for diagonal Gaussians.
+ *        Code for plain vanilla diagonal Gaussians.
  *
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -27,48 +27,44 @@
 #include <float.h>
 #include <assert.h>
 
+#include <string>
+
 #include "general.h"
 VCID("$Header$");
 #include "error.h"
+#include "rand.h"
+
 
 #include "GMTK_DiagGaussian.h"
-#include "rand.h"
+#include "GMTK_GMParms.h"
 
 #ifndef M_PI
 #define M_PI               3.14159265358979323846  /* pi */
 #endif
 
-double DiagGaussian::varianceFloor = 1e-30; // must be >= FLT_MIN;
 
 DiagGaussian::~DiagGaussian()
 {
 }
 
+
 void
 DiagGaussian::read(iDataStreamFile& is)
 {
+  // read name
+  NamedObject::read(is);
 
+  // read mean vector
+  string str;
+  is.read(str);
   
 
-  variances = new float[parent->nFeats];
-  variances_inv = new float [parent->nFeats];
-  burVals = new float[parent->sum_nComsp1];
 
-  float * burValsp = burVals;
-  for (int i=0;i<parent->nFeats;i++) {
-    const int nComs_p1 = parent->numComs[i]+1;
-    for (int j=0;j<nComs_p1;j++) {
-      is.readFloat(*burValsp++,"DiagGaussian::read bvs");
-    }
-  }
-  int dummy;
-  is.readInt(dummy,"DiagGaussian::read cvtyp");
-  if (dummy != 0) 
-    error("DiagGaussian::read covariance type must be 0");
-  for (int i=0;i<parent->nFeats;i++) 
-    is.readFloat(variances[i],"DiagGaussian::read vars");
-  preCompute();
-  bitmask |= bm_basicAllocated;
+
+  // read covariance vector
+
+
+
 }
 
 
@@ -122,61 +118,10 @@ void
 DiagGaussian::randomize()
 {
   assert ( bitmask & bm_basicAllocated );
-  float *burValsp = burVals;
-  for (int feat=0;feat<parent->nFeats;feat++) {
-    variances[feat] = 1.0+rnd.drand48pe();
-    const int nComs_p1 = parent->numComs[feat]+1;
-    for (int com=0;com<nComs_p1;com++) {
-      *burValsp++ = rnd.drand48pe();
-    }
-  }
+  means -> makeRandom();
+  variance -> makeRandom();
 }
 
-
-void
-DiagGaussian::expandGammaZZ()
-{
-  float *zz = gamma_zz;
-  float *zze = gamma_zz_expanded;
-  for (int feat=0;feat<parent->nFeats;feat++) {
-    const int nComs_p1 = parent->numComs[feat]+1;
-
-    switch (nComs_p1) {
-    case 1:
-      {
-	*zze++ = *zz++; 
-      }
-      break;
-    case 2:
-      {
-	zze[0] = zz[0];
-	zze[1] = zze[2] = zz[1];
-	zze[3] = zz[2];
-	zz += 3;
-	zze += 4;
-      }
-      break;
-    default:
-      {
-	float *zzep = zze;
-	float *zzp = zz;
-	for (int i=0;i<nComs_p1;i++) {
-	  float *zze_rp = zzep; // row ptr
-	  float *zze_cp = zzep; // col ptr
-	  *zze_rp = *zzp++;
-	  for (int j=1;j<(nComs_p1-i);j++) {
-	    zze_rp ++;
-	    zze_cp += nComs_p1;
-	    *zze_rp = *zze_cp = *zzp++;
-	  }
-	  zzep += (nComs_p1+1);
-	}
-	zz += nComs_p1*(nComs_p1+1)/2;
-	zze += nComs_p1*nComs_p1;
-      }
-    }
-  }
-}
 
 
 // This can be changed from 'float' to 'double' to
@@ -186,19 +131,18 @@ DiagGaussian::expandGammaZZ()
 // such low scores.
 #define TMP_ACCUMULATOR_TYPE double
 
-
 //
 // compute the log probability of x with stride 'stride'
 // 
 logpr
-DiagGaussian::log_p(const float *const x,const int stride)
+DiagGaussian::log_p(const float *const x,
+		    const ptr32* const base,
+		    const int stride)
 {
-
-  assert ( parent->bitmask & GaussianMixture::bm_strideAllocated );
 
   TMP_ACCUMULATOR_TYPE d=0.0;
   const float *xp = x;
-  float *var_invp = variances_inv;
+  float *var_invp = variance->variances_inv;
   // we assume that parent->nFeats > 0
   const int nFeats = parent->nFeats;
 

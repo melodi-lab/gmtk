@@ -226,6 +226,7 @@ void
 MDCPT::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
+  os.nl();
   os.write(_numParents,"MDCPT::write numParents"); 
   os.writeComment("number parents");os.nl();
   for (unsigned i=0;i<=_numParents;i++) {
@@ -508,6 +509,8 @@ void
 MDCPT::emIncrement(RandomVariable* rv, logpr prob)
 {
   // this is an MDCPT, so rv must be discrete.a
+  assert ( rv -> discrete );
+
   DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
   // make sure, by checking that drv's curCPT points to this.
   assert ( drv -> curCPT == this );
@@ -517,8 +520,10 @@ MDCPT::emIncrement(RandomVariable* rv, logpr prob)
   // loop!
   becomeAwareOfParentValues(*(drv->curConditionalParents));
 
+  // Grab the current offset ...
   int offset = mdcpt_ptr-mdcpt.ptr;
 
+  // ... and use it for the next cpt 
   *(nextMdcpt.ptr + offset + drv->val) += prob;
 
   accumulator += prob;
@@ -531,16 +536,32 @@ MDCPT::emEndIteration()
     error("Ending EM iteration but CPT %s has zero probability of occurance\n",
 	  _name.c_str());
 
-  logpr* p_ptr = nextMdcpt.ptr;
-  for (int i=0;i<condAccumulator.len();i++) {
-    if (condAccumulator[i] == 0.0)
-      error("Ending EM iteration, CPT %s has zero prob for certain parents\n",
-	    _name.c_str());
-    for (int j=0;j<cardinalities[_numParents];j++) {
-      *p_ptr /= condAccumulator[i];
-      p_ptr++;
+  // now normalize the next ones
+
+  const int child_card = cardinalities[_numParents];
+  const int num_parent_assignments = mdcpt.len()/child_card;
+  logpr *loc_ptr = nextMdcpt.ptr;
+  for (int parent_assignment =0; 
+       parent_assignment < num_parent_assignments; 
+       parent_assignment ++) {
+    logpr sum = 0.0;
+    logpr *tmp_loc_ptr = loc_ptr;
+    for (int i=0;i<child_card;i++) {
+      sum += *tmp_loc_ptr++;
     }
+
+    if (sum == 0.0) {
+      error("Ending EM iteration but a row of CPT %s has zero probability of occurance\n",
+	  _name.c_str());      
+    }
+    tmp_loc_ptr = loc_ptr;
+    for (int i=0;i<child_card;i++) {
+      *tmp_loc_ptr /= sum;
+      tmp_loc_ptr++;
+    }
+    loc_ptr += child_card;
   }
+
 }
 
 void

@@ -36,7 +36,7 @@
 #include "GMTK_NamedObject.h"
 
 
-class MTCPT : public CPT, public EMable  {
+class MTCPT : public CPT  {
 
   //////////////////////////////////
   // Index into the world structure
@@ -150,9 +150,8 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emInit() {}
   void emStartIteration() {}
-  void emIncrement(logpr prob) {}
+  void emIncrement(RandomVariable*,logpr prob) {}
   void emEndIteration() {}
   void emSwapCurAndNew() {}
   void emStoreAccumulators(oDataStreamFile& ofile) {}

@@ -359,7 +359,7 @@ public:
   FileParser(const char *const fileName);
   void parseGraphicalModel();
   void createRandomVariableGraph();
-  void associateWithDataParams();
+  void associateWithDataParams(bool allocateIfNotThere=false);
   // ensure links are "south", "south east",
   // "east", or "north east", meaning that there
   // is a numeric ordering on the nodes such that 

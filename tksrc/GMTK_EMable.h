@@ -27,6 +27,8 @@
 #include "fileParser.h"
 #include "logp.h"
 
+#include "GMTK_RandomVariable.h"
+
 class EMable {
 
 
@@ -72,21 +74,18 @@ public:
   // an "iteration" is an entire pass through the data.
 
   ////////////////////////////////////////////////////////////////////
-  // if emAllocatd not set, initilizes data and set emAllocated
-  // otherwise do nothing.
-  virtual void emInit() = 0;
-
-  ////////////////////////////////////////////////////////////////////
-  // begins a new epoch. Also ensures that data is allocated.
+  // begins a new epoch. Also ensures that data for EM is allocated
+  // and possibly changes the alocated bit, and ongoing bit
   virtual void emStartIteration() = 0;
 
   ////////////////////////////////////////////////////////////////////
   // Accumulate new data into the internal structures for eam.
-  virtual void emIncrement(logpr prob) = 0;
+  // assumes that the ongoing bit it set.
+  virtual void emIncrement(RandomVariable* rv, logpr prob) = 0;
 
   ////////////////////////////////////////////////////////////////////
   // Accumulate new data into the internal structures for this 
-  // em iteration
+  // em iteration, clears the ongoing bit.
   virtual void emEndIteration() = 0;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -96,7 +95,19 @@ public:
 
   /////////////////////////////////////////////////////////////////
   // clear the swap bit, needed for sharing.
-  void clearSwap() { bitmask &= ~bm_swapped; }
+  void emClearSwappedBit() { bitmask &= ~bm_swapped; }
+  void emSetSwappedBit() { bitmask |= bm_swapped; }
+
+  /////////////////////////////////////////////////////////////////
+  // clear the swap bit, needed for sharing.
+  void emClearAllocatedBit() { bitmask &= ~bm_emAllocated; }
+  void emSetAllocatedBit() { bitmask |= bm_emAllocated; }
+
+
+  /////////////////////////////////////////////////////////////////
+  // clear the swap bit, needed for sharing.
+  void emClearOnGoingBit() { bitmask &= ~bm_emEpochOnGoing; }
+  void emSetOnGoingBit() { bitmask |= bm_emEpochOnGoing; }
 
   //////////////////////////////////////////////
   // For parallel EM training.

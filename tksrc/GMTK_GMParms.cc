@@ -200,6 +200,7 @@ GMParms::writeBasic(oDataStreamFile& os)
   os.write(MAGIC_PRM_FILE,"GMTK_GMParms::writeBasic, magic");
   os.nl();
 
+  os.nl(); os.writeComment("dense PMFs");os.nl();
   os.write(dPmfs.size(),"GMTK_GMParms::writeBasic, dpmfs");
   os.nl();
   for (unsigned i=0;i<dPmfs.size();i++) {
@@ -208,6 +209,7 @@ GMParms::writeBasic(oDataStreamFile& os)
   }
   os.nl();
 
+  os.nl(); os.writeComment("sparse PMFs");os.nl();
   os.write(sPmfs.size(),"GMTK_GMParms::writeBasic, spmfs");
   os.nl();
   for (unsigned i=0;i<sPmfs.size();i++) {
@@ -216,7 +218,8 @@ GMParms::writeBasic(oDataStreamFile& os)
   }
   os.nl();
 
-  os.write(means.size(),"GMTK_GMParms::writeBasic, means");
+
+  os.nl(); os.write(means.size(),"GMTK_GMParms::writeBasic, means");
   os.nl();
   for (unsigned i=0;i<means.size();i++) {
     os.write(i);
@@ -224,6 +227,7 @@ GMParms::writeBasic(oDataStreamFile& os)
   }
   os.nl();
 
+  os.nl(); os.writeComment("covars");os.nl();
   os.write(covars.size(),"GMTK_GMParms::writeBasic, covars");
   os.nl();
   for (unsigned i=0;i<covars.size();i++) {
@@ -232,6 +236,7 @@ GMParms::writeBasic(oDataStreamFile& os)
   }
   os.nl();
 
+  os.nl(); os.writeComment("dlink matrices");os.nl();
   os.write(dLinkMats.size(),"GMTK_GMParms::writeBasic, DlinkMatrix");
   os.nl();
   for (unsigned i=0;i<dLinkMats.size();i++) {
@@ -240,6 +245,7 @@ GMParms::writeBasic(oDataStreamFile& os)
   }
   os.nl();
 
+  os.nl(); os.writeComment("weight matrices");os.nl();
   os.write(weightMats.size(),"GMTK_GMParms::writeBasic, WeightMatrix");
   os.nl();
   for (unsigned i=0;i<weightMats.size();i++) {
@@ -248,7 +254,7 @@ GMParms::writeBasic(oDataStreamFile& os)
   }
   os.nl();
 
-
+  os.nl(); os.writeComment("MDCPTs");os.nl();
   os.write(mdCpts.size(),"GMTK_GMParms::writeBasic, MDCPT");
   os.nl();
   for (unsigned i=0;i<mdCpts.size();i++) {
@@ -257,6 +263,7 @@ GMParms::writeBasic(oDataStreamFile& os)
   }
   os.nl();
 
+  os.nl();  os.writeComment("MSCPTs");os.nl();
   os.write(msCpts.size(),"GMTK_GMParms::writeBasic, MSCPT");
   os.nl();
   for (unsigned i=0;i<msCpts.size();i++) {
@@ -266,6 +273,7 @@ GMParms::writeBasic(oDataStreamFile& os)
   os.nl();
 
 
+  os.nl(); os.writeComment("MTCPTs");os.nl();
   os.write(mtCpts.size(),"GMTK_GMParms::writeBasic, MTCPT");
   os.nl();
   for (unsigned i=0;i<mtCpts.size();i++) {
@@ -300,6 +308,7 @@ GMParms::readDTs(iDataStreamFile& is)
 
     dts[i] = new RngDecisionTree<unsigned>;
     dts[i]->read(is);
+    dtsMap[dts[i]->name()] = dts[i];
   }
 }
 
