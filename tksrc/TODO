@@ -2733,8 +2733,9 @@ Sat Mar  5 17:17:49 2005
   - split up large .cc files into smaller more logical ones ones.
 
 
-
-
+Wed Mar 16 18:01:22 2005
+  - add a viterbi training appraoch to EM training (i.e., backward pass does viterbi, and rather
+    than sum, we just train gaussian using viterbi path).
 
 
 
