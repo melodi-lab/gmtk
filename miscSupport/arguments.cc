@@ -11,7 +11,6 @@
  */
 
 #include <strstream.h>
-#include <iostream.h>
 #include <fstream.h>
 #include <stddef.h>
 #include <stdlib.h>
