@@ -454,7 +454,7 @@ MSCPT::emStartIteration()
   emSetOnGoingBit();
   emSetSwappableBit();
 
-  spmf->emStartIteration();
+  // spmf->emStartIteration();
 
   accumulatedProbability = 0.0;  
 }
