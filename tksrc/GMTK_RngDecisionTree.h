@@ -192,10 +192,10 @@ public:
  *      object must be "filled" in.
  *
  * Postconditions:
- *      sky is the limit
+ *      object is not filled in.
  *
  * Side Effects:
- *      all memory is gone.
+ *      all memory associated with this object is reclaimed.
  *
  * Results:
  *      nothing
@@ -219,10 +219,10 @@ RngDecisionTree<T>::~RngDecisionTree()
  *      object must be "filled" in.
  *
  * Postconditions:
- *      sky is the limit
+ *      object is not filled in.
  *
  * Side Effects:
- *      all memory is gone.
+ *      all memory associated with this object is reclaimed.
  *
  * Results:
  *      nothing
