@@ -74,7 +74,6 @@ public:
   void makeUniform();
   //////////////////////////////////
 
-  void preCompute();
 
   //////////////////////////////////
   // probability evaluation
