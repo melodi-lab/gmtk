@@ -21,18 +21,21 @@ VCID("$Header$");
 
 #include "GMTK_Clique.h"
 
-set<vector<RandomVariable::DiscreteVariableType> > CliqueValue::global_val_set;
+set<vector<RandomVariable::DiscreteVariableType>, VecCompare > 
+CliqueValue::global_val_set;
 
 vector<CliqueValue> Clique::gip;  // the actual global instantiation pool
 vector<unsigned> Clique::freelist;     // and the freelist
 int Clique::nextfree=-1;
+
+static const float mem_factor=1.2;  // resize by this factor
 
 unsigned Clique::newCliqueValue()
 {
     if (nextfree==-1)         // nothing more left
     {
         freelist.clear();     // the previous entries have all been used
-        int oldsize = gip.size(), newsize = 2*gip.size();
+        int oldsize = gip.size(), newsize = int(mem_factor*gip.size());
         newsize = max(newsize, 100000);  // don't mess around at the beginning
         gip.resize(newsize);  // make more CliqueValues
         for (int i=oldsize; i<newsize; i++)
@@ -49,7 +52,7 @@ void Clique::recycleCliqueValue(unsigned idx)
     // CliqueValues added; not the size of the gip. Therefore, it may be 
     // necessary to make it bigger, e.g. when absolutely everything is freed up
     if (nextfree == int(freelist.size())-1)  
-        freelist.resize(2*freelist.size());
+        freelist.resize(int(mem_factor*freelist.size()));
 
     freelist[++nextfree] = idx;
 }
@@ -124,7 +127,8 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
             instantiation.push_back(ncv);                
             instantiationAddress[clampedValues] = ncv;  
             // store the underlying variable values with the instantiation
-            set<vector<RandomVariable::DiscreteVariableType> >::iterator si;
+            set<vector<RandomVariable::DiscreteVariableType>,
+                VecCompare >::iterator si;
             si = CliqueValue::global_val_set.insert(
                 CliqueValue::global_val_set.begin(), clampedValues);
             cv->values = &(*si);   
@@ -166,7 +170,8 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
             CliqueValue *cv = &gip[ncv];
             cv->pi = cv->lambda = pi;  // cache value in lambda
             cv->pred = pred_val;
-            set<vector<RandomVariable::DiscreteVariableType> >::iterator si;
+            set<vector<RandomVariable::DiscreteVariableType>,
+                VecCompare>::iterator si;
             si = CliqueValue::global_val_set.insert(
                 CliqueValue::global_val_set.begin(), clampedValues);
             cv->values = &(*si);
