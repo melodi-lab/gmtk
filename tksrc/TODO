@@ -174,3 +174,5 @@ X change sparse PMF so that it just contains a list
   easier than a decision tree. 
 
 - add a binary/ascii parameter file conversion program.
+
+- export internal variables to command line changes
