@@ -465,17 +465,17 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
 					     const unsigned int frameDelta)
   : origin(from_part)
 {
-  unsigned i;
+
   // first allocate space with empty (and unusable) entries
   maxCliques.resize(origin.cliques.size());
   separatorCliques.resize(origin.separators.size());
 
   // then actually re-construct the objects in the array appropriately.
-  for ( i=0;i<maxCliques.size();i++) {
+  for (unsigned i=0;i<maxCliques.size();i++) {
     new (&maxCliques[i]) InferenceMaxClique(origin.cliques[i],
 					    newRvs,ppf,frameDelta);
   }
-  for ( i=0;i<separatorCliques.size();i++) {
+  for (unsigned i=0;i<separatorCliques.size();i++) {
     new (&separatorCliques[i]) InferenceSeparatorClique(origin.separators[i],
 					    newRvs,ppf,frameDelta);
   }
