@@ -13,6 +13,8 @@ my $other_arguments;
 my $total_seconds;
 my $boundary_seconds;
 my $triangulate_seconds;
+my $pmae_line;
+my $boundary_line; 
 my $triangulate_line;
 my $gmtk_triangulate;
 my $gmtk_tfmerge;
@@ -96,27 +98,47 @@ if (!defined $other_arguments)
 }
 
 #############################################################################
+# Create command line to pipe items to pmae/pmake 
+#############################################################################
+$pmae_line = "$pmae | pmake -L 0 -J 6 -f- 1>&2";
+
+#############################################################################
 # Export process to find best boundary 
 #############################################################################
 print "Finding best boundary (maximum of $boundary_seconds seconds after export)...\n";
 
-`echo \'$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -outputTriangulatedFile $str_file.partition -triangulationHeuristic completed -findBestBoundary T -boundaryHeuristic W -M 1 -S 1 -seed T -anyTimeTriangulate $boundary_seconds -jtWeight T $other_arguments \' | $pmae | pmake -f- 1>&2`; 
+$boundary_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -triangulationHeuristic completed -findBestBoundary T -boundaryHeuristic W -M 1 -S 1 -seed T -anyTimeTriangulate $boundary_seconds -jtWeight T $other_arguments"; 
+
+`echo \'$boundary_line -forceLeftRight L -outputTriangulatedFile $str_file.L_partition \n$boundary_line -forceLeftRight R -outputTriangulatedFile $str_file.R_partition\' | $pmae_line`; 
 
 #############################################################################
 # Export processes to triangulate P, C, and E 
 #############################################################################
 print "Triangulating (maximum of $triangulate_seconds seconds after export)...\n";
 
-$triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $str_file.partition -findBestBoundary F -seed T -anyTimeTriangulate $triangulate_seconds -jtWeight T $other_arguments";
+$triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -findBestBoundary F -seed T -anyTimeTriangulate $triangulate_seconds -jtWeight T $other_arguments";
 
-`echo \'$triangulate_line -outputTriangulatedFile $str_file.P -noReTriP F -noReTriC T -noReTriE T\n $triangulate_line -outputTriangulatedFile $str_file.C -noReTriP T -noReTriC F -noReTriE T\n $triangulate_line -outputTriangulatedFile $str_file.E -noReTriP T -noReTriC T -noReTriE F\n\' | $pmae | pmake -f- 1>&2`; 
+open PMAE, "| $pmae_line" or die 
+  "Could not open stream to pmae or pmake";
+
+print PMAE "$triangulate_line -inputTriangulatedFile $str_file.L_partition -outputTriangulatedFile $str_file.L.P -noReTriP F -noReTriC T -noReTriE T\n";
+print PMAE "$triangulate_line -inputTriangulatedFile $str_file.L_partition -outputTriangulatedFile $str_file.L.C -noReTriP T -noReTriC F -noReTriE T\n";
+print PMAE "$triangulate_line -inputTriangulatedFile $str_file.L_partition -outputTriangulatedFile $str_file.L.E -noReTriP T -noReTriC T -noReTriE F\n"; 
+
+print PMAE "$triangulate_line -inputTriangulatedFile $str_file.R_partition -outputTriangulatedFile $str_file.R.P -noReTriP F -noReTriC T -noReTriE T\n";
+print PMAE "$triangulate_line -inputTriangulatedFile $str_file.R_partition -outputTriangulatedFile $str_file.R.C -noReTriP T -noReTriC F -noReTriE T\n";
+print PMAE "$triangulate_line -inputTriangulatedFile $str_file.R_partition -outputTriangulatedFile $str_file.R.E -noReTriP T -noReTriC T -noReTriE F\n"; 
+
+close PMAE;
 
 #############################################################################
 # Merge trifiles (using local processor) 
 #############################################################################
 print "Merging trifiles...\n";
 
-`$gmtk_tfmerge -strFile $str_file -outputTriangulatedFile $str_file.trifile -Ptrifile $str_file.P -Ctrifile $str_file.C -Etrifile $str_file.E 1>&2`; 
+`$gmtk_tfmerge -strFile $str_file -outputTriangulatedFile $str_file.L.trifile -Ptrifile $str_file.L.P -Ctrifile $str_file.L.C -Etrifile $str_file.L.E 1>&2`; 
+
+`$gmtk_tfmerge -strFile $str_file -outputTriangulatedFile $str_file.R.trifile -Ptrifile $str_file.R.P -Ctrifile $str_file.R.C -Etrifile $str_file.R.E 1>&2`; 
 
 
 #############################################################################
