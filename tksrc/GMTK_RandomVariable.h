@@ -46,9 +46,9 @@ struct RandomVariable
     // This means that a static graph with a predetermined topological order
     // can be compiled, even when there is switching parentage.
     // Parent and Child arrays refer only to hidden variables. 
-
+  
     sArray<randomVariable *> switchingParents, conditionalParents;
-    
+  
     sArray<randomVariable *> allPossibleParents;
     // allPossibleParents is the union of the switchingParents and the
     // all possible conditionalParents.
@@ -89,10 +89,6 @@ struct RandomVariable
     // A special case of discrete variables, where the parents' values 
     // uniquely determine the variable's value. No looping required.
 
-    int numVals;
-    // in the discrete case, how many possible values are there?
-    // values range from 0 to num_vals-1
-
     int val;
     // in the discrete case, the actual value of the variable
 
@@ -117,6 +113,17 @@ struct RandomVariable
 /* Add a pointer to the appropriate GMTK_DiscretePDF table here */
 /* Then discreteProbGivenParents() will follow it. */
     discreteVariable *dvp;
+
+
+    sArray< int > possibleDiscreteValues;
+    // The set of possible discrete values for whatever the
+    // parents are currently set to. One may just iterate over this
+    // array to obtain the set of values that this random variable
+    // may be set to.
+
+    void setPossibleDiscreteValues();
+    // Fills the table possibleDiscreteValues based on the set of
+    // current parent values.
 
     virtual void makeRandom() = 0;
     // Sets the parameters determining probGivenParents() to random values.
