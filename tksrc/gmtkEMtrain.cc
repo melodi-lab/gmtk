@@ -53,7 +53,8 @@ bool seedme = false;
 float pruneRatio=0.0;
 char *obsFileName;
 char *strFileName;
-char *parmsFileName;
+char *parmsFileName=NULL;
+char *parmsPtrFileName=NULL;
 
 unsigned maxEMIterations=3;
 
@@ -63,7 +64,8 @@ bool enem = false;
 ARGS ARGS::Args[] = {
 
  ARGS("obsFile",ARGS::Req,obsFileName,"File containing observations"),
- ARGS("parmsFile",ARGS::Req,parmsFileName,"GM Parms File"), 
+ ARGS("parmsFile",ARGS::Opt,parmsFileName,"GM Parms File"), 
+ ARGS("parmsPtrFile",ARGS::Opt,parmsPtrFileName,"GM Parms File"), 
  ARGS("strFile",ARGS::Req,strFileName,"GM Structure File"),
 
  ARGS("seed",ARGS::Opt,seedme,"Seed the RN generator"),
@@ -102,8 +104,14 @@ main(int argc,char*argv[])
 
   /////////
   // read in all parameters
-  iDataStreamFile parmsFile(parmsFileName);
-  GM_Parms.readAll(parmsFile);
+  if (parmsFileName) {
+    iDataStreamFile parmsFile(parmsFileName);
+    GM_Parms.readAll(parmsFile);
+  }
+  if (parmsPtrFileName) {
+    iDataStreamFile parmsFile(parmsPtrFileName);
+    GM_Parms.read(parmsFile);
+  }
 
   /////////////////////////////
   // read in the structure
