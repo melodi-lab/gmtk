@@ -99,7 +99,8 @@ ObservationMatrix::openFiles(int n_files,
 
     bool sflag;
 
-    if (swapflag == NULL || swapflag[i] == NULL)
+
+    if (swapflag == NULL || swapflag[i] == false)
       sflag = 0; 
     else
       sflag = swapflag[i];
