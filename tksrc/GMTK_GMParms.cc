@@ -1732,6 +1732,7 @@ GMParms::emSwapCurAndNew()
   // don't swap these since it should have
   // been done by the mix gausisan swapping
 
+
 //    for (unsigned i=0;i<means.size();i++)
 //      means[i]->emSwapCurAndNew();
 //    for (unsigned i=0;i<covars.size();i++)
