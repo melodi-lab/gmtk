@@ -486,6 +486,9 @@ sub main
   #########################################################################
   # Start thread to generate triangulations 
   #########################################################################
+  printf "%-4s%-39s%-5s%-5s%4s", '', 'method', 'vpap', 'vcap',
+    'partitions';
+
   push @children, threads->new( \&generate_triangulations );
 
   #########################################################################
@@ -645,7 +648,7 @@ sub generate_triangulations
       }
     } # end while
   
-    if ((defined $max_boundaries_with_advanced) && 
+    if ((!defined $max_boundaries_with_advanced) || 
         ($max_boundaries_with_advanced > 0))
     {
       print "Found $boundary_count unique boundaries\n";
@@ -685,7 +688,8 @@ sub generate_triangulations
       #########################################################################
       for ( $boundary_count = 0; 
             ( ($boundary_count < (scalar @boundary_list)) &&
-              ($boundary_count < $max_boundaries_with_advanced) );
+              ((!defined $max_boundaries_with_advanced) ||
+               ($boundary_count < $max_boundaries_with_advanced)) );
             $boundary_count++ )
       {
         $boundary = $boundary_list[$boundary_count]->{NAME};
@@ -1364,8 +1368,8 @@ sub start_boundary_searches
   my $boundary_calls;
   my $total_boundaries;
 
-  @boundary_heuristics = ('W' , 'Q', 'A', 'FWH', 'S', 'T', 'F', 'P', 'N', 'ST',
-    'SF', 'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 'FT', 'FW', 'FTSW');
+  @boundary_heuristics = ('W', 'S', 'F', 'FWH', 'T', 'P', 'N', 'ST', 'SF', 
+    'SW', 'SFW', 'TS', 'TF', 'TW', 'TSW', 'FS', 'FT', 'FW', 'FTSW');
 
   print "Starting boundary searches\n";
 
