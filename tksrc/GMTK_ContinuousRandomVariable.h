@@ -72,11 +72,12 @@ private:
   bool probIsCached;
   logpr _cachedProb;
 
-  //////////////////////////////////////////////////////////////
-  // the feature range to which this random variable corresponds.
-  // it corresponds to [firstFeature:lastFeature] inclusive
-  unsigned firstFeature;
-  unsigned lastFeature;
+  /////////////////////////////////////////////////////////////////
+  // the feature range to which this random variable corresponds
+  // in a data file. it corresponds to 
+  // [firstFeatureElement:lastFeatureElement] inclusive.
+  unsigned firstFeatureElement;
+  unsigned lastFeatureElement;
 
 
 public:
@@ -95,7 +96,7 @@ public:
   // presumably this is an observation and contains only one value.
   void clampFirstValue() {}
   // always the last value.
-  bool clampNextValue() { return true; }
+  bool clampNextValue() { return false; }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////

@@ -88,7 +88,7 @@ RandomVariableDiscreteType =
 
 RandomVariableContinuousType = 
        "continuous" 
-       ("hidden" | "observed" integer:integer)
+       ("hidden" | "observed" integer ":" integer)
 
 SwitchingParentAttribute = "nil" | ParentList "using" MappingSpec
 
@@ -406,7 +406,6 @@ FileParser::FileParser(const char*const file)
     if ((yyin = fopen (file,"r")) == NULL)
       error("FileParser::FileParser, can't open file (%s)",file);
   }
-
 }
 
 
@@ -593,6 +592,7 @@ FileParser::parseGraphicalModel()
     parseError(KW_Frame);
   // now this will consume the token
   parseFrameList();
+  _maxFrame = curFrame;
 
   parseChunkSpecifier();
 
@@ -638,6 +638,7 @@ FileParser::parseFrame()
   }
   curFrame++;
   consumeToken();
+
 
   ensureNotAtEOF("open frame {");
   if (tokenInfo != TT_LeftBrace)
@@ -825,7 +826,7 @@ FileParser::parseRandomVariableDiscreteType()
     ensureNotAtEOF("first feature range");
     if (tokenInfo != TT_Integer)
       parseError("first feature range");
-    curRV.rvFeatureRange.start = tokenInfo.int_val;
+    curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
     consumeToken();
 
     ensureNotAtEOF("feature range separator");
@@ -836,11 +837,19 @@ FileParser::parseRandomVariableDiscreteType()
     ensureNotAtEOF("second feature range");
     if (tokenInfo != TT_Integer)
       parseError("second feature range");
-    curRV.rvFeatureRange.stop = tokenInfo.int_val;
-    if (curRV.rvFeatureRange.stop < curRV.rvFeatureRange.start)
+    curRV.rvFeatureRange.lastFeatureElement = tokenInfo.int_val;
+    if (curRV.rvFeatureRange.lastFeatureElement < curRV.rvFeatureRange.firstFeatureElement)
       parseError("first range num must be < second range num");
     curRV.rvFeatureRange.filled = true;
     consumeToken();
+
+    // A discrete random variable is, at this time, only a scalar.
+    // Therefore, the feature range spec should be of the
+    // form n:n (i.e., it may only specify a single number).
+    // Ultimately, a discrete RV will be a vector, but for
+    // now 
+
+
 
   } else 
     parseError("variable disposition (hidden|discrete)");
@@ -893,7 +902,7 @@ FileParser::parseRandomVariableContinuousType()
     ensureNotAtEOF("first feature range");
     if (tokenInfo != TT_Integer)
       parseError("first feature range");
-    curRV.rvFeatureRange.start = tokenInfo.int_val;
+    curRV.rvFeatureRange.firstFeatureElement = tokenInfo.int_val;
     consumeToken();
 
     ensureNotAtEOF("feature range separator");
@@ -904,7 +913,9 @@ FileParser::parseRandomVariableContinuousType()
     ensureNotAtEOF("second feature range");
     if (tokenInfo != TT_Integer)
       parseError("second feature range");
-    curRV.rvFeatureRange.stop = tokenInfo.int_val;
+    curRV.rvFeatureRange.lastFeatureElement = tokenInfo.int_val;
+    if (curRV.rvFeatureRange.lastFeatureElement < curRV.rvFeatureRange.firstFeatureElement)
+      parseError("first range num must be < second range num");
     curRV.rvFeatureRange.filled = true;
     consumeToken();
 
@@ -1313,13 +1324,28 @@ FileParser::createRandomVariableGraph()
 {
   // first create the RV objects
   for (unsigned i=0;i<rvInfoVector.size();i++) {
-    if (rvInfoVector[i].rvType == RVInfo::t_discrete)
-      rvInfoVector[i].rv = 
+    if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
+      DiscreteRandomVariable*rv = 
 	new DiscreteRandomVariable(rvInfoVector[i].name,
 				   rvInfoVector[i].rvCard);
-    else 
-      rvInfoVector[i].rv = 
+      rv->hidden = (rvInfoVector[i].rvDisp == RVInfo::d_hidden);
+      if (!rv->hidden) {
+	rv->featureElement = 
+	  rvInfoVector[i].rvFeatureRange.firstFeatureElement;
+      }
+      rvInfoVector[i].rv = rv;
+    } else {
+      ContinuousRandomVariable*rv = 
 	new ContinuousRandomVariable(rvInfoVector[i].name);
+      rv->hidden = (rvInfoVector[i].rvDisp == RVInfo::d_hidden);
+      if (!rv->hidden) {
+	rv->firstFeatureElement = 
+	  rvInfoVector[i].rvFeatureRange.firstFeatureElement;
+	rv->lastFeatureElement = 
+	  rvInfoVector[i].rvFeatureRange.lastFeatureElement;
+      }
+      rvInfoVector[i].rv = rv;
+    }
     rvInfoVector[i].rv->timeIndex = rvInfoVector[i].frame;
   }
 
@@ -1884,13 +1910,11 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	  // set the CPT type. 
 	  assert ( 0 );
 	}
-
-	// loop over condtional parents
-	// for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
-	// }
       }
       // now add the cpts to the rv
       rv->setCpts(cpts);
+
+
     } else { 
       ///////////////////////////////////////////////////////////
       ///////////////////////////////////////////////////////////
