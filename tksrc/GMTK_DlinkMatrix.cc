@@ -34,8 +34,24 @@
 #include "GMTK_Dlinks.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_GaussianComponent.h"
+#include "GMTK_MixGaussiansCommon.h"
 
 VCID("$Header$");
+
+
+////////////////////////////////////////////////////////////////////
+//        Static members
+////////////////////////////////////////////////////////////////////
+
+double DlinkMatrix::cloneSTDfrac = 0.1;
+
+void DlinkMatrix::checkForValidValues()
+{
+  if (DlinkMatrix::cloneSTDfrac < 0)
+    error("ERROR: DlinkMatrix's cloneSTDfrac (%e) must be >= 0",
+	  DlinkMatrix::cloneSTDfrac);
+}
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -159,6 +175,11 @@ void
 DlinkMatrix::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
+  os.nl();
+
+  os.write(dLinks->name(),"DlinkMatrix::write, dlm");
+  os.nl();
+
   os.write(dim(),"DlinkMatrix::write, dim()");
   os.nl();
   int ptr = 0;
@@ -172,38 +193,6 @@ DlinkMatrix::write(oDataStreamFile& os)
 }
 
 
-
-
-/*-
- *-----------------------------------------------------------------------
- * compatibleWith()
- *      returns true of this object is compatible with the argument function.
- * 
- * Preconditions:
- *      Object must be read in.
- *
- * Postconditions:
- *      --
- *
- * Side Effects:
- *      none
- *
- * Results:
- *      true only if compatibility holds.
- *
- *-----------------------------------------------------------------------
- */
-bool 
-DlinkMatrix::compatibleWith(Dlinks& d)
-{
-  if (dim() != d.dim())
-    return false;
-  for (int i=0;i<dim();i++) {
-    if (numLinks(i) != d.numLinks(i))
-      return false;
-  }
-  return true;
-}
 
 
 /*-
@@ -302,15 +291,12 @@ DlinkMatrix::noisyClone()
     } while (GM_Parms.dLinkMatsMap.find(clone->_name) != GM_Parms.dLinkMatsMap.end());
     clone->refCount = 0;
     clone->dLinks = dLinks;
-    ####
 
-    clone->means.resize(means.len());
-    for (int i=0;i<means.len();i++) {
-      clone->means[i] = means[i] + 
-	cloneSTDfrac*means[i]*rnd.normal();
+    clone->arr.resize(arr.len());
+    for (int i=0;i<arr.len();i++) {
+      clone->arr[i] = arr[i] + 
+	cloneSTDfrac*arr[i]*rnd.normal();
     }
-
-
 
     clone->setBasicAllocatedBit();
     MixGaussiansCommon::dLinkMatCloneMap[this] = clone;
@@ -335,7 +321,8 @@ DlinkMatrix::noisyClone()
 
 void
 DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
-			      sArray<float>& zzAccumulators)
+			      sArray<float>& zzAccumulators,
+			      sArray<float>& zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
 
@@ -347,11 +334,15 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
   // and initialized.
   xzAccumulators.growIfNeeded(dLinks->totalNumberLinks());
   for (int i=0;i<xzAccumulators.len();i++) {
-    xzAccumulators = 0.0;
+    xzAccumulators[i] = 0.0;
   }
   zzAccumulators.growIfNeeded(dLinks->zzAccumulatorLength);
   for (int i=0;i<zzAccumulators.len();i++) {
-    zzAccumulators = 0.0;
+    zzAccumulators[i] = 0.0;
+  }
+  zAccumulators.growIfNeeded(dLinks->totalNumberLinks());
+  for (int i=0;i<zAccumulators.len();i++) {
+    zAccumulators[i] = 0.0;
   }
 
   if(emOnGoingBitIsSet()) {
@@ -390,7 +381,8 @@ DlinkMatrix::emIncrement(const logpr prob,
 			 const Data32* const base,
 			 const int stride,
 			 float* xzAccumulators,
-			 float* zzAccumulators)
+			 float* zzAccumulators,
+			 float* zAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
 
@@ -415,17 +407,26 @@ DlinkMatrix::emIncrement(const logpr prob,
   accumulatedProbability += prob;
 
   // compute the (possibly) shared cache arrays
+  if (dLinks->totalNumberLinks() == 0)
+    return;
   dLinks->cacheArrays(base,f);
 
-  // This routine is called often so we use pointer arithmetic where possible.
+  // This routine is called often, so we use pointer arithmetic
+
+  // accumulate the zx and z counters together since they have
+  // the same length.
   float *xzAccumulators_p = xzAccumulators;
   float *xzArrayCache_p = dLinks->xzArrayCache.ptr;
+  float *zAccumulators_p = zAccumulators;
+  float *zArrayCache_p = dLinks->zArrayCache.ptr;
   float *xzArrayCache_endp = xzArrayCache_p + 
     dLinks->totalNumberLinks();
   do {
     (*xzAccumulators_p++) += (*xzArrayCache_p++) * fprob;
+    (*zAccumulators_p++) += (*zArrayCache_p++) * fprob;
   } while (xzArrayCache_p != xzArrayCache_endp);
-  
+
+  // accumulate the zz counters  
   float *zzAccumulators_p = zzAccumulators;
   float *zzArrayCache_p = dLinks->zzArrayCache.ptr;
   float *zzArrayCache_endp = zzArrayCache_p + 
@@ -433,6 +434,7 @@ DlinkMatrix::emIncrement(const logpr prob,
   do {
     (*zzAccumulators_p++) += (*zzArrayCache_p++) * fprob;
   } while (zzArrayCache_p != zzArrayCache_endp);
+
 
 }
 
