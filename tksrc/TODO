@@ -333,3 +333,10 @@ no gaussian mixtures, does the master file still have to mention them?
 - remove all the using_files stuff in GM.cc
 
 - clean up GM.cc with setExampleStream, and all of that.
+
+- Wed Aug  8 21:58:36 2001 it is still the case that
+  the gaussian dimensions are not being checked (since
+  we don't know DT leaf values at start time).
+  Once tables are in place, we can make sure
+  that the tables point to all matching gaussians
+  at start time.
