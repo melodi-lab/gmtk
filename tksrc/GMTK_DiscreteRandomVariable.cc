@@ -61,7 +61,8 @@ DiscreteRandomVariable::findConditionalParents()
 //  printf("DiscreteRandomVariable::findConditionalParents called\n");
   cachedIntFromSwitchingState = intFromSwitchingState();
   assert ( cachedIntFromSwitchingState >= 0 && 
-     cachedIntFromSwitchingState < conditionalCPTs.size() );
+     cachedIntFromSwitchingState < conditionalCPTs.size()  &&
+     cachedIntFromSwitchingState < conditionalParentsList.size());
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
   curCPT = conditionalCPTs[cachedIntFromSwitchingState];
 }
@@ -131,7 +132,6 @@ DiscreteRandomVariable::tieParametersWith(RandomVariable*const _other)
 
   conditionalCPTs = other->conditionalCPTs;
   curCPT = other->curCPT;
-  
 }
 
 

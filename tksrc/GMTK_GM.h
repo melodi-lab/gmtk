@@ -186,6 +186,8 @@ struct GMTK_GM
     // the first and last frames in the template repeating segment
 
     int obsInTemplate, obsInRepeatSeg, framesInTemplate, framesInRepeatSeg;
+
+    void setupForVariableLengthUnrolling(int first_frame, int last_frame);
 };
 
 #endif
