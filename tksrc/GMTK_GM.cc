@@ -727,6 +727,9 @@ void GMTK_GM::showCliques()
  *      Variables from a time slice must be contiguous in the node array
  *      node[i-period] must be analogous to node[i] in the existing network
  *      timeIndex numbering starts at 0
+ *      Frames from first_frame to last_frame are replicated. In order for this
+ *      to be well-defined, first_frame-1 must be exactly analogous to 
+ *      last_frame
  *
  * Postconditions:
  *      The network is ready for inference
@@ -770,13 +773,23 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     map<RandomVariable *, pair<int,int> > slice_info_for;
     map<pair<int, int>, RandomVariable *> rv_for_slice;
     int cur_slices = (*node.rbegin())->timeIndex;
+    int period = last_frame-first_frame+1;  // over which segments repeat
     for (int i=0; i<=cur_slices; i++)
     {
         int offset = 0;
         for (vi=start_of_slice[i]; vi<=end_of_slice[i]; vi++,offset++)
         {
+            int new_slice = i;
+            if ((*vi)->timeIndex > last_frame) // part of the tail
+               new_slice += times*period; // this is where the tail node will be
+
+            // note where the variable is before unrolling 
             slice_info_for[*vi] = pair<int,int>(i, offset);
-            rv_for_slice[pair<int,int>(i,offset)] = *vi;
+ 
+            // note where it will be after unrolling. 
+            // variables in slices up to lasft_frame stay put
+            // variables in the tail advance by times*period slices
+            rv_for_slice[pair<int,int>(new_slice,offset)] = *vi;
         }
     }
     
@@ -797,6 +810,8 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
             {
                 RandomVariable *nrv = (*vi)->clone();  // new random variable
                 nrv->timeIndex = cs;
+                assert(rv_for_slice.find(pair<int,int>(cs, k)) ==
+                       rv_for_slice.end());  // should not add twice
                 rv_for_slice[pair<int,int>(cs, k)] = nrv; 
                 unrolled.push_back(nrv);  
             }
@@ -804,8 +819,9 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     }
 
     // add the tail nodes in the network
-    for (vi=end_of_slice[last_frame+1]; vi!=node.end(); vi++)
-        unrolled.push_back(*vi);
+    set<RandomVariable *>::iterator si;
+    for (si=in_tail.begin(); si!=in_tail.end(); si++)
+        unrolled.push_back(*si);
 
     // will add the parents again to set up the allPossibleChildren and 
     // allPossibleParents arrays, so clear them out now
@@ -816,7 +832,6 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     }
    
     // update all the parents in the network
-    int period = last_frame-first_frame+1;
     for (unsigned i=0; i<unrolled.size(); i++)
         if (unrolled[i]->timeIndex <= last_frame)
             continue;  // parents unchanged
@@ -844,6 +859,8 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                 int poffset = slice_info.second;
                 unrolled[i]->switchingParents[j] = 
                     rv_for_slice[pair<int,int>(pslice, poffset)];
+                if (unrolled[i]->switchingParents[j]==NULL)
+                    error("Inconsistency in unrolling. Structure OK?\n");
             }
 
             for (unsigned j=0; j<unrolled[i]->conditionalParentsList.size();j++)
@@ -856,6 +873,8 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                     int poffset = slice_info.second;
                     unrolled[i]->conditionalParentsList[j][k] =
                         rv_for_slice[pair<int,int>(pslice, poffset)];
+                    if (unrolled[i]->conditionalParentsList[j][k]==NULL)
+                        error("Inconsistency in unrolling. Structure OK?\n");
                 }
         }
     

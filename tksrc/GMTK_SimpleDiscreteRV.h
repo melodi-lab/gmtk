@@ -167,7 +167,6 @@ public:
     RandomVariable * clone() 
     { 
       RandomVariable *rv = RandomVariable::clone();
-      rv->cardinality = cardinality;
       rv->tieParametersWith(this);
       return rv;
     } 

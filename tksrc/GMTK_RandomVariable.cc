@@ -101,8 +101,6 @@ RandomVariable* RandomVariable::clone()
   rv->hidden = hidden;
   rv->discrete = discrete;
   // leave time index undefined
-  // rv->timeIndex = timeIndex;
-
   rv->switchingParents = switchingParents;
   // leave allPossibleParents and allPossibleChildren empty
   rv->conditionalParentsList = conditionalParentsList;
