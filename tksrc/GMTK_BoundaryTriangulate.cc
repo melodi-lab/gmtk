@@ -4102,6 +4102,7 @@ triangulateExhaustiveSearch(
   unsigned nmbr_empty, nmbr_nodes;
   unsigned i, j;
   unsigned row, col;
+  bool     triangulation_found = false;
 
   vector<triangulateNode>            triangulate_nodes; 
 
@@ -4229,6 +4230,8 @@ triangulateExhaustiveSearch(
 
     if (chordal) {
 
+      triangulation_found = true;
+
       listVectorCliquetoVectorSetClique( cliques, vector_cliques );
       weight = graphWeight(vector_cliques,jtWeight,nodesRootMustContain);
 
@@ -4343,6 +4346,13 @@ triangulateExhaustiveSearch(
   //////////////////////////////////////////////////////////////////////////
   listVectorCliquetoVectorSetClique( best_list_cliques, best_cliques );
   fillAccordingToCliques( best_cliques );
+
+  if (!triangulation_found) {
+    vector<RandomVariable*> order;
+    infoMsg(IM::Low, 
+      "Exhaustive search exited before finding any triangulations\n");
+    triangulateMaximumCardinalitySearch(nodes, best_cliques, order );
+  }
 
   infoMsg(IM::Tiny, "---->Tested:  %d\n", crrnt_trial); 
 }
@@ -4665,6 +4675,7 @@ anyTimeTriangulate(GMTemplate& gm_template,
 		 gm_template.E.triMethod, best_E_weight ); 
   }
 
+/*
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using a variety of heuristic searches 
   ////////////////////////////////////////////////////////////////////////
@@ -4726,6 +4737,8 @@ anyTimeTriangulate(GMTemplate& gm_template,
 
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
+
+*/
 
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using exhaustive search
