@@ -112,6 +112,7 @@ DiagCovarVector::makeRandom()
   for (int i=0;i<covariances.len();i++) {
     covariances[i] = 1.0+rnd.drand48pe();
   }
+  preCompute();
 }
 
 void
@@ -120,6 +121,7 @@ DiagCovarVector::makeUniform()
   for (int i=0;i<covariances.len();i++) {
     covariances[i] = 1.0;
   }
+  preCompute();
 }
 
 
@@ -233,6 +235,9 @@ DiagCovarVector::emEndIteration()
     return;
 
   if (accumulatedProbability.zero()) {
+    // TODO: need to check if this will overflow here
+    // when dividing by it. This is more than just checking
+    // for zero. Also need to do this in every such EM object.
     warning("WARNING: Diagonal covariance vector named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
@@ -307,10 +312,10 @@ DiagCovarVector::emSwapCurAndNew()
   for (int i=0;i<covariances.len();i++) {
     genSwap(covariances[i],nextCovariances[i]);
   }
-
-  emClearSwappableBit();
   // set up new parameters for their potential next use.
   preCompute();
+
+  emClearSwappableBit();
 }
 
 
