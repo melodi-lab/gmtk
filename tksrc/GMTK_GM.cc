@@ -999,7 +999,7 @@ void GMTK_GM::clampFirstExample()
 	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
         expos = 0;
-	GM_Parms.clampNextDTs();
+	GM_Parms.clampFirstDTs();
     }
     else
     {
