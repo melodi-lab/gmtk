@@ -1343,8 +1343,14 @@ MaxClique::sortAndAssignDispositions(const char *varCliqueAssignmentPrior)
   }
 
   bool nodesToRemove =  computeSortedAssignedNodesDispositions();
-  if (nodesToRemove == false)
+  if (nodesToRemove == false) {
+    // just sort and leave.
+    GraphicalModel::topologicalSortWPriority(assignedNodes,
+					     assignedNodes,
+					     sortedAssignedNodes,
+					     varCliqueAssignmentPrior);
     return;
+  }
 
   // so there are nodes to remove, we go through remove the
   // nodes, re-sort, and then recompute the dispositions (yes, a bit

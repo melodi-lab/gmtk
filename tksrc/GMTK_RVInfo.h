@@ -54,6 +54,7 @@ class RVInfo {
   friend class JunctionTree;
   friend class StructPage;
   friend class VizNode;
+  friend class GraphicalModel;
 
   friend class RV;
   friend class DiscRV;
