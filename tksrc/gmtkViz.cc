@@ -115,6 +115,9 @@ public:
     void copyFrameLayout( int from, int to );
     void copyFrameLayout( void );
     void copyPartitionLayout( void );
+    void copyArcLayout( int iFrom, int jFrom,
+			int iTo, int jTo,
+			bool backward );
 
     // general stats
     int getWidth( void ) { return canvasWidth; }
@@ -122,6 +125,8 @@ public:
     int getScale( void ) { return displayScale; }
     void setScale( int newScale );
     void getName( wxString& name );
+    void adjustCanvasWidth( void );
+    void adjustCanvasHeight( void );
 
     // some drawing-related convenience methods
     void draw( wxDC& dc );
@@ -166,6 +171,9 @@ public:
     void toggleViewFrameNames( void );
     void toggleViewToolTips( void );
 
+    void hideSelectedLabels( void );
+    void showAllLabels( void );
+
     // Ask the user what font they want to use.
     void changeFont( void );
 
@@ -199,6 +207,8 @@ private:
     int displayScale;
     long canvasWidth;
     long canvasHeight;
+    long rightMostItemX( void );
+    long bottomMostItemY( void );
 
     bool snapToGrid;
 
@@ -277,6 +287,8 @@ public:
     wxPoint size;
     /// the text displayed
     wxString name;
+    /// whether to actually draw it
+    bool visible;
     // constructor
     NameTag( const wxPoint& newPos, const wxString& newName );
     // drawing
@@ -405,8 +417,12 @@ public:
         MENU_FILE_CLOSE,
         MENU_FILE_EXIT,
 	MENU_EDIT_SNAPTOGRID,
+	MENU_EDIT_CANVASWIDTH,
+	MENU_EDIT_CANVASHEIGHT,
 	MENU_EDIT_COPYFRAMELAYOUT,
 	MENU_EDIT_COPYPARTITIONLAYOUT,
+	MENU_VIEW_HIDELABELS,
+	MENU_VIEW_SHOWLABELS,
 	MENU_VIEW_CPS,
 	MENU_VIEW_LINES,
 	MENU_VIEW_SPLINES,
@@ -528,10 +544,14 @@ public:
     void OnClose(wxCloseEvent &event);
 
     void OnMenuEditSnaptogrid(wxCommandEvent &event);
+    void OnMenuEditCanvaswidth(wxCommandEvent &event);
+    void OnMenuEditCanvasheight(wxCommandEvent &event);
     void OnMenuEditCopyframelayout(wxCommandEvent &event);
     void OnMenuEditCopypartitionlayout(wxCommandEvent &event);
 
     // Handle events from the View menu to toggle drawing various items
+    void OnMenuViewHideLabels(wxCommandEvent &event);
+    void OnMenuViewShowLabels(wxCommandEvent &event);
     void OnMenuViewCPs(wxCommandEvent &event);
     void OnMenuViewLines(wxCommandEvent &event);
     void OnMenuViewSplines(wxCommandEvent &event);
@@ -587,18 +607,21 @@ public:
 IMPLEMENT_APP(GMTKStructVizApp)
 
 #include "arguments.h"
-bool help =false;
+bool help = false;
 bool print_version_and_exit = false;
 #define MAX_OBJECTS (5)
 char *gvpFileNames[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};
 char *strFileNames[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};
+char *cppCommandOptions = NULL;
 
 Arg Arg::Args[] = {
+    Arg( "cppCommandOptions", Arg::Opt, cppCommandOptions,
+	 "Additional CPP command line" ),
     Arg( "gvpFile", Arg::Opt, gvpFileNames, "position file",
 	 Arg::ARRAY, MAX_OBJECTS ),
     Arg( "strFile", Arg::Opt, strFileNames, "structure file",
 	 Arg::ARRAY, MAX_OBJECTS ),
-    Arg("help", Arg::Tog, help, "print this message"),
+    Arg( "help", Arg::Tog, help, "print this message" ),
     Arg()
 };
 /**
@@ -709,11 +732,16 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     // The Edit menu
     wxMenu* menu_edit = new wxMenu();
     menu_edit->Append(MENU_EDIT_SNAPTOGRID, wxT("Snap To Grid"), wxT("Toggle whether items snap to the grids when they are moved"), wxITEM_CHECK);
+    menu_edit->Append(MENU_EDIT_CANVASWIDTH, wxT("Canvas Width..."), wxT("Adjust the width of the canvas"), wxITEM_NORMAL);
+    menu_edit->Append(MENU_EDIT_CANVASHEIGHT, wxT("Canvas Height..."), wxT("Adjust the height of the canvas"), wxITEM_NORMAL);
     menu_edit->Append(MENU_EDIT_COPYFRAMELAYOUT, wxT("Copy Frame Layout..."), wxT("Copy the layout from one frame to another"), wxITEM_NORMAL);
     menu_edit->Append(MENU_EDIT_COPYPARTITIONLAYOUT, wxT("Copy Partition Layout..."), wxT("Copy the layout from one partition to another"), wxITEM_NORMAL);
     MainVizWindow_menubar->Append(menu_edit, wxT("Edit"));
     // The View menu
     wxMenu* menu_view = new wxMenu();
+    menu_view->Append(MENU_VIEW_HIDELABELS, wxT("Hide Selected Labels"), wxT("Turn off drawing for all currently selected labels"), wxITEM_NORMAL);
+    menu_view->Append(MENU_VIEW_SHOWLABELS, wxT("Show All Labels"), wxT("Turn on drawing for all labels"), wxITEM_NORMAL);
+    menu_view->AppendSeparator();
     menu_view->Append(MENU_VIEW_CPS, wxT("Draw Control Points"), wxT("Toggle display of arc spline control points"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_LINES, wxT("Draw Arc Lines"), wxT("Toggle display of straight lines between control points in arcs"), wxITEM_CHECK);
     menu_view->Append(MENU_VIEW_SPLINES, wxT("Draw Arc Splines"), wxT("Toggle display of arc splines"), wxITEM_CHECK);
@@ -978,8 +1006,12 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_FILE_CLOSE, GFrame::OnMenuFileClose)
     EVT_MENU(MENU_FILE_EXIT, GFrame::OnMenuFileExit)
     EVT_MENU(MENU_EDIT_SNAPTOGRID, GFrame::OnMenuEditSnaptogrid)
+    EVT_MENU(MENU_EDIT_CANVASWIDTH, GFrame::OnMenuEditCanvaswidth)
+    EVT_MENU(MENU_EDIT_CANVASHEIGHT, GFrame::OnMenuEditCanvasheight)
     EVT_MENU(MENU_EDIT_COPYFRAMELAYOUT, GFrame::OnMenuEditCopyframelayout)
     EVT_MENU(MENU_EDIT_COPYPARTITIONLAYOUT, GFrame::OnMenuEditCopypartitionlayout)
+    EVT_MENU(MENU_VIEW_HIDELABELS, GFrame::OnMenuViewHideLabels)
+    EVT_MENU(MENU_VIEW_SHOWLABELS, GFrame::OnMenuViewShowLabels)
     EVT_MENU(MENU_VIEW_CPS, GFrame::OnMenuViewCPs)
     EVT_MENU(MENU_VIEW_LINES, GFrame::OnMenuViewLines)
     EVT_MENU(MENU_VIEW_SPLINES, GFrame::OnMenuViewSplines)
@@ -1387,6 +1419,64 @@ GFrame::OnMenuEditSnaptogrid(wxCommandEvent &event)
 /**
  *******************************************************************
  * Pass the buck to the appropriate StructPage telling it to
+ * prompt the user for a new width.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then its width may have changed.
+ *
+ * \note If a StructPage was in front, then its width may have changed.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuEditCanvaswidth(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->adjustCanvasWidth();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * prompt the user for a new height.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then its height may have changed.
+ *
+ * \note If a StructPage was in front, then its height may have changed.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuEditCanvasheight(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->adjustCanvasHeight();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
  * copy frame layout
  *
  * \param event Ignored.
@@ -1444,6 +1534,68 @@ GFrame::OnMenuEditCopypartitionlayout(wxCommandEvent &event)
     // If it couldn't be casted to a StructPage, then curPage will be NULL.
     if (curPage)
 	curPage->copyPartitionLayout();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it not to
+ * draw the selected labels.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has turned off drawing
+ *  for the selected labels.
+ *
+ * \note If a StructPage was in front, then it has turned off drawing
+ *  for the selected labels.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuViewHideLabels(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->hideSelectedLabels();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * draw all labels.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has turned on drawing
+ *  for all labels.
+ *
+ * \note If a StructPage was in front, then it has turned on drawing
+ *  for all selected labels.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuViewShowLabels(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->showAllLabels();
 }
 
 /**
@@ -2291,7 +2443,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 
     if (!gvpAborted && strFile.length()) {
 	// load up the structure file
-	fp = new FileParser(strFile, NULL);
+	fp = new FileParser(strFile, cppCommandOptions);
 
 	// XXX: prevent this from crashing with parse error
 	// parse the file
@@ -3315,7 +3467,9 @@ StructPage::blit( wxDC& dc )
     wxCoord w, h;
     dc.GetSize(&w, &h);
     wxRegion tempClip(0, 0, w, h);
-    tempClip.Subtract(wxRegion(0, 0, getWidth(), getHeight()));
+    tempClip.Subtract(wxRegion( 0, 0,
+			   (int)round(getWidth()*gZoomMap[displayScale]),
+		           (int)round(getHeight()*gZoomMap[displayScale]) ));
     dc.SetClippingRegion(tempClip);
     dc.Clear();
     dc.DestroyClippingRegion();
@@ -3764,6 +3918,53 @@ StructPage::copyFrameLayout( int from, int to )
 	    dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
 	    dy = nodeNameTags[i]->pos.y - nodeNameTags[destNode]->pos.y;
 	    moveNodeNameTag(destNode, dx, dy);
+
+	    // Rebuild the VizArc with similar ControlPoints
+	    VizArc *iArc = NULL, *destArc = NULL;
+	    RVInfo::rvParent destParentId, destChildId;
+	    int destParent, destChild, numNodes = nodes.size();
+	    for (int j = 0; j < numNodes; j++) {
+		iArc = arcs[i][j];
+		// if the arc doesn't exist, we're done for now
+		if (!iArc)
+		    continue;
+		destChildId.first = nodes[j]->rvId.first;
+		destChildId.second = nodes[j]->rvId.second -
+		    nodes[i]->rvId.second + nodes[destNode]->rvId.second;
+		// if there is no similar node in relation to
+		// destNode, then we're done for now
+		if (!nameVizNodeMap.count(destChildId))
+		    continue;
+		destChild = nameVizNodeMap[destChildId];
+		destArc = arcs[destNode][destChild];
+		// if that arc doesn't exist we're done for now
+		if (!destArc)
+		    continue;
+		// We've found two similar arcs. Now we need to
+		// make destArc look like iArc.
+		copyArcLayout(i, j, destNode, destChild, false);
+	    }
+	    for (int j = 0; j < numNodes; j++) {
+		iArc = arcs[j][i];
+		// if the arc doesn't exist, we're done for now
+		if (!iArc)
+		    continue;
+		destParentId.first = nodes[j]->rvId.first;
+		destParentId.second = nodes[j]->rvId.second -
+		    nodes[i]->rvId.second + nodes[destNode]->rvId.second;
+		// if there is no similar node in relation to
+		// destNode, then we're done for now
+		if (!nameVizNodeMap.count(destParentId))
+		    continue;
+		destParent = nameVizNodeMap[destParentId];
+		destArc = arcs[destParent][destNode];
+		// if that arc doesn't exist we're done for now
+		if (!destArc)
+		    continue;
+		// We've found two similar arcs. Now we need to
+		// make destArc look like iArc.
+		copyArcLayout(j, i, destParent, destNode, true);
+	    }
 	}
     }
 
@@ -3822,6 +4023,83 @@ StructPage::copyFrameLayout( void )
 	return;
 
     copyFrameLayout( from, to );
+}
+
+/**
+ *******************************************************************
+ * Rebuild the arc from \p iTo to \p jTo based on the ControlPoints in
+ * the arc from \p iFrom to jFrom (using relative
+ * offsets from ends which we don't move).
+ *
+ * \param iFrom The beginning node of the arc to copy the layout from.
+ * \param jFrom The ending node of the arc to copy the layout from.
+ * \param iTo The beginning node of the arc to copy the layout to.
+ * \param jTo The ending node of the arc to copy the layout to.
+ * \param backward Whether to copy using relative offsets from the
+ * child (rather than from the parent).
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post ControlPoints may be added, deleted, or moved.
+ *
+ * \note ControlPoints may be added, deleted, or moved.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::copyArcLayout( int iFrom, int jFrom,
+			   int iTo, int jTo,
+			   bool backward )
+{
+    // save the first and last ControlPoints
+    VizArc *from = arcs[iFrom][jFrom];
+    VizArc *to = arcs[iTo][jTo];
+    ControlPoint *toFirst = (*to->cps)[0];
+    ControlPoint *toLast = (*to->cps)[to->cps->size()-1];
+    ControlPoint *fromFirst = (*from->cps)[0];
+    ControlPoint *fromLast = (*from->cps)[from->cps->size()-1];
+    ControlPoint *newCP = NULL;
+    wxPoint center(getWidth()/2, getHeight()/2);
+    wxPoint offset, newPoint;
+    // clear the list deleting all the ones we don't want
+    for (unsigned int i = 1; i < to->cps->size() - 1; i++) {
+	delete (*to->cps)[i];
+	(*to->cps)[i] = NULL;
+    }
+    to->cps->clear();
+    // reinsert the first ControlPoint
+    to->cps->push_back(toFirst);
+    // copy the ones from the template
+    for (unsigned int k = 1; k < from->cps->size() - 1; k++) {
+	if (backward) {
+	    offset.x = (*from->cps)[k]->pos.x - fromLast->pos.x;
+	    offset.y = (*from->cps)[k]->pos.y - fromLast->pos.y;
+	    newPoint.x = toLast->pos.x + offset.x;
+	    newPoint.y = toLast->pos.y + offset.y;
+	} else {
+	    offset.x = (*from->cps)[k]->pos.x - fromFirst->pos.x;
+	    offset.y = (*from->cps)[k]->pos.y - fromFirst->pos.y;
+	    newPoint.x = toFirst->pos.x + offset.x;
+	    newPoint.y = toFirst->pos.y + offset.y;
+	}
+	// in case the newPoint is outside the canvas we create the
+	// ControlPoint in the center of the canvas and then move it
+	// into place
+	newCP = new ControlPoint(center);
+	// make it point to its parent arc
+	newCP->arc = to;
+	to->cps->push_back(newCP);
+	moveControlPoint( iTo, jTo, k,
+			  newPoint.x - center.x,
+			  newPoint.y - center.y );
+    }
+    // put the end point on again
+    to->cps->push_back(toLast);
+    // now rebuild the wxList used for drawing along the points
+    to->points->Clear();
+    for (unsigned int k = 0; k < to->cps->size(); k++) {
+	to->points->Append( (wxObject*)&(*to->cps)[k]->pos );
+    }
 }
 
 /**
@@ -4465,6 +4743,55 @@ StructPage::toggleSelectedInRect( const wxRect& rect )
 
 /**
  *******************************************************************
+ * Don't draw any labels that are currently selected.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Currently selected labels will no longer be drawn.
+ *
+ * \note Currently selected labels will no longer be drawn.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::hideSelectedLabels( void )
+{
+    int numNodes = nodes.size();
+    for (int i = 0; i < numNodes; i++) {
+	if (nodeNameTags[i]->getSelected())
+	    nodeNameTags[i]->visible = false;
+    }
+
+    redraw();
+    blit();
+}
+
+/**
+ *******************************************************************
+ * Don't draw any labels that are currently selected.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Currently selected labels will no longer be drawn.
+ *
+ * \note Currently selected labels will no longer be drawn.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::showAllLabels( void )
+{
+    int numNodes = nodes.size();
+    for (int i = 0; i < numNodes; i++) {
+	    nodeNameTags[i]->visible = true;
+    }
+
+    redraw();
+    blit();
+}
+
+/**
+ *******************************************************************
  * Toggle whether control points are drawn and redraw.
  *
  * \pre The StructPage should be fully initialized.
@@ -4816,6 +5143,170 @@ StructPage::setScale( int newScale )
     blit();
 }
 
+/**
+ *******************************************************************
+ * Prompt the user for a new canvas width and possible change it and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The canvas may be resized and redrawn.
+ *
+ * \note The canvas may be resized and redrawn.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::adjustCanvasWidth( void )
+{
+    wxCoord width, minWidth;
+
+    minWidth = rightMostItemX() + NODE_RADIUS;
+
+    width = wxGetNumberFromUser( wxT("How wide should the canvas be?"),
+				 wxT("Width: "), wxT("Change Canvas Width"),
+				 getWidth(), minWidth, getWidth()*2 );
+
+    if (width != -1) {
+	canvasWidth = width;
+	setScale(getScale());
+    }
+}
+
+/**
+ *******************************************************************
+ * Prompt the user for a new canvas height and possible change it and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The canvas may be resized and redrawn.
+ *
+ * \note The canvas may be resized and redrawn.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::adjustCanvasHeight( void )
+{
+    wxCoord height, minHeight;
+
+    minHeight = bottomMostItemY() + NODE_RADIUS;
+
+    height = wxGetNumberFromUser( wxT("How tall should the canvas be?"),
+				  wxT("Height: "), wxT("Change Canvas Height"),
+				 getHeight(), minHeight, getHeight()*2 );
+
+    if (height != -1) {
+	canvasWidth = height;
+	setScale(getScale());
+    }
+}
+
+/**
+ *******************************************************************
+ * Return the X coordinate of the right-most item.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post No real changes.
+ *
+ * \note No real changes.
+ *
+ * \return the X coordinate of the right-most item
+ *******************************************************************/
+long
+StructPage::rightMostItemX( void )
+{
+    long xMax = 0;
+    int numNodes = nodes.size();
+    // check all nodes (and associated control points)
+    for (int i = 0; i < numNodes; i++) {
+	xMax = ( nodes[i]->center.x <= xMax ? xMax : nodes[i]->center.x );
+    }
+    // check all node nametags
+    for (int i = 0; i < numNodes; i++) {
+	xMax = ( nodeNameTags[i]->pos.x <= xMax
+		 ? xMax
+		 : nodeNameTags[i]->pos.x );
+    }
+    // check all other control points
+    for (int i = 0; i < numNodes; i++) {
+	for (int j = 0; j < numNodes; j++) {
+	    if (arcs[i][j]) {
+		int end = arcs[i][j]->cps->size() - 1;
+		assert(end > 0);
+		for ( int k = 1; k < end; k++ ) {
+		    ( (*arcs[i][j]->cps)[k]->pos.x <= xMax
+		      ? xMax
+		      : (*arcs[i][j]->cps)[k]->pos.x );
+		}
+	    }
+	}
+    }
+    // check all frame separators
+    for (unsigned int i = 0; i < frameEnds.size(); i++) {
+	xMax = ( frameEnds[i]->x <= xMax ? xMax : frameEnds[i]->x );
+    }
+    // check all frame nametags
+    for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	xMax = ( frameNameTags[i]->pos.x <= xMax
+		 ? xMax
+		 : frameNameTags[i]->pos.x );
+    }
+
+    return xMax;
+}
+
+/**
+ *******************************************************************
+ * Return the Y coordinate of the bottom-most item.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post No real changes.
+ *
+ * \note No real changes.
+ *
+ * \return the Y coordinate of the bottom-most item
+ *******************************************************************/
+long
+StructPage::bottomMostItemY( void )
+{
+    long yMax = 0;
+    int numNodes = nodes.size();
+    // check all nodes (and associated control points)
+    for (int i = 0; i < numNodes; i++) {
+	yMax = ( nodes[i]->center.y <= yMax ? yMax : nodes[i]->center.y );
+    }
+    // check all node nametags
+    for (int i = 0; i < numNodes; i++) {
+	yMax = ( nodeNameTags[i]->pos.y <= yMax
+		 ? yMax
+		 : nodeNameTags[i]->pos.y );
+    }
+    // check all other control points
+    for (int i = 0; i < numNodes; i++) {
+	for (int j = 0; j < numNodes; j++) {
+	    if (arcs[i][j]) {
+		int end = arcs[i][j]->cps->size() - 1;
+		assert(end > 0);
+		for ( int k = 1; k < end; k++ ) {
+		    ( (*arcs[i][j]->cps)[k]->pos.y <= yMax
+		      ? yMax
+		      : (*arcs[i][j]->cps)[k]->pos.y );
+		}
+	    }
+	}
+    }
+    // check all frame nametags
+    for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+	yMax = ( frameNameTags[i]->pos.y <= yMax
+		 ? yMax
+		 : frameNameTags[i]->pos.y );
+    }
+
+    return yMax;
+}
+
 
 /**
  *******************************************************************
@@ -4833,7 +5324,7 @@ StructPage::setScale( int newScale )
  * \return Nothing.
  *******************************************************************/
 NameTag::NameTag( const wxPoint& newPos, const wxString& newName )
-    : pos(newPos), name(newName)
+    : pos(newPos), name(newName), visible(true)
 {
 }
 
@@ -4854,6 +5345,8 @@ NameTag::NameTag( const wxPoint& newPos, const wxString& newName )
 void
 NameTag::draw( wxDC *dc )
 {
+    if (!visible)
+	return;
     dc->GetTextExtent(name, &size.x, &size.y);
     if (getSelected())
 	dc->DrawRectangle(pos.x, pos.y, size.x, size.y);
@@ -4974,7 +5467,12 @@ VizNode::~VizNode( void )
 void
 VizNode::draw( wxDC *dc )
 {
+    wxBrush oldBrush = dc->GetBrush();
+    if (rvi->rvDisp == RVInfo::d_observed) {
+	dc->SetBrush(*wxLIGHT_GREY_BRUSH);
+    }
     dc->DrawCircle(center, NODE_RADIUS);
+    dc->SetBrush(oldBrush);
     if (getSelected()) {
 	dc->DrawRectangle( center.x-NODE_RADIUS, center.y-NODE_RADIUS,
 			   3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
@@ -5203,7 +5701,9 @@ VizArc::draw( wxDC *dc, int drawFlags )
 		(int)round(ARROW_WID * adj / hyp);
 
 	    wxBrush oldBrush = dc->GetBrush();
-	    dc->SetBrush(*wxBLACK_BRUSH);
+	    wxBrush newBrush(oldBrush);
+	    newBrush.SetColour(pen->GetColour());
+	    dc->SetBrush(newBrush);
 	    dc->DrawPolygon( 3, arrow );
 	    dc->SetBrush(oldBrush);
 	}
