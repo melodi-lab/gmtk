@@ -2415,7 +2415,7 @@ Sat Sep 11 14:36:36 2004
   - gmtkTime, report performance also in number frames/second.
 
 Tue Sep 14 01:19:08 2004
-  - new DT types
+  - new DT types and features.
     - sequence  - successive sorted sequence of integers,no gaps, can start/end at any int, implemented
                   as an array lookup. 
        Options can be things like:
