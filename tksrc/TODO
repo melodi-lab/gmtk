@@ -41,14 +41,16 @@ X Include gaussian objects for special situations.
     index -1 corresponds to, with probability 1, gaussian
     index -2 corresponds to, with probability 0, gaussian
 
-- An anytime clique finding algorithm that searches
+X An anytime clique finding algorithm that searches
   for the best clique tree in an hour, day, weekend, etc.
   Save the resulting clique (and model description) to
   a file so that it can be reused multiple times.
+  (removed Fri Dec 31 01:55:48 2004) 
 
-- Produce messages to the user saying that what the clique
+X Produce messages to the user saying that what the clique
   sizes are and that they might want to adjust the 
   structure to reduce clique sizes if they become too large.
+  (removed Fri Dec 31 01:55:54 2004)
 
 X the inference procedure should work both with clique chains and clique trees
     - no, but basic data structures are ok.
@@ -1560,6 +1562,9 @@ Sat Feb 21 19:11:22 2004
   - investigate and use faster hash functions for the vhash stuff.
    -  Look at Bob Jenkin's hash function
       and the FNV (Fowler/Noll/Vo) Hash. 
+  also:
+    http://www.mobydisk.com/softdev/techinfo/hash_paper/Near%20Minimal%20Perfect%20Hashing.html
+
 
 Sun Feb 22 14:36:17 2004
   - Allow soft evidence to come from an observation
@@ -2525,6 +2530,7 @@ Fri Nov 19 12:15:41 2004
     by using the same master file.
   - for docs: include bit aboutu how to use short utterances by concatenating things, and using a VE node
     with value 1, and with an always 1 DT. Also, why it works.
+    update Fri Dec 31 02:01:06 2004: once disconnected networks are working, this will be moot. 
 
 Wed Nov 24 12:43:32 2004
    gmtkEMTrainNew
@@ -2532,7 +2538,7 @@ Wed Nov 24 12:43:32 2004
     need to do -trrng nil -maxE 1 (give option to do maxE 0)
 
 Wed Nov 24 17:44:12 2004
-  - figure out why ri is sometimes faster.
+  - figure out why right interface case is sometimes faster.
 
 Thu Nov 25 19:24:08 2004
   - docs: recomended names of objects. E.g., use standard conventions to make
@@ -2559,9 +2565,13 @@ Sat Nov 27 09:44:40 2004
           P      C     E
 
      I.e., The C partition is duplicated without the link to b, and it is only the very last partition that
-     has a link to the E partition (since that is where the b variable has the parent).
+     has a link to the E partition (since that is where the b variable exists as a child,
+     and has the parent in the previous frame).
  
-    Way to explain it: parents are determined to satisfy CPTs (e.g., b's CPT needs a parent).
+    Way to explain it: parents are determined to satisfy CPTs (e.g., b's CPT needs a parent) based
+    on the current child (i.e., each child gets a CPT and then the child searches for parents
+    according to after unrolling, and according to the spec in the structure file).
+
  
 
 Sat Nov 27 22:10:37 2004
@@ -2571,7 +2581,49 @@ Sat Nov 27 22:10:37 2004
     with different JT creation options.
 
 
-    
+
+Mon Dec 27 19:40:22 2004
+ - veseps
+   1) In InferenceSeparatorClique make 
+       iAccHashMap and separatorValues pointers. 
+      - Also, add field
+        corresponding to VE sep so that these pointers are not deleted
+        on destruction, and so that backwards pass doesn't propagate into these separators.
+     -  During forward pass, only do intersection without any probablility update (rather
+        than doing a log multiply by one).
+
+   2) MaxClique contains a pointer to a data structure consisting of an array of
+          - parents, child, grandchild
+      which are used to create VE separator cliques.
+ 
+   3) we create and sort the separator cliques as normal.
+
+   4) Just before inference, the SeparatorClique computes the tables, reads them
+      from disk, or writes them to disk. SeparatorClique creates its own temporary
+      InferenceSeparatorClique for the VE separators.
+
+   5) InferenceSeparatorClique looks at the separator clique and if it is a VE sep,
+      uses those pointers rather than creating its own new ones.
+
+   6) SeparatorClique deletes the inference separator clique when it dies.
+
+- DONE: remove 'clamp' keyword.
+
+Tue Dec 28 13:38:22 2004
+  - extend .str file to allow for undirected edges so that we can do
+      -  maxent models
+      -  iterable VE constraints on graph
+
+Fri Dec 31 00:08:39 2004
+  - for DOCS: mention how to look at and store big log files:
+       script |& gzip --best -c > biglogfile.gz
+       zcat biglogfile | egrep bla
+
+Fri Dec 31 01:54:39 2004
+  - for DOCS. Encourage people to make their scripts relative to a top level directory,
+     - don't use absolute names
+     - shoud be able to tar up a top level directory, and untarr it some place else
+       and have it still work.
 
 
 
