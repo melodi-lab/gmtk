@@ -291,7 +291,7 @@ bool CliqueChain::computePosteriors(logpr beam)
 {
     if (!forwardPass(beam))
     {
-        cout << "Zero probability on the forward pass\n";
+        cout << "Warning: Zero probability on the forward pass.\n";
         return false;
     }
     assert(dataProb != 0.0);
