@@ -51,13 +51,77 @@ VCID("$Header$");
  * 
  */
 
+/*
+other primes
+
+7, 13, 31, 61, 127, 251, 509, 1021, 2017, 4093,
+  5987, 9551, 15683, 19609, 31397,
+  65521, 131071, 262139, 524287, 1048573, 2097143,
+  4194301, 8388593, 16777213, 33554393, 67108859,
+  134217689, 268435399, 536870909, 1073741789
+*/
+
+/*
+
+1,
+  2,
+  3,
+  7,
+  13,
+  23,
+  59,
+  113,
+  241,
+  503,
+  1019,
+  2039,
+  4091,
+  8179,
+  11587,
+  16369,
+  23143,
+  32749,
+  46349,
+  65521,
+  92683,
+  131063,
+  185363,
+  262139,
+  330287,
+  416147,
+  524269,
+  660557,
+  832253,
+  1048571,
+  1321109,
+  1664501,
+  2097143,
+  2642201,
+  3328979,
+  4194287,
+  5284393,
+  6657919,
+  8388593,
+  10568797,
+  13315831,
+  16777199,
+  33554393,
+  67108859,
+  134217689,
+  268435399,
+  536870879,
+  1073741789,
+  2147483629
+  };
+*/
+
 const unsigned
 hash_abstract::HashTableDefaultApproxStartingSize = 20000;
 
 
 // the possible sizes for the has table, a list of prime
 // numbers each entry roughly doubling in size of the 
-// previous entry. Comment the ones at the beginning to get
+// previous previous entry. Comment the ones at the beginning to get
 // the desired starting size of the hash table.
 
 const unsigned
@@ -92,7 +156,9 @@ hash_abstract::HashTable_PrimesArray[] = {
 268435399,
 536870909,
 1073741789,
-2147483647
+2147483647,
+/* 4294967291L */
+((unsigned long) 2147483647) + ((unsigned long) 2147483642)
 };
 
 /////////////////////////////////////////////////////////////

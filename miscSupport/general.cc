@@ -158,7 +158,7 @@ void exit_program_with_status(const int stat)
  
 void memory_error()
 {
-  fprintf(stderr,"ERROR: memory_error called. Program ran out of memory.\n");
+  fprintf(stderr,"ERROR: can't allocate any more memory, malloc() failed, so program ran out of memory. Either decrease your model or use a bigger machine\n");
   exit_program_with_status(-1);
 }
 
