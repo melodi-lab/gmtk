@@ -87,6 +87,12 @@ class PackCliqueValue {
   };
 
   sArray< ValLocator> valLocators;
+  // pointer to end of case where there is no word boundary.
+  ValLocator *member_vl_nwb_endp;
+  // pointer to end of array.
+  ValLocator *member_vl_endp;
+
+
 
   // array where lower locations hold indices for
   // which there is no word-boundary overlap and
@@ -146,17 +152,17 @@ public:
     // do the packing, first the ones that do not
     // span a word boundaries
     register ValLocator* vl_p = valLocators.ptr;
+    register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+    register const ValLocator *vl_endp = member_vl_endp;
     {
-      register const ValLocator *vl_endp = valLocators.ptr+wordBoundaryOverlapLocation;
       // assume that at least one case did not span a word boundary
       do {
 	const unsigned val = unpacked_vec[vl_p->loc];
 	packed_vec[vl_p->start] |= (val << vl_p->startRightShift);
-      } while (++vl_p != vl_endp);
+      } while (++vl_p != vl_nwb_endp);
     }
     // next the ones that span word boundaries
     {
-      register const ValLocator *vl_endp = valLocators.ptr+unpackedVectorLength;
       // assume that at least one case did not span a word boundary
       while (vl_p != vl_endp) {
 	const unsigned val = unpacked_vec[vl_p->loc];
@@ -182,17 +188,17 @@ public:
     // do the packing, first the ones that do not
     // span a word boundaries
     register ValLocator* vl_p = valLocators.ptr;
+    register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+    register const ValLocator *vl_endp = member_vl_endp;
     {
-      register const ValLocator *vl_endp = valLocators.ptr+wordBoundaryOverlapLocation;
       // assume that at least one case did not span a word boundary
       do {
 	const unsigned val = (*unpacked_vec[vl_p->loc]);
 	packed_vec[vl_p->start] |= (val << vl_p->startRightShift);
-      } while (++vl_p != vl_endp);
+      } while (++vl_p != vl_nwb_endp);
     }
     // next the ones that span word boundaries
     {
-      register const ValLocator *vl_endp = valLocators.ptr+unpackedVectorLength;
       // assume that at least one case did not span a word boundary
       while (vl_p != vl_endp) {
 	const unsigned val = (*unpacked_vec[vl_p->loc]);
@@ -214,20 +220,20 @@ public:
   inline void unpack(const unsigned *const packed_vec,
 		     unsigned *const unpacked_vec) {
     register ValLocator* vl_p = valLocators.ptr;
+    register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+    register const ValLocator *vl_endp = member_vl_endp;
     // do the unpacking, first the ones
     // that do not span a word boundary
     {
-      register const ValLocator *const vl_endp = valLocators.ptr+wordBoundaryOverlapLocation;
       do {
 	unpacked_vec[vl_p->loc] = 
 	  (packed_vec[vl_p->start] & vl_p->startMask)
 	    >> vl_p->startRightShift;
 	vl_p++;
-      } while (vl_p != vl_endp);
+      } while (vl_p != vl_nwb_endp);
     }
     // next the ones that do span a word boundary
     {
-      register const ValLocator *const vl_endp = valLocators.ptr+unpackedVectorLength;
       while (vl_p != vl_endp) {
 	register unsigned res =
 	  (packed_vec[vl_p->start] & vl_p->startMask)
@@ -246,20 +252,20 @@ public:
   inline void unpack(const unsigned *const packed_vec,
 		     unsigned **const unpacked_vec) {
     register ValLocator* vl_p = valLocators.ptr;
+    register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+    register const ValLocator *vl_endp = member_vl_endp;
     // do the unpacking, first the ones
     // that do not span a word boundary
     {
-      register const ValLocator *const vl_endp = valLocators.ptr+wordBoundaryOverlapLocation;
       do {
 	(*unpacked_vec[vl_p->loc]) = 
 	  (packed_vec[vl_p->start] & vl_p->startMask)
 	    >> vl_p->startRightShift;
 	vl_p++;
-      } while (vl_p != vl_endp);
+      } while (vl_p != vl_nwb_endp);
     }
     // next the ones that do span a word boundary
     {
-      register const ValLocator *const vl_endp = valLocators.ptr+unpackedVectorLength;
       while (vl_p != vl_endp) {
 	register unsigned res =
 	  (packed_vec[vl_p->start] & vl_p->startMask)
