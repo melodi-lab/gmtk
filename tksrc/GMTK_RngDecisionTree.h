@@ -127,6 +127,11 @@ protected:
         assert(stack_top >= -1);
       }
 
+      inline void pop_back(unsigned nmbr) {
+        stack_top -= nmbr;
+        assert(stack_top >= -1);
+      }
+
       inline void clear() {
         stack_top = -1;
       }
@@ -192,6 +197,7 @@ protected:
         TOKEN_LOGICAL_AND, 
         TOKEN_LOGICAL_OR, 
         TOKEN_MAX,
+        TOKEN_MEDIAN,
         TOKEN_MIN,
         TOKEN_MINUS, 
         TOKEN_MOD,
@@ -264,6 +270,7 @@ protected:
         COMMAND_LOGICAL_AND, 
         COMMAND_LOGICAL_OR, 
         COMMAND_MAX,
+        COMMAND_MEDIAN, 
         COMMAND_MIN, 
         COMMAND_MINUS, 
         COMMAND_MOD, 
