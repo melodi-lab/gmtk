@@ -92,6 +92,7 @@ Dense1DPMF::read(iDataStreamFile& is)
   if (length <= 0)
     error("ERROR: reading file '%s', DPMF '%s' has bad length (%d) < 0 in input",is.fileName(),name().c_str(),length);
   pmf.resize(length);
+  double sum = 0.0;
   for (int i=0;i<length;i++) {
     double prob;
     is.readDouble(prob,"Dense1DPMF::read, reading prob");
@@ -102,7 +103,16 @@ Dense1DPMF::read(iDataStreamFile& is)
 	    prob,
 	    i);
     pmf[i] = prob;
+    sum += prob;
   }
+  double abs_diff = fabs(sum - 1.0);
+  // be more forgiving as cardinality increases
+  if (abs_diff > length*1e-4) 
+    error("ERROR: reading file '%s', DPMF '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e.",
+	  is.fileName(),
+	  name().c_str(),
+	  sum,
+	  abs_diff);
   setBasicAllocatedBit();
 }
 
@@ -129,6 +139,7 @@ Dense1DPMF::write(oDataStreamFile& os)
   assert ( basicAllocatedBitIsSet() );
   NamedObject::write(os);
   os.write(pmf.len(),"Dense1DPMF::write, distribution length");
+  normalize();
   for (int i=0;i<pmf.len();i++) {
     // convert out of log domain and write out.
     os.writeDouble(pmf[i].unlog(),"Dense1DPMF::write, writing prob");
@@ -272,7 +283,7 @@ Dense1DPMF::emIncrement(logpr prob,
   if (prob < minIncrementProbabilty) {
     missedIncrementCount++;
     return;
-  } 
+  }
   accumulatedProbability+= prob;
   for (int i=0;i<nextPmf.len();i++) {
     // we assume here that 'prob' has already
@@ -334,12 +345,16 @@ Dense1DPMF::emEndIteration()
   if ( !emOnGoingBitIsSet() )
     return; 
 
-  if (accumulatedProbability.zero()) {
-    warning("WARNING: Dense1DPMF named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
-  }
-
-  for (int i=0;i<nextPmf.len();i++) {
-    nextPmf[i] /= accumulatedProbability;
+  accumulatedProbability.floor();
+  if (accumulatedProbability < minDiscAccumulatedProbability()) {
+    warning("WARNING: Dense1DPMF named '%s' received only %e accumulated probability in EM iteration. Using previous values.",name().c_str(),accumulatedProbability.val());
+    for (int i=0;i<nextPmf.len();i++) {
+      nextPmf[i] = pmf[i];
+    }
+  } else {
+    for (int i=0;i<nextPmf.len();i++) {
+      nextPmf[i] /= accumulatedProbability;
+    }
   }
 
   // stop EM
@@ -399,7 +414,7 @@ Dense1DPMF::emSwapCurAndNew()
     } else {
       pmf[newIndex++] = nextPmf[i];
     }
-  }  
+  }
   assert ( newIndex == newLen );
 
   nextPmf.resizeIfDifferent(newLen);
@@ -422,7 +437,7 @@ Dense1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
   }
   EMable::emStoreAccumulators(ofile);
   for (int i=0;i<pmf.len();i++) {
-    ofile.write(nextPmf[i].val());
+    ofile.write(nextPmf[i].val(),"DPMF store accums");
   }
 }
 
@@ -434,7 +449,7 @@ Dense1DPMF::emStoreZeroAccumulators(oDataStreamFile& ofile)
   EMable::emStoreZeroAccumulators(ofile);
   const logpr p;
   for (int i=0;i<pmf.len();i++) {
-    ofile.write(p.val());
+    ofile.write(p.val(),"DPMF store zero accums");
   }
 }
 
@@ -446,7 +461,7 @@ Dense1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
   for (int i=0;i<nextPmf.len();i++) {
-    ifile.read(nextPmf[i].valref());
+    ifile.read(nextPmf[i].valref(),"DPMF load accums");
   }
 }
 
@@ -459,7 +474,7 @@ Dense1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
   EMable::emAccumulateAccumulators(ifile);
   for (int i=0;i<nextPmf.len();i++) {
     logpr tmp;
-    ifile.read(tmp.valref());
+    ifile.read(tmp.valref(),"DPMF accumulate accums");
     nextPmf[i] += tmp;
   }
 }
