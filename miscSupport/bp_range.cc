@@ -383,6 +383,7 @@ BP_Range::iterator::iterator(const BP_Range::iterator& it)
   cur_lower = it.cur_lower;
 }
 
+
 BP_Range::iterator&
 BP_Range::iterator::operator++()
 {

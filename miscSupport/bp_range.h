@@ -87,7 +87,6 @@ public:
     iterator (const BP_Range& rng);
     iterator (const iterator&);
 
-
     iterator& operator ++(); // prefix
     iterator operator ++(int) { iterator tmp=*this; ++*this; return tmp; }
     iterator& operator --();  // prefix
