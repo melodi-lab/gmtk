@@ -234,12 +234,16 @@ findPartitions(// face quality heuristic
   vector<TriangulateHeuristic> th_v;
   createVectorTriHeuristic(th,th_v);
 
+  vector<float> best_L_score;
+  vector<float> best_R_score;
+
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'R')) {
     // find best left interface
     if (debug > 0)
-      printf("Finding best left interface\n");
+      printf("---\nFinding best left interface\n");
     findBestInterface(C1_u2,C2_u2,C3_u2,
-		      left_C_l_u2C2,C_l_u2C2,fh_v,
+		      left_C_l_u2C2,C_l_u2C2,best_L_score,
+		      fh_v,
 		      findBestFace,
 		      // find best face args
 		      th_v,
@@ -254,9 +258,10 @@ findPartitions(// face quality heuristic
   if (flr.size() == 0 || (flr.size() > 0 && toupper(flr[0]) != 'L')) {
     // find best right interface
     if (debug > 0)
-      printf("Finding best right interface\n");
+      printf("---\nFinding best right interface\n");
     findBestInterface(C3_u2,C2_u2,C1_u2,
-		      right_C_r_u2C2,C_r_u2C2,fh_v,
+		      right_C_r_u2C2,C_r_u2C2,best_R_score,
+		      fh_v,
 		      findBestFace,
 		      // find best face args
 		      th_v,
@@ -272,13 +277,15 @@ findPartitions(// face quality heuristic
   // Now find the partitions (i.e., left or right) corresponding
   // the interface which had minimum size, prefering the left
   // interface if there is a tie.
-  if ((flr.size() == 0 && C_l_u2C2.size() <= C_r_u2C2.size())
+  if ((flr.size() == 0 && best_L_score <= best_R_score)
       || 
       (flr.size() > 0 && toupper(flr[0]) == 'L')) {
     // this next routine gives us the best left interface that
     // exists from within the chunk C2_u2 and places
     // it in C_l_u2, and everything to the 'left' of C_l_u2
     // that still lies within C2_u2 is placed in left_C_l_u2
+    if (debug > 0)
+      printf("---\nUsing left interface to define partitions\n");
     findInterfacePartitions(P_u1,
 			    C1_u1,
 			    C2_u1,
@@ -294,6 +301,8 @@ findPartitions(// face quality heuristic
 			    CEInterface);
   } else {
     // find right interface partitions
+    if (debug > 0)
+      printf("---\nUsing right interface to define partitions\n");
     findInterfacePartitions(E_u1,
 			    C2_u1,
 			    C1_u1,
@@ -1923,11 +1932,15 @@ GMTemplate::interfaceScore(
       if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_MAX_C_CLIQUE) {
 	score.push_back(maxWeight);
 	if (debug > 0)
-	  printf("  Interface Score: set has max clique weight = %f\n",maxWeight);
+	  printf("  Interface Score: set has max %sclique weight = %f\n",
+		 (fh == IH_MIN_MAX_C_CLIQUE ?"C ":""),
+		 maxWeight);
       } else {
 	score.push_back(totalWeight);
 	if (debug > 0)
-	  printf("  Interface Score: set has total weight = %f\n",totalWeight);
+	  printf("  Interface Score: set has total %sweight = %f\n",
+		 (fh == IH_MIN_C_STATE_SPACE?"C ":""),
+		 totalWeight);
       }
 
       deleteNodes(Pc);
@@ -2322,7 +2335,7 @@ GMTemplate::createVectorInterfaceHeuristic(const string& fh,
       case 'A':
 	fh_v.push_back(IH_MIN_STATE_SPACE);
 	break;
-      case 'T':
+      case 'Q':
 	fh_v.push_back(IH_MIN_C_STATE_SPACE);
 	break;
       case 'N':
@@ -2466,6 +2479,8 @@ GMTemplate::findBestInterface(
  set<RandomVariable*> &left_C_l,
  // the starting left interface
  set<RandomVariable*> &C_l,
+ // the resulting score of the best interface
+ vector<float>& best_score,
  // what should be used to judge the quality of the interface
  const vector<InterfaceHeuristic>& fh_v,
  // true if we should use the exponential time optimal interface algorithm
@@ -2517,7 +2532,7 @@ GMTemplate::findBestInterface(
   }
   left_C_l.clear();
 
-  vector<float> best_score;
+
   interfaceScore(fh_v,C_l,left_C_l,
 		 th_v,
 		 P_u1,C1_u1,C2_u1,E_u1,
@@ -2530,7 +2545,7 @@ GMTemplate::findBestInterface(
     for (unsigned i=0;i<best_score.size();i++)
       printf(" %f ",best_score[i]);
     printf("\n");
-    printf("Size of remainder_C_l = %d\n",left_C_l.size());
+    // printf("Size of remainder_C_l = %d\n",left_C_l.size());
     {
       printf("Interface nodes include:");
       set<RandomVariable*>::iterator i;    
@@ -2567,7 +2582,7 @@ GMTemplate::findBestInterface(
       for (unsigned i=0;i<best_score.size();i++)
 	printf(" %f ",best_score[i]);
       printf("\n");
-      printf("Size of best_remainder_C_l = %d\n",best_left_C_l.size());
+      // printf("Size of best_remainder_C_l = %d\n",best_left_C_l.size());
       {
 	printf("Best interface nodes include:");
 	set<RandomVariable*>::iterator i;    

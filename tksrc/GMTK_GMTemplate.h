@@ -125,6 +125,8 @@ public:
 			      // use triangulation hint of variables
 			      // in .str file given by user.
 			      /* H */ TH_MIN_HINT = 7,
+			      // use weight, but don't use any information
+			      // about determinism of variables in clique.
 			      /* N */ TH_MIN_WEIGHT_NO_D = 8
   };
 
@@ -137,7 +139,7 @@ public:
 			    /* M */ IH_MIN_MAX_CLIQUE = 6,
 			    /* C */ IH_MIN_MAX_C_CLIQUE = 7,
 			    /* A */ IH_MIN_STATE_SPACE = 8,
-			    /* T */ IH_MIN_C_STATE_SPACE = 9
+			    /* Q */ IH_MIN_C_STATE_SPACE = 9
   };
 
 
@@ -428,6 +430,7 @@ public:
 	     const set<RandomVariable*> &C3,
 	     set<RandomVariable*> &left_C_l,
 	     set<RandomVariable*> &C_l,
+	     vector<float>& best_score,
 	     const vector<InterfaceHeuristic>& fh_v,
 	     const bool recurse,
 	     const vector<TriangulateHeuristic>& th_v,
