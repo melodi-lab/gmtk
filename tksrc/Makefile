@@ -290,11 +290,6 @@ ensure-ci:
 		exit 1; \
 	fi
 
-# to make a new version, do something like:
-#	make VERSION='June12Working' version	
-version : ensure-ci
-	rcs "-n$(VERSION):" $(rcs_files)
-
 #
 #----------------------------------------------------------------------------
 # CVS management.
@@ -302,6 +297,23 @@ version : ensure-ci
 
 TODO-dev:
 	cvs ci -m'update' TODO; cvs tag -F development TODO
+
+update:
+	cvs update
+
+# make current version a development version
+dev:
+	cvs tag -F development
+
+diff:
+	cvs diff
+
+# to make a new version, do something like:
+#	make VERSION='June12Working' version	
+version :
+	cvs tag -F "$(VERSION)"
+
+
 
 #----------------------------------------------------------------------------
 # Generate TAGS file for emacs editing.
