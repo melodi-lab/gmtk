@@ -46,21 +46,24 @@ VCID("$Header$");
 
 GM = "GRAPHICAL_MODEL" identifier Frame_List Chunk_Specifier
 
-Frame_List = Frame | Frame Frame_List
+Frame_List = Frame Frame_List | NULL
 
 Frame = "frame" ":" integer "{" RV_List "}"
 
-RV_List = RV | RV RV_List
+RV_List = RV RV_List | NULL
 
-RV = "variable" ":" name "{" RV_Attribute_List "}"
+RV = "variable" ":" name "{" RV_Attribute "}"
 
-RV_Attribute_List = Type_Attribute | Parents_Attribute
+RV_Attribute_List =
+        RV_Attribute RV_Attribute_List | NULL
+
+RV_Attribute = Type_Attribute | Parents_Attribute
 
 Type_Attribute = "type" ":" RV_Type ";"
 
 Parents_Attribute =
     "switchingparents" ":" Switching_Parent_LIST ";"
-    "conditionalparents" ":" Conditional_Parent_List_List  ";"
+   | "conditionalparents" ":" Conditional_Parent_List_List  ";"
 
 RV_Type = Discrete_RV | Continuous_RV
 
@@ -385,10 +388,72 @@ FileParser::parseFrame()
     parseError("frame number");
 
   prepareNextToken();
+  ensureNotEOF("open frame {");
+  if (tokenInfo != Token_LeftBrace)
+    parseError("open frame {");
 
+  prepareNextToken();
+
+  parseRandomVariableList();
+
+  if (tokenInfo != Token_RightBrace)
+    parseError("open frame }");
+
+  prepareNextToken();
+}
+
+void
+FileParser::parseRandomVariableList()
+{
+  ensureNotEOF("variable name or }");
+  if (tokenInfo != Token_Keyword || tokenInfo != "variable")
+    return;
+  parseRandomVariable();
+  parseRandomVariableList();
 }
 
 
+void
+FileParser::parseRandomVariable()
+{
+
+  if (tokenInfo != Token_Keyword || tokenInfo != "variable")  
+    parseError("variable keyword");
+
+  prepareNextToken();
+  ensureNotEOF(":");
+  if (tokenInfo != Token_Colon)
+    parseError(":");
+
+
+  prepareNextToken();
+  ensureNotEOF("variable name");
+  if (tokenInfo != Token_Identifier)
+    parseError("variable name");
+
+
+  prepareNextToken();
+  ensureNotEOF("open RV {");
+  if (tokenInfo != Token_LeftBrace)
+    parseError("open RV {");
+
+  prepareNextToken();
+
+  parseRandomVariableAttributeList();
+
+  if (tokenInfo != Token_RightBrace)
+    parseError("open frame }");
+
+  prepareNextToken();
+
+}
+
+void
+FileParser::parseRandomVariableAttributeList()
+{
+
+
+}
 
 void
 FileParser::parseChunkSpecifier()
