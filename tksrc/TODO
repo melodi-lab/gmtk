@@ -688,3 +688,9 @@ Fri Aug  9 10:33:17 2002
     message keep track of the line number & file name of file that it
     is parsing for error messages. Need to parse CPP options
     as well in that case.
+
+
+Sun Aug 11 18:07:53 2002
+ - obsNotToTrain file formats
+    - should allow multiple objects on the same line
+    - should use a better format (regexpressions, etc.)
