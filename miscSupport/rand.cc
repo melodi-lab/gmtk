@@ -306,6 +306,7 @@ RAND::rpermute(int * vec, const unsigned len)
 void
 RAND::rpermute(unsigned * vec, const unsigned len)
 {
+  if (len == 0) return;
   const unsigned lenm1 = len-1;
   for (unsigned i=0;i<lenm1;i++) {
     unsigned val = uniform(i,lenm1);
