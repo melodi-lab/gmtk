@@ -3574,7 +3574,7 @@ anyTimeTriangulate(GMTemplate& gm_template)
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using exhaustive search
   ////////////////////////////////////////////////////////////////////////
-/*
+
   if (timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating C using Exhaustive Search:\n");
 
@@ -3601,7 +3601,6 @@ anyTimeTriangulate(GMTemplate& gm_template)
 
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
-*/
 
   ////////////////////////////////////////////////////////////////////////
   // Return with the best triangulations found, which is
