@@ -138,9 +138,15 @@ bool erase)
             {
                 // clamp the values of the variables in the clique
                 CliqueValue &cv = Clique::gip[preorder(i)->instantiation[j]];
+#ifdef NO_HASH_TABLE
+                assert(cv.values.size()==preorder(i)->discreteMember.size());
+                for (unsigned k=0; k<preorder(i)->discreteMember.size(); k++)
+                    preorder(i)->discreteMember[k]->val = cv.values[k];
+#else
                 assert(cv.values->size()==preorder(i)->discreteMember.size());
                 for (unsigned k=0; k<preorder(i)->discreteMember.size(); k++)
                     preorder(i)->discreteMember[k]->val = (*cv.values)[k];
+#endif
             }
             else  
             {
@@ -151,10 +157,16 @@ bool erase)
                 CliqueValue &cv =
                   Clique::gip[
                     (*in2gn)[Clique::gip[preorder(i)->instantiation[j]].pred]];
-                assert(cv.values->size()==preorder(i-1)->discreteMember.size());
                 assert(i>0);
+#ifdef NO_HASH_TABLE
+                assert(cv.values.size()==preorder(i-1)->discreteMember.size());
+                for (unsigned k=0; k<preorder(i-1)->discreteMember.size(); k++)
+                    preorder(i-1)->discreteMember[k]->val = cv.values[k];
+#else
+                assert(cv.values->size()==preorder(i-1)->discreteMember.size());
                 for (unsigned k=0; k<preorder(i-1)->discreteMember.size(); k++)
                     preorder(i-1)->discreteMember[k]->val = (*cv.values)[k];
+#endif
             }
 
             // compute the clique values of the child clique that are 
@@ -221,7 +233,11 @@ void CliqueChain::initializeBackwardPass()
 
         // clamp the values of the root variable
         for (unsigned j=0; j<cl->discreteMember.size(); j++)
+#ifdef NO_HASH_TABLE
+            cl->discreteMember[j]->val = Clique::gip[best].values[j];
+#else
             cl->discreteMember[j]->val = (*Clique::gip[best].values)[j];
+#endif
 
  
         if (preorderSize()>1)  // then there must be at least 3
@@ -287,7 +303,11 @@ void CliqueChain::recedeLambdas(unsigned right, unsigned left)
             // clamp the values -- only care about non-separators
             if (!cl->separator)
                 for (unsigned j=0; j<cl->discreteMember.size(); j++)
+#ifdef NO_HASH_TABLE
+                    cl->discreteMember[j]->val = Clique::gip[best].values[j];
+#else
                     cl->discreteMember[j]->val = (*Clique::gip[best].values)[j];
+#endif
             // set best to the best instantiation of the predecessor clique
             best = (*(preorder(i-1)->inum2gnum))[Clique::gip[best].pred];
         }
@@ -337,7 +357,11 @@ void CliqueChain::finishBackwardPass()
         if (doingViterbi)
             // clamp the values of the root variable
             for (unsigned j=0; j<cl->discreteMember.size(); j++)
+#ifdef NO_HASH_TABLE
+                cl->discreteMember[j]->val = Clique::gip[best].values[j];
+#else
                 cl->discreteMember[j]->val = (*Clique::gip[best].values)[j];
+#endif
         else
         {
             if (doingEM)
@@ -384,7 +408,11 @@ void CliqueChain::incrementEMStatistics(Clique *cl)
         CliqueValue &cv = Clique::gip[cl->instantiation[k]];
         // clamp the instantiation values
         for (unsigned j=0; j<cl->discreteMember.size(); j++)
+#ifdef NO_HASH_TABLE
+            cl->discreteMember[j]->val = cv.values[j];
+#else
             cl->discreteMember[j]->val = (*cv.values)[j];
+#endif
 
         // find the conditional families, given the switching parent values
         cl->findConditionalProbabilityNodes();
