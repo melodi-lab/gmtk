@@ -81,9 +81,10 @@ public:
 
   char *   fofName;                    // this file's file name (name of list of file names)
   FILE *   fofFile;                    // this file (list of file names)
-  size_t   fullFofSize;                // full size of list of file names, i.e., before the sentence range is applied
   Range *  srRng;                      // sentence range
+  size_t   fullFofSize;                // full size of list of file names, i.e., before the sentence range is applied
   size_t   fofSize;                    // size of list of file names, after the sentence range is applied
+
 
 
 
@@ -119,6 +120,9 @@ public:
 
   size_t   getFofSize()            { return fofSize; } 
   void     setFofSize(size_t size) { fofSize = size; } 
+
+  size_t   getFullFofSize()            { return fullFofSize; } 
+  void     setFullFofSize(size_t size) { fullFofSize = size; } 
 
   size_t   getNumFileNames()  { return numFileNames; }
   unsigned getNumFloatsUsed() { return nFloatsUsed;  }
