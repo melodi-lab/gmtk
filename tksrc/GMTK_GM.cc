@@ -359,6 +359,7 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
     for (int i=0; i<iterations; i++)
     {
         logpr total_data_prob = 1.0;
+        int frames = 0;
         clampFirstExample();
         do
         {
@@ -373,10 +374,12 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
                 continue;
             }
             total_data_prob *= chain->dataProb;
+            frames += globalObservationMatrix.numFrames;
 
             // then increment the em counts
             chain->incrementEMStatistics();
         } while (clampNextExample());
+        cout << frames << " frames procesed\n";
 	printf("Total data prob is: %1.9e\n",total_data_prob.val());
         ::fflush(stdout);
         GM_Parms.emEndIteration();
