@@ -2,7 +2,7 @@
 //
 // $Header$
 // Written by: Jeff Bilmes
-//             bilmes@icsi.berkeley.edu
+//             bilmes@ee.washington.edu
 
 
 #ifndef IEEE_FP_SETUP_H
