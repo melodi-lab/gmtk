@@ -139,7 +139,8 @@ public:
   void makeRandom();
   void makeUniform();
 
-  void tieParametersWith(RandomVariable*const other);
+  void tieParametersWith(RandomVariable*const other,
+			 bool checkStructure=true);
 
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
@@ -169,6 +170,7 @@ public:
     return new ContinuousRandomVariable(label);
   }
   RandomVariable *clone();
+  RandomVariable *cloneWithoutParents();
 
   ///////////////////////////////////////////////////
 
