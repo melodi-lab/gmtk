@@ -112,8 +112,14 @@ public:
 				    /* R */ TH_RANDOM = 9, 
 				    // reverse time frame
 				    /* X */ TH_MAX_TIMEFRAME = 10
-
   };
+ 
+  typedef enum { 
+    NO_EDGES,
+    ALL_EDGES,
+    RANDOM_EDGES,
+    LOCALLY_OPTIMAL_EDGES
+  } extraEdgeHeuristicType;
 
   enum TriangulateStyles { 
     TS_ANNEALING, 
@@ -125,12 +131,15 @@ public:
     TS_PRE_EDGE_ALL, 
     TS_PRE_EDGE_LO, 
     TS_PRE_EDGE_RANDOM, 
-    TS_ELIMINATION_HEURISTICS 
+    TS_ELIMINATION_HEURISTICS, 
+    TS_NON_ELIMINATION_HEURISTICS,
+    TS_ALL_HEURISTICS 
   };
 
   struct TriangulateHeuristics {
-    unsigned numberTrials;
-    TriangulateStyles style;
+    unsigned               numberTrials;
+    TriangulateStyles      style;
+    extraEdgeHeuristicType extraEdgeHeuristic;
     vector<BasicTriangulateHeuristic> heuristic_vector;
     string basic_method_string;
 
@@ -142,6 +151,8 @@ public:
       numberTrials = 1;
       // default style
       style = TS_BASIC;
+      // Add no extra edges 
+      extraEdgeHeuristic = NO_EDGES;
       // default basic case:
       basic_method_string = "WFT";
       // first by weight
@@ -311,6 +322,22 @@ public:
 		   GMTemplate& gm_template,
 		   bool doP = true, bool doC = true, bool doE = true);
   
+  // Calls method which triangulates once, support routine for triangulate 
+  void triangulateOnce(// input: nodes to be triangulated
+  		       const set<RandomVariable*>& nodes,
+                       // use JT weight rather than sum of weight
+		       const bool jtWeight,
+		       // nodes that a JT root must contain (ok to be empty).
+		       const set<RandomVariable*>& nodesRootMustContain,
+		       // triangulation heuristic method
+		       const TriangulateHeuristics& tri_heur,
+		       // original neighbor structures
+		       vector<nghbrPairType>& orgnl_nghbrs,
+		       // output: resulting max cliques
+		       vector<MaxClique>& best_cliques,
+		       // output: string giving resulting method used
+		       string& meth_str );
+  
   // High-level generic graph triangulation using optionally all methods below.
   void triangulate(// input: nodes to be triangulated
 		   const set<RandomVariable*>& nodes,
@@ -327,8 +354,9 @@ public:
 		   // output: string giving resulting method used
 		   string& best_meth_str,
 		   // weight to best
-		   double& best_weight);
-
+		   double& best_weight,
+		   // Prefix for new best_meth_str 
+                   string  best_method_prefix = "");
 
   // include version that always uses sum weight.
   void triangulate(// input: nodes to be triangulated
@@ -345,8 +373,8 @@ public:
 		   double& best_weight)
   {
     const set <RandomVariable*> emptySet;
-    triangulate(nodes,false,emptySet,tri_heur,orgnl_nghbrs,best_cliques,
-		best_meth_str,best_weight);
+    triangulate(nodes, false, emptySet, tri_heur, orgnl_nghbrs,
+      best_cliques, best_meth_str, best_weight);
   }
 
 
@@ -366,35 +394,16 @@ public:
 		   // output: string giving resulting method used
 		   string& best_meth_str,
 		   // weight to best
-		   double& best_weight) 
+		   double& best_weight, 
+		   // Prefix for new best_meth_str 
+                   string  best_method_prefix = "" ) 
   {
     TriangulateHeuristics tri_heur;
     parseTriHeuristicString(tri_heur_str,tri_heur);
     triangulate(nodes,jtWeight,nodesRootMustContain,
 		tri_heur,orgnl_nghbrs,
-		best_cliques,best_meth_str,best_weight);
+		best_cliques,best_meth_str,best_weight,best_method_prefix);
   }
-
-#if 0
-  // include version that always uses sum weight.
-  void triangulate(// input: nodes to be triangulated
-		   const set<RandomVariable*>& nodes,
-		   // triangulation heuristic method
-		   const string& tri_heur_str,
-		   // original neighbor structures
-		   vector<nghbrPairType>& orgnl_nghbrs,
-		   // output: resulting max cliques
-		   vector<MaxClique>& best_cliques,
-		   // output: string giving resulting method used
-		   string& best_meth_str,
-		   // weight to best
-		   double& best_weight) 
-  {
-    const set <RandomVariable*> emptySet;
-    triangulate(nodes,false,emptySet,tri_heur_str,orgnl_nghbrs,
-		best_cliques,best_meth_str,best_weight);
-  }
-#endif
 
   // The basic triangulation heuristic routine. Given a set of nodes
   // (that have valid 'neighbors' members, triangulate it using the
@@ -413,26 +422,11 @@ public:
 			vector<RandomVariable*>& orderedNodes,
 			vector<MaxClique>& cliques,
 			const bool findCliques = true);
- 
-  typedef enum { 
-    ALL_EDGES,
-    RANDOM_EDGES,
-    LOCALLY_OPTIMAL_EDGES
-  } extraEdgeHeuristic;
-
-  void preEdgeAdditionElimination(
-   const set<RandomVariable*>& nodes,   
-   const bool                  jtWeight, 
-   const set<RandomVariable*>& nodesRootMustContain, 
-   extraEdgeHeuristic          edge_heuristic,
-   vector<MaxClique>&          cliques, 
-   string&                     best_method
-  );
 
   // triangulate by simulated annealing
   void triangulateSimulatedAnnealing(
     const set<RandomVariable*>& nodes,
-    const bool jtWeight,
+    const bool                  jtWeight,
     const set<RandomVariable*>& nodesRootMustContain,
     vector<MaxClique>&          best_cliques,
     vector<RandomVariable*>&    best_order,
@@ -522,8 +516,10 @@ public:
     const bool                  jtWeight,
     const set<RandomVariable*>& nodesRootMustContain,
     vector<nghbrPairType>&      orgnl_nghbrs,
-    vector<MaxClique>&          cliques,
-    string&                     tri_method
+    vector<MaxClique>&          best_cliques,
+    string&                     best_method,
+    double&                     best_weight,
+    string                      best_method_prefix = ""
     );
 
   ////////////////////////////////////////////////////////////
@@ -534,8 +530,9 @@ public:
     const bool                  jtWeight,
     const set<RandomVariable*>& nrmc,         // nrmc = nodes root must contain
     vector<nghbrPairType>&      orgnl_nghbrs,
-    vector<MaxClique>&          cliques,
-    string&                     tri_method
+    vector<MaxClique>&          best_cliques,
+    string&                     best_method,
+    double&                     best_weight
     );
 
   ////////////////////////////////////////////////////////////
@@ -778,16 +775,21 @@ private:
   );
 
   void addExtraEdgesToGraph(
-    vector<triangulateNode>& nodes,
-    const extraEdgeHeuristic edge_heuristic
+    const set<RandomVariable*>&  nodes,
+    const extraEdgeHeuristicType edge_heuristic
+  );
+
+  void addExtraEdgesToGraph(
+    vector<triangulateNode>&     nodes,
+    const extraEdgeHeuristicType edge_heuristic
   );
 
   void addEdgesToNode(
     triangulateNeighborType& parent_set,  
-    triangulateNode* const   child, 
-    triangulateNode* const   grandchild, 
-    const extraEdgeHeuristic edge_heuristic,
-    vector<edge>&            extra_edges 
+    triangulateNode* const       child, 
+    triangulateNode* const       grandchild, 
+    const extraEdgeHeuristicType edge_heuristic,
+    vector<edge>&                extra_edges 
   );
 
   void addEdges(
