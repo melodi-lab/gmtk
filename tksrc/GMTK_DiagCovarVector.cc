@@ -361,36 +361,57 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
     assert ( emOnGoingBitIsSet() );
 
     // NOTE: What are we doing here? We need to compute
-    // the weighted average of the shared means and covariances
-    // using the formula:
+    // the weighted average of the shared means and covariances.
+    // Lets say that C is the shared covariance formula,
+    // for all classes in the set J. Cj is the covariance
+    // just for class j. The normal update formula for class j's
+    // covariance is the following:
     // 
+    //        \sum p(j|x_i) (x_i-m_j)^2
+    //          i
+    // Cj =  ----------------------------------
+    //        \sum p(j|x_i)
+    //          i
+    //
+    // Now, however, we are equating Cj with a number of classes,
+    // i.e., we are saying that 
+    // 
+    //     C = \sum p(j) Cj
+    //         j in J
+    //
+    // where p(j) = \sum_i p(j|x_i) / \sum_k \sum_i p(k|x_i)
+    // 
+    // and we are using for all j in J C in place of Cj
+    // This then gives the formula
     // 
     //                              \sum p(j|x_i) (x_i-m_j)^2
     //        1.0                     i
     // C =  ------- \sum E[I(j)] --------------------------------------
-    //         N      j             \sum p(j|x_i)
-    //                                i
+    //         N    j in J            \sum p(j|x_i)
+    //                                  i
+    // 
     // where N = \sum E[I(j)]
     //             j
-    // and where I(j) is the indicator of class j so 
-    // E[I(j)] = \sum_i p(j|x_i) are the expected counts.
     // 
-    // The complication is that the means and covariances might be shared.
-    // What we are doing here is, using the EM version
-    // of the formula cov(X) = EX^2 - (EX)^2
-    // accumulating the partially weighted EX^2 and (EX)^2,
-    // since in the above formula E[I(j)] cancels out the denominator.
-    // The entire thing needs to be divided again by N, which
-    // is done below after refCount hits zero.
+    // and where I(j) is the indicator of class j so 
+    // E[I(j)] = \sum_i p(j|x_i) are the expected counts, and
+    // where p(j) = E[I(j)]/N
+    // 
+    // The complication is that the means and covariances might be
+    // shared.  What we are doing here is, using the EM version of the
+    // formula cov(X) = EX^2 - (EX)^2 accumulating each of the class
+    // conditional partially weighted EX^2 and (EX)^2 values.  This is
+    // valid since in the above formula E[I(j)] cancels out the
+    // denominator when we are computing the final C matrix. The
+    // entire thing needs to be divided again by N, though, which is
+    // done below after refCount hits zero below.
 
+    if ( parentsAccumulatedProbability >
+	 GaussianComponent::minAccumulatedProbability()) {
+      // Only accumulate here if there is something significant 
+      // to accumlate.
 
-    // TODO: make this next condition an overflow condition
-    // rather than just check for zero. This should
-    // have been ensured by the caller.
-    if ( parentsAccumulatedProbability != 0.0 ) {
-      // only accumulate if there is something to accumlate.
-
-      // accumulate in the 1st and 2nd order statistics given
+      // accumulate the 1st and 2nd order statistics given
       // by the mean object.
       const double invRealAccumulatedProbability = 
 	parentsAccumulatedProbability.inverse().unlog();
@@ -421,14 +442,15 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
     for (int i=0;i<covariances.len();i++) 
       nextCovariances[i] = covariances[i];
   } else {
-    // we have a non-zero accumulated prob.
+
     // TODO: should check for possible overflow here of 
     // accumulatedProbability when we do the inverse and unlog.
-
+    // Ideally this won't happen for a given minAccumulatedProbability().
     const double invRealAccumulatedProbability = 
       accumulatedProbability.inverse().unlog();
-    // finish computing the next means.
 
+    // Finally, divide by N (see the equation above)
+    // here computing the final variances.
     unsigned prevNumFlooredVariances = numFlooredVariances;
     for (int i=0;i<covariances.len();i++) {
       nextCovariances[i] *= invRealAccumulatedProbability;
