@@ -188,11 +188,11 @@ sub time_triangulation
   my $file_h;
   my $method;
   my $output;
+  my $crrnt_pid;
   my $timing_script_input;
   my $timing_script_output;
   my $tmp_name;
   my $tmp_tri_file;
-  my $error_caught;
 
   #####################################################################
   # Open a copy of gmtkTime in multiTest mode 
@@ -200,7 +200,7 @@ sub time_triangulation
   $timing_script_input  = gensym;
   $timing_script_output = gensym;
 
-  ($timing_script_input, $timing_script_output) = open_time();
+  ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
 
   #####################################################################
   # Create a temporary file for the current triangulation 
@@ -222,9 +222,8 @@ sub time_triangulation
     };
   
     if ($@) { 
-      close $timing_script_output;
-      close $timing_script_input;
-      ($timing_script_input, $timing_script_output) = open_time();
+      waitpid $crrnt_pid, 0; 
+      ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
       $crrnt_partitions = -1;
     }
 
@@ -244,16 +243,16 @@ sub time_triangulation
     $crrnt_weight = run_triangulation($method, $tmp_tri_file);
 
     if ($crrnt_weight > 0) {
+     
+      $crrnt_partitions = -1;
       eval {
         $crrnt_partitions = run_timing( $timing_script_input, 
           $timing_script_output, $tmp_tri_file );
       };
     
       if ($@) {
-        close $timing_script_output;
-        close $timing_script_input;
-        ($timing_script_input, $timing_script_output) = open_time();
-        $crrnt_partitions = -1;
+        waitpid $crrnt_pid, 0; 
+        ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
       }
 
       check_best($crrnt_partitions, $method, $crrnt_weight, $tmp_tri_file);
@@ -276,28 +275,29 @@ sub open_time
 {
   my $error;
   my $output;
+  my $pid;
   my $timing_script_input;
   my $timing_script_output;
 
   do {
     $error = 0;
     eval {
-      open2( $timing_script_output, $timing_script_input, "pexport -attr \'$export_line\' $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ");
+      $pid = open2( $timing_script_output, $timing_script_input, "$export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ");
+
       $timing_script_input->autoflush(1);
       $output = <$timing_script_output>;
       print STDERR "$output";
     };
 
     if ($@ || ($output=~'no suitable host available')) { 
-      close $timing_script_output;
-      close $timing_script_input;
       $error = 1;
       print "Problem opening timing script:'$output'\n";
+      waitpid $pid, 0; 
       sleep(15);
     }
   } while ($error);
 
-  return ($timing_script_input, $timing_script_output);
+  return ($pid, $timing_script_input, $timing_script_output);
 }
 
 
@@ -386,7 +386,7 @@ sub get_triangulation_method
   $method_count++;
   $method_sem->down;
   if (($method_count % 5)==0) {
-    printf "Throughput:%f\n", ($method_count/(time-$start_time));
+    printf "    Throughput:%f\n", (60*$method_count/(time-$start_time));
   } 
 
   return($method);
@@ -418,9 +418,14 @@ sub run_timing
   #   0: Operating on trifile ''
   #   0: Running program for approximately 7 seconds
   ###########################################################################
-  $output = <$timing_script_output>;
-  (defined $output) or die;
-  print STDERR "$output";
+
+  do {
+    $output = <$timing_script_output>;
+    (defined $output) or die;
+    print STDERR "$output";
+    chomp($output);
+  } while($output ne '--------');
+
   $output = <$timing_script_output>;
   (defined $output) or die;
   print STDERR "$output";
@@ -442,7 +447,7 @@ sub run_timing
 
   ($partitions) = $output =~ /residual partitions, ([0-9]+) total partitions,/;
 
-  (defined $partitions) or $partitions = 1; 
+  (defined $partitions) or $partitions = -1; 
 
   return($partitions);
 }
