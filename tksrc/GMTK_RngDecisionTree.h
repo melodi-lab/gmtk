@@ -171,6 +171,7 @@ protected:
         TOKEN_ABSOLUTE_VALUE, 
         TOKEN_BITWISE_AND, 
         TOKEN_BITWISE_OR, 
+        TOKEN_BITWISE_NOT, 
         TOKEN_BITWISE_XOR,
         TOKEN_CARDINALITY, 
         TOKEN_COLON, 
@@ -190,6 +191,7 @@ protected:
         TOKEN_MIN,
         TOKEN_MINUS, 
         TOKEN_MOD,
+        TOKEN_NOT,
         TOKEN_PARENT, 
         TOKEN_PLUS, 
         TOKEN_QUESTION_MARK, 
@@ -229,6 +231,7 @@ protected:
         COMMAND_PUSH_CONSTANT,    
         COMMAND_ABSOLUTE_VALUE, 
         COMMAND_BITWISE_AND, 
+        COMMAND_BITWISE_NOT, 
         COMMAND_BITWISE_OR, 
         COMMAND_BITWISE_XOR, 
         COMMAND_BRANCH,
@@ -246,6 +249,8 @@ protected:
         COMMAND_MIN, 
         COMMAND_MINUS, 
         COMMAND_MOD, 
+        COMMAND_NEGATE, 
+        COMMAND_NOT, 
         COMMAND_PLUS, 
         COMMAND_ROTATE,
         COMMAND_SHIFT_LEFT, 
@@ -264,6 +269,7 @@ protected:
       typedef enum {
         HIGHEST_PRECEDENCE = 0,
         PAREN_PRCDNC,  
+        UNARY_PRCDNC,  
         EXPONENT_PRCDNC,  
         MULT_PRCDNC,  
         ADDITIVE_PRCDNC,  
@@ -283,6 +289,7 @@ protected:
       static map<string, tokenEnum> function;
 
       static map<tokenEnum, formulaCommand> infixToken;
+      static map<tokenEnum, formulaCommand> unaryToken;
       static map<tokenEnum, formulaCommand> functionToken;
       static map<tokenEnum, formulaCommand> oneValFunctionToken;
       static map<tokenEnum, formulaCommand> twoValFunctionToken;
