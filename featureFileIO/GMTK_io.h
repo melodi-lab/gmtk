@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include "bp_range.h"
 #include "pfile.h"
-#include "GMTK_utils.h"
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_FileDescription.h"
 
@@ -101,9 +100,15 @@ public:
 
   void getNumFloats(unsigned *);
 
-  // get total number of features in stream
+  // get total number of features in observation matrix
 
   unsigned getNumFea() { return _totalFloats + _totalInts;}
+
+  // get number of floats 
+
+  unsigned getNumFloats() { return _totalFloats; }
+
+  unsigned getNumInts() {return _totalInts; }
 
   // return number of segments (utterances) in stream
 
@@ -146,6 +151,7 @@ class DataOutStream: public DataStream {
   OutFtrLabStream_PFile **pfile_ostr; // pfile streams
 
   unsigned *sampRate;
+
   unsigned *nFloats;
   unsigned *nInts;
 
@@ -176,7 +182,7 @@ public:
   void writeData(size_t,char **,char **, char *,ObservationMatrix *);
 
   void initOutStream(unsigned *,unsigned *,unsigned *, bool *,int *,
-		     unsigned *,char **,unsigned);
+		     unsigned *,char **,int);
 
   // set new file names
 
