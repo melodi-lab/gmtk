@@ -109,7 +109,7 @@ public:
   // NOTE: must have the following for sanity:
   //  mixCoeffSplitRatio/curNumComponents > 
   //                         1/(curNumComponents*mixCoeffVanishRatio)
-
+  static void checkForValidRatioValues();
 
   /////////////////////////////////////
   // return the dimensionality
