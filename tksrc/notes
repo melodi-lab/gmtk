@@ -1563,3 +1563,49 @@ RV- RandomVariable
 
 (Alternatively, the switching/nonswitching distinction can be factored out to the
   2nd level, since it is common to all subclasses???)
+
+Tue Aug 10 01:36:50 2004
+
+Splits:
+  Discrete vs. Continuous
+     -
+  Hidden vs. Observed
+     -
+  Switching vs. No Switching
+     -  multiple inheratance
+  Weighted Forms vs. No weight
+     - do this as multiple inheritance,
+       to include the weight member information.
+       Include class for
+           1) scale
+           2) penalty
+           3) both
+
+RV
+ - RV_Dis
+   + RV_HidDis
+     + RV_HidDis_Sc
+     + RV_HidDis_Pn
+     + RV_HidDis_ScPn
+     + RV_HidDis_Sw
+        + RV_HidDis_Sw_Sc
+        + RV_HidDis_Sw_Pn
+        + RV_HidDis_Sw_ScPn
+   + RV_ObsDis
+     + RV_ObsDis_Sc
+     + RV_ObsDis_Pn
+     + RV_ObsDis_ScPn
+     + RV_ObsDis_Sw
+       + RV_ObsDis_Sw_Sc
+       + RV_ObsDis_Sw_Pn
+       + RV_ObsDis_Sw_ScPn
+ - RV_Con
+   + RV_ObsCon
+     + RV_ObsCon_Sc
+     + RV_ObsCon_Pn
+     + RV_ObsCon_ScPn
+     + RV_ObsCon_Sw
+       + RV_ObsCon_Sw_Sc
+       + RV_ObsCon_Sw_Pn
+       + RV_ObsCon_Sw_ScPn
+
