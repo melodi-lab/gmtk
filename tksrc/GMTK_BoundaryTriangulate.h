@@ -38,13 +38,11 @@
 
 // class mention for forward references.
 class GraphicalModel;
-class AnyTimeTriangulation;
 
 class BoundaryTriangulate : public IM 
 {
   friend class FileParser;
   friend class GraphicalModel;
-  friend class AnyTimeTriangulation;
   friend class GMTemplate;
 
   // the file parser for this model.
