@@ -89,7 +89,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkEMtrain gmtkViterbi gmtkM2T gmtkB2A gmtkScore gmtkSample gmtkNumParms
+all_exs = gmtkEMtrain gmtkViterbi gmtkParmConvert gmtkScore gmtkSample
 
 all: ${all_exs}
 
@@ -132,19 +132,9 @@ gmtkSample: gmtkSample.o $(objs)
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkSample.o $(objs) $(LIBS)
 
-
-gmtkNumParms: gmtkNumParms.o $(objs)
+gmtkParmConvert: gmtkParmConvert.o $(objs)
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkNumParms.o $(objs) $(LIBS)
-
-gmtkM2T: gmtkM2T.o $(objs)
-	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkM2T.o $(objs) $(LIBS)
-
-
-gmtkB2A: gmtkB2A.o $(objs)
-	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkB2A.o $(objs) $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkParmConvert.o $(objs) $(LIBS)
 
 #----------------------------------------------------------------------------
 # Test driver programs (defines a -DMAIN to test each .cc file)
