@@ -89,13 +89,17 @@ Dense1DPMF::read(iDataStreamFile& is)
   int length;
   is.read(length,"Dense1DPMF::read, distribution length");
   if (length <= 0)
-    error("Dense1DPMF: read length (%d) < 0 in input",length);
+    error("ERROR: DPMF '%s', file '%s', bad length (%d) < 0 in input",
+	  name().c_str(),
+	  is.fileName(),length);
   pmf.resize(length);
   for (int i=0;i<length;i++) {
     double prob;
     is.readDouble(prob,"Dense1DPMF::read, reading prob");
     if (prob < 0 || prob > 1)
-      error("Dense1DPMF: read, invalid pmf value (%g)",prob);
+      error("ERROR: DPMF '%s', file '%s', bad pmf value (%g)",
+	    name().c_str(),
+	    is.fileName(),prob);
     pmf[i] = prob;
   }
 }
