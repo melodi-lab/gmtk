@@ -190,17 +190,18 @@ main(int argc,char*argv[])
     else
       error("ERROR: Unknown observation file format type: '%s'\n",fmts[i]);
 
-    globalObservationMatrix.openFiles(nfiles,
-                                      (const char**)&ofs,
-                                      (const char**)&frs,
-                                      (const char**)&irs,
-                                      (unsigned*)&nfs,
-                                      (unsigned*)&nis,
-                                      (unsigned*)&ifmts,
-                                      (bool*)&iswps,
-				      startSkip,
-				      endSkip);
   }
+
+  globalObservationMatrix.openFiles(nfiles,
+				    (const char**)&ofs,
+				    (const char**)&frs,
+				    (const char**)&irs,
+				    (unsigned*)&nfs,
+				    (unsigned*)&nis,
+				    (unsigned*)&ifmts,
+				    (bool*)&iswps,
+				    startSkip,
+				      endSkip);
 
   MixGaussiansCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
