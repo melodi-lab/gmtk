@@ -4178,27 +4178,27 @@ triangulateExhaustiveSearch(
   ////////////////////////////////////////////////////////////////////
   // Display node key and initial matrix 
   ////////////////////////////////////////////////////////////////////
-  infoMsg(IM::Tiny, "----------\n"); 
+  infoMsg(IM::Moderate, "----------\n"); 
         
   for( i=0; i<nmbr_nodes; i++) {
-    infoMsg(IM::Tiny, "[%d] %s(%d)\n", i, 
+    infoMsg(IM::Moderate, "[%d] %s(%d)\n", i, 
       triangulate_nodes[i].randomVariable->name().c_str(), 
       triangulate_nodes[i].randomVariable->timeIndex );
   } 
-  infoMsg(IM::Tiny, "\n");
+  infoMsg(IM::Moderate, "\n");
 
-  infoMsg(IM::Tiny, "   ");
+  infoMsg(IM::Moderate, "   ");
   for( i=0; i<nmbr_nodes; i++) {
-    infoMsg(IM::Tiny, "[%2d]", i);
+    infoMsg(IM::Moderate, "[%2d]", i);
   }
-  infoMsg(IM::Tiny, "\n");
+  infoMsg(IM::Moderate, "\n");
 
   for( i=0; i<nmbr_nodes; i++) {
-    infoMsg(IM::Tiny, "[%2d]", i );
+    infoMsg(IM::Moderate, "[%2d]", i );
     for( j=0; j<nmbr_nodes; j++) {
-      infoMsg(IM::Tiny," %2d ", adjacency[i][j]);
+      infoMsg(IM::Moderate," %2d ", adjacency[i][j]);
     }
-    infoMsg(IM::Tiny, "\n");
+    infoMsg(IM::Moderate, "\n");
   }  
 
   ////////////////////////////////////////////////////////////////////
@@ -4235,10 +4235,10 @@ triangulateExhaustiveSearch(
     if ((crrnt_trial % 0x10000) == 0) {
 
       if (nmbr_empty < 1024) { 
-        infoMsg(IM::Tiny, "%e of %0e\n", (double)crrnt_trial, nmbr_cmbntns );
+        infoMsg(IM::Low, "%e of %0e\n", (double)crrnt_trial, nmbr_cmbntns );
       }
       else {
-        infoMsg(IM::Tiny, "%e of 2^%d\n", (double)crrnt_trial, nmbr_empty);
+        infoMsg(IM::Low, "%e of 2^%d\n", (double)crrnt_trial, nmbr_empty);
       }
     }
  
@@ -4256,20 +4256,20 @@ triangulateExhaustiveSearch(
       weight = graphWeight(vector_cliques,jtWeight,nodesRootMustContain);
 
       if (weight < best_weight) {
-        infoMsg(IM::Tiny, "----- New Best: %f -----\n", weight); 
+        infoMsg(IM::Low, "----- New Best: %f -----\n", weight); 
 
-        infoMsg(IM::Tiny, "    ");
+        infoMsg(IM::Moderate, "    ");
         for( i=0; i<nmbr_nodes; i++) {
-          infoMsg(IM::Tiny, "[%2d]", i );
+          infoMsg(IM::Moderate, "[%2d]", i );
         } 
-        infoMsg(IM::Tiny, "\n"); 
+        infoMsg(IM::Moderate, "\n"); 
 
         for( i=0; i<nmbr_nodes; i++) {
-          infoMsg(IM::Tiny, "[%2d]", i );
+          infoMsg(IM::Moderate, "[%2d]", i );
           for( j=0; j<nmbr_nodes; j++) {
-            infoMsg(IM::Tiny, " %2d ", adjacency[i][j]);
+            infoMsg(IM::Moderate, " %2d ", adjacency[i][j]);
           } 
-          infoMsg(IM::Tiny, "\n"); 
+          infoMsg(IM::Moderate, "\n"); 
         } 
 
         for( crrnt_clique = cliques.begin(), 
@@ -4277,17 +4277,17 @@ triangulateExhaustiveSearch(
              crrnt_clique != end_clique; 
              ++crrnt_clique ) {
 
-          infoMsg(IM::Tiny, "--- Clique ---\n"); 
+          infoMsg(IM::Moderate, "--- Clique ---\n"); 
           for( crrnt_node = (*crrnt_clique).begin(), 
 	       end_node   = (*crrnt_clique).end(); 
                crrnt_node != end_node;
 	       crrnt_node++ ) { 
-            infoMsg(IM::Tiny, "%s(%d)\n", 
+            infoMsg(IM::Moderate, "%s(%d)\n", 
               (*crrnt_node)->randomVariable->name().c_str(), 
               (*crrnt_node)->randomVariable->timeIndex); 
           }
         } 
-        infoMsg(IM::Tiny, "--------------------------\n");
+        infoMsg(IM::Moderate, "--------------------------\n");
 
         best_list_cliques = cliques;
         best_weight = weight;
@@ -4369,7 +4369,7 @@ triangulateExhaustiveSearch(
 
   if (!triangulation_found) {
     vector<RandomVariable*> order;
-    infoMsg(IM::Low, 
+    infoMsg(IM::Tiny, 
       "Exhaustive search exited before finding any triangulations\n");
     triangulateMaximumCardinalitySearch(nodes, best_cliques, order );
   }
