@@ -86,19 +86,16 @@ public:
   virtual logpr log_p(const float *const x,    // real-valued scoring obs at time t
 		      const Data32* const base, // ptr to base obs at time t
 		      const int stride) = 0;       // stride
-  virtual double p(const float *const x,
-		   const Data32* const base,
-		   const int stride)
-  { return exp(log_p(x,base,stride).val()); }
+  virtual logpr log_p(const unsigned frameIndex, 
+		      const unsigned firstFeatureElement) = 0;
   //////////////////////////////////
 
   //////////////////////////////////
   // EM Support                   //
   //////////////////////////////////
   virtual void emIncrement(logpr prob,
-			   const float*f,
-			   const Data32* const base,
-			   const int stride) = 0;
+			   const unsigned frameIndex, 
+			   const unsigned firstFeatureElement) = 0;
 
   //////////////////////////////////
   // Sample Generation            //

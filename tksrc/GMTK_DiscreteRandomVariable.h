@@ -111,7 +111,7 @@ public:
 
   ////////////////////////////////////////////////////////////////
   // Value caching support.
-  DISCRETE_VARIABLE_TYPE cached_val;
+  RandomVariable::DiscreteVariableType cached_val;
   void cacheValue() {cached_val=val;}
   void restoreCachedValue() {val=cached_val;}
 

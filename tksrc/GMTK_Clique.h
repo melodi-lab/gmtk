@@ -41,7 +41,7 @@ struct CliqueValue
 
     // The underlying variable values corresponding to a particular clique
     // instantiation
-    vector<DISCRETE_VARIABLE_TYPE> values;
+    vector<RandomVariable::DiscreteVariableType> values;
 };
 
 struct Clique
@@ -63,7 +63,7 @@ struct Clique
     // its conditional probability. This array stores them.
     // it is set on demand by findConditionalProbabilityNodes()
 
-    vector<DISCRETE_VARIABLE_TYPE> clampedValues;
+    vector<RandomVariable::DiscreteVariableType> clampedValues;
     // What are the values of the discrete variables (which should be clamped)
     // set in the course of inference
 
@@ -84,7 +84,7 @@ struct Clique
     // This stores all the possible instantiations of a clique.
     // Pruning occurs by removing low probability instantiations.
 
-    map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue *> instantiationAddress;
+    map<vector<RandomVariable::DiscreteVariableType>, CliqueValue *> instantiationAddress;
     // A separator clique sums over multiple values from its non-separator
     // parent. instantiationAddress keeps track of the address of the 
     // unique CliqueValue that all the parent values with the same 
