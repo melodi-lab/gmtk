@@ -61,6 +61,9 @@ map<RngDecisionTree::EquationClass::tokenEnum,
   RngDecisionTree::EquationClass::infixToken;
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::unaryToken;
+map<RngDecisionTree::EquationClass::tokenEnum, 
+  RngDecisionTree::EquationClass::formulaCommand> 
   RngDecisionTree::EquationClass::functionToken;
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
@@ -572,6 +575,7 @@ RngDecisionTree::EquationClass::EquationClass()
     ////////////////////////////////////////////////////////////////////////
     delimiter["&"]  = TOKEN_BITWISE_AND;
     delimiter["|"]  = TOKEN_BITWISE_OR;
+    delimiter["~"]  = TOKEN_BITWISE_NOT;
     delimiter[":"]  = TOKEN_COLON;
     delimiter[","]  = TOKEN_COMMA;
     delimiter["/"]  = TOKEN_DIVIDE;
@@ -584,6 +588,7 @@ RngDecisionTree::EquationClass::EquationClass()
     delimiter["&&"] = TOKEN_LOGICAL_AND;
     delimiter["||"] = TOKEN_LOGICAL_OR;
     delimiter["-"]  = TOKEN_MINUS;
+    delimiter["!"]  = TOKEN_NOT;
     delimiter["+"]  = TOKEN_PLUS;
     delimiter["<<"] = TOKEN_SHIFT_LEFT;
     delimiter[">>"] = TOKEN_SHIFT_RIGHT;
@@ -623,6 +628,10 @@ RngDecisionTree::EquationClass::EquationClass()
     infixToken[TOKEN_SHIFT_RIGHT]     = COMMAND_SHIFT_RIGHT;
     infixToken[TOKEN_TIMES]           = COMMAND_TIMES;
 
+    unaryToken[TOKEN_BITWISE_NOT]     = COMMAND_BITWISE_NOT;
+    unaryToken[TOKEN_MINUS]           = COMMAND_NEGATE;
+    unaryToken[TOKEN_NOT]             = COMMAND_NOT;
+
     functionToken[TOKEN_MAX] = COMMAND_MAX;
     functionToken[TOKEN_MIN] = COMMAND_MIN;
 
@@ -635,6 +644,7 @@ RngDecisionTree::EquationClass::EquationClass()
     //  Maps tokens to priority levels 
     ////////////////////////////////////////////////////////////////////////
     tokenPriority[TOKEN_BITWISE_AND]     = BITWISE_AND_PRCDNC;
+    tokenPriority[TOKEN_BITWISE_NOT]     = UNARY_PRCDNC;
     tokenPriority[TOKEN_BITWISE_OR]      = BITWISE_OR_PRCDNC;
     tokenPriority[TOKEN_DIVIDE]          = MULT_PRCDNC;
     tokenPriority[TOKEN_EXPONENT]        = EXPONENT_PRCDNC;
@@ -647,6 +657,7 @@ RngDecisionTree::EquationClass::EquationClass()
     tokenPriority[TOKEN_LOGICAL_AND]     = LOGICAL_AND_PRCDNC;
     tokenPriority[TOKEN_LOGICAL_OR]      = LOGICAL_OR_PRCDNC;
     tokenPriority[TOKEN_MINUS]           = ADDITIVE_PRCDNC;
+    tokenPriority[TOKEN_NOT]             = UNARY_PRCDNC;
     tokenPriority[TOKEN_PLUS]            = ADDITIVE_PRCDNC;
     tokenPriority[TOKEN_QUESTION_MARK]   = CONDITIONAL_PRCDNC;
     tokenPriority[TOKEN_RIGHT_PAREN]     = PAREN_PRCDNC;
@@ -738,6 +749,11 @@ RngDecisionTree::EquationClass::evaluateFormula(
         last = stack.stackSize() - 1;
         stack[last-1] = stack[last-1] | stack[last];
         stack.pop_back();
+        break;
+
+      case COMMAND_BITWISE_NOT:
+        last = stack.stackSize() - 1;
+        stack[last] = ~(stack[last]); 
         break;
  
       case COMMAND_BITWISE_XOR: 
@@ -849,6 +865,16 @@ RngDecisionTree::EquationClass::evaluateFormula(
         }
         stack[last-1] = stack[last-1] % stack[last];
         stack.pop_back();
+        break;
+
+      case COMMAND_NEGATE:
+        last = stack.stackSize() - 1;
+        stack[last] = -(stack[last]); 
+        break;
+
+      case COMMAND_NOT:
+        last = stack.stackSize() - 1;
+        stack[last] = !(stack[last]); 
         break;
 
       case COMMAND_PLUS:
@@ -1047,9 +1073,18 @@ RngDecisionTree::EquationClass::parseExpression(
 
   //////////////////////////////////////////////////////////////////////////
   // Recursively call until a factor is found 
-  //////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
   if (prvs_precedence == HIGHEST_PRECEDENCE) {
     parseFactor(token, formula, cmmnds, depth);
+  }
+  else if ((prvs_precedence == UNARY_PRCDNC) && 
+           (unaryToken[token.token] != COMMAND_INVALID)) { 
+    next_token = token;
+    getToken(formula, token);
+    parseFactor(token, formula, cmmnds, depth);
+
+    new_command = MAKE_COMMAND( unaryToken[next_token.token], 0 );
+    cmmnds.push_back(new_command);
   }
   else {
     parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
@@ -1231,7 +1266,7 @@ RngDecisionTree::EquationClass::parseFactor(
       changeDepth( 1, depth );
       getToken(formula, token); 
       break;
- 
+
     case TOKEN_CARDINALITY:
       new_command = MAKE_COMMAND( COMMAND_PUSH_CARDINALITY, token.number );
       commands.push_back(new_command);
@@ -1240,7 +1275,7 @@ RngDecisionTree::EquationClass::parseFactor(
       break;
 
     //////////////////////////////////////////////////////////////////////
-    //   rotate(val,num,pos,length)
+    // rotate(val,num,pos,length)
     //////////////////////////////////////////////////////////////////////
     case TOKEN_ROTATE:
       next_token = token.token;
@@ -1248,28 +1283,28 @@ RngDecisionTree::EquationClass::parseFactor(
       getToken(formula, token); 
       if (token.token != TOKEN_LEFT_PAREN) {
         string error_message = "Expecting left parenthesis at '" + 
-	  formula + "'";
+          formula + "'";
         throw(error_message);
       }
 
       getToken(formula, token); 
       parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
       if (token.token != TOKEN_COMMA) {
-        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)  AA";
+        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
         throw(error_message);
       }
 
       getToken(formula, token);
       parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
       if (token.token != TOKEN_COMMA) {
-        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)  BB";
+        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
         throw(error_message);
       }
 
       getToken(formula, token);
       parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
       if (token.token != TOKEN_COMMA) {
-        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)  CC";
+        string error_message = "Function requires four operands:  rotate(value, number, position, bitwidth)";
         throw(error_message);
       }
 
@@ -1278,7 +1313,7 @@ RngDecisionTree::EquationClass::parseFactor(
 
       if (token.token != TOKEN_RIGHT_PAREN) {
         string error_message = "Expecting right parenthesis at '" + 
-	  formula + "'";
+          formula + "'";
         throw(error_message);
       }
 
@@ -1295,13 +1330,13 @@ RngDecisionTree::EquationClass::parseFactor(
       // Functions which take two or more operands 
       //////////////////////////////////////////////////////////////////////
       if (functionToken[token.token] != COMMAND_INVALID) {
-  
+ 
         next_token = token.token;
 
         getToken(formula, token); 
         if (token.token != TOKEN_LEFT_PAREN) {
           string error_message = "Expecting left parenthesis at '" + 
-	    formula + "'";
+            formula + "'";
           throw(error_message);
         }
 
@@ -1345,7 +1380,7 @@ RngDecisionTree::EquationClass::parseFactor(
         getToken(formula, token); 
         if (token.token != TOKEN_LEFT_PAREN) {
           string error_message = "Expecting left parenthesis at '" + 
-	    formula + "'";
+          formula + "'";
           throw(error_message);
         }
 
@@ -1372,7 +1407,7 @@ RngDecisionTree::EquationClass::parseFactor(
         getToken(formula, token); 
         if (token.token != TOKEN_LEFT_PAREN) {
           string error_message = "Expecting left parenthesis at '" + 
-	    formula + "'";
+            formula + "'";
           throw(error_message);
         }
 
@@ -2212,7 +2247,7 @@ bool RngDecisionTree::testFormula(
   }
 
   answer = node.leafNode.equation.evaluateFormula( variables );
-  printf("   Answer: %d\n", answer);
+  printf("   Answer: %d   0x%x\n", answer, answer);
 
   if (answer == desired_answer) {
     correct = true;
@@ -2341,6 +2376,18 @@ void test_formula()
 
   formula = "rotate(255, 0-3, 2, 16)";
   correct &= dt.testFormula( formula, vars, 2019 );
+
+  formula = "!0";
+  correct &= dt.testFormula( formula, vars, 1 );
+
+  formula = "~10&15";
+  correct &= dt.testFormula( formula, vars, 5 );
+
+  formula = "-(3-12)";
+  correct &= dt.testFormula( formula, vars, 9 );
+
+  formula = "-3--12-4*-2";
+  correct &= dt.testFormula( formula, vars, 17 );
 
 
   if (! correct) {
