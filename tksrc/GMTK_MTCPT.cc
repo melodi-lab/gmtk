@@ -169,7 +169,7 @@ MTCPT::read(iDataStreamFile& is)
   is.read(_card,"MTCPT::read cardinality");
   if (_card <= 0)
     error("ERROR: reading file '%s', MTCPT '%s' trying to use 0 or negative (%d) cardinality table, position %d.",
-	  is.fileName(),name().c_str(),_card,i);
+	  is.fileName(),name().c_str(),_card,_numParents);
 
 
   // Finally read in the ID of the decision tree
