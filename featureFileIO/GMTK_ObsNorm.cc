@@ -7,7 +7,9 @@
 */
 
 
-#include <values.h>
+// #include <values.h>
+
+#include <math.h>
 #include "GMTK_ObsNorm.h"
 
 void obsNorm(FILE*  out_fp,

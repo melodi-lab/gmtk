@@ -16,7 +16,9 @@
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
+#ifndef __CYGWIN__
 #include <values.h>
+#endif
 #include <cmath>
 #include <cassert>
 #include <stdlib.h>
@@ -164,7 +166,7 @@ static void uniformSkmeans(ObservationMatrix* obs_mat,
     kmeans *kms = new kmeans[num_words*num_segments];
     size_t sent_no;
 
-    double bestVarianceSum=HUGE;
+    double bestVarianceSum=DBL_MAX;
     
     for (int epoch=0;epoch<numRandomReStarts;epoch++) {
 
@@ -455,7 +457,7 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
     kmeans *kms = new kmeans[num_labels];
     size_t sent_no;
 
-    double bestVarianceSum=HUGE;
+    double bestVarianceSum=DBL_MAX;
 
     //    if (in_lstreamp != NULL) {
     //      if (in_lstreamp->n_segs() != in_streamp->n_segs())
