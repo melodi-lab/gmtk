@@ -1731,6 +1731,7 @@ FileParser::parseListIndex()
 {
   ensureNotAtEOF("list index");
   if (tokenInfo == TT_Integer) {
+    // TODO: need to remove the integer index code.
     listIndex.liType = RVInfo::ListIndex::li_Index;
     listIndex.intIndex = tokenInfo.int_val;
     consumeToken();
@@ -2735,6 +2736,22 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		rv->conditionalMixtures[j].mapping.dtMapper =
 		  GM_Parms.dts[rvInfoVector[i].listIndices[j].intIndex];
 	      }
+	  }
+	  // 
+	  // check that the DT matches the number of current parents and their cardinalities.
+
+	  // Check to make sure that the decision tree (which is used to map sets of parent values down
+	  // to the integer that indexes into the collection) has a number of features/parents that
+	  // matches the current set of conditional parents.
+	  if (rv->conditionalMixtures[j].mapping.dtMapper->numFeatures() != 
+	      rvInfoVector[i].conditionalParents[j].size()) {
+	    error("Error: RV \"%s\" at frame %d (line %d), Decision Tree '%s' wants %d parents, but number of current parents is %d.\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rv->conditionalMixtures[j].mapping.dtMapper->name().c_str(),
+		  rv->conditionalMixtures[j].mapping.dtMapper->numFeatures(),
+		  rvInfoVector[i].conditionalParents[j].size());
 	  }
 
 	  // get the collection as well.
