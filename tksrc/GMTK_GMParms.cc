@@ -420,15 +420,15 @@ GMParms::readGaussianMixtures(iDataStreamFile& is, bool reset)
     // read the Gaussian type
     int t;
     is.read(t,"GMTK_GMParms::readGaussianMixtures, type");
-    if (t == MixGaussiansCommon::mix) {
+    if (t == MixGaussiansCommon::ci_mixGaussian) {
       gm = new MixGaussians(dim);
-    } else if (t == MixGaussiansCommon::gausSwitchMix) {
+    } else if (t == MixGaussiansCommon::ci_gausSwitchMixGaussian) {
       error("GausSwitchMix not implemented");
       // gm = new GausSwitchingMixGaussians();
-    } else if (t == MixGaussiansCommon::logitSwitchMix) {
+    } else if (t == MixGaussiansCommon::ci_logitSwitchMixGaussian) {
       error("LogitSwitchMix not implemented");
       // gm = new LogitSwitchingMixGaussians();      
-    } else if (t == MixGaussiansCommon::mlpSwitchMix) {
+    } else if (t == MixGaussiansCommon::ci_mlpSwitchMixGaussian) {
       error("MlpSwitchMix not implemented");
       // gm = new MLPSwitchingMixGaussians(dim);
     } else {
