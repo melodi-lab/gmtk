@@ -485,14 +485,14 @@ MaxClique::prepareForUnrolling()
   // @@@ set to small size now to test out re-allocation schemes.
   allocationUnitChunkSize = 1;
 
-  if (packer.packedLen() > 1) {
+  if (packer.packedLen() > IMC_NWWOH) {
     // setup value hodler
-    new (&valueHolder) CliqueValueHolder(hiddenNodes.size(),
+    new (&valueHolder) CliqueValueHolder(packer.packedLen(),
 					 allocationUnitChunkSize,
 					 1.25);
     // set up common clique hash tables 
     // TODO: add appropriate default staring hash sizes.
-    new (&cliqueValueHashSet) vhash_set< unsigned > (hiddenNodes.size(),2);
+    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2);
   } else {
     // then no need to do a hash table at all, just store the packed
     // values in a local integer.
@@ -838,11 +838,12 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // and only proceed if we do.
     
     // find index if it exists.
-    unsigned tmp;
+    // unsigned tmp[ISC_NWWOH_AI];
+    unsigned tmp[((ISC_NWWOH_AI>1)?ISC_NWWOH_AI:1)];
     unsigned *key;
     // TODO: optimize this check out of loop (perhaps also assign to const local variable).
-    if (sep.origin.accPacker.packedLen() == 1) {
-      key = &tmp;
+    if (sep.origin.accPacker.packedLen() <= ISC_NWWOH_AI) {
+      key = &tmp[0];
     } else {
       // use since it always holds at least one extra slot ready
       key = sep.origin.accValueHolder.curCliqueValuePtr();
@@ -886,6 +887,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
       printRVSetAndValues(stdout,sep.fNodes);
     }
 
+    // we should have one entry only.
     assert ( sep.separatorValues[sepValueNumber].remValues.size() == 1 );
     // Continue down with new probability value.
     // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
@@ -895,9 +897,10 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 			sep.separatorValues[sepValueNumber].remValues[0].p);
   } else {
 
+    // TODO: this assertion should be redundant (check above)
     assert ( sep.origin.remPacker.packedLen() > 0 );
 
-    if (sep.origin.remPacker.packedLen() == 1) {
+    if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
       for (unsigned i=0;i< sep.separatorValues[sepValueNumber].numRemValuesUsed; i++) {
 
 	// if (i == 0 && sep.fNodes[0]->timeIndex == 5 && sep.fNodes[0]->label == "state") {
@@ -906,7 +909,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
 	// TODO: optimize this, pre-compute base array outside of loop.
 	sep.origin.remPacker.unpack(
-		  (unsigned*)&(sep.separatorValues[sepValueNumber].remValues[i].val),
+		  (unsigned*)&(sep.separatorValues[sepValueNumber].remValues[i].val[0]),
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
 
 	// if (i == 0 && sep.fNodes[0]->timeIndex == 5 && sep.fNodes[0]->label == "state") {
@@ -979,11 +982,11 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
     // be different for differnet cliques). Answer: We can do this
     // check once at beginning of iteration of assigned nodes, and
     // have two versions of this code.
-    if (origin.packer.packedLen() == 1) {
+    if (origin.packer.packedLen() <= IMC_NWWOH) {
       // pack the clique values directly into place
       origin.packer.pack(
 			 (unsigned**)discreteValuePtrs.ptr,
-			 (unsigned*)&(cliqueValues[numCliqueValuesUsed].val));
+			 (unsigned*)&(cliqueValues[numCliqueValuesUsed].val[0]));
     } else {
       // Deal with the hash table to re-use clique values.
       // First, grab pointer to storge where next clique value would
@@ -1098,8 +1101,6 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
       infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
     }
-
-
     ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
   }
 }
@@ -1131,8 +1132,8 @@ ceCollectToSeparator(JT_InferencePartition& part,
     //}
 
     // TODO: optimiae away this conditional check. (and/or use const local variable to indicate it wont change)
-    if (origin.packer.packedLen() == 1) {
-      origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val),
+    if (origin.packer.packedLen() <= IMC_NWWOH) {
+      origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val[0]),
 			   (unsigned**)discreteValuePtrs.ptr);
     } else {
       origin.packer.unpack((unsigned*)cliqueValues[cvn].ptr,
@@ -1161,15 +1162,15 @@ ceCollectToSeparator(JT_InferencePartition& part,
 	const unsigned old_size = sep.separatorValues.size();
 	// TODO: optimize this size re-allocation.
 	sep.separatorValues.resizeAndCopy(sep.separatorValues.size()*2);
-	if (sep.origin.accPacker.packedLen() == 1) {
+	if (sep.origin.accPacker.packedLen() <= ISC_NWWOH_AI) {
 	  // Then the above resize just invalided all our pointers to keys,
 	  // but it did not invalidate the array indices. Go through
 	  // and correct the keys within the hash table.
-	  // TODO: think of a better way to do this that looses no efficiency.
+	  // TODO: think of a better way to do this that also looses no efficiency.
 	  for (unsigned i=0;i<sep.iAccHashMap.tableSize();i++) {
 	    if (!sep.iAccHashMap.tableEmpty(i)) {
 	      sep.iAccHashMap.tableKey(i)
-		= &(sep.separatorValues[sep.iAccHashMap.tableItem(i)].val);
+		= &(sep.separatorValues[sep.iAccHashMap.tableItem(i)].val[0]);
 	    }
 	  }
 	}
@@ -1187,8 +1188,8 @@ ceCollectToSeparator(JT_InferencePartition& part,
       
       unsigned *accKey;
       // TODO: optimize this check out of loop.
-      if (sep.origin.accPacker.packedLen() == 1) {
-	accKey = &(sep.separatorValues[sep.numSeparatorValuesUsed].val);
+      if (sep.origin.accPacker.packedLen() <= ISC_NWWOH_AI) {
+	accKey = &(sep.separatorValues[sep.numSeparatorValuesUsed].val[0]);
 	sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
 				  accKey);
       } else {
@@ -1276,7 +1277,7 @@ ceCollectToSeparator(JT_InferencePartition& part,
     if (sv.numRemValuesUsed >= sv.remValues.size()) {
       // TODO: optimize this.
       sv.remValues.resizeAndCopy(1+sv.remValues.size()*2);
-      if (sep.origin.remPacker.packedLen() == 1) {
+      if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
 	// Then the above resize just invalided all our pointers to keys,
 	// but it did not invalidate the array indices. Go through
 	// and correct the keys within the hash table.
@@ -1284,7 +1285,7 @@ ceCollectToSeparator(JT_InferencePartition& part,
 	for (unsigned i=0;i<sv.iRemHashMap.tableSize();i++) {
 	  if (!sv.iRemHashMap.tableEmpty(i)) {
 	    sv.iRemHashMap.tableKey(i)
-	      = &(sv.remValues[sv.iRemHashMap.tableItem(i)].val);
+	      = &(sv.remValues[sv.iRemHashMap.tableItem(i)].val[0]);
 	  }
 	}
       }
@@ -1293,9 +1294,9 @@ ceCollectToSeparator(JT_InferencePartition& part,
     unsigned *remKey;
     // pack relevant variable values
     // TODO: optimize away this check.
-    if (sep.origin.remPacker.packedLen() == 1) {
+    if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
       // grab pointer to next location to be used in this case.
-      remKey = &(sv.remValues[sv.numRemValuesUsed].val);
+      remKey = &(sv.remValues[sv.numRemValuesUsed].val[0]);
       // pack the remainder pointers
       sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
 				remKey);
@@ -1494,15 +1495,15 @@ SeparatorClique::prepareForUnrolling()
     // we only use these structures if there is an intersection.
     new (&accPacker) PackCliqueValue(hAccumulatedIntersection);
     assert( accPacker.packedLen() > 0);
-    if (accPacker.packedLen() > 1) {
+    if (accPacker.packedLen() > ISC_NWWOH_AI) {
       // only setup hash table if the packed accumulated insersection
       // set is larger than one machine word (unsigned).
-      new (&accValueHolder) CliqueValueHolder(hAccumulatedIntersection.size(),
+      new (&accValueHolder) CliqueValueHolder(accPacker.packedLen(),
 					      // TODO: optimize this 1000 value.
 					      2,
 					      1.25);
       // TODO: optimize starting size.
-      new (&accSepValHashSet) vhash_set< unsigned > (hAccumulatedIntersection.size(),2);
+      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),2);
     }
   }
 
@@ -1518,15 +1519,15 @@ SeparatorClique::prepareForUnrolling()
   if (hRemainder.size() > 0) {
     new (&remPacker) PackCliqueValue(hRemainder);
     assert (remPacker.packedLen() > 0);
-    if (remPacker.packedLen() > 1) { 
+    if (remPacker.packedLen() > ISC_NWWOH_RM) { 
       // Only setup hash table if the packed remainder set is larger
       // than one machine word (unsigned).
-      new (&remValueHolder) CliqueValueHolder(hRemainder.size(),
+      new (&remValueHolder) CliqueValueHolder(remPacker.packedLen(),
 					      // TODO: optimize this starting sizse
 					      2,
 					      1.25);
       // TODO: optimize starting size
-      new (&remSepValHashSet) vhash_set< unsigned > (hRemainder.size(),2);
+      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),2);
     }
   }
 
@@ -1800,24 +1801,37 @@ CliqueValueHolder::CliqueValueHolder(unsigned _cliqueValueSize,
   : cliqueValueSize(_cliqueValueSize),growthFactor(_growthFactor),
     allocationUnitChunkSize(_allocationUnitChunkSize)
 {
-  values.resize(1);
-
-  unsigned newSize = cliqueValueSize*allocationUnitChunkSize;
-  values[values.size()-1].resize(newSize);
-
-  curAllocationPosition = values[values.size()-1].ptr;
-  curAllocationEnd = values[values.size()-1].ptr + newSize;
+  assert ( allocationUnitChunkSize > 0 );
+  prepare();
 }
 
 
+// make sure there is rom for one element.
 void
-CliqueValueHolder::clear()
+CliqueValueHolder::prepare()
+{
+  makeEmpty();
+  values.resize(1);
+  unsigned newSize = cliqueValueSize*allocationUnitChunkSize;
+  values[values.size()-1].resize(newSize);
+  capacity = newSize;
+  curAllocationPosition = values[values.size()-1].ptr;
+  curAllocationEnd = values[values.size()-1].ptr + newSize;
+
+}
+
+
+// free up all memory, postcondition: make an invalid object
+void
+CliqueValueHolder::makeEmpty()
 {
   for (unsigned i=0;i<values.size();i++) {
     values[i].clear();
   }
   values.clear();
 }
+
+
 
 void
 CliqueValueHolder::allocateCurCliqueValue()
@@ -1839,6 +1853,7 @@ CliqueValueHolder::allocateCurCliqueValue()
 
   values[values.size()-1].resize(newSize);
 
+  capacity += newSize;
   curAllocationPosition = values[values.size()-1].ptr;
   curAllocationEnd = values[values.size()-1].ptr + newSize;
 
