@@ -1119,7 +1119,7 @@ void GMTK_GM::setSize(int repeat_segs)
 void GMTK_GM::setExampleStream(const char *const obs_file_name,
 			       const char *const trrng_str)
 {
-  globalObservationMatrix.openFile(obs_file_name);
+  // globalObservationMatrix.openFile(obs_file_name);
   trrng = new BP_Range(trrng_str,0,globalObservationMatrix.numSegments());
 
 #if 0
