@@ -841,3 +841,9 @@ Thu Dec 26 02:21:28 2002
     - write an anytime exhaustive search triangulatio
     - get MCS working with current graphs, so we can
       verify that graphs are indeed triangulated.
+
+
+Thu Dec 26 03:18:13 2002
+  - include something indocumentation about
+    cpp0: ....
+    errors, and that these are generated from cpp not gmtk.
