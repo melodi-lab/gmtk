@@ -1337,13 +1337,14 @@ Sat Jan 17 14:38:59 2004
           - variational inference
      - usability features
           - ARPA LMs and FLMs
-          - non-linear BMMs (Ozgur??)
+          - non-linear BMMs 
           - smoothing for CPTs in EM
-          - parameter adaptation directly within GMTK
+          - generalized parameter adaptation directly within GMTK
           - ??? (something I'm forgetting).
           - generalized probability weights/exponents
           - decision tree formulas (Chris)
           - integrate in new obs code.
+
      - theory/algorithms
           - switching parents in inference in forward/backward
           - characterize nets which require particular M and S
@@ -1557,8 +1558,12 @@ Sun Feb 22 14:36:17 2004
         observation file. Define a new CPT that
         obtains its probabilities in this way.
       - NN probabilities in some sort of conditional distribution.
+     In other words:
+          - time-inhomogeneous CPTs (for vars without parents)
+          - time-inhomogeneous CPTs for one parent, and observed binary children set to 1.
+            i.e., we have a --> b,  where b is observed == 1 , and the
+            score comes from hidden variable a, as P(b|a) = score_from_file(a).
   - This functionality should subsume that of hybrid decoders.
-
 
 Tue Feb 24 11:01:06 2004
   - add an option to either sort or not sort the separators either
@@ -1641,6 +1646,18 @@ Mon Mar  8 20:48:40 2004
   Allow hidden continuous mixtures, and do inference simply
   by (importance) sampling from that distribution (so it is like discrete).
   This should be easy to get working with new inference code.
+
+Wed Mar 10 21:56:35 2004
+  - change to allow cliques with all observations, and all observed graphs. T?his
+    should be fairly easy, just do less "error" checking.
+  - change to allow disconnected frames (i.e., just don't send a message between partitions).
+  - add a feature where we topologically sort nodes in a clique based on
+    expected cost. I.e., if a deterministic node uses a complicated DT, then
+    it should come as early as possible in a clique to avoid redundantly calling
+    the expensive DT. Cheap DTs can go later in the clique order (i.e., extend
+    topological sort with continous vars first to be topological based on expected cost.
+    Perhaps use DT description length as an estimate of the DT cost, or perhaps  
+    just number of DT leaf nodes. 
 
 
 
