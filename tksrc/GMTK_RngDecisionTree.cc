@@ -550,6 +550,8 @@ RngDecisionTree::EquationClass::EquationClass()
     delimiter["||"] = TOKEN_LOGICAL_OR;
     delimiter["-"]  = TOKEN_MINUS;
     delimiter["+"]  = TOKEN_PLUS;
+    delimiter["<<"] = TOKEN_SHIFT_LEFT;
+    delimiter[">>"] = TOKEN_SHIFT_RIGHT;
     delimiter[" "]  = TOKEN_SPACE;
     delimiter["\t"] = TOKEN_SPACE;
     delimiter["("]  = TOKEN_LEFT_PAREN;
@@ -574,19 +576,19 @@ RngDecisionTree::EquationClass::EquationClass()
     infixToken[TOKEN_LESS_THAN_EQ]    = COMMAND_LESS_THAN_EQ;
     infixToken[TOKEN_LOGICAL_AND]     = COMMAND_LOGICAL_AND;
     infixToken[TOKEN_LOGICAL_OR]      = COMMAND_LOGICAL_OR; 
-    infixToken[TOKEN_TIMES]           = COMMAND_TIMES;
     infixToken[TOKEN_MINUS]           = COMMAND_MINUS;
     infixToken[TOKEN_PLUS]            = COMMAND_PLUS;
     infixToken[TOKEN_QUESTION_MARK]   = COMMAND_BRANCH_IF_FALSE;
+    infixToken[TOKEN_SHIFT_LEFT]      = COMMAND_SHIFT_LEFT;
+    infixToken[TOKEN_SHIFT_RIGHT]     = COMMAND_SHIFT_RIGHT;
+    infixToken[TOKEN_TIMES]           = COMMAND_TIMES;
 
     functionToken[TOKEN_MAX] = COMMAND_MAX;
     functionToken[TOKEN_MIN] = COMMAND_MIN;
 
-    twoValFunctionToken[TOKEN_BITWISE_XOR] = COMMAND_BITWISE_XOR;
-    twoValFunctionToken[TOKEN_MOD]         = COMMAND_MOD; 
+    twoValFunctionToken[TOKEN_BITWISE_XOR]  = COMMAND_BITWISE_XOR;
+    twoValFunctionToken[TOKEN_MOD]          = COMMAND_MOD; 
 
-    tokenPriority[TOKEN_LEFT_PAREN]      = PAREN_PRCDNC;
-    tokenPriority[TOKEN_RIGHT_PAREN]     = PAREN_PRCDNC;
     tokenPriority[TOKEN_BITWISE_AND]     = BITWISE_AND_PRCDNC;
     tokenPriority[TOKEN_BITWISE_OR]      = BITWISE_OR_PRCDNC;
     tokenPriority[TOKEN_DIVIDE]          = MULT_PRCDNC;
@@ -594,14 +596,18 @@ RngDecisionTree::EquationClass::EquationClass()
     tokenPriority[TOKEN_EQUALS]          = EQUALITY_PRCDNC;
     tokenPriority[TOKEN_GREATER_THAN]    = RELATIONAL_PRCDNC;
     tokenPriority[TOKEN_GREATER_THAN_EQ] = RELATIONAL_PRCDNC; 
+    tokenPriority[TOKEN_LEFT_PAREN]      = PAREN_PRCDNC;
     tokenPriority[TOKEN_LESS_THAN]       = RELATIONAL_PRCDNC;
     tokenPriority[TOKEN_LESS_THAN_EQ]    = RELATIONAL_PRCDNC;
     tokenPriority[TOKEN_LOGICAL_AND]     = LOGICAL_AND_PRCDNC;
     tokenPriority[TOKEN_LOGICAL_OR]      = LOGICAL_OR_PRCDNC;
-    tokenPriority[TOKEN_TIMES]           = MULT_PRCDNC;
-    tokenPriority[TOKEN_QUESTION_MARK]   = CONDITIONAL_PRCDNC;
     tokenPriority[TOKEN_MINUS]           = ADDITIVE_PRCDNC;
     tokenPriority[TOKEN_PLUS]            = ADDITIVE_PRCDNC;
+    tokenPriority[TOKEN_QUESTION_MARK]   = CONDITIONAL_PRCDNC;
+    tokenPriority[TOKEN_RIGHT_PAREN]     = PAREN_PRCDNC;
+    tokenPriority[TOKEN_SHIFT_LEFT]      = SHIFT_PRCDNC;
+    tokenPriority[TOKEN_SHIFT_RIGHT]     = SHIFT_PRCDNC;
+    tokenPriority[TOKEN_TIMES]           = MULT_PRCDNC;
   }
 
 }
@@ -682,6 +688,19 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_BITWISE_XOR: 
         last = stack.stackSize() - 1;
         stack[last-1] = stack[last-1] ^ stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_BRANCH: 
+        operand = GET_OPERAND(commands[crrnt_cmnd]); 
+        crrnt_cmnd += operand;
+        break;
+
+      case COMMAND_BRANCH_IF_FALSE: 
+        if (!stack[stack.stackSize()-1]) {
+          operand = GET_OPERAND(commands[crrnt_cmnd]); 
+          crrnt_cmnd += operand;
+        }
         stack.pop_back();
         break;
  
@@ -783,23 +802,22 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack.pop_back();
         break;
 
+      case COMMAND_SHIFT_LEFT:
+        last = stack.stackSize() - 1;
+        stack[last-1] = stack[last-1] << stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_SHIFT_RIGHT:
+        last = stack.stackSize() - 1;
+        stack[last-1] = stack[last-1] >> stack[last];
+        stack.pop_back();
+        break;
+
       case COMMAND_TIMES: 
         last = stack.stackSize() - 1;
         stack[last-1] = stack[last-1] * stack[last];
         stack.pop_back();
-        break;
-
-      case COMMAND_BRANCH_IF_FALSE: 
-        if (!stack[stack.stackSize()-1]) {
-          operand = GET_OPERAND(commands[crrnt_cmnd]); 
-          crrnt_cmnd += operand;
-        }
-        stack.pop_back();
-        break;
-
-      case COMMAND_BRANCH: 
-        operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        crrnt_cmnd += operand;
         break;
 
       default:
@@ -2121,6 +2139,12 @@ void test_formula()
 
   formula = " Mod(  c1  - p1 , 17 + P0  ) - 4";
   correct &= dt.testFormula( formula, vars, 9 );
+
+  formula = "3<<4";
+  correct &= dt.testFormula( formula, vars, 48 );
+
+  formula = "238>>3";
+  correct &= dt.testFormula( formula, vars, 29 );
 
   if (! correct) {
     error("A formula is not giving the correct answer\n");
