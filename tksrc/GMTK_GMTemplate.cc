@@ -214,7 +214,7 @@ findPartitions(// face quality heuristic
       C2_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C2_u1 == -1)
 	start_index_of_C2_u1 = i;
-    } else 
+    } else
       E_u1.insert(unroll1_rvs[i]);
   }
 
@@ -254,7 +254,8 @@ findPartitions(// face quality heuristic
     infoMsg(Tiny,"---\nFinding BEST LEFT interface\n");
 
     set<RandomVariable*> C2_1_u2; // first chunk in C2_u2
-    if (M == 1) {
+    // if (M == 1) {
+    if (0) {
       // make it empty signaling that we don't bother to check it in this case.
       C2_1_u2.clear();
     } else {
@@ -283,7 +284,8 @@ findPartitions(// face quality heuristic
     infoMsg(Tiny,"---\nFinding BEST RIGHT interface\n");
 
     set<RandomVariable*> C2_l_u2; // last chunk of C2_u2
-    if (M == 1) {
+    // if (M == 1) {
+    if (0) {
       // make it empty signaling that we don't bother to check it in this case.
       C2_l_u2.clear();
     } else {
@@ -1953,6 +1955,15 @@ GMTemplate::interfaceScore(
 	     (*i)->frame());
       
     }
+    if (message(VerbosityLevels(Moderate + 0.2*Increment))) {
+      // also print out left_C_l
+      printf("  Left of C_l:");
+      for (i=left_C_l.begin();i!=left_C_l.end();i++) {
+	printf(" %s(%d)",
+	       (*i)->name().c_str(),
+	       (*i)->frame());
+      }
+    }
     printf("\n");
   }
   score.clear();
@@ -2789,15 +2800,14 @@ findBestInterface(
     //      ammortized over the many runs of inference with the graph.
 
     // Condition ***: if v has neighbors in C3 (via set intersection),
-    // then continue since if v was moved left, we would end up with
-    // an invalid interface (i.e., invalid since there would be a node
-    // left of C_l that connects directly to the right of C_l).
+    // and if (v in C3), then continue since if v was moved left, we would 
+    // end up with a boundary that spans more than M chunks
     set<RandomVariable*> res;
     set_intersection((*v)->neighbors.begin(),
 		     (*v)->neighbors.end(),
 		     C3.begin(),C3.end(),
 		     inserter(res, res.end()));
-    if (res.size() != 0)
+    if ((res.size() != 0) && (C3.find((*v)) != C3.end()))
       continue;
 
     // Then it is ok to remove v from C_l and move v to the left.
@@ -2821,18 +2831,22 @@ findBestInterface(
     }
 
     // and add all neighbors of v that are 
-    // in C2\next_left_C_l to next_C_l
+    // in C3 U C2\next_left_C_l to next_C_l
     set<RandomVariable*> next_C_l;
     set<RandomVariable*> tmp;
     set_intersection((*v)->neighbors.begin(),
 		     (*v)->neighbors.end(),
 		     C2.begin(),C2.end(),
 		     inserter(tmp,tmp.end()));
+    // add neighbors from C3
+    set_intersection((*v)->neighbors.begin(),
+		     (*v)->neighbors.end(),
+		     C3.begin(),C3.end(),
+		     inserter(tmp,tmp.end()));
     res.clear();    
     set_difference(tmp.begin(),tmp.end(),
 		   next_left_C_l.begin(),next_left_C_l.end(),
 		   inserter(res,res.end()));
-
     set_union(res.begin(),res.end(),
 	      C_l.begin(),C_l.end(),
 	      inserter(next_C_l,next_C_l.end()));
@@ -2939,6 +2953,13 @@ findInterfacePartitions(
   set<RandomVariable*> C_l_u1C2;
   for (set<RandomVariable*>::iterator i = C_l_u2C2.begin();
        i!= C_l_u2C2.end(); i++) {
+
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // TODO BUG: this assertion will occur if interface has nodes in C3
+    // need to fix this!! 
+    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
+    assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
 
     C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
     C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
