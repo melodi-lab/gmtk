@@ -494,7 +494,6 @@ findPartitions(iDataStreamFile& is,
     tmp.insert(in_to_out[(*i)]);
   }
   makeComplete(tmp);  
-
 }
 
 
@@ -832,7 +831,7 @@ triangulatePartitions(iDataStreamFile& is,
  *   Given a set of partitions and a triangulation (elimination
  *   ordering) given by the arguments, store that
  *   information in file pointed to by 'os'
- *
+v *
  *   There are two versions of this routine, the first one also writes
  *   out cliques that result from using this elimination order (using
  *   the standard algorithm where a complete set is taken to be a
@@ -961,6 +960,7 @@ storePartitionTriangulation(oDataStreamFile& os,
   }
   os.nl();
 }
+
 void
 GMTemplate::
 storePartitionTriangulation(oDataStreamFile& os,
@@ -1059,6 +1059,7 @@ unrollAndTriangulate(// triangulate heuristics
     unsigned maxSize = 0;
     float maxSizeCliqueWeight;
     float maxWeight = -1.0;
+    float totalWeight = -1.0; // starting flag
     unsigned maxWeightCliqueSize;
     printf("Cliques from graph unrolled %d times\n",numTimes);
     for (unsigned i=0;i<cliques.size();i++) {
@@ -1068,11 +1069,14 @@ unrollAndTriangulate(// triangulate heuristics
 	maxWeight = curWeight;
 	maxWeightCliqueSize = cliques[i].nodes.size();
       }
+      if (totalWeight == -1.0)
+	totalWeight = curWeight;
+      else
+	totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
       if (cliques[i].nodes.size() > maxSize) {
 	maxSize = cliques[i].nodes.size();
 	maxSizeCliqueWeight = curWeight;
       }
-
       printf("%d : %d  %f\n",i,
 	     cliques[i].nodes.size(),curWeight);
       for (set<RandomVariable*>::iterator j=cliques[i].nodes.begin();
@@ -1081,12 +1085,13 @@ unrollAndTriangulate(// triangulate heuristics
 	printf("   %s(%d)\n",rv->name().c_str(),rv->frame());
       }
     }
-    printf("When unrolling %d times, max size clique = %d (with a weight of %f) and max weight of a clique = %f (with a size of %d)\n",
+    printf("When unrolling %d times, max size clique = %d (with a weight of %f) and max weight of a clique = %f (with a size of %d). Total state space = %f\n",
 	   numTimes,
 	   maxSize,
 	   maxSizeCliqueWeight,
 	   maxWeight,
-	   maxWeightCliqueSize);
+	   maxWeightCliqueSize,
+	   totalWeight);
     printf("\n");
   }
 }
@@ -1147,7 +1152,6 @@ basicTriangulate(// input: nodes to triangulate
 		 const bool findCliques
 		 )
 {
-
   const int debug = 0;
   const unsigned num_nodes = nodes.size();
 
@@ -1367,10 +1371,7 @@ basicTriangulate(// input: nodes to triangulate
 
     // continue until all nodes are eliminated.
   } while (orderedNodesSet.size() < num_nodes);
-
 }
-
-
 
 
 
@@ -1851,12 +1852,16 @@ GMTemplate::interfaceScore(
       if (debug > 0)
 	printf("  Interface Score: set has size = %d\n",
 	       C_l.size());
-    } else if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_MAX_C_CLIQUE) {
+    } else if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_MAX_C_CLIQUE ||
+	       fh == IH_MIN_STATE_SPACE || fh == IH_MIN_C_STATE_SPACE) {
       // This is the expensive one, need to form a set of partitions,
       // given the current interface, triangulate that partition set,
       // and then compute the score of the worst clique, and fill the
       // score variable above with this worst scoring clique (i.e., we
       // find the interface that has the best worst-case performance.
+
+      // TODO: some of these values could be cached to speed this
+      // up a bit.
 
       set<RandomVariable*> Pc;
       set<RandomVariable*> Cc;
@@ -1893,24 +1898,36 @@ GMTemplate::interfaceScore(
       // Now got cliques compute worst score using
       // the weight of a clique as the score mechanism.
       float maxWeight = -1.0;
+      float totalWeight = -1.0; // starting flag
       for (unsigned i=0;i<Ccliques.size();i++) {
 	float curWeight = computeWeight(Ccliques[i].nodes);
 	if (curWeight > maxWeight) maxWeight = curWeight;
+	if (totalWeight == -1.0)
+	  totalWeight = curWeight;
+	else
+	  totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
       }
-      if (fh == IH_MIN_MAX_CLIQUE) {
+      if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_STATE_SPACE) {
 	for (unsigned i=0;i<Pcliques.size();i++) {
 	  float curWeight = computeWeight(Pcliques[i].nodes);
 	  if (curWeight > maxWeight) maxWeight = curWeight;
+	  totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
 	}
 	for (unsigned i=0;i<Ecliques.size();i++) {
 	  float curWeight = computeWeight(Ecliques[i].nodes);
 	  if (curWeight > maxWeight) maxWeight = curWeight;
+	  totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
 	}
       }
-      score.push_back(maxWeight);
-
-      if (debug > 0)
-	printf("  Interface Score: set has max clique weight = %f\n",maxWeight);
+      if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_MAX_C_CLIQUE) {
+	score.push_back(maxWeight);
+	if (debug > 0)
+	  printf("  Interface Score: set has max clique weight = %f\n",maxWeight);
+      } else {
+	score.push_back(totalWeight);
+	if (debug > 0)
+	  printf("  Interface Score: set has total weight = %f\n",totalWeight);
+      }
 
       deleteNodes(Pc);
       deleteNodes(Cc);
@@ -2192,6 +2209,12 @@ GMTemplate::createVectorInterfaceHeuristic(const string& fh,
 	break;
       case 'M':
 	fh_v.push_back(IH_MIN_MAX_CLIQUE);
+	break;
+      case 'A':
+	fh_v.push_back(IH_MIN_STATE_SPACE);
+	break;
+      case 'T':
+	fh_v.push_back(IH_MIN_C_STATE_SPACE);
 	break;
       case 'N':
 	fh_v.push_back(IH_MIN_WEIGHT_NO_D);
@@ -2700,7 +2723,9 @@ findInterfacePartitions(
   map < RandomVariable*, RandomVariable* > in_to_out;
   set < RandomVariable* > tmp;
 
+  // create the final output variable Pc
   clone(P,Pc,in_to_out);
+  // next make the left interface that lives in Pc complete
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C1.begin();
        i != C_l_u1C1.end(); i++) {
@@ -2709,13 +2734,16 @@ findInterfacePartitions(
   makeComplete(tmp);
   PCInterface = tmp;
 
+  // create the final output variable Cc
   clone(C,Cc,in_to_out);
+  // next, make the left interface (part of P) that lives in Cc complete 
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C1.begin();
        i != C_l_u1C1.end(); i++) {
     tmp.insert(in_to_out[(*i)]);
   }
   makeComplete(tmp);
+  // next, make the left interface (part of C) that lives in Cc complete
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C2.begin();
        i != C_l_u1C2.end(); i++) {
@@ -2724,7 +2752,9 @@ findInterfacePartitions(
   makeComplete(tmp);
   CEInterface = tmp;
 
+  // create the final output variables Ec
   clone(E,Ec,in_to_out);
+  // next, make the left interface that lives in Ec complete
   tmp.clear();
   for (set<RandomVariable*>::iterator i = C_l_u1C2.begin();
        i != C_l_u1C2.end(); i++) {
