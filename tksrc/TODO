@@ -1,7 +1,8 @@
 
 $Header$
 
-Other things that need to be done.
+Other things that need to be done, or just other ideas that might be
+incorporated into the package at some point.
 
 - Low level file parser should support
    both integer and named pointers to
