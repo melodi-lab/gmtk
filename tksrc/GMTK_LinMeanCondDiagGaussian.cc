@@ -399,7 +399,7 @@ LinMeanCondDiagGaussian::emEndIteration()
     return;
 
   accumulatedProbability.floor();
-  if (accumulatedProbability.zero()) {
+  if (accumulatedProbability < minContAccumulatedProbability()) {
     error("ERROR: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration, check child mean '%s', covar '%s', and dlink matrix '%s'",name().c_str(),mean->name().c_str(),covar->name().c_str(),dLinkMat->name().c_str());
   }
 
@@ -416,12 +416,12 @@ LinMeanCondDiagGaussian::emEndIteration()
   // xzExpAccumulators (expanded accumulators) contains the same
   // information as xzAccumulators but includes the accumulated mean
   // xAccumulators in the right-most position of each vector.
-  sArray<float> xzExpAccumulators;
+  sArray<double> xzExpAccumulators;
 
   xzExpAccumulators.resize( dLinkMat->dLinks->totalNumberLinks() + mean->dim() );
 
   // now copy xz and x over to expanded xz
-  float *xzExpAccumulators_p = xzExpAccumulators.ptr;
+  double *xzExpAccumulators_p = xzExpAccumulators.ptr;
   float *xzAccumulators_p = xzAccumulators.ptr;
   for (int feat=0;feat<mean->dim();feat++) {
     const int nLinks = dLinkMat->numLinks(feat);
@@ -439,7 +439,7 @@ LinMeanCondDiagGaussian::emEndIteration()
   // zzExpAccumulators contains the same information as
   // zzAccumulators, but includes the extra right most column and
   // bottom most row containing the value accumulatedProbability.
-  sArray<float> zzExpAccumulators;  
+  sArray<double> zzExpAccumulators;  
   // resize matrix, going from a size of just upper triangular
   // representation to one where we include the extra z=1 variable at
   // the end and represent a full matrix (needed for computing matrix
@@ -455,16 +455,16 @@ LinMeanCondDiagGaussian::emEndIteration()
   // which wasn't represented during the EM increment stage.
   float *zzAccumulators_p = zzAccumulators.ptr;
   float *zAccumulators_p = zAccumulators.ptr;
-  float *zzExpAccumulators_p = zzExpAccumulators.ptr;
+  double *zzExpAccumulators_p = zzExpAccumulators.ptr;
   for (int feat=0;feat<mean->dim();feat++) {
     const int nLinks = dLinkMat->numLinks(feat);
     
     float *zzp = zzAccumulators_p; // ptr to current zz
-    float *zzep = zzExpAccumulators_p; // ptr to current exp zz
+    double *zzep = zzExpAccumulators_p; // ptr to current exp zz
 
     for (int dlink=0;dlink<=nLinks;dlink++) {
-      float *zze_rp = zzep; // row ptr to expanded zz
-      float *zze_cp = zzep; // col ptr to expanded zz
+      double *zze_rp = zzep; // row ptr to expanded zz
+      double *zze_cp = zzep; // col ptr to expanded zz
       for (int j=0;j<(nLinks-dlink);j++) {
 	*zze_rp = *zze_cp = *zzp++;
 	zze_rp ++;            // increment by one value
@@ -491,9 +491,9 @@ LinMeanCondDiagGaussian::emEndIteration()
   // Now go through and compute the next dlink coefficients (which
   // includes the coefficients AND the means which will be contained
   // in the right most position of the sparse array.)
-  sArray<float> nextDlinkMat;
+  sArray<double> nextDlinkMat;
   nextDlinkMat.resize( dLinkMat->dLinks->totalNumberLinks() + mean->dim() );
-  float *nextDlinkMat_p =  nextDlinkMat.ptr;
+  double *nextDlinkMat_p =  nextDlinkMat.ptr;
   zzExpAccumulators_p = zzExpAccumulators.ptr;
   xzExpAccumulators_p = xzExpAccumulators.ptr;
   for (int feat=0;feat<mean->dim();feat++) {
@@ -509,14 +509,14 @@ LinMeanCondDiagGaussian::emEndIteration()
 
     // First, copy xzAccumulators over to nextDlinkMat since
     // we will need the values of xzAccumulators later.
-    ::memcpy(nextDlinkMat_p,xzExpAccumulators_p,sizeof(float)*(nLinks+1));
+    ::memcpy(nextDlinkMat_p,xzExpAccumulators_p,sizeof(double)*(nLinks+1));
     // Finally, solve for the link values putting the results
     // in nextDlinkMat_p (the current values get destroyed).
     ::lineqsolve(nLinks+1,1,
 		 zzExpAccumulators_p,nextDlinkMat_p);
 
     // now solve for the variances
-    float tmp = 0;
+    double tmp = 0.0;
     for (int i=0;i<(nLinks+1);i++) {
       tmp += ( nextDlinkMat_p[i] * xzExpAccumulators_p[i]);
     }
