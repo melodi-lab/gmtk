@@ -126,11 +126,11 @@ public:
   unsigned cliqueWithMinWeight();
 
 
-  void clearDataMemory() {
+  void clearCliqueSepValueCache() {
     for (unsigned i=0;i<cliques.size();i++)
-      cliques[i].clearDataMemory();
+      cliques[i].clearCliqueValueCache();
     for (unsigned i=0;i<separators.size();i++) 
-      separators[i].clearDataMemory();
+      separators[i].clearSeparatorValueCache();
   }
 
 }; 
@@ -378,9 +378,9 @@ public:
   // When doing separator driven clique instantiation, if this
   // variable is true, we intersect the separators first before we
   // create the clique. If set to false, we take the product of the
-  // cliques irrespective of clique intersection.
-  static bool separatorIntersection;
-
+  // cliques irrespective of clique intersection. 
+  // TODO: remove as this probably doesn't make sense.
+  // static bool separatorIntersection;
 
 
   // When doing scoring (prob(evidence)), do we make compute the 'viterbi'
@@ -614,11 +614,11 @@ public:
 
 
   // used to clear out hash table memory between segments
-  void clearDataMemory() {
-    P1.clearDataMemory();
-    Cu0.clearDataMemory();
-    Co.clearDataMemory();
-    E1.clearDataMemory();
+  void clearCliqueSepValueCache() {
+    P1.clearCliqueSepValueCache();
+    Cu0.clearCliqueSepValueCache();
+    Co.clearCliqueSepValueCache();
+    E1.clearCliqueSepValueCache();
   }
 
   // access to the current set of nodes.

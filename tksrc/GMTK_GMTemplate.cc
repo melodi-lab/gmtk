@@ -1531,8 +1531,10 @@ computeUnrollParamaters(const unsigned numFrames,
   // from modified template:
   //     T = p + e + (M+jS)*c for j = positive integer.
   // check both here:
-  if ( T < p + e + (M+S)*c )
+  if ( T < p + e + (M+S)*c ) {
+    infoMsg(Info,"Unrolling Problem: Unrolling segment with %d=[P=%d,C=%d,E=%d] frames, but with M=%d,S=%d, minimum frame size is %d\n",T,p,c,e,M,S,p+e+(M+S)*c );
     return false;
+  }
   // Ok, it's possible to use this sentence.
   // The above puts constraints:
   //    (T - p - e) = i*c

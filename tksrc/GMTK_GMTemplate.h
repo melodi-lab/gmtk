@@ -43,7 +43,7 @@ class BoundaryTriangulate;
 class Partition;
 class GMTemplate;
 
-class Partition {
+class Partition : public IM {
 
   friend class GMTemplate;
   friend class BoundaryTriangulate;

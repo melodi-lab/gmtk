@@ -44,6 +44,7 @@
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_PackCliqueValue.h"
+#include "GMTK_SpaceManager.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -226,6 +227,17 @@ public:
   static double cliqueBeam;
 
 
+  // When doing inference if any kind, this variable determines
+  // if we should clear the clique and separator value cache
+  // between segments/utterances. It might be beneficial, for
+  // example, to retain the value cache around between segments/utterances
+  // if for example, there are many such values that are common. If
+  // not, on the other hand, setting this to true will cause
+  // an increase in memory use on each segment.
+  static bool perSegmentClearCliqueValueCache;
+
+
+
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
 #if 0
   MaxClique& operator=(const MaxClique& f) {
@@ -315,7 +327,6 @@ public:
 				       upperBound,
 				       useDeterminism);
   }
-
 
 
   // print just the clique nodes
@@ -632,6 +643,15 @@ public:
   vhash_set< unsigned > cliqueValueHashSet;
 
 
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // Manages and memorizes the size and space requests made
+  // by all corresponding InferenceMaxCliques. This way,
+  // the next time an InferenceMaxCliques asks for an initial
+  // amount of memory, we'll be able to give it something
+  // closer to what it previously asked for rather than
+  // something too small.
+  SpaceManager cliqueValueSpaceManager;
+
   // USED ONLY IN JUNCTION TREE INFERENCE An array containing the
   // partial/cumulative probabilities of partial clique values and is
   // used by the non-recursive version of the clique value iterationt
@@ -690,11 +710,13 @@ public:
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // used to clear out hash table memory between segments
-  void clearDataMemory() {
-    if (packer.packedLen() > IMC_NWWOH) {
+  void clearCliqueValueCache(bool force = false) {
+    if ((force || perSegmentClearCliqueValueCache) && packer.packedLen() > IMC_NWWOH) {
       valueHolder.prepare();
       cliqueValueHashSet.clear();    
     }
+    // shrink space asked for by clique values. 
+    cliqueValueSpaceManager.decay();
   }
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -790,6 +812,8 @@ class InferenceMaxClique  : public IM
   sArray< CliqueValue > cliqueValues;
   // Number of currently used clique values
   unsigned numCliqueValuesUsed;
+
+
 
   // Max collect-evidence probability for this clique. Used for beam
   // pruning.
@@ -950,16 +974,26 @@ public:
   void printAllJTInfo(FILE* f);
 
 
+  // Manages and memorizes the size and space requests made by all
+  // corresponding InferenceSeparatorCliques regarding the size of
+  // 'separatorValues' array. I.e., the next time a
+  // InferenceSeparatorClique asks for an initial amount of memory,
+  // we'll be able to give it something closer to what it previously
+  // asked for rather than something too small.
+  SpaceManager separatorValueSpaceManager;
+
   // used to clear out hash table memory between segments
-  void clearDataMemory() {
-    if (accPacker.packedLen() > ISC_NWWOH_AI) {
+  void clearSeparatorValueCache(bool force=false) {
+    if ((force || MaxClique::perSegmentClearCliqueValueCache) && accPacker.packedLen() > ISC_NWWOH_AI) {
       accValueHolder.prepare();
       accSepValHashSet.clear();
     }
-    if (remPacker.packedLen() > ISC_NWWOH_RM) { 
+    if ((force || MaxClique::perSegmentClearCliqueValueCache) && remPacker.packedLen() > ISC_NWWOH_RM) { 
       remValueHolder.prepare();
       remSepValHashSet.clear();
     }
+    // shrink space asked for by clique values. 
+    separatorValueSpaceManager.decay();
   }
 
 

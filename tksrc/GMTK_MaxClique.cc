@@ -90,6 +90,7 @@ MaxClique::continuousObservationPerFeaturePenalty = 0.0;
 bool
 MaxClique::ceSeparatorDrivenInference = true;
 
+bool MaxClique::perSegmentClearCliqueValueCache = true;
 
 /*
  *
@@ -244,8 +245,12 @@ MaxClique::MaxClique(MaxClique& from_clique,
 			   vector <RandomVariable*>& newRvs,
 			   map < RVInfo::rvParent, unsigned >& ppf,
 			   const unsigned int frameDelta)
-{
 
+  :  cliqueValueSpaceManager(1,     // starting size
+			     2.0,   // growth rate
+			     1,     // growth addition
+			     0.90)  // decay rate 
+{
   set<RandomVariable*>::iterator it;
   
 
@@ -1247,15 +1252,16 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 				       map < RVInfo::rvParent, unsigned >& ppf,
 				       const unsigned int frameDelta)
   : origin(from_clique)
+
 {
 
   set<RandomVariable*>::iterator it;
 
   // clone over nodes RVs.
-  fNodes.resize(from_clique.nodes.size());
+  fNodes.resize(origin.nodes.size());
   unsigned i=0;
-  for (it = from_clique.nodes.begin();
-       it != from_clique.nodes.end();
+  for (it = origin.nodes.begin();
+       it != origin.nodes.end();
        it++) {
     RandomVariable* rv = (*it);
     RVInfo::rvParent rvp;
@@ -1273,9 +1279,9 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   }
 
   // and clone over assigned nodes and sorted assigned nodes
-  fSortedAssignedNodes.resize(from_clique.sortedAssignedNodes.size());
-  for (i=0;i<from_clique.sortedAssignedNodes.size();i++) {
-    RandomVariable* rv = from_clique.sortedAssignedNodes[i];
+  fSortedAssignedNodes.resize(origin.sortedAssignedNodes.size());
+  for (i=0;i<origin.sortedAssignedNodes.size();i++) {
+    RandomVariable* rv = origin.sortedAssignedNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -1292,9 +1298,9 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 
   // do unassignedIteratedNodes
   i=0;
-  fUnassignedIteratedNodes.resize(from_clique.unassignedIteratedNodes.size());
-  for (it = from_clique.unassignedIteratedNodes.begin();
-       it != from_clique.unassignedIteratedNodes.end();
+  fUnassignedIteratedNodes.resize(origin.unassignedIteratedNodes.size());
+  for (it = origin.unassignedIteratedNodes.begin();
+       it != origin.unassignedIteratedNodes.end();
        it++) {
     RandomVariable* rv = (*it);
     RVInfo::rvParent rvp;
@@ -1314,9 +1320,9 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   // do unassignedNodes
   if (MaxClique::ceSeparatorDrivenInference == false) {
     i=0;
-    fUnassignedNodes.resize(from_clique.unassignedNodes.size());
-    for (it = from_clique.unassignedNodes.begin();
-	 it != from_clique.unassignedNodes.end();
+    fUnassignedNodes.resize(origin.unassignedNodes.size());
+    for (it = origin.unassignedNodes.begin();
+	 it != origin.unassignedNodes.end();
 	 it++) {
       RandomVariable* rv = (*it);
       RVInfo::rvParent rvp;
@@ -1336,10 +1342,10 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 
   // Clique values only store/hash values of hidden (thus necessarily
   // discrete) variables since they are the only thing that change.
-  discreteValuePtrs.resize(from_clique.hiddenNodes.size());
+  discreteValuePtrs.resize(origin.hiddenNodes.size());
   for (i=0;i<discreteValuePtrs.size();i++) {
     // get the unrolled rv for this hidden node
-    RandomVariable* rv = from_clique.hiddenNodes[i];
+    RandomVariable* rv = origin.hiddenNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -1363,9 +1369,12 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 
   // TODO: optimize this and make depend on if clique is all hidden, has observed, etc.
   // NOTE: This must be set to something greater than 0.
-  cliqueValues.resize(3); // 10000
+  // cliqueValues.resize(3); // 10000
+  cliqueValues.resize(origin.cliqueValueSpaceManager.currentSize());
 
 }
+
+
 
 //
 // TODO: make proper comments to all of the functions below.
@@ -1720,7 +1729,10 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 
     if (numCliqueValuesUsed >= cliqueValues.size()) {
       // TODO: optimize this.
-      cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+      if (numCliqueValuesUsed >= origin.cliqueValueSpaceManager.currentSize())
+	origin.cliqueValueSpaceManager.advanceToNextSize();
+      // cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+      cliqueValues.resizeAndCopy(origin.cliqueValueSpaceManager.currentSize());
     }
 
     // TODO: figure out if it is possible to get around doing this
@@ -2131,7 +2143,10 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
       if (numCliqueValuesUsed >= cliqueValues.size()) {
 	// TODO: optimize this.
-	cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+	// cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+	if (numCliqueValuesUsed >= origin.cliqueValueSpaceManager.currentSize())
+	  origin.cliqueValueSpaceManager.advanceToNextSize();
+	cliqueValues.resizeAndCopy(origin.cliqueValueSpaceManager.currentSize());
       }
 
       // Possibly remove this check if possible. It's probably ok though
@@ -2553,7 +2568,6 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
       if (cliqueValues.ptr[cvn].p < beamThreshold) {
 	// swap with last entry, and decrease numCliqueValuesUsed by
-
 	// one.
 	swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
 	numCliqueValuesUsed--;
@@ -2631,7 +2645,10 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	if (sep.numSeparatorValuesUsed >= sep.separatorValues.size()) {
 	  const unsigned old_size = sep.separatorValues.size();
 	  // TODO: optimize this size re-allocation.
-	  sep.separatorValues.resizeAndCopy(sep.separatorValues.size()*2);
+	  // sep.separatorValues.resizeAndCopy(sep.separatorValues.size()*2);
+	  if (sep.numSeparatorValuesUsed >= sep.origin.separatorValueSpaceManager.currentSize()) 
+	    sep.origin.separatorValueSpaceManager.advanceToNextSize();
+	  sep.separatorValues.resizeAndCopy(sep.origin.separatorValueSpaceManager.currentSize()); 
 	  if (isc_nwwoh_ai_p) {
 	    // Then the above resize just invalided all our pointers to keys,
 	    // but it did not invalidate the array indices. Go through
@@ -2827,6 +2844,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // 
   // TODO: reallocate only if change is > some percentage (say 5%),
   // and export to command line.
+  // TODO: possibly tell origin.cliqueValueSpaceManager about this pruning event.
   // 
   if (numCliqueValuesUsed < origNumCliqueValuesUsed)
     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
@@ -3214,7 +3232,10 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
     if (numCliqueValuesUsed >= cliqueValues.size()) {
       // TODO: optimize this.
-      cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+      // cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+      if (numCliqueValuesUsed >= origin.cliqueValueSpaceManager.currentSize())
+	origin.cliqueValueSpaceManager.advanceToNextSize();
+      cliqueValues.resizeAndCopy(origin.cliqueValueSpaceManager.currentSize());
     }
 
     // TODO: figure out if it is possible to get around doing this
@@ -3389,8 +3410,10 @@ InferenceMaxClique::
 sumProbabilities()
 {
   logpr p;
-  for (unsigned i=0;i<numCliqueValuesUsed;i++) {
-    p += cliqueValues.ptr[i].p;
+  if (numCliqueValuesUsed > 0) {
+    p = cliqueValues.ptr[0].p;
+    for (unsigned i=1;i<numCliqueValuesUsed;i++)
+      p += cliqueValues.ptr[i].p;
   }
   return p;
 }
@@ -4057,6 +4080,10 @@ setCliqueToMaxCliqueValue()
 ////////////////////////////////////////////////////////////////////
 
 SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
+  :  separatorValueSpaceManager(1,     // starting size
+				2.0,   // growth rate
+				1,     // growth addition
+				0.90)  // decay rate 
 {
   nodes.clear();
 
@@ -4069,11 +4096,14 @@ SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
 }
 
 
-
 SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 				 vector <RandomVariable*>& newRvs,
 				 map < RVInfo::rvParent, unsigned >& ppf,
 				 const unsigned int frameDelta)
+  :  separatorValueSpaceManager(3,     // starting size
+				2.0,   // growth rate
+				1,     // growth addition
+				0.90)  // decay rate 
 {
   set<RandomVariable*>::iterator it;
 
@@ -4454,7 +4484,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   } else {
     // start with something a bit larger
     // TODO: optimize this.
-    const unsigned starting_size = 3; // 2000;
+    const unsigned starting_size = origin.separatorValueSpaceManager.currentSize(); // 3,2000;
     separatorValues.resize(starting_size);
     if (origin.hRemainder.size() > 0) {
       for (unsigned i=0;i<starting_size;i++) {
