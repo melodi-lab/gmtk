@@ -40,14 +40,9 @@ private:
   // iterator used between clamp functions.
   CPT::iterator it;
 
-  // Cached value of findConditionalParents(). Can reuse
-  // this value w/o needing to do the integer map lookup
-  // again.
-  unsigned cachedIntFromSwitchingState;
-
 public:
 
-  DiscreteRandomVariable(string _label, vartype vt, int card);
+  DiscreteRandomVariable(string _label, int card);
 
   ////////////////////////////////////////////////
   // Assuming the parents have been allocated, this forces
@@ -55,6 +50,7 @@ public:
   // 2) match the cardinalities of the parents.
   void allocateProbabiltyTables();
 
+  void setCpts(vector<CPT*> &cpts);
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
