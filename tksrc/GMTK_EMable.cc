@@ -83,8 +83,165 @@ logpr EMable::setMinDiscAccumulatedProbability(const logpr floor)
 
 
 
-
 ////////////////////////////////////////////////////////////////////
-//        General create, read, destroy routines 
+//        Support for parallel training/accumulator load/store.
 ////////////////////////////////////////////////////////////////////
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ *
+ * Accumulator loading/storing routines.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
+void
+EMable::emStoreAccumulators(oDataStreamFile& ofile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet()) {
+    // then we are not training, either because
+    // 1) this object obtained no probability during training or
+    // 2) we have turned off training of this object.
+    // In either case, we write out '0' to state that 
+    // there are no values stored for this object.
+    unsigned flag = 0;
+    ofile.write(flag,"writing acc flag");
+    if ( !emEmAllocatedBitIsSet() ) {
+      // then we indeed have no probability values, so lets emit a warning
+      warning("WARNING: zero accumulator values for %s '%s'\n",
+	      typeName().c_str(),
+	      name().c_str());
+    }
+    return;
+  }
+
+  if ( !emEmAllocatedBitIsSet() ) {
+    // then we indeed have no probability values, so lets emit a warning
+    warning("WARNING: zero accumulator values for %s '%s'\n",
+	    typeName().c_str(),
+	    name().c_str());
+    unsigned flag = 0;
+    ofile.write(flag,"writing acc flag");
+  } else {
+    // em has been allocated, which means we must have had
+    /
+    unsigned flag = 1;
+    ofile.write(flag,"writing acc flag");
+    // store the accumulators as normal.
+    ofile.write(accumulatedProbability.val(),"EM store accums");
+    // call virtual function to do actual work for object.
+    emStoreObjectsAccumulators(ofile);
+  }
+}
+
+
+
+void
+Dense1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
+{
+  assert (basicAllocatedBitIsSet()); 
+  unsigned flag;
+  ifile.read(flag,"DPMF load flag");
+  if (!emAmTrainingBitIsSet()) {
+    // then we are not adjusting this object here.
+    if (flag == 0) {
+      // then not only are we not training, but
+      // we also have nothing here to load, so we move on.
+      return;
+    } else {
+      // this means that the accumulator file has data for this object
+      // (which must have occured during the production of the
+      // accumulator files) , but the user must have specified on the
+      // final command line during the accumulate-the-accumulator
+      // stage that this object should not be trained. Therefore,
+      // we emit a warning, read in the accumulators into dummy locations.
+      warning("WARNING: loading into dummy accumulators for fixed %s '%s'\n",
+	      typeName().c_str(),
+	      name().c_str());
+      // EMable::emLoadDummyAccumulators(ifile);
+      // load a dummy accummulator
+      logpr tmp;
+      ifile.read(tmp.valref(),"EM load accums");
+      // call virtual function to do actual work for object.
+      emLoadObjectsDummyAccumulators(ifile);
+      return;
+    }
+  }
+  // so we are training. This next assertion
+  // is needed, since it shouldn't be possible that
+  // we're training, but the EM data structures have not
+  // been allocated.
+  assert (emEmAllocatedBitIsSet());
+  
+  if (flag == 0) {
+    // then we don't have any accumulator values for this object, but
+    // still need to initizlie the accumulators.
+    // EMable::emZeroOutAccumulators();
+    accumulatedProbability.set_to_zero();
+    // call virtual function to do actual work for object.
+    emZeroOutObjectsAccumulators();
+  } else {
+    // load up the real accumulators.
+    // EMable::emLoadAccumulators(ifile);
+    ifile.read(accumulatedProbability.valref(),"EM load accums");
+    // call virtual function to do actual work for object.
+    emLoadObjectsAccumulators(ifile);
+  }
+}
+
+
+void
+Dense1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
+{
+  assert ( basicAllocatedBitIsSet() );
+  unsigned flag;
+  ifile.read(flag,"DPMF load flag");
+  if (!emAmTrainingBitIsSet()) {
+    // then we are not adjusting this object here.
+    if (flag == 0) {
+      // then not only are we not training, but
+      // we also have nothing here to load, so we move on.
+      return;
+    } else {
+      // this means that the accumulator file has data for this object
+      // (which must have occured during the production of the
+      // accumulator files) , but the user must have specified on the
+      // final command line during the accumulate-the-accumulator
+      // stage that this object should not be trained. Therefore, we
+      // emit a warning, read in the accumulators into dummy
+      // locations.
+      warning("WARNING: accumulating into dummy accumulators for fixed %s '%s'\n",
+	      typeName().c_str(),
+	      name().c_str());
+      // EMable::emLoadDummyAccumulators(ifile);
+      // load a dummy accummulator
+      logpr tmp;
+      ifile.read(tmp.valref(),"EM load accums");
+      // call virtual function to do actual work for object.
+      emLoadObjectsDummyAccumulators(ifile);
+      return;
+    }
+  }
+  // so we are training. This next assertion
+  // is needed, since it shouldn't be possible that
+  // we're training, but the EM data structures have not
+  // been allocated.
+  assert (emEmAllocatedBitIsSet());
+
+  if (flag == 0) {
+    // then we don't have any accumulator values for this object, and
+    // there is nothing to do.
+  } else {
+    // accumulate up the real accumulators.
+    // EMable::emAccumulateAccumulators(ifile);
+    logpr tmp;
+    ifile.read(tmp.valref(),"EM accumulate accums");
+    accumulatedProbability += tmp;
+    // call virtual function to do actual work for object.
+    emAccumulateObjectsAccumulators(ifile);
+  }
+}
