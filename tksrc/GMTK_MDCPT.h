@@ -68,7 +68,8 @@ public:
 
   //////////////////////////////////
   // various forms of probability calculation
-  void becomeAwareOfParentValues( vector <int>& parentValues );
+  void becomeAwareOfParentValues( vector <int>& parentValues,
+				  vector <int>& cards);
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents );
 
   logpr probGivenParents(const int val) {
@@ -77,9 +78,10 @@ public:
     return *(mdcpt_ptr + val);
   }
   logpr probGivenParents(vector <int>& parentValues, 
+			 vector <int>& cards, 
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parentValues);
+    becomeAwareOfParentValues(parentValues,cards);
     return probGivenParents(val);
   }
   logpr probGivenParents(vector <RandomVariable *>& parents,
