@@ -270,7 +270,7 @@ Sparse1DPMF::normalize()
 void
 Sparse1DPMF::makeRandom()
 {
-  dense1DPMF->randomize();
+  dense1DPMF->makeRandom();
 }
 
 void
@@ -352,6 +352,7 @@ Sparse1DPMF::emIncrement(logpr prob,const int val)
       // found the value
       accumulatedProbability += prob;
       dense1DPMF->emIncrement(prob,m);
+      return;
     }
   }
 
