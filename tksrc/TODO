@@ -1637,5 +1637,10 @@ Mon Mar  8 12:27:41 2004
        - current frame number of children: fc
        - number of frames in current utterance: nframes
         
+Mon Mar  8 20:48:40 2004
+  Allow hidden continuous mixtures, and do inference simply
+  by (importance) sampling from that distribution (so it is like discrete).
+  This should be easy to get working with new inference code.
+
 
 
