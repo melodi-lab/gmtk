@@ -2010,3 +2010,17 @@ Sun Jul 18 22:52:56 2004
 Tue Jul 27 14:29:03 2004
  -  in (to exist) config.h file, give option to make means, covariances, dlinks as double (64-bit) rather than 32-bit. 
  -  modify error messages about variance floor can also as option increase variance precision to 64-bit. 
+
+
+Tue Jul 27 14:57:19 2004
+  - modified form of separator drivin inference, where a separator can drive other cliques coming into a clique evne
+    if the separator doesn't contribute probability. I.e.,
+
+           A --  B  
+               /
+             C
+
+    with messages from A->B and C->B. If the AB sep has intersection with C, and if AB is quite sparse,
+    rather than generate all of C only to have it squashed when going into B, we can use AB sep to
+    keep C from generating in the first place the stuff that will ultimately just get squashed.
+
