@@ -45,6 +45,8 @@
  *  +-- MDCPT - Multi-d Dense CPT
  *  |
  *  +-- MSCPT - Multi-d Sparse (decision tree based) CPT
+ *  |
+ *  +-- MTCPT - Multi-d deTerminisitc (decision tree based) CPT
  * 
  * 
  */
@@ -64,7 +66,7 @@ protected:
 
   ///////////////////////////////////////////////////////////  
   // The cardinality of each variable, this array is
-  // of size (_numParents+1).
+  // of size (_numParents).
   // cardinality[0] = the cardinality of the first parent
   // cardinality[1] = the cardinality of the 2nd parent
   //    ...
