@@ -116,6 +116,8 @@ findPartitions(// boundary quality heuristic
 	       const bool findBestBoundary,
 	       // number of chunks in which to find interface boundary (M>=1)
 	       const unsigned M,
+	       // chunk skip
+	       const unsigned S,
 	       // the resulting new prologue
 	       set<RandomVariable*>& Pc,
 	       // the resulting new chunk
@@ -172,6 +174,7 @@ findPartitions(// boundary quality heuristic
   int start_index_of_C1_u2 = -1;
   int start_index_of_C2_u2 = -1;
   int start_index_of_C3_u2 = -1;
+  int start_index_of_E_u2 = -1;
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
     if (unroll2_rvs[i]->frame() < firstChunkFrame)
       P_u2.insert(unroll2_rvs[i]);
@@ -187,8 +190,11 @@ findPartitions(// boundary quality heuristic
       C3_u2.insert(unroll2_rvs[i]);
       if (start_index_of_C3_u2 == -1)
 	start_index_of_C3_u2 = i;
-    } else 
+    } else {
       E_u2.insert(unroll2_rvs[i]);
+      if (start_index_of_E_u2 == -1)
+	start_index_of_E_u2 = i;
+    }
   }
 
   assert (M*C1_u2.size() == C2_u2.size());
@@ -211,7 +217,7 @@ findPartitions(// boundary quality heuristic
   // is M + S, so we should unroll (M+S-1) times.
 
   vector <RandomVariable*> unroll1_rvs;
-  fp.unroll(2*M-1,unroll1_rvs);
+  fp.unroll(M+S-1,unroll1_rvs);
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->createNeighborsFromParentsChildren();
   }
@@ -221,22 +227,37 @@ findPartitions(// boundary quality heuristic
   set<RandomVariable*> P_u1;
   set<RandomVariable*> C1_u1;
   set<RandomVariable*> C2_u1;
+  set<RandomVariable*> Cextra_u1;
   set<RandomVariable*> E_u1;
   int start_index_of_C1_u1 = -1;
   int start_index_of_C2_u1 = -1;
+  int start_index_of_E_u1 = -1;
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     if (unroll1_rvs[i]->frame() < firstChunkFrame)
       P_u1.insert(unroll1_rvs[i]);
-    else if (unroll1_rvs[i]->frame() <= lastChunkFrame + (M-1)*chunkNumFrames) {
+    if ((unroll1_rvs[i]->frame() >= firstChunkFrame) &&
+	(unroll1_rvs[i]->frame() <= lastChunkFrame + (M-1)*chunkNumFrames)) {
       C1_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C1_u1 == -1)
 	start_index_of_C1_u1 = i;
-    } else if (unroll1_rvs[i]->frame() <= lastChunkFrame+(2*M-1)*chunkNumFrames) {
+    }
+    if ((unroll1_rvs[i]->frame() > lastChunkFrame + (M-1)*chunkNumFrames) &&
+	(unroll1_rvs[i]->frame() < firstChunkFrame + S*chunkNumFrames)) {
+      // this should only happen when S > M
+      assert ( S > M );
+      Cextra_u1.insert(unroll1_rvs[i]);
+    }
+    if ((unroll1_rvs[i]->frame() >= firstChunkFrame + S*chunkNumFrames) &&
+	(unroll1_rvs[i]->frame() <= lastChunkFrame + (M+S-1)*chunkNumFrames)) {
       C2_u1.insert(unroll1_rvs[i]);
       if (start_index_of_C2_u1 == -1)
 	start_index_of_C2_u1 = i;
-    } else
+    }
+    if (unroll1_rvs[i]->frame() > lastChunkFrame + (M+S-1)*chunkNumFrames) {
       E_u1.insert(unroll1_rvs[i]);
+      if (start_index_of_E_u1 == -1)
+	start_index_of_E_u1 = i;
+    }
   }
 
   assert (C1_u1.size() == C2_u1.size());
@@ -298,6 +319,7 @@ findPartitions(// boundary quality heuristic
 		      th_v,
 		      P_u1,
 		      C1_u1,
+		      Cextra_u1,
 		      C2_u1,
 		      E_u1,
 		      C2_u2_to_C1_u1,
@@ -328,6 +350,7 @@ findPartitions(// boundary quality heuristic
 		      th_v,
 		      E_u1,
 		      C2_u1,
+		      Cextra_u1,
 		      C1_u1,
 		      P_u1,
 		      C2_u2_to_C2_u1,
@@ -346,8 +369,28 @@ findPartitions(// boundary quality heuristic
     // it in C_l_u2, and everything to the 'left' of C_l_u2
     // that still lies within C2_u2 is placed in left_C_l_u2
     infoMsg(Nano,"---\nUsing left interface to define partitions\n");
+
+
+#if 0
+    // create a mapping from C3_u2 to C2_u1 and from C3_u2 to E_u1
+    // (where a correspondence exists)
+    map < RandomVariable*, RandomVariable* > C3_u2_to_C2_u1;
+    for (unsigned i=0;i<C3_u2.size();i++) {    
+      C3_u2_to_C2_u1[unroll2_rvs[i+start_index_of_C3_u2]]
+	= unroll1_rvs[i+start_index_of_C2_u1];
+    }
+    
+    // creat an E map
+    map < pair< string, unsigned> , RandomVariable* > E_u1_namemap;
+    for (set<RandomVariable*>::iterator it = E_u1.begin();it != E_u1.end();it++) {
+      RandomVariable* rv = (*it);
+      E_u1_namemap[pair<string,unsigned>(rv->name(),rv->frame())] = rv;
+    }
+#endif
+
     findInterfacePartitions(P_u1,
 			    C1_u1,
+			    Cextra_u1,
 			    C2_u1,
 			    E_u1,
 			    C2_u2_to_C1_u1,
@@ -362,8 +405,14 @@ findPartitions(// boundary quality heuristic
   } else {
     // find right interface partitions
     infoMsg(Nano,"---\nUsing right interface to define partitions\n");
+
+
+    // create a mapping from C1_u2 to C1_u1 and from C1_u2 to P_u1
+    // (where a correspondence exists)
+
     findInterfacePartitions(E_u1,
 			    C2_u1,
+			    Cextra_u1,
 			    C1_u1,
 			    P_u1,
 			    C2_u2_to_C2_u1,
@@ -410,6 +459,7 @@ void
 GMTemplate::
 findPartitions(iDataStreamFile& is,
 	       unsigned &M,
+	       unsigned &S,
 	       set<RandomVariable*>& Pc,
 	       set<RandomVariable*>& Cc,
 	       set<RandomVariable*>& Ec,
@@ -422,9 +472,14 @@ findPartitions(iDataStreamFile& is,
   if (M == 0)
     error("ERROR: M (number of chunks in which to find interface boundary) must be >= 1\n");
 
+
+  is.read(S,"S value");
+  if (S == 0)
+    error("ERROR: S (chunk skip) must be >= 1\n");
+
   vector <RandomVariable*> unroll1_rvs;
   map < RVInfo::rvParent, unsigned > positions;
-  fp.unroll(2*M-1,unroll1_rvs,positions);
+  fp.unroll(M+S-1,unroll1_rvs,positions);
 
   // need to moralize.
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
@@ -623,6 +678,14 @@ storePartitions(oDataStreamFile& os,const GMInfo& info)
   os.writeComment("--- M, number of chunks in which to find interface boundary\n");
   os.write(info.M);
   os.nl();
+
+  // chunk skip
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- S, chunk skip\n");
+  os.write(info.S);
+  os.nl();
+
 
   // next write it out in human readable form as a comment.
   os.nl();
@@ -939,6 +1002,7 @@ void
 GMTemplate::
 storePartitionTriangulation(oDataStreamFile& os,
 			    const unsigned M,
+			    const unsigned S,
 			    const set<RandomVariable*>& P,
 			    const set<RandomVariable*>& C,
 			    const set<RandomVariable*>& E,
@@ -1959,6 +2023,7 @@ GMTemplate::interfaceScore(
  // The network unrolled 1 time
  const set<RandomVariable*>& P_u1,
  const set<RandomVariable*>& C1_u1,
+ const set<RandomVariable*>& Cextra_u1,
  const set<RandomVariable*>& C2_u1,
  const set<RandomVariable*>& E_u1,
  // Mappings from C2 in the twice unrolled network to C1 and C2
@@ -2033,6 +2098,7 @@ GMTemplate::interfaceScore(
 
       findInterfacePartitions(P_u1,
 			      C1_u1,
+			      Cextra_u1,
 			      C2_u1,
 			      E_u1,
 			      C2_u2_to_C1_u1,
@@ -2311,7 +2377,6 @@ setUpClonedPartitionGraph(const set<RandomVariable*>& P,
   setPartitionParentsChildrenNeighbors(E,Ec,E_in_to_out,P_in_to_out,C_in_to_out);
 
 }
-
 
 
 
@@ -2650,6 +2715,7 @@ GMTemplate::findBestInterface(
  // The network unrolled 1 time (TODO: change to M+S-1)
  const set<RandomVariable*>& P_u1,
  const set<RandomVariable*>& C1_u1,
+ const set<RandomVariable*>& Cextra_u1,
  const set<RandomVariable*>& C2_u1,
  const set<RandomVariable*>& E_u1,
  // Mappings from C2 in the twice unrolled network to C1 and C2
@@ -2696,7 +2762,7 @@ GMTemplate::findBestInterface(
   // how good is this interface.
   interfaceScore(fh_v,C_l,left_C_l,
 		 th_v,
-		 P_u1,C1_u1,C2_u1,E_u1,
+		 P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
 		 C2_u2_to_C1_u1,C2_u2_to_C2_u1,
 		 best_score);
 
@@ -2710,7 +2776,7 @@ GMTemplate::findBestInterface(
     // but if we are running the right interface version, it should
     // print the string "right_C_l" instead. The algorithm however
     // does not know if it is running left or right interface.
-    infoMsg(Med,"Size of left_C_l = %d\n",left_C_l.size());
+    infoMsg(Med,"  Size of left_C_l = %d\n",left_C_l.size());
     {
       printf("  Interface nodes include:");
       set<RandomVariable*>::iterator i;    
@@ -2742,7 +2808,7 @@ GMTemplate::findBestInterface(
 		      best_score,fh_v,
 		      // 
 		      th_v,
-		      P_u1,C1_u1,C2_u1,E_u1,
+		      P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
 		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
     if (message(Tiny)) {
       printf("  Size of best interface = %d\n",best_C_l.size());
@@ -2803,6 +2869,7 @@ findBestInterface(
   const vector<TriangulateHeuristic>& th_v,
   const set<RandomVariable*>& P_u1,
   const set<RandomVariable*>& C1_u1,
+  const set<RandomVariable*>& Cextra_u1,
   const set<RandomVariable*>& C2_u1,
   const set<RandomVariable*>& E_u1,
   // these next 2 should be const, but there is no "op[] const"
@@ -2848,7 +2915,14 @@ findBestInterface(
     //      But note that this is only run once per graph so it will
     //      be beneficial to do this since its cost would probably be
     //      ammortized over the many runs of inference with the graph.
-    
+
+    set<RandomVariable*> res;
+
+#if 0
+    // see also $$$$$ below
+    // TODO: eventually add code something like this so that boundaries
+    // can go almost all the way over to the next chunk boundary. 
+
     // Condition ***: Never move a variable to the left that's already in C3 over,
     // since if we did, we would end up with a boundary that spans
     // more than M chunks. This condition also ensures termination
@@ -2857,6 +2931,20 @@ findBestInterface(
     // more recursion below.
     if (C3.find((*v)) != C3.end())
       continue;
+#endif
+
+    // Condition ***: if v has neighbors in C3 (via set intersection),
+    // then continue since if v was moved left, we would end up with
+    // a left  interface (i.e., invalid since there would be a node
+    // left of C_l that connects directly to the right of C_l).
+    set_intersection((*v)->neighbors.begin(),
+		     (*v)->neighbors.end(),
+		     C3.begin(),C3.end(),
+		     inserter(res, res.end()));
+    if (res.size() != 0)
+      continue;
+
+
 
     // Then it is ok to remove v from C_l and move v to the left.
     // take v from C_l and place it in left_C_l
@@ -2929,7 +3017,7 @@ findBestInterface(
     vector<float> next_score;
     interfaceScore(fh_v,next_C_l,next_left_C_l,
 		   th_v,
-		   P_u1,C1_u1,C2_u1,E_u1,
+		   P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
 		   C2_u2_to_C1_u1,C2_u2_to_C2_u1,
 		   next_score);
     // check size of candiate interface, and keep a copy of it if it
@@ -2947,7 +3035,7 @@ findBestInterface(
 		      best_left_C_l,best_C_l,best_score,
 		      fh_v,
 		      th_v,
-		      P_u1,C1_u1,C2_u1,E_u1,
+		      P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
 		      C2_u2_to_C1_u1,C2_u2_to_C2_u1);
 
   }
@@ -2997,6 +3085,7 @@ findInterfacePartitions(
  // input variables
  const set<RandomVariable*>& P_u1,
  const set<RandomVariable*>& C1_u1,
+ const set<RandomVariable*>& Cextra_u1, // non-empty only when S > M
  const set<RandomVariable*>& C2_u1,
  const set<RandomVariable*>& E_u1,
  // these next 2 should be const, but there is no "op[] const"
@@ -3021,11 +3110,10 @@ findInterfacePartitions(
 
     // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     // TODO BUG: this assertion will occur if interface has nodes in C3
-    // need to fix this!! 
+    // need to fix this!!  See $$$$$ above.
     // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ fails with three_frame_interface.str
     assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
     assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
-
 
     C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
     C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
@@ -3036,10 +3124,6 @@ findInterfacePartitions(
   for (set<RandomVariable*>::iterator i = left_C_l_u2C2.begin();
        i != left_C_l_u2C2.end(); i++) {
 
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    // TODO BUG: this assertion will occur if interface has nodes in C3
-    // need to fix this!! 
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ fails with snake.str 
     assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
     assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
 
@@ -3054,34 +3138,64 @@ findInterfacePartitions(
   // which are to be triangulated separately. 
   // For the *left* interface, the modified sets are defined
   // as follows:
-  //    P = P' + C1'(left_C_l) + C1'(C_l)
-  //    C = C1'\C1'(left_C_l) + C2'(left_C_l) + C2'(C_l)
-  //    E = C2'\C2'(left_C_l) + E'
+  //    P = P_u1 + C1_u1(left_C_l_u2) + C1_u1(C_l_u2)
+  //    C = C1_u1\C1_u1(left_C_l_u2) + C2_u1(left_C_l_u2) + C2_u1(C_l_u2)
+  //    E = C2_u1\C2_u1(left_C_l_u1) + E_u1
   // and the symmetric definitions apply for the right interface.
   // We use the left interface definitions in this code and
   // assume the caller calles with inverted arguments
   // to get the right interface behavior.
 
-  set<RandomVariable*> P = P_u1;
-  set<RandomVariable*> C;
-  set<RandomVariable*> E = E_u1;
+  // Sat May 24 13:12:08 2003: The new code does this:
+  //    P = P_u1 + C1_u1(left_C_l_u2) + C1_u1(C_l_u2)
+  //    E = C2_u1\C2_u1(left_C_l_u1) + E_u1
+  //    C = ((C1_u1 + C2_u1) \ (P + E)) + C2_u1(C_l_u2) + C1_u1(C_l_u2) + Cextra_u1
+
 
   // Finish P
+  set<RandomVariable*> P = P_u1;
   set_union(left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
 	    C_l_u1C1.begin(),C_l_u1C1.end(),
 	    inserter(P,P.end()));
 
-  // Finish C
-  set_union(left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
-	    C_l_u1C2.begin(),C_l_u1C2.end(),
-	    set_difference(C1_u1.begin(),C1_u1.end(),
-			   left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
-			   inserter(C,C.end())));
   // Finish E
+  set<RandomVariable*> E = E_u1;
   set_difference(C2_u1.begin(),C2_u1.end(),
 		 left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
 		 inserter(E,E.end()));
 
+  // Finish C
+//   set<RandomVariable*> Ctmp;
+//   set_union(left_C_l_u1C2.begin(),left_C_l_u1C2.end(),
+//  	    C_l_u1C2.begin(),C_l_u1C2.end(),
+//  	    set_difference(C1_u1.begin(),C1_u1.end(),
+//  			   left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
+//  			   inserter(Ctmp,Ctmp.end())));
+
+
+  // Finish C
+  set<RandomVariable*> C;
+  set<RandomVariable*> tmp1;
+  set<RandomVariable*> tmp2;
+  set<RandomVariable*> tmp3;
+  set_union(C1_u1.begin(),C1_u1.end(),
+	    C2_u1.begin(),C2_u1.end(),
+	    inserter(tmp1,tmp1.end()));
+  set_union(P.begin(),P.end(),
+	    E.begin(),E.end(),
+	    inserter(tmp2,tmp2.end()));
+  set_union(C_l_u1C2.begin(),C_l_u1C2.end(),
+	    C_l_u1C1.begin(),C_l_u1C1.end(),
+	    inserter(tmp3,tmp3.end()));
+  set_union(Cextra_u1.begin(),Cextra_u1.end(),
+	    tmp3.begin(),tmp3.end(),
+	    inserter(C,C.end()));
+  set_difference(tmp1.begin(),tmp1.end(),
+		 tmp2.begin(),tmp2.end(),
+		 inserter(C,C.end()));
+
+  // assert ( Ctmp == C );
+  
   // These (C_l_u1C1 and C_l_u1C2) are the interfaces which are forced
   // to be complete (i.e., part of a maxclique). This might take
   // the form of of the code:

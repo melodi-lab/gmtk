@@ -45,6 +45,9 @@ struct GMInfo {
   // number of chunks in which to find interface boundary
   unsigned M;
 
+  // chunk skip, Number of chunks that should exist between boundaries
+  unsigned S;
+
   // the modified prologue, chunk, and epilogue
   set<RandomVariable*> P;
   set<RandomVariable*> C;
@@ -73,6 +76,7 @@ struct GMInfo {
   // clear up everything.
   void clear() {
     M = ~0x0;
+    S = ~0x0;
     P.clear(); C.clear(); E.clear();
     PCInterface.clear(); CEInterface.clear();
     Pcliques.clear(); Ccliques.clear(); Ecliques.clear();
@@ -146,6 +150,7 @@ public:
 			      /* R */ TH_RANDOM = 9
   };
 
+  // TODO: change name to BoundaryHeuristic
   enum InterfaceHeuristic { /* S */ IH_MIN_SIZE = 1,        
 			    /* F */ IH_MIN_FILLIN = 2,
 			    /* W */ IH_MIN_WEIGHT = 3,
@@ -167,7 +172,7 @@ public:
 
 
   // Given the template, compute the best partitions
-  // using the heuristics that are provided. If 'findBestFace'
+  // using the heuristics that are provided. If 'findBestBoundary'
   // is true, this will run the exponential algorithm (which
   // isn't necessarily bad since for many structures
   // it is still efficient, but for some it might blow
@@ -176,8 +181,9 @@ public:
   void findPartitions(const string& faceHeuristic,
 		      const string& forceLeftRight,
 		      const string& triHeuristic,
-		      const bool findBestFace,
+		      const bool findBestBoundary,
 		      const unsigned M, 
+		      const unsigned S, 
 		      set<RandomVariable*>& P,
 		      set<RandomVariable*>& C,
 		      set<RandomVariable*>& E,
@@ -186,11 +192,12 @@ public:
   void findPartitions(const string& faceHeuristic,
 		      const string& forceLeftRight,
 		      const string& triHeuristic,
-		      const bool findBestFace,
+		      const bool findBestBoundary,
 		      GMInfo& info) {
     findPartitions(faceHeuristic,forceLeftRight,triHeuristic,
-		   findBestFace,
+		   findBestBoundary,
 		   info.M,
+		   info.S,
 		   info.P,info.C,info.E,
 		   info.PCInterface,info.CEInterface);
   }
@@ -201,6 +208,7 @@ public:
   // has been pre-computed and stored in file 'is'
   void findPartitions(iDataStreamFile& is,
 		      unsigned &M,
+		      unsigned &S,
 		      set<RandomVariable*>& P,
 		      set<RandomVariable*>& C,
 		      set<RandomVariable*>& E,
@@ -209,6 +217,7 @@ public:
   void findPartitions(iDataStreamFile& is,GMInfo& info) {
     findPartitions(is,
 		   info.M,
+		   info.S,
 		   info.P,info.C,info.E,
 		   info.PCInterface,info.CEInterface);
   }
@@ -286,6 +295,7 @@ public:
   // information in file pointed to by 'os'
   void storePartitionTriangulation(oDataStreamFile& os,
 				   const unsigned M,
+				   const unsigned S,
 				   const set<RandomVariable*>& P,
 				   const set<RandomVariable*>& C,
 				   const set<RandomVariable*>& E,
@@ -298,6 +308,7 @@ public:
   void storePartitionTriangulation(oDataStreamFile& os,GMInfo& info) {
     storePartitionTriangulation(os,
 				info.M,
+				info.S,
 				info.P,info.C,info.E,
 				info.Pcliques,info.Ccliques,info.Ecliques,
 				info.Pordered,info.Cordered,info.Eordered);
@@ -394,6 +405,7 @@ public:
 	 const vector<TriangulateHeuristic>& th_v,
 	 const set<RandomVariable*>& P_u1,
 	 const set<RandomVariable*>& C1_u1,
+	 const set<RandomVariable*>& Cextra_u1,
 	 const set<RandomVariable*>& C2_u1,
 	 const set<RandomVariable*>& E_u1,
 	 // these next 2 should be const, but there is no "op[] const"
@@ -467,6 +479,7 @@ public:
 	     const vector<TriangulateHeuristic>& th_v,
 	     const set<RandomVariable*>& P_u1,
 	     const set<RandomVariable*>& C1_u1,
+	     const set<RandomVariable*>& Cextra_u1,
 	     const set<RandomVariable*>& C2_u1,
 	     const set<RandomVariable*>& E_u1,
 	     // these next 2 should be const, but there is no "op[] const"
@@ -487,6 +500,7 @@ public:
 	     const vector<TriangulateHeuristic>& th_v,
 	     const set<RandomVariable*>& P_u1,
 	     const set<RandomVariable*>& C1_u1,
+	     const set<RandomVariable*>& Cextra_u1,
 	     const set<RandomVariable*>& C2_u1,
 	     const set<RandomVariable*>& E_u1,
 	     // these next 2 should be const, but there is no "op[] const"
@@ -496,6 +510,7 @@ public:
    // input params
    const set<RandomVariable*>& P_u1,
    const set<RandomVariable*>& C1_u1,
+   const set<RandomVariable*>& Cextra_u1, // non-empty only when S > M
    const set<RandomVariable*>& C2_u1,
    const set<RandomVariable*>& E_u1,
    map < RandomVariable*, RandomVariable* >& C2_u2_to_C1_u1,
