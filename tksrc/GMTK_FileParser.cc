@@ -2011,7 +2011,7 @@ FileParser::ensureValidTemplate(bool longCheck)
     // times. Unrolling this amount is sufficient for any further unrolling though.
     for (unsigned unrollAmount=longCheckStart;unrollAmount<=numVarsInChunk;unrollAmount++) 
       {
-	infoMsg(Max,"Ensuring Valid Template when unrolling %d out of %d times\n",unrollAmount,numVarsInChunk);
+	infoMsg(Max,"Longcheck: Ensuring Valid Template when unrolling %d out of %d times\n",unrollAmount,numVarsInChunk);
 	unroll(unrollAmount,vars);
 	// TODO: fix error messages to give indication as to where loop is.
 	if (!GraphicalModel::topologicalSort(vars,vars2))
@@ -2019,6 +2019,8 @@ FileParser::ensureValidTemplate(bool longCheck)
 	vars.clear(); vars2.clear();
       }
   }
+  infoMsg(Max,"Done ensuring valid template, longCheck = %d\n",longCheck);
+
 }
 
 
