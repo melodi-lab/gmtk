@@ -1096,7 +1096,7 @@ GMParms::writeMeans(oDataStreamFile& os)
     if (means[i]->emUsedBitIsSet())
       used++;
   if (used != means.size())
-    warning("NOTE: saving only %d used means out of a total of %d (hi Karen!! :-)\n",
+    warning("NOTE: saving only %d used means out of a total of %d (hi Karen!! :-)",
 	    used,means.size());
   os.write(used,"num Means"); os.nl();
   unsigned index=0;
@@ -1144,7 +1144,7 @@ GMParms::writeCovars(oDataStreamFile& os)
     if (covars[i]->emUsedBitIsSet())
       used++;
   if (used != covars.size())
-    warning("NOTE: saving only %d used covariances out of a total of %d (hi Peng!! :-)\n",
+    warning("NOTE: saving only %d used covariances out of a total of %d (hi Peng!! :-)",
 	    used,covars.size());
   os.write(used,"num covars"); os.nl();
   unsigned index=0;
@@ -1191,7 +1191,7 @@ GMParms::writeDLinkMats(oDataStreamFile& os)
       used++;
   }
   if (used != dLinkMats.size())
-    warning("NOTE: saving only %d used dlink matrices out of a total of %d (hi Karim!! :-)\n",
+    warning("NOTE: saving only %d used dlink matrices out of a total of %d (hi Karim!! :-)",
 	    used,dLinkMats.size());
   os.write(used,"num dlink mats"); os.nl();
   unsigned index=0;
@@ -1273,7 +1273,7 @@ GMParms::writeWeightMats(oDataStreamFile& os)
       used++;
   }
   if (used != weightMats.size())
-    warning("NOTE: saving only %d used weight  matrices out of a total of %d\n",
+    warning("NOTE: saving only %d used weight  matrices out of a total of %d",
 	    used,weightMats.size());
   os.write(used,"num weight mats"); os.nl();
   unsigned index = 0;
@@ -1453,7 +1453,7 @@ GMParms::writeGaussianComponents(oDataStreamFile& os)
       used++;
   }
   if (used != gaussianComponents.size())
-    warning("NOTE: saving only %d used gaussian components out of a total of %d (hi Geoff!! :-)\n",
+    warning("NOTE: saving only %d used gaussian components out of a total of %d (hi Geoff!! :-)",
 	    used,gaussianComponents.size());
   os.write(used,"num GCs"); os.nl();
   unsigned index = 0;  
