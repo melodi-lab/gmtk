@@ -104,8 +104,17 @@ public:
     void setAllSelected( bool newSelected );
     void setEndpointsSelected( bool newSelected, RVInfo::rvParent );
     void toggleSelectedInRect( const wxRect& rect );
+    void moveFrameSep( int i, int dx );
+    void moveFrameNameTag( int i, int dx, int dy );
+    void moveNodeNameTag( int i, int dx, int dy );
+    void moveNode( int i, int dx, int dy );
+    void moveControlPoint( int i, int j, int k, int dx, int dy );
     void moveSelected( int dx, int dy );
     void snapSelectedToGrid( void );
+
+    void copyFrameLayout( int from, int to );
+    void copyFrameLayout( void );
+    void copyPartitionLayout( void );
 
     // general stats
     int getWidth( void ) { return canvasWidth; }
@@ -230,6 +239,10 @@ private:
     // information about the arc/spline from node a to node b (or NULL)
     std::vector< VizSep* > frameEnds; // positions of dividers between frames
     std::vector< NameTag* > frameNameTags; // frame nametags
+    std::vector< int > firstNodeInFrame; // nodes in each frame;
+    int firstChunkFrame;
+    int firstEpilogueFrame;
+    int numFrames;
 };
 
 
@@ -391,6 +404,9 @@ public:
         MENU_FILE_PRINT,
         MENU_FILE_CLOSE,
         MENU_FILE_EXIT,
+	MENU_EDIT_SNAPTOGRID,
+	MENU_EDIT_COPYFRAMELAYOUT,
+	MENU_EDIT_COPYPARTITIONLAYOUT,
 	MENU_VIEW_CPS,
 	MENU_VIEW_LINES,
 	MENU_VIEW_SPLINES,
@@ -420,7 +436,6 @@ public:
 	MENU_ZOOM_2_pow_pos_4dot000,
 	MENU_ZOOM_END,
 	MENU_CUSTOMIZE_FONT,
-	MENU_CUSTOMIZE_SNAP,
 	MENU_CUSTOMIZE_PENS_BEGIN,
 	MENU_CUSTOMIZE_SWITCHING_PEN,
 	MENU_CUSTOMIZE_SWITCHING_PEN_COLOR,
@@ -512,6 +527,10 @@ public:
      */
     void OnClose(wxCloseEvent &event);
 
+    void OnMenuEditSnaptogrid(wxCommandEvent &event);
+    void OnMenuEditCopyframelayout(wxCommandEvent &event);
+    void OnMenuEditCopypartitionlayout(wxCommandEvent &event);
+
     // Handle events from the View menu to toggle drawing various items
     void OnMenuViewCPs(wxCommandEvent &event);
     void OnMenuViewLines(wxCommandEvent &event);
@@ -530,7 +549,6 @@ public:
 
     // Handle events from the Customize menu to alter how items are drawn
     void OnMenuCustomizeFont(wxCommandEvent &event);
-    void OnMenuCustomizeSnap(wxCommandEvent &event);
     void OnMenuCustomizePen(wxCommandEvent &event);
 
     // Do this when a different notebook page is chosen
@@ -608,7 +626,7 @@ bool GMTKStructVizApp::OnInit()
     // MainVizWindow has no parent...
     GFrame* MainVizWindow = new GFrame( 0, -1,
 					wxT("GMTK Structure File Vizualizer"),
-					wxDefaultPosition, wxSize(640, 480),
+					wxDefaultPosition, wxDefaultSize,
 					wxDEFAULT_FRAME_STYLE );
     // ...because it's the top level window.
     SetTopWindow(MainVizWindow);
@@ -688,6 +706,12 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
     MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
     MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+    // The Edit menu
+    wxMenu* menu_edit = new wxMenu();
+    menu_edit->Append(MENU_EDIT_SNAPTOGRID, wxT("Snap To Grid"), wxT("Toggle whether items snap to the grids when they are moved"), wxITEM_CHECK);
+    menu_edit->Append(MENU_EDIT_COPYFRAMELAYOUT, wxT("Copy Frame Layout..."), wxT("Copy the layout from one frame to another"), wxITEM_NORMAL);
+    menu_edit->Append(MENU_EDIT_COPYPARTITIONLAYOUT, wxT("Copy Partition Layout..."), wxT("Copy the layout from one partition to another"), wxITEM_NORMAL);
+    MainVizWindow_menubar->Append(menu_edit, wxT("Edit"));
     // The View menu
     wxMenu* menu_view = new wxMenu();
     menu_view->Append(MENU_VIEW_CPS, wxT("Draw Control Points"), wxT("Toggle display of arc spline control points"), wxITEM_CHECK);
@@ -719,7 +743,6 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
     wxMenu* menu_customize = new wxMenu();
     menu_customize->Append( MENU_CUSTOMIZE_FONT, wxT("Change Font..."),
 			    wxEmptyString, wxITEM_NORMAL );
-    menu_customize->Append(MENU_CUSTOMIZE_SNAP, wxT("Snap To Grid"), wxT("Toggle whether items snap to the grids when they are moved"), wxITEM_CHECK);
     wxMenu* menu_customize_switching = new wxMenu();
     menu_customize_switching->Append( MENU_CUSTOMIZE_SWITCHING_PEN_COLOR,
 				      wxT("Change Color..."),
@@ -954,6 +977,9 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_FILE_PRINT, GFrame::OnMenuFilePrint)
     EVT_MENU(MENU_FILE_CLOSE, GFrame::OnMenuFileClose)
     EVT_MENU(MENU_FILE_EXIT, GFrame::OnMenuFileExit)
+    EVT_MENU(MENU_EDIT_SNAPTOGRID, GFrame::OnMenuEditSnaptogrid)
+    EVT_MENU(MENU_EDIT_COPYFRAMELAYOUT, GFrame::OnMenuEditCopyframelayout)
+    EVT_MENU(MENU_EDIT_COPYPARTITIONLAYOUT, GFrame::OnMenuEditCopypartitionlayout)
     EVT_MENU(MENU_VIEW_CPS, GFrame::OnMenuViewCPs)
     EVT_MENU(MENU_VIEW_LINES, GFrame::OnMenuViewLines)
     EVT_MENU(MENU_VIEW_SPLINES, GFrame::OnMenuViewSplines)
@@ -967,7 +993,6 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
     EVT_MENU(MENU_VIEW_TOOLTIPS, GFrame::OnMenuViewToolTips)
     EVT_MENU_RANGE(MENU_ZOOM_BEGIN+1, MENU_ZOOM_END-1, GFrame::OnMenuZoom)
     EVT_MENU(MENU_CUSTOMIZE_FONT, GFrame::OnMenuCustomizeFont)
-    EVT_MENU(MENU_CUSTOMIZE_SNAP, GFrame::OnMenuCustomizeSnap)
     EVT_MENU_RANGE(MENU_CUSTOMIZE_PENS_BEGIN+1, MENU_CUSTOMIZE_PENS_END-1, GFrame::OnMenuCustomizePen)
     EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, GFrame::OnNotebookPageChanged)
     EVT_CLOSE(GFrame::OnClose)
@@ -1326,6 +1351,99 @@ GFrame::OnClose(wxCloseEvent& event)
     if ( destroy ) {
 	Destroy();
     }
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle snapping to the grids.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *      snaps to the grids.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *      snaps to the grids.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuEditSnaptogrid(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->toggleSnapToGrid();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * copy frame layout
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has asked the user
+ *   about which frame to copy to which and porbably moved nodes around.
+ *
+ * \note If a StructPage was in front, then it has asked the user
+ *   about which frame to copy to which and porbably moved nodes around.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuEditCopyframelayout(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->copyFrameLayout();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * copy partition layout
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *      in case it isn't, so everything should be fine as long as the
+ *      program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has asked the user
+ *   about which partition to copy to which and porbably moved nodes around.
+ *
+ * \note If a StructPage was in front, then it has asked the user
+ *   about which partition to copy to which and porbably moved nodes around.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuEditCopypartitionlayout(wxCommandEvent &event)
+{
+    // figure out which page this is for and pass the buck
+    int curPageNum = struct_notebook->GetSelection();
+    StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+    // If it couldn't be casted to a StructPage, then curPage will be NULL.
+    if (curPage)
+	curPage->copyPartitionLayout();
 }
 
 /**
@@ -1743,37 +1861,6 @@ GFrame::OnMenuCustomizeFont(wxCommandEvent &event)
 
 /**
  *******************************************************************
- * Pass the buck to the appropriate StructPage telling it to
- * toggle snapping to the grids.
- *
- * \param event Ignored.
- *
- * \pre A StructPage should be at the front, but precautions are taken
- *      in case it isn't, so everything should be fine as long as the
- *      program is fully initialized.
- *
- * \post If a StructPage was in front, then it has toggled whether it
- *      snaps to the grids.
- *
- * \note If a StructPage was in front, then it has toggled whether it
- *      snaps to the grids.
- *
- * \return void
- *******************************************************************/
-void
-GFrame::OnMenuCustomizeSnap(wxCommandEvent &event)
-{
-    // figure out which page this is for and pass the buck
-    int curPageNum = struct_notebook->GetSelection();
-    StructPage *curPage = dynamic_cast<StructPage*>
-	(struct_notebook->GetPage(curPageNum));
-    // If it couldn't be casted to a StructPage, then curPage will be NULL.
-    if (curPage)
-	curPage->toggleSnapToGrid();
-}
-
-/**
- *******************************************************************
  * Modify the StructPage's pen and tell it to repaint.
  *
  * \param event The event caused by selecting one of the Customize menu
@@ -1905,11 +1992,26 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 						  wxT("Change Pen Style"),
 						  6, choices, this );
 	    if (newStyleNum >= 0) {
-		if ( 2 <= newStyleNum && newStyleNum <= 5 &&
-		     thePen->GetWidth() != 1 ) {
-		    thePen->SetWidth(1);
-		    wxLogMessage( "Dots and dashes require a pen width of 1.\n"
-				  "The width has been altered accordingly." );
+		if ( 2 <= newStyleNum && newStyleNum <= 5 ) {
+		    if ( wxNO == wxMessageBox("Lines with dots and/or "
+					      "dashes are known to cause "
+					      "problems (crashing) in "
+					      "some situations (including "
+					      "printing).\nIf you choose "
+					      "to use dots and dashes, "
+					      "please remember to save "
+					      "frequently.\nAre you sure "
+					      "you want to change to "
+					      "this style?", "Confirm",
+					      wxYES_NO, this) ) {
+			break;
+		    }
+		    if ( thePen->GetWidth() != 1 ) {
+			thePen->SetWidth(1);
+			wxLogMessage( "Dots and dashes require a pen "
+				      "width of 1.\nThe width has been "
+				      "altered accordingly." );
+		    }
 		}
 		switch (newStyleNum) {
 		case 0:
@@ -1993,6 +2095,10 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 	MainVizWindow_menubar->Enable(MENU_FILE_PRINT, true);
 	MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, true);
 	// and this menu
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
+	MainVizWindow_menubar->Check( MENU_EDIT_SNAPTOGRID,
+				      curPage->getSnapToGrid() );
+	// and this menu
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), true);
 	// restore the checked status of each item
 	MainVizWindow_menubar->Check( MENU_VIEW_CPS,
@@ -2030,8 +2136,6 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 				      true );
 	// and the Customize menu should be shown for documents as well
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
-	MainVizWindow_menubar->Check( MENU_CUSTOMIZE_SNAP,
-				      curPage->getSnapToGrid() );
     }
     else {
 	// otherwise we set the status bar to some default values
@@ -2042,6 +2146,7 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
@@ -2301,6 +2406,11 @@ StructPage::~StructPage( void )
 	delete frameEnds[i];
 	frameEnds[i] = NULL;
     }
+    // delete all the frameNameTags
+    for (int i = frameNameTags.size() - 1; i >= 0; i--) {
+	delete frameNameTags[i];
+	frameNameTags[i] = NULL;
+    }
     // delete all the arcs
     for (int i = numNodes - 1; i >= 0; i--) {
 	for (int j = numNodes - 1; j >= 0; j--) {
@@ -2391,6 +2501,9 @@ StructPage::initNodes( void )
 
     int numVars = fp->numVarsInPrologue + fp->numVarsInChunk +
 	fp->numVarsInEpilogue;
+    firstChunkFrame = fp->_firstChunkframe;
+    firstEpilogueFrame = fp->_lastChunkframe + 1;
+    numFrames = fp->_maxFrame + 1;
     int numRows = (int)ceil(sqrt(2.0*numVars));
     int yMax = 0;
     wxString key, value;
@@ -2439,9 +2552,9 @@ StructPage::initNodes( void )
     key.sprintf("numFrames");
     value = config[key];
     if (value != wxEmptyString) {
-	long numFrames;
-	if (value.ToLong(&numFrames)) {
-	    if (numFrames != (long)fp->_maxFrame + 1) {
+	long gvpNumFrames;
+	if (value.ToLong(&gvpNumFrames)) {
+	    if (gvpNumFrames != (long)numFrames) {
 		wxLogMessage("gvp and str disagree on number of frames");
 		gvpAborted = true;
 	    }
@@ -2452,8 +2565,10 @@ StructPage::initNodes( void )
     }
 
     // for each node
+    firstNodeInFrame.push_back(nodes.size()); // should be 0
+    assert(firstNodeInFrame.size() == curFrame+1);
     for (int i = 0, row = 0; i < numVars; i++, row++) {
-	/* If this is a new frame or there are to many nodes in this
+	/* If this is a new frame or there are too many nodes in this
 	 * column, then move over to the next column. */
 	if (row >= numRows || fp->rvInfoVector[i].frame != curFrame) {
 	    if (curPos.y > yMax)
@@ -2496,6 +2611,8 @@ StructPage::initNodes( void )
 	    curPos.x += 80*ACTUAL_SCALE;
 	    curFrame++;
 	    assert(fp->rvInfoVector[i].frame == curFrame);
+	    firstNodeInFrame.push_back(nodes.size());
+	    assert(firstNodeInFrame.size() == curFrame+1);
 	}
 	// move down to the next row
 	curPos.y += 80*ACTUAL_SCALE;
@@ -2585,6 +2702,8 @@ StructPage::initNodes( void )
 	    }
 	}
     }
+    firstNodeInFrame.push_back(nodes.size());
+    assert(firstNodeInFrame.size() == (unsigned)numFrames+1);
     // get an idea of how big the canvas should be
     if (curPos.y > yMax)
 	yMax = curPos.y;
@@ -2993,6 +3112,18 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
     } else if (event.LeftUp()) {
 	if (boxSelecting) {
 	    // LeftUp + box selecting = done box selecting
+	    if (pt.x < selectBox.x) {
+		// swap pt.x and selectBox.x so we have a real rectangle
+		int temp = pt.x;
+		pt.x = selectBox.x;
+		selectBox.x = temp;
+	    }
+	    if (pt.y < selectBox.y) {
+		// swap pt.y and selectBox.y so we have a real rectangle
+		int temp = pt.y;
+		pt.y = selectBox.y;
+		selectBox.y = temp;
+	    }
 	    selectBox.width = pt.x - selectBox.x;
 	    selectBox.height = pt.y - selectBox.y;
 	    if (!shifted) {
@@ -3288,6 +3419,145 @@ StructPage::inBounds( wxCoord x, wxCoord y )
 
 /**
  *******************************************************************
+ * Move frame separator \p i \p dx units to the right, except in cases
+ * where the move should not be allowed.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Frame separator \p i may be moved.
+ *
+ * \note Frame separator \p i may be moved.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::moveFrameSep( int i, int dx )
+{
+    if ( inBounds(frameEnds[i]->x + dx, 1) &&
+	 !crossesNode(frameEnds[i]->x, frameEnds[i]->x + dx) ) {
+	frameEnds[i]->x += dx;
+    }
+}
+
+/**
+ *******************************************************************
+ * Move frame nametag \p i \p dx units to the right and \p dy units
+ * down, except in cases where the move should not be allowed.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Frame nametag \p i may be moved.
+ *
+ * \note Frame nametag \p i may be moved.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::moveFrameNameTag( int i, int dx, int dy )
+{
+    if ( inBounds( frameNameTags[i]->pos.x + dx,
+		   frameNameTags[i]->pos.y + dy ) ) {
+	if ( !crossesFrameEnd( frameNameTags[i]->pos.x + NODE_RADIUS,
+			       frameNameTags[i]->pos.x + NODE_RADIUS+dx ) )
+	    frameNameTags[i]->pos.x += dx;
+	frameNameTags[i]->pos.y += dy;
+    }
+}
+
+/**
+ *******************************************************************
+ * Move node nametag \p i \p dx units to the right and \p dy units
+ * down, except in cases where the move should not be allowed.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Node nametag \p i may be moved.
+ *
+ * \note Node nametag \p i may be moved.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::moveNodeNameTag( int i, int dx, int dy )
+{
+    if ( inBounds( nodeNameTags[i]->pos.x + dx,
+		   nodeNameTags[i]->pos.y + dy ) ) {
+	if ( !crossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
+			       nodeNameTags[i]->pos.x + NODE_RADIUS+dx ) )
+	    nodeNameTags[i]->pos.x += dx;
+	nodeNameTags[i]->pos.y += dy;
+    }
+}
+
+/**
+ *******************************************************************
+ * Move node \p i \p dx units to the right and \p dy units
+ * down, except in cases where the move should not be allowed. This
+ * also moves control points that are attached to the node.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Node \p i and attached control points may be moved.
+ *
+ * \note Node \p i and attached control points may be moved.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::moveNode( int i, int dx, int dy )
+{
+    if ( inBounds(nodes[i]->center.x + dx, nodes[i]->center.y + dy) ) {
+	if (crossesFrameEnd(nodes[i]->center.x, nodes[i]->center.x + dx))
+	    dx = 0;
+	nodes[i]->center.x += dx;
+	nodes[i]->center.y += dy;
+	/*nodes[i]->tipWin->Move( nodes[i]->center.x - NODE_RADIUS,
+				nodes[i]->center.y - NODE_RADIUS );*/
+	int totalNodes = nodes.size();
+	for ( int j = 0; j < totalNodes; j++ ) {
+	    // outgoing arcs
+	    if (arcs[i][j]) {
+		(*arcs[i][j]->cps)[0]->pos.x += dx;
+		(*arcs[i][j]->cps)[0]->pos.y += dy;
+	    }
+	    // incoming arcs
+	    if (arcs[j][i]) {
+		(*arcs[j][i]->cps)[ arcs[j][i]->cps->size()-1 ]->pos.x += dx;
+		(*arcs[j][i]->cps)[ arcs[j][i]->cps->size()-1 ]->pos.y += dy;
+	    }
+	}
+    }
+}
+
+/**
+ *******************************************************************
+ * Move control point \p k on the arc from node \p i to node \p j \p
+ * dx units to the right and \p dy units down, except in cases where
+ * the move should not be allowed.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Control point \p i, \p j, \p k may be moved.
+ *
+ * \note Control point \p i, \p j, \p k may be moved. This does not
+ *   pay attention to which control point it is moving. In particular,
+ *   it doesn't know if the control point should remain attached to a
+ *   node.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::moveControlPoint( int i, int j, int k, int dx, int dy )
+{
+    if ( inBounds( (*arcs[i][j]->cps)[k]->pos.x+dx,
+		   (*arcs[i][j]->cps)[k]->pos.y+dy ) ) {
+	(*arcs[i][j]->cps)[k]->pos.x += dx;
+	(*arcs[i][j]->cps)[k]->pos.y += dy;
+    }
+}
+
+/**
+ *******************************************************************
  * Move all selected items \p dx units to the right and \p dy units
  * down, except in cases where the move should not be allowed.
  *
@@ -3306,60 +3576,33 @@ StructPage::moveSelected( int dx, int dy )
 
     // frame separators
     for (unsigned int i = 0; i < frameEnds.size(); i++) {
-	if ( frameEnds[i]->getSelected() && inBounds(frameEnds[i]->x + dx, 1)
-	     && !crossesNode(frameEnds[i]->x, frameEnds[i]->x + dx) ) {
-	    frameEnds[i]->x += dx;
-	}
+	if ( frameEnds[i]->getSelected() )
+	    moveFrameSep( i, dx );
     }
     // frame name tags
     for (unsigned int i = 0; i < frameNameTags.size(); i++) {
-	if ( frameNameTags[i]->getSelected()
-	     && inBounds( frameNameTags[i]->pos.x + dx,
-			  frameNameTags[i]->pos.y + dy ) ) {
-	    if ( !crossesFrameEnd( frameNameTags[i]->pos.x + NODE_RADIUS,
-				   frameNameTags[i]->pos.x + NODE_RADIUS+dx ) )
-		frameNameTags[i]->pos.x += dx;
-	    frameNameTags[i]->pos.y += dy;
-	}
+	if ( frameNameTags[i]->getSelected() )
+	    moveFrameNameTag(i, dx, dy);
     }
     // node name tags
     for (int i = 0; i < numNodes; i++) {
-	if ( nodeNameTags[i]->getSelected()
-	     && inBounds( nodeNameTags[i]->pos.x + dx,
-			  nodeNameTags[i]->pos.y + dy ) ) {
-	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
-				   nodeNameTags[i]->pos.x + NODE_RADIUS+dx ) )
-		nodeNameTags[i]->pos.x += dx;
-	    nodeNameTags[i]->pos.y += dy;
-	}
+	if ( nodeNameTags[i]->getSelected() )
+	    moveNodeNameTag(i, dx, dy);
     }
     // nodes
     for (int i = 0; i < numNodes; i++) {
-	if ( nodes[i]->getSelected()
-	     && inBounds(nodes[i]->center.x + dx, nodes[i]->center.y + dy) ) {
-	    if (!crossesFrameEnd(nodes[i]->center.x, nodes[i]->center.x + dx))
-		nodes[i]->center.x += dx;
-	    nodes[i]->center.y += dy;
-	    nodes[i]->tipWin->Move( nodes[i]->center.x - NODE_RADIUS,
-				   nodes[i]->center.y - NODE_RADIUS );
-	}
+	if ( nodes[i]->getSelected() )
+	    moveNode(i, dx, dy);
     }
     // then arcs
     for (int i = 0; i < numNodes; i++) {
 	for (int j = 0; j < numNodes; j++) {
 	    if (arcs[i][j]) {
-		int end = arcs[i][j]->cps->size();
-		assert(end > 1);
-		for ( int k = 0; k < end; k++ ) {
-		    if ( (*arcs[i][j]->cps)[k]->getSelected()
-			 && inBounds( (*arcs[i][j]->cps)[k]->pos.x+dx,
-				      (*arcs[i][j]->cps)[k]->pos.y+dy ) ) {
-			if ((k && !(k == end-1)) ||
-			    !crossesFrameEnd((*arcs[i][j]->cps)[k]->pos.x,
-					     (*arcs[i][j]->cps)[k]->pos.x+dx))
-			    (*arcs[i][j]->cps)[k]->pos.x += dx;
-			(*arcs[i][j]->cps)[k]->pos.y += dy;
-		    }
+		int end = arcs[i][j]->cps->size() - 1;
+		assert(end >= 1);
+		for ( int k = 1; k < end; k++ ) {
+		    if ( (*arcs[i][j]->cps)[k]->getSelected() )
+			moveControlPoint(i, j, k, dx, dy);
 		}
 	    }
 	}
@@ -3393,10 +3636,8 @@ StructPage::snapSelectedToGrid( void )
 	dx = -(frameEnds[i]->x % GRID_SIZE);
 	if (dx <= -GRID_SIZE/2)
 	    dx += GRID_SIZE;
-	if ( frameEnds[i]->getSelected() && inBounds(frameEnds[i]->x + dx, 1)
-	     && !crossesNode(frameEnds[i]->x, frameEnds[i]->x + dx) ) {
-	    frameEnds[i]->x += dx;
-	}
+	if ( frameEnds[i]->getSelected() )
+	    moveFrameSep(i, dx);
     }
     // frame name tags
     for (unsigned int i = 0; i < frameNameTags.size(); i++) {
@@ -3406,14 +3647,8 @@ StructPage::snapSelectedToGrid( void )
 	dy = -(frameNameTags[i]->pos.y % GRID_SIZE);
 	if (dy <= -GRID_SIZE/2)
 	    dy += GRID_SIZE;
-	if ( frameNameTags[i]->getSelected()
-	     && inBounds( frameNameTags[i]->pos.x + dx,
-			  frameNameTags[i]->pos.y + dy ) ) {
-	    if ( !crossesFrameEnd( frameNameTags[i]->pos.x + NODE_RADIUS,
-				   frameNameTags[i]->pos.x + NODE_RADIUS+dx ) )
-		frameNameTags[i]->pos.x += dx;
-	    frameNameTags[i]->pos.y += dy;
-	}
+	if ( frameNameTags[i]->getSelected() )
+	    moveFrameNameTag(i, dx, dy);
     }
     // node name tags
     for (int i = 0; i < numNodes; i++) {
@@ -3423,14 +3658,8 @@ StructPage::snapSelectedToGrid( void )
 	dy = -(nodeNameTags[i]->pos.y % GRID_SIZE);
 	if (dy <= -GRID_SIZE/2)
 	    dy += GRID_SIZE;
-	if ( nodeNameTags[i]->getSelected()
-	     && inBounds( nodeNameTags[i]->pos.x + dx,
-			  nodeNameTags[i]->pos.y + dy ) ) {
-	    if ( !crossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
-				   nodeNameTags[i]->pos.x + NODE_RADIUS+dx ) )
-		nodeNameTags[i]->pos.x += dx;
-	    nodeNameTags[i]->pos.y += dy;
-	}
+	if ( nodeNameTags[i]->getSelected() )
+	    moveNodeNameTag(i, dx, dy);
     }
     // nodes
     for (int i = 0; i < numNodes; i++) {
@@ -3440,14 +3669,8 @@ StructPage::snapSelectedToGrid( void )
 	dy = -(nodes[i]->center.y % GRID_SIZE);
 	if (dy <= -GRID_SIZE/2)
 	    dy += GRID_SIZE;
-	if ( nodes[i]->getSelected()
-	     && inBounds(nodes[i]->center.x + dx, nodes[i]->center.y + dy) ) {
-	    if (!crossesFrameEnd(nodes[i]->center.x, nodes[i]->center.x + dx))
-		nodes[i]->center.x += dx;
-	    nodes[i]->center.y += dy;
-	    nodes[i]->tipWin->Move( nodes[i]->center.x - NODE_RADIUS,
-				   nodes[i]->center.y - NODE_RADIUS );
-	}
+	if ( nodes[i]->getSelected() )
+	    moveNode(i, dx, dy);
     }
     // then arcs
     for (int i = 0; i < numNodes; i++) {
@@ -3462,15 +3685,8 @@ StructPage::snapSelectedToGrid( void )
 		    dy = -((*arcs[i][j]->cps)[k]->pos.y % GRID_SIZE);
 		    if (dy <= -GRID_SIZE/2)
 			dy += GRID_SIZE;
-		    if ( (*arcs[i][j]->cps)[k]->getSelected()
-			 && inBounds( (*arcs[i][j]->cps)[k]->pos.x+dx,
-				      (*arcs[i][j]->cps)[k]->pos.y+dy ) ) {
-			if ((k && !(k == end-1)) ||
-			    !crossesFrameEnd((*arcs[i][j]->cps)[k]->pos.x,
-					     (*arcs[i][j]->cps)[k]->pos.x+dx))
-			    (*arcs[i][j]->cps)[k]->pos.x += dx;
-			(*arcs[i][j]->cps)[k]->pos.y += dy;
-		    }
+		    if ( (*arcs[i][j]->cps)[k]->getSelected() )
+			moveControlPoint(i, j, k, dx, dy);
 		}
 	    }
 	}
@@ -3479,6 +3695,199 @@ StructPage::snapSelectedToGrid( void )
     gvpDirty = true;
     // Update the status bar to reflect the dirt.
     onComeForward();
+}
+
+/**
+ *******************************************************************
+ * Copy the layout from frame \p from to frame \p to (at least as far
+ * as they have common variables).
+ *
+ * \param from The frame from which to copy the node layout.
+ * \param to The frame to which to copy the node layout.
+ *
+ * \pre The StructPage should be fully initialized and \p from and \to
+ *   should be valid frame numbers.
+ *
+ * \post The nodes in frame \p to may have been moved to positions
+ *   similar to those in the \p from frame.
+ *
+ * \note The nodes in frame \p to may have been moved to positions
+ *   similar to those in the \p from frame.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::copyFrameLayout( int from, int to )
+{
+    RVInfo::rvParent destNodeId;
+    destNodeId.second = to;
+    int destNode, dx, dxFromLeft, dxFromRight, dy, iLeft, iRight, destLeft,
+	destRight, iOffsetFromLeft, iOffsetFromRight, destOffsetFromLeft,
+	destOffsetFromRight;
+    for (int i = firstNodeInFrame[from]; i < firstNodeInFrame[from+1]; i++) {
+	destNodeId.first = nodes[i]->rvId.first;
+	if (nameVizNodeMap.count(destNodeId)) {
+	    destNode = nameVizNodeMap[destNodeId];
+
+	    // Figure out where to move the node.
+	    iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
+	    iOffsetFromLeft = nodes[i]->center.x - iLeft;
+	    iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
+	    iOffsetFromRight = nodes[i]->center.x - iRight;
+
+	    destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
+	    destOffsetFromLeft = nodes[destNode]->center.x - destLeft;
+	    destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
+	    destOffsetFromRight = nodes[destNode]->center.x - destRight;
+
+	    dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
+	    dxFromRight = iOffsetFromRight - destOffsetFromRight;
+
+	    dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
+	    dy = nodes[i]->center.y - nodes[destNode]->center.y;
+	    moveNode(destNode, dx, dy);
+
+	    // Figure out where to move the node's nametag.
+	    iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
+	    iOffsetFromLeft = nodeNameTags[i]->pos.x - iLeft;
+	    iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
+	    iOffsetFromRight = nodeNameTags[i]->pos.x - iRight;
+
+	    destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
+	    destOffsetFromLeft = nodeNameTags[destNode]->pos.x - destLeft;
+	    destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
+	    destOffsetFromRight = nodeNameTags[destNode]->pos.x - destRight;
+
+	    dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
+	    dxFromRight = iOffsetFromRight - destOffsetFromRight;
+
+	    dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
+	    dy = nodeNameTags[i]->pos.y - nodeNameTags[destNode]->pos.y;
+	    moveNodeNameTag(destNode, dx, dy);
+	}
+    }
+
+    // also move the frame's nametag
+    iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
+    iOffsetFromLeft = frameNameTags[from]->pos.x - iLeft;
+    iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
+    iOffsetFromRight = frameNameTags[from]->pos.x - iRight;
+
+    destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
+    destOffsetFromLeft = frameNameTags[to]->pos.x - destLeft;
+    destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
+    destOffsetFromRight = frameNameTags[to]->pos.x - destRight;
+
+    dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
+    dxFromRight = iOffsetFromRight - destOffsetFromRight;
+
+    dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
+    dy = frameNameTags[from]->pos.y - frameNameTags[to]->pos.y;
+    moveFrameNameTag(to, dx, dy);
+    
+    redraw();
+    blit();
+}
+
+/**
+ *******************************************************************
+ * Ask the user which frame's layout they would like copied to which
+ * and pass the buck.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Nodes may be moved around.
+ *
+ * \note Nodes may be moved around.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::copyFrameLayout( void )
+{
+    int from = 0, to;
+
+    from = wxGetNumberFromUser( wxT("Copy layout from"), wxT("frame"),
+				wxT("Copy Frame Layout"), from, 0,
+				numFrames-1, this, wxDefaultPosition );
+    if (from == -1) // user canceled
+	return;
+
+    to = (from == numFrames-1 ? from - 1 : from + 1);
+    wxString msg;
+    msg.sprintf("Copy layout from frame %d to", from);
+    to = wxGetNumberFromUser( msg, wxT("frame"), wxT("Copy Frame Layout"),
+			      to, 0, numFrames-1, this, wxDefaultPosition );
+    if (to == -1) // user canceled
+	return;
+
+    copyFrameLayout( from, to );
+}
+
+/**
+ *******************************************************************
+ * Ask the user which partition's layout they would like copied to which
+ * and pass the buck.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Nodes may be moved around.
+ *
+ * \note Nodes may be moved around.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::copyPartitionLayout( void )
+{
+    enum {INVALID = -1, PROLOGUE, CHUNK, EPILOGUE};
+    int from, to, fromStart, toStart, numFramesToCopy,
+	firstFrameInFrom, lastFrameInFrom, numFramesInFrom,
+	firstFrameInTo, lastFrameInTo, numFramesInTo;
+    bool backward;
+    wxString choices[] = {wxT("Prologue"), wxT("Chunk"), wxT("Epilogue")};
+
+    from = wxGetSingleChoiceIndex( wxT("Copy layout from which partition?"),
+				   wxT("Copy Partition Layout"), 3,
+				   choices, this );
+    if (from == INVALID)
+	return; // user canceled
+    to = wxGetSingleChoiceIndex( wxT("Copy layout to which partition?"),
+				 wxT("Copy Partition Layout"), 3,
+				 choices, this );
+    if (to == INVALID)
+	return; // user canceled
+
+    if (from == to)
+	return; // There's nothing to actually do.
+    backward = to < from;
+    firstFrameInFrom = ( from==PROLOGUE ? 0
+			 : ( from==CHUNK ? firstChunkFrame
+			     : firstEpilogueFrame ) );
+    lastFrameInFrom = ( from==PROLOGUE ? firstChunkFrame - 1
+			: ( from==CHUNK ? firstEpilogueFrame - 1
+			    : numFrames - 1 ) );
+    numFramesInFrom = lastFrameInFrom - firstFrameInFrom + 1;
+    firstFrameInTo = ( to==PROLOGUE ? 0
+		       : ( to==CHUNK ? firstChunkFrame
+			   : firstEpilogueFrame ) );
+    lastFrameInTo = ( to==PROLOGUE ? firstChunkFrame - 1
+		      : ( to==CHUNK ? firstEpilogueFrame - 1
+			  : numFrames - 1 ) );
+    numFramesInTo = lastFrameInTo - firstFrameInTo + 1;
+    numFramesToCopy = ( numFramesInTo<numFramesInFrom
+			? numFramesInTo
+			: numFramesInFrom );
+    if (backward) {
+	fromStart = firstFrameInFrom;
+	toStart = lastFrameInTo - numFramesToCopy + 1;
+    } else {
+	fromStart = lastFrameInFrom - numFramesToCopy + 1;
+	toStart = firstFrameInTo;
+    }
+    for (int i = 0; i < numFramesToCopy; i++) {
+	copyFrameLayout(fromStart + i, toStart + i);
+    }
 }
 
 /**
