@@ -38,6 +38,7 @@
 #include "vhash_map.h"
 #include "logp.h"
 #include "cArray.h"
+#include "debug.h"
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_PackCliqueValue.h"
@@ -63,7 +64,7 @@ class InferenceMaxClique;
 
 
 
-class CliqueValueHolder {
+class CliqueValueHolder  {
 
   // The packed clique value size (in unsigned).
   const unsigned cliqueValueSize;
@@ -127,7 +128,7 @@ public:
 };
 
 
-class MaxClique
+class MaxClique : public IM
 {
   friend class FileParser;
   friend class GraphicalModel;
@@ -299,6 +300,9 @@ public:
   // 'clones' of this object can be unrolled and inference can occur.
   void prepareForUnrolling();
 
+  // print out everything in this clique to a file.
+  void printAllJTInfo(FILE* f,const unsigned indent);
+
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
   MaxClique& operator=(const MaxClique& f) {
     return *this;
@@ -313,7 +317,7 @@ public:
 //   2) keeps a pointer back to it's original clique for hash tables, etc.
 // Note that this is not a subclass of MaxClique since we do not want
 // these objects to have to have all MaxClique's member variables.
-class InferenceMaxClique 
+class InferenceMaxClique  : public IM
 {
 
   // the original maxclique from which this object has been cloned and
@@ -419,13 +423,15 @@ public:
 			    InferenceSeparatorClique& sep); 
   void ceCollectToSeparator(JT_InferencePartition& part);
 
+  // sum up the probabilities in the current clique and return their value.
+  logpr sumProbabilities();
 
 };
 
 
 
 
-class SeparatorClique
+class SeparatorClique : public IM
 {
   friend class FileParser;
   friend class GraphicalModel;
@@ -491,6 +497,8 @@ public:
   // can be unrolled and inference can occur.
   void prepareForUnrolling();
 
+  // print out everything in this clique to a file.
+  void printAllJTInfo(FILE* f);
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
   SeparatorClique& operator=(const SeparatorClique& f) {
@@ -509,7 +517,7 @@ public:
 //      etc.
 // Note that this is not a subclass of SeparatorClique since we do not want
 // these objects to have to have all SeparatorClique's member variables.
-class InferenceSeparatorClique 
+class InferenceSeparatorClique : public IM
 {
   friend class InferenceMaxClique;
 
