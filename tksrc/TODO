@@ -127,3 +127,5 @@ XXX- todo, make sure that chunk n:m is valid.
 
 - in file parser, add checks to make sure that all ints read in
   are non-negative
+
+- change parser to keep track of multiple #include files via line directives.
