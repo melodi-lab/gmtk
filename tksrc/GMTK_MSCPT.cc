@@ -399,7 +399,7 @@ MSCPT::makeUniform()
 void
 MSCPT::emStartIteration()
 {
-  if (!GM_Parms.amTrainingMSCPTs())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if(emOnGoingBitIsSet())
@@ -421,10 +421,11 @@ MSCPT::emStartIteration()
 void
 MSCPT::emIncrement(logpr prob,RandomVariable* rv)
 {
-  if (!GM_Parms.amTrainingMSCPTs())
+  if (!emAmTrainingBitIsSet())
     return;
 
-  emStartIteration();
+  if (!emOnGoingBitIsSet())
+    emStartIteration();
 
   // this is an MSCPT, so rv must be discrete.a
   assert ( rv -> discrete );
@@ -446,7 +447,7 @@ MSCPT::emIncrement(logpr prob,RandomVariable* rv)
 void
 MSCPT::emEndIteration()
 {
-  if (!GM_Parms.amTrainingMSCPTs())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emOnGoingBitIsSet())
@@ -478,7 +479,7 @@ MSCPT::emEndIteration()
 void
 MSCPT::emSwapCurAndNew()
 {
-  if (!GM_Parms.amTrainingMSCPTs())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emSwappableBitIsSet())
@@ -496,6 +497,9 @@ MSCPT::emSwapCurAndNew()
 void
 MSCPT::emStoreAccumulators(oDataStreamFile& ofile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for MSCPT '%s'\n",
@@ -510,6 +514,9 @@ MSCPT::emStoreAccumulators(oDataStreamFile& ofile)
 void
 MSCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   EMable::emStoreZeroAccumulators(ofile);
 }
@@ -520,6 +527,9 @@ MSCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
 void
 MSCPT::emLoadAccumulators(iDataStreamFile& ifile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert (basicAllocatedBitIsSet());
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
@@ -529,6 +539,9 @@ MSCPT::emLoadAccumulators(iDataStreamFile& ifile)
 void
 MSCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);

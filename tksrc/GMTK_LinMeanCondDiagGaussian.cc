@@ -97,7 +97,8 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   }
   if ((unsigned)covar->dim() != dim()) {
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
-	  _name.c_str(),is.fileName(),
+	  _name.c_str(),
+	  is.fileName(),
 	  _dim,
 	  mean->name().c_str(),
 	  mean->dim(),
@@ -108,7 +109,8 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 
   if ((unsigned)dLinkMat->dim() != _dim)
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' specifies a dlink matrix '%s' that does not match its mean and covariance having dim '%d'\n",
-	  _name.c_str(),is.fileName(),
+	  _name.c_str(),
+	  is.fileName(),
 	  dLinkMat->name().c_str(),
 	  _dim);
 
@@ -305,9 +307,8 @@ void
 LinMeanCondDiagGaussian::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
-
 
   if (emOnGoingBitIsSet())
     return;
@@ -334,12 +335,12 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
 				     const Data32* const base,
 				     const int stride)
 {
-  
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
 
-  emStartIteration();
+  if (!emOnGoingBitIsSet())
+    emStartIteration();
 
   if (prob < minIncrementProbabilty) {
     missedIncrementCount++;
@@ -390,17 +391,17 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
 void
 LinMeanCondDiagGaussian::emEndIteration()
 {
-  assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
+  assert (basicAllocatedBitIsSet());
+  if (!emAmTrainingBitIsSet())
     return;
-
 
   if (!emOnGoingBitIsSet())
     return;
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    error("ERROR: Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, also check child mean '%s', covar '%s', and dlink matrix '%s'",name().c_str(),
+    error("ERROR: Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, also check child mean '%s', covar '%s', and dlink matrix '%s'",
+	  name().c_str(),
 	  accumulatedProbability.val(),
 	  minContAccumulatedProbability().val(),
 	  mean->name().c_str(),
@@ -580,7 +581,7 @@ void
 LinMeanCondDiagGaussian::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingLinMeanCondDiagGaussians())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emSwappableBitIsSet())
@@ -603,6 +604,8 @@ void
 LinMeanCondDiagGaussian::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for lin mean cond Gaussian '%s'\n",
 	    name().c_str());
@@ -633,6 +636,8 @@ void
 LinMeanCondDiagGaussian::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   EMable::emStoreZeroAccumulators(ofile);
   for (int i=0;i<mean->dim();i++) {
     ofile.write((float)0.0,"LMDG store zero accums x.");
@@ -656,6 +661,8 @@ void
 LinMeanCondDiagGaussian::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emLoadAccumulators(ifile);
   for (int i=0;i<xAccumulators.len();i++) {
@@ -681,6 +688,8 @@ void
 LinMeanCondDiagGaussian::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);
   for (int i=0;i<xAccumulators.len();i++) {

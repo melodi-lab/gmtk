@@ -296,7 +296,7 @@ void
 Sparse1DPMF::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingSparse1DPMFs())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if(emOnGoingBitIsSet())
@@ -326,10 +326,11 @@ void
 Sparse1DPMF::emIncrement(logpr prob,const int val)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingSparse1DPMFs())
+  if (!emAmTrainingBitIsSet())
     return;
 
-  emStartIteration();
+  if (!emOnGoingBitIsSet())
+    emStartIteration();
 
   assert ( pmf.len() > 0 );
   assert ( val >= 0 && val < _card );
@@ -379,10 +380,10 @@ void
 Sparse1DPMF::emEndIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingSparse1DPMFs())
+  if (!emAmTrainingBitIsSet())
     return;
 
-  if ( !emOnGoingBitIsSet() )
+  if (!emOnGoingBitIsSet())
     return; 
 
   accumulatedProbability.floor();
@@ -402,7 +403,7 @@ Sparse1DPMF::emSwapCurAndNew()
 {
 
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingSparse1DPMFs())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emSwappableBitIsSet())
@@ -418,6 +419,8 @@ void
 Sparse1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for SPMF '%s'\n",
 	    name().c_str());
@@ -432,6 +435,8 @@ void
 Sparse1DPMF::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   EMable::emStoreZeroAccumulators(ofile);
 }
 
@@ -440,6 +445,8 @@ void
 Sparse1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet());
+  if (!emAmTrainingBitIsSet())
+    return;
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
 }
@@ -449,6 +456,8 @@ void
 Sparse1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);
 }

@@ -105,8 +105,10 @@ DiagCovarVector::read(iDataStreamFile& is)
     if (covariances[i] < (float)GaussianComponent::varianceFloor()) {
       if (!floorVariancesWhenReadIn) {
 	error("Error: reading diagonal covariance matrix '%s' (from file '%s'), but covariance[%d] = (%e) < current Floor = (%e)",
-	      name().c_str(),is.fileName(),
-	      i,covariances[i],GaussianComponent::varianceFloor());
+	      name().c_str(),
+	      is.fileName(),
+	      i,covariances[i],
+	      GaussianComponent::varianceFloor());
       } else {
 	numFloored++;
 	covariances[i] = GaussianComponent::varianceFloor();
@@ -248,7 +250,7 @@ DiagCovarVector::preCompute()
     variances_inv[i] = 1.0/covariances[i];
     det *= covariances[i];
     if (det <= DBL_MIN) {
-      warning("WARNING: determinant of diagonal covariance matrix '%s' is hiting minimum after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",i,name().c_str());
+      warning("WARNING: determinant of diagonal covariance matrix '%s' is hiting minimum after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",name().c_str(),i);
     }
   }
   if (det <= DBL_MIN) {
@@ -275,8 +277,7 @@ void
 DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
 {
   assert ( basicAllocatedBitIsSet() );
-
-  if (!GM_Parms.amTrainingCovars())
+  if (!emAmTrainingBitIsSet())
     return;
 
   /////////////////////////////////////////////
@@ -359,9 +360,8 @@ DiagCovarVector::emIncrement(const logpr prob,
 			     float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingCovars())
+  if (!emAmTrainingBitIsSet())
     return;
-
 
   
   /////////////////////////////////////////////
@@ -437,7 +437,7 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
 				const float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingCovars())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (refCount > 0) {
@@ -589,7 +589,9 @@ DiagCovarVector::emEndIteration(const logpr parentsAccumulatedProbability,
     }
     if (prevNumFlooredVariances < numFlooredVariances) {
       warning("WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
-	      name().c_str(),numFlooredVariances-prevNumFlooredVariances,minVar);
+	      name().c_str(),
+	      numFlooredVariances-prevNumFlooredVariances,
+	      minVar);
     }
 
   }
@@ -638,7 +640,7 @@ void
 DiagCovarVector::emEndIteration(const float *const parentsAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingCovars())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (refCount > 0) {
@@ -740,7 +742,7 @@ void
 DiagCovarVector::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingCovars())
+  if (!emAmTrainingBitIsSet())
     return;
 
   // we should have that the number of calls
@@ -762,11 +764,13 @@ DiagCovarVector::emSwapCurAndNew()
 
 
 
-
 void
 DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for covar '%s'\n",
 	    name().c_str());
@@ -782,6 +786,8 @@ void
 DiagCovarVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   EMable::emStoreZeroAccumulators(ofile);
 }
 
@@ -790,6 +796,8 @@ void
 DiagCovarVector::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emLoadAccumulators(ifile);
 }
@@ -799,6 +807,8 @@ void
 DiagCovarVector::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);
 }

@@ -162,7 +162,7 @@ void
 MeanVector::emStartIteration(sArray<float>& componentsNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingMeans())
+  if (!emAmTrainingBitIsSet())
     return;
 
   /////////////////////////////////////////////
@@ -214,7 +214,7 @@ MeanVector::emIncrement(const logpr prob,
 			float *const partialAccumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingMeans())
+  if (!emAmTrainingBitIsSet())
     return;
   
   /////////////////////////////////////////////
@@ -254,7 +254,7 @@ void
 MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingMeans())
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (refCount > 0) {
@@ -306,8 +306,9 @@ void
 MeanVector::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
-  if (!GM_Parms.amTrainingMeans())
+  if (!emAmTrainingBitIsSet())
     return;
+
 
   // we should have that the number of calls
   // to emStartIteration and emEndIteration are
@@ -328,6 +329,9 @@ void
 MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
+
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for mean '%s'\n",
 	    name().c_str());
@@ -341,6 +345,9 @@ MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
 void
 MeanVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   EMable::emStoreZeroAccumulators(ofile);
 }
@@ -349,6 +356,9 @@ MeanVector::emStoreZeroAccumulators(oDataStreamFile& ofile)
 void
 MeanVector::emLoadAccumulators(iDataStreamFile& ifile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   assert ( emEmAllocatedBitIsSet() );
   EMable::emLoadAccumulators(ifile);
@@ -358,6 +368,9 @@ MeanVector::emLoadAccumulators(iDataStreamFile& ifile)
 void
 MeanVector::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
+  if (!emAmTrainingBitIsSet())
+    return;
+
   assert ( basicAllocatedBitIsSet() );
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);

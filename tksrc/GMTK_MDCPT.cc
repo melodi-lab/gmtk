@@ -260,6 +260,7 @@ MDCPT::read(iDataStreamFile& is)
 void
 MDCPT::write(oDataStreamFile& os)
 {
+  assert ( basicAllocatedBitIsSet() );
   NamedObject::write(os);
   os.nl();
   os.write(_numParents,"MDCPT::write numParents"); 
@@ -310,9 +311,9 @@ void
 MDCPT::becomeAwareOfParentValues( vector<int>& parentValues,
 				  vector<int>& cards)
 {
-
+  assert ( basicAllocatedBitIsSet() );
   assert ( parentValues.size() == _numParents );
-  assert ( bitmask & bm_basicAllocated );
+
   
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
@@ -343,8 +344,8 @@ void
 MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
 {
 
+  assert ( basicAllocatedBitIsSet() );
   assert ( parents.size() == _numParents );
-  assert ( bitmask & bm_basicAllocated );
   
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
@@ -378,7 +379,7 @@ MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
 int
 MDCPT::randomSample()
 {
-  assert ( bitmask & bm_basicAllocated );
+  assert ( basicAllocatedBitIsSet() );
   
   iterator it = begin();
   logpr uniform = rnd.drand48();
@@ -410,7 +411,8 @@ MDCPT::randomSample()
 void
 MDCPT::normalize()
 {
-  assert ( bitmask & bm_basicAllocated );
+  assert ( basicAllocatedBitIsSet() );
+
   assert ( card() > 0 );
 
   // Use the inherent structure of the multi-D array
@@ -456,7 +458,8 @@ MDCPT::normalize()
 void
 MDCPT::makeRandom()
 {
-  assert ( bitmask & bm_basicAllocated );
+  assert ( basicAllocatedBitIsSet() );
+
 
   // Use the inherent structure of the multi-D array
   // so to loop over the final distributions on the child.
@@ -503,7 +506,7 @@ MDCPT::makeRandom()
 void
 MDCPT::makeUniform()
 {
-  assert ( bitmask & bm_basicAllocated );
+  assert ( basicAllocatedBitIsSet() );
 
   // Use the inherent structure of the multi-D array
   // so to loop over the final distributions on the child.
@@ -531,7 +534,8 @@ MDCPT::makeUniform()
 void
 MDCPT::emStartIteration()
 {
-  if (!GM_Parms.amTrainingMDCPTs())
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
     return;
 
   if(emOnGoingBitIsSet())
@@ -557,11 +561,12 @@ MDCPT::emStartIteration()
 void
 MDCPT::emIncrement(logpr prob,RandomVariable* rv)
 {
-  if (!GM_Parms.amTrainingMDCPTs())
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
     return;
 
-  emStartIteration();
-
+  if (!emOnGoingBitIsSet())
+    emStartIteration();
 
   // this is an MDCPT, so rv must be discrete.a
   assert ( rv -> discrete );
@@ -588,7 +593,8 @@ MDCPT::emIncrement(logpr prob,RandomVariable* rv)
 void
 MDCPT::emEndIteration()
 {
-  if (!GM_Parms.amTrainingMDCPTs())
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emOnGoingBitIsSet())
@@ -650,7 +656,8 @@ MDCPT::emEndIteration()
 void
 MDCPT::emSwapCurAndNew()
 {
-  if (!GM_Parms.amTrainingMDCPTs())
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emSwappableBitIsSet())
@@ -665,6 +672,8 @@ void
 MDCPT::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for MDCPT '%s'\n",
 	    name().c_str());
@@ -681,6 +690,8 @@ void
 MDCPT::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   EMable::emStoreZeroAccumulators(ofile);
   for (int i=0;i<mdcpt.len();i++) {
     const logpr p; 
@@ -692,6 +703,8 @@ void
 MDCPT::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet());
+  if (!emAmTrainingBitIsSet())
+    return;
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
   for (int i=0;i<nextMdcpt.len();i++) {
@@ -704,6 +717,8 @@ void
 MDCPT::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);
   for (int i=0;i<nextMdcpt.len();i++) {

@@ -226,8 +226,10 @@ Dense1DPMF::makeUniform()
 void
 Dense1DPMF::emStartIteration()
 {
-  if (!GM_Parms.amTrainingDense1DPMFs())
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
     return;
+
   if(emOnGoingBitIsSet())
     return; 
 
@@ -274,9 +276,12 @@ void
 Dense1DPMF::emIncrement(logpr prob,
 			sArray<logpr>& postDist)
 {
-  if (!GM_Parms.amTrainingDense1DPMFs())
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
     return;
-  emStartIteration();
+
+  if (!emOnGoingBitIsSet()) 
+    emStartIteration();
 
   assert ( postDist.len() == nextPmf.len() );
 
@@ -321,11 +326,13 @@ void
 Dense1DPMF::emIncrement(logpr prob,
 			const int val)
 {
+  assert ( basicAllocatedBitIsSet() );
   assert ( val >= 0 && val < nextPmf.len() );
-
-  if (!GM_Parms.amTrainingDense1DPMFs())
+  if (!emAmTrainingBitIsSet())
     return;
-  emStartIteration();
+
+  if (!emOnGoingBitIsSet()) 
+    emStartIteration();
 
   if (prob < minIncrementProbabilty) {
     missedIncrementCount++;
@@ -339,7 +346,8 @@ Dense1DPMF::emIncrement(logpr prob,
 void
 Dense1DPMF::emEndIteration()
 {
-  if (!GM_Parms.amTrainingDense1DPMFs())
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
     return;
 
   if ( !emOnGoingBitIsSet() )
@@ -366,7 +374,8 @@ Dense1DPMF::emEndIteration()
 void
 Dense1DPMF::emSwapCurAndNew()
 {
-  if (!GM_Parms.amTrainingDense1DPMFs())
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
     return;
 
   if (!emSwappableBitIsSet())
@@ -429,6 +438,8 @@ void
 Dense1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   if ( !emEmAllocatedBitIsSet() ) {
     warning("WARNING: storing zero accumulators for DPMF '%s'\n",
 	    name().c_str());
@@ -446,6 +457,8 @@ void
 Dense1DPMF::emStoreZeroAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   EMable::emStoreZeroAccumulators(ofile);
   const logpr p;
   for (int i=0;i<pmf.len();i++) {
@@ -458,6 +471,8 @@ void
 Dense1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
 {
   assert (basicAllocatedBitIsSet());
+  if (!emAmTrainingBitIsSet())
+    return;
   assert (emEmAllocatedBitIsSet());
   EMable::emLoadAccumulators(ifile);
   for (int i=0;i<nextPmf.len();i++) {
@@ -470,6 +485,8 @@ void
 Dense1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
   assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet())
+    return;
   assert ( emEmAllocatedBitIsSet() );
   EMable::emAccumulateAccumulators(ifile);
   for (int i=0;i<nextPmf.len();i++) {
