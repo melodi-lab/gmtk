@@ -4,6 +4,59 @@
  * Written by Katrin Kirchhoff <katrin@ee.washington.edu> and Jeff Bilmes
  * <bilmes@ee.washington.edu> 
  *
+ *  Modified by Karim Filali <karim@cs.washington.edu> on 08sep2003:
+ *
+ *   - ASCII files are piped through CPP
+ *
+ *   - Changed the way data is read into memory.  It used to be read
+ *   frame by frame, iterating over all streams. Now it is read as a
+ *   whole sentence for each stream, then the sentences are glued
+ *   together in the final buffer.  This should be more efficient
+ *   since disk reads are consolidated.  TODO: maybe a add a pre-load
+ *   function that reads a bunch of sentences in memory upfront to
+ *   avoid the need to go through the whole loading process over and
+ *   over again for that subset of sentences.
+ *
+ *   - A per-sentence range can be applied to each stream individually
+ *
+ *   - The length of sentences across streams can be adjusted so that
+ *   they match.  The following options are supported when there is a length mismatch:
+ *
+ *       a) Report an error
+ *
+ *       b) Repeat the last frame up to the maximum number of frames
+ *
+ *       c) Repeat the first frame
+ *
+ *       d) Repeat all frames "segmentally" i.e. in a segmental k-means initialization fashion
+ *
+ *       e) Truncate from the end
+ *
+ *       f) Truncate from the start
+ *
+ *       g) TODO: repeat a range of frames, for example , the last three, all frames...
+ *
+ *   - The number of sentences per stream can be adjusted so that they
+ *   match across streams.  The following options are available:
+ *
+ *       a) Report an error 
+ *
+ *       b) Truncate 
+ *
+ *       c) Repeat the last sentence
+ *
+ *       d) Wrap around:  repeat setences from the beginning after the end is reached. 
+ *
+ *   - The following transformations can be applied to the data:
+ *
+ *        a) Mean and variance normalization
+ *       
+ *        b) Multiplication by some constant
+ *
+ *        c) Upsampling (either by simple repetition of frames or interpolation)
+ *
+ * $Header$
+ *
  * Copyright (c) 2001, < fill in later >
  *
  * Permission to use, copy, modify, and distribute this
@@ -24,8 +77,66 @@
 #include "bp_range.h"
 #include "GMTK_Stream.h"
 
+#define TRANS_NORMALIZATION_LETTER 'N'
+#define TRANS_MEAN_SUB_LETTER 'E'
+#define TRANS_UPSAMPLING_LETTER 'U'
+#define TRANS_HOLD_LETTER 'H'
+#define TRANS_SMOOTH_LETTER 'S'
+#define TRANS_MULTIPLICATION_LETTER 'M'
+#define TRANS_ARMA_LETTER 'R'
+#define TRANS_OFFSET_LETTER 'O'
+#define FILTER_LETTER 'F'
+#define END_STR (-1)
+#define UNRECOGNIZED_TRANSFORM (-2)
+#define SEPARATOR "_"
+
+#define DEFAULT_FILTER_FILE_NAME "filter.in"
+#define MAX_NUM_STORED_FILTERS 10
+#define MAX_FILTER_LEN 100
+#define MIN_FILTER_LEN 1
+
+#define ALLOW_VARIABLE_DIM_COMBINED_STREAMS 1
+
+// actions when the number of frames is different across streams
+// + actions when the number of sentences is different across streams
+enum {
+  ERROR,
+  REPEAT_LAST,
+  REPEAT_FIRST,
+  EXPAND_SEGMENTALLY,
+  TRUNCATE_FROM_END,
+  TRUNCATE_FROM_START,
+  REPEAT_RANGE_AT_START, // not used yet
+  REPEAT_RANGE_AT_END,   // not used yet
+  WRAP_AROUND    /* specific to diff num sentences */
+};
 
 
+// transformations
+enum {
+  NONE,
+  UPSAMPLE_HOLD,
+  UPSAMPLE_SMOOTH,
+  DOWNSAMPLE,
+  DELTAS,
+  DOUBLE_DELTAS,
+  MULTIPLY,
+  NORMALIZE,
+  MEAN_SUB,
+  ARMA,
+  FILTER,
+  OFFSET
+};
+
+// ftrcombo
+// operation flags
+enum {
+    FTROP_NONE = 0,
+    FTROP_ADD,
+    FTROP_SUB,
+    FTROP_MUL,
+    FTROP_DIV
+};
 
 /* ObservationMatrix: basic data structure for input feature buffer 
  * contains one or more input streams, where each stream is a list of filenames 
@@ -36,104 +147,105 @@
 
 
 
-class ObservationMatrix
-{
+class ObservationMatrix {
 
-
-  int _numStreams; // number of input streams 
-
-  unsigned _totalContinuous;  // total num of continuous features
-  unsigned _totalDiscrete;    // total num of discrete features 
-
-  unsigned _maxContinuous;  // max number of cont. features in any stream
-  unsigned _maxDiscrete;    // max number of disc. features in any stream
-
-  // total number of segments in input streams (identical for all streams)
-
-  unsigned _numSegments; 
-
- // temporary feature buffers for single frame 
-
-  sArray<float> _contFea; 
-  sArray<Int32> _discFea;
-
-  Data32 *_cont_p; // pointers into continuous/discrete feature block
-  Data32 *_disc_p; 
-
-  StreamInfo **_inStreams; // input streams
-
-  size_t _bufSize; // maximum number of frames in buffer
-
-  // read pfile features
-  bool readPFloats(InFtrLabStream_PFile *, BP_Range *);	
-  bool readPInts(InFtrLabStream_PFile *, BP_Range *);
-  bool readPFrame(InFtrLabStream_PFile *, BP_Range *, BP_Range *);
-
-  // read binary features
-  bool readBinFloats(unsigned, FILE *, BP_Range *, bool);
-  bool readBinInts(unsigned,FILE *,BP_Range *, bool);
-  
-  // read ascii features
-  bool readAscFloats(unsigned, FILE *,BP_Range *);
-  bool readAscInts(unsigned, FILE *, BP_Range *);
-
-
-  void reset();	 // resets pointers to beginning of obs matrix
-
-  void resize(size_t); // resize obs matrix
-
-
-  // get pointer to individual features in current frame
-
-  float *getContFea(unsigned short n);
-
-  Int32 *getDiscFea(unsigned short n);
-
-  // read single frame into observation matrix
-
-  void readFrame(size_t);	
-
-  // file opening routines
-
-  size_t openBinaryFile(StreamInfo *,size_t);
-  size_t openAsciiFile(StreamInfo *,size_t);
-  size_t openHTKFile(StreamInfo *,size_t);
-  size_t openPFile(StreamInfo *,size_t);
-
-  void closeDataFiles();
-
-
-  // the segment number
-  size_t _segmentNumber;
-
-  // the number of frames in this segment
-  unsigned _numFrames;
-
-  // the number of frames in this segment that are not skipped
-  unsigned _numNonSkippedFrames;
-
-  // number of continuous features in this segment
-  unsigned _numContinuous;
-
-  // number of discrete features
-  unsigned _numDiscrete;
-
-  // sum of the above two
-  unsigned _numFeatures;
-
+  ////////////  Global info independent of the segment ///////////////
+  unsigned      _numStreams;           // number of input streams 
+  unsigned      _numContinuous;        // number of continuous features (summed over all streams)
+  unsigned      _numDiscrete;          // number of discrete feature    (summed over all streams)
+  unsigned      _numFeatures;          // sum of the above two (_numContinuous and _numDiscrete)
   // stride, which is the number of Data32's between
   // each frame, as it might be different than numFeatures
+  unsigned      _stride;
+  unsigned      _maxContinuous;        // max number of cont. features in any stream
+  unsigned      _maxDiscrete;          // max number of disc. features in any stream
+  unsigned      _numSegments;          // total number of segments in input streams (identical for all streams)
+  size_t        _bufSize;              // maximum number of frames in buffer;  is dynamically increased when needed
+  unsigned      _startSkip;            // number of frames to skip at the beginning
+  unsigned      _endSkip;              // number of frames to skip a the end.
+  unsigned      _totalSkip;            // _startSkip + _endSkip
+  StreamInfo ** _inStreams;            // input streams
+  //////////////////////////////////////////////////////////////
 
-  unsigned _stride;
+  ////////////  Current segment info  //////////////////////////
+  size_t        _segmentNumber;        // the segment number
+  unsigned      _numFrames;            // the number of frames in this segment
+  unsigned      _numNonSkippedFrames;  // the number of frames in this segment that are not skipped
+  ///////////////////////////////////////////////////////////////
 
-  // number of frames to skip at the beginning
-  unsigned _startSkip;
+  ////////////  Data structures for applying various transformations to the data //////
+  //                              karim - 29aug2003
+  bool          _cppIfAscii;
+  char*         _cppCommandOptions;
+  unsigned*     _actionIfDiffNumFrames;
+  unsigned*     _actionIfDiffNumSents;
+  const char**  _prrngStr;
+  char**        _perStreamPreTransforms;
+  char*         _postTransforms;
+  unsigned      _ftrcombo;
+  char*         _filterFileName;
+  float         _filterCoeffs[MAX_FILTER_LEN];
+  float         _preStoredFilterCoeffs[MAX_NUM_STORED_FILTERS][MAX_FILTER_LEN];
+  unsigned      _startFilterSkip,_endFilterSkip;
+  sArray<int>   _repeat;               // array used when adjusting the length of sentences
+  /////////////////////////////////////////////////////////////////////////////////////////
 
-  // number of frames to skip a the end.
-  unsigned _endSkip;
 
-  /////////////////////////////////////////////
-  unsigned _totalSkip;
+  ////////////  Temporary buffers for a sentence  //////////////
+  sArray<float> _tmpFloatSenBuffer;
+  sArray<Int32> _tmpIntSenBuffer;
+  //////////////////////////////////////////////////////////////
+
+
+  // read a whole sentence into memory
+  bool readBinSentence(float* float_buffer, unsigned n_floats, Int32* int_buffer, unsigned n_ints,StreamInfo* s);
+  bool readPfileSentence(const unsigned segno, float* float_buffer,  Int32* int_buffer, InFtrLabStream_PFile *f);
+  bool readAsciiSentence(float* float_buffer, unsigned num_floats, Int32* int_buffer, unsigned num_ints,unsigned n_samples, FILE *f);
+  
+
+  void copyToFinalBuffer(unsigned stream_no,float* ,Int32*,BP_Range* ,BP_Range*,BP_Range*);
+  void copyAndAdjustLengthToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,BP_Range* float_rng,BP_Range* int_rng,BP_Range* pr_rng,unsigned prrng_n_samps);
+  
+  
+  /////////////////         data transformation routines      //////////////////  
+  
+  void applyTransforms(char* trans_str, unsigned num_floats, unsigned num_ints, unsigned num_frames);
+  void applyPostTransforms(char* trans_str, unsigned num_floats, unsigned num_ints, unsigned num_frames);
+  
+  void inPlaceMeanSubVarNorm(float* x, int vec_size, int stride, int num_frames);
+  void inPlaceMeanSub(float* x, int vec_size, int stride, int num_frames);
+  void multiply(float* x, unsigned vec_size, unsigned stride, unsigned num_frames, double multiplier);
+  void addOffset(float* x, unsigned vec_size, unsigned stride, unsigned num_frames, double offset);
+  void arma(float* x, unsigned vec_size, unsigned stride, unsigned num_frames,unsigned order);
+  template<class T> void upsampleHold(sArray<T>* x, unsigned vec_size, unsigned stride, unsigned num_frames,unsigned upsample);
+  template<class T> void upsampleSmooth(sArray<T>* tmp_sen_buffer, unsigned vec_size, unsigned stride, unsigned num_frames, unsigned upsample);
+  
+  void   filter(float* x, unsigned vec_size, unsigned stride, unsigned num_frames,float* filter_coeffs, unsigned filter_len);
+  
+  void   readFilterFromFile(char* filter_file_name,float* filter_coeffs, unsigned& filter_len);
+  
+  ///////////////////////////////////////////////////////////////////////
+  
+ 
+  void   reset();	       // resets pointers to beginning of obs matrix
+  void   resize(size_t);  // resize obs matrix
+  
+  // get pointer to individual features in current frame
+  float *getContFea(unsigned short n);
+  Int32 *getDiscFea(unsigned short n);
+  
+  ///////////////        file opening routines    //////////////////
+  
+  size_t openBinaryFile(StreamInfo *,size_t);
+  size_t openAsciiFile (StreamInfo *,size_t);
+  size_t openHTKFile   (StreamInfo *,size_t);
+  size_t openPFile     (StreamInfo *,size_t);
+  
+  void   closeDataFiles();
+  
+  /////////////////////////////////////////////////////////////////
+  
+  
 
  public:
   
@@ -145,54 +257,48 @@ class ObservationMatrix
   /////////////////////////////////////////////////////////
   // the true constructor, in that it initializes the
   // input streams and allocate obs matrix.
-  void openFiles(int n_files,  
-		 const char **fof_names,
-		 const char **cont_range_str,
-		 const char **disc_range_str,
-		 unsigned *n_floats,
-		 unsigned *n_ints,
-		 unsigned *formats,
-		 bool *swapflags,
+  void openFiles(int            n_files,  
+		 const char **  fof_names,
+		 const char **  cont_range_str,
+		 const char **  disc_range_str,
+		 unsigned *     n_floats,
+		 unsigned *     n_ints,
+		 unsigned *     formats,
+		 bool *         swapflags,
 		 const unsigned _startSkip = 0,
-		 const unsigned _endSkip = 0);
+		 const unsigned _endSkip   = 0,
+		 bool           cppIfAscii = true,
+		 char *         cppCommandOptions      = NULL,
+		 const char **  pr_range_str           = NULL,
+		 unsigned*      actionIfDiffNumFrames  = NULL,
+		 unsigned*      actionIfDiffNumSents   = NULL,
+		 char**         perStreamPreTransforms = NULL,
+		 char*          postTransforms         = NULL,
+		 unsigned       ftrcombo               = FTROP_NONE);
 
   
   ///////////////////////////////////////////////////////////
   // returns true if the current observation matrix
-  // is "active" in the sence that there are open
+  // is "active" in the sense that there are open
   // files, and data can be read from them. 
-  bool active() { return (_numStreams > 0); }
-
-  // the segment number
-  size_t segmentNumber() { return _segmentNumber; }
-
-  // the number of frames not including the skip in this segment
-  unsigned numFrames() { return _numFrames ; }
-
-  // the number of "real" frames in this segment
-  unsigned numNonSkippedFrames() { return _numNonSkippedFrames; }
-
-  // number of continuous features in this segment
-  unsigned numContinuous() { return _numContinuous; }
-
-  // number of discrete features
-  unsigned numDiscrete() { return _numDiscrete; }
-
-  // sum of the above two
-  unsigned numFeatures() { return _numFeatures; }
+  bool     active()        { return (_numStreams > 0); }
+  unsigned numStreams()    { return _numStreams ;  }
+  unsigned numSegments()   { return _numSegments ;  }
+  size_t   segmentNumber() { return _segmentNumber; }  // the segment number
+  unsigned numFrames()     { return _numFrames ;    }  // the number of frames not including the skip in this segment
+  unsigned numNonSkippedFrames() { return _numNonSkippedFrames; }    // the number of "real" frames in this segment
+  unsigned numContinuous() { return _numContinuous; }  // number of continuous features in this segment
+  unsigned numDiscrete()   { return _numDiscrete;   }  // number of discrete features
+  unsigned numFeatures()   { return _numFeatures;   }  // sum of the above two
 
   // stride, which is the number of Data32's between
   // each frame, as it might be different than numFeatures
+  unsigned stride()        { return _stride;        }
 
-  unsigned stride() { return _stride; }
 
-  // number of frames to skip at the beginning
-  unsigned startSkip() { return _startSkip; }
+  unsigned startSkip()     { return _startSkip;     }  // number of frames to skip at the beginning
+  unsigned endSkip()       { return _endSkip;       }  // number of frames to skip a the end.
 
-  // number of frames to skip a the end.
-  unsigned endSkip() { return _endSkip; }
-
-  unsigned numSegments() { return _numSegments ; }
 
   // The actual matrix of features, which may be used directly
   // if so desired. This is a matrix of Data32s, some of which
@@ -260,22 +366,111 @@ class ObservationMatrix
   bool elementIsContinuous(unsigned el) {
     return (el >= 0 && el < _numContinuous);
   }
+  /////////////////////////////////////////////////////////////
 
+  bool   checkIfSameNumSamples(unsigned segno, unsigned&,unsigned&);
 
-  // load data for single segment (utterance)
+  void   loadSegment(unsigned seg);   // load data for single segment (utterance)
+  void   storeSegment() { error("not implemented\n"); }
 
-  void loadSegment(const unsigned seg);
-  void storeSegment(const unsigned seg) { error("not implemented\n"); }
+  void   printSegmentInfo();
+  void   printFrame(FILE *, size_t no);
 
-  void printSegmentInfo();
+  float* getPhysicalStartOfFloatFeaturesBuffer() { return (float*) features.ptr;                  }
+  Int32* getPhysicalStartOfIntFeaturesBuffer()   { return (Int32*) features.ptr + _numContinuous; }
 
-  // print frame
+  StreamInfo* getStream(unsigned stream_no)      { 
+    if(stream_no >= _numStreams)
+      return NULL;
+    else
+      return _inStreams[stream_no];
+  }
 
-  void printFrame(FILE *, size_t no);
-
-
+  //////// old stuff -- not used anymore ////////////////////////////
+  void   framewiseLoadSegment(const unsigned segno); // old version that
+  // used to load the sentence frame by frame, which is both
+  // inefficient and inflexible when it comes to manipulationg the
+  // frame set
+  ///////////////////////////////////////////////////////////////////
 };
 
+
+
+template<class T>
+void ObservationMatrix::upsampleHold(sArray<T>* tmp_sen_buffer, unsigned vec_size, unsigned stride, unsigned num_frames,unsigned upsample) {
+
+  if(vec_size==0 || stride ==0)
+    return;
+
+  T* tmp_buf=new T[num_frames*vec_size*(upsample+1)];
+  T* x=tmp_sen_buffer->ptr;
+
+  // copy buffer into a temporary one
+  for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned j=0;j<vec_size;++j) {
+	tmp_buf[i*vec_size+j]=x[i*stride+j];
+    }
+
+  tmp_sen_buffer->resize(num_frames*stride*(upsample+1)*2);
+  resize(num_frames*stride*(upsample+1)*2);
+   
+  x=tmp_sen_buffer->ptr;
+
+  unsigned cnt=0;
+  for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned k=0;k<upsample+1;++k) {
+      for(unsigned j=0;j<vec_size;++j) {
+	x[cnt*stride+j]=tmp_buf[i*vec_size+j];
+      }
+      cnt++;
+    }
+
+}
+
+template<class T> void ObservationMatrix::upsampleSmooth(sArray<T>* tmp_sen_buffer, unsigned vec_size, unsigned stride, unsigned num_frames, unsigned upsample) {
+
+  if(vec_size==0 || stride ==0)
+    return;
+  
+  T* tmp_buf=new T[num_frames*vec_size*(upsample+1)];
+  T* x=tmp_sen_buffer->ptr;
+
+  // copy buffer into a temporary one
+  for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned j=0;j<vec_size;++j) {
+	tmp_buf[i*vec_size+j]=x[i*stride+j];
+    }
+
+  unsigned after_transform_num_frames = ((num_frames-1)*(upsample+1)+1)*stride*2;
+
+  tmp_sen_buffer->resize(after_transform_num_frames);
+  resize(after_transform_num_frames);
+   
+  x=tmp_sen_buffer->ptr;
+
+
+  double inc;
+  double additive_const;
+  unsigned cnt=0;
+  for(unsigned i=0;i<num_frames-1;++i) {
+    inc=0;
+    for(unsigned k=0;k<upsample+1;++k) {
+      for(unsigned j=0;j<vec_size;++j) {
+	additive_const =  tmp_buf[(i+1)*vec_size+j] - tmp_buf[i*vec_size+j];
+	additive_const /= (upsample+1);
+	inc = k*additive_const;
+	x[cnt*stride+j]=tmp_buf[i*vec_size+j] + (T)inc;
+      }
+      cnt++;
+    }
+  }
+
+    for(unsigned j=0;j<vec_size;++j) {
+      x[cnt*stride+j]=tmp_buf[(num_frames-1)*vec_size+j];
+    }
+
+
+}
 
 ////////////////////////////////////////////////
 // The global matrix object, must be
