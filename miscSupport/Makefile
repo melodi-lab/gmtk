@@ -89,7 +89,7 @@ all: libmiscSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o lineqsolve.o debug.o
+objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o lineqsolve.o debug.o fileParser.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
@@ -132,17 +132,20 @@ testRand: rand.cc
 testsArray: sArray.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ sArray.cc error.o $(LIBS)
 
+fileParserTest: fileParser.cc fileParser.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ fileParser.cc $(LIBS)
+
 #----------------------------------------------------------------------------
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc general.cc lineqsolve.cc string_err.cc debug.cc
+all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc general.cc lineqsolve.cc string_err.cc debug.cc fileParser.cc
 
-all_hdrs = error.h debug.h
+all_hdrs = error.h debug.h fileParser.h
 
 all_objs = 
 
-all_exs = testError testBPRange testArguments testLogp testRand testsArray string_err testDebug
+all_exs = testError testBPRange testArguments testLogp testRand testsArray string_err testDebug fileParserTest
 
 #----------------------------------------------------------------------------
 # installation
