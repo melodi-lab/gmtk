@@ -43,6 +43,7 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+#include "GMTK_NameCollection.h"
 
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_DiagGaussian.h"
@@ -68,6 +69,12 @@ const unsigned GMPARMS_MAX_NUM = 100000000;
 // Magic String definitions
 #define MAGIC_DT_FILE "GMTK_DT_FILE"
 #define MAGIC_PRM_FILE "GMTK_PRM_FILE"
+
+////////////////////////////////////////////////
+// Special name for global collection name. I.e.,
+// with these names the arrays will index the global 
+// entries.
+#define NAMED_COLLECTION_GLOBAL_NAME "global"
 
 // possibly use this at some point for ascii files.
 // static const char* sectionSeparator = "############################################################################";
@@ -677,6 +684,48 @@ GMParms::readMixGaussians(iDataStreamFile& is, bool reset)
   }
 }
 
+
+void 
+GMParms::readNameCollections(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"num NCs");
+  if (reset) {
+    start = 0;
+    ncls.resize(num);
+  } else {
+    start = ncls.size();
+    ncls.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    NameCollection* nc;
+
+    is.read(cnt,"NC cnt");
+    if (cnt != i) 
+      error("ERROR: collection order count (%d), out of order in file '%s', expecting %d",cnt,is.fileName(),i);
+
+    nc = new NameCollection();
+    nc->read(is);
+
+    if (nc->name() == NAMED_COLLECTION_GLOBAL_NAME) {
+      error("ERROR: special internal collection name '%s' can not be defined in file '%s'",nc->name().c_str(),is.fileName());
+
+    }
+
+    if (nclsMap.find(nc->name()) != nclsMap.end()) {
+      error("ERROR: collection named '%s' already defined but is specified for a second time in file '%s'",nc->name().c_str(),is.fileName());
+    }
+    ncls[i+start] = nc;
+    nclsMap[nc->name()] = i+start;
+  }
+}
+
+
+
 void 
 GMParms::readGausSwitchMixGaussians(iDataStreamFile& is, bool reset)
 {
@@ -940,19 +989,19 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
     } else if (keyword == "WEIGHT_MAT_OUT_FILE") {
       error("OUT_FILES not yet implemented");
 
-    } else if (keyword == "MDCPT_IN_FILE") {
+    } else if (keyword == "DENSE_CPT_IN_FILE") {
       readMdCpts(*((*it).second),false);
-    } else if (keyword == "MDCPT_OUT_FILE") {
+    } else if (keyword == "DENSE_CPT_OUT_FILE") {
       error("OUT_FILES not yet implemented");
 
-    } else if (keyword == "MSCPT_IN_FILE") {
+    } else if (keyword == "SPARSE_CPT_IN_FILE") {
       readMsCpts(*((*it).second),false);
-    } else if (keyword == "MSCPT_OUT_FILE") {
+    } else if (keyword == "SPARSE_CPT_OUT_FILE") {
       error("OUT_FILES not yet implemented");
 
-    } else if (keyword == "MTCPT_IN_FILE") {
+    } else if (keyword == "DETERMINISTIC_CPT_IN_FILE") {
       readMtCpts(*((*it).second),false);
-    } else if (keyword == "MTCPT_OUT_FILE") {
+    } else if (keyword == "DETERMINISTIC_CPT_OUT_FILE") {
       error("OUT_FILES not yet implemented");
 
     } else if (keyword == "DT_IN_FILE") {
@@ -968,6 +1017,11 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
     } else if (keyword == "MG_IN_FILE") {
       readMixGaussians(*((*it).second),false);
     } else if (keyword == "MG_OUT_FILE") {
+      error("OUT_FILES not yet implemented");
+
+    } else if (keyword == "NAME_COLLECTION_IN_FILE") {
+      readNameCollections(*((*it).second),false);
+    } else if (keyword == "NAME_COLLECTION_OUT_FILE") {
       error("OUT_FILES not yet implemented");
 
     } else if (keyword == "GSMG_IN_FILE") {
@@ -1004,6 +1058,26 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
       delete ((*it).second);
     }
   }
+
+  ///////////////////////////////////////////////////////
+  // Now that presumably everything has been read in,
+  // we insert the global named collection which references
+  // the global arrays.
+  //
+  // first, make sure that the name hasn't already been defined,
+  // meaning that this routine has already been called.
+  if (nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) != nclsMap.end()) {
+    error("PROGRAM INTERNAL ERROR: collection named '%s' already defined but is specified for a second time in file",
+	  NAMED_COLLECTION_GLOBAL_NAME);
+  }
+  NameCollection* nc = new NameCollection();
+  nc->_name = NAMED_COLLECTION_GLOBAL_NAME;
+  // copy the tables:
+  // TODO: figure out how to make this be by reference.
+  nc->mgTable = mixGaussians;
+  nc->spmfTable = sPmfs;
+  ncls.push_back(nc);
+  nclsMap[nc->name()] = ncls.size()-1;
 
 }
 
@@ -1519,6 +1593,43 @@ GMParms::writeMixGaussians(oDataStreamFile& os)
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeNameCollections
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeNameCollections(oDataStreamFile& os)
+{
+  os.nl(); os.writeComment("Collection of Names");os.nl();
+  os.write(ncls.size(),"num collections"); os.nl();
+  for (unsigned i=0;i<ncls.size();i++) {
+    // first write the count
+    os.write(i,"NCLS cnt");
+    os.nl();
+    ncls[i]->write(os);
+  }
+  os.nl();
+}
+
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * writeGausSwitchMixGaussians
@@ -1780,6 +1891,8 @@ GMParms::writeNonTrainable(oDataStreamFile& os)
   writeMtCpts(os);
 
 }
+
+
 
 
 
