@@ -193,9 +193,6 @@ main(int argc,char*argv[])
     fp.parseGraphicalModel();
     // create the rv variable objects
     fp.createRandomVariableGraph();
-    // make sure that there are no directed loops in the graph
-    // by imposing the S,SE,E,NE constrains
-    fp.ensureS_SE_E_NE();
     // link the RVs with the parameters that are contained in
     // the bn1_gm.dt file.
     if (allocateDenseCpts == 0)
