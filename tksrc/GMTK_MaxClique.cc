@@ -197,12 +197,10 @@ MaxClique::MaxClique(MaxClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -217,12 +215,10 @@ MaxClique::MaxClique(MaxClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -239,12 +235,10 @@ MaxClique::MaxClique(MaxClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
     RandomVariable* nrv = newRvs[ppf[rvp]];
     unassignedIteratedNodes.insert(nrv);
@@ -259,12 +253,10 @@ MaxClique::MaxClique(MaxClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
     RandomVariable* nrv = newRvs[ppf[rvp]];
     cumulativeAssignedNodes.insert(nrv);
@@ -564,7 +556,8 @@ MaxClique::computeAssignedNodesToIterate()
  *   prints everything JT (not not inference) about this clique to file.
  *
  * Preconditions:
- *   all variables must have been set up.
+ *   all variables must have been set up.  prepareForUnrolling() must have
+ *   been called.
  *
  * Postconditions:
  *   none
@@ -582,8 +575,11 @@ void
 MaxClique::printAllJTInfo(FILE*f,const unsigned indent)
 {
 
+  // TODO: also print out nubmer of bits for acc and rem.
+
   psp(f,indent*2);
-  fprintf(f,"Clique information:\n");
+  fprintf(f,"Clique information: %d packed bits, %d unsigned words\n",
+	  packer.packedLenBits(),packer.packedLen());
 
   psp(f,indent*2);
   fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
@@ -698,12 +694,10 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -718,12 +712,10 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -741,17 +733,17 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
     RandomVariable* nrv = newRvs[ppf[rvp]];
     fUnassignedIteratedNodes[i++] = nrv;
   }
 
+  // Clique values only store/hash values of hidden (thus necessarily
+  // discrete) variables since they are the only thing that change.
   discreteValuePtrs.resize(from_clique.hiddenNodes.size());
   for (i=0;i<discreteValuePtrs.size();i++) {
     // get the unrolled rv for this hidden node
@@ -799,7 +791,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
  *-----------------------------------------------------------------------
  */
 void
-InferenceMaxClique::collectEvidenceFromSeparators(JT_InferencePartition& part)
+InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
 {
   logpr p = 1.0;
 
@@ -893,12 +885,15 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
     // we should have one entry only.
     assert ( sep.separatorValues[sepValueNumber].remValues.size() == 1 );
+
     // Continue down with new probability value.
     // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
     // more info why remValues[0] exists.
+    // TODO: separator prune here.
     ceIterateSeparators(part,sepNumber+1,
 			p*
 			sep.separatorValues[sepValueNumber].remValues[0].p);
+
   } else {
 
     // TODO: this assertion should be redundant (check above)
@@ -927,8 +922,9 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	  printRVSetAndValues(stdout,sep.fNodes);
 	}
 
+
 	// continue down with new probability value.
-	// TOOD: prune here.
+	// TODO: separator prune here.
 	ceIterateSeparators(part,sepNumber+1,
 		    p*
 		    sep.separatorValues[sepValueNumber].remValues[i].p);
@@ -949,7 +945,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	}
 
 	// continue down with new probability value.
-	// TOOD: prune here.
+	// TODO: separator prune here.
 	ceIterateSeparators(part,sepNumber+1,
 		  p*
 		  sep.separatorValues[sepValueNumber].remValues[i].p);
@@ -1043,7 +1039,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       }
 
       // if at any step, we get zero, then back out.
-      if (!p.essentially_zero()) {
+      if (!cur_p.essentially_zero()) {
 	// Q: could do more severe pruning here as well as beam?
 	// 
 	// Continue, updating probability by cur_p.
@@ -1055,10 +1051,11 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 	    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
     // already assigned.
 
-    // @@@@ HACK HACK. Fix this, but right now time to sleep!!
+    // TODO: Make more efficient version of this, based on the type of
+    // RV.
     logpr cur_p = rv->probGivenParentsWSetup();
     // if at any step, we get zero, then back out.
-    if (!p.essentially_zero()) {
+    if (!cur_p.essentially_zero()) {
       // Q: could do more severe pruning here as well as beam?
       // 
       // Continue, updating probability by cur_p.
@@ -1090,6 +1087,7 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
     do {
       infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+    // continue on, effectively multiplying p by unity.
       ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
     } while (++drv->val < drv->cardinality);
   } else {
@@ -1107,6 +1105,7 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
       infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
     }
+    // continue on, effectively multiplying p by unity.
     ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
   }
 }
@@ -1120,24 +1119,25 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
 
 void 
 InferenceMaxClique::
-ceCollectToSeparator(JT_InferencePartition& part)
+ceSendToOutgoingSeparator(JT_InferencePartition& part)
 {
-  ceCollectToSeparator(part,
+  ceSendToOutgoingSeparator(part,
 		       part.separatorCliques[origin.ceSendSeparator]);
 }
 void 
 InferenceMaxClique::
-ceCollectToSeparator(JT_InferencePartition& part,
+ceSendToOutgoingSeparator(JT_InferencePartition& part,
 		     InferenceSeparatorClique& sep)
 {
   
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {{
     // TODO: beam pruning
     //if (cliqueValues[cvn].p < beamThreshold) {
-    //     continue;
+    //     continue; swap with last entry, and decrease numCliqueValuesUsed by one.
     //}
 
-    // TODO: optimiae away this conditional check. (and/or use const local variable to indicate it wont change)
+    // TODO: optimize away this conditional check. (and/or use const
+    // local variable to indicate it wont change)
     if (origin.packer.packedLen() <= IMC_NWWOH) {
       origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val[0]),
 			   (unsigned**)discreteValuePtrs.ptr);
@@ -1271,7 +1271,7 @@ ceCollectToSeparator(JT_InferencePartition& part,
     // either:
     //   1) AI exists and REM exist
     //     or
-    //   3) AI does not exist, but REM exists
+    //   3) AI does not exist (accIndex == 0), but REM exists
     // 
 
     // keep handy reference for readability.
@@ -1357,6 +1357,309 @@ sumProbabilities()
 }
 
 
+
+
+/*
+ * we have now a fully instantiated clique and are ready for backwards
+ * pass. Iterate through the values that are above beam and
+ * instantiate the outgoing separator with those values.
+ *
+ */
+
+void 
+InferenceMaxClique::
+deReceiveFromIncommingSeparator(JT_InferencePartition& part)
+{
+  deReceiveFromIncommingSeparator(part,
+				  part.separatorCliques[origin.ceSendSeparator]);
+}
+
+// For each clique value, we need to look up appropriate value in the
+// separator and multiply it into the current clique probability.
+void 
+InferenceMaxClique::
+deReceiveFromIncommingSeparator(JT_InferencePartition& part,
+				InferenceSeparatorClique& sep)
+{
+
+  // allocate some temporary storage for packed separator values.
+  // 128 words is *much* bigger than any possible packed clique value
+  // will take on, but it is easy/fast to allocate on the stack right now.
+  unsigned packedVal[128];
+  // but just in case, we assert.
+  assert ( sep.origin.accPacker.packedLen() < 128 );
+  assert ( sep.origin.remPacker.packedLen() < 128 );
+  // If this assertion fails (at some time in the future, probably in
+  // the year 2150), then it is fine to increase 128 to something larger.
+
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {{
+    // TODO: beam pruning
+    // Prune away based on forward computed beam
+    //if (cliqueValues[cvn].p < beamThreshold) {
+    //     continue;
+    //}
+
+
+    // TODO: optimize away this conditional check. (and/or use const
+    // local variable to indicate it wont change)
+    if (origin.packer.packedLen() <= IMC_NWWOH) {
+      origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val[0]),
+			   (unsigned**)discreteValuePtrs.ptr);
+    } else {
+      origin.packer.unpack((unsigned*)cliqueValues[cvn].ptr,
+			   (unsigned**)discreteValuePtrs.ptr);
+    }
+
+    // All hidden random variables now have their discrete
+    // value. Get appropriate entry in the separator
+    // for this clique entry.
+
+    /*
+     * There are 3 cases.
+     * 1) AI exists and REM exist
+     * 2) AI exists and REM doesnt exist
+     * 3) AI does not exist, but REM exists
+     * AI not exist and REM not exist can't occur.
+    */
+
+    unsigned accIndex;
+    // TODO: optimize this check away out of loop.
+    if (sep.origin.hAccumulatedIntersection.size() > 0) {
+      // an accumulated intersection exists.
+
+      sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
+				&packedVal[0]);
+      unsigned* accIndexp =
+	sep.iAccHashMap.find(&packedVal[0]);
+
+      // we should always find something or else something is wrong.
+      assert ( accIndexp != NULL ); 
+      accIndex = *accIndexp;
+
+      // TODO: optimize this check out of loop.
+      if (sep.remDiscreteValuePtrs.size() == 0) {
+	// 2) AI exists and REM doesnt exist
+	// Then this separator is entirely covered by one or 
+	// more other separators earlier in the order.
+
+	// go ahead and insert it here to the 1st entry (entry 0).
+
+	// handy reference for readability.
+	InferenceSeparatorClique::AISeparatorValue& sv
+	  = sep.separatorValues[accIndex];
+
+	// Multiply in this separator value's probability.
+	cliqueValues[cvn].p *= sv.remValues[0].bp;
+	// done
+	goto next_iteration;
+      }
+    } else {
+      // no accumulated intersection exists, everything
+      // is in the remainder.
+      accIndex = 0;
+    }
+
+    // if we're here, then we must have some remainder
+    // pointers.
+    // TODO: remove assertion when debugged.
+    assert (sep.remDiscreteValuePtrs.size() > 0);
+
+    // Do the remainder exists in this separator.
+    // 
+    // either:
+    //   1) AI exists and REM exist
+    //     or
+    //   3) AI does not exist (accIndex == 0), but REM exists
+    // 
+
+    // keep handy reference for readability.
+    InferenceSeparatorClique::AISeparatorValue& sv
+      = sep.separatorValues[accIndex];
+
+    sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
+			      &packedVal[0]);
+
+    unsigned* remIndexp =
+      sv.iRemHashMap.find(&packedVal[0]);
+
+    // it must exist
+    assert ( remIndexp != NULL );
+
+    // We've finally got the sep entry. Multiply it it into the
+    // current clique value.
+    cliqueValues[cvn].p *= sv.remValues[*remIndexp].bp;
+
+  }
+  next_iteration:
+  ;    
+  }
+}
+
+
+// Scatter out to the outgoing separators which are the same as the
+// receive separators in the collect evidence stage, so we use that
+// array here.
+void 
+InferenceMaxClique::
+deScatterToOutgoingSeparators(JT_InferencePartition& part)
+{
+  if (origin.ceReceiveSeparators.size() == 0)
+    return;
+
+  // Note. All separator .bp values have already been initialized to
+  // zero when the structure containing them 'a RemainderValue' was
+  // constructed. All memory reallocations will have preserved these
+  // initializations, so there is no need to scan through initializing
+  // bp to zero here.
+
+  
+  // allocate some temporary storage for packed separator values.
+  // 128 words is *much* bigger than any possible packed clique value
+  // will take on, but it is easy/fast to allocate on the stack right now.
+  unsigned packedVal[128];
+ 
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+    // TODO: beam pruning
+    // Prune away based on forward computed beam
+    //if (cliqueValues[cvn].p < beamThreshold) {
+    //     continue;
+    //}
+
+
+    // TODO: optimize away this conditional check. (and/or use const
+    // local variable to indicate it wont change)
+    if (origin.packer.packedLen() <= IMC_NWWOH) {
+      origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val[0]),
+			   (unsigned**)discreteValuePtrs.ptr);
+    } else {
+      origin.packer.unpack((unsigned*)cliqueValues[cvn].ptr,
+			   (unsigned**)discreteValuePtrs.ptr);
+    }
+
+    // now we iterate through all the separators.
+    for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
+      // get a handy reference to the current separator
+      InferenceSeparatorClique& sep = 
+	part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+
+      // If these assertions fail (at some time in the future, probably in
+      // the year 2150), then it is fine to increase 128 to something larger.
+      // In fact, 128 is so large, lets not even do the assert.
+      // assert ( sep.origin.accPacker.packedLen() < 128 );
+      // assert ( sep.origin.remPacker.packedLen() < 128 );
+
+
+      /*
+       * There are 3 cases.
+       * 1) AI exists and REM exist
+       * 2) AI exists and REM doesnt exist
+       * 3) AI does not exist, but REM exists
+       * AI not exist and REM not exist can't occur.
+       */
+
+      unsigned accIndex;
+      // TODO: optimize this check away out of loop.
+      if (sep.origin.hAccumulatedIntersection.size() > 0) {
+	// an accumulated intersection exists.
+
+	sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
+				  &packedVal[0]);
+	unsigned* accIndexp =
+	  sep.iAccHashMap.find(&packedVal[0]);
+
+	// we should always find something or else something is wrong.
+	assert ( accIndexp != NULL ); 
+	accIndex = *accIndexp;
+
+	// TODO: optimize this check out of loop.
+	if (sep.remDiscreteValuePtrs.size() == 0) {
+	  // 2) AI exists and REM doesnt exist
+	  // Then this separator is entirely covered by one or 
+	  // more other separators earlier in the order.
+
+	  // go ahead and insert it here to the 1st entry (entry 0).
+
+	  // handy reference for readability.
+	  InferenceSeparatorClique::AISeparatorValue& sv
+	    = sep.separatorValues[accIndex];
+
+	  // Add in this clique value's probability.  Note that bp was
+	  // initialized during forward pass.
+	  sv.remValues[0].bp += cliqueValues[cvn].p;
+	  // done, move on to next separator.
+	  continue; 
+	}
+      } else {
+	// no accumulated intersection exists, everything
+	// is in the remainder.
+	accIndex = 0;
+      }
+
+      // if we're here, then we must have some remainder
+      // pointers.
+      // TODO: remove assertion when debugged.
+      assert (sep.remDiscreteValuePtrs.size() > 0);
+
+      // Do the remainder exists in this separator.
+      // 
+      // either:
+      //   1) AI exists and REM exist
+      //     or
+      //   3) AI does not exist (accIndex == 0), but REM exists
+      // 
+
+      // keep handy reference for readability.
+      InferenceSeparatorClique::AISeparatorValue& sv
+	= sep.separatorValues[accIndex];
+
+      sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
+				&packedVal[0]);
+
+      unsigned* remIndexp =
+	sv.iRemHashMap.find(&packedVal[0]);
+
+      // it must exist
+      assert ( remIndexp != NULL );
+
+      // We've finally got the sep entry.  Add in this clique value's
+      // probability.  Note that bp was initialized during forward
+      // pass.
+      sv.remValues[*remIndexp].bp += cliqueValues[cvn].p;
+    }
+  }
+
+
+  // lastly iterate through all separators, and all entries in
+  // each separator and do the "divide" (subtraction)
+  for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
+    // get a handy reference to the current separator
+    InferenceSeparatorClique& sep = 
+      part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+
+    for (unsigned aiNo=0;aiNo < sep.numSeparatorValuesUsed; aiNo ++) {
+      InferenceSeparatorClique::AISeparatorValue* aisep = &(sep.separatorValues.ptr[aiNo]);
+      for (unsigned remNo=0; remNo < aisep->numRemValuesUsed; remNo++) {
+	InferenceSeparatorClique::RemainderValue* rv = &(aisep->remValues.ptr[remNo]);
+	// Do direct value reference subtraction in log domain
+	// (corresponding to divison in original domain) to ensure
+	// that compiler creates no temporaries. In other words, this
+	// operation could be "rv->bp = rv->bp / rv->p;"
+	//    rv->bp.valref() = rv->bp.valref() - rv->p.valref();
+	// Do slower version for now until debugged:
+	// We assume here that (!rv->p.zero()) is true since
+	// we pruned all zero p's above. If we didn't prune,
+	// then rv->p == zero would imply that rv->bp == zero,
+	// and we would need to do a check. Note that this
+	// pruning always occurs, regardless of beam.
+	rv->bp /= rv->p;
+      }
+    }
+  }
+
+}
+
+
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        SeparatorClique support
@@ -1400,12 +1703,10 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -1421,12 +1722,11 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
+
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -1442,12 +1742,10 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -1561,7 +1859,8 @@ SeparatorClique::prepareForUnrolling()
  *   prints everything JT (not not inference) about this clique to file.
  *
  * Preconditions:
- *   all variables must have been set up.
+ *   all variables must have been set up. prepareForUnrolling() must have
+ *   been called.
  *
  * Postconditions:
  *   none
@@ -1578,8 +1877,12 @@ SeparatorClique::prepareForUnrolling()
 void
 SeparatorClique::printAllJTInfo(FILE*f)
 {
+  // TODO: also print out nubmer of bits for acc and rem.
+  fprintf(f,"Separator information: %d acc packed bits (%d words), %d rem packed bits (%d words)\n",
+	  accPacker.packedLenBits(),accPacker.packedLen(),
+	  remPacker.packedLenBits(),remPacker.packedLen());
 
-  fprintf(f,"Separator information:\n");
+
   fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
   fprintf(f,"%d Acc Inter: ",accumulatedIntersection.size()); printRVSet(f,accumulatedIntersection);  
   fprintf(f,"%d Hid Acc Inter: ",hAccumulatedIntersection.size()); printRVSet(f,hAccumulatedIntersection);  
@@ -1640,12 +1943,11 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
+
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -1662,12 +1964,11 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
+
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
@@ -1684,17 +1985,19 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
+
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
     RandomVariable* nrv = newRvs[ppf[rvp]];
     fRemainder[i++] = nrv;
   }
 
+  // Separator accumulated intersection values only store/hash values
+  // of hidden (thus necessarily discrete) variables since they are
+  // the only thing that change.
   accDiscreteValuePtrs.resize(origin.hAccumulatedIntersection.size());
   for (i=0;i<accDiscreteValuePtrs.size();i++) {
     // get the hidden rv for this location
@@ -1703,12 +2006,10 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
     RandomVariable* nrv = newRvs[ppf[rvp]];
 
@@ -1720,6 +2021,9 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     accDiscreteValuePtrs[i] = &(drv->val);
   }
 
+  // Separator remainder values only store/hash values of hidden (thus
+  // necessarily discrete) variables since they are the only thing
+  // that change.
   remDiscreteValuePtrs.resize(origin.hRemainder.size());
   for (i=0;i<remDiscreteValuePtrs.size();i++) {
     // get the hidden rv for this location
@@ -1728,12 +2032,10 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
 
-    // TODO: ultimately turn this just into an assert
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
-      assert ( ppf.find(rvp) != ppf.end() );
     }
     RandomVariable* nrv = newRvs[ppf[rvp]];
 
@@ -1749,6 +2051,8 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   if (origin.hAccumulatedIntersection.size() == 0) {
     // in this case, we'll only need one and never more.
     separatorValues.resize(1);
+    // there will always be one used value here.
+    numSeparatorValuesUsed = 1;
     new (&separatorValues[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
       (origin.remPacker.packedLen(),2);
   } else {
@@ -1770,8 +2074,8 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     // need to re-construct the hash table.
     new (&iAccHashMap) VHashMapUnsignedUnsignedKeyUpdatable
       (origin.accPacker.packedLen(),2);
+    numSeparatorValuesUsed = 0;
   }
-  numSeparatorValuesUsed = 0;
 
 }
 
@@ -1875,3 +2179,4 @@ VHashMapUnsignedUnsignedKeyUpdatable(const unsigned arg_vsize,
   // do nothing
 }
 	
+

@@ -304,12 +304,17 @@ public:
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // set of separators that we receive from in the collect evidence stage.
+  // (equivalently, the set of separators we send to in distribute evidence
+  // stage)
   // Again, ints indexing into parent partition.
   vector<unsigned> ceReceiveSeparators;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // separator that we send to in the collect collect evidence stage
-  // Again, ints indexing into parent partition.
+  // The separator that we send to in the collect collect evidence
+  // stage (equivalently, the separator that we receive from in the
+  // distribute evidence stage).  Again, ints indexing into parent
+  // partition. Set to ~0x0 when the appropriate separator lives in
+  // another partition (and so needs to be explicitly given).
   unsigned ceSendSeparator;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -373,23 +378,31 @@ public:
 
 
 //////////////////////////////////////////////////////////////////////////////
-// Number of words to exist in a pack clique without a hash. These may
-// be set to zero to turn on hashing even when packed clique values
-// fall into less than 1 machine word.
+// Number of words to exist in a packed clique without a hash. These
+// may be set to zero to turn on hashing even when packed clique
+// values take up less than 1 machine word. To turn off hashing, set
+// to something larger than the largest packed clique value. The
+// number of bits required for a packed clique value is equal to:
+//
+//    num_bits_required = \sum_{v \in C} ceil(log2(card(v)))
+//
+// where C is a clique, v is all hidden variables in the clique,
+// and card(v) is the cardinality of the variable v (the
+// card is taken from the structure file).
 // --
 // InferenceMaxClique Number Words WithOut a Hash: Namely,
 // the number of words that can be stored directly as
 // a packed clique value before we resort to using
 // a shared hash table for all instances of this origin clique.
-#define IMC_NWWOH (0)
+#define IMC_NWWOH (1)
 // InferenceSeparatorClique Number Words WithOut a Hash: Namely,
 // the number of words that can be stored directly as
 // a packed clique value before we resort to using
 // a shared hash table for all instances of this origin clique.
 // One for the accumulated Intersection packed values
-#define ISC_NWWOH_AI (0)
+#define ISC_NWWOH_AI (1)
 // And for the remainder
-#define ISC_NWWOH_RM (0)
+#define ISC_NWWOH_RM (1)
 // -- 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -463,8 +476,16 @@ class InferenceMaxClique  : public IM
       unsigned val[((IMC_NWWOH>1)?IMC_NWWOH:1)];
     };
 
-    // probability
+    // The probability p. Note that we could keep a collect evidence
+    // and distribute evidence probability here (and thereby avoid
+    // doing the Hugin-style divide on the distribute evidence stage)
+    // but we only keep one value 1) to save space, as adding an extra
+    // probability will increase storage requirements (especially if a
+    // logpr is a 64-bit fp number), and 2) since everything is done
+    // in log arithmetic, a divide is really a floating point
+    // subtraction which is cheap.
     logpr p;
+
   };
 
   // the collection of clique values for this clique.
@@ -492,7 +513,7 @@ public:
   ~InferenceMaxClique() {}
 
   // collect evidence functions.
-  void collectEvidenceFromSeparators(JT_InferencePartition& part);
+  void ceGatherFromIncommingSeparators(JT_InferencePartition& part);
   void ceIterateSeparators(JT_InferencePartition& part,
 			   const unsigned sepNumber,
 			   const logpr p);
@@ -502,9 +523,17 @@ public:
   void ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
 					const unsigned nodeNumber,
 					const logpr p);
-  void ceCollectToSeparator(JT_InferencePartition& part,
+  void ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			    InferenceSeparatorClique& sep); 
-  void ceCollectToSeparator(JT_InferencePartition& part);
+  void ceSendToOutgoingSeparator(JT_InferencePartition& part);
+
+
+  // distribute evidence functions.
+  void deScatterToOutgoingSeparators(JT_InferencePartition& part);
+  void deReceiveFromIncommingSeparator(JT_InferencePartition& part,
+				       InferenceSeparatorClique& sep);
+  void deReceiveFromIncommingSeparator(JT_InferencePartition& part);
+
 
   // sum up the probabilities in the current clique and return their value.
   logpr sumProbabilities();
@@ -640,6 +669,8 @@ class InferenceSeparatorClique : public IM
     };
     // probability
     logpr p;
+    // probability for distribute evidence pass
+    logpr bp;
   };
 
 

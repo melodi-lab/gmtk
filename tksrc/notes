@@ -1047,12 +1047,24 @@ switching parents/just normal parents
 no-weight / weight 
 
   different types of weight:
-     no weight
-     just value weight  p(x)^\lambda
-     value weight and value penalty  p(x)^\lambda + beta
-     just switching weight
-     just switching penalty
-     just switching weight and penalty
+     nothing
+   No observation dependence
+     just weight  p(x)^\lambda
+     just penalty p(x) + \beta 
+     weight and penalty  p(x)^\lambda + \beta
+     switching just weight
+     switching just penalty
+     switching just weight and penalty
+   Observation dependence; 
+     just weight  p(x)^\lambda(o)
+     just penalty p(x) + \beta(o) 
+     weight and penalty  p(x)^\lambda + \beta
+     switching just weight
+     switching just penalty
+     switching just weight and penalty
+
+     just weight  p(x)^\lambda
+
      just exponent from obs p(x)^{\lambda(z)}
      just exponent and add from obs p(x)^{\lambda(z)} + \beta(z)
      switching just exponent from obs p(x)^{\lambda(z)}

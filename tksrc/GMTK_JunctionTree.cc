@@ -2019,20 +2019,20 @@ JunctionTree::collectEvidence()
   for (unsigned msgNo=0;msgNo < P1_message_order.size(); msgNo ++) {
     const unsigned from = P1_message_order[msgNo].first;
     const unsigned to = P1_message_order[msgNo].second;
-    infoMsg(IM::Med,"message in P1,part[0] from clique %d --> clique %d\n",
+    jtIPartitions[0].maxCliques[from].
+      ceGatherFromIncommingSeparators(jtIPartitions[0]);
+    infoMsg(IM::Med,"CE: message P1,part[0],clique %d --> clique %d\n",
 	    from,to);
     jtIPartitions[0].maxCliques[from].
-      collectEvidenceFromSeparators(jtIPartitions[0]);
-    jtIPartitions[0].maxCliques[from].
-      ceCollectToSeparator(jtIPartitions[0]);
+      ceSendToOutgoingSeparator(jtIPartitions[0]);
   }
   // do P1-C1 interface 
-  infoMsg(IM::Med,"message in P1,part[0] from clique %d --> C1,part[1], clique %d\n",
+  jtIPartitions[0].maxCliques[P_ri_to_C].
+    ceGatherFromIncommingSeparators(jtIPartitions[0]);
+  infoMsg(IM::Med,"CE: message P1,part[0],clique %d --> C1,part[1], clique %d\n",
 	    P_ri_to_C,C_li_to_P);
   jtIPartitions[0].maxCliques[P_ri_to_C].
-    collectEvidenceFromSeparators(jtIPartitions[0]);
-  jtIPartitions[0].maxCliques[P_ri_to_C].
-    ceCollectToSeparator(jtIPartitions[0],
+    ceSendToOutgoingSeparator(jtIPartitions[0],
 			 jtIPartitions[1].
 			 separatorCliques[jtIPartitions[1].
 					  separatorCliques.size()-1]);
@@ -2043,21 +2043,21 @@ JunctionTree::collectEvidence()
     for (unsigned msgNo=0;msgNo < C1_message_order.size(); msgNo ++) {
       const unsigned from = C1_message_order[msgNo].first;
       const unsigned to = C1_message_order[msgNo].second;
-      infoMsg(IM::Med,"message in C1,part[%d] from clique %d --> clique %d\n",
+      jtIPartitions[partNo].maxCliques[from].
+	ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
+      infoMsg(IM::Med,"CE: message C,part[%d],clique %d --> clique %d\n",
 	      partNo,from,to);
       jtIPartitions[partNo].maxCliques[from].
-	collectEvidenceFromSeparators(jtIPartitions[partNo]);
-      jtIPartitions[partNo].maxCliques[from].
-	ceCollectToSeparator(jtIPartitions[partNo]);
+	ceSendToOutgoingSeparator(jtIPartitions[partNo]);
     }
 
     // do C1-nextC interface
-    infoMsg(IM::Med,"message in C1,part[%d] from clique %d --> C,part[%d], clique %d\n",
+    jtIPartitions[partNo].maxCliques[C_ri_to_C].
+      ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
+    infoMsg(IM::Med,"CE: message C,part[%d],clique %d --> C,part[%d],clique %d\n",
 	    partNo,C_ri_to_C,partNo+1,C_li_to_C);
     jtIPartitions[partNo].maxCliques[C_ri_to_C].
-      collectEvidenceFromSeparators(jtIPartitions[partNo]);
-    jtIPartitions[partNo].maxCliques[C_ri_to_C].
-      ceCollectToSeparator(jtIPartitions[partNo],
+      ceSendToOutgoingSeparator(jtIPartitions[partNo],
 			   jtIPartitions[partNo+1].
 			   separatorCliques[jtIPartitions[partNo+1].
 					    separatorCliques.size()-1]);
@@ -2067,24 +2067,23 @@ JunctionTree::collectEvidence()
   for (unsigned msgNo=0;msgNo < C3_message_order.size(); msgNo ++) {
     const unsigned from = C3_message_order[msgNo].first;
     const unsigned to = C3_message_order[msgNo].second;
-    infoMsg(IM::Med,"message in C3,part[%d] from clique %d --> clique %d\n",
+    jtIPartitions[partNo].maxCliques[from].
+      ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
+    infoMsg(IM::Med,"CE: message in C3,part[%d], clique %d --> clique %d\n",
 	    partNo,from,to);
     jtIPartitions[partNo].maxCliques[from].
-      collectEvidenceFromSeparators(jtIPartitions[partNo]);
-    jtIPartitions[partNo].maxCliques[from].
-      ceCollectToSeparator(jtIPartitions[partNo]);
+      ceSendToOutgoingSeparator(jtIPartitions[partNo]);
   }
   // do C3-E1 interface
-  infoMsg(IM::Med,"message in C3,part[%d] from clique %d --> E,part[%d], clique %d\n",
+  jtIPartitions[partNo].maxCliques[C_ri_to_E].
+    ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
+  infoMsg(IM::Med,"CE: message C3,part[%d],clique %d --> E,part[%d],clique %d\n",
 	  partNo,C_ri_to_E,partNo+1,E_li_to_C);
   jtIPartitions[partNo].maxCliques[C_ri_to_E].
-    collectEvidenceFromSeparators(jtIPartitions[partNo]);
-  jtIPartitions[partNo].maxCliques[C_ri_to_E].
-    ceCollectToSeparator(jtIPartitions[partNo],
+    ceSendToOutgoingSeparator(jtIPartitions[partNo],
 			 jtIPartitions[partNo+1].
 			 separatorCliques[jtIPartitions[partNo+1].
 					  separatorCliques.size()-1]);
-
 
 
   // finally E1 messages
@@ -2092,17 +2091,17 @@ JunctionTree::collectEvidence()
   for (unsigned msgNo=0;msgNo < E1_message_order.size(); msgNo ++) {
     const unsigned from = E1_message_order[msgNo].first;
     const unsigned to = E1_message_order[msgNo].second;
-    infoMsg(IM::Med,"message in E1,part[%d] from clique %d --> clique %d\n",
+    jtIPartitions[partNo].maxCliques[from].
+      ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
+    infoMsg(IM::Med,"CE: message E1,part[%d], clique %d --> clique %d\n",
 	    partNo,from,to);
     jtIPartitions[partNo].maxCliques[from].
-      collectEvidenceFromSeparators(jtIPartitions[partNo]);
-    jtIPartitions[partNo].maxCliques[from].
-      ceCollectToSeparator(jtIPartitions[partNo]);
+      ceSendToOutgoingSeparator(jtIPartitions[partNo]);
   }
-  infoMsg(IM::Med,"final collect in E1,part[%d] from clique %d\n",
+  infoMsg(IM::Med,"CE: final collect in E1,part[%d] to root clique %d\n",
 	  partNo,E_root_clique);
   jtIPartitions[partNo].maxCliques[E_root_clique].
-    collectEvidenceFromSeparators(jtIPartitions[partNo]);
+    ceGatherFromIncommingSeparators(jtIPartitions[partNo]);
 
 }
 
@@ -2133,11 +2132,103 @@ JunctionTree::distributeEvidence()
   // unrolled 1 time: so there is a P1, C1, C3, E1
   // unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
 
-  // start at the end, an E1 partition.
-  // unsigned partNo = jtIPartitions.size()-1;
-  
-  
 
+  const unsigned stopVal = (unsigned)(-1);
+  // start at the end, an E1 partition.
+  unsigned partNo = jtIPartitions.size()-1;
+
+  // start at E1 partition
+  infoMsg(IM::Med,"DE: initial distribute in E1,part[%d] from root clique %d\n",
+	  partNo,E_root_clique);
+  jtIPartitions[partNo].maxCliques[E_root_clique].
+    deScatterToOutgoingSeparators(jtIPartitions[partNo]);
+
+  for (unsigned msgNo=(E1_message_order.size()-1);msgNo != stopVal; msgNo --) {
+    const unsigned to = E1_message_order[msgNo].first;
+    const unsigned from = E1_message_order[msgNo].second;
+    infoMsg(IM::Med,"DE: message E1,part[%d], clique %d --> clique %d\n",
+	    partNo,from,to);
+    jtIPartitions[partNo].maxCliques[to].
+      deReceiveFromIncommingSeparator(jtIPartitions[partNo]);
+    jtIPartitions[partNo].maxCliques[to].
+      deScatterToOutgoingSeparators(jtIPartitions[partNo]);
+  }
+  partNo--;
+
+  // do E1->C3 interface
+  infoMsg(IM::Med,"DE: message E1,part[%d]clique %d -> C3,part[%d],clique %d\n",
+	  partNo+1,E_li_to_C,partNo,C_ri_to_E);
+  jtIPartitions[partNo].maxCliques[C_ri_to_E].
+    deReceiveFromIncommingSeparator(jtIPartitions[partNo],
+				    jtIPartitions[partNo+1].
+				    separatorCliques[jtIPartitions[partNo+1].
+						     separatorCliques.size()-1]);
+  jtIPartitions[partNo].maxCliques[C_ri_to_E].
+    deScatterToOutgoingSeparators(jtIPartitions[partNo]);
+
+  // then do C3 messages
+  for (unsigned msgNo=(C3_message_order.size()-1);msgNo != stopVal ; msgNo --) {
+    const unsigned to = C3_message_order[msgNo].first;
+    const unsigned from = C3_message_order[msgNo].second;
+    infoMsg(IM::Med,"DE: message C3,part[%d], clique %d --> clique %d\n",
+	    partNo,from,to);
+    jtIPartitions[partNo].maxCliques[to].
+      deReceiveFromIncommingSeparator(jtIPartitions[partNo]);
+    jtIPartitions[partNo].maxCliques[to].
+      deScatterToOutgoingSeparators(jtIPartitions[partNo]);
+  }
+
+  // then do [C2 ... ] C1  messages
+  for (partNo--; partNo > 0 ; partNo -- ) {
+    // do prevC -> C interface
+    infoMsg(IM::Med,"DE: message C,part[%d],clique %d --> C,part[%d],clique %d\n",
+	    partNo+1,C_li_to_C,partNo,C_ri_to_C);
+    jtIPartitions[partNo].maxCliques[C_ri_to_C].
+      deReceiveFromIncommingSeparator(jtIPartitions[partNo],
+				      jtIPartitions[partNo+1].
+				      separatorCliques[jtIPartitions[partNo+1].
+						       separatorCliques.size()-1]);
+    jtIPartitions[partNo].maxCliques[C_ri_to_C].
+      deScatterToOutgoingSeparators(jtIPartitions[partNo]);
+
+    for (unsigned msgNo=(C1_message_order.size()-1);msgNo != stopVal; msgNo --) {
+      const unsigned to = C1_message_order[msgNo].first;
+      const unsigned from = C1_message_order[msgNo].second;      
+      infoMsg(IM::Med,"DE: message C,part[%d],clique %d --> clique %d\n",
+	      partNo,from,to);
+      jtIPartitions[partNo].maxCliques[to].
+	deReceiveFromIncommingSeparator(jtIPartitions[partNo]);
+      jtIPartitions[partNo].maxCliques[to].
+	deScatterToOutgoingSeparators(jtIPartitions[partNo]);
+    }
+
+  }
+
+  // do C1-P1 interface 
+  infoMsg(IM::Med,"DE: message C1,part[1],clique %d --> P1,part[0], clique %d\n",
+	  C_li_to_P,P_ri_to_C);
+  jtIPartitions[0].maxCliques[P_ri_to_C].
+    deReceiveFromIncommingSeparator(jtIPartitions[0],
+				    jtIPartitions[1].
+				    separatorCliques[jtIPartitions[1].
+						     separatorCliques.size()-1]);
+  jtIPartitions[0].maxCliques[P_ri_to_C].
+    deScatterToOutgoingSeparators(jtIPartitions[0]);
+
+  // do P1 messages
+  for (unsigned msgNo=(P1_message_order.size()-1);msgNo != stopVal; msgNo --) {
+    const unsigned to = P1_message_order[msgNo].first;
+    const unsigned from = P1_message_order[msgNo].second;
+
+    infoMsg(IM::Med,"DE: message P1,part[0],clique %d --> clique %d\n",
+	    from,to);
+    jtIPartitions[0].maxCliques[to].
+      deReceiveFromIncommingSeparator(jtIPartitions[0]);
+    // note that some of these will be leaf nodes and
+    // will have no effect.
+    jtIPartitions[0].maxCliques[to].
+      deScatterToOutgoingSeparators(jtIPartitions[0]);
+  }
 
 
 }
@@ -2165,6 +2256,17 @@ JunctionTree::probEvidence()
 {
   return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
     sumProbabilities();
+}
+
+void
+JunctionTree::printAllCliquesProbEvidence()
+{
+  for (unsigned part=0;part<jtIPartitions.size();part++) {
+    for (unsigned cliqueNo=0;cliqueNo<jtIPartitions[part].maxCliques.size();cliqueNo++) {
+      printf("Part no %d: clique no %d: log probE = %f\n",
+	     part,cliqueNo,jtIPartitions[part].maxCliques[cliqueNo].sumProbabilities().valref());
+    }
+  }
 }
 
 
