@@ -264,6 +264,14 @@ void ObservationMatrix::openFiles(int n_files,
   _stride = _numFeatures; // _stride might become an option in the future and be != _numFeatures
   ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // The case below happens when we apply a float feature range that
+  // REDUCES the number of features.  We can also INCREASE the number
+  // of features, that's why _maxContinuous is initialized in the
+  // checkNumFeatures() function above
+  if(sen_float_buffer_stride > _maxContinuous) _maxContinuous = sen_float_buffer_stride; 
+  // We do the same kind of check for int features
+  if(sen_int_buffer_stride > _maxDiscrete) _maxDiscrete = sen_int_buffer_stride;
+
   _startSkip = start_skip;
   _endSkip =   end_skip;
 
@@ -276,11 +284,12 @@ void ObservationMatrix::openFiles(int n_files,
 #endif
   featuresBase = features.ptr + _stride*_startSkip;
 
-  DBGFPRINTF((stderr,"ObservationMatrix::openFiles: Creating _tmpFloatSenBuffer of size sen_float_buffer_stride x _bufSize = %d x %d\n",sen_float_buffer_stride,_bufSize));
+  DBGFPRINTF((stderr,"ObservationMatrix::openFiles: Creating _tmpFloatSenBuffer of size _maxContinuous x _bufSize = %d x %d\n",_maxContinuous,_bufSize));
 
-  _tmpFloatSenBuffer.resize(_bufSize * sen_float_buffer_stride);
-  _tmpIntSenBuffer.resize(_bufSize * sen_int_buffer_stride);
+  _tmpFloatSenBuffer.resize(_bufSize * _maxContinuous);
+  _tmpIntSenBuffer.resize(_bufSize * _maxDiscrete);
   _repeat.resize(_bufSize);
+
 }
 
 /** 
