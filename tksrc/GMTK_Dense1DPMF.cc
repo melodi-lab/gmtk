@@ -1,5 +1,5 @@
 /*-
- * GMTK_Discrete1DPDF.cc
+ * GMTK_Dense1DPMF.cc
  *     Trainable (with say EM) 1D discrete probability
  *     distributions.
  *
@@ -42,7 +42,7 @@ VCID("$Header$");
 
 /*-
  *-----------------------------------------------------------------------
- * Discrete1DPDF::Discrete1DPDF()
+ * Dense1DPMF::Dense1DPMF()
  *      Constructor
  *
  * Results:
@@ -53,7 +53,7 @@ VCID("$Header$");
  *
  *-----------------------------------------------------------------------
  */
-Discrete1DPDF::Discrete1DPDF() 
+Dense1DPMF::Dense1DPMF() 
 {
 
 }
@@ -62,7 +62,7 @@ Discrete1DPDF::Discrete1DPDF()
 
 /*-
  *-----------------------------------------------------------------------
- * Discrete1DPDF::read(is)
+ * Dense1DPMF::read(is)
  *      read in a distribution from file 'is'. 
  *      The data probs are stored as doubles, but when they are read in
  *      they are converted into the log domain (so discrete data on disk
@@ -80,21 +80,21 @@ Discrete1DPDF::Discrete1DPDF()
  *-----------------------------------------------------------------------
  */
 void
-Discrete1DPDF::read(iDataStreamFile& is)
+Dense1DPMF::read(iDataStreamFile& is)
 {
 
-  is.read(length,"Discrete1DPDF::read, distribution length");
+  is.read(length,"Dense1DPMF::read, distribution length");
 
   if (length <= 0)
-    error("Discrete1DPDF: read length (%d) < 0 in input",length);
+    error("Dense1DPMF: read length (%d) < 0 in input",length);
 
   pmf.resize(length);
 
   for (int i=0;i<length;i++) {
     double val;
-    is.readDouble(val,"Discrete1DPDF::read, reading value");
+    is.readDouble(val,"Dense1DPMF::read, reading value");
     if (val < 0 || val > 1)
-      error("Discrete1DPDF: read, invalid pmf value (%g)",val);
+      error("Dense1DPMF: read, invalid pmf value (%g)",val);
     pmf[i] = val;
   }
 }
@@ -104,7 +104,7 @@ Discrete1DPDF::read(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
- * Discrete1DPDF::read(is)
+ * Dense1DPMF::read(is)
  *      write out distribution to file 'os'. 
  *      the data probs are stored on disk as doubles,  NOT in log domain.
  * 
@@ -117,14 +117,14 @@ Discrete1DPDF::read(iDataStreamFile& is)
  *-----------------------------------------------------------------------
  */
 void
-Discrete1DPDF::write(oDataStreamFile& os)
+Dense1DPMF::write(oDataStreamFile& os)
 {
   assert (nFeats > 0);
 
-  os.write(length,"Discrete1DPDF::write, distribution length");
+  os.write(length,"Dense1DPMF::write, distribution length");
   for (int i=0;i<length;i++) {
     // convert out of log domain and write out.
-    os.writeDouble(pmf[i].unlog(),"Discrete1DPDF::write, writing value");
+    os.writeDouble(pmf[i].unlog(),"Dense1DPMF::write, writing value");
   }
   os.nl();
 

@@ -1,6 +1,6 @@
 /*-
- * GMTK_Discrete1DPDF.h
- *      .h file for GMTK_Discrete1DPDF.h, trainable 1D discrete probability
+ * GMTK_Dense1DPMF.h
+ *      .h file for GMTK_Dense1DPMF.h, trainable 1D discrete probability
  *      distributions.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -28,7 +28,7 @@
 #include "logp.h"
 #include "sArray.h"
 
-class Discrete1DPDF : public EMable {
+class Dense1DPMF : public EMable {
 
 
   ///////////////////////////////////////////////////////////  
@@ -46,7 +46,7 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  Discrete1DPDF();
+  Dense1DPMF();
 
   int length() { return pmf.len(); }
 
