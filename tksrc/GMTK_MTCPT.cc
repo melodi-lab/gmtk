@@ -151,7 +151,7 @@ MTCPT::read(iDataStreamFile& is)
   is.read(_numParents,"MTCPT::read numParents");
 
   if (_numParents < 0) 
-    error("MTCPT: read, trying to use negative (%d) num parents.",_numParents);
+    error("ERROR: reading file '%s', MTCPT '%s' trying to use negative (%d) num parents.",is.fileName(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
     warning("MTCPT: read, creating MTCPT with %d parents",_numParents);
   cardinalities.resize(_numParents+1);
@@ -159,7 +159,7 @@ MTCPT::read(iDataStreamFile& is)
   for (unsigned i=0;i<=_numParents;i++) {
     is.read(cardinalities[i],"MTCPT::read cardinality");
     if (cardinalities[i] <= 0)
-      error("MTCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
+      error("ERROR: reading file '%s', MTCPT '%s' trying to use 0 or negative (%d) cardinality table.",is.fileName(),name().c_str(),cardinalities[i]);
   }
 
   // Finally read in the ID of the decision tree
@@ -168,14 +168,13 @@ MTCPT::read(iDataStreamFile& is)
   string str;
   is.read(str);
   if (GM_Parms.dtsMap.find(str) ==  GM_Parms.dtsMap.end()) 
-      error("Error: MTCPT '%s' specifies DT name '%s' that does not exist",
-	    _name.c_str(),str.c_str());
+    error("ERROR: reading file '%s', MTCPT '%s' specifies DT name '%s' that does not exist",is.fileName(),_name.c_str(),str.c_str());
   dtIndex = GM_Parms.dtsMap[str];
 
   dt = GM_Parms.dts[dtIndex];
   
   if (_numParents != dt->numFeatures())
-      error("Error: MTCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
+    error("ERROR: reading file '%s', MTCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",is.fileName(),
 	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 
 
