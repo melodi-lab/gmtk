@@ -766,3 +766,11 @@ Sun Dec 22 21:12:43 2002
      to link into the end (i.e., P can link to E using negative)?? 
   - but this would have same problems as linking from P to E
     in note above.
+
+
+Tue Dec 24 00:25:18 2002
+  - find best {left,right} interface should have the option
+    to judge the quality of the interface not by size
+    but also by weight (which includes deterministic 
+    variables).
+  
