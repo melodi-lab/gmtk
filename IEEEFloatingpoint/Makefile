@@ -92,7 +92,7 @@ objs = ieeeFPsetup.o
 # Main build programs.
 #----------------------------------------------------------------------------
 
-libIEEEsuport.a: $(objs)
+libIEEEsupport.a: $(objs)
 	rm -f $@
 	$(archive) $@ $(objs)
 
