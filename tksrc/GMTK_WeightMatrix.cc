@@ -30,6 +30,8 @@
 #include "general.h"
 #include "error.h"
 
+#include "GMTK_WeightMatrix.h"
+
 
 VCID("$Header$");
 
@@ -41,7 +43,7 @@ VCID("$Header$");
 
 /*-
  *-----------------------------------------------------------------------
- * RealMatrix::RealMatrix()
+ * WeightMatrix::WeightMatrix()
  *      Constructor
  *
  * Results:
@@ -52,16 +54,14 @@ VCID("$Header$");
  *
  *-----------------------------------------------------------------------
  */
-RealMatrix::RealMatrix() 
+WeightMatrix::WeightMatrix() 
 {
-
-
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * RealMatrix::read(is)
+ * WeightMatrix::read(is)
  *      read in the array from file 'is'. 
  *      The data probs are stored as doubles, but when they are read in
  *      they are converted to the log domain.
@@ -75,22 +75,22 @@ RealMatrix::RealMatrix()
  *-----------------------------------------------------------------------
  */
 void
-RealMatrix::read(iDataStreamFile& is)
+WeightMatrix::read(iDataStreamFile& is)
 {
-  is.read(_rows,"RealMatrix::read, distribution rows");
+  is.read(_rows,"WeightMatrix::read, distribution rows");
   if (_rows <= 0)
-    error("RealMatrix: read rows (%d) < 0 in input",rows);
+    error("WeightMatrix: read rows (%d) < 0 in input",_rows);
 
-  is.read(_cols,"RealMatrix::read, distribution cols");
+  is.read(_cols,"WeightMatrix::read, distribution cols");
   if (_cols <= 0)
-    error("RealMatrix: read cols (%d) < 0 in input",_cols);
+    error("WeightMatrix: read cols (%d) < 0 in input",_cols);
 
   weights.resize(_rows*_cols);
 
-  float ptr = weights.ptr;
+  float* ptr = weights.ptr;
   for (int i=0;i<_rows*_cols;i++) {
     float val;
-    is.read(val,"RealMatrix::read, reading value");
+    is.read(val,"WeightMatrix::read, reading value");
     *ptr++ = val;
   }
 }
@@ -100,7 +100,7 @@ RealMatrix::read(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
- * RealMatrix::write(os)
+ * WeightMatrix::write(os)
  *      write out data to file 'os'. 
  * 
  * Results:
@@ -112,16 +112,16 @@ RealMatrix::read(iDataStreamFile& is)
  *-----------------------------------------------------------------------
  */
 void
-RealMatrix::write(oDataStreamFile& os)
+WeightMatrix::write(oDataStreamFile& os)
 {
-
-  os.write(_rows,"RealMatrix::write, distribution rows");
-  os.write(_cols,"RealMatrix::write, distribution cols");
-
+  os.write(_rows,"WeightMatrix::write, distribution rows");
+  os.write(_cols,"WeightMatrix::write, distribution cols");
   for (int i=0;i<_rows*_cols;i++) {
-    os.write(weights[i],"RealMatrix::write, writeing value");
-    if (i 
+    if (i % _cols == 0)
+      os.nl();
+    os.write(weights[i],"WeightMatrix::write, writing value");
   }
+  os.nl();
 }
 
 
