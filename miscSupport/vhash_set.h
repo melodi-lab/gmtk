@@ -42,18 +42,19 @@ public:
   // The size of all the vectors in this set must be the
   // same. Here we store the size once, so they don't
   // need to be stored in each element.
-  const unsigned vsize;
+  // @@@ should be const
+  unsigned vsize;
 
   ////////////////////////////////////////////////////////////
-  // the "buckets", which include a key 
-  struct Bucket {
+  // the set "buckets", which includes only key 
+  struct SBucket {
     _Key* key;
-    Bucket() :key(NULL) {}
+    SBucket() :key(NULL) {}
   };
 
   //////////////////////////////////////////////////////////
   // the actual hash table, an array of pointers to T's
-  sArray < Bucket > table;
+  sArray < SBucket > table;
 
 #ifdef COLLECT_COLLISION_STATISTICS
   unsigned maxCollisions;
@@ -131,18 +132,18 @@ public:
 
   ///////////////////////////////////////
   // return true if the bucket is empty
-  bool empty(const Bucket* bucket) {
+  bool empty(const SBucket* bucket) {
     return (bucket->key == NULL);
   }
   // return true if the bucket is empty
-  bool empty(const Bucket& bucket) {
+  bool empty(const SBucket& bucket) {
     return (bucket.key == NULL);
   }
 
   //////////////////////////////////////////////////////////////////
   // return the entry of key in table a_table
   unsigned entryOf(const _Key* key,
-		   sArray<Bucket> & a_table) {
+		   sArray<SBucket> & a_table) {
     const unsigned size = a_table.size();
     unsigned a = h1(key,size);
 
@@ -183,7 +184,7 @@ public:
     // old table into the new table.
 
     // the next table, used for table resizing.
-    sArray < Bucket > nt;
+    sArray < SBucket > nt;
     nt.resize(new_size);
 
     for (unsigned i=0;i<table.size();i++) {

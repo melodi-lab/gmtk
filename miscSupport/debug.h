@@ -63,6 +63,7 @@ public:
     Tiny = 20,
     Low  = 30,
     Moderate = 40,
+    Mod  = 40, // alias for Moderate
     Med  = 50,
     High = 60,
     Huge = 70,
