@@ -276,7 +276,7 @@ MDCPT::write(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * MDCPT::setParentValues()
+ * MDCPT::becomeAwareOfParentValues()
  *      Adjusts the current structure so that subsequent calls of
  *      probability routines will be conditioned on the given
  *      assigment to parent values.
@@ -290,7 +290,7 @@ MDCPT::write(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void
-MDCPT::setParentValues( sArray<int>& parentValues)
+MDCPT::becomeAwareOfParentValues( sArray<int>& parentValues)
 {
 
   assert ( parentValues.len() == numParents );
@@ -299,18 +299,122 @@ MDCPT::setParentValues( sArray<int>& parentValues)
   int offset = 0;
   for (int i = 0; i < numParents; i++) {
     if (parentValues[i] < 0 || parentValues[i] >= cardinalities[i]) 
-      error("MDCPT:setParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
+      error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
     offset += parentValues[i]*cumulativeCardinalities[i];
   }
   mdcpt_ptr = mdcpt.ptr + offset;
 
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MDCPT::becomeAwareOfParentValues()
+ *      Like above, but uses the explicit array of parents.
+ *  
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      Changes the mdcpt_ptr
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MDCPT::becomeAwareOfParentValues( sArray< randomVariable * >& parents)
+{
+
+  assert ( parents.len() == numParents );
+  assert ( bitmask & bm_basicAllocated );
+  
+  int offset = 0;
+  for (int i = 0; i < numParents; i++) {
+    if ( parents[i].val < 0 || parents[i].val >= cardinalities[i]) 
+      error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
+    offset += parents[i].val*cumulativeCardinalities[i];
+  }
+  mdcpt_ptr = mdcpt.ptr + offset;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
 ////////////////////////////////////////////////////////////////////
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * MDCPT::randomSample()
+ *      Takes a random sample given current parent values.
+ *  
+ * Results:
+ *      the sample
+ *
+ * Side Effects:
+ *      none.
+ *
+ *-----------------------------------------------------------------------
+ */
+int
+MDCPT::randomSample()
+{
+  assert ( bitmask & bm_basicAllocated );
+  
+  iterator it = first();
+  logpr uniform = rnd.drand48();
+  logpr sum = 0.0;
+  do {
+    sum += it.probVal;
+    if (uniform <= sum)
+      break;
+  } while next(it);
+  
+  return it.val;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MDCPT::normalize()
+ *      Re-normalize all the distributions
+ *  
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      Changes the values of all tables.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MDCPT::normalize()
+{
+  assert ( bitmask & bm_basicAllocated );
+
+  // Use the inherent structure of the multi-D array
+  // so to loop over the final distributions on the child.
+
+  const int child_card = cardinalities[numParents];
+  const int num_parent_assignments = mdcpt.len()/child_card;
+  logpr *loc_ptr = mdcpt.ptr;
+  for (int parent_assignment =0; 
+       parent_assignment < num_parent_assignments; 
+       parent_assignment ++) {
+    logpr sum = 0.0;
+    logpr *tmp_loc_ptr = loc_ptr;
+    for (int i=0;i<child_card;i++) {
+      sum += *tmp_loc_ptr++;
+    }
+    tmp_loc_ptr = loc_ptr;
+    for (int i=0;i<child_card;i++) {
+      *tmp_loc_ptr /= sum;
+      tmp_loc_ptr++;
+    }
+    loc_ptr += child_card;
+  }
+}
 
 
 /*-
@@ -322,7 +426,7 @@ MDCPT::setParentValues( sArray<int>& parentValues)
  *      No results.
  *
  * Side Effects:
- *      Changes the mdcpt_ptr
+ *      Changes the values of all tables.
  *
  *-----------------------------------------------------------------------
  */
@@ -355,6 +459,50 @@ MDCPT::makeRandom()
     loc_ptr += child_card;
   }
 }
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MDCPT::makeUnifrom()
+ *      Have distribution be entirely uniform.
+ *  
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      Changes the values of all tables.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MDCPT::makeUniform()
+{
+  assert ( bitmask & bm_basicAllocated );
+
+  // Use the inherent structure of the multi-D array
+  // so to loop over the final distributions on the child.
+
+  const int child_card = cardinalities[numParents];
+  double u_val = 1.0/(double)child_card;
+  const int num_parent_assignments = mdcpt.len()/child_card;
+  logpr *loc_ptr = mdcpt.ptr;
+  for (int parent_assignment =0; 
+       parent_assignment < num_parent_assignments; 
+       parent_assignment ++) {
+    logpr sum = 0.0;
+    logpr *tmp_loc_ptr = loc_ptr;
+    for (int i=0;i<child_card;i++) {
+      *tmp_loc_ptr ++ = u_val;
+    }
+    loc_ptr += child_card;
+  }
+}
+
+
+
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -441,7 +589,7 @@ main()
   parentVals[0] = 0;
   parentVals[1] = 0;
   parentVals[2] = 1;
-  mdcpt.setParentValues(parentVals);
+  mdcpt.becomeAwareOfParentValues(parentVals);
 
   it = mdcpt.first();
   do {

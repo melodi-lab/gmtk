@@ -51,3 +51,33 @@ int CPT::warningNumParents = 50;
 //        Misc Support
 ////////////////////////////////////////////////////////////////////
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      compareCardinalities: compare the cardinalities of this CPT with that of an other. REturn
+ *      true if they are equil false otherwise.
+ *
+ * Results:
+ *      returns true if cards are equal.
+ *
+ * Side Effects:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+bool 
+CPT::compareCardinalities(CPT& cpt)
+{
+  if (cardinalities.len() != cpt.cardinalities.len())
+    return false;
+
+  for (int i=0;i<cardinalities.len();i++) {
+    if (cardinalities[i] != cpt.cardinalities[i])
+      return false;
+  }
+}
+
+

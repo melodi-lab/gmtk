@@ -2,7 +2,7 @@
  * GMTK_DiscreteRandomVariable.h
  * A specific case of the RandomVariable class
  *
- * Written by Geoffrey Zweig <gzweig@us.ibm.com>
+ * Written by Geoffrey Zweig <gzweig@us.ibm.com> & Jeff Bilmes <bilmes@ee.washington.edu>
  * 
  * Copyright (c) 2001, < fill in later >
  *
@@ -21,32 +21,84 @@
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
 
-struct DiscreteRandomVariable : public RandomVariable
+class DiscreteRandomVariable : public RandomVariable
 {
-    logpr probGivenParents();
+private:
 
-    void clampFirstValue();
+  //////////////////////////////////////////////////////////////////////
+  // CPT array, one for each set of possible parents we might
+  // have (so size of this array is the number of different
+  // possible conditional parents).
+  sArray < CPT* > conditionalCPTs;
 
-    bool clampNextValue();
+  // the current CPT after findConditionalParents() is called.
+  CPT* curCPT;
 
-    void makeRandom();
+  // iterator used between clamp functions.
+  CPT::iterator it;
 
-    void makeUniform();
+  // Cached value of findConditionalParents(). Can reuse
+  // this value w/o needing to do the integer map lookup
+  // again.
+  int cachedIntFromSwitchingState;
 
-    void instantiate();
+public:
 
-    void tieWith(randomVariable *rv);
 
-    void zeroAccumulators();
+  DiscreteRandomVariable();
 
-    void increment(logpr posterior);
+  ////////////////////////////////////////////////////////////////
+  // Set up conditional parents pointers and other tables.
+  void findConditionalParents();
 
-    void update();
+  ////////////////////////////////////////////////////////////////
+  // These next several routines use the switching state and
+  // parent set determined the last time findConditionalParents
+  // was called.
+  // 
+  // compute the probability
+  logpr probGivenParents() {
+    reutrn curCPT->probGivenParents(curConditionalParents,val);
+  }
+  // clamp this RV to its "first" value
+  void clampFirstValue() { it = curCPT->first(); val = it.val; }
+  // continue on
+  bool clampNextValue() { curCPT->next(it); val = it.val; }
+  ////////////////////////////////////////////////////////////////
 
-    DISCRETE_VARIABLE_TYPE cached_val;
-    void cacheValue() = {cached_val=val;}
+  ////////////////////////////////////////////////////////////////
+  // Value caching support.
+  DISCRETE_VARIABLE_TYPE cached_val;
+  void cacheValue() {cached_val=val;}
+  void restoreCachedValue() {val=cached_val;}
 
-    void restoreCachedValue() = {val=cached_val;}
+  void makeRandom() { 
+    for (i=0;i<conditionalCPTs.len();i++) 
+      conditionalCPTs[i].makeRandom();
+  }
+
+  void makeUniform()  { 
+    for (i=0;i<conditionalCPTs.len();i++) 
+      conditionalCPTs[i].makeUniform();
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Sample, set value.
+  void instantiate() { val = curCPT->randomSample(); }
+
+  ////////////////////////////////////////////////////////////////
+  // tie self set of parameters with those of rv
+  void tieWith(randomVariable *rv);
+
+
+  ///////////////////////////////////////////////////
+  // EM Support
+  void zeroAccumulators();
+  void increment(logpr posterior);
+  void update();
+  ///////////////////////////////////////////////////
+
+
 };
 
 #endif
