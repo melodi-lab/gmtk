@@ -62,6 +62,7 @@ compile.c = $(CC) $(DEFS) $(INCLUDES) $(CXXFLAGS)
 pure =
 link = $(pure) $(LD) $(LDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
+compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 
 #----------------------------------------------------------------------------
 # Default build rules.
