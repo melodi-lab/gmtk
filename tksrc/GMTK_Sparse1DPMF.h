@@ -105,6 +105,11 @@ public:
   // is located at the correct position.
   void read(iDataStreamFile& is);
 
+
+  ///////////////////////////////////////////////////////////
+  // presumably, get parameters from dense pmfs.
+  unsigned totalNumberParameters() { return dense1DPMF->totalNumberParameters();  }
+
   ///////////////////////////////////////////////////////////    
   // write out the basic parameters, starting at the current
   // file position.

@@ -115,6 +115,34 @@ MixGaussians::write(oDataStreamFile& os)
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * totalNumberParameters()
+ *      return total number of parameters used by this mixture.
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+unsigned MixGaussians::totalNumberParameters()
+{
+  unsigned sum=0;
+  for (unsigned i=0;i<components.size();i++) 
+    sum += components[i]->totalNumberParameters();
+  return (sum + dense1DPMF->totalNumberParameters());
+}
+
+
 void
 MixGaussians::makeUniform()
 {

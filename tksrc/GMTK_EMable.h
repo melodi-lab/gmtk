@@ -355,6 +355,9 @@ public:
   void emSetSharedBit() { bitmask |= bm_isShared; }
   bool emSharedBitIsSet() { return (bitmask & bm_isShared); }
 
+  // return the number of parameters for object.
+  virtual unsigned totalNumberParameters() = 0;
+
   //////////////////////////////////////////////
   // For parallel EM training.
 

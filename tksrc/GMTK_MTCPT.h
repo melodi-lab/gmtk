@@ -162,6 +162,11 @@ public:
   // set all values to uniform values.
   void makeUniform() {}
 
+
+  ///////////////////////////////////
+  // get parameters from dense pmfs
+  unsigned totalNumberParameters() { return 0; }
+
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is);

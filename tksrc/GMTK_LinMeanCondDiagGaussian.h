@@ -89,6 +89,13 @@ public:
   void makeUniform();
   //////////////////////////////////
 
+
+  ///////////////////////////////////
+  unsigned totalNumberParameters() { return 
+				       mean->totalNumberParameters()+
+				       covar->totalNumberParameters()+
+				       dLinkMat->totalNumberParameters(); }
+
   //////////////////////////////////
   // probability evaluation
   logpr log_p(const float *const x,    // real-valued scoring obs at time t
