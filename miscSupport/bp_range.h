@@ -134,11 +134,13 @@ public:
   bool overlapP (const BP_Range& r) const;
   bool overlapP (const BP_Range* r) const { return overlapP(*r); }
 
-  bool operator<  (const BP_Range& r)  const;
-  bool operator<= (const BP_Range& r)  const;
-  bool operator>  (const BP_Range& r)  const;
-  bool operator>= (const BP_Range& r)  const;
-  bool operator== (const BP_Range& r)  const;
+  bool operator<  (const BP_Range& r)  const { return (max() < r.min()); }
+  bool operator>  (const BP_Range& r)  const { return (min() > r.max()); }
+  bool boundariesOverlap(const  BP_Range& r) const {
+    if (max() < r.min() || min() > r.max())
+      return false;
+    return true;
+  }
 
   bool operator<  (const int r)  const { return (max() < r); }
   bool operator<= (const int r)  const { return (max() < r || contains(r)); }
