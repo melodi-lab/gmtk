@@ -544,3 +544,8 @@ logic therefore needs to be rethought.
 -----------------------------------------------------------------
 
 - get automatic allocation of DenseCPTs working again.
+
+
+Tue Jul  2 19:35:29 2002
+- errors when reading in parameter files should be more informative
+  and perhaps say where in the parameeeeeer files the problem is.
