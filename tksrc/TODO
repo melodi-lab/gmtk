@@ -169,3 +169,6 @@ X change sparse PMF so that it just contains a list
   thigns that are inconvenient, etc.).
 
 - add VCID everywhere.
+
+- allow deterministic relations to be enumerated out. in some cases, this is
+  easier than a decision tree. 
