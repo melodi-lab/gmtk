@@ -58,6 +58,27 @@ VCID("$Header$");
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
+//        Misc Support
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+static void
+printRVSet(set<RandomVariable*>& locset)
+{
+  set<RandomVariable*>::iterator it;
+  bool first = true;
+  for (it=locset.begin();it!=locset.end();it++) {
+    RandomVariable* rv = (*it);
+    if (!first)
+      printf(", ");
+    printf("%s(%d)",rv->name().c_str(),rv->frame());
+    first = false;
+  }
+  printf("\n");
+}
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 //        Inference Partition support
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -149,7 +170,8 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
   infoMsg(IM::Med,"Starting create JT\n");
 
   if (numMaxCliques == 0) {
-    // then nothing to do
+    // this shouldn't happen
+    assert(0);
     infoMsg(IM::Med,"Partition is empty\n");
     return;
   } else if (numMaxCliques == 1) {
@@ -162,7 +184,12 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
     part.cliques[0].neighbors.push_back(1);
     part.cliques[1].neighbors.push_back(0);
   } else {
-    // need to do some work.
+
+    // Run max spanning tree to construct JT from set of cliques.
+    // This is basically Krusgal's algorithm, but without using the
+    // fast data structures (it doesn't need to be that fast
+    // since it is run one time per partition, for all inference
+    // runs of any length.
 
     vector < set<unsigned> >  findSet;
     findSet.resize(numMaxCliques);
@@ -230,6 +257,73 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::unroll()
+ *   sets up the internal data structures and creates a junction tree corresponding
+ *   to the graph with C' unrolled k=2 times, (i.e., we have
+ *   a graph that has (3) copies of C'). It does this using the initial
+ *   partitions given in gm_template (P', C', and E').
+ *
+ *   This routine should really only be called once to set up
+ *   the base partitions (P1,C1,C2,C3,E1,Cu0), from which all future
+ *   unrolls will take place.
+ *
+ *   Sets things up so that inference can take place.
+ *   Unrolling is in terms of new C' partitions (so that if S=1, k corresponds to frames)
+ *   but in general the network will be T(P') + k*T(C') + T(E) frames long, and in general
+ *   T(C') >= S. This also depends on if the boundary algorithm was run or not. 
+ *
+ * Preconditions:
+ *   The partitions must be validly instantiated with cliques 
+ *
+ * Postconditions:
+ *   The partitions are such that they now know who they are connected to on
+ *   the right and left.
+ *
+ * Side Effects:
+ *   Modifies all neighbors variables within the cliques within the
+ *   partition.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::base_unroll()
+{
+
+  const unsigned k = 2;
+
+  // first create the unrolled set of random variables corresponding
+  // to this JT.
+
+  // unrolled random variables
+  vector <RandomVariable*> unrolled_rvs;
+  // mapping from name(frame) to integer index into unrolled_rvs.
+  map < RVInfo::rvParent, unsigned > ppf;
+  // number of C repetitions is M + (k+1)*S, so
+  // we unroll one less than that.
+  fp.unroll(gm_template.M + (k+1)*gm_template.S - 1,
+	    unrolled_rvs,ppf);
+  
+  // copy P partition 
+  new (&P1) InferencePartition(gm_template.P,unrolled_rvs,ppf,0);
+
+  // copy C partition
+  new (&C1) InferencePartition(gm_template.C,unrolled_rvs,ppf,0*gm_template.S);
+  new (&Cu0) InferencePartition(gm_template.C,unrolled_rvs,ppf,0*gm_template.S);
+  new (&C2) InferencePartition(gm_template.C,unrolled_rvs,ppf,1*gm_template.S);
+  new (&C3) InferencePartition(gm_template.C,unrolled_rvs,ppf,2*gm_template.S);
+
+  // copy E partition
+  new (&E1) InferencePartition(gm_template.E,unrolled_rvs,ppf,2*gm_template.S);
+  
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::createPartitionInterfaces()
@@ -247,7 +341,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
  *   The member variables P_ri_to_C etc. are filled in.
  *
  * Side Effects:
- *   Modifies member variables, as above.
+ *   chnages group of member variables P_ri_to_C, C_li_to_P, etc.
  *
  * Results:
  *   Modifies member variables as above.
@@ -257,36 +351,29 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 void
 JunctionTree::computePartitionInterfaces()
 {
-  // unroll internal data structures one time, setting
-  // up the base_partition structures.
-  base_unroll(1);
+  // set up the base partitions
+  base_unroll();
 
-  // now we have that
-  //  base_partition[0] is a P partition
-  //  base_partition[1] is a C partition (C1)
-  //  base_partition[2] is a C partition (C2)
-  //  base_partition[3] is an E 
-  // Use these new partitions to find the various interface
-  // cliques.
+  // Use base partitions to find the various interface cliques.
 
   infoMsg(IM::Huge,"computing interface for partitions P to C");
-  computePartitionInterface(base_partitions[0],
+  computePartitionInterface(P1,
 			    P_ri_to_C,
-			    base_partitions[1],
+			    C1,
 			    C_li_to_P,
 			    P_to_C_icliques_same);
 
   infoMsg(IM::Huge,"computing interface for partitions C to C");
-  computePartitionInterface(base_partitions[1],
+  computePartitionInterface(C1,
 			    C_ri_to_C,
-			    base_partitions[2],
+			    C2,
 			    C_li_to_C,
 			    C_to_C_icliques_same);
 
   infoMsg(IM::Huge,"computing interface for partitions C to E");
-  computePartitionInterface(base_partitions[2],
+  computePartitionInterface(C3,
 			    C_ri_to_E,
-			    base_partitions[3],
+			    E1,
 			    E_li_to_C,
 			    C_to_E_icliques_same);
 
@@ -317,8 +404,7 @@ JunctionTree::computePartitionInterfaces()
  *   the right and left.
  *
  * Side Effects:
- *   Modifies all neighbors variables within the cliques within the
- *   partition.
+ *   none
  *
  * Results:
  *   The left partitions right interface clique and the right partitions
@@ -400,73 +486,6 @@ JunctionTree::computePartitionInterface(InferencePartition& part1,
 
 
 
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::unroll()
- *   sets up the internal data structures and creates a junction tree corresponding
- *   to the graph with C' unrolled k times, k >= 0. (i.e., we have
- *   a graph that has (k+1) copies of C'). It does this using the initial
- *   partitions given in gm_template (P', C', and E').
- *
- *   This routine should really only be called once to set up
- *   the base_partitions data structure, from which all future
- *   unrolls will take place.
- *
- *   Sets things up so that inference can take place.
- *   Unrolling is in terms of new C' partitions (so that if S=1, k corresponds to frames)
- *   but in general the network will be T(P') + k*T(C') + T(E) frames long, and in general
- *   T(C') >= S. This also depends on if the boundary algorithm was run or not. 
- *
- * Preconditions:
- *   The partitions must be validly instantiated with cliques 
- *
- * Postconditions:
- *   The partitions are such that they now know who they are connected to on
- *   the right and left.
- *
- * Side Effects:
- *   Modifies all neighbors variables within the cliques within the
- *   partition.
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::base_unroll(const unsigned int k)
-{
-
-  // first create the unrolled set of random variables corresponding
-  // to this JT.
-
-  // unrolled random variables
-  vector <RandomVariable*> unrolled_rvs;
-  // mapping from name(frame) to integer index into unrolled_rvs.
-  map < RVInfo::rvParent, unsigned > ppf;
-  // number of C repetitions is M + (k+1)*S, so
-  // we unroll one less than that.
-  fp.unroll(gm_template.M + (k+1)*gm_template.S - 1,
-	    unrolled_rvs,ppf);
-
-  // clear out the old and pre-allocate for new size.
-  base_partitions.clear();
-  base_partitions.reserve(k+3);
-  
-  // copy P partition into base_partitions[0]
-  base_partitions.push_back(InferencePartition(gm_template.P,unrolled_rvs,ppf,0));
-
-  for (unsigned i = 0; i <= k; i++) {
-    base_partitions.push_back(InferencePartition(gm_template.C,unrolled_rvs,ppf,i*gm_template.S));
-  }
-
-  // copy E partition into base_partitions[k+1]
-  base_partitions.push_back(InferencePartition(gm_template.E,unrolled_rvs,ppf,k*gm_template.S));
-  
-}
-
-
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -494,23 +513,19 @@ JunctionTree::base_unroll(const unsigned int k)
 void
 JunctionTree::createDirectedGraphOfCliques()
 {
-  assert (base_partitions.size() == 4);
 
-  // do P to C
-  createDirectedGraphOfCliques(base_partitions[0],
+  createDirectedGraphOfCliques(P1,
 			       P_ri_to_C);
-
-  // do C to C
-  createDirectedGraphOfCliques(base_partitions[1],
+  createDirectedGraphOfCliques(C1,
 			       C_ri_to_C);
-
-  // do C to E
-  createDirectedGraphOfCliques(base_partitions[2],
+  createDirectedGraphOfCliques(C2,
+			       C_ri_to_C);
+  createDirectedGraphOfCliques(C3,
 			       C_ri_to_E);
-
-  // do E
-  createDirectedGraphOfCliques(base_partitions[3],
+  createDirectedGraphOfCliques(E1,
 			       E_root_clique);
+  createDirectedGraphOfCliques(Cu0,
+			       C_ri_to_E);
 
 }
 
@@ -601,26 +616,36 @@ JunctionTree::createDirectedGraphOfCliquesRecurse(InferencePartition& part,
 void
 JunctionTree::assignRVsToCliques()
 {
-  assert (base_partitions.size() == 4);
 
-  // infoMsg(IM::Med,"assigning rvs to orig P partition\n");
-  // assignRVsToCliques(gm_template.P,P_ri_to_C);
+  infoMsg(IM::Med,"assigning rvs to P1 partition\n");
+  assignRVsToCliques("P1",P1,P_ri_to_C);
 
-  infoMsg(IM::Med,"assigning rvs to P partition\n");
-  assignRVsToCliques(0,base_partitions[0],P_ri_to_C);
+  infoMsg(IM::Med,"assigning rvs to C1 partition\n");
+  C1.cliques[C_li_to_P].cumulativeAssignedNodes = 
+    P1.cliques[P_ri_to_C].cumulativeAssignedNodes;
+  printf("C1's li to P cum nodes are:\n");
+  printRVSet(C1.cliques[C_li_to_P].cumulativeAssignedNodes);
+  assignRVsToCliques("C1",C1,C_ri_to_C);
 
+  infoMsg(IM::Med,"assigning rvs to C2 partition\n");
+  C2.cliques[C_li_to_C].cumulativeAssignedNodes = 
+    C1.cliques[C_ri_to_C].cumulativeAssignedNodes;
+  assignRVsToCliques("C2",C2,C_ri_to_C);
 
-  infoMsg(IM::Med,"assigning rvs to C partition\n");
-  assignRVsToCliques(1,base_partitions[1],C_ri_to_C);
+  infoMsg(IM::Med,"assigning rvs to C3 partition\n");
+  C3.cliques[C_li_to_C].cumulativeAssignedNodes = 
+    C2.cliques[C_ri_to_C].cumulativeAssignedNodes;
+  assignRVsToCliques("C3",C3,C_ri_to_E);
 
-
-  infoMsg(IM::Med,"assigning rvs to last C partition\n");
-  assignRVsToCliques(2,base_partitions[2],C_ri_to_E);
-
+  infoMsg(IM::Med,"assigning rvs to last Cu0 partition\n");
+  Cu0.cliques[C_li_to_P].cumulativeAssignedNodes =
+    P1.cliques[P_ri_to_C].cumulativeAssignedNodes;
+  assignRVsToCliques("Cu0",Cu0,C_ri_to_E);
 
   infoMsg(IM::Med,"assigning rvs to E partition\n");
-  assignRVsToCliques(3,base_partitions[3],E_root_clique);
-
+  E1.cliques[E_li_to_C].cumulativeAssignedNodes =
+    C3.cliques[C_ri_to_E].cumulativeAssignedNodes;
+  assignRVsToCliques("E1",E1,E_root_clique);
 
 
 }
@@ -668,7 +693,7 @@ JunctionTree::assignRVsToCliques()
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::assignRVsToCliques(const unsigned partNo,
+JunctionTree::assignRVsToCliques(const char *const partName,
 				 InferencePartition& part,
 				 const unsigned rootClique)
 {
@@ -688,7 +713,7 @@ JunctionTree::assignRVsToCliques(const unsigned partNo,
     }
     bool assigned = false;
     multimap < vector<float>, unsigned> scoreSet;
-    assignRVToClique(partNo,
+    assignRVToClique(partName,
 		     part,rootClique,
 		     0,
 		     rv,
@@ -702,22 +727,20 @@ JunctionTree::assignRVsToCliques(const unsigned partNo,
 	part.cliques[clique_num].sortedAssignedNodes.push_back(rv);
 	assigned = true;
 	infoMsg(IM::Med,
-		"Part %d: random variable %s(%d) assigned to clique %d\n",
-		partNo,
+		"Part %s: random variable %s(%d) assigned to clique %d\n",
+		partName,
 		rv->name().c_str(),rv->frame(),clique_num);
       } else {
 	// rv was not assigned to this partition, it must
 	// be the case that it will be assigned to a different
 	// partition.
-	infoMsg(IM::Med,"Part %d: random variable %s(%d) not assigned in current partition\n",partNo,
+	infoMsg(IM::Med,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
 		rv->name().c_str(),rv->frame());
       }
     }
-    // re-compute the cumulative RV assignments.
+    // update the cumulative RV assignments.
     if (assigned)
-      getCumulativeAssignedNodes(part,
-				 rootClique,
-				 part.cliques[rootClique].cumulativeAssignedNodes);
+      getCumulativeAssignedNodes(part,rootClique);
   }
 }
 
@@ -744,7 +767,7 @@ JunctionTree::assignRVsToCliques(const unsigned partNo,
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::assignRVToClique(const unsigned partNo,
+JunctionTree::assignRVToClique(const char *const partName,
 			       InferencePartition& part,
 			       const unsigned root,
 			       unsigned depth,
@@ -784,8 +807,8 @@ JunctionTree::assignRVToClique(const unsigned partNo,
     // assigned to this clique).
 
     infoMsg(IM::Huge,
-	    "Part %d: found random variable %s(%d) in clique %d along with all its parents\n",
-	    partNo,
+	    "Part %s: found random variable %s(%d) in clique %d along with all its parents\n",
+	    partName,
 	    rv->name().c_str(),rv->frame(),root);
 
 
@@ -805,54 +828,78 @@ JunctionTree::assignRVToClique(const unsigned partNo,
       curClique.sortedAssignedNodes.push_back(rv);
       assigned = true;
       infoMsg(IM::Med,
-	      "Part %d: random variable %s(%d) assigned to clique %d with all its parents\n",partNo,
+	      "Part %s: random variable %s(%d) assigned to clique %d with all its parents\n",partName,
 		rv->name().c_str(),rv->frame(),root);
       // all done with this routine since rv has been assigned.
       return;
     } else {
 
+      // Note: in this discussion, we make a distinction between node
+      // parents and children (i.e., original graph parents and
+      // children) and JT parents and children which are cliques in
+      // the JT. A child clique c of a parent p in the JT is one such
+      // that c ~ p and that depth(c) = depth(p)+1, where
+      // depth(root)=0 in the junction tree.
+
       // While we have a clique that contains this rv and all of its
-      // parents, it is not the case that all of rv's parents are
-      // assigned to this clique. Moreover, it will never be the case
-      // that rv's parents will be assigned to *this* clique since we
-      // are presumably assigning rv's to cliques in topological
-      // order, and at this point, we've already assigned rv's parents
-      // somewhere else.
+      // node parents, it is not the case that all of rv's node
+      // parents are assigned to this clique. Moreover, it will never
+      // be the case that rv's node parents will be assigned to *this*
+      // clique since we are presumably assigning rv nodes to cliques
+      // in topological order, and at this point, we've already
+      // assigned rv's node parents somewhere else.
 
       // Therefore, we have to do the best we can (i.e., we're now in
       // a situation where rv will live in a clique without all of its
-      // parents assigned).
+      // node parents assigned).
 
       // What we do, is continue on down. It may be the the case that
-      // we find a clique with rv and all of rv's parents assigned (in
-      // which case we assign rv right then), but in the mean time we
-      // keep track of this clique's "score" using a set of
-      // heuristics. At some time later, the variable will be assigned
-      // to the clique with the *LOWEST* score.
+      // we find a clique with rv and all of rv's node parents
+      // assigned (in which case we assign rv right then), but in the
+      // mean time we keep track of this clique's "score" using a set
+      // of heuristics. At some time later, the rv will be assigned to
+      // the clique with the *LOWEST* score.
 
-      // Possible Heuristics: want to assign rv to a clique where it 
-      //    A) has all of its parents  in clique (already satisfied here)
-      //    B) has its parents actually assigned (not satisfied here)
+      // Heuristics: want to assign rv to a clique where it:
+      // 
+      //    A) has all of its node parents in clique (already satisfied here)
+      //
+      //    B) has its node parents actually assigned (not satisfied here)
+      //
+      //    C) be in a clique CL close enough to the root clique so
+      //    that all rv's node parents are assigned to cliques that
+      //    are JT decendants of CL in the JT rooted at root. This way
+      //    the separator driven iterations will preserve any
+      //    sparsity driven zeros in the CPTs.
+      //
+      //    D) has lots of node children whose other node parents are
+      //    already (or will be) assigned.
+      // 
+      //    E) is assign as far away from root as possible, to try
+      //    encourage it to have as much "influence" as possible in
+      //    JT parents (but this is only a poor heuristic)
+      //
+      //    F) (NOT DONE BELOW) is assigned to a clique where it has the greatest
+      //    number of node descendants (but this is only a heuristic
+      //    since to gain benefit, we would need to have it be such
+      //    that those node descendants have their node parents in
+      //    clique as well.
+      // 
 
-      //    C) be in a clique close enough to the root (say at depth
-      //       d) so that all rv's parents are assigned to cliques that
-      //       JT decendants in the JT rooted at root.
+      // TODO: The variable being in a clique with its parents
+      // *assigned* is really only important for sparse or
+      // deterministic nodes. Ideally, this bit of info should also
+      // affect the assignment process.
 
-      //    D) lots of children whose other parents are already
-      //       (or will be) assigned.
-      //    E) assign as far away from root as possible.
-
-      // Note. The variable being in a clique with its parents
-      // *assigned* is really only important for sparse or deterministic
-      // nodes. Ideally, this bit of info should also affect the
-      // assignment process.
+      // TODO: think this through as this code is only
+      // heuristic. There is most likely some theoretically best thing
+      // to do here.
       
       vector<float> score;
 
-      // Push back items in decreasing order of priority.
-      // Lower is better (e.g., more negative or less positive is better).
-      // First thing inserted has highest priority.
-
+      // Push back items in decreasing order of priority.  Lower
+      // numbers is better (e.g., more negative or less positive is
+      // higher priority).  First thing inserted has highest priority.
 
       // First (top priority), 
       // insert value:
@@ -869,16 +916,10 @@ JunctionTree::assignRVToClique(const unsigned partNo,
 	if (!parents_not_assigned) {
 	  // then this is good! we've found at least one.
 	  infoMsg(IM::Med,
-		  "Part %d: found random variable %s(%d) in clique %d with all parents in children cliques\n",partNo,
+		  "Part %s: found random variable %s(%d) in clique %d with all parents in children cliques\n",partName,
 		  rv->name().c_str(),rv->frame(),root);
 	}
       }
-
-      // Next, distance from root, among the higher priorities that
-      // are equal, try to be as far away from the root as possible so
-      // as to prune away as much zero as possible as early as
-      // possible.
-      score.push_back(-depth);
 
       // Next, add number of children in current clique. If rv
       // has lots of children in this clique, it is hopeful that
@@ -892,11 +933,23 @@ JunctionTree::assignRVToClique(const unsigned partNo,
       }
       score.push_back(-numChildren);
 
+      // Next, distance from root, among the higher priorities that
+      // are equal, try to be as far away from the root as possible so
+      // as to prune away as much zero as possible as early as
+      // possible.
+      score.push_back(-depth);
+
       // And so on. We can push back as many heuristics as we want.
       // alternatively, perhaps take a weighted average of some of
       // them??
 
-      // insert the score and the current clique into the set.
+      // TODO: add more heuristics here, and/or produce better prioritized
+      // order above.
+
+      // ...
+      
+      // done inserting heuristicss, now insert the score and the
+      // current clique into the set.
       pair < vector<float>, unsigned> p(score,root);
       scoreSet.insert(p);
     }
@@ -906,7 +959,7 @@ JunctionTree::assignRVToClique(const unsigned partNo,
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
     const unsigned child = part.cliques[root].children[childNo];
-    assignRVToClique(partNo,part,child,depth,rv,parSet,assigned,scoreSet);
+    assignRVToClique(partName,part,child,depth,rv,parSet,assigned,scoreSet);
     if (assigned)
       break;
   }
@@ -937,23 +990,33 @@ JunctionTree::assignRVToClique(const unsigned partNo,
  */
 void
 JunctionTree::getCumulativeAssignedNodes(InferencePartition& part,
-					 const unsigned root,
-					 set<RandomVariable*> &res)
+					 const unsigned root)
 {
   MaxClique& curClique = part.cliques[root];
-  // res.clear(); @@@ no need to have, do this and do cumulative clique from before.
+
+  set<RandomVariable*> res;
+  const set<RandomVariable*> empty;
   for (unsigned childNo=0;
        childNo<curClique.children.size();childNo++) {
 
     const unsigned child = part.cliques[root].children[childNo];
-    getCumulativeAssignedNodes(part,child,part.cliques[child].cumulativeAssignedNodes);
-    set_union(part.cliques[child].assignedNodes.begin(),
-	      part.cliques[child].assignedNodes.end(),
+
+    getCumulativeAssignedNodes(part,child);
+
+    // Note: this will do a bunch of redundant work (i.e., inserting
+    // elements into sets where the elements are already contained in
+    // the sets), but it doesn't need to run that fast, so the
+    // redundant work is not a big deal.
+    set_union(empty.begin(),empty.end(),
 	      part.cliques[child].cumulativeAssignedNodes.begin(),
 	      part.cliques[child].cumulativeAssignedNodes.end(),
 	      inserter(res,res.end()));
-
   }
+  set_union(curClique.assignedNodes.begin(),
+	    curClique.assignedNodes.end(),
+	    res.begin(),res.end(),
+	    inserter(curClique.cumulativeAssignedNodes,
+		     curClique.cumulativeAssignedNodes.end()));
 
 }
 
@@ -985,28 +1048,24 @@ JunctionTree::getCumulativeAssignedNodes(InferencePartition& part,
 void
 JunctionTree::setUpMessagePassingOrders()
 {
-  // do P to C order
-  setUpMessagePassingOrder(base_partitions[0],
-			   P_ri_to_C,
-			   P_to_C_message_order);
-  // do C to C order
-  setUpMessagePassingOrder(base_partitions[1],
-			   C_ri_to_C,
-			   C_to_C_message_order);
-  // do C to E order
-  setUpMessagePassingOrder(base_partitions[2],
-			   C_ri_to_E,
-			   C_to_E_message_order);
 
-  // do E order
-  setUpMessagePassingOrder(base_partitions[3],
+  setUpMessagePassingOrder(P1,
+			   P_ri_to_C,
+			   P1_message_order);
+
+  setUpMessagePassingOrder(C1,
+			   C_ri_to_C,
+			   C1_message_order);
+
+  setUpMessagePassingOrder(C3,
+			   C_ri_to_E,
+			   C3_message_order);
+
+  setUpMessagePassingOrder(E1,
 			   E_root_clique,
-			   E_message_order);
+			   E1_message_order);
 
 }
-
-
-
 
 
 
@@ -1100,19 +1159,24 @@ JunctionTree::setUpMessagePassingOrderRecurse(InferencePartition& part,
 void
 JunctionTree::createSeparators()
 {
-  // do P to C 
-  createSeparators(base_partitions[0],
-		   P_to_C_message_order);
 
-  // do C to C
-  createSeparators(base_partitions[1],
-		   C_to_C_message_order);
+  createSeparators(P1,
+		   P1_message_order);
 
-  // do C to E
-  createSeparators(base_partitions[2],C_to_E_message_order);
+  createSeparators(C1,
+		   C1_message_order);
 
-  // do E
-  createSeparators(base_partitions[3],E_message_order);
+  createSeparators(C2,
+		   C1_message_order);
+
+  createSeparators(C3,
+		   C3_message_order);
+
+  createSeparators(E1,
+		   E1_message_order);
+
+  createSeparators(Cu0,
+		   C3_message_order);
 
 }
 
@@ -1193,8 +1257,6 @@ void
 JunctionTree::unroll(const unsigned int k)
 {
 
-  assert ( base_partitions.size() == 4 );
-
   // first create the unrolled set of random variables corresponding
   // to this JT.
 
@@ -1215,26 +1277,27 @@ JunctionTree::unroll(const unsigned int k)
 
   // printf("unroll: doing P\n");
   // copy P partition into partitions[0]
-  partitions.push_back(InferencePartition(base_partitions[0],unrolled_rvs,ppf,0));
+  partitions.push_back(InferencePartition(P1,unrolled_rvs,ppf,0));
 
-  // copy the C partitions into partitions[1:k-1]
-  // this does nothing if k == 0.
-  for (unsigned i = 0; i < k; i++) {
-    // printf("unroll: doing C[%d]\n",i);
-    partitions.push_back(InferencePartition(base_partitions[1],unrolled_rvs,ppf,i*gm_template.S));
+  if (k == 0) {
+    partitions.push_back(InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S));
+    partitions.push_back(InferencePartition(E1,unrolled_rvs,ppf,-2*gm_template.S));
+  } else if (k == 1) {
+    partitions.push_back(InferencePartition(C1,unrolled_rvs,ppf,0*gm_template.S));
+    partitions.push_back(InferencePartition(C3,unrolled_rvs,ppf,-1*gm_template.S));
+    partitions.push_back(InferencePartition(E1,unrolled_rvs,ppf,-1*gm_template.S));
+  } else {
+    partitions.push_back(InferencePartition(C1,unrolled_rvs,ppf,0*gm_template.S));
 
+    for (unsigned i = 1; i < k; i++) {
+      partitions.push_back(InferencePartition(C2,unrolled_rvs,ppf,(i-1)*gm_template.S));
+    }
+
+    partitions.push_back(InferencePartition(C3,unrolled_rvs,ppf,((int)k-2)*gm_template.S));
+    partitions.push_back(InferencePartition(E1,unrolled_rvs,ppf,((int)k-2)*gm_template.S));
   }
-
-  // copy the last C partition into partitions[k]
-  // printf("unroll: doing C[%d]\n",k);
-  partitions.push_back(InferencePartition(base_partitions[2],unrolled_rvs,ppf,((int)k-1)*gm_template.S));
-
-  // printf("unroll: doing E\n");
-  // copy E partition into partitions[k+1]
-  partitions.push_back(InferencePartition(base_partitions[3],unrolled_rvs,ppf,((int)k-1)*gm_template.S));
   
 }
-
 
 
 
@@ -1259,17 +1322,24 @@ void
 JunctionTree::collectEvidence()
 {
 
+#if 0
+
   // first do P messages
-  for (unsigned msgNo=0;msgNo < P_to_C_message_order.size(); msgNo ++){
+  for (unsigned msgNo=0;msgNo < P1_message_order.size(); msgNo ++){
     infoMsg(IM::Med,"message in P from clique %d --> clique %d\n",
-	   P_to_C_message_order[msgNo].first,
-	   P_to_C_message_order[msgNo].second);
+	    P1_message_order[msgNo].first,
+	    P1_message_order[msgNo].second);
   }
 
   infoMsg(IM::Med,"message from P clique %d --> C clique %d\n",
 	 P_ri_to_C,C_li_to_P);
 
   // then do C messsages
+  if (partitions.size() == 3) {
+
+
+
+
   for (unsigned partNo = 1; partNo <= (partitions.size()-2); partNo ++ ) {
     
     for (unsigned msgNo=0;msgNo < C_to_C_message_order.size(); msgNo ++){
@@ -1295,6 +1365,9 @@ JunctionTree::collectEvidence()
 	   E_message_order[msgNo].first,
 	   E_message_order[msgNo].second);
   }
+
+#endif
+
 }
 
 
