@@ -40,12 +40,16 @@
 extern const unsigned HashTable_SizePrimesArray;
 extern const unsigned HashTable_PrimesArray[];
 
- 
-// T must be a STL vector< something > or a C++ string.
+///////////////////////////////////////////////////////////
+// A generic hash table that hashes T objects.  
+// Note: T *MUST* be a STL vector< something >, or a C++ 'string'
+// or any other object that acts like an array of int types.
+//
 template <class T>
 class HashTable
 {
-public:
+  // uncomment to get test main() stuff working.
+  // public:
 
   ////////////////////////////////
   // total number of entries in the hash table
@@ -64,6 +68,23 @@ public:
 
 
 public:
+
+  // constructors
+  HashTable(unsigned approximateStartingSize = 200000) {
+    _totalNumberEntries=0;
+    for (primesArrayIndex=0;
+	 primesArrayIndex<HashTable_SizePrimesArray;
+	 primesArrayIndex++) {
+      if (HashTable_PrimesArray[primesArrayIndex] >= approximateStartingSize)
+	break;
+    }
+    if (primesArrayIndex == HashTable_SizePrimesArray)
+      error("ERROR: Can't create hash table of approximate size %u\n",
+	    approximateStartingSize);
+  }
+  ~HashTable() {
+    clear();
+  } 
 
   //////////////////////////////////////////////////////////////////
   // since this is a double hash table, we define two address functions,
@@ -103,11 +124,10 @@ public:
   }
 
   //////////////////////////////////////////////////////////////////
-  // return 
+  // return the entry of vec according to table tbl.
   unsigned entryOf(T &vec, vector < T* >& tbl) {
 
     unsigned a = addr(vec, tbl.size());
-
     unsigned inc = incr(vec, tbl.size() );
 
     while ( tbl[a] != NULL && *tbl[a] != vec) {
@@ -146,14 +166,18 @@ public:
     return nv;
   }
 
+  //////////////////////////////////////////////////////
   // returns true if vec is contained in table
   bool isContained(T& vec) {
     const unsigned a = entryOf(vec,table);    
     return (table[a] != NULL);
   }
 
+  ////////////////////////////////////////////////////////////
+  // resize: resizes the table to be new_size.
+  // new_size *MUST* be a prime number.
   void resize(int new_size) {
-    // make a new table (nt) and re-hash everyone in the
+    // make a new table (nt),  and re-hash everyone in the
     // old table into the new table.
 
     // the next table, used for table resizing.
@@ -184,23 +208,11 @@ public:
     _totalNumberEntries=0;
     primesArrayIndex=0;
   }
-  
-  HashTable(unsigned approximateStartingSize = 200000) {
-    _totalNumberEntries=0;
-    for (primesArrayIndex=0;
-	 primesArrayIndex<HashTable_SizePrimesArray;
-	 primesArrayIndex++) {
-      if (HashTable_PrimesArray[primesArrayIndex] >= approximateStartingSize)
-	break;
-    }
-    if (primesArrayIndex == HashTable_SizePrimesArray)
-      error("ERROR: Can't create hash table of approximate size %u\n",
-	    approximateStartingSize);
-  }
-  ~HashTable() {
-    clear();
-  } 
 
+  ////////////////////////////////////////////////////////////////
+  // return the total number of entries that have
+  // been inserted into the hash table (this is different
+  // than the total allocated size of the table.
   unsigned totalNumberEntries() { return _totalNumberEntries; }
 
   
