@@ -224,6 +224,9 @@ MSCPT::read(iDataStreamFile& is)
   // cardinality as self. This will eliminate the need for run-time checks of
   // this condition since all DT leaf values, even if they have integer expressions,
   // must go through a collection.
+  // also compute _averageCardinality using a heuristic
+  // under an assumption of uniform distribution of hits in the collection.
+  _averageCardinality = _maxCardinality = 0;
   for (unsigned u=0;u<ncl->spmfSize();u++) {
     if (ncl->spmf(u)->card() != card()) {
       error("ERROR: reading file '%s', MSCPT '%s' uses collection '%s' referring to SPMF '%s' (position %d within collection) with card %d but MSCPT needs card %d",
@@ -235,7 +238,13 @@ MSCPT::read(iDataStreamFile& is)
 	    ncl->spmf(u)->card(),
 	    card());
     }
+    _averageCardinality += ncl->spmf(u)->length();
+    if ((unsigned)ncl->spmf(u)->length() > _maxCardinality)
+      _maxCardinality = ncl->spmf(u)->length();
+
   }
+  _averageCardinality /= ncl->spmfSize();
+
 
   setBasicAllocatedBit();
 }
