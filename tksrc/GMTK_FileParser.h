@@ -43,6 +43,7 @@ class FileParser
 {
  private:
   friend class RV;
+  friend class StructPage;
 
   ////////////////////////////////////////////////////////////////
   // The current pre-allocated random variable that is being
