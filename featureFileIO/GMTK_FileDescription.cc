@@ -129,7 +129,6 @@ FileDescription::readFof() {
   size_t n_lines = 0;
   char *tmp2, *endp;
   char prev;
-  int i;
 
   tmp2 = fofBuf;
   dataNames[n_lines] = tmp2;

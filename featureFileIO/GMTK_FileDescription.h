@@ -29,7 +29,7 @@ enum {
   RAWASC, 
   PFILE,
   HTK,
-  GMTK,
+  GMTK
 };
 
 /* file description class: contains information about (list of) input files */
