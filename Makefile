@@ -61,6 +61,9 @@ TAR = /bin/tar
 package:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE ../gmtk-`cat RELEASE`.tar.gz .
 
+date:  EXCLUDE
+	$(TAR) cvzXf EXCLUDE - . > ../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz
+
 # always remake this target when called.
 EXCLUDE: force
 	(find $(EXCLUDE) -type d -print -prune ; \
