@@ -74,6 +74,57 @@ MeanVector::MeanVector()
 {}
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * MeanVector::read(is)
+ *      read in the mean array from file 'is'. 
+ * 
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *
+ *-----------------------------------------------------------------------
+ */
+void MeanVector::read(iDataStreamFile& is) { 
+  NamedObject::read(is);
+  int length;
+  is.read(length,"MeanVector::read, distribution length");
+  if (length <= 0)
+    error("ERROR: mean vector %s specifies length (%d) < 0 in input. Must be positive.",
+	    name().c_str(),length);
+  means.resize(length);
+  for (int i=0;i<length;i++) {
+    is.read(means[i],":reading mean values");
+  }
+  setBasicAllocatedBit();
+  numTimesShared = 0;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MeanVector::write(is)
+ *      read in the mean array from file 'is'. 
+ * 
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *
+ *-----------------------------------------------------------------------
+ */
+void MeanVector::write(oDataStreamFile& os) { 
+  NamedObject::write(os);
+  os.write(means.len(),"mean vector write length");
+  for (int i=0;i<means.len();i++) {
+    os.write(means[i],"mean vector write, values");
+  }
+  os.nl();
+}
+
+
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
 ////////////////////////////////////////////////////////////////////

@@ -41,7 +41,7 @@ class DiagCovarVector : public EMable {
 
   //////////////////////////////////
   // The actual covariance "matrix"
-  RealArray covariances;
+  sArray<float> covariances;
 
   //////////////////////////////////
   // Data structures support for EM
@@ -126,10 +126,7 @@ public:
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is);
-  void write(oDataStreamFile& os) { 
-    NamedObject::write(os);
-    covariances.write(os); 
-  }
+  void write(oDataStreamFile& os);
 
   // create a copy of self, but with slightly perturbed values
   DiagCovarVector* noisyClone();
