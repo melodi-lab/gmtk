@@ -1524,7 +1524,10 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		rvInfoVector[i].fileLineNumber,
 		rvInfoVector[i].switchMapping.nameIndex.c_str());
 
-	rvInfoVector[i].rv->dtMapper = GM_Parms.dtsMap[rvInfoVector[i].switchMapping.nameIndex];
+	rvInfoVector[i].rv->dtMapper = 
+	  GM_Parms.dts[
+		       GM_Parms.dtsMap[rvInfoVector[i].switchMapping.nameIndex
+		       ]];
       } else if  (rvInfoVector[i].switchMapping.liType == 
 		  RVInfo::ListIndex::li_Index) {
 	if ((rvInfoVector[i].switchMapping.intIndex < 0) ||
@@ -1619,14 +1622,17 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 
 		GM_Parms.mdCpts.push_back(mdcpt);
 		GM_Parms.mdCptsMap[rvInfoVector[i].listIndices[j].nameIndex]
-		  = mdcpt;
+		  = GM_Parms.mdCpts.size()-1;
 		cpts[j] = mdcpt;
 	      }
 	    } else {
 	      // otherwise add it
-	      cpts[j] = GM_Parms.mdCptsMap[
-		  rvInfoVector[i].listIndices[j].nameIndex
-	      ];
+	      cpts[j] = 
+		GM_Parms.mdCpts[
+		 GM_Parms.mdCptsMap[
+			  rvInfoVector[i].listIndices[j].nameIndex
+		 ]
+		];
 	    }
 	  } else {
 	    if (rvInfoVector[i].listIndices[j].intIndex >= 
@@ -1679,9 +1685,11 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
 	      }
 	      // otherwise add it
-	      cpts[j] = GM_Parms.msCptsMap[
-					   rvInfoVector[i].listIndices[j].nameIndex
-	      ];
+	      cpts[j] = 
+		GM_Parms.msCpts[
+		   GM_Parms.msCptsMap[
+			   rvInfoVector[i].listIndices[j].nameIndex
+	                      ]];
 	    } else {
 	      if (rvInfoVector[i].listIndices[j].intIndex >= 
 		  GM_Parms.msCpts.size()) {
@@ -1729,9 +1737,11 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
 	      }
 	      // otherwise add it
-	      cpts[j] = GM_Parms.mtCptsMap[
-					   rvInfoVector[i].listIndices[j].nameIndex
-	      ];
+	      cpts[j] = 
+		GM_Parms.mtCpts[
+				GM_Parms.mtCptsMap[
+				   rvInfoVector[i].listIndices[j].nameIndex
+				]];
 	    } else {
 	      if (rvInfoVector[i].listIndices[j].intIndex >= 
 		  GM_Parms.mtCpts.size()) {

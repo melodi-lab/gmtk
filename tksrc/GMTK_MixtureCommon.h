@@ -1,5 +1,5 @@
 /*-
- * GMTK_GaussianCommon
+ * GMTK_Mixgaussiancommon
  *        Common elements that are shared by all Gaussiaan type clases.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -19,8 +19,8 @@
  */
 
 
-#ifndef GMTK_GAUSSIANCOMMON_H
-#define GMTK_GAUSSIANCOMMON_H
+#ifndef GMTK_MIXGAUSSIANCOMMON_H
+#define GMTK_MIXGAUSSIANCOMMON_H
 
 #include "fileParser.h"
 #include "logp.h"
@@ -28,87 +28,68 @@
 #include "machine-dependent.h"
 
 #include "GMTK_NamedObject.h"
+#include "GMTK_EMable.h"
 
-class GaussianCommon : public NamedObject {
+class MixGaussiansCommon : public NamedObject, public EMable {
 
   ///////////////////////////////////////////////////////
   // dim = dimensionality of this Gaussian.
   // Typically, this will be the number of features over which
   // this Gaussian applies.
-  int dim;
-
-  ///////////////////////////////////////////////////////
-  // The value that, if any variances go below, cause
-  // either warnings (and adjustments) or errors to occur
-  // depending on how probable this component is.
-  static double _varianceFloor;
-
-  /////////////////////////////////////////////////////////
-  // precompute values so that evaluation is efficient.
-  virtual void preCompute();
-
+  const int _dim;
+  
 public:
 
+  ///////////////////////////////////////////////////////////
+  // This object must be aware of types of its derived
+  // classes for reading from file purposes. 
+  enum MixType { mix = 0, 
+		 gausSwitchMix = 1,
+		 logitSwitchMix = 2,
+                 mlpSwitchMix = 3};
+
+
   
-  GaussianCommon() {}
-  virtual ~GaussianCommon() {}
-
-
-  static double varianceFloor();
-  static void setVarianceFloor(const double floor);
-
-
+  MixGaussiansCommon(const int dim) : _dim(dim) {}
+  virtual ~MixGaussiansCommon() {}
 
   //////////////////////////////////////////////
   // read/write basic parameters
-  virtual void read(iDataStreamFile& is);
-  virtual void write(oDataStreamFile& os);
+  virtual void read(iDataStreamFile& is) = 0;
+  virtual void write(oDataStreamFile& os) = 0;
   //////////////////////////////////////////////
-
 
   //////////////////////////////////
   // set all current parameters to valid but random values
-  virtual void makeRandom();
+  virtual void makeRandom() = 0;
   // set all current parameters to valid but "uniform" values 
   // (for Gaussians this means N(0,1))
-  virtual void makeUniform();
+  virtual void makeUniform() = 0;
   //////////////////////////////////
+
+  /////////////////////////////////////////////////////////
+  // precompute values so that evaluation is efficient.
+  virtual void preCompute() = 0;
+
 
   //////////////////////////////////
   // probability evaluation
   virtual logpr log_p(const float *const x,    // real-valued scoring obs at time t
 		      const Data32* const base, // ptr to base obs at time t
-		      const int stride);       // stride
+		      const int stride) = 0;       // stride
   virtual double p(const float *const x,
 		   const Data32* const base,
 		   const int stride)
   { return exp(log_p(x,base,stride).val()); }
   //////////////////////////////////
 
-
-  //////////////////////////////////
-  // Full Baum-Welch EM training  //
-  //////////////////////////////////
-  virtual void emInit();
-  virtual void startEmEpoch();
-  // WARNING: Interface to this next one will soon change. JB: 4/19/01
-  virtual void emAccumulate(const float prob,
-			    const float *const obs);
-  virtual void endEmEpoch(logpr cmpSop_acc);
-  // For parallelism, loading/storing partially completed accumulators.
-  virtual void emLoadAccumulators(iDataStreamFile& ifile);
-  virtual void emStoreAccumulators(oDataStreamFile& ofile);
-  virtual void emAccumulateAccumulators(iDataStreamFile& ifile);
-  //////////////////////////////////
-
-
   //////////////////////////////////
   // Sample Generation            //
   //////////////////////////////////
-  virtual void sampleGenerate(float *const sample,
-		      const Data32* const base);
+  virtual void sampleGenerate(float *sample,
+			      const Data32* const base,
+			      const int stride) = 0;
   //////////////////////////////////
-
 
 };
 

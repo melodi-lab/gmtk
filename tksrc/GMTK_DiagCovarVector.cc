@@ -32,7 +32,7 @@
 #include "rand.h"
 
 #include "GMTK_DiagCovarVector.h"
-#include "GMTK_GaussianCommon.h"
+#include "GMTK_GaussianComponent.h"
 
 
 VCID("$Header$");
@@ -80,9 +80,9 @@ DiagCovarVector::read(iDataStreamFile& is)
   NamedObject::read(is);
   covariances.read(is); 
   for (int i=0;i<covariances.len();i++) {
-    if (covariances[i] < GaussianCommon::varianceFloor()) {
+    if (covariances[i] < GaussianComponent::varianceFloor()) {
       error("DiagCovarVector:: read, covariance[%d] = (%e) < current Floor = (%e)",
-	    i,covariances[i],GaussianCommon::varianceFloor());
+	    i,covariances[i],GaussianComponent::varianceFloor());
     }
   }
 }
