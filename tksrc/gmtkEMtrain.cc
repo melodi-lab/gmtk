@@ -65,7 +65,7 @@ VCID("$Header$");
  * command line arguments
  */
 bool seedme = false;
-float beam=1000;
+float beam=-LZERO;
 
 char *strFileName=NULL;
 

@@ -70,7 +70,7 @@ VCID("$Header$");
 
 // the file of observation
 
-float beam=1000;
+float beam=-LZERO;
 char *strFileName;
 char *prmMasterFile=NULL;
 char *prmTrainableFile=NULL;
