@@ -1801,6 +1801,31 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		  j,
 		  cpts[j]->name().c_str());
 	  }
+
+	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
+	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but MDCPT \"%s\" requires cardinality of %d.\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rvInfoVector[i].rvCard,
+		  cpts[j]->name().c_str(),
+		  cpts[j]->card());
+	  }
+	  //// @@@@@@@@@@@@@@@@@@@@@@@@@
+	  ///// @@@ continuoue and check parent cpt cards.
+	  for (unsigned par=0;par<cpts[j]->numParents();par++) {
+	    if (rv->conditionalParentsList[j][par]->cardinality !=
+		cpts[j]->parentCardinality(par))
+	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of MDCPT \"%s\" requires cardinality of %d.\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rv->conditionalParentsList[j][par]->name().c_str(),
+		  rv->conditionalParentsList[j][par]->cardinality,
+		  cpts[j]->name().c_str(),
+		  cpts[j]->parentCardinality(par));
+	  }
+
 	} else 
 	  if (rvInfoVector[i].discImplementations[j] == CPT::di_MSCPT) {
 
@@ -2004,7 +2029,60 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 	  // set the CPT type. 
 	  assert ( 0 );
 	}
+
+	// now check that the current cpt's cardinalities match
+	// that with the parents.
+	// first get the name for better error reporting.
+	string cptType;
+	if (rvInfoVector[i].discImplementations[j] == CPT::di_MDCPT) {
+	  cptType = "MDCPT";
+	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_MSCPT) {
+	  cptType = "MSCPT";
+	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
+	  cptType = "MTCPT";
+	}
+	// now do the checking.
+	
+	// now check to make sure this cpt matches this
+	// number of parents.
+	if (cpts[j]->numParents() != 
+	    rvInfoVector[i].conditionalParents[j].size()) {
+	  error("Error: RV \"%s\" at frame %d (line %d), num parents cond. %d different than required by %s \"%s\".\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		j,
+		cptType.c_str(),
+		cpts[j]->name().c_str());
+	}
+
+	if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
+	  error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		rvInfoVector[i].rvCard,
+		cptType.c_str(),		
+		cpts[j]->name().c_str(),
+		cpts[j]->card());
+	}
+	for (unsigned par=0;par<cpts[j]->numParents();par++) {
+	  if (rv->conditionalParentsList[j][par]->cardinality !=
+	      cpts[j]->parentCardinality(par))
+	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rv->conditionalParentsList[j][par]->name().c_str(),
+		  rv->conditionalParentsList[j][par]->cardinality,
+		  cptType.c_str(),
+		  cpts[j]->name().c_str(),
+		  cpts[j]->parentCardinality(par));
+	}
+
+
       }
+
       // now add the cpts to the rv
       rv->setCpts(cpts);
 
