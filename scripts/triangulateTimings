@@ -28,6 +28,7 @@ my $pmake            = 'pmake';
 my $timing_length = 60; 
 #my $timing_length = 30; 
 #my $timing_length = 3; 
+#my $timing_length = 1; 
 
 my $initial_vpap = 'COI';
 my $initial_vcap = 'COI';
@@ -41,7 +42,7 @@ my $advanced_once_index : shared = 0;
 my @run_once = ( 'completed', 'elimination-heuristics', 
   'non-elimination-heuristics' );
 
-my @basic_iterations : shared = ( '100-', '10-' ); 
+my @basic_iterations : shared = ( '100-', '10-', '1-' ); 
 my @basic_prefix     : shared = ( 'pre-edge-lo-', 'pre-edge-all-', 
   'pre-edge-random-');
 my @basic_method     : shared = ( 'MCS', 'R', 'W', 'F' );
@@ -53,6 +54,8 @@ my $basic_prefix_index    : shared = 0;
 my $basic_method_index    : shared = 0;
 my $basic_suffix_index    : shared = 0;
 my $basic_iterations_done : shared = 0;
+
+my $boundary_searches_done : shared = 0;
 
 ##############################################################################
 # State variables for advanced methods 
@@ -253,10 +256,10 @@ sub main
 sub generate_triangulations 
 {
   my $input_triangulation;
+  my @input_trifile_names;
   my $output_triangulation;
   my $input_basename;
   my $i;
-  my $boundary_searches_done;
   my $prvs_bndry;
   my $bndry_unique;
   my $boundary_count;
@@ -290,6 +293,7 @@ sub generate_triangulations
     {
       $output_triangulation = "$output_directory/input.$i.$input_basename";
       copy( $input_triangulation, $output_triangulation ); 
+      push @input_trifile_names, $output_triangulation;
 
       $trifile_queue->enqueue($output_triangulation);
 
@@ -305,7 +309,6 @@ sub generate_triangulations
   # Phase 2, run basic methods on all boundaries 
   ###########################################################################
   $boundary_count=0; 
-  $boundary_searches_done = 0;
   while ( !$boundary_searches_done )
   {
     $boundary = $boundary_queue->dequeue;
@@ -441,7 +444,19 @@ sub generate_triangulations
           }
           $timing_thread_idle_sem->down($parallelism); 
         }
-     
+
+        ###############################################################
+        # Input triangulations  
+        ###############################################################
+        foreach $trifile_name (@input_trifile_names)
+        {
+          $trifile_queue->enqueue($trifile_name);
+          $needed_trifiles->down; 
+        }
+
+        ###############################################################
+        # Advanced triangulation methods  
+        ###############################################################
         reset_advanced_methods();
 
         ($method, $method_name) = get_advanced_triangulation_method();
@@ -571,13 +586,20 @@ sub open_time
       print STDERR "$output";
     };
 
-    if ($@ || ($output=~'no suitable host available')) { 
+    if ($@ || ($output=~'no suitable host available')) 
+    { 
       $error = 1;
       chomp($output);
-      print "Problem opening timing script:'$output'\n";
+      if ( !$boundary_searches_done ) {
+        sleep(60);
+      }
+      else {
+        print "Problem opening timing script:'$output'\n";
+      }
       waitpid $pid, 0; 
       sleep(15);
     }
+
   } while ($error);
 
   return ($pid, $timing_script_input, $timing_script_output);
