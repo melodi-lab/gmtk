@@ -117,7 +117,10 @@ DiagCovarVector::read(iDataStreamFile& is)
   }
   if (numFloored > 0)
     warning("WARNING: reading diagonal covariance matrix '%s' (from file '%s'), and %d variance values (out of %d) were  < current Floor = (%e), forcing them to floor.",
-	    name().c_str(),is.fileName(),numFloored,covariances.len(),
+	    name().c_str(),
+	    is.fileName(),
+	    numFloored,
+	    covariances.len(),
 	    GaussianComponent::varianceFloor());
   setBasicAllocatedBit();
   preCompute();
@@ -250,11 +253,14 @@ DiagCovarVector::preCompute()
     variances_inv[i] = 1.0/covariances[i];
     det *= covariances[i];
     if (det <= DBL_MIN) {
-      warning("WARNING: determinant of diagonal covariance matrix '%s' is hiting minimum after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",name().c_str(),i);
+      warning("WARNING: determinant of diagonal covariance matrix '%s' is hiting minimum after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",
+	      name().c_str(),
+	      i);
     }
   }
   if (det <= DBL_MIN) {
-    error("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",name().c_str());
+    error("ERROR: determinant of diagonal covariance matrix '%s' has hit minimum. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",
+	  name().c_str());
   }
   const double tmp = (::pow(2*M_PI,covariances.len()/2.0)*::sqrt(det));
   if (tmp <= DBL_MIN)
@@ -668,8 +674,11 @@ DiagCovarVector::emEndIteration(const float *const parentsAccumulatedNextCovar)
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",accumulatedProbability.val(),name().c_str());
-    for (int i=0;i<covariances.len();i++) 
+    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",
+	    name().c_str(),
+	    accumulatedProbability.val());
+    
+    for (int i=0;i<covariances.len();i++)
       nextCovariances[i] = covariances[i];
   } else {
 
@@ -727,7 +736,9 @@ DiagCovarVector::emEndIteration(const float *const parentsAccumulatedNextCovar)
     }
     if (prevNumFlooredVariances < numFlooredVariances) {
       warning("WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
-	      name().c_str(),numFlooredVariances-prevNumFlooredVariances,minVar);
+	      name().c_str(),
+	      numFlooredVariances-prevNumFlooredVariances,
+	      minVar);
     }
   }
 

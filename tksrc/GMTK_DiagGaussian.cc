@@ -332,7 +332,11 @@ DiagGaussian::emEndIteration()
     // check for zero, and then issue a warning if needed. This might not
     // indicate a problem as the mean and covar of this object might be shared
     // and might have received plenty of count.
-    warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration, check child mean '%s' and covar '%s'",name().c_str(),mean->name().c_str(),covar->name().c_str());
+    warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration. Global missed increment count is %d. Also check child mean '%s' and covar '%s'",
+	    name().c_str(),
+	    missedIncrementCount,
+	    mean->name().c_str(),
+	    covar->name().c_str());
   }
 
   mean->emEndIteration(nextMeans.ptr);
