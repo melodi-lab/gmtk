@@ -22,7 +22,10 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
-#include <time.h>
+
+// TODO: remove next 2 eventually 
+#include <iostream.h>
+#include <fstream.h>
 
 #include "general.h"
 #include "error.h"
@@ -76,10 +79,9 @@ static char *outputMasterFile=NULL;
 static char *inputTrainableParameters=NULL;
 static bool binInputTrainableParameters=false;
 // static char *outputTrainableParameters="outParms%d.gmp";
-// static char *outputTrainableParameters=NULL;
-// static bool binOutputTrainableParameters=false;
-// static bool writeParametersAfterEachEMIteration=true;
-// static char *objsToNotTrainFile=NULL;
+static char *outputTrainableParameters=NULL;
+static bool binOutputTrainableParameters=false;
+static bool writeParametersAfterEachEMIteration=true;
 static int allocateDenseCpts=0;
 
 
@@ -112,11 +114,18 @@ static bool print_version_and_exit = false;
 
 /////////////////////////////////////////////////////////////
 // Inference Options
-static bool doDistributeEvidence=false;
-static bool probE=false;
 static bool island=false;
 static unsigned base=2;
 static unsigned lst=100;
+
+/////////////////////////////////////////////////////////////
+// Decoding Options
+static char *dumpNames = NULL;
+static char *ofilelist = NULL;
+static char *wordVar=NULL;
+static char *varMapFile=NULL;
+static char *transitionLabel=NULL;
+static char* showVitVals = NULL;
 
 Arg Arg::Args[] = {
 
@@ -138,7 +147,6 @@ Arg Arg::Args[] = {
   Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 1"),
   Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 1"),
 
-
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
@@ -146,9 +154,10 @@ Arg Arg::Args[] = {
   Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
   Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
   Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
-  // Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
-  // Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
-  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
+  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
+  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
+  Arg("wpaeei",Arg::Opt,writeParametersAfterEachEMIteration,"Write Parameters After Each EM Iteration Completes"),
+  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Auto allocate undef CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 use random initial CPT values. arg = 2, use uniform values"),
   Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
 
   /////////////////////////////////////////////////////////////
@@ -186,14 +195,21 @@ Arg Arg::Args[] = {
 
   /////////////////////////////////////////////////////////////
   // Inference Options
-  Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Do distribute evidence also"),
-  Arg("probE",Arg::Opt,probE,"Run the const memory probE function"),
   Arg("island",Arg::Opt,island,"Run island algorithm"),
   Arg("base",Arg::Opt,base,"Island algorithm logarithm base"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
   Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
-  Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture probabilities, faster but uses more memory."),
-  Arg("viterbiScore",Arg::Opt,JunctionTree::viterbiScore,"Compute p(o,h_max) (rather than sum_h p(o,h))"),
+  Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture and component probabilities, faster but uses more memory."),
+
+  /////////////////////////////////////////////////////////////
+  // Decoding Options
+  Arg("dumpNames",Arg::Opt,dumpNames,"File containing the names of the variables to save to a file"),
+  Arg("ofilelist",Arg::Opt,ofilelist,"List of filenames to dump the hidden variable values to"),
+  // These 3 must be used together or not at all
+  Arg("printWordVar",Arg::Opt,wordVar,"Print the word var - which has this label"),
+  Arg("varMap",Arg::Opt,varMapFile,"Use this file to map from word-index to string"),
+  Arg("transitionLabel",Arg::Opt,transitionLabel,"The label of the word transition variable"),
+  Arg("showVitVals",Arg::Opt,showVitVals,"File to print viterbi values, '-' for stdout"),
 
   // final one to signal the end of the list
   Arg()
@@ -231,6 +247,9 @@ main(int argc,char*argv[])
     printf("%s\n",gmtk_version_id);
     exit(0);
   }
+
+  if (dumpNames)
+    if (ofilelist==NULL) error("Must also specify output files for binary writing");
 
   // Make sure not to cache the mixture component probabilities as it
   // is only needed in EM training.
@@ -300,6 +319,7 @@ main(int argc,char*argv[])
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+  // comment for now Sun Jan 11 09:47:23 2004
   GM_Parms.finalizeParameters();
 
   /////////////////////////////
@@ -337,11 +357,6 @@ main(int argc,char*argv[])
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
   GM_Parms.setStride(globalObservationMatrix.stride());
-
-  /////
-  // TODO: check that beam is a valid value.
-  // logpr pruneRatio;
-  // pruneRatio.valref() = -beam;
 
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
@@ -386,26 +401,101 @@ main(int argc,char*argv[])
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
-  if (globalObservationMatrix.numSegments()==0)
-    error("ERROR: no segments are available in observation file");
+
+  if (globalObservationMatrix.numSegments()==0) {
+    infoMsg(IM::Default,"ERROR: no segments are available in observation file. Exiting...");
+    exit_program_with_status(0);
+  }
 
   BP_Range* dcdrng = new BP_Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+#if 0
   if (dcdrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 	  dcdrng_str);
     exit_program_with_status(0);
   }
+#endif
+
+  if (dcdrng->length() == 0) { 
+    error("Decoding range must specify a non-zero length range. Range given is %s\n",
+	  dcdrng_str);
+  }
+
+  logpr total_data_prob = 1.0;
+
+  oDataStreamFile* vitValsFile;
+  if (showVitVals) {
+    vitValsFile = new oDataStreamFile(showVitVals,false);
+    if (vitValsFile == NULL) error("Can't open file %s for writing\n",showVitVals);
+  } else {
+    vitValsFile = NULL;
+  }
+
+  map<int, string> word_map;
+  if (wordVar != NULL)
+  {
+    if (varMapFile==NULL)
+      error("File to map from word index to string not specified.");
+    if(transitionLabel == NULL)
+      error("The label of the transition variable was not specified.");
+    ifstream in(varMapFile);
+    if (!in) { cout << "Unable to open " << varMapFile << endl; exit(1); }
+    string name;
+    int val;
+    while (!in.eof())
+    {
+      in >> val >> name >> ws;
+      word_map[val] = name;
+    }
+    in.close();
+  }
+
+  set<string> dumpVars;
+  map<string,int> posFor;
+  int ndv=0;
+  if (dumpNames)
+  {
+      ifstream din(dumpNames);
+      if (!din) {cout << "Unable to open " << dumpNames << endl; exit(1);}
+      string s;
+      while (!din.eof())
+      {
+          din >> s >> ws;
+          dumpVars.insert(s);
+          posFor[s] = ndv++;  // which position within a frame to put it
+      }
+      din.close();
+  }
+
+
+  vector<string> ofiles;
+  if (ofilelist)
+  {
+      ifstream oin(ofilelist);
+      if (!oin) {cout << "Unable to open " << ofilelist << endl; exit(1);} 
+      string s;
+      while (!oin.eof())
+      {
+          oin >> s >> ws;
+          ofiles.push_back(s);
+      }
+      oin.close();
+  }
+
+  // We always do viterbi scoring/option in this program.
+  JunctionTree::viterbiScore = true;
 
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
-
+  total_data_prob = 1.0;
   BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
+
   while ((*dcdrng_it) <= dcdrng->max()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
     if (globalObservationMatrix.numSegments() < (segment+1)) 
-      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+      error("ERROR: only %d segments in file, decode range must be in range [%d,%d] inclusive\n",
 	    globalObservationMatrix.numSegments(),
 	    0,globalObservationMatrix.numSegments()-1);
 
@@ -414,55 +504,117 @@ main(int argc,char*argv[])
 
     const int numFrames = globalObservationMatrix.numFrames();
 
-    if (probE) {
-      unsigned numUsableFrames;
-      logpr probe = myjt.probEvidence(numFrames,numUsableFrames);
-      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-    } else if (island) {
+    logpr probe;
+    if (island) {
+      error("Island for decoding not yet finished (but almost)\n");
       unsigned numUsableFrames;
       myjt.collectDistributeIsland(numFrames,
 				   numUsableFrames,
 				   base,
-				   lst);
-    } else {
-      unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Default,"Collecting Evidence\n");
-      myjt.collectEvidence();
-      infoMsg(IM::Default,"Done Collecting Evidence\n");
-      logpr probe = myjt.probEvidence();
-      printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+				   lst,
+				   false, // run EM algorithm
+				   true,  // run viterbi algorithm
+				   false  // localCliqueNormalization, unused here.
+				   );
+      probe = myjt.curProbEvidenceIsland();
+      printf("Segment %d, after Island, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	     segment,
 	     probe.val(),
 	     probe.val()/numFrames,
 	     probe.val()/numUsableFrames);
-
-      if (doDistributeEvidence) {
-	infoMsg(IM::Default,"Distributing Evidence\n");
+      if (probe.not_essentially_zero()) {
+	total_data_prob *= probe;
+      }
+    } else {
+      // linear space inference
+      unsigned numUsableFrames = myjt.unroll(numFrames);
+      infoMsg(IM::Low,"Collecting Evidence\n");
+      myjt.collectEvidence();
+      infoMsg(IM::Low,"Done Collecting Evidence\n");
+      probe = myjt.probEvidence();
+      infoMsg(IM::Low,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     segment,
+	     probe.val(),
+	     probe.val()/numFrames,
+	     probe.val()/numUsableFrames);
+      if (probe.essentially_zero()) {
+	infoMsg(IM::Default,"Skipping segment since probability is essentially zero\n");
+      } else {
+	myjt.setRootToMaxCliqueValue();
+	total_data_prob *= probe;
+	infoMsg(IM::Low,"Distributing Evidence\n");
 	myjt.distributeEvidence();
-	infoMsg(IM::Default,"Done Distributing Evidence\n");
+	infoMsg(IM::Low,"Done Distributing Evidence\n");
+      }
+    }
+    //    if (vitValsFile)
+    //      myjt.printCurrentRVValues(*vitValsFile);
 
-	if (JunctionTree::viterbiScore)
-	  infoMsg(IM::Default,"Note: Clique sums will be different since viteri option is active\n");
-	myjt.printAllCliquesProbEvidence();
-	
-	probe = myjt.probEvidence();
-	printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	       segment,
-	       probe.val(),
-	       probe.val()/numFrames,
-	       probe.val()/numUsableFrames);
+    if (dumpNames)
+    {
+        if (segment==ofiles.size()) 
+	  error("More utterances than output files");
+        FILE *fp = fopen(ofiles[segment].c_str(), "wb");
+        if (!fp) {cout << "Unable to open " << ofiles[segment] << endl; exit(1);}
+        int *vals = new int[myjt.curNodes().size()];
+        // just in case a variable isn't present in a slice, write a -1
+        for (int i=0; i<int(myjt.curNodes().size()); i++) vals[i] = -1;
+        int nv=0;
+        for (int i=0; i<int(myjt.curNodes().size()); i++)
+            if (dumpVars.count(myjt.curNodes()[i]->label)) 
+            {
+                if (!myjt.curNodes()[i]->discrete || !myjt.curNodes()[i]->hidden) 
+                    error("variables to dump must be discrete and hidden");
+                int p = myjt.curNodes()[i]->timeIndex*dumpVars.size() 
+                        + posFor[myjt.curNodes()[i]->label];
+                assert(p<int(myjt.curNodes().size()));
+                vals[p] = myjt.curNodes()[i]->val; 
+                nv++;
+            }
+        fwrite((void *) vals, sizeof(int), nv, fp); 
+        delete [] vals;
+        fclose(fp);
+    }
+    if (wordVar && probe.not_essentially_zero())
+    {
+      // print the sequence of values for this variable
+      // compress consecutive values into a single instance
+      // the times are right if a word transition at time t means there is
+      // a new word at t+1
+      string pvn = string(wordVar);
+      string tl = string(transitionLabel);
+      for (int i=0, lv=-1, lf=0; i<int(myjt.curNodes().size()); i++)
+      {
+        if (myjt.curNodes()[i]->label == pvn)
+        {
+          if (!myjt.curNodes()[i]->discrete) 
+            error("Can only print Viterbi values for discrete variables");
+          if (myjt.curNodes()[i]->cardinality != int(word_map.size()))
+            error("Word-val to string map does not match the number of words.");
+          lv = myjt.curNodes()[i]->val;
+        }
+        else if (myjt.curNodes()[i]->label==tl)
+        {
+          if (myjt.curNodes()[i]->cardinality != 2) 
+            error("Word transition variable should have two values");
+          if (myjt.curNodes()[i]->val==1)  // a word transition
+          {
+            cout << word_map[lv] << " (" << lf << "-" 
+                 << myjt.curNodes()[i]->timeIndex << ")\n" << flush;  
+            lf = myjt.curNodes()[i]->timeIndex+1;
+          }
+        }
       }
     }
     (*dcdrng_it)++;
   }
 
+  infoMsg(IM::Default,"Total data log prob is: %1.9e\n",
+	  total_data_prob.val());
+
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
-    infoMsg(IM::Default,"### Final time (seconds) just for inference: ");
+    infoMsg(IM::Default,"### Final time (seconds) just for decoding stage: ");
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }

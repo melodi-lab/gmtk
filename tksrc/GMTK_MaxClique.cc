@@ -1339,6 +1339,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   maxCEValue.set_to_zero();
 
   // TODO: optimize this and make depend on if clique is all hidden, has observed, etc.
+  // NOTE: This must be set to something greater than 0.
   cliqueValues.resize(3); // 10000
 
 }
@@ -2094,6 +2095,15 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
       // save the probability
       cliqueValues.ptr[numCliqueValuesUsed].p = final_p;
       numCliqueValuesUsed++;
+
+
+      if (message(Giga)) {
+	psp(stdout,2*nodeNumber);
+	infoMsg(Giga,"Inserting New Clique Value. prob = %f, sum = %f: ",
+		cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
+	printRVSetAndValues(stdout,fNodes);
+      }
+
     }
 
   next_iteration:
@@ -2476,7 +2486,11 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	continue;
       } else {
 	if (JunctionTree::viterbiScore) {
-	  sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
+	  // sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
+	  if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
+	    sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
+	    sv.remValues.ptr[0].backPointer = cvn;
+	  }
 	} else {
 	  sv.remValues.ptr[0].p += cliqueValues.ptr[cvn].p;
 	}
@@ -2629,7 +2643,11 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	    // already there so must have hit before.
 	    // we thus accumulate.
 	    if (JunctionTree::viterbiScore) {
-	      sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
+	      // sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
+	      if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
+		sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
+		sv.remValues.ptr[0].backPointer = cvn;
+	      }
 	    } else {
 	      sv.remValues.ptr[0].p += cliqueValues.ptr[cvn].p;
 	    }
@@ -2715,8 +2733,11 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
       // We've finally got the entry, so accumulate the clique's
       // probability into this separator's probability.
       if (JunctionTree::viterbiScore) {
-	sv.remValues.ptr[*remIndexp].
-	  p.assign_if_greater(cliqueValues.ptr[cvn].p);
+	// sv.remValues.ptr[*remIndexp].p.assign_if_greater(cliqueValues.ptr[cvn].p);
+	if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[*remIndexp].p) {
+	  sv.remValues.ptr[*remIndexp].p = cliqueValues.ptr[cvn].p;
+	  sv.remValues.ptr[*remIndexp].backPointer = cvn;
+	}
       } else {
 	sv.remValues.ptr[*remIndexp].p += cliqueValues.ptr[cvn].p;
       }
@@ -3390,14 +3411,16 @@ InferenceMaxClique::
 deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 				InferenceSeparatorClique& sep)
 {
-
+  if (JunctionTree::viterbiScore) {
+    return deReceiveFromIncommingSeparatorViterbi(part,sep);
+  }
 
   if (origin.hiddenNodes.size() == 0) {
     // do the observed clique case up front right here so we don't
     // need to keep checking below.
     InferenceSeparatorClique::AISeparatorValue& sv
       = sep.separatorValues.ptr[0];
-    cliqueValues.ptr[0].p *= sv.remValues.ptr[0].bp;
+    cliqueValues.ptr[0].p *= sv.remValues.ptr[0].bp();
     return;
   }
 
@@ -3469,7 +3492,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 	  = sep.separatorValues.ptr[accIndex];
 
 	// Multiply in this separator value's probability.
-	cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp;
+	cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp();
 	// done
 	goto next_iteration;
       }
@@ -3503,7 +3526,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 
       // We've finally got the sep entry. Multiply it it into the
       // current clique value.
-      cliqueValues.ptr[cvn].p *= sv.remValues.ptr[*remIndexp].bp;
+      cliqueValues.ptr[cvn].p *= sv.remValues.ptr[*remIndexp].bp();
     } else {
       // separator must be all observed. We multiply in its one value.
 
@@ -3512,7 +3535,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 
       // We've finally got the sep entry. Multiply it it into the
       // current clique value.
-      cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp;
+      cliqueValues.ptr[cvn].p *= sv.remValues.ptr[0].bp();
 
     }
 
@@ -3525,6 +3548,161 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 }
 
 
+// Viterbi version of above.
+// For each clique value, we need to look up appropriate value in the
+// separator and multiply it into the current clique probability.
+void 
+InferenceMaxClique::
+deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
+				       InferenceSeparatorClique& sep)
+{
+
+  if (origin.hiddenNodes.size() == 0) {
+    // Values already set to their max (and only) setting,
+    // so no need to do anything.
+    return;
+  }
+
+  // allocate some temporary storage for packed separator values.
+  // 128 words is *much* bigger than any possible packed clique value
+  // will take on, but it is easy/fast to allocate on the stack right now.
+  unsigned packedVal[128];
+  // but just in case, we assert.
+  assert ((sep.origin.hAccumulatedIntersection.size() == 0)
+	  ||
+	  (sep.origin.accPacker.packedLen() < 128)
+	  );
+  assert ((sep.origin.hRemainder.size() == 0) 
+	  ||
+	  (sep.origin.remPacker.packedLen() < 128 )
+	  );
+  // If this assertion fails (at some time in the future, probably in
+  // the year 2150), then it is fine to increase 128 to something larger.
+
+
+  // cache check here.
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+
+  // We assume here that the RVs according to the separator are
+  // already set to the appropriate value. Get appropriate sep entry
+  // and fill in rest of clique RVs with that value.
+
+  /*
+   * There are 3 cases.
+   * 1) AI exists and REM exist
+   * 2) AI exists and REM doesnt exist
+   * 3) AI does not exist, but REM exists
+   * AI not exist and REM not exist can't occur.
+   */
+
+  unsigned accIndex,cvn;
+  // TODO: optimize this check away out of loop.
+  if (sep.origin.hAccumulatedIntersection.size() > 0) {
+    // an accumulated intersection exists.
+
+    sep.origin.accPacker.pack((unsigned**)sep.accDiscreteValuePtrs.ptr,
+			      &packedVal[0]);
+    unsigned* accIndexp =
+      sep.iAccHashMap.find(&packedVal[0]);
+
+    // we should always find something or else something is wrong.
+    assert ( accIndexp != NULL ); 
+    accIndex = *accIndexp;
+
+    // TODO: optimize this check out of loop.
+    if (sep.remDiscreteValuePtrs.size() == 0) {
+      // 2) AI exists and REM doesnt exist
+      // Then this separator is entirely covered by one or 
+      // more other separators earlier in the order.
+
+      // go ahead and insert it here to the 1st entry (entry 0).
+
+      // handy reference for readability.
+      InferenceSeparatorClique::AISeparatorValue& sv
+	= sep.separatorValues.ptr[accIndex];
+
+      // Multiply in this separator value's probability.
+
+      cvn = sv.remValues.ptr[0].backPointer;
+
+      // unpack the rest of the clique.
+      if (imc_nwwoh_p) {
+	origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
+			     (unsigned**)discreteValuePtrs.ptr);
+      } else {
+	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
+			     (unsigned**)discreteValuePtrs.ptr);
+      }
+
+      // done
+      goto done;
+    }
+  } else {
+    // no accumulated intersection exists, everything
+    // is in the remainder.
+    accIndex = 0;
+  }
+
+  if (sep.remDiscreteValuePtrs.size() > 0) {
+    // if we're here, then we must have some remainder pointers.
+    // Do the remainder exists in this separator.
+    // either:
+    //   1) AI exists and REM exist
+    //     or
+    //   3) AI does not exist (accIndex == 0), but REM exists
+    // 
+
+    // keep handy reference for readability.
+    InferenceSeparatorClique::AISeparatorValue& sv
+      = sep.separatorValues.ptr[accIndex];
+
+    sep.origin.remPacker.pack((unsigned**)sep.remDiscreteValuePtrs.ptr,
+			      &packedVal[0]);
+
+    unsigned* remIndexp =
+      sv.iRemHashMap.find(&packedVal[0]);
+
+    // it must exist
+    assert ( remIndexp != NULL );
+
+    // We've finally got the sep entry. Unpack the pointed-to clique
+    // entry.
+
+    cvn = sv.remValues.ptr[*remIndexp].backPointer;
+    // unpack the rest of the clique.
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
+			   (unsigned**)discreteValuePtrs.ptr);
+    } else {
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
+			   (unsigned**)discreteValuePtrs.ptr);
+    }
+
+
+
+  } else {
+    // separator must be all observed. We use its one value.
+
+    InferenceSeparatorClique::AISeparatorValue& sv
+      = sep.separatorValues.ptr[accIndex];
+
+    // We've finally got the sep entry. Unpack the pointed-to clique
+    // entry.
+    cvn = sv.remValues.ptr[0].backPointer;
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
+			   (unsigned**)discreteValuePtrs.ptr);
+    } else {
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
+			   (unsigned**)discreteValuePtrs.ptr);
+    }
+  }
+ done:
+  ;
+}
+
+
+
 // Scatter out to the outgoing separators which are the same as the
 // receive separators in the collect evidence stage, so we use that
 // array here.
@@ -3532,6 +3710,15 @@ void
 InferenceMaxClique::
 deScatterToOutgoingSeparators(JT_InferencePartition& part)
 {
+
+  if (JunctionTree::viterbiScore) {
+    // there is nothing to do in this case since if the RVs associated
+    // with the current clique have been set to the appropriate clique
+    // table entry, the associated separator RVs have also been set.
+    return; 
+  }
+
+
   if (origin.ceReceiveSeparators.size() == 0)
     return;
 
@@ -3554,7 +3741,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
       InferenceSeparatorClique::AISeparatorValue& sv
 	= sep.separatorValues.ptr[0];
       // can use assignment rather than += here since there is only one value.
-      sv.remValues.ptr[0].bp = cliqueValues.ptr[0].p;      
+      sv.remValues.ptr[0].bp() = cliqueValues.ptr[0].p;      
     }
   } else {
 
@@ -3625,7 +3812,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 
 	    // Add in this clique value's probability.  Note that bp was
 	    // initialized during forward pass.
-	    sv.remValues.ptr[0].bp += cliqueValues.ptr[cvn].p;
+	    sv.remValues.ptr[0].bp() += cliqueValues.ptr[cvn].p;
 	    // done, move on to next separator.
 	    continue; 
 	  }
@@ -3663,7 +3850,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	  // We've finally got the sep entry.  Add in this clique value's
 	  // probability.  Note that bp was initialized during forward
 	  // pass.
-	  sv.remValues.ptr[*remIndexp].bp += cliqueValues.ptr[cvn].p;
+	  sv.remValues.ptr[*remIndexp].bp() += cliqueValues.ptr[cvn].p;
 	} else {
 	  // Separator must be all observed.
 	
@@ -3674,7 +3861,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	  // We've finally got the sep entry.  Add in this clique value's
 	  // probability.  Note that bp was initialized during forward
 	  // pass.
-	  sv.remValues.ptr[0].bp += cliqueValues.ptr[cvn].p;
+	  sv.remValues.ptr[0].bp() += cliqueValues.ptr[cvn].p;
 	}
       }
     }
@@ -3709,10 +3896,72 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	// then rv->p == zero would imply that rv->bp == zero, and we
 	// would need to do a check. Note that this pruning always
 	// occurs, regardless of beam.
-	rv->bp /= rv->p;
+	rv->bp() /= rv->p;
 
       }
     }
+  }
+
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::setCliqueToMaxCliqueValue()
+ *
+ *    This routine just sets the clique to the clique value to the one
+ *    that has maximum score. It sets all RVs to the values associated
+ *    with the clique value that has maximum score.
+ *    
+ * Preconditions:
+ *
+ *     Clique table must be at least partially instantiated.
+ *
+ * Postconditions:
+ *
+ *     Hidden RVs now have values of clique value having maximum score
+ *     in clique table.
+ *
+ * Side Effects:
+ *
+ *    Changes values of RVs associated with this clique
+ *
+ * Results:
+ *    nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr
+InferenceMaxClique::
+setCliqueToMaxCliqueValue()
+{
+
+  if (origin.hiddenNodes.size() == 0) {
+    // The observed clique case requires no action since this
+    // means that the cliuqe (and therefore all its separators)
+    // are all observed and already set to their max prob (and only) values.
+    return cliqueValues.ptr[0].p;
+  } else {
+    unsigned max_cvn = 0;
+    logpr max_cvn_score = cliqueValues.ptr[0].p;
+    
+    // find the max score clique entry
+    for (unsigned cvn=1;cvn<numCliqueValuesUsed;cvn++) {
+      if (cliqueValues.ptr[cvn].p > max_cvn_score) {
+	max_cvn_score = cliqueValues.ptr[cvn].p;
+	max_cvn = cvn;
+      }
+    }
+
+    const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[max_cvn].val[0]),
+			   (unsigned**)discreteValuePtrs.ptr);
+    } else {
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[max_cvn].ptr,
+			   (unsigned**)discreteValuePtrs.ptr);
+    }
+
+    return max_cvn_score;
   }
 
 }

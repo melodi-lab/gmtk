@@ -347,6 +347,7 @@ class JunctionTree  {
   void deletePartition(const unsigned part);
   void deScatterOutofRoot(const unsigned part);
   logpr probEvidenceRoot(const unsigned part);
+  logpr setRootToMaxCliqueValue(const unsigned part);
   void emIncrementIsland(const unsigned part,
 			  const logpr probE, 
 			  const bool localCliqueNormalization);
@@ -355,10 +356,12 @@ class JunctionTree  {
 				      const unsigned base,
 				      const unsigned linear_section_threshold,
 				      const bool runEMalgorithm,
+				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization);
   void collectDistributeIslandBase(const unsigned start,
 				   const unsigned end,
 				   const bool runEMalgorithm,
+				   const bool runViterbiAlgorithm,
 				   const bool localCliqueNormalization);
 
 public:
@@ -565,6 +568,8 @@ public:
   // all values should be the same.
   void printAllCliquesProbEvidence();
 
+  // Set the root to the max clique value and return that value.
+  logpr setRootToMaxCliqueValue();
 
   // Routine that calls collect/distribute evidence using the island
   // algorithm (i.e., log-space inference).
@@ -574,6 +579,7 @@ public:
 			  const unsigned base,
 			  const unsigned linear_section_threshold,
 			  const bool runEMalgorithm = false,
+			  const bool runViterbiAlgorithm = false,
 			  const bool localCliqueNormalization = false);
 
 
@@ -609,6 +615,9 @@ public:
     Co.clearDataMemory();
     E1.clearDataMemory();
   }
+
+  // access to the current set of nodes.
+  inline vector <RandomVariable*>& curNodes() { return cur_unrolled_rvs; }
 
 
 };

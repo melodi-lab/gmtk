@@ -826,8 +826,8 @@ public:
 				     const unsigned nodeNumber,
 				     const logpr p)
   {
-    // ceIterateAssignedNodesRecurse(part,nodeNumber,p);
-    ceIterateAssignedNodesNoRecurse(part,p);
+    ceIterateAssignedNodesRecurse(part,nodeNumber,p);
+    // ceIterateAssignedNodesNoRecurse(part,p);
   }
 
 
@@ -854,7 +854,12 @@ public:
   void deScatterToOutgoingSeparators(JT_InferencePartition& part);
   void deReceiveFromIncommingSeparator(JT_InferencePartition& part,
 				       InferenceSeparatorClique& sep);
+  void deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
+					      InferenceSeparatorClique& sep);
+
   void deReceiveFromIncommingSeparator(JT_InferencePartition& part);
+
+  logpr setCliqueToMaxCliqueValue();
 
 
   // sum up the probabilities in the current clique and return their value.
@@ -1016,16 +1021,28 @@ class InferenceSeparatorClique : public IM
       // unsigned val[ISC_NWWOH_RM];
       unsigned val[((ISC_NWWOH_RM>1)?ISC_NWWOH_RM:1)];
     };
-    // probability
+    // forward probability
     logpr p;
-    // 
-    // union upi {
-    //   char bp[sizeof(logpr)];
-    //   unsigned backPointer;
-    // };
-    // 
+
+
+    // make a union to share space between doing
+    // backward inference and backward viterbi pass
+    union {
+      char _bpo[sizeof(logpr)];
+      // TODO: make this an unsigned* to be able
+      // todo n-best.
+      unsigned backPointer;
+    };
+
+    // easy access to different fields
+    inline logpr& bp() { return (*((logpr*)(&_bpo[0]))); }
+
+    RemainderValue() { 
+      bp().set_to_zero(); 
+    }
+
     // probability for distribute evidence pass
-    logpr bp;
+    // logpr bp;
   };
 
 
