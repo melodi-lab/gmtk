@@ -174,7 +174,8 @@ void ObservationMatrix::openFiles(int n_files,
 			     char** perStreamPreTransforms,
 			     char* postTransforms,
 			     unsigned ftrcombo,
-				const char **sr_range_str  ) 
+			     const char **sr_range_str,
+			     const char **preTransFrameRangeStr) 
 {
   
   assert (n_files > 0);
@@ -182,6 +183,7 @@ void ObservationMatrix::openFiles(int n_files,
   unsigned max_num_segments=0;
 
   _prrngStr=pr_range_str;
+  _preTransFrameRangeStr=preTransFrameRangeStr;
   _actionIfDiffNumFrames=actionIfDiffNumFrames;
   _actionIfDiffNumSents=actionIfDiffNumSents;
   _perStreamPreTransforms=perStreamPreTransforms;
@@ -296,8 +298,8 @@ void ObservationMatrix::openFiles(int n_files,
   }  // end of for (unsigned i = 0; i < _numStreams; i++)
 
   if(ftrcombo!=FTROP_NONE) {
-    // we'll combine features streams so the overall number of floats will be the max
-    // labels are not affected by the feature combination.  Could be changed in the future.
+    // we'll combine features streams so the overall number of floats will be the max.
+    // Labels are not affected by the feature combination.  Could be changed in the future.
     _numContinuous=_maxContinuous;
   }
 
@@ -361,8 +363,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   bool sameNumSamples=true;
   bool gotAnExpand=false;
   bool gotATruncate=false;
-  unsigned i;
-  size_t prrng_max_num_samples=0, prrng_min_num_samples=0;
+   size_t prrng_max_num_samples=0, prrng_min_num_samples=0;
   size_t cur_n_samps = 0;
   size_t cur_prrng_n_samps = 0;
   StreamInfo *s;
@@ -375,10 +376,14 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   if (segno < 0 || segno >= _numSegments)  
     error("ObservationMatrix:::checkIfSameNumSamples: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
 
-  for (i = 0; i < _numStreams; i++) {
-    s = _inStreams[i];
+  ////////////////////////////////////
+  // Loop over all streams
+  ////////////////////////////////////
+  for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
+
+    s = _inStreams[stream_no];
     if (s == NULL)
-      error("ObservationMatrix::checkIfSameNumSamples: stream %i is NULL\n",i);
+      error("ObservationMatrix::checkIfSameNumSamples: stream %i is NULL\n",stream_no);
     
     if (s->fofName == NULL)
       sname = "(unset)";
@@ -386,10 +391,10 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
       sname = s->fofName;
 
     if(_actionIfDiffNumSents!=NULL &&  segno > s->getFofSize()-1) {
-      if(_actionIfDiffNumSents[i]==REPEAT_LAST) {
+      if(_actionIfDiffNumSents[stream_no]==REPEAT_LAST) {
 	segno=s->getFofSize()-1;
       }
-      else if(_actionIfDiffNumSents[i]==WRAP_AROUND) {
+      else if(_actionIfDiffNumSents[stream_no]==WRAP_AROUND) {
 	segno= segno % s->getFofSize();
       }
     }
@@ -399,16 +404,15 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
 
     if (s->dataFormat != PFILE) {
       if (s->dataNames == NULL)
-        error("ObservationMatrix::loadSegment: List of file names for stream %i (%s) is NULL\n",i,sname);
+        error("ObservationMatrix::loadSegment: List of file names for stream %i (%s) is NULL\n",stream_no,sname);
 
       fname = s->dataNames[segno];
       if (fname == NULL)
-        error("ObservationMatrix::loadSegment: Filename %li is NULL in stream %i (%s)\n",segno,i,sname);
+        error("ObservationMatrix::loadSegment: Filename %li is NULL in stream %i (%s)\n",segno,stream_no,sname);
     }
     else {
       if (s->pfile_istr == NULL)
-        error("ObservationMatrix::loadSegment: pfile stream %i (%s) is NULL\n",
-              i,sname);
+        error("ObservationMatrix::loadSegment: pfile stream %i (%s) is NULL\n",stream_no,sname);
     }
 
     switch(s->dataFormat) {
@@ -425,20 +429,36 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
       cur_n_samps = openPFile(s,segno);
       break;
     default:
-      error("ObservationMatrix::checkIfSameNumSamples: Invalid file format specified for stream %i\n",i);
+      error("ObservationMatrix::checkIfSameNumSamples: Invalid file format specified for stream %i\n",stream_no);
     }
 
-    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, stream %d, segment number %d has %d frames\n",i, segno,cur_n_samps));
+    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, stream %d, segment number %d has %d frames\n",stream_no, segno,cur_n_samps));
 
     if (cur_n_samps == 0)
-      error("ObservationMatrix::CheckNumSamples: failure to read segment %i: no samples found.",i);
+      error("ObservationMatrix::CheckNumSamples: failure to read segment %d of stream no %d: no samples found.",segno,stream_no);
+
+    // We update the max number of samples before AND after applying
+    // the pre-transform frame range because it might decrease (or
+    // increase) the number of frames.  max_num_samples should be the
+    // maximum number of frames we would ever read into a buffer.
+     if(cur_n_samps > max_num_samples)
+      max_num_samples=cur_n_samps;
+
+    //////////////////////////////////////////////////////////////////////////////////////
+    // Check if a pre-transform frame range specification is supplied -- karim 13oct2004
+     if(_preTransFrameRangeStr != NULL) {
+       Range* preTransFrameRange = new Range(_preTransFrameRangeStr[stream_no]==NULL?NULL:_preTransFrameRangeStr[stream_no],0,cur_n_samps);
+       cur_n_samps = preTransFrameRange->length();
+       delete preTransFrameRange;
+     }
+    //////////////////////////////////////////////////////////////////////////////////////
 
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before cheking per stream transforms.\n"));    
-
+    /////////////////////////////////////////////////////////////////////////////////////////////
     // check whether there is a transformation that changes the number of frames, e.g: upsampling
     // Post transformations are not allowed to change the number of frames
-    if(_perStreamPreTransforms!=NULL && _perStreamPreTransforms[i] != NULL) {
-      char* trans_str_ptr =  _perStreamPreTransforms[i];
+    if(_perStreamPreTransforms!=NULL && _perStreamPreTransforms[stream_no] != NULL) {
+      char* trans_str_ptr =  _perStreamPreTransforms[stream_no];
       int trans;
       int magic_int;
       double magic_double;
@@ -456,6 +476,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
 	}
       }
     }
+    /////////////////////////////////////////////////////////////////////////////////
 
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before calling s->setAfterTransformCurNumFrames(cur_n_samps);.\n"));    
 
@@ -463,27 +484,29 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
 
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before setting up prrng.\n"));    
 
-    Range* prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[i],0,cur_n_samps);
+    /////////////////////////////////////////////////////////////////////////
+    Range* prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[stream_no],0,cur_n_samps);
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 1.\n"));    
     cur_prrng_n_samps=prrng->length();
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 2.\n"));    
     s->setPrrngCurNumFrames(cur_prrng_n_samps);
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 3.\n"));    
     delete prrng;
+    /////////////////////////////////////////////////////////////////////////
 
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, checking if different num frames.\n"));
 
     if( _actionIfDiffNumFrames != NULL ) {
-      if(_actionIfDiffNumFrames[i]==TRUNCATE_FROM_START || _actionIfDiffNumFrames[i]==TRUNCATE_FROM_END) 
+      if(_actionIfDiffNumFrames[stream_no]==TRUNCATE_FROM_START || _actionIfDiffNumFrames[stream_no]==TRUNCATE_FROM_END) 
 	gotATruncate=true;
-      if(_actionIfDiffNumFrames[i]==REPEAT_FIRST || _actionIfDiffNumFrames[i]==REPEAT_LAST || _actionIfDiffNumFrames[i]==EXPAND_SEGMENTALLY) 
+      if(_actionIfDiffNumFrames[stream_no]==REPEAT_FIRST || _actionIfDiffNumFrames[stream_no]==REPEAT_LAST || _actionIfDiffNumFrames[stream_no]==EXPAND_SEGMENTALLY) 
 	gotAnExpand=true;
     }
 
     // unless we adjust the number of frames, report an error
-    if (i > 0 && cur_prrng_n_samps != _inStreams[i-1]->getPrrngCurNumFrames()) {
-      if(_actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[i]==ERROR && _actionIfDiffNumFrames[i-1]==ERROR)) {
-	error("ObservationMatrix::checkIfSameNumSamples: Number of samples for sentence %i don't match for streams %s and %s (%li vs. %li)\n",segno,_inStreams[i-1]->fofName,s->fofName,_inStreams[i-1]->getPrrngCurNumFrames(),cur_prrng_n_samps);
+    if (stream_no > 0 && cur_prrng_n_samps != _inStreams[stream_no-1]->getPrrngCurNumFrames()) {
+      if(_actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]==ERROR && _actionIfDiffNumFrames[stream_no-1]==ERROR)) {
+	error("ObservationMatrix::checkIfSameNumSamples: Number of samples for sentence %i don't match for streams %s and %s (%li vs. %li)\n",segno,_inStreams[stream_no-1]->fofName,s->fofName,_inStreams[stream_no-1]->getPrrngCurNumFrames(),cur_prrng_n_samps);
       }
       else {
 	if(gotATruncate && gotAnExpand)
@@ -498,24 +521,24 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
     if(cur_prrng_n_samps > prrng_max_num_samples)
       prrng_max_num_samples=cur_prrng_n_samps;
 
-    if(i==0)
+    if(stream_no==0)
       prrng_min_num_samples=cur_prrng_n_samps;
     else if(cur_prrng_n_samps < prrng_min_num_samples)
       prrng_min_num_samples=cur_prrng_n_samps;
     
-        DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, finished processing stream %d, segment number %d\n",i, segno));
+        DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, finished processing stream %d, segment number %d\n",stream_no, segno));
 
-  }  // end for (i = 0; i < _numStreams; i++)
+  }  // end for (stream_no = 0; stream_no < _numStreams; stream_no++)
 
   DBGFPRINTF((stderr,"At end of  ObservationMatrix::checkIfSameNumSamples, segment number %d has %d frames\n",segno,cur_n_samps));
 
-  for (unsigned i = 0; i < _numStreams; i++) {
-    s = _inStreams[i];
-    if(gotAnExpand && s->getPrrngCurNumFrames() < prrng_max_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[i]!=REPEAT_FIRST && _actionIfDiffNumFrames[i]!=REPEAT_LAST && _actionIfDiffNumFrames[i]!=EXPAND_SEGMENTALLY))  ) {
-      error("ERROR: Stream no %d does not have expand action associated with it and its number of frames, %d, is less than the maximum, %d, across streams",i,s->getPrrngCurNumFrames(),prrng_max_num_samples);
+  for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
+    s = _inStreams[stream_no];
+    if(gotAnExpand && s->getPrrngCurNumFrames() < prrng_max_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=REPEAT_FIRST && _actionIfDiffNumFrames[stream_no]!=REPEAT_LAST && _actionIfDiffNumFrames[stream_no]!=EXPAND_SEGMENTALLY))  ) {
+      error("ERROR: Stream no %d does not have expand action associated with it and its number of frames, %d, is less than the maximum, %d, across streams",stream_no,s->getPrrngCurNumFrames(),prrng_max_num_samples);
     }
-    if(gotATruncate && s->getPrrngCurNumFrames() > prrng_min_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[i]!=TRUNCATE_FROM_START && _actionIfDiffNumFrames[i]!=TRUNCATE_FROM_END))) { 
-      error("ERROR: Stream no %d does not have truncate action associated with it and its number of frames, %d, is larger than the minimum, %d, across streams",i,s->getPrrngCurNumFrames(),prrng_min_num_samples);
+    if(gotATruncate && s->getPrrngCurNumFrames() > prrng_min_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=TRUNCATE_FROM_START && _actionIfDiffNumFrames[stream_no]!=TRUNCATE_FROM_END))) { 
+      error("ERROR: Stream no %d does not have truncate action associated with it and its number of frames, %d, is larger than the minimum, %d, across streams",stream_no,s->getPrrngCurNumFrames(),prrng_min_num_samples);
     }
   }
 
@@ -532,7 +555,6 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
 // Overloaded method that returns the number of frames in a given segment
 unsigned ObservationMatrix::numFrames(unsigned segno) {
   unsigned num_frames=0;
-
 
   // max_n_samps and prrng_n_samps are initialized in the next fct call
   unsigned max_n_samps,prrng_n_samps;  
@@ -558,13 +580,11 @@ unsigned ObservationMatrix::numFrames(unsigned segno) {
 void ObservationMatrix::loadSegment(unsigned segno) {
   DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: Loading segment no %d\n",segno));
 
-  Range* prrng;
   StreamInfo *s;
   // max_n_samps and prrng_n_samps are initialized in the next fct call
   unsigned max_n_samps,prrng_n_samps;  
   DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: before call to checkIfSameNumSamples\n"));
   bool same_num_samples = checkIfSameNumSamples(segno,max_n_samps,prrng_n_samps);
-  DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: after call to checkIfSameNumSamples\n"));
   //reset();  // reset the observation buffer to the beginning.
    
 
@@ -578,26 +598,28 @@ void ObservationMatrix::loadSegment(unsigned segno) {
   // resize buffer if necessary
   if (max_n_samps > _bufSize) {
     DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: Resizing buffer for segment no %d\n",segno));
-      DBGFPRINTF((stderr,"Allocating %dx%dx%d=%d entries for temp float buffer\n",max_n_samps,_maxContinuous,2,max_n_samps * _maxContinuous*2));
-    resize(max_n_samps*2);
-    _tmpFloatSenBuffer.resize(max_n_samps*_maxContinuous*2);
-    _tmpIntSenBuffer.resize(max_n_samps*_maxDiscrete*2);
-    _repeat.resize(max_n_samps*2);
+    DBGFPRINTF((stderr,"Allocating %dx%dx%d=%d entries for temp float buffer\n",max_n_samps,_maxContinuous,2,max_n_samps * _maxContinuous*2));
+    _bufSize=max_n_samps*2;
+    resize(_bufSize);
+    _tmpFloatSenBuffer.resize(_bufSize*_maxContinuous);
+    _tmpIntSenBuffer.resize(_bufSize*_maxDiscrete);
+    _repeat.resize(_bufSize);
   }
-
+  
   _numNonSkippedFrames = prrng_n_samps;
   
+  ////////////////////////////////////////////
+  // Loop over al streams
+  ////////////////////////////////////////////
   for (unsigned i = 0; i < _numStreams; i++) {
+    
     s = _inStreams[i];
     unsigned num_floats = s->getNumFloats();
     unsigned num_ints   = s->getNumInts();
     // all checks were done in the function checkNumSamples
     
-    DBGFPRINTF((stderr,"In loadSegment(): s->getAfterTransformCurNumFrames() = %d\n",s->getAfterTransformCurNumFrames()));
-    prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[i],0,s->getAfterTransformCurNumFrames());
+    Range* prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[i],0,s->getAfterTransformCurNumFrames());
     assert(prrng != NULL);
-
-    //delete prrng;
 
     if(_actionIfDiffNumSents!=NULL &&  segno > s->fofSize-1) {
       if(_actionIfDiffNumSents[i]==REPEAT_LAST) {
@@ -611,12 +633,11 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     // Used to before the above section of code that modifies segno.  It seems obvious it should follow it instead, but the coment is here just in case there was a reason for that I don't see now. 
     _segmentNumber = segno;
 
-    DBGFPRINTF((stderr,"In loadSegment(): Reading sentence.\n"));
+    DBGFPRINTF((stderr,"In loadSegment(): Reading sentence. prrng->length()=%d.\n",prrng->length()));
 
     switch(s->dataFormat) {
     case RAWBIN:
     case HTK:
-      //readBinSentence(_tmpFloatSenBuffer.ptr,num_floats,_tmpIntSenBuffer.ptr,num_ints,s->curNumFrames,s->curDataFile,s->dataFormat,s->swap());
       readBinSentence(_tmpFloatSenBuffer.ptr,num_floats,_tmpIntSenBuffer.ptr,num_ints,s);
       break;
     case RAWASC:
@@ -629,6 +650,20 @@ void ObservationMatrix::loadSegment(unsigned segno) {
       error("ObservationMatrix::loadSegment: Invalid file format specified for stream %i\n",i);
     }
 
+    DBGFPRINTF((stderr,"In loadSegment(): Before pre-transform frame range _prrngStr[i]= %s, prrng->length()=%d, s->curNumFrames=%d.\n",_prrngStr[i],prrng->length(),s->curNumFrames));
+
+    // Apply pre-transform frame range
+    if(_preTransFrameRangeStr != NULL && _preTransFrameRangeStr[i] != NULL && strcmp(_preTransFrameRangeStr[i],"all") !=0 && strcmp(_preTransFrameRangeStr[i],"nil") !=0 &&  strcmp(_preTransFrameRangeStr[i],"none") !=0 &&  strcmp(_preTransFrameRangeStr[i],"full") !=0) {
+      unsigned new_num_frames=0;
+      if(num_floats != 0)
+	new_num_frames=applyPreTransformFrameRange(&_tmpFloatSenBuffer, num_floats, num_floats, s->curNumFrames, _preTransFrameRangeStr[i]);
+    DBGFPRINTF((stderr,"In loadSegment(): After float pre-transform frame range _prrngStr[i]= %s, prrng->length()=%d, s->curNumFrames=%d, new_num_frames=%d.\n",_prrngStr[i],prrng->length(),s->curNumFrames,new_num_frames));
+      if(num_ints != 0)
+	new_num_frames=applyPreTransformFrameRange(&_tmpIntSenBuffer, num_ints, num_ints, s->curNumFrames, _preTransFrameRangeStr[i]);
+      s->curNumFrames=new_num_frames;
+    }
+
+    DBGFPRINTF((stderr,"In loadSegment(): After pre-transform frame range prrng->length()=%d, s->curNumFrames=%d.\n",prrng->length(),s->curNumFrames));
 
 #ifdef DEBUG
     DBGFPRINTF((stderr,"In loadSegment(): num_floats = %d and _tmpFloatSenBuffer.ptr = \n",num_floats));
@@ -657,7 +692,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
       applyTransforms(_perStreamPreTransforms[i],num_floats, num_ints, s->curNumFrames);
     }
 
-    DBGFPRINTF((stderr,"In loadSegment(): preparing to copy data to final buffer.\n"));
+    DBGFPRINTF((stderr,"In loadSegment(): preparing to copy data to final buffer. prrng->length()=%d\n",prrng->length()));
 
     if(same_num_samples)
       copyToFinalBuffer(i,_tmpFloatSenBuffer.ptr,_tmpIntSenBuffer.ptr,s->cont_rng,s->disc_rng,prrng);
@@ -773,6 +808,8 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     // get multiplier
     //DBGFPRINTF((stderr,"trans_str=%s\n",trans_str));
     magic_double=conv2double(trans_str,len,'_');
+    if(len==0) 
+      error("ERROR: parseTransform: Need to supply multiplicative factor with 'M' transformation.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return MULTIPLY;
@@ -780,6 +817,8 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     ++trans_str; 
     // get offset
     magic_double=conv2double(trans_str,len,'_');
+    if(len==0) 
+      error("ERROR: parseTransform: Need to supply offset with 'O' transformation.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return OFFSET;
@@ -795,18 +834,22 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     // a number to upsample by should follow
     ++trans_str;
     magic_double=conv2double(trans_str,len,'_');
+    if(len==0) 
+      error("ERROR: parseTransform: Need to supply upsampling factor with 'UH' or 'US' transformations.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return return_val;
-  case TRANS_ARMA_LETTER:
+  case TRANS_ARMA_LETTER: // 'R'
     ++trans_str; 
     //DBGFPRINTF((stderr,"trans_str=%s\n",trans_str));
     // get order of ARMA filter
     magic_int=(int)conv2double(trans_str,len,'_',true); // conv2int is true
+    if(len==0) 
+      error("ERROR: parseTransform: Need to supply order of arma filter with 'R' transformation.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str; 
     return ARMA;
-  case FILTER_LETTER:
+  case FILTER_LETTER: // 'F'
     ++trans_str;
     if(*(trans_str)=='@') {
       magic_int=-1;  //we'll read the filter from a file
@@ -884,6 +927,7 @@ void ObservationMatrix::applyTransforms(char* trans_str, unsigned num_floats, un
       multiply(_tmpFloatSenBuffer.ptr,num_floats,num_floats,num_frames,magic_double);
       break;
     case ARMA:
+      if((unsigned) magic_int > num_frames/2) error("ERROR: applyTransformation: ARMA filter order (%d) has to be less than half the number of frames (%d).",magic_int, num_frames);
       arma(_tmpFloatSenBuffer.ptr,num_floats,num_floats,num_frames,magic_int);
       break;
     case FILTER:
@@ -937,6 +981,7 @@ void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats
       inPlaceMeanSub((float*)features.ptr,numContinuous(),stride(),num_frames);
       break;
     case ARMA:
+      if((unsigned) magic_int > num_frames/2) error("ERROR: applyTransformation: ARMA filter order (%d) has to be less than half the number of frames (%d).",magic_int, num_frames);
       arma((float*)features.ptr,numContinuous(),stride(),num_frames,magic_int);
       break;
     case FILTER:
@@ -971,7 +1016,7 @@ void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats
  * */
 void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,Range* float_rng,Range* int_rng,Range* pr_rng) {
 
-  DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.\n"));
+  DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer. pr_rng->length()=%d\n", pr_rng->length()));
 
   StreamInfo* s            = _inStreams[stream_no];
   unsigned num_floats      = s->getNumFloats();
@@ -1053,6 +1098,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
   if(num_floats>0) {
     for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_float_buf+=stride) {
       float_buf_ptr=start_float_buf;
+      DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.   *pr_it= %d.\n",*pr_it));  
       for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	copy_swap_func_ptr(1,(const int *) &float_buf[*it+(*pr_it)*num_floats], (int *)float_buf_ptr++);
 	if(!finite(*(float_buf_ptr-1))) {
@@ -1726,7 +1772,8 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
   float* float_buffer_ptr = float_buffer;
   Int32* int_buffer_ptr   = int_buffer;
 
-// consume CPP special directives if any
+
+  // consume CPP special directives if any
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP     
   if(_cppIfAscii) {
     while((tmp=fgetc(f))==CPP_DIRECTIVE_CHAR) {
@@ -1736,7 +1783,9 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
     ungetc(tmp,f);
   }
 #endif
-
+  
+  
+  
   // could be made a bit more efficient since we check whether
   // num_floats and num_ints > 0 for each frame.
   DBGFPRINTF((stderr,"Reading ascii sentence...\n"));
@@ -1761,7 +1810,8 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
     }
     DBGFPRINTF((stderr,"\n"));
   }
-
+  
+  DBGFPRINTF((stderr,"Done reading ascii sentence.\n"));
   return true;
 }
 

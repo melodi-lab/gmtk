@@ -77,7 +77,6 @@
 #include "GMTK_Stream.h"
 #include "ieeeFPsetup.h"
 
-
 #define NONE_LETTER 'X'
 #define TRANS_NORMALIZATION_LETTER 'N'
 #define TRANS_MEAN_SUB_LETTER 'E'
@@ -97,6 +96,12 @@
 #define MIN_FILTER_LEN 1
 
 #define ALLOW_VARIABLE_DIM_COMBINED_STREAMS 1
+
+#ifdef DEBUG
+#define DBGFPRINTF(_x_) fprintf _x_
+#else
+#define DBGFPRINTF(_x_)
+#endif
 
 // actions when the number of frames is different across streams
 // + actions when the number of sentences is different across streams
@@ -181,6 +186,7 @@ class ObservationMatrix {
   unsigned*     _actionIfDiffNumFrames;
   unsigned*     _actionIfDiffNumSents;
   const char**  _prrngStr;
+  const char**  _preTransFrameRangeStr;
   char**        _perStreamPreTransforms;
   char*         _postTransforms;
   unsigned      _ftrcombo;
@@ -209,6 +215,8 @@ class ObservationMatrix {
   
   
   /////////////////         data transformation routines      //////////////////  
+  
+  template<class T> unsigned applyPreTransformFrameRange(sArray<T>* tmp_sen_buffer, unsigned vec_size, unsigned stride, unsigned& num_frames, const char* preTransFrameRangeStr);
 
   int  parseTransform(char*& trans_str, int& magic_int, double& magic_double);
   void applyTransforms(char* trans_str, unsigned num_floats, unsigned num_ints, unsigned num_frames);
@@ -277,7 +285,8 @@ class ObservationMatrix {
 		 char**         perStreamPreTransforms = NULL,
 		 char*          postTransforms         = NULL,
 		 unsigned       ftrcombo               = FTROP_NONE,
-		 const char**   sr_range_str           = NULL
+		 const char**   sr_range_str           = NULL,
+		 const char**   preTransFramerangeStr  = NULL
 );
 
   /////////////////////////////////////////////////////////////////////////
@@ -299,12 +308,13 @@ class ObservationMatrix {
 		char**         perStreamPreTransforms = NULL,
 		char*          postTransforms         = NULL,
 		unsigned       ftrcombo               = FTROP_NONE,
-		const char**   sr_range_str           = NULL
+		const char**   sr_range_str           = NULL,
+		const char**   preTransFramerangeStr  = NULL
 		) {
     openFiles(1,&f_name,&cont_range_str,&disc_range_str,&n_floats,&n_ints,&formats,&swapflags,
 	      _startSkip,_endSkip,cppIfAscii,cppCommandOptions,pr_range_str,
 	      actionIfDiffNumFrames,actionIfDiffNumSents,
-	      perStreamPreTransforms,postTransforms,ftrcombo,sr_range_str);
+	      perStreamPreTransforms,postTransforms,ftrcombo,sr_range_str,preTransFramerangeStr);
   }
 
   unsigned formatStrToNumber(const char * fmt) {
@@ -479,6 +489,8 @@ void ObservationMatrix::upsampleHold(sArray<T>* tmp_sen_buffer, unsigned vec_siz
       cnt++;
     }
 
+  delete [] tmp_buf;
+
 }
 
 template<class T> void ObservationMatrix::upsampleSmooth(sArray<T>* tmp_sen_buffer, unsigned vec_size, unsigned stride, unsigned num_frames, unsigned upsample) {
@@ -523,6 +535,53 @@ template<class T> void ObservationMatrix::upsampleSmooth(sArray<T>* tmp_sen_buff
       x[cnt*stride+j]=tmp_buf[(num_frames-1)*vec_size+j];
     }
 
+    delete [] tmp_buf;
+
+}
+
+/**
+ *
+ * side effects: - updates the number of frames num_frames
+*/
+
+template<class T>
+unsigned ObservationMatrix::applyPreTransformFrameRange(sArray<T>* tmp_sen_buffer, unsigned vec_size, unsigned stride, unsigned& num_frames, const char* preTransFrameRangeStr) {
+
+  assert(vec_size!=0 && stride != 0);
+
+  DBGFPRINTF((stderr,"In ObservationMatrix::applyPreTransformFrameRange: creating preTransFrameRange preTransFrameRangeStr= %s, num_frames=%d.\n",preTransFrameRangeStr,num_frames));
+  Range* preTransFrameRange = new Range(preTransFrameRangeStr==NULL?NULL:preTransFrameRangeStr,0,num_frames);
+  //  Range* preTransFrameRange = new Range(NULL,0,num_frames);
+ assert(preTransFrameRange != NULL);
+  DBGFPRINTF((stderr,"In ObservationMatrix::applyPreTransformFrameRange: after creating preTransFrameRange preTransFrameRangeStr= %s, num_frames=%d.\n",preTransFrameRangeStr,num_frames));
+
+  unsigned new_num_frames= preTransFrameRange->length();
+
+  T* tmp_buf=new T[num_frames*vec_size];
+  T* x=tmp_sen_buffer->ptr;
+
+
+
+
+  // copy buffer into a temporary one
+  for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned j=0;j<vec_size;++j) {
+	tmp_buf[i*vec_size+j]=x[i*stride+j];
+    }
+
+  // No need to resize tmp_sen_buffer because It wa already assigned proper size 
+
+  unsigned cnt=0;
+  for(Range::iterator frame_it = preTransFrameRange->begin(); !frame_it.at_end();++frame_it,++cnt) {
+      for(unsigned j=0;j<vec_size;++j) { 
+	x[cnt*stride+j]=tmp_buf[*frame_it*vec_size+j];
+      }
+  }  
+
+  delete [] tmp_buf;
+  delete preTransFrameRange;
+
+  return new_num_frames;
 
 }
 
