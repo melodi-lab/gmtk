@@ -51,3 +51,5 @@ incorporated into the package at some point.
 
 - use namedobject for randomvariable and any other object that
   has a string name
+
+- include check to make sure that names for each section in parms are unique
