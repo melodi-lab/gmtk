@@ -1,5 +1,16 @@
 // -*- C++ -*-
 
+// Dots and dashes have been disabled because of the instability they
+// induce. The wxWidgets documentation says that they may only be
+// drawn with width one. I believe the problem is that when you print
+// (and maybe scale, etc.) that width changes implicitly. There was a
+// (perhaps) similar problem with fonts previously. The didn't scale
+// the way they should have. That was solved by making a temporary
+// font object based on the original font object's settings. See
+// StructPage::draw(). Perhaps something similar can be done the
+// pens. Instead of simply changing to the appropriate pen, create a
+// new pen with the properties of that pen and switch to the new pen.
+
 // the only parts of gmtk that gmtkViz needs to concern itself with
 #include "GMTK_FileParser.h"
 #include "GMTK_RVInfo.h"
@@ -2145,7 +2156,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 	case MENU_CUSTOMIZE_GRID_PEN_STYLE:
 	    newStyleNum = wxGetSingleChoiceIndex( wxT("What style would you like?"),
 						  wxT("Change Pen Style"),
-						  6, choices, this );
+						  2 /*6*/, choices, this );
 	    if (newStyleNum >= 0) {
 		if ( 2 <= newStyleNum && newStyleNum <= 5 ) {
 		    if ( wxNO == wxMessageBox("Lines with dots and/or "
@@ -2397,16 +2408,16 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
     content = NULL;
 
     /* Dots and dashes require width to be one. */
-    switchingPen.SetStyle(wxDOT);
+    switchingPen.SetStyle(wxSOLID /*wxDOT*/);
     conditionalPen.SetStyle(wxSOLID);
-    bothPen.SetStyle(wxLONG_DASH);
-    frameBorderPen.SetStyle(wxDOT);
+    bothPen.SetStyle(wxSOLID /*wxLONG_DASH*/);
+    frameBorderPen.SetStyle(wxSOLID /*wxDOT*/);
     chunkBorderPen.SetStyle(wxSOLID);
     // Scale all these lines up.
-    //switchingPen.SetWidth(ACTUAL_SCALE);
+    switchingPen.SetWidth(ACTUAL_SCALE);
     conditionalPen.SetWidth(ACTUAL_SCALE);
-    //bothPen.SetWidth(ACTUAL_SCALE);
-    //frameBorderPen.SetWidth(ACTUAL_SCALE);
+    bothPen.SetWidth(ACTUAL_SCALE);
+    frameBorderPen.SetWidth(ACTUAL_SCALE);
     chunkBorderPen.SetWidth(ACTUAL_SCALE);
     controlPointPen.SetWidth(ACTUAL_SCALE);
     // Make the corners sharp
