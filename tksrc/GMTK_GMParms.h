@@ -236,7 +236,7 @@ public:
   void writeObservationParams(oDataStreamFile& os);
 
   ///////////////////////////////////////////////////////////    
-  // read and write Observation Structures (DLINKS)
+  // read and write the DLINKS
   void readObservationStructures(iDataStreamFile& is);
   void writeObservationStructures(oDataStreamFile& os);
 
