@@ -114,27 +114,28 @@ Sparse1DPMF::read(iDataStreamFile& is)
     prev_val = val;
 
     pmf[i] = val;
-
-    // read name of dense 1d PMF to use
-    string str;
-    is.read(str);
-    if (GM_Parms.dPmfsMap.find(str) == GM_Parms.dPmfsMap.end()) {
-      error("ERROR: in SPMF '%s', can't find DPMF named '%s' when reading file '%s'\n",
-	    name().c_str(),str.c_str(),is.fileName());
-    }
-
-    dense1DPMF = GM_Parms.dPmfs[
-				GM_Parms.dPmfsMap[str]
-    ];
-
-    // now make sure length is right.
-    if ((unsigned)len != dense1DPMF->length()) {
-      error("ERROR: in SPMF '%s', DPMF named '%s' has %d elements but SPMF needs %d\n",
-	    name().c_str(),
-	    str.c_str(),dense1DPMF->length(),len);
-    }
     
   }
+
+  // read name of dense 1d PMF to use
+  string str;
+  is.read(str);
+  if (GM_Parms.dPmfsMap.find(str) == GM_Parms.dPmfsMap.end()) {
+    error("ERROR: in SPMF '%s', can't find DPMF named '%s' when reading file '%s'\n",
+	  name().c_str(),str.c_str(),is.fileName());
+  }
+
+  dense1DPMF = GM_Parms.dPmfs[
+			      GM_Parms.dPmfsMap[str]
+  ];
+
+  // now make sure length is right.
+  if ((unsigned)len != dense1DPMF->length()) {
+    error("ERROR: in SPMF '%s', DPMF named '%s' has %d elements but SPMF needs %d\n",
+	  name().c_str(),
+	  str.c_str(),dense1DPMF->length(),len);
+  }
+
 }
 
 
