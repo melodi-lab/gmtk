@@ -90,7 +90,7 @@ PackCliqueValue::init(const unsigned *const cards)
  
   const unsigned numBitsPerUnsigned = sizeof(unsigned)*8;
 
-  unsigned totalNumBits = 0;
+  totalNumBits = 0;
   for (unsigned i = 0; i< len; i++) {
     totalNumBits += 
       (unsigned)ceil(log((double)cards[i])*inv_log_2_base_e);

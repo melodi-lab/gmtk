@@ -326,7 +326,8 @@ main(int argc,char*argv[])
   myjt.createSeparators();
   myjt.computeSeparatorIterationOrders();
   myjt.getPrecedingIteratedUnassignedNodes();
-  myjt.printAllJTInfo("jt_info_before_unrolling.txt");
+  // this will cause problems when printing number of bits.
+  // myjt.printAllJTInfo("jt_info_before_unrolling.txt");
   myjt.prepareForUnrolling();
   // TODO: allow user input file name
   myjt.printAllJTInfo("jt_info.txt");
@@ -371,13 +372,20 @@ main(int argc,char*argv[])
 
   // myjt.unroll(partition_unroll_amount);
   unsigned numUsableFrames = myjt.unroll(frames);
+  printf("Collecting Evidence\n");
   myjt.collectEvidence();
+  // myjt.printAllCliquesProbEvidence();
 
+  printf("Distributing Evidence\n");
+  myjt.distributeEvidence();
+  myjt.printAllCliquesProbEvidence();
+  
   logpr probe = myjt.probEvidence();
   printf("log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	 probe.val(),
 	 probe.val()/frames,
 	 probe.val()/numUsableFrames);
+
   
 #if 0
   fprintf(stderr,"Hit return when ready:");

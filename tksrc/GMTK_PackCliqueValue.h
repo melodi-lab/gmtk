@@ -48,8 +48,9 @@ class PackCliqueValue {
 
   friend class MaxClique;
 
-
   unsigned numUnsignedInPackedVector;
+
+  unsigned totalNumBits;
 
   const unsigned unpackedVectorLength;
 
@@ -104,6 +105,9 @@ public:
   // hold a packed clique value
   unsigned packedLen() { return numUnsignedInPackedVector; }
   unsigned unPackedLen() { return unpackedVectorLength; }
+  // return the number of bits
+  unsigned packedLenBits() { return totalNumBits; }
+
 
   // pack()
   // this routine assumes that both

@@ -358,6 +358,11 @@ public:
   // compute P(E), probability of the evidence
   logpr probEvidence();
 
+  // print P(E) to stdout using all cliques. After a ce,de stage,
+  // all values should be the same.
+  void printAllCliquesProbEvidence();
+
+
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);
   // void distributeMessage(MaxClique& from,MaxClique& to);
