@@ -112,7 +112,17 @@ public:
       if (globalObservationMatrix.active() && featureElement != DRV_USE_FIXED_VALUE_FEATURE_ELEMENT) {
 	// printf("getting value of random variable '%s', time index %d, el %d\n",
 	// label.c_str(),timeIndex,featureElement);
-	val = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
+	unsigned tmp = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
+	if (tmp >= (unsigned)cardinality) 
+	  coredump("ERROR: RV '%s' at time index %d has cardinality %d, but feature element position %d in observation file (time %d of segment %d) has value %u.\n",
+		   label.c_str(),
+		   timeIndex,
+		   cardinality,
+		   featureElement,
+		   timeIndex,
+		   globalObservationMatrix.segmentNumber,
+		   tmp);
+	val = tmp;
       }
       // otherwise, we keep the value set to what it was before.
       return;
