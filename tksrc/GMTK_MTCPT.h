@@ -148,6 +148,11 @@ public:
     return _val;
   }
 
+  // used for elimination/triangulation
+  virtual unsigned averageCardinality() { return 1; }
+  virtual unsigned maxCardinality() { return 1; }
+
+
   // random sample given current parents value
   int randomSample() { return _val; }
   
