@@ -228,7 +228,9 @@ X make sure that dlinkmatrix precompute is being
 
 - clean up source directories.
 
-- fix unrolling bug 
+- fix unrolling bug, where it is possible to get an assertion
+  failure because of unrolling a network but having  incompatible
+  RVs.
 
 - dlinks, make sure we do not point to self
 
