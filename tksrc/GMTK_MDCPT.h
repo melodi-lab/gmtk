@@ -54,6 +54,12 @@ class MDCPT : public CPT {
   // the overall expected occurence of this CPT
   logpr accumulator;
 
+protected:
+
+  // special constructor for subclasses who want to 
+  // use a different type.
+  MDCPT(DiscreteImplementaton _cptType) : CPT(_cptType) {};
+
 public:
 
   ///////////////////////////////////////////////////////////  
