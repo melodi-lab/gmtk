@@ -786,7 +786,7 @@ FileParser::parseRandomVariableList()
   // we need to at least have specified one conditional parents set,
   // which might be 'nil' 
   if (curRV.conditionalParents.size() == 0)  
-    error("Conditional parents unknown/unspecified for random variable %s at frame %d, line %d\n",
+    error("Conditional parents unknown/unspecified for random variable '%s' at frame %d, line %d\n",
 	  curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
 
   // Make sure that if we have switching weights, then we also have a
@@ -798,7 +798,7 @@ FileParser::parseRandomVariableList()
     // switching parents and list of conditional parent sets, where
     // the list is the same length.
     if (curRV.conditionalParents.size() != curRV.rvWeightInfo.size()) {
-      error("Random variable %s, frame %d, line %d of file %s has %d switching weights but "
+      error("Random variable '%s', frame %d, line %d of file %s has %d switching weights but "
 	    "only %d set(s) of conditional parents. Must either have the same number, or a single weight item.\n",
 	    curRV.name.c_str(),
 	    curRV.frame,
@@ -811,7 +811,7 @@ FileParser::parseRandomVariableList()
 
   // check that if we have conditionalparents > 1 we also have switching parents. 
   if (curRV.conditionalParents.size() > 1 && curRV.switchingParents.size() == 0) {
-      error("Random variable %s, frame %d, line %d of file %s has %d sets of conditional parents but does not list any switching parents.\n",
+      error("Random variable '%s', frame %d, line %d of file %s has %d sets of conditional parents but does not list any switching parents.\n",
 	    curRV.name.c_str(),
 	    curRV.frame,
 	    curRV.fileLineNumber,
@@ -823,7 +823,7 @@ FileParser::parseRandomVariableList()
   map < RVInfo::rvParent , unsigned >::iterator it;
   it = nameRVmap.find(RVInfo::rvParent(curRV.name,curRV.frame));
   if (it != nameRVmap.end()) {
-    error("Error: random variable (%s) at frame (%d) defined twice, "
+    error("Error: random variable '%s' at frame (%d) defined twice, "
 	  "on both line %d and %d\n",curRV.name.c_str(),
 	  curRV.frame,
 	  curRV.fileLineNumber,
@@ -1208,7 +1208,6 @@ FileParser::parseRandomVariableWeightAttributeSpec()
     parseRandomVariableWeightOptionList();
   }
 
-
 }
 
 
@@ -1279,12 +1278,12 @@ FileParser::parseRandomVariableWeightOptionList()
   } else 
     parseErrorExpecting("integer or floating-point value");
   
-  ensureNotAtEOF("; or another weight option");
-  if (tokenInfo != TT_SemiColon) {
-    // assume it is another weight option.
+  ensureNotAtEOF("; or another weight (scale,penalty,shift) option");
+  if (tokenInfo == KW_Scale || tokenInfo == KW_Penalty || tokenInfo == KW_Shift) {
+    // it is another weight option.
     parseRandomVariableWeightOptionList();
   } else {
-    // we've got a semi, so time to end the option list.
+    // we've got something else, time to end.
   }
 }
 
