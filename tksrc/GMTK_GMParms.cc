@@ -2311,6 +2311,8 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
   char buff[2048];
   iDataStreamFile is(outputFileFormat,false,true,cppCommandOptions);
 
+  markUsedMixtureComponents();
+
   while (is.readString(keyword)) {
 
     if (!is.readString(fileName)) {
