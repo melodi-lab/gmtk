@@ -24,9 +24,12 @@
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
-#include "CPT.h"
 
-class MDCPT : public CPT {
+#include "GMTK_CPT.h"
+#include "GMTK_EMable.h"
+
+
+class MDCPT : public EMable, public CPT {
 
   //////////////////////////////////
   // The acutal cpt. This is the table for
@@ -53,41 +56,77 @@ public:
   // General constructor
   MDCPT();
 
-  //////////////////////////////////
-  // set all current parameters to random values
-  void randomize();
+  ///////////////////////////////////////////////////////////    
+  // Semi-constructors: useful for debugging.
+  // See parent class for further documention.
+  void setNumParents(const int _nParents);
+  void setNumCardinality(const int var, const int card);
+  void allocateBasicInternalStructures();
 
 
   //////////////////////////////////
   // various forms of probability calculation
   void setParentValues( sArray <int>& parentValues );
-  logpr probGivenParents(const int val);
+  logpr probGivenParents(const int val) {
+    assert ( bitmask & bm_basicAllocated );
+    assert ( val >= 0 && val <= cardinalities[numParents] );
+    return *(mdcpt_ptr + val);
+  }
   logpr probGivenParents(sArray <int>& parentValues, 
-				 const int val);
-  int numValsGivenParents();
+			 const int val) {
+    assert ( bitmask & bm_basicAllocated );
+    setParentValues(parentValues);
+    return probGivenParents(val);
+  }
+  int numValsGivenParents() { 
+    assert ( bitmask & bm_basicAllocated );
+    return cardinalities[numParents]; 
+  }
   // returns an iterator for the first one.
-  iterator first();
+  iterator first() {
+    assert ( bitmask & bm_basicAllocated );
+    iterator it;
+    it.val = 0;
+    it.probVal = *mdcpt_ptr;
+    return it;
+  }
   // Given a current iterator, return the next one in the sequence.
-  iterator next(iterator &);
+  bool next(iterator &it) {
+    assert ( bitmask & bm_basicAllocated );
 
+    if (it.val == cardinalities[numParents]-1)
+      return false;
+    it.val++;
+    it.probVal = mdcpt_ptr[it.val];
+    return true;
+  }
 
+  
+  ///////////////////////////////////////////////////////////  
+  // Re-normalize the output distributions
+  void normalize() {};
+  // set all values to random values.
+  void makeRandom();
+  // set all values to uniform values.
+  void makeUniform() {};
 
   //////////////////////////////////////////////
   // read/write basic parameters
-  void read(iDataStreamFile& is) { means.read(is); }
-  void write(oDataStreamFile& os) { means.write(os); }
+  void read(iDataStreamFile& is);
+  void write(oDataStreamFile& os);
 
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emInit();
-  void startEmEpoch();
+  void emInit() { error("not implemented"); }
+  void startEmEpoch()  { error("not implemented"); }
   void emAccumulate(const float prob,
-		    const float *const oo_array);
-  void endEmEpoch(logpr cmpSop_acc);
-  void emLoadAccumulators(iDataStreamFile& ifile);
-  void emStoreAccumulators(oDataStreamFile& ofile);
-  void emAccumulateAccumulators(iDataStreamFile& ifile);
+		    const float *const oo_array) { error("not implemented"); }
+  void endEmEpoch(logpr cmpSop_acc)  { error("not implemented"); }
+  void emLoadAccumulators(iDataStreamFile& ifile)  { error("not implemented"); }
+  void emStoreAccumulators(oDataStreamFile& ofile)  { error("not implemented"); }
+  void emAccumulateAccumulators(iDataStreamFile& ifile)  { error("not implemented"); }
+  void swapCurAndNew() { error("not implemented"); }
   //////////////////////////////////
 
 
