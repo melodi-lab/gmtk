@@ -115,6 +115,8 @@ mixgauss swap
 
 to get compiling on IBM
 
+ -D__GNUC__=2 -D__GNUG__=2 -D__GNUC_MINOR__=95 -D__cplusplus -trigraphs -D__STRICT_ANSI__ -D_IBMR2 -D_POWER -D_AIX -D_AIX32 -D_AIX41 -D_AIX43 -D_LONG_LONG -Asystem(unix) -Asystem(aix) -D__EXCEPTIONS -D__CHAR_UNSIGNED__ -g -Wall -pedantic -D_ARCH_COM
+
 - GMTK_FileParser.lex
   already defined fileno
 
@@ -126,3 +128,5 @@ to get compiling on IBM
 
 - fileParser.cc
      write() overload problem.
+
+- ieeefp from pfile
