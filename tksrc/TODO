@@ -1610,7 +1610,8 @@ Sat Mar  6 14:52:42 2004
         51-95: beam3
         96-100: beam4
     where 0-10 says the first 10% of the file, 11-50 the next 39%, and so on.
-
+  - also have a beam for each clique in some way (i.e., perhaps a growth function'
+    so that larger cliques have larger beams, etc.)
 
 Sat Mar  6 19:52:15 2004
  - write an any-time script that iterates for a given amount of time:
