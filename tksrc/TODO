@@ -1669,4 +1669,19 @@ Fri Mar 12 17:13:42 2004
  - instead of unity score CPTs and Gaussians, produce alpha-score CPts and Gaussian
    where alpha can be any value.
 
+Sat Mar 13 18:45:03 2004
+ - docs: place note in documentation about FPEs, and to first make sure that
+   you don't have any NaNs in the feature files (since this will
+   cause FPEs in GMTK and people might think this is a GMTK bug).
+   You can use 'od' to check the status of raw binary feature files.
+   I.e., 'od -f' will print things out in 32-bit floats. You can
+   also use od to skip a bit (say if it is a 12-bite header).
+   Also mention the use of obsPrint (the new pfile functions Karim
+   did). All should go in documentation
+ - Have obs file check for NaNs on input and report error (todo for Karim's
+   new version of obsfile).
+
+
+
+
 
