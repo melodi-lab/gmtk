@@ -39,39 +39,39 @@
 bool CliqueChain::forwardPass(logpr beam, bool viterbi)
 {
     // zero  out the clique instantiations.
-    for (unsigned i=0; i<preorder.size(); i++)
+    for (unsigned i=0; i<preorderSize(); i++)
     {
-        preorder[i]->recycleAllCliqueValues();
-        preorder[i]->instantiation.clear();
+        preorder(i)->recycleAllCliqueValues();
+        preorder(i)->instantiation.clear();
     }
     assert(Clique::nextfree == int(Clique::gip.size())-1);
 
-    preorder[0]->enumerateValues(0, -1, viterbi);
-    for (unsigned i=0; i<preorder.size()-1; i++)
+    preorder(0)->enumerateValues(0, -1, viterbi);
+    for (unsigned i=0; i<preorderSize()-1; i++)
     {
-        // we are done enumerating the values for preorder[i], and can
+        // we are done enumerating the values for preorder(i), and can
         // free the memory used in its instantiationAddress
         if (i%2)  // a separator; instantiationAddress only used in separators
-            preorder[i]->instantiationAddress.clear();  
+            preorder(i)->instantiationAddress.clear();  
 
-        // prune the low probability entries in preorder[i]
+        // prune the low probability entries in preorder(i)
         // do not prune separators
         // this ensures that each entry on the instantaition list of a
         // non-separator clique will have a successor, and that li->succ->lambda
         // can  be dereferenced on the backward pass without an extra check.
-        if (!preorder[i]->separator)
-            preorder[i]->prune(beam);
+        if (!preorder(i)->separator)
+            preorder(i)->prune(beam);
 
-        // propagate the surviving entries to preorder[i+1]
-        for (unsigned j=0; j<preorder[i]->instantiation.size(); j++)
+        // propagate the surviving entries to preorder(i+1)
+        for (unsigned j=0; j<preorder(i)->instantiation.size(); j++)
         {
-            if (!preorder[i]->separator)
+            if (!preorder(i)->separator)
             {
                 // clamp the values of the variables in the clique
-                CliqueValue &cv = Clique::gip[preorder[i]->instantiation[j]];
-                assert(cv.values->size()==preorder[i]->discreteMember.size());
-                for (unsigned k=0; k<preorder[i]->discreteMember.size(); k++)
-                    preorder[i]->discreteMember[k]->val = (*cv.values)[k];
+                CliqueValue &cv = Clique::gip[preorder(i)->instantiation[j]];
+                assert(cv.values->size()==preorder(i)->discreteMember.size());
+                for (unsigned k=0; k<preorder(i)->discreteMember.size(); k++)
+                    preorder(i)->discreteMember[k]->val = (*cv.values)[k];
             }
             else  
             {
@@ -79,25 +79,25 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
                 // there are more than in the separator, but this way we don't 
                 // have to store values for separators
                 CliqueValue &cv =
-                  Clique::gip[Clique::gip[preorder[i]->instantiation[j]].pred];
-                assert(cv.values->size()==preorder[i-1]->discreteMember.size());
-                for (unsigned k=0; k<preorder[i-1]->discreteMember.size(); k++)
-                    preorder[i-1]->discreteMember[k]->val = (*cv.values)[k];
+                  Clique::gip[Clique::gip[preorder(i)->instantiation[j]].pred];
+                assert(cv.values->size()==preorder(i-1)->discreteMember.size());
+                for (unsigned k=0; k<preorder(i-1)->discreteMember.size(); k++)
+                    preorder(i-1)->discreteMember[k]->val = (*cv.values)[k];
             }
 
             // compute the clique values of the child clique that are 
             // consistent with this parent instantiation.
-            preorder[i+1]->enumerateValues(0, preorder[i]->instantiation[j], 
+            preorder(i+1)->enumerateValues(0, preorder(i)->instantiation[j], 
                 viterbi);
         }
     }
 
     // clean up after the last clique
-    postorder[0]->prune(beam);  // didn't get a chance yet
-    // postorder[0] not a separator; don't need to clear its instantiationAddrs
+    postorder(0)->prune(beam);  // didn't get a chance yet
+    // postorder(0) not a separator; don't need to clear its instantiationAddrs
 
     // check if nothing had any probability, or pruning was too drastic
-    if (postorder[0]->instantiation.size() == 0) 
+    if (postorder(0)->instantiation.size() == 0) 
     {
         dataProb = viterbiProb = 0.0;
         return false; 
@@ -105,9 +105,9 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
 
     // look at the probabilities
     logpr sum=0.0, max=0.0;
-    for (unsigned j=0; j<postorder[0]->instantiation.size(); j++)
+    for (unsigned j=0; j<postorder(0)->instantiation.size(); j++)
     {
-        int inst_idx = postorder[0]->instantiation[j];
+        int inst_idx = postorder(0)->instantiation[j];
         CliqueValue &cv = Clique::gip[inst_idx];
         sum += cv.pi;
         if (cv.pi > max) max = cv.pi;
@@ -148,13 +148,13 @@ void CliqueChain::backwardPass()
     backwardDataProb = 0.0;  // lets see how closely it matches the forward DP.
 
     // first do the last clique, where the lambdas are all 1.
-    Clique *cl = postorder[0];
+    Clique *cl = postorder(0);
     for (unsigned j=0; j<cl->instantiation.size(); j++)
     {
         CliqueValue &cv = Clique::gip[cl->instantiation[j]];
         logpr t = cv.lambda;  // retrieve the cached probGivenParents
         cv.lambda = 1.0;
-        if (postorder.size() > 1)  // watch out for degenerate case
+        if (postorderSize() > 1)  // watch out for degenerate case
             Clique::gip[cv.pred].lambda += t;
 	else 
             backwardDataProb += cv.lambda*cv.pi;
@@ -163,9 +163,9 @@ void CliqueChain::backwardPass()
     // now do the middle cliques, whose instantiations must pull in a lambda 
     // from the instantiations derived from them, and push a lambda to the 
     // instantiations they derive from.
-    for (int i=2; i<int(postorder.size())-2; i+=2)
+    for (int i=2; i<int(postorderSize())-2; i+=2)
     {
-        Clique *cl = postorder[i];
+        Clique *cl = postorder(i);
         for (unsigned j=0; j<cl->instantiation.size(); j++)
         {
             CliqueValue &cv = Clique::gip[cl->instantiation[j]];
@@ -179,9 +179,9 @@ void CliqueChain::backwardPass()
     }
 
     // now do the root, which does not do any pushing
-    if (preorder.size() > 1) 
+    if (preorderSize() > 1) 
     {
-        cl = preorder[0];
+        cl = preorder(0);
         for (unsigned j=0; j<cl->instantiation.size(); j++)    
         {
               CliqueValue &cv = Clique::gip[cl->instantiation[j]];
@@ -220,7 +220,7 @@ bool CliqueChain::doViterbi(logpr beam)
     // first find the likeliest instantiation of the last clique
     logpr maxprob = 0.0;
     int best = -1;
-    Clique *cl = postorder[0];
+    Clique *cl = postorder(0);
     for (unsigned j=0; j<cl->instantiation.size(); j++)
     {
         CliqueValue &cv = Clique::gip[cl->instantiation[j]];
@@ -233,9 +233,9 @@ bool CliqueChain::doViterbi(logpr beam)
     assert(maxprob==viterbiProb); // already computed on forward pass
             
     // then trace backwards and clamp the best values
-    for (unsigned i=0; i<postorder.size(); i++)
+    for (unsigned i=0; i<postorderSize(); i++)
     {
-        cl = postorder[i];
+        cl = postorder(i);
         // clamp the values -- only care about non-separators
         if (!cl->separator)
             for (unsigned j=0; j<cl->discreteMember.size(); j++)
@@ -296,9 +296,9 @@ void CliqueChain::incrementEMStatistics()
     // go over the cliques and increment the statistics for all the nodes 
     // assigned to each clique
 
-    for (unsigned i=0; i<preorder.size(); i+=2)  // no need to do separators
+    for (unsigned i=0; i<preorderSize(); i+=2)  // no need to do separators
     {
-        Clique *cl = preorder[i];
+        Clique *cl = preorder(i);
 
 	// Uncomment for debugging, sum up the posteriors
         // logpr sum;

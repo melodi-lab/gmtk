@@ -28,8 +28,14 @@ struct CliqueChain
     vector<Clique> cliques;
     // The actual cliques in the chain.
 
-    vector<Clique *> preorder, postorder;
+    vector<Clique *> _preorder;
     // Pointers to the cliques in pre and post-order.
+
+    Clique* preorder(const int i) { return _preorder[i]; }
+    unsigned preorderSize() { return _preorder.size(); }
+    Clique* postorder(const int i) 
+         { return _preorder[_preorder.size()-i-1]; }
+    unsigned postorderSize() { return _preorder.size(); }
 
     bool forwardPass(logpr beam=0.0, bool viterbi=false);
     // Computes the alpha probabilities and/or viterbi clique value pointers.

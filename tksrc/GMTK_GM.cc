@@ -649,13 +649,12 @@ void GMTK_GM::GM2CliqueChain()
     }
     
     // now initialize all the other clique data members
-  
     assert(chain->cliques.size());
     assert(chain->cliques.size()%2);
     for (unsigned i=0; i<chain->cliques.size(); i++)
     {
         Clique *cl = &chain->cliques[i];
-        chain->preorder.push_back(cl);
+        chain->_preorder.push_back(cl);
         cl->separator = i%2;
 
         // the discrete members
@@ -672,8 +671,6 @@ void GMTK_GM::GM2CliqueChain()
         // probability nodes assigned to them!!
         cl->conditionalProbabilityNode = cl->newMember;
     }
-    chain->postorder = chain->preorder;
-    reverse(chain->postorder.begin(), chain->postorder.end());
 }
 
 /*-
@@ -698,10 +695,10 @@ void GMTK_GM::GM2CliqueChain()
 
 void GMTK_GM::showCliques()
 {
-    for (unsigned i=0; i<chain->preorder.size(); i++)
+    for (unsigned i=0; i<chain->preorderSize(); i++)
     {
         cout << "Clique " << i << ":" << endl;
-        chain->preorder[i]->reveal();
+        chain->preorder(i)->reveal();
     }
 }
 
