@@ -167,7 +167,7 @@ gmtkUnroll: gmtkUnroll.o  libGMTK.a
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkUnroll.o $(LIBS)
 
-gmtkJT: gmtkJT.o libGMTK.a
+gmtkJT: gmtkJT.o libGMTK.a ../miscSupport/libmiscSupport.a
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkJT.o $(LIBS)
 

@@ -93,16 +93,6 @@ class PackCliqueValue {
   ValLocator *member_vl_endp;
 
 
-
-  // array where lower locations hold indices for
-  // which there is no word-boundary overlap and
-  // upper locations hold indices for which there
-  // are word-boundary overlaps.
-  // sArray< unsigned> iterations;
-
-  // index in 'iterations' where word-boundary overlaps occur.
-  unsigned wordBoundaryOverlapLocation;
-
   // total number of bits in this packed clique.
   unsigned totalNumBits;
 
@@ -117,7 +107,7 @@ public:
   PackCliqueValue(const unsigned len, const unsigned *const cards, bool useNaive = false); 
 
   // create an empty one for re-construction later
-  PackCliqueValue() : numUnsignedInPackedVector(0),unpackedVectorLength(0),totalNumBits(0) {}
+  PackCliqueValue() : numUnsignedInPackedVector(0),unpackedVectorLength(0),member_vl_nwb_endp(0),member_vl_endp(0),totalNumBits(0) {}
 
   ~PackCliqueValue() {}
 

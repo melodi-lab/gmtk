@@ -1335,20 +1335,36 @@ MaxClique::computeSortedAssignedNodesDispositions()
 void
 MaxClique::sortAndAssignDispositions(const char *varCliqueAssignmentPrior)
 {
+
   if (!varCliqueAssignmentPrior || strlen(varCliqueAssignmentPrior) == 0 || ceSeparatorDrivenInference == false) {
-    // then in this case, we don't try to remove any AN_CONTINUE nodes nor
-    // do we do any sorting.
+    // then in this case, we don't try to remove any AN_CONTINUE nodes
+    // nor do we do any sorting.  TODO: change things so that there
+    // are never any AN_CONTINUE dispositions regardless of if we sort
+    // or not.
     computeSortedAssignedNodesDispositions();
     return;
   }
 
+  // the first thing we do is compute the node disposistions. We don't
+  // actually use the disposistions here, as we use this routine just
+  // to tell us if there are any AN_CONTINUE nodes in the clique, and
+  // if there are, we remove them (since they are wasteful). The
+  // variable nodesToRemove is a boolean telling us if there
+  // are any such nodes to remove.
   bool nodesToRemove =  computeSortedAssignedNodesDispositions();
+
+
   if (nodesToRemove == false) {
     // just sort and leave.
     GraphicalModel::topologicalSortWPriority(assignedNodes,
 					     assignedNodes,
 					     sortedAssignedNodes,
 					     varCliqueAssignmentPrior);
+    // potentially need to re-compute disposistions if sorting order
+    // changed anything. These are the final and real dispositions
+    // used.
+    nodesToRemove = computeSortedAssignedNodesDispositions();
+    assert (!nodesToRemove);
     return;
   }
 
