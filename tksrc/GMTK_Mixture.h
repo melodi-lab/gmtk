@@ -49,7 +49,13 @@ class MixGaussians : public MixGaussiansCommon {
   // the (possibly) shared 1DPMFs used for the mixture weights.
   Dense1DPMF* dense1DPMF;
 
-  int dummy;
+
+
+  ////////////////////////////////////////////////////////////
+  // this dummy variable apparently needs to be here so that gdb 5.0 on
+  // Solaris can print out *this. If this is removed, that version of
+  // gdb can't do that.
+  int _dummy;
  
 public:
 
