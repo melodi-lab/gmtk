@@ -176,7 +176,7 @@ X get MCVR working
     - need routine makeAccumulatorsPrior
     - stand alone program for writing out accumulator file to be read in.
 
-- IMPORTANT: finish load/store/accumulate accumulators
+X IMPORTANT: finish load/store/accumulate accumulators
 
 - Identify potential issues with release (ie.., bugs, slowness, obviously needed toolkit abilities,
   thigns that are inconvenient, etc.).
@@ -237,6 +237,10 @@ X make sure that dlinkmatrix precompute is being
 - decision trees, need to deal with the issue with reading them
   in, parallelism, and so on.
 
+- implement other forms of mappings from RV 
+    - decision tree (done)
+    - hash table
+    - direct mapping 
 
 - write MDCPT parameters out in nice order with smart comments.
 
@@ -249,3 +253,4 @@ X make sure that dlinkmatrix precompute is being
 - print message at start with largest clique (members, and upper bound on
   joint state space)
 
+- reading ascii files should not be by line.
