@@ -22,8 +22,8 @@ VPATH = .
 #
 # Compilng programs to use.
 #
-CXX = g++
-CC = gcc
+CXX = /g/rcs/sw/bin/g++
+CC = /g/rcs/sw/bin/gcc
 LD = $(CXX)
 AR = ar
 RANLIB = :
@@ -54,7 +54,7 @@ docdir = $(prefix)/man/man1
 #
 # Libraries.
 #
-LIBS = -lmiscSupport -lm
+LIBS = -lfileParser  -lmiscSupport -lm
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
@@ -88,7 +88,7 @@ all:
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = fileParser.o
+objs = GMTK_Discrete1DPDF.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
@@ -101,8 +101,13 @@ programname: $(objs)
 # Test driver programs (defines a -DMAIN to test each .cc file)
 #----------------------------------------------------------------------------
 
-testCCfile: ccfile.cc ccfile.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ ccfile.cc $(LIBS)
+testMDCPT: GMTK_MDCPT.cc GMTK_MDCPT.h  GMTK_CPT.o
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_MDCPT.cc GMTK_CPT.o $(LIBS)
+
+
+testRngDecisionTree: GMTK_RngDecisionTree.cc GMTK_RngDecisionTree.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_RngDecisionTree.cc $(LIBS)
+
 
 
 #----------------------------------------------------------------------------
