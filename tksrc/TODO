@@ -256,3 +256,5 @@ X make sure that dlinkmatrix precompute is being
 - reading ascii files should not be by line.
 
 - fix bug with small parallel chunks and accumulators being zero
+
+- add option to pass definitions to cpp with cpp arg.
