@@ -3877,7 +3877,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       logpr cur_p = rv->probGivenParents();
 
       if (message(Huge)) {
-	psp2(stdout,spi*(traceIndent+1));
+	psp2(stdout,spi*(traceIndent+1+nodeNumber));
 	printf("%d:assigned obs/prob app, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
 	if (message(Mega)) {
@@ -3907,7 +3907,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       logpr cur_p = rv->probGivenParents();
 
       if (message(Huge)) {
-	psp2(stdout,spi*(traceIndent+1));
+	psp2(stdout,spi*(traceIndent+1+nodeNumber));
 	printf("%d:assigned obs/zero rmv, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
 	if (message(Mega)) {
@@ -3990,7 +3990,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
   }
 
   if (message(High)) {
-    psp2(stdout,spi*(traceIndent+2));
+    psp2(stdout,spi*(traceIndent+1+fSortedAssignedNodes.size()));
     infoMsg(High,"CI:Inserting Observed %d-clique ent #0,pr=%f,sm=%f:",
 	    fNodes.size(),
 	    cliqueValues.ptr[0].p.val(),sumProbabilities().val());
