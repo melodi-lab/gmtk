@@ -114,7 +114,7 @@ XXX- todo, make sure that chunk n:m is valid.
 
 - need to add a check that makes sure that the observation
   range used by the cont. parents match that used by
-  the gaussian.
+  the gaussian, perhaps add a length check as well.
 
 - Fri Jun 15 12:43:49 2001, 
   MEMORY SAVINGS:
