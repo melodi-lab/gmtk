@@ -64,7 +64,12 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"|","
 %%
 
 
-"#"[^\n]*   /* eat up one-line comments */
+"%"[^\n]*   /* eat up one-line comments */
+
+^"#"{ws}{int}{ws}{string}{ws}{int} {
+              /* eat up cpp file/line directives for now. Ultimately parse this */
+                ;
+          }
 
 
 [ \t]+    /* eat up whitespace */
