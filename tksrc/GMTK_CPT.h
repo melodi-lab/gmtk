@@ -64,6 +64,7 @@ protected:
   // issue a warning if the number of parents becomes greater than this.
   static unsigned warningNumParents;
 
+
   ///////////////////////////////////////////////////////////  
   // The cardinality of each variable, this array is
   // of size (_numParents).
@@ -78,6 +79,9 @@ protected:
 
 public:
 
+  /////////////////////////////////////////////////////////////////
+  // threshold to ensure input data sums to approximately unity
+  static double normalizationThreshold;
 
   enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_MTCPT, di_unknown };
   const DiscreteImplementaton cptType;
