@@ -62,7 +62,7 @@ class iDataStreamFile : public ioDataStreamFile {
 
 
   template <class T>
-  bool readArray(int length, T* location, char *msg = NULL) 
+  bool readArray(T* location, const int length, char *msg = NULL) 
   {
     assert ( length >= 0 && location != NULL);
     
@@ -78,8 +78,8 @@ class iDataStreamFile : public ioDataStreamFile {
   }
 
   template <class T>
-  bool read(int length, T* location, char *msg = NULL)
-  { return readArray(length,location,msg); }
+  bool read(T* location, const int length, char *msg = NULL)
+  { return readArray(location,length,msg); }
 
 };
 
@@ -115,7 +115,7 @@ class oDataStreamFile : public ioDataStreamFile {
 
 
   template <class T>
-  bool writeArray(int length, T* location, char *msg = NULL) 
+  bool writeArray(T* location, const int length, char *msg = NULL) 
   {
     assert ( length >= 0 && location != NULL);
     
@@ -131,8 +131,8 @@ class oDataStreamFile : public ioDataStreamFile {
   }
 
   template <class T>
-  bool write(int length, T* location, char *msg = NULL)
-  { return writeArray(length,location,msg); }
+  bool write(T* location, const int length, char *msg = NULL)
+  { return writeArray(location,length,msg); }
 
 
 
