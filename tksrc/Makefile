@@ -121,6 +121,14 @@ GMTK_RandomVariable.o $(objs)
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ BN1.cc GMTK_GM.cc \
 GMTK_Clique.cc GMTK_CliqueChain.cc GMTK_RandomVariable.cc $(objs) $(LIBS)
 
+
+lex.yy: lex.yy.cc
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ lex.yy.cc $(objs) $(LIBS) -lfl
+
+lex.yy.cc: GMTK_FileTokenizer.lex
+	lex GMTK_FileTokenizer.lex
+	mv lex.yy.c lex.yy.cc	
+
 #----------------------------------------------------------------------------
 # Gather stuff together.
 #----------------------------------------------------------------------------
