@@ -32,6 +32,12 @@
 #include "general.h"
 VCID("$Header$");
 
+#include <iostream.h>
+#include <fstream.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+
 #include "GMTK_Clique.h"
 
 #ifndef NO_HASH_TABLE

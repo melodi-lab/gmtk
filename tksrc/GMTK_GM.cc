@@ -30,6 +30,12 @@
 
 VCID("$Header$");
 
+
+#include <iostream.h>
+#include <fstream.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "GMTK_GM.h"
 #include "GMTK_ObservationMatrix.h"
 
