@@ -1348,7 +1348,7 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
   fprintf(f,"%d Cumulative Unassigned: ",cumulativeUnassignedIteratedNodes.size()); printRVSet(f,cumulativeUnassignedIteratedNodes);
 
   psp(f,indent*2);
-  fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSet(f,hiddenNodes);
+  fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
 
 
   psp(f,indent*2);

@@ -83,8 +83,13 @@ class Mixture : public MixtureCommon {
   // this dummy variable apparently needs to be here so that gdb 5.0 on
   // Solaris can print out *this. If this is removed, that version of
   // gdb can't do that.
-  // int _dummy;
- 
+  //   int _dummy1;
+  //   int _dummy2;
+  //   int _dummy3;
+  //   int _dummy4;
+  //   Dense1DPMF* dcopy;
+
+
 public:
 
   Mixture(const int dim,ContinuousImplementation mtype=ci_mixture)

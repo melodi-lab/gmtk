@@ -2624,6 +2624,8 @@ Fri Dec 31 01:54:39 2004
      - don't use absolute names
      - shoud be able to tar up a top level directory, and untarr it some place else
        and have it still work.
+     - when including files in cpp, use #include "  " and use "-I dir" on gmtk cpp command line.
+
 
 Fri Dec 31 22:03:17 2004
   - iterate unassigned nodes, should iterate in order of increasing cardinality.
@@ -2637,7 +2639,7 @@ Fri Dec 31 22:21:42 2004
 
 Sat Jan  1 23:07:03 2005
   - for DOCS
-     for normalize(), makeUniform(), makeRandom(), if thigns are shared,
+     for normalize(), makeUniform(), makeRandom() at the same time, if thigns are shared,
      no guarantee to behaviour (i.e., it depends on the internal order which
      the last operation will be). When in doubt, load with a table
      or write out indivual parameters separately and then read back in jointly.
@@ -2655,3 +2657,8 @@ Fri Jan 14 17:52:24 2005
       - PackCliqueValue, pack and unpack
       - ceIterateAssignedNodesNoRecurse
       - 
+
+Sun Jan 30 11:30:02 2005
+  - viterbi output shoudl allow:
+     1) ascii.
+     2) separate files per segment.

@@ -6005,7 +6005,8 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
 {
 
   if (message(Max)) {
-    printf("Checking that template has valid interface\nP:");printRVSet(stdout,P);
+    printf("==== %s case: Checking template for valid interface\nP:",(leftInterface?"Left Interface":"Right Interface"));
+    printRVSet(stdout,P);
     // printf("P:");printRVSet(stdout,P);
     printf("C1:");printRVSet(stdout,C1);
     printf("Cextra:");printRVSet(stdout,Cextra);
@@ -6017,6 +6018,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   // always be valid as long as the network is valid.
   if (P.size() == 0)
     return true;
+
 
   // First compute P', C', and E', the basic non-boundary partitions.
   // Note: 
@@ -6123,10 +6125,19 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   if (UR_pli.size() != Ep_uli.size() || 
       Ep_uli.size() != Ep0_pli.size()) {
     if (message(Max)) {
-      printf("INTERFACE FAILED: size(UR_pli)=%d, size(Ep_uli)=%d, size(Ep0_pli)=%d\n",
+      printf("INTERFACE FAILED: size(LI of union(C',E') to P')=%d, size(LI of E' to union(P',Cp'))=%d, size(LI of E' to P')=%d\n",
 	     UR_pli.size(),Ep_uli.size(),Ep0_pli.size());
+      printf("LI of union(C',E') to P': ");printRVSet(stdout,UR_pli);
+      printf("LI of E' to union(P',C'): ");printRVSet(stdout,Ep_uli);
+      printf("LI of E' to P': ");printRVSet(stdout,Ep0_pli);
     }
     return false;
+  } else if (message(Max+50)) {
+    printf("INTERFACE SIZE SUCCEEDED: size(LI of union(C',E') to P')=%d, size(LI of E' to union(P',Cp'))=%d, size(LI of E' to P')=%d\n",
+	   UR_pli.size(),Ep_uli.size(),Ep0_pli.size());
+    printf("LI of union(C',E') to P': ");printRVSet(stdout,UR_pli);
+    printf("LI of E' to union(P',C'): ");printRVSet(stdout,Ep_uli);
+    printf("LI of E' to P': ");printRVSet(stdout,Ep0_pli);    
   }
 
   // they have the same size, so now need to make sure they
@@ -6581,10 +6592,11 @@ BoundaryTriangulate::findBestInterface(
   
   if ((bnd_heur_v.size() == 1) &&
       ((bnd_heur_v[0] == IH_MIN_SIZE) 
-       || (bnd_heur_v[0] == IH_MIN_FILLIN) 
-       || (bnd_heur_v[0] == IH_MIN_WEIGHT)
        || (bnd_heur_v[0] == IH_MIN_WEIGHT_NO_D)))
     {      
+      // only do min size and min weight no d since those are the ones
+      // that can be evaluated as a sum of RV costs.
+
       float (*cw)(const set<RV*>&) = NULL;
       if (bnd_heur_v[0] == IH_MIN_WEIGHT_NO_D)
 	cw = &flowMinNoDWeightHelper;
@@ -6593,22 +6605,29 @@ BoundaryTriangulate::findBestInterface(
       else
 	cw = &flowMinSizeHelper;
 
-      printf("Initial boundary:\n\t");
-      printRVSet(stdout,C_l);
+      if (message(Tiny)) {
+	printf("Initial boundary has size %d: ",C_l.size());
+	printRVSet(stdout,C_l);
+      }
 
-      
+      // find best boundary by network flow algorithm.
       GMTK2Network network(cw, C_l, C2, finalLI);
       double flow = network.findMaxFlow();
-      infoMsg(IM::Info, "Best flow found is %f", flow); 
       std::set<RV*> bestC_l; 
       std::set<RV*> leftBestC_l; 
       network.findBoundary(bestC_l, leftBestC_l);
       C_l = bestC_l;
       left_C_l = leftBestC_l; 
-      infoMsg(IM::Info, "Best boundary found has size %d and is:",C_l.size());
-      printRVSet(stdout,C_l);
-      infoMsg(IM::Info, "Best (left of boundary) found has size %d and is:",left_C_l.size());
-      printRVSet(stdout,left_C_l);
+      
+      if (message(Tiny)) {
+	printf("Best flow found is %f\n", flow); 
+	printf("Best boundary found has size %d: ",C_l.size());
+	printRVSet(stdout,C_l);
+	if (message(Med)) {
+	  printf("Best (left of boundary) found has size %d and is:",left_C_l.size());
+	  printRVSet(stdout,left_C_l);
+	}
+      }
       return; 
       
       // TODO: check of all heuristics in bnd_heur_v are
