@@ -109,16 +109,11 @@ public:
   // Sample, set value.
   void instantiate() { val = curCPT->randomSample(); }
 
-  ////////////////////////////////////////////////////////////////
-  // tie self set of parameters with those of rv
-  void tieWith(RandomVariable *rv);
-
-
   ///////////////////////////////////////////////////
   // EM Support
-  void zeroAccumulators() {error("zeroAccumulators undefined");}
-  void increment(logpr posterior) {error("increment undefined");}
-  void update() {error("update undefined");}
+  void emStartIteration() {error("zeroAccumulators undefined");}
+  void emIncrement(logpr posterior) {error("increment undefined");}
+  void emEndIteration() {error("update undefined");}
   ///////////////////////////////////////////////////
 
 
