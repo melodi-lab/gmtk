@@ -134,6 +134,8 @@ void CliqueChain::backwardPass()
     // of those descended values. Note that this was cleverly cached on the
     // forward pass.
 
+    backwardDataProb = 0.0;  // lets see how closely it matches the forward DP.
+
     // first do the last clique, where the lambdas are all 1.
     Clique *cl = postorder[0];
     for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
@@ -142,9 +144,8 @@ void CliqueChain::backwardPass()
         li->lambda = 1.0;
         if (postorder.size() > 1)  // watch out for degenerate case
             li->pred->lambda += t;
-	else {
-	     // accumulate BW data prob
-	}
+	else 
+            backwardDataProb += li->lambda*li->pi;
     }
 
     // now do the middle cliques, whose instantiations must pull in a lambda 
@@ -167,11 +168,12 @@ void CliqueChain::backwardPass()
     // now do the root, which does not do any pushing
     if (preorder.size() > 1) {
         cl = preorder[0];
-        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++) {
-	  li->lambda =  li->succ->lambda;
-	  // and accumualte BW data prob
-	}
+        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++) 
+	      backwardDataProb += (li->lambda=li->succ->lambda)*li->pi;
     }
+
+    cout << "Forward data prob: " << dataProb.val() << " Backward data prob: "
+         << backwardDataProb.val() << endl;
 }
 
 /*-
@@ -260,6 +262,8 @@ bool CliqueChain::computePosteriors(logpr beam)
  *     incrementEMStatistics() multiplies the lambdas and the pis for 
  *     each clique instantiation, clamps the nodes in the network, and
  *     increments the EM statistics for each node assigned to the clique.
+ *     It assumes that the separators do not have any conditionalProbability
+ *     nodes assigned to them. If it 
  *
  * Results:
  *
@@ -275,19 +279,17 @@ void CliqueChain::incrementEMStatistics()
     // go over the cliques and increment the statistics for all the nodes 
     // assigned to each clique
 
-    
-    /////////////////////////////////////////////////////
-    // TODO: go over steps of two to do the non-separators rather
-    // than all of them. i.e., change i++ to i+=2
-    for (unsigned i=0; i<preorder.size(); i++)
+    for (unsigned i=0; i<preorder.size(); i+=2)  // no need to do separators
     {
         Clique *cl = preorder[i];
 
-
-	assert ( !cl->separator || (cl->conditionalProbabilityNode.size() == 0) );
-	
 	// for debugging, sum up the posteriors
         logpr sum;
+
+        // if using floats, the forward and backward data probs may not be
+        // the same. it might be better to use an average.
+        void *dummy;
+        logpr aveDataProb(dummy, (dataProb.val()+backwardDataProb.val())/2);
 
         // consider the contribution of each instantiation of the clique
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
@@ -300,8 +302,7 @@ void CliqueChain::incrementEMStatistics()
             cl->findConditionalProbabilityNodes();
 
             // do the updates
-            assert(dataProb != 0.0);
-            logpr posterior = li->lambda*li->pi/dataProb;
+            logpr posterior = li->lambda*li->pi/aveDataProb;
 
 	    // for debugging, sum up the posteriors
 	    sum += posterior;
@@ -310,6 +311,6 @@ void CliqueChain::incrementEMStatistics()
                 cl->conditionalProbabilityNode[j]->emIncrement(posterior);
         }
 	// for debugging, print the sum of the posteriors
-	// printf("Done summing over clique, sum of posteriors = %f\n",sum.unlog());
+	// printf("Sum of posteriors = %f\n",sum.unlog());
     }
 }
