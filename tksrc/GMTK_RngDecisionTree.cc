@@ -358,6 +358,11 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
 	  error("ERROR: DT '%s', file '%s': expecting default str (%s) got (%s)",
 		name().c_str(),is.fileName(),RNG_DECISION_TREE_DEF_STR,str);
       } else {
+	// note: ideally, we would limit the maximum range
+	// value to be equal to the cardinality of the random
+	// variable here. We can't do that, however, because
+	// the DT is generic, and could be used with multiple
+	// different RVs with different cardinalities.
 	node->nonLeafNode.rngs[i]
 	  = new BP_Range(str,
 			 0,
