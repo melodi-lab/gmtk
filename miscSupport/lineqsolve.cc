@@ -24,7 +24,12 @@ VCID("$Header$");
 
 
 #define NRANSI
-#define TINY 1.0e-20;
+#define SINGLE_TINY 1.0e-20;
+#define DOUBLE_TINY 1.0e-150;
+
+///////////////////////////////////////////////////////////////
+// Single precision versions
+///////////////////////////////////////////////////////////////
 
 void ludcmp(float *a, // nXn matrix
 	    int n, 
@@ -76,7 +81,7 @@ void ludcmp(float *a, // nXn matrix
     }
     indx[j]=imax;
     if (a[j*n+j] == 0.0) 
-      a[j*n+j]=TINY;
+      a[j*n+j]=SINGLE_TINY;
     if (j != n) {
       dum=1.0/(a[j*n+j]);
       for (i=j+1;i<n;i++) 
@@ -157,6 +162,150 @@ lineqsolve(const int n, const int nrhs,
     bp += n;
   }
 }
+
+
+
+///////////////////////////////////////////////////////////////
+// Double precision versions
+///////////////////////////////////////////////////////////////
+
+void ludcmp(double *a, // nXn matrix
+	    int n, 
+	    int *indx, // row permutation by partial piviting.
+	    double *d)
+{
+  int i,imax=0,j,k;
+  double big,dum,sum,temp;
+  double *vv;
+
+  vv= (double*) malloc((size_t) (n*sizeof(double)));
+  *d=1.0;
+  for (i=0;i<n;i++) {
+    big=0.0;
+    for (j=0;j<n;j++)
+      if ((temp=fabs(a[i*n+j])) > big) 
+	big=temp;
+    if (big == 0.0) {
+      error("ERROR: LU Decomposition routine given a singular matrix");
+    }
+    vv[i]=1.0/big;
+  }
+  for (j=0;j<n;j++) {
+    for (i=0;i<j;i++) {
+      sum=a[i*n+j];
+      for (k=0;k<i;k++)
+	sum -= a[i*n+k]*a[k*n+j];
+      a[i*n+j]=sum;
+    }
+    big=0.0;
+    for (i=j;i<n;i++) {
+      sum=a[i*n+j];
+      for (k=0;k<j;k++)
+	sum -= a[i*n+k]*a[k*n+j];
+      a[i*n+j]=sum;
+      if ( (dum=vv[i]*fabs(sum)) >= big) {
+	big=dum;
+	imax=i;
+      }
+    }
+    if (j != imax) {
+      for (k=0;k<n;k++) {
+	dum=a[imax*n+k];
+	a[imax*n+k]=a[j*n+k];
+	a[j*n+k]=dum;
+      }
+      *d = -(*d);
+      vv[imax]=vv[j];
+    }
+    indx[j]=imax;
+    if (a[j*n+j] == 0.0) 
+      a[j*n+j]=DOUBLE_TINY;
+    if (j != n) {
+      dum=1.0/(a[j*n+j]);
+      for (i=j+1;i<n;i++) 
+	a[i*n+j] *= dum;
+    }
+  }
+  free((void*)vv);
+}
+
+
+void lubksb(double *a, 
+	    int n, 
+	    int *indx, 
+	    double *b)
+{
+  int i,ii=-1,ip,j;
+  double sum;
+
+  for (i=0;i<n;i++) {
+    ip=indx[i];
+    sum=b[ip];
+    b[ip]=b[i];
+    if (ii>=0) {
+      for (j=ii;j<=(i-1);j++) 
+	sum -= a[i*n+j]*b[j];
+    } else if (sum) 
+      ii=i;
+    b[i]=sum;
+  }
+  for (i=(n-1);i>=0;i--) {
+    sum=b[i];
+    for (j=i+1;j<n;j++) 
+      sum -= a[i*n+j]*b[j];
+    b[i]=sum/a[i*n+i];
+  }
+}
+
+
+/*
+ *
+ * Solves AX=B
+ * where A is nXn
+ *       X is nXr
+ *       B is nXr
+ * 
+ * The resulting X is placed in B.
+ */
+void
+lineqsolve(const int n, const int nrhs,
+	   double *a,  /* the nXn A matrix */
+	   double *b)  /* the rXn B^T matrix  and
+			  the rXN resulting X^T. */
+{
+
+  double d;
+  int i;
+  double *bp;
+
+#ifdef LINEQSOLVE_USE_MALLOC
+  static int *indx = NULL;
+  static int indx_len = 0;
+  if (indx_len < n) {
+    if (indx_len > 0) {
+      free((void*)indx);
+    }
+    indx = (int*)malloc((size_t)(n*sizeof(int)));
+    indx_len = n;
+  }
+#else
+  int *indx = (int*)alloca((size_t)(n*sizeof(int)));
+#endif
+
+  ludcmp(a,n,indx,&d);
+
+  bp = b;
+  for (i=0;i<nrhs;i++) {
+    lubksb(a,n,indx,bp);
+    bp += n;
+  }
+}
+
+//////////////////////////////////////////////
+// Driver program
+//////////////////////////////////////////////
+
+
 
 #ifdef MAIN
 
