@@ -950,3 +950,14 @@ Sun Feb 23 17:05:10 2003
   - Have exponential partition algorithm also parallize (so that space
     can be broken into chunks in some way and have search run in parallel).
 
+Sun Feb 23 17:12:53 2003
+  - when using with an observation set that does not match what unrolling
+    can do for a given graph and triangulation, give options
+      1) left justify, 2) right justify, 3) center, 4) unconstraints
+    Make it clear that when obs length is too short, it will do unconstrainted
+     (or perhaps even backoff to simpler triangulation scheme, one that
+      does not do any partially unrolled triangulation).
+     call it "semi-constrained triangulation"
+     (good for certain graphs, Brian's, Kevin's, but still doesn't 
+      work for snake, the optimal graph is fully unconstrained).
+
