@@ -40,7 +40,7 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_MixGaussians.h"
-
+#include "GMTK_ObservationMatrix.h"
 
 VCID("$Header$");
 
@@ -2147,6 +2147,80 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
     }
   }
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * checkConsistentWithGlobalObservationStream
+ *      Make sure that the obs variables defined here are 
+ *      ok with the current global observation stream object.
+ *
+ * Preconditions:
+ *      Global observation stream should have been set up (i.e.,
+ *      number features per frame, etc. all set up).
+ *      createRandomVariableGraph() MUST HAVE BEEN CALLED FIRST.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      might kill the program.
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+FileParser::checkConsistentWithGlobalObservationStream()
+{
+  for (unsigned i=0;i<rvInfoVector.size();i++) { 
+    if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
+      DiscreteRandomVariable* rv = 
+	(DiscreteRandomVariable*) rvInfoVector[i].rv;
+      if (!rv->hidden) {
+	if (rv->featureElement != DRV_USE_FIXED_VALUE_FEATURE_ELEMENT) {
+	  if (!globalObservationMatrix.elementIsDiscrete(rv->featureElement)) {
+	    if (globalObservationMatrix.numDiscrete() > 0) 
+	      error("ERROR: discrete observed random variable '%s', frame %d, line %d, specifies a feature element %d:%d that is out of discrete range ([%d:%d] inclusive) of observation matrix",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rv->featureElement,
+		    rv->featureElement,
+		    globalObservationMatrix.numContinuous(),
+		    globalObservationMatrix.numFeatures()-1);
+	    else
+	      error("ERROR: discrete observed random variable '%s', frame %d, line %d, specifies a feature element %d:%d for an observation matrix with zero discrete features.",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rv->featureElement,
+		    rv->featureElement,
+		    globalObservationMatrix.numContinuous(),
+		    globalObservationMatrix.numFeatures()-1);
+	  }
+	}
+      }
+    } else { // (rvInfoVector[i].rvType == RVInfo::t_continuous) {
+      ContinuousRandomVariable* rv = 
+	(ContinuousRandomVariable*) rvInfoVector[i].rv;
+      if (!rv->hidden) {
+	if (rv->lastFeatureElement >=  globalObservationMatrix.numContinuous())
+	      error("ERROR: continuous observed random variable '%s', frame %d, line %d, specifies feature elements %d:%d that are out of continuous range ([%d:%d] inclusive) of observation matrix",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rv->firstFeatureElement,
+		    rv->lastFeatureElement,
+		    0,
+		    globalObservationMatrix.numContinuous()-1);
+      }
+    }
+  }
+}
+
+
 
 
 /*-
