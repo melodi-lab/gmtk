@@ -25,10 +25,9 @@
 #ifndef GMTK_RNG_DECISION_TREE_H
 #define GMTK_RNG_DECISION_TREE_H
 
-
+#include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
-#include "fileParser.h"
 #include "bp_range.h"
 
 

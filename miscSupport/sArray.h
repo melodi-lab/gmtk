@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "error.h"
+#include "assert.h"
 
 template <class T>
 class sArray {
@@ -96,7 +97,6 @@ class sArray {
 
   }
     
-
   inline void clear() {
     delete [] ptr;
     ptr = NULL;
@@ -112,8 +112,14 @@ class sArray {
   }
     
   inline int len() const { return size; }
-  inline T& operator[](int i) { return ptr[i]; }
-  inline T operator[] (int i) const { return ptr[i]; }
+  inline T& operator[](const int i) { 
+    assert ( i >= 0 && i < size );
+    return ptr[i]; 
+  }
+  inline T operator[] (const int i) const { 
+    assert ( i >= 0 && i < size );
+    return ptr[i]; 
+  }
 
 };
 

@@ -12,11 +12,13 @@
 
 
 #ifndef EXIT_SUCCESS
+#include <stdlib.h>
+#ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS (0)
-#endif
-#ifndef EXIT_FAILURE
 #define EXIT_FAILURE (1)
 #endif
+#endif
+
 
 void error(char *format, ...);
 void coredump(char *format, ...);
