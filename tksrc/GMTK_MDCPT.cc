@@ -43,6 +43,30 @@ VCID("$Header$");
  */      
 extern "C" double copysign(double x, double y) __THROW;
 
+// TODO: move this to one file, for printing random variables. 
+
+static void
+printRVSetAndValues(FILE*f,vector<RandomVariable*>& locset) 
+{
+  bool first = true;
+  for (unsigned i=0;i<locset.size();i++) {
+    RandomVariable* rv = locset[i];
+    if (!first)
+      fprintf(f,",");
+    fprintf(f,"%s(%d)=",rv->name().c_str(),rv->frame());
+    if (!rv->discrete) {
+      fprintf(f,"C");
+    } else {
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      fprintf(f,"%d",drv->val);
+    }
+    first = false;
+  }
+  fprintf(f,"\n");
+}
+
+
+
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
@@ -212,7 +236,8 @@ MDCPT::read(iDataStreamFile& is)
 
   // Finally read in the probability values (stored as doubles).
   mdcpt.resize(numValues);
-  double child_sum = 0.0;
+  logpr child_sum;
+  child_sum.set_to_zero();
   int row=0;;
   const double threshold = _card*normalizationThreshold;
   for (int i=0;i<numValues;) {
@@ -252,24 +277,24 @@ MDCPT::read(iDataStreamFile& is)
 	mdcpt[i].set_to_one();	
       }
     }
+    child_sum += mdcpt[i];
 
     i++;
-    child_sum += val;
     if (i % _card == 0 && (normalizationThreshold != 0)) {
       // check that child sum is approximately one if (normalizationThreshold != 0)
       // which otherwise would turn it off.
-      double abs_diff = fabs(child_sum - 1.0);
+      double abs_diff = fabs(child_sum.unlog() - 1.0);
       // be more forgiving as cardinality increases
       if (abs_diff > threshold) 
 	error("ERROR: reading file '%s', row %d of DenseCPT '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
 	      is.fileName(),
 	      row,
 	      name().c_str(),
-	      child_sum,
+	      child_sum.unlog(),
 	      abs_diff,
 	      normalizationThreshold);
       // reset
-      child_sum = 0.0;
+      child_sum.set_to_zero();
       row++;
     }
   }
@@ -383,7 +408,7 @@ MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
     if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
-      error("ERROR:becomeAwareOfParentValues. Dense CPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
+      error("ERROR:becomeAwareOfParentValues. DenseCPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
 	    name().c_str(),
 	    parents[i]->name().c_str(),parents[i]->frame(),
 	    i,
@@ -405,7 +430,7 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
     if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
-      error("ERROR:becomeAwareOfParentValues. Dense CPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
+      error("ERROR:becomeAwareOfParentValues. DenseCPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
 	    name().c_str(),
 	    parents[i]->name().c_str(),parents[i]->frame(),
 	    i,
@@ -446,7 +471,7 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
     if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
-      error("ERROR:becomeAwareOfParentValues. Dense CPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
+      error("ERROR:becomeAwareOfParentValues. DenseCPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
 	    name().c_str(),
 	    parents[i]->name().c_str(),parents[i]->frame(),
 	    i,
@@ -462,11 +487,17 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
   register RandomVariable::DiscreteVariableType value = 0;
   while (mdcpt_ptr[value].essentially_zero()) {
     value++;
-    // We keep the following assertion as we
-    // must have that at least one entry is non-zero.
-    // The read code of the MDCPT should ensure this
-    // as sure all parameter update procedures.
-    assert (value < (int)ucard());
+    // We keep the following check as we must have that at least one
+    // entry is non-zero.  The read code of the MDCPT should ensure
+    // this as sure all parameter update procedures, as long as
+    // normalizationThreshold is not set to large.
+    if (value >= (int)ucard()) {
+      fprintf(stderr,"ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Parents and values are: ",
+	      name().c_str(),drv->name().c_str(),drv->frame());
+      printRVSetAndValues(stderr,parents);
+      error("Program Exiting...\n"); 
+    }
+    // assert (value < (int)ucard());
   }
   p = mdcpt_ptr[value];    
   drv->val = value;
