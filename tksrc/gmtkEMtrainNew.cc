@@ -202,7 +202,7 @@ Arg Arg::Args[] = {
   Arg("base",Arg::Opt,base,"Island algorithm logarithm base"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
   Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
-  Arg("componentCache",Arg::Opt,MixtureCommon::cacheComponentsInEmTraining,"Cache mixture probabilities, faster but uses more memory."),
+  Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture and component probabilities, faster but uses more memory."),
 
   /////////////////////////////////////////////////////////////
   // EM Training Options
@@ -270,6 +270,8 @@ main(int argc,char*argv[])
     exit(0);
   }
 
+  if (MixtureCommon::cacheMixtureProbabilities)
+    MixtureCommon::cacheComponentsInEmTraining = true;
 
   ////////////////////////////////////////////
   // check for valid argument values.

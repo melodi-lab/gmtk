@@ -25,7 +25,7 @@
 #include "fileParser.h"
 #include "logp.h"
 #include "machine-dependent.h"
-
+#include "cArray.h"
 
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_Component.h"
@@ -58,17 +58,19 @@ class Mixture : public MixtureCommon {
     // unsigned componentNum; to be used soon.
   };
   struct CompCacheArray {
-    vector < CompProb > cmpProbArray;
+    cArray < CompProb > cmpProbArray;
     logpr prob;
+    unsigned firstFeatureElement;
     CompCacheArray() : prob((void*)0) {
       // initial value is special value indicating that this
       // entry is empty.
       prob.valref() = (-LZERO);
+      firstFeatureElement = ~0x0;
     }
     // might want to add more fields later.
   };
 
-  vector< CompCacheArray > componentCache;
+  cArray< CompCacheArray > componentCache;
 
   ///////////////////////////////////////////
 

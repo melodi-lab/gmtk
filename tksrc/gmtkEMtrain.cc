@@ -238,7 +238,7 @@ Arg("showCliques",Arg::Opt,show_cliques,"Show the cliques after the network has 
 
   Arg("baseCaseThreshold",Arg::Opt,bct,"Base case threshold to end recursion (>=2)."),
 
-  Arg("componentCache",Arg::Opt,MixtureCommon::cacheComponentsInEmTraining,"Cache component probabilities during EM training, speeds things up but uses more memory."),
+  Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture and component probabilities during EM training, speeds things up but uses more memory."),
 
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 
@@ -270,6 +270,9 @@ main(int argc,char*argv[])
 
   if (print_version_and_exit)
     printf("%s\n",gmtk_version_id);
+
+  if (MixtureCommon::cacheMixtureProbabilities)
+    MixtureCommon::cacheComponentsInEmTraining = true;
 
   ////////////////////////////////////////////
   // check for valid argument values.

@@ -475,8 +475,7 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
 	return false;
   }
 
-#if 0
-  // TODO: sort using other criterion as well.
+  // sort using other criterion as well.
 
   // next do a pass for any observed variables.
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
@@ -509,9 +508,8 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
   // could continue here doing ternary, etc. variables depending
   // on what exists in set of nodes.
 
-#endif
-
   // last do a pass to hit any remainder.
+
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
     RandomVariable* rv = (*it);
     if (rv->tag == 0)

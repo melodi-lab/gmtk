@@ -152,6 +152,7 @@ Arg Arg::Args[] = {
  Arg("numSplits",Arg::Opt,ns,"Number of splits to use in logspace recursion (>=2)."),
 
   Arg("baseCaseThreshold",Arg::Opt,bct,"Base case threshold to end recursion (>=2)."),
+  Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture probabilities, faster but uses more memory."),
 
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 
@@ -179,6 +180,8 @@ main(int argc,char*argv[])
 
   if (print_version_and_exit)
     printf("%s\n",gmtk_version_id);
+
+  MixtureCommon::cacheComponentsInEmTraining = false;
 
   ////////////////////////////////////////////
   // check for valid argument values.
