@@ -47,6 +47,7 @@ VCID("$Header$");
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_ProgramDefaultParms.h"
+#include "GMTK_Signals.h"
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 
@@ -311,6 +312,7 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
   set_new_handler(memory_error);
+  InstallSignalHandlers();
 
   ////////////////////////////////////////////
   // parse arguments
@@ -411,9 +413,9 @@ main(int argc,char*argv[])
   triangulator.noBoundaryMemoize = noBoundaryMemoize;
 
   TimerClass* timer = NULL;
+  timer = new TimerClass;
   // Initialize the timer if anyTimeTriangulate is selected
   if (anyTimeTriangulate != NULL) {
-    timer = new TimerClass;
     time_t given_time;
     given_time = timer->parseTimeString( string(anyTimeTriangulate) );
     if (given_time == 0) {
@@ -421,8 +423,11 @@ main(int argc,char*argv[])
     }
     infoMsg(IM::Low, "Triangulating for %d seconds\n", (int)given_time);
     timer->Reset(given_time);
-    triangulator.useTimer(timer);
   }
+  else { 
+    timer->DisableTimer();
+  }
+  triangulator.useTimer(timer);
 
   if (jut >= 0) {
     // then Just Unroll, Triangulate, and report on quality of triangulation.
