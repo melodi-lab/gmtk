@@ -47,6 +47,7 @@
 
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_DiagGaussian.h"
+#include "GMTK_LinMeanCondDiagGaussian.h"
 
 #include "GMTK_MixGaussiansCommon.h"
 #include "GMTK_MixGaussians.h"
@@ -621,8 +622,7 @@ GMParms::readGaussianComponents(iDataStreamFile& is, bool reset)
     if (t == GaussianComponent::Diag) {
       gc = new DiagGaussian(dim);
     } else if (t == GaussianComponent::LinMeanCondDiag) {
-      error("LinMeanCondDiag not implemented");
-      // gc = new LinMeanCondDiagGaussian(dim);
+      gc = new LinMeanCondDiagGaussian(dim);
     } else if (t == GaussianComponent::NLinMeanCondDiag) {
       error("NLinMeanCondDiag not implemented");
       // gc = new NLinMeanCondDiagGaussian(dim);
@@ -1221,24 +1221,101 @@ GMParms::writeAll(oDataStreamFile& os)
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-void
-GMParms::clampNextDTs()
-{
-  for(unsigned i = 0; i<clampableDts.size(); i++) {
-    clampableDts[i]->clampNextDecisionTree();
-  }
-}
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * clampFirstExample
+ *      do any necessary bookkeeping work with regard to the
+ *      parameters in order that we properly clamp the first example.
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      nil
+ *
+ * Side Effects:
+ *      might change internal objects.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
-GMParms::clampFirstDTs()
+GMParms::clampFirstExample()
 {
   for(unsigned i = 0; i<clampableDts.size(); i++) {
     clampableDts[i]->clampFirstDecisionTree();
   }
+  for (unsigned i=0;i<dLinks.size();i++) {
+    dLinks[i]->clearArrayCache();
+  }
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * clampNextExample
+ *      do any necessary bookkeeping work with regard to the
+ *      parameters in order that we properly clamp the first example.
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      nil
+ *
+ * Side Effects:
+ *      might change internal objects.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+GMParms::clampNextExample()
+{
+  for(unsigned i = 0; i<clampableDts.size(); i++) {
+    clampableDts[i]->clampNextDecisionTree();
+  }
+  for (unsigned i=0;i<dLinks.size();i++) {
+    dLinks[i]->clearArrayCache();
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * setStride()
+ *      Inform all objects what the current stride will be from the
+ *      observation matrix that will be used.
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      internal objects are set to use stride.
+ *
+ * Side Effects:
+ *      internal objects are set to use stride.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+GMParms::setStride(const unsigned stride)
+{
+  for (unsigned i=0;i<dLinks.size();i++) {
+    dLinks[i]->preCompute(stride);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -1360,6 +1437,7 @@ GMParms::emSwapCurAndNew()
   MixGaussiansCommon::splittingComponentSet.clear();
 
   MixGaussiansCommon::meanCloneMap.clear();
+  MixGaussiansCommon::dLinkMatCloneMap.clear();
   MixGaussiansCommon::diagCovarCloneMap.clear();
   MixGaussiansCommon::gcCloneMap.clear();
 
