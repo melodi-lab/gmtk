@@ -39,7 +39,11 @@ bool logp<FT, iFT>::table_init()
 {
     inc = (table_size-1)/logp_minLogExp;
     for (int i=0; i<table_size; i++)
+#ifdef HAVE_LOG1P
+        table[i] = log1p(exp(logp_minLogExp*i/table_size));
+#else // don't HAVE_LOG1P
         table[i] = log(1.0 + exp(logp_minLogExp*i/table_size));
+#endif
     return true;
 }
 /////////////////////////////////////////////////////////////////
