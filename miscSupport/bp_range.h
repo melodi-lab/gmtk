@@ -105,35 +105,46 @@ public:
   friend class iterator;
 
   // The first valid iterator.
-  iterator begin();
+  iterator begin () const;
   // The last valid iterator.
-  iterator end();
+  iterator end () const;
 
   // Returns the number of elements in this range set.
-  int length() { return range_set_size; }
+  int length() const { return range_set_size; }
   // Returns the value of the minimum element.
-  int min() { return _min; }
+  int min() const { return _min; }
   // Returns the value of the maximum element.
-  int max() { return _max; }
+  int max() const { return _max; }
 
   // Returns true if value is contained in this range set.
-  bool contains(const int value);
+  bool contains(const int value) const;
 
   static bool emptyRangeSpec(const char *str);
   static bool fullRangeSpec(const char *str);
 
-  bool emptyRangeSpec() { return emptyRangeSpec(range_str); }
-  bool fullRangeSpec() { return fullRangeSpec(range_str); }
+  bool emptyRangeSpec () const { return emptyRangeSpec(range_str); }
+  bool fullRangeSpec () const { return fullRangeSpec(range_str); }
 
   ////////////////////////////////////////////////////////
   // returns a pointer to the range string.
-  char*const rangeStr() { return range_str; };
+  char*const rangeStr  () const { return range_str; };
 
   // returns true if r has any overlap with this (i.e., if
   // the intersection is non-null)
-  bool overlapP(BP_Range& r);
-  bool overlapP(BP_Range* r) { return overlapP(*r); }
+  bool overlapP (const BP_Range& r) const;
+  bool overlapP (const BP_Range* r) const { return overlapP(*r); }
 
+  bool operator<  (const BP_Range& r)  const;
+  bool operator<= (const BP_Range& r)  const;
+  bool operator>  (const BP_Range& r)  const;
+  bool operator>= (const BP_Range& r)  const;
+  bool operator== (const BP_Range& r)  const;
+
+  bool operator<  (const int r)  const { return (max() < r); }
+  bool operator<= (const int r)  const { return (max() < r || contains(r)); }
+  bool operator>  (const int r)  const { return (min() > r); }
+  bool operator>= (const int r)  const { return (min() > r || contains(r)); }
+  bool operator== (const int r)  const { return contains(r); }
 
 };
 
