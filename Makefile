@@ -33,6 +33,11 @@ MAKE_VARS = \
 	CXX="$(GPP)" \
 	EXLDFLAGS="$(EXLDFLAGS)"
 
+all clean:
+	for subdir in $(MODULES); do \
+		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
+	done
+
 linux solaris ibm cygwin:
 	for subdir in IEEEFloatingpoint; do \
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
@@ -43,10 +48,6 @@ depend:
 		(cd $$subdir; touch depends.make; $(MAKE) $(MAKE_VARS) $@); \
 	done
 
-all clean:
-	for subdir in $(MODULES); do \
-		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
-	done
 
 # this will make world just for linux for now.
 World:
