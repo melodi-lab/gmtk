@@ -114,12 +114,12 @@ protected:
     public:
       sArrayStack(int size) {
         stack_top = -1;
-        resize(size);
+        this->resize(size);
       }
       
       inline void push_back(T item) {
         ++stack_top;
-        ptr[stack_top] = item;
+        this->ptr[stack_top] = item;
       }
 
       inline void pop_back() {
