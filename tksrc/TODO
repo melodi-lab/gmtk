@@ -276,3 +276,9 @@ X ascii/binary conversion program can go both ways.
 
 - for documentation:
   - good idea to turn on conservative vanishing right after forced splitting.
+    This is to make sure that the splitting as a good idea. A forced
+    split might not be a good idea. The split Gaussian might 
+    dwindle away during training after a split, so keeping conservative
+    vanishing will keep that from happening (and will keep the
+    variances from being large).
+ 
