@@ -49,6 +49,8 @@ struct GMTK_GM
     // Goes over each variable in the graph and calls its makeUniform function.
 
     void simulate();
+    // This could be called 'sample' since it produces a sample from
+    // the set of RVs constituting a GM.
     // Goes over the variables in topological order and instantiates them 
     // according to the probability distribution given their parent's values.
 
