@@ -244,7 +244,7 @@ sub time_triangulation
      
     ($crrnt_pid, $timing_script_input, $timing_script_output, $crrnt_partitions)
       = run_timing( $crrnt_pid, $timing_script_input, $timing_script_output, 
-      $input_triangulation);
+      $tmp_tri_file);
 
     check_best($crrnt_partitions, $method, $crrnt_weight, $tmp_tri_file);
   }
@@ -277,6 +277,7 @@ sub open_time
 
     if ($@ || ($output=~'no suitable host available')) { 
       $error = 1;
+      chomp($output);
       print "Problem opening timing script:'$output'\n";
       waitpid $pid, 0; 
       sleep(15);
