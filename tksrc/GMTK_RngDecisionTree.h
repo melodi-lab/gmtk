@@ -72,6 +72,8 @@ protected:
     } nonLeafNode;
     struct LeafNode {
       T value;
+      Node* prevLeaf;
+      Node* nextLeaf;
     } leafNode;
   };
 
@@ -85,8 +87,14 @@ protected:
   Node *root;
 
   ///////////////////////////////////////////////////////////    
+  // The leaf nodes.
+  Node *rightMostLeaf;
+  Node *leftMostLeaf;
+
+  ///////////////////////////////////////////////////////////    
   // support for reading
-  Node* readRecurse(iDataStreamFile& is);
+  Node* readRecurse(iDataStreamFile& is,
+		    Node* & prevLeaf);
 
   ///////////////////////////////////////////////////////////    
   // support for writing
@@ -119,6 +127,34 @@ public:
   // write out the basic parameters, starting at the current
   // file position.
   void write(oDataStreamFile& os);
+
+
+  ///////////////////////////////////////////////////////////    
+  // iterators for iterating through leaf values.
+
+  class iterator {
+    friend class RngDecisionTree;
+    Node *leaf;
+    const RngDecisionTree& mydt;
+  public:
+    iterator(RngDecisionTree& dt) : mydt(dt) { 
+      leaf = dt.leftMostLeaf;
+      // We could also start with rightMostLeaf and
+      // move leftwards.
+    }
+    // prefix
+    iterator& operator ++() { leaf = leaf->leafNode.nextLeaf; return *this; }
+    // postfix
+    iterator operator ++(int) { iterator tmp=*this; ++*this; return tmp; }
+    T value() { return leaf->leafNode.value; }
+    bool operator == (const iterator &it) { return it.leaf == leaf; } 
+    bool operator != (const iterator &it) { return it.leaf != leaf; } 
+  };
+  friend class iterator;
+  
+  iterator begin() { return iterator(*this); }
+  iterator end() { iterator it(*this); it.leaf = NULL; return it; }
+
 
   ///////////////////////////////////////////////////////////    
   // Make a query and return the value corresponding to
@@ -243,7 +279,16 @@ RngDecisionTree<T>::read(iDataStreamFile& is)
   is.read(_numFeatures,"RngDecisionTree:: read numFeatures");
   if (_numFeatures <= 0)
     error("RngDecisionTree::read decision tree must have >= 0 features");
-  root = readRecurse(is);
+  rightMostLeaf = NULL;
+  root = readRecurse(is,rightMostLeaf);
+  Node *tmp = rightMostLeaf;
+  Node *rightLeaf = NULL;
+  while (tmp != NULL) {
+    tmp->leafNode.nextLeaf = rightLeaf;
+    rightLeaf = tmp;
+    tmp = tmp->leafNode.prevLeaf;
+  }
+  leftMostLeaf = rightLeaf;
 }
 
 
@@ -270,7 +315,8 @@ RngDecisionTree<T>::read(iDataStreamFile& is)
  */
 template <class T> 
 RngDecisionTree<T>::Node* 
-RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
+RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
+				Node* &prevLeaf)
 {
 
   int curFeat;
@@ -285,6 +331,8 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
     // leaf node
     node->leaf = true;
     is.read(node->leafNode.value,"RngDecisionTree:: readRecurse value");
+    node->leafNode.prevLeaf = prevLeaf;
+    prevLeaf = node;
   } else {
     node->leaf = false;
     node->nonLeafNode.ftr = curFeat;
@@ -332,7 +380,7 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is)
 
     for (int i=0;i<numSplits;i++)
       node->nonLeafNode.children[i] =
-	readRecurse(is);
+	readRecurse(is,prevLeaf);
   }
   return node;
 }
