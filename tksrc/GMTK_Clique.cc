@@ -21,8 +21,7 @@ VCID("$Header$");
 
 #include "GMTK_Clique.h"
 
-set<vector<RandomVariable::DiscreteVariableType>, VecCompare > 
-CliqueValue::global_val_set;
+ValueHashTable CliqueValue::global_val_set;
 
 vector<CliqueValue> Clique::gip;  // the actual global instantiation pool
 vector<unsigned> Clique::freelist;     // and the freelist
@@ -169,11 +168,7 @@ void Clique::enumerateValues(int new_member_num, int pred_val, bool viterbi)
             CliqueValue *cv = &gip[ncv];
             cv->pi = cv->lambda = pi;  // cache value in lambda
             cv->pred = pred_val;
-            set<vector<RandomVariable::DiscreteVariableType>,
-                VecCompare>::iterator si;
-            si = CliqueValue::global_val_set.insert(
-                CliqueValue::global_val_set.begin(), clampedValues);
-            cv->values = &(*si);
+            cv->values = CliqueValue::global_val_set.insert(clampedValues);
             if (pred_val!=-1)   // not doing root
                 cv->pi *= gip[pred_val].pi;
         }
