@@ -30,6 +30,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_RandomVariable.h"
 
+class Dlinks;
 
 class DlinkMatrix : public EMable, public NamedObject  {
 
@@ -50,8 +51,10 @@ public:
 
   //////////////////////////////////
   // set all current parameters to random values
-  void makeRandom() {}
-  void makeUniform() {}
+  void makeRandom();
+
+
+  void makeUniform();
 
   //////////////////////////////////////////////
   // read/write basic parameters
@@ -63,6 +66,22 @@ public:
     NamedObject::write(os);
     mat.write(os); 
   }
+
+
+  ///////////////////////////////////////////////////////////  
+  // numFeats: return the number of features for this 
+  // collection.
+  int numFeats() { return mat.numRows(); }
+
+  ///////////////////////////////////////////////////////////  
+  // numLinks: return the number of links for the ith
+  // feature.
+  int numLinks(const int i) { return mat.numCols(i); }
+
+
+  bool compatibleWith(Dlinks&d);
+
+
 
   //////////////////////////////////
   // Public interface support for EM

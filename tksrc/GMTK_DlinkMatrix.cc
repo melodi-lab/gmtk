@@ -31,6 +31,7 @@
 #include "rand.h"
 
 #include "GMTK_DlinkMatrix.h"
+#include "GMTK_Dlinks.h"
 
 VCID("$Header$");
 
@@ -63,4 +64,93 @@ DlinkMatrix::DlinkMatrix()
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
 ////////////////////////////////////////////////////////////////////
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * compatibleWith()
+ *      returns true of this object is compatible with the argument function.
+ * 
+ * Preconditions:
+ *      Object must be read in.
+ *
+ * Postconditions:
+ *      --
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      true only if compatibility holds.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool 
+DlinkMatrix::compatibleWith(Dlinks& d)
+{
+  if (numFeats() != d.numFeats())
+    return false;
+  for (int i=0;i<numFeats();i++) {
+    if (numLinks(i) != d.numLinks(i))
+      return false;
+  }
+  return true;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * makeRandom()
+ *      assign random values to all elements
+ * 
+ * Preconditions:
+ *      Object must be allocated.
+ *
+ * Postconditions:
+ *      Object has random values.
+ *
+ * Side Effects:
+ *      destroys previous values.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::makeRandom()
+{
+  for (int i=0;i<numFeats();i++)
+    for (int j=0;j<numLinks(i);j++)
+      mat.arr[i][j] = rnd.drand48pe();
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * makeUniform()
+ *      assign uniform (i.e., in this case 0) values to all elements
+ * 
+ * Preconditions:
+ *      Object must be allocated.
+ *
+ * Postconditions:
+ *      Object has random values.
+ *
+ * Side Effects:
+ *      destroys previous values.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::makeUniform()
+{
+  for (int i=0;i<numFeats();i++)
+    for (int j=0;j<numLinks(i);j++)
+      mat.arr[i][j] = 0.0;
+}
 
