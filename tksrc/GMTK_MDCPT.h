@@ -54,7 +54,6 @@ class MDCPT : public CPT {
   // the overall expected occurence of this CPT
   logpr accumulator;
 
-
 public:
 
   ///////////////////////////////////////////////////////////  
