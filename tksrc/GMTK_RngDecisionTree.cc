@@ -380,7 +380,7 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
       node->leafNode.leafNodeString = leafNodeVal;
     } else if (leafNodeVal[0] == '(') {
       node->nodeType = LeafNodeFormula;
-
+      // TODO: remove exceptions
       try {
         node->leafNode.equation.parseFormula(leafNodeVal);
       }
@@ -394,6 +394,9 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
           is.fileName(), name().c_str(), leafNodeVal.c_str(), 
 	  error_message );
       }
+    } else {
+      error("ERROR: In file '%s', DT '%s', invalid leaf node value '%s':  %s", 
+	    is.fileName(), name().c_str(), leafNodeVal.c_str() ); 
     }
 
     node->leafNode.prevLeaf = prevLeaf;

@@ -822,7 +822,7 @@ public:
   void ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& part,
 					    const unsigned nodeNumber,
 					    const logpr p);
-  
+  void ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePartition& part);
 
 
 

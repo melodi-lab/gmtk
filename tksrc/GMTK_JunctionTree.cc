@@ -1329,16 +1329,9 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 
       // Note that it is impossible for a node to be assigned in two
       // partitions. The reason is the following. The only nodes that
-      // live in both partitions are the interface nodes.  Consider
-      // the left interface case. If the edges are right pointing,
-      // then the child and its parents are in the interface, but
-      // one of the nodes @@@ (is this true??).
-      // @@@@@@ THIS IS CURRENTLY A BUG AND NEEDS TO BE FIXED.
-      // the problem is that certain nodes in the interface
-      // between two partitions might get prob assigned to
-      // two partitions. Need to fix this. As an example,
-      // consider aurora_training when we do not run the boundary
-      // algorithm.
+      // live in both partitions are the interface nodes.  These nodes
+      // have been special cased above using the
+      // 'alreadyAProbContributer' variable.
 
       infoMsg(IM::Med,"Part %s: random variable %s(%d) not assigned in current partition\n",partName,
 	      rv->name().c_str(),rv->frame());
@@ -3705,7 +3698,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
     infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
 	    part,partPArray[part].nm);
     for (unsigned cliqueNo=0;cliqueNo<partPArray[part].p->maxCliques.size();cliqueNo++) {
-      printf("Part no %d: clique no %d: log probE = %f\n",
+      printf("Island: Part no %d: clique no %d: log probE = %f\n",
 	     part,cliqueNo,partPArray[part].p->maxCliques[cliqueNo].sumProbabilities().valref());
     }
 
@@ -3949,7 +3942,6 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
  *
  * Results:
  *
- * @@@ test case -lst 4 -base 4 on aurora, problem with part 109. Sun Feb 22 03:11:52 2004
  *
  *-----------------------------------------------------------------------
  */

@@ -235,7 +235,8 @@ public:
 
   logpr probGivenParentsWSetup() {
     findConditionalParents();
-    curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    // this isn't necessary.
+    // curCPT->becomeAwareOfParentValues(*curConditionalParents);
     return probGivenParents();
   }
 
