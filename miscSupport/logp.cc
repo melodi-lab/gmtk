@@ -2,7 +2,7 @@
 // Log arithmetic .cc and test file.
 //
 //
-// Written by: Jeff Bilmes
+// Written by: Jeff A. Bilmes
 //             bilmes@icsi.berkeley.edu
 
 

@@ -5,7 +5,7 @@
 //
 // $Header$
 //
-// Written by: Jeff Bilmes
+// Written by: Jeff A. Bilmes
 //             bilmes@ee.washington.edu
 
 
