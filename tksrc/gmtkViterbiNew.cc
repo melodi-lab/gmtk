@@ -532,7 +532,7 @@ main(int argc,char*argv[])
     exit_program_with_status(0);
   }
 
-  BP_Range* dcdrng = new BP_Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+  Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
 #if 0
   if (dcdrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
@@ -618,7 +618,7 @@ main(int argc,char*argv[])
   getrusage(RUSAGE_SELF,&rus);
 
   total_data_prob = 1.0;
-  BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
+  Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
 
   if (island) {
     if (MixtureCommon::cacheMixtureProbabilities == true) {
