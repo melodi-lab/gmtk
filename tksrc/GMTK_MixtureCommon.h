@@ -63,13 +63,34 @@ public:
   virtual ~MixGaussiansCommon() {}
 
   //////////////////////////////////////////////////////
-  // support for mixture vanishing
+  // Support for mixture vanishing
   static double mixCoeffVanishRatio;
   // The value that, if any mixture coef gets smaller than,
-  // causes that component to vanish.
-  // mixCoeffVanishThreshold = 
-  // 1/(curNumComponents*mixCoeffVanishRatio).
-  logpr mixCoeffVanishThreshold;
+  // causes that component to vanish. I.e., if a mixture 
+  // coeff is such that 
+  // 
+  //     p_component < 1/(curNumComponents*mixCoeffVanishRatio).
+  // 
+  // then it should vanish. Set to very large values (1e20) to
+  // effectively turn off.
+
+  // Support for mixture splitting, if a mixture coefficient prob.
+  // gets greater or equal to mixCoeffSplitRatio/curNumComponents,
+  // then the mixture will split. Typical values
+  // might be something in the range 1.0 - 10.0. To
+  // split single Gaussians, set it to unity. In other words, if
+  // a mixture coeff is such that;:
+  // 
+  //     p_component >= mixCoeffSplitRatio/curNumComponents;
+  // 
+  // then it should split. Set to very large values (e.g., 1e10)
+  // to effectively turn off.
+  static double mixCoeffSplitRatio;
+  // 
+  // NOTE: must have the following for sanity:
+  //  mixCoeffSplitRatio/curNumComponents > 
+  //                         1/(curNumComponents*mixCoeffVanishRatio)
+
 
   /////////////////////////////////////
   // return the dimensionality
