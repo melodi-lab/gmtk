@@ -1573,21 +1573,24 @@ Mon Mar  1 23:09:05 2004
     Try to pre-pend the path to the file somehow (or add that to CPP's -I options by
     default)
 
+
 Mon Mar  1 23:41:09 2004
   - in DT leaf formulas, add
      variables fp0 fp1 fp2 for frame numbers of parents 0 1 2, and fc for frame number of child.
   - also, be able to add cardinality of both parent and child.
   - also, be able to add number of frames in current segment.
-   (this might make moot the need for special internal variables, as it
+    (this might make moot the need for special internal variables, as it
     it is easy to have RVs with DTs to do this.) Make sure that we can have
     RVs without parents and with a MTCPT that always returns a single value,
     and that can have cardinality 1 (and so should never be placed in any clique
     value, since it is essentially another way of doing an observation, but here
     the observation changes each frame).
 
+
 Mon Mar  1 23:50:32 2004
   - variables with card = 1 should be treated as observations, and triangulation
     code and methods should pay attention to this. 
+
 
 Sat Mar  6 14:52:42 2004
   - let cbeam and sbeam come from an observation vector, so we can have dynamic beam pruning.
@@ -1600,4 +1603,12 @@ Sat Mar  6 14:52:42 2004
     where 0-10 says the first 10% of the file, 11-50 the next 39%, and so on.
 
 
+Sat Mar  6 19:52:15 2004
+ - write an any-time script that iterates for a given amount of time:
+   1) generate a random triangulation (meaning it chooses
+      one of the triangulation heuristics at random).
+   2) run one utterance of inference, timing the result
+      (kill process if it takes too long).
+ - Stores the N-best triangulation files by run-time. 
 
+ 
