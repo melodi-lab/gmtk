@@ -47,6 +47,7 @@
 #include "GMTK_CPT.h"
 #include "GMTK_Vocab.h"
 #include "GMTK_RandomVariable.h"
+#include "GMTK_DiscreteRandomVariable.h"
 #include "fileParser.h"
 #include "hash_mtable.h"
 
@@ -126,21 +127,27 @@ public:
 	virtual logpr probGivenParents(vector<RandomVariable *>& parents, const int val);
 
 	// returns an iterator for the first one.
-	virtual iterator begin();
+	virtual iterator begin(DiscreteRandomVariable* drv);
 
 	// creates an iterator for the first one.
-	virtual void begin(iterator& it);
-	virtual void becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it);
+	virtual void begin(iterator& it,DiscreteRandomVariable* drv);
+	virtual void begin(iterator& it,DiscreteRandomVariable* drv,logpr& p);
+       virtual void becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it,
+							  DiscreteRandomVariable* drv);
+       virtual void becomeAwareOfParentValuesAndIterBegin(vector<RandomVariable *>& parents, iterator &it, 
+							  DiscreteRandomVariable* drv, logpr& p);
+
+	// Given a current iterator, return true if it is a valid next
+	// value, otherwise return false so a loop can terminate.
+	virtual bool next(iterator &it);
+	virtual bool next(iterator &it,logpr& p);
+
 	// returns true if iterate is at end state
-	virtual bool end(iterator &it)	{return it.value >= ucard();}
-	// Given a current iterator, return true if it
-	// is a valid next value, otherwise return false so
-	// a loop can terminate.
-	virtual bool next(iterator &);
+	virtual bool end(iterator &it)	{return it.drv->val >= (int)ucard();}
 
 	///////////////////////////////////////////////////////////  
 	// Given the current parent values, generate a random sample.
-	virtual int randomSample();
+	virtual int randomSample(DiscreteRandomVariable*drv);
 
 
 	///////////////////////////////////////////////////////////  
@@ -244,7 +251,7 @@ protected:
 	unsigned _contextStartBlockSize;
 	unsigned _probStartBlockSize;
 
-	// parents values
+	// parents values, TODO: convert this to fast sArray 
 	std::vector<ContextHashEntry*> _contextPointers;
 	unsigned _numExistParents;		// The size of _parentValues is fixed.  This is added so that lower order ngram can share the table.
 

@@ -388,7 +388,9 @@ protected:
 
   ///////////////////////////////////////////////////////////    
   // Node structure (nonLeafNode and leafNodes can not be 
-  //  unioned because they have entries with constructors)  
+  // unioned because they have entries with constructors)  
+  // TODO: this needs to change as it is a huge waste of memory.
+  // change into an 'unsigned char foo[max(sizeof,sizeof)]' construct.
   ///////////////////////////////////////////////////////////    
   struct Node {
     NodeType nodeType;
@@ -527,7 +529,10 @@ public:
   ///////////////////////////////////////////////////////////    
   // Make a query and return the value corresponding to
   // the array of integers, from an array of random variables.
-  leafNodeValType query(const vector < RandomVariable* >& arr);
+  leafNodeValType query(const vector < RandomVariable* >& arr) {
+    assert ( unsigned(arr.size()) == _numFeatures );
+    return queryRecurse(arr,root);
+  }
 
 
   ///////////////////////////////////////////////////////////    

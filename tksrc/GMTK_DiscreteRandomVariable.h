@@ -32,9 +32,11 @@
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CPT.h"
+/* 
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+*/
 #include "GMTK_ObservationMatrix.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -73,6 +75,7 @@ private:
   unsigned featureElement;
 
 public:
+
 
   DiscreteRandomVariable(RVInfo&,
 			 string _label, 
@@ -251,20 +254,24 @@ public:
 
   logpr probGivenParentsWSetup() {
     DiscreteRandomVariable::findConditionalParents();
-    // this isn't necessary.
+    // this isn't necessary since probGivenParents() queries the current
+    // conditional parents directly.
     // curCPT->becomeAwareOfParentValues(*curConditionalParents);
     return DiscreteRandomVariable::probGivenParents();
   }
   void probGivenParentsWSetup(logpr& p) {
     DiscreteRandomVariable::findConditionalParents();
-    // this isn't necessary.
+    // this isn't necessary since probGivenParents() queries the current
+    // conditional parents directly.
     // curCPT->becomeAwareOfParentValues(*curConditionalParents);
     return DiscreteRandomVariable::probGivenParents(p);
   }
 
 
 
-  // set the RV (which must be 
+  // set the RV (which must be observed) to the observed value in a
+  // file (this should be done once outside of the inference inner
+  // loops).
   void setToObservedValue() {
     // assert (!hidden);
     // observed, so set value from observation matrix
@@ -301,8 +308,8 @@ public:
     }
     // a hidden variable, so we set up the iterator.
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    curCPT->begin(it); 
-    val = it.val();
+    curCPT->begin(it,this); 
+    // val = it.val();
     // assert ( val >= 0 );
   }
 
@@ -320,30 +327,24 @@ public:
     if (!hidden) 
       return false;
     const bool unfinished = curCPT->next(it);
-    if (unfinished)
-      val = it.val();
     return unfinished;
   }
 
 
-  // clamp this RV to its "first" value
+  // set this RV to its starting value
   void begin() {
     findConditionalParents();
     if (!hidden) {
-      // must be done externally
+      // observed value already presumably set externally.
       // setToObservedValue();
       return;
     }
     // a hidden variable, so we set up the iterator.
-    curCPT->becomeAwareOfParentValuesAndIterBegin(*curConditionalParents,it);
-    // curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    // curCPT->begin(it); 
-    val = it.val();
-    // assert ( val >= 0 );
+    curCPT->becomeAwareOfParentValuesAndIterBegin(*curConditionalParents,it,this);
   }
 
 
-  // clamp this RV to its "first" value
+  // set this RV to its starting value
   void begin(logpr& p) {
     findConditionalParents();
     if (!hidden) {
@@ -352,11 +353,7 @@ public:
       return;
     }
     // a hidden variable, so we set up the iterator.
-    curCPT->becomeAwareOfParentValuesAndIterBegin(*curConditionalParents,it);
-    // curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    // curCPT->begin(it); 
-    val = it.val();
-    p = it.probVal;
+    curCPT->becomeAwareOfParentValuesAndIterBegin(*curConditionalParents,it,this,p);
     if (wtStatus != wt_NoWeight) {
       if (wtStatus == wt_Constant)
 	p.valref() *= wtWeight;
@@ -364,7 +361,6 @@ public:
 	p.valref() *= 
 	  (*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
     }
-    // assert ( val >= 0 );
   }
 
 
@@ -372,42 +368,26 @@ public:
   bool next() { 
     if (!hidden) 
       return false;
-    it++; 
-    if (!curCPT->end(it)) 
-      val = it.val();
+    return curCPT->next(it);
+    //    if (!curCPT->end(it)) 
+    //val = it.val();
     // assert ( val >= 0 );
-    return (!curCPT->end(it)); 
+    // return (!curCPT->end(it)); 
   }
 
   // continue on
   bool next(logpr& p) { 
-#if 0
     if (!hidden) 
       return false;
-    it++; 
-    if (!curCPT->end(it)) {
-      val = it.val();
-      p = probGivenParents();
-      assert ( p == it.probVal );
-    }
-    return (!curCPT->end(it)); 
-#endif
-    if (!hidden) 
-      return false;
-    const bool unfinished = curCPT->next(it);
-    if (unfinished) {
-      val = it.val();
-      p = it.probVal;
-      if (wtStatus != wt_NoWeight) {
+    const bool unfinished = curCPT->next(it,p);
+    if (unfinished && (wtStatus != wt_NoWeight)) {
 	if (wtStatus == wt_Constant)
 	  p.valref() *= wtWeight;
 	else // get weight from observation matrix at current time frame
 	  p.valref() *= 
 	    (*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
-      }
     }
     return unfinished;
-
   }
 
 
@@ -445,7 +425,7 @@ public:
   void instantiate() { 
     findConditionalParents(); 
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
-    val = curCPT->randomSample(); 
+    curCPT->randomSample(this); 
   }
 
   ///////////////////////////////////////////////////

@@ -307,21 +307,19 @@ MSCPT::write(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 int
-MSCPT::randomSample()
+MSCPT::randomSample(DiscreteRandomVariable*drv)
 {
   assert ( bitmask & bm_basicAllocated );
-  
-  iterator it = begin();
+
   logpr uniform = rnd.drand48();
   logpr sum = 0.0;
-  do {
-    sum += it.probVal;
+  int i;
+  for (i=0;i<spmf->length();i++) {
+    sum += spmf->probAtEntry(i);
     if (uniform <= sum)
       break;
-    it++;
-  } while (!end(it));
-  
-  return it.val();
+  }
+  return (drv->val = spmf->valueAtEntry(i));
 }
 
 

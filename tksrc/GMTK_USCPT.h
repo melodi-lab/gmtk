@@ -32,6 +32,7 @@
 #include "GMTK_MDCPT.h"
 #include "GMTK_EMable.h"
 #include "GMTK_RandomVariable.h"
+#include "GMTK_DiscreteRandomVariable.h"
 #include "GMTK_NamedObject.h"
 
 
@@ -94,25 +95,62 @@ public:
   }
 
   // returns an iterator for the first one that is not zero prob.
-  iterator begin() {
-    // this routine should never be called for this object.
+  iterator begin(DiscreteRandomVariable* drv) {
+    // this routine should never be called for this object, since the
+    // variable is always observed.
     assert ( 0 );
     // include code to keep compiler happy
     iterator it(this);
+    it.drv = drv;
     return it;
   }
 
   // returns an iterator for the first one that is not zero prob.
-  void begin(iterator& it) {
-    // this routine should never be called for this object.
+  void begin(iterator& it,DiscreteRandomVariable* drv) {
+    // this routine should never be called for this object, since the variable
+    // is always observed.
+    assert ( 0 );
+    // include code to keep compiler happy
+    it.drv = drv;
+    it.setCPT(this);
+  }
+  void begin(iterator& it,DiscreteRandomVariable* drv,logpr* p) {
+    // this routine should never be called for this object, since the variable
+    // is always observed.
     assert ( 0 );
     // include code to keep compiler happy
     it.setCPT(this);
   }
 
+  virtual void becomeAwareOfParentValuesAndIterBegin(vector < RandomVariable *>& parents , iterator &it, DiscreteRandomVariable* drv){
+    // this routine should never be called for this object, since the variable
+    // is always observed.
+    assert ( 0 );
+    // include code to keep compiler happy
+    it.drv = drv;
+    it.setCPT(this);
+  }
+  virtual void becomeAwareOfParentValuesAndIterBegin(vector < RandomVariable *>& parents, iterator &it, DiscreteRandomVariable* drv,logpr& p)
+  {
+    // this routine should never be called for this object, since the variable
+    // is always observed.
+    assert ( 0 );
+    // include code to keep compiler happy
+    it.drv = drv;
+    it.setCPT(this);
+  }
+
   // Given a current iterator, return the next one in the sequence.
   bool next(iterator &_it) {
-    // this routine should never be called for this object.
+    // this routine should never be called for this object, since the variable
+    // is always observed.
+    assert ( 0 );
+    // include code to keep compiler happy
+    return false;
+  }
+  bool next(iterator &_it,logpr& p) {
+    // this routine should never be called for this object, since the variable
+    // is always observed.
     assert ( 0 );
     // include code to keep compiler happy
     return false;
@@ -120,6 +158,8 @@ public:
 
 
   bool end(iterator &it) {
+    // this routine should never be called for this object, since the variable
+    // is always observed.
     assert ( 0 );
     // include code to keep compiler happy
     return true;
@@ -127,7 +167,8 @@ public:
 
 
   ///////////////////////////////////
-  int randomSample() { return 0; }
+  // don't set drv's value since it is observed.
+  int randomSample(DiscreteRandomVariable*drv) { return 0; }
 
   ///////////////////////////////////
   unsigned totalNumberParameters() { return 0; }

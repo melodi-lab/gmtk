@@ -128,6 +128,16 @@ MaxClique::cliqueBeam=(-LZERO);
 
 /*
  *
+ * The max number of states in a clique (or set to 0 to make ineffectual).
+ * Basically, only the top cliqueBeamMaxNumStates cliuqe entries (ranked by their
+ * probability entry) will be kept, everything below will be pruned away.
+ *
+ */
+unsigned
+MaxClique::cliqueBeamMaxNumStates = 0;
+
+/*
+ *
  * separator beam width, for separator-based beam pruning.  Default value is
  * very large (1.0/0.0 = est. of infty) meaning that we do no beam
  * pruning.
@@ -2087,7 +2097,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
   switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
   case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
     {
-#if 1
+#if 0
       rv->begin();
       do {
 	// At each step, we compute probability
@@ -2830,10 +2840,13 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     return;
   } 
 
+  // do k-pruning (ideally we would do this after
+  // beam pruning, but since beam pruning is integrated
+  // into the code below, we do max state pruning first).
+  ceCliquePrune(origin.cliqueBeamMaxNumStates);
 
   // create an ininitialized variable using dummy argument
   logpr beamThreshold((void*)0);
-
   if (origin.cliqueBeam != (-LZERO)) {
     // then we do clique table pruning right here rather
     // than a separate call to ceCliquePrune().
@@ -3257,6 +3270,199 @@ InferenceMaxClique::ceCliquePrune()
     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
 
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceCliquePrune(unsigned k)
+ *
+ *    Collect Evidence, Clique Prune: This routine will prune away
+ *    part of a previously instantiated clique so that it has only
+ *    k entries left. It does this by chosing the k-best (maximum partial
+ *    probability) clique entries.
+ *
+ * Preconditions:
+ *   1) the value of the max clique 'maxCEValue' must have been
+ *      computed already.
+ *
+ *   2) clique table must be created, meaning that either:
+ *
+ *        InferenceMaxClique::ceIterateAssignedNodesRecurse()
+ *   or
+ *        InferenceMaxClique::ceIterateAssignedNodesCliqueDriven
+ *   must have just been called.
+ *
+ * Postconditions:
+ *    Clique table has been pruned, and memory for it has been re-allocated to
+ *    fit the smaller size.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void 
+InferenceMaxClique::ceCliquePrune(const unsigned k)
+{
+  // k can't be larger than the number of clique entries.
+  if (k == 0 || k > numCliqueValuesUsed)
+    return;
+
+  // inclusive range to process.
+  unsigned lower = 0;
+  unsigned upper = numCliqueValuesUsed-1;
+
+  do {
+    // k'th largest lives within [lower,upper] inclusive.
+    // printf("lower = %d, upper = %d\n",lower,upper);
+
+    if (lower == upper)
+      break;
+
+    // We find the k max elements using a quick sort-like algorithm,
+    // and start by processing the elements between lower and upper
+    // inclusive.
+
+    // Choose a random pivot and then divide the array so that
+    // elements >= pivot are on the left, and elements < pivot are on
+    // the right. We choose a pivot by taking the median of 3 randomly
+    // choosen values.
+    unsigned pl1 = rnd.uniform(lower,upper);
+    unsigned pl2 = rnd.uniform(lower,upper);
+    unsigned pl3 = rnd.uniform(lower,upper);
+    unsigned pl;
+    // find rough median
+    if (cliqueValues.ptr[pl1].p < cliqueValues.ptr[pl2].p) {
+      if (cliqueValues.ptr[pl2].p < cliqueValues.ptr[pl3].p) {
+	pl = pl2;
+      } else {
+	pl = pl3;
+      }
+    } else {
+      if (cliqueValues.ptr[pl1].p < cliqueValues.ptr[pl3].p) {
+	pl = pl1;
+      } else {
+	pl = pl3;
+      }
+    }
+
+    logpr pivot = cliqueValues.ptr[pl].p;
+    // printf("pivot location = %d, pivot = %f\n",pl,pivot);
+
+    // swap pivot into first position, which is a valid position for
+    // pivot, since pivot >= pivot.
+    swap(cliqueValues.ptr[pl],cliqueValues.ptr[lower]);
+
+    unsigned l = lower+1;
+    unsigned u = upper;
+    while (l < u) {
+      if (cliqueValues.ptr[l].p >= pivot) {
+	l++;
+      } else {
+	swap(cliqueValues.ptr[l],cliqueValues.ptr[u]);
+	u--;
+      }
+    }
+
+    // 1) Now all entries with index < l are >= pivot,
+    //   which means at this point we know we have
+    //   the top l entries at indices [0,l]
+    // 2) All entries with index > u are < pivot
+    // 3) we have l == u
+    // 4) The entry at index u==l is unknown however.
+
+
+    if (cliqueValues.ptr[l].p >= pivot) {
+      l++;
+      u++;
+    }
+    // 1) Now all entries with index < l are >= pivot,
+    //   which means at this point we know we have
+    //   the top l entries at indices [0,l]
+    // 2) All entries with index >= u are < pivot
+    // 3) we still have l == u
+
+    // put pivot in its appropriate place.
+    l--;
+    swap(cliqueValues.ptr[lower],cliqueValues.ptr[l]);
+    // 1) Now all entries with index <= l are >= pivot,
+    //   which means at this point we know we have
+    //   the top l entries at indices [0,l]
+    // 2) All entries with index >= u are < pivot
+    // 3) we have l +1 == u
+
+    // Now, deal with potential ties.
+    // Move any other entries that are equal to pivot to the center.
+    unsigned ll;
+    if (l > lower) {
+      ll = l-1; // left of left-most known pivot value.
+      unsigned i = lower;
+      while (i < ll) {
+	if (cliqueValues.ptr[i].p == pivot) {
+	  swap(cliqueValues.ptr[i],cliqueValues.ptr[ll]);
+	  ll--;
+	} else {
+	  i++;
+	}
+      }
+    } else
+      ll = l;
+
+    // 1) Now all entries with index <= l are >= pivot,
+    //   which means at this point we know we have
+    //   the top l entries at indices [0,l]
+    // 2) All entries with index >= u are < pivot
+    // 3) we have l +1 == u
+    // 4) either
+    //    a) all entries with index <= ll are > pivot, or
+    //         (meaning that ll+1 is the number of entries
+    //          that are strictly greater than pivot)
+    //    b) ll = lower and arr[ll] == pivot
+    //       (in which case, ll is the number of entries
+    //          that are strictly greater than pivot).
+
+    //     printf("after swapping, l = %d, u = %d,array now:\n",l,u);
+    //     for (unsigned j=0;j<len;j++)
+    //       printf("arr[%d] = %f\n",j,arr[j]);
+
+    if (ll > k) {
+      upper = ll;
+    } else if (l > k) {
+      // then we're done since we must
+      // have a bunch of ties, and pivot value
+      // must be correct k'th value.
+      break;
+    } else if (l == k) {
+      // then we have l+1 entries
+      // printf("finished, we have l == k == %d\n",l);
+      break;
+    } else { // l < k, need to search to the right.
+      // printf("setting lower to %d\n",u);
+      lower = u;
+    }
+
+  } while(1);
+
+  infoMsg(IM::Huge,"Clique k-beam pruning: Original clique state space = %d, new clique state space = %d\n",
+	  numCliqueValuesUsed,k);
+  
+  // To reallocate or not to reallocate, that is the question.  here,
+  // we just reallocate for now.
+  // 
+  // TODO: reallocate only if change is > some percentage (say 5%),
+  // and export to command line.
+  // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
+  // 
+  cliqueValues.resizeAndCopy(k);
+  numCliqueValuesUsed = k;
+
+}
+
 
 
 

@@ -231,7 +231,8 @@ public:
 
   // beam width for clique-based beam pruning.
   static double cliqueBeam;
-
+  // forced max number of states in a clique. Set to 0 to turn it off.
+  static unsigned cliqueBeamMaxNumStates;
 
   // When doing inference if any kind, this variable determines
   // if we should clear the clique and separator value cache
@@ -886,6 +887,7 @@ public:
 			    InferenceSeparatorClique& sep); 
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
   void ceCliquePrune();
+  void ceCliquePrune(const unsigned k);
 
   // support for collect evidence clique driven operations.
   void ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePartition& part);

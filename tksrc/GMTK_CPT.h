@@ -31,7 +31,10 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_EMable.h"
 
+
 class RandomVariable;
+class DiscreteRandomVariable;
+
 
 /*
  * Generic interface class to all CPT random variables.
@@ -93,11 +96,12 @@ public:
   static double normalizationThreshold;
 
   enum DiscreteImplementaton {
-    di_MDCPT,
-    di_MSCPT,
-    di_MTCPT,
-    di_USCPT,
-    di_NGramCPT,
+    di_MDCPT, // Dense CPT
+    di_MSCPT, // Sparse CPT
+    di_MTCPT, // Deterministic CPT
+    di_USCPT, // Unity Score CPT 
+    di_NGramCPT, // Ngram "language model" CPT
+    di_VECPT,    // Virtual Evidence CPT
     di_unknown
   };
   const DiscreteImplementaton cptType;
@@ -189,8 +193,10 @@ public:
   public:
     // Three fields that a CPT subclass can
     // modify as desired to implement a CPT.
-    // The value of the RV.
-    unsigned value;
+    // The actual discrete random variable that this
+    // iterator affects. It will use this to set the RVs
+    // value and get its cardinality, etc. 
+    DiscreteRandomVariable* drv;
     // some internal state.
     int internalState;
     // some internal state pointer to be used.
@@ -198,7 +204,7 @@ public:
 
     // Return the value of the RV, the CPT subclasses must make sure it is set
     // correctly to the appropriate values.
-    unsigned val() { return value; }
+    // unsigned val() { return value; }
     // The probability of the variable being value 'val()'. Again,
     // CPT subclasses must make sure it is set correctly.
     logpr probVal;
@@ -207,38 +213,38 @@ public:
     iterator(CPT* _cpt) : cpt(_cpt) {}
     iterator(const iterator& it) :cpt(it.cpt) 
     { internalState = it.internalState; 
+      drv = it.drv;
       internalStatePtr = it.internalStatePtr; 
       probVal = it.probVal; }
     // allow to construct an empty iterator, to be filled in later
     iterator() : cpt(NULL) {}
 
-     // prefix
-    iterator& operator ++() { cpt->next(*this); return *this; }
-    // postfix
-    iterator operator ++(int) {
-      iterator tmp=*this; ++*this; return tmp;
-    }
-
-    // bool operator == (const iterator &it) 
-    // { return it.internalState == internalState; } 
-    // bool operator != (const iterator &it)
-    // { return it.internalState != internalState; } 
   };
 
-  // returns an iterator for the first one.
-  virtual iterator begin() = 0;
 
-  // creates an iterator for the first one.
-  virtual void begin(iterator& it) = 0;
+  // Creates an iterator for the first value of a random variable
+  // using this CPT.
+  virtual iterator begin(DiscreteRandomVariable* drv) = 0;
+  virtual void begin(iterator& it,DiscreteRandomVariable* drv) = 0;
+  virtual void begin(iterator& it,DiscreteRandomVariable* drv,logpr& p) = 0;
+  // TODO: remove this next routine and always use the version with p as argument.  
   virtual void becomeAwareOfParentValuesAndIterBegin
-  (  vector < RandomVariable *>& parents , iterator &it ) = 0;
+  (  vector < RandomVariable *>& parents , iterator &it, 
+     DiscreteRandomVariable* drv) = 0;
+  virtual void becomeAwareOfParentValuesAndIterBegin
+  (  vector < RandomVariable *>& parents , iterator &it, 
+     DiscreteRandomVariable* drv,logpr& p) = 0;
+
+  // Given a current iterator, return true if it is a valid next
+  // value, otherwise return false so a loop can terminate. Sets
+  // the probability in the iterator state. 
+  virtual bool next(iterator &) = 0;
+  // a version that also sets an argument probability and
+  // does *NOT* set the probability value in the iterator.
+  virtual bool next(iterator &,logpr& p) = 0;
+
   // returns true if iterate is at end state
   virtual bool end(iterator &it) = 0;
-  // Given a current iterator, return true if it
-  // is a valid next value, otherwise return false so
-  // a loop can terminate.
-  virtual bool next(iterator &) = 0;
-
 
   // given an internal state of an iterator, return
   // the value corresponding to this random variable.
@@ -247,7 +253,7 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // Given the current parent values, generate a random sample.
-  virtual int randomSample() = 0;
+  virtual int randomSample(DiscreteRandomVariable* drv) = 0;
 
 
   ///////////////////////////////////////////////////////////  

@@ -135,7 +135,7 @@ Arg Arg::Args[] = {
   Arg("ni1",Arg::Opt,nis[0],"Number of ints in observation file 1"),
   Arg("fr1",Arg::Opt,frs[0],"Float range for observation file 1"),
   Arg("ir1",Arg::Opt,irs[0],"Int range for observation file 1"),
-  Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
+  Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,binary,ascii,pfile) for observation file 1"),
   Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
 
   Arg("of2",Arg::Opt,ofs[1],"Observation File 1"),

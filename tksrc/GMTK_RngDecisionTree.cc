@@ -2056,7 +2056,8 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < int >& arr,
 					      const vector < int >& cards,
 					      RngDecisionTree::Node *n)
 {
-  assert(0);
+  // this is not implemented for now, so just die if it gets called. 
+  assert(0); 
   leafNodeValType dummy;
   return(dummy); 
 }
@@ -2064,7 +2065,7 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < int >& arr,
 
 /*-
  *-----------------------------------------------------------------------
- * query & queryRecurse
+ *  queryRecurse
  *      Exact same routine as above but for arrays of random variables.
  *      This code is duplicated here for simplicity and efficiency.
  *      NOTE: Any update here should also be done in the
@@ -2084,12 +2085,6 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < int >& arr,
  *
  *-----------------------------------------------------------------------
  */
-leafNodeValType RngDecisionTree::query(const vector < RandomVariable* >& arr)
-{
-  assert ( unsigned(arr.size()) == _numFeatures );
-  return queryRecurse(arr,root);
-}
-
 leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& arr,
 					      RngDecisionTree::Node *n)
 {
