@@ -81,3 +81,39 @@ void RandomVariable::reveal(bool show_vals)
         cout << allPossibleParents[i]->label << " ";
     cout << endl;
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * basicClone 
+ *      copies the data structures necessary for unrolling
+ *      all random variables have these structures.
+ * 
+ * Preconditions:
+ *      dtMapper and all parents lists must be set
+ *
+ * Postconditions:
+ *      specified data members are copied
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      none   
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void RandomVariable::basicClone(RandomVariable *caller)
+{
+    caller->label = label;
+    caller->hidden = hidden;
+    caller->discrete = discrete;
+    // leave time index undefined
+    caller->switchingParents = switchingParents;
+    // leave allPossibleParents and allPossibleChildren empty
+    caller->conditionalParentsList = conditionalParentsList;
+    // leave curConditionalParents empty
+    caller->dtMapper = dtMapper; 
+    // leave cachedIntFromSwitchingState uninitialized
+}
