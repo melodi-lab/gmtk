@@ -1,7 +1,8 @@
 /*-
  * GMTK_RealArray.h
  *    An array of real values with some functionality for 
- *         reading, writing, and so on.
+ *         reading, writing, and so on. This is just an sArray<float> packaged
+ *         with  reading and writing routines.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
@@ -27,12 +28,8 @@
 #include "logp.h"
 #include "sArray.h"
 
-class RealArray {
+class RealArray : public sArray<float> {
 
-  ///////////////////////////////////////////////////////////  
-  // The data values
-  sArray<float> arr;
-  ///////////////////////////////////////////////////////////  
 
 
 public:
@@ -40,10 +37,6 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   RealArray();
-
-  float& operator[] (const int i) { return arr[i]; }
-
-  int len() { return arr.len(); }
 
   ///////////////////////////////////////////////////////////    
   // reading and writing from/to disk.

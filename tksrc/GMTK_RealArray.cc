@@ -84,12 +84,12 @@ RealArray::read(iDataStreamFile& is)
   if (length <= 0)
     error("RealArray: read length (%d) < 0 in input",length);
 
-  arr.resize(length);
+  resize(length);
 
   for (int i=0;i<length;i++) {
     float val;
     is.read(val,"RealArray::read, reading value");
-    arr[i] = val;
+    operator[](i) = val;
   }
 }
 
@@ -113,9 +113,9 @@ void
 RealArray::write(oDataStreamFile& os)
 {
 
-  os.write(arr.len(),"RealArray::write, length");
-  for (int i=0;i<arr.len();i++) {
-    os.write(arr[i],"RealArray::write, values");
+  os.write(len(),"RealArray::write, length");
+  for (int i=0;i<len();i++) {
+    os.write(operator[](i),"RealArray::write, values");
   }
   os.nl();
 }
