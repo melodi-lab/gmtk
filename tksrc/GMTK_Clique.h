@@ -45,10 +45,27 @@ struct ValueHashTable
     int table_size, count;
     int addr(vector<RandomVariable::DiscreteVariableType> &vec)
          // return the hash value of the vector
-        {unsigned long a = vec.size();
-         for (unsigned i=0; i<vec.size(); i++) a = 65599*a + vec[i];
-         a = a % table_size;
-         return a;}
+        {
+	  // assert ( vec.size() > 0 ); 
+	  // first hash key
+	  unsigned long a = vec.size(); 
+	  // second hash key
+	  unsigned long r = 0;
+	  unsigned i=0; do {
+	    // cache local value and convert
+	    const unsigned long tmp = vec[i];
+	    // update first hash key
+	    a = 65599*a + tmp + 7;
+	    // update 2nd hash key
+	    r = (r << 4) + tmp + 1;
+	    if (r > 0x0fffffff) {
+	      r ^= (r >> 24) & 0xf0;
+	      r &= 0x0fffffff;
+	    }
+	  } while (++i < vec.size());
+	  // return a mixture of the two keys
+	  return (a+r)% table_size;
+	}
 
     vector<RandomVariable::DiscreteVariableType> *insert(
         vector<RandomVariable::DiscreteVariableType> &vec)
