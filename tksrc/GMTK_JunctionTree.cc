@@ -2273,8 +2273,81 @@ JunctionTree::printAllCliquesProbEvidence()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::junctionTreeWeight()
+ *
+ * Compute the 'junction tree weight' (roughly, the log10(cost of
+ * doing inference)) for the set of cliques given in cliques. Note,
+ * cliques *must* be a valid set of maxcliques of a junction tree --
+ * if they are not, unexpected results are returned.
+ *
+ * Preconditions:
+ *   The partition must have been fully instantiated. I.e.,
+ *   we must have that assignRVsToCliques have been called.
+ *
+ * Postconditions:
+ *   The weight, as inference would do it, of this clique is 
+ *   computed.
+ *
+ * Side Effects:
+ *   none.
+ *
+ * Results:
+ *   the weight
+ *
+ *-----------------------------------------------------------------------
+ */
+#if 0
+double
+JunctionTree::junctionTreeWeight(JT_Partition& part,
+				 const unsigned rootClique)
+{
+  
+
+  
+
+
+}
+double
+JunctionTree::junctionTreeWeightRecurse(JT_Partition& part,
+					const unsigned rootClique,
+					const unsigned bottomLeaf)
+{
+  if (part.cliques[root].children.size() == 0) {
+    // store leaf node
+    if (root != bottomLeaf) {
+    } else {
+    }
+
+    MaxClique::computeWeight(sep_set)
+
+  }
+
+}
+
+#endif
+
 
 #if 0
+
+spare code:
+
+  // build a JT
+  // assign RVs.
+
+  
+  Partition part;
+
+  part.cliques = cliques;
+
+  for (unsigned clique = 0; clique <= part.clique.size(); clique ++) {
+    part.cliques[i].neighbors.clear();
+  }
+  createPartitionJunctionTrees(part);
+
+  JT_Partition jt_part(part);
+
 
 
   // code from above that is commented out but not yet deleted. 

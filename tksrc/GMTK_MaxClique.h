@@ -69,17 +69,21 @@ class InferenceMaxClique;
 class CliqueValueHolder  {
 
   // The packed clique value size (in unsigned).
-  const unsigned cliqueValueSize;
+  // @@@ sould be const
+  // const unsigned cliqueValueSize;
+  unsigned cliqueValueSize;
 
   // The amount that successive allocation chunks grow in size.  Must
   // be >= 1.0.
-  const float growthFactor;
+  // @@@ sould be const
+  float growthFactor;
 
   // The size of the initial allocation unit. A chunk is an
   // array of packed clique values. When we allocate the n'th
   // chunk, we allocate k(n) new packed clique values, 
   // where k(n) = allocationUnitChunkSize*growthFactor^(n-1)
-  const unsigned allocationUnitChunkSize;
+  // @@@ sould be const
+  unsigned allocationUnitChunkSize;
 
   // Current capacity, total number of packed clique values that this
   // object can currently potentially hold max without a resize.
@@ -166,9 +170,11 @@ public:
 
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
+#if 0
   MaxClique& operator=(const MaxClique& f) {
     return *this;
   }
+#endif
 
   // the set of nodes which form a max clique, in arbitrary order.
   set<RandomVariable*> nodes;
@@ -616,9 +622,11 @@ public:
   void printAllJTInfo(FILE* f);
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
+#if 0
   SeparatorClique& operator=(const SeparatorClique& f) {
     return *this;
   }
+#endif
 
 
 };

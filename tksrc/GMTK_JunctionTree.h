@@ -367,6 +367,24 @@ public:
   // void collectMessage(MaxClique& from,MaxClique& to);
   // void distributeMessage(MaxClique& from,MaxClique& to);
 
+  // Returns a good approximation of the weight of (optionally) P, C,
+  // and E in the variables pWeight, cWeight, and eWeight for
+  // a given number of frame unrollings.
+  double junctionTreeWeight(const bool includeP,
+			    const bool includeC,
+			    const bool includeE,
+			    const unsigned numFrames,
+			    double& pWeight,
+			    double& cWeight,
+			    double& eWeight);
+
+  // Compute the 'junction tree weight' (roughly, the log10(cost of
+  // doing inference)) for the set of cliques given in cliques. Note,
+  // cliques *must* be a valid set of maxcliques of a junction tree --
+  // if they are not, unexpected results are returned.
+  double junctionTreeWeight(vector<MaxClique>& cliques);
+
+
 };
 
 

@@ -167,6 +167,15 @@ public:
 			   /* H */ IH_MIN_MAX_HINT = 15
   };
 
+  // While much of the code for finding the best right and best left
+  // interface boundaries is symmetric, there are a few places where
+  // the code needs to do something different. Rather than pass in an
+  // argument deep inside a set of routine calls, we keep this member
+  // variable, set in the outer loops, to say if we are currently
+  // finding the left interface boundary (set to true) or finding the right
+  // interface boundary (set to false).
+  bool findingLeftInterface;
+
   // Support for unTriangulating partitions. This stuff
   // could go into the Partition class, but we don't want
   // to include all the STL code for triangulation/untriangulting

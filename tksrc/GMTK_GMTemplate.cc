@@ -151,9 +151,14 @@ writeMaxCliques(oDataStreamFile& os)
 {
   // First write out the cliques in commented form for the user
 
-  if (triMethod.length() > 0) 
-    os.writeComment("---- Triangulation came from method: %s, %d total max-cliques \n",
-		    triMethod.c_str(),cliques.size());
+  // TODO: convert tri method string to have no spaces/tabs.
+
+
+  os.writeComment("---- %d total max-cliques \n",cliques.size());
+  if (triMethod.size() > 0)
+    os.writeComment("---- Triangulation came from method: %s\n",triMethod.c_str());
+
+
   float maxWeight = -1.0;
   float totalWeight = -1.0; // starting flag
   for (unsigned i=0;i<cliques.size();i++) {
@@ -175,6 +180,18 @@ writeMaxCliques(oDataStreamFile& os)
   os.writeComment("Maximum clique state space = 1e%f, total state space = 1e%f\n",maxWeight,totalWeight);
   // Then write out the same information in a less human-readable but more machine
   // readable format.
+
+  if (triMethod.size() > 0) {
+    // remove all white space to turn into string token.
+    for (unsigned i=0;i<triMethod.size();i++) {
+      if (isspace(triMethod[i]))
+	triMethod[i] = '_';
+    }
+    os.write(triMethod.c_str());
+  } else {
+    os.write("UNKNOWN_TRIANGULATION_METHOD");
+  }
+  os.nl();
 
   os.write(cliques.size()); // number of cliques
   os.nl();
@@ -215,6 +232,10 @@ void
 Partition::
 readMaxCliques(iDataStreamFile& is)
 {
+  // read triangulation method used to produce these cliques.
+  is.read(triMethod,"triangulation method string");
+
+  // read number of cliques
   unsigned numCliques;
   is.read(numCliques,"numCliques value");
   if (numCliques == 0)
@@ -596,13 +617,32 @@ writePartitions(oDataStreamFile& os)
   os.write(S);
   os.nl();
 
-  if (boundaryMethod.length() > 0) {
-    // write out boundary method as a comment to the user.
-    os.nl();
-    os.writeComment("---\n");
-    os.writeComment("%s\n",boundaryMethod.c_str());
-    os.nl();  
+  // interface method
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- interface method\n");
+  os.write((leftInterface?"LEFT":"RIGHT"));
+  os.nl();
+
+
+  // write out information about method used to create current
+  // boundary
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- boundary method\n");
+  printf("about to write boundary method = %s\n",boundaryMethod.c_str());
+  if (boundaryMethod.size() > 0) {
+    // make sure string has no white space.
+    for (unsigned i=0;i<boundaryMethod.size();i++) {
+      if (isspace(boundaryMethod[i]))
+	boundaryMethod[i] = '_';
+    }
+    os.write(boundaryMethod.c_str());
+  } else {
+    os.write("UNKNOWN_BOUNDARY_METHOD");
   }
+  os.nl();  
+
 
   // next write it out in human readable form as a comment.
   os.nl();
@@ -790,6 +830,7 @@ GMTemplate::
 readPartitions(iDataStreamFile& is)
 {
   unsigned loc_S,loc_M;
+  string loc_I;
 
   is.read(loc_M,"M value");
 
@@ -823,6 +864,20 @@ readPartitions(iDataStreamFile& is)
       error("ERROR: reading file %s, S in file (%d) does not equal %d\n",
 	    is.fileName(),loc_S,S);
   }
+
+  // interface method
+  is.read(loc_I,"interface method value");
+  if (loc_I == "LEFT") {
+    leftInterface = true;
+  } else if  (loc_I == "RIGHT") {
+    leftInterface = false;
+  } else {
+      error("ERROR: reading file %s, interface in file must be 'LEFT' or 'RIGHT' but got string '%s'\n",
+	    is.fileName(),loc_I.c_str());
+  }
+
+  // read in information about method used to create current boundary
+  is.read(boundaryMethod,"boundary method string");
 
   vector <RandomVariable*> unrolled_rvs;
   map < RVInfo::rvParent, unsigned > positions;

@@ -1284,11 +1284,11 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // make sure there is at least one available entry
     assert (sv.numRemValuesUsed <= sv.remValues.size());
     if (sv.numRemValuesUsed >= sv.remValues.size()) {
-      // TODO: optimize this.
+      // TODO: optimize this growth rate.
       sv.remValues.resizeAndCopy(1+sv.remValues.size()*2);
       if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-	// Then the above resize just invalided all our pointers to keys,
-	// but it did not invalidate the array indices. Go through
+	// Then the above resize just invalided all sv.iRemHashMap's pointers to keys,
+	// but it did not invalidate its array indices. Go through
 	// and correct the keys within the hash table.
 	// TODO: think of a better way to do this that looses no efficiency.
 	for (unsigned i=0;i<sv.iRemHashMap.tableSize();i++) {

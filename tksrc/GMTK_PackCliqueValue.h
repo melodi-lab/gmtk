@@ -52,7 +52,9 @@ class PackCliqueValue {
 
   unsigned totalNumBits;
 
-  const unsigned unpackedVectorLength;
+  // @@@ should be const
+  // const unsigned unpackedVectorLength;
+  unsigned unpackedVectorLength;
 
   // Structure to hold information in going
   // from a packed word to an unpacked word.
