@@ -35,6 +35,11 @@ VCID("$Header$");
 // need to change the comment character above.
 #define PIPE_ASCII_FILES_THROUGH_CPP
 
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+#define CPP_DIRECTIVE_CHAR '#'
+#endif
+
+
 bool 
 ioDataStreamFile::errorReturn(char *from,char *msg)
 {
@@ -132,6 +137,10 @@ iDataStreamFile::prepareNext()
       char *s = fgets(buff,MAXLINSIZE,fh);
       if (s == NULL)
 	return false;
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+      if (*s == CPP_DIRECTIVE_CHAR)
+	continue;
+#endif
       char *cstart = ::index(s,COMMENTCHAR);
       if (cstart != NULL) {
 	if (cstart == buff)
@@ -157,6 +166,13 @@ iDataStreamFile::prepareNext()
     }
   }
   return true;
+}
+
+
+void iDataStreamFile::rewind()
+{
+  (void) fseek (fh, 0L, SEEK_SET);
+  state = GetNextLine;
 }
 
 

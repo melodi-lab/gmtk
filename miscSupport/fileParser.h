@@ -30,7 +30,6 @@ class ioDataStreamFile {
 
  public:
 
-  void rewind() { ::rewind(fh); }
   ioDataStreamFile(const char *name,bool _Binary = false) : 
     Binary(_Binary), _fileName(copyToNewStr(name)) {}
   ~ioDataStreamFile() { delete [] _fileName; }
@@ -51,6 +50,9 @@ class iDataStreamFile : public ioDataStreamFile {
   ~iDataStreamFile();
 
   bool prepareNext();
+  
+  void rewind();
+
 
   // These return true if a successful value is returned,
   // false otherwise. If 'msg' is provided and an error
