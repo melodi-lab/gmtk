@@ -98,11 +98,9 @@ Arg Arg::Args[] = {
       Arg::Opt,findBestBoundary,
       "Run the (exponential time) boundary algorithm or not."),
 
-#if 0
   Arg("traverseFraction",
       Arg::Opt,traverseFraction,
       "Fraction of current interface to traverse in boundary recursion."),
-#endif
 
   Arg("noBoundaryMemoize",
       Arg::Opt,noBoundaryMemoize,
@@ -268,7 +266,7 @@ main(int argc,char*argv[])
     exit(0);
   }
 
-  GMTemplate gm_template(fp);
+  GMTemplate gm_template(fp,traverseFraction);
 
   gm_template.noBoundaryMemoize = noBoundaryMemoize;
 

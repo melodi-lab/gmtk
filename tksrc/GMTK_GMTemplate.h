@@ -95,6 +95,9 @@ class GMTemplate : public IM
   // the file parser for this model.
   FileParser& fp;
 
+  // fraction of boundary to traverse (randomly).
+  double boundaryTraverseFraction;
+
   // Keep a number of member variables here for convenience.
   // The number of frames in this template
   const unsigned numFrames;
@@ -118,14 +121,16 @@ public:
   ////////////////////////////////////////////////////////////
   // constructors/destructors
   ////////////////////////////////////////////////////////////
-  GMTemplate(FileParser& _fp) 
+  GMTemplate(FileParser& _fp,double _boundaryTraverseFraction = 1.0) 
     : fp(_fp), 
+      boundaryTraverseFraction(_boundaryTraverseFraction),
       numFrames(_fp.numFrames()),
       prologueNumFrames(_fp.firstChunkFrame()),
       chunkNumFrames(_fp.lastChunkFrame() - _fp.firstChunkFrame() + 1),
       epilogueNumFrames(_fp.numFrames() - _fp.firstChunkFrame() - 1),
       firstChunkFrame(_fp.firstChunkFrame()),
-      lastChunkFrame(_fp.lastChunkFrame()),noBoundaryMemoize(false) { }
+      lastChunkFrame(_fp.lastChunkFrame()),noBoundaryMemoize(false)
+       { }
   ~GMTemplate() {}
 
   ////////////////////////////////////////////////////////////
