@@ -826,8 +826,8 @@ public:
 				     const unsigned nodeNumber,
 				     const logpr p)
   {
-    ceIterateAssignedNodesRecurse(part,nodeNumber,p);
-    // ceIterateAssignedNodesNoRecurse(part,p);
+    // ceIterateAssignedNodesRecurse(part,nodeNumber,p);
+    ceIterateAssignedNodesNoRecurse(part,p);
   }
 
 
@@ -1002,6 +1002,11 @@ class InferenceSeparatorClique : public IM
 
   // the original separator clique from which this object has been cloned.
   SeparatorClique& origin;
+  
+  // Two indices to get at the veterbi values for current separator.
+  // unsigned viterbiAccIndex;
+  // unsigned viterbiRemIndex;
+
 
   class RemainderValue {
   public:

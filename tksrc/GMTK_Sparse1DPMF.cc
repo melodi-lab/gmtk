@@ -394,7 +394,7 @@ Sparse1DPMF::emEndIteration()
 
   accumulatedProbability.floor();
   if (accumulatedProbability.zero()) {
-    warning("WARNING: Sparse 1D PMF named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+    infoMsg(IM::Warning,"WARNING: Sparse 1D PMF named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
   dense1DPMF->emEndIteration();
@@ -446,7 +446,7 @@ Sparse1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
     ofile.write(flag,"DPMF writing flag");
     if ( !emEmAllocatedBitIsSet() ) {
       // then we indeed have no probability values, so lets emit a warning
-      warning("WARNING: zero accumulator values for SPMF '%s'\n",
+      infoMsg(IM::SoftWarning,"WARNING: zero accumulator values for SPMF '%s'\n",
 	      name().c_str());
     }
     return;
@@ -487,7 +487,7 @@ Sparse1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
       // final command line during the accumulate-the-accumulator
       // stage that this object should not be trained. Therefore,
       // we emit a warning, read in the accumulators into dummy locations.
-      warning("WARNING: loading into dummy accumulators for fixed SPMF '%s'\n",
+      infoMsg(IM::Warning,"WARNING: loading into dummy accumulators for fixed SPMF '%s'\n",
 	      name().c_str());
       EMable::emLoadDummyAccumulators(ifile);
       return;

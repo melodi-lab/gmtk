@@ -99,7 +99,7 @@ public:
     // If the tree only had constant leaf expressions, we wouldn't
     // need this check here.
     if (!ncl->validSpmfIndex(spmfIndex)) {
-      error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
+      error("ERROR: Sparse CPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
 	    name().c_str(),dt->name().c_str(),spmfIndex,
 	    ncl->name().c_str(),ncl->spmfSize());
     }
@@ -115,13 +115,13 @@ public:
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
     spmfIndex = dt->query(parents);
     if (!ncl->validSpmfIndex(spmfIndex)) {
-      error("ERROR: MSCPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
+      error("ERROR: Sparse CPT '%s' uses DT '%s' with invalid SPMF index '%d' in collection '%s' of size %d\n",
 	    name().c_str(),dt->name().c_str(),spmfIndex,
 	    ncl->name().c_str(),ncl->spmfSize());
     }
     spmf = ncl->spmf(spmfIndex);
     if (spmf->card() != card()) {
-      warning("ERROR: MSCPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' (offset %d in collection '%s') having card %d",
+      warning("ERROR: Sparse CPT '%s' of card %d querying DT '%s' received index %d of SPMF '%s' (offset %d in collection '%s') having card %d",
 	      name().c_str(),
 	      card(),
 	      dt->name().c_str(),
@@ -162,26 +162,17 @@ public:
   iterator begin() {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
-    it.internalState = 0;
-    it.probVal = spmf->probAtEntry(0);
-    return it;
-  }
-
-  iterator end() {
-    assert ( bitmask & bm_basicAllocated );
-    iterator it(this);
-    it.internalState = spmf->length();
-    return it;
-  }
-  bool next(iterator &it) {
-    assert ( bitmask & bm_basicAllocated );
+    it.internalState = -1;
+    // store the current spmf
+    it.internalStatePtr = (void*) spmf;
     do {
       it.internalState++;
-      // don't increment past the last value.
-      if (it.internalState >= spmf->length()) {
-	it.internalState = spmf->length();
-	return false;
-      }
+      // We keep the following assertion as we
+      // must have that at least one entry is non-zero.
+      // The read code of the MDCPT should ensure this
+      // as sure all parameter update procedures.
+      assert (it.internalState < spmf->length());
+
       it.probVal = spmf->probAtEntry(it.internalState);
       // NOTE: this is a sparse CPT, so the user really shouldn't
       // be placing zeros in a sparse CPT. It might be the case,
@@ -190,8 +181,62 @@ public:
       // it essentially becomes zero, we just skip it over, never
       // placing it in a clique entry.
     } while (it.probVal.essentially_zero());
+    it.value = spmf->valueAtEntry(it.internalState); 
+    return it;
+  }
+
+  // returns an iterator for the first one.
+  void begin(iterator& it) {
+    assert ( bitmask & bm_basicAllocated );
+    it.setCPT(this);
+    it.internalState = -1;
+    // store the current spmf
+    it.internalStatePtr = (void*) spmf;
+    do {
+      it.internalState++;
+      // We keep the following assertion as we
+      // must have that at least one entry is non-zero.
+      // The read code of the MDCPT should ensure this
+      // as sure all parameter update procedures.
+      assert (it.internalState < spmf->length());
+
+      it.probVal = spmf->probAtEntry(it.internalState);
+      // NOTE: this is a sparse CPT, so the user really shouldn't
+      // be placing zeros in a sparse CPT. It might be the case,
+      // however, that during parameter training, some CPT entry
+      // converges to zero, so we keep this check here, and once
+      // it essentially becomes zero, we just skip it over, never
+      // placing it in a clique entry.
+    } while (it.probVal.essentially_zero());
+    it.value = spmf->valueAtEntry(it.internalState); 
+  }
+
+  bool next(iterator &it) {
+    Sparse1DPMF* const cur_spmf = (Sparse1DPMF*)it.internalStatePtr;
+    do {
+      it.internalState++;
+      // don't increment past the last value.
+      if (it.internalState >= cur_spmf->length()) {
+	it.internalState = cur_spmf->length();
+	return false;
+      }
+      it.probVal = cur_spmf->probAtEntry(it.internalState);
+      // NOTE: this is a sparse CPT, so the user really shouldn't
+      // be placing zeros in a sparse CPT. It might be the case,
+      // however, that during parameter training, some CPT entry
+      // converges to zero, so we keep this check here, and once
+      // it essentially becomes zero, we just skip it over, never
+      // placing it in a clique entry.
+    } while (it.probVal.essentially_zero());
+    it.value = spmf->valueAtEntry(it.internalState); 
     return true;
   }
+
+  bool end(iterator &it) {
+    Sparse1DPMF* const cur_spmf = (Sparse1DPMF*)it.internalStatePtr;
+    return (it.internalState == cur_spmf->length());
+  }
+
   virtual int valueAtIt(const int internalState) { 
     assert ( internalState >= 0 && internalState < spmf->length() );
     return spmf->valueAtEntry(internalState); 

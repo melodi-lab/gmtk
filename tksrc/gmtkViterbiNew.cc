@@ -75,13 +75,8 @@ bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 // input parameter/structure file handling
 static char *cppCommandOptions = NULL;
 static char *inputMasterFile=NULL;
-static char *outputMasterFile=NULL;
 static char *inputTrainableParameters=NULL;
 static bool binInputTrainableParameters=false;
-// static char *outputTrainableParameters="outParms%d.gmp";
-static char *outputTrainableParameters=NULL;
-static bool binOutputTrainableParameters=false;
-static bool writeParametersAfterEachEMIteration=true;
 static int allocateDenseCpts=0;
 
 
@@ -151,12 +146,8 @@ Arg Arg::Args[] = {
   // input parameter/structure file handling
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
   Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
-  Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
   Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
   Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
-  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
-  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
-  Arg("wpaeei",Arg::Opt,writeParametersAfterEachEMIteration,"Write Parameters After Each EM Iteration Completes"),
   Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Auto allocate undef CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 use random initial CPT values. arg = 2, use uniform values"),
   Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
 
@@ -506,7 +497,7 @@ main(int argc,char*argv[])
 
     logpr probe;
     if (island) {
-      error("Island for decoding not yet finished (but almost)\n");
+      // error("Island for decoding not yet finished (but almost)\n");
       unsigned numUsableFrames;
       myjt.collectDistributeIsland(numFrames,
 				   numUsableFrames,
@@ -552,7 +543,7 @@ main(int argc,char*argv[])
 
     if (dumpNames)
     {
-        if (segment==ofiles.size()) 
+        if (segment >= ofiles.size()) 
 	  error("More utterances than output files");
         FILE *fp = fopen(ofiles[segment].c_str(), "wb");
         if (!fp) {cout << "Unable to open " << ofiles[segment] << endl; exit(1);}

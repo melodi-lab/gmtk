@@ -65,7 +65,7 @@ public:
 
   logpr p(unsigned i) { 
     assert ( i < (unsigned)pmf.len() );
-    return pmf[i]; 
+    return pmf.ptr[i]; 
   }
   
   // also give access to next pmf

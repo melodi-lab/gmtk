@@ -124,7 +124,7 @@ DiagCovarVector::read(iDataStreamFile& is)
     }
   }
   if (numFloored > 0)
-    warning("WARNING: reading diagonal covariance matrix '%s' (from file '%s'), and %d variance values (out of %d) were  < current Floor = (%e), forcing them to floor.",
+    infoMsg(IM::Warning,"WARNING: reading diagonal covariance matrix '%s' (from file '%s'), and %d variance values (out of %d) were  < current Floor = (%e), forcing them to floor.",
 	    name().c_str(),
 	    is.fileName(),
 	    numFloored,
@@ -306,7 +306,7 @@ DiagCovarVector::preCompute()
     variances_inv[i] = 1.0/covariances[i];
     det *= covariances[i];
     if (det <= DBL_MIN) {
-      warning("WARNING: determinant of diagonal covariance matrix '%s' (=%e) is hiting minimum (=%e) after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",
+      infoMsg(IM::Warning,"WARNING: determinant of diagonal covariance matrix '%s' (=%e) is hiting minimum (=%e) after %d stages. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",
 	      name().c_str(),det,DBL_MIN,i);
     }
   }
@@ -550,7 +550,7 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",
+    infoMsg(IM::Warning,"WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",
 	    name().c_str(),
 	    accumulatedProbability.val());
     
@@ -606,7 +606,7 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
       }
     }
     if (prevNumFlooredVariances < numFlooredVariances) {
-      warning("WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
+      infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
 	      numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
@@ -723,7 +723,7 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
   // compute the next covariances.
 
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: shared diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
+    infoMsg(IM::Warning,"WARNING: shared diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
 	    name().c_str(),
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
@@ -785,7 +785,7 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
       }
     }
     if (prevNumFlooredVariances < numFlooredVariances) {
-      warning("WARNING: shared covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
+      infoMsg(IM::Warning,"WARNING: shared covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
 	      numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
@@ -887,7 +887,7 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",
+    infoMsg(IM::Warning,"WARNING: Diag covariance vec '%s' received only %e accumulated log probability in EM iteration, using previous values.",
 	    name().c_str(),
 	    accumulatedProbability.val());
     
@@ -948,7 +948,7 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
       }
     }
     if (prevNumFlooredVariances < numFlooredVariances) {
-      warning("WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
+      infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
 	      numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
@@ -1133,7 +1133,7 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
   // compute the next covariances.
 
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Shared diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
+    infoMsg(IM::Warning,"WARNING: Shared diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
 	    name().c_str(),
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
@@ -1195,7 +1195,7 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
       }
     }
     if (prevNumFlooredVariances < numFlooredVariances) {
-      warning("WARNING: shared covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
+      infoMsg(IM::Warning,"WARNING: shared covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
 	      numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
@@ -1304,7 +1304,7 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
   // compute the next covariances.
 
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
+    infoMsg(IM::Warning,"WARNING: Diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
 	    name().c_str(),
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
@@ -1366,7 +1366,7 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
       }
     }
     if (prevNumFlooredVariances < numFlooredVariances) {
-      warning("WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
+      infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
 	      numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
@@ -1440,7 +1440,7 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
   // we're ready to finish and compute the next covariances.
 
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
+    infoMsg(IM::Warning,"WARNING: Diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
 	    name().c_str(),
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
@@ -1507,7 +1507,7 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
       }
     }
     if (prevNumFlooredVariances < numFlooredVariances) {
-      warning("WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
+      infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
 	      numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
@@ -1583,7 +1583,7 @@ DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
     // be needed by another object for which the training bit is set.
     if (accumulatedProbability.zero()) {
       // then we indeed have no probability values, so lets emit a warning
-      warning("WARNING: zero accumulator values for %s '%s'\n",
+      infoMsg(IM::SoftWarning,"WARNING: zero accumulator values for %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
       // We write out '0' to state that 

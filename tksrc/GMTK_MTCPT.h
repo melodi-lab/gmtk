@@ -70,7 +70,7 @@ public:
 				  vector <int>& cards ) {
     _val = dt->query(parentValues,cards);
     if (_val >= card()) {
-      warning("ERROR: MTCPT '%s' of card %d querying DT '%s' received value %d",
+      warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
 	      name().c_str(),
 	      card(),
 	      dt->name().c_str(),
@@ -85,7 +85,7 @@ public:
   void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
     _val = dt->query(parents);
     if (_val >= card()) {
-      warning("ERROR: MTCPT '%s' of card %d querying DT '%s' received value %d",
+      warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
 	      name().c_str(),
 	      card(),
 	      dt->name().c_str(),
@@ -122,27 +122,40 @@ public:
     return probGivenParents(val);
   }
 
-  // returns an iterator for the first one.
+  // returns an iterator for the first one.  It *must* be that
+  // becomeAwareOfParentValues has already been called
   iterator begin() {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
     it.internalState = 0;
     it.probVal = 1.0;
+    it.value = _val;
     return it;
   }
 
-  iterator end() {
+
+  // returns an iterator for the first one.  It *must* be that
+  // becomeAwareOfParentValues has already been called
+  void begin(iterator& it) {
     assert ( bitmask & bm_basicAllocated );
-    iterator it(this);
-    it.internalState = 1;
-    return it;
+    it.setCPT(this);
+    // indicates internal state
+    it.internalState = 0;
+    it.probVal = 1.0;
+    it.value = _val;
   }
-  bool next(iterator &it) {
-    assert ( bitmask & bm_basicAllocated );
+
+  inline bool next(iterator &it) {
+    // this is an MTCPT so we end here immediately.
     it.internalState = 1;
-    it.probVal = 0.0;
     return false;
   }
+
+  bool end(iterator& it) {
+    return (it.internalState == 1);
+  }
+
+
   virtual int valueAtIt(const int internalState) { 
     assert ( internalState == 0);
     return _val;

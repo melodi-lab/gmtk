@@ -117,20 +117,34 @@ public:
 	it.probVal = mdcpt_ptr[it.internalState];
       } while (it.probVal.essentially_zero());
     }
+    it.value = it.internalState;
     return it;
   }
 
-  iterator end() {
+  // returns an iterator for the first one that is not zero prob.
+  void begin(iterator& it) {
     assert ( bitmask & bm_basicAllocated );
-    iterator it(this);
-    it.internalState = card();
-    return it;
+    it.setCPT(this);
+    it.internalState = 0;
+    it.probVal = *mdcpt_ptr;
+    if (it.probVal.essentially_zero()) {
+      // go to first entry which is not zero.
+      do {
+	it.internalState++;
+	// We keep the following assertion as we
+	// must have that at least one entry is non-zero.
+	// The read code of the MDCPT should ensure this
+	// as sure all parameter update procedures.
+	assert (it.internalState < card());
+      } while (mdcpt_ptr[it.internalState].essentially_zero());
+      it.probVal = mdcpt_ptr[it.internalState];
+    }
+    it.value = it.internalState;
   }
 
   // Given a current iterator, return the next one in the sequence.
   // Skip the zero probability ones.
   bool next(iterator &it) {
-    assert ( bitmask & bm_basicAllocated );
     // don't increment past the last value.
     do {
       it.internalState++;
@@ -138,9 +152,14 @@ public:
 	return false;
       it.probVal = mdcpt_ptr[it.internalState];
     } while (it.probVal.essentially_zero());
+    it.value = it.internalState;
     return true;
   }
 
+
+  bool end(iterator& it) {
+    return (it.internalState == card());
+  }
 
   ///////////////////////////////////
   int randomSample();

@@ -114,7 +114,7 @@ EMable::emStoreAccumulators(oDataStreamFile& ofile)
     // the training bit is set.
     if (accumulatedProbability.zero()) {
       // then we indeed have no probability values, so lets emit a warning
-      warning("WARNING: zero accumulator values for %s '%s'\n",
+      infoMsg(IM::SoftWarning,"WARNING: zero accumulator values for %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
       // We write out '0' to state that 
@@ -163,7 +163,7 @@ EMable::emLoadAccumulators(iDataStreamFile& ifile)
       // final command line during the accumulate-the-accumulator
       // stage that this object should not be trained. Therefore,
       // we emit a warning, read in the accumulators into dummy locations.
-      warning("WARNING: loading into dummy accumulators for fixed %s '%s'\n",
+      infoMsg(IM::Warning,"WARNING: loading into dummy accumulators for fixed %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
       // EMable::emLoadDummyAccumulators(ifile);
@@ -219,7 +219,7 @@ EMable::emAccumulateAccumulators(iDataStreamFile& ifile)
       // stage that this object should not be trained. Therefore, we
       // emit a warning, read in the accumulators into dummy
       // locations.
-      warning("WARNING: accumulating into dummy accumulators for fixed %s '%s'\n",
+      infoMsg(IM::Warning,"WARNING: accumulating into dummy accumulators for fixed %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
       // EMable::emLoadDummyAccumulators(ifile);

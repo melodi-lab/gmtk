@@ -426,7 +426,7 @@ MDCPT::randomSample()
     if (uniform <= sum)
       break;
     it++;
-  } while (it != end());
+  } while (!end(it));
   
   return it.val();
 }

@@ -456,7 +456,7 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Shared mean vec '%s' received only a total of %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+    infoMsg(IM::Warning,"WARNING: Shared mean vec '%s' received only a total of %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<nextMeans.len();i++)
@@ -484,7 +484,7 @@ MeanVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumulated
       }
     }
     if (previousMeansUsed > 0) 
-      warning("WARNING: Shared mean vec '%s' used %d previous means values because of low counts.",
+      infoMsg(IM::Warning,"WARNING: Shared mean vec '%s' used %d previous means values because of low counts.",
 	      name().c_str(),
 	      previousMeansUsed);
   }
@@ -589,7 +589,7 @@ MeanVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbab
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Shared mean vec '%s' received only a total of %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+    infoMsg(IM::Warning,"WARNING: Shared mean vec '%s' received only a total of %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<nextMeans.len();i++)
@@ -611,7 +611,7 @@ MeanVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbab
       }
     }
     if (previousMeansUsed > 0) 
-      warning("WARNING: Shared mean vec '%s' used %d previous means values because of low counts.",
+      infoMsg(IM::Warning,"WARNING: Shared mean vec '%s' used %d previous means values because of low counts.",
 	      name().c_str(),
 	      previousMeansUsed);
   }
@@ -682,7 +682,7 @@ MeanVector::emEndIterationNoSharing(const float*const partialAccumulatedNextMean
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+    infoMsg(IM::Warning,"WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<nextMeans.len();i++)
@@ -765,7 +765,7 @@ MeanVector::emEndIterationNoSharingAlreadyNormalized(const float*const accumulat
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+    infoMsg(IM::Warning,"WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<nextMeans.len();i++)
@@ -839,7 +839,7 @@ MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
     // be needed by another object for which the training bit is set.
     if (accumulatedProbability.zero()) {
       // then we indeed have no probability values, so lets emit a warning
-      warning("WARNING: zero accumulator values for %s '%s'\n",
+      infoMsg(IM::SoftWarning,"WARNING: zero accumulator values for %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
       // We write out '0' to state that 

@@ -52,6 +52,12 @@ class RandomVariable;
  * 
  * 
  */
+
+class MDCPT;
+class MSCPT;
+class MTCPT;
+class USCPT;
+
 class CPT : public EMable {
 
 protected:
@@ -158,21 +164,35 @@ public:
 
   class iterator {
     friend class CPT;
+    friend class MDCPT;
+    friend class MSCPT;
+    friend class MTCPT;
+    friend class USCPT;
+
     // An integer internal state which "hopefully" will
     // be enough for each derived class.
     CPT* cpt;
+  protected:
+    void setCPT(CPT* _cpt) { cpt = _cpt; }
   public:
+    // hold the value right here.
+    unsigned value;
+    // two variables to be used by CPTs
+    // to hold their internal state.
     int internalState;
-    // another name for internalState, the value of the RV.
-    int val() { return cpt->valueAtIt(internalState); }
+    void* internalStatePtr;
+    // return the value of the RV, the iterators make sure it is set
+    // right.
+    unsigned val() { return value; }
     // the probability of the variable being value 'val()'
     logpr probVal;
 
     iterator(CPT* _cpt) : cpt(_cpt) {}
     iterator(const iterator& it) :cpt(it.cpt) 
-    { internalState = it.internalState; probVal = it.probVal; }
-    // allow to construct an empty iterator, to be filled
-    // in later
+    { internalState = it.internalState; 
+      internalStatePtr = it.internalStatePtr; 
+      probVal = it.probVal; }
+    // allow to construct an empty iterator, to be filled in later
     iterator() : cpt(NULL) {}
 
      // prefix
@@ -190,12 +210,17 @@ public:
 
   // returns an iterator for the first one.
   virtual iterator begin() = 0;
-  // returns an iterator for the first one.
-  virtual iterator end() = 0;
+
+  // creates an iterator for the first one.
+  virtual void begin(iterator& it) = 0;
+  // returns true if iterate is at end state
+  virtual bool end(iterator &it) = 0;
   // Given a current iterator, return true if it
   // is a valid next value, otherwise return false so
   // a loop can terminate.
   virtual bool next(iterator &) = 0;
+
+
   // given an internal state of an iterator, return
   // the value corresponding to this random variable.
   virtual int valueAtIt(const int internalState) { return internalState; }

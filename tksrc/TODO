@@ -1797,4 +1797,33 @@ Wed Apr  7 11:51:32 2004
   - get compiling with intel compiler. Also, see:
     http://www.coyotegulch.com/reviews/intel_comp/intel_gcc_bench2.html
 
+Thu Apr  8 00:05:03 2004
+  - get island decoding working (need to have separator keep track of which
+    entry is current max rather than having it assume that its values
+    are set from right most clique.
+
+      C0 -- s0 -- C1 -- s1 -- C2 -- s2 -- C3 --
+               1>    2>    3>    <4          <b  
+
+    1> and 3> are ceGatherIntoRoot msgs
+    2> is a ceSendToNextPartition msg
+    <4 is a deReceveFromIncommingSep msg
+       and deScatterOutofRoot is (currently) a nop
+    <b is a deReceveFromIncommingSep msg from before.
+
+   The problem is that <4 assumes that it's 's2' is currently
+   set to appropriate values (max of C3 done by <b), but message 3>
+   changes clique C2 and thus changes s2 so that it no longer
+   holds max value.
+
+  Possible fix: add two variables in InferenceSep
+    // Two indices to get at the veterbi values for current separator.
+    // unsigned viterbiAccIndex;
+    // unsigned viterbiRemIndex;
+  to keep track of which entries in seps (such as s2) are max.
+  Then <4 would restore those values for each separator. 
+  and deScatterOutofRoot would compute them (since deScatterOutofRoot
+  is called at the time C3 is at its true max value).
+  
+
 

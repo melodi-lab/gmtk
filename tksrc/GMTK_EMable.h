@@ -28,12 +28,13 @@
 #include "logp.h"
 #include "machine-dependent.h"
 #include "sArray.h"
+#include "debug.h"
 
 #include "GMTK_NamedObject.h"
 
 class RandomVariable;
 
-class EMable : public NamedObject {
+class EMable : public NamedObject, public IM {
 
 protected:
 
