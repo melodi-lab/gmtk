@@ -61,11 +61,11 @@ class PackCliqueValue {
   struct ValLocator {
     // the starting word in a packed vector
     unsigned start;
-    // the mask in this first word
-    unsigned startMask;
     // the amount to right-shift the packed word
     // to get an unpacked word
     unsigned startRightShift;
+    // the mask in this first word
+    unsigned startMask;
 
     // if we overlap to next machine word, the mask
     // in that next word, these bits are to be or'd in
