@@ -3760,10 +3760,9 @@ triangulateCompletePartition(
  */
 void
 BoundaryTriangulate::
-triangulateFrontier( 
-  const set<RandomVariable*>& nodes,
-  vector<MaxClique>&          cliques
-  )
+triangulateFrontier(const set<RandomVariable*>& nodes,
+		    vector<MaxClique>&          cliques
+		    )
 {
   cliques.clear();
   vector <RandomVariable*> sortedNodes;
@@ -3842,10 +3841,7 @@ triangulateFrontier(
     printRVSet(stdout,frontier);
   }
   MaxClique::makeComplete(frontier);
-  vector<RandomVariable*> order;
-  // To check triangulation, uncomment the following, but see note below:
-  //    if (!getCliques(nodes,cliques))
-  //       error("ERROR: Frontier algorithm failed to triangulate graph\n");
+
   // Sometimes, but rarely, frontier might not triangulate the graph
   // since it doesn't know about the extra compulsory edges for the
   // completing the left and right interfaces of the current
@@ -3857,8 +3853,9 @@ triangulateFrontier(
   // the graph (such that the extra forced completion of the
   // interfaces are included in cliques or the result is
   // triangulated), then this next step is guaranteed not to change
-  // the graph, and it will be a
-  triangulateMaximumCardinalitySearch(nodes,cliques,order);
+  // the graph at all.
+  if (!triangulateMCSIfNotTriangulated(nodes,cliques))
+    infoMsg(High,"Frontier: MCS used to fix up frontier triangulation\n");
 
   return;
 }

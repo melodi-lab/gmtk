@@ -657,7 +657,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       } else if (separatorNodes.find(rv) != separatorNodes.end()) {
 	// separator node case.
 	if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
-	  // separator, unassigned in partition:
+	  // separator, unassigned in the current partition:
 
 	  if (upperBound)
 	    tmp_weight += log10((double)drv->cardinality);
@@ -673,18 +673,21 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	    // log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
 	    // tmp_weight += log10((double)drv->useCardinality());
 	  }
-
-
 	} else if (cumulativeUnassignedIteratedNodes.find(rv) !=
 		   cumulativeUnassignedIteratedNodes.end()) {
+	  // separator, assigned in this partition, but NOT assigned
+	  // in any previous clique.
 	  if (assignedNodes.find(rv) == assignedNodes.end()) {
-	    // separator, unassigned previously, not assigned here:
+	    // separator, assigned in this partition, unassigned previously, not assigned 
+	    // in current clique either:
 
 	    // Charge full amount since we do separator iteration over
-	    // something that is not assigned in any previous cliques.
+	    // something that is not assigned in any previous cliques
+	    // and nor in this clique.
 	    tmp_weight += log10((double)drv->cardinality);
 	  } else {
-	    // separator, unassigned previously, assigned here:
+	    // separator, assigned in this partition, unassigned
+	    // previously, assigned here in this clique:
 
 	    // This is the case we would like to avoid since for
 	    // separator driven iteration, we are iterating over all
@@ -696,12 +699,14 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	    // While it will come into this clique without zeros being
 	    // removed, this clique will remove them (since it is
 	    // assigned), so from a memory point of view, we could
-	    // charge useCard. We be conservative here, however, and
-	    // charge full card (which is computational cost).
+	    // charge useCard. For now, we are conservative here,
+	    // however, and charge full card (which is the computational
+	    // but not the memory cost).
 	    tmp_weight += log10((double)drv->cardinality);
 	  }
 	} else {
-	  // separator, assigned previously
+	  // separator, assigned in this partition, and assigned in a
+	  // previous clique.
 
 	  if (upperBound) 
 	    tmp_weight += log10((double)drv->cardinality);
@@ -879,7 +884,8 @@ MaxClique::prepareForUnrolling()
   // allocationUnitChunkSize = 16;
 
   // @@@ set to small size now to test out re-allocation schemes.
-  allocationUnitChunkSize = 1;
+  // allocationUnitChunkSize = 1;
+  allocationUnitChunkSize = 10000;
 
   if (packer.packedLen() > IMC_NWWOH) {
     // setup value hodler
@@ -888,7 +894,8 @@ MaxClique::prepareForUnrolling()
 					 1.25);
     // set up common clique hash tables 
     // TODO: add appropriate default staring hash sizes.
-    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2);
+    // new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2);
+    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),10000);
   } else {
     // then no need to do a hash table at all, just store the packed
     // values in a local integer.
@@ -1258,7 +1265,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   maxCEValue.set_to_zero();
 
   // TODO: optimize this.
-  cliqueValues.resize(3);
+  cliqueValues.resize(10000); // 3
 
 }
 
@@ -1877,7 +1884,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     assert (sv.numRemValuesUsed <= sv.remValues.size());
     if (sv.numRemValuesUsed >= sv.remValues.size()) {
       // TODO: optimize this growth rate.
-      sv.remValues.resizeAndCopy(1+sv.remValues.size()*2);
+      // start small but grow fast.
+      sv.remValues.resizeAndCopy(1+sv.remValues.size()*3); // 2
       if (sep.origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
 	// Then the above resize just invalided all sv.iRemHashMap's pointers to keys,
 	// but it did not invalidate its array indices. Go through
@@ -2405,10 +2413,10 @@ SeparatorClique::prepareForUnrolling()
       // set is larger than one machine word (unsigned).
       new (&accValueHolder) CliqueValueHolder(accPacker.packedLen(),
 					      // TODO: optimize this 1000 value.
-					      2,
+					      5000, // 2
 					      1.25);
       // TODO: optimize starting size.
-      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),2);
+      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),5000); // 2
     }
   }
 
@@ -2429,10 +2437,10 @@ SeparatorClique::prepareForUnrolling()
       // than one machine word (unsigned).
       new (&remValueHolder) CliqueValueHolder(remPacker.packedLen(),
 					      // TODO: optimize this starting sizse
-					      2,
+					      5000, // 2
 					      1.25);
       // TODO: optimize starting size
-      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),2);
+      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),5000); // 2
     }
   }
 
@@ -2659,7 +2667,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   } else {
     // start with something a bit larger
     // TODO: optimize this.
-    const unsigned starting_size = 3;
+    const unsigned starting_size = 2000;
     separatorValues.resize(starting_size);
     if (origin.hRemainder.size() > 0) {
       for (unsigned i=0;i<starting_size;i++) {
@@ -2674,7 +2682,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     }
     // need to re-construct the hash table.
     new (&iAccHashMap) VHashMapUnsignedUnsignedKeyUpdatable
-      (origin.accPacker.packedLen(),2);
+      (origin.accPacker.packedLen(),starting_size); // 2
     numSeparatorValuesUsed = 0;
   }
 
