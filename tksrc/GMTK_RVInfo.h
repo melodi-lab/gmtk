@@ -93,12 +93,12 @@ private:
     // probability according to the following formula:
     //
     //        penalty*p^scale+shift
-    // 
+    //
     // each of penalty, scale, and shift might be an immediate value
     // or might come from the observation file at a frame given by the
-    // child class. 
-    
-    struct WeightItem { 
+    // child class.
+
+    struct WeightItem {
       enum wtEnum { wt_NoWeight, wt_Constant, wt_Observation };
       wtEnum wt_Status;
       // the values of scale,penalty, or shift depending on the
@@ -110,7 +110,7 @@ private:
       unsigned lastFeatureElement;
       void clear() { wt_Status = wt_NoWeight; }
     };
-    
+
     WeightItem penalty;
     WeightItem scale;
     WeightItem shift;
@@ -120,9 +120,9 @@ private:
   };
 
   struct FeatureRange {
-    enum frEnum { fr_UnFilled, fr_Range, fr_FirstIsValue, 
+    enum frEnum { fr_UnFilled, fr_Range, fr_FirstIsValue,
 		  fr_FrameNumIsValue, fr_NumFramesIsValue,
-		  fr_SegmentNumIsValue, fr_NumSegmentsIsValue 
+		  fr_SegmentNumIsValue, fr_NumSegmentsIsValue
     };
     frEnum filled;
     unsigned firstFeatureElement;
@@ -137,6 +137,11 @@ private:
     unsigned intIndex;
     // Otherwise, if this is an string index, this is used.
     string nameIndex;
+    // the following is for FNGramCPT only
+    // when all FNGramCPT use all parents in each switching branch
+    // the size will be zero. Otherwise the size will equal to
+    // actual number of parents
+    vector <unsigned> fnparents;
     // in cases where this is a reference to a DT that
     // is supposed to reference via a collection, here
     // is the name of the collection.
@@ -150,7 +155,7 @@ private:
   // file and can be used as a selector during triangulation.
   float eliminationOrderHint;
 
-  // The position of this variable in the structure file 
+  // The position of this variable in the structure file
   // (i.e., this variable indicates the order in which
   // this variable is encountered when parsing). It is
   // used as a possible triangulation hint. Value -1
@@ -160,7 +165,7 @@ private:
   ///////////////////////////////////////////////////////////
   // data associated with a RV
 
-  // TODO: remove some of the friends above and make public interfaces to 
+  // TODO: remove some of the friends above and make public interfaces to
   //        these as read only.
   // the frame where it was defined (so is part of name really)
   unsigned frame;
@@ -169,7 +174,7 @@ private:
   // file name where this r.v. is first defined.
   string rvFileName;
   // rv's name
-  string name;    
+  string name;
 
   // fields from type
   Type rvType;
@@ -237,9 +242,9 @@ public:
     rv = v.rv;
   }
 
-  // clear out the current RV structure when we 
+  // clear out the current RV structure when we
   // are parsing and encounter a new RV.
-  void clear() { 
+  void clear() {
     name.erase();
 
     rvType = t_unknown;
