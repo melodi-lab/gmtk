@@ -49,25 +49,6 @@ double GaussianComponent::setVarianceFloor(const double floor)
 }
 
 
-////////////////////////////////////////////////////
-// The minimum accumulated probability of mean and covariance -like
-// objects. If the accumulated probability falls below this
-// value, then the mean or variance like object will not
-// update its values.
-logpr GaussianComponent::_minAccumulatedProbability = 
-GaussianComponent::setMinAccumulatedProbability(logpr((void*)NULL, (double)-600.0));
-
-
-logpr GaussianComponent::setMinAccumulatedProbability(const logpr floor) 
-{ 
-  // hard limit to be no less than exp(-700).
-  if (floor.val() < -700)
-    _minAccumulatedProbability = logpr((void*)NULL, (double)-700.0);
-  else 
-    _minAccumulatedProbability = floor; 
-  return _minAccumulatedProbability;
-}
-
 
 GaussianComponent::GaussianComponent(const int dim) : _dim(dim) 
 {
