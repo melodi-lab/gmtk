@@ -62,3 +62,5 @@ XXX- todo, make sure that chunk n:m is valid.
   assertions, etc.
 
 - look at and get rid of purify memory lost message
+
+- update make file so that -@ works for .o files.
