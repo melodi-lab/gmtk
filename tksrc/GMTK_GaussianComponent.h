@@ -43,7 +43,7 @@ protected:
   // dim = dimensionality of this Gaussian.
   // Typically, this will be the number of features over which
   // this Gaussian applies.
-  const int _dim;
+  const unsigned _dim;
 
 public:
 
@@ -61,7 +61,7 @@ public:
   static double varianceFloor();
   static double setVarianceFloor(const double floor);
 
-  int dim() const { return _dim; }
+  unsigned dim() const { return _dim; }
 
 
   //////////////////////////////////////////////
