@@ -22,38 +22,45 @@
  * n_frames: max number of frames in buffer
  * n_floats: number of continuous features
  * n_ints: number of discrete features
+ * max_floats: max number of floats per frame in any of the input streams
+ * max_ints: max number of ints per frame in any of the input streams
  */
 
 
 ObservationMatrix::ObservationMatrix(size_t n_frames, 
 				     unsigned n_floats, 
-				     unsigned n_ints) {
+				     unsigned n_ints,
+				     unsigned max_floats,
+				     unsigned max_ints) {
+				     
 
   _numFrames = n_frames;
   _numContinuous = n_floats;
   _numDiscrete = n_ints;
   _numFeatures = _numContinuous + _numDiscrete;
+  _maxContinuous = max_floats;
+  _maxDiscrete = max_ints;
   
-  _stride = _numFeatures; // for now
+  _stride = _numFeatures; 
   
-  features.resize(_numFrames * _stride);
+  features.resize(_numFrames * _numFeatures); // actual observation buffer
   
-  fea.resize(_numContinuous); // temporary buffers
-  
-  disc_fea.resize(_numDiscrete);
-  
+  cont_fea.resize(_maxContinuous); // temporary buffers for 1 frame of input
+  disc_fea.resize(_maxDiscrete);   
+
   _bufSize = _numFrames;
+
+  // structure of observation matrix: in each frame, all continuous
+  // features come first, followed by all discrete features
   
-  _cont_p = features.ptr;
-  _disc_p = features.ptr + _numContinuous;
+  _cont_p = features.ptr;  // pointer to continuous block 
+  _disc_p = features.ptr + _numContinuous; // pointer to discrete block
 }
 
 
 ObservationMatrix::~ObservationMatrix() {
-
-  printf("deleting observation matrix\n");
-  ;
   
+  ;
 }
 
 
@@ -82,18 +89,20 @@ ObservationMatrix::readBinFloats(unsigned n_floats, FILE *f,
 
   unsigned n_read;	
   
-  if (_cont_p == NULL ) {
+  
+  if (_cont_p == NULL) {
     warning("ObservationMatrix::readBinFloats: Data buffer is NULL\n");
     return 0;
   }
-  if (fea.ptr == NULL) {
+
+  if (cont_fea.ptr == NULL) {
     warning("ObservationMatrix::readBinFloats: Temporary buffer is NULL\n");
     return 0;
   }
 
   // read complete frame
   
-  n_read = fread((float *)fea.ptr,sizeof(float),n_floats,f);
+  n_read = fread((float *)cont_fea.ptr,sizeof(float),n_floats,f);
   
   if (n_read != n_floats) {
     warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
@@ -103,14 +112,23 @@ ObservationMatrix::readBinFloats(unsigned n_floats, FILE *f,
 
   // select features
   
-  for (BP_Range::iterator it = cont_rng->begin(); it <= cont_rng->max(); it++,_cont_p++) {
+  for (BP_Range::iterator it = cont_rng->begin(); it <= cont_rng->end(); it++,_cont_p++) {
+
     int i = (int) *it;
     float *fp = (float *)_cont_p;
+
+    if (fp == NULL) {
+      warning("OvservationMatrix::readBinFloats: memory error reading %i'th feature",i);
+      return 0;
+    }
+
     if (bswap) 
-      swapb_vi32_vi32(1,(const int *)&fea.ptr[i],(int *)fp);
+      swapb_vi32_vi32(1,(const int *)&cont_fea.ptr[i],(int *)fp);
     else
-      *fp = fea.ptr[i];
+      *fp = cont_fea.ptr[i];
+    
   }
+
   return 1;
 }
 
@@ -125,26 +143,32 @@ ObservationMatrix::readPFloats(InFtrLabStream_PFile *str, BP_Range *cont_rng) {
 
 
   unsigned n_read;
-  
+
   if (_cont_p == NULL) {
     warning("ObservationMatrix::readPFLoats: Data buffer is NULL\n");
     return 0;
   }
   
-  if (fea.ptr == NULL) {
+  if (cont_fea.ptr == NULL) {
     warning("ObservationMatrix::readPFLoats: Temporary buffer is NULL\n");
     return 0;
   }
   
-  if ((n_read = str->read_ftrslabs((size_t)1,(float *)fea.ptr,NULL)) != 1) {
+  if ((n_read = str->read_ftrslabs((size_t)1,(float *)cont_fea.ptr,NULL)) != 1) {
     warning("ObservationMatrix::readPFLoats: read failed\n");
     return 0;
   }
-  
-  for (BP_Range::iterator it = cont_rng->begin(); it <= cont_rng->max(); it++,_cont_p++) {
+
+  for (BP_Range::iterator it = cont_rng->begin(); it <= cont_rng->end(); it++,_cont_p++) {
     int i = (int) *it;
     float *fp = (float *)_cont_p;
-    *fp = fea.ptr[i];
+
+    if (fp == NULL) {
+      warning("ObservationMatrix::readPFloats: memory error trying to read %i'th feature",i);
+      return 0;
+    }
+
+    *fp = cont_fea.ptr[i];
   }
 
   return 1;
@@ -166,23 +190,30 @@ ObservationMatrix::readAscFloats(unsigned n_floats,
     warning("ObservationMatrix::readAscFloats: Data buffer is NULL\n");
     return 0;
   }
-  if (fea.ptr == NULL) {
+
+  if (cont_fea.ptr == NULL) {
     warning("ObservationMatrix::readAscFloats: Temporary buffer is NULL\n");
     return 0;
   }
 	
-  float *fea_p = fea.ptr;
+  float *fea_p = cont_fea.ptr;
   
   for (unsigned n = 0; n < n_floats; n++,fea_p++)
-    if (!(fscanf(f,"%e",fea_p))) {
+    if (fscanf(f,"%e",fea_p) != 1) {
       warning("ObservationMatrix::readAscFloats: couldn't read %i'th item in frame\n",n);
       return 0;
     }
   
-  for (BP_Range::iterator it = cont_rng->begin(); it <= cont_rng->max(); it++,_cont_p++) {
+  for (BP_Range::iterator it = cont_rng->begin(); it <= cont_rng->end(); it++,_cont_p++) {
     int i = (int) *it;
     float *fp = (float *)_cont_p;
-    *fp = fea.ptr[i];
+
+    if (fp == NULL) {
+      warning("ObservationMatrix::readAscFloats: memory error trying to read %i'th feature",i);
+      return 0;
+    }
+
+    *fp = cont_fea.ptr[i];
   }
   return 1;
 }
@@ -211,8 +242,14 @@ ObservationMatrix::readPInts(InFtrLabStream_PFile *str, BP_Range *disc_rng) {
     warning("ObservationMatrix::readPInts: read failed\n");
     return 0;
   }
-  for (BP_Range::iterator it = disc_rng->begin(); it <= disc_rng->max(); it++,_disc_p++) {
+  for (BP_Range::iterator it = disc_rng->begin(); it <= disc_rng->end(); it++,_disc_p++) {
     int i = (int)*it;
+
+    if ( _disc_p == NULL) {
+      warning("ObservationMatrix::readPInts: memory error trying to read %i'the feature",i);
+      return 0;
+    }
+
     (Int32 *) _disc_p = disc_fea.ptr[i];
   }
   return 1;
@@ -250,9 +287,17 @@ ObservationMatrix::readBinInts(unsigned n_ints, FILE *f, BP_Range *disc_rng,
   }
 
   
-  for (BP_Range::iterator it = disc_rng->begin(); it <= disc_rng->max(); it++,_disc_p++) {
-    int i = (int)*it;
+  for (BP_Range::iterator it = disc_rng->begin(); it <= disc_rng->end(); it++,_disc_p++) {
+  
+  int i = (int)*it;
+
     Int32 *ip = (Int32 *)_disc_p;
+
+    if (ip == NULL) {
+      warning("ObservationMatrix:::readBinInts: memory error trying to read %i'th feature",i);
+      return 0;
+    }
+
     if (bswap) 
       *ip  = swapb_i32_i32(disc_fea.ptr[i]);
     else 
@@ -271,7 +316,6 @@ ObservationMatrix::readBinInts(unsigned n_ints, FILE *f, BP_Range *disc_rng,
 bool
 ObservationMatrix::readAscInts(unsigned n_ints, FILE *f, BP_Range *disc_rng) {
 
-  unsigned i;
 
   if (_disc_p == NULL) {
     warning("ObservationMatrix::readAscInts: Data buffer is NULL");
@@ -284,16 +328,25 @@ ObservationMatrix::readAscInts(unsigned n_ints, FILE *f, BP_Range *disc_rng) {
   }
 
   Int32 *dp = disc_fea.ptr;
-  for (i = 0; i < n_ints; i++,dp++)
-    if (!(fscanf(f,"%i",dp))) {
-      warning("ObservationMatrix::readAscInts: couldn't read %i'th item in frame\n",i);
+ 
+  for (int a = 0; a < n_ints; a++,dp++) {
+    if (fscanf(f,"%i",dp) != 1) {
+      warning("ObservationMatrix::readAscInts: couldn't read %i'th item in frame\n",a);
       return 0;
     }
+  }
   
-  
-  for (BP_Range::iterator it = disc_rng->begin(); it <= disc_rng->max(); it++,_disc_p++) {
+  for (BP_Range::iterator it = disc_rng->begin(); it <= disc_rng->end(); it++,_disc_p++) {
+
     int i = (int)*it;
-    (Int32 *) _disc_p = disc_fea.ptr[i];
+
+    Int32 *ip = (Int32 *)_disc_p;
+
+    if (ip == NULL) {
+      warning("ObservationMatrix:::readAscInts: memory error trying to read %i'th feature",i);
+      return 0;
+    } 
+    *ip = disc_fea.ptr[i];
   }
   return 1;
 }
@@ -311,7 +364,9 @@ ObservationMatrix::readFrame(size_t frameno,
                              int numFiles) {
 
   FileDescription *f;
+  unsigned num_floats,num_ints;
   int i;
+
   
   for (i = 0; i < numFiles; i++) {
     
@@ -319,40 +374,46 @@ ObservationMatrix::readFrame(size_t frameno,
     
     if (f == NULL)
       error("ObservationMatrix::readFrame: Cannot access file descriptor %i\n",i);
+
+    num_floats = f->nFloats;
+    
+    assert(num_floats <= _maxContinuous);
+
+    num_ints = f->nInts;
+
+    assert(num_ints <= _maxDiscrete);
 	
     switch(f->dataFormat) {
 
     case PFILE:
-      if (f->nFloats > 0)
+      if (num_floats > 0)
 	if (!(readPFloats(f->pfile_istr,f->cont_rng)))
-	  error("ObservationMatrix::readFrame: can't read floats for frame %li from file %i\n",frameno,i);
+	  error("ObservationMatrix::readFrame: can't read floats for frame %li from stream %i\n",frameno,i);
       
-      if (f->nInts > 0)
+      if (num_ints > 0)
 	if (!(readPInts(f->pfile_istr,f->disc_rng)))
-	  error("ObservationMatrix::readFrame: can't read ints for frame %li from file %i\n",frameno,i);
+	  error("ObservationMatrix::readFrame: can't read ints for frame %li from stream %i\n",frameno,i);
       break;
 
     case RAWASC:
-      if (f->nFloats > 0) 
-	if (!(readAscFloats(f->nFloats,f->curDataFile,f->cont_rng)))
-	  error("ObservationMatrix::readFrame: can't read floats for frame %li from file %i\n",frameno,i);
+      if (num_floats > 0) 
+	if (!(readAscFloats(num_floats,f->curDataFile,f->cont_rng)))
+	  error("ObservationMatrix::readFrame: can't read floats for frame %li from stream %i\n",frameno,i);
       
-      if (f->nInts > 0)
-	 if (!(readAscInts(f->nInts,f->curDataFile,f->disc_rng)))
-	   error("ObservationMatrix::readFrame: can't read ints for frame %li from file %i\n",frameno,i);
+      if (num_ints > 0)
+	 if (!(readAscInts(num_ints,f->curDataFile,f->disc_rng)))
+	   error("ObservationMatrix::readFrame: can't read ints for frame %li from stream %i\n",frameno,i);
       break;
 
     case RAWBIN:
     case HTK:
-
-      if (f->nFloats > 0) 
-	if (!(readBinFloats(f->nFloats,f->curDataFile,f->cont_rng,f->bswap)))
-	  error("ObservationMatrix::readFrame: can't read floats for frame %li from file %i \n",frameno,i);
+      if (num_floats > 0) 
+	if (!(readBinFloats(num_floats,f->curDataFile,f->cont_rng,f->bswap)))
+	  error("ObservationMatrix::readFrame: can't read floats for frame %li from stream %i \n",frameno,i);
       
-      if (f->nInts > 0) {
-	if (!(readBinInts(f->nInts,f->curDataFile,f->disc_rng,f->bswap)))
-	  error("ObservationMatrix::readFrame: can't read ints for frame %li from file %i \n",frameno,i);
-      }
+      if (num_ints > 0) 
+	if (!(readBinInts(num_ints,f->curDataFile,f->disc_rng,f->bswap)))
+	  error("ObservationMatrix::readFrame: can't read ints for frame %li from stream %i \n",frameno,i);
       break;
     default:
       error("Unsupported data file format\n");	
