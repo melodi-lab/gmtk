@@ -19,12 +19,12 @@
 #ifndef GMTK_RANDOMVARIABLE
 #define GMTK_RANDOMVARIABLE
 
-#include "sArray.h"
-#include "logp.h"
-
-#include "GMTK_RngDecisionTree.h"
 #include <vector>
 #include <string>
+
+#include "sArray.h"
+#include "logp.h"
+#include "GMTK_RngDecisionTree.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // This is the integer type of the values that a discrete random variable
