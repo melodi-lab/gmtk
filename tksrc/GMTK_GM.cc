@@ -748,25 +748,36 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
     map<int,int> slice_size_for_frame;
     map<int,vector<RandomVariable *>::iterator> start_of_slice, end_of_slice;
 
+    // put the unrolled variables here
+    // start with the variables before the tail segment
+    vector<RandomVariable *> unrolled;
+    for (unsigned i=0; i<node.size(); i++)
+        if (node[i]->timeIndex <= last_frame)
+            unrolled.push_back(node[i]);
+
     // find out how big each slice is
     vector<RandomVariable *>::iterator vi;
     for (vi=node.begin(); vi!=node.end(); vi++)
         end_of_slice[(*vi)->timeIndex] = vi; 
-    for (vi=node.end(); vi>=node.begin(); vi--)
+    for (vi=node.end()-1; vi>=node.begin(); vi--)
         start_of_slice[(*vi)->timeIndex] = vi;
     for (int i=first_frame; i<=last_frame; i++)
         slice_size_for_frame[i] = end_of_slice[i]-start_of_slice[i]+1;
 
-    int cur_slices = (*node.rbegin())->timeIndex;  
     // number of slices before unrolling
 
     // for all existing variables, map their address to the slice and offset
     map<RandomVariable *, pair<int,int> > slice_info_for;
+    map<pair<int, int>, RandomVariable *> rv_for_slice;
+    int cur_slices = (*node.rbegin())->timeIndex;
     for (int i=0; i<=cur_slices; i++)
     {
         int offset = 0;
-        for (vi=start_of_slice[i]; vi<=end_of_slice[i]; vi++)
-            slice_info_for[*vi] = pair<int,int>(i, offset++);
+        for (vi=start_of_slice[i]; vi<=end_of_slice[i]; vi++,offset++)
+        {
+            slice_info_for[*vi] = pair<int,int>(i, offset);
+            rv_for_slice[pair<int,int>(i,offset)] = *vi;
+        }
     }
     
     // will need to know which nodes are in the tail segment. record it now
@@ -776,7 +787,6 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
             in_tail.insert(node[i]);
 
     // duplicate the range over and over again
-    map<pair<int, int>, RandomVariable *> rv_for_slice;
     int cs = last_frame+1;  // slice being created
     for (int i=0; i<times; i++)
     {
@@ -788,64 +798,72 @@ void GMTK_GM::unroll(int first_frame, int last_frame, int times)
                 RandomVariable *nrv = (*vi)->clone();  // new random variable
                 nrv->timeIndex = cs;
                 rv_for_slice[pair<int,int>(cs, k)] = nrv; 
-                node.push_back(nrv);  // ok because no pointers to it
+                unrolled.push_back(nrv);  
             }
         assert(vi==end_of_slice[last_frame]+1);
     }
 
+    // add the tail nodes in the network
+    for (vi=end_of_slice[last_frame+1]; vi!=node.end(); vi++)
+        unrolled.push_back(*vi);
+
     // will add the parents again to set up the allPossibleChildren and 
     // allPossibleParents arrays, so clear them out now
-    for (unsigned i=0; i<node.size(); i++)
+    for (unsigned i=0; i<unrolled.size(); i++)
     {
-        node[i]->allPossibleChildren.clear(); 
-        node[i]->allPossibleParents.clear();
+        unrolled[i]->allPossibleChildren.clear(); 
+        unrolled[i]->allPossibleParents.clear();
     }
    
     // update all the parents in the network
     int period = last_frame-first_frame+1;
-    for (unsigned i=0; i<node.size(); i++)
-        if (node[i]->timeIndex <= last_frame)
+    for (unsigned i=0; i<unrolled.size(); i++)
+        if (unrolled[i]->timeIndex <= last_frame)
             continue;  // parents unchanged
         else 
         {
-            if (in_tail.count(node[i])==1)
+            if (in_tail.count(unrolled[i])==1)
             {
                 // the parents in the tail segment point to variables in the 
                 // original (unrolled) frames
                 // update them to point where they should
                 // also update the time index to the right thing
-                node[i]->timeIndex += times*period;
+                unrolled[i]->timeIndex += times*period;
             }
 
             // how many periods ahead are we?
-            int periods = (node[i]->timeIndex-last_frame-1)/period + 1; 
+            int periods = (unrolled[i]->timeIndex-last_frame-1)/period + 1; 
+            if (in_tail.count(unrolled[i])==1)
+                periods = times;  // override
 
-            for (unsigned j=0; j<node[i]->switchingParents.size(); j++)
+            for (unsigned j=0; j<unrolled[i]->switchingParents.size(); j++)
             {
                 pair<int, int> slice_info = 
-                    slice_info_for[node[i]->switchingParents[j]];
+                    slice_info_for[unrolled[i]->switchingParents[j]];
                 int pslice = slice_info.first + periods*period;
                 int poffset = slice_info.second;
-                node[i]->switchingParents[j] = 
+                unrolled[i]->switchingParents[j] = 
                     rv_for_slice[pair<int,int>(pslice, poffset)];
             }
 
-            for (unsigned j=0; j<node[i]->conditionalParentsList.size(); j++)
-                for (unsigned k=0; k<node[i]->conditionalParentsList[j].size();
-                k++)
+            for (unsigned j=0; j<unrolled[i]->conditionalParentsList.size();j++)
+                for (unsigned k=0; 
+                k<unrolled[i]->conditionalParentsList[j].size(); k++)
                 {
                     pair<int, int> slice_info = 
-                        slice_info_for[node[i]->conditionalParentsList[j][k]];
+                    slice_info_for[unrolled[i]->conditionalParentsList[j][k]];
                     int pslice = slice_info.first + periods*period;
                     int poffset = slice_info.second;
-                    node[i]->conditionalParentsList[j][k] =
+                    unrolled[i]->conditionalParentsList[j][k] =
                         rv_for_slice[pair<int,int>(pslice, poffset)];
                 }
         }
     
-        // update all the allPossibleChildren arrays -- add the parents 
-        // all over again
-        for (unsigned i=0; i<node.size(); i++)
-            node[i]->setParents(node[i]->switchingParents, 
-                                node[i]->conditionalParentsList);
+    // update all the allPossibleChildren arrays -- add the parents 
+    // all over again
+    for (unsigned i=0; i<unrolled.size(); i++)
+        unrolled[i]->setParents(unrolled[i]->switchingParents, 
+                            unrolled[i]->conditionalParentsList);
+
+    node = unrolled;
 }
