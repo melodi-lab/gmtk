@@ -529,6 +529,26 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   return sameNumSamples;
 }
 
+
+// Overloaded method that returns the number of frames in a given segment
+unsigned ObservationMatrix::numFrames(unsigned segno) {
+  unsigned num_frames=0;
+
+
+  // max_n_samps and prrng_n_samps are initialized in the next fct call
+  unsigned max_n_samps,prrng_n_samps;  
+  checkIfSameNumSamples(segno,max_n_samps,prrng_n_samps);
+
+  // maybe move this to the end after potential upsampling takes place
+  if (_totalSkip >= prrng_n_samps)
+    error("ERROR: number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
+  
+  num_frames = prrng_n_samps - _totalSkip;
+
+  return num_frames;
+}
+
+
 // Modified to read whole sentences at once instead of frame by frame
 // That's also needed because we need to manipulate buffers (to repeat
 // frames for example)
