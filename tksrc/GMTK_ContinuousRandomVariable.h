@@ -65,7 +65,7 @@ public:
   void restoreCachedValue() {}
   /////////////////////////////////////////////////////////////////////////
   // stores a variable's value elsewhere
-  void storeValue(VariableValue &vv) {vv.ival = val;}
+  void storeValue(VariableValue &vv) {vv.fval = val;}
   /////////////////////////////////////////////////////////////////////////
   // sets a variables value as specified
   void setValue(VariableValue &vv) {val = vv.ival;}
@@ -73,6 +73,8 @@ public:
 
   void makeRandom() {}
   void makeUniform() {}
+
+  void tieParameters(RandomVariable*const other) {}
 
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
@@ -83,6 +85,9 @@ public:
   void emStartIteration() {}
   void emIncrement(logpr posterior) {}
   void emEndIteration() {}
+  void emClearAllocatedBit() { } 
+  void emClearSwappedBit() { }
+  void emSwapCurAndNew() { }
   ///////////////////////////////////////////////////
 
 

@@ -28,6 +28,8 @@
 #include "GMTK_PackedSparseRealMatrix.h"
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
+#include "GMTK_RandomVariable.h"
+
 
 class DlinkMatrix : public EMable, public NamedObject  {
 
@@ -64,9 +66,8 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emInit() {}
   void emStartIteration() {}
-  void emIncrement(logpr prob) {}
+  void emIncrement(RandomVariable*,logpr prob) {}
   void emEndIteration() {}
   void emSwapCurAndNew() {}
   void emStoreAccumulators(oDataStreamFile& ofile) {}

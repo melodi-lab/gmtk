@@ -1495,7 +1495,7 @@ FileParser::ensureS_SE_E_NE()
  *-----------------------------------------------------------------------
  */
 void
-FileParser::associateWithDataParams()
+FileParser::associateWithDataParams(bool allocateIfNotThere)
 {
   // now set up rest of info about RV such as
   // - feature range
@@ -1572,29 +1572,73 @@ FileParser::associateWithDataParams()
 	    if (GM_Parms.mdCptsMap.find(
 		      rvInfoVector[i].listIndices[j].nameIndex) ==
 		GM_Parms.mdCptsMap.end()) {
-	      error("Error: RV \"%s\" at frame %d (line %d), conditional parent MDCPT \"%s\" doesn't exist\n",
-		    rvInfoVector[i].name.c_str(),
-		    rvInfoVector[i].frame,
-		    rvInfoVector[i].fileLineNumber,
-		    rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      if (!allocateIfNotThere) {
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent MDCPT \"%s\" doesn't exist\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      }
+	      else {
+		// allocate the MDCPT with name and install it.
+		MDCPT* mdcpt = new MDCPT();
+		mdcpt->setName(rvInfoVector[i].listIndices[j].nameIndex);
+		mdcpt->
+		  setNumParents
+		      (rvInfoVector[i].conditionalParents[j].size());
 
+		for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+
+
+		  rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+			      rvInfoVector[i].frame
+			      +rvInfoVector[i].conditionalParents[j][k].second);
+		  map < rvParent , unsigned >::iterator it;
+		  it = nameRVmap.find(pp);
+		  if (it == nameRVmap.end()) {
+		    // this really shouldn't happen at this point since
+		    // it should have been checked somewhere else,
+		    // but we include the check nonetheless
+		    error("Error: parent random variable \"%s\" at" 
+			  "frame %d does not exist\n",
+			  rvInfoVector[i].conditionalParents[j][k].first.c_str(),
+			  rvInfoVector[i].conditionalParents[j][k].second);
+		  }
+		  mdcpt->setNumCardinality(k,
+					   rvInfoVector[(*it).second].rvCard);
+		}
+		mdcpt->setNumCardinality(rvInfoVector[i].conditionalParents[j].size(),
+					 rvInfoVector[i].rvCard);
+		mdcpt->allocateBasicInternalStructures();
+
+		GM_Parms.mdCpts.push_back(mdcpt);
+		GM_Parms.mdCptsMap[rvInfoVector[i].listIndices[j].nameIndex]
+		  = mdcpt;
+		cpts[j] = mdcpt;
+	      }
+	    } else {
+	      // otherwise add it
+	      cpts[j] = GM_Parms.mdCptsMap[
+		  rvInfoVector[i].listIndices[j].nameIndex
+	      ];
 	    }
-	    // otherwise add it
-	    cpts[j] = GM_Parms.mdCptsMap[
-		rvInfoVector[i].listIndices[j].nameIndex
-	    ];
 	  } else {
 	    if (rvInfoVector[i].listIndices[j].intIndex >= 
 		GM_Parms.mdCpts.size()) {
-	      error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
-		    rvInfoVector[i].name.c_str(),
-		    rvInfoVector[i].frame,
-		    rvInfoVector[i].fileLineNumber,
-		    rvInfoVector[i].listIndices[j].intIndex);
+	      if (!allocateIfNotThere) {
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      rvInfoVector[i].listIndices[j].intIndex);
+	      } else {
+		error("Can't allocate with integer cpt index");
+	      }
+	    } else {
+	      // otherwise add it
+	      cpts[j] =
+		GM_Parms.mdCpts[rvInfoVector[i].listIndices[j].intIndex];
 	    }
-	    // otherwise add it
-	    cpts[j] =
-	      GM_Parms.mdCpts[rvInfoVector[i].listIndices[j].intIndex];
 	  }
 
 	  // now check to make sure this cpt matches this
@@ -1714,10 +1758,9 @@ FileParser::associateWithDataParams()
 	  assert ( 0 );
 	}
 
-
-	for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
-
-	}
+	// loop over condtional parents
+	// for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+	// }
       }
       // now add the cpts to the rv
       rv->setCpts(cpts);

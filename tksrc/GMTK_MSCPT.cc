@@ -356,6 +356,36 @@ MSCPT::makeUniform()
 
 
 
+////////////////////////////////////////////////////////////////////
+//        EM Routines
+////////////////////////////////////////////////////////////////////
+
+void
+MSCPT::emStartIteration()
+{
+  error("Not implemented");
+}
+
+
+void
+MSCPT::emIncrement(RandomVariable* rv, logpr prob)
+{
+  error("Not implemented");
+}
+
+void
+MSCPT::emEndIteration()
+{
+  error("Not implemented");
+}
+
+void
+MSCPT::emSwapCurAndNew()
+{
+  error("Not implemented"); 
+}
+
+
 
 ////////////////////////////////////////////////////////////////////
 //        Test Driver

@@ -27,7 +27,9 @@
 
 #include "machine-dependent.h"
 
-class GaussianCommon {
+#include "GMTK_NamedObject.h"
+
+class GaussianCommon : public NamedObject {
 
   ///////////////////////////////////////////////////////
   // dim = dimensionality of this Gaussian.

@@ -30,6 +30,8 @@
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_NamedObject.h"
+#include "GMTK_EMable.h"
+
 
 /*
  * Generic interface class to all CPT random variables.
@@ -46,7 +48,7 @@
  * 
  * 
  */
-class CPT : public NamedObject {
+class CPT : public NamedObject, public EMable {
 
 protected:
 
