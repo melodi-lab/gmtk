@@ -56,6 +56,9 @@
 ////////////////////////////////////////////////////////////////////
 
 VCID("$Header$");
+bool JunctionTree::jtWeightUpperBound = false;
+bool JunctionTree::separatorIntersection = true;
+bool JunctionTree::probEvidenceTimeExpired = false;
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -97,9 +100,6 @@ union_1_2_to_3(const set<RandomVariable*>& A,
 	    B.begin(),B.end(),
 	    inserter(C,C.end()));
 }
-
-bool JunctionTree::jtWeightUpperBound = false;
-bool JunctionTree::separatorIntersection = true;
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -3604,12 +3604,184 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		   E1_message_order,
 		   "E1",partNo);
 
-  return curPart->maxCliques[E_root_clique].sumProbabilities();
+  logpr rc = curPart->maxCliques[E_root_clique].sumProbabilities();
+  
+  delete curPart;
+  delete prevPart;
+  
+  return rc;
+
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::probEvidenceTime()
+ *    Just like probEvidence() but keeps track of how many messages between partitions
+ *    have been done, and returns (even if not complete) when timer expires.  
+ *
+ * See Also:
+ *    0) probEvidence()
+ *
+ * Preconditions:
+ *    same as probEvidence() above.
+ *
+ * Postconditions:
+ *    same as probEvidence() above.
+ *
+ * Side Effects:
+ *    same as probEvidence() above.
+ *
+ * Results:
+ *    same as probEvidence() above.
+ *-----------------------------------------------------------------------
+ */
+logpr 
+JunctionTree::probEvidenceTime(const unsigned int numFrames,
+			       unsigned& numUsableFrames,
+			       unsigned& numPartitionsDone)
+{
+
+  // first create the unrolled set of random variables corresponding
+  // to this JT.
+  numPartitionsDone = 0;
+  logpr res;
+
+  unsigned basicTemplateUnrollAmount;
+  unsigned modifiedTemplateUnrollAmount;
+  unsigned frameStart;
+  if (!gm_template.computeUnrollParamaters(numFrames,
+					   basicTemplateUnrollAmount,
+					   modifiedTemplateUnrollAmount,
+					   numUsableFrames,
+					   frameStart))
+    error("Can't unroll\n"); // TODO: fix this error.
+  // return 0
+
+  infoMsg(IM::Default,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
+  infoMsg(IM::Default,"numFrames = %d, unrolling BT %d times, MT %d times\n",
+	  numFrames,
+	  basicTemplateUnrollAmount,
+	  modifiedTemplateUnrollAmount);
+
+  // unrolled random variables
+  // vector <RandomVariable*> unrolled_rvs;
+  // mapping from 'name+frame' to integer index into unrolled_rvs.
+  // map < RVInfo::rvParent, unsigned > ppf;
+
+  fp.unroll(basicTemplateUnrollAmount,cur_unrolled_rvs,cur_ppf);
+  setObservedRVs(cur_unrolled_rvs);
+
+  // this clears the shared caches. 
+  clearDataMemory();
+
+
+
+
+  // actual absolute part numbers
+  unsigned partNo;
+  const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
+  // never use more than two partitions at a time.
+  JT_InferencePartition *curPart, *prevPart;
+  // set up appropriate name for debugging output.
+  const char* prv_nm;
+
+  // NOTE, if this isn't done in some way every partition, we will
+  // continue growing memory via the shared hash tables
+  // 
+  // TODO: change cliques so that in this case they have the ability
+  //       to use their own memory areana.
+  clearDataMemory();
+
+  partNo = 0;
+  curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
+  prevPart = NULL;
+  prv_nm = "P1";
+  ceGatherIntoRoot(*curPart,
+		   P_ri_to_C,
+		   P1_message_order,
+		   prv_nm,partNo);
+  swap(curPart,prevPart);
+  if (probEvidenceTimeExpired)
+    goto finished;
+
+
+  if (gm_template.leftInterface) {
+    delete curPart;
+    curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
+    ceSendToNextPartition(*prevPart,P_ri_to_C,"P1",partNo,
+			  *curPart,C_li_to_P,"Cu0",partNo+1);
+    partNo++;
+
+    prv_nm = "Cu0";
+    ceGatherIntoRoot(*curPart,
+		     C_ri_to_C,
+		     Cu0_message_order,
+		     prv_nm,partNo);
+    swap(curPart,prevPart);
+    if (probEvidenceTimeExpired)
+      goto finished;
+  }
+
+  for (unsigned p = 0; p < numCoPartitions; p++ ) {
+    delete curPart;
+    curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
+    ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
+			  *curPart,C_li_to_C,"Co",partNo+1);
+    partNo++;
+    prv_nm = "Co";
+    ceGatherIntoRoot(*curPart,
+		     C_ri_to_C,
+		     Co_message_order,
+		     prv_nm,partNo);
+    swap(curPart,prevPart);
+    if (probEvidenceTimeExpired)
+      goto finished;
+  }
+
+  if (!gm_template.leftInterface) {
+    delete curPart;
+    curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,
+					((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+
+    ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
+			  *curPart,C_li_to_C,"Cu0",partNo+1);
+    partNo++;
+    prv_nm = "Cu0";
+    ceGatherIntoRoot(*curPart,
+		     C_ri_to_E,
+		     Cu0_message_order,
+		     prv_nm,partNo);
+    swap(curPart,prevPart);
+    if (probEvidenceTimeExpired)
+      goto finished;
+  }
+
+  delete curPart;
+  curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
+				      ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+  ceSendToNextPartition(*prevPart,C_ri_to_E,prv_nm,partNo,
+			*curPart,E_li_to_C,"E1",partNo+1);
+  partNo++;
+  ceGatherIntoRoot(*curPart,
+		   E_root_clique,
+		   E1_message_order,
+		   "E1",partNo);
+
+
+  res = curPart->maxCliques[E_root_clique].sumProbabilities();
+ finished:
+  numPartitionsDone = partNo;
   
   delete curPart;
   delete prevPart;
 
+  return res;
+
 }
+
+
 
 
 /*-
