@@ -102,7 +102,7 @@ public:
   // returns an iterator for the first one.
   iterator begin() {
     assert ( bitmask & bm_basicAllocated );
-    iterator it;
+    iterator it(this);
     it.internalState = 0;
     it.probVal = 1.0;
     return it;
