@@ -38,8 +38,9 @@
 
 VCID("$Header$");
 
-ContinuousRandomVariable::ContinuousRandomVariable(string _label)
-  : RandomVariable(_label,Continuous) 
+ContinuousRandomVariable::ContinuousRandomVariable(RVInfo& _rv_info,
+						   string _label)
+  : RandomVariable(_rv_info,_label,Continuous) 
 {
 
 }
