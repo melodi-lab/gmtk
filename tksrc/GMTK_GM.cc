@@ -483,7 +483,7 @@ void GMTK_GM::cliqueChainEM(const int iterations,
       copyStringWithTag(buff,outputParamFile,
 			i,2048);
       oDataStreamFile of(buff,binOutFile);
-      GM_Parms.writeAll(of);
+      GM_Parms.writeTrainable(of);
     }
 
     // store the current total data probability to a file.
@@ -511,7 +511,7 @@ void GMTK_GM::cliqueChainEM(const int iterations,
     copyStringWithTag(buff,outputParamFile,
 		      CSWT_EMPTY_TAG,2048);
     oDataStreamFile of(buff,binOutFile);
-    GM_Parms.writeAll(of);
+    GM_Parms.writeTrainable(of);
   }
 }
 
