@@ -104,11 +104,12 @@ DiscreteRandomVariable::allocateProbabiltyTables()
  *-----------------------------------------------------------------------
  * tieParametersWith()
  *      Ties the parameters of 'this' with whatever those of 'other' are. 
- *      'other' and 'this' must be identical structuraly.
+ *      'other' and 'this' must be identical structuraly, if the
+ *       'checkStructure' option is true.
  * 
  * Preconditions:
  *      other must be a fully instantiated RV with parameters, and 'this'
- *      and 'other' must be structurally identical.
+ *      and 'other' must be structurally identical (if arg is true)
  *
  * Postconditions:
  *      'this' has the identical _tied_ parameters with 'other'
@@ -122,13 +123,14 @@ DiscreteRandomVariable::allocateProbabiltyTables()
  *-----------------------------------------------------------------------
  */
 void
-DiscreteRandomVariable::tieParametersWith(RandomVariable*const _other)
+DiscreteRandomVariable::tieParametersWith(RandomVariable*const _other,
+					  bool checkStructure)
 {
   assert ( _other -> discrete );
   
   DiscreteRandomVariable * other = (DiscreteRandomVariable*) _other;
 
-  if (!identicalStructureWith(*other))
+  if (checkStructure && !identicalStructureWith(*other))
     error("Error, trying to tie parameters of RV '%s' with RV '%s' but they have different structure.",
 	  label.c_str(),other->label.c_str());
 
@@ -166,6 +168,39 @@ DiscreteRandomVariable::clone()
   // inline 'value' observation 
   rv->val = val;
   rv->tieParametersWith(this);
+  rv->featureElement = featureElement;
+  return rv;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * cloneWithoutParents()
+ *      Returns a clone of self, but without parents
+ * 
+ * Preconditions:
+ *      self must be filled in.
+ *
+ * Postconditions:
+ *      same as preconditions.
+ *
+ * Side Effects:
+ *      No internal effects.
+ *
+ * Results:
+ *      returns a new random variable.
+ *
+ *-----------------------------------------------------------------------
+ */
+RandomVariable*
+DiscreteRandomVariable::cloneWithoutParents()
+{
+  DiscreteRandomVariable* rv = 
+    (DiscreteRandomVariable*) RandomVariable::cloneWithoutParents();
+  // make sure to set value since it might be an 
+  // inline 'value' observation 
+  rv->val = val;
+  rv->tieParametersWith(this,false);
   rv->featureElement = featureElement;
   return rv;
 }

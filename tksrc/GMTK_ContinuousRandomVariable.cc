@@ -180,12 +180,13 @@ ContinuousRandomVariable::makeUniform()
  *-----------------------------------------------------------------------
  */
 void
-ContinuousRandomVariable::tieParametersWith(RandomVariable*const _other)
+ContinuousRandomVariable::tieParametersWith(RandomVariable*const _other,
+					    bool checkStructure)
 {
   assert ( !(_other -> discrete) );
   ContinuousRandomVariable* other = (ContinuousRandomVariable*)_other;
 
-  if (!identicalStructureWith(*other))
+  if (checkStructure && !identicalStructureWith(*other))
     error("Error, trying to tie parameters of RV '%s' with RV '%s' but they have different structure.",
 	  label.c_str(),other->label.c_str());
 
@@ -226,6 +227,37 @@ ContinuousRandomVariable::clone()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * cloneWithoutParents()
+ *      Returns a clone of self.
+ * 
+ * Preconditions:
+ *      self must be filled in.
+ *
+ * Postconditions:
+ *      same as preconditions.
+ *
+ * Side Effects:
+ *      No internal effects.
+ *
+ * Results:
+ *      returns a new random variable.
+ *
+ *-----------------------------------------------------------------------
+ */
+RandomVariable*
+ContinuousRandomVariable::cloneWithoutParents()
+{
+  ContinuousRandomVariable* rv = 
+    (ContinuousRandomVariable*) RandomVariable::cloneWithoutParents();
+  // might as well set val, although probably won't be useful.
+  rv->tieParametersWith(this,false);
+  rv->firstFeatureElement = firstFeatureElement;
+  rv->lastFeatureElement = lastFeatureElement;
+  return rv;
+}
 
 
 
