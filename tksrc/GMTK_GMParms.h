@@ -30,6 +30,17 @@ class VariableParams {
 
 
   //////////////////////////////////////////////////////////////////
+  // General structure 
+  //  higher level objects (see below) might share together.
+  //  All of these objects are "EMable" in the sense that
+  //  they may be trained using EM (plus possibly some other gradient
+  //  based training method).
+  //////////////////////////////////////////////////////////////////
+
+  GM_Structure
+
+
+  //////////////////////////////////////////////////////////////////
   // Basic shared low-level parameters: These are the objects that 
   //  higher level objects (see below) might share together.
   //  All of these objects are "EMable" in the sense that
@@ -38,8 +49,12 @@ class VariableParams {
   //////////////////////////////////////////////////////////////////
 
   /////////////////////////////  
-  // Collection of prob. mass functions
-  sArray< Discrete1DPDF* > pmfs;
+  // Collection of dense prob. mass functions
+  sArray< Dense1DPMF* > dPmfs;
+
+  /////////////////////////////  
+  // Collection of sparse prob. mass functions
+  sArray< Sparse1DPMF* > sPmfs;
 
   /////////////////////////////
   // Collection of means
@@ -48,6 +63,15 @@ class VariableParams {
   ////////////////////////////////
   // Collection of diag. covariances
   sArray< DiagCovarVector* > covars;
+
+  ////////////////////////////////
+  // Collection of dense real matrices
+  sArray< RealMatrix* > realMats;
+
+  ////////////////////////////////
+  // Collection of packed sparse real matrices
+  sArray< PackedSparseRealMatrix* > psRealMats;
+
 
   ////////////////////////////////
   // Collection of DLINKS
