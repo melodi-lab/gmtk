@@ -55,9 +55,26 @@ class JT_Partition : public Partition {
 
   friend class JunctionTree;
 
+
+  struct PriorityClique {
+    unsigned clique;
+    vector <double> weights;
+    PriorityClique(unsigned c,vector <double> w) : clique(c), weights(w) {}
+  };
+
+  struct PriorityCliqueCompare {  
+    // sort descending
+    bool operator() (const PriorityClique& a, 
+		     const PriorityClique& b) {
+      return (a.weights) > (b.weights);
+    }
+  };
+
+
   void findInterfaceCliques(const set <RV*>& iNodes,
 			    unsigned& iClique,
-			    bool& iCliqueSameAsInterface);
+			    bool& iCliqueSameAsInterface,
+			    const string priorityStr);
 public:
 
 
@@ -121,8 +138,10 @@ public:
 
   // returns the left and right interface clique. If not defined,
   // sets the variable to ~0x0.
-  void findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface);
-  void findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface);
+  void findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface,
+			    const string priorityStr);
+  void findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface,
+			    const string priorityStr);
 
   // return the index of the clique with max/min weight.
   unsigned cliqueWithMaxWeight();
@@ -375,6 +394,9 @@ class JunctionTree  {
 
 public:
 
+
+
+
   // Set to true if the JT weight that we compute should be an upper
   // bound.  It is not guaranteed to be a tight upper bound, but is
   // guaranteed to at least be *an* upper bound.
@@ -384,6 +406,17 @@ public:
   // conservative, meaning it should not underestimate the charge of a
   // node in a clique as much. See code for details.
   static bool jtWeightMoreConservative;
+
+  // The priority string for selecting the next edge when constructing the junction
+  // tree. Default is in .cc file, and see .cc file for what options are supported.
+  static char* priorityStr;
+
+
+  // The priority string for selecting which clique of a partition
+  // (from the set of valid ones) should be used as the partition
+  // interface clique. See .cc file in routine findInterfaceClique()
+  // for documentation.
+  static char* interfaceCliquePriorityStr;
 
   // Set to > 0.0 if the JT weight that we compute should heavily
   // penalize any unassigned iterated nodes. Penalty = factor
@@ -445,6 +478,7 @@ public:
 
   // for sorting edges in decreasing weight order.
   struct EdgeCompare {  
+    // sort descending
     bool operator() (const Edge& a, 
 		     const Edge& b) {
       return (a.weights) > (b.weights);
@@ -457,13 +491,13 @@ public:
 			   const char *varCliqueAssignmentPrior);
 
   // create the three junction trees for the basic partitions.
-  void createPartitionJunctionTrees() {
-    createPartitionJunctionTree(gm_template.P);
-    createPartitionJunctionTree(gm_template.C);
-    createPartitionJunctionTree(gm_template.E);
+  void createPartitionJunctionTrees(const string priorityStr = "DSU") {
+    createPartitionJunctionTree(gm_template.P,priorityStr);
+    createPartitionJunctionTree(gm_template.C,priorityStr);
+    createPartitionJunctionTree(gm_template.E,priorityStr);
   }
   // create a junction tree within a partition.
-  static void createPartitionJunctionTree(Partition& part);
+  static void createPartitionJunctionTree(Partition& part, const string priorityStr = "DSU");
 
   // routine to find the interface cliques of the partitions
   void computePartitionInterfaces();
