@@ -302,3 +302,7 @@ X ascii/binary conversion program can go both ways.
 - add command line option "-format file-type" to the main programs that
 will explain the formats of the various files. For example, if there are
 no gaussian mixtures, does the master file still have to mention them?
+
+- make DTS such that 'default' is not required, and that if
+  we have splits w/o a default, then it will have a run-time
+  error if we ever get a case that doesn't match the guys in the split
