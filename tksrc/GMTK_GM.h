@@ -57,6 +57,7 @@ struct GMTK_GM
     ~GMTK_GM() { 
       if (chain) delete chain; 
       deleteObsInVector(node);
+      deleteObsInVector(gmTemplate);
     }
 
     void makeRandom();
