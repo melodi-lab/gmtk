@@ -425,6 +425,7 @@ FileParser::FileParser(const char*const file)
       error("FileParser::FileParser, can't open file stream from (%s)",file);
   }
   yyin = f;
+  fileNameParsing = file;
 }
 
 
@@ -581,7 +582,8 @@ FileParser::ensureNotAtEOF(const TokenKeyword kw)
 void
 FileParser::parseError(const char* const str)
 {
-  fprintf(stderr,"Parse Error: %s at line %d, near (%s)\n",
+  fprintf(stderr,"Parse Error in file '%s': %s at line %d, near (%s)\n",
+	  fileNameParsing.c_str(),
 	  str,
 	  tokenInfo.srcLine,
 	  tokenInfo.tokenStr);
@@ -591,7 +593,8 @@ FileParser::parseError(const char* const str)
 void
 FileParser::parseError(const TokenKeyword kw)
 {
-  fprintf(stderr,"Parse Error: expecting keyword (%s) at line %d, near (%s)\n",
+  fprintf(stderr,"Parse Error in file '%s': expecting keyword (%s) at line %d, near (%s)\n",
+	  fileNameParsing.c_str(),
 	  KeywordTable[kw].c_str(),
 	  tokenInfo.srcLine,
 	  tokenInfo.tokenStr);
