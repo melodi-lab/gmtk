@@ -362,50 +362,29 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
     zAccumulators[i] = 0.0;
   }
 
-  sharedZZDenominator.growIfNeeded(zzAccumulators.len());
-  for (int i=0;i<sharedZZDenominator.len();i++) {
-    sharedZZDenominator[i] = 0.0;
-  }
-
   if(emOnGoingBitIsSet()) {
     // EM already on going.
     // Increment the count of number of Gaussian Components using this mean.
     refCount++;
     // this object therefore is shared, set the bit saying so.
     emSetSharedBit();
-
-    if (refCount == 2) {
-      // initialize the denominator if this is the
-      // first time that we find out that this mean is shared
-      // (known by the fact that refCount == 2).
-      sharedZZDenominator.growIfNeeded(zzAccumulators.len());
-      for (int i=0;i<sharedZZDenominator.len();i++) {
-	sharedZZDenominator[i] = 0.0;
-      }
-    }
     return;
   }
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
     emSetEmAllocatedBit();
-    // allocate the final next means if needed
-    nextArr.growIfNeeded(dLinks->totalNumberLinks());
   }
 
   // EM iteration is now going.
   emSetOnGoingBit();
 
+  // accumulators are not initialized at this point.
+  emClearAccInitializedBit();
+
   accumulatedProbability = 0.0;
   refCount = 1;
   emClearSharedBit();
-  for (int i=0;i<nextArr.len();i++) {
-    nextArr[i] = 0.0;
-  }
-
-  // make it swapable, although at this point
-  // it would swap in the unaccumulated values.
-  emSetSwappableBit();
 }
 
 
@@ -495,58 +474,7 @@ DlinkMatrix::emIncrement(const logpr prob,
     (*zzAccumulators_p++) += (*zzArrayCache_p++) * fprob;
   } while (zzArrayCache_p != zzArrayCache_endp);
 
-
 }
-
-#if 0
-
-void
-DlinkMatrix::emEndIteration(const float*const xzAccumulators)
-{
-  assert ( basicAllocatedBitIsSet() );
-  if (!emAmTrainingBitIsSet())
-    return;
-
-  if (refCount > 0) {
-    // if this isn't the case, something is wrong.
-    assert ( emOnGoingBitIsSet() );
-
-    for (int i=0;i<nextArr.len();i++) {
-      nextArr[i] += xzAccumulators[i];
-    }
-
-    refCount--;
-  }
-
-  /////////////////////////////////////////////
-  // if there is still someone who
-  // has not given us his/her accumulators
-  // then we return w/o finishing.
-  if (refCount > 0)
-    return;
-
-  // accumulatedProbability.floor();
-  if (accumulatedProbability < minContAccumulatedProbability()) {
-    warning("WARNING: dLink matrx '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
-	    name().c_str(),
-	    accumulatedProbability.val());
-    for (int i=0;i<nextArr.len();i++)
-      nextArr[i] = arr[i];
-  } else {
-    const double invRealAccumulatedProbability =
-      accumulatedProbability.inverse().unlog();
-    // finish computing the next means.
-    for (int i=0;i<nextArr.len();i++) {
-      nextArr[i] *= invRealAccumulatedProbability;
-    }
-  }
-
-  // stop EM
-  emClearOnGoingBit();
-}
-
-#endif
-
 
 
 /*-
@@ -588,6 +516,18 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
+  
+  if (!emAccInitializedBitIsSet()) {
+    nextArr.growIfNeeded(dLinks->totalNumberLinks());
+    for (int i=0;i<nextArr.len();i++) {
+      nextArr[i] = 0.0;
+    }
+    sharedZZDenominator.growIfNeeded(dLinks->zzAccumulatorLength());
+    for (int i=0;i<sharedZZDenominator.len();i++) {
+      sharedZZDenominator[i] = 0.0;
+    }
+    emSetAccInitializedBit();
+  }
 
   if (refCount > 0) {
     // if this isn't the case, something is wrong.
@@ -654,8 +594,6 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
     double *sharedZZDenominator_ptr = sharedZZDenominator.ptr;
     float *nextArr_ptr = nextArr.ptr;
 
-    unsigned numFlooredDlinks = 0;
-    double minDlinkValue = DBL_MAX;
     for (int i=0;i<dim();i++) {
       const int nLinks = numLinks(i);
 
@@ -671,34 +609,20 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 
       // copy out and convert back to single precision.
       for (int j=0;j<nLinks;j++) {
-	if (nextDlinkMat[j] > FLT_MIN)
-	  nextArr_ptr[j] = nextDlinkMat[j];
-	else {
-	  nextArr_ptr[j] = FLT_MIN;
-	  numFlooredDlinks ++;
-	}
-	if (nextDlinkMat[j] < minDlinkValue)
-	  minDlinkValue = nextDlinkMat[j];
+	nextArr_ptr[j] = nextDlinkMat[j];
       }
 
       nextArr_ptr += nLinks;
       sharedZZDenominator_ptr += (nLinks*nLinks);
     }
-
-    if (numFlooredDlinks > 0) {
-      warning("WARNING: shared dlink matrix '%s' had %d dlinks floored to %e, minimum dlink value found was %e.\n",
-	      name().c_str(),
-	      numFlooredDlinks,
-	      FLT_MIN,
-	      minDlinkValue);
-    }
   }
+
+  // make it swapable
+  emSetSwappableBit();
 
   // stop EM
   emClearOnGoingBit();
 }
-
-
 
 
 /*-
@@ -736,6 +660,16 @@ DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumu
   // shouldn't be called when sharing occurs, ensure this.
   assert ( refCount == 1 );
   assert (!emSharedBitIsSet());
+
+
+  if (!emAccInitializedBitIsSet()) {
+    nextArr.growIfNeeded(dLinks->totalNumberLinks());
+    for (int i=0;i<nextArr.len();i++) {
+      nextArr[i] = 0.0;
+    }
+    emSetAccInitializedBit();
+  }
+
   refCount = 0;
 
   // accumulatedProbability.floor();
@@ -751,6 +685,9 @@ DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumu
       nextArr[i] = xzAccumulators[i];
     }
   }
+
+  // make it swapable
+  emSetSwappableBit();
 
   // stop EM
   emClearOnGoingBit();

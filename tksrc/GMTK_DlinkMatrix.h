@@ -31,10 +31,15 @@
 #include "GMTK_Dlinks.h"
 
 class LinMeanCondDiagGaussian;
+class MeanVector;
+class DiagCovarVector;
 
 class DlinkMatrix : public EMable, public NamedObject  {
+
   friend class Dlinks;
   friend class LinMeanCondDiagGaussian;
+  friend class MeanVector;
+  friend class DiagCovarVector;
 
   ///////////////////////////////////////////////////////
   // The actual dlink structure
@@ -49,6 +54,10 @@ class DlinkMatrix : public EMable, public NamedObject  {
   ///////////////////////////////////////////////////////////
   // Data structures support for EM
   sArray< float > nextArr;
+
+  /////////////////////////////////////////////////////////
+  // the denominator used in the case of shared dlinks
+  sArray<double> sharedZZDenominator;
 
   /////////////////////////////////////////////////
   // counts the number of gaussian components
@@ -89,14 +98,14 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // num number of features (dimensionality) for this 
-  int dim() { return dLinks->dim(); }
+  int dim() const { return dLinks->dim(); }
   unsigned totalNumberLinks() { return dLinks->totalNumberLinks(); }
   unsigned zzAccumulatorLength() { return dLinks->zzAccumulatorLength(); }
 
   ///////////////////////////////////////////////////////////  
   // numLinks: return the number of links for the ith
   // feature.
-  int numLinks(const int i) { 
+  int numLinks(const int i) const { 
     assert ( i >=0 && i < dim() );
     return dLinks->numLinks(i);
   }
@@ -115,7 +124,13 @@ public:
 		   float* xzAccumulators,
 		   float* zzAccumulators,
 		   float* zAccumulators);
-  void emEndIteration(const float*const xzAccumulators);
+  void emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumulators);
+  void emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulators,
+					     const float*const zAccumulators,
+					     const float*const zzAccumulators,
+					     const MeanVector* mean,
+					     const DiagCovarVector* covar);
+
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
   void emStoreZeroAccumulators(oDataStreamFile& ofile);

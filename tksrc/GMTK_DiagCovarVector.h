@@ -30,8 +30,13 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_RandomVariable.h"
 
+class MeanVector;
+
 class DiagCovarVector : public EMable, public NamedObject {
 
+  friend class DiagGaussian;
+  friend class MeanVector;
+  friend class DlinkMatrix;
 
   //////////////////////////////////
   // The actual covariance "matrix"
@@ -40,13 +45,6 @@ class DiagCovarVector : public EMable, public NamedObject {
   //////////////////////////////////
   // Data structures support for EM
   sArray<float> nextCovariances;
-  // Need the following means because of potential sharing.
-  // that is, if multiple Gaussians share different means
-  // and different covariances, then the covariance matrices
-  // need to keep track of the accumulated means according to
-  // all the Gaussians that share this Covariance matrix (which
-  // might not be the same sharing as the means.
-  sArray<float> nextMeans;
 
   ///////////////////////////////////////////////////////
   // Precomputed values for efficiency (computed at the
@@ -131,6 +129,24 @@ public:
 		   float *const partialAccumulatedNextCovars);
   void emEndIteration(const float*const c);
   void emEndIteration(const logpr prob,const float*const m,const float*const v);
+  void emEndIterationNoSharing(const float*const m,const float*const v);
+  void emEndIterationNoSharingAlreadyNormalized(const float*const c);
+  void emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbability,
+					     const float*const partialAccumulatedNextMeans,
+					     const float *const partialAccumulatedNextCovar,
+					     const MeanVector* mean);
+  void emEndIterationSharedMeansCovarsDlinks(const logpr accumulatedProbability,
+					     const float* const xAccumulators,
+					     const float* const xxAccumulators,
+					     const float* const xzAccumulators,
+					     const float* const zAccumulators,
+					     const float* const zzAccumulators,
+					     const MeanVector* mean,
+					     const DlinkMatrix* dLinkMat);
+  void emEndIterationSharedCovars(const logpr parentsAccumulatedProbability,
+				  const float*const partialAccumulatedNextMeans,
+				  const float *const partialAccumulatedNextCovar);
+  void emEndIterationSharedCovars(const float*const c);
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
   void emStoreZeroAccumulators(oDataStreamFile& ofile);
