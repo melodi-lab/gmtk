@@ -1,7 +1,8 @@
 /*-
  * GMTK_Dense1DPMF.h
  *      .h file for GMTK_Sparse1DPMF.h, trainable 1D discrete probability
- *      distributions.
+ *      distributions. This is just a dense1dpmf but with values which
+ *      say which rv values are not zero. Zero values are not represented.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
@@ -31,6 +32,8 @@
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
 #include "GMTK_RandomVariable.h"
+#include "GMTK_Dense1DPMF.h"
+
 
 class Sparse1DPMF : public EMable, public NamedObject {
 
@@ -40,21 +43,20 @@ class Sparse1DPMF : public EMable, public NamedObject {
   // values may take value between [0:card-1]
   int _card;
 
-  struct Entry {
-    int val;
-    logpr prob;
-  };
+  ///////////////////////////////////////////
+  // the (possibly) shared 1DPMFs used for the prob values
+  Dense1DPMF* dense1DPMF;
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
-  sArray <Entry> pmf;
+  sArray <RandomVariable::DiscreteVariableType> pmf;
   ///////////////////////////////////////////////////////////  
 
   //////////////////////////////////
   // Data structures support for EM.
   //   The previous probability mass function 
   //   (we don't use 'Entrys' here as the vals are the same.
-  sArray <logpr> nextPmf;
+  // sArray <logpr> nextPmf;
   ///////////////////////////////////////////////////////////  
 
 public:
@@ -81,13 +83,13 @@ public:
   // return the probability at entry i
   logpr probAtEntry(const int i) {
     assert ( i >= 0 && i < pmf.len() );
-    return pmf[i].prob;
+    return dense1DPMF->p(i);
   }
   ///////////////////////////////////////
   // return the value at entry i
-  int valueAtEntry(const int i) {
+  RandomVariable::DiscreteVariableType valueAtEntry(const int i) {
     assert ( i >= 0 && i < pmf.len() );
-    return pmf[i].val;
+    return pmf[i];
   }
 
   ///////////////////////////////////////////////////////////  

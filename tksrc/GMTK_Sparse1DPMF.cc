@@ -89,34 +89,51 @@ Sparse1DPMF::read(iDataStreamFile& is)
   NamedObject::read(is);
   is.read(_card,"Sparse1DPMF::read, card");
   if (_card <= 0)
-    error("Sparse1DPMF: read length (%d) < 0 in input",_card);
+    error("ERROR: invalid read cardinality (%d) < 0 in SPMF '%s' in file '%s'",
+	  _card,name().c_str(),is.fileName());
 
   is.read(len,"Sparse1DPMF::read, len");
   if (len <= 0)
-    error("Sparse1DPMF: read length (%d) < 0 in input",len);
-  if (len > _card)
-    error("Sparse1DPMF: read length (%d) > card (%d) in input",len,_card);
+    error("ERROR: invalid read length (%d) < 0 in SPMF '%s' of cardinality %d in file '%s'",
+	  len,name().c_str(),_card,is.fileName());
 
   pmf.resize(len);
 
   int prev_val = -1;
   for (int i=0;i<len;i++) {
     int val;
-    double prob;
 
     is.read(val,"Sparse1DPMF::read, reading value");
     if (val < 0 || val > _card-1)
-      error("Sparse1DPMF::read, bad value = %d, must be in range [0:%d]",val,
-	    _card-1);
+      error("ERROR: invalid value (%d) in SPMF '%s' of cardinality %d in file '%s'",
+	  val,name().c_str(),_card,is.fileName());
     if (val <= prev_val)
-      error("Sparse1DPMF::read, values must be unique and in sorted order");
+      error("ERROR: values must be sorted (%d) in SPMF '%s' of cardinality %d in file '%s'",
+	  val,name().c_str(),_card,is.fileName());
+
     prev_val = val;
 
-    is.readDouble(prob,"Sparse1DPMF::read, reading prob");
-    if (prob < 0.0 || prob > 1.0)
-      error("Sparse1DPMF: read, invalid pmf value (%g)",val);
-    pmf[i].val = val;
-    pmf[i].prob = prob;
+    pmf[i] = val;
+
+    // read name of dense 1d PMF to use
+    string str;
+    is.read(str);
+    if (GM_Parms.dPmfsMap.find(str) == GM_Parms.dPmfsMap.end()) {
+      error("ERROR: in SPMF '%s', can't find DPMF named '%s' when reading file '%s'\n",
+	    name().c_str(),str.c_str(),is.fileName());
+    }
+
+    dense1DPMF = GM_Parms.dPmfs[
+				GM_Parms.dPmfsMap[str]
+    ];
+
+    // now make sure length is right.
+    if ((unsigned)len != dense1DPMF->length()) {
+      error("ERROR: in SPMF '%s', DPMF named '%s' has %d elements but SPMF needs %d\n",
+	    name().c_str(),
+	    str.c_str(),dense1DPMF->length(),len);
+    }
+    
   }
 }
 
@@ -144,12 +161,12 @@ Sparse1DPMF::write(oDataStreamFile& os)
   os.write(_card,"Sparse1DPMF::write, card");
   os.write(pmf.len(),"Sparse1DPMF::write, len");
   for (int i=0;i<pmf.len();i++) {
-    os.write(pmf[i].val,"Sparse1DPMF::write, writing value");
-    os.writeDouble(pmf[i].prob.unlog(),"Sparse1DPMF::write, writing prob");
+    os.write(pmf[i],"Sparse1DPMF::write, writing value");
   }
   os.nl();
+  os.write(dense1DPMF->name());
+  os.nl();
 }
-
 
 
 
@@ -185,7 +202,7 @@ Sparse1DPMF::prob(const int val)
   assert ( pmf.len() > 0 );
   assert ( val >= 0 && val < _card );
   const int last = pmf.len()-1;
-  if (val > pmf[last].val)
+  if (val > pmf[last])
     return LZERO;
 
   int l,u;
@@ -203,12 +220,12 @@ Sparse1DPMF::prob(const int val)
     // if one even, one odd, and l+1 < u
     //      then l < m < u
 
-    if (val < pmf[m].val)
+    if (val < pmf[m])
       u = m-1;
-    else if (val > pmf[m].val)
+    else if (val > pmf[m])
       l = m+1;
     else
-      return pmf[m].prob;
+      return dense1DPMF->p(m);
   }
 
 
@@ -246,27 +263,13 @@ Sparse1DPMF::prob(const int val)
 void
 Sparse1DPMF::normalize()
 {
-  logpr sum = 0.0;
-  for (int i=0;i<pmf.len();i++) {
-    sum += pmf[i].prob;
-  }
-  for (int i=0;i<pmf.len();i++) {
-    pmf[i].prob = pmf[i].prob / sum;
-  }
+  dense1DPMF->normalize();
 }
 
 void
 Sparse1DPMF::makeRandom()
 {
-  logpr sum = 0.0;
-  for (int i=0;i<pmf.len();i++) {
-    logpr tmp = rnd.drand48();
-    sum += tmp;
-    pmf[i].prob = tmp;
-  }
-  for (int i=0;i<pmf.len();i++) {
-    pmf[i].prob = pmf[i].prob / sum;
-  }
+  dense1DPMF->normalize();
 }
 
 void
@@ -274,10 +277,7 @@ Sparse1DPMF::makeUniform()
 {
   // NOTE: this doesn't assign non-zero values to "holes"
   // in the table (which are forced to be zero).
-  logpr p = 1.0/pmf.len();
-  for (int i=0;i<pmf.len();i++) {
-    pmf[i].prob = p;
-  }
+  dense1DPMF->makeUniform();
 }
 
 
@@ -297,7 +297,6 @@ Sparse1DPMF::emStartIteration()
     return; // already done
 
   if (!emEmAllocatedBitIsSet()) {
-    nextPmf.resize(pmf.len());
     emSetEmAllocatedBit();
   }
   // EM iteration is now going.
@@ -306,9 +305,7 @@ Sparse1DPMF::emStartIteration()
 
   accumulatedProbability = 0.0;  
 
-  for (int i=0;i<nextPmf.len();i++) {
-    nextPmf[i].set_to_zero();
-  }
+  dense1DPMF->emStartIteration();
 
 }
 
@@ -328,7 +325,7 @@ Sparse1DPMF::emIncrement(logpr prob,const int val)
   /////////////////////////////////////////////////////////
   // we shouln't be trying to increment an impossible value.
   // something must be wrong upstairs.
-  assert (val <= pmf[last].val);
+  assert (val <= pmf[last]);
 
   // find the entry using bin search
   int l,u;
@@ -346,14 +343,14 @@ Sparse1DPMF::emIncrement(logpr prob,const int val)
     // if one even, one odd, and l+1 < u
     //      then l < m < u
 
-    if (val < pmf[m].val)
+    if (val < pmf[m])
       u = m-1;
-    else if (val > pmf[m].val)
+    else if (val > pmf[m])
       l = m+1;
     else {
       // found the value
       accumulatedProbability += prob;
-      nextPmf[m] += prob;
+      dense1DPMF->emIncrement(prob,m);
     }
   }
 
@@ -377,9 +374,7 @@ Sparse1DPMF::emEndIteration()
     warning("WARNING: Sparse 1D PMF named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
 
-  for (int i=0;i<nextPmf.len();i++) {
-    nextPmf[i] /= accumulatedProbability;
-  }
+  dense1DPMF->emEndIteration();
 
   // stop EM
   emClearOnGoingBit();
@@ -395,9 +390,7 @@ Sparse1DPMF::emSwapCurAndNew()
   if (!emSwappableBitIsSet())
     return;
 
-  for (int i=0;i<nextPmf.len();i++) {
-    genSwap(nextPmf[i],pmf[i].prob);
-  }
+  dense1DPMF->emEndIteration();
 
   emClearSwappableBit();
 }
