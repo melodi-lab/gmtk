@@ -438,7 +438,7 @@ bool CliqueChain::recProcess(unsigned left, unsigned right)
     {
 // cout << "recursively processing from " << left << " to " << right << endl;
         // divide into k parts    
-        int block_size = (int(right)-int(left)+1)/numSplits + 1;
+        int block_size = (int(right)-int(left)+1)/numSplits;
         // block size must be even to accomodate sep-nonsep pattern
         if (block_size % 2)  
             block_size = block_size+1;
