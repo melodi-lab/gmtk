@@ -206,7 +206,8 @@ iDataStreamFile::readInt(int& i, char *msg)
     char *ptr;
     long l = strtol(buffp,&ptr,0);
     if (ptr == buffp) {
-      error("readInt: Can't form int at (%s) in file. %s",buffp,
+      error("readInt: Can't form int at (%s) in file (%s). %s",buffp,
+	    fileName(),
 	    (msg?msg:""));
     } else
       buffp = ptr;
@@ -230,7 +231,8 @@ iDataStreamFile::readFloat(float& f, char *msg)
     char *ptr;
     f = strtod(buffp,&ptr);
     if (ptr == buffp) {
-      error("readFloat: Can't form float at (%s) in file. %s",buffp,
+      error("readFloat: Can't form float at (%s) in file (%s). %s",buffp,
+	    fileName(),
 	    (msg?msg:""));
     } else
       buffp = ptr;
@@ -253,7 +255,8 @@ iDataStreamFile::readDouble(double& d, char *msg)
     char *ptr;
     d = strtod(buffp,&ptr);
     if (ptr == buffp) {
-      error("readDouble: Can't form double at (%s) in file. %s",buffp,
+      error("readDouble: Can't form double at (%s) in file (%s). %s",buffp,
+	    fileName(),
 	    (msg?msg:""));
     } else
       buffp = ptr;
