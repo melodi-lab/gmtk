@@ -1,5 +1,5 @@
 /*-
- * GMTK_ObservationParams.h
+ * GMTK_VariableParams.h
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
@@ -18,15 +18,15 @@
  */
 
 
-#ifndef GMTK_OBSERVATIONPARAMS_H
-#define GMTK_OBSERVATIONPARAMS_H
+#ifndef GMTK_VARIABLEPARAMS_H
+#define GMTK_VARIABLEPARAMS_H
 
 
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
 
-class ObservationParams {
+class VariableParams {
 
   /////////////////////////////  
   // Collection of prob. mass functions
@@ -82,7 +82,7 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor
-  ObservationParams(); 
+  VariableParams(); 
 
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 
