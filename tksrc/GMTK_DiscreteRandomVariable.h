@@ -2,7 +2,7 @@
  * GMTK_DiscreteRandomVariable.h
  * A specific case of the RandomVariable class
  *
- * Written by Geoffrey Zweig <gzweig@us.ibm.com> & Jeff Bilmes <bilmes@ee.washington.edu>
+ * Written by Jeff Bilmes <bilmes@ee.washington.edu> & Geoffrey Zweig <gzweig@us.ibm.com>
  * 
  * Copyright (c) 2001, < fill in later >
  *
@@ -85,12 +85,8 @@ public:
   void clampFirstValue() { 
     if (!hidden) {
       // observed, so set value from observation matrix
-      assert ( featureElement >= globalObservationMatrix.numContinuous 
-	       &&
-	       featureElement < globalObservationMatrix.numFeatures );
-      val = 
-	*((int*)
-	  (featureElement+globalObservationMatrix.baseAtFrame(timeIndex)));
+      if (globalObservationMatrix.active())
+	val = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
       return;
     }
     findConditionalParents(); 

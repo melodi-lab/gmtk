@@ -66,6 +66,8 @@ ContinuousRandomVariable::ContinuousRandomVariable(string _label)
 void
 ContinuousRandomVariable::findConditionalParents()
 {
+  printf("ContinuousRandomVariable::findConditionalParents called\n");
+
   cachedIntFromSwitchingState = intFromSwitchingState();
   assert ( cachedIntFromSwitchingState >= 0 && 
      cachedIntFromSwitchingState < conditionalParentsList.size() );
@@ -100,7 +102,7 @@ ContinuousRandomVariable::probGivenParents()
     _cachedProb = 
       curMappingOrDirect->gaussian->log_p
       (
-       firstFeatureElement+globalObservationMatrix.floatAtFrame(timeIndex),
+       firstFeatureElement+globalObservationMatrix.floatVecAtFrame(timeIndex),
        globalObservationMatrix.baseAtFrame(timeIndex),
        globalObservationMatrix.stride
        );
@@ -114,7 +116,7 @@ ContinuousRandomVariable::probGivenParents()
     // different types of mixtures of Gaussians.
     _cachedProb = GM_Parms.mixGaussians[gaussianIndex]->log_p
       (
-       firstFeatureElement+globalObservationMatrix.floatAtFrame(timeIndex),
+       firstFeatureElement+globalObservationMatrix.floatVecAtFrame(timeIndex),
        globalObservationMatrix.baseAtFrame(timeIndex),
        globalObservationMatrix.stride
        );

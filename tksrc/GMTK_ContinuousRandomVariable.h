@@ -28,6 +28,7 @@
 #include "GMTK_MixGaussiansCommon.h"
 #include "GMTK_GMParms.h"
 
+#include "GMTK_ObservationMatrix.h"
 
 class ContinuousRandomVariable : public RandomVariable
 {
@@ -94,7 +95,13 @@ public:
   ////////////////////////////////////////////////
   // clamp this RV to its "first" value,
   // presumably this is an observation and contains only one value.
-  void clampFirstValue() {}
+  void clampFirstValue() {
+    // we do not support hidden continuous variables just yet.
+    assert ( !hidden );
+    if (!globalObservationMatrix.active())
+      warning("WARNING: clamping value of observation variable w/o observation matrix");
+    findConditionalParents();
+  }
   // always the last value.
   bool clampNextValue() { return false; }
   ////////////////////////////////////////////////////////////////
@@ -118,7 +125,7 @@ public:
 
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
-  void instantiate() {}
+  void instantiate() { error("not implemented"); }
 
   ///////////////////////////////////////////////////
   // EM Support

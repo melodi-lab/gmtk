@@ -986,7 +986,9 @@ void GMTK_GM::clampFirstExample()
             error("no data available");
         globalObservationMatrix.loadSegment(0);
         int frames = globalObservationMatrix.numFrames;
-        assert((frames-framesInTemplate)%framesInRepeatSeg == 0);
+	if ((frames-framesInTemplate)%framesInRepeatSeg != 0) {
+	  error("ERROR: segment 0 in observation file does not have a number of frames compatible with unrolling specified structure file");
+	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
         expos = 0;
     }
@@ -1012,7 +1014,9 @@ bool GMTK_GM::clampNextExample()
         expos++;
         globalObservationMatrix.loadSegment(expos);
         int frames = globalObservationMatrix.numFrames;
-        assert((frames-framesInTemplate)%framesInRepeatSeg == 0);
+	if ((frames-framesInTemplate)%framesInRepeatSeg != 0) {
+	  error("ERROR: segment %d in observation file does not have a number of frames compatible with unrolling specified structure file",expos);
+	}
         setSize((frames-framesInTemplate)/framesInRepeatSeg);
     }
     else

@@ -84,6 +84,25 @@ GMParms::GMParms()
 ////////////////////////////////////////////////////////////////////
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * readDPmfs
+ *      Read in the dense PMF functions from a file.
+ * 
+ * Preconditions:
+ *      No conditions.
+ *
+ * Postconditions:
+ *      All dense PMFs from file are now contained in internal arrays.
+ *
+ * Side Effects:
+ *      Modifies internal arrays of object.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::readDPmfs(iDataStreamFile& is, bool reset)
 {
@@ -119,6 +138,25 @@ GMParms::readDPmfs(iDataStreamFile& is, bool reset)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * readSPmfs
+ *      Read in the sparse PMF functions from a file.
+ * 
+ * Preconditions:
+ *      No conditions.
+ *
+ * Postconditions:
+ *      All sparse PMFs from file are now contained in internal arrays.
+ *
+ * Side Effects:
+ *      Modifies internal arrays of object.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::readSPmfs(iDataStreamFile& is, bool reset)
 {
@@ -154,6 +192,25 @@ GMParms::readSPmfs(iDataStreamFile& is, bool reset)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * readMeans
+ *      Read in the mean from a file.
+ * 
+ * Preconditions:
+ *      No conditions.
+ *
+ * Postconditions:
+ *      All means from file are now contained in internal arrays.
+ *
+ * Side Effects:
+ *      Modifies internal arrays of object.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
 void 
 GMParms::readMeans(iDataStreamFile& is, bool reset)
 {
