@@ -41,14 +41,16 @@ struct ValueHashTable
     vector<vector<RandomVariable::DiscreteVariableType> *> table, nt;
     int table_size, count;
     int addr(vector<RandomVariable::DiscreteVariableType> &vec)
-        {unsigned long v = vec.size();
-         for (unsigned i=0; i<vec.size(); i++) v = 65599*v + vec[i];
-         return (v % table_size);}
+         // return the hash value of the vector
+        {unsigned long a = vec.size();
+         for (unsigned i=0; i<vec.size(); i++) a = 65599*a + vec[i];
+         a = a % table_size;
+         return a;}
     vector<RandomVariable::DiscreteVariableType> *insert(
         vector<RandomVariable::DiscreteVariableType> &vec)
-        {if (++count>=table_size/2) resize(max(2*table_size,100000)); 
+        {if (++count>=table_size/2) resize(max(2*table_size,200000)); 
          int a = addr(vec);
-         while (table[a] && *table[a] != vec) a=(a+1)%table_size;
+         while (table[a] && *table[a]!=vec) a=(a+1)%table_size;
          if (!table[a])
              table[a] = new vector<RandomVariable::DiscreteVariableType>(vec);
          return table[a];}
@@ -62,7 +64,9 @@ struct ValueHashTable
          nt.resize(table_size);
          for (int i=0; i<table_size; i++) nt[i] = NULL;
          for (unsigned i=0; i<table.size(); i++)
-             if (table[i]) nt[addr(*table[i])] = table[i];
+             if (table[i]) {int a=addr(*table[i]); 
+              while (nt[a] && *nt[a]!=*table[i]) a=(a+1)%table_size;
+              nt[a] = table[i];}
          table=nt;}
 };
 
