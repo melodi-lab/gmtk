@@ -329,6 +329,7 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
       tri_heur.numberTrials = numTrials;
     else
       tri_heur.numberTrials = 1;
+    // skip optional '-' character.
     if (*endp == '-')
       endp++;
     if (!*endp || tri_heur.numberTrials <= 0)
@@ -338,26 +339,20 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
       tri_heur.style = TS_ANNEALING;
     } else if (strncmp(endp, "exhaustive", strlen(endp)) == 0) {
       tri_heur.style = TS_EXHAUSTIVE;
-    } 
-    else if (strncmp(endp, pre_edge_all, strlen(pre_edge_all)) == 0) {
+    } else if (strncmp(endp, pre_edge_all, strlen(pre_edge_all)) == 0) {
       tri_heur.style = TS_PRE_EDGE_ALL;
       tri_heur.basic_method_string = &endp[strlen(pre_edge_all)];
-    } 
-    else if (strncmp(endp, pre_edge_lo, strlen(pre_edge_lo)) == 0) {
+    } else if (strncmp(endp, pre_edge_lo, strlen(pre_edge_lo)) == 0) {
       tri_heur.style = TS_PRE_EDGE_LO;
       tri_heur.basic_method_string = &endp[strlen(pre_edge_lo)];
-    } 
-    else if (strncmp(endp, pre_edge_random, strlen(pre_edge_random)) == 0) {
+    } else if (strncmp(endp, pre_edge_random, strlen(pre_edge_random)) == 0) {
       tri_heur.style = TS_PRE_EDGE_RANDOM;
       tri_heur.basic_method_string = &endp[strlen(pre_edge_random)];
-    } 
-    else if (strncmp(endp, "heuristics", strlen(endp)) == 0) {
+    } else if (strncmp(endp, "heuristics", strlen(endp)) == 0) {
       tri_heur.style = TS_ALL_HEURISTICS;
-    }
-    else if (strncmp(endp, "elimination-heuristics", strlen(endp)) == 0) {
+    } else if (strncmp(endp, "elimination-heuristics", strlen(endp)) == 0) {
       tri_heur.style = TS_ELIMINATION_HEURISTICS;
-    }
-    else if (strncmp(endp, "non-elimination-heuristics", strlen(endp)) == 0) {
+    } else if (strncmp(endp, "non-elimination-heuristics", strlen(endp)) == 0) {
       tri_heur.style = TS_NON_ELIMINATION_HEURISTICS;
     } else if (strncmp(endp, "frontier", strlen(endp)) == 0) {
       tri_heur.style = TS_FRONTIER;
@@ -404,8 +399,22 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
 	  tri_heur.heuristic_vector.push_back(TH_RANDOM);
 	  break;
 	default:
-	  error("ERROR: Unknown triangulation heuristic given '%c' in string '%s'\n",
-		*endp,tri_heur_str.c_str());
+	  {
+	    // next check if there is a number at the end to determine
+	    // numRandomTop for a basic heuristic.
+	    char *end_endp;
+	    // skip optional '-' character.
+	    if (*endp == '-') 
+	      endp++;
+	    unsigned tmpu = strtol(endp,&end_endp,10);
+	    if (endp != end_endp) {
+	      // then there is a num random top heuristic number.
+	      tri_heur.numRandomTop = tmpu;
+	      endp = end_endp - 1;
+	    } else
+	      error("ERROR: Unknown triangulation heuristic given starting at position '%s' in string '%s'\n",
+		    endp,tri_heur_str.c_str());
+	  }
 	  break;
 	}
 	endp++;
@@ -1349,7 +1358,7 @@ triangulateOnce(// input: nodes to be triangulated
   switch (tri_heur.style) {
 
     case TS_BASIC:
-      basicTriangulate( nodes, tri_heur.heuristic_vector, order, cliques);
+      basicTriangulate( nodes, tri_heur.heuristic_vector, tri_heur.numRandomTop, order, cliques);
       meth_str = tri_heur.basic_method_string;
       break;
 
@@ -1625,6 +1634,8 @@ basicTriangulate(// input: nodes to triangulate
 		 const set<RandomVariable*>& nodes,
 		 // input: triangulation heuristic
 		 const vector<BasicTriangulateHeuristic>& th_v,
+		 // choose randomly from N-best scored nodes
+		 const unsigned numRandomTop,
 		 // output: nodes ordered according to resulting elimination
 		 vector<RandomVariable*>& orderedNodes,  
 		 // output: resulting max cliques
@@ -1754,7 +1765,6 @@ basicTriangulate(// input: nodes to triangulate
       }
     }
 
-
     // Go through the updated multi-map, grab an iterator pair to
     // iterate between all nodes that have the lowest weight. This
     // utilizes the fact that the multimap stores values in ascending
@@ -1765,15 +1775,25 @@ basicTriangulate(// input: nodes to triangulate
       multimap< vector<float>,RandomVariable*>::iterator 
       > ip = unorderedNodes.equal_range( (*(unorderedNodes.begin())).first );
 
-    const int d = distance(ip.first,ip.second);
-    if (d == 1) {
+    const unsigned d = distance(ip.first,ip.second);
+
+    // compute number of random top. We first take the min of
+    // numRandomTop and number of remaining nodes, to make sure that
+    // we don't randomly choose from a number with too many nodes. We
+    // take the max of that with d, so that if more than numRandomTop
+    // nodes tie, we still randomly choose from among all the tied
+    // nodes.
+    const unsigned curNumRandomTop = 
+      max(min(numRandomTop,unorderedNodes.size()),d);
+
+    if (curNumRandomTop == 1) {
       // then there is only one node and we eliminate that
       // so do nothing
     } else {
       // choose a random one, don't re-seed rng as that
       // should be done one time for the program via command line arguments.
       RAND rnd(false);
-      int val = rnd.uniform(d-1);
+      int val = rnd.uniform(curNumRandomTop-1);
       // TODO: there must be a better way to do this next step!
       while (val--)
 	ip.first++;
@@ -4830,65 +4850,65 @@ tryEliminationHeuristics(
 {
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Weight, Fill, Size
-  triangulate( nodes, jtWeight, nrmc, "20-WFS", 
+  triangulate( nodes, jtWeight, nrmc, "20-WFS-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "20-HWFS", 
+  triangulate( nodes, jtWeight, nrmc, "20-HWFS-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Fill, Weight, Size 
-  triangulate( nodes, jtWeight, nrmc, "20-FWS",  
+  triangulate( nodes, jtWeight, nrmc, "20-FWS-3",  
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "20-HFWS", 
+  triangulate( nodes, jtWeight, nrmc, "20-HFWS-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Weight
-  triangulate( nodes, jtWeight, nrmc, "30-W",  
+  triangulate( nodes, jtWeight, nrmc, "30-W-3",  
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "20-HW", 
+  triangulate( nodes, jtWeight, nrmc, "20-HW-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "20-TW", 
+  triangulate( nodes, jtWeight, nrmc, "20-TW-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Fill 
-  triangulate( nodes, jtWeight, nrmc, "30-F",  
+  triangulate( nodes, jtWeight, nrmc, "30-F-3",  
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "20-HF", 
+  triangulate( nodes, jtWeight, nrmc, "20-HF-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "20-TF", 
+  triangulate( nodes, jtWeight, nrmc, "20-TF-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Size 
-  triangulate( nodes, jtWeight, nrmc, "30-S",  
+  triangulate( nodes, jtWeight, nrmc, "30-S-3",  
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "20-HS", 
+  triangulate( nodes, jtWeight, nrmc, "20-HS-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "20-ST", 
+  triangulate( nodes, jtWeight, nrmc, "20-ST-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Time
-  triangulate( nodes, jtWeight, nrmc, "100-T",  
+  triangulate( nodes, jtWeight, nrmc, "100-T-3",  
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "30-TS", 
+  triangulate( nodes, jtWeight, nrmc, "30-TS-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "30-TW", 
+  triangulate( nodes, jtWeight, nrmc, "30-TW-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "30-TF", 
+  triangulate( nodes, jtWeight, nrmc, "30-TF-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try Position
   triangulate( nodes, jtWeight, nrmc, "P",  
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "30-WP", 
+  triangulate( nodes, jtWeight, nrmc, "30-WP-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "30-FP", 
+  triangulate( nodes, jtWeight, nrmc, "30-FP-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
-  triangulate( nodes, jtWeight, nrmc, "30-SP", 
+  triangulate( nodes, jtWeight, nrmc, "30-SP-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   ///////////////////////////////////////////////////////////////////////////// 
@@ -4898,12 +4918,12 @@ tryEliminationHeuristics(
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try purely random
-  triangulate( nodes, jtWeight, nrmc, "500-R", 
+  triangulate( nodes, jtWeight, nrmc, "500-R-1", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   ///////////////////////////////////////////////////////////////////////////// 
   // Try hints only 
-  triangulate( nodes, jtWeight, nrmc, "30-H", 
+  triangulate( nodes, jtWeight, nrmc, "30-H-3", 
     orgnl_nghbrs, best_cliques, best_method, best_weight, best_method_prefix );
 
   return(best_weight);

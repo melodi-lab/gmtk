@@ -141,6 +141,7 @@ public:
     TriangulateStyles      style;
     extraEdgeHeuristicType extraEdgeHeuristic;
     vector<BasicTriangulateHeuristic> heuristic_vector;
+    unsigned numRandomTop;
     string basic_method_string;
 
     TriangulateHeuristics() {
@@ -161,6 +162,12 @@ public:
       heuristic_vector.push_back(TH_MIN_FILLIN);
       // and lastly by time frame (earliest first)
       heuristic_vector.push_back(TH_MIN_TIMEFRAME);
+      // Default number of top nodes to randomly choose from
+      // when eliminating. I.e., if we use heuristic 'W', we
+      // take the top N of the nodes as ranked by 'W' and, rather
+      // than just eliminating the top one, we randomly choose from
+      // among the top N as the node to next eliminate.
+      numRandomTop = 3;
     }
   };
 
@@ -419,6 +426,7 @@ public:
   // via the internal randomness that can occur if a tie occurs.
   void basicTriangulate(const set<RandomVariable*>& nodes,
 			const vector<BasicTriangulateHeuristic>& th_v,
+			const unsigned numRandomTop,
 			vector<RandomVariable*>& orderedNodes,
 			vector<MaxClique>& cliques,
 			const bool findCliques = true);
