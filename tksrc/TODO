@@ -2456,3 +2456,7 @@ Sat Sep 18 21:18:05 2004
 
 Tue Sep 21 15:59:32 2004
   - bug: divide by zero error from bartels, 9/17/04. 
+
+Wed Sep 22 20:34:42 2004
+  - add check to MTCPT children that their card is not > \prod_i card(par_i) -1.
+
