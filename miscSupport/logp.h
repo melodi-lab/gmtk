@@ -17,8 +17,9 @@
 
 #include "error.h"
 
-// use a lookup table?
-#define _TABLE_
+// use a lookup table? If so, define the following,
+// or otherwise, undefine to use log(1+exp(x)) directly.
+// #define _TABLE_
 
 // What we call ~log(0). 
 #define LZERO  (-1.0E10)
@@ -126,9 +127,12 @@ public:
     else 
       v = logpval;
   }
-  
+
+  // these are here for quick use so as to avoid compiler temporaries
+  // and/or conversion with comparing with float values
   inline bool zero() const { return (v == LZERO); }
   inline bool essentially_zero() const { return (v < LSMALL); }
+  inline bool not_essentially_zero() const { return (v >= LSMALL); }
   inline bool almost_zero() const { return (v == LSMALL); }
   inline void set_to_zero() { v = LZERO; }
   inline void set_to_almost_zero() { v = LSMALL; }

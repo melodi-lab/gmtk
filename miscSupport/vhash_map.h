@@ -47,17 +47,17 @@ public:
   const unsigned vsize;
 
   ////////////////////////////////////////
-  // the "buckets", which include a key and data item.
-  struct Bucket {
+  // the map "buckets", which include a key mapping to a data item.
+  struct MBucket {
     _Key* key;
     _Data item;
     // start off with an empty one.
-    Bucket() :key(NULL) {}
+    MBucket() :key(NULL) {}
   };
 
   //////////////////////////////////////////////////////////
   // the actual hash table, an array of pointers to T's
-  sArray < Bucket > table;
+  sArray < MBucket > table;
 
 
 #ifdef COLLECT_COLLISION_STATISTICS
@@ -135,18 +135,18 @@ public:
 
   ///////////////////////////////////////
   // return true if the bucket is empty
-  bool empty(const Bucket* bucket) {
+  bool empty(const MBucket* bucket) {
     return (bucket->key == NULL);
   }
   // return true if the bucket is empty
-  bool empty(const Bucket& bucket) {
+  bool empty(const MBucket& bucket) {
     return (bucket.key == NULL);
   }
 
   //////////////////////////////////////////////////////////////////
   // return the entry of key
   unsigned entryOf(const _Key* key,
-		   sArray<Bucket> & a_table) {
+		   sArray<MBucket> & a_table) {
     const unsigned size = a_table.size();
     unsigned a = h1(key,size);
 
@@ -187,7 +187,7 @@ public:
     // old table into the new table.
 
     // the next table, used for table resizing.
-    sArray < Bucket > nt;
+    sArray < MBucket > nt;
     nt.resize(new_size);
 
     for (unsigned i=0;i<table.size();i++) {
