@@ -1,0 +1,6 @@
+2005-03-08  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
+
+	* speedup: faster Gaussian evaluation
+	* cpbeam applies to separators as well as clique
+	* started ChangeLog
+
