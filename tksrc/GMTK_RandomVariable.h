@@ -103,19 +103,37 @@ public:
   unsigned tag;
 
   /////////////////////////////////////////////////////////////////////////
+  // Random variable weight value. This value is applied to
+  // the random variable when computing probabilities, as follows
+  // p(x)^weight. This can apply both to discrete or continuous
+  // variables, and therefore can simulate {acoustic, pronunciation,
+  // language} model scale factors (and anything similar) 
+  enum  { wt_NoWeight, wt_Constant, wt_Observation } wtStatus;
+  union {
+    double wtWeight; // weight value if wt_Constant is active.
+    unsigned wtFeatureElement; // feature element of weight value if wt_Observation is active.
+  };
+
+  /////////////////////////////////////////////////////////////////////////
   // Initialize with the variable type.
   // The default timeIndex value of -1 indicates a static network.
   // The default value of "hidden" is true.
   // Discrete nodes must be specified with their cardinalities.
   RandomVariable(string _label, vartype vt, int card=0) {
-    hidden=true; 
-    discrete=(vt==Discrete); 
-    timeIndex=-1;
-    cardinality=card; 
+
+    hidden = true; 
+    discrete = (vt==Discrete); 
+    timeIndex = -1;
+    cardinality = card; 
     if (discrete) 
       assert(card!=0);
-    label=_label;
-    dtMapper=NULL;
+    label = _label;
+    dtMapper = NULL;
+    wtStatus = wt_NoWeight;
+    // give some sensible values to these
+    wtWeight = 1.0;
+    wtFeatureElement = 0;
+    
   }
 
   virtual ~RandomVariable() {;}

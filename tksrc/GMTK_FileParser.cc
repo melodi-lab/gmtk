@@ -317,7 +317,7 @@ FileParser::fillKeywordTable()
 {
   // ******************************************************************
   // This table must always be consistent with the enum TokenKeyword in 
-  // the .h file.
+  // the .h file and with 'keyword' in the .lex file.
   // ******************************************************************
   const char*const kw_table[] = {
     "frame",
@@ -343,7 +343,9 @@ FileParser::fillKeywordTable()
     "mlpSwitchMixGaussian",
     "chunk",
     "GRAPHICAL_MODEL",
-    "value"
+    "value",
+    "weight",
+    "observation" 
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -369,6 +371,7 @@ FileParser::RVInfo::RVInfo(const RVInfo& v)
   rvDisp = v.rvDisp;
   rvCard = v.rvCard;
   rvFeatureRange = v.rvFeatureRange;
+  rvWeightInfo = v.rvWeightInfo;
   switchingParents = v.switchingParents;
   switchMapping = v.switchMapping;
   conditionalParents = v.conditionalParents;
@@ -811,6 +814,7 @@ void
 FileParser::parseRandomVariableAttributeList()
 {
   if (tokenInfo == KW_Type || 
+      tokenInfo == KW_Weight ||
       tokenInfo == KW_Switchingparents ||
       tokenInfo == KW_Conditionalparents) 
     {
@@ -826,6 +830,8 @@ FileParser::parseRandomVariableAttribute()
   ensureNotAtEOF("variable attribute");
   if (tokenInfo == KW_Type)
     return parseRandomVariableTypeAttribute();
+  else if (tokenInfo == KW_Weight)
+    return parseRandomVariableWeightAttribute();
   else if (tokenInfo == KW_Switchingparents ||
 	   tokenInfo == KW_Conditionalparents) {
     if (curRV.rvType == RVInfo::t_unknown)
@@ -1015,6 +1021,78 @@ FileParser::parseRandomVariableContinuousType()
     parseError("variable disposition (hidden|discrete)");
 
 }
+
+void
+FileParser::parseRandomVariableWeightAttribute()
+{
+
+
+  ensureNotAtEOF(KW_Weight);
+  if (tokenInfo != KW_Weight)
+    parseError(KW_Weight);
+  if (curRV.rvWeightInfo.wt_Status != RVInfo::WeightInfo::wt_NoWeight) {
+    parseError("RV already has weight attribute");
+  }
+  consumeToken();
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseError(":");
+  consumeToken();
+
+  ensureNotAtEOF("weight value or observation");
+  if (tokenInfo == KW_Value) {
+    consumeToken();
+
+    ensureNotAtEOF("weight floating-point value");
+    // allow an int to be treated as a float value.
+    if (tokenInfo != TT_Real && tokenInfo != TT_Integer)
+      parseError("weight floating-point value");
+    if (tokenInfo == TT_Real)
+      curRV.rvWeightInfo.weight_value = tokenInfo.doub_val;
+    else 
+      curRV.rvWeightInfo.weight_value = (double)tokenInfo.int_val;
+    consumeToken();
+
+    curRV.rvWeightInfo.wt_Status = RVInfo::WeightInfo::wt_Constant;    
+    
+  } else if (tokenInfo == KW_Observation) {
+    consumeToken();
+    
+    ensureNotAtEOF("first feature range");
+    if (tokenInfo != TT_Integer)
+      parseError("first feature range");
+    curRV.rvWeightInfo.firstFeatureElement = tokenInfo.int_val;
+    consumeToken();
+
+    ensureNotAtEOF("feature range separator");
+    if (tokenInfo != TT_Colon)
+      parseError("feature range separator");
+    consumeToken();
+    
+    ensureNotAtEOF("second feature range");
+    if (tokenInfo != TT_Integer)
+      parseError("second feature range");
+    curRV.rvWeightInfo.lastFeatureElement = tokenInfo.int_val;
+    if (curRV.rvWeightInfo.lastFeatureElement != curRV.rvWeightInfo.firstFeatureElement
+	|| (curRV.rvWeightInfo.lastFeatureElement < 0))
+      parseError("first range num must be == second range num for observation scalar weight");
+    consumeToken();
+
+    curRV.rvWeightInfo.wt_Status = RVInfo::WeightInfo::wt_Observation;
+
+  } else 
+    parseError("weight value or observation");
+
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseError(";");
+  consumeToken();
+
+}
+
+
 
 void
 FileParser::parseRandomVariableParentAttribute()
@@ -1518,6 +1596,17 @@ FileParser::createRandomVariableGraph()
       rvInfoVector[i].rv = rv;
     }
     rvInfoVector[i].rv->timeIndex = rvInfoVector[i].frame;
+
+    // add weight value stuff
+    rvInfoVector[i].rv->wtStatus = RandomVariable::wt_NoWeight;
+    if (rvInfoVector[i].rvWeightInfo.wt_Status == RVInfo::WeightInfo::wt_Constant) {
+      rvInfoVector[i].rv->wtStatus = RandomVariable::wt_Constant;
+      rvInfoVector[i].rv->wtWeight = rvInfoVector[i].rvWeightInfo.weight_value;
+    } else if (rvInfoVector[i].rvWeightInfo.wt_Status == RVInfo::WeightInfo::wt_Observation) {
+      rvInfoVector[i].rv->wtStatus = RandomVariable::wt_Observation;
+      rvInfoVector[i].rv->wtFeatureElement = rvInfoVector[i].rvWeightInfo.firstFeatureElement;
+    }
+
   }
 
   // now set up all the parents of each random variable.
@@ -2304,9 +2393,25 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		    globalObservationMatrix.numContinuous()-1);
       }
     }
+
+    // checks common for both discrete and continuous RVs.
+
+    // if weight comes from observation matrix, make sure it indexes into
+    // a valid index and a float value.
+    if (rvInfoVector[i].rvWeightInfo.wt_Status == RVInfo::WeightInfo::wt_Observation) {
+      if (rvInfoVector[i].rvWeightInfo.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	error("ERROR: random variable '%s', frame %d, line %d, specifies weight's observation feature element %d:%d that are out of continuous range ([%d:%d] inclusive) of observation matrix",
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber,
+	      rvInfoVector[i].rvWeightInfo.firstFeatureElement,
+	      rvInfoVector[i].rvWeightInfo.lastFeatureElement,
+	      0,
+	      globalObservationMatrix.numContinuous()-1);
+      }
+    }
   }
 }
-
 
 
 

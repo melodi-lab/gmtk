@@ -109,12 +109,20 @@ public:
   // 
   // compute the probability
   logpr probGivenParents() {
-    return curCPT->probGivenParents(*curConditionalParents,val);
+    logpr _cachedProb = curCPT->probGivenParents(*curConditionalParents,val);
+    if (wtStatus != wt_NoWeight) {
+      if (wtStatus == wt_Constant)
+	_cachedProb.valref() *= wtWeight;
+      else // get weight from observation matrix at current time frame
+	_cachedProb.valref() *= 
+	  (*globalObservationMatrix.floatVecAtFrame((unsigned)timeIndex, wtFeatureElement));
+    }
+    return _cachedProb;
   }
 
   // clamp this RV to its "first" value
-  void clampFirstValue() { 
-    findConditionalParents(); 
+  void clampFirstValue() {
+    findConditionalParents();
     if (!hidden) {
       // observed, so set value from observation matrix
       if (globalObservationMatrix.active() && featureElement != DRV_USE_FIXED_VALUE_FEATURE_ELEMENT) {

@@ -54,7 +54,19 @@ class FileParser
     ////////////////////////////////////////////////////////////
     // define a bunch of types that are used in RVs
     enum Type { t_discrete, t_continuous, t_unknown };
+
     enum Disposition { d_hidden, d_observed, d_unknown };
+
+    struct WeightInfo {
+      enum wtEnum { wt_NoWeight, wt_Constant, wt_Observation };
+      double weight_value;
+      wtEnum wt_Status;
+      unsigned firstFeatureElement;
+      unsigned lastFeatureElement;
+      WeightInfo() { clear(); }
+      void clear() { wt_Status = wt_NoWeight; weight_value = 1.0; }
+    };
+
     struct FeatureRange {
       enum frEnum { fr_UnFilled, fr_Range, fr_FirstIsValue };
       frEnum filled;
@@ -63,6 +75,7 @@ class FileParser
       FeatureRange() { filled = fr_UnFilled; }
       void clear() { filled = fr_UnFilled; }
     };
+
     struct ListIndex {
       enum ListIndexType { li_String, li_Index, li_Unknown } liType;
       // if this is an integer index, this is used.
@@ -92,6 +105,10 @@ class FileParser
     unsigned rvCard;
     // if it is an observed variable, it must have a feature range.
     FeatureRange rvFeatureRange;
+
+    // if it is an observed continuous, it might have a weight
+    WeightInfo rvWeightInfo;
+
 
     // switching parents stuff
     vector< rvParent > switchingParents;
@@ -125,6 +142,7 @@ class FileParser
       rvType = t_unknown;
       rvDisp = d_unknown;
       rvFeatureRange.clear();
+      rvWeightInfo.clear();
 
       switchingParents.clear();
       switchMapping.clear();
@@ -236,7 +254,9 @@ public:
     KW_MlpSwitchMixGaussin=20,
     KW_Chunk=21,
     KW_GRAPHICAL_MODEL=22,
-    KW_Value=23
+    KW_Value=23,
+    KW_Weight=24,
+    KW_Observation=25
   };
 
   // list of token keyword strings.
@@ -265,7 +285,7 @@ public:
     // of the read token.
     union {
       int int_val;
-      float float_val;
+      // float float_val;
       double doub_val;
     };
 
@@ -338,6 +358,7 @@ private:
   void parseRandomVariableAttributeList();
   void parseRandomVariableAttribute();
   void parseRandomVariableTypeAttribute();
+  void parseRandomVariableWeightAttribute();
   void parseRandomVariableType();
   void parseRandomVariableDiscreteType();
   void parseRandomVariableContinuousType();

@@ -168,6 +168,10 @@ RandomVariable* RandomVariable::cloneWithoutParents()
   // leave cachedIntFromSwitchingState uninitialized since
   // it will be changed individually for each rv.
 
+  rv->wtStatus = wtStatus;
+  rv->wtWeight = wtWeight;
+  rv->wtFeatureElement = wtFeatureElement;
+
   return rv;
 }
 
