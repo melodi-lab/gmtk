@@ -12,7 +12,7 @@
     2) A global info message handler, just call infoMsg(IM::Low,"message");
        (see below).
 
-    Jeff Bilmes <bilmes@cs.berkeley.edu>
+    Jeff Bilmes <bilmes@ee.washington.edu>
 */
 
 
