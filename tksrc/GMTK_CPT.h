@@ -231,7 +231,10 @@ public:
   // returns true, then it also sets the argument p to the next
   // probability value, and otherwise does nothing to p. If next()
   // returns false, then nothing more should be assumed about either
-  // the CPT or the value of the caller RV.
+  // the CPT or the value of the caller RV. Note that if next returns
+  // true, then p is guaranteed not to be zero probability (meaning it
+  // is up to the CPT iterator to advance to the next non-zero
+  // probability value).
   virtual bool next(iterator &,logpr& p) = 0;
 
   ///////////////////////////////////////////////////////////  
