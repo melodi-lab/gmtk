@@ -97,6 +97,12 @@ public:
   int timeIndex;
 
   /////////////////////////////////////////////////////////////////////////
+  // General tag variable that is used for a variety of purposes,
+  // such as topological sort, etc. Having this variable avoids
+  // needing to use maps for certain operations.
+  unsigned tag;
+
+  /////////////////////////////////////////////////////////////////////////
   // Initialize with the variable type.
   // The default timeIndex value of -1 indicates a static network.
   // The default value of "hidden" is true.
@@ -287,7 +293,8 @@ public:
   ////////////////////////////////////////////////////////////////////////
   // Ties the parameters of 'this' with whatever those of 'other' are. 
   // 'other' and 'this' must be identical structuraly.
-  virtual void tieParametersWith(RandomVariable*const other) = 0;
+  virtual void tieParametersWith(RandomVariable*const other,
+				 bool checkStructure=true) = 0;
 
   ////////////////////////////////////////////////////////////////////////
   // Returns true of 'this' and 'other' are structurally identical.
@@ -384,6 +391,12 @@ public:
   // - copy the parent arrays (child arrays will be reset)
   // - copy the member data - cardinality, dtMapper, hidden, discrete
   virtual RandomVariable *clone();
+
+  /////////////////////////////////////////  
+  // A version of the clone routine that does not
+  // copy any of the parents and children.
+  virtual RandomVariable *cloneWithoutParents();
+
 
   ////////////////////////////////////////////////////////
   // create an empty object of the same type as this (or
