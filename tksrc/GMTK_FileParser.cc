@@ -44,6 +44,7 @@
 #include "GMTK_MixGaussians.h"
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_GraphicalModel.h"
+#include "GMTK_RVInfo.h"
 
 VCID("$Header$");
 
@@ -386,11 +387,11 @@ FileParser::RVInfo::RVInfo(const RVInfo& v)
 // 
 // Check the consistency of the RV information
 // that couldn't be checked while it was parsing (if anything)
-void
-FileParser::RVInfo::checkConsistency()
-{
-  error("not implemented");
-}
+// void
+// FileParser::RVInfo::checkConsistency()
+// {
+//   error("not implemented");
+// }
 
 
 ////////////////////////////////////////////////////////////////////
@@ -752,8 +753,8 @@ FileParser::parseRandomVariableList()
 
 
   // check if we've already seen this RV
-  map < rvParent , unsigned >::iterator it;
-  it = nameRVmap.find(rvParent(curRV.name,curRV.frame));
+  map < RVInfo::rvParent , unsigned >::iterator it;
+  it = nameRVmap.find(RVInfo::rvParent(curRV.name,curRV.frame));
   if (it != nameRVmap.end()) {
     error("Error: random variable (%s) at frame (%d) defined twice, "
 	  "on both line %d and %d\n",curRV.name.c_str(),
@@ -767,7 +768,7 @@ FileParser::parseRandomVariableList()
   rvInfoVector.push_back(curRV);
   // add to map
   nameRVmap[
-	    rvParent(curRV.name,curRV.frame)
+	    RVInfo::rvParent(curRV.name,curRV.frame)
             ] 
     = rvInfoVector.size()-1;
 
@@ -783,7 +784,9 @@ FileParser::parseRandomVariable()
     parseError(KW_Variable);
   curRV.frame = curFrame;
   curRV.fileLineNumber = tokenInfo.srcLine;
+  curRV.rvFileName  = fileNameParsing;
   consumeToken();
+
 
   ensureNotAtEOF(":");
   if (tokenInfo != TT_Colon)
@@ -1209,7 +1212,7 @@ FileParser::parseParentList()
 void
 FileParser::parseParent()
 {
-  rvParent p;
+  RVInfo::rvParent p;
 
   ensureNotAtEOF("parent RV name");
   if (tokenInfo != TT_Identifier) 
@@ -1618,15 +1621,20 @@ FileParser::createRandomVariableGraph()
     vector<RandomVariable *> sparents;
     for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
 
-      rvParent pp(rvInfoVector[i].switchingParents[j].first,
+      RVInfo::rvParent pp(rvInfoVector[i].switchingParents[j].first,
 		  frame+rvInfoVector[i].switchingParents[j].second);
 
       ////////////////////////////////////////////////////
       // Make sure the rv at the time delta from the current
       // frame exists.
       if (nameRVmap.find(pp) == nameRVmap.end())
-	error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+	error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber,
 	      pp.first.c_str(),pp.second);
+      // error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+      // pp.first.c_str(),pp.second);
 
       const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
 
@@ -1650,15 +1658,20 @@ FileParser::createRandomVariableGraph()
     for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
       for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
 
-	rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+	RVInfo::rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
 		    frame+rvInfoVector[i].conditionalParents[j][k].second);
 
 	////////////////////////////////////////////////////
 	// Make sure the rv at the time delta from the current
 	// frame exists.
 	if (nameRVmap.find(pp) == nameRVmap.end())
-	  error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+	  error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
 		pp.first.c_str(),pp.second);
+	// error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+	// pp.first.c_str(),pp.second);
 
 	const RVInfo& par = rvInfoVector[ nameRVmap[ pp ] ];
 
@@ -1717,7 +1730,7 @@ FileParser::ensureS_SE_E_NE()
   for (unsigned i=0;i<rvInfoVector.size();i++) {
     for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
 
-      rvParent pp(rvInfoVector[i].switchingParents[j].first,
+      RVInfo::rvParent pp(rvInfoVector[i].switchingParents[j].first,
 		  rvInfoVector[i].frame
 		  +rvInfoVector[i].switchingParents[j].second);
 
@@ -1725,8 +1738,13 @@ FileParser::ensureS_SE_E_NE()
       // Make sure the rv at the time delta from the current
       // frame exists.
       if (nameRVmap.find(pp) == nameRVmap.end())
-	error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+	error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber,
 	      pp.first.c_str(),pp.second);
+      // error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+      // pp.first.c_str(),pp.second);
 
       unsigned parent_position = nameRVmap[ pp ];
 
@@ -1746,7 +1764,7 @@ FileParser::ensureS_SE_E_NE()
     for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
       for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
 
-	rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+	RVInfo::rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
 		    rvInfoVector[i].frame		    
 		    +rvInfoVector[i].conditionalParents[j][k].second);
 
@@ -1754,8 +1772,13 @@ FileParser::ensureS_SE_E_NE()
 	// Make sure the rv at the time delta from the current
 	// frame exists.
 	if (nameRVmap.find(pp) == nameRVmap.end())
-	  error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+	  error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
 		pp.first.c_str(),pp.second);
+	// error("Error: parent random variable \"%s\" at frame %d does not exist\n",
+	// pp.first.c_str(),pp.second);
 	unsigned parent_position = nameRVmap[ pp ];
 
 	if (parent_position > i) {
@@ -1902,19 +1925,26 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
 
 
-		  rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
+		  RVInfo::rvParent pp(rvInfoVector[i].conditionalParents[j][k].first,
 			      rvInfoVector[i].frame
 			      +rvInfoVector[i].conditionalParents[j][k].second);
-		  map < rvParent , unsigned >::iterator it;
+		  map < RVInfo::rvParent , unsigned >::iterator it;
 		  it = nameRVmap.find(pp);
 		  if (it == nameRVmap.end()) {
 		    // this really shouldn't happen at this point since
 		    // it should have been checked somewhere else,
 		    // but we include the check nonetheless
-		    error("Error: parent random variable \"%s\" at" 
-			  "frame %d does not exist\n",
+		    error("Error: RV \"%s\" at frame %d (line %d) specifies a parent \"%s\" at frame %d that does not exist\n",
+			  rvInfoVector[i].name.c_str(),
+			  rvInfoVector[i].frame,
+			  rvInfoVector[i].fileLineNumber,
+			  pp.first.c_str(),pp.second,
 			  rvInfoVector[i].conditionalParents[j][k].first.c_str(),
 			  rvInfoVector[i].conditionalParents[j][k].second);
+		    // error("Error: parent random variable \"%s\" at" 
+		    // "frame %d does not exist\n",
+		    // rvInfoVector[i].conditionalParents[j][k].first.c_str(),
+		    // rvInfoVector[i].conditionalParents[j][k].second);
 		  }
 		  mdcpt->setNumCardinality(k,
 					   rvInfoVector[(*it).second].rvCard);
@@ -2452,7 +2482,7 @@ FileParser::addVariablesToGM(GMTK_GM& gm)
 
 
 
-
+#if 0
 /*-
  *-----------------------------------------------------------------------
  * addVariablesToGMTemplate()
@@ -2485,23 +2515,34 @@ void
 FileParser::addVariablesToTemplate(GMTemplate& gm_template)
 {
   gm_template.numFrames = numFrames();
+
+  // TODO: rhs, computed already?
+  gm_template.prologueNumFrames = firstChunkFrame();
+  gm_template.chunkNumFrames = lastChunkFrame() - firstChunkFrame() + 1;
+  gm_template.epilogueNumFrames = numFrames() - firstChunkFrame() - 1;
+
   gm_template.firstChunkFrame = firstChunkFrame();
   gm_template.lastChunkFrame = lastChunkFrame();
 
-  gm_template.frames.resize(numFrames());
+  // unroll the file parser's template 1 time and place
+  // it in the GM template.
+  unroll(2,gm_template.rvs);
 
-  ///////////////////////////////////////////////////////////
-  // Assume that the rvs inserted into rvInfoVector are 
-  // insereted in frame order.
-  unsigned rvindex=0;
-  for (unsigned frameIndex=0;frameIndex<numFrames();frameIndex++) {
-    while (rvInfoVector[rvindex].frame == frameIndex) {
-      gm_template.frames[frameIndex].rvs.push_back(rvInfoVector[rvindex].rv);
-      rvindex++;
-    }
-  }
+//   gm_template.frames.resize(numFrames());
+//   ///////////////////////////////////////////////////////////
+//   // Assume that the rvs inserted into rvInfoVector are 
+//   // insereted in frame order.
+//   unsigned rvindex=0;
+//   for (unsigned frameIndex=0;frameIndex<numFrames();frameIndex++) {
+//     while (rvInfoVector[rvindex].frame == frameIndex) {
+//       gm_template.frames[frameIndex].rvs.push_back(rvInfoVector[rvindex].rv);
+//       rvindex++;
+//     }
+//  }
+
 }
 
+#endif
 
 
 
@@ -2544,7 +2585,11 @@ FileParser::addVariablesToTemplate(GMTemplate& gm_template)
  *      have been stored in frame order (frame 0 first, 1 second, etc.)
  *
  * Postconditions:
- *      argument contains unrolled network.
+ *      argument 'unrolledVarSet' contains unrolled network.
+ *      Order of vars in 'unrolledVarSet' is GUARANTEED to be
+ *      in same order as before (i.e., in frame order
+ *      which will be the order the variables are presented in 
+ *      the file).
  *
  * Side Effects:
  *      Nothing internal is changed, but changes argument.
@@ -2552,7 +2597,8 @@ FileParser::addVariablesToTemplate(GMTemplate& gm_template)
  * Results:
  *      nothing.
  *
- *----------------------------------------------------------------------- */
+ *----------------------------------------------------------------------- 
+ */
 void
 FileParser::unroll(unsigned timesToUnroll,
 		   vector<RandomVariable*> &unrolledVarSet)
@@ -2560,7 +2606,7 @@ FileParser::unroll(unsigned timesToUnroll,
 
   // a map from the r.v. name and new frame number to
   // position in the new unrolled array of r.v.'s
-  map < rvParent, unsigned > posOfParentAtFrame;
+  map < RVInfo::rvParent, unsigned > posOfParentAtFrame;
 
   // a map from the new r.v. to the corresponding rv info
   // vector position in the template.
@@ -2576,10 +2622,10 @@ FileParser::unroll(unsigned timesToUnroll,
   unrolledVarSet.clear();
   // set up the size for the new one in advance.
   unrolledVarSet.resize(numVarsInPrologue+
-	      (timesToUnroll+1)*numVarsInChunk+numVarsInEpilogue);
+			(timesToUnroll+1)*numVarsInChunk+numVarsInEpilogue);
   // uvsi: unrolledVarSet index
   unsigned uvsi=0;
-  // tvi: template variable index
+  // tvi: template variable indexa
   unsigned tvi=0;
   for (;tvi<numVarsInPrologue;tvi++) {
 
@@ -2592,7 +2638,7 @@ FileParser::unroll(unsigned timesToUnroll,
     // unrolledVarSet[uvsi]->timeIndex = frame;
 
     infoOf[unrolledVarSet[uvsi]] = tvi;
-    rvParent p(unrolledVarSet[uvsi]->name(),frame);
+    RVInfo::rvParent p(unrolledVarSet[uvsi]->name(),frame);
     posOfParentAtFrame[p] = uvsi;
 
     uvsi++;
@@ -2609,7 +2655,7 @@ FileParser::unroll(unsigned timesToUnroll,
       unrolledVarSet[uvsi]->timeIndex = frame;
 
       infoOf[unrolledVarSet[uvsi]] = tvi;
-      rvParent p(unrolledVarSet[uvsi]->name(),frame);
+      RVInfo::rvParent p(unrolledVarSet[uvsi]->name(),frame);
       posOfParentAtFrame[p] = uvsi;
 
       uvsi++;
@@ -2625,7 +2671,7 @@ FileParser::unroll(unsigned timesToUnroll,
     unrolledVarSet[uvsi]->timeIndex = frame;
 
     infoOf[unrolledVarSet[uvsi]] = tvi;
-    rvParent p(unrolledVarSet[uvsi]->name(),frame);
+    RVInfo::rvParent p(unrolledVarSet[uvsi]->name(),frame);
     posOfParentAtFrame[p] = uvsi;
 
     uvsi++;
@@ -2650,7 +2696,7 @@ FileParser::unroll(unsigned timesToUnroll,
 	info->rv->switchingParents[j];
 
       // pointer to parent in unrolled network
-      rvParent pp(info->switchingParents[j].first,
+      RVInfo::rvParent pp(info->switchingParents[j].first,
 		  frame+info->switchingParents[j].second);
 
 
@@ -2661,7 +2707,7 @@ FileParser::unroll(unsigned timesToUnroll,
       ////////////////////////////////////////////////////////
       // Make sure the rv at the time delta from the current
       // frame exists.
-      map < rvParent , unsigned >::iterator it;      
+      map < RVInfo::rvParent , unsigned >::iterator it;      
       if ((it = posOfParentAtFrame.find(pp)) == posOfParentAtFrame.end()) {
 	error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that does not exist when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which does not exist)\n",
 	      info->name.c_str(),
@@ -2728,7 +2774,7 @@ FileParser::unroll(unsigned timesToUnroll,
 	RandomVariable* template_parent_rv =
 	  info->rv->conditionalParentsList[j][k];
 
-	rvParent pp(info->conditionalParents[j][k].first,
+	RVInfo::rvParent pp(info->conditionalParents[j][k].first,
 		    frame+info->conditionalParents[j][k].second);
 
 
@@ -2739,7 +2785,7 @@ FileParser::unroll(unsigned timesToUnroll,
 	////////////////////////////////////////////////////////
 	// Make sure the rv at the time delta from the current
 	// frame exists.
-	map < rvParent , unsigned >::iterator it;      
+	map < RVInfo::rvParent , unsigned >::iterator it;      
 	if ((it = posOfParentAtFrame.find(pp)) == posOfParentAtFrame.end()) {
 	  error("Error: random variable '%s' (template frame %d, line %d) specifies a parent '%s(%d)' that does not exist when unrolling template %d times (in unrolled network, variable at frame %d asked for parent '%s' at frame '%d' which does not exist)\n",
 		info->name.c_str(),
