@@ -1,4 +1,4 @@
-
+# $Header$
 
 #change this to whatever
 exec_prefix=./
