@@ -408,6 +408,9 @@ MixGaussians::emEndIteration()
   if ( !emOnGoingBitIsSet() )
     return; // done already
 
+  // floor to zero of small.
+
+  accumulatedProbability.floor();
   if (accumulatedProbability.zero()) {
     warning("WARNING: Gaussian mixture named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }

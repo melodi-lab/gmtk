@@ -271,6 +271,7 @@ MTCPT::emEndIteration()
   if (!emOnGoingBitIsSet())
     return;
 
+  accumulatedProbability.floor();
   if (accumulatedProbability.zero()) {
     warning("WARNING: MTCPT named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
   }
