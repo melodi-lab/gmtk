@@ -306,3 +306,10 @@ no gaussian mixtures, does the master file still have to mention them?
 - make DTS such that 'default' is not required, and that if
   we have splits w/o a default, then it will have a run-time
   error if we ever get a case that doesn't match the guys in the split
+
+
+- change range error messages to indcate where the error is
+  in the file, etc. where the error occurs (add an extra 
+  string argument, etc.).
+
+
