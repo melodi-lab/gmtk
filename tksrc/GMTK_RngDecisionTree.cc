@@ -130,7 +130,7 @@ main()
   vec.resize(dt.numFeatures());
   iDataStreamFile stin ("-",false);
 
-  // first test iterating through all values.
+  // first test iterating through all leaf values.
   for (RngDecisionTree<int>::iterator it = dt.begin();
        it != dt.end(); it++) {
     printf("leaf value = %d\n",it.value());
