@@ -371,8 +371,8 @@ public:
 
   //////////////////////////////////////////////////////////////
   // access to the chunk information.
-  unsigned firstChunkframe() { return _firstChunkframe; }
-  unsigned lastChunkframe() { return _firstChunkframe; }
+  unsigned firstChunkFrame() { return _firstChunkframe; }
+  unsigned lastChunkFrame() { return _firstChunkframe; }
   unsigned maxFrame() { return _maxFrame; }
   unsigned numFrames() { return _maxFrame+1; }
 };

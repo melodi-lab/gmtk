@@ -594,10 +594,10 @@ FileParser::parseGraphicalModel()
   parseFrameList();
   _maxFrame = curFrame;
 
+  parseChunkSpecifier();
+
   if (_lastChunkframe > _maxFrame)
     parseError("last chunk integer must be no greater than number of frames");
-
-  parseChunkSpecifier();
 
   printf("Found %d random variables.\n",
 	 rvInfoVector.size());
@@ -2068,6 +2068,12 @@ FileParser::addVariablesToGM(GMTK_GM& gm)
   for (unsigned i=0;i<rvInfoVector.size();i++) {
     gm.node[i] = rvInfoVector[i].rv;
   }
+  // set some of the GMs variables.
+  gm.firstChunkFrame = firstChunkFrame();
+  gm.lastChunkFrame = lastChunkFrame();
+  gm.framesInTemplate = numFrames();
+  gm.framesInRepeatSeg = lastChunkFrame()- firstChunkFrame() + 1;
+
 }
 
 
