@@ -1987,10 +1987,66 @@ Sun Jun 13 15:14:51 2004
   - make quick reference card for sparse CPTs 
 
 Tue Jun 22 15:41:46 2004
-  - design function to do log(1+exp(x))
+  - design function to do log(1+exp(x)) directly.
   - make use of log1p() = log(1+x) when x is very small.
       (just include source code of log1p() for portability).
-  - check that log1p() is available, use HAVE_LOG1P config
+  - check that log1p() is available, use HAVE_LOG1P config.h
+  - include ASM directive for microprocessors that have fnlog1p functions (i387??)  
+
+  - fast log function from web:
+      
+       Submitted by Laurent de Soras, posted on 30 March 2001 
+       Fast log() Function, by Laurent de Soras: 
+       --------------------------------------------------------------------------------
+       
+       Here is a code snippet to replace the slow log() function... It
+       just performs an approximation, but the maximum error is below
+       0.007. Speed gain is about x5, and probably could be increased
+       by tweaking the assembly code.
+       
+       The function is based on floating point coding. It's easy to
+       get floor (log2(N)) by isolating exponent part. We can refine
+       the approximation by using the mantissa. This function returns
+       log2(N) :
+       
+       
+       inline float fast_log2 (float val)
+       {
+          int * const    exp_ptr = reinterpret_cast <int *> (&val);
+          int            x = *exp_ptr;
+          const int      log_2 = ((x >> 23) & 255) - 128;
+          x &= ~(255 << 23);
+          x += 127 << 23;
+          *exp_ptr = x;
+       
+          val = ((-1.0f/3) * val + 2) * val - 2.0f/3;   // (1)
+       
+          return (val + log_2);
+       }
+        
+       
+       The line (1) computes 1+log2(m), m ranging from 1 to 2. The
+       proposed formula is a 3rd degree polynomial keeping first
+       derivate continuity. Higher degree could be used for more
+       accuracy. For faster results, one can remove this line, if
+       accuracy is not the matter (it gives some linear interpolation
+       between powers of 2).
+       
+       Now we got log2(N), we have to multiply it by ln(2) to get the natural log : 
+       
+       
+       inline float fast_log (const float &val)
+       {
+          return (fast_log2 (val) * 0.69314718f);
+       }
+       -- Laurent 
+      This tip was submitted by Laurent de Soras, posted on 30 March 2001. To submit your own tip, visit here. 
+   - See also:
+       http://algo.inria.fr/papers/html/RiSaShVH96/RiSaShVH96.html 
+       BSD source code of log1p.c
+          http://www.tundraware.com/Technology/Docs/FreeBSD-Source/lib/libm/common_source/log1p.c       
+
+
  
 Tue Jun 22 18:36:23 2004
  new sequence CPTs (and lattice CPTs).
@@ -2008,7 +2064,7 @@ Tue Jun 22 18:36:23 2004
 
 
 Wed Jun 23 00:24:01 2004
- DT formula reading errors when {} characters are not there, causes core dump. 
+  DT formula reading errors when {} characters are not there, causes core dump. 
       
 
 Fri Jul 16 00:52:15 2004
@@ -2018,7 +2074,8 @@ Fri Jul 16 00:52:15 2004
 
 
 Sun Jul 18 22:52:56 2004
-  BUG: unityScore CPT iterators should work (right now they just die with an assertion).
+  unityScore CPT iterators should work (right now they just die with an assertion).
+   (but this is OK since unity score CPTs apply only to observed variables without parents).
    Also, fix class hierarchy in CPT class.
 
 Tue Jul 27 14:29:03 2004
@@ -2097,7 +2154,8 @@ Wed Aug 18 20:23:43 2004
     killing the machine). Integrate this with gmtkTime -multi so that
     if the fixed memory (or time) is exceeded, we free-up everything
     done so far in current inerence pass, and return to beginning state.
-
+  - This might be hard since many OSs (e.g., currently linux) don't
+    support setrlimit with fixed memory
 
 Wed Aug 18 21:05:31 2004
 Summary of many of the new features compiled from the above up to the
@@ -2151,6 +2209,8 @@ other minor things mentioned above).
           models as Gaussians). To avoid needing to do an iterative scheme, triangulate
           this mdoel giving chordal Gaussians.
         - ancestral graphs and Gaussians.
+        - sparse inverse covariance matrices, non-chordal, using iterative proporotional scaling (IPS)
+          to train within EM 
 
 
      - usability features
@@ -2258,6 +2318,7 @@ Wed Aug 25 14:54:03 2004
 Fri Aug 27 05:15:25 2004
   - Add to docs. In DT formulas, the 'card' of a continous random variable
     evaluates to '0'. 
+  - add child card() to DT leafs of discrete children.
 
 Sat Aug 28 15:54:29 2004
   Remove all the extraneous "f >=0" for typeof f  == unsigned in ObservationMatrix
@@ -2291,7 +2352,7 @@ DONE: Mon Aug 30 06:36:52 2004
      numSegments - returns number of segments
   - also add to DT leaf formulas.
 
-Mon Aug 30 09:04:32 2004
+DONE: Mon Aug 30 09:04:32 2004
   - change gmtkTime -multi to use fork() set/getrlimits to avoid blowing up on
     bad triangulations.
 
