@@ -39,12 +39,14 @@ public:
   // warning that could indicate a problem, a tag of 100 means
   // that this is something that should not exist.
   enum VerbosityLevels { 
-    Min = 0,
-    Warning = 0, // Anything lower than this should be an error
+    Nothing = 0, // At this level nothing is intended to be printed (note
+                 // that user should never do infoMsg(Nothing,"") for this to work).
+    Min = 1,     // Min level at which anything is printed.
+    Warning = 1, // Anything lower than this should be an error
                  // called with the error() function which will kill
                  // the program. Also, this level is the
                  // threshold at which things get sent to stderr.
-                 //
+
     Nano = 10,   // This should be the default.
     Default = 10,
     Tiny = 20,
@@ -56,7 +58,8 @@ public:
     Mega = 80,
     Rediculous = 90,
     Foolish = 100,
-    Max  = 100,    //  keep this set at the maximum
+    Max  = 100,    //  Maximum setable level.
+
     // We also define an "increment" variable here, so that a user
     // can do something like 
     //   infoMsg( (Nano + 0.3*Increment), "bar" );
