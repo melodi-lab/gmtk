@@ -301,8 +301,8 @@ X ascii/binary conversion program can go both ways.
 - clean up swap and end EM in gmparams
 
 - add command line option "-format file-type" to the main programs that
-will explain the formats of the various files. For example, if there are
-no gaussian mixtures, does the master file still have to mention them?
+  will explain the formats of the various files. For example, if there are
+  no gaussian mixtures, does the master file still have to mention them?
 
 - make DTS such that 'default' is not required, and that if
   we have splits w/o a default, then it will have a run-time
@@ -344,6 +344,7 @@ no gaussian mixtures, does the master file still have to mention them?
 
 - write our own pre-processor (doesn't have space problem
   that cpp has, and also will give standard #line/#file directives).
+  Perhaps in perl.
 
 - add tag to command line to add to all cloned objects.
 
@@ -357,7 +358,7 @@ no gaussian mixtures, does the master file still have to mention them?
 - clean up virtual functions in GMTK_EMable since some of
   the EM ones need not be virtual.
 
-- fix arg description of beam
+x fix arg description of beam
 
 - for docs, when stdfracs are zero for D and B, and
   when we clonesharemeans, we might make a copy of
