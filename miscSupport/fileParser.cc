@@ -200,7 +200,7 @@ iDataStreamFile::prepareNext()
 void iDataStreamFile::rewind()
 {
   assert ( ! cppIfAscii );
-  if (fseek (fh, 0L, SEEK_SET) != 0)
+  if (::fseek (fh, 0L, SEEK_SET) != 0)
     error("ERROR: trouble seeking to beginning of file '%s', %s\n",
 	  fileName(),strerror(errno));
   state = GetNextLine;
@@ -633,7 +633,7 @@ bool oDataStreamFile::flush(char *msg)
 
 void oDataStreamFile::rewind()
 {
-  if (fseek (fh, 0L, SEEK_SET) != 0)
+  if (::fseek (fh, 0L, SEEK_SET) != 0)
     error("ERROR: trouble seeking to beginning of file '%s', %s\n",
 	  fileName(),strerror(errno));
 }

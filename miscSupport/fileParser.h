@@ -46,6 +46,8 @@ class ioDataStreamFile {
   bool binary() { return Binary; }
   const char *const fileName() { return _fileName; }
 
+  long ftell() const { return(::ftell(fh)); }
+  int  fseek ( long offset , int origin ) { return(::fseek(fh,offset,origin)); }
 };
 
 
