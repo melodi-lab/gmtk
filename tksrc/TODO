@@ -1129,13 +1129,14 @@ Fri May 23 15:42:30 2003
     gives true errors.
  
 
-Wed May 28 14:45:38 2003
-  - perhaps this is done already, but when checking for loops and valid structures,
-    do toploigical sort on all of 
-      - basic template (unroll(0))
-      - unroll(1)
-      - unroll(2)
-    There is some email from me to chris on this topic, look for that.
+XX Wed May 28 14:45:38 2003
+    - perhaps this is done already, but when checking for loops and valid structures,
+     do toploigical sort on all of 
+       - basic template (unroll(0))
+       - unroll(1)
+       - unroll(2)
+     There is some email from me to chris on this topic, look for that.
+    DONE: Sat Jul  5 20:49:37 2003 (JB)
 
 
 Tue Jun 03 23:19:31 2003
