@@ -68,7 +68,7 @@ void copyStringWithTag(char *result,const char *const input,
 	return;
       }
     }
-    else if (input_p+1 != input_endp && input_p[1] == 'I') {
+    else if (input_p+1 != input_endp && input_p[1] == 'D') {
       input_p += 2;
       for (int i=0;i<buflen;i++) {
 	if (result_p < result_endp)
