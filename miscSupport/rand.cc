@@ -297,16 +297,18 @@ RAND::inverse_normal_func(double p)
 void
 RAND::rpermute(int * vec, const unsigned len)
 {
-  for (unsigned i=0;i<len;i++) {
-    unsigned val = uniform(i,len-1);
+  const unsigned lenm1 = len-1;
+  for (unsigned i=0;i<lenm1;i++) {
+    unsigned val = uniform(i,lenm1);
     swap(vec[i],vec[val]);
   }
 }
 void
 RAND::rpermute(unsigned * vec, const unsigned len)
 {
-  for (unsigned i=0;i<len;i++) {
-    unsigned val = uniform(i,len-1);
+  const unsigned lenm1 = len-1;
+  for (unsigned i=0;i<lenm1;i++) {
+    unsigned val = uniform(i,lenm1);
     swap(vec[i],vec[val]);
   }
 }
