@@ -738,7 +738,7 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
     }
 
     if (!is.readString(binStatus)) {
-      error("ERROR: while reading file '%s', got keyword '%s' without a filename",is.fileName(),keyword.c_str());
+      error("ERROR: while reading file '%s', got keyword '%s' and filename '%s' without a binary status",is.fileName(),keyword.c_str(),fileName.c_str());
     }
 
     bool binary_p;
@@ -747,7 +747,7 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
     else if (binStatus == "binary" || binStatus == "BINARY")
       binary_p = true;
     else {
-      error("ERROR: while reading file '%s', got keyword '%s' when expecting 'ascii'/'binary' keyword",is.fileName(),binStatus.c_str());
+      error("ERROR: while reading file '%s', got string '%s' when expecting 'ascii'/'binary' keyword",is.fileName(),binStatus.c_str());
     }
 
     map<string,iDataStreamFile*>::iterator it = fileNameMap.find(fileName);
