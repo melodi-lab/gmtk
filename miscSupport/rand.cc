@@ -23,14 +23,32 @@ VCID("$Header$");
 #include "rand.h"
 #include "alloca.h"
 
+#ifndef M_SQRT2
 #define M_SQRT2        1.41421356237309504880  /* sqrt(2) */
+#endif
 
-// declare a default rnd object.
+// declare a default global rnd object.
 RAND rnd(false); // change to true at some point.
+
+//////////////////////////////
+// data needed for rand objects.
 unsigned short RAND::seedv[3];
 
-//
-// randomly choose a mixture component in [0:NumMixComps-1]
+
+/*-
+ *-----------------------------------------------------------------------
+ * RAND::sample
+ *      Sample an integer in the range [0:u] according to the
+ *      probability mass function given by 'dist'
+ *
+ * Results:
+ *      Returns the resulting integer.
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
 int
 RAND::sample(const int u, const float *const dist)
 {
@@ -54,7 +72,22 @@ RAND::sample(const int u, const float *const dist)
 }
 
 
-
+/*-
+ *-----------------------------------------------------------------------
+ * inverse_error_func
+ *      This function implements an approximation to the inverse
+ *      error function. The code was taken from the source code
+ *      of gnuplot. See Abramovitz & Stegan (or some stat book)
+ *      for the definition of the inverse error function.
+ *
+ * Results:
+ *      returns the inverse error function for value p
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
 double 
 inverse_error_func(double p) 
 {
@@ -167,6 +200,27 @@ inverse_error_func(double p)
 }
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * inverse_normal_func
+ *      This function implements an approximation to the inverse
+ *      normal(0,1) function. The code was taken from the source code
+ *      of gnuplot. See Abramovitz & Stegan (or some stat book)
+ *      for the definition of the inverse error function.
+ *      So, to get a sample from a Gaussian N(0,1), call
+ *      inverse_normal_func(rnd.drand48pe()).
+ *
+ * Results:
+ *      returns the inverse Normal function for value p, where
+ *      'p' is presummably uniformly distributed on (0,1).
+ *
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
 double 
 inverse_normal_func(double p)
 {
