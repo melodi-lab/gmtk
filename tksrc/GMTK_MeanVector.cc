@@ -67,7 +67,7 @@ void
 MeanVector::makeRandom()
 {
   for (int i=0;i<means.len();i++) {
-    means[i] = rnd.drand48();
+    means[i] = rnd.drand48pe();
   }
 }
 
