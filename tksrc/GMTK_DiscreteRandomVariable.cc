@@ -32,7 +32,7 @@
 
 VCID("$Header$");
 
-DiscreteRandomVariable::DiscreteRandomVariable(char * _label, vartype vt, 
+DiscreteRandomVariable::DiscreteRandomVariable(string _label, vartype vt, 
 int card)
     : RandomVariable(_label, vt, card) {;}
 

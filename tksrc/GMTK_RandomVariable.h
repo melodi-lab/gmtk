@@ -20,10 +20,10 @@
 #define GMTK_RANDOMVARIABLE_H
 
 #include <vector>
+#include <string>
 
 #include "logp.h"
 #include "GMTK_RngDecisionTree.h"
-#include "general.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // This is the integer type of the values that a discrete random variable
@@ -31,7 +31,22 @@
 // unsigned long, and so on.
 #define DISCRETE_VARIABLE_TYPE short 
 
+// Variables come in these basic varieties.
 enum vartype {Continuous,Discrete};
+
+/////////////////////////////////////////////////////////////////////////////
+// For doing EM with simulated data, it is necessary to be able to store 
+// the values of
+// all the variables in an array of type VariableValue. The easiest way
+// of accomodating both discrete and continuous variables is to let 
+// VariableValue objects store either kind of data.
+struct VariableValue
+{
+    int ival;  // in the case of integer values, this gets used
+
+    // for continuous variables, the values can be stored in the fval array
+    vector<float> fval;   
+};
 
 /*
  * The random variable class defines the basic functions that random
@@ -50,12 +65,12 @@ public:
     // The default timeIndex value of -1 indicates a static network.
     // The default value of "hidden" is true.
     // Discrete nodes must be specified with their cardinalities.
-    RandomVariable(char *_label, vartype vt, int card=0)
+    RandomVariable(string _label, vartype vt, int card=0)
     {hidden=true; discrete=(vt==Discrete); timeIndex=-1;
      cardinality=card; if (discrete) assert(card!=0);
-     label=copyToNewStr(_label);dtMapper=NULL;}
+     label=_label;dtMapper=NULL;}
 
-    virtual ~RandomVariable() {delete [] label;}
+    virtual ~RandomVariable() {;}
 
     /////////////////////////////////////////////////////////////////////////
     // Is the node hidden, or is it an observation.
@@ -95,7 +110,7 @@ public:
 
     ////////////////////////////////////////////////////////////////////////
     // What is my name?
-    char *label;
+    string label;
 
     ////////////////////////////////////////////////////////////////////////
     // The set of switching parents, if any.
@@ -242,6 +257,13 @@ public:
     // This like a pop operation, off of the stack.
     virtual void restoreCachedValue() = 0;
 
+    /////////////////////////////////////////////////////////////////////////
+    // stores a variable's value elsewhere
+    virtual void storeValue(VariableValue &vv) = 0;
+
+    /////////////////////////////////////////////////////////////////////////
+    // sets a variables value as specified
+    virtual void setValue(VariableValue &vv) = 0;
 
     /////////////////////////////////////////
     /////////////////////////////////////////
