@@ -94,11 +94,13 @@ protected:
   // this is used if we are to obtain multiple
   // decision trees (using the same name) from
   // a file
-  iDataStreamFile* dtFile; // the file pointer
-  string dtFileName;       // the file name
-  unsigned numDTs;         // number of DTs in this file
-  int dtNum;               // the current DT number
-  string curName;          // the current DT name
+  iDataStreamFile* indexFile;  // file pointer to the index file
+  iDataStreamFile* dtFile;     // the file pointer
+  string           dtFileName; // the file name
+  unsigned         numDTs;     // number of DTs in this file
+  int              dtNum;      // the current DT number
+  string           curName;    // the current DT name
+  unsigned         firstDT;    // index of the first decision tree 
 
   enum NodeType { NonLeafNode, LeafNodeVal, LeafNodeFormula, LeafNodeFullExpand };
 
@@ -197,12 +199,17 @@ protected:
   // support for destructor
   void destructorRecurse(Node *n);
 
+  ///////////////////////////////////////////////////////////    
+  // seek through decision tree file to a particular tree 
+  void seek(
+    unsigned dt_nmbr 
+  );
+
 public:
 
-  RngDecisionTree() { dtFile = NULL; root = NULL;  }
+  RngDecisionTree() : indexFile(NULL), dtFile(NULL), firstDT(0), root(NULL) {}; 
   ~RngDecisionTree();
   bool clampable() { return (dtFile != NULL); }
-
 
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 
@@ -213,9 +220,19 @@ public:
   // write out the basic parameters, starting at the current
   // file position.
   void write(oDataStreamFile& os);
+
   ///////////////////////////////////////////////////////////    
-  // read in the next DT assuming this is a file.a
+  // Set the index of the first decision tree
+  void setFirstDecisionTree(
+    unsigned first_index
+  ) { firstDT = first_index; } 
+ 
+  ///////////////////////////////////////////////////////////    
+  // Set the file pointer and read ino the first DT 
   void clampFirstDecisionTree();
+
+  ///////////////////////////////////////////////////////////    
+  // read in the next DT 
   void clampNextDecisionTree();
 
   ///////////////////////////////////////////////////////////    
@@ -266,6 +283,10 @@ public:
   ///////////////////////////////////////////////////////////    
   // return the number of leaves.
   int numLeaves();
+
+  ///////////////////////////////////////////////////////////    
+  // write index file for a clampable DT 
+  void writeIndexFile();
 
 };
 

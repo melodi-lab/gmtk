@@ -68,7 +68,6 @@ VCID("$Header$");
 // many for checking obviously invalid values.
 const unsigned GMPARMS_MAX_NUM = 900000000;
 
-
 ////////////////////////////////
 // Magic String definitions
 #define MAGIC_DT_FILE "GMTK_DT_FILE"
@@ -82,6 +81,7 @@ const unsigned GMPARMS_MAX_NUM = 900000000;
 
 // possibly use this at some point for ascii files.
 // static const char* sectionSeparator = "############################################################################";
+
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -560,9 +560,11 @@ GMParms::readMtCpts(iDataStreamFile& is, bool reset)
 }
 
 
-
 void 
-GMParms::readDTs(iDataStreamFile& is, bool reset)
+GMParms::readDTs(
+  iDataStreamFile& is, 
+  bool reset 
+  )
 {
   unsigned num;
   unsigned cnt;
@@ -577,6 +579,7 @@ GMParms::readDTs(iDataStreamFile& is, bool reset)
     start = dts.size();
     dts.resize(start+num);
   }
+
   for (unsigned i=0;i<num;i++) {
     // first read the count
     RngDecisionTree* ob;
@@ -592,9 +595,10 @@ GMParms::readDTs(iDataStreamFile& is, bool reset)
       error("ERROR: DT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
     dts[i+start] = ob;
     dtsMap[ob->name()] = i+start;
-    if (ob->clampable())
+    if (ob->clampable()) {
       clampableDts.push_back(ob);
-  }
+    } 
+  }   
 }
 
 
@@ -938,7 +942,9 @@ GMParms::readNonTrainable(iDataStreamFile& is)
 
 
 void 
-GMParms::read(iDataStreamFile& is)
+GMParms::read(
+  iDataStreamFile& is
+  )
 {
   // read a file consisting of a list of keyword,filename
   // pairs. the keyword says which structure to read in,
@@ -1053,6 +1059,40 @@ GMParms::read(iDataStreamFile& is)
 
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMParms::writeDecisionTreeIndexFiles()
+ *
+ * Preconditions:
+ *    The clampableDts vector has been filled in using readDTs 
+ *
+ * Postconditions:
+ *    An index file is written for each clampable DT
+ *
+ * Side Effects:
+ *    The first decison tree is set to 0 for all trees. 
+ *
+ * Results:
+ *    none
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::
+writeDecisionTreeIndexFiles()
+{
+  vector<RngDecisionTree*>::iterator crrnt_tree; 
+  vector<RngDecisionTree*>::iterator end_tree; 
+
+  for (crrnt_tree = clampableDts.begin(), 
+       end_tree   = clampableDts.end();
+       crrnt_tree != end_tree;
+       crrnt_tree++) {
+ 
+    (*crrnt_tree)->setFirstDecisionTree(0);
+    (*crrnt_tree)->writeIndexFile();
+  } 
+}
 
 
 /*-
@@ -2113,7 +2153,7 @@ GMParms::write(const char *const outputFileFormat, const int intTag)
 
 /*-
  *-----------------------------------------------------------------------
- * clampFirstExample
+ * 
  *      do any necessary bookkeeping work with regard to the
  *      parameters in order that we properly clamp the first example.
  * 
@@ -2135,6 +2175,7 @@ void
 GMParms::clampFirstExample()
 {
   for(unsigned i = 0; i<clampableDts.size(); i++) {
+    clampableDts[i]->setFirstDecisionTree(firstUtterance);
     clampableDts[i]->clampFirstDecisionTree();
   }
   for (unsigned i=0;i<dLinks.size();i++) {
@@ -2882,7 +2923,32 @@ GMParms::emAccumulateAccumulators(iDataStreamFile& ifile)
 }
 
 
-
+/*-
+ *-----------------------------------------------------------------------
+ * setFirstUtterance
+ *      Set the index of the first utterance so that the parameters to
+ *      identify which per-utterance decision trees to use. 
+ *
+ * Preconditions:
+ *      none 
+ *
+ * Postconditions:
+ *      firstUtterance is set 
+ *
+ * Side Effects:
+ *      none 
+ *
+ * Results:
+ *      nil
+ *-----------------------------------------------------------------------
+ */
+void
+GMParms::setFirstUtterance(
+  unsigned first_index 
+  )
+{
+  firstUtterance = first_index;
+}
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////

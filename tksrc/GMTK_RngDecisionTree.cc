@@ -16,25 +16,25 @@
  *
  */
 
-
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-#include <float.h>
 #include <assert.h>
+#include <errno.h>
+#include <float.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "general.h"
 #include "error.h"
+#include "general.h"
 
+#include "GMTK_RandomVariable.h"
 #include "GMTK_RngDecisionTree.h"
-
 
 VCID("$Header$");
 
-
-#include "GMTK_RandomVariable.h"
+/////////////////////////////////////////////////////////////
+// File extension for compiled DT files 
+const string DTFileExtension = ".index";
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -142,48 +142,124 @@ RngDecisionTree::read(iDataStreamFile& is)
 {
   NamedObject::read(is);
 
-  // read the next entry which is either an integer, or
-  // a string which gives the name of the DT file to obtain
-  // multiple instances of the internals of this decision tree.
+  //////////////////////////////////////////////////////////////////////
+  // Read the beginning of the next decision tree 
+  //////////////////////////////////////////////////////////////////////
   is.read(dtFileName,"RngDecisionTree:: read file/numFeatures");
-  if (!strIsInt(dtFileName.c_str(),(int*)&_numFeatures)) {
-    if (clampable())
-      error("ERROR: in DT named '%s' in file '%s', can't have DTs defined recursively in files",
-	    name().c_str(),is.fileName());
-    // then this must be a file name, turn off cpp pipe since we need to
-    // rewind later.
-    dtFile = new iDataStreamFile(dtFileName.c_str(),is.binary(),false);
-    dtNum = -1;
-    numDTs = 0;
-    // pre-read here, so we always have a valid DT, 
-    // even before clamping.
-    dtFile->read(numDTs,"num DTs");
-    if (numDTs == 0)
-      error("ERROR: in DT named '%s', File '%s' specifies an invalid number of DTs\n",name().c_str(),dtFileName.c_str());
-    clampNextDecisionTree();
-    return;
-  }
-  if (_numFeatures < 0)
-    error("ERROR: in DT named '%s', file '%s', decision tree must have >= 0 features",name().c_str(),is.fileName());
-  rightMostLeaf = NULL;
-  root = readRecurse(is,rightMostLeaf);
 
-  // set up the 'right' pointers in the doubly 
-  // linked lists.
-  Node *tmp = rightMostLeaf;
-  Node *rightLeaf = NULL;
-  while (tmp != NULL) {
-    tmp->leafNode.nextLeaf = rightLeaf;
-    rightLeaf = tmp;
-    tmp = tmp->leafNode.prevLeaf;
+  //////////////////////////////////////////////////////////////////////
+  // Entry is the name of a file containing multiple instances of the 
+  // decision tree.
+  //////////////////////////////////////////////////////////////////////
+  if (!strIsInt(dtFileName.c_str(), (int*)&_numFeatures)) {
+
+    if (clampable()) {
+      error("ERROR: in DT named '%s' in file '%s', can't have DTs defined recursively in files",
+        name().c_str(),is.fileName());
+    }
+
+    //////////////////////////////////////////////////////////////////////
+    // Open files needed for reading clampable decision trees 
+    // Turn off cpp pipe since we need to rewind later
+    //////////////////////////////////////////////////////////////////////
+    dtFile = new iDataStreamFile(dtFileName.c_str(), is.binary(), false);
+    numDTs = 0;
+    dtNum  = -1;
+
+    //////////////////////////////////////////////////////////////////////
+    // Read in the first decision tree 
+    //////////////////////////////////////////////////////////////////////
+    clampFirstDecisionTree();
   }
-  leftMostLeaf = rightLeaf;
-  return;
+  //////////////////////////////////////////////////////////////////////
+  // Entry is an integer indicating an inline decision tree 
+  //////////////////////////////////////////////////////////////////////
+  else {
+
+    if (_numFeatures < 0) {
+      error("ERROR: in DT named '%s', file '%s', decision tree must have >= 0 features",
+      name().c_str(), is.fileName());
+    }
+
+    rightMostLeaf = NULL;
+    root = readRecurse(is,rightMostLeaf);
+
+    // set up the 'right' pointers in the doubly 
+    // linked lists.
+    Node *tmp = rightMostLeaf;
+    Node *rightLeaf = NULL;
+    while (tmp != NULL) {
+      tmp->leafNode.nextLeaf = rightLeaf;
+      rightLeaf = tmp;
+      tmp = tmp->leafNode.prevLeaf;
+    }
+    leftMostLeaf = rightLeaf;
+  }
 
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * seek 
+ *      Seek to a particular decision tree 
+ *
+ * Preconditions:
+ *      Object should be filled in using 'read'.  
+ *
+ * Postconditions:
+ *      The decision tree file pointer will point to the appropriate tree  
+ *
+ * Side Effects:
+ *      If the index file has not been opened, it will be. 
+ *
+ * Results:
+ *      none
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::seek(
+  unsigned dt_nmbr 
+  )
+{
+  string   indexFileName;
+  unsigned i, numIndexDTs;
+  unsigned position; 
+  unsigned result; 
 
+  if (!clampable()) {
+    error("ERROR: trying to seek in non-clampable DT, '%s'\n",  
+      curName.c_str() ); 
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Open index file if necessary
+  //////////////////////////////////////////////////////////////////////////
+  if (indexFile == NULL) {
+    indexFileName = dtFileName + DTFileExtension;
+    indexFile = new iDataStreamFile(indexFileName.c_str(), true, false);
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Check that the number of decision trees matches in the index file 
+  //////////////////////////////////////////////////////////////////////////
+  indexFile->rewind();
+  indexFile->read(numIndexDTs, "num index DTs");
+
+  if (numIndexDTs != numDTs) {
+      error("ERROR: Index file '%s' lists '%d' decision trees does match '%s' which lists '%d'\n",
+        indexFileName.c_str(), numIndexDTs, dtFileName.c_str(), numDTs );
+  }
+ 
+  //////////////////////////////////////////////////////////////////////////
+  // Read in the position of the tree in the DT file 
+  //////////////////////////////////////////////////////////////////////////
+  indexFile->fseek( sizeof(unsigned)*dt_nmbr, SEEK_CUR ); 
+  indexFile->read(position, "DT offset");
+
+  result = dtFile->fseek(position, SEEK_SET); 
+  dtNum = firstDT - 1; 
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -443,8 +519,6 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
 }
 
 
-
-
 /*-
  *-----------------------------------------------------------------------
  * clampFirstDecisionTree
@@ -468,12 +542,31 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
 void
 RngDecisionTree::clampFirstDecisionTree()
 {
+  //////////////////////////////////////////////////////////////////////
   // first make sure this is a DT from file object
-  if (!clampable())
+  //////////////////////////////////////////////////////////////////////
+  if (!clampable()) {
     error("ERROR: can't call clampFirstDecisionTree() for non-file DT");
-  dtNum = -1;
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Rewind file pointer to the beginning of the files and read the 
+  // number decision trees 
+  //////////////////////////////////////////////////////////////////////
   dtFile->rewind();
-  dtFile->read(numDTs,"num DTs");
+  dtFile->read(numDTs, "num DTs");
+  dtNum = -1;
+
+  //////////////////////////////////////////////////////////////////////
+  // If necessary, use index file to seek to first utterance 
+  //////////////////////////////////////////////////////////////////////
+  if (firstDT != 0) {
+    seek( firstDT ); 
+  }
+ 
+  //////////////////////////////////////////////////////////////////////
+  // Read in the first tree 
+  //////////////////////////////////////////////////////////////////////
   clampNextDecisionTree();
 }
 
@@ -501,19 +594,34 @@ RngDecisionTree::clampFirstDecisionTree()
 void
 RngDecisionTree::clampNextDecisionTree()
 {
+  int    readDTNum;
+
+  //////////////////////////////////////////////////////////////////////
   // first make sure this is a DT from file object
-  if (!clampable())
+  //////////////////////////////////////////////////////////////////////
+  if (!clampable()) {
     error("ERROR: can't call clampNextDecisionTree() for non-file DT");
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Increment tree index and make sure the file matches 
+  //////////////////////////////////////////////////////////////////////
   dtNum++;
-  int i;
-  dtFile->read(i,"DT num");
-  if (i != dtNum)
-    error("ERROR: reading from file '%s', expecting DT number %d but got number %d\n",dtFileName.c_str(),dtNum,i);
+
+  dtFile->read(readDTNum, "DT num");
+  if (readDTNum != dtNum) {
+    error("ERROR: reading from file '%s', expecting DT number %d but got number %d\n",
+      dtFileName.c_str(), dtNum, readDTNum);
+  }
+
+  //////////////////////////////////////////////////////////////////////
   // next, delete old DT if it exists.
+  //////////////////////////////////////////////////////////////////////
   if (root != NULL) {
     destructorRecurse(root);
     delete root;
   }
+
   // read in the rest of the DT.
   dtFile->read(curName,"cur name");
   dtFile->read(_numFeatures,"num feats");
@@ -534,6 +642,100 @@ RngDecisionTree::clampNextDecisionTree()
   leftMostLeaf = rightLeaf;
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeIndexFile 
+ *   Writes an index file for a clampable DT 
+ * 
+ * Preconditions:
+ *   The file containing the per-utterance DTs should have already been 
+ *   opened using read
+ *
+ * Postconditions:
+ *   File will be written
+ *
+ * Side Effects:
+ *   File pointer for per-utterance DTs is moved to the end of the file.
+ *   If it is to be used again clampFirstDecisionTree must be called. 
+ *
+ * Results:
+ *   none
+ *
+ * TODO: Move DT parsing into a subroutine
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::writeIndexFile()
+{
+  int      numDTs;
+  unsigned position;
+  int      i;
+
+  assert(clampable()); 
+
+  //////////////////////////////////////////////////////////////////////////
+  // Open index file for writing 
+  //////////////////////////////////////////////////////////////////////////
+  string outputFileName = dtFile->fileName() + DTFileExtension;
+  oDataStreamFile outFile(outputFileName.c_str(), true);
+ 
+  //////////////////////////////////////////////////////////////////////////
+  // Write number of trees 
+  //////////////////////////////////////////////////////////////////////////
+  dtFile->rewind();
+  dtFile->read(numDTs, "num DTs");
+  outFile.writeInt(numDTs, "num DTs");
+
+  //////////////////////////////////////////////////////////////////////////
+  // Write indices 
+  //////////////////////////////////////////////////////////////////////////
+  for(i=0; i<numDTs; i++) {
+
+    position = dtFile->ftell();
+
+    if (position < 0) {
+      error("ERROR: probelm reading from file '%s'\n", dtFileName.c_str() );
+    }
+
+    outFile.writeInt(position, "");
+
+    ////////////////////////////////////////////////////////////////////////
+    // Parse file to the beginning of the next tree 
+    ////////////////////////////////////////////////////////////////////////
+    dtFile->read(dtNum, "DT num");
+    if (i != dtNum) {
+      error("ERROR: reading from file '%s', expecting DT number %d but got number %d\n",
+        dtFileName.c_str(), dtNum, i);
+    }
+
+    // next, delete old DT if it exists.
+    if (root != NULL) {
+      destructorRecurse(root);
+      delete root;
+    }
+
+    // read in the rest of the DT.
+    dtFile->read(curName,"cur name");
+    dtFile->read(_numFeatures,"num feats");
+    if (_numFeatures <= 0) {
+      error("ERROR: reading dynamic decision tree '%s' with current name '%s' from file '%s', but decision tree must have > 0 features", 
+        name().c_str(), curName.c_str(), dtFile->fileName());
+    } 
+
+    rightMostLeaf = NULL;
+    root = readRecurse(*dtFile,rightMostLeaf);
+    Node *tmp = rightMostLeaf;
+    Node *rightLeaf = NULL;
+    while (tmp != NULL) {
+      tmp->leafNode.nextLeaf = rightLeaf;
+      rightLeaf = tmp;
+      tmp = tmp->leafNode.prevLeaf;
+    }
+    leftMostLeaf = rightLeaf;
+  }
+
+}
 
 
 /*-
@@ -570,8 +772,6 @@ RngDecisionTree::write(oDataStreamFile& os)
     os.nl();
   }
 }
-
-
 
 
 /*-
