@@ -103,21 +103,20 @@ public:
   iterator begin() {
     assert ( bitmask & bm_basicAllocated );
     iterator it(this);
-    it.internalState = 0;
+    it.value = 0;
     it.probVal = *mdcpt_ptr;
     if (it.probVal.essentially_zero()) {
       // go to first entry which is not zero.
       do {
-	it.internalState++;
+	it.value++;
 	// We keep the following assertion as we
 	// must have that at least one entry is non-zero.
 	// The read code of the MDCPT should ensure this
 	// as sure all parameter update procedures.
-	assert (it.internalState < card());
-	it.probVal = mdcpt_ptr[it.internalState];
-      } while (it.probVal.essentially_zero());
+	assert (it.value < ucard());
+      } while (mdcpt_ptr[it.value].essentially_zero());
+      it.probVal = mdcpt_ptr[it.value];
     }
-    it.value = it.internalState;
     return it;
   }
 
@@ -125,21 +124,20 @@ public:
   void begin(iterator& it) {
     assert ( bitmask & bm_basicAllocated );
     it.setCPT(this);
-    it.internalState = 0;
+    it.value = 0;
     it.probVal = *mdcpt_ptr;
     if (it.probVal.essentially_zero()) {
       // go to first entry which is not zero.
       do {
-	it.internalState++;
+	it.value++;
 	// We keep the following assertion as we
 	// must have that at least one entry is non-zero.
 	// The read code of the MDCPT should ensure this
 	// as sure all parameter update procedures.
-	assert (it.internalState < card());
-      } while (mdcpt_ptr[it.internalState].essentially_zero());
-      it.probVal = mdcpt_ptr[it.internalState];
+	assert (it.value < ucard());
+      } while (mdcpt_ptr[it.value].essentially_zero());
+      it.probVal = mdcpt_ptr[it.value];
     }
-    it.value = it.internalState;
   }
 
   // Given a current iterator, return the next one in the sequence.
@@ -147,18 +145,17 @@ public:
   bool next(iterator &it) {
     // don't increment past the last value.
     do {
-      it.internalState++;
-      if (it.internalState == card())
+      it.value++;
+      if (it.value == ucard())
 	return false;
-      it.probVal = mdcpt_ptr[it.internalState];
-    } while (it.probVal.essentially_zero());
-    it.value = it.internalState;
+    } while (mdcpt_ptr[it.value].essentially_zero());
+    it.probVal = mdcpt_ptr[it.value];
     return true;
   }
 
 
   bool end(iterator& it) {
-    return (it.internalState == card());
+    return (it.value == ucard());
   }
 
   ///////////////////////////////////

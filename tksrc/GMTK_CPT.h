@@ -109,6 +109,9 @@ public:
   int card() {
     return _card;
   }
+  unsigned ucard() {
+    return (unsigned)_card;
+  }
 
   // used for elimination/triangulation
   virtual unsigned averageCardinality() { return (unsigned)card(); }
@@ -175,17 +178,22 @@ public:
   protected:
     void setCPT(CPT* _cpt) { cpt = _cpt; }
   public:
-    // hold the value right here.
+    // Three fields that a CPT subclass can
+    // modify as desired to implement a CPT.
+    // The value of the RV.
     unsigned value;
-    // two variables to be used by CPTs
-    // to hold their internal state.
+    // some internal state.
     int internalState;
+    // some internal state pointer to be used.
     void* internalStatePtr;
-    // return the value of the RV, the iterators make sure it is set
-    // right.
+
+    // Return the value of the RV, the CPT subclasses must make sure it is set
+    // correctly to the appropriate values.
     unsigned val() { return value; }
-    // the probability of the variable being value 'val()'
+    // The probability of the variable being value 'val()'. Again,
+    // CPT subclasses must make sure it is set correctly.
     logpr probVal;
+
 
     iterator(CPT* _cpt) : cpt(_cpt) {}
     iterator(const iterator& it) :cpt(it.cpt) 
@@ -202,10 +210,10 @@ public:
       iterator tmp=*this; ++*this; return tmp;
     }
 
-    bool operator == (const iterator &it) 
-       { return it.internalState == internalState; } 
-    bool operator != (const iterator &it)
-       { return it.internalState != internalState; } 
+    // bool operator == (const iterator &it) 
+    // { return it.internalState == internalState; } 
+    // bool operator != (const iterator &it)
+    // { return it.internalState != internalState; } 
   };
 
   // returns an iterator for the first one.
