@@ -3,6 +3,12 @@
  * 
  * Written by Katrin Kirchhoff <katrin@ee.washington.edu>
  *
+ * Modified by Karim Filali <karim@cs.washington.edu> to add the
+ * option to pipe the list of file names through CPP.  Made a few
+ * other minor "bug" fixes.
+ *
+ * $Header$
+ *
  * Copyright (c) 2001
  *
  * Permission to use, copy, modify, and distribute this
@@ -26,7 +32,9 @@ enum {
   RAWBIN, 
   RAWASC, 
   PFILE,
-  HTK
+  HTK,
+  FLATBIN,
+  FLATASC
 };
 
 
@@ -53,19 +61,27 @@ enum {
 /* file description class: contains information about (list of) input files */
 
 class StreamInfo {
+  bool     cppIfAscii;
+  char*    cppCommandOptions;
+  size_t   numFileNames;               // number of filenames
+  unsigned nFloatsUsed;                // number of floats actually used (of input)
+  unsigned nIntsUsed;                  // number of ints actually used (of input)
+  
+  size_t   prrngCurNumFrames;          // size of current data file
+  size_t   afterTransformCurNumFrames;
 
+  size_t calcNumFileNames(FILE*&f);
 public:
 
-  unsigned nFloats;        // number of floats (cont. features) in file
-  unsigned nInts;          // number of ints (disc. features) in file
-  unsigned dataFormat;     // file format
+  unsigned nFloats;                    // number of floats (cont. features) in file
+  unsigned nInts;                      // number of ints (disc. features) in file
+  unsigned dataFormat;                 // file format
 
-  unsigned nFloatsUsed;    // number of floats actually used (of input)
-  unsigned nIntsUsed;      // number of ints actually used (of input)
+  
 
-  char *fofName;           // this file's file name (name of list of file names)
-  FILE *fofFile;           // this file (list of file names)
-  size_t fofSize;          // size of list of file names
+  char *   fofName;                    // this file's file name (name of list of file names)
+  FILE *   fofFile;                    // this file (list of file names)
+  size_t   fofSize;                    // size of list of file names
 
   bool bswap;              // true if file needs to be byte-swapped
 
@@ -88,11 +104,28 @@ public:
 	     unsigned *, 
 	     unsigned *,
 	     bool,
-	     unsigned);
+	     unsigned,
+	     bool cppIfAscii=false,
+	     char* cppCommandOptions=NULL);
 
   ~StreamInfo();
 
-  size_t readFof(FILE *);       // read file of file names
+  size_t   readFof(FILE *);       // read file of file names
+
+  size_t   getNumFileNames()  { return numFileNames; }
+  unsigned getNumFloatsUsed() { return nFloatsUsed;  }
+  unsigned getNumIntsUsed()   { return nIntsUsed;    }
+  unsigned getNumFloats()     { return nFloats;      }
+  unsigned getNumInts()       { return nInts;        }
+
+  size_t   getPrrngCurNumFrames()         { return prrngCurNumFrames; }
+  void     setPrrngCurNumFrames(size_t n) { prrngCurNumFrames=n;      }
+  size_t   getCurNumFrames()              { return curNumFrames;      }
+  void     setAfterTransformCurNumFrames(size_t n) { afterTransformCurNumFrames=n;      }
+  size_t   getAfterTransformCurNumFrames()         { return afterTransformCurNumFrames; }
+  unsigned getDataFormat() { return dataFormat; }
+  bool     swap()             { return bswap;   }
+  void     setSwap(bool swap) { bswap = swap;   }
 };
 
 #endif
