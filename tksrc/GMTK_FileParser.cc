@@ -67,8 +67,8 @@ VCID("$Header$");
 
 #ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
 extern "C" {
-   FILE     *popen(const char *, const char *) __THROW;
-   int pclose(FILE *stream) __THROW;
+  //   FILE     *popen(const char *, const char *) __THROW;
+  //   int pclose(FILE *stream) __THROW;
 };
 #endif
 
@@ -457,16 +457,32 @@ FileParser::FileParser(const char*const file,
   string cppCommand = string("cpp");
   if (cppCommandOptions != NULL)
     cppCommand = cppCommand + string(" ") + cppCommandOptions;
+
   if (!strcmp("-",file)) {
     f = ::popen(cppCommand.c_str(),"r");
     if (f == NULL) {
       error("ERROR: unable to open with standard input structure file");
     }
   }  else {
+
+    // check that file exists.
     if ((f = ::fopen(file,"r")) == NULL) {
       error("ERROR: unable to open file (%s) for reading",file);
     }
     fclose(f);
+
+    // add path of file to include directory paths.
+    string path = file;
+    unsigned slashPos = path.rfind("/");
+    if (slashPos != string::npos) {
+      // then '/' is found
+      cppCommand = cppCommand + " -I" + path.substr(0,slashPos);
+    }
+    // Lastly, add CWD to default CPP command options for include files
+    // (i.e., we look for include files in CWD only if all previous
+    // ones fail, cpp has this behavior.
+    cppCommand = cppCommand + " -I.";
+
     cppCommand = cppCommand + string(" ") + (string)file;
     f = ::popen(cppCommand.c_str(),"r");
     if (f == NULL)
@@ -1377,8 +1393,6 @@ FileParser::parseConditionalParentSpec()
 
   parseImplementation();
 
-
-
 }
 
 void
@@ -1494,40 +1508,41 @@ FileParser::parseDiscreteImplementation()
 
     ensureNotAtEOF(") or ,");
 
-	if (tokenInfo != TT_RightParen) {
-		if ( tokenInfo != TT_Comma )
-			parseErrorExpecting("')' or ','");
-		// parse CPT with fewer parents like
-		// using FNGramCPT("fngram", 0, 1);
+    if (tokenInfo != TT_RightParen) {
+      if ( tokenInfo != TT_Comma )
+	parseErrorExpecting("')' or ','");
+      // parse CPT with fewer parents like
+      // using FNGramCPT("fngram", 0, 1);
+      
+      while ( tokenInfo != TT_RightParen ) {
+	if ( tokenInfo != TT_Comma )
+	  parseErrorExpecting("','");
+	consumeToken();
+	
+	if ( tokenInfo != TT_Integer )
+	  parseErrorExpecting("integer");
+	listIndex.fnparents.push_back(tokenInfo.int_val);
+	consumeToken();
+      }
+      
+      // before push_back curRV.listIndices.size() is the last index which we are looking for
+      if ( listIndex.fnparents.size() != curRV.conditionalParents[curRV.listIndices.size()].size() ) {
+	error("Error: RV \"%s\" at frame %d (line %d), conditional parent set %d has %d parents but FNGramCPT sub-parent list specifices %d parents indices. They must match\n",
+	      curRV.name.c_str(),
+	      curRV.frame,
+	      curRV.listIndices.size(),
+	      curRV.conditionalParents[curRV.listIndices.size()].size(),
+	      listIndex.fnparents.size());
+      }
+    }
 
-		while ( tokenInfo != TT_RightParen ) {
-			if ( tokenInfo != TT_Comma )
-				parseErrorExpecting("','");
-			consumeToken();
-
-			if ( tokenInfo != TT_Integer )
-				parseErrorExpecting("integer");
-			listIndex.fnparents.push_back(tokenInfo.int_val);
-			consumeToken();
-		}
-
-		// before push_back curRV.listIndices.size() is the last index which we are looking for
-		if ( listIndex.fnparents.size() != curRV.conditionalParents[curRV.listIndices.size()].size() ) {
-			error("Error: RV \"%s\" at frame %d (line %d) specifies different number of parents (%d) than parents indices (%d)\n",
-				curRV.name.c_str(),
-				curRV.frame,
-				curRV.conditionalParents.size(),
-				listIndex.fnparents.size());
-		}
-
-		consumeToken();
-    } else
-		consumeToken();
+    // consume what now must be the right paren.
+    consumeToken();
 
     curRV.listIndices.push_back(listIndex);
 
-	// we need to clear this up.
-	listIndex.fnparents.resize(0);
+    // we need to clear this up.
+    listIndex.fnparents.resize(0);
   } else {
     parseError("need discrete implementations in discrete RV");
   }

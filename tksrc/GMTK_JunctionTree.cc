@@ -645,6 +645,13 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 
 	// The remaining items we push back in the case of ties.
 	// Larger numbers are prefered.
+	//
+	// Options to possibly include:
+	//   * number of determinisitc nodes
+	//   * weight of separator
+	//   * weight of union of cliques
+	//   * indicator if one clique is a subset of another
+	//   * number of hidden/observed nodes.
 
 	// push back number of deterministic nodes in
 	// the separator
@@ -2159,13 +2166,16 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // note: code to compute 'an' order is commented out and taged
       // with ABCDEFGHIJK at end of this file.
       // 
-      // In otherwords, rerder clique.ceReceiveSeparators for maximal overlap.
+      // In otherwords, reorder clique.ceReceiveSeparators for maximal overlap.
       // 
       // sort
       // ... ADD SORTING CODE HERE.
-      // Done sorting. sort separator
 
 
+      // ...
+
+
+      // ... DONE SORTING clique.ceReceiveSeparators
 
 
       // Compute the cummulative intersection of the sepsets using the

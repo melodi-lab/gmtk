@@ -874,6 +874,9 @@ main(int argc,char*argv[])
 	  error("ERROR: can't write to parent pipe, errno = %d, %s",errno,strerror(errno));
 	}
 
+	// gracefully close
+	close(write_fd);
+
 	// exit normally, so parent realizes this.
 	exit(EXIT_SUCCESS);
 	// END OF CHILD PROCESS

@@ -624,6 +624,7 @@ public:
   // distribute evidence stage) Again, ints indexing into parent
   // partition.
   // Created in JunctionTree::createSeparators().
+  // Modified/Sorted in JunctionTree::computeSeparatorIterationOrder()
   vector<unsigned> ceReceiveSeparators;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
