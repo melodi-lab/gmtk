@@ -222,7 +222,7 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////
   // set up the observation stream
-  gm.setExampleStream(obsFileName);
+  gm.setExampleStream(obsFileName,trrng_str);
 
 
   gm.GM2CliqueChain();
