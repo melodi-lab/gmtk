@@ -70,6 +70,12 @@ public:
   BP_Range(const char * range_str,  // Range specification.
 	const int lower_limit_a, // Limits of a valid range, 
 	const int upper_limit_a); // must be in [l:(u-1)]
+
+  // create an invalid version of this object for re-construction
+  // within an array later using new&.
+  BP_Range() 
+    : lower_limit(0),upper_limit(0) {}
+
   ~BP_Range();
   
 

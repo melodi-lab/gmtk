@@ -35,16 +35,20 @@ class ioDataStreamFile {
   FILE *fh;
   bool Binary;
   bool errorReturn(char *from,char *msg);
-  const char *const _fileName;
+  // the current file name
+  string _fileName;
+  // the current line number in the current file name (always 0 for binary file).
+  int _curLineNo;
 
  public:
 
   ioDataStreamFile(const char *name,bool _Binary = false) : 
-    Binary(_Binary), _fileName(copyToNewStr(name)) {}
-  ~ioDataStreamFile() { delete [] _fileName; }
+    Binary(_Binary), _fileName(name), _curLineNo(0) {}
+  ~ioDataStreamFile() { }
 
   bool binary() { return Binary; }
-  const char *const fileName() { return _fileName; }
+  const char *const fileName() { return _fileName.c_str(); }
+  int lineNo() { return _curLineNo; }
 
   long ftell() const { return(::ftell(fh)); }
   int  fseek ( long offset , int origin ) { return(::fseek(fh,offset,origin)); }
