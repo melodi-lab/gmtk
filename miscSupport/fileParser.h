@@ -11,6 +11,15 @@
 #ifndef FILEPARSER_H
 #define FILEPARSER_H
 
+
+/////////////////////////////////////////
+// Define if you want to pipe all ASCII
+// files through the C pre-processor to
+// get to use it's macro facilities. Might
+// need to change the comment character above.
+#define PIPE_ASCII_FILES_THROUGH_CPP
+
+
 #include <string>
 #include <vector>
 
@@ -34,6 +43,7 @@ class ioDataStreamFile {
     Binary(_Binary), _fileName(copyToNewStr(name)) {}
   ~ioDataStreamFile() { delete [] _fileName; }
 
+  bool binary() { return Binary; }
   const char *const fileName() { return _fileName; }
 
 };
@@ -44,9 +54,15 @@ class iDataStreamFile : public ioDataStreamFile {
   char *buff;
   char *buffp;
   enum State { GetNextLine, UseCurLine } state;
+  const bool cppIfAscii;
 
  public:
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+  iDataStreamFile(const char *_name, bool _Binary = false, bool _cppIfAscii = true);
+#else
   iDataStreamFile(const char *_name, bool _Binary = false);
+#endif
+
   ~iDataStreamFile();
 
   bool prepareNext();
