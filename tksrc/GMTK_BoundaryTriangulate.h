@@ -171,6 +171,7 @@ public:
   // for inference, and where a triangulation will simply
   // come from a set of maxcliques.
   typedef pair<RandomVariable*, set<RandomVariable*> > nghbrPairType; 
+
   // original neighbors of nodes so that deTriangulate() will work.
   vector<nghbrPairType>  orgnl_P_nghbrs;
   vector<nghbrPairType>  orgnl_C_nghbrs;
@@ -203,6 +204,7 @@ public:
   void saveCurrentNeighbors(Partition &prt,vector<nghbrPairType>& orgnl_nghbrs) {
     saveCurrentNeighbors(prt.nodes,orgnl_nghbrs);
   }
+
   // return partitions to their state at previous saveCurrentNeighbors();
   void restoreNeighbors(vector<nghbrPairType>& orgnl_nghbrs);
 
@@ -219,20 +221,6 @@ public:
 
   // compute the weight of a vector of cliques
   double graphWeight(vector<MaxClique>& cliques);
-
-  // support for triangulation by simulated annealing
-  unsigned annealChain(set<RandomVariable*>     nodes,
-		       vector<RandomVariable*>& crrnt_order,
-		       vector<RandomVariable*>& best_order,
-		       double&         best_graph_weight,
-		       double&         best_this_weight,
-		       double          temperature,
-		       unsigned        iterations,
-		       double&         weight_sum,         
-		       double&         weight_sqr_sum,         
-		       vector<nghbrPairType>    orgnl_nghbrs
-		       );
-
   
 public:
 
@@ -366,12 +354,12 @@ public:
 
 
   // triangulate by simulated annealing
-  void triangulateSimulatedAnnealing(set<RandomVariable*>     nodes,
-				     vector<MaxClique>&       cliques,
-				     vector<RandomVariable*>& best_order,
-				     vector<nghbrPairType>    orgnl_nghbrs,
-                                     string&                  comment 
-				     );
+  void triangulateSimulatedAnnealing(
+    const set<RandomVariable*>& nodes,
+    vector<MaxClique>&          best_cliques,
+    vector<RandomVariable*>&    best_order,
+    string&                     comment 
+    );
 
   // Triangulate by maximum cardinality search
   void triangulateMaximumCardinalitySearch( 
@@ -513,9 +501,10 @@ public:
 
 private:
 
-  //////////////////////////////////////////////////////////////////// 
-  // 
-  //////////////////////////////////////////////////////////////////// 
+  //////////////////////////////////////////////////////////////////////////// 
+  // Custom data structures for fast Maximum Cardinality Search, fill-in 
+  // computation, and chordality test. 
+  //////////////////////////////////////////////////////////////////////////// 
   class triangulateNode;
   class triangulateNodeList;
 
@@ -533,7 +522,7 @@ private:
       unsigned                 cardinality;
       bool                     eliminated;
       unsigned                 position;
-
+    
     private:
       triangulateNode*         previousNode;
       triangulateNode*         nextNode;
@@ -563,6 +552,10 @@ private:
     vector<triangulateNode>&    new_nodes 
   );
  
+  //////////////////////////////////////////////////////////////////////////// 
+  // O(n+e) routines for Maximum Cardinality Search, fill-in 
+  // computation, and chordality test. 
+  //////////////////////////////////////////////////////////////////////////// 
   void maximumCardinalitySearch(
     vector<triangulateNode>&         nodes,
     list<vector<triangulateNode*> >& cliques,
@@ -582,6 +575,37 @@ private:
     const list<vector<triangulateNode*> >& lv_cliques,
     vector<MaxClique>&                     vs_cliques
   );
+
+  //////////////////////////////////////////////////////////////////////////// 
+  // Overloaded functions for saving and restoring graph structure when using 
+  // triangulateNodes
+  //////////////////////////////////////////////////////////////////////////// 
+ 
+  typedef pair<triangulateNode*, vector<triangulateNode*> > 
+    triangulateNghbrPairType; 
+
+  void saveCurrentNeighbors(
+    vector<triangulateNode>&          nodes,
+    vector<triangulateNghbrPairType>& orgnl_nghbrs
+    );
+
+  void restoreNeighbors(vector<triangulateNghbrPairType>& orgnl_nghbrs);
+
+  //////////////////////////////////////////////////////////////////////////// 
+  // Support routine for triangulation by simulated annealing
+  //////////////////////////////////////////////////////////////////////////// 
+  unsigned annealChain(
+    vector<triangulateNode>&  nodes,
+    vector<triangulateNode*>& crrnt_order,
+    vector<triangulateNode*>& triangulate_best_order,
+    double&                   best_graph_weight,
+    double&                   best_this_weight,
+    double                    temperature,
+    unsigned                  iterations,
+    double&                   weight_sum,         
+    double&                   weight_sqr_sum,         
+    vector<triangulateNghbrPairType>&    orgnl_nghbrs
+    );
 
 };
 

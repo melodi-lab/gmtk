@@ -106,6 +106,45 @@ saveCurrentNeighbors(const set<RandomVariable*> nodes,vector<nghbrPairType>& org
 
 /*-
  *-----------------------------------------------------------------------
+ * Partition::saveCurrentNeighbors()
+ *   Save a copy of the current neighbors of the partition.
+ *
+ * Preconditions:
+ *   The corresponding partition must be instantiated.
+ *
+ * Postconditions:
+ *   a copy of the current neighborset will be made
+ *
+ * Side Effects:
+ *   Any previous neighbor set will be lost.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+saveCurrentNeighbors(
+  vector<triangulateNode>& nodes,
+  vector<triangulateNghbrPairType>& orgnl_nghbrs
+  )
+{
+  vector<triangulateNode>::iterator crrnt_node; 
+  vector<triangulateNode>::iterator end_node; 
+
+  orgnl_nghbrs.clear();
+  for ( crrnt_node=nodes.begin(), end_node=nodes.end();
+        crrnt_node != end_node;
+        ++crrnt_node ) {
+    orgnl_nghbrs.push_back(
+      triangulateNghbrPairType(&(*crrnt_node), (*crrnt_node).neighbors) );
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
  * Partition::restoreNeighbors()
  *   Restore graph's neighbors to state on previous save.
  *   This can be used as an "unTriangulate" routine.
@@ -132,6 +171,46 @@ restoreNeighbors(vector<nghbrPairType>& orgnl_nghbrs)
 {
   vector<pair<RandomVariable*, set<RandomVariable*> > >::iterator crrnt_node;
   vector<pair<RandomVariable*, set<RandomVariable*> > >::iterator end_node;
+  for( end_node=orgnl_nghbrs.end(), crrnt_node=orgnl_nghbrs.begin();
+       crrnt_node!=end_node;
+       ++crrnt_node )
+  {
+    (*crrnt_node).first->neighbors = (*crrnt_node).second;
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Partition::restoreNeighbors()
+ *   Restore graph's neighbors to state on previous save.
+ *   This can be used as an "unTriangulate" routine.
+ *
+ * Preconditions:
+ *   The corresponding partition must be instantiated. 
+ *   For this routine to have any effect, previous neighbors must have 
+ *     already been saved.
+ *
+ * Postconditions:
+ *   Old neighbors restored.
+ *
+ * Side Effects:
+ *   Any previous neighbor set will be lost.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+restoreNeighbors(vector<triangulateNghbrPairType>& orgnl_nghbrs)
+{
+  vector<pair<triangulateNode*, vector<triangulateNode*> > >::iterator 
+    crrnt_node;
+  vector<pair<triangulateNode*, vector<triangulateNode*> > >::iterator  
+    end_node;
+
   for( end_node=orgnl_nghbrs.end(), crrnt_node=orgnl_nghbrs.begin();
        crrnt_node!=end_node;
        ++crrnt_node )
@@ -1068,7 +1147,6 @@ triangulate(// input: nodes to be triangulated
       triangulateSimulatedAnnealing(nodes, 
 				    cliques, 
 				    order, 
-				    orgnl_nghbrs,
                                     annealing_str );
 
       meth_str = string(buff) + "-" + "annealing-" + annealing_str;
@@ -1438,11 +1516,10 @@ basicTriangulate(// input: nodes to triangulate
 void
 BoundaryTriangulate::
 triangulateSimulatedAnnealing(
-  set<RandomVariable*>     nodes,
-  vector<MaxClique>&       cliques,
-  vector<RandomVariable*>& best_order,
-  vector<nghbrPairType>    orgnl_nghbrs,
-  string&                  parameter_string 
+  const set<RandomVariable*>& nodes,
+  vector<MaxClique>&          best_cliques,
+  vector<RandomVariable*>&    best_order,
+  string&                     parameter_string 
   )
 {
   ///////////////////////////////////////////////////////////////////////
@@ -1484,10 +1561,21 @@ triangulateSimulatedAnnealing(
   ///////////////////////////////////////////////////////////////////////
   // Local Variables
   ///////////////////////////////////////////////////////////////////////
-  vector<RandomVariable*> crrnt_order;
+  vector<triangulateNode>          triangulate_nodes;
+  vector<triangulateNode*>         crrnt_order;
+  vector<triangulateNode*>         triangulate_best_order;
+  list<vector<triangulateNode*> >  cliques;
+  vector<MaxClique>                rv_cliques;
+  vector<triangulateNode*>         dummy_order;
+  vector<triangulateNghbrPairType> orgnl_nghbrs;
 
-  back_insert_iterator<vector<RandomVariable*> > bi_crrnt(crrnt_order);
-  back_insert_iterator<vector<RandomVariable*> > bi_best(best_order);
+  back_insert_iterator<vector<triangulateNode*> > bi_crrnt(crrnt_order);
+  back_insert_iterator<vector<triangulateNode*> > 
+    bi_best(triangulate_best_order);
+  vector<triangulateNode>::iterator  crrnt_node;  
+  vector<triangulateNode>::iterator  end_node;  
+  vector<triangulateNode*>::iterator crrnt_np;  
+  vector<triangulateNode*>::iterator end_np;  
 
   double     crrnt_tmprtr;        // Current annealing temperature
 
@@ -1505,19 +1593,34 @@ triangulateSimulatedAnnealing(
 
   bool       exit;
 
+  ///////////////////////////////////////////////////////////////////
+  // Initialize data structures 
+  ///////////////////////////////////////////////////////////////////
   infoMsg(IM::Tiny, "Annealing:\n");
+
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+
+  saveCurrentNeighbors( triangulate_nodes, orgnl_nghbrs );  
+
+  for( crrnt_node = triangulate_nodes.begin(), 
+       end_node   = triangulate_nodes.end(); 
+       crrnt_node != end_node; 
+       ++crrnt_node ) { 
+
+    crrnt_order.push_back( &(*crrnt_node) );    
+  }
 
   ///////////////////////////////////////////////////////////////////
   // Begin with random elimination order  
   ///////////////////////////////////////////////////////////////////
-
-  copy (nodes.begin(), nodes.end(), bi_crrnt);
   random_shuffle (crrnt_order.begin(), crrnt_order.end());
-  copy (nodes.begin(), nodes.end(), bi_best);
+  copy (crrnt_order.begin(), crrnt_order.end(), bi_best);
 
-  cliques.clear();
-  triangulateElimination( nodes, crrnt_order, cliques);
-  best_graph_weight = graphWeight(cliques);
+  fillInComputation( crrnt_order );
+  maximumCardinalitySearch( triangulate_nodes, cliques, dummy_order, false );
+
+  listVectorCliquetoVectorSetClique( cliques, best_cliques );
+  best_graph_weight = graphWeight(best_cliques);
   weight_sum = best_graph_weight;
   weight_sqr_sum = best_graph_weight*best_graph_weight;
 
@@ -1529,9 +1632,9 @@ triangulateSimulatedAnnealing(
   ///////////////////////////////////////////////////////////////////
 
   moves_accepted = annealChain(
-    nodes, 
+    triangulate_nodes, 
     crrnt_order,
-    best_order,
+    triangulate_best_order,
     best_graph_weight,
     best_this_weight,
     HUGE_VAL,
@@ -1556,7 +1659,8 @@ triangulateSimulatedAnnealing(
   // Begin with best order 
   ////////////////////////////////////////////////////////////
   crrnt_order.clear();
-  copy(best_order.begin(), best_order.end(), bi_crrnt );
+  copy( triangulate_best_order.begin(), triangulate_best_order.end(), 
+    bi_crrnt );
 
   ////////////////////////////////////////////////////////////
   // Loop until stop condition found 
@@ -1571,9 +1675,9 @@ triangulateSimulatedAnnealing(
     weight_sqr_sum = 0;
 
     moves_accepted = annealChain(
-		       nodes, 
+		       triangulate_nodes, 
                        crrnt_order,
-                       best_order,
+                       triangulate_best_order,
                        best_graph_weight,
                        best_this_weight,
                        crrnt_tmprtr,
@@ -1598,7 +1702,6 @@ triangulateSimulatedAnnealing(
         (1 + (crrnt_tmprtr*log(1+distance))/(3*std_dev));  
 
       ratio = (mean - best_this_weight) / std_dev; 
-     
       ++i;
     }
     ////////////////////////////////////////////////////////////////
@@ -1623,9 +1726,17 @@ triangulateSimulatedAnnealing(
   ////////////////////////////////////////////////////////////////
   infoMsg(IM::Tiny, "  Exiting on iteration: %d\n", i); 
 
-  cliques.clear();
-  restoreNeighbors(orgnl_nghbrs);
-  triangulateElimination( nodes, best_order, cliques);
+  best_order.clear();
+  for( crrnt_np = triangulate_best_order.begin(), 
+       end_np   = triangulate_best_order.end(); 
+       crrnt_np != end_np; 
+       ++crrnt_np ) {
+
+    best_order.push_back( (*crrnt_np)->randomVariable ); 
+  }
+
+  best_cliques.clear();
+  triangulateElimination( nodes, best_order, best_cliques);
   infoMsg(IM::Tiny, "  Annealing Best Weight: %f\n", best_graph_weight ); 
 }
 
@@ -1666,30 +1777,34 @@ triangulateSimulatedAnnealing(
 unsigned
 BoundaryTriangulate::
 annealChain(
-  set<RandomVariable*>     nodes,
-  vector<RandomVariable*>& crrnt_order,
-  vector<RandomVariable*>& best_order,
-  double&         best_graph_weight,
-  double&         best_this_weight,
-  double          temperature,
-  unsigned        iterations,
-  double&         weight_sum,         
-  double&         weight_sqr_sum,         
-  vector<nghbrPairType>    orgnl_nghbrs
+  vector<triangulateNode>&          nodes,
+  vector<triangulateNode*>&         crrnt_order,
+  vector<triangulateNode*>&         best_order,
+  double&                           best_graph_weight,
+  double&                           best_this_weight,
+  double                            temperature,
+  unsigned                          iterations,
+  double&                           weight_sum,         
+  double&                           weight_sqr_sum,         
+  vector<triangulateNghbrPairType>& orgnl_nghbrs
   )
 {  
-  vector<MaxClique> cliques;
-  back_insert_iterator<vector<RandomVariable*> > bi_best(best_order);
-  RandomVariable* tmp_RV; 
-  RAND     rndm_nmbr(0);
-  double   crrnt_graph_weight;
-  double   prvs_graph_weight;
-  double   tmprtr_penalty;
-  unsigned first_index  = 0;    
-  unsigned second_index = 0;    
-  unsigned moves_accepted;
-  unsigned i;
-  bool     accepted;
+  vector<MaxClique>               rv_cliques;
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        dummy_order;
+
+  back_insert_iterator<vector<triangulateNode*> > bi_best(best_order);
+
+  triangulateNode* tmp_node; 
+  RAND             rndm_nmbr(0);
+  double           crrnt_graph_weight;
+  double           prvs_graph_weight;
+  double           tmprtr_penalty;
+  unsigned         first_index  = 0;    
+  unsigned         second_index = 0;    
+  unsigned         moves_accepted;
+  unsigned         i;
+  bool             accepted;
   
   crrnt_graph_weight = HUGE_VAL;
   prvs_graph_weight  = HUGE_VAL;
@@ -1712,18 +1827,19 @@ annealChain(
         assert( second_index < crrnt_order.size() );
       } while (first_index == second_index);
 
-      tmp_RV = crrnt_order[first_index];
+      tmp_node = crrnt_order[first_index];
       crrnt_order[first_index]  = crrnt_order[second_index];
-      crrnt_order[second_index] = tmp_RV; 
+      crrnt_order[second_index] = tmp_node; 
     } 
 
     ////////////////////////////////////////////////////////////////
     // Calculate new graph weight 
     ////////////////////////////////////////////////////////////////
     restoreNeighbors(orgnl_nghbrs);
-    cliques.clear();
-    triangulateElimination( nodes, crrnt_order, cliques);
-    crrnt_graph_weight = graphWeight(cliques); 
+    fillInComputation( crrnt_order );
+    maximumCardinalitySearch( nodes, list_cliques, dummy_order, false );
+    listVectorCliquetoVectorSetClique( list_cliques, rv_cliques );
+    crrnt_graph_weight = graphWeight(rv_cliques);
 
     ////////////////////////////////////////////////////////////////
     // Check if it is the best ordering so far 
@@ -1745,9 +1861,9 @@ annealChain(
       tmprtr_penalty = temperature * log(rndm_nmbr.drand48());
 
       if ( crrnt_graph_weight > (prvs_graph_weight-tmprtr_penalty)) {
-        tmp_RV = crrnt_order[first_index];
+        tmp_node = crrnt_order[first_index];
         crrnt_order[first_index]  = crrnt_order[second_index];
-        crrnt_order[second_index] = tmp_RV;
+        crrnt_order[second_index] = tmp_node;
         accepted = false;
       }
     } 
@@ -3458,6 +3574,7 @@ anyTimeTriangulate(GMTemplate& gm_template)
   ////////////////////////////////////////////////////////////////////////
   // Triangulate using exhaustive search
   ////////////////////////////////////////////////////////////////////////
+/*
   if (timer->SecondsLeft() > 10) {
     infoMsg(IM::Tiny, "Triangulating C using Exhaustive Search:\n");
 
@@ -3484,6 +3601,7 @@ anyTimeTriangulate(GMTemplate& gm_template)
 
     infoMsg(IM::Tiny, "Time Remaining: %d\n", (int)timer->SecondsLeft() ); 
   }
+*/
 
   ////////////////////////////////////////////////////////////////////////
   // Return with the best triangulations found, which is
