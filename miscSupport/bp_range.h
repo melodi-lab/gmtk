@@ -126,9 +126,14 @@ public:
   bool emptyRangeSpec() { return emptyRangeSpec(range_str); }
   bool fullRangeSpec() { return fullRangeSpec(range_str); }
 
+  ////////////////////////////////////////////////////////
+  // returns a pointer to the range string.
+  char*const rangeStr() { return range_str; };
+
   // returns true if r has any overlap with this (i.e., if
   // the intersection is non-null)
   bool overlapP(BP_Range& r);
+  bool overlapP(BP_Range* r) { return overlapP(*r); }
 
 
 };

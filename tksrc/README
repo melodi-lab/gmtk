@@ -13,7 +13,8 @@ Classes (including structs)
         Discrete1DPDF - discrete 1Dim PDF
         DiagonalGaussian
 	FooBar
-
+	Foo
+	
 
 Member Variables, member functions.
   list of words, no space, capitalize each word, not including first word
@@ -28,6 +29,10 @@ Member Variables, member functions.
 
 Typedefs
  Same as classes above.
+
+Member Classes/Structs
+     (i.e., classes/structs that are scoped only within other classes/structs)
+  Same as classes/structs.
 
 
 Global Variables: (including static members, etc.)

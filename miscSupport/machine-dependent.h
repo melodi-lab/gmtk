@@ -22,15 +22,33 @@
 #ifndef MACHINE_DEPENDENT_H
 #define MACHINE_DEPENDENT_H
 
+
+// 16 bit int
+typedef short Int16;
+// 16 bit unsigned
+typedef unsigned short Uint16;
+// generic 16 bit data value
+typedef short Data16;
+
+
 // 32 bit int
-typedef int GMTK_int32;
+typedef int Int32;
 // 32 bit unsigned
-typedef unsigned int GMTK_unsigned32;
+typedef unsigned int Uint32;
+// generic 32 bit data value
+typedef int Data32;
 // 32 bit pointer
-typedef int* GMTK_ptr32;
+typedef Data32* Datap32;
+// generic 64 bit data value
+typedef double Data64;
 // 64 bit pointer
-typedef double* GMTK_ptr64;
+typedef Data64* Datap64;
 
 
 #endif
+
+
+
+
+
 

@@ -469,14 +469,31 @@ done:
 
 bool BP_Range::overlapP(BP_Range& r)
 {
-  // TODO: This is a very inefficient implementatio
-  // of this operation. This should really be optimized.
+  // TODO: This is a very inefficient implementation
+  // of this operation. This should really be redone 
+  // and optimized to have log time (linear time currently)
+
+  // do simple tests first
+  if (range_set_size == 0 || r.range_set_size == 0)
+    return false;
+  if (max() < r.min() || min() > r.max())
+    return false;
+
+  // So, there may be some overlap.
+  // Search over all range elements of r, stopping
+  // as soon as we can.
   for (BP_Range::iterator it = r.begin();
        it <=r.max();
        it++) {
-    if (contains(*it)) {
+    const int val = (*it);
+    if (val < min())
+      continue;
+
+    if (contains(val)) {
       return true;
     }
+    if (val > max())
+      return false;
   }
   return false;
 }
