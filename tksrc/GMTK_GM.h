@@ -42,8 +42,8 @@ struct GMTK_GM
     void reveal(vector<RandomVariable *> order, bool show_vals = false);
     // Go through the nodes in the specified order and show them.
 
-    GMTK_GM() {example=NULL;}
-    ~GMTK_GM() { delete chain; }
+    GMTK_GM() {example=NULL; chain=NULL;}
+    ~GMTK_GM() { if (chain) delete chain; }
 
     void makeRandom();
     // Goes over each variable in the graph and calls its makeRandom function.
@@ -136,6 +136,10 @@ struct GMTK_GM
     void clampFirstExample() 
     { if (example==NULL) error("Example array not set.");
       if (example->size()==0) error("No examples.");
+/*
+      assert(((*example)[0].size()-obsInTemplate)%obsInRepeatSeg==0);
+      setSize(((*example)[0].size()-obsInTemplate)/obsInRepeatSeg);
+*/
       setValues((*example)[0]);
       expos=0;
     }
@@ -146,7 +150,13 @@ struct GMTK_GM
 
     bool clampNextExample() 
     { if (expos==example->size()-1) return false; 
-      setValues((*example)[++expos]); return true; }
+      ++expos;
+/*
+      assert( ((*example)[expos].size()-obsInTemplate)%obsInRepeatSeg==0);
+      setSize( ((*example)[expos].size()-obsInTemplate)/obsInRepeatSeg);
+*/
+      setValues((*example)[expos]); return true; 
+    }
     // Clamps the observation variables according to the next example.
 
     void enumerativeEM(int iterations);
@@ -175,30 +185,21 @@ struct GMTK_GM
     // duplicates the structure from first_frame to last_frame "times" times
     // e.g. unroll(1,2,5) adds 10 frames -- 5 1,2 chunks
 
-    map<pair<RandomVariable *, int>, RandomVariable *> analogue_k_past;
-    // To make speedy length adjustments possible, we will keep track of
-    // the analogue of every varable that is referenced in the parent lists
-    // of the last slice.
+    vector<RandomVariable *> gmTemplate;
 
-    void spliceOut(int segments);
-    // splices out "segments" repeating portions of the network.
- 
-    void restoreNet();
-    // undoes the last splice operation
-   
-    vector<pair<RandomVariable **, RandomVariable *> > parentUpdates;
-    // changing the pointers in the first part of the pair to the second part
-    // undoes the parent changes made in a splice
+    void cloneVariables(vector<RandomVariable *> &from, 
+        vector<RandomVariable *> &to);
+    // clones the network structure held in from so that it is reproduced in to.
+    // all internal pointers are adjusted correctly
 
-    vector<RandomVariable **> parentsToUpdate;
-    // which guys to change to do the splice
+    void setSize(int repeat_segs);
+    // sets the network up for infrence with an observation sequence that
+    // is time_frames long
 
-    vector<RandomVariable *> tempNode, tempTopo;
-    // used to store temporary arrays while adjusting length
+    int firstChunkFrame, lastChunkFrame;
+    // the first and last frames in the template repeating segment
 
-    int repeatPeriod;   // how many slices is the reepeating period of the net?
-  
-    int startTimeOfLastSegment;  // last repeating segment
+    int obsInTemplate, obsInRepeatSeg;
 };
 
 #endif
