@@ -323,7 +323,7 @@ RngDecisionTree::seek(
   //////////////////////////////////////////////////////////////////////////
   // Read in the position of the tree in the DT file 
   //////////////////////////////////////////////////////////////////////////
-  indexFile->fseek( sizeof(unsigned)*dt_nmbr, SEEK_CUR ); 
+  indexFile->fseek( sizeof(unsigned)*(dt_nmbr+1), SEEK_CUR ); 
   indexFile->read(position, "DT offset");
 
   result = dtFile->fseek(position, SEEK_SET); 
