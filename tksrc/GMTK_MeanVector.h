@@ -40,7 +40,7 @@ class MeanVector : public EMable, public NamedObject {
 
   //////////////////////////////////
   // Data structures support for EM
-  RealArray nextMeans;
+  sArray<float> nextMeans;
 
 
 public:
@@ -71,16 +71,19 @@ public:
     means.write(os); 
   }
 
+
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emStartIteration() {}
-  void emIncrement(RandomVariable*,logpr prob) {}
-  void emEndIteration() {}
-  void emSwapCurAndNew() {}
-  void emStoreAccumulators(oDataStreamFile& ofile) {}
-  void emLoadAccumulators(iDataStreamFile& ifile) {}
-  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void emStartIteration();
+  void emIncrement(logpr prob,const float *f,
+		   const Data32* const base,
+		   const int stride);
+  void emEndIteration();
+  void emSwapCurAndNew();
+  void emStoreAccumulators(oDataStreamFile& ofile);
+  void emLoadAccumulators(iDataStreamFile& ifile);
+  void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////
 
 

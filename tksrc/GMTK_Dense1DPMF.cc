@@ -33,6 +33,7 @@
 #include "rand.h"
 
 #include "GMTK_Dense1DPMF.h"
+#include "GMTK_GMParms.h"
 
 VCID("$Header$");
 
@@ -190,4 +191,149 @@ Dense1DPMF::makeUniform()
     pmf[i] = val;
   }
 }
+
+
+
+/////////////////
+// EM routines //
+/////////////////
+
+
+void
+Dense1DPMF::emStartIteration()
+{
+  if (!GM_Parms.amTrainingDense1DPMFs())
+    return;
+  if(emOnGoingBitIsSet())
+    return; 
+
+  if (!emEmAllocatedBitIsSet()) {
+    // this is presumably the first time
+    nextPmf.resize(pmf.len());
+    emSetEmAllocatedBit();
+  }
+  // EM iteration is now going.
+  emSetOnGoingBit();
+  emSetSwappableBit();
+
+  accumulatedProbability = 0.0;
+
+  for (int i=0;i<nextPmf.len();i++) {
+    nextPmf[i].set_to_zero();
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emIncrement()
+ *      Increment postDist into the next parameters for this PMF.
+ * 
+ * Preconditions:
+ *      prob must be valid probability, and postDist
+ *      a posterior distribution that has *ALREADY* had 
+ *      'prob' multiplied in by the caller.
+ *
+ * Postconditions:
+ *      postDist has been accumulated in.
+ *
+ * Side Effects:
+ *      Changes internal variables.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+Dense1DPMF::emIncrement(logpr prob,
+			sArray<logpr>& postDist)
+{
+  if (!GM_Parms.amTrainingDense1DPMFs())
+    return;
+  emStartIteration();
+
+  assert ( postDist.len() == nextPmf.len() );
+
+  if (prob.val() < log_FLT_MIN) {
+    return;
+  } 
+  accumulatedProbability+= prob;
+  for (int i=0;i<nextPmf.len();i++) {
+    // we assume here that 'prob' has already
+    // been multipled into postDist by our friendly
+    // caller. If this is not the case, then
+    // this code would be wrong.
+    nextPmf[i] += postDist[i];
+  }
+}
+
+
+void
+Dense1DPMF::emEndIteration()
+{
+  if (!GM_Parms.amTrainingDense1DPMFs())
+    return;
+
+  if ( !emOnGoingBitIsSet() )
+    return; 
+
+  if (accumulatedProbability.zero()) {
+    warning("WARNING: Dense1DPMF named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+  }
+
+  for (int i=0;i<nextPmf.len();i++) {
+    nextPmf[i] /= accumulatedProbability;
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+
+
+void
+Dense1DPMF::emSwapCurAndNew()
+{
+  if (!GM_Parms.amTrainingDense1DPMFs())
+    return;
+
+  if (!emSwappableBitIsSet())
+    return;
+
+  for (int i=0;i<nextPmf.len();i++) {
+    genSwap(nextPmf[i],pmf[i]);
+  }
+
+  emClearSwappableBit();
+}
+
+
+
+
+void
+Dense1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
+{
+  error("not implemented");
+}
+
+void
+Dense1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+void
+Dense1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+////////////////////////////////////////////////////////////
+// Sample generation
+////////////////////////////////////////////////////////////
+
 

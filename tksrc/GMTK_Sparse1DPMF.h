@@ -112,13 +112,13 @@ public:
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
-  void emStartIteration() {}
-  void emIncrement(RandomVariable*,logpr prob) {}
-  void emEndIteration() {}
-  void emSwapCurAndNew() {}
-  void emStoreAccumulators(oDataStreamFile& ofile) {}
-  void emLoadAccumulators(iDataStreamFile& ifile) {}
-  void emAccumulateAccumulators(iDataStreamFile& ifile) {}
+  void emStartIteration();
+  void emIncrement(logpr prob,const int val);
+  void emEndIteration();
+  void emSwapCurAndNew();
+  void emStoreAccumulators(oDataStreamFile& ofile);
+  void emLoadAccumulators(iDataStreamFile& ifile);
+  void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////
 
 

@@ -948,40 +948,6 @@ GMParms::writeDTs(oDataStreamFile& os)
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-void
-GMParms::emStartIteration()
-{
-  // go through all EMable objects possibly
-  // used by any RV and make the call
-
-  // We do this only for those mid-level EMable objects.
-
-  // First do the basic objects. 
-  for (unsigned i=0;i<gaussianComponents.size();i++)
-    gaussianComponents[i]->emStartIteration();
-
-  // for discrete RVs
-  for (unsigned i=0;i<mdCpts.size();i++)
-    mdCpts[i]->emStartIteration();
-  for (unsigned i=0;i<msCpts.size();i++)
-    msCpts[i]->emStartIteration();
-  for (unsigned i=0;i<mtCpts.size();i++)
-    mtCpts[i]->emStartIteration();
-
-  // for continuous RVs
-  for (unsigned i=0;i<mixGaussians.size();i++)
-    mixGaussians[i]->emStartIteration();
-#if 0
-  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
-    gausSwitchingMixGaussians[i]->emStartIteration();
-  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
-    logitSwitchingMixGaussians[i]->emStartIteration();
-  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
-    mlpSwitchingMixGaussians[i]->emStartIteration();
-#endif
-
-}
-
 
 void
 GMParms::emEndIteration()
@@ -991,6 +957,20 @@ GMParms::emEndIteration()
 
 
   // first do the basic objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emEndIteration();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emEndIteration();
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->emEndIteration();
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->emEndIteration();
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->emEndIteration();
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->emEndIteration();
+
+  // gaussian components
   for (unsigned i=0;i<gaussianComponents.size();i++)
     gaussianComponents[i]->emEndIteration();
 
@@ -1036,6 +1016,8 @@ GMParms::emSwapCurAndNew()
     dLinkMats[i]->emSwapCurAndNew();
   for (unsigned i=0;i<weightMats.size();i++)
     weightMats[i]->emSwapCurAndNew();
+
+  // gaussian components
   for (unsigned i=0;i<gaussianComponents.size();i++)
     gaussianComponents[i]->emSwapCurAndNew();
 

@@ -33,7 +33,7 @@
 #include "rand.h"
 
 #include "GMTK_Sparse1DPMF.h"
-
+#include "GMTK_GMParms.h"
 
 VCID("$Header$");
 
@@ -279,4 +279,147 @@ Sparse1DPMF::makeUniform()
     pmf[i].prob = p;
   }
 }
+
+
+
+////////////////////////////////////////////////////////////////////
+//        EM Routines
+////////////////////////////////////////////////////////////////////
+
+ 
+void
+Sparse1DPMF::emStartIteration()
+{
+  if (!GM_Parms.amTrainingSparse1DPMFs())
+    return;
+
+  if(emOnGoingBitIsSet())
+    return; // already done
+
+  if (!emEmAllocatedBitIsSet()) {
+    nextPmf.resize(pmf.len());
+    emSetEmAllocatedBit();
+  }
+  // EM iteration is now going.
+  emSetOnGoingBit();
+  emSetSwappableBit();
+
+  accumulatedProbability = 0.0;  
+
+  for (int i=0;i<nextPmf.len();i++) {
+    nextPmf[i].set_to_zero();
+  }
+
+}
+
+
+void
+Sparse1DPMF::emIncrement(logpr prob,const int val)
+{
+  if (!GM_Parms.amTrainingSparse1DPMFs())
+    return;
+
+  emStartIteration();
+
+  assert ( pmf.len() > 0 );
+  assert ( val >= 0 && val < _card );
+  const int last = pmf.len()-1;
+
+  /////////////////////////////////////////////////////////
+  // we shouln't be trying to increment an impossible value.
+  // something must be wrong upstairs.
+  assert (val <= pmf[last].val);
+
+  // find the entry using bin search
+  int l,u;
+  l = 0;
+  u = last;
+  while (l<=u) {
+    // pmf[l] <= val <= pmf[u]
+    int m = (l+u)/2;
+    // if l = u, 
+    //      then  m = l = u
+    // if even(u), even(l)
+    //      then l < m < u
+    // if one even, one odd, and l+1 = u
+    //      then  m = l = u-1
+    // if one even, one odd, and l+1 < u
+    //      then l < m < u
+
+    if (val < pmf[m].val)
+      u = m-1;
+    else if (val > pmf[m].val)
+      l = m+1;
+    else {
+      // found the value
+      accumulatedProbability += prob;
+      nextPmf[m] += prob;
+    }
+  }
+
+  /////////////////////////////////////////////////////////
+  // again, we shouln't be trying to increment an impossible value.
+  // something must be wrong.
+  assert (0);
+
+}
+
+void
+Sparse1DPMF::emEndIteration()
+{
+  if (!GM_Parms.amTrainingSparse1DPMFs())
+    return;
+
+  if ( !emOnGoingBitIsSet() )
+    return; 
+
+  if (accumulatedProbability.zero()) {
+    warning("WARNING: Sparse 1D PMF named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+  }
+
+  for (int i=0;i<nextPmf.len();i++) {
+    nextPmf[i] /= accumulatedProbability;
+  }
+
+  // stop EM
+  emClearOnGoingBit();
+
+}
+
+void
+Sparse1DPMF::emSwapCurAndNew()
+{
+  if (!GM_Parms.amTrainingSparse1DPMFs())
+    return;
+
+  if (!emSwappableBitIsSet())
+    return;
+
+  for (int i=0;i<nextPmf.len();i++) {
+    genSwap(nextPmf[i],pmf[i].prob);
+  }
+
+  emClearSwappableBit();
+}
+
+
+void
+Sparse1DPMF::emStoreAccumulators(oDataStreamFile& ofile)
+{
+  error("not implemented");
+}
+
+void
+Sparse1DPMF::emLoadAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+void
+Sparse1DPMF::emAccumulateAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
 

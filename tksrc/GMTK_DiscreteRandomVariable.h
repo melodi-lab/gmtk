@@ -88,13 +88,13 @@ public:
   }
   // clamp this RV to its "first" value
   void clampFirstValue() { 
+    findConditionalParents(); 
     if (!hidden) {
       // observed, so set value from observation matrix
       if (globalObservationMatrix.active())
 	val = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
       return;
     }
-    findConditionalParents(); 
     curCPT->becomeAwareOfParentValues(*curConditionalParents);
     it = curCPT->begin(); val = it.val(); 
   }
@@ -147,19 +147,19 @@ public:
   }
   void emIncrement(logpr posterior) { 
     findConditionalParents();
-    curCPT->emIncrement(this,posterior);
+    curCPT->emIncrement(posterior,this);
   }
   void emEndIteration() { 
     for(unsigned i=0;i<conditionalCPTs.size();i++)
       conditionalCPTs[i]->emEndIteration();
   }
-  void emClearAllocatedBit() { 
+  void emClearEmAllocatedBit() { 
     for(unsigned i=0;i<conditionalCPTs.size();i++)
-      conditionalCPTs[i]->emClearAllocatedBit();
+      conditionalCPTs[i]->emClearEmAllocatedBit();
   }
   void emClearSwappedBit() { 
     for(unsigned i=0;i<conditionalCPTs.size();i++)
-      conditionalCPTs[i]->emClearSwappedBit();
+      conditionalCPTs[i]->emClearSwappableBit();
   }
   void emSwapCurAndNew() { 
     for(unsigned i=0;i<conditionalCPTs.size();i++)

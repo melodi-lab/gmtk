@@ -148,12 +148,12 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration();
-  void emIncrement(RandomVariable*rv, logpr prob);
+  void emIncrement(logpr p,RandomVariable*rv);
   void emEndIteration();
   void emSwapCurAndNew();
-  void emStoreAccumulators(oDataStreamFile& ofile) { error("not implemented");  }
-  void emLoadAccumulators(iDataStreamFile& ifile) { error("not implemented");  }
-  void emAccumulateAccumulators(iDataStreamFile& ifile) { error("not implemented");  }
+  void emStoreAccumulators(oDataStreamFile& ofile);
+  void emLoadAccumulators(iDataStreamFile& ifile);
+  void emAccumulateAccumulators(iDataStreamFile& ifile);
   //////////////////////////////////
 
 

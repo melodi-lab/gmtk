@@ -102,7 +102,7 @@ ContinuousRandomVariable::probGivenParents()
     _cachedProb = 
       curMappingOrDirect->gaussian->log_p
       (
-       firstFeatureElement+globalObservationMatrix.floatVecAtFrame(timeIndex),
+       globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),
        globalObservationMatrix.baseAtFrame(timeIndex),
        globalObservationMatrix.stride
        );
@@ -116,7 +116,7 @@ ContinuousRandomVariable::probGivenParents()
     // different types of mixtures of Gaussians.
     _cachedProb = GM_Parms.mixGaussians[gaussianIndex]->log_p
       (
-       firstFeatureElement+globalObservationMatrix.floatVecAtFrame(timeIndex),
+       globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),
        globalObservationMatrix.baseAtFrame(timeIndex),
        globalObservationMatrix.stride
        );
@@ -202,3 +202,89 @@ ContinuousRandomVariable::clone()
   rv->tieParametersWith(this);
   return rv;
 }
+
+
+
+
+
+/////////////////
+// EM routines //
+/////////////////
+
+
+
+void
+ContinuousRandomVariable::emStartIteration()
+{
+  // do nothing, assuming that all objects
+  // that this RV might use are started globally.
+}
+
+
+void
+ContinuousRandomVariable::emIncrement(logpr posterior)
+{
+  findConditionalParents();
+  if (curMappingOrDirect->direct) {
+    curMappingOrDirect->gaussian->emIncrement
+      (
+       posterior,
+       globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),
+       globalObservationMatrix.baseAtFrame(timeIndex),
+       globalObservationMatrix.stride
+       );
+  } else {
+    // need to find which gaussian this will be.
+    const unsigned gaussianIndex =
+      curMappingOrDirect->dtMapper->query(*curConditionalParents);
+    assert ( gaussianIndex < GM_Parms.mixGaussians.size() );
+    //
+    // TODO: this needs to be changed when we have
+    // different types of mixtures of Gaussians.
+    GM_Parms.mixGaussians[gaussianIndex]->emIncrement
+      (
+       posterior,
+       globalObservationMatrix.floatVecAtFrame(timeIndex,firstFeatureElement),
+       globalObservationMatrix.baseAtFrame(timeIndex),
+       globalObservationMatrix.stride
+       );
+  }
+}
+
+
+void
+ContinuousRandomVariable::emEndIteration()
+{
+  // again do nothing, assuming that all objects
+  // that this RV might use are started globally.
+}
+
+
+void
+ContinuousRandomVariable::emSwapCurAndNew()
+{
+  // again do nothing, assuming that all objects
+  // that this RV might use are started globally.
+}
+
+#if 0
+void
+ContinuousRandomVariable::emStoreAccumulators(oDataStreamFile& ofile)
+{
+  error("not implemented");
+}
+
+void
+ContinuousRandomVariable::emLoadAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+
+void
+ContinuousRandomVariable::emAccumulateAccumulators(iDataStreamFile& ifile)
+{
+  error("not implemented");
+}
+
+#endif

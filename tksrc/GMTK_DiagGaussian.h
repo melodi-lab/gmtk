@@ -38,7 +38,7 @@ class DiagGaussian : public GaussianComponent {
   ///////////////////////////////////////////////////////
   // The means. 
   // This might be tied with multiple other distributions.
-  MeanVector* means;
+  MeanVector* mean;
   // The index in the global mean array of this mean.
   int meanIndex; 
 
@@ -48,6 +48,7 @@ class DiagGaussian : public GaussianComponent {
   DiagCovarVector* covar;
   // The index in the global variance array of this variance vector
   int covarIndex;
+
 
  
 public:
@@ -84,7 +85,10 @@ public:
   // Full Baum-Welch EM training  //
   //////////////////////////////////
   void emStartIteration();
-  void emIncrement(RandomVariable*,logpr prob);
+  void emIncrement(logpr prob,
+		   const float*f,
+		   const Data32* const base,
+		   const int stride);
   void emEndIteration();
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);

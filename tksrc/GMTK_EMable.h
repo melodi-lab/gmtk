@@ -26,6 +26,8 @@
 
 #include "fileParser.h"
 #include "logp.h"
+#include "machine-dependent.h"
+#include "sArray.h"
 
 #include "GMTK_RandomVariable.h"
 
@@ -49,8 +51,8 @@ protected:
     // True when an EM epoch is ongoing, so that we don't call
     // startEmEpoch multiple times when things are tied together.
     bm_emEpochOnGoing  = (1 << 2),
-    // Have the current and next parameters been swapped.
-    bm_swapped         = (1 << 3),
+    // May the current and next parameters been swapped.
+    bm_swappable         = (1 << 3),
     // Has the accumulators been loaded/stored.
     bm_accLoadStore    = (1 << 4),
 
@@ -59,6 +61,11 @@ protected:
   };
 
   unsigned int bitmask;
+
+  ////////////////////////////////////////////////
+  // the sum of the EM accumulated probability for this
+  // object.
+  logpr accumulatedProbability;
  
 public:
 
@@ -71,7 +78,145 @@ public:
   // EM training                  //
   //////////////////////////////////
 
-  // an "iteration" is an entire pass through the data.
+
+  /*
+   *
+   * ////////////////////////////////////////
+   * The following dummy routines describe the
+   * GENERIC EM Loop functionality for an EMable.
+   *  an "iteration" is an entire pass through the data.
+   *
+   *
+   *emStartIeration() {
+   *  // First check if this type object (means, variances,
+   *  // dlink matrices, etc) is currently set to be trained
+   *  // or is it fixed for this EM.
+   *  if (!object of this type being trained with EM)
+   *    return;
+   *
+   *  // Next check if EM has been started for this object.
+   *  // If it has, then we don't do anything.
+   *  if(emOnGoingBitIsSet())
+   *    return; // already done
+   *  // Next check to make sure any internal EM structures
+   *  // have been allocated, using the allocated bit. If
+   *  // not, allocate them and set the bit.
+   *  if (!emEmAllocatedBitIsSet()) {
+   *    // Allocate interal structurse
+   *    // ... 
+   *    // and set the bit
+   *    emSetEmAllocatedBit();
+   *  }
+   *  // Next, make it such that we set the ongoing bit.
+   *  emSetOnGoingBit();
+   *  // Next, set the swappable bit so that this object's parameters
+   *  // will get swapped when an emEndIteration is called later.
+   *  emSetSwappableBit();
+   *
+   *  // Finally, do any object specific initialization of
+   *  // the next parameters, such as setting to zero (or
+   *  // to prior values), and so on, and calling
+   *  // any member objects emStartIteration();
+   *  // ...
+   *}
+   *
+   *
+   *emIncrement(logpr prob, ...) {
+   *  // First check if this type object (means, variances,
+   *  // dlink matrices, etc) is currently set to be trained
+   *  // or is it fixed for this EM.
+   *  if (!object of this type being trained with EM)
+   *    return;
+   *
+   *  // Next, call emStartIteration. The idea here
+   *  // is that we do not know, during each EM iteration,
+   *  // what objects are going to be actively trained using EM.
+   *  // We just start incrementing and in a lazy fashion
+   *  // start the EM iterations going. If an iteration is
+   *  // already going, this ends up being a nop, otherwise
+   *  // things are initialized appropriately.
+   *
+   *  emStartIteration();
+   *
+   *  // Next, accumulate the probabilities.
+   *  accumulatedProbability+= prob;
+   *
+   *  // Finally, do object specific incrementing which depends
+   *  // also on the remaining arguments after prob.
+   *  // ..
+   *
+   *}
+   *
+   *emEndIteration() {
+   *  // First check if this type object (means, variances,
+   *  // dlink matrices, etc) is currently set to be trained
+   *  // or is it fixed for this EM.
+   *  if (!object of this type being trained with EM)
+   *    return;
+   *
+   *  // Next check if EM is on going for this object, and if it
+   *  // is not, return making this a nop. This way, endIteration
+   *  // may be called from a collection of global EMable objects
+   *  // w/o respect to who is using them via parameter tying.
+   *
+   *  if ( !emOnGoingBitIsSet() )
+   *    return; 
+   *
+   *  // Next, check if the accumulator is zero, if it is
+   *  // then this means that emIncrement() either was not
+   *  // called or it was called with very low or zero values
+   *  // for prob. Issue a warning for now.
+   *
+   *  if (accumulatedProbability.zero()) {
+   *    warning("...");
+   *  }
+   *
+   *  // Next, do any obect specific ending, which might include
+   *  // ending for sub-objects.
+   *
+   *  // Finaly, stop the EM iteration. That way emEndIteration
+   *  // may be called multiple times (via shared objects for 
+   *  // parameter tieing) and anything other than the first
+   *  // time will be a nop.
+   *  emClearOnGoingBit();
+   *
+   *}
+   *
+   *
+   *emSwapCurAndNew() {
+   *  // First check if this type object (means, variances,
+   *  // dlink matrices, etc) is currently set to be trained
+   *  // or is it fixed for this EM.
+   *  if (!object of this type being trained with EM)
+   *    return;
+   *
+   *
+   *  // Next, check if this object is swappable and if
+   *  // not this is a nop.
+   *  if (!emSwappableBitIsSet())
+   *    return;
+   *
+   *  // Next, do the stuff to swap the current and next parameters,
+   *  // possibly calling this routine on member variables.
+   *
+   *  // Finally, reset the swappable bit so that this is only
+   *  // called once.
+   *  emClearSwappableBit();
+   *}
+   *
+   *
+   *The global EM loop should look something like:
+   *
+   *  for each training sample
+   *      for each object and relevant probability
+   *           ob.emIncrement(prob)
+   *  GlobalCollection.emEndIteration();
+   *  if converged
+   *      GlobalCollection.emSwapCurAndNew();     
+   *
+   */
+  
+  
 
   ////////////////////////////////////////////////////////////////////
   // begins a new epoch. Also ensures that data for EM is allocated
@@ -80,8 +225,26 @@ public:
 
   ////////////////////////////////////////////////////////////////////
   // Accumulate new data into the internal structures for eam.
-  // assumes that the ongoing bit it set.
-  virtual void emIncrement(RandomVariable* rv, logpr prob) = 0;
+  // assumes that the ongoing bit it set. The various 
+  // versions are for differnet objects that need to utilize
+  // different information when they are being called.
+  // E.g., a discrete random variable that uses a CPT, the CPT needs to know 
+  // the current values of the parents. A continuous random variable
+  // with a mean object, the mean object needs to know the current values
+  // of the observations, say. These should never be called directly,
+  // and should be re-defined in child classes. They are not abstract
+  // though (i.e., "=0") because we want the option to need not define them
+  // for a particular child class.
+  virtual void emIncrement(logpr prob) { assert(0); }
+  virtual void emIncrement(logpr prob,RandomVariable*r) { assert(0); }
+  virtual void emIncrement(logpr prob,
+			   const float*f,
+			   const Data32* const base,
+			   const int stride)
+                        { assert(0); }
+  virtual void emIncrement(logpr prob,sArray<logpr>& a) { assert(0); }  
+  virtual void emIncrement(logpr prob,const int val) { assert(0); }  
+
 
   ////////////////////////////////////////////////////////////////////
   // Accumulate new data into the internal structures for this 
@@ -95,19 +258,21 @@ public:
 
   /////////////////////////////////////////////////////////////////
   // clear the swap bit, needed for sharing.
-  void emClearSwappedBit() { bitmask &= ~bm_swapped; }
-  void emSetSwappedBit() { bitmask |= bm_swapped; }
+  void emClearSwappableBit() { bitmask &= ~bm_swappable; }
+  void emSetSwappableBit() { bitmask |= bm_swappable; }
+  bool emSwappableBitIsSet() { return (bitmask & bm_swappable); }
 
   /////////////////////////////////////////////////////////////////
-  // clear the swap bit, needed for sharing.
-  void emClearAllocatedBit() { bitmask &= ~bm_emAllocated; }
-  void emSetAllocatedBit() { bitmask |= bm_emAllocated; }
-
+  // basic allocated bit
+  void emClearEmAllocatedBit() { bitmask &= ~bm_emAllocated; }
+  void emSetEmAllocatedBit() { bitmask |= bm_emAllocated; }
+  bool emEmAllocatedBitIsSet() { return (bitmask & bm_emAllocated); }
 
   /////////////////////////////////////////////////////////////////
   // clear the swap bit, needed for sharing.
   void emClearOnGoingBit() { bitmask &= ~bm_emEpochOnGoing; }
   void emSetOnGoingBit() { bitmask |= bm_emEpochOnGoing; }
+  bool emOnGoingBitIsSet() { return (bitmask & bm_emEpochOnGoing); }
 
   //////////////////////////////////////////////
   // For parallel EM training.
@@ -131,5 +296,5 @@ public:
 
 };
 
-
 #endif
+

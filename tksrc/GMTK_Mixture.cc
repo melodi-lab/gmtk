@@ -72,7 +72,7 @@ MixGaussians::read(iDataStreamFile& is)
 
   // now read 'name' pointers to all the Gaussians.
   components.resize(numComponents);
-  for (int i=0;i<numComponents;i++) {
+  for (unsigned i=0;i<numComponents;i++) {
     is.read(str);
     if (GM_Parms.gaussianComponentsMap.find(str) == GM_Parms.gaussianComponentsMap.end()) {
       error("Error: MixGaussians '%s', can't find Gaussian Component named '%s'\n",_name.c_str(),str.c_str());
@@ -82,6 +82,7 @@ MixGaussians::read(iDataStreamFile& is)
     ];
     components[i] = gc;
   }
+  // make ready for probability evaluation.
 }
 
 void
@@ -92,20 +93,12 @@ MixGaussians::write(oDataStreamFile& os)
 }
 
 
-void
-MixGaussians::preCompute()
-{
-  for (int i=0;i<numComponents;i++) {
-    components[i]->preCompute();
-  }
-}
-
 
 void
 MixGaussians::makeUniform()
 {
   dense1DPMF->makeUniform();
-  for (int i=0;i<numComponents;i++) {
+  for (unsigned i=0;i<numComponents;i++) {
     components[i]->makeUniform();
   }
 }
@@ -115,11 +108,10 @@ void
 MixGaussians::makeRandom()
 {
   dense1DPMF->makeRandom();
-  for (int i=0;i<numComponents;i++) {
+  for (unsigned i=0;i<numComponents;i++) {
     components[i]->makeRandom();
   }
 }
-
 
 
 //
@@ -139,6 +131,7 @@ MixGaussians::log_p(const float *const x,
 }
 
 
+
 /////////////////
 // EM routines //
 /////////////////
@@ -147,30 +140,115 @@ MixGaussians::log_p(const float *const x,
 void
 MixGaussians::emStartIteration()
 {
-  error("not implemented");
+  if (!GM_Parms.amTrainingMixGaussians())
+    return;
+  if(emOnGoingBitIsSet())
+    return; // already done
+
+  if (!emEmAllocatedBitIsSet()) {
+    // this is presumably the first time
+    postDistribution.resize(components.size());
+    emSetEmAllocatedBit();
+  }
+
+  // EM iteration is now going.
+  emSetOnGoingBit();
+  emSetSwappableBit();
+
+  accumulatedProbability = 0.0;
+  dense1DPMF->emStartIteration();
+  for (unsigned i=0;i<numComponents;i++) {
+    components[i]->emStartIteration();
+  }
 }
 
 
 void
-MixGaussians::emSwapCurAndNew()
+MixGaussians::emIncrement(logpr prob,
+			  const float *f,
+			  const Data32* const base,
+			  const int stride)
 {
-  error("not implemented");
-}
+  if (!GM_Parms.amTrainingMixGaussians())
+    return;  
 
+  emStartIteration();
 
-void
-MixGaussians::emIncrement(RandomVariable* rv,
-			  logpr prob)
-{
-  error("not implemented");
+  if (prob.val() < log_FLT_MIN) {
+    return;
+  } 
+  accumulatedProbability+= prob;
+
+  // first compute the local Gaussian mixture posterior distribution.
+  logpr sum;
+  sum.set_to_zero();
+  for (unsigned i=0;i<numComponents;i++) {
+    postDistribution[i] = 
+      dense1DPMF->p(i)* components[i]->log_p(f,base,stride);
+    sum += postDistribution[i];
+  }
+
+  logpr tmp = prob/sum;
+  for (unsigned i=0;i<numComponents;i++) {
+    postDistribution[i] =
+      postDistribution[i]*tmp;
+  }
+
+  // increment the mixture weights
+  dense1DPMF->emIncrement(prob,postDistribution);
+
+  // and the components themselves.
+  for (unsigned i=0;i<numComponents;i++) {
+    components[i]->emIncrement(postDistribution[i],
+			       f,base,stride);
+  }
+
 }
 
 
 void
 MixGaussians::emEndIteration()
 {
-  error("not implemented");
+
+  if (!GM_Parms.amTrainingMixGaussians())
+    return;
+
+  if ( !emOnGoingBitIsSet() )
+    return; // done already
+
+  if (accumulatedProbability.zero()) {
+    warning("WARNING: Diagonal covariance vector named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+  }
+
+  dense1DPMF->emEndIteration();
+
+  for (unsigned i=0;i<numComponents;i++)
+    components[i]->emEndIteration();
+
+  // stop EM
+  emClearOnGoingBit();
 }
+
+
+
+void
+MixGaussians::emSwapCurAndNew()
+{
+
+  if (!GM_Parms.amTrainingMixGaussians())
+    return;
+
+  if (!emSwappableBitIsSet())
+      return;
+
+  dense1DPMF->emSwapCurAndNew();
+  for (unsigned i=0;i<numComponents;i++) {
+    components[i]->emSwapCurAndNew();
+  }
+  emClearSwappableBit();
+}
+
+
 
 
 void

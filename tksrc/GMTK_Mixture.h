@@ -42,6 +42,10 @@ class MixGaussians : public MixGaussiansCommon {
   vector < GaussianComponent* > components;
 
   ///////////////////////////////////////////
+  // For EM, the posteriors
+  sArray < logpr > postDistribution;
+
+  ///////////////////////////////////////////
   // the (possibly) shared 1DPMFs used for the mixture weights.
   Dense1DPMF* dense1DPMF;
  
@@ -51,8 +55,6 @@ public:
     : MixGaussiansCommon(dim,ci_mixGaussian)
   { }
   ~MixGaussians() {}
-
-  void preCompute();
 
   //////////////////////////////////////////////
   // read/write basic parameters
@@ -80,7 +82,10 @@ public:
   // Full Baum-Welch EM training  //
   //////////////////////////////////
   void emStartIteration();
-  void emIncrement(RandomVariable*,logpr prob);
+  void emIncrement(logpr prob, 
+		   const float*f,
+		   const Data32* const base,
+		   const int stride);
   void emEndIteration();
   void emSwapCurAndNew();
   void emStoreAccumulators(oDataStreamFile& ofile);
