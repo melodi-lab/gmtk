@@ -1235,3 +1235,100 @@ RV- RandomVariable
  two things:
     1) look inside DT to decide how much they cost
     2) judge JT quality by number of deterministic unassigned nodes.
+
+
+
+Fri Feb 13 13:20:27 2004
+ - classification of nodes in a clique:
+
+   1) assignedProbNodes: These are the nodes in a clique
+      for which we must compute the probability. I.e.,
+      they have been assigned to this clique to copute the probability.
+      These nodes exist in the clique along with all of this
+      nodes parents.
+      These should be CPT iterated.
+
+   2) assignedIterateNodes: These are nodes in this clique that
+      exist along with all their parents (like assignedGetProb),
+      but each of these nodes have been asigned for computing the
+      CPT probabiltiy in another clique. These should
+      be CPT iterated, but we don't update the probability.
+
+   3) Separator driven. These are nodes that are iterated by
+      the incomming separators during the CE stage. 
+
+      It is bad if any of these nodes are both previously unassigned
+      (lower stages in the JT) and also overlap with the assigned nodes
+      (of either kind) since in that case, we'll be doing
+      a separator iteration over previously unassigned nodes. Note
+      however, that in this case, the current clique will kill off
+      any zero probability entries (even if the node is
+      assignedJustIterate).
+
+   4) Unassigned Iterated. These are nodes that are not assigned
+      to this clique (i.e., the node's parents do not exist in this
+      clique), and so we must iterate them using [0,card-1].  
+
+
+plan:
+
+  assignedNodes: 
+      the nodes in the current clique that also
+      have all its parents in the current clique. These nodes
+      can be charged useCard() in general, but if there
+      is a sepNode that is also an assigned node, then
+      the charge of that node depends on if it was
+      assigned lower in the JT. If it was assigned,
+      we charge the node 
+
+  assignedNodes need to be in topological order:
+
+   say v is an assignedNode (meaning it exists with its parents in the clique).
+
+  7 cases:
+   - v is not in sepNodes, and v is a prob node as well, meaning we multiply
+     this clique potential by prob(v|parents(v)). We use
+     CPT iteration to iterate over v and compute probabilities.
+     Same for v being sparse or not.
+     CPT_ITERATION_COMPUTE_AND_APPLY_PROB
+   - v is not in sepNodes, and v is not a prob node, and V is sparse. We still use
+     CPT iteration to iterate over v given parents, but do not multiply
+     clique potential by probabilties. By using CPT iteration,
+     we remove any zeros now.
+     CPT_ITERATION_COMPUTE_PROB
+   - v is not in sepNodes, and v is not a prob node, and V is NOT sparse. 
+     We iterate using [0,card-1] and continue, and do not 
+     change any probabilities.
+     CARD_ITERATION
+
+   - v is in sepNodes, and v is a probability node. Then we compute
+     the probability for v, and continue only if the probabilty
+     is non zero. 
+     Same for v being sparse or not.
+     COMPUTE_AND_APPLY_PROB
+   - v is in sepNodes, v is not a probability node, but v was
+     assigned in a previous JT clique. In this case, we just
+     continue on since we know the incomming separators
+     killed off any zero entries. 
+     same for v being sparse or not.
+     CONTINUE
+   - v is in sepNodes, v is not a probability node, v sparse, but v was
+     *NOT* assigned in a previous JT clique. Then, since v is
+     sparse, we check here to make sure that the probability 
+     of v|parents is not zero. If it is zero, we backout,
+     but if it is not zero we continue, but *do not* multiply
+     the probability into this clique potential.
+     CONTINUE_COMPUTE_PROB
+   - v is in sepNodes, v is not a probability node, v not sparse, but v was
+     *NOT* assigned in a previous JT clique. We just continue,
+      since the CPT won't tell us anything. 
+     CONTINUE
+
+
+  unassignedNodes:
+  1 case:
+   - if hidden, just iterate [0,card-1]
+   - if observed, continue going.
+
+      
+

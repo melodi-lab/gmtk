@@ -332,15 +332,7 @@ main(int argc,char*argv[])
 
   printf("Creating Junction Tree\n"); fflush(stdout);
   JunctionTree myjt(gm_template);
-  myjt.createPartitionJunctionTrees();
-  myjt.computePartitionInterfaces();
-
-  myjt.createDirectedGraphOfCliques();
-  myjt.assignRVsToCliques();
-  myjt.setUpMessagePassingOrders();
-  myjt.createSeparators();
-  myjt.computeSeparatorIterationOrders();
-  myjt.getPrecedingIteratedUnassignedNodes();
+  myjt.setUpDataStructures();
 
   // this will cause problems when printing number of bits.
   // myjt.printAllJTInfo("jt_info_before_unrolling.txt");
