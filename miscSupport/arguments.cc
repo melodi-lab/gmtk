@@ -4,19 +4,76 @@
  * an easy interface to quickly define arguments.
  * 
  *   Jeff Bilmes <bilmes@ee.washington.edu>
+
+ Modified by Karim Filali (karim@cs.washington.edu) to handle the following:
+
+ - "Array type" flags: an example is the input flag -i; before if we
+   wanted to have five input files we had to have five different flag
+   entries -i1,-i2,...,-i5, all of which have the same properties.
+   Now we only need to specify a generic flag -iX which is tied to an
+   array instead to just a variable. -i1 corresponds to the first
+   element of the array and so on.
+   There are a few options relating to how to treat potentially ambiguous flags:
+
+     - The variable "static bool Disambiguate_When_Perfect_Match"
+     controls whether we want to allow switches such as -i, -invert,
+     and -input. If the bool below is false, command line flags -i and
+     -in are both ambiguous. If it is true, -i is no longer ambiguous
+     because it mathes the arg -i perfectly.
+
+     - The variable "static bool
+     Disambiguate_When_Different_Data_Struct_Type" controls whether we
+     want to allow an array command line arg -in1 when we have say
+     switches -invert (SINGLE switch), and -input (ARRAY).  If the
+     bool below is true, -in1 is valid since it is a array type switch
+     (assuming no -in1 arg exits) and -input is the only matching
+     template of the same type.  If the bool is false, we don't
+     disambiguate
+ 
+     - The variable "static bool
+     Error_If_No_Index_For_Array_Data_Struct_Type", if true, cause an
+     error if the user does not specify the index (e.g. -i instead
+     of -i1) for array type flags. If false -i is equivalent to -i1.
+   (2003/08/15)
+
+ - Ability to hide some flags and to selectively print usage
+   information about a subset of the flags based on the prefix string.
+   For example the flag -klt has several suboptions, -kltUnityVar,
+   -kltInputStat, etc, that are only relevant when the main flag is
+   used.  By making that flag hidden, usage information about the
+   subflags will not be printed unless we specify the option "-usage
+   klt" The way the suboptions are linked to a min option is by
+   sharing the same prefix, "klt" in this case.
+   (2003/12/22)
+
+ Also, I changed a few things such as the handling of argument errors:
+ now we do not exit when such an error occurs but return an error code
+ so that the calling routine gets a chance to print specific usage
+ information before quiting.
+
+ I also changed the names of the C style include files to get rid of
+ warnings.  There are still a few warnings left though.
+
+ Implementation-wise I replaced the previous MultiArg union mechanism
+ by one in which I just use a void pointer and cast appropriately.  I
+ needed to do that because the MultiArg union could not handle array
+ type variables.
+
+ TODO: cleanup; a better driver program.
+
+
  *
  *  $Header$
  *
  *-----------------------------------------------------------------------
  */
 
-// #include <strstream.h>
-#include <iostream.h>
+#include <iostream>
 #include <fstream.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include <cstddef>
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
 
 #include "error.h"
 #include "arguments.h"
@@ -27,6 +84,10 @@
  * static entities
  *-----------------------------------------------------------------------
  */
+
+bool Arg::Disambiguate_When_Perfect_Match=true;
+bool Arg::Disambiguate_When_Different_Data_Struct_Type=true;
+bool Arg::Error_If_No_Index_For_Array_Data_Struct_Type=true;
 
 bool Arg::EMPTY_ARGS_FLAG;
 char* const Arg::NOFLAG = "noflg";
@@ -44,8 +105,6 @@ const char* const ArgsErrStr = "Argument Error:";
  *-----------------------------------------------------------------------
  */
 
-
-
 /*-
  *-----------------------------------------------------------------------
  * Arg::initialize
@@ -56,8 +115,7 @@ const char* const ArgsErrStr = "Argument Error:";
  *
  *-----------------------------------------------------------------------
  */
-void Arg::initialize(char*m,ArgDisposition r,char *d) 
-{
+void Arg::initialize(char*m,ArgDisposition r,char *d,ArgDataStruct ds, unsigned maxArrayElmts, bool hidden) {
   flag = m;
   arg_kind = r;
   if (arg_kind == Tog) { 
@@ -67,6 +125,10 @@ void Arg::initialize(char*m,ArgDisposition r,char *d)
     }
   }
   description = d;
+  dataStructType=ds;
+  this->maxArrayElmts=maxArrayElmts;
+  arrayElmtIndex=0;
+  this->hidden = hidden;
 }
 
 
@@ -82,9 +144,8 @@ void Arg::initialize(char*m,ArgDisposition r,char *d)
  *-----------------------------------------------------------------------
  */
 Arg::Arg() : mt(EMPTY_ARGS_FLAG) {
-  initialize(NULL,Arg::Opt,"");
+  initialize(NULL,Arg::Opt,"",SINGLE,DEFAULT_MAX_NUM_ARRAY_ELEMENTS,false);
 }
-
 
 
 /*-
@@ -97,10 +158,8 @@ Arg::Arg() : mt(EMPTY_ARGS_FLAG) {
  *
  *-----------------------------------------------------------------------
  */
-Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d)
-: mt(ucl) 
-{
-  initialize(m,r,d);
+Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts, bool hidden) : mt(ucl) {
+  initialize(m,r,d,ds,maxArrayElmts,hidden);
 }
 
 
@@ -114,10 +173,9 @@ Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d)
  *
  *-----------------------------------------------------------------------
  */
-Arg::Arg(ArgDisposition r,MultiType ucl,char* d)
-: mt(ucl) 
-{
-  initialize(NOFLAG,r,d);
+Arg::Arg(ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts,bool hidden): mt(ucl) {
+  //initialize(NOFLAG,r,d);
+  initialize(NOFLAG,r,d,ds,maxArrayElmts,hidden);
 }
 
 
@@ -141,6 +199,67 @@ Arg::Arg(const Arg& a)
 Arg::~Arg() {}
 
 
+/**
+ *-----------------------------------------------------------------------
+ *  searchArrayArgs() 
+ *
+ *   remove int postfix of flag, if any, and search the arg list one
+ *   that matches a given flag.
+ * 
+ * Preconditions:
+ *
+ *      should be called after a call to searchArgs() has failed.  No
+ *      catastropchic consequecences otherwise but you might get a
+ *      ambiguous switch return value.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      Return NULL for unknown switch, return (Arg*)(-1) for ambiguous switch,
+ *      otherwise returns the Arg* that matches.
+ *
+ *----------------------------------------------------------------------- */
+Arg* Arg::searchArrayArgs(Arg* Args, char* flag) {
+  int flaglen = ::strlen(flag);
+  char* flagCopy=::strcpy(new char[flaglen+1],flag);
+  char* flagPtr=&flagCopy[flaglen-1];
+  int index;
+
+  Arg* arg_ptr=NULL;
+
+  if( isdigit(*flagPtr) ) {  // check last character of flag
+    while( isdigit(*flagPtr) ) flagPtr--;
+    index = atoi(++flagPtr);
+    *flagPtr='\0';
+    if(Disambiguate_When_Different_Data_Struct_Type) 
+      arg_ptr = searchArgs(Args,&flagCopy[1],ARRAY);
+    else
+      arg_ptr = searchArgs(Args,&flagCopy[1]);
+    if(arg_ptr==(Arg*)(-1)) {
+      warning("%s Ambiguous switch: %s",ArgsErrStr,flag);
+      return  (Arg*)(-1);
+    }
+    else if(arg_ptr != NULL) {  // this time we found it
+      arg_ptr->arrayElmtIndex= index-1; // The user number flags starting from 1.  
+      if(arg_ptr->arrayElmtIndex > (int) arg_ptr->maxArrayElmts-1) {
+        warning("%s Array index in switch (%s) is out of bounds (1..%d)",
+      	    ArgsErrStr, flag,arg_ptr->maxArrayElmts);
+        return (Arg*)(-1);
+      }
+      // if the argument type of the matching argument is not ARRAY then we should stop here;  otherwise things will break down later on.
+      if(arg_ptr->dataStructType != ARRAY) {
+	warning("%s Switch (%s) is not of type ARRAY and cannot be written as (%sX)", ArgsErrStr,flag,flagCopy);
+	return  (Arg*)(-1);
+      }
+    }
+  }
+
+  return arg_ptr;
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -207,8 +326,12 @@ bool Arg::checkMissing(bool printMessage) {
       if (printMessage) {
 	char brackets[2];
 	fprintf(stderr,"%s Missing REQUIRED argument:",ArgsErrStr);
-	if (!noFlagP(arg_ptr->flag))
+	if (!noFlagP(arg_ptr->flag)) {
+	  if(arg_ptr->dataStructType == ARRAY) 
+	    fprintf(stderr," -%sX ",arg_ptr->flag);
+	  else
 	  fprintf(stderr," -%s ",arg_ptr->flag);
+	}
 	// bool_type args are always optional. (i.e. -b T, -b F, or -b)
 	if (arg_ptr->mt.type == MultiType::bool_type) {  
 	  brackets[0] = '[';  brackets[1] = ']';
@@ -253,6 +376,8 @@ Arg* Arg::searchArgs(Arg* ag,char *flag) {
   Arg* arg_ptr = ag;
   int numTaged = 0;  
   int lastTaged = -1;
+  int lastPerfectlyTaged = -1;
+  bool perfectMatch=false;
 
   // find the one that best matches.
   while (arg_ptr->flag != NULL) {
@@ -260,23 +385,91 @@ Arg* Arg::searchArgs(Arg* ag,char *flag) {
       if (!::strncmp(arg_ptr->flag,flag,flaglen)) {
 	numTaged++;
 	lastTaged = (arg_ptr - ag);
+	if(::strlen(arg_ptr->flag)==(unsigned)flaglen) {
+	  perfectMatch=true;
+	  lastPerfectlyTaged=(arg_ptr - ag);
+	}
       }
     }
     arg_ptr++;
   }
   // include check for args file since we shouldn't
   // be ambiguous with respect to this as well.
-  if (!::strncmp(ARGS_FILE_NAME,flag,flaglen))
+  if (!::strncmp(ARGS_FILE_NAME,flag,flaglen)) 
     numTaged++;
 
   if (numTaged == 0)
     return NULL;
-  else if (numTaged > 1)
+  else if (numTaged > 1) {
+    if(Disambiguate_When_Perfect_Match && perfectMatch) {
+      return &ag[lastPerfectlyTaged];
+    }
     return (Arg*)(-1);
+  }
   else 
     return &ag[lastTaged];
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * overloaded searchArgs()
+ *
+ *      search the arg list one that matches a given flag given that
+ *      the args are of a certain type (SINGLE or ARRAY).
+ * 
+ * Preconditions:
+ *      none
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      Return NULL for unknown switch, return (Arg*)(-1) for ambiguous switch,
+ *      otherwise returns the Arg* that matches.
+ *
+ *----------------------------------------------------------------------- */
+Arg* Arg::searchArgs(Arg* ag,char *flag, ArgDataStruct dataStructure) {
+  int flaglen = ::strlen(flag);
+  Arg* arg_ptr = ag;
+  int numTaged = 0;  
+  int lastTaged = -1;
+  int lastPerfectlyTaged = -1;
+  bool perfectMatch=false;
+
+  // find the one that best matches.
+  while (arg_ptr->flag != NULL) {
+    if (!noFlagP(arg_ptr->flag) && arg_ptr->dataStructType == dataStructure) {
+      if (!::strncmp(arg_ptr->flag,flag,flaglen)) {
+	numTaged++;
+	lastTaged = (arg_ptr - ag);
+	if(::strlen(arg_ptr->flag)==(unsigned)flaglen) {
+	  perfectMatch=true;
+	  lastPerfectlyTaged=(arg_ptr - ag);
+	}
+      }
+    }
+    arg_ptr++;
+  }
+  // include check for args file since we shouldn't
+  // be ambiguous with respect to this as well.
+  if (!::strncmp(ARGS_FILE_NAME,flag,flaglen) && dataStructure == SINGLE) 
+    numTaged++;
+
+  if (numTaged == 0)
+    return NULL;
+  else if (numTaged > 1) {
+    if(Disambiguate_When_Perfect_Match && perfectMatch) {
+      return &ag[lastPerfectlyTaged];
+    }
+    return (Arg*)(-1);
+  }
+  else 
+    return &ag[lastTaged];
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -301,8 +494,13 @@ Arg* Arg::searchArgs(Arg* ag,char *flag) {
 Arg::ArgsRetCode 
 Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 {
+  
+  if(arg_ptr->dataStructType == ARRAY) {
+    assert(arg_ptr->arrayElmtIndex >= 0 && arg_ptr->arrayElmtIndex < (int) arg_ptr->maxArrayElmts);
+  }
+  
   switch(arg_ptr->mt.type) {
-  // =============================================================
+    // =============================================================
   case MultiType::int_type: {
     if (arg == NULL) { // end of arguments.
       warning("%s Integer argument needed: %s",
@@ -312,7 +510,7 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
     }
     int n;
     char *endp;
-    n = (int)strtol(arg,&endp,0); 
+    n = (int)strtol(arg,&endp,0);
     if ( endp == arg ) {
       warning("%s Integer argument needed: %s %s",
 	      ArgsErrStr,
@@ -320,7 +518,10 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 	      arg);
       return ARG_ERROR;
     }
-    arg_ptr->mt.ptr->integer = n;
+    if(arg_ptr->dataStructType == ARRAY)
+      *((int*)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex) = n;
+    else
+      *((int*)(arg_ptr->mt.ptr)) = n;
     found = true;
   }
   break;
@@ -342,7 +543,10 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 	      arg);
       return ARG_ERROR;
     }
-    arg_ptr->mt.ptr->uinteger = n;
+    if(arg_ptr->dataStructType == ARRAY)
+      *((unsigned int*)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex) = n;
+    else
+      *((unsigned int*)(arg_ptr->mt.ptr)) = n;
     found = true;
   }
   break;
@@ -364,7 +568,10 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 	      arg);
       return ARG_ERROR;
     }
-    arg_ptr->mt.ptr->single_prec = f;
+    if(arg_ptr->dataStructType == ARRAY)
+      *((float*)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex) = f;
+    else
+      *((float*)(arg_ptr->mt.ptr)) = f;
     found = true;
   }
   break;
@@ -386,7 +593,10 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 	      arg); 
       return ARG_ERROR;
     }
-    arg_ptr->mt.ptr->double_prec = d;
+    if(arg_ptr->dataStructType == ARRAY)
+      *((double*)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex) = d;
+    else
+      *((double*)(arg_ptr->mt.ptr)) = d;
     found = true;
   }
   break;
@@ -398,8 +608,10 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 	      flag);
       return ARG_ERROR;
     }
-    arg_ptr->mt.ptr->string =
-      ::strcpy(new char[strlen(arg)+1],arg);
+    if(arg_ptr->dataStructType == ARRAY)
+      *( (char**)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex) = ::strcpy(new char[strlen(arg)+1],arg);
+    else
+      *((char**)(arg_ptr->mt.ptr)) = ::strcpy(new char[strlen(arg)+1],arg);
     found = true;
   }
   break;
@@ -412,21 +624,29 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 	      flag,arg);
       return ARG_ERROR;
     }
-    arg_ptr->mt.ptr->ch = arg[0];
+    if(arg_ptr->dataStructType == ARRAY)
+      *((char*)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex) = arg[0];
+    else
+      *((char*)(arg_ptr->mt.ptr)) = arg[0];
     found = true;
   }
   break;
   // =============================================================
   case MultiType::bool_type: {
+    bool * argPtr;
+    if(arg_ptr->dataStructType == ARRAY)
+      argPtr = ((bool*)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex);
+    else
+      argPtr = (bool*)(arg_ptr->mt.ptr);
     bool b; 
     if (arg == NULL || // end of arguments.
 	arg[0] == '-') { // for optionless flag, just turn on.
       // for bool case, just turn it on.
-      if (arg_ptr->arg_kind != Tog)
-	arg_ptr->mt.ptr->boolean = true;
+      if (arg_ptr->arg_kind != Tog) { 
+	*argPtr=true;
+      } 
       else
-	arg_ptr->mt.ptr->boolean = 
-	  ((arg_ptr->mt.ptr->boolean == true) ? false : true);
+	*argPtr = ( *argPtr == true )?false:true;
       if (arg != NULL)
 	index--;
       found = true;
@@ -440,7 +660,7 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 	      flag,arg);
       return ARG_ERROR;
     }
-    arg_ptr->mt.ptr->boolean = b;
+    *argPtr=b;
     found = true;
   }
   break;
@@ -535,25 +755,32 @@ bool Arg::noFlagP(char *flg) {
 void MultiType::print(FILE* f) {
   switch (type) {
   case MultiType::bool_type:
-    fprintf(f,"%c",(ptr->boolean?'T':'F'));
+    //fprintf(f,"%c",(ptr->boolean?'T':'F'));
+    fprintf(f,"%c",(*((bool*)(ptr))?'T':'F'));
     break;
   case MultiType::char_type:
-    fprintf(f,"%c",(ptr->ch));
+    //fprintf(f,"%c",(ptr->ch));
+    fprintf(f,"%c",*((char*)(ptr)));
     break;
   case MultiType::str_type:
-    fprintf(f,"%s",(ptr->string == NULL ? "" : ptr->string));
+    //fprintf(f,"%s",(ptr->string == NULL ? "" : ptr->string));
+    fprintf(f,"%s",( ptr == NULL ? "" : *((char**)ptr) ) );
     break;
   case MultiType::int_type:
-    fprintf(f,"%d",(ptr->integer));
+    //fprintf(f,"%d",(ptr->integer));
+    fprintf(f,"%d",*((int*)(ptr)));
     break;
   case MultiType::uint_type:
-    fprintf(f,"%u",(ptr->uinteger));
+    //fprintf(f,"%u",(ptr->uinteger));
+    fprintf(f,"%u",*((unsigned int*)(ptr)));
     break;
   case MultiType::float_type:
-    fprintf(f,"%e",(double)(ptr->single_prec));
+    //fprintf(f,"%e",(double)(ptr->single_prec));
+    fprintf(f,"%e",(double)*((float*)(ptr)));
     break;
   case MultiType::double_type:
-    fprintf(f,"%e",(ptr->double_prec));
+    //fprintf(f,"%e",(ptr->double_prec));
+    fprintf(f,"%e",*((double*)(ptr)));
     break;
   default:
     error("%s Internal argument error",ArgsErrStr);
@@ -666,7 +893,7 @@ char *MultiType::printable(MultiType::ArgumentType at) {
  *
  *-----------------------------------------------------------------------
  */
-void Arg::usage() {
+void Arg::usage(char* filter) {
 
   fprintf(stderr,"Usage: %s  [[[-flag] [option]] ...]\n",Program_Name);
   fprintf(stderr,"Required: <>; Optional: []; Flagless arguments must be in order.\n");
@@ -693,6 +920,8 @@ void Arg::usage() {
     while (arg_ptr->flag != NULL) {
       int this_variation = 0;
       char brackets[2];
+      if(arg_ptr->hidden && filter==NULL) goto skip;
+      if(filter != NULL && ::strncmp(filter,arg_ptr->flag,strlen(filter))!=0) goto skip;
       if (arg_ptr->arg_kind == Req) {
 	if (printOptional)
 	  goto skip;
@@ -705,9 +934,14 @@ void Arg::usage() {
       fprintf(stderr," %c",brackets[0]);
 
       if (!noFlagP(arg_ptr->flag)) {
-	fprintf(stderr,"-%s",arg_ptr->flag);
 	// add one for the '-', as in "-flag"
 	this_variation = ::strlen(arg_ptr->flag) + 1;
+	if(arg_ptr->dataStructType==ARRAY) {
+	  fprintf(stderr,"-%sX",arg_ptr->flag);
+	  this_variation ++;
+	}
+	else
+	  fprintf(stderr,"-%s",arg_ptr->flag);
 	fprintf(stderr," ");
 	this_variation ++; //  add one for the ' ' in "-flag "
       }
@@ -897,16 +1131,26 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
       int flaglen = ::strlen(flag);
       arg_ptr = searchArgs(Args,&flag[1]);
       if (arg_ptr == NULL) {
-	warning("%s Unknown switch: %s",
-		ArgsErrStr,
-		argv[i]);
+	// if the flag is of the form -flagX, X:int, remove X and search for -flag
+	// So, we perform a second search
+	arg_ptr=searchArrayArgs(Args, flag);
+	if(arg_ptr==NULL) {
+	  warning("%s Unknown switch: %s", ArgsErrStr, argv[i]);
+	  return (ARG_ERROR);
+	}
+	else if(arg_ptr == (Arg*)(-1)) return (ARG_ERROR);
+	else { // found a an ARRAY type flag
+	  char *arg;
+	  if ((i+1) >= argc) arg = NULL;
+	  else arg = argv[++i];
+	  argsSwitch(arg_ptr,arg,i,Argument_Specified[arg_ptr - Args],flag);
+	}
+      }
+      else if (arg_ptr == (Arg*)(-1)) {
+	warning("%s Ambiguous switch: %s",ArgsErrStr,argv[i]);
 	return (ARG_ERROR);
-      } else if (arg_ptr == (Arg*)(-1)) {
-	warning("%s Ambiguous switch: %s",
-		ArgsErrStr,
-		argv[i]);
-	return (ARG_ERROR);
-      } else {
+      } 
+      else {
 	// first check to see if it is the special parse from file
 	// argument name, which is always valid.
 	if (!::strncmp(ARGS_FILE_NAME,&flag[1],flaglen-1)) {
@@ -925,6 +1169,13 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
 	    arg = NULL;
 	  else
 	    arg = argv[++i];
+	  if(arg_ptr->dataStructType == ARRAY) 
+	    if(Error_If_No_Index_For_Array_Data_Struct_Type) {
+	      warning("%s Need to supply index for array type flag: %s",ArgsErrStr,flag);
+	      return (ARG_ERROR);
+	    }
+	    else
+	      arg_ptr->arrayElmtIndex=0; // if the user specfies -i instead of -i1, we implicitly assume -i1, when the flag is of type array. Could also make this an eror.
 	  argsSwitch(arg_ptr,arg,i,Argument_Specified[arg_ptr - Args],flag);
 	}
       }
@@ -968,7 +1219,7 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
  *
  *-----------------------------------------------------------------------
  */
-void Arg::parse(int argc,char** argv)
+bool Arg::parse(int argc,char** argv)
 {
   ArgsRetCode rc;
   rc = parseArgsFromCommandLine(argc,argv);
@@ -976,9 +1227,11 @@ void Arg::parse(int argc,char** argv)
     Arg::checkMissing(true);
   }
   if (rc != ARG_OK) {
-    Arg::usage();
-    ::exit(1);
+    //Arg::usage();
+    //::exit(1);
+    return false;
   }
+  return true;
 }
 
 
@@ -1005,47 +1258,61 @@ int int_fl = 343;
 /*
  * arguments with flags
  */
-char *myString = "BARSTR";
+//char *myString = "BARSTR";
+char *myString;
+char* strOfStr[10];
 float aSingle = 2.3;
 double aDouble = .4;
 int int1 = 3;
 int int2 = 3;
 bool bvalue = true;
+bool abvalue[] = {false,true,false};
 bool aToggle = true;
 bool anotherToggle = false;
 char aChar = 'c';
+
+int input[10]={9,8,7};
+int int3=3;
+int int4=4;
+int arg[10]={1000};
+
+char* testArrayOfChars="abcde";
+char testArrayOfChars2[10]={'z','y','x'};
+
 
 /*
  * the argument list
  */
 Arg Arg::Args[] = {
+  // Arguments with flags. 
+  Arg("arg",      Arg::Opt, arg,"An integer to test the ambiguity with -argsFile",Arg::ARRAY,0,true),
+  Arg("i",      Arg::Opt, input,"An array integer",Arg::ARRAY,10,true),
+  Arg("str",      Arg::Opt, strOfStr,"An array string",Arg::ARRAY,2,true),
+  Arg("myString",  Arg::Opt, myString,"A string"),
+  Arg("aSingle",   Arg::Opt, aSingle,"A single precision floating point num"),
+  Arg("aDouble",   Arg::Opt, aDouble,"A double precision floating point num"),
+  Arg("int1",      Arg::Opt, int1,"An integer"),
+  Arg("int2",      Arg::Opt, int2,"A different integer"),
+  Arg("in",      Arg::Opt, int3,"An integer to test disambiguation"),
+  Arg("rbvalue",   Arg::Opt, bvalue,"A required boolean"),
+  Arg("bvalue",    Arg::Opt, bvalue,"A boolean"),
+  Arg("abvalue",    Arg::Opt, abvalue,"A boolean",Arg::ARRAY,3,true),
+  Arg("aToggle",   Arg::Tog, aToggle,"a toggle"),
+  Arg("anotherToggle",Arg::Tog, anotherToggle,"another toggle"),
+  Arg("aChar",     Arg::Opt, aChar,"A character",Arg::SINGLE,0,false),
+  
+  // Arguments without flags. The order on the command line must be in
+  // the the same as the order given here. i.e. string first, then int,
+  // then bool, etc.
+  Arg(Arg::Opt, char_fl,    "char"),
+  Arg(Arg::Opt, float_fl,   "float"),
+  Arg(Arg::Opt, double_fl,  "double"),
+  Arg(Arg::Opt, bool_fl,    "bool"),
+  Arg(Arg::Opt, int_fl,     "int"),
 
- // Arguments with flags. 
- Arg("myString",  Arg::Opt, myString,"A string"),
- Arg("aSingle",   Arg::Opt, aSingle,"A single precision floating point num"),
- Arg("aDouble",   Arg::Req, aDouble,"A double precision floating point num"),
- Arg("int1",      Arg::Req, int1,"An integer"),
- Arg("int2",      Arg::Req, int2,"A differnet integer"),
- Arg("rbvalue",   Arg::Req, bvalue,"A required boolean"),
- Arg("bvalue",    Arg::Opt, bvalue,"A boolean"),
- Arg("aToggle",   Arg::Tog, aToggle,"a toggle"),
- Arg("anotherToggle",Arg::Tog, anotherToggle,"another toggle"),
- Arg("aChar",     Arg::Opt, aChar,"A character"),
-
- // Arguments without flags. The order on the command line must be in
- // the the same as the order given here. i.e. string first, then int,
- // then bool, etc.
- Arg(Arg::Req, string_fl,  "string"),
- Arg(Arg::Opt, char_fl,    "char"),
- Arg(Arg::Opt, float_fl,   "float"),
- Arg(Arg::Opt, double_fl,  "double"),
- Arg(Arg::Opt, bool_fl,    "bool"),
- Arg(Arg::Opt, int_fl,     "int"),
-
- // The argumentless argument marks the end
- // of the above list.
- Arg()
-
+  // The argumentless argument marks the end
+  // of the above list.
+  Arg()
 };
 
 
@@ -1053,6 +1320,16 @@ int main(int argc,char*argv[])
 {
   Arg::parse(argc,argv);
   Arg::printArgs(Arg::Args,stdout);
+  Arg::usage("a");
+
+#if 1
+  if(strOfStr != NULL)
+    for (int i=0;i<2;++i) {
+        if(strOfStr[i] != NULL)
+	  printf("%d: %s\n",i,strOfStr[i]);
+    }
+#endif
+
 }
 
 #endif // #ifdef MAIN
