@@ -1856,3 +1856,9 @@ Thu Apr 22 14:40:34 2004
     as well as smoothing p(x_t| y_{1:T}), where y is observed, and x are
     the hidden variables in the DBN.
 
+   - filtering is easy, just give an option to command line
+     that gives length other than true length of segment.
+   - prediction can be done with a similar function, but using
+     a long E partition.
+    (but probably better ways exist).
+
