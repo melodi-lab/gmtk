@@ -761,7 +761,6 @@ ch is the scale and which is the penalty, e.g.
 weight:  scale value 1.0 penalty observed 0:0 ;
 
 
-
 Thu Dec 19 17:36:22 2002
   - topological sort loop detection should indicate
     which node is involved in a loop.
@@ -1381,3 +1380,12 @@ Fri Jan 23 18:32:41 2004
      you might either get 1) unexpected results since a value
      occurs you didn't expect, or 2) hopefully, you'll get a runtime error 
      saying that the output value is invalid.
+
+
+Tue Jan 27 15:56:38 2004
+  - have observation files also be able to read streams
+    of words. The words are converted to integers using
+    one of the internal word hash tables, where the
+    hash tables were built using some vocabulary.
+  - Perhaps look into "perfect" hashing functions for
+    vocabularies.
