@@ -133,9 +133,15 @@ VECPT::read(iDataStreamFile& is)
   is.read(preTransforms,"Can't read VirtualEvidenceCPT's obs file pre-transform string");
   is.read(postTransforms,"Can't read VirtualEvidenceCPT's obs file post-transform string");
   is.read(sentRange,"Can't read VirtualEvidenceCPT's obs file sentence range  string");
-  const char*pr_str=pr_rs.c_str();
-  const char*sentRangeStr=sentRange.c_str();
 
+  // TODO: can't do this and take address of local variable!!
+  // const char*pr_str=pr_rs.c_str();
+  // const char*sentRangeStr=sentRange.c_str();
+
+  // TODO: fix the below as the below requires that the current object to stay
+  // existing (i.e., it takes addresses into members of this object). This
+  // is a quick fix as before it was taking addresses of local variables.
+  // 
   // Now try opening the file:
   obs.openFile(obsFileName.c_str(),
 	       frs.c_str(),
@@ -148,13 +154,13 @@ VECPT::read(iDataStreamFile& is)
 	       globalObservationMatrix.endSkip(),
 	       false,  // ); // do not run CPP if ascii file.
 	       NULL,
-	       (const char**)&pr_str,
+	       (const char**)&pr_rs,
 	       NULL,
 	       NULL,
 	       &preTransforms,
 	       postTransforms,
 	       0,  // FTROP_NONE
-	       (const char**)&sentRangeStr
+	       (const char**)&sentRange
 	       );
 
 
