@@ -1,6 +1,6 @@
 /*-
- * GMTK_World.cc
- *        All aspects about a GM.
+ * GMTK_GMParms.cc
+ *        All parameters associated with a GM.
  *
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
