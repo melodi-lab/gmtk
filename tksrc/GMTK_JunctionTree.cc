@@ -4303,6 +4303,9 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
   unsigned partNo = 0;  
 
+  // this clears the shared caches. 
+  clearDataMemory();
+
   // re-allocate.
   partPArray.resize(numPartitions);
   // Redundantly store partition information in an array both for
