@@ -9,8 +9,8 @@
 EXLDFLAGS=
 # GCC=/usr/nikola/pkgs/gcc/.3.2/bin/gcc
 # GPP=/usr/nikola/pkgs/gcc/.3.2/bin/g++
-GCC=gcc
-GPP=g++
+CC=gcc
+CXX=g++
 OPTFLAGS = -g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse
 
 # GMTK modules 
@@ -29,8 +29,8 @@ EXCLUDE = \
 
 MAKE_VARS = \
 	OPTFLAGS="$(OPTFLAGS)" \
-	CC="$(GCC)" \
-	CXX="$(GPP)" \
+	CC="$(CC)" \
+	CXX="$(CXX)" \
 	EXLDFLAGS="$(EXLDFLAGS)"
 
 all clean:
