@@ -222,6 +222,7 @@ main(int argc,char*argv[])
     iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+  GM_Parms.loadGlobal();
 
   /////////////////////////////
   // read in the structure
@@ -230,6 +231,9 @@ main(int argc,char*argv[])
   // read in the structure of the GM, this will
   // die if the file does not exist.
   FileParser fp(strFileName,cppCommandOptions);
+
+  printf("Finished reading in all parameters and structures\n");
+
   // parse the file
   fp.parseGraphicalModel();
   // create the rv variable objects
