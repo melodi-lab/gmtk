@@ -29,7 +29,7 @@ LD = $(CXX)
 AR = ar
 LEX = flex
 RANLIB = :
-INSTALL = /usr/ucb/install -c
+INSTALL = /usr/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 555
 INSTALL_EXE = $(INSTALL) -m 755
 
