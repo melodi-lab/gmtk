@@ -353,7 +353,7 @@ public:
 
   // basic collect evidence phase on basic structures.
   void collectEvidence();
-  // void distributeEvidence() {}
+  void distributeEvidence();
 
   // compute P(E), probability of the evidence
   logpr probEvidence();

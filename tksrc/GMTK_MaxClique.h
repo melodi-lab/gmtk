@@ -82,7 +82,7 @@ class CliqueValueHolder  {
   const unsigned allocationUnitChunkSize;
 
   // Current capacity, total number of packed clique values that this
-  // object can currently hold max without a resize.
+  // object can currently potentially hold max without a resize.
   unsigned capacity;
 
   // a chunk, i.e., matrix of unsigned numbers constituting
@@ -112,11 +112,14 @@ public:
 		    unsigned allocationUnitChunkSize,
 		    float growthFactor=1.25);
 
-  ~CliqueValueHolder() { clear(); }
+  ~CliqueValueHolder() { makeEmpty(); }
 
-  // Clear out and free up all memory, and reset to having
-  // nothing added.
-  void clear();
+  // clear out all existing memory, and get ready for next use.
+  void prepare();
+
+  // Empty out and free up all memory, and reset to having
+  // nothing added. Make invalid as well.
+  void makeEmpty();
 
   // return a pointer to the next unused clique value
   // for scratch (etc.) without actually allocating it.
@@ -145,14 +148,12 @@ public:
 				       HashTableDefaultApproxStartingSize);
 };
 
-
 class MaxClique : public IM {
 
   friend class FileParser;
   friend class GraphicalModel;
   friend class GMTemplate;
   friend class SeperatorClique;
-
 
 public:
 
@@ -332,8 +333,8 @@ public:
   // unrolling are stored only once (so that memory for clique value
   // storage stays roughly constant for any amount of unrolling).
   //
-  // Note that if a packed clique value can be held in <
-  // sizeof(unsigned)*8, then this isn't used since the pointer
+  // Note that if a packed clique value can be held in < IMC_NWWOH*
+  // sizeof(unsigned) bytes, then this isn't used since the pointer
   // storage can be used instead.
   vhash_set< unsigned > cliqueValueHashSet;
 
@@ -365,6 +366,29 @@ public:
   void printAllJTInfo(FILE* f,const unsigned indent);
 
 };
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Number of words to exist in a pack clique without a hash. These may
+// be set to zero to turn on hashing even when packed clique values
+// fall into less than 1 machine word.
+// --
+// InferenceMaxClique Number Words WithOut a Hash: Namely,
+// the number of words that can be stored directly as
+// a packed clique value before we resort to using
+// a shared hash table for all instances of this origin clique.
+#define IMC_NWWOH (0)
+// InferenceSeparatorClique Number Words WithOut a Hash: Namely,
+// the number of words that can be stored directly as
+// a packed clique value before we resort to using
+// a shared hash table for all instances of this origin clique.
+// One for the accumulated Intersection packed values
+#define ISC_NWWOH_AI (0)
+// And for the remainder
+#define ISC_NWWOH_RM (0)
+// -- 
+//////////////////////////////////////////////////////////////////////////////
 
 
 // A version of maxclique that:
@@ -423,16 +447,17 @@ class InferenceMaxClique  : public IM
 
     // shared space.
     union {
-      // When a packed clique value is > 1 word (unsigned), then we
-      // keep a pointer to the packed clique value (list of variables)
-      // where the actuall clique value is obtained. This points to a
-      // data structure maintained by origin.
+      // When a packed clique value is > ISC_NWWOH words (unsigned),
+      // then we keep a pointer to the packed clique value (list of
+      // variables) where the actuall clique value is obtained. This
+      // points to a data structure maintained by origin.
       unsigned *ptr;
-      // When a packed clique value is only 1 word (unsigned) or less
-      // we don't bother with a hash table and just store the packed
-      // clique value right here, thereby saving needing to look
-      // things up in a hash table and also saving memory.
-      unsigned val;
+      // When a packed clique value is only ISC_NWWOH words (unsigned)
+      // or less we don't bother with a hash table and just store the
+      // packed clique value right here, thereby saving needing to
+      // look things up in a hash table and also saving memory.
+      // unsigned val[IMC_NWWOH];
+      unsigned val[((IMC_NWWOH>1)?IMC_NWWOH:1)];
     };
 
     // probability
@@ -596,16 +621,19 @@ class InferenceSeparatorClique : public IM
   public:
     // shared space.
     union {
-      // When a packed clique value is > 1 word (unsigned), then we
-      // keep a pointer to the packed clique value (list of variables)
-      // where the actuall clique value is obtained. This points to a
-      // data structure maintained by origin.
+      // When a packed clique value is > ISC_NWWOH_RM words
+      // (unsigned), then we keep a pointer to the packed clique value
+      // (list of variables) where the actuall clique value is
+      // obtained. This points to a data structure maintained by
+      // origin.
       unsigned *ptr;
-      // When a packed clique value is only 1 word (unsigned) or less
-      // we don't bother with a hash table and just store the packed
-      // clique value right here, thereby saving needing to look
-      // things up in a hash table and also saving memory.
-      unsigned val;
+      // When a packed clique value is only ISC_NWWOH_RM words
+      // (unsigned) or less we don't bother with a hash table and just
+      // store the packed clique value right here, thereby saving
+      // needing to look things up in a hash table and also saving
+      // memory.
+      // unsigned val[ISC_NWWOH_RM];
+      unsigned val[((ISC_NWWOH_RM>1)?ISC_NWWOH_RM:1)];
     };
     // probability
     logpr p;
@@ -617,16 +645,19 @@ class InferenceSeparatorClique : public IM
   public:
     // shared space.
     union {
-      // When a packed clique value is > 1 word (unsigned), then we
-      // keep a pointer to the packed clique value (list of variables)
-      // where the actuall clique value is obtained. This points to a
-      // data structure maintained by origin.
+      // When a packed clique value is > ISC_NWWOH_AI words
+      // (unsigned vals), then we keep a pointer to the packed clique value
+      // (list of variables) where the actuall clique value is
+      // obtained. This points to a data structure maintained by
+      // origin.
       unsigned *ptr;
-      // When a packed clique value is only 1 word (unsigned) or less
-      // we don't bother with a hash table and just store the packed
-      // clique value right here, thereby saving needing to look
-      // things up in a hash table and also saving memory.
-      unsigned val;
+      // When a packed clique value is only ISC_NWWOH_AI words
+      // (unsigned vals) or less we don't bother with a hash table and
+      // just store the packed clique value right here, thereby saving
+      // needing to look things up in a hash table and also saving
+      // memory.
+      // unsigned val[ISC_NWWOH_AI];
+      unsigned val[((ISC_NWWOH_AI>1)?ISC_NWWOH_AI:1)];
     };
     // Array of remainder separator values for this accumulated
     // intersection value. 
@@ -643,7 +674,7 @@ class InferenceSeparatorClique : public IM
     // ensure that we start with nothing inserted.
     AISeparatorValue() { 
       numRemValuesUsed = 0;
-      // fprintf(stderr,"in aisv init\n"); 
+      // fprintf(stderr,"in aisv init\n");
     }
   };
 

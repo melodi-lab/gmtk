@@ -2077,6 +2077,40 @@ JunctionTree::collectEvidence()
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::distributeEvidence()
+ *
+ * Preconditions:
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+
+ *
+ * Results:
+
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::distributeEvidence()
+{
+  // this routine handles all of:
+  // unrolled 0 times: (so there is a single P1,Cu0, and E1)  
+  // unrolled 1 time: so there is a P1, C1, C3, E1
+  // unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
+
+  // start at the end, an E1 partition.
+  unsigned partNo = jtIPartitions.size()-1;
+  
+  
+
+
+
+}
+
+
 
 /*-
  *-----------------------------------------------------------------------
