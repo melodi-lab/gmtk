@@ -225,3 +225,5 @@ X make sure that dlinkmatrix precompute is being
 
 - figure out a good way to get (save to disk) most viterbi assignment to 
   mixture variables.
+
+- clean up source directories.
