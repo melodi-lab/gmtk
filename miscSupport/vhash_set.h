@@ -300,8 +300,26 @@ public:
     return !empty(table[a]);
   }
 
+
+  ////////////////////////////////////////////////////////
+  // another version of find that also returns a pointer to the key in
+  // the hash table itself. Returns true if the key is contained in
+  // the set, false otherwise.
+  bool find(_Key* key,_Key**& key_pp) {
+    const unsigned a = entryOf(key,table);
+    if (empty(table[a])) {
+      key_pp = NULL;
+      return false;
+    } else {
+      key_pp = &(table[a].key);
+      return true;
+    }
+  }
+
+
+
 };
 
 
-#endif // defined HASH_MAP_LIST
+#endif // defined VHASH_SET
 
