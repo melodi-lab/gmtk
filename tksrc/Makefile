@@ -116,8 +116,14 @@ programname: $(objs)
 	$(link) -Wall -g  -o $@ $(bmm_objs) $@.o $(LIBS)
 
 gmtkEMtrain: gmtkEMtrain.o $(objs)
-	-@rm gmtkEMtrain
+	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkEMtrain.o $(objs) $(LIBS)
+
+gmtkSplitGaussians: $@.o $(objs)
+	-@rm -f $@
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ $@.o $(objs) $(LIBS)
+
+
 
 #----------------------------------------------------------------------------
 # Test driver programs (defines a -DMAIN to test each .cc file)
