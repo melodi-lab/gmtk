@@ -229,7 +229,7 @@ void RV::connectNeighbors(set<RV*> exclude)
  *      this node are neighbors of each other.
  *
  * Preconditions:
- *      createNeighborsFromParentsChildren() must have
+ *      createNeighborsFromParentsChildren() *MUST* have
  *      been run for *all* parents of this node.
  *
  * Postconditions:
@@ -248,10 +248,24 @@ void RV::moralize()
 {
   for (unsigned i=0;i<allParents.size();i++) {
     for (unsigned j=i+1;j<allParents.size();j++) {
-      if (allParents[i]->neighbors.find(allParents[j])
-	  == allParents[i]->neighbors.end()) {
+      if (!disconnectChildrenOfObservedParents) {
+	// then there is no chance that we will ever wish
+	// an observed parent to not be connected to the rest of
+	// the parents.
 	allParents[i]->neighbors.insert(allParents[j]);
 	allParents[j]->neighbors.insert(allParents[i]);
+      } else {
+	// check that both parents are hidden, and only do this if
+	// they both are. The reason is that if we are not connected
+	// to a parent because it it observed, there is no need to
+	// moralize with respect to that parent (meaning conect that
+	// parent to the other parents) since such observed parents
+	// need not exist in the same clique for the child to be
+	// assigned to that clique.
+	if (allParents[i]->hidden() && allParents[j]->hidden()) {
+	  allParents[i]->neighbors.insert(allParents[j]);
+	  allParents[j]->neighbors.insert(allParents[i]);
+	}
       }
     }
   }
