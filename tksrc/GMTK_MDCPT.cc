@@ -211,7 +211,7 @@ MDCPT::read(iDataStreamFile& is)
   mdcpt.resize(numValues);
   double child_sum = 0.0;
   int row=0;;
-  const double threshold = _card*1e-3;
+  const double threshold = _card*normalizationThreshold;
   for (int i=0;i<numValues;) {
     double val;
     is.readDouble(val,"MDCPT::read, reading value");
