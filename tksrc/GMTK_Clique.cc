@@ -16,6 +16,8 @@
  *
  */ 
 
+VCID("$Header$");
+
 #include "GMTK_Clique.h"
 
 set<vector<RandomVariable::DiscreteVariableType> > CliqueValue::global_val_set;
