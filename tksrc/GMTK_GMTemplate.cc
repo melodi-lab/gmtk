@@ -1220,8 +1220,9 @@ basicTriangulate(// input: nodes to triangulate
 
 	const TriangulateHeuristic th = th_v[thi];
 
-	if (th == TH_MIN_WEIGHT) {
-	  float tmp_weight = computeWeight(activeNeighbors,(*i));
+	if (th == TH_MIN_WEIGHT || th == TH_MIN_WEIGHT_NO_D) {
+	  float tmp_weight = computeWeight(activeNeighbors,(*i),
+					   (th == TH_MIN_WEIGHT));
 	  weight.push_back(tmp_weight);
 	  if (debug > 0)
 	    printf("  node has weight = %f\n",tmp_weight);
@@ -1586,7 +1587,8 @@ GMTemplate::moralize(vector <RandomVariable*>& rvs)
 float
 GMTemplate::
 computeWeight(const set<RandomVariable*>& nodes,
-	      const RandomVariable* node) 
+	      const RandomVariable* node,
+	      const bool useDeterminism)
 	      
 {
   // compute weight in log base 10 so that
@@ -1602,7 +1604,7 @@ computeWeight(const set<RandomVariable*>& nodes,
     if (node->discrete && node->hidden) {
       DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)node;
       // weight changes only if node is not deterministic (Lauritzen CG inference).
-      if (drv->deterministic()) {
+      if (useDeterminism && drv->deterministic()) {
 	// then there is a possibility that this node
 	// does not affect the state space, as long
 	// as all of this nodes parents are in the clique.
@@ -1632,7 +1634,7 @@ computeWeight(const set<RandomVariable*>& nodes,
     // are observed. This will change in a future version (Lauritzen CG inference).
     if (rv->discrete && rv->hidden) {
       DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
-      if (drv->deterministic()) {
+      if (useDeterminism && drv->deterministic()) {
 	// then there is a possibility that this node
 	// does not affect the state space, as long
 	// as all of this nodes parents are in the clique.
@@ -1749,8 +1751,9 @@ GMTemplate::variableSetScore(const vector<InterfaceHeuristic>& fh_v,
   score.clear();
   for (unsigned fhi=0;fhi<fh_v.size();fhi++) {
     const InterfaceHeuristic fh = fh_v[fhi];
-    if (fh == IH_MIN_WEIGHT) {
-      float tmp_weight = computeWeight(varSet);
+    if (fh == IH_MIN_WEIGHT || fh == IH_MIN_WEIGHT_NO_D) {
+      float tmp_weight = computeWeight(varSet,NULL,
+				       (fh == IH_MIN_WEIGHT));
       score.push_back(tmp_weight);
       if (debug > 0)
 	printf("  variableSetScore: set has weight = %f\n",tmp_weight);
@@ -1832,8 +1835,9 @@ GMTemplate::interfaceScore(
   score.clear();
   for (unsigned fhi=0;fhi<fh_v.size();fhi++) {
     const InterfaceHeuristic fh = fh_v[fhi];
-    if (fh == IH_MIN_WEIGHT) {
-      float tmp_weight = computeWeight(C_l);
+    if (fh == IH_MIN_WEIGHT || fh == IH_MIN_WEIGHT_NO_D) {
+      float tmp_weight = computeWeight(C_l,NULL,
+				       (fh == IH_MIN_WEIGHT));
       score.push_back(tmp_weight);
       if (debug > 0)
 	printf("  Interface Score: set has weight = %f\n",tmp_weight);
@@ -2122,6 +2126,9 @@ GMTemplate::createVectorTriHeuristic(const string& th,
       case 'H':
 	th_v.push_back(TH_MIN_HINT);
 	break;
+      case 'N':
+	th_v.push_back(TH_MIN_WEIGHT_NO_D);
+	break;
       default:
 	error("ERROR: Unknown triangulation heuristic given '%c' in string '%s'\n",
 	      th[i],th.c_str());
@@ -2185,6 +2192,9 @@ GMTemplate::createVectorInterfaceHeuristic(const string& fh,
 	break;
       case 'M':
 	fh_v.push_back(IH_MIN_MAX_CLIQUE);
+	break;
+      case 'N':
+	fh_v.push_back(IH_MIN_WEIGHT_NO_D);
 	break;
       default:
 	error("ERROR: Unknown triangulation heuristic given '%c' in string '%s'\n",
