@@ -564,7 +564,7 @@ main(int argc,char*argv[])
     unsigned numCurPartitionsDone = 0;
     while (1) {
       BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
-      while ((*dcdrng_it) <= dcdrng->max()) {
+      while (!dcdrng_it->at_end()) {
 	const unsigned segment = (unsigned)(*(*dcdrng_it));
 	if (globalObservationMatrix.numSegments() < (segment+1)) 
 	  error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
@@ -829,7 +829,7 @@ main(int argc,char*argv[])
 	ipc_struct child_info;
 	while (1) {
 	  BP_Range::iterator* dcdrng_it = new BP_Range::iterator(dcdrng->begin());
-	  while ((*dcdrng_it) <= dcdrng->max()) {
+	  while (!dcdrng_it->at_end()) {
 	    const unsigned segment = (unsigned)(*(*dcdrng_it));
 	    if (globalObservationMatrix.numSegments() < (segment+1)) 
 	      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
