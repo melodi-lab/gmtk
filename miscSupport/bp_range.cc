@@ -338,13 +338,13 @@ BP_Range::make_range_safe_to_add_one()
   }
 }
 
-BP_Range::iterator BP_Range::begin()
+BP_Range::iterator BP_Range::begin() const
 {
   iterator rc(*this);
   return rc;
 }
 
-BP_Range::iterator BP_Range::end()
+BP_Range::iterator BP_Range::end() const
 {
   iterator rc(*this);
   rc.array_pos = range_size-1;
@@ -431,7 +431,7 @@ BP_Range::iterator::operator--()
   return *this;
 }
 
-bool BP_Range::contains(const int value)
+bool BP_Range::contains(const int value) const
 {
 
   // check for single value range case.
@@ -477,7 +477,7 @@ done:
 
 
 
-bool BP_Range::overlapP(BP_Range& r)
+bool BP_Range::overlapP(const BP_Range& r) const
 {
   //////////////////////////////////////////////////////////
   // TODO: This is an INEFFICIENT implementation
@@ -490,24 +490,88 @@ bool BP_Range::overlapP(BP_Range& r)
   if (max() < r.min() || min() > r.max())
     return false;
 
+
+
+
   // So, there may be some overlap.
   // Be dumb, and earch over all range elements of r, stopping
-  // as soon as we can.
-  for (BP_Range::iterator it = r.begin();
-       it <=r.max();
-       it++) {
-    const int val = (*it);
-    if (val < min())
-      continue;
-
-    if (contains(val)) {
-      return true;
+  // as soon as we can. Do linear search on the smaller
+  // one.
+  if (r.length() < length()) {
+    for (BP_Range::iterator it = r.begin();
+	 it <=r.max();
+	 it++) {
+      const int val = (*it);
+      if (val < min())
+	continue;
+      if (val > max())
+	return false;
+      if (contains(val)) {
+	return true;
+      }
     }
-    if (val > max())
-      return false;
+  } else {
+    for (BP_Range::iterator it = begin();
+	 it <= max();
+	 it++) {
+      const int val = (*it);
+      if (val < r.min())
+	continue;
+      if (val > r.max())
+	return false;
+      if (r.contains(val)) {
+	return true;
+      }
+    }    
   }
   return false;
 }
+
+
+bool BP_Range::operator <(const BP_Range& r) const
+{
+  if (max() < r.min())
+    return true;
+  if (max() < r.max() && min() < r.min())
+    return true;
+  return false;
+}
+
+bool BP_Range::operator <=(const BP_Range& r) const
+{
+  return (*this < r) || (*this == r);
+}
+
+
+bool BP_Range::operator >(const BP_Range& r) const
+{
+  if (min() > r.max())
+    return true;
+  if (min() > r.min() && max() > r.max())
+    return true;
+  return false;
+}
+
+bool BP_Range::operator >=(const BP_Range& r) const
+{
+  return (*this > r) || (*this == r);
+}
+
+
+bool BP_Range::operator == (const BP_Range& r) const
+{
+  if (min() != r.min() || max() != r.max() || length() != r.length())
+    return false;
+  BP_Range::iterator it1 = begin();
+  BP_Range::iterator it2 = r.begin();
+  for (;it1 <= max() && it2 <= r.max();it1++,it2++) {
+    if ((*it1) != (*it2))
+      return false;
+  }
+  return true;
+}
+
+
 
 
 
