@@ -1084,7 +1084,6 @@ Sat Mar 15 22:33:27 2003
 
 
 
-
 Sat Mar 22 21:02:06 2003
   - environment variables for:
      - cpp (or some preprocessor) command and/or path
@@ -1407,6 +1406,9 @@ Fri Jan 30 19:17:21 2004
   - triangulater, add option to just re-triangulate
     one of P, C, or E.
     Allows for parallelism. 
+    DONE, but need way to merge different trifiles together.
+    create program: gmtkMergeTrifiles
+
 
 Sat Jan 31 11:45:06 2004
   - arguments code, when printing out default arguments, it
@@ -1419,3 +1421,11 @@ Sat Jan 31 11:45:06 2004
 Sat Jan 31 19:01:06 2004
   - get new inference working with disconnected networks.
 
+
+Mon Feb  2 23:41:53 2004
+  - figure out a way to have discrete RVs. in different
+    frames be observed or hidden (i.e., perhaps
+    the hidden/observed status of a RV can be obtained
+    from the observation file for a given utterance in
+    some nice way). This would need to gel with
+    the new RV class hierarchy. 
