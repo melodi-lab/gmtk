@@ -1,5 +1,5 @@
 /*-
- * GMTK_1D_Dist.cc
+ * GMTK_Discrete1DPDF.cc
  *     Trainable (with say EM) 1D discrete probability
  *     distributions.
  *
@@ -60,92 +60,69 @@ Discrete1DPDF::Discrete1DPDF()
 
 
 
-
+/*-
+ *-----------------------------------------------------------------------
+ * Discrete1DPDF::read(is)
+ *      read in a distribution from file 'is'. 
+ *      The data probs are stored as doubles, but when they are read in
+ *      they are converted to the log domain.
+ * 
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      Changes the pmf member function in the object.
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 Discrete1DPDF::read(iDataStreamFile& is)
 {
   assert (nFeats > 0);
 
+  is.read(length,"Discrete1DPDF::read, distribution length");
 
-  is.read(length);
+  if (length <= 0)
+    error("Discrete1DPDF: read length (%d) < 0 in input",length);
 
-  if (length <= 0) {
-    error("Discrete1DPDF: read a lenght (%d) of < 0 in file (%s)",
-	  length,is.fileName);
+  pmf.resize(length);
+
+  for (int i=0;i<length;i++) {
+    double val;
+    is.readDouble(val,"Discrete1DPDF::read, reading value");
+    pmf[i] = val;
   }
-
-
-  numComs = new int[nFeats];
-  bIndices = new bindex*[nFeats];
-
-  is.readInt(origNumComponents,"GaussianMixture::read ncmps");
-  if (origNumComponents <= 0)
-    error("GaussianMixture::read, must have at least 1 component in a mixture.");
-  newNumComponents = curNumComponents = origNumComponents;
-  mixCoeffVanishThreshold = 
-    logpr((double)1.0/curNumComponents) /
-    logpr(mixCoeffVanishRatio);
-
-  mixCoeffs = new logpr[origNumComponents];
-  components.resize(origNumComponents);
-  for (int i=0;i<origNumComponents;i++)
-    components[i] = new DiagGaussian();
-
-  int i;
-
-  _minLag = MAXINT;
-  _maxLag = -MAXINT;
-  _maxOffset = -MAXINT;
-  sum_nComsp1 = 0;
-  sum_nComsp1SqH = 0;
-  for (i=0;i<nFeats;i++) {
-    is.readInt(numComs[i],"GaussianMixture::read ncms");
-
-    sum_nComsp1 += numComs[i]+1;
-    sum_nComsp1SqH += (numComs[i]+1)*(numComs[i]+2)/2;
-
-    bIndices[i] = new bindex[numComs[i]];
-    for (int j=0;j<numComs[i];j++) {
-      int l,o;
-      is.readInt(l,"GaussianMixture::read lag");
-      is.readInt(o,"GaussianMixture::read offset");
-      
-      if (l < _minLag)
-	_minLag = l;
-      if (l > _maxLag)
-	_maxLag = l;
-      if (o > _maxOffset)
-	_maxOffset = o;
-
-      bIndices[i][j].lag = l;
-      bIndices[i][j].offset = o;
-    }
-  }
-  if (_minLag == MAXINT)
-    _minLag = 0;
-  if (_maxLag == -MAXINT)
-    _maxLag = 0;
-  if (_maxOffset == -MAXINT)
-    _maxOffset = 0;
-  
-  for (i=0;i<origNumComponents;i++) {
-    int dummy;
-    is.readInt(dummy,"GaussianMixture::read cmp #");
-    if (dummy != i) {
-      error("Error in BMM file, component number, got %d, expected %d",dummy,i);
-    }
-    double mxcoef;
-    is.readDouble(mxcoef,"GaussianMixture::read alpha");
-    mixCoeffs[i] = mxcoef;
-    components[i]->setParent(this);
-    components[i]->read(is);
-  }
-
-  z_cache.resize(sum_nComsp1 - nFeats);
-
-  bitmask |= bm_basicAllocated;
 }
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Discrete1DPDF::read(is)
+ *      write out distribution to file 'os'. 
+ *      The data probs are stored as doubles not in log domain.
+ * 
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      No effectcs other than  moving the file pointer of os.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Discrete1DPDF::write(oDataStreamFile& os)
+{
+  assert (nFeats > 0);
+
+  os.write(length,"Discrete1DPDF::write, distribution length");
+  for (int i=0;i<length;i++) {
+    os.writeDouble(pmf[i].unlog(),"Discrete1DPDF::write, reading value");
+  }
+  os.nl();
+
+}
 
 
 
