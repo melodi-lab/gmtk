@@ -27,7 +27,7 @@ class IM {
 public:
 
   IM() {
-    messagesOn = globalMessageLevel;
+    messageLevel = globalMessageLevel;
     messagesOn = true;
   }
 
