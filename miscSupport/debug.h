@@ -41,6 +41,7 @@ public:
                  // threshold at which things get sent to stderr.
                  //
     Nano = 10,   // This should be the default.
+    Default = 10,
     Tiny = 20,
     Low  = 30,
     Med  = 40,
@@ -75,6 +76,20 @@ public:
 #endif
   }
 
+  inline void infoMsg(char*format, ...) 
+  {
+#if INFO_MESSAGES_ON
+    if (message(Default)) {
+      va_list ap;
+      va_start(ap,format);
+      if (Default == Warning)
+	(void) vfprintf(stderr, format, ap);
+      else 
+	(void) vfprintf(stdout, format, ap);
+      va_end(ap);
+    }
+#endif
+  }
 
   void msgsOn() { messagesOn = true; }
   void msgsOff() { messagesOn = false; }
@@ -94,6 +109,21 @@ inline void infoMsg(unsigned v,char*format, ...)
     va_list ap;
     va_start(ap,format);
     if (v == IM::Warning)
+      (void) vfprintf(stderr, format, ap);
+    else 
+      (void) vfprintf(stdout, format, ap);
+    va_end(ap);
+  }
+#endif
+}
+
+inline void infoMsg(char*format, ...) 
+{
+#if INFO_MESSAGES_ON
+  if (IM::messageGlb(IM::Default)) {
+    va_list ap;
+    va_start(ap,format);
+    if (IM::Default == IM::Warning)
       (void) vfprintf(stderr, format, ap);
     else 
       (void) vfprintf(stdout, format, ap);
