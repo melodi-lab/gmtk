@@ -22,6 +22,8 @@
 #include <float.h>
 #include <assert.h>
 
+#include "ieeeFPsetup.h"
+
 #include "rand.h"
 #include "MixBiNormal.h"
 #include "error.h"
