@@ -106,6 +106,10 @@ class GMTemplate : public IM
   
 public:
 
+  ////////////////////////////////////////////////////////////
+  // options
+  ////////////////////////////////////////////////////////////
+  bool noBoundaryMemoize;
 
   ////////////////////////////////////////////////////////////
   // constructors/destructors
@@ -117,7 +121,7 @@ public:
       chunkNumFrames(_fp.lastChunkFrame() - _fp.firstChunkFrame() + 1),
       epilogueNumFrames(_fp.numFrames() - _fp.firstChunkFrame() - 1),
       firstChunkFrame(_fp.firstChunkFrame()),
-      lastChunkFrame(_fp.lastChunkFrame()) { }
+      lastChunkFrame(_fp.lastChunkFrame()),noBoundaryMemoize(false) { }
   ~GMTemplate() {}
 
   ////////////////////////////////////////////////////////////
