@@ -122,14 +122,14 @@ public:
 	// label.c_str(),timeIndex,featureElement);
 	unsigned tmp = globalObservationMatrix.unsignedAtFrame(timeIndex,featureElement);
 	if (tmp >= (unsigned)cardinality) 
-	  coredump("ERROR: RV '%s' at time index %d has cardinality %d, but feature element position %d in observation file (time %d of segment %d) has value %u.\n",
-		   label.c_str(),
-		   timeIndex,
-		   cardinality,
-		   featureElement,
-		   timeIndex,
-		   globalObservationMatrix.segmentNumber(),
-		   tmp);
+	  error("ERROR: RV '%s' at time index %d has cardinality %d, but feature element position %d in observation file (time %d of segment %d) has value %u.\n",
+		label.c_str(),
+		timeIndex,
+		cardinality,
+		featureElement,
+		timeIndex,
+		globalObservationMatrix.segmentNumber(),
+		tmp);
 	val = tmp;
       }
       // otherwise, we keep the value set to what it was before.
@@ -183,7 +183,8 @@ public:
       conditionalCPTs[i]->makeUniform();
   }
 
-  void tieParametersWith(RandomVariable*const other);
+  void tieParametersWith(RandomVariable*const other,
+			 bool checkStructure=true);
 
   ////////////////////////////////////////////////////////////////
   // Sample, set value.
@@ -209,6 +210,7 @@ public:
     return new DiscreteRandomVariable(label,cardinality);
   }
   RandomVariable *clone();
+  RandomVariable *cloneWithoutParents();
 
   ///////////////////////////////////////////////////
 
