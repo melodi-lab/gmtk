@@ -3954,9 +3954,17 @@ sumProbabilities()
 
 void
 InferenceMaxClique::
-printCliqueEntries(FILE *f) 
+printCliqueEntries(FILE *f,const char*str, const bool normalize) 
 {
-  fprintf(f,"--- Printing Clique with %d values\n",numCliqueValuesUsed);
+
+  logpr sum;
+  if (normalize)
+    sum = sumProbabilities();
+  fprintf(f,"--------\n");
+  if (str != NULL)
+    fprintf(f,"%s ",str);
+  fprintf(f,"Printing Clique with %d variables, %d entries\n",
+	  fNodes.size(),numCliqueValuesUsed);
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
     if (imc_nwwoh_p) {
@@ -3966,7 +3974,13 @@ printCliqueEntries(FILE *f)
       origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
     }
-    fprintf(f,"--- %d:p=%f:",cvn,cliqueValues.ptr[cvn].p.valref());
+    if (normalize) {
+      // then print the exponentiated probability
+      fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).unlog());
+    } else {
+      // print the log value directly
+      fprintf(f,"%d: %f ",cvn,cliqueValues.ptr[cvn].p.valref());
+    }
     printRVSetAndValues(f,fNodes);
   }
 }
@@ -4016,7 +4030,7 @@ emIncrement(const logpr probE,
   const bool clique_has_hidden_vars = (origin.hiddenNodes.size() > 0);
   
   logpr beamThreshold((void*)0);
-  if (origin.cliqueBeam != (-LZERO)) {
+  if (emTrainingBeam != (-LZERO)) {
     // then we do clique table pruning right here rather
     // than a separate call to ceCliquePrune().
     // break into the logp to avoid unnecessary zero checking.
@@ -4258,7 +4272,29 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
   ;    
   }
 
-  // TODO: backwards/distribute evidence beam pruning here.
+  // backwards pruning: Fixed backwards/distribute evidence beam
+  // pruning here. Since we know log(prob(E)), we can do fairly
+  // accurate pruning now. This will be useful particulalry when many
+  // of the bp() values are zero (i.e., in this case, we have zero
+  // compression). We just prune out the zeros for now.  
+  // TODO: integrate this pruning into the above loop instead.  
+  // TODO: export backwards beam width to command line & integrate
+  //    with -ebeam
+  {
+    const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
+    for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
+      if (cliqueValues.ptr[cvn].p.essentially_zero()) {
+	// swap with last entry, and decrease numCliqueValuesUsed by one.
+	swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
+	numCliqueValuesUsed--;
+      } else {
+	cvn++;
+      }
+    }
+    if (numCliqueValuesUsed < origNumCliqueValuesUsed)
+      cliqueValues.resizeAndCopy(numCliqueValuesUsed);
+  }
+
 }
 
 

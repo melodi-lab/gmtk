@@ -920,7 +920,7 @@ public:
   // sum up the probabilities in the current clique and return their value.
   logpr sumProbabilities();
   // print all clique values and prob to given file.
-  void printCliqueEntries(FILE*f);
+  void printCliqueEntries(FILE*f,const char*str=NULL,const bool normalize = false);
   
 
 
