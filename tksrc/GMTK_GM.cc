@@ -707,6 +707,25 @@ void GMTK_GM::GM2CliqueChain()
         // probability nodes assigned to them!!
         cl->conditionalProbabilityNode = cl->newMember;
     }
+
+/*
+cout << "Num cliques: " << chain->cliques.size() << endl;
+unsigned pi=0, maxi=0, lc=0;
+for (unsigned i=0; i<chain->cliques.size(); i++)
+{
+Clique *cl = &chain->cliques[i];
+unsigned sz = 1;
+for (unsigned i=0; i<cl->member.size(); i++)
+if (cl->member[i]->hidden) sz *= cl->member[i]->cardinality;
+pi += sz;
+maxi = max(maxi, sz);
+lc = max(cl->member.size(), lc);
+}
+cout << "Max clique size is " << maxi << endl;
+cout << "Total possible instantiations: " << pi << endl;
+cout << "Max variables in a clique is " << lc << " elements" << endl;
+*/
+
 }
 
 /*-
