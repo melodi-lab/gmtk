@@ -265,10 +265,21 @@ void CliqueChain::incrementEMStatistics()
 
     // go over the cliques and increment the statistics for all the nodes 
     // assigned to each clique
+
+    
+    /////////////////////////////////////////////////////
+    // TODO: go over steps of two to do the non-separators rather
+    // than all of them. i.e., change i++ to i+=2
     for (unsigned i=0; i<preorder.size(); i++)
     {
         Clique *cl = preorder[i];
-        
+
+
+	assert ( !cl->separator || (cl->conditionalProbabilityNode.size() == 0) );
+	
+	// for debugging, sum up the posteriors
+        logpr sum;
+
         // consider the contribution of each instantiation of the clique
         for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
         {
@@ -278,12 +289,18 @@ void CliqueChain::incrementEMStatistics()
 
             // find the conditional families, given the switching parent values
             cl->findConditionalProbabilityNodes();
-            
+
             // do the updates
             assert(dataProb != 0.0);
             logpr posterior = li->lambda*li->pi/dataProb;
+
+	    // for debugging, sum up the posteriors
+	    sum += posterior;
+
             for (unsigned j=0; j<cl->conditionalProbabilityNode.size(); j++)
                 cl->conditionalProbabilityNode[j]->emIncrement(posterior);
         }
+	// for debugging, print the sum of the posteriors
+	// printf("Done summing over clique, sum of posteriors = %f\n",sum.unlog());
     }
 }
