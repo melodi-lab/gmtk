@@ -90,6 +90,8 @@ ARGS ARGS::Args[] = {
   ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
   ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
        "Floor the variances to varFloor when they are read in"),
+  ARGS("cptNormThreshold",ARGS::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
+
   // final one to signal the end of the list
   ARGS()
 
