@@ -289,6 +289,7 @@ MeanVector::emEndIteration(const float*const partialAccumulatedNextMeans)
       *nextMeans_p *= invRealAccumulatedProbability;
       nextMeans_p++;
     } while (nextMeans_p != nextMeans_end_p);
+
   }
 
   // stop EM
