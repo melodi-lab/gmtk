@@ -142,6 +142,9 @@ void CliqueChain::backwardPass()
         li->lambda = 1.0;
         if (postorder.size() > 1)  // watch out for degenerate case
             li->pred->lambda += t;
+	else {
+	     // accumulate BW data prob
+	}
     }
 
     // now do the middle cliques, whose instantiations must pull in a lambda 
@@ -164,8 +167,10 @@ void CliqueChain::backwardPass()
     // now do the root, which does not do any pushing
     if (preorder.size() > 1) {
         cl = preorder[0];
-        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
-            li->lambda =  li->succ->lambda;
+        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++) {
+	  li->lambda =  li->succ->lambda;
+	  // and accumualte BW data prob
+	}
     }
 }
 
