@@ -57,6 +57,11 @@
  */
 class NGramCPT : public CPT {
 
+  // return the probability of the child 'val' given the parents
+  // are the assigned to the set of values set during the most
+  // previous call to becomeAwareOfParentValues.
+  virtual logpr probGivenParents(const int val);
+
 public:
 
 	/*-
@@ -117,14 +122,18 @@ public:
 	// Another version of becomeAwareOfParentValues but this
 	// one explicitely takes an array of random variable parents.
 	virtual void becomeAwareOfParentValues(vector<RandomVariable *>& parents);
-	// return the probability of 'val' given the parents are the
-	// assigned to the set of values set during the most previous call to 
-	// becomeAwareOfParentValues.
-	virtual logpr probGivenParents(const int val);
+
+
+	// return the probability of the child 'drv' given the parents
+	// are the assigned to the set of values set during the most
+	// previous call to becomeAwareOfParentValues.
+        virtual logpr probGivenParents(DiscreteRandomVariable* drv) {
+	  return probGivenParents(drv->val);
+        }
 	// Similar to the above two. This is convenient for one time
 	// probability evaluation.
+	virtual logpr probGivenParents(vector<RandomVariable *>& parents, DiscreteRandomVariable* drv);
 	virtual logpr probGivenParents(vector<int>& parentValues, vector<int>& cards, const int val);
-	virtual logpr probGivenParents(vector<RandomVariable *>& parents, const int val);
 
 	// returns an iterator for the first one.
 	virtual iterator begin(DiscreteRandomVariable* drv);

@@ -230,6 +230,8 @@ Mixture::log_p(const unsigned frameIndex,
 {
   assert ( basicAllocatedBitIsSet() );
 
+  // we assume that frameIndex exists since we unroll the graph with respect to
+  // the global observation matrix.
   const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride =  globalObservationMatrix.stride();

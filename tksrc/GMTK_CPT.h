@@ -169,11 +169,11 @@ public:
   // return the probability of 'val' given the parents are the
   // assigned to the set of values set during the most previous call
   // to becomeAwareOfParentValues.
-  virtual logpr probGivenParents(const int val) = 0;
+  virtual logpr probGivenParents(DiscreteRandomVariable* drv) = 0;
   // Similar to the above, but convenient for one time probability
   // evaluation.
   virtual logpr probGivenParents(vector < RandomVariable *>& parents,
-				 const int val) = 0;
+				 DiscreteRandomVariable* drv) = 0;
   // A version that doesn't use any random variables, useful for debugging,
   // but guaranteed not to be called by any random variable and/or GMTK inference
   // code.
@@ -202,10 +202,10 @@ public:
     // iterator affects. It will use this to set the RVs
     // value and get its cardinality, etc. 
     DiscreteRandomVariable* drv;
-    // some internal state.
-    int internalState;
     // some internal state pointer to be used.
     void* internalStatePtr;
+    // some general scratch internal state.
+    int internalState;
 
     // The probability of the variable being value 'val()'. CPT
     // subclasses must make sure it is set correctly.

@@ -140,23 +140,27 @@ public:
       error("");
     }
   }
-  logpr probGivenParents(const int val) {
+  logpr probGivenParents(DiscreteRandomVariable* drv) {
     assert ( bitmask & bm_basicAllocated );
+    register RandomVariable::DiscreteVariableType val = drv->val;
     assert ( val >= 0 && val <= card() );
     return spmf->prob(val);
   }
+  logpr probGivenParents(vector <RandomVariable *>& parents,
+			 DiscreteRandomVariable* drv) {
+    assert ( bitmask & bm_basicAllocated );
+    becomeAwareOfParentValues(parents);
+    register RandomVariable::DiscreteVariableType val = drv->val;
+    assert ( val >= 0 && val <= card() );
+    return spmf->prob(val);
+  }
+
   logpr probGivenParents(vector <int>& parentValues, 
 			 vector <int>& cards,
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parentValues,cards);
-    return probGivenParents(val);
-  }
-  logpr probGivenParents(vector <RandomVariable *>& parents,
-			 const int val) {
-    assert ( bitmask & bm_basicAllocated );
-    becomeAwareOfParentValues(parents);
-    return probGivenParents(val);
+    return spmf->prob(val);
   }
 
   // returns an iterator for the first one.
