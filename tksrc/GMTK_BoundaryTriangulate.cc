@@ -2820,7 +2820,7 @@ testZeroFillIn(
  *   A triangulation with an elimination order as determined by maximum 
  *   cardinality search is stored via the maximal cliques in the
  *   cliques variable in RIP order.  The elimination order used is stored 
- *   in order.  Note that the graph is not actually triangulated. 
+ *   in order and the graph is triangulated.  
  *
  * Side Effects:
  *   Neighbor members of each random variable can be changed.
@@ -2843,15 +2843,50 @@ triangulateMaximumCardinalitySearch(
   vector<RandomVariable*>&    order
   )
 {
-  vector<triangulateNode>         triangulate_nodes; 
-  list<vector<triangulateNode*> > list_cliques;
-  vector<triangulateNode*>        triangulate_order; 
+  vector<triangulateNode>           triangulate_nodes; 
+  list<vector<triangulateNode*> >   list_cliques;
+  vector<triangulateNode*>          triangulate_order; 
+  vector<triangulateNode*>          dummy_order; 
+  vector<MaxClique>::iterator       crrnt_clique; 
+  vector<MaxClique>::iterator       end_clique; 
+  vector<triangulateNode>::iterator crrnt_node; 
+  vector<triangulateNode>::iterator end_node; 
 
   fillTriangulateNodeStructures( nodes, triangulate_nodes );
+
+  ////////////////////////////////////////////////////////////////////////// 
+  // Find a triangulation using maximum cardinality search 
+  ////////////////////////////////////////////////////////////////////////// 
   maximumCardinalitySearch( triangulate_nodes, list_cliques, triangulate_order, 
     true);
- 
+  fillInComputation( triangulate_order );
+
+  ////////////////////////////////////////////////////////////////////////// 
+  // Now use maximum cardinality search to get the cliques of the 
+  // triangulated graph 
+  ////////////////////////////////////////////////////////////////////////// 
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, dummy_order, 
+    false);
+
+  ////////////////////////////////////////////////////////////////////////// 
+  // Convert to MaxCliques and triangulate the RandomVariable structures 
+  ////////////////////////////////////////////////////////////////////////// 
   listVectorCliquetoVectorSetClique( list_cliques, cliques );
+  for ( crrnt_clique = cliques.begin(), end_clique   = cliques.end();
+        crrnt_clique != end_clique;
+        ++crrnt_clique ) {
+    MaxClique::makeComplete((*crrnt_clique).nodes);
+  }
+
+  ////////////////////////////////////////////////////////////////////////// 
+  // Store the order 
+  ////////////////////////////////////////////////////////////////////////// 
+  for ( crrnt_node = triangulate_nodes.begin(), 
+        end_node   = triangulate_nodes.end();  
+        crrnt_node != end_node ;
+        ++crrnt_node) {
+    order.push_back( (*crrnt_node).randomVariable );
+  }
 }
 
 
