@@ -321,10 +321,12 @@ DiagGaussian::emEndIteration()
     return;
 
   if (accumulatedProbability == 0.0) {
-    // TODO: need to check if this will overflow here
-    // when dividing by it. This is more than just checking
-    // for zero. Also need to do this in every such EM object.
-    warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration",name().c_str());
+    // Note: we assume here that the mean and covar object will check for us that 
+    // its accumulated probability is above threshold. Here, we just
+    // check for zero, and then issue a warning if needed. This might not
+    // indicate a problem as the mean and covar of this object might be shared
+    // and might have received plenty of count.
+    warning("WARNING: Gaussian Component named '%s' did not receive any accumulated probability in EM iteration, check child mean '%s' and covar '%s'",name().c_str(),mean->name().c_str(),covar->name().c_str());
   }
 
   mean->emEndIteration(nextMeans.ptr);
