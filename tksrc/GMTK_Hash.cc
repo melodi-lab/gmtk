@@ -30,6 +30,10 @@
 #include "general.h"
 VCID("$Header$");
 
+#ifdef MAIN
+#define COLLECT_COLLISION_STATISTICS
+#endif
+
 #include "GMTK_Hash.h"
 
 // the possible sizes for the has table, a list of prime
@@ -88,11 +92,14 @@ int main(int argc,char*argv[])
   // first insert some numbers.
   int count= 100000;
   int vsize = 3;
+  int maxCard = 10;
   
   if (argc > 1)
     count = atoi(argv[1]);
   if (argc > 2)
     vsize = atoi(argv[2]);
+  if (argc > 3)
+    maxCard = atoi(argv[3]);
 
   printf("prime table size = %d\n",HashTable_SizePrimesArray);
   printf("Using %d entries, each of length %d\n",count,vsize);
@@ -104,11 +111,17 @@ int main(int argc,char*argv[])
   vi.resize(vsize);
   for (int i=0;i<count;i++) {
     for (int j=0;j<vsize;j++) {
-      vi[j] = rand();
+      vi[j] = rand() % maxCard;
     }
     ht.insert(vi);
   }
   
+  printf("max %d cols, %d total collisions with %d inserts, avg = %e, num entries = %d, table size=%d\n",
+	 ht.maxCollisions,ht.numCollisions,ht.numInserts,
+	 (double)ht.numCollisions/(double)ht.numInserts,
+	 ht. totalNumberEntries(),
+	 HashTable_PrimesArray[ht.primesArrayIndex]);
+
   // now go through each entry in the table to test if it is there.
   printf("ensuring inserted entries are all contained\n");
   for (unsigned pos=0;pos<ht.table.size();pos++) {
@@ -137,7 +150,7 @@ int main(int argc,char*argv[])
   int nhits = 0;
   for (int i=0;i<count;i++) {
     for (int j=0;j<vsize;j++) {
-      vi[j] = rand();
+      vi[j] = rand() % maxCard;
     }
     if (ht.isContained(vi))
       nhits++;
@@ -145,6 +158,7 @@ int main(int argc,char*argv[])
   printf("Found %d out of %d with random vectors\n",nhits,count);
 
   // next, try hashing some C++ strings.
+  count = 0;
   printf("string hash table: inserting %d random strings of various sizes\n",count);
   HashTable< string > sht;
   string str;

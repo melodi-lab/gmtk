@@ -40,6 +40,23 @@
 extern const unsigned HashTable_SizePrimesArray;
 extern const unsigned HashTable_PrimesArray[];
 
+/*
+ * Ten random 10 digit primes
+ *
+ * unsigned long tenDigitPrimes[] = {
+ * 5915587277u, 
+ * 1500450271u, 
+ * 3267000013u, 
+ * 5754853343u, 
+ * 4093082899u, 
+ * 9576890767u, 
+ * 3628273133u, 
+ * 2860486313u, 
+ * 5463458053u, 
+ * 3367900313u };
+ * 
+ */
+
 ///////////////////////////////////////////////////////////
 // A generic hash table that hashes T objects.  
 // Note: T *MUST* be a STL vector< something >, or a C++ 'string'
@@ -49,7 +66,7 @@ template <class T>
 class HashTable
 {
   // uncomment to get test main() stuff working.
-  // public:
+public:
 
   ////////////////////////////////
   // total number of entries in the hash table
@@ -66,6 +83,11 @@ class HashTable
   // the actual hash table, an array of pointers to T's
   vector < T* > table;
 
+#ifdef COLLECT_COLLISION_STATISTICS
+  unsigned maxCollisions;
+  unsigned numCollisions;
+  unsigned numInserts;
+#endif
 
 public:
 
@@ -81,6 +103,11 @@ public:
     if (primesArrayIndex == HashTable_SizePrimesArray)
       error("ERROR: Can't create hash table of approximate size %u\n",
 	    approximateStartingSize);
+#ifdef COLLECT_COLLISION_STATISTICS
+    maxCollisions = 0;
+    numCollisions = 0;
+    numInserts = 0;
+#endif
   }
   ~HashTable() {
     clear();
@@ -89,17 +116,21 @@ public:
   //////////////////////////////////////////////////////////////////
   // since this is a double hash table, we define two address functions,
   // addr which gives the starting position, and incr which
-  // gives the increment when we have a colision.
+  // gives the increment when we have a collision.
   unsigned addr(T & vec, const unsigned size)
   {
+    assert ( size > 1 );
     unsigned long a = vec.size();
     int i = (int)(vec.size()-1); do {
-      a = 65599*a + vec[i];
+      // a =65599*a + vec[i] + 1;
+      // a = 402223*a + vec[i] + 1;
+      // a = 611953*a + vec[i] + 1;
+      a = 3367900313ul*a + vec[i] + 1;
     } while (--i >= 0);
     return a % size;
   }
   // the increment of vec for table of size 'size' when
-  // we have a colision.
+  // we have a collision.
   // Note: the result of the function must satisfy
   //    1) it must be greater than zero
   //    2) it must be strictly less than size
@@ -107,17 +138,28 @@ public:
   unsigned incr(T &vec, const unsigned size)
   {
     assert ( size > 1 );
-    unsigned long r=0;
+    unsigned long a=0;
 
+    int i = (int)(vec.size()-1); do {
+      // a =65599*a + vec[i] + 1;
+      // a = 402223*a + vec[i] + 1;
+      // a = 611953*a + vec[i] + 1;
+      // a = 1500450271ul*a + vec[i] + 1;
+      a = 3267000013ul*a + vec[i] + 1;
+    } while (--i >= 0);
+
+#if 0
     int i=(int)(vec.size()-1); do {
-      r = (r << 4) + vec[i] + 1;
-      if (r > 0x0fffffff) {
-	r ^= (r >> 24) & 0xf0;
-	r &= 0x0fffffff;
+      a = (a << 4) + vec[i] + 1;
+      if (a > 0x0fffffff) {
+	a ^= (a >> 24) & 0xf0;
+	a &= 0x0fffffff;
       }
     } while (--i >= 0);
+#endif
+
     return (
-       (r % (size-1)) // this gives [0 : (size-2)]
+       (a % (size-1)) // this gives [0 : (size-2)]
        +
        1              // this gives [1 : (size-1)] 
        );
@@ -128,11 +170,29 @@ public:
   unsigned entryOf(T &vec, vector < T* >& tbl) {
 
     unsigned a = addr(vec, tbl.size());
-    unsigned inc = incr(vec, tbl.size() );
 
-    while ( tbl[a] != NULL && *tbl[a] != vec) {
-	a = (a+inc) % tbl.size();
-    }
+#ifdef COLLECT_COLLISION_STATISTICS
+    unsigned collisions=0;
+#endif
+
+    if ( tbl[a] == NULL || *tbl[a] == vec) {
+      return a;
+    } 
+    // don't compute inc unless we need to.
+    const unsigned inc = incr(vec, tbl.size());
+    do {
+#ifdef COLLECT_COLLISION_STATISTICS
+      collisions++;
+#endif
+      a = (a+inc) % tbl.size(); 
+    } while ( tbl[a] != NULL && *tbl[a] != vec);
+
+#ifdef COLLECT_COLLISION_STATISTICS
+    if (collisions > maxCollisions)
+      maxCollisions = collisions;
+    numCollisions += collisions;
+#endif
+
     return a;
   }
 
@@ -143,6 +203,10 @@ public:
   T* insert(T &vec) {
     // can only insert non-zero size entries.
     assert (vec.size() > 0); 
+
+#ifdef COLLECT_COLLISION_STATISTICS
+    numInserts++;
+#endif
 
     // make sure the table has entries
     if (table.size() == 0) 
