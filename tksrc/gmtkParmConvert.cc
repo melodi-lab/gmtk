@@ -24,6 +24,14 @@
  * THE PROGRAM, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES."
 */
 
+/*
+ * This program converts from ascii trainable parameters to binary
+ * and vice versa.
+ *
+ *
+ */
+
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -80,6 +88,8 @@ ARGS ARGS::Args[] = {
   ARGS("binPrmOutFile",ARGS::Opt,binPrmOutFile,"Output parametes binary? (def=false)"),
 
   ARGS("varFloor",ARGS::Opt,varFloor,"Variance Floor"),
+  ARGS("floorVarOnRead",ARGS::Opt,DiagCovarVector::floorVariancesWhenReadIn,
+       "Floor the variances to varFloor when they are read in"),
   // final one to signal the end of the list
   ARGS()
 
