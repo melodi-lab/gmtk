@@ -19,33 +19,34 @@
 #define GMTK_DISCRETERANDOMVARIABLE
 
 #include "GMTK_RandomVariable.h"
+#include "GMTK_CPT.h"
 
-struct RandomVariable
+struct DiscreteRandomVariable : public RandomVariable
 {
-    virtual logpr probGivenParents() = 0;
+    logpr probGivenParents();
 
-    virtual void clampFirstValue() = 0;
+    void clampFirstValue();
 
-    virtual bool clampNextValue() = 0;
+    bool clampNextValue();
 
-    virtual void makeRandom() = 0;
+    void makeRandom();
 
-    virtual void makeUniform() = 0;
+    void makeUniform();
 
-    virtual void instantiate() = 0;
+    void instantiate();
 
-    virtual void tieWith(randomVariable *rv) = 0;
+    void tieWith(randomVariable *rv);
 
-    virtual void zeroAccumulators() = 0;
+    void zeroAccumulators();
 
-    virtual void increment(logpr posterior) = 0;
+    void increment(logpr posterior);
 
-    virtual void update() = 0;
+    void update();
 
     DISCRETE_VARIABLE_TYPE cached_val;
-    virtual void cacheValue() = {cached_val=val;}
+    void cacheValue() = {cached_val=val;}
 
-    virtual void restoreCachedValue() = {val=cached_val;}
+    void restoreCachedValue() = {val=cached_val;}
 };
 
 #endif

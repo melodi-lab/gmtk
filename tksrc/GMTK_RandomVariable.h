@@ -59,6 +59,18 @@ struct RandomVariable
     // all possible conditionalParents.
     // Used to determine topological orderings
 
+    sArray< sArray < randomVariable > > conditionalParentsList;
+    // For each possible different list of
+    // conditional parents that might exist for all possible
+    // values of the switching parents, this array gives that list of
+    // appropriate conditional parents. For example, 
+    // suppose that S is the set of conditional parents, and that
+    // 0 <= S <= 5 corresponds to one set of conditional parents,
+    // and 6 <= S < = 10 corresponds to another set of conditional
+    // parents, and those are the only two set of conditional parents
+    // that exist for all values of the switching parents, this
+    // list is of size two. 
+
     sArray<randomVariable *> allPossibleChildren;
     // The set of variables that use this variable either as a switching
     // parent or as a (possible) conditional parent.
