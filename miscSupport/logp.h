@@ -17,6 +17,9 @@
 
 #include "error.h"
 
+// use a lookup table?
+#define _TABLE_
+
 // What we call ~log(0). 
 #define LZERO  (-1.0E10)
 
@@ -48,6 +51,10 @@ extern double logp_minLogExp;
 extern double log_FLT_MIN;
 extern double log_DBL_MIN;
 
+#ifdef _TABLE_
+  const int table_size = 500000;
+#endif
+
 //
 // FT should either be float or double.
 template <
@@ -58,8 +65,17 @@ class logp {
 
 private:
   FT v;
+#ifdef _TABLE_
+  static FT table[table_size];
+  static bool initialized;
+  static double inc;
+#endif
 
 public:
+
+#ifdef _TABLE_
+  void table_init();
+#endif
 
   logp(const float p) { 
     assert ( p >= 0.0 );
@@ -166,7 +182,12 @@ public:
       logp<FT,iFT> z((void*)0);
       // could use table lookup here, or if we could
       // write a function to do log(1+exp(x)) directly w/o two calls.
+#ifdef _TABLE_
+      if (!z.initialized) {z.table_init(); z.initialized=true;}
+      z.v = x.v + table[int(diff*inc)]; 
+#else
       z.v = x.v+log(1.0+exp(diff)); 
+#endif
 
       return z;
     }
