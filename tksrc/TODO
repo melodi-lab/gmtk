@@ -1523,3 +1523,9 @@ Check the following and use the one that is faster.
 >
 > I've been noticing it in your code, and if it is faster, will want to
 > start converting over.
+
+
+Thu Feb 19 23:41:00 2004
+  - tree-structured lexicon: it should be possible to code
+    this up using sparse CPTs, and use the same standard inference procedure.
+    Should investigate this.
