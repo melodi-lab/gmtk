@@ -113,6 +113,9 @@ bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
 bool show_cliques=false;
 
+char *argsFile = NULL;
+char *cppCommandOptions = NULL;
+
 ARGS ARGS::Args[] = {
 
   /////////////////////////////////////////////////////////////
@@ -153,6 +156,8 @@ ARGS ARGS::Args[] = {
   ARGS("prmTrainableFile",ARGS::Opt,prmTrainableFile,"File containing Trainable Parameters"),
   ARGS("binPrmTrainableFile",ARGS::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
 
+  ARGS("cppCommandOptions",ARGS::Opt,cppCommandOptions,"Command line options to give to cpp"),
+
 
   ARGS("prmOutFile",ARGS::Opt,prmOutFile,"File to place *TRAINABLE* output parametes"),
   ARGS("binPrmOutFile",ARGS::Opt,binPrmOutFile,"Output parametes binary? (def=false)"),
@@ -172,7 +177,10 @@ ARGS ARGS::Args[] = {
 
   // support for splitting and vanishing
   ARGS("mcvr",ARGS::Opt,MixGaussiansCommon::mixCoeffVanishRatio,"Mixture Coefficient Vanishing Ratio"),
+  ARGS("botForceVanish",ARGS::Opt,MixGaussiansCommon::numBottomToForceVanish,"Number of bottom mixture components to force vanish"),
+  
   ARGS("mcsr",ARGS::Opt,MixGaussiansCommon::mixCoeffSplitRatio,"Mixture Coefficient Splitting Ratio"),
+  ARGS("topForceSplit",ARGS::Opt,MixGaussiansCommon::numTopToForceSplit,"Number of top mixture components to force split"),
 
   ARGS("meanCloneSTDfrac",ARGS::Opt,MeanVector::cloneSTDfrac,"Fraction of mean to use for STD in mean clone"),
   ARGS("covarCloneSTDfrac",ARGS::Opt,DiagCovarVector::cloneSTDfrac,"Fraction of var to use for STD in covar clone"),
@@ -204,6 +212,9 @@ ARGS ARGS::Args[] = {
 
   ARGS("showCliques",ARGS::Opt,show_cliques,"Show the cliques of the not-unrolled network"),
 
+  ARGS("argsFile",ARGS::Opt,argsFile,"File to get args from (overrides specified comand line args)."),
+
+
   // final one to signal the end of the list
   ARGS()
 
@@ -228,7 +239,7 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  ARGS::parse(argc,argv);
+  ARGS::parse(argc,argv,argsFile);
 
   ////////////////////////////////////////////
   // check for valid argument values.
@@ -289,19 +300,19 @@ main(int argc,char*argv[])
   // read in all the parameters
   if (prmMasterFile) {
     // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(prmMasterFile,false);
+    iDataStreamFile pf(prmMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
   }
   if (prmTrainableFile) {
-    // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(prmTrainableFile,false);
+    // flat, where everything is contained in one file
+    iDataStreamFile pf(prmTrainableFile,binPrmTrainableFile,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
 
   /////////////////////////////
   // read in the structure of the GM, this will
   // die if the file does not exist.
-  FileParser fp(strFileName);
+  FileParser fp(strFileName,cppCommandOptions);
   // parse the file
   fp.parseGraphicalModel();
   // create the rv variable objects
