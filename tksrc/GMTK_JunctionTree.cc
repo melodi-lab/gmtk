@@ -1885,122 +1885,142 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
   // all nodes in separators for incomming messages for this clique.
   clique.unionIncommingCESeps.clear();
 
-  if (numSeparators == 0) {
-    // This must be a leaf-node clique relatve to root.
-    // 'unionIncommingCESeps' is already empty so no need to do anything there.
-  } else if (numSeparators == 1) {
-    // shortcut to separator 0
-    SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
-    clique.unionIncommingCESeps = s0.nodes;
-    s0.accumulatedIntersection.clear();
-    s0.remainder = s0.nodes;
-    assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
-  } else if (numSeparators == 2) {
+  if (MaxClique::ceSeparatorDrivenInference) {
+    if (numSeparators == 0) {
+      // This must be a leaf-node clique relatve to root.
+      // 'unionIncommingCESeps' is already empty so no need to do anything there.
+    } else if (numSeparators == 1) {
+      // shortcut to separator 0
+      SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
+      clique.unionIncommingCESeps = s0.nodes;
+      s0.accumulatedIntersection.clear();
+      s0.remainder = s0.nodes;
+      assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
+    } else if (numSeparators == 2) {
 
 
-    // iterate through smaller weight separator first. If no
-    // intersection, then this of course doesn't matter at all.
-    if (part.separators[clique.ceReceiveSeparators[0]].weight() <
-	part.separators[clique.ceReceiveSeparators[1]].weight()) {
-      // do nothing
-    } else {
-      swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
-    }
-
-    // shortcuts to separator 0 and 1
-    SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
-    SeparatorClique& s1 = part.separators[clique.ceReceiveSeparators[1]];
-
-
-    // intersection of the two separators
-    set<RandomVariable*> sepIntersection;
-    set_intersection(s0.nodes.begin(),s0.nodes.end(),
-		     s1.nodes.begin(),s1.nodes.end(),
-		     inserter(sepIntersection,sepIntersection.end()));
-
-    // first one in order should be empty.
-    s0.accumulatedIntersection.clear();
-    // and remainder of first one should get the rest
-    s0.remainder = s0.nodes;
-    // 2nd one in should be intersection
-    s1.accumulatedIntersection = sepIntersection;
-    // and remainder gets the residual.
-    set_difference(s1.nodes.begin(),
-		   s1.nodes.end(),
-		   sepIntersection.begin(),sepIntersection.end(),
-		   inserter(s1.remainder,
-			    s1.remainder.end()));
-    // compute union of all separators.
-    set_union(s0.nodes.begin(),s0.nodes.end(),
-	      s1.nodes.begin(),s1.nodes.end(),
-	      inserter(clique.unionIncommingCESeps,clique.unionIncommingCESeps.end()));
-
-    assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
-    assert ( s1.accumulatedIntersection.size() + s1.remainder.size() == s1.nodes.size() );
-
-  } else {
-    // there are 3 or more separators, determine proper order and then
-    // compute running accumulated intersection relative to that order.
-
-    // TODO: need to determine if there is an optimum order or not.
-    // note: code to compute 'an' order is commented out and taged
-    // with ABCDEFGHIJK at end of this file.
-    // 
-    // In otherwords, rerder clique.ceReceiveSeparators for maximal overlap.
-    // 
-    
-    // sort based on increasing 
-
-
-    // Compute the cummulative intersection of the sepsets
-    // using the current sepset order.
-
-    {
-
-      // initialize union of all previous separators
-
-      clique.unionIncommingCESeps = 
-	part.separators[clique.ceReceiveSeparators[0]].nodes;
-      part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
-      part.separators[clique.ceReceiveSeparators[0]].remainder
-	= part.separators[clique.ceReceiveSeparators[0]].nodes;
-
-      for (unsigned sep=1;sep<numSeparators;sep++) {
-      
-	// reference variables for easy access
-	set<RandomVariable*>& sepNodes
-	  = part.separators[clique.ceReceiveSeparators[sep]].nodes;
-	set<RandomVariable*>& sepAccumInter
-	  = part.separators[clique.ceReceiveSeparators[sep]].accumulatedIntersection;
-
-
-	// create the intersection of 1) the union of all previous nodes in
-	// the sep order, and 2) the current sep nodes.
-	sepAccumInter.clear();
-	set_intersection(clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
-			 sepNodes.begin(),sepNodes.end(),
-			 inserter(sepAccumInter,sepAccumInter.end()));
-
-	// compute the separator remainder while we're at it.
-	// specifically: remainder = sepNodes - sepAccumInter.
-	part.separators[clique.ceReceiveSeparators[sep]].remainder.clear();
-	set_difference(sepNodes.begin(),sepNodes.end(),
-		       sepAccumInter.begin(),sepAccumInter.end(),
-		       inserter(part.separators[clique.ceReceiveSeparators[sep]].remainder,
-				part.separators[clique.ceReceiveSeparators[sep]].remainder.end()));
-
-
-	// update the accumulated (union) of all previous sep nodes.
-	set<RandomVariable*> res;
-	set_union(sepNodes.begin(),sepNodes.end(),
-		  clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
-		  inserter(res,res.end()));
-	clique.unionIncommingCESeps = res;	
+      // iterate through smaller weight separator first. If no
+      // intersection, then this of course doesn't matter at all.
+      if (part.separators[clique.ceReceiveSeparators[0]].weight() <
+	  part.separators[clique.ceReceiveSeparators[1]].weight()) {
+	// do nothing
+      } else {
+	swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
       }
+
+      // shortcuts to separator 0 and 1
+      SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
+      SeparatorClique& s1 = part.separators[clique.ceReceiveSeparators[1]];
+
+
+      // intersection of the two separators
+      set<RandomVariable*> sepIntersection;
+      set_intersection(s0.nodes.begin(),s0.nodes.end(),
+		       s1.nodes.begin(),s1.nodes.end(),
+		       inserter(sepIntersection,sepIntersection.end()));
+
+      // first one in order should be empty.
+      s0.accumulatedIntersection.clear();
+      // and remainder of first one should get the rest
+      s0.remainder = s0.nodes;
+      // 2nd one in should be intersection
+      s1.accumulatedIntersection = sepIntersection;
+      // and remainder gets the residual.
+      set_difference(s1.nodes.begin(),
+		     s1.nodes.end(),
+		     sepIntersection.begin(),sepIntersection.end(),
+		     inserter(s1.remainder,
+			      s1.remainder.end()));
+      // compute union of all separators.
+      set_union(s0.nodes.begin(),s0.nodes.end(),
+		s1.nodes.begin(),s1.nodes.end(),
+		inserter(clique.unionIncommingCESeps,clique.unionIncommingCESeps.end()));
+
+      assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
+      assert ( s1.accumulatedIntersection.size() + s1.remainder.size() == s1.nodes.size() );
+
+    } else {
+      // there are 3 or more separators, determine proper order and then
+      // compute running accumulated intersection relative to that order.
+
+      // TODO: need to determine if there is an optimum order or not.
+      // note: code to compute 'an' order is commented out and taged
+      // with ABCDEFGHIJK at end of this file.
+      // 
+      // In otherwords, rerder clique.ceReceiveSeparators for maximal overlap.
+      // 
+    
+      // sort based on increasing 
+
+
+      // Compute the cummulative intersection of the sepsets
+      // using the current sepset order.
+
+      {
+
+	// initialize union of all previous separators
+
+	clique.unionIncommingCESeps = 
+	  part.separators[clique.ceReceiveSeparators[0]].nodes;
+	part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
+	part.separators[clique.ceReceiveSeparators[0]].remainder
+	  = part.separators[clique.ceReceiveSeparators[0]].nodes;
+
+	for (unsigned sep=1;sep<numSeparators;sep++) {
+      
+	  // reference variables for easy access
+	  set<RandomVariable*>& sepNodes
+	    = part.separators[clique.ceReceiveSeparators[sep]].nodes;
+	  set<RandomVariable*>& sepAccumInter
+	    = part.separators[clique.ceReceiveSeparators[sep]].accumulatedIntersection;
+
+
+	  // create the intersection of 1) the union of all previous nodes in
+	  // the sep order, and 2) the current sep nodes.
+	  sepAccumInter.clear();
+	  set_intersection(clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
+			   sepNodes.begin(),sepNodes.end(),
+			   inserter(sepAccumInter,sepAccumInter.end()));
+
+	  // compute the separator remainder while we're at it.
+	  // specifically: remainder = sepNodes - sepAccumInter.
+	  part.separators[clique.ceReceiveSeparators[sep]].remainder.clear();
+	  set_difference(sepNodes.begin(),sepNodes.end(),
+			 sepAccumInter.begin(),sepAccumInter.end(),
+			 inserter(part.separators[clique.ceReceiveSeparators[sep]].remainder,
+				  part.separators[clique.ceReceiveSeparators[sep]].remainder.end()));
+
+
+	  // update the accumulated (union) of all previous sep nodes.
+	  set<RandomVariable*> res;
+	  set_union(sepNodes.begin(),sepNodes.end(),
+		    clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
+		    inserter(res,res.end()));
+	  clique.unionIncommingCESeps = res;	
+	}
+      }
+
     }
+  } else {
+    // We are doing clique driven iteration. While we could use the
+    // same code as above (producing both accumulated intersection and
+    // remainder sets), we optimize for this case by making sure that
+    // all accumualted intersection sets should be of zero size, so
+    // that we only do one hash lookup for the remainder (which in
+    // this case will be everything). Note also that the order of the
+    // separators no longer matters.
+    const set < RandomVariable* > empty;
+    for (unsigned i=0;i<numSeparators;i++) {
+      SeparatorClique& sep = part.separators[clique.ceReceiveSeparators[i]];
+      sep.accumulatedIntersection.clear();
+      sep.remainder = sep.nodes;
+      // compute union of all separators.
+      set_union(empty.begin(),empty.end(),
+		sep.nodes.begin(),sep.nodes.end(),
+		inserter(clique.unionIncommingCESeps,clique.unionIncommingCESeps.end()));
 
+    }
   }
-
 
   // lastly, assign unassignedIteratedNodes in this clique
   {
