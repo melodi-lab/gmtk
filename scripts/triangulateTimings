@@ -14,13 +14,9 @@ use Thread::Semaphore;
 use Thread::Queue;
 
 ##############################################################################
-# Executable names (should eventually be overwritten by command line 
-# parameters)
+# Executable names 
 ##############################################################################
-my $rexport = 'rexport -attr Linux'; 
 my $gmtk_triangulate = 'gmtkTriangulate'; 
-my $pmae             = 'pmae'; 
-my $pmake            = 'pmake'; 
 
 ##############################################################################
 # Default amount to time each triangulation 
@@ -43,10 +39,10 @@ my @run_once = ( 'completed', 'elimination-heuristics',
   'non-elimination-heuristics' );
 
 my @basic_iterations : shared = ( '100-', '10-', '1-' ); 
-my @basic_prefix     : shared = ( 'pre-edge-lo-', 'pre-edge-all-', 
+my @basic_prefix     : shared = ( '', 'pre-edge-lo-', 'pre-edge-all-', 
   'pre-edge-random-');
 my @basic_method     : shared = ( 'MCS', 'R', 'W', 'F' );
-my @basic_suffix     : shared = ( '-1', '-3' );
+my @basic_suffix     : shared = ( '-1', '-2', '-3' );
 my $basic_suffix_threshold : shared = 2;
 
 my $basic_iteration_index : shared = 0;
@@ -105,10 +101,13 @@ my @input_triangulations;
 my $str_file; 
 my $timing_script;
 my $parallelism;
-my $export_line;
+my $timing_export_line;
+my $boundary_export_line;
+my $triangulation_export_line;
 my $output_directory;
 my $str_basename;
 my $working_dir;
+my $delay_timings;
 
 ##############################################################################
 # Run the program 
@@ -134,11 +133,15 @@ sub main
   # Get command line parameters 
   ##############################################################################
   $valid_options = &GetOptions( 
-    "strFile:s"               => \$str_file, 
-    "exportLine:s"            => \$export_line,
-    "timingScript:s"          => \$timing_script,
-    "parallelism:i"           => \$parallelism,
-    "outputDirectory:s"      => \$output_directory 
+    "strFile:s"                 => \$str_file, 
+    "timingExportLine:s"        => \$timing_export_line,
+    "boundaryExportLine:s"      => \$boundary_export_line,
+    "triangulationExportLine:s" => \$triangulation_export_line,
+    "timingScript:s"            => \$timing_script,
+    "parallelism:i"             => \$parallelism,
+    "outputDirectory:s"         => \$output_directory,
+    "seconds:i"                 => \$timing_length,
+    "delayTimings!"             => \$delay_timings
    );
 
   @input_triangulations = @ARGV;
@@ -157,9 +160,21 @@ sub main
     (-e $str_file) or die "***ERROR:  '$str_file' does not exist\n"; 
   }
 
-  if (!defined $export_line) 
+  if (!defined $timing_export_line) 
   {
-    print "***ERROR:  Must supply a pmake export line\n";
+    print "***ERROR:  Must supply an export line for running timings\n";
+    $valid_options = 0;
+  }
+
+  if (!defined $boundary_export_line) 
+  {
+    print "***ERROR:  Must supply an export line for running boundaries\n";
+    $valid_options = 0;
+  }
+
+  if (!defined $triangulation_export_line) 
+  {
+    print "***ERROR:  Must supply an export line for creating triangulations\n";
     $valid_options = 0;
   }
 
@@ -177,7 +192,8 @@ sub main
     print "  3) Scripts which runs gmtkTime (-inputTriangulatedFile, -strFile, and\n";
     print "     -seconds are passed in as parameters)\n"; 
     print "      -strFile                Structure file name\n";
-    print "      -exportLine             pmake export line\n";
+    print "      -timingExportLine       Export line for timings\n";
+    print "      -boundaryExportLine     Export line for boundary searches\n";
     print "      -timingScript           Script running gmtkTime\n";
     print "      -inputTriangulatedFile  Starting triangulation\n";
     die "\n";
@@ -196,6 +212,7 @@ sub main
     
   if (!defined $output_directory)
   {
+die;
     $output_directory = './';
   }
 
@@ -205,7 +222,12 @@ sub main
     $valid_options = 0;
   }
 
-  ($valid_options) or die "wheeee\n";
+  if (!defined $delay_timings) 
+  {
+    $delay_timings = 0;
+  }
+
+  ($valid_options) or die "Options not valid\n";
 
   $str_basename = basename($str_file); 
   $working_dir = `pwd`;
@@ -236,6 +258,10 @@ sub main
   #########################################################################
   # Start threads to time triangulations
   #########################################################################
+  if ($delay_timings) { 
+    sleep(45);
+    print "Starting timing threads\n";
+  }
 
   for (my $i=0; $i<$parallelism; $i++) {
     $last_child = threads->new(\&time_triangulation, $initial_vpap, 
@@ -405,9 +431,10 @@ sub generate_triangulations
         $boundary_count < (scalar @boundary_list); 
         $boundary_count++ )
   {
-    print "------ Starting $boundary_name ------\n";
     $boundary = $boundary_list[$boundary_count]->{NAME};
     $boundary_name = "B$boundary_list[$boundary_count]->{INDEX}";
+
+    print "------ Starting $boundary_name ------\n";
 
     #######################################################################
     # Run advanced methods, minus the basic methods  
@@ -469,6 +496,14 @@ sub generate_triangulations
         } 
       } 
     } 
+
+    {
+      lock($timing_thread_idle);
+      for ($i=0; $i<$parallelism; $i++) {
+        $trifile_queue->enqueue("RESTART_${$initial_vpap}_${initial_vcap}");
+      }
+      $timing_thread_idle_sem->down($parallelism); 
+    }
 
   } # for boundary_list
 
@@ -578,8 +613,9 @@ sub open_time
 
   do {
     $error = 0;
-    eval {
-      $pid = open2( $timing_script_output, $timing_script_input, "$export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ");
+    eval 
+    {
+      $pid = open2( $timing_script_output, $timing_script_input, "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ");
 
       $timing_script_input->autoflush(1);
       $output = <$timing_script_output>;
@@ -615,7 +651,7 @@ sub start_boundary_searches
 {
   my @boundary_heuristics;
   my $boundary_heuristic;
-  my $tmp_file;
+  my $boundary_job_list;
   my $triangulate_line;
   my @weight_UB_types;
   my $weight_UB_type;
@@ -631,11 +667,11 @@ sub start_boundary_searches
   ############################################################################
   # Create makefile for boundaries  
   ############################################################################
-  $tmp_file = "$output_directory/boundaries.makefile";  
+  $boundary_job_list = "$output_directory/boundary_job_list";  
 
   $triangulate_line = "$gmtk_triangulate -strFile $str_file -rePartition T -reTriangulate T -findBestBoundary T -seed T -printResults F -numBackupFiles 0 -anyTimeTriangulate '4hour' -noBoundaryMemoize T";
 
-  open PMAE, "| pmae > $tmp_file"; 
+  open JOB_LIST, ">$boundary_job_list";
 
   foreach $boundary_heuristic (@boundary_heuristics)
   {
@@ -651,20 +687,20 @@ sub start_boundary_searches
       foreach $left_right ('L', 'R') 
       { 
         $output_name = "$output_directory/$boundary_heuristic.$weight_UB_type.$left_right.$str_basename.boundary";
-        print PMAE "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right 2&>1; echo DONE WITH $output_name\n";
+        print JOB_LIST "$triangulate_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right 2>&1 ; echo DONE WITH $output_name\n";
       }
     }
   }
 
-  close PMAE;
+  close JOB_LIST; 
 
   ############################################################################
-  # Start searches with pmake, and enque the boundaries as they finish
+  # Start searches and enque the boundaries as they finish
   ############################################################################
-  open PMAKE, "pmake -L 0 -J 15 -f $tmp_file |";
+  open RUN_JOBS, "cat $boundary_job_list | $boundary_export_line |";
 
   $total_boundaries = 0; 
-  while (<PMAKE>) 
+  while (<RUN_JOBS>) 
   {
     print STDERR "$_";
 
@@ -676,6 +712,8 @@ sub start_boundary_searches
       $total_boundaries++; 
     }
   }
+
+  close RUN_JOBS;
   
   printf "%d boundary searches completed\n", $total_boundaries; 
 
@@ -701,7 +739,7 @@ sub run_triangulation
   $boundary        = pop;
   $method_options  = pop;
 
-  $output = `$rexport $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options 2>&1`;
+  $output = `$triangulation_export_line $gmtk_triangulate -strFile $str_file -rePartition F -reTriangulate T -findBestBoundary F -inputTriangulatedFile $boundary -seed T -noReTriP T -noReTriC F -noReTriE T -outputTriangulatedFile $output_tri_file -printResults T -numBackupFiles 0 $method_options 2>&1`;
 
   print STDERR "$output\n";
 
