@@ -365,7 +365,7 @@ main(int argc,char*argv[])
   }
 
   (void) IM::setGlbMsgLevel(verbosity);
-
+  GM_Parms.setMsgLevel(verbosity);
 
   if (MixtureCommon::cacheMixtureProbabilities)
     MixtureCommon::cacheComponentsInEmTraining = true;
