@@ -242,7 +242,7 @@ X make sure that dlinkmatrix precompute is being
 
 - dlinkmats, normalize by "previous" covariance matrix.
 
-- do a sensible triangulation algoritms to reduce large clique sizes.
+- more triangulation procedures to reduce large clique sizes.
 
 - get switching parents working with triangulation
 
