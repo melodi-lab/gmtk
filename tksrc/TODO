@@ -366,7 +366,21 @@ x fix arg description of beam
   same as the parent leading to redundant copy of
   Gaussians. Make sure to mention this in docs.
 
-
 - support no training names such as gmMx* for foobar*
 
 - state clustering, ala HTK, occupancy counts.
+
+- when segment is to short during training, skip it
+  rather than exiting with an error. 
+
+
+TODO:
+ - file formats (table & output file)
+ - record phone numbers
+ - src id
+ - icassp
+
+- accumulate multiple accumulators, give a list of accumulator
+  files when numeric range doesn't work to support accumulators
+   on different machines.
+
