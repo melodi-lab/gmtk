@@ -25,8 +25,14 @@
 
 #include "fileParser.h"
 #include "logp.h"
+#include "machine-dependent.h"
+
 
 #include "GMTK_RandomVariable.h"
+#include "GMTK_GaussianCommon.h"
+#include "GMTK_EMable.h"
+#include "GMTK_MeanVector.h"
+#include "GMTK_DiagCovarVector.h"
 
 class DiagGaussian : public GaussianCommon, public EMable {
 
@@ -67,7 +73,7 @@ public:
   //////////////////////////////////
   // probability evaluation
   logpr log_p(const float *const x,    // real-valued scoring obs at time t
-	      const ptr32* const base, // ptr to base obs at time t
+	      const Data32* const base, // ptr to base obs at time t
 	      const int stride);       // stride
   //////////////////////////////////
 
@@ -88,7 +94,7 @@ public:
   // Sample Generation            //
   //////////////////////////////////
   void sampleGenerate(float *const sample,
-		      const ptr32* const base);
+		      const Data32* const base);
   //////////////////////////////////
 
 
