@@ -111,9 +111,7 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
 	// ones fail, cpp has this behavior.
 	cppCommand = cppCommand + string(" -I.");
 
-	// C++ STRING BUG: If we uncomment the following line
-	//  and comment the one after, it will produce a bug.
-	//cppCommand = cppCommand + (" ") + string(_name);
+	// cppCommand = cppCommand + (" ") + string(_name);
 	cppCommand = cppCommand + (" ") + path;
 
 	// printf("cppCommand = (%s)\n",cppCommand.c_str());
