@@ -48,11 +48,15 @@ unsigned Clique::newCliqueValue()
     {
         freelist.clear();     // the previous entries have all been used
         int oldsize = gip.size(), newsize = int(mem_factor*gip.size());
-        newsize = max(newsize, 200000);  // don't mess around at the beginning
+        newsize = max(newsize, 2000000);  // don't mess around at the beginning
         gip.resize(newsize);  // make more CliqueValues
         for (int i=oldsize; i<newsize; i++)
             freelist.push_back(i);  // add the indexes of the new CliqueValues
         nextfree = freelist.size()-1;  // initialize the nextfree pointer
+/*
+cout << "gip size: " << newsize << " " << newsize*sizeof(CliqueValue) << endl;
+cout << "gip capacity: " << gip.capacity() << " " << gip.capacity()*sizeof(CliqueValue) << endl;
+*/
     }
     return freelist[nextfree--];
 }
