@@ -32,6 +32,8 @@
 #include "GMTK_FileParser.h"
 #include "GMTK_MaxClique.h"
 
+#include "debug.h"
+
 // class mention for forward references.
 class GraphicalModel;
 class AnyTimeTriangulation;
@@ -80,7 +82,7 @@ struct GMInfo {
 };
 
 
-class GMTemplate
+class GMTemplate : public IM 
 {
   friend class FileParser;
   friend class GraphicalModel;
@@ -279,6 +281,7 @@ public:
   // ordering) given by the arguments, store that
   // information in file pointed to by 'os'
   void storePartitionTriangulation(oDataStreamFile& os,
+				   const unsigned M,
 				   const set<RandomVariable*>& P,
 				   const set<RandomVariable*>& C,
 				   const set<RandomVariable*>& E,
@@ -290,6 +293,7 @@ public:
 				   const vector<RandomVariable*>& Eordered);
   void storePartitionTriangulation(oDataStreamFile& os,GMInfo& info) {
     storePartitionTriangulation(os,
+				info.M,
 				info.P,info.C,info.E,
 				info.Pcliques,info.Ccliques,info.Ecliques,
 				info.Pordered,info.Cordered,info.Eordered);
