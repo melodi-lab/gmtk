@@ -18,34 +18,33 @@
 #ifndef GMTK_GM_H
 #define GMTK_GM_H
 
-#include "sArray.h"
 #include "logp.h"
 #include "GMTK_RandomVariable.h"
 #include "GMTK_CliqueChain.h"
 
 struct GMTK_GM
 {
-    sArray<RandomVariable *> node;
+    vector<RandomVariable *> node;
     // This holds all the variables in the graph.
     // The topology os determined by the Parent and Child arrays associated
     // with each random variable.
 
-    sArray<RandomVariable *> topologicalOrder;
+    vector<RandomVariable *> topologicalOrder;
     // A topological ordering of the nodes; useful for simulation and
     // enumerative inference.
 
-    void findTopologicalOrder(RandomVariable *rv = NULL);
-    // Guarantees that all variables at time t-1 occur before any variables
-    // at time t.
+    void verifyTopologicalOrder();
+    // verifies that the node array is in topological order
+    // copies it to the topological array
 
-    void reveal(sArray<RandomVariable *> order);
+    void reveal(vector<RandomVariable *> order, bool show_vals = false);
     // Go through the nodes in the specified order and show them.
 
     int numEquivalenceClasses;
     // The variables in the network may be divided into equivalence classes,
     // with the members of each equivalence class sharing the same parameters.
 
-    sArray<RandomVariable *> representativeOfEquivalenceClass;
+    vector<RandomVariable *> representativeOfEquivalenceClass;
     // All the members of an equivalence class will use the parameters 
     // associated with this particular member. To save memory, the other
     // member's parameter data structures simply point to this representative.
@@ -87,9 +86,6 @@ struct GMTK_GM
     // liekliest value.
 
     logpr dataProb, viterbiProb;
-
-    int numNodes;
-    // how many nodes are in the graph, i.e. node.len()
 
     int sliceSize;
     // how many nodes in a time slice
