@@ -130,6 +130,12 @@ class sArray {
     assert ( i >= 0 && i < size );
     return ptr[i]; 
   }
+  
+  void assignAllToValue(const T x) {
+    for (int i=0; i<size; i++)
+      ptr[i] = x;
+  }
+
 
 };
 
