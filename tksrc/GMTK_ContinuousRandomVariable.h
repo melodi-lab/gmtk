@@ -75,9 +75,9 @@ private:
   // findConditionalParents() is called.
   MappingOrDirect* curMappingOrDirect;
 
-  // cached probability
-  bool probIsCached;
-  logpr _cachedProb;
+  // cached probability, not used at the moment
+  // bool probIsCached;
+  // logpr _cachedProb;
 
   /////////////////////////////////////////////////////////////////
   // the feature range to which this random variable corresponds
