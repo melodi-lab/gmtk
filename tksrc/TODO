@@ -264,3 +264,5 @@ X make sure that dlinkmatrix precompute is being
   easier, and save memory for big DTs).
 
 - option to floor variances when they are read in.
+
+- dynamic DTs, error messages should print cur name as well as base name. 
