@@ -1,0 +1,132 @@
+
+Notes on algorithm for splitting and vanishing Gaussians
+with sharing.
+
+J. Bilmes, $Header$
+
+
+   If a Gaussian component is split, it gets cloned
+   meaning that its mean and covariances are cloned.
+   If another Gaussian component is split, and it shares
+     either the mean/variance of another one that was split,
+     it will continue to share the mean/variance of the cloned
+     Gaussian.
+   The cloning relationships are forgotten once all is done at the 
+   end of the epoch.
+
+Need three maps here, cleared out at the end of each epoch.
+   remove map
+    DPMF ptr & unsiged -> dummy;
+   added map
+    DPMF ptr & unsigned -> dummy
+   addd map 
+    DPMF ptr & cmp ptr -> cmp ptr
+
+Need more maps for cloning, these are cleared out at the end of each epoch.
+They live in GM_Params.
+   map from mean -> its clone
+   map from covar -> its clone
+   map from lincondvar -> its clone
+   map from GC -> its clone   
+
+When we clone a GC
+   if GC has clone in map, use that
+   else
+       clone mean
+       clone var
+
+clone mean
+   if mean has clone in map use that,
+   else really clone
+
+clone covar
+   analogous to clone mean
+       
+The reason for using maps here rather than additional members in
+each object is that splitting/vanishing is probably the exception
+rather than the norm, therefore we don't want to use up
+more memory by adding a field in each object which will
+probably not often be used.
+
+
+mix gaus end 
+
+   end the PMF
+   to through pmf,  entry i
+         end comp epoch
+              // need to end comp epoch in any case because
+              // otherwise cov ref count won't hit zero.
+         if pmf i is below threshold
+               add DPMF ptr & i key to set of removed things
+         if pmf i is above threshold
+               add DPMF ptr & i key to set of added things
+
+mixgauss swap
+
+   check on DPMF's new length
+
+   go through, entry i
+       if pmf&i is in delete set
+           skip it, don't swap, move to last position
+       if pmf&i ptr in add set
+           // can't just use cmp ptr here since it might be shared &
+           // have been cloned for one MG but not for another.
+           clone cmp i and add it in.
+
+
+densePMF swap
+
+   newLen = len;
+   go through pmf, entry i
+      if i is in delete set
+         newLen --;
+      if i is in clone set
+         newLen ++
+   make new len array
+   go through pmf, entry i
+      if i is in delete set
+         skip j
+      if i is in clone set
+         add i an j with split prob
+      else
+         just skip
+   normalize
+
+
+OLD ========================================
+
+
+mixgauss swap
+
+   go through, entry i
+       if pmf&i is in delete set
+           skip it, don't swap
+       if pmf& cmp ptr in add set
+           // can't just use cmp ptr here since it might be shared &
+           // have been cloned for one MG but not for another.
+           add cmp & its clone to new thing      
+           if DPMF ptr & cmp ptr not in that map
+                 clone and perturb entry i
+                  add DPMF & cmp ptrs to that map
+
+
+===============================
+
+
+to get compiling on IBM
+
+ -D__GNUC__=2 -D__GNUG__=2 -D__GNUC_MINOR__=95 -D__cplusplus -trigraphs -D__STRICT_ANSI__ -D_IBMR2 -D_POWER -D_AIX -D_AIX32 -D_AIX41 -D_AIX43 -D_LONG_LONG -Asystem(unix) -Asystem(aix) -D__EXCEPTIONS -D__CHAR_UNSIGNED__ -g -Wall -pedantic -D_ARCH_COM
+
+- GMTK_FileParser.lex
+  already defined fileno
+
+- no libsunmath to use.
+
+- using g++ w/o a path in makefiles
+
+- ieeefp.h
+
+- fileParser.cc
+     write() overload problem.
+
+- ieeefp from pfile
