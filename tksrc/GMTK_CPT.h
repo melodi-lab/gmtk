@@ -49,7 +49,8 @@ class RandomVariable;
  *  +-- MTCPT - Multi-d deTerminisitc (decision tree based) CPT
  *  |
  *  +-- USCPT - special unity score CPT for discrete features.
- * 
+ *  |
+ *  +-- NGramCPT - ngram language model with backing-off support
  * 
  */
 
@@ -91,7 +92,14 @@ public:
   // threshold to ensure input data sums to approximately unity
   static double normalizationThreshold;
 
-  enum DiscreteImplementaton { di_MDCPT, di_MSCPT, di_MTCPT, di_USCPT, di_unknown };
+  enum DiscreteImplementaton {
+    di_MDCPT,
+    di_MSCPT,
+    di_MTCPT,
+    di_USCPT,
+    di_NGramCPT,
+    di_unknown
+  };
   const DiscreteImplementaton cptType;
 
 
@@ -158,7 +166,7 @@ public:
   // Similar to the above two. This is convenient for one time
   // probability evaluation.
   virtual logpr probGivenParents(vector <int>& parentValues, 
-		                                                                                                                            		 vector <int>& cards, 
+		         vector <int>& cards, 
 				 const int val) = 0;
   virtual logpr probGivenParents(vector < RandomVariable *>& parents,
 				 const int val) = 0;
@@ -171,6 +179,7 @@ public:
     friend class MSCPT;
     friend class MTCPT;
     friend class USCPT;
+    friend class NGramCPT;
 
     // An integer internal state which "hopefully" will
     // be enough for each derived class.
@@ -262,5 +271,4 @@ public:
 };
 
 
-#endif 
-
+#endif

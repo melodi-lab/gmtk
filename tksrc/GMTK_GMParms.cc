@@ -44,6 +44,8 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_USCPT.h"
+#include "GMTK_NGramCPT.h"
+#include "GMTK_Vocab.h"
 #include "GMTK_NameCollection.h"
 
 // particular Gaussian components
@@ -106,6 +108,8 @@ GMParms::~GMParms()
   deleteObsInVector(mdCpts);
   deleteObsInVector(msCpts);
   deleteObsInVector(mtCpts);
+  deleteObsInVector(vocabs);
+  deleteObsInVector(ngramCpts);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
   // deleteObsInVector(logitSwitchingMixtures);
@@ -132,6 +136,8 @@ void GMParms::add(Component*ob){ add(ob,
 void GMParms::add(MDCPT*ob) { add(ob,mdCpts,mdCptsMap); }
 void GMParms::add(MSCPT*ob) { add(ob,msCpts,msCptsMap); }
 void GMParms::add(MTCPT*ob) { add(ob,mtCpts,mtCptsMap); }
+void GMParms::add(Vocab* ob) { add(ob, vocabs, vocabsMap); }
+void GMParms::add(NGramCPT*ob) { add(ob,ngramCpts,ngramCptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
 void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
@@ -564,6 +570,74 @@ GMParms::readMtCpts(iDataStreamFile& is, bool reset)
 }
 
 
+void GMParms::readVocabs(iDataStreamFile& is, bool reset)
+{
+	unsigned num;
+	unsigned cnt;
+	unsigned start = 0;
+
+	is.read(num,"num NGRAM Vocabs");
+	if ( num > GMPARMS_MAX_NUM )
+		error("ERROR: number of Vocabs (%d) exceeds maximum", num);
+	if ( reset ) {
+		start = 0;
+		vocabs.resize(num);
+	} else {
+		start = vocabs.size();
+		vocabs.resize(start + num);
+	}
+	for ( unsigned i = 0; i <num;i++ ) {
+		// first read the count
+		Vocab* ob;
+
+		is.read(cnt, "Vocab cnt");
+		if ( cnt != i ) 
+			error("ERROR: Vocab count (%d), out of order in file '%s', expecting %d", cnt,is.fileName(),i);
+
+		ob = new Vocab();
+		ob->read(is);
+		if ( vocabsMap.find(ob->name()) != vocabsMap.end() )
+			error("ERROR: Vocab named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+		vocabs[i + start] = ob;
+		vocabsMap[ob->name()] = i + start;
+  }
+}
+
+
+void GMParms::readNgramCpts(iDataStreamFile& is, bool reset)
+{
+	unsigned num;
+	unsigned cnt;
+	unsigned start = 0;
+
+	is.read(num,"num NGRAM CPTs");
+	if ( num > GMPARMS_MAX_NUM )
+		error("ERROR: number of NGram CPTs (%d) exceeds maximum", num);
+	if ( reset ) {
+		start = 0;
+		ngramCpts.resize(num);
+	} else {
+		start = ngramCpts.size();
+		ngramCpts.resize(start + num);
+	}
+	for ( unsigned i = 0; i <num;i++ ) {
+		// first read the count
+		NGramCPT* ob;
+
+		is.read(cnt, "NGram CPT cnt");
+		if ( cnt != i ) 
+			error("ERROR: NGramCPT count (%d), out of order in file '%s', expecting %d", cnt,is.fileName(),i);
+
+		ob = new NGramCPT();
+		ob->read(is);
+		if ( ngramCptsMap.find(ob->name()) != ngramCptsMap.end() )
+			error("ERROR: NGramCPT named '%s' already defined but is specified for a second time in file '%s'",ob->name().c_str(),is.fileName());
+		ngramCpts[i + start] = ob;
+		ngramCptsMap[ob->name()] = i + start;
+  }
+}
+
+
 void 
 GMParms::readDTs(
   iDataStreamFile& is, 
@@ -817,7 +891,8 @@ GMParms::readBasic(iDataStreamFile& is)
   readMdCpts(is);
   readMsCpts(is);
   readMtCpts(is);
-
+  readVocabs(is);
+  readNgramCpts(is);
 }
 
 
@@ -859,6 +934,8 @@ GMParms::readAll(iDataStreamFile& is)
   readMdCpts(is);
   readMsCpts(is);
   readMtCpts(is);
+  readVocabs(is);
+  readNgramCpts(is);
 
   // next read definitional items
   readComponents(is);
@@ -952,7 +1029,8 @@ GMParms::readNonTrainable(iDataStreamFile& is)
 
   readMsCpts(is);
   readMtCpts(is);
-
+  readVocabs(is);
+  readNgramCpts(is);
 }
 
 
@@ -1032,6 +1110,12 @@ GMParms::read(
 
     } else if (keyword == "DETERMINISTIC_CPT_IN_FILE") {
       readMtCpts(*((*it).second),false);
+
+	} else if (keyword == "VOCAB_IN_FILE") {
+	  readVocabs(*((*it).second),false);
+
+	} else if (keyword == "NGRAM_CPT_IN_FILE") {
+	  readNgramCpts(*((*it).second),false);
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
@@ -1915,7 +1999,6 @@ GMParms::writeBasic(oDataStreamFile& os)
   writeMdCpts(os);
   writeMsCpts(os);
   writeMtCpts(os);
-
 }
 
 
@@ -2046,7 +2129,6 @@ GMParms::writeNonTrainable(oDataStreamFile& os)
 
   writeMsCpts(os);
   writeMtCpts(os);
-
 }
 
 
@@ -2425,6 +2507,8 @@ unsigned GMParms::totalNumberParameters()
     sum += msCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<mtCpts.size();i++)
     sum += mtCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<ngramCpts.size();i++)
+    sum += ngramCpts[i]->totalNumberParameters();
   return sum;
 
 }
