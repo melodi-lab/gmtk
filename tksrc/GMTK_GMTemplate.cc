@@ -2893,9 +2893,13 @@ findBestInterface(
 
   // All nodes in C1 must be to the left of the boundary (ensured by
   // start condition and by the nature of the algoritm).  All nodes to
-  // the right of the left interface in C3 must be to the right of the
-  // boundary, and we can not have an interface that consists entirely
-  // of nodes in C3 (both are ensured by "condition ***" below).
+  // the right of the boundary must still be in C2, or otherwise
+  // we would try to produce a boundary with > M chunks. This could
+  // lead to invalid networks since the left interface structure in E
+  // might not be the same as the left interface structure in C (and this
+  // is the reason for unrolling u2 by M+1, to get an extra chunk at the
+  // beginning and end of of the chunks in which we do a boundary search).
+  // This condition is ensured by "condition ***" below.
 
   // If C2 consists of multiple chunks (say C2_1, C2_2, etc.) then we
   // should never have that all of C2_1 lies completely to the left of
@@ -2916,35 +2920,25 @@ findBestInterface(
     //      be beneficial to do this since its cost would probably be
     //      ammortized over the many runs of inference with the graph.
 
+    // continue with probabilty 'boundaryTraverseFraction'
+    if (!rnd.coin(boundaryTraverseFraction))
+      continue;
+
     set<RandomVariable*> res;
 
-#if 0
-    // see also $$$$$ below
-    // TODO: eventually add code something like this so that boundaries
-    // can go almost all the way over to the next chunk boundary. 
-
-    // Condition ***: Never move a variable to the left that's already in C3 over,
-    // since if we did, we would end up with a boundary that spans
-    // more than M chunks. This condition also ensures termination
-    // since as soon as all the variables live in C3 (which would
-    // eventually happen if we kept sliding everything left) we do no
-    // more recursion below.
-    if (C3.find((*v)) != C3.end())
-      continue;
-#endif
-
     // Condition ***: if v has neighbors in C3 (via set intersection),
-    // then continue since if v was moved left, we would end up with
-    // a left  interface (i.e., invalid since there would be a node
-    // left of C_l that connects directly to the right of C_l).
+    // then continue since if v was moved left, we would end up with a
+    // boundary > M chunks. This would be invalid since there
+    // would be a node left of C_l that connects directly to the right
+    // of C_l. This might also lead to problems since we are not guaranteed
+    // that the basic left interface in E is the same as the basic left interface
+    // in C.
     set_intersection((*v)->neighbors.begin(),
 		     (*v)->neighbors.end(),
 		     C3.begin(),C3.end(),
 		     inserter(res, res.end()));
     if (res.size() != 0)
       continue;
-
-
 
     // Then it is ok to remove v from C_l and move v to the left.
     // take v from C_l and place it in left_C_l
@@ -3108,10 +3102,6 @@ findInterfacePartitions(
   for (set<RandomVariable*>::iterator i = C_l_u2C2.begin();
        i!= C_l_u2C2.end(); i++) {
 
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    // TODO BUG: this assertion will occur if interface has nodes in C3
-    // need to fix this!!  See $$$$$ above.
-    // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ fails with three_frame_interface.str
     assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
     assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
 
