@@ -40,14 +40,18 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
 {
     // zero  out the clique instantiations.
     for (unsigned i=0; i<preorder.size(); i++)
+    {
+        preorder[i]->recycleAllCliqueValues();
         preorder[i]->instantiation.clear();
+    }
 
-    preorder[0]->enumerateValues(0, NULL, viterbi);
+    preorder[0]->enumerateValues(0, -1, viterbi);
     for (unsigned i=0; i<preorder.size()-1; i++)
     {
         // we are done enumerating the values for preorder[i], and can
         // free the memory used in its instantiationAddress
-        preorder[i]->instantiationAddress.clear();  
+        if (i%2)  // a separator; instantiationAddress only used in separators
+            preorder[i]->instantiationAddress.clear();  
 
         // prune the low probability entries in preorder[i]
         // do not prune separators
@@ -58,24 +62,24 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
             preorder[i]->prune(beam);
 
         // propagate the surviving entries to preorder[i+1]
-        list<CliqueValue>::iterator li;
-        for (li=preorder[i]->instantiation.begin(); 
-        li!=preorder[i]->instantiation.end(); li++) 
+        for (unsigned j=0; j<preorder[i]->instantiation.size(); j++)
         {
+            CliqueValue &cv = Clique::gip[preorder[i]->instantiation[j]];
             // clamp the values of the variables in the parent clique
-            assert(li->values.size()==preorder[i]->discreteMember.size());
-            for (unsigned j=0; j<preorder[i]->discreteMember.size(); j++)
-                preorder[i]->discreteMember[j]->val = li->values[j];
+            assert(cv.values->size()==preorder[i]->discreteMember.size());
+            for (unsigned k=0; k<preorder[i]->discreteMember.size(); k++)
+                preorder[i]->discreteMember[k]->val = (*cv.values)[k];
 
             // compute the clique values of the child clique that are 
             // consistent with this parent instantiation.
-            preorder[i+1]->enumerateValues(0, &(*li), viterbi);
+            preorder[i+1]->enumerateValues(0, preorder[i]->instantiation[j], 
+                viterbi);
         }
     }
 
     // clean up after the last clique
     postorder[0]->prune(beam);  // didn't get a chance yet
-    postorder[0]->instantiationAddress.clear();
+    // postorder[0] not a separator; don't need to clear its instantiationAddrs
 
     // check if nothing had any probability, or pruning was too drastic
     if (postorder[0]->instantiation.size() == 0) 
@@ -86,12 +90,12 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
 
     // look at the probabilities
     logpr sum=0.0, max=0.0;
-    list<CliqueValue>::iterator li;
-    for (li=postorder[0]->instantiation.begin(); 
-    li!=postorder[0]->instantiation.end(); li++)
+    for (unsigned j=0; j<postorder[0]->instantiation.size(); j++)
     {
-        sum += li->pi;
-        if (li->pi > max) max = li->pi;
+        int inst_idx = postorder[0]->instantiation[j];
+        CliqueValue &cv = Clique::gip[inst_idx];
+        sum += cv.pi;
+        if (cv.pi > max) max = cv.pi;
     }
     dataProb=viterbiProb=0.0;
     if (viterbi)
@@ -117,15 +121,6 @@ bool CliqueChain::forwardPass(logpr beam, bool viterbi)
  */
 void CliqueChain::backwardPass()
 {
-    // zero out the separator lambdas
-    list<CliqueValue>::iterator li;
-    for (unsigned i=1; i<postorder.size(); i+=2)
-    {
-        Clique *cl = postorder[i];
-        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
-            li->lambda = 0.0;
-    }
-
     // compute the lambdas:
     // Non-separator clique values simply get the lambda of the separator
     // clique value that is descended from them.
@@ -133,19 +128,21 @@ void CliqueChain::backwardPass()
     // clique values descended from them, multiplied by the probGivenParents
     // of those descended values. Note that this was cleverly cached on the
     // forward pass.
+    // separator lambdas are zero already
 
     backwardDataProb = 0.0;  // lets see how closely it matches the forward DP.
 
     // first do the last clique, where the lambdas are all 1.
     Clique *cl = postorder[0];
-    for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
+    for (unsigned j=0; j<cl->instantiation.size(); j++)
     {
-        logpr t = li->lambda;  // retrieve the cached probGivenParents
-        li->lambda = 1.0;
+        CliqueValue &cv = Clique::gip[cl->instantiation[j]];
+        logpr t = cv.lambda;  // retrieve the cached probGivenParents
+        cv.lambda = 1.0;
         if (postorder.size() > 1)  // watch out for degenerate case
-            li->pred->lambda += t;
+            Clique::gip[cv.pred].lambda += t;
 	else 
-            backwardDataProb += li->lambda*li->pi;
+            backwardDataProb += cv.lambda*cv.pi;
     }
 
     // now do the middle cliques, whose instantiations must pull in a lambda 
@@ -154,26 +151,30 @@ void CliqueChain::backwardPass()
     for (int i=2; i<int(postorder.size())-2; i+=2)
     {
         Clique *cl = postorder[i];
-        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
+        for (unsigned j=0; j<cl->instantiation.size(); j++)
         {
+            CliqueValue &cv = Clique::gip[cl->instantiation[j]];
             // retrieve the cached probGivenParents
-            logpr t = li->lambda;
+            logpr t = cv.lambda;
 	    // update non-separator clique value
-            li->lambda = li->succ->lambda;
+            cv.lambda = Clique::gip[cv.succ].lambda;
 	    // update separator clique value
-	    li->pred->lambda += li->lambda*t;
+	    Clique::gip[cv.pred].lambda += cv.lambda*t;
         }
     }
 
     // now do the root, which does not do any pushing
-    if (preorder.size() > 1) {
+    if (preorder.size() > 1) 
+    {
         cl = preorder[0];
-        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++) 
-	      backwardDataProb += (li->lambda=li->succ->lambda)*li->pi;
+        for (unsigned j=0; j<cl->instantiation.size(); j++)    
+        {
+              CliqueValue &cv = Clique::gip[cl->instantiation[j]];
+	      backwardDataProb += (cv.lambda=Clique::gip[cv.succ].lambda)*cv.pi;
+        }
     }
-
-    // cout << "Forward data prob: " << dataProb.val() << " Backward data prob: "
-    // << backwardDataProb.val() << endl;
+    cout << "Forward data prob: " << dataProb.val() << " Backward data prob: "
+    << backwardDataProb.val() << endl;
 }
 
 /*-
@@ -203,15 +204,17 @@ bool CliqueChain::doViterbi(logpr beam)
 
     // first find the likeliest instantiation of the last clique
     logpr maxprob = 0.0;
-    CliqueValue *best = NULL;
+    int best = -1;
     Clique *cl = postorder[0];
-    list<CliqueValue>::iterator li;
-    for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
-        if (li->pi >= maxprob)
+    for (unsigned j=0; j<cl->instantiation.size(); j++)
+    {
+        CliqueValue &cv = Clique::gip[cl->instantiation[j]];
+        if (cv.pi >= maxprob)
         {
-            maxprob = li->pi;
-            best = &(*li);
+            maxprob = cv.pi;
+            best = j;
         }
+    }
     assert(maxprob==viterbiProb); // already computed on forward pass
             
     // then trace backwards and clamp the best values
@@ -220,9 +223,9 @@ bool CliqueChain::doViterbi(logpr beam)
         cl = postorder[i];
         // clamp the values
         for (unsigned j=0; j<cl->discreteMember.size(); j++)
-            cl->discreteMember[j]->val = best->values[j];
+            cl->discreteMember[j]->val = (*Clique::gip[best].values)[j];
         // set best to the best instantiation of the predecessor clique
-        best = best->pred;
+        best = Clique::gip[best].pred;
     }
 
     return true;
@@ -274,8 +277,6 @@ bool CliqueChain::computePosteriors(logpr beam)
 
 void CliqueChain::incrementEMStatistics()
 {
-    list<CliqueValue>::iterator li;
-
     // go over the cliques and increment the statistics for all the nodes 
     // assigned to each clique
 
@@ -290,20 +291,22 @@ void CliqueChain::incrementEMStatistics()
         // not be the same. it might be better to use an average. When
 	// using doubles, this shouldn't be necessary (or in fact
 	// have any effect).
-        logpr aveDataProb = logpr((void*)NULL, (dataProb.val()+backwardDataProb.val())/2);
+        logpr aveDataProb = logpr((void*)NULL, 
+            (dataProb.val()+backwardDataProb.val())/2);
 
         // consider the contribution of each instantiation of the clique
-        for (li=cl->instantiation.begin(); li!=cl->instantiation.end(); li++)
+        for (unsigned k=0; k<cl->instantiation.size(); k++)
         {
+            CliqueValue &cv = Clique::gip[cl->instantiation[k]];
             // clamp the instantiation values
             for (unsigned j=0; j<cl->discreteMember.size(); j++)
-                cl->discreteMember[j]->val = li->values[j];
+                cl->discreteMember[j]->val = (*cv.values)[j];
 
             // find the conditional families, given the switching parent values
             cl->findConditionalProbabilityNodes();
 
             // do the updates
-            logpr posterior = li->lambda*li->pi/aveDataProb;
+            logpr posterior = cv.lambda*cv.pi/aveDataProb;
 
 	    // 
 	    // Uncomment for debugging, sum up the posteriors
