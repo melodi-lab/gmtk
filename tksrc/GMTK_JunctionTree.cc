@@ -99,6 +99,7 @@ union_1_2_to_3(const set<RandomVariable*>& A,
 }
 
 bool JunctionTree::jtWeightUpperBound = false;
+bool JunctionTree::separatorIntersection = true;
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -2018,7 +2019,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
   // all nodes in separators for incomming messages for this clique.
   clique.unionIncommingCESeps.clear();
 
-  if (MaxClique::ceSeparatorDrivenInference) {
+  if (MaxClique::ceSeparatorDrivenInference && separatorIntersection) {
     if (numSeparators == 0) {
       // This must be a leaf-node clique relatve to root.
       // 'unionIncommingCESeps' is already empty so no need to do anything there.
@@ -2135,13 +2136,17 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
     }
   } else {
-    // We are doing clique driven iteration. While we could use the
+    // Either we are doing clique driven iteration or we do not wish
+    // to do separator Intersection for separator driven. 
+
+    // In the case of CLIQUE-DRIVEN inference: while we could use the
     // same code as above (producing both accumulated intersection and
     // remainder sets), we optimize for this case by making sure that
     // all accumualted intersection sets should be of zero size, so
     // that we only do one hash lookup for the remainder (which in
     // this case will be everything). Note also that the order of the
     // separators no longer matters.
+
     const set < RandomVariable* > empty;
     for (unsigned i=0;i<numSeparators;i++) {
       SeparatorClique& sep = part.separators[clique.ceReceiveSeparators[i]];
@@ -2815,11 +2820,13 @@ JunctionTree::unroll(const unsigned int numFrames)
   map < RVInfo::rvParent, unsigned > ppf;
 
   fp.unroll(basicTemplateUnrollAmount,unrolled_rvs,ppf);
+  setObservedRVs(unrolled_rvs);
 
   // TODO: clear out the old and pre-allocate for new size.
 
   // re-allocate.
   jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
+
 
   unsigned partNo = 0;
   const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
@@ -2840,6 +2847,44 @@ JunctionTree::unroll(const unsigned int numFrames)
   assert (partNo == jtIPartitions.size());
 
   return numUsableFrames;
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::setObservedRVs()
+ *   sets the observed RVs to their values, either taking values from
+ *   the global observation matrix, or taking the values from the files.
+ *
+ * Preconditions:
+ *   The given RVs must come from the result of unroll, and the observation matrix
+ *   *must* be set up and ready to be used.
+ *
+ * Postconditions:
+ *   All discrete observed random variables have a value that is their appropriate observed
+ *   value.
+ *
+ * Side Effects:
+ *   Modifies values of discrete observed random variables.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::setObservedRVs(vector <RandomVariable*>& rvs)
+{
+  // Set all discrete observed variables to their values here
+  vector <RandomVariable*>::iterator it;
+  for (it = rvs.begin(); it!= rvs.end(); it++) {
+    RandomVariable *rv = (*it);
+    if (rv->discrete && !rv->hidden) {
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      drv->setToObservedValue();
+    }
+  }
 }
 
 
@@ -3389,6 +3434,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   map < RVInfo::rvParent, unsigned > ppf;
 
   fp.unroll(basicTemplateUnrollAmount,unrolled_rvs,ppf);
+  setObservedRVs(unrolled_rvs);
 
   // actual absolute part numbers
   unsigned partNo;
@@ -3950,6 +3996,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 	  modifiedTemplateUnrollAmount);
 
   fp.unroll(basicTemplateUnrollAmount,cur_unrolled_rvs,cur_ppf);
+  setObservedRVs(cur_unrolled_rvs);
 
   const unsigned numPartitions = modifiedTemplateUnrollAmount+3;
   const unsigned numCoPartitions = modifiedTemplateUnrollAmount;

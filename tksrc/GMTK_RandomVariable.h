@@ -371,6 +371,11 @@ public:
   // It is assumed that the parent values are clamped at this point.
   virtual bool clampNextValue() = 0;
 
+  // iterators for this RV.
+  virtual void begin() = 0;
+  virtual bool next() = 0;
+
+
   ////////////////////////////////////////////////////////////////////////
   // Sets the variable according to the probability distribution determined
   // by its parent's values. (i.e., sample from this distribution)

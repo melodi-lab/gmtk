@@ -45,7 +45,7 @@ VCID("$Header$");
 #include "GMTK_LinMeanCondDiagGaussian.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_MixtureCommon.h"
-
+#include "GMTK_DiagGaussian.h"
 
 void
 LinMeanCondDiagGaussian::read(iDataStreamFile& is)
@@ -393,7 +393,7 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
 			zzAccumulators.ptr,
 			zAccumulators.ptr);
   covar->emIncrement(prob,fprob,f,base,stride,xxAccumulators.ptr);
-
+  DiagGaussian::emIncrementMeanDiagCovar(fprob,f,xAccumulators.size(),xAccumulators.ptr,xxAccumulators.ptr);
 }
 
 

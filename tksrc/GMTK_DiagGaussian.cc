@@ -330,6 +330,54 @@ DiagGaussian::emIncrement(logpr prob,
   const float fprob = prob.unlog();
   mean->emIncrement(prob,fprob,f,base,stride,nextMeans.ptr);
   covar->emIncrement(prob,fprob,f,base,stride,nextDiagCovars.ptr);
+
+  emIncrementMeanDiagCovar(fprob,f,nextMeans.size(),nextMeans.ptr,nextDiagCovars.ptr);
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emIncrementMeanDiagCovar
+ *      Simultaneously increments a mean and a diagonal covariance vector
+ *      with one loop rather than doing each separately with two loops.
+ * 
+ * Preconditions:
+ *      Vectors must be allocated and pointing to appropriately sized
+ *      arrays. No other assumptions are made (e.g., such as like prob
+ *      is large enough).
+ *
+ * Postconditions:
+ *      Vectors have been accumulated by f.
+ *
+ * Side Effects:
+ *      Changes meanAccumulator and diagCovarAccumulator arrays.
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+DiagGaussian::emIncrementMeanDiagCovar(const float fprob,
+				       const float * const f,
+				       const unsigned len,
+				       float *meanAccumulator,
+				       float *diagCovarAccumulator)
+{
+  register const float * f_p = f;
+  register const float *const f_p_endp = f + len;
+  register float *meanAccumulator_p = meanAccumulator;
+  register float *diagCovarAccumulator_p = diagCovarAccumulator;
+  do {
+    register float tmp = (*f_p)*fprob;
+    *meanAccumulator_p += tmp;
+    tmp *= (*f_p);
+    *diagCovarAccumulator_p += tmp;
+    meanAccumulator_p++;
+    diagCovarAccumulator_p++;
+    f_p ++;
+  } while (f_p != f_p_endp);
 }
 
 

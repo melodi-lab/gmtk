@@ -114,8 +114,15 @@ public:
 		   const float*f,
 		   const Data32* const base,
 		   const int stride);
+  static void emIncrementMeanDiagCovar(const float prob,
+				       const float *const f,
+				       const unsigned len,
+				       float *meanAccumulator,
+				       float *diagCovarAccumulator);
+
   void emEndIteration();
   void emSwapCurAndNew();
+
 
 
   // parallel training
