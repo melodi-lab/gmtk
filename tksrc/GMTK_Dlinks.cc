@@ -45,7 +45,7 @@ VCID("$Header$");
 
 /*-
  *-----------------------------------------------------------------------
- * CPT::CPT()
+ * Dlinks::Dlinks()
  *      Constructor
  *
  * Results:
@@ -56,7 +56,7 @@ VCID("$Header$");
  *
  *-----------------------------------------------------------------------
  */
-CPT::CPT() 
+Dlinks::Dlinks()
 {
 
 }
@@ -65,7 +65,7 @@ CPT::CPT()
 
 /*-
  *-----------------------------------------------------------------------
- * CPT::read(is)
+ * Dlinks::read(is)
  *      read in a distribution from file 'is'. 
  *      The data probs are stored as doubles, but when they are read in
  *      they are converted to the log domain.
@@ -79,23 +79,35 @@ CPT::CPT()
  *-----------------------------------------------------------------------
  */
 void
-CPT::read(iDataStreamFile& is)
+Dlinks::read(iDataStreamFile& is)
 {
-  is.read(rows,"Discrete1DPDF::read, rows");
-  if (rows <= 0)
-    error("Discrete1DPDF: read rows (%d) < 0 in input",rows);
-  is.read(cols,"Discrete1DPDF::read, cols");
-  if (rows <= 0)
-    error("Discrete1DPDF: read cols (%d) < 0 in input",cols);
+  int nFeats;
+  is.read(nFeats,"Dlinks::read, num feats");
+  if (nFeats <= 0)
+    error("Dlinks::read, read num feats (%d) < 0 in input",nFeats);
 
-  pmf.resize(rows*cols);
+  dIndices.resize(nFeats);
 
-  logpr * ptr = pmf.ptr;
-  for (int r=0;i<rows;i++) {
-    for (int c=0;c<cols;c++) {
-      double val;
-      is.readDouble(val,"CPT::read, reading value");
-      *ptr++ = val;
+  for (int i=0;i<nFeats;i++) {
+    int nLinks;
+    is.read(nLinks,"Dlinks::read, nLinks");
+
+    // Note we explicitely allow for there to be 0 links here.
+    // If so, the array size will be set to have zero length.
+    if (nLinks < 0)
+      error("Dlinks::read, read nLinks (%d) < 0 in input",nLinks);
+    dIndices[i].resize(nLinks);
+
+    for (j=0;j<nLinks;j++) {
+      int l,o;
+      // lags can be pos or negative
+      is.read(l,"Dlinks::read, lag");      
+      // offsets must be >= 0
+      is.read(o,"Dlinks::read, offset");
+      if (o < 0)
+	error("Dlinks::read, read offset (%d) < 0 in input",o);
+      dIndices[i].[j].lag = l;
+      dIndices[i].[j].offset = o;
     }
   }
 }
@@ -104,9 +116,8 @@ CPT::read(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
- * CPT::write(os)
+ * Dlinks::write(os)
  *      write out distribution to file 'os'. 
- *      The data probs are stored as doubles not in log domain.
  * 
  * Results:
  *      No results.
@@ -119,19 +130,17 @@ CPT::read(iDataStreamFile& is)
 void
 CPT::write(oDataStreamFile& os)
 {
-  is.write(rows,"Discrete1DPDF::write, rows");
-  is.write(cols,"Discrete1DPDF::write, cols");
-
-  logpr * ptr = pmf.ptr;
-  for (int r=0;i<rows;i++) {
-    for (int c=0;c<cols;c++) {
-      is.writeDouble((*ptr).unlog(),"CPT::read, reading value");
-      ptr++;
+  os.write(numFeats(),"Dlinks::write, num feats");
+  os.nl();
+  for (int i=0;i<numFeats();i++) {
+    os.write(numLinks(i),"Dlinks::write, nLinks");
+    for (j=0;j<numLinks(i);j++) {
+      os.write(dIndices[i].[j].lag,"Dlinks::write, lag");      
+      os.write(dIndices[i].[j].offset,"Dlinks::write, offset");
     }
+    os.nl();
   }
 }
-
-
 
 
 ////////////////////////////////////////////////////////////////////
