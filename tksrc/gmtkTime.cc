@@ -266,8 +266,6 @@ Arg Arg::Args[] = {
   Arg("veSepLogProdCardLimit",
       Arg::Opt,SeparatorClique::veSeparatorLogProdCardLimit,
       "The log (base 10) upper limit on a VE sep variable cardinality product"),
-  
-
 
   // Observation Matrix transformation options
   Arg("fdiffact",  Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
@@ -672,10 +670,26 @@ main(int argc,char*argv[])
     fflush(stdout);
 
     unsigned iteration = 0;
-
     bool first = true;
-    string best_tri_file;
+
+    // TODO: these ultimately should come from the same place.
+    string orig_vpap_str = varPartitionAssignmentPrior;
+    string orig_vcap_str = varCliqueAssignmentPrior;
+    string orig_jcap_str = JunctionTree::junctionTreeMSTpriorityStr;
+    string orig_icap_str = JunctionTree::interfaceCliquePriorityStr;
+    string orig_tri_file;
+    if (triFileName == NULL) 
+      orig_tri_file = string(strFileName) + GMTemplate::fileExtension;
+    else 
+      orig_tri_file = string(triFileName);
+
     double bestRate = 0.0;
+    string best_tri_file;
+    string best_vpap_str;
+    string best_vcap_str;
+    string best_jcap_str;
+    string best_icap_str;
+
 
     while (1) {
 
@@ -685,12 +699,17 @@ main(int argc,char*argv[])
       // where this program ensures that the result is triangulated
       // and where it reports the quality of the triangulation.
 
-      string tri_file;
-      // get name of triangulation file from the command line.
-      //   If trifile is named 'end' then, end.
-      //   If empty line, then use triFileName approach, assuming trifile is re-written.
+      // restore original options to overrided only if need be.
+      string tri_file = orig_tri_file;
+      string vpap_str  = orig_vpap_str ;
+      string vcap_str =  orig_vcap_str;
+      string jcap_str =  orig_jcap_str;
+      string icap_str =  orig_icap_str;
 
-      // TODO: support vcap, etc. options. vcap=DBD, etc.
+      // get name of triangulation file (and other options) from the command line.
+      //   If trifile is named 'end' then, stop processing.
+      //   If an empty line occurs, then use triFileName approach, assuming trifile is re-written.
+
       char buff[16384];
       fflush(stdout);
       if (!fgets(buff,sizeof(buff),stdin)) {
@@ -701,19 +720,123 @@ main(int argc,char*argv[])
       if (buff[n-1] == '\n')
 	buff[n-1] = '\0';
       if (strlen(buff) == 0) {
-	if (triFileName == NULL) 
-	  tri_file = string(strFileName) + GMTemplate::fileExtension;
-	else 
-	  tri_file = string(triFileName);
+	// do nothing since defaults are already set.
       } else if (strcmp(buff,"END") == 0 || 		 
 		 strcmp(buff,"end") == 0) {
 	multiTest = false;
 	break; // out of enclosing do loop 
-      } else
-	tri_file = buff;
+      } else {
+	// TODO: support vcap, etc. options. vcap=DBD, etc.
+	// parse the buffer string using the following format.
+	// option1="value" option2="value2" option3="value3" etc.
+	// double quotes can be excaped (part of the value) by using \" character.
+	// I.e., we can do trifile="foobar\"baz" will ask for a file named foobar"baz
+	// Options currently supported:
+	//   trifile="file"
+	//   vcap="vcap options"
+	//   vpap="vpap options"
+	//   jcap="jpap options"
+	//   icap="icap options"
 
-      if (first)
+	char* buffp=buff;
+	while (*buffp) {
+	  // get next option.
+
+	  // skip white space
+	  while ( *buffp && isspace(*buffp) )
+	    buffp++;
+
+	  // end if this is the end of the string.
+	  if (!*buffp)
+	    break;
+	  
+	  if (!strncmp("vcap=\"",buffp,6)) {
+	    buffp += 6; // skip to option.
+	    char* buffpp = buffp+1;
+	    while (*buffpp && ((*buffpp != '"') || (buffpp[-1] == '\\'))) {
+	      buffpp++;
+	    }
+	    if (!*buffpp)
+	      break; // missing end quote, so no option.
+	    
+	    *buffpp = '\0';
+	    vcap_str = buffp;
+	    // printf("vcap_str=(%s)\n",vcap_str.c_str());
+	    *buffpp = '"';
+	    buffp = buffpp+1;
+	  } else if (!strncmp("vpap=\"",buffp,6)) {
+	    buffp += 6; // skip to option.
+	    char* buffpp = buffp+1;
+	    while (*buffpp && ((*buffpp != '"') || (buffpp[-1] == '\\'))) {
+	      buffpp++;
+	    }
+	    if (!*buffpp)
+	      break; // missing end quote, so no option.
+	    
+	    *buffpp = '\0';
+	    vpap_str = buffp;
+	    *buffpp = '"';
+	    buffp = buffpp+1;
+	  } else if (!strncmp("jcap=\"",buffp,6)) {
+	    buffp += 6; // skip to option.
+	    char* buffpp = buffp+1;
+	    while (*buffpp && ((*buffpp != '"') || (buffpp[-1] == '\\'))) {
+	      buffpp++;
+	    }
+	    if (!*buffpp)
+	      break; // missing end quote, so no option.
+	    
+	    *buffpp = '\0';
+	    jcap_str = buffp;
+	    *buffpp = '"';
+	    buffp = buffpp+1;
+	  } else if (!strncmp("icap=\"",buffp,6)) {
+	    buffp += 6; // skip to option.
+	    char* buffpp = buffp+1;
+	    while (*buffpp && ((*buffpp != '"') || (buffpp[-1] == '\\'))) {
+	      buffpp++;
+	    }
+	    if (!*buffpp)
+	      break; // missing end quote, so no option.
+	    
+	    *buffpp = '\0';
+	    icap_str = buffp;
+	    *buffpp = '"';
+	    buffp = buffpp+1;
+	  } else if (!strncmp("trifile=\"",buffp,6)) {
+	    buffp += 9; // skip to option.
+	    char* buffpp = buffp+1;
+	    while (*buffpp && ((*buffpp != '"') || (buffpp[-1] == '\\'))) {
+	      buffpp++;
+	    }
+	    if (!*buffpp)
+	      break; // missing end quote, so no option.
+	    
+	    *buffpp = '\0';
+	    tri_file = buffp;
+	    // printf("trifile=(%s)\n",tri_file.c_str());
+	    *buffpp = '"';
+	    buffp = buffpp+1;
+	  } else {
+	    fprintf(stderr,"WARNING: unrecognized string option (%s)\n",buffp);
+	    // skip
+	    buffp++;
+	  }
+	}
+      }
+
+      // TODO: clean this up. code below can't retain these ptrs.
+      JunctionTree::junctionTreeMSTpriorityStr=(char*)jcap_str.c_str();
+      JunctionTree::interfaceCliquePriorityStr=(char*)icap_str.c_str();
+
+      if (first) {
 	best_tri_file = tri_file;
+	best_vpap_str = vpap_str;
+	best_vcap_str =	vcap_str;
+	best_jcap_str = jcap_str;
+	best_icap_str = icap_str;
+      }
+
 
       GMTemplate gm_template(fp);
       {
@@ -742,7 +865,7 @@ main(int argc,char*argv[])
       // CREATE JUNCTION TREE DATA STRUCTURES
       infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
       JunctionTree myjt(gm_template);
-      myjt.setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+      myjt.setUpDataStructures(vpap_str.c_str(),vcap_str.c_str());
       myjt.prepareForUnrolling();
       if (jtFileName != NULL)
 	myjt.printAllJTInfo(jtFileName);
@@ -788,6 +911,10 @@ main(int argc,char*argv[])
       const int limitTime = MAX(seconds+rlimitSlop,1);
 
       printf("--------\n%d: Operating on trifile '%s'\n",iteration,tri_file.c_str());
+      printf("%d: Other options: vpap=%s,vcap=%s,jcap=%s,icap=%s\n",
+	     iteration,
+	     vpap_str.c_str(),vcap_str.c_str(),
+	     jcap_str.c_str(),icap_str.c_str());
       printf("%d: ",iteration); 
       printf("Running program for approximately %d seconds, not to exceed %d CPU seconds.\n",seconds,limitTime);
       fflush(stdout);
@@ -842,6 +969,10 @@ main(int argc,char*argv[])
 	  
 	  if (curRate > bestRate) {
 	    best_tri_file = tri_file;
+	    best_vpap_str = vpap_str;
+	    best_vcap_str = vcap_str;
+	    best_jcap_str = jcap_str;
+	    best_icap_str = icap_str;
 	    bestRate = curRate;
 	  }
 
@@ -942,7 +1073,11 @@ main(int argc,char*argv[])
       first = false;
     }
 
-    printf("--------\nBest trifile found at %0.3e partitions/sec is '%s'\n--------\n",bestRate,best_tri_file.c_str());
+    printf("--------\n");
+    printf("Best trifile found at %0.3e partitions/sec is '%s'\n",bestRate,best_tri_file.c_str());
+    printf("Best options: vpap=%s, vcap=%s, jcap=%s, icap=%s\n",best_vpap_str.c_str(),best_vcap_str.c_str(),
+	   best_jcap_str.c_str(),best_icap_str.c_str());
+    printf("--------\n");
 
   } // end of multi-test section.
 

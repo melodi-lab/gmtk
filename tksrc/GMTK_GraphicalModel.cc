@@ -476,6 +476,7 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
   //    I: ever increasing cardinality of variables.
   //    M: ever increasing smart cardinality of variables, tie breaking by number of children.
   //    T: ever increasing smart cardinality of variables, tie breaking by number of deterministic children.
+  //    // P: ever increasing smart cardinality of variables, tie breaking by number of sparse children.
   //    A: alphabetical (for debugging purposes)
   //    F: by frame number (for debugging purposes)
   //    N: first by alpha name and next by frame (for debugging purposes)
