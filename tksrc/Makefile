@@ -36,7 +36,7 @@ INSTALL_EXE = $(INSTALL) -m 555
 #
 # Program options.
 #
-# OPTFLAGS = -O
+# OPTFLAGS = -O2 -DNDEBUG
 OPTFLAGS =
 
 EXFLAGS =  # extra flags via command line (e.g., -pg).
@@ -57,7 +57,7 @@ docdir = $(prefix)/man/man1
 #
 # Libraries.
 #
-LIBS = -lfileParser  -lmiscSupport -lpfile -lIEEEsupport -lfl -lm 
+LIBS = -lfileParser  -lmiscSupport -lpfile -lIEEEsupport -lfl -lsunmath -lm 
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
