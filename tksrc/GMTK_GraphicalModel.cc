@@ -451,8 +451,9 @@ GraphicalModel::topologicalSortRecurseRandom(const set<RandomVariable*>& sortSet
  */
 bool
 GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarList,
-					    const set<RandomVariable*>& sortSet,
-					    vector<RandomVariable*>& outputVarList)
+					 const set<RandomVariable*>& sortSet,
+					 vector<RandomVariable*>& outputVarList,
+					 const string priorityStr)
 {
   outputVarList.clear();
   outputVarList.resize(inputVarList.size());
@@ -462,6 +463,10 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
     rv->tag = 0;
   }
   unsigned position=0;
+
+#if 0
+  // original code (with fixed COB priority)
+
   // first do a pass doing just continuous variables
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
     RandomVariable* rv = (*it);
@@ -476,7 +481,6 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
   }
 
   // sort using other criterion as well.
-
   // next do a pass for any observed variables.
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
     RandomVariable* rv = (*it);
@@ -489,6 +493,7 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
 					      position))
 	return false;
   }
+
   // next do a pass for any binary variables.
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
     RandomVariable* rv = (*it);
@@ -499,17 +504,128 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
       continue;
     if (rv->tag == 0)
       if (!topologicalSortRecurseContFirst(sortSet,
-					      outputVarList,
-					      rv,
-					      position))
+					   outputVarList,
+					   rv,
+					   position))
 	return false;
   }
 
   // could continue here doing ternary, etc. variables depending
   // on what exists in set of nodes.
 
-  // last do a pass to hit any remainder.
+#endif
 
+  // Different cases of sort to be prioritized by position in string:
+  //    C: continuous, observed
+  //    D: discrete, observed, deterministic
+  //    O: observed
+  //    B: binary
+  //    I: ever increasing cardinality of variables.
+  // 
+  // Some good ones to try: 
+  //   COB, 
+  //   CDOI or CODI (good when no continuous vars)
+  //
+
+  for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
+    const char curCase = toupper(priorityStr[charNo]);
+
+    if (curCase == 'C') {
+
+      // Do a pass doing just continuous observed variables We do these
+      // here to avoid having to re-compute them many times (in case
+      // caching is turned off).
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RandomVariable* rv = (*it);
+	if (rv->discrete || rv->hidden)
+	  continue;
+	if (rv->tag == 0)
+	  if (!topologicalSortRecurseContFirst(sortSet,
+					       outputVarList,
+					       rv,
+					       position))
+	    return false;
+      }
+    } else if (curCase == 'D') {
+
+
+      // Do a pass for discrete *deterministic* (meaning really
+      // determinisitc, not sparse) observed variable.  Getting these in
+      // early are likely to kill off a large chunk of unnecessary
+      // computation.
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RandomVariable* rv = (*it);
+	if (!(rv->discrete && rv->deterministic() && !rv->hidden))
+	  continue;
+	if (rv->tag == 0)
+	  if (!topologicalSortRecurseContFirst(sortSet,
+					       outputVarList,
+					       rv,
+					       position))
+	    return false;
+      }
+
+    } else if (curCase == 'O') {
+
+      // Next do a pass for any other observed variables.
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RandomVariable* rv = (*it);
+	if (rv->hidden)
+	  continue;
+	if (rv->tag == 0)
+	  if (!topologicalSortRecurseContFirst(sortSet,
+					       outputVarList,
+					       rv,
+					       position))
+	    return false;
+      }
+    } else if (curCase == 'I') {
+
+      // Sort the reminaing discrete variables in increasing order of
+      // cardinality and do a pass in that increasing order.
+      multimap< unsigned ,RandomVariable*> cardSortedNodes;
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RandomVariable* rv = (*it);
+	if (!rv->discrete)
+	  continue;
+	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	pair< unsigned , RandomVariable*> pr (drv->cardinality, rv );
+	cardSortedNodes.insert(pr);    
+      }
+      for (multimap< unsigned, RandomVariable*>::iterator m = cardSortedNodes.begin();
+	   m != cardSortedNodes.end(); m++) {
+	// unsigned lcard = (*m).first;
+	RandomVariable* rv = (*m).second;
+	// DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	// printf("Doing node %s(%d) with card %d\n",(*m).second->name().c_str(),(*m).second->frame(),drv->cardinality);
+	if (rv->tag == 0)
+	  if (!topologicalSortRecurseContFirst(sortSet,
+					       outputVarList,
+					       rv,
+					       position))
+	    return false;
+      }
+    } else if (curCase == 'B') {
+      // next do a pass for any binary variables.
+      for (it=inputVarList.begin();it != inputVarList.end();it++) {
+	RandomVariable* rv = (*it);
+	if (!rv->discrete)
+	  continue;
+	DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	if (drv->cardinality > 2)
+	  continue;
+	if (rv->tag == 0)
+	  if (!topologicalSortRecurseContFirst(sortSet,
+					       outputVarList,
+					       rv,
+					       position))
+	    return false;
+      }
+    }
+  }
+
+  // Last do a pass to hit any remainder that the above might not have
+  // done.
   for (it=inputVarList.begin();it != inputVarList.end();it++) {
     RandomVariable* rv = (*it);
     if (rv->tag == 0)
@@ -519,6 +635,7 @@ GraphicalModel::topologicalSortContFirst(const set<RandomVariable*>& inputVarLis
 					      position))
 	return false;
   }
+
   assert (position == inputVarList.size());
   return true;
 }

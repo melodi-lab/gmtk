@@ -1532,7 +1532,7 @@ computeUnrollParamaters(const unsigned numFrames,
   //     T = p + e + (M+jS)*c for j = positive integer.
   // check both here:
   if ( T < p + e + (M+S)*c ) {
-    infoMsg(Info,"Unrolling Problem: Unrolling segment with %d=[P=%d,C=%d,E=%d] frames, but with M=%d,S=%d, minimum frame size is %d\n",T,p,c,e,M,S,p+e+(M+S)*c );
+    infoMsg(Info,"Unrolling Incompatibility: Unrolling segment with %d frames with template of [P=%d,C=%d,E=%d] frames, but with M=%d,S=%d, minimum segment frame length is %d\n",T,p,c,e,M,S,p+e+(M+S)*c );
     return false;
   }
   // Ok, it's possible to use this sentence.

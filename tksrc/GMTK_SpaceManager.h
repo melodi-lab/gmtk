@@ -51,9 +51,9 @@ class SpaceManager : public IM {
 
   // Rate of exponential growth for memory allocation
   // should be const (but compiler complains)
-  float growthFactor;
+  float growthRate;
 
-  // Rate of additive growth for memory allocation
+  // additive growth for memory allocation
   // should be const (but compiler complains)
   unsigned growthAddition;
 
@@ -71,18 +71,18 @@ public:
 
 
   SpaceManager(const unsigned _startingSize=2,
-	       const float _growthFactor=2.0,
+	       const float _growthRate=2.0,
 	       const unsigned _growthAddition=1,
 	       const float _decayRate=1.0)
     : startingSize(_startingSize),
-      growthFactor(_growthFactor),
+      growthRate(_growthRate),
       growthAddition(_growthAddition),
       decayRate(_decayRate)
   {
     if (decayRate <= 0.0)
       error("ERROR: SpaceManager, decay rate %f must be > 0", decayRate);
-    if (growthFactor  < 1.0)
-      error("ERROR: SpaceManager, growth factor %f must be >= 1", growthFactor);
+    if (growthRate  < 1.0)
+      error("ERROR: SpaceManager, growth factor %f must be >= 1", growthRate);
     if (growthAddition  < 1)
       error("ERROR: SpaceManager, growth addition %d must be > 0", growthAddition);
     if (startingSize < 1)
@@ -122,13 +122,25 @@ public:
   void recomputeMinSize(unsigned arg) {
   }
 
+  float growthRateVal() { return growthRate; }
+  unsigned growthAdditionVal() { return growthAddition; }
+  float decayRateVal() { return decayRate; }
+
   // Bump up to the next new size
   unsigned advanceToNextSize() {
-    currentAllocationSize = (int)((double)currentAllocationSize*growthFactor) + 
+    currentAllocationSize = (int)((double)currentAllocationSize*growthRate) + 
       growthAddition;
     return currentAllocationSize;
   }
 
+  unsigned nextSizeFrom(const unsigned curSize) {
+    return (unsigned)(((float)curSize)*growthRate) +  growthAddition;
+  }
+
+  void setCurrentAllocationSizeIfLarger(const unsigned curSize) {
+    if (curSize > currentAllocationSize)
+      currentAllocationSize = curSize;
+  }
 
 }; 
 
