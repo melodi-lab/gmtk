@@ -1,6 +1,6 @@
 /*-
  * GMTK_GaussianComponent
- *        Component elements that are shared by all Gaussiaan type clases.
+ *        Component elements that are shared by all Gaussian type clases.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
