@@ -61,7 +61,7 @@ DiscreteRandomVariable::findConditionalParents()
 /*-
  *-----------------------------------------------------------------------
  * Function
- *     tieWith(randomVariable *rv)
+ *     tieWith(RandomVariable *rv)
  *     Sets things up so that this random variable has all parameters
  *     that are tied with the argument.
  *  
@@ -73,7 +73,7 @@ DiscreteRandomVariable::findConditionalParents()
  *
  *-----------------------------------------------------------------------
  */
-DiscreteRandomVariable::tieWith(randomVariable* rv)
+DiscreteRandomVariable::tieWith(RandomVariable* rv)
 {
 
 #ifndef NDEBUG

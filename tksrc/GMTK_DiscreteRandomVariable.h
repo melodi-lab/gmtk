@@ -44,8 +44,8 @@ private:
 
 public:
 
-
-  DiscreteRandomVariable();
+  DiscreteRandomVariable(string _label, vartype vt, int card=0)
+  {RandomVariable::RandomVariable(string _label, vartype vt, int card=0);}
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
@@ -58,7 +58,7 @@ public:
   // 
   // compute the probability
   logpr probGivenParents() {
-    reutrn curCPT->probGivenParents(curConditionalParents,val);
+    return curCPT->probGivenParents(curConditionalParents,val);
   }
   // clamp this RV to its "first" value
   void clampFirstValue() { it = curCPT->first(); val = it.val; }
@@ -73,12 +73,12 @@ public:
   void restoreCachedValue() {val=cached_val;}
 
   void makeRandom() { 
-    for (i=0;i<conditionalCPTs.len();i++) 
+    for (int i=0;i<conditionalCPTs.len();i++) 
       conditionalCPTs[i].makeRandom();
   }
 
   void makeUniform()  { 
-    for (i=0;i<conditionalCPTs.len();i++) 
+    for (int i=0;i<conditionalCPTs.len();i++) 
       conditionalCPTs[i].makeUniform();
   }
 
@@ -88,7 +88,7 @@ public:
 
   ////////////////////////////////////////////////////////////////
   // tie self set of parameters with those of rv
-  void tieWith(randomVariable *rv);
+  void tieWith(RandomVariable *rv);
 
 
   ///////////////////////////////////////////////////
