@@ -3732,14 +3732,40 @@ triangulateCompletePartition(
 /*-
  *-----------------------------------------------------------------------
  * triangulateFrontier
+ *
  *   Triangulate using the Frontier algorithm, a procedure that works
- *   entirely on the directed graph. Note that the graph doesn't need
- *   to be moralized here, but it won't change things or hurt if it already is.
- *   Also, note that Frontier sometimes (but rarely) will not triangulate the graph with
+ *   entirely on the directed graph. The Frontier algorithm is defined
+ *   in:
+ *
+ *       "A forward-backward algorithm for inference in Bayesian
+ *       networks and an empirical comparison with HMMs", G. Zweig,
+ *       Master's Thesis, Dept. of Computer Science, U.C. Berkeley,
+ *       May 9th, 1996.
+ *
+ *   We don't use the Frontier alg. for inference (as it was
+ *   originally defined, it was an algorithm to specify the order of
+ *   variables to marginalize a big joint probability
+ *   distribution). Here, rather, the essentials of the Frontier
+ *   algorithm are extracted just to perform a graph triangulation for
+ *   us that can be evaluated and compared with the other graph
+ *   triangulation heuristics implemented in GMTK.
+ *  
+ *   Note, that Frontier requires a topological ordering of the nodes.
+ *   In this implementation, we first compute a random topological
+ *   ordering. This allows this routine to be called many times, each
+ *   time it will produce a different triangulation.
+ *
+ *   Note that the graph doesn't need to be moralized here, as
+ *   Frontier does that for us when it selects cliques, but it won't
+ *   change things or hurt if it already is.  Also, note that Frontier
+ *   sometimes (but rarely) will not triangulate the graph with
  *   respect to the cumpulsory interface completion edges that have at
- *   this point been added to the graph. If Frontier misses those edges,
- *   then we do a quick MCS pass to fix this up. In practice, however, this
- *   does not happen very often, and also it depends on the current boundary.
+ *   this point been added to the graph. If Frontier misses those
+ *   edges, then we do a quick MCS pass to fix this up. In practice,
+ *   however, this does not happen very often, and also it depends on
+ *   the current boundary. If we spent time finding a good boundary
+ *   then the cases when Frontier does this are likely to be quite
+ *   poor triangulations.
  *   
  *
  * Preconditions:
