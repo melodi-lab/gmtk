@@ -133,7 +133,9 @@ main(int argc,char*argv[])
   }
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
-  gm.cliqueChainEM(maxEMIterations, pruneRatio);
+//  gm.cliqueChainEM(maxEMIterations, pruneRatio);
+cout << "\n\n\n Doing enumerative EM!!! \n\n";
+  gm.enumerativeEM(maxEMIterations);
 
   return 0;  
 
