@@ -71,7 +71,12 @@ public:
   // (e.g., for an E partition).
   set <RandomVariable*> riNodes;
 
-  // Nodes that are not assigned in this partition.
+  // Nodes that are not assigned in this partition. If all nodes are
+  // forward-time directed, we are guaranteed that they will be
+  // assigned in the left adjacent partition. Similarly, if all nodes
+  // are backward-time directed, the nodes are assigned in the right
+  // adjacent partition. With a bi-directional graph, the nodes could
+  // be assigned in either the left or right adjacent partition.
   set <RandomVariable*> unassignedInPartition;
   
   // The separators for this partition.  If this is a P partition,
@@ -321,6 +326,10 @@ public:
       return (a.weights) > (b.weights);
     }
   };
+
+
+  // Call many of the routines below in the right order.
+  void setUpDataStructures();
 
   // create the three junction trees for the basic partitions.
   void createPartitionJunctionTrees() {

@@ -209,9 +209,9 @@ MaxClique::MaxClique(MaxClique& from_clique,
   }
 
   // and clone over assigned nodes and sorted assigned nodes
-  sortedAssignedNodes.reserve(from_clique.sortedAssignedNodes.size());
-  for (unsigned i=0;i<from_clique.sortedAssignedNodes.size();i++) {
-    RandomVariable* rv = from_clique.sortedAssignedNodes[i];
+  sortedAssignedProbNodes.reserve(from_clique.sortedAssignedProbNodes.size());
+  for (unsigned i=0;i<from_clique.sortedAssignedProbNodes.size();i++) {
+    RandomVariable* rv = from_clique.sortedAssignedProbNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -223,8 +223,8 @@ MaxClique::MaxClique(MaxClique& from_clique,
     }
 
     RandomVariable* nrv = newRvs[ppf[rvp]];
-    assignedNodes.insert(nrv);
-    sortedAssignedNodes.push_back(nrv);
+    assignedProbNodes.insert(nrv);
+    sortedAssignedProbNodes.push_back(nrv);
   }
 
   // do unassignedIteratedNodes
@@ -603,7 +603,7 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
 float
 MaxClique::
 computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-			    const set<RandomVariable*>& assignedNodes,
+			    const set<RandomVariable*>& assignedProbNodes,
 			    const set<RandomVariable*>& unassignedIteratedNodes,
 			    const set<RandomVariable*>& separatorNodes,
 			    const set<RandomVariable*>& cumulativeAssignedNodes,
@@ -634,7 +634,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 		 (unassignedInPartition.find(rv) == unassignedInPartition.end())) {
 	tmp_weight += log10((double)drv->cardinality);
       } else if (separatorNodes.find(rv) != separatorNodes.end()) {
-	if (assignedNodes.find(rv) != assignedNodes.end()) {
+	if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
 	  tmp_weight += log10((double)drv->cardinality);
 	} else {
 	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
@@ -675,7 +675,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 float
 MaxClique::
 computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-			    const set<RandomVariable*>& assignedNodes,
+			    const set<RandomVariable*>& assignedProbNodes,
 			    const set<RandomVariable*>& unassignedIteratedNodes,
 			    const set<RandomVariable*>& separatorNodes,
 			    const set<RandomVariable*>& cumulativeAssignedNodes,
@@ -704,7 +704,7 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
       } else if (unassignedIteratedNodes.find(rv) != unassignedIteratedNodes.end()) {
 	truly_sparse = false;
       } else if (separatorNodes.find(rv) != separatorNodes.end()) {
-	if (assignedNodes.find(rv) != assignedNodes.end()) {
+	if (assignedProbNodes.find(rv) != assignedProbNodes.end()) {
 	  truly_sparse = false;	  
 	} else {
 	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
@@ -823,13 +823,13 @@ MaxClique::prepareForUnrolling()
  *   by a separator driven iteration).
  *
  * Preconditions:
- *   assignedNodes, sortedAssignedNodes, and precedingUnassignedIteratedNodes members 
+ *   assignedProbNodes, sortedAssignedProbNodes, and precedingUnassignedIteratedNodes members 
  *   must have already been computed.
  *
  * Postconditions:
  *   If we iterate over all nodes, then iterateSortedAssignedNodesP is of size 0.
  *   If we iterate over some nodes, then iterateSortedAssignedNodesP is of same size
- *        as assignedNodes and indicates which nodes to iterate over.
+ *        as assignedProbNodes and indicates which nodes to iterate over.
  *
  * Side Effects:
  *     potentially modifies one member variable
@@ -844,7 +844,7 @@ void
 MaxClique::computeAssignedNodesToIterate()
 {
   set<RandomVariable*> res;
-  set_intersection(assignedNodes.begin(),assignedNodes.end(),
+  set_intersection(assignedProbNodes.begin(),assignedProbNodes.end(),
 		   precedingUnassignedIteratedNodes.begin(),precedingUnassignedIteratedNodes.end(),
 		   inserter(res,res.end()));
   if (res.size() == 0)
@@ -853,9 +853,9 @@ MaxClique::computeAssignedNodesToIterate()
   // too bad, we've got assigned nodes in this clique that
   // we do not iterate, so we must add a check in iteration.
 
-  iterateSortedAssignedNodesP.resize(sortedAssignedNodes.size());
-  for (unsigned i=0;i<sortedAssignedNodes.size();i++) {
-    if ((precedingUnassignedIteratedNodes.find(sortedAssignedNodes[i]) != precedingUnassignedIteratedNodes.end())) {
+  iterateSortedAssignedNodesP.resize(sortedAssignedProbNodes.size());
+  for (unsigned i=0;i<sortedAssignedProbNodes.size();i++) {
+    if ((precedingUnassignedIteratedNodes.find(sortedAssignedProbNodes[i]) != precedingUnassignedIteratedNodes.end())) {
       // found, no need to iterate (which is bad since this means that
       // we'll be iterating this assigned node via the separator).
       iterateSortedAssignedNodesP[i] = false;
@@ -904,10 +904,10 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent)
   fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
 
   psp(f,indent*2);
-  fprintf(f,"%d Assigned: ",assignedNodes.size()); printRVSet(f,assignedNodes);  
+  fprintf(f,"%d Assigned: ",assignedProbNodes.size()); printRVSet(f,assignedProbNodes);  
 
   psp(f,indent*2);
-  fprintf(f,"%d Assigned Sorted: ",sortedAssignedNodes.size()); printRVSet(f,sortedAssignedNodes);  
+  fprintf(f,"%d Assigned Sorted: ",sortedAssignedProbNodes.size()); printRVSet(f,sortedAssignedProbNodes);  
 
   psp(f,indent*2);
   fprintf(f,"%d Unassigned Iterated: ",unassignedIteratedNodes.size()); printRVSet(f,unassignedIteratedNodes);
@@ -1030,9 +1030,9 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   }
 
   // and clone over assigned nodes and sorted assigned nodes
-  fSortedAssignedNodes.resize(from_clique.sortedAssignedNodes.size());
-  for (i=0;i<from_clique.sortedAssignedNodes.size();i++) {
-    RandomVariable* rv = from_clique.sortedAssignedNodes[i];
+  fSortedAssignedNodes.resize(from_clique.sortedAssignedProbNodes.size());
+  for (i=0;i<from_clique.sortedAssignedProbNodes.size();i++) {
+    RandomVariable* rv = from_clique.sortedAssignedProbNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    

@@ -338,6 +338,46 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
 ////////////////////////////////////////////////////////////////////
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::setUpDataStructures()
+ *
+ *   Sets up all the data structures in a JT (other than preparing for unrolling),
+ *   and calls all the routines in the necessary order.
+ *
+ * Preconditions:
+ *   Junction tree must have been created. Should not have called 
+ *   setUpDataStructures() before.
+ *
+ * Postconditions:
+ *   All data structures are set up. The JT is ready to have
+ *   prepareForUnrolling() called.
+ *
+ * Side Effects:
+ *   Changes many internal data structures in this object. 
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::setUpDataStructures()
+{
+  createPartitionJunctionTrees();
+  computePartitionInterfaces();
+  createDirectedGraphOfCliques();
+  assignRVsToCliques();
+  setUpMessagePassingOrders();
+  createSeparators();
+  computeSeparatorIterationOrders();
+  getPrecedingIteratedUnassignedNodes();
+}
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::createPartitionJunctionTree()
@@ -698,18 +738,21 @@ JunctionTree::computePartitionInterfaces()
   // Perhaps use the maximum weight clique???
   E_root_clique = 0;
   // E_root_clique = E1.cliqueWithMinWeight();
+  // If this is updated, need also to update in other places
+  // the code, search for 'E_root_clique case'
   
 }
-
 
 
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::createPartitionInterface()
- *   finds the "interface" between the two partitions. The interface are
+ *   Finds the "interface" between the two partitions. The interface are
  *   the two cliques in each interface that have maximum intersection.
  *   These are the two cliques that are joined in a junction tree.
  *   It is assumed that partition 1 is just to the "left" of partition 2.
+ *   This does an N*M algorithm, where N (resp. M) is the number of cliques 
+ *   in one (resp. the other) partition
  *
  *
  * Preconditions:
@@ -921,7 +964,7 @@ JunctionTree::createDirectedGraphOfCliquesRecurse(JT_Partition& part,
  *
  * Postconditions:
  *     Each of the partitions so specified in the code below
- *     are now such that their cliques have their 'assignedNodes' 
+ *     are now such that their cliques have their 'assignedProbNodes' 
  *     member filled in.
  *
  * Side Effects:
@@ -1005,7 +1048,7 @@ JunctionTree::assignRVsToCliques()
  *
  * Postconditions:
  *     the partition so specified in the code below
- *     are now such that their cliques have their 'assignedNodes' 
+ *     are now such that their cliques have their 'assignedProbNodes' 
  *     member filled in.
  *
  * Side Effects:
@@ -1035,6 +1078,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
     // pre-compute it here.
     set<RandomVariable*> parSet;
     for (unsigned p=0;p<rv->allPossibleParents.size();p++) {
+      // TODO: see if there is a faster STL way to go from vector to set.
       // fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
       parSet.insert(rv->allPossibleParents[p]);
     }
@@ -1046,17 +1090,24 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 		     rv,
 		     parSet,assigned,
 		     scoreSet);
+    infoMsg(IM::High,
+	    "Part %s: random variable %s(%d) with its parents contained in %d cliques\n",
+	    partName,
+	    rv->name().c_str(),rv->frame(),scoreSet.size());
+
     if (!assigned) {
       if (scoreSet.size() > 0) {
 	// choose the first one to assign.
 	unsigned clique_num = (*(scoreSet.begin())).second;
-	part.cliques[clique_num].assignedNodes.insert(rv);
-	part.cliques[clique_num].sortedAssignedNodes.push_back(rv);
+	part.cliques[clique_num].assignedProbNodes.insert(rv);
+	part.cliques[clique_num].sortedAssignedProbNodes.push_back(rv);
 	assigned = true;
 	infoMsg(IM::Med,
 		"Part %s: random variable %s(%d) assigned to clique %d\n",
 		partName,
 		rv->name().c_str(),rv->frame(),clique_num);
+
+	// @@@ add to assignedIterNodes here.
       } else {
 	// rv was not assigned to this partition, it must be the case
 	// that it will be assigned to a different partition. This
@@ -1118,23 +1169,23 @@ JunctionTree::assignRVToClique(const char *const partName,
 
   // First, check if directed_closure(rv) == (rv U parents(rv)) not in
   // the current clique, and if so then continue on down.
-  bool closure_not_in_clique = (curClique.nodes.find(rv) == curClique.nodes.end());
+  bool closure_in_clique = (curClique.nodes.find(rv) != curClique.nodes.end());
   
-  // printf("clique%d: from rv, closure_not_in_clique = %d\n",root,closure_not_in_clique);
+  // printf("clique%d: from rv, closure_in_clique = %d\n",root,closure_in_clique);
 
-  if (!closure_not_in_clique) {
+  if (closure_in_clique) {
     // need to further check that parents are in clique
     set<RandomVariable*> res;
     set_intersection(curClique.nodes.begin(),
 		     curClique.nodes.end(),
 		     parSet.begin(),parSet.end(),
 		     inserter(res,res.end()));
-    closure_not_in_clique = (res.size() != parSet.size());
+    closure_in_clique = (res.size() == parSet.size());
   }
 
   // printf("clique%d: from par(rv), closure_not_in_clique = %d, num children = %d\n",root,closure_not_in_clique,part.cliques[root].children.size());
 
-  if (!closure_not_in_clique) {
+  if (closure_in_clique) {
     // So closure(rv) is in current clique, meaning rv and all its
     // parents are members of this clique, but it is not nec. the case
     // that all of rv's parents are themselves assigned to this clique
@@ -1150,146 +1201,149 @@ JunctionTree::assignRVToClique(const char *const partName,
     // If parents(rv) are actually assigned to this clique already,
     // then assign rv to this clique right now.
     set<RandomVariable*> res;
-    set_intersection(curClique.assignedNodes.begin(),
-		     curClique.assignedNodes.end(),
+    set_intersection(curClique.assignedProbNodes.begin(),
+		     curClique.assignedProbNodes.end(),
 		     parSet.begin(),parSet.end(),
 		     inserter(res,res.end()));
     const bool parents_assigned_to_clique
       = (res.size() == parSet.size());
+
+    vector<float> score;
     if (parents_assigned_to_clique) {
       // we've got all our parents assigned, so assign
       // child to this clique right now.
-      curClique.assignedNodes.insert(rv);
-      curClique.sortedAssignedNodes.push_back(rv);
-      assigned = true;
+      // curClique.assignedProbNodes.insert(rv);
+      // curClique.sortedAssignedProbNodes.push_back(rv);
+      // assigned = true;
       infoMsg(IM::Med,
 	      "Part %s: random variable %s(%d) assigned to clique %d with all its parents\n",partName,
 		rv->name().c_str(),rv->frame(),root);
       // all done with this routine since rv has been assigned.
-      return;
+      score.push_back(0);
     } else {
-
-      // Note: in this discussion, we make a distinction between node
-      // parents and children (i.e., original graph parents and
-      // children) and JT parents and children which are cliques in
-      // the JT. A child clique c of a parent p in the JT is one such
-      // that c ~ p and that depth(c) = depth(p)+1, where
-      // depth(root)=0 in the junction tree.
-
-      // While we have a clique that contains this rv and all of its
-      // node parents, it is not the case that all of rv's node
-      // parents are assigned to this clique. Moreover, it will never
-      // be the case that rv's node parents will be assigned to *this*
-      // clique since we are presumably assigning rv nodes to cliques
-      // in topological order, and at this point, we've already
-      // assigned rv's node parents somewhere else.
-
-      // Therefore, we have to do the best we can (i.e., we're now in
-      // a situation where rv will live in a clique without all of its
-      // node parents assigned).
-
-      // What we do, is continue on down. It may be the the case that
-      // we find a clique with rv and all of rv's node parents
-      // assigned (in which case we assign rv right then), but in the
-      // mean time we keep track of this clique's "score" using a set
-      // of heuristics. At some time later, the rv will be assigned to
-      // the clique with the *LOWEST* score.
-
-      // Heuristics: want to assign rv to a clique where it:
-      // 
-      //    A) has all of its node parents in clique (already satisfied here)
-      //
-      //    B) has its node parents actually assigned (not satisfied here)
-      //
-      //    C) be in a clique CL close enough to the root clique so
-      //    that all rv's node parents are assigned to cliques that
-      //    are JT decendants of CL in the JT rooted at root. This way
-      //    the separator driven iterations will preserve any
-      //    sparsity driven zeros in the CPTs.
-      //
-      //    D) has lots of node children whose other node parents are
-      //    already (or will be) assigned.
-      // 
-      //    E) is assign as far away from root as possible, to try
-      //    encourage it to have as much "influence" as possible in
-      //    JT parents (but this is only a poor heuristic)
-      //
-      //    F) (NOT DONE BELOW) is assigned to a clique where it has the greatest
-      //    number of node descendants (but this is only a heuristic
-      //    since to gain benefit, we would need to have it be such
-      //    that those node descendants have their node parents in
-      //    clique as well.
-      // 
-
-      // TODO: The variable being in a clique with its parents
-      // *assigned* is really only important for sparse or
-      // deterministic nodes. Ideally, this bit of info should also
-      // affect the assignment process.
-
-      // TODO: think this through as this code is only
-      // heuristic. There is most likely some theoretically best thing
-      // to do here.
-      
-      vector<float> score;
-
-      // Push back items in decreasing order of priority.  Lower
-      // numbers is better (e.g., more negative or less positive is
-      // higher priority).  First thing inserted has highest priority.
-
-      // Previous Parents in Junction Tree.
-      // insert value:
-      //   0, if all parents have been assigned in the cummulative set, or
-      //   1, if not.
-      {
-	set<RandomVariable*> res;
-	set_intersection(curClique.cumulativeAssignedNodes.begin(),
-			 curClique.cumulativeAssignedNodes.end(),
-			 parSet.begin(),parSet.end(),
-			 inserter(res,res.end()));
-	bool parents_not_assigned = (res.size() != parSet.size());
-	score.push_back(parents_not_assigned);
-	if (!parents_not_assigned) {
-	  // then this is good! we've found at least one.
-	  infoMsg(IM::Med,
-		  "Part %s: found random variable %s(%d) in clique %d with all parents in children cliques\n",partName,
-		  rv->name().c_str(),rv->frame(),root);
-	}
-      }
-
-
-      // Distance from root, among the higher priorities that
-      // are equal, try to be as far away from the root as possible so
-      // as to prune away as much zero as possible as early as
-      // possible.
-      score.push_back(-depth);
-
-
-      // Number of children in current clique. If rv has lots of
-      // children in this clique, it is hopeful that other parents of
-      // those children might also be assigned to the same clique.
-      unsigned numChildren = 0;
-      for (unsigned i=0;i<rv->allPossibleChildren.size();i++) {
-	RandomVariable* child = rv->allPossibleChildren[i];
-	if (curClique.nodes.find(child) != curClique.nodes.end())
-	  numChildren++;
-      }
-      score.push_back(-numChildren);
-
-
-      // And so on. We can push back as many heuristics as we want.
-      // alternatively, perhaps take a weighted average of some of
-      // them??
-
-      // TODO: add more heuristics here, and/or produce better prioritized
-      // order above.
-
-      // ...
-      
-      // done inserting heuristicss, now insert the score and the
-      // current clique into the set.
-      pair < vector<float>, unsigned> p(score,root);
-      scoreSet.insert(p);
+      score.push_back(1);
     }
+
+    // Note: in this discussion, we make a distinction between node
+    // parents and children (i.e., original graph parents and
+    // children) and JT parents and children which are cliques in
+    // the JT. A child clique c of a parent p in the JT is one such
+    // that c ~ p and that depth(c) = depth(p)+1, where
+    // depth(root)=0 in the junction tree.
+
+    // While we have a clique that contains this rv and all of its
+    // node parents, it is not the case that all of rv's node
+    // parents are assigned to this clique. Moreover, it will never
+    // be the case that rv's node parents will be assigned to *this*
+    // clique since we are presumably assigning rv nodes to cliques
+    // in topological order, and at this point, we've already
+    // assigned rv's node parents somewhere else.
+
+    // Therefore, we have to do the best we can (i.e., we're now in
+    // a situation where rv will live in a clique without all of its
+    // node parents assigned).
+
+    // What we do, is continue on down. It may be the the case that
+    // we find a clique with rv and all of rv's node parents
+    // assigned (in which case we assign rv right then), but in the
+    // mean time we keep track of this clique's "score" using a set
+    // of heuristics. At some time later, the rv will be assigned to
+    // the clique with the *LOWEST* score.
+
+    // Heuristics: want to assign rv to a clique where it:
+    // 
+    //    A) has all of its node parents in clique (already satisfied here)
+    //
+    //    B) has its node parents actually assigned (not satisfied here)
+    //
+    //    C) be in a clique CL close enough to the root clique so
+    //    that all rv's node parents are assigned to cliques that
+    //    are JT decendants of CL in the JT rooted at root. This way
+    //    the separator driven iterations will preserve any
+    //    sparsity driven zeros in the CPTs.
+    //
+    //    D) has lots of node children whose other node parents are
+    //    already (or will be) assigned.
+    // 
+    //    E) is assign as far away from root as possible, to try
+    //    encourage it to have as much "influence" as possible in
+    //    JT parents (but this is only a poor heuristic)
+    //
+    //    F) (NOT DONE BELOW) is assigned to a clique where it has the greatest
+    //    number of node descendants (but this is only a heuristic
+    //    since to gain benefit, we would need to have it be such
+    //    that those node descendants have their node parents in
+    //    clique as well.
+    // 
+
+    // TODO: The variable being in a clique with its parents
+    // *assigned* is really only important for sparse or
+    // deterministic nodes. Ideally, this bit of info should also
+    // affect the assignment process.
+
+    // TODO: think this through as this code is only
+    // heuristic. There is most likely some theoretically best thing
+    // to do here.
+      
+
+
+    // Push back items in decreasing order of priority.  Lower
+    // numbers is better (e.g., more negative or less positive is
+    // higher priority).  First thing inserted has highest priority.
+
+    // Previous Parents in Junction Tree.
+    // insert value:
+    //   0, if all parents have been assigned in the cummulative set, or
+    //   1, if not.
+    {
+      set<RandomVariable*> res;
+      set_intersection(curClique.cumulativeAssignedNodes.begin(),
+		       curClique.cumulativeAssignedNodes.end(),
+		       parSet.begin(),parSet.end(),
+		       inserter(res,res.end()));
+      bool parents_not_assigned = (res.size() != parSet.size());
+      score.push_back(parents_not_assigned);
+      if (!parents_not_assigned) {
+	// then this is good! we've found at least one.
+	infoMsg(IM::Med,
+		"Part %s: found random variable %s(%d) in clique %d with all parents in children cliques\n",partName,
+		rv->name().c_str(),rv->frame(),root);
+      }
+    }
+
+
+    // Distance from root, among the higher priorities that
+    // are equal, try to be as far away from the root as possible so
+    // as to prune away as much zero as possible as early as
+    // possible.
+    score.push_back(-depth);
+
+
+    // Number of children in current clique. If rv has lots of
+    // children in this clique, it is hopeful that other parents of
+    // those children might also be assigned to the same clique.
+    unsigned numChildren = 0;
+    for (unsigned i=0;i<rv->allPossibleChildren.size();i++) {
+      RandomVariable* child = rv->allPossibleChildren[i];
+      if (curClique.nodes.find(child) != curClique.nodes.end())
+	numChildren++;
+    }
+    score.push_back(-numChildren);
+
+
+    // And so on. We can push back as many heuristics as we want.
+    // alternatively, perhaps take a weighted average of some of
+    // them??
+
+    // TODO: add more heuristics here, and/or produce better prioritized
+    // order above.
+
+    // ...
+      
+    // done inserting heuristicss, now insert the score and the
+    // current clique into the set.
+    pair < vector<float>, unsigned> p(score,root);
+    scoreSet.insert(p);
   }
 
   // continue on down.
@@ -1349,8 +1403,8 @@ JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
 	      part.cliques[child].cumulativeAssignedNodes.end(),
 	      inserter(res,res.end()));
   }
-  set_union(curClique.assignedNodes.begin(),
-	    curClique.assignedNodes.end(),
+  set_union(curClique.assignedProbNodes.begin(),
+	    curClique.assignedProbNodes.end(),
 	    res.begin(),res.end(),
 	    inserter(curClique.cumulativeAssignedNodes,
 		     curClique.cumulativeAssignedNodes.end()));
@@ -1835,11 +1889,11 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
   // lastly, assign unassignedIteratedNodes in this clique
   {
     // unassigned nodes, unassigned iterated nodes, 
-    // compute: unassignedIteratedNodes  = nodes - (assignedNodes U accumSeps)
-    // first: compute res = nodes - assignedNodes
+    // compute: unassignedIteratedNodes  = nodes - (assignedProbNodes U accumSeps)
+    // first: compute res = nodes - assignedProbNodes
     set<RandomVariable*> res;
     set_difference(clique.nodes.begin(),clique.nodes.end(),
-		   clique.assignedNodes.begin(),clique.assignedNodes.end(),
+		   clique.assignedProbNodes.begin(),clique.assignedProbNodes.end(),
 		   inserter(res,res.end()));
     // next: compute unassignedIteratedNodes = res - accumSeps
     // note at this point accumSeps contains the union of all nodes in all separators
@@ -2078,6 +2132,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
   if (interfaceNodes.size() > 0)
     jt_part.findRInterfaceClique(root,tmp);
   else {
+    // 'E_root_clique case'
     // Presumably, this is an E partition, so the root should be done
     // same as E_root_clique computed above.
     root = 0; 
@@ -2130,9 +2185,6 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
   // return badness_count*1000 + weight;
 
 }
-
-
-
 
 
 /*-

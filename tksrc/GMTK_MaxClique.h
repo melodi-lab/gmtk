@@ -224,7 +224,7 @@ public:
 					  const set<RandomVariable*>& unionSepNodes,
 					  const bool useDeterminism = true);
   static float computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
-					   const set<RandomVariable*>& assignedNodes,
+					   const set<RandomVariable*>& assignedProbNodes,
 					   const set<RandomVariable*>& unassignedIteratedNodes,
 					   const set<RandomVariable*>& separatorNodes,
 					   const set<RandomVariable*>& cumulativeAssignedNodes,
@@ -238,7 +238,7 @@ public:
   float weightInJunctionTree(const set<RandomVariable*>& unassignedInPartition,
 			     const bool useDeterminism = true) const { 
     return computeWeightInJunctionTree(nodes,
-				       assignedNodes,
+				       assignedProbNodes,
 				       unassignedIteratedNodes,
 				       accumSeps,
 				       cumulativeAssignedNodes,
@@ -251,7 +251,6 @@ public:
   // print just the clique nodes
   void printCliqueNodes(FILE* f);
 
-
   
   //////////////////////////////////////////////
   // TODO: figure out a way so that the member variables below exist only in
@@ -259,46 +258,85 @@ public:
   // triangulation.
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // The set of nodes that are assigned to this
-  // maxClique from which probabilities are extracted.
-  // Necessarily it is the case
-  // that assignedNodes <= nodes (i.e., set containment)
-  // TODO: needs to be an array in topological partial order.
-  set<RandomVariable*> assignedNodes;
+  // The set of nodes that are assigned to this maxClique from which
+  // probabilities are extracted.  Necessarily it is the case that
+  // assignedProbNodes <= nodes (i.e., set containment).
+  // Computed in JunctionTree::assignRVsToCliques().
+  // Used to:
+  //    1) compute cumulativeAssignedNodes below
+  //    2) compute unassignedIteratedNodes = nodes - (assignedProbNodes U accumSeps)
+  //    3) compute JT weight
+  //    4) compute iterateSortedAssignedNodesP
+  set<RandomVariable*> assignedProbNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // a topologically sorted vector version of assignedNodes
+  // a topologically sorted vector version of assignedProbNodes
   // The topological sort is relative only to the variables
   // in this clique.
-  vector<RandomVariable*> sortedAssignedNodes;
+  // Computed in JunctionTree::assignRVsToCliques().
+  // Used to:
+  //   1) compute iterateSortedAssignedNodesP (since order here must be sorted order)
+  //   2) compute fSortedAssignedNodes in inference cliques
+  vector<RandomVariable*> sortedAssignedProbNodes;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // These are the nodes in this clique that have their parents
+  // in the same clique, but have been assigned to the
+  // assignedProbNodes set in another clique. We still
+  // keep track of them here, since we can use CPT iteration
+  // over them rather than [0,card-1] iteration.
+  // Computed in JunctionTree::assignRVsToCliques().
+  // set<RandomVariable*> assignedIterNodes;
+
 
   // USED ONLY IN JUNCTION TREE INFERENCE 
-  // predicate for each each sorted assigned node, used to say if that
+  // Predicate for each each sorted assigned node, used to say if that
   // node should be iterated, or if its value has already been set by
-  // a separator iteration. If this has zero length, then we iterate
-  // everything. If it does not have zero length, it has same length
-  // as sortedAssignedNodes array.
+  // an incomming separator being iterated. If this has zero length,
+  // then we iterate everything in sortedAssignedProbNodes. If it does not
+  // have zero length, it has same length as sortedAssignedProbNodes array
+  // indicating which ones should not be CPT-iterated.
+  // computed in MaxClique::computeAssignedNodesToIterate()
+  // Used to:
+  //   1) determine which of fSortedAssignedNodes in inf clique should be iterated.
   sArray < bool > iterateSortedAssignedNodesP;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // The set of nodes that are not
-  // assigned to this clique but that also are not iterated over by
-  // the incomming separators. Therefore, these nodes in the clique
-  // must be iterated over from scratch.  The hope is that assignment
-  // and setup can be done so there are very few or zero of such
-  // nodes. Note however that once a clique iterates over such a node,
-  // any later cliques (closer to the JT root) will not have to re-do
-  // this as these assignments here will be represented in this
-  // cliques out-going sepset.
+  // The set of nodes that are not assigned to this clique but that
+  // also are not iterated over by the incomming
+  // separators. Therefore, these nodes in the clique must be iterated
+  // over from scratch.  The hope is that assignment and setup can be
+  // done so there are very few or zero of such nodes. Note however
+  // that once a clique iterates over such a node, any later cliques
+  // (closer to the JT root) will not have to re-do this as these
+  // assignments here will be represented in this cliques out-going
+  // sepset.
+  // Computed in JunctionTree::computeSeparatorIterationOrders()
+  // Used to:
+  //  1) help compute precedingUnassignedIteratedNodes
+  //  2) compute JT weight in clique
+  //  3) compute fUnassignedIteratedNodes in inference clique (which says
+  //     which nodes in a clique are unassigend so iterated [0,card-1]
   set<RandomVariable*> unassignedIteratedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of assigned nodes cummulative in the JT relative to root
-  // in the JT for the current partition.  This variable is used only
-  // by the code that assigns CPTs to cliques. Note that
-  // cumulativeAssignedNodes includes the assignedNodes
-  // in the current clique.
+  // in the JT for the current partition.  Note that
+  // cumulativeAssignedNodes DOES INCLUDE the assignedProbNodes in the current
+  // clique.  Also note, that during inference, this includes all
+  // assigned nodes in the previous partition, but during jt-weight
+  // evaluation in triangulation, it does not include those previous
+  // partition nodes. Instead, those nodes are a subset of
+  // JT_Partition::unassignedInPartition.
+  // Computed in JunctionTree::getCumulativeAssignedNodes
+  //    via JunctionTree::assignRVsToCliques()
+  // Used to:
+  //   1) when assigning RV, heuristic to tell if a rv
+  //      when being considered to be assigned to a clique
+  //      has its parents previously assigned in lower JT cliques (i.e.,
+  //       will the parents be assigned in an CE incomming separator.
+  //   2) compute JT weight
   set<RandomVariable*> cumulativeAssignedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -307,22 +345,41 @@ public:
   // clique. This is used to determine which of the assigned nodes
   // need actually be iterated within a clique, and which are already
   // set by the separator iterations. Note that
-  // cumulativeUnassignedIteratedNodes does *NOT* include the
-  // assignedNodes in the current clique (thus the name preceding).
+  // precedingUnassignedIteratedNodes does *NOT* include the
+  // unassignedIteratedNodes in the current clique (thus the name
+  // preceding).  
+  // Computed in JunctionTree::getPrecedingIteratedUnassignedNodes()
+  // Used to:
+  //    1) compute, iterateSortedAssignedNodesP to determine
+  //       if any of the assigned nodes are being iterated
+  //       by previously unassigned iterated nodes.
+  // Note: should be replaced by accumSeps, perhaps remove.
   set<RandomVariable*> precedingUnassignedIteratedNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The union of of all nodes in separators for incomming messages
   // for this clique. By 'incomming', what is meant is incomming
   // during the collect evidence stage.
+  // Computed in JunctionTree::computeSeparatorIterationOrder()
+  // Used to:
+  //   1) when computing the sep sets division between previous
+  //      separator iteration, and remainder, this is
+  //      built up accumulatively. When done, it contains
+  //      the union of all CE incoming separators, but 
+  //      is not currently used outside the routine it is created in
+  //      (other than printing).
   set<RandomVariable*> accumSeps;
-
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // These are the nodes that are hidden (i.e., they are
   // the non-continous hidden variables). These are
   // the nodes whose values will be hashed.
+  // Computed in MaxClique::prepareForUnrolling()
+  // Used to:
+  //   1) set the size of the clique packer
+  //   2) set the size of discreteValuePtrs in inference clique
+  //      to get quick access to the set of RV vals.
   vector<RandomVariable*> hiddenNodes;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -332,6 +389,7 @@ public:
   // maxcliques, cloned partitions (with same corresponding clique
   // array ordering) can use the same structure (ints offsets 
   // in an array) on different cliques in unrolled partitions.
+  // Computed in JunctionTree::createPartitionJunctionTree()
   vector<unsigned> neighbors;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -344,13 +402,15 @@ public:
   // on different cliques. This variable is used only by the code that
   // assigns CPTs to cliques, so the variable DOES NOT SURIVE during a
   // clique cloning.
+  // Computed in JunctionTree::createDirectedGraphOfCliques()
   vector<unsigned> children;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // set of separators that we receive from in the collect evidence stage.
-  // (equivalently, the set of separators we send to in distribute evidence
-  // stage)
-  // Again, ints indexing into parent partition.
+  // set of separators that we receive from in the collect evidence
+  // stage.  (equivalently, the set of separators we send to in
+  // distribute evidence stage) Again, ints indexing into parent
+  // partition.
+  // Created in JunctionTree::createSeparators().
   vector<unsigned> ceReceiveSeparators;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -362,18 +422,19 @@ public:
   unsigned ceSendSeparator;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
-  // structure used to pack and unpack clique values
+  // structure used to pack and unpack clique values for this
+  // clique. Shared by all infernece instances of this clique.
   PackCliqueValue packer;
 
   // USED ONLY IN JUNCTION TREE INFERENCE 
-  // structure to allocate clique values from.  These things are
+  // Structure to allocate clique values from.  These things are
   // allocated and deleted in bulk (rather than individually) and that
   // is handled by this object, thereby acting effectively as a
   // customized memory management unit.
   // 
-  // Note that if a packed clique value can be held in <
-  // sizeof(unsigned)*8, then this isn't used since the pointer
-  // storage can be used instead.
+  // Note that if a packed clique value can be held in less than
+  // IMC_NWWOH*sizeof(unsigned)*8 bits, then this isn't used since the
+  // direct storage (overlaped with a pointer) is used instead.
   CliqueValueHolder valueHolder;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -386,8 +447,8 @@ public:
   // storage stays roughly constant for any amount of unrolling).
   //
   // Note that if a packed clique value can be held in < IMC_NWWOH*
-  // sizeof(unsigned) bytes, then this isn't used since the pointer
-  // storage can be used instead.
+  // sizeof(unsigned) bytes, then this isn't used since the direct
+  // storage (overlaped with pointer) can be used instead.
   vhash_set< unsigned > cliqueValueHashSet;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -397,14 +458,15 @@ public:
   // This will be used for initial memory allocation units, etc.
   // by this clique object and clones of this clique object.
   // It is only usable after we have prepared for unrolling.
+  // TODO: add proper allocation statistics object and use that.
   unsigned allocationUnitChunkSize;
 
 
   // Clear up the things that are just to create and hold information
   // about this maxclique being used in a junction tree.
   void clearJTStructures() {
-    assignedNodes.clear();
-    sortedAssignedNodes.clear();
+    assignedProbNodes.clear();
+    sortedAssignedProbNodes.clear();
     iterateSortedAssignedNodesP.clear();
     unassignedIteratedNodes.clear();
     cumulativeAssignedNodes.clear();
@@ -414,7 +476,6 @@ public:
     neighbors.clear();
     children.clear();
     ceReceiveSeparators.clear();
-    
   }
 
 
@@ -443,9 +504,11 @@ public:
 //////////////////////////////////////////////////////////////////////////////
 // Number of words to exist in a packed clique without a hash. These
 // may be set to zero to turn on hashing even when packed clique
-// values take up less than 1 machine word. To turn off hashing, set
-// to something larger than the largest packed clique value. The
-// number of bits required for a packed clique value is equal to:
+// values take up less than 1 machine word. To turn off hashing
+// always, set to something larger than the largest packed clique
+// value in machine words (e.g., 2, 3, etc. but this might consume
+// lots of memory). The number of bits required for a packed clique
+// value is equal to:
 //
 //    num_bits_required = \sum_{v \in C} ceil(log2(card(v)))
 //
@@ -453,19 +516,19 @@ public:
 // and card(v) is the cardinality of the variable v (the
 // card is taken from the structure file).
 // --
-// InferenceMaxClique Number Words WithOut a Hash: Namely,
-// the number of words that can be stored directly as
-// a packed clique value before we resort to using
-// a shared hash table for all instances of this origin clique.
-#define IMC_NWWOH (2)
-// InferenceSeparatorClique Number Words WithOut a Hash: Namely,
-// the number of words that can be stored directly as
-// a packed clique value before we resort to using
-// a shared hash table for all instances of this origin clique.
-// One for the accumulated Intersection packed values
-#define ISC_NWWOH_AI (2)
-// And for the remainder
-#define ISC_NWWOH_RM (2)
+// InferenceMaxClique Number Words WithOut a Hash (IMC_NWWOH): Namely,
+// the number of words that can be stored directly as a packed clique
+// value before we resort to using a shared hash table for all
+// instances of this origin clique.
+#define IMC_NWWOH (1)
+// InferenceSeparatorClique Number Words WithOut a Hash (ISC_NWWOH):
+// Namely, the number of words that can be stored directly as a packed
+// clique value before we resort to using a shared hash table for all
+// instances of this origin clique.  One for the accumulated
+// Intersection packed values
+#define ISC_NWWOH_AI (1)
+// And the same for the remainder in a Separator.
+#define ISC_NWWOH_RM (1)
 // -- 
 //////////////////////////////////////////////////////////////////////////////
 
