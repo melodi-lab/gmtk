@@ -1,13 +1,22 @@
 //
 //
-// A very simple array class.
-// This class is not meant for protection, it is only
+// A simple array class that is basically a glorified 
+// type*.
+// 
+// This class is NOT meant for protection. It is
+// mean to have type* (such as an int*, float*, double*, etc.)
+// and where the underlying pointer is easy to access for
+// low level loops. But this class also provides
 // for convenient managing of lengths, allocation, deallocation,
 // and resizing.
+//
+// ****** NOTE ***** There is no COPY CONSTRUCTOR.
+
 // $Header$
 //
 // Written by: Jeff Bilmes
 //             bilmes@icsi.berkeley.edu
+//
 
 #ifndef SARRAY_H
 #define SARRAY_H
@@ -33,15 +42,6 @@ class sArray {
       error("Error: sArray::sArray _size < 0");
     if (size > 0)
       ptr = new T[size];
-  }
-  // copy constructor
-  sArray(sArray<T> &arr) {
-    size = arr.size;
-    ptr = NULL;
-    if (size > 0) {
-      ptr = new T[size];
-      ::memcpy((void*)ptr,(void*)arr.ptr,sizeof(T)*size);
-    }
   }
 
   ~sArray() {
