@@ -16,13 +16,6 @@
  *
  */ 
 
-
-TODO:
-Break definitions into two grand sections,
-  discrete and continuous support.
-
-
-
 #ifndef GMTK_RANDOMVARIABLE
 #define GMTK_RANDOMVARIABLE
 
@@ -39,7 +32,7 @@ Break definitions into two grand sections,
 
 struct RandomVariable
 {
-    const bool discrete;
+    bool discrete;
     // Is the variable discrete?
     // Inference conditions on this; cliques keep track of the values of 
     // their discrete members.
@@ -48,7 +41,7 @@ struct RandomVariable
     // in the discrete case, the actual value of the variable.
     // Cliques keep track of the values of their discrete members.
 
-    const bool hidden;
+    bool hidden;
     // Is the node hidden, or is it an observation.
 
     // The probability of a variable taking a particular value depends on
@@ -71,11 +64,11 @@ struct RandomVariable
     // The set of variables that use this variable either as a switching
     // parent or as a (possible) conditional parent.
 
-    findConditionalParents();
+    void findConditionalParents();
     // Looks at the values of the switching parents, and sets the 
     // conditionalParents array appropriately.
 
-    findAllPossibleParents();
+    void findAllPossibleParents();
     // Iterates through all possible instantiations of the conditioning 
     // parents and unions together the parents. Stores the result in the
     // allPossibleParents array.
