@@ -112,7 +112,7 @@ protected:
     public:
 
       void parseFormula(
-        string& leafNodeVal 
+        string leafNodeVal 
         );
 
       leafNodeValType evaluateFormula(
