@@ -1888,3 +1888,8 @@ Sat Apr 24 22:21:09 2004
     allocators, default program options, etc. This gives us a one stop shop
     to set all defaults.
 
+Wed Apr 28 23:37:01 2004
+  - add option to turn off hash table sharing of clique and sep values and figure out a way
+    to do this without taking an additional branch hit.
+
+

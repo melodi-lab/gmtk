@@ -878,8 +878,8 @@ void GMTK_GM::showCliques()
     unsigned lc = 0;
     for (unsigned i=0; i<chain->preorderSize(); i++)
     {
-        cout << "Clique " << i << ":" << endl;
         Clique *cl = chain->preorder(i);
+        cout << "Clique " << i << ": " << cl->member.size() << " variables " << endl;
         map<RandomVariable *, bool> counts;
         for (unsigned m=0; m<cl->member.size(); m++)
         {
