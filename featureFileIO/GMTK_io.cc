@@ -907,13 +907,13 @@ DataOutStream::writeBinFeatures(FILE *fp,
 
   // for all frames in range
 
-  for (BP_Range::iterator fit  = fr->begin(); fit <= fr->end(); fit++) {
+  for (BP_Range::iterator fit  = fr->begin(); !fit.at_end(); fit++) {
 
     o->gotoFrame(*fit);
     
     // print continuous features
     
-    for (BP_Range::iterator cit = cr->begin(); cit <= cr->end(); cit++) {
+    for (BP_Range::iterator cit = cr->begin(); !cit.at_end(); cit++) {
       
       float *f = o->getContFea(*cit);
       
@@ -924,7 +924,7 @@ DataOutStream::writeBinFeatures(FILE *fp,
     
     // or discrete features 
     
-    for (BP_Range::iterator dit = dr->begin(); dit <= dr->end(); dit++) {
+    for (BP_Range::iterator dit = dr->begin(); !dit.at_end(); dit++) {
       
       Int32 *i = o->getDiscFea(*dit);
       
@@ -963,7 +963,7 @@ DataOutStream::writePFileFeatures(OutFtrLabStream_PFile *str,
   float *fp = ftr_buf;      
   UInt32 *lp = lab_buf;
 
-  for (BP_Range::iterator fit = fr->begin(); fit <= fr->end(); fit++) {
+  for (BP_Range::iterator fit = fr->begin(); !fit.at_end(); fit++) {
     
     o->gotoFrame(*fit);
     
@@ -971,7 +971,7 @@ DataOutStream::writePFileFeatures(OutFtrLabStream_PFile *str,
       
       // fill temporary feature buffer
       
-      for (BP_Range::iterator cit = cr->begin(); cit <= cr->end(); cit++,fp++) {
+      for (BP_Range::iterator cit = cr->begin(); !cit.at_end(); cit++,fp++) {
 	float *tmp_fp = o->getContFea(*cit);
 	if (tmp_fp == NULL)
 	  error("DataOutStream::writePFileFeatures: couldn't read %i'th feature for frame %i from buffer",*cit,*fit);
@@ -979,7 +979,7 @@ DataOutStream::writePFileFeatures(OutFtrLabStream_PFile *str,
       }
     }
     else if (n_ints > 0) {
-      for (BP_Range::iterator cit = cr->begin(); cit <= cr->end(); cit++,lp++){
+      for (BP_Range::iterator cit = cr->begin(); !cit.at_end(); cit++,lp++){
 	UInt32 *tmp_lp = (UInt32 *)o->getDiscFea(*cit);
 	if (tmp_lp == NULL)
 	  error("DataOutStream::writePFileFeatures: couldn't read %i'th feature for frame %i from buffer",*cit,*fit);
@@ -1022,13 +1022,13 @@ DataOutStream::writeAscFeatures(FILE *fp,
   // for all frames in range
 
 
-  for (BP_Range::iterator fit  = fr->begin(); fit <= fr->end(); fit++) {
+  for (BP_Range::iterator fit  = fr->begin(); !fit.at_end(); fit++) {
     
     o->gotoFrame(*fit);
     
     // print continuous features    
 
-    for (BP_Range::iterator cit = cr->begin(); cit <= cr->end(); cit++) {
+    for (BP_Range::iterator cit = cr->begin(); !cit.at_end(); cit++) {
       
       float *f = o->getContFea(*cit);
       
@@ -1042,7 +1042,7 @@ DataOutStream::writeAscFeatures(FILE *fp,
     
     // or print discrete features
     
-    for (BP_Range::iterator dit = dr->begin(); dit <= dr->end(); dit++) {
+    for (BP_Range::iterator dit = dr->begin(); !dit.at_end(); dit++) {
       
       Int32 *i = o->getDiscFea(*dit);
 
