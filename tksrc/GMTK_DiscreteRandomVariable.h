@@ -176,6 +176,13 @@ public:
     return _cachedProb;
   }
 
+  logpr probGivenParentsWSetup() {
+    findConditionalParents();
+    curCPT->becomeAwareOfParentValues(*curConditionalParents);
+    return probGivenParents();
+  }
+
+
 
   // set the RV (which must be 
   void setToObservedValue() {

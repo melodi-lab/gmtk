@@ -19,12 +19,15 @@
 
 /*
  * TODO:
- *   In some of the structures the choice of when
+ *   1) Maybe: In some of the structures the choice of when
  *   to use a hash table vs. an inlined value is done
  *   by either using an unsigned* or a unsigned. Create
  *   options where we do 'unsigned val[LEN]' and where
  *   only if packed value is > LEN words do we resort to
  *   the hash table.
+ *
+ *   2) Figure out way to remove the (unsigned**) type casts
+ *   in front of call to packer object (see below).   
  *
  */
 
@@ -465,6 +468,7 @@ MaxClique::prepareForUnrolling()
   // setup and re-construct packer
   assert (packer.unPackedLen() == 0); // make sure it is empty.
   new (&packer) PackCliqueValue(hiddenNodes);
+  assert (packer.packedLen() > 0);
 
   // TODO: optimize initial size and growth factor.  Compute an
   // estimate of the state space of this clique for a starting
@@ -476,13 +480,17 @@ MaxClique::prepareForUnrolling()
   if (allocationUnitChunkSize < 16)
     allocationUnitChunkSize = 16;
 
+  // @@@ set to small size now to test out re-allocation schemes.
+  allocationUnitChunkSize = 1;
+
   if (packer.packedLen() > 1) {
     // setup value hodler
     new (&valueHolder) CliqueValueHolder(hiddenNodes.size(),
 					 allocationUnitChunkSize,
 					 1.25);
-    // set up common clique hash tables
-    new (&hashTable) vhash_set< unsigned > (hiddenNodes.size());
+    // set up common clique hash tables 
+    // TODO: add appropriate default staring hash sizes.
+    new (&cliqueValueHashSet) vhash_set< unsigned > (hiddenNodes.size(),2);
   } else {
     // then no need to do a hash table at all, just store the packed
     // values in a local integer.
@@ -490,7 +498,56 @@ MaxClique::prepareForUnrolling()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::computeAssignedNodesToIterate()
+ *   
+ *   computes the number and set of nodes that are assigned to this clique
+ *   that we are actually to iterate over (rather than have them be iterated
+ *   by a separator driven iteration).
+ *
+ * Preconditions:
+ *   assignedNodes, sortedAssignedNodes, and precedingUnassignedIteratedNodes members 
+ *   must have already been computed.
+ *
+ * Postconditions:
+ *   If we iterate over all nodes, then iterateSortedAssignedNodesP is of size 0.
+ *   If we iterate over some nodes, then iterateSortedAssignedNodesP is of same size
+ *        as assignedNodes and indicates which nodes to iterate over.
+ *
+ * Side Effects:
+ *     potentially modifies one member variable
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MaxClique::computeAssignedNodesToIterate()
+{
+  set<RandomVariable*> res;
+  set_intersection(assignedNodes.begin(),assignedNodes.end(),
+		   precedingUnassignedIteratedNodes.begin(),precedingUnassignedIteratedNodes.end(),
+		   inserter(res,res.end()));
+  if (res.size() == 0)
+    return;
 
+  // too bad, we've got assigned nodes in this clique that
+  // we do not iterate, so we must add a check in iteration.
+
+  iterateSortedAssignedNodesP.resize(sortedAssignedNodes.size());
+  for (unsigned i=0;i<sortedAssignedNodes.size();i++) {
+    if ((precedingUnassignedIteratedNodes.find(sortedAssignedNodes[i]) != precedingUnassignedIteratedNodes.end())) {
+      // found, no need to iterate
+      iterateSortedAssignedNodesP[i] = false;
+    }  else {
+      // not found, need to iterate
+      iterateSortedAssignedNodesP[i] = true;
+    }
+  }
+}
 
 
 
@@ -552,6 +609,35 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent)
   psp(f,indent*2);
   fprintf(f,"Send Sep: %d\n",ceSendSeparator);
 
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::printCliqueNodes()
+ *   
+ *   prints the names and frames of the clique nodes.
+ *
+ * Preconditions:
+ *   all variables must have been set up.
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *     none
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MaxClique::printCliqueNodes(FILE*f)
+{
+  fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
 }
 
 
@@ -686,7 +772,7 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   maxCEValue.set_to_zero();
 
   // TODO: optimize this.
-  cliqueValues.resize(1000);
+  cliqueValues.resize(3);
 
 }
 
@@ -745,15 +831,14 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 
 
   unsigned sepValueNumber;  
-  if (sep.fAccumulatedIntersection.size() > 0) {
+  if (sep.origin.hAccumulatedIntersection.size() > 0) {
     // look up existing intersected values to see if we have a match
     // and only proceed if we do.
     
     // find index if it exists.
     unsigned tmp;
     unsigned *key;
-    unsigned *data;
-    // TODO: optimize this check out of loop
+    // TODO: optimize this check out of loop (perhaps also assign to const local variable).
     if (sep.origin.accPacker.packedLen() == 1) {
       key = &tmp;
     } else {
@@ -767,28 +852,28 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // int** foo = sep.accDiscreteValuePtrs.ptr;
     // sep.origin.accPacker.pack(foo,&tmp);
 
-    data = sep.iAccHashTable.find(key);
-    if (data == NULL) {
+    unsigned* indexp = sep.iAccHashMap.find(key);
+    if (indexp == NULL) {
       // Then not found in this separator, so it must have zero
       // probability. We continue with the next value of the previous
       // separator.
       return;
     } else {
       // need to further iterate.
-      sepValueNumber = *data;
+      sepValueNumber = *indexp;
     }
 
   } else {
     // TODO: check this, as this condition might fail if
     // we've completely pruned away parent clique.
     assert ( sep.separatorValues.size() == 1);
-    assert ( sep.fRemainder.size() > 0 );
+    assert ( sep.origin.hRemainder.size() > 0 );
     sepValueNumber = 0;
   }
 
   // Iterate through remainder of separator Q: should we do some
   // pruning here as well?
-  if (sep.fRemainder.size() == 0) {
+  if (sep.origin.hRemainder.size() == 0) {
     // only one remainder entry (in position 0) and also no need to
     // unpack since all has been covered by accumulated intersection
     // set above in a previous separator. Just continue on with single value.
@@ -799,11 +884,16 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
       printRVSetAndValues(stdout,sep.fNodes);
     }
 
-    // continue down with new probability value.
+    assert ( sep.separatorValues[sepValueNumber].remValues.size() == 1 );
+    // Continue down with new probability value.
+    // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for more info why remValues[0] is there.
     ceIterateSeparators(part,sepNumber+1,
 			p*
 			sep.separatorValues[sepValueNumber].remValues[0].p);
   } else {
+
+    assert ( sep.origin.remPacker.packedLen() > 0 );
+
     if (sep.origin.remPacker.packedLen() == 1) {
       for (unsigned i=0;i< sep.separatorValues[sepValueNumber].numRemValuesUsed; i++) {
 
@@ -811,6 +901,7 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
 	// printf("here1");
 	// } 
 
+	// TODO: optimize this, pre-compute base array outside of loop.
 	sep.origin.remPacker.unpack(
 		  (unsigned*)&(sep.separatorValues[sepValueNumber].remValues[i].val),
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
@@ -833,6 +924,8 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
       }
     } else {
       for (unsigned i=0;i< sep.separatorValues[sepValueNumber].numRemValuesUsed; i++) {
+
+	// TODO: optimize this, pre-compute base array outside of loop.
 	sep.origin.remPacker.unpack(
 		  (unsigned*)sep.separatorValues[sepValueNumber].remValues[i].ptr,
 		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
@@ -861,6 +954,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
 					   const unsigned nodeNumber,
 					   const logpr p)
 {
+
   if (nodeNumber == fSortedAssignedNodes.size()) {
     // time to store clique value and total probability, p is
     // current clique probability.
@@ -897,7 +991,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       // Look it up in the hash table.
       bool foundp;
       unsigned *key;
-      key = origin.hashTable.insert(pcv,foundp);
+      key = origin.cliqueValueHashSet.insert(pcv,foundp);
       if (!foundp) {
 	// if it was not found, need to claim this storage that we
 	// just used.
@@ -915,38 +1009,50 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
   RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
-  infoMsg(Giga,"Starting Assigned iteration of rv %s(%d), nodeNumber =%d, p = %f\n",
-	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
 
-  rv->clampFirstValue();
-  do {
-    // At each step, we compute probability
-    logpr cur_p = rv->probGivenParents();
+  // TODO: definitely optimize out this next check.
+  if (origin.iterateSortedAssignedNodesP.size() == 0 || origin.iterateSortedAssignedNodesP[nodeNumber] == true) {
+    infoMsg(Giga,"Starting Assigned iteration of rv %s(%d), nodeNumber =%d, p = %f\n",
+	    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+    rv->clampFirstValue();
+    do {
+      // At each step, we compute probability
+      logpr cur_p = rv->probGivenParents();
 
-    // for (unsigned j=0;j<nodeNumber;j++)
-    //  printf("  ");
-    // printf("%s(%d)=",rv->name().c_str(),rv->frame());
-    if (!rv->discrete) {
-      infoMsg(Giga,"  Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
-    } else {
-      // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
-      infoMsg(Giga,"  Assigned iteration of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
-	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
-      // printf("%d, p=%f,cur_p=%f",drv->val,p.val(),cur_p.val());
-    }
-    // printf("\n");
-    
+      if (message(Giga)) {
+	if (!rv->discrete) {
+	  infoMsg(Giga,"  Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+		  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+	} else {
+	  // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+	  infoMsg(Giga,"  Assigned iteration of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
+		  rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+	}
+      }
 
+      // if at any step, we get zero, then back out.
+      if (!p.essentially_zero()) {
+	// Q: could do more severe pruning here as well as beam?
+	// 
+	// Continue, updating probability by cur_p.
+	ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
+      }
+    } while (rv->clampNextValue());
+  } else {
+    infoMsg(Giga,"Already in iteration of rv %s(%d), nodeNumber =%d, p = %f\n",
+	    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+    // already assigned.
+
+    // @@@@ HACK HACK. Fix this, but right now time to sleep!!
+    logpr cur_p = rv->probGivenParentsWSetup();
     // if at any step, we get zero, then back out.
     if (!p.essentially_zero()) {
-      // Q: should be do more severe pruning here as well as beam?
+      // Q: could do more severe pruning here as well as beam?
       // 
       // Continue, updating probability by cur_p.
       ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
     }
-  } while (rv->clampNextValue());
-
+  }
 
 }
 
@@ -1015,18 +1121,18 @@ ceCollectToSeparator(JT_InferencePartition& part,
 		     InferenceSeparatorClique& sep)
 {
   
-  for (unsigned i=0;i<numCliqueValuesUsed;i++) {{
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {{
     // TODO: beam pruning
-    //if (cliqueValues[i].p < beamThreshold) {
+    //if (cliqueValues[cvn].p < beamThreshold) {
     //     continue;
     //}
 
-    // TODO: optimiae away this conditional check.
+    // TODO: optimiae away this conditional check. (and/or use const local variable to indicate it wont change)
     if (origin.packer.packedLen() == 1) {
-      origin.packer.unpack((unsigned*)&(cliqueValues[i].val),
+      origin.packer.unpack((unsigned*)&(cliqueValues[cvn].val),
 			   (unsigned**)discreteValuePtrs.ptr);
     } else {
-      origin.packer.unpack((unsigned*)cliqueValues[i].ptr,
+      origin.packer.unpack((unsigned*)cliqueValues[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
     }
 
@@ -1043,20 +1149,35 @@ ceCollectToSeparator(JT_InferencePartition& part,
 
     unsigned accIndex;
     // TODO: optimize this check away out of loop.
-    if (sep.origin.accumulatedIntersection.size() > 0) {
+    if (sep.origin.hAccumulatedIntersection.size() > 0) {
       // an accumulated intersection exists.
 
       // make sure there is at least one available entry
+      assert ( sep.numSeparatorValuesUsed <= sep.separatorValues.size());
       if (sep.numSeparatorValuesUsed >= sep.separatorValues.size()) {
 	const unsigned old_size = sep.separatorValues.size();
+	// TODO: optimize this size re-allocation.
 	sep.separatorValues.resizeAndCopy(sep.separatorValues.size()*2);
+	if (sep.origin.accPacker.packedLen() == 1) {
+	  // Then the above resize just invalided all our pointers to keys,
+	  // but it did not invalidate the array indices. Go through
+	  // and correct the keys within the hash table.
+	  // TODO: think of a better way to do this that looses no efficiency.
+	  for (unsigned i=0;i<sep.iAccHashMap.tableSize();i++) {
+	    if (!sep.iAccHashMap.tableEmpty(i)) {
+	      sep.iAccHashMap.tableKey(i)
+		= &(sep.separatorValues[sep.iAccHashMap.tableItem(i)].val);
+	    }
+	  }
+	}
 	const unsigned new_size = sep.separatorValues.size();
 	if (sep.remDiscreteValuePtrs.size() > 0) {
-	  // need to re-construct hash tables for new entries.
 	  for (unsigned i=old_size;i<new_size;i++) {
-	    new (&sep.separatorValues[i].iRemHashTable)
-	      vhash_map< unsigned, unsigned >
-	      (sep.origin.remPacker.packedLen());
+	    // re-construct hash tables only for new entries.
+	    new (&sep.separatorValues[i].iRemHashMap)
+	      VHashMapUnsignedUnsignedKeyUpdatable
+	      (sep.origin.remPacker.packedLen(),2);
+	    // TODO: potentially preallocate default size of  separatorValues[i].remValues.resize(default);
 	  }
 	}
       }
@@ -1074,7 +1195,7 @@ ceCollectToSeparator(JT_InferencePartition& part,
 	// check if this value combination already lives in
 	// origin's value holder hash table and if so, use that.
 	bool foundp;
-	accKey = sep.origin.accHashTable.insert(accKey,foundp);
+	accKey = sep.origin.accSepValHashSet.insert(accKey,foundp);
 	if (!foundp) {
 	  // only allocate a new value if it was inserted.
 	  sep.origin.accValueHolder.allocateCurCliqueValue();
@@ -1085,7 +1206,7 @@ ceCollectToSeparator(JT_InferencePartition& part,
       
       bool foundp;
       unsigned* accIndexp =
-	sep.iAccHashTable.insert(accKey,
+	sep.iAccHashMap.insert(accKey,
 				 sep.numSeparatorValuesUsed,
 				 foundp);
 
@@ -1110,12 +1231,17 @@ ceCollectToSeparator(JT_InferencePartition& part,
 	// Accumulate the clique's
 	// probability into this separator's probability.
 	if (sv.remValues.size() < 1) {
-	  // this must be first time for this entry.
+	  // This must be first time for this entry.
+	  // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for where else this could
+	  // be done.
 	  sv.remValues.resize(1);
 	  sv.numRemValuesUsed = 1;	  
-	  sv.remValues[0].p = cliqueValues[i].p;
+	  // initialize and assign.
+	  sv.remValues[0].p = cliqueValues[cvn].p;
 	} else {
-	  sv.remValues[0].p += cliqueValues[i].p;
+	  // already there so must have hit before.
+	  // we thus accumulate.
+	  sv.remValues[0].p += cliqueValues[cvn].p;
 	}
 
 	goto next_iteration;
@@ -1143,9 +1269,22 @@ ceCollectToSeparator(JT_InferencePartition& part,
       = sep.separatorValues[accIndex];
     
     // make sure there is at least one available entry
+    assert (sv.numRemValuesUsed <= sv.remValues.size());
     if (sv.numRemValuesUsed >= sv.remValues.size()) {
       // TODO: optimize this.
       sv.remValues.resizeAndCopy(1+sv.remValues.size()*2);
+      if (sep.origin.remPacker.packedLen() == 1) {
+	// Then the above resize just invalided all our pointers to keys,
+	// but it did not invalidate the array indices. Go through
+	// and correct the keys within the hash table.
+	// TODO: think of a better way to do this that looses no efficiency.
+	for (unsigned i=0;i<sv.iRemHashMap.tableSize();i++) {
+	  if (!sv.iRemHashMap.tableEmpty(i)) {
+	    sv.iRemHashMap.tableKey(i)
+	      = &(sv.remValues[sv.iRemHashMap.tableItem(i)].val);
+	  }
+	}
+      }
     }
 
     unsigned *remKey;
@@ -1165,7 +1304,7 @@ ceCollectToSeparator(JT_InferencePartition& part,
       // check if this value combination already lives in
       // origin's value holder hash table and if so, use that.
       bool foundp;
-      remKey = sep.origin.remHashTable.insert(remKey,foundp);
+      remKey = sep.origin.remSepValHashSet.insert(remKey,foundp);
       if (!foundp) {
 	// only allocate a new value if it was inserted.
 	sep.origin.remValueHolder.allocateCurCliqueValue();
@@ -1176,10 +1315,9 @@ ceCollectToSeparator(JT_InferencePartition& part,
 
     bool foundp;
     unsigned* remIndexp =
-      sv.iRemHashTable.insert(
-			      remKey,
-			      sv.numRemValuesUsed,
-			      foundp);
+      sv.iRemHashMap.insert(remKey,
+			    sv.numRemValuesUsed,
+			    foundp);
     if (!foundp) {
       // add the values we just used. 
       sv.numRemValuesUsed++;
@@ -1187,7 +1325,7 @@ ceCollectToSeparator(JT_InferencePartition& part,
 
     // We've finally got the entry, so accumulate the clique's
     // probability into this separator's probability.
-    sv.remValues[*remIndexp].p += cliqueValues[i].p;
+    sv.remValues[*remIndexp].p += cliqueValues[cvn].p;
 
   }
   next_iteration:
@@ -1230,6 +1368,7 @@ SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
   set_intersection(c1.nodes.begin(),c1.nodes.end(),
 		   c2.nodes.begin(),c2.nodes.end(),
 		   inserter(nodes,nodes.end()));
+  assert (nodes.size() > 0);
   
 }
 
@@ -1351,14 +1490,16 @@ SeparatorClique::prepareForUnrolling()
   if (hAccumulatedIntersection.size() > 0) {
     // we only use these structures if there is an intersection.
     new (&accPacker) PackCliqueValue(hAccumulatedIntersection);
+    assert( accPacker.packedLen() > 0);
     if (accPacker.packedLen() > 1) {
       // only setup hash table if the packed accumulated insersection
       // set is larger than one machine word (unsigned).
       new (&accValueHolder) CliqueValueHolder(hAccumulatedIntersection.size(),
 					      // TODO: optimize this 1000 value.
-					      1000,
+					      2,
 					      1.25);
-      new (&accHashTable) vhash_set< unsigned > (hAccumulatedIntersection.size());
+      // TODO: optimize starting size.
+      new (&accSepValHashSet) vhash_set< unsigned > (hAccumulatedIntersection.size(),2);
     }
   }
 
@@ -1373,15 +1514,30 @@ SeparatorClique::prepareForUnrolling()
 
   if (hRemainder.size() > 0) {
     new (&remPacker) PackCliqueValue(hRemainder);
+    assert (remPacker.packedLen() > 0);
     if (remPacker.packedLen() > 1) { 
       // Only setup hash table if the packed remainder set is larger
       // than one machine word (unsigned).
       new (&remValueHolder) CliqueValueHolder(hRemainder.size(),
-					      // TODO: optimize this
-					      1000,
+					      // TODO: optimize this starting sizse
+					      2,
 					      1.25);
-      new (&remHashTable) vhash_set< unsigned > (hRemainder.size());
+      // TODO: optimize starting size
+      new (&remSepValHashSet) vhash_set< unsigned > (hRemainder.size(),2);
     }
+  }
+
+  // make sure we have at least one hidden variable in separator.
+  if (hAccumulatedIntersection.size() == 0 && hRemainder.size() == 0) {
+    // We should never have a separator clique consisting of only and
+    // entirely observed variables. If we do, it means that one part
+    // of the JT is entirely cut off from the rest since cliques are
+    // independent of each other given sep sets.  TODO: put an error
+    // message in JT creation code if this case occurs.
+    warning("ERROR: separator clique in junction tree consists entirely of observed values. Invalid graph.");
+    warning("Separator clique has %d nodes:",nodes.size()); 
+    printRVSet(stderr,nodes);
+    error("...EXITING...");
   }
 
 }
@@ -1580,27 +1736,30 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   }
 
   // allocate at one value for now.
-  if (origin.accumulatedIntersection.size() == 0) {
+  if (origin.hAccumulatedIntersection.size() == 0) {
     // in this case, we'll only need one and never more.
-    assert( origin.hRemainder.size() > 0 );
     separatorValues.resize(1);
-    new (&separatorValues[0].iRemHashTable)vhash_map< unsigned, unsigned >
-      (origin.remPacker.packedLen());
+    new (&separatorValues[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
+      (origin.remPacker.packedLen(),2);
   } else {
     // start with something a bit larger
     // TODO: optimize this.
-    const unsigned starting_size = 1000;
+    const unsigned starting_size = 3;
     separatorValues.resize(starting_size);
     if (origin.hRemainder.size() > 0) {
-      // need to re-construct individual hash tables.
       for (unsigned i=0;i<starting_size;i++) {
-	new (&separatorValues[i].iRemHashTable)vhash_map< unsigned, unsigned >
-	  (origin.remPacker.packedLen());
+	// need to re-construct individual hash tables.
+	new (&separatorValues[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
+	  (origin.remPacker.packedLen(),2);
+	// TODO: potentially preallocate default size of  separatorValues[i].remValues.resize(default);
       }
+    } else {
+      // things such as array separatorValues[i].remValues will be sized as needed later.
+      // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for where it is allocated.
     }
     // need to re-construct the hash table.
-    new (&iAccHashTable) vhash_map< unsigned, unsigned >
-      (origin.accPacker.packedLen());
+    new (&iAccHashMap) VHashMapUnsignedUnsignedKeyUpdatable
+      (origin.accPacker.packedLen(),2);
   }
   numSeparatorValuesUsed = 0;
 
@@ -1672,7 +1831,7 @@ CliqueValueHolder::allocateCurCliqueValue()
   // don't need to re-copy all the existing ones already.
   values.resizeAndCopy(values.size()+1);
 
-  unsigned newSize = unsigned(cliqueValueSize*allocationUnitChunkSize*
+  unsigned newSize = unsigned(1+cliqueValueSize*allocationUnitChunkSize*
 			      ::pow(growthFactor,values.size()-1));
 
   values[values.size()-1].resize(newSize);
@@ -1681,3 +1840,14 @@ CliqueValueHolder::allocateCurCliqueValue()
   curAllocationEnd = values[values.size()-1].ptr + newSize;
 
 }
+
+
+
+VHashMapUnsignedUnsignedKeyUpdatable::
+VHashMapUnsignedUnsignedKeyUpdatable(const unsigned arg_vsize,
+				     unsigned approximateStartingSize)
+  : VHashMapUnsignedUnsigned(arg_vsize,approximateStartingSize)
+{
+  // do nothing
+}
+	

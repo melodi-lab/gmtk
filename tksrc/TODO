@@ -1345,3 +1345,10 @@ Sat Jan 17 14:38:59 2004
           - integrate in small test suite examples (exp1, exp2, etc.) which will
             both serve as tutorial material and something to
             test things out to ensure compiled version works.  
+
+
+Sun Jan 18 02:11:09 2004
+  - in boundary search, traverse to parents of children
+    in next partition first, to try to find something useful sooner.
+
+
