@@ -3314,7 +3314,7 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
  *  original source in genetics (as of 2004. Please let me know if you
  *  are reading this and you know.).
  *
- *  Here, we adopt this idea to GMTK's notition of graph partitions.
+ *  Here, we adopt this idea to GMTK's notion of graph partitions.
  *
  *  Most simply, in the linear case we pay O(T) memory and O(T)
  *  compute. In the island case, we pay O(b*log_b(T)) memory and
