@@ -261,11 +261,11 @@ VECPT::read(iDataStreamFile& is)
 	}
       }
       else if(option_name == "preTransforms") {
-	pr_rs=new char[option_value.length()];
+	preTransforms=new char[option_value.length()];
 	strcpy(preTransforms,option_value.c_str());
       }  
       else if(option_name == "postTransforms") {
-	pr_rs=new char[option_value.length()];
+	postTransforms=new char[option_value.length()];
 	strcpy(postTransforms,option_value.c_str());
       }
       else if(option_name == "sentRange") {
