@@ -355,8 +355,7 @@ protected:
 	std::vector<unsigned> _parentsValues;
 #endif
 
-	//FNGramImp::BackoffGraphNode::HashEntry ** _contextEntries;
-	std::vector<FNGramImp::BackoffGraphNode::HashEntry **> _contextEntriesStack;
+	std::vector<void *> _contextEntriesStack;
 	unsigned _numberOfActiveIterators;
 };
 
