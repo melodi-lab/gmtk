@@ -40,9 +40,11 @@
 
 #include "fileParser.h"
 #include "logp.h"
-#include "vector.h"
 #include "bp_range.h"
 #include "GMTK_NamedObject.h"
+
+#include <vector>
+#include <algorithm>
 
 /////////////////////////////////////////////////
 // The maximum branching factor on any decision tree node.
@@ -134,6 +136,21 @@ protected:
       Node* prevLeaf;
       Node* nextLeaf;
     } leafNode;
+  };
+
+    
+  ////////////////////////////////////////////////////////////////
+  // structure for comparing range pointers. 
+  struct RngCompare {  
+    bool operator() (const BP_Range* a, const BP_Range* b) {
+      return (*a) < (*b);
+    }
+    bool operator() (const BP_Range* a, const int b) {
+      return (*a) < b;
+    }
+    bool operator() (const int a, const BP_Range* b) {
+      return (*b) > a;
+    }
   };
 
   ///////////////////////////////////////////////////////////    
@@ -577,12 +594,13 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
       delete [] str;
       ///////////////////////////////////////////////////////////////
     }
+
+    //////////////////////////////////////////////
     // check for overlap errors in the strings
     for (unsigned i=0;i<numSplits-1;i++) {
       for (unsigned j=i+1;j<numSplits-1;j++) {
 	if (node->nonLeafNode.rngs[i]
-	    ->overlapP(
-		       node->nonLeafNode.rngs[j]))
+	    ->overlapP(node->nonLeafNode.rngs[j]))
 	  error("ERROR: DT '%s', file '%s': range %d (%s) and %d (%s) have a non-empty intersection.",name().c_str(),is.fileName(),
 		i,
 		node->nonLeafNode.rngs[i]->rangeStr(),j,
@@ -590,7 +608,23 @@ RngDecisionTree<T>::readRecurse(iDataStreamFile& is,
       }
     }
 
-    for (unsigned i=0;i<numSplits;i++)
+    //////////////////////////////////////////////////////////
+    //
+    RngCompare rc;
+    sort(node->nonLeafNode.rngs.begin(),
+	 node->nonLeafNode.rngs.end(),
+	 rc);
+
+#if 0
+
+    BP_Range *tmp;
+    binary_search(node->nonLeafNode.rngs.begin(),
+		  node->nonLeafNode.rngs.end()-1,
+		  tmp,rc);
+
+#endif
+
+    for (unsigned i=0; i<numSplits; i++)
       node->nonLeafNode.children[i] =
 	readRecurse(is,prevLeaf);
   }
@@ -675,7 +709,9 @@ RngDecisionTree<T>::clampNextDecisionTree()
   dtFile->read(curName,"cur name");
   dtFile->read(_numFeatures,"num feats");
   if (_numFeatures <= 0)
-    error("ERROR: reading decision tree from file '%s', but decision tree must have >= 0 features",
+    error("ERROR: reading dynamic decision tree '%s' with current name '%s' from file '%s', but decision tree must have >= 0 features",
+	  name().c_str(),
+	  curName.c_str(),
 	  dtFile->fileName());
   rightMostLeaf = NULL;
   root = readRecurse(*dtFile,rightMostLeaf);
@@ -851,7 +887,8 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
 	     RNG_DECISION_TREE_MAX_CARDINALITY );
 
     const int val = arr[n->nonLeafNode.ftr];
-    for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++ ) {
+#if 0
+    for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
       // TODO: turn this into a log(n) operation
       // rather than linear. To do this, we'll need
       // to make sure that the ranges are in order.
@@ -859,6 +896,27 @@ T RngDecisionTree<T>::queryRecurse(const vector < int >& arr,
       if (n->nonLeafNode.rngs[i]->contains(val))
 	return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
     }
+#else 
+
+    // @@@ don't forget to update the RV version of this.
+
+    printf("\n");
+    printf("Querying with val %d\n",val);
+    RngCompare rc;
+    vector <BP_Range*>::iterator it =
+      lower_bound(n->nonLeafNode.rngs.begin(),
+		  n->nonLeafNode.rngs.end(),
+		  val,rc);
+   
+    if (it != n->nonLeafNode.rngs.end() && (*it)->contains(val))
+      return queryRecurse(arr,cards,
+			  n->nonLeafNode.children[it - n->nonLeafNode.rngs.begin()]);
+
+    if (it == n->nonLeafNode.rngs.end())
+      printf("didn't find value\n");
+
+
+#endif
     // failed lookup, so return must be the default one.
     return queryRecurse(arr,
 			cards,
