@@ -73,6 +73,71 @@ void Clique::recycleCliqueValue(unsigned idx)
     freelist[++nextfree] = idx;
 }
 
+int addr2(vector<RandomVariable::DiscreteVariableType> &vec)
+{
+    unsigned r=0;
+    int i=int(vec.size())-1; do {
+    r = (r << 4) + vec[i] + 1;
+    if (r > 0x0fffffff) {
+      r ^= (r >> 24) & 0xf0;
+      r &= 0x0fffffff;
+    }
+  } while (--i >= 0);
+  return r;
+}
+
+int ValueHashTable::addr(vector<RandomVariable::DiscreteVariableType> &vec)
+{
+    unsigned long a = vec.size();
+    for (int i=vec.size()-1; i>=0; i--) a = 65599*a + vec[i];
+    return a % table_size;
+}
+
+// the possible sizes for the has table
+const unsigned primes[14] =
+{
+   262139,524287,1048573,2097143,4194301,8388593,16777213,33554393,
+   67108859,134217689,268435399,536870909,1073741789,2147483647
+};
+
+vector<RandomVariable::DiscreteVariableType> *ValueHashTable::insert(
+vector<RandomVariable::DiscreteVariableType> &vec)
+{
+    int size_index=0;
+    if (table_size == 0) resize(primes[size_index]);
+    int a = addr(vec);
+    int inc=addr2(vec)+1;
+    while (table[a] && *table[a]!=vec) {a=(a+inc)%table_size;}
+    vector<RandomVariable::DiscreteVariableType> *nv = table[a];
+    if (!table[a])
+    {
+      table[a]=nv=new vector<RandomVariable::DiscreteVariableType>(vec);
+      if (++count>=table_size/2)
+      {
+        if (size_index==13) error("Value hash table size exceeds 2147483647");
+        resize(primes[++size_index]);
+      }    
+    }
+    return nv;
+}
+
+void ValueHashTable::resize(int size)
+{
+cout << "resizing " << size << endl;
+    table_size = size;  // used for addressing; not same as table.size()
+    nt.resize(table_size);
+    for (int i=0; i<table_size; i++) nt[i] = NULL;
+    for (unsigned i=0; i<table.size(); i++)
+        if (table[i])
+        {
+             int a=addr(*table[i]);
+             int inc=addr2(*table[i])+1;
+             while (nt[a] && *nt[a]!=*table[i]) a=(a+inc)%table_size;
+             nt[a] = table[i];
+        }
+    table=nt;
+}
+
 void Clique::cacheClampedValues()
 {
     for (unsigned i=0; i<discreteMember.size(); i++)

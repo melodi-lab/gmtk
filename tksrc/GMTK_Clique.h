@@ -36,54 +36,13 @@
 #include <numeric>
 #include "GMTK_RandomVariable.h"
 
-const int min_value_hash_table_size = 200000;
-const float value_hash_mem_factor = 1.2;
-
 struct ValueHashTable
 {
     vector<vector<RandomVariable::DiscreteVariableType> *> table, nt;
     int table_size, count;
-    int addr(vector<RandomVariable::DiscreteVariableType> &vec)
-         // return the hash value of the vector
-        {
-	  // assert ( vec.size() > 0 ); 
-	  // first hash key
-	  unsigned long a = vec.size(); 
-	  // second hash key
-	  unsigned long r = 0;
-	  int i=vec.size()-1; do {
-	    // cache local value and convert
-	    const unsigned long tmp = vec[i];
-	    // update first hash key
-	    a = 65599*a + tmp + 7;
-	    // update 2nd hash key
-	    r = (r << 4) + tmp + 1;
-	    if (r > 0x0fffffff) {
-	      r ^= (r >> 24) & 0xf0;
-	      r &= 0x0fffffff;
-	    }
-	  } while (i-- > 0);
-	  // return a mixture of the two keys
-	  return (a+r)% table_size;
-	}
-
+    int addr(vector<RandomVariable::DiscreteVariableType> &vec);
     vector<RandomVariable::DiscreteVariableType> *insert(
-        vector<RandomVariable::DiscreteVariableType> &vec)
-        {
-          if (table_size == 0) resize(min_value_hash_table_size);
-	  int a = addr(vec);
-	  while (table[a] && *table[a]!=vec) a=(a+1)%table_size;
-          vector<RandomVariable::DiscreteVariableType> *nv = table[a];
-	  if (!table[a])
-          {
-	    table[a]=nv=new vector<RandomVariable::DiscreteVariableType>(vec);
-	    if (++count>=table_size/2)
-	      resize(max(int(value_hash_mem_factor*table_size),
-                         min_value_hash_table_size)); 
-          }
-	  return nv;
-	}
-
+        vector<RandomVariable::DiscreteVariableType> &vec);
     void clear() 
     {
        for (unsigned i=0; i<table.size(); i++) if (table[i]) delete table[i];
@@ -91,15 +50,7 @@ struct ValueHashTable
     }
     ~ValueHashTable() {clear();} 
     ValueHashTable() {count=table_size=0;}
-    void resize(int size) 
-        {table_size = size;  // used for addressing; not same as table.size()
-         nt.resize(table_size);
-         for (int i=0; i<table_size; i++) nt[i] = NULL;
-         for (unsigned i=0; i<table.size(); i++)
-             if (table[i]) {int a=addr(*table[i]); 
-              while (nt[a] && *nt[a]!=*table[i]) a=(a+1)%table_size;
-              nt[a] = table[i];}
-         table=nt;}
+    void resize(int size); 
 };
 
 struct CliqueValue
