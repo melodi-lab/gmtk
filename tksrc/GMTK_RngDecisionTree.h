@@ -40,7 +40,7 @@
 #include "logp.h"
 #include "vector.h"
 #include "bp_range.h"
-
+#include "GMTK_NamedObject.h"
 
 /////////////////////////////////////////////////
 // The maximum branching factor on any decision tree node.
@@ -67,12 +67,10 @@
 class RandomVariable;
 
 template <class T = int>
-class RngDecisionTree {
+class RngDecisionTree : public NamedObject {
 
 private:
 
-  ////////////////////////////////////////////////////////////
-  char *_name;
 
 protected:
 
@@ -129,7 +127,7 @@ protected:
 
 public:
 
-  RngDecisionTree() : _name(NULL) {}
+  RngDecisionTree() {}
   ~RngDecisionTree();
 
   ///////////////////////////////////////////////////////////    
@@ -222,7 +220,6 @@ public:
 template <class T>
 RngDecisionTree<T>::~RngDecisionTree()
 {
-  delete [] _name;
   destructorRecurse(root);
   delete root;
 }
@@ -294,7 +291,7 @@ template <class T>
 void
 RngDecisionTree<T>::read(iDataStreamFile& is)
 {
-  is.read(_name,"RngDecisionTree:: read name");
+  NamedObject::read(is);
   is.read(_numFeatures,"RngDecisionTree:: read numFeatures");
   if (_numFeatures <= 0)
     error("RngDecisionTree::read decision tree must have >= 0 features");
@@ -428,7 +425,7 @@ template <class T>
 void
 RngDecisionTree<T>::write(oDataStreamFile& os)
 {
-  os.write(_name,"RngDecisionTree:: read name");
+  NamedObject::write(os);
   os.nl();
   os.write(_numFeatures,"RngDecisionTree:: read numFeatures");
   os.nl();

@@ -26,14 +26,10 @@
 #include "sArray.h"
 
 #include "GMTK_EMable.h"
-
-class WeightMatrix : public EMable {
-
+#include "GMTK_NamedObject.h"
 
 
-  //////////////////////////////////////////////////////  
-  // the name
-  char *_name;
+class WeightMatrix : public EMable, public NamedObject  {
 
 
   ///////////////////////////////////////////////////////////  
@@ -58,7 +54,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   WeightMatrix();
-  ~WeightMatrix() { delete [] _name; }
+  ~WeightMatrix() {}
 
   int rows() { return _rows; }
   int cols() { return _cols; }

@@ -21,9 +21,10 @@
 #ifndef GMTK_MSCPT_H
 #define GMTK_MSCPT_H
 
+#include <vector>
+
 #include "fileParser.h"
 #include "logp.h"
-#include "sArray.h"
 
 #include "GMTK_RngDecisionTree.h"
 #include "GMTK_RandomVariable.h"
@@ -32,17 +33,15 @@
 
 #include "GMTK_EMable.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_NamedObject.h"
 
-class MSCPT : public EMable, public CPT {
 
-  //////////////////////////////////////////////////////  
-  // the name
-  char *_name;
+class MSCPT : public EMable, public CPT, public NamedObject {
 
   //////////////////////////////////
   // Index into the world structure
   // of the decision tree
-  int dtIndex; 
+  unsigned dtIndex; 
 
   ///////////////////////////////////////
   // Direct pointer to the decision tree.
@@ -62,7 +61,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   MSCPT();
-  ~MSCPT() { delete [] _name; }
+  ~MSCPT() { }
 
   ///////////////////////////////////////////////////////////    
   void setNumParents(const int _nParents);
@@ -72,11 +71,11 @@ public:
 
   //////////////////////////////////
   // various forms of probability calculation
-  void becomeAwareOfParentValues( sArray <int>& parentValues ) {
+  void becomeAwareOfParentValues( vector <int>& parentValues ) {
     spmfIndex = dt->query(parentValues);
     spmf = GM_Parms.sPmfs[spmfIndex];
   }
-  void becomeAwareOfParentValues( sArray <RandomVariable *>& parents ) {
+  void becomeAwareOfParentValues( vector <RandomVariable *>& parents ) {
     spmfIndex = dt->query(parents);
     spmf = GM_Parms.sPmfs[spmfIndex];
   }
@@ -85,13 +84,13 @@ public:
     assert ( val >= 0 && val <= cardinalities[numParents] );
     return spmf->prob(val);
   }
-  logpr probGivenParents(sArray <int>& parentValues, 
+  logpr probGivenParents(vector <int>& parentValues, 
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parentValues);
     return probGivenParents(val);
   }
-  logpr probGivenParents(sArray <RandomVariable *>& parents,
+  logpr probGivenParents(vector <RandomVariable *>& parents,
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents);

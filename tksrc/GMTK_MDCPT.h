@@ -23,18 +23,15 @@
 
 #include "fileParser.h"
 #include "logp.h"
+
 #include "sArray.h"
 
 #include "GMTK_CPT.h"
 #include "GMTK_EMable.h"
 #include "GMTK_RandomVariable.h"
+#include "GMTK_NamedObject.h"
 
-class MDCPT : public EMable, public CPT {
-
-
-  //////////////////////////////////////////////////////  
-  // the name
-  char *_name;
+class MDCPT : public EMable, public CPT, public NamedObject {
 
   //////////////////////////////////
   // The acutal cpt. This is the table for
@@ -48,7 +45,7 @@ class MDCPT : public EMable, public CPT {
   logpr* mdcpt_ptr; 
   // The accumulative cardinalities to help index into
   // the table above.
-  sArray <int> cumulativeCardinalities;
+  vector <int> cumulativeCardinalities;
 
   //////////////////////////////////
   // Data structures support for EM
@@ -60,7 +57,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   MDCPT();
-  ~MDCPT() { delete [] _name; }
+  ~MDCPT() { }
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
@@ -69,24 +66,23 @@ public:
   void setNumCardinality(const int var, const int card);
   void allocateBasicInternalStructures();
 
-
   //////////////////////////////////
   // various forms of probability calculation
-  void becomeAwareOfParentValues( sArray <int>& parentValues );
-  void becomeAwareOfParentValues( sArray <RandomVariable *>& parents );
+  void becomeAwareOfParentValues( vector <int>& parentValues );
+  void becomeAwareOfParentValues( vector <RandomVariable *>& parents );
 
   logpr probGivenParents(const int val) {
     assert ( bitmask & bm_basicAllocated );
     assert ( val >= 0 && val <= cardinalities[numParents] );
     return *(mdcpt_ptr + val);
   }
-  logpr probGivenParents(sArray <int>& parentValues, 
+  logpr probGivenParents(vector <int>& parentValues, 
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parentValues);
     return probGivenParents(val);
   }
-  logpr probGivenParents(sArray <RandomVariable *>& parents,
+  logpr probGivenParents(vector <RandomVariable *>& parents,
 			 const int val) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents);

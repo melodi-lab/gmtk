@@ -29,12 +29,10 @@
 #include "sArray.h"
 
 #include "GMTK_EMable.h"
+#include "GMTK_NamedObject.h"
 
-class Dense1DPMF : public EMable {
 
-  ///////////////////////////////////////////////////////////  
-  // the name
-  char *_name;
+class Dense1DPMF : public EMable, public NamedObject {
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
@@ -52,7 +50,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   Dense1DPMF();
-  ~Dense1DPMF() { delete [] _name; }
+  ~Dense1DPMF() { }
 
   int length() { return pmf.len(); }
 

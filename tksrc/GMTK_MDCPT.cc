@@ -57,7 +57,6 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 MDCPT::MDCPT()
-  : _name(NULL)
 {
 }
 
@@ -123,7 +122,7 @@ void MDCPT::setNumCardinality(const int var, const int card)
 void MDCPT::allocateBasicInternalStructures()
 {
   int numValues = 1;
-  for (int i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=numParents;i++) {
     numValues *= cardinalities[i];
   }
 
@@ -162,7 +161,8 @@ void
 MDCPT::read(iDataStreamFile& is)
 {
 
-  is.read(_name,"MDCPT::read name");
+  NamedObject::read(is);
+
   is.read(numParents,"MDCPT::read numParents");
 
   if (numParents < 0) 
@@ -175,7 +175,7 @@ MDCPT::read(iDataStreamFile& is)
 
   // read the cardinalities
   int numValues = 1;
-  for (int i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=numParents;i++) {
     is.read(cardinalities[i],"MDCPT::read cardinality");
     if (cardinalities[i] <= 0)
       error("MDCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
@@ -224,10 +224,10 @@ MDCPT::read(iDataStreamFile& is)
 void
 MDCPT::write(oDataStreamFile& os)
 {
-  os.write(_name,"MDCPT::write name"); os.nl();
+  NamedObject::write(os);
   os.write(numParents,"MDCPT::write numParents"); 
   os.writeComment("number parents");os.nl();
-  for (int i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=numParents;i++) {
     os.write(cardinalities[i],"MDCPT::write cardinality");
   }
   os.writeComment("cardinalities");
@@ -270,14 +270,14 @@ MDCPT::write(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void
-MDCPT::becomeAwareOfParentValues( sArray<int>& parentValues)
+MDCPT::becomeAwareOfParentValues( vector<int>& parentValues)
 {
 
-  assert ( parentValues.len() == numParents );
+  assert ( parentValues.size() == numParents );
   assert ( bitmask & bm_basicAllocated );
   
   int offset = 0;
-  for (int i = 0; i < numParents; i++) {
+  for (unsigned i = 0; i < numParents; i++) {
     if (parentValues[i] < 0 || parentValues[i] >= cardinalities[i]) 
       error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parentValues[i],cardinalities[i]);
     offset += parentValues[i]*cumulativeCardinalities[i];
@@ -302,14 +302,14 @@ MDCPT::becomeAwareOfParentValues( sArray<int>& parentValues)
  *-----------------------------------------------------------------------
  */
 void
-MDCPT::becomeAwareOfParentValues( sArray< RandomVariable * >& parents)
+MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
 {
 
-  assert ( parents.len() == numParents );
+  assert ( parents.size() == numParents );
   assert ( bitmask & bm_basicAllocated );
   
   int offset = 0;
-  for (int i = 0; i < numParents; i++) {
+  for (unsigned i = 0; i < numParents; i++) {
     if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i]) 
       error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n",i,parents[i]->val,cardinalities[i]);
     offset += parents[i]->val*cumulativeCardinalities[i];
@@ -518,14 +518,20 @@ main()
 
   mdcpt.write(od);
 
+  printf("mdcpt name = %s\n",mdcpt.name().c_str());
+
   // now print out some probabilities.
-  sArray < int > parentVals;
+  vector < int > parentVals;
   parentVals.resize(3);
 
   parentVals[0] = 0;
   parentVals[1] = 0;
   parentVals[2] = 0;
 
+  printf("parentVals:");
+  for (unsigned i=0;i<3;i++) 
+    printf("%d ",parentVals[i]);
+  printf("\n");
   for (int i =0; i<3;i++) {
     printf("Prob(%d) Given cur Par = %f\n",
 	   i,mdcpt.probGivenParents(parentVals,i).unlog());
@@ -535,6 +541,10 @@ main()
   parentVals[1] = 0;
   parentVals[2] = 1;
 
+  printf("parentVals:");
+  for (unsigned i=0;i<3;i++) 
+    printf("%d ",parentVals[i]);
+  printf("\n");
   for (int i =0; i<3;i++) {
     printf("Prob(%d) Given cur Par = %f\n",
 	   i,mdcpt.probGivenParents(parentVals,i).unlog());
@@ -544,6 +554,10 @@ main()
   parentVals[1] = 1;
   parentVals[2] = 1;
 
+  printf("parentVals:");
+  for (unsigned i=0;i<3;i++) 
+    printf("%d ",parentVals[i]);
+  printf("\n");
   for (int i =0; i<3;i++) {
     printf("Prob(%d) Given cur Par = %f\n",
 	   i,mdcpt.probGivenParents(parentVals,i).unlog());
@@ -553,6 +567,10 @@ main()
   parentVals[1] = 2;
   parentVals[2] = 1;
 
+  printf("parentVals:");
+  for (unsigned i=0;i<3;i++) 
+    printf("%d ",parentVals[i]);
+  printf("\n");
   for (int i =0; i<3;i++) {
     printf("Prob(%d) Given cur Par = %f\n",
 	   i,mdcpt.probGivenParents(parentVals,i).unlog());
@@ -570,6 +588,10 @@ main()
   parentVals[0] = 0;
   parentVals[1] = 0;
   parentVals[2] = 1;
+  printf("parentVals:");
+  for (unsigned i=0;i<3;i++) 
+    printf("%d ",parentVals[i]);
+  printf("\n");
   mdcpt.becomeAwareOfParentValues(parentVals);
 
   it = mdcpt.begin();

@@ -56,7 +56,6 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 Dense1DPMF::Dense1DPMF() 
-  : _name(NULL)
 {
 
 }
@@ -85,7 +84,7 @@ void
 Dense1DPMF::read(iDataStreamFile& is)
 {
 
-  is.read(_name,"Dense1DPMF::read, name");
+  NamedObject::read(is);
   int length;
   is.read(length,"Dense1DPMF::read, distribution length");
   if (length <= 0)
@@ -120,7 +119,7 @@ Dense1DPMF::read(iDataStreamFile& is)
 void
 Dense1DPMF::write(oDataStreamFile& os)
 {
-  os.write(_name,"Dense1DPMF::write, name");
+  NamedObject::write(os);
   os.write(pmf.len(),"Dense1DPMF::write, distribution length");
   for (int i=0;i<pmf.len();i++) {
     // convert out of log domain and write out.

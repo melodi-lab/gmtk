@@ -57,7 +57,6 @@ VCID("$Header$");
  *-----------------------------------------------------------------------
  */
 MSCPT::MSCPT()
-  : _name(NULL)
 {
 }
 
@@ -146,7 +145,7 @@ void
 MSCPT::read(iDataStreamFile& is)
 {
 
-  is.read(_name,"MSCPT::read name");
+  NamedObject::read(is);
   is.read(numParents,"MSCPT::read numParents");
 
   if (numParents < 0) 
@@ -155,7 +154,7 @@ MSCPT::read(iDataStreamFile& is)
     warning("MSCPT: read, creating MSCPT with %d parents",numParents);
   cardinalities.resize(numParents+1);
   // read the cardinalities
-  for (int i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=numParents;i++) {
     is.read(cardinalities[i],"MSCPT::read cardinality");
     if (cardinalities[i] <= 0)
       error("MSCPT: read, trying to use 0 or negative (%d) cardinality table.",cardinalities[i]);
@@ -165,7 +164,7 @@ MSCPT::read(iDataStreamFile& is)
   // that maps from parent values to an integer specifying
   // the sparse CPT. 
   is.read(dtIndex);
-  if (dtIndex < 0 || dtIndex >= GM_Parms.dts.len())
+  if (dtIndex < 0 || dtIndex >= GM_Parms.dts.size())
     error("MSCPT::read, invalid DT index %d\n",dtIndex);
 
   // TODO: check that the cardinalities of self match
@@ -181,8 +180,8 @@ MSCPT::read(iDataStreamFile& is)
   // cardinality as self.
   RngDecisionTree<int>::iterator it = dt->begin();
   do {
-    const int v = it.value();
-    if ( v < 0 || v >= GM_Parms.sPmfs.len() )
+    const unsigned v = it.value();
+    if ( v < 0 || v >= GM_Parms.sPmfs.size() )
       error("MSCPT::read, dt leaf value %d refers to invalid Sparse 1D PMF",
 	    v);
     if (GM_Parms.sPmfs[v]->card() != card()) {
@@ -212,10 +211,10 @@ MSCPT::read(iDataStreamFile& is)
 void
 MSCPT::write(oDataStreamFile& os)
 {
-  os.write(_name,"MSCPT::write name");os.nl();
+  NamedObject::write(os);
   os.write(numParents,"MSCPT::write numParents");
   os.writeComment("number parents");os.nl();
-  for (int i=0;i<=numParents;i++) {
+  for (unsigned i=0;i<=numParents;i++) {
     os.write(cardinalities[i],"MSCPT::write cardinality");
   }
   os.writeComment("cardinalities");
@@ -392,7 +391,7 @@ main()
   mdcpt.write(od);
 
   // now print out some probabilities.
-  sArray < int > parentVals;
+  vector < int > parentVals;
   parentVals.resize(3);
 
   parentVals[0] = 0;

@@ -22,6 +22,7 @@
 #ifndef GMTK_CPT_H
 #define GMTK_CPT_H
 
+#include <vector> 
 
 #include "logp.h"
 #include "sArray.h"
@@ -53,11 +54,11 @@ protected:
   // The number of "parents" of this CPT, so if we were
   // to expand this out, the dimensionality of this discrete scalar variable
   // and its parents 
-  int numParents;
+  unsigned numParents;
 
   ///////////////////////////////////////////////////////////  
   // issue a warning if the number of parents becomes greater than this.
-  static int warningNumParents;
+  static unsigned warningNumParents;
 
   ///////////////////////////////////////////////////////////  
   // The cardinality of each variable, this array is
@@ -66,7 +67,7 @@ protected:
   // cardinality[numParents-1] = the cardinality of the first parent
   // cardinality[numParents-2] = the cardinality of the 2nd parent
   // and so on.
-  sArray < int > cardinalities;
+  vector < int > cardinalities;
 
 
 public:
@@ -80,11 +81,11 @@ public:
   // Semi-constructors: useful for debugging.
   // Functions to force the internal structures to be particular values.
   // Force the number of parents to be such.
-  virtual void setNumParents(const int _nParents);
+  virtual void setNumParents(const unsigned _nParents);
   // Set the cardinality. If var = numParents, this sets
   // the cardinality of the child. Otherwise, it sets the
   // cardinality of the parent. 
-  virtual void setNumCardinality(const int var, const int card);
+  virtual void setNumCardinality(const unsigned var, const int card);
   // Allocate memory, etc. for the internal data structures
   // for this CPT, depending on current numParents & cardinalities.
   virtual void allocateBasicInternalStructures() = 0;
@@ -100,19 +101,19 @@ public:
   // assignment. All subsequent calls to to probGivenParents
   // will return the probability of the RV given that the
   // parents are at the particular value.
-  virtual void becomeAwareOfParentValues( sArray <int>& parentValues ) = 0;
+  virtual void becomeAwareOfParentValues( vector <int>& parentValues ) = 0;
   // Another version of becomeAwareOfParentValues but this
   // one explicitely takes an array of random variable parents.
-  virtual void becomeAwareOfParentValues( sArray < RandomVariable *>& parents ) = 0;
+  virtual void becomeAwareOfParentValues( vector < RandomVariable *>& parents ) = 0;
   // return the probability of 'val' given the parents are the
   // assigned to the set of values set during the most previous call to 
   // becomeAwareOfParentValues.
   virtual logpr probGivenParents(const int val) = 0;
   // Similar to the above two. This is convenient for one time
   // probability evaluation.
-  virtual logpr probGivenParents(sArray <int>& parentValues, 
+  virtual logpr probGivenParents(vector <int>& parentValues, 
 				 const int val) = 0;
-  virtual logpr probGivenParents(sArray < RandomVariable *>& parents,
+  virtual logpr probGivenParents(vector < RandomVariable *>& parents,
 				 const int val) = 0;
 
 

@@ -29,12 +29,10 @@
 #include "sArray.h"
 
 #include "GMTK_EMable.h"
+#include "GMTK_NamedObject.h"
 
-class Sparse1DPMF : public EMable {
+class Sparse1DPMF : public EMable, public NamedObject {
 
-  ///////////////////////////////////////////////////////////  
-  // the name
-  char *_name;
 
   //////////////////////////////////////
   // The cardinality of this RV, i.e., 
@@ -63,7 +61,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   Sparse1DPMF();
-  ~Sparse1DPMF() { delete [] _name; } 
+  ~Sparse1DPMF() {}
 
   //////////////////////////////////////
   // Return the number of valid values

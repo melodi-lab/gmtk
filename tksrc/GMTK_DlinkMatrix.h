@@ -27,13 +27,9 @@
 
 #include "GMTK_PackedSparseRealMatrix.h"
 #include "GMTK_EMable.h"
+#include "GMTK_NamedObject.h"
 
-class DlinkMatrix : public EMable {
-
-
-  //////////////////////////////////////////////////////  
-  // the name
-  char *_name;
+class DlinkMatrix : public EMable, public NamedObject  {
 
   //////////////////////////////////
   // The acutal matrix.
@@ -48,7 +44,7 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor
   DlinkMatrix();
-  ~DlinkMatrix() { delete [] _name; }
+  ~DlinkMatrix() { }
 
   //////////////////////////////////
   // set all current parameters to random values
@@ -57,11 +53,11 @@ public:
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is) { 
-    is.read(_name,"DlinkMatrix::read name");
+    NamedObject::read(is);
     mat.read(is); 
   }
   void write(oDataStreamFile& os) { 
-    os.write(_name,"DlinkMatrix::write name");
+    NamedObject::write(os);
     mat.write(os); 
   }
 

@@ -63,113 +63,117 @@ GMParms::GMParms()
 {}
 
 
-
 void 
 GMParms::readBasic(iDataStreamFile& is)
 {
 
-  int num;
-  int cnt;
-  char *str;
+  unsigned num;
+  unsigned cnt;
+  string str;
 
   is.read(str,"GMTK_GMParms::readBasic, magic");
-  if (strcmp(str,MAGIC_PRM_FILE))
-    error("GMTK_GMParms::readBasic. Expecting basic param file, got (%s) in file (%s)",str,is.fileName());
-  delete [] str;
+  if (str != MAGIC_PRM_FILE)
+    error("GMTK_GMParms::readBasic. Expecting basic param file, got (%s) in file (%s)",str.c_str(),is.fileName());
 
 
   is.read(num,"GMTK_GMParms::readBasic, dpmfs");
   if (num < 0) error("GMTK_GMParms::readBasic num dpmfs = %d",num);
   dPmfs.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readBasic, cnt dpmfs");
     if (cnt != i) 
       error("GMTK_GMParms::readBasic,dpmfs, out of order count",cnt);
     dPmfs[i] = new Dense1DPMF;
     dPmfs[i]->read(is);
+    dPmfsMap[dPmfs[i]->name()] = dPmfs[i];
   }
 
 
   is.read(num,"GMTK_GMParms::readBasic, spmfs");
   if (num < 0) error("GMTK_GMParms::readBasic num spmfs = %d",num);
   sPmfs.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readBasic, cnt spmfs");
     if (cnt != i) 
       error("GMTK_GMParms::readBasic,spmfs, out of order count",cnt);
     sPmfs[i] = new Sparse1DPMF;
     sPmfs[i]->read(is);
+    sPmfsMap[sPmfs[i]->name()] = sPmfs[i];
   }
 
   is.read(num,"GMTK_GMParms::readBasic, means");
   if (num < 0) error("GMTK_GMParms::readBasic num means = %d",num);
   means.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readBasic, cnt means");
     if (cnt != i) 
       error("GMTK_GMParms::readBasic,means,  out of order count",cnt);
     means[i] = new MeanVector;
     means[i]->read(is);
+    meansMap[means[i]->name()] = means[i];
   }
 
   is.read(num,"GMTK_GMParms::readBasic, covars");
   if (num < 0) error("GMTK_GMParms::readBasic num covars = %d",num);
   covars.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readBasic, cnt covars");
     if (cnt != i) 
       error("GMTK_GMParms::readBasic,covars, out of order count",cnt);
     covars[i] = new DiagCovarVector;
     covars[i]->read(is);
+    covarsMap[covars[i]->name()] = covars[i];
   }
 
   is.read(num,"GMTK_GMParms::readBasic, DlinkMatrix");
   if (num < 0) error("GMTK_GMParms::readBasic num DlinkMatrix = %d",num);
   dLinkMats.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readBasic, cnt dlinks");
     if (cnt != i) 
       error("GMTK_GMParms::readBasic,dlinks, out of order count",cnt);
     dLinkMats[i] = new DlinkMatrix;
     dLinkMats[i]->read(is);
+    dLinkMatsMap[dLinkMats[i]->name()] = dLinkMats[i];
   }
 
   is.read(num,"GMTK_GMParms::readBasic, WeightMatrix");
   if (num < 0) error("GMTK_GMParms::readBasic num WeightMatrix = %d",num);
   weightMats.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readBasic, cnt weights");
     if (cnt != i) 
       error("GMTK_GMParms::readBasic, weights, out of order count",cnt);
     weightMats[i] = new WeightMatrix;
     weightMats[i]->read(is);
+    weightMatsMap[weightMats[i]->name()] = weightMats[i];
   }
 
 
   is.read(num,"GMTK_GMParms::readBasic, MDCPT");
   if (num < 0) error("GMTK_GMParms::readBasic num MDCPT = %d",num);
   mdCpts.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readBasic, cnt MDCPTs");
     if (cnt != i) 
       error("GMTK_GMParms::readBasic, MDCPTs, out of order count",cnt);
     mdCpts[i] = new MDCPT;
     mdCpts[i]->read(is);
+    mdCptsMap[mdCpts[i]->name()] = mdCpts[i];
   }
 
   is.read(num,"GMTK_GMParms::readBasic, MSCPT");
   if (num < 0) error("GMTK_GMParms::readBasic num MSCPT = %d",num);
   msCpts.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readBasic, cnt MSCPTS");
     if (cnt != i) 
       error("GMTK_GMParms::readBasic, MSCPTs, out of order count",cnt);
     msCpts[i] = new MSCPT;
     msCpts[i]->read(is);
+    msCptsMap[msCpts[i]->name()] = msCpts[i];
   }
-
 }
-
 
 void 
 GMParms::writeBasic(oDataStreamFile& os)
@@ -178,66 +182,66 @@ GMParms::writeBasic(oDataStreamFile& os)
   os.write(MAGIC_PRM_FILE,"GMTK_GMParms::writeBasic, magic");
   os.nl();
 
-  os.write(dPmfs.len(),"GMTK_GMParms::writeBasic, dpmfs");
+  os.write(dPmfs.size(),"GMTK_GMParms::writeBasic, dpmfs");
   os.nl();
-  for (int i=0;i<dPmfs.len();i++) {
+  for (unsigned i=0;i<dPmfs.size();i++) {
     os.write(i);
     dPmfs[i]->write(os);
   }
   os.nl();
 
-  os.write(sPmfs.len(),"GMTK_GMParms::writeBasic, spmfs");
+  os.write(sPmfs.size(),"GMTK_GMParms::writeBasic, spmfs");
   os.nl();
-  for (int i=0;i<sPmfs.len();i++) {
+  for (unsigned i=0;i<sPmfs.size();i++) {
     os.write(i);
     sPmfs[i]->write(os);
   }
   os.nl();
 
-  os.write(means.len(),"GMTK_GMParms::writeBasic, means");
+  os.write(means.size(),"GMTK_GMParms::writeBasic, means");
   os.nl();
-  for (int i=0;i<means.len();i++) {
+  for (unsigned i=0;i<means.size();i++) {
     os.write(i);
     means[i]->write(os);
   }
   os.nl();
 
-  os.write(covars.len(),"GMTK_GMParms::writeBasic, covars");
+  os.write(covars.size(),"GMTK_GMParms::writeBasic, covars");
   os.nl();
-  for (int i=0;i<covars.len();i++) {
+  for (unsigned i=0;i<covars.size();i++) {
     os.write(i);
     covars[i]->write(os);
   }
   os.nl();
 
-  os.write(dLinkMats.len(),"GMTK_GMParms::writeBasic, DlinkMatrix");
+  os.write(dLinkMats.size(),"GMTK_GMParms::writeBasic, DlinkMatrix");
   os.nl();
-  for (int i=0;i<dLinkMats.len();i++) {
+  for (unsigned i=0;i<dLinkMats.size();i++) {
     os.write(i); os.nl();
     dLinkMats[i]->write(os);
   }
   os.nl();
 
-  os.write(weightMats.len(),"GMTK_GMParms::writeBasic, WeightMatrix");
+  os.write(weightMats.size(),"GMTK_GMParms::writeBasic, WeightMatrix");
   os.nl();
-  for (int i=0;i<weightMats.len();i++) {
+  for (unsigned i=0;i<weightMats.size();i++) {
     os.write(i); os.nl();
     weightMats[i]->write(os);
   }
   os.nl();
 
 
-  os.write(mdCpts.len(),"GMTK_GMParms::writeBasic, MDCPT");
+  os.write(mdCpts.size(),"GMTK_GMParms::writeBasic, MDCPT");
   os.nl();
-  for (int i=0;i<mdCpts.len();i++) {
+  for (unsigned i=0;i<mdCpts.size();i++) {
     os.write(i); os.nl();
     mdCpts[i]->write(os);
   }
   os.nl();
 
-  os.write(msCpts.len(),"GMTK_GMParms::writeBasic, MSCPT");
+  os.write(msCpts.size(),"GMTK_GMParms::writeBasic, MSCPT");
   os.nl();
-  for (int i=0;i<msCpts.len();i++) {
+  for (unsigned i=0;i<msCpts.size();i++) {
     os.write(i); os.nl();
     msCpts[i]->write(os);
   }
@@ -249,8 +253,8 @@ GMParms::writeBasic(oDataStreamFile& os)
 void 
 GMParms::readDTs(iDataStreamFile& is)
 {
-  int num;
-  int cnt;
+  unsigned num;
+  unsigned cnt;
   char *str;
 
   is.read(str,"GMTK_GMParms::readDTs, magic");
@@ -261,7 +265,7 @@ GMParms::readDTs(iDataStreamFile& is)
   is.read(num,"GMTK_GMParms::readDTs, dpmfs");
   if (num < 0) error("GMTK_GMParms::readDTs num dpmfs = %d",num);
   dts.resize(num);
-  for (int i=0;i<num;i++) {
+  for (unsigned i=0;i<num;i++) {
     is.read(cnt,"GMTK_GMParms::readDTs, cnt");
     if (cnt != i) 
       error("GMTK_GMParms::readDTs, out of order count",cnt);
@@ -278,9 +282,9 @@ GMParms::writeDTs(oDataStreamFile& os)
 {
   os.write(MAGIC_DT_FILE,"GMTK_GMParms::writeDTs, magic");
   os.nl();
-  os.write(dts.len(),"GMTK_GMParms::writeDTs, dpmfs");
+  os.write(dts.size(),"GMTK_GMParms::writeDTs, dpmfs");
   os.nl();
-  for (int i=0;i<dts.len();i++) {
+  for (unsigned i=0;i<dts.size();i++) {
     os.write(i); os.nl();
     dts[i]->write(os);
   }
