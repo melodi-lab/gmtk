@@ -1,4 +1,5 @@
 
+
 #change this to whatever
 exec_prefix=./
 docdir=./
@@ -67,11 +68,13 @@ link = $(PUR) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target.
 #----------------------------------------------------------------------------
 
-all: libpfile.a pfile_gaussian pfile_info pfile_merge pfile_diff pfile_print \
-	pfile_select pfile_stats pfile_build  pfile_create \
-	pfile_concat pfile_norm pfile_normutts pfile_ftrcombo  \
-	pfile_klt pfile_mi pfile_skmeans pfile_addsil pfile_initmg
+# all: libpfile.a pfile_gaussian pfile_info pfile_merge pfile_diff pfile_print \
+# 	pfile_select pfile_stats pfile_build  pfile_create \
+# 	pfile_concat pfile_norm pfile_normutts pfile_ftrcombo  \
+# 	pfile_klt pfile_mi pfile_skmeans pfile_addsil pfile_initmg
 
+# temporary, for now just create the library. TODO: add karim's library.
+all: libpfile.a
 
 #----------------------------------------------------------------------------
 # Build pfile_utils programs.
