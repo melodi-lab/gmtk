@@ -49,9 +49,10 @@ CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -pedantic -ansi -DMAIN
 LDFLAGS = 
 DEFS = 
 
-ifdef DEBUG
-CXXFLAGS := $(CXXFLAGS) -DDEBUG='$(DEBUG)'
-endif
+# doesn't appear to work with pmake, temporarly remove. JB:12/29/04.
+# i f d e f DEBUG
+# CXXFLAGS := $(CXXFLAGS) -DDEBUG='$(DEBUG)'
+# e n d i f
 
 
 prefix = .
