@@ -235,7 +235,13 @@ ObservationMatrix::loadSegment(const unsigned segno) {
     }
 
     if (n_samps == 0)
-      error("ObservationMatrix::loadSegment: failure to read file '%s'\n",fname);
+      error("ObservationMatrix::loadSegment: failure to read segment %i ",i);
+    if (s->dataFormat != PFILE) {
+      if (fname != NULL)
+	printf("%s\n",fname);
+    }
+    else
+      printf("\n");
 
     if (i > 0 && n_samps != _inStreams[i-1]->curNumFrames) {
       error("ObservationMatrix::loadSegment: Number of samples for sentence %i don't match for streams %s and %s (%li vs. %li)\n",
