@@ -192,7 +192,7 @@ install: $(all_exs)
 	(for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i; done)
 
 uninstall:
-	rm -f $(exec_prefix)/bin/pfile_stats
+	rm -f $(exec_prefix)/bin/foo
 
 #----------------------------------------------------------------------------
 # TODO:Configure targets.
