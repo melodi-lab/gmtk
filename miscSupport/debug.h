@@ -33,14 +33,12 @@ class IM {
   friend class InferenceMaxClique;
   static unsigned globalMessageLevel;
   unsigned messageLevel;
-  bool messagesOn;
   bool flush;
 
 public:
 
   IM() {
     messageLevel = globalMessageLevel;
-    messagesOn = true;
     flush = true;
   }
 
@@ -87,7 +85,7 @@ public:
 
   inline bool message(unsigned v) {
 #if INFO_MESSAGES_ON
-    return (messagesOn && ((v <= messageLevel) || (v <= globalMessageLevel)));
+    return (v <= messageLevel);
 #else 
     return false;
 #endif
@@ -155,8 +153,6 @@ public:
   }
 
 
-  void msgsOn() { messagesOn = true; }
-  void msgsOff() { messagesOn = false; }
   unsigned msgLevel() { return messageLevel; }
   unsigned setMsgLevel(const unsigned ml) { messageLevel = ml; return ml; }
   static unsigned glbMsgLevel() { return globalMessageLevel; }

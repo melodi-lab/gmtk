@@ -34,6 +34,7 @@ using namespace std;
 char *copyToNewStr(const char *const str);
 
 bool strIsInt(const char *const str, int* i=NULL,int* len=NULL);
+bool strIsInt(const char *const str, unsigned* i=NULL,int* len=NULL);
 
 
 // a general swapping routine.
@@ -103,5 +104,9 @@ void reportTiming(// input
 		  double& sysTime,
 		  // input
 		  FILE* outputf=NULL);
+
+
+int stringprintf(string& str,char *format, ...);
+
 
 #endif

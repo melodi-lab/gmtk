@@ -10,7 +10,9 @@
 #include <time.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <stdarg.h>
 
+#include <string>
 
 #include "general.h"
 #include "rand.h"
@@ -35,6 +37,20 @@ bool strIsInt(const char*const str, int* i,int* len)
   else {
     if (i != NULL)
       *i = l;
+    if (len != NULL)
+      *len = (p - str);
+    return true;
+  }
+}
+bool strIsInt(const char*const str, unsigned* i,int* len) 
+{
+  char *p;
+  long l = strtol(str,&p,0);
+  if (p == str || l < 0)
+    return false;
+  else {
+    if (i != NULL)
+      *i = (unsigned)l;
     if (len != NULL)
       *len = (p - str);
     return true;
@@ -204,5 +220,20 @@ void reportTiming(// input
   userTime = utimef;
   // if (sysTime)
   sysTime = stimef;
+}
+
+
+/*
+ * a version of printf that goes to a C++ string 
+ */
+int stringprintf(string& str,char *format, ...)
+{
+  char buff[512];
+  va_list ap;
+  va_start(ap,format);
+  int rc = vsnprintf(buff,sizeof(buff), format, ap);
+  va_end(ap);
+  str = buff;
+  return rc;
 }
 
