@@ -2008,4 +2008,5 @@ Sun Jul 18 22:52:56 2004
    Also, fix class hierarchy in CPT class.
 
 Tue Jul 27 14:29:03 2004
-  in (to exist) config.h file, give option to make means, covariances, dlinks as double (64-bit) rather than 32-bit. 
+ -  in (to exist) config.h file, give option to make means, covariances, dlinks as double (64-bit) rather than 32-bit. 
+ -  modify error messages about variance floor can also as option increase variance precision to 64-bit. 
