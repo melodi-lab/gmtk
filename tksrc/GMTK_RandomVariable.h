@@ -48,14 +48,29 @@ struct RandomVariable
     // Parent and Child arrays refer only to hidden variables. 
 
     sArray<randomVariable *> switchingParents, conditionalParents;
+    
+    sArray<randomVariable *> allPossibleParents;
+    // allPossibleParents is the union of the switchingParents and the
+    // all possible conditionalParents.
+    // Used to determine topological orderings
 
-    findConditioningParents();
+    sArray<randomVariable *> allPossibleChildren;
+    // The set of variables that use this variable either as a switching
+    // parent or as a (possible) conditional parent.
+
+    findConditionalParents();
     // Looks at the values of the switching parents, and sets the 
     // conditional parents appropraitely
 
-    sarray <sparseCPT> discreteCPT;
+    findAllPossibleParents();
+    // Iterates through all possible instantiations of the conditioning 
+    // parents and unions together the parents. Stores the result in the
+    // allPossibleParents array.
+
+    sarray<sparseCPT> discreteCPT;
     // entry i of the sArray gives the CPT to use when the switching parents
-    // have instantiation i
+    // have instantiation i. i is determined by a multidimensional array
+    // indexing function.
 
     /* These next members are used to control the inference loops in a
        clique tree. (The constituents of each clique are random variables.)
@@ -74,11 +89,14 @@ struct RandomVariable
     // A special case of discrete variables, where the parents' values 
     // uniquely determine the variable's value. No looping required.
 
-    int num_vals;
+    int numVals;
     // in the discrete case, how many possible values are there?
     // values range from 0 to num_vals-1
 
-    virtual logp probGivenParents() {error("probGivenParents() Undefined\n");}
+    int val;
+    // in the discrete case, the actual value of the variable
+
+    virtual logpr probGivenParents() {error("probGivenParents() Undefined\n");}
     // For continuous variables.
     // The inference algorithm guarantees that when this is called, the
     // variable and its parents will be clamped to appropriate values.
@@ -89,7 +107,7 @@ struct RandomVariable
     // looks up the values of the the switching parents and computes a 
     // integer index into a 1 dimensional array
 
-    inline logp discreteProbGivenParents() 
+    inline logpr discreteProbGivenParents() 
     {findConditionalParents(); return discreteCPT[address(conditionalParents)][i];}
     // For discrete variables.
     // The inference algorithm guarantees that when this is called, the
@@ -120,7 +138,7 @@ struct RandomVariable
     virtual void zeroAccumulators() = 0;
     // Called at the beginning of an EM iteration.
 
-    virtual void increment(logp posterior) = 0;
+    virtual void increment(logpr posterior) = 0;
     // On the backward pass, this will be called with a posterior probability
     // for the variable and its parents with all possible sets of values.
     // In inference, the GM is used as a global memory, with variable values
@@ -142,6 +160,13 @@ struct RandomVariable
     virtual void update() = 0;
     // At the end of each EM iteration, this is called to convert the 
     // accumulated statistics into probability distributions.
+
+    int nodeNum;  
+    // A unique node index. nodes in a GM are numbered consecutively from 0.
+
+    int timeIndex;
+    // What time frame does the node belong to?
+    // Counting starts from 0.
 };
 
 #endif
