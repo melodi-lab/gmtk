@@ -82,7 +82,10 @@ public:
   // 2) match the cardinalities of the parents.
   void allocateProbabiltyTables();
 
-  void setCpts(vector<CPT*> &cpts) { conditionalCPTs = cpts; }
+  void setCpts(vector<CPT*> &cpts) { 
+    // TODO: add check here that cardinalities match.
+    conditionalCPTs = cpts; 
+  }
 
   ////////////////////////////////////////////////////////////////
   // Set up conditional parents pointers and other tables.
