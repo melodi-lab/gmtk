@@ -66,7 +66,8 @@ class MSCPT : public CPT {
   // Direct index to the Sparse PMF
   Sparse1DPMF* spmf;
 
-
+  unsigned _averageCardinality;
+  unsigned _maxCardinality;
 
 public:
 
@@ -79,6 +80,11 @@ public:
   void setNumParents(const int _nParents);
   void setNumCardinality(const int var, const int card);
   void allocateBasicInternalStructures();
+
+  virtual unsigned averageCardinality() { return _averageCardinality; }
+  virtual unsigned maxCardinality() { return _maxCardinality; }
+
+
   ///////////////////////////////////////////////////////////    
 
   //////////////////////////////////

@@ -28,10 +28,10 @@
 #include "sArray.h"
 #include "fileParser.h"
 
-#include "GMTK_RandomVariable.h"
 #include "GMTK_NamedObject.h"
 #include "GMTK_EMable.h"
 
+class RandomVariable;
 
 /*
  * Generic interface class to all CPT random variables.
@@ -104,6 +104,10 @@ public:
     return _card;
   }
 
+  // used for elimination/triangulation
+  virtual unsigned averageCardinality() { return (unsigned)card(); }
+  virtual unsigned maxCardinality() { return (unsigned)card(); }
+
   int parentCardinality(const unsigned int par) {
     assert ( par < numParents() );
     return cardinalities[par];
@@ -145,7 +149,7 @@ public:
   // Similar to the above two. This is convenient for one time
   // probability evaluation.
   virtual logpr probGivenParents(vector <int>& parentValues, 
-				 vector <int>& cards, 
+		                                                                                                                            		 vector <int>& cards, 
 				 const int val) = 0;
   virtual logpr probGivenParents(vector < RandomVariable *>& parents,
 				 const int val) = 0;
@@ -171,7 +175,7 @@ public:
     // in later
     iterator() : cpt(NULL) {}
 
-    // prefix
+     // prefix
     iterator& operator ++() { cpt->next(*this); return *this; }
     // postfix
     iterator operator ++(int) {
