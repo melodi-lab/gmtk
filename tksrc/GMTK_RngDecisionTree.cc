@@ -17,6 +17,7 @@
  */
 
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <float.h>
 #include <math.h>
@@ -29,6 +30,12 @@
 
 #include "GMTK_RandomVariable.h"
 #include "GMTK_RngDecisionTree.h"
+
+// ############################################################ 
+// ############################################################ 
+#include "GMTK_DiscreteRandomVariable.h"
+// ############################################################ 
+// ############################################################ 
 
 VCID("$Header$");
 
@@ -347,102 +354,7 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
       node->leafNode.leafNodeString = leafNodeVal;
     } else if (leafNodeVal[0] == '(') {
       node->nodeType = LeafNodeFormula;
-      //
-      // try and parse it. It should be
-      // a string of the form (A1+A2+A3+A4+...An) 
-      // where Ai is either:
-      //    1) a single integer
-      //    2) the string "pj" where j is the j'th parent's value
-      //    3) the string "cj" where j is the j'th parent's cardinality
-      //    4) the string "mj" where j is the j'th parent's cardinality*value (i.e., the product of value * card)
-      // 
-      //  So, an example might be m0+m1+p2+1
-      //    which will go from the joint product state space of parents 0, 1, and 2 but will add one 
-      //    to the current state.
-      // 
-
-
-      // start parsing the string
-      unsigned pos = 1;
-      bool expectingPlus = false;
-      node->leafNode.leafNodeString = leafNodeVal;
-      while (1) {
-	while (pos < leafNodeVal.size() && (leafNodeVal[pos] == ' ' || leafNodeVal[pos] == '\t'))
-	  pos++;
-	if (pos == leafNodeVal.size()) {
-	  // get next portion
-	  is.read(leafNodeVal,"RngDecisionTree:: readRecurse leaf node value");
-	  node->leafNode.leafNodeString += leafNodeVal;
-	  pos = 0;
-	  continue;
-	}
-	int val;
-	int len;
-	if (leafNodeVal[pos] == 'p' || 
-	    leafNodeVal[pos] == 'c' || 
-	    leafNodeVal[pos] == 'm') {
-	  if (expectingPlus) {
-	    error("ERROR: DT '%s', file '%s': Expecting '+' at position %d in string '%s'\n",
-		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
-	  }
-	  FormEntry fe;
-	  if (leafNodeVal[pos] == 'p')
-	    fe.fType = ParentValue;
-	  else if (leafNodeVal[pos] == 'c')
-	    fe.fType = ParentCardinality;
-	  else
-	    fe.fType = ParentValCard;
-
-	  pos++;
-	  if (!strIsInt(leafNodeVal.c_str()+pos,&val,&len)) {
-	    error("ERROR: DT '%s', file '%s': Expecting integer at position %d in string '%s'\n",
-		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
-	  }
-	  // we have an int value
-	  pos += len;
-	  fe.parentIndex = val;
-	  if (fe.parentIndex >= _numFeatures)
-	    error("ERROR: DT '%s' in file '%s' specifies a parent index (%c%d) larger than number of parents (%d)\n",
-		  name().c_str(),is.fileName(),
-		  fe.parentIndex,
-		  (fe.fType == ParentValue?'p':(fe.fType == ParentCardinality?'c':'m')),
-		  _numFeatures);
-	  node->leafNode.formula.push_back(fe);
-	  expectingPlus = true;
-	} else if (leafNodeVal[pos] == '+') {
-	  if (!expectingPlus)
-	    error("ERROR: DT '%s', file '%s': Not expecting '+' at position %d in string '%s'\n",
-		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
-	  // consume token
-	  pos++;
-	  expectingPlus = false;
-	} else if (strIsInt(leafNodeVal.c_str()+pos,&val,&len)) {
-	  if (expectingPlus) {
-	    error("ERROR: DT '%s', file '%s': Expecting '+' at position %d in string '%s'\n",
-		  name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
-	  }
-	  FormEntry fe;
-	  fe.fType = Integer;
-	  fe.value = val;
-	  node->leafNode.formula.push_back(fe);
-	  pos += len;
-	  expectingPlus = true;
-	} else if (leafNodeVal[pos] == ')') {
-	  // the end of the formula
-	  break;
-	} else {
-	  error("ERROR: DT '%s', file '%s': Parse error at position %d in string '%s'\n",
-		name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
-	}
-      }
-      // make sure we didnt' have string such as "p1+p2+"
-      if (!expectingPlus) 
-	error("ERROR: DT '%s', file '%s': Must not end with a '+' at position %d in string '%s'\n",
-	      name().c_str(),is.fileName(),pos,leafNodeVal.c_str());
-      if (node->leafNode.formula.size() == 0) {
-	error("ERROR: DT '%s', file '%s': Must have formula between '()' in '%s'\n",
-	      name().c_str(),is.fileName(),leafNodeVal.c_str());
-      }
+      node->leafNode.equation.parseFormula(leafNodeVal);
     }
 
     node->leafNode.prevLeaf = prevLeaf;
@@ -551,6 +463,775 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,
 
   }
   return node;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::evaluateFormula
+ *   Calculate an equation's value given a set parent variables 
+ *
+ * Preconditions:
+ *   none 
+ *
+ * Postconditions:
+ *   none 
+ *
+ * Side Effects:
+ *   none   
+ *
+ * Results:
+ *   Returns a single value 
+ *-----------------------------------------------------------------------
+ */
+leafNodeValType 
+RngDecisionTree::EquationClass::evaluateFormula(
+  const vector< RandomVariable* >& variables 
+  )
+{
+  vector<unsigned> stack;	
+  vector<commandStruct>::iterator crrnt_cmnd;	
+  vector<commandStruct>::iterator end_cmnd;
+  unsigned last; 
+
+  for (crrnt_cmnd = commands.begin(),
+       end_cmnd   = commands.end();
+       crrnt_cmnd != end_cmnd;
+       ++crrnt_cmnd) {
+
+    switch ((*crrnt_cmnd).command) {
+	
+      case COMMAND_PUSH_PARENT:	
+        // This check could be done during file parsing, not at evaluation time
+        if ((*crrnt_cmnd).immediate >= variables.size()) {	
+          error("ERROR:  Reference to non-existant parent\n"); 	
+        }
+
+        stack.push_back( variables[(*crrnt_cmnd).immediate]->val );	
+        break;	
+
+      case COMMAND_PUSH_CARDINALITY:
+        // This check could be done during file parsing, not at evaluation time
+        if ((*crrnt_cmnd).immediate >= variables.size()) {
+          error("ERROR:  Reference to non-existant parent cardinality\n"); 
+        }
+
+        stack.push_back( variables[(*crrnt_cmnd).immediate]->cardinality ); 
+        break;
+
+      case COMMAND_PUSH_CONSTANT:
+        stack.push_back( (*crrnt_cmnd).immediate ); 
+        break;
+       
+      case COMMAND_PLUS:
+        last = stack.size() - 1;
+        stack[last-1] = stack[last-1] + stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_MINUS:
+        last = stack.size() - 1;
+        if (stack[last-1] < stack[last]) {
+          error("ERROR:  Result of subtraction is negative\n"); 
+        }
+        stack[last-1] = stack[last-1] - stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_TIMES: 
+        last = stack.size() - 1;
+        stack[last-1] = stack[last-1] * stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_DIVIDE:
+        last = stack.size() - 1;
+        if (stack[last] == 0) {
+          error("ERROR:  Divide by zero error\n"); 
+        }
+        stack[last-1] = stack[last-1] / stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_EXPONENT: 
+	unsigned value, i;
+
+        last = stack.size() - 1;
+        value = 1; 
+	for (i=0; i<stack[last]; ++i) {
+          value = value*stack[last-1]; 
+	}
+	stack[last-1] = value;
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_BITWISE_AND: 
+        last = stack.size() - 1;
+        stack[last-1] = stack[last-1] & stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_BITWISE_OR: 
+        last = stack.size() - 1;
+        stack[last-1] = stack[last-1] | stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_XOR: 
+        last = stack.size() - 1;
+        stack[last-1] = stack[last-1] ^ stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_LOGICAL_AND: 
+        last = stack.size() - 1;
+        stack[last-1] = stack[last-1] && stack[last];
+        stack.pop_back();
+        break;
+ 
+      case COMMAND_LOGICAL_OR: 
+        last = stack.size() - 1;
+        stack[last-1] = stack[last-1] || stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_MOD:
+        last = stack.size() - 1;
+        if (stack[last] == 0) {
+          error("ERROR:  Mod by zero error\n"); 
+        }
+        stack[last-1] = stack[last-1] % stack[last];
+        stack.pop_back();
+        break;
+
+      case COMMAND_MIN:
+        last = stack.size() - 1;
+        if (stack[last] < stack[last-1]) {
+          stack[last-1] = stack[last];
+	}
+        stack.pop_back();
+        break;
+
+      case COMMAND_MAX:
+        last = stack.size() - 1;
+        if (stack[last] > stack[last-1]) {
+          stack[last-1] = stack[last];
+	}
+        stack.pop_back();
+        break;
+
+      default:
+        assert(0);
+        break;
+    }
+  }
+
+  assert(stack.size() == 1);
+  return(stack[0]);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::evaluateFormula
+ *   Stub function to support some leftover tests
+ *
+ * Preconditions:
+ *   none 
+ *
+ * Postconditions:
+ *   none 
+ *
+ * Side Effects:
+ *   none   
+ *
+ * Results:
+ *   Returns a single value 
+ *-----------------------------------------------------------------------
+ */
+leafNodeValType 
+RngDecisionTree::EquationClass::evaluateFormula(
+  const vector<unsigned>& value,
+  const vector<unsigned>& cardinality
+  )
+{
+  assert(0);
+  return(0);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::parseFormula
+ *   Parse a string containing an equation.  The equation is converted 
+ *   into a series of integer commands that are executed by evaluateFormula.
+ * 
+ * Preconditions:
+ *   none      
+ *
+ * Postconditions:
+ *   The decision tree's equation data structure is filled in. 
+ *      
+ * Side Effects:
+ *   none      
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::EquationClass::parseFormula(
+  string& leafNodeVal
+  )
+{
+  tokenStruct token;
+ 
+  do {
+    getToken(leafNodeVal, token); 
+    parseExpression(token, leafNodeVal ); 
+  } while (token.token != TOKEN_END);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::parseExpression
+ *   Support function for parseFormula.  An expression includes terms
+ *   separated by + and -. 
+ * 
+ * Preconditions:
+ *   none 
+ *
+ * Postconditions:
+ *   The decision tree's equation data structure is partially filled in. 
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::EquationClass::parseExpression(
+  tokenStruct& token,
+  string&      leafNodeVal  
+  )
+{
+  commandStruct new_command;
+  unsigned      next_token;
+
+  parseTerm(token, leafNodeVal); 
+
+  while( (token.token == TOKEN_PLUS) || (token.token == TOKEN_MINUS)) {
+
+    next_token  = token.token;
+    getToken(leafNodeVal, token); 
+    parseTerm( token, leafNodeVal );
+
+    switch (next_token) {
+      case TOKEN_PLUS:
+	new_command.command   = COMMAND_PLUS;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+ 
+      case TOKEN_MINUS: 
+	new_command.command   = COMMAND_MINUS;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+    
+      default:
+        break;
+    }
+  } 
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::parseTerm
+ *   Support function for parseFormula.  An term contains factors 
+ *   separated by operators that are evaluated in the order listed. 
+ * 
+ * Preconditions:
+ *   none 
+ *
+ * Postconditions:
+ *   The decision tree's equation data structure is partially filled in. 
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::EquationClass::parseTerm(
+  tokenStruct& token,
+  string&      leafNodeVal  
+  )
+{
+  commandStruct new_command;
+  unsigned      next_token;
+ 
+  parseFactor(token, leafNodeVal);
+
+  while( (token.token == TOKEN_TIMES)    || 
+         (token.token == TOKEN_DIVIDE)   ||
+         (token.token == TOKEN_EXPONENT) ||
+         (token.token == TOKEN_BITWISE_AND) ||
+         (token.token == TOKEN_BITWISE_OR)  || 
+         (token.token == TOKEN_XOR)         || 
+         (token.token == TOKEN_LOGICAL_AND) ||
+         (token.token == TOKEN_LOGICAL_OR) ) { 
+ 
+    next_token  = token.token;
+    getToken(leafNodeVal, token); 
+    parseFactor(token, leafNodeVal);
+
+    switch (next_token) {
+ 
+      case TOKEN_TIMES:
+	new_command.command   = COMMAND_TIMES;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+ 
+      case TOKEN_DIVIDE:
+	new_command.command   = COMMAND_DIVIDE;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+
+      case TOKEN_EXPONENT:
+	new_command.command   = COMMAND_EXPONENT;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+
+      case TOKEN_BITWISE_AND:
+	new_command.command   = COMMAND_BITWISE_AND;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+
+      case TOKEN_BITWISE_OR:
+	new_command.command   = COMMAND_BITWISE_OR;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+ 
+      case TOKEN_XOR:
+	new_command.command   = COMMAND_XOR;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+
+      case TOKEN_LOGICAL_AND:
+	new_command.command   = COMMAND_LOGICAL_AND;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+
+      case TOKEN_LOGICAL_OR:
+	new_command.command   = COMMAND_LOGICAL_OR;
+	new_command.immediate = 0;
+        commands.push_back( new_command );
+        break;
+ 
+      default: 
+        break;
+    }
+  }
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * parseFactor
+ *   Support function for parseFormula.  A factor evaluates to a value
+ *   (possibly recursively) that operators can evaluate.  Examples are
+ *   integers, functions, 'p0', and 'c0'.
+ * 
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   The decision tree's equation data structure is partially filled in. 
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::EquationClass::parseFactor(
+  tokenStruct& token,
+  string&      leafNodeVal  
+  )
+{
+  commandStruct new_command;
+
+  switch (token.token) {
+
+    case TOKEN_LEFT_PAREN:  
+      getToken(leafNodeVal, token); 
+      parseExpression(token, leafNodeVal);
+
+      if (token.token == TOKEN_RIGHT_PAREN) {
+        getToken(leafNodeVal, token); 
+      }
+      else {
+        error("ERROR:  Missing right parenthesis\n"); 
+      }
+      break;
+ 
+    case TOKEN_INTEGER:
+      new_command.command   = COMMAND_PUSH_CONSTANT;
+      new_command.immediate = token.number;
+      commands.push_back( new_command );
+      getToken(leafNodeVal, token); 
+      break;
+ 
+    case TOKEN_PARENT:
+      new_command.command   = COMMAND_PUSH_PARENT;
+      new_command.immediate = token.number;
+      commands.push_back( new_command );
+      getToken(leafNodeVal, token); 
+      break;
+ 
+    case TOKEN_CARDINALITY:
+      new_command.command   = COMMAND_PUSH_CARDINALITY;
+      new_command.immediate = token.number;
+      commands.push_back( new_command );
+      getToken(leafNodeVal, token); 
+      break;
+
+    case TOKEN_MOD:
+      getToken(leafNodeVal, token); 
+      if (token.token != TOKEN_LEFT_PAREN) {
+        error("ERROR:  Missing left parenthesis\n"); 
+      }
+
+      getToken(leafNodeVal, token); 
+      parseExpression(token, leafNodeVal);
+      if (token.token != TOKEN_COMMA) {
+        error("ERROR:  mod requires exactly two operands\n"); 
+      }
+
+      getToken(leafNodeVal, token);
+      parseExpression(token, leafNodeVal);
+
+      if (token.token != TOKEN_RIGHT_PAREN) {
+        error("ERROR:  Missing right parenthesis\n"); 
+      }
+
+      new_command.command   = COMMAND_MOD;
+      new_command.immediate = 0;
+      commands.push_back( new_command );
+      getToken(leafNodeVal, token); 
+      break;
+
+    case TOKEN_MIN:
+      getToken(leafNodeVal, token); 
+      if (token.token != TOKEN_LEFT_PAREN) {
+        error("ERROR:  Missing left parenthesis\n"); 
+      }
+
+      getToken(leafNodeVal, token); 
+      parseExpression(token, leafNodeVal);
+      if (token.token != TOKEN_COMMA) {
+        error("ERROR:  min requires exactly two operands\n"); 
+      }
+
+      getToken(leafNodeVal, token);
+      parseExpression(token, leafNodeVal);
+
+      if (token.token != TOKEN_RIGHT_PAREN) {
+        error("ERROR:  Missing right parenthesis\n"); 
+      }
+
+      new_command.command   = COMMAND_MIN;
+      new_command.immediate = 0;
+      commands.push_back( new_command );
+      getToken(leafNodeVal, token); 
+      break;
+
+    case TOKEN_MAX:
+      getToken(leafNodeVal, token); 
+      if (token.token != TOKEN_LEFT_PAREN) {
+        error("ERROR:  Missing left parenthesis\n"); 
+      }
+
+      getToken(leafNodeVal, token); 
+      parseExpression(token, leafNodeVal);
+      if (token.token != TOKEN_COMMA) {
+        error("ERROR:  min requires exactly two operands\n"); 
+      }
+
+      getToken(leafNodeVal, token);
+      parseExpression(token, leafNodeVal);
+
+      if (token.token != TOKEN_RIGHT_PAREN) {
+        error("ERROR:  Missing right parenthesis\n"); 
+      }
+
+      new_command.command   = COMMAND_MAX;
+      new_command.immediate = 0;
+      commands.push_back( new_command );
+      getToken(leafNodeVal, token); 
+      break;
+  
+    default:
+      break;
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::getToken
+ *   Support function for parseFormula.  Parses a string and gives the   
+ *   next token in the string.
+ * 
+ * Preconditions:
+ *   none 
+ *
+ * Postconditions:
+ *   The token found is written to the token structure, and the 
+ *   characters making up the token are removed from the expression.
+ *
+ * Side Effects:
+ *   none 
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::EquationClass::getToken(
+  string&      expression, 
+  tokenStruct& token 
+  )
+{
+  //////////////////////////////////////////////////////////////////////////
+  // Initialize the maps of tokens 
+  //////////////////////////////////////////////////////////////////////////
+  map<string, tokenEnum> delimiter; 
+  map<string, tokenEnum> function; 
+
+  delimiter[" "]  = TOKEN_SPACE;
+  delimiter["\t"] = TOKEN_SPACE;
+  delimiter["+"]  = TOKEN_PLUS;
+  delimiter["-"]  = TOKEN_MINUS;
+  delimiter["*"]  = TOKEN_TIMES;
+  delimiter["/"]  = TOKEN_DIVIDE;
+  delimiter["("]  = TOKEN_LEFT_PAREN;
+  delimiter[")"]  = TOKEN_RIGHT_PAREN;
+  delimiter[","]  = TOKEN_COMMA;
+  delimiter["^"]  = TOKEN_EXPONENT;
+  delimiter["&"]  = TOKEN_BITWISE_AND;
+  delimiter["|"]  = TOKEN_BITWISE_OR;
+  delimiter["&&"] = TOKEN_LOGICAL_AND;
+  delimiter["||"] = TOKEN_LOGICAL_OR;
+
+  function["mod"] = TOKEN_MOD;
+  function["min"] = TOKEN_MIN;
+  function["max"] = TOKEN_MAX;
+  function["xor"] = TOKEN_XOR;
+
+  //////////////////////////////////////////////////////////////////////////
+  // Other local variables 
+  //////////////////////////////////////////////////////////////////////////
+  string   token_string;
+  unsigned index;
+
+  map<string, tokenEnum>::iterator crrnt_dlmtr; 
+  map<string, tokenEnum>::iterator end_dlmtr; 
+  size_t dlmtr_lctn; 
+  size_t minimum_dlmtr_lctn;
+ 
+  vector<map<string, tokenEnum>::iterator> found_dlmtr_cntnr; 
+  vector<map<string, tokenEnum>::iterator>::iterator crrnt_found_dlmtr; 
+  vector<map<string, tokenEnum>::iterator>::iterator end_found_dlmtr; 
+  map<string, tokenEnum>::iterator found_dlmtr; 
+
+  //////////////////////////////////////////////////////////////////////////
+  // Skip leading spaces 
+  //////////////////////////////////////////////////////////////////////////
+  index = 0;
+  while ((index < expression.length()) &&   
+         ((expression[index] == ' ') || (expression[index] == '\t'))) {
+    ++index;
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Find the earliest delimiter token 
+  //////////////////////////////////////////////////////////////////////////
+  token.token = LAST_TOKEN_INDEX;
+  minimum_dlmtr_lctn = expression.size();
+
+  for( crrnt_dlmtr = delimiter.begin(),
+       end_dlmtr   = delimiter.end();
+       crrnt_dlmtr != end_dlmtr;  
+       ++crrnt_dlmtr ) { 
+
+    dlmtr_lctn = expression.find( (*crrnt_dlmtr).first, index );    
+    if (dlmtr_lctn >= 0) {
+      if (dlmtr_lctn < minimum_dlmtr_lctn) {
+        minimum_dlmtr_lctn = dlmtr_lctn;
+        found_dlmtr_cntnr.clear();
+      }
+      if (dlmtr_lctn <= minimum_dlmtr_lctn) {
+        found_dlmtr_cntnr.push_back(crrnt_dlmtr);
+      }
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // If no tokens were found, return the end token 
+  //////////////////////////////////////////////////////////////////////////
+  if (found_dlmtr_cntnr.size() == 0) {
+    token.token = TOKEN_END;
+  }
+  //////////////////////////////////////////////////////////////////////////
+  // If next token is a delimiter, determine the longest delimiter which 
+  // matches. 
+  //////////////////////////////////////////////////////////////////////////
+  else if (minimum_dlmtr_lctn == 0) {
+
+    found_dlmtr = *found_dlmtr_cntnr.begin();
+    for( crrnt_found_dlmtr = found_dlmtr_cntnr.begin(),
+         end_found_dlmtr  = found_dlmtr_cntnr.end();
+         crrnt_found_dlmtr != end_found_dlmtr;  
+         ++crrnt_found_dlmtr) { 
+
+      if ( (*(*crrnt_found_dlmtr)).first.size() > (*found_dlmtr).first.size() ) {
+        found_dlmtr = *crrnt_found_dlmtr;
+      }
+    }
+
+    token.token = (*found_dlmtr).second;
+    minimum_dlmtr_lctn += (*found_dlmtr).first.size();
+  }
+  //////////////////////////////////////////////////////////////////////////
+  // The next token is not a delimiter, the token is contained in the string
+  // between the beginning of the expression and delimiter.  Now parse 
+  // this string for a token.
+  //////////////////////////////////////////////////////////////////////////
+  else {
+
+    token_string = expression.substr(0, minimum_dlmtr_lctn);
+
+    //////////////////////////////////////////////////////////////////////////
+    // Check for an integer 
+    //////////////////////////////////////////////////////////////////////////
+    string rest;
+    int    number;    
+    bool   is_integer;
+
+    is_integer = getInteger( token_string, number ); 
+    if (is_integer) {
+      token.token  = TOKEN_INTEGER;
+      token.number = number; 
+    } 
+    //////////////////////////////////////////////////////////////////////////
+    // Next, check for parent or cardinality (such as "p0" or "c2")
+    //////////////////////////////////////////////////////////////////////////
+    else if ( token_string[0] == 'p' ) {
+  
+      rest = token_string.substr(1, token_string.length());
+      is_integer = getInteger( rest,  number ); 
+      if (is_integer) {
+        token.token  = TOKEN_PARENT;
+        token.number = number; 
+      } 
+    }
+    else if ( token_string[0] == 'c' ) {
+  
+      rest = token_string.substr(1, token_string.length());
+      is_integer = getInteger( rest,  number ); 
+      if (is_integer) {
+        token.token  = TOKEN_CARDINALITY;
+        token.number = number; 
+      } 
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Check if token string is a multiple character key word 
+    //////////////////////////////////////////////////////////////////////////
+    else {
+
+      map<string, tokenEnum>::iterator found_string;
+      found_string = function.find( token_string );
+      if (found_string != function.end()) {
+        token.token = (*found_string).second; 
+      }
+    }
+  }
+ 
+  //////////////////////////////////////////////////////////////////////////
+  // Erase portion of string that was parsed 
+  //////////////////////////////////////////////////////////////////////////
+  expression.erase(0, minimum_dlmtr_lctn ); 
+
+  assert(token.token != LAST_TOKEN_INDEX);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::getInteger
+ *   Determine if string begins with an integer and gives the integer if
+ *   one is found. 
+ * 
+ * Preconditions:
+ *   none     
+ *
+ * Postconditions:
+ *   If found, the integer is stored in number otherwise number is 
+ *   undetermined. 
+ *
+ * Side Effects:
+ *   none     
+ *
+ * Results:
+ *   Returns true if given expression begins with a integer, false if not 
+ *-----------------------------------------------------------------------
+ */
+bool 
+RngDecisionTree::EquationClass::getInteger(
+  const string& expression, 
+  int& number 
+  )
+{
+  string   nmbr;
+  unsigned index = 0;
+  bool     is_number = true;
+
+  while ((index < expression.length()) && (is_number)) {
+
+    if ((expression[index]>='0') && (expression[index]<='9')) {
+      nmbr += expression[index]; 
+    }
+    else {
+      is_number = false;
+    }
+
+    ++index;
+  }
+
+  if (index == 0) {
+    is_number = false; 
+  }
+
+  number = atoi(nmbr.c_str());
+  return(is_number);
 }
 
 
@@ -862,7 +1543,6 @@ RngDecisionTree::writeRecurse(oDataStreamFile& os,
 //////////////////////////////////////////////////////////////////////
 
 
-
 /*-
  *-----------------------------------------------------------------------
  * query
@@ -887,6 +1567,7 @@ RngDecisionTree::writeRecurse(oDataStreamFile& os,
 leafNodeValType RngDecisionTree::query(const vector <int >& arr,
 				       const vector <int > &cards)
 {
+  assert(0);
   assert ( unsigned(arr.size()) == _numFeatures );
   return queryRecurse(arr,cards,root);
 }
@@ -917,114 +1598,9 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < int >& arr,
 					      const vector < int >& cards,
 					      RngDecisionTree::Node *n)
 {
-  assert ( arr.size() == cards.size() );
-
-  if (n->nodeType == LeafNodeVal) {
-    return n->leafNode.value;
-  } else if (n->nodeType == NonLeafNode) {
-
-    assert ( n->nonLeafNode.ftr < int(arr.size()) );
-
-    assert ( arr[n->nonLeafNode.ftr] >= 0 );
-    /*
-      assert ( arr[n->nonLeafNode.ftr] >= 0 &&
-      arr[n->nonLeafNode.ftr] <= 
-      RNG_DECISION_TREE_MAX_CARDINALITY );
-    */
-
-    const int val = arr[n->nonLeafNode.ftr];
-
-    // use a switch to knock off the short cases for
-    // which we use simple linear search with little bookkeeping.
-    if (n->nonLeafNode.rngs.size() < DT_SPLIT_SORT_THRESHOLD
-	||
-	!n->nonLeafNode.ordered) {
-      for (unsigned i=0;i<n->nonLeafNode.rngs.size();i++) {
-	// Do a linear search.
-	if (n->nonLeafNode.rngs[i]->contains(val))
-	  return queryRecurse(arr,cards,n->nonLeafNode.children[i]);
-      }
-    } else {
-      // do a binary search.
-      const int maxRngNum = n->nonLeafNode.rngs.size()-1;
-      if (*(n->nonLeafNode.rngs[0]) > val)
-	goto failedQuery;
-      if (*(n->nonLeafNode.rngs[maxRngNum]) < val)
-	goto failedQuery;
-
-      // do binary search
-      int l=0,u=maxRngNum;
-      int m=0;
-      while (l<=u) {
-	// all these are conditional on the val being contained in the rng.
-	// rngs[l] <= val && val <= rngs[u]  
-	m = (l+u)/2; 
-	if (*(n->nonLeafNode.rngs[m]) > val) 
-	  // rngs[l] <= val && val < rngs[m]
-	  u = m-1;
-	// rngs[l] <= val && val <= rngs[u]
-	else if (*(n->nonLeafNode.rngs[m]) < val)
-	  // rngs[m] < val && val < rngs[u]
-	  l=m+1;
-	// rngs[l] < val && val < rngs[u]
-	else {
-	  // found potential range that might contain value
-	  // since neither val < rng nor val > rng. 
-	  if (n->nonLeafNode.rngs[m]->contains(val))
-	    return queryRecurse(arr,cards,n->nonLeafNode.children[m]);
-	  break;
-	}
-      }
-    }
-
-    // failed lookup, so return must be the default one.
-  failedQuery:
-    return queryRecurse(arr,
-			cards,
-			n->nonLeafNode.children[n->nonLeafNode.rngs.size()]);
-  } else if (n->nodeType == LeafNodeFullExpand) {
-
-    leafNodeValType res = 0;
-    for (unsigned i=0;i<arr.size()-1;i++) {
-      res = cards[i]*(res + arr[i]);
-    }
-    res += arr[arr.size()-1];
-    return res;
-
-  } else {
-    // formula
-
-    leafNodeValType res = 0;
-    for (unsigned i=0;i<n->leafNode.formula.size();i++) {
-      if (n->leafNode.formula[i].fType == Integer)
-	res += n->leafNode.formula[i].value;
-      else if (n->leafNode.formula[i].fType == ParentValue) {
-	if (n->leafNode.formula[i].parentIndex >= arr.size())
-	  error("ERROR: Dynamic error, DT '%s' specifies a parent index (p%d) larger than number of parents (%d)\n",
-		name().c_str(),
-		n->leafNode.formula[i].parentIndex,
-		arr.size());
-	res += arr[n->leafNode.formula[i].parentIndex];
-      } else if (n->leafNode.formula[i].fType == ParentCardinality) {
-	if (n->leafNode.formula[i].parentIndex >= arr.size())
-	  error("ERROR: Dynamic error, DT '%s' specifies a card index (c%d) larger than number of parents (%d)\n",
-		name().c_str(),
-		n->leafNode.formula[i].parentIndex,
-		arr.size());
-	res += cards[n->leafNode.formula[i].parentIndex];
-      } else {
-	// we must have that (n->leafNode.formula[i].fType == ParentValCard)
-	if (n->leafNode.formula[i].parentIndex >= arr.size())
-	  error("ERROR: Dynamic error, DT '%s' specifies an index (m%d) larger than number of parents (%d)\n",
-		name().c_str(),
-		n->leafNode.formula[i].parentIndex,
-		arr.size());
-	res += cards[n->leafNode.formula[i].parentIndex]*
-	       arr[n->leafNode.formula[i].parentIndex];
-      }
-    }
-    return res;
-  }
+  assert(0);
+  leafNodeValType dummy;
+  return(dummy); 
 }
 
 
@@ -1133,41 +1709,10 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RandomVariable* >& 
     return res;
 
   } else {
-    // formula
+    leafNodeValType answer;
 
-    leafNodeValType res = 0;
-    for (unsigned i=0;i<n->leafNode.formula.size();i++) {
-      if (n->leafNode.formula[i].fType == Integer)
-	res += n->leafNode.formula[i].value;
-      else if (n->leafNode.formula[i].fType == ParentValue) {
-	// This check is redundant.
-	// if (n->leafNode.formula[i].parentIndex >= arr.size())
-	//  error("ERROR: Dynamic error, DT '%s' specifies a parent index (p%d) larger than number of parents (%d)\n",
-	//	name().c_str(),
-	//	n->leafNode.formula[i].parentIndex,
-	//	arr.size());
-	res += arr[n->leafNode.formula[i].parentIndex]->val;
-      } else if (n->leafNode.formula[i].fType == ParentCardinality) {
-	// This check is redundant.
-	// if (n->leafNode.formula[i].parentIndex >= arr.size())
-	//  error("ERROR: Dynamic error, DT '%s' specifies a card index (c%d) larger than number of parents (%d)\n",
-	//	name().c_str(),
-	//	n->leafNode.formula[i].parentIndex,
-	//	arr.size());
-	res += arr[n->leafNode.formula[i].parentIndex]->cardinality;
-      } else {
-	// we must have that (n->leafNode.formula[i].fType == ParentValCard)
-	// This check is redundant.
-	// if (n->leafNode.formula[i].parentIndex >= arr.size())
-	//  error("ERROR: Dynamic error, DT '%s' specifies an index (m%d) larger than number of parents (%d)\n",
-	//	name().c_str(),
-	//	n->leafNode.formula[i].parentIndex,
-	//	arr.size());
-	res += arr[n->leafNode.formula[i].parentIndex]->cardinality*
-	       arr[n->leafNode.formula[i].parentIndex]->val;
-      }
-    }
-    return res;
+    answer = n->leafNode.equation.evaluateFormula( arr );
+    return(answer);
   }
 
 }
