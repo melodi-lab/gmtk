@@ -1415,3 +1415,7 @@ Sat Jan 31 11:45:06 2004
          foo -arg1 a -arg2 b -arg3 c -helpk
     will print out default values of a for arg 1 b for arg2 regardless of
     what they were in program. Fix this as it is confusing. 
+
+Sat Jan 31 19:01:06 2004
+  - get new inference working with disconnected networks.
+
