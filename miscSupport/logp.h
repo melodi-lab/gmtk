@@ -283,7 +283,7 @@ public:
     logp<FT,iFT> operator/(logp<FT,iFT> x, logp<FT,iFT> y) 
     { 
       if (y.zero()) coredump("logp: divide by zero.");
-      if (x.zero()) return x;
+      if (x.essentially_zero()) return x;
       x.v -= y.v; // might need to worry about underflow here.
       return x; }
   inline logp<FT,iFT>& operator /=(logp<FT,iFT> z)
