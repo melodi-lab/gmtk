@@ -238,13 +238,6 @@ public:
     virtual void instantiate() = 0;
 
     ////////////////////////////////////////////////////////////////////////
-    // In a DGM, the analogous occurrences of a variable in different time
-    // slices all share the same distributions and accumulators. This function
-    // tells a variable to use the data structures associated with just one
-    // member of its equivalence class.
-    virtual void tieWith(RandomVariable *rv) = 0;
-
-    ////////////////////////////////////////////////////////////////////////
     // It can be useful to tell a variable to cache the value it's currently
     // set to. For example, wheen keeping track of the best values seen
     // so far in enumerativeViterbi(). Calling this function tells a variable
@@ -275,8 +268,7 @@ public:
 
     ////////////////////////////////////////////////////////////////////////
     // Called at the beginning of an EM iteration.
-    virtual void zeroAccumulators() = 0;
-
+    virtual void emStartIteration() = 0;
 
     ////////////////////////////////////////////////////////////////////////
     // On the backward pass, this will be called with a posterior probability
@@ -289,14 +281,12 @@ public:
     // Then the count of seeing the variable and its parents with those values
     // is incremented by the posterior amount.
     // For continuous variables, statistics are accumulated.
-    virtual void increment(logpr posterior) = 0;
-
+    virtual void emIncrement(logpr posterior) = 0;
 
     ////////////////////////////////////////////////////////////////////////
     // At the end of each EM iteration, this is called to convert the 
     // accumulated statistics into probability distributions.
-    virtual void update() = 0;
-
+    virtual void emEndIteration() = 0;
 
     /////////////////////////////////////////
     /////////////////////////////////////////
