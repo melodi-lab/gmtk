@@ -48,7 +48,10 @@ VCID("$Header$");
 ***********************************************************************
 ***********************************************************************
 
-# The GM Grammar:
+The GM Grammar: 
+        This is a valid grammer for the parser below.
+	Please try to keep this grammer up to date if any
+	changes are made to the parser.
 
 GM = "GRAPHICAL_MODEL" identifier FrameList ChunkSpecifier
 
@@ -144,7 +147,7 @@ Example of a grammatical GM file
 -----------------------------------
 
 #
-# Actual model definition (that parsed).
+# An actual model definition (that parses).
 # 
 GRAPHICAL_MODEL FHMM
 
@@ -248,14 +251,6 @@ chunk: 1:1
 
 ------------------------------------------------------------
 
-Notes on the semantic stuff:
-
-o   Check for unconnected RVs?
-o   Allow non DAGs (untimately for loopy inference) but include a routine 
-    that provides a DAG check.
-o   
-
-
 *********************************************************************** 
 *********************************************************************** 
 */
@@ -352,6 +347,7 @@ FileParser::RVInfo::RVInfo(const RVInfo& v)
 void
 FileParser::RVInfo::checkConsistency()
 {
+  error("not implemented");
 }
 
 
@@ -398,6 +394,7 @@ FileParser::FileParser(const char*const file)
  *-----------------------------------------------------------------------
  * prepareNextToken
  *   prepares the next input token and fills the tokeninfo structure.
+ *   Note that this depends on lex. 
  * 
  * Preconditions:
  *      Object must be in the midst of parsing a file.
