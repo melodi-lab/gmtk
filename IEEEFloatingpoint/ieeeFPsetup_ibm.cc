@@ -17,7 +17,6 @@
 #include <signal.h>
 #include <sys/signal.h>
 
-#include <siginfo.h>
 #include "general.h"
 #include "ieeeFPsetup.h"
 #include "error.h"
