@@ -69,6 +69,7 @@ public:
     covariances.write(os); 
   }
 
+  void preCompute() { error("not implemented"); }
 
 
   //////////////////////////////////
