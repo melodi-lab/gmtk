@@ -979,3 +979,8 @@ Sat Mar  8 00:00:26 2003
   - another arguments.cc bug, in this case with -argsFile and then
     missing required option later, default argument values are printed
     incorrectly.
+
+Sat Mar  8 16:56:48 2003
+  - Write an emacs editing mode file for gmtk .str files.
+
+
