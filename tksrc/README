@@ -1,0 +1,45 @@
+
+$Header$
+
+
+Naming Conventions:
+
+
+Classes:
+  list of words, no space, capitalize each word, including first word
+  Examples:
+
+        GaussianMixture
+        Discrete1DPDF - discrete 1Dim PDF
+        DiagonalGaussian
+	FooBar
+
+Member Variables, member functions.
+  list of words, no space, capitalize each word, not including first word
+  Examples:
+
+       gaussianMixture
+       diagonalGaussian
+       fooBar       
+
+
+Global Variables: (+static members, etc.)
+
+
+
+
+
+
+Local Variables:
+   lower case, list of words, separated by '_' character.
+
+
+   
+
+
+
+
+
+
+
+
