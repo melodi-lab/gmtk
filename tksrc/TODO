@@ -2625,6 +2625,7 @@ Fri Dec 31 01:54:39 2004
      - shoud be able to tar up a top level directory, and untarr it some place else
        and have it still work.
 
-
+Fri Dec 31 22:03:17 2004
+  - iterate unassigned nodes, should iterate in order of increasing cardinality.
 
 
