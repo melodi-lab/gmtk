@@ -36,6 +36,7 @@ INSTALL_EXE = $(INSTALL) -m 555
 #
 # OPTFLAGS = -O
 OPTFLAGS = -O3
+# OPTFLAGS =
 
 # extra flags via command line (e.g., -pg).
 EXCFLAGS =  
@@ -89,7 +90,7 @@ all: libmiscSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o general.o lineqsolve.o debug.o fileParser.o
+objs = error.o bp_range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
@@ -147,6 +148,10 @@ testRand: rand.cc
 testsArray: sArray.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ sArray.cc error.o $(LIBS)
 
+testcArray: cArray.cc
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ cArray.cc error.o $(LIBS)
+
+
 fileParserTest: fileParser.cc fileParser.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ fileParser.cc $(LIBS)
 
@@ -154,13 +159,13 @@ fileParserTest: fileParser.cc fileParser.h
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc general.cc lineqsolve.cc string_err.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc
+all_srcs = error.cc bp_range.cc arguments.cc logp.cc rand.cc sArray.cc cArray.cc general.cc lineqsolve.cc string_err.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc
 
 all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h
 
 all_objs = 
 
-all_exs = testError testBPRange testArguments testLogp testRand testsArray string_err testDebug fileParserTest testHashMapList
+all_exs = testError testBPRange testArguments testLogp testRand testsArray testcArray string_err testDebug fileParserTest testHashMapList
 
 #----------------------------------------------------------------------------
 # installation

@@ -319,6 +319,7 @@ public:
   //////////////////////////////////////////////////////
   // the iterator class for this object.
   class iterator {
+
     friend class hash_map_list;
     // current bucket 
     Bucket* b;
@@ -346,17 +347,18 @@ public:
 
   };
 
-  // iterator over all elements in the hash table
-  iterator begin() {
-    iterator it;
-    it.b = first;
-    return it;
-  }
   // A version that takes an iterator as argument and so
   // can be used with an existing iterator w/o needing to
   // create tmp objects with lots of construction/destruction.
   void begin(iterator& it) {
     it.b = first;
+  }
+
+  // STL like iterator over all elements in the hash table
+  iterator begin() {
+    iterator it;
+    begin(it);
+    return it;
   }
 
   // Begin an iterator starting at key if it exists, otherwise 
