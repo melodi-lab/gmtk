@@ -3075,7 +3075,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // take a look at what state space size is with large verbosity
   // value.
   if (origin.cliqueBeam != (-LZERO)) {
-    infoMsg(IM::Huge,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
+    infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
 	    maxCEValue.valref(),
 	    beamThreshold.valref(),
 	    origNumCliqueValuesUsed,
@@ -3151,7 +3151,7 @@ InferenceMaxClique::ceCliquePrune()
     }
   }
 
-  infoMsg(IM::Huge,"Clique beam pruning: Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
+  infoMsg(IM::Med,"Clique beam pruning: Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
 	  maxCEValue.valref(),
 	  beamThreshold.valref(),
 	  origNumCliqueValuesUsed,
@@ -3355,7 +3355,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 
   } while(1);
 
-  infoMsg(IM::Huge,"Clique k-beam pruning: Original clique state space = %d, new clique state space = %d\n",
+  infoMsg(IM::Med,"Clique k-beam pruning: Original clique state space = %d, new clique state space = %d\n",
 	  numCliqueValuesUsed,k);
   
   // To reallocate or not to reallocate, that is the question.  here,
@@ -5280,7 +5280,7 @@ InferenceSeparatorClique::ceSeparatorPrune()
     }
   }
 
-  infoMsg(IM::Huge,"Separator beam pruning, Max cv = %f, thres = %f. Original sep state space = %d, new sep state space = %d\n",
+  infoMsg(IM::Med,"Separator beam pruning, Max cv = %f, thres = %f. Original sep state space = %d, new sep state space = %d\n",
 	  maxCEsepValue.valref(),
 	  beamThreshold.valref(),
 	  originalTotalStateSpace,newTotalStateSpace);
