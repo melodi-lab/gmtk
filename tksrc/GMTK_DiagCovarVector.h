@@ -88,6 +88,10 @@ public:
   void makeRandom();
   void makeUniform();
 
+
+  ///////////////////////////////////
+  unsigned totalNumberParameters() { return covariances.len(); }
+
   ///////////////////////////////////////
   int dim() { return covariances.len(); }
 

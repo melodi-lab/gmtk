@@ -82,6 +82,10 @@ public:
   // means values.
   DlinkMatrix* noisyClone();
 
+  ///////////////////////////////////
+  unsigned totalNumberParameters() { return arr.len(); }
+
+
   ///////////////////////////////////////////////////////////  
   // num number of features (dimensionality) for this 
   int dim() { return dLinks->dim(); }

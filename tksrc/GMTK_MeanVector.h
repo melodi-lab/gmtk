@@ -94,6 +94,8 @@ public:
   // means values.
   MeanVector* noisyClone();
 
+  unsigned totalNumberParameters() { return means.len(); }
+
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////

@@ -72,6 +72,8 @@ public:
   void makeRandom() {}
   void makeUniform() {}
 
+  unsigned totalNumberParameters() { return 0; }
+
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////

@@ -82,6 +82,11 @@ public:
   // set all values to uniform values.
   void makeUniform();
 
+
+  ///////////////////////////////////
+  unsigned totalNumberParameters() { return pmf.len(); }
+
+
   ///////////////////////////////////////////////////////////    
   // read in the basic parameters, assuming file pointer 
   // is located at the correct position.

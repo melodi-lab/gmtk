@@ -1516,6 +1516,57 @@ GMParms::setStride(const unsigned stride)
   }
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * totalNumberParameters
+ *      return the total number of parameters used by this system.
+ *      NOTE: The code in this routine is very dependent on the
+ *      way that the internal objects are implemented, which means
+ *      that not all objects are queried for their number of parameters.
+ *      For example, sparsePMFs use dense PMFs, so we only query
+ *      all the dense ones to get the total number of parameters.
+ * 
+ * Preconditions:
+ *      parameters should be read in to have non zero value
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      obvious
+ *
+ *-----------------------------------------------------------------------
+ */
+
+unsigned GMParms::totalNumberParameters()
+{
+  unsigned sum=0;
+
+  // gets dpmfs, and covers spmfs also. This covers mixture coefficients.
+  for (unsigned i=0;i<dPmfs.size();i++)
+    sum += dPmfs[i]->totalNumberParameters();
+
+  // gaussian components, gets means, vars, dlinks, weight mats
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    sum += gaussianComponents[i]->totalNumberParameters();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    sum += mdCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<msCpts.size();i++)
+    sum += msCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    sum += mtCpts[i]->totalNumberParameters();
+  return sum;
+
+}
+
+
 void
 GMParms::makeRandom()
 {

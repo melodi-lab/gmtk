@@ -74,6 +74,10 @@ public:
   void makeUniform();
   //////////////////////////////////
 
+  ///////////////////////////////////
+  unsigned totalNumberParameters() { return 
+				       mean->totalNumberParameters()+
+				       covar->totalNumberParameters(); }
 
   //////////////////////////////////
   // probability evaluation

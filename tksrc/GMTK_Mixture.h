@@ -87,6 +87,7 @@ public:
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
 
+  unsigned totalNumberParameters();
 
   //////////////////////////////////
   // set all current parameters to valid but random values
