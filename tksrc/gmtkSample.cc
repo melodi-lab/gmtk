@@ -98,7 +98,6 @@ int startSkip = 0;
 int endSkip = 0;
 char *samplerng_str="all";
 
-char *argsFile = NULL;
 char *cppCommandOptions = NULL;
 
 char *ofilelist = NULL;
@@ -106,82 +105,49 @@ char *dumpNames = NULL;
 
 double varFloor = 1e-10;
 
-void makeArgs(Argument_List &args)
-{
-  bool optional=0,required=1;
-  args.add("of1",required,&ofs[0],
-           "Observation File 1");
-  args.add("nf1",optional,&nfs[0],
-           "Number of floats in observation file 1");
-  args.add("ni1",optional,&nis[0],
-           "Number of ints in observation file 1");
-  args.add("fr1",optional,&frs[0],
-           "Float range for observation file 1");
-  args.add("ir1",optional,&irs[0],
-           "Int range for observation file 1");
-  args.add("fmt1",optional,&fmts[0],
-           "Format (htk,bin,asc,pfile) for observation file 1");
-  args.add("iswp1",optional,&iswps[0],
-           "Endian swap condition for observation file 1");
+Arg Arg::Args[] = {
 
-  args.add("of2",optional,&ofs[1],
-           "Observation File 2");
-  args.add("nf2",optional,&nfs[1],
-           "Number of floats in observation file 2");
-  args.add("ni2",optional,&nis[1],
-           "Number of ints in observation file 2");
-  args.add("fr2",optional,&frs[1],
-           "Float range for observation file 2");
-  args.add("ir2",optional,&irs[1],
-           "Int range for observation file 2");
-  args.add("fmt2",optional,&fmts[1],
-           "Format (htk,bin,asc,pfile) for observation file 2");
-  args.add("iswp2",optional,&iswps[1],
-           "Endian swap condition for observation file 2");
-
-  args.add("of3",optional,&ofs[2],
-           "Observation File 3");
-  args.add("nf3",optional,&nfs[2],
-           "Number of floats in observation file 3");
-  args.add("ni3",optional,&nis[2],
-           "Number of ints in observation file 3");
-  args.add("fr3",optional,&frs[2],
-           "Float range for observation file 3");
-  args.add("ir3",optional,&irs[2],
-           "Int range for observation file 3");
-  args.add("fmt3",optional,&fmts[2],
-           "Format (htk,bin,asc,pfile) for observation file 3");
-  args.add("iswp3",optional,&iswps[2],
-           "Endian swap condition for observation file 3");
-
-  args.add("strFile",required,&strFileName,
-           "GM Structure File");
-  args.add("prmMasterFile",required,&prmMasterFile,
-           "Multi-level master CPP processed GM Parms File");
-  args.add("prmTrainableFile",optional,&prmTrainableFile,
-           "File containing Trainable Parameters");
-  args.add("binPrmTrainableFile",optional,&binPrmTrainableFile,
-           "Is Binary? File containing Trainable Parameters");
-  args.add("cppCommandOptions",optional,&cppCommandOptions,
-           "Command line options to give to cpp");
-
-  args.add("samplerng",optional,&samplerng_str,
-           "Range to decode over segment file");
-
-  args.add("startSkip",optional,&startSkip,
-          "Frames to skip at beginning (i.e., first frame is buff[startSkip])");
-  args.add("endSkip",optional,&endSkip,
-           "Frames to skip at end (i.e., last frame is buff[len-1-endSkip])");
+  Arg("of1",Arg::Req,ofs[0],"Observation File 1"),
+  Arg("nf1",Arg::Opt,nfs[0],"Number of floats in observation file 1"),
+  Arg("ni1",Arg::Opt,nis[0],"Number of ints in observation file 1"),
+  Arg("fr1",Arg::Opt,frs[0],"Float range for observation file 1"),
+  Arg("ir1",Arg::Opt,irs[0],"Int range for observation file 1"),
+  Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
+  Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
 
 
-  args.add("dumpNames",required,&dumpNames,
-           "File containing the names of the variables to save to a file");
-  args.add("ofilelist",required,&ofilelist,
-           "List of filenames to dump the hidden variable values to");
+  Arg("of2",Arg::Opt,ofs[1],"Observation File 2"),
+  Arg("nf2",Arg::Opt,nfs[1],"Number of floats in observation file 2"),
+  Arg("ni2",Arg::Opt,nis[1],"Number of ints in observation file 2"),
+  Arg("fr2",Arg::Opt,frs[1],"Float range for observation file 2"),
+  Arg("ir2",Arg::Opt,irs[1],"Int range for observation file 2"),
+  Arg("fmt2",Arg::Opt,fmts[1],"Format (htk,bin,asc,pfile) for observation file 2"),
+  Arg("iswp2",Arg::Opt,iswps[1],"Endian swap condition for observation file 2"),
+  Arg("of3",Arg::Opt,ofs[2],"Observation File 3"),
+  Arg("nf3",Arg::Opt,nfs[2],"Number of floats in observation file 3"),
+  Arg("ni3",Arg::Opt,nis[2],"Number of ints in observation file 3"),
+  Arg("fr3",Arg::Opt,frs[2],"Float range for observation file 3"),
+  Arg("ir3",Arg::Opt,irs[2],"Int range for observation file 3"),
+  Arg("fmt3",Arg::Opt,fmts[2],"Format (htk,bin,asc,pfile) for observation file 3"),
+  Arg("iswp3",Arg::Opt,iswps[2],"Endian swap condition for observation file 3"),
 
-  args.add("argsFile",optional,&argsFile,
-           "File to get args from (overrides specified comand line args).");
-}
+  Arg("strFile",Arg::Req,strFileName,"GM Structure File"),
+  Arg("prmMasterFile",Arg::Req,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
+  Arg("prmTrainableFile",Arg::Opt,prmTrainableFile,"File containing Trainable Parameters"),
+  Arg("binPrmTrainableFile",Arg::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
+  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to cpp"),
+
+
+  Arg("samplerng",Arg::Opt,samplerng_str,"Range to decode over segment file"),
+
+  Arg("startSkip",Arg::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
+  Arg("endSkip",Arg::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
+
+  Arg("dumpNames",Arg::Req,dumpNames,"File containing the names of the variables to save to a file"),
+  Arg("ofilelist",Arg::Req,ofilelist,"List of filenames to dump the hidden variable values to"),
+  Arg()
+
+};
 
 
 RAND rnd(0);
@@ -199,9 +165,7 @@ main(int argc,char*argv[])
   ieeeFPsetup();
   set_new_handler(memory_error);
 
-  Argument_List args;
-  makeArgs(args);
-  args.parse(argc, argv);
+  Arg::parse(argc,argv);
 
   ////////////////////////////////////////////
   // check for valid argument values.

@@ -78,33 +78,30 @@ double varFloor = 1e-10;
 char *cppCommandOptions = NULL;
 
 
-void makeArgs(Argument_List &args)
-{
-  bool optional=0,required=1;
+Arg Arg::Args[] = {
 
-  args.add("prmMasterFile",optional,&prmMasterFile,
-           "Multi-level master CPP processed GM Parms File");
+  /////////////////////////////////////////////////////////////
+  // input parameter/structure file handling
 
-  args.add("prmTrainableFile",required,&prmTrainableFile,
-           "File containing Trainable Parameters");
-  args.add("binPrmTrainableFile",optional,&binPrmTrainableFile,
-           "Is Binary? File containing Trainable Parameters");
+  Arg("prmMasterFile",Arg::Opt,prmMasterFile,"Multi-level master CPP processed GM Parms File"),
+
+  Arg("prmTrainableFile",Arg::Req,prmTrainableFile,"File containing Trainable Parameters"),
+  Arg("binPrmTrainableFile",Arg::Opt,binPrmTrainableFile,"Is Binary? File containing Trainable Parameters"),
 
 
-  args.add("prmOutFile",required,&prmOutFile,
-           "File to place *TRAINABLE* output parametes");
-  args.add("binPrmOutFile",optional,&binPrmOutFile,
-           "Output parametes binary? (def=false)");
-  args.add("cppCommandOptions",optional,&cppCommandOptions,
-           "Command line options to give to cpp");
+  Arg("prmOutFile",Arg::Req,prmOutFile,"File to place *TRAINABLE* output parametes"),
+  Arg("binPrmOutFile",Arg::Opt,binPrmOutFile,"Output parametes binary? (def=false)"),
+  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to cpp"),
 
-  args.add("varFloor",optional,&varFloor,
-           "Variance Floor");
-  args.add("floorVarOnRead",optional,&DiagCovarVector::floorVariancesWhenReadIn,
-           "Floor the variances to varFloor when they are read in");
-  args.add("cptNormThreshold",optional,&CPT::normalizationThreshold,
-           "Read error if |Sum-1.0|/card > norm_threshold");
-}
+  Arg("varFloor",Arg::Opt,varFloor,"Variance Floor"),
+  Arg("floorVarOnRead",Arg::Opt,DiagCovarVector::floorVariancesWhenReadIn,
+       "Floor the variances to varFloor when they are read in"),
+  Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
+
+  // final one to signal the end of the list
+  Arg()
+
+};
 
 /*
  * definition of needed global arguments
@@ -124,9 +121,7 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  Argument_List args;
-  makeArgs(args);
-  args.parse(argc, argv);
+  Arg::parse(argc,argv);
 
   MixGaussiansCommon::checkForValidRatioValues();
   MeanVector::checkForValidValues();
