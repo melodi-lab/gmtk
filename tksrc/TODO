@@ -2504,6 +2504,14 @@ Wed Oct 27 13:26:52 2004
     gmtkJunctionTree should create .jt files that indicate which cliques are potential interface cliques.
 
 
+Thu Oct 28 00:20:56 2004
+  - do phipac [4,2,1] like optimizations for:
+      1) Gaussian evaluation
+      2) Hash key evaluation.
+   
+Thu Oct 28 00:21:20 2004
+  - in separator sort, put least intersection last. 
+    - when a tie occurs, put the bigger (more variables) separator earlier.
 
 
     
