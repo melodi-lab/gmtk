@@ -693,7 +693,11 @@ GMParms::readAll(iDataStreamFile& is)
 {
   // just read everything in one go.
 
-  // first read basic numeric items.
+  // first read structural items
+  readDTs(is);
+  readDLinks(is);
+
+  // then read basic numeric items.
   readDPmfs(is);
   readSPmfs(is);
   readMeans(is);
@@ -710,11 +714,6 @@ GMParms::readAll(iDataStreamFile& is)
   readGausSwitchMixGaussians(is);
   readLogitSwitchMixGaussians(is);
   readMlpSwitchMixGaussians(is);  
-
-  // and finally read structural items
-  readDTs(is);
-  readDLinks(is);
-
 }
 
 
@@ -1148,7 +1147,11 @@ GMParms::writeAll(oDataStreamFile& os)
 {
   // just write everything in one go.
 
-  // first write basic numeric items.
+  // write structural items
+  writeDTs(os);
+  writeDLinks(os);
+
+  // then write basic numeric items.
   writeDPmfs(os);
   writeSPmfs(os);
   writeMeans(os);
@@ -1165,10 +1168,6 @@ GMParms::writeAll(oDataStreamFile& os)
   writeGausSwitchMixGaussians(os);
   writeLogitSwitchMixGaussians(os);
   writeMlpSwitchMixGaussians(os);
-
-  // and finally write structural items
-  writeDTs(os);
-  writeDLinks(os);
 
 }
 
