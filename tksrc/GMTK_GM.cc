@@ -18,6 +18,8 @@
 
 #include "GMTK_GM.h"
 #include <map>
+#include <set>
+#include <algorithm>
 
 /*
  *-------------------------------------------------------------------------
@@ -485,4 +487,205 @@ logpr GMTK_GM::cliqueChainExampleProb(vector<vector<VariableValue > > &example)
         tp *= chain->dataProb;
     } while (clampNextExample());
     return tp;
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      GM2CliqueChain creates a clique chain corresponding to the GM.
+ *      It fully initializes the chain, so that all forms of inference and 
+ *      learning can be done.
+ * 
+ * Preconditions:
+ *      GM must be fully initialized
+ *
+ * Postconditions:
+ *      CliqueChain is ready to go
+ *
+ * Side Effects:
+ *      Clique chain created
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void GMTK_GM::GM2CliqueChain()
+{
+    /* A valid clique chain/tree satisfies two constraints (see Zweig thesis):
+
+     * 1)Each variable can be found in at least one clique with all its parents.
+
+     *    - When switching parents are present, the constraint is relaxed: each
+     *    variable can be found in at least one clique with 
+     *    a) all its switching parents and
+     *    b) one occurrence of each set of possible conditional parents
+
+     * 2)The cliques encountered on the (unique) path between two occurrences 
+     *   of a variable also contain the variable.
+ 
+     * This routine creates a clique chain according to the following simple
+     * algorithm:
+
+     * Maintain a frontier clique that it initialized with a variable that
+     * has no parents.
+     * Repeat:
+     *     - If there are variables in the frontier whose children are all 
+     *     present, create a new frontier clique by removing them.
+     *     - Otherwise create a new frontier clique by adding a variable whose
+     *     parents are all present.
+     *     - The new frontier clique is added to the chain as the child of
+     *     the old one.
+
+     * This satisfies constraint 1) because a variable is only added
+     * when its parents are present. 
+     * It satisfies constraint 2) because the variable is added, remains for
+     * some time in consecutive cliques, and then is removed.
+
+     * After the clique chain is created, it is condensed by retaining only the 
+     * sequence of maximal cliques. Then separator cliques are added.
+
+     * If desired, another routine can be added to split up the cliques so
+     * that they satisfy the looser constraints the exist when switching 
+     * parents are present. (This should come right before making the
+     * separators.)
+     */
+       
+    // This assumes that the variables are present in the node array 
+    // according to the order in which they should be added/removed
+
+    // remove a node when all its children have been added
+    // use this to keep track of how many have been added.
+    map<RandomVariable *, unsigned> num_children_added_for;
+
+    chain = new CliqueChain;
+
+    unsigned maxops = 2*node.size()-1;  // This many add/removes
+    vector<Clique> cl(maxops);
+    set<Clique *> maximal;  // To keep track of the maximal cliques
+    cl[0].member.push_back(node[0]);  // initialize
+    cl[0].newMember.push_back(node[0]);
+    unsigned num_adds=1;
+    assert(node.size() > 0);
+    while (num_adds != node.size())
+    {
+        unsigned i=num_adds;
+
+        // inherit the new nodes of the predecessor
+        // accumulate new nodes up to a maximal clique
+        // note that they are guaranteed to be in topological order
+        cl[i].newMember = cl[i-1].newMember;
+
+        // do all the removes possible
+        for (unsigned j=0; j<cl[i-1].member.size(); j++)
+        if (num_children_added_for[cl[i-1].member[j]] 
+        != cl[i-1].member[j]->allPossibleChildren.size())
+        {
+            cl[i].member.push_back(cl[i-1].member[j]);
+        }
+        else
+        {
+            maximal.insert(&cl[i-1]);
+            cl[i].newMember.clear();
+        }
+
+        // do an add
+        cl[i].member.push_back(node[num_adds]);
+        cl[i].newMember.push_back(node[num_adds]);
+        for (unsigned j=0; j<node[num_adds]->allPossibleParents.size(); j++)
+            num_children_added_for[node[num_adds]->allPossibleParents[j]]++;
+        num_adds++;
+
+        // keep the clique members sorted for later intersection
+        sort(cl[i].member.begin(), cl[i].member.end());
+    }
+    maximal.insert(&cl[num_adds-1]);
+
+    // copy the maximal cliques to the clique chain leaving space for separators
+    int num_cliques = 2*maximal.size() - 1;  // maximals and separators
+    assert(num_cliques>0);
+    chain->cliques.resize(num_cliques); 
+    set<Clique *>::iterator si;
+    int p=0;
+    for (si=maximal.begin(); si!=maximal.end(); si++, p+=2)
+        chain->cliques[p] = *(*si);
+
+    // make the separators by finding the intersection between successive
+    // cliques. 
+    for (unsigned i=1; i<chain->cliques.size(); i+=2)
+    {
+        // make a temporary vector big enough to hold the intersection
+        vector<RandomVariable *> tempv(chain->cliques[i-1].member.size());
+        vector<RandomVariable *>::iterator se;  // iterator to mark the end
+
+        // get pointers to the ranges to search over
+        vector<RandomVariable *>::iterator 
+            c1_start= chain->cliques[i-1].member.begin();
+        vector<RandomVariable *>::iterator 
+            c1_end= chain->cliques[i-1].member.end();
+        vector<RandomVariable *>::iterator 
+            c2_start= chain->cliques[i+1].member.begin();
+        vector<RandomVariable *>::iterator 
+            c2_end= chain->cliques[i+1].member.end();
+
+        // do the intersection, allocate memory, and store
+        se=set_intersection(c1_start, c1_end, c2_start, c2_end, tempv.begin());
+        chain->cliques[i].member.resize(se-tempv.begin());
+        copy(tempv.begin(), se, chain->cliques[i].member.begin());
+
+       assert(chain->cliques[i].member.begin()!=chain->cliques[i].member.end());
+       
+    }
+    
+    // now initialize all the other clique data members
+  
+    assert(chain->cliques.size());
+    assert(chain->cliques.size()%2);
+    for (unsigned i=0; i<chain->cliques.size(); i++)
+    {
+        Clique *cl = &chain->cliques[i];
+        chain->preorder.push_back(cl);
+        cl->separator = i%2;
+
+        // the discrete members
+        for (unsigned j=0; j<cl->member.size(); j++)
+            if (cl->member[j]->discrete)
+                cl->discreteMember.push_back(cl->member[j]);
+
+        // the conditional probability nodes
+        // set it up conservatively so it will work regardless of switching
+        cl->conditionalProbabilityNode = cl->newMember;
+    }
+    chain->postorder = chain->preorder;
+    reverse(chain->postorder.begin(), chain->postorder.end());
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function
+ *      showCliques prints out vital information about the cliques
+ * 
+ * Preconditions:
+ *      cliqueChain is set up
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void GMTK_GM::showCliques()
+{
+    for (unsigned i=0; i<chain->preorder.size(); i++)
+    {
+        cout << "Clique " << i << ":" << endl;
+        chain->preorder[i]->reveal();
+    }
 }
