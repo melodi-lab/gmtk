@@ -1,5 +1,5 @@
 /*-
- * GMTK_MDCPT.cc
+ * GMTK_FileParser.cc
  *     structure file parsing
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -112,13 +112,13 @@ Parent = identifier "(" integer ")"
 
 Implementation = DiscreteImplementation | ContinuousImplementation
 
-DiscreteImplementation = ( "MDCPT" | "MSCPT" | "MTCPT" )  "(" ListIndex ")"
+DiscreteImplementation = ( "DenseCPT" | "SparseCPT" | "DeterministicCPT" )  "(" ListIndex ")"
 
 ContinuousImplementation = ContObsDistType
         (
              "(" ListIndex ")"
            |
-              MappingSpec
+              "collection" "(" ListIndex ")" MappingSpec
         )
        #
        # A ContinousImplementation has two cases:
@@ -139,14 +139,17 @@ ContinuousImplementation = ContObsDistType
        #
        # 2) in the second case, which uses the syntax
        #
-       #           MappingSpec
+       #           "collection" "(" ListIndex ")" MappingSpec
        #
        # this is when we have multiple
        # conditional parents, and we need another decision tree to map
        # from the conditional parents values to the appropriate
        # distribution. Therefore we use the mapping syntax.
        # In this case, the 'MappingSpec' must refer to one of
-       # the decision trees. 
+       # the decision trees.  The collection referes to the 
+       # collection of objects in global arrays, and the mappingspec
+       # gives the mapping from random variable parent indices to
+       # the relative offset in the collection array.
        # 
 
 
@@ -176,29 +179,30 @@ Example of a grammatical GM file
 GRAPHICAL_MODEL FHMM
 
 frame:0 {
+
      variable : word {
           type: discrete hidden cardinality 3 ;
           switchingparents: nil ;
-          conditionalparents: nil using MDCPT("initcpt") ;
+          conditionalparents: nil using DenseCPT("initcpt") ;
         }
      variable : phone {
           type: discrete hidden cardinality 4 ;
           switchingparents : nil ;
           conditionalparents :
-                     word(0) using MDCPT("dep_on_word") ;
+                     word(0) using DenseCPT("dep_on_word") ;
         }
      variable : state1 {
           type: discrete hidden cardinality 4 ;
           switchingparents: phone(0) using mapping("phone2state1") ;
           conditionalparents :
-                  nil using MSCPT("f1")
-                | nil using MDCPT("f2") ;
+                  nil using SparseCPT("f1")
+                | nil using DenseCPT("f2") ;
        }
        variable : state2 {
           type: discrete hidden cardinality 4 ;
           switchingparents: nil ;
           conditionalparents:
-                     nil using MDCPT("f5") ;
+                     nil using DenseCPT("f5") ;
        }
 
        variable : obs1 {
@@ -207,13 +211,13 @@ frame:0 {
                    using mapping("state2obs6") ;
           conditionalparents: 
                  nil using mixGaussian("the_forth_gaussian")
-               | state1(0) using mixGaussian mapping("gausmapping");
+               | state1(0) using mixGaussian collection("gaussianCollection") mapping("gausmapping");
        }
        variable : obs2 {
           type: continuous observed 6:25  ;
           switchingparents: nil ;
           conditionalparents: 
-                state1(0) using mlpSwitchMixGaussian
+                state1(0) using mlpSwitchMixGaussian collection("mlpgaussianCollection")
                           mapping("gaussmapping3") ;
        }
 }
@@ -223,14 +227,14 @@ frame:1 {
      variable : word {
           type: discrete hidden cardinality 3 ;
           switchingparents: nil ;
-          conditionalparents: word(-1) using MDCPT("wordbigram") ;
+          conditionalparents: word(-1) using DenseCPT("wordbigram") ;
         }
 
      variable : phone {
           type: discrete hidden cardinality 4 ;
           switchingparents : nil ;
           conditionalparents :
-                phone(-1),word(0) using MDCPT("dep_on_word_phone") ;
+                phone(-1),word(0) using DenseCPT("dep_on_word_phone") ;
         }
 
      variable : state1 {
@@ -238,9 +242,9 @@ frame:1 {
           switchingparents: phone(0) using mapping("phone2state1") ;
           conditionalparents :
 	          # in this first case, state1 is dep on prev time
-                  state1(-1) using MSCPT("f3")
+                  state1(-1) using SparseCPT("f3")
 	          # in this second case, it is cond. indep. of prev. time.
-                | nil using MDCPT("f2") ;
+                | nil using DenseCPT("f2") ;
        }
 
        variable : state2 {
@@ -248,7 +252,7 @@ frame:1 {
           switchingparents: nil ;
           conditionalparents:
 	             # this is a sep. hidden markov chain
-                     state2(-1) using MDCPT("f9") ;
+                     state2(-1) using DenseCPT("f9") ;
        }
 
        # like in the first frame, the obs. are only dep.
@@ -259,14 +263,14 @@ frame:1 {
                    using mapping("state2obs6") ;
           conditionalparents: 
                  nil using mixGaussian("the_forth_gaussian")
-               | state1(0) using mixGaussian mapping("gausmapping");
+               | state1(0) using mixGaussian collection("gaussianCollection") mapping("gausmapping");
        }
 
        variable : obs2 {
           type: continuous observed 6:25  ;
           switchingparents: nil ;
           conditionalparents: 
-                state1(0) using mlpSwitchMixGaussian
+                state1(0) using mlpSwitchMixGaussian collection("gaussianCollection")
                           mapping("gaussmapping3") ;
        }
 }
@@ -307,7 +311,8 @@ const vector<string>
 FileParser::fillKeywordTable()
 {
   // ******************************************************************
-  // This table must always be consistent with the enum TokenKeyword.
+  // This table must always be consistent with the enum TokenKeyword in 
+  // the .h file.
   // ******************************************************************
   const char*const kw_table[] = {
     "frame",
@@ -323,9 +328,10 @@ FileParser::fillKeywordTable()
     "nil",
     "using",
     "mapping",
-    "MDCPT",
-    "MSCPT",
-    "MTCPT",
+    "collection",
+    "DenseCPT",
+    "SparseCPT",
+    "DeterministicCPT",
     "mixGaussian",
     "gausSwitchMixGaussian",
     "logitSwitchMixGaussian",
@@ -1152,6 +1158,13 @@ void
 FileParser::parseImplementation()
 {
   ensureNotAtEOF("implementation");  
+  if (curRV.rvType == RVInfo::t_discrete)
+    parseDiscreteImplementation();
+  else
+    parseContinuousImplementation();
+
+#if 0
+
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT 
       || tokenInfo == KW_MTCPT) {
     if (curRV.rvType != RVInfo::t_discrete) 
@@ -1162,6 +1175,8 @@ FileParser::parseImplementation()
       parseError("need continuous implementations in continuous RV");
     parseContinuousImplementation();
   }
+#endif
+
 }
 
 
@@ -1198,7 +1213,7 @@ FileParser::parseDiscreteImplementation()
 
 
   } else {
-    parseError("discrete implementation");
+    parseError("need discrete implementations in discrete RV");
   }
 
 }
@@ -1249,7 +1264,42 @@ FileParser::parseContinuousImplementation()
 
   } else {
 
+    // parse a string of the form 'collection("foo")'
+
+    ensureNotAtEOF(KW_Collection);
+    if (tokenInfo != KW_Collection)
+      parseError(KW_Collection);
+    consumeToken();
+
+    ensureNotAtEOF("(");
+    if (tokenInfo != TT_LeftParen) {
+      parseError("(");
+    }
+    consumeToken();
+
+    ensureNotAtEOF("collection name");
+    string collectionName;
+    if (tokenInfo == TT_String) {
+      collectionName = tokenInfo.tokenStr;
+      // remove the double quotes
+      collectionName.replace(0,1,"");
+      collectionName.replace(collectionName.length()-1,1,"");
+      consumeToken();
+    } else
+      parseError("expecting collection name");
+
+    ensureNotAtEOF(")");
+    if (tokenInfo != TT_RightParen) {
+      parseError(")");
+    }
+    consumeToken();
+
+    // parse a string of the form 'mapping("bar")'
     parseMappingSpec();
+
+    listIndex.collectionName = collectionName;
+
+    // save the data.
     curRV.listIndices.push_back(listIndex);
 
     //////////////////////////////////////////////////////////////////
@@ -1331,7 +1381,6 @@ FileParser::parseMappingSpec()
   if (tokenInfo != TT_LeftParen) {
     parseError("(");
   }
-
   consumeToken();
 
   parseListIndex();
@@ -1347,7 +1396,6 @@ FileParser::parseMappingSpec()
 void
 FileParser::parseListIndex()
 {
-
   ensureNotAtEOF("list index");
   if (tokenInfo == TT_Integer) {
     listIndex.liType = RVInfo::ListIndex::li_Index;
@@ -2120,7 +2168,7 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 		      j,
 		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
 	    } else {
-	      rv->conditionalGaussians[j].dtMapper =
+	      rv->conditionalGaussians[j].mapping.dtMapper =
 		GM_Parms.dts[
 		   GM_Parms.dtsMap[
 				rvInfoVector[i].listIndices[j].nameIndex
@@ -2138,10 +2186,30 @@ FileParser::associateWithDataParams(bool allocateIfNotThere)
 			rvInfoVector[i].listIndices[j].intIndex);
 	      } else {
 		// otherwise add it
-		rv->conditionalGaussians[j].dtMapper =
+		rv->conditionalGaussians[j].mapping.dtMapper =
 		  GM_Parms.dts[rvInfoVector[i].listIndices[j].intIndex];
 	      }
 	  }
+
+	  // get the collection as well.
+	  if (GM_Parms.nclsMap.find(
+		    rvInfoVector[i].listIndices[j].collectionName) ==
+		GM_Parms.nclsMap.end()) {
+		error("Error: RV \"%s\" at frame %d (line %d), conditional parent %d specifies a collection name \"%s\" that doesn't exist\n",
+		      rvInfoVector[i].name.c_str(),
+		      rvInfoVector[i].frame,
+		      rvInfoVector[i].fileLineNumber,
+		      j,
+		      rvInfoVector[i].listIndices[j].collectionName.c_str());
+	    } else {
+	      rv->conditionalGaussians[j].mapping.collection =
+		GM_Parms.ncls[
+		   GM_Parms.nclsMap[
+				rvInfoVector[i].listIndices[j].collectionName
+		  ]];
+	      // make sure that the pointer table is filled in for this name.
+	      rv->conditionalGaussians[j].mapping.collection->fillMgTable();
+	    }
 	}
       }
     }

@@ -913,7 +913,7 @@ GMParms::readNonTrainable(iDataStreamFile& is)
 
 
 void 
-GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
+GMParms::read(iDataStreamFile& is)
 {
   // read a file consisting of a list of keyword,filename
   // pairs. the keyword says which structure to read in,
@@ -952,97 +952,64 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
     if (it == fileNameMap.end()) {
       fileNameMap[fileName] = new iDataStreamFile(fileName.c_str(),binary_p);
       it = fileNameMap.find(fileName);
+    } else if (((*it).second)->binary() != binary_p) {
+      error("ERROR: reading '%s'. File '%s' had binary status = %d, now binary status = %d. Can't mix binary and ASCII files",is.fileName(),fileName.c_str(),((*it).second)->binary(),binary_p);
     }
+
 
     if (keyword == "DPMF_IN_FILE") {
       readDPmfs(*((*it).second),false);
-    } else if (keyword == "DPMF_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "SPMF_IN_FILE") {
       readSPmfs(*((*it).second),false);
-    } else if (keyword == "SPMF_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "MEAN_IN_FILE") {
       readMeans(*((*it).second),false);
-    } else if (keyword == "MEAN_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "COVAR_IN_FILE") {
       readCovars(*((*it).second),false);
-    } else if (keyword == "COVAR_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "DLINK_MAT_IN_FILE") {
       readDLinkMats(*((*it).second),false);
-    } else if (keyword == "DLINK_MAT_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "DLINK_IN_FILE") {
       readDLinks(*((*it).second),false);
-    } else if (keyword == "DLINK_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "WEIGHT_MAT_IN_FILE") {
       readWeightMats(*((*it).second),false);
-    } else if (keyword == "WEIGHT_MAT_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "DENSE_CPT_IN_FILE") {
       readMdCpts(*((*it).second),false);
-    } else if (keyword == "DENSE_CPT_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "SPARSE_CPT_IN_FILE") {
       readMsCpts(*((*it).second),false);
-    } else if (keyword == "SPARSE_CPT_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "DETERMINISTIC_CPT_IN_FILE") {
       readMtCpts(*((*it).second),false);
-    } else if (keyword == "DETERMINISTIC_CPT_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
-    } else if (keyword == "DT_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "GC_IN_FILE") {
       readGaussianComponents(*((*it).second),false);
-    } else if (keyword == "GC_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "MG_IN_FILE") {
       readMixGaussians(*((*it).second),false);
-    } else if (keyword == "MG_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "NAME_COLLECTION_IN_FILE") {
       readNameCollections(*((*it).second),false);
-    } else if (keyword == "NAME_COLLECTION_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "GSMG_IN_FILE") {
       error("GSMG_IN_FILE in file '%s', not implemented",
 	    is.fileName());
-    } else if (keyword == "GSMG_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
 
     } else if (keyword == "LSMG_IN_FILE") {
       error("LSMG_IN_FILE in file '%s', not implemented",
 	    is.fileName());
-    } else if (keyword == "LSMG_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
-
 
     } else if (keyword == "MSMG_IN_FILE") {
       error("MSMG_IN_FILE in file '%s', not implemented",
 	    is.fileName());
-    } else if (keyword == "MSMG_OUT_FILE") {
-      error("OUT_FILES not yet implemented");
-
 
     } else {
       error("ERROR: encountered unknown file type '%s' in file '%s'",
@@ -1890,6 +1857,138 @@ GMParms::writeNonTrainable(oDataStreamFile& os)
   writeMsCpts(os);
   writeMtCpts(os);
 
+}
+
+
+
+void 
+GMParms::write(const char *const outputFileFormat, const int intTag)
+{
+  //
+  // read a file consisting of a list of 
+  // 
+  //      <keyword>  <filename> {ascii|binary}
+  //
+  // triplets. 
+  // The keyword says which structure to write out,
+  // The filename says where to write it.
+  // And the {ascii|binary} tag says if we should write it in ascii or
+  //   binary.
+  //
+
+  if (outputFileFormat == NULL)
+    return;
+
+  string keyword;
+  string fileName;
+  string binStatus;
+
+  map<string,oDataStreamFile*> fileNameMap;
+  char buff[2048];
+  iDataStreamFile is(outputFileFormat,false);
+
+  while (is.readString(keyword)) {
+
+    if (!is.readString(fileName)) {
+      error("ERROR: while reading file '%s', got keyword '%s' without a filename",is.fileName(),keyword.c_str());
+    }
+    
+
+    bool binary_p = is.binary();
+    // read binary status of file
+    if (!is.readString(binStatus)) {
+      error("ERROR: while reading file '%s', got keyword '%s' and filename '%s' without a binary status",is.fileName(),keyword.c_str(),fileName.c_str());
+    }
+    if (binStatus == "ascii" || binStatus == "ASCII")
+      binary_p = false;
+    else if (binStatus == "binary" || binStatus == "BINARY")
+      binary_p = true;
+    else {
+      error("ERROR: while reading file '%s', got string '%s' when expecting 'ascii'/'binary' keyword",is.fileName(),binStatus.c_str());
+    }
+
+    copyStringWithTag(buff,fileName.c_str(),intTag,sizeof(buff));
+    fileName = buff;
+
+    map<string,oDataStreamFile*>::iterator it = fileNameMap.find(fileName);
+    if (it == fileNameMap.end()) {
+      // then this is a previously unencountered filename.
+      fileNameMap[fileName] = new oDataStreamFile(fileName.c_str(),binary_p);
+      it = fileNameMap.find(fileName);
+    } else if (((*it).second)->binary() != binary_p) {
+      // need to close the file and re-open it with the appropriate binary status, and
+      // in append mode
+      // delete ((*it).second);
+      // fileNameMap[fileName] = new oDataStreamFile(fileName.c_str(),binary_p,true);
+      // it = fileNameMap.find(fileName);
+      error("ERROR: reading '%s'. File '%s' had binary status = %d, now binary status = %d. Can't mix binary and ASCII files",is.fileName(),fileName.c_str(),((*it).second)->binary(),binary_p);
+    }
+
+    if (keyword == "DPMF_OUT_FILE") {
+      writeDPmfs(*((*it).second));
+
+    } else if (keyword == "SPMF_OUT_FILE") {
+      writeSPmfs(*((*it).second));
+
+    } else if (keyword == "MEAN_OUT_FILE") {
+      writeMeans(*((*it).second));
+
+    } else if (keyword == "COVAR_OUT_FILE") {
+      writeCovars(*((*it).second));
+
+    } else if (keyword == "DLINK_MAT_OUT_FILE") {
+      writeDLinkMats(*((*it).second));
+
+    } else if (keyword == "DLINK_OUT_FILE") {
+      writeDLinks(*((*it).second));
+
+    } else if (keyword == "WEIGHT_MAT_OUT_FILE") {
+      writeWeightMats(*((*it).second));
+
+    } else if (keyword == "DENSE_CPT_OUT_FILE") {
+      writeMdCpts(*((*it).second));
+
+    } else if (keyword == "SPARSE_CPT_OUT_FILE") {
+      writeMsCpts(*((*it).second));
+
+    } else if (keyword == "DETERMINISTIC_CPT_OUT_FILE") {
+      writeMtCpts(*((*it).second));
+
+    } else if (keyword == "DT_OUT_FILE") {
+      writeDTs(*((*it).second));
+
+    } else if (keyword == "GC_OUT_FILE") {
+      writeGaussianComponents(*((*it).second));
+
+    } else if (keyword == "MG_OUT_FILE") {
+      writeMixGaussians(*((*it).second));
+
+    } else if (keyword == "NAME_COLLECTION_OUT_FILE") {
+      writeNameCollections(*((*it).second));
+
+    } else if (keyword == "GSMG_OUT_FILE") {
+      error("GSMG_OUT_FILE in file '%s', not implemented",
+	    is.fileName());
+
+    } else if (keyword == "LSMG_OUT_FILE") {
+      error("LSMG_OUT_FILE in file '%s', not implemented",
+	    is.fileName());
+
+    } else if (keyword == "MSMG_OUT_FILE") {
+      error("MSMG_OUT_FILE in file '%s', not implemented",
+	    is.fileName());
+
+    } else {
+      error("ERROR: encountered unknown file type '%s' in file '%s'",
+	    keyword.c_str(),is.fileName());
+    }
+  }
+
+  // now go through and delete all the input files
+  for (map<string,oDataStreamFile*>::iterator it = fileNameMap.begin();
+       it != fileNameMap.end(); it++) {
+      delete ((*it).second);
+  }
 }
 
 

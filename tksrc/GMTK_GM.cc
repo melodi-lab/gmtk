@@ -374,6 +374,7 @@ void GMTK_GM::cliqueChainEM(const int iterations,
 			    const bool writeParametersAfterEachEMIteration,
 			    const char *const outputParamFile,
 			    const bool binOutFile,
+			    const char *const outputMasterFile,
 			    const char* const loadAccFile,
 			    const char* const loadAccRange,
 			    const char* const storeAccFile,
@@ -488,6 +489,8 @@ void GMTK_GM::cliqueChainEM(const int iterations,
       oDataStreamFile of(buff,binOutFile);
       GM_Parms.writeTrainable(of);
     }
+    // also write according to output master
+    GM_Parms.write(outputMasterFile,i);  
 
     // store the current total data probability to a file.
     if (llStoreFile != NULL) {
@@ -516,6 +519,8 @@ void GMTK_GM::cliqueChainEM(const int iterations,
     oDataStreamFile of(buff,binOutFile);
     GM_Parms.writeTrainable(of);
   }
+  // also write according to output master
+  GM_Parms.write(outputMasterFile);  
 }
 
 
