@@ -59,6 +59,7 @@ public:
                  // called with the error() function which will kill
                  // the program. Also, this level is the
                  // threshold at which things get sent to stderr.
+    SoftWarning = 6, // warnings that aren't too bad.
     Nano = 10,   // This should be the default.
     Default = 10, // Another name for default. Prints using default command line option.
     Info = 11, // Informative but not crucially important commands.
