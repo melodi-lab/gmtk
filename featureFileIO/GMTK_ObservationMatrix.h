@@ -21,7 +21,6 @@
 #include "logp.h"
 #include "sArray.h"
 #include "machine-dependent.h"
-#include "pfile.h"
 #include "bp_range.h"
 #include "GMTK_Stream.h"
 
@@ -68,6 +67,7 @@ class ObservationMatrix
   // read pfile features
   bool readPFloats(InFtrLabStream_PFile *, BP_Range *);	
   bool readPInts(InFtrLabStream_PFile *, BP_Range *);
+  bool readPFrame(InFtrLabStream_PFile *, BP_Range *, BP_Range *);
 
   // read binary features
   bool readBinFloats(unsigned, FILE *, BP_Range *, bool);
