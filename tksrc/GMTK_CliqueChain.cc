@@ -283,8 +283,8 @@ void CliqueChain::incrementEMStatistics()
     {
         Clique *cl = preorder[i];
 
-	// for debugging, sum up the posteriors
-        logpr sum;
+	// Uncomment for debugging, sum up the posteriors
+        // logpr sum;
 
         // If using floats, the forward and backward data probs may
         // not be the same. it might be better to use an average. When
@@ -306,13 +306,13 @@ void CliqueChain::incrementEMStatistics()
             logpr posterior = li->lambda*li->pi/aveDataProb;
 
 	    // 
-	    // for debugging, sum up the posteriors
-	    sum += posterior;
+	    // Uncomment for debugging, sum up the posteriors
+	    // sum += posterior;
 
             for (unsigned j=0; j<cl->conditionalProbabilityNode.size(); j++)
                 cl->conditionalProbabilityNode[j]->emIncrement(posterior);
         }
-	// for debugging, print the sum of the posteriors
+	// Uncomment for debugging, print the sum of the posteriors
 	// printf("Sum of posteriors = %f\n",sum.unlog());
     }
 }
