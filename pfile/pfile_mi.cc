@@ -1579,16 +1579,17 @@ pfile_mi_mg(SPI_base* in_streamp,
 	      num_samps = lab_buf_curp-lab_buf_cur;
 	    }
 
-	    mbn.addtoEpoch(dftr_buf_cur,
-			   n_ftrs,
-			   num_samps,
-			   n_frames,
-			   lab_buf_cur-lab_buf,
-			   lab_buf_cur_endp-lab_buf_cur-num_samps,
-			   cfr_rng,
-			   bfr_rng,
-			   lfr_rng,
-			   counts);
+	    if (num_samps > 1) // change to a command line threshold
+	      mbn.addtoEpoch(dftr_buf_cur,
+			     n_ftrs,
+			     num_samps,
+			     n_frames,
+			     lab_buf_cur-lab_buf,
+			     lab_buf_cur_endp-lab_buf_cur-num_samps,
+			     cfr_rng,
+			     bfr_rng,
+			     lfr_rng,
+			     counts);
 	    
 	    lab_buf_cur += num_samps;
 	    dftr_buf_cur += num_samps;
