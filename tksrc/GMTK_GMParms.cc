@@ -835,6 +835,256 @@ GMParms::read(iDataStreamFile& is,bool dataFilesAreBinary)
 ////////////////////////////////////////////////////////////////////
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * write<OBJECTS>
+ *      Write the <OBJECT> to a file specified by os
+ * 
+ * Preconditions:
+ *      None, as if the arrays are zero sized, nothing will be written
+ *      other than the number 0
+ *
+ * Postconditions:
+ *      All objects have been written.
+ *      
+ * Side Effects:
+ *      None.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+
+void 
+GMParms::writeDPmfs(oDataStreamFile& os)
+{
+  os.write(dPmfs.size(),"num dPMFs");
+  os.nl();
+  for (unsigned i=0;i<dPmfs.size();i++) {
+    // first write the count
+    os.write(i,"dDPMF cnt");
+    os.nl();
+    dPmfs[i]->write(os);
+  }
+  os.nl();
+}
+
+
+
+void 
+GMParms::writeSPmfs(oDataStreamFile& os)
+{
+  os.write(sPmfs.size(),"num sPMFs");
+  os.nl();
+  for (unsigned i=0;i<sPmfs.size();i++) {
+    // first write the count
+    os.write(i,"sPMFs cnt");
+    os.nl();
+    sPmfs[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeMeans(oDataStreamFile& os)
+{
+  os.write(means.size(),"num Means");
+  os.nl();
+  for (unsigned i=0;i<means.size();i++) {
+    // first write the count
+    os.write(i,"means cnt");
+    os.nl();
+    means[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeCovars(oDataStreamFile& os)
+{
+  os.write(covars.size(),"num covars");
+  os.nl();
+  for (unsigned i=0;i<covars.size();i++) {
+    // first write the count
+    os.write(i,"covar cnt");
+    os.nl();
+    covars[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeDLinkMats(oDataStreamFile& os)
+{
+  os.write(dLinkMats.size(),"num dlink mats");
+  os.nl();
+  for (unsigned i=0;i<dLinkMats.size();i++) {
+    // first write the count
+    os.write(i,"dlink mat cnt");
+    os.nl();
+    dLinkMats[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeDLinks(oDataStreamFile& os)
+{
+  os.write(dLinks.size(),"num dlinks");
+  os.nl();
+  for (unsigned i=0;i<dLinks.size();i++) {
+    // first write the count
+    os.write(i,"dlink cnt");
+    os.nl();
+    dLinks[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeWeightMats(oDataStreamFile& os)
+{
+  os.write(weightMats.size(),"num weight mats");
+  os.nl();
+  for (unsigned i=0;i<weightMats.size();i++) {
+    // first write the count
+    os.write(i,"weight mat cnt");
+    os.nl();
+    weightMats[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeMdCpts(oDataStreamFile& os)
+{
+  os.write(mdCpts.size(),"num MDCPTs");
+  os.nl();
+  for (unsigned i=0;i<mdCpts.size();i++) {
+    // first write the count
+    os.write(i,"MDCPT cnt");
+    os.nl();
+    mdCpts[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeMsCpts(oDataStreamFile& os)
+{
+  os.write(msCpts.size(),"num MSCPTs");
+  os.nl();
+  for (unsigned i=0;i<msCpts.size();i++) {
+    // first write the count
+    os.write(i,"MSCPT cnt");
+    os.nl();
+    msCpts[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeMtCpts(oDataStreamFile& os)
+{
+  os.write(mtCpts.size(),"num MTCPTs");
+  os.nl();
+  for (unsigned i=0;i<mtCpts.size();i++) {
+    // first write the count
+    os.write(i,"MTCPT cnt");
+    os.nl();
+    mtCpts[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeDTs(oDataStreamFile& os)
+{
+  os.write(dts.size(),"num DTS");
+  os.nl();
+  for (unsigned i=0;i<dts.size();i++) {
+    // first write the count
+    os.write(i,"DTS cnt");
+    os.nl();
+    dts[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeGaussianComponents(oDataStreamFile& os)
+{
+  os.write(gaussianComponents.size(),"num GCs");
+  os.nl();
+  for (unsigned i=0;i<dts.size();i++) {
+    // first write the count
+    os.write(i,"GC cnt");
+    os.nl();
+
+    // next write the dimension of this Gaussian
+    os.write(gaussianComponents[i]->dim(),"GC dim");
+    os.nl();
+
+    ////////////////////////////////////////////////////////////
+    // Assume that the GC's write routine will 
+    // itself write the Gaussian type
+    gaussianComponents[i]->write(os);
+  }
+  os.nl();
+}
+
+
+void 
+GMParms::writeMixGaussians(oDataStreamFile& os)
+{
+  os.write(mixGaussians.size(),"num MIXGAUSSIANS");
+  os.nl();
+  for (unsigned i=0;i<mixGaussians.size();i++) {
+    // first write the count
+    os.write(i,"MIXGAUSSIANS cnt");
+    os.nl();
+
+    // next write the dimension of this Gaussian
+    os.write(mixGaussians[i]->dim(),"MG dim");
+    os.nl();
+
+    mixGaussians[i]->write(os);
+  }
+  os.nl();
+}
+
+void 
+GMParms::writeGausSwitchMixGaussians(oDataStreamFile& os)
+{
+  error("not implemented");
+}
+
+void 
+GMParms::writeLogitSwitchMixGaussians(oDataStreamFile& os)
+{
+  error("not implemented");
+}
+
+void 
+GMParms::writeMlpSwitchMixGaussians(oDataStreamFile& os)
+{
+  error("not implemented");
+}
+
+
+
 void 
 GMParms::writeBasic(oDataStreamFile& os)
 {
@@ -926,20 +1176,6 @@ GMParms::writeBasic(oDataStreamFile& os)
 
 }
 
-
-
-void 
-GMParms::writeDTs(oDataStreamFile& os)
-{
-  os.write(MAGIC_DT_FILE,"GMTK_GMParms::writeDTs, magic");
-  os.nl();
-  os.write(dts.size(),"GMTK_GMParms::writeDTs, dpmfs");
-  os.nl();
-  for (unsigned i=0;i<dts.size();i++) {
-    os.write(i); os.nl();
-    dts[i]->write(os);
-  }
-}
 
 
 ////////////////////////////////////////////////////////////////////
