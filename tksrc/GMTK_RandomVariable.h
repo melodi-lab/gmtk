@@ -77,7 +77,6 @@ class RandomVariable
 {
 public:
 
-  unsigned foo[5];
 
   ////////////////////////////////////////////////////////////////////////
   // What is my name?
@@ -149,9 +148,6 @@ public:
     wtWeight = 1.0;
     wtFeatureElement = 0;
 
-    for (unsigned i=0;i<sizeof(foo)/sizeof(unsigned);i++) {
-      foo[i] = i;
-    } 
 
   }
 

@@ -210,16 +210,38 @@ public:
   static void makeComplete(const set<RandomVariable*> &rvs);
 
 
+
+  // Static version of various compute weight routines, useful in
+  // certain places outside this class where we just have a collection
+  // of nodes to compute the weight of.
+  static float computeWeight(const set<RandomVariable*>& nodes,
+			     const RandomVariable* node = NULL,
+			     const bool useDeterminism = true);
+  static float computeWeightWithExclusion(const set<RandomVariable*>& nodes,
+					  const set<RandomVariable*>& unassignedIteratedNodes,
+					  const set<RandomVariable*>& unionSepNodes,
+					  const bool useDeterminism = true);
+  static float computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
+					   const set<RandomVariable*>& assignedNodes,
+					   const set<RandomVariable*>& unassignedIteratedNodes,
+					   const set<RandomVariable*>& separatorNodes,
+					   const set<RandomVariable*>& cumulativeAssignedNodes,
+					   const bool useDeterminism);
+
   // compute the weight (log10 state space) of this clique.
   float weight(const bool useDeterminism = true) const { 
     return computeWeight(nodes,NULL,useDeterminism); 
   }
-  // Static version of routine, useful in certain places outside this
-  // class where we just have a collection of nodes to compute the
-  // weight of.
-  static float computeWeight(const set<RandomVariable*>& nodes,
-			     const RandomVariable* node = NULL,
-			     const bool useDeterminism = true);
+  float weightInJunctionTree(const bool useDeterminism = true) const { 
+    return computeWeightInJunctionTree(nodes,
+				       assignedNodes,
+				       unassignedIteratedNodes,
+				       accumSeps,
+				       cumulativeAssignedNodes,
+				       useDeterminism);
+  }
+
+
 
   // print just the clique nodes
   void printCliqueNodes(FILE* f);
@@ -283,6 +305,13 @@ public:
   // cumulativeUnassignedIteratedNodes does *NOT* include the
   // assignedNodes in the current clique (thus the name preceding).
   set<RandomVariable*> precedingUnassignedIteratedNodes;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // The union of of all nodes in separators for incomming messages
+  // for this clique. By 'incomming', what is meant is incomming
+  // during the collect evidence stage.
+  set<RandomVariable*> accumSeps;
+
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE

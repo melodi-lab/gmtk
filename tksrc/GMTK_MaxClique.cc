@@ -337,7 +337,7 @@ MaxClique::makeComplete(const set<RandomVariable*> &rvs)
  *     none
  *
  * Results:
- *     none
+ *     the weight
  *
  *
  *-----------------------------------------------------------------------
@@ -418,6 +418,238 @@ computeWeight(const set<RandomVariable*>& nodes,
   }
   return tmp_weight;
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::computeWeightWithExclusion()
+ *   Computes the log base 10 weight of a set of nodes (i.e.,
+ *   the union of 'node' and 'nodes', ignores 'node' if 'node == NULL').
+ *
+ *   Note, that all nodes in the exclusion set (excludeSet) are counted
+ *   as their full cardinality, regardless of if their parents are
+ *   in the current node set or not and regardless of if the rv
+ *   is sparse.
+ *
+ * Preconditions:
+ *   Set of nodes must be valid meaning that it has valid neighbors,
+ *   parents, and children member variables.
+ *
+ * Postconditions:
+ *   computed weight (with exclusion) is provided.
+ *
+ * Side Effects:
+ *     none
+ *
+ * Results:
+ *     the weight
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+float
+MaxClique::
+computeWeightWithExclusion(const set<RandomVariable*>& nodes,
+			   const set<RandomVariable*>& unassignedIteratedNodes,
+			   const set<RandomVariable*>& unionSepNodes,
+			   const bool useDeterminism)
+{
+  // compute weight in log base 10 so that
+  //   1) we don't overflow
+  //   2) base 10 is an easy to understand magnitude rating of state space.
+
+  float tmp_weight = 0;
+  // Next, get weight of all 'nodes'
+  for (set<RandomVariable*>::iterator j=nodes.begin();
+       j != nodes.end();
+       j++) {
+    RandomVariable *const rv = (*j);
+    // First get cardinality of 'node', but if
+    // it is continuous or observed, it does not change the weight.
+    // TODO: The assumption here (for now) is that all continuous variables
+    // are observed. This will change in a future version (Lauritzen CG inference).
+    if (rv->discrete && rv->hidden) {
+      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+      bool truly_sparse = true;
+      if (!useDeterminism || !drv->sparse()) {
+	truly_sparse = false;
+      } else { 
+	// the potential exists for finding sparsity
+	if (unassignedIteratedNodes.find(rv) == unassignedIteratedNodes.end() && 
+	    unionSepNodes.find(rv) == unionSepNodes.end()) {
+	  // then there is a possibility that this node does not affect
+	  // the state space, as long as all of this nodes parents are
+	  // in the clique.  The variable 'truly_sparse' indicates that.
+	  for (unsigned i=0;i<drv->allPossibleParents.size();i++) {
+	    if (nodes.find(drv->allPossibleParents[i]) == nodes.end()) {
+	      // found a parent that is not in 'node' set so the node
+	      // would not truly be sparse/deterministic here.
+	      truly_sparse = false;
+	      break;
+	    }
+	  }	  
+	} else
+	  truly_sparse = false;
+      }
+      // Finally, multiply in the weight depending on if it is "truly
+      // sparse" or not.
+      if (truly_sparse)
+	tmp_weight += log10((double)drv->useCardinality());	
+      else 
+	tmp_weight += log10((double)drv->cardinality);
+    }
+  }
+  return tmp_weight;
+}
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::computeWeightInJunctionTree()
+ *   Computes an ESTIMATE of the log base 10 weight of a set of nodes (i.e.,
+ *   the union of 'node' and 'nodes', ignores 'node' if 'node == NULL').
+ *
+ *   This routine approximates the weight as the clique appears
+ *   in a junction tree given a set of arguments. The arguments
+     are as follows:
+
+    nodes: The set of all nodes in clique.
+    assigned_nodes: The set of nodes that are assigned (i.e., used
+                    to compute a probability) to this clique.
+    unassigned_iterated_nodes: nodes in this clique that   
+                     are not assigned and are not incomming
+                     separator nodes (so they need to be iterated in
+                     full, based in their cardinality).
+    separator_nodes: Nodes that are part of an incomming separator
+                     during the collect evidence stage of inference. 
+                     The cost of these nodes (if sparse) depends on two things.
+
+                     If the separator nodes are also assigned here, we pay
+                     full cardinality (since we're doing separator driven
+                     clique instantiation).
+                  
+                     If, on the other hand, the separator nodes are
+                     previously unassigned, we also pay full card.
+        
+                     If, the separator nodes were previously assigned
+                     we pay only use_card (i.e., if they are deterministic
+                     we pay nothing). This could produce a lower bound for
+                     weight, but we really want to bias in favor of such
+                     JTs, since in the DT case, this will significantly
+                     prune away zero probabilities.
+                    
+   cumulativeAssignedNodes: all nodes lower (farther away from root) in JT that 
+                            are assigned. NOTE: These nodes INCLUDE the
+                            assigned nodes in this clique, meaning:
+                            assigned_nodes <= cumulativeAssignedNodes
+
+   Here is the basic algorithm (acting as comments to the below):
+
+   for each node v
+     if hidden(v) 
+        if (!sparse(v))
+            multiply by card since not sparse.
+        else if unassigned_iterated(v)
+            multiply by card since we iterate over all values.
+        else if separator_node(v)
+           if assigned_node(v)
+              multiply by card since wasn't assigned before and
+              we need to iterate over all separator values.
+           else
+              if cumulativeAssignedNodes(v)
+                  multiply by use_card (assigned earlier in JT).
+                  While it might be that this node costs more than
+                  use_card here, we are not penalizing for this case
+                  since we assume that the node will only come into
+                  this clique with parent values (if any) such that
+                  p(node|parents) > 0. This will in some cases
+                  give us a lower bound on the weight though.
+              else
+                  multiply by card, since in this case it must
+                  be comming in as a previous unassignediterated node.
+                  This is a bad case.
+        else // must be assigned non sep node
+           multiply by use_card, since we know parents live in cur 
+           clique since assigned here.
+ *
+ * Preconditions:
+ *   All sets nodes must be valid meaning that it has valid neighbors,
+ *   parents, and children member variables. All input arguments must
+ *   refer to the same overall set of unrolled RVs.
+ *
+ * Postconditions:
+ *   computed weight (with exclusion) is provided.
+ *
+ * Side Effects:
+ *     none
+ *
+ * Results:
+ *     the weight
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+float
+MaxClique::
+computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
+			    const set<RandomVariable*>& assignedNodes,
+			    const set<RandomVariable*>& unassignedIteratedNodes,
+			    const set<RandomVariable*>& separatorNodes,
+			    const set<RandomVariable*>& cumulativeAssignedNodes,
+			    const bool useDeterminism)
+{
+  // compute weight in log base 10 so that
+  //   1) we don't overflow
+  //   2) base 10 is an easy to understand magnitude rating of state space.
+
+  float tmp_weight = 0;
+  // Next, get weight of all 'nodes'
+  for (set<RandomVariable*>::iterator j=nodes.begin();
+       j != nodes.end();
+       j++) {
+    RandomVariable *const rv = (*j);
+    // First get cardinality of 'node', but if
+    // it is continuous or observed, it does not change the weight.
+    // TODO: The assumption here (for now) is that all continuous variables
+    // are observed. This will change in a future version (Lauritzen CG inference).
+    if (rv->discrete && rv->hidden) {
+      DiscreteRandomVariable *const drv = (DiscreteRandomVariable*)rv;
+      bool truly_sparse = true;
+      // see comments above for description and rational of this algorithm
+      if (!useDeterminism || !drv->sparse()) {
+	truly_sparse = false;
+      } else if (unassignedIteratedNodes.find(rv) != unassignedIteratedNodes.end()) {
+	truly_sparse = false;
+      } else if (separatorNodes.find(rv) != separatorNodes.end()) {
+	if (assignedNodes.find(rv) != assignedNodes.end()) {
+	  truly_sparse = false;	  
+	} else {
+	  if (cumulativeAssignedNodes.find(rv) != cumulativeAssignedNodes.end()) {
+	    // @@@@ This is the problem case here. we need to estimate the
+	    // cost.
+	    ; // do nothing, we can multiply by use card.
+	  } else {
+	    truly_sparse = false;
+	  }
+	}
+      } else {
+	; // do nothing.
+      }
+      // Finally, multiply in the weight depending on if it is "truly
+      // sparse" or not.
+      if (truly_sparse)
+	tmp_weight += log10((double)drv->useCardinality());	
+      else 
+	tmp_weight += log10((double)drv->cardinality);
+    }
+  }
+  return tmp_weight;
+}
+
 
 
 
@@ -598,6 +830,12 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent)
 
   psp(f,indent*2);
   fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSet(f,hiddenNodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%d Preceding Unassigned: ",precedingUnassignedIteratedNodes.size()); printRVSet(f,precedingUnassignedIteratedNodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%d Union Incomming Seps: ",accumSeps.size()); printRVSet(f,accumSeps);
 
   psp(f,indent*2);
   fprintf(f,"%d Clique Neighbors: ",neighbors.size());

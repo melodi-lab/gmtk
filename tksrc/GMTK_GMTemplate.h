@@ -109,7 +109,6 @@ class GMTemplate : public IM
   // (meaning that the basic template P' C' E' is such that P'
   // contains a portion of a C at its end and E' is just an E).
   bool leftInterface;
-public:
   // a string with information about the boundary method
   string boundaryMethod;
 

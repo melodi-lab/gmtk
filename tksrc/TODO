@@ -1436,7 +1436,9 @@ Mon Feb  9 21:07:55 2004
            resulting E only contains interface nodes (which might
            result in a clique of size one if the interface has one node)
       If P = empty in left interface case (symmetric case as above).
-    probable solution. Allow for P or E to still be empty in .trifile.
+   - probable solution. Allow for P or E to still be empty in .trifile.
+   - other (possibly easy) solution: when P (or E) are empty, unroll an extra
+    time to create a P' (or E') that is not empty. 
 
 
 Mon Feb  9 21:11:40 2004

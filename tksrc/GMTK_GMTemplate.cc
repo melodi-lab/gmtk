@@ -264,7 +264,7 @@ readMaxCliques(iDataStreamFile& is)
     is.read(cliqueSize,"cliqueSize value");
     if (cliqueSize <= 1)
       error("ERROR: reading file %s, cliqueSize %d must be >= 2\n",
-	    cliqueSize,is.fileName());
+	    is.fileName(),cliqueSize);
     
     for (unsigned j=0;j<cliqueSize;j++) {
 
@@ -423,7 +423,7 @@ void
 GMTemplate::
 setPartitionParentsChildrenNeighbors(const set<RandomVariable*>& S,
 				     set<RandomVariable*>& Sc,
-				     // next 3 should be const but ther eis no "op[] const"
+				     // next 3 should be const but there is no "op[] const" in STL
 				     map < RandomVariable*, RandomVariable* >& S_in_to_out,
 				     map < RandomVariable*, RandomVariable* >& O1_in_to_out,
 				     map < RandomVariable*, RandomVariable* >& O2_in_to_out)

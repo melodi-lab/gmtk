@@ -52,7 +52,24 @@ class JunctionTree;
 class JT_Partition : public Partition {
 
   friend class JunctionTree;
+
+  void findInterfaceCliques(const set <RandomVariable*>& iNodes,
+			    unsigned& iClique,
+			    bool& iCliqueSameAsInterface);
 public:
+
+
+  // Interface nodes on the "left" of this partition. I.e., To find
+  // the left interface clique, find a clique that is a superset of
+  // these nodes. Empty if there is no such set (e.g., for a P
+  // partition)
+  set <RandomVariable*> liNodes;
+
+  // Interface nodes on the "right" of this partition. I.e., to
+  // compute the root clique of this partition, we find a clique that
+  // is a superset of these nodes. Empty if there is no such set
+  // (e.g., for an E partition).
+  set <RandomVariable*> riNodes;
   
   // The separators for this partition.  If this is a P partition,
   // then all of the separators in this partition are between cliques
@@ -66,14 +83,30 @@ public:
   // there is with a C or an E partition.
   vector<SeparatorClique> separators;
 
+
   // create an empty one to be filled in later.
   JT_Partition() {}
 
   // constructor
   JT_Partition(Partition& from_part,
-		     vector <RandomVariable*>& newRvs,
-		     map < RVInfo::rvParent, unsigned >& ppf,
-		     const unsigned int frameDelta = 0);
+	       const unsigned int frameDelta,
+	       // the left and right interface variables for
+	       // this JT partition Empty if doesn't exist
+	       // (say for an P or E partition). These have
+	       // their own frame deltas since they might be
+	       // different.
+	       const set <RandomVariable*>& from_liVars,
+	       const unsigned int liFrameDelta,
+	       const set <RandomVariable*>& from_riVars,
+	       const unsigned int riFrameDelta,
+	       // Information todo the mapping.
+	       vector <RandomVariable*>& newRvs,
+	       map < RVInfo::rvParent, unsigned >& ppf);
+
+  // returns the left and right interface clique. If not defined,
+  // sets the variable to ~0x0.
+  void findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface);
+  void findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface);
 
 }; 
 
@@ -112,66 +145,76 @@ class JunctionTree {
   friend class GMTemplate;
   friend class BoundaryTriangulate;
 
-  // the base partitions from which real unrolled things are cloned from.
+  // The set of base partitions from which real unrolled things are cloned from.
+  // When unrolling zero time, we get:
+  //   u0: P1 Cu0 E1
+  // When unrolling 1 or more times, the method depends on
+  // if the template was created using either the left or right interface
+  // method.
+  // If template created using left interface method, we do:
+  //  u0: P1 Cu0 E1
+  //  u1: P1 Cu0 Co E1 
+  //  u2: P1 Cu0 Co Co E1 
+  //  u3: P1 Cu0 Co Co Co E1 
+  //  u4: etc.
+  // If template created using right interface method, we do:
+  //  u0: P1 Cu0 E1
+  //  u1: P1 Co Cu0 E1 
+  //  u2: P1 Co Co Cu0 E1 
+  //  u3: P1 Co Co Co Cu0 E1 
+  //  u4: etc.
+  
   JT_Partition P1; 
-  JT_Partition C1; 
-  JT_Partition C2; 
-  JT_Partition C3; 
+  JT_Partition Cu0;  // C when unrolling 0 times
+  JT_Partition Co;   // C "other", depending on if right or left interface method is used.
   JT_Partition E1; 
-  // extra one for unrolling 0 times.
-  JT_Partition Cu0; 
 
-  // between partitions, we need extra separator cliques that are
-  // between the corresponding partitions interface cliques. These
-  // are used to instantiate the separators. Note we need
-  // four of them since we might be in case where we unroll 1x.
-  // SeparatorClique base_separator_P_C;
-  // SeparatorClique base_separator_C_C;
-  // SeparatorClique base_separator_C_E;
+  // Note, while we need extra separator cliques that are between the
+  // corresponding partitions interface cliques, these separators will
+  // live in the partition on the right of the separator. They will be
+  // pointed to by the left interface clique in the partition on the
+  // right.
 
-  // the real partitions, where inference will take place
-  // and which will be unrolled depending on the observation vector.
+  // The real partitions, where inference will take place and which
+  // will be unrolled depending on the observation vector.
   sArray <JT_InferencePartition> jtIPartitions;
 
-  // after unrolling, these are the separators between the partitions.
-  // partitionSeparators.size() = partitions.size() - 1;
-  // vector <SeparatorClique> partitionSeparators;
 
-
-  // identities of cliques in junction trees.
-  // for P, P's right interface to C (a root)
+  // Identities of cliques in junction trees: 
+  // for P, 
+  //    P's right  interface to C (a root in a JT partition)
   unsigned P_ri_to_C; 
   // for C
   //    C's left interface to P
   unsigned C_li_to_P;
   //    C's left interface to C
   unsigned C_li_to_C;
-  //    C's right interface to C (a root)
+  //    C's right interface to C (a root in a JT partition)
   unsigned C_ri_to_C;
-  //    C's right interface to E (a root)
+  //    C's right interface to E (a root in a JT partition)
   unsigned C_ri_to_E;
   // for E, E's left interface to C
   unsigned E_li_to_C;
   // root inside of E.
   unsigned E_root_clique;
 
-  // booleans telling if the interface cliques
-  // of the two partitions are the same, meaning
-  // we don't need both and can drop one (to save
-  // a bit of computation).
+  // Booleans telling if the interface cliques of the two partitions
+  // are the same, meaning we don't need both and can drop one (to
+  // save a bit of computation). These are currently computed but are
+  // not yet used for anything.
   bool P_to_C_icliques_same;
   bool C_to_C_icliques_same;
   bool C_to_E_icliques_same;
 
-
+#if 0
   // Message passing orders for each partition.  Increasing index
   // order is 'collect evidence' phase from left to right in directio
   // of time, and decreasing order is 'distribute evidence' phase from
   // right to left in direction of time. Note that this assumes that
   // the overal root node in the JT is on the far right within E
-  // (which might not be the best order).
-  // NOTE: These are kept here rather than in the partitions,
-  // since they are re-used for all cloned partitions.
+  // (which might not be the best order).  NOTE: These are kept here
+  // rather than in the partitions, since they are re-used for all
+  // cloned partitions.
   vector< pair<unsigned,unsigned> > P1_message_order;
   vector< unsigned > P1_leaf_cliques;
   vector< pair<unsigned,unsigned> > C1_message_order;
@@ -191,6 +234,17 @@ class JunctionTree {
 
   // Q: why is C3's message order not the same as C2's?
   // A: because C3 might have a different root than C2.
+
+#endif
+
+  vector< pair<unsigned,unsigned> > P1_message_order;
+  vector< unsigned > P1_leaf_cliques;
+  vector< pair<unsigned,unsigned> > Cu0_message_order;
+  vector< unsigned > Cu0_leaf_cliques;
+  vector< pair<unsigned,unsigned> > Co_message_order;
+  vector< unsigned > Co_leaf_cliques;
+  vector< pair<unsigned,unsigned> > E1_message_order;  
+  vector< unsigned > E1_leaf_cliques;
 
 
   // A version of unroll that starts with the gm_template and fills up
@@ -219,6 +273,35 @@ class JunctionTree {
 				  const unsigned root);
   void getPrecedingIteratedUnassignedNodes(JT_Partition& part,const unsigned root);
 
+  void ceGatherIntoRoot(JT_InferencePartition& part,
+			 const unsigned root,
+			 vector< pair<unsigned,unsigned> >& message_order,
+			 const char*const part_type_name,
+			 const unsigned part_num);
+
+  void ceSendToNextPartition(JT_InferencePartition& previous_part,
+			     const unsigned previous_part_root,
+			     const char*const previous_part_type_name,
+			     const unsigned previous_part_num,
+			     JT_InferencePartition& next_part,
+			     const unsigned next_part_leaf,
+			     const char*const next_part_type_name,
+			     const unsigned next_part_num);
+
+  void deScatterOutofRoot(JT_InferencePartition& part,
+			  const unsigned root,
+			  vector< pair<unsigned,unsigned> >& message_order,
+			  const char*const part_type_name,
+			  const unsigned part_num);
+
+  void deReceiveToPreviousPartition(JT_InferencePartition& next_part,
+				    const unsigned next_part_leaf,
+				    const char*const next_part_type_name,
+				    const unsigned next_part_num,
+				    JT_InferencePartition& previous_part,
+				    const unsigned previous_part_root,
+				    const char*const previous_part_type_name,
+				    const unsigned previous_part_num);
 
   
 public:
@@ -318,6 +401,14 @@ public:
   // set of assigned nodes in each clique that should/shouldn't be
   // iterated.
   void getPrecedingIteratedUnassignedNodes();
+
+
+  // return an upper bound on the weight of the junction tree in the
+  // given partition, where the JT weight is defined as the cost of
+  // doing collect evidence on this JT.
+  double junctionTreeWeight(JT_Partition& part,
+			  const unsigned rootClique);
+
 
   // 
   // Print all information about the JT. Must

@@ -85,7 +85,7 @@ static bool noReTriE = false;
 static bool continueTriangulating = false;
 
 static bool noBoundaryMemoize = false;
-static unsigned numBackupFiles = 5;
+static unsigned numBackupFiles = 7;
 static char* forceLeftRight="";
 static unsigned verbosity = IM::Default;
 static bool printResults = false;

@@ -244,7 +244,6 @@ main(int argc,char*argv[])
   if (seedme)
     rnd.seed();
 
-
   /////////////////////////////////////////////
   // read in all the parameters
   if (inputMasterFile) {
@@ -342,6 +341,7 @@ main(int argc,char*argv[])
   myjt.createSeparators();
   myjt.computeSeparatorIterationOrders();
   myjt.getPrecedingIteratedUnassignedNodes();
+
   // this will cause problems when printing number of bits.
   // myjt.printAllJTInfo("jt_info_before_unrolling.txt");
   myjt.prepareForUnrolling();
