@@ -498,3 +498,4 @@ double RandomVariable::log10ProductCardOfParentsNotContainedInSet(const set <Ran
   return weight;
 }
 
+

@@ -446,11 +446,17 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
   register RandomVariable::DiscreteVariableType value = 0;
   while (mdcpt_ptr[value].essentially_zero()) {
     value++;
-    // We keep the following assertion as we
-    // must have that at least one entry is non-zero.
-    // The read code of the MDCPT should ensure this
-    // as sure all parameter update procedures.
-    assert (value < (int)ucard());
+    // We keep the following check as we must have that at least one
+    // entry is non-zero.  The read code of the MDCPT should ensure
+    // this as sure all parameter update procedures, as long as
+    // normalizationThreshold is not set to large.
+    // TODO: remove cast
+    if (value >= (int)ucard()) {
+      fprintf(stderr,"ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Parents and values are: ",
+	      name().c_str(),drv->name().c_str(),drv->frame());
+      printRVSetAndValues(stderr,parents);
+      error("Program Exiting...\n"); 
+    }
   }
   it.probVal = mdcpt_ptr[value];    
   drv->val = value;
@@ -491,13 +497,13 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RandomVariable * >& parent
     // entry is non-zero.  The read code of the MDCPT should ensure
     // this as sure all parameter update procedures, as long as
     // normalizationThreshold is not set to large.
+    // TODO: remove cast
     if (value >= (int)ucard()) {
       fprintf(stderr,"ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Parents and values are: ",
 	      name().c_str(),drv->name().c_str(),drv->frame());
       printRVSetAndValues(stderr,parents);
       error("Program Exiting...\n"); 
     }
-    // assert (value < (int)ucard());
   }
   p = mdcpt_ptr[value];    
   drv->val = value;

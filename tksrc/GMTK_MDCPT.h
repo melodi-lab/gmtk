@@ -133,12 +133,15 @@ public:
     register RandomVariable::DiscreteVariableType value = 0;
     while (mdcpt_ptr[value].essentially_zero()) {
       value++;
-      // We keep the following assertion as we
-      // must have that at least one entry is non-zero.
-      // The read code of the MDCPT should ensure this
-      // as sure all parameter update procedures.
+      // We keep the following check as we must have that at least one
+      // entry is non-zero.  The read code of the MDCPT should ensure
+      // this as sure all parameter update procedures, as long as
+      // normalizationThreshold is not set to large.
       // TODO: remove cast
-      assert (value < (int)ucard());
+      if (value >= (int)ucard()) {
+	error("ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Program Exiting ...\n",
+	      name().c_str(),drv->name().c_str(),drv->frame());
+      }
     }
     it.probVal = mdcpt_ptr[value];    
     drv->val = value;
@@ -156,12 +159,15 @@ public:
     register RandomVariable::DiscreteVariableType value = 0;
     while (mdcpt_ptr[value].essentially_zero()) {
       value++;
-      // We keep the following assertion as we
-      // must have that at least one entry is non-zero.
-      // The read code of the MDCPT should ensure this
-      // as sure all parameter update procedures.
+      // We keep the following check as we must have that at least one
+      // entry is non-zero.  The read code of the MDCPT should ensure
+      // this as sure all parameter update procedures, as long as
+      // normalizationThreshold is not set to large.
       // TODO: remove cast
-      assert (value < (int)ucard());
+      if (value >= (int)ucard()) {
+	error("ERROR: DenseCPT '%s' used for RV '%s(%d)' has a row with all zeros. Program Exiting ...\n",
+	      name().c_str(),drv->name().c_str(),drv->frame());
+      }
     }
     p = mdcpt_ptr[value];    
     drv->val = value;
