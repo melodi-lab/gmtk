@@ -27,6 +27,24 @@ double logp_minLogExp = -log(-LZERO);
 double log_FLT_MIN = log(FLT_MIN)+LOG_FLT_MIN_CNST;
 double log_DBL_MIN = log(DBL_MIN)+LOG_DBL_MIN_CNST;
 
+#ifdef _TABLE_
+#include <iostream.h>
+template <class FT, class iFT = double>
+  FT logp<FT, iFT>::table[table_size];
+template <class FT, class iFT = double>
+  bool logp<FT, iFT>::initialized=false;
+template <class FT, class iFT = double>
+  double logp<FT, iFT>::inc;
+
+template <class FT, class iFT>
+void logp<FT, iFT>::table_init()
+{
+    inc = (table_size-1)/logp_minLogExp;
+    for (int i=0; i<table_size; i++)
+        table[i] = log(1.0 + exp(logp_minLogExp*i/table_size));
+}
+#endif
+
 #ifdef MAIN
 
 inline logpr foo(logpr p1, logpr p2)
