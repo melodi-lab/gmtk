@@ -1893,3 +1893,13 @@ Wed Apr 28 23:37:01 2004
     to do this without taking an additional branch hit.
 
 
+Mon May 10 13:06:14 2004 
+  - in documentation, add that all mixtures in a collection must have the same dim.
+  - 
+
+Fri Jun  4 18:41:44 2004
+From Simon.
+The 'clean' Makefile targets should probably also remove the
+depends.make files - otherwise these can still contain references to
+files that have been removed or have moved to another directory, such
+as pfile.h
