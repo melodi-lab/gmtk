@@ -231,3 +231,9 @@ X make sure that dlinkmatrix precompute is being
 - fix unrolling bug 
 
 - dlinks, make sure we do not point to self
+
+- decision trees, need to deal with the issue with reading them
+  in, parallelism, and so on.
+
+
+ 
