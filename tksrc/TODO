@@ -1725,3 +1725,6 @@ Sat Mar 27 20:57:04 2004
    cache memory should be re-claimed for different islands so that
    we don't use O(T) mem for cache but rather O(log T) mem.
 
+Sat Mar 27 21:08:06 2004
+ - add bit about gaussian component cache to docs. 
+
