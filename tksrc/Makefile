@@ -82,7 +82,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all: libfileParser.a
+all: 
 
 #----------------------------------------------------------------------------
 # Define the standard library modules
@@ -94,30 +94,28 @@ objs = fileParser.o
 # Main build programs.
 #----------------------------------------------------------------------------
 
-libfileParser.a: $(objs)
-	rm -f $@
-	$(archive) $@ $(objs)
-
+programname: $(objs)
+	$(link) -Wall -g  -o $@ $(bmm_objs) $@.o $(LIBS)
 
 #----------------------------------------------------------------------------
-# Test programs
+# Test driver programs (defines a -DMAIN to test each .cc file)
 #----------------------------------------------------------------------------
 
-fileParserTest: fileParser.cc fileParser.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ fileParser.cc $(LIBS)
+testCCfile: ccfile.cc ccfile.h
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ ccfile.cc $(LIBS)
 
 
 #----------------------------------------------------------------------------
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = $(srcdir)/fileParser.cc 
+all_srcs = GMTK_Discrete1DPDF.cc
 
-all_hdrs = $(srcdir)/fileParser.h
+all_hdrs = GMTK_Discrete1DPDF.h
 
 all_objs = 
 
-all_exs = fileParserTest
+all_exs = 
 
 #----------------------------------------------------------------------------
 # Installation
