@@ -38,7 +38,6 @@
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_RealMatrix.h"
-#include "GMTK_PackedSparseRealMatrix.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
 #include "GMTK_WeightMatrix.h"
