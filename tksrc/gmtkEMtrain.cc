@@ -353,7 +353,7 @@ main(int argc,char*argv[])
   // with the global observation stream.
   fp.checkConsistentWithGlobalObservationStream();
   // now associate the RVs with a GM
-  GMTK_GM gm;
+  GMTK_GM gm(&fp);
   fp.addVariablesToGM(gm);
   gm.verifyTopologicalOrder();
 
