@@ -2091,15 +2091,16 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 	assert(parents.size() == _numParents);
 
 	FNGramImp::BackoffGraphNode::HashEntry **ptr;
-	// increment counter and set inter point for iterator
-	++_numberOfActiveIterators;
-	if ( _numberOfActiveIterators > _contextEntriesStack.size() * 4 ) {
+
+	if ( _numberOfActiveIterators >= _contextEntriesStack.size() * 4 ) {
 		void *tmpPtr = (void *) malloc(sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * 4 * _fngram->_numberOfBGNodes);
 		_contextEntriesStack.push_back(tmpPtr);
 		ptr = (FNGramImp::BackoffGraphNode::HashEntry**)tmpPtr;
 	} else {
 		ptr = ((FNGramImp::BackoffGraphNode::HashEntry**)_contextEntriesStack[_numberOfActiveIterators / 4]) + (_numberOfActiveIterators % 4) * _fngram->_numberOfBGNodes;
 	}
+	// increment counter and set inter point for iterator
+	_numberOfActiveIterators++;
 
 	memset(ptr, 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
 
