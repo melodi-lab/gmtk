@@ -296,8 +296,7 @@ public:
     return;
   }
 
-
-
+  // TODO: These next two routines will soon disappear. 
 
   // clamp this RV to its "first" value
   void clampFirstValue() {
@@ -315,21 +314,11 @@ public:
 
   // continue on
   bool clampNextValue() { 
-#if 0
-    if (!hidden) 
-      return false;
-    it++; 
-    if (!curCPT->end(it)) 
-      val = it.val();
-    // assert ( val >= 0 );
-    return (!curCPT->end(it));
-#endif
     if (!hidden) 
       return false;
     const bool unfinished = curCPT->next(it);
     return unfinished;
   }
-
 
   // set this RV to its starting value
   void begin() {

@@ -87,6 +87,7 @@ protected:
   vector < int > cardinalities;
 
   // cardinality of self (the child)
+  // TODO: turn into unsigned.
   int _card;
 
 public:
@@ -158,24 +159,28 @@ public:
   // assignment. All subsequent calls to to probGivenParents
   // will return the probability of the RV given that the
   // parents are at the particular value.
+  virtual void becomeAwareOfParentValues( vector < RandomVariable *>& parents ) = 0;
+  // A version that doesn't use any random variables, useful for
+  // debugging, but guaranteed not to be called by any random variable
+  // and/or GMTK inference code.
   virtual void becomeAwareOfParentValues( vector <int>& parentValues,
 					  vector <int>& cards) = 0;
-  // Another version of becomeAwareOfParentValues but this
-  // one explicitely takes an array of random variable parents.
-  virtual void becomeAwareOfParentValues( vector < RandomVariable *>& parents ) = 0;
+
   // return the probability of 'val' given the parents are the
-  // assigned to the set of values set during the most previous call to 
-  // becomeAwareOfParentValues.
+  // assigned to the set of values set during the most previous call
+  // to becomeAwareOfParentValues.
   virtual logpr probGivenParents(const int val) = 0;
-  // Similar to the above two. This is convenient for one time
-  // probability evaluation.
-  virtual logpr probGivenParents(vector <int>& parentValues, 
-		         vector <int>& cards, 
-				 const int val) = 0;
+  // Similar to the above, but convenient for one time probability
+  // evaluation.
   virtual logpr probGivenParents(vector < RandomVariable *>& parents,
 				 const int val) = 0;
+  // A version that doesn't use any random variables, useful for debugging,
+  // but guaranteed not to be called by any random variable and/or GMTK inference
+  // code.
+  virtual logpr probGivenParents(vector <int>& parentValues, 
+				 vector <int>& cards, 
+				 const int val) = 0;
 
-  
 
   class iterator {
     friend class CPT;
@@ -185,8 +190,8 @@ public:
     friend class USCPT;
     friend class NGramCPT;
 
-    // An integer internal state which "hopefully" will
-    // be enough for each derived class.
+
+    // The cpt for this iterator.
     CPT* cpt;
   protected:
     void setCPT(CPT* _cpt) { cpt = _cpt; }
@@ -202,13 +207,9 @@ public:
     // some internal state pointer to be used.
     void* internalStatePtr;
 
-    // Return the value of the RV, the CPT subclasses must make sure it is set
-    // correctly to the appropriate values.
-    // unsigned val() { return value; }
-    // The probability of the variable being value 'val()'. Again,
-    // CPT subclasses must make sure it is set correctly.
+    // The probability of the variable being value 'val()'. CPT
+    // subclasses must make sure it is set correctly.
     logpr probVal;
-
 
     iterator(CPT* _cpt) : cpt(_cpt) {}
     iterator(const iterator& it) :cpt(it.cpt) 

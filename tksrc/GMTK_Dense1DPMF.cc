@@ -97,7 +97,7 @@ Dense1DPMF::read(iDataStreamFile& is)
   if (length <= 0)
     error("ERROR: reading file '%s', DPMF '%s' has bad length (%d) < 0 in input",is.fileName(),name().c_str(),length);
   pmf.resize(length);
-  double sum = 0.0;
+  logpr sum;
   for (int i=0;i<length;i++) {
     double prob;
     is.readDouble(prob,"Dense1DPMF::read, reading prob");
@@ -134,17 +134,18 @@ Dense1DPMF::read(iDataStreamFile& is)
 	pmf[i].set_to_one();
       }
     }
-    sum += prob;
+    sum += pmf[i];
   }
   if (CPT::normalizationThreshold != 0) {
-    double abs_diff = fabs(sum - 1.0);
+    double abs_diff = fabs(sum.unlog() - 1.0);
     // be more forgiving as cardinality increases
     if (abs_diff > length*CPT::normalizationThreshold) 
-      error("ERROR: reading file '%s', DPMF '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e.",
+      error("ERROR: reading file '%s', DPMF '%s' has probabilities that sum to %e but should sum to unity, absolute difference = %e, current normalization threshold = %f.",
 	    is.fileName(),
 	    name().c_str(),
-	    sum,
-	    abs_diff);
+	    sum.unlog(),
+	    abs_diff,
+	    CPT::normalizationThreshold);
   }
   setBasicAllocatedBit();
 }
