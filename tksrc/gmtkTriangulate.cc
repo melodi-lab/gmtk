@@ -336,23 +336,61 @@ main(int argc,char*argv[])
       }
       {
 	printf("\n--- Printing final clique set and clique weights---\n");
-	float maxWeight = -1.0;
+
+	float p_maxWeight = -1.0;
+	float p_totalWeight = -1.0; // starting flag
 	for (unsigned i=0;i<gm_info.Pcliques.size();i++) {
 	  float curWeight = gm_template.computeWeight(gm_info.Pcliques[i].nodes);
 	  printf("   --- P curWeight = %f\n",curWeight);
-	  if (curWeight > maxWeight) maxWeight = curWeight;
+	  if (curWeight > p_maxWeight) p_maxWeight = curWeight;
+	  if (p_totalWeight == -1.0)
+	    p_totalWeight = curWeight;
+	  else
+	    p_totalWeight = p_totalWeight + log10(1+pow(10,curWeight-p_totalWeight));
 	}
+	printf("  --- Prologue max weight = %f, total weight = %f\n",
+	       p_maxWeight,p_totalWeight);
+
+	float c_maxWeight = -1.0;
+	float c_totalWeight = -1.0; // starting flag
 	for (unsigned i=0;i<gm_info.Ccliques.size();i++) {
 	  float curWeight = gm_template.computeWeight(gm_info.Ccliques[i].nodes);
 	  printf("   --- C curWeight = %f\n",curWeight);
-	  if (curWeight > maxWeight) maxWeight = curWeight;
+	  if (curWeight > c_maxWeight) c_maxWeight = curWeight;
+	  if (c_totalWeight == -1.0)
+	    c_totalWeight = curWeight;
+	  else
+	    c_totalWeight = c_totalWeight + log10(1+pow(10,curWeight-c_totalWeight));
 	}
+	printf("  --- Chunk max weight = %f, total weight = %f\n",
+	       c_maxWeight,c_totalWeight);
+
+
+	float e_maxWeight = -1.0;
+	float e_totalWeight = -1.0; // starting flag
 	for (unsigned i=0;i<gm_info.Ecliques.size();i++) {
 	  float curWeight = gm_template.computeWeight(gm_info.Ecliques[i].nodes);
 	  printf("   --- E curWeight = %f\n",curWeight);
-	  if (curWeight > maxWeight) maxWeight = curWeight;
+	  if (curWeight > e_maxWeight) e_maxWeight = curWeight;
+	  if (e_totalWeight == -1.0)
+	    e_totalWeight = curWeight;
+	  else
+	    e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
 	}
-	printf("--- Final set has max clique weight = %f ---\n",maxWeight);
+	printf("  --- Epilogue max weight = %f, total weight = %f\n",
+	       e_maxWeight,e_totalWeight);
+
+	float maxWeight
+	  = (p_maxWeight>c_maxWeight?p_maxWeight:c_maxWeight);
+	maxWeight =
+	  (maxWeight>e_maxWeight?maxWeight:e_maxWeight);
+	float totalWeight = p_totalWeight;
+	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));
+	totalWeight += log10(1+pow(10,e_totalWeight-totalWeight));
+
+	printf("--- Final set (P,C,E) has max clique weight = %f, total state space = %f ---\n",
+	       maxWeight,
+	       totalWeight);
       }
       
 
