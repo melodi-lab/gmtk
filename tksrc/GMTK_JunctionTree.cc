@@ -2852,12 +2852,12 @@ JunctionTree::unroll(const unsigned int numFrames)
 	  modifiedTemplateUnrollAmount);
 
   // unrolled random variables
-  vector <RandomVariable*> unrolled_rvs;
+  // vector <RandomVariable*> unrolled_rvs;
   // mapping from 'name+frame' to integer index into unrolled_rvs.
-  map < RVInfo::rvParent, unsigned > ppf;
+  // map < RVInfo::rvParent, unsigned > ppf;
 
-  fp.unroll(basicTemplateUnrollAmount,unrolled_rvs,ppf);
-  setObservedRVs(unrolled_rvs);
+  fp.unroll(basicTemplateUnrollAmount,cur_unrolled_rvs,cur_ppf);
+  setObservedRVs(cur_unrolled_rvs);
 
   // TODO: clear out the old and pre-allocate for new size.
   jtIPartitions.clear();
@@ -2871,17 +2871,17 @@ JunctionTree::unroll(const unsigned int numFrames)
   unsigned partNo = 0;
   const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
 
-  new (&jtIPartitions[partNo++]) JT_InferencePartition(P1,unrolled_rvs,ppf,0*gm_template.S);
+  new (&jtIPartitions[partNo++]) JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   if (gm_template.leftInterface) 
-    new (&jtIPartitions[partNo++]) JT_InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S);
+    new (&jtIPartitions[partNo++]) JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   for (unsigned p=0;p<numCoPartitions;p++) 
-    new (&jtIPartitions[partNo++]) JT_InferencePartition(Co,unrolled_rvs,ppf,p*gm_template.S);
+    new (&jtIPartitions[partNo++]) JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
   if (!gm_template.leftInterface) 
     new (&jtIPartitions[partNo++]) 
-      JT_InferencePartition(Cu0,unrolled_rvs,ppf,
+      JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,
 			    ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
   new (&jtIPartitions[partNo++]) 
-    JT_InferencePartition(E1,unrolled_rvs,ppf,
+    JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
 			  ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
 
   assert (partNo == jtIPartitions.size());
@@ -3511,12 +3511,18 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 	  modifiedTemplateUnrollAmount);
 
   // unrolled random variables
-  vector <RandomVariable*> unrolled_rvs;
+  // vector <RandomVariable*> unrolled_rvs;
   // mapping from 'name+frame' to integer index into unrolled_rvs.
-  map < RVInfo::rvParent, unsigned > ppf;
+  // map < RVInfo::rvParent, unsigned > ppf;
 
-  fp.unroll(basicTemplateUnrollAmount,unrolled_rvs,ppf);
-  setObservedRVs(unrolled_rvs);
+  fp.unroll(basicTemplateUnrollAmount,cur_unrolled_rvs,cur_ppf);
+  setObservedRVs(cur_unrolled_rvs);
+
+  // this clears the shared caches. 
+  clearDataMemory();
+
+
+
 
   // actual absolute part numbers
   unsigned partNo;
@@ -3534,7 +3540,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   clearDataMemory();
 
   partNo = 0;
-  curPart = new JT_InferencePartition(P1,unrolled_rvs,ppf,0*gm_template.S);
+  curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   prevPart = NULL;
   prv_nm = "P1";
   ceGatherIntoRoot(*curPart,
@@ -3545,7 +3551,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 
   if (gm_template.leftInterface) {
     delete curPart;
-    curPart = new JT_InferencePartition(Cu0,unrolled_rvs,ppf,0*gm_template.S);
+    curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
     ceSendToNextPartition(*prevPart,P_ri_to_C,"P1",partNo,
 			  *curPart,C_li_to_P,"Cu0",partNo+1);
     partNo++;
@@ -3559,7 +3565,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
     delete curPart;
-    curPart = new JT_InferencePartition(Co,unrolled_rvs,ppf,p*gm_template.S);
+    curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
     ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
 			  *curPart,C_li_to_C,"Co",partNo+1);
     partNo++;
@@ -3573,7 +3579,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 
   if (!gm_template.leftInterface) {
     delete curPart;
-    curPart = new JT_InferencePartition(Cu0,unrolled_rvs,ppf,
+    curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,
 					((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
 
     ceSendToNextPartition(*prevPart,C_ri_to_C,prv_nm,partNo,
@@ -3588,7 +3594,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   }
 
   delete curPart;
-  curPart = new JT_InferencePartition(E1,unrolled_rvs,ppf,
+  curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
 				      ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
   ceSendToNextPartition(*prevPart,C_ri_to_E,prv_nm,partNo,
 			*curPart,E_li_to_C,"E1",partNo+1);
@@ -3702,7 +3708,20 @@ deScatterOutofRoot(const unsigned part)
 		     partPArray[part].nm,
 		     part);
 }
-
+logpr
+JunctionTree::probEvidenceRoot(const unsigned part)
+{
+  // return the sum of probs for the root (right interface) clique of the given partition.
+  return partPArray[part].p->maxCliques[partPArray[part].ri].sumProbabilities();
+}
+void
+JunctionTree::emIncrementIsland(const unsigned part,
+				const logpr cur_prob_evidence,
+				const bool localCliqueNormalization)
+{
+  // increment for this partition.
+  return partPArray[part].p->emIncrement(cur_prob_evidence,localCliqueNormalization);
+}
 
 
 
@@ -3743,7 +3762,9 @@ deScatterOutofRoot(const unsigned part)
  */
 void
 JunctionTree::collectDistributeIslandBase(const unsigned start,
-					  const unsigned end)
+					  const unsigned end,
+					  const bool runEMalgorithm,
+					  const bool localCliqueNormalization)
 {
   for (unsigned part = start; part <= end; part ++) {
     if (part > start) {
@@ -3774,23 +3795,43 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
       // then there is something on the right to receive a message
       // from.
       deReceiveToPreviousPartition(part+1,part);
+    } else {
+      // this is the true end and we can get the probability of evidence here.
+      // only initialize this if we are not doing localCliqueNormalization
+      cur_prob_evidence = probEvidenceRoot(part);
+      if (cur_prob_evidence.essentially_zero()) {
+	infoMsg(IM::Default,"Island not training segment since probability is essentially zero\n");
+	// note that we can't just jump out as we have to free up all the
+	// memory that we allocated. We thus have to check a bunch of conditions on 
+	// the way out and do EM training when appropriate, but always delete.
+      }
     }
     // 
     if (part != end) {
       // delete it if we created it here.
       deletePartition(part+1);
     }
-    deScatterOutofRoot(part);
+
+    if (!runEMalgorithm || cur_prob_evidence.not_essentially_zero()) {
+      // scatter into all cliques within this separator (at the very least)
+      deScatterOutofRoot(part);
+    }
 
     // We now have a completed partition that we can use
     // for EM, scoring, etc.
-    infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
-	    part,partPArray[part].nm);
-    for (unsigned cliqueNo=0;cliqueNo<partPArray[part].p->maxCliques.size();cliqueNo++) {
-      printf("Island: Part no %d: clique no %d: log probE = %f\n",
-	     part,cliqueNo,partPArray[part].p->maxCliques[cliqueNo].sumProbabilities().valref());
+    if (IM::messageGlb(IM::Mod)) {
+      infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
+	      part,partPArray[part].nm);
+      for (unsigned cliqueNo=0;cliqueNo<partPArray[part].p->maxCliques.size();cliqueNo++) {
+	printf("Island: Part no %d: clique no %d: log probE = %f\n",
+	       part,cliqueNo,partPArray[part].p->maxCliques[cliqueNo].sumProbabilities().valref());
+      }
     }
-
+    
+    // and do em updating if appropriate.
+    if (runEMalgorithm && cur_prob_evidence.not_essentially_zero()) {
+      emIncrement(cur_prob_evidence,localCliqueNormalization);
+    }
 
     if (part == start)
       break;
@@ -3835,20 +3876,22 @@ void
 JunctionTree::collectDistributeIslandRecurse(const unsigned start,
 					     const unsigned end,
 					     const unsigned base,
-					     const unsigned linear_section_threshold)
+					     const unsigned linear_section_threshold,
+					     const bool runEMalgorithm,
+					     const bool localCliqueNormalization)
 {
   // We're doing from [start,end] inclusive, so compute length
   // accordingly
   const unsigned len = end-start + 1;
   if (len <= linear_section_threshold) {
     // do base case.
-    collectDistributeIslandBase(start,end);
+    collectDistributeIslandBase(start,end,runEMalgorithm,localCliqueNormalization);
   } else { 
     const unsigned section_size = len/base;
 
     if (section_size <= 1) {
       infoMsg(IM::Info,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
-      return collectDistributeIslandBase(start,end);
+      return collectDistributeIslandBase(start,end,runEMalgorithm,localCliqueNormalization);
     }
     // so we are assured there that section_size is at least two here. 
 
@@ -3916,7 +3959,8 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
       const unsigned section_end = section_start + cur_section_size-1;
       // recurse
       collectDistributeIslandRecurse(section_start,section_end,
-				     base,linear_section_threshold);
+				     base,linear_section_threshold,
+				     runEMalgorithm,localCliqueNormalization);
       // need to delete partition at location section_start+cur_section_size
       // if it is one that we created.
       if (!first_iteration) {
@@ -4045,7 +4089,9 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				      // the threshold at which we drop
 				      // down to the linear collect/distribute
 				      // evidence stage.
-				      const unsigned linear_section_threshold)
+				      const unsigned linear_section_threshold,
+				      const bool runEMalgorithm,
+				      const bool localCliqueNormalization)
 {
 
   // must have a linear_section_threshold of at least two partitions.
@@ -4139,7 +4185,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   partPArray[0].p = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
   ceGatherIntoRoot(0);
-  collectDistributeIslandRecurse(0,partPArray.size()-1,base,linear_section_threshold);
+  collectDistributeIslandRecurse(0,partPArray.size()-1,base,linear_section_threshold,
+				 runEMalgorithm,localCliqueNormalization);
   delete partPArray[0].p;
   partPArray[0].p = NULL;
 

@@ -285,6 +285,7 @@ main(int argc,char*argv[])
 
   gm.setupForVariableLengthUnrolling(fp.firstChunkFrame(),fp.lastChunkFrame());
 
+  clock_t start_time = clock();
   // and away we go
   gm.clampFirstExample();
   do {
@@ -300,6 +301,12 @@ main(int argc,char*argv[])
     gm.chain->compute(data_probs, pruneRatio);
     cout << "Data prob: " << gm.chain->dataProb.val() << endl;
   } while (gm.clampNextExample());
+
+
+  clock_t end_time = clock();
+  clock_t diff = end_time-start_time;
+
+  printf("### Final time just for inference: %ld clocks, %0.2f seconds\n",diff,(double)diff/(double)CLOCKS_PER_SEC);
 
   exit_program_with_status(0);
 }

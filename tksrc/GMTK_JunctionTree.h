@@ -169,7 +169,7 @@ public:
 };
 
 
-class JunctionTree {
+class JunctionTree  {
 
   friend class GMTemplate;
   friend class BoundaryTriangulate;
@@ -235,6 +235,8 @@ class JunctionTree {
   vector <RandomVariable*> cur_unrolled_rvs;
   // current mapping from 'name+frame' to integer index into unrolled_rvs.
   map < RVInfo::rvParent, unsigned > cur_ppf;
+  // the evidence probability used during island algorithm.
+  logpr cur_prob_evidence;
   ////////////////////////////////////////////////////////////////////////
 
   // Identities of cliques in junction trees: 
@@ -337,22 +339,28 @@ class JunctionTree {
 				    const char*const previous_part_type_name,
 				    const unsigned previous_part_num);
 
-  // support routines for island algorithm inference.
+  // Support routines for island algorithm inference.
   void ceGatherIntoRoot(const unsigned part);
   void createPartition(const unsigned part);
   void ceSendToNextPartition(const unsigned part,const unsigned nextPart);
   void deReceiveToPreviousPartition(const unsigned part,const unsigned prevPart);
   void deletePartition(const unsigned part);
   void deScatterOutofRoot(const unsigned part);
+  logpr probEvidenceRoot(const unsigned part);
+  void emIncrementIsland(const unsigned part,
+			  const logpr probE, 
+			  const bool localCliqueNormalization);
   void collectDistributeIslandRecurse(const unsigned start,
 				      const unsigned end,
 				      const unsigned base,
-				      const unsigned linear_section_threshold);
+				      const unsigned linear_section_threshold,
+				      const bool runEMalgorithm = false,
+				      const bool localCliqueNormalization = false);
   void collectDistributeIslandBase(const unsigned start,
-				   const unsigned end);
+				   const unsigned end,
+				   const bool runEMalgorithm = false,
+				   const bool localCliqueNormalization = false);
 
-
-  
 public:
 
   // Set to true if the JT weight that we compute should be an upper
@@ -535,6 +543,9 @@ public:
   // version that does unrolling, and const. memory.
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames);
 
+  // return the island's idea of the current prob of evidence
+  logpr curProbEvidenceIsland() { return cur_prob_evidence; }
+
 
   // EM training increment, for use with collectEvidence and distributeEvidence.
   void emIncrement(const logpr probEvidence,
@@ -551,7 +562,9 @@ public:
   collectDistributeIsland(const unsigned numFrames,
 			  unsigned& numUsableFrames,
 			  const unsigned base,
-			  const unsigned linear_section_threshold);
+			  const unsigned linear_section_threshold,
+			  const bool runEMalgorithm = false,
+			  const bool localCliqueNormalization = false);
 
 
 

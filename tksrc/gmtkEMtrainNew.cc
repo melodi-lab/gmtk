@@ -520,12 +520,23 @@ main(int argc,char*argv[])
 	const int numFrames = globalObservationMatrix.numFrames();
 
 	if (island) {
-	  error("WARNING: island EM front end not yet ready\n");
+	  error("Island for EM not yet finished (but almost)\n");
 	  unsigned numUsableFrames;
 	  myjt.collectDistributeIsland(numFrames,
 				       numUsableFrames,
 				       base,
-				       lst);
+				       lst,
+				       true,
+				       localCliqueNormalization);
+	  total_num_frames += numUsableFrames;
+	  printf("Segment %d, after Island, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		 segment,
+		 myjt.curProbEvidenceIsland().val(),
+		 myjt.curProbEvidenceIsland().val()/numFrames,
+		 myjt.curProbEvidenceIsland().val()/numUsableFrames);
+	  if (myjt.curProbEvidenceIsland().not_essentially_zero()) {
+	    total_data_prob *= myjt.curProbEvidenceIsland();
+	  }
 	} else {
 	  unsigned numUsableFrames = myjt.unroll(numFrames);
 	  total_num_frames += numUsableFrames;
