@@ -87,7 +87,6 @@ struct ContextTreeEntry {
  */
 void NGramCPT::setNumParents(const unsigned nParents) {
 	_numParents = nParents;
-	_parentValues.resize(_numParents);
 	cardinalities.resize(_numParents);
 }
 
@@ -111,11 +110,19 @@ void NGramCPT::becomeAwareOfParentValues(vector<int>& parentValues, vector<int>&
 	assert(_numExistParents <= _numParents);		// This is not a "==" so that lower order ngram can use it.
 	assert(cards.size() == _numExistParents);
 
-	for ( unsigned i = 0; i < _numExistParents; ++i ) {
-		if ( parentValues[i] < 0 || parentValues[i] >= cards[i] )
-			error("NGramCPT:becomeAwareOfParentValues: Invalid parent value for parent %d, parentValue = %d but card = %d\n", i, parentValues[i], cardinalities[i]);
-		_parentValues[i] = parentValues[i];
+	_contextPointers.clear();
+	if ( _numExistParents > 0 ) {
+		unsigned i = _numExistParents - 1;
+		ContextHashEntry *ce = _contextTable.find(parentValues[i], 0, _contextStartBlockSize);
+		_contextPointers.push_back(ce);
+	
+		while ( ce != NULL && --i >= 0 ) {
+			ce = _contextTable.find(parentValues[i], ce->nextContextOffset, ce->nextContextBlockSize);
+			_contextPointers.push_back(ce);
+		}
 	}
+
+	_contextPointers.push_back(NULL);
 }
 
 
@@ -137,13 +144,19 @@ void NGramCPT::becomeAwareOfParentValues(vector<RandomVariable *>& parents) {
 	_numExistParents = parents.size();
 	assert(_numExistParents <= _numParents);		// This is not a "==" so that lower order ngram can use it.
 
-	for ( unsigned i = 0; i < _numExistParents; ++i ) {
-		if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
-			error("ERROR:becomeAwareOfParentValues. NGram CPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
-				name().c_str(), parents[i]->name().c_str(),parents[i]->frame(), i, parents[i]->val,cardinalities[i]);
+	_contextPointers.clear();
+	if ( _numExistParents > 0 ) {
+		unsigned i = _numExistParents - 1;
+		ContextHashEntry *ce = _contextTable.find(parents[i]->val, 0, _contextStartBlockSize);
+		_contextPointers.push_back(ce);
 
-		_parentValues[i] = parents[i]->val;
+		while ( ce != NULL && --i >= 0 ) {
+			ce = _contextTable.find(parents[i]->val, ce->nextContextOffset, ce->nextContextBlockSize);
+			_contextPointers.push_back(ce);
+		}
 	}
+
+	_contextPointers.push_back(NULL);
 }
 
 
@@ -159,8 +172,7 @@ void NGramCPT::becomeAwareOfParentValues(vector<RandomVariable *>& parents) {
  *
  *-----------------------------------------------------------------------
  */
-logpr NGramCPT::probGivenParents(const int val) {
-	// TODO: make it faster by not copying the parent values.
+inline logpr NGramCPT::probGivenParents(const int val) {
 	double *p = _probTable.find(val, 0, _probStartBlockSize);
 
 	double prob;
@@ -170,33 +182,12 @@ logpr NGramCPT::probGivenParents(const int val) {
 	else
 		return logpr(0.0);
 
-	if ( _numExistParents == 0 )
-		return logpr(NULL, prob);
-
-	int i = _numExistParents - 1;
-
-	// the first one is special since the shift is 0
-	ContextHashEntry *ce = _contextTable.find(_parentValues[i], 0, _contextStartBlockSize);
-	if ( ce == NULL )
-		return logpr(NULL, prob);
-
-	p = _probTable.find(val, ce->probOffset, ce->probBlockSize);
-	if ( p != NULL )
- 		prob = *p;
-	else
- 		prob += ce->bow;
-
-	// search next context
-	while ( --i >= 0 ) {
-		ce = _contextTable.find(_parentValues[i], ce->nextContextOffset, ce->nextContextBlockSize);
-		if ( ce == NULL )
-			return logpr(NULL, prob);
-
-		p = _probTable.find(val, ce->probOffset, ce->probBlockSize);
+	for ( std::vector<ContextHashEntry*>::const_iterator it = _contextPointers.begin(); it != _contextPointers.end() && *it != NULL; ++it ) {
+		p = _probTable.find(val, (*it)->probOffset, (*it)->probBlockSize);
 		if ( p != NULL )
 			prob = *p;
 		else
-			prob += ce->bow;
+			prob += (*it)->bow;
 	}
 
 	return logpr(NULL, prob); // this will create a logp with log value
@@ -418,7 +409,6 @@ void NGramCPT::read(iDataStreamFile &is) {
 		warning("WARNING: creating NGramCPT '%s' with %d parents in file '%s'", _numParents,name().c_str(),is.fileName());
 
 	cardinalities.resize(_numParents);
-	_parentValues.resize(_numParents);
 	// read the cardinalities
 	for ( unsigned i = 0; i < _numParents; i++ ) {
 		is.read(cardinalities[i], "NGramCPT::read cardinality");
@@ -479,18 +469,22 @@ void NGramCPT::read(iDataStreamFile &is) {
 void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	// the goal of this preprocessing is to
 	// collect information for hash table sizes
+	
+	// check cardinalities
+	if ( vocab.size() != ucard() )
+		error("Error: ngram card %d does not equal vocab card %d", ucard(), vocab.size());
  
 	ContextTreeEntry startEntry;
 
 	// phase I
 	// 1. Read in the vocabulary
 	// 2. Set up the indices table
-	int * indices = new int [vocab.size()];
+	int * indices = new int [ucard()];
 	if ( indices == NULL )
 		error("out of memory in NGramCPT::read");
 
 	int i;
-	for ( i = 0; i < (int)vocab.size(); ++i )
+	for ( i = 0; i < (int)ucard(); ++i )
 		indices[i] = i;
 
 	iDataStreamFile ifs(lmFile, false, false);	// ascii, no cpp
@@ -559,13 +553,13 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 
 		// skip prob (we don't have prob hash table yet.)
 		if ( (tok = strtok(line, seps)) == NULL )
-			error("error reading line %s", line);
+			error("Error: error reading line %s", line);
 
 		// read in word
 		if ( (tok = strtok(NULL, seps)) == NULL )
-			error("error reading line %s", line);
-		if ( (wid = vocab.index(tok)) >= (int)vocab.size() )
-			error("index %d exceeds vocab size %d in NGramCPT::read", wid, vocab.size());
+			error("Error: error reading line %s", line);
+		if ( (wid = vocab.index(tok)) >= (int)ucard() )
+				error("Error: unknown word %s in vocabulary in NGramCPT::read", tok);
 
 		ContextTreeEntry contextEntry;
 		// read in bow if any
@@ -605,8 +599,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			for ( k = 0; k < index - 1; ++k ) {
 				if ( (tok = strtok(NULL, seps)) == NULL )
 					error("error reading line %s", line);
-				if ( (context[k] = vocab.index(tok)) >= (int)vocab.size() )
-					error("index %d exceeds vocab size %d in NGramCPT::read", wid, vocab.size());
+				if ( (context[k] = vocab.index(tok)) >= (int)ucard() )
+					error("Error: unknown word %s in vocabulary in NGramCPT::read", tok);
 			}
 
 			// update the previous level of hashing
@@ -631,8 +625,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			// read in word
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("error reading line %s", line);
-			if ( (context[index-1] = vocab.index(tok)) >= (int)vocab.size() )
-				error("index %d exceeds vocab size %d in NGramCPT::read", wid, vocab.size());
+			if ( (context[index-1] = vocab.index(tok)) >= (int)ucard() )
+					error("Error: unknown word %s in vocabulary in NGramCPT::read", tok);
 
 			ContextTreeEntry entry;
 			// read in bow if any
@@ -692,8 +686,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			for ( k = 0; k < index - 1; ++k ) {
 				if ( (tok = strtok(NULL, seps)) == NULL )
 					error("error reading line %s", line);
-				if ( (context[k] = vocab.index(tok)) >= (int)vocab.size() )
-					error("index %d exceeds vocab size %d in NGramCPT::read", wid, vocab.size());
+				if ( (context[k] = vocab.index(tok)) >= (int)ucard() )
+					error("Error: unknown word %s in vocabulary in NGramCPT::read", tok);
 			}
 	
 			// skip the rest
@@ -810,15 +804,13 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 		for ( k = 0; k < index - 1; ++k ) {
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("error reading line %s", line);
-			if ( (context[k] = vocab.index(tok)) >= (int)vocab.size() )
-				error("index %d exceeds vocab size %d in NGramCPT::read", wid, vocab.size());
+			context[k] = vocab.index(tok);
 		}
 
 		// read in word
 		if ( (tok = strtok(NULL, seps)) == NULL )
 			error("error reading line %s", line);
-		if ( (wid = vocab.index(tok)) >= (int)vocab.size() )
-			error("index %d exceeds vocab size %d in NGramCPT::read", wid, vocab.size());
+		wid = vocab.index(tok);
 
 		_probTable.insert(wid, prob, 0, _probStartBlockSize);
 	}
@@ -845,8 +837,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			for ( k = 0; k < index - 1; ++k ) {
 				if ( (tok = strtok(NULL, seps)) == NULL )
 					error("error reading line %s", line);
-				if ( (context[k] = vocab.index(tok)) >= (int)vocab.size() )
-					error("index %d exceeds vocab size %d in NGramCPT::read", wid, vocab.size());
+				context[k] = vocab.index(tok);
 			}
 
 			// find the context entry
@@ -857,8 +848,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 			// read in word
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("error reading line %s", line);
-			if ( (wid = vocab.index(tok)) >= (int)vocab.size() )
-				error("index %d exceeds vocab size %d in NGramCPT::read", wid, vocab.size());
+			wid = vocab.index(tok);
 
 			_probTable.insert(wid, prob, contextEntry->probOffset, contextEntry->probBlockSize);
 		}
