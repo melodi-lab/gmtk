@@ -55,8 +55,7 @@ char *obsFileName;
 char *strFileName;
 char *parmsFileName;
 
-unsigned maxEMIterations=30;
-int EMLimit=3;
+unsigned maxEMIterations=3;
 
 bool randomizeParams = true;
 bool enem = false;
@@ -99,7 +98,6 @@ main(int argc,char*argv[])
 
   ARGS::parse(argc,argv);
 
-maxEMIterations = EMLimit;
 
   if (seedme)
     rnd.seed();
