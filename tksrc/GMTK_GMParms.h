@@ -67,6 +67,47 @@ class GMTK_GM;
 class GMParms {
 public:
 
+  //////////////////////////////////////////////////////////////////
+  // A bitmask giving a flag if each type of EMable object is
+  // currently being trained. Can only have 8*sizeof(unsigned) of these
+  // for now.
+  enum {
+    emTrainDense1DPMFs                    = (1 << 0),
+    emTrainSparse1DPMFs                   = (1 << 1),
+    emTrainMeans                          = (1 << 2),
+    emTrainCovars                         = (1 << 3),
+    emTraindLinkMats                      = (1 << 4),
+    emTrainWeightMats                     = (1 << 5),
+    emTrainDiagGaussians                  = (1 << 6),
+    emTrainMDCPTs                         = (1 << 7),
+    emTrainMSCPTs                         = (1 << 8),
+    emTrainMixGaussians                   = (1 << 9),
+    emTrainGausSwitchingMixGaussians      = (1 << 10),
+    emTrainLogitSwitchingMixGaussians     = (1 << 11),
+    emTrainMLPSwitchingMixGaussians       = (1 << 12),
+    emDefaultState                        = ~0x0
+  };
+
+  unsigned int emTrainBitmask;
+  
+  bool amTrainingDense1DPMFs() { return (emTrainBitmask & emTrainDense1DPMFs); }
+  bool amTrainingSparse1DPMFs() { return (emTrainBitmask & emTrainSparse1DPMFs); }
+  bool amTrainingMeans() { return (emTrainBitmask & emTrainMeans); }
+  bool amTrainingCovars() { return (emTrainBitmask & emTrainCovars); }
+  bool amTrainingdLinkMats() { return (emTrainBitmask & emTraindLinkMats); }
+  bool amTrainingWeightMats() { return (emTrainBitmask & emTrainWeightMats); }
+  bool amTrainingDiagGaussians() { return (emTrainBitmask & emTrainDiagGaussians); }
+  bool amTrainingMDCPTs() { return (emTrainBitmask & emTrainMDCPTs); }
+  bool amTrainingMSCPTs() { return (emTrainBitmask & emTrainMSCPTs); }
+  bool amTrainingMixGaussians() { return (emTrainBitmask & emTrainMixGaussians); }
+  bool amTrainingGausSwitchingMixGaussians() 
+  { return (emTrainBitmask & emTrainGausSwitchingMixGaussians); }
+  bool amTrainingLogitSwitchingMixGaussians() 
+  { return (emTrainBitmask & emTrainLogitSwitchingMixGaussians); }
+  bool amTrainingMLPSwitchingMixGaussians() 
+  { return (emTrainBitmask & emTrainMLPSwitchingMixGaussians); }
+
+
   class ParamFile {
   public:
     string fileName;
@@ -76,9 +117,11 @@ public:
   typedef vector < ParamFile >  ParamFileVector;
 
   /********************************************************************/
+  /********************************************************************/
+  /********************************************************************/
 
   //////////////////////////////////////////////////////////////////
-  // BASIC SHARED LOW-LEVEL PARAMETERS: These are the objects that 
+  // BASIC SHARED LOW-LEVEL SUPPORT PARAMETERS: These are the objects that 
   //  higher level objects (see below) might share together.
   //  All of these objects are "EMable" in the sense that
   //  they may be trained using EM (plus possibly some other gradient
@@ -126,6 +169,23 @@ public:
   typedef map< string, unsigned > WeightMatsMapType;
   WeightMatsMapType weightMatsMap;
 
+
+  //////////////////////////////////////////////////////////////////
+  // Basic Gaussian Components of various types. 
+  //////////////////////////////////////////////////////////////////
+
+  vector< GaussianComponent* > gaussianComponents;
+  typedef map< string, unsigned > GaussianComponentsMapType;
+  GaussianComponentsMapType gaussianComponentsMap;
+
+  /********************************************************************/
+  /********************************************************************/
+  /********************************************************************/
+
+  //////////////////////////////////////////////////////////////////
+  // OBJECTS USED DIRECTLY BY DISCRETE RANDOM VARIABLES
+  //////////////////////////////////////////////////////////////////
+
   ////////////////////////////////
   // Collection of multi-dimensional dense CPTs
   vector< MDCPT* > mdCpts;
@@ -144,23 +204,14 @@ public:
   typedef map< string, unsigned > mtCptsMapType;
   mtCptsMapType mtCptsMap;
 
-  /********************************************************************/
-
-  //////////////////////////////////////////////////////////////////
-  // Basic Gaussian Components
-  //////////////////////////////////////////////////////////////////
-
-  ///////////////////////////////////////////
-  // Collection of diag. covariance Gaussians
-
-  vector< GaussianComponent* > gaussianComponents;
-  typedef map< string, unsigned > GaussianComponentsMapType;
-  GaussianComponentsMapType gaussianComponentsMap;
 
   /********************************************************************/
+  /********************************************************************/
+  /********************************************************************/
+
 
   //////////////////////////////////////////////////////////////////
-  // OBSERVATION DENSITIES
+  // OBJECTS USED DIRECTLY BY CONTINUOUS RANDOM VARIABLES
   //////////////////////////////////////////////////////////////////
 
   ////////////////////////////////
@@ -183,9 +234,17 @@ public:
   MlpSwitchingMixGaussiansMapType  mlpSwitchingMixGaussiansMap;
 
   /********************************************************************/
+  /********************************************************************/
+  /********************************************************************/
 
   //////////////////////////////////////////////////////////////////
-  // A global collection of decision trees mapping vectors
+  // STRUCTURAL OBJECTS (i.e., objects having to do with underlying
+  // structure). These are not changed during parameter training
+  // and are presumably learned external to this program.
+  //////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////
+  // First, A global collection of decision trees mapping vectors
   // of integers to integers. These might be used for
   // different purposes, and other strucures might index
   // into this array (or keep their own pointers to individual dts
@@ -196,10 +255,8 @@ public:
   typedef map< string,  unsigned > DtsMapType;
   DtsMapType dtsMap;
 
-  /********************************************************************/
-
   //////////////////////////////////////////////////////////////////
-  // Structure between observations as a collection of
+  // Next, the structure between observations as a collection of
   // DLINKs
   //////////////////////////////////////////////////////////////////
 
@@ -207,6 +264,8 @@ public:
   typedef map< string, unsigned > DLinksMapType;
   DLinksMapType dLinksMap;
 
+  /********************************************************************/
+  /********************************************************************/
   /********************************************************************/
 
   //////////////////////////////////////////////////////////////////
@@ -290,23 +349,13 @@ public:
   // Support for EM, applies to all EMable objects contained herein.
   ///////////////////////////////////////////////////////////
 
-  ///////////////////////////////////////////////////////////
-  // begins a new epoch. Also ensures that data for EM is allocated
-  // and possibly changes the alocated bit, and ongoing bit
-  void emStartIteration();
-
   ////////////////////////////////////////////////////////////////////
-  // Accumulate new data into the internal structures for this 
-  // em iteration, clears the ongoing bit.
+  // calls the end EM on all objects EM epochs
   void emEndIteration();
 
   ////////////////////////////////////////////////////////////////////////////
-  // if swap bit not set, swaps the current and new parameters, set swap bit.
-  // otherwise does nothing.
+  // calls the swap routine on all objects current and next parameters.
   void emSwapCurAndNew();
-
-
-
 
 
 };
