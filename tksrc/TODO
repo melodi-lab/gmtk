@@ -1862,3 +1862,25 @@ Thu Apr 22 14:40:34 2004
      a long E partition.
     (but probably better ways exist).
 
+
+Fri Apr 23 19:02:36 2004
+  - arguments.cc, when string argument is given "" it shouldn't give warning.
+
+
+Sat Apr 24 20:57:47 2004
+  - look at log/exp implementations
+    http://openbsd.secsup.org/src/lib/libm/src/e_log.c
+  - and produce a fast function that does:
+     f(x)= log(1+exp(x)) as one accurate and fast
+     function, has to be faster than random lookup in table
+     (i.e., the cost is less than the typicall cache miss rate in
+     the table, under a normal workload). 
+    alternatively, could be log10(1+10^x)
+    Note: if x << 0 then f(x) = 0
+          if x >> 0 then f(x) = x
+    non-linear part is when x ~ 0
+    But we only care about the case when x <= 0
+    since we form x as a difference between smaller and larger value in logadd.
+
+  
+
