@@ -1892,7 +1892,6 @@ Wed Apr 28 23:37:01 2004
   - add option to turn off hash table sharing of clique and sep values and figure out a way
     to do this without taking an additional branch hit.
 
-
 Mon May 10 13:06:14 2004 
   - in documentation, add that all mixtures in a collection must have the same dim.
   - 
@@ -1926,4 +1925,51 @@ Sun Jun 13 15:14:51 2004
   - make quick reference card for decision trees 
   - make quick reference card for sparse CPTs 
 
+Mon Jun 14 18:28:13 2004
+  - become aware of parent values, comment should mention that parents won't change, so that
+    when people add new cpts, they know that they don't need to copy parent values.
+
+Mon Jun 14 19:24:21 2004
+  - NGramCPT always has its own vocab object.
+    RVs can also have its own Vocab object.
+    when a RV with a vocab object uses an NGramCPT, we check that the
+    two vocab objects are the same.
+
+
+Tue Jun 15 17:44:56 2004
+  - in tri-file partition information ugm, say if moralized for
+    triangulated graph as comment.
+
+Mon May 10 13:06:14 2004 
+  - in documentation, add that all mixtures in a collection must have the same dim.
+  - 
+
+Fri Jun  4 18:41:44 2004
+From Simon.
+The 'clean' Makefile targets should probably also remove the
+depends.make files - otherwise these can still contain references to
+files that have been removed or have moved to another directory, such
+as pfile.h
+
+Sat Jun  5 19:14:59 2004
+  - covert binary dump variables in gmtkViterbiNew to ascii as well, redo all such
+    outputs.
+
+Tue Jun  8 12:14:48 2004
+  - staged verbose outputs, so that when you wnat to be verbose in inference, you don't
+    get so much verbose output during initial JT creation, etc.
+
+
+Sat Jun 12 14:22:47 2004
+  - add new observation component type: ChordalGaussian,
+    which allows user to specify a sparse representation of
+    a Gaussian (i.e., sparse inverse covariance). The triangulation
+    engine will triangulate it (finding a good triangulation), and
+    the result will be the chordal sparse Gaussian used. Since it
+    is chordal, ML estimates still exist.
+
+
+Sun Jun 13 15:14:51 2004
+  - make quick reference card for decision trees 
+  - make quick reference card for sparse CPTs 
 

@@ -2490,7 +2490,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		    && 
 		    (rv->conditionalMixtures[j].mapping.collection->mx(u)->dim() 
 		     != rvDim)) {
-		  error("Error: RV \"%s\" at frame %d (line %d), dimensionality %d, conditional parent %d, collection \"%s\" specifies Gaussian \"%s\" at pos %d with wrong dimension %d\n",
+		  error("Error: RV \"%s\" at frame %d (line %d), dimensionality %d, conditional parent %d, collection \"%s\" specifies Mixture \"%s\" at pos %d with wrong dimension %d\n",
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
 		      rvInfoVector[i].fileLineNumber,
