@@ -353,15 +353,16 @@ FileParser::fillKeywordTable()
     /* 15 */ "SparseCPT",
     /* 16 */ "DeterministicCPT",
     /* 17 */ "NGramCPT",
-    /* 18 */ "mixture",
-    /* 19 */ "gausSwitchMixture",
-    /* 20 */ "logitSwitchMixture",
-    /* 21 */ "mlpSwitchMixture",
-    /* 22 */ "chunk",
-    /* 23 */ "GRAPHICAL_MODEL",
-    /* 24 */ "value",
-    /* 25 */ "weight",
-    /* 26 */ "elimination_hint",
+    /* 18 */ "FNGramCPT",
+    /* 19 */ "mixture",
+    /* 20 */ "gausSwitchMixture",
+    /* 21 */ "logitSwitchMixture",
+    /* 22 */ "mlpSwitchMixture",
+    /* 23 */ "chunk",
+    /* 24 */ "GRAPHICAL_MODEL",
+    /* 25 */ "value",
+    /* 26 */ "weight",
+    /* 27 */ "elimination_hint",
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -1278,7 +1279,7 @@ FileParser::parseImplementation()
 #if 0
 
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT 
-      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT) {
+      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT) {
     if (curRV.rvType != RVInfo::t_discrete) 
       parseError("need discrete implementations in discrete RV");
     parseDiscreteImplementation();
@@ -1297,7 +1298,7 @@ FileParser::parseDiscreteImplementation()
 {
   ensureNotAtEOF("discrete implementation");  
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
-      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT) {
+      || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT ) {
 
     if (tokenInfo == KW_MDCPT)
       curRV.discImplementations.push_back(CPT::di_MDCPT);
@@ -1305,8 +1306,10 @@ FileParser::parseDiscreteImplementation()
       curRV.discImplementations.push_back(CPT::di_MSCPT);
     else if (tokenInfo == KW_MTCPT)
       curRV.discImplementations.push_back(CPT::di_MTCPT);
-    else // tokenInfo == KW_NGRAMCPT
+    else if (tokenInfo == KW_NGRAMCPT)
       curRV.discImplementations.push_back(CPT::di_NGramCPT);
+    else // tokenInfo == KW_FNGRAMCPT
+      curRV.discImplementations.push_back(CPT::di_FNGramCPT);
     consumeToken();
 
 
@@ -2171,22 +2174,22 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 #endif
 	    }
 
-	} else 
+	} else
 	  if (rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT) {
 
 	    /////////////////////////////////////////////////////////
 	    // Once again, same code as above, but using NGramCPTs rather
-	    // then MDCPTs, MSCPTs or MTCPTs. 
+	    // then MDCPTs, MSCPTs or MTCPTs.
 
 	    //////////////////////////////////////////////////////
 	    // set the CPT to a NGramCPT, depending on if a string
 	    // or integer index was used in the file.
-	    if (rvInfoVector[i].listIndices[j].liType 
+	    if (rvInfoVector[i].listIndices[j].liType
 		== RVInfo::ListIndex::li_String) {
 	      if (GM_Parms.ngramCptsMap.find(
 					  rvInfoVector[i].listIndices[j].nameIndex) ==
 		  GM_Parms.ngramCptsMap.end()) {
-		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent MTCPT \"%s\" doesn't exist\n",
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent NGramCPT \"%s\" doesn't exist\n",
 			rvInfoVector[i].name.c_str(),
 			rvInfoVector[i].frame,
 			rvInfoVector[i].fileLineNumber,
@@ -2204,7 +2207,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      // need to remove the integer index code.
 	      assert(0);
 #if 0
-	      if (rvInfoVector[i].listIndices[j].intIndex >= 
+	      if (rvInfoVector[i].listIndices[j].intIndex >=
 		  GM_Parms.ngramCpts.size()) {
 		if (!allocateIfNotThere) {
 		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
@@ -2219,6 +2222,58 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		// otherwise add it
 		cpts[j] =
 		  GM_Parms.ngramCpts[rvInfoVector[i].listIndices[j].intIndex];
+	      }
+#endif
+	    }
+
+	} else
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_FNGramCPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using FNGramCPTs rather
+	    // then MDCPTs, MSCPTs or MTCPTs.
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a NGramCPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.fngramCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.fngramCptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent FNGramCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = (CPT*)
+		  GM_Parms.fngramCpts[
+				  GM_Parms.fngramCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // need to remove the integer index code.
+	      assert(0);
+#if 0
+	      if (rvInfoVector[i].listIndices[j].intIndex >=
+		  GM_Parms.fngramCpts.size()) {
+		if (!allocateIfNotThere) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent index (%d) too large\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].intIndex);
+		} else {
+		  error("Can't allocate with integer cpt index");
+		}
+	      } else {
+		// otherwise add it
+		cpts[j] =
+		  GM_Parms.fngramCpts[rvInfoVector[i].listIndices[j].intIndex];
 	      }
 #endif
 	    }
@@ -2243,7 +2298,9 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_MTCPT) {
 	  cptType = "MTCPT";
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_NGramCPT) {
-	  cptType = "NGramCPT";
+		cptType = "NGramCPT";
+	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_FNGramCPT) {
+		cptType = "FNGramCPT";
 	}
 
 	// check to make sure this cpt matches this
@@ -2336,7 +2393,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
       // finally, give the the cpts to the rv
       rv->setCpts(cpts);
 
-    } else { 
+    } else {
       ///////////////////////////////////////////////////////////
       ///////////////////////////////////////////////////////////
       // This is a CONTINUOUS RV, so 

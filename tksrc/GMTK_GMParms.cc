@@ -45,6 +45,7 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_USCPT.h"
 #include "GMTK_NGramCPT.h"
+#include "GMTK_FNGramCPT.h"
 #include "GMTK_Vocab.h"
 #include "GMTK_NameCollection.h"
 
@@ -110,6 +111,7 @@ GMParms::~GMParms()
   deleteObsInVector(mtCpts);
   deleteObsInVector(vocabs);
   deleteObsInVector(ngramCpts);
+  deleteObsInVector(fngramCpts);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
   // deleteObsInVector(logitSwitchingMixtures);
@@ -138,6 +140,7 @@ void GMParms::add(MSCPT*ob) { add(ob,msCpts,msCptsMap); }
 void GMParms::add(MTCPT*ob) { add(ob,mtCpts,mtCptsMap); }
 void GMParms::add(Vocab* ob) { add(ob, vocabs, vocabsMap); }
 void GMParms::add(NGramCPT*ob) { add(ob,ngramCpts,ngramCptsMap); }
+void GMParms::add(FNGramCPT*ob) { add(ob,fngramCpts,fngramCptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
 void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
@@ -625,7 +628,7 @@ void GMParms::readNgramCpts(iDataStreamFile& is, bool reset)
 		NGramCPT* ob;
 
 		is.read(cnt, "NGram CPT cnt");
-		if ( cnt != i ) 
+		if ( cnt != i )
 			error("ERROR: NGramCPT count (%d), out of order in file '%s', expecting %d", cnt,is.fileName(),i);
 
 		ob = new NGramCPT();
@@ -638,7 +641,42 @@ void GMParms::readNgramCpts(iDataStreamFile& is, bool reset)
 }
 
 
-void 
+void GMParms::readFNgramCpts(iDataStreamFile& is, bool reset)
+{
+	unsigned num;
+	unsigned cnt;
+	unsigned start = 0;
+
+	is.read(num, "num FNGRAM CPTs");
+	if ( num > GMPARMS_MAX_NUM )
+		error("ERROR: number of FNGram CPTs (%d) exceeds maximum", num);
+	if ( reset ) {
+		start = 0;
+		fngramCpts.resize(num);
+	} else {
+		start = fngramCpts.size();
+		fngramCpts.resize(start + num);
+	}
+	for ( unsigned i = 0; i <num; i++ ) {
+		// first read the count
+		FNGramCPT* ob;
+
+		is.read(cnt, "FNGram CPT cnt");
+		if ( cnt != i )
+			error("ERROR: FNGramCPT count (%d), out of order in file '%s', expecting %d", cnt, is.fileName(), i);
+
+		ob = new FNGramCPT();
+		ob->read(is);
+		if ( fngramCptsMap.find(ob->name()) != fngramCptsMap.end() )
+			error("ERROR: FNGramCPT named '%s' already defined but is specified for a second time in file '%s'",
+				ob->name().c_str(), is.fileName());
+		fngramCpts[i + start] = ob;
+		fngramCptsMap[ob->name()] = i + start;
+	}
+}
+
+
+void
 GMParms::readDTs(
   iDataStreamFile& is, 
   bool reset 
@@ -893,6 +931,7 @@ GMParms::readBasic(iDataStreamFile& is)
   readMtCpts(is);
   readVocabs(is);
   readNgramCpts(is);
+  readFNgramCpts(is);
 }
 
 
@@ -936,6 +975,7 @@ GMParms::readAll(iDataStreamFile& is)
   readMtCpts(is);
   readVocabs(is);
   readNgramCpts(is);
+  readFNgramCpts(is);
 
   // next read definitional items
   readComponents(is);
@@ -1031,6 +1071,7 @@ GMParms::readNonTrainable(iDataStreamFile& is)
   readMtCpts(is);
   readVocabs(is);
   readNgramCpts(is);
+  readFNgramCpts(is);
 }
 
 
@@ -1116,6 +1157,9 @@ GMParms::read(
 
 	} else if (keyword == "NGRAM_CPT_IN_FILE") {
 	  readNgramCpts(*((*it).second),false);
+
+	} else if (keyword == "FNGRAM_CPT_IN_FILE") {
+	  readFNgramCpts(*((*it).second),false);
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
@@ -2509,6 +2553,8 @@ unsigned GMParms::totalNumberParameters()
     sum += mtCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<ngramCpts.size();i++)
     sum += ngramCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<fngramCpts.size();i++)
+    sum += fngramCpts[i]->totalNumberParameters();
   return sum;
 
 }
