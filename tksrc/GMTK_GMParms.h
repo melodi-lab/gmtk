@@ -354,6 +354,18 @@ public:
   void read(iDataStreamFile& is,bool dataFilesAreBinary=false);
   void write(oDataStreamFile& os);
 
+  ///////////////////////////////////////////////////////////    
+  // read/write the trainable parameters, i.e., the ones that this program
+  // might modify
+  void readTrainable(iDataStreamFile& is,bool dataFilesAreBinary=false);
+  void writeTrainable(oDataStreamFile& os,bool dataFilesAreBinary=false);
+
+  ///////////////////////////////////////////////////////////    
+  // read/write the non-trainable parameters, i.e., the ones that this program
+  // will not modify (e.g., DTs, DLINK structures, etc)
+  void readNonTrainable(iDataStreamFile& is,bool dataFilesAreBinary=false);
+  void writeNonTrainable(oDataStreamFile& os,bool dataFilesAreBinary=false);
+
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
