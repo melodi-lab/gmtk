@@ -92,7 +92,7 @@ NameCollection::read(iDataStreamFile& is)
 	  is.fileName(),name().c_str(),length);
   table.resize(length);
   for (int i=0;i<length;i++) {
-    is.read(table[i],"MTCPT::read table entry");
+    is.read(table[i],"Collection::read table entry");
   }
 }
 
