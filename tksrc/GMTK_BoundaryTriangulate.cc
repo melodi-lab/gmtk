@@ -2459,10 +2459,10 @@ unrollAndTriangulate(// triangulate heuristics
     double best_weight = HUGE_VAL;
     triangulate(rvsSet,tri_heur,orgnl_nghbrs,cliques,best_meth_str,best_weight);
     unsigned maxSize = 0;
-    float maxSizeCliqueWeight;
+    float maxSizeCliqueWeight=0;
     float maxWeight = -1.0;
     float totalWeight = -1.0; // starting flag
-    unsigned maxWeightCliqueSize;
+    unsigned maxWeightCliqueSize=0;
 
     // TODO: just print out the resulting information for now. Ultimately
     // return the cliques and do inference with them.
