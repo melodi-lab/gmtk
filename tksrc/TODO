@@ -2038,3 +2038,5 @@ Fri Jul 30 01:12:00 2004
     I.e., p3o21 would be the integer in the observation file at position 21 using
     the frame of parent3, or co12 would be the int in the obs file at the frame of the child.
 
+Tue Aug  3 15:07:03 2004
+  -jt_info.txt dispositions, print text rather than numbers.
