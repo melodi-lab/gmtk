@@ -797,3 +797,18 @@ Tue Dec 24 08:26:10 2002
    those values that are not significant.
    This is another heuristic to add (and should be
    controllable via command line parameter).
+
+Tue Dec 24 13:58:16 2002
+  - for snake structure, can have a module that
+    still does regular unconstrained triangulation and
+    unrolls and triangulates for each length (in that
+    case, snake will be better)
+
+
+Tue Dec 24 13:58:48 2002
+  - for min-fill, min-weight, etc., when there
+    is a tie, back off to constrained triangulation
+    (e.g., eliminate the earliest node first, or
+     a random node selected from among the earliest
+     nodes)
+
