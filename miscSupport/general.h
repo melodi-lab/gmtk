@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "machine-dependent.h"
+
 #define VCID(x) static char * version_control_id = x; static char *___tmp___ = version_control_id;
 
 char *copyToNewStr(const char *const str);
@@ -38,6 +40,8 @@ void copyStringWithTag(char *result,char *input,
 
 unsigned long fsize(FILE*stream);
 unsigned long fsize(const char* const filename);
+
+
 
 
 #endif
