@@ -133,3 +133,5 @@ XXX- todo, make sure that chunk n:m is valid.
 
 - change sparse PMF so that it just contains a list
   of values, and then a pointer to a dense pmf
+
+- get the parameter writing stuff finalized.
