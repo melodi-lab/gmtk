@@ -105,6 +105,7 @@ public:
   // Collection of multi-dimensional sparse CPTs (transition matrices, etc.)
   sArray< MSCPT* > msCpts;
 
+  /********************************************************************/
 
   //////////////////////////////////////////////////////////////////
   // Basic Gaussian Components
@@ -207,7 +208,25 @@ public:
   void readDTs(iDataStreamFile& is);
   void writeDTs(oDataStreamFile& os);
 
+  ///////////////////////////////////////////////////////////    
+  // read and write basic Gaussians
+  void readGaussians(iDataStreamFile& is);
+  void writeGaussians(oDataStreamFile& os);
 
+  ///////////////////////////////////////////////////////////    
+  // read and write Observation Params
+  void readObservationParams(iDataStreamFile& is);
+  void writeObservationParams(oDataStreamFile& os);
+
+  ///////////////////////////////////////////////////////////    
+  // read and write Observation Structures (DLINKS)
+  void readObservationStructures(iDataStreamFile& is);
+  void writeObservationStructures(oDataStreamFile& os);
+
+  ///////////////////////////////////////////////////////////    
+  // read and write structure
+  void readStructure(iDataStreamFile& is);
+  void writeStructure(oDataStreamFile& os);
 
 
 };
