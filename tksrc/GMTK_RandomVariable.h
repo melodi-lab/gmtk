@@ -39,8 +39,6 @@
 
 class RandomVariable
 {
-
-
 public:
 
     int nodeNum;  
@@ -76,7 +74,7 @@ public:
     // The maximum number of possible values this RV may take in, irrespective
     // of the values of the parents. So, we must
     // have that 0 <= val < cardinality
-
+    sArray<RandomVariable *> switchingParents, *curConditionalParents;
 
     // The probability of a variable taking a particular value depends on
     // the values of its parents. There come in two varieties: switching 
@@ -86,16 +84,13 @@ public:
     // parent may also be a conditional parent.
     // A node's switching and conditional parents must all be lower numbered 
     // than the node itself, thus allowing a topological ordering of 
-    // the graph induced by the union of all possible conditioning relationships
-    sArray<randomVariable *> switchingParents, *curConditionalParents;
 
-  
-    sArray<randomVariable *> allPossibleParents;
+    sArray<RandomVariable *> allPossibleParents;
     // allPossibleParents is the union of the switchingParents and the
     // all possible conditionalParents.
     // Used to determine topological orderings
 
-    sArray< sArray < randomVariable* > > conditionalParentsList;
+    sArray< sArray < RandomVariable* > > conditionalParentsList;
     // For each possible different list of
     // conditional parents that might exist for all possible
     // values of the switching parents, this array gives that list of
@@ -107,16 +102,19 @@ public:
     // that exist for all values of the switching parents, this
     // list is of size two. 
 
-    sArray<randomVariable *> allPossibleChildren;
+    void setParents(sArray<RandomVariable *> &sparents, 
+         sArray<sArray<RandomVariable *> > &cpl);
+    // A method to make it easy to set up the graph topology
+    
+
+    sArray<RandomVariable *> allPossibleChildren;
     // The set of variables that use this variable either as a switching
     // parent or as a (possible) conditional parent.
 
     int intFromSwitchingState();
     // Looks at the currently (presumably clamped) values of the
     // switching parents and returns an 1D integer index. 
-    // This index is used to determine the set of equivalence ranges of the switching
-    // parents in tables such as conditionalParentsList, this equivalence range
-    // is indicated by the integer this routine returns.
+    // This indexes the set of conditional parents to use.
 
     virutal void findConditionalParents() = 0;
     // Looks at the values of the switching parents, and sets the 
@@ -127,8 +125,7 @@ public:
     // parents and unions together the parents. Stores the result in the
     // allPossibleParents array (in what order??)
 
-
-    int address(sArray<randomVariable *>);
+    int address(sArray<RandomVariable *>);
     // Looks up the values of a vector of parents and computes an
     // integer index into a 1 dimensional array. 
     //  (not sure what this is for??)
@@ -143,7 +140,6 @@ public:
     // The inference algorithm guarantees that when this is called, the
     // variable and its parents will be clamped to appropriate values.
     // This also assumes that findConditionalParents has been called.
-
 
     virtual void clampFirstValue() = 0;
     // Sets a variable to the first value that is possible.
@@ -169,12 +165,11 @@ public:
     // by its parent's values. (i.e., sample from this distribution)
     // Used for simulation.
 
-    virtual void tieWith(randomVariable *rv) = 0;
+    virtual void tieWith(RandomVariable *rv) = 0;
     // In a DGM, the analogous occurrences of a variable in different time
     // slices all share the same distributions and accumulators. This function
     // tells a variable to use the data structures associated with just one
     // member of its equivalence class.
-
 
     virtual void cacheValue() = 0;
     // It can be useful to tell a variable to cache the value it's currently
@@ -193,7 +188,6 @@ public:
     // SUPPORT FOR EM  VARIABLES ////////////
     /////////////////////////////////////////
     /////////////////////////////////////////
-
 
     virtual void zeroAccumulators() = 0;
     // Called at the beginning of an EM iteration.
@@ -219,9 +213,6 @@ public:
     // END OF SUPPORT FOR EM  VARIABLES /////
     /////////////////////////////////////////
     /////////////////////////////////////////
-
-
-
 };
 
 #endif
