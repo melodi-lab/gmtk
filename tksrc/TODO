@@ -2329,4 +2329,9 @@ Wed Sep  1 07:20:49 2004
      and n(W) is number of words in W (so the more words we choose,
      the more the penalty if we choose \beta to be negative).
 
+Fri Sep  3 16:10:39 2004
+  - now that VECPTs are in, there is more need to not need an obs file on the command line and to get the
+    current utterance length either from a file of lengths, or from the VECPTs themselves.
+  - add back in the .active() checks for the global observation files.
+
 
