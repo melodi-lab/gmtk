@@ -307,6 +307,15 @@ LinMeanCondDiagGaussian::noisyClone()
       else
 	clone->dLinkMat = dLinkMat->noisyClone();
     }
+    
+    // need to tell mean, covar, and dlink that either
+    //    1) if this is a new mean,covar,dlink, that a
+    //       a parent object is using them, or
+    //    2) if this is a shared mean,covar,dlink, that
+    //       an additional parent object is using them.
+    clone->mean->numTimesShared++;
+    clone->covar->numTimesShared++;
+    clone->dLinkMat->numTimesShared++;
 
     clone->setBasicAllocatedBit();
     MixGaussiansCommon::gcCloneMap[this] = clone;

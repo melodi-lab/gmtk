@@ -188,6 +188,14 @@ DiagGaussian::noisyClone()
       else
 	clone->covar = covar->noisyClone();
     }
+    
+    // need to tell mean, and covar that either
+    //    1) if this is a new mean,covar that a
+    //       a parent object is using them, or
+    //    2) if this is a shared mean,covar that
+    //       an additional parent object is using them.
+    clone->mean->numTimesShared++;
+    clone->covar->numTimesShared++;
 
     clone->setBasicAllocatedBit();
     MixGaussiansCommon::gcCloneMap[this] = clone;
