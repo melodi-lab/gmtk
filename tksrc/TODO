@@ -2495,7 +2495,17 @@ Wed Oct 27 12:48:48 2004
         f(1,x) = f(x)
     so query the first variable first. 
 
-         
+Wed Oct 27 13:26:52 2004
+  - make program gmtkJunctionTree that creates a junction tree from a
+    graph and a trifile.
+    Normally the infererence programs make their own junction tree, but gmtkJunctionTree makes
+    one offline. Also .jt files can be edited by hand to specify your own junction trees for
+    a given triangulation. .jt files also specify interface cliques (from the set of valid ones).
+    gmtkJunctionTree should create .jt files that indicate which cliques are potential interface cliques.
+
+
+
+
     
 
 
