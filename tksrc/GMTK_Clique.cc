@@ -16,15 +16,17 @@
  *
  */ 
 
-void GMTK_Clique::cacheClampedValues()
+#include "GMTK_Clique.h"
+
+void Clique::cacheClampedValues()
 {
     for (int i=0; i<discreteMember.len(); i++)
         clampedValues[i] = discreteMember[i]->val;
 }
 
-logpr GMTK_Clique::probGivenParents()
+logpr Clique::probGivenParents()
 {
-    logpr p = 1;
+    logpr p = 1.0;
     findConditionalProbabilityNodes();
     for (int i=0; i<conditionalProbabilityNode.len(); i++)
         p *= conditionalProbabilityNode[i]->probGivenParents();
@@ -60,10 +62,10 @@ logpr GMTK_Clique::probGivenParents()
  *
  *-----------------------------------------------------------------------
  */
-void GMTK_Clique::prune(logpr beam)
+void Clique::prune(logpr beam)
 {
     // find the maximum probability instantiation
-    logpr maxv = 0;
+    logpr maxv = 0.0;
     list<CliqueValue>::iterator li;
     for (li=instantiation.begin(); li!=instantiation.end(); li++)
         if (li->pi > maxv)
@@ -74,14 +76,14 @@ void GMTK_Clique::prune(logpr beam)
     vector<list<CliqueValue>::iterator> kill;
     for (li=instantiation.begin(); li!=instantiation.end(); li++)
         if (li->pi < threshold)
-            kill.insert(li);
+            kill.push_back(li);
 
     // delete them
-    for (int i=0; i<kill.size(); i++)
-        instantiation.remove(kill[i]);
+    for (unsigned i=0; i<kill.size(); i++)
+        instantiation.erase(kill[i]);
 }
 
-void GMTK_Clique::enumerateValues(int new_member_num, CliqueValue *pred_val,
+void Clique::enumerateValues(int new_member_num, CliqueValue *pred_val,
 bool viterbi)
 {
     if (separator)
@@ -90,21 +92,21 @@ bool viterbi)
      
         // Make sure we have a clique value to work with
         // instantiationAddress tells if the instantiation was seen before
-        map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue>::iterator mi;
+        map<vector<DISCRETE_VARIABLE_TYPE>, CliqueValue *>::iterator mi;
         CliqueValue *cv;
-        if ((mi=instantiationAddress.find(cachedValues)) == 
+        if ((mi=instantiationAddress.find(clampedValues)) == 
         instantiationAddress.end())                  // not seen before
         {
             CliqueValue c;
-            c.pi = 0;
+            c.pi = 0.0;
             instantiation.push_back(c);              // add a new value
-            cv = &(*instantiation.back());           // will work with new value
+            cv = &instantiation.back();           // will work with new value
         }
         else
-            cv = &(*mi);                             // will word with old value
+            cv = (*mi).second;                    // will word with old value
      
         // store the underlying variable values with the instantiation
-        cv->values = cachedValues;   
+        cv->values = clampedValues;   
 
         if (!viterbi)
         {
@@ -131,12 +133,12 @@ bool viterbi)
         CliqueValue cv;
         cv.pi = cv.lambda = probGivenParents();  // cache value in lambda
         cv.pred = pred_val;
-        cv.values = cachedValues;
+        cv.values = clampedValues;
         if (pred_val)   // not doing root
             cv.pi *= pred_val->pi;
 	// copy in the clique value -- if it has a nonzero probability
         // otherwise, discard it to avoid further propagation
-        if (cv.pi != 0)
+        if (cv.pi != 0.0)
 // does logpr know what 0 is??
             instantiation.push_back(cv);
     }
@@ -148,7 +150,7 @@ bool viterbi)
         do
         {
             enumerateValues(new_member_num+1, pred_val, viterbi);
-        } while (member[new_member_num]->clampNextValue();
+        } while (member[new_member_num]->clampNextValue());
     }
 }
 

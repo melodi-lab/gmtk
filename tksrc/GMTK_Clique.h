@@ -69,7 +69,7 @@ struct Clique
     void cacheClampedValues();
     // Reads the values of the discrete members and stores them in clampedValues
 
-    void findConditionalProbabilityNodes();
+    void findConditionalProbabilityNodes() {error("can't find cp nodes yet");}
     // With switching parents, the set of variables assigned to a clique 
     // depends on the value of the clique. This function is called after all
     // the variables have been clamped, and stores the appropriate 
