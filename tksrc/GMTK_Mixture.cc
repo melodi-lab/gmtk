@@ -91,11 +91,14 @@ MixGaussians::read(iDataStreamFile& is)
 
   // make ready for probability evaluation.
   componentCache.resize(10);
+  setBasicAllocatedBit();
 }
 
 void
 MixGaussians::write(oDataStreamFile& os)
 {
+  assert ( basicAllocatedBitIsSet() );
+
   NamedObject::write(os);
   os.nl();
   // read number of mixture components
@@ -159,6 +162,8 @@ MixGaussians::log_p(const unsigned frameIndex,
 		    const unsigned firstFeatureElement)
 
 {
+  assert ( basicAllocatedBitIsSet() );
+
   const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride =  globalObservationMatrix.stride;
@@ -190,9 +195,14 @@ MixGaussians::log_p(const unsigned frameIndex,
 /////////////////
 
 
+
+
+
 void
 MixGaussians::emStartIteration()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingMixGaussians())
     return;
   if(emOnGoingBitIsSet())
@@ -203,7 +213,14 @@ MixGaussians::emStartIteration()
     weightedPostDistribution.resize(components.size());
     emSetEmAllocatedBit();
   }
-
+  
+  // check the length here because
+  //  1) it is cheap
+  //  2) we want to make sure that this Gaussians DPMF length
+  //     hasn't changed while this mixture wasn't active (i.e.,
+  //     it is possible that during pruning, this mixture
+  //     never went through swap below, which is the routine
+  //     which adjusts the components.
   if (dense1DPMF->length() != numComponents) {
     error("ERROR: Gaussian mixture '%s' with '%d' components is trying to start an EM iteration with a dense PMF '%s' of length '%d'\n",
 	  name().c_str(),numComponents,dense1DPMF->name().c_str(),
@@ -220,54 +237,6 @@ MixGaussians::emStartIteration()
     components[i]->emStartIteration();
   }
 }
-
-#if 0
-void
-MixGaussians::emIncrement(logpr prob,
-			  const float *f,
-			  const Data32* const base,
-			  const int stride)
-{
-
-  // printf("In emIncrement, calling with log prob = %g, float = 0x%X\n",
-  // prob.val(),(void*)f);
-
-  if (!GM_Parms.amTrainingMixGaussians())
-    return;  
-
-  emStartIteration();
-
-  if (prob < minIncrementProbabilty) {
-    missedIncrementCount++;
-    return;
-  } 
-  accumulatedProbability+= prob;
-
-  // first compute the local Gaussian mixture posterior distribution.
-  logpr sum;
-  for (unsigned i=0;i<numComponents;i++) {
-    postDistribution[i] = 
-      dense1DPMF->p(i)* components[i]->log_p(f,base,stride);
-    sum += postDistribution[i];
-  }
-
-  logpr tmp = prob/sum;
-  for (unsigned i=0;i<numComponents;i++) {
-    postDistribution[i] =
-      postDistribution[i]*tmp;
-  }
-
-  // increment the mixture weights
-  dense1DPMF->emIncrement(prob,postDistribution);
-
-  // and the components themselves.
-  for (unsigned i=0;i<numComponents;i++) {
-    components[i]->emIncrement(postDistribution[i],
-			       f,base,stride);
-  }
-
-}
-#endif
 
 
 /*-
@@ -297,6 +266,7 @@ MixGaussians::emIncrement(logpr prob,
 			  const unsigned frameIndex, 
 			  const unsigned firstFeatureElement)
 {
+  assert ( basicAllocatedBitIsSet() );
 
   if (!GM_Parms.amTrainingMixGaussians())
     return;  
@@ -330,9 +300,34 @@ MixGaussians::emIncrement(logpr prob,
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIteration
+ *      end the current iteration of the gaussian mixtures.
+ *      First this will end the component mixture.
+ *      Next, we compute the mixture specific ratios.
+ *      If we find any components that satisfy the tresholds,
+ *      we enter them into the map so that other routines
+ *      can identify which components are to be added/deleted.
+ * 
+ * Preconditions:
+ *      Basic stuff must be allocated.
+ *
+ * Postconditions:
+ *      iteration has been ended, no longer valid to increment.
+ *
+ * Side Effects:
+ *      changes object values.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 MixGaussians::emEndIteration()
 {
+  assert ( basicAllocatedBitIsSet() );
 
   if (!GM_Parms.amTrainingMixGaussians())
     return;
@@ -367,9 +362,36 @@ MixGaussians::emEndIteration()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * emSwapCurAndNew
+ *      swaps in the new parameters and makes them current.
+ *      This routine has extra logic than the standard swap
+ *      because of sharing, and the desire to split and remove
+ *      mixture components.
+ * 
+ * Preconditions:
+ *      basic allocated, and em iteration finished.
+ *
+ *
+ * Postconditions:
+ *      New parameters are in. Components might be
+ *      split or removed.
+ *
+ * Side Effects:
+ *      Might drop the link to a Gaussian component
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 MixGaussians::emSwapCurAndNew()
 {
+  assert ( basicAllocatedBitIsSet() );
+
   if (!GM_Parms.amTrainingMixGaussians())
     return;
 
@@ -377,9 +399,50 @@ MixGaussians::emSwapCurAndNew()
       return;
 
   dense1DPMF->emSwapCurAndNew();
+
+  const unsigned newNumComponents = dense1DPMF->length();
+  vector < GaussianComponent* > newComponents;
+  newComponents.resize(newNumComponents);
+
+  unsigned newIndex = 0;  
   for (unsigned i=0;i<numComponents;i++) {
-    components[i]->emSwapCurAndNew();
+    if (MixGaussiansCommon::vanishingComponentSet.
+	find(pair<Dense1DPMF*,unsigned>(dense1DPMF,i))
+	!= MixGaussiansCommon::vanishingComponentSet.end()) {
+      // Do we swap in new values?? No, we keep
+      // old values. If someone else needs them, however,
+      // the new ones will get swapped in by whoever
+      // has not eliminated this component.
+      // components[i]->emSwapCurAndNew();
+      // Next, do nothing, i.e., don't copy it over to new components.
+      ;
+    } else if (MixGaussiansCommon::splittingComponentSet.
+	       find(pair<Dense1DPMF*,unsigned>(dense1DPMF,i))
+	       != MixGaussiansCommon::splittingComponentSet.end()) {
+      // first swap in new values
+      components[i]->emSwapCurAndNew();
+      // next copy it over,
+      newComponents[newIndex] = components[i];
+      // next copy a cloned copy over,
+      newComponents[newIndex+1] = components[i]->noisyClone();
+      // two components added
+      newIndex += 2;
+    } else {
+      // first swap in new values
+      components[i]->emSwapCurAndNew();
+      // next copy it over,
+      newComponents[newIndex] = components[i];
+      newIndex++;
+    }
   }
+  // make sure everything is as expected
+  assert ( newIndex == newNumComponents );
+
+  // finally, get ready for next iteration.
+  components = newComponents;
+  numComponents = newNumComponents;
+  weightedPostDistribution.resizeIfDifferent(components.size());
+
   emClearSwappableBit();
 }
 
@@ -388,12 +451,14 @@ MixGaussians::emSwapCurAndNew()
 void
 MixGaussians::emStoreAccumulators(oDataStreamFile& ofile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
 void
 MixGaussians::emLoadAccumulators(iDataStreamFile& ifile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
@@ -401,6 +466,7 @@ MixGaussians::emLoadAccumulators(iDataStreamFile& ifile)
 void
 MixGaussians::emAccumulateAccumulators(iDataStreamFile& ifile)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 
@@ -415,6 +481,7 @@ void MixGaussians::sampleGenerate(float *const sample,
 				  const Data32* const base,
 				  const int stride)
 {
+  assert ( basicAllocatedBitIsSet() );
   error("not implemented");
 }
 

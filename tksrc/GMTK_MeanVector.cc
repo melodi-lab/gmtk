@@ -113,7 +113,13 @@ MeanVector::noisyClone()
   map<MeanVector*,MeanVector*>::iterator it = MixGaussiansCommon::meanCloneMap.find(this);
   if (it == MixGaussiansCommon::meanCloneMap.end()) {
     clone = new MeanVector();
-    clone->_name = _name + string("_cl");
+    // make sure we get a unique name
+    unsigned cloneNo=0; do {
+      char buff[256];
+      sprintf(buff,"%d",cloneNo);
+      clone->_name = _name + string("_cl") + buff;
+      cloneNo++;
+    } while (GM_Parms.meansMap.find(clone->_name) != GM_Parms.meansMap.end());
     clone->refCount = 0;
     clone->means.resize(means.len());
     for (int i=0;i<means.len();i++) {
