@@ -201,6 +201,10 @@ public:
 
 public:
 
+  // Dummy constructor to create an invalid object to be re-constructed
+  // later.
+  vhash_set() {}
+
   ////////////////////
   // constructor
   //    All entries in this hash table have the same size given
