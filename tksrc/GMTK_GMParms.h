@@ -404,7 +404,9 @@ public:
   // all of the above) from a single file consisting
   // of sets of <keyword,fileName> pairs
   void read(iDataStreamFile& is);
-  void write(const char *const outputFileFormat, const int intTag=CSWT_EMPTY_TAG);
+  void write(const char *const outputFileFormat, 
+	     const char * const cppCommandOptions,
+	     const int intTag=CSWT_EMPTY_TAG);
 
   ///////////////////////////////////////////////////////////    
   // read/write the trainable parameters, i.e., the ones that this program
