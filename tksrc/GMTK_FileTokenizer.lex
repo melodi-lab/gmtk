@@ -75,7 +75,7 @@ separator ":"|";"|"{"|"}"|"("|")"|"|"|","
             FileParser::tokenInfo.tokenStr = yytext;
             FileParser::tokenInfo.tokenType = FileParser::TT_String;
             if (debugLexer)
-              printf( "A string: %s (%d)\n", yytext);
+              printf( "A string: %s\n", yytext);
 	    return FileParser::tokenInfo.tokenType;
             }
 
