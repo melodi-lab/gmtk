@@ -60,9 +60,12 @@ DiscreteRandomVariable::findConditionalParents()
 {
 //  printf("DiscreteRandomVariable::findConditionalParents called\n");
   cachedIntFromSwitchingState = intFromSwitchingState();
-  assert ( cachedIntFromSwitchingState >= 0 && 
-     cachedIntFromSwitchingState < conditionalCPTs.size()  &&
-     cachedIntFromSwitchingState < conditionalParentsList.size());
+  if ( cachedIntFromSwitchingState < 0 ||
+       cachedIntFromSwitchingState >= conditionalCPTs.size()  ||
+       cachedIntFromSwitchingState >= conditionalParentsList.size()) {
+    error("ERROR: DRV %s:%d using DT '%s' got invliad switching position %d\n",
+	  label.c_str(),timeIndex, (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedIntFromSwitchingState);
+  }
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
   curCPT = conditionalCPTs[cachedIntFromSwitchingState];
 }

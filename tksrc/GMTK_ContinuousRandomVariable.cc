@@ -67,8 +67,13 @@ void
 ContinuousRandomVariable::findConditionalParents()
 {
   cachedIntFromSwitchingState = intFromSwitchingState();
-  assert ( cachedIntFromSwitchingState >= 0 && 
-     cachedIntFromSwitchingState < conditionalParentsList.size() );
+
+  if ( cachedIntFromSwitchingState < 0 ||
+       cachedIntFromSwitchingState >= conditionalParentsList.size()) {
+    error("ERROR: CRV %s:%d using DT '%s' got invliad switching position %d\n",
+	  label.c_str(),timeIndex, (dtMapper == NULL?"NULL":dtMapper->name().c_str()),cachedIntFromSwitchingState);
+  }
+
   curConditionalParents = & conditionalParentsList[cachedIntFromSwitchingState];
   curMappingOrDirect = &conditionalGaussians[cachedIntFromSwitchingState];
 }
@@ -234,8 +239,20 @@ ContinuousRandomVariable::emIncrement(logpr posterior)
     // need to find which gaussian this will be.
     const unsigned gaussianIndex =
       curMappingOrDirect->dtMapper->query(*curConditionalParents);
-    assert ( gaussianIndex < GM_Parms.mixGaussians.size() );
-    //
+
+    ///////////////////////////////////////////////////////////
+    // Dynamic error checking:
+    // the following check needs to be here because DTs might
+    // have formulas in their leaves and there is no way
+    // to check this statically w/o enumerating through all possible
+    // values of the parents of this RV.
+    if ( gaussianIndex >= GM_Parms.mixGaussians.size()) {
+      error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants GM "
+            "with index %d but there are only %d GMs",
+	    label.c_str(),timeIndex,curMappingOrDirect->dtMapper->name().c_str(),
+	    gaussianIndex,GM_Parms.mixGaussians.size());
+    }
+
     // TODO: this needs to be changed when we have
     // different types of mixtures of Gaussians.
     GM_Parms.mixGaussians[gaussianIndex]->emIncrement
