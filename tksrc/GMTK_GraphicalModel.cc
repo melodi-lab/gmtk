@@ -622,7 +622,7 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 	// unsigned lcard = (*m).first;
 	RV* rv = (*m).second;
 	// DiscRV* drv = (DiscRV*)rv;
-	printf("Doing node %s(%d) with name,frame\n",(*m).second->name().c_str(),(*m).second->frame());
+	// printf("Doing node %s(%d) with name,frame\n",(*m).second->name().c_str(),(*m).second->frame());
 	if (tag[rv] == 0)
 	  if (!topologicalSortRecurseWPriorityRecurse(sortSet,
 						      outputVarList,

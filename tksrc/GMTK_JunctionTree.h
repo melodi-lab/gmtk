@@ -199,25 +199,28 @@ class JunctionTree  {
 
   // The set of base partitions from which real unrolled things are cloned from.
   // When unrolling zero time, we get:
-  //   u0: P1 Cu0 E1
+  //   u0: P' E'
   // When unrolling 1 or more times, the method depends on
   // if the template was created using either the left or right interface
   // method.
   // If template created using left interface method, we do:
-  //  u0: P1 Cu0 E1
-  //  u1: P1 Cu0 Co E1 
-  //  u2: P1 Cu0 Co Co E1 
-  //  u3: P1 Cu0 Co Co Co E1 
+  //  u0: P' E'
+  //  u1: P' C' E' 
+  //  u2: P' C' C' E' 
+  //  u3: P' C' C' C' E'
   //  u4: etc.
+  // Note that for left interface, an E1 contains M copies of 
+  // the original chunk C, so u0 is the basic template.
+  //
   // If template created using right interface method, we do:
-  //  u0: P1 Cu0 E1
-  //  u1: P1 Co Cu0 E1 
-  //  u2: P1 Co Co Cu0 E1 
-  //  u3: P1 Co Co Co Cu0 E1 
+  //  u0: P' E'
+  //  u1: P' C' E' 
+  //  u2: P' C' C' E' 
+  //  u3: P' C' C' C' E'
   //  u4: etc.
+  // in the right interface case, P' contains an original P and M copies of C.
   
   JT_Partition P1; 
-  JT_Partition Cu0;  // C when unrolling 0 times
   JT_Partition Co;   // C "other", depending on if right or left interface method is used.
   JT_Partition E1; 
 
@@ -239,13 +242,13 @@ class JunctionTree  {
     // pointer to origin
     JT_Partition* JT;
     // offset to set random variables
-    unsigned offset;
+    int offset;
     // a pointer to the partition information
     JT_InferencePartition* p;
     // Message order for this partition.
     vector< pair<unsigned,unsigned> >* mo;
     // the name (type) of this partition, i.e., either
-    // a P1, Cu0, Co, or an E1.
+    // a P1, Co, or an E1.
     char *nm;
     // clique number of right interface 
     unsigned ri;
@@ -300,8 +303,6 @@ class JunctionTree  {
   // cloned partitions.
   vector< pair<unsigned,unsigned> > P1_message_order;
   vector< unsigned > P1_leaf_cliques;
-  vector< pair<unsigned,unsigned> > Cu0_message_order;
-  vector< unsigned > Cu0_leaf_cliques;
   vector< pair<unsigned,unsigned> > Co_message_order;
   vector< unsigned > Co_leaf_cliques;
   vector< pair<unsigned,unsigned> > E1_message_order;  
@@ -699,7 +700,6 @@ public:
   // used to clear out hash table memory between segments
   void clearCliqueSepValueCache() {
     P1.clearCliqueSepValueCache();
-    Cu0.clearCliqueSepValueCache();
     Co.clearCliqueSepValueCache();
     E1.clearCliqueSepValueCache();
   }

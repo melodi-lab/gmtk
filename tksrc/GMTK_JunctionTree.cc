@@ -167,7 +167,7 @@ JT_Partition::JT_Partition(
     rvp.second = rv->frame()+frameDelta;    
 
     if ( ppf.find(rvp) == ppf.end() ) {
-      error("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_part\n",
+      error("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_part2\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
@@ -964,7 +964,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string priorityS
  *   partitions given in gm_template (P', C', and E').
  *
  *   This routine should really only be called once to set up
- *   the base partitions (P1,C1,C2,C3,E1,Cu0), from which all future
+ *   the base partitions (P1,C1,C2,C3,E1), from which all future
  *   unrolls will take place.
  *
  *   Sets things up so that inference can take place.
@@ -992,8 +992,6 @@ void
 JunctionTree::base_unroll()
 {
 
-  const unsigned k = 1;
-
   // first create the unrolled set of random variables corresponding
   // to this JT.
 
@@ -1003,10 +1001,9 @@ JunctionTree::base_unroll()
   map < RVInfo::rvParent, unsigned > ppf;
   // number of C repetitions is M + (k+1)*S, so
   // we unroll one less than that.
-  fp.unroll(gm_template.M + (k+1)*gm_template.S - 1,
+  fp.unroll(gm_template.M + gm_template.S - 1,
 	    unrolled_rvs,ppf);
   
-
   set <RV*> empty;
   // copy P partition 
   new (&P1) JT_Partition(gm_template.P,0*gm_template.S,
@@ -1014,37 +1011,18 @@ JunctionTree::base_unroll()
 			 gm_template.PCInterface_in_P,0*gm_template.S,
 			 unrolled_rvs,ppf);
 
-  if (gm_template.leftInterface) { 
-    // left interface case.
-    // Template has a (P)(C)(CE) = (P')(C')(E')
-    // Unroll to a P Cu0 Co CE
-    new (&Cu0) JT_Partition(gm_template.C,0*gm_template.S,
-			    gm_template.PCInterface_in_C,0*gm_template.S,
-			    gm_template.CEInterface_in_C,0*gm_template.S,
-			    unrolled_rvs,ppf);
-    new (&Co) JT_Partition(gm_template.C,1*gm_template.S,
-			   gm_template.CEInterface_in_C,0*gm_template.S,
-			   gm_template.CEInterface_in_C,1*gm_template.S,			   			   unrolled_rvs,ppf);
-  } else { // right interface
-    // Right interface case.
-    // Template has a (PC)(C)(E) = (P')(C')(E')
-    // Unroll to a P Co Cu0 CE
-
-    new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
-			   gm_template.PCInterface_in_C,0*gm_template.S,			   
-			   gm_template.PCInterface_in_C,1*gm_template.S,
-			   unrolled_rvs,ppf);
-
-    new (&Cu0) JT_Partition(gm_template.C,1*gm_template.S,
-			    gm_template.PCInterface_in_C,1*gm_template.S,
-			    gm_template.CEInterface_in_C,1*gm_template.S,
-			    unrolled_rvs,ppf);
-
-  }
+  // left interface case.
+  // Template has a (P)(C)(CE) = (P')(C')(E')
+  // Right interface case.
+  // Template has a (PC)(C)(E) = (P')(C')(E')
+  new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
+			 gm_template.PCInterface_in_C,0*gm_template.S,			   
+			 gm_template.PCInterface_in_C,0*gm_template.S,
+			 unrolled_rvs,ppf);
 
   // copy E partition
-  new (&E1) JT_Partition(gm_template.E,1*gm_template.S,
-			 gm_template.CEInterface_in_E,1*gm_template.S,
+  new (&E1) JT_Partition(gm_template.E,0*gm_template.S,
+			 gm_template.CEInterface_in_E,0*gm_template.S,
 			 empty,0*gm_template.S,
 			 unrolled_rvs,ppf);
   
@@ -1089,39 +1067,36 @@ JunctionTree::computePartitionInterfaces()
   E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
 
   if (gm_template.leftInterface) {
-    bool Cu0_liCliqueSameAsInterface;
-    bool Cu0_riCliqueSameAsInterface;
     bool Co_liCliqueSameAsInterface;
     bool Co_riCliqueSameAsInterface;
 
-    Cu0.findLInterfaceClique(C_li_to_P,Cu0_liCliqueSameAsInterface,interfaceCliquePriorityStr);
-    Cu0.findRInterfaceClique(C_ri_to_C,Cu0_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     Co.findLInterfaceClique(C_li_to_C,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+    C_li_to_P = C_li_to_C;
     Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+    C_ri_to_C = C_ri_to_E;
+
     
     // sanity check
     assert (C_ri_to_C == C_ri_to_E);
 
     P_to_C_icliques_same =
-      P_riCliqueSameAsInterface && Cu0_liCliqueSameAsInterface;
+      P_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;
 
     C_to_C_icliques_same =
-      Cu0_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;    
+      Co_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;    
 
     C_to_E_icliques_same =
       Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
 
   } else { // right interface
 
-    bool Cu0_liCliqueSameAsInterface;
-    bool Cu0_riCliqueSameAsInterface;
     bool Co_liCliqueSameAsInterface;
     bool Co_riCliqueSameAsInterface;
 
     Co.findLInterfaceClique(C_li_to_P,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
     Co.findRInterfaceClique(C_ri_to_C,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
-    Cu0.findLInterfaceClique(C_li_to_C,Cu0_liCliqueSameAsInterface,interfaceCliquePriorityStr);
-    Cu0.findRInterfaceClique(C_ri_to_E,Cu0_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+    C_li_to_C = C_li_to_P;
+    C_ri_to_E = C_ri_to_C;
 
     // sanity check
     assert (C_li_to_C == C_li_to_P);
@@ -1130,10 +1105,10 @@ JunctionTree::computePartitionInterfaces()
       P_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;
 
     C_to_C_icliques_same =
-      Co_riCliqueSameAsInterface && Cu0_liCliqueSameAsInterface;    
+      Co_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;    
 
     C_to_E_icliques_same =
-      Cu0_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
+      Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
 
   }
 
@@ -1280,15 +1255,11 @@ JunctionTree::createDirectedGraphOfCliques()
   createDirectedGraphOfCliques(P1,
 			       P_ri_to_C);
   if (gm_template.leftInterface) {
-    createDirectedGraphOfCliques(Cu0,
-				 C_ri_to_C);
     createDirectedGraphOfCliques(Co,
 				 C_ri_to_E);
   } else { // right interface
     createDirectedGraphOfCliques(Co,
 				 C_ri_to_C);
-    createDirectedGraphOfCliques(Cu0,
-				 C_ri_to_E);
   }
   createDirectedGraphOfCliques(E1,
 			       E_root_clique);
@@ -1386,70 +1357,30 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
   infoMsg(IM::Giga,"assigning rvs to P1 partition\n");
   assignRVsToCliques("P1",P1,P_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
-  if (gm_template.leftInterface) {
-    infoMsg(IM::Max,"assigning rvs to Cu0 partition\n");
-    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
-		   P1.cliques[P_ri_to_C].assignedNodes,
-		   Cu0.cliques[C_li_to_P].cumulativeAssignedNodes);
-    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
-		   P1.cliques[P_ri_to_C].assignedProbNodes,
-		   Cu0.cliques[C_li_to_P].cumulativeAssignedProbNodes);
-    assignRVsToCliques("Cu0",Cu0,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  infoMsg(IM::Max,"assigning rvs to Co partition\n");
+  union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
+		 P1.cliques[P_ri_to_C].assignedNodes,
+		 Co.cliques[C_li_to_P].cumulativeAssignedNodes);
+  union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
+		 P1.cliques[P_ri_to_C].assignedProbNodes,
+		 Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
+  assignRVsToCliques("Co",Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
+  infoMsg(IM::Max,"assigning rvs to E partition\n");
+  union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
+		 Co.cliques[C_ri_to_E].assignedNodes,
+		 E1.cliques[E_li_to_C].cumulativeAssignedNodes);
+  union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
+		 Co.cliques[C_ri_to_E].assignedProbNodes,
+		 E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
+  assignRVsToCliques("E1",E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
-    infoMsg(IM::Max,"assigning rvs to Co partition\n");
-    union_1_2_to_3(Cu0.cliques[C_ri_to_C].cumulativeAssignedNodes,
-		   Cu0.cliques[C_ri_to_C].assignedNodes,
-		   Co.cliques[C_li_to_C].cumulativeAssignedNodes);
-    union_1_2_to_3(Cu0.cliques[C_ri_to_C].cumulativeAssignedProbNodes,
-		   Cu0.cliques[C_ri_to_C].assignedProbNodes,
-		   Co.cliques[C_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques("Co",Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-
-    infoMsg(IM::Max,"assigning rvs to E partition\n");
-    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
-		   Co.cliques[C_ri_to_E].assignedNodes,
-		   E1.cliques[E_li_to_C].cumulativeAssignedNodes);
-    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
-		   Co.cliques[C_ri_to_E].assignedProbNodes,
-		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques("E1",E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-
-  } else { // right interface 
-    infoMsg(IM::Max,"assigning rvs to Co partition\n");
-    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
-		   P1.cliques[P_ri_to_C].assignedNodes,
-		   Co.cliques[C_li_to_P].cumulativeAssignedNodes);
-    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
-		   P1.cliques[P_ri_to_C].assignedProbNodes,
-		   Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
-    assignRVsToCliques("Co",Co,C_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-
-    infoMsg(IM::Max,"assigning rvs to Cu0 partition\n");
-    union_1_2_to_3(Co.cliques[C_ri_to_C].cumulativeAssignedNodes,
-		   Co.cliques[C_ri_to_C].assignedNodes,
-		   Cu0.cliques[C_li_to_C].cumulativeAssignedNodes);
-    union_1_2_to_3(Co.cliques[C_ri_to_C].cumulativeAssignedProbNodes,
-		   Co.cliques[C_ri_to_C].assignedProbNodes,
-		   Cu0.cliques[C_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques("Cu0",Cu0,C_ri_to_E,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-
-    infoMsg(IM::Max,"assigning rvs to E partition\n");
-    union_1_2_to_3(Cu0.cliques[C_ri_to_E].cumulativeAssignedNodes,
-		   Cu0.cliques[C_ri_to_E].assignedNodes,
-		   E1.cliques[E_li_to_C].cumulativeAssignedNodes);
-    union_1_2_to_3(Cu0.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
-		   Cu0.cliques[C_ri_to_E].assignedProbNodes,
-		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques("E1",E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-  }
-
-#ifndef NDEBUG
-
-  // lastly, check to make sure all nodes have been
-  // assigned to to give probability to one clique.
+  // lastly, check to make sure all nodes have been assigned to to
+  // give probability to one clique. This should be done in case the
+  // user edited the trifile, which is one possible reason for this to
+  // end in error.
   set <RV*> allNodes;
-  union_1_2_to_3(P1.nodes,Cu0.nodes,allNodes);
+  union_1_2_to_3(P1.nodes,Co.nodes,allNodes);
   union_1_2_to_3(Co.nodes,E1.nodes,allNodes,true);
   set <RV*> allAssignedProbNodes;
   union_1_2_to_3(E1.cliques[E_root_clique].cumulativeAssignedProbNodes,
@@ -1464,11 +1395,9 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
   if (nodesThatGiveNoProb.size() > 0) {
     fprintf(stderr,"INTERNAL ERROR: some nodes do not give probability to any clique, those nodes include: ");
     printRVSet(stderr,nodesThatGiveNoProb);
-    fprintf(stderr,"\n");
-    assert(0);
+    error("Possibly corrupt trifile. Exiting program ...");
   }
 
-#endif
 
 }
 
@@ -1932,7 +1861,6 @@ void
 JunctionTree::computeUnassignedCliqueNodes()
 {
   computeUnassignedCliqueNodes(P1);
-  computeUnassignedCliqueNodes(Cu0);
   computeUnassignedCliqueNodes(Co);
   computeUnassignedCliqueNodes(E1);
 }
@@ -1974,31 +1902,11 @@ JunctionTree::setUpMessagePassingOrders()
 			   ~0x0,
 			   P1_leaf_cliques);
 
-  if (gm_template.leftInterface) {
-    setUpMessagePassingOrder(Cu0,
-			     C_ri_to_C,
-			     Cu0_message_order,
-			     C_li_to_P,
-			     Cu0_leaf_cliques);
-
-    setUpMessagePassingOrder(Co,
-			     C_ri_to_C,
-			     Co_message_order,
-			     C_li_to_C,
-			     Co_leaf_cliques);
-
-  } else { // right interface
-    setUpMessagePassingOrder(Co,
-			     C_ri_to_C,
-			     Co_message_order,
-			     C_li_to_P,
-			     Co_leaf_cliques);
-    setUpMessagePassingOrder(Cu0,
-			     C_ri_to_E,
-			     Cu0_message_order,
-			     C_li_to_C,
-			     Cu0_leaf_cliques);
-  }
+  setUpMessagePassingOrder(Co,
+			   C_ri_to_C,
+			   Co_message_order,
+			   C_li_to_P,
+			   Co_leaf_cliques);
 
   setUpMessagePassingOrder(E1,
 			   E_root_clique,
@@ -2119,63 +2027,24 @@ JunctionTree::createSeparators()
   P1.cliques[P_ri_to_C].ceSendSeparator = ~0x0; // set to invalid value
   // P1 has no LI, so nothing more to do for P1 here.
 
-  createSeparators(Cu0,
-		   Cu0_message_order);
   createSeparators(Co,
 		   Co_message_order);
   createSeparators(E1,
 		   E1_message_order);
 
-  if (gm_template.leftInterface) {
+  // Create separator of interface cliques
+  Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Co.cliques[C_li_to_P]));
+  // update right partitions LI clique to include new separator
+  Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
+  // don't update left partitions RI clique's send separator since handeled explicitly
+  Co.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
 
-    // Create separator of interface cliques
-    Cu0.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Cu0.cliques[C_li_to_P]));
-    // update right partitions LI clique to include new separator
-    Cu0.cliques[C_li_to_P].ceReceiveSeparators.push_back(Cu0.separators.size()-1);
-    // don't update left partitions RI clique's send separator since handeled explicitly
-    Cu0.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
-
-    // Create separator of interface cliques
-    Co.separators.push_back(SeparatorClique(Cu0.cliques[C_ri_to_C],Co.cliques[C_li_to_C]));
-    // update right partitions LI clique to include new separator
-    Co.cliques[C_li_to_C].ceReceiveSeparators.push_back(Co.separators.size()-1);
-    // don't update left partitions RI clique's send separator since handeled explicitly
-    Co.cliques[C_ri_to_E].ceSendSeparator = ~0x0; //set to invalid value
-
-
-    // Create separator of interface cliques
-    E1.separators.push_back(SeparatorClique(Co.cliques[C_ri_to_E],E1.cliques[E_li_to_C]));
-    // update right partitions LI clique to include new separator
-    E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
-    // don't update left partitions RI clique's send separator since handeled explicitly
-    E1.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
-
-
-  } else { // right interface 
-
-    // Create separator of interface cliques
-    Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Co.cliques[C_li_to_P]));
-    // update right partitions LI clique to include new separator
-    Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
-    // don't update left partitions RI clique's send separator since handeled explicitly
-    Co.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
-
-    // Create separator of interface cliques
-    Cu0.separators.push_back(SeparatorClique(Co.cliques[C_ri_to_C],Cu0.cliques[C_li_to_C]));
-    // update right partitions LI clique to include new separator
-    Cu0.cliques[C_li_to_C].ceReceiveSeparators.push_back(Cu0.separators.size()-1);
-    // don't update left partitions RI clique's send separator since handeled explicitly
-    Cu0.cliques[C_ri_to_E].ceSendSeparator = ~0x0; //set to invalid value
-
-    // Create separator of interface cliques
-    E1.separators.push_back(SeparatorClique(Cu0.cliques[C_ri_to_E],E1.cliques[E_li_to_C]));
-    // update right partitions LI clique to include new separator
-    E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
-    // don't update left partitions RI clique's send separator since handeled explicitly
-    E1.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
-
-  }
-
+  // Create separator of interface cliques
+  E1.separators.push_back(SeparatorClique(Co.cliques[C_ri_to_E],E1.cliques[E_li_to_C]));
+  // update right partitions LI clique to include new separator
+  E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
+  // don't update left partitions RI clique's send separator since handeled explicitly
+  E1.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
 
 }
 
@@ -2252,7 +2121,6 @@ JunctionTree::computeSeparatorIterationOrders()
 {
 
   computeSeparatorIterationOrders(P1);
-  computeSeparatorIterationOrders(Cu0);
   computeSeparatorIterationOrders(Co);
   computeSeparatorIterationOrders(E1);
 }
@@ -2533,53 +2401,17 @@ JunctionTree::getCumulativeUnassignedIteratedNodes()
 	    P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.end(),	    
 	    inserter(res,res.end()));
 
-  if (gm_template.leftInterface) {
-    
-    Cu0.cliques[C_li_to_P].cumulativeUnassignedIteratedNodes = res;
-    getCumulativeUnassignedIteratedNodes(Cu0,C_ri_to_C);
+  Co.cliques[C_li_to_P].cumulativeUnassignedIteratedNodes = res;
+  getCumulativeUnassignedIteratedNodes(Co,C_ri_to_C);
 
-    res.clear();
-    set_union(Cu0.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	      Cu0.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	      Cu0.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
-	      Cu0.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),	    
-	      inserter(res,res.end()));
-    Co.cliques[C_li_to_C].cumulativeUnassignedIteratedNodes = res;
-    getCumulativeUnassignedIteratedNodes(Co,C_ri_to_E);
-
-    res.clear();
-    set_union(Co.cliques[C_ri_to_E].unassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_E].unassignedIteratedNodes.end(),
-	      Co.cliques[C_ri_to_E].cumulativeUnassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_E].cumulativeUnassignedIteratedNodes.end(),
-	      inserter(res,res.end()));
-    E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
-    getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
-
-  } else { // right interface 
-
-    Co.cliques[C_li_to_P].cumulativeUnassignedIteratedNodes = res;
-    getCumulativeUnassignedIteratedNodes(Co,C_ri_to_C);
-
-    res.clear();
-    set_union(Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),	    
-	      inserter(res,res.end()));
-    Cu0.cliques[C_li_to_C].cumulativeUnassignedIteratedNodes = res;
-    getCumulativeUnassignedIteratedNodes(Cu0,C_ri_to_E);
-
-    res.clear();
-    set_union(Cu0.cliques[C_ri_to_E].unassignedIteratedNodes.begin(),
-	      Cu0.cliques[C_ri_to_E].unassignedIteratedNodes.end(),
-	      Cu0.cliques[C_ri_to_E].cumulativeUnassignedIteratedNodes.begin(),
-	      Cu0.cliques[C_ri_to_E].cumulativeUnassignedIteratedNodes.end(),
-	      inserter(res,res.end()));
-    E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
-    getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
-
-  }
+  res.clear();
+  set_union(Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
+	    Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
+	    Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
+	    Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),	    
+	    inserter(res,res.end()));
+  E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
+  getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
 
 }
 
@@ -2805,49 +2637,21 @@ JunctionTree::printAllJTInfo(char *fileName)
   fprintf(f,"===============================\n");
   fprintf(f,"   P1 partition information: JT_weight = %f\n",
 	  junctionTreeWeight(P1,P_ri_to_C,
-			     NULL,(gm_template.leftInterface?&Cu0.nodes:&Co.nodes)));
-  printAllJTInfo(f,P1,P_ri_to_C,NULL,(gm_template.leftInterface?&Cu0.nodes:&Co.nodes));
+			     NULL,&Co.nodes));
+  printAllJTInfo(f,P1,P_ri_to_C,NULL,&Co.nodes);
   fprintf(f,"\n\n");
 
-  if (gm_template.leftInterface) {
-
-    fprintf(f,"===============================\n");
-    fprintf(f,"   Cu0 partition information: JT_weight = %f\n",
-	    junctionTreeWeight(Cu0,C_ri_to_C,
-			       &P1.nodes,&Co.nodes));
-
-    printAllJTInfo(f,Cu0,C_ri_to_C,&P1.nodes,&Co.nodes);
-    fprintf(f,"\n\n");
-
-
-    fprintf(f,"===============================\n");
-    fprintf(f,"   Co partition information: JT_weight = %f\n",
-	    junctionTreeWeight(Co,C_ri_to_E,&Cu0.nodes,&E1.nodes));
-    printAllJTInfo(f,Co,C_ri_to_E,&Cu0.nodes,&E1.nodes);
-    fprintf(f,"\n\n");
-
-  } else { // right interface
-
-    fprintf(f,"===============================\n");
-    fprintf(f,"   Co partition information: JT_weight = %f\n",
-	    junctionTreeWeight(Co,C_ri_to_C,&P1.nodes,&Cu0.nodes));
-    printAllJTInfo(f,Co,C_ri_to_C,&P1.nodes,&Cu0.nodes);
-    fprintf(f,"\n\n");
-
-    fprintf(f,"===============================\n");
-    fprintf(f,"   Cu0 partition information: JT_weight = %f\n",
-	    junctionTreeWeight(Cu0,C_ri_to_E,&Co.nodes,&E1.nodes));
-    printAllJTInfo(f,Cu0,C_ri_to_E,&Co.nodes,&E1.nodes);
-    fprintf(f,"\n\n");
-
-  }
+  fprintf(f,"===============================\n");
+  fprintf(f,"   Co partition information: JT_weight = %f\n",
+	  junctionTreeWeight(Co,C_ri_to_E,&P1.nodes,&E1.nodes));
+  printAllJTInfo(f,Co,C_ri_to_C,&P1.nodes,&E1.nodes);
+  fprintf(f,"\n\n");
 
   fprintf(f,"===============================\n");
   fprintf(f,"   E1 partition information: JT_weight = %f\n",
 	  junctionTreeWeight(E1,E_root_clique,
-			     (gm_template.leftInterface?&Co.nodes:&Cu0.nodes),NULL));
-
-  printAllJTInfo(f,E1,E_root_clique,(gm_template.leftInterface?&Co.nodes:&Cu0.nodes),NULL);
+			     &Co.nodes,NULL));
+  printAllJTInfo(f,E1,E_root_clique,&Co.nodes,NULL);
   fprintf(f,"\n\n");
 
   // print message order information
@@ -2858,28 +2662,10 @@ JunctionTree::printAllJTInfo(char *fileName)
   printMessageOrder(f,P1_message_order);
   fprintf(f,"\n\n");
 
-  if (gm_template.leftInterface) {
-    fprintf(f,"===============================\n");  
-    fprintf(f,"   Cu0 message order\n");
-    printMessageOrder(f,Cu0_message_order);
-    fprintf(f,"\n\n");
-
-    fprintf(f,"===============================\n");  
-    fprintf(f,"   Co message order\n");
-    printMessageOrder(f,Co_message_order);
-    fprintf(f,"\n\n");
-  } else {
-
-    fprintf(f,"===============================\n");  
-    fprintf(f,"   Co message order\n");
-    printMessageOrder(f,Co_message_order);
-    fprintf(f,"\n\n");
-
-    fprintf(f,"===============================\n");  
-    fprintf(f,"   Cu0 message order\n");
-    printMessageOrder(f,Cu0_message_order);
-    fprintf(f,"\n\n");
-  }
+  fprintf(f,"===============================\n");  
+  fprintf(f,"   Co message order\n");
+  printMessageOrder(f,Co_message_order);
+  fprintf(f,"\n\n");
 
   fprintf(f,"===============================\n");  
   fprintf(f,"   E1 message order\n");
@@ -3066,7 +2852,6 @@ void
 JunctionTree::prepareForUnrolling()
 {
   prepareForUnrolling(P1);
-  prepareForUnrolling(Cu0);
   prepareForUnrolling(Co);
   prepareForUnrolling(E1);
 }
@@ -3124,17 +2909,20 @@ JunctionTree::unroll(const unsigned int numFrames)
   // to this JT.
 
   unsigned basicTemplateUnrollAmount;
-  unsigned modifiedTemplateUnrollAmount;
+  int modifiedTemplateUnrollAmount;
   unsigned numUsableFrames;
   unsigned frameStart;
 
-
-  if (!gm_template.computeUnrollParamaters(numFrames,
+  if (!gm_template.computeUnrollParameters(numFrames,
 					   basicTemplateUnrollAmount,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, decrease M,S, or different template.\n",
+	  numFrames,
+	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+	  fp.numFrames(),
+	  gm_template.M,gm_template.S);
 
   infoMsg(IM::Info,"Number of Current Frames = %d, Number of Currently Usable Frames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"Number Of Frames = %d, Unrolling Basic Template %d times, Modified Template %d times\n",
@@ -3158,20 +2946,14 @@ JunctionTree::unroll(const unsigned int numFrames)
   clearCliqueSepValueCache();
 
   unsigned partNo = 0;
-  const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
+  const int numCoPartitions = modifiedTemplateUnrollAmount+1;
 
   new (&jtIPartitions[partNo++]) JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
-  if (gm_template.leftInterface) 
-    new (&jtIPartitions[partNo++]) JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
-  for (unsigned p=0;p<numCoPartitions;p++) 
+  for (int p=0;p<numCoPartitions;p++) 
     new (&jtIPartitions[partNo++]) JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
-  if (!gm_template.leftInterface) 
-    new (&jtIPartitions[partNo++]) 
-      JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,
-			    ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
   new (&jtIPartitions[partNo++]) 
     JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-			  ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+			  (modifiedTemplateUnrollAmount)*gm_template.S);
 
   assert (partNo == jtIPartitions.size());
 
@@ -3399,12 +3181,12 @@ JunctionTree::collectEvidence()
 {
   // This routine handles all of:
   // 
-  //    unrolled 0 times: (so there is a single P1,Cu0, and E1)  
+  //    unrolled 0 times: (so there is a single P1, and E1)  
   //    unrolled 1 time: so there is a P1, C1, C3, E1
   //    unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
   //    etc.
 
-  const unsigned numCoPartitions = jtIPartitions.size()-3;
+  const unsigned numCoPartitions = jtIPartitions.size()-2;
   unsigned partNo = 0;
   // set up appropriate name for debugging output.
   const char* prv_nm;
@@ -3414,19 +3196,6 @@ JunctionTree::collectEvidence()
 		   P_ri_to_C,
 		   P1_message_order,
 		   prv_nm,partNo);
-
-  if (gm_template.leftInterface) {
-    ceSendToNextPartition(jtIPartitions[partNo],prv_ri,"P1",partNo,
-			  jtIPartitions[partNo+1],C_li_to_P,"Cu0",partNo+1);
-    partNo++;
-    prv_nm = "Cu0";
-    prv_ri = C_ri_to_C;
-    ceGatherIntoRoot(jtIPartitions[partNo],
-		     C_ri_to_C,
-		     Cu0_message_order,
-		     prv_nm,partNo);
-  }
-
 
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
     ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
@@ -3440,18 +3209,6 @@ JunctionTree::collectEvidence()
 		     prv_nm,partNo);
   }
 
-  if (!gm_template.leftInterface) {
-    ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
-			  jtIPartitions[partNo+1],C_li_to_C,"Cu0",partNo+1);
-    partNo++;
-    prv_nm = "Cu0";
-    prv_ri = C_ri_to_E;
-    ceGatherIntoRoot(jtIPartitions[partNo],
-		     C_ri_to_E,
-		     Cu0_message_order,
-		     prv_nm,partNo);
-  }
-
   ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
 			jtIPartitions[partNo+1],E_li_to_C,"E1",partNo+1);
   partNo++;
@@ -3459,6 +3216,9 @@ JunctionTree::collectEvidence()
 		   E_root_clique,
 		   E1_message_order,
 		   "E1",partNo);
+
+
+  assert ( partNo == jtIPartitions.size()-1 );
 
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
@@ -3646,15 +3406,14 @@ void
 JunctionTree::distributeEvidence()
 {
   // this routine handles all of:
-  // unrolled 0 times: (so there is a single P1,Cu0, and E1)  
+  // unrolled 0 times: (so there is a single P1, and E1)  
   // unrolled 1 time: so there is a P1, C1, C3, E1
   // unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
 
-  const unsigned numCoPartitions = jtIPartitions.size()-3;
+  const unsigned numCoPartitions = jtIPartitions.size()-2;
   unsigned partNo = jtIPartitions.size()-1;
   // set up appropriate name for debugging output.
   const char* prv_nm;
-  const char *frst_name = "Cu0";
 
   deScatterOutofRoot(jtIPartitions[partNo],
 		     E_root_clique,
@@ -3663,23 +3422,9 @@ JunctionTree::distributeEvidence()
 
   partNo--;
 
-  prv_nm = ((!gm_template.leftInterface)?"Cu0":"Co");
+  prv_nm = "Co";
   deReceiveToPreviousPartition(jtIPartitions[partNo+1],E_li_to_C,"E1",partNo+1,
-			       jtIPartitions[partNo],C_ri_to_E,prv_nm,partNo);
-
-  if (!gm_template.leftInterface) {
-    deScatterOutofRoot(jtIPartitions[partNo],
-		       C_ri_to_E,
-		       Cu0_message_order,
-		       "Cu0",partNo);
-    partNo--;
-    prv_nm = ((numCoPartitions>0)?"Co":"P1");
-    // if there's a Cu0 here, it doesn't occur at the beginning.
-    frst_name = "P1";
-    deReceiveToPreviousPartition(jtIPartitions[partNo+1],C_li_to_C,"Cu0",partNo+1,
-				 jtIPartitions[partNo],C_ri_to_C,prv_nm,partNo);
-
-  }
+			       jtIPartitions[partNo],C_ri_to_E,"Co",partNo);
 
   for (unsigned p=numCoPartitions; p > 0; p--) {
     deScatterOutofRoot(jtIPartitions[partNo],
@@ -3687,30 +3432,14 @@ JunctionTree::distributeEvidence()
 		       Co_message_order,
 		       "Co",partNo);
     partNo--;
-    prv_nm = ((p == 1)?frst_name:"Co");
+    prv_nm = ((p == 1)?"P1":"Co");
     unsigned prv_ri;
     if (p > 1) 
       prv_ri = C_ri_to_C;
-    else {
-      if (gm_template.leftInterface)
-	prv_ri = C_ri_to_C;
-      else
-	prv_ri = P_ri_to_C;
-    }
+    else
+      prv_ri = P_ri_to_C;
     deReceiveToPreviousPartition(jtIPartitions[partNo+1],C_li_to_C,"Co",partNo+1,
 				 jtIPartitions[partNo],prv_ri,prv_nm,partNo);
-  }
-
-
-  if (gm_template.leftInterface) {
-    deScatterOutofRoot(jtIPartitions[partNo],
-		       C_ri_to_C,
-		       Cu0_message_order,
-		       "Cu0",partNo);
-    partNo--;
-    deReceiveToPreviousPartition(jtIPartitions[partNo+1],C_li_to_P,"Cu0",partNo+1,
-				 jtIPartitions[partNo],P_ri_to_C,"P1",partNo);
-
   }
 
   deScatterOutofRoot(jtIPartitions[partNo],
@@ -3718,6 +3447,7 @@ JunctionTree::distributeEvidence()
 		     P1_message_order,
 		     "P1",partNo);
 
+  assert ( partNo == 0 );
 }
 
 /*
@@ -3850,14 +3580,18 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   // to this JT.
 
   unsigned basicTemplateUnrollAmount;
-  unsigned modifiedTemplateUnrollAmount;
+  int modifiedTemplateUnrollAmount;
   unsigned frameStart;
-  if (!gm_template.computeUnrollParamaters(numFrames,
+  if (!gm_template.computeUnrollParameters(numFrames,
 					   basicTemplateUnrollAmount,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, decrease M,S, or different template.\n",
+	  numFrames,
+	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+	  fp.numFrames(),
+	  gm_template.M,gm_template.S);
 
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
@@ -3878,11 +3612,9 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   clearCliqueSepValueCache();
 
 
-
-
   // actual absolute part numbers
   unsigned partNo;
-  const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
+  const int numCoPartitions = modifiedTemplateUnrollAmount+1;
   // never use more than two partitions at a time.
   JT_InferencePartition *curPart, *prevPart;
   // set up appropriate name for debugging output.
@@ -3900,22 +3632,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		   prv_nm,partNo);
   swap(curPart,prevPart);
 
-  if (gm_template.leftInterface) {
-    delete curPart;
-    curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
-    ceSendToNextPartition(*prevPart,P_ri_to_C,"P1",partNo,
-			  *curPart,C_li_to_P,"Cu0",partNo+1);
-    partNo++;
-    prv_nm = "Cu0";
-    prv_ri = C_ri_to_C;
-    ceGatherIntoRoot(*curPart,
-		     C_ri_to_C,
-		     Cu0_message_order,
-		     prv_nm,partNo);
-    swap(curPart,prevPart);
-  }
-
-  for (unsigned p = 0; p < numCoPartitions; p++ ) {
+  for (int p = 0; p < numCoPartitions; p++ ) {
     delete curPart;
     curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
     ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
@@ -3930,26 +3647,9 @@ JunctionTree::probEvidence(const unsigned int numFrames,
     swap(curPart,prevPart);
   }
 
-  if (!gm_template.leftInterface) {
-    delete curPart;
-    curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,
-					((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
-
-    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			  *curPart,C_li_to_C,"Cu0",partNo+1);
-    partNo++;
-    prv_nm = "Cu0";
-    prv_ri = C_ri_to_E;
-    ceGatherIntoRoot(*curPart,
-		     C_ri_to_E,
-		     Cu0_message_order,
-		     prv_nm,partNo);
-    swap(curPart,prevPart);
-  }
-
   delete curPart;
   curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-				      ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+				      modifiedTemplateUnrollAmount*gm_template.S);
   ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			*curPart,E_li_to_C,"E1",partNo+1);
   partNo++;
@@ -4008,14 +3708,18 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   logpr res;
 
   unsigned basicTemplateUnrollAmount;
-  unsigned modifiedTemplateUnrollAmount;
+  int modifiedTemplateUnrollAmount;
   unsigned frameStart;
-  if (!gm_template.computeUnrollParamaters(numFrames,
+  if (!gm_template.computeUnrollParameters(numFrames,
 					   basicTemplateUnrollAmount,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, decrease M,S, or different template.\n",
+	  numFrames,
+	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+	  fp.numFrames(),
+	  gm_template.M,gm_template.S);
 
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
@@ -4037,7 +3741,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
 
   // actual absolute part numbers
   unsigned partNo;
-  const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
+  const unsigned numCoPartitions = modifiedTemplateUnrollAmount+1;
   // never use more than two partitions at a time.
   JT_InferencePartition *curPart, *prevPart;
   // set up appropriate name for debugging output.
@@ -4057,25 +3761,6 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   if (probEvidenceTimeExpired)
     goto finished;
 
-
-  if (gm_template.leftInterface) {
-    delete curPart;
-    curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
-    ceSendToNextPartition(*prevPart,P_ri_to_C,"P1",partNo,
-			  *curPart,C_li_to_P,"Cu0",partNo+1);
-    partNo++;
-
-    prv_nm = "Cu0";
-    prv_ri = C_ri_to_C;
-    ceGatherIntoRoot(*curPart,
-		     C_ri_to_C,
-		     Cu0_message_order,
-		     prv_nm,partNo);
-    swap(curPart,prevPart);
-    if (probEvidenceTimeExpired)
-      goto finished;
-  }
-
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
     delete curPart;
     curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
@@ -4093,28 +3778,9 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
       goto finished;
   }
 
-  if (!gm_template.leftInterface) {
-    delete curPart;
-    curPart = new JT_InferencePartition(Cu0,cur_unrolled_rvs,cur_ppf,
-					((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
-
-    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			  *curPart,C_li_to_C,"Cu0",partNo+1);
-    partNo++;
-    prv_nm = "Cu0";
-    prv_ri = C_ri_to_E;
-    ceGatherIntoRoot(*curPart,
-		     C_ri_to_E,
-		     Cu0_message_order,
-		     prv_nm,partNo);
-    swap(curPart,prevPart);
-    if (probEvidenceTimeExpired)
-      goto finished;
-  }
-
   delete curPart;
   curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-				      ((int)modifiedTemplateUnrollAmount-1)*gm_template.S);
+				      modifiedTemplateUnrollAmount*gm_template.S);
   ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			*curPart,E_li_to_C,"E1",partNo+1);
   partNo++;
@@ -4727,15 +4393,18 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   // first create the unrolled set of random variables corresponding
   // to this JT.
   unsigned basicTemplateUnrollAmount;
-  unsigned modifiedTemplateUnrollAmount;
+  int modifiedTemplateUnrollAmount;
   unsigned frameStart;
-  if (!gm_template.computeUnrollParamaters(numFrames,
+  if (!gm_template.computeUnrollParameters(numFrames,
 					   basicTemplateUnrollAmount,
 					   modifiedTemplateUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames is too short using your current GMTK template and M=%d,S=%d boundary parameters. Either use longer utterances or decrease M,S.\n",numFrames,gm_template.M,gm_template.S);
-
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, decrease M,S, or different template.\n",
+	  numFrames,
+	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+	  fp.numFrames(),
+	  gm_template.M,gm_template.S);
 
   infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
@@ -4747,7 +4416,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   setObservedRVs(cur_unrolled_rvs);
 
   const unsigned numPartitions = modifiedTemplateUnrollAmount+3;
-  const unsigned numCoPartitions = modifiedTemplateUnrollAmount;
+  const unsigned numCoPartitions = modifiedTemplateUnrollAmount+1;
   unsigned partNo = 0;  
 
   // this clears the shared caches. 
@@ -4766,16 +4435,6 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   partPArray[partNo].ri = P_ri_to_C;
   partPArray[partNo].li = ~0x0;
   partNo++;
-  if (gm_template.leftInterface) {
-    partPArray[partNo].JT = &Cu0;
-    partPArray[partNo].offset = 0*gm_template.S;
-    partPArray[partNo].p = NULL;
-    partPArray[partNo].mo = &Cu0_message_order;
-    partPArray[partNo].nm = "Cu0";
-    partPArray[partNo].ri = C_ri_to_C;
-    partPArray[partNo].li = C_li_to_P;
-    partNo++;
-  }
   for (unsigned p=0;p<numCoPartitions;p++) {
     partPArray[partNo].JT = &Co;
     partPArray[partNo].offset = p*gm_template.S;
@@ -4786,18 +4445,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
     partPArray[partNo].li = C_li_to_C;
     partNo++;
   }
-  if (!gm_template.leftInterface) {
-    partPArray[partNo].JT = &Cu0;
-    partPArray[partNo].offset = ((int)modifiedTemplateUnrollAmount-1)*gm_template.S;
-    partPArray[partNo].p = NULL;
-    partPArray[partNo].mo = &Cu0_message_order;
-    partPArray[partNo].nm = "Cu0";
-    partPArray[partNo].ri = C_ri_to_E;
-    partPArray[partNo].li = C_li_to_C;
-    partNo++;
-  }
   partPArray[partNo].JT = &E1;
-  partPArray[partNo].offset = ((int)modifiedTemplateUnrollAmount-1)*gm_template.S;
+  partPArray[partNo].offset = (modifiedTemplateUnrollAmount)*gm_template.S;
   partPArray[partNo].p = NULL;
   partPArray[partNo].mo = &E1_message_order;
   partPArray[partNo].nm = "E1";

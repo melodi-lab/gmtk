@@ -101,12 +101,21 @@ void RV::printChildrenInfo(FILE*f, bool nl)
 }
 
 
-
 /*-
  *-----------------------------------------------------------------------
  * createNeighborsFromParentsChildren()
  *      initializes the neighbors member set with
  *      entries from all parents and all children.
+ *
+ *      TODO: when disconnected networks are working, do not add
+ *      neighbors if BOTH: 1) they are children of this node, *and* 2)
+ *      if this node is observed. The reason is that in the directed
+ *      model such neighbors are superfluous since the nodes are
+ *      independent.  Note that those edges might be added elsewhere
+ *      (i.e., via a moralization step). In any event, adding fewer
+ *      neighbors can in some cases make the triangulation
+ *      possibilities more efficient.
+ *
  *
  * Preconditions:
  *      all parents and all children member variables must already
