@@ -935,3 +935,9 @@ Thu Jan 30 19:15:59 2003
 Fri Jan 31 00:30:30 2003
   - add a '-debug' option that prints various status
     messages depending on the '-debug' number.
+
+Mon Feb 03 14:45:49 2003
+  - might be above, but add the option to
+    unroll more times of the C chunk and triangulate that
+    rather than just one time (this would put more constraints
+    on the number of allowable frames for a P,C,E graph).
