@@ -72,7 +72,7 @@ class Dlinks : public NamedObject {
   const Data32* arrayCacheTag;
   sArray <float> zzArrayCache;
   sArray <float> xzArrayCache;
-  sArray <float> zArray;
+  sArray <float> zArrayCache;
   void cacheArrays(const Data32* const base,
 		   const float*const f);
   // --- precomputed length support
@@ -99,9 +99,6 @@ public:
     return dIndices[i].size(); 
   }
 
-  /////////////////////////////////////////////////////
-  // returns true if objects are compatible
-  bool compatibleWith(DlinkMatrix&d);
 
   ////////////////////////////////////////////////
   // precomputes the offset array 

@@ -163,39 +163,6 @@ Dlinks::write(oDataStreamFile& os)
 ////////////////////////////////////////////////////////////////////
 
 
-/*-
- *-----------------------------------------------------------------------
- * compatibleWith()
- *      returns true of this object is compatible with the argument function.
- * 
- * Preconditions:
- *      Object must be read in.
- *
- * Postconditions:
- *      --
- *
- * Side Effects:
- *      none
- *
- * Results:
- *      true only if compatibility holds.
- *
- *-----------------------------------------------------------------------
- */
-bool 
-Dlinks::compatibleWith(DlinkMatrix& d)
-{
-  if (dim() != d.dim())
-    return false;
-  for (int i=0;i<dim();i++) {
-    if (numLinks(i) != d.numLinks(i))
-      return false;
-  }
-  return true;
-}
-
-
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -242,9 +209,9 @@ Dlinks::preCompute(const unsigned stride)
   assert ( len == entry );
 
   // now allocate the cache for dlink matrix
-  zArray.resize(maxDlinks);
   zzArrayCache.resize(zzAccumulatorLength);
   xzArrayCache.resize(len);
+  zArrayCache.resize(len);
   clearArrayCache();
 
 }
@@ -307,24 +274,24 @@ Dlinks::cacheArrays(const Data32* const base, const float *const f)
     return;
 
   // refill the cache.
-
   const int* lagStrideOffsetsp = preComputedOffsets.ptr;
   float *zzArrayCachep = zzArrayCache.ptr;
+  float *zArrayCachep = zArrayCache.ptr;
   float *xzArrayCachep = xzArrayCache.ptr;
   const float *fp = f;
   int i=0; do {
     const int nLinks = numLinks(i);
     if (nLinks > 0) {
       const float feat = *fp;
-      float *zArray_p = zArray.ptr;
+      float *zArray = zArrayCachep;
       const int *const lagStrideOffsets_endp = 
 	lagStrideOffsetsp + nLinks;
       do { 
 	const float zval = *((float*)base + *lagStrideOffsetsp++);
-	*zArray_p++ = zval;
 	*xzArrayCachep++ = feat*zval;
+	*zArrayCachep++ = zval;
       } while (lagStrideOffsetsp != lagStrideOffsets_endp);
-      matrixSelfOuterProduct(zArray.ptr,nLinks,zzArrayCachep);
+      matrixSelfOuterProduct(zArray,nLinks,zzArrayCachep);
       zzArrayCachep += nLinks*(nLinks+1)/2;
     }
     fp++;
