@@ -205,7 +205,7 @@ Arg Arg::Args[] = {
   Arg("noReTriE",
       Arg::Opt,noReTriE,
       "When re-triangulating existing .tri file, don't re-triangulate E, keep old"),
-  Arg("jcap",Arg::Opt,JunctionTree::priorityStr,"Junction Tree Clique Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
+  Arg("jcap",Arg::Opt,JunctionTree::junctionTreeMSTpriorityStr,"Junction Tree Clique MST Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
   Arg("icap",Arg::Opt,JunctionTree::interfaceCliquePriorityStr,"Interface Clique Priority Determiner Priority. From Set: [W,D,H,O,I]"),
 
 
