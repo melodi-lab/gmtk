@@ -49,6 +49,7 @@ class BoundaryTriangulate : public IM
 
 public:
 
+
   // the file parser for this model.
   FileParser& fp;
 
@@ -121,7 +122,8 @@ public:
 			   TS_EXHAUSTIVE = 1,
 			   TS_MCS = 2,
 			   TS_COMPLETED = 3,
-			   TS_BASIC = 4
+			   TS_BASIC = 4,
+			   TS_FRONTIER = 5
   };
 
   struct TriangulateHeuristics {
@@ -448,6 +450,12 @@ public:
   void triangulateCompletePartition(const set<RandomVariable*>& nodes,
 				    vector<MaxClique>&          cliques
 				    );
+
+  // triangulation by frontier algorithm
+  void triangulateFrontier(const set<RandomVariable*>& nodes,
+			   vector<MaxClique>&          cliques
+			   );
+
 
   // triangulate by exhaustive search, takes a *LONG* time.
   void triangulateExhaustiveSearch(const set<RandomVariable*>&  nodes,

@@ -248,6 +248,14 @@ public:
 
 
 
+  // The penalty per feature that we pay to include a continous
+  // observation in a clique. We include this since if we always
+  // charge penalty of a factor of one, the continuous observation
+  // might end up in a clique with many more than its own parents,
+  // something that might possibly slow things down. The
+  // default value is 0, meaning no additional penalty.
+  static double continuousObservationPerFeaturePenalty;
+
   // Static version of various compute weight routines, useful in
   // certain places outside this class where we just have a collection
   // of nodes to compute the weight of.

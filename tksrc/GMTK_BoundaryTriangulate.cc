@@ -51,6 +51,7 @@
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_RandomVariable.h"
 #include "GMTK_JunctionTree.h"
+#include "GMTK_GraphicalModel.h"
 
 VCID("$Header$");
 
@@ -69,6 +70,38 @@ VCID("$Header$");
  *******************************************************************************
  *******************************************************************************
  */
+
+// TODO: move this somewhere else, generally accessible.
+static void
+printRVSet(FILE*f,set<RandomVariable*>& locset)
+{
+  bool first = true;
+  set<RandomVariable*>::iterator it;
+  for (it = locset.begin();
+       it != locset.end();it++) {
+    RandomVariable* rv = (*it);
+    if (!first)
+      fprintf(f,",");
+    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
+    first = false;
+  }
+  fprintf(f,"\n");
+}
+static void
+printRVSet(FILE*f,vector<RandomVariable*>& locvec)
+{
+  bool first = true;
+  for (unsigned i=0;i<locvec.size();i++) {
+    RandomVariable* rv = locvec[i];
+    if (!first)
+      fprintf(f,",");
+    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
+    first = false;
+  }
+  fprintf(f,"\n");
+}
+
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -302,6 +335,8 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
       tri_heur.style = TS_ANNEALING;
     } else if (strncmp(endp, "exhaustive", strlen(endp)) == 0) {
       tri_heur.style = TS_EXHAUSTIVE;
+    } else if (strncmp(endp, "frontier", strlen(endp)) == 0) {
+      tri_heur.style = TS_FRONTIER;
     } else if (strcmp(endp, "MCS") == 0) { 
       // MCS must be specified with full "MCS" string, so use strcmp
       // rather than strncmp here.
@@ -1326,6 +1361,10 @@ triangulate(// input: nodes to be triangulated
       triangulateMaximumCardinalitySearch(nodes, 
 					  cliques, order );
       meth_str = string(buff) + "-" + "MCS";
+    } else if (tri_heur.style == TS_FRONTIER) {
+      triangulateFrontier(nodes, 
+			  cliques);
+      meth_str = string(buff) + "-" + "FRONTIER";
     } else if (tri_heur.style == TS_COMPLETED) {
       triangulateCompletePartition( nodes, cliques );
       meth_str = string(buff) + "-" + "completed";
@@ -2914,6 +2953,11 @@ testZeroFillIn(
  *-----------------------------------------------------------------------
  * triangulateMaximumCardinalitySearch
  *
+ *    This routine will triangulate the graph, but is * guaranteedfasfaldskfjaldfjafguarguaraslfjakdl
+
+GUARANTEED
+ *    not to change a graph if it is already triangulated.
+ *
  * Preconditions:
  *   Each variable in the set of nodes must have valid parent and 
  *   neighbor members and the parents/neighbors must only point to other 
@@ -2926,7 +2970,8 @@ testZeroFillIn(
  *   in order and the graph is triangulated.  
  *
  * Side Effects:
- *   Neighbor members of each random variable can be changed.
+ *   Neighbor members of each random variable can be changed. If graph is already
+ *   triangulated, then no side effects.
  *
  * Results:
  *   none 
@@ -3125,6 +3170,145 @@ triangulateCompletePartition(
 
   return;
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateFrontier
+ *   Triangulate using the Frontier algorithm, a procedure that works
+ *   entirely on the directed graph. Note that the graph doesn't need
+ *   to be moralized here, but it won't change things or hurt if it already is.
+ *   Also, note that Frontier sometimes (but rarely) will not triangulate the graph with
+ *   respect to the cumpulsory interface completion edges that have at
+ *   this point been added to the graph. If Frontier misses those edges,
+ *   then we do a quick MCS pass to fix this up. In practice, however, this
+ *   does not happen very often, and also it depends on the current boundary.
+ *   
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   Triangulates by running the Frontier algorithm.
+ *
+ * Side Effects:
+ *   There are edges between every node in each clique in the graph.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+triangulateFrontier( 
+  const set<RandomVariable*>& nodes,
+  vector<MaxClique>&          cliques
+  )
+{
+  cliques.clear();
+  vector <RandomVariable*> sortedNodes;
+
+  // TODO: implement true random topological sort.
+  GraphicalModel::topologicalSortRandom(nodes,nodes,sortedNodes);
+  if (message(High)) {
+    infoMsg(High,"Frontier: Sorted Nodes:");
+    printRVSet(stdout,sortedNodes);
+  }
+
+  set <RandomVariable*> frontier;
+  set <RandomVariable*> cumulativeFrontier;
+  for (unsigned i=0;i<sortedNodes.size();i++) {
+    RandomVariable*nrv = sortedNodes[i];
+    if (message(High)) {
+      infoMsg(High,"Frontier: Current nodes");
+      printRVSet(stdout,frontier);
+    }
+    
+    set <RandomVariable*>::iterator it;
+    set <RandomVariable*>::iterator it_end = frontier.end();
+    set <RandomVariable*> toRemove;
+    for (it=frontier.begin();it!=it_end;it++) {
+      RandomVariable*rv = (*it);
+      bool childrenInFrontier = true;
+      // Check if all of rv's children are in the
+      // cumulative frontier.
+      infoMsg(High,"Frontier: Node %s(%d) has %d children\n",
+	      rv->name().c_str(),rv->frame(),rv->allPossibleChildren.size());
+
+      for (unsigned c=0;c<rv->allPossibleChildren.size();c++) {
+	RandomVariable* child = rv->allPossibleChildren[c];
+	// only consider nodes within this partition set.
+	if (nodes.find(child) == nodes.end()) {
+	  infoMsg(High,"Frontier: Child %d %s(%d) not in nodes\n",
+		  c,child->name().c_str(),child->frame());
+	  continue;
+	}
+ 	if (cumulativeFrontier.find(child) == cumulativeFrontier.end()) {
+	  infoMsg(High,"Frontier: Child %d %s(%d) not in frontier\n",
+		  c,child->name().c_str(),child->frame());
+	  childrenInFrontier = false;
+	  break;
+	}
+      }
+      if (childrenInFrontier)
+	toRemove.insert(rv);
+    }
+    if (toRemove.size() > 0) {
+      // we have a clique
+      if (message(High)) {
+	infoMsg(High,"Frontier: Clique:");
+	printRVSet(stdout,frontier);
+      }
+      MaxClique::makeComplete(frontier);
+      set <RandomVariable*> res;
+      if (message(High)) {
+	infoMsg(High,"Frontier: Removing:");
+	printRVSet(stdout,toRemove);
+      }
+
+      set_difference(frontier.begin(),frontier.end(),
+		     toRemove.begin(),toRemove.end(),
+		     inserter(res,res.end()));
+      frontier = res;
+    }
+    infoMsg(High,"Frontier: adding node %s(%d)\n",
+	    nrv->name().c_str(),nrv->frame());
+    // insert new members
+    frontier.insert(nrv);
+    cumulativeFrontier.insert(nrv);
+  }
+  // last one is always a clique
+  if (message(High)) {
+    infoMsg(High,"Frontier: Clique:");
+    printRVSet(stdout,frontier);
+  }
+  MaxClique::makeComplete(frontier);
+  vector<RandomVariable*> order;
+  // To check triangulation, uncomment the following, but see note below:
+  //    if (!getCliques(nodes,cliques))
+  //       error("ERROR: Frontier algorithm failed to triangulate graph\n");
+  // Sometimes, but rarely, frontier might not triangulate the graph
+  // since it doesn't know about the extra compulsory edges for the
+  // completing the left and right interfaces of the current
+  // partition.
+  // 
+  // In order to make sure, we run a MCS pass adding edges in case
+  // Frontier didn't enclose right interface with a clique and it
+  // isn't triangulated.  Note that if Frontier indeed triangulated
+  // the graph (such that the extra forced completion of the
+  // interfaces are included in cliques or the result is
+  // triangulated), then this next step is guaranteed not to change
+  // the graph, and it will be a
+  triangulateMaximumCardinalitySearch(nodes,cliques,order);
+
+  return;
+}
+
+
 
 
 /*-
@@ -4018,8 +4202,18 @@ tryHeuristics(
 	       orgnl_nghbrs, cliques, tri_method, best_weight ); 
 
   ///////////////////////////////////////////////////////////////////////////// 
+  // Try purely random
+  triangulate( nodes, jtWeight, nrmc, "500-R", 
+	       orgnl_nghbrs, cliques, tri_method, best_weight );
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Try frontier algorithm
+  triangulate( nodes, jtWeight, nrmc, "500-frontier", 
+	       orgnl_nghbrs, cliques, tri_method, best_weight );
+  ///////////////////////////////////////////////////////////////////////////// 
+
   // Try hints only 
-  triangulate( nodes, jtWeight, nrmc, "500-H", 
+  triangulate( nodes, jtWeight, nrmc, "30-H", 
 	       orgnl_nghbrs, cliques, tri_method, best_weight );
 
   ///////////////////////////////////////////////////////////////////////////// 

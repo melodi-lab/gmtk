@@ -50,6 +50,60 @@ VCID("$Header$");
 ////////////////////////////////////////////////////////////////////
 
 
+////////////////////////////////////////////////////////////////////
+//        Basic topological sort & support
+////////////////////////////////////////////////////////////////////
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GraphicalModel::topologicalSort
+ *      performes a topological sort of the set of random variables
+ *      that live in inputVarList, and places the result of the
+ *      sort in outputVarList. If the graph has a directed loop,
+ *      fail and return false otherwise return true.
+ *
+ * Preconditions:
+ *     inputVarLIst must contain a list of random variables with
+ *     the variables appropriately set up.
+ *
+ * Postconditions:
+ *     ouputVarList contains the list of variables in order.
+ *
+ * Side Effects:
+ *     changes the call by reference variable outputVarList. Destroys
+ *     what is there before if anything. Changes the tag member of each
+ *     random variable.
+ *
+ * Results:
+ *     returns true if everything works, return false if the
+ *     graph has a directed loop.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool
+GraphicalModel::topologicalSort(vector<RandomVariable*>& inputVarList,
+				vector<RandomVariable*>& outputVarList)
+
+{
+  outputVarList.clear();
+  outputVarList.resize(inputVarList.size());
+  for (unsigned i=0;i<inputVarList.size();i++)
+    inputVarList[i]->tag = 0;
+  unsigned position=inputVarList.size();
+  for (unsigned i=0;i<inputVarList.size();i++) {
+    if (inputVarList[i]->tag == 0)
+      if (!topologicalSortRecurse(outputVarList,
+				  inputVarList[i],position))
+	return false;
+  }
+  assert (position == 0);
+  return true;
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * GraphicalModel::topologicalSortRecurse
@@ -95,6 +149,74 @@ GraphicalModel::topologicalSortRecurse(vector<RandomVariable*>& outputVarList,
   return true;
 }
 
+
+
+////////////////////////////////////////////////////////////////////
+//        constrained topological sort & support
+////////////////////////////////////////////////////////////////////
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GraphicalModel::topologicalSort
+ *      Another topological sort, just like the one above, but this
+ *      one constrains the sort to be determined with respect only to 
+ *      those variables that are in the given sortSet argument. I.e.,
+ *      its as if each variables children are considered to be its
+ *      real children intersected with sortSet (so some children are
+ *      never considered in the sort, nor are they traversed). 
+ *
+ *      This is useful when we want to sort a set of variables that
+ *      themselves have a partial order, but some of the variables
+ *      point to children outside of the current set, and we want
+ *      to ignore those children, and only sort with respect to the
+ *      variables in sortSet.
+ * 
+ *
+ * Preconditions:
+ *     inputVarLIst must contain a set of random variables with
+ *     the variables appropriately set up.
+ *
+ * Postconditions:
+ *     ouputVarList contains the list of variables in order.
+ *
+ * Side Effects:
+ *     changes the call by reference variable outputVarList. Destroys
+ *     what is there before if anything. Changes the tag member of each
+ *     random variable.
+ *
+ * Results:
+ *     returns true if everything works, return false if the
+ *     graph has a directed loop.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool
+GraphicalModel::topologicalSort(const set<RandomVariable*>& inputVarList,
+				const set<RandomVariable*>& sortSet,
+				vector<RandomVariable*>& outputVarList)
+
+{
+  outputVarList.clear();
+  outputVarList.resize(inputVarList.size());
+  set<RandomVariable*>::iterator it;
+  for (it=inputVarList.begin();it != inputVarList.end();it++) {
+    RandomVariable* rv = (*it);
+    rv->tag = 0;
+  }
+  unsigned position=inputVarList.size();
+  for (it=inputVarList.begin();it != inputVarList.end();it++) {
+    RandomVariable* rv = (*it);
+    if (rv->tag == 0)
+      if (!topologicalSortRecurse(sortSet,
+				  outputVarList,
+				  rv,
+				  position))
+	return false;
+  }
+  assert (position == 0);
+  return true;
+}
 
 
 /*-
@@ -149,50 +271,10 @@ GraphicalModel::topologicalSortRecurse(const set<RandomVariable*>& sortSet,
 
 
 
-/*-
- *-----------------------------------------------------------------------
- * GraphicalModel::topologicalSort
- *      performes a topological sort of the set of random variables
- *      that live in inputVarList, and places the result of the
- *      sort in outputVarList. If the graph has a directed loop,
- *      fail and return false otherwise return true.
- *
- * Preconditions:
- *     inputVarLIst must contain a list of random variables with
- *     the variables appropriately set up.
- *
- * Postconditions:
- *     ouputVarList contains the list of variables in order.
- *
- * Side Effects:
- *     changes the call by reference variable outputVarList. Destroys
- *     what is there before if anything.
- *
- * Results:
- *     returns true if everything works, return false if the
- *     graph has a directed loop.
- *
- *-----------------------------------------------------------------------
- */
-bool
-GraphicalModel::topologicalSort(vector<RandomVariable*>& inputVarList,
-				vector<RandomVariable*>& outputVarList)
 
-{
-  outputVarList.clear();
-  outputVarList.resize(inputVarList.size());
-  for (unsigned i=0;i<inputVarList.size();i++)
-    inputVarList[i]->tag = 0;
-  unsigned position=inputVarList.size();
-  for (unsigned i=0;i<inputVarList.size();i++) {
-    if (inputVarList[i]->tag == 0)
-      if (!topologicalSortRecurse(outputVarList,
-				  inputVarList[i],position))
-	return false;
-  }
-  assert (position == 0);
-  return true;
-}
+////////////////////////////////////////////////////////////////////
+//        constrained & Random topological sort & support
+////////////////////////////////////////////////////////////////////
 
 
 
@@ -205,6 +287,10 @@ GraphicalModel::topologicalSort(vector<RandomVariable*>& inputVarList,
  *      its as if each variables children are considered to be its
  *      real children intersected with sortSet (so some children are
  *      never considered in the sort, nor are they traversed). 
+ *
+ *      This version also produces a random sort, so if it is
+ *      called multiple times (or with a different seed), a different
+ *      resulting topological sort will result.
  *
  *      This is useful when we want to sort a set of variables that
  *      themselves have a partial order, but some of the variables
@@ -222,7 +308,8 @@ GraphicalModel::topologicalSort(vector<RandomVariable*>& inputVarList,
  *
  * Side Effects:
  *     changes the call by reference variable outputVarList. Destroys
- *     what is there before if anything.
+ *     what is there before if anything. Changes the tag member of each
+ *     random variable.
  *
  * Results:
  *     returns true if everything works, return false if the
@@ -231,31 +318,100 @@ GraphicalModel::topologicalSort(vector<RandomVariable*>& inputVarList,
  *-----------------------------------------------------------------------
  */
 bool
-GraphicalModel::topologicalSort(const set<RandomVariable*>& inputVarList,
-				const set<RandomVariable*>& sortSet,
-				vector<RandomVariable*>& outputVarList)
+GraphicalModel::topologicalSortRandom(const set<RandomVariable*>& inputVarList,
+				      const set<RandomVariable*>& sortSet,
+				      vector<RandomVariable*>& outputVarList)
 
 {
   outputVarList.clear();
   outputVarList.resize(inputVarList.size());
   set<RandomVariable*>::iterator it;
-  for (it=inputVarList.begin();it != inputVarList.end();it++) {
+  const   set<RandomVariable*>::iterator it_end = inputVarList.end();
+
+  sArray < unsigned > permutation(inputVarList.size());
+  vector< RandomVariable*> rv_vec(inputVarList.size());
+  unsigned i = 0;
+  for (it=inputVarList.begin();it != it_end;it++) {
     RandomVariable* rv = (*it);
     rv->tag = 0;
+    permutation.ptr[i] = i;
+    rv_vec[i] = rv;
+    i++;
   }
+  rnd.rpermute(permutation.ptr,inputVarList.size());
   unsigned position=inputVarList.size();
-  for (it=inputVarList.begin();it != inputVarList.end();it++) {
-    RandomVariable* rv = (*it);
+  for (i=0;i<inputVarList.size();i++) {
+    RandomVariable* rv = rv_vec[permutation.ptr[i]];
     if (rv->tag == 0)
-      if (!topologicalSortRecurse(sortSet,
-				  outputVarList,
-				  rv,
-				  position))
+      if (!topologicalSortRecurseRandom(sortSet,
+					outputVarList,
+					rv,
+					position))
 	return false;
   }
   assert (position == 0);
   return true;
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GraphicalModel::topologicalSortRecurseRandom
+ *      Support routine for the topological Sort routine that
+ *      uses the sortSet argument and is random.
+ *
+ * Preconditions:
+ *      must only be called from topological sort with the sortSet argument.
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+ *     Position variable is modified
+ *
+ * Results:
+ *     returns true if everything works, return false if the
+ *     graph has a directed loop.
+ *
+ *-----------------------------------------------------------------------
+ */
+bool
+GraphicalModel::topologicalSortRecurseRandom(const set<RandomVariable*>& sortSet,
+					     vector<RandomVariable*>& outputVarList,
+					     RandomVariable* node,
+					     unsigned& position)
+{
+  node->tag = 1;
+
+  const unsigned nChildren = node->allPossibleChildren.size();
+  sArray <unsigned > permutation(nChildren);
+  for (unsigned i=0;i<nChildren;i++) {
+    permutation.ptr[i] = i;
+  }
+  rnd.rpermute(permutation.ptr,nChildren);
+  for (unsigned i=0;i<nChildren;i++) {
+    RandomVariable*rv = node->allPossibleChildren[permutation.ptr[i]];
+    // don't bother with children not in sort set.
+    if (sortSet.find(rv) == sortSet.end())
+      continue;
+    if (rv->tag == 0) {
+      bool res = topologicalSortRecurseRandom(sortSet,outputVarList,rv,position);
+      if (!res)
+	// directed graph has a loop
+	return false;
+    } else if (rv->tag == 1)
+      // directed graph has a loop
+      return false;
+    else
+      ;
+      // tag == 2, meaning we've gone down this path before and need not
+      // do it again.
+  }
+  node->tag = 2; // done with this node
+  outputVarList[--position] = node;
+  return true;
+}
+
+
 
 
 

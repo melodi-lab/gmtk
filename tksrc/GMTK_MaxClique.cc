@@ -73,6 +73,17 @@ VCID("$Header$");
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+/*
+ *
+ * Continuous observation per-feature penalty, default value defined here.
+ *
+ */
+double 
+MaxClique::continuousObservationPerFeaturePenalty = 0.0;
+
+
+
+
 // TODO: put this function somewhere more generally available.
 static void
 printRVSetAndValues(FILE*f,sArray<RandomVariable*>& locset) 
@@ -155,7 +166,6 @@ psp(FILE*f,const int numSpaceChars)
 //        MaxClique support
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
-
 
 
 /*-
@@ -381,6 +391,10 @@ computeWeight(const set<RandomVariable*>& nodes,
 	  tmp_weight += log10((double)drv->cardinality);
       } else
 	tmp_weight += log10((double)drv->cardinality);
+    } else if (!node->discrete) {
+      // node is continuous observed.
+      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)node;
+      tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
     }
   }
   // Next, get weight of all 'nodes'
@@ -415,7 +429,11 @@ computeWeight(const set<RandomVariable*>& nodes,
 	  tmp_weight += log10((double)drv->cardinality);
       } else
 	tmp_weight += log10((double)drv->cardinality);
-    }
+    } else if (!rv->discrete) {
+      // node is continuous observed.
+      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
+      tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
+    } 
   }
   return tmp_weight;
 }
@@ -499,7 +517,11 @@ computeWeightWithExclusion(const set<RandomVariable*>& nodes,
 	tmp_weight += log10((double)drv->useCardinality());	
       else 
 	tmp_weight += log10((double)drv->cardinality);
-    }
+    } else if (!rv->discrete) {
+      // node is continuous observed.
+      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
+      tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
+    } 
   }
   return tmp_weight;
 }
@@ -721,7 +743,11 @@ computeWeightInJunctionTree(const set<RandomVariable*>& nodes,
 	  tmp_weight += log10((double)drv->cardinality);
 	}
       }
-    }
+    } else if (!rv->discrete) {
+      // node is continuous observed.
+      ContinuousRandomVariable *crv = (ContinuousRandomVariable*)rv;
+      tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
+    } 
   }
   return tmp_weight;
 }
@@ -1573,7 +1599,7 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       logpr cur_p = rv->probGivenParentsWSetup();
       if (!cur_p.essentially_zero()) {
 	// Continue, do not update probability!!
-	ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
+	ceIterateAssignedNodes(part,nodeNumber+1,p);
       }
     }
     break;

@@ -1328,18 +1328,32 @@ plan:
    - if hidden, just iterate [0,card-1]
    - if observed, continue going.
 
-      
+=========================================================================      
 
-forwardBackward(start,end)
+island forwardBackward(start,end)
 
-  len = end-start + 1;
-  if (len <= base)
-      do standard
-  else
-    chunk = len/splits
-    forward chunk 1
-    forward chunk 2
- 
+ We have four basic operations:
+  ceGather(partNo);
+  ceSendNext(partNo);
+
+  deScatter(partNo);
+  deReceiveToPrev(partNo)
+
+
+forwardBackwardRecurse(start,end)
+   len = end-start + 1;
+   if (len <= base)
+      - Free shared hash-table memory arena.
+      - forwardBackward(start,end);
+   else
+      chunk = len/splits
+
+      for (i = 1 to splits-1 )
+         const space forward chunk i
+         save memory at last
+      for (i = splits down to 1)
+         forwardBackwardRecurse(i-1,i)
+
   	
 
 
