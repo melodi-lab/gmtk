@@ -1058,7 +1058,7 @@ void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats
  * */
 void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,Range* float_rng,Range* int_rng,Range* pr_rng) {
 
-  DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer. pr_rng->length()=%d\n", pr_rng->length()));
+  DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.\n\tProcessing stream no %d.  pr_rng = %s, pr_rng->length()=%d\n", stream_no, pr_rng->GetDefStr(), pr_rng->length()));
 
   StreamInfo* s            = _inStreams[stream_no];
   unsigned num_floats      = s->getNumFloats();
@@ -1070,16 +1070,24 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
   unsigned fmt             = s->getDataFormat();
   if(fmt == PFILE || fmt == RAWASC) swap=false;  // byte swapping is already taken care of for pfiles and is not needed for ascii 
 
-  DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.  After init.\n"));
+  DBGFPRINTF((stderr,"\tNum total cont feats = %d; stream %d num floats = %d, num ints = %d, stride = %d.\n",_numContinuous,stream_no,num_floats,num_ints,stride));
 
   void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  void (*int_copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
 
   if(stream_no==0) {
-    if(swap) copy_swap_func_ptr=&swapb_vi32_vi32;
-    else copy_swap_func_ptr=&copy_vi32_vi32;
+    if(swap) {
+      copy_swap_func_ptr=&swapb_vi32_vi32;
+      int_copy_swap_func_ptr=&swapb_vi32_vi32;
+    }
+    else {
+      copy_swap_func_ptr=&copy_vi32_vi32;
+      int_copy_swap_func_ptr=&copy_vi32_vi32;
+    }
   }
   else {
     if(swap) {
+      int_copy_swap_func_ptr=&swapb_vi32_vi32;
       switch(_ftrcombo) {
       case FTROP_NONE:
 	copy_swap_func_ptr=&swapb_vi32_vi32; break;
@@ -1096,6 +1104,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
       }
     }
     else {
+      int_copy_swap_func_ptr=&copy_vi32_vi32;
       switch(_ftrcombo) {
       case FTROP_NONE:
 	copy_swap_func_ptr=&copy_vi32_vi32; break;
@@ -1128,14 +1137,14 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
     }
   }
 
-  DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.  Before copy.\n"));
+  DBGFPRINTF((stderr,"\tStart_float_pos=%d, start_int_pos=%d.\n",start_float_pos,start_int_pos));
 
   float* start_float_buf = getPhysicalStartOfFloatFeaturesBuffer() + start_float_pos;
   float* float_buf_ptr;
   Int32* start_int_buf   = getPhysicalStartOfIntFeaturesBuffer()   + start_int_pos;
   Int32* int_buf_ptr;
 
-  DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.  Copying floats (num_floats = %d).\n",num_floats));  
+  DBGFPRINTF((stderr,"start of physical start of float buf=%d, start of physical start of int buf=%d.\n",getPhysicalStartOfFloatFeaturesBuffer(), getPhysicalStartOfIntFeaturesBuffer()));  
 
   if(num_floats>0) {
     for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_float_buf+=stride) {
@@ -1160,7 +1169,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
     for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_int_buf+=stride) {
       int_buf_ptr=start_int_buf;
       for(Range::iterator it = int_rng->begin(); !it.at_end(); it++) {
-	copy_swap_func_ptr(1,(const int *) &int_buf[*it+(*pr_it)*num_ints], (int *)int_buf_ptr++);
+	int_copy_swap_func_ptr(1,(const int *) &int_buf[*it+(*pr_it)*num_ints], (int *)int_buf_ptr++);
       }
     }
   }
