@@ -156,11 +156,6 @@ protected:
         const vector< RandomVariable* >& variables 
       );
 
-      leafNodeValType evaluateFormula(
-        const vector<unsigned>& value, 
-        const vector<unsigned>& cardinality
-      );
-
     protected:
 
       static sArrayStack<int> stack;
@@ -224,8 +219,8 @@ protected:
         COMMAND_MASK  = 0x1f, 
         OPERAND_MASK  = ~COMMAND_MASK,
 
-        COMMAND_INVALID = 0,    
-        COMMAND_PUSH_PARENT,
+        COMMAND_INVALID = 0,
+        COMMAND_PUSH_PARENT, 
         COMMAND_PUSH_CARDINALITY,
         COMMAND_PUSH_CONSTANT,    
         COMMAND_BITWISE_AND, 
@@ -246,12 +241,13 @@ protected:
         COMMAND_MOD, 
         COMMAND_PLUS, 
         COMMAND_TIMES, 
-        COMMAND_QUESTION_MARK,
+        COMMAND_BRANCH_IF_FALSE,
+        COMMAND_BRANCH,
 
         LAST_COMMAND_INDEX
       };
 
-      #define MAKE_COMMAND(command, operand)     \
+      #define MAKE_COMMAND(command, operand)  \
         (command | (operand << OPERAND_SHIFT))
 
       #define GET_COMMAND(command) (command & COMMAND_MASK) 
@@ -259,6 +255,7 @@ protected:
 
       typedef enum {
         HIGHEST_PRECEDENCE = 0,
+        PAREN_PRCDNC,  
         EXPONENT_PRCDNC,  
         MULT_PRCDNC,  
         ADDITIVE_PRCDNC,  
@@ -279,10 +276,13 @@ protected:
       static map<tokenEnum, formulaCommand> infixToken;
       static map<tokenEnum, formulaCommand> functionToken;
       static map<tokenEnum, formulaCommand> twoValFunctionToken;
-
-      static map<formulaCommand, unsigned> commandPriority;
+      static map<tokenEnum, unsigned>       tokenPriority;
 
       typedef vector<formulaCommand> parsingCommandContainer;
+
+      void preProcessFormula(
+        string& original 
+      );
 
       void parseExpression(
         tokenStruct&             token,
@@ -292,8 +292,11 @@ protected:
         unsigned&                depth  
       );
 
-      void preProcessFormula(
-        string& original 
+      void parseQuestionMark(
+        tokenStruct&             token,
+        string&                  formula,  
+        parsingCommandContainer& commands,
+        unsigned&                depth  
       );
 
       bool parseFactor(

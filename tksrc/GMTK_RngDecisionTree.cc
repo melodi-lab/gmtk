@@ -65,8 +65,9 @@ map<RngDecisionTree::EquationClass::tokenEnum,
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
   RngDecisionTree::EquationClass::twoValFunctionToken;
-map<RngDecisionTree::EquationClass::formulaCommand, unsigned> 
-  RngDecisionTree::EquationClass::commandPriority;
+
+map<RngDecisionTree::EquationClass::tokenEnum, unsigned> 
+  RngDecisionTree::EquationClass::tokenPriority;
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -574,9 +575,9 @@ RngDecisionTree::EquationClass::EquationClass()
     infixToken[TOKEN_LOGICAL_AND]     = COMMAND_LOGICAL_AND;
     infixToken[TOKEN_LOGICAL_OR]      = COMMAND_LOGICAL_OR; 
     infixToken[TOKEN_TIMES]           = COMMAND_TIMES;
-    infixToken[TOKEN_QUESTION_MARK]   = COMMAND_QUESTION_MARK;
     infixToken[TOKEN_MINUS]           = COMMAND_MINUS;
     infixToken[TOKEN_PLUS]            = COMMAND_PLUS;
+    infixToken[TOKEN_QUESTION_MARK]   = COMMAND_BRANCH_IF_FALSE;
 
     functionToken[TOKEN_MAX] = COMMAND_MAX;
     functionToken[TOKEN_MIN] = COMMAND_MIN;
@@ -584,21 +585,23 @@ RngDecisionTree::EquationClass::EquationClass()
     twoValFunctionToken[TOKEN_BITWISE_XOR] = COMMAND_BITWISE_XOR;
     twoValFunctionToken[TOKEN_MOD]         = COMMAND_MOD; 
 
-    commandPriority[COMMAND_BITWISE_AND]     = BITWISE_AND_PRCDNC;
-    commandPriority[COMMAND_BITWISE_OR]      = BITWISE_OR_PRCDNC;
-    commandPriority[COMMAND_DIVIDE]          = MULT_PRCDNC;
-    commandPriority[COMMAND_EXPONENT]        = EXPONENT_PRCDNC;
-    commandPriority[COMMAND_EQUALS]          = EQUALITY_PRCDNC;
-    commandPriority[COMMAND_GREATER_THAN]    = RELATIONAL_PRCDNC;
-    commandPriority[COMMAND_GREATER_THAN_EQ] = RELATIONAL_PRCDNC; 
-    commandPriority[COMMAND_LESS_THAN]       = RELATIONAL_PRCDNC;
-    commandPriority[COMMAND_LESS_THAN_EQ]    = RELATIONAL_PRCDNC;
-    commandPriority[COMMAND_LOGICAL_AND]     = LOGICAL_AND_PRCDNC;
-    commandPriority[COMMAND_LOGICAL_OR]      = LOGICAL_OR_PRCDNC;
-    commandPriority[COMMAND_TIMES]           = MULT_PRCDNC;
-    commandPriority[COMMAND_QUESTION_MARK]   = CONDITIONAL_PRCDNC;
-    commandPriority[COMMAND_MINUS]           = ADDITIVE_PRCDNC;
-    commandPriority[COMMAND_PLUS]            = ADDITIVE_PRCDNC;
+    tokenPriority[TOKEN_LEFT_PAREN]      = PAREN_PRCDNC;
+    tokenPriority[TOKEN_RIGHT_PAREN]     = PAREN_PRCDNC;
+    tokenPriority[TOKEN_BITWISE_AND]     = BITWISE_AND_PRCDNC;
+    tokenPriority[TOKEN_BITWISE_OR]      = BITWISE_OR_PRCDNC;
+    tokenPriority[TOKEN_DIVIDE]          = MULT_PRCDNC;
+    tokenPriority[TOKEN_EXPONENT]        = EXPONENT_PRCDNC;
+    tokenPriority[TOKEN_EQUALS]          = EQUALITY_PRCDNC;
+    tokenPriority[TOKEN_GREATER_THAN]    = RELATIONAL_PRCDNC;
+    tokenPriority[TOKEN_GREATER_THAN_EQ] = RELATIONAL_PRCDNC; 
+    tokenPriority[TOKEN_LESS_THAN]       = RELATIONAL_PRCDNC;
+    tokenPriority[TOKEN_LESS_THAN_EQ]    = RELATIONAL_PRCDNC;
+    tokenPriority[TOKEN_LOGICAL_AND]     = LOGICAL_AND_PRCDNC;
+    tokenPriority[TOKEN_LOGICAL_OR]      = LOGICAL_OR_PRCDNC;
+    tokenPriority[TOKEN_TIMES]           = MULT_PRCDNC;
+    tokenPriority[TOKEN_QUESTION_MARK]   = CONDITIONAL_PRCDNC;
+    tokenPriority[TOKEN_MINUS]           = ADDITIVE_PRCDNC;
+    tokenPriority[TOKEN_PLUS]            = ADDITIVE_PRCDNC;
   }
 
 }
@@ -786,11 +789,17 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack.pop_back();
         break;
 
-      case COMMAND_QUESTION_MARK: 
-        last = stack.stackSize() - 1;
-        stack[last-2] = stack[last-2] ? stack[last-1] : stack[last]; 
+      case COMMAND_BRANCH_IF_FALSE: 
+        if (!stack[stack.stackSize()-1]) {
+          operand = GET_OPERAND(commands[crrnt_cmnd]); 
+          crrnt_cmnd += operand;
+        }
         stack.pop_back();
-        stack.pop_back();
+        break;
+
+      case COMMAND_BRANCH: 
+        operand = GET_OPERAND(commands[crrnt_cmnd]); 
+        crrnt_cmnd += operand;
         break;
 
       default:
@@ -802,35 +811,6 @@ RngDecisionTree::EquationClass::evaluateFormula(
   assert(stack.stackSize() == 1);
   return((unsigned)stack[0]);
 }    
-
-
-/*-
- *-----------------------------------------------------------------------
- * RngDecisionTree::EquationClass::evaluateFormula
- *   Stub function to support some leftover tests
- *
- * Preconditions:
- *   none 
- *
- * Postconditions:
- *   none 
- *
- * Side Effects:
- *   none   
- *
- * Results:
- *   Returns a single value 
- *-----------------------------------------------------------------------
- */
-leafNodeValType 
-RngDecisionTree::EquationClass::evaluateFormula(
-  const vector<unsigned>& value,
-  const vector<unsigned>& cardinality
-  )
-{
-  assert(0);
-  return(0);
-}
 
 
 /*-
@@ -867,10 +847,8 @@ RngDecisionTree::EquationClass::parseFormula(
 
   preProcessFormula(formula);
 
-  do {
-    getToken(formula, token);
-    parseExpression(token, formula, new_commands, LOWEST_PRECEDENCE, depth);
-  } while (token.token != TOKEN_END);
+  getToken(formula, token);
+  parseExpression(token, formula, new_commands, LOWEST_PRECEDENCE, depth);
 
   if (depth != 1) {
     string error_message = "Not enough factors for given operators";
@@ -923,6 +901,7 @@ RngDecisionTree::EquationClass::preProcessFormula(
   original = revised;
 }
 
+
 /*-
  *-----------------------------------------------------------------------
  * RngDecisionTree::EquationClass::parseExpression
@@ -957,6 +936,9 @@ RngDecisionTree::EquationClass::parseExpression(
   tokenStruct    next_token;
   unsigned       next_precedence;
 
+  //////////////////////////////////////////////////////////////////////////
+  // Recursively call until a factor is found 
+  //////////////////////////////////////////////////////////////////////////
   if (prvs_precedence == HIGHEST_PRECEDENCE) {
     parseFactor(token, formula, cmmnds, depth);
   }
@@ -964,19 +946,116 @@ RngDecisionTree::EquationClass::parseExpression(
     parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
   }
   
+  //////////////////////////////////////////////////////////////////////////
+  // Process if this is in infix token with the current precedence level 
+  //////////////////////////////////////////////////////////////////////////
   while((infixToken[token.token] != COMMAND_INVALID) &&
-        (commandPriority[infixToken[token.token]] == prvs_precedence)) {
+        (tokenPriority[token.token] == prvs_precedence)) {
 
-    next_token = token;
-    getToken(formula, token);
-    next_precedence = commandPriority[infixToken[token.token]];
+    if (token.token == TOKEN_QUESTION_MARK) {
+      parseQuestionMark( token, formula, cmmnds, depth );
+    }
+    else {
+      next_token = token;
+      getToken(formula, token);
+      next_precedence = tokenPriority[token.token];
+ 
+      parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
 
-    parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
-  
-    new_command = MAKE_COMMAND( infixToken[next_token.token], 0 );
-    cmmnds.push_back(new_command);
-    changeDepth( -1, depth );
+      switch (next_token.token) {
+        case TOKEN_COLON:
+          break;
+      
+        default:
+          new_command = MAKE_COMMAND( infixToken[next_token.token], 0 );
+          cmmnds.push_back(new_command);
+          changeDepth( -1, depth );
+          break;
+      }
+    }
   }
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * parseQuestionMark
+ *   Support function for parseExpression.  Parses the right side of the
+ *   conditional (?) operator.  
+ * 
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   Text that is parsed is erased from formula, and the commands created
+ *   are placed in cmmnds.  'depth' is updated along with the computation 
+ *   stack size.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *-----------------------------------------------------------------------
+ */
+void
+RngDecisionTree::EquationClass::parseQuestionMark(
+  tokenStruct&             token,
+  string&                  formula,  
+  parsingCommandContainer& commands,
+  unsigned&                depth  
+  )
+{
+  parsingCommandContainer true_commands;
+  parsingCommandContainer false_commands;
+  tokenStruct             next_token;
+  formulaCommand          new_command;
+  unsigned                start_depth;
+
+  //////////////////////////////////////////////////////////////////////////
+  // Parse the 'true' section of the conditional 
+  //////////////////////////////////////////////////////////////////////////
+  start_depth = depth; 
+  next_token = token;
+  getToken(formula, token);
+  parseExpression( token, formula, true_commands, LOWEST_PRECEDENCE, depth );
+
+  if (token.token != TOKEN_COLON) {
+    string error_message = "Expecting ':' after '?' operator";
+    throw(error_message); 
+  }
+
+  if (start_depth+1 != depth) {
+    string error_message = "Not enough factors in true section of conditional";
+    throw(error_message); 
+  }
+  changeDepth( -1, depth );
+
+  //////////////////////////////////////////////////////////////////////////
+  // Parse the 'false' section of the conditional 
+  //////////////////////////////////////////////////////////////////////////
+  next_token = token;
+  getToken(formula, token);
+  parseExpression( token, formula, false_commands, LOWEST_PRECEDENCE, depth );
+
+  if (start_depth+1 != depth) {
+    string error_message = "Not enough factors in false section of conditional";
+    throw(error_message); 
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Add the branch commands and the commands for the true and false clauses 
+  //////////////////////////////////////////////////////////////////////////
+  new_command = MAKE_COMMAND( COMMAND_BRANCH_IF_FALSE, true_commands.size()+1 );
+  commands.push_back(new_command);
+  changeDepth( -1, depth );
+  copy( true_commands.begin(), true_commands.end(), inserter(commands, 
+        commands.end()) );
+  new_command = MAKE_COMMAND( COMMAND_BRANCH, false_commands.size() );
+  commands.push_back(new_command);
+  copy( false_commands.begin(), false_commands.end(), inserter(commands, 
+    commands.end()) );
 
 }
 
@@ -992,14 +1071,15 @@ RngDecisionTree::EquationClass::parseExpression(
  *   none
  *
  * Postconditions:
- *   The decision tree's equation data structure is partially filled in. 
+ *   Text that is parsed is erased from formula, and the commands created
+ *   are placed in cmmnds.  'depth' is updated along with the computation 
+ *   stack size.
  *
  * Side Effects:
  *   none
  *
  * Results:
  *   none
- *
  *-----------------------------------------------------------------------
  */
 bool
@@ -1899,7 +1979,9 @@ class TestRandomVariable : public RandomVariable
        : RandomVariable(new_info, new_name, Discrete, new_cardinality) {return;}
     void findConditionalParents() { return; }
     logpr probGivenParents() { return(0.0); }
+    void  probGivenParents(logpr& p) { return; }
     logpr probGivenParentsWSetup() { return(0.0); }
+    void  probGivenParentsWSetup(logpr& p) { return; }
     void makeRandom() { return; }
     void makeUniform()  { return; }
     void tieParametersWith(RandomVariable*const other,
@@ -1907,7 +1989,9 @@ class TestRandomVariable : public RandomVariable
     void clampFirstValue() { return; }
     bool clampNextValue() { return(false); }
     void begin() { return; }
+    void begin(logpr& p) { return; }
     bool next() { return(false); }
+    bool next(logpr& p) { return(false); }
     void instantiate() { return; }
     void cacheValue() { return; }
     void restoreCachedValue() { return; }
@@ -1987,6 +2071,9 @@ void test_formula()
   formula = "2+3*4";
   correct &= dt.testFormula( formula, vars, 14 );
 
+  formula = "1+2+3+4+5";
+  correct &= dt.testFormula( formula, vars, 15 );
+
   formula = "3+(4==4)*5^2|6";
   correct &= dt.testFormula( formula, vars, 30 );
 
@@ -2020,8 +2107,14 @@ void test_formula()
   formula = "  mod  (  8 , 3 ) ";
   correct &= dt.testFormula( formula, vars, 2 );
 
-//  formula = "((12>3)?(p0*p1):(c0+p2))";
-//  correct &= dt.testFormula( formula, vars, 21 );
+  formula = "((12>3)?(p0*p1):(c0+p2))";
+  correct &= dt.testFormula( formula, vars, 21 );
+
+  formula = "12<3 ? p1/0 : c0+p2";
+  correct &= dt.testFormula( formula, vars, 8 );
+
+  formula = " 1 ? 27==p0 ? c0+c2 :  p0+2 :7/0 ";
+  correct &= dt.testFormula( formula, vars, 9 );
 
   formula = "  (  max  (  ( 12/  4) , 14,p2  ) + ( c1   -p1))*   p0+27";
   correct &= dt.testFormula( formula, vars, 384 );
@@ -2127,6 +2220,7 @@ main(int argc,char *argv[])
   // Test the formula parser 
   test_formula();
 
+/*
   // first write out the file
   if (argc == 1)
     {
@@ -2178,6 +2272,7 @@ main(int argc,char *argv[])
     printf("\n");
     printf("### RESULT ==> %d\n",dt.query(vec,card));
   }
+*/
 
 }
 
