@@ -75,7 +75,9 @@ const unsigned GMPARMS_MAX_NUM = 100000;
 ////////////////////////////////////////////////////////////////////
 
 GMParms::GMParms()
-{}
+{
+  emTrainBitmask = emDefaultState;
+}
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -938,6 +940,127 @@ GMParms::writeDTs(oDataStreamFile& os)
     dts[i]->write(os);
   }
 }
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        EM Routines
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+void
+GMParms::emStartIteration()
+{
+  // go through all EMable objects possibly
+  // used by any RV and make the call
+
+  // We do this only for those mid-level EMable objects.
+
+  // First do the basic objects. 
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emStartIteration();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emStartIteration();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emStartIteration();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emStartIteration();
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emStartIteration();
+#if 0
+  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+    gausSwitchingMixGaussians[i]->emStartIteration();
+  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+    logitSwitchingMixGaussians[i]->emStartIteration();
+  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+    mlpSwitchingMixGaussians[i]->emStartIteration();
+#endif
+
+}
+
+
+void
+GMParms::emEndIteration()
+{
+  // go through all EMable objects possibly
+  // used by any RV and make the call
+
+
+  // first do the basic objects
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emEndIteration();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emEndIteration();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emEndIteration();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emEndIteration();
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emEndIteration();
+#if 0
+  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+    gausSwitchingMixGaussians[i]->emEndIteration();
+  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+    logitSwitchingMixGaussians[i]->emEndIteration();
+  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+    mlpSwitchingMixGaussians[i]->emEndIteration();
+#endif
+
+}
+
+
+void
+GMParms::emSwapCurAndNew()
+{
+  // go through all EMable objects possibly
+  // used by any RV and make the call
+
+  // first do the basic objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<gaussianComponents.size();i++)
+    gaussianComponents[i]->emSwapCurAndNew();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emSwapCurAndNew();
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixGaussians.size();i++)
+    mixGaussians[i]->emSwapCurAndNew();
+#if 0
+  for (unsigned i=0;i<gausSwitchingMixGaussians.size();i++)
+    gausSwitchingMixGaussians[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<logitSwitchingMixGaussians.size();i++)
+    logitSwitchingMixGaussians[i]->emSwapCurAndNew();
+  for (unsigned i=0;i<mlpSwitchingMixGaussians.size();i++)
+    mlpSwitchingMixGaussians[i]->emSwapCurAndNew();
+#endif
+
+}
+
 
 
 
