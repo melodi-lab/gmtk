@@ -378,7 +378,11 @@ void GMTK_GM::cliqueChainEM(int iterations, logpr beam)
         do
         {
             // first compute the probabilities
-            chain->computePosteriors(beam);
+            if (!chain->computePosteriors(beam))
+            {
+                cout << "Skipping example due to 0 probability\n";
+                continue;
+            }
             total_data_prob *= chain->dataProb;
 
             // then increment the em counts
@@ -476,14 +480,19 @@ logpr GMTK_GM::enumerativeExampleProb(vector<vector<VariableValue > > &example)
  *-----------------------------------------------------------------------
  */
 
-logpr GMTK_GM::cliqueChainExampleProb(vector<vector<VariableValue > > &example)
+logpr GMTK_GM::cliqueChainExampleProb(vector<vector<VariableValue > > &example,
+logpr beam)
 {
     setExampleStream(&example);
     logpr tp = 1.0;
     clampFirstExample();
     do
     {
-        chain->computePosteriors();
+        if (!chain->computePosteriors(beam))
+        {
+            cout << "Skipping example due to 0 probability\n";
+            continue;
+        }
         tp *= chain->dataProb;
     } while (clampNextExample());
     return tp;

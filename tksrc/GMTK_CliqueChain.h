@@ -45,10 +45,12 @@ struct CliqueChain
     // Computes the likeliest value of each clique, and clamps the variables
     // in the underlying network correspondingly.
     // Prunes away entries that are less than beam*max.
+    // returns false of the forwards pass fails (0 prob after pruning)
 
-    void computePosteriors(logpr beam=0.0);
+    bool computePosteriors(logpr beam=0.0);
     // Calculates the lambdas and pis for all the cliques.
     // Prunes away entries that are less than beam*max.
+    // returns false of the forwards pass fails (0 prob after pruning)
 
     void incrementEMStatistics();
     // Multiplies the lambdas and pis for each clique instantiation, clamps
