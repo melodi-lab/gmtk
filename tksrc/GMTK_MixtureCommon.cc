@@ -56,14 +56,14 @@ MixGaussiansCommon::mixCoeffSplitRatio = 1e10;
 
 void
 MixGaussiansCommon::checkForValidRatioValues() {
-  if (1.0/mixCoeffVanishRatio >= mixCoeffSplitRatio) 
-    error("ERROR: must have 1.0/mixCoeffVanishRatio < mixCoeffSplitRatio");
   // this next check guarantees that we will never eliminate
   // all components
   if (mixCoeffVanishRatio < 1.0)
     error("ERROR: must have mixCoeffVanishRatio >= 1.0");
   if (mixCoeffSplitRatio <= 0)
     error("ERROR: must have mixCoeffSplitRatio > 0.0");
+  if (1.0/mixCoeffVanishRatio >= mixCoeffSplitRatio) 
+    error("ERROR: must have 1.0/mixCoeffVanishRatio < mixCoeffSplitRatio");
 }
 
 
