@@ -81,7 +81,7 @@ DiagGaussian::read(iDataStreamFile& is)
 	  covar->name().c_str(),
 	  covar->dim());
   }
-  if (covar->dim() != _dim) {
+  if ((unsigned)covar->dim() != _dim) {
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' of dim %d does not match its mean '%s' with dim %d or covariance '%s' with dim '%d'\n",
 	  _name.c_str(),is.fileName(),
 	  _dim,
