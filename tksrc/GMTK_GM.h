@@ -31,10 +31,6 @@ struct GMTK_GM
     // The topology os determined by the Parent and Child arrays associated
     // with each random variable.
 
-    vector<RandomVariable *> topologicalOrder;
-    // A topological ordering of the nodes; useful for simulation and
-    // enumerative inference.
-
     void verifyTopologicalOrder();
     // verifies that the node array is in topological order
     // copies it to the topological array
