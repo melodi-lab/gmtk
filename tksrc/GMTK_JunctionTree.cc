@@ -148,16 +148,17 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
 					     const unsigned int frameDelta)
   : origin(from_part)
 {
+  unsigned i;
   // first allocate space with empty (and unusable) entries
   maxCliques.resize(origin.cliques.size());
   separatorCliques.resize(origin.separators.size());
 
   // then actually re-construct the objects in the array appropriately.
-  for (unsigned i=0;i<maxCliques.size();i++) {
+  for ( i=0;i<maxCliques.size();i++) {
     new (&maxCliques[i]) InferenceMaxClique(origin.cliques[i],
 					    newRvs,ppf,frameDelta);
   }
-  for (unsigned i=0;i<separatorCliques.size();i++) {
+  for ( i=0;i<separatorCliques.size();i++) {
     new (&separatorCliques[i]) InferenceSeparatorClique(origin.separators[i],
 					    newRvs,ppf,frameDelta);
   }
@@ -259,6 +260,16 @@ JunctionTree::createPartitionJunctionTree(Partition& part)
 
       // TODO: optimize this to deal with ties to make message
       // passing cheaper.
+      //    Ideas: among all ties
+      //        a) maximize number of variables in same frame (or near each other)
+      //        b) minimize cardinality or state space of separator
+      //        c) minimize number of neighbors in each clique (i.e., 
+      //           if cliques already have neighbors, choose the ones with fewer.
+      //        d) integrate with RV value assignment to minimize
+      //           the number of unassigned clique nodes (since they're
+      //           iterated over w/o knowledge of any parents. If this
+      //           ends up being a search, make this be offline, in with gmtkTriangulate
+
 
       set<unsigned>& iset1 = findSet[edges[i].clique1];
       set<unsigned>& iset2 = findSet[edges[i].clique2];
@@ -494,7 +505,7 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
 	part1_clique = i;
 	part1_clique_size = part1.cliques[i].nodes.size();
 	part2_clique = j;
-	part2_clique_size = part2.cliques[i].nodes.size();
+	part2_clique_size = part2.cliques[j].nodes.size();
 	max_sep_set_size = sep_set_size;
       }
     }
@@ -743,6 +754,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
     // pre-compute it here.
     set<RandomVariable*> parSet;
     for (unsigned p=0;p<rv->allPossibleParents.size();p++) {
+      // fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
       parSet.insert(rv->allPossibleParents[p]);
     }
     bool assigned = false;
@@ -1255,7 +1267,7 @@ JunctionTree::createSeparators()
   // update right partitions LI clique to include new separator
   E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
   // don't update left partitions RI clique's send separator since handeled explicitly
-  C3.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
+  E1.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
 
 
   createSeparators(Cu0,
@@ -1404,10 +1416,12 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     // This must be a leaf-node clique relatve to root.
     // 'accumSeps' is already empty so no need to do anything there.
   } else if (numSeparators == 1) {
-    accumSeps = part.separators[clique.ceReceiveSeparators[0]].nodes;
-    part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
-    part.separators[clique.ceReceiveSeparators[0]].remainder =
-      part.separators[clique.ceReceiveSeparators[0]].nodes;
+    // shortcut to separator 0
+    SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
+    accumSeps = s0.nodes;
+    s0.accumulatedIntersection.clear();
+    s0.remainder = s0.nodes;
+    assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
   } else if (numSeparators == 2) {
     
 
@@ -1455,10 +1469,13 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     {
 
       // initialize union of all previous separators
+
       accumSeps = 
 	part.separators[clique.ceReceiveSeparators[0]].nodes;
-
       part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
+      part.separators[clique.ceReceiveSeparators[0]].remainder
+	= part.separators[clique.ceReceiveSeparators[0]].nodes;
+
       for (unsigned sep=1;sep<numSeparators;sep++) {
       
 	// reference variables for easy access
@@ -1512,6 +1529,172 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
   }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::printAllJTInfo()
+ *
+ *   Prints all information to a file that has been computed
+ *   for this junction tree.
+ *
+ * Preconditions:
+ *   All JT creation functions, ending in
+ *   computeSeparatorIterationOrders() must have been
+ *   called. If not, this function will print garbage (or will crash).
+ *
+ * Postconditions:
+ *   All stuff printed to given file.
+ *
+ * Side Effects:
+ *    none
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::printAllJTInfo(char *fileName) 
+{
+  FILE* f;
+  if ((fileName == NULL)
+      ||
+      ((f = ::fopen(fileName,"w")) == NULL))
+    return;
+
+
+  // print partition (clique,separator) information
+
+  fprintf(f,"===============================\n");
+  fprintf(f,"   P1 partition information\n");
+  printAllJTInfo(f,P1,P_ri_to_C);
+  fprintf(f,"\n\n");
+
+  fprintf(f,"===============================\n");
+  fprintf(f,"   C1 partition information\n");
+  printAllJTInfo(f,C1,C_ri_to_C);
+  fprintf(f,"\n\n");
+
+  fprintf(f,"===============================\n");
+  fprintf(f,"   Cu0 partition information\n");
+  printAllJTInfo(f,Cu0,C_ri_to_E);
+  fprintf(f,"\n\n");
+
+  fprintf(f,"===============================\n");
+  fprintf(f,"   C2 partition information\n");
+  printAllJTInfo(f,C2,C_ri_to_C);
+  fprintf(f,"\n\n");
+
+  fprintf(f,"===============================\n");
+  fprintf(f,"   C3 partition information\n");
+  printAllJTInfo(f,C3,C_ri_to_E);
+  fprintf(f,"\n\n");
+
+  fprintf(f,"===============================\n");
+  fprintf(f,"   E1 partition information\n");
+  printAllJTInfo(f,E1,E_root_clique);
+  fprintf(f,"\n\n");
+
+  // print message order information
+  fprintf(f,"===============================\n\n");    
+
+  fprintf(f,"===============================\n");  
+  fprintf(f,"   P1 message order\n");
+  printMessageOrder(f,P1_message_order);
+  fprintf(f,"\n\n");
+
+  fprintf(f,"===============================\n");  
+  fprintf(f,"   C1 message order\n");
+  printMessageOrder(f,C1_message_order);
+  fprintf(f,"\n\n");
+
+
+  fprintf(f,"===============================\n");  
+  fprintf(f,"   C3 message order\n");
+  printMessageOrder(f,C3_message_order);
+  fprintf(f,"\n\n");
+
+
+  fprintf(f,"===============================\n");  
+  fprintf(f,"   E1 message order\n");
+  printMessageOrder(f,E1_message_order);
+  fprintf(f,"\n\n");
+
+
+  fclose(f);
+}
+
+void
+JunctionTree::printAllJTInfo(FILE* f,
+			     JT_Partition& part,
+			     const unsigned root)
+{
+  // print cliques information
+  fprintf(f,"=== Clique Information ===\n");
+  fprintf(f,"Number of cliques = %d\n",part.cliques.size());
+  printAllJTInfoCliques(f,part,root,0);
+
+  // print separator information
+  fprintf(f,"\n=== Separator Information ===\n");
+  fprintf(f,"Number of separators = %d\n",part.separators.size());
+  for (unsigned sepNo=0;sepNo<part.separators.size();sepNo++) {
+    fprintf(f,"== Separator number: %d\n",sepNo);
+    part.separators[sepNo].printAllJTInfo(f);
+  }
+
+}
+
+void
+JunctionTree::printAllJTInfoCliques(FILE* f,
+				    JT_Partition& part,
+				    const unsigned root,
+				    const unsigned treeLevel)
+{
+  // print cliques information
+  for (unsigned i=0;i<treeLevel;i++) fprintf(f,"  ");
+  fprintf(f,"== Clique number: %d\n",root);
+  part.cliques[root].printAllJTInfo(f,treeLevel);
+  for (unsigned childNo=0;
+       childNo<part.cliques[root].children.size();childNo++) {
+    unsigned child = part.cliques[root].children[childNo];
+    printAllJTInfoCliques(f,part,child,treeLevel+1);
+  }
+}
+
+void
+JunctionTree::printMessageOrder(FILE *f,
+				vector< pair<unsigned,unsigned> >& message_order)
+{
+  fprintf(f,"Number of messages: %d\n",message_order.size());
+  for (unsigned m=0;m<message_order.size();m++) {
+    const unsigned from = message_order[m].first;
+    const unsigned to = message_order[m].second;
+    fprintf(f,"  %d: %d --> %d\n",m,from,to);
+  }
+}
+
 
 
 
@@ -1596,7 +1779,7 @@ JunctionTree::prepareForUnrolling(JT_Partition& part)
  *
  *-----------------------------------------------------------------------
  */
-void
+unsigned
 JunctionTree::unroll(const unsigned int k)
 {
 
@@ -1613,6 +1796,7 @@ JunctionTree::unroll(const unsigned int k)
 					   numUsableFrames,
 					   frameStart))
     error("Can't unroll\n"); // TODO: fix this error.
+    // return 0
 
   fprintf(stderr,"numFrames = %d, unrolling BT %d times, MT %d times\n",
 	  k,
@@ -1659,6 +1843,7 @@ JunctionTree::unroll(const unsigned int k)
 			    ((int)modifiedTemplateUnrollAmount-2)*gm_template.S);
 
   }
+  return numUsableFrames;
 }
 
 
@@ -1702,6 +1887,8 @@ JunctionTree::collectEvidence()
       ceCollectToSeparator(jtIPartitions[0]);
   }
   // do P1-C1 interface 
+  infoMsg(IM::Med,"message in P1,part[0] from clique %d --> C1,part[1], clique %d\n",
+	    P_ri_to_C,C_li_to_P);
   jtIPartitions[0].maxCliques[P_ri_to_C].
     collectEvidenceFromSeparators(jtIPartitions[0]);
   jtIPartitions[0].maxCliques[P_ri_to_C].
@@ -1725,6 +1912,8 @@ JunctionTree::collectEvidence()
     }
 
     // do C1-nextC interface
+    infoMsg(IM::Med,"message in C1,part[%d] from clique %d --> C,part[%d], clique %d\n",
+	    partNo,C_ri_to_C,partNo+1,C_li_to_C);
     jtIPartitions[partNo].maxCliques[C_ri_to_C].
       collectEvidenceFromSeparators(jtIPartitions[partNo]);
     jtIPartitions[partNo].maxCliques[C_ri_to_C].
@@ -1746,6 +1935,8 @@ JunctionTree::collectEvidence()
       ceCollectToSeparator(jtIPartitions[partNo]);
   }
   // do C3-E1 interface
+  infoMsg(IM::Med,"message in C3,part[%d] from clique %d --> E,part[%d], clique %d\n",
+	  partNo,C_ri_to_E,partNo+1,E_li_to_C);
   jtIPartitions[partNo].maxCliques[C_ri_to_E].
     collectEvidenceFromSeparators(jtIPartitions[partNo]);
   jtIPartitions[partNo].maxCliques[C_ri_to_E].
@@ -1768,6 +1959,8 @@ JunctionTree::collectEvidence()
     jtIPartitions[partNo].maxCliques[from].
       ceCollectToSeparator(jtIPartitions[partNo]);
   }
+  infoMsg(IM::Med,"final collect in E1,part[%d] from clique %d\n",
+	  partNo,E_root_clique);
   jtIPartitions[partNo].maxCliques[E_root_clique].
     collectEvidenceFromSeparators(jtIPartitions[partNo]);
 

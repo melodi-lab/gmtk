@@ -77,6 +77,7 @@ class RandomVariable
 {
 public:
 
+  unsigned foo[5];
 
   ////////////////////////////////////////////////////////////////////////
   // What is my name?
@@ -147,6 +148,11 @@ public:
     // give some sensible values to these
     wtWeight = 1.0;
     wtFeatureElement = 0;
+
+    for (unsigned i=0;i<sizeof(foo)/sizeof(unsigned);i++) {
+      foo[i] = i;
+    } 
+
   }
 
   virtual ~RandomVariable() {;}

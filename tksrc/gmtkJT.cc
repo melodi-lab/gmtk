@@ -55,9 +55,10 @@ VCID("$Header$");
  */
 static bool seedme = false;
 static char *strFileName=NULL;
+static char *triFileName=NULL;
 static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
 
-static int allocateDenseCpts=-1;
+static int allocateDenseCpts=0;
 static char *cppCommandOptions = NULL;
 
 static unsigned verbosity = IM::Default;
@@ -91,6 +92,7 @@ char *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all" };
 char *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile" };
 bool iswps[MAX_NUM_OBS_FILES] = { false, false, false };
 
+static unsigned segment=0;
 
 bool print_version_and_exit = false;
 Arg Arg::Args[] = {
@@ -105,6 +107,8 @@ Arg Arg::Args[] = {
   Arg("ir1",Arg::Opt,irs[0],"Int range for observation file 1"),
   Arg("fmt1",Arg::Opt,fmts[0],"Format (htk,bin,asc,pfile) for observation file 1"),
   Arg("iswp1",Arg::Opt,iswps[0],"Endian swap condition for observation file 1"),
+
+  Arg("segment",Arg::Opt,segment,"Which segment to do"),
 
   /////////////////////////////////////////////////////////////
   // input parameter/structure file handling
@@ -122,6 +126,7 @@ Arg Arg::Args[] = {
 
 
   Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
+  Arg("triFile",Arg::Opt,triFileName,"Triangulation file for strFile"),
 
   /////////////////////////////////////////////////////////////
   // General Options
@@ -285,9 +290,12 @@ main(int argc,char*argv[])
   // where this program ensures that the result is triangulated
   // and where it reports the quality of the triangulation.
   
-  string tri_file = string(strFileName) + GMTemplate::fileExtension;
+  string tri_file;
+  if (triFileName == NULL) 
+    tri_file = string(strFileName) + GMTemplate::fileExtension;
+  else 
+    tri_file = string(triFileName);
   GMTemplate gm_template(fp);
-
   iDataStreamFile is(tri_file.c_str());
   if (!fp.readAndVerifyGMId(is))
     error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
@@ -318,6 +326,8 @@ main(int argc,char*argv[])
   myjt.createSeparators();
   myjt.computeSeparatorIterationOrders();
   myjt.prepareForUnrolling();
+  // TODO: allow user input file name
+  myjt.printAllJTInfo("jt_info.txt");
 
 
   // fprintf(stderr,"starting unrolling\n");
@@ -328,16 +338,51 @@ main(int argc,char*argv[])
     error("ERROR: no segments are available in observation file");
   GM_Parms.clampFirstExample();
 
-  globalObservationMatrix.loadSegment(0);
+  globalObservationMatrix.loadSegment(segment);
 
   int frames = globalObservationMatrix.numFrames();
 
-  // assume size(P) = 1, size(C) = 1, and size(E) = 1 for now.
-  unsigned unroll_k = (frames-3);
+#if 0
+  int partition_unroll_amount
+    = frames - gm_template.prologueNumFrames() - gm_template.epilogueNumFrames();
+  if (partition_unroll_amount % gm_template.chunkNumFrames() != 0) {
+    int adj = partition_unroll_amount % gm_template.chunkNumFrames();
+    frames -= adj;
+    partition_unroll_amount -= adj;
+    warning("Warning: using only %d frames out of %d\n",frames,frames+adj);
+    // TODO: do left, right center adjustment, etc.
+  }
+  partition_unroll_amount /= gm_template.chunkNumFrames();
 
-  myjt.unroll(unroll_k);
+  partition_unroll_amount -= gm_template.maxNumChunksInBoundary();
+  if (partition_unroll_amount % gm_template.chunkSkip() != 0) {
+    error("incompatible number of frames (for now)\n");
+  }
+  partition_unroll_amount /= gm_template.chunkSkip();
+  partition_unroll_amount --;
+#endif
+
+  // assume size(P) = 1, size(C) = 1, and size(E) = 1 for now.
+  // unsigned unroll_k = (frames-4);
+  // assume size(P) = 1, size(C) = 1, and size(E) = 0 for now.
+  // unsigned unroll_k = (frames-3);
+
+  // myjt.unroll(partition_unroll_amount);
+  unsigned numUsableFrames = myjt.unroll(frames);
   myjt.collectEvidence();
 
+  logpr probe = myjt.probEvidence();
+  printf("log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	 probe.val(),
+	 probe.val()/frames,
+	 probe.val()/numUsableFrames);
+  
+#if 0
+  fprintf(stderr,"Hit return when ready:");
+  {
+    scanf("\n");
+  }
+#endif
 
   exit_program_with_status(0);
 }

@@ -314,6 +314,16 @@ public:
   void computeSeparatorIterationOrders();
 
   // 
+  // Print all information about the JT. Must
+  // have had computeSeparatorIterationOrders() called
+  // already.
+  void printAllJTInfo(char* fileName);
+  void printAllJTInfo(FILE* f,JT_Partition& part,const unsigned root);
+  void printAllJTInfoCliques(FILE* f,JT_Partition& part,const unsigned root,const unsigned treeLevel);
+  void printMessageOrder(FILE *f,vector< pair<unsigned,unsigned> >& message_order);
+
+
+  // 
   // Do some last-minute data structure setup to prepare for
   // unrolling to work (such as preliminary and pre work for
   // leaving STL, etc.)
@@ -328,7 +338,8 @@ public:
 
   // unroll for frames = numFrames 
   // Unrolling only affects the non-STL data structures.
-  void unroll(unsigned numFrames);
+  // Returns number of frames actually used, or 0 if invalid num frames.
+  unsigned unroll(unsigned numFrames);
 
   // Perhaps make different unrolls for decoding, unroll for EM
   // training unroll for viterbi training, etc.

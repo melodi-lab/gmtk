@@ -70,6 +70,82 @@ VCID("$Header$");
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+// TODO: put this function somewhere more generally available.
+static void
+printRVSetAndValues(FILE*f,sArray<RandomVariable*>& locset) 
+{
+  bool first = true;
+  for (unsigned i=0;i<locset.size();i++) {
+    RandomVariable* rv = locset[i];
+    if (!first)
+      fprintf(f,", ");
+    fprintf(f,"%s(%d)=",rv->name().c_str(),rv->frame());
+    if (!rv->discrete) {
+      fprintf(f,"C");
+    } else {
+      DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      fprintf(f,"%d",drv->val);
+    }
+    first = false;
+  }
+  fprintf(f,"\n");
+}
+static void
+printRVSet(FILE*f,sArray<RandomVariable*>& locset) 
+{
+  bool first = true;
+  for (unsigned i=0;i<locset.size();i++) {
+    RandomVariable* rv = locset[i];
+    if (!first)
+      fprintf(f,", ");
+    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
+    first = false;
+  }
+  fprintf(f,"\n");
+}
+static void
+printRVSet(FILE*f,set<RandomVariable*>& locset)
+{
+  bool first = true;
+  set<RandomVariable*>::iterator it;
+  for (it = locset.begin();
+       it != locset.end();it++) {
+    RandomVariable* rv = (*it);
+    if (!first)
+      fprintf(f,",");
+    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
+    first = false;
+  }
+  fprintf(f,"\n");
+}
+
+
+static void
+printRVSet(FILE*f,vector<RandomVariable*>& locvec)
+{
+  bool first = true;
+  for (unsigned i=0;i<locvec.size();i++) {
+    RandomVariable* rv = locvec[i];
+    if (!first)
+      fprintf(f,",");
+    fprintf(f,"%s(%d)",rv->name().c_str(),rv->frame());
+    first = false;
+  }
+  fprintf(f,"\n");
+}
+
+
+
+// TODO: put this in misc support
+static void
+psp(FILE*f,const int numSpaceChars)
+{
+  int tmp = numSpaceChars;
+  while (tmp--)
+    fprintf(f," ");
+}
+
+
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -415,6 +491,70 @@ MaxClique::prepareForUnrolling()
 
 
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::printAllJTInfo()
+ *   
+ *   prints everything JT (not not inference) about this clique to file.
+ *
+ * Preconditions:
+ *   all variables must have been set up.
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *     none
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MaxClique::printAllJTInfo(FILE*f,const unsigned indent)
+{
+
+  psp(f,indent*2);
+  fprintf(f,"Clique information:\n");
+
+  psp(f,indent*2);
+  fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%d Assigned: ",assignedNodes.size()); printRVSet(f,assignedNodes);  
+
+  psp(f,indent*2);
+  fprintf(f,"%d Assigned Sorted: ",sortedAssignedNodes.size()); printRVSet(f,sortedAssignedNodes);  
+
+  psp(f,indent*2);
+  fprintf(f,"%d Unassigned Iterated: ",unassignedIteratedNodes.size()); printRVSet(f,unassignedIteratedNodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSet(f,hiddenNodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%d Clique Neighbors: ",neighbors.size());
+  for (unsigned i=0;i<neighbors.size();i++) fprintf(f,"%d,",neighbors[i]); fprintf(f,"\n");
+
+  psp(f,indent*2);
+  fprintf(f,"%d Clique Children: ",children.size());
+  for (unsigned i=0;i<children.size();i++) fprintf(f,"%d,",children[i]); fprintf(f,"\n");
+
+  psp(f,indent*2);
+  fprintf(f,"%d Receive Seps: ",ceReceiveSeparators.size());
+  for (unsigned i=0;i<ceReceiveSeparators.size();i++) fprintf(f,"%d,",ceReceiveSeparators[i]); fprintf(f,"\n");
+
+  psp(f,indent*2);
+  fprintf(f,"Send Sep: %d\n",ceSendSeparator);
+
+}
+
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        InferenceMaxClique support
@@ -522,9 +662,22 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 
   discreteValuePtrs.resize(from_clique.hiddenNodes.size());
   for (i=0;i<discreteValuePtrs.size();i++) {
+    // get the unrolled rv for this hidden node
+    RandomVariable* rv = from_clique.hiddenNodes[i];
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+    if ( ppf.find(rvp) == ppf.end() ) {
+      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	    rv->name().c_str(),rv->frame(),frameDelta,
+	    rvp.first.c_str(),rvp.second);
+      assert ( ppf.find(rvp) != ppf.end() );
+    }
+    RandomVariable* nrv = newRvs[ppf[rvp]];
+
     // hidden nodes are always discrete (in this version).
     DiscreteRandomVariable* drv = 
-      (DiscreteRandomVariable*)from_clique.hiddenNodes[i];
+      (DiscreteRandomVariable*)nrv;
     // grab a pointer directly to its value for easy access later.
     discreteValuePtrs[i] = &(drv->val);
   }
@@ -583,7 +736,15 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
   // get a handy reference to the current separator
   InferenceSeparatorClique& sep = 
     part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
-  unsigned sepValueNumber;
+
+  if (message(Giga)) {
+    fprintf(stdout,"Starting separator iteration, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
+    printRVSet(stdout,sep.fNodes);
+  }
+
+
+  unsigned sepValueNumber;  
   if (sep.fAccumulatedIntersection.size() > 0) {
     // look up existing intersected values to see if we have a match
     // and only proceed if we do.
@@ -621,27 +782,74 @@ InferenceMaxClique::ceIterateSeparators(JT_InferencePartition& part,
     // TODO: check this, as this condition might fail if
     // we've completely pruned away parent clique.
     assert ( sep.separatorValues.size() == 1);
+    assert ( sep.fRemainder.size() > 0 );
     sepValueNumber = 0;
   }
 
-  // iterate through remainder of separator
-  for (unsigned i=0;i< sep.separatorValues[sepValueNumber].numRemValuesUsed; i++) {
-    
-    // TODO: optimize away this check here by duplicating code.
-    if (sep.origin.remPacker.packedLen() == 1) {
-      sep.origin.remPacker.unpack(
-				  (unsigned*)&(sep.separatorValues[sepValueNumber].remValues[i].val),
-				  (unsigned**)sep.remDiscreteValuePtrs.ptr);
-    } else {
-      sep.origin.remPacker.unpack(
-				  (unsigned*)sep.separatorValues[sepValueNumber].remValues[i].ptr,
-				  (unsigned**)sep.remDiscreteValuePtrs.ptr);
+  // Iterate through remainder of separator Q: should we do some
+  // pruning here as well?
+  if (sep.fRemainder.size() == 0) {
+    // only one remainder entry (in position 0) and also no need to
+    // unpack since all has been covered by accumulated intersection
+    // set above in a previous separator. Just continue on with single value.
+
+    if (message(Giga)) {
+      fprintf(stdout,"   separator iteration nounpack, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+	      sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
+      printRVSetAndValues(stdout,sep.fNodes);
     }
+
     // continue down with new probability value.
-    // Q: should we do some pruning here as well?
     ceIterateSeparators(part,sepNumber+1,
 			p*
-			sep.separatorValues[sepValueNumber].remValues[i].p);
+			sep.separatorValues[sepValueNumber].remValues[0].p);
+  } else {
+    if (sep.origin.remPacker.packedLen() == 1) {
+      for (unsigned i=0;i< sep.separatorValues[sepValueNumber].numRemValuesUsed; i++) {
+
+	// if (i == 0 && sep.fNodes[0]->timeIndex == 5 && sep.fNodes[0]->label == "state") {
+	// printf("here1");
+	// } 
+
+	sep.origin.remPacker.unpack(
+		  (unsigned*)&(sep.separatorValues[sepValueNumber].remValues[i].val),
+		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
+
+	// if (i == 0 && sep.fNodes[0]->timeIndex == 5 && sep.fNodes[0]->label == "state") {
+	// printf("here2");
+	// } 
+
+	if (message(Giga)) {
+	  fprintf(stdout,"   separator iteration %d, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+		  i,
+		  sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
+	  printRVSetAndValues(stdout,sep.fNodes);
+	}
+
+	// continue down with new probability value.
+	ceIterateSeparators(part,sepNumber+1,
+		    p*
+		    sep.separatorValues[sepValueNumber].remValues[i].p);
+      }
+    } else {
+      for (unsigned i=0;i< sep.separatorValues[sepValueNumber].numRemValuesUsed; i++) {
+	sep.origin.remPacker.unpack(
+		  (unsigned*)sep.separatorValues[sepValueNumber].remValues[i].ptr,
+		  (unsigned**)sep.remDiscreteValuePtrs.ptr);
+
+	if (message(Giga)) {
+	  fprintf(stdout,"   pseparator iteration %d, sepNumber =%d, part sepNo = %d,p = %f, nodes:",
+		  i,
+		  sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
+	  printRVSetAndValues(stdout,sep.fNodes);
+	}
+
+	// continue down with new probability value.
+	ceIterateSeparators(part,sepNumber+1,
+		  p*
+		  sep.separatorValues[sepValueNumber].remValues[i].p);
+      }
+    }
   }
 
 }
@@ -656,6 +864,9 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
   if (nodeNumber == fSortedAssignedNodes.size()) {
     // time to store clique value and total probability, p is
     // current clique probability.
+
+    // printf("ceIterateAssignedNodes: nodeNumber = %d, p = %f,",nodeNumber,p.val());
+    // printRVSet(fNodes);
 
     // keep track of the max clique probability right here.
     if (p > maxCEValue)
@@ -703,10 +914,30 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
   }
   RandomVariable* rv = fSortedAssignedNodes[nodeNumber];
   // do the loop right here
+
+  infoMsg(Giga,"Starting Assigned iteration of rv %s(%d), nodeNumber =%d, p = %f\n",
+	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+
   rv->clampFirstValue();
   do {
     // At each step, we compute probability
     logpr cur_p = rv->probGivenParents();
+
+    // for (unsigned j=0;j<nodeNumber;j++)
+    //  printf("  ");
+    // printf("%s(%d)=",rv->name().c_str(),rv->frame());
+    if (!rv->discrete) {
+      infoMsg(Giga,"  Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+    } else {
+      // DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
+      infoMsg(Giga,"  Assigned iteration of rv %s(%d)=%d, nodeNumber =%d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
+      // printf("%d, p=%f,cur_p=%f",drv->val,p.val(),cur_p.val());
+    }
+    // printf("\n");
+    
+
     // if at any step, we get zero, then back out.
     if (!p.essentially_zero()) {
       // Q: should be do more severe pruning here as well as beam?
@@ -715,6 +946,8 @@ InferenceMaxClique::ceIterateAssignedNodes(JT_InferencePartition& part,
       ceIterateAssignedNodes(part,nodeNumber+1,p*cur_p);
     }
   } while (rv->clampNextValue());
+
+
 }
 
 
@@ -725,14 +958,20 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
 {
   if (nodeNumber == fUnassignedIteratedNodes.size()) {
     ceIterateAssignedNodes(part,0,p);
+    return;
   }
   RandomVariable* rv = fUnassignedIteratedNodes[nodeNumber];
+  infoMsg(Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
+	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+
   if (rv->hidden) {
     // only discrete RVs can be hidden for now.
     DiscreteRandomVariable* drv = (DiscreteRandomVariable*)rv;
     // do the loop right here
     drv->val = 0;
     do {
+      infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
       ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
     } while (++drv->val < drv->cardinality);
   } else {
@@ -742,10 +981,16 @@ InferenceMaxClique::ceIterateUnassignedIteratedNodes(JT_InferencePartition& part
       // TODO: for observed variables, do this once at the begining
       // before any looping here.
       drv->setToObservedValue();
+      infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),rv->val,nodeNumber,p.val());
     } else {
       // nothing to do since we get continuous observed
       // value indirectly
+      infoMsg(Giga,"  Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
     }
+
+
     ceIterateUnassignedIteratedNodes(part,nodeNumber+1,p);
   }
 }
@@ -806,10 +1051,13 @@ ceCollectToSeparator(JT_InferencePartition& part,
 	const unsigned old_size = sep.separatorValues.size();
 	sep.separatorValues.resizeAndCopy(sep.separatorValues.size()*2);
 	const unsigned new_size = sep.separatorValues.size();
-	// need to re-construct hash tables for new entries.
-	for (unsigned i=old_size;i<new_size;i++) {
-	  new (&sep.separatorValues[i].iRemHashTable)vhash_map< unsigned, unsigned >
-	    (sep.origin.remPacker.packedLen());
+	if (sep.remDiscreteValuePtrs.size() > 0) {
+	  // need to re-construct hash tables for new entries.
+	  for (unsigned i=old_size;i<new_size;i++) {
+	    new (&sep.separatorValues[i].iRemHashTable)
+	      vhash_map< unsigned, unsigned >
+	      (sep.origin.remPacker.packedLen());
+	  }
 	}
       }
       
@@ -853,9 +1101,9 @@ ceCollectToSeparator(JT_InferencePartition& part,
 	// Then this separator is entirely covered by one or 
 	// more other separators earlier in the order.
 
-	// go ahead and insert it here to the 1st entry.
+	// go ahead and insert it here to the 1st entry (entry 0).
 
-	// keep handy reference for readability.
+	// handy reference for readability.
 	InferenceSeparatorClique::AISeparatorValue& sv
 	  = sep.separatorValues[accIndex];
 
@@ -876,6 +1124,12 @@ ceCollectToSeparator(JT_InferencePartition& part,
     } else {
       accIndex = 0;
     }
+
+    // if we're here, then we must have some remainder
+    // pointers.
+    // TODO: remove assertion when debugged.
+    assert (sep.remDiscreteValuePtrs.size() > 0);
+
     // Do the remainder exists in this separator.
     // 
     // either:
@@ -890,9 +1144,9 @@ ceCollectToSeparator(JT_InferencePartition& part,
     
     // make sure there is at least one available entry
     if (sv.numRemValuesUsed >= sv.remValues.size()) {
-      sv.remValues.resizeAndCopy(sv.remValues.size()*2);
+      // TODO: optimize this.
+      sv.remValues.resizeAndCopy(1+sv.remValues.size()*2);
     }
-
 
     unsigned *remKey;
     // pack relevant variable values
@@ -942,6 +1196,17 @@ ceCollectToSeparator(JT_InferencePartition& part,
 
 }
 
+
+logpr
+InferenceMaxClique::
+sumProbabilities()
+{
+  logpr p;
+  for (unsigned i=0;i<numCliqueValuesUsed;i++) {
+    p += cliqueValues[i].p;
+  }
+  return p;
+}
 
 
 ////////////////////////////////////////////////////////////////////
@@ -1072,6 +1337,8 @@ SeparatorClique::prepareForUnrolling()
 {
 
   // set up number of hidden ndoes within accumulated intersection.
+
+  // create a vector form of the variables.
   set<RandomVariable*>::iterator it;
   for (it = accumulatedIntersection.begin();
        it != accumulatedIntersection.end();
@@ -1081,18 +1348,21 @@ SeparatorClique::prepareForUnrolling()
       hAccumulatedIntersection.push_back(rv);
   }
 
-  new (&accPacker) PackCliqueValue(hAccumulatedIntersection);
-
-  if (accPacker.packedLen() > 1) {
-    // only setup hash table if the packed accumulated insersection
-    // set is larger than one machine word (unsigned).
-    new (&accValueHolder) CliqueValueHolder(hAccumulatedIntersection.size(),
-					    // TODO: optimize this 1000 value.
-					    1000,
-					    1.25);
-    new (&accHashTable) vhash_set< unsigned > (hAccumulatedIntersection.size());
+  if (hAccumulatedIntersection.size() > 0) {
+    // we only use these structures if there is an intersection.
+    new (&accPacker) PackCliqueValue(hAccumulatedIntersection);
+    if (accPacker.packedLen() > 1) {
+      // only setup hash table if the packed accumulated insersection
+      // set is larger than one machine word (unsigned).
+      new (&accValueHolder) CliqueValueHolder(hAccumulatedIntersection.size(),
+					      // TODO: optimize this 1000 value.
+					      1000,
+					      1.25);
+      new (&accHashTable) vhash_set< unsigned > (hAccumulatedIntersection.size());
+    }
   }
 
+  // create a vector form of the variables.
   for (it = remainder.begin();
        it != remainder.end();
        it++) {
@@ -1101,19 +1371,56 @@ SeparatorClique::prepareForUnrolling()
       hRemainder.push_back(rv);
   }
 
-  new (&remPacker) PackCliqueValue(hRemainder);
-
-  if (remPacker.packedLen() > 1) { 
-    // Only setup hash table if the packed remainder set is larger
-    // than one machine word (unsigned).
-    new (&remValueHolder) CliqueValueHolder(hRemainder.size(),
-					    // TODO: optimize this
-					    1000,
-					    1.25);
-    new (&remHashTable) vhash_set< unsigned > (hRemainder.size());
+  if (hRemainder.size() > 0) {
+    new (&remPacker) PackCliqueValue(hRemainder);
+    if (remPacker.packedLen() > 1) { 
+      // Only setup hash table if the packed remainder set is larger
+      // than one machine word (unsigned).
+      new (&remValueHolder) CliqueValueHolder(hRemainder.size(),
+					      // TODO: optimize this
+					      1000,
+					      1.25);
+      new (&remHashTable) vhash_set< unsigned > (hRemainder.size());
+    }
   }
 
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * SeparatorClique::printAllJTInfo()
+ *   
+ *   prints everything JT (not not inference) about this clique to file.
+ *
+ * Preconditions:
+ *   all variables must have been set up.
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *     none
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+SeparatorClique::printAllJTInfo(FILE*f)
+{
+
+  fprintf(f,"Separator information:\n");
+  fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
+  fprintf(f,"%d Acc Inter: ",accumulatedIntersection.size()); printRVSet(f,accumulatedIntersection);  
+  fprintf(f,"%d Hid Acc Inter: ",hAccumulatedIntersection.size()); printRVSet(f,hAccumulatedIntersection);  
+  fprintf(f,"%d remainder: ",remainder.size()); printRVSet(f,remainder);  
+  fprintf(f,"%d hRemainder: ",hRemainder.size()); printRVSet(f,hRemainder);  
+}
+
 
 
 
@@ -1224,18 +1531,50 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 
   accDiscreteValuePtrs.resize(origin.hAccumulatedIntersection.size());
   for (i=0;i<accDiscreteValuePtrs.size();i++) {
+    // get the hidden rv for this location
+    RandomVariable* rv = origin.hAccumulatedIntersection[i];;
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    // TODO: ultimately turn this just into an assert
+    if ( ppf.find(rvp) == ppf.end() ) {
+      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	    rv->name().c_str(),rv->frame(),frameDelta,
+	    rvp.first.c_str(),rvp.second);
+      assert ( ppf.find(rvp) != ppf.end() );
+    }
+    RandomVariable* nrv = newRvs[ppf[rvp]];
+
     // hidden nodes are always discrete (in this version).
     DiscreteRandomVariable* drv = 
-      (DiscreteRandomVariable*)origin.hAccumulatedIntersection[i];
+      (DiscreteRandomVariable*)nrv;
+
     // grab a pointer directly to its value for easy access later.
     accDiscreteValuePtrs[i] = &(drv->val);
   }
 
   remDiscreteValuePtrs.resize(origin.hRemainder.size());
   for (i=0;i<remDiscreteValuePtrs.size();i++) {
+    // get the hidden rv for this location
+    RandomVariable* rv = origin.hRemainder[i];
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    // TODO: ultimately turn this just into an assert
+    if ( ppf.find(rvp) == ppf.end() ) {
+      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	    rv->name().c_str(),rv->frame(),frameDelta,
+	    rvp.first.c_str(),rvp.second);
+      assert ( ppf.find(rvp) != ppf.end() );
+    }
+    RandomVariable* nrv = newRvs[ppf[rvp]];
+
     // hidden nodes are always discrete (in this version).
     DiscreteRandomVariable* drv = 
-      (DiscreteRandomVariable*)origin.hRemainder[i];
+      (DiscreteRandomVariable*)nrv;
+
     // grab a pointer directly to its value for easy access later.
     remDiscreteValuePtrs[i] = &(drv->val);
   }
@@ -1243,6 +1582,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
   // allocate at one value for now.
   if (origin.accumulatedIntersection.size() == 0) {
     // in this case, we'll only need one and never more.
+    assert( origin.hRemainder.size() > 0 );
     separatorValues.resize(1);
     new (&separatorValues[0].iRemHashTable)vhash_map< unsigned, unsigned >
       (origin.remPacker.packedLen());
@@ -1251,18 +1591,18 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
     // TODO: optimize this.
     const unsigned starting_size = 1000;
     separatorValues.resize(starting_size);
-    // need to re-construct individual hash tables.
-    for (unsigned i=0;i<starting_size;i++) {
-      new (&separatorValues[i].iRemHashTable)vhash_map< unsigned, unsigned >
-	(origin.remPacker.packedLen());
+    if (origin.hRemainder.size() > 0) {
+      // need to re-construct individual hash tables.
+      for (unsigned i=0;i<starting_size;i++) {
+	new (&separatorValues[i].iRemHashTable)vhash_map< unsigned, unsigned >
+	  (origin.remPacker.packedLen());
+      }
     }
     // need to re-construct the hash table.
     new (&iAccHashTable) vhash_map< unsigned, unsigned >
       (origin.accPacker.packedLen());
   }
   numSeparatorValuesUsed = 0;
-
-
 
 }
 
