@@ -1,7 +1,7 @@
 // 
 // A general streams-like class with iterators for
 // parsing and and using bi-polar range specifications.
-//     For example: -310 means { -3, -2, -1, 0, ...., 10 }
+//     For example: -3:10 means { -3, -2, -1, 0, ...., 10 }
 // 
 // Jeff Bilmes <bilmes@icsi.berkeley.edu>  Sep 1997
 //
@@ -432,6 +432,11 @@ BP_Range::iterator::operator--()
 
 bool BP_Range::contains(const int value)
 {
+
+  // check for single value range case.
+  if (min() == max())
+    return (value == min());
+  // check for out of bounds, or empty range.
   if (value < min() || value > max() || range_set_size == 0)
     return false;
 
@@ -462,15 +467,20 @@ done:
     return false;
 
   // We must have range[i].lower <= value <= range[i].upper 
-  return (((value-range[i].lower)%range[i].step) == 0);
-
+  if (range[i].step == 1)
+    return true;
+  else
+    return (((value-range[i].lower)%range[i].step) == 0);
 }
+
+
 
 
 bool BP_Range::overlapP(BP_Range& r)
 {
-  // TODO: This is a very inefficient implementation
-  // of this operation. This should really be redone 
+  //////////////////////////////////////////////////////////
+  // TODO: This is an INEFFICIENT implementation
+  // of this operation. This should be REDONE 
   // and optimized to have log time (linear time currently)
 
   // do simple tests first
@@ -480,7 +490,7 @@ bool BP_Range::overlapP(BP_Range& r)
     return false;
 
   // So, there may be some overlap.
-  // Search over all range elements of r, stopping
+  // Be dumb, and earch over all range elements of r, stopping
   // as soon as we can.
   for (BP_Range::iterator it = r.begin();
        it <=r.max();
