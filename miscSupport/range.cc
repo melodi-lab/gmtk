@@ -11,10 +11,10 @@
 //   02sep2003 karim@cs.washington.edu
 //
 // Added some error checking the supplied range bounds are exceeded.
-// This functionality can be turned off by undefining
-// ENFORCE_LOWER_UPPER_LIMITS (this can be useful if we want to report
-// the error higher up, when we have more information about the
-// specific range that is causing the problem)
+// This functionality can be turned off by defining
+// ENFORCE_LOWER_UPPER_LIMITS to be 0 (this can be useful if we want
+// to report the error higher up, when we have more information about
+// the specific range that is causing the problem) 
 //   13oct2004 karim@cs.washington
 //
 // $Header$
@@ -51,8 +51,6 @@
 #include "error.h"
 
 #define ENFORCE_LOWER_UPPER_LIMITS 1
-
-//#define DEBUG
 
 #ifdef DEBUG
 #define DBGFPRINTF(a)	fprintf a
@@ -694,6 +692,7 @@ void Range::_reportParseError(char *def_str) {
     char fmtstr[32];
     sprintf(fmtstr, ">> %%%ds\n", (pos-def_str));
     fprintf(stderr, fmtstr, "^");
+    exit(-1); // Karim 13oct2004
 }
 
 void Range::PrintRanges(char *tag/*=NULL*/, FILE *stream/*=stderr*/) {
@@ -866,21 +865,25 @@ int Range::full(void) {
 
 Range::Range(const char *defstr /*=NULL*/, int minval /*=0*/, 
 	     int ulimval /*=RNG_VAL_BAD*/) {
-    def_string = NULL;
-    rangeList = NULL;
-    type = RNG_TYPE_NONE;
-    min_val=0; max_val=0;
-    SetLimits(minval, ulimval);
-    SetDefStr(defstr?defstr:"all");
-    // Report an error if our range exceeds the specified limits 
-    //  -- Karim Oct,13, 2004
-#ifdef ENFORCE_LOWER_UPPER_LIMITS
+  def_string = NULL;
+  rangeList = NULL;
+  type = RNG_TYPE_NONE;
+  min_val=0; max_val=0;
+  SetLimits(minval, ulimval);
+  SetDefStr(defstr?defstr:"all");
+  
+  // Report an error if our range exceeds the specified limits 
+  //  -- Karim Oct,13, 2004
+#if ENFORCE_LOWER_UPPER_LIMITS
+  DBGFPRINTF((stderr,"defstr=%s, min_val=%d, max_val=%d\n",defstr,min_val,max_val));
+  if(defstr!=NULL && strcmp(defstr,"all")!=0) {  // we cannot call first() and last() on an empty list
     if(first() < minval) {
       error("ERROR: First value of range specification '%s' is below the minimum possible value '%d'",defstr,minval);
+      }
+    if(last() >= ulimval) {
+      error("ERROR: Last value of range specification '%s' is greater than the maximum possible value '%d'",defstr,ulimval-1);
     }
-    if(last() > ulimval) {
-      error("ERROR: Last value of range specification '%s' is greater than the maximum possible value '%d'",defstr,minval);
-    }
+  }
 #endif
 }
 
