@@ -79,7 +79,8 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   // This is the integer type of the values that a discrete random variable
   // may take on. Possibilities include unsigned char, char, short, int, 
-  // unsigned long, and so on.
+  // unsigned long, and so on. Note, if this changes,
+  // then might need to change Decision tree code as well.
   typedef short DiscreteVariableType;
 
   ////////////////////////////////////////////////////////////////////////
