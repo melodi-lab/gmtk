@@ -5,6 +5,9 @@
 //             bilmes@icsi.berkeley.edu
 
 
+
+#include <ctype.h>
+
 #include "general.h"
 #include "rand.h"
 #include "error.h"
@@ -17,6 +20,19 @@ char *copyToNewStr(const char *const str)
   ::strcpy(rc,str);
   return rc;
 }
+
+bool strIsInt(const char*const str, int& i) 
+{
+  char *p;
+  long l = strtol(str,&p,0);
+  if (p == str)
+    return false;
+  else {
+    i = l;
+    return true;
+  }
+}
+
 
 
 // Copies input over to result and if 

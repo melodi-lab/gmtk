@@ -19,6 +19,8 @@
 
 char *copyToNewStr(const char *const str);
 
+bool strIsInt(const char *const str, int& i);
+
 
 // a general swapping routine.
 template <class T>
