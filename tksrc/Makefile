@@ -123,11 +123,9 @@ gmtkViterbi: gmtkViterbi.o $(objs)
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkViterbi.o $(objs) $(LIBS)
 
-gmtkSplitGaussians: $@.o $(objs)
+gmtkM2T: gmtkM2T.o $(objs)
 	-@rm -f $@
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ $@.o $(objs) $(LIBS)
-
-
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkM2T.o $(objs) $(LIBS)
 
 #----------------------------------------------------------------------------
 # Test driver programs (defines a -DMAIN to test each .cc file)
