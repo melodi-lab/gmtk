@@ -2034,7 +2034,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
       // iterate through smaller weight separator first. If no
       // intersection, then this of course doesn't matter at all.
-      if (part.separators[clique.ceReceiveSeparators[0]].weight() <
+      if (part.separators[clique.ceReceiveSeparators[0]].weight() <=
 	  part.separators[clique.ceReceiveSeparators[1]].weight()) {
 	// do nothing
       } else {

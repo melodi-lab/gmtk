@@ -383,8 +383,11 @@ MDCPT::becomeAwareOfParentValues( vector< RandomVariable * >& parents)
   int offset = 0;
   for (unsigned i = 0; i < _numParents; i++) {
     if ( parents[i]->val < 0 || parents[i]->val >= cardinalities[i])
-      error("MDCPT:becomeAwareOfParentValues: Invalid parent value for parent %s(%d), parentValue = %d but card = %d\n",
-	    parents[i]->name().c_str(),parents[i]->frame(),parents[i]->val,cardinalities[i]);
+      error("ERROR:becomeAwareOfParentValues. Dense CPT %s, invalid parent value for parent %s(%d) (parent number %d), parentValue = %d but RV cardinality = %d\n",
+	    name().c_str(),
+	    parents[i]->name().c_str(),parents[i]->frame(),
+	    i,
+	    parents[i]->val,cardinalities[i]);
     offset += parents[i]->val*cumulativeCardinalities[i];
   }
   mdcpt_ptr = mdcpt.ptr + offset;
