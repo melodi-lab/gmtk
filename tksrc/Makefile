@@ -247,6 +247,8 @@ ensure-ci:
 		exit 1; \
 	fi
 
+# to make a new version, do something like:
+#	make VERSION='June12Working' version	
 version : ensure-ci
 	rcs "-n$(VERSION):" $(rcs_files)
 

@@ -98,3 +98,5 @@ XXX- todo, make sure that chunk n:m is valid.
      mode that changes the pointer if it is there).
     This would need to have objects that use DTs
     use the integer index rater than the pointer directly.
+
+- add a 'fail' tag to DT leaves.
