@@ -46,11 +46,7 @@ private:
 
 public:
 
-  DiscreteRandomVariable(char * _label, vartype vt, int card);
-/*
-  DiscreteRandomVariable(char * _label, vartype vt, int card)
-    : RandomVariable(_label, vt, card) {;}
-*/
+  DiscreteRandomVariable(string _label, vartype vt, int card);
 
   ////////////////////////////////////////////////
   // Assuming the parents have been allocated, this forces
@@ -89,6 +85,14 @@ public:
   DISCRETE_VARIABLE_TYPE cached_val;
   void cacheValue() {cached_val=val;}
   void restoreCachedValue() {val=cached_val;}
+
+    /////////////////////////////////////////////////////////////////////////
+    // stores a variable's value elsewhere
+    virtual void storeValue(VariableValue &vv) {vv.ival = val;}
+
+    /////////////////////////////////////////////////////////////////////////
+    // sets a variables value as specified
+    virtual void setValue(VariableValue &vv) {val = vv.ival;}
 
   void makeRandom() { 
     for (unsigned i=0;i<conditionalCPTs.size();i++) 
