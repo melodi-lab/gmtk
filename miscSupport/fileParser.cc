@@ -109,9 +109,14 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
 	// Lastly, add CWD to default CPP command options for include files
 	// (i.e., we look for include files in CWD only if all previous
 	// ones fail, cpp has this behavior.
-	cppCommand = cppCommand + " -I.";
+	cppCommand = cppCommand + string(" -I.");
 
-	cppCommand = cppCommand + string(" ") + string(_name);
+	// C++ STRING BUG: If we uncomment the following line
+	//  and comment the one after, it will produce a bug.
+	//cppCommand = cppCommand + (" ") + string(_name);
+	cppCommand = cppCommand + (" ") + path;
+
+	// printf("cppCommand = (%s)\n",cppCommand.c_str());
 	fh = ::popen(cppCommand.c_str(),"r");    
 	if (fh == NULL)
 	  error("ERROR, can't open file stream from (%s)",_name);
