@@ -91,17 +91,17 @@ Dense1DPMF::read(iDataStreamFile& is)
   int length;
   is.read(length,"Dense1DPMF::read, distribution length");
   if (length <= 0)
-    error("ERROR: DPMF '%s', file '%s', bad length (%d) < 0 in input",
-	  name().c_str(),
-	  is.fileName(),length);
+    error("ERROR: reading file '%s', DPMF '%s' has bad length (%d) < 0 in input",is.fileName(),name().c_str(),length);
   pmf.resize(length);
   for (int i=0;i<length;i++) {
     double prob;
     is.readDouble(prob,"Dense1DPMF::read, reading prob");
     if (prob < 0 || prob > 1)
-      error("ERROR: DPMF '%s', file '%s', bad pmf value (%g)",
+      error("ERROR: reading file '%s', DPMF '%s' has invalid probability value (%e), entry %d",
+	    is.fileName(),
 	    name().c_str(),
-	    is.fileName(),prob);
+	    prob,
+	    i);
     pmf[i] = prob;
   }
   setBasicAllocatedBit();
