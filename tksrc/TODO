@@ -1695,6 +1695,14 @@ Sun Mar 14 23:04:25 2004
     and all possible formulas, etc.
 
 
-
+Sun Mar 21 05:24:38 2004
+  - in inner inference loops, rather than have:
+        rv->begin()
+            computeProb
+        while (rv->next())
+  - have rv->next() also provide the probability, thereby
+    avoiding yet another virtual function call (which is expensive). 
+    i.e., have rv->next(prob) return true if prob was filled with the next probability.
+   
 
 
