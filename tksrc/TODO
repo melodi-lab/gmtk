@@ -206,3 +206,6 @@ X add VCID everywhere.
 - check for cardinalties in str file
 
 - make sure dlinks are checked somewhere for validity wrt a file
+
+- rething the EMable thing with the virtual functions, might
+  be a speedup there, esp. with emIncrement.
