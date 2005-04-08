@@ -124,6 +124,7 @@ static bool seedme = false;
 static unsigned verbosity = DEF_VERBOSITY;
 static bool print_version_and_exit = false;
 static unsigned seconds = 10;
+static bool noEPartition = false;
 static unsigned numTimes = 1;
 static bool multiTest = false;
 static int rlimitSlop = 2;
@@ -234,7 +235,13 @@ Arg Arg::Args[] = {
   Arg("times",Arg::Opt,numTimes,"Number of times to run program seconds seconds long (not multitest mode)."),
   Arg("multiTest",Arg::Opt,multiTest,"Run gmtkTime in multi-test mode, taking triangulation file names from command line."),
   Arg("slop",Arg::Opt,rlimitSlop,"In multiTest mode, number of additional seconds before fail-terminate is forced."),
+  Arg("noEPartition",Arg::Opt,noEPartition,"If true, do not run E partition (only [P C C ... C] skipping E)"),
+
+
   // Arg("limitBest",Arg::Opt,limitBest,"Limit running time to be approximately best seen so far.."),
+
+
+
 
   Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
 
@@ -621,7 +628,7 @@ main(int argc,char*argv[])
 	  unsigned numUsableFrames;
 	  numCurPartitionsDone = 0;
 	  if (probE && !island) {
-	    logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone);
+	    logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone,noEPartition);
 	    totalNumberPartitionsDone += numCurPartitionsDone;
 	    infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 		    segment,
@@ -1079,7 +1086,7 @@ main(int argc,char*argv[])
 	    unsigned numUsableFrames;
 	    child_info.numCurPartitionsDone = 0;
 	    if (probE && !island) {
-	      logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,child_info.numCurPartitionsDone);
+	      logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,child_info.numCurPartitionsDone,noEPartition);
 	      child_info.totalNumberPartitionsDone += child_info.numCurPartitionsDone;
 	      infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 		      segment,
