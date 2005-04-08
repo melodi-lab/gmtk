@@ -682,7 +682,8 @@ public:
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames);
   // version that does unrolling, and const. memory, & stops after timer interupt occurs.
   static bool probEvidenceTimeExpired;
-  logpr probEvidenceTime(const unsigned numFrames, unsigned& numUsableFrames, unsigned &numPartitionsDone);
+  logpr probEvidenceTime(const unsigned numFrames, unsigned& numUsableFrames, 
+			 unsigned &numPartitionsDone, const bool noE = false);
 
   // return the island's idea of the current prob of evidence
   logpr curProbEvidenceIsland() { return cur_prob_evidence; }

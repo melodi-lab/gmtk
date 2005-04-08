@@ -4509,7 +4509,8 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 logpr 
 JunctionTree::probEvidenceTime(const unsigned int numFrames,
 			       unsigned& numUsableFrames,
-			       unsigned& numPartitionsDone)
+			       unsigned& numPartitionsDone,
+			       const bool noE)
 {
 
   // first create the unrolled set of random variables corresponding
@@ -4597,22 +4598,30 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   }
 
   delete curPart;
-  curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-				      modifiedTemplateUnrollAmount*gm_template.S);
-  ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			*curPart,E_li_to_C,E1_n,partNo+1);
-  partNo++;
-  ceGatherIntoRoot(*curPart,
-		   E_root_clique,
-		   E1_message_order,
-		   E1_n,partNo);
 
-  // root clique of last partition did not do partition, since it
-  // never sent to next separator (since there is none). We explicitly
-  // call pruning on the root clique of the last partition.
-  curPart->maxCliques[E_root_clique].ceDoAllPruning();
+  // we have the option to skip E here.
+  if (!noE) {
+    // then do E.
+    curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
+					modifiedTemplateUnrollAmount*gm_template.S);
+    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
+			  *curPart,E_li_to_C,E1_n,partNo+1);
+    partNo++;
+    ceGatherIntoRoot(*curPart,
+		     E_root_clique,
+		     E1_message_order,
+		     E1_n,partNo);
+    
+    // root clique of last partition did not do partition, since it
+    // never sent to next separator (since there is none). We explicitly
+    // call pruning on the root clique of the last partition.
+    curPart->maxCliques[E_root_clique].ceDoAllPruning();
+    
+    res = curPart->maxCliques[E_root_clique].sumProbabilities();
+  } else {
+    curPart = NULL;
+  }
 
-  res = curPart->maxCliques[E_root_clique].sumProbabilities();
  finished:
   numPartitionsDone = partNo;
   
