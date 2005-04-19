@@ -1538,13 +1538,13 @@ sub start_boundary_searches
           { 
             $output_name = "$output_directory/$boundary_heuristic.$left_right.M$boundary_M.UB_$weight_UB_type.D_$disconnect_type.$str_basename.boundary";
 
-            print BOUNDARY_JOB_LIST "$boundary_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1\n";
+            print BOUNDARY_JOB_LIST "$boundary_line -outputTriangulatedFile $output_name.B -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1\n";
 
-            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.P -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP F -noReTriC T -noReTriE T 2>&1\n";
-            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.C -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC F -noReTriE T 2>&1\n";
-            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.E -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC T -noReTriE F 2>&1\n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.P -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP F -noReTriC T -noReTriE T 2>&1\n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.C -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC F -noReTriE T 2>&1\n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.E -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC T -noReTriE F 2>&1\n";
 
-            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 2>&1 ; ";  
+            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 -outputTriangulatedF $output_name 2>&1 ; ";  
             print MERGE_JOB_LIST "echo DONE WITH $output_name\n";
 
             $boundary_calls++;
@@ -1569,13 +1569,13 @@ sub start_boundary_searches
           { 
             $output_name = "$output_directory/$boundary_heuristic.$left_right.M$boundary_M.UB_$weight_UB_type.D_$disconnect_type.$str_basename.boundary";
 
-            print BOUNDARY_JOB_LIST "$boundary_line -outputTriangulatedFile $output_name -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1 \n";
+            print BOUNDARY_JOB_LIST "$boundary_line -outputTriangulatedFile $output_name.B -boundaryHeuristic $boundary_heuristic -jtwUB $weight_UB_type -forceLeftRight $left_right -disconnectFromObservedParent $disconnect_type -M $boundary_M 2>&1 \n";
  
-            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.P -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP F -noReTriC T -noReTriE T 2>&1 \n";
-            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.C -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC F -noReTriE T 2>&1 \n";
-            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name -outputTriangulatedFile $output_name.E -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC T -noReTriE F 2>&1 \n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.P -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP F -noReTriC T -noReTriE T 2>&1 \n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.C -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC F -noReTriE T 2>&1 \n";
+            print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.E -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC T -noReTriE F 2>&1 \n";
 
-            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 2>&1 ; ";
+            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 -outputTriangulatedFile $output_name 2>&1 ; ";
             print MERGE_JOB_LIST "echo DONE WITH $output_name\n";
 
             $boundary_calls++;
