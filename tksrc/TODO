@@ -2644,9 +2644,11 @@ Sat Jan  1 23:07:03 2005
      the last operation will be). When in doubt, load with a table
      or write out indivual parameters separately and then read back in jointly.
 
+
 Fri Jan  7 21:32:19 2005
   - DONE: add verbose messages to parameter reading (to give status updates on reading
          on long parameters).  
+
 
 Fri Jan 14 17:52:24 2005
   - system speedups
@@ -2716,7 +2718,7 @@ Fri Feb 18 20:14:44 2005
   - in addition, given a clique, the first thing we do is iterate through all the
     variables in the clique constructing an array of begin() and next() function pointers
     for each variable in the clique.
-
+    Q: but how to do this when virtual functions in RVs modify values coming from CPTs?
 
 Sat Feb 26 18:31:27 2005
   - docs, for -cpbeam, it is important for this to work not to have
@@ -2762,7 +2764,26 @@ Tue Apr  5 13:47:10 2005
     state probs. should have less splitting, high state probs. should have more splitting.
   - 
 
+Mon Apr 18 02:46:32 2005
+  - for speed:
+       - have a proper var sorting routine, that doesn't do everything through the generic topoloigcal sort.
+         I.e., when we start with cont. varialbe and go backwards, it might not leave much left to work with.
 
+Wed Apr 20 00:46:19 2005
+  - do conflict-directed backjumping not only over vars, but also over previous separators
+  - create one unified separator and variable routines, iterating seps first, so that we can
+     backjump over both vars and seps w/o C++ exceptions.
+  - get A* like heuristic working for cpbeam
+      - for cpbeam, figure out a way so that iterators iterate in descending order, so that
+        once we prune, we can prune the rest of the vals of the current variable being iterated.
+  - 
+  - Add new DT leaf formulas:
 
- 
+   allEqual(p1,p2,p3,7) which returns 1 if (p1==p2 && p2 == p3 && p3 == 7)
+   allDiff(p1,p2,p3,7) which returns 1 if none of p1, p2, p3, and 7 are the same.
+                        (i.e., p1 != p2 &&  p1 != p3 && p1 != 7 && p2 != p3  etc etc.)
+   allUnequal (same as allDiff)
+   increasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing
+   decreasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing
+
 
