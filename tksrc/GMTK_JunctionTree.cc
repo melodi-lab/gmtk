@@ -3996,10 +3996,18 @@ JunctionTree::collectEvidence()
   ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
 			jtIPartitions[partNo+1],E_li_to_C,E1_n,partNo+1);
   partNo++;
+
+  // it might be that E is the first partition as well, say if this is
+  // a static graph, and in this case we need in this case to skip the
+  // incomming separator, which doesn't exist.
+  if (numCoPartitions == 0 && P1.cliques.size() == 0)
+    E1.skipLISeparator();
   ceGatherIntoRoot(jtIPartitions[partNo],
 		   E_root_clique,
 		   E1_message_order,
 		   E1_n,partNo);
+  if (numCoPartitions == 0 && P1.cliques.size() == 0)
+    E1.useLISeparator();
 
 
   assert ( partNo == jtIPartitions.size()-1 );
@@ -4207,10 +4215,15 @@ JunctionTree::distributeEvidence()
   // set up appropriate name for debugging output.
   const char* prv_nm;
 
+  if (numCoPartitions == 0 && P1.cliques.size() == 0)
+    E1.skipLISeparator();
   deScatterOutofRoot(jtIPartitions[partNo],
 		     E_root_clique,
 		     E1_message_order,
 		     E1_n,partNo);
+  if (numCoPartitions == 0 && P1.cliques.size() == 0)
+    E1.useLISeparator();
+
 
   partNo--;
 
@@ -4463,10 +4476,15 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			*curPart,E_li_to_C,E1_n,partNo+1);
   partNo++;
+  if (numCoPartitions == 0 && P1.cliques.size() == 0)
+    E1.skipLISeparator();
   ceGatherIntoRoot(*curPart,
 		   E_root_clique,
 		   E1_message_order,
 		   E1_n,partNo);
+  if (numCoPartitions == 0 && P1.cliques.size() == 0)
+    E1.useLISeparator();
+
 
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
@@ -4607,10 +4625,16 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
     ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,E_li_to_C,E1_n,partNo+1);
     partNo++;
+
+    if (numCoPartitions == 0 && P1.cliques.size() == 0)
+      E1.skipLISeparator();
     ceGatherIntoRoot(*curPart,
 		     E_root_clique,
 		     E1_message_order,
 		     E1_n,partNo);
+    if (numCoPartitions == 0 && P1.cliques.size() == 0)
+      E1.useLISeparator();
+  
     
     // root clique of last partition did not do partition, since it
     // never sent to next separator (since there is none). We explicitly
@@ -5261,6 +5285,15 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   const unsigned numCoPartitions = modifiedTemplateUnrollAmount+1;
   unsigned partNo = 0;  
 
+  if (numCoPartitions == 0) {
+    // In this case, there is:
+    //    for LI: a P'=P, E'=[CE]
+    //    for RI: a P'=[P C], a E'=E
+    // In either case, it might be that P is empty.
+    if (P1.cliques.size() == 0)
+      E1.skipLISeparator();
+  }
+
   // this clears the shared caches. 
   clearCliqueSepValueCache();
 
@@ -5321,6 +5354,10 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   partPArray[0].p = NULL;
 
   partPArray.clear();
+
+  // turn it back on in all cases.
+  E1.useLISeparator();
+
 }
 
 
