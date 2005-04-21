@@ -2780,6 +2780,12 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
  *    is still in place. Any modifications not associated with verbose
  *    printing will need to be done in both places.
  *
+ *
+ *  TODO: when we find that all values of a variable cause a prune, don't back up to the previous variable (which 
+ *        might not be a parent),
+ *        rather back up to the latest parent of that variable and change its value. We might even
+ *        back out to the separators.
+ *
  * Preconditions:
  *
  *   Same as ceIterateAssignedNodesRecurse()
