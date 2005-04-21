@@ -1,3 +1,7 @@
+2005-04-21  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
+
+	* fixed bug with static (1 frame) graphs on E1 partition.
+
 2005-03-26  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
 
 	* fixed bug with dispositions not being re-sorted with variables in clique.
