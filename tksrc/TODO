@@ -2776,6 +2776,8 @@ Wed Apr 20 00:46:19 2005
   - get A* like heuristic working for cpbeam
       - for cpbeam, figure out a way so that iterators iterate in descending order, so that
         once we prune, we can prune the rest of the vals of the current variable being iterated.
+         - for sparse CPT's it is easy.
+
   - 
   - Add new DT leaf formulas:
 
@@ -2785,5 +2787,25 @@ Wed Apr 20 00:46:19 2005
    allUnequal (same as allDiff)
    increasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing
    decreasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing
+
+
+Mon Apr 25 15:49:15 2005
+  - for the constraint version of the algorithm,
+     for conflict-directed backtracking, keep track of two conditions:
+           1) if current variable failed itslef, jump back to one of
+              the parents/constraints for the current variable.
+           2) if the curent variable failed because of some later variable,
+              then jump back to the deepest child variable's parents/constraints.
+  - variable ordering for switching parents.
+
+
+Mon Apr 25 21:55:36 2005
+  - create a gmtkFilter that does filtering. This will be easy by
+    printing out sum normalized forward cliques during collect evidence, and
+    then printing out. We might need to do one step of distribute evidence starting
+    from the C depending on the triangulation of C.
+
+
+
 
 
