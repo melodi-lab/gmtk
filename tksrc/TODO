@@ -2786,7 +2786,9 @@ Wed Apr 20 00:46:19 2005
                         (i.e., p1 != p2 &&  p1 != p3 && p1 != 7 && p2 != p3  etc etc.)
    allUnequal (same as allDiff)
    increasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing
+   nonIncreasingOrder(p1,p2,p3) true if p1,p2,p3 are not increasing (decreasing or equal)
    decreasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing
+   nonDecreasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing are equal.
 
 
 Mon Apr 25 15:49:15 2005
