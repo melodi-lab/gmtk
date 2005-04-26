@@ -2789,6 +2789,7 @@ Wed Apr 20 00:46:19 2005
    nonIncreasingOrder(p1,p2,p3) true if p1,p2,p3 are not increasing (decreasing or equal)
    decreasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing
    nonDecreasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing are equal.
+   parity(p1,p2,p3) = 1 if (p1+p2+p3) is odd, and zero otherwise.
 
 
 Mon Apr 25 15:49:15 2005
