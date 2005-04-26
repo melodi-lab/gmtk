@@ -2800,7 +2800,7 @@ Mon Apr 25 15:49:15 2005
 
 
 Mon Apr 25 21:55:36 2005
-  - create a gmtkFilter that does filtering. This will be easy by
+  - create a gmtkFilter program that does filtering. This will be easy by
     printing out sum normalized forward cliques during collect evidence, and
     then printing out. We might need to do one step of distribute evidence starting
     from the C depending on the triangulation of C.
