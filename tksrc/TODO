@@ -2809,6 +2809,21 @@ Mon Apr 25 21:55:36 2005
     from the C depending on the triangulation of C.
 
 
+Tue Apr 26 21:30:04 2005
+  - create a new CPT type called a ConstraintCPT that
+    askes for a set of variables (the parents) and an observed
+    to be 1 child, and imposes the constraint with a given weight in the CPT.
+    The Constraint CPT is specified as a table of parent (unsigned integer) values and child score
+    (float) for that parent value.
+    Options:
+       - scores can default to unity (and thus need not be specified).
+       - scores can be in normal domain (so need to log them), meaning
+             scores are always non-negative.
+       - scores can be in natural log domain already, so can be positive or negative.
+
+
+
+
 
 
 
