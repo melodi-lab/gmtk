@@ -104,6 +104,8 @@ public:
     di_NGramCPT, // Ngram "language model" CPT
     di_FNGramCPT, // factored ngram "language model" CPT
     di_VECPT,    // Virtual Evidence CPT
+    di_LatticeNodeCPT,	// lattice node CPT
+    di_LatticeEdgeCPT,	// lattice edge CPT
     di_unknown
   };
   const DiscreteImplementaton cptType;
