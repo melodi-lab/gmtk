@@ -150,7 +150,9 @@ public:
     KW_NumFrames=32,
     KW_SegmentNum=33,
     KW_NumSegments=34,
-    KW_VECPT=35
+    KW_VECPT=35,
+    KW_LATTICENODECPT=36,
+    KW_LATTICEEDGECPT=37
   };
 
   // list of token keyword strings.
