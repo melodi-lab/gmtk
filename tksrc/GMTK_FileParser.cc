@@ -58,6 +58,8 @@
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_USCPT.h"
 #include "GMTK_VECPT.h"
+#include "GMTK_LatticeNodeCPT.h"
+#include "GMTK_LatticeEdgeCPT.h"
 #include "GMTK_Mixture.h"
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_GraphicalModel.h"
@@ -411,6 +413,8 @@ FileParser::fillKeywordTable()
     /* 33 */ "segmentNum",
     /* 34 */ "numSegments",
     /* 35 */ "VirtualEvidenceCPT",
+    /* 36 */ "LatticeNodeCPT",
+    /* 37 */ "LatticeEdgeCPT"
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -1483,7 +1487,7 @@ FileParser::parseDiscreteImplementation()
   ensureNotAtEOF("discrete implementation");
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
       || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT
-      || tokenInfo == KW_VECPT  ) {
+      || tokenInfo == KW_VECPT || tokenInfo == KW_LATTICENODECPT || tokenInfo == KW_LATTICEEDGECPT ) {
 
     if (tokenInfo == KW_MDCPT)
       curRV.discImplementations.push_back(CPT::di_MDCPT);
@@ -1497,6 +1501,10 @@ FileParser::parseDiscreteImplementation()
       curRV.discImplementations.push_back(CPT::di_FNGramCPT);
     else if (tokenInfo == KW_VECPT)
       curRV.discImplementations.push_back(CPT::di_VECPT);
+    else if (tokenInfo == KW_LATTICENODECPT)
+	    curRV.discImplementations.push_back(CPT::di_LatticeNodeCPT);
+    else if (tokenInfo == KW_LATTICEEDGECPT)
+	    curRV.discImplementations.push_back(CPT::di_LatticeEdgeCPT);
 
     consumeToken();
 
@@ -2501,12 +2509,76 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	      // TODO: need to remove the integer index code.
 	      assert(0);
 	    }
-	} else {
+	  } else if (rvInfoVector[i].discImplementations[j] == CPT::di_LatticeNodeCPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using LatticeNodeCPTs rather
+	    // then MDCPTs or MSCPTs. 
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a LatticeNodeCPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType == RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.latticeNodeCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.latticeNodeCptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent LatticeNodeCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.latticeNodeCpts[
+				  GM_Parms.latticeNodeCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // TODO: need to remove the integer index code.
+	      assert(0);
+	    }
+	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_LatticeEdgeCPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using LatticeEdgeCPTs rather
+	    // then MDCPTs or MSCPTs. 
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a LatticeEdgeCPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType == RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.latticeEdgeCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.latticeEdgeCptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent LatticeNodeCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.latticeEdgeCpts[
+				  GM_Parms.latticeEdgeCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // TODO: need to remove the integer index code.
+	      assert(0);
+	    }
+
+  	  } else {
 	  // Again, this shouldn't happen. If it does, something is wrong
 	  // with the parser code or some earlier code, and it didn't correctly
 	  // set the CPT type.
 	  assert ( 0 );
 	}
+
 
 
 	// do checking to ensure that CPTs specified are
@@ -2526,6 +2598,10 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		cptType = "FNGramCPT";
 	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_VECPT) {
 		cptType = "VirtualEvidenceCPT";
+	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_LatticeNodeCPT) {
+		cptType = "LatticeNodeCPT";
+	} else if (rvInfoVector[i].discImplementations[j] == CPT::di_LatticeEdgeCPT) {
+		cptType = "LatticeEdgeCPT";
 	}
 
 	// check to make sure this cpt matches this
@@ -2575,6 +2651,68 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	  }
 	  for ( unsigned par = 0; par < rv->condParentsVec(j).size(); par++ ) {
 	    if ( RV2DRV(rv->condParentsVec(j)[par])->cardinality != cpts[j]->parentCardinality(par) )
+	      error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rv->condParentsVec(j)[par]->name().c_str(),
+		    RV2DRV(rv->condParentsVec(j)[par])->cardinality,
+		    par,
+		    cptType.c_str(),
+		    cpts[j]->name().c_str(),
+		    cpts[j]->parentCardinality(par));
+	  }
+	} else if ( cpts[j]->cptType == CPT::di_LatticeNodeCPT ) {
+		// lattice node cpt only has one parent
+		if ( cpts[j]->numParents() != 1 )
+			error("Error: RV \"%s\" at frame %d (line %d), should have only one parent",
+				rvInfoVector[i].name.c_str(),
+				rvInfoVector[i].frame,
+				rvInfoVector[i].fileLineNumber);
+	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
+	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rvInfoVector[i].rvCard,
+		  cptType.c_str(),
+		  cpts[j]->name().c_str(),
+		  cpts[j]->card());
+	  }
+	  for (unsigned par=0;par<cpts[j]->numParents();par++) {
+	    if (RV2DRV(rv->condParentsVec(j)[par])->cardinality !=
+		cpts[j]->parentCardinality(par))
+	      error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
+		    rvInfoVector[i].name.c_str(),
+		    rvInfoVector[i].frame,
+		    rvInfoVector[i].fileLineNumber,
+		    rv->condParentsVec(j)[par]->name().c_str(),
+		    RV2DRV(rv->condParentsVec(j)[par])->cardinality,
+		    par,
+		    cptType.c_str(),
+		    cpts[j]->name().c_str(),
+		    cpts[j]->parentCardinality(par));
+	  }
+	} else if ( cpts[j]->cptType == CPT::di_LatticeEdgeCPT ) {
+		// lattice node cpt only has two parents
+		if ( cpts[j]->numParents() != 2 )
+			error("Error: RV \"%s\" at frame %d (line %d), should have only one parent",
+				rvInfoVector[i].name.c_str(),
+				rvInfoVector[i].frame,
+				rvInfoVector[i].fileLineNumber);
+	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
+	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber,
+		  rvInfoVector[i].rvCard,
+		  cptType.c_str(),
+		  cpts[j]->name().c_str(),
+		  cpts[j]->card());
+	  }
+	  for (unsigned par=0;par<cpts[j]->numParents();par++) {
+	    if (RV2DRV(rv->condParentsVec(j)[par])->cardinality !=
+		cpts[j]->parentCardinality(par))
 	      error("Error: RV \"%s\" at frame %d (line %d), cardinality of parent '%s' is %d, but %d'th parent of %s \"%s\" requires cardinality of %d.\n",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,

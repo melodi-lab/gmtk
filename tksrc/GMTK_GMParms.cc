@@ -48,6 +48,9 @@
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_VECPT.h"
 #include "GMTK_Vocab.h"
+#include "GMTK_LatticeADT.h"
+#include "GMTK_LatticeNodeCPT.h"
+#include "GMTK_LatticeEdgeCPT.h"
 #include "GMTK_NameCollection.h"
 
 // particular Gaussian components
@@ -113,6 +116,8 @@ GMParms::~GMParms()
   deleteObsInVector(vocabs);
   deleteObsInVector(ngramCpts);
   deleteObsInVector(fngramCpts);
+  deleteObsInVector(latticeAdts);
+  deleteObsInVector(latticeNodeCpts);
   deleteObsInVector(veCpts);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
@@ -144,6 +149,9 @@ void GMParms::add(Vocab* ob) { add(ob, vocabs, vocabsMap); }
 void GMParms::add(NGramCPT* ob) { add(ob,ngramCpts,ngramCptsMap); }
 void GMParms::add(FNGramCPT* ob) { add(ob,fngramCpts,fngramCptsMap); }
 void GMParms::add(FNGramImp* ob) { add(ob,fngramImps,fngramImpsMap); }
+void GMParms::add(LatticeADT* ob) { add(ob,latticeAdts,latticeAdtsMap); }
+void GMParms::add(LatticeNodeCPT* ob) { add(ob,latticeNodeCpts,latticeNodeCptsMap); }
+void GMParms::add(LatticeEdgeCPT* ob) { add(ob,latticeEdgeCpts,latticeEdgeCptsMap); }
 void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
@@ -699,6 +707,55 @@ void GMParms::readFNgramImps(iDataStreamFile& is, bool reset)
 }
 
 
+void GMParms::readLatticeAdts(iDataStreamFile& is, bool reset) {
+	unsigned num;
+	unsigned cnt;
+	unsigned start = 0;
+
+	is.read(num, "Can't read num Lattice CPTs");
+	if ( num > GMPARMS_MAX_NUM )
+		error("ERROR: number of Lattice CPTs (%d) exceeds maximum", num);
+
+	if ( reset ) {
+		start = 0;
+		latticeAdts.resize(num);
+		latticeNodeCpts.resize(num);
+		latticeEdgeCpts.resize(num);
+	} else {
+		start = latticeAdts.size();
+		latticeAdts.resize(start + num);
+		latticeNodeCpts.resize(start + num);
+		latticeEdgeCpts.resize(start + num);
+	}
+
+	for ( unsigned i = 0; i < num; i++ ) {
+		is.read(cnt, "Can't read Lattice CPT index");
+		if ( cnt != i )
+			error("ERROR: Lattice CPT count (%d), out of order in file '%s' line %d, expecting %d", cnt, is.fileName(),is.lineNo(), i);
+		LatticeADT* ob = new LatticeADT();
+		ob->read(is);
+		if ( latticeAdtsMap.find(ob->name()) != latticeAdtsMap.end() )
+			error("ERROR: Lattice CPT named '%s' already defined but is specified for a second time in file '%s' line %d", ob->name().c_str(), is.fileName(),is.lineNo());
+		latticeAdts[i+start] = ob;
+		latticeAdtsMap[ob->name()] = i + start;
+
+		// add node CPT
+		LatticeNodeCPT* ndCpt = new LatticeNodeCPT();
+		ndCpt->setLatticeADT(*ob);
+		ndCpt->setName(ob->name());
+		latticeNodeCpts[i+start] = ndCpt;
+		latticeNodeCptsMap[ob->name()] = i + start;
+
+		// add edge CPT
+		LatticeEdgeCPT* edgeCpt = new LatticeEdgeCPT();
+		edgeCpt->setLatticeADT(*ob);
+		edgeCpt->setName(ob->name());
+		latticeEdgeCpts[i+start] = edgeCpt;
+		latticeEdgeCptsMap[ob->name()] = i + start;
+	}
+}
+
+
 void GMParms::readVECpts(iDataStreamFile& is, bool reset)
 {
   unsigned num;
@@ -1055,6 +1112,7 @@ GMParms::readAll(iDataStreamFile& is)
   readVocabs(is);
   readNgramCpts(is);
   readFNgramImps(is);
+  readLatticeAdts(is);
   readVECpts(is);
 
   // next read definitional items
@@ -1178,7 +1236,6 @@ GMParms::read(
   // read a file consisting of a list of keyword,filename
   // pairs. the keyword says which structure to read in,
   // and the filename says where to get it.
-
   string keyword;
   string fileName;
   string binStatus;
@@ -1226,7 +1283,6 @@ GMParms::read(
 	    is.fileName(),is.lineNo(),fileName.c_str(),((*it).second)->binary(),binary_p);
     }
 
-
     if (keyword == "DPMF_IN_FILE") {
       readDPmfs(*((*it).second),false);
 
@@ -1265,6 +1321,9 @@ GMParms::read(
 
     } else if (keyword == "FNGRAM_CPT_IN_FILE") {
       readFNgramImps(*((*it).second),false);
+
+    } else if (keyword == "LATTICE_CPT_IN_FILE") {
+	    readLatticeAdts(*((*it).second),false);
 
     } else if (keyword == "VE_CPT_IN_FILE") {
       readVECpts(*((*it).second),false);

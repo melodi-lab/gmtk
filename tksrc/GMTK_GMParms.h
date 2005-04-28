@@ -52,6 +52,9 @@ class FNGramCPT;
 class FNGramImp;
 class VECPT;
 class Vocab;
+class LatticeADT;
+class LatticeNodeCPT;
+class LatticeEdgeCPT;
 
 class Component;
 class GaussianComponent;
@@ -243,6 +246,18 @@ public:
   void add(FNGramImp*);
 
   ///////////////////////////////////
+  // Collection of Lattice CPTs
+  vector<LatticeADT*> latticeAdts;
+  ObjectMapType latticeAdtsMap;
+  void add(LatticeADT*);
+  vector<LatticeNodeCPT*> latticeNodeCpts;
+  ObjectMapType latticeNodeCptsMap;
+  void add(LatticeNodeCPT*);
+  vector<LatticeEdgeCPT*> latticeEdgeCpts;
+  ObjectMapType latticeEdgeCptsMap;
+  void add(LatticeEdgeCPT*);
+
+  ///////////////////////////////////
   // Collection of Virtual Evidence "CPTs"
   vector<VECPT*> veCpts;
   ObjectMapType veCptsMap;
@@ -353,6 +368,7 @@ public:
   void readVocabs(iDataStreamFile& is, bool reset = false);
   void readNgramCpts(iDataStreamFile& is, bool reset = false);
   void readFNgramImps(iDataStreamFile& is, bool reset = false);
+  void readLatticeAdts(iDataStreamFile& is, bool reset = false);
   void readVECpts(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);
@@ -505,3 +521,4 @@ private:
 extern GMParms GM_Parms;
 
 #endif
+
