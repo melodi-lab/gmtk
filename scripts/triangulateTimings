@@ -1391,7 +1391,6 @@ sub open_time
     $error = 0;
     eval 
     {
-<<<<<<< triangulateTimings
       if ($global_triangulation_mode eq 'P') {
         $extra_options = '-gpr 0:6 -noEPartition';
       }
@@ -1403,9 +1402,7 @@ sub open_time
       }
  
       $timing_command_line = "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T $extra_options 2>&1 ";
-=======
-      $timing_command_line = "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ";
->>>>>>> 1.45
+
       print STDERR "OPENING:$timing_command_line\n"; 
 
       $pid = open2( $timing_script_output, $timing_script_input, 
