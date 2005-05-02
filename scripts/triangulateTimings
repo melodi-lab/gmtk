@@ -28,6 +28,8 @@ my $gmtk_tfmerge = 'gmtkTFmerge';
 ##############################################################################
 # State variables for basic methods 
 ##############################################################################
+my $global_triangulation_mode : shared = '';
+
 my $basic_once_index    : shared = 0;
 my $advanced_once_index : shared = 0;
 
@@ -577,7 +579,6 @@ sub generate_triangulations
   my $method;
   my $method_name;
   my $best_from_previous_section;
-  my $triangulation_mode;
   my $vcap_option;
   my $component_cache_option;
   my $trifile_name;
@@ -588,17 +589,8 @@ sub generate_triangulations
   my @vcap_options;
   my @component_cache_options;
 
-  if ($graph_has_continuous_obs)
-  { 
-    @vcap_options = ( 'COT', 'COM', 'COI', 'CT', 'CM', 'CI', 'OT', 'OM', 'OI', 
-      'T', 'M', 'I');
-    @component_cache_options = ('T', 'F');
-  }
-  else
-  {
-    @vcap_options = ( 'OT', 'OM', 'OI', 'T', 'M', 'I');
-    @component_cache_options = ('T');
-  }
+  @vcap_options = ( 'COT', 'COM', 'COI' );
+  @component_cache_options = ('T');
 
   ###########################################################################
   # Possibly allow an extra process for creating trifiles 
@@ -622,7 +614,7 @@ sub generate_triangulations
   #######################################################################
   if ($triangulateC) 
   {
-    $triangulation_mode = 'C'; 
+    $global_triangulation_mode = 'C'; 
 
     ###########################################################################
     # Phase 1, put the input triangulations on the queue 
@@ -695,7 +687,7 @@ sub generate_triangulations
           while ($method_name ne 'DONE')
           {
             make_trifile( $boundary_name, $boundary, $method_name, $method, 
-              $triangulation_mode );
+              $global_triangulation_mode );
             ($method, $method_name) = get_basic_triangulation_method();
           } 
 
@@ -766,7 +758,7 @@ sub generate_triangulations
           if (!grep /^$method_name$/, @basic_methods) 
           {
             make_trifile( $boundary_name, $boundary, $method_name, $method, 
-              $triangulation_mode );
+              $global_triangulation_mode );
           }
     
           ($method, $method_name) = get_advanced_triangulation_method();
@@ -832,6 +824,8 @@ sub generate_triangulations
 
   } # if triangulate C
 
+  $global_triangulation_mode = 'E';
+
   ###########################################################################
   # If C wasn't triangulated on this run, find the fastest input 
   # triangulation and fastest timing option  
@@ -842,9 +836,18 @@ sub generate_triangulations
     {
       foreach $vcap_option (@vcap_options)
       {
-        if (($vcap_option ne $initial_vcap) &&
-            ($component_cache_option ne $initial_component_cache))
-        {
+          #####################################################################
+          # Restart gmtkTime using new vcap 
+          ####################################################################
+          {
+            lock($timing_thread_idle);
+            for ($i=0; $i<$nmbr_timing_processes ; $i++) {
+              enqueue_trifile(
+                "RESTART_${vcap_option}_${component_cache_option}");
+            }
+            $timing_thread_idle_sem->down($nmbr_timing_processes ); 
+          }
+
           $i = 0; 
           foreach $input_triangulation (@input_triangulations) 
           {
@@ -859,27 +862,15 @@ sub generate_triangulations
         
               enqueue_trifile($output_triangulation);
               $needed_trifiles->down;
-              $boundary_queue->enqueue( $output_triangulation );
+              push @boundary_list, $output_triangulation;
             }
             $i++ 
           }
-        
-          #####################################################################
-          # Restart gmtkTime using new vcap 
-          ####################################################################
-          {
-            lock($timing_thread_idle);
-            for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-              enqueue_trifile(
-                "RESTART_${vcap_option}_${component_cache_option}");
-            }
-            $timing_thread_idle_sem->down($nmbr_timing_processes ); 
-          }
-        }
+
       }
     }
   }
- 
+
   foreach $boundary_item (@boundary_list)
   {
     if ($best_boundary_index eq $boundary_item->{INDEX})
@@ -888,19 +879,25 @@ sub generate_triangulations
         '.E.best_from_previous';
     }
   }
+
   (defined $best_from_previous_section) or die "Problem finding boundary";
   copy( $best_trifile, $best_from_previous_section );
  
   #######################################################################
   # Restart gmtkTime using best vcap 
   #######################################################################
+
   {
     lock($timing_thread_idle);
     for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-      enqueue_trifile("RESTART_${best_vcap}_${best_caching}");
+      enqueue_trifile("REBOOT_${best_vcap}_${best_caching}");
     }
     $timing_thread_idle_sem->down($nmbr_timing_processes ); 
   }
+
+  $best_partitions = 0;
+  enqueue_trifile($best_from_previous_section);
+  $needed_trifiles->down;
 
   #######################################################################
   # Triangulate Epilogue  
@@ -908,7 +905,6 @@ sub generate_triangulations
   if ($triangulateE) 
   {
     print "------------- Triangulating E -------------\n"; 
-    $triangulation_mode = 'E';
     $boundary      = $best_from_previous_section; 
     $boundary_name = 'BE'; 
 
@@ -921,7 +917,7 @@ sub generate_triangulations
     while ($method_name ne 'DONE')
     {
       make_trifile( $boundary_name, $boundary, $method_name, $method, 
-        $triangulation_mode );
+        $global_triangulation_mode );
       ($method, $method_name) = get_basic_triangulation_method();
     }
 
@@ -936,7 +932,7 @@ sub generate_triangulations
       if (!grep /^$method_name$/, @basic_methods) 
       {
         make_trifile( $boundary_name, $boundary, $method_name, $method, 
-          $triangulation_mode );
+          $global_triangulation_mode );
       }
       ($method, $method_name) = get_advanced_triangulation_method();
     }
@@ -955,12 +951,28 @@ sub generate_triangulations
   copy( $best_trifile, $best_from_previous_section );
  
   #######################################################################
+  # Restart gmtkTime using best vcap 
+  #######################################################################
+  $global_triangulation_mode = 'P';
+
+  {
+    lock($timing_thread_idle);
+    for ($i=0; $i<$nmbr_timing_processes ; $i++) {
+      enqueue_trifile("REBOOT_${best_vcap}_${best_caching}");
+    }
+    $timing_thread_idle_sem->down($nmbr_timing_processes ); 
+  }
+ 
+  $best_partitions = 0;
+  enqueue_trifile($best_from_previous_section);
+  $needed_trifiles->down;
+
+  #######################################################################
   # Triangulate Prologue 
   #######################################################################
   if ($triangulateP) 
   {
     print "------------- Triangulating P -------------\n"; 
-    $triangulation_mode = 'P';
     $boundary      = $best_from_previous_section; 
     $boundary_name = 'BP'; 
 
@@ -973,24 +985,8 @@ sub generate_triangulations
     while ($method_name ne 'DONE')
     {
       make_trifile( $boundary_name, $boundary, $method_name, $method, 
-        $triangulation_mode );
+        $global_triangulation_mode );
       ($method, $method_name) = get_basic_triangulation_method();
-    }
-
-    #######################################################################
-    # Run advanced methods (minus the basic methods) using best vcap
-    #######################################################################
-    reset_advanced_methods();
-
-    ($method, $method_name) = get_advanced_triangulation_method();
-    while ($method_name ne 'DONE')
-    {
-      if (!grep /^$method_name$/, @basic_methods) 
-      {
-        make_trifile( $boundary_name, $boundary, $method_name, $method, 
-          $triangulation_mode );
-      }
-      ($method, $method_name) = get_advanced_triangulation_method();
     }
   }
 
@@ -1126,6 +1122,18 @@ sub dequeue_and_time_triangulation
     elsif ($trifile_name =~ /RESTART_/) 
     {
       ($vcap, $caching) = $trifile_name =~ /RESTART_(.+)_(.+)/; 
+      $processing_command = 1;
+    }
+    elsif ($trifile_name =~ /REBOOT_/) 
+    {
+      print STDERR "CLOSING timing script\n";
+      ($vcap, $caching) = $trifile_name =~ /REBOOT_(.+)_(.+)/; 
+
+      close $timing_script_input;
+      close $timing_script_output;
+      waitpid $crrnt_pid, 0; 
+      ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
+
       $processing_command = 1;
     }
     elsif ($trifile_name =~ /EXIT/) 
@@ -1377,12 +1385,27 @@ sub open_time
   my $timing_script_input;
   my $timing_script_output;
   my $timing_command_line;
+  my $extra_options;
 
   do {
     $error = 0;
     eval 
     {
+<<<<<<< triangulateTimings
+      if ($global_triangulation_mode eq 'P') {
+        $extra_options = '-gpr 0:6 -noEPartition';
+      }
+      elsif ($global_triangulation_mode eq 'C') {
+        $extra_options = '-noEPartition T';
+      }
+      elsif ($global_triangulation_mode eq 'E') {
+        $extra_options = '-gpr 0:20';
+      }
+ 
+      $timing_command_line = "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T $extra_options 2>&1 ";
+=======
       $timing_command_line = "$timing_export_line $timing_script -strFile $str_file -seconds $timing_length -multiTest T 2>&1 ";
+>>>>>>> 1.45
       print STDERR "OPENING:$timing_command_line\n"; 
 
       $pid = open2( $timing_script_output, $timing_script_input, 
@@ -1398,13 +1421,14 @@ sub open_time
       $error = 1;
       chomp($output);
       if ( !$boundary_searches_done ) {
-        sleep(60);
+        #sleep(60);
+        sleep(10);
       }
       else {
         print "Problem opening timing script:'$output'\n";
       }
       waitpid $pid, 0; 
-      sleep(15);
+      sleep(5);
     }
 
   } while ($error);
@@ -1544,8 +1568,7 @@ sub start_boundary_searches
             print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.C -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC F -noReTriE T 2>&1\n";
             print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.E -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC T -noReTriE F 2>&1\n";
 
-            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 -outputTriangulatedF $output_name 2>&1 ; ";  
-            print MERGE_JOB_LIST "echo DONE WITH $output_name\n";
+            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 -outputTriangulatedF $output_name 2>&1 ; echo DONE WITH $output_name\n";
 
             $boundary_calls++;
           }
@@ -1575,8 +1598,7 @@ sub start_boundary_searches
             print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.C -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC F -noReTriE T 2>&1 \n";
             print TRI_JOB_LIST "$triangulate_line -inputTriangulatedFile $output_name.B -outputTriangulatedFile $output_name.E -disconnectFromObservedParent $disconnect_type -M $boundary_M -noReTriP T -noReTriC T -noReTriE F 2>&1 \n";
 
-            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 -outputTriangulatedFile $output_name 2>&1 ; ";
-            print MERGE_JOB_LIST "echo DONE WITH $output_name\n";
+            print MERGE_JOB_LIST "$gmtk_tfmerge -strFile $str_file -Ptrifile $output_name.P -Ctrifile $output_name.C -Etrifile $output_name.E -numBackupFiles 0 -outputTriangulatedFile $output_name 2>&1 ; echo DONE WITH $output_name\n";
 
             $boundary_calls++;
           }
@@ -1592,15 +1614,14 @@ sub start_boundary_searches
   ############################################################################
   # Start searches and enque the boundaries as they finish
   ############################################################################
-print `date`;
-print "Start boundaries\n";
+  print `date`;
+  print "Start boundaries\n";
   print STDERR `cat $boundary_job_list | $boundary_export_line`;
-print `date`;
-print "Start initial job\n";
+  print `date`;
+  print "Start heuristic triangulate job\n";
   print STDERR `cat $initial_job_list | $boundary_export_line`;
-
-print `date`;
-print "Start merge jobjob\n";
+  print `date`;
+  print "Start merge job\n";
   open RUN_JOBS, "cat $merge_job_list | $boundary_export_line |";
 
   $total_boundaries = 0; 
@@ -1628,7 +1649,6 @@ print "Start merge jobjob\n";
     print "Boundary search completed\n";
   }
 
-print `date`;
   $boundary_queue->enqueue( 'BOUNDARY_SEARCHES_DONE' ); 
 }
 
@@ -1715,7 +1735,7 @@ sub make_trifile_thread
       $tmp_tri_file, $triangulation_mode );
     if ($triangulation_status < 0) {
       print "Triangulation failed\n";
-      sleep(15);
+      sleep(5);
     } 
   } while($triangulation_status< 0);
 
