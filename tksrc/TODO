@@ -2845,6 +2845,27 @@ Tue May  3 17:35:00 2005
     Q: how do we detect such an independent tree of values?
 
 
+Tue May  3 20:50:38 2005
+   - change RV and CPT interface to have a new routine, rv->nextAbove(cur_p,thres)
+     which returns the next probability that is above thres or returns failure. This can
+     be done rapidly by doing a quick scan with comparison tests rather than
+     repeadly calling virtual functions, returning cur_p, multiplying it in
+     and then checking at that point. This would be in liu of sorting
+     the CPTs and then pruning the rest of it ever falls below a threshold.
+
+Tue May  3 22:13:05 2005
+   - see email in gmtk emails to sheila from today around this time. Problem
+     with many disconnected observed parents making triangulations job harder.
+
+
+
+
+
+
+
+     
+
+
 
 
 
