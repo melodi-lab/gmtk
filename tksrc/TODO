@@ -2821,6 +2821,32 @@ Tue Apr 26 21:30:04 2005
              scores are always non-negative.
        - scores can be in natural log domain already, so can be positive or negative.
 
+Mon May  2 16:45:39 2005
+  - for RV and CPT iterators, have begin return if there is a next right away
+    to avoid the extra call to next that will fail for deterministic functions.
+    I.e., begin() returns true if the next call to next will not fail, but
+     begin() returns false if the next call to next is guaranteed to fail, useful
+     for deterministic CPTs.
+
+Tue May  3 17:35:00 2005
+  - during inference, within a clique, when expanding a clique, if there
+    is a sub-tree that is identical and used/expanded multiple times for
+    different values of previous variables (meaning the previous variables
+    do not effect the expansion of the subtree), we should:
+         1) figure this out offline (and be able to)
+         2) expand the subtree once, and the first time we expand the subtree
+            we store it in a packed table with the entries consisting of the
+            RV values and the score,
+         3) the next time we encounter the first variable of the table, rather than
+            expanding out the tree again, we just iterate through the table, unpacking
+            variables, multiplying in the score, and then jumping down to the
+            variable just after the last variable in the table.
+    This is similar to the "good" processing in value elimination.
+    Q: how do we detect such an independent tree of values?
+
+
+
+
 
 
 
