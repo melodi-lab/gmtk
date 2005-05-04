@@ -563,6 +563,27 @@ iDataStreamFile::readLine(char *&line, size_t n, char *msg) {
   return true;
 }
 
+/*-
+ *-----------------------------------------------------------------------
+ * iDataStreamFile::peekChar
+ *      Peek one char from the buffer
+ *
+ * Results:
+ *      None.
+ * 
+ * Side Effects:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
+char iDataStreamFile::peekChar() {
+	if ( Binary )
+		error("cannot peek in binary file.");
+
+	prepareNext();
+	return *buffp;
+}
+
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////

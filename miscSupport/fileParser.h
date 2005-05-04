@@ -116,6 +116,7 @@ class iDataStreamFile : public ioDataStreamFile {
     char *msg=NULL );
   
   bool readLine(char *&lineptr, size_t n, char *msg = NULL);
+  char peekChar();
 
   template <class T>
   bool readArray(T* location, const int length, char *msg = NULL) 
