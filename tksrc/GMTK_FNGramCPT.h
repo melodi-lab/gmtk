@@ -43,7 +43,7 @@
 #include "GMTK_DiscRV.h"
 #include "fileParser.h"
 #include "vshash_map.h"
-#include "shash_map.h"
+#include "strhash_map.h"
 #include "hash_mtable.h"
 #include "logp.h"
 
@@ -85,8 +85,8 @@ protected:
 
 	/** parent for the factored language mdoel */
 	struct ParentType {
-		void read(iDataStreamFile &ifs, shash_map<char, unsigned> &tagMap);
-		void parseFromString(char* str, shash_map<char, unsigned> &tagMap);
+		void read(iDataStreamFile &ifs, strhash_map<unsigned> &tagMap);
+		void parseFromString(char* str, strhash_map<unsigned> &tagMap);
 		bool operator == (const ParentType &parent) const;
 
 		// attributes
@@ -208,7 +208,7 @@ public:
 
 	void setNumParents(const unsigned nParents);
 
-	void setTagMap(shash_map<char, unsigned> &tagMap) {_tagMap = tagMap;}
+	void setTagMap(strhash_map<unsigned> &tagMap) {_tagMap = tagMap;}
 	void read(iDataStreamFile &ifs);
 	void readFNGramSpec(iDataStreamFile &ifs);
 	void readLMFile(std::vector<Vocab*> vocabs);
@@ -247,13 +247,13 @@ protected:
 	unsigned _numParents;				// number of parents
 	ParentType *_parents;				// parent specifications
 	std::vector<unsigned> cardinalities;
-	shash_map<char, unsigned> _tagMap;	// parents tag map
+	strhash_map<unsigned> _tagMap;			// parents tag map
 
 	unsigned _numberOfBGNodes;			// total number of possible backing-off graph nodes
 	BackoffGraphNode *_bgNodes;			// backing-off graph nodes
 
 	char *_countFileName;				// count file. might be useful for some backing-off strategies
-	char *_lmFileName;					// language model file in sudo ARPA format
+	char *_lmFileName;				// language model file in sudo ARPA format
 
 	HashMTable<logpr> *_probabilities;
 	HashMTable<unsigned> *_counts;

@@ -206,28 +206,26 @@ void FNGramImp::read(iDataStreamFile &is) {
 	is.readStr(tag, "Can't read FNGramCPT vocab map");
 	const char seps[] = "-:";
 	char* tok = strtok(tag, seps);
-	char tagChar;
+	char* tagStr;
 	unsigned tagId = 0;
 	std::vector<Vocab*> vocabPtrs;
 	while ( tok != NULL ) {
 		// get the tag char
-		tagChar = tok[0];
-		if ( _tagMap.find(tagChar) != NULL )
-			error("Warning: tag %c was defined before in file %s, 2nd-time at line %d",
-			      tagChar,
-			      is.fileName(),is.lineNo());
+		tagStr = tok;
+		if ( _tagMap.contains(tagStr) )
+			error("Warning: tag %s was defined before in file %s, 2nd-time at line %d", tagStr, is.fileName(),is.lineNo());
 
 		// read in the vocab object name
 		if ( (tok = strtok(NULL, seps)) == NULL )
-			error("Error: tag %c should followed by vocab name in %s line %d",
-			      tagChar, is.fileName(),is.lineNo());
+			error("Error: tag %s should followed by vocab name in %s line %d",
+			      tagStr, is.fileName(),is.lineNo());
 
 		std::string vocabName = std::string(tok);
 
 		if ( GM_Parms.vocabsMap.find(vocabName) ==  GM_Parms.vocabsMap.end())
 			error("ERROR: reading file '%s' line %d, NGramCPT '%s' specifies Vobab name '%s' that does not exist", is.fileName(),is.lineNo(), _name.c_str(), vocabName.c_str());
 		vocabPtrs.push_back(GM_Parms.vocabs[GM_Parms.vocabsMap[vocabName]]);
-		_tagMap.insert(tagChar, tagId++);
+		_tagMap.insert(tagStr, tagId++);
 
 		tok = strtok(NULL, seps);
 	}
@@ -299,18 +297,18 @@ void FNGramImp::read(iDataStreamFile &is) {
  *-----------------------------------------------------------------------
  */
 void FNGramImp::readFNGramSpec(iDataStreamFile &ifs) {
-	char c;
-
+	string childstr;
+	ifs.prepareNext();
 	// read in child node name
-	ifs.readChar(c);
-	unsigned* it = _tagMap.find(c);
-	if ( it == NULL )
-		error("Error: tag %c not found in %s", c, ifs.fileName());
-	_childIndex = *it;
+	ifs.readStringUntil(childstr, ':', true, "reading child spec in flm");
+	if ( ! _tagMap.find(childstr.c_str(), _childIndex) )
+		error("Error: tag %s not found in %s", childstr.c_str(), ifs.fileName());
 
-	ifs.readChar(c);
-	if ( c != ':' )
-		error("Error: expecting ':' in flm file %s", ifs.fileName());
+	// we allow no space between tag and ':'
+	// in this case c will not be ':'.
+	char c = ifs.peekChar();
+	if ( c == ':' )
+		ifs.readChar(c);
 
 	// read in parents
 	unsigned nParents;
@@ -337,7 +335,6 @@ void FNGramImp::readFNGramSpec(iDataStreamFile &ifs) {
 
 	// now read in the nodes
 	// this version only supports one line per node
-	char *line = new char [2048];
 	for ( i = 0; i < numberOfSpecifiedNodes; i++ ) {
 		// read the id of the node
 		char *str = NULL;
@@ -347,15 +344,15 @@ void FNGramImp::readFNGramSpec(iDataStreamFile &ifs) {
 		// of parents set.  So instead of putting this into
 		// type BackingoffGraphNode, I put the code here.
 		unsigned nodeId = parseNodeString(str);
+
 		if ( nodeId >= _numberOfBGNodes )
 			error("Error: node specifier must be between 0x0 and 0x%x inclusive in %s", _numberOfBGNodes - 1, ifs.fileName());
 		delete [] str;
 		str = NULL;
 
 		readBackoffGraphNode(ifs, _bgNodes[nodeId], nodeId);
-	}
 
-	delete [] line;
+	}
 
 	// poste process the reading of flm specifying file
 	_bgNodes[_numberOfBGNodes - 1].valid = true;
@@ -909,12 +906,17 @@ unsigned FNGramImp::parseNodeString(char *str) {
 		//      0b11101
 		// which is returned.
 
+		char *parentStr = p;
+		while (*p && !isdigit(*p) && *p != '+' && *p != '-') {
+			p++;
+		}
+		char tmp = *p;
+		*p = '\0';
+
 		ParentType parent;
-		unsigned* it = _tagMap.find(*p);
-		if ( it == NULL )
-			error("Error: parent '%c' not exist", *p);
-		parent.index = *it;
-		p++;
+		if ( ! _tagMap.find(parentStr, parent.index) )
+			error("Error: parent '%s' not exist", parentStr);
+		*p = tmp;
 
 		// be careful about the sign
 		// if we see W1 it means W(-1)
@@ -1631,43 +1633,43 @@ double FNGramImp::backoffValueRSubCtxW(unsigned val, BackoffNodeStrategy parents
  *
  *-----------------------------------------------------------------------
  */
-void FNGramImp::ParentType::read(iDataStreamFile &ifs, shash_map<char, unsigned> &tagMap) {
-	char c;
-	ifs.readChar(c);
-	unsigned* it = tagMap.find(c);
-	if ( it == NULL )
-		error("Error: tag %c not found in %s", c, ifs.fileName());
-	index = *it;
+void FNGramImp::ParentType::read(iDataStreamFile &ifs, strhash_map<unsigned> &tagMap) {
+	string prnt;
+	ifs.readStringUntil(prnt, '(', true);
 
-	ifs.readChar(c);
-	if ( c != '(' )
-		error("Error: reading flm. expecting ( in %s", ifs.fileName());
+	if ( ! tagMap.find(prnt.c_str(), index) )
+		error("Error: tag %s not found in %s", prnt.c_str(), ifs.fileName());
 
 	ifs.readInt(offset);
 
+	char c;
 	ifs.readChar(c);
 	if ( c != ')' )
-		error("Error: reading flm. expecting ( in %s", ifs.fileName());
+		error("Error: reading flm. expecting '(' but get '%c' in %s", ifs.fileName(), c);
 }
 
 
-void FNGramImp::ParentType::parseFromString(char* str, shash_map<char, unsigned> &tagMap) {
+void FNGramImp::ParentType::parseFromString(char* str, strhash_map<unsigned> &tagMap) {
 	if ( str == NULL )
 		error("Error: string is null in FNGramCPT::ParentType::parseFromString");
 
-	unsigned* it = tagMap.find(str[0]);
-	if ( it == NULL )
-		error("Error: tag %c not found in %s", str[0], str);
-	index = *it;
+	char *p = str;
+	while ( *p && (*p != '(') )
+		p++;
+	char tmp = *p;
+	*p = '\0';
 
-	if ( str[1] != '(' )
-		error("Error: expecting ( in %s", str);
-	char* end = strchr(str, ')');
+	if ( ! tagMap.find(str, index) )
+		error("Error: tag %s not found", str);
+
+	*p = tmp;
+
+	char* end = strchr(p, ')');
 	if ( end == NULL )
 		error("Error: expecting ( in %s", str);
 	*end = '\0';
 
-	offset = atoi(str + 2);
+	offset = atoi(p + 1);
 }
 
 /*-
