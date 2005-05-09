@@ -824,8 +824,6 @@ sub generate_triangulations
 
   } # if triangulate C
 
-  $global_triangulation_mode = 'E';
-
   ###########################################################################
   # If C wasn't triangulated on this run, find the fastest input 
   # triangulation and fastest timing option  
@@ -871,40 +869,44 @@ sub generate_triangulations
     }
   }
 
-  foreach $boundary_item (@boundary_list)
-  {
-    if ($best_boundary_index eq $boundary_item->{INDEX})
-    {
-      $best_from_previous_section = $boundary_item->{NAME}.
-        '.E.best_from_previous';
-    }
-  }
-
-  (defined $best_from_previous_section) or die "Problem finding boundary";
-  copy( $best_trifile, $best_from_previous_section );
- 
-  #######################################################################
-  # Restart gmtkTime using best vcap 
-  #######################################################################
-
-  {
-    lock($timing_thread_idle);
-    for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-      enqueue_trifile("REBOOT_${best_vcap}_${best_caching}");
-    }
-    $timing_thread_idle_sem->down($nmbr_timing_processes ); 
-  }
-
-  $best_partitions = 0;
-  enqueue_trifile($best_from_previous_section);
-  $needed_trifiles->down;
-
   #######################################################################
   # Triangulate Epilogue  
   #######################################################################
   if ($triangulateE) 
   {
+    $global_triangulation_mode = 'E';
+
+    foreach $boundary_item (@boundary_list)
+    {
+      if ($best_boundary_index eq $boundary_item->{INDEX})
+      {
+        $best_from_previous_section = $boundary_item->{NAME}.
+          '.E.best_from_previous';
+      }
+    }
+
+    #print "BEST FROM PREV: $best_from_previous_section\n";
+
+    (defined $best_from_previous_section) or die "Problem finding boundary";
+    copy( $best_trifile, $best_from_previous_section );
+   
+    #######################################################################
+    # Restart gmtkTime using best vcap 
+    #######################################################################
+
+    {
+      lock($timing_thread_idle);
+      for ($i=0; $i<$nmbr_timing_processes ; $i++) {
+        enqueue_trifile("REBOOT_${best_vcap}_${best_caching}");
+      }
+      $timing_thread_idle_sem->down($nmbr_timing_processes ); 
+    }
+
     print "------------- Triangulating E -------------\n"; 
+    $best_partitions = 0;
+    enqueue_trifile($best_from_previous_section);
+    $needed_trifiles->down;
+
     $boundary      = $best_from_previous_section; 
     $boundary_name = 'BE'; 
 
@@ -947,31 +949,31 @@ sub generate_triangulations
     }
   }
 
-  (defined $best_from_previous_section) or die "Problem finding boundary";
-  copy( $best_trifile, $best_from_previous_section );
- 
-  #######################################################################
-  # Restart gmtkTime using best vcap 
-  #######################################################################
-  $global_triangulation_mode = 'P';
-
-  {
-    lock($timing_thread_idle);
-    for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-      enqueue_trifile("REBOOT_${best_vcap}_${best_caching}");
-    }
-    $timing_thread_idle_sem->down($nmbr_timing_processes ); 
-  }
- 
-  $best_partitions = 0;
-  enqueue_trifile($best_from_previous_section);
-  $needed_trifiles->down;
-
   #######################################################################
   # Triangulate Prologue 
   #######################################################################
   if ($triangulateP) 
   {
+    $global_triangulation_mode = 'P';
+
+    (defined $best_from_previous_section) or die "Problem finding boundary";
+    copy( $best_trifile, $best_from_previous_section );
+   
+    #######################################################################
+    # Restart gmtkTime using P specific options 
+    #######################################################################
+    {
+      lock($timing_thread_idle);
+      for ($i=0; $i<$nmbr_timing_processes ; $i++) {
+        enqueue_trifile("REBOOT_${best_vcap}_${best_caching}");
+      }
+      $timing_thread_idle_sem->down($nmbr_timing_processes ); 
+    }
+   
+    $best_partitions = 0;
+    enqueue_trifile($best_from_previous_section);
+    $needed_trifiles->down;
+
     print "------------- Triangulating P -------------\n"; 
     $boundary      = $best_from_previous_section; 
     $boundary_name = 'BP'; 
@@ -1331,9 +1333,8 @@ sub check_best
 
   $crrnt_time = time() - $start_time;
 
-  printf "%-8d%-8d%-8d%-3s%-39s%-5s%-2s %4e", $crrnt_time, 
+  printf "%-8d%-8d%-3s%-39s%-5s%-2s %4e", $crrnt_time, 
     int($cumulative_time+0.5), 
-    int($crrnt_time-$cumulative_time+0.5), 
     $boundary, $method, $vcap, $caching, 
     $nmbr_partitions;
 
