@@ -223,7 +223,7 @@ my $moves_accepted;
 
 $moves_accepted = 0;
 my $moves_attempted = 0;
-#while($moves_accepted<$total_iterations)
+
 while($moves_attempted < $total_iterations)
 {
   @changed_edges = change_edge($G);
@@ -414,16 +414,6 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
   print "frame : $frame\n"; 
   print "{\n"; 
 
-  if ($nmbr_frames == 1)
-  {
-    print  "   variable : dummy {\n";
-    print  "      type: discrete hidden cardinality 2;\n"; 
-    print  "      switchingparents: nil;\n"; 
-    printf "      conditionalparents: nil\n"; 
-    print "         using DeterministicCPT(\"dummy_0_DtrmnstcCPT\");\n";
-    print "   }\n\n";
-  }
-
   for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
   {
     if ($nmbr_frames==1) {
@@ -455,9 +445,6 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
     print "      conditionalparents: ";
 
     @parent_names = (); 
-    if (($nmbr_frames == 1) && ($node_index == 0)) {
-      @parent_names = ('dummy(0)', @parent_names); 
-    }
 
     @parent_indices = $G->predecessors($vertex);
     for($prnt_index=0; $prnt_index<(scalar @parent_indices); $prnt_index++)
@@ -510,24 +497,12 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
 
 if ($nmbr_frames == 1)
 {
-  print  "frame : 1\n";   
-  print  "{\n";
-  print  "   variable : dummy {\n";
-  print  "      type: discrete hidden cardinality 2;\n"; 
-  print  "      switchingparents: nil;\n"; 
-  print  "      conditionalparents: dummy(-1) using DeterministicCPT(\"dummy_1_DtrmnstcCPT\");\n";
-  print  "   }\n";
-
-  print  "   variable : dummy_2 {\n";
-  print  "      type: discrete hidden cardinality 2;\n"; 
-  print  "      switchingparents: nil;\n"; 
-  print  "      conditionalparents: dummy(0) using DeterministicCPT(\"dummy_1_DtrmnstcCPT\");\n"; 
-  print  "   }\n";
-  print  "}\n\n";
+  printf "chunk 0:0\n\n";
 }
-
-printf "chunk 1:1\n\n";
-
+else
+{
+  printf "chunk 1:1\n\n";
+}
 
 ##############################################################################
 # Write master file 
@@ -554,28 +529,10 @@ if (defined $master_file_name)
   print MASTER "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n";
   print MASTER "DT_IN_FILE inline\n\n";
 
-  if ($nmbr_frames == 1) {
-    $nmbr_deterministic_CPT += 2; 
-  }
-
   print MASTER "$nmbr_deterministic_CPT  % Number of decision trees\n\n";
 
   my $DT_count;
   $DT_count = 0;
-
-  if ($nmbr_frames == 1) {
-    print  MASTER "$DT_count  % DT number\n";
-    $DT_count++; 
-    print  MASTER "dummy_0_DT\n";
-    printf MASTER "0 %% Number of parents\n";
-    printf MASTER "   -1 0\n\n";
-
-    print  MASTER "$DT_count  % DT number\n";
-    $DT_count++; 
-    print  MASTER "dummy_1_DT\n";
-    printf MASTER "1 %% Number of parents\n";
-    printf MASTER "   -1 0\n\n";
-  }
 
   foreach $vertex (@sorted_vertices)
   {
@@ -618,22 +575,6 @@ if (defined $master_file_name)
   print MASTER "$nmbr_deterministic_CPT  % Number of decision trees\n\n";
 
   $DT_count = 0;
-
-  if ($nmbr_frames == 1) {
-    print  MASTER "$DT_count  % DT number\n";
-    $DT_count++; 
-    print  MASTER "dummy_0_DtrmnstcCPT\n";
-    printf MASTER "0 %% Number of parents\n";
-    printf MASTER "2\n"; 
-    print  MASTER "dummy_0_DT\n\n";
-
-    print  MASTER "$DT_count  % DT number\n";
-    $DT_count++; 
-    print  MASTER "dummy_1_DtrmnstcCPT\n";
-    printf MASTER "1 %% Number of parents\n";
-    printf MASTER "2 2\n"; 
-    print  MASTER "dummy_1_DT\n\n";
-  }
 
   foreach $vertex (@sorted_vertices)
   {
