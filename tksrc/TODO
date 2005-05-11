@@ -2858,8 +2858,43 @@ Tue May  3 22:13:05 2005
      with many disconnected observed parents making triangulations job harder.
 
 
+Tue May 10 14:00:20 2005
+   - when compiling a VESEP, interate variables in increasing cardinality (rather than arbitrarily).
+     Also, when iterating parents, check if there any deterministic relationship between
+     the parents, and if so, iterate them out according to that relationship rather than
+     based on just prod. of cardinalities.
+   - optimize hash tables. In hash functions, during table build insertions, sometimes
+     we know we'll only be inserting unique keys. Create a insertUnique() function that
+     speeds up insertion by not redundantly checking for key equality (i.e., it assumes
+     that the keys will alwasy be different when a collision occurs).
+   - (something else in the GH paper).
 
+Tue May 10 14:19:41 2005
+  - have a generic variable order version of iterate that can take any of:
+      - separator
+      - VE separator
+      - unassigned variable
+      - assigned variable
+    and do this in a dynamic order.
+    Also, chooses the next thing to use if any based on previous values.
+      VE separators should be choosen only optionally (sometimes we might
+      skip them entirely, which potentially changes the assignment of later
+      variables).
+  - have a generalized notion of VEseparators, so that rather than having to,
+    say ,have a table of a,b representing a=b, we can just have the relation
+    a=b, so that when we switch on a, it assignes b to a.
 
+Tue May 10 16:42:18 2005
+  - potential bug: when cpbeam, need sometimes to call cpt->end() to reclaim storage for FNGramCPT and similar things.
+  - when there are a cluster of variables that have many MTCPTs associated with them within the cluster,
+    it may be efficient to run over all sets of assignments and do it as a constraint rather than a set of MTCPTs.
+  - connection between FSM minimization and SAT solvers.
+
+Tue May 10 21:37:14 2005
+  - create new option to JT creation to try to find and to use chain if it exists in the triangulation
+    (so that it is more of a branchwidth).
+
+ 
 
 
 
