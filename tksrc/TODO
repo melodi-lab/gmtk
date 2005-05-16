@@ -2894,7 +2894,12 @@ Tue May 10 21:37:14 2005
   - create new option to JT creation to try to find and to use chain if it exists in the triangulation
     (so that it is more of a branchwidth).
 
- 
+Mon May 16 15:28:39 2005
+  - another time/space tradeoff: In a clique, we don't need to store values for
+    the variables that are a determinisitic function of other variables that
+    are in the clique. This will cut down on size potentially (if the det. variable
+    is large cardinality) at the time expense of needing to set the det. values when
+    project down to separators.
 
 
 
