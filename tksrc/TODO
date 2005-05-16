@@ -2900,7 +2900,13 @@ Mon May 16 15:28:39 2005
     are in the clique. This will cut down on size potentially (if the det. variable
     is large cardinality) at the time expense of needing to set the det. values when
     project down to separators.
+    (mention this also in Tri jounral paper).
 
+Mon May 16 16:06:08 2005
+  - clique printing. In addition to posterior probabilities for cliques, have ability to print out also
+    entropy of clique (good for when cliques have lots of entries since for binary variable cliques not
+    to many, but with large cardinalities or for man variables, printing out posteriors on cliques might
+    be to much. Also think about printing out MIs of subsets of variables for cliques.
 
 
      
