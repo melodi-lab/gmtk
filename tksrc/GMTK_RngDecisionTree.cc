@@ -82,6 +82,9 @@ map<RngDecisionTree::EquationClass::tokenEnum,
   RngDecisionTree::EquationClass::twoValFunctionToken;
 map<RngDecisionTree::EquationClass::tokenEnum, 
   RngDecisionTree::EquationClass::formulaCommand> 
+  RngDecisionTree::EquationClass::manyValFunctionToken;
+map<RngDecisionTree::EquationClass::tokenEnum, 
+  RngDecisionTree::EquationClass::formulaCommand> 
   RngDecisionTree::EquationClass::variableToken;
 
 map<RngDecisionTree::EquationClass::tokenEnum, unsigned> 
@@ -898,6 +901,7 @@ RngDecisionTree::EquationClass::EquationClass()
     function["median"] = TOKEN_MEDIAN;
     function["min"]    = TOKEN_MIN;
     function["mod"]    = TOKEN_MOD;
+    function["not_equal"] = TOKEN_ALL_NOT_EQUAL;
     function["rotate"] = TOKEN_ROTATE;
     function["xor"]    = TOKEN_BITWISE_XOR;
 
@@ -954,6 +958,8 @@ RngDecisionTree::EquationClass::EquationClass()
     twoValFunctionToken[TOKEN_DIVIDE_FLOOR_FUNCTION] = COMMAND_DIVIDE_FLOOR;
     twoValFunctionToken[TOKEN_DIVIDE_ROUND_FUNCTION] = COMMAND_DIVIDE_ROUND;
     twoValFunctionToken[TOKEN_MOD]          = COMMAND_MOD;
+
+    manyValFunctionToken[TOKEN_ALL_NOT_EQUAL] = COMMAND_ALL_NOT_EQUAL;
 
     // Special cases
     // TOKEN_MEDIAN => COMMAND_MEDIAN
@@ -1106,6 +1112,32 @@ RngDecisionTree::EquationClass::evaluateFormula(
         if (stack[last] < 0) { 
           stack[last] = -stack[last];
         }
+        break;
+
+      case COMMAND_ALL_NOT_EQUAL:
+        int  index_1;
+        int  index_2;
+        bool all_not_equal; 
+    
+        operand = GET_OPERAND(commands[crrnt_cmnd]); 
+        all_not_equal = true;
+
+        for( index_1=(stack.stackSize()-operand); 
+             (index_1<stack.stackSize()) && (all_not_equal); 
+             index_1++)
+        {
+          for(index_2=index_1+1; index_2<stack.stackSize(); index_2++)
+          {
+            if (stack[index_1] == stack[index_2]) 
+            {
+              all_not_equal = false;
+              break;
+            }
+          }
+        }
+
+        stack[stack.stackSize()-operand] = all_not_equal;
+        stack.pop_back(operand-1);
         break;
  
       case COMMAND_BITWISE_AND: 
@@ -1941,6 +1973,53 @@ RngDecisionTree::EquationClass::parseFactor(
         commands.push_back(new_command);
         changeDepth( -1, depth );
         getToken(formula, token); 
+      }
+      //////////////////////////////////////////////////////////////////////
+      // Functions which takes >=2 operands and the function 
+      // evaluator evaluates all operands at once
+      //////////////////////////////////////////////////////////////////////
+      else if (manyValFunctionToken[token.token] != COMMAND_INVALID) {
+
+        unsigned nmbr_operands = 0;
+
+        next_token = token.token;
+
+        getToken(formula, token); 
+        if (token.token != TOKEN_LEFT_PAREN) {
+          string error_message = "Expecting left parenthesis at '" + 
+            formula + "'";
+          throw(error_message);
+        }
+
+        getToken(formula , token); 
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+        nmbr_operands++; 
+        if (token.token != TOKEN_COMMA) {
+          string error_message = "Function requires at least two operands"; 
+          throw(error_message);
+        }
+
+        getToken(formula, token);
+        parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+        nmbr_operands++; 
+
+        while (token.token == TOKEN_COMMA) {
+          getToken(formula, token);
+          parseExpression(token, formula, commands, LOWEST_PRECEDENCE, depth);
+          nmbr_operands++; 
+        }
+
+        if (token.token != TOKEN_RIGHT_PAREN) {
+          string error_message = "Expecting right parenthesis at '" + 
+            formula + "'";
+          throw(error_message);
+        }
+
+        new_command = MAKE_COMMAND( manyValFunctionToken[next_token], 
+          nmbr_operands );
+        commands.push_back(new_command);
+        changeDepth( -(nmbr_operands-1), depth );
+        getToken(formula , token); 
       }
       //////////////////////////////////////////////////////////////////////
       // Handle to median function separately
@@ -3077,6 +3156,7 @@ void test_formula()
 
   correct = true;
 
+
   formula = "cc";
   correct &= dt.testFormula( formula, vars, &child, 1000000 );
 
@@ -3281,6 +3361,21 @@ void test_formula()
 
     correct &= dt.testFormula( formula, vars, &child, answer );
   }
+
+  formula = "not_equal( 0, 0 )";
+  correct &= dt.testFormula( formula, vars, &child, 0 );
+
+  formula = "not_equal( 0, 1 )";
+  correct &= dt.testFormula( formula, vars, &child, 1 );
+
+  formula = "not_equal( 7, 3+4, p0-1, 7, 7, 7, 7 ) + 4";
+  correct &= dt.testFormula( formula, vars, &child, 4 );
+
+  formula = "4+not_equal( 7, 3+5, p0-2, 9, 10, 11, 12, 13, 14, 14 )";
+  correct &= dt.testFormula( formula, vars, &child, 4 );
+
+  formula = "not_equal( 7, 3+5, p0-2, 9, 10, 11, 12, 13, 14, 15, 16 )";
+  correct &= dt.testFormula( formula, vars, &child, 1 );
 
 
   ////////////////////////////////////////////////////////////////////// 
@@ -3538,7 +3633,7 @@ void test_dts()
 int
 main(int argc,char *argv[])
 {
-
+/*
   printf("sizeof RngDecisionTree::Node = %d\n",sizeof(RngDecisionTree::Node));
   printf("sizeof EquationClass = %d\n",sizeof(RngDecisionTree::EquationClass));
   printf("sizeof BP_Range = %d\n",sizeof(BP_Range));
@@ -3548,12 +3643,12 @@ main(int argc,char *argv[])
   printf("sizeof NonLeafNodeRngsStruct = %d\n",sizeof(RngDecisionTree::NonLeafNodeRngsStruct));
   printf("sizeof LeafNodeValStruct = %d\n",sizeof(RngDecisionTree::LeafNodeValStruct));
   printf("sizeof LeafNodeEquationStruct = %d\n",sizeof(RngDecisionTree::LeafNodeEquationStruct));
+*/
 
   // Test the formula parser 
+  test_formula();
 
-  // test_formula();
-
-  test_dts();
+  //test_dts();
 
 }
 
