@@ -897,13 +897,13 @@ RngDecisionTree::EquationClass::EquationClass()
     function["ceil_divide"]  = TOKEN_DIVIDE_CEIL_FUNCTION;
     function["floor_divide"] = TOKEN_DIVIDE_FLOOR_FUNCTION;
     function["round_divide"] = TOKEN_DIVIDE_ROUND_FUNCTION;
-    function["max"]    = TOKEN_MAX;
-    function["median"] = TOKEN_MEDIAN;
-    function["min"]    = TOKEN_MIN;
-    function["mod"]    = TOKEN_MOD;
-    function["not_equal"] = TOKEN_ALL_NOT_EQUAL;
-    function["rotate"] = TOKEN_ROTATE;
-    function["xor"]    = TOKEN_BITWISE_XOR;
+    function["max"]     = TOKEN_MAX;
+    function["median"]  = TOKEN_MEDIAN;
+    function["min"]     = TOKEN_MIN;
+    function["mod"]     = TOKEN_MOD;
+    function["all_diff"] = TOKEN_ALL_DIFFERENT;
+    function["rotate"]  = TOKEN_ROTATE;
+    function["xor"]     = TOKEN_BITWISE_XOR;
 
     variable["cardinality_child"]   = TOKEN_CARDINALITY_CHILD;
     variable["cc"]                  = TOKEN_CARDINALITY_CHILD;
@@ -959,7 +959,7 @@ RngDecisionTree::EquationClass::EquationClass()
     twoValFunctionToken[TOKEN_DIVIDE_ROUND_FUNCTION] = COMMAND_DIVIDE_ROUND;
     twoValFunctionToken[TOKEN_MOD]          = COMMAND_MOD;
 
-    manyValFunctionToken[TOKEN_ALL_NOT_EQUAL] = COMMAND_ALL_NOT_EQUAL;
+    manyValFunctionToken[TOKEN_ALL_DIFFERENT] = COMMAND_ALL_DIFFERENT;
 
     // Special cases
     // TOKEN_MEDIAN => COMMAND_MEDIAN
@@ -1114,29 +1114,29 @@ RngDecisionTree::EquationClass::evaluateFormula(
         }
         break;
 
-      case COMMAND_ALL_NOT_EQUAL:
+      case COMMAND_ALL_DIFFERENT:
         int  index_1;
         int  index_2;
-        bool all_not_equal; 
+        bool all_different; 
     
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        all_not_equal = true;
+        all_different = true;
 
         for( index_1=(stack.stackSize()-operand); 
-             (index_1<stack.stackSize()) && (all_not_equal); 
+             (index_1<stack.stackSize()) && (all_different); 
              index_1++)
         {
           for(index_2=index_1+1; index_2<stack.stackSize(); index_2++)
           {
             if (stack[index_1] == stack[index_2]) 
             {
-              all_not_equal = false;
+              all_different = false;
               break;
             }
           }
         }
 
-        stack[stack.stackSize()-operand] = all_not_equal;
+        stack[stack.stackSize()-operand] = all_different;
         stack.pop_back(operand-1);
         break;
  
@@ -3362,19 +3362,19 @@ void test_formula()
     correct &= dt.testFormula( formula, vars, &child, answer );
   }
 
-  formula = "not_equal( 0, 0 )";
+  formula = "all_diff( 0, 0 )";
   correct &= dt.testFormula( formula, vars, &child, 0 );
 
-  formula = "not_equal( 0, 1 )";
+  formula = "all_diff( 0, 1 )";
   correct &= dt.testFormula( formula, vars, &child, 1 );
 
-  formula = "not_equal( 7, 3+4, p0-1, 7, 7, 7, 7 ) + 4";
+  formula = "all_diff( 7, 3+4, p0-1, 7, 7, 7, 7 ) + 4";
   correct &= dt.testFormula( formula, vars, &child, 4 );
 
-  formula = "4+not_equal( 7, 3+5, p0-2, 9, 10, 11, 12, 13, 14, 14 )";
+  formula = "4+all_diff( 7, 3+5, p0-2, 9, 10, 11, 12, 13, 14, 14 )";
   correct &= dt.testFormula( formula, vars, &child, 4 );
 
-  formula = "not_equal( 7, 3+5, p0-2, 9, 10, 11, 12, 13, 14, 15, 16 )";
+  formula = "all_diff( 7, 3+5, p0-2, 9, 10, 11, 12, 13, 14, 15, 16 )";
   correct &= dt.testFormula( formula, vars, &child, 1 );
 
 
