@@ -2738,6 +2738,8 @@ Sat Mar  5 17:17:49 2005
 Wed Mar 16 18:01:22 2005
   - add a viterbi training appraoch to EM training (i.e., backward pass does viterbi, and rather
     than sum, we just train gaussian using viterbi path).
+     - also have N-best viterbi EM training, training on the N-best list, weighted by normalized
+       score.
 
 Thu Mar 17 13:50:47 2005
   - add DT constraint leaf nodes: I.e.,
@@ -2908,9 +2910,16 @@ Mon May 16 16:06:08 2005
     to many, but with large cardinalities or for man variables, printing out posteriors on cliques might
     be to much. Also think about printing out MIs of subsets of variables for cliques.
 
-
-     
-
+Tue May 17 18:22:30 2005
+  - finish gmtkSample, so that you can sample not so much from p(x_{1:N}) but instead from
+     p(X_{V\E}|X_E), i.e., sample from the posterior distribution of the JT given the evidence.
+     This can be done by sampling from cliques in the junction tree and by renormalizing each
+     clique as a function of the current values of the incomming separators. Create an array
+     of clique entries that correspond to the entries that have the same values as the variables
+     of the incomming separators. 
+      - compare: viterbi training vs. sample training vs. "typical" training.
+      - add a "sample training" appraoch to EM, where rather than iterating over all values,
+        we just sample from the distribution N times per observation vector.
 
 
 
