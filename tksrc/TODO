@@ -2945,9 +2945,24 @@ Thu May 19 17:34:17 2005
              Lewis, D.M., Interpolato r, Computer Arithmetic,
              1993. Proceedings., 11th Symposium on , 29 June-2 July 1993, Pages:2-9.
 
+Thu May 19 18:04:37 2005
+  - unityScore CPT viterbi: Is it possible for unity score CPTs when used to make
+    it such that viterbi can produce different scores for different triangulations?
+    No. But sum of final clique might change for different triangulations when
+    in viterbi mode.
 
+Fri May 20 00:22:02 2005
+   - in hash table, use the insertUnique() idea when doing a hash resize.
+     I.e., need a version of  entryOf() routine that does not check for
+     equality, since for a hash set or hash map, when we resize, we're
+     guaranteed that each insert will be unique, so not-empty guarantees
+     inequality.
+   - search for all uses of hash tasbles to use insertUnique().
 
- 
+Fri May 20 14:38:26 2005
+  -  add a neural network (multi-layered MLP) CPT.
+  -  add an SVM binary and multi-way CDT.
+
 
 
 
