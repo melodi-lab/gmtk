@@ -2861,7 +2861,8 @@ Tue May  3 22:13:05 2005
 
 
 Tue May 10 14:00:20 2005
-   - when compiling a VESEP, interate variables in increasing cardinality (rather than arbitrarily).
+   - when compiling a VESEP, interate variables in increasing cardinality (rather than arbitrarily),
+       so that the longest loop is deeply nested.
      Also, when iterating parents, check if there any deterministic relationship between
      the parents, and if so, iterate them out according to that relationship rather than
      based on just prod. of cardinalities.
@@ -2869,7 +2870,8 @@ Tue May 10 14:00:20 2005
      we know we'll only be inserting unique keys. Create a insertUnique() function that
      speeds up insertion by not redundantly checking for key equality (i.e., it assumes
      that the keys will alwasy be different when a collision occurs).
-   - (something else in the GH paper).
+   - (something else in the GH paper) == form JT as chain if it is possible to do so
+      with current set of cliques.
 
 Tue May 10 14:19:41 2005
   - have a generic variable order version of iterate that can take any of:
@@ -2916,14 +2918,36 @@ Tue May 17 18:22:30 2005
      This can be done by sampling from cliques in the junction tree and by renormalizing each
      clique as a function of the current values of the incomming separators. Create an array
      of clique entries that correspond to the entries that have the same values as the variables
-     of the incomming separators. 
+     of the incomming separators. While doing so, sum up the value of the clique and form
+     the cumulative array as well, then uniformly sample from 0 to the sum, and use binary search
+     in the cumulative array to find the appropriate clique entry index, then instantiate that
+     clique entry and proceed to the next clique.
       - compare: viterbi training vs. sample training vs. "typical" training.
       - add a "sample training" appraoch to EM, where rather than iterating over all values,
         we just sample from the distribution N times per observation vector.
 
 
+Thu May 19 17:34:17 2005
+  - new faster log table implementation.
+     Log table implementation of f(x) = log(1+exp(x)), instead of
+     doing this as a linear table, do it using interpolation with
+     different density sampling. Use high-order bits to index into bucket
+     and in a given bucket low-order bits to find location in interpolation.
+     (higher density sampling near y-axis). This should significantly reduce
+     needed table size while maintaining (or perhaps increasing) accuracy, thus
+     reducing demands on L1 cache. But we'd need to do interpolation.
+     See papers:
+          wan99: 
+             Wan, Y., Khalil, M.A., Wey, C.L., logarithmic numbers and
+             logic implementatino, IEE Proc. Comput. Digit. Tehc, Vol. 146, No.
+             6. November 1999.
+          lewis93:
+             Lewis, D.M., Interpolato r, Computer Arithmetic,
+             1993. Proceedings., 11th Symposium on , 29 June-2 July 1993, Pages:2-9.
 
 
+
+ 
 
 
 
