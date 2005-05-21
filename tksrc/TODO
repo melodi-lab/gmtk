@@ -2960,11 +2960,9 @@ Fri May 20 00:22:02 2005
    - search for all uses of hash tasbles to use insertUnique().
 
 Fri May 20 14:38:26 2005
-  -  add a neural network (multi-layered MLP) CPT.
+  -  add a neural network (multi-layered MLP) CPT. NeuralCPT, MLP-CPT
   -  add an SVM binary and multi-way CDT.
-
-
-
+  -  docs: email too email from today on 'pruning, triangulation, scores, and CPT -> clique assignment'
 
 
 

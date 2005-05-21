@@ -1019,7 +1019,11 @@ main(int argc,char*argv[])
 	  }
 	  printf("%d: ",iteration);
 
-	  double curRate = (double)child_info.totalNumberPartitionsDone/userTime;
+	  double curRate;
+	  if (userTime > 0.0) 
+	    curRate = (double)child_info.totalNumberPartitionsDone/userTime;
+	  else
+	    curRate = 0.0;
 	  printf("Inference stats: %0.2f seconds, %d segments + %d residual partitions, %d total partitions, %0.3e partitions/sec\n",
 		 userTime,
 		 child_info.totalNumberSegmentsDone,

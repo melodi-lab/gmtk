@@ -639,7 +639,7 @@ main(int argc,char*argv[])
 	infoMsg(IM::Low,"Done Distributing Evidence\n");
 
 	if (JunctionTree::viterbiScore)
-	  infoMsg(IM::SoftWarning,"Note: Clique sums will be different since viteri option is active\n");
+	  infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
 	if (IM::messageGlb(IM::Low)) {
 	  myjt.printAllCliquesProbEvidence();
 	  probe = myjt.probEvidence();
