@@ -1018,11 +1018,13 @@ public:
 
   void deReceiveFromIncommingSeparator(JT_InferencePartition& part);
 
-  logpr setCliqueToMaxCliqueValue();
-
-
   // sum up the probabilities in the current clique and return their value.
   logpr sumProbabilities();
+
+  // compute the max probability and return its value, and also
+  // optionally sets the clique to its max value.
+  logpr maxProbability(bool setCliqueToMaxValue = true);
+
   // print all clique values and prob to given file.
   void printCliqueEntries(FILE*f,const char*str=NULL,const bool normalize = false);
   
@@ -1316,6 +1318,9 @@ class InferenceSeparatorClique : public IM
       // TODO: make this an unsigned* to be able
       // todo n-best.
       unsigned backPointer;
+      // pointer to array of nbest backpointers.
+      // use sign bit for 'used' status.
+      // unsigned *nBestList;
     };
 
     // probability for distribute evidence pass

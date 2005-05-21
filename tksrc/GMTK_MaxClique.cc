@@ -2865,6 +2865,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
       removeZeroTag:
 	// check for possible zero (could occur with
 	// zero score or observations).
+	// TODO: could do cpbeam pruning here and see if 
+	//       parray[nodeNumber-1]*cur_p falls below threshold pruning if it does.
 	if (cur_p.essentially_zero()) {
 	  // Since we have zero here, we cancel iterations of all
 	  // subsequent variables right now, rather than iterate them
@@ -4987,11 +4989,13 @@ sumProbabilities()
 
 
 
+
 /*-
  *-----------------------------------------------------------------------
- * InferenceMaxClique::setCliqueToMaxCliqueValue()
+ * InferenceMaxClique::maxProbability()
  *
- *    This routine just sets the clique to the clique value to the one
+ *    This routine just computes the max clique probabiltiy and
+ *    optionally sets the clique to the clique value to the one
  *    that has maximum score. It sets all RVs to the values associated
  *    with the clique value that has maximum score.
  *    
@@ -5015,7 +5019,7 @@ sumProbabilities()
  */
 logpr
 InferenceMaxClique::
-setCliqueToMaxCliqueValue()
+maxProbability(bool setCliqueToMaxValue)
 {
 
   if (origin.hiddenNodes.size() == 0) {
@@ -5035,13 +5039,15 @@ setCliqueToMaxCliqueValue()
       }
     }
 
-    const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
-    if (imc_nwwoh_p) {
-      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[max_cvn].val[0]),
-			   (unsigned**)discreteValuePtrs.ptr);
-    } else {
-      origin.packer.unpack((unsigned*)cliqueValues.ptr[max_cvn].ptr,
-			   (unsigned**)discreteValuePtrs.ptr);
+    if (setCliqueToMaxValue) {
+      const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
+      if (imc_nwwoh_p) {
+	origin.packer.unpack((unsigned*)&(cliqueValues.ptr[max_cvn].val[0]),
+			     (unsigned**)discreteValuePtrs.ptr);
+      } else {
+	origin.packer.unpack((unsigned*)cliqueValues.ptr[max_cvn].ptr,
+			     (unsigned**)discreteValuePtrs.ptr);
+      }
     }
 
     return max_cvn_score;

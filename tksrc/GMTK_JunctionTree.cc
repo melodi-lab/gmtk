@@ -1853,7 +1853,7 @@ JunctionTree::assignRVToClique(const char *const partName,
     numberOfTimesAssigned++;
 
     infoMsg(IM::Max,
-	    "Part %s: RV and its parents in clique, assigning random variable %s(%d) to clique %d\n",
+	    "Part %s: RV %s(%d) and its parents in clique %d\n",
 	    partName,
 	    rv->name().c_str(),rv->frame(),root);
 
@@ -1973,6 +1973,17 @@ JunctionTree::assignRVToClique(const char *const partName,
       // We've now computed a bunch of heursitcs, push them
       // into an array in priority order to be scored later
       vector<double> score;
+
+      // most important, distance from root, fail first, prune first.
+      score.push_back(distance_from_root);
+      // next most, break ties with weight of clique, encourage fail first principle
+      score.push_back(weight);
+      // next, if lots of parents in clique, adding this here might help prune.
+      score.push_back(num_parents_with_probability);      
+      // break ties with number of children, likely to help others prune.
+      score.push_back(numChildren);
+
+#if 0
       if (rv->discrete()) {
 	DiscRV* drv = (DiscRV*)rv;
 	// 1st thing pushed has highest priority.
@@ -2002,6 +2013,7 @@ JunctionTree::assignRVToClique(const char *const partName,
 	// RV is continue. Then perfer lots of parents with probability.
 	score.push_back(num_parents_with_probability);      
       }
+#endif
 
       // done inserting heuristicss, now insert the score and the
       // current clique into the set.
@@ -4804,7 +4816,7 @@ JunctionTree::setRootToMaxCliqueValue(const unsigned part)
   // return the sum of probs for the root (right interface) clique of the given partition.
   infoMsg(IM::Mod,"^^^ setting JT root to max clique value: part = %d (%s)\n",
 	  part,partPArray[part].nm);
-  return partPArray[part].p->maxCliques[partPArray[part].ri].setCliqueToMaxCliqueValue();
+  return partPArray[part].p->maxCliques[partPArray[part].ri].maxProbability();
 }
 void
 JunctionTree::emIncrementIsland(const unsigned part,
@@ -5370,6 +5382,9 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
  *   been called all the way to E's root clique, this function will
  *   return the probabilty of the evidence prob(E).
  *
+ *   Note that if we are in viterbi mode, then rather than summing
+ *   we return the score of the maximum value clique entry.
+ *
  * See Also:
  *   probEvidence() above, the other (overloaded) version which is
  *   a const. mem version of collectEvidence().
@@ -5393,15 +5408,26 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 logpr
 JunctionTree::probEvidence()
 {
-
-  if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
-    return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
-      sumProbabilities();
-  else {
-    // this means that E is empty, we use the root clique of the last
-    // Co partition.
-    return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
-      sumProbabilities();
+  if (viterbiScore) {
+    if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
+      return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
+	maxProbability();
+    else {
+      // this means that E is empty, we use the root clique of the last
+      // Co partition.
+      return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
+	maxProbability();
+    }
+  } else {
+    if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
+      return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
+	sumProbabilities();
+    else {
+      // this means that E is empty, we use the root clique of the last
+      // Co partition.
+      return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
+	sumProbabilities();
+    }
   }
 }
 
@@ -5439,10 +5465,10 @@ JunctionTree::setRootToMaxCliqueValue()
 {
   if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
     return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
-      setCliqueToMaxCliqueValue();
+      maxProbability();
   else 
     return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
-      setCliqueToMaxCliqueValue();
+      maxProbability();
 }
 
 

@@ -263,7 +263,7 @@ readMaxCliques(iDataStreamFile& is)
     unsigned cliqueNo;
     is.read(cliqueNo,"clique number value");
     if (cliqueNo != i)
-      error("ERROR: reading file %s, bad cliqueNo (= %d) when reading cliques, out of sequence, should be = %d, file '%s' line %d\n",
+      error("ERROR: reading file %s, line %d, bad cliqueNo (= %d) when reading cliques, out of sequence, should be = %d instead.\n",
 	    is.fileName(),is.lineNo(),cliqueNo,i);
     
     unsigned cliqueSize;

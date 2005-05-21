@@ -2094,6 +2094,9 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 
 	FNGramImp::BackoffGraphNode::HashEntry **ptr;
 
+	// we allocate CPT iterators in groups of 4 (thus the constant 4). We then use up each of the four and 
+	// allocate a new chunk only if we need more than 4.
+	// TODO: change '4' to a #define.
 	if ( _numberOfActiveIterators >= _contextEntriesStack.size() * 4 ) {
 		void *tmpPtr = (void *) malloc(sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * 4 * _fngram->_numberOfBGNodes);
 		_contextEntriesStack.push_back(tmpPtr);
