@@ -120,6 +120,7 @@ private:
     NO_EDGES,
     ALL_EDGES,
     RANDOM_EDGES,
+    SOME_EDGES,
     LOCALLY_OPTIMAL_EDGES
   } extraEdgeHeuristicType;
 
@@ -133,6 +134,7 @@ private:
     TS_PRE_EDGE_ALL, 
     TS_PRE_EDGE_LO, 
     TS_PRE_EDGE_RANDOM, 
+    TS_PRE_EDGE_SOME, 
     TS_ELIMINATION_HEURISTICS, 
     TS_NON_ELIMINATION_HEURISTICS,
     TS_ALL_HEURISTICS 
@@ -759,7 +761,8 @@ private:
   //////////////////////////////////////////////////////////////////////////// 
  
   void fillParentChildLists(
-    vector<triangulateNode>& nodes
+    vector<triangulateNode>& nodes,
+    bool includeUndirected = true
   );
 
   void addExtraEdgesToGraph(

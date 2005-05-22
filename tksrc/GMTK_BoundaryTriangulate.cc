@@ -357,6 +357,7 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
   const char pre_edge_all[]    = "pre-edge-all-";
   const char pre_edge_lo[]     = "pre-edge-lo-";
   const char pre_edge_random[] = "pre-edge-random-";
+  const char pre_edge_some[]   = "pre-edge-some-";
 
   tri_heur.init();
   if (tri_heur_str.size() == 0) {
@@ -433,6 +434,9 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
     } else if (strncmp(endp, pre_edge_random, strlen(pre_edge_random)) == 0) {
       tri_heur.style = TS_PRE_EDGE_RANDOM;
       tri_heur.basic_method_string = &endp[strlen(pre_edge_random)];
+    } else if (strncmp(endp, pre_edge_some, strlen(pre_edge_some)) == 0) {
+      tri_heur.style = TS_PRE_EDGE_SOME;
+      tri_heur.basic_method_string = &endp[strlen(pre_edge_some)];
     } else if (strncmp(endp, "heuristics", strlen(endp)) == 0) {
       tri_heur.style = TS_ALL_HEURISTICS;
     } else if (strncmp(endp, "elimination-heuristics", strlen(endp)) == 0) {
@@ -1914,6 +1918,15 @@ BoundaryTriangulate
 				buff+(string)"-pre-edge-random-" );
           break;
 
+        case TS_PRE_EDGE_SOME:
+          parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
+          ea_tri_heur.extraEdgeHeuristic = SOME_EDGES;
+          sprintf(buff,"%d", trial+1 );
+          triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
+				nghbrs_with_extra, best_cliques, best_method, best_weight,
+				buff+(string)"-pre-edge-some-" );
+          break;
+
         ////////////////////////////////////////////////////////////////////////
         // Handle cases that just t riangulate once 
         ////////////////////////////////////////////////////////////////////////
@@ -2327,7 +2340,8 @@ fillAccordingToCliques(
 void
 BoundaryTriangulate::
 fillParentChildLists(
-  vector<triangulateNode>& nodes
+  vector<triangulateNode>& nodes,
+  bool includeUndirected 
   )
 {
   vector<triangulateNode>::iterator crrnt_node;
@@ -2362,7 +2376,7 @@ fillParentChildLists(
       //////////////////////////////////////////////////////////////
       // If not a parent, check if it is a child
       //////////////////////////////////////////////////////////////
-      else {
+      else if (includeUndirected) {
         found_node = find( 
           (*crrnt_node).randomVariable->allChildren.begin(), 
           (*crrnt_node).randomVariable->allChildren.end(),
@@ -2371,7 +2385,6 @@ fillParentChildLists(
         if (found_node == (*crrnt_node).randomVariable->allChildren.end()) {
           (*crrnt_node).nonChildren.push_back( *crrnt_nghbr );
         }
-        
       }
     }
   } 
@@ -2449,7 +2462,13 @@ addExtraEdgesToGraph(
   triangulateNeighborType::iterator end_nghbr;
   vector<edge> extra_edges;
 
-  fillParentChildLists( nodes );
+
+  if (edge_heuristic == SOME_EDGES) {
+    fillParentChildLists( nodes, false );
+  }
+  else {
+    fillParentChildLists( nodes, true );
+  }
 
   //////////////////////////////////////////////////////////////////////////
   // Iterate through all nodes
@@ -2554,6 +2573,7 @@ addEdgesToNode(
   switch (edge_heuristic) {
 
     case ALL_EDGES:
+    case SOME_EDGES:
       add_edge = true;
       break;
 
