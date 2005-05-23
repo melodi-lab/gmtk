@@ -2109,6 +2109,7 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 
 	memset(ptr, 0, sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * _fngram->_numberOfBGNodes);
 
+	// TODO: pre-allocate context to save time rather than allocationg/deleting all the time.
 	unsigned * context = new unsigned [_numParents];
 
 	// descend down the BG, level by level except buttom (0)
