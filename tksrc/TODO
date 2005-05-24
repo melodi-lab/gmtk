@@ -2965,4 +2965,14 @@ Fri May 20 14:38:26 2005
   -  docs: email too email from today on 'pruning, triangulation, scores, and CPT -> clique assignment'
 
 
+Mon May 23 20:18:34 2005
+  - in addition to a .trifile, have a .jtfile that contains all the information
+    about forming the JT, including JT, variable ordering information, CPT assignment
+    infomration, and so on. Make it in ascii so users can edit it. Default
+    should be to re-compute it on the fly. This is starting to get important
+    as some .trifiles are differently speed (with pruning) only because
+    of differences in CPT assignment. Keep a triangulation ID in
+    the file.
+
+
 
