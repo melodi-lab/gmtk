@@ -2974,5 +2974,9 @@ Mon May 23 20:18:34 2005
     of differences in CPT assignment. Keep a triangulation ID in
     the file.
 
+Tue May 24 02:55:02 2005
+  - change format of clique printing to be more like debug messages,
+    i.e., Pr[var=val|var1=val,var2=val2,...] = p
 
+ 
 
