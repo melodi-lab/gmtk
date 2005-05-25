@@ -2978,5 +2978,25 @@ Tue May 24 02:55:02 2005
   - change format of clique printing to be more like debug messages,
     i.e., Pr[var=val|var1=val,var2=val2,...] = p
 
- 
+
+Tue May 24 23:58:05 2005
+  - another speedup. Currently, when pruning has occured in previous partitions,
+    the result of that pruning is captured by the separator between partitions.
+    I.e., more pruning leads to lower state space separator. The separator scores
+    can only be applied once (to one clique)) in the next partiiton, but the separator
+    itself can also be used as a constraint (set of non-zero variable combinations)
+    used to iterate cliques in the next separator other than the left-interface
+    clique in that partition. This could significantly reduce the cost of
+    iterating cliques. In other words, this would be sort of a loopy
+    graph, but the scores would only be applied once, but the inherent constraints
+    specified by the JT during pruning would be applied mulitple times.
+    This might also be another form of approximate inference speedup under pruning.
+       - modification: each separator is projected down to the sub-separator consisting
+         of variables that intersect with each clique the separator will be used
+         as a constraint for.
+
+
+
+
+
 
