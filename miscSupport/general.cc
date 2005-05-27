@@ -255,3 +255,35 @@ bitsRequiredUptoNotIncluding(unsigned val)
   }
   return res;
 }
+
+/*
+ * returns integer 2^ceil(log2(val)), least
+ * power of two that is >= val. I.e., returns
+ * 2^k* where k* = argmin_k { k : 2^k >= val }
+ */
+unsigned nextPower2(unsigned val)
+{
+  unsigned numBitsSet=0;
+  unsigned highBit=0;
+  if (val == 0) return 0;
+  while (val) { 
+    numBitsSet += (val&0x1); 
+    highBit++;
+    val >>= 1; 
+  }
+  if (numBitsSet == 1)
+    return (1<<(highBit-1));
+  else
+    return (1<<(highBit));
+}
+
+
+/*
+ * returns the number of bits set in the unsigned
+ *
+ */
+unsigned numBitsSet(unsigned u) {
+  unsigned count=0;
+  while (u) { count += (u&0x1); u >>= 1; }
+  return count;
+}

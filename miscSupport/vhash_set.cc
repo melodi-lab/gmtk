@@ -18,7 +18,7 @@
 
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 
 #ifdef MAIN
 #define COLLECT_COLLISION_STATISTICS
@@ -66,28 +66,45 @@ main(int argc,char*argv[])
   if (argc > 3)
     maxCard = atoi(argv[3]);
 
-  printf("Using %d entries, each of length %d\n",count,vsize);
+  if (maxCard == 0)
+    maxCard = INT_MAX;
+
+  printf("Using %d entries, each of length %d, maxCard = %d\n",count,vsize,maxCard);
 
   vhash_set< int > ht(vsize,1000);
 
+  printf("creating %d random entries of size %d\n",count,vsize);
+  int* data = new int[vsize*count];
+  int* vp = data;
+  for (int i=0;i<vsize*count;i++) {
+    *vp++ = rand() % maxCard;
+  }
+
   printf("inserting %d random entries of size %d\n",count,vsize);
+  struct rusage rus; /* starting time */
+  struct rusage rue; /* ending time */
+  getrusage(RUSAGE_SELF,&rus);
+  vp = data;
+  int * res;
   for (int i=0;i<count;i++) {
-    int* vi = new int[vsize];
-    for (int j=0;j<vsize;j++) {
-      vi[j] = rand() % maxCard;
-    }
     bool foundp;
-    ht.insert(vi,foundp);
+    *vp = (int)res;
+    res = ht.insert(vp,foundp);
     // printf("inserted ");
     // myprintv(vi,vsize);
     // printf(", foundp = %d\n",foundp);
+    vp+= vsize;
   }
+  getrusage(RUSAGE_SELF,&rue);
+  double userTime,sysTime;
+  reportTiming(rus,rue,userTime,sysTime,stdout);
   
   printf("max %d cols, %d total collisions with %d inserts, avg = %e, num entries = %d\n",
 	 ht.maxCollisions,ht.numCollisions,ht.numInserts,
 	 (double)ht.numCollisions/(double)ht.numInserts,
 	 ht.totalNumberEntries());
 
+#if 0
 
   // now go through each entry in the table to test if it is there.
   printf("ensuring inserted entries are all contained\n");
@@ -142,7 +159,7 @@ main(int argc,char*argv[])
     }
     sht.insert(str);
   }
-
+#endif
 
 }
 

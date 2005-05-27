@@ -152,7 +152,9 @@ public:
     unsigned collisions=0;
 #endif
 
-    if (empty(a_table[a]) || keyEqual(a_table[a].key,key)) {
+    // printf("entryOf: at entry %d\n",a);
+
+    if (empty(a_table.ptr[a]) || keyEqual(a_table.ptr[a].key,key)) {
       return a;
     }
     const unsigned inc = h2(key,size);
@@ -161,10 +163,10 @@ public:
       collisions++;
 #endif
       a = (a+inc) % size;
-      // printf("entryOf: now at entry %d\n",a);
-    } while ( !empty(a_table[a])
+      // printf("entryOf: C. now at entry %d\n",a);
+    } while ( !empty(a_table.ptr[a])
 	      &&
-	      (!keyEqual(a_table[a].key,key)) 
+	      (!keyEqual(a_table.ptr[a].key,key)) 
 	      );
 
 #ifdef COLLECT_COLLISION_STATISTICS
@@ -189,9 +191,9 @@ public:
     nt.resize(new_size);
 
     for (unsigned i=0;i<table.size();i++) {
-      if (!empty(table[i])) {
-	  unsigned a = entryOf(table[i].key,nt);
-	  nt[a].key = table[i].key;
+      if (!empty(table.ptr[i])) {
+	  unsigned a = entryOf(table.ptr[i].key,nt);
+	  nt[a].key = table.ptr[i].key;
       }
     }
 
@@ -268,10 +270,10 @@ public:
     // compute the address
     unsigned a = entryOf(key,table);
     // printf("inserting to entry %d, empty = %d\n",a,empty(table[a]));
-    if (empty(table[a])) {
+    if (empty(table.ptr[a])) {
       foundp = false;
 
-      table[a].key = key;
+      table.ptr[a].key = key;
 
       // time to resize if getting too big.
       // TODO: probably should resize a bit later than 1/2 entries being used.
@@ -283,12 +285,12 @@ public:
 	  resize(HashTable_PrimesArray[++primesArrayIndex]);
 	  // need to re-get location
 	  a = entryOf(key,table);
-	  assert (!empty(table[a]));
+	  assert (!empty(table.ptr[a]));
       }
     } else {
       foundp = true;
     }
-    return table[a].key;
+    return table.ptr[a].key;
   }
 
 
@@ -298,7 +300,7 @@ public:
   bool find(_Key* key) {
     const unsigned a = entryOf(key,table);
     // printf("find: entry %d\n",a);
-    return !empty(table[a]);
+    return !empty(table.ptr[a]);
   }
 
 
@@ -308,11 +310,11 @@ public:
   // the set, false otherwise.
   bool find(_Key* key,_Key**& key_pp) {
     const unsigned a = entryOf(key,table);
-    if (empty(table[a])) {
+    if (empty(table.ptr[a])) {
       key_pp = NULL;
       return false;
     } else {
-      key_pp = &(table[a].key);
+      key_pp = &(table.ptr[a].key);
       return true;
     }
   }
