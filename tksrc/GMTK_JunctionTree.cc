@@ -304,6 +304,8 @@ JT_Partition::JT_Partition(
  *   interface clique. If there are more than one candiate interface clique
  *   available, then the one with the smallest normal weight is chosen.
  *
+ *   uses command line option: interfaceCliquePriorityStr 
+ *
  *
  * Preconditions:
  *   JT_partition tree must have been created and all set up.
@@ -1242,7 +1244,9 @@ JunctionTree::computePartitionInterfaces()
   // E order, clique 0 is choosen as root arbitrarily for now.  TODO:
   // see if it is possible to choose a better root for E.  Perhaps use
   // the maximum weight clique.
-  E_root_clique = 0;
+  // TODO: make command line heuristics for choosing E-root-clique as well.
+  // @@@@@ REMOVE NEXT LINE ****
+  E_root_clique = 1;
   // E_root_clique = E1.cliqueWithMinWeight();
   // If this is updated, need also to update in all other places
   // the code, search for string "update E_root_clique"
@@ -3477,11 +3481,22 @@ JunctionTree::printAllJTInfoCliques(FILE* f,
 				    set <RV*>* lp_nodes,
 				    set <RV*>* rp_nodes)
 {
-  // print cliques information
+  const bool is_P_partition = (lp_nodes == NULL);
+  const bool is_E_partition = (rp_nodes == NULL);
+  // can't be both.
+  assert ( !(is_P_partition && is_E_partition) );
+
+  // print clique's information
   for (unsigned i=0;i<treeLevel;i++) fprintf(f,"  ");
   fprintf(f,"== Clique number: %d",root);
   if (treeLevel == 0)
     fprintf(f,", root/right-interface clique");
+  if (treeLevel == 0) {
+    if (!is_E_partition)
+      fprintf(f,", root/right-interface clique");
+    else
+      fprintf(f,", root clique");
+  }
   if (part.cliques[root].ceReceiveSeparators.size() == 
       part.cliques[root].numVESeparators() + part.cliques[root].children.size() + 1) {
     if (part.cliques[root].ceReceiveSeparators.size() > 1 + part.cliques[root].numVESeparators()) 
@@ -3834,7 +3849,9 @@ JunctionTree::ceGatherIntoRoot(// partition
   for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
     const unsigned from = message_order[msgNo].first;
     const unsigned to = message_order[msgNo].second;
-    // TODO: add another info message here
+    infoMsg(IM::Med+5,
+	    "CE: gathering into %s,part[%d]: clique %d\n",
+	    part_type_name,part_num,from);
     part.maxCliques[from].
       ceGatherFromIncommingSeparators(part);
     infoMsg(IM::Mod,
@@ -3844,7 +3861,9 @@ JunctionTree::ceGatherIntoRoot(// partition
       ceSendToOutgoingSeparator(part);
   }
   // collect to partition's root clique
-  // TODO: add another info message here
+  infoMsg(IM::Med+5,
+	  "CE: gathering into partition root %s,part[%d]: clique %d\n",
+	  part_type_name,part_num,root);
   part.maxCliques[root].
     ceGatherFromIncommingSeparators(part);
 }
@@ -4086,6 +4105,8 @@ JunctionTree::deScatterOutofRoot(// the partition
     return;
 
   const unsigned stopVal = (unsigned)(-1);
+  infoMsg(IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
+	  part_type_name,part_num,root);
   part.maxCliques[root].
     deScatterToOutgoingSeparators(part);
   for (unsigned msgNo=(message_order.size()-1);msgNo != stopVal; msgNo --) {
@@ -4095,6 +4116,8 @@ JunctionTree::deScatterOutofRoot(// the partition
 	    part_type_name,part_num,to,from);
     part.maxCliques[to].
       deReceiveFromIncommingSeparator(part);
+    infoMsg(IM::Med+5,"DE: distributing out of %s,part[%d]: clique %d\n",
+	    part_type_name,part_num,to);
     part.maxCliques[to].
       deScatterToOutgoingSeparators(part);
   }
@@ -4226,6 +4249,7 @@ JunctionTree::distributeEvidence()
   unsigned partNo = jtIPartitions.size()-1;
   // set up appropriate name for debugging output.
   const char* prv_nm;
+  unsigned prv_ri;
 
   if (numCoPartitions == 0 && P1.cliques.size() == 0)
     E1.skipLISeparator();
@@ -4238,10 +4262,17 @@ JunctionTree::distributeEvidence()
 
 
   partNo--;
-
-  prv_nm = Co_n;
+  if (numCoPartitions > 0) {
+    prv_ri = C_ri_to_E;
+    prv_nm = Co_n;
+  } else {
+    // then there is no C' partition so we distribute
+    // directly into P partition.
+    prv_ri = P_ri_to_C;
+    prv_nm = P1_n;
+  }
   deReceiveToPreviousPartition(jtIPartitions[partNo+1],E_li_to_C,E1_n,partNo+1,
-			       jtIPartitions[partNo],C_ri_to_E,Co_n,partNo);
+			       jtIPartitions[partNo],prv_ri,prv_nm,partNo);
 
   for (unsigned p=numCoPartitions; p > 0; p--) {
 
@@ -4256,7 +4287,7 @@ JunctionTree::distributeEvidence()
 
     partNo--;
     prv_nm = ((p == 1)?P1_n:Co_n);
-    unsigned prv_ri;
+
     if (p > 1) 
       prv_ri = C_ri_to_C;
     else
@@ -4725,16 +4756,28 @@ ceGatherIntoRoot(const unsigned part)
   infoMsg(IM::Mod,"==> ceGatherIntoRoot: part = %d, nm = %s\n",
 	  part,partPArray[part].nm);
 
-  if (part == 1 && P1.cliques.size() == 0)
+  // We check here the condition if the partition number is 1 (i.e.,
+  // the 2nd partition) and P has no cliques. If this is the case,
+  // then we don't want to use the partition 1's left interface
+  // separator since it will be empty. Since we don't know
+  // at this point if partition one is a C' or an E' we ask to skip
+  // both (this will work either in the case when the number of C'
+  // partitions is 0 or 1).
+  if (part == 1 && P1.cliques.size() == 0) {
     Co.skipLISeparator();
+    E1.skipLISeparator();
+  }
   if (cur_prob_evidence.not_essentially_zero())
     ceGatherIntoRoot(*partPArray[part].p,
 		     partPArray[part].ri,
 		     *partPArray[part].mo,
 		     partPArray[part].nm,
 		     part);
-  if (part == 1 && P1.cliques.size() == 0)
+  // restore the LI interface skip state of the partitions.
+  if (part == 1 && P1.cliques.size() == 0) {
     Co.useLISeparator();
+    E1.useLISeparator();
+  }
 
 }
 void JunctionTree::
@@ -4789,18 +4832,21 @@ deScatterOutofRoot(const unsigned part)
   infoMsg(IM::Mod,"<== deScatterOutofRoot: part = %d (%s)\n",
 	  part,partPArray[part].nm);
 
-  if (part == 2 && P1.cliques.size() == 0)
+  if (part == 1 && P1.cliques.size() == 0) {
     Co.skipLISeparator();
+    E1.skipLISeparator();
+  }
+
   if (cur_prob_evidence.not_essentially_zero())
     deScatterOutofRoot(*partPArray[part].p,
 		       partPArray[part].ri,
 		       *partPArray[part].mo,
 		       partPArray[part].nm,
 		       part);
-  if (part == 2 && P1.cliques.size() == 0)
+  if (part == 1 && P1.cliques.size() == 0) {
     Co.useLISeparator();
-
-
+    E1.useLISeparator();
+  }
 }
 logpr
 JunctionTree::probEvidenceRoot(const unsigned part)

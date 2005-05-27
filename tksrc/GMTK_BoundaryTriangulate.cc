@@ -951,6 +951,7 @@ BoundaryTriangulate
   //                 |    |  / \  /    | 
   //       named:    P    C1    C2     E
   //   (here, since M>S, there is again a C1 C2 overlap of (M-S) chunks).
+  //   In other words, intersect(C1,C2) = 2nd and 3rd C.
   // 
   //   M=2,S=3:
   //          P  C  C   C   C  C   E

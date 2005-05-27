@@ -5898,7 +5898,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	    sv.remValues.ptr[0].bp() += cliqueValues.ptr[cvn].p;
 	    // done, move on to next separator.
 	    continue; 
-	  }
+	  } // else, we continue on below.
 	} else {
 	  // no accumulated intersection exists, everything
 	  // is in the remainder.
@@ -6117,7 +6117,6 @@ deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part)
       unsigned* remIndexp =
 	sv.iRemHashMap.find(&CliqueBuffer::packedVal[0]);
 
-      // it must exist
       assert ( remIndexp != NULL );
 	
       // We've finally got the sep entry.  Store the sep entry's id.

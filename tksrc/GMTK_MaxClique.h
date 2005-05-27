@@ -636,7 +636,12 @@ public:
   // set of separators that we receive from in the collect evidence
   // stage.  (equivalently, the set of separators we send to in
   // distribute evidence stage) Again, ints indexing into parent
-  // partition.
+  // partition. Note that if this clique is the LI of the partition,
+  // then there will be one extra separator at the end of this list
+  // that corresponds to the separator that links us to the left
+  // partition.  This is of course only true for the C and E
+  // partitions.
+  // 
   // Created in JunctionTree::createSeparators().
   // Modified/Sorted in JunctionTree::computeSeparatorIterationOrder()
   vector<unsigned> ceReceiveSeparators;
@@ -1277,7 +1282,13 @@ class InferenceSeparatorClique : public IM
   // the original separator clique from which this object has been cloned.
   SeparatorClique& origin;
   
-  // Two indices to get at the veterbi values for current separator.
+  // Two indices to get at the veterbi values for current
+  // separator. In other words, these indices give the separator entry
+  // corresponding to the variable assigmnets that give the max value
+  // for the clique closer to the root relative to this separator. We
+  // store these indices here so that that clique need not retain its
+  // values, while the current separator can still store the values it
+  // needs.
   struct ForwardPointer {
     unsigned viterbiAccIndex;
     unsigned viterbiRemIndex;
@@ -1330,7 +1341,6 @@ class InferenceSeparatorClique : public IM
     RemainderValue() { 
       bp().set_to_zero(); 
     }
-
   };
 
 

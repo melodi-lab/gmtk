@@ -2995,7 +2995,6 @@ Tue May 24 23:58:05 2005
          of variables that intersect with each clique the separator will be used
          as a constraint for.
 
-
 Wed May 25 02:26:37 2005
   - have the ability to sample not only from P(H|E) but also from
     P(A|E) where A \subset H. Also, ability to compute \argmax_A P(A|E)
@@ -3003,8 +3002,13 @@ Wed May 25 02:26:37 2005
     containing A. As long as sub-JT is connected tree still satisfying RIP, we can just 
     project down individual cliques. The problem is that if we sample from P(H|E), we are
     not getting a sample from P(A|E) if we just use A in H.
-    
-
+    - call program: gmtkMLDecode (for maximum likelihood decode)??
+    - note: this type of decoding in ASR is a research topic itself,
+      namely if we do ML decoding, while more expensive, is the WER 
+      significantly reduced?
+    - might need to use a separator like data structure for the resulting projected
+      down JT cliques.
+    - need clique packing equality for subsets of arguments.
 
 
 
