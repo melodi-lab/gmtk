@@ -133,8 +133,11 @@ testHashMapList: hash_map_list.cc hash_abstract.o hash_map_list.h hash_abstract.
 testHashTree: hash_tree.h hash_tree.cc hash_map_list.cc hash_abstract.o hash_map_list.h hash_abstract.cc hash_abstract.h
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ hash_tree.cc error.o hash_abstract.o $(LIBS)
 
-testVHashSet: vhash_set.h vhash_set.cc hash_abstract.o hash_abstract.cc hash_abstract.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ vhash_set.cc error.o hash_abstract.o $(LIBS)
+testVHashSet: vhash_set.h vhash_set.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ vhash_set.cc error.o hash_abstract.o general.o $(LIBS)
+
+testVHashSet2: vhash_set2.h vhash_set2.cc hash_abstract2.o hash_abstract2.cc hash_abstract2.h general.o
+	$(compile.cc.link) -Wall -g -DMAIN $(HASH) -o $@ vhash_set2.cc error.o hash_abstract2.cc general.o 
 
 
 testVHashMap: vhash_map.h vhash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h

@@ -30,6 +30,7 @@
 // Things that result in log values < LSMALL are set to LZERO.
 // I.e., this is the smallest log value that we represent
 // after the result of an addition, etc. 
+// TODO: make this a function of LZERO, i.e., (0.5*(LZERO))
 #define LSMALL (-0.5E10)
 
 // Lowest exp() arg  = log(MINLARG)

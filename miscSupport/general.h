@@ -115,4 +115,36 @@ int stringprintf(string& str,char *format, ...);
  */
 unsigned bitsRequiredUptoNotIncluding(unsigned val); 
 
+
+/*
+ * returns integer 2^ceil(log2(val)), least
+ * power of two that is >= val. I.e., returns
+ * 2^k* where k* = argmin_k { k : 2^k >= val }
+ */
+unsigned nextPower2(unsigned val); 
+
+/*
+ * returns the number of bits set in the unsigned
+ *
+ */
+unsigned int numBitsSet(unsigned u);
+
+
+/*
+ * MACHINE DEPENDENT typedefs.
+ */
+
+// 8-bit (1 byte) unsigned integer type
+typedef unsigned char UInt8;
+
+// 16-bit (2 byte) unsigned integer type
+typedef unsigned short UInt16;
+
+// 32-bit (4 byte) unsigned integer type.
+typedef unsigned int UInt32;
+
+// 64-bit (8 byte) unsigned integer type.
+// typedef long long unsigned UInt64;
+
+
 #endif
