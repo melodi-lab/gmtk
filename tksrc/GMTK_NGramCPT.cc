@@ -461,7 +461,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	char *line = new char [MAX_LINE_LENGTH];
 	// readin '\data\'
 	do {
-		ifs.readLine(line, MAX_LINE_LENGTH);
+		if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+			error("Error: expect '\\data\\' in lm file %s", lmFile);
 	} while ( strstr(line, "\\data\\") != line );
 
 	// read in number of ngrams
@@ -508,7 +509,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	// step 1: readin unigram as this is the easy case
 	// looking for \1-gram
 	do {
-		ifs.readLine(line, MAX_LINE_LENGTH);
+		if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+			error("Error: invalid ARPA lm format in %s", lmFile);
 	} while ( line[0] != '\\');
 	index = atoi(line+1);
 
@@ -518,7 +520,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	startEntry.probBlockSize = probTotalSize;
 
 	for ( j = 0; j < num; ++j ) {
-		ifs.readLine(line, MAX_LINE_LENGTH);
+		if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+			error("Error: invalid ARPA lm format in %s", lmFile);
 
 		// skip prob (we don't have prob hash table yet.)
 		if ( (tok = strtok(line, seps)) == NULL )
@@ -549,7 +552,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	for ( i = 1; i < (int)_numParents; ++i ) {
 		// looking for \n-gram
 		do {
-			ifs.readLine(line, MAX_LINE_LENGTH);
+			if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+				error("Error: invalid ARPA lm format in %s", lmFile);
 		} while ( line[0] != '\\');
 		index = atoi(line+1);
 
@@ -558,7 +562,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 		ContextTreeEntry *prevContextEntry = NULL;
 		unsigned accumNum = 0;
 		for ( j = 0; j < num; ++j ) {
-			ifs.readLine(line, MAX_LINE_LENGTH);
+			if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+				error("Error: invalid ARPA lm format in %s", lmFile);
 
 			// get prob
 			if ( (tok = strtok(line, seps)) == NULL )
@@ -636,7 +641,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 	// looking for \n-gram
 	if ( _numParents > 0 ) {	// in case of unigram
 		do {
-			ifs.readLine(line, MAX_LINE_LENGTH);
+			if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+				error("Error: invalid ARPA lm format in %s", lmFile);
 		} while ( line[0] != '\\');
 		index = atoi(line+1);
 	
@@ -645,7 +651,8 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 		ContextTreeEntry *prevContextEntry = NULL;
 		unsigned accumNum = 0;
 		for ( j = 0; j < num; ++j ) {
-			ifs.readLine(line, MAX_LINE_LENGTH);
+			if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+				error("Error: invalid ARPA lm format in %s", lmFile);
 	
 			// get prob
 			if ( (tok = strtok(line, seps)) == NULL )
