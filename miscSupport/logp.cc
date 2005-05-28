@@ -29,9 +29,9 @@ double log_DBL_MIN = log(DBL_MIN)+LOG_DBL_MIN_CNST;
 
 #ifdef _TABLE_
 #include <iostream.h>
-template <class FT, class iFT = double>
+template <class FT, class iFT >
   FT logp<FT, iFT>::table[table_size];
-template <class FT, class iFT = double>
+template <class FT, class iFT >
   double logp<FT, iFT>::inc;
 
 template <class FT, class iFT>
