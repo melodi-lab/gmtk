@@ -1245,8 +1245,7 @@ JunctionTree::computePartitionInterfaces()
   // see if it is possible to choose a better root for E.  Perhaps use
   // the maximum weight clique.
   // TODO: make command line heuristics for choosing E-root-clique as well.
-  // @@@@@ REMOVE NEXT LINE ****
-  E_root_clique = 1;
+  E_root_clique = 0;
   // E_root_clique = E1.cliqueWithMinWeight();
   // If this is updated, need also to update in all other places
   // the code, search for string "update E_root_clique"
