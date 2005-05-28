@@ -22,7 +22,7 @@
 
 // use a lookup table? If so, define the following,
 // or otherwise, undefine to use log(1+exp(x)) directly.
-// #define _TABLE_
+//  #define _TABLE_
 
 // What we call ~log(0). 
 #define LZERO  (-1.0E10)
