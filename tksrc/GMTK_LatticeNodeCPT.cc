@@ -35,9 +35,9 @@ LatticeNodeCPT::~LatticeNodeCPT() {
 
 void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
 	// check out the out-going edges based on parent value
-	shash_map2<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map2<unsigned, LatticeADT::LatticeEdge>::iterator();
+	shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator();
 	assert(_latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.totalNumberEntries() != 0);
-	*pit = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.begin();
+	_latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.begin(*pit);
 
 	// set up the iternal state for iterators
 	it.internalStatePtr = (void*)pit;
@@ -61,7 +61,7 @@ logpr LatticeNodeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
 
 
 bool LatticeNodeCPT::next(iterator &it, logpr& p) {
-	shash_map2<unsigned, LatticeADT::LatticeEdge>::iterator* pit = (shash_map2<unsigned, LatticeADT::LatticeEdge>::iterator*) it.internalStatePtr;
+	shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator* pit = (shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator*) it.internalStatePtr;
 	if ( pit->next() ) {
 		it.drv->val = pit->key();
 		p = (**pit).ac_score;		// TODO: instead of acoustic score, implement other scores
