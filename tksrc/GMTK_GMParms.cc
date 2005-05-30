@@ -731,7 +731,7 @@ void GMParms::readLatticeAdts(iDataStreamFile& is, bool reset) {
 	for ( unsigned i = 0; i < num; i++ ) {
 		is.read(cnt, "Can't read Lattice CPT index");
 		if ( cnt != i )
-			error("ERROR: Lattice CPT count (%d), out of order in file '%s' line %d, expecting %d", cnt, is.fileName(),is.lineNo(), i);
+		  error("ERROR: Lattice CPT count (%d), out of order in file '%s' line %d, expecting %d", cnt, is.fileName(),is.lineNo(), i);
 		LatticeADT* ob = new LatticeADT();
 		ob->read(is);
 		if ( latticeAdtsMap.find(ob->name()) != latticeAdtsMap.end() )

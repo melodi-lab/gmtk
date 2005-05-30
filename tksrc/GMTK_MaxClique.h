@@ -169,11 +169,10 @@ public:
   // internals of a hash table. Note also that this breaks
   // encapsulation, meaning that if the implementation of the
   // internals of the parent hash table change, this code might break.
-  unsigned*& tableKey(const unsigned i) { return table[i].key; }
-  unsigned& tableItem(const unsigned i) { return table[i].item; }
-  bool tableEmpty(const unsigned i) { return empty(table[i]); }
+  unsigned*& tableKey(const unsigned i) { return table.ptr[i].key; }
+  unsigned& tableItem(const unsigned i) { return table.ptr[i].item; }
+  bool tableEmpty(const unsigned i) { return empty(table.ptr[i]); }
   unsigned tableSize() { return table.size(); }
-
 
 };
 

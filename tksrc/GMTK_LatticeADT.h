@@ -27,7 +27,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_Vocab.h"
 #include "fileParser.h"
-#include "shash_map2.h"
+#include "shash_map_iter.h"
 #include "logp.h"
 
 
@@ -70,7 +70,7 @@ protected:
 		/** ending frame number */
 		unsigned endFrame;
 		/** possible out-going edges */
-		shash_map2<unsigned, LatticeEdge> edges;
+		shash_map_iter<unsigned, LatticeEdge> edges;
 
 		LatticeNode() : startFrame(0), endFrame(0) {}
 	};

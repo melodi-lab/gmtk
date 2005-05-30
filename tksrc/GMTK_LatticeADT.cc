@@ -197,7 +197,8 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
 		printf("node %d at frame (%d,%d):\n", i, _latticeNodes[i].startFrame, _latticeNodes[i].endFrame);
 		if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
-			shash_map2<unsigned, LatticeEdge>::iterator it = _latticeNodes[i].edges.begin();
+			shash_map_iter<unsigned, LatticeEdge>::iterator it;
+			_latticeNodes[i].edges.begin(it);
 			do {
 				LatticeEdge &edge = *it;
 				printf("\tto %d, w=%d, ac=%f, lm=%f\n", it.key(), edge.emissionId, edge.ac_score.val(), edge.lm_score.val());
