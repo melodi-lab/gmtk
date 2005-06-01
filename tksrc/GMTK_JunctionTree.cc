@@ -505,7 +505,7 @@ JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterf
 unsigned
 JT_Partition::cliqueWithMaxWeight()
 {
-  double weight = -1.0;
+  double weight = -10e20;
   unsigned res= ~0x0;
   // TODO: for empty P or E partitions, this next assertion will need to be removed.
   // assert ( cliques.size() > 0 );
@@ -1245,8 +1245,9 @@ JunctionTree::computePartitionInterfaces()
   // see if it is possible to choose a better root for E.  Perhaps use
   // the maximum weight clique.
   // TODO: make command line heuristics for choosing E-root-clique as well.
-  E_root_clique = 0;
+  // E_root_clique = 0;
   // E_root_clique = E1.cliqueWithMinWeight();
+  E_root_clique = E1.cliqueWithMaxWeight();
   // If this is updated, need also to update in all other places
   // the code, search for string "update E_root_clique"
   
@@ -3227,6 +3228,9 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 
 {
 
+  // const bool is_P_partition = (lp_nodes == NULL);
+  const bool is_E_partition = (rp_nodes == NULL);
+
   // might be a partition that is empty.
   if (cliques.size() == 0)
     return 0.0;
@@ -3252,14 +3256,21 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 
   bool tmp;
   unsigned root;
-  if (interfaceNodes.size() > 0)
+  if (!is_E_partition) 
     jt_part.findRInterfaceClique(root,tmp,interfaceCliquePriorityStr);
   else {
     // 'E_root_clique case'
     // Presumably, this is an E partition, so the root should be done
     // same as E_root_clique computed above.
     // "update E_root_clique"
-    root = 0; 
+    // root = 0; 
+    // currently, find max weight clique.
+    double weight = -10e20;
+    for (unsigned i=0;i<cliques.size();i++) {
+      if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
+	root = i;
+      }
+    }
   }
     
   createDirectedGraphOfCliques(jt_part,root);
