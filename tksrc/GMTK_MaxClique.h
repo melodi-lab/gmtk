@@ -171,7 +171,7 @@ public:
   // internals of the parent hash table change, this code might break.
   unsigned*& tableKey(const unsigned i) { return table.ptr[i].key; }
   unsigned& tableItem(const unsigned i) { return table.ptr[i].item; }
-  bool tableEmpty(const unsigned i) { return empty(table.ptr[i]); }
+  bool tableEmpty(const unsigned i) { return table.ptr[i].empty(); }
   unsigned tableSize() { return table.size(); }
 
 };

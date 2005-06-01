@@ -150,6 +150,8 @@ GMTK_LinMeanCondDiagGaussianOpt.o: GMTK_LinMeanCondDiagGaussianOpt.cc
 # Main build programs.
 #----------------------------------------------------------------------------
 
+.NOEXPORT:
+
 programname: $(objs)
 	$(link) -Wall -g  -o $@ $(bmm_objs) $@.o $(LIBS)
 
@@ -159,46 +161,46 @@ libGMTK.a: $(objs)
 	$(archive) $@ $(objs)
 
 
-gmtkEMtrainNew: gmtkEMtrainNew.o libGMTK.a
+gmtkEMtrainNew: gmtkEMtrainNew.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkEMtrainNew.o $(LIBS)
 
-gmtkUnroll: gmtkUnroll.o  libGMTK.a
+gmtkUnroll: gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkUnroll.o $(LIBS)
 
-gmtkJT: gmtkJT.o libGMTK.a ../miscSupport/libmiscSupport.a
+gmtkJT: gmtkJT.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkJT.o $(LIBS)
 
-gmtkTime: gmtkTime.o libGMTK.a
+gmtkTime: gmtkTime.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTime.o $(LIBS)
 
 
-gmtkTriangulate: gmtkTriangulate.o libGMTK.a
+gmtkTriangulate: gmtkTriangulate.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTriangulate.o $(LIBS)
 
 
-gmtkTFmerge: gmtkTFmerge.o libGMTK.a
+gmtkTFmerge: gmtkTFmerge.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkTFmerge.o $(LIBS)
 
 
-gmtkViterbiNew: gmtkViterbiNew.o libGMTK.a
+gmtkViterbiNew: gmtkViterbiNew.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkViterbiNew.o $(LIBS)
 
-gmtkParmConvert: gmtkParmConvert.o libGMTK.a
+gmtkParmConvert: gmtkParmConvert.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkParmConvert.o $(LIBS)
 
-gmtkDTindex: gmtkDTindex.o libGMTK.a
+gmtkDTindex: gmtkDTindex.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkDTindex.o $(LIBS)
 
-gmtkNGramIndex: gmtkNGramIndex.o libGMTK.a
+gmtkNGramIndex: gmtkNGramIndex.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkNGramIndex.o $(LIBS)
 
