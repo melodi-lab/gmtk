@@ -218,6 +218,7 @@ Arg Arg::Args[] = {
   // General Options
   Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
+  Arg("hashLoadFactor",Arg::Opt,hash_abstract::loadFactor,"Hash table load factor, in range 0.5 <= lf <= 0.95"),
   Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 

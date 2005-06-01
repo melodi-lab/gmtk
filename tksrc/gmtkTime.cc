@@ -240,9 +240,7 @@ Arg Arg::Args[] = {
 
   // Arg("limitBest",Arg::Opt,limitBest,"Limit running time to be approximately best seen so far.."),
 
-
-
-
+  Arg("hashLoadFactor",Arg::Opt,hash_abstract::loadFactor,"Hash table load factor, in range 0.5 <= lf <= 0.95"),
   Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
 
   /////////////////////////////////////////////////////////////
