@@ -18,7 +18,7 @@
 
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 
 #ifdef MAIN
 #define COLLECT_COLLISION_STATISTICS

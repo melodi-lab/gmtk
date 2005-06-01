@@ -187,11 +187,15 @@ public:
     }
     foundp = !createRest;
     if (!foundp)
-      _totalNumberEntries++;
+      numberUniqueEntriesInserted++;
     assert ( ++depth == treeDepth );
     tdi->val = val;
     return &(tdi->val);
   }
+
+  unsigned numEntries() {
+    return numberUniqueEntriesInserted;
+  }  
 
   ///////////////////////////////////////////////////
   // insert() but using an sArray()
@@ -248,6 +252,7 @@ public:
   // hash tables at each tree level.
   class iterator {
     friend class hash_tree<_Key,_Data>;
+
   protected:
     sArray< base_map_iterator_t > it_array;
     bool endp;
@@ -322,26 +327,27 @@ public:
   public:
 
     iterator_vector& operator ++(int) {
+
       // test for end.
-      unsigned depth = it_array.size()-1;
+      unsigned depth = iterator::it_array.size()-1;
       const unsigned depthm1 = depth;
 
-      it_array[depth]++;
-      while (it_array[depth].end() && depth != 0) {
+      iterator::it_array[depth]++;
+      while (iterator::it_array[depth].end() && depth != 0) {
 	depth--;
-	it_array[depth]++;
+	iterator::it_array[depth]++;
       }
-      if (depth == 0 && it_array[depth].end()) {
-	endp = true;
+      if (depth == 0 && iterator::it_array[depth].end()) {
+	iterator::endp = true;
 	return *this; // we're at the real end.
       }
       while (depth < depthm1) {
-	key_vec[depth] = it_array[depth].key();
+	key_vec[depth] = iterator::it_array[depth].key();
 	NonTerminalDataItem* ntdi = 
-	  (NonTerminalDataItem*)(*it_array[depth]);
-	ntdi->base_map.begin(it_array[++depth]);
+	  (NonTerminalDataItem*)(*iterator::it_array[depth]);
+	ntdi->base_map.begin(iterator::it_array[++depth]);
       }
-      key_vec[depth] = it_array[depth].key();
+      key_vec[depth] = iterator::it_array[depth].key();
       return *this;
     }
   };
@@ -367,25 +373,25 @@ public:
 
     iterator_vectorp& operator ++(int) {
       // test for end.
-      unsigned depth = it_array.size()-1;
+      unsigned depth = iterator::it_array.size()-1;
       const unsigned depthm1 = depth;
 
-      it_array[depth]++;
-      while (it_array[depth].end() && depth != 0) {
+      iterator::it_array[depth]++;
+      while (iterator::it_array[depth].end() && depth != 0) {
 	depth--;
-	it_array[depth]++;
+	iterator::it_array[depth]++;
       }
-      if (depth == 0 && it_array[depth].end()) {
-	endp = true;
+      if (depth == 0 && iterator::it_array[depth].end()) {
+	iterator::endp = true;
 	return *this; // we're at the real end.
       }
       while (depth < depthm1) {
-	(*key_vecp[depth]) = it_array[depth].key();
+	(*key_vecp[depth]) = iterator::it_array[depth].key();
 	NonTerminalDataItem* ntdi = 
-	  (NonTerminalDataItem*)(*it_array[depth]);
-	ntdi->base_map.begin(it_array[++depth]);
+	  (NonTerminalDataItem*)(*iterator::it_array[depth]);
+	ntdi->base_map.begin(iterator::it_array[++depth]);
       }
-      (*key_vecp[depth]) = it_array[depth].key();
+      (*key_vecp[depth]) = iterator::it_array[depth].key();
       return *this;
     }
   };

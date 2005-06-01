@@ -124,6 +124,11 @@ unsigned bitsRequiredUptoNotIncluding(unsigned val);
 unsigned nextPower2(unsigned val); 
 
 /*
+ * returns ceil(log2(val))
+ */
+unsigned ceilLog2(unsigned val);
+
+/*
  * returns the number of bits set in the unsigned
  *
  */

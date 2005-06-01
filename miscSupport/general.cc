@@ -257,6 +257,25 @@ bitsRequiredUptoNotIncluding(unsigned val)
 }
 
 /*
+ * returns ceil(log2(val))
+ */
+unsigned ceilLog2(unsigned val)
+{
+  unsigned numBitsSet=0;
+  unsigned highBit=0;
+  if (val == 0) return 0;
+  while (val) { 
+    numBitsSet += (val&0x1); 
+    highBit++;
+    val >>= 1; 
+  }
+  if (numBitsSet == 1)
+    return (highBit-1);
+  else
+    return (highBit);
+}
+
+/*
  * returns integer 2^ceil(log2(val)), least
  * power of two that is >= val. I.e., returns
  * 2^k* where k* = argmin_k { k : 2^k >= val }

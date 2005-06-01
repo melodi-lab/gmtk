@@ -1,10 +1,12 @@
 /*
  * shash_set.h
- *   General data structure for a scalar-based hash-table implementation
- *   of a set. Each element of the set is a scalar.
+ *   General data structure for a scalar-based (size 1 key) hash-table
+ *   implementation of a set. Each element of the set is a
+ *   vector. This hash type is really meant for arrays of words (e.g.,
+ *   32 or 64 bit quantities), but could also be used for character
+ *   strings.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
- * Modified by Gang Ji <gang@ee.washington.edu>
  *
  * Copyright (c) 2003, < fill in later >
  *
@@ -18,7 +20,7 @@
  *
  * $Header$
  *
- */
+*/
 
 #ifndef SHASH_SET_H
 #define SHASH_SET_H
@@ -30,132 +32,98 @@
 #include "sArray.h"
 #include "hash_abstract.h"
 
-// _Key must be a basic type.
-template <class _Key>
+// _Key must be a basic type. This is a hash set containing vectors
+// (_Key*).  All elements of the set have the same length, given by
+// object constructor.
+template <class _Key> 
 class shash_set : public hash_abstract {
 
 #ifdef COLLECT_COLLISION_STATISTICS
 public:
 #endif
 
+
   ////////////////////////////////////////////////////////////
-  // the set "buckets", which includes only key
+  // the set "buckets", which includes only key 
   struct SBucket {
     _Key key;
     bool active;
-    SBucket() : active(false) {}
+    SBucket() :active(false) { }
+    inline bool empty() { return (!active); }
+    inline bool keyEqual(const _Key k2) {
+      return (key == k2);
+    }
   };
 
   //////////////////////////////////////////////////////////
   // the actual hash table, an array of pointers to T's
   sArray < SBucket > table;
 
-#ifdef COLLECT_COLLISION_STATISTICS
-  unsigned maxCollisions;
-  unsigned numCollisions;
-  unsigned numInserts;
-#endif
-
-  ///////////////////////////////////////////////////////////////////////
-  // since this is a double hash table, we define two address
-  // functions, h1() and h2().  h1() gives the starting position of in
-  // the array of the key, and h2() gives the increment when we have a
-  // collision.
-  unsigned h1(const _Key& key, const unsigned arg_size) {
-    return (3367900314ul + key) % arg_size;
-  }
-
-  ///////////////////////////////////////////////////////////////////////
-  // h2() is the increment of of key when we have a collision.  "The
-  // value of h2(key) must be relatively prime to the hash-table m for
-  // the entire hash table to be searched" (from Corman, Leiserson,
-  // Rivest). Therefore, we have result of the h2() function satisfy
-  //         1) it must be greater than zero
-  //         2) it must be strictly less than table.size()
-  //
-  unsigned h2(const _Key& key, const unsigned arg_size) {
-    return (key + 1) % (arg_size - 1) + 1;
-  }
-
-  ///////////////////////////////////////
-  // return true if the bucket is empty
-  bool empty(const SBucket* bucket) {
-    return bucket->active == false;
-  }
-  // return true if the bucket is empty
-  bool empty(const SBucket& bucket) {
-    return bucket.active == false;
-  }
-
-  //////////////////////////////////////////////////////////////////
-  // return the entry of key in table a_table
-  unsigned entryOf(const _Key& key, sArray<SBucket> & a_table) {
-    const unsigned size = a_table.size();
-    unsigned a = h1(key, size);
-
-#ifdef COLLECT_COLLISION_STATISTICS
-    unsigned collisions=0;
-#endif
-
-    if ( (! a_table[a].active) || a_table[a].key == key ) {
-      return a;
-    }
-    const unsigned inc = h2(key, size);
-    do {
-#ifdef COLLECT_COLLISION_STATISTICS
-      collisions++;
-#endif
-      a = (a+inc) % size;
-    } while ( a_table[a].active && a_table[a].key != key );
-
-#ifdef COLLECT_COLLISION_STATISTICS
-    if (collisions > maxCollisions)
-      maxCollisions = collisions;
-    numCollisions += collisions;
-#endif
-
-    return a;
-  }
-
-
   ////////////////////////////////////////////////////////////
-  // resize: resizes the table to be new_size.  new_size *MUST* be a
-  // prime number, or everything will fail.
-  void resize(int new_size) {
+  // resize: resizes the table to be new_size.  
+  inline void resize(int new_size) {
     // make a new table (nt),  and re-hash everyone in the
     // old table into the new table.
 
     // the next table, used for table resizing.
     sArray < SBucket > nt;
-    nt.resize(new_size);
 
-    for ( unsigned i=0;i<table.size();i++) {
-      if ( table[i].active ) {
-        unsigned a = entryOf(table[i].key, nt);
-        nt[a].active = true;
-        nt[a].key = table[i].key;
+#if defined(HASH_PRIME_SIZE)
+    nt.resize(new_size);
+#else
+    // In this case, new_size *MUST* be a power of two, or everything
+    // will fail.
+    nt.resize(new_size);
+    // make sure to re-set mask before a rehash.
+    sizeMask = new_size-1;
+#ifdef HASH_LOC_FOLD
+    logSize = ceilLog2(new_size);
+#endif
+#endif
+
+    for (unsigned i=0;i<table.size();i++) {
+      if (!table.ptr[i].empty()) {
+	// assume that the key is unique, so collision detection
+	// can be done just by a bucket being non-empty.
+	unsigned a = entryOfUnique(table.ptr[i].key,nt);
+	nt.ptr[a].key = table.ptr[i].key;
+	nt.ptr[a].active = true;
       }
     }
 
-    // printf("resizing begin, %d current elements, new els = %d\n",_totalNumberEntries,new_size);
     // iterate over only non-empty entries in hash table.
     table.swap(nt);
     // clear out nt which is now old table.
     nt.clear();
+
+    numEntriesToCauseResize = (int)(loadFactor*(float)new_size);
+
   }
 
 public:
 
+  // Dummy constructor to create an invalid object to be re-constructed
+  // later.
+  shash_set() {}
+
   ////////////////////
   // constructor
-  //    All entries in this hash table have the same size given
-  //    by the argument arg_vsize.
-  shash_set(unsigned approximateStartingSize = hash_abstract::HashTableDefaultApproxStartingSize) {
-    _totalNumberEntries=0;
+  //    All entries in this hash table have the same size (= 1).
+  shash_set(unsigned approximateStartingSize = 
+	     hash_abstract::HashTableDefaultApproxStartingSize)
+  {
+    // make sure we hash at least one element, otherwise do {} while()'s won't work.
+
+    numberUniqueEntriesInserted=0;
+#if defined(HASH_PRIME_SIZE)
     findPrimesArrayIndex(approximateStartingSize);
     initialPrimesArrayIndex = primesArrayIndex;
     // create the actual hash table here.
     resize(HashTable_PrimesArray[primesArrayIndex]);
+#else
+    // create the actual hash table here.
+    resize(nextPower2(approximateStartingSize));
+#endif
 
 #ifdef COLLECT_COLLISION_STATISTICS
     maxCollisions = 0;
@@ -168,14 +136,18 @@ public:
 
   /////////////////////////////////////////////////////////
   // clear out the table entirely, including deleting
-  // all memory pointed to by the T* pointers.
-  void clear(unsigned approximateStartingSize =
-	     hash_abstract::HashTableDefaultApproxStartingSize)
+  // all memory pointed to by the T* pointers. 
+  void clear(unsigned approximateStartingSize = 
+	     hash_abstract::HashTableDefaultApproxStartingSize) 
   {
     table.clear();
-    _totalNumberEntries=0;
+    numberUniqueEntriesInserted=0;
+#if defined(HASH_PRIME_SIZE)
     primesArrayIndex=initialPrimesArrayIndex;
     resize(HashTable_PrimesArray[primesArrayIndex]);
+#else
+    resize(nextPower2(approximateStartingSize));
+#endif
   }
 
 #ifdef COLLECT_COLLISION_STATISTICS
@@ -188,65 +160,78 @@ public:
   ///////////////////////////////////////////////////////
   // insert an item <key> into the hash table.  Return a pointer to
   // the key in the hash table after it has been inserted.  The foundp
-  // argument is set to true when the key has been found.
-  _Key* insert(_Key key, bool&foundp = hash_abstract::global_foundp) {
+  // argument is set to true when the key has been found. 
+  inline _Key* insert(_Key key,
+		      bool&foundp = hash_abstract::global_foundp) {
 
 #ifdef COLLECT_COLLISION_STATISTICS
     numInserts++;
 #endif
 
     // compute the address
-    unsigned a = entryOf(key, table);
-    if ( ! table[a].active ) {
+    unsigned a = entryOf(key,table);
+
+    if (table.ptr[a].empty()) {
       foundp = false;
 
-      table[a].active = true;
-      table[a].key = key;
+      table.ptr[a].key = key;
+      table.ptr[a].active = true;
+
 
       // time to resize if getting too big.
-      // TODO: probably should resize a bit later than 1/2 entries being used.
-      // TODO: precompute size at which we do a resize.
-      if ( ++_totalNumberEntries >= table.size() / 2 ) {
-	  if ( primesArrayIndex == (HashTable_SizePrimesArray - 1) )
-	    error("ERROR: Hash table error, table size exceeds max size of %lu",
-		  HashTable_PrimesArray[primesArrayIndex]);
-	  resize(HashTable_PrimesArray[++primesArrayIndex]);
-	  // need to re-get location
-	  a = entryOf(key, table);
-	  assert (table[a].active);
+      if (++numberUniqueEntriesInserted >= numEntriesToCauseResize) {
+#if defined(HASH_PRIME_SIZE)
+	if (primesArrayIndex == (HashTable_SizePrimesArray-1)) 
+	  error("ERROR: Hash table error, table size exceeds max size of %lu",
+		HashTable_PrimesArray[primesArrayIndex]);
+	resize(HashTable_PrimesArray[++primesArrayIndex]);	
+#else
+	resize(nextPower2(table.size()+1));
+#endif
+
+	// need to re-get location
+	a = entryOf(key,table);
+	assert (!table.ptr[a].empty());
       }
     } else {
       foundp = true;
     }
-    return &table[a].key;
+    return &(table.ptr[a].key);
+  }
+
+
+  inline _Key* insertUnique(_Key key,
+			    bool&foundp = hash_abstract::global_foundp)
+  {
+    return insert(key,foundp);
   }
 
 
   ////////////////////////////////////////////////////////
   // search for key returning true if the key is found, otherwise
   // don't change the table. Return true when found.
-  bool find(_Key key) {
-    const unsigned a = entryOf(key, table);
-    return table[a].active;
+  inline bool find(_Key key) {
+    const unsigned a = entryOf(key,table);
+    return !(table.ptr[a].empty());
   }
-
 
   ////////////////////////////////////////////////////////
   // another version of find that also returns a pointer to the key in
   // the hash table itself. Returns true if the key is contained in
   // the set, false otherwise.
-  bool find(_Key* key,_Key**& key_pp) {
+  inline bool find(_Key key,_Key*& key_pp) {
     const unsigned a = entryOf(key,table);
-    if (empty(table[a])) {
+    if (table.ptr[a].empty()) {
       key_pp = NULL;
       return false;
     } else {
-      key_pp = &(table[a].key);
+      key_pp = &(table.ptr[a].key);
       return true;
     }
   }
+
 };
 
 
-#endif // defined VHASH_SET
+#endif // defined SHASH_SET
 

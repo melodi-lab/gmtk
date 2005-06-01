@@ -31,6 +31,8 @@
 #include "sArray.h"
 #include "hash_abstract.h"
 
+#define HML_EMPTY_BUCKET ((Bucket*)(~0x0))
+
 template <class _Key, class _Data> 
 class hash_map_list : public hash_abstract {
 
@@ -41,9 +43,17 @@ class hash_map_list : public hash_abstract {
   struct Bucket {
     _Key key;
     _Data item;
-    // a bucket is considered empty when pointer (next == NULL).
+    // a bucket is considered empty when pointer (next == HML_EMPTY_BUCKET).
     Bucket* next;
-    Bucket() : next(NULL) {}
+    Bucket() : next(HML_EMPTY_BUCKET) {}
+    inline bool empty() { 
+      // a bucket is empty when
+      //   1) it's next pointer is HML_EMPTY_BUCKET
+      return (next == HML_EMPTY_BUCKET);
+    }
+    inline bool keyEqual(const _Key k2) {
+      return (key == k2);
+    }
   };
 
   //////////////////////////////////////////////////////////
@@ -63,99 +73,6 @@ public:
 private:
 #endif
 
-  //////////////////////////////////////////////////////////////////
-  // since this is a double hash table, we define two address
-  // functions, h1() and h2().  h1() gives the starting position of in
-  // the array of the key, and h2() gives the increment when we have a
-  // collision.
-  unsigned h1(const _Key key, const unsigned arg_size)
-  {
-    unsigned long a;
-    // a =65599*key + 1;
-    // a = 402223*key + 1;
-    // a = 611953*key + 1;
-    // a = 3367900313ul*key + 1;
-    // a = 3367900313ul*key + key + 1;
-    a = key+1;
-    // TODO: when we know cardinality of a random variable,
-    // we can scale a by tableSize/cardinality which might
-    // give more uniform distribution over bucket entries.
-    return a % arg_size;
-  }
-
-  ////////////////////////////////////////////////////////////
-  // h2() is the increment of of key when we have a collision.  "The
-  // value of h2(key) must be relatively prime to the hash-table m for
-  // the entire hash table to be searched" (from Corman, Leiserson,
-  // Rivest). Therefore, we have result of the h2() function satisfy
-  //         1) it must be greater than zero 
-  //         2) it must be strictly less than table.size()
-  // 
-  unsigned h2(const _Key key, const unsigned arg_size)
-  {
-    unsigned long a;
-
-    // a =65599*key + 1;
-    // a = 402223*key + 1;
-    // a = 611953*key + 1;
-    // a = 1500450271ul*key + 1;
-    // a = 3267000013ul*a + key + 1;
-    // a = 3267000013ul*key + key + 1;
-    a = key+1;
-    return (
-       (a % (arg_size-1)) // this gives [0 : (size-2)]
-       +
-       1                  // this gives [1 : (size-1)] 
-       );
-  }
-
-
-  ///////////////////
-  // return true when the bucket is empty.
-  bool empty(const Bucket* bucket,
-	     const Bucket* a_last) {
-    // a bucket is empty when
-    //   1) it is not a_last, and
-    //   2) it's next pointer is NULL
-    return (bucket->next == NULL && bucket != a_last); 
-  }
-
-  /////////////////////////////////////////////////////////////////////
-  // return the entry of key in table a_table with last bucket a_last.
-  unsigned entryOf(_Key key,
-		   sArray<Bucket> & a_table,
-		   const Bucket* a_last) {
-    const unsigned size = a_table.size();
-    unsigned a = h1(key,size);
-
-#ifdef COLLECT_COLLISION_STATISTICS
-    unsigned collisions=0;
-#endif
-
-    if ( empty(&a_table[a],a_last) ||
-	 (a_table[a].key == key) ) {
-      return a;
-    }
-    const unsigned inc = h2(key,size);
-    do {
-#ifdef COLLECT_COLLISION_STATISTICS
-      collisions++;
-#endif
-      a = (a+inc) % size;
-    } while ( !empty(&a_table[a],a_last)
-	      &&
-	      (a_table[a].key != key) 
-	      );
-
-#ifdef COLLECT_COLLISION_STATISTICS
-    if (collisions > maxCollisions)
-      maxCollisions = collisions;
-    numCollisions += collisions;
-#endif
-
-    return a;
-  }
-
 
   ////////////////////////////////////////////////////////////
   // resize: resizes the table to be new_size.  new_size *MUST* be a
@@ -169,15 +86,27 @@ private:
 
     Bucket* nfirst=NULL;
     Bucket* nlast=NULL;
+
+#if defined(HASH_PRIME_SIZE)
     nt.resize(new_size);
+#else
+    // In this case, new_size *MUST* be a power of two, or everything
+    // will fail.
+    nt.resize(new_size);
+    // make sure to re-set mask before a rehash.
+    sizeMask = new_size-1;
+#ifdef HASH_LOC_FOLD
+    logSize = ceilLog2(new_size);
+#endif
+#endif
 
     // printf("resizing begin, %d current elements\n",_totalNumberEntries);
     // iterate over only non-empty entries in hash table.
     iterator it = begin();
     for (; it != end(); it++) {
-      unsigned a = entryOf(it.b->key,nt,nlast);
-      nt[a].key = it.b->key;
-      nt[a].item = it.b->item;
+      unsigned a = entryOfUnique(it.b->key,nt);
+      nt.ptr[a].key = it.b->key;
+      nt.ptr[a].item = it.b->item;
       // printf("resizing key = %d, item = %f\n",it.b->key,it.b->item);
 
       if (nfirst == NULL)
@@ -194,6 +123,8 @@ private:
     // set up new first and last pointers.
     first = nfirst;
     last = nlast;
+
+    numEntriesToCauseResize = (int)(loadFactor*(float)new_size);
   }
 
 
@@ -203,19 +134,24 @@ public:
   // constructor
   hash_map_list(unsigned approximateStartingSize = 
 		hash_abstract::HashTableDefaultApproxStartingSize) {
-    _totalNumberEntries=0;
+
+    // make sure we hash at least one element, otherwise do {} while()'s won't work.
+    numberUniqueEntriesInserted=0;
+#if defined(HASH_PRIME_SIZE)
     findPrimesArrayIndex(approximateStartingSize);
     initialPrimesArrayIndex = primesArrayIndex;
-    first = last = NULL;
     // create the actual hash table here.
     resize(HashTable_PrimesArray[primesArrayIndex]);
+#else
+    // create the actual hash table here.
+    resize(nextPower2(approximateStartingSize));
+#endif
 
 #ifdef COLLECT_COLLISION_STATISTICS
     maxCollisions = 0;
     numCollisions = 0;
     numInserts = 0;
 #endif
-
   }
 
   /////////////////////////////////////////////////////////
@@ -224,10 +160,13 @@ public:
   void clear(unsigned approximateStartingSize = 
 	     hash_abstract::HashTableDefaultApproxStartingSize) {
     table.clear();
-    _totalNumberEntries=0;
+    numberUniqueEntriesInserted=0;
+#if defined(HASH_PRIME_SIZE)
     primesArrayIndex=initialPrimesArrayIndex;
-    first = last = NULL;
     resize(HashTable_PrimesArray[primesArrayIndex]);
+#else
+    resize(nextPower2(approximateStartingSize));
+#endif
   }
 
 #ifdef COLLECT_COLLISION_STATISTICS
@@ -255,14 +194,14 @@ public:
 #endif
 
     // compute the address
-    unsigned a = entryOf(key,table,last);
+    unsigned a = entryOf(key,table);
     // printf("inserting %d to entry %d, empty = %d\n",key,a,empty(&table[a],last));
-    if (empty(&table[a],last)) {
+    if (table.ptr[a].empty()) {
       foundp = false;
 
-      table[a].key = key;
-      table[a].item = val;
-      table[a].next = NULL;
+      table.ptr[a].key = key;
+      table.ptr[a].item = val;
+      table.ptr[a].next = NULL;
 
       if (first == NULL)
 	first = last = &table[a];      
@@ -271,13 +210,15 @@ public:
 	last = &table[a];
       }
       // time to resize if getting too big.
-      // TODO: probably should resize a bit later than 1/2 entries being used.
-      if (++_totalNumberEntries >= table.size()/2) {
-	  if (primesArrayIndex == (HashTable_SizePrimesArray-1)) 
-	    error("ERROR: Hash table error, table size exceeds max size of %lu",
-		  HashTable_PrimesArray[primesArrayIndex]);
-	  resize(HashTable_PrimesArray[++primesArrayIndex]);
-	  a = entryOf(key,table,last);
+      if (++numberUniqueEntriesInserted >= numEntriesToCauseResize) {
+#if defined(HASH_PRIME_SIZE)
+	if (primesArrayIndex == (HashTable_SizePrimesArray-1)) 
+	  error("ERROR: Hash table error, table size exceeds max size of %lu",
+		HashTable_PrimesArray[primesArrayIndex]);
+	resize(HashTable_PrimesArray[++primesArrayIndex]);	
+#else
+	resize(nextPower2(table.size()+1));
+#endif
       }
     } else {
       foundp = true;
@@ -285,16 +226,22 @@ public:
     return &table[a].item;
   }
 
+  inline _Data* insertUnique(_Key key, _Data val,
+			    bool&foundp = hash_abstract::global_foundp)
+  {
+    return insert(key,val,foundp);
+  }
+
+
+
   ////////////////////////////////////////////////////////
   // search for key returning true if the key is found, otherwise
   // don't change the table. Return pointer to the data item
   // when found, and NULL when not found.
   _Data* find(_Key key) {
-    const unsigned a = entryOf(key,table,last);
-    // const bool foundp = ((table[a].next != NULL) || (last == &table[a]));
-    const bool foundp = !empty(&table[a],last);
-    if (foundp) 
-      return &table[a].item;
+    const unsigned a = entryOf(key,table);
+    if (!table.ptr[a].empty())
+      return &table.ptr[a].item;
     else
       return NULL;
   }
@@ -364,8 +311,8 @@ public:
   // Begin an iterator starting at key if it exists, otherwise 
   // create an iterator which end is true.
   void begin(iterator& it,_Key key) {
-    const unsigned a = entryOf(key,table,last);
-    const bool foundp = !empty(&table[a],last);
+    const unsigned a = entryOf(key,table);
+    const bool foundp = !table.ptr[a].empty();
     if (foundp) {
       it.b = &table[a];
     } else {
