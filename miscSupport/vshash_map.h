@@ -1,11 +1,10 @@
 /*
- * vhash_map.h
+ * vshash_map.h
  *   General data structure for a vector-stored hash-table implementation
  *   of a map. Each element of the map is a vector.  This is an variation
  *   of vhash_map except the value of the vector is stored.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
- * Modified by Gang Ji <gang@ee.washington.edu>
  *
  * Copyright (c) 2003, < fill in later >
  *
@@ -19,7 +18,7 @@
  *
  * $Header$
  *
- */
+*/
 
 #ifndef VSHASH_MAP_H
 #define VSHASH_MAP_H
@@ -31,322 +30,305 @@
 #include "sArray.h"
 #include "hash_abstract.h"
 
-// _Key must be a basic type. This is a hash map, mapping from vectors (_Key*)
-// which are all the same length (given by object constructor). We map
-// from these vectors of _Key's to objects given by _Data.
-template <class _Key, class _Data>
+// _Key must be a basic type. This is a hash set containing vectors
+// (_Key*).  All elements of the set have the same length, given by
+// object constructor.
+template <class _Key, class _Data> 
 class vshash_map : public hash_abstract {
-protected:
 
 #ifdef COLLECT_COLLISION_STATISTICS
 public:
 #endif
 
-	////////////////////////////////////
-	// The size of all the vectors in this map must be the
-	// same. Here we store the size once, so they don't
-	// need to be stored in each element.
-	const unsigned vsize;
+  //////////////////////////////////////////////////////////
+  // The size of all the vectors in this set must be the same. Here
+  // we store the size once, so they don't need to be stored in each
+  // element. Ideally would be const.
+  unsigned ksize;
 
-	////////////////////////////////////////
-	// the map "buckets", which include a key mapping to a data item.
-	struct MBucket {
-		_Key* key;
-		_Data item;
+  ////////////////////////////////////////////////////////////
+  // the map "buckets", which includes only key and data item.
+  struct MBucket {
+    _Key* key;
+    _Data item;
+    MBucket() :key(NULL) {}
 
-		// start off with an empty one.
-		MBucket() : key(NULL) {}
-		~MBucket() { delete [] key; }
-	};
+    inline bool empty() { return (key == NULL); }
 
-	//////////////////////////////////////////////////////////
-	// the actual hash table, an array of pointers to T's
-	sArray<MBucket> table;
+    inline bool keyEqual(const _Key* k2, const _Key* const k2_endp) {
+      const _Key* k1 = key;
+      do {
+	if (*k1++ != *k2++)
+	  return false;
+      } while (k2 != k2_endp);
+      return true;
+    }
 
+    inline void keyCopy(_Key* k2, const unsigned vsize) {
+      if (k2 == NULL) {
+	delete [] key; key = NULL;
+	return;
+      }
+      if (key == NULL)
+	key = new _Key [vsize];
 
-#ifdef COLLECT_COLLISION_STATISTICS
-	unsigned maxCollisions;
-	unsigned numCollisions;
-	unsigned numInserts;
+      const _Key* key_endp = key + vsize;
+      _Key* keyp = key;
+      do {
+	*keyp++ = *k2++;
+      } while ( keyp != key_endp );
+    }
+
+  };
+
+  //////////////////////////////////////////////////////////
+  // the actual hash table, an array of pointers to T's
+  sArray < MBucket > table;
+
+  ////////////////////////////////////////////////////////////
+  // resize: resizes the table to be new_size.  
+  inline void resize(int new_size) {
+    // make a new table (nt),  and re-hash everyone in the
+    // old table into the new table.
+
+    // printf("resizing table: current elements = %d, current table size =%d, new table size = %d\n",
+    // numberUniqueEntriesInserted,table.size(),new_size);
+
+    // the next table, used for table resizing.
+    sArray < MBucket > nt;
+
+#if defined(HASH_PRIME_SIZE)
+    nt.resize(new_size);
+#else
+    // In this case, new_size *MUST* be a power of two, or everything
+    // will fail.
+    nt.resize(new_size);
+    // make sure to re-set mask before a rehash.
+    sizeMask = new_size-1;
+#ifdef HASH_LOC_FOLD
+    logSize = ceilLog2(new_size);
+#endif
 #endif
 
-	//////////////////////////////////////////////////
-	// return true if the two keys are equal.
-	bool keyEqual(const register _Key* k1, const register _Key* k2) {
-		const register _Key* k1_endp = k1 + vsize;
-		do {
-			if ( *k1++ != *k2++ )
-				return false;
-		} while ( k1 != k1_endp );
-		return true;
-	}
+    for (unsigned i=0;i<table.size();i++) {
+      if (!table.ptr[i].empty()) {
+	unsigned a = entryOfUnique(table.ptr[i].key,ksize,nt);
+	nt.ptr[a].key = table.ptr[i].key;
+	nt.ptr[a].item = table[i].item;
+      }
+    }
 
-	void keyCopy(_Key* &k1, _Key* &k2) {
-		if ( k2 == NULL ) {
-			delete [] k1;
-			k1 = NULL;
-			return;
-		}
+    // iterate over only non-empty entries in hash table.
+    table.swap(nt);
+    // clear out nt which is now old table.
+    nt.clear();
 
-		if ( k1 == NULL ) {
-			k1 = new _Key [vsize];
-		}
-
-		const _Key* p1end = k1 + vsize;
-		for ( _Key* p1 = k1, *p2 = k2; p1 != p1end; ++p1, ++p2 ) {
-			*p1 = *p2;
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////
-	// since this is a double hash table, we define two address
-	// functions, h1() and h2().  h1() gives the starting position of in
-	// the array of the key, and h2() gives the increment when we have a
-	// collision.
-	unsigned h1(const _Key* key, const unsigned arg_size) {
-		const _Key* keyp = key + vsize;
-
-		unsigned long a = vsize;
-		do {
-			--keyp;
-			a = 3367900313ul * a + (*keyp) + 1;
-		} while ( keyp != key );
-
-		return a % arg_size;
-	}
-
-	///////////////////////////////////////////////////////////////////////
-	// h2() is the increment of of key when we have a collision.  "The
-	// value of h2(key) must be relatively prime to the hash-table m for
-	// the entire hash table to be searched" (from Corman, Leiserson,
-	// Rivest). Therefore, we have result of the h2() function satisfy
-	//         1) it must be greater than zero
-	//         2) it must be strictly less than table.size()
-	unsigned h2(const _Key* key, const unsigned arg_size) {
-		unsigned long a=0;
-		const _Key* keyp = key + vsize;
-		do {
-			--keyp;
-			a = 3267000013ul * a + (*keyp) + 1;
-		} while ( keyp != key );
-		return (a % (arg_size - 1)) + 1;
-	}
-
-	///////////////////////////////////////
-	// return true if the bucket is empty
-	bool empty(const MBucket* bucket) {
-		return bucket->key == NULL;
-	}
-	// return true if the bucket is empty
-	bool empty(const MBucket& bucket) {
-		return bucket.key == NULL;
-	}
-
-	//////////////////////////////////////////////////////////////////
-	// return the entry of key
-	unsigned entryOf(const _Key* key, sArray<MBucket>& a_table) {
-		const unsigned size = a_table.size();
-		unsigned a = h1(key, size);
-
-#ifdef COLLECT_COLLISION_STATISTICS
-		unsigned collisions=0;
-#endif
-
-		if ( empty(a_table[a]) || keyEqual(a_table[a].key,key) )
-			return a;
-
-		const unsigned inc = h2(key,size);
-		do {
-#ifdef COLLECT_COLLISION_STATISTICS
-			collisions++;
-#endif
-			a = (a + inc) % size;
-		} while ( !empty(a_table[a]) && (! keyEqual(a_table[a].key, key)) );
-
-#ifdef COLLECT_COLLISION_STATISTICS
-		if ( collisions > maxCollisions )
-			maxCollisions = collisions;
-		numCollisions += collisions;
-#endif
-
-		return a;
-	}
-
-
-	////////////////////////////////////////////////////////////
-	// resize: resizes the table to be new_size.  new_size *MUST* be a
-	// prime number, or everything will fail.
-	void resize(int new_size) {
-		// make a new table (nt),  and re-hash everyone in the
-		// old table into the new table.
-
-		// the next table, used for table resizing.
-		sArray<MBucket> nt;
-		nt.resize(new_size);
-
-		for ( unsigned i = 0; i < table.size(); i++ ) {
-			if ( ! empty(table[i]) ) {
-				unsigned a = entryOf(table[i].key, nt);
-				keyCopy(nt[a].key, table[i].key);
-				nt[a].item = table[i].item;
-			}
-		}
-
-		table.swap(nt);
-		nt.clear();
-	}
+    numEntriesToCauseResize = (int)(loadFactor*(float)new_size);
+  }
 
 public:
 
-	////////////////////
-	// constructor
-	//    All entries in this hash table have the same size given
-	//    by the argument arg_vsize.
-	vshash_map(const unsigned arg_vsize, unsigned approximateStartingSize = hash_abstract::HashTableDefaultApproxStartingSize) : vsize(arg_vsize) {
-		// make sure we hash at least one element, otherwise do {} while()'s won't work.
-		assert(vsize > 0);
+  // Dummy constructor to create an invalid object to be re-constructed
+  // later.
+  vshash_map() {}
 
-		_totalNumberEntries=0;
-		findPrimesArrayIndex(approximateStartingSize);
-		initialPrimesArrayIndex = primesArrayIndex;
-		// create the actual hash table here.
-		resize(HashTable_PrimesArray[primesArrayIndex]);
+  ////////////////////
+  // constructor
+  //    All entries in this hash table have the same size given
+  //    by the argument arg_ksize.
+  vshash_map(const unsigned arg_ksize,
+	     unsigned approximateStartingSize = 
+	     hash_abstract::HashTableDefaultApproxStartingSize)
+    : ksize(arg_ksize) 
+  {
+    // make sure we hash at least one element, otherwise do {} while()'s won't work.
+    assert (ksize > 0);
+
+    numberUniqueEntriesInserted=0;
+#if defined(HASH_PRIME_SIZE)
+    findPrimesArrayIndex(approximateStartingSize);
+    initialPrimesArrayIndex = primesArrayIndex;
+    // create the actual hash table here.
+    resize(HashTable_PrimesArray[primesArrayIndex]);
+#else
+    // create the actual hash table here.
+    resize(nextPower2(approximateStartingSize));
+#endif
 
 #ifdef COLLECT_COLLISION_STATISTICS
-		maxCollisions = 0;
-		numCollisions = 0;
-		numInserts = 0;
+    maxCollisions = 0;
+    numCollisions = 0;
+    numInserts = 0;
 #endif
-	}
 
-	//////////////////////
-	// constructor for empty invalid object.
-	// WARNING: this will create an invalid object. It is assumed
-	// that this object will re-reconstructed later.
-	vshash_map() {}
+  }
 
+  // need a destructure since we've allocated stuff here.
+  ~vshash_map() {
+    for (unsigned i=0;i<table.size(); i++ ) {
+      if (!table.ptr[i].empty()) {
+	delete [] table.ptr[i].key;
+      }
+    }
+  }
 
-	/////////////////////////////////////////////////////////
-	// clear out the table entirely, including deleting
-	// all memory pointed to by the T* pointers.
-	void clear(unsigned approximateStartingSize = hash_abstract::HashTableDefaultApproxStartingSize) {
-		table.clear();
-		_totalNumberEntries=0;
-		primesArrayIndex=initialPrimesArrayIndex;
-		resize(HashTable_PrimesArray[primesArrayIndex]);
-	}
+  /////////////////////////////////////////////////////////
+  // clear out the table entirely, including deleting
+  // all memory pointed to by the T* pointers. 
+  void clear(unsigned approximateStartingSize = 
+	     hash_abstract::HashTableDefaultApproxStartingSize) 
+  {
+    table.clear();
+    numberUniqueEntriesInserted=0;
+#if defined(HASH_PRIME_SIZE)
+    primesArrayIndex=initialPrimesArrayIndex;
+    resize(HashTable_PrimesArray[primesArrayIndex]);
+#else
+    resize(nextPower2(approximateStartingSize));
+#endif
+  }
 
 #ifdef COLLECT_COLLISION_STATISTICS
-	// clear out the statistics
-	void clearStats() {
-		maxCollisions = numCollisions = numInserts = 0;
-	}
+  // clear out the statistics
+  void clearStats() {
+    maxCollisions = numCollisions = numInserts = 0;
+  }
 #endif
 
-	///////////////////////////////////////////////////////
-	// insert an item <key vector,val> into the hash table.  Return a
-	// pointer to the data item in the hash table after it has been
-	// inserted.  The foundp argument is set to true when the key has
-	// been found. In this case (when it was found), the existing _Data
-	// item is not adjusted to be val.
-	_Data* insert(_Key* key, _Data val, bool&foundp = hash_abstract::global_foundp) {
+  ///////////////////////////////////////////////////////
+  // insert an item <key> into the hash table.  Return a pointer to
+  // the key in the hash table after it has been inserted.  The foundp
+  // argument is set to true when the key has been found. 
+  inline _Data* insert(_Key* key,
+		       _Data val,
+		       bool&foundp = hash_abstract::global_foundp) {
+
 #ifdef COLLECT_COLLISION_STATISTICS
-		numInserts++;
+    numInserts++;
 #endif
 
-		// compute the address
-		unsigned a = entryOf(key, table);
-		if ( empty(table[a]) ) {
-			foundp = false;
+    // compute the address
+    unsigned a = entryOf(key,ksize,table);
 
-			keyCopy(table[a].key, key);
-			table[a].item = val;
+    // printf("inserting to entry %d, empty = %d\n",a,empty(table[a]));
+    if (table.ptr[a].empty()) {
+      foundp = false;
 
-			// time to resize if getting too big.
-			// TODO: probably should resize a bit later than 1/2 entries being used.
-			if ( ++_totalNumberEntries >= table.size() / 2 ) {
-				if ( primesArrayIndex == (HashTable_SizePrimesArray - 1) )
-					error("ERROR: Hash table error, table size exceeds max size of %lu", HashTable_PrimesArray[primesArrayIndex]);
-				resize(HashTable_PrimesArray[++primesArrayIndex]);
-				// need to re-get location
-				a = entryOf(key, table);
-				assert(! empty(table[a]) );
-			}
-		} else {
-			foundp = true;
-		}
+      table.ptr[a].keyCopy(key,ksize);
+      table.ptr[a].item = val;
 
-		return &table[a].item;
-	}
+      // time to resize if getting too big.
+      if (++numberUniqueEntriesInserted >= numEntriesToCauseResize) {
+#if defined(HASH_PRIME_SIZE)
+	if (primesArrayIndex == (HashTable_SizePrimesArray-1)) 
+	  error("ERROR: Hash table error, table size exceeds max size of %lu",
+		HashTable_PrimesArray[primesArrayIndex]);
+	resize(HashTable_PrimesArray[++primesArrayIndex]);	
+#else
+	resize(nextPower2(table.size()+1));
+#endif
 
-	_Data* insert(_Key* key, _Data val, _Key* &keyPtr, bool&foundp = hash_abstract::global_foundp) {
+	// need to re-get location
+	a = entryOf(key,ksize,table);
+	assert (!table.ptr[a].empty());
+      }
+    } else {
+      foundp = true;
+    }
+    return &table.ptr[a].item;
+  }
+
+
+  inline _Data* insert(_Key* key,
+		       _Data val,
+		       _Key* &keyPtr,
+		       bool&foundp = hash_abstract::global_foundp) {
+
 #ifdef COLLECT_COLLISION_STATISTICS
-		numInserts++;
+    numInserts++;
 #endif
 
-		// compute the address
-		unsigned a = entryOf(key, table);
-		if ( empty(table[a]) ) {
-			foundp = false;
+    // compute the address
+    unsigned a = entryOf(key,ksize,table);
 
-			keyCopy(table[a].key, key);
-			table[a].item = val;
+    // printf("inserting to entry %d, empty = %d\n",a,empty(table[a]));
+    if (table.ptr[a].empty()) {
+      foundp = false;
 
-			// time to resize if getting too big.
-			// TODO: probably should resize a bit later than 1/2 entries being used.
-			if ( ++_totalNumberEntries >= table.size() / 2 ) {
-				if ( primesArrayIndex == (HashTable_SizePrimesArray - 1) )
-					error("ERROR: Hash table error, table size exceeds max size of %lu", HashTable_PrimesArray[primesArrayIndex]);
-				resize(HashTable_PrimesArray[++primesArrayIndex]);
-				// need to re-get location
-				a = entryOf(key, table);
-				assert(! empty(table[a]) );
-			}
-		} else {
-			foundp = true;
-		}
+      table.ptr[a].keyCopy(key,ksize);
+      table.ptr[a].item = val;
 
-		keyPtr = table[a].key;
-
-		return &table[a].item;
-	}
-
-
-	////////////////////////////////////////////////////////
-	// search for key returning true if the key is found, otherwise
-	// don't change the table. Return pointer to the data item
-	// when found, and NULL when not found.
-	_Data* find(_Key* key) {
-		const unsigned a = entryOf(key, table);
-		if ( ! empty(table[a]) )
-			return &table[a].item;
-		else
-			return NULL;
-	}
-
-
-	/////////////////////////////////////////////////////////
-	// search for key, returning a reference to the data item
-	// regardless if the value was found or not. This will
-	// insert the key into the hash table (similar to the
-	// way STL's operator[] works with the hash_set.h and hash_map.h)
-	_Data& operator[](_Key* key) {
-		_Data* resp = insert(key, _Data());
-		// return a reference to the location regardless
-		// of if it was found or not.
-		return *resp;
-	}
-
-#if 0
-	// Make these avaialble only in derived classes.
-	// Direct access to tables and keys (made available for speed).
-	// Use sparingly, and only if you know what you are doing.
-	_Key*& tableKey(const unsigned i) { return table[i].key; }
-	_Data& tableItem(const unsigned i) { return table[i].item; }
-	bool tableEmpty(const unsigned i) { return empty(table[i]); }
-	unsigned tableSize() { return table.size(); }
+      // time to resize if getting too big.
+      if (++numberUniqueEntriesInserted >= numEntriesToCauseResize) {
+#if defined(HASH_PRIME_SIZE)
+	if (primesArrayIndex == (HashTable_SizePrimesArray-1)) 
+	  error("ERROR: Hash table error, table size exceeds max size of %lu",
+		HashTable_PrimesArray[primesArrayIndex]);
+	resize(HashTable_PrimesArray[++primesArrayIndex]);	
+#else
+	resize(nextPower2(table.size()+1));
 #endif
+
+	// need to re-get location
+	a = entryOf(key,ksize,table);
+	assert (!table.ptr[a].empty());
+      }
+    } else {
+      foundp = true;
+    }
+    keyPtr = table[a].key;
+    return &table.ptr[a].item;
+  }
+
+
+  ////////////////////////////////////////////////////////
+  // search for key returning true if the key is found, otherwise
+  // don't change the table. Return true when found.
+  // search for key returning data item if the key is found, otherwise
+  // don't change the table. Return pointer to the data item
+  // when found, and NULL when not found.
+  _Data* find(_Key* key) {
+    const unsigned a = entryOf(key,ksize,table);
+    if (!table.ptr[a].empty())
+      return &(table.ptr[a].item);
+    else 
+      return NULL;
+  }
+
+
+
+  ////////////////////////////////////////////////////////
+  // Another version of find that returns not only the data item, but
+  // also a pointer to the keyp in the hash table itself, which can be
+  // modified if need be. If item is not found, key_pp is *NOT*
+  // modified.
+  _Data* find(_Key* key,_Key**& key_pp) {
+    const unsigned a = entryOf(key,ksize,table);
+    // printf("find: entry %d\n",a);
+    if (!table.ptr[a].empty()){
+      key_pp = &table[a].key;
+      return &table[a].item;
+    } else {
+      return NULL;
+    }
+  }
+
+  /////////////////////////////////////////////////////////
+  // search for key, returning a reference to the data item
+  // regardless if the value was found or not. This will
+  // insert the key into the hash table (similar to the
+  // way STL's operator[] works with the hash_set.h and hash_map.h)
+  _Data& operator[](_Key* key) {
+    _Data* resp = insert(key, _Data());
+    // return a reference to the location regardless
+    // of if it was found or not.
+    return *resp;
+  }
+
+
+
 };
 
 
-#endif // defined VHASH_MAP2
+#endif // defined VSHASH_MAP
+

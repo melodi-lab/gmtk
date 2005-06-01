@@ -58,6 +58,8 @@ main(int argc,char*argv[])
   int count= 100000;
   int vsize = 3;
   int maxCard = 100000;
+
+  srand(0);
   
   if (argc > 1)
     count = atoi(argv[1]);
@@ -65,31 +67,37 @@ main(int argc,char*argv[])
     vsize = atoi(argv[2]);
   if (argc > 3)
     maxCard = atoi(argv[3]);
+  if (argc > 4)
+    hash_abstract::loadFactor = atof(argv[4]);
+
+  assert ( hash_abstract::loadFactor > 0 && hash_abstract::loadFactor < 1.0 );
+
 
   if (maxCard == 0)
     maxCard = INT_MAX;
 
   printf("Using %d entries, each of length %d, maxCard = %d\n",count,vsize,maxCard);
 
-  vhash_set< int > ht(vsize,1000);
+  vhash_set< UInt32 > ht(vsize,1000);
 
-  printf("creating %d random entries of size %d\n",count,vsize);
-  int* data = new int[vsize*count];
-  int* vp = data;
+  // printf("creating %d random entries of size %d\n",count,vsize);
+  UInt32* data = new UInt32[vsize*count];
+  UInt32* vp = data;
   for (int i=0;i<vsize*count;i++) {
     *vp++ = rand() % maxCard;
   }
+
 
   printf("inserting %d random entries of size %d\n",count,vsize);
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
   vp = data;
-  int * res;
+  // UInt32 * res;
   for (int i=0;i<count;i++) {
     bool foundp;
-    *vp = (int)res;
-    res = ht.insert(vp,foundp);
+    // *vp = (UInt32)res;
+    ht.insert(vp,foundp);
     // printf("inserted ");
     // myprintv(vi,vsize);
     // printf(", foundp = %d\n",foundp);
@@ -97,14 +105,24 @@ main(int argc,char*argv[])
   }
   getrusage(RUSAGE_SELF,&rue);
   double userTime,sysTime;
-  reportTiming(rus,rue,userTime,sysTime,stdout);
+  reportTiming(rus,rue,userTime,sysTime,NULL);
+
+
+  printf("%d inserts, size %d, lf %f, %d total cols, %d max cols, avg  %e, entries  %d, userTime  %f\n",
+	 ht.numInserts,vsize,hash_abstract::loadFactor,
+	 ht.numCollisions,
+	 ht.maxCollisions,
+	 (double)ht.numCollisions/(double)ht.numInserts,
+	 ht.totalNumberEntries(),
+	 userTime);
+
+#if 0
   
   printf("max %d cols, %d total collisions with %d inserts, avg = %e, num entries = %d\n",
 	 ht.maxCollisions,ht.numCollisions,ht.numInserts,
 	 (double)ht.numCollisions/(double)ht.numInserts,
 	 ht.totalNumberEntries());
 
-#if 0
 
   // now go through each entry in the table to test if it is there.
   printf("ensuring inserted entries are all contained\n");

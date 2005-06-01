@@ -61,12 +61,12 @@ docdir = $(prefix)/man/man1
 LIBS = -lm
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS)
+compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS) $(HASH)
+compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS) $(HASH)
 pure =
 link = $(pure) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
-compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
+compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS) $(HASH)
 
 #----------------------------------------------------------------------------
 # Default build rules.
@@ -101,62 +101,63 @@ libmiscSupport.a: $(objs)
 	$(archive) $@ $(objs)
 
 
-string_err: string_err.o
-	$(compile.cc.link) -Wall -g -DMAIN  -o string_err string_err.o $(LIBS)
-
-
 #----------------------------------------------------------------------------
 # Test programs for each .cc file
 #----------------------------------------------------------------------------
 
 testError: error.cc
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ error.cc $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ error.cc $(objs)
 
 testDebug: debug.cc debug.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ debug.cc $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ debug.cc $(objs)
 
 
 testBPRange: bp_range.cc error.o
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ bp_range.cc error.o $(LIBS)
-
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ bp_range.cc error.o $(objs)
 
 testArguments: arguments.cc
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ arguments.cc $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ arguments.cc $(objs)
 
 testLogp: logp.cc
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ logp.cc error.o $(LIBS)
-
-testHashMapList: hash_map_list.cc hash_abstract.o hash_map_list.h hash_abstract.cc hash_abstract.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ hash_map_list.cc error.o hash_abstract.o $(LIBS)
-
-
-testHashTree: hash_tree.h hash_tree.cc hash_map_list.cc hash_abstract.o hash_map_list.h hash_abstract.cc hash_abstract.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ hash_tree.cc error.o hash_abstract.o $(LIBS)
-
-testVHashSet: vhash_set.h vhash_set.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ vhash_set.cc error.o hash_abstract.o general.o $(LIBS)
-
-testVHashSet2: vhash_set2.h vhash_set2.cc hash_abstract2.o hash_abstract2.cc hash_abstract2.h general.o
-	$(compile.cc.link) -Wall -g -DMAIN $(HASH) -o $@ vhash_set2.cc error.o hash_abstract2.cc general.o 
-
-
-testVHashMap: vhash_map.h vhash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ vhash_map.cc error.o hash_abstract.o $(LIBS)
-
-
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ logp.cc error.o $(objs)
 
 testRand: rand.cc
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ rand.cc error.o $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ rand.cc error.o $(objs)
 
 testsArray: sArray.cc sArray.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ sArray.cc error.o $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ sArray.cc error.o $(objs)
 
 testcArray: cArray.cc
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ cArray.cc error.o $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ cArray.cc error.o $(objs)
 
 
 fileParserTest: fileParser.cc fileParser.h
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ fileParser.cc $(LIBS)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ fileParser.cc $(objs)
+
+testHashDrivers: testHashMapList testHashTree testVHashSet testVHashMap testSHashSet testSHashMap testVSHashMap
+
+testHashMapList: hash_map_list.cc hash_abstract.o hash_map_list.h hash_abstract.cc hash_abstract.h general.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ hash_map_list.cc error.o hash_abstract.o general.o
+
+testHashTree: hash_tree.h hash_tree.cc hash_map_list.cc hash_abstract.o hash_map_list.h hash_abstract.cc hash_abstract.h general.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ hash_tree.cc error.o hash_abstract.o general.o
+
+testVHashSet: vhash_set.h vhash_set.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ vhash_set.cc error.o hash_abstract.o general.o
+
+testVHashMap: vhash_map.h vhash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ vhash_map.cc error.o hash_abstract.o general.o
+
+testSHashSet: shash_set.h shash_set.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN $(HASH) -o $@ shash_set.cc error.o hash_abstract.cc general.o 
+
+testSHashMap: shash_map.h shash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN $(HASH) -o $@ shash_map.cc error.o hash_abstract.cc general.o
+
+testVSHashMap: vshash_map.h vshash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN $(HASH) -o $@ vshash_map.cc error.o hash_abstract.cc general.o
+
+
 
 #----------------------------------------------------------------------------
 # Gather stuff together.
@@ -168,7 +169,9 @@ all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h eig.h
 
 all_objs = 
 
-all_exs = testError testBPRange testArguments testLogp testRand testsArray testcArray string_err testDebug fileParserTest testHashMapList
+all_exs = testError testDebug testBPRange testArguments testLogp testRand testsArray testcArray fileParserTest testHashDrivers testHashMapList testHashTree testVHashSet testVHashMap testSHashSet testSHashMap testVSHashMap
+
+
 
 #----------------------------------------------------------------------------
 # installation

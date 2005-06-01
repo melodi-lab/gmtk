@@ -34,6 +34,18 @@ VCID("$Header$")
 ////////////////////////////////////////////////////////////////////
 
 
+// NOTE: this variable makes the code non-reentrant for threads
+bool hash_abstract::global_foundp = false;
+
+const unsigned
+hash_abstract::HashTableDefaultApproxStartingSize = 20000;
+
+float
+hash_abstract::loadFactor = 0.5;
+
+
+#if defined(HASH_PRIME_SIZE)
+
 /*
  * Ten random 10 digit primes
  *
@@ -63,7 +75,7 @@ other primes
 
 /*
 
-1,
+  1,
   2,
   3,
   7,
@@ -115,9 +127,6 @@ other primes
   };
 */
 
-const unsigned
-hash_abstract::HashTableDefaultApproxStartingSize = 20000;
-
 
 // the possible sizes for the has table, a list of prime
 // numbers each entry roughly doubling in size of the 
@@ -167,5 +176,4 @@ const unsigned
 hash_abstract::HashTable_SizePrimesArray
    = sizeof(HashTable_PrimesArray)/sizeof(unsigned);
 
-// NOTE: this variable makes the code non-reentrant for threads
-bool hash_abstract::global_foundp = false;
+#endif // defined(HASH_PRIME_SIZE)

@@ -1,6 +1,6 @@
 /*-
- * vshash_map.cc
- *     vshash_map driver class class
+ * vshash_map2.cc
+ *     vshash_map2 driver class class
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -18,7 +18,7 @@
 
 
 #include "general.h"
-VCID("$Header$");
+VCID("$Header$")
 
 #ifdef MAIN
 #define COLLECT_COLLISION_STATISTICS
