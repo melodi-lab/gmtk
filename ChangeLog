@@ -1,3 +1,8 @@
+2005-05-31  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
+
+	* added HTK lattice support (Gang Ji)
+	* added faster hash tables.
+
 2005-04-21  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
 
 	* fixed bug with static (1 frame) graphs on E1 partition.

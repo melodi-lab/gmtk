@@ -17,7 +17,7 @@ EXLDFLAGS=
 CC=gcc
 CXX=g++
 EXCOMFLAGS=
-OPTFLAGS = -g -O3 -Wno-deprecated -march=pentium4 -mfpmath=sse "$(EXCOMFLAGS)"
+OPTFLAGS =-g -O3 -Wno-deprecated -march=pentium4 -mfpmath=sse $(EXCOMFLAGS)
 
 # GMTK modules 
 MODULES = \
