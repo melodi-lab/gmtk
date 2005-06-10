@@ -3011,5 +3011,11 @@ Wed May 25 02:26:37 2005
     - need clique packing equality for subsets of arguments.
 
 
+Fri Jun 10 01:57:36 2005
+  - both cpts and separators have conditional cardinality, i.e., 
+     separators conditioned on previous stuff have card. of remainder
+      (as do cpts, such as sparse cpts), and random variables, depending
+      on switching. In either case, this info should be used in a variable
+     iteration order approach.
 
 
