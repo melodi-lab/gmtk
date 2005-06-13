@@ -1942,35 +1942,29 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   int nfloats = f->nFloats;
 
   if (fname == NULL) {
-    warning("ObservationMatrix::openHTKFile: Filename is NULL for segment %li\n",sentno);
-    return 0;
-
+    error("ERROR: ObservationMatrix::openHTKFile: Filename is NULL for segment %li\n",sentno);
   }
 
   if ((f->curDataFile = fopen(fname,"rb")) == NULL) {
-    warning("ObservationMatrix::openHTKFile: Can't open '%s' for input\n",fname);
-    return 0;
+    error("ERROR: ObservationMatrix::openHTKFile: Can't open '%s' for input\n",fname);
   }
 
   if (fread(&tmp1,sizeof(Int32),1,f->curDataFile) != 1) {
-    warning("ObservationMatrix::openHTKFile: Can't read number of samples\n");
-    return 0;
+    error("ERROR: ObservationMatrix::openHTKFile: Can't read number of samples\n");
   }
 
   
   if (fread((short *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
-    warning("ObservationMatrix::openHTKFile: Can't read sample period\n");
-    return 0;
+    error("ERROR: ObservationMatrix::openHTKFile: Can't read sample period\n");
   }
 
   if (fread((short *)&stmp1,sizeof(short),1,f->curDataFile) != 1) {
-    warning("ObservationMatrix::openHTKFile: Can't read sample size\n");
+    error("ERROR: ObservationMatrix::openHTKFile: Can't read sample size\n");
     return 0;
   }
 
   if (fread(&stmp2,sizeof(short),1,f->curDataFile) != 1) {
-    warning("ObservationMatrix::openHTKFile: Can't read parm kind\n");
-    return 0;
+    error("ERROR: ObservationMatrix::openHTKFile: Can't read parm kind\n");
   }
 
   if (bswap) {
@@ -1987,32 +1981,27 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   }
 
   if (n_samples <= 0) {
-    warning("ObservationMatrix::openHTKFile: number of samples is %i\n",n_samples);
-    return 0;
+    error("ERROR: ObservationMatrix::openHTKFile: number of samples is %i\n",n_samples);
   }
 
   if (samp_period <= 0 || samp_period > 1000000) {
-    warning("ObservationMatrix::openHTKFile: sample period is %i - must be between 0 and 1000000\n", samp_period);
-    return 0;
+    warning("WARNING: ObservationMatrix::openHTKFile: sample period is %i - must be between 0 and 1000000\n", samp_period);
   }
 
   if (samp_size <= 0 || samp_size > 5000) {
-    warning("ObservationMatrix::openHTKFile: sample size is %i - must be between 0 and 5000\n",samp_size);
-    return 0;
+    warning("WARNING: ObservationMatrix::openHTKFile: sample size is %i - must be between 0 and 5000\n",samp_size);
   }
 
   short pk = parm_kind & BASEMASK;
 
   if (pk < WAVEFORM || pk > ANON) {
-    warning("Undefined parameter kind for HTK feature file: %i\n",pk);
-    return 0;
+    warning("WARNING: ObservationMatrix::openHTKFile: Undefined parameter kind for HTK feature file: %i. Will assume float features.\n",pk);
   }
 
   // For now we don't support the WAVEFORM parameter kind.  It uses
   // shorts instead of floats and that requires special treatment.
   if (pk == WAVEFORM) {
-    warning("HTK WAVEFORM parameter kind not supported: %i\n",pk);
-    return 0;
+    warning("WARNING: ObservationMatrix::openHTKFile: HTK WAVEFORM parameter kind not supported: %i\n",pk);
   }
 
 
@@ -2020,22 +2009,23 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
   // parameter kind DISCRETE = all discrete features
 
-  if (parm_kind == DISCRETE) {
-    //    n_fea = samp_size / sizeof(int) ;
+  if (nfloats == 0) {
     n_fea = samp_size / sizeof(short) ;
     if (n_fea != nints) {
-      warning("ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of ints specified (%i)\n", n_fea,nints);
-      return 0;
+      error("ERROR: ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of ints specified (%i)\n", n_fea,nints);
+    }
+    if(parm_kind != DISCRETE) {
+      warning("WARNING: ObservationMatrix::openHTKFile: Number of floats specified is 0 but the HTK parameter kind is not DISCRETE.\n");
     }
   }
-  
   // otherwise all continuous features
-
   else {
     n_fea = samp_size / sizeof(float);
     if (n_fea != nfloats) {
-      warning("ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of floats specified (%i)\n", n_fea,nfloats);
-      return 0;
+      error("ERROR: ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of floats specified (%i)\n", n_fea,nfloats);
+    }
+    if(parm_kind == DISCRETE) {
+      warning("WARNING: ObservationMatrix::openHTKFile:  Number of floats specified (%i) is not 0 but the HTK parameter kind is DISCRETE.\n",nfloats);
     }
   }
 
