@@ -2740,6 +2740,9 @@ Wed Mar 16 18:01:22 2005
     than sum, we just train gaussian using viterbi path).
      - also have N-best viterbi EM training, training on the N-best list, weighted by normalized
        score.
+  - also, allow sample training (where we sample from the posterior and train on that rather
+    than on all cases). N-sample training, sample N times. N-best training, train on
+    N-best.
 
 Thu Mar 17 13:50:47 2005
   - add DT constraint leaf nodes: I.e.,
@@ -3016,6 +3019,14 @@ Fri Jun 10 01:57:36 2005
      separators conditioned on previous stuff have card. of remainder
       (as do cpts, such as sparse cpts), and random variables, depending
       on switching. In either case, this info should be used in a variable
-     iteration order approach.
+     iteration order approach. This can't be done for all separators (i.e.,
+     a separator can never go earlier than its AI variables have appeared, but it can
+     always go later than its AI variables have appeared. Goal is to decide a-priori
+     on the AI and REM variables of a sepator to give the optimal tradeoff between
+     maximizing the number of AI variables and the greatest flexibility in variable
+     ordering.
+
+
+
 
 
