@@ -80,7 +80,41 @@ VCID("$Header$")
 ////////////////////////////////////////////////////////////////////
 
 
-// set to 1 to test
+///////////////////////////////////////////
+// Uncomment to optimize for memory usage.
+// #define OPTIMIZE_FOR_MEMORY_USAGE
+//////////////////////////////////////////
+
+#ifdef OPTIMIZE_FOR_MEMORY_USAGE
+
+#define CLIQUE_VALUE_HOLDER_STARTING_SIZE 23
+#define CLIQUE_VALUE_HOLDER_GROWTH_RATE   1.25
+
+#define AI_SEP_VALUE_HOLDER_STARTING_SIZE 1
+#define AI_SEP_VALUE_HOLDER_GROWTH_RATE   1.25
+
+#define REM_SEP_VALUE_HOLDER_STARTING_SIZE 1
+#define REM_SEP_VALUE_HOLDER_GROWTH_RATE   1.25
+
+#define REM_HASH_MAP_STARTING_SIZE 1
+
+#define CLIQUE_VALUE_SPACE_MANAGER_GROWTH_RATE   1.25
+#define CLIQUE_VALUE_SPACE_MANAGER_DECAY_RATE    0.0
+
+#define SEPARATOR_VALUE_SPACE_MANAGER_GROWTH_RATE  1.25
+#define SEPARATOR_VALUE_SPACE_MANAGER_DECAY_RATE   0.0
+
+#define REMAINDER_VALUE_SPACE_MANAGER_GROWTH_RATE  1.25
+#define REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE   0.0
+
+#else
+  // Then we optimize more for speed at the expense of memory usage.
+  // Note, with these settings, information about memory usage will be
+  // used from one segment to pre-allocate structures for the next
+  // segment processed (which means that if segment i uses less memory
+  // than segment i+1, we might use more memory than segment i+1
+  // needs).
+
 #define CLIQUE_VALUE_HOLDER_STARTING_SIZE 23
 #define CLIQUE_VALUE_HOLDER_GROWTH_RATE   2.0
 
@@ -91,6 +125,17 @@ VCID("$Header$")
 #define REM_SEP_VALUE_HOLDER_GROWTH_RATE   2.0
 
 #define REM_HASH_MAP_STARTING_SIZE 2
+
+#define CLIQUE_VALUE_SPACE_MANAGER_GROWTH_RATE   2.0
+#define CLIQUE_VALUE_SPACE_MANAGER_DECAY_RATE    0.9
+
+#define SEPARATOR_VALUE_SPACE_MANAGER_GROWTH_RATE  2.0
+#define SEPARATOR_VALUE_SPACE_MANAGER_DECAY_RATE   0.9
+
+#define REMAINDER_VALUE_SPACE_MANAGER_GROWTH_RATE  2.0
+#define REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE   0.9
+
+#endif
 
 // for sorting an array of RVs ascending based on increasing cardinality
 struct ParentCardinalityCompare 
@@ -287,9 +332,9 @@ MaxClique::MaxClique(MaxClique& from_clique,
 			   const unsigned int frameDelta)
 
   :  cliqueValueSpaceManager(1,     // starting size
-			     2.0,   // growth rate
+			     CLIQUE_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
 			     1,     // growth addition
-			     0.90)  // decay rate 
+			     CLIQUE_VALUE_SPACE_MANAGER_DECAY_RATE)    // decay rate 
 {
   set<RV*>::iterator it;
   
@@ -6146,13 +6191,13 @@ deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part)
 SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
   :  veSeparator(false),
      separatorValueSpaceManager(1,     // starting size
-				2.0,   // growth rate
+				SEPARATOR_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
 				1,     // growth addition
-				0.90),  // decay rate 
+				SEPARATOR_VALUE_SPACE_MANAGER_DECAY_RATE),   // decay rate 
      remainderValueSpaceManager(1,     // starting size
-				2.0,   // growth rate
+				REMAINDER_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
 				1,     // growth addition
-				0.90)  // decay rate
+				REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE)    // decay rate
      
 {
   nodes.clear();
@@ -6187,7 +6232,7 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
   :  separatorValueSpaceManager(1,     // starting size
 				2.0,   // growth rate
 				1,     // growth addition
-				0.90),  // decay rate 
+				0.90), // decay rate 
      remainderValueSpaceManager(1,     // starting size
 				2.0,   // growth rate
 				1,     // growth addition
