@@ -59,7 +59,7 @@ void fp_sigaction(int sig, siginfo_t* s_info, void *foo)
   default:
     errstr = "unknown code"; break;
   }
-  coredump("Program received signal SIGFPE (%d), Arithmetic exception (%s)",sig,errstr);
+  coredump("Program received signal SIGFPE (%d), Arithmetic/floating-point exception (%s)",sig,errstr);
 }
 
 void ieeeFPsetup()
