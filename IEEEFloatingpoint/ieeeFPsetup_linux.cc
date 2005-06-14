@@ -42,7 +42,7 @@ void sighandler(int sigarg)
     */
     _FPU_GETSTW(sw);
 
-    fprintf(stderr,"Received floating point exception: ");
+    fprintf(stderr,"Received floating point (FP) exception: ");
     if (sw & 0x1) {
       fprintf(stderr,"(inexact) low precision\n");
       found = 1;
@@ -68,13 +68,13 @@ void sighandler(int sigarg)
       found = 1;
     }
     if (sw & 0x40) {
-      fprintf(stderr,"ES (FP exception summary)\n");
+      fprintf(stderr,"ES (floating-point exception summary)\n");
       found = 1;
     }
     if (!found) {
       fprintf(stderr,"Can't determine FP exception type\n");
     }
-    fprintf(stderr,"Process purposely exiting with a core dump due to FPE....\n");
+    fprintf(stderr,"Process purposely exiting with a core dump due to FP Exception....\n");
     abort();
   } else {
     fprintf(stderr,"Caught signal %d, returning\n",sigarg);    
