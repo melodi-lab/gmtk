@@ -1334,22 +1334,54 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #endif
 #endif // defined(GMTK_ARG_OBS_MATRIX_XFORMATION)
 
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/************************                                              ******************************************/
+/************************            DECODING OPTIONS                  ******************************************/
+/************************                                              ******************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
 
-#if defined(GMTK_ARG_XX_XX)
+#if defined(GMTK_ARG_DECODING_OPTIONS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
---
+
+  static char *dumpNames = NULL;
+  static char *ofilelist = NULL;
+  static char *wordVar=NULL;
+  static char *varMapFile=NULL;
+  static char *transitionLabel=NULL;
+  static char* showVitVals = NULL;
+
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
---
+
+  Arg("dumpNames",Arg::Opt,dumpNames,"File containing the names of the variables to save to a file"),
+  Arg("ofilelist",Arg::Opt,ofilelist,"List of filenames to dump the hidden variable values to"),
+  // These 3 must be used together or not at all
+  Arg("printWordVar",Arg::Opt,wordVar,"Print the word var - which has this label"),
+  Arg("varMap",Arg::Opt,varMapFile,"Use this file to map from word-index to string"),
+  Arg("transitionLabel",Arg::Opt,transitionLabel,"The label of the word transition variable"),
+  Arg("showVitVals",Arg::Opt,showVitVals,"File to print viterbi values, '-' for stdout"),
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
---
+
+  if (dumpNames)
+    if (ofilelist==NULL) 
+      error("Must also specify output files for binary writing");
+
 #else
 #endif
-#endif // defined(GMTK_ARG_XX_XX)
+#endif // defined(GMTK_ARG_DECODING_OPTIONS)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
