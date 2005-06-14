@@ -90,6 +90,7 @@ VCID("$Header$")
 #define REM_SEP_VALUE_HOLDER_STARTING_SIZE 23
 #define REM_SEP_VALUE_HOLDER_GROWTH_RATE   2.0
 
+#define REM_HASH_MAP_STARTING_SIZE 2
 
 // for sorting an array of RVs ascending based on increasing cardinality
 struct ParentCardinalityCompare 
@@ -3783,7 +3784,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	      // re-construct hash tables only for new entries.
 	      new (&sepSeparatorValuesPtr[i].iRemHashMap)
 		VHashMapUnsignedUnsignedKeyUpdatable
-		(sep.origin.remPacker.packedLen(),2);
+		(sep.origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
 	      // TODO: potentially preallocate default size of  
 	      // separatorValues->ptr[i].remValues.resize(default);
 	      // TODO: potentially create zero size here, and only
@@ -7029,7 +7030,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	separatorValues->ptr[0].remValues.resize(origin.remainderValueSpaceManager.currentSize());
 	new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
 	  (origin.remPacker.packedLen(),origin.remainderValueSpaceManager.currentSize());
-	// new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable(origin.remPacker.packedLen(),2);
+	// new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable(origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
       } else {
 	// The separator consists of all observed nodes. 
 	// Search in file for key string
@@ -7045,7 +7046,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	for (unsigned i=0;i<starting_size;i++) {
 	  // need to re-construct individual hash tables.
 	  new (&separatorValues->ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
-	    (origin.remPacker.packedLen(),2);
+	    (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
 	  // TODO: while we potentially could preallocate default size
 	  // of separatorValues->ptr[i].remValues.resize(default); here,
 	  // we don't really know what it should be. Since there are
@@ -7149,7 +7150,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique)
       separatorValues->ptr[0].remValues.resize(origin.remainderValueSpaceManager.currentSize());
       new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
 	(origin.remPacker.packedLen(),origin.remainderValueSpaceManager.currentSize());
-      // new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable(origin.remPacker.packedLen(),2);
+      // new (&separatorValues->ptr[0].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable(origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
     } else {
       // The separator consists of all observed nodes. 
       // Search in file for key string
@@ -7165,7 +7166,7 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique)
       for (unsigned i=0;i<starting_size;i++) {
 	// need to re-construct individual hash tables.
 	new (&separatorValues->ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
-	  (origin.remPacker.packedLen(),2);
+	  (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
 	// TODO: while we potentially could preallocate default size
 	// of separatorValues->ptr[i].remValues.resize(default); here,
 	// we don't really know what it should be. Since there are
@@ -7274,7 +7275,7 @@ void InferenceSeparatorClique::insert()
 	  // re-construct hash tables only for new entries.
 	  new (&sepSeparatorValuesPtr[i].iRemHashMap)
 	    VHashMapUnsignedUnsignedKeyUpdatable
-	    (origin.remPacker.packedLen(),2);
+	    (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
 	  // TODO: potentially preallocate default size of  
 	  // separatorValues->ptr[i].remValues.resize(default);
 	  // TODO: potentially create zero size here, and only
