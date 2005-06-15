@@ -108,7 +108,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkJT gmtkTime gmtkEMtrainNew gmtkViterbiNew gmtkTriangulate gmtkParmConvert gmtkTFmerge gmtkUnroll gmtkDTindex gmtkNGramIndex #gmtkViz
+all_exs = gmtkJT gmtkTime gmtkEMtrainNew gmtkViterbiNew gmtkTriangulate gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex #gmtkViz
 
 all: ${all_exs}
 

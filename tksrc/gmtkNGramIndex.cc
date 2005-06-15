@@ -63,7 +63,7 @@ Arg Arg::Args[] = {
 	/////////////////////////////////////////////////////////////
 	// input parameter/structure file handling
 
-	Arg("lmFile", Arg::Req, lmFile, "Input ARPA lm file"),
+	Arg("lmFile", Arg::Req, lmFile, "Input ARPA language model file"),
 	
 	Arg("vocab", Arg::Req, vocabFile, "vocab file"),
 

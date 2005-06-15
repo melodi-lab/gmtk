@@ -54,32 +54,27 @@ VCID("$Header$")
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_RngDecisionTree.h"
 
-/*
- * command line arguments
- */
+
+#define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_VERB
+#define GMTK_ARG_VERSION
 
 static char *DTFiles           = NULL;
-static char *inputMasterFile   = NULL;
-static char *cppCommandOptions = NULL;
-static bool print_version_and_exit = false;
-static unsigned verbosity = IM::Default;
+
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
+
 
 Arg Arg::Args[] = {
 
-  /////////////////////////////////////////////////////////////
-  // input parameter/structure file handling
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
 
   Arg("decisionTreeFiles", Arg::Opt, DTFiles, "List of decision tree files"),
-
-  Arg("inputMasterFile", Arg::Opt, inputMasterFile,
-    "Input file of multi-level master CPP processed GM input parameters"),
-
-  Arg("cppCommandOptions", Arg::Opt, cppCommandOptions,
-    "Command line options to give to cpp"),
-  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
-
-  Arg("version", Arg::Opt, print_version_and_exit,
-    "Print GMTK version number and exit."),
 
   // final one to signal the end of the list
   Arg()
@@ -105,19 +100,13 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
-  
-  if (print_version_and_exit) {
-    printf("%s\n",gmtk_version_id);
-    exit(0);
-  }
-  
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
 
-  (void) IM::setGlbMsgLevel(verbosity);
-  GM_Parms.setMsgLevel(verbosity);
-
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
 
   ////////////////////////////////////////////

@@ -53,60 +53,33 @@ VCID("$Header$")
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
 
+#define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_OUTPUT_MASTER_FILE
+#define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
+#define GMTK_ARG_INPUT_TRAINABLE_PARAMS
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_VERB
+#define GMTK_ARG_ALLOC_DENSE_CPTS
+#define GMTK_ARG_SEED
+#define GMTK_ARG_VAR_FLOOR
+#define GMTK_ARG_STR_FILE_OPT_ARG
+#define GMTK_ARG_VAR_FLOOR
+#define GMTK_ARG_VERSION
+#define GMTK_ARG_VAR_FLOOR_ON_READ
+#define GMTK_ARG_CPT_NORM_THRES
 
-/*
- * command line arguments
- */
+#define GMTK_ARGUMENTS_DEFINITION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
 
-char *inputMasterFile=NULL;
-char *outputMasterFile=NULL;
-
-char *outputTrainableParameters=NULL;
-bool binOutputTrainableParameters=false;
-
-char *inputTrainableParameters=NULL;
-bool binInputTrainableParameters=false;
-
-double varFloor = 1e-10;
-char *cppCommandOptions = NULL;
-static unsigned verbosity = IM::Default;
-
-
-unsigned allocateDenseCpts=0;
-bool seedme = false;
-
-char *strFileName=NULL;
-
-bool print_version_and_exit = false;
 
 Arg Arg::Args[] = {
 
-  /////////////////////////////////////////////////////////////
-  // input parameter/structure file handling
 
-  Arg("strFile",Arg::Opt,strFileName,"Optional Graphical Model Structure File"),
-  Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
-  Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
 
-  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
-  Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
-
-  Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
-  Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
-
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to cpp"),
-
-  Arg("varFloor",Arg::Opt,varFloor,"Variance Floor"),
-  Arg("floorVarOnRead",Arg::Opt,DiagCovarVector::floorVariancesWhenReadIn,
-       "Floor the variances to varFloor when they are read in"),
-  Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
-
-
-  Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
-  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
-
-  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
-  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
 
 
   // final one to signal the end of the list
@@ -133,31 +106,16 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
-  
-  if (print_version_and_exit) {
-    printf("%s\n",gmtk_version_id);
-    exit(0);
-  }
-  
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
 
-  (void) IM::setGlbMsgLevel(verbosity);
-  GM_Parms.setMsgLevel(verbosity);
+
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
 
-
-  MixtureCommon::checkForValidRatioValues();
-  MeanVector::checkForValidValues();
-  DiagCovarVector::checkForValidValues();
-  DlinkMatrix::checkForValidValues();
-
-  ////////////////////////////////////////////
-  // set global variables/change global state from args
-  GaussianComponent::setVarianceFloor(varFloor);
-  if (seedme)
-    rnd.seed();
   /////////////////////////////////////////////
 
   if (strFileName == NULL || allocateDenseCpts == 0) {

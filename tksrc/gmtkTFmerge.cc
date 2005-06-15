@@ -51,42 +51,35 @@ VCID("$Header$")
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 
-/*
- * command line arguments
- */
-static char *strFileName=NULL;
-static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
-static char *cppCommandOptions = NULL;
-static bool loadParameters = false;
+#define GMTK_ARG_STR_FILE
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_LOAD_PARAMETERS
+#define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_INPUT_TRAINABLE_PARAMS
+#define GMTK_ARG_OUTPUT_TRI_FILE
+#define GMTK_ARG_NUM_BACKUP_FILES
+#define GMTK_ARG_VERB
+#define GMTK_ARG_ALLOC_DENSE_CPTS
 
-static char *inputMasterFile=NULL;
-static char *inputTrainableParameters=NULL;
-static char *outputTriangulatedFile=NULL;
-static bool binInputTrainableParameters=false;
 
 static char* Ptrifile = false;
 static char* Ctrifile = false;
 static char* Etrifile = false;
 
-static unsigned numBackupFiles = 7;
-static unsigned verbosity = IM::Default;
-// static bool printResults = false;
-static int allocateDenseCpts=0;
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
+
 
 Arg Arg::Args[] = {
 
-  /////////////////////////////////////////////////////////////
-  // input parameter/structure file handling
 
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
-  Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
-  Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
-  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
 
-  /////////////////////////////////////////////////////////////
-  // Triangulation file Options
 
-  Arg("outputTriangulatedFile",Arg::Opt,outputTriangulatedFile,"File name to write resulting triangulation to"),
 
   Arg("Ptrifile",
       Arg::Opt,Ptrifile,
@@ -98,15 +91,7 @@ Arg Arg::Args[] = {
       Arg::Opt,Etrifile,
       "Tri-file to obtain triangulation for E partition"),
 
-  Arg("numBackupFiles",Arg::Opt,numBackupFiles,"Number of backup output .trifiles (_bak0,_bak1,etc.) to keep."),
-  // Arg("printResults",Arg::Opt,printResults,"Print information about result of final triangulation."),
-  Arg("loadParameters",Arg::Opt,loadParameters,"Also load in all trainable parameters."),
 
-  /////////////////////////////////////////////////////////////
-  // General Options
-
-  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
-  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
   // final one to signal the end of the list
   Arg()
 
@@ -174,13 +159,13 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
-  
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
 
-  (void) IM::setGlbMsgLevel(verbosity);
-  GM_Parms.setMsgLevel(verbosity);
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
   if (Ptrifile == NULL) {
     if (Etrifile == NULL) {
@@ -203,18 +188,6 @@ main(int argc,char*argv[])
     Etrifile = Ptrifile;    
     infoMsg(IM::Warning,"Warning: Using Ptrifile for Etrifile.\n");
   }
-
-  MixtureCommon::checkForValidRatioValues();
-  MeanVector::checkForValidValues();
-  DiagCovarVector::checkForValidValues();
-  DlinkMatrix::checkForValidValues();
-
-  ////////////////////////////////////////////
-  // set global variables/change global state from args
-  GaussianComponent::setVarianceFloor(varFloor);
-
-  // if (chunkSkip > maxNumChunksInBoundary)
-  //  error("ERROR: Must have S<=M at this time.\n");
 
   /////////////////////////////////////////////
   if (loadParameters) {
