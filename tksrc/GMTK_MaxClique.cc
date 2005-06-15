@@ -80,10 +80,10 @@ VCID("$Header$")
 ////////////////////////////////////////////////////////////////////
 
 
-///////////////////////////////////////////
-// Uncomment to optimize for memory usage.
-// #define OPTIMIZE_FOR_MEMORY_USAGE
-//////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+// Comment/Uncomment to optimize for speed/reducing memory usage.
+#define OPTIMIZE_FOR_MEMORY_USAGE
+////////////////////////////////////////////////////////////////////////
 
 #ifdef OPTIMIZE_FOR_MEMORY_USAGE
 
@@ -3615,7 +3615,6 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			  InferenceSeparatorClique& sep)
 {
 
-
   // keep a local variable copy of this around to avoid potential
   // dereferencing.  This one cannot be const since it might change
   // during a resize, in which case we need to reassign this variable.
@@ -3660,7 +3659,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
     // and we're done already. This was easy!
     return;
-  } 
+  }
 
   // do k-pruning (ideally we would do this after
   // beam pruning, but since beam pruning is integrated
@@ -4050,7 +4049,6 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   /////////////////////////////////////
   // And prune the separator as well.
   sep.ceSeparatorPrune();
-  
 
 
 }

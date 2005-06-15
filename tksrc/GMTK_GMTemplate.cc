@@ -167,7 +167,7 @@ writeMaxCliques(oDataStreamFile& os)
     if (totalWeight == -1.0)
       totalWeight = curWeight;
     else
-      totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
+      totalWeight = log10add(curWeight,totalWeight);
     os.writeComment("%d : %d  %f\n",
 		    i,
 		    cliques[i].nodes.size(),curWeight);
@@ -1391,7 +1391,7 @@ writeCliqueInformation(oDataStreamFile& os)
       if (p_totalWeight == -1.0)
 	p_totalWeight = curWeight;
       else
-	p_totalWeight = p_totalWeight + log10(1+pow(10,curWeight-p_totalWeight));
+	p_totalWeight = log10add(curWeight,p_totalWeight);
     }
     os.writeComment("  --- Prologue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	   p_maxWeight,p_totalWeight,
@@ -1410,7 +1410,7 @@ writeCliqueInformation(oDataStreamFile& os)
       if (c_totalWeight == -1.0)
 	c_totalWeight = curWeight;
       else
-	c_totalWeight = c_totalWeight + log10(1+pow(10,curWeight-c_totalWeight));
+	c_totalWeight = log10add(curWeight,c_totalWeight);
     }
     os.writeComment("  --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f, jt_weight = %f\n",
 	   c_maxWeight,
@@ -1432,7 +1432,7 @@ writeCliqueInformation(oDataStreamFile& os)
       if (e_totalWeight == -1.0)
 	e_totalWeight = curWeight;
       else
-	e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
+	e_totalWeight = log10add(curWeight,e_totalWeight);
     }
     const set <RV*> emptySet;
     os.writeComment("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
@@ -1447,9 +1447,9 @@ writeCliqueInformation(oDataStreamFile& os)
       (maxWeight>e_maxWeight?maxWeight:e_maxWeight);
     double totalWeight = p_totalWeight;
     // log version of: totalWeight += c_totalWeight
-    totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));
+    totalWeight = log10add(c_totalWeight,totalWeight);
     // log version of: totalWeight += e_totalWeight
-    totalWeight += log10(1+pow(10,e_totalWeight-totalWeight));
+    totalWeight = log10add(e_totalWeight,totalWeight);
 
     os.writeComment("--- Final set (P,Cx%d,E) has max clique weight = %f, total state space = %f ---\n",
 	   S,
@@ -1459,28 +1459,28 @@ writeCliqueInformation(oDataStreamFile& os)
     // print out a couple of total state spaces for various unrollings
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+S-1,totalWeight);
 
-    totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));	
+    totalWeight = log10add(c_totalWeight,totalWeight);	
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+2*S-1,totalWeight);
 
-    totalWeight += log10(1+pow(10,log10(3.0) + c_totalWeight-totalWeight));
+    totalWeight = log10add(log10(3.0) + c_totalWeight,totalWeight);
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+5*S-1,totalWeight);
 
-    totalWeight += log10(1+pow(10,log10(5.0) + c_totalWeight-totalWeight));
+    totalWeight = log10add(log10(5.0) + c_totalWeight,totalWeight);
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+10*S-1,totalWeight);
 
-    totalWeight += log10(1+pow(10,log10(10.0) + c_totalWeight-totalWeight));
+    totalWeight = log10add(log10(10.0) + c_totalWeight,totalWeight);
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+20*S-1,totalWeight);
 
-    totalWeight += log10(1+pow(10,log10(30.0) + c_totalWeight-totalWeight));
+    totalWeight = log10add(log10(30.0) + c_totalWeight,totalWeight);
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+50*S-1,totalWeight);
 
-    totalWeight += log10(1+pow(10,log10(50.0) + c_totalWeight-totalWeight));
+    totalWeight = log10add(log10(50.0) + c_totalWeight,totalWeight);
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+100*S-1,totalWeight);
 
-    totalWeight += log10(1+pow(10,log10(400.0) + c_totalWeight-totalWeight));
+    totalWeight = log10add(log10(400.0) + c_totalWeight,totalWeight);
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+500*S-1,totalWeight);
 
-    totalWeight += log10(1+pow(10,log10(500.0) + c_totalWeight-totalWeight));
+    totalWeight = log10add(log10(500.0) + c_totalWeight,totalWeight);
     os.writeComment("--- Total weight when unrolling %dx = %f ---\n",M+1000*S-1,totalWeight);
 
   }

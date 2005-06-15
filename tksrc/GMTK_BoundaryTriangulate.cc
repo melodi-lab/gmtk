@@ -707,7 +707,7 @@ graphWeight(vector<MaxClique>& cliques)
       weight = crrnt_weight; 
     }
     else {
-      weight = weight + log10(1+pow(10,crrnt_weight-weight));
+      weight = log10add(crrnt_weight,weight);
     } 
   } 
 
@@ -2599,8 +2599,7 @@ addEdgesToNode(
       parent_weight = MaxClique::computeWeight(parents_child);  
       child_weight  = MaxClique::computeWeight(child_grandchild);
 
-      no_edge_weight = parent_weight + 
-        log10(1+pow(10,child_weight-parent_weight));
+      no_edge_weight = log10add(parent_weight,child_weight);
       with_edge_weight = MaxClique::computeWeight(all); 
       if (with_edge_weight < no_edge_weight) { 
         add_edge = true;
@@ -5109,7 +5108,7 @@ unrollAndTriangulate(// triangulate heuristics
       if (totalWeight == -1.0)
 	totalWeight = curWeight;
       else
-	totalWeight = totalWeight + log10(1+pow(10,curWeight-totalWeight));
+	totalWeight = log10add(totalWeight,curWeight);
       if (cliques[i].nodes.size() > maxSize) {
 	maxSize = cliques[i].nodes.size();
 	maxSizeCliqueWeight = curWeight;
@@ -5861,8 +5860,8 @@ BoundaryTriangulate::interfaceScore(
 	if (fh == IH_MIN_STATE_SPACE) {
 	  // just sum up the weights
 	  double weight = best_P_weight;
-	  weight += log10(1+pow(10,best_C_weight-weight));
-	  weight += log10(1+pow(10,best_E_weight-weight));
+	  weight = log10add(weight,best_C_weight);
+	  weight = log10add(weight,best_E_weight);
 	  score.push_back(weight);
 	  infoMsg(Low,"  Interface Score: resulting graph with this interface has total weight = %f\n",
 		  weight);

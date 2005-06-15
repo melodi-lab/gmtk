@@ -51,188 +51,48 @@ VCID("$Header$")
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 
-/*
- * command line arguments
- */
-static bool seedme = false;
-static char *strFileName=NULL;
-static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
-static int jut = -1;
-static char* anyTimeTriangulate = NULL;
-static char* timeLimit = NULL;
-static bool reTriangulate = false;
-static bool rePartition = false;
-static unsigned maxNumChunksInBoundary = 1; 
-static unsigned chunkSkip = 1; 
-static int allocateDenseCpts=0;
-static char *cppCommandOptions = NULL;
-static char* triangulationHeuristic="completed";
-static char* boundaryHeuristic="S";
-static bool findBestBoundary = true;
-static double traverseFraction = 1.0;
-static bool loadParameters = false;
-static bool jtWeight = true;
+/*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_CPP_CMD_OPTS
 
-static char *inputMasterFile=NULL;
-// static char *outputMasterFile=NULL;
-static char *inputTrainableParameters=NULL;
-static char *inputTriangulatedFile=NULL;
-static char *outputTriangulatedFile=NULL;
-static bool binInputTrainableParameters=false;
-// static char *objsToNotTrainFile=NULL;
+/*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_STR_FILE
+#define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_INPUT_TRAINABLE_PARAMS
+#define GMTK_ARG_INPUT_TRI_FILE
+#define GMTK_ARG_OUTPUT_TRI_FILE
 
-static bool noReTriP = false;
-static bool noReTriC = false;
-static bool noReTriE = false;
-static bool continueTriangulating = false;
+/************************            TRIANGULATION OPTIONS             ******************************************/
+#define GMTK_ARG_TRIANGULATION_OPTIONS
+#define GMTK_ARG_LOAD_PARAMETERS
+#define GMTK_ARG_NUM_BACKUP_FILES
+#define GMTK_ARG_JTW_UB
+#define GMTK_ARG_JT_OPTIONS
 
-static bool noBoundaryMemoize = false;
-static unsigned numBackupFiles = 10;
-static char* forceLeftRight="";
-static unsigned verbosity = IM::Default;
-static bool printResults = false;
-// uncomment when reading in for sparse CPTs
-// static char *inputMasterFile=NULL;
-// static char *inputTrainableParameters=NULL;
-// static bool binInputTrainableParameters=false;
-static bool longStrCheck = false;
+/*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_ALLOC_DENSE_CPTS
+
+/****************************         GENERAL OPTIONS             ***********************************************/
+#define GMTK_ARG_SEED
+#define GMTK_ARG_VERB
+
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
+
 
 Arg Arg::Args[] = {
 
-  /////////////////////////////////////////////////////////////
-  // input parameter/structure file handling
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
 
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
-  Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
-  Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
-  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
-  Arg("inputTriangulatedFile",Arg::Opt,inputTriangulatedFile,"Non-default previous triangulated file to start with"),
-  Arg("outputTriangulatedFile",Arg::Opt,outputTriangulatedFile,"File name to write resulting triangulation to"),
-
-
-  /////////////////////////////////////////////////////////////
-  // Triangulation Options
-  Arg("triangulationHeuristic",
-      Arg::Opt,triangulationHeuristic,
-      "Triang. heuristic, >1 of S=size,T=time,F=fill,W=wght,X=rev-time,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
-
-  Arg("jtWeight",
-      Arg::Opt,jtWeight,
-      "True means use an estimate of the JT weight to score triangulation rather than sum of weight"),
-
-  Arg("jtwUB",
-      Arg::Opt,JunctionTree::jtWeightUpperBound,
-      "True means jtWeight is allways an upper bound on true JT weight, false means jtWeight is estimate"),
-
-  Arg("jtwPUI",
-      Arg::Opt,JunctionTree::jtWeightPenalizeUnassignedIterated,
-      "Amount jtWeight should penalize cliques with unassigned iterated nodes (0.0 means no penalty)"),
-
-  Arg("jtwMC",
-      Arg::Opt,JunctionTree::jtWeightMoreConservative,
-      "True means jtWeight should be more conservative (more upper bound like) regarding charges to some nodes"),
-
-  Arg("jtwSNSC",
-      Arg::Opt,JunctionTree::jtWeightSparseNodeSepScale,
-      "Amount to scale charge of a sparse node in a clique's incomming separator"),
-
-  Arg("jtwDNSC",
-      Arg::Opt,JunctionTree::jtWeightDenseNodeSepScale,
-      "Amount to scale charge of a dense node in a clique's incomming separator"),
-
-  Arg("pfCobWeight",
-      Arg::Opt,MaxClique::continuousObservationPerFeaturePenalty,
-      "Per-Feature Dimension Continuous Observation Log penalty to use in clique weight calc"),
-
-  Arg("findBestBoundary",
-      Arg::Opt,findBestBoundary,
-      "Run the (exponential time) boundary algorithm or not."),
-
-  Arg("traverseFraction",
-      Arg::Opt,traverseFraction,
-      "Fraction of current interface to traverse in boundary recursion."),
-
-  Arg("noBoundaryMemoize",
-      Arg::Opt,noBoundaryMemoize,
-      "Do not memoize boundaries (less memory but runs slower)"),
-
-  Arg("forceLeftRight",
-      Arg::Opt,forceLeftRight,
-      "Run boundary algorithm only for either left (L) or right (R) interface, rather than both"),
-
-  Arg("boundaryHeuristic",
-      Arg::Opt,boundaryHeuristic,
-      "Boundary heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
-
-  Arg("M",
-      Arg::Opt,maxNumChunksInBoundary,
-      "Max number simultaneous chunks in which boundary may simultaneously exist"),
-
-  Arg("S",
-      Arg::Opt,chunkSkip,
-      "Number of chunks that should exist between boundaries"),
-
-  Arg("disconnectFromObservedParent",
-      Arg::Opt,RV::disconnectChildrenOfObservedParents,
-      "In going to UGM, disconnect children from observed parents when possible"),
-
-
-  Arg("unroll",
-      Arg::Opt,jut,
-      "Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
-
-  Arg("anyTimeTriangulate",
-      Arg::Opt,anyTimeTriangulate,
-      "Run the any-time triangulation algorithm for given duration."),
-
-  Arg("timeLimit",
-      Arg::Opt,timeLimit,
-      "Do not run for longer than the given amount of time."),
-
-  Arg("rePartition",
-      Arg::Opt,rePartition,
-      "Re-Run the boundary algorithm even if .str.trifile exists to produce new partition and new triangulation."),
-
-  Arg("reTriangulate",
-      Arg::Opt,reTriangulate,
-      "Re-Run only triangluation using existing partition given in .trifile."),
-
-  Arg("continueTriangulating",
-      Arg::Opt,continueTriangulating,
-      "When re-triangulating existing .tri file, continue besting existing triangulations"),
-
-  Arg("noReTriP",
-      Arg::Opt,noReTriP,
-      "When re-triangulating existing .tri file, don't re-triangulate P, keep old"),
-  Arg("noReTriC",
-      Arg::Opt,noReTriC,
-      "When re-triangulating existing .tri file, don't re-triangulate C, keep old"),
-  Arg("noReTriE",
-      Arg::Opt,noReTriE,
-      "When re-triangulating existing .tri file, don't re-triangulate E, keep old"),
-  Arg("jcap",Arg::Opt,JunctionTree::junctionTreeMSTpriorityStr,"Junction Tree Clique MST Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
-  Arg("icap",Arg::Opt,JunctionTree::interfaceCliquePriorityStr,"Interface Clique Priority Determiner Priority. From Set: [W,D,H,O,I]"),
-
-
-  Arg("numBackupFiles",Arg::Opt,numBackupFiles,"Number of backup .trifiles (_bak0,_bak1,etc.) to keep."),
-
-  Arg("printResults",Arg::Opt,printResults,"Print information about result of triangulation."),
-
-  Arg("loadParameters",Arg::Opt,loadParameters,"Also load in all trainable parameters."),
-
-  /////////////////////////////////////////////////////////////
-  // General Options
-
-  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
-
-  Arg("longStrCheck",Arg::Opt,longStrCheck,"Set to true to do the long check for structure file validity"),
-
-  Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
-  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
   // final one to signal the end of the list
   Arg()
 
 };
+
+
 
 #define MYBS(x) ((x)?"T":"F")
 
@@ -357,36 +217,14 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
-  
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
 
-  (void) IM::setGlbMsgLevel(verbosity);
-  GM_Parms.setMsgLevel(verbosity);
 
-  if (chunkSkip < 1)
-    error("Argument error: chunk skip parameter S must be >= 1\n");
-  if (maxNumChunksInBoundary < 1)
-    error("Argument error: max number chunks in boundary parameter M must be >= 1\n");
-
-  if (fabs(MaxClique::continuousObservationPerFeaturePenalty) > 1.0) {
-    infoMsg(IM::Warning,"###\n### !!!DANGER WILL ROBINSON!! LARGE -pfCobWeight VALUE %f MIGHT CAUSE FLOATING POINT EXCEPTION. SUGGEST REDUCE IT IF FPE OCCURS!! ###\n###\n",MaxClique::continuousObservationPerFeaturePenalty);
-  }
-
-  MixtureCommon::checkForValidRatioValues();
-  MeanVector::checkForValidValues();
-  DiagCovarVector::checkForValidValues();
-  DlinkMatrix::checkForValidValues();
-
-  ////////////////////////////////////////////
-  // set global variables/change global state from args
-  GaussianComponent::setVarianceFloor(varFloor);
-  if (seedme)
-    rnd.seed();
-
-  // if (chunkSkip > maxNumChunksInBoundary)
-  //  error("ERROR: Must have S<=M at this time.\n");
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
   /////////////////////////////////////////////
   if (loadParameters) {
@@ -656,7 +494,7 @@ main(int argc,char*argv[])
 	  if (p_totalWeight == -1.0)
 	    p_totalWeight = curWeight;
 	  else
-	    p_totalWeight = p_totalWeight + log10(1+pow(10,curWeight-p_totalWeight));
+	    p_totalWeight = log10add(curWeight,p_totalWeight);
 	}
 	printf("   --- Prologue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	       p_maxWeight,p_totalWeight,
@@ -680,7 +518,7 @@ main(int argc,char*argv[])
 	  if (c_totalWeight == -1.0)
 	    c_totalWeight = curWeight;
 	  else
-	    c_totalWeight = c_totalWeight + log10(1+pow(10,curWeight-c_totalWeight));
+	    c_totalWeight = log10add(curWeight,c_totalWeight);
 	}
 	printf("   --- Chunk max clique weight = %f, total Cx%d weight = %f, per-chunk total C weight = %f, jt_weight = %f\n",
 	       c_maxWeight,
@@ -708,7 +546,7 @@ main(int argc,char*argv[])
 	  if (e_totalWeight == -1.0)
 	    e_totalWeight = curWeight;
 	  else
-	    e_totalWeight = e_totalWeight + log10(1+pow(10,curWeight-e_totalWeight));
+	    e_totalWeight = log10add(curWeight,e_totalWeight);
 	}
 	const set <RV*> emptySet;
 	printf("   --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
@@ -729,9 +567,10 @@ main(int argc,char*argv[])
 	  (maxWeight>e_maxWeight?maxWeight:e_maxWeight);
 	double totalWeight = p_totalWeight;
 	// log version of: totalWeight += c_totalWeight
-	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));
+	totalWeight = log10add(c_totalWeight,totalWeight);
 	// log version of: totalWeight += e_totalWeight
-	totalWeight += log10(1+pow(10,e_totalWeight-totalWeight));
+	totalWeight = log10add(e_totalWeight,totalWeight);
+
 
 	printf("--- Final set (P,Cx%d,E) has max clique weight = %f, total state space = %f ---\n",
 	       chunkSkip,
@@ -741,28 +580,28 @@ main(int argc,char*argv[])
 	// print out a couple of total state spaces for various unrollings
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+chunkSkip-1,totalWeight);
 
-	totalWeight += log10(1+pow(10,c_totalWeight-totalWeight));	
+	totalWeight = log10add(c_totalWeight,totalWeight);	
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+2*chunkSkip-1,totalWeight);
 
-	totalWeight += log10(1+pow(10,log10(3.0) + c_totalWeight-totalWeight));
+	totalWeight = log10add(log10(3.0) + c_totalWeight,totalWeight);
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+5*chunkSkip-1,totalWeight);
 
-	totalWeight += log10(1+pow(10,log10(5.0) + c_totalWeight-totalWeight));
+	totalWeight = log10add(log10(5.0) + c_totalWeight,totalWeight);
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+10*chunkSkip-1,totalWeight);
 
-	totalWeight += log10(1+pow(10,log10(10.0) + c_totalWeight-totalWeight));
+	totalWeight = log10add(log10(10.0) + c_totalWeight,totalWeight);
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+20*chunkSkip-1,totalWeight);
 
-	totalWeight += log10(1+pow(10,log10(30.0) + c_totalWeight-totalWeight));
+	totalWeight = log10add(log10(30.0) + c_totalWeight,totalWeight);
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+50*chunkSkip-1,totalWeight);
 
-	totalWeight += log10(1+pow(10,log10(50.0) + c_totalWeight-totalWeight));
+	totalWeight = log10add(log10(50.0) + c_totalWeight,totalWeight);
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+100*chunkSkip-1,totalWeight);
 
-	totalWeight += log10(1+pow(10,log10(400.0) + c_totalWeight-totalWeight));
+	totalWeight = log10add(log10(400.0) + c_totalWeight,totalWeight);
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+500*chunkSkip-1,totalWeight);
 
-	totalWeight += log10(1+pow(10,log10(500.0) + c_totalWeight-totalWeight));
+	totalWeight = log10add(log10(500.0) + c_totalWeight,totalWeight);
 	printf("--- Total weight when unrolling %dx = %f ---\n",maxNumChunksInBoundary+1000*chunkSkip-1,totalWeight);
 
       }

@@ -19,6 +19,7 @@
  *
  */
 
+#include "GMTK_ProgramDefaultParms.h"
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -55,6 +56,8 @@
 
 
 #if defined(GMTK_ARG_OBS_FILES)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
 
 // This next code is used by a number of routines to compute and set
 // the default endian swapping condition associated with the
@@ -86,8 +89,6 @@
 #define CODE_TO_COMPUTE_ENDIAN DEF_CODE_TO_COMPUTE_ENDIAN(false) 
 #endif
 
-
-#if defined(GMTK_ARGUMENTS_DEFINITION)
 
    // observation input file handling
 #define MAX_NUM_OBS_FILES (5)
@@ -204,7 +205,7 @@
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
+  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to 'cpp'"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -219,20 +220,25 @@
 /*************************************************************************************************************/
 
 
-#if defined(GMTK_ARG_INPUT_MASTER_FILE)
+#if defined(GMTK_ARG_INPUT_MASTER_FILE) || defined(GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
    static char *inputMasterFile=NULL;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
+#ifdef GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+   Arg("inputMasterFile",Arg::Opt,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
+#else
    Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
+#endif
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGSo)
 
 #else
 #endif
 #endif // defined(GMTK_ARG_INPUT_MASTER_FILE)
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -365,7 +371,7 @@
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 /*************************                                            *******************************************/
-/*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
+/*************************   INPUT STRUCTURE/TRI/JT FILE HANDLING     *******************************************/
 /*************************                                            *******************************************/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
@@ -378,14 +384,18 @@
 /*************************************************************************************************************/
 
 
-#if defined(GMTK_ARG_STR_FILE)
+#if defined(GMTK_ARG_STR_FILE) || defined(GMTK_ARG_STR_FILE_OPT_ARG)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
   static char *strFileName=NULL;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
+#ifdef GMTK_ARG_STR_FILE_OPT_ARG
+  Arg("strFile",Arg::Opt,strFileName,"Graphical Model Structure File"),
+#else
   Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
+#endif
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -420,10 +430,56 @@
 /*************************************************************************************************************/
 
 
+#if defined(GMTK_ARG_INPUT_TRI_FILE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char *inputTriangulatedFile=NULL;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("inputTriangulatedFile",Arg::Opt,inputTriangulatedFile,"Non-default previous triangulated file to start with"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_INPUT_TRI_FILE)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_OUTPUT_TRI_FILE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char *outputTriangulatedFile=NULL;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("outputTriangulatedFile",Arg::Opt,outputTriangulatedFile,"File name to write resulting triangulation to"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_OUTPUT_TRI_FILE)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
 #if defined(GMTK_ARG_JT_INFO_FILE)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-   static char *jtFileName="jt_info.txt";
+#ifdef GMTK_ARG_JT_INFO_FILE_DEF_VAL
+    static char *jtFileName = GMTK_ARG_JT_INFO_FILE_DEF_VAL;
+#else
+    static char *jtFileName = "jt_info.txt";
+#endif
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
@@ -827,7 +883,11 @@
 #if defined(GMTK_ARG_VERB)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
+#ifdef GMTK_ARG_VERB_DEF_VAL
+  static unsigned verbosity = GMTK_ARG_VERB_DEF_VAL;
+#else
   static unsigned verbosity = IM::Default;
+#endif
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
@@ -1383,6 +1443,19 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #endif
 #endif // defined(GMTK_ARG_DECODING_OPTIONS)
 
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/************************                                              ******************************************/
+/************************            TIMING OPTIONS                    ******************************************/
+/************************                                              ******************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -1391,16 +1464,40 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
 
 
-#if defined(GMTK_ARG_XX_XX)
+#if defined(GMTK_ARG_TIMING)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
---
+
+  static unsigned seconds = 10;
+  static bool noEPartition = false;
+  static unsigned numTimes = 1;
+  static bool multiTest = false;
+  static int rlimitSlop = 2;
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
---
+
+  Arg("seconds",Arg::Opt,seconds,"Number of seconds to run and then exit."),
+  Arg("times",Arg::Opt,numTimes,"Number of times to run program seconds seconds long (not multitest mode)."),
+  Arg("multiTest",Arg::Opt,multiTest,"Run gmtkTime in multi-test mode, taking triangulation file names from command line."),
+  Arg("slop",Arg::Opt,rlimitSlop,"In multiTest mode, number of additional seconds before fail-terminate is forced."),
+  Arg("noEPartition",Arg::Opt,noEPartition,"If true, do not run E partition (only [P C C ... C] skipping E)"),
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
---
+
 #else
 #endif
-#endif // defined(GMTK_ARG_XX_XX)
+#endif // defined(GMTK_ARG_TIMING)
+
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/************************                                              ******************************************/
+/************************            TRIANGULATION OPTIONS             ******************************************/
+/************************                                              ******************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1409,16 +1506,150 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
 
 
-#if defined(GMTK_ARG_XX_XX)
+#if defined(GMTK_ARG_TRIANGULATION_OPTIONS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
---
+
+  static char* triangulationHeuristic="completed";
+  static bool jtWeight = true;
+  static double traverseFraction = 1.0;
+  static bool noBoundaryMemoize = false;
+  static char* forceLeftRight="";
+  static char* boundaryHeuristic="S";
+  static unsigned maxNumChunksInBoundary = 1; 
+  static unsigned chunkSkip = 1; 
+  static int jut = -1;
+  static char* anyTimeTriangulate = NULL;
+  static char* timeLimit = NULL;
+  static bool rePartition = false;
+  static bool reTriangulate = false;
+  static bool continueTriangulating = false;
+  static bool noReTriP = false;
+  static bool noReTriC = false;
+  static bool noReTriE = false;
+  static bool printResults = false;
+
+  static bool longStrCheck = false;
+  static bool findBestBoundary = true;
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
---
+
+  Arg("triangulationHeuristic",
+      Arg::Opt,triangulationHeuristic,
+      "Triang. heuristic, >1 of S=size,T=time,F=fill,W=wght,X=rev-time,P=pos,H=hint,R=rnd,N=wght-w/o-det"),
+
+  Arg("jtWeight",
+      Arg::Opt,jtWeight,
+      "True means use an estimate of the JT weight to score triangulation rather than sum of weight"),
+
+
+  Arg("jtwPUI",
+      Arg::Opt,JunctionTree::jtWeightPenalizeUnassignedIterated,
+      "Amount jtWeight should penalize cliques with unassigned iterated nodes (0.0 means no penalty)"),
+
+  Arg("jtwMC",
+      Arg::Opt,JunctionTree::jtWeightMoreConservative,
+      "True means jtWeight should be more conservative (more upper bound like) regarding charges to some nodes"),
+
+  Arg("jtwSNSC",
+      Arg::Opt,JunctionTree::jtWeightSparseNodeSepScale,
+      "Amount to scale charge of a sparse node in a clique's incomming separator"),
+
+  Arg("jtwDNSC",
+      Arg::Opt,JunctionTree::jtWeightDenseNodeSepScale,
+      "Amount to scale charge of a dense node in a clique's incomming separator"),
+
+  Arg("pfCobWeight",
+      Arg::Opt,MaxClique::continuousObservationPerFeaturePenalty,
+      "Per-Feature Dimension Continuous Observation Log penalty to use in clique weight calc"),
+
+  Arg("findBestBoundary",
+      Arg::Opt,findBestBoundary,
+      "Run the (exponential time) boundary algorithm or not."),
+
+  Arg("traverseFraction",
+      Arg::Opt,traverseFraction,
+      "Fraction of current interface to traverse in boundary recursion."),
+
+  Arg("noBoundaryMemoize",
+      Arg::Opt,noBoundaryMemoize,
+      "Do not memoize boundaries (less memory but runs slower)"),
+
+  Arg("forceLeftRight",
+      Arg::Opt,forceLeftRight,
+      "Run boundary algorithm only for either left (L) or right (R) interface, rather than both"),
+
+  Arg("boundaryHeuristic",
+      Arg::Opt,boundaryHeuristic,
+      "Boundary heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
+
+  Arg("M",
+      Arg::Opt,maxNumChunksInBoundary,
+      "Max number simultaneous chunks in which boundary may simultaneously exist"),
+
+  Arg("S",
+      Arg::Opt,chunkSkip,
+      "Number of chunks that should exist between boundaries"),
+
+  Arg("disconnectFromObservedParent",
+      Arg::Opt,RV::disconnectChildrenOfObservedParents,
+      "In going to UGM, disconnect children from observed parents when possible"),
+
+
+  Arg("unroll",
+      Arg::Opt,jut,
+      "Unroll graph & triangulate using heuristics. DON'T use P,C,E constrained triangulation."),
+
+  Arg("anyTimeTriangulate",
+      Arg::Opt,anyTimeTriangulate,
+      "Run the any-time triangulation algorithm for given duration."),
+
+  Arg("timeLimit",
+      Arg::Opt,timeLimit,
+      "Do not run for longer than the given amount of time."),
+
+  Arg("rePartition",
+      Arg::Opt,rePartition,
+      "Re-Run the boundary algorithm even if .str.trifile exists to produce new partition and new triangulation."),
+
+  Arg("reTriangulate",
+      Arg::Opt,reTriangulate,
+      "Re-Run only triangluation using existing partition given in .trifile."),
+
+  Arg("continueTriangulating",
+      Arg::Opt,continueTriangulating,
+      "When re-triangulating existing .tri file, continue besting existing triangulations"),
+
+  Arg("noReTriP",
+      Arg::Opt,noReTriP,
+      "When re-triangulating existing .tri file, don't re-triangulate P, keep old"),
+  Arg("noReTriC",
+      Arg::Opt,noReTriC,
+      "When re-triangulating existing .tri file, don't re-triangulate C, keep old"),
+  Arg("noReTriE",
+      Arg::Opt,noReTriE,
+      "When re-triangulating existing .tri file, don't re-triangulate E, keep old"),
+
+  Arg("printResults",Arg::Opt,printResults,"Print information about result of triangulation."),
+
+  Arg("longStrCheck",Arg::Opt,longStrCheck,"Set to true to do the long check for structure file validity"),
+
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
---
+
+  if (chunkSkip < 1)
+    error("Argument error: chunk skip parameter S must be >= 1\n");
+  if (maxNumChunksInBoundary < 1)
+    error("Argument error: max number chunks in boundary parameter M must be >= 1\n");
+  if (fabs(MaxClique::continuousObservationPerFeaturePenalty) > 1.0) {
+    infoMsg(IM::Warning,"###\n### !!!DANGER WILL ROBINSON!! LARGE -pfCobWeight VALUE %f MIGHT CAUSE FLOATING POINT EXCEPTION. SUGGEST REDUCE IT IF FPE OCCURS!! ###\n###\n",MaxClique::continuousObservationPerFeaturePenalty);
+  }
+
+
 #else
 #endif
-#endif // defined(GMTK_ARG_XX_XX)
+#endif // defined(GMTK_ARG_TRIANGULATION_OPTIONS)
+
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1426,17 +1657,20 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 /*************************************************************************************************************/
 
 
-
-#if defined(GMTK_ARG_XX_XX)
+#if defined(GMTK_ARG_LOAD_PARAMETERS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
---
+
+  static bool loadParameters = false;
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
---
+
+  Arg("loadParameters",Arg::Opt,loadParameters,"Also load in all trainable parameters."),
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
---
+
 #else
 #endif
-#endif // defined(GMTK_ARG_XX_XX)
+#endif // defined(GMTK_ARG_LOAD_PARAMETERS)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1444,17 +1678,21 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 /*************************************************************************************************************/
 
 
-
-#if defined(GMTK_ARG_XX_XX)
+#if defined(GMTK_ARG_NUM_BACKUP_FILES)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
---
+
+  static unsigned numBackupFiles = 10;
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
---
+
+  Arg("numBackupFiles",Arg::Opt,numBackupFiles,"Number of backup .trifiles (_bak0,_bak1,etc.) to keep."),
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
---
+
+
 #else
 #endif
-#endif // defined(GMTK_ARG_XX_XX)
+#endif // defined(GMTK_ARG_NUM_BACKUP_FILES)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/

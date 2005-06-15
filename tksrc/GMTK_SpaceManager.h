@@ -79,10 +79,10 @@ public:
       growthAddition(_growthAddition),
       decayRate(_decayRate)
   {
-    if (decayRate <= 0.0)
-      error("ERROR: SpaceManager, decay rate %f must be > 0", decayRate);
-    if (growthRate  < 1.0)
-      error("ERROR: SpaceManager, growth factor %f must be >= 1", growthRate);
+    if (decayRate < 0.0)
+      error("ERROR: SpaceManager, decay rate %f must be >= 0", decayRate);
+    if (growthRate  <= 1.0)
+      error("ERROR: SpaceManager, growth factor %f must be > 1", growthRate);
     if (growthAddition  < 1)
       error("ERROR: SpaceManager, growth addition %d must be > 0", growthAddition);
     if (startingSize < 1)

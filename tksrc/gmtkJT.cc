@@ -54,222 +54,78 @@ VCID("$Header$")
 #include "GMTK_JunctionTree.h"
 #include "GMTK_MaxClique.h"
 
-/*
- * command line arguments
- */
-
-/////////////////////////////////////////////////////////////
-// observation input file handling
-#define MAX_NUM_OBS_FILES (5)
-char    *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL }; 
-unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
-char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-// per stream frame range string before any tranformations are applied
-char  *prepr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
-// per stream frame range string after per-stream transformations are applied
-char *postpr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL}; 
-char *gpr_str                   = NULL;   // global final frame range string
-
-/////////////////////////////////////////////////////////////
-// input parameter/structure file handling
-static char *cppCommandOptions = NULL;
-static char *inputMasterFile=NULL;
-static char *outputMasterFile=NULL;
-static char *inputTrainableParameters=NULL;
-static bool binInputTrainableParameters=false;
-// static char *outputTrainableParameters="outParms%d.gmp";
-// static char *outputTrainableParameters=NULL;
-// static bool binOutputTrainableParameters=false;
-// static bool writeParametersAfterEachEMIteration=true;
-// static char *objsToNotTrainFile=NULL;
-static int allocateDenseCpts=0;
 
 
-/////////////////////////////////////////////////////////////
-// Structure file, Triangulation File, and Junction Tree Options.
-static char *strFileName=NULL;
-static char *triFileName=NULL;
-static char *jtFileName="jt_info.txt";
+/*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
+#define GMTK_ARG_OBS_FILES
 
-/////////////////////////////////////////////////////////////
-// Continuous RV Options
-static double varFloor = GMTK_DEFAULT_VARIANCE_FLOOR;
+/*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_INPUT_MASTER_FILE
+#define GMTK_ARG_INPUT_TRAINABLE_PARAMS
+#define GMTK_ARG_ALLOC_DENSE_CPTS
+#define GMTK_ARG_CPT_NORM_THRES
 
-/////////////////////////////////////////////////////////////
-// Beam Options
-// static double cliqueBeam=-LZERO;
-// static double separatorBeam=-LZERO;
+/*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_STR_FILE
+#define GMTK_ARG_TRI_FILE
+#define GMTK_ARG_JT_INFO_FILE
+#define GMTK_ARG_JTW_UB
 
-/////////////////////////////////////////////////////////////
-// File Range Options
-static char *dcdrng_str="all";
-static int startSkip = 0;
-static int endSkip = 0;
 
-/////////////////////////////////////////////////////////////
-// General Options
-static bool seedme = false;
-static unsigned verbosity = IM::Default;
-static bool print_version_and_exit = false;
-static char* pPartCliquePrintRange = NULL;
-static char* cPartCliquePrintRange = NULL;
-static char* ePartCliquePrintRange = NULL;
+/*************************   CONTINUOUS RANDOM VARIABLE OPTIONS       *******************************************/
+#define GMTK_ARG_VAR_FLOOR
+#define GMTK_ARG_VAR_FLOOR_ON_READ
 
-static unsigned help = 0;  // 0: no help; HIGHEST_PRIORITY (1) ... LOWEST_PRIORITY (5) : increasing levels of help.  The priority levels are defined in arguments.h 
 
-/////////////////////////////////////////////////////////////
-// Memory management options 
+/*************************          BEAM PRUNING OPTIONS              *******************************************/
+#define GMTK_ARG_CBEAM
+#define GMTK_ARG_CPBEAM
+#define GMTK_ARG_CKBEAM
+#define GMTK_ARG_CRBEAM
+#define GMTK_ARG_SBEAM
 
-/////////////////////////////////////////////////////////////
-// Inference Options
-static bool doDistributeEvidence=false;
-static bool probE=false;
-static bool island=false;
-static unsigned base=3;
-static unsigned lst=100;
-static char* varPartitionAssignmentPrior = "COI";
-static char* varCliqueAssignmentPrior = "COT";
+/*************************          MEMORY MANAGEMENT OPTIONS         *******************************************/
+#define GMTK_ARG_HASH_LOAD_FACTOR
+#define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
 
-////////////////////////////////////
-// Observation matrix options
-bool     Cpp_If_Ascii        = false;
-char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};
-unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};
-char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"};
-unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};
 
-char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};
-char    *Post_Transforms=NULL;
+/****************************      FILE RANGE OPTIONS             ***********************************************/
+#define GMTK_ARG_DCDRNG
+#define GMTK_ARG_START_END_SKIP
 
-char    *Ftr_Combo_Str="none";
-unsigned Ftr_Combo=FTROP_NONE;
+/****************************         GENERAL OPTIONS             ***********************************************/
+#define GMTK_ARG_SEED
+#define GMTK_ARG_VERB
+#define GMTK_ARG_HELP
+#define GMTK_ARG_VERSION
+#define GMTK_ARG_CLIQUE_PRINT
 
-#ifdef INTV_WORDS_BIGENDIAN
-bool iswp[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
-#else
-bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
-#endif
 
+/****************************         INFERENCE OPTIONS           ***********************************************/
+#define GMTK_ARG_DO_DIST_EVIDENCE
+#define GMTK_ARG_PROB_EVIDENCE
+#define GMTK_ARG_ISLAND
+#define GMTK_ARG_CE_SEP_DRIVEN
+#define GMTK_ARG_MIXTURE_CACHE
+#define GMTK_ARG_VITERBI_SCORE
+#define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
+#define GMTK_ARG_JT_OPTIONS
+#define GMTK_ARG_VE_SEPS
+
+/************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
+#define GMTK_ARG_OBS_MATRIX_XFORMATION
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
 
 Arg Arg::Args[] = {
 
-  /////////////////////////////////////////////////////////////
-  // observation input file handling
-  Arg("of",  Arg::Req,ofs,"Observation File.  Replace X with the file number",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("nf",  Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fmt", Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("iswp",Arg::Opt,iswp,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fr",  Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("prepr", Arg::Opt, prepr,"Frame range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("postpr",Arg::Opt, postpr,"Frame range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("gpr",    Arg::Opt, gpr_str,"Global final frame range"),
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
 
-  /////////////////////////////////////////////////////////////
-  // input parameter/structure file handling
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
-  Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
-  Arg("outputMasterFile",Arg::Opt,outputMasterFile,"Output file to place master CPP processed GM output parameters"),
-  Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
-  Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
-  // Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
-  // Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
-  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate any undefined CPTs. arg = -1, no read params, arg = 0 noallocate, arg = 1 means use random initial CPT values. arg = 2, use uniform values"),
-  Arg("cptNormThreshold",Arg::Opt,CPT::normalizationThreshold,"Read error if |Sum-1.0|/card > norm_threshold"),
-
-  /////////////////////////////////////////////////////////////
-  // Structure file, Triangulation File, and Junction Tree Options.
-  Arg("strFile",Arg::Req,strFileName,"Graphical Model Structure File"),
-  Arg("triFile",Arg::Opt,triFileName,"Triangulation file for strFile"),
-  Arg("jtFile",Arg::Opt,jtFileName,"Name of file to write junction tree information"),
-  // this is here only to affect printing of jt_info.txt
-  Arg("jtwUB",
-      Arg::Opt,JunctionTree::jtWeightUpperBound,
-      "True means jtWeight is allways an upper bound on true JT weight, false means jtWeight is estimate"),
-
-  /////////////////////////////////////////////////////////////
-  // Continuous RV Options
-  Arg("varFloor",Arg::Opt,varFloor,"Variance Floor"),
-  Arg("floorVarOnRead",Arg::Opt,DiagCovarVector::floorVariancesWhenReadIn,
-       "Floor the variances to varFloor when they are read in"),
-
-  /////////////////////////////////////////////////////////////
-  // Beam Options
-  Arg("cbeam",Arg::Opt,MaxClique::cliqueBeam,"Clique beam width to prune clique (log value)"),
-  Arg("cpbeam",Arg::Opt,MaxClique::cliqueBeamBuildBeam,"Clique beam width while building cliques (log value)"),
-  Arg("ckbeam",Arg::Opt,MaxClique::cliqueBeamMaxNumStates,"Prune to this clique max state space (0 = no pruning)"),
-  Arg("crbeam",Arg::Opt,MaxClique::cliqueBeamRetainFraction,"Fraction of clique state space to retain. Range: 0 < v <= 1. v = 1 means no pruning"),
-  Arg("sbeam",Arg::Opt,SeparatorClique::separatorBeam,"Separator beam width pruning log value"),
-
-
-  /////////////////////////////////////////////////////////////
-  // Memory management options
-  Arg("clearCliqueValMem",Arg::Opt,MaxClique::perSegmentClearCliqueValueCache,"Free clique/separator value cache for each segment"),
-
-  /////////////////////////////////////////////////////////////
-  // File Range Options
-  Arg("dcdrng",Arg::Opt,dcdrng_str,"Range to decode over segment file"),
-  Arg("startSkip",Arg::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
-  Arg("endSkip",Arg::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
-
-  /////////////////////////////////////////////////////////////
-  // General Options
-  Arg("seed",Arg::Opt,seedme,"Seed the random number generator"),
-  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
-  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
-
-  Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P partition."),
-  Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C partition."),
-  Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E partition."),
-  Arg("hashLoadFactor",Arg::Opt,hash_abstract::loadFactor,"Hash table load factor, in range 0.5 <= lf <= 0.95"),
-  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
-
-  /////////////////////////////////////////////////////////////
-  // Inference Options
-  Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Do distribute evidence also"),
-  Arg("probE",Arg::Opt,probE,"Run the const memory probE function"),
-  Arg("island",Arg::Opt,island,"Run island algorithm"),
-  Arg("base",Arg::Opt,base,"Island algorithm logarithm base"),
-  Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
-  Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
-  Arg("componentCache",Arg::Opt,MixtureCommon::cacheMixtureProbabilities,"Cache mixture probabilities, faster but uses more memory."),
-  Arg("viterbiScore",Arg::Opt,JunctionTree::viterbiScore,"Compute p(o,h_max) (rather than sum_h p(o,h))"),
-  Arg("vpap",Arg::Opt,varPartitionAssignmentPrior,"Variable partition assignment priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N]"),  
-  Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N,T,M,+,.]"),
-  Arg("jcap",Arg::Opt,JunctionTree::junctionTreeMSTpriorityStr,"Junction Tree Clique MST Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
-  Arg("icap",Arg::Opt,JunctionTree::interfaceCliquePriorityStr,"Interface Clique Priority Determiner Priority. From Set: [W,D,H,O,I]"),
-  Arg("useVESeparators",
-      Arg::Opt,JunctionTree::useVESeparators,
-      "Use Virtual Evidence (VE) Separators (if any are available) during inference"),
-  Arg("veSepWhere",
-      Arg::Opt,JunctionTree::veSeparatorWhere,
-      "Where to use VE seps. Bitwise or of 0x1 (P), 0x2 (C), 0x4 (E)"),
-  Arg("veSepFileName",
-      Arg::Opt,SeparatorClique::veSeparatorFileName,
-      "Name of VE separators file to store VE sep/read previous VE sep info"),
-  Arg("veSepRecompute",
-      Arg::Opt,SeparatorClique::recomputeVESeparatorTables,
-      "Force a re-compute of VE separator information"),  
-  Arg("veSepLogProdCardLimit",
-      Arg::Opt,SeparatorClique::veSeparatorLogProdCardLimit,
-      "The log (base 10) upper limit on a VE sep variable cardinality product"),
-  
-  
-
-
-  // Observation Matrix transformation options
-  Arg("fdiffact", Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sdiffact", Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("cppifascii",        Arg::Tog, Cpp_If_Ascii,"Pre-process ASCII files using CPP"),
-  Arg("trans",  Arg::Opt,Per_Stream_Transforms ,"per stream transformations string",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("posttrans",  Arg::Opt,Post_Transforms ,"Final global transformations string"),
-  Arg("comb",      Arg::Opt, Ftr_Combo_Str,"Combine float features (none: no combination, add, sub, mul,div"),
 
   // final one to signal the end of the list
   Arg()
@@ -298,139 +154,19 @@ main(int argc,char*argv[])
   ieeeFPsetup();
   set_new_handler(memory_error);
 
-  // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
-  bool doWeSwap;
-  
-  ByteEndian byteEndian = getWordOrganization();
-  switch(byteEndian) {
-  case BYTE_BIG_ENDIAN:
-    doWeSwap=false;
-    break;
-  case BYTE_LITTLE_ENDIAN:
-     doWeSwap=true;
-     break;
-  default:
-    // We weren't able to figure the Endian out.  Leave the swap defaults as they are.
-#ifdef INTV_WORDS_BIGENDIAN
-    doWeSwap=true;
-#else
-    doWeSwap=false;
-#endif
-  }
-
-   for(int i=0; i<MAX_NUM_OBS_FILES; ++i) {
-     iswp[i]=doWeSwap;
-   }
+  CODE_TO_COMPUTE_ENDIAN;
 
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
-  
-  if (print_version_and_exit) {
-    printf("%s\n",gmtk_version_id);
-    exit(0);
-  }
-
-
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
 
-  (void) IM::setGlbMsgLevel(verbosity);
-  GM_Parms.setMsgLevel(verbosity);
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "GMTK_Arguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
-  // Make sure not to cache the mixture component probabilities as it
-  // is only needed in EM training.
-  MixtureCommon::cacheComponentsInEmTraining = false;
-
-  ////////////////////////////////////////////
-  // check for valid argument values.
-  int nfiles = 0;
-  unsigned ifmts[MAX_NUM_OBS_FILES];
-  for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
-
-    if (strcmp(fmts[i],"htk") == 0)
-      ifmts[i] = HTK;
-    else if (strcmp(fmts[i],"binary") == 0)
-      ifmts[i] = RAWBIN;
-    else if (strcmp(fmts[i],"ascii") == 0)
-      ifmts[i] = RAWASC;
-    else if (strcmp(fmts[i],"pfile") == 0)
-      ifmts[i] = PFILE;
-    else
-      error("ERROR: Unknown observation file format type: '%s'\n",fmts[i]);
-
-    if (ofs[i] != NULL && ifmts[i] != PFILE && nfs[i] == 0 && nis[i] == 0)
-      error("ERROR: command line parameters must specify one of nf%d and ni%d as not zero",
-	    i+1,i+1);
-
-    if(ofs[i] != NULL && ifmts[i]==PFILE) {
-      FILE *in_fp = fopen(ofs[i], "r");
-      if (in_fp==NULL) error("Couldn't open input pfile for reading.");
-      bool debug_level=0;
-      InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswp[i]);
-      unsigned num_labs=in_streamp->num_labs();
-      unsigned num_ftrs=in_streamp->num_ftrs();
-
-      ////////////////////////////////////////////////////////////
-      // Check consistency between pfile and supplied arguments //
-      char search_str[]="nXXXXX";
-      sprintf(search_str,"-ni%d",i+1);
-      bool found=false;
-      for(int j=1; j < argc; ++j) {
-	if(strcmp(argv[j],search_str)==0) found=true;
-      }
-      if(found && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
-      sprintf(search_str,"-nf%d",i+1);
-      found=false;
-      for(int j=1; j < argc; ++j) {
-	if(strcmp(argv[j],search_str)==0) found=true;
-      }
-      if(found && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
-      ////////////////////////////////////////////////////////////
-      nis[i]=num_labs;
-      nfs[i]=num_ftrs;
-
-      if (fclose(in_fp)) error("Couldn't close input pfile.");
-      delete in_streamp;
-    }
-
-
-    nfiles += (ofs[i] != NULL);
-  }
-
-
-   if (strcmp(Ftr_Combo_Str,"none") == 0)     Ftr_Combo = FTROP_NONE;
-   else if (strcmp(Ftr_Combo_Str,"add") == 0) Ftr_Combo = FTROP_ADD;
-   else if (strcmp(Ftr_Combo_Str,"sub") == 0) Ftr_Combo = FTROP_SUB;
-   else if (strcmp(Ftr_Combo_Str,"mul") == 0) Ftr_Combo = FTROP_MUL;
-   else if (strcmp(Ftr_Combo_Str,"div") == 0) Ftr_Combo = FTROP_DIV;
-   else error("ERROR: Unknown feature combination type: '%s'\n",Ftr_Combo_Str);
-
-   for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-     if(ofs[i]!=NULL) {
-       if (strcmp(Action_If_Diff_Num_Frames_Str[i],"er") == 0)      Action_If_Diff_Num_Frames[i] = FRAMEMATCH_ERROR;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rl") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_LAST;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rf") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_FIRST;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
-       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
-       else error("ERROR: Unknown action when diff num of frames: '%s'\n",Action_If_Diff_Num_Frames_Str[i]);
-     }
-   }
-
-   for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-     if(ofs[i]!=NULL) {
-       if (strcmp(Action_If_Diff_Num_Sents_Str[i],"er") == 0)      Action_If_Diff_Num_Sents[i] = SEGMATCH_ERROR;
-       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_REPEAT_LAST;
-       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_WRAP_AROUND;
-       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_TRUNCATE_FROM_END;
-       else error("ERROR: Unknown action when diff num of sentences: '%s'\n",Action_If_Diff_Num_Sents_Str[i]);
-     }
-   }
-
-  if (startSkip < 0 || endSkip < 0)
-    error("startSkip/endSkip must be >= 0");
 
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,
@@ -454,25 +190,6 @@ main(int argc,char*argv[])
 				    (const char**)&prepr,
 				    gpr_str);
 
-
-  // TODO: put this parameter checking in one routine somewhere.
-  MixtureCommon::checkForValidRatioValues();
-  MeanVector::checkForValidValues();
-  DiagCovarVector::checkForValidValues();
-  DlinkMatrix::checkForValidValues();
-  if (MaxClique::cliqueBeam < 0.0)
-    error("cliqueBeam argument must be >= 0");
-  if (MaxClique::cliqueBeamRetainFraction <= 0.0 || MaxClique::cliqueBeamRetainFraction > 1.0)
-    error("crbeam argument must be: 0.0 < v <= 1.0");
-  if (SeparatorClique::separatorBeam < 0.0)
-    error("separatorBeam must be >= 0");
-
-
-  ////////////////////////////////////////////
-  // set global variables/change global state from args
-  GaussianComponent::setVarianceFloor(varFloor);
-  if (seedme)
-    rnd.seed();
 
   /////////////////////////////////////////////
   // read in all the parameters
@@ -501,8 +218,7 @@ main(int argc,char*argv[])
   // Make sure that there are no directed loops in the graph.
   fp.ensureValidTemplate();
 
-  // link the RVs with the parameters that are contained in
-  // the bn1_gm.dt file.
+  // link the RVs with the parameters.
   if (allocateDenseCpts >= 0) {
     if (allocateDenseCpts == 0)
       fp.associateWithDataParams(FileParser::noAllocate);
