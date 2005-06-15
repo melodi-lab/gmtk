@@ -205,6 +205,7 @@ class Arg {
   Arg(char*,ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false,unsigned priority=HIGHEST_PRIORITY);
   //Arg(ArgDisposition,MultiType,char*d=NULL);
   Arg(ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false, unsigned priority=HIGHEST_PRIORITY);
+
   Arg(char*d);
   Arg(const Arg&);
   Arg();
