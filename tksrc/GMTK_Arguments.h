@@ -636,9 +636,6 @@
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  if (MaxClique::cliqueBeamMaxNumStates <= 0)
-    error("ERROR: ckbeam option must be a positive integer\n");
-
 #else
 #endif
 #endif // defined(GMTK_ARG_CKBEAM)
