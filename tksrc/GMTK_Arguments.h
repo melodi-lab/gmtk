@@ -35,6 +35,9 @@
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 const char*const argerr = "ARG ERROR";
+// include nop statement to avoid warning message.
+(void)argerr;
+
 
 #else
 #endif

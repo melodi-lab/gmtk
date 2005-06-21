@@ -109,6 +109,7 @@ main(int argc,char*argv[])
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
 
+
   ////////////////////////////////////////////
   // Write index files for all decision trees in the master file 
   if (inputMasterFile != NULL) {
