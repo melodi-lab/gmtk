@@ -270,12 +270,19 @@ MaxClique::cliqueBeamRetainFraction = 1.0;
 
 
 /*
- * Fraction of clique mass to retain. Default (1.0) means prune nothing.
+ * Fraction of clique mass to relinquish. Default (0.0) means prune nothing.
  *
  */
 double
-MaxClique::cliqueBeamMassRetainFraction = 1.0;
+MaxClique::cliqueBeamMassRelinquishFraction = 0.0;
 
+/*
+ * When using cliqueBeamMassRelinquishFraction, this option determins the lower bound of the
+ * min min clique state space size.
+ *
+ */
+unsigned 
+MaxClique::cliqueBeamMassMinSize = 1;
 
 /*
  *
@@ -3692,7 +3699,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
   ceCliquePrune(k);
   // prune also based on mass, using remaining probability after previous pruning.
-  ceCliqueMassPrune(origin.cliqueBeamMassRetainFraction);
+  ceCliqueMassPrune(1.0-origin.cliqueBeamMassRelinquishFraction,origin.cliqueBeamMassMinSize);
 
   // create an ininitialized variable using dummy argument
   logpr beamThreshold((void*)0);
@@ -3706,6 +3713,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     beamThreshold.set_to_zero();
   }
 
+  // Now, we send the clique to the outgoing separator, doing
+  // regular clique beam pruning as we go.
 
   const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;  
   // logpr origSum = sumProbabilities();
@@ -4037,8 +4046,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // TODO: possibly tell origin.cliqueValueSpaceManager about this pruning event.
   // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
   //       will soon be deleted anyway.
-  // 
-  if (numCliqueValuesUsed < origNumCliqueValuesUsed)
+  // TODO: if we do a backward pass, we might not want to resize, and if an entry ends up
+  //       becoming probable, re-insert the entry as a valid clique entry.
+  if (numCliqueValuesUsed < cliqueValues.size())
     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
 
   // Keep this out of previous check so we can also use large beams to
@@ -4149,18 +4159,6 @@ InferenceMaxClique::ceCliquePrune()
 	  beamThreshold.valref(),
 	  origNumCliqueValuesUsed,
 	  numCliqueValuesUsed);
-  
-  // To reallocate or not to reallocate, that is the question.  here,
-  // we just reallocate for now.
-  // 
-  // TODO: reallocate only if change is > some percentage (say 5%),
-  // and export to command line.
-  // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
-  // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
-  //       will soon be deleted anyway.
-  // 
-  if (numCliqueValuesUsed < origNumCliqueValuesUsed)
-    cliqueValues.resizeAndCopy(numCliqueValuesUsed);
 
 }
 
@@ -4192,6 +4190,7 @@ InferenceMaxClique::ceCliquePrune()
 void 
 InferenceMaxClique::ceDoAllPruning()
 {
+
   // First, do k-pruning (ideally we would do this after
   // beam pruning, but since beam pruning is integrated
   // into the code above, we do max state pruning first).
@@ -4205,10 +4204,24 @@ InferenceMaxClique::ceDoAllPruning()
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
   ceCliquePrune(k);
 
-  // next, do beam pruning.
+  // next do mass pruning.
+  ceCliqueMassPrune(1.0-origin.cliqueBeamMassRelinquishFraction,origin.cliqueBeamMassMinSize);
+
+  // next, do normal beam pruning.
   ceCliquePrune();
 
-  // printCliqueEntries(stdout);
+  // lastly, resize.
+  // To reallocate or not to reallocate, that is the question.  here,
+  // we just reallocate for now.
+  // 
+  // TODO: reallocate only if change is > some percentage (say 5%),
+  // and export to command line.
+  // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
+  // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
+  //       will soon be deleted anyway.
+  // TODO: if we do a backward pass, we might not want to resize, and if an entry ends up
+  //       becoming probable, re-insert the entry as a valid clique entry.
+  cliqueValues.resizeAndCopy(numCliqueValuesUsed);
 
 }
 
@@ -4408,15 +4421,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   infoMsg(IM::Med,"Clique k-beam pruning: Original clique state space = %d, new clique state space = %d\n",
 	  numCliqueValuesUsed,k);
   
-  // To reallocate or not to reallocate, that is the question.  here,
-  // we just reallocate for now.
-  // 
-  // TODO: reallocate only if change is > some percentage (say 5%),
-  // and export to command line.
-  // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
-  // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
-  //       will soon be deleted anyway.
-  // 
+
   cliqueValues.resizeAndCopy(k);
   numCliqueValuesUsed = k;
 
@@ -4425,7 +4430,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 
 /*-
  *-----------------------------------------------------------------------
- * InferenceMaxClique::ceCliqueMassPrune(double fraction)
+ * InferenceMaxClique::ceCliqueMassPrune(double fraction, unsigned minSize)
  *
  *    Collect Evidence, Clique Mass Prune: This routine will prune away
  *    part of a previously instantiated clique so that it has only
@@ -4455,7 +4460,8 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
  */
 
 void 
-InferenceMaxClique::ceCliqueMassPrune(const double fraction)
+InferenceMaxClique::ceCliqueMassPrune(const double fraction,
+				      const unsigned minSize)
 {
   if (fraction >= 1.0)
     return;
@@ -4474,22 +4480,16 @@ InferenceMaxClique::ceCliqueMassPrune(const double fraction)
     if (cumulativeSum >=  finalSum)
       break;
   }
+  
+  if (k<minSize)
+    k=min(minSize,numCliqueValuesUsed);
 
   infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space = %d, mass = %f, new clique state space = %d, mass(cum) = %f(%f)\n",
 	  numCliqueValuesUsed,origSum.valref(),
 	  k,finalSum.valref(),cumulativeSum.valref());
-  
-  // To reallocate or not to reallocate, that is the question.  here,
-  // we just reallocate for now.
-  // 
-  // TODO: reallocate only if change is > some percentage (say 5%),
-  // and export to command line.
-  // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
-  // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
-  //       will soon be deleted anyway.
-  // 
-  cliqueValues.resizeAndCopy(k);
-  numCliqueValuesUsed = k;
+
+  numCliqueValuesUsed = k;  
+
 }
 
 
