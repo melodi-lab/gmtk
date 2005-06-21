@@ -240,6 +240,8 @@ public:
   // fraction of clique to retain, forcibly pruning away everything else. Must be
   // between 0 and 1 (i.e., 0 < v <= 1).
   static float cliqueBeamRetainFraction;
+  // between 0 and 1 (i.e., 0 < v <= 1).
+  static double cliqueBeamMassRetainFraction;
 
   // When doing inference if any kind, this variable determines
   // if we should clear the clique and separator value cache
@@ -827,6 +829,7 @@ public:
 // these objects to have to have all MaxClique's member variables.
 class InferenceMaxClique  : public IM
 {
+  friend struct CliqueValueDescendingProbCompare;
 
   // integer value to keep track of indenting when running in trace
   // mode.
@@ -997,6 +1000,7 @@ public:
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
   void ceCliquePrune();
   void ceCliquePrune(const unsigned k);
+  void ceCliqueMassPrune(const double fraction);
   // a version that does all the pruning for this clique.
   void ceDoAllPruning();
 

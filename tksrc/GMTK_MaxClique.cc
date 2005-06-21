@@ -153,6 +153,17 @@ struct ParentCardinalityCompare
 };
 
 
+// for sorting an array of CliqueValue descending based on the contained logpr 
+struct CliqueValueDescendingProbCompare
+{  
+  bool operator() (const InferenceMaxClique::CliqueValue& cv1,
+		   const InferenceMaxClique::CliqueValue& cv2)
+  {
+    return (cv1.p > cv2.p);
+  }
+};
+
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -257,6 +268,13 @@ MaxClique::cliqueBeamMaxNumStates = 0;
 float
 MaxClique::cliqueBeamRetainFraction = 1.0;
 
+
+/*
+ * Fraction of clique mass to retain. Default (1.0) means prune nothing.
+ *
+ */
+double
+MaxClique::cliqueBeamMassRetainFraction = 1.0;
 
 
 /*
@@ -3673,6 +3691,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   //   printf("nms = %d, pf = %f, ncv = %d, k = %d\n",origin.cliqueBeamMaxNumStates,
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
   ceCliquePrune(k);
+  // prune also based on mass, using remaining probability after previous pruning.
+  ceCliqueMassPrune(origin.cliqueBeamMassRetainFraction);
 
   // create an ininitialized variable using dummy argument
   logpr beamThreshold((void*)0);
@@ -4401,6 +4421,77 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   numCliqueValuesUsed = k;
 
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceCliqueMassPrune(double fraction)
+ *
+ *    Collect Evidence, Clique Mass Prune: This routine will prune away
+ *    part of a previously instantiated clique so that it has only
+ *    'fraction' of the clique mass left. It does this by sorting
+ *    and choosing the top entries such that the mass is retained. This
+ *    is based on an idea by Andrew McCallum (2005).
+ *
+ * Preconditions:
+ *   1) clique table must be created, meaning that either:
+ *
+ *        InferenceMaxClique::ceIterateAssignedNodesRecurse()
+ *   or
+ *        InferenceMaxClique::ceIterateAssignedNodesCliqueDriven
+ *   must have just been called.
+ *
+ * Postconditions:
+ *    Clique table has been pruned, and memory for it has been re-allocated to
+ *    fit the smaller size.
+ *
+ * Side Effects:
+ *    changes the clique size.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void 
+InferenceMaxClique::ceCliqueMassPrune(const double fraction)
+{
+  if (fraction >= 1.0)
+    return;
+
+  // sort descending based on clique mass value.
+  sort(cliqueValues.ptr,cliqueValues.ptr + numCliqueValuesUsed,CliqueValueDescendingProbCompare());
+
+  logpr loc_maxCEValue = cliqueValues.ptr[numCliqueValuesUsed-1].p;
+  logpr origSum = sumProbabilities();
+  logpr finalSum = origSum*fraction;
+  logpr cumulativeSum;
+  
+  unsigned k;
+  for (k=0;k<numCliqueValuesUsed;k++) {
+    cumulativeSum += cliqueValues.ptr[k].p;
+    if (cumulativeSum >=  finalSum)
+      break;
+  }
+
+  infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space = %d, mass = %f, new clique state space = %d, mass(cum) = %f(%f)\n",
+	  numCliqueValuesUsed,origSum.valref(),
+	  k,finalSum.valref(),cumulativeSum.valref());
+  
+  // To reallocate or not to reallocate, that is the question.  here,
+  // we just reallocate for now.
+  // 
+  // TODO: reallocate only if change is > some percentage (say 5%),
+  // and export to command line.
+  // e.g., if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > 0.05*origNumCliqueValuesUsed)
+  // TODO: if -probE option or gmtkDecode is running, no need to re-allocate here since this
+  //       will soon be deleted anyway.
+  // 
+  cliqueValues.resizeAndCopy(k);
+  numCliqueValuesUsed = k;
+}
+
 
 
 /*-
