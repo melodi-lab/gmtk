@@ -2604,6 +2604,11 @@ GMParms::setSegment(const unsigned segmentNo)
     if (veCpts[i]->numFrames() != numFrames) 
       error("ERROR: number of frames in segment %d for main observation matrix is %d, but VirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
   }
+
+  // TODO: load next lattice CPTs if any.
+  // for(unsigned i = 0; i<iterableLattices.size(); i++) {
+  //  etc. etc.
+
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
