@@ -26,17 +26,19 @@
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
+/* initial definitions commonto all arguments */
 
-#if defined(GMTK_ARG_XX_XX)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
---
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
---
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
---
+
+const char*const argerr = "ARG ERROR";
+
 #else
 #endif
-#endif // defined(GMTK_ARG_XX_XX)
+
 
 
 /*==============================================================================================================*/
@@ -138,15 +140,16 @@
     else if (strcmp(fmts[i],"pfile") == 0)
       ifmts[i] = PFILE;
     else
-      error("ERROR: Unknown observation file format type: '%s'\n",fmts[i]);
+      error("%s: Unknown observation file format type: '%s'\n",argerr,fmts[i]);
 
     if (ofs[i] != NULL && ifmts[i]!=PFILE && nfs[i] == 0 && nis[i] == 0)
-      error("ERROR: command line parameters must specify one of nf%d and ni%d as not zero",
+      error("%s: command line parameters must specify one of nf%d and ni%d as not zero",argerr,
 	    i+1,i+1);
     
     if(ofs[i] != NULL && ifmts[i]==PFILE) {
       FILE *in_fp = fopen(ofs[i], "r");
-      if (in_fp==NULL) error("Couldn't open input pfile for reading.");
+      if (in_fp==NULL) 
+	error("Couldn't open input pfile for reading.");
       bool debug_level=0;
       InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswp[i]);
       unsigned num_labs=in_streamp->num_labs();
@@ -160,18 +163,23 @@
       for(int j=1; j < argc; ++j) {
 	if(strcmp(argv[j],search_str)==0) found=true;
       }
-      if(found && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
+      if(found && nis[i] != num_labs) 
+	error("%s: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",argerr,
+	      i+1,nis[i],num_labs); 
       sprintf(search_str,"-nf%d",i+1);
       found=false;
       for(int j=1; j < argc; ++j) {
 	if(strcmp(argv[j],search_str)==0) found=true;
       }
-      if(found && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
+      if(found && nfs[i] != num_ftrs) 
+	error("%s: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",
+	      argerr,i+1,nfs[i],num_ftrs); 
       ////////////////////////////////////////////////////////////
       nis[i]=num_labs;
       nfs[i]=num_ftrs;
 
-      if (fclose(in_fp)) error("Couldn't close input pfile.");
+      if (fclose(in_fp)) 
+	error("Couldn't close input pfile.");
       delete in_streamp;
     }
     
@@ -343,7 +351,7 @@
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
      
   if (allocateDenseCpts != -1 && allocateDenseCpts != 0 && allocateDenseCpts != 1 && allocateDenseCpts != 2)
-    error("-allocateDenseCpts argument must be in {-1,0,1,2}\n") ;
+    error("%s: -allocateDenseCpts argument must be in {-1,0,1,2}\n",argerr) ;
 
 #else
 #endif
@@ -596,7 +604,7 @@
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   if (MaxClique::cliqueBeam < 0.0)
-    error("ERROR: argument cliqueBeam=%f argument must be >= 0",MaxClique::cliqueBeam);
+    error("%s: argument cliqueBeam=%f argument must be >= 0",argerr,MaxClique::cliqueBeam);
 
 #else
 #endif
@@ -658,7 +666,7 @@
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   if (MaxClique::cliqueBeamRetainFraction <= 0.0 || MaxClique::cliqueBeamRetainFraction > 1.0)
-    error("crbeam argument must be: 0.0 < v <= 1.0");
+    error("%s: crbeam argument must be: 0.0 < v <= 1.0",argerr);
 
 #else
 #endif
@@ -681,7 +689,10 @@
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   if (MaxClique::cliqueBeamMassRelinquishFraction < 0.0 || MaxClique::cliqueBeamMassRelinquishFraction >= 1.0)
-    error("cmbeam argument must be: 0.0 <= v < 1.0");
+    error("%s: cmbeam argument must be: 0.0 <= v < 1.0",argerr);
+  if (MaxClique::cliqueBeamMassMinSize <= 0)
+    error("%s: -cmmin option must be at least unity.",argerr);
+
 
 #else
 #endif
@@ -704,7 +715,7 @@
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   if (SeparatorClique::separatorBeam < 0.0)
-    error("separatorBeam must be >= 0");
+    error("%s: separatorBeam must be >= 0",argerr);
 
 #else
 #endif
@@ -757,7 +768,7 @@
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
     if (hash_abstract::loadFactor < 0.05 || hash_abstract::loadFactor >= 1.0) 
-      error("ARG ERROR: hashLoadFactor must be between 0.05 and 1.0 non-inclusive");
+      error("%s: hashLoadFactor must be between 0.05 and 1.0 non-inclusive",argerr);
 
 #else
 #endif
@@ -857,7 +868,7 @@
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   if (startSkip < 0 || endSkip < 0)
-    error("ERROR: arguments startSkip=%d/endSkip=%d must both be >= 0",startSkip,endSkip);
+    error("%s: arguments startSkip=%d/endSkip=%d must both be >= 0",argerr,startSkip,endSkip);
 
 #else
 #endif
@@ -1389,7 +1400,7 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
   else if (strcmp(Ftr_Combo_Str,"sub") == 0) Ftr_Combo = FTROP_SUB;
   else if (strcmp(Ftr_Combo_Str,"mul") == 0) Ftr_Combo = FTROP_MUL;
   else if (strcmp(Ftr_Combo_Str,"div") == 0) Ftr_Combo = FTROP_DIV;
-  else error("ERROR: Unknown feature combination type: '%s'\n",Ftr_Combo_Str);
+  else error("%s: Unknown feature combination type: '%s'\n",argerr,Ftr_Combo_Str);
   
   for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
     if(ofs[i]!=NULL) {
@@ -1399,7 +1410,7 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
       else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
-      else error("ERROR: Unknown action when diff num of frames: '%s'\n",Action_If_Diff_Num_Frames_Str[i]);
+      else error("%s: Unknown action when diff num of frames: '%s'\n",argerr,Action_If_Diff_Num_Frames_Str[i]);
     }
   }
   
@@ -1409,7 +1420,8 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_REPEAT_LAST;
       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_WRAP_AROUND;
       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_TRUNCATE_FROM_END;
-      else error("ERROR: Unknown action when diff num of sentences: '%s'\n",Action_If_Diff_Num_Sents_Str[i]);
+      else error("%s: Unknown action when diff num of sentences: '%s'\n",argerr,
+		 Action_If_Diff_Num_Sents_Str[i]);
     }
   }
 
@@ -1461,7 +1473,7 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
   if (dumpNames)
     if (ofilelist==NULL) 
-      error("Must also specify output files for binary writing");
+      error("%s: Must also specify output files for binary writing",argerr);
 
 #else
 #endif
@@ -1661,9 +1673,9 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   if (chunkSkip < 1)
-    error("Argument error: chunk skip parameter S must be >= 1\n");
+    error("%s: chunk skip parameter S must be >= 1\n",argerr);
   if (maxNumChunksInBoundary < 1)
-    error("Argument error: max number chunks in boundary parameter M must be >= 1\n");
+    error("%s: max number chunks in boundary parameter M must be >= 1\n",argerr);
   if (fabs(MaxClique::continuousObservationPerFeaturePenalty) > 1.0) {
     infoMsg(IM::Warning,"###\n### !!!DANGER WILL ROBINSON!! LARGE -pfCobWeight VALUE %f MIGHT CAUSE FLOATING POINT EXCEPTION. SUGGEST REDUCE IT IF FPE OCCURS!! ###\n###\n",MaxClique::continuousObservationPerFeaturePenalty);
   }

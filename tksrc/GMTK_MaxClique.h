@@ -1002,7 +1002,7 @@ public:
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
   void ceCliquePrune();
   void ceCliquePrune(const unsigned k);
-  void ceCliqueMassPrune(const double fraction,const unsigned minSize);
+  void ceCliqueMassPrune(const double removeFraction,const unsigned minSize);
   // a version that does all the pruning for this clique.
   void ceDoAllPruning();
 
