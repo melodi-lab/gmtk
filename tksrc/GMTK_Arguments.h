@@ -1186,7 +1186,7 @@ static char* varCliqueAssignmentPrior = "COT";
 
   Arg("useVESeparators",
       Arg::Opt,JunctionTree::useVESeparators,
-      "Use Virtual Evidence (VE) Separators (if any are available) during inference"),
+      "Use Virtual Evidence (VE) Separators (if any are available) during inference (Bitwise or of 0x1 (PC) or PCG (0x2)"),
   Arg("veSepWhere",
       Arg::Opt,JunctionTree::veSeparatorWhere,
       "Where to use VE seps. Bitwise or of 0x1 (P), 0x2 (C), 0x4 (E)"),
