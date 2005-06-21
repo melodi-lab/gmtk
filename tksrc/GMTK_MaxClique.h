@@ -241,8 +241,10 @@ public:
   // between 0 and 1 (i.e., 0 < v <= 1).
   static float cliqueBeamRetainFraction;
   // between 0 and 1 (i.e., 0 < v <= 1).
-  static double cliqueBeamMassRetainFraction;
-
+  static double cliqueBeamMassRelinquishFraction;
+  // min possible resulting size.
+  static unsigned cliqueBeamMassMinSize;
+  
   // When doing inference if any kind, this variable determines
   // if we should clear the clique and separator value cache
   // between segments/utterances. It might be beneficial, for
@@ -1000,7 +1002,7 @@ public:
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
   void ceCliquePrune();
   void ceCliquePrune(const unsigned k);
-  void ceCliqueMassPrune(const double fraction);
+  void ceCliqueMassPrune(const double fraction,const unsigned minSize);
   // a version that does all the pruning for this clique.
   void ceDoAllPruning();
 

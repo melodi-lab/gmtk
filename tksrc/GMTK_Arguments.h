@@ -675,12 +675,13 @@
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("cmbeam",Arg::Opt,MaxClique::cliqueBeamMassRetainFraction,"Percentage of clique mass to retain. Range: 0 < v <= 1. v = 1 means no pruning"),
+  Arg("cmbeam",Arg::Opt,MaxClique::cliqueBeamMassRelinquishFraction,"Percentage of clique mass to relinquish. Range: 0 < v <= 1. v = 0.0 means no pruning"),
+  Arg("cmmin",Arg::Opt,MaxClique::cliqueBeamMassMinSize,"When using -cmbeam, min possible resulitng clique state size (>= 1)"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  if (MaxClique::cliqueBeamMassRetainFraction <= 0.0 || MaxClique::cliqueBeamMassRetainFraction > 1.0)
-    error("cmbeam argument must be: 0.0 < v <= 1.0");
+  if (MaxClique::cliqueBeamMassRelinquishFraction < 0.0 || MaxClique::cliqueBeamMassRelinquishFraction >= 1.0)
+    error("cmbeam argument must be: 0.0 <= v < 1.0");
 
 #else
 #endif
