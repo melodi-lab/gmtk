@@ -3699,7 +3699,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
   ceCliquePrune(k);
   // prune also based on mass, using remaining probability after previous pruning.
-  ceCliqueMassPrune(1.0-origin.cliqueBeamMassRelinquishFraction,origin.cliqueBeamMassMinSize);
+  ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,origin.cliqueBeamMassMinSize);
 
   // create an ininitialized variable using dummy argument
   logpr beamThreshold((void*)0);
@@ -4205,7 +4205,7 @@ InferenceMaxClique::ceDoAllPruning()
   ceCliquePrune(k);
 
   // next do mass pruning.
-  ceCliqueMassPrune(1.0-origin.cliqueBeamMassRelinquishFraction,origin.cliqueBeamMassMinSize);
+  ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,origin.cliqueBeamMassMinSize);
 
   // next, do normal beam pruning.
   ceCliquePrune();
@@ -4421,7 +4421,6 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   infoMsg(IM::Med,"Clique k-beam pruning: Original clique state space = %d, new clique state space = %d\n",
 	  numCliqueValuesUsed,k);
   
-
   cliqueValues.resizeAndCopy(k);
   numCliqueValuesUsed = k;
 
@@ -4430,7 +4429,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 
 /*-
  *-----------------------------------------------------------------------
- * InferenceMaxClique::ceCliqueMassPrune(double fraction, unsigned minSize)
+ * InferenceMaxClique::ceCliqueMassPrune(double removeFraction, unsigned minSize)
  *
  *    Collect Evidence, Clique Mass Prune: This routine will prune away
  *    part of a previously instantiated clique so that it has only
@@ -4460,10 +4459,12 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
  */
 
 void 
-InferenceMaxClique::ceCliqueMassPrune(const double fraction,
+InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
 				      const unsigned minSize)
 {
-  if (fraction >= 1.0)
+  // printf("pruning with removeFraction %e\n",removeFraction);
+
+  if (removeFraction <= 0.0)
     return;
 
   // sort descending based on clique mass value.
@@ -4471,7 +4472,8 @@ InferenceMaxClique::ceCliqueMassPrune(const double fraction,
 
   logpr loc_maxCEValue = cliqueValues.ptr[numCliqueValuesUsed-1].p;
   logpr origSum = sumProbabilities();
-  logpr finalSum = origSum*fraction;
+  // logpr finalSum = origSum* (1.0 - removeFraction);
+  logpr finalSum = origSum - (origSum*removeFraction);
   logpr cumulativeSum;
   
   unsigned k;
@@ -4484,7 +4486,7 @@ InferenceMaxClique::ceCliqueMassPrune(const double fraction,
   if (k<minSize)
     k=min(minSize,numCliqueValuesUsed);
 
-  infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space = %d, mass = %f, new clique state space = %d, mass(cum) = %f(%f)\n",
+  infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space = %d, mass = %e, new clique state space = %d, mass(cum) = %e(%e)\n",
 	  numCliqueValuesUsed,origSum.valref(),
 	  k,finalSum.valref(),cumulativeSum.valref());
 
