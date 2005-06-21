@@ -3634,9 +3634,20 @@ JunctionTree::prepareForUnrolling()
 
 
   }
-
+  
+  if (P1.numVEseps > 0) {
+    infoMsg(IM::Default,"Computing P's %d VE separators\n",P1.numVEseps);
+  }
   prepareForUnrolling(P1);
+
+  if (Co.numVEseps > 0) {
+    infoMsg(IM::Default,"Computing C's %d VE separators\n",Co.numVEseps);
+  }
   prepareForUnrolling(Co);
+
+  if (E1.numVEseps > 0) {
+    infoMsg(IM::Default,"Computing E's %d VE separators\n",E1.numVEseps);
+  }
   prepareForUnrolling(E1);
 
   if (useVESeparators && totalNumVESeps > 0) {
