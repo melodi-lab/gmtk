@@ -5157,6 +5157,10 @@ InferenceMaxClique::
 maxProbability(bool setCliqueToMaxValue)
 {
 
+  // check for empty clique and if so, return zero.
+  if (numCliqueValuesUsed == 0)
+    return logpr();
+  
   if (origin.hiddenNodes.size() == 0) {
     // The observed clique case requires no action since this
     // means that the cliuqe (and therefore all its separators)
