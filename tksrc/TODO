@@ -3031,7 +3031,8 @@ Wed Jun 22 12:28:34 2005
     the beam relative to the max probability, uses it relative to the i'th from the
     max (since the max might be artificially high).
   
-
+Wed Jun 22 14:38:17 2005
+  - gmtkTime: remove error (change to warning) about not running lin-mem case (line 373 or so).
 
 
 
