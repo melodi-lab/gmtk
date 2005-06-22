@@ -1025,146 +1025,37 @@ MaxClique
 }
 
 
-
-#if 0
-      // see comments above for description and rational of this algorithm
-      if (!useDeterminism || !drv->sparse()) {
-	// charge full amount since not sparse.
-	tmp_weight += log10((double)drv->cardinality);
-      } else if (separatorNodes.find(rv) != separatorNodes.end()) {
-	// separator node case.
-	if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
-	  // separator, UNassigned in the current partition (so either
-	  // assigned in previous or next partition, depending on direction
-	  // of edges):
-
-	  if (upperBound)
-	    tmp_weight += log10((double)drv->cardinality);
-	  else {
-	    // Then variable is unasigned in this partition. We assume
-	    // that the node has been assigned in another (say
-	    // previous) partition, but it could have been assigned in
-	    // the next partition (if there are backwards time links).
-
-	    if (moreConservative) {
-	      // now you know that more conservative really means try a cludge/hack.
-	      // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
-	      // Even so, this could either be a lower or upper bound.
-	      tmp_weight += (min(drv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
-				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
-	    } else {
-	      // What we do: we don't charge full amount. Note that this
-	      // could cause the estimate to be LOWER than the true
-	      // weight.
-	      tmp_weight += log10((double)drv->useCardinality());
-	    }
-	  }
-	} else if (cumulativeUnassignedIteratedNodes.find(rv) !=
-		   cumulativeUnassignedIteratedNodes.end()) {
-	  // separator, assigned in this partition, but NOT assigned
-	  // in any previous clique.
-	  if (assignedNodes.find(rv) == assignedNodes.end()) {
-	    // separator, assigned in this partition, unassigned previously, not assigned 
-	    // in current clique either:
-
-	    // Charge full amount since we do separator iteration over
-	    // something that is not assigned in any previous cliques
-	    // and nor in this clique.
-	    tmp_weight += log10((double)drv->cardinality);
-	  } else {
-	    // separator, assigned in this partition, unassigned
-	    // previously, assigned here in this clique:
-
-	    // This is the case we would like to avoid since for
-	    // separator driven iteration, we are iterating over all
-	    // values of var, and don't remove the zeros until this
-	    // clique. If there are many of these cases, we might
-	    // consider doing clique driven rather than separator
-	    // driven clique potential instantiation.
-
-	    // While it will come into this clique without zeros being
-	    // removed, this clique will remove them (since it is
-	    // assigned), so from a memory point of view, we could
-	    // charge useCard. For now, we are conservative here,
-	    // however, and charge full card (which is the computational
-	    // but not the memory cost).
-	    tmp_weight += log10((double)drv->cardinality);
-	  }
-	} else {
-	  // separator, assigned in this partition, and assigned in a
-	  // previous clique.
-
-	  if (upperBound) 
-	    tmp_weight += log10((double)drv->cardinality);
-	  else {
-	    // This is an important one since this is quite likely to occur
-	    // when determinism abounds.
-	    if (moreConservative) {
-	      // now you know that more conservative really means try a cludge/hack.
-	      // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
-	      // Even so, this could either be a lower or upper bound.
-	      tmp_weight += (min(drv->log10ProductCardOfParentsNotContainedInSet(separatorNodes),
-				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;
-	    } else {
-	      // Charge low amount since it has been assigned in some
-	      // previous clique, and at least one of the separators will
-	      // kill off the zero prob entries. This could cause the
-	      // estimate to be LOWER than the true weight.
-	      tmp_weight += log10((double)drv->useCardinality());
-	    }
-	  }
-	}
-      } else {
-	// non separator node case.
-	if (unassignedInPartition.find(rv) != unassignedInPartition.end()) {
-	  // non separator, unassigned in partition.
-
-	  if (upperBound) 
-	    tmp_weight += log10((double)drv->cardinality);
-	  else {
-	    if (moreConservative) {
-	      // (min(card,unavailble_parents_prod_card) + use_card)/2 (but in log domain).
-	      // Even so, this could either be a lower or upper bound.
-	      tmp_weight += (min(drv->log10ProductCardOfParentsNotContainedInSet(nodes),
-				 log10((double)drv->cardinality)) + log10((double)drv->useCardinality()))/2.0;	      
-	    } else {
-	      // Then unasigned in this partition. We assume that the
-	      // node has been assigned in another (say previous) partition
-	      // and we don't charge full amount. Note that
-	      // this could cause the estimate to be LOWER than
-	      // the true weight.
-	      tmp_weight += log10((double)drv->useCardinality());
-	    }
-	  }
-	} else if (assignedNodes.find(rv) != assignedNodes.end()) {
-	  // non separator, assigned here:
-
-	  // Then assigned in this clique. Charge correct amount.
-	  tmp_weight += log10((double)drv->useCardinality());
-	} else {
-	  // non separator, not assigned here:
-
-	  // Not assigned in this clique. We know it can't be in
-	  // cumulativeAssignedNodes since it is not a sep node.
-	  assert ( cumulativeAssignedNodes.find(rv) == cumulativeAssignedNodes.end());
-	  // charge full amount.
-	  tmp_weight += log10((double)drv->cardinality);
-	}
-      }
-    } else if (!rv->discrete()) {
-      // node is continuous observed.
-      ContRV *crv = (ContRV*)rv;
-      tmp_weight += crv->dimensionality()*continuousObservationPerFeaturePenalty;
-    } else {
-      // node is discrete observed.
-      
-    } 
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::clearCliqueValueCache()
+ *   
+ *   clear out hash and clique value memory for use between segments
+ *
+ * Preconditions:
+ *   Data structures must be set up.
+ *
+ * Postconditions:
+ *   all hash and clique value memory is released.
+ *
+ * Side Effects:
+ *     changes internal data structures.
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MaxClique::clearCliqueValueCache(bool force)
+{
+  if ((force || perSegmentClearCliqueValueCache) && packer.packedLen() > IMC_NWWOH) {
+    valueHolder.prepare();
+    cliqueValueHashSet.clear(CLIQUE_VALUE_HOLDER_STARTING_SIZE);
   }
-#endif
-
-
-
-
+  // shrink space asked for by clique values. 
+  cliqueValueSpaceManager.decay();
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -3686,6 +3577,12 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     return;
   }
 
+  // TODO: have option where user can specify order of
+  // these pruning options. BKM
+
+  // optionally, do a pass of clique pruning here.
+  // ceCliquePrune();
+
   // do k-pruning (ideally we would do this after
   // beam pruning, but since beam pruning is integrated
   // into the code below, we do max state pruning first).
@@ -4098,7 +3995,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
  *    same beam width). This routine, however, is kept here since 1)
  *    at the very right clique of the right most partition, we need to
  *    explicitely prune, and 2) the island algorithm sometimes also
- *    needs to explicitely call pruning.
+ *    needs to explicitly call pruning.
  *
  * Preconditions:
  *   1) the value of the max clique 'maxCEValue' must have been
@@ -4462,33 +4359,64 @@ void
 InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
 				      const unsigned minSize)
 {
-  // printf("pruning with removeFraction %e\n",removeFraction);
 
-  if (removeFraction <= 0.0)
+
+  if (removeFraction <= 0.0 || numCliqueValuesUsed <= minSize)
     return;
 
-  // sort descending based on clique mass value.
+  // sort all current clique values descending based on clique mass value.
   sort(cliqueValues.ptr,cliqueValues.ptr + numCliqueValuesUsed,CliqueValueDescendingProbCompare());
 
-  logpr loc_maxCEValue = cliqueValues.ptr[numCliqueValuesUsed-1].p;
-  logpr origSum = sumProbabilities();
-  // logpr finalSum = origSum* (1.0 - removeFraction);
-  logpr finalSum = origSum - (origSum*removeFraction);
-  logpr cumulativeSum;
+  // logpr loc_maxCEValue = cliqueValues.ptr[0].p;
+
+  // printf("mass pruning: maxVal %.18e, minVal %.18e\n",
+  // loc_maxCEValue.val(),cliqueValues.ptr[numCliqueValuesUsed-1].p.val());
+
+  logpr origSum = sumProbabilities(); // /loc_maxCEValue;
+
+  if (origSum.zero())
+    return;
+
+  // logpr desiredSum = origSum* (1.0 - removeFraction);
+  logpr desiredSum = (origSum - (origSum*removeFraction));
+  logpr actualSum;
+
+  //   printf("mass pruning: origSum %.18e, desiredSum %.18e, diff %.18e\n",
+  // 	 origSum.val(),
+  // 	 desiredSum.val(),
+  // 	 (origSum - desiredSum).val());
   
   unsigned k;
   for (k=0;k<numCliqueValuesUsed;k++) {
-    cumulativeSum += cliqueValues.ptr[k].p;
-    if (cumulativeSum >=  finalSum)
+    actualSum += cliqueValues.ptr[k].p; // /loc_maxCEValue;
+    // could use either ">" or ">=" here.
+    //   - use ">=" if you want more aggressive pruning (will probably want to use a bigger minSize in this case).
+    //   - use ">" if you want less agressive pruning.
+    // This can actually have a big effect since due to the dynamic range of the elements
+    // in the clique, the rest of the clique when added to the current sum might
+    // not cause any increment at all (all it needs to be is different by
+    // less than the min difference, see logp.h).
+    if (actualSum >= desiredSum)
       break;
   }
+
+  //   // optional code to calculate and print residual (stuff that is pruned away)
+  //   unsigned r=k;
+  //   logpr residualSum;
+  //   for (r=k+1;r<numCliqueValuesUsed;r++) {
+  //     residualSum += cliqueValues.ptr[r].p; // /loc_maxCEValue;
+  //   }
+  //   printf("mass pruning: removeFraction %.18e, maxCV = %.18e, actualSum = %.18e, residualSum = %0.18e, actual+residual = %0.18e\n",
+  // 	 removeFraction,loc_maxCEValue.val(),actualSum.val(),residualSum.val(),
+  // 	 (actualSum+residualSum).val());
+  
   
   if (k<minSize)
     k=min(minSize,numCliqueValuesUsed);
 
-  infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space = %d, mass = %e, new clique state space = %d, mass(cum) = %e(%e)\n",
+  infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space (mass) = %d (%e), new state space = %d, desired (actual) new-mass = %e(%e)\n",
 	  numCliqueValuesUsed,origSum.valref(),
-	  k,finalSum.valref(),cumulativeSum.valref());
+	  k,desiredSum.valref(),actualSum.valref());
 
   numCliqueValuesUsed = k;  
 
@@ -6398,6 +6326,45 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 
 }
 #endif
+
+/*-
+ *-----------------------------------------------------------------------
+ * SeparatorClique::clearSeparatorValueCache()
+ *   
+ *   Clear out hash table and other memories for use between segments.
+ *
+ * Preconditions:
+ *   Data structures must have been set up.
+ *
+ * Postconditions:
+ *   All shared hash tables and value holders for this clique are cleared if 'force'
+ *   is true.
+ *
+ * Side Effects:
+ *     internal data structures will change.
+ *
+ * Results:
+ *     none
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+SeparatorClique::clearSeparatorValueCache(bool force) 
+{
+  if ((force || MaxClique::perSegmentClearCliqueValueCache) && accPacker.packedLen() > ISC_NWWOH_AI) {
+    accValueHolder.prepare();
+    accSepValHashSet.clear(AI_SEP_VALUE_HOLDER_STARTING_SIZE);
+  }
+  if ((force || MaxClique::perSegmentClearCliqueValueCache) && remPacker.packedLen() > ISC_NWWOH_RM) { 
+    remValueHolder.prepare();
+    remSepValHashSet.clear(REM_SEP_VALUE_HOLDER_STARTING_SIZE);
+  }
+  // shrink space asked for by clique values. 
+  separatorValueSpaceManager.decay();
+  remainderValueSpaceManager.decay(); 
+}
+
 
 
 /*-

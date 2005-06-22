@@ -424,7 +424,7 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
       for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
 	bins[i] = sizeof(unsigned)*8;
       }
-      unsigned tr2 = findApproximateBestRetry(bins,ints2);
+      unsigned tr2 = findApproximateBest2Retry(bins,ints2);
       if (tr2 == 0) {
 	ints = ints2;
 	splits = tr2;
