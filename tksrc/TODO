@@ -3026,6 +3026,11 @@ Fri Jun 10 01:57:36 2005
      maximizing the number of AI variables and the greatest flexibility in variable
      ordering.
 
+Wed Jun 22 12:28:34 2005
+  - in addition to the latest -cmbeam, also have a -cbeam that rather than using
+    the beam relative to the max probability, uses it relative to the i'th from the
+    max (since the max might be artificially high).
+  
 
 
 
