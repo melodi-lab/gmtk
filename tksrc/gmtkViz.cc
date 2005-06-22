@@ -314,7 +314,7 @@ class VizNode : public Selectable {
 public:
 	/// absolute position of the center of the circle
 	wxPoint center;
-	/// a pointer to the RVInfo entry in the XXX FileParser
+	/// a copy of the RVInfo entry from the FileParser
 	RVInfo *rvi;
 	/// the parent
 	StructPage *page;
@@ -1254,6 +1254,28 @@ void GFrame::OnMenuFilePageSetup(wxCommandEvent &event)
  *
  * \return void
  *******************************************************************/
+
+//This class subclasses wxPrintPrview and disables zoom (for the time being)
+class nozoomwxPrintPreview : public wxPrintPreview
+{
+	public:
+		void SetZoom(int zoom);
+		nozoomwxPrintPreview(GmtkPrintout*, GmtkPrintout*, wxPrintDialogData* = NULL);
+};
+
+nozoomwxPrintPreview::nozoomwxPrintPreview(GmtkPrintout* printout, 
+		GmtkPrintout* printoutForPrinting, wxPrintDialogData* data) 
+	: wxPrintPreview(printout, printoutForPrinting, data)
+{
+	wxPrintPreview::SetZoom(200);
+};
+
+void nozoomwxPrintPreview::SetZoom(int zoom)
+{
+	//do nothing
+	return;
+};
+
 void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 {
 	// figure out which page this is for and pass the buck
@@ -1270,8 +1292,8 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 		 * work. It in turn calls the StructPage's draw() method to do
 		 * the actual drawing. */
 		wxPrintDialogData printDialogData(printData);
-		wxPrintPreview *preview =
-			new wxPrintPreview(new GmtkPrintout(curPage, name),
+		nozoomwxPrintPreview *preview =
+			new nozoomwxPrintPreview(new GmtkPrintout(curPage, name),
 						new GmtkPrintout(curPage, name),
 						&printDialogData);
 		if (!preview->Ok()) {
@@ -1281,6 +1303,10 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 		}
 		
 		// Now that the preview is set up, show it in a preview frame.
+		
+		//XXX this allows for dotted lines (not ideal)
+		//preview->SetZoom(200);
+
 		wxPreviewFrame *frame =
 			new wxPreviewFrame(preview, this, wxT("gmtkViz Print Preview"),
 						wxPoint(100, 100), wxSize(600, 650));
@@ -2157,7 +2183,9 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 		case MENU_CUSTOMIZE_GRID_PEN_STYLE:
 			newStyleNum = wxGetSingleChoiceIndex( wxT("What style would you like?"),
 							  wxT("Change Pen Style"),
-							  2 /*6*/, choices, this );
+							  /* the number of pen choices, if set to 2 we remove the
+								* ability to chose dotted and dashed lines */
+							  6, choices, this );
 			if (newStyleNum >= 0) {
 			if ( 2 <= newStyleNum && newStyleNum <= 5 ) {
 				if ( wxNO == wxMessageBox("Lines with dots and/or "
@@ -2409,10 +2437,10 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	content = NULL;
 
 	/* Dots and dashes require width to be one. */
-	switchingPen.SetStyle(wxSOLID /*wxDOT*/);
+	switchingPen.SetStyle(wxDOT); /* was wxSOLID */
 	conditionalPen.SetStyle(wxSOLID);
-	bothPen.SetStyle(wxSOLID /*wxLONG_DASH*/);
-	frameBorderPen.SetStyle(wxSOLID /*wxDOT*/);
+	bothPen.SetStyle(wxLONG_DASH); /* was wxSOLID */
+	frameBorderPen.SetStyle(wxDOT); /* was wxSOLID */
 	chunkBorderPen.SetStyle(wxSOLID);
 	// Scale all these lines up.
 	switchingPen.SetWidth(ACTUAL_SCALE);
@@ -2532,7 +2560,6 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		// At this point we no longer need the file parser, and since it
 		// uses global variables, we can't have more than one. Thus, we
 		// delete it now, rather than later.
-		// XXX: references to the rvinfo vector still exist!
 		delete fp;
 	}
 	fp = NULL;
@@ -3890,96 +3917,96 @@ StructPage::copyFrameLayout( int from, int to )
 	RVInfo::rvParent destNodeId;
 	destNodeId.second = to;
 	int destNode, dx, dxFromLeft, dxFromRight, dy, iLeft, iRight, destLeft,
-	destRight, iOffsetFromLeft, iOffsetFromRight, destOffsetFromLeft,
-	destOffsetFromRight;
+		 destRight, iOffsetFromLeft, iOffsetFromRight, destOffsetFromLeft,
+		 destOffsetFromRight;
 	for (int i = firstNodeInFrame[from]; i < firstNodeInFrame[from+1]; i++) {
-	destNodeId.first = nodes[i]->rvId.first;
-	if (nameVizNodeMap.count(destNodeId)) {
-		destNode = nameVizNodeMap[destNodeId];
+		destNodeId.first = nodes[i]->rvId.first;
+		if (nameVizNodeMap.count(destNodeId)) {
+			destNode = nameVizNodeMap[destNodeId];
 
-		// Figure out where to move the node.
-		iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
-		iOffsetFromLeft = nodes[i]->center.x - iLeft;
-		iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
-		iOffsetFromRight = nodes[i]->center.x - iRight;
+			// Figure out where to move the node.
+			iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
+			iOffsetFromLeft = nodes[i]->center.x - iLeft;
+			iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
+			iOffsetFromRight = nodes[i]->center.x - iRight;
 
-		destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
-		destOffsetFromLeft = nodes[destNode]->center.x - destLeft;
-		destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
-		destOffsetFromRight = nodes[destNode]->center.x - destRight;
+			destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
+			destOffsetFromLeft = nodes[destNode]->center.x - destLeft;
+			destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
+			destOffsetFromRight = nodes[destNode]->center.x - destRight;
 
-		dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
-		dxFromRight = iOffsetFromRight - destOffsetFromRight;
+			dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
+			dxFromRight = iOffsetFromRight - destOffsetFromRight;
 
-		dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
-		dy = nodes[i]->center.y - nodes[destNode]->center.y;
-		moveNode(destNode, dx, dy);
+			dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
+			dy = nodes[i]->center.y - nodes[destNode]->center.y;
+			moveNode(destNode, dx, dy);
 
-		// Figure out where to move the node's nametag.
-		iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
-		iOffsetFromLeft = nodeNameTags[i]->pos.x - iLeft;
-		iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
-		iOffsetFromRight = nodeNameTags[i]->pos.x - iRight;
+			// Figure out where to move the node's nametag.
+			iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
+			iOffsetFromLeft = nodeNameTags[i]->pos.x - iLeft;
+			iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
+			iOffsetFromRight = nodeNameTags[i]->pos.x - iRight;
 
-		destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
-		destOffsetFromLeft = nodeNameTags[destNode]->pos.x - destLeft;
-		destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
-		destOffsetFromRight = nodeNameTags[destNode]->pos.x - destRight;
+			destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
+			destOffsetFromLeft = nodeNameTags[destNode]->pos.x - destLeft;
+			destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
+			destOffsetFromRight = nodeNameTags[destNode]->pos.x - destRight;
 
-		dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
-		dxFromRight = iOffsetFromRight - destOffsetFromRight;
+			dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
+			dxFromRight = iOffsetFromRight - destOffsetFromRight;
 
-		dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
-		dy = nodeNameTags[i]->pos.y - nodeNameTags[destNode]->pos.y;
-		moveNodeNameTag(destNode, dx, dy);
+			dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
+			dy = nodeNameTags[i]->pos.y - nodeNameTags[destNode]->pos.y;
+			moveNodeNameTag(destNode, dx, dy);
 
-		// Rebuild the VizArc with similar ControlPoints
-		VizArc *iArc = NULL, *destArc = NULL;
-		RVInfo::rvParent destParentId, destChildId;
-		int destParent, destChild, numNodes = nodes.size();
-		for (int j = 0; j < numNodes; j++) {
-		iArc = arcs[i][j];
-		// if the arc doesn't exist, we're done for now
-		if (!iArc)
-			continue;
-		destChildId.first = nodes[j]->rvId.first;
-		destChildId.second = nodes[j]->rvId.second -
-			nodes[i]->rvId.second + nodes[destNode]->rvId.second;
-		// if there is no similar node in relation to
-		// destNode, then we're done for now
-		if (!nameVizNodeMap.count(destChildId))
-			continue;
-		destChild = nameVizNodeMap[destChildId];
-		destArc = arcs[destNode][destChild];
-		// if that arc doesn't exist we're done for now
-		if (!destArc)
-			continue;
-		// We've found two similar arcs. Now we need to
-		// make destArc look like iArc.
-		copyArcLayout(i, j, destNode, destChild, false);
+			// Rebuild the VizArc with similar ControlPoints
+			VizArc *iArc = NULL, *destArc = NULL;
+			RVInfo::rvParent destParentId, destChildId;
+			int destParent, destChild, numNodes = nodes.size();
+			for (int j = 0; j < numNodes; j++) {
+				iArc = arcs[i][j];
+				// if the arc doesn't exist, we're done for now
+				if (!iArc)
+					continue;
+				destChildId.first = nodes[j]->rvId.first;
+				destChildId.second = nodes[j]->rvId.second -
+					nodes[i]->rvId.second + nodes[destNode]->rvId.second;
+				// if there is no similar node in relation to
+				// destNode, then we're done for now
+				if (!nameVizNodeMap.count(destChildId))
+					continue;
+				destChild = nameVizNodeMap[destChildId];
+				destArc = arcs[destNode][destChild];
+				// if that arc doesn't exist we're done for now
+				if (!destArc)
+					continue;
+				// We've found two similar arcs. Now we need to
+				// make destArc look like iArc.
+				copyArcLayout(i, j, destNode, destChild, false);
+			}
+			for (int j = 0; j < numNodes; j++) {
+				iArc = arcs[j][i];
+				// if the arc doesn't exist, we're done for now
+				if (!iArc)
+					continue;
+				destParentId.first = nodes[j]->rvId.first;
+				destParentId.second = nodes[j]->rvId.second -
+					nodes[i]->rvId.second + nodes[destNode]->rvId.second;
+				// if there is no similar node in relation to
+				// destNode, then we're done for now
+				if (!nameVizNodeMap.count(destParentId))
+					continue;
+				destParent = nameVizNodeMap[destParentId];
+				destArc = arcs[destParent][destNode];
+				// if that arc doesn't exist we're done for now
+				if (!destArc)
+					continue;
+				// We've found two similar arcs. Now we need to
+				// make destArc look like iArc.
+				copyArcLayout(j, i, destParent, destNode, true);
+			}
 		}
-		for (int j = 0; j < numNodes; j++) {
-		iArc = arcs[j][i];
-		// if the arc doesn't exist, we're done for now
-		if (!iArc)
-			continue;
-		destParentId.first = nodes[j]->rvId.first;
-		destParentId.second = nodes[j]->rvId.second -
-			nodes[i]->rvId.second + nodes[destNode]->rvId.second;
-		// if there is no similar node in relation to
-		// destNode, then we're done for now
-		if (!nameVizNodeMap.count(destParentId))
-			continue;
-		destParent = nameVizNodeMap[destParentId];
-		destArc = arcs[destParent][destNode];
-		// if that arc doesn't exist we're done for now
-		if (!destArc)
-			continue;
-		// We've found two similar arcs. Now we need to
-		// make destArc look like iArc.
-		copyArcLayout(j, i, destParent, destNode, true);
-		}
-	}
 	}
 
 	// also move the frame's nametag
@@ -3999,7 +4026,7 @@ StructPage::copyFrameLayout( int from, int to )
 	dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
 	dy = frameNameTags[from]->pos.y - frameNameTags[to]->pos.y;
 	moveFrameNameTag(to, dx, dy);
-	
+
 	redraw();
 	blit();
 }
@@ -4020,23 +4047,39 @@ StructPage::copyFrameLayout( int from, int to )
 void
 StructPage::copyFrameLayout( void )
 {
-	int from = 0, to;
+	int from = 0, count;
+	wxString temp;
+	wxArrayInt selections;
+	//these two arrays hold the same data in different formats
+	//which allows for more elegant access later
+	wxArrayString choicesString;
+	wxArrayInt choicesInt;
+	wxString msg;
 
 	from = wxGetNumberFromUser( wxT("Copy layout from"), wxT("frame"),
-				wxT("Copy Frame Layout"), from, 0,
-				numFrames-1, this, wxDefaultPosition );
+			wxT("Copy Frame Layout"), from, 0,
+			numFrames-1, this, wxDefaultPosition );
 	if (from == -1) // user canceled
-	return;
+		return;
 
-	to = (from == numFrames-1 ? from - 1 : from + 1);
-	wxString msg;
-	msg.sprintf("Copy layout from frame %d to", from);
-	to = wxGetNumberFromUser( msg, wxT("frame"), wxT("Copy Frame Layout"),
-				  to, 0, numFrames-1, this, wxDefaultPosition );
-	if (to == -1) // user canceled
-	return;
+	for (int i = 0; i < numFrames; i++){
+		temp.Printf("%i", i);
+		if (i != from){
+			choicesString.Add(temp);
+			choicesInt.Add(i);
+		}
+	}
 
-	copyFrameLayout( from, to );
+	msg.sprintf("Copy layout from frame %d to:", from);
+
+	count = wxGetMultipleChoices(selections, 
+			wxT("Select Frame(s) to copy layout to:"), 
+			msg, choicesString, this);
+	
+	if (count < 1)
+		return;	//zero selected or canceled
+	for(int i = 0; i < count; i++)
+		copyFrameLayout(from, choicesInt.Item(selections.Item(i)));
 }
 
 /**
@@ -5210,7 +5253,7 @@ StructPage::adjustCanvasHeight( void )
 				 getHeight(), minHeight, getHeight()*2 );
 
 	if (height != -1) {
-		canvasWidth = height;
+		canvasHeight = height;
 		setScale(getScale());
 	}
 }
@@ -5682,7 +5725,7 @@ VizArc::draw( wxDC *dc, int drawFlags )
 			pen = &page->switchingPen;
 		else if (conditional)
 			pen = &page->conditionalPen;
-
+		
 		dc->SetPen(*pen);
 
 		/* Draw whatever splines, lines, or direct lines the StructPage
