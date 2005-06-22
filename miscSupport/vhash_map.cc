@@ -90,7 +90,6 @@ main(int argc,char*argv[])
 	 (double)ht.numCollisions/(double)ht.numInserts,
 	 ht. totalNumberEntries());
 
-
   // now go through each entry in the table to test if it is there.
   printf("ensuring inserted entries are all contained\n");
   for (unsigned pos=0;pos<ht.table.size();pos++) {
