@@ -45,9 +45,9 @@ class sArray {
 
   int _size;
 
-  // simple dirty quicksort with dumb pivoting. Current type must have
-  // assignment, comparison (operator <()), and be swapable (i.e.,
-  // copy constructor and/or writable)
+  // simple dirty ascending quicksort with dumb pivoting. Current type
+  // must have assignment, comparison (operator <()), and be swapable
+  // (i.e., copy constructor and/or writable)
   void internalSort(int begin,int end) {
     if (end > begin) {
       // last element is pivot. Could also choose a random median-like
