@@ -780,14 +780,7 @@ public:
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // used to clear out hash table memory between segments
-  void clearCliqueValueCache(bool force = false) {
-    if ((force || perSegmentClearCliqueValueCache) && packer.packedLen() > IMC_NWWOH) {
-      valueHolder.prepare();
-      cliqueValueHashSet.clear();    
-    }
-    // shrink space asked for by clique values. 
-    cliqueValueSpaceManager.decay();
-  }
+  void clearCliqueValueCache(bool force = false);
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // used to compute the unassigned nodes in this clique.
@@ -1230,20 +1223,7 @@ public:
   SpaceManager remainderValueSpaceManager; 
 
   // used to clear out hash table memory between segments
-  void clearSeparatorValueCache(bool force=false) {
-    if ((force || MaxClique::perSegmentClearCliqueValueCache) && accPacker.packedLen() > ISC_NWWOH_AI) {
-      accValueHolder.prepare();
-      accSepValHashSet.clear();
-    }
-    if ((force || MaxClique::perSegmentClearCliqueValueCache) && remPacker.packedLen() > ISC_NWWOH_RM) { 
-      remValueHolder.prepare();
-      remSepValHashSet.clear();
-    }
-    // shrink space asked for by clique values. 
-    separatorValueSpaceManager.decay();
-    remainderValueSpaceManager.decay(); 
-  }
-
+  void clearSeparatorValueCache(bool force=false);
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
 #if 0
