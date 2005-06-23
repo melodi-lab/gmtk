@@ -297,6 +297,11 @@ void FNGramImp::read(iDataStreamFile &is) {
  *-----------------------------------------------------------------------
  */
 void FNGramImp::readFNGramSpec(iDataStreamFile &ifs) {
+	int alwaysOne;
+	ifs.readInt(alwaysOne);
+	if ( alwaysOne != 1 )
+		error("Error: in flm spec file %s, expecting 1 at the beginning", ifs.fileName());
+
 	string childstr;
 	ifs.prepareNext();
 	// read in child node name
