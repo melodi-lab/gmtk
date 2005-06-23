@@ -1265,7 +1265,7 @@ class nozoomwxPrintPreview : public wxPrintPreview
 
 nozoomwxPrintPreview::nozoomwxPrintPreview(GmtkPrintout* printout, 
 		GmtkPrintout* printoutForPrinting, wxPrintDialogData* data) 
-	: wxPrintPreview(printout, printoutForPrinting, data)
+: wxPrintPreview(printout, printoutForPrinting, data)
 {
 	wxPrintPreview::SetZoom(200);
 };
@@ -1298,7 +1298,9 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 						&printDialogData);
 		if (!preview->Ok()) {
 			delete preview;
-			wxMessageBox(_T("There was a problem previewing.\nPerhaps your current printer is not set correctly?"), wxT("Previewing"), wxOK);
+			wxMessageBox(_T("There was a problem previewing.\n"
+						"Perhaps your current printer is not set correctly?"), 
+					wxT("Previewing"), wxOK);
 			return;
 		}
 		
@@ -4031,6 +4033,106 @@ StructPage::copyFrameLayout( int from, int to )
 	blit();
 }
 
+/* this class represents a dialog that shows 2 lists and has an ok and cancel button
+ * the first list allows for 1 selection and the second list allows for many selections
+ * this allows for a 1 to many relationship to be specified (like copying the layout of
+ * frame to many other frames
+ */
+class wxgmtk1toManyDialog : public wxDialog {
+	public:
+		wxgmtk1toManyDialog( wxWindow *parent,
+				wxWindowID id,
+				const wxString &title,
+				wxString choises_1[],
+				wxString choises_Many[],
+				int choises_1_size,
+				int choises_Many_size,
+				wxString caption_1,
+				wxString caption_Many,
+				const wxPoint& position = wxDefaultPosition,
+				const wxSize& size = wxDefaultSize,
+				long style = wxDEFAULT_DIALOG_STYLE );
+		~wxgmtk1toManyDialog();
+		int Get_1_Selection() { return listbox1->GetSelection();}
+		int Get_Many_Selection(wxArrayInt *selected) { return listboxMany->GetSelections(*selected);}
+	private:
+		void OnOk( wxCommandEvent &event );
+		void OnCancel( wxCommandEvent &event );
+		wxListBox * listbox1;
+		wxListBox * listboxMany;
+		DECLARE_EVENT_TABLE()
+
+};
+
+BEGIN_EVENT_TABLE(wxgmtk1toManyDialog,wxDialog)
+    EVT_BUTTON( wxID_OK, wxgmtk1toManyDialog::OnOk )
+    EVT_BUTTON( wxID_CANCEL, wxgmtk1toManyDialog::OnCancel )
+END_EVENT_TABLE()
+
+wxgmtk1toManyDialog::wxgmtk1toManyDialog( wxWindow *parent,
+		wxWindowID id,
+		const wxString &title,
+		wxString choises_1[],
+		wxString choises_Many[],
+		int choises_1_size,
+		int choises_Many_size,
+		wxString caption_1,
+		wxString caption_Many,
+		const wxPoint& position,
+		const wxSize& size,
+		long style) : 
+	wxDialog( parent, id, title, position, size, style )
+{
+	wxBoxSizer *topsizer = new wxBoxSizer( wxVERTICAL );
+	wxBoxSizer *selection_sizer = new wxBoxSizer( wxHORIZONTAL );
+
+	wxStaticText * caption_1_ob = new wxStaticText(this,-1, caption_1, wxDefaultPosition);
+	selection_sizer->Add( caption_1_ob, 0, wxALL | wxALIGN_CENTER,5 );
+
+	listbox1 = new wxListBox((wxWindow*)this, -1, wxDefaultPosition,
+			wxDefaultSize, choises_1_size, choises_1, wxLB_SINGLE | wxLB_NEEDED_SB,
+			wxDefaultValidator, caption_1);
+	selection_sizer->Add( listbox1, 1, wxALIGN_LEFT | wxEXPAND | wxALL, 5);
+	listbox1->SetSelection(0);	//select the first item by default
+	
+	wxStaticText * caption_Many_op = new wxStaticText(this,-1, caption_Many, wxDefaultPosition);
+	selection_sizer->Add( caption_Many_op, 0, wxALL | wxALIGN_CENTER ,5);
+
+	listboxMany = new wxListBox((wxWindow*)this, -1, wxDefaultPosition,
+			wxDefaultSize, choises_Many_size, choises_Many, wxLB_EXTENDED | wxLB_NEEDED_SB,
+			wxDefaultValidator, caption_Many);
+	selection_sizer->Add( listboxMany, 1, wxALIGN_LEFT | wxEXPAND | wxALL, 5);
+
+	//add the selections, align them along the center of the dialog box
+	topsizer->Add( selection_sizer, 1, wxALIGN_CENTER | wxEXPAND);
+
+	//create buttons and add them
+	wxBoxSizer *button_sizer = new wxBoxSizer( wxHORIZONTAL );
+	button_sizer->Add( new wxButton( this, wxID_OK, "Ok" ), 0, wxALL, 10 );
+	button_sizer->Add( new wxButton( this, wxID_CANCEL, "Cancel" ), 0, wxALL, 10 );
+	//add the buttons, align them along the center of the dialog box
+	topsizer->Add( button_sizer, 0, wxALIGN_CENTER );
+
+	SetAutoLayout( true );     // tell dialog to use sizer
+	SetSizer( topsizer );      // actually set the sizer
+
+	topsizer->Fit( this );            // set size to minimum size as calculated by the sizer
+	topsizer->SetSizeHints( this );   // set size hints to honour mininum size
+}
+
+wxgmtk1toManyDialog::~wxgmtk1toManyDialog(){
+	delete listboxMany;
+	delete listbox1;
+}
+
+void wxgmtk1toManyDialog::OnOk( wxCommandEvent &event ){
+	event.Skip();
+}
+void wxgmtk1toManyDialog::OnCancel( wxCommandEvent &event ){
+	listbox1->Clear();
+	listboxMany->Clear();
+	event.Skip();
+}
 /**
  *******************************************************************
  * Ask the user which frame's layout they would like copied to which
@@ -4048,38 +4150,41 @@ void
 StructPage::copyFrameLayout( void )
 {
 	int from = 0, count;
-	wxString temp;
-	wxArrayInt selections;
-	//these two arrays hold the same data in different formats
-	//which allows for more elegant access later
-	wxArrayString choicesString;
-	wxArrayInt choicesInt;
-	wxString msg;
-
-	from = wxGetNumberFromUser( wxT("Copy layout from"), wxT("frame"),
-			wxT("Copy Frame Layout"), from, 0,
-			numFrames-1, this, wxDefaultPosition );
-	if (from == -1) // user canceled
-		return;
+	wxString temp_string;
+	wxArrayInt selections_Many;
+	wxString *choices = new wxString [numFrames];
+	int to;
 
 	for (int i = 0; i < numFrames; i++){
-		temp.Printf("%i", i);
-		if (i != from){
-			choicesString.Add(temp);
-			choicesInt.Add(i);
-		}
+		temp_string.Printf("%i", i);
+		choices[i] = temp_string;
 	}
 
-	msg.sprintf("Copy layout from frame %d to:", from);
-
-	count = wxGetMultipleChoices(selections, 
-			wxT("Select Frame(s) to copy layout to:"), 
-			msg, choicesString, this);
+	wxgmtk1toManyDialog *copyDialog = new wxgmtk1toManyDialog((wxWindow*)this,
+			-1,
+			wxString("Copy Frame Layout"),
+			choices, choices, numFrames, numFrames,
+			wxString("Copy Layout From:"),
+			wxString("To:")
+			);
+	copyDialog->ShowModal();
+	from = copyDialog->Get_1_Selection();
 	
-	if (count < 1)
+	//make sure a source has been selected and that there is at least one destination
+	if(from < 0 || 1 > (count = copyDialog->Get_Many_Selection(&selections_Many))){
+		delete [] choices;
+		delete copyDialog;
 		return;	//zero selected or canceled
-	for(int i = 0; i < count; i++)
-		copyFrameLayout(from, choicesInt.Item(selections.Item(i)));
+	}
+	
+	//copy the frame layout to all the selected frames (except the source if it is selected)
+	for(int i = 0; i < count; i++){
+		to = selections_Many.Item(i);
+		if (to != from)
+			copyFrameLayout(from, to);
+	}
+	delete [] choices;
+	delete copyDialog;
 }
 
 /**
@@ -4120,42 +4225,42 @@ StructPage::copyArcLayout( int iFrom, int jFrom,
 	wxPoint offset, newPoint;
 	// clear the list deleting all the ones we don't want
 	for (unsigned int i = 1; i < to->cps->size() - 1; i++) {
-	delete (*to->cps)[i];
-	(*to->cps)[i] = NULL;
+		delete (*to->cps)[i];
+		(*to->cps)[i] = NULL;
 	}
 	to->cps->clear();
 	// reinsert the first ControlPoint
 	to->cps->push_back(toFirst);
 	// copy the ones from the template
 	for (unsigned int k = 1; k < from->cps->size() - 1; k++) {
-	if (backward) {
-		offset.x = (*from->cps)[k]->pos.x - fromLast->pos.x;
-		offset.y = (*from->cps)[k]->pos.y - fromLast->pos.y;
-		newPoint.x = toLast->pos.x + offset.x;
-		newPoint.y = toLast->pos.y + offset.y;
-	} else {
-		offset.x = (*from->cps)[k]->pos.x - fromFirst->pos.x;
-		offset.y = (*from->cps)[k]->pos.y - fromFirst->pos.y;
-		newPoint.x = toFirst->pos.x + offset.x;
-		newPoint.y = toFirst->pos.y + offset.y;
-	}
-	// in case the newPoint is outside the canvas we create the
-	// ControlPoint in the center of the canvas and then move it
-	// into place
-	newCP = new ControlPoint(center);
-	// make it point to its parent arc
-	newCP->arc = to;
-	to->cps->push_back(newCP);
-	moveControlPoint( iTo, jTo, k,
-			  newPoint.x - center.x,
-			  newPoint.y - center.y );
+		if (backward) {
+			offset.x = (*from->cps)[k]->pos.x - fromLast->pos.x;
+			offset.y = (*from->cps)[k]->pos.y - fromLast->pos.y;
+			newPoint.x = toLast->pos.x + offset.x;
+			newPoint.y = toLast->pos.y + offset.y;
+		} else {
+			offset.x = (*from->cps)[k]->pos.x - fromFirst->pos.x;
+			offset.y = (*from->cps)[k]->pos.y - fromFirst->pos.y;
+			newPoint.x = toFirst->pos.x + offset.x;
+			newPoint.y = toFirst->pos.y + offset.y;
+		}
+		// in case the newPoint is outside the canvas we create the
+		// ControlPoint in the center of the canvas and then move it
+		// into place
+		newCP = new ControlPoint(center);
+		// make it point to its parent arc
+		newCP->arc = to;
+		to->cps->push_back(newCP);
+		moveControlPoint( iTo, jTo, k,
+				newPoint.x - center.x,
+				newPoint.y - center.y );
 	}
 	// put the end point on again
 	to->cps->push_back(toLast);
 	// now rebuild the wxList used for drawing along the points
 	to->points->Clear();
 	for (unsigned int k = 0; k < to->cps->size(); k++) {
-	to->points->Append( (wxObject*)&(*to->cps)[k]->pos );
+		to->points->Append( (wxObject*)&(*to->cps)[k]->pos );
 	}
 }
 
@@ -4179,50 +4284,61 @@ StructPage::copyPartitionLayout( void )
 	int from, to, fromStart, toStart, numFramesToCopy,
 	firstFrameInFrom, lastFrameInFrom, numFramesInFrom,
 	firstFrameInTo, lastFrameInTo, numFramesInTo;
+	int count_Many_selected;	//number of selections
 	bool backward;
+	wxArrayInt selections_Many;
 	wxString choices[] = {wxT("Prologue"), wxT("Chunk"), wxT("Epilogue")};
+	
+	wxgmtk1toManyDialog *copyDialog = new wxgmtk1toManyDialog((wxWindow*)this,
+			-1,
+			wxString("Copy Partition Layout"),
+			choices, choices, 3, 3,
+			wxString("Copy Layout From:"),
+			wxString("To:")
+			);
+	copyDialog->ShowModal();
+	from = copyDialog->Get_1_Selection();
 
-	from = wxGetSingleChoiceIndex( wxT("Copy layout from which partition?"),
-				   wxT("Copy Partition Layout"), 3,
-				   choices, this );
-	if (from == INVALID)
-	return; // user canceled
-	to = wxGetSingleChoiceIndex( wxT("Copy layout to which partition?"),
-				 wxT("Copy Partition Layout"), 3,
-				 choices, this );
-	if (to == INVALID)
-	return; // user canceled
+	//make sure a source has been selected and that there is at least one destination
+	if(from < 0 || 1 > (count_Many_selected = copyDialog->Get_Many_Selection(&selections_Many))){
+		return;	//zero destinations selected or canceled
+	}
+	
+	//copy the frame layout to all the selected frames (except the source if it is selected)
+	for(int i = 0; i < count_Many_selected; i++){
+		to = selections_Many.Item(i);
+		if (to != from){
+			backward = to < from;
+			firstFrameInFrom = ( from==PROLOGUE ? 0
+					: ( from==CHUNK ? firstChunkFrame
+						: firstEpilogueFrame ) );
+			lastFrameInFrom = ( from==PROLOGUE ? firstChunkFrame - 1
+					: ( from==CHUNK ? firstEpilogueFrame - 1
+						: numFrames - 1 ) );
+			numFramesInFrom = lastFrameInFrom - firstFrameInFrom + 1;
+			firstFrameInTo = ( to==PROLOGUE ? 0
+					: ( to==CHUNK ? firstChunkFrame
+						: firstEpilogueFrame ) );
+			lastFrameInTo = ( to==PROLOGUE ? firstChunkFrame - 1
+					: ( to==CHUNK ? firstEpilogueFrame - 1
+						: numFrames - 1 ) );
+			numFramesInTo = lastFrameInTo - firstFrameInTo + 1;
+			numFramesToCopy = ( numFramesInTo<numFramesInFrom
+					? numFramesInTo
+					: numFramesInFrom );
+			if (backward) {
+				fromStart = firstFrameInFrom;
+				toStart = lastFrameInTo - numFramesToCopy + 1;
+			} else {
+				fromStart = lastFrameInFrom - numFramesToCopy + 1;
+				toStart = firstFrameInTo;
+			}
+			for (int j = 0; j < numFramesToCopy; j++) {
+				copyFrameLayout(fromStart + j, toStart + j);
+			}
+		}
+	}
 
-	if (from == to)
-	return; // There's nothing to actually do.
-	backward = to < from;
-	firstFrameInFrom = ( from==PROLOGUE ? 0
-			 : ( from==CHUNK ? firstChunkFrame
-				 : firstEpilogueFrame ) );
-	lastFrameInFrom = ( from==PROLOGUE ? firstChunkFrame - 1
-			: ( from==CHUNK ? firstEpilogueFrame - 1
-				: numFrames - 1 ) );
-	numFramesInFrom = lastFrameInFrom - firstFrameInFrom + 1;
-	firstFrameInTo = ( to==PROLOGUE ? 0
-			   : ( to==CHUNK ? firstChunkFrame
-			   : firstEpilogueFrame ) );
-	lastFrameInTo = ( to==PROLOGUE ? firstChunkFrame - 1
-			  : ( to==CHUNK ? firstEpilogueFrame - 1
-			  : numFrames - 1 ) );
-	numFramesInTo = lastFrameInTo - firstFrameInTo + 1;
-	numFramesToCopy = ( numFramesInTo<numFramesInFrom
-			? numFramesInTo
-			: numFramesInFrom );
-	if (backward) {
-	fromStart = firstFrameInFrom;
-	toStart = lastFrameInTo - numFramesToCopy + 1;
-	} else {
-	fromStart = lastFrameInFrom - numFramesToCopy + 1;
-	toStart = firstFrameInTo;
-	}
-	for (int i = 0; i < numFramesToCopy; i++) {
-	copyFrameLayout(fromStart + i, toStart + i);
-	}
 }
 
 /**
