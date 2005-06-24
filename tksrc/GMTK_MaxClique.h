@@ -244,6 +244,9 @@ public:
   static double cliqueBeamMassRelinquishFraction;
   // min possible resulting size.
   static unsigned cliqueBeamMassMinSize;
+  // additional normal beam to include once mass is covered.
+  static double cliqueBeamMassFurtherBeam;
+
   
   // When doing inference if any kind, this variable determines
   // if we should clear the clique and separator value cache
@@ -995,7 +998,9 @@ public:
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
   void ceCliquePrune();
   void ceCliquePrune(const unsigned k);
-  void ceCliqueMassPrune(const double removeFraction,const unsigned minSize);
+  void ceCliqueMassPrune(const double removeFraction,
+			 const double furtherBeam,
+			 const unsigned minSize);
   // a version that does all the pruning for this clique.
   void ceDoAllPruning();
 
@@ -1356,8 +1361,12 @@ class InferenceSeparatorClique : public IM
 
     // Hash table into remainder. This is used during clique iteration
     // to project down into the outgoing separator in a CE stage.
-    // Note, by default, these hash tables are constructed empty and
-    // invalid, and they need to be explicitly re-constructed.
+    // When we iterate over a clique to project into the outgoing
+    // separator during CE, we need to index (hash) into both the AI,
+    // and for the AI found, see if the remainder exists. This hash
+    // table is used for that purpose.  Note, by default, these hash
+    // tables are constructed empty and invalid, and they need to be
+    // explicitly re-constructed.
     VHashMapUnsignedUnsignedKeyUpdatable iRemHashMap;
 
     // ensure that we start with nothing inserted.
