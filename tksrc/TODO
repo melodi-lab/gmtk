@@ -3030,6 +3030,9 @@ Wed Jun 22 12:28:34 2005
   - in addition to the latest -cmbeam, also have a -cbeam that rather than using
     the beam relative to the max probability, uses it relative to the i'th from the
     max (since the max might be artificially high).
+  - alternatively/in addition, can combine -cmbeam and -cbeam, so that we take that percentage
+    of the top mass, and then do -cbeam style pruning starting from the one below the
+    top mass.
   
 Wed Jun 22 14:38:17 2005
   - gmtkTime: remove error (change to warning) about not running lin-mem case (line 373 or so).

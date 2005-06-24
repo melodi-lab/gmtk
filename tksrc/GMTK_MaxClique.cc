@@ -284,6 +284,17 @@ MaxClique::cliqueBeamMassRelinquishFraction = 0.0;
 unsigned 
 MaxClique::cliqueBeamMassMinSize = 1;
 
+
+
+/*
+ * When using mass beam pruning, we use this to further allow additional states through below
+ * the one below first one after the mass has been acounted for. 0.0 to turn off.
+ *
+ */
+double
+MaxClique::cliqueBeamMassFurtherBeam = 0.0;
+
+
 /*
  *
  * separator beam width, for separator-based beam pruning.  Default value is
@@ -3596,7 +3607,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
   ceCliquePrune(k);
   // prune also based on mass, using remaining probability after previous pruning.
-  ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,origin.cliqueBeamMassMinSize);
+  ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,
+		    origin.cliqueBeamMassFurtherBeam,
+		    origin.cliqueBeamMassMinSize);
 
   // create an ininitialized variable using dummy argument
   logpr beamThreshold((void*)0);
@@ -3615,6 +3628,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
   const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;  
   // logpr origSum = sumProbabilities();
+
+  // TODO: do sampling code here, i.e., optionally sample from remaining portion
+  //       of what otherwise would be pruned away portion of the clique.
 
   // next check if the outgoing separator has only obseved values.
   if (sep.origin.hAccumulatedIntersection.size() == 0 && sep.origin.hRemainder.size() == 0) {
@@ -4102,7 +4118,9 @@ InferenceMaxClique::ceDoAllPruning()
   ceCliquePrune(k);
 
   // next do mass pruning.
-  ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,origin.cliqueBeamMassMinSize);
+  ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,
+		    origin.cliqueBeamMassFurtherBeam,
+		    origin.cliqueBeamMassMinSize);
 
   // next, do normal beam pruning.
   ceCliquePrune();
@@ -4357,6 +4375,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 
 void 
 InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
+				      const double furtherBeam,
 				      const unsigned minSize)
 {
 
@@ -4367,7 +4386,7 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
   // sort all current clique values descending based on clique mass value.
   sort(cliqueValues.ptr,cliqueValues.ptr + numCliqueValuesUsed,CliqueValueDescendingProbCompare());
 
-  // logpr loc_maxCEValue = cliqueValues.ptr[0].p;
+  logpr loc_maxCEValue = cliqueValues.ptr[0].p;
 
   // printf("mass pruning: maxVal %.18e, minVal %.18e\n",
   // loc_maxCEValue.val(),cliqueValues.ptr[numCliqueValuesUsed-1].p.val());
@@ -4389,6 +4408,7 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
   unsigned k;
   for (k=0;k<numCliqueValuesUsed;k++) {
     actualSum += cliqueValues.ptr[k].p; // /loc_maxCEValue;
+
     // could use either ">" or ">=" here.
     //   - use ">=" if you want more aggressive pruning (will probably want to use a bigger minSize in this case).
     //   - use ">" if you want less agressive pruning.
@@ -4398,6 +4418,16 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
     // less than the min difference, see logp.h).
     if (actualSum >= desiredSum)
       break;
+
+  }
+  
+  if (furtherBeam != 0.0 && k < numCliqueValuesUsed ) {
+    logpr curMax = cliqueValues.ptr[k].p;
+    logpr threshold = curMax/logpr((void*)0,furtherBeam);
+    while (++k < numCliqueValuesUsed) {
+      if (cliqueValues.ptr[k].p  < threshold)
+	break;
+    }
   }
 
   //   // optional code to calculate and print residual (stuff that is pruned away)
@@ -4415,8 +4445,8 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
     k=min(minSize,numCliqueValuesUsed);
 
   infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space (mass) = %d (%e), new state space = %d, desired (actual) new-mass = %e(%e)\n",
-	  numCliqueValuesUsed,origSum.valref(),
-	  k,desiredSum.valref(),actualSum.valref());
+	  numCliqueValuesUsed,origSum.val(),
+	  k,desiredSum.val(),actualSum.val());
 
   numCliqueValuesUsed = k;  
 
@@ -4780,7 +4810,7 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
 
 	// If it doesn't exist in this separator, then it must have
 	// zero probability some where. We therefore do not insert it
-	// into this clique, and continue on with next cliuqe value.
+	// into this clique, and continue on with next clique value.
 	if ( remIndexp == NULL )
 	  return;
 
@@ -4929,7 +4959,6 @@ InferenceMaxClique::ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& pa
     break;
   }
 }
-
 
 
 /*-
