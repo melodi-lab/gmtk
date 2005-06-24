@@ -155,6 +155,7 @@ public:
 	wxPen nodePen;
 	wxPen gridPen;
 	wxFont labelFont;
+	wxPen boundingBoxPen;
 
 	// Are we drawing ... ?
 	bool getViewCPs( void ) { return drawCPs; }
@@ -168,6 +169,7 @@ public:
 	bool getViewNodeNames( void ) { return drawNodeNames; }
 	bool getViewFrameNames( void ) { return drawFrameNames; }
 	bool getViewToolTips( void ) { return drawToolTips; }
+	bool getViewBoundingBox( void ) { return drawBoundingBox; }
 
 	// toggle drawing ...
 	void toggleViewCPs( void );
@@ -181,6 +183,7 @@ public:
 	void toggleViewNodeNames( void );
 	void toggleViewFrameNames( void );
 	void toggleViewToolTips( void );
+	void toggleViewBoundingBox( void );
 
 	void hideSelectedLabels( void );
 	void showAllLabels( void );
@@ -213,6 +216,7 @@ private:
 	bool drawNodeNames;
 	bool drawFrameNames;
 	bool drawToolTips;
+	bool drawBoundingBox;
 
 	// How big?
 	int displayScale;
@@ -445,6 +449,7 @@ public:
 	MENU_VIEW_NODE_NAMES,
 	MENU_VIEW_FRAME_NAMES,
 	MENU_VIEW_TOOLTIPS,
+	MENU_VIEW_BOUNDING_BOX,
 	MENU_ZOOM_BEGIN,
 	MENU_ZOOM_2_pow_neg_4dot000,
 	MENU_ZOOM_2_pow_neg_3dot000,
@@ -496,6 +501,10 @@ public:
 	MENU_CUSTOMIZE_GRID_PEN_COLOR,
 	MENU_CUSTOMIZE_GRID_PEN_WIDTH,
 	MENU_CUSTOMIZE_GRID_PEN_STYLE,
+	MENU_CUSTOMIZE_BOUNDING_BOX_PEN,
+	MENU_CUSTOMIZE_BOUNDING_BOX_PEN_COLOR,
+	MENU_CUSTOMIZE_BOUNDING_BOX_PEN_WIDTH,
+	MENU_CUSTOMIZE_BOUNDING_BOX_PEN_STYLE,
 	MENU_CUSTOMIZE_PENS_END
 	};
 
@@ -574,6 +583,7 @@ public:
 	void OnMenuViewNodeNames(wxCommandEvent &event);
 	void OnMenuViewFrameNames(wxCommandEvent &event);
 	void OnMenuViewToolTips(wxCommandEvent &event);
+	void OnMenuViewBoundingBox(wxCommandEvent &event);
 
 	// Handle events from the Zoom menu to change the scale/zoom
 	void OnMenuZoom(wxCommandEvent &event);
@@ -768,6 +778,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_view->Append(MENU_VIEW_FRAME_SEPS, wxT("Draw Frame Separators"), wxT("Toggle display of frame separators"), wxITEM_CHECK);
 	menu_view->Append(MENU_VIEW_NODE_NAMES, wxT("Draw Node Names"), wxT("Toggle display of node names"), wxITEM_CHECK);
 	menu_view->Append(MENU_VIEW_FRAME_NAMES, wxT("Draw Frame Names"), wxT("Toggle display of frame names"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_BOUNDING_BOX, wxT("Draw Bounding Box"), wxT("Toggle display of bounding box"), wxITEM_CHECK);
 	// XXX: menu_view->Append(MENU_VIEW_TOOLTIPS, wxT("Draw Tool Tips"), wxT("Toggle display of tool tips for node names"), wxITEM_CHECK);
 	MainVizWindow_menubar->Append(menu_view, wxT("View"));
 	// Doesn't make sense unless a document is active, so disable it for now.
@@ -926,6 +937,22 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_customize->Append( MENU_CUSTOMIZE_GRID_PEN,
 				wxT("Grid Pen"),
 				menu_customize_grid );
+	wxMenu* menu_customize_bounding_box = new wxMenu();
+	menu_customize_bounding_box->Append( MENU_CUSTOMIZE_BOUNDING_BOX_PEN_COLOR,
+					  wxT("Change Color..."),
+					  wxT("Change the color of bounding box" ),
+					  wxITEM_NORMAL );
+	menu_customize_bounding_box->Append( MENU_CUSTOMIZE_BOUNDING_BOX_PEN_WIDTH,
+					  wxT("Change Width..."),
+					  wxT("Change the width of bounding box"),
+					  wxITEM_NORMAL );
+	menu_customize_bounding_box->Append( MENU_CUSTOMIZE_BOUNDING_BOX_PEN_STYLE,
+					  wxT("Change Style..."),
+					  wxT("Change the style of bounding box"),
+					  wxITEM_NORMAL );
+	menu_customize->Append( MENU_CUSTOMIZE_BOUNDING_BOX_PEN,
+				wxT("Bounding Box Pen"),
+				menu_customize_bounding_box );
 	MainVizWindow_menubar->Append(menu_customize, wxT("Customize"));
 	// Again, needs a document to make sense.
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
@@ -1039,6 +1066,7 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_VIEW_NODE_NAMES, GFrame::OnMenuViewNodeNames)
 	EVT_MENU(MENU_VIEW_FRAME_NAMES, GFrame::OnMenuViewFrameNames)
 	EVT_MENU(MENU_VIEW_TOOLTIPS, GFrame::OnMenuViewToolTips)
+	EVT_MENU(MENU_VIEW_BOUNDING_BOX, GFrame::OnMenuViewBoundingBox)
 	EVT_MENU_RANGE(MENU_ZOOM_BEGIN+1, MENU_ZOOM_END-1, GFrame::OnMenuZoom)
 	EVT_MENU(MENU_CUSTOMIZE_FONT, GFrame::OnMenuCustomizeFont)
 	EVT_MENU_RANGE(MENU_CUSTOMIZE_PENS_BEGIN+1, MENU_CUSTOMIZE_PENS_END-1, GFrame::OnMenuCustomizePen)
@@ -1303,7 +1331,7 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 					wxT("Previewing"), wxOK);
 			return;
 		}
-		
+			
 		// Now that the preview is set up, show it in a preview frame.
 		
 		//XXX this allows for dotted lines (not ideal)
@@ -1984,6 +2012,36 @@ GFrame::OnMenuViewToolTips(wxCommandEvent &event)
 	if (curPage)
 		curPage->toggleViewToolTips();
 }
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * toggle the drawing of the bounding box
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *	  in case it isn't, so everything should be fine as long as the
+ *	  program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has toggled whether it
+ *	  draws the bounding box and redrawn itself.
+ *
+ * \note If a StructPage was in front, then it has toggled whether it
+ *	  draws the bounding box and redrawn itself.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuViewBoundingBox(wxCommandEvent &event)
+{
+	// figure out which page this is for and pass the buck
+	int curPageNum = struct_notebook->GetSelection();
+	StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+	// If it couldn't be casted to a StructPage, then curPage will be NULL.
+	if (curPage)
+		curPage->toggleViewBoundingBox();
+}
 
 /**
  *******************************************************************
@@ -2126,6 +2184,11 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 			case MENU_CUSTOMIZE_GRID_PEN_STYLE:
 				thePen = &curPage->gridPen;
 				break;
+			case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_COLOR:
+			case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_WIDTH:
+			case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_STYLE:
+				thePen = &curPage->boundingBoxPen;
+				break;
 			default:
 				return;
 		}
@@ -2148,6 +2211,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 		case MENU_CUSTOMIZE_CONTROLPOINT_PEN_COLOR:
 		case MENU_CUSTOMIZE_NODE_PEN_COLOR:
 		case MENU_CUSTOMIZE_GRID_PEN_COLOR:
+		case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_COLOR:
 			newColor = wxGetColourFromUser(this, thePen->GetColour());
 			if (newColor.Ok())
 				thePen->SetColour(newColor);
@@ -2161,6 +2225,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 		case MENU_CUSTOMIZE_CONTROLPOINT_PEN_WIDTH:
 		case MENU_CUSTOMIZE_NODE_PEN_WIDTH:
 		case MENU_CUSTOMIZE_GRID_PEN_WIDTH:
+		case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_WIDTH:
 			penStyle = thePen->GetStyle();
 			if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
 					penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
@@ -2183,6 +2248,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 		case MENU_CUSTOMIZE_CONTROLPOINT_PEN_STYLE:
 		case MENU_CUSTOMIZE_NODE_PEN_STYLE:
 		case MENU_CUSTOMIZE_GRID_PEN_STYLE:
+		case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_STYLE:
 			newStyleNum = wxGetSingleChoiceIndex( wxT("What style would you like?"),
 							  wxT("Change Pen Style"),
 							  /* the number of pen choices, if set to 2 we remove the
@@ -2318,6 +2384,8 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 						  curPage->getViewNodeNames());
 		MainVizWindow_menubar->Check( MENU_VIEW_FRAME_NAMES,
 						  curPage->getViewFrameNames());
+		MainVizWindow_menubar->Check( MENU_VIEW_BOUNDING_BOX,
+						  curPage->getViewBoundingBox() );
 		// tooltips don't work
 		// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS,
 		// curPage->getViewToolTips() );
@@ -2402,8 +2470,9 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	  switchingPen(*wxCYAN_PEN), conditionalPen(*wxBLACK_PEN),
 	  bothPen(*wxRED_PEN), frameBorderPen(*wxLIGHT_GREY_PEN),
 	  chunkBorderPen(*wxBLACK_PEN), controlPointPen(*wxRED_PEN),
-	  nodePen(*wxBLACK_PEN), gridPen(*wxLIGHT_GREY_PEN),
-	  labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL, wxNORMAL)
+	  nodePen(*wxBLACK_PEN), gridPen(*wxLIGHT_GREY_PEN), 
+	  labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL, wxNORMAL),
+	  boundingBoxPen(*wxBLACK_PEN)
 {
 	// This is used later to update the status bar
 	this->parentFrame = parentFrame;
@@ -2431,6 +2500,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	drawFrameNames = true;
 	// Has no real effect since our tooltips don't work
 	drawToolTips = true;
+	drawBoundingBox = false;
 
 	snapToGrid = false;
 
@@ -2455,6 +2525,8 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	controlPointPen.SetJoin(wxJOIN_MITER);
 	nodePen.SetWidth(ACTUAL_SCALE);
 	gridPen.SetStyle(wxDOT);
+	boundingBoxPen.SetStyle(wxSOLID);
+	boundingBoxPen.SetJoin(wxJOIN_MITER);
 
 	// scroll 10 pixels at a time
 	SetScrollRate( 10, 10 );
@@ -4560,6 +4632,17 @@ StructPage::draw( wxDC& dc )
 		dc.SetBrush(oldBrush);
 		dc.SetPen(oldPen);
 	}
+	
+	if (drawBoundingBox) {
+		//draw a bounding box around the canvas
+		wxPen oldPen = dc.GetPen();
+		wxBrush oldBrush = dc.GetBrush();
+		dc.SetPen(boundingBoxPen);
+		dc.SetBrush(*wxTRANSPARENT_BRUSH);
+		dc.DrawRectangle(0, 0, getWidth(), getHeight());
+		dc.SetPen(oldPen);
+		dc.SetBrush(oldBrush);
+	}
 
 	dc.EndDrawing();
 }
@@ -5204,6 +5287,29 @@ StructPage::toggleViewToolTips( void )
 {
 	drawToolTips = !drawToolTips;
 	wxToolTip::Enable(drawToolTips);
+}
+/**
+ *******************************************************************
+ * Toggle whether bounding box is drawn and redrawn.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether bounding box will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether bounding box will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \remark
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::toggleViewBoundingBox( void )
+{
+	drawBoundingBox = !drawBoundingBox;
+	redraw();
+	blit();
 }
 
 /**
