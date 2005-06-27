@@ -52,9 +52,9 @@ ObservationMatrix globalObservationMatrix;
 // The different zooming modes (in the menu) correspond to the
 // following scales:
 static const double gZoomMap[] = {
-	0.0625/ACTUAL_SCALE, // 1/16
-	0.125/ACTUAL_SCALE, // 1/8
-	0.25/ACTUAL_SCALE, // 1/4
+//	0.0625/ACTUAL_SCALE, // 1/16
+//	0.125/ACTUAL_SCALE, // 1/8
+//	0.25/ACTUAL_SCALE, // 1/4
 	0.5/ACTUAL_SCALE, // 1/2
 	0.70710678118654746/ACTUAL_SCALE, // 1/(2**(1/2))
 	0.84089641525371461/ACTUAL_SCALE, // 1/(2**(1/4))
@@ -64,10 +64,13 @@ static const double gZoomMap[] = {
 	1.189207115002721/ACTUAL_SCALE, // 2**(1/4)
 	1.4142135623730951/ACTUAL_SCALE, // 2**(1/2)
 	2.0/ACTUAL_SCALE, // 2
-	4.0/ACTUAL_SCALE, // 4
-	8.0/ACTUAL_SCALE, // 8
-	16.0/ACTUAL_SCALE // 16
+	4.0/ACTUAL_SCALE // 4
+//	8.0/ACTUAL_SCALE, // 8
+//	16.0/ACTUAL_SCALE // 16
 };
+//this is the index into gZoomMap which will give a Zoom of 1
+#define ZOOM_1_INDEX 4
+
 
 // some sizes of things
 #define NODE_RADIUS (10*ACTUAL_SCALE)
@@ -88,186 +91,186 @@ class ControlPoint;
 /// associated with a structure file.
 class StructPage: public wxScrolledWindow
 {
-public:
-	// constructor
-	StructPage(wxWindow *parent, wxWindowID id,
-		   wxFrame *parentFrame, wxNotebook *parentNotebook,
-		   const wxString &file, bool old = true);
-	// destructor
-	~StructPage();
-	// some event handlers
-	void OnPaint( wxPaintEvent &event );
-	void OnChar( wxKeyEvent &event );
-	void OnMouseEvent( wxMouseEvent &event );
+	public:
+		// constructor
+		StructPage(wxWindow *parent, wxWindowID id,
+				wxFrame *parentFrame, wxNotebook *parentNotebook,
+				const wxString &file, bool old = true);
+		// destructor
+		~StructPage();
+		// some event handlers
+		void OnPaint( wxPaintEvent &event );
+		void OnChar( wxKeyEvent &event );
+		void OnMouseEvent( wxMouseEvent &event );
 
-	// pseudo event handlers: GFrame calls these.
-	void Save( void );
-	void SaveAs( void );
-	bool RequestClose( void );
-	// Set the status bar etc. when we're in the front
-	void onComeForward( void );
+		// pseudo event handlers: GFrame calls these.
+		void Save( void );
+		void SaveAs( void );
+		bool RequestClose( void );
+		// Set the status bar etc. when we're in the front
+		void onComeForward( void );
 
-	// Did everything parse successfully?
-	bool Ready( void ) { return !gvpAborted; }
+		// Did everything parse successfully?
+		bool Ready( void ) { return !gvpAborted; }
 
-	// things related to selecting
-	Selectable *itemAt( const wxPoint& pt );
-	void setAllSelected( bool newSelected );
-	void setEndpointsSelected( bool newSelected, RVInfo::rvParent );
-	void toggleSelectedInRect( const wxRect& rect );
-	void moveFrameSep( int i, int dx );
-	void moveFrameNameTag( int i, int dx, int dy );
-	void moveNodeNameTag( int i, int dx, int dy );
-	void moveNode( int i, int dx, int dy );
-	void moveControlPoint( int i, int j, int k, int dx, int dy );
-	void moveSelected( int dx, int dy );
-	void snapSelectedToGrid( void );
+		// things related to selecting
+		Selectable *itemAt( const wxPoint& pt );
+		void setAllSelected( bool newSelected );
+		void setEndpointsSelected( bool newSelected, RVInfo::rvParent );
+		void toggleSelectedInRect( const wxRect& rect );
+		void moveFrameSep( int i, int dx );
+		void moveFrameNameTag( int i, int dx, int dy );
+		void moveNodeNameTag( int i, int dx, int dy );
+		void moveNode( int i, int dx, int dy );
+		void moveControlPoint( int i, int j, int k, int dx, int dy );
+		void moveSelected( int dx, int dy );
+		void snapSelectedToGrid( void );
 
-	void copyFrameLayout( int from, int to );
-	void copyFrameLayout( void );
-	void copyPartitionLayout( void );
-	void copyArcLayout( int iFrom, int jFrom,
-			int iTo, int jTo,
-			bool backward );
+		void copyFrameLayout( int from, int to );
+		void copyFrameLayout( void );
+		void copyPartitionLayout( void );
+		void copyArcLayout( int iFrom, int jFrom,
+				int iTo, int jTo,
+				bool backward );
 
-	// general stats
-	int getWidth( void ) { return canvasWidth; }
-	int getHeight( void ) { return canvasHeight; }
-	int getScale( void ) { return displayScale; }
-	void setScale( int newScale );
-	void getName( wxString& name );
-	void adjustCanvasWidth( void );
-	void adjustCanvasHeight( void );
+		// general stats
+		int getWidth( void ) { return canvasWidth; }
+		int getHeight( void ) { return canvasHeight; }
+		int getScale( void ) { return displayScale; }
+		void setScale( int newScale );
+		void getName( wxString& name );
+		void adjustCanvasWidth( void );
+		void adjustCanvasHeight( void );
 
-	// some drawing-related convenience methods
-	void draw( wxDC& dc );
-	void redraw( void );
-	void blit( wxDC& dc );
-	void blit( void );
+		// some drawing-related convenience methods
+		void draw( wxDC& dc );
+		void redraw( void );
+		void blit( wxDC& dc );
+		void blit( void );
 
-	// pens and fonts for drawing different items
-	wxPen switchingPen;
-	wxPen conditionalPen;
-	wxPen bothPen;
-	wxPen frameBorderPen;
-	wxPen chunkBorderPen;
-	wxPen controlPointPen;
-	wxPen nodePen;
-	wxPen gridPen;
-	wxFont labelFont;
-	wxPen boundingBoxPen;
+		// pens and fonts for drawing different items
+		wxPen switchingPen;
+		wxPen conditionalPen;
+		wxPen bothPen;
+		wxPen frameBorderPen;
+		wxPen chunkBorderPen;
+		wxPen controlPointPen;
+		wxPen nodePen;
+		wxPen gridPen;
+		wxFont labelFont;
+		wxPen boundingBoxPen;
 
-	// Are we drawing ... ?
-	bool getViewCPs( void ) { return drawCPs; }
-	bool getViewLines( void ) { return drawLines; }
-	bool getViewSplines( void ) { return drawSplines; }
-	bool getViewArrowHeads( void ) { return drawArrowHeads; }
-	bool getViewNodes( void ) { return drawNodes; }
-	bool getViewGrids( void ) { return drawGrids; }
-	bool getViewDirectLines( void ) { return drawDirectLines; }
-	bool getViewFrameSeps( void ) { return drawFrameSeps; }
-	bool getViewNodeNames( void ) { return drawNodeNames; }
-	bool getViewFrameNames( void ) { return drawFrameNames; }
-	bool getViewToolTips( void ) { return drawToolTips; }
-	bool getViewBoundingBox( void ) { return drawBoundingBox; }
+		// Are we drawing ... ?
+		bool getViewCPs( void ) { return drawCPs; }
+		bool getViewLines( void ) { return drawLines; }
+		bool getViewSplines( void ) { return drawSplines; }
+		bool getViewArrowHeads( void ) { return drawArrowHeads; }
+		bool getViewNodes( void ) { return drawNodes; }
+		bool getViewGrids( void ) { return drawGrids; }
+		bool getViewDirectLines( void ) { return drawDirectLines; }
+		bool getViewFrameSeps( void ) { return drawFrameSeps; }
+		bool getViewNodeNames( void ) { return drawNodeNames; }
+		bool getViewFrameNames( void ) { return drawFrameNames; }
+		bool getViewToolTips( void ) { return drawToolTips; }
+		bool getViewBoundingBox( void ) { return drawBoundingBox; }
 
-	// toggle drawing ...
-	void toggleViewCPs( void );
-	void toggleViewLines( void );
-	void toggleViewSplines( void );
-	void toggleViewArrowHeads( void );
-	void toggleViewNodes( void );
-	void toggleViewGrids( void );
-	void toggleViewDirectLines( void );
-	void toggleViewFrameSeps( void );
-	void toggleViewNodeNames( void );
-	void toggleViewFrameNames( void );
-	void toggleViewToolTips( void );
-	void toggleViewBoundingBox( void );
+		// toggle drawing ...
+		void toggleViewCPs( void );
+		void toggleViewLines( void );
+		void toggleViewSplines( void );
+		void toggleViewArrowHeads( void );
+		void toggleViewNodes( void );
+		void toggleViewGrids( void );
+		void toggleViewDirectLines( void );
+		void toggleViewFrameSeps( void );
+		void toggleViewNodeNames( void );
+		void toggleViewFrameNames( void );
+		void toggleViewToolTips( void );
+		void toggleViewBoundingBox( void );
 
-	void hideSelectedLabels( void );
-	void showAllLabels( void );
+		void hideSelectedLabels( void );
+		void showAllLabels( void );
 
-	// Ask the user what font they want to use.
-	void changeFont( void );
+		// Ask the user what font they want to use.
+		void changeFont( void );
 
-	bool getSnapToGrid( void ) { return snapToGrid; }
-	void toggleSnapToGrid( void );
+		bool getSnapToGrid( void ) { return snapToGrid; }
+		void toggleSnapToGrid( void );
 
-	//DECLARE_DYNAMIC_CLASS(StructPage)
-	DECLARE_EVENT_TABLE()
-private:
-	wxFrame *parentFrame;
-	wxNotebook *parentNotebook;
-	wxBitmap *content; // the drawing buffer
-	std::map< RVInfo::rvParent, unsigned int > nameVizNodeMap;
-	wxRect selectBox;
+		//DECLARE_DYNAMIC_CLASS(StructPage)
+		DECLARE_EVENT_TABLE()
+	private:
+			wxFrame *parentFrame;
+			wxNotebook *parentNotebook;
+			wxBitmap *content; // the drawing buffer
+			std::map< RVInfo::rvParent, unsigned int > nameVizNodeMap;
+			wxRect selectBox;
 
-	// What do we draw?
-	bool drawSelectBox;
-	bool drawCPs;
-	bool drawLines;
-	bool drawSplines;
-	bool drawArrowHeads;
-	bool drawNodes;
-	bool drawGrids;
-	bool drawDirectLines;
-	bool drawFrameSeps;
-	bool drawNodeNames;
-	bool drawFrameNames;
-	bool drawToolTips;
-	bool drawBoundingBox;
+			// What do we draw?
+			bool drawSelectBox;
+			bool drawCPs;
+			bool drawLines;
+			bool drawSplines;
+			bool drawArrowHeads;
+			bool drawNodes;
+			bool drawGrids;
+			bool drawDirectLines;
+			bool drawFrameSeps;
+			bool drawNodeNames;
+			bool drawFrameNames;
+			bool drawToolTips;
+			bool drawBoundingBox;
 
-	// How big?
-	int displayScale;
-	long canvasWidth;
-	long canvasHeight;
-	long rightMostItemX( void );
-	long bottomMostItemY( void );
+			// How big?
+			int displayScale;
+			long canvasWidth;
+			long canvasHeight;
+			long rightMostItemX( void );
+			long bottomMostItemY( void );
 
-	bool snapToGrid;
+			bool snapToGrid;
 
-	void initNodes( void );
-	void initArcs( void );
+			void initNodes( void );
+			void initArcs( void );
 
-	// utility methods
-	VizArc* newArc(int i, int j);
-	VizArc* findArcOwning( ControlPoint *cp, int& index );
-	void deleteSelectedCps( void );
-	bool crossesNode( wxCoord x0, wxCoord x1 );
-	bool crossesFrameEnd( wxCoord x0, wxCoord x1 );
-	bool inBounds( wxCoord x, wxCoord y );
+			// utility methods
+			VizArc* newArc(int i, int j);
+			VizArc* findArcOwning( ControlPoint *cp, int& index );
+			void deleteSelectedCps( void );
+			bool crossesNode( wxCoord x0, wxCoord x1 );
+			bool crossesFrameEnd( wxCoord x0, wxCoord x1 );
+			bool inBounds( wxCoord x, wxCoord y );
 
-	// things related to the structure (str) file
-	wxString strFile;
-	FileParser *fp;
+			// things related to the structure (str) file
+			wxString strFile;
+			FileParser *fp;
 
-	// things related to the position (gvp) file
-	wxString gvpFile;
-	/// needs saving?
-	bool gvpDirty;
-	/// gvp file had peculiarities?
-	bool gvpAborted;
-	// reads the gvp info into the config map
-	void fillMap( void );
-	/// comparator for the config map
-	struct ltstr {
-	bool operator()(const wxString s1, const wxString s2) const
-	{
-		return (s1 < s2);
-	}
-	};
-	map<const wxString, wxString, ltstr> config;
-	std::vector< VizNode* > nodes; // node positions
-	std::vector< NameTag* > nodeNameTags; // node nametags
-	std::vector< std::vector< VizArc* > > arcs; // arcs[a][b] is the
-	// information about the arc/spline from node a to node b (or NULL)
-	std::vector< VizSep* > frameEnds; // positions of dividers between frames
-	std::vector< NameTag* > frameNameTags; // frame nametags
-	std::vector< int > firstNodeInFrame; // nodes in each frame;
-	int firstChunkFrame;
-	int firstEpilogueFrame;
-	int numFrames;
+			// things related to the position (gvp) file
+			wxString gvpFile;
+			/// needs saving?
+			bool gvpDirty;
+			/// gvp file had peculiarities?
+			bool gvpAborted;
+			// reads the gvp info into the config map
+			void fillMap( void );
+			/// comparator for the config map
+			struct ltstr {
+				bool operator()(const wxString s1, const wxString s2) const
+				{
+					return (s1 < s2);
+				}
+			};
+			map<const wxString, wxString, ltstr> config;
+			std::vector< VizNode* > nodes; // node positions
+			std::vector< NameTag* > nodeNameTags; // node nametags
+			std::vector< std::vector< VizArc* > > arcs; // arcs[a][b] is the
+			// information about the arc/spline from node a to node b (or NULL)
+			std::vector< VizSep* > frameEnds; // positions of dividers between frames
+			std::vector< NameTag* > frameNameTags; // frame nametags
+			std::vector< int > firstNodeInFrame; // nodes in each frame;
+			int firstChunkFrame;
+			int firstEpilogueFrame;
+			int numFrames;
 };
 
 
@@ -451,9 +454,10 @@ public:
 	MENU_VIEW_TOOLTIPS,
 	MENU_VIEW_BOUNDING_BOX,
 	MENU_ZOOM_BEGIN,
-	MENU_ZOOM_2_pow_neg_4dot000,
-	MENU_ZOOM_2_pow_neg_3dot000,
-	MENU_ZOOM_2_pow_neg_2dot000,
+	//took these out because they caused crashes with dotted lines
+//	MENU_ZOOM_2_pow_neg_4dot000,
+//	MENU_ZOOM_2_pow_neg_3dot000,
+//	MENU_ZOOM_2_pow_neg_2dot000,
 	MENU_ZOOM_2_pow_neg_1dot000,
 	MENU_ZOOM_2_pow_neg_0dot500,
 	MENU_ZOOM_2_pow_neg_0dot250,
@@ -464,8 +468,10 @@ public:
 	MENU_ZOOM_2_pow_pos_0dot500,
 	MENU_ZOOM_2_pow_pos_1dot000,
 	MENU_ZOOM_2_pow_pos_2dot000,
-	MENU_ZOOM_2_pow_pos_3dot000,
-	MENU_ZOOM_2_pow_pos_4dot000,
+	//took these out because they cause a loss of responce with large
+	//graphics
+//	MENU_ZOOM_2_pow_pos_3dot000,
+//	MENU_ZOOM_2_pow_pos_4dot000,
 	MENU_ZOOM_END,
 	MENU_CUSTOMIZE_FONT,
 	MENU_CUSTOMIZE_PENS_BEGIN,
@@ -2646,7 +2652,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	onComeForward();
 
 	// Item 7 in gZoomMap is a 1.0 scaling factor.
-	setScale(7);
+	setScale(ZOOM_1_INDEX);
 }
 
 /**
@@ -5414,7 +5420,7 @@ StructPage::setScale( int newScale )
 	// The drawing buffer needs to change size.
 	if (content) delete content;
 	content = new wxBitmap( (int)round(canvasWidth*gZoomMap[displayScale]),
-				(int)round(canvasHeight*gZoomMap[displayScale]) );
+			(int)round(canvasHeight*gZoomMap[displayScale]) );
 	// The scrollable area needs to change size.
 	SetVirtualSize( (int)round(canvasWidth*gZoomMap[displayScale]),
 			(int)round(canvasHeight*gZoomMap[displayScale]) );
@@ -5442,8 +5448,8 @@ StructPage::adjustCanvasWidth( void )
 	minWidth = rightMostItemX() + NODE_RADIUS;
 
 	width = wxGetNumberFromUser( wxT("How wide should the canvas be?"),
-				 wxT("Width: "), wxT("Change Canvas Width"),
-				 getWidth(), minWidth, getWidth()*2 );
+			wxT("Width: "), wxT("Change Canvas Width"),
+			getWidth(), minWidth, getWidth()*2 );
 
 	if (width != -1) {
 		canvasWidth = width;
