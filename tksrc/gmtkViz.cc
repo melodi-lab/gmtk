@@ -766,8 +766,8 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_edit->Append(MENU_EDIT_SNAPTOGRID, wxT("Snap To Grid"), wxT("Toggle whether items snap to the grids when they are moved"), wxITEM_CHECK);
 	menu_edit->Append(MENU_EDIT_CANVASWIDTH, wxT("Canvas Width..."), wxT("Adjust the width of the canvas"), wxITEM_NORMAL);
 	menu_edit->Append(MENU_EDIT_CANVASHEIGHT, wxT("Canvas Height..."), wxT("Adjust the height of the canvas"), wxITEM_NORMAL);
-	menu_edit->Append(MENU_EDIT_COPYFRAMELAYOUT, wxT("Copy Frame Layout..."), wxT("Copy the layout from one frame to another"), wxITEM_NORMAL);
-	menu_edit->Append(MENU_EDIT_COPYPARTITIONLAYOUT, wxT("Copy Partition Layout..."), wxT("Copy the layout from one partition to another"), wxITEM_NORMAL);
+	menu_edit->Append(MENU_EDIT_COPYFRAMELAYOUT, wxT("Copy Frame Layout...\tCtrl+F"), wxT("Copy the layout from one frame to another"), wxITEM_NORMAL);
+	menu_edit->Append(MENU_EDIT_COPYPARTITIONLAYOUT, wxT("Copy Partition Layout...\tCtrl+L"), wxT("Copy the layout from one partition to another"), wxITEM_NORMAL);
 	MainVizWindow_menubar->Append(menu_edit, wxT("Edit"));
 	// The View menu
 	wxMenu* menu_view = new wxMenu();
@@ -4136,8 +4136,10 @@ class wxgmtk1toManyDialog : public wxDialog {
 	private:
 		void OnOk( wxCommandEvent &event );
 		void OnCancel( wxCommandEvent &event );
+		void OnApply( wxCommandEvent &event );
 		wxListBox * listbox1;
 		wxListBox * listboxMany;
+		void (*function)(wxgmtk1toManyDialog);
 		DECLARE_EVENT_TABLE()
 
 };
@@ -4145,6 +4147,7 @@ class wxgmtk1toManyDialog : public wxDialog {
 BEGIN_EVENT_TABLE(wxgmtk1toManyDialog,wxDialog)
     EVT_BUTTON( wxID_OK, wxgmtk1toManyDialog::OnOk )
     EVT_BUTTON( wxID_CANCEL, wxgmtk1toManyDialog::OnCancel )
+    EVT_BUTTON( wxID_APPLY, wxgmtk1toManyDialog::OnApply )
 END_EVENT_TABLE()
 
 wxgmtk1toManyDialog::wxgmtk1toManyDialog( wxWindow *parent,
@@ -4187,6 +4190,7 @@ wxgmtk1toManyDialog::wxgmtk1toManyDialog( wxWindow *parent,
 	//create buttons and add them
 	wxBoxSizer *button_sizer = new wxBoxSizer( wxHORIZONTAL );
 	button_sizer->Add( new wxButton( this, wxID_OK, "Ok" ), 0, wxALL, 10 );
+//	button_sizer->Add( new wxButton( this, wxID_APPLY, "Apply" ), 0, wxALL, 10 );
 	button_sizer->Add( new wxButton( this, wxID_CANCEL, "Cancel" ), 0, wxALL, 10 );
 	//add the buttons, align them along the center of the dialog box
 	topsizer->Add( button_sizer, 0, wxALIGN_CENTER );
@@ -4209,6 +4213,9 @@ void wxgmtk1toManyDialog::OnOk( wxCommandEvent &event ){
 void wxgmtk1toManyDialog::OnCancel( wxCommandEvent &event ){
 	listbox1->Clear();
 	listboxMany->Clear();
+	event.Skip();
+}
+void wxgmtk1toManyDialog::OnApply( wxCommandEvent &event ){
 	event.Skip();
 }
 /**
