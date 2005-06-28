@@ -1582,6 +1582,13 @@ RngDecisionTree::EquationClass::parseFormula(
   getToken(formula, token);
   parseExpression(token, formula, new_commands, LOWEST_PRECEDENCE, depth);
 
+  if (token.token != TOKEN_END) {
+    string error_message = "Invalid token at " + formula;
+    throw(error_message); 
+  }
+
+  assert(formula.length() == 0);
+
   if (depth != 1) {
     string error_message = "Not enough factors for given operators";
     throw(error_message); 
@@ -2306,7 +2313,7 @@ RngDecisionTree::EquationClass::getToken(
       } 
     }
   }
-  
+
   //////////////////////////////////////////////////////////////////////////
   // Exit with error message if no token was found 
   //////////////////////////////////////////////////////////////////////////
@@ -3156,7 +3163,16 @@ void test_formula()
 
   correct = true;
 
+  formula = "3@=4";
+  correct &= dt.testFormula( formula, vars, &child, 1);
 
+  formula = "!(3==4)";
+  correct &= dt.testFormula( formula, vars, &child, 1);
+
+  formula = "3!=4";
+  correct &= dt.testFormula( formula, vars, &child, 1);
+
+/*
   formula = "cc";
   correct &= dt.testFormula( formula, vars, &child, 1000000 );
 
@@ -3376,6 +3392,7 @@ void test_formula()
 
   formula = "all_diff( 7, 3+5, p0-2, 9, 10, 11, 12, 13, 14, 15, 16 )";
   correct &= dt.testFormula( formula, vars, &child, 1 );
+*/
 
 
   ////////////////////////////////////////////////////////////////////// 
