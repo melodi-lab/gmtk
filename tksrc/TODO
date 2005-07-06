@@ -3037,5 +3037,14 @@ Wed Jun 22 12:28:34 2005
 Wed Jun 22 14:38:17 2005
   - gmtkTime: remove error (change to warning) about not running lin-mem case (line 373 or so).
 
-
+Tue Jul  5 23:33:15 2005
+  - add a DirectionalConstraintCPT, where we have n parents, and the n'th parent
+    is a det. function of the first (n-1) parents, and the child is satisfied only
+    if the nth parent is that det function of the (n-1) parents. This is an easy
+    way of imposing constraints that can be expressed in this way:
+       extension:
+            child is satisfied only if
+                  set of DTs, each relating some subset of parents and one other parent
+                               not in that subset. Child satisfied only if all such
+                               directional constraints are satisfied. 
 
