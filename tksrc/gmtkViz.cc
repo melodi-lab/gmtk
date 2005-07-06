@@ -34,6 +34,7 @@
 #include <cassert>
 #include <cmath>
 #include <vector>
+#include <string.h>
 
 // Apprently these are needed in order to do anything with gmtk (even
 // if you don't actually use them).
@@ -432,6 +433,7 @@ public:
 		MENU_FILE_SAVEAS,
 		MENU_FILE_PAGESETUP,
 		MENU_FILE_PRINT,
+		MENU_FILE_PRINT_EPS,
 		MENU_FILE_CLOSE,
 		MENU_FILE_EXIT,
 	MENU_EDIT_SNAPTOGRID,
@@ -548,6 +550,11 @@ public:
 	 * Processes menu File->Print
 	 */
 	void OnMenuFilePrint(wxCommandEvent &event);
+	
+	/**
+	 * Processes menu File->PrintEPS
+	 */
+	void OnMenuFilePrintEPS(wxCommandEvent &event);
 
 	/**
 	 * Processes menu File->Page Setup
@@ -752,6 +759,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_PAGESETUP, wxT("Page Setup..."), wxT("Set up page size/orientation"), wxITEM_NORMAL);
 	menu_file->Append(MENU_FILE_PRINT, wxT("&Print...\tCtrl+P"), wxT("Preview and print the current graph"), wxITEM_NORMAL);
+	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to EPS file...\tCtrl+E"), wxT("Print an Encapsulated PostScript file of the current graph"), wxITEM_NORMAL);
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_CLOSE, wxT("&Close\tCtrl+W"), wxT("Close current placement file"), wxITEM_NORMAL);
 	menu_file->Append(MENU_FILE_EXIT, wxT("E&xit\tCtrl+Q"), wxT("Close all files and exit"), wxITEM_NORMAL);
@@ -760,6 +768,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
+	MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
 	MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
 	// The Edit menu
 	wxMenu* menu_edit = new wxMenu();
@@ -1052,6 +1061,7 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_FILE_SAVEAS, GFrame::OnMenuFileSaveas)
 	EVT_MENU(MENU_FILE_PAGESETUP, GFrame::OnMenuFilePageSetup)
 	EVT_MENU(MENU_FILE_PRINT, GFrame::OnMenuFilePrint)
+	EVT_MENU(MENU_FILE_PRINT_EPS, GFrame::OnMenuFilePrintEPS)
 	EVT_MENU(MENU_FILE_CLOSE, GFrame::OnMenuFileClose)
 	EVT_MENU(MENU_FILE_EXIT, GFrame::OnMenuFileExit)
 	EVT_MENU(MENU_EDIT_SNAPTOGRID, GFrame::OnMenuEditSnaptogrid)
@@ -1289,6 +1299,7 @@ void GFrame::OnMenuFilePageSetup(wxCommandEvent &event)
  * \return void
  *******************************************************************/
 
+
 //This class subclasses wxPrintPrview and disables zoom (for the time being)
 class nozoomwxPrintPreview : public wxPrintPreview
 {
@@ -1349,6 +1360,90 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 		frame->Centre(wxBOTH);
 		frame->Initialize();
 		frame->Show(TRUE);
+	}
+}
+
+/**
+ *******************************************************************
+ * Get a file name from the User, print a temporary PostScript file
+ * execute "cat <tempPostScriptFile> | ps2eps > <filefromUser>"
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *	  in case it isn't, so everything should be fine as long as the
+ *	  program is fully initialized.
+ *
+ * \post The file may have been printed 
+ *
+ * \note The file may have been printed 
+ *
+ * \return void
+ *******************************************************************/
+
+void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
+{
+	// figure out which page this is for and pass the buck
+	int curPageNum = struct_notebook->GetSelection();
+	
+	StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+	// If it couldn't be casted to a StructPage, then curPage will be NULL.
+	if (curPage) {
+
+		wxFileDialog eps_file_dialog(this, "Save to EPS", "", "", "*.eps", wxSAVE | wxOVERWRITE_PROMPT);
+		if(eps_file_dialog.ShowModal() == wxID_CANCEL)
+			return; //canceled
+
+		//see if the bounding box is being viewed, if not, display it
+		//but keep track so we can revert to the previous settings later
+		bool had_bounding_box = curPage->getViewBoundingBox();
+		if(!had_bounding_box)
+			curPage->toggleViewBoundingBox();
+
+		// get a title for the printout
+		wxString name;
+		curPage->getName(name);
+		wxPrintDialogData printDialogData(printData);
+
+      GmtkPrintout printout(curPage,name);
+		//set up the printer, give a temp file name, make it print to file
+      wxPrinter printer;
+		wxString temp_file_name = wxGetTempFileName( wxT("gmtkviz") );
+		printer.GetPrintDialogData().GetPrintData().SetFilename(temp_file_name);
+		printer.GetPrintDialogData().SetPrintToFile(true);
+		printer.Print(this, &printout, false);
+		
+		//this is the command being sent to the shell (single quote the file name)
+		string ps2eps_cmd = "cat ";
+		ps2eps_cmd.append(printer.GetPrintDialogData().GetPrintData().GetFilename());
+		ps2eps_cmd.append(" | ps2eps > '");
+
+		//quote single quotes to be safe
+		string temp_path = eps_file_dialog.GetPath().c_str();
+		size_t match_loc = 0;
+		while(string::npos != (match_loc = temp_path.find("'", match_loc))){
+			temp_path.replace(match_loc,1,"'\"'\"'"); //replace ' with '"'"'
+			match_loc += 5;	//skip what we put in
+		}
+		ps2eps_cmd.append(temp_path);
+		ps2eps_cmd.append("'");
+		
+		//execute the command
+		if(system(ps2eps_cmd.c_str()) != 0){
+			//print error if needed
+			wxMessageBox(_T("There was a problem printing to an EPS file.\n"
+						"Perhaps ps2eps is not in your path?\n"
+						"Check the shell output for more information."), 
+					wxT("Error Printing to EPS"), wxOK);
+		}
+
+		//get rid of temp file
+		wxRemoveFile(temp_file_name);
+		
+		//revert to previous settings
+		if(!had_bounding_box)
+			curPage->toggleViewBoundingBox();
 	}
 }
 
@@ -2362,6 +2457,7 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_SAVE, true);
 		MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, true);
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT, true);
+		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, true);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, true);
 		// and this menu
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
@@ -2416,6 +2512,7 @@ GFrame::OnNotebookPageChanged(wxCommandEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
+		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
@@ -3371,37 +3468,37 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			}
 		}
 	} else if (event.Dragging() && event.LeftIsDown()) {
-	if (boxSelecting) {
-		// LeftDragging + box selecting
-		selectBox.width = pt.x - selectBox.x;
-		selectBox.height = pt.y - selectBox.y;
-	} else if (dragging) {
-		// LeftDragging + moving items
-		moveSelected( pt.x - dragStart.x, pt.y - dragStart.y );
-		dragStart.x = pt.x;
-		dragStart.y = pt.y;
-	}
-	screenDirty = true;
+		if (boxSelecting) {
+			// LeftDragging + box selecting
+			selectBox.width = pt.x - selectBox.x;
+			selectBox.height = pt.y - selectBox.y;
+		} else if (dragging) {
+			// LeftDragging + moving items
+			moveSelected( pt.x - dragStart.x, pt.y - dragStart.y );
+			dragStart.x = pt.x;
+			dragStart.y = pt.y;
+		}
+		screenDirty = true;
 	} else if (event.LeftUp()) {
 		if (boxSelecting) {
 			// LeftUp + box selecting = done box selecting
 			if (pt.x < selectBox.x) {
-			// swap pt.x and selectBox.x so we have a real rectangle
-			int temp = pt.x;
-			pt.x = selectBox.x;
-			selectBox.x = temp;
+				// swap pt.x and selectBox.x so we have a real rectangle
+				int temp = pt.x;
+				pt.x = selectBox.x;
+				selectBox.x = temp;
 			}
 			if (pt.y < selectBox.y) {
-			// swap pt.y and selectBox.y so we have a real rectangle
-			int temp = pt.y;
-			pt.y = selectBox.y;
-			selectBox.y = temp;
+				// swap pt.y and selectBox.y so we have a real rectangle
+				int temp = pt.y;
+				pt.y = selectBox.y;
+				selectBox.y = temp;
 			}
 			selectBox.width = pt.x - selectBox.x;
 			selectBox.height = pt.y - selectBox.y;
 			if (!shifted) {
-			// LeftUp + box selecting + not shifted when we started
-			setAllSelected(false);
+				// LeftUp + box selecting + not shifted when we started
+				setAllSelected(false);
 			}
 			toggleSelectedInRect(selectBox);
 			screenDirty = true;
@@ -3422,16 +3519,16 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			// get the arc and control point index
 			VizArc *arc = findArcOwning(cp, index);
 			if (arc && index >= 0) {
-			// make a new one
-			wxPoint where(pt.x - NEW_CP_OFFSET, pt.y - NEW_CP_OFFSET);
-			arc->cps->insert( arc->cps->begin() + index,
-					  new ControlPoint(where) );
-			// Tell it who its parent is.
-			(*arc->cps)[index]->arc = arc;
-			// must keep these in sync
-			arc->points->Insert( index,
-						 (wxObject*)&(*arc->cps)[index]->pos );
-			screenDirty = true;
+				// make a new one
+				wxPoint where(pt.x - NEW_CP_OFFSET, pt.y - NEW_CP_OFFSET);
+				arc->cps->insert( arc->cps->begin() + index,
+						new ControlPoint(where) );
+				// Tell it who its parent is.
+				(*arc->cps)[index]->arc = arc;
+				// must keep these in sync
+				arc->points->Insert( index,
+						(wxObject*)&(*arc->cps)[index]->pos );
+				screenDirty = true;
 			}
 		} else {
 			// check to see if it's on a line between two nodes
@@ -3445,44 +3542,44 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 					/* This stuff is all used to figure out if a point
 					 * is near the line. */
 					int x0 = (*arc->cps)[0]->pos.x, x1 = (*arc->cps)[1]->pos.x,
-					y0 = (*arc->cps)[0]->pos.y, y1 = (*arc->cps)[1]->pos.y;
+						 y0 = (*arc->cps)[0]->pos.y, y1 = (*arc->cps)[1]->pos.y;
 					double y = ( (x1-x0) ?
-						 (y1-y0)/(double)(x1-x0)*(pt.x-x0) + y0 :
-						 (y0+y1)/2 ),
-					x = ( (y1-y0) ?
-						  (x1-x0)/(double)(y1-y0)*(pt.y-y0) + x0 :
-						  (x0+x1)/2 ),
-					epsilon = fabs(2*ACTUAL_SCALE*(y1-y0)/(double)(x1-x0)),
-					delta = fabs(2*ACTUAL_SCALE*(x1-x0)/(double)(y1-y0));
+							(y1-y0)/(double)(x1-x0)*(pt.x-x0) + y0 :
+							(y0+y1)/2 ),
+							 x = ( (y1-y0) ?
+									 (x1-x0)/(double)(y1-y0)*(pt.y-y0) + x0 :
+									 (x0+x1)/2 ),
+							 epsilon = fabs(2*ACTUAL_SCALE*(y1-y0)/(double)(x1-x0)),
+							 delta = fabs(2*ACTUAL_SCALE*(x1-x0)/(double)(y1-y0));
 					epsilon = (epsilon>2*ACTUAL_SCALE?epsilon:2*ACTUAL_SCALE);
 					delta = ( delta>2*ACTUAL_SCALE ? delta : 2*ACTUAL_SCALE );
 #if 0
 					// allow this to compile for some insight
 					wxString msg;
 					msg.sprintf("(pt.x, pt.y) = (%d, %d)\n"
-						"(x0, y0)	 = (%d, %d)\n"
-						"(x1, y1)	 = (%d, %d)\n"
-						"(x, y)	   = (%f, %f)\n"
-						"(del, eps)   = (%f, %f)\n"
-						"fabs(x-pt.x) = %f\n"
-						"fabs(y-pt.y) = %f\n",
-						pt.x, pt.y, x0, y0, x1, y1, x, y,
-						delta, epsilon, fabs(x-pt.x), fabs(y-pt.y) );
+							"(x0, y0)	 = (%d, %d)\n"
+							"(x1, y1)	 = (%d, %d)\n"
+							"(x, y)	   = (%f, %f)\n"
+							"(del, eps)   = (%f, %f)\n"
+							"fabs(x-pt.x) = %f\n"
+							"fabs(y-pt.y) = %f\n",
+							pt.x, pt.y, x0, y0, x1, y1, x, y,
+							delta, epsilon, fabs(x-pt.x), fabs(y-pt.y) );
 					wxLogMessage(msg);
 #endif
 					// if the arc exists and has only two control points
 					if ( arc->cps->size() == 2 &&
 							// and the click is in the rectangle
 							( ( x0-1 <= pt.x && pt.x <= x1+1 ) ||
-								( x1-1 <= pt.x && pt.x <= x0+1 ) ) &&
+							  ( x1-1 <= pt.x && pt.x <= x0+1 ) ) &&
 							( ( y0-1 <= pt.y && pt.y <= y1+1 ) ||
-								( y1-1 <= pt.y && pt.y <= y0+1 ) ) &&
-						// and (roughly) on the line
-						fabs(y-pt.y) <= epsilon && fabs(x-pt.x) <= delta ) {
+							  ( y1-1 <= pt.y && pt.y <= y0+1 ) ) &&
+							// and (roughly) on the line
+							fabs(y-pt.y) <= epsilon && fabs(x-pt.x) <= delta ) {
 						// make a new control point
 						wxPoint where(pt.x-NEW_CP_OFFSET, pt.y-NEW_CP_OFFSET);
 						arc->cps->insert( arc->cps->begin() + 1,
-							new ControlPoint(where) );
+								new ControlPoint(where) );
 						// Tell it who its parent is.
 						(*arc->cps)[1]->arc = arc;
 						// must keep these in sync
@@ -3494,13 +3591,13 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 				}
 			}
 		}
-	}
+	} 
 
 	if ( screenDirty ) {
 		redraw();
 		blit();
 	}
-	
+
 	// Anything else to be done?
 	event.Skip();
 }
@@ -3664,7 +3761,7 @@ StructPage::crossesFrameEnd( wxCoord x0, wxCoord x1 )
 {
 	for (unsigned int i = 0; i < frameEnds.size(); i++) {
 		if ((x0<frameEnds[i]->x-NODE_RADIUS!=x1<frameEnds[i]->x-NODE_RADIUS) ||
-			(x0>frameEnds[i]->x+NODE_RADIUS!=x1>frameEnds[i]->x+NODE_RADIUS))
+				(x0>frameEnds[i]->x+NODE_RADIUS!=x1>frameEnds[i]->x+NODE_RADIUS))
 			return true;
 	}
 	return false;
@@ -3709,7 +3806,7 @@ void
 StructPage::moveFrameSep( int i, int dx )
 {
 	if ( inBounds(frameEnds[i]->x + dx, 1) &&
-	 !crossesNode(frameEnds[i]->x, frameEnds[i]->x + dx) ) {
+			!crossesNode(frameEnds[i]->x, frameEnds[i]->x + dx) ) {
 		frameEnds[i]->x += dx;
 	}
 }
@@ -3731,9 +3828,9 @@ void
 StructPage::moveFrameNameTag( int i, int dx, int dy )
 {
 	if ( inBounds( frameNameTags[i]->pos.x + dx,
-		   frameNameTags[i]->pos.y + dy ) ) {
+				frameNameTags[i]->pos.y + dy ) ) {
 		if ( !crossesFrameEnd( frameNameTags[i]->pos.x + NODE_RADIUS,
-						frameNameTags[i]->pos.x + NODE_RADIUS+dx ) )
+					frameNameTags[i]->pos.x + NODE_RADIUS+dx ) )
 			frameNameTags[i]->pos.x += dx;
 		frameNameTags[i]->pos.y += dy;
 	}
@@ -3756,11 +3853,11 @@ void
 StructPage::moveNodeNameTag( int i, int dx, int dy )
 {
 	if ( inBounds( nodeNameTags[i]->pos.x + dx,
-		   nodeNameTags[i]->pos.y + dy ) ) {
-	if ( !crossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
-				   nodeNameTags[i]->pos.x + NODE_RADIUS+dx ) )
-		nodeNameTags[i]->pos.x += dx;
-	nodeNameTags[i]->pos.y += dy;
+				nodeNameTags[i]->pos.y + dy ) ) {
+		if ( !crossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
+					nodeNameTags[i]->pos.x + NODE_RADIUS+dx ) )
+			nodeNameTags[i]->pos.x += dx;
+		nodeNameTags[i]->pos.y += dy;
 	}
 }
 
@@ -3782,25 +3879,25 @@ void
 StructPage::moveNode( int i, int dx, int dy )
 {
 	if ( inBounds(nodes[i]->center.x + dx, nodes[i]->center.y + dy) ) {
-	if (crossesFrameEnd(nodes[i]->center.x, nodes[i]->center.x + dx))
-		dx = 0;
-	nodes[i]->center.x += dx;
-	nodes[i]->center.y += dy;
-	/*nodes[i]->tipWin->Move( nodes[i]->center.x - NODE_RADIUS,
-				nodes[i]->center.y - NODE_RADIUS );*/
-	int totalNodes = nodes.size();
-	for ( int j = 0; j < totalNodes; j++ ) {
-		// outgoing arcs
-		if (arcs[i][j]) {
-		(*arcs[i][j]->cps)[0]->pos.x += dx;
-		(*arcs[i][j]->cps)[0]->pos.y += dy;
+		if (crossesFrameEnd(nodes[i]->center.x, nodes[i]->center.x + dx))
+			dx = 0;
+		nodes[i]->center.x += dx;
+		nodes[i]->center.y += dy;
+		/*nodes[i]->tipWin->Move( nodes[i]->center.x - NODE_RADIUS,
+		  nodes[i]->center.y - NODE_RADIUS );*/
+		int totalNodes = nodes.size();
+		for ( int j = 0; j < totalNodes; j++ ) {
+			// outgoing arcs
+			if (arcs[i][j]) {
+				(*arcs[i][j]->cps)[0]->pos.x += dx;
+				(*arcs[i][j]->cps)[0]->pos.y += dy;
+			}
+			// incoming arcs
+			if (arcs[j][i]) {
+				(*arcs[j][i]->cps)[ arcs[j][i]->cps->size()-1 ]->pos.x += dx;
+				(*arcs[j][i]->cps)[ arcs[j][i]->cps->size()-1 ]->pos.y += dy;
+			}
 		}
-		// incoming arcs
-		if (arcs[j][i]) {
-		(*arcs[j][i]->cps)[ arcs[j][i]->cps->size()-1 ]->pos.x += dx;
-		(*arcs[j][i]->cps)[ arcs[j][i]->cps->size()-1 ]->pos.y += dy;
-		}
-	}
 	}
 }
 
