@@ -3774,11 +3774,9 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 						//if there are more parents [based on switching varaibles], print | between them
 						if (j != nodes[i]->rvi->conditionalParents.size() - 1)
 							message.append(" | ");
-						else
-							message.append("\n");
 					}
 				} else
-					message.append("Conditional Parents: nil\n");
+					message.append("Conditional Parents: nil");
 				new wxTipWindow(this, message, 500, NULL);
 				break;	//we should only be on 1 node
 			}
