@@ -242,6 +242,7 @@ class StructPage: public wxScrolledWindow
 			bool crossesNode( wxCoord x0, wxCoord x1 );
 			bool crossesFrameEnd( wxCoord x0, wxCoord x1 );
 			bool inBounds( wxCoord x, wxCoord y );
+			int nodeUnderPt(wxPoint pt);
 
 			// things related to the structure (str) file
 			wxString strFile;
@@ -3595,191 +3596,187 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 	} else if (event.MiddleDown()){
 		//print information about a node and it's parents
 		wxString message;
-		int numNodes = nodes.size();
-		//go through the nodes
-		for (int i = 0; i < numNodes; i++) {
-			//if we're on a node
-			if( nodes[i]->onMe(pt)) {
-				//name
-				message = "rvName: ";
-				message.append(nodes[i]->nametag.name);
-				message.append("\n");
-				//type
-				message.append("rvType: ");
-				switch (nodes[i]->rvi->rvType){
-					case RVInfo::t_discrete:
-						message.append("discrete\n");
-						break;
-					case RVInfo::t_continuous:
-						message.append("continuous\n");
-						break;
-					default:
-						message.append("unknown\n");
-				}
+		int i = nodeUnderPt(pt);	//find a node under point pt
+		//if we're on a node
+		if(0 <= i) {
+			//name
+			message = "rvName: ";
+			message.append(nodes[i]->nametag.name);
+			message.append("\n");
+			//type
+			message.append("rvType: ");
+			switch (nodes[i]->rvi->rvType){
+				case RVInfo::t_discrete:
+					message.append("discrete\n");
+					break;
+				case RVInfo::t_continuous:
+					message.append("continuous\n");
+					break;
+				default:
+					message.append("unknown\n");
+			}
 
-				//disposition
-				message.append("rvDisposition: ");
-				switch (nodes[i]->rvi->rvType){
-					case RVInfo::d_hidden:
-						message.append("hidden\n");
-						break;
-					case RVInfo::d_observed:
-						message.append("observed\n");
-						break;
-					default:
-						message.append("unknown\n");
-				}
-				
-				//cardinality
-				message.append(wxString::Format("rvCardinality: %d\n",nodes[i]->rvi->rvCard));
+			//disposition
+			message.append("rvDisposition: ");
+			switch (nodes[i]->rvi->rvType){
+				case RVInfo::d_hidden:
+					message.append("hidden\n");
+					break;
+				case RVInfo::d_observed:
+					message.append("observed\n");
+					break;
+				default:
+					message.append("unknown\n");
+			}
 
-				//switching parents
-				if (nodes[i]->rvi->switchingParents.size() > 0){
-					for (unsigned int j = 0; j < nodes[i]->rvi->switchingParents.size(); j++){
-						message.append("Switching Parent: ");
-						message.append(nodes[i]->rvi->switchingParents[j].first.c_str());
+			//cardinality
+			message.append(wxString::Format("rvCardinality: %d\n",nodes[i]->rvi->rvCard));
+
+			//switching parents
+			if (nodes[i]->rvi->switchingParents.size() > 0){
+				for (unsigned int j = 0; j < nodes[i]->rvi->switchingParents.size(); j++){
+					message.append("Switching Parent: ");
+					message.append(nodes[i]->rvi->switchingParents[j].first.c_str());
+					message.append("(");
+					message.append(wxString::Format("%d", nodes[i]->rvId.second 
+								+ nodes[i]->rvi->switchingParents[j].second));
+					message.append(")");
+					message.append(" using ");
+
+					//collections
+					if (nodes[i]->rvi->switchMapping.collectionName != ""){
+						message.append("mixture collection(\"");
+						message.append(nodes[i]->rvi->switchMapping.collectionName.c_str());
+						message.append("\")");
+					}
+					//mappings
+					message.append(" mapping(\"");
+					switch(nodes[i]->rvi->switchMapping.liType){
+						case RVInfo::ListIndex::li_String :
+							message.append(nodes[i]->rvi->switchMapping.nameIndex.c_str());
+							break;
+						case RVInfo::ListIndex::li_Index :
+							message.append(wxString::Format("%d", nodes[i]->rvi->switchMapping.intIndex));
+							break;
+						default:
+							message.append("unknown");
+					}
+					message.append("\")\n");
+				}
+			} else
+				message.append("Switching Parents: nil\n");
+
+			//conditional parents
+			if (nodes[i]->rvi->conditionalParents.size() > 0){
+				bool mixture = false;
+				message.append("Conditional Parents: ");
+				for (unsigned int j = 0; j < nodes[i]->rvi->conditionalParents.size(); j++){
+					if (nodes[i]->rvi->conditionalParents[j].size() == 0)
+						message.append("nil");
+					for (unsigned int k = 0; k < nodes[i]->rvi->conditionalParents[j].size(); k++){
+						message.append(nodes[i]->rvi->conditionalParents[j][k].first.c_str());
 						message.append("(");
 						message.append(wxString::Format("%d", nodes[i]->rvId.second 
-									+ nodes[i]->rvi->switchingParents[j].second));
+									+ nodes[i]->rvi->conditionalParents[j][k].second));
 						message.append(")");
-						message.append(" using ");
-						
-						//collections
-						if (nodes[i]->rvi->switchMapping.collectionName != ""){
-							message.append("mixture collection(\"");
-							message.append(nodes[i]->rvi->switchMapping.collectionName.c_str());
-							message.append("\")");
-						}
-						//mappings
-						message.append(" mapping(\"");
-						switch(nodes[i]->rvi->switchMapping.liType){
-							case RVInfo::ListIndex::li_String :
-								message.append(nodes[i]->rvi->switchMapping.nameIndex.c_str());
+						if (k != nodes[i]->rvi->conditionalParents[j].size() - 1)
+							message.append(", ");
+					}
+					message.append(" using ");
+					//discrete implementations
+					if (nodes[i]->rvi->rvType == RVInfo::t_discrete){
+						switch (nodes[i]->rvi->discImplementations[j]){
+							case CPT::di_MDCPT: 
+								message.append("DenseCPT");
 								break;
-							case RVInfo::ListIndex::li_Index :
-								message.append(wxString::Format("%d", nodes[i]->rvi->switchMapping.intIndex));
+							case CPT::di_MSCPT: 
+								message.append("SparseCPT");
+								break;
+							case CPT::di_MTCPT: 
+								message.append("DeterministicCPT");
+								break;
+							case CPT::di_USCPT: 
+								message.append("UnityScoreCPT");
+								break;
+							case CPT::di_NGramCPT: 
+								message.append("Ngram\"languagemodel\"CPT");
+								break;
+							case CPT::di_FNGramCPT: 
+								message.append("factoredngram\"languagemodel\"CPT");
+								break;
+							case CPT::di_VECPT:
+								message.append("VirtualEvidenceCPT");
+								break;
+							case CPT::di_LatticeNodeCPT:
+								message.append("latticenodeCPT");
+								break;
+							case CPT::di_LatticeEdgeCPT:	
+								message.append("latticeedgeCPT");
 								break;
 							default:
 								message.append("unknown");
 						}
-						message.append("\")\n");
-					}
-				} else
-					message.append("Switching Parents: nil\n");
-
-				//conditional parents
-				if (nodes[i]->rvi->conditionalParents.size() > 0){
-					bool mixture = false;
-					message.append("Conditional Parents: ");
-					for (unsigned int j = 0; j < nodes[i]->rvi->conditionalParents.size(); j++){
-						if (nodes[i]->rvi->conditionalParents[j].size() == 0)
-							message.append("nil");
-						for (unsigned int k = 0; k < nodes[i]->rvi->conditionalParents[j].size(); k++){
-							message.append(nodes[i]->rvi->conditionalParents[j][k].first.c_str());
-							message.append("(");
-							message.append(wxString::Format("%d", nodes[i]->rvId.second 
-										+ nodes[i]->rvi->conditionalParents[j][k].second));
-							message.append(")");
-							if (k != nodes[i]->rvi->conditionalParents[j].size() - 1)
-								message.append(", ");
-						}
-						message.append(" using ");
-						//discrete implementations
-						if (nodes[i]->rvi->rvType == RVInfo::t_discrete){
-							switch (nodes[i]->rvi->discImplementations[j]){
-								case CPT::di_MDCPT: 
-										message.append("DenseCPT");
-										break;
-								case CPT::di_MSCPT: 
-										message.append("SparseCPT");
-										break;
-								case CPT::di_MTCPT: 
-										message.append("DeterministicCPT");
-										break;
-								case CPT::di_USCPT: 
-										message.append("UnityScoreCPT");
-										break;
-								case CPT::di_NGramCPT: 
-										message.append("Ngram\"languagemodel\"CPT");
-										break;
-								case CPT::di_FNGramCPT: 
-										message.append("factoredngram\"languagemodel\"CPT");
-										break;
-								case CPT::di_VECPT:
-										message.append("VirtualEvidenceCPT");
-										break;
-								case CPT::di_LatticeNodeCPT:
-										message.append("latticenodeCPT");
-										break;
-								case CPT::di_LatticeEdgeCPT:	
-										message.append("latticeedgeCPT");
-										break;
-								default:
-										message.append("unknown");
-							}
 						//continuous implementations
-						} else if (nodes[i]->rvi->rvType == RVInfo::t_continuous){
-							switch (nodes[i]->rvi->contImplementations[j]){ 
-								case MixtureCommon::ci_unknown:
-									message.append("unknown");
-									break;
-								case MixtureCommon::ci_mixture:
-									message.append("mixture ");
-									mixture = true;
-									break;
-								case MixtureCommon::ci_gausSwitchMixture:
-									message.append("gausSwitchMixGaussian");
-									break;
-								case MixtureCommon::ci_logitSwitchMixture:
-									message.append("logitSwitchMixGaussian");
-									break;
-								case MixtureCommon::ci_mlpSwitchMixture:
-									message.append("mlpSwitchMixGaussian");
-									break;
-								case MixtureCommon::ci_zeroScoreMixture:
-									message.append("zeroScoreMixGaussian");
-									break;
-								case MixtureCommon::ci_unityScoreMixture:
-									message.append("unityScoreMixGaussian");
-									break;
-								default:
-									message.append("unknown");
-							};
-						} else {
-							message.append("unknown");
-						}
-						//listIndices
-						//if it is a mixture we look for both a collection and a mapping, right?
-						if(mixture){
-							if(nodes[i]->rvi->listIndices[j].collectionName != ""){
-								message.append("collection(\"");
-								message.append(nodes[i]->rvi->listIndices[j].collectionName.c_str());
-								message.append("\") ");
-							}
-							message.append("mapping");
-						}
-						switch(nodes[i]->rvi->listIndices[j].liType){
-							case RVInfo::ListIndex::li_String :
-								message.append("(\"");
-								message.append(nodes[i]->rvi->listIndices[j].nameIndex.c_str());
-								message.append("\")");
+					} else if (nodes[i]->rvi->rvType == RVInfo::t_continuous){
+						switch (nodes[i]->rvi->contImplementations[j]){ 
+							case MixtureCommon::ci_unknown:
+								message.append("unknown");
 								break;
-							case RVInfo::ListIndex::li_Index :
-								message.append(wxString::Format("(\"%d\")", nodes[i]->rvi->listIndices[j].intIndex));
+							case MixtureCommon::ci_mixture:
+								message.append("mixture ");
+								mixture = true;
+								break;
+							case MixtureCommon::ci_gausSwitchMixture:
+								message.append("gausSwitchMixGaussian");
+								break;
+							case MixtureCommon::ci_logitSwitchMixture:
+								message.append("logitSwitchMixGaussian");
+								break;
+							case MixtureCommon::ci_mlpSwitchMixture:
+								message.append("mlpSwitchMixGaussian");
+								break;
+							case MixtureCommon::ci_zeroScoreMixture:
+								message.append("zeroScoreMixGaussian");
+								break;
+							case MixtureCommon::ci_unityScoreMixture:
+								message.append("unityScoreMixGaussian");
 								break;
 							default:
-								message.append("(unknown)");
-						}
-
-						//if there are more parents [based on switching varaibles], print | between them
-						if (j != nodes[i]->rvi->conditionalParents.size() - 1)
-							message.append(" | ");
+								message.append("unknown");
+						};
+					} else {
+						message.append("unknown");
 					}
-				} else
-					message.append("Conditional Parents: nil");
-				new wxTipWindow(this, message, 500, NULL);
-				break;	//we should only be on 1 node
-			}
+					//listIndices
+					//if it is a mixture we look for both a collection and a mapping, right?
+					if(mixture){
+						if(nodes[i]->rvi->listIndices[j].collectionName != ""){
+							message.append("collection(\"");
+							message.append(nodes[i]->rvi->listIndices[j].collectionName.c_str());
+							message.append("\") ");
+						}
+						message.append("mapping");
+					}
+					switch(nodes[i]->rvi->listIndices[j].liType){
+						case RVInfo::ListIndex::li_String :
+							message.append("(\"");
+							message.append(nodes[i]->rvi->listIndices[j].nameIndex.c_str());
+							message.append("\")");
+							break;
+						case RVInfo::ListIndex::li_Index :
+							message.append(wxString::Format("(\"%d\")", nodes[i]->rvi->listIndices[j].intIndex));
+							break;
+						default:
+							message.append("(unknown)");
+					}
+
+					//if there are more parents [based on switching varaibles], print | between them
+					if (j != nodes[i]->rvi->conditionalParents.size() - 1)
+						message.append(" | ");
+				}
+			} else
+				message.append("Conditional Parents: nil");
+			new wxTipWindow(this, message, 500, NULL);
 		}
 	}
 
@@ -3977,6 +3974,34 @@ StructPage::inBounds( wxCoord x, wxCoord y )
 {
 	return ( x > 0 && x < getWidth() &&
 		 y > 0 && y < getHeight() );
+}
+
+/**
+ *******************************************************************
+ * Gives the node index for a node that is under point pt.  If there
+ * is no node there then returns -1;
+ * 
+ * \pre The StructPage should be fully initialized.  In particular the nodes
+ * should be allocated.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return node index if pt is on a node, -1 if pt is not on a node
+ *
+ *******************************************************************/
+int
+StructPage::nodeUnderPt( wxPoint pt)
+{
+	int numNodes = nodes.size();
+	//go through the nodes
+	for (int i = 0; i < numNodes; i++) {
+		//if we're on a node
+		if( nodes[i]->onMe(pt))
+			return i;
+	}
+	return -1;	//if we're not on a node
 }
 
 /**
