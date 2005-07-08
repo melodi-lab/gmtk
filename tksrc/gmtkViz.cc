@@ -191,7 +191,8 @@ class StructPage: public wxScrolledWindow
 		void toggleViewBoundingBox( void );
 
 		void hideSelectedLabels( void );
-		void showAllLabels( void );
+		void showAllNodeLabels( void );
+		void showAllFrameLabels( void );
 
 		// Ask the user what font they want to use.
 		void changeFont( void );
@@ -446,7 +447,8 @@ public:
 	MENU_EDIT_COPYFRAMELAYOUT,
 	MENU_EDIT_COPYPARTITIONLAYOUT,
 	MENU_VIEW_HIDELABELS,
-	MENU_VIEW_SHOWLABELS,
+	MENU_VIEW_SHOW_NODE_LABELS,
+	MENU_VIEW_SHOW_FRAME_LABELS,
 	MENU_VIEW_CPS,
 	MENU_VIEW_LINES,
 	MENU_VIEW_SPLINES,
@@ -588,7 +590,8 @@ public:
 
 	// Handle events from the View menu to toggle drawing various items
 	void OnMenuViewHideLabels(wxCommandEvent &event);
-	void OnMenuViewShowLabels(wxCommandEvent &event);
+	void OnMenuViewShowNodeLabels(wxCommandEvent &event);
+	void OnMenuViewShowFrameLabels(wxCommandEvent &event);
 	void OnMenuViewCPs(wxCommandEvent &event);
 	void OnMenuViewLines(wxCommandEvent &event);
 	void OnMenuViewSplines(wxCommandEvent &event);
@@ -785,7 +788,8 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	// The View menu
 	wxMenu* menu_view = new wxMenu();
 	menu_view->Append(MENU_VIEW_HIDELABELS, wxT("Hide Selected Labels"), wxT("Turn off drawing for all currently selected labels"), wxITEM_NORMAL);
-	menu_view->Append(MENU_VIEW_SHOWLABELS, wxT("Show All Labels"), wxT("Turn on drawing for all labels"), wxITEM_NORMAL);
+	menu_view->Append(MENU_VIEW_SHOW_NODE_LABELS, wxT("Show All Node Labels"), wxT("Turn on drawing for all node labels"), wxITEM_NORMAL);
+	menu_view->Append(MENU_VIEW_SHOW_FRAME_LABELS, wxT("Show All Frame Labels"), wxT("Turn on drawing for all frame labels"), wxITEM_NORMAL);
 	menu_view->AppendSeparator();
 	menu_view->Append(MENU_VIEW_CPS, wxT("Draw Control Points"), wxT("Toggle display of arc spline control points"), wxITEM_CHECK);
 	menu_view->Append(MENU_VIEW_LINES, wxT("Draw Arc Lines"), wxT("Toggle display of straight lines between control points in arcs"), wxITEM_CHECK);
@@ -1074,7 +1078,8 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_EDIT_COPYFRAMELAYOUT, GFrame::OnMenuEditCopyframelayout)
 	EVT_MENU(MENU_EDIT_COPYPARTITIONLAYOUT, GFrame::OnMenuEditCopypartitionlayout)
 	EVT_MENU(MENU_VIEW_HIDELABELS, GFrame::OnMenuViewHideLabels)
-	EVT_MENU(MENU_VIEW_SHOWLABELS, GFrame::OnMenuViewShowLabels)
+	EVT_MENU(MENU_VIEW_SHOW_NODE_LABELS, GFrame::OnMenuViewShowNodeLabels)
+	EVT_MENU(MENU_VIEW_SHOW_FRAME_LABELS, GFrame::OnMenuViewShowFrameLabels)
 	EVT_MENU(MENU_VIEW_CPS, GFrame::OnMenuViewCPs)
 	EVT_MENU(MENU_VIEW_LINES, GFrame::OnMenuViewLines)
 	EVT_MENU(MENU_VIEW_SPLINES, GFrame::OnMenuViewSplines)
@@ -1747,7 +1752,7 @@ GFrame::OnMenuViewHideLabels(wxCommandEvent &event)
 /**
  *******************************************************************
  * Pass the buck to the appropriate StructPage telling it to
- * draw all labels.
+ * draw all node labels.
  *
  * \param event Ignored.
  *
@@ -1756,15 +1761,15 @@ GFrame::OnMenuViewHideLabels(wxCommandEvent &event)
  *	  program is fully initialized.
  *
  * \post If a StructPage was in front, then it has turned on drawing
- *  for all labels.
+ *  for all node labels.
  *
  * \note If a StructPage was in front, then it has turned on drawing
- *  for all selected labels.
+ *  for all node labels.
  *
  * \return void
  *******************************************************************/
 void
-GFrame::OnMenuViewShowLabels(wxCommandEvent &event)
+GFrame::OnMenuViewShowNodeLabels(wxCommandEvent &event)
 {
 	// figure out which page this is for and pass the buck
 	int curPageNum = struct_notebook->GetSelection();
@@ -1772,7 +1777,38 @@ GFrame::OnMenuViewShowLabels(wxCommandEvent &event)
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage)
-		curPage->showAllLabels();
+		curPage->showAllNodeLabels();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * draw all frame labels.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *	  in case it isn't, so everything should be fine as long as the
+ *	  program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has turned on drawing
+ *  for all frame labels.
+ *
+ * \note If a StructPage was in front, then it has turned on drawing
+ *  for all frame labels.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuViewShowFrameLabels(wxCommandEvent &event)
+{
+	// figure out which page this is for and pass the buck
+	int curPageNum = struct_notebook->GetSelection();
+	StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+	// If it couldn't be casted to a StructPage, then curPage will be NULL.
+	if (curPage)
+		curPage->showAllFrameLabels();
 }
 
 /**
@@ -2736,6 +2772,20 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 					gvpAborted = true;
 				}
 			}
+			// visibility
+			key.sprintf( "frames[%d].nametag.visible", i );
+			value = config[key];
+			if (value != wxEmptyString) {
+				long visible;
+				if (value.ToLong(&visible) && (visible == true || visible == false)) {
+					frameNameTags[i]->visible = visible;
+				} else {
+					wxString msg;
+					msg.sprintf( "frames[%d].nametag.visible is not a number 0 or 1", i);
+					wxLogMessage(msg);
+					gvpAborted = true;
+				}
+			}
 		}
 		initArcs();
 		// At this point we no longer need the file parser, and since it
@@ -3078,6 +3128,24 @@ StructPage::initNodes( void )
 				gvpAborted = true;
 			}
 		}
+		// visibility
+		key.sprintf( "nodes[%d].nametag.visible",
+				 nameGvpNodeMap.count(nodes[i]->rvId) ?
+				 nameGvpNodeMap[nodes[i]->rvId] : i );
+		value = config[key];
+		if (value != wxEmptyString) {
+			long visible;
+			if (value.ToLong(&visible) && (visible == true || visible == false)) {
+				nodeNameTags[i]->visible = visible;
+			} else {
+				wxString msg;
+				msg.sprintf( "nodes[%d].nametag.visible is not a number 0 or 1",
+					nameGvpNodeMap.count(nodes[i]->rvId) ?
+					nameGvpNodeMap[nodes[i]->rvId] : i );
+				wxLogMessage(msg);
+				gvpAborted = true;
+			}
+		}
 	}
 	firstNodeInFrame.push_back(nodes.size());
 	assert(firstNodeInFrame.size() == (unsigned)numFrames+1);
@@ -3366,6 +3434,21 @@ StructPage::OnChar( wxKeyEvent &event )
 			nodes[node_index]->nametag.toggleVisible();
 			redraw();
 			blit();
+		} else {
+			//see if we're on a frame name tag
+			int tag_index = -1;
+			for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+				if (frameNameTags[i]->onMe(mouse_pos)){
+					tag_index = i;
+					break;
+				}
+			}
+			//if this is true then we're on a frameNameTag
+			if (0 <= tag_index){
+				frameNameTags[tag_index]->toggleVisible();
+				redraw();
+				blit();
+			}
 		}
 	} else {
 		event.Skip();
@@ -3620,11 +3703,12 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 		//if we're on a node
 		if(0 <= i) {
 			//name
-			message = "rvName: ";
+			message = "Name: ";
 			message.append(nodes[i]->nametag.name);
 			message.append("\n");
+			message.append(wxString::Format("Frame: %d\n", nodes[i]->rvId.second));
 			//type
-			message.append("rvType: ");
+			message.append("Type: ");
 			switch (nodes[i]->rvi->rvType){
 				case RVInfo::t_discrete:
 					message.append("discrete\n");
@@ -3637,7 +3721,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			}
 
 			//disposition
-			message.append("rvDisposition: ");
+			message.append("Disposition: ");
 			switch (nodes[i]->rvi->rvType){
 				case RVInfo::d_hidden:
 					message.append("hidden\n");
@@ -3650,7 +3734,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			}
 
 			//cardinality
-			message.append(wxString::Format("rvCardinality: %d\n",nodes[i]->rvi->rvCard));
+			message.append(wxString::Format("Cardinality: %d\n",nodes[i]->rvi->rvCard));
 
 			//switching parents
 			if (nodes[i]->rvi->switchingParents.size() > 0){
@@ -3658,8 +3742,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 					message.append("Switching Parent: ");
 					message.append(nodes[i]->rvi->switchingParents[j].first.c_str());
 					message.append("(");
-					message.append(wxString::Format("%d", nodes[i]->rvId.second 
-								+ nodes[i]->rvi->switchingParents[j].second));
+					message.append(wxString::Format("%d", nodes[i]->rvi->switchingParents[j].second));
 					message.append(")");
 					message.append(" using ");
 
@@ -3688,7 +3771,6 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 
 			//conditional parents
 			if (nodes[i]->rvi->conditionalParents.size() > 0){
-				bool mixture = false;
 				message.append("Conditional Parents: ");
 				for (unsigned int j = 0; j < nodes[i]->rvi->conditionalParents.size(); j++){
 					if (nodes[i]->rvi->conditionalParents[j].size() == 0)
@@ -3696,8 +3778,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 					for (unsigned int k = 0; k < nodes[i]->rvi->conditionalParents[j].size(); k++){
 						message.append(nodes[i]->rvi->conditionalParents[j][k].first.c_str());
 						message.append("(");
-						message.append(wxString::Format("%d", nodes[i]->rvId.second 
-									+ nodes[i]->rvi->conditionalParents[j][k].second));
+						message.append(wxString::Format("%d", nodes[i]->rvi->conditionalParents[j][k].second));
 						message.append(")");
 						if (k != nodes[i]->rvi->conditionalParents[j].size() - 1)
 							message.append(", ");
@@ -3744,7 +3825,6 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 								break;
 							case MixtureCommon::ci_mixture:
 								message.append("mixture ");
-								mixture = true;
 								break;
 							case MixtureCommon::ci_gausSwitchMixture:
 								message.append("gausSwitchMixGaussian");
@@ -3768,8 +3848,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 						message.append("unknown");
 					}
 					//listIndices
-					//if it is a mixture we look for both a collection and a mapping, right?
-					if(mixture){
+					if(nodes[i]->rvi->rvType == RVInfo::t_continuous){
 						if(nodes[i]->rvi->listIndices[j].collectionName != ""){
 							message.append("collection(\"");
 							message.append(nodes[i]->rvi->listIndices[j].collectionName.c_str());
@@ -5053,6 +5132,9 @@ StructPage::Save( void )
 				line.sprintf( "nodes[%d].nametag.pos.y=%d\n",
 						  i, nodes[i]->nametag.pos.y );
 				gvp.Write(line);
+				line.sprintf( "nodes[%d].nametag.visible=%d\n",
+						  i, nodes[i]->nametag.visible );
+				gvp.Write(line);
 			}
 
 			// arcs
@@ -5101,6 +5183,9 @@ StructPage::Save( void )
 				gvp.Write(line);
 				line.sprintf( "frames[%d].nametag.pos.y=%d\n",
 						  i, frameNameTags[i]->pos.y );
+				gvp.Write(line);
+				line.sprintf( "frames[%d].nametag.visible=%d\n",
+						  i, frameNameTags[i]->visible );
 				gvp.Write(line);
 			}
 
@@ -5362,6 +5447,10 @@ StructPage::hideSelectedLabels( void )
 		if (nodeNameTags[i]->getSelected())
 			nodeNameTags[i]->visible = false;
 	}
+	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+		if (frameNameTags[i]->getSelected())
+			frameNameTags[i]->visible = false;
+	}
 
 	redraw();
 	blit();
@@ -5369,7 +5458,7 @@ StructPage::hideSelectedLabels( void )
 
 /**
  *******************************************************************
- * Don't draw any labels that are currently selected.
+ * Don't draw any node labels that are currently selected.
  *
  * \pre The StructPage should be fully initialized.
  *
@@ -5380,11 +5469,34 @@ StructPage::hideSelectedLabels( void )
  * \return void
  *******************************************************************/
 void
-StructPage::showAllLabels( void )
+StructPage::showAllNodeLabels( void )
 {
 	int numNodes = nodes.size();
 	for (int i = 0; i < numNodes; i++) {
 		nodeNameTags[i]->visible = true;
+	}
+
+	redraw();
+	blit();
+}
+
+/**
+ *******************************************************************
+ * Don't draw any frame labels that are currently selected.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Currently selected labels will no longer be drawn.
+ *
+ * \note Currently selected labels will no longer be drawn.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::showAllFrameLabels( void )
+{
+	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+		frameNameTags[i]->visible = true;
 	}
 
 	redraw();
