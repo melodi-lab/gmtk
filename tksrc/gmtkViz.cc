@@ -5458,13 +5458,13 @@ StructPage::hideSelectedLabels( void )
 
 /**
  *******************************************************************
- * Don't draw any node labels that are currently selected.
+ * Mark all the node labels as visible and redraw.
  *
  * \pre The StructPage should be fully initialized.
  *
- * \post Currently selected labels will no longer be drawn.
+ * \post All of the Node Labels will be marked visible and drawn.
  *
- * \note Currently selected labels will no longer be drawn.
+ * \note All of the Node Labels will be marked visible and drawn.
  *
  * \return void
  *******************************************************************/
@@ -5482,13 +5482,13 @@ StructPage::showAllNodeLabels( void )
 
 /**
  *******************************************************************
- * Don't draw any frame labels that are currently selected.
+ * Mark all the frame labels as visible and redraw.
  *
  * \pre The StructPage should be fully initialized.
  *
- * \post Currently selected labels will no longer be drawn.
+ * \post All of the Frame Labels will be marked visible and drawn.
  *
- * \note Currently selected labels will no longer be drawn.
+ * \post All of the Frame Labels will be marked visible and drawn.
  *
  * \return void
  *******************************************************************/
