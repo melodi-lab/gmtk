@@ -3048,3 +3048,8 @@ Tue Jul  5 23:33:15 2005
                                not in that subset. Child satisfied only if all such
                                directional constraints are satisfied. 
 
+
+Fri Jul  8 01:16:04 2005
+  - for new inference, when backjumping, the CPT iters need to be ended since
+    otherwise, those CPTs that allocate memory will not free it, and when going
+    forward again, will look like memory leak.
