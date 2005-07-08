@@ -274,6 +274,7 @@ class StructPage: public wxScrolledWindow
 			int firstChunkFrame;
 			int firstEpilogueFrame;
 			int numFrames;
+			wxPoint mouse_pos;	//the mouse position
 };
 
 
@@ -317,6 +318,7 @@ public:
 	// selectable method overrides
 	virtual bool onMe( const wxPoint& pt );
 	virtual bool inRect( const wxRect& rect );
+	void toggleVisible();
 };
 
 /// Represents a node 
@@ -2752,6 +2754,9 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 
 	// Item 7 in gZoomMap is a 1.0 scaling factor.
 	setScale(ZOOM_1_INDEX);
+
+	//set the mouse_pos to 0,0 on init
+	mouse_pos.x = mouse_pos.y = 0;
 }
 
 /**
@@ -3352,6 +3357,16 @@ StructPage::OnChar( wxKeyEvent &event )
 		moveSelected(0, ACTUAL_SCALE*(event.ShiftDown()?10:1));
 		redraw();
 		blit();
+	} else if (event.m_keyCode == 't'){
+
+		//find a node under the mouse
+		int node_index = nodeUnderPt(mouse_pos);
+		//if we find a node then toggle it's nametag visibility
+		if (0 <= node_index){
+			nodes[node_index]->nametag.toggleVisible();
+			redraw();
+			blit();
+		}
 	} else {
 		event.Skip();
 	}
@@ -3434,6 +3449,11 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 	// calculate unscaled position
 	pt.x = (int)round(pt.x / gZoomMap[displayScale]);
 	pt.y = (int)round(pt.y / gZoomMap[displayScale]);
+	
+	//save the mouse position for other uses
+	mouse_pos.x = pt.x;
+	mouse_pos.y = pt.y;
+	
 	// find out what (if anything) was clicked
 	Selectable *pointee = itemAt(pt);
 
@@ -5999,6 +6019,26 @@ bool
 NameTag::inRect( const wxRect& rect )
 {
 	return rect.Inside(pos.x + size.x/2, pos.y + size.y/2);
+}
+
+/**
+ *******************************************************************
+ * Toggles The Visibility of a NameTag
+ * 
+ * \param none
+ *
+ * \pre The NameTag should be valid.
+ *
+ * \post The NameTag's visibility will be toggled, it should be redrawn
+ *
+ * \note The NameTag's visibility will be toggled, it should be redrawn
+ *
+ * \return void
+ *******************************************************************/
+void
+NameTag::toggleVisible()
+{
+	visible = !visible;
 }
 
 /**
