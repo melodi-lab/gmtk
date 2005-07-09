@@ -2381,6 +2381,8 @@ sub check_timing_and_export_parameters
   }
   else {
     print "${error_message}Problem running gmtkTriangulate\n";  
+    print "   Might be a problem in the sctructure file, or gmtkTriangulate\n"; 
+    print "   is not in your path\n";  
     die "${error_message}Problem running gmtkTriangulate\n";  
   }
 
