@@ -883,6 +883,7 @@ RngDecisionTree::EquationClass::EquationClass()
     delimiter["||"] = TOKEN_LOGICAL_OR;
     delimiter["-"]  = TOKEN_MINUS;
     delimiter["!"]  = TOKEN_NOT;
+    delimiter["!="] = TOKEN_NOT_EQUAL;
     delimiter["+"]  = TOKEN_PLUS;
     delimiter["<<"] = TOKEN_SHIFT_LEFT;
     delimiter[">>"] = TOKEN_SHIFT_RIGHT;
@@ -931,6 +932,7 @@ RngDecisionTree::EquationClass::EquationClass()
     infixToken[TOKEN_DIVIDE_ROUND]    = COMMAND_DIVIDE_ROUND;
     infixToken[TOKEN_EXPONENT]        = COMMAND_EXPONENT;
     infixToken[TOKEN_EQUALS]          = COMMAND_EQUALS;
+    infixToken[TOKEN_NOT_EQUAL]       = COMMAND_NOT_EQUAL;
     infixToken[TOKEN_GREATER_THAN]    = COMMAND_GREATER_THAN;
     infixToken[TOKEN_GREATER_THAN_EQ] = COMMAND_GREATER_THAN_EQ;
     infixToken[TOKEN_LESS_THAN]       = COMMAND_LESS_THAN;
@@ -995,6 +997,7 @@ RngDecisionTree::EquationClass::EquationClass()
     tokenPriority[TOKEN_LOGICAL_OR]      = LOGICAL_OR_PRCDNC;
     tokenPriority[TOKEN_MINUS]           = ADDITIVE_PRCDNC;
     tokenPriority[TOKEN_NOT]             = UNARY_PRCDNC;
+    tokenPriority[TOKEN_NOT_EQUAL]       = EQUALITY_PRCDNC;
     tokenPriority[TOKEN_PLUS]            = ADDITIVE_PRCDNC;
     tokenPriority[TOKEN_QUESTION_MARK]   = CONDITIONAL_PRCDNC;
     tokenPriority[TOKEN_RIGHT_PAREN]     = PAREN_PRCDNC;
@@ -1476,6 +1479,12 @@ RngDecisionTree::EquationClass::evaluateFormula(
         stack[last] = !(stack[last]); 
         break;
 
+      case COMMAND_NOT_EQUAL: 
+        last = stack.stackSize() - 1;
+        stack[last-1] = stack[last-1] != stack[last];
+        stack.pop_back();
+        break;
+ 
       case COMMAND_PLUS:
         last = stack.stackSize() - 1;
         stack[last-1] = stack[last-1] + stack[last];
@@ -1580,6 +1589,7 @@ RngDecisionTree::EquationClass::parseFormula(
   preProcessFormula(formula);
 
   getToken(formula, token);
+
   parseExpression(token, formula, new_commands, LOWEST_PRECEDENCE, depth);
 
   if (token.token != TOKEN_END) {
@@ -1627,7 +1637,7 @@ RngDecisionTree::EquationClass::preProcessFormula(
 {
   unsigned i;
   string revised;
-  
+
   //////////////////////////////////////////////////////////////////////////
   // Build string without whitespace characters, and covert to lower case 
   //////////////////////////////////////////////////////////////////////////
@@ -2332,7 +2342,7 @@ RngDecisionTree::EquationClass::getToken(
 /*-
  *-----------------------------------------------------------------------
  * RngDecisionTree::EquationClass::getInteger
- *   Determine if string begins with an integer and gives the integer if
+ *   Determine if string is an integer and gives the integer if
  *   one is found. 
  * 
  * Preconditions:
@@ -2346,7 +2356,7 @@ RngDecisionTree::EquationClass::getToken(
  *   none     
  *
  * Results:
- *   Returns true if given expression begins with a integer, false if not 
+ *   Returns true if given expression is an integer, false if not 
  *-----------------------------------------------------------------------
  */
 bool 
@@ -2364,7 +2374,6 @@ RngDecisionTree::EquationClass::getInteger(
 
     if ((expression[index]>='0') && (expression[index]<='9')) {
       nmbr += expression[index];
-      number_found = true;
     }
     else {
       is_number = false;
@@ -2372,8 +2381,9 @@ RngDecisionTree::EquationClass::getInteger(
 
     ++index;
   }
-
-  if (number_found) {
+ 
+  if (is_number) {
+    number_found = true;
     number = atoi(nmbr.c_str());
   }
 
@@ -3163,16 +3173,15 @@ void test_formula()
 
   correct = true;
 
-  formula = "3@=4";
+  formula = "(3!=4)";
   correct &= dt.testFormula( formula, vars, &child, 1);
 
-  formula = "!(3==4)";
+  formula = "p0 != 7";
+  correct &= dt.testFormula( formula, vars, &child, 0);
+
+  formula = "!0!=!1";
   correct &= dt.testFormula( formula, vars, &child, 1);
 
-  formula = "3!=4";
-  correct &= dt.testFormula( formula, vars, &child, 1);
-
-/*
   formula = "cc";
   correct &= dt.testFormula( formula, vars, &child, 1000000 );
 
@@ -3392,8 +3401,6 @@ void test_formula()
 
   formula = "all_diff( 7, 3+5, p0-2, 9, 10, 11, 12, 13, 14, 15, 16 )";
   correct &= dt.testFormula( formula, vars, &child, 1 );
-*/
-
 
   ////////////////////////////////////////////////////////////////////// 
   // Finish 
