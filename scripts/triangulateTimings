@@ -29,7 +29,7 @@ my $gmtk_tfmerge = 'gmtkTFmerge';
 ##############################################################################
 # State variables for basic methods 
 ##############################################################################
-my $global_triangulation_mode : shared = '';
+my $global_triangulation_mode : shared = 'C';
 
 my $basic_once_index    : shared = 0;
 my $advanced_once_index : shared = 0;
@@ -490,10 +490,8 @@ sub main
     $single_processor_vcap = $initial_vcap;
     $single_processor_caching = $initial_component_cache;
 
-print "HERE1\n";
     ($single_processor_current_pid, $single_processor_timing_script_input, 
       $single_processor_timing_script_output) = open_time(); 
-print "HERE2\n";
   }
 
   #########################################################################
@@ -1423,7 +1421,6 @@ sub open_time
     { 
       $error = 1;
       if ( !$boundary_searches_done ) {
-        #sleep(60);
         sleep(10);
       }
       else {
@@ -2262,22 +2259,19 @@ sub get_gmtkTime_options
   my $time_arg;
   my $line;
   my $array_test;
-  my $args_code;
   my @args_code;
   my @args_file;
   my @args;
 
   my $gmtkTime_location = $FindBin::Bin;
 
-  if (open GMTKTIME, "<$gmtkTime_location/../tksrc/gmtkTime.cc")
+  if (open GMTKTIME, "<$gmtkTime_location/../tksrc/GMTK_Arguments.h")
   {
     #####################################################################
     # Get the arguments from gmtkTime.cc
     #####################################################################
-    my @args_file = <GMTKTIME>;
-    ($args_code) = "@args_file" =~ /Arg\s+Arg::Args\[\]\s*=\s*\{([^\}]*)\}/gs;
+    @args_code = grep /Arg.*\(.*\).*,/, <GMTKTIME>;
 
-    @args_code = split /\n/, $args_code;
     foreach $line (@args_code)
     {
       ($arg) = $line =~ /Arg\(\s*\"([^\"]+)\"/;    
