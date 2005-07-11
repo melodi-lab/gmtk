@@ -1327,6 +1327,7 @@ nozoomwxPrintPreview::nozoomwxPrintPreview(GmtkPrintout* printout,
 void nozoomwxPrintPreview::SetZoom(int zoom)
 {
 	//do nothing
+	new wxTipWindow(NULL, "Zooming has been known to cause crashes when\nnon-solid lines are used so zooming has been disabled.", 500, NULL);
 	return;
 };
 
