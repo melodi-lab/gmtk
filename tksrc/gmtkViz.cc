@@ -3746,12 +3746,6 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 					message.append(")");
 					message.append(" using ");
 
-					//collections
-					if (nodes[i]->rvi->switchMapping.collectionName != ""){
-						message.append("mixture collection(\"");
-						message.append(nodes[i]->rvi->switchMapping.collectionName.c_str());
-						message.append("\")");
-					}
 					//mappings
 					message.append(" mapping(\"");
 					switch(nodes[i]->rvi->switchMapping.liType){
@@ -4262,36 +4256,36 @@ StructPage::moveSelected( int dx, int dy )
 
 	// frame separators
 	for (unsigned int i = 0; i < frameEnds.size(); i++) {
-	if ( frameEnds[i]->getSelected() )
-		moveFrameSep( i, dx );
+		if ( frameEnds[i]->getSelected() )
+			moveFrameSep( i, dx );
 	}
 	// frame name tags
 	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
-	if ( frameNameTags[i]->getSelected() )
-		moveFrameNameTag(i, dx, dy);
+		if ( frameNameTags[i]->getSelected() )
+			moveFrameNameTag(i, dx, dy);
 	}
 	// node name tags
 	for (int i = 0; i < numNodes; i++) {
-	if ( nodeNameTags[i]->getSelected() )
-		moveNodeNameTag(i, dx, dy);
+		if ( nodeNameTags[i]->getSelected() )
+			moveNodeNameTag(i, dx, dy);
 	}
 	// nodes
 	for (int i = 0; i < numNodes; i++) {
-	if ( nodes[i]->getSelected() )
-		moveNode(i, dx, dy);
+		if ( nodes[i]->getSelected() )
+			moveNode(i, dx, dy);
 	}
 	// then arcs
 	for (int i = 0; i < numNodes; i++) {
-	for (int j = 0; j < numNodes; j++) {
-		if (arcs[i][j]) {
-		int end = arcs[i][j]->cps->size() - 1;
-		assert(end >= 1);
-		for ( int k = 1; k < end; k++ ) {
-			if ( (*arcs[i][j]->cps)[k]->getSelected() )
-			moveControlPoint(i, j, k, dx, dy);
+		for (int j = 0; j < numNodes; j++) {
+			if (arcs[i][j]) {
+				int end = arcs[i][j]->cps->size() - 1;
+				assert(end >= 1);
+				for ( int k = 1; k < end; k++ ) {
+					if ( (*arcs[i][j]->cps)[k]->getSelected() )
+						moveControlPoint(i, j, k, dx, dy);
+				}
+			}
 		}
-		}
-	}
 	}
 	// Things are almost definitely dirty.
 	gvpDirty = true;
