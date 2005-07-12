@@ -36,6 +36,12 @@
 #include <cmath>
 #include <vector>
 #include <string.h>
+//needed for dirname and basename
+#include <libgen.h>
+//needed for stat
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 // Apprently these are needed in order to do anything with gmtk (even
 // if you don't actually use them).
@@ -80,6 +86,9 @@ static const double gZoomMap[] = {
 #define NEW_CP_OFFSET (10*ACTUAL_SCALE)
 #define ARROW_LEN (12*ACTUAL_SCALE)
 #define ARROW_WID (4*ACTUAL_SCALE)
+
+//forward declarations of things that GFrame needs
+class wxgmtk1toManyDialog;
 
 // forward declarations of things StructPage needs
 class NameTag;
@@ -464,6 +473,7 @@ public:
 	MENU_ZOOM_BEGIN,
 	//took these out because they caused crashes with dotted lines
 //	MENU_ZOOM_2_pow_neg_4dot000,
+
 //	MENU_ZOOM_2_pow_neg_3dot000,
 //	MENU_ZOOM_2_pow_neg_2dot000,
 	MENU_ZOOM_2_pow_neg_1dot000,
@@ -991,6 +1001,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	set_properties();
 	// arrange the About tab and add it to the notebook
 	do_layout();
+
 }
 
 /**
@@ -1685,8 +1696,24 @@ GFrame::OnMenuEditCopyframelayout(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
 		curPage->copyFrameLayout();
+		/* TODO: make frameCopyDialog happen from here
+		 * each StructPage should have it's own dialog and if there is one being displayed
+		 * when a new page is loaded then the old dialog should be replaced with the new one
+		 * We also need to keep track of when a structpage is closed so that if a dialog is
+		 * being displayed it will be either closed or replaced by the dialog for the structpage
+		 * that'll be shown next
+		 *
+		if (frameCopyDialog != NULL) {
+		//if the page has changed then we need to display a different copyDialog
+		} else {
+			//do something like this
+			frameCopyDialog = curPage->getFrameCopyDialog();
+		}
+			
+		*/
+	}
 }
 
 /**
@@ -2704,102 +2731,166 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	}
 
 	if (!gvpAborted && strFile.length()) {
-		// load up the structure file
-		fp = new FileParser(strFile, cppCommandOptions);
+		// this indicates if the strFile location contained in the gvp file is
+		// valid below we may mark it invalid
+		bool strFile_valid = true;
+		//these are just char * versions of the filenames
+		char * strFile_cstr = (char *)strFile.mb_str(wxConvUTF8);
+		char * gvpFile_cstr = (char *)gvpFile.mb_str(wxConvUTF8);
+		/* store the strFile name so that we can use it to in the FileParser
+		 * this way we only need to have 1 call to the FileParser, even
+		 * if we modify the tempFileName
+		 */
+		wxString tempFileName(strFile);
 
-		// XXX: prevent this from crashing with parse error
-		// parse the file
-		fp->parseGraphicalModel();
-		// create the rv variable objects
-		fp->createRandomVariableGraph();
-		// ensure no loops in graph for all possible unrollings.
-		fp->ensureValidTemplate();
+		if (old){
+			/*
+			 * here we try to be intelligent about the location of the strfile
+			 * since sometimes it isn't so smart in the gvp file
+			 */
+			int error_num;
+			struct stat strFile_stat;
 
-		// XXX: verify that the str and gvp files go together
-		// make up initial positions for the nodes
-		initNodes();
-		if ( frameEnds.size() ) {
-			if ( frameEnds[0]->sepType == VizSep::PROLOGUE ||
-					frameEnds[0]->sepType == VizSep::BEGIN_CHUNK )
-				frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
-							10*ACTUAL_SCALE), wxT("frame 0 (P)")));
-			else
-				frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
-							10*ACTUAL_SCALE), wxT("frame 0 (C)")));
-		}
-		for (unsigned int i = 0; i < frameEnds.size(); i++) {
-			char partition;
-			wxString label;
-			if ( frameEnds[i]->sepType == VizSep::PROLOGUE )
-				partition = 'P';
-			else if ( frameEnds[i]->sepType == VizSep::BEGIN_CHUNK ||
-				  frameEnds[i]->sepType == VizSep::CHUNK )
-				partition = 'C';
-			else 
-				partition = 'E';
-			label.sprintf("frame %d (%c)", i+1, partition);
-			frameNameTags.push_back(new NameTag( wxPoint( frameEnds[i]->x +
-								  10*ACTUAL_SCALE,
-								  10*ACTUAL_SCALE ),
-							 label ));
-		}
-		wxString key, value;
-		for (unsigned int i = 0; i < frameNameTags.size(); i++) {
-			// move the nametag, if requested
-			// x
-			key.sprintf( "frames[%d].nametag.pos.x", i );
-			value = config[key];
-			if (value != wxEmptyString) {
-				long xPos;
-				if (value.ToLong(&xPos)) {
-					frameNameTags[i]->pos.x = xPos;
-				} else {
-					wxString msg;
-					msg.sprintf("frames[%d].nametag.pos.x is not a number", i);
-					wxLogMessage(msg);
-					gvpAborted = true;
+			error_num = stat(strFile, &strFile_stat);
+			//so if there is an error the file probably doesn't exist
+			//try to find the file
+			if (error_num < 0) {
+				// here we try to make a filename for the strfile so that
+				// it is relative to the location of the gvpFile
+				// since dirname and basename modify their arguments we must
+				// create temp copies
+				wxString tempGVP = wxString::Format("%s",gvpFile_cstr);
+				//wxString tempSTR = wxString::Format("%s",strFile_cstr);
+				//= dirname(gvpFile) ++ / ++ strFile
+				tempFileName = wxString::Format("%s/%s",
+						dirname((char *)tempGVP.mb_str(wxConvUTF8)), 
+						strFile_cstr);
+						//basename((char *)tempSTR.mb_str(wxConvUTF8)));
+
+				if (strFile_cstr[0] == '/'){
+					//the strfile is given as an absolute path and there
+					//isn't a valid file there
+					strFile_valid = false;
+				}
+				else if(stat(tempFileName.c_str(), &strFile_stat) != 0){
+					//we cannot find it
+					perror(tempFileName.c_str());
+					strFile_valid = false;
+				} 
+				/* otherwise we've found the location of the strFile, it was given
+				 * relative to the location of the gvpFile this is the ideal
+				 * location of the strFile relative to the gvpFile
+				 * it is stored in tempFileName
+				 */
+			}
+		} 
+		
+		if (strFile_valid) {
+			// load up the structure file
+			fp = new FileParser(tempFileName, cppCommandOptions);
+
+			// XXX: prevent this from crashing with parse error
+			// parse the file
+			fp->parseGraphicalModel();
+			// create the rv variable objects
+			fp->createRandomVariableGraph();
+			// ensure no loops in graph for all possible unrollings.
+			fp->ensureValidTemplate();
+
+			// XXX: verify that the str and gvp files go together
+			// make up initial positions for the nodes
+			initNodes();
+			if ( frameEnds.size() ) {
+				if ( frameEnds[0]->sepType == VizSep::PROLOGUE ||
+						frameEnds[0]->sepType == VizSep::BEGIN_CHUNK )
+					frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
+									10*ACTUAL_SCALE), wxT("frame 0 (P)")));
+				else
+					frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
+									10*ACTUAL_SCALE), wxT("frame 0 (C)")));
+			}
+			for (unsigned int i = 0; i < frameEnds.size(); i++) {
+				char partition;
+				wxString label;
+				if ( frameEnds[i]->sepType == VizSep::PROLOGUE )
+					partition = 'P';
+				else if ( frameEnds[i]->sepType == VizSep::BEGIN_CHUNK ||
+						frameEnds[i]->sepType == VizSep::CHUNK )
+					partition = 'C';
+				else 
+					partition = 'E';
+				label.sprintf("frame %d (%c)", i+1, partition);
+				frameNameTags.push_back(new NameTag( wxPoint( frameEnds[i]->x +
+								10*ACTUAL_SCALE,
+								10*ACTUAL_SCALE ),
+							label ));
+			}
+			wxString key, value;
+			for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+				// move the nametag, if requested
+				// x
+				key.sprintf( "frames[%d].nametag.pos.x", i );
+				value = config[key];
+				if (value != wxEmptyString) {
+					long xPos;
+					if (value.ToLong(&xPos)) {
+						frameNameTags[i]->pos.x = xPos;
+					} else {
+						wxString msg;
+						msg.sprintf("frames[%d].nametag.pos.x is not a number", i);
+						wxLogMessage(msg);
+						gvpAborted = true;
+					}
+				}
+				// y
+				key.sprintf( "frames[%d].nametag.pos.y", i );
+				value = config[key];
+				if (value != wxEmptyString) {
+					long yPos;
+					if (value.ToLong(&yPos)) {
+						frameNameTags[i]->pos.y = yPos;
+					} else {
+						wxString msg;
+						msg.sprintf("frames[%d].nametag.pos.y is not a number", i);
+						wxLogMessage(msg);
+						gvpAborted = true;
+					}
+				}
+				// visibility
+				key.sprintf( "frames[%d].nametag.visible", i );
+				value = config[key];
+				if (value != wxEmptyString) {
+					long visible;
+					if (value.ToLong(&visible) && (visible == true || visible == false)) {
+						frameNameTags[i]->visible = visible;
+					} else {
+						wxString msg;
+						msg.sprintf( "frames[%d].nametag.visible is not a number 0 or 1", i);
+						wxLogMessage(msg);
+						gvpAborted = true;
+					}
 				}
 			}
-			// y
-			key.sprintf( "frames[%d].nametag.pos.y", i );
-			value = config[key];
-			if (value != wxEmptyString) {
-				long yPos;
-				if (value.ToLong(&yPos)) {
-					frameNameTags[i]->pos.y = yPos;
-				} else {
-					wxString msg;
-					msg.sprintf("frames[%d].nametag.pos.y is not a number", i);
-					wxLogMessage(msg);
-					gvpAborted = true;
-				}
-			}
-			// visibility
-			key.sprintf( "frames[%d].nametag.visible", i );
-			value = config[key];
-			if (value != wxEmptyString) {
-				long visible;
-				if (value.ToLong(&visible) && (visible == true || visible == false)) {
-					frameNameTags[i]->visible = visible;
-				} else {
-					wxString msg;
-					msg.sprintf( "frames[%d].nametag.visible is not a number 0 or 1", i);
-					wxLogMessage(msg);
-					gvpAborted = true;
-				}
-			}
+			initArcs();
+			// At this point we no longer need the file parser, and since it
+			// uses global variables, we can't have more than one. Thus, we
+			// delete it now, rather than later.
+			delete fp;
+		} else {
+			//we don't have a valid strfile
+			wxString msg;
+			msg.sprintf(
+					"Position file:\n"
+					"\"%s\"\n"
+					"claims that its strfile is:"
+					"\n \"%s\"\n"
+					"but that file does not exist or cannot be opened.\n"
+					"Please edit the position file to point to a valid\n"
+					"strfile and re-open the Position File.", gvpFile_cstr, strFile_cstr);
+			wxLogMessage(msg);
 		}
-		initArcs();
-		// At this point we no longer need the file parser, and since it
-		// uses global variables, we can't have more than one. Thus, we
-		// delete it now, rather than later.
-		delete fp;
 	}
 	fp = NULL;
-
-	// If there was anything odd about the gvp file, say so.
-	if (gvpAborted)
-		wxLogMessage("Position file contained oddities: proceed with caution");
 
 	// Update the status bar and stuff
 	onComeForward();
@@ -2896,9 +2987,9 @@ StructPage::fillMap( void )
 		if (!strFile.length()) {
 			wxLogMessage(wxT("gvp file doesn't specify a structure file"));
 			gvpAborted = true;
-		}
+		} 
 	} else {
-		wxLogMessage(wxT("Failed to open position file for reading"));
+		wxLogMessage(wxString::Format("Failed to open position file \"%s\" for reading", gvpFile.c_str()));
 		gvpAborted = true;
 	}
 }
