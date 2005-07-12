@@ -3053,3 +3053,17 @@ Fri Jul  8 01:16:04 2005
   - for new inference, when backjumping, the CPT iters need to be ended since
     otherwise, those CPTs that allocate memory will not free it, and when going
     forward again, will look like memory leak.
+
+
+
+Mon Jul 11 22:47:31 2005
+ - variable order. Might be able to benefit not only switching parents, but also
+   DTs (since inside DTs, we have value specific independence), and also Backoff CPTs.
+
+ - not a GMTK idea, but rather a LVCSR idea with switching weights: give a smaller acoustic weight
+   at word endings since pronunciation is more variable at the end of words. This can be done by
+   having a word-position dependent variable that is a switching parent for a switchign weight on
+   an acoustic variable.
+
+
+
