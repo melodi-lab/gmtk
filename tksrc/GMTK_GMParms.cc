@@ -149,7 +149,11 @@ void GMParms::add(Vocab* ob) { add(ob, vocabs, vocabsMap); }
 void GMParms::add(NGramCPT* ob) { add(ob,ngramCpts,ngramCptsMap); }
 void GMParms::add(FNGramCPT* ob) { add(ob,fngramCpts,fngramCptsMap); }
 void GMParms::add(FNGramImp* ob) { add(ob,fngramImps,fngramImpsMap); }
-void GMParms::add(LatticeADT* ob) { add(ob,latticeAdts,latticeAdtsMap); }
+void GMParms::add(LatticeADT* ob) {
+	add(ob,latticeAdts,latticeAdtsMap);
+	if ( ob->iterable() )
+		iterableLatticeAdts.push_back(ob);
+}
 void GMParms::add(LatticeNodeCPT* ob) { add(ob,latticeNodeCpts,latticeNodeCptsMap); }
 void GMParms::add(LatticeEdgeCPT* ob) { add(ob,latticeEdgeCpts,latticeEdgeCptsMap); }
 void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
@@ -738,6 +742,10 @@ void GMParms::readLatticeAdts(iDataStreamFile& is, bool reset) {
 			error("ERROR: Lattice CPT named '%s' already defined but is specified for a second time in file '%s' line %d", ob->name().c_str(), is.fileName(),is.lineNo());
 		latticeAdts[i+start] = ob;
 		latticeAdtsMap[ob->name()] = i + start;
+
+		// add if it iterable
+		if ( ob->iterable() )
+			iterableLatticeAdts.push_back(ob);
 
 		// add node CPT
 		LatticeNodeCPT* ndCpt = new LatticeNodeCPT();
@@ -2519,6 +2527,9 @@ GMParms::begin()
     iterableDts[i]->setFirstDecisionTree(firstUtterance);
     iterableDts[i]->beginIterableDT();
   }
+  for ( unsigned i = 0; i < iterableLatticeAdts.size(); i++ ) {
+	  iterableLatticeAdts[i]->beginIterableLattice();
+  }
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
@@ -2554,6 +2565,9 @@ GMParms::next()
 {
   for(unsigned i = 0; i<iterableDts.size(); i++) {
     iterableDts[i]->nextIterableDT();
+  }
+  for ( unsigned i = 0; i < iterableLatticeAdts.size(); i++ ) {
+	  iterableLatticeAdts[i]->nextIterableLattice();
   }
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
@@ -2604,11 +2618,17 @@ GMParms::setSegment(const unsigned segmentNo)
     if (veCpts[i]->numFrames() != numFrames) 
       error("ERROR: number of frames in segment %d for main observation matrix is %d, but VirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
   }
-
-  // TODO: load next lattice CPTs if any.
-  // for(unsigned i = 0; i<iterableLattices.size(); i++) {
-  //  etc. etc.
-
+  // set the lattice CPT frame indices
+  for (unsigned i=0; i < latticeAdts.size(); i++ ) {
+	  // I cannot call iterableLatticeAdts here because
+	  // there is overlap of the object and reset frame indices
+	  // needs to be done to all lattices
+	  if ( latticeAdts[i]->iterable() ) {
+		  latticeAdts[i]->seek(segmentNo);
+		  latticeAdts[i]->nextIterableLattice();
+	  }
+	  latticeAdts[i]->resetFrameIndices(numFrames);
+  }
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }

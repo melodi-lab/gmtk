@@ -39,9 +39,22 @@ public:
 	LatticeADT();
 	~LatticeADT();
 
+	// read from HTK lattice format file
 	void readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab);
 
+	// read from GMTK master file
 	void read(iDataStreamFile &is);
+
+	// this lattice is iterable
+	inline bool iterable() const { return _latticeFile != NULL; }
+
+	void seek(unsigned nmbr);
+	void initializeIterableLattice(const string &fileName);
+	void beginIterableLattice();
+	void nextIterableLattice();
+
+	// reset the frame indices
+	void resetFrameIndices(unsigned numFrames);
 
 	friend class LatticeNodeCPT;
 	friend class LatticeEdgeCPT;
@@ -57,6 +70,8 @@ protected:
 		logpr ac_score;
 		/** acoustic score */
 		logpr lm_score;
+		/** probability score */
+		logpr prob_score;
 
 		LatticeEdge() : emissionId(0) {}
 	};
@@ -65,6 +80,8 @@ protected:
 	 * lattice node information
 	 */
 	struct LatticeNode {
+		/** absolute time for this node */
+		float time;
 		/** starting frame number */
 		unsigned startFrame;
 		/** ending frame number */
@@ -95,8 +112,16 @@ protected:
 	double _amscale;
 	/** log base */
 	double _base;
-	/** default frame rate this is not yet used */
-	double _frameRate;
+
+	/** how many frame relaxation is allowed in CPT */
+	unsigned _frameRelax;
+
+	/** if this is an iterable cpt */
+	iDataStreamFile* _latticeFile; // the file pointer
+	string _latticeFileName; // the file name
+	unsigned _numLattices; // number of lattices in this file
+	int _curNum; // the current lattice number
+	string _curName; // the current lattice cpt name
 
 	// the following is GM paramters
 	unsigned _nodeCardinality;
