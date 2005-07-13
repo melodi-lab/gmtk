@@ -42,6 +42,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <wx/filename.h>
 
 // Apprently these are needed in order to do anything with gmtk (even
 // if you don't actually use them).
@@ -260,6 +261,7 @@ class StructPage: public wxScrolledWindow
 
 			// things related to the position (gvp) file
 			wxString gvpFile;
+			wxString gvpFile_old;	//the previous gvpfile, used when saving as
 			/// needs saving?
 			bool gvpDirty;
 			/// gvp file had peculiarities?
@@ -2900,6 +2902,9 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 
 	//set the mouse_pos to 0,0 on init
 	mouse_pos.x = mouse_pos.y = 0;
+
+	//we haven't done a save as yet so there is no old gvp file
+	gvpFile_old = "";
 }
 
 /**
@@ -5185,7 +5190,76 @@ StructPage::Save( void )
 			line.sprintf(".=This file was created by gmtkViz.\n");
 			gvp.Write(line);
 
-			line.sprintf("strFile=%s\n", strFile.c_str());
+			/* 
+			 * Here we run into a problem, if the strFile is in the same
+			 * directory (or under) the gvp file, this line should be 
+			 * relative the gvpFile location, but then the gvp file and
+			 * strFile must stay in the same location relative to eachother
+			 *
+			 * If the strFile isn't in the same directory (or under) as the
+			 * gvpFile, then we should store an absolute path for the strFile
+			 * but then we cannot move the strFile without making the gvpFile's
+			 * reference invalid.
+			 */
+
+			struct stat strFile_stat;
+			//we need temp strings because basename and dirname alter their args
+			wxString tempGVP = wxString::Format("%s",gvpFile.c_str());
+			//tempFileName = dirname(gvpFile) ++ "/" ++ strFile
+			wxString tempFileName = wxString::Format("%s/%s",
+					dirname((char *)tempGVP.mb_str(wxConvUTF8)), 
+					strFile.c_str());
+			if(strFile.GetChar(0) == '/' && stat(strFile.c_str(), &strFile_stat) == 0){
+				//this is an absolute path so we should use this
+				line.sprintf("strFile=%s\n", strFile.c_str());
+			} else if(stat(tempFileName.c_str(), &strFile_stat) == 0){
+				// we check to see if the strFile is given relative to the gvpfile Location
+				//this is ideal
+				line.sprintf("strFile=%s\n", strFile.c_str());
+			} else {
+				bool strFile_error = false;
+				//we need temp strings because basename and dirname alter their args
+				wxString tempSTR = wxString::Format("%s",strFile.c_str());
+				tempGVP = wxString::Format("%s",gvpFile.c_str());
+				//see if the strFile is relative to the cwd
+				tempFileName = wxString::Format("%s/%s",
+						wxFileName::GetCwd().c_str(), 
+						strFile.c_str());
+				// if we're doing a save as, try to see if the strfile location
+				// is relative to the old gvpFile
+				wxString tempGVP_old = wxString::Format("%s",gvpFile_old.c_str());
+				wxString tempFileName_old = wxString::Format("%s/%s/%s",
+						wxFileName::GetCwd().c_str(),
+						dirname((char *)tempGVP_old.mb_str(wxConvUTF8)), 
+						strFile.c_str());
+				if(tempSTR.Find(dirname((char *)tempGVP.mb_str(wxConvUTF8))) == 0){
+					// if strfile is in directory or subdir of gvpFile
+					tempGVP = wxString::Format("%s",gvpFile.c_str());
+					//remove the leading directory data and the / so that strFile loc is
+					//relative to gvpFile
+					tempSTR.Remove(0,1 + strlen(dirname((char *)tempGVP.mb_str(wxConvUTF8))));
+					line.sprintf("strFile=%s\n", tempSTR.c_str());
+				} else if((gvpFile_old != "") && (stat(tempFileName_old.c_str(), &strFile_stat) == 0)){
+					//strFile is relative to old gvpFile (this is a save as)
+					line.sprintf("strFile=%s\n", tempFileName_old.c_str());
+				} else if(stat(tempFileName.c_str(), &strFile_stat) == 0){
+					//this is a absolute path because it is not in the gvpFileDir | gvpFileDir_old (or below)
+					line.sprintf("strFile=%s\n", tempFileName.c_str());
+				} else {
+					strFile_error = true;
+				}
+				//if we cannot find the strFile in a resonable location give an error message
+				if (strFile_error){
+					wxString msg;
+					msg.sprintf("strfile: \"%s\" is not in a location gmtkViz can find\n"
+							"so it is likely that this gvpFile will not open correctly.\n"
+							"If it doesn't open correctly then you can edit the gvpFile\n"
+							"and point it to the correct location of the strFile.", strFile.c_str());
+					wxMessageBox(msg,wxT("Saving"), wxOK | wxICON_ERROR);
+					//just put the name of the strFile there, better than nothing
+					line.sprintf("strFile=%s\n", strFile.c_str());
+				}
+			}
 			gvp.Write(line);
 
 			// canvas size
@@ -5277,14 +5351,27 @@ StructPage::Save( void )
 			}
 
 			gvpDirty = false;
+			//there is no old gvp file once we have saved
+			gvpFile_old = "";
 		} else {
-			wxLogMessage(wxT("Failed to open position file for writing"));
+			wxString msg;
+			msg.sprintf("Failed to open position file \"%s\" for writing", gvpFile.c_str());
+			wxLogMessage(msg);
+			//if the save wasn't sucessful then we shouldn't point to the unsucessful gvpfile
+			if (gvpFile_old != "") {
+				gvpFile = gvpFile_old;
+				gvpFile_old = "";
+			}
 		}
 	} else {
 		SaveAs();
+		//there is no old gvp file once we have saved
+		gvpFile_old = "";
 	}
 	// We may not be dirty anymore, so update the status bar.
 	onComeForward();
+	//there is no old gvp file once we have saved
+	gvpFile_old = "";
 }
 
 /**
@@ -5304,19 +5391,30 @@ void
 StructPage::SaveAs( void )
 {
 	wxString defaultGvp;
-	defaultGvp.sprintf("%s.gvp", strFile.c_str());
+	if (gvpFile == "")
+		defaultGvp.sprintf("%s.gvp", strFile.c_str());
+	else
+		defaultGvp.sprintf("%s", gvpFile.c_str());
+
 	wxFileDialog dlg(this, "Save position file as...",
 			 defaultGvp.BeforeLast('/'), defaultGvp.AfterLast('/'),
 			 "All files|*"
 			 "|Position Files (*.gvp)|*.gvp"
 			 "|Text Files|*.txt;*.text",
-			 wxSAVE | wxCHANGE_DIR | wxOVERWRITE_PROMPT,
+			 /* i believe that the wxCHANGE_DIR was cause problems
+			  * because it would change our working directory so none
+			  * of our file locations (which were all relative to the cwd)
+			  * were valid
+			  */
+			 //wxSAVE | wxCHANGE_DIR | wxOVERWRITE_PROMPT,
+			 wxSAVE | wxOVERWRITE_PROMPT,
 			 wxDefaultPosition);
 
 	dlg.SetFilterIndex(1); // show only gvps by default
 
 	// Where do they want to save it?
 	if ( dlg.ShowModal() == wxID_OK ) {
+		gvpFile_old = gvpFile;
 		gvpFile = dlg.GetPath();
 		// save to the file
 		Save();
