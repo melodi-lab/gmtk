@@ -3055,7 +3055,6 @@ Fri Jul  8 01:16:04 2005
     forward again, will look like memory leak.
 
 
-
 Mon Jul 11 22:47:31 2005
  - variable order. Might be able to benefit not only switching parents, but also
    DTs (since inside DTs, we have value specific independence), and also Backoff CPTs.
@@ -3065,5 +3064,19 @@ Mon Jul 11 22:47:31 2005
    having a word-position dependent variable that is a switching parent for a switchign weight on
    an acoustic variable.
 
+Wed Jul 13 10:31:41 2005
+  - memory savings: many of the variables in a clique are det. functions of other variables.
+    Have an option where the det. variable that have as their parents either non-det variables
+    or other det. variables that have already beencomputed, do not store these in the clique.
+    Then on an unpack, have a phase of assigning the RV values of these det variables. This should:
+          1) cut down on memory (perhaps significantly in some cases) by reducing the width
+             of the stored clique table
+          2) reduce hashing costs (smaller keys, and keys that are more defining of their entry).
+   This probably won't work for separators since we need to hash into separators, but it is less
+   important there since separators will be smaller.          
 
+ - two modes of inference:
+       1) static variable order
+       2) dynamic variable order
+   for cliques without any "switching", could use static variable order??
 
