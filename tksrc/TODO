@@ -3080,3 +3080,16 @@ Wed Jul 13 10:31:41 2005
        2) dynamic variable order
    for cliques without any "switching", could use static variable order??
 
+
+Wed Jul 13 13:32:06 2005
+  - new inference should do clause/good caching and conflict/no-good learning accross time
+    for common cliques for things that are not related to the observations
+    this will work in a DBN, DGM, PRMs, and other structured networks since
+    many of the CPTs and variables are almost identical.
+  - DTs should also be able to take advantage of dynamic variable order, DT needs
+    to export stuff to inference code.
+  - New CPTS:
+    - MLP-CPT
+    - Logistic regression CPT
+    - relational constraint CPT - same as directional constraint CPT.
+
