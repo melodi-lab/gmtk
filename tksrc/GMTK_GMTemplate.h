@@ -65,12 +65,22 @@ public:
   // Clone constructor from another Partition, but that uses a new set
   // of random variables, and adjusts the frame of each new set of
   // random variable with offset
+
+#if 0
   Partition(Partition& from_part,
 	    vector <RV*>& newRvs,
 	    map < RVInfo::rvParent, unsigned >& ppf,
 	    const unsigned int frameDelta = 0);
+#endif
 
-  void clear() { nodes.clear(); cliques.clear(); triMethod.clear(); }
+  void clear() { 
+    set<RV*>::iterator it;
+    for (it = nodes.begin();it != nodes.end();it++) 
+      delete (*it);
+    nodes.clear(); 
+    cliques.clear(); 
+    triMethod.clear(); 
+  }
 
   void clearCliques() { cliques.clear(); triMethod.clear(); }
 
@@ -179,9 +189,11 @@ public:
   // interface between P and C are not the same actuall variables
   // (they have the same name and frame number, but they are clones of
   // each other, so are different C++ RV objects). The reason for this
-  // is that each partition can be triangulated separately without needing
-  // to worry about what happens in the other partitions. Also, we are guaranteed
-  // that when these are read in, the interfaces in each partition are complete.
+  // is that each partition can be triangulated separately without
+  // needing to worry about what happens in the other partitions (as
+  // long as before triangualtion it is the case that the common
+  // interfaces are completed). Also, we are guaranteed that when
+  // these are read in, the interfaces in each partition are complete.
   Partition P;
   Partition C;
   Partition E;
@@ -233,7 +245,7 @@ public:
     return *this;
   }
 
-  ~GMTemplate() {}
+  ~GMTemplate() { clear(); }
 
 
   // returning M and S by their "proper" names.

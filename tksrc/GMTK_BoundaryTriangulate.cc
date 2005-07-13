@@ -1554,10 +1554,12 @@ BoundaryTriangulate
   //       will be in C as well. Same for E.
 
   // create the template with these partition definitions.
+
   if (findingLeftInterface)
     gm_template.createPartitions(P,C,E,C_l_u1C1,C_l_u1C2);
   else // we are finding right interface, need to swap arguments. 
     gm_template.createPartitions(E,C,P,C_l_u1C2,C_l_u1C1);
+
 
 }
 
@@ -5822,6 +5824,7 @@ BoundaryTriangulate::interfaceScore(
       // up a bit.
 
       GMTemplate gm_template(fp,M,S);
+
       constructInterfacePartitions(P_u1,
 				   C1_u1,
 				   Cextra_u1,
@@ -5833,7 +5836,8 @@ BoundaryTriangulate::interfaceScore(
 				   C_l,
 				   gm_template);
 
-      if (fh == IH_MIN_MAX_CLIQUE || IH_MIN_STATE_SPACE) {
+
+      if (fh == IH_MIN_MAX_CLIQUE || fh == IH_MIN_STATE_SPACE) {
 	// then we do the entire graph, all three partitions
 	SavedGraph orgnl_P_nghbrs;
 	SavedGraph orgnl_C_nghbrs;
@@ -5849,7 +5853,7 @@ BoundaryTriangulate::interfaceScore(
 	saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
 	saveCurrentNeighbors(gm_template.E,orgnl_E_nghbrs);
 
-	// TODO: use version that includes jtWeight
+	// TODO: use version that includes jtWeight (this means more than setting arg to true)
 	triangulatePartitionWeight(gm_template.P.nodes,tri_heur,orgnl_P_nghbrs,gm_template.P.cliques,
 				   gm_template.P.triMethod,best_P_weight);
 	triangulatePartitionWeight(gm_template.C.nodes,tri_heur,orgnl_C_nghbrs,gm_template.C.cliques,
@@ -5888,9 +5892,10 @@ BoundaryTriangulate::interfaceScore(
 	// then we do almost same, but just on C
 	SavedGraph orgnl_C_nghbrs;
 	string best_C_method_str;
-	double best_C_weight;
+	double best_C_weight = DBL_MAX;
 	saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
-	// TODO: use version that includes jtWeight
+	// TODO: use version that includes jtWeight (this means more than setting arg to true)
+	setUpForC(gm_template);
 	triangulatePartitionWeight(gm_template.C.nodes,tri_heur,orgnl_C_nghbrs,gm_template.C.cliques,best_C_method_str,best_C_weight);
 
 	if (fh == IH_MIN_C_STATE_SPACE) {

@@ -77,6 +77,9 @@ const string GMTemplate::fileExtension(".trifile");
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+#if 0
+// This constructor isn't being used currently. as of Wed Jul 13, 2005
+// TODO: eventually remove
 Partition::Partition(Partition& from_part,
 		     vector <RV*>& newRvs,
 		     map < RVInfo::rvParent, unsigned >& ppf,
@@ -118,6 +121,7 @@ Partition::Partition(Partition& from_part,
 				newRvs,ppf,frameDelta));
   }
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////

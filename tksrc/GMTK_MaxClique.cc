@@ -3547,7 +3547,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // during a resize, in which case we need to reassign this variable.
   InferenceSeparatorClique::AISeparatorValue * 
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
-
+  
+  infoMsg(IM::High-1,"Clique state space = %d.\n",numCliqueValuesUsed);
 
   // first check if this is an all observed clique.
   if (origin.hiddenNodes.size() == 0) {
@@ -3587,6 +3588,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // and we're done already. This was easy!
     return;
   }
+
 
   // TODO: have option where user can specify order of
   // these pruning options. BKM
