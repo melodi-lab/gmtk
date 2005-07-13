@@ -22,6 +22,16 @@
 #include "GMTK_CPT.h"
 #include "GMTK_DiscRV.h"
 
+/*-
+ *-----------------------------------------------------------------------
+ * Function LatticeEdgeCPT::LatticeEdgeCPT
+ *      Default constructor.
+ *
+ * Results:
+ *      None.
+ *
+ *-----------------------------------------------------------------------
+ */
 LatticeEdgeCPT::LatticeEdgeCPT() : CPT(di_LatticeEdgeCPT), _latticeAdt(NULL) {
 	// some values are fixed
 	_numParents = 2;
@@ -29,13 +39,35 @@ LatticeEdgeCPT::LatticeEdgeCPT() : CPT(di_LatticeEdgeCPT), _latticeAdt(NULL) {
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * Function LatticeEdgeCPT::~LatticeEdgeCPT
+ *      Default destructor.
+ *
+ * Results:
+ *      None.
+ *-----------------------------------------------------------------------
+ */
 LatticeEdgeCPT::~LatticeEdgeCPT() {
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * Function LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin
+ *      Begin an iterator with the parents values known.
+ *
+ * Results:
+ *      None.
+ *-----------------------------------------------------------------------
+ */
 void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
 	LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
-	assert(outEdge != NULL);
+	if ( outEdge == NULL ) {
+		// this should report an error because I have set prob in
+		// latticeNodeCPT to zero.
+		error("Error: lattice edge CPT is not synchronized with node cpt");
+	}
 
 	it.drv = drv;
 	drv->val = outEdge->emissionId;
@@ -43,6 +75,16 @@ void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * Function LatticeEdgeCPT::probGivenParents
+ *      Get probability with parents and child value known.
+ *
+ * Results:
+ *      Probability.
+ *
+ *-----------------------------------------------------------------------
+ */
 logpr LatticeEdgeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
 	LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
 	if ( outEdge == NULL || outEdge->emissionId != drv->val ) {
@@ -53,14 +95,31 @@ logpr LatticeEdgeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * Function LatticeEdgeCPT::next
+ *      Advance an iterator.
+ *
+ * Results:
+ *      Always return false since this is a deterministic mapping.
+ *-----------------------------------------------------------------------
+ */
 bool LatticeEdgeCPT::next(iterator &it, logpr& p) {
 	return false;
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * Function LatticeEdgeCPT::setLatticeADT
+ *      Set the lattice adt.
+ *
+ * Results:
+ *      None.
+ *-----------------------------------------------------------------------
+ */
 void LatticeEdgeCPT::setLatticeADT(const LatticeADT &latticeAdt) {
         _latticeAdt = &latticeAdt;
         cardinalities[0] = cardinalities[1] = _latticeAdt->_nodeCardinality;
 	_card = _latticeAdt->_wordCardinality;
 }
-

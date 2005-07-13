@@ -248,6 +248,7 @@ public:
   ///////////////////////////////////
   // Collection of Lattice CPTs
   vector<LatticeADT*> latticeAdts;
+  vector<LatticeADT*> iterableLatticeAdts;
   ObjectMapType latticeAdtsMap;
   void add(LatticeADT*);
   vector<LatticeNodeCPT*> latticeNodeCpts;
