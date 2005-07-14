@@ -1155,6 +1155,8 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 		// the front, so we'll just pretend we did
 		wxCommandEvent dummy;
 		OnNotebookPageChanged(dummy);
+	} else{
+		delete page;
 	}
 }
 
