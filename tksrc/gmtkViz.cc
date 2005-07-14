@@ -254,6 +254,7 @@ class StructPage: public wxScrolledWindow
 			void deleteSelectedCps( void );
 			bool crossesNode( wxCoord x0, wxCoord x1 );
 			bool crossesFrameEnd( wxCoord x0, wxCoord x1 );
+			bool nameTagcrossesFrameEnd( wxCoord x0, wxCoord x1 );
 			bool inBounds( wxCoord x, wxCoord y );
 			int nodeUnderPt(wxPoint pt);
 
@@ -4150,6 +4151,34 @@ StructPage::crossesFrameEnd( wxCoord x0, wxCoord x1 )
 
 /**
  *******************************************************************
+ * Determines when moving an name tag from x position
+ * \p x0 to x position \p x1 would cross a frame separator and should
+ * therefor be prevented.
+ *
+ * \pre The StructPage (and in particular the vector of frame
+ * separators) should be fully initialized.
+ *
+ * \post No real changes.
+ *
+ * \note No side effects.
+ *
+ * \return \c true if the movement would get too close to a frame
+ * separator and should therefor be prevented, or \c false if the
+ * movement should be fine.
+ *******************************************************************/
+bool
+StructPage::nameTagcrossesFrameEnd( wxCoord x0, wxCoord x1 )
+{
+	for (unsigned int i = 0; i < frameEnds.size(); i++) {
+		if ((x0<frameEnds[i]->x != x1<frameEnds[i]->x) ||
+				(x0>frameEnds[i]->x != x1>frameEnds[i]->x))
+			return true;
+	}
+	return false;
+}
+
+/**
+ *******************************************************************
  * Determines whether the given point is in the drawing area or
  * not. (If not a move to this position shouldn't be allowed.)
  *
@@ -4263,8 +4292,11 @@ StructPage::moveNodeNameTag( int i, int dx, int dy )
 {
 	if ( inBounds( nodeNameTags[i]->pos.x + dx,
 				nodeNameTags[i]->pos.y + dy ) ) {
-		if ( !crossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
-					nodeNameTags[i]->pos.x + NODE_RADIUS+dx ) )
+		//Would be nice if the point was centered and we didn't use NODE_RADIUS
+		//but since fonts can change the size of the nametag maybe this is the
+		//best we can do for now
+		if ( !nameTagcrossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
+					nodeNameTags[i]->pos.x + NODE_RADIUS + dx ) )
 			nodeNameTags[i]->pos.x += dx;
 		nodeNameTags[i]->pos.y += dy;
 	}
