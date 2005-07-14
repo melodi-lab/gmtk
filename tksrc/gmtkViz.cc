@@ -41,6 +41,7 @@
 //needed for stat
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <wx/filename.h>
 
@@ -110,6 +111,10 @@ class StructPage: public wxScrolledWindow
 				const wxString &file, bool old = true);
 		// destructor
 		~StructPage();
+
+		//make sure that the data parsed ok
+		bool parsedSucessfully() {return data_parsed;}
+		
 		// some event handlers
 		void OnPaint( wxPaintEvent &event );
 		void OnChar( wxKeyEvent &event );
@@ -290,6 +295,7 @@ class StructPage: public wxScrolledWindow
 			int firstEpilogueFrame;
 			int numFrames;
 			wxPoint mouse_pos;	//the mouse position
+			bool data_parsed; //indicates if the str file parsed or not
 };
 
 
@@ -1136,17 +1142,20 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 	// This will add itself to the notebook and be destroyed when
 	// the notebook is destroyed.
 	StructPage *page = new StructPage( struct_notebook, -1, this,
-					   struct_notebook, fileName, gvpFormat );
-	int w, h;
-	GetSize(&w, &h);
-	SetSize( w<page->getWidth()/ACTUAL_SCALE+25 ?
-		 page->getWidth()/ACTUAL_SCALE+25 : w,
-		 h<page->getHeight()/ACTUAL_SCALE+100 ?
-		 page->getHeight()/ACTUAL_SCALE+100 : h );
-	// We won't get an event for this new notebook page coming to
-	// the front, so we'll just pretend we did
-	wxCommandEvent dummy;
-	OnNotebookPageChanged(dummy);
+			struct_notebook, fileName, gvpFormat );
+	//see if we've parsed sucessfully
+	if (page->parsedSucessfully()){
+		int w, h;
+		GetSize(&w, &h);
+		SetSize( w<page->getWidth()/ACTUAL_SCALE+25 ?
+			 page->getWidth()/ACTUAL_SCALE+25 : w,
+			 h<page->getHeight()/ACTUAL_SCALE+100 ?
+			 page->getHeight()/ACTUAL_SCALE+100 : h );
+		// We won't get an event for this new notebook page coming to
+		// the front, so we'll just pretend we did
+		wxCommandEvent dummy;
+		OnNotebookPageChanged(dummy);
+	}
 }
 
 /**
@@ -2652,6 +2661,8 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	  labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL, wxNORMAL),
 	  boundingBoxPen(*wxBLACK_PEN)
 {
+	//since we haven't parsed the data yet we mark it false
+	data_parsed = false;
 	// This is used later to update the status bar
 	this->parentFrame = parentFrame;
 	// We add ourselves to this
@@ -2713,18 +2724,18 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	wxToolTip::SetDelay(250);
 	wxToolTip::Enable(drawToolTips);
 
-	// mangle the name and set the tab title and status bar
-	int beginning, ending;
-	if ( (beginning = file.rfind('/') + 1) < 1 )
-		beginning = 0;
-	ending = file.rfind(wxT(".str"));
-	if (ending <= beginning)
-		ending = file.rfind(wxT(".gvp"));
-	if (ending <= beginning)
-		ending = file.size();
-	parentNotebook->InsertPage(parentNotebook->GetPageCount(),
-				   this, file.substr(beginning, ending-beginning),
-				   true);
+//	// mangle the name and set the tab title and status bar
+//	int beginning, ending;
+//	if ( (beginning = file.rfind('/') + 1) < 1 )
+//		beginning = 0;
+//	ending = file.rfind(wxT(".str"));
+//	if (ending <= beginning)
+//		ending = file.rfind(wxT(".gvp"));
+//	if (ending <= beginning)
+//		ending = file.size();
+//	parentNotebook->InsertPage(parentNotebook->GetPageCount(),
+//				   this, file.substr(beginning, ending-beginning),
+//				   true);
 
 	/* If this was specified as "old" then the file is a gvp file so
 	 * we should populate the config map with info from that.
@@ -2792,96 +2803,164 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		} 
 		
 		if (strFile_valid) {
-			// load up the structure file
-			fp = new FileParser(tempFileName, cppCommandOptions);
 
-			// XXX: prevent this from crashing with parse error
-			// parse the file
-			fp->parseGraphicalModel();
-			// create the rv variable objects
-			fp->createRandomVariableGraph();
-			// ensure no loops in graph for all possible unrollings.
-			fp->ensureValidTemplate();
+			/*
+			 * Here we fork.
+			 * We fork to see if we can parse the data, if we are sucessful then we
+			 * parse it again, if not (if the child doesn't exit correctly) then we
+			 * print an error and exit.
+			 *
+			 * XXX:
+			 * Later this should be replaced with exceptions, this would be quite
+			 * simple, all you'd have to keep would be the sucessful return from
+			 * fork statment (but wrap it in a try), and the else statment [when
+			 * the child doesn't exit sucessfully] would be the catch statement
+			 */
+			pid_t pid;
+			if ( (pid = fork()) < 0) {
+				//cannot fork
+				wxString msg;
+				msg.sprintf(
+						"Could not fork so we cannot make sure that we can parse the data\n"
+						"without crashing so we will not parse it at all.");
+				wxLogMessage(msg);
+			} else if (pid == 0) {
+				//the child
+				// load up the structure file
+				fp = new FileParser(tempFileName, cppCommandOptions);
+				// parse the file
+				fp->parseGraphicalModel();
+				// create the rv variable objects
+				fp->createRandomVariableGraph();
+				// ensure no loops in graph for all possible unrollings.
+				fp->ensureValidTemplate();
+				//the fp is of no good to the parent, ditch it
+				delete fp;
+				fp = NULL;
+				_exit(0);	//sucess
+			} else {
+				int status;
+				//the parent
+				waitpid(pid, &status, 0);
+				if(WEXITSTATUS(status) == 0){
+					//exited sucessfully
+					// load up the structure file
+					fp = new FileParser(tempFileName, cppCommandOptions);
 
-			// XXX: verify that the str and gvp files go together
-			// make up initial positions for the nodes
-			initNodes();
-			if ( frameEnds.size() ) {
-				if ( frameEnds[0]->sepType == VizSep::PROLOGUE ||
-						frameEnds[0]->sepType == VizSep::BEGIN_CHUNK )
-					frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
-									10*ACTUAL_SCALE), wxT("frame 0 (P)")));
-				else
-					frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
-									10*ACTUAL_SCALE), wxT("frame 0 (C)")));
-			}
-			for (unsigned int i = 0; i < frameEnds.size(); i++) {
-				char partition;
-				wxString label;
-				if ( frameEnds[i]->sepType == VizSep::PROLOGUE )
-					partition = 'P';
-				else if ( frameEnds[i]->sepType == VizSep::BEGIN_CHUNK ||
-						frameEnds[i]->sepType == VizSep::CHUNK )
-					partition = 'C';
-				else 
-					partition = 'E';
-				label.sprintf("frame %d (%c)", i+1, partition);
-				frameNameTags.push_back(new NameTag( wxPoint( frameEnds[i]->x +
-								10*ACTUAL_SCALE,
-								10*ACTUAL_SCALE ),
-							label ));
-			}
-			wxString key, value;
-			for (unsigned int i = 0; i < frameNameTags.size(); i++) {
-				// move the nametag, if requested
-				// x
-				key.sprintf( "frames[%d].nametag.pos.x", i );
-				value = config[key];
-				if (value != wxEmptyString) {
-					long xPos;
-					if (value.ToLong(&xPos)) {
-						frameNameTags[i]->pos.x = xPos;
-					} else {
-						wxString msg;
-						msg.sprintf("frames[%d].nametag.pos.x is not a number", i);
-						wxLogMessage(msg);
-						gvpAborted = true;
+
+					// XXX: prevent this from crashing with parse error
+					// parse the file
+					fp->parseGraphicalModel();
+					// create the rv variable objects
+					fp->createRandomVariableGraph();
+					// ensure no loops in graph for all possible unrollings.
+					fp->ensureValidTemplate();
+
+					// XXX: verify that the str and gvp files go together
+					// make up initial positions for the nodes
+					initNodes();
+					if ( frameEnds.size() ) {
+						if ( frameEnds[0]->sepType == VizSep::PROLOGUE ||
+								frameEnds[0]->sepType == VizSep::BEGIN_CHUNK )
+							frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
+											10*ACTUAL_SCALE), wxT("frame 0 (P)")));
+						else
+							frameNameTags.push_back(new NameTag(wxPoint(10*ACTUAL_SCALE,
+											10*ACTUAL_SCALE), wxT("frame 0 (C)")));
 					}
-				}
-				// y
-				key.sprintf( "frames[%d].nametag.pos.y", i );
-				value = config[key];
-				if (value != wxEmptyString) {
-					long yPos;
-					if (value.ToLong(&yPos)) {
-						frameNameTags[i]->pos.y = yPos;
-					} else {
-						wxString msg;
-						msg.sprintf("frames[%d].nametag.pos.y is not a number", i);
-						wxLogMessage(msg);
-						gvpAborted = true;
+					for (unsigned int i = 0; i < frameEnds.size(); i++) {
+						char partition;
+						wxString label;
+						if ( frameEnds[i]->sepType == VizSep::PROLOGUE )
+							partition = 'P';
+						else if ( frameEnds[i]->sepType == VizSep::BEGIN_CHUNK ||
+								frameEnds[i]->sepType == VizSep::CHUNK )
+							partition = 'C';
+						else 
+							partition = 'E';
+						label.sprintf("frame %d (%c)", i+1, partition);
+						frameNameTags.push_back(new NameTag( wxPoint( frameEnds[i]->x +
+										10*ACTUAL_SCALE,
+										10*ACTUAL_SCALE ),
+									label ));
 					}
-				}
-				// visibility
-				key.sprintf( "frames[%d].nametag.visible", i );
-				value = config[key];
-				if (value != wxEmptyString) {
-					long visible;
-					if (value.ToLong(&visible) && (visible == true || visible == false)) {
-						frameNameTags[i]->visible = visible;
-					} else {
-						wxString msg;
-						msg.sprintf( "frames[%d].nametag.visible is not a number 0 or 1", i);
-						wxLogMessage(msg);
-						gvpAborted = true;
+					wxString key, value;
+					for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+						// move the nametag, if requested
+						// x
+						key.sprintf( "frames[%d].nametag.pos.x", i );
+						value = config[key];
+						if (value != wxEmptyString) {
+							long xPos;
+							if (value.ToLong(&xPos)) {
+								frameNameTags[i]->pos.x = xPos;
+							} else {
+								wxString msg;
+								msg.sprintf("frames[%d].nametag.pos.x is not a number", i);
+								wxLogMessage(msg);
+								gvpAborted = true;
+							}
+						}
+						// y
+						key.sprintf( "frames[%d].nametag.pos.y", i );
+						value = config[key];
+						if (value != wxEmptyString) {
+							long yPos;
+							if (value.ToLong(&yPos)) {
+								frameNameTags[i]->pos.y = yPos;
+							} else {
+								wxString msg;
+								msg.sprintf("frames[%d].nametag.pos.y is not a number", i);
+								wxLogMessage(msg);
+								gvpAborted = true;
+							}
+						}
+						// visibility
+						key.sprintf( "frames[%d].nametag.visible", i );
+						value = config[key];
+						if (value != wxEmptyString) {
+							long visible;
+							if (value.ToLong(&visible) && (visible == true || visible == false)) {
+								frameNameTags[i]->visible = visible;
+							} else {
+								wxString msg;
+								msg.sprintf( "frames[%d].nametag.visible is not a number 0 or 1", i);
+								wxLogMessage(msg);
+								gvpAborted = true;
+							}
+						}
 					}
+					initArcs();
+					// At this point we no longer need the file parser, and since it
+					// uses global variables, we can't have more than one. Thus, we
+					// delete it now, rather than later.
+					delete fp;
+					
+					// mangle the name and set the tab title and status bar
+					int beginning, ending;
+					if ( (beginning = file.rfind('/') + 1) < 1 )
+						beginning = 0;
+					ending = file.rfind(wxT(".str"));
+					if (ending <= beginning)
+						ending = file.rfind(wxT(".gvp"));
+					if (ending <= beginning)
+						ending = file.size();
+					//actually make the page since we parsed the data
+					parentNotebook->InsertPage(parentNotebook->GetPageCount(),
+							this, file.substr(beginning, ending-beginning),
+							true);
+					//indicate that we parsed sucessfully
+					data_parsed = true;
+				} else {
+					//exited on error or crashed
+					wxString msg;
+					msg.sprintf(
+							"Could not parse the strFile: \"%s\"\n"
+							"so we cannot load it, check the terminal output for more data",
+							strFile_cstr);
+					wxLogMessage(msg);
 				}
 			}
-			initArcs();
-			// At this point we no longer need the file parser, and since it
-			// uses global variables, we can't have more than one. Thus, we
-			// delete it now, rather than later.
-			delete fp;
 		} else {
 			//we don't have a valid strfile
 			wxString msg;
