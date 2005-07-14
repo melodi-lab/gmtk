@@ -185,6 +185,7 @@ class StructPage: public wxScrolledWindow
 		bool getViewFrameNames( void ) { return drawFrameNames; }
 		bool getViewToolTips( void ) { return drawToolTips; }
 		bool getViewBoundingBox( void ) { return drawBoundingBox; }
+		bool getViewSelectBox( void ) { return drawSelectBox; }
 
 		// toggle drawing ...
 		void toggleViewCPs( void );
@@ -199,6 +200,7 @@ class StructPage: public wxScrolledWindow
 		void toggleViewFrameNames( void );
 		void toggleViewToolTips( void );
 		void toggleViewBoundingBox( void );
+		void toggleViewSelectBox( void );
 
 		void hideSelectedLabels( void );
 		void showAllNodeLabels( void );
@@ -1356,6 +1358,7 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 		// get a title for the printout
 		wxString name;
 		curPage->getName(name);
+			
 		/* Pass two printout objects: for preview, and possible
 		 * printing. The printout object is what does much of the
 		 * work. It in turn calls the StructPage's draw() method to do
@@ -5134,7 +5137,7 @@ StructPage::draw( wxDC& dc )
 	for (int i = 0; i < numNodes; i++) {
 		for (int j = 0; j < numNodes; j++) {
 			if (arcs[i][j])
-			arcs[i][j]->draw(&dc, VizArc::DRAW_CPS);
+				arcs[i][j]->draw(&dc, VizArc::DRAW_CPS);
 		}
 	}
 
@@ -5950,6 +5953,29 @@ void
 StructPage::toggleViewBoundingBox( void )
 {
 	drawBoundingBox = !drawBoundingBox;
+	redraw();
+	blit();
+}
+/**
+ *******************************************************************
+ * Toggle whether select box is drawn and redrawn.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post Whether select box will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \note Whether select box will be drawn or not will be toggled
+ * and the screen will be refreshed.
+ *
+ * \remark
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::toggleViewSelectBox( void )
+{
+	drawSelectBox= !drawSelectBox;
 	redraw();
 	blit();
 }
@@ -6915,8 +6941,26 @@ GmtkPrintout::DrawPageOne(wxDC *dc)
 	//wxFont scaledFont(oldFont);
 	//scaledFont.SetPointSize((int)(actualScale*oldFont.GetPointSize()));
 	//dc->SetFont(scaledFont);
-	
+
+	//turn off controlpts and selectBox if they're viewable
+	bool had_view_cps = page->getViewCPs();
+	if(had_view_cps)
+		page->toggleViewCPs();
+	bool had_view_select_box = page->getViewSelectBox();
+	if(had_view_select_box)
+		page->toggleViewSelectBox();
+
+	//deselect everything
+	page->setAllSelected(false);
+
 	page->draw(*dc);
+
 	//dc->SetFont(oldFont);
+	
+	//revert to the previous settings with the controlpts and selectBox
+	if(had_view_cps)
+		page->toggleViewCPs();
+	if(had_view_select_box)
+		page->toggleViewSelectBox();
 }
 
