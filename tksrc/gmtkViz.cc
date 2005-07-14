@@ -461,6 +461,7 @@ public:
 		MENU_FILE_PRINT_EPS,
 		MENU_FILE_CLOSE,
 		MENU_FILE_EXIT,
+	MENU_EDIT_SELECTALL,
 	MENU_EDIT_SNAPTOGRID,
 	MENU_EDIT_CANVASWIDTH,
 	MENU_EDIT_CANVASHEIGHT,
@@ -603,6 +604,7 @@ public:
 	 */
 	void OnClose(wxCloseEvent &event);
 
+	void OnMenuEditSelectAll(wxCommandEvent &event);
 	void OnMenuEditSnaptogrid(wxCommandEvent &event);
 	void OnMenuEditCanvaswidth(wxCommandEvent &event);
 	void OnMenuEditCanvasheight(wxCommandEvent &event);
@@ -800,6 +802,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
 	// The Edit menu
 	wxMenu* menu_edit = new wxMenu();
+	menu_edit->Append(MENU_EDIT_SELECTALL, wxT("Select All\tCtrl+A"), wxT("Select Everything that is Selectable"), wxITEM_NORMAL);
 	menu_edit->Append(MENU_EDIT_SNAPTOGRID, wxT("Snap To Grid"), wxT("Toggle whether items snap to the grids when they are moved"), wxITEM_CHECK);
 	menu_edit->Append(MENU_EDIT_CANVASWIDTH, wxT("Canvas Width..."), wxT("Adjust the width of the canvas"), wxITEM_NORMAL);
 	menu_edit->Append(MENU_EDIT_CANVASHEIGHT, wxT("Canvas Height..."), wxT("Adjust the height of the canvas"), wxITEM_NORMAL);
@@ -1094,6 +1097,7 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_FILE_PRINT_EPS, GFrame::OnMenuFilePrintEPS)
 	EVT_MENU(MENU_FILE_CLOSE, GFrame::OnMenuFileClose)
 	EVT_MENU(MENU_FILE_EXIT, GFrame::OnMenuFileExit)
+	EVT_MENU(MENU_EDIT_SELECTALL, GFrame::OnMenuEditSelectAll)
 	EVT_MENU(MENU_EDIT_SNAPTOGRID, GFrame::OnMenuEditSnaptogrid)
 	EVT_MENU(MENU_EDIT_CANVASWIDTH, GFrame::OnMenuEditCanvaswidth)
 	EVT_MENU(MENU_EDIT_CANVASHEIGHT, GFrame::OnMenuEditCanvasheight)
@@ -1594,6 +1598,39 @@ GFrame::OnClose(wxCloseEvent& event)
 	// if we didn't abort (weren't cancelled), then destroy the frame
 	if ( destroy ) {
 		Destroy();
+	}
+}
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * select all of its selectable items.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *	  in case it isn't, so everything should be fine as long as the
+ *	  program is fully initialized.
+ *
+ * \post If a StructPage was in front, then all of its selectable items
+ * will be selected
+ *
+ * \note If a StructPage was in front, then all of its selectable items
+ * will be selected
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuEditSelectAll(wxCommandEvent &event)
+{
+	// figure out which page this is for and pass the buck
+	int curPageNum = struct_notebook->GetSelection();
+	StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+	// If it couldn't be casted to a StructPage, then curPage will be NULL.
+	if (curPage){
+		curPage->setAllSelected(true);
+		curPage->redraw();
+		curPage->blit();
 	}
 }
 
