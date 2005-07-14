@@ -38,7 +38,7 @@ enum {
 };
 
 
-#define MAXSTRLEN 1024 // max length of input file name
+#define MAXSTRLEN (16*1024) // max length of input file name
 #define MAXFRAMES 400  // initial data buffer size (in frames)
 
 #define BASEMASK  077 // Mask to remove HTK par. kind qualifiers 
