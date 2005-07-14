@@ -278,8 +278,8 @@ size_t StreamInfo::readFof(FILE *f) {
     if(line[0]==CPP_DIRECTIVE_CHAR) continue;
     if (line[l-1] != '\n') {
       if (n_lines < numFileNames-1) 
-	error("StreamInfo::readFof: line %i too long in file '%s' - increase MAXSTRLEN\n",
-	      n_lines+1,fofName);
+	error("StreamInfo::readFof: line %i too long in file '%s' - increase MAXSTRLEN (currently set to %d) or decrease your line lengths.\n",
+	      n_lines+1,fofName,MAXSTRLEN);
     }
     else
       line[l-1] = '\0';
