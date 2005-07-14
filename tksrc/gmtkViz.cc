@@ -2644,7 +2644,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 			   const wxString &file, bool old)
 	: wxScrolledWindow( parent, id, wxDefaultPosition, wxDefaultSize,
 			wxSUNKEN_BORDER | wxTAB_TRAVERSAL, _T("") ),
-	  switchingPen(*wxCYAN_PEN), conditionalPen(*wxBLACK_PEN),
+	  switchingPen(*wxBLUE,1,wxSOLID), conditionalPen(*wxBLACK_PEN),
 	  bothPen(*wxRED_PEN), frameBorderPen(*wxLIGHT_GREY_PEN),
 	  chunkBorderPen(*wxBLACK_PEN), controlPointPen(*wxRED_PEN),
 	  nodePen(*wxBLACK_PEN), gridPen(*wxLIGHT_GREY_PEN), 
