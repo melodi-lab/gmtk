@@ -45,6 +45,8 @@
 #include <unistd.h>
 #include <wx/filename.h>
 
+#include <wx/html/helpctrl.h>
+
 // Apprently these are needed in order to do anything with gmtk (even
 // if you don't actually use them).
 #include "GMTK_GMParms.h"
@@ -119,6 +121,7 @@ class StructPage: public wxScrolledWindow
 		void OnPaint( wxPaintEvent &event );
 		void OnChar( wxKeyEvent &event );
 		void OnMouseEvent( wxMouseEvent &event );
+		void popUpNodeInfo(wxPoint);
 
 		// pseudo event handlers: GFrame calls these.
 		void Save( void );
@@ -426,7 +429,6 @@ public:
 	virtual bool inRect( const wxRect& rect ) { return false; }
 };
 
-
 /// This is what wxWidgets uses for printing, previewing, etc.
 class GmtkPrintout : public wxPrintout {
 public:
@@ -467,6 +469,7 @@ public:
 	MENU_EDIT_CANVASHEIGHT,
 	MENU_EDIT_COPYFRAMELAYOUT,
 	MENU_EDIT_COPYPARTITIONLAYOUT,
+	MENU_HELP,
 	MENU_VIEW_HIDELABELS,
 	MENU_VIEW_SHOW_NODE_LABELS,
 	MENU_VIEW_SHOW_FRAME_LABELS,
@@ -611,6 +614,8 @@ public:
 	void OnMenuEditCopyframelayout(wxCommandEvent &event);
 	void OnMenuEditCopypartitionlayout(wxCommandEvent &event);
 
+	void OnMenuHelp(wxCommandEvent &event);
+
 	// Handle events from the View menu to toggle drawing various items
 	void OnMenuViewHideLabels(wxCommandEvent &event);
 	void OnMenuViewShowNodeLabels(wxCommandEvent &event);
@@ -646,6 +651,8 @@ private:
 	// places to keep the print and page setup settings
 	wxPrintData printData;
 	wxPageSetupData pageSetupData;
+
+	wxHtmlHelpController * helpWindow;
 
 protected:
 	// the widgets associated with this GFrame
@@ -1001,6 +1008,12 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 				wxT("Bounding Box Pen"),
 				menu_customize_bounding_box );
 	MainVizWindow_menubar->Append(menu_customize, wxT("Customize"));
+
+	// The Help menu
+	wxMenu* help_menu = new wxMenu();
+	help_menu->Append(MENU_HELP, wxT("Help"), wxT("Pop Up the Help Info Window"), wxITEM_NORMAL);
+	MainVizWindow_menubar->Append(help_menu, wxT("Help"));
+	
 	// Again, needs a document to make sense.
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
 
@@ -1016,6 +1029,22 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	// arrange the About tab and add it to the notebook
 	do_layout();
 
+	//create the Help Window
+	helpWindow = new wxHtmlHelpController;
+#if 0
+	//this is turned off for now until we can find a good place to put the help
+	//docs and let gmtkviz know where they are
+	//so for now help will be empty
+	if (getenv("GMTKVIZ_HELP_DIR") != NULL){
+		wxString help_loc = getenv("GMTKVIZ_HELP_DIR");
+		help_loc.append("/gmtkvizhelp.hhp");
+		helpWindow->AddBook(help_loc);
+	} else {
+		cout << "The Help System for gmtkViz currently requires that\n"
+		  "you set an enviroment variable \"GMTKVIZ_HELP_DIR\" to the location\n"
+		  "of the gmtkViz help docs, (ie ~/gmtk/gmtk_dev/tksrc/doc/)\n";
+	}
+#endif
 }
 
 /**
@@ -1103,6 +1132,7 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_EDIT_CANVASHEIGHT, GFrame::OnMenuEditCanvasheight)
 	EVT_MENU(MENU_EDIT_COPYFRAMELAYOUT, GFrame::OnMenuEditCopyframelayout)
 	EVT_MENU(MENU_EDIT_COPYPARTITIONLAYOUT, GFrame::OnMenuEditCopypartitionlayout)
+	EVT_MENU(MENU_HELP, GFrame::OnMenuHelp)
 	EVT_MENU(MENU_VIEW_HIDELABELS, GFrame::OnMenuViewHideLabels)
 	EVT_MENU(MENU_VIEW_SHOW_NODE_LABELS, GFrame::OnMenuViewShowNodeLabels)
 	EVT_MENU(MENU_VIEW_SHOW_FRAME_LABELS, GFrame::OnMenuViewShowFrameLabels)
@@ -1799,6 +1829,27 @@ GFrame::OnMenuEditCopypartitionlayout(wxCommandEvent &event)
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage)
 		curPage->copyPartitionLayout();
+}
+
+
+/**
+ *******************************************************************
+ * Pop Up the Help Window
+ *
+ * \param event Ignored.
+ *
+ * \pre The GFrame Should Be fully Initialized.
+ *
+ * \post A Window will pop Up with Help info.
+ *
+ * \note
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuHelp(wxCommandEvent &event)
+{
+	helpWindow->DisplayContents();
 }
 
 /**
@@ -3670,6 +3721,8 @@ StructPage::OnChar( wxKeyEvent &event )
 				blit();
 			}
 		}
+	} else if (event.m_keyCode == 'i'){
+		popUpNodeInfo(mouse_pos);
 	} else {
 		event.Skip();
 	}
@@ -3917,182 +3970,8 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			}
 		}
 	} else if (event.MiddleDown()){
-		//print information about a node and it's parents
-		wxString message;
-		int i = nodeUnderPt(pt);	//find a node under point pt
-		//if we're on a node
-		if(0 <= i) {
-			//name
-			message = "Name: ";
-			message.append(nodes[i]->nametag.name);
-			message.append("\n");
-			message.append(wxString::Format("Frame: %d\n", nodes[i]->rvId.second));
-			//type
-			message.append("Type: ");
-			switch (nodes[i]->rvi->rvType){
-				case RVInfo::t_discrete:
-					message.append("discrete\n");
-					break;
-				case RVInfo::t_continuous:
-					message.append("continuous\n");
-					break;
-				default:
-					message.append("unknown\n");
-			}
-
-			//disposition
-			message.append("Disposition: ");
-			switch (nodes[i]->rvi->rvType){
-				case RVInfo::d_hidden:
-					message.append("hidden\n");
-					break;
-				case RVInfo::d_observed:
-					message.append("observed\n");
-					break;
-				default:
-					message.append("unknown\n");
-			}
-
-			//cardinality
-			message.append(wxString::Format("Cardinality: %d\n",nodes[i]->rvi->rvCard));
-
-			//switching parents
-			if (nodes[i]->rvi->switchingParents.size() > 0){
-				for (unsigned int j = 0; j < nodes[i]->rvi->switchingParents.size(); j++){
-					message.append("Switching Parent: ");
-					message.append(nodes[i]->rvi->switchingParents[j].first.c_str());
-					message.append("(");
-					message.append(wxString::Format("%d", nodes[i]->rvi->switchingParents[j].second));
-					message.append(")");
-					message.append(" using ");
-
-					//mappings
-					message.append(" mapping(\"");
-					switch(nodes[i]->rvi->switchMapping.liType){
-						case RVInfo::ListIndex::li_String :
-							message.append(nodes[i]->rvi->switchMapping.nameIndex.c_str());
-							break;
-						case RVInfo::ListIndex::li_Index :
-							message.append(wxString::Format("%d", nodes[i]->rvi->switchMapping.intIndex));
-							break;
-						default:
-							message.append("unknown");
-					}
-					message.append("\")\n");
-				}
-			} else
-				message.append("Switching Parents: nil\n");
-
-			//conditional parents
-			if (nodes[i]->rvi->conditionalParents.size() > 0){
-				message.append("Conditional Parents: ");
-				for (unsigned int j = 0; j < nodes[i]->rvi->conditionalParents.size(); j++){
-					if (nodes[i]->rvi->conditionalParents[j].size() == 0)
-						message.append("nil");
-					for (unsigned int k = 0; k < nodes[i]->rvi->conditionalParents[j].size(); k++){
-						message.append(nodes[i]->rvi->conditionalParents[j][k].first.c_str());
-						message.append("(");
-						message.append(wxString::Format("%d", nodes[i]->rvi->conditionalParents[j][k].second));
-						message.append(")");
-						if (k != nodes[i]->rvi->conditionalParents[j].size() - 1)
-							message.append(", ");
-					}
-					message.append(" using ");
-					//discrete implementations
-					if (nodes[i]->rvi->rvType == RVInfo::t_discrete){
-						switch (nodes[i]->rvi->discImplementations[j]){
-							case CPT::di_MDCPT: 
-								message.append("DenseCPT");
-								break;
-							case CPT::di_MSCPT: 
-								message.append("SparseCPT");
-								break;
-							case CPT::di_MTCPT: 
-								message.append("DeterministicCPT");
-								break;
-							case CPT::di_USCPT: 
-								message.append("UnityScoreCPT");
-								break;
-							case CPT::di_NGramCPT: 
-								message.append("Ngram\"languagemodel\"CPT");
-								break;
-							case CPT::di_FNGramCPT: 
-								message.append("factoredngram\"languagemodel\"CPT");
-								break;
-							case CPT::di_VECPT:
-								message.append("VirtualEvidenceCPT");
-								break;
-							case CPT::di_LatticeNodeCPT:
-								message.append("latticenodeCPT");
-								break;
-							case CPT::di_LatticeEdgeCPT:	
-								message.append("latticeedgeCPT");
-								break;
-							default:
-								message.append("unknown");
-						}
-						//continuous implementations
-					} else if (nodes[i]->rvi->rvType == RVInfo::t_continuous){
-						switch (nodes[i]->rvi->contImplementations[j]){ 
-							case MixtureCommon::ci_unknown:
-								message.append("unknown");
-								break;
-							case MixtureCommon::ci_mixture:
-								message.append("mixture ");
-								break;
-							case MixtureCommon::ci_gausSwitchMixture:
-								message.append("gausSwitchMixGaussian");
-								break;
-							case MixtureCommon::ci_logitSwitchMixture:
-								message.append("logitSwitchMixGaussian");
-								break;
-							case MixtureCommon::ci_mlpSwitchMixture:
-								message.append("mlpSwitchMixGaussian");
-								break;
-							case MixtureCommon::ci_zeroScoreMixture:
-								message.append("zeroScoreMixGaussian");
-								break;
-							case MixtureCommon::ci_unityScoreMixture:
-								message.append("unityScoreMixGaussian");
-								break;
-							default:
-								message.append("unknown");
-						};
-					} else {
-						message.append("unknown");
-					}
-					//listIndices
-					if(nodes[i]->rvi->rvType == RVInfo::t_continuous){
-						if(nodes[i]->rvi->listIndices[j].collectionName != ""){
-							message.append("collection(\"");
-							message.append(nodes[i]->rvi->listIndices[j].collectionName.c_str());
-							message.append("\") ");
-						}
-						message.append("mapping");
-					}
-					switch(nodes[i]->rvi->listIndices[j].liType){
-						case RVInfo::ListIndex::li_String :
-							message.append("(\"");
-							message.append(nodes[i]->rvi->listIndices[j].nameIndex.c_str());
-							message.append("\")");
-							break;
-						case RVInfo::ListIndex::li_Index :
-							message.append(wxString::Format("(\"%d\")", nodes[i]->rvi->listIndices[j].intIndex));
-							break;
-						default:
-							message.append("(unknown)");
-					}
-
-					//if there are more parents [based on switching varaibles], print | between them
-					if (j != nodes[i]->rvi->conditionalParents.size() - 1)
-						message.append(" | ");
-				}
-			} else
-				message.append("Conditional Parents: nil");
-			new wxTipWindow(this, message, 500, NULL);
-		}
+		popUpNodeInfo(pt);
 	}
-
 	if ( screenDirty ) {
 		redraw();
 		blit();
@@ -4101,6 +3980,185 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 	// Anything else to be done?
 	event.Skip();
 }
+
+void
+StructPage::popUpNodeInfo(wxPoint pt){
+	//print information about a node and it's parents
+	wxString message;
+	int i = nodeUnderPt(pt);	//find a node under point pt
+	//if we're on a node
+	if(0 <= i) {
+		//name
+		message = "Name: ";
+		message.append(nodes[i]->nametag.name);
+		message.append("\n");
+		message.append(wxString::Format("Frame: %d\n", nodes[i]->rvId.second));
+		//type
+		message.append("Type: ");
+		switch (nodes[i]->rvi->rvType){
+			case RVInfo::t_discrete:
+				message.append("discrete\n");
+				break;
+			case RVInfo::t_continuous:
+				message.append("continuous\n");
+				break;
+			default:
+				message.append("unknown\n");
+		}
+
+		//disposition
+		message.append("Disposition: ");
+		switch (nodes[i]->rvi->rvType){
+			case RVInfo::d_hidden:
+				message.append("hidden\n");
+				break;
+			case RVInfo::d_observed:
+				message.append("observed\n");
+				break;
+			default:
+				message.append("unknown\n");
+		}
+
+		//cardinality
+		message.append(wxString::Format("Cardinality: %d\n",nodes[i]->rvi->rvCard));
+
+		//switching parents
+		if (nodes[i]->rvi->switchingParents.size() > 0){
+			for (unsigned int j = 0; j < nodes[i]->rvi->switchingParents.size(); j++){
+				message.append("Switching Parent: ");
+				message.append(nodes[i]->rvi->switchingParents[j].first.c_str());
+				message.append("(");
+				message.append(wxString::Format("%d", nodes[i]->rvi->switchingParents[j].second));
+				message.append(")");
+				message.append(" using ");
+
+				//mappings
+				message.append(" mapping(\"");
+				switch(nodes[i]->rvi->switchMapping.liType){
+					case RVInfo::ListIndex::li_String :
+						message.append(nodes[i]->rvi->switchMapping.nameIndex.c_str());
+						break;
+					case RVInfo::ListIndex::li_Index :
+						message.append(wxString::Format("%d", nodes[i]->rvi->switchMapping.intIndex));
+						break;
+					default:
+						message.append("unknown");
+				}
+				message.append("\")\n");
+			}
+		} else
+			message.append("Switching Parents: nil\n");
+
+		//conditional parents
+		if (nodes[i]->rvi->conditionalParents.size() > 0){
+			message.append("Conditional Parents: ");
+			for (unsigned int j = 0; j < nodes[i]->rvi->conditionalParents.size(); j++){
+				if (nodes[i]->rvi->conditionalParents[j].size() == 0)
+					message.append("nil");
+				for (unsigned int k = 0; k < nodes[i]->rvi->conditionalParents[j].size(); k++){
+					message.append(nodes[i]->rvi->conditionalParents[j][k].first.c_str());
+					message.append("(");
+					message.append(wxString::Format("%d", nodes[i]->rvi->conditionalParents[j][k].second));
+					message.append(")");
+					if (k != nodes[i]->rvi->conditionalParents[j].size() - 1)
+						message.append(", ");
+				}
+				message.append(" using ");
+				//discrete implementations
+				if (nodes[i]->rvi->rvType == RVInfo::t_discrete){
+					switch (nodes[i]->rvi->discImplementations[j]){
+						case CPT::di_MDCPT: 
+							message.append("DenseCPT");
+							break;
+						case CPT::di_MSCPT: 
+							message.append("SparseCPT");
+							break;
+						case CPT::di_MTCPT: 
+							message.append("DeterministicCPT");
+							break;
+						case CPT::di_USCPT: 
+							message.append("UnityScoreCPT");
+							break;
+						case CPT::di_NGramCPT: 
+							message.append("Ngram\"languagemodel\"CPT");
+							break;
+						case CPT::di_FNGramCPT: 
+							message.append("factoredngram\"languagemodel\"CPT");
+							break;
+						case CPT::di_VECPT:
+							message.append("VirtualEvidenceCPT");
+							break;
+						case CPT::di_LatticeNodeCPT:
+							message.append("latticenodeCPT");
+							break;
+						case CPT::di_LatticeEdgeCPT:	
+							message.append("latticeedgeCPT");
+							break;
+						default:
+							message.append("unknown");
+					}
+					//continuous implementations
+				} else if (nodes[i]->rvi->rvType == RVInfo::t_continuous){
+					switch (nodes[i]->rvi->contImplementations[j]){ 
+						case MixtureCommon::ci_unknown:
+							message.append("unknown");
+							break;
+						case MixtureCommon::ci_mixture:
+							message.append("mixture ");
+							break;
+						case MixtureCommon::ci_gausSwitchMixture:
+							message.append("gausSwitchMixGaussian");
+							break;
+						case MixtureCommon::ci_logitSwitchMixture:
+							message.append("logitSwitchMixGaussian");
+							break;
+						case MixtureCommon::ci_mlpSwitchMixture:
+							message.append("mlpSwitchMixGaussian");
+							break;
+						case MixtureCommon::ci_zeroScoreMixture:
+							message.append("zeroScoreMixGaussian");
+							break;
+						case MixtureCommon::ci_unityScoreMixture:
+							message.append("unityScoreMixGaussian");
+							break;
+						default:
+							message.append("unknown");
+					};
+				} else {
+					message.append("unknown");
+				}
+				//listIndices
+				if(nodes[i]->rvi->rvType == RVInfo::t_continuous){
+					if(nodes[i]->rvi->listIndices[j].collectionName != ""){
+						message.append("collection(\"");
+						message.append(nodes[i]->rvi->listIndices[j].collectionName.c_str());
+						message.append("\") ");
+					}
+					message.append("mapping");
+				}
+				switch(nodes[i]->rvi->listIndices[j].liType){
+					case RVInfo::ListIndex::li_String :
+						message.append("(\"");
+						message.append(nodes[i]->rvi->listIndices[j].nameIndex.c_str());
+						message.append("\")");
+						break;
+					case RVInfo::ListIndex::li_Index :
+						message.append(wxString::Format("(\"%d\")", nodes[i]->rvi->listIndices[j].intIndex));
+						break;
+					default:
+						message.append("(unknown)");
+				}
+
+				//if there are more parents [based on switching varaibles], print | between them
+				if (j != nodes[i]->rvi->conditionalParents.size() - 1)
+					message.append(" | ");
+			}
+		} else
+			message.append("Conditional Parents: nil");
+		new wxTipWindow(this, message, 500, NULL);
+	}
+}
+
 
 /**
  *******************************************************************
@@ -7113,4 +7171,3 @@ GmtkPrintout::DrawPageOne(wxDC *dc)
 	if(had_view_select_box)
 		page->toggleViewSelectBox();
 }
-
