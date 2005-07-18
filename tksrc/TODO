@@ -2741,8 +2741,8 @@ Wed Mar 16 18:01:22 2005
      - also have N-best viterbi EM training, training on the N-best list, weighted by normalized
        score.
   - also, allow sample training (where we sample from the posterior and train on that rather
-    than on all cases). N-sample training, sample N times. N-best training, train on
-    N-best.
+    than on all cases). N-sample training, sample N times. 
+  - N-best training, train on N-best, do this after N-best list has been created.
 
 Thu Mar 17 13:50:47 2005
   - add DT constraint leaf nodes: I.e.,
@@ -3092,4 +3092,13 @@ Wed Jul 13 13:32:06 2005
     - MLP-CPT
     - Logistic regression CPT
     - relational constraint CPT - same as directional constraint CPT.
+
+Sun Jul 17 19:10:28 2005
+  - added today, but from before:
+     add a boundary heuristic that adds edges corresponding to ancestral pairs
+     *before* running a size or weight based boundary search. After finding
+     a boundary, then remove edges so that triangulation can proceed as normal.
+     This way, the resulting partitions will more likely be such that
+     it will be possible for triangulation to find case where there are no
+     det. variables in clique w/o parents.
 
