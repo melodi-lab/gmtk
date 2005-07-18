@@ -3101,4 +3101,22 @@ Sun Jul 17 19:10:28 2005
      This way, the resulting partitions will more likely be such that
      it will be possible for triangulation to find case where there are no
      det. variables in clique w/o parents.
+  - In clique entries, have a mode where teh clique entries do not include the variables
+    that are deterministic functions of other variables in the clique. This will reduce
+    the width of the clique and if it spans a 32-bit boundary, could significantly reduce
+    memory requirements, especially when there are many large-cardinality deterministic RVs in a clique with
+    their parents. When iterating through a clique, we'll need to re-expand the
+    RVs associated with the clique entry with new RV routines, rv->setDetValueFromParents()
+    which is nil for non-det variables, and sets the value from the current parent value
+    for deterministic parents. 
+    Note, only should do this if packed reduce clique reduces so that we pass a 32-bit boundary,
+    as otherwise there will be no memory savings, and only a speed hit.
+    - do this for big separators also. 
+    - compare memory savings & speed increase with the use if island algorithm.
 
+
+
+
+
+
+    
