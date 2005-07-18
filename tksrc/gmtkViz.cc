@@ -32,6 +32,7 @@
 #include <wx/textfile.h>
 #include <wx/tooltip.h>
 #include <wx/tipwin.h>
+#include <wx/textctrl.h>
 #include <cassert>
 #include <cmath>
 #include <vector>
@@ -44,8 +45,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <wx/filename.h>
-
-#include <wx/html/helpctrl.h>
 
 // Apprently these are needed in order to do anything with gmtk (even
 // if you don't actually use them).
@@ -93,6 +92,7 @@ static const double gZoomMap[] = {
 
 //forward declarations of things that GFrame needs
 class wxgmtk1toManyDialog;
+class	GmtkHelp;
 
 // forward declarations of things StructPage needs
 class NameTag;
@@ -449,6 +449,25 @@ private:
 	StructPage *page;
 };
 
+//this class provides a simple help window for gmtkViz
+class GmtkHelp : public wxFrame {
+	public:
+		GmtkHelp(wxWindow* parent, wxWindowID id) : wxFrame(parent, id, "GmktViz Help", 
+				wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE,
+				"gmtkVizHelp") {}
+		void DisplayContents(void){Show(true); Raise();}
+		void doLayout();
+		DECLARE_EVENT_TABLE()
+	private:
+		void OnClose(wxCloseEvent &event){ Show(false); }
+};
+
+//event table for GmtkHelp
+BEGIN_EVENT_TABLE(GmtkHelp, wxFrame)
+	EVT_CLOSE(GmtkHelp::OnClose)
+	EVT_BUTTON(wxID_CLOSE, GmtkHelp::OnClose)
+END_EVENT_TABLE()
+
 /// This is the main window
 class GFrame: public wxFrame {
 public:
@@ -652,7 +671,7 @@ private:
 	wxPrintData printData;
 	wxPageSetupData pageSetupData;
 
-	wxHtmlHelpController * helpWindow;
+	GmtkHelp * helpWindow;
 
 protected:
 	// the widgets associated with this GFrame
@@ -1030,21 +1049,8 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	do_layout();
 
 	//create the Help Window
-	helpWindow = new wxHtmlHelpController;
-#if 0
-	//this is turned off for now until we can find a good place to put the help
-	//docs and let gmtkviz know where they are
-	//so for now help will be empty
-	if (getenv("GMTKVIZ_HELP_DIR") != NULL){
-		wxString help_loc = getenv("GMTKVIZ_HELP_DIR");
-		help_loc.append("/gmtkvizhelp.hhp");
-		helpWindow->AddBook(help_loc);
-	} else {
-		cout << "The Help System for gmtkViz currently requires that\n"
-		  "you set an enviroment variable \"GMTKVIZ_HELP_DIR\" to the location\n"
-		  "of the gmtkViz help docs, (ie ~/gmtk/gmtk_dev/tksrc/doc/)\n";
-	}
-#endif
+	helpWindow = new GmtkHelp(this,-1);
+	helpWindow->doLayout();
 }
 
 /**
@@ -4835,10 +4841,10 @@ class wxgmtk1toManyDialog : public wxDialog {
 		wxgmtk1toManyDialog( wxWindow *parent,
 				wxWindowID id,
 				const wxString &title,
-				wxString choises_1[],
-				wxString choises_Many[],
-				int choises_1_size,
-				int choises_Many_size,
+				wxString choices_1[],
+				wxString choices_Many[],
+				int choices_1_size,
+				int choices_Many_size,
 				wxString caption_1,
 				wxString caption_Many,
 				const wxPoint& position = wxDefaultPosition,
@@ -4867,10 +4873,10 @@ END_EVENT_TABLE()
 wxgmtk1toManyDialog::wxgmtk1toManyDialog( wxWindow *parent,
 		wxWindowID id,
 		const wxString &title,
-		wxString choises_1[],
-		wxString choises_Many[],
-		int choises_1_size,
-		int choises_Many_size,
+		wxString choices_1[],
+		wxString choices_Many[],
+		int choices_1_size,
+		int choices_Many_size,
 		wxString caption_1,
 		wxString caption_Many,
 		const wxPoint& position,
@@ -4885,7 +4891,7 @@ wxgmtk1toManyDialog::wxgmtk1toManyDialog( wxWindow *parent,
 	selection_sizer->Add( caption_1_ob, 0, wxALL | wxALIGN_CENTER,5 );
 
 	listbox1 = new wxListBox((wxWindow*)this, -1, wxDefaultPosition,
-			wxDefaultSize, choises_1_size, choises_1, wxLB_SINGLE | wxLB_NEEDED_SB,
+			wxDefaultSize, choices_1_size, choices_1, wxLB_SINGLE | wxLB_NEEDED_SB,
 			wxDefaultValidator, caption_1);
 	selection_sizer->Add( listbox1, 1, wxALIGN_LEFT | wxEXPAND | wxALL, 5);
 	listbox1->SetSelection(0);	//select the first item by default
@@ -4894,7 +4900,7 @@ wxgmtk1toManyDialog::wxgmtk1toManyDialog( wxWindow *parent,
 	selection_sizer->Add( caption_Many_op, 0, wxALL | wxALIGN_CENTER ,5);
 
 	listboxMany = new wxListBox((wxWindow*)this, -1, wxDefaultPosition,
-			wxDefaultSize, choises_Many_size, choises_Many, wxLB_EXTENDED | wxLB_NEEDED_SB,
+			wxDefaultSize, choices_Many_size, choices_Many, wxLB_EXTENDED | wxLB_NEEDED_SB,
 			wxDefaultValidator, caption_Many);
 	selection_sizer->Add( listboxMany, 1, wxALIGN_LEFT | wxEXPAND | wxALL, 5);
 
@@ -7170,4 +7176,74 @@ GmtkPrintout::DrawPageOne(wxDC *dc)
 		page->toggleViewCPs();
 	if(had_view_select_box)
 		page->toggleViewSelectBox();
+}
+
+void
+GmtkHelp::doLayout()
+{
+	wxBoxSizer* help_sizer = new wxBoxSizer(wxVERTICAL);
+	wxTextCtrl* help_msg = new wxTextCtrl(this, -1, "", wxDefaultPosition,
+			wxSize(800,300), wxTE_READONLY | wxTE_MULTILINE | wxTE_LEFT | wxTE_DONTWRAP);
+
+	wxTextAttr normal(*wxBLACK,wxNullColour,wxFont(12, wxROMAN, wxNORMAL, wxNORMAL));
+	wxTextAttr title(*wxBLACK,wxNullColour,wxFont(14, wxROMAN, wxNORMAL, wxBOLD));
+	wxTextAttr bold(*wxBLACK,wxNullColour,wxFont(12, wxROMAN, wxNORMAL, wxBOLD));
+	wxTextAttr italic(*wxBLACK,wxNullColour,wxFont(12, wxROMAN, wxITALIC, wxNORMAL));
+
+	help_msg->SetDefaultStyle(title);
+	help_msg->AppendText("Gmtkviz Help Sheet:\n\n");
+
+	help_msg->SetDefaultStyle(bold);
+	help_msg->AppendText("Keyboard Commands:\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'i'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is over a node 'i' will pop up node info\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t't'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is over a node or frame label 't' will toggle the node or ");
+	help_msg->AppendText("frame label's visibility\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'delete'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+
+	help_msg->SetDefaultStyle(bold);
+	help_msg->AppendText("\nMouse Commands:\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'button 1'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is on a selectable item (node, controlpoint, frame boarder, label) will select that item\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'button 1 + Shift'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : \n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'button 1 + drag motion'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If drag is started on a selectable item then this will move the current selection\n");
+	help_msg->AppendText("\t\tIf drag is started elsewhere a box will be created (and destroyed when the mouse button is released)\n");
+	help_msg->AppendText("\t\teverything in this box will be selected\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'button 2'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is on a control point will create a new control point\n");
+	help_msg->AppendText("\t\tIf there is only a strait line between nodes then a click on this line will create a spline and a control point\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'button 3'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is over a node will pop up node info\n");
+
+	help_msg->AppendText("\nFor more detailed help go to: https://ssli.ee.washington.edu/ssliwiki/GMTK");
+
+	help_sizer->Add(help_msg, 1, wxEXPAND, 0);
+
+	help_sizer->Add( new wxButton( this, wxID_CLOSE, "Close" ), 0, wxALL | wxALIGN_CENTRE, 10 );
+
+	SetAutoLayout(true);
+	SetSizer(help_sizer);
+	help_sizer->Fit(this);
+	help_sizer->SetSizeHints(this);
+	Layout();
 }
