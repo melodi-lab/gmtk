@@ -51,6 +51,7 @@ VCID("$Header$")
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 
+
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_CPP_CMD_OPTS
 
@@ -67,6 +68,7 @@ VCID("$Header$")
 #define GMTK_ARG_NUM_BACKUP_FILES
 #define GMTK_ARG_JTW_UB
 #define GMTK_ARG_JT_OPTIONS
+#define GMTK_ARG_CROSSOVER_OPTIONS
 
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_ALLOC_DENSE_CPTS
@@ -93,6 +95,16 @@ Arg Arg::Args[] = {
 };
 
 
+void triangulateCrossover(
+ BoundaryTriangulate& triangulator, 
+ GMTemplate&          gm_template, 
+ FileParser           fp,
+ string               input_crossover_tri_file,
+ string               output_crossover_tri_file,
+ vector<MaxClique>&   input_P_triangulation,
+ vector<MaxClique>&   input_C_triangulation,
+ vector<MaxClique>&   input_E_triangulation
+ );
 
 #define MYBS(x) ((x)?"T":"F")
 
@@ -206,6 +218,9 @@ backupTriFile(const string &triFile)
 int
 main(int argc,char*argv[])
 {
+  string input_tri_file, output_tri_file;
+  string input_crossover_tri_file, output_crossover_tri_file;
+
   ////////////////////////////////////////////
   // set things up so that if an FP exception
   // occurs such as an "invalid" (NaN), overflow
@@ -281,6 +296,104 @@ main(int argc,char*argv[])
   if (noBoundaryMemoize)
     triangulator.dontMemoizeBoundary();
 
+  //////////////////////////////////////////////////////////////////////
+  // Give warnings if crossover paramters are set for non-crossover
+  // triangulation methods 
+  //////////////////////////////////////////////////////////////////////
+  if (string(triangulationHeuristic) != "crossover") {
+    if (inputCrossoverTriangulatedFile != NULL) {
+      warning("WARNING: inputCrossoverTriangulatedFile only used for triangulationHeuristic crossover");
+    }
+    if (outputCrossoverTriangulatedFile != NULL) {
+      warning("WARNING: outputCrossoverTriangulatedFile is only used for triangulationHeuristic crossover");
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Get name of input triangulation
+  //////////////////////////////////////////////////////////////////////
+  if (inputTriangulatedFile == NULL) {
+    input_tri_file = string(strFileName) + GMTemplate::fileExtension;
+  }
+  else {
+    input_tri_file = string(inputTriangulatedFile);
+    if (fsize(input_tri_file.c_str()) == 0) {
+      error("ERROR: triangulation file '%s' does not exist or is empty\n",
+        input_tri_file.c_str() );
+    }
+  }
+
+  if (inputCrossoverTriangulatedFile != NULL) {
+    input_crossover_tri_file = string(inputCrossoverTriangulatedFile); 
+    if (fsize(input_crossover_tri_file.c_str()) == 0) {
+      error("ERROR: crossover triangulation file '%s' does not exist or is empty\n", input_crossover_tri_file.c_str() );
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Name the output trifiles
+  //////////////////////////////////////////////////////////////////////
+  if (string(triangulationHeuristic) == "crossover") {
+
+    if (outputTriangulatedFile == NULL) {
+      output_tri_file = string(strFileName) + ".1." + GMTemplate::fileExtension;
+    }
+    else {
+      output_tri_file = string(outputTriangulatedFile);
+    }
+
+    if (outputCrossoverTriangulatedFile == NULL) {
+      output_crossover_tri_file = 
+        string(strFileName) + ".2." + GMTemplate::fileExtension;
+    }
+    else {
+      output_crossover_tri_file = string(outputCrossoverTriangulatedFile);
+    }
+  }
+  else {
+    if (outputTriangulatedFile == NULL) {
+      output_tri_file = string(strFileName) + GMTemplate::fileExtension;
+    }
+    else {
+      output_tri_file = string(outputTriangulatedFile);
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Give error if one-edge is requested but other conflicting 
+  // parameters are given.
+  //////////////////////////////////////////////////////////////////////
+  if (string(triangulationHeuristic) == "one-edge") {
+    if (rePartition) {
+      error("ERROR: Can not repartition graph when doing one-edge"); 
+    }
+    if (fsize(input_tri_file.c_str()) == 0) {
+      error("ERROR: An inputTriangulatedFile is required when doing one-edge"); 
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Give errors if crossover is requested but other conflicting 
+  // parameters are given.
+  //////////////////////////////////////////////////////////////////////
+  if (string(triangulationHeuristic) == "crossover") {
+    if (rePartition) {
+      error("ERROR: Can not repartition graph when doing a crossover"); 
+    }
+
+printf("itf:%d  ictf:%d\n", fsize(input_tri_file.c_str()),
+         fsize(input_crossover_tri_file.c_str()) );
+
+    if ((inputCrossoverTriangulatedFile == NULL) ||
+        (fsize(input_tri_file.c_str()) == 0)     ||
+        (fsize(input_crossover_tri_file.c_str()) == 0)) { 
+      error("ERROR: An inputTriangulatedFile and an inputCrossoverTriangulatedFile are required when doing a crossover"); 
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Triangulate the graph 
+  //////////////////////////////////////////////////////////////////////
   TimerClass* timer = NULL;
   timer = new TimerClass;
   // Initialize the timer if anyTimeTriangulate is selected
@@ -319,31 +432,6 @@ main(int argc,char*argv[])
   } else {
 
     GMTemplate gm_template(fp,maxNumChunksInBoundary,chunkSkip);
-    string input_tri_file, output_tri_file;
-
-    //////////////////////////////////////////////////////////////////////
-    // Get name of input triangulation  
-    //////////////////////////////////////////////////////////////////////
-    if (inputTriangulatedFile == NULL) {
-      input_tri_file = string(strFileName) + GMTemplate::fileExtension;
-    }
-    else {
-      input_tri_file = string(inputTriangulatedFile);
-      if (fsize(input_tri_file.c_str()) == 0) {
-	  error("ERROR: triangulation file '%s' does not exist or is empty\n",
-            input_tri_file.c_str() );
-      }
-    }
-
-    //////////////////////////////////////////////////////////////////////
-    // Get name of output triangulation  
-    //////////////////////////////////////////////////////////////////////
-    if (outputTriangulatedFile == NULL) {
-      output_tri_file = string(strFileName) + GMTemplate::fileExtension;
-    }
-    else {
-      output_tri_file = string(outputTriangulatedFile);
-    }
 
     BoundaryTriangulate::SavedGraph orgnl_P_graph;
     BoundaryTriangulate::SavedGraph orgnl_C_graph;
@@ -397,6 +485,10 @@ main(int argc,char*argv[])
 
     } else if (reTriangulate && !rePartition) {
 
+      vector<MaxClique> input_P_triangulation;
+      vector<MaxClique> input_C_triangulation;
+      vector<MaxClique> input_E_triangulation;
+
       // first get the id and partition information.
       {
 	iDataStreamFile is(input_tri_file.c_str(),false,false);
@@ -407,6 +499,14 @@ main(int argc,char*argv[])
 	// read the max cliques but don't triangulate with
 	// them here.
       }
+
+      triangulator.saveCurrentNeighbors( gm_template.P.nodes, orgnl_P_graph );
+      triangulator.saveCurrentNeighbors( gm_template.C.nodes, orgnl_C_graph );
+      triangulator.saveCurrentNeighbors( gm_template.E.nodes, orgnl_E_graph );
+
+      input_P_triangulation = gm_template.P.cliques;
+      input_C_triangulation = gm_template.C.cliques;
+      input_E_triangulation = gm_template.E.cliques;
 
       if (!continueTriangulating) {
 	// If we are *not* continuing on with old triangulation, then
@@ -420,17 +520,30 @@ main(int argc,char*argv[])
 	  gm_template.clear_E_Cliques();
       }
 
-      triangulator.saveCurrentNeighbors( gm_template.P.nodes, orgnl_P_graph );
-      triangulator.saveCurrentNeighbors( gm_template.C.nodes, orgnl_C_graph );
-      triangulator.saveCurrentNeighbors( gm_template.E.nodes, orgnl_E_graph );
-
       // now using the partition triangulate
       if (anyTimeTriangulate == NULL) {
 	// just run simple triangulation.
-	triangulator.triangulate(string(triangulationHeuristic),
-				 jtWeight,
-				 gm_template,
-				 !noReTriP,!noReTriC,!noReTriE);
+
+        //////////////////////////////////////////////////////////////////////
+        // Call the appropriate triangulation interface  
+        //////////////////////////////////////////////////////////////////////
+        if (string(triangulationHeuristic) == "crossover") {
+          triangulateCrossover( triangulator, gm_template, fp, 
+            input_crossover_tri_file, output_crossover_tri_file, 
+            input_P_triangulation, 
+            input_C_triangulation, input_E_triangulation);
+        }
+        else { 
+          triangulator.triangulate(
+            string(triangulationHeuristic),
+            jtWeight,
+            gm_template,
+            input_P_triangulation,
+            input_C_triangulation,
+            input_E_triangulation,
+            !noReTriP,!noReTriC,!noReTriE);
+        }
+
       } else {
 	// In this case, here we only run triangulation on the
 	// provided new P,C,E partitions until the given amount of time
@@ -610,3 +723,58 @@ main(int argc,char*argv[])
 
   exit_program_with_status(0);
 }
+
+
+
+void triangulateCrossover(
+ BoundaryTriangulate& triangulator, 
+ GMTemplate&          gm_template, 
+ FileParser           fp,
+ string               input_crossover_tri_file,
+ string               output_crossover_tri_file,
+ vector<MaxClique>&   input_P_triangulation,
+ vector<MaxClique>&   input_C_triangulation,
+ vector<MaxClique>&   input_E_triangulation
+ )
+{
+  vector<MaxClique> crossover_P_tri;
+  vector<MaxClique> crossover_C_tri;
+  vector<MaxClique> crossover_E_tri;
+
+  GMTemplate crossover_gm_template(fp,maxNumChunksInBoundary,chunkSkip);
+  iDataStreamFile cis(input_crossover_tri_file.c_str(), false, false);
+
+  if (!fp.readAndVerifyGMId(cis)) {
+    error("ERROR: crossover triangulation file '%s' does not match graph given in structure file '%s'\n", input_crossover_tri_file.c_str(), strFileName);
+  }
+
+  crossover_gm_template.readPartitions(cis);
+  crossover_gm_template.readMaxCliques(cis);
+  crossover_gm_template.triangulatePartitionsByCliqueCompletion();
+
+  crossover_P_tri = crossover_gm_template.P.cliques;
+  crossover_C_tri = crossover_gm_template.C.cliques;
+  crossover_E_tri = crossover_gm_template.E.cliques;
+
+  triangulator.triangulateCrossover(
+    gm_template, 
+    input_P_triangulation, input_C_triangulation, input_E_triangulation,
+    crossover_gm_template,
+    crossover_P_tri, crossover_C_tri, crossover_E_tri, 
+    crossoverProbability, mutateProbability, 
+    !noReTriP, !noReTriC, !noReTriE);
+
+  crossover_gm_template.triangulatePartitionsByCliqueCompletion();
+
+  backupTriFile(output_crossover_tri_file);
+  oDataStreamFile cos(output_crossover_tri_file.c_str());
+  fp.writeGMId(cos);
+  string clStr;
+  createCommandLineOptionString(clStr);
+  crossover_gm_template.writePartitions(cos, clStr);
+  crossover_gm_template.writeMaxCliques(cos);
+
+  triangulator.ensurePartitionsAreChordal(crossover_gm_template);
+}
+
+

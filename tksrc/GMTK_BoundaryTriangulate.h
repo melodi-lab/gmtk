@@ -126,6 +126,8 @@ private:
 
   enum TriangulateStyles { 
     TS_ANNEALING, 
+    TS_EDGE_ANNEALING,
+    TS_RANDOM, 
     TS_EXHAUSTIVE,
     TS_MCS,
     TS_COMPLETED,
@@ -421,6 +423,21 @@ private:
     string&                     comment 
     );
 
+  /*  Not currently implemented
+  void triangulateEdgeAnnealing(
+    const set<RV*>&             nodes,
+    vector<MaxClique>&          best_cliques,
+    string&                     parameter_string, 
+    const bool                  jtWeight,
+    const set<RV*>& nodesRootMustContain
+  );
+  */
+
+  void triangulateRandom(
+    const set<RV*>&    nodes,
+    vector<MaxClique>& best_cliques
+  );
+
   // Triangulate by maximum cardinality search
   void triangulateMaximumCardinalitySearch( 
     const set<RV*>& nodes,
@@ -440,10 +457,9 @@ private:
     const set<RV*>& nodes
   );
 
-  // Check chordality and get cliques in RIP order
-  bool getCliques( 
-    const set<RV*>& nodes,
-    vector<MaxClique>&          cliques
+  bool getCliques(
+    const set<RV*>&    nodes,
+    vector<MaxClique>& cliques
   );
 
   // triangulation by simple completion
@@ -703,6 +719,10 @@ private:
         return(*this);
       }
 
+      inline bool operator== (const edge& e) const {
+        return ((e.first() == first_node) && (e.second()==second_node));
+      }
+
       edge( triangulateNode* a, triangulateNode* b) {
         assign(a,b); 
       }
@@ -729,9 +749,15 @@ private:
     );
 
   void fillInComputation(
-    vector<triangulateNode*>& ordered_nodes 
+    vector<triangulateNode*>& ordered_nodes,
+    vector<edge>&             fill_in, 
+    bool                      calculate_fill_in = true 
   );
- 
+
+  void fillInComputation(
+    vector<triangulateNode*>& ordered_nodes
+  );
+
   bool testZeroFillIn( 
     vector<triangulateNode*>& ordered_nodes 
   );
@@ -806,6 +832,57 @@ private:
     vector<triangulateNghbrPairType>&    orgnl_nghbrs
     );
 
+  /* Not currently implemented
+  void triangulateEdgeAnnealing(
+    vector<triangulateNode>& nodes,
+    const double   distance,     
+    const double   stop_ratio,   
+    const unsigned chain_length,
+    const bool     jtWeight,
+    const set<RV*>& nodesRootMustContain
+  );
+  */
+
+  unsigned edgeAnnealChain(
+    vector<triangulateNode>&          nodes,
+    vector<edge>&                     fill_in,
+    vector<edge>&                     missing,
+    const unsigned                    iterations,
+    const double                      temperature,
+    vector<triangulateNghbrPairType>& best_triangulation,
+    double&                           best_graph_weight,
+    double&                           best_this_weight,
+    double&                           weight_sum,         
+    double&                           weight_sqr_sum,
+    const bool                  jtWeight,
+    const set<RV*>& nodesRootMustContain,
+    const bool                        use_temperature = true
+  );
+
+  void calculateMissingEdges(
+    vector<triangulateNode>& nodes,
+    vector<edge>&            missing
+  );
+
+  void calculateFillInEdges(
+    vector<triangulateNode>& nodes,
+    SavedGraph&              orgnl_graph,
+    vector<edge>&            fill_in 
+  );
+
+  bool changeOneEdge(
+    vector<triangulateNode>& nodes,
+    vector<edge>&            fill_in,
+    vector<edge>&            missing,
+    edge&                    change_edge,
+    list<vector<triangulateNode*> >& cliques
+  );
+
+  void triangulateOneEdgeChange(
+    Partition& part,
+    SavedGraph orgnl_graph
+    );
+
 public:
 
   // Public Interface
@@ -845,6 +922,41 @@ public:
 		   bool doE = true   // triangulate E
 		   );
 
+  // This interface must be used in order to use the one-edge method. 
+  void triangulate(const string& tri_heur_str,
+    bool jtWeight,
+    GMTemplate& gm_template,
+    vector<MaxClique> orgnl_P_triangulation,
+    vector<MaxClique> orgnl_C_triangulation,
+    vector<MaxClique> orgnl_E_triangulation,
+    bool doP,
+    bool doC,
+    bool doE );
+
+  // Uses crossover and mutation to create two new triangulations.  
+  // Crossover requires extra parameters and is not available through
+  // the general triangulte interface.
+  void triangulateCrossover(
+    GMTemplate& t1,
+    vector<MaxClique>& orgnl_t1_P,
+    vector<MaxClique>& orgnl_t1_C,
+    vector<MaxClique>& orgnl_t1_E,
+    GMTemplate& t2,
+    vector<MaxClique>& orgnl_t2_P,
+    vector<MaxClique>& orgnl_t2_C,
+    vector<MaxClique>& orgnl_t2_E,
+    float crossoverProbability,
+    float mutateProbability,
+    bool reTriP,
+    bool reTriC,
+    bool reTriE );
+
+  void triangulateCrossover(
+    Partition& target,
+    Partition& crossover,
+    float crossoverProbability,
+    float mutateProbability );
+
   // A simple one-stop shop for good anytime algorithm triangulation,
   // runs only for a given amount of time.
   void anyTimeTriangulate(GMTemplate& gm_template,
@@ -856,7 +968,6 @@ public:
   // but depending on the heuristics given in 'th').
   void unrollAndTriangulate(const string& tri_heur_str,
 			    const unsigned numTimes);
-
 
   // Given the template, compute the best partitions
   // using the heuristics that are provided. If 'findBestBoundary'

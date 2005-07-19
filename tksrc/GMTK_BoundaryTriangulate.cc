@@ -425,6 +425,8 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
       tri_heur.style = TS_ANNEALING;
     } else if (strncmp(endp, "exhaustive", strlen(endp)) == 0) {
       tri_heur.style = TS_EXHAUSTIVE;
+    } else if (strncmp(endp, "random", strlen(endp)) == 0) {
+      tri_heur.style = TS_RANDOM;
     } else if (strncmp(endp, pre_edge_all, strlen(pre_edge_all)) == 0) {
       tri_heur.style = TS_PRE_EDGE_ALL;
       tri_heur.basic_method_string = &endp[strlen(pre_edge_all)];
@@ -1627,7 +1629,6 @@ BoundaryTriangulate
   double best_E_weight = DBL_MAX;
   const set <RV*> emptySet;
 
-  parseTriHeuristicString(tri_heur_str,tri_heur);
 
   if (gm_template.P.nodes.size() == 0)
     doP = false;
@@ -1643,6 +1644,8 @@ BoundaryTriangulate
     saveCurrentNeighbors(gm_template.C,orgnl_C_nghbrs);
   if (doE)
     saveCurrentNeighbors(gm_template.E,orgnl_E_nghbrs);
+
+  parseTriHeuristicString(tri_heur_str,tri_heur);
 
   if (doP) {
     infoMsg(IM::Tiny, "---\nTriangulating P:\n");
@@ -1670,10 +1673,145 @@ BoundaryTriangulate
     restoreNeighbors(orgnl_C_nghbrs);
   if (doE)
     restoreNeighbors(orgnl_E_nghbrs);
+
+  gm_template.triangulatePartitionsByCliqueCompletion();
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::triangulate()
+ *   Triangualted GMTemplate using one-edge.  If the requested method is
+ *   not one-edge, the main triangulation interface is called.  
+ * 
+ *   The separate interface for one-edge is needed because it returns a 
+ *   modification of the input triangulation, where most other methods 
+ *   either return an entirely new triangulation or keep the existing 
+ *   triangulation intact.  
+ *
+ *  Preconditions:
+ *   Graphs in GMTemplate must be a valid undirected model. This means if the
+ *   graph was originally a directed model, it must have been properly
+ *   moralized and their 'neighbors' structure is valid. It is also assumed
+ *   that the parents of each r.v. are valid but that they only poiint to
+ *   variables within the set 'nodes' (i.e., parents must not point out of
+ *   this set).
+ *
+ * Postconditions:
+ *   Resulting graphs are  now triangulated, and cliques are stored (not in
+ *   RIP order)
+ *
+ * Side Effects:
+ *   Will change neighbors members of variables.
+ *
+ * Results:
+ *     none
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate
+::triangulate(const string& tri_heur_str,
+	      bool jtWeight,
+	      GMTemplate& gm_template,
+              vector<MaxClique> orgnl_P_triangulation,
+              vector<MaxClique> orgnl_C_triangulation,
+              vector<MaxClique> orgnl_E_triangulation,
+	      bool doP,
+	      bool doC,
+	      bool doE)
+{
+  SavedGraph orgnl_P_nghbrs;
+  SavedGraph orgnl_C_nghbrs;
+  SavedGraph orgnl_E_nghbrs;
+  set<RV*>::iterator crrnt_RV;
+
+  if (gm_template.P.nodes.size() == 0)
+    doP = false;
+  if (gm_template.C.nodes.size() == 0)
+    doC = false;
+  if (gm_template.E.nodes.size() == 0)
+    doE = false;
+
+  //////////////////////////////////////////////////////////////////////
+  // If method is not one-edge, call antoher triangualte interface
+  //////////////////////////////////////////////////////////////////////
+  if (tri_heur_str != "one-edge") {
+    triangulate( tri_heur_str, jtWeight, gm_template, doP, doC, doE ); 
+  }
+  //////////////////////////////////////////////////////////////////////
+  // Triangualted requested partitions using one-edge 
+  //////////////////////////////////////////////////////////////////////
+  else {
+
+    if (doP) {
+      infoMsg(IM::Tiny, "---\nTriangulating P:\n");
+      saveCurrentNeighbors(gm_template.P, orgnl_P_nghbrs);
+
+      setUpForP(gm_template);
+
+      if (gm_template.P.cliques.size() > 0) {
+        for ( crrnt_RV = gm_template.P.nodes.begin();
+              crrnt_RV != gm_template.P.nodes.end();
+              ++crrnt_RV ) {
+          (*crrnt_RV)->neighbors.clear();
+        }
+      }
+      fillAccordingToCliques( orgnl_P_triangulation );
+    
+      triangulateOneEdgeChange(gm_template.P, orgnl_P_nghbrs );
+      gm_template.P.triMethod = "one-edge";
+    }
+    if (doC) {
+      infoMsg(IM::Tiny, "---\nTriangulating C:\n");
+      saveCurrentNeighbors(gm_template.C, orgnl_C_nghbrs);
+      setUpForC(gm_template);
+
+      if (gm_template.C.cliques.size() > 0) {
+        for ( crrnt_RV = gm_template.C.nodes.begin();
+              crrnt_RV != gm_template.C.nodes.end();
+              ++crrnt_RV ) {
+          (*crrnt_RV)->neighbors.clear();
+        }
+      }
+      fillAccordingToCliques( orgnl_C_triangulation );
+ 
+      triangulateOneEdgeChange(gm_template.C, orgnl_C_nghbrs );
+      gm_template.C.triMethod = "one-edge";
+    }
+    if (doE) {
+      infoMsg(IM::Tiny, "---\nTriangulating E:\n");
+    
+      saveCurrentNeighbors(gm_template.E, orgnl_E_nghbrs);
+
+      setUpForE(gm_template);
+
+      if (gm_template.P.cliques.size() > 0) {
+        for ( crrnt_RV = gm_template.E.nodes.begin();
+              crrnt_RV != gm_template.E.nodes.end();
+              ++crrnt_RV ) {
+          (*crrnt_RV)->neighbors.clear();
+        }
+      }
+      fillAccordingToCliques( orgnl_E_triangulation );
+
+      triangulateOneEdgeChange(gm_template.E, orgnl_E_nghbrs );
+      gm_template.E.triMethod = "one-edge";
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  // Return with the best triangulations found, which is
+  // be stored within the template at this point.
+  ////////////////////////////////////////////////////////////////////////
+  if (doP)
+    restoreNeighbors(orgnl_P_nghbrs);
+  if (doC)
+    restoreNeighbors(orgnl_C_nghbrs);
+  if (doE)
+    restoreNeighbors(orgnl_E_nghbrs);
   gm_template.triangulatePartitionsByCliqueCompletion();
 
 }
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -1720,6 +1858,11 @@ triangulateOnce(// input: nodes to be triangulated
   string                  annealing_str;
 
   switch (tri_heur.style) {
+
+    case TS_RANDOM:
+      triangulateRandom( nodes, cliques );
+      meth_str = "random";
+      break;
 
     case TS_BASIC:
       basicTriangulate( nodes, tri_heur.heuristic_vector, tri_heur.numRandomTop, order, cliques);
@@ -1931,7 +2074,7 @@ BoundaryTriangulate
           break;
 
         ////////////////////////////////////////////////////////////////////////
-        // Handle cases that just t riangulate once 
+        // Handle cases that triangulate once and do not keep a best weight 
         ////////////////////////////////////////////////////////////////////////
         default:
           triangulateOnce( nodes, jtWeight, nodesRootMustContain, tri_heur, 
@@ -1963,10 +2106,11 @@ BoundaryTriangulate
           }
           break;
       }
+
     }
   }
-}
 
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -2702,8 +2846,7 @@ addEdges(
 /*-
  *-----------------------------------------------------------------------
  * BoundaryTriangulate::triangulateSimulatedAnnealing()
- *   Simulated Annealing is stochastic decent search through elimination 
- *   orderings.
+ *   A stochastic search of elimination orderings.
  *  
  *   Simulated  annealing randomly permutes two nodes in the elimination 
  *   ordering, this move is accepted if the weight is improved and 
@@ -3137,6 +3280,823 @@ annealChain(
   }
  
   return(moves_accepted);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::triangulateCrossover() 
+ *   Takes two input triangulations and creates two triangulations that are
+ *   hybrids of the two input triangulations.  To do this it iterates through
+ *   each edge missing from the original graph, if the edge is in or is missing
+ *   from both graphs it does nothing, otherwise it switches them with
+ *   crossoverProbability.  If the new graphs are not triangulated they are
+ *   triangulated using maximum cardinality search.  After both new
+ *   triangulations have been created it performs a mutation (a one-edge
+ *   triangulation) with mutateProbability.
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set.   
+ *  
+ * Postconditions:
+ *   The graphs in the given partitions have new triangulations.
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+triangulateCrossover(
+  GMTemplate& t1, 
+  vector<MaxClique>& t1_P,
+  vector<MaxClique>& t1_C,
+  vector<MaxClique>& t1_E,
+  GMTemplate& t2, 
+  vector<MaxClique>& t2_P,
+  vector<MaxClique>& t2_C,
+  vector<MaxClique>& t2_E,
+  float crossoverProbability,
+  float mutateProbability,
+  bool reTriP, 
+  bool reTriC,
+  bool reTriE )
+{
+  char crossoverName[2048];
+
+  sprintf(crossoverName, "crossover-%4.2e-%4.2e", crossoverProbability, 
+    mutateProbability);
+
+  if (reTriP)
+  {
+    t1.P.cliques = t1_P;
+    t2.P.cliques = t2_P;
+  }
+
+  if (reTriC)
+  {
+    t1.C.cliques = t1_C;
+    t2.C.cliques = t2_C;
+  }
+
+  if (reTriE)
+  {
+    t1.E.cliques = t1_E;
+    t2.E.cliques = t2_E;
+  }
+
+  t1.triangulatePartitionsByCliqueCompletion();
+  t2.triangulatePartitionsByCliqueCompletion();
+
+  if (reTriP)
+  {
+    triangulateCrossover( t1.P, t2.P, crossoverProbability, mutateProbability );
+    t1.P.triMethod = crossoverName;
+    t2.P.triMethod = crossoverName;
+  }
+
+  if (reTriC)
+  {
+    triangulateCrossover( t1.C, t2.C, crossoverProbability, mutateProbability );
+    t1.C.triMethod = crossoverName;
+    t2.C.triMethod = crossoverName;
+  }
+
+  if (reTriE)
+  {
+    triangulateCrossover( t1.E, t2.E, crossoverProbability, mutateProbability ); 
+    t1.E.triMethod = crossoverName;
+    t2.E.triMethod = crossoverName;
+  }
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::triangulateCrossover() 
+ *   Takes two input triangulations and creates two triangulations that are
+ *   hybrids of the two input triangulations.  To do this it iterates through
+ *   each edge missing from the original graph, if the edge is in or is missing
+ *   from both graphs it does nothing, otherwise it switches them with
+ *   crossoverProbability.  If the new graphs are not triangulated they are
+ *   triangulated using maximum cardinality search.  After both new
+ *   triangulations have been created it performs a mutation (a one-edge
+ *   triangulation) with mutateProbability.  
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set.   
+ *
+ * Postconditions:
+ *   The graphs in the given partitions have new triangulations.
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+triangulateCrossover(
+  Partition& triangulation1, 
+  Partition& triangulation2,
+  float crossoverProbability,
+  float mutateProbability
+ )
+{
+  vector<RV*> order;
+  SavedGraph orgnl_triangulation1_nghbrs;
+  SavedGraph orgnl_triangulation2_nghbrs;
+  set<RV*>::iterator t1_node_1;
+  set<RV*>::iterator t1_node_2;
+  set<RV*>::iterator t1_end_node;
+  set<RV*>::iterator t2_node_1;
+  set<RV*>::iterator t2_node_2;
+  set<RV*>::iterator t2_end_node;
+  set<RV*>::iterator t1_found_edge;
+  set<RV*>::iterator t2_found_edge;
+ 
+  saveCurrentNeighbors(triangulation1, orgnl_triangulation1_nghbrs);
+  saveCurrentNeighbors(triangulation2, orgnl_triangulation2_nghbrs);
+
+  t1_end_node = triangulation1.nodes.end();
+  t2_end_node = triangulation2.nodes.end(); 
+
+  for (t1_node_1 = triangulation1.nodes.begin();
+       t1_node_1 != t1_end_node;
+       t1_node_1++) {
+
+    ////////////////////////////////////////////////////////////////////////
+    // Find pointer to node in triangulation2 that is the same as t1_node_1
+    ////////////////////////////////////////////////////////////////////////
+    for (t2_node_1 = triangulation2.nodes.begin();
+         t2_node_1 != t2_end_node;
+         t2_node_1++ ) {
+
+      if ((&((*t2_node_1)->rv_info) == (&(*t1_node_1)->rv_info)) &&
+            ((*t2_node_1)->timeFrame == (*t1_node_1)->timeFrame)) { 
+        break; 
+      }
+    }
+
+    if (t2_node_1 == t2_end_node) {
+      error("ERROR: '%s(%d)' exists in inputTriangulatedFile but can not be found in triangulation2TriagulatedFile", (*t1_node_1)->name().c_str(), (*t1_node_1)->frame() );
+    }
+
+    for (t1_node_2 = t1_node_1; 
+         t1_node_2 != t1_end_node;
+         t1_node_2++) {
+       
+      ////////////////////////////////////////////////////////////////////////
+      // Find pointer to node in triangulation2 that is the same as t1_node_2
+      ////////////////////////////////////////////////////////////////////////
+      for (t2_node_2 = triangulation2.nodes.begin();
+           t2_node_2 != t2_end_node;
+           t2_node_2++ ) {
+
+        if ((&((*t2_node_2)->rv_info) == (&(*t1_node_2)->rv_info)) &&
+              ((*t2_node_2)->timeFrame == (*t1_node_2)->timeFrame)) { 
+          break; 
+        }
+      }
+
+      if (t2_node_2 == t2_end_node) {
+        error("ERROR: '%s(%d)' exists in inputTriangulatedFile but can not be found in triangulation2TriagulatedFile", (*t1_node_2)->name().c_str(), (*t1_node_2)->frame() );
+      }
+
+      ////////////////////////////////////////////////////////////////////////
+      // Find if node_1 and node_2 are neighbors 
+      ////////////////////////////////////////////////////////////////////////
+      t1_found_edge = find( (*t1_node_1)->neighbors.begin(), 
+        (*t1_node_1)->neighbors.end(), *t1_node_2 ); 
+      t2_found_edge = find( (*t2_node_1)->neighbors.begin(), 
+        (*t2_node_1)->neighbors.end(), *t2_node_2 ); 
+
+      //////////////////////////////////////////////////////////////////////
+      // Edge not in t1, edge is in t2 
+      //////////////////////////////////////////////////////////////////////
+      if ((t1_found_edge == (*t1_node_1)->neighbors.end()) && 
+          (t2_found_edge != (*t2_node_1)->neighbors.end())) { 
+
+        if (rnd.drand48() < crossoverProbability) {
+          (*t1_node_1)->neighbors.insert( *t1_node_2 );
+          (*t1_node_2)->neighbors.insert( *t1_node_1 );
+
+          (*t2_node_1)->neighbors.erase( *t2_node_2 );
+          (*t2_node_2)->neighbors.erase( *t2_node_1 );
+        }
+      }
+      //////////////////////////////////////////////////////////////////////
+      // Edge is in t1, edge is not in t2 
+      //////////////////////////////////////////////////////////////////////
+      else if ((t1_found_edge != (*t1_node_1)->neighbors.end()) && 
+               (t2_found_edge == (*t2_node_1)->neighbors.end())) { 
+
+        if (rnd.drand48() < crossoverProbability) {
+          (*t1_node_1)->neighbors.erase( *t1_node_2 );
+          (*t1_node_2)->neighbors.erase( *t1_node_1 );
+
+          (*t2_node_1)->neighbors.insert( *t2_node_2 );
+          (*t2_node_2)->neighbors.insert( *t2_node_1 );
+        }
+      } 
+
+    } 
+  } 
+
+  //////////////////////////////////////////////////////////////////////
+  // Triangulate new graphs if not already triangulated 
+  //////////////////////////////////////////////////////////////////////
+  triangulateMaximumCardinalitySearch( triangulation1.nodes, 
+    triangulation1.cliques, order ); 
+  triangulateMaximumCardinalitySearch( triangulation2.nodes, 
+    triangulation2.cliques, order ); 
+
+  //////////////////////////////////////////////////////////////////////
+  // Mutate triangulation given mutateProbability
+  //////////////////////////////////////////////////////////////////////
+  if (rnd.drand48() < mutateProbability) {
+    triangulateOneEdgeChange( triangulation1, orgnl_triangulation1_nghbrs );
+  }
+
+  if (rnd.drand48() < mutateProbability) {
+    triangulateOneEdgeChange( triangulation2, orgnl_triangulation2_nghbrs );
+  }
+ 
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::triangulateOneEdgeChange
+ *   Takes an input triangulation and creates a triangulations differs by one
+ *   edge. 
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set.  Graph should be triangulated.   
+ *
+ * Postconditions:
+ *   The graphs in the given partitions have new triangulations.
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *   none 
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+triangulateOneEdgeChange(
+  Partition& part,
+  SavedGraph orgnl_graph 
+  )
+{
+  vector<triangulateNode> triangulate_nodes;
+  vector<edge>            fill_in;
+  vector<edge>            missing;
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        order;
+  set<RV*>::iterator crrnt_RV;
+  edge change_edge;
+  bool edge_added;
+
+  ////////////////////////////////////////////////////////////////////// 
+  // Prepare 
+  ////////////////////////////////////////////////////////////////////// 
+  if (! chordalityTest(part.nodes) ) {
+      error("ERROR: No input triangulation or input not triangulated");
+  }
+
+  fillTriangulateNodeStructures( part.nodes, triangulate_nodes );
+
+  calculateMissingEdges( triangulate_nodes, missing );
+  calculateFillInEdges( triangulate_nodes, orgnl_graph, fill_in );
+
+  ////////////////////////////////////////////////////////////////////// 
+  // Actually change the edge
+  ////////////////////////////////////////////////////////////////////// 
+  edge_added = changeOneEdge( triangulate_nodes, fill_in, missing, change_edge, 
+    list_cliques ); 
+
+  if (edge_added) {
+    infoMsg(IM::Tiny, "Edge Added\n");
+  }
+  else {
+    infoMsg(IM::Tiny, "Edge Subtracted\n");
+  }
+
+  ////////////////////////////////////////////////////////////////////// 
+  // Convert new triangulation to standard cliques 
+  ////////////////////////////////////////////////////////////////////// 
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false );
+  assert( testZeroFillIn(order) ); 
+  listVectorCliquetoVectorSetClique( list_cliques, part.cliques );
+
+  if (part.cliques.size() > 0) {
+    for ( crrnt_RV = part.nodes.begin();
+          crrnt_RV != part.nodes.end();
+          ++crrnt_RV ) {
+      (*crrnt_RV)->neighbors.clear();
+    }
+    fillAccordingToCliques( part.cliques );
+  }
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::triangulateRandom()
+ *   Gives random triangulation.  This should give uniform probability
+ *   over all possible triangulations (not just random over elimination 
+ *   orders).  It does this by running a MCMC chain of triangulations 
+ *   which differ by one edge.  This proceedure is a bit slow. 
+ *  
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ * 
+ * Postconditions:
+ *   The triangulation with the lowest weight triangulation found is 
+ *   stored in best_cliques.  The edges in the graph are left in an
+ *   undetermined state. 
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+triangulateRandom(
+  const set<RV*>&        nodes,
+  vector<MaxClique>&     best_cliques
+  )
+{
+  const unsigned chain_length = 10000;
+
+  ///////////////////////////////////////////////////////////////////
+  // Local Variables 
+  ///////////////////////////////////////////////////////////////////
+  vector<triangulateNode>         triangulate_nodes;
+  vector<triangulateNode*>        order;
+  list<vector<triangulateNode*> > cliques;
+  vector<edge>                    fill_in;
+  vector<edge>                    missing;
+  vector<triangulateNghbrPairType> dummy_triangulation;
+  const bool                       jtWeight = false;
+  const set<RV*>                   nodesRootMustContain;
+
+  vector<triangulateNode>::iterator crrnt_node; 
+  vector<triangulateNode>::iterator end_node;
+
+  double     best_graph_weight;   // Best overal graph weight
+  double     best_this_weight;    // Best graph weight on most recent trial
+  unsigned   moves_accepted;
+  double     weight_sum = 0;      // Sum of weights (for variance calculation)
+  double     weight_sqr_sum = 0;  // Sum of weights^2 (for variance calculation)
+
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+
+  ///////////////////////////////////////////////////////////////////////
+  // Begin with a triangulated graph.  Use a random elimination order so 
+  // the starting point of MCMC chain is somewhat random 
+  ///////////////////////////////////////////////////////////////////////
+  for (crrnt_node = triangulate_nodes.begin(),
+       end_node   = triangulate_nodes.end();
+       crrnt_node != end_node;
+       ++crrnt_node) {
+    order.push_back( &(*crrnt_node) ); 
+  }
+  random_shuffle( order.begin(), order.end() );
+  fillInComputation( order, fill_in );
+
+  ////////////////////////////////////////////////////////////////////////
+  // Run MCMC chain (with no temperature parameter all moves are accepted) 
+  ////////////////////////////////////////////////////////////////////////
+  if ((fill_in.size() > 0) ||
+      (missing.size() > 0)) {
+    moves_accepted = edgeAnnealChain(
+      triangulate_nodes,
+      fill_in,
+      missing, 
+      chain_length,
+      DBL_MAX,
+      dummy_triangulation,
+      best_graph_weight,
+      best_this_weight,
+      weight_sum,         
+      weight_sqr_sum,
+      jtWeight,
+      nodesRootMustContain,
+      false );
+  }
+
+  ///////////////////////////////////////////////////////////////////
+  // Get maximal cliques of triangulation 
+  ///////////////////////////////////////////////////////////////////
+  maximumCardinalitySearch( triangulate_nodes, cliques, order, false );
+  assert( testZeroFillIn(order) ); 
+  listVectorCliquetoVectorSetClique( cliques, best_cliques );
+  fillAccordingToCliques( best_cliques );
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * edgeAnnealChain 
+ *    Generate a chain of triangulations that have one edge different between
+ *    them.  This is for use in MCMC methods that can generate any
+ *    triangulation.  Edge based simulated annealing is not currently
+ *    implemented. 
+ *
+ * Preconditions:
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+ *
+ * Results:
+ *
+ *-----------------------------------------------------------------------
+ */
+unsigned
+BoundaryTriangulate::
+edgeAnnealChain(
+  vector<triangulateNode>&          nodes,
+  vector<edge>&                     fill_in,
+  vector<edge>&                     missing,
+  const unsigned                    iterations,
+  const double                      temperature,
+  vector<triangulateNghbrPairType>& best_triangulation,
+  double&                           best_graph_weight,
+  double&                           best_this_weight,
+  double&                           weight_sum,         
+  double&                           weight_sqr_sum,
+  const bool                        jtWeight,
+  const set<RV*>&                   nodesRootMustContain,
+  const bool                        use_temperature 
+  )
+{
+  vector<MaxClique>               rv_cliques;
+  list<vector<triangulateNode*> > list_cliques;
+
+  edge change_edge;
+  bool edge_added = false;
+
+  triangulateNeighborType::iterator found_nghbr;
+  vector<edge>::iterator            found_edge; 
+
+  RAND             rndm_nmbr(0);
+  double           crrnt_graph_weight;
+  double           prvs_graph_weight;
+  double           tmprtr_penalty;
+  double           crrnt_tmprtr;
+  unsigned         moves_accepted;
+  unsigned         i;
+  bool             accepted;
+
+  crrnt_graph_weight = DBL_MAX;
+  prvs_graph_weight  = DBL_MAX;
+  best_this_weight   = DBL_MAX;
+  moves_accepted     = 0;
+
+  ///////////////////////////////////////////////////////////////////////
+  // Permute nodes 'iterations' times  
+  ///////////////////////////////////////////////////////////////////////
+  for(i=0; i<iterations; ++i) {
+
+    edge_added = changeOneEdge( nodes, fill_in, missing, change_edge, 
+      list_cliques );
+
+    listVectorCliquetoVectorSetClique( list_cliques, rv_cliques );
+    crrnt_graph_weight = graphWeight(rv_cliques, jtWeight, nodesRootMustContain);
+ 
+    ////////////////////////////////////////////////////////////////
+    // Check if it is the best ordering so far 
+    ////////////////////////////////////////////////////////////////
+    if (crrnt_graph_weight < best_graph_weight) {
+      best_graph_weight = crrnt_graph_weight;
+      saveCurrentNeighbors( nodes, best_triangulation );  
+    } 
+
+    if (crrnt_graph_weight < best_this_weight) {
+      best_this_weight = crrnt_graph_weight; 
+    }
+
+    ////////////////////////////////////////////////////////////////
+    // If new weight is better always accept it.  If weight is 
+    //  worse, accept it with a probability calculated from the 
+    //  temperature. 
+    ////////////////////////////////////////////////////////////////
+    if (edge_added == true) {
+      crrnt_tmprtr = temperature*1;
+    }
+    else {
+      crrnt_tmprtr = temperature;
+    }
+
+    accepted = true;
+    if ( ((crrnt_graph_weight-prvs_graph_weight) > 1e-8) && 
+          (use_temperature == true) ) {
+      tmprtr_penalty = crrnt_tmprtr * log(rndm_nmbr.drand48());
+
+      if ( crrnt_graph_weight > (prvs_graph_weight-tmprtr_penalty)) {
+        accepted = false;
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////
+    // Update depending on acceptance/rejection 
+    ////////////////////////////////////////////////////////////////
+    if (accepted == true) {
+      prvs_graph_weight = crrnt_graph_weight;
+      weight_sum += prvs_graph_weight;
+      weight_sqr_sum += prvs_graph_weight*prvs_graph_weight;
+      ++moves_accepted;
+
+      if (edge_added == true) {
+        fill_in.push_back( change_edge );
+        found_edge = find( missing.begin(), missing.end(), change_edge );
+        missing.erase( found_edge );
+      }
+      else {
+        missing.push_back( change_edge );
+           found_edge = find( fill_in.begin(), fill_in.end(), change_edge );   
+        fill_in.erase( found_edge );
+      }
+    }
+    else {
+      if (edge_added == true) {
+        found_nghbr = find( change_edge.first()->neighbors.begin(),
+        change_edge.first()->neighbors.end(), change_edge.second() );
+        assert(found_nghbr != change_edge.first()->neighbors.end());  
+        change_edge.first()->neighbors.erase( found_nghbr );
+
+        found_nghbr = find( change_edge.second()->neighbors.begin(),
+        change_edge.second()->neighbors.end(), change_edge.first() );
+        assert(found_nghbr != change_edge.second()->neighbors.end());  
+        change_edge.second()->neighbors.erase( found_nghbr );
+      }
+      else {
+        change_edge.first()->neighbors.push_back( change_edge.second() ); 
+        change_edge.second()->neighbors.push_back( change_edge.first() ); 
+      }
+    }
+
+  } // End for iterations
+
+  return(moves_accepted);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::changeOneEdge
+ *   Takes an input triangulation and creates a triangulations differs by one
+ *   edge.  This is done by randomly changing the status of a single edge, and
+ *   rejecting the change if the new graph is not triangulated.
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set.  Input graph must be triangulated or this will never 
+ *   halt.  
+ * 
+ * Postconditions:
+ *   The edges in the graph are set to this triangulation.  (cliques are not
+ *   found)
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *   none
+ *-----------------------------------------------------------------------
+ */
+bool
+BoundaryTriangulate::
+changeOneEdge(
+  vector<triangulateNode>& nodes,
+  vector<edge>&            fill_in,
+  vector<edge>&            missing,
+  edge&                    change_edge,
+  list<vector<triangulateNode*> >& cliques
+  )
+{
+  triangulateNeighborType::iterator found_nghbr;
+  vector<edge>::iterator            found_edge; 
+  vector<triangulateNode*>          dummy_order;
+  RAND     rndm_nmbr(0);
+  unsigned index;
+  unsigned total_fill_in;
+  bool     chordal;
+  bool     edge_added = false;
+
+  total_fill_in = fill_in.size() + missing.size();
+
+  if (total_fill_in > 0) {
+    do  { 
+
+      ////////////////////////////////////////////////////////////////
+      // Pick an edge and swap its status 
+      ////////////////////////////////////////////////////////////////
+      index = rndm_nmbr.uniform( total_fill_in-1 );
+
+      if (index < fill_in.size()) { 
+        
+        change_edge = fill_in[index];
+
+        found_nghbr = find( change_edge.first()->neighbors.begin(),
+          change_edge.first()->neighbors.end(), change_edge.second() );
+        assert(found_nghbr != change_edge.first()->neighbors.end());  
+        change_edge.first()->neighbors.erase( found_nghbr );
+
+        found_nghbr = find( change_edge.second()->neighbors.begin(),
+          change_edge.second()->neighbors.end(), change_edge.first() );
+        assert(found_nghbr != change_edge.second()->neighbors.end());  
+        change_edge.second()->neighbors.erase( found_nghbr );
+        edge_added = false;
+      }
+      else {
+        
+        index -= fill_in.size(); 
+        change_edge = missing[index];
+        
+        change_edge.first()->neighbors.push_back( change_edge.second() ); 
+        change_edge.second()->neighbors.push_back( change_edge.first() ); 
+        edge_added = true;
+      } 
+
+      ////////////////////////////////////////////////////////////////
+      // Test chordality 
+      ////////////////////////////////////////////////////////////////
+      maximumCardinalitySearch( nodes, cliques, dummy_order, false );
+      chordal = testZeroFillIn( dummy_order ); 
+
+      if (! chordal) {
+        if (edge_added == true) {
+
+          found_nghbr = find( change_edge.first()->neighbors.begin(),
+            change_edge.first()->neighbors.end(), change_edge.second() );
+          assert(found_nghbr != change_edge.first()->neighbors.end());  
+          change_edge.first()->neighbors.erase( found_nghbr );
+
+          found_nghbr = find( change_edge.second()->neighbors.begin(),
+            change_edge.second()->neighbors.end(), change_edge.first() );
+          assert(found_nghbr != change_edge.second()->neighbors.end());  
+          change_edge.second()->neighbors.erase( found_nghbr );
+        }
+        else {
+          change_edge.first()->neighbors.push_back( change_edge.second() ); 
+          change_edge.second()->neighbors.push_back( change_edge.first() ); 
+        }
+      }
+    } while (! chordal);
+  }
+
+  return(edge_added);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::calculateMissingEdges
+ *   Returns the set of edges missing from the graph
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+calculateMissingEdges(
+  vector<triangulateNode>& nodes,
+  vector<edge>&            missing
+)
+{
+  vector<triangulateNode>::iterator crrnt_node; 
+  vector<triangulateNode>::iterator end_node; 
+  vector<triangulateNode>::iterator crrnt_second; 
+  vector<triangulateNode>::iterator end_second;
+  triangulateNeighborType::iterator found_nghbr; 
+  vector<RV*>::iterator found_fill_in; 
+
+  missing.clear();
+
+  for (crrnt_node = nodes.begin(),
+       end_node   = nodes.end();
+       crrnt_node != end_node;
+       ++crrnt_node) {
+    for (crrnt_second = crrnt_node,
+         ++crrnt_second, 
+         end_second = nodes.end();
+         crrnt_second != end_second;
+         ++crrnt_second) {
+
+      found_nghbr = find( (*crrnt_node).neighbors.begin(), 
+        (*crrnt_node).neighbors.end(), &(*crrnt_second) );
+      if (found_nghbr == (*crrnt_node).neighbors.end()) {
+        missing.push_back( edge( &(*crrnt_node), &(*crrnt_second)) ); 
+      } 
+    }
+  }
+
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::calculateFillInEdges
+ *   Determines the set of edges in the given set of nodes are fill-in (i.e. 
+ *   not in the original graph)
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+calculateFillInEdges(
+  vector<triangulateNode>& nodes,
+  SavedGraph&              orgnl_graph,
+  vector<edge>&            fill_in 
+)
+{
+  vector<triangulateNode>::iterator crrnt_node; 
+  vector<triangulateNode>::iterator end_node; 
+  vector<triangulateNode*>::iterator crrnt_nghbr; 
+  vector<triangulateNode*>::iterator end_nghbr;
+  triangulateNeighborType::iterator found_nghbr; 
+  set<RV*>::iterator found_fill_in; 
+  SavedGraph::iterator crrnt_saved;
+  vector<edge>::iterator found_edge; 
+
+  fill_in.clear();
+
+  for (crrnt_node = nodes.begin(),
+       end_node   = nodes.end();
+       crrnt_node != end_node;
+       ++crrnt_node) {
+
+    crrnt_saved = orgnl_graph.begin();
+    while ((*crrnt_saved).first != (*crrnt_node).randomVariable) {
+      ++crrnt_saved;
+      assert(crrnt_saved != orgnl_graph.end());
+    }
+
+    for (crrnt_nghbr = (*crrnt_node).neighbors.begin(),
+         end_nghbr = (*crrnt_node).neighbors.end();
+         crrnt_nghbr != end_nghbr;
+         ++crrnt_nghbr ) {
+
+      if (*((*crrnt_saved).second.begin()) != NULL)
+      {
+        found_fill_in = find( (*crrnt_saved).second.begin(), 
+          (*crrnt_saved).second.end(), (*crrnt_nghbr)->randomVariable );
+
+        if (found_fill_in == (*crrnt_saved).second.end()) {
+          found_edge = find( fill_in.begin(), fill_in.end(), 
+            edge( &(*crrnt_node), *crrnt_nghbr) ); 
+          if (found_edge == fill_in.end()) {
+            fill_in.push_back( edge( &(*crrnt_node), *crrnt_nghbr) ); 
+          }
+        }
+      }
+    }
+  } 
 }
 
 
@@ -3739,21 +4699,23 @@ maximumCardinalitySearch(
 void
 BoundaryTriangulate::
 fillInComputation( 
-  vector<triangulateNode*>& ordered_nodes 
+  vector<triangulateNode*>& ordered_nodes,
+  vector<edge>&             fill_in,
+  bool                      calculate_fill_in
   )
 {
   const unsigned invalid_index = ~0;
 
-  typedef pair<triangulateNode*, triangulateNode*> edge; 
-  
   vector<triangulateNode*> follower; 
   vector<unsigned>         index;
   vector<edge>             edges;  
  
   vector<triangulateNode*>::iterator crrnt_node;
   vector<triangulateNode*>::iterator end_node;
-  vector<triangulateNode*>::iterator crrnt_nghbr;
-  vector<triangulateNode*>::iterator end_nghbr;
+  triangulateNeighborType::iterator  crrnt_nghbr;
+  triangulateNeighborType::iterator  end_nghbr;
+  vector<edge>::iterator             crrnt_edge;  
+  vector<edge>::iterator             end_edge;  
   unsigned i;
  
   triangulateNode* new_nghbr;  
@@ -3817,10 +4779,30 @@ fillInComputation(
   }   
 
   ////////////////////////////////////////////////////////////////////
+  // Calculate the fil-in 
+  ////////////////////////////////////////////////////////////////////
+  if (calculate_fill_in)
+  {
+    triangulateNeighborType::iterator found_n;
+
+    fill_in.clear();
+    for (crrnt_edge = edges.begin(), 
+         end_edge   = edges.end();
+         crrnt_edge != end_edge;
+         ++crrnt_edge ) {
+
+      found_n = find( (*crrnt_edge).first()->neighbors.begin(),
+                      (*crrnt_edge).first()->neighbors.end(),
+                      (*crrnt_edge).second() );
+      if ( found_n == (*crrnt_edge).first()->neighbors.end() ) {
+        fill_in.push_back( *crrnt_edge );
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////
   // Remove the previous edge sets 
   ////////////////////////////////////////////////////////////////////
-  vector<edge>::iterator crrnt_edge;  
-  vector<edge>::iterator end_edge;  
  
   for (crrnt_node = ordered_nodes.begin(), 
        end_node   = ordered_nodes.end();
@@ -3838,11 +4820,52 @@ fillInComputation(
        crrnt_edge != end_edge;
        ++crrnt_edge ) {
 
-    (*crrnt_edge).first->neighbors.push_back( (*crrnt_edge).second ); 
-    (*crrnt_edge).second->neighbors.push_back( (*crrnt_edge).first ); 
+    (*crrnt_edge).first()->neighbors.push_back( (*crrnt_edge).second() ); 
+    (*crrnt_edge).second()->neighbors.push_back( (*crrnt_edge).first() ); 
   }
 }
- 
+
+/*-
+ *-----------------------------------------------------------------------
+ * fillInComputation
+ *  
+ *   Triangulates a graph according to a given elimination order in 
+ *   O(N+E') time, where N is the number of nodes and E' is the number 
+ *   of original graph edges plus the number of fill in edges. 
+ *
+ *   This algorithm is given in:
+ *     R. E. Tarjan and M. Yannakakis.  "Simple linear time algorithm to 
+ *     test chordality of graphs, test acyclicity of hypergraphs, and 
+ *     selectively reduce acyclic hypergraphs."  SIAM J. Comput., 
+ *     13:566--579, 1984.  
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   The graph is triangulated according to the elimination order 
+ *   ordered_nodes. 
+ *
+ * Side Effects:
+ *   Neighbor members of each random variable can be changed.
+ *
+ * Results:
+ *   none 
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+fillInComputation( 
+  vector<triangulateNode*>& ordered_nodes
+  )
+{
+  vector<edge> dummy_fill_in;
+  fillInComputation(ordered_nodes, dummy_fill_in, false);
+}
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -7013,7 +8036,6 @@ findBestInterfaceRecurse(
 
   boundaryRecursionDepth--;
 }
-
 
 
 
