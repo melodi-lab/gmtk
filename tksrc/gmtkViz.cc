@@ -137,6 +137,7 @@ class StructPage: public wxScrolledWindow
 		Selectable *itemAt( const wxPoint& pt );
 		void setAllSelected( bool newSelected );
 		void setEndpointsSelected( bool newSelected, RVInfo::rvParent );
+		void setInOutArcsVisible( bool newVisible, RVInfo::rvParent rvId );
 		void toggleSelectedInRect( const wxRect& rect );
 		void moveFrameSep( int i, int dx );
 		void moveFrameNameTag( int i, int dx, int dy );
@@ -213,6 +214,7 @@ class StructPage: public wxScrolledWindow
 		void hideSelectedLabels( void );
 		void showAllNodeLabels( void );
 		void showAllFrameLabels( void );
+		void showAllNodes( void );
 
 		// Ask the user what font they want to use.
 		void changeFont( void );
@@ -326,50 +328,58 @@ protected:
 
 /// Represents a node's nametag
 class NameTag : public Selectable {
-public:
-	/// absolute position (not relative to node)
-	wxPoint pos;
-	/// automatically updated size
-	wxPoint size;
-	/// the text displayed
-	wxString name;
-	/// whether to actually draw it
-	bool visible;
-	// constructor
-	NameTag( const wxPoint& newPos, const wxString& newName );
-	// drawing
-	void draw( wxDC *dc );
-	// selectable method overrides
-	virtual bool onMe( const wxPoint& pt );
-	virtual bool inRect( const wxRect& rect );
-	void toggleVisible();
+	public:
+		/// absolute position (not relative to node)
+		wxPoint pos;
+		/// automatically updated size
+		wxPoint size;
+		/// the text displayed
+		wxString name;
+		// constructor
+		NameTag( const wxPoint& newPos, const wxString& newName );
+		// drawing
+		void draw( wxDC *dc );
+		// selectable method overrides
+		virtual bool onMe( const wxPoint& pt );
+		virtual bool inRect( const wxRect& rect );
+		void setVisible(bool newVisible){visible = newVisible;}
+		void toggleVisible(){visible = !visible;}
+		bool isVisible(){return visible;}
+	private:
+		/// whether to actually draw it
+		bool visible;
 };
 
 /// Represents a node 
 class VizNode : public Selectable {
-public:
-	/// absolute position of the center of the circle
-	wxPoint center;
-	/// a copy of the RVInfo entry from the FileParser
-	RVInfo *rvi;
-	/// the parent
-	StructPage *page;
-	/// name and frame number
-	RVInfo::rvParent rvId;
-	/// the node's label
-	NameTag nametag;
-	/// pointer to a generic window from a failed attempt at tooltips
-	wxWindow *tipWin;
-	// constructor
-	VizNode( const wxPoint& newPos, RVInfo *newRvi, StructPage *parentPage );
-	// destructor (noop for now)
-	~VizNode( void );
-	// draw the node
-	void draw( wxDC *dc );
-	// Selectable methods
-	virtual void setSelected( bool newSelected );
-	virtual bool onMe( const wxPoint& pt );
-	virtual bool inRect( const wxRect& rect ) { return rect.Inside(center); }
+	public:
+		/// absolute position of the center of the circle
+		wxPoint center;
+		/// a copy of the RVInfo entry from the FileParser
+		RVInfo *rvi;
+		/// the parent
+		StructPage *page;
+		/// name and frame number
+		RVInfo::rvParent rvId;
+		/// the node's label
+		NameTag nametag;
+		/// pointer to a generic window from a failed attempt at tooltips
+		wxWindow *tipWin;
+		// constructor
+		VizNode( const wxPoint& newPos, RVInfo *newRvi, StructPage *parentPage );
+		// destructor (noop for now)
+		~VizNode( void );
+		// draw the node
+		void draw( wxDC *dc );
+		// Selectable methods
+		virtual void setSelected( bool newSelected );
+		virtual bool onMe( const wxPoint& pt );
+		virtual bool inRect( const wxRect& rect ) { return rect.Inside(center); }
+		bool isVisible(){return visible;}
+		void setVisible(bool newVisible);
+		void toggleVisible(){setVisible(!visible);}
+	private:
+		bool visible;
 };
 
 
@@ -389,24 +399,30 @@ public:
 
 /// Represents an arc
 class VizArc {
-public:
-	/// for some wxDC methods
-	wxList *points;
-	/// much more user-friendly and with all the necessary info
-	std::vector< ControlPoint* > *cps;
-	/// the parent
-	StructPage *page;
-	/// Is it a switching arc?
-	bool switching;
-	/// Is it a conditional arc?
-	bool conditional;
-	// constructor
-	VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage );
-	// destructor (to delete the wxList of points)
-	~VizArc( void );
-	enum { DRAW_ARCS = 1<<0, DRAW_CPS = 1<<1 };
-	// draw itself
-	void draw( wxDC *dc, int drawFlags );
+	public:
+		/// for some wxDC methods
+		wxList *points;
+		/// much more user-friendly and with all the necessary info
+		std::vector< ControlPoint* > *cps;
+		/// the parent
+		StructPage *page;
+		/// Is it a switching arc?
+		bool switching;
+		/// Is it a conditional arc?
+		bool conditional;
+		// constructor
+		VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage );
+		// destructor (to delete the wxList of points)
+		~VizArc( void );
+		enum { DRAW_ARCS = 1<<0, DRAW_CPS = 1<<1 };
+		// draw itself
+		void draw( wxDC *dc, int drawFlags );
+		//visiblity
+		void setVisible(bool newVisible){visible = newVisible;}
+		bool isVisible(){return visible;}
+	private:
+		// is it visible
+		bool visible;
 };
 
 
@@ -492,6 +508,7 @@ public:
 	MENU_VIEW_HIDELABELS,
 	MENU_VIEW_SHOW_NODE_LABELS,
 	MENU_VIEW_SHOW_FRAME_LABELS,
+	MENU_VIEW_ALL_NODES_VISIBLE,
 	MENU_VIEW_CPS,
 	MENU_VIEW_LINES,
 	MENU_VIEW_SPLINES,
@@ -639,6 +656,7 @@ public:
 	void OnMenuViewHideLabels(wxCommandEvent &event);
 	void OnMenuViewShowNodeLabels(wxCommandEvent &event);
 	void OnMenuViewShowFrameLabels(wxCommandEvent &event);
+	void OnMenuViewAllNodesVisible(wxCommandEvent &event);
 	void OnMenuViewCPs(wxCommandEvent &event);
 	void OnMenuViewLines(wxCommandEvent &event);
 	void OnMenuViewSplines(wxCommandEvent &event);
@@ -840,6 +858,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_view->Append(MENU_VIEW_HIDELABELS, wxT("Hide Selected Labels"), wxT("Turn off drawing for all currently selected labels"), wxITEM_NORMAL);
 	menu_view->Append(MENU_VIEW_SHOW_NODE_LABELS, wxT("Show All Node Labels"), wxT("Turn on drawing for all node labels"), wxITEM_NORMAL);
 	menu_view->Append(MENU_VIEW_SHOW_FRAME_LABELS, wxT("Show All Frame Labels"), wxT("Turn on drawing for all frame labels"), wxITEM_NORMAL);
+	menu_view->Append(MENU_VIEW_ALL_NODES_VISIBLE, wxT("Make All Nodes Visible"), wxT("Make all nodes Visible"), wxITEM_NORMAL);
 	menu_view->AppendSeparator();
 	menu_view->Append(MENU_VIEW_CPS, wxT("Draw Control Points"), wxT("Toggle display of arc spline control points"), wxITEM_CHECK);
 	menu_view->Append(MENU_VIEW_LINES, wxT("Draw Arc Lines"), wxT("Toggle display of straight lines between control points in arcs"), wxITEM_CHECK);
@@ -1142,6 +1161,7 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_VIEW_HIDELABELS, GFrame::OnMenuViewHideLabels)
 	EVT_MENU(MENU_VIEW_SHOW_NODE_LABELS, GFrame::OnMenuViewShowNodeLabels)
 	EVT_MENU(MENU_VIEW_SHOW_FRAME_LABELS, GFrame::OnMenuViewShowFrameLabels)
+	EVT_MENU(MENU_VIEW_ALL_NODES_VISIBLE, GFrame::OnMenuViewAllNodesVisible)
 	EVT_MENU(MENU_VIEW_CPS, GFrame::OnMenuViewCPs)
 	EVT_MENU(MENU_VIEW_LINES, GFrame::OnMenuViewLines)
 	EVT_MENU(MENU_VIEW_SPLINES, GFrame::OnMenuViewSplines)
@@ -1949,6 +1969,37 @@ GFrame::OnMenuViewShowFrameLabels(wxCommandEvent &event)
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage)
 		curPage->showAllFrameLabels();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * draw all nodes.
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *	  in case it isn't, so everything should be fine as long as the
+ *	  program is fully initialized.
+ *
+ * \post If a StructPage was in front, then it has turned on drawing
+ *  for all nodes.
+ *
+ * \note If a StructPage was in front, then it has turned on drawing
+ *  for all nodes.
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuViewAllNodesVisible(wxCommandEvent &event)
+{
+	// figure out which page this is for and pass the buck
+	int curPageNum = struct_notebook->GetSelection();
+	StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+	// If it couldn't be casted to a StructPage, then curPage will be NULL.
+	if (curPage)
+		curPage->showAllNodes();
 }
 
 /**
@@ -3017,7 +3068,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 						if (value != wxEmptyString) {
 							long visible;
 							if (value.ToLong(&visible) && (visible == true || visible == false)) {
-								frameNameTags[i]->visible = visible;
+								frameNameTags[i]->setVisible(visible);
 							} else {
 								wxString msg;
 								msg.sprintf( "frames[%d].nametag.visible is not a number 0 or 1", i);
@@ -3413,7 +3464,7 @@ StructPage::initNodes( void )
 		if (value != wxEmptyString) {
 			long visible;
 			if (value.ToLong(&visible) && (visible == true || visible == false)) {
-				nodeNameTags[i]->visible = visible;
+				nodeNameTags[i]->setVisible(visible);
 			} else {
 				wxString msg;
 				msg.sprintf( "nodes[%d].nametag.visible is not a number 0 or 1",
@@ -3708,9 +3759,11 @@ StructPage::OnChar( wxKeyEvent &event )
 		int node_index = nodeUnderPt(mouse_pos);
 		//if we find a node then toggle it's nametag visibility
 		if (0 <= node_index){
-			nodes[node_index]->nametag.toggleVisible();
-			redraw();
-			blit();
+			if (nodes[node_index]->isVisible()){
+				nodes[node_index]->nametag.toggleVisible();
+				redraw();
+				blit();
+			}
 		} else {
 			//see if we're on a frame name tag
 			int tag_index = -1;
@@ -3729,6 +3782,14 @@ StructPage::OnChar( wxKeyEvent &event )
 		}
 	} else if (event.m_keyCode == 'i'){
 		popUpNodeInfo(mouse_pos);
+	} else if (event.m_keyCode == 'v'){
+		//find a node under the mouse
+		int node_index = nodeUnderPt(mouse_pos);
+		if (0 <= node_index){
+			nodes[node_index]->toggleVisible();
+			redraw();
+			blit();
+		}
 	} else {
 		event.Skip();
 	}
@@ -5511,7 +5572,7 @@ StructPage::Save( void )
 						  i, nodes[i]->nametag.pos.y );
 				gvp.Write(line);
 				line.sprintf( "nodes[%d].nametag.visible=%d\n",
-						  i, nodes[i]->nametag.visible );
+						  i, nodes[i]->nametag.isVisible() );
 				gvp.Write(line);
 			}
 
@@ -5563,7 +5624,7 @@ StructPage::Save( void )
 						  i, frameNameTags[i]->pos.y );
 				gvp.Write(line);
 				line.sprintf( "frames[%d].nametag.visible=%d\n",
-						  i, frameNameTags[i]->visible );
+						  i, frameNameTags[i]->isVisible() );
 				gvp.Write(line);
 			}
 
@@ -5729,6 +5790,45 @@ StructPage::setEndpointsSelected( bool newSelected, RVInfo::rvParent rvId )
 
 /**
  *******************************************************************
+ * Sets the visiblity of all the arcs coming in and going out of a node
+ *
+ * \param newVisible The visiblity value desired for the arcs.
+ * \param rvId The Id of the node whose endpoints should be made visible/invisible.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The arcs going in and coming out of the given node will be made visible or invisible.
+ *
+ * \note The arcs going in and coming out of the given node will be made visible or invisible.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::setInOutArcsVisible( bool newVisible, RVInfo::rvParent rvId )
+{
+	int n = nameVizNodeMap[rvId];
+	int totalNodes = nodes.size();
+
+	for ( int i = 0; i < totalNodes; i++ ) {
+		// outgoing arcs
+		if (arcs[n][i]) {
+			//an arc should only be made visible if both nodes are visible
+			if ((newVisible && nodes[i]->isVisible()) | !newVisible){
+				(*arcs[n][i]).setVisible(newVisible);
+			}
+		}
+		// incoming arcs
+		if (arcs[i][n]) {
+			//an arc should only be made visible if both nodes are visible
+			if ((newVisible && nodes[i]->isVisible()) | !newVisible){
+				(*arcs[i][n]).setVisible(newVisible);
+			}
+		}
+	}
+}
+
+/**
+ *******************************************************************
  * Set the selected status of every item.
  *
  * \param newSelected The selected value desired for the items.
@@ -5847,11 +5947,11 @@ StructPage::hideSelectedLabels( void )
 	int numNodes = nodes.size();
 	for (int i = 0; i < numNodes; i++) {
 		if (nodeNameTags[i]->getSelected())
-			nodeNameTags[i]->visible = false;
+			nodeNameTags[i]->setVisible(false);
 	}
 	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
 		if (frameNameTags[i]->getSelected())
-			frameNameTags[i]->visible = false;
+			frameNameTags[i]->setVisible(false);
 	}
 
 	redraw();
@@ -5873,9 +5973,8 @@ StructPage::hideSelectedLabels( void )
 void
 StructPage::showAllNodeLabels( void )
 {
-	int numNodes = nodes.size();
-	for (int i = 0; i < numNodes; i++) {
-		nodeNameTags[i]->visible = true;
+	for (unsigned int i = 0; i < nodes.size(); i++) {
+		nodeNameTags[i]->setVisible(true);
 	}
 
 	redraw();
@@ -5898,7 +5997,30 @@ void
 StructPage::showAllFrameLabels( void )
 {
 	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
-		frameNameTags[i]->visible = true;
+		frameNameTags[i]->setVisible(true);
+	}
+
+	redraw();
+	blit();
+}
+
+/**
+ *******************************************************************
+ * Mark all the nodes as visible and redraw.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post All of the Nodes (their labels and in/out arcs) will be marked visible and drawn.
+ *
+ * \note All of the Nodes (their labels and in/out arcs) will be marked visible and drawn.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::showAllNodes( void )
+{
+	for (unsigned int i = 0; i < nodes.size(); i++) {
+		nodes[i]->setVisible(true);
 	}
 
 	redraw();
@@ -6560,26 +6682,6 @@ NameTag::inRect( const wxRect& rect )
 
 /**
  *******************************************************************
- * Toggles The Visibility of a NameTag
- * 
- * \param none
- *
- * \pre The NameTag should be valid.
- *
- * \post The NameTag's visibility will be toggled, it should be redrawn
- *
- * \note The NameTag's visibility will be toggled, it should be redrawn
- *
- * \return void
- *******************************************************************/
-void
-NameTag::toggleVisible()
-{
-	visible = !visible;
-}
-
-/**
- *******************************************************************
  * Constructs a VizNode.
  *
  * \param pos The center of the node.
@@ -6612,6 +6714,7 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
 			   wxTRANSPARENT_WINDOW );
 	tipWin->Hide();
 	tipWin->SetToolTip(wxT(rvId.first.c_str()));
+	visible = true;
 }
 
 /**
@@ -6651,6 +6754,8 @@ VizNode::~VizNode( void )
 void
 VizNode::draw( wxDC *dc )
 {
+	if (!visible)
+		return;
 	wxBrush oldBrush = dc->GetBrush();
 	if (rvi->rvDisp == RVInfo::d_observed) {
 		dc->SetBrush(*wxLIGHT_GREY_BRUSH);
@@ -6659,13 +6764,13 @@ VizNode::draw( wxDC *dc )
 	dc->SetBrush(oldBrush);
 	if (getSelected()) {
 		dc->DrawRectangle( center.x-NODE_RADIUS, center.y-NODE_RADIUS,
-					3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
+				3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
 		dc->DrawRectangle( center.x+NODE_RADIUS, center.y-NODE_RADIUS,
-					-3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
+				-3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
 		dc->DrawRectangle( center.x-NODE_RADIUS, center.y+NODE_RADIUS,
-					3*ACTUAL_SCALE, -3*ACTUAL_SCALE );
+				3*ACTUAL_SCALE, -3*ACTUAL_SCALE );
 		dc->DrawRectangle( center.x+NODE_RADIUS, center.y+NODE_RADIUS,
-					-3*ACTUAL_SCALE, -3*ACTUAL_SCALE );
+				-3*ACTUAL_SCALE, -3*ACTUAL_SCALE );
 	}
 }
 
@@ -6714,6 +6819,32 @@ VizNode::setSelected( bool newSelected ) {
 	page->setEndpointsSelected( newSelected, rvId );
 	// select the node's nametag as well
 	nametag.setSelected( newSelected );
+}
+
+/**
+ *******************************************************************
+ * Set the visibility state of this node, it's nametag and any arc endpoints
+ * leading to or from it.
+ *
+ * \param newVisible The new visiblity value for this node, nametag (and
+ * endpoints).
+ *
+ * \pre The StructPage and VizNode should be fully initialized.
+ *
+ * \post The node and enpoints will have the specified selected value.
+ *
+ * \note The node and enpoints will have the specified selected value.
+ *
+ * \return void
+ *******************************************************************/
+void
+VizNode::setVisible( bool newVisible ) {
+	visible = newVisible;
+	//the visiblity of the arcs going in and out should be the same as
+	//the node
+	page->setInOutArcsVisible( newVisible, rvId );
+	// change the visiblity of the node's nametag as well
+	nametag.setVisible( newVisible );
 }
 
 
@@ -6795,6 +6926,7 @@ VizArc::VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage )
 	for (int i = 0; i < numPoints; i++) {
 		points->Append( (wxObject*)&(*cps)[i]->pos );
 	}
+	visible = true;
 }
 
 /**
@@ -6838,8 +6970,10 @@ VizArc::~VizArc( void )
 void
 VizArc::draw( wxDC *dc, int drawFlags )
 {
+	if (!visible)
+		return;
 	wxPen oldPen = dc->GetPen();
-	if ( drawFlags & DRAW_ARCS ) {
+	if (drawFlags & DRAW_ARCS) {
 		wxPen *pen = NULL;
 		/* Set the pen appropriately depending on whether it's switching,
 		 * conditional, or both. */
@@ -6849,7 +6983,7 @@ VizArc::draw( wxDC *dc, int drawFlags )
 			pen = &page->switchingPen;
 		else if (conditional)
 			pen = &page->conditionalPen;
-		
+
 		dc->SetPen(*pen);
 
 		/* Draw whatever splines, lines, or direct lines the StructPage
@@ -6871,18 +7005,18 @@ VizArc::draw( wxDC *dc, int drawFlags )
 			hyp = hypot( opp, adj );
 
 			arrow[0].x = (*cps)[cps->size()-1]->pos.x -
-			(int)(NODE_RADIUS * adj / hyp);
+				(int)(NODE_RADIUS * adj / hyp);
 			arrow[0].y = (*cps)[cps->size()-1]->pos.y -
-			(int)(NODE_RADIUS * opp / hyp);
+				(int)(NODE_RADIUS * opp / hyp);
 
 			arrow[1].x = arrow[0].x - (int)round(ARROW_LEN * adj / hyp) +
-			(int)round(ARROW_WID * opp / hyp);
+				(int)round(ARROW_WID * opp / hyp);
 			arrow[1].y = arrow[0].y - (int)round(ARROW_LEN * opp / hyp) -
-			(int)round(ARROW_WID * adj / hyp);
+				(int)round(ARROW_WID * adj / hyp);
 			arrow[2].x = arrow[0].x - (int)round(ARROW_LEN * adj / hyp) -
-			(int)round(ARROW_WID * opp / hyp);
+				(int)round(ARROW_WID * opp / hyp);
 			arrow[2].y = arrow[0].y - (int)round(ARROW_LEN * opp / hyp) +
-			(int)round(ARROW_WID * adj / hyp);
+				(int)round(ARROW_WID * adj / hyp);
 
 			wxBrush oldBrush = dc->GetBrush();
 			wxBrush newBrush(oldBrush);
@@ -6906,11 +7040,11 @@ VizArc::draw( wxDC *dc, int drawFlags )
 			wxPoint *p = (wxPoint *)node->GetData();
 			if ( (*cps)[i]->getSelected() )
 				dc->DrawRectangle( p->x-(3*ACTUAL_SCALE)/2,
-					p->y-(3*ACTUAL_SCALE)/2,
-					3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
+						p->y-(3*ACTUAL_SCALE)/2,
+						3*ACTUAL_SCALE, 3*ACTUAL_SCALE );
 			if ( page->getViewCPs() ) {
 				dc->DrawRectangle( p->x-ACTUAL_SCALE, p->y-ACTUAL_SCALE,
-					2*ACTUAL_SCALE, 2*ACTUAL_SCALE );
+						2*ACTUAL_SCALE, 2*ACTUAL_SCALE );
 			}
 		}
 		dc->SetPen(oldPen);
@@ -7204,6 +7338,10 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : If the mouse pointer is over a node or frame label 't' will toggle the node or ");
 	help_msg->AppendText("frame label's visibility\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'v'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is over a node will toggle that node, its label and its edge's visibility\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
 	help_msg->SetDefaultStyle(normal);
