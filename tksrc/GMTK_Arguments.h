@@ -483,6 +483,38 @@ const char*const argerr = "ARG ERROR";
 /*************************************************************************************************************/
 
 
+#if defined(GMTK_ARG_CROSSOVER_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char *inputCrossoverTriangulatedFile=NULL;
+  static char *outputCrossoverTriangulatedFile=NULL;
+
+  static float crossoverProbability = 0.2;
+  static float mutateProbability = 0.7;
+                                                                                
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("inputCrossoverTriangulatedFile",Arg::Opt,inputCrossoverTriangulatedFile,
+    "Non-default previous triangulated file to start with"),
+  Arg("outputCrossoverTriangulatedFile",Arg::Opt,outputCrossoverTriangulatedFile, 
+    "File name to write second resulting triangulation to"),
+  Arg("crossoverProbability", Arg::Opt, crossoverProbability, 
+    "Probability of an edge swap when using crossover"),
+  Arg("mutateProbability", Arg::Opt, mutateProbability, 
+    "Probability of an edge mutation when using crossover"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif 
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
 #if defined(GMTK_ARG_JT_INFO_FILE)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
