@@ -138,6 +138,7 @@ class StructPage: public wxScrolledWindow
 		void setAllSelected( bool newSelected );
 		void setEndpointsSelected( bool newSelected, RVInfo::rvParent );
 		void setInOutArcsVisible( bool newVisible, RVInfo::rvParent rvId );
+		void setInArcsHighlighed( bool newHighlighted, RVInfo::rvParent rvId );
 		void toggleSelectedInRect( const wxRect& rect );
 		void moveFrameSep( int i, int dx );
 		void moveFrameNameTag( int i, int dx, int dy );
@@ -173,6 +174,7 @@ class StructPage: public wxScrolledWindow
 		wxPen switchingPen;
 		wxPen conditionalPen;
 		wxPen bothPen;
+		wxPen highlightedPen;
 		wxPen frameBorderPen;
 		wxPen chunkBorderPen;
 		wxPen controlPointPen;
@@ -378,8 +380,12 @@ class VizNode : public Selectable {
 		bool isVisible(){return visible;}
 		void setVisible(bool newVisible);
 		void toggleVisible(){setVisible(!visible);}
+		bool isHighlighted() {return highlighted;}
+		void setHighlighted(bool newHighlighted){ highlighted = newHighlighted;}
+		void toggleHighlighted() {setHighlighted(!highlighted);}
 	private:
 		bool visible;
+		bool highlighted;
 };
 
 
@@ -420,9 +426,13 @@ class VizArc {
 		//visiblity
 		void setVisible(bool newVisible){visible = newVisible;}
 		bool isVisible(){return visible;}
+		bool isHighlighted() {return highlighted;}
+		void setHighlighted(bool newHighlighted){ highlighted = newHighlighted;}
+		void toggleHighlighted() {setHighlighted(!highlighted);}
 	private:
 		// is it visible
 		bool visible;
+		bool highlighted;
 };
 
 
@@ -2801,12 +2811,13 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 			   const wxString &file, bool old)
 	: wxScrolledWindow( parent, id, wxDefaultPosition, wxDefaultSize,
 			wxSUNKEN_BORDER | wxTAB_TRAVERSAL, _T("") ),
-	  switchingPen(*wxBLUE,1,wxSOLID), conditionalPen(*wxBLACK_PEN),
-	  bothPen(*wxRED_PEN), frameBorderPen(*wxLIGHT_GREY_PEN),
-	  chunkBorderPen(*wxBLACK_PEN), controlPointPen(*wxRED_PEN),
-	  nodePen(*wxBLACK_PEN), gridPen(*wxLIGHT_GREY_PEN), 
-	  labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL, wxNORMAL),
-	  boundingBoxPen(*wxBLACK_PEN)
+	switchingPen(*wxBLUE,1,wxSOLID), conditionalPen(*wxBLACK_PEN),
+	bothPen(*wxRED_PEN), highlightedPen(*wxCYAN_PEN),
+	frameBorderPen(*wxLIGHT_GREY_PEN), chunkBorderPen(*wxBLACK_PEN),
+	controlPointPen(*wxRED_PEN), nodePen(*wxBLACK_PEN),
+	gridPen(*wxLIGHT_GREY_PEN), 
+	labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL), 
+	boundingBoxPen(*wxBLACK_PEN)
 {
 	//since we haven't parsed the data yet we mark it false
 	data_parsed = false;
@@ -2848,12 +2859,14 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	switchingPen.SetStyle(wxDOT); /* was wxSOLID */
 	conditionalPen.SetStyle(wxSOLID);
 	bothPen.SetStyle(wxLONG_DASH); /* was wxSOLID */
+	highlightedPen.SetStyle(wxSOLID); /* was wxSOLID */
 	frameBorderPen.SetStyle(wxDOT); /* was wxSOLID */
 	chunkBorderPen.SetStyle(wxSOLID);
 	// Scale all these lines up.
 	switchingPen.SetWidth(ACTUAL_SCALE);
 	conditionalPen.SetWidth(ACTUAL_SCALE);
 	bothPen.SetWidth(ACTUAL_SCALE);
+	highlightedPen.SetWidth(ACTUAL_SCALE + 2);	//make the highlighted pen thicker
 	frameBorderPen.SetWidth(ACTUAL_SCALE);
 	chunkBorderPen.SetWidth(ACTUAL_SCALE);
 	controlPointPen.SetWidth(ACTUAL_SCALE);
@@ -3783,6 +3796,7 @@ StructPage::OnChar( wxKeyEvent &event )
 	} else if (event.m_keyCode == 'i'){
 		popUpNodeInfo(mouse_pos);
 	} else if (event.m_keyCode == 'v'){
+		//toggle visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
 		if (0 <= node_index){
@@ -3790,6 +3804,43 @@ StructPage::OnChar( wxKeyEvent &event )
 			redraw();
 			blit();
 		}
+	} else if (event.m_keyCode == 'h'){
+		//highlight
+		//find a node under the mouse
+		int node_index = nodeUnderPt(mouse_pos);
+		int numNodes = nodes.size();
+		bool is_highlighted = false;
+		if (0 <= node_index){
+			is_highlighted = nodes[node_index]->isHighlighted();
+			//if the node isn't visible then don't allow for it and it's parents to
+			//be highlighed
+			if (!nodes[node_index]->isVisible())
+				node_index = -1;
+		}
+		//turn off highlighting for every node and arc except parents of node_index
+		//arcs coming into the node_index
+		for(int i = 0; i < numNodes; i++){
+			if (i == node_index){
+				nodes[node_index]->setHighlighted(!is_highlighted);
+				setInArcsHighlighed(!is_highlighted, nodes[node_index]->rvId);
+			} else {
+				nodes[i]->setHighlighted(false);
+				for (int j = 0; j < numNodes; j++) {
+					//if the arc is valid and goes to the node_index highlight
+					//the node (the parent of the node_index) otherwise unhighlight
+					//the arc
+					if (arcs[i][j]) {
+						if (j == node_index)
+							nodes[i]->setHighlighted(!is_highlighted);
+						else 
+							arcs[i][j]->setHighlighted(false);
+					} 
+				}
+			}
+		}
+
+		redraw();
+		blit();
 	} else {
 		event.Skip();
 	}
@@ -5793,7 +5844,7 @@ StructPage::setEndpointsSelected( bool newSelected, RVInfo::rvParent rvId )
  * Sets the visiblity of all the arcs coming in and going out of a node
  *
  * \param newVisible The visiblity value desired for the arcs.
- * \param rvId The Id of the node whose endpoints should be made visible/invisible.
+ * \param rvId The Id of the node whose in/out arcs should be made visible/invisible.
  *
  * \pre The StructPage should be fully initialized.
  *
@@ -5823,6 +5874,35 @@ StructPage::setInOutArcsVisible( bool newVisible, RVInfo::rvParent rvId )
 			if ((newVisible && nodes[i]->isVisible()) | !newVisible){
 				(*arcs[i][n]).setVisible(newVisible);
 			}
+		}
+	}
+}
+
+/**
+ *******************************************************************
+ * Sets the highlighedness of all the arcs coming in to a node
+ *
+ * \param newHighlighted The highlighedness value desired for the arcs.
+ * \param rvId The Id of the node whose incoming arcs should be highlighed/unhighlighed.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The arcs going in to the given node will be made highlighted or unhighlighed.
+ *
+ * \note The arcs going in to the given node will be made highlighted or unhighlighed.
+ *
+ * \return void
+ *******************************************************************/
+void
+StructPage::setInArcsHighlighed( bool newHighlighted, RVInfo::rvParent rvId )
+{
+	int n = nameVizNodeMap[rvId];
+	int totalNodes = nodes.size();
+
+	for ( int i = 0; i < totalNodes; i++ ) {
+		// incoming arcs
+		if (arcs[i][n]) {
+			(*arcs[i][n]).setHighlighted(newHighlighted);
 		}
 	}
 }
@@ -6715,6 +6795,7 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
 	tipWin->Hide();
 	tipWin->SetToolTip(wxT(rvId.first.c_str()));
 	visible = true;
+	highlighted = false;
 }
 
 /**
@@ -6760,7 +6841,15 @@ VizNode::draw( wxDC *dc )
 	if (rvi->rvDisp == RVInfo::d_observed) {
 		dc->SetBrush(*wxLIGHT_GREY_BRUSH);
 	}
-	dc->DrawCircle(center, NODE_RADIUS);
+
+	if (highlighted){
+		wxPen oldPen = dc->GetPen();
+		dc->SetPen(page->highlightedPen);
+		dc->DrawCircle(center, NODE_RADIUS);
+		dc->SetPen(oldPen);
+	} else
+		dc->DrawCircle(center, NODE_RADIUS);
+
 	dc->SetBrush(oldBrush);
 	if (getSelected()) {
 		dc->DrawRectangle( center.x-NODE_RADIUS, center.y-NODE_RADIUS,
@@ -6927,6 +7016,7 @@ VizArc::VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage )
 		points->Append( (wxObject*)&(*cps)[i]->pos );
 	}
 	visible = true;
+	highlighted = false;
 }
 
 /**
@@ -6977,7 +7067,9 @@ VizArc::draw( wxDC *dc, int drawFlags )
 		wxPen *pen = NULL;
 		/* Set the pen appropriately depending on whether it's switching,
 		 * conditional, or both. */
-		if (switching && conditional)
+		if (highlighted)
+			pen = &page->highlightedPen;
+		else if (switching && conditional)
 			pen = &page->bothPen;
 		else if (switching)
 			pen = &page->switchingPen;
@@ -7312,6 +7404,20 @@ GmtkPrintout::DrawPageOne(wxDC *dc)
 		page->toggleViewSelectBox();
 }
 
+ /*******************************************************************
+  * Create the Contents of the Help window
+ *
+ * \param 
+ *
+ * \pre The GFrame should be fully initialized
+ *
+ * \post The GmktHelp object will contain data and a button
+ *
+ * \note The GmktHelp object will contain data and a button
+ * 
+ * \return void
+ *******************************************************************/
+
 void
 GmtkHelp::doLayout()
 {
@@ -7342,6 +7448,11 @@ GmtkHelp::doLayout()
 	help_msg->AppendText("\t'v'");
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : If the mouse pointer is over a node will toggle that node, its label and its edge's visibility\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'h'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is over a visible node will highlight/unhighlight that node, its parents and its incoming edges\n");
+	help_msg->AppendText("\t\tIf the mouse pointer is not on a visible node 'h' will turn off all highlighting\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
 	help_msg->SetDefaultStyle(normal);
