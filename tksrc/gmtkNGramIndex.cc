@@ -55,7 +55,6 @@ VCID("$Header$")
 static char * lmFile = NULL;
 static char* vocabFile = NULL;
 static bool outBin = false;
-static bool print_version_and_exit = false;
 
 
 Arg Arg::Args[] = {
@@ -68,8 +67,6 @@ Arg Arg::Args[] = {
 	Arg("vocab", Arg::Req, vocabFile, "vocab file"),
 
 	Arg("outBin", Arg::Opt, outBin, "Use binary for output index file"),
-
-	Arg("version", Arg::Opt, print_version_and_exit, "Print GMTK version number and exit."),
 
 	// final one to signal the end of the list
 	Arg()
@@ -86,12 +83,12 @@ ObservationMatrix globalObservationMatrix;
 
 
 int main(int argc, char *argv[]) {
-#if 0
 	////////////////////////////////////////////
 	// set things up so that if an FP exception
 	// occurs such as an "invalid" (NaN), overflow
 	// or divide by zero, we actually get a FPE
 	ieeeFPsetup();
+	set_new_handler(memory_error);
 
 	////////////////////////////////////////////
 	// parse arguments
@@ -101,15 +98,7 @@ int main(int argc, char *argv[]) {
 	  Arg::usage(); exit(-1);
 	}
 
-	(void) IM::setGlbMsgLevel(verbosity);
-	GM_Parms.setMsgLevel(verbosity);
 
-	if (print_version_and_exit) {
-		printf("%s\n",gmtk_version_id);
-	}
-
-
-	
 	// figure out how many words in the vocab file
 	unsigned card = 0;
 	unsigned len = 1024;
@@ -126,7 +115,7 @@ int main(int argc, char *argv[]) {
 	// figure out ngram order
 	unsigned order = 0;
 	if ( (fp = fopen(lmFile, "r")) == NULL )
-		qerror("cannot open file %s", lmFile);
+		error("cannot open file %s", lmFile);
 
 	do {
 		if ( getline(&word, &len, fp) < 0 )
@@ -169,5 +158,4 @@ int main(int argc, char *argv[]) {
 	delete [] indexFile;
 
 	return 0;
-#endif
 }
