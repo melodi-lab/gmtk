@@ -2569,6 +2569,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 		case MENU_CUSTOMIZE_GRID_PEN_WIDTH:
 		case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_WIDTH:
 			penStyle = thePen->GetStyle();
+#ifdef __WXMSW__
 			if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
 					penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
 					penStyle == wxUSER_DASH ) {
@@ -2581,6 +2582,14 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 				if (newWidth > 0)
 					thePen->SetWidth(newWidth);
 			}
+#else
+			newWidth = wxGetNumberFromUser( wxT("How wide should the pen be?"),
+					wxT("Width: "),
+					wxT("Change Pen Width"),
+					thePen->GetWidth(), 1, 256 );
+			if (newWidth > 0)
+				thePen->SetWidth(newWidth);
+#endif
 			break;
 		case MENU_CUSTOMIZE_SWITCHING_PEN_STYLE:
 		case MENU_CUSTOMIZE_CONDITIONAL_PEN_STYLE:
@@ -2611,12 +2620,14 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 							  wxYES_NO, this) ) {
 					break;
 				}
+#ifdef __WXMSW__
 				if ( thePen->GetWidth() != 1 ) {
 					thePen->SetWidth(1);
 					wxLogMessage( "Dots and dashes require a pen "
 						  "width of 1.\nThe width has been "
 						  "altered accordingly." );
 				}
+#endif
 			}
 			switch (newStyleNum) {
 				case 0:
