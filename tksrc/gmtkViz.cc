@@ -3801,6 +3801,20 @@ StructPage::OnChar( wxKeyEvent &event )
 		int node_index = nodeUnderPt(mouse_pos);
 		if (0 <= node_index){
 			nodes[node_index]->toggleVisible();
+			//if this node is highlighed make all it's parents and edges
+			//unhighlighted
+			if (nodes[node_index]->isHighlighted()){
+				for (unsigned int i = 0; i < nodes.size(); i++) {
+					if (arcs[i][node_index]) {
+						nodes[i]->setHighlighted(false);
+						arcs[i][node_index]->setHighlighted(false);
+					} 
+					if (arcs[node_index][i])
+						arcs[node_index][i]->setHighlighted(false);
+				}
+				//unhighlight the node
+				nodes[node_index]->setHighlighted(false);
+			}
 			redraw();
 			blit();
 		}
