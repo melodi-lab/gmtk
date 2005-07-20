@@ -311,7 +311,6 @@ class StructPage: public wxScrolledWindow
 			int firstChunkFrame;
 			int firstEpilogueFrame;
 			int numFrames;
-			wxPoint mouse_pos;	//the mouse position
 			bool data_parsed; //indicates if the str file parsed or not
 };
 
@@ -3200,9 +3199,6 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	// Item 7 in gZoomMap is a 1.0 scaling factor.
 	setScale(ZOOM_1_INDEX);
 
-	//set the mouse_pos to 0,0 on init
-	mouse_pos.x = mouse_pos.y = 0;
-
 	//we haven't done a save as yet so there is no old gvp file
 	gvpFile_old = "";
 }
@@ -3800,9 +3796,14 @@ StructPage::newArc( int i, int j )
 void
 StructPage::OnChar( wxKeyEvent &event )
 {
-	/* if it was delete, then delete the selected control points
-	 * otherwise pass it on in case someone else wants to do something
-	 * with it. */
+	//get the mouse position incase we need it
+	wxPoint mouse_pos = wxGetMousePosition();
+	ScreenToClient(&mouse_pos.x,&mouse_pos.y);
+	CalcUnscrolledPosition( mouse_pos.x, mouse_pos.y, &mouse_pos.x, &mouse_pos.y );
+	// calculate unscaled position
+	mouse_pos.x = (int)round(mouse_pos.x / gZoomMap[displayScale]);
+	mouse_pos.y = (int)round(mouse_pos.y / gZoomMap[displayScale]);
+
 	if (event.m_keyCode == WXK_DELETE) {
 		deleteSelectedCps();
 		redraw();
@@ -3913,7 +3914,7 @@ StructPage::toggleNodeAndArcVisibility(int node_index){
 /**
  *******************************************************************
  * Given a node index (which may be -1 to indicate that we're not on
- * a node, go to the next Highlighting state.  If we're not on a node
+ * a node), go to the next Highlighting state.  If we're not on a node
  * then unhighlight everything.
  *
  * \pre The StructPage must be fully initialized.
@@ -4110,10 +4111,6 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 	// calculate unscaled position
 	pt.x = (int)round(pt.x / gZoomMap[displayScale]);
 	pt.y = (int)round(pt.y / gZoomMap[displayScale]);
-	
-	//save the mouse position for other uses
-	mouse_pos.x = pt.x;
-	mouse_pos.y = pt.y;
 	
 	// find out what (if anything) was clicked
 	Selectable *pointee = itemAt(pt);
