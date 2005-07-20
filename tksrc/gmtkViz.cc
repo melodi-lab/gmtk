@@ -82,6 +82,14 @@ static const double gZoomMap[] = {
 //this is the index into gZoomMap which will give a Zoom of 1
 #define ZOOM_1_INDEX 4
 
+//states of highlight
+//off = not higlighed
+//on = highlighted (for the children and parents)
+//childern = highlighted and highlighting children
+//parents = highlighted and highlighting parents
+//both = highlighted and highlighting both parents and children
+enum highlight_states {off,on,children,parents,both};
+
 
 // some sizes of things
 #define NODE_RADIUS (10*ACTUAL_SCALE)
@@ -116,12 +124,14 @@ class StructPage: public wxScrolledWindow
 
 		//make sure that the data parsed ok
 		bool parsedSucessfully() {return data_parsed;}
-		
+
 		// some event handlers
 		void OnPaint( wxPaintEvent &event );
 		void OnChar( wxKeyEvent &event );
 		void OnMouseEvent( wxMouseEvent &event );
 		void popUpNodeInfo(wxPoint);
+		void nextHighlightState(int node_index);
+		void toggleNodeAndArcVisibility(int node_index);
 
 		// pseudo event handlers: GFrame calls these.
 		void Save( void );
@@ -380,11 +390,16 @@ class VizNode : public Selectable {
 		bool isVisible(){return visible;}
 		void setVisible(bool newVisible);
 		void toggleVisible(){setVisible(!visible);}
-		bool isHighlighted() {return highlighted;}
+
+		//highlight functions
+		bool isHighlighted() {return (highlight_state != off);}
 		void setHighlighted(bool newHighlighted){ highlighted = newHighlighted;}
-		void toggleHighlighted() {setHighlighted(!highlighted);}
+		void setHighlightState(highlight_states state) {highlight_state = state;}
+		highlight_states getHighlightState() {return highlight_state;}
+		highlight_states getNextHighlightState();
 	private:
 		bool visible;
+		highlight_states highlight_state;
 		bool highlighted;
 };
 
@@ -2854,7 +2869,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	: wxScrolledWindow( parent, id, wxDefaultPosition, wxDefaultSize,
 			wxSUNKEN_BORDER | wxTAB_TRAVERSAL, _T("") ),
 	switchingPen(*wxBLUE,1,wxSOLID), conditionalPen(*wxBLACK_PEN),
-	bothPen(*wxRED_PEN), highlightPen(*wxCYAN_PEN),
+	bothPen(*wxRED_PEN), highlightPen(wxPen(wxColour(255,0,255),3,wxSOLID)),//highlight pen is pink
 	frameBorderPen(*wxLIGHT_GREY_PEN), chunkBorderPen(*wxBLACK_PEN),
 	controlPointPen(*wxRED_PEN), nodePen(*wxBLACK_PEN),
 	gridPen(*wxLIGHT_GREY_PEN), 
@@ -3808,8 +3823,8 @@ StructPage::OnChar( wxKeyEvent &event )
 		moveSelected(0, ACTUAL_SCALE*(event.ShiftDown()?10:1));
 		redraw();
 		blit();
-	} else if (event.m_keyCode == 't'){
-
+	} else if (event.m_keyCode == 'q'){
+		//toggle nametag's visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
 		//if we find a node then toggle it's nametag visibility
@@ -3835,70 +3850,186 @@ StructPage::OnChar( wxKeyEvent &event )
 				blit();
 			}
 		}
-	} else if (event.m_keyCode == 'i'){
+	} else if (event.m_keyCode == 'w'){
 		popUpNodeInfo(mouse_pos);
-	} else if (event.m_keyCode == 'v'){
-		//toggle visiblity
+	} else if (event.m_keyCode == 'e'){
+		//toggle node and its edges visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
-		if (0 <= node_index){
-			nodes[node_index]->toggleVisible();
-			//if this node is highlighed make all it's parents and edges
-			//unhighlighted
-			if (nodes[node_index]->isHighlighted()){
-				for (unsigned int i = 0; i < nodes.size(); i++) {
-					if (arcs[i][node_index]) {
-						nodes[i]->setHighlighted(false);
-						arcs[i][node_index]->setHighlighted(false);
-					} 
-					if (arcs[node_index][i])
-						arcs[node_index][i]->setHighlighted(false);
-				}
-				//unhighlight the node
-				nodes[node_index]->setHighlighted(false);
-			}
-			redraw();
-			blit();
-		}
-	} else if (event.m_keyCode == 'h'){
+		toggleNodeAndArcVisibility(node_index);
+		redraw();
+		blit();
+	} else if (event.m_keyCode == 'r'){
 		//highlight
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
-		int numNodes = nodes.size();
-		bool is_highlighted = false;
-		if (0 <= node_index){
-			is_highlighted = nodes[node_index]->isHighlighted();
-			//if the node isn't visible then don't allow for it and it's parents to
-			//be highlighed
-			if (!nodes[node_index]->isVisible())
-				node_index = -1;
-		}
-		//turn off highlighting for every node and arc except parents of node_index
-		//arcs coming into the node_index
-		for(int i = 0; i < numNodes; i++){
-			if (i == node_index){
-				nodes[node_index]->setHighlighted(!is_highlighted);
-				setInArcsHighlighed(!is_highlighted, nodes[node_index]->rvId);
-			} else {
-				nodes[i]->setHighlighted(false);
-				for (int j = 0; j < numNodes; j++) {
-					//if the arc is valid and goes to the node_index highlight
-					//the node (the parent of the node_index) otherwise unhighlight
-					//the arc
-					if (arcs[i][j]) {
-						if (j == node_index)
-							nodes[i]->setHighlighted(!is_highlighted);
-						else 
-							arcs[i][j]->setHighlighted(false);
-					} 
-				}
-			}
-		}
+		nextHighlightState(node_index);
 
 		redraw();
 		blit();
 	} else {
 		event.Skip();
+	}
+}
+
+/**
+ *******************************************************************
+ * Given a node index (which may be -1 to indicate that we're not on
+ * a node), toggle the Node and its arcs visibility
+ *
+ * \pre The StructPage must be fully initialized as well as its nodes and arcs
+ *
+ * \post the node and its incoming and outgoing arcs will have their visibility
+ * toggled, if the node (node_index) was highlighted everything will be unhighlighted
+ *
+ * \note the node and its incoming and outgoing arcs will have their visibility
+ * toggled, if the node (node_index) was highlighted everything will be unhighlighted
+ *
+ * \return void
+ *******************************************************************/
+
+void
+StructPage::toggleNodeAndArcVisibility(int node_index){
+	//first make sure it is in range
+	int numNodes = nodes.size();
+	if (0 <= node_index && node_index < (int)nodes.size()){
+		nodes[node_index]->toggleVisible();
+		//if this node is highlighed make all it's parents and edges
+		//unhighlighted
+		if (nodes[node_index]->isHighlighted()){
+			for (int i = 0; i < numNodes; i++) {
+				for (int j = 0; j < numNodes; j++) {
+					if (arcs[i][j])
+						arcs[i][j]->setHighlighted(false);
+					nodes[i]->setHighlightState(off);
+				}
+			}
+			//unhighlight the node
+			nodes[node_index]->setHighlightState(off);
+		}
+	}
+}
+
+/**
+ *******************************************************************
+ * Given a node index (which may be -1 to indicate that we're not on
+ * a node, go to the next Highlighting state.  If we're not on a node
+ * then unhighlight everything.
+ *
+ * \pre The StructPage must be fully initialized.
+ *
+ * \post The highlighting state for the given node will be changed,
+ * it's parents, children and in/out arcs may also be highlighted or
+ * unhighlighted depending on the state of the given node.  If a negative
+ * node id is given then all nodes and arcs will be set to an unhighlighted
+ * state
+ *
+ * \note The highlighting state for the given node will be changed,
+ * it's parents, children and in/out arcs may also be highlighted or
+ * unhighlighted depending on the state of the given node.  If a negative
+ * node id is given then all nodes and arcs will be set to an unhighlighted
+ * state
+ *
+ * \return void
+ *******************************************************************/
+
+void
+StructPage::nextHighlightState(int node_index){
+	//highlight
+	int numNodes = nodes.size();
+	highlight_states next_highlight_state = off;
+	//if it is a valid node get it's highlight state
+	if (0 <= node_index && node_index < numNodes){
+		//if the node isn't visible then we shouldn't highlight anything
+		if (!nodes[node_index]->isVisible())
+			node_index = -1;
+		else{
+			//figure out the next state for highlighting
+			if(off == nodes[node_index]->getHighlightState())
+				next_highlight_state = children;
+			else
+				next_highlight_state = nodes[node_index]->getNextHighlightState();
+		}
+	}
+
+	switch (next_highlight_state){
+		case children:
+			//step through all the arcs, if it starts at our node
+			//highlight it, also highlight the destination node
+			for(int i = 0; i < numNodes; i++){
+				//turn off highlighting for all but our node's children
+				if (arcs[node_index][i])
+					nodes[i]->setHighlightState(on);
+				else
+					nodes[i]->setHighlightState(off);
+
+				if ( i == node_index){
+					for (int j = 0; j < numNodes; j++) {
+						//j is a child of our node
+						if (arcs[node_index][j])
+							arcs[node_index][j]->setHighlighted(true);
+					}
+				} else {
+					for (int j = 0; j < numNodes; j++) {
+						if (arcs[i][j])
+							arcs[i][j]->setHighlighted(false);
+					}
+				}
+			}
+			nodes[node_index]->setHighlightState(children);
+			break;
+		case parents:
+			//step though all the arcs, if it ends at our node
+			//highlight it, also highlight the source node (parent)
+			for(int i = 0; i < numNodes; i++){
+				//turn off all highlighting for nodes, though we may turn it
+				//back on later
+				nodes[i]->setHighlightState(off);
+				for (int j = 0; j < numNodes; j++) {
+					if (arcs[i][j]) {
+						if (j == node_index){
+							//i is a parent
+							nodes[i]->setHighlightState(on);
+							arcs[i][j]->setHighlighted(true);
+						} else 
+							arcs[i][j]->setHighlighted(false);
+					} 
+				}
+			}
+			nodes[node_index]->setHighlightState(parents);
+			break;
+		case both:
+			//step through all the arcs, if it starts or ends at our node
+			//highlight it and the nodes at either end
+			for(int i = 0; i < numNodes; i++){
+				for (int j = 0; j < numNodes; j++) {
+					if (arcs[i][j]) {
+						if (i == node_index){
+							//i is a parent
+							nodes[j]->setHighlightState(on);
+							arcs[i][j]->setHighlighted(true);
+						} else if (j == node_index){
+							//i is a child
+							nodes[i]->setHighlightState(on);
+							arcs[i][j]->setHighlighted(true);
+						} else {
+							arcs[i][j]->setHighlighted(false);
+						}
+					} 
+				}
+			}
+			nodes[node_index]->setHighlightState(both);
+			break;
+		default:
+			//clear everything
+			for(int i = 0; i < numNodes; i++){
+				nodes[i]->setHighlightState(off);
+				for (int j = 0; j < numNodes; j++) {
+					if (arcs[i][j])
+						arcs[i][j]->setHighlighted(false);
+				}
+			}
+			break;
 	}
 }
 
@@ -6851,7 +6982,7 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
 	tipWin->Hide();
 	tipWin->SetToolTip(wxT(rvId.first.c_str()));
 	visible = true;
-	highlighted = false;
+	highlight_state = off;
 }
 
 /**
@@ -6898,7 +7029,7 @@ VizNode::draw( wxDC *dc )
 		dc->SetBrush(*wxLIGHT_GREY_BRUSH);
 	}
 
-	if (highlighted){
+	if (highlight_state != off){
 		wxPen oldPen = dc->GetPen();
 		dc->SetPen(page->highlightPen);
 		dc->DrawCircle(center, NODE_RADIUS);
@@ -6990,6 +7121,33 @@ VizNode::setVisible( bool newVisible ) {
 	page->setInOutArcsVisible( newVisible, rvId );
 	// change the visiblity of the node's nametag as well
 	nametag.setVisible( newVisible );
+}
+
+/**
+ *******************************************************************
+ * Steps to the next highlight state off-> on, on -> off, children -> parents
+ * parents -> both, both->off
+ *
+ * \param void
+ *
+ * \pre VizNode should be fully initialized.
+ *
+ * \post No side effects.
+ *
+ * \note No side effects.
+ *
+ * \return the next highlight state
+ *******************************************************************/
+highlight_states 
+VizNode::getNextHighlightState(){
+	switch (highlight_state) {
+		case off: return highlight_state = on;
+		case on: return highlight_state = off;
+		case children: return highlight_state = parents;
+		case parents: return highlight_state = both;
+		case both: return highlight_state = off;
+		default: return highlight_state = off;
+	}
 }
 
 
@@ -7492,23 +7650,27 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(bold);
 	help_msg->AppendText("Keyboard Commands:\n");
 	help_msg->SetDefaultStyle(italic);
-	help_msg->AppendText("\t'i'");
+	help_msg->AppendText("\t'q'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If the mouse pointer is over a node 'i' will pop up node info\n");
-	help_msg->SetDefaultStyle(italic);
-	help_msg->AppendText("\t't'");
-	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If the mouse pointer is over a node or frame label 't' will toggle the node or ");
+	help_msg->AppendText(" : If the mouse pointer is over a node or frame label 'q' will toggle the node or ");
 	help_msg->AppendText("frame label's visibility\n");
 	help_msg->SetDefaultStyle(italic);
-	help_msg->AppendText("\t'v'");
+	help_msg->AppendText("\t'w'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is over a node 'w' will pop up node info\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'e'");
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : If the mouse pointer is over a node will toggle that node, its label and its edge's visibility\n");
 	help_msg->SetDefaultStyle(italic);
-	help_msg->AppendText("\t'h'");
+	help_msg->AppendText("\t'r'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If the mouse pointer is over a visible node will highlight/unhighlight that node, its parents and its incoming edges\n");
-	help_msg->AppendText("\t\tIf the mouse pointer is not on a visible node 'h' will turn off all highlighting\n");
+	help_msg->AppendText(" : If the mouse pointer is over a visible node 'r' will step through highlighting modes.\n");
+	help_msg->AppendText("\t\t\tFirst: the node, its outgoing edges and its children will be highlighted.\n");
+	help_msg->AppendText("\t\t\tSecond: the node, its incoming edges and its parents will be highlighted.\n");
+	help_msg->AppendText("\t\t\tThird: the node, its edges, its children and its parents will be highlighted.\n");
+	help_msg->AppendText("\t\t\tFourth: all highlighting will be turned off\n");
+	help_msg->AppendText("\t\tIf the mouse pointer is not on a visible node 'r' will turn off all highlighting\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
 	help_msg->SetDefaultStyle(normal);
