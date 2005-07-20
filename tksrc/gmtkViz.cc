@@ -174,7 +174,7 @@ class StructPage: public wxScrolledWindow
 		wxPen switchingPen;
 		wxPen conditionalPen;
 		wxPen bothPen;
-		wxPen highlightedPen;
+		wxPen highlightPen;
 		wxPen frameBorderPen;
 		wxPen chunkBorderPen;
 		wxPen controlPointPen;
@@ -566,6 +566,10 @@ public:
 	MENU_CUSTOMIZE_BOTH_PEN_COLOR,
 	MENU_CUSTOMIZE_BOTH_PEN_WIDTH,
 	MENU_CUSTOMIZE_BOTH_PEN_STYLE,
+	MENU_CUSTOMIZE_HIGHLIGHT_PEN,
+	MENU_CUSTOMIZE_HIGHLIGHT_PEN_COLOR,
+	MENU_CUSTOMIZE_HIGHLIGHT_PEN_WIDTH,
+	MENU_CUSTOMIZE_HIGHLIGHT_PEN_STYLE,
 	MENU_CUSTOMIZE_FRAMEBORDER_PEN,
 	MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR,
 	MENU_CUSTOMIZE_FRAMEBORDER_PEN_WIDTH,
@@ -959,6 +963,25 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_customize->Append( MENU_CUSTOMIZE_BOTH_PEN,
 				wxT("Both Pen"),
 				menu_customize_both );
+	wxMenu* menu_customize_highlight = new wxMenu();
+	menu_customize_highlight->Append( MENU_CUSTOMIZE_HIGHLIGHT_PEN_COLOR,
+					  wxT("Change Color..."),
+					  wxT( "Change the color of "
+						  "highlighed arcs and nodes"),
+					  wxITEM_NORMAL );
+	menu_customize_highlight->Append( MENU_CUSTOMIZE_HIGHLIGHT_PEN_WIDTH,
+					  wxT("Change Width..."),
+					  wxT( "Change the width of "
+						  "highlighed arcs and nodes"),
+					  wxITEM_NORMAL );
+	menu_customize_highlight->Append( MENU_CUSTOMIZE_HIGHLIGHT_PEN_STYLE,
+					  wxT("Change Style..."),
+					  wxT( "Change the style of "
+						  "highlighed arcs and nodes"),
+					  wxITEM_NORMAL );
+	menu_customize->Append( MENU_CUSTOMIZE_HIGHLIGHT_PEN,
+				wxT("Highlight Pen"),
+				menu_customize_highlight );
 	wxMenu* menu_customize_frameborder = new wxMenu();
 	menu_customize_frameborder->Append( MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR,
 					  wxT("Change Color..."),
@@ -2501,6 +2524,11 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 			case MENU_CUSTOMIZE_BOTH_PEN_STYLE:
 				thePen = &curPage->bothPen;
 				break;
+			case MENU_CUSTOMIZE_HIGHLIGHT_PEN_COLOR:
+			case MENU_CUSTOMIZE_HIGHLIGHT_PEN_WIDTH:
+			case MENU_CUSTOMIZE_HIGHLIGHT_PEN_STYLE:
+				thePen = &curPage->highlightPen;
+				break;
 			case MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR:
 			case MENU_CUSTOMIZE_FRAMEBORDER_PEN_WIDTH:
 			case MENU_CUSTOMIZE_FRAMEBORDER_PEN_STYLE:
@@ -2545,130 +2573,133 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 							wxT("Dashed (shart dashes)"),
 							wxT("Dotted and Dashed") };
 		switch (id) {
-		case MENU_CUSTOMIZE_SWITCHING_PEN_COLOR:
-		case MENU_CUSTOMIZE_CONDITIONAL_PEN_COLOR:
-		case MENU_CUSTOMIZE_BOTH_PEN_COLOR:
-		case MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR:
-		case MENU_CUSTOMIZE_CHUNKBORDER_PEN_COLOR:
-		case MENU_CUSTOMIZE_CONTROLPOINT_PEN_COLOR:
-		case MENU_CUSTOMIZE_NODE_PEN_COLOR:
-		case MENU_CUSTOMIZE_GRID_PEN_COLOR:
-		case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_COLOR:
-			newColor = wxGetColourFromUser(this, thePen->GetColour());
-			if (newColor.Ok())
-				thePen->SetColour(newColor);
-			//else wxLogMessage("User canceled or invalid color");
-			break;
-		case MENU_CUSTOMIZE_SWITCHING_PEN_WIDTH:
-		case MENU_CUSTOMIZE_CONDITIONAL_PEN_WIDTH:
-		case MENU_CUSTOMIZE_BOTH_PEN_WIDTH:
-		case MENU_CUSTOMIZE_FRAMEBORDER_PEN_WIDTH:
-		case MENU_CUSTOMIZE_CHUNKBORDER_PEN_WIDTH:
-		case MENU_CUSTOMIZE_CONTROLPOINT_PEN_WIDTH:
-		case MENU_CUSTOMIZE_NODE_PEN_WIDTH:
-		case MENU_CUSTOMIZE_GRID_PEN_WIDTH:
-		case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_WIDTH:
-			penStyle = thePen->GetStyle();
+			case MENU_CUSTOMIZE_SWITCHING_PEN_COLOR:
+			case MENU_CUSTOMIZE_CONDITIONAL_PEN_COLOR:
+			case MENU_CUSTOMIZE_BOTH_PEN_COLOR:
+			case MENU_CUSTOMIZE_HIGHLIGHT_PEN_COLOR:
+			case MENU_CUSTOMIZE_FRAMEBORDER_PEN_COLOR:
+			case MENU_CUSTOMIZE_CHUNKBORDER_PEN_COLOR:
+			case MENU_CUSTOMIZE_CONTROLPOINT_PEN_COLOR:
+			case MENU_CUSTOMIZE_NODE_PEN_COLOR:
+			case MENU_CUSTOMIZE_GRID_PEN_COLOR:
+			case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_COLOR:
+				newColor = wxGetColourFromUser(this, thePen->GetColour());
+				if (newColor.Ok())
+					thePen->SetColour(newColor);
+				//else wxLogMessage("User canceled or invalid color");
+				break;
+			case MENU_CUSTOMIZE_SWITCHING_PEN_WIDTH:
+			case MENU_CUSTOMIZE_CONDITIONAL_PEN_WIDTH:
+			case MENU_CUSTOMIZE_BOTH_PEN_WIDTH:
+			case MENU_CUSTOMIZE_HIGHLIGHT_PEN_WIDTH:
+			case MENU_CUSTOMIZE_FRAMEBORDER_PEN_WIDTH:
+			case MENU_CUSTOMIZE_CHUNKBORDER_PEN_WIDTH:
+			case MENU_CUSTOMIZE_CONTROLPOINT_PEN_WIDTH:
+			case MENU_CUSTOMIZE_NODE_PEN_WIDTH:
+			case MENU_CUSTOMIZE_GRID_PEN_WIDTH:
+			case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_WIDTH:
+				penStyle = thePen->GetStyle();
 #ifdef __WXMSW__
-			if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
-					penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
-					penStyle == wxUSER_DASH ) {
-				wxLogMessage("Dots and dashes can only be used with pens of width 1, so you can't change the width until you change the style.");
-			} else {
+				if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
+						penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
+						penStyle == wxUSER_DASH ) {
+					wxLogMessage("Dots and dashes can only be used with pens of width 1, so you can't change the width until you change the style.");
+				} else {
+					newWidth = wxGetNumberFromUser( wxT("How wide should the pen be?"),
+							wxT("Width: "),
+							wxT("Change Pen Width"),
+							thePen->GetWidth(), 1, 256 );
+					if (newWidth > 0)
+						thePen->SetWidth(newWidth);
+				}
+#else
 				newWidth = wxGetNumberFromUser( wxT("How wide should the pen be?"),
-					wxT("Width: "),
-					wxT("Change Pen Width"),
-					thePen->GetWidth(), 1, 256 );
+						wxT("Width: "),
+						wxT("Change Pen Width"),
+						thePen->GetWidth(), 1, 256 );
 				if (newWidth > 0)
 					thePen->SetWidth(newWidth);
-			}
-#else
-			newWidth = wxGetNumberFromUser( wxT("How wide should the pen be?"),
-					wxT("Width: "),
-					wxT("Change Pen Width"),
-					thePen->GetWidth(), 1, 256 );
-			if (newWidth > 0)
-				thePen->SetWidth(newWidth);
 #endif
-			break;
-		case MENU_CUSTOMIZE_SWITCHING_PEN_STYLE:
-		case MENU_CUSTOMIZE_CONDITIONAL_PEN_STYLE:
-		case MENU_CUSTOMIZE_BOTH_PEN_STYLE:
-		case MENU_CUSTOMIZE_FRAMEBORDER_PEN_STYLE:
-		case MENU_CUSTOMIZE_CHUNKBORDER_PEN_STYLE:
-		case MENU_CUSTOMIZE_CONTROLPOINT_PEN_STYLE:
-		case MENU_CUSTOMIZE_NODE_PEN_STYLE:
-		case MENU_CUSTOMIZE_GRID_PEN_STYLE:
-		case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_STYLE:
-			newStyleNum = wxGetSingleChoiceIndex( wxT("What style would you like?"),
-							  wxT("Change Pen Style"),
-							  /* the number of pen choices, if set to 2 we remove the
-								* ability to chose dotted and dashed lines */
-							  6, choices, this );
-			if (newStyleNum >= 0) {
-			if ( 2 <= newStyleNum && newStyleNum <= 5 ) {
-				if ( wxNO == wxMessageBox("Lines with dots and/or "
-							  "dashes are known to cause "
-							  "problems (crashing) in "
-							  "some situations (including "
-							  "printing).\nIf you choose "
-							  "to use dots and dashes, "
-							  "please remember to save "
-							  "frequently.\nAre you sure "
-							  "you want to change to "
-							  "this style?", "Confirm",
-							  wxYES_NO, this) ) {
-					break;
-				}
+				break;
+			case MENU_CUSTOMIZE_SWITCHING_PEN_STYLE:
+			case MENU_CUSTOMIZE_CONDITIONAL_PEN_STYLE:
+			case MENU_CUSTOMIZE_BOTH_PEN_STYLE:
+			case MENU_CUSTOMIZE_HIGHLIGHT_PEN_STYLE:
+			case MENU_CUSTOMIZE_FRAMEBORDER_PEN_STYLE:
+			case MENU_CUSTOMIZE_CHUNKBORDER_PEN_STYLE:
+			case MENU_CUSTOMIZE_CONTROLPOINT_PEN_STYLE:
+			case MENU_CUSTOMIZE_NODE_PEN_STYLE:
+			case MENU_CUSTOMIZE_GRID_PEN_STYLE:
+			case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_STYLE:
+				newStyleNum = wxGetSingleChoiceIndex( wxT("What style would you like?"),
+						wxT("Change Pen Style"),
+						/* the number of pen choices, if set to 2 we remove the
+						 * ability to chose dotted and dashed lines */
+						6, choices, this );
+				if (newStyleNum >= 0) {
+					if ( 2 <= newStyleNum && newStyleNum <= 5 ) {
+						if ( wxNO == wxMessageBox("Lines with dots and/or "
+									"dashes are known to cause "
+									"problems (crashing) in "
+									"some situations (including "
+									"printing).\nIf you choose "
+									"to use dots and dashes, "
+									"please remember to save "
+									"frequently.\nAre you sure "
+									"you want to change to "
+									"this style?", "Confirm",
+									wxYES_NO, this) ) {
+							break;
+						}
 #ifdef __WXMSW__
-				if ( thePen->GetWidth() != 1 ) {
-					thePen->SetWidth(1);
-					wxLogMessage( "Dots and dashes require a pen "
-						  "width of 1.\nThe width has been "
-						  "altered accordingly." );
-				}
+						if ( thePen->GetWidth() != 1 ) {
+							thePen->SetWidth(1);
+							wxLogMessage( "Dots and dashes require a pen "
+									"width of 1.\nThe width has been "
+									"altered accordingly." );
+						}
 #endif
-			}
-			switch (newStyleNum) {
-				case 0:
-					thePen->SetStyle(wxSOLID);
-					break;
-				case 1:
-					thePen->SetStyle(wxTRANSPARENT);
-					break;
-				case 2:
-					thePen->SetStyle(wxDOT);
-					break;
-				case 3:
-					thePen->SetStyle(wxLONG_DASH);
-					break;
-				case 4:
-					thePen->SetStyle(wxSHORT_DASH);
-					break;
-				case 5:
-					thePen->SetStyle(wxDOT_DASH);
-					break;
-				/*case 6:
-					thePen->SetStyle(wxBDIAGONAL_HATCH);
-					break;
-				case 7:
-					thePen->SetStyle(wxCROSSDIAG_HATCH);
-					break;
-				case 8:
-					thePen->SetStyle(wxFDIAGONAL_HATCH);
-					break;
-				case 9:
-					thePen->SetStyle(wxCROSS_HATCH);
-					break;
-				case 10:
-					thePen->SetStyle(wxHORIZONTAL_HATCH);
-					break;
-				case 11:
-					thePen->SetStyle(wxVERTICAL_HATCH);
-					break;*/
-				default:
-					return;
-				}
+					}
+					switch (newStyleNum) {
+						case 0:
+							thePen->SetStyle(wxSOLID);
+							break;
+						case 1:
+							thePen->SetStyle(wxTRANSPARENT);
+							break;
+						case 2:
+							thePen->SetStyle(wxDOT);
+							break;
+						case 3:
+							thePen->SetStyle(wxLONG_DASH);
+							break;
+						case 4:
+							thePen->SetStyle(wxSHORT_DASH);
+							break;
+						case 5:
+							thePen->SetStyle(wxDOT_DASH);
+							break;
+							/*case 6:
+							  thePen->SetStyle(wxBDIAGONAL_HATCH);
+							  break;
+							  case 7:
+							  thePen->SetStyle(wxCROSSDIAG_HATCH);
+							  break;
+							  case 8:
+							  thePen->SetStyle(wxFDIAGONAL_HATCH);
+							  break;
+							  case 9:
+							  thePen->SetStyle(wxCROSS_HATCH);
+							  break;
+							  case 10:
+							  thePen->SetStyle(wxHORIZONTAL_HATCH);
+							  break;
+							  case 11:
+							  thePen->SetStyle(wxVERTICAL_HATCH);
+							  break;*/
+						default:
+							return;
+					}
 				}
 				break;
 			default:
@@ -2823,7 +2854,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	: wxScrolledWindow( parent, id, wxDefaultPosition, wxDefaultSize,
 			wxSUNKEN_BORDER | wxTAB_TRAVERSAL, _T("") ),
 	switchingPen(*wxBLUE,1,wxSOLID), conditionalPen(*wxBLACK_PEN),
-	bothPen(*wxRED_PEN), highlightedPen(*wxCYAN_PEN),
+	bothPen(*wxRED_PEN), highlightPen(*wxCYAN_PEN),
 	frameBorderPen(*wxLIGHT_GREY_PEN), chunkBorderPen(*wxBLACK_PEN),
 	controlPointPen(*wxRED_PEN), nodePen(*wxBLACK_PEN),
 	gridPen(*wxLIGHT_GREY_PEN), 
@@ -2870,14 +2901,14 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	switchingPen.SetStyle(wxDOT); /* was wxSOLID */
 	conditionalPen.SetStyle(wxSOLID);
 	bothPen.SetStyle(wxLONG_DASH); /* was wxSOLID */
-	highlightedPen.SetStyle(wxSOLID); /* was wxSOLID */
+	highlightPen.SetStyle(wxSOLID); /* was wxSOLID */
 	frameBorderPen.SetStyle(wxDOT); /* was wxSOLID */
 	chunkBorderPen.SetStyle(wxSOLID);
 	// Scale all these lines up.
 	switchingPen.SetWidth(ACTUAL_SCALE);
 	conditionalPen.SetWidth(ACTUAL_SCALE);
 	bothPen.SetWidth(ACTUAL_SCALE);
-	highlightedPen.SetWidth(ACTUAL_SCALE + 2);	//make the highlighted pen thicker
+	highlightPen.SetWidth(ACTUAL_SCALE + 2);	//make the highlighted pen thicker
 	frameBorderPen.SetWidth(ACTUAL_SCALE);
 	chunkBorderPen.SetWidth(ACTUAL_SCALE);
 	controlPointPen.SetWidth(ACTUAL_SCALE);
@@ -6869,7 +6900,7 @@ VizNode::draw( wxDC *dc )
 
 	if (highlighted){
 		wxPen oldPen = dc->GetPen();
-		dc->SetPen(page->highlightedPen);
+		dc->SetPen(page->highlightPen);
 		dc->DrawCircle(center, NODE_RADIUS);
 		dc->SetPen(oldPen);
 	} else
@@ -7093,7 +7124,7 @@ VizArc::draw( wxDC *dc, int drawFlags )
 		/* Set the pen appropriately depending on whether it's switching,
 		 * conditional, or both. */
 		if (highlighted)
-			pen = &page->highlightedPen;
+			pen = &page->highlightPen;
 		else if (switching && conditional)
 			pen = &page->bothPen;
 		else if (switching)
