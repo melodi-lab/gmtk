@@ -317,23 +317,29 @@ class StructPage: public wxScrolledWindow
 
 /// Represents anything that can be selected
 class Selectable {
-public:
-	// Is it currently selected?
-	virtual bool getSelected( void ) { return selected; }
-	// Tell it whether or not to be selected.
-	virtual void setSelected( bool newSelected ) { selected = newSelected; }
-	virtual void toggleSelected( void ) { setSelected(!getSelected()); }
-	// If it can be selected, it must be somewhere. These tell you
-	// if a click landed on it...
-	virtual bool onMe( const wxPoint& pt ) = 0;
-	// or if it's in a given rectangle (e.g. the selection rectangle)
-	virtual bool inRect( const wxRect& rect ) = 0;
-	// constructor: items start out unselected
-			Selectable() { selected = false; }
-	// destructor: no dnamically allocated memory to free
-	virtual 	~Selectable() {  }
-protected:
-	bool selected;
+	public:
+		// Is it currently selected?
+		virtual bool getSelected( void ) { return selected; }
+		// Tell it whether or not to be selected.
+		virtual void setSelected( bool newSelected ) { selected = visible ? newSelected : false;}
+		virtual void toggleSelected( void ) { setSelected(!getSelected()); }
+		// If it can be selected, it must be somewhere. These tell you
+		// if a click landed on it...
+		virtual bool onMe( const wxPoint& pt ) = 0;
+		// or if it's in a given rectangle (e.g. the selection rectangle)
+		virtual bool inRect( const wxRect& rect ) = 0;
+		// constructor: items start out unselected
+		Selectable() { selected = false; }
+		// destructor: no dnamically allocated memory to free
+		virtual 	~Selectable() {  }
+
+		virtual void setVisible(bool newVisible){visible = newVisible;}
+		void toggleVisible(){setVisible(!visible);}
+		bool isVisible(){return visible;}
+
+	protected:
+		bool selected;
+		bool visible;
 };
 
 
@@ -353,12 +359,6 @@ class NameTag : public Selectable {
 		// selectable method overrides
 		virtual bool onMe( const wxPoint& pt );
 		virtual bool inRect( const wxRect& rect );
-		void setVisible(bool newVisible){visible = newVisible;}
-		void toggleVisible(){visible = !visible;}
-		bool isVisible(){return visible;}
-	private:
-		/// whether to actually draw it
-		bool visible;
 };
 
 /// Represents a node 
@@ -386,20 +386,18 @@ class VizNode : public Selectable {
 		virtual void setSelected( bool newSelected );
 		virtual bool onMe( const wxPoint& pt );
 		virtual bool inRect( const wxRect& rect ) { return rect.Inside(center); }
-		bool isVisible(){return visible;}
-		void setVisible(bool newVisible);
-		void toggleVisible(){setVisible(!visible);}
 
 		//highlight functions
 		bool isHighlighted() {return (highlight_state != off);}
-		void setHighlighted(bool newHighlighted){ highlighted = newHighlighted;}
 		void setHighlightState(highlight_states state) {highlight_state = state;}
 		highlight_states getHighlightState() {return highlight_state;}
 		highlight_states getNextHighlightState();
+
+		//overload set Visible
+		void setVisible( bool newVisible );
+		
 	private:
-		bool visible;
 		highlight_states highlight_state;
-		bool highlighted;
 };
 
 
@@ -440,6 +438,7 @@ class VizArc {
 		//visiblity
 		void setVisible(bool newVisible){visible = newVisible;}
 		bool isVisible(){return visible;}
+		//highlight state
 		bool isHighlighted() {return highlighted;}
 		void setHighlighted(bool newHighlighted){ highlighted = newHighlighted;}
 		void toggleHighlighted() {setHighlighted(!highlighted);}
@@ -3804,7 +3803,7 @@ StructPage::OnChar( wxKeyEvent &event )
 	mouse_pos.x = (int)round(mouse_pos.x / gZoomMap[displayScale]);
 	mouse_pos.y = (int)round(mouse_pos.y / gZoomMap[displayScale]);
 
-	if (event.m_keyCode == WXK_DELETE) {
+	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == 'r') {
 		deleteSelectedCps();
 		redraw();
 		blit();
@@ -3824,7 +3823,7 @@ StructPage::OnChar( wxKeyEvent &event )
 		moveSelected(0, ACTUAL_SCALE*(event.ShiftDown()?10:1));
 		redraw();
 		blit();
-	} else if (event.m_keyCode == 'q'){
+	} else if (event.m_keyCode == 's'){
 		//toggle nametag's visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
@@ -3852,15 +3851,39 @@ StructPage::OnChar( wxKeyEvent &event )
 			}
 		}
 	} else if (event.m_keyCode == 'w'){
+		//toggle the visiblity of the selected nodes and framenametags
+		for (int i = 0; i < (int)nodes.size(); i++) {
+			if (nodes[i]->getSelected() && nodes[i]->isVisible())
+				nodes[i]->nametag.toggleVisible();
+		}
+		for (int i = 0; i < (int)frameNameTags.size(); i++) {
+			if (frameNameTags[i]->getSelected()){
+				frameNameTags[i]->toggleVisible();
+			}
+		}
+		redraw();
+		blit();
+	} else if (event.m_keyCode == 'a'){
 		popUpNodeInfo(mouse_pos);
-	} else if (event.m_keyCode == 'e'){
+	} else if (event.m_keyCode == 'd'){
 		//toggle node and its edges visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
-		toggleNodeAndArcVisibility(node_index);
+		//if there is a node under the mouse, toggle it
+		if(node_index >= 0 && node_index < (int)nodes.size()){
+			toggleNodeAndArcVisibility(node_index);
+			redraw();
+			blit();
+		}
+	} else if (event.m_keyCode == 'e'){
+		//toggle visibility for all the nodes in the current selection
+		for (int i = 0; i < (int)nodes.size(); i++) {
+			if (nodes[i]->getSelected())
+				toggleNodeAndArcVisibility(i);
+		}
 		redraw();
 		blit();
-	} else if (event.m_keyCode == 'r'){
+	} else if (event.m_keyCode == 'f'){
 		//highlight
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
@@ -4872,17 +4895,18 @@ StructPage::moveSelected( int dx, int dy )
 	}
 	// frame name tags
 	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
-		if ( frameNameTags[i]->getSelected() )
+		if ( frameNameTags[i]->getSelected() && frameNameTags[i]->isVisible())
 			moveFrameNameTag(i, dx, dy);
 	}
 	// node name tags
 	for (int i = 0; i < numNodes; i++) {
-		if ( nodeNameTags[i]->getSelected() )
+		if ( nodeNameTags[i]->getSelected() && nodeNameTags[i]->isVisible())
 			moveNodeNameTag(i, dx, dy);
 	}
 	// nodes
 	for (int i = 0; i < numNodes; i++) {
-		if ( nodes[i]->getSelected() )
+		//don't move the node unless it is visible
+		if ( nodes[i]->getSelected() && nodes[i]->isVisible())
 			moveNode(i, dx, dy);
 	}
 	// then arcs
@@ -4892,7 +4916,7 @@ StructPage::moveSelected( int dx, int dy )
 				int end = arcs[i][j]->cps->size() - 1;
 				assert(end >= 1);
 				for ( int k = 1; k < end; k++ ) {
-					if ( (*arcs[i][j]->cps)[k]->getSelected() )
+					if ( (*arcs[i][j]->cps)[k]->getSelected() && (*arcs[i][j]->cps)[k]->isVisible())
 						moveControlPoint(i, j, k, dx, dy);
 				}
 			}
@@ -6049,14 +6073,20 @@ StructPage::setInOutArcsVisible( bool newVisible, RVInfo::rvParent rvId )
 		if (arcs[n][i]) {
 			//an arc should only be made visible if both nodes are visible
 			if ((newVisible && nodes[i]->isVisible()) | !newVisible){
-				(*arcs[n][i]).setVisible(newVisible);
+				arcs[n][i]->setVisible(newVisible);
+				for(unsigned int j = 1; j < arcs[n][i]->cps->size() - 1; j++){
+					(*arcs[n][i]->cps)[j]->setVisible(newVisible);
+				}
 			}
 		}
 		// incoming arcs
 		if (arcs[i][n]) {
 			//an arc should only be made visible if both nodes are visible
 			if ((newVisible && nodes[i]->isVisible()) | !newVisible){
-				(*arcs[i][n]).setVisible(newVisible);
+				arcs[i][n]->setVisible(newVisible);
+				for(unsigned int j = 1; j < arcs[i][n]->cps->size() - 1; j++){
+					(*arcs[i][n]->cps)[j]->setVisible(newVisible);
+				}
 			}
 		}
 	}
@@ -6238,7 +6268,9 @@ void
 StructPage::showAllNodeLabels( void )
 {
 	for (unsigned int i = 0; i < nodes.size(); i++) {
-		nodeNameTags[i]->setVisible(true);
+		//only make the nametags visible if the node is visible
+		if (nodes[i]->isVisible())
+			nodeNameTags[i]->setVisible(true);
 	}
 
 	redraw();
@@ -6871,8 +6903,9 @@ StructPage::bottomMostItemY( void )
  * \return Nothing.
  *******************************************************************/
 NameTag::NameTag( const wxPoint& newPos, const wxString& newName )
-	: pos(newPos), name(newName), visible(true)
+	: pos(newPos), name(newName)
 {
+	visible = true;
 }
 
 /**
@@ -7086,6 +7119,10 @@ VizNode::onMe( const wxPoint& pt )
  *******************************************************************/
 void
 VizNode::setSelected( bool newSelected ) {
+	//if it isn't visible we shouldn't be able to select it
+	if (!visible){
+		newSelected = false;
+	}
 	selected = newSelected;
 	// the selected state of the node must be the same as all the
 	// control points belonging to the node
@@ -7646,32 +7683,49 @@ GmtkHelp::doLayout()
 
 	help_msg->SetDefaultStyle(bold);
 	help_msg->AppendText("Keyboard Commands:\n");
+
 	help_msg->SetDefaultStyle(italic);
-	help_msg->AppendText("\t'q'");
+	help_msg->AppendText("\t'a'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If the mouse pointer is over a node or frame label 'q' will toggle the node or ");
+	help_msg->AppendText(" : If the mouse pointer is over a node 'a' will pop up node info\n");
+
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t's'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : If the mouse pointer is over a node or frame label 's' will toggle the node or ");
 	help_msg->AppendText("frame label's visibility\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'w'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If the mouse pointer is over a node 'w' will pop up node info\n");
+	help_msg->AppendText(" : toggles the visibility of node and frame labels in the current selection\n");
+	
 	help_msg->SetDefaultStyle(italic);
-	help_msg->AppendText("\t'e'");
+	help_msg->AppendText("\t'd'");
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : If the mouse pointer is over a node will toggle that node, its label and its edge's visibility\n");
 	help_msg->SetDefaultStyle(italic);
-	help_msg->AppendText("\t'r'");
+	help_msg->AppendText("\t'e'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If the mouse pointer is over a visible node 'r' will step through highlighting modes.\n");
+	help_msg->AppendText(" : If there is an active selection will toggle the visibility of the selected nodes and their labels and edges\n");
+
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'f'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : will step through highlighting modes if the mouse pointer is over a visible node.\n");
 	help_msg->AppendText("\t\t\tFirst: the node, its outgoing edges and its children will be highlighted.\n");
 	help_msg->AppendText("\t\t\tSecond: the node, its incoming edges and its parents will be highlighted.\n");
 	help_msg->AppendText("\t\t\tThird: the node, its edges, its children and its parents will be highlighted.\n");
 	help_msg->AppendText("\t\t\tFourth: all highlighting will be turned off\n");
-	help_msg->AppendText("\t\tIf the mouse pointer is not on a visible node 'r' will turn off all highlighting\n");
+	help_msg->AppendText("\t\tturns off all highlighting if the mouse pointer is not on a visible node\n");
+
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'r'");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+
 
 	help_msg->SetDefaultStyle(bold);
 	help_msg->AppendText("\nMouse Commands:\n");
@@ -7698,6 +7752,16 @@ GmtkHelp::doLayout()
 	help_msg->AppendText("\t'button 3'");
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : If the mouse pointer is over a node will pop up node info\n");
+
+	help_msg->SetDefaultStyle(bold);
+	help_msg->AppendText("\nExtra Notes:\n");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText("Once you make a selection invisible and you create a new selection or click on the canvas you can only make the\n");
+	help_msg->AppendText("nodes visible by toggling the visibilty of the nodes individually [by guessing their location] or by selecting\n");
+	help_msg->AppendText("View->\"Make All Nodes Visible\" from the tool bar\n");
+	help_msg->AppendText("\nIn the View Menu on the tool bar there are also options to Make All Node Labels Visible, Make All Frame Labels Visible\n");
+	help_msg->AppendText("and Hide the labels in the current selection\n");
+
 
 	help_msg->AppendText("\nFor more detailed help go to: https://ssli.ee.washington.edu/ssliwiki/GMTK");
 
