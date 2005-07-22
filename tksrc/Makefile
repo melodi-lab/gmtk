@@ -212,7 +212,7 @@ gmtkViz.o: gmtkViz.cc
 
 gmtkViz: gmtkViz.o libGMTK.a
 	-@rm -f $@
-	$(compile.cc.link) `wx-config --libs` `wx-config --cxxflags` -Wall -g -o $@ gmtkViz.o $(LIBS)
+	$(compile.cc.link) -Wall -g -o $@ gmtkViz.o $(LIBS) `wx-config --libs` `wx-config --cxxflags` 
 
 #----------------------------------------------------------------------------
 # Test driver programs (defines a -DMAIN to test each .cc file)
