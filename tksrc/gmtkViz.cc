@@ -130,8 +130,11 @@ class StructPage: public wxScrolledWindow
 		void OnChar( wxKeyEvent &event );
 		void OnMouseEvent( wxMouseEvent &event );
 		void popUpNodeInfo(wxPoint);
+
+		//functions called by event handlers
 		void nextHighlightState(int node_index);
 		void toggleNodeAndArcVisibility(int node_index);
+		void selectAllInFrame(int frame);
 
 		// pseudo event handlers: GFrame calls these.
 		void Save( void );
@@ -878,14 +881,14 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_edit->Append(MENU_EDIT_CANVASWIDTH, wxT("Canvas Width..."), wxT("Adjust the width of the canvas"), wxITEM_NORMAL);
 	menu_edit->Append(MENU_EDIT_CANVASHEIGHT, wxT("Canvas Height..."), wxT("Adjust the height of the canvas"), wxITEM_NORMAL);
 	menu_edit->Append(MENU_EDIT_COPYFRAMELAYOUT, wxT("Copy Frame Layout...\tCtrl+F"), wxT("Copy the layout from one frame to another"), wxITEM_NORMAL);
-	menu_edit->Append(MENU_EDIT_COPYPARTITIONLAYOUT, wxT("Copy Partition Layout...\tCtrl+L"), wxT("Copy the layout from one partition to another"), wxITEM_NORMAL);
+	menu_edit->Append(MENU_EDIT_COPYPARTITIONLAYOUT, wxT("Copy Partition Layout...\tCtrl+G"), wxT("Copy the layout from one partition to another"), wxITEM_NORMAL);
 	MainVizWindow_menubar->Append(menu_edit, wxT("Edit"));
 	// The View menu
 	wxMenu* menu_view = new wxMenu();
 	menu_view->Append(MENU_VIEW_HIDELABELS, wxT("Hide Selected Labels"), wxT("Turn off drawing for all currently selected labels"), wxITEM_NORMAL);
 	menu_view->Append(MENU_VIEW_SHOW_NODE_LABELS, wxT("Show All Node Labels"), wxT("Turn on drawing for all node labels"), wxITEM_NORMAL);
 	menu_view->Append(MENU_VIEW_SHOW_FRAME_LABELS, wxT("Show All Frame Labels"), wxT("Turn on drawing for all frame labels"), wxITEM_NORMAL);
-	menu_view->Append(MENU_VIEW_ALL_NODES_VISIBLE, wxT("Make All Nodes Visible"), wxT("Make all nodes Visible"), wxITEM_NORMAL);
+	menu_view->Append(MENU_VIEW_ALL_NODES_VISIBLE, wxT("Make All Nodes Visible\tCtrl+D"), wxT("Make all nodes Visible"), wxITEM_NORMAL);
 	menu_view->AppendSeparator();
 	menu_view->Append(MENU_VIEW_CPS, wxT("Draw Control Points"), wxT("Toggle display of arc spline control points"), wxITEM_CHECK);
 	menu_view->Append(MENU_VIEW_LINES, wxT("Draw Arc Lines"), wxT("Toggle display of straight lines between control points in arcs"), wxITEM_CHECK);
@@ -3928,6 +3931,29 @@ StructPage::OnChar( wxKeyEvent &event )
 
 		redraw();
 		blit();
+	} else if (event.GetKeyCode() == 'z' || event.GetKeyCode() == 'Z'){
+		//select current frame
+		//if it is capitol then add it to the current selection
+		int frame_n = 0;
+		if(event.GetKeyCode() != 'Z')
+			setAllSelected(false);
+		for (int i = frameEnds.size() - 1; i >= 0; i--) {
+			if(mouse_pos.x > frameEnds[i]->x){
+				frame_n = i + 1;
+				break;
+			}
+		}
+		selectAllInFrame(frame_n);
+		redraw();
+		blit();
+	} else if(event.GetKeyCode() == 'x'){
+		//invert selection
+		for (unsigned int i = 0; i < nodes.size(); i++){
+			nodes[i]->setSelected(!nodes[i]->getSelected());
+		}
+		redraw();
+		blit();
+		
 	} else {
 		event.Skip();
 	}
@@ -4092,6 +4118,49 @@ StructPage::nextHighlightState(int node_index){
 			}
 			break;
 	}
+}
+
+/**
+ *******************************************************************
+ * Iterate through all of the Nodes, if they are in the given frame
+ * and visible then select them, also select their control points
+ *
+ * \pre The StructPage must be fully initialized.
+ *
+ * \post All the visible nodes in the given frame will be selected.
+ *
+ * \note All the visible nodes in the given frame will be selected.
+ *
+ * \return void
+ *******************************************************************/
+
+void
+StructPage::selectAllInFrame(int frame)
+{
+	int numNodes = nodes.size();
+	//make sure the frame number is valid
+	if (frame < 0 || frame >= numFrames)
+		return;
+	//for each node, if it is in the frame and is visible select it,
+	//also select the controlpoints along its arcs
+	for (int i = 0; i < numNodes; i++){
+		if (nodes[i]->rvId.second == frame && nodes[i]->isVisible()){
+			nodes[i]->setSelected(true);
+			for (int j = 0; j < numNodes; j++){
+				if (arcs[i][j]){
+					for(unsigned int k = 1; k < arcs[i][j]->cps->size() - 1; k++){
+						(*arcs[i][j]->cps)[k]->setSelected(true);
+					}
+				}
+				if (arcs[j][i]){
+					for(unsigned int k = 1; k < arcs[j][i]->cps->size() - 1; k++){
+						(*arcs[j][i]->cps)[k]->setSelected(true);
+					}
+				}
+			}
+		}
+	}
+	
 }
 
 /**
@@ -7732,8 +7801,8 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t's'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If the mouse pointer is over a node or frame label 's' will toggle the node or ");
-	help_msg->AppendText("frame label's visibility\n");
+	help_msg->AppendText(" : If the mouse pointer is over a node or frame label 's' will toggle the node or "
+		"frame label's visibility\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'w'");
 	help_msg->SetDefaultStyle(normal);
@@ -7751,12 +7820,25 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'f'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : will step through highlighting modes if the mouse pointer is over a visible node.\n");
-	help_msg->AppendText("\t\t\tFirst: the node, its outgoing edges and its children will be highlighted.\n");
-	help_msg->AppendText("\t\t\tSecond: the node, its incoming edges and its parents will be highlighted.\n");
-	help_msg->AppendText("\t\t\tThird: the node, its edges, its children and its parents will be highlighted.\n");
-	help_msg->AppendText("\t\t\tFourth: all highlighting will be turned off\n");
-	help_msg->AppendText("\t\tturns off all highlighting if the mouse pointer is not on a visible node\n");
+	help_msg->AppendText(" : will step through highlighting modes if the mouse pointer is over a visible node.\n"
+			"\t\t\tFirst: the node, its outgoing edges and its children will be highlighted.\n"
+			"\t\t\tSecond: the node, its incoming edges and its parents will be highlighted.\n"
+			"\t\t\tThird: the node, its edges, its children and its parents will be highlighted.\n"
+			"\t\t\tFourth: all highlighting will be turned off\n"
+			"\t\tturns off all highlighting if the mouse pointer is not on a visible node\n");
+
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'z'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : selects all the nodes in the frame under the mouse pointer.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'Z'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : adds the nodes in the frame under the mouse pointer to the current selection\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'x'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : invert selection.  Everything that was selected is deselected and everything that was not selected is selected.\n");
 
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
@@ -7764,7 +7846,58 @@ GmtkHelp::doLayout()
 	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'r'");
+	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-a'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : selects everything that is selectable.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-d'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : makes all nodes visible.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-e'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : brings up the \"Print to EPS file\" dialog.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-p'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : brings up the print dialog.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-f'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : brings up the \"Copy Frame Layout\" dialog.  This allows you to take the layout of\n"
+			"\t\tone frame and apply it to one or more other frames.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-g'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : brings up the \"Copy Partition Layout\" dialog.  This allows you to take the layout of\n"
+			"\t\tone partition and apply it to one or more other partitions.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-n'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : brings up a Dialog which allows you to create a new graph from a structure file.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-o'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : brings up a Dialog which allows you to open a previously saved graph (gvp file).\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-s'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : saves the current graph.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-S'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : brings up the \"Save As\" dialog.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-w'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : closes the current graph.\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'ctrl-q'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : quits gmtkViz.\n");
 
 
 	help_msg->SetDefaultStyle(bold);
@@ -7780,14 +7913,14 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'button 1 + drag motion'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If drag is started on a selectable item then this will move the current selection\n");
-	help_msg->AppendText("\t\tIf drag is started elsewhere a box will be created (and destroyed when the mouse button is released)\n");
-	help_msg->AppendText("\t\teverything in this box will be selected\n");
+	help_msg->AppendText(" : If drag is started on a selectable item then this will move the current selection\n"
+		"\t\tIf drag is started elsewhere a box will be created (and destroyed when the mouse button is released)\n"
+		"\t\teverything in this box will be selected\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'button 2'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : If the mouse pointer is on a control point will create a new control point\n");
-	help_msg->AppendText("\t\tIf there is only a strait line between nodes then a click on this line will create a spline and a control point\n");
+	help_msg->AppendText(" : If the mouse pointer is on a control point will create a new control point\n"
+		"\t\tIf there is only a strait line between nodes then a click on this line will create a spline and a control point\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'button 3'");
 	help_msg->SetDefaultStyle(normal);
@@ -7796,11 +7929,14 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(bold);
 	help_msg->AppendText("\nExtra Notes:\n");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText("Once you make a selection invisible and you create a new selection or click on the canvas you can only make the\n");
-	help_msg->AppendText("nodes visible by toggling the visibilty of the nodes individually [by guessing their location] or by selecting\n");
-	help_msg->AppendText("View->\"Make All Nodes Visible\" from the tool bar\n");
-	help_msg->AppendText("\nIn the View Menu on the tool bar there are also options to Make All Node Labels Visible, Make All Frame Labels Visible\n");
-	help_msg->AppendText("and Hide the labels in the current selection\n");
+	help_msg->AppendText("Once you make a selection invisible and you create a new selection or click on the canvas you can only make the\n"
+		"nodes visible by toggling the visibilty of the nodes individually [by guessing their location] or by selecting\n"
+		"View->\"Make All Nodes Visible\" from the tool bar\n"
+		"\nIn the View Menu on the tool bar there are also options to Make All Node Labels Visible, Make All Frame Labels Visible\n"
+		"and Hide the labels in the current selection\n");
+
+	help_msg->AppendText("\nTo make the nodes in every frame except the frame under the mouse hit z x e\n"
+		"this will select all visible nodes in the current frame, invert the selection and finally toggle the visibility of that selection\n");
 
 
 	help_msg->AppendText("\nFor more detailed help go to: https://ssli.ee.washington.edu/ssliwiki/GMTK");
