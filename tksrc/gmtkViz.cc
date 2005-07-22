@@ -3146,6 +3146,41 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 						}
 					}
 					initArcs();
+					//now that the arcs and everything is initialized toggle the visibility of the nodes
+					//we couldn't do it when we inited the nodes because the node visibility function
+					//toggles the visibility of the its arcs, which didn't exist until just now
+					//we keep this boolean to see if there are any invisible nodes and notify the user
+					//just so they know
+					bool contains_invisibile_nodes = false;
+					if(!gvpAborted){
+						for(unsigned int i = 0; i < nodes.size(); i++){
+							// node visibility
+							key.sprintf( "nodes[%d].visible", i);
+							value = config[key];
+							if (value != wxEmptyString) {
+								long visible;
+								if (value.ToLong(&visible) && (visible == true || visible == false)) {
+									nodes[i]->setVisible(visible);
+									//this indicates if there are any invisible nodes
+									contains_invisibile_nodes |= !visible;
+								} else {
+									wxString msg;
+									msg.sprintf( "nodes[%d].visible is not a number 0 or 1", i);
+									wxLogMessage(msg);
+									gvpAborted = true;
+								}
+							}
+						}
+					}
+					//if there are invisible nodes give the user a warning just so they know and don't think
+					//their data not being read in correctly
+					if (!gvpAborted && contains_invisibile_nodes){
+						wxString msg;
+						msg.sprintf("Just so you know:\n"
+								"\"%s\" contains invisible nodes\n" "if you want to make all nodes visible select "
+								"View->\"Make All Nodes Visible\" from the menu tool bar.", gvpFile_cstr);
+						wxLogMessage(msg);
+					}
 					// At this point we no longer need the file parser, and since it
 					// uses global variables, we can't have more than one. Thus, we
 					// delete it now, rather than later.
@@ -3318,7 +3353,7 @@ StructPage::initNodes( void )
 	curPos.x = 200*ACTUAL_SCALE;
 	curPos.y = 120*ACTUAL_SCALE;
 	nodes.clear();
-
+	
 	int numVars = fp->numVarsInPrologue + fp->numVarsInChunk +
 	fp->numVarsInEpilogue;
 	firstChunkFrame = fp->_firstChunkframe;
@@ -3484,6 +3519,7 @@ StructPage::initNodes( void )
 				gvpAborted = true;
 			}
 		}
+
 		// and move the nametag, if requested
 		// x
 		key.sprintf( "nodes[%d].nametag.pos.x",
@@ -3521,7 +3557,7 @@ StructPage::initNodes( void )
 				gvpAborted = true;
 			}
 		}
-		// visibility
+		// nametag visibility
 		key.sprintf( "nodes[%d].nametag.visible",
 				 nameGvpNodeMap.count(nodes[i]->rvId) ?
 				 nameGvpNodeMap[nodes[i]->rvId] : i );
@@ -3575,6 +3611,7 @@ StructPage::initNodes( void )
 			gvpAborted = true;
 		}
 	}
+	
 	/* Since I'm not sure what we made up and what was in the file,
 	 * consider the file dirty. */
 	gvpDirty = true;
@@ -5814,6 +5851,9 @@ StructPage::Save( void )
 				gvp.Write(line);
 				line.sprintf( "nodes[%d].center.y=%d\n",
 						  i, nodes[i]->center.y );
+				gvp.Write(line);
+				line.sprintf( "nodes[%d].visible=%d\n",
+						  i, nodes[i]->isVisible() );
 				gvp.Write(line);
 				/* These are unnecessary but could be used to better
 				 * match up variables and/or to verify that the gvp
