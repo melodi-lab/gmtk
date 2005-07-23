@@ -398,6 +398,7 @@ public:
   void writeDLinkMats(oDataStreamFile& os);
   void writeDLinks(oDataStreamFile& os);
   void writeWeightMats(oDataStreamFile& os);
+  void writeDirichletTabs(oDataStreamFile& os);
   void writeMdCpts(oDataStreamFile& os);
   void writeMsCpts(oDataStreamFile& os);
   void writeMtCpts(oDataStreamFile& os);
