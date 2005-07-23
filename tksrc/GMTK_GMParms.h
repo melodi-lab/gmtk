@@ -44,6 +44,7 @@ class RealMatrix;
 class DlinkMatrix;
 class Dlinks;
 class WeightMatrix;
+class DirichletTable;
 class MDCPT;
 class MSCPT;
 class MTCPT;
@@ -188,6 +189,15 @@ public:
   vector< WeightMatrix* > weightMats;
   ObjectMapType weightMatsMap;
   void add(WeightMatrix*ob);
+
+
+  ////////////////////////////////
+  // Collection of N-D Dense count (Dirichlet hyperparameter) matrices, used
+  // for meta counts for DenseCPTs and Dense1DPMFs. 
+  vector< DirichletTable* > dirichletTabs;
+  ObjectMapType dirichletTabsMap;
+  void add(DirichletTable*ob);
+
 
 
   //////////////////////////////////////////////////////////////////
@@ -363,6 +373,7 @@ public:
   void readDLinkMats(iDataStreamFile& is,bool reset = false);
   void readDLinks(iDataStreamFile& is,bool reset = false);
   void readWeightMats(iDataStreamFile& is,bool reset = false);
+  void readDirichletTabs(iDataStreamFile& is,bool reset = false);
   void readMdCpts(iDataStreamFile& is,bool reset = false);
   void readMsCpts(iDataStreamFile& is,bool reset = false);
   void readMtCpts(iDataStreamFile& is,bool reset = false);
@@ -401,13 +412,6 @@ public:
   void writeGausSwitchMixtures(oDataStreamFile& os);
   void writeLogitSwitchMixtures(oDataStreamFile& os);
   void writeMlpSwitchMixtures(oDataStreamFile& os);
-
-
-  ///////////////////////////////////////////////////////////    
-  // read/write in all the basic parameters, assuming file pointer 
-  // is located at the correct position.
-  void readBasic(iDataStreamFile& is);
-  void writeBasic(oDataStreamFile& os);
 
   ///////////////////////////////////////////////////////////    
   // read/write in all the all parameters for simple

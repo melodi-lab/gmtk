@@ -43,6 +43,8 @@ EMable::minIncrementProbabilty = logpr((void*)NULL,log_FLT_MIN);
 unsigned long
 EMable::missedIncrementCount = 0;
 
+bool EMable::useDirichletPriors = false;
+
 
 ////////////////////////////////////////////////////
 // The minimum accumulated probability of mean and covariance -like

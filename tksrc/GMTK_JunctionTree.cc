@@ -5210,7 +5210,7 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
  *
  *      J. Binder, K. Murphy, and S. Russel. Space-efficient inference in
  *      dynamic probabilistic networks. In IJCAI, 1997.
- *      http://citeseer.nj.nec.com/30635.html
+ *      http://citeseer.ist.psu.edu/30635.html
  *
  *  By word of mouth, I (bilmes) heard that the idea arose from an
  *  algorithm that is used in genetic sequencing, and the connection

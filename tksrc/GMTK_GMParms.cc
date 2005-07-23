@@ -40,6 +40,7 @@
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
 #include "GMTK_WeightMatrix.h"
+#include "GMTK_DirichletTable.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
@@ -109,6 +110,7 @@ GMParms::~GMParms()
   deleteObsInVector(covars);
   deleteObsInVector(dLinkMats);
   deleteObsInVector(weightMats);
+  deleteObsInVector(dirichletTabs);
   deleteObsInVector(components);
   deleteObsInVector(mdCpts);
   deleteObsInVector(msCpts);
@@ -139,6 +141,7 @@ void GMParms::add(MeanVector* ob){ add(ob,means,meansMap); }
 void GMParms::add(DiagCovarVector* ob){ add(ob,covars,covarsMap); }
 void GMParms::add(DlinkMatrix* ob) { add(ob,dLinkMats,dLinkMatsMap); }
 void GMParms::add(WeightMatrix*ob) { add(ob,weightMats,weightMatsMap); }
+void GMParms::add(DirichletTable*ob) { add(ob,dirichletTabs,dirichletTabsMap); }
 void GMParms::add(Component*ob){ add(ob,
 				     components,
 				     componentsMap); }
@@ -484,6 +487,44 @@ GMParms::readWeightMats(iDataStreamFile& is, bool reset)
 	    ob->name().c_str(),is.fileName(),is.lineNo());
     weightMats[i+start] = ob;
     weightMatsMap[ob->name()] = i+start;
+  }
+}
+
+
+
+void 
+GMParms::readDirichletTabs(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"Cant' read num dirichlet tables");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of dirichlet tables (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
+  if (reset) {
+    start = 0;
+    dirichletTabs.resize(num);
+  } else {
+    start = dirichletTabs.size();
+    dirichletTabs.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    DirichletTable* ob;
+
+    is.read(cnt,"Can't read dirichlet table num");
+    if (cnt != i) 
+      error("ERROR: dirichlet table count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
+
+    ob = new DirichletTable();
+    ob->read(is);
+    if (dirichletTabsMap.find(ob->name()) != dirichletTabsMap.end())
+      error("ERROR: dirichlet table named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
+    dirichletTabs[i+start] = ob;
+    dirichletTabsMap[ob->name()] = i+start;
   }
 }
 
@@ -1052,32 +1093,6 @@ GMParms::readMlpSwitchMixtures(iDataStreamFile& is, bool reset)
 }
 
 
-void 
-GMParms::readBasic(iDataStreamFile& is)
-{
-
-  string str;
-
-  is.read(str,"Can't read GM parameter magic string");
-  if (str != MAGIC_PRM_FILE)
-    error("GMTK_GMParms::readBasic. Expecting basic param file, got (%s) in file (%s) line %d",
-	  str.c_str(),is.fileName(),is.lineNo());
-
-  readDPmfs(is);
-  readSPmfs(is);
-  readMeans(is);
-  readCovars(is);
-  readDLinkMats(is);
-  readWeightMats(is);  
-  readMdCpts(is);
-  readMsCpts(is);
-  readMtCpts(is);
-  readVocabs(is);
-  readNgramCpts(is);
-  readFNgramImps(is);
-  readVECpts(is);
-}
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -1114,6 +1129,7 @@ GMParms::readAll(iDataStreamFile& is)
   readCovars(is);
   readDLinkMats(is);
   readWeightMats(is);
+  readDirichletTabs(is);
   readMdCpts(is);
   readMsCpts(is);
   readMtCpts(is);
@@ -1311,6 +1327,9 @@ GMParms::read(
 
     } else if (keyword == "WEIGHT_MAT_IN_FILE") {
       readWeightMats(*((*it).second),false);
+
+    } else if (keyword == "DIRICHLET_TAB_IN_FILE") {
+      readDirichletTabs(*((*it).second),false);
 
     } else if (keyword == "DENSE_CPT_IN_FILE") {
       readMdCpts(*((*it).second),false);
@@ -2180,45 +2199,6 @@ GMParms::writeMlpSwitchMixtures(oDataStreamFile& os)
  *
  */
 
-
-/*-
- *-----------------------------------------------------------------------
- * writeBasic
- *    write the basic parameters, where 'basic' is defined
- *    as those which are written in this routine. (sorry)
- *
- * Preconditions:
- *      nil
- *
- * Postconditions:
- *      one
- *
- * Side Effects:
- *      all "used" parameters are written out.
- *
- * Results:
- *      nil.
- *
- *-----------------------------------------------------------------------
- */
-void 
-GMParms::writeBasic(oDataStreamFile& os)
-{
-  markUsedMixtureComponents();
-
-  os.write(MAGIC_PRM_FILE,"GMTK_GMParms::writeBasic, magic");
-  os.nl();
-
-  writeDPmfs(os);
-  writeSPmfs(os);
-  writeMeans(os);
-  writeCovars(os);
-  writeDLinkMats(os);
-  writeWeightMats(os);  
-  writeMdCpts(os);
-  writeMsCpts(os);
-  writeMtCpts(os);
-}
 
 
 /*-
@@ -3427,12 +3407,10 @@ main()
 #if 0
   // read in basic structures
   iDataStreamFile is("dataFiles/test1.gmb",false);
-  GM_Parms.readBasic(is);
 
   // write both out again to stdout (i.e., "-")
   oDataStreamFile os("-");
   GM_Parms.writeDTs(os);
-  GM_Parms.writeBasic(os);
 #endif
 
 }

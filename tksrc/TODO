@@ -3114,6 +3114,17 @@ Sun Jul 17 19:10:28 2005
     - do this for big separators also. 
     - compare memory savings & speed increase with the use if island algorithm.
 
+Sun Jul 17 19:33:11 2005
+  - for new inference, combine all together:
+     1) conflict/clause/nogood learning but over time (stuff learned for one clique saved for next)
+     2) domain pruning
+     3) component caching over time (stuff cached for one clique saved for next)
+     4) A* pruning within clique, using polynomial estimate of max probability and
+        prod. of most likely RV values as admissible heuristic.
+
+
+
+
 
 
 
