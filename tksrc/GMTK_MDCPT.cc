@@ -237,6 +237,7 @@ MDCPT::read(iDataStreamFile& is)
   string firstValue;
   bool firstValueGiven = false;
   is.read(firstValue,"can't read DenseCPT double value or counts specification");
+  // TODO: change to use is.readIfMatch()
   if (firstValue == DirichletConstStr) {
     // so we should have a single constant alpha value next.
     is.read(dirichletAlpha,"Can't read DenseCPT Dirichlet hyperparameter");
