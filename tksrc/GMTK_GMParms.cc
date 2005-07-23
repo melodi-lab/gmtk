@@ -1809,6 +1809,41 @@ GMParms::writeWeightMats(oDataStreamFile& os)
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeDiricletTabs
+ *      writes out the Dirichlet Tables
+ * 
+ * Preconditions:
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeDirichletTabs(oDataStreamFile& os)
+{
+  os.nl(); os.writeComment("Dirichlet Tables");os.nl();
+  os.write(weightMats.size(),"num dirichlet tabs"); os.nl();
+  for (unsigned i=0;i<dirichletTabs.size();i++) {
+    // first write the count
+    os.write(i,"diriclet tab cnt");
+    os.nl();
+    dirichletTabs[i]->write(os);
+  }
+  os.nl();
+}
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * writeMdCpts
@@ -2421,6 +2456,9 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
 
     } else if (keyword == "WEIGHT_MAT_OUT_FILE") {
       writeWeightMats(*((*it).second));
+
+    } else if (keyword == "DIRICHLET_TAB_OUT_FILE") {
+      writeDirichletTabs(*((*it).second));
 
     } else if (keyword == "DENSE_CPT_OUT_FILE") {
       writeMdCpts(*((*it).second));
