@@ -96,6 +96,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool readString(string& str,char *msg=NULL);
   bool readToken(string& str,const string& tokenChars,char *msg=NULL);
 
+  bool readIfMatch(const string& matchTokenStr,char *msg=NULL);
 
   // type implicit
   bool read(char*& str,char *msg=NULL) { return readStr(str,msg); }
@@ -116,7 +117,7 @@ class iDataStreamFile : public ioDataStreamFile {
     char *msg=NULL );
   
   bool readLine(char *&lineptr, size_t n, char *msg = NULL);
-  char peekChar();
+  char peekChar(char *msg = NULL);
 
   template <class T>
   bool readArray(T* location, const int length, char *msg = NULL) 
