@@ -127,6 +127,9 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
       }
     }
   } else {
+    // then this is a binary file. It is important that we 
+    // use fopen here to open the file, since if this is a
+    // binary file we might change the file pointer using fseek().
     if (!strcmp("-",_name)) {
       fh = stdin;
     } else if ((fh=fopen(_name,"r")) == NULL) {
@@ -268,14 +271,13 @@ iDataStreamFile::prepareNext()
 
 void iDataStreamFile::rewind()
 {
-  assert ( ! cppIfAscii );
+  assert ( Binary || ! cppIfAscii );
   if (::fseek (fh, 0L, SEEK_SET) != 0)
     error("ERROR: trouble seeking to beginning of file '%s', %s\n",
 	  fileName(),strerror(errno));
   _curLineNo = 0;
   state = GetNextLine;
 }
-
 
 
 bool 
@@ -435,6 +437,95 @@ iDataStreamFile::readToken(string& str, const string& tokenChars, char *msg)
 
 
 
+/*
+ * read in a matched token string 'matchToken' and advance the file pointer
+ * if the string (for ascii or binary file) matches. If the next set of matchToken.size()
+ * characters does not match the string (with a '\0' at the end for binary file, and space
+ * at the end for ascii file) then success is set to false, and the file pointer is
+ * not advanced (rewinded).
+ *
+ * Returns: true if the matched token string was found and is read in.
+ *          false if the matchTokenStr was not found or did not match (note prefixes are not a match). 
+ *
+ * Note this function works differently than the other read functions, namely it will
+ * allways die with an error if an error occurs, rather than return with an error condition.
+ * 
+
+ */
+bool 
+iDataStreamFile::readIfMatch(const string& matchTokenStr, char *msg) 
+{
+  bool success;
+  if (Binary) {
+    char c;
+    // read a string up to the next NULL character while things match
+    unsigned i = 0;
+    success = true;
+    do {
+      size_t rc = fread(&c, sizeof(char), 1,fh);
+      if (rc != 1)
+	error("ERROR: readIfMatch: trouble reading next character in file '%s', '%s', : %s\n",
+	      fileName(),strerror(errno),
+	      (msg != NULL ? msg : ""));
+      if (i < matchTokenStr.size()) {
+	if (matchTokenStr[i] != c) {
+	  // then doesn't match.
+	  success = false;
+	  break;
+	}
+      } else {
+	if (c != '\0') {
+	  // then doesn't match since we are not at end of string in file.
+	  success = false;
+	  break;
+	}
+      }
+      i++;
+    } while (1);
+    if (!success) {
+      // need to move file pointer back
+      if (::fseek(fh, -(long)(i+1), SEEK_CUR))
+	error("ERROR: readIfMatch: trouble seeking to %d'th previous character in file '%s', '%s', : %s\n",
+	      i+1,
+	      fileName(),strerror(errno),
+	      (msg != NULL ? msg : ""));
+    }
+  } else {
+    if (!prepareNext())
+	error("ERROR: readIfMatch: trouble getting next line in file '%s', '%s', : %s\n",
+	      fileName(),strerror(errno),
+	      (msg != NULL ? msg : ""));
+    char c;
+    // read a string up to the next NULL character while things match
+    unsigned i = 0;
+    success = true;
+    do {
+      c = *buffp++;
+      if (i < matchTokenStr.size()) {
+	if (matchTokenStr[i] != c) {
+	  // then doesn't match. This case catches also the case when we're at the end of line and (c == '\0')
+	  success = false;
+	  break;
+	}
+      } else {
+	if (!(isspace(c) || c == '\0')) {
+	  // then doesn't match since we are not at end of string.
+	  success = false;
+	  break;
+	}
+      }
+      i++;
+    } while (1);
+    if (!success) {
+      // need to move file pointer back
+      buffp -= (i+1);
+    }
+  }
+  return true;
+}
+
+
+
 bool 
 iDataStreamFile::readInt(int& i, char *msg) 
 {
@@ -576,12 +667,20 @@ iDataStreamFile::readLine(char *&line, size_t n, char *msg) {
  *
  *-----------------------------------------------------------------------
  */
-char iDataStreamFile::peekChar() {
-	if ( Binary )
-		error("cannot peek in binary file.");
-
-	prepareNext();
-	return *buffp;
+char iDataStreamFile::peekChar(char *msg) {
+  if ( Binary ) {
+    char c;
+    size_t rc = fread(&c, sizeof(char), 1,fh);
+    if (rc != 1)
+      return errorReturn("peekChar",msg);
+    if (::fseek(fh, -1L, SEEK_CUR))
+      error("ERROR: in peekChar, trouble seeking to previous character in file '%s', '%s'\n",
+	    fileName(),strerror(errno));
+    return c;
+  } else {
+    prepareNext();
+    return *buffp;
+  }
 }
 
 
