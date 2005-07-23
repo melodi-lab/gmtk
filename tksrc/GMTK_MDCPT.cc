@@ -65,8 +65,6 @@ extern "C" double copysign(double x, double y) __THROW;
 MDCPT::MDCPT()
   : CPT(di_MDCPT)
 {
-  smoothingType = NoneVal;
-  dirichletTable = NULL;
 }
 
 
@@ -239,11 +237,11 @@ MDCPT::read(iDataStreamFile& is)
   string firstValue;
   bool firstValueGiven = false;
   is.read(firstValue,"can't read DenseCPT double value or counts specification");
-  if (firstValue == "DirichletConst") {
+  if (firstValue == DirichletConstStr) {
     // so we should have a single constant alpha value next.
     is.read(dirichletAlpha,"Can't read DenseCPT Dirichlet hyperparameter");
     smoothingType = DirichletConstVal;
-  } else if (firstValue == "DirichletTable") {
+  } else if (firstValue == DirichletTableStr) {
     // so we should have a pointer to a previously existing count table.
     string dirichletTableName;
     is.read(dirichletTableName);
@@ -404,6 +402,16 @@ MDCPT::write(oDataStreamFile& os)
   os.write(card(),"DenseCPT::write cardinality");
   os.writeComment("cardinalities");
   os.nl();
+
+  if (smoothingType == DirichletConstVal) {
+    os.write(DirichletConstStr);
+    os.write(dirichletAlpha);
+    os.nl();
+  } else if (smoothingType == DirichletTableVal) {
+    os.write(DirichletTableStr);
+    os.write(dirichletTable->name());
+    os.nl();
+  }
 
   // Finally write in the probability values (stored as doubles).
   normalize();
