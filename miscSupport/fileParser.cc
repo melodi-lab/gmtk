@@ -474,11 +474,13 @@ iDataStreamFile::readIfMatch(const string& matchTokenStr, char *msg)
 	  break;
 	}
       } else {
+	// we're at the end of matchTokenStr
 	if (c != '\0') {
-	  // then doesn't match since we are not at end of string in file.
+	  // then doesn't match since we are not at end of string in file. In a binary
+	  // file, a string must end with a '\0' character.
 	  success = false;
-	  break;
 	}
+	break;
       }
       i++;
     } while (1);
@@ -508,11 +510,13 @@ iDataStreamFile::readIfMatch(const string& matchTokenStr, char *msg)
 	  break;
 	}
       } else {
+	// we're at the end of matchTokenStr
 	if (!(isspace(c) || c == '\0')) {
-	  // then doesn't match since we are not at end of string.
+	  // then doesn't match since we are not at end of string in the file but we
+	  // are at the end of matchTokenStr
 	  success = false;
-	  break;
 	}
+	break;
       }
       i++;
     } while (1);
@@ -521,7 +525,7 @@ iDataStreamFile::readIfMatch(const string& matchTokenStr, char *msg)
       buffp -= (i+1);
     }
   }
-  return true;
+  return success;
 }
 
 
