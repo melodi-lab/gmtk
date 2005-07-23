@@ -129,14 +129,11 @@ Dense1DPMF::read(iDataStreamFile& is)
   //      must specify another table and re-read in the object.
 
   
-  string firstValue;
-  bool firstValueGiven = false;
-  is.read(firstValue,"can't read DPMF double value or counts specification");
-  if (firstValue == DirichletConstStr) {
+  if (is.readIfMatch(DirichletConstStr,"DenseCPT double value or Dirichlet const spec")) {
     // so we should have a single constant alpha value next.
     is.read(dirichletAlpha,"Can't read DPMF Dirichlet hyperparameter");
     smoothingType = DirichletConstVal;
-  } else if (firstValue == DirichletTableStr) {
+  } else if (is.readIfMatch(DirichletTableStr,"DenseCPT double value or Dirichlet table spec")) {
     // so we should have a pointer to a previously existing count table.
     string dirichletTableName;
     is.read(dirichletTableName);
@@ -171,30 +168,15 @@ Dense1DPMF::read(iDataStreamFile& is)
     // everything matches up, but include last sanity check
     assert ( dirichletTable->tableSize() == (unsigned)length );
 
-  } else {
-    firstValueGiven = true;
   }
 
 
 
   logpr sum;
   for (int i=0;i<length;i++) {
-    double prob;
 
-    if (firstValueGiven) {
-      // then we need to get the first value from the string.
-      char *ptr_p;
-      prob = strtod(firstValue.c_str(),&ptr_p);
-      if (ptr_p == firstValue.c_str()) {
-	error("ERROR: reading file '%s' line %d, DPMF '%s' has invalid probability value (%s), table entry number %d",
-	      is.fileName(),is.lineNo(),
-	      name().c_str(),
-	      firstValue.c_str(),
-	      i);
-      }
-      firstValueGiven = false;
-    } else
-      is.readDouble(prob,"Can't read Dense1DPMF's prob");
+    double prob;
+    is.readDouble(prob,"Can't read Dense1DPMF's prob");
 
     // we support reading in both regular probability values
     // (in the range [+0,1] inclusive) and log probability 

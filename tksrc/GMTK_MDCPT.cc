@@ -234,15 +234,11 @@ MDCPT::read(iDataStreamFile& is)
   //      where table-object is a previously defined Dirichlet Table object in the
   //      master file which is compatible with this table.
   
-  string firstValue;
-  bool firstValueGiven = false;
-  is.read(firstValue,"can't read DenseCPT double value or counts specification");
-  // TODO: change to use is.readIfMatch()
-  if (firstValue == DirichletConstStr) {
+  if (is.readIfMatch(DirichletConstStr,"DenseCPT double value or Dirichlet const spec")) {
     // so we should have a single constant alpha value next.
     is.read(dirichletAlpha,"Can't read DenseCPT Dirichlet hyperparameter");
     smoothingType = DirichletConstVal;
-  } else if (firstValue == DirichletTableStr) {
+  } else if (is.readIfMatch(DirichletTableStr,"DenseCPT double value or Dirichlet table spec")) {
     // so we should have a pointer to a previously existing count table.
     string dirichletTableName;
     is.read(dirichletTableName);
@@ -290,10 +286,7 @@ MDCPT::read(iDataStreamFile& is)
     // everything matches up, but include last sanity check
     assert ( dirichletTable->tableSize() == (unsigned)numValues );
 
-  } else {
-    firstValueGiven = true;
   }
-
 
   // Finally read in the probability values (stored as doubles).
   mdcpt.resize(numValues);
@@ -305,20 +298,8 @@ MDCPT::read(iDataStreamFile& is)
   for (int i=0;i<numValues;) {
 
     double val;  // sign bit below needs to be changed if we change this type.
-    if (firstValueGiven) {
-      // then we need to get the first value from the string.
-      char *ptr_p;
-      val = strtod(firstValue.c_str(),&ptr_p);
-      if (ptr_p == firstValue.c_str()) {
-	error("ERROR: reading file '%s' line %d, DenseCPT '%s' has invalid probability value (%s), table entry number %d",
-	      is.fileName(),is.lineNo(),
-	      name().c_str(),
-	      firstValue.c_str(),
-	      i);
-      }
-      firstValueGiven = false;
-    } else
-      is.readDouble(val,"Can't read DenseCPT double value");
+    is.readDouble(val,"Can't read DenseCPT double value");
+
 
     // we support reading in both regular probability values
     // (in the range [+0,1] inclusive) and log probability 
