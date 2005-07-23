@@ -43,9 +43,8 @@ INSTALL_EXE = $(INSTALL) -m 755
 # Program options.
 #
 # OPTFLAGS = -O2 -DNDEBUG
-#OPTFLAGS=-O3 -Wno-deprecated -march=pentium4 -mfpmath=sse
-#removed optimizations for debugging
-OPTFLAGS= -Wno-deprecated -march=pentium4 -mfpmath=sse
+OPTFLAGS=-O3 -Wno-deprecated -march=pentium4 -mfpmath=sse
+# OPTFLAGS= -Wno-deprecated -march=pentium4 -mfpmath=sse
 # OPTFLAGS=
 XOPTFLAGS=-funroll-loops -fargument-noalias
 # XOPTFLAGS=
