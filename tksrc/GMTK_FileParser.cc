@@ -521,7 +521,6 @@ FileParser::FileParser(const char*const file,
  */
 FileParser::~FileParser()
 {
-  pclose(yyin);
 }
 
 
@@ -738,6 +737,7 @@ FileParser::parseGraphicalModel()
   }
 #endif
 
+  pclose(yyin);
 
 }
 

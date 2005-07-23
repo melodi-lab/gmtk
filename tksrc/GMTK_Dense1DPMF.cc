@@ -132,11 +132,11 @@ Dense1DPMF::read(iDataStreamFile& is)
   string firstValue;
   bool firstValueGiven = false;
   is.read(firstValue,"can't read DPMF double value or counts specification");
-  if (firstValue == "DirichletConst") {
+  if (firstValue == DirichletConstStr) {
     // so we should have a single constant alpha value next.
     is.read(dirichletAlpha,"Can't read DPMF Dirichlet hyperparameter");
     smoothingType = DirichletConstVal;
-  } else if (firstValue == "DirichletTable") {
+  } else if (firstValue == DirichletTableStr) {
     // so we should have a pointer to a previously existing count table.
     string dirichletTableName;
     is.read(dirichletTableName);
@@ -270,6 +270,18 @@ Dense1DPMF::write(oDataStreamFile& os)
   assert ( basicAllocatedBitIsSet() );
   NamedObject::write(os);
   os.write(pmf.len(),"Dense1DPMF::write, distribution length");
+
+  if (smoothingType == DirichletConstVal) {
+    os.write(DirichletConstStr);
+    os.write(dirichletAlpha);
+    os.nl();
+  } else if (smoothingType == DirichletTableVal) {
+    os.write(DirichletTableStr);
+    os.write(dirichletTable->name());
+    os.nl();
+  }
+
+
   normalize();
   for (int i=0;i<pmf.len();i++) {
     // convert out of log domain and write out.

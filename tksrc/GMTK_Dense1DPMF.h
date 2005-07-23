@@ -31,9 +31,10 @@
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
 #include "GMTK_DirichletTable.h"
+#include "GMTK_DirichletPrior.h"
 
 
-class Dense1DPMF : public EMable {
+class Dense1DPMF : public EMable, public DirichletPrior {
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
@@ -45,16 +46,6 @@ class Dense1DPMF : public EMable {
   //   The next probability mass function 
   sArray <logpr> nextPmf;
   ///////////////////////////////////////////////////////////  
-
-  ///////////////////////////////////////////////////////////  
-  enum PriorType { NoneVal, DirichletConstVal, DirichletTableVal };
-  PriorType smoothingType;
-  // in case smoothingType == DirichletConstVal, then the constant value
-  // corresponding to the one hyperparameter of the Dirichlet prior.
-  double dirichletAlpha;
-  // in case smoothingType == DirichletTableVal, then the pointer to the
-  // table of DirichletTable hyperparameters.
-  DirichletTable* dirichletTable;
 
 public:
 

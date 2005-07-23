@@ -31,8 +31,9 @@
 #include "GMTK_DiscRV.h"
 #include "GMTK_NamedObject.h"
 #include "GMTK_DirichletTable.h"
+#include "GMTK_DirichletPrior.h"
 
-class MDCPT : public CPT {
+class MDCPT : public CPT, public DirichletPrior  {
 
   //////////////////////////////////
   // The acutal cpt. This is the table for
@@ -55,15 +56,6 @@ class MDCPT : public CPT {
 
   // the overall expected occurence of this CPT
   logpr accumulator;
-
-  enum PriorType { NoneVal, DirichletConstVal, DirichletTableVal };
-  PriorType smoothingType;
-  // in case smoothingType == DirichletConstVal, then the constant value
-  // corresponding to the one hyperparameter of the Dirichlet prior.
-  double dirichletAlpha;
-  // in case smoothingType == DirichletTableVal, then the pointer to the
-  // table of DirichletTable hyperparameters.
-  DirichletTable* dirichletTable;
 
 protected:
 
