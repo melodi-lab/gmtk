@@ -1367,6 +1367,7 @@ static bool localCliqueNormalization = false;
   Arg("llStoreFile",Arg::Opt,llStoreFile,"File to store previous sum LL's"), 
   Arg("objsNotToTrain",Arg::Opt,objsToNotTrainFile,"File listing trainable parameter objects to not train."),
   Arg("localCliqueNorm",Arg::Opt,localCliqueNormalization,"Use local clique sum for posterior normalization."),
+  Arg("dirichletPriors",Arg::Opt,EMable::useDirichletPriors,"Enable the use of Dirichlet priors for this process."),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)

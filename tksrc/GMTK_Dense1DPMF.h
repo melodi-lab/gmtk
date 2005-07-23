@@ -30,6 +30,7 @@
 
 #include "GMTK_EMable.h"
 #include "GMTK_NamedObject.h"
+#include "GMTK_DirichletTable.h"
 
 
 class Dense1DPMF : public EMable {
@@ -45,12 +46,15 @@ class Dense1DPMF : public EMable {
   sArray <logpr> nextPmf;
   ///////////////////////////////////////////////////////////  
 
-
-  ////////////////////////////////////////////////////////////
-  // this dummy variable apparently needs to be here so that gdb 5.0 on
-  // Solaris can print out *this. If this is removed, that version of
-  // gdb can't do that.
-  // int _dummy;
+  ///////////////////////////////////////////////////////////  
+  enum PriorType { NoneVal, DirichletConstVal, DirichletTableVal };
+  PriorType smoothingType;
+  // in case smoothingType == DirichletConstVal, then the constant value
+  // corresponding to the one hyperparameter of the Dirichlet prior.
+  double dirichletAlpha;
+  // in case smoothingType == DirichletTableVal, then the pointer to the
+  // table of DirichletTable hyperparameters.
+  DirichletTable* dirichletTable;
 
 public:
 

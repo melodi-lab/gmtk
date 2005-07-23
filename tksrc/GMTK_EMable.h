@@ -119,6 +119,11 @@ protected:
  
 public:
 
+  // global variable to determine if this process includes priors in
+  // the counts. We keep this here since when using parallelism, we
+  // only want to add the priors to one process, not all of them.
+  static bool useDirichletPriors;
+
   
   EMable() { bitmask = bm_amTraining; }
   virtual ~EMable() {}

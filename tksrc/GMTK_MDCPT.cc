@@ -34,6 +34,7 @@
 #include "GMTK_DiscRV.h"
 #include "GMTK_GMParms.h"
 
+
 VCID("$Header$")
 
 /*
@@ -64,8 +65,10 @@ extern "C" double copysign(double x, double y) __THROW;
 MDCPT::MDCPT()
   : CPT(di_MDCPT)
 {
-
+  smoothingType = NoneVal;
+  dirichletTable = NULL;
 }
+
 
 
 /*-
@@ -211,6 +214,88 @@ MDCPT::read(iDataStreamFile& is)
     }
   }
 
+  // read optional smoothing parameters. We support either
+  //   1) constant dirichlet priors, where a constant alpha
+  //      is given right here, where we have a Dirichlet 
+  //      with hyperparameter alpha >= 0 which is constant for
+  //      all rv values. The syntax for this is:
+  //         
+  //         DirichletConst <alpha>
+  // 
+  //      and where the accumulators now have E[counts] + alpha rather
+  //      than just alpha. Note that \alpha is given as a real fractional
+  //      count value, so it is not a log prob.
+  //   2) specify a counts object, where we have a full set of 'numValues'
+  //      counts for all values of the random variable for all possible
+  //      parent values. This is much more general than the above, as
+  //      the counts object can specify a different Dirichlet hyperparameter
+  //      for each value of the RV. Syntax for this is:
+  //   
+  //        DirichletTable table-object
+  //
+  //      where table-object is a previously defined Dirichlet Table object in the
+  //      master file which is compatible with this table.
+  
+  string firstValue;
+  bool firstValueGiven = false;
+  is.read(firstValue,"can't read DenseCPT double value or counts specification");
+  if (firstValue == "DirichletConst") {
+    // so we should have a single constant alpha value next.
+    is.read(dirichletAlpha,"Can't read DenseCPT Dirichlet hyperparameter");
+    smoothingType = DirichletConstVal;
+  } else if (firstValue == "DirichletTable") {
+    // so we should have a pointer to a previously existing count table.
+    string dirichletTableName;
+    is.read(dirichletTableName);
+    if (GM_Parms.dirichletTabsMap.find(dirichletTableName) == GM_Parms.dirichletTabsMap.end()) {
+	error("ERROR: reading file '%s' line %d, DenseCPT '%s' specified Dirichlet Table (%s) that does not exist",
+	      is.fileName(),is.lineNo(),
+	      name().c_str(),
+	      dirichletTableName.c_str());
+
+    }
+    dirichletTable = GM_Parms.dirichletTabs[GM_Parms.dirichletTabsMap[dirichletTableName]];
+    smoothingType = DirichletTableVal;
+    // next check that the table matches the CPT.
+    if (_numParents + 1 != dirichletTable->numDimensions()) {
+	error("ERROR: reading file '%s' line %d, DenseCPT '%s' has %d parents (a %d-D table), but Dirichlet Table '%s' has dimensionality %d",
+	      is.fileName(),is.lineNo(),
+	      name().c_str(),
+	      _numParents,_numParents+1,
+	      dirichletTable->name().c_str(),
+	      dirichletTable->numDimensions());
+    }
+
+    // check that parents match
+    for (unsigned i=0;i<_numParents;i++) {    
+      if (cardinalities[i] != dirichletTable->dimension(i)) {
+	error("ERROR: reading file '%s' line %d, in DenseCPT '%s', %d'th parent has cardinality %d, but Dirichlet Table '%s' has its %d'th dimension of size %d",
+	      is.fileName(),is.lineNo(),
+	      name().c_str(),
+	      i,cardinalities[i],
+	      dirichletTable->name().c_str(),
+	      i,dirichletTable->dimension(i));
+      }
+    }
+
+    // check self cardinality
+    if (_card != dirichletTable->lastDimension()) {
+      error("ERROR: reading file '%s' line %d, in DenseCPT '%s', child has cardinality %d, but Dirichlet Table '%s' has its last dimension of size %d",
+	    is.fileName(),is.lineNo(),
+	    name().c_str(),
+	    _card,
+	    dirichletTable->name().c_str(),
+	    dirichletTable->lastDimension());
+    }
+
+    // everything matches up, but include last sanity check
+    assert ( dirichletTable->tableSize() == (unsigned)numValues );
+
+  } else {
+    firstValueGiven = true;
+  }
+
+
   // Finally read in the probability values (stored as doubles).
   mdcpt.resize(numValues);
   logpr child_sum;
@@ -221,7 +306,20 @@ MDCPT::read(iDataStreamFile& is)
   for (int i=0;i<numValues;) {
 
     double val;  // sign bit below needs to be changed if we change this type.
-    is.readDouble(val,"Can't read DenseCPT double value");
+    if (firstValueGiven) {
+      // then we need to get the first value from the string.
+      char *ptr_p;
+      val = strtod(firstValue.c_str(),&ptr_p);
+      if (ptr_p == firstValue.c_str()) {
+	error("ERROR: reading file '%s' line %d, DenseCPT '%s' has invalid probability value (%s), table entry number %d",
+	      is.fileName(),is.lineNo(),
+	      name().c_str(),
+	      firstValue.c_str(),
+	      i);
+      }
+      firstValueGiven = false;
+    } else
+      is.readDouble(val,"Can't read DenseCPT double value");
 
     // we support reading in both regular probability values
     // (in the range [+0,1] inclusive) and log probability 
@@ -619,9 +717,22 @@ MDCPT::emStartIteration()
   accumulatedProbability = 0.0;  
   // zero the accumulators
   // or if we want to add priors here, we can do that at this point.
-  for (int i=0;i<nextMdcpt.len();i++) {
-    nextMdcpt[i].set_to_zero();
+  if (smoothingType == NoneVal || !useDirichletPriors) {
+    for (int i=0;i<nextMdcpt.len();i++) {
+      nextMdcpt[i].set_to_zero();
+    }
+  } else if  (smoothingType == DirichletConstVal) {
+    logpr alpha(dirichletAlpha);
+    for (int i=0;i<nextMdcpt.len();i++) {
+      nextMdcpt[i] = alpha;
+    }
+  } else {
+    // dirichlet table
+    for (int i=0;i<nextMdcpt.len();i++) {
+      nextMdcpt[i] = dirichletTable->tableValue(i);
+    }
   }
+
 }
 
 

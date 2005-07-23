@@ -36,6 +36,7 @@
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_CPT.h"
 
+
 VCID("$Header$")
 
 /*
@@ -98,10 +99,102 @@ Dense1DPMF::read(iDataStreamFile& is)
     error("ERROR: reading file '%s' line %d, DPMF '%s' has a bad length of (%d) <= 0 in input",
 	  is.fileName(),is.lineNo(),name().c_str(),length);
   pmf.resize(length);
+
+
+  // read optional smoothing parameters. We support either
+  //   1) constant dirichlet priors, where a constant alpha
+  //      is given right here, where we have a Dirichlet 
+  //      with hyperparameter alpha >= 0 which is constant for
+  //      all rv values. The syntax for this is:
+  //         
+  //         DirichletConst <alpha>
+  // 
+  //      and where the accumulators now have E[counts] + alpha rather
+  //      than just alpha. Note that \alpha is given as a real fractional
+  //      count value, so it is not a log prob.
+  //   2) specify a counts object, where we have a full set of 'numValues'
+  //      counts for all values of the random variable for all possible
+  //      parent values. This is much more general than the above, as
+  //      the counts object can specify a different Dirichlet hyperparameter
+  //      for each value of the RV. Syntax for this is:
+  //   
+  //        DirichletTable table-object
+  //
+  //      where table-object is a previously defined Dirichlet Table object in the
+  //      master file which is compatible with this table. Note that it
+  //      has to be compatible at read time. Since a Dense1DPMF can increase
+  //      in cardinality when used for Gaussian mixture responsibilities, once
+  //      the cardinality increases, the Dirichlet Table is no longer valid and
+  //      it is not any longer used. To get it to work again in this case, you
+  //      must specify another table and re-read in the object.
+
+  
+  string firstValue;
+  bool firstValueGiven = false;
+  is.read(firstValue,"can't read DPMF double value or counts specification");
+  if (firstValue == "DirichletConst") {
+    // so we should have a single constant alpha value next.
+    is.read(dirichletAlpha,"Can't read DPMF Dirichlet hyperparameter");
+    smoothingType = DirichletConstVal;
+  } else if (firstValue == "DirichletTable") {
+    // so we should have a pointer to a previously existing count table.
+    string dirichletTableName;
+    is.read(dirichletTableName);
+    if (GM_Parms.dirichletTabsMap.find(dirichletTableName) == GM_Parms.dirichletTabsMap.end()) {
+	error("ERROR: reading file '%s' line %d, DPMF '%s' specified Dirichlet Table (%s) that does not exist.",
+	      is.fileName(),is.lineNo(),
+	      name().c_str(),
+	      dirichletTableName.c_str());
+
+    }
+    dirichletTable = GM_Parms.dirichletTabs[GM_Parms.dirichletTabsMap[dirichletTableName]];
+    smoothingType = DirichletTableVal;
+    // next check that the table matches the DPMF.
+    if (dirichletTable->numDimensions() != 1) {
+	error("ERROR: reading file '%s' line %d, DPMF '%s' (a 1-D table), but Dirichlet Table '%s' has dimensionality %d",
+	      is.fileName(),is.lineNo(),
+	      name().c_str(),
+	      dirichletTable->name().c_str(),
+	      dirichletTable->numDimensions());
+    }
+
+    // check self cardinality
+    if (pmf.size() != dirichletTable->lastDimension()) {
+      error("ERROR: reading file '%s' line %d, in DPMF '%s', has length %d, but Dirichlet Table '%s' has its last dimension of size %d",
+	    is.fileName(),is.lineNo(),
+	    name().c_str(),
+	    pmf.size(),
+	    dirichletTable->name().c_str(),
+	    dirichletTable->lastDimension());
+    }
+
+    // everything matches up, but include last sanity check
+    assert ( dirichletTable->tableSize() == (unsigned)length );
+
+  } else {
+    firstValueGiven = true;
+  }
+
+
+
   logpr sum;
   for (int i=0;i<length;i++) {
     double prob;
-    is.readDouble(prob,"Can't read Dense1DPMF's prob");
+
+    if (firstValueGiven) {
+      // then we need to get the first value from the string.
+      char *ptr_p;
+      prob = strtod(firstValue.c_str(),&ptr_p);
+      if (ptr_p == firstValue.c_str()) {
+	error("ERROR: reading file '%s' line %d, DPMF '%s' has invalid probability value (%s), table entry number %d",
+	      is.fileName(),is.lineNo(),
+	      name().c_str(),
+	      firstValue.c_str(),
+	      i);
+      }
+      firstValueGiven = false;
+    } else
+      is.readDouble(prob,"Can't read Dense1DPMF's prob");
 
     // we support reading in both regular probability values
     // (in the range [+0,1] inclusive) and log probability 
@@ -137,6 +230,8 @@ Dense1DPMF::read(iDataStreamFile& is)
     }
     sum += pmf[i];
   }
+
+
   if (CPT::normalizationThreshold != 0) {
     double abs_diff = fabs(sum.unlog() - 1.0);
     // be more forgiving as cardinality increases
@@ -148,6 +243,7 @@ Dense1DPMF::read(iDataStreamFile& is)
 	    abs_diff,
 	    CPT::normalizationThreshold);
   }
+
   setBasicAllocatedBit();
 }
 
@@ -284,8 +380,21 @@ Dense1DPMF::emStartIteration()
 
   accumulatedProbability = 0.0;
 
-  for (int i=0;i<nextPmf.len();i++) {
-    nextPmf[i].set_to_zero();
+  if (smoothingType == NoneVal || !useDirichletPriors) {
+    for (int i=0;i<nextPmf.len();i++) {
+      nextPmf[i].set_to_zero();
+    }
+  } else if (smoothingType == DirichletConstVal) {
+    // const dirichlet priors 
+    logpr alpha(dirichletAlpha);
+    for (int i=0;i<nextPmf.len();i++) {
+      nextPmf[i] = alpha;
+    }
+  } else {
+    // table dirichlet priors 
+    for (int i=0;i<nextPmf.len();i++) {
+      nextPmf[i] = dirichletTable->tableValue(i);
+    }
   }
 }
 
@@ -421,6 +530,7 @@ Dense1DPMF::emSwapCurAndNew()
   if (!emSwappableBitIsSet())
     return;
 
+  const unsigned oldLen = nextPmf.len();
   unsigned newLen = nextPmf.len();
   unsigned numVanished = 0;
   unsigned numSplit = 0;
@@ -467,6 +577,20 @@ Dense1DPMF::emSwapCurAndNew()
   assert ( newIndex == newLen );
 
   nextPmf.resizeIfDifferent(newLen);
+  
+  if (useDirichletPriors) {
+    if (smoothingType == DirichletTableVal) {
+      if (newLen != dirichletTable->lastDimension()) {
+	// if length changed, we can no longer use the table.
+	// rather than die with an error, we instead turn off Dirichlet smoothing using this table.
+	smoothingType = NoneVal;
+	infoMsg(IM::Med,"WARNING: Dense1DPMF named '%s' changed from length %d to length %d, so is no longer using DirichletTable '%s' of length %d.",
+		name().c_str(),oldLen,newLen,
+		dirichletTable->name().c_str(),
+		dirichletTable->lastDimension());
+      }
+    }
+  }
 
   // renormalize
   normalize();
