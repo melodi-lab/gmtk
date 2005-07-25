@@ -105,7 +105,9 @@ public:
 
   // Dummy constructor to create an invalid object to be re-constructed
   // later.
-  shash_map() {}
+  // This was commented because it will conflict with the following
+  // constructor with default size
+  //shash_map() {}
 
   ////////////////////
   // constructor
@@ -199,6 +201,19 @@ public:
       foundp = true;
     }
     return &(table.ptr[a].item);
+  }
+
+  ////////////////////////////////////////////////////////
+  // remove an item according to key
+  inline void remove(_Key key, bool&foundp = hash_abstract::global_foundp) {
+    // compute the address
+    unsigned a = entryOf(key,table);
+    if ( table.ptr[a].empty() ) {
+      foundp = false;
+    } else {
+      foundp = true;
+      table.ptr[a].active = false;
+    }
   }
 
 
