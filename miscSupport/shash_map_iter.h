@@ -41,7 +41,7 @@ public:
 	//    by the argument arg_vsize.
 	shash_map_iter(unsigned approximateStartingSize = hash_abstract::HashTableDefaultApproxStartingSize) : shash_map<_Key, _Data>(approximateStartingSize) {}
 
-	shash_map_iter(const shash_map_iter<_Key, _Data> &map) : shash_map_iter((shash_map<_Key, _Data>)map){}
+	shash_map_iter(const shash_map_iter<_Key, _Data> &map) : shash_map<_Key, _Data>((shash_map<_Key, _Data>)map){}
 
 	const shash_map_iter& operator = (const shash_map_iter<_Key, _Data> &map) {
 		return *this = (shash_map<_Key, _Data>)map;
