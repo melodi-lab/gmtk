@@ -63,6 +63,7 @@ LatticeADT::~LatticeADT() {
 		delete _latticeFile;
 }
 
+
 /*-
  *-----------------------------------------------------------------------
  * LatticeADT::readFromHTKLattice(ifs, vocab)
@@ -184,9 +185,8 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 			case 'W':
 				// word token
 				edge.emissionId = vocab.index(ptr+2);
-				if ( edge.emissionId == vocab.index("<unk>") ) {
-					warning("Warning: word '%s' in lattice '%s' cannot be found in vocab", ptr+2, ifs.fileName());
-				}
+				if ( edge.emissionId == vocab.index("<unk>") )
+					error("Error: word '%s' in lattice '%s' cannot be found in vocab", ptr+2, ifs.fileName());
 				break;
 			case 'a':
 				// acoustic score
@@ -226,6 +226,251 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	}
 
 	delete [] line;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * LatticeADT::readFromHTKLatticeAndEliminate(ifs, vocab)
+ *     read an HTK lattice
+ *
+ * Results:
+ *     eliminate null edges
+ *-----------------------------------------------------------------------
+ */
+void LatticeADT::readFromHTKLatticeAndEliminate(iDataStreamFile &ifs, const Vocab &vocab) {
+	char *s_tmp, *ptr;
+	do {
+		ifs.read(s_tmp);
+		if ( s_tmp == NULL )
+			break;
+
+		if ( strstr(s_tmp, "VERSION") != 0 ) {
+			// skip the line
+		} else if ( strstr(s_tmp, "UTTERANCE") != NULL ) {
+			// skip the line
+		} else if ( strstr(s_tmp, "lmscale=") != NULL ) {
+			// parsing language model scale
+			ptr = strchr(s_tmp, '=');
+			_lmscale = atof(++ptr);
+		} else if ( strstr(s_tmp, "wdpenalty=") != NULL ) {
+			// parsing word penalty
+			ptr = strchr(s_tmp, '=');
+			_wdpenalty = atof(++ptr);
+		} else if ( strstr(s_tmp, "acscale") != NULL ) {
+			// parse acoustic scale
+			ptr = strchr(s_tmp, '=');
+			_acscale = atof(++ptr);
+		} else if ( strstr(s_tmp, "base=") != NULL ) {
+			// parse log base
+			ptr = strchr(s_tmp, '=');
+			_base = atof(++ptr);
+		} else if ( strstr(s_tmp, "amscale") != NULL ) {
+			// parse am scale
+			ptr = strchr(s_tmp, '=');
+			_amscale = atof(++ptr);
+		} else if ( strstr(s_tmp, "start=") != NULL ) {
+			// parse start node id
+			ptr = strchr(s_tmp, '=');
+			_start = (unsigned)atoi(++ptr);
+		} else if ( strstr(s_tmp, "end=") != NULL ) {
+			// parse start node id
+			ptr = strchr(s_tmp, '=');
+			_end = (unsigned)atoi(++ptr);
+		} else if ( strstr(s_tmp, "N=") != NULL ) {
+			// parse number of nodes
+			ptr = strchr(s_tmp, '=');
+			_numberOfNodes = (unsigned)atoi(++ptr);
+			if ( _numberOfNodes > _nodeCardinality )
+				error("Runtime error: number of nodes in lattice %d is bigger than node cardinlaity %d", _numberOfNodes, _nodeCardinality);
+		} else if ( strstr(s_tmp, "L=") != NULL ) {
+			// parse number of nodes
+			ptr = strchr(s_tmp, '=');
+			_numberOfLinks = (unsigned)atoi(++ptr);
+			break;		// read to parse node and link information
+		}
+
+		delete [] s_tmp;
+		s_tmp = NULL;
+	} while ( ! ifs.isEOF() );
+
+	if ( _latticeNodes )
+		delete [] _latticeNodes;
+	_latticeNodes = new LatticeNode [_numberOfNodes];
+	char *line = new char [1024];
+	const char seps[] = " \t\n";
+	unsigned id;
+
+	// reading nodes
+	for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
+		ifs.readLine(line, 1024);
+		ptr = strtok(line, seps);
+		if ( ptr[0] != 'I' || ptr[1] != '=' )
+			error("expecting I= in line %s at LatticeCPT::readFromHTKLattice", ptr);
+		if ( (id = atoi(ptr+2)) > _numberOfNodes )
+			error("node id %d is bigger than number of nodes in LatticeCPT::readFromHTKLattice", id, _numberOfNodes);
+		if ( (ptr = strtok(NULL, seps)) != NULL ) {
+			// there is time information
+			if ( ptr[0] == 't' ) {
+				// set up the time
+				_latticeNodes[id].time = atof(ptr+2);
+				// by default, there is no frame constrain
+				_latticeNodes[id].startFrame = 0;
+				_latticeNodes[id].endFrame = ~0;
+			}
+		}
+	}
+
+	unsigned *nodeMap = new unsigned [_numberOfNodes];
+	for ( unsigned i = 0; i < _numberOfNodes; i++ )
+		nodeMap[i] = i;
+
+	unsigned numEliminate = 0;
+
+	// reading links
+	double score;
+	unsigned endNodeId = 0;
+	for ( unsigned i = 0; i < _numberOfLinks; i++ ) {
+		ifs.readLine(line, 1024);
+		ptr = strtok(line, seps);
+		if ( ptr[0] != 'J' || ptr[1] != '=' )
+			error("expecting J= in line %s at LatticeCPT::readFromHTKLattice", ptr);
+		if ( (id = atoi(ptr+2)) > _numberOfLinks )
+			error("link id %d is bigger than number of nodes in LatticeCPT::readFromHTKLattice", id, _numberOfLinks);
+
+		// starting node
+		if ( (ptr = strtok(NULL, seps)) == NULL )
+			error("expect starting node for link %d", id);
+		if ( ptr[0] != 'S' || ptr[1] != '=' )
+			error("expect starting node for link %d", id);
+		if ( (id = atoi(ptr+2)) > _numberOfNodes )
+			error("node id %d is bigger than number of nodes in LatticeCPT::readFromHTKLattice", id, _numberOfNodes);
+
+		LatticeEdge edge;
+		while ( (ptr = strtok(NULL, seps)) != NULL ) {
+			switch ( ptr[0] ) {
+			case 'E':
+				// ending link
+				endNodeId = atoi(ptr+2);
+				break;
+			case 'W':
+				// word token
+				if ( strcmp(ptr+2, "!NULL") == 0 ) {
+					nodeMap[endNodeId] = id;
+					++numEliminate;
+				} else {
+					edge.emissionId = vocab.index(ptr+2);
+					if ( edge.emissionId == vocab.index("<unk>") )
+						error("Error: word '%s' in lattice '%s' cannot be found in vocab", ptr+2, ifs.fileName());
+				}
+				break;
+			case 'a':
+				// acoustic score
+				score = atof(ptr+2);
+				if ( _base == 0 ) {
+					score = log(score);
+				} else {
+					score *= log(_base);
+				}
+				edge.ac_score.setFromLogP(score);
+				break;
+			case 'l':
+				// lm score
+				score = atof(ptr+2);
+				if ( _base == 0 ) {
+					score = log(score);
+				} else {
+					score *= log(_base);
+				}
+				edge.lm_score.setFromLogP(score);
+				break;
+			case 'd':
+				// duration
+				break;
+			case 'p':
+				// probability
+				score = atof(ptr+2);
+				edge.prob_score.setFromP(score);
+				break;
+			default:
+				error("unknonw token %s in LatticeCTP::readFromHTKLattice\n", ptr);
+				break;
+			}
+		}
+
+		_latticeNodes[id].edges.insert(endNodeId, edge);
+	}
+
+	if ( numEliminate > 0 ) {
+		LatticeNode *newNodes = new LatticeNode [_numberOfNodes - numEliminate];
+		unsigned* newMap = new unsigned [_numberOfNodes];
+		for ( unsigned i = 0; i < _numberOfNodes; i++ )
+			newMap[i] = i;
+
+		// go through the lattices and get new node map
+		for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
+			if ( nodeMap[i] != i ) {
+				// this node needs to be removed
+				// set up new map
+				for ( unsigned j = i + 1; j < _numberOfNodes; j++ )
+					--newMap[j];
+			}
+		}
+
+		// go through the lattices and eliminate
+		for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
+			if ( nodeMap[i] != i ) {
+				LatticeNode& fromNode = _latticeNodes[i];
+				LatticeNode& toNode = newNodes[newMap[nodeMap[i]]];
+
+				// eliminate this node by adding edges to 'from' node
+				shash_map_iter<unsigned, LatticeEdge>::iterator it;
+				fromNode.edges.begin(it);
+				do {
+					LatticeEdge *e = toNode.edges.find(newMap[it.key()]);
+					if ( e != NULL ) {
+						// we need to compare the probabilities to decide keep which
+						if ( e->prob_score < (*it).prob_score ) {
+							toNode.edges.insert(newMap[it.key()], *it);
+						}
+					} else {
+						toNode.edges.insert(newMap[it.key()], *it);
+					}
+				} while ( it.next() );
+			} else {
+				// copy the node to new location
+				LatticeNode& fromNode = _latticeNodes[i];
+				LatticeNode& toNode = newNodes[newMap[i]];
+
+				toNode.time = fromNode.time;
+				toNode.startFrame = fromNode.startFrame;
+				toNode.endFrame = fromNode.endFrame;
+
+				// there is no out edge for end
+				if ( i != _end ) {
+					shash_map_iter<unsigned, LatticeEdge>::iterator it;
+					fromNode.edges.begin(it);
+					do {
+						if ( nodeMap[it.key()] == it.key() ) {
+							toNode.edges.insert(newMap[it.key()], *it);
+						}
+					} while ( it.next() );
+				}
+			}
+		}
+
+		// set data fields
+		delete [] _latticeNodes;
+		_latticeNodes = newNodes;
+		_numberOfNodes -= numEliminate;
+		_start = newMap[_start];
+		_end = newMap[_end];
+		delete [] newMap;
+	}
+
+	// clean up
+	delete [] line;
+	delete [] nodeMap;
 }
 
 
@@ -271,7 +516,9 @@ void LatticeADT::read(iDataStreamFile &is) {
 		// set vocabulary and read in HTK lattice
 		Vocab *vocab = GM_Parms.vocabs[GM_Parms.vocabsMap[vocabName]];
 		iDataStreamFile lfifs(latticeFile);
-		readFromHTKLattice(lfifs, *vocab);
+		//readFromHTKLattice(lfifs, *vocab);
+		readFromHTKLatticeAndEliminate(lfifs, *vocab);
+
 		_wordCardinality = vocab->size();
 
 		// read in frame relaxation
@@ -399,11 +646,14 @@ void LatticeADT::nextIterableLattice() {
 	// set vocabulary and read in HTK lattice
 	Vocab *vocab = GM_Parms.vocabs[GM_Parms.vocabsMap[vocabName]];
 	iDataStreamFile lfifs(latticeFile);
-	readFromHTKLattice(lfifs, *vocab);
+	//readFromHTKLattice(lfifs, *vocab);
+	readFromHTKLatticeAndEliminate(lfifs, *vocab);
 	_wordCardinality = vocab->size();
 
 	// read in frame relaxation
 	_latticeFile->read(_frameRelax, "Can't read lattice frame relaxation");
+
+	delete [] latticeFile;
 }
 
 
@@ -421,17 +671,24 @@ void LatticeADT::resetFrameIndices(unsigned numFrames) {
 	const unsigned lastFrameId = numFrames - 1;
 	float warpRate = lastFrameId / _latticeNodes[_end].time;
 
-	const LatticeNode *const end_p = _latticeNodes + _numberOfNodes;
 	unsigned frame;
-	for ( LatticeNode *p = _latticeNodes; p != end_p; ++p ) {
-		frame = (unsigned)roundf(warpRate * p->time);
-		p->startFrame = (frame < _frameRelax) ? 0 : frame - _frameRelax;
+	for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
+		frame = (unsigned)roundf(warpRate * _latticeNodes[i].time);
+		_latticeNodes[i].startFrame = (frame < _frameRelax) ? 0 : frame - _frameRelax;
+
 		frame += _frameRelax;
-		p->endFrame = (frame > lastFrameId) ? lastFrameId : frame;
+		_latticeNodes[i].endFrame = (frame > lastFrameId - 1) ? lastFrameId - 1: frame;
 	}
 
-#if 1
+	// special treatment for start
+	_latticeNodes[_start].startFrame = _latticeNodes[_start].endFrame = 0;
+
+	// special treatment for end
+	_latticeNodes[_end].startFrame = _latticeNodes[_end].endFrame = lastFrameId;
+
+#if 0
 	// print the lattice for debugging reasons
+	printf("starting %d and end %d\n", _start, _end);
 	for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
 		printf("node %d at frame (%u,%u):\n", i, _latticeNodes[i].startFrame, _latticeNodes[i].endFrame);
 		if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {

@@ -72,8 +72,22 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
 	// if the lattice node is the end, return prob zero
 	if ( node.edges.totalNumberEntries() == 0 ) {
-		p.set_to_zero();
-		return;
+		delete pit;
+		if ( RV2DRV(parents[0])->val == _latticeAdt->_end ) {
+			// This is a trick to make sure that lattice
+			// always reaches its end.
+			// The down side the the word variable in the last
+			// frame gives garbage.
+			it.internalState = _latticeAdt->_end;
+			it.internalStatePtr = NULL;
+			it.drv = drv;
+			drv->val = _latticeAdt->_end;
+			p.set_to_one();
+			return;
+		} else {
+			p.set_to_zero();
+			return;
+		}
 	}
 
 	// now the current node can have next transition
@@ -82,11 +96,14 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
 	// check the frame number and parent frame index to see whether
 	// transition is allowed at this frame
-	if ( drv->frame() >= _latticeAdt->_latticeNodes[pit->key()].startFrame
-			&& drv->frame() <= _latticeAdt->_latticeNodes[pit->key()].endFrame ) {
+	if ( drv->frame() >= _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].startFrame
+			&& drv->frame() <= _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].endFrame ) {
+	//if ( drv->frame() >= _latticeAdt->_latticeNodes[pit->key()].startFrame
+	//		&& drv->frame() <= _latticeAdt->_latticeNodes[pit->key()].endFrame ) {
 		// easy case
 		// set up the iternal state for iterators
 		it.internalStatePtr = (void*)pit;
+		it.internalState = RV2DRV(parents[0])->val;
 		it.drv = drv;
 
 		// set up the values
@@ -97,10 +114,12 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 	} else {
 		// need to find the next available in the tree
 		while ( pit->next() ) {
-			if ( drv->frame() >= _latticeAdt->_latticeNodes[pit->key()].startFrame && drv->frame() <= _latticeAdt->_latticeNodes[pit->key()].endFrame ) {
+			if ( drv->frame() >= _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].startFrame && drv->frame() <= _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].endFrame ) {
+			//if ( drv->frame() >= _latticeAdt->_latticeNodes[pit->key()].startFrame && drv->frame() <= _latticeAdt->_latticeNodes[pit->key()].endFrame ) {
 				// this is what we need
 				// set up the iternal state for iterators
 				it.internalStatePtr = (void*)pit;
+				it.internalState = RV2DRV(parents[0])->val;
 				it.drv = drv;
 
 				// set up the values
@@ -172,7 +191,8 @@ bool LatticeNodeCPT::next(iterator &it, logpr& p) {
 
 	// need to find the next available in the tree
 	while ( pit->next() ) {
-		if ( it.drv->frame() >= _latticeAdt->_latticeNodes[pit->key()].startFrame && it.drv->frame() <= _latticeAdt->_latticeNodes[pit->key()].endFrame ) {
+		if ( it.drv->frame() >= _latticeAdt->_latticeNodes[it.internalState].startFrame && it.drv->frame() <= _latticeAdt->_latticeNodes[it.internalState].endFrame ) {
+		//if ( it.drv->frame() >= _latticeAdt->_latticeNodes[pit->key()].startFrame && it.drv->frame() <= _latticeAdt->_latticeNodes[pit->key()].endFrame ) {
 			// set up the values
 			it.drv->val = pit->key();
 			p = (**pit).prob_score;		// TODO: implement other scores
@@ -202,3 +222,4 @@ void LatticeNodeCPT::setLatticeADT(const LatticeADT &latticeAdt) {
 	_latticeAdt = &latticeAdt;
 	_card = cardinalities[0] = _latticeAdt->_nodeCardinality;
 }
+
