@@ -41,6 +41,7 @@ public:
 
 	// read from HTK lattice format file
 	void readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab);
+	void readFromHTKLatticeAndEliminate(iDataStreamFile &ifs, const Vocab &vocab);
 
 	// read from GMTK master file
 	void read(iDataStreamFile &is);
@@ -89,7 +90,7 @@ protected:
 		/** possible out-going edges */
 		shash_map_iter<unsigned, LatticeEdge> edges;
 
-		LatticeNode() : startFrame(0), endFrame(0) {}
+		LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdge>(1)) {}
 	};
 
 	/** lattice nodes */

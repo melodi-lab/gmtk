@@ -66,12 +66,17 @@ void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 	if ( outEdge == NULL ) {
 		// this should report an error because I have set prob in
 		// latticeNodeCPT to zero.
-		error("Error: lattice edge CPT is not synchronized with node cpt");
+		//error("Error: lattice edge CPT is not synchronized with node cpt");
+		// I changed it to be zero prob.
+		it.drv = drv;
+		drv->val = 0;	// some junk number
+		p.set_to_zero();
+		return;
 	}
 
 	it.drv = drv;
 	drv->val = outEdge->emissionId;
-	p = logpr(1.0);
+	p.set_to_one();
 }
 
 
@@ -105,6 +110,7 @@ logpr LatticeEdgeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
  *-----------------------------------------------------------------------
  */
 bool LatticeEdgeCPT::next(iterator &it, logpr& p) {
+	p.set_to_zero();
 	return false;
 }
 
@@ -123,3 +129,4 @@ void LatticeEdgeCPT::setLatticeADT(const LatticeADT &latticeAdt) {
         cardinalities[0] = cardinalities[1] = _latticeAdt->_nodeCardinality;
 	_card = _latticeAdt->_wordCardinality;
 }
+
