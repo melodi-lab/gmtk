@@ -82,6 +82,34 @@ static const double gZoomMap[] = {
 //this is the index into gZoomMap which will give a Zoom of 1
 #define ZOOM_1_INDEX 4
 
+/// comparator for the maps
+struct ltstr {
+	bool operator()(const wxString s1, const wxString s2) const
+	{
+		return (s1 < s2);
+	}
+};
+
+struct ltint {
+	bool operator()(const int i1, const int i2) const
+	{
+		return (i1 < i2);
+	}
+};
+
+//These store style data
+//They are used so that we can save and restore styles of pens into a text file
+//so the numeric style will be converted into text and when the text is read in
+//it will be converted back to a number, this way if the numbers that represent
+//the styles change within wxWidgets our files will still be valid, unless styles
+//are dropped.  If new styles are added then just add them to the map where the
+//others are added
+//
+//string -> int style (ie "wxSOLID" -> wxSOLID)
+map<const wxString, int, ltstr> styleStringToIntMap;
+//int style - > string (ie wxSOLID -> "wxSOLID")
+map<const int, wxString, ltint> styleIntToStringMap;
+
 //states of highlight
 //off = not higlighed
 //on = highlighted (for the children and parents)
@@ -109,6 +137,25 @@ class VizArc;
 class VizSep;
 class Selectable;
 class ControlPoint;
+
+
+// this class subclasses wxPen and simply adds the ability to save "default" data
+// and later see if the current pen setup matches that default.  This way we can 
+// save only the non default pen data to a file
+class gmtkPen : public wxPen {
+	public: 
+		gmtkPen(const wxColour& colour, int width, int style) : wxPen(colour,width,style){setDefaults();}
+		gmtkPen(const wxString& colourName, int width, int style) : wxPen(colourName,width,style){setDefaults();}
+//		gmtkPen(const wxBitmap& stipple, int width) : wxPen(wxBitmap,width){}
+		gmtkPen(const wxPen& pen) : wxPen(pen){setDefaults();}
+		bool isDefault(){ return (default_Colour == GetColour()) && (default_style == GetStyle()) && (default_width == GetWidth());}
+		void setDefaults(){ default_Colour = GetColour(); default_style = GetStyle(); default_width = GetWidth();}
+	private:
+		wxColour default_Colour;
+		int	default_style;
+		int	default_width;
+};
+
 
 /// A tab with a scrolled area for displaying and manipulating a graph
 /// associated with a structure file.
@@ -184,17 +231,34 @@ class StructPage: public wxScrolledWindow
 		void blit( void );
 
 		// pens and fonts for drawing different items
-		wxPen switchingPen;
-		wxPen conditionalPen;
-		wxPen bothPen;
-		wxPen highlightPen;
-		wxPen frameBorderPen;
-		wxPen chunkBorderPen;
-		wxPen controlPointPen;
-		wxPen nodePen;
-		wxPen gridPen;
+		//holds info about a pen
+		struct PenInfo {
+			gmtkPen * pen;
+			wxString nameabr;
+			wxString namelong;
+		};
+#define numPens 10
+		PenInfo PenArray[numPens];
+	private:
+		void PutInPenArray(int index,gmtkPen * penptr, wxString nameabr, wxString namelong)
+		{
+			PenArray[index].pen = penptr;
+			PenArray[index].nameabr = nameabr;
+			PenArray[index].namelong = namelong;
+		}
+	public:
+		gmtkPen switchingPen;
+		gmtkPen conditionalPen;
+		gmtkPen bothPen;
+		gmtkPen highlightPen;
+		gmtkPen frameBorderPen;
+		gmtkPen chunkBorderPen;
+		gmtkPen controlPointPen;
+		gmtkPen nodePen;
+		gmtkPen gridPen;
+		gmtkPen boundingBoxPen;
+
 		wxFont labelFont;
-		wxPen boundingBoxPen;
 
 		// Are we drawing ... ?
 		bool getViewCPs( void ) { return drawCPs; }
@@ -296,13 +360,6 @@ class StructPage: public wxScrolledWindow
 			bool gvpAborted;
 			// reads the gvp info into the config map
 			void fillMap( void );
-			/// comparator for the config map
-			struct ltstr {
-				bool operator()(const wxString s1, const wxString s2) const
-				{
-					return (s1 < s2);
-				}
-			};
 			map<const wxString, wxString, ltstr> config;
 			std::vector< VizNode* > nodes; // node positions
 			std::vector< NameTag* > nodeNameTags; // node nametags
@@ -417,6 +474,7 @@ public:
 	virtual bool onMe( const wxPoint& pt );
 	virtual bool inRect( const wxRect& rect ) { return rect.Inside(pos); }
 };
+
 
 /// Represents an arc
 class VizArc {
@@ -785,6 +843,38 @@ bool GMTKStructVizApp::OnInit()
 		return false;
 	}
 
+	//init the global Style Maps
+	//these are used to map the gvp file's text representation of style
+	//to wxWidgets numerical representation and visa versa
+	styleStringToIntMap["wxSOLID"] = wxSOLID;
+   styleIntToStringMap[wxSOLID] = "wxSOLID";
+	styleStringToIntMap["wxTRANSPARENT"] = wxTRANSPARENT;
+   styleIntToStringMap[wxTRANSPARENT] = "wxTRANSPARENT";
+	styleStringToIntMap["wxDOT"] = wxDOT;
+   styleIntToStringMap[wxDOT] = "wxDOT";
+	styleStringToIntMap["wxLONG_DASH"] = wxLONG_DASH;
+   styleIntToStringMap[wxLONG_DASH] = "wxLONG_DASH";
+	styleStringToIntMap["wxSHORT_DASH"] = wxSHORT_DASH;
+   styleIntToStringMap[wxSHORT_DASH] = "wxSHORT_DASH";
+	styleStringToIntMap["wxDOT_DASH"] = wxDOT_DASH;
+   styleIntToStringMap[wxDOT_DASH] = "wxDOT_DASH";
+	styleStringToIntMap["wxSTIPPLE"] = wxSTIPPLE;
+   styleIntToStringMap[wxSTIPPLE] = "wxSTIPPLE";
+	styleStringToIntMap["wxUSER_DASH"] = wxUSER_DASH;
+   styleIntToStringMap[wxUSER_DASH] = "wxUSER_DASH";
+	styleStringToIntMap["wxBDIAGONAL_HATCH"] = wxBDIAGONAL_HATCH;
+   styleIntToStringMap[wxBDIAGONAL_HATCH] = "wxBDIAGONAL_HATCH";
+	styleStringToIntMap["wxCROSSDIAG_HATCH"] = wxCROSSDIAG_HATCH;
+   styleIntToStringMap[wxCROSSDIAG_HATCH] = "wxCROSSDIAG_HATCH";
+	styleStringToIntMap["wxFDIAGONAL_HATCH"] = wxFDIAGONAL_HATCH;
+   styleIntToStringMap[wxFDIAGONAL_HATCH] = "wxFDIAGONAL_HATCH";
+	styleStringToIntMap["wxCROSS_HATCH"] = wxCROSS_HATCH;
+   styleIntToStringMap[wxCROSS_HATCH] = "wxCROSS_HATCH";
+	styleStringToIntMap["wxHORIZONTAL_HATCH"] = wxHORIZONTAL_HATCH;
+   styleIntToStringMap[wxHORIZONTAL_HATCH] = "wxHORIZONTAL_HATCH";
+	styleStringToIntMap["wxVERTICAL_HATCH"] = wxVERTICAL_HATCH;
+   styleIntToStringMap[wxVERTICAL_HATCH] = "wxVERTICAL_HATCH";
+	
 	(void) IM::setGlbMsgLevel(verbosity);
 	GM_Parms.setMsgLevel(verbosity);
 
@@ -2874,8 +2964,8 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	frameBorderPen(*wxLIGHT_GREY_PEN), chunkBorderPen(*wxBLACK_PEN),
 	controlPointPen(*wxRED_PEN), nodePen(*wxBLACK_PEN),
 	gridPen(*wxLIGHT_GREY_PEN), 
-	labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL), 
-	boundingBoxPen(*wxBLACK_PEN)
+	boundingBoxPen(*wxBLACK_PEN),
+	labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL)
 {
 	//since we haven't parsed the data yet we mark it false
 	data_parsed = false;
@@ -2934,6 +3024,30 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	gridPen.SetStyle(wxDOT);
 	boundingBoxPen.SetStyle(wxSOLID);
 	boundingBoxPen.SetJoin(wxJOIN_MITER);
+
+	//save the state of each pen as the default
+	switchingPen.setDefaults();
+	conditionalPen.setDefaults();
+	bothPen.setDefaults();
+	highlightPen.setDefaults();
+	frameBorderPen.setDefaults();
+	chunkBorderPen.setDefaults();
+	controlPointPen.setDefaults();
+	nodePen.setDefaults();
+	gridPen.setDefaults();
+	boundingBoxPen.setDefaults();
+
+	//Put data in the pen array
+	PutInPenArray(0,&switchingPen,"switchingPen","Switching Pen");
+	PutInPenArray(1,&conditionalPen,"conditionalPen","Conditional Pen");
+	PutInPenArray(2,&bothPen,"bothPen","Both Pen");
+	PutInPenArray(3,&highlightPen,"highlightPen","Highlight Pen");
+	PutInPenArray(4,&frameBorderPen,"frameBorderPen","Frameborder Pen");
+	PutInPenArray(5,&chunkBorderPen,"chunkBorderPen","Chunkborder Pen");
+	PutInPenArray(6,&controlPointPen,"controlPointPen","Control Point Pen");
+	PutInPenArray(7,&nodePen,"nodePen","Node Pen");
+	PutInPenArray(8,&gridPen,"gridPen","Grid Pen");
+	PutInPenArray(9,&boundingBoxPen,"boundingBoxPen","Bounding Box Pen");
 
 	// scroll 10 pixels at a time
 	SetScrollRate( 10, 10 );
@@ -3149,6 +3263,55 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 						}
 					}
 					initArcs();
+
+					//for each pen read in the customizations from the gvp if they exist
+					for(int i = 0; i < numPens; i++){
+						//width
+						key.sprintf("%s.width", PenArray[i].nameabr.c_str());
+						value = config[key];
+						if (value != wxEmptyString) {
+							long w;
+							if (value.ToLong(&w)) {
+								PenArray[i].pen->SetWidth(w);
+							} else {
+								wxString msg;
+								msg.sprintf("%s.width is not a number", PenArray[i].nameabr.c_str());
+								wxLogMessage(msg);
+								gvpAborted = true;
+							}
+						}
+						//colour
+						key.sprintf("%s.colour", PenArray[i].nameabr.c_str());
+						value = config[key];
+						if (value != wxEmptyString) {
+							int r,g,b;
+							if(sscanf(value.c_str(),"%i,%i,%i",&r,&g,&b) == 3){
+								PenArray[i].pen->SetColour(r,g,b);
+							} else {
+								wxString msg;
+								msg.sprintf("%s.color is not a set of ints r,g,b", PenArray[i].nameabr.c_str());
+								wxLogMessage(msg);
+								gvpAborted = true;
+							}
+						}
+						//style
+						key.sprintf("%s.style", PenArray[i].nameabr.c_str());
+						value = config[key];
+						if (value != wxEmptyString) {
+							//if there is anything with that Style in the map
+							if (styleStringToIntMap.count(value)) {
+								PenArray[i].pen->SetStyle(styleStringToIntMap[value]);
+							} else {
+								wxString msg;
+								msg.sprintf("%s.style is not valid", PenArray[i].nameabr.c_str());
+								//XXX todo: figure out a better way to log this
+								cout << msg << "\n";
+								//				wxLogMessage(msg);
+								//				gvpAborted = true;
+							}
+						}
+					}
+
 					//now that the arcs and everything is initialized toggle the visibility of the nodes
 					//we couldn't do it when we inited the nodes because the node visibility function
 					//toggles the visibility of the its arcs, which didn't exist until just now
@@ -3614,6 +3777,7 @@ StructPage::initNodes( void )
 			gvpAborted = true;
 		}
 	}
+	
 	
 	/* Since I'm not sure what we made up and what was in the file,
 	 * consider the file dirty. */
@@ -5824,6 +5988,7 @@ StructPage::draw( wxDC& dc )
 void
 StructPage::Save( void )
 {
+
 	if (gvpFile.length()) {
 		wxFFile gvp;
 		if (gvp.Open(gvpFile, "w")) {
@@ -5994,6 +6159,36 @@ StructPage::Save( void )
 				line.sprintf( "frames[%d].nametag.visible=%d\n",
 						  i, frameNameTags[i]->isVisible() );
 				gvp.Write(line);
+			}
+
+			//for all the pens, if they are not the defaults, save their colour,
+			//width and style in the gvp file, style is saved as text so we have
+			//to use a Map
+			for(int i = 0; i < numPens; i++){
+				if (!PenArray[i].pen->isDefault()){
+					line.sprintf( "%s.width=%i\n", 
+							PenArray[i].nameabr.c_str(),
+							PenArray[i].pen->GetWidth());
+					gvp.Write(line);
+					line.sprintf( "%s.colour=%i,%i,%i\n", 
+							PenArray[i].nameabr.c_str(),
+							PenArray[i].pen->GetColour().Red(),
+							PenArray[i].pen->GetColour().Green(),
+							PenArray[i].pen->GetColour().Blue()
+							);
+					gvp.Write(line);
+					//make sure we have the style in our map
+					if (styleIntToStringMap.count(PenArray[i].pen->GetStyle())){
+						line.sprintf( "%s.style=%s\n", 
+								PenArray[i].nameabr.c_str(),
+								styleIntToStringMap[PenArray[i].pen->GetStyle()].c_str());
+						gvp.Write(line);
+					} else {
+						//XXX figure out a better way to log these errors, which shouldn't happen
+						cout << "Style " << PenArray[i].pen->GetStyle() <<" is not in map and so will not be written into\n";
+						cout << "the gvp File, this is a problem with the program and so you should contact the maintainer.\n";
+					}
+				}
 			}
 
 			gvpDirty = false;
