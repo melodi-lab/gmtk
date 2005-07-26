@@ -1578,10 +1578,20 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 		 * work. It in turn calls the StructPage's draw() method to do
 		 * the actual drawing. */
 		wxPrintDialogData printDialogData(printData);
+
+//if we're using 2.6.1 or greater we don't get crashes on zoom
+//so there is no need to disable it
+#if wxCHECK_VERSION(2,6,1)
+		wxPrintPreview *preview =
+			new wxPrintPreview(new GmtkPrintout(curPage, name),
+						new GmtkPrintout(curPage, name),
+						&printDialogData);
+#else
 		nozoomwxPrintPreview *preview =
 			new nozoomwxPrintPreview(new GmtkPrintout(curPage, name),
 						new GmtkPrintout(curPage, name),
 						&printDialogData);
+#endif
 		if (!preview->Ok()) {
 			delete preview;
 			wxMessageBox(_T("There was a problem previewing.\n"
@@ -1589,7 +1599,6 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 					wxT("Previewing"), wxOK);
 			return;
 		}
-			
 		// Now that the preview is set up, show it in a preview frame.
 		
 		//XXX this allows for dotted lines (not ideal)
@@ -1651,9 +1660,16 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		//set up the printer, give a temp file name, make it print to file
       wxPrinter printer;
 		wxString temp_file_name = wxGetTempFileName( wxT("gmtkviz") );
+//XXX Print to eps doesn't work in 2.6.1
 		printer.GetPrintDialogData().GetPrintData().SetFilename(temp_file_name);
 		printer.GetPrintDialogData().SetPrintToFile(true);
-		printer.Print(this, &printout, false);
+		printer.GetPrintDialogData().GetPrintData().SetPrintMode(wxPRINT_MODE_FILE);
+		if(!printer.Print(this, &printout, false)){
+			wxMessageBox(_T("There was a problem printing to an EPS file.\n"
+						"gmtkViz having trouble printing to file."),
+					wxT("Error Printing to EPS"), wxOK);
+			return;
+		}
 		
 		//this is the command being sent to the shell (single quote the file name)
 		string ps2eps_cmd = "cat ";
@@ -2747,6 +2763,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 						6, choices, this );
 				if (newStyleNum >= 0) {
 					if ( 2 <= newStyleNum && newStyleNum <= 5 ) {
+#if !wxCHECK_VERSION(2,6,1)
 						if ( wxNO == wxMessageBox("Lines with dots and/or "
 									"dashes are known to cause "
 									"problems (crashing) in "
@@ -2760,6 +2777,8 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 									wxYES_NO, this) ) {
 							break;
 						}
+#endif
+
 #ifdef __WXMSW__
 						if ( thePen->GetWidth() != 1 ) {
 							thePen->SetWidth(1);
