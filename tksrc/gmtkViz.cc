@@ -389,7 +389,7 @@ class Selectable {
 		// or if it's in a given rectangle (e.g. the selection rectangle)
 		virtual bool inRect( const wxRect& rect ) = 0;
 		// constructor: items start out unselected
-		Selectable() { selected = false; }
+		Selectable() { selected = false; visible = true;}
 		// destructor: no dnamically allocated memory to free
 		virtual 	~Selectable() {  }
 
@@ -7525,7 +7525,7 @@ ControlPoint::onMe( const wxPoint& pt )
  *
  * \return Nothing.
  *******************************************************************/
-ControlPoint::ControlPoint( const wxPoint& pt )
+ControlPoint::ControlPoint( const wxPoint& pt ) : Selectable()
 {
 	pos.x = pt.x;
 	pos.y = pt.y;
