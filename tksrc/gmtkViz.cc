@@ -559,13 +559,16 @@ class GmtkHelp : public wxFrame {
 		void doLayout();
 		DECLARE_EVENT_TABLE()
 	private:
+		//we need 2 events because the close button and window close button
+		//create different types of events
 		void OnClose(wxCloseEvent &event){ Show(false); }
+		void OnCloseButton(wxCommandEvent &event){ Show(false); }
 };
 
 //event table for GmtkHelp
 BEGIN_EVENT_TABLE(GmtkHelp, wxFrame)
 	EVT_CLOSE(GmtkHelp::OnClose)
-	EVT_BUTTON(wxID_CLOSE, GmtkHelp::OnClose)
+	EVT_BUTTON(wxID_CLOSE, GmtkHelp::OnCloseButton)
 END_EVENT_TABLE()
 
 /// This is the main window
@@ -766,7 +769,7 @@ public:
 	void OnMenuCustomizePen(wxCommandEvent &event);
 
 	// Do this when a different notebook page is chosen
-	void OnNotebookPageChanged(wxCommandEvent &event);
+	void OnNotebookPageChanged(wxNotebookEvent &event);
 
 private:
 	// initialize the status bar
@@ -1352,7 +1355,7 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 			 page->getHeight()/ACTUAL_SCALE+100 : h );
 		// We won't get an event for this new notebook page coming to
 		// the front, so we'll just pretend we did
-		wxCommandEvent dummy;
+		wxNotebookEvent dummy;
 		OnNotebookPageChanged(dummy);
 	} else{
 		delete page;
@@ -2831,7 +2834,7 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
  * \return void
  *******************************************************************/
 void
-GFrame::OnNotebookPageChanged(wxCommandEvent &event)
+GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 {
 	// figure out which page this is for and pass the buck
 	int curPageNum = struct_notebook->GetSelection();
