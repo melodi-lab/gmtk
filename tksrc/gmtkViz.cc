@@ -463,16 +463,16 @@ class VizNode : public Selectable {
 
 /// Represents a control point
 class ControlPoint : public Selectable {
-public:
-	/// absolute position
-	wxPoint pos;
-	/// the parent arc owning this control point
-	VizArc *arc;
-	// constructor
-	ControlPoint( const wxPoint& pt );
-	// selectable methods
-	virtual bool onMe( const wxPoint& pt );
-	virtual bool inRect( const wxRect& rect ) { return rect.Inside(pos); }
+	public:
+		/// absolute position
+		wxPoint pos;
+		/// the parent arc owning this control point
+		VizArc *arc;
+		// constructor
+		ControlPoint( const wxPoint& pt );
+		// selectable methods
+		virtual bool onMe( const wxPoint& pt );
+		virtual bool inRect( const wxRect& rect ) { return rect.Inside(pos); }
 };
 
 
@@ -501,7 +501,7 @@ class VizArc {
 		bool isVisible(){return visible;}
 		//highlight state
 		bool isHighlighted() {return highlighted;}
-		void setHighlighted(bool newHighlighted){ highlighted = newHighlighted;}
+		void setHighlighted(bool newHighlighted) {highlighted = newHighlighted;}
 		void toggleHighlighted() {setHighlighted(!highlighted);}
 	private:
 		// is it visible
@@ -3017,7 +3017,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	highlightPen.SetWidth(ACTUAL_SCALE + 2);	//make the highlighted pen thicker
 	frameBorderPen.SetWidth(ACTUAL_SCALE);
 	chunkBorderPen.SetWidth(ACTUAL_SCALE);
-	controlPointPen.SetWidth(ACTUAL_SCALE);
+	controlPointPen.SetWidth(ACTUAL_SCALE + 1);
 	// Make the corners sharp
 	controlPointPen.SetJoin(wxJOIN_MITER);
 	nodePen.SetWidth(ACTUAL_SCALE);
@@ -7674,7 +7674,11 @@ VizArc::draw( wxDC *dc, int drawFlags )
 
 	if (drawFlags & DRAW_CPS) {
 		// draw the control points
-		dc->SetPen(page->controlPointPen);
+		if (highlighted)
+			dc->SetPen(page->highlightPen);
+		else
+			dc->SetPen(page->controlPointPen);
+
 		int end = points->GetCount() - 1;
 		assert(end > 0);
 		wxNode *node = points->GetFirst();
