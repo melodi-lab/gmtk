@@ -122,6 +122,7 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 			// parse number of nodes
 			ptr = strchr(s_tmp, '=');
 			_numberOfLinks = (unsigned)atoi(++ptr);
+			delete [] s_tmp;
 			break;		// read to parse node and link information
 		}
 		
@@ -287,6 +288,7 @@ void LatticeADT::readFromHTKLatticeAndEliminate(iDataStreamFile &ifs, const Voca
 			// parse number of nodes
 			ptr = strchr(s_tmp, '=');
 			_numberOfLinks = (unsigned)atoi(++ptr);
+			delete [] s_tmp;
 			break;		// read to parse node and link information
 		}
 
@@ -297,7 +299,7 @@ void LatticeADT::readFromHTKLatticeAndEliminate(iDataStreamFile &ifs, const Voca
 	if ( _latticeNodes )
 		delete [] _latticeNodes;
 	_latticeNodes = new LatticeNode [_numberOfNodes];
-	char *line = new char [1024];
+	char *line = new char [2048];
 	const char seps[] = " \t\n";
 	unsigned id;
 
@@ -331,7 +333,7 @@ void LatticeADT::readFromHTKLatticeAndEliminate(iDataStreamFile &ifs, const Voca
 	double score;
 	unsigned endNodeId = 0;
 	for ( unsigned i = 0; i < _numberOfLinks; i++ ) {
-		ifs.readLine(line, 1024);
+		ifs.readLine(line, 2048);
 		ptr = strtok(line, seps);
 		if ( ptr[0] != 'J' || ptr[1] != '=' )
 			error("expecting J= in line %s at LatticeCPT::readFromHTKLattice", ptr);
@@ -361,7 +363,7 @@ void LatticeADT::readFromHTKLatticeAndEliminate(iDataStreamFile &ifs, const Voca
 				} else {
 					edge.emissionId = vocab.index(ptr+2);
 					if ( edge.emissionId == vocab.index("<unk>") )
-						error("Error: word '%s' in lattice '%s' cannot be found in vocab", ptr+2, ifs.fileName());
+						error("Error: word '%s' in lattice '%s:%d' cannot be found in vocab", ptr+2, ifs.fileName(), ifs.lineNo());
 				}
 				break;
 			case 'a':
@@ -515,9 +517,10 @@ void LatticeADT::read(iDataStreamFile &is) {
 
 		// set vocabulary and read in HTK lattice
 		Vocab *vocab = GM_Parms.vocabs[GM_Parms.vocabsMap[vocabName]];
-		iDataStreamFile lfifs(latticeFile);
+		iDataStreamFile lfifs(latticeFile, false, false);
 		//readFromHTKLattice(lfifs, *vocab);
 		readFromHTKLatticeAndEliminate(lfifs, *vocab);
+		delete [] latticeFile;
 
 		_wordCardinality = vocab->size();
 
@@ -645,15 +648,14 @@ void LatticeADT::nextIterableLattice() {
 
 	// set vocabulary and read in HTK lattice
 	Vocab *vocab = GM_Parms.vocabs[GM_Parms.vocabsMap[vocabName]];
-	iDataStreamFile lfifs(latticeFile);
+	iDataStreamFile lfifs(latticeFile, false, false);
 	//readFromHTKLattice(lfifs, *vocab);
 	readFromHTKLatticeAndEliminate(lfifs, *vocab);
 	_wordCardinality = vocab->size();
+	delete [] latticeFile;
 
 	// read in frame relaxation
 	_latticeFile->read(_frameRelax, "Can't read lattice frame relaxation");
-
-	delete [] latticeFile;
 }
 
 
