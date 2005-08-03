@@ -7387,9 +7387,10 @@ StructPage::save_state(std::stack<StructPage_state *> &state_stack)
 	//make a new state structure
 	StructPage_state * state = new StructPage_state;
 	//save the state
-	memcpy(&(state->PenArray), &PenArray, sizeof(PenInfo) * numPens);
 	for (int i = 0; i < numPens; i++){
 		state->PenArray[i].pen = new gmtkPen(*(PenArray[i].pen));
+		state->PenArray[i].nameabr = PenArray[i].nameabr;
+		state->PenArray[i].namelong = PenArray[i].namelong;
 	}
 	state->drawSelectBox = drawSelectBox;
 	state->drawCPs = drawCPs;
@@ -7414,7 +7415,6 @@ StructPage::save_state(std::stack<StructPage_state *> &state_stack)
 	int numNodes = nodes.size();
 	state->nodes.clear();
 	state->arcs.clear();
-//	state->arcs.resize(numNodes);
 	for (int i = 0; i < numNodes; i++){
 		curVec.clear();
 		state->arcs.push_back(curVec);
@@ -7453,6 +7453,10 @@ StructPage::restore_state(std::stack<StructPage_state *> &state_stack)
 		PenArray[i].pen->SetWidth(state->PenArray[i].pen->GetWidth());
 		PenArray[i].pen->SetStyle(state->PenArray[i].pen->GetStyle());
 		delete state->PenArray[i].pen;
+		state->PenArray[i].pen = NULL;
+		//XXX do we need to do this below?
+//		delete state->PenArray[i].nameabr;
+//		delete state->PenArray[i].namelong;
 	}
 	drawSelectBox = state->drawSelectBox;
 	drawCPs = state->drawCPs;
@@ -7478,8 +7482,7 @@ StructPage::restore_state(std::stack<StructPage_state *> &state_stack)
 	frameNameTags = state->frameNameTags;
 	frameEnds = state->frameEnds;
 	state_stack.pop();
-//XXX: is this being cleaned up correctly??
-// delete state;
+	delete state;
 	return true;
 }
 
@@ -7490,7 +7493,7 @@ StructPage::save_undo()
 	//if we save an undo state then we have no need for the
 	//redo stack
 	while(!redo_stack.empty()){
-//		delete redo_stack.top();
+		delete redo_stack.top();
 		redo_stack.pop();
 	}
 }
