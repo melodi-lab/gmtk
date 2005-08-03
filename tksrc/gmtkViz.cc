@@ -317,6 +317,7 @@ class StructPage: public wxScrolledWindow
 	private:
 			struct StructPage_state {
 				PenInfo PenArray[numPens];
+				wxFont labelFont;
 				// What do we draw?
 				bool drawSelectBox;
 				bool drawCPs;
@@ -393,8 +394,7 @@ class StructPage: public wxScrolledWindow
 			VizArc* findArcOwning( ControlPoint *cp, int& index );
 			void deleteSelectedCps( void );
 			bool crossesNode( wxCoord x0, wxCoord x1 );
-			bool crossesFrameEnd( wxCoord x0, wxCoord x1 );
-			bool nameTagcrossesFrameEnd( wxCoord x0, wxCoord x1 );
+			bool itemMovingInBounds(int frame, wxCoord x_cur, wxCoord x_new);
 			bool inBounds( wxCoord x, wxCoord y );
 			int nodeUnderPt(wxPoint pt);
 
@@ -456,6 +456,8 @@ class Selectable {
 
 /// Represents a node's nametag
 class NameTag : public Selectable {
+	private:
+		int frame;
 	public:
 		/// absolute position (not relative to node)
 		wxPoint pos;
@@ -472,6 +474,8 @@ class NameTag : public Selectable {
 		// selectable method overrides
 		virtual bool onMe( const wxPoint& pt );
 		virtual bool inRect( const wxRect& rect );
+		int GetFrame() { return frame;}
+		void SetFrame(int frameNum) { frame = frameNum;}
 };
 
 /// Represents a node 
@@ -497,6 +501,8 @@ class VizNode : public Selectable {
 		~VizNode( void );
 		// draw the node
 		void draw( wxDC *dc );
+		// get frame number
+		int GetFrame(){return rvId.second;}
 		// Selectable methods
 		virtual void setSelected( bool newSelected );
 		virtual bool onMe( const wxPoint& pt );
@@ -5066,39 +5072,11 @@ StructPage::crossesNode( wxCoord x0, wxCoord x1 )
 	return false;
 }
 
-/**
- *******************************************************************
- * Determines when moving an object (generally a node) from x position
- * \p x0 to x position \p x1 would cross a frame separator and should
- * therefor be prevented.
- *
- * \pre The StructPage (and in particular the vector of frame
- * separators) should be fully initialized.
- *
- * \post No real changes.
- *
- * \note No side effects.
- *
- * \return \c true if the movement would get too close to a frame
- * separator and should therefor be prevented, or \c false if the
- * movement should be fine.
- *******************************************************************/
-bool
-StructPage::crossesFrameEnd( wxCoord x0, wxCoord x1 )
-{
-	for (unsigned int i = 0; i < frameEnds.size(); i++) {
-		if ((x0<frameEnds[i]->x-NODE_RADIUS!=x1<frameEnds[i]->x-NODE_RADIUS) ||
-				(x0>frameEnds[i]->x+NODE_RADIUS!=x1>frameEnds[i]->x+NODE_RADIUS))
-			return true;
-	}
-	return false;
-}
 
 /**
  *******************************************************************
- * Determines when moving an name tag from x position
- * \p x0 to x position \p x1 would cross a frame separator and should
- * therefor be prevented.
+ * Determines when moving an item (node or nametag) from x position
+ * \p x_cur to x position \p x_new move out of its frame
  *
  * \pre The StructPage (and in particular the vector of frame
  * separators) should be fully initialized.
@@ -5107,19 +5085,49 @@ StructPage::crossesFrameEnd( wxCoord x0, wxCoord x1 )
  *
  * \note No side effects.
  *
- * \return \c true if the movement would get too close to a frame
- * separator and should therefor be prevented, or \c false if the
- * movement should be fine.
+ * \return \c true if moving in bounds of the frame or moving toward being in bounds
+ *	\c false if moving out of bounds
  *******************************************************************/
 bool
-StructPage::nameTagcrossesFrameEnd( wxCoord x0, wxCoord x1 )
+StructPage::itemMovingInBounds(int frame, wxCoord x_cur, wxCoord x_new)
 {
-	for (unsigned int i = 0; i < frameEnds.size(); i++) {
-		if ((x0<frameEnds[i]->x != x1<frameEnds[i]->x) ||
-				(x0>frameEnds[i]->x != x1>frameEnds[i]->x))
-			return true;
+	int nframe_ends = frameEnds.size();
+	wxCoord x_min, x_max;
+
+	if (frame < 0){
+		cout << "item has an invalid frame number\n";
+		return false;
 	}
-	return false;
+
+	if (nframe_ends == 0){
+		//there is only 1 frame
+		x_min = 0;
+		x_max = getWidth();
+	} else if (frame == 0){
+		//first frame
+		x_min = 0;
+		x_max = frameEnds[0]->x;
+	} else if (frame == nframe_ends + 1){
+		//the item is in the last frame
+		x_min = frameEnds[nframe_ends -1]->x;
+		x_max = getWidth();
+	} else {
+		//this item is in a frame that isn't the first or last
+		x_min = frameEnds[frame - 1]->x;
+		x_max = frameEnds[frame]->x;
+	}
+
+	if (x_new > x_min && x_new < x_max)
+		return true;
+	else {
+		//is it atleast moving toward being in bounds?
+		if (x_new < x_min && (abs(x_min - x_new) < abs(x_min - x_cur)))
+			return true;
+		else if (x_new > x_max && ((x_new - x_max) < (x_cur - x_max)))
+			return true;
+		else
+			return false;
+	}
 }
 
 /**
@@ -5212,8 +5220,8 @@ StructPage::moveFrameNameTag( int i, int dx, int dy )
 {
 	if ( inBounds( frameNameTags[i]->pos.x + dx,
 				frameNameTags[i]->pos.y + dy ) ) {
-		if ( !crossesFrameEnd( frameNameTags[i]->pos.x + NODE_RADIUS,
-					frameNameTags[i]->pos.x + NODE_RADIUS+dx ) )
+		if(itemMovingInBounds(i, frameNameTags[i]->pos.x + NODE_RADIUS,
+					frameNameTags[i]->pos.x + NODE_RADIUS + dx))
 			frameNameTags[i]->pos.x += dx;
 		frameNameTags[i]->pos.y += dy;
 	}
@@ -5240,8 +5248,9 @@ StructPage::moveNodeNameTag( int i, int dx, int dy )
 		//Would be nice if the point was centered and we didn't use NODE_RADIUS
 		//but since fonts can change the size of the nametag maybe this is the
 		//best we can do for now
-		if ( !nameTagcrossesFrameEnd( nodeNameTags[i]->pos.x + NODE_RADIUS,
-					nodeNameTags[i]->pos.x + NODE_RADIUS + dx ) )
+		if (itemMovingInBounds(nodeNameTags[i]->GetFrame(),
+					nodeNameTags[i]->pos.x + NODE_RADIUS, nodeNameTags[i]->pos.x +
+					NODE_RADIUS + dx))
 			nodeNameTags[i]->pos.x += dx;
 		nodeNameTags[i]->pos.y += dy;
 	}
@@ -5265,7 +5274,8 @@ void
 StructPage::moveNode( int i, int dx, int dy )
 {
 	if ( inBounds(nodes[i]->center.x + dx, nodes[i]->center.y + dy) ) {
-		if (crossesFrameEnd(nodes[i]->center.x, nodes[i]->center.x + dx))
+		if (!itemMovingInBounds(nodes[i]->GetFrame(), nodes[i]->center.x,
+					nodes[i]->center.x + dx))
 			dx = 0;
 		nodes[i]->center.x += dx;
 		nodes[i]->center.y += dy;
@@ -7392,6 +7402,7 @@ StructPage::save_state(std::stack<StructPage_state *> &state_stack)
 		state->PenArray[i].nameabr = PenArray[i].nameabr;
 		state->PenArray[i].namelong = PenArray[i].namelong;
 	}
+	state->labelFont = labelFont;
 	state->drawSelectBox = drawSelectBox;
 	state->drawCPs = drawCPs;
 	state->drawLines = drawLines;
@@ -7458,6 +7469,7 @@ StructPage::restore_state(std::stack<StructPage_state *> &state_stack)
 //		delete state->PenArray[i].nameabr;
 //		delete state->PenArray[i].namelong;
 	}
+	labelFont = state->labelFont;
 	drawSelectBox = state->drawSelectBox;
 	drawCPs = state->drawCPs;
 	drawLines = state->drawLines;
@@ -7536,6 +7548,7 @@ NameTag::NameTag( const wxPoint& newPos, const wxString& newName )
 {
 	visible = true;
 	selected = false;
+	frame = -1; //indicates that we haven't given a frame value
 }
 /**
  *******************************************************************
@@ -7557,6 +7570,7 @@ NameTag::NameTag( const NameTag &original)
 	pos = original.pos;
 	name = original.name;
 	selected = false;
+	frame = original.frame;
 }
 
 /**
@@ -7665,6 +7679,7 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
 	tipWin->SetToolTip(wxT(rvId.first.c_str()));
 	visible = true;
 	highlight_state = off;
+	nametag.SetFrame(rvi->frame);
 }
 
 /**
