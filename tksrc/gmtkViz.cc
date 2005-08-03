@@ -37,6 +37,7 @@
 #include <cmath>
 #include <vector>
 #include <string.h>
+#include <stack>
 //needed for dirname and basename
 #include <libgen.h>
 //needed for stat
@@ -148,10 +149,20 @@ class gmtkPen : public wxPen {
 		gmtkPen(const wxString& colourName, int width, int style) : wxPen(colourName,width,style){setDefaults();}
 //		gmtkPen(const wxBitmap& stipple, int width) : wxPen(wxBitmap,width){}
 		gmtkPen(const wxPen& pen) : wxPen(pen){setDefaults();}
-		bool isDefault(){ return (default_Colour == GetColour()) && (default_style == GetStyle()) && (default_width == GetWidth());}
-		void setDefaults(){ default_Colour = GetColour(); default_style = GetStyle(); default_width = GetWidth();}
+		gmtkPen(const gmtkPen& pen) : wxPen((wxPen)pen)
+		{ default_style = pen.default_style; default_colour = pen.default_style; default_width = pen.default_width;}
+		bool isDefault(){ return (default_colour == GetColour()) && (default_style == GetStyle()) && (default_width == GetWidth());}
+		//save the current settings as the default
+		void setDefaults(){ default_colour = GetColour(); default_style = GetStyle(); default_width = GetWidth();}
+		//default setters and getters
+		int GetDefaultStyle() {return default_style;}
+		int GetDefaultWidth() {return default_width;}
+		wxColour GetDefaultColour() {return default_colour;}
+		void SetDefaultStyle(int new_style) {default_style = new_style;}
+		void SetDefaultWidth(int new_width) {default_width = new_width;}
+		void SetDefaultColour(wxColour new_colour) {default_colour = new_colour;}
 	private:
-		wxColour default_Colour;
+		wxColour default_colour;
 		int	default_style;
 		int	default_width;
 };
@@ -304,6 +315,46 @@ class StructPage: public wxScrolledWindow
 		//DECLARE_DYNAMIC_CLASS(StructPage)
 		DECLARE_EVENT_TABLE()
 	private:
+			struct StructPage_state {
+				PenInfo PenArray[numPens];
+				// What do we draw?
+				bool drawSelectBox;
+				bool drawCPs;
+				bool drawLines;
+				bool drawSplines;
+				bool drawArrowHeads;
+				bool drawNodes;
+				bool drawGrids;
+				bool drawDirectLines;
+				bool drawFrameSeps;
+				bool drawNodeNames;
+				bool drawFrameNames;
+				bool drawToolTips;
+				bool drawBoundingBox;
+				// How big?
+				int displayScale;
+				long canvasWidth;
+				long canvasHeight;
+
+				bool snapToGrid;
+
+				std::vector< VizNode* > nodes; // node positions
+				std::vector< NameTag* > nodeNameTags; // node nametags
+				std::vector< std::vector< VizArc* > > arcs; // arcs[a][b] is the
+				// information about the arc/spline from node a to node b (or NULL)
+				std::vector< VizSep* > frameEnds; // positions of dividers between frames
+				std::vector< NameTag* > frameNameTags; // frame nametags
+			};
+	public:
+			void save_undo();
+	private:
+			bool undo();
+			bool redo();
+			void save_state(std::stack<StructPage_state *> &);
+			bool restore_state(std::stack<StructPage_state *> &);
+			//this contains states we've been in
+			std::stack<StructPage_state *> undo_stack;
+			std::stack<StructPage_state *> redo_stack;
 			wxFrame *parentFrame;
 			wxNotebook *parentNotebook;
 			wxBitmap *content; // the drawing buffer
@@ -414,6 +465,8 @@ class NameTag : public Selectable {
 		wxString name;
 		// constructor
 		NameTag( const wxPoint& newPos, const wxString& newName );
+		//copy constructor
+		NameTag( const NameTag &);
 		// drawing
 		void draw( wxDC *dc );
 		// selectable method overrides
@@ -438,6 +491,8 @@ class VizNode : public Selectable {
 		wxWindow *tipWin;
 		// constructor
 		VizNode( const wxPoint& newPos, RVInfo *newRvi, StructPage *parentPage );
+		//copy constructor
+		VizNode( const VizNode &);
 		// destructor (noop for now)
 		~VizNode( void );
 		// draw the node
@@ -491,6 +546,8 @@ class VizArc {
 		bool conditional;
 		// constructor
 		VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage );
+		// copy constructor
+		VizArc(const VizArc&);
 		// destructor (to delete the wxList of points)
 		~VizArc( void );
 		enum { DRAW_ARCS = 1<<0, DRAW_CPS = 1<<1 };
@@ -522,6 +579,8 @@ public:
 	StructPage *page;
 	// constructor
 	VizSep( wxCoord xNew, StructPage *newPage, FrameSepType newSepType );
+	//copy constructor
+	VizSep(const VizSep &);
 	// draw itself
 	void draw( wxDC *dc );
 	// selectable methods
@@ -771,6 +830,9 @@ public:
 	// Do this when a different notebook page is chosen
 	void OnNotebookPageChanged(wxNotebookEvent &event);
 
+	//update the menu to reflect the given structpage
+	void UpdateMenuChecks(StructPage *);
+
 private:
 	// initialize the status bar
 	void set_properties();
@@ -793,6 +855,9 @@ protected:
 
 	DECLARE_EVENT_TABLE()
 };
+
+//global
+GFrame* MainVizWindow;
 
 /// represents the app as a whole to the wxWidgets system
 class GMTKStructVizApp: public wxApp {
@@ -883,7 +948,7 @@ bool GMTKStructVizApp::OnInit()
 
 	wxInitAllImageHandlers();
 	// MainVizWindow has no parent...
-	GFrame* MainVizWindow = new GFrame( 0, -1,
+	MainVizWindow = new GFrame( 0, -1,
 					wxT("GMTK Structure File Vizualizer"),
 					wxDefaultPosition, wxDefaultSize,
 					wxDEFAULT_FRAME_STYLE );
@@ -983,17 +1048,17 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_view->Append(MENU_VIEW_SHOW_FRAME_LABELS, wxT("Show All Frame Labels"), wxT("Turn on drawing for all frame labels"), wxITEM_NORMAL);
 	menu_view->Append(MENU_VIEW_ALL_NODES_VISIBLE, wxT("Make All Nodes Visible\tCtrl+D"), wxT("Make all nodes Visible"), wxITEM_NORMAL);
 	menu_view->AppendSeparator();
-	menu_view->Append(MENU_VIEW_CPS, wxT("Draw Control Points"), wxT("Toggle display of arc spline control points"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_LINES, wxT("Draw Arc Lines"), wxT("Toggle display of straight lines between control points in arcs"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_SPLINES, wxT("Draw Arc Splines"), wxT("Toggle display of arc splines"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_ARROW_HEADS, wxT("Draw Arrow Heads"), wxT("Toggle display of arrow heads on arcs"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_NODES, wxT("Draw Nodes"), wxT("Toggle display of nodes"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_GRIDS, wxT("Draw Grids"), wxT("Toggle display of grids"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_DIRECT_LINES, wxT("Draw Direct Lines"), wxT("Toggle display of direct straight lines for arcs"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_FRAME_SEPS, wxT("Draw Frame Separators"), wxT("Toggle display of frame separators"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_NODE_NAMES, wxT("Draw Node Names"), wxT("Toggle display of node names"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_FRAME_NAMES, wxT("Draw Frame Names"), wxT("Toggle display of frame names"), wxITEM_CHECK);
-	menu_view->Append(MENU_VIEW_BOUNDING_BOX, wxT("Draw Bounding Box"), wxT("Toggle display of bounding box"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_CPS, wxT("Draw Control Points\t`"), wxT("Toggle display of arc spline control points"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_LINES, wxT("Draw Arc Lines\t1"), wxT("Toggle display of straight lines between control points in arcs"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_SPLINES, wxT("Draw Arc Splines\t2"), wxT("Toggle display of arc splines"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_ARROW_HEADS, wxT("Draw Arrow Heads\t3"), wxT("Toggle display of arrow heads on arcs"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_NODES, wxT("Draw Nodes\t4"), wxT("Toggle display of nodes"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_GRIDS, wxT("Draw Grids\t5"), wxT("Toggle display of grids"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_DIRECT_LINES, wxT("Draw Direct Lines\t6"), wxT("Toggle display of direct straight lines for arcs"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_FRAME_SEPS, wxT("Draw Frame Separators\t7"), wxT("Toggle display of frame separators"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_NODE_NAMES, wxT("Draw Node Names\t8"), wxT("Toggle display of node names"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_FRAME_NAMES, wxT("Draw Frame Names\t9"), wxT("Toggle display of frame names"), wxITEM_CHECK);
+	menu_view->Append(MENU_VIEW_BOUNDING_BOX, wxT("Draw Bounding Box\t0"), wxT("Toggle display of bounding box"), wxITEM_CHECK);
 	// XXX: menu_view->Append(MENU_VIEW_TOOLTIPS, wxT("Draw Tool Tips"), wxT("Toggle display of tool tips for node names"), wxITEM_CHECK);
 	MainVizWindow_menubar->Append(menu_view, wxT("View"));
 	// Doesn't make sense unless a document is active, so disable it for now.
@@ -1875,8 +1940,10 @@ GFrame::OnMenuEditSnaptogrid(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleSnapToGrid();
+	}
 }
 
 /**
@@ -1904,8 +1971,10 @@ GFrame::OnMenuEditCanvaswidth(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->adjustCanvasWidth();
+	}
 }
 
 /**
@@ -1933,8 +2002,10 @@ GFrame::OnMenuEditCanvasheight(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->adjustCanvasHeight();
+	}
 }
 
 /**
@@ -2063,8 +2134,10 @@ GFrame::OnMenuViewHideLabels(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->hideSelectedLabels();
+	}
 }
 
 /**
@@ -2094,8 +2167,10 @@ GFrame::OnMenuViewShowNodeLabels(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->showAllNodeLabels();
+	}
 }
 
 /**
@@ -2125,8 +2200,10 @@ GFrame::OnMenuViewShowFrameLabels(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->showAllFrameLabels();
+	}
 }
 
 /**
@@ -2156,8 +2233,10 @@ GFrame::OnMenuViewAllNodesVisible(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->showAllNodes();
+	}
 }
 
 /**
@@ -2187,8 +2266,10 @@ GFrame::OnMenuViewCPs(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewCPs();
+	}
 }
 
 /**
@@ -2219,8 +2300,10 @@ GFrame::OnMenuViewLines(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewLines();
+	}
 }
 
 /**
@@ -2250,8 +2333,10 @@ GFrame::OnMenuViewSplines(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewSplines();
+	}
 }
 
 /**
@@ -2281,8 +2366,10 @@ GFrame::OnMenuViewArrowHeads(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewArrowHeads();
+	}
 }
 
 /**
@@ -2312,8 +2399,10 @@ GFrame::OnMenuViewNodes(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewNodes();
+	}
 }
 
 /**
@@ -2343,8 +2432,10 @@ GFrame::OnMenuViewGrids(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewGrids();
+	}
 }
 
 /**
@@ -2374,8 +2465,10 @@ GFrame::OnMenuViewDirectLines(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewDirectLines();
+	}
 }
 
 /**
@@ -2405,8 +2498,10 @@ GFrame::OnMenuViewFrameSeps(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewFrameSeps();
+	}
 }
 
 /**
@@ -2436,8 +2531,10 @@ GFrame::OnMenuViewNodeNames(wxCommandEvent &event)
 	StructPage *curPage = dynamic_cast<StructPage*>
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
-	if (curPage)
+	if (curPage){
+		curPage->save_undo();
 		curPage->toggleViewNodeNames();
+	}
 }
 
 /**
@@ -2563,6 +2660,7 @@ GFrame::OnMenuZoom(wxCommandEvent &event)
 	(struct_notebook->GetPage(curPageNum));
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage) {
+		curPage->save_undo();
 		int id = event.GetId()/*, scale = curPage->getScale()*/;
 		// Since the are radio items, only one will be checked at a time.
 		//MainVizWindow_menubar->Check(MENU_ZOOM_BEGIN + scale + 1, false);
@@ -2709,8 +2807,10 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 			case MENU_CUSTOMIZE_GRID_PEN_COLOR:
 			case MENU_CUSTOMIZE_BOUNDING_BOX_PEN_COLOR:
 				newColor = wxGetColourFromUser(this, thePen->GetColour());
-				if (newColor.Ok())
+				if (newColor.Ok()){
+					curPage->save_undo();
 					thePen->SetColour(newColor);
+				}
 				//else wxLogMessage("User canceled or invalid color");
 				break;
 			case MENU_CUSTOMIZE_SWITCHING_PEN_WIDTH:
@@ -2734,7 +2834,8 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 							wxT("Width: "),
 							wxT("Change Pen Width"),
 							thePen->GetWidth(), 1, 256 );
-					if (newWidth > 0)
+					if (newWidth > 0){
+						curPage->save_undo();
 						thePen->SetWidth(newWidth);
 				}
 #else
@@ -2742,8 +2843,10 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 						wxT("Width: "),
 						wxT("Change Pen Width"),
 						thePen->GetWidth(), 1, 256 );
-				if (newWidth > 0)
+				if (newWidth > 0){
+					curPage->save_undo();
 					thePen->SetWidth(newWidth);
+				}
 #endif
 				break;
 			case MENU_CUSTOMIZE_SWITCHING_PEN_STYLE:
@@ -2778,6 +2881,8 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
 							break;
 						}
 #endif
+					//save the undo
+					curPage->save_undo();
 
 #ifdef __WXMSW__
 						if ( thePen->GetWidth() != 1 ) {
@@ -2852,6 +2957,36 @@ GFrame::OnMenuCustomizePen(wxCommandEvent &event)
  *
  * \return void
  *******************************************************************/
+
+void GFrame::UpdateMenuChecks(StructPage *curPage)
+{
+		MainVizWindow_menubar->Check( MENU_VIEW_CPS,
+						  curPage->getViewCPs() );
+		MainVizWindow_menubar->Check( MENU_VIEW_LINES,
+						  curPage->getViewLines() );
+		MainVizWindow_menubar->Check( MENU_VIEW_SPLINES,
+						  curPage->getViewSplines() );
+		MainVizWindow_menubar->Check( MENU_VIEW_ARROW_HEADS,
+						  curPage->getViewArrowHeads() );
+		MainVizWindow_menubar->Check( MENU_VIEW_NODES,
+						  curPage->getViewNodes() );
+		MainVizWindow_menubar->Check( MENU_VIEW_GRIDS,
+						  curPage->getViewGrids() );
+		MainVizWindow_menubar->Check( MENU_VIEW_DIRECT_LINES,
+						  curPage->getViewDirectLines() );
+		MainVizWindow_menubar->Check( MENU_VIEW_FRAME_SEPS,
+						  curPage->getViewFrameSeps() );
+		MainVizWindow_menubar->Check( MENU_VIEW_NODE_NAMES,
+						  curPage->getViewNodeNames());
+		MainVizWindow_menubar->Check( MENU_VIEW_FRAME_NAMES,
+						  curPage->getViewFrameNames());
+		MainVizWindow_menubar->Check( MENU_VIEW_BOUNDING_BOX,
+						  curPage->getViewBoundingBox() );
+
+		MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
+						  true );
+}
+
 void
 GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 {
@@ -2877,28 +3012,8 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		// and this menu
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), true);
 		// restore the checked status of each item
-		MainVizWindow_menubar->Check( MENU_VIEW_CPS,
-						  curPage->getViewCPs() );
-		MainVizWindow_menubar->Check( MENU_VIEW_LINES,
-						  curPage->getViewLines() );
-		MainVizWindow_menubar->Check( MENU_VIEW_SPLINES,
-						  curPage->getViewSplines() );
-		MainVizWindow_menubar->Check( MENU_VIEW_ARROW_HEADS,
-						  curPage->getViewArrowHeads() );
-		MainVizWindow_menubar->Check( MENU_VIEW_NODES,
-						  curPage->getViewNodes() );
-		MainVizWindow_menubar->Check( MENU_VIEW_GRIDS,
-						  curPage->getViewGrids() );
-		MainVizWindow_menubar->Check( MENU_VIEW_DIRECT_LINES,
-						  curPage->getViewDirectLines() );
-		MainVizWindow_menubar->Check( MENU_VIEW_FRAME_SEPS,
-						  curPage->getViewFrameSeps() );
-		MainVizWindow_menubar->Check( MENU_VIEW_NODE_NAMES,
-						  curPage->getViewNodeNames());
-		MainVizWindow_menubar->Check( MENU_VIEW_FRAME_NAMES,
-						  curPage->getViewFrameNames());
-		MainVizWindow_menubar->Check( MENU_VIEW_BOUNDING_BOX,
-						  curPage->getViewBoundingBox() );
+		UpdateMenuChecks(curPage);
+
 		// tooltips don't work
 		// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS,
 		// curPage->getViewToolTips() );
@@ -2910,8 +3025,8 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 			MainVizWindow_menubar->Check( i + MENU_ZOOM_BEGIN + 1,
 						  i==scale );
 		}*/
-		MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
-						  true );
+//		MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
+//						  true );
 		// and the Customize menu should be shown for documents as well
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
 	}
@@ -4030,26 +4145,32 @@ StructPage::OnChar( wxKeyEvent &event )
 	mouse_pos.y = (int)round(mouse_pos.y / gZoomMap[displayScale]);
 
 	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == 'r') {
+		save_undo();
 		deleteSelectedCps();
 		redraw();
 		blit();
 	} else if (event.m_keyCode == WXK_LEFT) {
+		save_undo();
 		moveSelected(-ACTUAL_SCALE*(event.ShiftDown()?10:1), 0);
 		redraw();
 		blit();
 	} else if (event.m_keyCode == WXK_UP) {
+		save_undo();
 		moveSelected(0, -ACTUAL_SCALE*(event.ShiftDown()?10:1));
 		redraw();
 		blit();
 	} else if (event.m_keyCode == WXK_RIGHT) {
+		save_undo();
 		moveSelected(ACTUAL_SCALE*(event.ShiftDown()?10:1), 0);
 		redraw();
 		blit();
 	} else if (event.m_keyCode == WXK_DOWN) {
+		save_undo();
 		moveSelected(0, ACTUAL_SCALE*(event.ShiftDown()?10:1));
 		redraw();
 		blit();
 	} else if (event.m_keyCode == 's'){
+		save_undo();
 		//toggle nametag's visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
@@ -4077,6 +4198,7 @@ StructPage::OnChar( wxKeyEvent &event )
 			}
 		}
 	} else if (event.m_keyCode == 'w'){
+		save_undo();
 		//toggle the visiblity of the selected nodes and framenametags
 		for (int i = 0; i < (int)nodes.size(); i++) {
 			if (nodes[i]->getSelected() && nodes[i]->isVisible())
@@ -4092,6 +4214,7 @@ StructPage::OnChar( wxKeyEvent &event )
 	} else if (event.m_keyCode == 'a'){
 		popUpNodeInfo(mouse_pos);
 	} else if (event.m_keyCode == 'd'){
+		save_undo();
 		//toggle node and its edges visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
@@ -4102,6 +4225,7 @@ StructPage::OnChar( wxKeyEvent &event )
 			blit();
 		}
 	} else if (event.m_keyCode == 'e'){
+		save_undo();
 		//toggle visibility for all the nodes in the current selection
 		for (int i = 0; i < (int)nodes.size(); i++) {
 			if (nodes[i]->getSelected())
@@ -4139,7 +4263,24 @@ StructPage::OnChar( wxKeyEvent &event )
 		}
 		redraw();
 		blit();
-		
+	} else if(event.GetKeyCode() == 'g'){
+		if (undo()){
+			setScale(displayScale);
+			redraw();
+			blit();
+			MainVizWindow->UpdateMenuChecks(this);
+		} else {
+			cout << "Undo stack is empty\n";
+		}
+	} else if(event.GetKeyCode() == 'G'){
+		if (redo()){
+			setScale(displayScale);
+			redraw();
+			blit();
+			MainVizWindow->UpdateMenuChecks(this);
+		} else {
+			cout << "Redo stack is empty\n";
+		}
 	} else {
 		event.Skip();
 	}
@@ -4417,6 +4558,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 	static bool dragging = false;
 	static bool boxSelecting = false;
 	static bool shifted = false;
+	static bool start_drag = false;
 	static wxPoint dragStart;
 	bool screenDirty = false;
 	wxPoint pt;
@@ -4440,6 +4582,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			} else {
 				// LeftDown + not Shifted + on something
 				dragging = true;
+				start_drag = true;	//we are starting a drag
 				dragStart.x = pt.x;
 				dragStart.y = pt.y;
 				if (!pointee->getSelected()) {
@@ -4468,6 +4611,11 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 			selectBox.width = pt.x - selectBox.x;
 			selectBox.height = pt.y - selectBox.y;
 		} else if (dragging) {
+			//if this is the beg of a drag then we should save the undo
+			if(start_drag){
+				save_undo();
+				start_drag = false;
+			}
 			// LeftDragging + moving items
 			moveSelected( pt.x - dragStart.x, pt.y - dragStart.y );
 			dragStart.x = pt.x;
@@ -4475,6 +4623,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 		}
 		screenDirty = true;
 	} else if (event.LeftUp()) {
+		start_drag = false;
 		if (boxSelecting) {
 			// LeftUp + box selecting = done box selecting
 			if (pt.x < selectBox.x) {
@@ -4510,6 +4659,7 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 		/* If the user right clicked on a control point that makes our
 		 * job a bit easier. */
 		if (cp) {
+			save_undo();
 			int index = -1;
 			// get the arc and control point index
 			VizArc *arc = findArcOwning(cp, index);
@@ -4571,6 +4721,8 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 							  ( y1-1 <= pt.y && pt.y <= y0+1 ) ) &&
 							// and (roughly) on the line
 							fabs(y-pt.y) <= epsilon && fabs(x-pt.x) <= delta ) {
+						//save undo
+						save_undo();
 						// make a new control point
 						wxPoint where(pt.x-NEW_CP_OFFSET, pt.y-NEW_CP_OFFSET);
 						arc->cps->insert( arc->cps->begin() + 1,
@@ -5593,6 +5745,8 @@ StructPage::copyFrameLayout( void )
 		delete copyDialog;
 		return;	//zero selected or canceled
 	}
+
+	save_undo();
 	
 	//copy the frame layout to all the selected frames (except the source if it is selected)
 	for(int i = 0; i < count; i++){
@@ -5720,7 +5874,7 @@ StructPage::copyPartitionLayout( void )
 	if(from < 0 || 1 > (count_Many_selected = copyDialog->Get_Many_Selection(&selections_Many))){
 		return;	//zero destinations selected or canceled
 	}
-	
+	save_undo();
 	//copy the frame layout to all the selected frames (except the source if it is selected)
 	for(int i = 0; i < count_Many_selected; i++){
 		to = selections_Many.Item(i);
@@ -6955,6 +7109,7 @@ StructPage::changeFont( void )
 {
 	wxFont newFont = wxGetFontFromUser(this, labelFont);
 	if (newFont.Ok()) {
+		save_undo();
 		labelFont = newFont;
 		redraw();
 		blit();
@@ -7212,6 +7367,151 @@ StructPage::bottomMostItemY( void )
 	return yMax;
 }
 
+/**
+ *******************************************************************
+ * Save the state of the StructPage so that it can be restored later.
+ *
+ * \pre The StructPage should be fully initialized.
+ *
+ * \post The undo_stack will have a new item on it containing the current
+ * state.
+ *
+ * \note The undo_stack will have a new item on it containing the current
+ * state.
+ *
+ * \return nothing
+ *******************************************************************/
+void
+StructPage::save_state(std::stack<StructPage_state *> &state_stack)
+{
+	//make a new state structure
+	StructPage_state * state = new StructPage_state;
+	//save the state
+	memcpy(&(state->PenArray), &PenArray, sizeof(PenInfo) * numPens);
+	for (int i = 0; i < numPens; i++){
+		state->PenArray[i].pen = new gmtkPen(*(PenArray[i].pen));
+	}
+	state->drawSelectBox = drawSelectBox;
+	state->drawCPs = drawCPs;
+	state->drawLines = drawLines;
+	state->drawSplines = drawSplines;
+	state->drawArrowHeads = drawArrowHeads;
+	state->drawNodes = drawNodes;
+	state->drawGrids = drawGrids;
+	state->drawDirectLines = drawDirectLines;
+	state->drawFrameSeps = drawFrameSeps;
+	state->drawNodeNames = drawNodeNames;
+	state->drawFrameNames = drawFrameNames;
+	state->drawToolTips = drawToolTips;
+	state->drawBoundingBox = drawBoundingBox;
+	state->displayScale = displayScale;
+	state->canvasWidth = canvasWidth;
+	state->canvasHeight = canvasHeight;
+	state->snapToGrid = snapToGrid;
+
+	std::vector< VizArc* > curVec;
+
+	int numNodes = nodes.size();
+	state->nodes.clear();
+	state->arcs.clear();
+//	state->arcs.resize(numNodes);
+	for (int i = 0; i < numNodes; i++){
+		curVec.clear();
+		state->arcs.push_back(curVec);
+		state->nodes.push_back(new VizNode(*nodes[i]));
+		state->nodeNameTags.push_back(&(state->nodes[i]->nametag));
+		for (int j = 0; j < numNodes; j++){
+			if (arcs[i][j] != NULL)
+				state->arcs[i].push_back(new VizArc(*(arcs[i][j])));
+			else
+				state->arcs[i].push_back(NULL);
+		}
+	}
+
+	//just incase
+	state->frameEnds.clear();
+	state->frameNameTags.clear();
+	for (unsigned int i = 0; i < frameEnds.size(); i++)
+		state->frameEnds.push_back(new VizSep(*frameEnds[i]));
+	for (unsigned int i = 0; i < frameNameTags.size(); i++)
+		state->frameNameTags.push_back(new NameTag(*frameNameTags[i]));
+
+	//push the state onto the given stack
+	state_stack.push(state);
+}
+
+bool
+StructPage::restore_state(std::stack<StructPage_state *> &state_stack)
+{
+	if(state_stack.empty()){
+		return false;	//we cannot restore state
+	}
+	StructPage_state * state;
+	state = state_stack.top();
+	for (int i = 0; i < numPens; i++){
+		PenArray[i].pen->SetColour(state->PenArray[i].pen->GetColour());
+		PenArray[i].pen->SetWidth(state->PenArray[i].pen->GetWidth());
+		PenArray[i].pen->SetStyle(state->PenArray[i].pen->GetStyle());
+		delete state->PenArray[i].pen;
+	}
+	drawSelectBox = state->drawSelectBox;
+	drawCPs = state->drawCPs;
+	drawLines = state->drawLines;
+	drawSplines = state->drawSplines;
+	drawArrowHeads = state->drawArrowHeads;
+	drawNodes = state->drawNodes;
+	drawGrids = state->drawGrids;
+	drawDirectLines = state->drawDirectLines;
+	drawFrameSeps = state->drawFrameSeps;
+	drawNodeNames = state->drawNodeNames;
+	drawFrameNames = state->drawFrameNames;
+	drawToolTips = state->drawToolTips;
+	drawBoundingBox = state->drawBoundingBox;
+	displayScale = state->displayScale;
+	canvasWidth = state->canvasWidth;
+	canvasHeight = state->canvasHeight;
+	snapToGrid = state->snapToGrid;
+
+	nodes = state->nodes;
+	nodeNameTags = state->nodeNameTags;
+	arcs = state->arcs;
+	frameNameTags = state->frameNameTags;
+	frameEnds = state->frameEnds;
+	state_stack.pop();
+//XXX: is this being cleaned up correctly??
+// delete state;
+	return true;
+}
+
+void
+StructPage::save_undo()
+{ 
+	save_state(undo_stack);
+	//if we save an undo state then we have no need for the
+	//redo stack
+	while(!redo_stack.empty()){
+//		delete redo_stack.top();
+		redo_stack.pop();
+	}
+}
+
+bool
+StructPage::undo()
+{ 
+	if(undo_stack.empty())
+		return false;
+	save_state(redo_stack);
+	return restore_state(undo_stack);
+}
+
+bool
+StructPage::redo()
+{ 
+	if(redo_stack.empty())
+		return false;
+	save_state(undo_stack);
+	return restore_state(redo_stack);
+}
 
 /**
  *******************************************************************
@@ -7232,6 +7532,28 @@ NameTag::NameTag( const wxPoint& newPos, const wxString& newName )
 	: pos(newPos), name(newName)
 {
 	visible = true;
+	selected = false;
+}
+/**
+ *******************************************************************
+ * Construct a NameTag from an existing NameTag.
+ *
+ * \param original, the nametag to copy
+ *
+ * \pre Valid NameTag.
+ *
+ * \post The NameTag should exist, it will be a copy of original.
+ *
+ * \note No side effects.
+ *
+ * \return a NameTag object.
+ *******************************************************************/
+NameTag::NameTag( const NameTag &original)
+{
+	visible = original.visible;
+	pos = original.pos;
+	name = original.name;
+	selected = false;
 }
 
 /**
@@ -7319,6 +7641,7 @@ NameTag::inRect( const wxRect& rect )
  *
  * \return Nothing.
  *******************************************************************/
+
 VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
 	: nametag(pos, wxT(newRvi->name.c_str()))
 {
@@ -7340,6 +7663,36 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
 	visible = true;
 	highlight_state = off;
 }
+
+/**
+ *******************************************************************
+ * Constructs a VizNode, which is a copy of a given VizNode
+ *
+ * \param original, a VizNode to be copied.
+ *
+ * \pre Valid parameters.
+ *
+ * \post This VizNode will be created, it will have a Valid NameTag
+ * and they will be copies of the original VizNode
+ *
+ * \note No side effects.
+ *
+ * \return Nothing.
+ *******************************************************************/
+
+VizNode::VizNode(const VizNode &original) : nametag(original.nametag)
+{
+	center.x = original.center.x;
+	center.y = original.center.y;
+	rvi = new RVInfo(*(original.rvi));
+	rvId.first = original.rvId.first;
+	rvId.second = original.rvId.second;
+	page = original.page;
+	tipWin = original.tipWin;
+	visible = original.visible;
+	highlight_state = off;
+}
+
 
 /**
  *******************************************************************
@@ -7593,6 +7946,31 @@ VizArc::VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage )
 	highlighted = false;
 }
 
+VizArc::VizArc(const VizArc &original)
+{
+	page = original.page;
+	switching = original.switching;
+	conditional = original.conditional;
+
+	visible = original.visible;
+	highlighted = false;
+
+	cps = new std::vector< ControlPoint* >;
+
+	(*cps).clear();
+	for (unsigned int i = 0; i < original.cps->size(); i++) {
+		cps->push_back(new ControlPoint(*(*(original.cps))[i]));
+		(*cps)[i]->arc = this;
+		(*cps)[i]->pos.x = (*(original.cps))[i]->pos.x;
+		(*cps)[i]->pos.y = (*(original.cps))[i]->pos.y;
+	}
+	int numPoints = cps->size();
+	points = new wxList;
+	for (int i = 0; i < numPoints; i++) {
+		points->Append( (wxObject*)&(*cps)[i]->pos );
+	}
+}
+
 /**
  *******************************************************************
  * Destroy the VizArc, freeing dynamically allocated data.
@@ -7636,6 +8014,7 @@ VizArc::draw( wxDC *dc, int drawFlags )
 {
 	if (!visible)
 		return;
+
 	wxPen oldPen = dc->GetPen();
 	if (drawFlags & DRAW_ARCS) {
 		wxPen *pen = NULL;
@@ -7744,6 +8123,27 @@ VizSep::VizSep( wxCoord newX, StructPage *newPage, FrameSepType newSepType )
 	x = newX;
 	page = newPage;
 	sepType = newSepType;
+}
+/**
+ *******************************************************************
+ * Construct the VizSep, a copy of a give VizSep
+ *
+ * \param a VizSep to copy
+ *
+ * \pre Valid parameters.
+ *
+ * \post The VizSep should be a valid copy of original.
+ *
+ * \note No side effects.
+ *
+ * \return Nothing.
+ *******************************************************************/
+
+VizSep::VizSep(const VizSep &original)
+{
+	x = original.x;
+	page = original.page;
+	sepType = original.sepType;
 }
 
 /**
@@ -8069,6 +8469,14 @@ GmtkHelp::doLayout()
 	help_msg->AppendText("\t'r'");
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'g'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : undo... steps through the undo stack\n");
+	help_msg->SetDefaultStyle(italic);
+	help_msg->AppendText("\t'G'");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText(" : redo... steps through the redo stack, only exits after an undo and before any other undoable actions\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'ctrl-a'");
 	help_msg->SetDefaultStyle(normal);
