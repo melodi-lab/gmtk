@@ -1725,22 +1725,41 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		// get a title for the printout
 		wxString name;
 		curPage->getName(name);
-		wxPrintDialogData printDialogData(printData);
-
       GmtkPrintout printout(curPage,name);
-		//set up the printer, give a temp file name, make it print to file
-      wxPrinter printer;
 		wxString temp_file_name = wxGetTempFileName( wxT("gmtkviz") );
-//XXX Print to eps doesn't work in 2.6.1
-		printer.GetPrintDialogData().GetPrintData().SetFilename(temp_file_name);
-		printer.GetPrintDialogData().SetPrintToFile(true);
-		printer.GetPrintDialogData().GetPrintData().SetPrintMode(wxPRINT_MODE_FILE);
+
+		//give the temp file name to the printData
+		printData.SetFilename(temp_file_name);
+		printData.SetPrintMode(wxPRINT_MODE_FILE);
+		wxPrintDialogData printDialogData(printData);
+		//set up the printer make it print to file
+		printDialogData.SetPrintToFile(true);
+		printDialogData.SetPrintData(printData);
+
+      wxPrinter printer(&printDialogData);
+
+//XXX Print direct to file doesn't work in 2.6.1 so we need to pop up the
+//print dialog
+#if wxCHECK_VERSION(2,6,1)
+		wxMessageBox(_T("wxWidgets 2.6.1 doesn't print to file the same way as 2.4.2"
+					" and we haven't figured out how to make it work without user interaction"
+					" so in order to print to EPS you simply have to press OK, Save, Yes when the print dialog"
+					" shows up, don't change any settings"),
+				wxT("Printing to EPS"), wxOK);
+		if(!printer.Print(this, &printout, true)){
+			wxMessageBox(_T("There was a problem printing to an EPS file.\n"
+						"gmtkViz having trouble printing to file."),
+					wxT("Error Printing to EPS"), wxOK);
+			return;
+		}
+#else
 		if(!printer.Print(this, &printout, false)){
 			wxMessageBox(_T("There was a problem printing to an EPS file.\n"
 						"gmtkViz having trouble printing to file."),
 					wxT("Error Printing to EPS"), wxOK);
 			return;
 		}
+#endif
 		
 		//this is the command being sent to the shell (single quote the file name)
 		string ps2eps_cmd = "cat ";
