@@ -5126,9 +5126,9 @@ StructPage::itemMovingInBounds(int frame, wxCoord x_cur, wxCoord x_new)
 		//first frame
 		x_min = 0;
 		x_max = frameEnds[0]->x;
-	} else if (frame == nframe_ends + 1){
+	} else if (frame == nframe_ends){
 		//the item is in the last frame
-		x_min = frameEnds[nframe_ends -1]->x;
+		x_min = frameEnds[nframe_ends - 1]->x;
 		x_max = getWidth();
 	} else {
 		//this item is in a frame that isn't the first or last
