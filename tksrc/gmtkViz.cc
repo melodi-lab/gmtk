@@ -204,6 +204,9 @@ class GmtkPenSelectDialog : public wxDialog {
 			wxButton * button;
 			wxSpinCtrl * width_select;
 			wxChoice * style_choice;
+			//this is a pointer to the dialog so that the event handler
+			//can give the color picker a valid parent
+			GmtkPenSelectDialog * dialog;
 		};
 		//this array contains the data that is passed to the event
 		//handlers
@@ -263,6 +266,7 @@ GmtkPenSelectDialog::GmtkPenSelectDialog( wxWindow *parent,
 			wxALL | wxALIGN_CENTER_VERTICAL | wxALIGN_CENTER_HORIZONTAL);
 	//add the pens
 	for (int i = 0; i < num_pens; i++){
+		penSelData[i].dialog = this;
 		//pen name
 		penSelData[i].pen = pen_info[i].pen;
 		flex_sizer->Add(new
@@ -343,7 +347,7 @@ GmtkPenSelectDialog::OnColourBtnPush( wxCommandEvent &event)
 	//get the user data
 	PenSelectData_struct * data = (PenSelectData_struct*)event.m_callbackUserData;
 	//pop up the get color dialog
-	wxColour newColor = wxGetColourFromUser(this, data->pen->GetColour());
+	wxColour newColor = wxGetColourFromUser(data->dialog, data->pen->GetColour());
 	if (newColor.Ok()){
 		//set the color of the pen and the button
 		data->pen->SetColour(newColor);
