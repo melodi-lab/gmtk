@@ -181,6 +181,7 @@ class gmtkPen : public wxPen {
 		int	default_width;
 };
 
+
 /*
  * This class creates a Dialog that allows users to customize all the pens 
  * at one time
@@ -192,42 +193,176 @@ class GmtkPenSelectDialog : public wxDialog {
 				wxWindowID id,
 				const wxString &title,
 				PenInfo * pen_info,
-				int num_pens,
+				int number_of_pens,
 				const wxPoint& position = wxDefaultPosition,
 				const wxSize& size = wxDefaultSize,
 				long style = wxDEFAULT_DIALOG_STYLE );
 	private:
-		//this struct contains references to the pens, buttons etc
-		//that the event handlers need
-		struct PenSelectData_struct {
-			gmtkPen * pen;
-			wxButton * button;
-			wxSpinCtrl * width_select;
-			wxChoice * style_choice;
-			//this is a pointer to the dialog so that the event handler
-			//can give the color picker a valid parent
-			GmtkPenSelectDialog * dialog;
-		};
-		//this array contains the data that is passed to the event
-		//handlers
-		PenSelectData_struct * penSelData;
 		//event handlers
 		void OnCancel( wxCommandEvent &event ){event.Skip();}
 		void OnOk( wxCommandEvent &event ){event.Skip();}
-		void OnColourBtnPush( wxCommandEvent &event);
-		void OnChangeWidth( wxSpinEvent &event);
-		void OnChangeStyle( wxCommandEvent &event);
-	public:
-		~GmtkPenSelectDialog(){ delete [] penSelData;}
 		DECLARE_EVENT_TABLE()
 };
 
+/*
+ * This class encapsulates the data and event handeler function
+ * needed to react to the Color Customization dialog changes
+ * in color
+ */
 
+class GmtkPenSelect_col_evthnd : public wxEvtHandler {
+	public:
+		GmtkPenSelect_col_evthnd(GmtkPenSelectDialog * parent_ptr, gmtkPen *
+				pen_ptr, wxButton * colbtn_ptr) { pen = pen_ptr; colbutton =
+			colbtn_ptr; parent = parent_ptr;}
+
+		void OnEvent(wxCommandEvent& event)
+		{
+			GmtkPenSelect_col_evthnd * data =
+				(GmtkPenSelect_col_evthnd*)event.m_callbackUserData;
+			//pop up the get color dialog
+			wxColour newColor = wxGetColourFromUser(data->parent,
+					data->pen->GetColour());
+			if (newColor.Ok()){
+				//set the color of the pen and the button
+				data->pen->SetColour(newColor);
+				data->colbutton->SetBackgroundColour(newColor);
+			}
+			event.Skip();
+		}
+	private:
+		gmtkPen * pen;
+		wxButton * colbutton;
+		GmtkPenSelectDialog * parent;
+};
+
+/*
+ * This class encapsulates the data and event handeler function
+ * needed to react to the Color Customization dialog changes
+ * in width
+ */
+
+class GmtkPenSelect_width_evthnd : public wxEvtHandler {
+
+	public:
+		GmtkPenSelect_width_evthnd(GmtkPenSelectDialog * parent_ptr, gmtkPen *
+				pen_ptr, wxSpinCtrl * wdth_sel_ptr) { pen = pen_ptr; width_select =
+			wdth_sel_ptr; parent = parent_ptr; }
+
+		void OnEvent(wxCommandEvent& event)
+		{
+			GmtkPenSelect_width_evthnd * data =
+				(GmtkPenSelect_width_evthnd*)event.m_callbackUserData;
+			int penWidth = data->width_select->GetValue();
+#ifdef __WXMSW__
+			//if we're using windows then we have to force the pen width to be 1
+			//if the pen is non solid
+			int penStyle = data->pen->GetStyle();
+			if (penWidth != 1 && (penStyle == wxDOT || penStyle == wxLONG_DASH ||
+					penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
+					penStyle == wxUSER_DASH)) {
+				wxLogMessage("Dots and dashes can only be used with pens of "
+						"width 1, so you can't change the width until you change "
+						"the style.");
+				event.Skip();
+				return;
+			} 
+#endif
+			data->pen->SetWidth(penWidth);
+			event.Skip();
+		}
+	private:
+		gmtkPen * pen;
+		wxSpinCtrl * width_select;
+		GmtkPenSelectDialog * parent;
+};
+
+/*
+ * This class encapsulates the data and event handeler function
+ * needed to react to the Color Customization dialog changes
+ * in style
+ */
+class GmtkPenSelect_style_evthnd : public wxEvtHandler {
+
+	public:
+		GmtkPenSelect_style_evthnd(GmtkPenSelectDialog * parent_ptr, gmtkPen *
+				pen_ptr, wxChoice * style_choice_ptr) { pen = pen_ptr; style_choice
+			= style_choice_ptr; parent = parent_ptr; }
+
+		void OnEvent(wxCommandEvent& event)
+		{
+			//get the user data
+			GmtkPenSelect_style_evthnd * data =
+				(GmtkPenSelect_style_evthnd*)event.m_callbackUserData;
+			int penStyle = data->style_choice->GetSelection();
+			//set the pen style
+			switch (penStyle) {
+				case 0:
+					data->pen->SetStyle(wxSOLID);
+					break;
+				case 1:
+					data->pen->SetStyle(wxTRANSPARENT);
+					break;
+				case 2:
+					data->pen->SetStyle(wxDOT);
+					break;
+				case 3:
+					data->pen->SetStyle(wxLONG_DASH);
+					break;
+				case 4:
+					data->pen->SetStyle(wxSHORT_DASH);
+					break;
+				case 5:
+					data->pen->SetStyle(wxDOT_DASH);
+					break;
+					/*case 6:
+					  data->pen->SetStyle(wxBDIAGONAL_HATCH);
+					  break;
+					  case 7:
+					  data->pen->SetStyle(wxCROSSDIAG_HATCH);
+					  break;
+					  case 8:
+					  data->pen->SetStyle(wxFDIAGONAL_HATCH);
+					  break;
+					  case 9:
+					  data->pen->SetStyle(wxCROSS_HATCH);
+					  break;
+					  case 10:
+					  data->pen->SetStyle(wxHORIZONTAL_HATCH);
+					  break;
+					  case 11:
+					  data->pen->SetStyle(wxVERTICAL_HATCH);
+					  break;*/
+			}
+#ifdef __WXMSW__
+			//if we're using windows then we have to make sure that the
+			//width is 1 if the pen is not solid or transparent
+			if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
+					penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
+					penStyle == wxUSER_DASH ) {
+				wxLogMessage("Dots and dashes can only be used with pens of "
+						"width 1, so you can't change the width until you change "
+						"the style.");
+				data->pen->SetWidth(1);
+			}
+#endif
+			event.Skip();
+		}
+	private:
+		gmtkPen * pen;
+		wxChoice * style_choice;
+		GmtkPenSelectDialog * parent;
+};
+
+
+//the event table for the Pen Customization Dialog
 BEGIN_EVENT_TABLE(GmtkPenSelectDialog,wxDialog)
     EVT_BUTTON( wxID_OK, GmtkPenSelectDialog::OnOk )
     EVT_BUTTON( wxID_CANCEL, GmtkPenSelectDialog::OnCancel )
 END_EVENT_TABLE()
 
+	//global variables that represent the number of pen styles
+	//and the style names as the user sees them
 	static const int n_pen_styles = 6;
 	static const wxString pen_style_choices[] = { wxT("Solid"),
 		wxT("Transparent"),
@@ -236,6 +371,9 @@ END_EVENT_TABLE()
 		wxT("Dashed (shart dashes)"),
 		wxT("Dotted and Dashed") };
 
+/*
+ * GmtkPenSelectDialog Constructor, actually creates the dialog
+ */
 
 GmtkPenSelectDialog::GmtkPenSelectDialog( wxWindow *parent,
 				wxWindowID id,
@@ -247,10 +385,8 @@ GmtkPenSelectDialog::GmtkPenSelectDialog( wxWindow *parent,
 				long style) : wxDialog(parent, id, title, position, size, style, "dialogBox")
 {
 	//allocate the color button data for event callbacks
-	penSelData = new PenSelectData_struct[num_pens];
 	wxBoxSizer *topsizer = new wxBoxSizer( wxVERTICAL );
 	wxFlexGridSizer * flex_sizer = new wxFlexGridSizer(4,5,5);
-
 	//make labels
 	flex_sizer->Add(new
 			wxStaticText(this,-1,"Pen Name",wxDefaultPosition), 0,
@@ -264,11 +400,10 @@ GmtkPenSelectDialog::GmtkPenSelectDialog( wxWindow *parent,
 	flex_sizer->Add(new
 			wxStaticText(this,-1,"Colour",wxDefaultPosition), 0,
 			wxALL | wxALIGN_CENTER_VERTICAL | wxALIGN_CENTER_HORIZONTAL);
+
 	//add the pens
 	for (int i = 0; i < num_pens; i++){
-		penSelData[i].dialog = this;
 		//pen name
-		penSelData[i].pen = pen_info[i].pen;
 		flex_sizer->Add(new
 				wxStaticText(this,-1,pen_info[i].namelong,wxDefaultPosition), 0,
 				wxALL | wxALIGN_CENTER_VERTICAL);
@@ -279,21 +414,27 @@ GmtkPenSelectDialog::GmtkPenSelectDialog( wxWindow *parent,
 					wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,  0, 16,
 					pen_info[i].pen->GetWidth()), 0, wxALL |
 				wxALIGN_CENTER_VERTICAL);
-		penSelData[i].width_select = width_select;
+		//make an event handler object
+		GmtkPenSelect_width_evthnd * width_evt_handler = new
+			GmtkPenSelect_width_evthnd(this, pen_info[i].pen, width_select);
+		//connect to the event handler
 		width_select->Connect(-1, wxEVT_COMMAND_SPINCTRL_UPDATED,
 				(wxObjectEventFunction) (wxEventFunction) (wxCommandEventFunction)
-				&GmtkPenSelectDialog::OnChangeWidth, (wxObject *)(&penSelData[i]));
+				&GmtkPenSelect_width_evthnd::OnEvent, (wxObject *)width_evt_handler);
 
 		//style choice input
 		wxChoice * style_choice;
 		flex_sizer->Add(style_choice = new wxChoice(this, -1, wxDefaultPosition,
 					wxDefaultSize, n_pen_styles, pen_style_choices), 0, wxALL |
 				wxALIGN_CENTER_VERTICAL);
-		penSelData[i].style_choice = style_choice;
 		style_choice->Select(styleToStyleChoicesIndexMap[pen_info[i].pen->GetStyle()]);
+		//make an event handler object
+		GmtkPenSelect_style_evthnd * style_evt_handler = new
+			GmtkPenSelect_style_evthnd(this, pen_info[i].pen, style_choice);
+		//connect to the event handler
 		style_choice->Connect(-1, wxEVT_COMMAND_CHOICE_SELECTED,
 				(wxObjectEventFunction) (wxEventFunction) (wxCommandEventFunction)
-				&GmtkPenSelectDialog::OnChangeStyle, (wxObject *)(&penSelData[i]));
+				&GmtkPenSelect_style_evthnd::OnEvent, (wxObject *)style_evt_handler);
 
 		//color choice input
 		wxButton * color_button;
@@ -302,13 +443,13 @@ GmtkPenSelectDialog::GmtkPenSelectDialog( wxWindow *parent,
 				wxALIGN_CENTER_VERTICAL);
 		color_button->SetBackgroundColour(pen_info[i].pen->GetColour());
 		color_button->SetForegroundColour(*wxWHITE);
-		penSelData[i].button = color_button;
+		//make an event handler object
+		GmtkPenSelect_col_evthnd * col_evt_handler = new
+			GmtkPenSelect_col_evthnd(this, pen_info[i].pen, color_button);
+		//connect to the event handler
 		color_button->Connect(-1, wxEVT_COMMAND_BUTTON_CLICKED,
 				(wxObjectEventFunction) (wxEventFunction) (wxCommandEventFunction)
-				&GmtkPenSelectDialog::OnColourBtnPush, (wxObject
-					*)(&penSelData[i]));
-				//new gmtkColButtonEvtData(color_button,pen_info[i].pen));
-//				wxCommandEventHandler(GmtkPenSelectDialog::OnColourBtnPush) );
+				&GmtkPenSelect_col_evthnd::OnEvent, (wxObject *)col_evt_handler);
 	}
 
 	//add the selections, align them along the center of the dialog box
@@ -327,142 +468,6 @@ GmtkPenSelectDialog::GmtkPenSelectDialog( wxWindow *parent,
 	topsizer->Fit( this );            // set size to minimum size as calculated by the sizer
 	topsizer->SetSizeHints( this );   // set size hints to honour mininum size
 }
-
-/**
- *******************************************************************
- * called when the User pushes the Color Change button, it pops up a
- * color Selection Dialog, allows the user to change the color of a pen
- *
- * \pre The StructPage should be full initialized
- *
- * \post The Color of the button pushed and a pen may change
- *
- * \note This is called by an eventhandler
- *
- * \return void
- *******************************************************************/
-void 
-GmtkPenSelectDialog::OnColourBtnPush( wxCommandEvent &event)
-{
-	//get the user data
-	PenSelectData_struct * data = (PenSelectData_struct*)event.m_callbackUserData;
-	//pop up the get color dialog
-	wxColour newColor = wxGetColourFromUser(data->dialog, data->pen->GetColour());
-	if (newColor.Ok()){
-		//set the color of the pen and the button
-		data->pen->SetColour(newColor);
-		data->button->SetBackgroundColour(newColor);
-	}
-	event.Skip();
-}
-
-/**
- *******************************************************************
- * called when the User changes a width value in the Pen Customization
- * Dialog, this function actually changes the width of the pen
- *
- * \pre The StructPage should be full initialized
- *
- * \post The Width of the pen may be changed
- *
- * \note This is called by an eventhandler
- *
- * \return void
- *******************************************************************/
-void 
-GmtkPenSelectDialog::OnChangeWidth( wxSpinEvent &event)
-{
-	//get the user data
-	PenSelectData_struct * data = (PenSelectData_struct*)event.m_callbackUserData;
-	//set the pen width
-	int penStyle = data->width_select->GetValue();
-#ifdef __WXMSW__
-				if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
-						penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
-						penStyle == wxUSER_DASH ) {
-					wxLogMessage("Dots and dashes can only be used with pens of "
-							"width 1, so you can't change the width until you change "
-							"the style.");
-					event.Skip();
-					return;
-				} 
-#endif
-	data->pen->SetWidth(penStyle);
-	event.Skip();
-}
-
-/**
- *******************************************************************
- * called when the User changes a Style value in the Pen Customization
- * Dialog, this function actually changes the Style of the pen
- *
- * \pre The StructPage should be full initialized
- *
- * \post The Style of the pen may be changed
- *
- * \note This is called by an eventhandler
- *
- * \return void
- *******************************************************************/
-void
-GmtkPenSelectDialog::OnChangeStyle( wxCommandEvent &event)
-{
-	//get the user data
-	PenSelectData_struct * data = (PenSelectData_struct*)event.m_callbackUserData;
-	int penStyle = data->style_choice->GetSelection();
-	//set the pen style
-	switch (penStyle) {
-		case 0:
-			data->pen->SetStyle(wxSOLID);
-			break;
-		case 1:
-			data->pen->SetStyle(wxTRANSPARENT);
-			break;
-		case 2:
-			data->pen->SetStyle(wxDOT);
-			break;
-		case 3:
-			data->pen->SetStyle(wxLONG_DASH);
-			break;
-		case 4:
-			data->pen->SetStyle(wxSHORT_DASH);
-			break;
-		case 5:
-			data->pen->SetStyle(wxDOT_DASH);
-			break;
-			/*case 6:
-			  data->pen->SetStyle(wxBDIAGONAL_HATCH);
-			  break;
-			  case 7:
-			  data->pen->SetStyle(wxCROSSDIAG_HATCH);
-			  break;
-			  case 8:
-			  data->pen->SetStyle(wxFDIAGONAL_HATCH);
-			  break;
-			  case 9:
-			  data->pen->SetStyle(wxCROSS_HATCH);
-			  break;
-			  case 10:
-			  data->pen->SetStyle(wxHORIZONTAL_HATCH);
-			  break;
-			  case 11:
-			  data->pen->SetStyle(wxVERTICAL_HATCH);
-			  break;*/
-	}
-#ifdef __WXMSW__
-				if ( penStyle == wxDOT || penStyle == wxLONG_DASH ||
-						penStyle == wxSHORT_DASH || penStyle == wxDOT_DASH ||
-						penStyle == wxUSER_DASH ) {
-					wxLogMessage("Dots and dashes can only be used with pens of "
-							"width 1, so you can't change the width until you change "
-							"the style.");
-					data->pen->SetWidth(1);
-				}
-#endif
-	event.Skip();
-}
-
-
 
 /// A tab with a scrolled area for displaying and manipulating a graph
 /// associated with a structure file.
@@ -4613,7 +4618,9 @@ StructPage::OnChar( wxKeyEvent &event )
 			blit();
 			MainVizWindow->UpdateMenuChecks(this);
 		} else {
-			cout << "Undo stack is empty\n";
+			//make beep sound
+			printf("\a");
+			fflush(stdout);
 		}
 	} else if(event.GetKeyCode() == 'G'){
 		if (redo()){
@@ -4622,7 +4629,9 @@ StructPage::OnChar( wxKeyEvent &event )
 			blit();
 			MainVizWindow->UpdateMenuChecks(this);
 		} else {
-			cout << "Redo stack is empty\n";
+			//make beep sound
+			printf("\a");
+			fflush(stdout);
 		}
 	} else {
 		event.Skip();
