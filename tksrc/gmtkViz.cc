@@ -150,6 +150,8 @@ class ControlPoint;
 
 class gmtkPen;
 
+static wxFont defaultFont;
+
 //number of pens in a StructPage
 #define numPens 10
 
@@ -1402,6 +1404,27 @@ bool GMTKStructVizApp::OnInit()
 			}
 		}
 	}
+
+	//set the default font
+	defaultFont = wxFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL);
+	//look for a user defined default font
+
+	//font name
+	value = XGetDefault(display_name,"gmtkViz","fontName");
+	if (value != wxEmptyString) {
+		defaultFont.SetNativeFontInfo(value);
+	}
+	//font size
+	value = XGetDefault(display_name,"gmtkViz","fontSize");
+	if (value != wxEmptyString) {
+		long w;
+		if (value.ToLong(&w) && w > 0) {
+			defaultFont.SetPointSize(w);
+		} else {
+			cout << "\"gmtkViz.fontSize: " << value << "\" is not a valid number (this is probably in ~/.Xdefaults)\n";
+		}
+	}
+	
 	//close the display
    XCloseDisplay(display_name);
 	
@@ -3591,9 +3614,10 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	frameBorderPen(*wxLIGHT_GREY_PEN), chunkBorderPen(*wxBLACK_PEN),
 	controlPointPen(*wxRED_PEN), nodePen(*wxBLACK_PEN),
 	gridPen(*wxLIGHT_GREY_PEN), 
-	boundingBoxPen(*wxBLACK_PEN),
-	labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL)
+	boundingBoxPen(*wxBLACK_PEN)
+	//labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL)
 {
+	labelFont = defaultFont;
 	//since we haven't parsed the data yet we mark it false
 	data_parsed = false;
 	// This is used later to update the status bar
@@ -3631,6 +3655,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	content = NULL;
 
 	/* load defaults */
+	//pens
 	switchingPen.SetStyle( PenDefaultMap["switchingPen"]->style);
 	switchingPen.SetWidth( PenDefaultMap["switchingPen"]->width);
 	switchingPen.SetColour(PenDefaultMap["switchingPen"]->color);
@@ -6941,6 +6966,9 @@ StructPage::Save( void )
 					}
 				}
 			}
+//			//write the font if it isn't the default font
+//			if (labelFont != defaultFont) 
+//				do something here
 
 			gvpDirty = false;
 			//there is no old gvp file once we have saved
