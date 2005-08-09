@@ -50,6 +50,10 @@
 #include <unistd.h>
 #include <wx/filename.h>
 
+//for .Xdefaults
+#include<X11/Xlib.h>
+#include<X11/Xutil.h>
+
 // Apprently these are needed in order to do anything with gmtk (even
 // if you don't actually use them).
 #include "GMTK_GMParms.h"
@@ -146,6 +150,9 @@ class ControlPoint;
 
 class gmtkPen;
 
+//number of pens in a StructPage
+#define numPens 10
+
 //stores info about Pens
 struct PenInfo {
 	gmtkPen * pen;
@@ -153,6 +160,13 @@ struct PenInfo {
 	wxString namelong;
 };
 
+struct PenDefault_t {
+	wxColour color;
+	int style;
+	int width;
+};
+
+map<const wxString, PenDefault_t *, ltstr> PenDefaultMap;
 
 // this class subclasses wxPen and simply adds the ability to save "default" data
 // and later see if the current pen setup matches that default.  This way we can 
@@ -398,7 +412,7 @@ GmtkPenSelectDialog::GmtkPenSelectDialog( wxWindow *parent,
 			wxStaticText(this,-1,"Style",wxDefaultPosition), 0,
 			wxALL | wxALIGN_CENTER_VERTICAL | wxALIGN_CENTER_HORIZONTAL);
 	flex_sizer->Add(new
-			wxStaticText(this,-1,"Colour",wxDefaultPosition), 0,
+			wxStaticText(this,-1,"Color",wxDefaultPosition), 0,
 			wxALL | wxALIGN_CENTER_VERTICAL | wxALIGN_CENTER_HORIZONTAL);
 
 	//add the pens
@@ -545,7 +559,6 @@ class StructPage: public wxScrolledWindow
 
 		// pens and fonts for drawing different items
 		//holds info about a pen
-#define numPens 10
 		PenInfo PenArray[numPens];
 	private:
 		void PutInPenArray(int index,gmtkPen * penptr, wxString nameabr, wxString namelong)
@@ -1216,6 +1229,8 @@ bool GMTKStructVizApp::OnInit()
 		Arg::usage();
 		return false;
 	}
+	
+
 
 	//init the global Style Maps
 	//these are used to map the gvp file's text representation of style
@@ -1262,6 +1277,133 @@ bool GMTKStructVizApp::OnInit()
 	styleStringToIntMap["wxVERTICAL_HATCH"] = wxVERTICAL_HATCH;
    styleIntToStringMap[wxVERTICAL_HATCH] = "wxVERTICAL_HATCH";
 	styleToStyleChoicesIndexMap[wxVERTICAL_HATCH] = 13;
+
+	//Set up the Pen Defaults (default within the program)
+	
+	//switchingPen
+	PenDefault_t * temp_default = new PenDefault_t;
+	temp_default->color = *wxBLUE;
+	temp_default->style = wxDOT;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["switchingPen"] = temp_default;
+	//conditionalPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxBLACK;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["conditionalPen"] = temp_default;
+	//bothPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxRED;
+	temp_default->style = wxLONG_DASH;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["bothPen"] = temp_default;
+	//highlightPen
+	temp_default = new PenDefault_t;
+	temp_default->color = wxColour(255,0,255);
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE + 2;
+	PenDefaultMap["highlightPen"] = temp_default;
+	//frameBorderPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxLIGHT_GREY;
+	temp_default->style = wxDOT;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["frameBorderPen"] = temp_default;
+	//chunkBorderPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxBLACK;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["chunkBorderPen"] = temp_default;
+	//controlPointPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxRED;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE + 1;
+	PenDefaultMap["controlPointPen"] = temp_default;
+	//nodePen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxBLACK;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["nodePen"] = temp_default;
+	//gridPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxLIGHT_GREY;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["gridPen"] = temp_default;
+	//boundingBoxPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxBLACK;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["boundingBoxPen"] = temp_default;
+
+	//load up any data that is in ~/.Xdefaults
+	//these are user defined defaults, they override the program
+	//defaults, they are not saved to the gvp file
+   Display *display_name;
+   display_name = XOpenDisplay(NULL);
+
+	//the interator for the PenDefaultMap
+	map<const wxString, PenDefault_t *, ltstr>::iterator pen_iterator;
+	wxString PenWidth;
+	wxString PenStyle;
+	wxString PenColor;
+	wxString value;
+
+	//for each default pen see if there is data in ~/.Xdefaults
+	for (pen_iterator = PenDefaultMap.begin(); pen_iterator != PenDefaultMap.end(); pen_iterator++){
+		//width
+		PenWidth = pen_iterator->first;
+		PenWidth = PenWidth.Append("Width");
+		value = XGetDefault(display_name,"gmtkViz",PenWidth.c_str());
+		if (value != wxEmptyString) {
+			long w;
+			if (value.ToLong(&w)) {
+				pen_iterator->second->width = w;
+			} else {
+				cout << "\"gmtkViz." << PenWidth << " : " << value << "\" is not a valid number (this is probably in ~/.Xdefaults)\n";
+			}
+		}
+
+		//color
+		PenColor = pen_iterator->first;
+		PenColor = PenColor.Append("Color");
+		value = XGetDefault(display_name,"gmtkViz",PenColor.c_str());
+		if (value != wxEmptyString) {
+			int r,g,b;
+			if(sscanf(value.c_str(),"%i,%i,%i",&r,&g,&b) == 3){
+				pen_iterator->second->color = wxColour(r,g,b);
+			} else {
+				wxColour temp_color = wxColour(value);
+				if (temp_color.Ok())
+					pen_iterator->second->color = temp_color;
+				else {
+					cout << "\"gmtkViz." << PenColor << " : " << value << 
+						"\" is not a valid color r,g,b or string (ie \"red\") (this is probably in ~/.Xdefaults)\n";
+				}
+			}
+		}
+
+		//style
+		PenStyle = pen_iterator->first;
+		PenStyle = PenStyle.Append("Style");
+		value = XGetDefault(display_name,"gmtkViz",PenStyle.c_str());
+		if (value != wxEmptyString) {
+			//if there is anything with that Style in the map
+			if (styleStringToIntMap.count(value)) {
+				pen_iterator->second->style = styleStringToIntMap[value];
+			} else {
+				cout << "\"gmtkViz." << PenStyle << " : " << value << 
+					"\" is not a valid style (like wxSOLID, wxDOT, etc) (this is probably in ~/.Xdefaults)\n";
+			}
+		}
+	}
+	//close the display
+   XCloseDisplay(display_name);
 	
 	(void) IM::setGlbMsgLevel(verbosity);
 	GM_Parms.setMsgLevel(verbosity);
@@ -3488,21 +3630,53 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	// accidentally delete it later (cause a segfault).
 	content = NULL;
 
-	/* Dots and dashes require width to be one. */
-	switchingPen.SetStyle(wxDOT); /* was wxSOLID */
-	conditionalPen.SetStyle(wxSOLID);
-	bothPen.SetStyle(wxLONG_DASH); /* was wxSOLID */
-	highlightPen.SetStyle(wxSOLID); /* was wxSOLID */
-	frameBorderPen.SetStyle(wxDOT); /* was wxSOLID */
-	chunkBorderPen.SetStyle(wxSOLID);
-	// Scale all these lines up.
-	switchingPen.SetWidth(ACTUAL_SCALE);
-	conditionalPen.SetWidth(ACTUAL_SCALE);
-	bothPen.SetWidth(ACTUAL_SCALE);
-	highlightPen.SetWidth(ACTUAL_SCALE + 2);	//make the highlighted pen thicker
-	frameBorderPen.SetWidth(ACTUAL_SCALE);
-	chunkBorderPen.SetWidth(ACTUAL_SCALE);
-	controlPointPen.SetWidth(ACTUAL_SCALE + 1);
+	/* load defaults */
+	switchingPen.SetStyle( PenDefaultMap["switchingPen"]->style);
+	switchingPen.SetWidth( PenDefaultMap["switchingPen"]->width);
+	switchingPen.SetColour(PenDefaultMap["switchingPen"]->color);
+	conditionalPen.SetStyle( PenDefaultMap["conditionalPen"]->style);
+	conditionalPen.SetWidth( PenDefaultMap["conditionalPen"]->width);
+	conditionalPen.SetColour(PenDefaultMap["conditionalPen"]->color);
+	bothPen.SetStyle( PenDefaultMap["bothPen"]->style);
+	bothPen.SetWidth( PenDefaultMap["bothPen"]->width);
+	bothPen.SetColour(PenDefaultMap["bothPen"]->color);
+	highlightPen.SetStyle( PenDefaultMap["highlightPen"]->style);
+	highlightPen.SetWidth( PenDefaultMap["highlightPen"]->width);
+	highlightPen.SetColour(PenDefaultMap["highlightPen"]->color);
+	frameBorderPen.SetStyle( PenDefaultMap["frameBorderPen"]->style);
+	frameBorderPen.SetWidth( PenDefaultMap["frameBorderPen"]->width);
+	frameBorderPen.SetColour(PenDefaultMap["frameBorderPen"]->color);
+	chunkBorderPen.SetStyle( PenDefaultMap["chunkBorderPen"]->style);
+	chunkBorderPen.SetWidth( PenDefaultMap["chunkBorderPen"]->width);
+	chunkBorderPen.SetColour(PenDefaultMap["chunkBorderPen"]->color);
+	controlPointPen.SetStyle( PenDefaultMap["controlPointPen"]->style);
+	controlPointPen.SetWidth( PenDefaultMap["controlPointPen"]->width);
+	controlPointPen.SetColour(PenDefaultMap["controlPointPen"]->color);
+	nodePen.SetStyle( PenDefaultMap["nodePen"]->style);
+	nodePen.SetWidth( PenDefaultMap["nodePen"]->width);
+	nodePen.SetColour(PenDefaultMap["nodePen"]->color);
+	gridPen.SetStyle( PenDefaultMap["gridPen"]->style);
+	gridPen.SetWidth( PenDefaultMap["gridPen"]->width);
+	gridPen.SetColour(PenDefaultMap["gridPen"]->color);
+	boundingBoxPen.SetStyle( PenDefaultMap["boundingBoxPen"]->style);
+	boundingBoxPen.SetWidth( PenDefaultMap["boundingBoxPen"]->width);
+	boundingBoxPen.SetColour(PenDefaultMap["boundingBoxPen"]->color);
+	
+//	/* Dots and dashes require width to be one. */
+//	switchingPen.SetStyle(wxDOT); /* was wxSOLID */
+//	conditionalPen.SetStyle(wxSOLID);
+//	bothPen.SetStyle(wxLONG_DASH); /* was wxSOLID */
+//	highlightPen.SetStyle(wxSOLID); /* was wxSOLID */
+//	frameBorderPen.SetStyle(wxDOT); /* was wxSOLID */
+//	chunkBorderPen.SetStyle(wxSOLID);
+//	// Scale all these lines up.
+//	switchingPen.SetWidth(ACTUAL_SCALE);
+//	conditionalPen.SetWidth(ACTUAL_SCALE);
+//	bothPen.SetWidth(ACTUAL_SCALE);
+//	highlightPen.SetWidth(ACTUAL_SCALE + 2);	//make the highlighted pen thicker
+//	frameBorderPen.SetWidth(ACTUAL_SCALE);
+//	chunkBorderPen.SetWidth(ACTUAL_SCALE);
+//	controlPointPen.SetWidth(ACTUAL_SCALE + 1);
 	// Make the corners sharp
 	controlPointPen.SetJoin(wxJOIN_MITER);
 	nodePen.SetWidth(ACTUAL_SCALE);
