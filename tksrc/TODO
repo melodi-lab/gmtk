@@ -643,10 +643,10 @@ Mon Jul 22 13:39:02 2002
  - add to docs that normthres can be == 0 to turn it off.
 
 Fri Jul 19 10:11:04 2002
- - add ability to specify initial counts on command line for discrete objects
+ DONE: add ability to specify initial counts on command line for discrete objects
    (M?CPT, DPMF) during training, to do a form of Laplace smoothing.
    Perhaps similar to obsnottotrain option. 
-
+   (done Sat Jul 23 16:02:39 2005, general Dirichlet prior model for DenseCPTs and DPMFs)
 
 Fri Jul 19 10:13:22 2002
  - idea. Each gmtk object should have a set of options that can
@@ -686,11 +686,11 @@ Fri Jul 26 14:52:53 2002
 				   
 
 Wed Jul 31 22:04:27 2002
-  - actually, rather than laplace smoothing, add an object type 
+  DONE: actually, rather than laplace smoothing, add an object type 
     that can include initial counts to use for MDCTPs and MSCPTs
     (use  same file format as these, but just include pos integer or fp counts
      rather than probabilities).
-
+   (done Sat Jul 23 16:03:05 2005)
 
 Tue Aug  6 22:49:42 2002
   - use email to chiaping on Tue Aug  6 22:49:46 2002 about unity
@@ -1347,7 +1347,7 @@ Sat Jan 17 14:38:59 2004  (but updated since then)
      - usability features
           - ARPA LMs and FLMs
           - non-linear Gaussians and non-linear BMMs w. pseudo-2nd-order training methods.
-          - smoothing for CPTs in EM
+          - DONE: smoothing for CPTs in EM
           - generalized parameter adaptation directly within GMTK
           - ??? (something I'm forgetting). (Sat Apr 24 22:21:09 2004, probably "decision tree"
             (or some form of) state clustering, generalized to
@@ -2197,7 +2197,8 @@ other minor things mentioned above).
         - non-linear Gaussians and non-linear BMMs w. pseudo-2nd-order training methods.
           non-linear regression models, lasso, etc.
         - smoothing for CPTs in EM
-             Laplace smoothing, Good Turing within EM training, false counts.
+             Laplace smoothing (DONE), 
+             Good Turing within EM training, false counts.
         - generalized parameter adaptation directly within GMTK
         -  (Sat Apr 24 22:21:09 2004, probably "decision tree"
            (or some form of) state clustering, generalized to
@@ -3123,7 +3124,13 @@ Sun Jul 17 19:33:11 2005
         prod. of most likely RV values as admissible heuristic.
 
 
-
+Thu Aug 11 15:46:24 2005
+  - When combining pruning with sampling from what was pruned away, have
+    a mode that the sampling not only uses the probabilities but biases thinsg
+    to try to increase "diversity" of the samples (i.e., if we sample from exactly
+    the same high & mid-level but only a slight difference in the low level, that is not
+    likely to yield a significant increase in the ultimate effect of the sampled states. Instead,
+    reduce the probability of similar samples somehow.
 
 
 
