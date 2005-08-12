@@ -156,7 +156,7 @@ class gmtkPen;
 static wxFont defaultFont;
 
 //number of pens in a StructPage
-#define numPens 10
+#define numPens 14
 
 //stores info about Pens
 struct PenInfo {
@@ -573,9 +573,13 @@ class StructPage: public wxScrolledWindow
 			PenArray[index].namelong = namelong;
 		}
 	public:
+		gmtkPen detPen;
+		gmtkPen randPen;
 		gmtkPen switchingPen;
-		gmtkPen conditionalPen;
-		gmtkPen bothPen;
+		gmtkPen det_randPen;
+		gmtkPen det_switchPen;
+		gmtkPen rand_switchPen;
+		gmtkPen det_rand_switchPen;
 		gmtkPen highlightPen;
 		gmtkPen frameBorderPen;
 		gmtkPen chunkBorderPen;
@@ -851,7 +855,6 @@ class ControlPoint : public Selectable {
 		virtual bool inRect( const wxRect& rect ) { return rect.Inside(pos); }
 };
 
-
 /// Represents an arc
 class VizArc {
 	public:
@@ -861,10 +864,12 @@ class VizArc {
 		std::vector< ControlPoint* > *cps;
 		/// the parent
 		StructPage *page;
-		/// Is it a switching arc?
-		bool switching;
-		/// Is it a conditional arc?
-		bool conditional;
+
+		//these methods set the type of this Arc
+		void setRand(void){comb_type |= random;}
+		void setSwitching(void){comb_type |= switching;}
+		void setDeterministic(void){comb_type |= determin;}
+
 		// constructor
 		VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage );
 		// copy constructor
@@ -885,6 +890,10 @@ class VizArc {
 		// is it visible
 		bool visible;
 		bool highlighted;
+		// combined type {deterministic, random, switching, deterministic/random,
+		// deterministic/switching....}
+		enum type {undefined, determin = 1, random, det_rand, switching, det_switch, rand_switch,det_rand_switch};
+		unsigned int comb_type;
 };
 
 
@@ -1234,8 +1243,6 @@ bool GMTKStructVizApp::OnInit()
 		Arg::usage();
 		return false;
 	}
-	
-
 
 	//init the global Style Maps
 	//these are used to map the gvp file's text representation of style
@@ -1285,24 +1292,48 @@ bool GMTKStructVizApp::OnInit()
 
 	//Set up the Pen Defaults (default within the program)
 	
-	//switchingPen
+	//detPen
 	PenDefault_t * temp_default = new PenDefault_t;
-	temp_default->color = *wxBLUE;
-	temp_default->style = wxDOT;
+	temp_default->color = *wxBLACK;
+	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
-	PenDefaultMap["switchingPen"] = temp_default;
-	//conditionalPen
+	PenDefaultMap["detPen"] = temp_default;
+	//randPen
 	temp_default = new PenDefault_t;
 	temp_default->color = *wxBLACK;
 	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
-	PenDefaultMap["conditionalPen"] = temp_default;
-	//bothPen
+	PenDefaultMap["randPen"] = temp_default;
+	//switchingPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxBLUE;
+	temp_default->style = wxDOT;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["switchingPen"] = temp_default;
+	//det_randPen
 	temp_default = new PenDefault_t;
 	temp_default->color = *wxRED;
-	temp_default->style = wxLONG_DASH;
+	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
-	PenDefaultMap["bothPen"] = temp_default;
+	PenDefaultMap["det_randPen"] = temp_default;
+	//det_switchPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxRED;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["det_switchPen"] = temp_default;
+	//rand_switchPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxRED;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["rand_switchPen"] = temp_default;
+	//det_rand_switchPen
+	temp_default = new PenDefault_t;
+	temp_default->color = *wxRED;
+	temp_default->style = wxSOLID;
+	temp_default->width = ACTUAL_SCALE;
+	PenDefaultMap["det_rand_switchPen"] = temp_default;
 	//highlightPen
 	temp_default = new PenDefault_t;
 	temp_default->color = wxColour(255,0,255);
@@ -3625,8 +3656,14 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 			   const wxString &file, bool old)
 	: wxScrolledWindow( parent, id, wxDefaultPosition, wxDefaultSize,
 			wxSUNKEN_BORDER | wxTAB_TRAVERSAL, _T("") ),
-	switchingPen(*wxBLUE,1,wxSOLID), conditionalPen(*wxBLACK_PEN),
-	bothPen(*wxRED_PEN), highlightPen(wxPen(wxColour(255,0,255),3,wxSOLID)),//highlight pen is pink
+	detPen(*wxBLACK_PEN),
+	randPen(*wxBLACK_PEN),
+	switchingPen(*wxBLACK_PEN),
+	det_randPen(*wxBLACK_PEN),
+	det_switchPen(*wxBLACK_PEN),
+	rand_switchPen(*wxBLACK_PEN),
+	det_rand_switchPen(*wxBLACK_PEN),
+	highlightPen(wxPen(wxColour(255,0,255),3,wxSOLID)),//highlight pen is pink
 	frameBorderPen(*wxLIGHT_GREY_PEN), chunkBorderPen(*wxBLACK_PEN),
 	controlPointPen(*wxRED_PEN), nodePen(*wxBLACK_PEN),
 	gridPen(*wxLIGHT_GREY_PEN), 
@@ -3672,15 +3709,28 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 
 	/* load defaults */
 	//pens
+	detPen.SetStyle( PenDefaultMap["detPen"]->style);
+	detPen.SetWidth( PenDefaultMap["detPen"]->width);
+	detPen.SetColour(PenDefaultMap["detPen"]->color);
+	randPen.SetStyle( PenDefaultMap["randPen"]->style);
+	randPen.SetWidth( PenDefaultMap["randPen"]->width);
+	randPen.SetColour(PenDefaultMap["randPen"]->color);
 	switchingPen.SetStyle( PenDefaultMap["switchingPen"]->style);
 	switchingPen.SetWidth( PenDefaultMap["switchingPen"]->width);
 	switchingPen.SetColour(PenDefaultMap["switchingPen"]->color);
-	conditionalPen.SetStyle( PenDefaultMap["conditionalPen"]->style);
-	conditionalPen.SetWidth( PenDefaultMap["conditionalPen"]->width);
-	conditionalPen.SetColour(PenDefaultMap["conditionalPen"]->color);
-	bothPen.SetStyle( PenDefaultMap["bothPen"]->style);
-	bothPen.SetWidth( PenDefaultMap["bothPen"]->width);
-	bothPen.SetColour(PenDefaultMap["bothPen"]->color);
+	det_randPen.SetStyle( PenDefaultMap["det_randPen"]->style);
+	det_randPen.SetWidth( PenDefaultMap["det_randPen"]->width);
+	det_randPen.SetColour(PenDefaultMap["det_randPen"]->color);
+	det_switchPen.SetStyle( PenDefaultMap["det_switchPen"]->style);
+	det_switchPen.SetWidth( PenDefaultMap["det_switchPen"]->width);
+	det_switchPen.SetColour(PenDefaultMap["det_switchPen"]->color);
+	rand_switchPen.SetStyle( PenDefaultMap["rand_switchPen"]->style);
+	rand_switchPen.SetWidth( PenDefaultMap["rand_switchPen"]->width);
+	rand_switchPen.SetColour(PenDefaultMap["rand_switchPen"]->color);
+	det_rand_switchPen.SetStyle( PenDefaultMap["det_rand_switchPen"]->style);
+	det_rand_switchPen.SetWidth( PenDefaultMap["det_rand_switchPen"]->width);
+	det_rand_switchPen.SetColour(PenDefaultMap["det_rand_switchPen"]->color);
+
 	highlightPen.SetStyle( PenDefaultMap["highlightPen"]->style);
 	highlightPen.SetWidth( PenDefaultMap["highlightPen"]->width);
 	highlightPen.SetColour(PenDefaultMap["highlightPen"]->color);
@@ -3726,9 +3776,13 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	boundingBoxPen.SetJoin(wxJOIN_MITER);
 
 	//save the state of each pen as the default
+	detPen.setDefaults();
+	randPen.setDefaults();
 	switchingPen.setDefaults();
-	conditionalPen.setDefaults();
-	bothPen.setDefaults();
+	det_randPen.setDefaults();
+	det_switchPen.setDefaults();
+	rand_switchPen.setDefaults();
+	det_rand_switchPen.setDefaults();
 	highlightPen.setDefaults();
 	frameBorderPen.setDefaults();
 	chunkBorderPen.setDefaults();
@@ -3738,16 +3792,20 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	boundingBoxPen.setDefaults();
 
 	//Put data in the pen array
-	PutInPenArray(0,&switchingPen,"switchingPen","Switching Pen");
-	PutInPenArray(1,&conditionalPen,"conditionalPen","Conditional Pen");
-	PutInPenArray(2,&bothPen,"bothPen","Both Pen");
-	PutInPenArray(3,&highlightPen,"highlightPen","Highlight Pen");
-	PutInPenArray(4,&frameBorderPen,"frameBorderPen","Frameborder Pen");
-	PutInPenArray(5,&chunkBorderPen,"chunkBorderPen","Chunkborder Pen");
-	PutInPenArray(6,&controlPointPen,"controlPointPen","Control Point Pen");
-	PutInPenArray(7,&nodePen,"nodePen","Node Pen");
-	PutInPenArray(8,&gridPen,"gridPen","Grid Pen");
-	PutInPenArray(9,&boundingBoxPen,"boundingBoxPen","Bounding Box Pen");
+	PutInPenArray( 0,&detPen,"detPen","Deterministic Pen");
+	PutInPenArray( 1,&randPen,"randPen","Random Pen");
+	PutInPenArray( 2,&switchingPen,"switchingPen","Switching Pen");
+	PutInPenArray( 3,&det_randPen,"det_randPen","Deterministic/Random Pen");
+	PutInPenArray( 4,&det_switchPen,"det_switchPen","Deterministic/Switching Pen");
+	PutInPenArray( 5,&rand_switchPen,"rand_switchPen","Random/Switching Pen");
+	PutInPenArray( 6,&det_rand_switchPen,"det_rand_switchPen","Deterministic/Random/Switching Pen");
+	PutInPenArray( 7,&highlightPen,"highlightPen","Highlight Pen");
+	PutInPenArray( 8,&frameBorderPen,"frameBorderPen","Frameborder Pen");
+	PutInPenArray( 9,&chunkBorderPen,"chunkBorderPen","Chunkborder Pen");
+	PutInPenArray(10,&controlPointPen,"controlPointPen","Control Point Pen");
+	PutInPenArray(11,&nodePen,"nodePen","Node Pen");
+	PutInPenArray(12,&gridPen,"gridPen","Grid Pen");
+	PutInPenArray(13,&boundingBoxPen,"boundingBoxPen","Bounding Box Pen");
 
 	// scroll 10 pixels at a time
 	SetScrollRate( 10, 10 );
@@ -4547,7 +4605,8 @@ StructPage::initArcs( void )
 			if (!arcs[i][j])
 				arcs[i][j] = newArc(i, j);
 			// label it as a switching arc (an arc to a switching parent)
-			arcs[i][j]->switching = true;
+			arcs[i][j]->setSwitching();
+			
 		}
 		// for each conditional parent
 		for ( unsigned int k = 0;
@@ -4568,9 +4627,14 @@ StructPage::initArcs( void )
 				// if the arc doesn't exist yet, make it
 				if (!arcs[i][j])
 					arcs[i][j] = newArc(i, j);
-				/* label it as a conditional arc (an arc to a
-				 * conditional parent) */
-				arcs[i][j]->conditional = true;
+				/* label it as random or deterministic */
+				if (nodes[j]->rvi->rvType == RVInfo::t_discrete){
+						if(nodes[j]->rvi->discImplementations[k] == CPT::di_MTCPT)
+							arcs[i][j]->setDeterministic();
+						else
+							arcs[i][j]->setRand();
+				} else
+					arcs[i][j]->setRand();
 			}
 		}
 	}
@@ -8565,8 +8629,8 @@ VizArc::VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage )
 {
 	cps = newCps;
 	page = newPage;
-	switching = false;
-	conditional = false;
+
+	comb_type = undefined;
 
 	for (unsigned int i = 0; i < cps->size(); i++) {
 		(*cps)[i]->arc = this;
@@ -8584,8 +8648,8 @@ VizArc::VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage )
 VizArc::VizArc(const VizArc &original)
 {
 	page = original.page;
-	switching = original.switching;
-	conditional = original.conditional;
+
+	comb_type = original.comb_type;
 
 	visible = original.visible;
 	highlighted = false;
@@ -8653,16 +8717,38 @@ VizArc::draw( wxDC *dc, int drawFlags )
 	wxPen oldPen = dc->GetPen();
 	if (drawFlags & DRAW_ARCS) {
 		wxPen *pen = NULL;
-		/* Set the pen appropriately depending on whether it's switching,
-		 * conditional, or both. */
+
+		/* Set the pen appropriately */
 		if (highlighted)
 			pen = &page->highlightPen;
-		else if (switching && conditional)
-			pen = &page->bothPen;
-		else if (switching)
-			pen = &page->switchingPen;
-		else if (conditional)
-			pen = &page->conditionalPen;
+		else {
+			switch (comb_type){
+				case determin:
+					pen = &page->detPen;
+					break;
+				case random:
+					pen = &page->randPen;
+					break;
+				case det_rand:
+					pen = &page->det_randPen;
+					break;
+				case switching:
+					pen = &page->switchingPen;
+					break;
+				case det_switch:
+					pen = &page->det_switchPen;
+					break;
+				case rand_switch:
+					pen = &page->rand_switchPen;
+					break;
+				case det_rand_switch:
+					pen = &page->det_rand_switchPen;
+					break;
+				default:
+					cout << "error, pen has no type\n";
+					return;
+			}
+		}
 
 		dc->SetPen(*pen);
 
