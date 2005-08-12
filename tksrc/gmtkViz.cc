@@ -21,7 +21,7 @@
 #include <wx/dcbuffer.h>
 #include <wx/ffile.h>
 #include <wx/fontdlg.h>
-//#include <wx/gdicmn.h>
+#include <wx/gdicmn.h>
 #include <wx/image.h>
 #include <wx/list.h>
 #include <wx/notebook.h>
@@ -36,6 +36,7 @@
 #include <wx/spinctrl.h>
 #include <wx/choice.h>
 #include <wx/event.h>
+#include <wx/font.h>
 #include <cassert>
 #include <cmath>
 #include <vector>
@@ -51,8 +52,10 @@
 #include <wx/filename.h>
 
 //for .Xdefaults
+#ifndef __WXMSW__
 #include<X11/Xlib.h>
 #include<X11/Xutil.h>
+#endif
 
 // Apprently these are needed in order to do anything with gmtk (even
 // if you don't actually use them).
@@ -1310,7 +1313,11 @@ bool GMTKStructVizApp::OnInit()
 	temp_default = new PenDefault_t;
 	temp_default->color = *wxLIGHT_GREY;
 	temp_default->style = wxDOT;
+#ifdef __WXMSW__
+	temp_default->width = 1;
+#else
 	temp_default->width = ACTUAL_SCALE;
+#endif
 	PenDefaultMap["frameBorderPen"] = temp_default;
 	//chunkBorderPen
 	temp_default = new PenDefault_t;
@@ -1343,11 +1350,15 @@ bool GMTKStructVizApp::OnInit()
 	temp_default->width = ACTUAL_SCALE;
 	PenDefaultMap["boundingBoxPen"] = temp_default;
 
+	//set the default font
+	defaultFont = wxFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL);
+
 	//load up any data that is in ~/.Xdefaults
 	//these are user defined defaults, they override the program
 	//defaults, they are not saved to the gvp file
-   Display *display_name;
-   display_name = XOpenDisplay(NULL);
+#ifndef __WXMSW__
+	Display *display_name;
+	display_name = XOpenDisplay(NULL);
 
 	//the interator for the PenDefaultMap
 	map<const wxString, PenDefault_t *, ltstr>::iterator pen_iterator;
@@ -1355,6 +1366,7 @@ bool GMTKStructVizApp::OnInit()
 	wxString PenStyle;
 	wxString PenColor;
 	wxString value;
+
 
 	//for each default pen see if there is data in ~/.Xdefaults
 	for (pen_iterator = PenDefaultMap.begin(); pen_iterator != PenDefaultMap.end(); pen_iterator++){
@@ -1405,15 +1417,17 @@ bool GMTKStructVizApp::OnInit()
 		}
 	}
 
-	//set the default font
-	defaultFont = wxFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL);
 	//look for a user defined default font
 
 	//font name
+	//this will only work for 2.6.1 and above, 2.4.2 doesn't let you set
+	//SetNativeFontInfo based on a string
+#if wxCHECK_VERSION(2,6,1)
 	value = XGetDefault(display_name,"gmtkViz","fontName");
 	if (value != wxEmptyString) {
 		defaultFont.SetNativeFontInfo(value);
 	}
+#endif
 	//font size
 	value = XGetDefault(display_name,"gmtkViz","fontSize");
 	if (value != wxEmptyString) {
@@ -1421,12 +1435,14 @@ bool GMTKStructVizApp::OnInit()
 		if (value.ToLong(&w) && w > 0) {
 			defaultFont.SetPointSize(w);
 		} else {
-			cout << "\"gmtkViz.fontSize: " << value << "\" is not a valid number (this is probably in ~/.Xdefaults)\n";
+			cout << "\"gmtkViz.fontSize: " << value << 
+				"\" is not a valid number (this is probably in ~/.Xdefaults)\n";
 		}
 	}
 	
 	//close the display
    XCloseDisplay(display_name);
+#endif
 	
 	(void) IM::setGlbMsgLevel(verbosity);
 	GM_Parms.setMsgLevel(verbosity);
@@ -3832,6 +3848,14 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 			 * fork statment (but wrap it in a try), and the else statment [when
 			 * the child doesn't exit sucessfully] would be the catch statement
 			 */
+#ifdef __WXMSW__
+			//XXX does this actually need to happen?
+			//we need to get the filename into a format that cygwin can deal with
+			//this is a unix path format
+			if (tempFileName.Find("cygwin") >= 0)
+				tempFileName.Remove(0,tempFileName.Find("cygwin") + 6);
+			tempFileName.Replace("\\","/",true);
+#endif
 			pid_t pid;
 			if ( (pid = fork()) < 0) {
 				//cannot fork
@@ -3861,8 +3885,8 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 				if(WEXITSTATUS(status) == 0){
 					//exited sucessfully
 					// load up the structure file
+					
 					fp = new FileParser(tempFileName, cppCommandOptions);
-
 
 					// XXX: prevent this from crashing with parse error
 					// parse the file
