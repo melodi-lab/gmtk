@@ -1,4 +1,4 @@
-#!/usr/nikola/bin/perl -w
+#!/usr/bin/perl -w
 
 ##############################################################################
 # triangulateGA
@@ -528,15 +528,9 @@ sub main
     $inference_opt_crossover_prob = 0.0;
     $inference_opt_mutate_prob    = 0.0; 
     @timing_option_list = ( $best_vcap ); 
-  
-    {
-      for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-        enqueue_trifile('REBOOT');
-      }
-      $timing_thread_idle_sem->down($nmbr_timing_processes );
-      cond_broadcast($timing_thread_idle);
-    }
-  
+
+    send_timing_thread_message('REBOOT'); 
+      
     $best_partitions = 0; 
     generate_pool_from_files( ("${best_trifile}____${best_vcap}") );
     $boundary_queue->enqueue( "${best_trifile}" );
@@ -554,13 +548,7 @@ sub main
     print "--------------- Triangulating P ---------------\n";
     $global_triangulation_mode = 'P';
   
-    {
-      for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-        enqueue_trifile('REBOOT');
-      }
-      $timing_thread_idle_sem->down($nmbr_timing_processes );
-      cond_broadcast($timing_thread_idle);
-    }
+    send_timing_thread_message('REBOOT'); 
   
     $best_partitions = 0; 
     generate_pool_from_files( ("${best_trifile}____${best_vcap}") );
@@ -574,13 +562,7 @@ sub main
   #########################################################################
   # Tell the timing threads to exit 
   #########################################################################
-  {
-    for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-      enqueue_trifile('EXIT');
-    }
-    $timing_thread_idle_sem->down($nmbr_timing_processes); 
-    cond_broadcast($timing_thread_idle);
-  }
+  send_timing_thread_message('EXIT'); 
 
   #########################################################################
   # Wait for all threads to return 
@@ -607,34 +589,43 @@ sub genetic_triangulations
 
   $last_iteration = pop;
 
+  ## Calculate best from initial pool for use in extra eliteism selection 
+  for (my $i=1;$i<scalar(@trifile_pool);$i+=2){
+    my $score = $trifile_pool[$i];
+    if ($score > $prevbest_score){
+      $prevbest_trifile = $trifile_pool[$i-1];
+      $prevbest_score = $trifile_pool[$i];
+    }
+  } 
+
   infoMsg(20, "Crossover: $crossover_prob / Mutate: $mutate_prob\n");
 
   for ($iteration=1; $iteration<=$last_iteration; $iteration++)
   {
+    infoMsg(10, "\n======================================================================\n");
+    infoMsg(10, "Iteration $iteration\n");
+    infoMsg(10, "======================================================================\n");
+
     my $desired_popsize;
     my $separateGA = 1;
     my $popsize;
 
     if ($iteration > 4){
-        $separateGA = 0;
+      $separateGA = 0;
     }
 
     if ($separateGA){
-        $desired_popsize = $numBoundaries * 20; # TODO: currently
-                                                # hardcode this
+      $desired_popsize = $numBoundaries * 20; # TODO: currently
+                                              # hardcode this
     }
     else {
-        $popsize = scalar(@trifile_pool) / 2; # because 2 entries rep. 1 gene
-        $desired_popsize = int($popsize/$shrinkrate); # shrink to the minimum at shrinkrate 
-        if ($desired_popsize < $minimum_popsize)
-          {
-      	$desired_popsize = $minimum_popsize; 
-          }
+      $popsize = scalar(@trifile_pool) / 2; # because 2 entries rep. 1 gene
+      $desired_popsize = int($popsize/$shrinkrate); # shrink to the minimum at shrinkrate 
+      if ($desired_popsize < $minimum_popsize)
+      {
+        $desired_popsize = $minimum_popsize; 
+      }
     }
-
-    print "\n======================================================================\n";
-    print "Iteration $iteration\n";
-    print "======================================================================\n";
 
     trifile_pool_selection('deathmatch','elitist',$desired_popsize,$separateGA);
     crossover($crossover_prob);
@@ -986,23 +977,10 @@ sub generate_pool_from_files
     enqueue_trifile($trifile);
   }
 
-  #########################################################################
-  # Wait for all triangulations in the timing queue to be triangulated 
-  #
-  # Lock the timing_thread_idle variable 
-  # Queue a copy of BECOME_IDLE for each timing thread
-  # Decrement the timing_thread_idle_sem once for each timing thread (the
-  #   timing threads will increment it as they process BECOME_IDLE)
-  # The timing_thread_idle variable is unlocked, telling the timing threads 
-  #   to they can continue
-  #########################################################################
-  {
-    for (my $i=0; $i<$nmbr_timing_processes ; $i++) {
-      enqueue_trifile('BECOME_IDLE');
-    }
-    $timing_thread_idle_sem->down($nmbr_timing_processes); 
-    cond_broadcast($timing_thread_idle);
-  }
+  ##########################################################################
+  # Wait for all trifiles to be timed
+  ##########################################################################
+  send_timing_thread_message('BECOME_IDLE'); 
 }
 
 ################################################################################
@@ -1372,22 +1350,7 @@ sub make_and_time_trifile_pool
     }
   }
 
-  #########################################################################
-  # Wait for all triangulations in the timing queue to be triangulated 
-  #
-  # Queue a copy of BECOME_IDLE for each timing thread
-  # Decrement the timing_thread_idle_sem once for each timing thread (the
-  #   timing threads will increment it as they process BECOME_IDLE)
-  # Broadcast cond_signal to all the timing threads   
-  #########################################################################
-  {
-    for ($i=0; $i<$nmbr_timing_processes ; $i++) {
-      enqueue_trifile('BECOME_IDLE');
-    }
-    $timing_thread_idle_sem->down($nmbr_timing_processes); 
-    lock($timing_thread_idle);
-    cond_broadcast($timing_thread_idle);
-  }
+  send_timing_thread_message('BECOME_IDLE'); 
 }
 
 ################################################################################
@@ -1665,6 +1628,37 @@ sub time_triangulation_thread
 
 }
 
+#############################################################################
+# send_timing_thread_message()
+#
+# Sends a command and control message to the timing threads 
+#
+# PARAMETERS:
+#  $message - string containing the message code
+#############################################################################
+sub send_timing_thread_message 
+{
+  my $message = pop; 
+
+  #########################################################################
+  # Send message to each thread 
+  #########################################################################
+  for (my $i=0; $i<$nmbr_timing_processes ; $i++) {
+    enqueue_trifile($message);
+  }
+
+  #########################################################################
+  # Wait for all threads to acknowledge that they got the message 
+  #########################################################################
+  $timing_thread_idle_sem->down($nmbr_timing_processes);
+
+  #########################################################################
+  # Tell the timing threads that they can continue 
+  #########################################################################
+  lock($timing_thread_idle);
+  cond_broadcast($timing_thread_idle);
+}
+
 
 #############################################################################
 # dequeue_and_time_triangulation() 
@@ -1712,7 +1706,7 @@ sub dequeue_and_time_triangulation
     }
     elsif ($dequeue_value eq 'REBOOT')
     {
-      print "CLOSING\n";
+      printf "CLOSING %x\n", threads->self;
       print STDERR "CLOSING\n";
 
       close $timing_script_input;
@@ -1721,6 +1715,7 @@ sub dequeue_and_time_triangulation
       ($crrnt_pid, $timing_script_input, $timing_script_output) = open_time();
 
       $processing_command = 1;
+      printf "DONE CLOSING %x\n", threads->self;
     }
     elsif ($dequeue_value eq 'EXIT') 
     {
