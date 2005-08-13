@@ -1312,7 +1312,7 @@ bool GMTKStructVizApp::OnInit()
 	PenDefaultMap["switchingPen"] = temp_default;
 	//det_randPen
 	temp_default = new PenDefault_t;
-	temp_default->color = *wxRED;
+	temp_default->color = *wxBLACK;
 	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
 	PenDefaultMap["det_randPen"] = temp_default;
