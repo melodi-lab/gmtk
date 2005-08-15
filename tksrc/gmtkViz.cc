@@ -7056,7 +7056,7 @@ StructPage::Save( void )
 			}
 //			//write the font if it isn't the default font
 //			if (labelFont != defaultFont) 
-//				do something here
+//				XXX: do something here
 
 			gvpDirty = false;
 			//there is no old gvp file once we have saved
