@@ -3940,7 +3940,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 				int status;
 				//the parent
 				waitpid(pid, &status, 0);
-				if(WEXITSTATUS(status) == 0){
+				if(WEXITSTATUS(status) == EXIT_SUCCESS){
 					//exited sucessfully
 					// load up the structure file
 					
