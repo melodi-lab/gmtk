@@ -1300,7 +1300,7 @@ bool GMTKStructVizApp::OnInit()
 	PenDefaultMap["detPen"] = temp_default;
 	//randPen
 	temp_default = new PenDefault_t;
-	temp_default->color = *wxBLACK;
+	temp_default->color = *wxRED;
 	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
 	PenDefaultMap["randPen"] = temp_default;
@@ -1312,25 +1312,25 @@ bool GMTKStructVizApp::OnInit()
 	PenDefaultMap["switchingPen"] = temp_default;
 	//det_randPen
 	temp_default = new PenDefault_t;
-	temp_default->color = *wxBLACK;
+	temp_default->color = *wxGREEN;
 	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
 	PenDefaultMap["det_randPen"] = temp_default;
 	//det_switchPen
 	temp_default = new PenDefault_t;
-	temp_default->color = *wxRED;
+	temp_default->color = *wxGREEN;
 	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
 	PenDefaultMap["det_switchPen"] = temp_default;
 	//rand_switchPen
 	temp_default = new PenDefault_t;
-	temp_default->color = *wxRED;
+	temp_default->color = *wxGREEN;
 	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
 	PenDefaultMap["rand_switchPen"] = temp_default;
 	//det_rand_switchPen
 	temp_default = new PenDefault_t;
-	temp_default->color = *wxRED;
+	temp_default->color = *wxGREEN;
 	temp_default->style = wxSOLID;
 	temp_default->width = ACTUAL_SCALE;
 	PenDefaultMap["det_rand_switchPen"] = temp_default;
