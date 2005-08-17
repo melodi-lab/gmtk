@@ -2272,9 +2272,7 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 //XXX Print direct to file doesn't work in 2.6.1 so we need to pop up the
 //print dialog
 #if wxCHECK_VERSION(2,6,1)
-		wxMessageBox(_T("wxWidgets 2.6.1 doesn't print to file the same way as 2.4.2"
-					" and we haven't figured out how to make it work without user interaction"
-					" so in order to print to EPS you simply have to press OK, Save, Yes when the print dialog"
+		wxMessageBox(_T("In order to print to EPS you simply have to press OK, Save, Yes when the print dialog"
 					" shows up, don't change any settings"),
 				wxT("Printing to EPS"), wxOK);
 		if(!printer.Print(this, &printout, true)){
