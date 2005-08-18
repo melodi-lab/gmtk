@@ -9274,8 +9274,57 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText(" : If the mouse pointer is over a node will pop up node info\n");
 
+	//help on the .Xdefaults File
 	help_msg->SetDefaultStyle(bold);
-	help_msg->AppendText("\nExtra Notes:\n");
+	help_msg->AppendText("\n.Xdefaults File:\n");
+	help_msg->SetDefaultStyle(normal);
+	help_msg->AppendText("\nThe .Xdefaults file allows you to set defaults for Pen Color, Width and Style");
+	help_msg->AppendText("\nthe format is this:");
+	help_msg->AppendText("\n\tgmtkViz.<PenName>Color: <ColorName>");
+	help_msg->AppendText("\n\tgmtkViz.<PenName>Color: r,b,g (where r, g and b are integers between 0 and 255 inclusive)");
+	help_msg->AppendText("\n\tgmtkViz.<PenName>Width: <integer>");
+	help_msg->AppendText("\n\tgmtkViz.<PenName>Style: <StyleName>");
+
+	help_msg->AppendText("\n\nPen Names are abreviated.\nValid PenNames are: ");
+
+	//the interator for the PenDefaultMap
+	map<const wxString, PenDefault_t *, ltstr>::iterator pen_iterator;
+	//print the name of each pen
+	unsigned int i = 0;
+	for (pen_iterator = PenDefaultMap.begin(); pen_iterator != PenDefaultMap.end(); pen_iterator++){
+		help_msg->AppendText(pen_iterator->first.c_str());
+		if (i != PenDefaultMap.size() - 1){
+			help_msg->AppendText(", ");
+			if (i % 5 == 4)
+				help_msg->AppendText("\n\t");
+		}
+		i++;
+	}
+
+	help_msg->AppendText("\n\nValid Colors are: "
+			"\n\tAQUAMARINE, BLACK, BLUE, BLUE VIOLET, BROWN, CADET BLUE, CORAL,"
+			"\n\tCORNFLOWER BLUE, CYAN, DARK GREY, DARK GREEN, DARK OLIVE GREEN, DARK ORCHID,"
+			"\n\tDARK SLATE BLUE, DARK SLATE GREY DARK TURQUOISE, DIM GREY, FIREBRICK, FOREST"
+			"\n\tGREEN, GOLD, GOLDENROD, GREY, GREEN, GREEN YELLOW, INDIAN RED, KHAKI, LIGHT"
+			"\n\tBLUE, LIGHT GREY, LIGHT STEEL BLUE, LIME GREEN, MAGENTA, MAROON, MEDIUM"
+			"\n\tAQUAMARINE, MEDIUM BLUE, MEDIUM FOREST GREEN, MEDIUM GOLDENROD, MEDIUM ORCHID,"
+			"\n\tMEDIUM SEA GREEN, MEDIUM SLATE BLUE, MEDIUM SPRING GREEN, MEDIUM TURQUOISE,"
+			"\n\tMEDIUM VIOLET RED, MIDNIGHT BLUE, NAVY, ORANGE, ORANGE RED, ORCHID, PALE GREEN,"
+			"\n\tPINK, PLUM, PURPLE, RED, SALMON, SEA GREEN, SIENNA, SKY BLUE, SLATE BLUE,"
+			"\n\tSPRING GREEN, STEEL BLUE, TAN, THISTLE, TURQUOISE, VIOLET, VIOLET RED, WHEAT,"
+			"\n\tWHITE, YELLOW, YELLOW GREEN.");
+
+	help_msg->AppendText("\n\nValid StyleName are: wxSOLID, wxDOT, wxLONG_DASH,");
+   help_msg->AppendText(" wxSHORT_DASH, wxDOT_DASH, wxTRANSPARENT");
+
+	help_msg->AppendText("\n\nExamples:");
+	help_msg->AppendText("\n\tgmtkViz.detPenWidth: 2");
+	help_msg->AppendText("\n\tgmtkViz.detPenColor: 0,255,0");
+	help_msg->AppendText("\n\tgmtkViz.randPenStyle: wxDOT");
+	help_msg->AppendText("\n\tgmtkViz.randPenColor: VIOLET");
+
+	help_msg->SetDefaultStyle(bold);
+	help_msg->AppendText("\n\nExtra Notes:\n");
 	help_msg->SetDefaultStyle(normal);
 	help_msg->AppendText("Once you make a selection invisible and you create a new selection or click on the canvas you can only make the\n"
 		"nodes visible by toggling the visibilty of the nodes individually [by guessing their location] or by selecting\n"
@@ -9286,8 +9335,7 @@ GmtkHelp::doLayout()
 	help_msg->AppendText("\nTo make the nodes in every frame except the frame under the mouse hit z x e\n"
 		"this will select all visible nodes in the current frame, invert the selection and finally toggle the visibility of that selection\n");
 
-
-	help_msg->AppendText("\nFor more detailed help go to: https://ssli.ee.washington.edu/ssliwiki/GMTK");
+	help_msg->AppendText("\n\nFor more detailed help go to: https://ssli.ee.washington.edu/ssliwiki/GMTK");
 
 	help_sizer->Add(help_msg, 1, wxEXPAND, 0);
 
