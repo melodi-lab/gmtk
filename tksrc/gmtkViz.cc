@@ -9278,7 +9278,7 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(bold);
 	help_msg->AppendText("\n.Xdefaults File:\n");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText("\nThe .Xdefaults file allows you to set defaults for Pen Color, Width and Style");
+	help_msg->AppendText("\nThe .Xdefaults file allows you to set defaults for Pen Color, Width and Style as well Font Size and Style.");
 	help_msg->AppendText("\nthe format is this:");
 	help_msg->AppendText("\n\tgmtkViz.<PenName>Color: <ColorName>");
 	help_msg->AppendText("\n\tgmtkViz.<PenName>Color: r,b,g (where r, g and b are integers between 0 and 255 inclusive)");
@@ -9317,11 +9317,22 @@ GmtkHelp::doLayout()
 	help_msg->AppendText("\n\nValid StyleName are: wxSOLID, wxDOT, wxLONG_DASH,");
    help_msg->AppendText(" wxSHORT_DASH, wxDOT_DASH, wxTRANSPARENT");
 
+	help_msg->AppendText("\n\nFont Size is given in the format:");
+	help_msg->AppendText("\n\tgmtkViz.fontSize: <num> (where num is an positive no zero integer)");
+
+	help_msg->AppendText("\n\nFont Style defaults only work in version of wxWidgets 2.6.1 and beyond.");
+	help_msg->AppendText("\nThe format for Font Style is:");
+	help_msg->AppendText("\n\tgmtkViz.fontStyle: <style>");
+	help_msg->AppendText("\nStyle is OS dependent, it is simply the name of a font, like Times New Roman, or Utopia.");
+	help_msg->AppendText("\nTo find out what Styles are avalible for your system simply look at the font customization dialog in gmtkViz.");
+
 	help_msg->AppendText("\n\nExamples:");
 	help_msg->AppendText("\n\tgmtkViz.detPenWidth: 2");
 	help_msg->AppendText("\n\tgmtkViz.detPenColor: 0,255,0");
 	help_msg->AppendText("\n\tgmtkViz.randPenStyle: wxDOT");
 	help_msg->AppendText("\n\tgmtkViz.randPenColor: VIOLET");
+	help_msg->AppendText("\n\tgmtkViz.fontSize: 12");
+	help_msg->AppendText("\n\tgmtkViz.fontName: Utopia");
 
 	help_msg->SetDefaultStyle(bold);
 	help_msg->AppendText("\n\nExtra Notes:\n");
