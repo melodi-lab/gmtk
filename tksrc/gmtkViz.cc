@@ -5795,7 +5795,7 @@ StructPage::itemMovingInBounds(int frame, wxCoord x_cur, wxCoord x_new)
 		return true;
 	else {
 		//is it atleast moving toward being in bounds?
-		if (x_new < x_min && (abs(x_min - x_new) < abs(x_min - x_cur)))
+		if (x_new < x_min && ((x_min - x_new) < (x_min - x_cur)))
 			return true;
 		else if (x_new > x_max && ((x_new - x_max) < (x_cur - x_max)))
 			return true;
