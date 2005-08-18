@@ -711,7 +711,7 @@ class StructPage: public wxScrolledWindow
 			// utility methods
 			VizArc* newArc(int i, int j);
 			VizArc* findArcOwning( ControlPoint *cp, int& index );
-			void deleteSelectedCps( void );
+			bool deleteSelectedCps( void );
 			bool crossesNode( wxCoord x0, wxCoord x1 );
 			bool itemMovingInBounds(int frame, wxCoord x_cur, wxCoord x_new);
 			bool inBounds( wxCoord x, wxCoord y );
@@ -4779,9 +4779,13 @@ StructPage::OnChar( wxKeyEvent &event )
 
 	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == 'r') {
 		save_undo();
-		deleteSelectedCps();
-		redraw();
-		blit();
+		//if we actually deleted any cps then redraw, otherwise pop
+		//one state from the undo stack
+		if (deleteSelectedCps()){
+			redraw();
+			blit();
+		} else
+			restore_state(undo_stack);
 	} else if (event.m_keyCode == WXK_LEFT) {
 		save_undo();
 		moveSelected(-ACTUAL_SCALE*(event.ShiftDown()?10:1), 0);
@@ -4803,13 +4807,13 @@ StructPage::OnChar( wxKeyEvent &event )
 		redraw();
 		blit();
 	} else if (event.m_keyCode == 's'){
-		save_undo();
 		//toggle nametag's visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
 		//if we find a node then toggle it's nametag visibility
 		if (0 <= node_index){
 			if (nodes[node_index]->isVisible()){
+				save_undo();
 				nodes[node_index]->nametag.toggleVisible();
 				redraw();
 				blit();
@@ -4831,28 +4835,35 @@ StructPage::OnChar( wxKeyEvent &event )
 			}
 		}
 	} else if (event.m_keyCode == 'w'){
+		bool something_toggled = false;
 		save_undo();
 		//toggle the visiblity of the selected nodes and framenametags
 		for (int i = 0; i < (int)nodes.size(); i++) {
-			if (nodes[i]->getSelected() && nodes[i]->isVisible())
+			if (nodes[i]->getSelected() && nodes[i]->isVisible()){
 				nodes[i]->nametag.toggleVisible();
+				something_toggled = true;
+			}
 		}
 		for (int i = 0; i < (int)frameNameTags.size(); i++) {
 			if (frameNameTags[i]->getSelected()){
 				frameNameTags[i]->toggleVisible();
+				something_toggled = true;
 			}
 		}
-		redraw();
-		blit();
+		if(something_toggled){
+			redraw();
+			blit();
+		} else
+			restore_state(undo_stack);
 	} else if (event.m_keyCode == 'a'){
 		popUpNodeInfo(mouse_pos);
 	} else if (event.m_keyCode == 'd'){
-		save_undo();
 		//toggle node and its edges visiblity
 		//find a node under the mouse
 		int node_index = nodeUnderPt(mouse_pos);
 		//if there is a node under the mouse, toggle it
 		if(node_index >= 0 && node_index < (int)nodes.size()){
+			save_undo();
 			toggleNodeAndArcVisibility(node_index);
 			redraw();
 			blit();
@@ -4860,12 +4871,20 @@ StructPage::OnChar( wxKeyEvent &event )
 	} else if (event.m_keyCode == 'e'){
 		save_undo();
 		//toggle visibility for all the nodes in the current selection
+		bool node_toggled = false;
 		for (int i = 0; i < (int)nodes.size(); i++) {
-			if (nodes[i]->getSelected())
+			if (nodes[i]->getSelected()){
+				node_toggled = true;
 				toggleNodeAndArcVisibility(i);
+			}
 		}
-		redraw();
-		blit();
+		//if no node was toggled then we don't need to redraw, and we should pop
+		//from the undo stack
+		if (node_toggled){
+			redraw();
+			blit();
+		} else
+			restore_state(undo_stack);
 	} else if (event.m_keyCode == 'f'){
 		//highlight
 		//find a node under the mouse
@@ -5139,13 +5158,13 @@ StructPage::selectAllInFrame(int frame)
  *
  * \note Any selected ControlPoints will be deleted.
  *
- * \return void
+ * \return bool, if any control points have been deleted
  *******************************************************************/
-void
+bool
 StructPage::deleteSelectedCps( void )
 {
 	int numNodes = nodes.size();
-
+	bool cps_deleted = false;
 	// iterate through every possible arc
 	for (int i = 0; i < numNodes; i++) {
 		for (int j = 0; j < numNodes; j++) {
@@ -5158,6 +5177,7 @@ StructPage::deleteSelectedCps( void )
 						// delete's on it's own?
 						arcs[i][j]->cps->erase(arcs[i][j]->cps->begin() + k);
 						arcs[i][j]->points->DeleteNode(arcs[i][j]->points->Item(k));
+						cps_deleted = true;
 					}
 				}
 			}
@@ -5168,6 +5188,7 @@ StructPage::deleteSelectedCps( void )
 	gvpDirty = true;
 	// Update the status bar to indicate that we're dirty.
 	onComeForward();
+	return cps_deleted;
 }
 
 /**
