@@ -667,9 +667,9 @@ class StructPage: public wxScrolledWindow
 			};
 	public:
 			void save_undo();
-	private:
 			bool undo();
 			bool redo();
+	private:
 			void save_state(std::stack<StructPage_state *> &);
 			bool restore_state(std::stack<StructPage_state *> &);
 			//this contains states we've been in
@@ -980,6 +980,8 @@ public:
 	MENU_EDIT_CANVASHEIGHT,
 	MENU_EDIT_COPYFRAMELAYOUT,
 	MENU_EDIT_COPYPARTITIONLAYOUT,
+	MENU_EDIT_UNDO,
+	MENU_EDIT_REDO,
 	MENU_HELP,
 	MENU_VIEW_HIDELABELS,
 	MENU_VIEW_SHOW_NODE_LABELS,
@@ -1132,6 +1134,8 @@ public:
 	void OnMenuEditCanvasheight(wxCommandEvent &event);
 	void OnMenuEditCopyframelayout(wxCommandEvent &event);
 	void OnMenuEditCopypartitionlayout(wxCommandEvent &event);
+	void OnMenuEditUndo(wxCommandEvent &event);
+	void OnMenuEditRedo(wxCommandEvent &event);
 
 	void OnMenuHelp(wxCommandEvent &event);
 
@@ -1566,6 +1570,8 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
 	// The Edit menu
 	wxMenu* menu_edit = new wxMenu();
+	menu_edit->Append(MENU_EDIT_UNDO, wxT("Undo"), wxT("Undo the Last Action"), wxITEM_NORMAL);
+	menu_edit->Append(MENU_EDIT_REDO, wxT("Redo"), wxT("Redo the Last Action"), wxITEM_NORMAL);
 	menu_edit->Append(MENU_EDIT_SELECTALL, wxT("Select All\tCtrl+A"), wxT("Select Everything that is Selectable"), wxITEM_NORMAL);
 	menu_edit->Append(MENU_EDIT_SNAPTOGRID, wxT("Snap To Grid"), wxT("Toggle whether items snap to the grids when they are moved"), wxITEM_CHECK);
 	menu_edit->Append(MENU_EDIT_CANVASWIDTH, wxT("Canvas Width..."), wxT("Adjust the width of the canvas"), wxITEM_NORMAL);
@@ -1900,6 +1906,8 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_EDIT_CANVASHEIGHT, GFrame::OnMenuEditCanvasheight)
 	EVT_MENU(MENU_EDIT_COPYFRAMELAYOUT, GFrame::OnMenuEditCopyframelayout)
 	EVT_MENU(MENU_EDIT_COPYPARTITIONLAYOUT, GFrame::OnMenuEditCopypartitionlayout)
+	EVT_MENU(MENU_EDIT_UNDO, GFrame::OnMenuEditUndo)
+	EVT_MENU(MENU_EDIT_REDO, GFrame::OnMenuEditRedo)
 	EVT_MENU(MENU_HELP, GFrame::OnMenuHelp)
 	EVT_MENU(MENU_VIEW_HIDELABELS, GFrame::OnMenuViewHideLabels)
 	EVT_MENU(MENU_VIEW_SHOW_NODE_LABELS, GFrame::OnMenuViewShowNodeLabels)
@@ -2639,6 +2647,84 @@ GFrame::OnMenuEditCopypartitionlayout(wxCommandEvent &event)
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage)
 		curPage->copyPartitionLayout();
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * undo the last action
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *	  in case it isn't, so everything should be fine as long as the
+ *	  program is fully initialized.
+ *
+ * \post If a StructPage was in front then the last action will be undone
+ * 	(if there is one)
+ *
+ * \note If a StructPage was in front then the last action will be undone
+ * 	(if there is one)
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuEditUndo(wxCommandEvent &event)
+{
+	// figure out which page this is for and pass the buck
+	int curPageNum = struct_notebook->GetSelection();
+	StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+	// If it couldn't be casted to a StructPage, then curPage will be NULL.
+	if (curPage){
+		if (!curPage->undo()){
+			//make beep sound
+			printf("\a");
+			fflush(stdout);
+		} else {
+			curPage->redraw();
+			curPage->blit();
+		}
+	}
+}
+
+/**
+ *******************************************************************
+ * Pass the buck to the appropriate StructPage telling it to
+ * redo the last action (undo the last undo)
+ *
+ * \param event Ignored.
+ *
+ * \pre A StructPage should be at the front, but precautions are taken
+ *	  in case it isn't, so everything should be fine as long as the
+ *	  program is fully initialized.
+ *
+ * \post If a StructPage was in front then the last action will be redone
+ * 	(if there is one)
+ *
+ * \note If a StructPage was in front then the last action will be redone
+ * 	(if there is one)
+ *
+ * \return void
+ *******************************************************************/
+void
+GFrame::OnMenuEditRedo(wxCommandEvent &event)
+{
+	// figure out which page this is for and pass the buck
+	int curPageNum = struct_notebook->GetSelection();
+	StructPage *curPage = dynamic_cast<StructPage*>
+	(struct_notebook->GetPage(curPageNum));
+	// If it couldn't be casted to a StructPage, then curPage will be NULL.
+	if (curPage){
+		if (!curPage->redo()){
+			//make beep sound
+			printf("\a");
+			fflush(stdout);
+		} else {
+			curPage->redraw();
+			curPage->blit();
+		}
+	}
 }
 
 
