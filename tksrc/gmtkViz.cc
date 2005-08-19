@@ -498,7 +498,7 @@ class StructPage: public wxScrolledWindow
 				wxFrame *parentFrame, wxNotebook *parentNotebook,
 				const wxString &file, bool old = true);
 		// destructor
-		~StructPage();
+		virtual ~StructPage();
 
 		//make sure that the data parsed ok
 		bool parsedSucessfully() {return data_parsed;}
@@ -1925,6 +1925,7 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_CLOSE(GFrame::OnClose)
 END_EVENT_TABLE()
 
+
 /**
  *******************************************************************
  * Make a new StructPage for the given structure or position.
@@ -1959,7 +1960,7 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 		// the front, so we'll just pretend we did
 		wxNotebookEvent dummy;
 		OnNotebookPageChanged(dummy);
-	} else{
+	} else {
 		delete page;
 	}
 }
@@ -2407,26 +2408,26 @@ GFrame::OnClose(wxCloseEvent& event)
 
 	// There are some cases where we're not allowed to veto the event.
 	if ( event.CanVeto() ) {
-	StructPage *curPage;
-	// for each tab (going backward since we delete them)
-	for ( int pageNum = struct_notebook->GetPageCount() - 1;
-		  pageNum >= 0 && destroy;
-		  pageNum-- ) {
-		curPage = dynamic_cast<StructPage*>
-		(struct_notebook->GetPage(pageNum));
-		/* If it couldn't be casted to a StructPage, then curPage
-		 * will be NULL. */
-		if (curPage) {
-			// only delete the tab if it says we can
-			if (curPage->RequestClose()) {
-				struct_notebook->DeletePage(pageNum);
-			} else {
-				// otherwise the user cancelled so we abort
-				event.Veto();
-				destroy = false;
+		StructPage *curPage;
+		// for each tab (going backward since we delete them)
+		for ( int pageNum = struct_notebook->GetPageCount() - 1;
+				pageNum >= 0 && destroy;
+				pageNum-- ) {
+			curPage = dynamic_cast<StructPage*>
+				(struct_notebook->GetPage(pageNum));
+			/* If it couldn't be casted to a StructPage, then curPage
+			 * will be NULL. */
+			if (curPage) {
+				// only delete the tab if it says we can
+				if (curPage->RequestClose()) {
+					struct_notebook->DeletePage(pageNum);
+				} else {
+					// otherwise the user cancelled so we abort
+					event.Veto();
+					destroy = false;
+				}
 			}
 		}
-	}
 	}
 	// if we didn't abort (weren't cancelled), then destroy the frame
 	if ( destroy ) {
@@ -3668,6 +3669,12 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	boundingBoxPen(*wxBLACK_PEN)
 	//labelFont(12*ACTUAL_SCALE, wxMODERN, wxNORMAL,wxNORMAL)
 {
+	nodes.clear();
+	nodeNameTags.clear();
+	arcs.clear();
+	frameEnds.clear();
+	frameNameTags.clear();
+
 	labelFont = defaultFont;
 	//since we haven't parsed the data yet we mark it false
 	data_parsed = false;
@@ -4115,7 +4122,8 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 					// uses global variables, we can't have more than one. Thus, we
 					// delete it now, rather than later.
 					delete fp;
-					
+					fp = NULL;
+
 					// mangle the name and set the tab title and status bar
 					int beginning, ending;
 					if ( (beginning = file.rfind('/') + 1) < 1 )
@@ -4157,11 +4165,12 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	}
 	fp = NULL;
 
-	// Update the status bar and stuff
-	onComeForward();
-
-	// Item 7 in gZoomMap is a 1.0 scaling factor.
-	setScale(ZOOM_1_INDEX);
+	if (data_parsed){
+		// Update the status bar and stuff
+		onComeForward();
+		// Item 7 in gZoomMap is a 1.0 scaling factor.
+		setScale(ZOOM_1_INDEX);
+	}
 
 	//we haven't done a save as yet so there is no old gvp file
 	gvpFile_old = "";
@@ -4211,7 +4220,8 @@ StructPage::~StructPage( void )
 		nodes[i] = NULL;
 	}
 	// delete the drawing buffer
-	delete content;
+	if (content != NULL)
+		delete content;
 	content = NULL;
 }
 
