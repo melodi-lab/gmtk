@@ -3844,26 +3844,8 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	boundingBoxPen.SetWidth( PenDefaultMap["boundingBoxPen"]->width);
 	boundingBoxPen.SetColour(PenDefaultMap["boundingBoxPen"]->color);
 	
-//	/* Dots and dashes require width to be one. */
-//	switchingPen.SetStyle(wxDOT); /* was wxSOLID */
-//	conditionalPen.SetStyle(wxSOLID);
-//	bothPen.SetStyle(wxLONG_DASH); /* was wxSOLID */
-//	highlightPen.SetStyle(wxSOLID); /* was wxSOLID */
-//	frameBorderPen.SetStyle(wxDOT); /* was wxSOLID */
-//	chunkBorderPen.SetStyle(wxSOLID);
-//	// Scale all these lines up.
-//	switchingPen.SetWidth(ACTUAL_SCALE);
-//	conditionalPen.SetWidth(ACTUAL_SCALE);
-//	bothPen.SetWidth(ACTUAL_SCALE);
-//	highlightPen.SetWidth(ACTUAL_SCALE + 2);	//make the highlighted pen thicker
-//	frameBorderPen.SetWidth(ACTUAL_SCALE);
-//	chunkBorderPen.SetWidth(ACTUAL_SCALE);
-//	controlPointPen.SetWidth(ACTUAL_SCALE + 1);
 	// Make the corners sharp
 	controlPointPen.SetJoin(wxJOIN_MITER);
-	nodePen.SetWidth(ACTUAL_SCALE);
-	gridPen.SetStyle(wxDOT);
-	boundingBoxPen.SetStyle(wxSOLID);
 	boundingBoxPen.SetJoin(wxJOIN_MITER);
 
 	//save the state of each pen as the default
