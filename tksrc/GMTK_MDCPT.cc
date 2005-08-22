@@ -135,6 +135,15 @@ void MDCPT::allocateBasicInternalStructures()
   }
   numValues *= card();
 
+  if (numValues < 0) {
+    fprintf(stderr,"ERROR: DenseCPT '%s' with %d parents, CPT table size too large.  Combined cardinalities of parents & child too large: ",name().c_str(),_numParents);
+    fprintf(stderr,"child card = %d, parent cardinalities are:",card());
+    for (unsigned i=0;i<_numParents;i++) {
+      fprintf(stderr," %d",cardinalities[i]);
+    }
+    error(" exiting ...");
+  }
+
   mdcpt.resize(numValues);
 
   if (_numParents > 0) {
