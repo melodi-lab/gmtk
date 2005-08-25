@@ -4054,9 +4054,25 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 										10*ACTUAL_SCALE,
 										10*ACTUAL_SCALE ),
 									label ));
-					}
+				        }	
 					wxString key, value;
 					for (unsigned int i = 0; i < frameNameTags.size(); i++) {
+
+						// move the frame ends, if requested
+						key.sprintf( "frameEnds[%d].x", i );
+						value = config[key];
+						if (value != wxEmptyString) {
+							long xPos;
+							if (value.ToLong(&xPos)) {
+								frameEnds[i]->x = xPos;
+							} else {
+								wxString msg;
+								msg.sprintf("frameEnds[%d].x is not a number", i);
+								wxLogMessage(msg);
+								gvpAborted = true;
+							}
+						}
+
 						// move the nametag, if requested
 						// x
 						key.sprintf( "frames[%d].nametag.pos.x", i );
@@ -4072,6 +4088,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 								gvpAborted = true;
 							}
 						}
+
 						// y
 						key.sprintf( "frames[%d].nametag.pos.y", i );
 						value = config[key];
