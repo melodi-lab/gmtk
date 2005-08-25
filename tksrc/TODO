@@ -3132,6 +3132,13 @@ Thu Aug 11 15:46:24 2005
     likely to yield a significant increase in the ultimate effect of the sampled states. Instead,
     reduce the probability of similar samples somehow.
 
+Thu Aug 25 14:04:39 2005
+  - undirected models in GMTK, part of a clique, and trained using the perceptron and ballceptron
+    algorithm (should be easy, just iterate through teh clique a few times, with posterior
+    given to perceptron/balceptron algorithm)
+  - When unpacking clique within EM, only unpack values that are being used for
+    parameter updating (i.e., this mgiht be useful when det. values are not stored within clique).
+
 
 
 
