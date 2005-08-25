@@ -6263,47 +6263,30 @@ StructPage::copyFrameLayout( int from, int to )
 {
 	RVInfo::rvParent destNodeId;
 	destNodeId.second = to;
-	int destNode, dx, dxFromLeft, dxFromRight, dy, iLeft, iRight, destLeft,
-		 destRight, iOffsetFromLeft, iOffsetFromRight, destOffsetFromLeft,
-		 destOffsetFromRight;
+        int fromLeft, fromRight, fromCenter, centerOffset, toLeft, toRight, toCenter;
+	int destNode, dx, dy;
+
+        fromLeft   = (from==0) ? 0 : frameEnds[from-1]->x;
+        fromRight  = (from==numFrames-1) ? getWidth() : frameEnds[from]->x;
+        fromCenter = (fromLeft + fromRight)/2; 
+        toLeft     = (to==0) ? 0 : frameEnds[to-1]->x;
+        toRight    = (to==numFrames-1) ? getWidth() : frameEnds[to]->x;
+        toCenter   = (toLeft + toRight)/2; 
+
 	for (int i = firstNodeInFrame[from]; i < firstNodeInFrame[from+1]; i++) {
 		destNodeId.first = nodes[i]->rvId.first;
 		if (nameVizNodeMap.count(destNodeId)) {
 			destNode = nameVizNodeMap[destNodeId];
 
 			// Figure out where to move the node.
-			iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
-			iOffsetFromLeft = nodes[i]->center.x - iLeft;
-			iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
-			iOffsetFromRight = nodes[i]->center.x - iRight;
-
-			destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
-			destOffsetFromLeft = nodes[destNode]->center.x - destLeft;
-			destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
-			destOffsetFromRight = nodes[destNode]->center.x - destRight;
-
-			dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
-			dxFromRight = iOffsetFromRight - destOffsetFromRight;
-
-			dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
+			centerOffset = nodes[i]->center.x - fromCenter;
+                        dx = (toCenter+centerOffset) - (nodes[destNode]->center.x); 
 			dy = nodes[i]->center.y - nodes[destNode]->center.y;
 			moveNode(destNode, dx, dy);
 
 			// Figure out where to move the node's nametag.
-			iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
-			iOffsetFromLeft = nodeNameTags[i]->pos.x - iLeft;
-			iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
-			iOffsetFromRight = nodeNameTags[i]->pos.x - iRight;
-
-			destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
-			destOffsetFromLeft = nodeNameTags[destNode]->pos.x - destLeft;
-			destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
-			destOffsetFromRight = nodeNameTags[destNode]->pos.x - destRight;
-
-			dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
-			dxFromRight = iOffsetFromRight - destOffsetFromRight;
-
-			dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
+			centerOffset = nodeNameTags[i]->pos.x - fromCenter;
+                        dx = (toCenter+centerOffset) - (nodeNameTags[destNode]->pos.x); 
 			dy = nodeNameTags[i]->pos.y - nodeNameTags[destNode]->pos.y;
 			moveNodeNameTag(destNode, dx, dy);
 
@@ -6357,20 +6340,8 @@ StructPage::copyFrameLayout( int from, int to )
 	}
 
 	// also move the frame's nametag
-	iLeft = ( from==0 ? 0 : frameEnds[from-1]->x );
-	iOffsetFromLeft = frameNameTags[from]->pos.x - iLeft;
-	iRight = ( from==numFrames-1 ? getWidth() : frameEnds[from]->x );
-	iOffsetFromRight = frameNameTags[from]->pos.x - iRight;
-
-	destLeft = ( to==0 ? 0 : frameEnds[to-1]->x );
-	destOffsetFromLeft = frameNameTags[to]->pos.x - destLeft;
-	destRight = to==numFrames-1 ? getWidth() : frameEnds[to]->x;
-	destOffsetFromRight = frameNameTags[to]->pos.x - destRight;
-
-	dxFromLeft = iOffsetFromLeft - destOffsetFromLeft;
-	dxFromRight = iOffsetFromRight - destOffsetFromRight;
-
-	dx = abs(dxFromLeft)<=abs(dxFromRight) ? dxFromLeft : dxFromRight;
+        centerOffset = frameNameTags[from]->pos.x - fromCenter;
+        dx = (toCenter+centerOffset) - (frameNameTags[to]->pos.x); 
 	dy = frameNameTags[from]->pos.y - frameNameTags[to]->pos.y;
 	moveFrameNameTag(to, dx, dy);
 
