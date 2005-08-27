@@ -61,6 +61,12 @@ public:
     return curCPT->next(it,p);
   }
 
+  // This function assumes that::
+  //   1) deterministic() is true
+  //   2) the curCPT is a deterministic CPT
+  // If these conditions are not true, calling this function will yield a run-time error.
+  void assignDeterministicChild() { curCPT->assignDeterministicChild(allParents,this); }
+
   virtual HidDiscRV* cloneRVShell();
   virtual HidDiscRV* create() {
     HidDiscRV*rv = new HidDiscRV(rv_info,frame(),cardinality);

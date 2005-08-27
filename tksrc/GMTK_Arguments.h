@@ -812,6 +812,24 @@ const char*const argerr = "ARG ERROR";
 #endif // defined(GMTK_ARG_HASH_LOAD_FACTOR)
 
 
+
+#if defined(GMTK_ARG_STORE_DETERMINISTIC_CHILDREN)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("deterministiChildrenStore",Arg::Opt,MaxClique::storeDeterministicChildrenInClique,"Store deterministic children in clique memory"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_STORE_DETERMINISTIC_CHILDREN)
+
+
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/

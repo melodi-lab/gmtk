@@ -171,6 +171,14 @@ public:
   // Otherwise, if the function returns false, p is undefined.
   virtual bool next(logpr& p) = 0;
 
+
+  // If this variable is deterministic (i.e., deterministic() returns
+  // true), then this routine assumes that 1) the child is hidden, 2)
+  // the parents are set sufficiently so that the child can be
+  // determined with probability one, and 3) sets this child
+  // accordingly.
+  virtual void assignDeterministicChild() { error("INTERNAL ERROR: invalidly called RV::assignDeterministicChild()"); }
+
   ////////////////////////////////////////////////////////////////////////
   // Sample the current distribution setting the random variable to a set
   // of values depending on the current parent values.
@@ -206,28 +214,10 @@ public:
   double log10ProductCardOfParentsNotContainedInSet(const set <RV*> givenSet);
 
   // returns true if the RV is determinstic.
-  bool deterministic() {
-    // TODO: make this a member of the rv_info (so that we don't
-    // re-compute this over and over).
-    for (unsigned i=0;i<rv_info.discImplementations.size();i++) {
-      if (rv_info.discImplementations[i] != CPT::di_MTCPT)
-	return false; 
-    }
-    return true;
-  }
+  bool deterministic() {  return rv_info.deterministic();  }
 
   // returns true if all cpts are sparse or determinstic.
-  bool sparse() {
-    // TODO: make this a member of the rv_info (so that we don't
-    // re-compute this over and over).
-    for (unsigned i=0;i<rv_info.discImplementations.size();i++) {
-      if ((rv_info.discImplementations[i] != CPT::di_MTCPT)
-	  &&
-	  (rv_info.discImplementations[i] != CPT::di_MSCPT))
-	return false; 
-    }
-    return true;
-  }
+  bool sparse() { return rv_info.sparse();  }
 
   // This routine returns the average cardinality (average number of
   // possible child random variable values with non-zero probability)

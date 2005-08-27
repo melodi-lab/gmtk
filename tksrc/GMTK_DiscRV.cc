@@ -59,7 +59,7 @@ VCID("$Header$")
 void DiscRV::printSelf(FILE *f,bool nl)
 {
   printNameFrameValue(f,false);
-  fprintf(f,"discrete cardinality = %d%s",cardinality,nls(nl));
+  fprintf(f,"discrete cardinality=%d, det=%d, %s",cardinality,deterministic(),nls(nl));
 }
 
 
@@ -88,7 +88,7 @@ void DiscRV::printSelfVerbose(FILE *f)
   fprintf(f,"Discrete Random variable:\n");
   printNameFrameValue(f,true);
   fprintf(f,"From line %d in file %s\n",rv_info.fileLineNumber,rv_info.rvFileName.c_str());
-  fprintf(f,"RV has cardinality = %d\n",cardinality);
+  fprintf(f,"RV has cardinality = %d, deterministic = %d\n",cardinality,deterministic());
 }
 
 

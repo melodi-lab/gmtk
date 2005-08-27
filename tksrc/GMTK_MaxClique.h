@@ -247,6 +247,12 @@ public:
   // additional normal beam to include once mass is covered.
   static double cliqueBeamMassFurtherBeam;
 
+  // set to true to store all deterministic children that exist in
+  // this clique with its parents in the clique sorage. Otherwise, set
+  // to false so that the det. children are not stored (which saves
+  // space and might but does not necessarily slow things down).
+  static bool storeDeterministicChildrenInClique;
+
   
   // When doing inference if any kind, this variable determines
   // if we should clear the clique and separator value cache
@@ -607,13 +613,39 @@ public:
   // USED ONLY IN JUNCTION TREE INFERENCE
   // These are the nodes that are hidden (i.e., they are
   // the non-continous hidden variables). These are
-  // the nodes whose values will be hashed.
+  // the nodes whose values could be hashed.
+  // Computed in MaxClique::prepareForUnrolling()
+  // Used to:
+  //   1) compute hashableNodes
+  vector<RV*> hiddenNodes;
+
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // These are the hidden nodes that are hashed (i.e., they are
+  // the nodes that when unpacked, and along with
+  // the observations, are such that any remaining
+  // nodes in the clique can be determined uniquely (e.g.,
+  // deterministic nodes)
   // Computed in MaxClique::prepareForUnrolling()
   // Used to:
   //   1) set the size of the clique packer
   //   2) set the size of discreteValuePtrs in inference clique
   //      to get quick access to the set of RV vals.
-  vector<RV*> hiddenNodes;
+  vector<RV*> hashableNodes;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // These are the nodes that given the hashable nodes
+  // and any observations can be determinied deterministically.
+  // Note that if this vector is empty, then hashableNodes contains
+  // everything to be hashed. The nodes are so ordered that
+  // these  nodes should be determined in order (i.e., later ones
+  // might use earlier ones as parents).
+  // Computed in MaxClique::prepareForUnrolling()
+  // Used to:
+  //   1) when unpacking clique, compute the rest of the clique values
+  //      (by determining these variables deterministic values)
+  vector<RV*> determinableNodes;
+
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // Clique neighbors in a junction tree, integer indexes into a table
@@ -845,10 +877,13 @@ class InferenceMaxClique  : public IM
   sArray< RV*> fSortedAssignedNodes;
   sArray< RV*> fUnassignedIteratedNodes;
   sArray< RV*> fUnassignedNodes;
+  sArray< RV*> fDeterminableNodes;
   // Direct pointers to the values within the discrete hidden RVs
   // within this clique.  Note, the observed discrete and continuous
   // variables are not contained here.
   sArray < DiscRVType* > discreteValuePtrs;
+
+
 
   // Data structure holding a clique value, i.e., a set of random
   // variable values and a probability for that set of values.

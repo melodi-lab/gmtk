@@ -1631,6 +1631,8 @@ JunctionTree::assignRVsToCliques(const char *const partName,
     // pre-compute it here. While we're at it, we compute if all
     // parents are observed since the behaviour is a bit
     // different in this case.
+    // TODO: check if this is really necessary, as in template routines vector is a container
+    //       so can be used as needed.
     set<RV*> parSet;
     bool allParentsObserved=true;
     for (unsigned p=0;p<rv->allParents.size();p++) {

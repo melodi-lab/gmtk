@@ -239,6 +239,17 @@ public:
   // probability value).
   virtual bool next(iterator &,logpr& p) = 0;
 
+
+  // If this CPT is deterministic function, then this routine sets the
+  // child as a function of the current values of the parents.
+  virtual void assignDeterministicChild(vector < RV *>& parents,
+					DiscRV* drv) {
+    // unless child class re-defines this routine, it is always
+    // an error to call it. 
+    error("INTERNAL ERROR: invalidly called RV::assignDeterministicChild()");
+  }
+
+
   ///////////////////////////////////////////////////////////  
   // Given the current parent values, generate a random sample.
   virtual int randomSample(DiscRV* drv) = 0;

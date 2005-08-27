@@ -137,6 +137,23 @@ public:
     return false;
   }
 
+  void assignDeterministicChild( vector < RV* >& parents,
+				 DiscRV* drv )
+  {
+    drv->val = dt->query(parents,drv);
+    if (drv->val >= card()) {
+      warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
+	      name().c_str(),
+	      card(),
+	      dt->name().c_str(),
+	      drv->val);
+      fprintf(stderr,"Parents configuration :");
+      printRVSetAndValues(stderr,parents);
+      error("");
+    }
+  }
+
+
   // used for elimination/triangulation
   virtual unsigned averageCardinality() { return 1; }
   virtual unsigned maxCardinality() { return 1; }

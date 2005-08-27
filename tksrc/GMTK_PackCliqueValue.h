@@ -111,6 +111,12 @@ public:
 
   ~PackCliqueValue() {}
 
+  // return the number of bits required for storing a vector of nodes
+  // (or array with cardinalities).
+  static unsigned numWordsRequiredFor(vector<RV*>& nodes,RV* extra=NULL);
+  static unsigned numWordsRequiredFor(set<RV*>& nodes,RV* extra=NULL);
+  static unsigned numWordsRequiredFor(const unsigned len, const unsigned *const cards);
+  static unsigned numSpareBitsAvailableWith(vector<RV*>& nodes);
 
   // Return the number of unsigned words that are required to hold a
   // packed clique value.
