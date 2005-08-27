@@ -797,6 +797,8 @@ FileParser::parseRandomVariableList()
   curRV.clear();
   parseRandomVariable();
 
+
+
   ////////////////////////////////////////////////////////////
   // A number of "semantic" errors can be checked right
   // here before going on, so we do that.
@@ -857,6 +859,10 @@ FileParser::parseRandomVariableList()
 
   curRV.variablePositionInStrFile = rvInfoVector.size();
 
+  // compute the RV's internal status variables
+  curRV.computeAndReturnDeterministicStatus();
+  curRV.computeAndReturnSparseStatus();
+
   // everything looks ok, insert it in our tables.
   rvInfoVector.push_back(curRV);
   // add to map
@@ -864,6 +870,7 @@ FileParser::parseRandomVariableList()
 	    RVInfo::rvParent(curRV.name,curRV.frame)
             ]
     = rvInfoVector.size()-1;
+
 
   parseRandomVariableList();
 }

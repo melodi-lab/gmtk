@@ -228,6 +228,8 @@ FILE* SeparatorClique::veSeparatorFile = NULL;
 float SeparatorClique::veSeparatorLogProdCardLimit = 7.0; // i.e., 1e7=10M is default max.
 
 bool MaxClique::perSegmentClearCliqueValueCache = true;
+bool MaxClique::storeDeterministicChildrenInClique = true;
+
 
 /*
  *
@@ -1095,14 +1097,146 @@ void
 MaxClique::prepareForUnrolling()
 {
 
+  set<RV*> hiddenNodesSet;
+
   // set up number of hidden ndoes
   set<RV*>::iterator it;
   for (it = nodes.begin();
        it != nodes.end();
        it++) {
     RV* rv = (*it);
-    if (rv->hidden())
+    if (rv->hidden()) {
       hiddenNodes.push_back(rv);
+      hiddenNodesSet.insert(rv);
+    }
+  }
+
+  if (storeDeterministicChildrenInClique) {
+    hashableNodes = hiddenNodes;
+    determinableNodes.clear();
+  } else {
+
+    vector<RV*> hiddenNodesSorted;
+    GraphicalModel::topologicalSort(hiddenNodesSet,hiddenNodesSet,hiddenNodesSorted);
+
+    determinableNodes.clear();
+    hashableNodes.clear();
+    for (unsigned n=hiddenNodesSorted.size();n>0;n--) {
+      RV* rv = hiddenNodesSorted[n-1];
+      if (   rv->discrete() 
+	     && rv->hidden()    // we know the first two are true but include them for clarity.
+	     && RV2DRV(rv)->deterministic() ) {
+	// printf("found deterministic node, in assignedNodes = %d :",(assignedNodes.find(rv) != assignedNodes.end())); 
+	// rv->printNameFrame(stdout,true);
+
+	// Now check to see if this node hidden parents live in earlier
+	// nodes in clique. Because we are checking the nodes reverse
+	// topologically, we need not worry about the nodes that have
+	// already been removed. Also, we don't care about this nodes
+	// observed parents, since any observed parents can live
+	// anywhere.
+
+	// create a set version of all the parents for this rv.
+	set<RV*> parSet;
+	for (unsigned j=0;j<rv->allParents.size();j++) {
+	  parSet.insert(rv->allParents[j]);
+	}
+	set<RV*> parentsInClique;
+	set_intersection(parSet.begin(),parSet.end(),
+			 nodes.begin(),nodes.end(),
+			 inserter(parentsInClique,parentsInClique.end()));
+	// printf("number of parents in clique = %d, num parents = %d\n",parentsInClique.size(),rv->allParents.size());
+	if (parentsInClique.size() == rv->allParents.size()) {
+	  // then rv is discrete, hidden, deterministic, and its parents live
+	  // in the earlier nodes in the clique. 
+	  determinableNodes.push_back(rv);
+	  continue; // onto next loop
+	} else {
+	  // check if all the parents out of the clique are all observed, and
+	  // if so, we're still fine (i.e., the node rv can be removed).
+	  set<RV*> parentsOutOfClique;
+	  set_difference(parSet.begin(),parSet.end(),
+			 parentsInClique.begin(),parentsInClique.end(),
+			 inserter(parentsOutOfClique,parentsOutOfClique.end()));
+	  set<RV*>::iterator it;
+	  bool parentsOutOfCliqueObserved = true;
+	  // printf("num parents out of clique = %d: ",parentsOutOfClique.size());
+	  for (it = parentsOutOfClique.begin(); it != parentsOutOfClique.end(); it++) {
+	    RV* par = (*it);
+	    if (par->hidden()) {
+	      parentsOutOfCliqueObserved = false;
+	      // par->printNameFrame(stdout,false);
+	      // break;
+	    }
+	  }
+	  // printf("\n");
+
+	  if (parentsOutOfCliqueObserved) {
+	    determinableNodes.push_back(rv);
+	    continue; // onto next loop
+	  }
+	}
+      }
+      // we failed, so this must be a hashable node.
+      hashableNodes.push_back(rv);
+    }
+
+    assert( hiddenNodes.size() == hashableNodes.size() + determinableNodes.size() );
+
+    // Reverse nodes so that increasing order is the order that they
+    // should be set (i.e., so that later ones might depend on earlier
+    // ones, but not the reverse).
+    reverse(determinableNodes.begin(),determinableNodes.end());
+
+    // printf("Number of words required for original %d hidden variables = %d\n",
+    // hiddenNodes.size(),PackCliqueValue::numWordsRequiredFor(hiddenNodes));
+    // printf("Number of words required for %d hidden hashable variables w/o determinism = %d\n",
+    // hashableNodes.size(),PackCliqueValue::numWordsRequiredFor(hashableNodes));
+
+    const unsigned hash_pack_size = PackCliqueValue::numWordsRequiredFor(hashableNodes);
+    const unsigned orig_pack_size = PackCliqueValue::numWordsRequiredFor(hiddenNodes);
+    assert ( hash_pack_size <= orig_pack_size );
+    
+    infoMsg(High,"Packed clique size %d words with %d all hidden variables, and %d words without %d deterministic vars\n",
+	    orig_pack_size,hiddenNodes.size(),hash_pack_size,determinableNodes.size());
+
+    if (hash_pack_size == orig_pack_size) {
+      // then don't bother with not storing the deterministic nodes
+      // since we wouldn't save any memory.
+      hashableNodes = hiddenNodes;
+      determinableNodes.clear();
+    } else {
+      // So hash_pack_size < orig_pack_size,
+      // Last, we take some of the nodes in determinable nodes and add them
+      // back to hashable nodes as long as the number of words does not
+      // increase. Do this in increasing order of node cardinality.
+    
+      vector<RV*> determinableNodesSortedByCard = determinableNodes;
+      sort(determinableNodesSortedByCard.begin(),determinableNodesSortedByCard.end(),ParentCardinalityCompare());
+
+      // this is not the most efficient way of doing this, but it is
+      // only run 1X so probably not that crucial to optimize.
+      set <RV*> determinableNodesToRemove;
+      for (unsigned j=0; 
+	   j < determinableNodesSortedByCard.size() &&
+	     PackCliqueValue::numWordsRequiredFor(hashableNodes,determinableNodesSortedByCard[j]) == hash_pack_size;
+	   j++) {
+	hashableNodes.push_back(determinableNodesSortedByCard[j]);
+	determinableNodesToRemove.insert(determinableNodesSortedByCard[j]);
+      }
+
+      if (determinableNodesToRemove.size() > 0) {
+	// need to create a new determinableNodes without the ones we removed, but otherwise in the same order.
+	infoMsg(High,"Placing %d deterministic variables back into hashable set since word size (%d) the same\n",
+		determinableNodesToRemove.size(),hash_pack_size);
+	vector <RV*> updatedDeterminableNodes;
+	for (unsigned j=0;j<determinableNodes.size();j++) {
+	  if (determinableNodesToRemove.find(determinableNodes[j]) == determinableNodesToRemove.end())
+	    updatedDeterminableNodes.push_back(determinableNodes[j]);
+	}
+	determinableNodes = updatedDeterminableNodes;
+      }
+    }
   }
 
   // setup and re-construct packer
@@ -1113,8 +1247,8 @@ MaxClique::prepareForUnrolling()
   // store observed values in clique tables, we need to do a bit of
   // extra checking here.
 
-  if (hiddenNodes.size() > 0) {
-    new (&packer) PackCliqueValue(hiddenNodes);
+  if (hashableNodes.size() > 0) {
+    new (&packer) PackCliqueValue(hashableNodes);
     // ensure that we have something to store.
     assert (packer.packedLen() > 0);
   } else {
@@ -1438,8 +1572,16 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
   psp(f,indent*2);
   fprintf(f,"%d Cumulative Unassigned: ",cumulativeUnassignedIteratedNodes.size()); printRVSet(f,cumulativeUnassignedIteratedNodes);
 
-  psp(f,indent*2);
-  fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
+  if (hiddenNodes.size() == hashableNodes.size()) {
+    psp(f,indent*2);
+    fprintf(f,"%d Hidden/Hashable: ",hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
+  } else {
+    psp(f,indent*2);
+    fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
+
+    psp(f,indent*2);
+    fprintf(f,"%d Hashable: ",hashableNodes.size()); printRVSetAndCards(f,hashableNodes);
+  }
 
 
   psp(f,indent*2);
@@ -1820,10 +1962,10 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 
   // Clique values only store/hash values of hidden (thus necessarily
   // discrete) variables since they are the only thing that change.
-  discreteValuePtrs.resize(origin.hiddenNodes.size());
+  discreteValuePtrs.resize(origin.hashableNodes.size());
   for (i=0;i<discreteValuePtrs.size();i++) {
     // get the unrolled rv for this hidden node
-    RV* rv = origin.hiddenNodes[i];
+    RV* rv = origin.hashableNodes[i];
     RVInfo::rvParent rvp;
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
@@ -1841,6 +1983,26 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
     // grab a pointer directly to its value for easy access later.
     discreteValuePtrs[i] = &(drv->val);
   }
+
+  fDeterminableNodes.resize(origin.determinableNodes.size());
+  for (i=0;i<fDeterminableNodes.size();i++) {
+    // get the unrolled rv for this hidden node
+    RV* rv = origin.determinableNodes[i];
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+    if ( ppf.find(rvp) == ppf.end() ) {
+      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	    rv->name().c_str(),rv->frame(),frameDelta,
+	    rvp.first.c_str(),rvp.second);
+      assert ( ppf.find(rvp) != ppf.end() );
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+
+    // hidden nodes are always discrete (in this version).
+    fDeterminableNodes[i] = RV2DRV(nrv);
+  }
+
 
   numCliqueValuesUsed = 0;
   maxCEValue.set_to_zero();
@@ -1947,7 +2109,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
   if (!origin.ceSeparatorDrivenInference)
     return ceGatherFromIncommingSeparatorsCliqueDriven(part);
 
-  if (origin.hiddenNodes.size() == 0) {
+  if (origin.hashableNodes.size() == 0) {
     ceGatherFromIncommingSeparatorsCliqueObserved(part);
   } else {
     // if we're still here, we do regular separator driven inference.
@@ -3551,7 +3713,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   infoMsg(IM::High-1,"Clique state space = %d.\n",numCliqueValuesUsed);
 
   // first check if this is an all observed clique.
-  if (origin.hiddenNodes.size() == 0) {
+  if (origin.hashableNodes.size() == 0) {
     // Everything in this clique is observed.  Therefore, there should
     // be one and only one clique value in this clique which is the
     // probability of the assigned probability nodes in this clique.
@@ -3727,6 +3889,13 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			     (unsigned**)discreteValuePtrs.ptr);
       }
+      if (fDeterminableNodes.size() > 0) {
+	for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	  RV* rv = fDeterminableNodes.ptr[j];
+	  RV2DRV(rv)->assignDeterministicChild();
+	}
+      }
+
 
       // All hidden random variables now have their discrete
       // value. Accumulate this probability into the given separator.
@@ -4655,7 +4824,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePart
 {
   assert (MaxClique::ceSeparatorDrivenInference == false); 
 
-  if (origin.hiddenNodes.size() == 0) {
+  if (origin.hashableNodes.size() == 0) {
     ceGatherFromIncommingSeparatorsCliqueObserved(part);
   } else {
     logpr p = 1.0;
@@ -5122,7 +5291,7 @@ maxProbability(bool setCliqueToMaxValue)
   if (numCliqueValuesUsed == 0)
     return logpr();
   
-  if (origin.hiddenNodes.size() == 0) {
+  if (origin.hashableNodes.size() == 0) {
     // The observed clique case requires no action since this
     // means that the cliuqe (and therefore all its separators)
     // are all observed and already set to their max prob (and only) values.
@@ -5148,6 +5317,13 @@ maxProbability(bool setCliqueToMaxValue)
 	origin.packer.unpack((unsigned*)cliqueValues.ptr[max_cvn].ptr,
 			     (unsigned**)discreteValuePtrs.ptr);
       }
+      if (fDeterminableNodes.size() > 0) {
+	for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	  RV* rv = fDeterminableNodes.ptr[j];
+	  RV2DRV(rv)->assignDeterministicChild();
+	}
+      }
+
     }
 
     return max_cvn_score;
@@ -5202,6 +5378,12 @@ printCliqueEntries(FILE *f,const char*str, const bool normalize)
     } else {
       origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
+    }
+    if (fDeterminableNodes.size() > 0) {
+      for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	RV* rv = fDeterminableNodes.ptr[j];
+	RV2DRV(rv)->assignDeterministicChild();
+      }
     }
     if (normalize) {
       // then print the exponentiated probability
@@ -5283,7 +5465,7 @@ emIncrement(const logpr probE,
   }
 
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
-  const bool clique_has_hidden_vars = (origin.hiddenNodes.size() > 0);
+  const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
   
   logpr beamThreshold((void*)0);
   if (emTrainingBeam != (-LZERO)) {
@@ -5320,6 +5502,13 @@ emIncrement(const logpr probE,
 	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			     (unsigned**)discreteValuePtrs.ptr);
       }
+      if (fDeterminableNodes.size() > 0) {
+	for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	  RV* rv = fDeterminableNodes.ptr[j];
+	  RV2DRV(rv)->assignDeterministicChild();
+	}
+      }
+
     }
     // Increment all assigned probability nodes.  
     // 
@@ -5419,7 +5608,7 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
   InferenceSeparatorClique::AISeparatorValue * const
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
-  if (origin.hiddenNodes.size() == 0) {
+  if (origin.hashableNodes.size() == 0) {
     // do the observed clique case up front right here so we don't
     // need to keep checking below.
     InferenceSeparatorClique::AISeparatorValue& sv
@@ -5455,6 +5644,12 @@ deReceiveFromIncommingSeparator(JT_InferencePartition& part,
     } else {
       origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
+    }
+    if (fDeterminableNodes.size() > 0) {
+      for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	RV* rv = fDeterminableNodes.ptr[j];
+	RV2DRV(rv)->assignDeterministicChild();
+      }
     }
 
     // All hidden random variables now have their discrete
@@ -5643,7 +5838,7 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
 				       InferenceSeparatorClique& sep)
 {
 
-  if (origin.hiddenNodes.size() == 0) {
+  if (origin.hashableNodes.size() == 0) {
     // All clique values already set to their max (and only) settings,
     // so no need to do anything.
     return;
@@ -5667,6 +5862,13 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
     origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			 (unsigned**)discreteValuePtrs.ptr);
   }
+  if (fDeterminableNodes.size() > 0) {
+    for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+      RV* rv = fDeterminableNodes.ptr[j];
+      RV2DRV(rv)->assignDeterministicChild();
+    }
+  }
+
 
 #if 0
 
@@ -5739,6 +5941,14 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
 	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			     (unsigned**)discreteValuePtrs.ptr);
       }
+      if (fDeterminableNodes.size() > 0) {
+	for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	  RV* rv = fDeterminableNodes.ptr[i];
+	  RV2DRV(rv)->assignDeterministicChild();
+	}
+      }
+
+
 
       // done
       goto done;
@@ -5783,6 +5993,13 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
       origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
     }
+    if (fDeterminableNodes.size() > 0) {
+      for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	RV* rv = fDeterminableNodes.ptr[i];
+	RV2DRV(rv)->assignDeterministicChild();
+      }
+    }
+
 
 
   } else {
@@ -5803,6 +6020,13 @@ deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
       origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			   (unsigned**)discreteValuePtrs.ptr);
     }
+    if (fDeterminableNodes.size() > 0) {
+      for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	RV* rv = fDeterminableNodes.ptr[i];
+	RV2DRV(rv)->assignDeterministicChild();
+      }
+    }
+
   }
  done:
   ;
@@ -5904,7 +6128,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
   // bp to zero here.
 
 
-  if (origin.hiddenNodes.size() == 0) {
+  if (origin.hashableNodes.size() == 0) {
     // Do the observed clique case up front right here so we don't
     // need to keep checking below. Here, the clique is observed which
     // means that all connecting separators are also observed. We just
@@ -5935,6 +6159,12 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
       } else {
 	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
 			     (unsigned**)discreteValuePtrs.ptr);
+      }
+      if (fDeterminableNodes.size() > 0) {
+	for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	  RV* rv = fDeterminableNodes.ptr[j];
+	  RV2DRV(rv)->assignDeterministicChild();
+	}
       }
 
       // now we iterate through all the separators.

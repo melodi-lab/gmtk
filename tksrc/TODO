@@ -3140,8 +3140,9 @@ Thu Aug 25 14:04:39 2005
     parameter updating (i.e., this mgiht be useful when det. values are not stored within clique).
 
 
-
-
-
-
+Fri Aug 26 00:35:20 2005
+  // TODO: have some form of RV::currentlyDeterministic() function, which based on
+  // the current switching parents values, checks if the current CPT is deterministic.
+     If so (based on switching values), we can set all det variables. 
     
+

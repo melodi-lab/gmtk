@@ -90,6 +90,17 @@ public:
     return curCPT->next(it,p);
   }
 
+  // This function assumes that::
+  //   1) deterministic() is true
+  //   2) the curCPT is a deterministic CPT
+  // If these conditions are not true, calling this function will yield a run-time error.
+  // TODO: have some form of currentlyDeterministic() function, which based on
+  // the current switching parents values, checks if the current CPT is deterministic.
+  void assignDeterministicChild() { 
+    setCurrentConditionalParents(this);
+    curCPT = conditionalCPTs[cachedSwitchingState];
+    curCPT->assignDeterministicChild(allParents,this); 
+  }
 
   void emIncrement(logpr posterior) {
     setCurrentConditionalParents(this);

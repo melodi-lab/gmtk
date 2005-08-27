@@ -548,6 +548,87 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * PackCliqueValue::numWordsRequiredFor()
+ * return the number of bits required for storing a vector of nodes
+ * (or array with cardinalities).
+ *
+ * Preconditions:
+ *   input must be valid
+ * 
+ * Postconditions:
+ *   see above.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   number of bits n
+ *
+ *-----------------------------------------------------------------------
+ */
+unsigned PackCliqueValue::numWordsRequiredFor(vector<RV*>& nodes,RV* extra)
+{
+  if (nodes.size() == 0 && (extra == NULL)) return 0;
+  sArray < unsigned > cards(nodes.size() + ((extra != NULL)?1:0));
+  vector<RV*>::iterator it;
+  unsigned i=0;
+  for (it=nodes.begin();
+       it != nodes.end();it++) {
+    RV*rv = (*it);
+    assert ( rv->discrete() );
+    DiscRV*drv = RV2DRV(rv);
+    cards.ptr[i] = drv->cardinality;
+    i++;
+  }
+  if (extra != NULL) {
+    RV*rv = extra;
+    assert ( rv->discrete() );
+    DiscRV*drv = RV2DRV(rv);
+    cards.ptr[i] = drv->cardinality;
+  }
+  return numWordsRequiredFor(cards.size(),cards.ptr);
+}
+unsigned PackCliqueValue::numWordsRequiredFor(set<RV*>& nodes,RV* extra)
+{
+  if (nodes.size() == 0 && (extra == NULL)) return 0;
+  sArray < unsigned > cards(nodes.size() + ((extra != NULL)?1:0));
+  set<RV*>::iterator it;
+  unsigned i=0;
+  for (it=nodes.begin();
+       it != nodes.end();it++) {
+    RV*rv = (*it);
+    assert ( rv->discrete() );
+    DiscRV*drv = RV2DRV(rv);
+    cards.ptr[i] = drv->cardinality;
+    i++;
+  }
+  if (extra != NULL) {
+    RV*rv = extra;
+    assert ( rv->discrete() );
+    DiscRV*drv = RV2DRV(rv);
+    cards.ptr[i] = drv->cardinality;
+  }
+  return numWordsRequiredFor(cards.size(),cards.ptr);
+}
+unsigned PackCliqueValue::numWordsRequiredFor(const unsigned len, const unsigned *const cards)
+{
+  unsigned totalNumBits = 0;
+  for (unsigned i = 0; i< len; i++) {
+    unsigned bits = bitsRequiredUptoNotIncluding(cards[i]);
+    totalNumBits += bits;
+  }
+  const unsigned numBitsPerUnsigned = sizeof(unsigned)*8;
+  unsigned numUnsignedInPackedVector = 
+    (totalNumBits+numBitsPerUnsigned-1)/numBitsPerUnsigned;
+  return numUnsignedInPackedVector;
+}
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * PackCliqueValue::PackCliqueValue()

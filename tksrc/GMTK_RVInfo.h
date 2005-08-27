@@ -183,6 +183,11 @@ private:
   unsigned rvCard;
   // if it is an observed variable, it must have a feature range.
   FeatureRange rvFeatureRange;
+  // a status flag that tells if the variable is deterministic or not.
+  // This has to be computed once the details of the RV are filled in.
+  bool isDeterministic;
+  // same thing for sparse
+  bool isSparse;
 
   // switching parents and weight stuff
   vector< rvParent > switchingParents;
@@ -232,6 +237,8 @@ public:
     Disposition  new_rvDisp,
     unsigned     new_rvCard,
     FeatureRange new_rvFeatureRange,
+    bool         new_isDeterministic,
+    bool         new_isSparse,
     RV*          new_rv,
     ListIndex    new_switchMapping,
     vector< rvParent >          new_switchingParents,
@@ -251,6 +258,8 @@ public:
   rvDisp( new_rvDisp ), 
   rvCard( new_rvCard ), 
   rvFeatureRange( new_rvFeatureRange ), 
+  isDeterministic ( new_isDeterministic ),
+  isSparse ( new_isSparse ),
   switchingParents( new_switchingParents ), 
   switchMapping( new_switchMapping ), 
   conditionalParents( new_conditionalParents ), 
@@ -281,6 +290,8 @@ public:
     contImplementations = v.contImplementations;
     listIndices = v.listIndices;
     rv = v.rv;
+    isDeterministic = v.isDeterministic;
+    isSparse = v.isSparse;
   }
 
   // clear out the current RV structure when we
@@ -303,7 +314,36 @@ public:
     contImplementations.clear();
     listIndices.clear();
 
+    isDeterministic = isSparse = false;
   }
+
+  bool computeAndReturnDeterministicStatus() {
+    isDeterministic = false;
+    for (unsigned i=0;i<discImplementations.size();i++) {
+      if (discImplementations[i] != CPT::di_MTCPT)
+	return false; 
+    }
+    isDeterministic = true;
+    return true;
+  }
+
+  bool deterministic() { return isDeterministic; }
+
+  bool computeAndReturnSparseStatus() {
+    isSparse = false;
+    for (unsigned i=0;i<discImplementations.size();i++) {
+      if ((discImplementations[i] != CPT::di_MTCPT)
+	  &&
+	  (discImplementations[i] != CPT::di_MSCPT))
+	return false; 
+    }
+    isSparse = true;
+    return true;
+  }
+
+  bool sparse() { return isSparse; }
+
+
 
 };
 
