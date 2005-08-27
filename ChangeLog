@@ -1,3 +1,8 @@
+2005-08-27  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
+
+	* new -deterministiChildrenStore option to inference programs, to optionally not
+	  store determinisitc variables in cliques. Saves memory but 10-20% slower.
+
 2005-06-20  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
 
 	* added new beam options, -cmbeam, -cmmin 
