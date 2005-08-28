@@ -3144,5 +3144,25 @@ Fri Aug 26 00:35:20 2005
   // TODO: have some form of RV::currentlyDeterministic() function, which based on
   // the current switching parents values, checks if the current CPT is deterministic.
      If so (based on switching values), we can set all det variables. 
-    
+
+Sun Aug 28 01:23:06 2005
+  - memory management: if it is the case that same clique over time almost never has the
+    same values, then the clique value structure, and the hash table to find old clique values
+    is just wasting memory. I.e.,:
+      with -probE, then both hash table and shared value storage is a complete waste, since
+            a) since values aren't same, hash table is always a miss
+            b) since values are kept around in shared space even with -probE, early values are
+               never discarded.
+      without -probE:  
+            a) then hash table is a waste since we never find shared values.
+      with island:
+            a) values are kept around (not deleted) even though the should be.
+   Thus, have a mode that doesn't use shared values and hash tables over difference instances
+   of the same clique.
+
+
+Sun Aug 28 13:31:02 2005
+  - anothe memory savings idea, clear the clique/separator value holder and cache every so often (N frames). 
+    This will be good esp. if values are shared with close frames but not far away frames.
+
 
