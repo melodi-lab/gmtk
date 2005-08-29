@@ -158,7 +158,7 @@ void exit_program_with_status(const int stat)
  
 void memory_error()
 {
-  fprintf(stderr,"ERROR: can't allocate any more memory, malloc() failed. Either decrease your model size, find a better triangulation, use more pruning, or use a machine with more memory.\n");
+  fprintf(stderr,"ERROR: can't allocate any more memory, malloc() failed. Either decrease your model size, find a better triangulation, use more pruning, use low-memory options, and/or use a machine with more memory.\n");
   exit_program_with_status(-1);
 }
 
