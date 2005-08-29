@@ -3164,5 +3164,8 @@ Sun Aug 28 01:23:06 2005
 Sun Aug 28 13:31:02 2005
   - anothe memory savings idea, clear the clique/separator value holder and cache every so often (N frames). 
     This will be good esp. if values are shared with close frames but not far away frames.
+  - place the clique value storage at end, and then dynamically allocate it depending on if the value is contained
+    in the clique, or if it is a pointer to a shared hash value.
+
 
 
