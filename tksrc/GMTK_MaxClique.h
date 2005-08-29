@@ -246,23 +246,15 @@ public:
   static unsigned cliqueBeamMassMinSize;
   // additional normal beam to include once mass is covered.
   static double cliqueBeamMassFurtherBeam;
+  // amount to re-sample from pruned clique. =0.0 to turn off.
+  static double cliqueBeamUniformSampleAmount;
+
 
   // set to true to store all deterministic children that exist in
   // this clique with its parents in the clique sorage. Otherwise, set
   // to false so that the det. children are not stored (which saves
   // space and might but does not necessarily slow things down).
   static bool storeDeterministicChildrenInClique;
-
-  
-  // When doing inference if any kind, this variable determines
-  // if we should clear the clique and separator value cache
-  // between segments/utterances. It might be beneficial, for
-  // example, to retain the value cache around between segments/utterances
-  // if for example, there are many such values that are common. If
-  // not, on the other hand, setting this to true will cause
-  // an increase in memory use on each segment.
-  static bool perSegmentClearCliqueValueCache;
-
 
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
@@ -946,7 +938,10 @@ class InferenceMaxClique  : public IM
   sArray< CliqueValue > cliqueValues;
   // Number of currently used clique values
   unsigned numCliqueValuesUsed;
-
+#ifdef TRACK_NUM_CLIQUE_VALS_SHARED
+  // Number of times that the clique value was shared from a time before
+  unsigned numCliqueValuesShared;
+#endif
 
   // Max collect-evidence probability for this clique. Used for beam
   // pruning.
@@ -1036,6 +1031,7 @@ public:
   void ceCliqueMassPrune(const double removeFraction,
 			 const double furtherBeam,
 			 const unsigned minSize);
+  void ceCliqueUniformSamplePrunedCliquePortion(const unsigned origNumCliqueValuesUsed);
   // a version that does all the pruning for this clique.
   void ceDoAllPruning();
 

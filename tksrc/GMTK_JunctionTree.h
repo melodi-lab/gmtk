@@ -154,11 +154,21 @@ public:
   unsigned cliqueWithMinWeight();
 
 
-  void clearCliqueSepValueCache() {
+  void clearCliqueSepValueCache(bool force = false) {
     for (unsigned i=0;i<cliques.size();i++)
-      cliques[i].clearCliqueValueCache();
+      cliques[i].clearCliqueValueCache(force);
     for (unsigned i=0;i<separators.size();i++) 
-      separators[i].clearSeparatorValueCache();
+      separators[i].clearSeparatorValueCache(force);
+  }
+
+  void clearCliqueValueCache(bool force=false) {
+    for (unsigned i=0;i<cliques.size();i++)
+      cliques[i].clearCliqueValueCache(force);
+  }
+
+  void clearSeparatorValueCache(bool force=false) {
+    for (unsigned i=0;i<separators.size();i++) 
+      separators[i].clearSeparatorValueCache(force);
   }
 
 }; 
@@ -426,6 +436,16 @@ public:
   // booleans to indicate where ve-seps should be used.
   static unsigned veSeparatorWhere;
   enum VESeparatorWhere { VESEP_WHERE_P = 0x1, VESEP_WHERE_C = 0x2, VESEP_WHERE_E = 0x4 }; 
+
+  
+  // When doing inference if any kind, this variable determines
+  // if we should clear the clique and separator value cache
+  // between segments/utterances. It might be beneficial, for
+  // example, to retain the value cache around between segments/utterances
+  // if for example, there are many such values that are common. If
+  // not, on the other hand, setting this to true will cause
+  // an increase in memory use on each segment.
+  static bool perSegmentClearCliqueValueCache;
 
   // Set to true if the JT weight that we compute should be an upper
   // bound.  It is not guaranteed to be a tight upper bound, but is
@@ -740,10 +760,10 @@ public:
 
 
   // used to clear out hash table memory between segments
-  void clearCliqueSepValueCache() {
-    P1.clearCliqueSepValueCache();
-    Co.clearCliqueSepValueCache();
-    E1.clearCliqueSepValueCache();
+  void clearCliqueSepValueCache(bool force=false) {
+    P1.clearCliqueSepValueCache(force);
+    Co.clearCliqueSepValueCache(force);
+    E1.clearCliqueSepValueCache(force);
   }
 
   // access to the current set of nodes.

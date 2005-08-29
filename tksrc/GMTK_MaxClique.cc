@@ -227,7 +227,7 @@ bool SeparatorClique::generatingVESeparatorTables = "true";
 FILE* SeparatorClique::veSeparatorFile = NULL;
 float SeparatorClique::veSeparatorLogProdCardLimit = 7.0; // i.e., 1e7=10M is default max.
 
-bool MaxClique::perSegmentClearCliqueValueCache = true;
+
 bool MaxClique::storeDeterministicChildrenInClique = true;
 
 
@@ -295,6 +295,15 @@ MaxClique::cliqueBeamMassMinSize = 1;
  */
 double
 MaxClique::cliqueBeamMassFurtherBeam = 0.0;
+
+
+/*
+ * If 0 <= val <= 1, then fraction of pruned clique table to uniformly re-sample from (without replacement)
+ * if > 1, then number of times to re-sample (without replacement) from pruned clique table.
+ * Set to 0.0 to turn off.
+ */
+double
+MaxClique::cliqueBeamUniformSampleAmount = 0.0;
 
 
 /*
@@ -1062,7 +1071,7 @@ MaxClique
 void
 MaxClique::clearCliqueValueCache(bool force)
 {
-  if ((force || perSegmentClearCliqueValueCache) && packer.packedLen() > IMC_NWWOH) {
+  if (force && packer.packedLen() > IMC_NWWOH) {
     valueHolder.prepare();
     cliqueValueHashSet.clear(CLIQUE_VALUE_HOLDER_STARTING_SIZE);
   }
@@ -2005,6 +2014,9 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 
 
   numCliqueValuesUsed = 0;
+#ifdef TRACK_NUM_CLIQUE_VALS_SHARED
+  numCliqueValuesShared = 0;
+#endif
   maxCEValue.set_to_zero();
   // always prune if we fall below or equal to almost zero.
   cliqueBeamThresholdEstimate.set_to_almost_zero();
@@ -3089,7 +3101,11 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 	  // if it was not found, need to claim this storage that we
 	  // just used.
 	  origin.valueHolder.allocateCurCliqueValue();
-	}
+	} 
+#ifdef TRACK_NUM_CLIQUE_VALS_SHARED	
+	else
+	  numCliqueValuesShared++;
+#endif
 	// Save the pointer to whatever the hash table decided to use.
 	cliqueValues.ptr[numCliqueValuesUsed].ptr = key;
       }
@@ -3709,8 +3725,13 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // during a resize, in which case we need to reassign this variable.
   InferenceSeparatorClique::AISeparatorValue * 
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
-  
+
+#ifdef TRACK_NUM_CLIQUE_VALS_SHARED  
+  infoMsg(IM::High-1,"Clique state space = %d. NumShared = %d, %2.2f percent\n",
+	  numCliqueValuesUsed,numCliqueValuesShared, 100*(float)numCliqueValuesShared/(float)numCliqueValuesUsed);
+#else
   infoMsg(IM::High-1,"Clique state space = %d.\n",numCliqueValuesUsed);
+#endif
 
   // first check if this is an all observed clique.
   if (origin.hashableNodes.size() == 0) {
@@ -3751,12 +3772,14 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     return;
   }
 
+  // ***********************************************************
+  // ***************** PRUNING & SAMPLING **********************
+  // ***********************************************************
 
   // TODO: have option where user can specify order of
   // these pruning options. BKM
 
-  // optionally, do a pass of clique pruning here.
-  // ceCliquePrune();
+  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
 
   // do k-pruning (ideally we would do this after
   // beam pruning, but since beam pruning is integrated
@@ -3775,6 +3798,15 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 		    origin.cliqueBeamMassFurtherBeam,
 		    origin.cliqueBeamMassMinSize);
 
+  // do a pass of clique pruning here.
+  // TODO: if we do this here, we should take out inline code in loop below that does the same.
+  ceCliquePrune();
+
+  if (origin.cliqueBeamUniformSampleAmount != 0) {
+    ceCliqueUniformSamplePrunedCliquePortion(origNumCliqueValuesUsed);
+  }
+
+
   // create an ininitialized variable using dummy argument
   logpr beamThreshold((void*)0);
   if (origin.cliqueBeam != (-LZERO)) {
@@ -3790,7 +3822,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // Now, we send the clique to the outgoing separator, doing
   // regular clique beam pruning as we go.
 
-  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;  
+  const unsigned cbOrigNumCliqueValuesUsed = numCliqueValuesUsed;  
   // logpr origSum = sumProbabilities();
 
   // TODO: do sampling code here, i.e., optionally sample from remaining portion
@@ -4143,14 +4175,14 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
 	    maxCEValue.valref(),
 	    beamThreshold.valref(),
-	    origNumCliqueValuesUsed,
+	    cbOrigNumCliqueValuesUsed,
 	    numCliqueValuesUsed);
 #if 0
     // A version with a bit more information printed.
     infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, orig sum = %f, new clique state space = %d, new sum = %f\n",
 	    maxCEValue.valref(),
 	    beamThreshold.valref(),
-	    origNumCliqueValuesUsed,
+	    cbOrigNumCliqueValuesUsed,
 	    origSum.valref(),
 	    numCliqueValuesUsed,
 	    sumProbabilities().valref());
@@ -4196,7 +4228,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
  *   must have just been called.
  *
  * Postconditions:
- *    Clique table has been pruned, and memory for it has been re-allocated to
+ *    Clique table has been pruned, and memory for it has NOT been re-allocated to
  *    fit the smaller size.
  *
  * Side Effects:
@@ -4275,6 +4307,8 @@ void
 InferenceMaxClique::ceDoAllPruning()
 {
 
+  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
+
   // First, do k-pruning (ideally we would do this after
   // beam pruning, but since beam pruning is integrated
   // into the code above, we do max state pruning first).
@@ -4295,6 +4329,11 @@ InferenceMaxClique::ceDoAllPruning()
 
   // next, do normal beam pruning.
   ceCliquePrune();
+
+  if (origin.cliqueBeamUniformSampleAmount != 0) {
+    ceCliqueUniformSamplePrunedCliquePortion(origNumCliqueValuesUsed);
+  }
+
 
   // lastly, resize.
   // To reallocate or not to reallocate, that is the question.  here,
@@ -4333,7 +4372,7 @@ InferenceMaxClique::ceDoAllPruning()
  *   must have just been called.
  *
  * Postconditions:
- *    Clique table has been pruned, and memory for it has been re-allocated to
+ *    Clique table has been pruned, and memory for it has NOT been re-allocated to
  *    fit the smaller size.
  *
  * Side Effects:
@@ -4507,7 +4546,6 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   infoMsg(IM::Med,"Clique k-beam pruning: Original clique state space = %d, new clique state space = %d\n",
 	  numCliqueValuesUsed,k);
   
-  cliqueValues.resizeAndCopy(k);
   numCliqueValuesUsed = k;
 
 }
@@ -4532,7 +4570,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
  *   must have just been called.
  *
  * Postconditions:
- *    Clique table has been pruned, and memory for it has been re-allocated to
+ *    Clique table has been pruned, and memory for it has NOT been re-allocated to
  *    fit the smaller size.
  *
  * Side Effects:
@@ -4549,7 +4587,6 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
 				      const double furtherBeam,
 				      const unsigned minSize)
 {
-
 
   if (removeFraction <= 0.0 || numCliqueValuesUsed <= minSize)
     return;
@@ -4615,13 +4652,108 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
   if (k<minSize)
     k=min(minSize,numCliqueValuesUsed);
 
-  infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space (mass) = %d (%e), new state space = %d, desired (actual) new-mass = %e(%e)\n",
+  infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space = %d (mass=%e), new state space = %d, desired(actual) new-mass = %e(%e)\n",
 	  numCliqueValuesUsed,origSum.val(),
 	  k,desiredSum.val(),actualSum.val());
 
   numCliqueValuesUsed = k;  
 
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceCliqueUniformSamplePrunedCliquePortion()
+ *
+ *    After pruning has occured, this routine will uniformly sample a
+ *    certain portion of the entries that have been pruned away, and
+ *    place them back in the clique. It does this uniformly, i.e.,
+ *    irrespectively of the mass/score on each clique entry. The
+ *    reason for this is that if pruning by score (which is what all
+ *    of the pruning methods so far do) leads us to get a zero
+ *    probability, then we add a bit of noise irrespective of the
+ *    probabilities back in to the inference so that hopefully one of
+ *    the entries will allow us to get a non-zero score at the very
+ *    end of inference.
+ *  
+ *    TODO: select entries rather than uniformly at random, but based also on
+ *          some form of "diversity", so that for the number of re-samples, we
+ *          get as different a set of entries as possible.
+ *    
+ *
+ * Preconditions:
+ *   1) clique table must be created, meaning that either:
+ *
+ *        InferenceMaxClique::ceIterateAssignedNodesRecurse()
+ *   or
+ *        InferenceMaxClique::ceIterateAssignedNodesCliqueDriven
+ *   must have just been called.
+ *   We assume that the clique has been pruned in the past, but that
+ *   the memory for the clique still exists in the clique table (cliqueValues), meaning
+ *   that no memory reallocation has yet been done based on prunning. We also
+ *   assume that the argument 'origNumCliqueValuesUsed' contains the size of the
+ *   clique before any pruning has been done, and that 'numCliqueValuesUsed' gives
+ *   the number of current clique values used, and that all entries between entry
+ *   numCliqueValuesUsed and origNumCliqueValuesUsed-1 inclusive are previously pruned
+ *   cliques entries.
+ *   
+ *
+ * Postconditions:
+ *    Clique table has been "un-pruned", and memory for it has NOT been re-allocated to
+ *    fit the smaller size.
+ *
+ * Side Effects:
+ *    changes the clique size.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+InferenceMaxClique::ceCliqueUniformSamplePrunedCliquePortion(const unsigned origNumCliqueValuesUsed)
+{
+
+  if (origin.cliqueBeamUniformSampleAmount == 0.0)
+    return;
+
+  unsigned numEntriesPruned = origNumCliqueValuesUsed - numCliqueValuesUsed;
+  if (numEntriesPruned == 0)
+    return;
+
+  unsigned numToSample;
+  if (origin.cliqueBeamUniformSampleAmount < 1.0) {
+    numToSample = (unsigned)(origin.cliqueBeamUniformSampleAmount*(double)numEntriesPruned);
+  } else {
+    numToSample = (unsigned)origin.cliqueBeamUniformSampleAmount;
+  }
+
+  const unsigned numCliqueValuesUsedBeforeSampling = numCliqueValuesUsed;
+
+  numToSample = min(numToSample,numEntriesPruned);
+  if (numToSample == 0) {
+    return;
+  } else if (numToSample == numEntriesPruned) {
+    numCliqueValuesUsed = origNumCliqueValuesUsed;
+  } else {
+    while (numToSample > 0) {
+
+      unsigned entry = rnd.uniform(--numEntriesPruned);
+
+      // swap the entry to the end of the current clique.
+      swap(cliqueValues[numCliqueValuesUsed],cliqueValues[numCliqueValuesUsed + entry]);
+    
+      numToSample --;
+      numCliqueValuesUsed++;
+    }
+  }
+
+  infoMsg(IM::Med,"Clique uniform sampling: Upped state space from %d to %d\n",
+	  numCliqueValuesUsedBeforeSampling,numCliqueValuesUsed);
+
+}
+
+
 
 
 
@@ -6613,11 +6745,11 @@ SeparatorClique::SeparatorClique(SeparatorClique& from_sep,
 void
 SeparatorClique::clearSeparatorValueCache(bool force) 
 {
-  if ((force || MaxClique::perSegmentClearCliqueValueCache) && accPacker.packedLen() > ISC_NWWOH_AI) {
+  if (force && accPacker.packedLen() > ISC_NWWOH_AI) {
     accValueHolder.prepare();
     accSepValHashSet.clear(AI_SEP_VALUE_HOLDER_STARTING_SIZE);
   }
-  if ((force || MaxClique::perSegmentClearCliqueValueCache) && remPacker.packedLen() > ISC_NWWOH_RM) { 
+  if (force && remPacker.packedLen() > ISC_NWWOH_RM) { 
     remValueHolder.prepare();
     remSepValHashSet.clear(REM_SEP_VALUE_HOLDER_STARTING_SIZE);
   }
