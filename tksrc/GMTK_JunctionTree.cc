@@ -54,6 +54,8 @@
 
 VCID("$Header$")
 
+// clear all memory on each new segment.
+bool JunctionTree::perSegmentClearCliqueValueCache = true;
 // turns on or off VE separators, and determins the type to use PC, or PCG. 
 unsigned JunctionTree::useVESeparators = (VESEP_PC | VESEP_PCG);
 // turn off VE separators by default.
@@ -3752,7 +3754,7 @@ JunctionTree::unroll(const unsigned int numFrames)
   // re-allocate.
   jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
   // this clears the shared caches. 
-  clearCliqueSepValueCache();
+  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
 
   unsigned partNo = 0;
   const int numCoPartitions = modifiedTemplateUnrollAmount+1;
@@ -4493,7 +4495,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   setObservedRVs(cur_unrolled_rvs);
 
   // this clears the shared caches. 
-  clearCliqueSepValueCache();
+  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
 
   // actual absolute part numbers
   unsigned partNo;
@@ -4513,13 +4515,21 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		   P_ri_to_C,
 		   P1_message_order,
 		   prv_nm,partNo);
+  // curPart->origin.clearSeparatorValueCache();
+
   swap(curPart,prevPart);
 
-  for (int p = 0; p < numCoPartitions; p++ ) {
+  for (int p = 0; p < numCoPartitions; p++) {
     delete curPart;
     curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
     ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,C_li_to_C,Co_n,partNo+1);
+
+    // TODO: this next call can't really go here since the destination clique
+    // has already assumed parameters from the previous sizes. To clear cache at
+    // partition bondary intervals, will need to interleave this in the above two calls.
+    // prevPart->origin.clearCliqueValueCache(true);
+
     partNo++;
     prv_nm = Co_n;
     prv_ri = C_ri_to_C;
@@ -4530,8 +4540,10 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		     C_ri_to_C,
 		     Co_message_order,
 		     prv_nm,partNo);
+    // curPart->origin.clearSeparatorValueCache();
     if (p == 0 && P1.cliques.size() == 0)
       Co.useLISeparator();
+
 
     swap(curPart,prevPart);
   }
@@ -4541,6 +4553,8 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 				      modifiedTemplateUnrollAmount*gm_template.S);
   ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			*curPart,E_li_to_C,E1_n,partNo+1);
+  // prevPart->origin.clearCliqueValueCache(true);
+
   partNo++;
   if (numCoPartitions == 0 && P1.cliques.size() == 0)
     E1.skipLISeparator();
@@ -4548,6 +4562,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		   E_root_clique,
 		   E1_message_order,
 		   E1_n,partNo);
+  // curPart->origin.clearSeparatorValueCache();
   if (numCoPartitions == 0 && P1.cliques.size() == 0)
     E1.useLISeparator();
 
@@ -4634,7 +4649,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   setObservedRVs(cur_unrolled_rvs);
 
   // this clears the shared caches. 
-  clearCliqueSepValueCache();
+  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
 
   // actual absolute part numbers
   unsigned partNo;
@@ -5376,7 +5391,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   }
 
   // this clears the shared caches. 
-  clearCliqueSepValueCache();
+  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
 
   // TODO: turn this array into a function so we don't alloate the entire array length.
   // re-allocate.

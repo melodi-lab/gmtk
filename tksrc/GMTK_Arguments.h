@@ -676,8 +676,14 @@ const char*const argerr = "ARG ERROR";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("ckbeam",Arg::Opt,MaxClique::cliqueBeamMaxNumStates,"Prune to this clique max state space (0 = no pruning)"),
+  Arg("cusample",Arg::Opt,MaxClique::cliqueBeamUniformSampleAmount,"Uniformly sample pruned clique (0<v=<1 fraction, >= 1 number)"),
+
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+    if (MaxClique::cliqueBeamUniformSampleAmount < 0.0) {
+      error("ERROR: -cusample option must be non-negative");
+    }
 
 #else
 #endif
@@ -721,6 +727,7 @@ const char*const argerr = "ARG ERROR";
   Arg("cmbeam",Arg::Opt,MaxClique::cliqueBeamMassRelinquishFraction,"Percentage of clique mass to relinquish. Range: 0 < v <= 1. v = 0.0 means no pruning"),
   Arg("cmmin",Arg::Opt,MaxClique::cliqueBeamMassMinSize,"When using -cmbeam, min possible resulting clique state size (>= 1)"),
   Arg("cmfurther",Arg::Opt,MaxClique::cliqueBeamMassFurtherBeam,"When using -cmbeam, additional beam to use after mass has been acounted for (>= 0)"),
+
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -840,7 +847,7 @@ const char*const argerr = "ARG ERROR";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("clearCliqueValMem",Arg::Opt,MaxClique::perSegmentClearCliqueValueCache,"Free clique/separator value cache for each segment"),
+  Arg("clearCliqueValMem",Arg::Opt,JunctionTree::perSegmentClearCliqueValueCache,"Free clique/separator value cache for each segment"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
