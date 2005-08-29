@@ -3166,6 +3166,9 @@ Sun Aug 28 13:31:02 2005
     This will be good esp. if values are shared with close frames but not far away frames.
   - place the clique value storage at end, and then dynamically allocate it depending on if the value is contained
     in the clique, or if it is a pointer to a shared hash value.
+  - smart mode, where we keep track of the number of clique values that are being shard, and if the
+    percentage is high, we continue sharing, but if it is low, we start freeing old memory.
+
 
 
 
