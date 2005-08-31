@@ -320,7 +320,9 @@ public:
   bool computeAndReturnDeterministicStatus() {
     isDeterministic = false;
     for (unsigned i=0;i<discImplementations.size();i++) {
-      if (discImplementations[i] != CPT::di_MTCPT)
+      if ((discImplementations[i] != CPT::di_MTCPT) 
+	  &&
+	  (discImplementations[i] != CPT::di_LatticeEdgeCPT))
 	return false; 
     }
     isDeterministic = true;
@@ -334,7 +336,9 @@ public:
     for (unsigned i=0;i<discImplementations.size();i++) {
       if ((discImplementations[i] != CPT::di_MTCPT)
 	  &&
-	  (discImplementations[i] != CPT::di_MSCPT))
+	  (discImplementations[i] != CPT::di_MSCPT)
+	  &&
+	  (discImplementations[i] != CPT::di_LatticeEdgeCPT))
 	return false; 
     }
     isSparse = true;
