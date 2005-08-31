@@ -4172,11 +4172,14 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // value.
   if (origin.cliqueBeam != (-LZERO)) {
 
-    infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
-	    maxCEValue.valref(),
-	    beamThreshold.valref(),
-	    cbOrigNumCliqueValuesUsed,
-	    numCliqueValuesUsed);
+    // only print out this message if we did inline clique beam pruning, since if we did
+    // it by routine call, this information has already been printed. 
+    if (origin.cliqueBeamUniformSampleAmount == 0)
+      infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
+	      maxCEValue.valref(),
+	      beamThreshold.valref(),
+	      cbOrigNumCliqueValuesUsed,
+	      numCliqueValuesUsed);
 #if 0
     // A version with a bit more information printed.
     infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, orig sum = %f, new clique state space = %d, new sum = %f\n",
@@ -4714,25 +4717,29 @@ void
 InferenceMaxClique::ceCliqueUniformSamplePrunedCliquePortion(const unsigned origNumCliqueValuesUsed)
 {
 
+  const unsigned numCliqueValuesUsedBeforeSampling = numCliqueValuesUsed;
+
   if (origin.cliqueBeamUniformSampleAmount == 0.0)
     return;
+  else if (origin.cliqueBeamUniformSampleAmount == 1.0) {
+    numCliqueValuesUsed = origNumCliqueValuesUsed;
+    goto done;
+  } 
 
   unsigned numEntriesPruned = origNumCliqueValuesUsed - numCliqueValuesUsed;
   if (numEntriesPruned == 0)
-    return;
+    goto done;
 
   unsigned numToSample;
   if (origin.cliqueBeamUniformSampleAmount < 1.0) {
     numToSample = (unsigned)(origin.cliqueBeamUniformSampleAmount*(double)numEntriesPruned);
-  } else {
+  } else { // > 1.0
     numToSample = (unsigned)origin.cliqueBeamUniformSampleAmount;
   }
 
-  const unsigned numCliqueValuesUsedBeforeSampling = numCliqueValuesUsed;
-
   numToSample = min(numToSample,numEntriesPruned);
   if (numToSample == 0) {
-    return;
+    goto done;
   } else if (numToSample == numEntriesPruned) {
     numCliqueValuesUsed = origNumCliqueValuesUsed;
   } else {
@@ -4747,9 +4754,11 @@ InferenceMaxClique::ceCliqueUniformSamplePrunedCliquePortion(const unsigned orig
       numCliqueValuesUsed++;
     }
   }
+  
+ done:
 
-  infoMsg(IM::Med,"Clique uniform sampling: Upped state space from %d to %d\n",
-	  numCliqueValuesUsedBeforeSampling,numCliqueValuesUsed);
+  infoMsg(IM::Med,"Clique uniform sampling: Upped state space from %d to %d, before pruning state space was %d\n",
+	  numCliqueValuesUsedBeforeSampling,numCliqueValuesUsed,origNumCliqueValuesUsed);
 
 }
 
