@@ -65,30 +65,34 @@ LatticeNodeCPT::~LatticeNodeCPT() {
  *-----------------------------------------------------------------------
  */
 void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
-	// check out the out-going edges based on parent value
-	shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator();
+	// For simplity reason, here cardinality of lattice nodes can be
+	// bigger than number of real nodes in some particular lattice.
+	// This is because in iterable lattices, different lattices can
+	// have different number of nodes.  But in master file, we can
+	// just specify the max of those.
+	if ( RV2DRV(parents[0])->val >= _latticeAdt->_end ) {
+		// This is a trick to make sure that lattice
+		// always reaches its end.
+		// The down side the the word variable in the last
+		// frame gives garbage.
+		it.internalState = _latticeAdt->_end;
+		it.internalStatePtr = NULL;
+		it.drv = drv;
+		drv->val = _latticeAdt->_end;
+		p.set_to_one();
+		return;
+	}
 
 	LatticeADT::LatticeNode &node = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val];
 
 	// if the lattice node is the end, return prob zero
 	if ( node.edges.totalNumberEntries() == 0 ) {
-		delete pit;
-		if ( RV2DRV(parents[0])->val == _latticeAdt->_end ) {
-			// This is a trick to make sure that lattice
-			// always reaches its end.
-			// The down side the the word variable in the last
-			// frame gives garbage.
-			it.internalState = _latticeAdt->_end;
-			it.internalStatePtr = NULL;
-			it.drv = drv;
-			drv->val = _latticeAdt->_end;
-			p.set_to_one();
-			return;
-		} else {
-			p.set_to_zero();
-			return;
-		}
+		p.set_to_zero();
+		return;
 	}
+
+	// check out the out-going edges based on parent value
+	shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator();
 
 	// now the current node can have next transition
 	// find the correct iterators
