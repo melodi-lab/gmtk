@@ -4723,39 +4723,36 @@ InferenceMaxClique::ceCliqueUniformSamplePrunedCliquePortion(const unsigned orig
     return;
   else if (origin.cliqueBeamUniformSampleAmount == 1.0) {
     numCliqueValuesUsed = origNumCliqueValuesUsed;
-    goto done;
-  } 
-
-  unsigned numEntriesPruned = origNumCliqueValuesUsed - numCliqueValuesUsed;
-  if (numEntriesPruned == 0)
-    goto done;
-
-  unsigned numToSample;
-  if (origin.cliqueBeamUniformSampleAmount < 1.0) {
-    numToSample = (unsigned)(origin.cliqueBeamUniformSampleAmount*(double)numEntriesPruned);
-  } else { // > 1.0
-    numToSample = (unsigned)origin.cliqueBeamUniformSampleAmount;
-  }
-
-  numToSample = min(numToSample,numEntriesPruned);
-  if (numToSample == 0) {
-    goto done;
-  } else if (numToSample == numEntriesPruned) {
-    numCliqueValuesUsed = origNumCliqueValuesUsed;
   } else {
-    while (numToSample > 0) {
 
-      unsigned entry = rnd.uniform(--numEntriesPruned);
+    unsigned numEntriesPruned = origNumCliqueValuesUsed - numCliqueValuesUsed;
+    if (numEntriesPruned != 0) {
+      unsigned numToSample;
+      if (origin.cliqueBeamUniformSampleAmount < 1.0) {
+	numToSample = (unsigned)(origin.cliqueBeamUniformSampleAmount*(double)numEntriesPruned);
+      } else { // > 1.0
+	numToSample = (unsigned)origin.cliqueBeamUniformSampleAmount;
+      }
 
-      // swap the entry to the end of the current clique.
-      swap(cliqueValues[numCliqueValuesUsed],cliqueValues[numCliqueValuesUsed + entry]);
+      numToSample = min(numToSample,numEntriesPruned);
+      if (numToSample == 0) {
+	; // do nothing
+      } else if (numToSample == numEntriesPruned) {
+	numCliqueValuesUsed = origNumCliqueValuesUsed;
+      } else {
+	while (numToSample > 0) {
+
+	  unsigned entry = rnd.uniform(--numEntriesPruned);
+
+	  // swap the entry to the end of the current clique.
+	  swap(cliqueValues[numCliqueValuesUsed],cliqueValues[numCliqueValuesUsed + entry]);
     
-      numToSample --;
-      numCliqueValuesUsed++;
+	  numToSample --;
+	  numCliqueValuesUsed++;
+	}
+      }
     }
   }
-  
- done:
 
   infoMsg(IM::Med,"Clique uniform sampling: Upped state space from %d to %d, before pruning state space was %d\n",
 	  numCliqueValuesUsedBeforeSampling,numCliqueValuesUsed,origNumCliqueValuesUsed);
