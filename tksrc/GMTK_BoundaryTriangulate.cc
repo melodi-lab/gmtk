@@ -912,10 +912,15 @@ BoundaryTriangulate
   // call it "partition"). We place the new network in variables P_u1,
   // C1_u1, Cextra_u1, C2_u1, and E_u1 from which the final true
   // template is formed. Note that some of these might have variable
-  // overlap (depending on M and S, and depending on the underlying order 
-  // with respect to C of the DBN Markov property).
+  // overlap (depending on M and S, and depending on the underlying
+  // order with respect to C of the DBN Markov property, where "order"
+  // in this context means the number of C's spanned across by links
+  // coming from C).
   //
-  // Examples of creating P_u1, C1_u1, Cextra_u1, C2_u1, and E_u1:
+  // We create this graph by unrolling the basic template (M+S-1)
+  // times (see below for more details). Here are some examples of
+  // creating P_u1, C1_u1, Cextra_u1, C2_u1, and E_u1 for various
+  // M and S values:
   // 
   //   M=1,S=1:  
   //       unrolled: P  C   C   E
