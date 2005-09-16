@@ -3170,5 +3170,13 @@ Sun Aug 28 13:31:02 2005
     percentage is high, we continue sharing, but if it is low, we start freeing old memory.
 
 
+Fri Sep 16 15:25:52 2005
+  - smarter debug/trace information, that can be turned on only on particular
+    frames (i.e., for frame <rng> turn the debugging/trace from n to m,
+    and then back to n afterwards). 
+    This will help with log files getting to large before zeros occur.
+
+
+
 
 
