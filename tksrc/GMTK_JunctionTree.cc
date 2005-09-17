@@ -191,7 +191,7 @@ JT_Partition::JT_Partition(
     rvp.second = rv->frame()+frameDelta;    
 
     if ( ppf.find(rvp) == ppf.end() ) {
-      error("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_part2\n",
+      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_part2\n",
 	    rv->name().c_str(),rv->frame(),frameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
@@ -209,7 +209,7 @@ JT_Partition::JT_Partition(
     rvp.second = rv->frame()+liFrameDelta;    
 
     if ( ppf.find(rvp) == ppf.end() ) {
-      error("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_liVars\n",
+      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_liVars\n",
 	    rv->name().c_str(),rv->frame(),liFrameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
@@ -227,7 +227,7 @@ JT_Partition::JT_Partition(
     rvp.second = rv->frame()+riFrameDelta;    
 
     if ( ppf.find(rvp) == ppf.end() ) {
-      error("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_riVars\n",
+      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_riVars\n",
 	    rv->name().c_str(),rv->frame(),riFrameDelta,
 	    rvp.first.c_str(),rvp.second);
     }
@@ -1552,7 +1552,7 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
   if (nodesThatGiveNoProb.size() > 0) {
     fprintf(stderr,"INTERNAL ERROR: some nodes do not give probability to any clique, those nodes include: ");
     printRVSet(stderr,nodesThatGiveNoProb);
-    error("Possibly corrupt trifile. Exiting program ...");
+    coredump("Possibly corrupt trifile. Exiting program ...");
   }
 
 }

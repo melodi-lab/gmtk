@@ -50,6 +50,7 @@ public:
         virtual void becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p);
         virtual logpr probGivenParents(vector< RV* >& parents, DiscRV* drv);
         virtual bool next(iterator &it,logpr& p);
+        virtual void assignDeterministicChild( vector < RV* >& parents, DiscRV* drv );
  
         // Include here an extra routine that returns the probability
         // of the child 'val' given the parents are the assigned to

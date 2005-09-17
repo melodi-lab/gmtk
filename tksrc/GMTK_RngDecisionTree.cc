@@ -203,7 +203,7 @@ RngDecisionTree::destructorRecurse(RngDecisionTree::Node* node)
     break;
 
   default:
-    error("INTERNAL ERROR: unknown DT node type.\n");
+    coredump("INTERNAL ERROR: unknown DT node type.\n");
     break;
   }
 

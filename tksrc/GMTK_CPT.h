@@ -246,7 +246,7 @@ public:
 					DiscRV* drv) {
     // unless child class re-defines this routine, it is always
     // an error to call it. 
-    error("INTERNAL ERROR: invalidly called RV::assignDeterministicChild()");
+    coredump("INTERNAL ERROR: invalidly called RV::assignDeterministicChild()");
   }
 
 

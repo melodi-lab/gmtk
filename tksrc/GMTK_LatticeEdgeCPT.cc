@@ -64,14 +64,29 @@ LatticeEdgeCPT::~LatticeEdgeCPT() {
 void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
 	LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
 	if ( outEdge == NULL ) {
-		// this should report an error because I have set prob in
-		// latticeNodeCPT to zero.
-		//error("Error: lattice edge CPT is not synchronized with node cpt");
-		// I changed it to be zero prob.
-		it.drv = drv;
-		drv->val = 0;	// some junk number
-		p.set_to_zero();
-		return;
+	  assert ( RV2DRV(parents[0])->val == RV2DRV(parents[1])->val );
+	  // If this occurs, it means that there is no outgoing edge
+	  // in the lattice starting from the node with value parent0->val.
+	  // We are guaranteed that the corresponding LatticeNodeCPT, when
+	  // this occurs, will do two things:
+	  //    1) it will give this event zero probability
+	  //    2) the value given to the child in LatticeNodeCPT will
+	  //       be the same node value as the parent, meaning that
+	  //       parent0->val == parent1->val.
+	  // Note that if the graph is evaluated topologically, then
+	  // the LatticeNodeCPT will be evaluated first (before this)
+	  // and inference should prune away before we ever get to this
+	  // case. For some triangluations, however, the LatticeEdgeCPT might
+	  // be evaluated first, so we need to cover this case here.
+
+	  // ultimately, since the LatticeNodeCPT gives this zero probabilty,
+	  // we know this case will get trimmed away, but for now we just
+	  // give some junk values.
+
+	  it.drv = drv;
+	  drv->val = 0;	// some junk number
+	  p.set_to_zero();
+	  return;
 	}
 
 	it.drv = drv;
@@ -113,6 +128,35 @@ bool LatticeEdgeCPT::next(iterator &it, logpr& p) {
 	p.set_to_zero();
 	return false;
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function LatticeEdgeCPT::assignDeterministicChild
+ *
+ *      Assign the value of the child random variable to be the
+ *      determinstic function of the current parent assignments. We
+ *      can do this since this CPT is "determinstic", meaning that
+ *      given a set of parent assignments, there is only one child
+ *      assignment that exists that has non zero (and unity)
+ *      probability.
+ *
+ * Results:
+ *      none
+ *-----------------------------------------------------------------------
+ */
+void LatticeEdgeCPT::assignDeterministicChild( vector < RV* >& parents, DiscRV* drv )
+{
+  LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
+  if ( outEdge == NULL ) {
+    // For documentation on this case, see the routine:
+    // LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin()
+    drv->val = 0; // some junk number
+  } else
+    drv->val = outEdge->emissionId;
+}
+
+
 
 
 /*-
