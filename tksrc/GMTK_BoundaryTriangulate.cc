@@ -104,7 +104,7 @@ getRV(const vector <RV*>& rvs, // a set of RVs
   if ((it = pos.find(pp)) == pos.end()) {
     // this could be an assertion failure as well, but we need
     // to set 'it'
-    error("INTERNAL ERROR: getRV: Can't find random variable %s(%d) in unrolled collection.\n",
+    coredump("INTERNAL ERROR: getRV: Can't find random variable %s(%d) in unrolled collection.\n",
 	  pp.first.c_str(),pp.second);
   }
   return rvs[(*it).second];
@@ -122,7 +122,7 @@ shiftedRV(const vector <RV*>& rvs, // a set of RVs
   if ((it = pos.find(p)) == pos.end()) {
     // this could be an assertion failure as well, but we need
     // to set 'it'
-    error("INTERNAL ERROR: Can't find random variable %s(%d) shifted by %d frames.\n",
+    coredump("INTERNAL ERROR: Can't find random variable %s(%d) shifted by %d frames.\n",
 	  rv->name().c_str(),rv->frame(),
 	  shift);
   }

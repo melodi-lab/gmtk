@@ -99,7 +99,7 @@ public:
   void assignDeterministicChild() { 
     setCurrentConditionalParents(this);
     curCPT = conditionalCPTs[cachedSwitchingState];
-    curCPT->assignDeterministicChild(allParents,this); 
+    curCPT->assignDeterministicChild(*curConditionalParents,this); 
   }
 
   void emIncrement(logpr posterior) {

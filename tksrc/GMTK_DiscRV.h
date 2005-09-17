@@ -177,7 +177,7 @@ public:
   // the parents are set sufficiently so that the child can be
   // determined with probability one, and 3) sets this child
   // accordingly.
-  virtual void assignDeterministicChild() { error("INTERNAL ERROR: invalidly called RV::assignDeterministicChild()"); }
+  virtual void assignDeterministicChild() { coredump("INTERNAL ERROR: invalidly called RV::assignDeterministicChild()"); }
 
   ////////////////////////////////////////////////////////////////////////
   // Sample the current distribution setting the random variable to a set
