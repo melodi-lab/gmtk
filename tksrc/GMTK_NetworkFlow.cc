@@ -451,7 +451,7 @@ namespace networkFlow {
     // A flow is maximal if and only if there is no augmenting path in the
     // residual network. So check if an augmenting path exists. 
     while(augmentingPathExists) {
-      infoMsg(IM::Mod, "Found augmenting path");
+      infoMsg(IM::Mod, "Found augmenting path\n");
       
       // Stick the maximum possible flow along this augmenting path. 
       double incFlow = path.capacity();
@@ -468,7 +468,9 @@ namespace networkFlow {
     }
 
     ++_currTime;
-    infoMsg(IM::Mod, "Computing reachable and cut sets");
+    infoMsg(IM::Mod, "Computing reachable and cut sets\n");
+
+
     _cut = findMinCutValue();
     if (_cut != _flow) {
       infoMsg(IM::High, "Error: Flow does not match cut. ");
@@ -477,7 +479,7 @@ namespace networkFlow {
       for(;ei!=eend;++ei) {
 	infoMsg(IM::Mod,  "Edge %d -> %d", (*ei)->sourceNode(), (*ei)->targetNode());
       }
-      debugState();
+      // debugState();
       throw new NetworkFlowException("Internal Error: Flow does not match cut", -1);
     } else {
       return _flow;
@@ -578,7 +580,7 @@ namespace networkFlow {
 	EdgeList* inEdges = _inEdges[currNode];
 	begin = inEdges->begin(); end = inEdges->end();
 	for(i=begin;i!=end;++i) {
-	  int nextNode = (*i)->targetNode();
+	  int nextNode = (*i)->sourceNode();
 	  if ((_lastVisitTime[nextNode] < _currTime) &&
 	      (capacityExists(currNode, nextNode)) && 
 	      (_parent.count(nextNode) == 0)) {
@@ -644,6 +646,7 @@ namespace networkFlow {
   double Network::findMinCutValue(void) {
     _minCut.clear(); _reachableSet.clear(); 
     _parents[0] = 0;
+    _reachableSet.clear();
     findReachableSet(_sourceNode);
     std::set<int>::iterator ni,nbegin,nend;
     _cut = 0;
