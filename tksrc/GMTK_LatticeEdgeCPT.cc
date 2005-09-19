@@ -149,6 +149,18 @@ void LatticeEdgeCPT::assignDeterministicChild( vector < RV* >& parents, DiscRV* 
 {
   LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
   if ( outEdge == NULL ) {
+    // this shouldn't happen under the current inference since zero
+    // score clique eventsa are never inserted into the clique (so
+    // we'll never need to reconstruct a clique entry that would have
+    // zero probability). If the outEdge is null, this would have caused
+    // the clique entry to have zero probability.
+
+    // we include the following as a sanity check.
+
+    assert ( 0 ); 
+
+
+    // Just for consistency, include the following code.
     // For documentation on this case, see the routine:
     // LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin()
     drv->val = 0; // some junk number
