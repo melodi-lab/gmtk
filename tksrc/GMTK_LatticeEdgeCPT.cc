@@ -64,7 +64,6 @@ LatticeEdgeCPT::~LatticeEdgeCPT() {
 void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
 	LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
 	if ( outEdge == NULL ) {
-	  assert ( RV2DRV(parents[0])->val == RV2DRV(parents[1])->val );
 	  // If this occurs, it means that there is no outgoing edge
 	  // in the lattice starting from the node with value parent0->val.
 	  // We are guaranteed that the corresponding LatticeNodeCPT, when

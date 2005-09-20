@@ -2412,6 +2412,10 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	    // set the CPT to a FNGramCPT, depending on if a string
 	    // or integer index was used in the file.
 		if (rvInfoVector[i].listIndices[j].liType == RVInfo::ListIndex::li_String) {
+			if ( GM_Parms.fngramImpsMap.find(rvInfoVector[i].listIndices[j].nameIndex) == GM_Parms.fngramImpsMap.end() )
+				error("Error: RV \"%s\" at frame %d (line %d), conditional parent FNGramCPT \"%s\" doesn't exist\n",
+						rvInfoVector[i].name.c_str(), rvInfoVector[i].frame, rvInfoVector[i].fileLineNumber, rvInfoVector[i].listIndices[j].nameIndex.c_str());
+
 			// the naming convention is if there is full parents, then use fngramCPT name
 			// otherwise use name like "fngram:0,1,3"
 			string fngramCptName = rvInfoVector[i].listIndices[j].nameIndex;
@@ -2671,7 +2675,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	  }
 	} else if ( cpts[j]->cptType == CPT::di_LatticeNodeCPT ) {
 		// lattice node cpt only has one parent
-		if ( cpts[j]->numParents() != 1 )
+		if ( cpts[j]->numParents() != 2 )
 			error("Error: RV \"%s\" at frame %d (line %d), should have only one parent",
 				rvInfoVector[i].name.c_str(),
 				rvInfoVector[i].frame,
@@ -2701,7 +2705,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		    cpts[j]->parentCardinality(par));
 	  }
 	} else if ( cpts[j]->cptType == CPT::di_LatticeEdgeCPT ) {
-		// lattice node cpt only has two parents
+		// lattice edge cpt only has two parents
 		if ( cpts[j]->numParents() != 2 )
 			error("Error: RV \"%s\" at frame %d (line %d), should have only one parent",
 				rvInfoVector[i].name.c_str(),
