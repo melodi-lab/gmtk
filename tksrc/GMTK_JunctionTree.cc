@@ -1243,10 +1243,9 @@ JunctionTree::computePartitionInterfaces()
 
   }
 
-  // E order, clique 0 is choosen as root arbitrarily for now.  TODO:
-  // see if it is possible to choose a better root for E.  Perhaps use
-  // the maximum weight clique.
+  // TODO: see if it is possible to choose a better root for E.  
   // TODO: make command line heuristics for choosing E-root-clique as well.
+  // E order, clique 0 could be choosen as root arbitrarily.  
   // E_root_clique = 0;
   // E_root_clique = E1.cliqueWithMinWeight();
   E_root_clique = E1.cliqueWithMaxWeight();

@@ -62,7 +62,7 @@ VCID("$Header$")
 void ObsDiscRV::printSelf(FILE *f,bool nl)
 {
   printNameFrameValue(f,false);
-  fprintf(f,"observed discrete cardinality = %d%s",cardinality,nls(nl));
+  fprintf(f," observed discrete cardinality = %d%s",cardinality,nls(nl));
 }
 
 
@@ -90,7 +90,7 @@ void ObsDiscRV::printSelfVerbose(FILE *f)
 {
   fprintf(f,"Observed Discrete Random variable:\n");
   printNameFrameValue(f,true);
-  fprintf(f,"From line %d in file %s\n",rv_info.fileLineNumber,rv_info.rvFileName.c_str());
+  fprintf(f," From line %d in file %s\n",rv_info.fileLineNumber,rv_info.rvFileName.c_str());
   fprintf(f,"RV has cardinality = %d\n",cardinality);
 }
 

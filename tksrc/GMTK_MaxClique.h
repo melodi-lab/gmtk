@@ -367,6 +367,7 @@ public:
   // a subclass since all of the below is not needed for basic
   // triangulation.
 
+
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of nodes that are *assigned* to this maxClique. "Assigned"
   // means that the node and its parents exist in this clique, but

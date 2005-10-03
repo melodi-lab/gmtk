@@ -110,7 +110,7 @@ ObsContRV::printNameFrameValue(FILE *f,bool nl)
 void ObsContRV::printSelf(FILE *f,bool nl)
 {
   printNameFrameValue(f,false);
-  fprintf(f,"observed continuous%s",nls(nl));
+  fprintf(f," observed continuous%s",nls(nl));
 }
 
 

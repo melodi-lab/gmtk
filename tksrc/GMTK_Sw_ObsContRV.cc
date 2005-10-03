@@ -69,7 +69,7 @@ VCID("$Header$")
 void Sw_ObsContRV::printSelf(FILE *f,bool nl)
 {
   printNameFrameValue(f,false);
-  fprintf(f,"switching observed continuous%s",nls(nl));
+  fprintf(f," switching observed continuous%s",nls(nl));
 }
 
 

@@ -59,7 +59,7 @@ VCID("$Header$")
 void ContRV::printSelf(FILE *f,bool nl)
 {
   printNameFrameValue(f,false);
-  fprintf(f,"continuous%s",nls(nl));
+  fprintf(f," continuous%s",nls(nl));
 }
 
 

@@ -61,7 +61,7 @@ VCID("$Header$")
 void HidDiscRV::printSelf(FILE *f,bool nl)
 {
   printNameFrameValue(f,false);
-  fprintf(f,"hidden discrete cardinality = %d%s",cardinality,nls(nl));
+  fprintf(f," hidden discrete cardinality = %d%s",cardinality,nls(nl));
 }
 
 
