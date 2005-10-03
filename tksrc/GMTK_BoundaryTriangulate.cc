@@ -1200,6 +1200,9 @@ BoundaryTriangulate
 	  "Currently, M=%d,S=%d.",M,S);
   }
 
+  // TODO: optionally call addExtraEdgesToGraph(nodes, edge_heuristic)
+  // to add edges corresponding to ancestral pairs. 
+
 
   // now, augment the network to partition.
   set < RVInfo::rvParent > augmentation2;
@@ -2568,9 +2571,9 @@ fillParentChildLists(
 void
 BoundaryTriangulate::
 addExtraEdgesToGraph(
-  const set<RV*>&  nodes,  
-  const extraEdgeHeuristicType edge_heuristic 
-  )
+		     const set<RV*>&  nodes,  
+		     const extraEdgeHeuristicType edge_heuristic 
+		     )
 {
   vector<triangulateNode>  triangulate_nodes;
 

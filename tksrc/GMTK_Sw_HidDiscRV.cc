@@ -62,7 +62,7 @@ VCID("$Header$")
 void Sw_HidDiscRV::printSelf(FILE *f,bool nl)
 {
   printNameFrameValue(f,false);
-  fprintf(f,"switching hidden discrete cardinality = %d%s",cardinality,nls(nl));
+  fprintf(f," switching hidden discrete cardinality = %d%s",cardinality,nls(nl));
 }
 
 

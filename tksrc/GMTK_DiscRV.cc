@@ -59,7 +59,7 @@ VCID("$Header$")
 void DiscRV::printSelf(FILE *f,bool nl)
 {
   printNameFrameValue(f,false);
-  fprintf(f,"discrete cardinality=%d, det=%d, %s",cardinality,deterministic(),nls(nl));
+  fprintf(f," discrete cardinality=%d, det=%d, %s",cardinality,deterministic(),nls(nl));
 }
 
 

@@ -827,7 +827,7 @@ void MultiType::print(FILE* f) {
     break;
   case MultiType::str_type:
     //fprintf(f,"%s",(ptr->string == NULL ? "" : ptr->string));
-    fprintf(f,"%s",( ptr == NULL ? "" : *((char**)ptr) ) );
+    fprintf(f,"%s",( ptr == NULL ? "" : *((char**)ptr)==NULL?"null":*((char**)ptr) ) );
     break;
   case MultiType::int_type:
     //fprintf(f,"%d",(ptr->integer));

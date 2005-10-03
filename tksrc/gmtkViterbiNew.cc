@@ -444,8 +444,12 @@ main(int argc,char*argv[])
 	infoMsg(IM::Low,"Done Distributing Evidence\n");
       }
     }
-    if (vitValsFile)
-      myjt.printCurrentRVValues(vitValsFile);
+    if (vitValsFile) {
+      if (probe.essentially_zero())
+	printf("Not printing Viterbi values since segment has zero probability\n");
+      else 
+	myjt.printCurrentRVValues(vitValsFile);
+    }
 
     if (dumpNames)
     {
