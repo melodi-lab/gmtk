@@ -358,6 +358,8 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
   const char pre_edge_lo[]     = "pre-edge-lo-";
   const char pre_edge_random[] = "pre-edge-random-";
   const char pre_edge_some[]   = "pre-edge-some-";
+  const char complete_frame_left [] = "completeframeleft";
+  const char complete_frame_right [] = "completeframeright";
 
   tri_heur.init();
   if (tri_heur_str.size() == 0) {
@@ -453,6 +455,12 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
       tri_heur.style = TS_MCS;
     } else if (strncmp(endp, "completed", strlen(endp)) == 0) {
       tri_heur.style = TS_COMPLETED;
+    } else if (strncmp(endp, complete_frame_left, strlen(complete_frame_left)) == 0) {
+      tri_heur.style = TS_COMPLETE_FRAME_LEFT;
+      tri_heur.basic_method_string = &endp[strlen(complete_frame_left)];
+    } else if (strncmp(endp, complete_frame_right, strlen(complete_frame_right)) == 0) {
+      tri_heur.style = TS_COMPLETE_FRAME_RIGHT;
+      tri_heur.basic_method_string = &endp[strlen(complete_frame_right)];
     } else {
       tri_heur.style = TS_BASIC;
       tri_heur.heuristic_vector.clear();
@@ -2026,6 +2034,20 @@ BoundaryTriangulate
         ////////////////////////////////////////////////////////////////////////
         // Handle cases that keep their own running best weight 
         ////////////////////////////////////////////////////////////////////////
+        case TS_COMPLETE_FRAME_LEFT:
+          triangulateCompleteFrame( COMPLETE_FRAME_LEFT, nodes, jtWeight,
+            nodesRootMustContain, tri_heur.basic_method_string,
+            nghbrs_with_extra, best_cliques, best_method, best_weight,
+            best_method_prefix+"completeframeleft" );
+          break;
+
+          case TS_COMPLETE_FRAME_RIGHT:
+            triangulateCompleteFrame( COMPLETE_FRAME_RIGHT, nodes, jtWeight,
+              nodesRootMustContain, tri_heur.basic_method_string,
+              nghbrs_with_extra, best_cliques, best_method, best_weight,
+              best_method_prefix+"completeframeright" );
+            break;
+
         case TS_ELIMINATION_HEURISTICS:
           tryEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
             nghbrs_with_extra, best_cliques, best_method, best_weight, 
@@ -5286,6 +5308,194 @@ triangulateCompletePartition(
   return;
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * triangulateCompleteFrame
+ *   Complete all the nodes that are in the same frame plus either the
+ *   left or right  interface. 
+ *
+ * Preconditions:
+ *   Each variable in the set of nodes must have valid parent and 
+ *   neighbor members and the parents/neighbors must only point to other 
+ *   nodes in the set. 
+ *
+ * Postconditions:
+ *   Triangulates by adding edge between every node in the graph.  
+ *
+ * Side Effects:
+ *   There are edges between every node in the graph.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+BoundaryTriangulate::
+triangulateCompleteFrame( 
+  // 
+  BoundaryTriangulate::completeFrameType leftRightType, 
+  // input: nodes to be triangulated
+  const set<RV*>& nodes,
+  // use JT weight rather than sum of weight
+  const bool jtWeight,
+  // nodes that a JT root must contain (ok to be empty).
+  const set<RV*>& nodesRootMustContain,
+  // triangulation heuristic method
+  const string& tri_heur_str,
+  // original neighbor structures
+  SavedGraph& orgnl_nghbrs,
+  // output: resulting max cliques
+  vector<MaxClique>& best_cliques,
+  // output: string giving resulting method used
+  string& best_meth_str,
+  // weight to best
+  double& best_weight, 
+  // Prefix for new best_meth_str 
+  string  best_method_prefix
+  )
+{
+  set <RV*>::iterator crrnt_node;
+  set <RV*>::iterator end_node;
+  set <RV*>::iterator crrnt_nghbr;
+  set <RV*>::iterator end_nghbr;
+  vector<MaxClique> cliques;
+  unsigned min_frame, max_frame, crrnt_frame; 
+  set <RV*> crrnt_group;
+  double weight;
+
+  ////////////////////////////////////////////////////////////////////
+  // Find the frames that exist in this partition
+  ////////////////////////////////////////////////////////////////////
+  min_frame = (*(nodes.begin()))->timeFrame;
+  max_frame = (*(nodes.begin()))->timeFrame;
+
+  for ( crrnt_node = nodes.begin(), end_node = nodes.end();
+        crrnt_node != end_node;
+        crrnt_node++ )
+  {
+    if (min_frame > (*crrnt_node)->timeFrame)
+    { 
+      min_frame = (*crrnt_node)->timeFrame;
+    }
+    else if (max_frame < (*crrnt_node)->timeFrame)
+    { 
+      max_frame = (*crrnt_node)->timeFrame;
+    }
+  }
+       
+  ////////////////////////////////////////////////////////////////////
+  // Iterate through the frames
+  ////////////////////////////////////////////////////////////////////
+  for (crrnt_frame=min_frame; crrnt_frame<=max_frame; crrnt_frame++)
+  {
+    crrnt_group.clear();
+
+    ////////////////////////////////////////////////////////////////////
+    // Find all nodes in the current frame
+    ////////////////////////////////////////////////////////////////////
+    for ( crrnt_node = nodes.begin(), end_node = nodes.end();
+          crrnt_node != end_node;
+          crrnt_node++ )
+    {
+      if ((*crrnt_node)->timeFrame == crrnt_frame)
+      {
+        crrnt_group.insert(*crrnt_node);         
+
+        ////////////////////////////////////////////////////////////////////
+        // Find any interface nodes connected to the current frame
+        ////////////////////////////////////////////////////////////////////
+        for ( crrnt_nghbr = (*crrnt_node)->neighbors.begin(), 
+              end_nghbr = (*crrnt_node)->neighbors.end(); 
+              crrnt_nghbr != end_nghbr;
+              crrnt_nghbr++ )
+        {
+          if (leftRightType == COMPLETE_FRAME_RIGHT) 
+          {
+            if ((*crrnt_nghbr)->timeFrame < (*crrnt_node)->timeFrame)
+            {
+              crrnt_group.insert(*crrnt_nghbr);
+            }
+          }
+          else
+          {
+            if ((*crrnt_nghbr)->timeFrame > (*crrnt_node)->timeFrame) 
+            {
+              crrnt_group.insert(*crrnt_nghbr);
+            }
+          }
+        } 
+      } 
+    } 
+
+    ////////////////////////////////////////////////////////////////////
+    // Complete the nodes 
+    ////////////////////////////////////////////////////////////////////
+    MaxClique::makeComplete(crrnt_group);
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  // Check if the partition is triangulated, if not fix it
+  ////////////////////////////////////////////////////////////////////
+  vector<triangulateNode>         triangulate_nodes; 
+  list<vector<triangulateNode*> > list_cliques;
+  vector<triangulateNode*>        order; 
+  bool                            chordal;
+
+  fillTriangulateNodeStructures( nodes, triangulate_nodes );
+  maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false);
+  chordal = testZeroFillIn( order );
+
+  if (chordal)
+  {
+    listVectorCliquetoVectorSetClique( list_cliques, cliques );
+    weight = graphWeight(cliques, jtWeight, nodesRootMustContain);
+
+    if (weight < best_weight) 
+    { 
+      ////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////
+      //@@@ There is a bug due to the stubbed out = operator in the 
+      //   MaxClique 
+      //   class the following line which clears the cliques appears to 
+      //   work around the bug. @@@
+      // TODO: ultimately take this out, but keep in for now until
+      // we do code restructuring (1/20/2004).
+      best_cliques.clear();
+      ////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////
+
+      best_cliques = cliques;
+      best_weight  = weight;
+    
+      best_meth_str = best_method_prefix;
+      infoMsg(IM::Tiny, "   New Best Triangulation Found: %20s %-10f\n", 
+        best_meth_str.c_str(), weight);
+    }
+  }
+  else 
+  {
+    infoMsg(IM::Huge, "Graph not triangulated after complete frame\n");
+
+    string fix_heuristic = tri_heur_str;
+
+    if (fix_heuristic.length()== 0) {
+      fix_heuristic = "W";
+    }
+
+    if (fix_heuristic[0] == '-') {
+      fix_heuristic.erase(0, 1); 
+    }
+
+    SavedGraph cmpltd_nghbrs;
+    saveCurrentNeighbors(nodes, cmpltd_nghbrs);
+    triangulatePartition( nodes, jtWeight, nodesRootMustContain, fix_heuristic, 
+      cmpltd_nghbrs, best_cliques, best_meth_str, best_weight, 
+      best_method_prefix+"-" ); 
+  } 
+
+}
 
 
 /*-

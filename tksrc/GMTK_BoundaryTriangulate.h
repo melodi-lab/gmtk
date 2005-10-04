@@ -130,6 +130,8 @@ private:
     TS_RANDOM, 
     TS_EXHAUSTIVE,
     TS_MCS,
+    TS_COMPLETE_FRAME_LEFT,
+    TS_COMPLETE_FRAME_RIGHT,
     TS_COMPLETED,
     TS_BASIC,
     TS_FRONTIER,
@@ -466,6 +468,34 @@ private:
   void triangulateCompletePartition(const set<RV*>& nodes,
 				    vector<MaxClique>&          cliques
 				    );
+
+  typedef enum {
+     COMPLETE_FRAME_LEFT,
+     COMPLETE_FRAME_RIGHT } completeFrameType;
+
+  // ****************** triangulation by simple completion
+  void triangulateCompleteFrame( 
+    //  
+    completeFrameType leftRightType, 
+    // input: nodes to be triangulated
+    const set<RV*>& nodes,
+    // use JT weight rather than sum of weight
+    const bool jtWeight,
+    // nodes that a JT root must contain (ok to be empty).
+    const set<RV*>& nodesRootMustContain,
+    // triangulation heuristic method
+    const string& tri_heur_str,
+    // original neighbor structures
+    SavedGraph& orgnl_nghbrs,
+    // output: resulting max cliques
+    vector<MaxClique>& best_cliques,
+    // output: string giving resulting method used
+    string& best_meth_str,
+    // weight to best
+    double& best_weight, 
+    // Prefix for new best_meth_str 
+    string  best_method_prefix = ""
+  );
 
   // triangulation by frontier algorithm
   void triangulateFrontier(const set<RV*>& nodes,
