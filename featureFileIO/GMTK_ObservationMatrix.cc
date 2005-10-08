@@ -1914,7 +1914,48 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
  return n_samples;
 }
 
-/* open htk file for segment 'sentno' */
+/*
+ *
+ * ObservationMatrix::openHTKFile()
+ * 
+ * open an HTK file for segment 'sentno'.
+ *
+ * The HTK file is presumed to be in the following format (taken directly
+ * from the HTK book:
+ *
+ * 
+ * 5.10.1 HTK Format Parameter Files
+ * 
+ * HTK format files consist of a contiguous sequence of samples preceded
+ * by a header. Each sample is a vector of either 2-byte integers or
+ * 4-byte floats. 2-byte integers are used for compressed forms as
+ * described below and for vector quantised data as described later in
+ * section 5.14. HTK format data files can also be used to store speech
+ * waveforms as described in section 5.11.  The HTK file format header is
+ * 12 bytes long and contains the following data:
+ * 
+ * nSamples - number of samples in file (4-byte integer)
+ * sampPeriod -  sample period in 100ns units (4-byte integer)
+ * sampSize -  number of bytes per sample (2-byte integer)
+ * parmKind -  a code indicating the sample kind (2-byte integer)
+ * 
+ * The parameter kind consists of a 6 bit code representing the basic
+ * parameter kind plus additional bits for each of the possible
+ * qualifiers. The basic parameter kind codes are
+ * 
+ * 0 WAVEFORM sampled waveform
+ * 1 LPC linear prediction filter coefficients
+ * 2 LPREFC linear prediction reflection coefficients
+ * 3 LPCEPSTRA LPC cepstral coefficients
+ * 4 LPDELCEP LPC cepstra plus delta coefficients
+ * 5 IREFC LPC reflection coef in 16 bit integer format
+ * 6 MFCC mel-frequency cepstral coefficients
+ * 7 FBANK log mel-filter bank channel outputs
+ * 8 MELSPEC linear mel-filter bank channel outputs
+ * 9 USER user defined sample kind
+ * 10 DISCRETE vector quantised data
+ *
+ */
 
 size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
@@ -2010,6 +2051,8 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   // parameter kind DISCRETE = all discrete features
 
   if (nfloats == 0) {
+    // we divide by sizeof(short) which should be presumably size of a 2-byte int
+    // (but this is MACHINE DEPENDENT).
     n_fea = samp_size / sizeof(short) ;
     if (n_fea != nints) {
       error("ERROR: ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of ints specified (%i)\n", n_fea,nints);
