@@ -41,7 +41,6 @@ public:
 
 	// read from HTK lattice format file
 	void readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab);
-	void readFromHTKLatticeAndEliminate(iDataStreamFile &ifs, const Vocab &vocab);
 
 	// read from GMTK master file
 	void read(iDataStreamFile &is);
@@ -56,6 +55,7 @@ public:
 
 	// reset the frame indices
 	void resetFrameIndices(unsigned numFrames);
+	void useScore(unsigned option);
 
 	friend class LatticeNodeCPT;
 	friend class LatticeEdgeCPT;
@@ -71,10 +71,12 @@ protected:
 		logpr ac_score;
 		/** acoustic score */
 		logpr lm_score;
-		/** probability score */
-		logpr prob_score;
+		/** posterior */
+		logpr posterior;
+		/** score used in GMTK */
+		logpr gmtk_score;
 
-		LatticeEdge() : emissionId(0) {}
+		LatticeEdge() : emissionId(0), gmtk_score(1.0) {}
 	};
 
 	/**
@@ -92,6 +94,11 @@ protected:
 
 		LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdge>(1)) {}
 	};
+
+	/**
+	 * renormalize posterior
+	 */
+	void normalizePosterior();
 
 	/** lattice nodes */
 	LatticeNode *_latticeNodes;
@@ -131,3 +138,4 @@ protected:
 
 
 #endif
+
