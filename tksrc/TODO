@@ -3176,7 +3176,24 @@ Fri Sep 16 15:25:52 2005
     and then back to n afterwards). 
     This will help with log files getting to large before zeros occur.
 
+Thu Oct 27 21:55:54 2005
+   For docs:
+    Not a valid decision tree:
+
+    >3 % number of parents
+    >0 2 {p1} default % query parent 0, 2 splits, 
+    >     -1 {p2}
+    >     -1 0
+
+    I.e., one of the ranges cannot be the value of another parent.
+    This won't work (ranges must be const), but you can get something just
+    as easy using:
+
+    3 % number of parents
+    -1 { (p0 == p1) ? p2 : 0 }
 
 
+Thu Oct 27 21:56:54 2005
+  - fix observation file error messages so that it tells which feature file is in trouble.
 
 
