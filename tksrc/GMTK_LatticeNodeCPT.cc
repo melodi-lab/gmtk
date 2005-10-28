@@ -120,7 +120,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
       it.drv = drv;
 
       drv->val = pit->key();
-      p = (**pit).prob_score;
+      p = (**pit).gmtk_score;
     } else {
       // no word transition, copy value
       it.internalStatePtr = NULL;
@@ -149,7 +149,7 @@ logpr LatticeNodeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
 	if ( outEdge == NULL )
 		return logpr(0.0);
 	else
-		return outEdge->prob_score;	// TODO: implement other scores
+		return outEdge->gmtk_score;
 }
 
 
@@ -178,7 +178,7 @@ bool LatticeNodeCPT::next(iterator &it, logpr& p) {
   if ( pit->next() ) {
     // set up the values
     it.drv->val = pit->key();
-    p = (**pit).prob_score;		// TODO: implement other scores
+    p = (**pit).gmtk_score;
 
     return true;
   } else {

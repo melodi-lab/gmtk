@@ -154,11 +154,6 @@ void LatticeEdgeCPT::assignDeterministicChild( vector < RV* >& parents, DiscRV* 
     // zero probability). If the outEdge is null, this would have caused
     // the clique entry to have zero probability.
 
-    // we include the following as a sanity check.
-
-    assert ( 0 ); 
-
-
     // Just for consistency, include the following code.
     // For documentation on this case, see the routine:
     // LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin()
