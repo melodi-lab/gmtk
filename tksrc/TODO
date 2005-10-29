@@ -3195,5 +3195,6 @@ Thu Oct 27 21:55:54 2005
 
 Thu Oct 27 21:56:54 2005
   - fix observation file error messages so that it tells which feature file is in trouble.
+    Improve all of these messages.
 
 
