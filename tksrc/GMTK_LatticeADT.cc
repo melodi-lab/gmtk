@@ -280,30 +280,45 @@ void LatticeADT::read(iDataStreamFile &is) {
 		_wordCardinality = vocab->size();
 
 		// read in options for choosing scores
+		// 0x0,0x3 no AC
+		// 0x1 AC
+		// 0x2 ACScale
+		// 0x0,0x3 (<<2) no LM
+		// 0x1 (<<2) LM
+		// 0x2 (<<2) LMScale
+		// 0x0 (<<4) no WDPenalty
+		// 0x1 (<<4) WDPenalty
+		// 0x0 (<<5) no posterior
+		// 0x1 (<<5) posterior
+		// note: if posterior is used, all the others are disabled
 		unsigned option = 0;
 		string trigger = "UseScore";
 		if ( is.readIfMatch(trigger, "reading score options") ) {
 			char *str = new char[1024];
 			is.read(str, "reading score options");
-			char *tok = strtok(str, "+");
-			while ( tok != NULL ) {
-				if ( strcmp(tok, "AC") == 0 ) {
-					option &= ~0x3;
-					option |= 0x1;
-				} else if ( strcmp(tok, "ACScale") == 0 ) {
-					option &= ~0x3;
-					option |= 0x2;
-				} else if ( strcmp(tok, "LM") == 0 ) {
-					option &= 0xc;
-					option |= 0x4;
-				} else if ( strcmp(tok, "LMScale") == 0 ) {
-					option &= 0xc;
-					option |= 0x8;
-				} else if ( strcmp(tok, "WDPenalty") == 0 ) {
-					option |= 0x10;
-				} else
-					error("Error: reading file '%s' line '%d', unknown score option '%s'", is.fileName(), is.lineNo(), tok);
-				tok = strtok(NULL, "+");
+			if ( strcmp(str, "Posterior") == 0 ) {
+				option = 0x1u << 5;
+			} else {
+				char *tok = strtok(str, "+");
+				while ( tok != NULL ) {
+					if ( strcmp(tok, "AC") == 0 ) {
+						option &= ~0x3;
+						option |= 0x1;
+					} else if ( strcmp(tok, "ACScale") == 0 ) {
+						option &= ~0x3;
+						option |= 0x2;
+					} else if ( strcmp(tok, "LM") == 0 ) {
+						option &= 0xc;
+						option |= 0x4;
+					} else if ( strcmp(tok, "LMScale") == 0 ) {
+						option &= 0xc;
+						option |= 0x8;
+					} else if ( strcmp(tok, "WDPenalty") == 0 ) {
+						option |= 0x10;
+					} else
+						error("Error: reading file '%s' line '%d', unknown score option '%s'", is.fileName(), is.lineNo(), tok);
+					tok = strtok(NULL, "+");
+				}
 			}
 			delete [] str;
 		}
