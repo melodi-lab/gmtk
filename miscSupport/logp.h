@@ -84,6 +84,9 @@ public:
   static bool table_init();
 #endif
 
+  // return the base of the log.
+  double base() { return exp(1.0); }
+
   logp(const float p) { 
     assert ( p >= 0.0 );
 
