@@ -261,6 +261,10 @@ class ObservationMatrix {
   Int32 *getDiscFea(unsigned short n);
   
   ///////////////        file opening routines    //////////////////
+
+  // TODO: change the following four routines to also take the stream number,
+  // and change so that all error messages are much better (like they report the stream,
+  // and all relevant files that have problems when an error occurs).
   
   size_t openBinaryFile(StreamInfo *,size_t);
   size_t openAsciiFile (StreamInfo *,size_t);
