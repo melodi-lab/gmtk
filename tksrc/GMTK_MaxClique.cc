@@ -5391,6 +5391,46 @@ sumProbabilities()
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::cliqueEntropy()
+ *
+ *    Compute the clique entropy (base 2) of the forcibly normalized clique.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     sum of probabilities of all elements in the clique.
+ *
+ *-----------------------------------------------------------------------
+ */
+double
+InferenceMaxClique::
+cliqueEntropy()
+{
+  logpr sum = sumProbabilities();
+  double H = 0.0;
+  if (numCliqueValuesUsed > 0) {
+    logpr tmp = cliqueValues.ptr[0].p/sum;
+    H = tmp.unlog() * tmp.val();
+    for (unsigned i=1;i<numCliqueValuesUsed;i++) {
+      logpr tmp = cliqueValues.ptr[i].p/sum;
+      H += tmp.unlog() * tmp.val();
+    }
+  }
+  // convert to entropy and log base 2.
+  return - H / logpr::internal_log(2.0);
+}
+
+
+
 
 
 /*-
@@ -5497,17 +5537,22 @@ maxProbability(bool setCliqueToMaxValue)
  */
 void
 InferenceMaxClique::
-printCliqueEntries(FILE *f,const char*str, const bool normalize) 
+printCliqueEntries(FILE *f,const char*str, 
+		   const bool normalize,
+		   const bool justPrintEntropy)
 {
 
-  logpr sum;
-  if (normalize)
-    sum = sumProbabilities();
+
   fprintf(f,"--------\n");
   if (str != NULL)
     fprintf(f,"%s ",str);
-  fprintf(f,"Printing Clique with %d variables, %d entries\n",
-	  fNodes.size(),numCliqueValuesUsed);
+  fprintf(f,"Printing Clique with %d variables, %d entries, H=%e\n",
+	  fNodes.size(),numCliqueValuesUsed,cliqueEntropy());
+  if (justPrintEntropy)
+    return;
+  logpr sum;
+  if (normalize)
+    sum = sumProbabilities();
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
     if (imc_nwwoh_p) {

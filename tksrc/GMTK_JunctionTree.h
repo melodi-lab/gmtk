@@ -407,8 +407,10 @@ class JunctionTree {
   void emIncrementIsland(const unsigned part,
 			 const logpr probE, 
 			 const bool localCliqueNormalization);
-  void printAllCliques(const unsigned part,FILE* f,const bool normalize);
-
+  void printAllCliques(const unsigned part,FILE* f,
+		       const bool normalize,
+		       const bool justPrintEntropy = false);
+  
   void collectDistributeIslandRecurse(const unsigned start,
 				      const unsigned end,
 				      const unsigned base,
@@ -663,7 +665,7 @@ public:
   void printMessageOrder(FILE *f,vector< pair<unsigned,unsigned> >& message_order);
   void printCurrentRVValues(FILE* f);
   void setCliquePrintRanges(char *p,char*c,char*e);
-  void printAllCliques(FILE* f,const bool normalize);
+  void printAllCliques(FILE* f,const bool normalize,const bool justPrintEntropy);
 
   // 
   // Do some last-minute data structure setup to prepare for

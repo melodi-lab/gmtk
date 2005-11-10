@@ -1067,12 +1067,14 @@ const char*const argerr = "ARG ERROR";
 static char* pPartCliquePrintRange = NULL;
 static char* cPartCliquePrintRange = NULL;
 static char* ePartCliquePrintRange = NULL;
+static bool  cliquePrintOnlyEntropy = false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P partition."),
   Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C partition."),
   Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E partition."),
+  Arg("cliquePrintOnlyEntropy",Arg::Opt,cliquePrintOnlyEntropy,"With CE/DE, print only clique entropies."),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
