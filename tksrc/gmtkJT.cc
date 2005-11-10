@@ -367,9 +367,10 @@ main(int argc,char*argv[])
 		 probe.val()/numFrames,
 		 probe.val()/numUsableFrames);
 	}
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	  myjt.printAllCliques(stdout,true);
       }
+      if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
+
     }
     (*dcdrng_it)++;
   }

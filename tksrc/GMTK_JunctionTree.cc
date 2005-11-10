@@ -4333,7 +4333,7 @@ JunctionTree::distributeEvidence()
  *
  */
 void
-JunctionTree::printAllCliques(FILE* f,const bool normalize)
+JunctionTree::printAllCliques(FILE* f,const bool normalize,const bool justPrintEntropy)
 {
   unsigned partNo = 0;
   char buff[2048];
@@ -4343,7 +4343,7 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
 	sprintf(buff,"Partition %d (P), Clique %d:",partNo,cliqueNum); 
-	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
       }
       it++;
     }
@@ -4357,7 +4357,7 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
 	const unsigned cliqueNum = (unsigned)(*it);
 	if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
 	  sprintf(buff,"Partition %d (C), Clique %d:",partNo,cliqueNum); 
-	  jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+	  jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
 	}
 	it++;
       }
@@ -4372,7 +4372,7 @@ JunctionTree::printAllCliques(FILE* f,const bool normalize)
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
 	sprintf(buff,"Partition %d (E), Clique %d:",partNo,cliqueNum); 
-	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
       }
       it++;
     }
@@ -4912,7 +4912,7 @@ JunctionTree::emIncrementIsland(const unsigned part,
   return partPArray[part].p->emIncrement(cur_prob_evidence,localCliqueNormalization,curEMTrainingBeam);
 }
 void
-JunctionTree::printAllCliques(const unsigned part,FILE* f,const bool normalize)
+JunctionTree::printAllCliques(const unsigned part,FILE* f,const bool normalize,const bool justPrintEntropy)
 {
   BP_Range* rng;
   if (part == 0) 
@@ -4927,7 +4927,7 @@ JunctionTree::printAllCliques(const unsigned part,FILE* f,const bool normalize)
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       sprintf(buff,"Partition %d (%s), Clique %d:",part,partPArray[part].nm,cliqueNum); 
-      partPArray[part].p->maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize);
+      partPArray[part].p->maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
       it++;
     }
   }
