@@ -85,7 +85,9 @@ public:
 #endif
 
   // return the base of the log.
-  double base() { return exp(1.0); }
+  static double base() { return exp(1.0); }
+  // use the log function used internally by this class.
+  static double internal_log(double d) { return log(d); }
 
   logp(const float p) { 
     assert ( p >= 0.0 );
