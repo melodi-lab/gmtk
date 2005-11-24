@@ -50,7 +50,7 @@ my @trifile_pool : shared;
 my $basic_once_index    : shared = 0;
 my $advanced_once_index : shared = 0;
 
-my @run_once = ( 'completed', 'copy' );
+my @run_once = ( 'completed', 'copy', 'completeframeleft', 'completeframeright' );
 my @basic_iterations : shared = ( '100-', '1-' ); 
 my @basic_prefix     : shared = ( '', 'pre-edge-all-', 'pre-edge-random-');
 my @basic_suffix     : shared = ( '-1', '-3' );
@@ -2088,6 +2088,8 @@ sub get_existing_boundaries
   }
   
   printf "%d boundary files found\n", $total_boundaries; 
+
+  ($total_boundaries > 0) or die;
 
   $boundary_queue->enqueue( 'BOUNDARY_SEARCHES_DONE' ); 
 }
