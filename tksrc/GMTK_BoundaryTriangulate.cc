@@ -114,7 +114,8 @@ static RV *
 shiftedRV(const vector <RV*>& rvs, // a set of RVs
 	  map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
 	  RV* rv, // the variable to be shifted
-	  const int shift=0 // the shift amount in frames
+	  const int shift=0, // the shift amount in frames
+	  const bool failIfNotExist=true // abort if shifted RV doesnot exist, otherwise set empty
 	  )
 {
   RVInfo::rvParent p(rv->name(),rv->frame()+shift);
@@ -122,9 +123,12 @@ shiftedRV(const vector <RV*>& rvs, // a set of RVs
   if ((it = pos.find(p)) == pos.end()) {
     // this could be an assertion failure as well, but we need
     // to set 'it'
-    coredump("INTERNAL ERROR: Can't find random variable %s(%d) shifted by %d frames.\n",
-	  rv->name().c_str(),rv->frame(),
-	  shift);
+    if (failIfNotExist)
+      coredump("INTERNAL ERROR: Can't find random variable %s(%d) shifted by %d frames.\n",
+	       rv->name().c_str(),rv->frame(),
+	       shift);
+    else 
+      return NULL;
   }
   return rvs[(*it).second];
 }
@@ -132,15 +136,17 @@ static set<RV*>
 shiftedRVSet(const vector <RV*>& rvs, // a set of RVs
 	     map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
 	     set<RV*>& rvs_to_shift, // the variable to be shifted
-	     const int shift // the shift amount in frames
+	     const int shift, // the shift amount in frames
+	     const bool failIfNotExist=true // abort if shifted RV doesnot exist, otherwise set empty
 	     )
 {
   set <RV*> res;
   set<RV*>::iterator i;
   for (i=rvs_to_shift.begin(); i!= rvs_to_shift.end(); i++) {
     RV *rv = (*i);
-    RV *srv = shiftedRV(rvs,pos,rv,shift);
-    res.insert(srv);
+    RV *srv = shiftedRV(rvs,pos,rv,shift,failIfNotExist);
+    if (srv != NULL)
+      res.insert(srv);
   }
   return res;
 }
@@ -1158,6 +1164,10 @@ BoundaryTriangulate
       E0.insert(unroll0_rvs[i]);
     }
   }
+  infoMsg(High,"Size of (P0,C0,E0) = (%d,%d,%d)\n",
+	  P0.size(),C0.size(),E0.size());
+
+
   // augmentToAbideBySMarkov(unroll0_rvs,unroll0_pos,augmentation2,C0,fp.firstChunkFrame());
 
 
@@ -7360,7 +7370,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   }
 
   if (message(Max)) {
-    printf("Ep's li to Union(Cp,Pp): ");
+    printf("E's li to Union(C',P'): ");
     printRVSet(stdout,Ep_uli);
   }
 
@@ -7392,7 +7402,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   if (UR_pli.size() != Ep_uli.size() || 
       Ep_uli.size() != Ep0_pli.size()) {
     if (message(Max)) {
-      printf("INTERFACE FAILED: size(LI of union(C',E') to P')=%d, size(LI of E' to union(P',Cp'))=%d, size(LI of E' to P')=%d\n",
+      printf("INTERFACE FAILED: size(LI of union(C',E') to P')=%d, size(LI of E' to union(P',C'))=%d, size(LI of E' to P')=%d\n",
 	     UR_pli.size(),Ep_uli.size(),Ep0_pli.size());
       printf("LI of union(C',E') to P': ");printRVSet(stdout,UR_pli);
       printf("LI of E' to union(P',C'): ");printRVSet(stdout,Ep_uli);
@@ -7400,7 +7410,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
     }
     return false;
   } else if (message(Max+50)) {
-    printf("INTERFACE SIZE SUCCEEDED: size(LI of union(C',E') to P')=%d, size(LI of E' to union(P',Cp'))=%d, size(LI of E' to P')=%d\n",
+    printf("INTERFACE SIZE SUCCEEDED: size(LI of union(C',E') to P')=%d, size(LI of E' to union(P',C'))=%d, size(LI of E' to P')=%d\n",
 	   UR_pli.size(),Ep_uli.size(),Ep0_pli.size());
     printf("LI of union(C',E') to P': ");printRVSet(stdout,UR_pli);
     printf("LI of E' to union(P',C'): ");printRVSet(stdout,Ep_uli);
@@ -7414,7 +7424,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   // same as the Ep <--> union_left interface is easy, since
   // we can just shift the first one to the right and check
   // for set equality.
-  set<RV*> UR_pli_r_shifted = shiftedRVSet(rvs,pos,UR_pli,(leftInterface?(1):(-1))*S*fp.numFramesInC());
+  set<RV*> UR_pli_r_shifted = shiftedRVSet(rvs,pos,UR_pli,(leftInterface?(1):(-1))*S*fp.numFramesInC(),false);
   if (UR_pli_r_shifted != Ep_uli) {
     if (message(Max)) {
       printf("INTERFACE FAILED (UR_pli_r_shifted(by %d,%d) != Ep_uli)\n",(leftInterface?(1):(-1))*S*fp.numFramesInC(),leftInterface);
@@ -7428,7 +7438,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   // left interface to union left. We do this by creating a version of
   // Ep0_pli but shifted right and in the right space, and then
   // compare.
-  set<RV*> Ep0_pli_shifted = shiftedRVSet(rvs,pos,Ep0_pli,(leftInterface?1:0)*S*fp.numFramesInC());
+  set<RV*> Ep0_pli_shifted = shiftedRVSet(rvs,pos,Ep0_pli,(leftInterface?1:0)*S*fp.numFramesInC(),false);
   // next check that they are the same.
   if (Ep0_pli_shifted != Ep_uli) {
     if (message(Max)) {
