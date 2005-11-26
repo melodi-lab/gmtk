@@ -7188,8 +7188,9 @@ BoundaryTriangulate::interfaceScore(
  *   2) between P'C' and E'
  *   3) between P' and E'
  *
- *  A simple way to write this is to say that:
- *   In the left interface case (with M=S=1), we must have:
+ *  A simple way to write this (using the user-specified non-primed
+ *  partitions, P, C and E) is to say that: 
+ *  In the left interface case (with M=S=1), we must have:
  *
  *    [P | C E] == [P | C C E] == [P C | C E]
  *
@@ -7280,9 +7281,11 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
 						   map < RVInfo::rvParent, unsigned >& pos0,
 						   const bool leftInterface)
 {
+  
+  const char* interfaceStr = (leftInterface? "LEFT" : "RIGHT");
 
   if (message(Max)) {
-    printf("==== %s case: Checking template for valid interface\nP:",(leftInterface?"Left Interface":"Right Interface"));
+    printf("==== %s Interface case: Checking template for valid interface\nP:",interfaceStr);
     printRVSet(stdout,P);
     // printf("P:");printRVSet(stdout,P);
     printf("C1:");printRVSet(stdout,C1);
@@ -7427,7 +7430,9 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   set<RV*> UR_pli_r_shifted = shiftedRVSet(rvs,pos,UR_pli,(leftInterface?(1):(-1))*S*fp.numFramesInC(),false);
   if (UR_pli_r_shifted != Ep_uli) {
     if (message(Max)) {
-      printf("INTERFACE FAILED (UR_pli_r_shifted(by %d,%d) != Ep_uli)\n",(leftInterface?(1):(-1))*S*fp.numFramesInC(),leftInterface);
+      printf("%s INTERFACE FAILED (UR_pli_r_shifted(by %d) != Ep_uli)\n",
+	     interfaceStr,
+	     (leftInterface?(1):(-1))*S*fp.numFramesInC());
       printf("UR_pli_r_shifted:");
       printRVSet(stdout,UR_pli_r_shifted);
     }
@@ -7442,7 +7447,9 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   // next check that they are the same.
   if (Ep0_pli_shifted != Ep_uli) {
     if (message(Max)) {
-      printf("INTERFACE FAILED (Ep0_pli_shifted(by %d,%d) != Ep_uli)\n",(leftInterface?(1):(0))*S*fp.numFramesInC(),leftInterface);
+      printf("%s INTERFACE FAILED (Ep0_pli_shifted(by %d) != Ep_uli)\n",
+	     interfaceStr,
+	     (leftInterface?(1):(0))*S*fp.numFramesInC());
       printf("Ep0_pli_shifted:");
       printRVSet(stdout,Ep0_pli_shifted);
     }
