@@ -3197,4 +3197,8 @@ Thu Oct 27 21:56:54 2005
   - fix observation file error messages so that it tells which feature file is in trouble.
     Improve all of these messages.
 
+Wed Dec 14 00:30:37 2005
 
+  - for DOCS: mention that we can train with a lattice (i.e., rather than a forced alignment
+       withi a word or phone sequence, that we can force train according to a lattice which is
+      a generalization of that).
