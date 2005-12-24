@@ -2190,7 +2190,7 @@ other minor things mentioned above).
          - virtual evidence extended to separator driven inference so that
            the virtual evidence in a clique acts like a separator, thereby effectively
            pruning away what is not necessary.
-         - Single-Pass Retraining, ala HTK (sec 8.6).
+         - Single-Pass Retraining, ala HTK (sec 8.6). (single pass retraining).
 
      - underlying different models
         - native support for time-inhomogeneous DBNs
@@ -3202,3 +3202,16 @@ Wed Dec 14 00:30:37 2005
   - for DOCS: mention that we can train with a lattice (i.e., rather than a forced alignment
        withi a word or phone sequence, that we can force train according to a lattice which is
       a generalization of that).
+
+Fri Dec 23 21:21:16 2005
+  - for DOCS, give an example graph for how to do arbitrary duration modeling
+        - base case with geometrics
+        - negative binomial with sums of geometrics
+        - mixtures of negative bionomials
+        - as a fixed duration distribution "histogram" and a reverse
+          counter started off at the sample of the histogram.
+
+
+
+
+
