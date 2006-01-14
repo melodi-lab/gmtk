@@ -53,9 +53,17 @@ class DiscRV;
  *  |     |
  *  |     +-- USCPT - special unity (1) score CPT for discrete features.
  *  |
- *  +-- NGramCPT - ngram language model with backing-off support
+ *  +-- NGramCPT - ARPA ngram language model with backing-off support
  *  |
  *  +-- FNGramCPT - factored language model as in SRILM 1.4+
+ *  |
+ *  +-- VECPT - virtual evidence CPT
+ *  | 
+ *  +-- LatticeEdgeCPT - implementation of an HTK lattice edge as a GMTK CPT
+ *  +-- LatticeNodeCPT - implementation of an HTK lattice node as a GMTK CPT
+ *
+ *  Still TODO:
+ *      Neural Network/MLP CPT
  *
  */
 
