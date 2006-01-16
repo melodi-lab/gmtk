@@ -99,7 +99,9 @@ Frame = "frame" ":" integer "{" RandomVariableList "}"
 
 RandomVariableList = RandomVariable RandomVariableList | NULL
 
-RV = "variable" ":" name "{" RandomVariableAttribute "}"
+RandomVariable = "variable" ":" name "{" RandomVariableAttributeList "}"
+               |  "clique" ":" name "{" CliqueAttributeList "}"
+
 
 RandomVariableAttributeList =
         RandomVariableAttribute RandomVariableAttributeList | NULL
@@ -414,7 +416,9 @@ FileParser::fillKeywordTable()
     /* 34 */ "numSegments",
     /* 35 */ "VirtualEvidenceCPT",
     /* 36 */ "LatticeNodeCPT",
-    /* 37 */ "LatticeEdgeCPT"
+    /* 37 */ "LatticeEdgeCPT",
+    /* 38 */ "clique",
+    /* 39 */ "variables",
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -700,6 +704,7 @@ FileParser::parseGraphicalModel()
   tokenInfo.srcChar = 1;
   curFrame = -1;
   rvInfoVector.clear();
+  cliqueList.clear();
 
   // prepare the first lookahead token
   prepareNextToken();
@@ -780,7 +785,7 @@ FileParser::parseFrame()
     parseErrorExpecting("open frame {");
   consumeToken();
 
-  parseRandomVariableList();
+  parseFrameEntryList();
 
   ensureNotAtEOF("close frame }");
   if (tokenInfo != TT_RightBrace)
@@ -789,91 +794,207 @@ FileParser::parseFrame()
 }
 
 void
-FileParser::parseRandomVariableList()
+FileParser::parseFrameEntryList()
 {
-  if (tokenInfo != KW_Variable)
+  if (tokenInfo != KW_Variable && tokenInfo != KW_Clique)
     return;
 
-  curRV.clear();
-  parseRandomVariable();
+  if (tokenInfo == KW_Variable) {
+    // the current frame entry must be a random variable definition.
 
+    curRV.clear();
+    parseRandomVariable();
 
+    ////////////////////////////////////////////////////////////
+    // A number of "semantic" errors can be checked right
+    // here before going on, so we do that.
+    ///////////////////////////////////////////////////////////////
 
-  ////////////////////////////////////////////////////////////
-  // A number of "semantic" errors can be checked right
-  // here before going on, so we do that.
-  ///////////////////////////////////////////////////////////////
+    //////////////////////////////
+    // make sure that there was a type and switching/cont parents
+    if (curRV.rvType == RVInfo::t_unknown)
+      error("Random variable type unknown for variable %s at frame %d, line %d\n",
+	    curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
 
-  //////////////////////////////
-  // make sure that there was a type and switching/cont parents
-  if (curRV.rvType == RVInfo::t_unknown)
-    error("Random variable type unknown for variable %s at frame %d, line %d\n",
-	  curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
+    // we need to at least have specified one conditional parents set,
+    // which might be 'nil' 
+    if (curRV.conditionalParents.size() == 0)
+      error("Conditional parents unknown/unspecified for random variable '%s' at frame %d, line %d\n",
+	    curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
 
-  // we need to at least have specified one conditional parents set,
-  // which might be 'nil' 
-  if (curRV.conditionalParents.size() == 0)
-    error("Conditional parents unknown/unspecified for random variable '%s' at frame %d, line %d\n",
-	  curRV.name.c_str(),curRV.frame,curRV.fileLineNumber);
-
-  // Make sure that if we have switching weights, then we also have a
-  // sets of conditional parents, and that we either
-  //    1) have only one weight (scale,penalty,shift)
-  // or 2) have as many weights as we have sets of conditional parents.
-  if (curRV.rvWeightInfo.size() > 1) {
-    // then we have switching weights, make sure that we have
-    // switching parents and list of conditional parent sets, where
-    // the list is the same length.
-    if (curRV.conditionalParents.size() != curRV.rvWeightInfo.size()) {
-      error("Random variable '%s', frame %d, line %d of file %s has %d switching weights but "
-	    "only %d set(s) of conditional parents. Must either have the same number, or a single weight item.\n",
-	    curRV.name.c_str(),
-	    curRV.frame,
-	    curRV.fileLineNumber,
-	    curRV.rvFileName.c_str(),
-	    curRV.rvWeightInfo.size(),
-	    curRV.conditionalParents.size());
+    // Make sure that if we have switching weights, then we also have a
+    // sets of conditional parents, and that we either
+    //    1) have only one weight (scale,penalty,shift)
+    // or 2) have as many weights as we have sets of conditional parents.
+    if (curRV.rvWeightInfo.size() > 1) {
+      // then we have switching weights, make sure that we have
+      // switching parents and list of conditional parent sets, where
+      // the list is the same length.
+      if (curRV.conditionalParents.size() != curRV.rvWeightInfo.size()) {
+	error("Random variable '%s', frame %d, line %d of file %s has %d switching weights but "
+	      "only %d set(s) of conditional parents. Must either have the same number, or a single weight item.\n",
+	      curRV.name.c_str(),
+	      curRV.frame,
+	      curRV.fileLineNumber,
+	      curRV.rvFileName.c_str(),
+	      curRV.rvWeightInfo.size(),
+	      curRV.conditionalParents.size());
+      }
     }
-  }
 
-  // check that if we have conditionalparents > 1 we also have switching parents.
-  if (curRV.conditionalParents.size() > 1 && curRV.switchingParents.size() == 0) {
+    // check that if we have conditionalparents > 1 we also have switching parents.
+    if (curRV.conditionalParents.size() > 1 && curRV.switchingParents.size() == 0) {
       error("Random variable '%s', frame %d, line %d of file %s has %d sets of conditional parents but does not list any switching parents.\n",
 	    curRV.name.c_str(),
 	    curRV.frame,
 	    curRV.fileLineNumber,
 	    curRV.rvFileName.c_str(),
 	    curRV.conditionalParents.size());
+    }
+
+    // check if we've already seen this RV
+    map < RVInfo::rvParent , unsigned >::iterator it;
+    it = nameRVmap.find(RVInfo::rvParent(curRV.name,curRV.frame));
+    if (it != nameRVmap.end()) {
+      error("Error: random variable '%s' at frame (%d) defined twice, "
+	    "on both line %d and line %d\n",curRV.name.c_str(),
+	    curRV.frame,
+	    curRV.fileLineNumber,
+	    rvInfoVector[(*it).second].fileLineNumber);
+    }
+
+    curRV.variablePositionInStrFile = rvInfoVector.size();
+
+    // compute the RV's internal status variables
+    curRV.computeAndReturnDeterministicStatus();
+    curRV.computeAndReturnSparseStatus();
+
+    // everything looks ok, insert it in our tables.
+    rvInfoVector.push_back(curRV);
+    // add to map
+    nameRVmap[
+	      RVInfo::rvParent(curRV.name,curRV.frame)
+    ]
+      = rvInfoVector.size()-1;
+
+  } else {
+    // this must be a clique definition.
+    curLC.clear();
+    parseLocalClique();
+
+    // Do dumb linear search since number of cliques will probably be
+    // very small.
+    for (unsigned i=0;i<cliqueList.size();i++) {
+      if (cliqueList[i].frame == curLC.frame &&
+	  cliqueList[i].name == curLC.name) {
+	error("Error: local clique '%s' at frame (%d) defined twice in same frame, "
+	      "on both line %d and line %d\n",
+	      curLC.name.c_str(),
+	      curLC.frame,
+	      cliqueList[i].fileLineNumber,
+	      curLC.fileLineNumber);
+      }
+    }
+
+    cliqueList.push_back(curLC);
   }
 
-  // check if we've already seen this RV
-  map < RVInfo::rvParent , unsigned >::iterator it;
-  it = nameRVmap.find(RVInfo::rvParent(curRV.name,curRV.frame));
-  if (it != nameRVmap.end()) {
-    error("Error: random variable '%s' at frame (%d) defined twice, "
-	  "on both line %d and %d\n",curRV.name.c_str(),
-	  curRV.frame,
-	  curRV.fileLineNumber,
-	  rvInfoVector[(*it).second].fileLineNumber);
-  }
-
-  curRV.variablePositionInStrFile = rvInfoVector.size();
-
-  // compute the RV's internal status variables
-  curRV.computeAndReturnDeterministicStatus();
-  curRV.computeAndReturnSparseStatus();
-
-  // everything looks ok, insert it in our tables.
-  rvInfoVector.push_back(curRV);
-  // add to map
-  nameRVmap[
-	    RVInfo::rvParent(curRV.name,curRV.frame)
-            ]
-    = rvInfoVector.size()-1;
-
-
-  parseRandomVariableList();
+  parseFrameEntryList();
 }
+
+
+
+void
+FileParser::parseLocalClique()
+{
+
+  ensureNotAtEOF(KW_Clique);
+  if (tokenInfo != KW_Clique)
+    parseError(KW_Clique);
+  
+  curLC.frame = curFrame;
+  curLC.fileLineNumber = tokenInfo.srcLine;
+  curLC.fileName  = fileNameParsing;
+  consumeToken();
+
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseErrorExpecting("':'");
+  consumeToken();
+
+  ensureNotAtEOF("clique name");
+  if (tokenInfo != TT_Identifier)
+    parseErrorExpecting("clique name");
+  curLC.name = tokenInfo.tokenStr;
+  consumeToken();
+
+  ensureNotAtEOF("open clique {");
+  if (tokenInfo != TT_LeftBrace)
+    parseErrorExpecting("open clique {");
+  consumeToken();
+
+  parseCliqueAttributeList();
+
+  ensureNotAtEOF("close clique }");
+  if (tokenInfo != TT_RightBrace)
+    parseErrorExpecting("close clique }");
+  consumeToken();
+
+
+}
+
+
+void
+FileParser::parseCliqueAttributeList()
+{
+  if (tokenInfo == KW_Variables) {
+    parseCliqueAttribute();
+    parseCliqueAttributeList();
+  }
+  return;
+}
+
+
+void
+FileParser::parseCliqueAttribute()
+{
+  ensureNotAtEOF("clique attribute");
+  if (tokenInfo == KW_Variables)
+    return parseCliqueVariablesAttribute();
+  else
+    parseErrorExpecting("clique attribute");
+}
+
+void
+FileParser::parseCliqueVariablesAttribute()
+{
+  ensureNotAtEOF(KW_Variables);
+  if (tokenInfo != KW_Variables)
+    parseError(KW_Variables);
+  consumeToken();
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseErrorExpecting("':'");
+  consumeToken();
+
+  // use same format as a list of parents to define the list of
+  // parents (and use the relative offset notation, where the offset
+  // is relative to the current frame number for convenience).
+  
+  ensureNotAtEOF("list of clique variables");
+  rvDeclarationList.clear();
+  parseRVDeclarationList();
+  curLC.variables = rvDeclarationList;
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseErrorExpecting("';'");
+  consumeToken();
+}
+
+
 
 
 void
@@ -906,7 +1027,7 @@ FileParser::parseRandomVariable()
 
   parseRandomVariableAttributeList();
 
-  ensureNotAtEOF("close frame }");
+  ensureNotAtEOF("close RV }");
   if (tokenInfo != TT_RightBrace)
     parseErrorExpecting("close RV }");
   consumeToken();
@@ -1476,6 +1597,56 @@ FileParser::parseParent()
 
 }
 
+
+
+void
+FileParser::parseRVDeclarationList()
+{
+  parseRVDeclaration();
+  if (tokenInfo == TT_Comma) {
+    consumeToken();
+    parseRVDeclarationList();
+  }
+}
+
+void
+FileParser::parseRVDeclaration()
+{
+  RVInfo::rvParent p;
+
+  ensureNotAtEOF("RV name");
+  if (tokenInfo != TT_Identifier) 
+    parseErrorExpecting("RV name");
+  p.first = tokenInfo.tokenStr;
+  consumeToken();
+
+  ensureNotAtEOF("(");
+  if (tokenInfo != TT_LeftParen) 
+    parseErrorExpecting("'('");
+  consumeToken();
+
+  ensureNotAtEOF("RV offset");
+  if (tokenInfo != TT_Integer) 
+    parseErrorExpecting("RV offset");
+  p.second = tokenInfo.int_val;;
+
+
+  // unlike parents, it is not illegal if a variable in this list
+  // occurs twice (although it might be a mistake. Perhaps
+  // issue a warning).
+
+  rvDeclarationList.push_back(p);
+  consumeToken();
+
+  ensureNotAtEOF(")");
+  if (tokenInfo != TT_RightParen) 
+    parseErrorExpecting("')'");
+  consumeToken();
+
+}
+
+
+
 void
 FileParser::parseImplementation()
 {
@@ -1978,6 +2149,34 @@ FileParser::createRandomVariableGraph()
     // finally, add all the parents.
     rvInfoVector[i].rv->setParents(sparents,cpl);
   }
+
+
+  // now go through clique list and added edges to neighbors of each
+  // random variable (and make sure that all variables in each
+  // clique exists according to the template).
+
+  for (unsigned cliqueNo=0;cliqueNo<cliqueList.size();cliqueNo++) {
+    LocalClique& loc_clique = cliqueList[cliqueNo];
+
+    for (unsigned varNo=0;varNo<loc_clique.variables.size();varNo++) {
+      RVInfo::rvParent pp(loc_clique.variables[varNo].first,
+			  loc_clique.variables[varNo].second 
+			  + loc_clique.frame);
+
+      if (nameRVmap.find(pp) == nameRVmap.end())
+	error("Error: RV \"%s(%d)\" doesn't exist, declared as \"%s(%d)\" in clique '%s' at frame %d (line %d of file '%s')\n",
+	      pp.first.c_str(),pp.second,
+	      pp.first.c_str(),loc_clique.variables[varNo].second,
+	      loc_clique.name.c_str(),
+	      loc_clique.frame,
+	      loc_clique.fileLineNumber,
+	      loc_clique.fileName.c_str());
+    }
+
+    // TODO: add neighbor members for each template random variable according to local cliques.
+
+  }
+
 }
 
 
@@ -2018,13 +2217,14 @@ FileParser::ensureValidTemplate(bool longCheck)
     unroll(unrollAmount,vars);
     // TODO: fix error messages to give indication as to where loop is.
     if (!GraphicalModel::topologicalSort(vars,vars2))
-      error("ERROR. Graph is not directed, contains a directed loop when unrolled %d times.\n",unrollAmount);
+      error("ERROR. Graph is not acyclic, contains a directed loop when unrolled %d times.\n",unrollAmount);
     vars.clear(); vars2.clear();
   }
 
   if (longCheck) {
     // note that it is possible for the directed loop to show up only when the graph is unrolled numVarsInChunk
-    // times. Unrolling this amount is sufficient for any further unrolling though.
+    // times. Unrolling this amount is sufficient for any further unrolling though, but this
+    // can take a long time for big graphs.
     for (unsigned unrollAmount=longCheckStart;unrollAmount<=numVarsInChunk;unrollAmount++) 
       {
 	infoMsg(Max,"Longcheck: Ensuring Valid Template when unrolling %d out of %d times\n",unrollAmount,numVarsInChunk);
@@ -3407,18 +3607,134 @@ FileParser::unroll(unsigned timesToUnroll,
     unrolledVarSet[uvsi]->setParents(sparents,cpl);
   }
 
-  // can't call topological sort for now since clique
-  // sizes get too big for frontier algorithm.
-
-  // vector<RV*> res;
-  // GraphicalModel::topologicalSort(unrolledVarSet,res);
-  // unrolledVarSet = res;
+  // optionally call the following if we want the neighbors
+  // members of RVS to respect the clique's that were defined in the .str file.
+  // 
+  // addUndirectedLocalCliqueEdges(unrolledVarSet,posOfParentAtFrame);
 
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * addUndirectedLocalCliqueEdges()
+ *
+ *  Given an unrolled graph (and the corresponding data structures
+ *  returned by the unroll routine), add any undirected edges
+ *  according to any local cliques specified in the structure file.
+ *
+ *  Note that the semantics of local cliques in a graph is that the
+ *  clique is added relative to the frame in the *unrolled*
+ *  graph. This means that if a local clique is defined with a random
+ *  variable foo(-3) in the template, and that local clique when
+ *  unrolled exists at frame n, then it expects (and affects) random
+ *  variable foo(n-3) in the unrolled graph.  Note that this is
+ *  similar behavior to that of random variables that are defined in a
+ *  frame, i.e., it is the parents of a random variable that are
+ *  relative to the child in the unrolled graph (so we first create
+ *  the graph of children, and then create the parents relative to
+ *  those children). Here, we first create the graph of nodes in
+ *  frames, and then create the local cliques relative to those frames.
+ *
+ * Preconditions:
+ *     Must be called from unroll() after all the random variales have been set up.
+ *     All RV's neighbors members are presumably empty.
+ *     'timesToUnroll' argument must be same as corresponding call with unroll().
+ *
+ * Postconditions:
+ *     The neighbors members of the random variables in the unrolled graph
+ *     have been adjusted to reflect the local cliques given in the structure file.
+ *
+ * Side Effects:
+ *     Changes neighbors members of RVs.
+ *
+ * Results:
+ *     None
+ *
+ *----------------------------------------------------------------------- 
+ */
+void
+FileParser::addUndirectedLocalCliqueEdges(unsigned timesToUnroll,
+					  vector<RV*> &rvs,
+					  map < RVInfo::rvParent, unsigned >& pos)
+
+{
+  // 
+  // Add neighbors structures in unrolled graph based on local cliques.
+  for (unsigned cliqueNo=0;cliqueNo<cliqueList.size();cliqueNo++) {
+    LocalClique& clique = cliqueList[cliqueNo];
+    if (frameInTemplateP(clique.frame)) {
+      const unsigned offset = 0;
+      completeRVsInClique(clique,offset,rvs,pos);
+    } else if (frameInTemplateC(clique.frame)) {
+      // do this for all original C partitions.
+      for (unsigned i=0;i<(timesToUnroll+1);i++) {
+	const unsigned offset = 
+	  i*numFramesInC();
+	completeRVsInClique(clique,offset,rvs,pos);	
+      }
+    } else {
+      assert (frameInTemplateE(clique.frame));
+      const unsigned offset = 
+	timesToUnroll*numFramesInC();
+      completeRVsInClique(clique,offset,rvs,pos);	
+    }
+  }
+}
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * completeRVsInClique()
+ *  Given a file parser clique (which, as you should know, is not nec. a max clique),
+ *  and an offset, complete (connect all neighbors) of all the random variables
+ *  in the unrolled graph according to that clique.
+ *
+ *
+ *
+ * Preconditions:
+ *     Must be called from unroll() after all the random variales have been set up.
+ *     All RV's neighbors members are presumably empty.
+ *
+ * Postconditions:
+ *     The neighbors members of the random variables in the unrolled graph
+ *     have been adjusted to reflect the cliques given in the structure file.
+ *
+ * Side Effects:
+ *     Changes neighbors members of RVs.
+ *
+ * Results:
+ *     None
+ *
+ *----------------------------------------------------------------------- 
+ */
+void
+FileParser::completeRVsInClique(LocalClique& loc_clique,
+				const unsigned offset,
+				vector<RV*> &rvs,
+				map < RVInfo::rvParent, unsigned >& pos)
+{
+
+  // form a set of the random variables themselves.
+  set<RV*> rv_clique;
+
+  map < RVInfo::rvParent , unsigned >::iterator it;
+  for (unsigned varNo=0;varNo<loc_clique.variables.size();varNo++) {
+    RVInfo::rvParent pp(loc_clique.variables[varNo].first,
+			loc_clique.variables[varNo].second 
+			+ loc_clique.frame
+			+ offset);
+
+    if ((it = pos.find(pp)) == pos.end()) {
+      coredump("INTERNAL ERROR: Can't find random variable %s(%d) in unrolled collection.\n",
+	       pp.first.c_str(),pp.second);
+    }
+    rv_clique.insert(rvs[(*it).second]);
+  }
+  MaxClique::makeComplete(rv_clique);
+
+}
 
 
 /*-
@@ -3536,7 +3852,7 @@ FileParser::writeGMId(oDataStreamFile& os)
  *----------------------------------------------------------------------- 
  */
 bool
-FileParser::readAndVerifyGMId(iDataStreamFile& is)
+FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
 {
   // just go through and make sure everything is the same.
 
@@ -3557,7 +3873,9 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is)
     if (uval != rvInfoVector[i].frame) return false;
 
     if (!is.read(uval)) return false;
-    if (uval != rvInfoVector[i].rvCard) return false;
+    if (checkCardinality) {
+      if (uval != rvInfoVector[i].rvCard) return false;
+    }
 
     if (!is.read(nm)) return false;
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {

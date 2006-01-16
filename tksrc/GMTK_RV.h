@@ -216,10 +216,17 @@ protected:
 
   ////////////////////////////////////////////////////////////////////////
   // The set of neighbors, for undirected graph formulation. This
-  // consists of the union of the parents and the children. Note that
-  // this variable is set only during triangulation. During inference,
-  // this variable is likley to be empty, and the undirected graph is
-  // defined only implicitly via the maxCliques.
+  // consists of the union of the parents, the children, any
+  // moralization edges, any additional edges added by one of a
+  // variety of non-minimal triangulation routines, and any additional
+  // edges specified by structure file cliques.  Note that this member
+  // is fully set only during triangulation, and only for small
+  // partially unrolled template graphs, not for the complete unrolled
+  // graph that is done for each observation length.  During
+  // inference, this variable is likley to be either empty or not
+  // completely accurate, and the corresponding undirected graph is
+  // defined only implicitly via the maxCliques and the way that an
+  // inference algorithm treats the random variables.
   set<RV *> neighbors;
 
   ////////////////////////////////////////////////////////////////////////

@@ -349,7 +349,7 @@ const char*const argerr = "ARG ERROR";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate undefined CPTs. (-1) = don't read params, (0) = noallocate, (1) = use random initial CPT values, (2) = use uniform values"),
+  Arg("allocateDenseCpts",Arg::Opt,allocateDenseCpts,"Automatically allocate undefined CPTs. (-1) = don't read params, (0) = don't allocate, (1) = use random initial CPT values, (2) = use uniform values"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
      
@@ -414,6 +414,29 @@ const char*const argerr = "ARG ERROR";
 #endif
 #endif // defined(GMTK_ARG_STR_FILE)
 
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+#if defined(GMTK_ARG_CHECK_TRI_FILE_CARD)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static bool checkTriFileCards=true;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("checkTriFileCards",Arg::Opt,checkTriFileCards,"Verify rv cardinalities in triangulation file match .str file"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_CHECK_TRI_FILE_CARD)
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -440,6 +463,15 @@ const char*const argerr = "ARG ERROR";
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
+// 
+// This option is meant just for gmtkTriangulate.cc, a program that
+// normally outputs a triangulation file, but sometimes (e.g., when
+// called by scripts, when wanting to triangulate just one partition
+// at a time, or when wanting just to check various stats about a
+// trifile such as clique weight), we need to read in a pre-existing
+// tri-file. These options are for that purpose.  Note that we
+// shouldn't have both *INPUT_TRI_FILE and *TRI_FILE defined in the
+// same file.
 
 #if defined(GMTK_ARG_INPUT_TRI_FILE)
 #if defined(GMTK_ARGUMENTS_DEFINITION)

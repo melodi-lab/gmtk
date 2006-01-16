@@ -60,7 +60,7 @@ VCID("$Header$")
 #define GMTK_ARG_NUM_BACKUP_FILES
 #define GMTK_ARG_VERB
 #define GMTK_ARG_ALLOC_DENSE_CPTS
-
+#define GMTK_ARG_CHECK_TRI_FILE_CARD
 
 static char* Ptrifile = false;
 static char* Ctrifile = false;
@@ -79,8 +79,7 @@ Arg Arg::Args[] = {
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
 
-
-
+  // define these here since they are unique to this .cc file.
   Arg("Ptrifile",
       Arg::Opt,Ptrifile,
       "Tri-file to obtain triangulation for P partition"),
@@ -90,7 +89,6 @@ Arg Arg::Args[] = {
   Arg("Etrifile",
       Arg::Opt,Etrifile,
       "Tri-file to obtain triangulation for E partition"),
-
 
   // final one to signal the end of the list
   Arg()
@@ -243,7 +241,7 @@ main(int argc,char*argv[])
 
   {
     iDataStreamFile is(Ptrifile,false,false);
-    if (!fp.readAndVerifyGMId(is))
+    if (!fp.readAndVerifyGMId(is,checkTriFileCards))
       error("ERROR: triangulation P tri-file '%s' does not match graph given in structure file '%s'\n",Ptrifile,strFileName);
     gm_template_for_P.readPartitions(is);
     gm_template_for_P.readMaxCliques(is);
@@ -251,7 +249,7 @@ main(int argc,char*argv[])
   }
   {
     iDataStreamFile is(Ctrifile,false,false);
-    if (!fp.readAndVerifyGMId(is))
+    if (!fp.readAndVerifyGMId(is,checkTriFileCards))
       error("ERROR: triangulation C tri-file '%s' does not match graph given in structure file '%s'\n",Ctrifile,strFileName);
     gm_template_for_C.readPartitions(is);
     gm_template_for_C.readMaxCliques(is);
@@ -259,7 +257,7 @@ main(int argc,char*argv[])
   }
   {
     iDataStreamFile is(Etrifile,false,false);
-    if (!fp.readAndVerifyGMId(is))
+    if (!fp.readAndVerifyGMId(is,checkTriFileCards))
       error("ERROR: triangulation E tri-file '%s' does not match graph given in structure file '%s'\n",Etrifile,strFileName);
     gm_template_for_E.readPartitions(is);
     gm_template_for_E.readMaxCliques(is);
