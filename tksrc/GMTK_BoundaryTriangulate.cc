@@ -850,6 +850,15 @@ BoundaryTriangulate
   //
   // where we find the boundary in the chunks within the square brackets. The
   // set of nodes consitituting the boundary is not allowed to exist in more than M chunks.
+  // The various chunks will be placed into variables (with u2 suffix) P, C1, C2, C3, and E
+  // as follows:
+  //
+  //
+  //           1 2 ... M    
+  //     P C [ C C ... C ] C E
+  //    /  |    \     /    |  \       connections
+  //   P  C1      C2       C3  E      <== u2 suffixed variables.
+  // 
 
   vector <RV*> unroll2_rvs;
   map < RVInfo::rvParent, unsigned > unroll2_pos;
@@ -858,6 +867,8 @@ BoundaryTriangulate
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
     unroll2_rvs[i]->createNeighborsFromParentsChildren();
   }
+  // add any local cliques from .str file
+  fp.addUndirectedLocalCliqueEdges(M+1,unroll2_rvs,unroll2_pos);
   // moralize graph
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
     unroll2_rvs[i]->moralize();
@@ -915,7 +926,7 @@ BoundaryTriangulate
 
   ///////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////
-  // Third, create the network from which the new P', C', and E'
+  // Next, create the network from which the new P', C', and E'
   // partitions will be formed out of the original P,C, and E in the
   // structure file. P', C', E' are formed based on both the current
   // settings of M and S, and also based on the resulting boundary
@@ -979,7 +990,7 @@ BoundaryTriangulate
   //          |   \ /   |    \ /   |
   //          P    C1   Cxtr  C2   E
   //    (here, again there is no intersection between C1 and C2, but
-  //     since S>M, we put the middel in Cextra.
+  //     since S>M, we put the middle in Cextra.
   // 
   // The number of chunks needed is M + S, so we should unroll (M+S-1)
   // time(s).  We ultimately create sets P', C1', C2', and E', from the
@@ -988,7 +999,8 @@ BoundaryTriangulate
   // between chunk C1' and C2' is S frames.
   // Note also that:
   //      1) if S==M, Cextra will be empty, and C1' and C2' will not overlap.  
-  //      2) if M > S, then C1' and C2' will overlap certain variables.  
+  //      2) if M > S, then C1' and C2' will overlap certain variables, and Cextra
+  //         will be empty.  
   //      3) if S > M, C1' and C2' will not overlap, and there will be chunks 
   //         between C1' and C2', and they'll be placed in Cextra.
   // 
@@ -1072,6 +1084,8 @@ BoundaryTriangulate
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->createNeighborsFromParentsChildren();
   }
+  // add any local cliques from .str file
+  fp.addUndirectedLocalCliqueEdges(M+S-1,unroll1_rvs,unroll1_pos);
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->moralize();
   }
@@ -1129,11 +1143,16 @@ BoundaryTriangulate
 
 
 
+
   ///////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////
-  // Next, create a network unrolled 0 times in the modified partition (corresponding exactly to
-  // the basic user defined modified template), and used unfortunately only for
-  // interface error checks, E' to P'
+  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////
+  // Next, create a network unrolled 0 times in the modified partition
+  // (corresponding exactly to the basic user defined M/S-modified
+  // template). This is used only for interface error checks, for 
+  // E' to P' matching the other cases (see below).
+  // 
   vector <RV*> unroll0_rvs;
   map < RVInfo::rvParent, unsigned > unroll0_pos;
   fp.unroll(M-1,unroll0_rvs,unroll0_pos);
@@ -1141,6 +1160,8 @@ BoundaryTriangulate
   for (unsigned i=0;i<unroll0_rvs.size();i++) {
     unroll0_rvs[i]->createNeighborsFromParentsChildren();
   }
+  // add any local cliques from .str file
+  fp.addUndirectedLocalCliqueEdges(M-1,unroll0_rvs,unroll0_pos);
   // moralize graph
   for (unsigned i=0;i<unroll0_rvs.size();i++) {
     unroll0_rvs[i]->moralize();
@@ -1220,6 +1241,9 @@ BoundaryTriangulate
 
   // TODO: optionally call addExtraEdgesToGraph(nodes, edge_heuristic)
   // to add edges corresponding to ancestral pairs. 
+  // TODO: change name of routine 'addExtraEdgesToGraph' to something like
+  //     connectAncestralPairs(), or addEdgesForAncestralPairs(), etc.
+  // 
 
 
   // now, augment the network to partition.
@@ -5538,7 +5562,7 @@ triangulateCompleteFrame(
  *   Frontier does that for us when it selects cliques, but it won't
  *   change things or hurt if it already is.  Also, note that Frontier
  *   sometimes (but rarely) will not triangulate the graph with
- *   respect to the cumpulsory interface completion edges that have at
+ *   respect to the compulsory interface completion edges that have at
  *   this point been added to the graph. If Frontier misses those
  *   edges, then we do a quick MCS pass to fix this up. In practice,
  *   however, this does not happen very often, and also it depends on
@@ -5623,14 +5647,46 @@ BoundaryTriangulate
 	printRVSet(stdout,frontier);
       }
       MaxClique::makeComplete(frontier);
+
+      // We do not need to remove (reduce) everything in the toRemove
+      // set. As another random heuristic, we add the case where we
+      // remove only a random subset of the set of nodes that we
+      // should remove. This:
+      //   1) introduces further randomness into the algorithm (on top of the 
+      //      random topological sort we do above),
+      //   2) TODO: could be extended to use smarter heuristics other than
+      //      taking a random subset.
+      //   3) potentially makes the cliques larger (as the next clique that
+      //      occurs is going to contain the variables that we have not removed
+      //      on this clique.
+      //   4) TODO: potentially could add with the ancestral-pair heuristic, so that
+      //      we don't remove a node if it is ancestral with respect to some
+      //      node in the clique.
+      //   5) We make sure we remove at least something, as otherwise
+      //      the next clique will include  this one (which is wasteful)
+
+
+      set <RV*> toRemoveSubset;
+      set <RV*>::iterator rem_it;
+      set <RV*>::iterator rem_it_end = toRemove.end();
+      for (rem_it=toRemove.begin();rem_it!=rem_it_end;rem_it++) {
+	// drop entries from remove set with probabiltiy 0.75 for now.
+	// TODO: change this to a command line option.
+	if (rnd.coin(0.75))
+	  toRemoveSubset.insert((*rem_it));
+      }
+
+      // Uncomment if we want to remove everything.
+      // set <RV*> toRemoveSubset = toRemove;
+
       set <RV*> res;
       if (message(High)) {
 	infoMsg(High,"Frontier: Removing:");
-	printRVSet(stdout,toRemove);
+	printRVSet(stdout,toRemoveSubset);
       }
 
       set_difference(frontier.begin(),frontier.end(),
-		     toRemove.begin(),toRemove.end(),
+		     toRemoveSubset.begin(),toRemoveSubset.end(),
 		     inserter(res,res.end()));
       frontier = res;
     }
@@ -5650,7 +5706,7 @@ BoundaryTriangulate
   // Sometimes, but rarely, frontier might not triangulate the graph
   // since it doesn't know about the extra compulsory edges for the
   // completing the left and right interfaces of the current
-  // partition.
+  // partition (and it does not know about any other local cliques in the .str file).
   // 
   // In order to make sure, we run a MCS pass adding edges in case
   // Frontier didn't enclose right interface with a clique and it
@@ -5659,6 +5715,7 @@ BoundaryTriangulate
   // interfaces are included in cliques or the result is
   // triangulated), then this next step is guaranteed not to change
   // the graph at all.
+  // TODO: use a better fixup triangulation algorithm other than MCS.
   if (!triangulateMCSIfNotTriangulated(nodes,cliques))
     infoMsg(High,"Frontier: MCS used to fix up frontier triangulation\n");
 
@@ -6322,8 +6379,9 @@ unrollAndTriangulate(// triangulate heuristics
 
   if (numTimes >= 0) {
     vector <RV*> rvs;
+    map < RVInfo::rvParent, unsigned > pos;
     set <RV*> rvsSet;
-    fp.unroll(numTimes,rvs);
+    fp.unroll(numTimes,rvs,pos);
     if (message(Huge)) {
       // print out unrolled graph
       printRVSet(stdout,rvs);
@@ -6331,6 +6389,8 @@ unrollAndTriangulate(// triangulate heuristics
     for (unsigned i=0;i<rvs.size();i++) {
       rvs[i]->createNeighborsFromParentsChildren();
     }
+    // add any local cliques from .str file
+    // fp.addUndirectedLocalCliqueEdges(numTimes,rvs,pos);
     for (unsigned i=0;i<rvs.size();i++) {
       rvs[i]->moralize();
       rvsSet.insert(rvs[i]);
@@ -7349,7 +7409,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   }
 
   if (message(Max)) {
-    printf("Union(Cp,Ep)'s li to Pp: ");
+    printf("Union(C',E')'s li to P': ");
     printRVSet(stdout,UR_pli);
   }
 
@@ -7373,7 +7433,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   }
 
   if (message(Max)) {
-    printf("E's li to Union(C',P'): ");
+    printf("E's li to Union(P',C'): ");
     printRVSet(stdout,Ep_uli);
   }
 
@@ -7395,7 +7455,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
 		     inserter(Ep0_pli, Ep0_pli.end()));
   }
   if (message(Max)) {
-    printf("Ep0's li to Cp: ");
+    printf("E'0's li to P'0: ");
     printRVSet(stdout,Ep0_pli);
   }
 
@@ -7776,35 +7836,14 @@ BoundaryTriangulate::findBestInterface(
   // left interface
   C_l.clear();
 
-  // First, construct the basic left interface (i.e., left
-  // interface of C2).
-
-#if 0
-  // Go through through set C1, and pick out all neighbors
-  // of variables in set C1 that live in C2, and these neighbors
-  // become the initial left interface C_l
-  set<RV*>::iterator c1_iter;
-  for (c1_iter = C1.begin(); c1_iter != C1.end(); c1_iter ++) {
-    // go through all neighbors of nodes in C1
-    RV *cur_rv = (*c1_iter);
-    // neighbor iterator
-    set<RV*>::iterator n_iter;
-    for (n_iter = cur_rv->neighbors.begin();
-	 n_iter != cur_rv->neighbors.end();
-	 n_iter ++) {
-      if (C2.find((*n_iter)) != C2.end()) {
-	// found a neighbor of cur_rv in C2, so
-	// it must be in C_l
-	C_l.insert((*n_iter));
-      }
-    }
-  }
-#endif
+  // First, construct the basic left interface (i.e., left interface
+  // of C2).
 
   // initial left interface of C2 consists of all nodes in C2 either that
-  // 1) have a neighbor in union(P,C1), or that are contained
-  // in both C2 and union(P,C1).
-  // first, insert intersection(C2,union(P,C1)) == union(intersection(C2,P),intersection(C2,C1))
+  //   1) are also contained in union(P,C1) (i.e., contained in both C2 and union(P,C1)), or that
+  //   2) have a neighbor in union(P,C1).
+  // 
+  // First, insert intersection(C2,union(P,C1)) == union(intersection(C2,P),intersection(C2,C1))
   set_intersection(C2.begin(),C2.end(),
 		   C1.begin(),C1.end(),
 		   inserter(C_l,C_l.end()));
@@ -7812,8 +7851,15 @@ BoundaryTriangulate::findBestInterface(
 		   P.begin(),P.end(),
 		   inserter(C_l,C_l.end()));
   // printf("LI intersection =");printRVSet(stdout,C_l); 
-  // next, if any v \in C2 has a neighbor in union(P,C1) and that
-  // neighbor is not already in C2, it also goes in.
+  // 
+  // Next, if there exists any v in C2 that has a neighbor in union(P,C1)
+  // and that neighbor is not already in C2, then v also goes into the left interface.
+  // If, on the other hand, all of v's neighbors in union(P,C1) are
+  // already in C2, then v doesn't become part of the left interface
+  // (even if it does have neighbors in union(P,C1)). The reason is that
+  // we don't need v to act as part of a separator any longer, since those
+  // neighbors of of v that are in both union(P,C1) and C2 already act as the
+  // separator, so it would be unnecessary to add such a v.
   set<RV*>::iterator c2_iter;
   for (c2_iter = C2.begin(); c2_iter != C2.end(); c2_iter ++) {
     RV *cur_rv = (*c2_iter);
@@ -7831,16 +7877,19 @@ BoundaryTriangulate::findBestInterface(
       set_intersection(res.begin(),res.end(),
 		       C2.begin(),C2.end(),
 		       inserter(tmp,tmp.end()));
-      if (tmp.size() != res.size())
+      if (tmp.size() != res.size()) {
+	// then at least one of cur_rv's neighbors in union(P,C1) is not in C2,
+	// so we add it.
 	C_l.insert(cur_rv);
+      }
     }
   }
 
 
-  // final left interface of C2 consists of all nodes in C2 either that
-  // 1) have a neighbor in union(C3,E) or that are contained in
-  // both C2 and union(C3,E). These are the nodes that the l-interface might contain,
-  // but we can't go beyond.
+  // Like above, final left interface of C2 consists of all nodes in
+  // C2 either that 1) have a neighbor in union(C3,E) or that are
+  // contained in both C2 and union(C3,E). These are the nodes that
+  // the l-interface might contain, but we can't go beyond.
 
   // left interface
   set <RV*> finalLI;
@@ -7851,7 +7900,7 @@ BoundaryTriangulate::findBestInterface(
 		   E.begin(),E.end(),
 		   inserter(finalLI,finalLI.end()));
   // next, if any v \in C2 has a neighbor in union(C3,E) that is not
-  // already contained within C2, it also goes in.
+  // already contained within C2, it also goes in (see above expanded comment).
   for (c2_iter = C2.begin(); c2_iter != C2.end(); c2_iter ++) {
     RV *cur_rv = (*c2_iter);
     set<RV*> res;
@@ -8272,99 +8321,4 @@ findBestInterfaceRecurse(
   boundaryRecursionDepth--;
 }
 
-
-
-#if 0
-// code from findPartitions, no longer used. Remove after we've got a CVS stamp.
-
-  ///////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////
-  // First, create a network that is used to ensure that we have a
-  // temporal independence property (the S-Markov property) among
-  // chunk sequences of length M skipped by S chunks. I.e., in order for inference to work
-  // properly, we must change the graph so that:
-  //    1) each list of M chunks is conditionally independent of
-  //    earlier lists of M chunk given the previous list of M chunks,
-  //    where the latest previous list of M chunks is S chunks earlier.
-  //    2) each list of M chunks is conditionally independent of
-  //    later lists of M chunk given the next list of M chunks, where
-  //    the earlist next list of M chunks is S chunks later.
-  // We do this by creating a network with M+2S chunks in the middle, of the form:
-  //
-  // P C C ...  C  E
-  //   1 2 ...  K
-  //  |<- M ->|<S>|
-  //      |<- M ->|
-  //  |<S>|
-  //  |<---S+M--->|
-  // 
-  // where K = M+S
-  // 
-  // The list of M chunks in the middle the above S-Markov property
-  // holds. Note that in the modified template, each C' will be
-  // potentially M original chunks long and there will be S original
-  // chunks between each C'.
-  
-  vector <RV*> unroll_s_markov_rvs;
-  map < RVInfo::rvParent, unsigned > unroll_s_markov_pos;
-  fp.unroll(M+S-1,unroll_s_markov_rvs,unroll_s_markov_pos);
-  // drop all the edge directions
-  for (unsigned i=0;i<unroll_s_markov_rvs.size();i++) {
-    unroll_s_markov_rvs[i]->createNeighborsFromParentsChildren();
-  }
-  // moralize graph
-  for (unsigned i=0;i<unroll_s_markov_rvs.size();i++) {
-    unroll_s_markov_rvs[i]->moralize();
-  }
-  // create sets Ps, Cs1, Cs2, and Es, from graph unrolled 2S-1 times
-  set<RV*> Ps;
-  // 1st section, S chunks long
-  set<RV*> Cs1;
-  // 2nd section, S chunks long
-  set<RV*> Cs2;
-  // epilogue
-  set<RV*> Es;
-
-  int start_index_of_Cs1 = -1;
-  int start_index_of_Cs2 = -1;
-  int start_index_of_Es = -1;
-  for (unsigned i=0;i<unroll_s_markov_rvs.size();i++) {
-    if (unroll_s_markov_rvs[i]->frame() < fp.firstChunkFrame())
-      // prologue
-      Ps.insert(unroll_s_markov_rvs[i]);
-    else if (unroll_s_markov_rvs[i]->frame() <= fp.lastChunkFrame() + (S-1)*fp.numFramesInC()) {
-      // 1st section, S chunks long
-      Cs1.insert(unroll_s_markov_rvs[i]);
-      if (start_index_of_Cs1 == -1)
-	start_index_of_Cs1 = i;
-    } else if (unroll_s_markov_rvs[i]->frame() <= fp.lastChunkFrame()+(2*S-1)*fp.numFramesInC()) {
-      // 2nd section, S chunks long
-      Cs2.insert(unroll_s_markov_rvs[i]);
-      if (start_index_of_Cs2 == -1)
-	start_index_of_Cs2 = i;
-    } else {
-      // epilogue
-      Es.insert(unroll_s_markov_rvs[i]);
-      if (start_index_of_Es == -1)
-	start_index_of_Es = i;
-    }
-  }
-
-  assert (Cs1.size() == Cs2.size());
-  infoMsg(High,"Size of (P,Cs1,Cs2,E) = (%d,%d,%d,%d)\n",
-	  Ps.size(),Cs1.size(),Cs2.size(),Es.size());
-
-  set < RVInfo::rvParent > augmentation;
-  computeSMarkovAugmentation(unroll_s_markov_rvs,unroll_s_markov_pos,
-			     Ps,Cs1,first_frame_of_Cs1,Cs2,first_frame_of_Cs2,Es,augmentation);
-  if (message(Max)) {
-    printf("Relative C*S augmentation is: ");
-    set < RVInfo::rvParent >::iterator it;
-    for (it = augmentation.begin();it != augmentation.end(); it ++) {
-      RVInfo::rvParent p = (*it);
-      printf("%s(%d),",p.first.c_str(),p.second);
-    }
-    printf("\n");
-  }
-#endif
 

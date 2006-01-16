@@ -129,7 +129,7 @@ void RV::printChildrenInfo(FILE*f, bool nl)
  *
  * Preconditions:
  *      all parents and all children member variables must already
- *      be initialized with a valid graph
+ *      be initialized with a valid graph.
  *
  * Postconditions:
  *      graph now has undirected representation, where neighbors

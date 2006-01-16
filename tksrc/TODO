@@ -3211,6 +3211,13 @@ Fri Dec 23 21:21:16 2005
         - as a fixed duration distribution "histogram" and a reverse
           counter started off at the sample of the histogram.
 
+Sun Jan  8 16:25:04 2006
+  - for Gang's Lattice cpt implementation: 
+   - GMTK needs file of utterance lengths (to determine how much to unroll)
+     when there are no observations. Nemove need in this case to insist that
+     there are observations. File of lengths must have the same number of lengths
+     as there are utterance files (in this case, the number of iterable LatticeCPTs).
+                
 
 
 

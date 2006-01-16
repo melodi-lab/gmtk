@@ -77,6 +77,7 @@ VCID("$Header$")
 /*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_STR_FILE
 #define GMTK_ARG_TRI_FILE
+#define GMTK_ARG_CHECK_TRI_FILE_CARD
 #define GMTK_ARG_JT_INFO_FILE
 #define GMTK_ARG_JT_INFO_FILE_DEF_VAL NULL
 #define GMTK_ARG_JTW_UB
@@ -282,7 +283,7 @@ main(int argc,char*argv[])
     {
       // do this in scope so that is gets deleted now rather than later.
       iDataStreamFile is(tri_file.c_str(),false,false);
-      if (!fp.readAndVerifyGMId(is))
+      if (!fp.readAndVerifyGMId(is,checkTriFileCards))
 	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
     
       gm_template.readPartitions(is);
@@ -630,7 +631,7 @@ main(int argc,char*argv[])
       {
 	// do this in scope so that is gets deleted now rather than later.
 	iDataStreamFile is(tri_file.c_str(),false,false);
-	if (!fp.readAndVerifyGMId(is))
+	if (!fp.readAndVerifyGMId(is,checkTriFileCards))
 	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
     
 	gm_template.readPartitions(is);

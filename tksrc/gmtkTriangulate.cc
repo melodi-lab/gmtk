@@ -60,6 +60,7 @@ VCID("$Header$")
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_INPUT_TRI_FILE
+#define GMTK_ARG_CHECK_TRI_FILE_CARD
 #define GMTK_ARG_OUTPUT_TRI_FILE
 
 /************************            TRIANGULATION OPTIONS             ******************************************/
@@ -492,7 +493,7 @@ main(int argc,char*argv[])
       // first get the id and partition information.
       {
 	iDataStreamFile is(input_tri_file.c_str(),false,false);
-	if (!fp.readAndVerifyGMId(is))
+	if (!fp.readAndVerifyGMId(is,checkTriFileCards))
 	  error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",input_tri_file.c_str(),strFileName);
 	gm_template.readPartitions(is);
 	gm_template.readMaxCliques(is);
@@ -577,7 +578,7 @@ main(int argc,char*argv[])
 
 
       iDataStreamFile is(input_tri_file.c_str(),false,false);
-      if (!fp.readAndVerifyGMId(is))
+      if (!fp.readAndVerifyGMId(is,checkTriFileCards))
 	error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",input_tri_file.c_str(),strFileName);
 
       gm_template.readPartitions(is);
@@ -744,7 +745,7 @@ void triangulateCrossover(
   GMTemplate crossover_gm_template(fp,maxNumChunksInBoundary,chunkSkip);
   iDataStreamFile cis(input_crossover_tri_file.c_str(), false, false);
 
-  if (!fp.readAndVerifyGMId(cis)) {
+  if (!fp.readAndVerifyGMId(cis,checkTriFileCards)) {
     error("ERROR: crossover triangulation file '%s' does not match graph given in structure file '%s'\n", input_crossover_tri_file.c_str(), strFileName);
   }
 

@@ -69,6 +69,32 @@ class FileParser : public IM
   // then frame 1, and so on.
   vector < RVInfo > rvInfoVector;
 
+
+  //////////////////////////////////////////////
+  // the next structure is a set of 'cliques' (not max cliques) that
+  // are used for adding edges to the graph and/or producing
+  // hybrid directed-undirected graphical models. 
+  struct LocalClique {
+    // frame where this local clique is defined.
+    unsigned frame; 
+    // and where in the .str file it is defined.
+    unsigned fileLineNumber;
+    string fileName;
+    // the clique's name, used only to identify it later.
+    string name; 
+    // the list of variables (in file order) defined in this clique.
+    vector < RVInfo::rvParent > variables;
+
+    void clear() {
+      fileName.erase(); name.erase();
+      variables.clear();
+    }
+
+  };
+  vector < LocalClique > cliqueList;
+  LocalClique curLC; 
+
+
   //////////////////////////////////////////////
   // the result of the chunk parse
   unsigned _firstChunkframe;
@@ -152,7 +178,9 @@ public:
     KW_NumSegments=34,
     KW_VECPT=35,
     KW_LATTICENODECPT=36,
-    KW_LATTICEEDGECPT=37
+    KW_LATTICEEDGECPT=37,
+    KW_Clique=38,
+    KW_Variables=39
   };
 
   // list of token keyword strings.
@@ -247,12 +275,13 @@ private:
   void parseError(const TokenKeyword kw);
 
 
-
   ////////////////////////////////////////////////////////////
   // the actual routines for the recursive descent parser 
   void parseFrameList();
   void parseFrame();
-  void parseRandomVariableList();
+  void parseFrameEntryList();
+
+
   void parseRandomVariable();
   void parseRandomVariableAttributeList();
   void parseRandomVariableAttribute();
@@ -262,6 +291,11 @@ private:
   void parseRandomVariableWeightAttributeSpecList();
   void parseRandomVariableWeightAttributeSpec();
   void parseRandomVariableWeightOptionList();
+
+  void parseLocalClique();
+  void parseCliqueAttributeList();
+  void parseCliqueAttribute();
+  void parseCliqueVariablesAttribute();
 
   void parseRandomVariableEliminationHintAttribute();
   void parseRandomVariableType();
@@ -289,9 +323,19 @@ private:
   void parseParent();
   vector < RVInfo::rvParent > parentList;
 
+  void parseRVDeclarationList();
+  void parseRVDeclaration();
+  vector < RVInfo::rvParent > rvDeclarationList;
+
   void parseMappingSpec();
   void parseListIndex();
   RVInfo::ListIndex listIndex;
+
+  void completeRVsInClique(LocalClique& clique,
+			   const unsigned offset,
+			   vector<RV*> &unrolledVarSet,
+			   map < RVInfo::rvParent, unsigned >& posOfParentAtFrame);
+
 
 public:
 
@@ -347,6 +391,13 @@ public:
 	      vector<RV*> &unrolledVarSet,
 	      map < RVInfo::rvParent, unsigned >& ppf);
 
+
+  // Add undirected edges from local clique.
+  void addUndirectedLocalCliqueEdges(unsigned k,
+				     vector<RV*> &unrolledVarSet,
+				     map < RVInfo::rvParent, unsigned >& ppf);
+
+
   // A routine to write out the graph template (P,C,E) in condensed
   // form but in sufficient detail so that it can be used to quickly
   // ID the current template (e.g., so that a given elimination
@@ -356,7 +407,7 @@ public:
   // A routine that reads in a graph id that was written
   // in condensed by writeGMId(), and it verifies that
   // the GM ID written matches the current template.
-  bool readAndVerifyGMId(iDataStreamFile& is);
+  bool readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality=true);
 
 
   //////////////////////////////////////////////////////////////
@@ -371,6 +422,11 @@ public:
   unsigned numFramesInC() { return _lastChunkframe - _firstChunkframe +1; }
   // number of frames in epilogue  
   unsigned numFramesInE() { return _maxFrame - _lastChunkframe; }
+
+  bool frameInTemplateP(unsigned frame) { return (frame < _firstChunkframe); }
+  bool frameInTemplateC(unsigned frame) { return (frame >= _firstChunkframe && frame <= _lastChunkframe); }
+  bool frameInTemplateE(unsigned frame) { return (frame > _lastChunkframe); }
+
 };
 
 #endif
