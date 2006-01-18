@@ -3217,6 +3217,24 @@ Sun Jan  8 16:25:04 2006
      when there are no observations. Nemove need in this case to insist that
      there are observations. File of lengths must have the same number of lengths
      as there are utterance files (in this case, the number of iterable LatticeCPTs).
+
+Sun Jan 15 19:01:47 2006
+   - fix bug that still remains in sheila_bug2.
+
+
+Tue Jan 17 16:03:34 2006
+   - variable trimming (see SUPERLINK paper), where any hidden
+     variables that have no children or are not connected are removed
+     from the graph, and do this recursively (but only trim variables
+     if they are not needed for either training or producing 
+     most likely value thereof).
+
+
+
+
+ 
+
+
                 
 
 
