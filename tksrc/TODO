@@ -3229,6 +3229,50 @@ Tue Jan 17 16:03:34 2006
      if they are not needed for either training or producing 
      most likely value thereof).
 
+Wed Jan 18 00:19:03 2006
+  - another idea for inference: wave propagation, back and forth in
+    the chain-tree, wehre we start with agressive pruning, and if we
+    get to zeros, we keep increasing the beam (but don't re-expand the
+    states that are already expanded). Once we get to the right end,
+    we start going backwards, pruning again along the way. We then
+    go to the right, expanding some unexpanded states that look promising,
+    and keep going left, right, etc. until things settle down.
+
+  - add a HashSparseCPT, where the CPT is just a list of parents,child values
+    in a big hash-table. We can start with an empty such table, and during
+    EM training, add entries corresponding to cliques that don't get pruned, 
+    or alternatively we can read in a table of the form:
+ 
+       p1v p2v ... pNv cv prob
+       ...
+
+    where p1v is parent 1 value, pNv is parent N value, cv is child value, and
+    prob is probability. This can be stored in a big hash table, where
+    prob. queries (with parent/child values) are computed by hasing into
+    the table. We should be able to read & write in this format as well. If
+    we read in such a table, we can either have it that only those entries
+    will survive EM training, or we can have the non-existing entries correspond
+    to a epsilon (implicit laplace smoothign), and then prune the table again
+    on writing back out to disk.
+
+  - Domain pruning array: Keep an array of valid RV values, and when
+    we want to prune an entry away, we swap it to with the ending value, and 
+    decrease N, thereby providing an O(1) prune operation (while keeping the
+    table size the same). If we keep track of starting and ending size
+    during a phase, it should be relatively easy to swap back values into
+    place during a prune pop operation.
+        - Rather than keeping one value per word, we can have an array of
+          packed words, where we use enough words (say K) to hold more than 
+          K values. Example, say we want to store 17-bit values, we could
+          store 32 17 bit values in 17 packed words rather than 32 words
+          which can be a big savings. Abstract class can still ask for
+          to word number i, provid swapping routine, etc. To avoid integer
+          mod, can do power of two sized groups of words (pages??).
+
+
+
+
+
 
 
 
