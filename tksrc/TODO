@@ -3270,7 +3270,10 @@ Wed Jan 18 00:19:03 2006
           mod, can do power of two sized groups of words (pages??).
 
 
-
+Mon Jan 23 17:50:36 2006
+   Karim's idea of, for certain casesd with value-elimination style inference, it would be
+   possible to reduce cache size (and cache creation) when some or all of the CPTs are shared
+   for certain switching parent values. 
 
 
 
