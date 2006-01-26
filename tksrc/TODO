@@ -3273,10 +3273,21 @@ Wed Jan 18 00:19:03 2006
 Mon Jan 23 17:50:36 2006
    Karim's idea of, for certain casesd with value-elimination style inference, it would be
    possible to reduce cache size (and cache creation) when some or all of the CPTs are shared
-   for certain switching parent values. 
+   for certain switching parent values. I..e, even if a set of RVs is different, if they
+   share the same CPTs, then they should be able also to share some of the same cache entries.
 
+Thu Jan 26 10:34:12 2006
+   New pruning ideas:
+      - diversity based pruning: where we make sure that enough diversity exists in the
+           clique after it is pruned, e.g., say that we want to make sure that each     
+           "category" in the list of items to be diverse is well represented enough,
+           even if it is low probabilty. For example, say that we want to keep
+           the top k entries, we keep the top k (or beam) in each category, where each category
+           might correspond to a particular word, or n-gram. (if we do beam like pruning,
+           we'd have a different max score and beam threshold in each category).
 
-
+      - cluster or partition pruning: cluster the clique entries into categories, and then prune based
+           on these unsupervised derived categories. 
 
 
  
