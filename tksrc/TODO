@@ -3277,17 +3277,20 @@ Mon Jan 23 17:50:36 2006
    share the same CPTs, then they should be able also to share some of the same cache entries.
 
 Thu Jan 26 10:34:12 2006
-   New pruning ideas:
-      - diversity based pruning: where we make sure that enough diversity exists in the
-           clique after it is pruned, e.g., say that we want to make sure that each     
-           "category" in the list of items to be diverse is well represented enough,
-           even if it is low probabilty. For example, say that we want to keep
-           the top k entries, we keep the top k (or beam) in each category, where each category
-           might correspond to a particular word, or n-gram. (if we do beam like pruning,
-           we'd have a different max score and beam threshold in each category).
+   Two new pruning ideas:
+     - diversity based pruning: where we make sure that enough diversity exists in the
+       clique after it is pruned, e.g., say that we want to make sure that each     
+       "category" in the list of items to be diverse is well represented enough,
+       even if it is low probabilty. For example, say that we want to keep
+       the top k entries, we keep the top k (or beam) in each category, where each category
+       might correspond to a particular word, or n-gram. (if we do beam like pruning,
+       we'd have a different max score and beam threshold in each category).
 
-      - cluster or partition pruning: cluster the clique entries into categories, and then prune based
-           on these unsupervised derived categories. 
+     - cluster or partition pruning: cluster the clique entries into categories, and then prune based
+       on these unsupervised derived categories. I.e., here the clustering algorithm
+       would be based on some measure or cost. Use a distance function on clique entries
+       (could use something as simple as hamming, or something more categorical entry based).
+ 
 
 
  
