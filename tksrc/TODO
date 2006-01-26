@@ -3290,8 +3290,10 @@ Thu Jan 26 10:34:12 2006
        on these unsupervised derived categories. I.e., here the clustering algorithm
        would be based on some measure or cost. Use a distance function on clique entries
        (could use something as simple as hamming, or something more categorical entry based).
- 
 
+   Memory savings idea: 
+     - do some form of LZ-compression of cliques and their entries (so bit encode not only
+       one entry, but an entire list of entries).
 
  
 
