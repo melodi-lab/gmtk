@@ -3310,6 +3310,14 @@ Tue Jan 31 00:08:25 2006
   - alternatively, have multiple dset value lists point to the same cached value/table (i.e., 
     merge the cached value/table when we see that both dsets are valid for this case).
 
+Tue Jan 31 01:35:39 2006
+  - when possible, implement "variable trimming" as done in Superlink, where hidden variables
+    that are childless in the BN can be trimmed away without effecting likelyhood (assuming
+    that we're just summing over hidden variables, and/or not computing viterbi paths).
+    This can be applied recursively (i.e., if we have A --> B --> C, and we trim C, we'd get
+    A --> B, and can trim B, etc.)
+
+
  
 
 
