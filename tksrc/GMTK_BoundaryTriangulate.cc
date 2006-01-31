@@ -2388,6 +2388,14 @@ BoundaryTriangulate
     } else {
       // choose a random one, don't re-seed rng as that
       // should be done one time for the program via command line arguments.
+
+      // TODO: add option so that rather choose one from the top N uniformly
+      //       at random, we use some function of the weights (and perhaps position)
+      //       to choose according to the (unnormalized) distribution given by these
+      //       weights. This distribution should also be parameterized by \lambda so
+      //       that when \lambda = 0, we get back to unform distribution, and \lambda = \infty
+      //       we get back to picking the best (first) one.
+
       RAND rnd(false);
       int val = rnd.uniform(curNumRandomTop-1);
       // TODO: there must be a better way to do this next step!
