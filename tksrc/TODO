@@ -3317,6 +3317,16 @@ Tue Jan 31 01:35:39 2006
     This can be applied recursively (i.e., if we have A --> B --> C, and we trim C, we'd get
     A --> B, and can trim B, etc.)
 
+Tue Jan 31 02:47:47 2006
+  - When choosing next variable to sum over (condition on) inside of clique,
+    we use (as mentioned above) fail first heuristic (i.e., minimum remaining
+    value, MRV, or "most constrained value" heuristic). We break ties
+    with the degree heuristic, choosing next variable that is connected to
+    the most things. SUPERLINK paper has probably an improvement on
+    degree heuristic where they choose node v based on sqrt(N(v))*C(v)
+    where C(v) is either just the product card of the closure-neighbors of 
+    of v, or where C(v) is is the product card of the closure-neighbors of 
+    v in the original graph (i.e., just involving factors). 
 
  
 
