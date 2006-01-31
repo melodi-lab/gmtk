@@ -3296,6 +3296,24 @@ Thu Jan 26 10:34:12 2006
        one entry, but an entire list of entries).
 
  
+Sun Jan 29 16:55:08 2006
+  - LatticeCPTs currently use hash table for each node in the lattice, but we could
+    significantly reduce memory by using a globally shared array (even if hash tables live inside
+    the array). Ideally, use packed hash tables in a global array (or alternatively, sorted arrays with
+    binary search) to reduce memory usage for lattices.
+
+Tue Jan 31 00:08:25 2006
+  - regarding value elimination, rather than just have a dset to cache, but allow
+    the dset items to be more than a list of values, but rather a list of ranges (or sets) of values
+    to produce more compact versions of things to cache. thus, the cached table can be shared
+    more easily. This should reduce cache size considerably in some cases.
+  - alternatively, have multiple dset value lists point to the same cached value/table (i.e., 
+    merge the cached value/table when we see that both dsets are valid for this case).
+
+ 
+
+
+
 
 
                 
