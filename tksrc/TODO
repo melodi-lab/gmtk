@@ -3327,8 +3327,8 @@ Tue Jan 31 02:47:47 2006
     where C(v) is either just the product card of the closure-neighbors of 
     of v, or where C(v) is is the product card of the closure-neighbors of 
     v in the original graph (i.e., just involving factors). 
+    (there are a few other small ideas in SUPERLINK paper that would be easy to incorporate).
 
- 
 
 
 
