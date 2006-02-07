@@ -3330,6 +3330,10 @@ Tue Jan 31 02:47:47 2006
     (there are a few other small ideas in SUPERLINK paper that would be easy to incorporate).
 
 
+Mon Feb  6 16:27:55 2006
+  - for DOCS: See email from today in gmtk list (Mon, 06 Feb 2006 14:28:33 -0800) about
+    difference between Mealy and Moore FSAs and their representation with a graphical
+    model, and/or what to do about null transitions in Mealy machines. Relate to LatticeCPTs.
 
 
 
