@@ -2797,6 +2797,13 @@ Wed Apr 20 00:46:19 2005
    nonDecreasingOrder(p1,p2,p3)  true if p1,p2,p3 are ordered increasing are equal.
    parity(p1,p2,p3) = 1 if (p1+p2+p3) is odd, and zero otherwise.
 
+ - other things possibly to add (for speed??)
+    sum(p1,p2,...,pn) computes the sum of the expressions.
+    prod(   ) computes the product of the expressions
+    random(l,u) returns a random number between 0<= l and u inclusive.
+
+
+
 
 Mon Apr 25 15:49:15 2005
   - for the constraint version of the algorithm,
