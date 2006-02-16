@@ -360,7 +360,7 @@ main(int argc,char*argv[])
 	if (JunctionTree::viterbiScore)
 	  infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
 	if (IM::messageGlb(IM::Low)) {
-	  myjt.printAllCliquesProbEvidence();
+	  myjt.printProbEvidenceAccordingToAllCliques();
 	  probe = myjt.probEvidence();
 	  printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 		 segment,

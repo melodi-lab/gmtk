@@ -440,7 +440,7 @@ main(int argc,char*argv[])
 	    if (IM::messageGlb(IM::Huge)) {
 	      // print out all the clique probabilities. In the ideal
 	      // case, they should be the same.
-	      myjt.printAllCliquesProbEvidence();
+	      myjt.printProbEvidenceAccordingToAllCliques();
 	    }
 	    // And actually train with EM.
 	    infoMsg(IM::Low,"Incrementing EM Accumulators\n");

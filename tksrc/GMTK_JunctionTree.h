@@ -407,9 +407,18 @@ class JunctionTree {
   void emIncrementIsland(const unsigned part,
 			 const logpr probE, 
 			 const bool localCliqueNormalization);
+
+  void printAllCliques(JT_InferencePartition& part,
+		       const unsigned partNo,
+		       const char *const nm,
+		       BP_Range* rng,
+		       FILE* f,
+		       const bool normalize,
+		       const bool justPrintEntropy = false);
   void printAllCliques(const unsigned part,FILE* f,
 		       const bool normalize,
 		       const bool justPrintEntropy = false);
+
   
   void collectDistributeIslandRecurse(const unsigned start,
 				      const unsigned end,
@@ -719,7 +728,7 @@ public:
 
   // print P(E) to stdout using all cliques. After a ce,de stage,
   // all values should be the same.
-  void printAllCliquesProbEvidence();
+  void printProbEvidenceAccordingToAllCliques();
 
   // Set the root to the max clique value and return that value.
   logpr setRootToMaxCliqueValue();
