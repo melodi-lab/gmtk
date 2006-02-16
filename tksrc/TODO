@@ -3350,8 +3350,9 @@ Sat Feb 11 13:33:17 2006
     the tree of the clique, and then traversing it again to build the clique
     table (but perhaps this'll be slower since we don't get sub-clique entry copy).
 
-
-
+Thu Feb 16 09:58:42 2006
+   - Add ability to do sub-Clique printing during collect evidence stage
+     (for all cliques, even if they are sub hanging dummy subset cliques)
                 
 
 
