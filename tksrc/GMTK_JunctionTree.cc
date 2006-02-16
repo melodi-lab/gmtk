@@ -4424,6 +4424,28 @@ JunctionTree::emIncrement(const logpr probE,
   }
 }
 
+void
+JunctionTree::printAllCliques(JT_InferencePartition& part, // partition
+			      const unsigned partNo, // partition Number
+			      const char *const nm,  // partition name
+			      BP_Range* rng,         // range of cliques in partition to print.
+			      FILE* f,               // where to print
+			      const bool normalize,
+			      const bool justPrintEntropy)
+{
+  char buff[2048];
+  if (rng != NULL) {
+    BP_Range::iterator it = rng->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      sprintf(buff,"Partition %d (%s), Clique %d:",partNo,nm,cliqueNum); 
+      part.maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
+      it++;
+    }
+  }
+}
+
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -4516,6 +4538,14 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		   prv_nm,partNo);
   // curPart->origin.clearSeparatorValueCache();
 
+  if (pPartCliquePrintRange != NULL) 
+    printAllCliques(*curPart,
+		    partNo,
+		    prv_nm,
+		    pPartCliquePrintRange,
+		    stdout,
+		    false);
+
   swap(curPart,prevPart);
 
   for (int p = 0; p < numCoPartitions; p++) {
@@ -4539,6 +4569,17 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		     C_ri_to_C,
 		     Co_message_order,
 		     prv_nm,partNo);
+
+    if (cPartCliquePrintRange != NULL) 
+      printAllCliques(*curPart,
+		      partNo,
+		      prv_nm,
+		      cPartCliquePrintRange,
+		      stdout,
+		      false);
+
+
+
     // curPart->origin.clearSeparatorValueCache();
     if (p == 0 && P1.cliques.size() == 0)
       Co.useLISeparator();
@@ -4561,6 +4602,15 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 		   E_root_clique,
 		   E1_message_order,
 		   E1_n,partNo);
+
+  if (ePartCliquePrintRange != NULL) 
+    printAllCliques(*curPart,
+		    partNo,
+		    E1_n,
+		    ePartCliquePrintRange,
+		    stdout,
+		    false);
+
   // curPart->origin.clearSeparatorValueCache();
   if (numCoPartitions == 0 && P1.cliques.size() == 0)
     E1.useLISeparator();
@@ -4921,16 +4971,11 @@ JunctionTree::printAllCliques(const unsigned part,FILE* f,const bool normalize,c
     rng = ePartCliquePrintRange;
   else 
     rng = cPartCliquePrintRange;
-  char buff[2048];
-  if (rng != NULL) {
-    BP_Range::iterator it = rng->begin();
-    while (!it.at_end()) {
-      const unsigned cliqueNum = (unsigned)(*it);
-      sprintf(buff,"Partition %d (%s), Clique %d:",part,partPArray[part].nm,cliqueNum); 
-      partPArray[part].p->maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
-      it++;
-    }
-  }
+
+  printAllCliques(*(partPArray[part].p),part,partPArray[part].nm,
+		  rng,
+		  f,normalize,justPrintEntropy);
+
 }
 
 
@@ -5557,7 +5602,7 @@ JunctionTree::setRootToMaxCliqueValue()
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::printAllCliquesProbEvidence()
+ * JunctionTree::printProbEvidenceAccordingToAllCliques()
  *   
  *   This routine will cycle through all cliques of all partitions and will
  *   print out the sums of the probs. of each cliuqe. Therefore, if 
@@ -5583,7 +5628,7 @@ JunctionTree::setRootToMaxCliqueValue()
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::printAllCliquesProbEvidence()
+JunctionTree::printProbEvidenceAccordingToAllCliques()
 {
   for (unsigned part=0;part<jtIPartitions.size();part++) {
     for (unsigned cliqueNo=0;cliqueNo<jtIPartitions[part].maxCliques.size();cliqueNo++) {
