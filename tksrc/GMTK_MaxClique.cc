@@ -5554,18 +5554,22 @@ printCliqueEntries(FILE *f,const char*str,
   if (normalize)
     sum = sumProbabilities();
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
-    if (imc_nwwoh_p) {
-      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
-			   (unsigned**)discreteValuePtrs.ptr);
-    } else {
-      origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
-			   (unsigned**)discreteValuePtrs.ptr);
-    }
-    if (fDeterminableNodes.size() > 0) {
-      for (unsigned j=0;j<fDeterminableNodes.size();j++) {
-	RV* rv = fDeterminableNodes.ptr[j];
-	RV2DRV(rv)->assignDeterministicChild();
+
+    if (clique_has_hidden_vars) {
+      if (imc_nwwoh_p) {
+	origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
+			     (unsigned**)discreteValuePtrs.ptr);
+      } else {
+	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
+			     (unsigned**)discreteValuePtrs.ptr);
+      }
+      if (fDeterminableNodes.size() > 0) {
+	for (unsigned j=0;j<fDeterminableNodes.size();j++) {
+	  RV* rv = fDeterminableNodes.ptr[j];
+	  RV2DRV(rv)->assignDeterministicChild();
+	}
       }
     }
     if (normalize) {
