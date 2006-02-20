@@ -3356,5 +3356,17 @@ Thu Feb 16 09:58:42 2006
                 
 
 
+Sun Feb 19 19:48:12 2006
+  - for docs and for thinking: when modifying the trifile to do clique printing,
+    the modification might make things much slower. For example, suppose
+    there is a big cardinality variable F that is deterministic given its parents.
+    Normally, F always lives in a clique with its parents, but if we create an
+    extra clique with just F and during the collect evidence phase, we might
+    do unassigned iteration over F. 
+    Solution: need a way to defer iterating over F based on its
+       parent clique in the JT
+  - This also relates to entry on Feb 16, 2006 where we want to print
+    CE-based clique entries. If we project from parent clique down to the
+    child clique, this would solve both problems.
 
 
