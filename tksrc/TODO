@@ -3368,5 +3368,8 @@ Sun Feb 19 19:48:12 2006
   - This also relates to entry on Feb 16, 2006 where we want to print
     CE-based clique entries. If we project from parent clique down to the
     child clique, this would solve both problems.
+  - for the docs (at least for now): when adding extra print cliques for
+    printing, do them in a partition (or hang them off a clique) where
+    they are subsets of the incomming separator from the JT.
 
 
