@@ -112,10 +112,6 @@ protected:
   // same thing as above but for discrete objects.
   static logpr _minDiscAccumulatedProbability;
 
-  // returns the type of the sub-object in string
-  // form that is suitable for printing and identifying
-  // the type of the object.
-  virtual const string typeName() = 0;
  
 public:
 
@@ -135,6 +131,12 @@ public:
   static logpr setMinContAccumulatedProbability(const logpr floor);
   static logpr setMinDiscAccumulatedProbability(const logpr floor);
 
+  inline logpr get_accumulatedProbability() { return accumulatedProbability; }
+
+  // returns the type of the sub-object in string
+  // form that is suitable for printing and identifying
+  // the type of the object.
+  virtual const string typeName() = 0;
 
   /////////////////////////////////////////////////////////////////
   // clear the swap bit, needed for sharing.
