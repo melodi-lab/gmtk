@@ -34,6 +34,9 @@
 
 class DiagGaussian : public GaussianComponent {
 
+  friend class GMTK_Tie;
+  friend MeanVector* find_MeanVector_of_DiagGaussian(DiagGaussian *diag_gaussian);
+
   ///////////////////////////////////////////////////////
   // The means. 
   // This might be tied with multiple other distributions.
@@ -64,6 +67,11 @@ public:
   // create a copy of self, but with slightly perturbed
   // means/variance values.
   Component* noisyClone();
+
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new parameters with
+  // identical values; NOTHING is shared
+  Component* identicalIndependentClone();
 
   //////////////////////////////////
   // set all current parameters to valid but random values
