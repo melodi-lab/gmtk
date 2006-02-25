@@ -3372,4 +3372,38 @@ Sun Feb 19 19:48:12 2006
     printing, do them in a partition (or hang them off a clique) where
     they are subsets of the incomming separator from the JT.
 
+Wed Feb 22 13:39:36 2006
+  - have different type of "known" constraints that inference can deal with:
+       1) undirectional constraints, such as equals(a,b,c), notequal(a,b,c), etc.
+       2) directional constraints, such as a=f(b,c) where f() is a deterministic function.
+          These are constraitns, and impose a directionality order on order of evaluation.
+          Also, these constraints can be implemented with integer formulas, so they can
+          be specified by user (but still can be fast). 
+    Both deterministic CPTs and deterministic directional constraints put order constraints
+    on variable order of evaluation.
+    Question: but what if "child" variable of MTCPT or DirConstraint comes in via a separator?
+
+
+Wed Feb 22 23:53:46 2006
+  - memory savings: have the pack-clique code also include a mode that rahter than
+    using \sum_i ceil(log(card(var_i))) bits, instead use: ceil(log(\prod_i card(var_i)))
+    bits using int mults, divides, and mods. This will be of course slower than
+    the bit-packing, but in certain cases, it will probably be faster to use this
+    than to move to island algorithm. Make this a command line option and default
+    is still to use bit packing.
+ 
+  - inside-outside inference (todo when infernece engine v3 is ready).
+     New modes of inference:
+       - CE = left-to-right followed by DE right-to-left (what currently exists)
+       - CE = right-to-left followed by DE left-to-right (good for many arrows pointing left)
+       - inside-outside: CE = outside-to-inside followed by DE = inside-to-outside (like parsing)
+         - this third way might have two advantages:
+            a) if there lots of zeros or pruning at the beginning and end, then we'll take advatnage of them.
+            b) this is easy to make to use two threads in parallel (good for dual-core microprocessors giving
+               a one time factor of 2 speedup relatively easily).
+
+
+
+
+ 
 
