@@ -236,6 +236,19 @@ class sArray {
     internalSort(start,end); 
   }
 
+  inline sArray<T>& operator+= (sArray<T> &s){
+    assert(_size == s.len());
+    for (int i=0; i<_size; i++)
+      ptr[i] += s[i];
+    return *this;
+  }
+
+  inline sArray<T>& operator/= (const T n){
+    for (int i=0; i<_size; i++)
+      ptr[i] /= n;
+    return *this;
+  }
+
 };
 
 
