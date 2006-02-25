@@ -64,6 +64,11 @@ public:
   // randomly) perturbed values.
   virtual Component* noisyClone() = 0;
 
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new parameters with
+  // identical values; NOTHING is shared
+  virtual Component* identicalIndependentClone() = 0;
+
   //////////////////////////////////
   // set all current parameters to valid but random values
   virtual void makeRandom() = 0;
