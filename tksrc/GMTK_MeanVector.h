@@ -41,6 +41,9 @@ private:
   friend class LinMeanCondDiagGaussian;
   friend class DiagCovarVector;
   friend class DlinkMatrix;
+  friend class GMTK_Tie;
+  friend class ClusterableMean;
+  friend class ClusterableMixture;
 
   //////////////////////////////////
   // The acutal mean vector
@@ -110,6 +113,11 @@ public:
   // create a copy of self, but with slightly perturbed
   // means values.
   MeanVector* noisyClone();
+
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new parameters with
+  // identical values; NOTHING is shared
+  MeanVector* identicalIndependentClone();
 
   unsigned totalNumberParameters() { return means.len(); }
   void recursivelyClearUsedBit() {  emClearUsedBit();  }
