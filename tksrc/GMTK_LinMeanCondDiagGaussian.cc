@@ -46,6 +46,7 @@ VCID("$Header$")
 #include "GMTK_GMParms.h"
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_DiagGaussian.h"
+#include "tieSupport.h"
 
 void
 LinMeanCondDiagGaussian::read(iDataStreamFile& is)
@@ -1070,7 +1071,25 @@ void LinMeanCondDiagGaussian::sampleGenerate(float *const sample,
 
 
 
+Component*
+LinMeanCondDiagGaussian::identicalIndependentClone()
+{
+  LinMeanCondDiagGaussian* newLMCDG = new LinMeanCondDiagGaussian(mean->means.len());
+  newLMCDG->mean = mean->identicalIndependentClone();
+  newLMCDG->covar = covar->identicalIndependentClone();
+  newLMCDG->dLinkMat = dLinkMat->identicalIndependentClone();
 
+  newLMCDG->mean->numTimesShared++;
+  newLMCDG->covar->numTimesShared++;
+  newLMCDG->dLinkMat->numTimesShared++;
+  mean->numTimesShared--;
+  covar->numTimesShared--;
+  dLinkMat->numTimesShared--;
 
+  newLMCDG->setName(new_name(name(),&GM_Parms.componentsMap));
+  newLMCDG->setBasicAllocatedBit();
 
+  GM_Parms.add(newLMCDG);
 
+  return newLMCDG;
+}

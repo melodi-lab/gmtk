@@ -37,6 +37,7 @@
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DlinkMatrix.h"
+#include "tieSupport.h"
 
 #ifndef M_PI
 #define M_PI               3.14159265358979323846  /* pi */
@@ -1605,6 +1606,26 @@ DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
 
 
 
+DiagCovarVector* 
+DiagCovarVector::identicalIndependentClone()
+{
+  DiagCovarVector* newCV = new DiagCovarVector;
+  newCV->refCount = 0;
+
+  newCV->covariances.resize(covariances.len());
+  for (int i=0;i<covariances.len();i++) 
+    newCV->covariances[i] = covariances[i];
+
+  newCV->setName(new_name(name(),&GM_Parms.covarsMap));
+  newCV->setBasicAllocatedBit();
+
+  GM_Parms.add(newCV);
+
+
+
+  return newCV;
+
+}
 
 
 

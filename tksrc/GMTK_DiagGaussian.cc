@@ -37,6 +37,7 @@ VCID("$Header$")
 #include "GMTK_DiagGaussian.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_MixtureCommon.h"
+#include "tieSupport.h"
 
 
 
@@ -450,3 +451,26 @@ void DiagGaussian::sampleGenerate(float *const sample,
 {
   error("not implemented");
 }
+
+
+Component* 
+DiagGaussian::identicalIndependentClone()
+{
+
+  DiagGaussian* newDG = new DiagGaussian(dim());
+
+  newDG->mean = mean->identicalIndependentClone();
+  newDG->covar = covar->identicalIndependentClone();
+
+  newDG->mean->numTimesShared++;
+  newDG->covar->numTimesShared++;
+  mean->numTimesShared--;
+  covar->numTimesShared--;
+
+  newDG->_name = new_name(name(),&GM_Parms.componentsMap);
+  newDG->setBasicAllocatedBit();
+  GM_Parms.add(newDG);
+
+  return newDG;
+}
+
