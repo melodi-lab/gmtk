@@ -37,6 +37,7 @@ class DiagCovarVector : public EMable {
   friend class LinMeanCondDiagGaussian;
   friend class MeanVector;
   friend class DlinkMatrix;
+  friend class GMTK_Tie;
 
   //////////////////////////////////
   // The actual covariance "matrix"
@@ -130,6 +131,11 @@ public:
   // create a copy of self, but with slightly perturbed values
   DiagCovarVector* noisyClone();
 
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new parameters with
+  // identical values; NOTHING is shared
+  DiagCovarVector* identicalIndependentClone();
+  
   //////////////////////////////////
   // Public interface support for EM
   //////////////////////////////////
