@@ -32,9 +32,12 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_DirichletTable.h"
 #include "GMTK_DirichletPrior.h"
+#include "tieSupport.h"
 
 
 class Dense1DPMF : public EMable, public DirichletPrior {
+
+  friend class GMTK_Tie;
 
   ///////////////////////////////////////////////////////////  
   // The probability mass function
@@ -53,6 +56,11 @@ public:
   // General constructor
   Dense1DPMF();
   ~Dense1DPMF() { }
+
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new parameters with
+  // identical values; NOTHING is shared
+  Dense1DPMF* identicalIndependentClone();
 
   unsigned length() { return (unsigned)pmf.len(); }
   unsigned card() { return (unsigned)pmf.len(); }
@@ -109,7 +117,6 @@ public:
   void emAccumulateObjectsAccumulators(iDataStreamFile& ifile);
   const string typeName() { return "DPMF"; }
   //////////////////////////////////
-
 
 
 };
