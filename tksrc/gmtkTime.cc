@@ -372,7 +372,7 @@ main(int argc,char*argv[])
 	    // do this for now. Ultimately fix this.
 	    totalNumberPartitionsDone += numUsableFrames;
 	  } else {
-	    error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence\n");
+	    error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence. Use either '-probE' option, or as a simulation, '-island -lst HUGE_INT'\n");
 	  }
       
 	  if (JunctionTree::probEvidenceTimeExpired)
