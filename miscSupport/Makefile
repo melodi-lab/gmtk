@@ -163,7 +163,7 @@ testVSHashMap: vshash_map.h vshash_map.cc hash_abstract.o hash_abstract.cc hash_
 # Gather stuff together.
 #----------------------------------------------------------------------------
 
-all_srcs = error.cc bp_range.cc range.cc arguments.cc logp.cc rand.cc sArray.cc cArray.cc general.cc lineqsolve.cc string_err.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc  mul_mdmd_md.c mul_mdmd_md_l0g.c mul_mdmd_md_l0nf.c eig.c bin_search.cc
+all_srcs = error.cc bp_range.cc range.cc arguments.cc logp.cc rand.cc sArray.cc cArray.cc general.cc lineqsolve.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc  mul_mdmd_md.c mul_mdmd_md_l0g.c mul_mdmd_md_l0nf.c eig.c bin_search.cc # string_err.cc
 
 all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h eig.h
 
