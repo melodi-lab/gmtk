@@ -37,6 +37,7 @@
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
+#include "tieSupport.h"
 
 VCID("$Header$")
 
@@ -849,4 +850,16 @@ DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
       emStoreObjectsAccumulators(ofile);
     }
   }
+}
+
+
+
+DlinkMatrix*
+DlinkMatrix::identicalIndependentClone()
+{
+  DlinkMatrix* newDLM = new DlinkMatrix();
+
+  error("DlinkMatrix::identicalIndependentClone not implemented yet");
+
+  return newDLM;
 }
