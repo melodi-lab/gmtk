@@ -36,6 +36,7 @@
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
+#include "tieSupport.h"
 
 VCID("$Header$")
 
@@ -859,3 +860,21 @@ MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
   }
 }
 
+
+MeanVector*
+MeanVector::identicalIndependentClone()
+{
+
+  MeanVector* newMV = new MeanVector();
+  newMV->refCount = 0;
+
+  newMV->means.resize(means.len());
+  for (int i=0;i<means.len();i++) 
+    newMV->means[i] = means[i];
+
+  newMV->setName(new_name(name(),&GM_Parms.meansMap));
+  newMV->setBasicAllocatedBit();
+  GM_Parms.add(newMV);
+
+  return newMV;
+}

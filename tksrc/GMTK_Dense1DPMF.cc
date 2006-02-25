@@ -35,6 +35,7 @@
 #include "GMTK_GMParms.h"
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_CPT.h"
+#include "tieSupport.h"
 
 
 VCID("$Header$")
@@ -642,6 +643,24 @@ void Dense1DPMF::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
   }
 }
 
+
+
+
+Dense1DPMF* 
+Dense1DPMF::identicalIndependentClone()
+{
+  Dense1DPMF* newDPMF = new Dense1DPMF();
+
+  newDPMF->pmf.resize(pmf.len());
+  for (int i=0;i<pmf.len();i++) 
+    newDPMF->pmf[i] = pmf[i];
+
+  newDPMF->setName(new_name(name(),&GM_Parms.dPmfsMap));
+  newDPMF->setBasicAllocatedBit();
+  GM_Parms.add(newDPMF);
+
+  return newDPMF;
+} 
 
 #if 0
 
