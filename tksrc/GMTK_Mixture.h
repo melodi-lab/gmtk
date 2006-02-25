@@ -37,6 +37,13 @@
 
 class Mixture : public MixtureCommon {
 
+  friend class GMTK_Tie;
+
+  // functions in tieSupport.h
+  friend MeanVector* find_MeanVector_of_Mixture(Mixture *mixture);
+  friend bool all_DiagGaussian(Mixture* mixture);
+  friend std::vector<MeanVector*> find_MeanVectors_of_Mixture(Mixture *mixture);
+
   ///////////////////////////////////////////
   // the (possibly) shared components
   vector < Component* > components;
