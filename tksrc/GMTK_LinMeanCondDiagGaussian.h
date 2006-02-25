@@ -81,6 +81,10 @@ public:
   // means/variance values.
   Component* noisyClone();
 
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new parameters with
+  // identical values; NOTHING is shared
+  Component* identicalIndependentClone();
 
   //////////////////////////////////
   // set all current parameters to valid but random values
