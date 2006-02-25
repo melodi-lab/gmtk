@@ -102,6 +102,11 @@ public:
   // means values.
   DlinkMatrix* noisyClone();
 
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new parameters with
+  // identical values; NOTHING is shared
+  DlinkMatrix* identicalIndependentClone();
+
   ///////////////////////////////////
   unsigned totalNumberParameters() { return arr.len(); }
   void recursivelyClearUsedBit() {  emClearUsedBit();  }
