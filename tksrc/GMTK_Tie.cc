@@ -1364,10 +1364,23 @@ GMTK_Tie::untie_Mixtures(std::vector<std::string> param_expressions, bool expand
       // (possibly shared) original; the identicalIndependentClone
       // function takes care of generating a new name and putting the
       // new object into the GM_Parms table
+
+      // the old Component (which we about to lose the pointer to)
+      // needs to decrease its usage by 1
+      (*j)->adjustNumTimesShared(-1);
+
       *j = (*j)->identicalIndependentClone();
+
+      // the new Component we just made now gets a usage count of 1
+      (*j)->adjustNumTimesShared(1);
+
+      // now adjust the usage counts of any subobjects that have them
+
+
    
     }
 
+    // Dense1DPMFs do not have numTimesShared
     this_mixture->dense1DPMF = this_mixture->dense1DPMF->identicalIndependentClone();
 
   }
