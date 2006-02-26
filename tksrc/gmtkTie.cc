@@ -299,6 +299,7 @@ main(int argc,char*argv[])
   // should make this optional - there may be some situation where
   // unused parameters should be retained to take part in the tying
   // procedure
+  infoMsg(IM::Tiny,"Note: unused parameters will NOT be saved\n");
   GM_Parms.markUsedMixtureComponents();
   infoMsg(IM::Mod,"Finished marking used params\n");
 
