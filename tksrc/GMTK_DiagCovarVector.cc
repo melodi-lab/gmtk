@@ -305,6 +305,51 @@ DiagCovarVector::noisyClone()
 
 /*-
  *-----------------------------------------------------------------------
+ * DiagCovarVector::identicalIndependentClone
+ *      creates an exact copy of this object that shares nothing with
+ *      the original
+ *
+ * Preconditions:
+ *      1) object being copied should be allocated
+ *      2) GM_Parms should contain all parameters, so that a unique name
+ *         for the new object can be generated
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      the new object is added to GM_Parms
+ *
+ * Results:
+ *      a pointer the new object
+ *
+ *-----------------------------------------------------------------------
+ */
+DiagCovarVector* 
+DiagCovarVector::identicalIndependentClone()
+{
+  DiagCovarVector* newCV = new DiagCovarVector;
+  newCV->refCount = 0;
+  newCV->numTimesShared = 0;
+
+  newCV->covariances.resize(covariances.len());
+  for (int i=0;i<covariances.len();i++) 
+    newCV->covariances[i] = covariances[i];
+
+  newCV->setName(new_name(name(),&GM_Parms.covarsMap));
+  newCV->setBasicAllocatedBit();
+  GM_Parms.add(newCV);
+  newCV->preCompute();
+
+  return newCV;
+
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
  * precompute()
  *      Precompute a number of internal variables for speed.
  *      This routine **** MUST BE CALLED ANYTIME *** the paramters
@@ -1643,52 +1688,6 @@ DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
     }
   }
 }
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * DiagCovarVector::identicalIndependentClone
- *      creates an exact copy of this object that shares nothing with
- *      the original
- *
- * Preconditions:
- *      1) object being copied should be allocated
- *      2) GM_Parms should contain all parameters, so that a unique name
- *         for the new object can be generated
- *
- * Postconditions:
- *      none
- *
- * Side Effects:
- *      the new object is added to GM_Parms
- *
- * Results:
- *      a pointer the new object
- *
- *-----------------------------------------------------------------------
- */
-DiagCovarVector* 
-DiagCovarVector::identicalIndependentClone()
-{
-  DiagCovarVector* newCV = new DiagCovarVector;
-  newCV->refCount = 0;
-
-  newCV->covariances.resize(covariances.len());
-  for (int i=0;i<covariances.len();i++) 
-    newCV->covariances[i] = covariances[i];
-
-  newCV->setName(new_name(name(),&GM_Parms.covarsMap));
-  newCV->setBasicAllocatedBit();
-
-  GM_Parms.add(newCV);
-
-
-
-  return newCV;
-
-}
-
 
 
 
