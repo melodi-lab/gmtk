@@ -249,6 +249,54 @@ DiagGaussian::noisyClone()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * DiagGaussian::identicalIndependentClone
+ *      creates an exact copy of this object that shares nothing with
+ *      the original
+ *
+ * Preconditions:
+ *      1) object being copied should be allocated
+ *      2) GM_Parms should contain all parameters, so that a unique name
+ *         for the new object can be generated
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      the new object is added to GM_Parms
+ *
+ * Results:
+ *      a pointer the new object
+ *
+ *-----------------------------------------------------------------------
+ */
+Component* 
+DiagGaussian::identicalIndependentClone()
+{
+
+  DiagGaussian* newDG = new DiagGaussian(dim());
+
+  newDG->mean = mean->identicalIndependentClone();
+  newDG->covar = covar->identicalIndependentClone();
+
+  // don't change usage counts here - do it in calling function,
+  // because only that knows how the sharing is arranged
+
+  //newDG->mean->numTimesShared++;
+  //newDG->covar->numTimesShared++;
+
+  //mean->numTimesShared--;
+  //covar->numTimesShared--;
+
+  newDG->_name = new_name(name(),&GM_Parms.componentsMap);
+  newDG->setBasicAllocatedBit();
+  GM_Parms.add(newDG);
+
+  return newDG;
+}
+
 /////////////////
 // EM routines //
 /////////////////
@@ -490,48 +538,4 @@ void DiagGaussian::sampleGenerate(float *const sample,
   error("not implemented");
 }
 
-
-
-/*-
- *-----------------------------------------------------------------------
- * DiagGaussian::identicalIndependentClone
- *      creates an exact copy of this object that shares nothing with
- *      the original
- *
- * Preconditions:
- *      1) object being copied should be allocated
- *      2) GM_Parms should contain all parameters, so that a unique name
- *         for the new object can be generated
- *
- * Postconditions:
- *      none
- *
- * Side Effects:
- *      the new object is added to GM_Parms
- *
- * Results:
- *      a pointer the new object
- *
- *-----------------------------------------------------------------------
- */
-Component* 
-DiagGaussian::identicalIndependentClone()
-{
-
-  DiagGaussian* newDG = new DiagGaussian(dim());
-
-  newDG->mean = mean->identicalIndependentClone();
-  newDG->covar = covar->identicalIndependentClone();
-
-  newDG->mean->numTimesShared++;
-  newDG->covar->numTimesShared++;
-  mean->numTimesShared--;
-  covar->numTimesShared--;
-
-  newDG->_name = new_name(name(),&GM_Parms.componentsMap);
-  newDG->setBasicAllocatedBit();
-  GM_Parms.add(newDG);
-
-  return newDG;
-}
 

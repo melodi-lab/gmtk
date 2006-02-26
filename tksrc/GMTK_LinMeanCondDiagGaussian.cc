@@ -282,6 +282,58 @@ LinMeanCondDiagGaussian::noisyClone()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * LinMeanCondDiagGaussian::identicalIndependentClone
+ *      creates an exact copy of this object that shares nothing with
+ *      the original
+ *
+ * Preconditions:
+ *      1) object being copied should be allocated
+ *      2) GM_Parms should contain all parameters, so that a unique name
+ *         for the new object can be generated
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      the new object is added to GM_Parms
+ *
+ * Results:
+ *      a pointer the new object
+ *
+ *-----------------------------------------------------------------------
+ */
+
+Component*
+LinMeanCondDiagGaussian::identicalIndependentClone()
+{
+  LinMeanCondDiagGaussian* newLMCDG = new LinMeanCondDiagGaussian(mean->means.len());
+  newLMCDG->mean = mean->identicalIndependentClone();
+  newLMCDG->covar = covar->identicalIndependentClone();
+  newLMCDG->dLinkMat = dLinkMat->identicalIndependentClone();
+
+
+  // don't change usage counts here - do it in calling function,
+  // because only that knows how the sharing is arranged
+
+  //newLMCDG->mean->numTimesShared++;
+  //newLMCDG->covar->numTimesShared++;
+  //newLMCDG->dLinkMat->numTimesShared++;
+
+  //mean->numTimesShared--;
+  //covar->numTimesShared--;
+  //dLinkMat->numTimesShared--;
+
+  newLMCDG->setName(new_name(name(),&GM_Parms.componentsMap));
+  newLMCDG->setBasicAllocatedBit();
+
+  GM_Parms.add(newLMCDG);
+
+  return newLMCDG;
+}
+
 /////////////////
 // EM routines //
 /////////////////
@@ -1104,49 +1156,3 @@ void LinMeanCondDiagGaussian::sampleGenerate(float *const sample,
 }
 
 
-
-
-/*-
- *-----------------------------------------------------------------------
- * LinMeanCondDiagGaussian::identicalIndependentClone
- *      creates an exact copy of this object that shares nothing with
- *      the original
- *
- * Preconditions:
- *      1) object being copied should be allocated
- *      2) GM_Parms should contain all parameters, so that a unique name
- *         for the new object can be generated
- *
- * Postconditions:
- *      none
- *
- * Side Effects:
- *      the new object is added to GM_Parms
- *
- * Results:
- *      a pointer the new object
- *
- *-----------------------------------------------------------------------
- */
-Component*
-LinMeanCondDiagGaussian::identicalIndependentClone()
-{
-  LinMeanCondDiagGaussian* newLMCDG = new LinMeanCondDiagGaussian(mean->means.len());
-  newLMCDG->mean = mean->identicalIndependentClone();
-  newLMCDG->covar = covar->identicalIndependentClone();
-  newLMCDG->dLinkMat = dLinkMat->identicalIndependentClone();
-
-  newLMCDG->mean->numTimesShared++;
-  newLMCDG->covar->numTimesShared++;
-  newLMCDG->dLinkMat->numTimesShared++;
-  mean->numTimesShared--;
-  covar->numTimesShared--;
-  dLinkMat->numTimesShared--;
-
-  newLMCDG->setName(new_name(name(),&GM_Parms.componentsMap));
-  newLMCDG->setBasicAllocatedBit();
-
-  GM_Parms.add(newLMCDG);
-
-  return newLMCDG;
-}
