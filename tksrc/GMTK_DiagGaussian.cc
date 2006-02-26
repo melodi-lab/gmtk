@@ -114,6 +114,25 @@ DiagGaussian::write(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * DiagGaussian::makeRandom
+ *      calls makeRandom for the mean and covar
+ * 
+ * Preconditions:
+ *      Object must be allocated.
+ *
+ * Postconditions:
+ *      Object has random values.
+ *
+ * Side Effects:
+ *      destroys previous values.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 DiagGaussian::makeRandom()
 {
@@ -125,6 +144,25 @@ DiagGaussian::makeRandom()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * makeUniform()
+ *      calls makeUniform for the mean and covar
+ * 
+ * Preconditions:
+ *      Object must be allocated.
+ *
+ * Postconditions:
+ *      Object has uniform values.
+ *
+ * Side Effects:
+ *      destroys previous values.
+ *
+ * Results:
+ *      none
+ *
+ *-----------------------------------------------------------------------
+ */
 void
 DiagGaussian::makeUniform()
 {
@@ -453,6 +491,29 @@ void DiagGaussian::sampleGenerate(float *const sample,
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * DiagGaussian::identicalIndependentClone
+ *      creates an exact copy of this object that shares nothing with
+ *      the original
+ *
+ * Preconditions:
+ *      1) object being copied should be allocated
+ *      2) GM_Parms should contain all parameters, so that a unique name
+ *         for the new object can be generated
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      the new object is added to GM_Parms
+ *
+ * Results:
+ *      a pointer the new object
+ *
+ *-----------------------------------------------------------------------
+ */
 Component* 
 DiagGaussian::identicalIndependentClone()
 {

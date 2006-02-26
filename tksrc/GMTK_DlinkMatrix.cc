@@ -211,8 +211,9 @@ DlinkMatrix::write(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * makeRandom()
- *      assign random values to all elements
+ * DlinkMatrix::makeRandom
+ *      assign random values to all elements (uniformly distributed values
+ *      from [0+epsilon,1])
  * 
  * Preconditions:
  *      Object must be allocated.
@@ -242,7 +243,7 @@ DlinkMatrix::makeRandom()
 
 /*-
  *-----------------------------------------------------------------------
- * makeUniform()
+ * DlinkMatrix::makeUniform
  *      assign uniform (i.e., in this case 0) values to all elements
  * 
  * Preconditions:
@@ -854,6 +855,31 @@ DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * WHEN IMPLEMENTED:
+ *
+ * DlinkMatrix::identicalIndependentClone
+ *      creates an exact copy of this object that shares nothing with
+ *      the original
+ *
+ * Preconditions:
+ *      1) object being copied should be allocated
+ *      2) GM_Parms should contain all parameters, so that a unique name
+ *         for the new object can be generated
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      the new object is added to GM_Parms
+ *
+ * Results:
+ *      a pointer the new object
+ *
+ *-----------------------------------------------------------------------
+ */
 DlinkMatrix*
 DlinkMatrix::identicalIndependentClone()
 {
