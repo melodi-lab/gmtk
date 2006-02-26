@@ -251,6 +251,47 @@ MeanVector::noisyClone()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * MeanVector::identicalIndependentClone
+ *      creates an exact copy of this object that shares nothing with
+ *      the original
+ *
+ * Preconditions:
+ *      1) object being copied should be allocated
+ *      2) GM_Parms should contain all parameters, so that a unique name
+ *         for the new object can be generated
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      the new object is added to GM_Parms
+ *
+ * Results:
+ *      a pointer the new object
+ *
+ *-----------------------------------------------------------------------
+ */
+MeanVector*
+MeanVector::identicalIndependentClone()
+{
+
+  MeanVector* newMV = new MeanVector();
+  newMV->refCount = 0;
+
+  newMV->means.resize(means.len());
+  for (int i=0;i<means.len();i++) 
+    newMV->means[i] = means[i];
+
+  newMV->setName(new_name(name(),&GM_Parms.meansMap));
+  newMV->setBasicAllocatedBit();
+  GM_Parms.add(newMV);
+
+  return newMV;
+}
+
+
 /////////////////
 // EM routines //
 /////////////////
@@ -899,43 +940,3 @@ MeanVector::emStoreAccumulators(oDataStreamFile& ofile)
   }
 }
 
-
-/*-
- *-----------------------------------------------------------------------
- * MeanVector::identicalIndependentClone
- *      creates an exact copy of this object that shares nothing with
- *      the original
- *
- * Preconditions:
- *      1) object being copied should be allocated
- *      2) GM_Parms should contain all parameters, so that a unique name
- *         for the new object can be generated
- *
- * Postconditions:
- *      none
- *
- * Side Effects:
- *      the new object is added to GM_Parms
- *
- * Results:
- *      a pointer the new object
- *
- *-----------------------------------------------------------------------
- */
-MeanVector*
-MeanVector::identicalIndependentClone()
-{
-
-  MeanVector* newMV = new MeanVector();
-  newMV->refCount = 0;
-
-  newMV->means.resize(means.len());
-  for (int i=0;i<means.len();i++) 
-    newMV->means[i] = means[i];
-
-  newMV->setName(new_name(name(),&GM_Parms.meansMap));
-  newMV->setBasicAllocatedBit();
-  GM_Parms.add(newMV);
-
-  return newMV;
-}
