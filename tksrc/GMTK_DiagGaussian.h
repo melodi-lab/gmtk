@@ -52,7 +52,14 @@ class DiagGaussian : public GaussianComponent {
   // This might be tied with multiple other distributions.
   DiagCovarVector* covar;
 
- 
+  /////////////////////////////////////////////////
+  // modify the usage counts of any members that use them; typically
+  // called with amount=1 or -1
+  void adjustNumTimesShared(int amount){
+    mean->numTimesShared += amount;
+    covar->numTimesShared += amount;
+  };
+
 public:
 
   
