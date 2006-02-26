@@ -49,6 +49,16 @@ class LinMeanCondDiagGaussian : public GaussianComponent {
   ///////////////////////////////////////////////////////
   // parameters for the dlink structure
   DlinkMatrix* dLinkMat;
+ 
+
+  /////////////////////////////////////////////////
+  // modify the usage counts of any members that use them; typically
+  // called with amount=1 or -1
+  void adjustNumTimesShared(int amount){
+    mean->numTimesShared += amount;
+    covar->numTimesShared += amount;
+    dLinkMat->numTimesShared += amount;
+  };
 
   // Accumulators for EM training: First, a local mean & diagCov
   // accumulator, needed for sharing.
