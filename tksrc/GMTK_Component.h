@@ -32,6 +32,7 @@
 
 class Component :  public EMable {
 
+  friend class GMTK_Tie;
 
 protected:
   ///////////////////////////////////////////////////////
@@ -39,6 +40,11 @@ protected:
   // Typically, this will be the number of features over which
   // this component applies.
   const unsigned _dim;
+
+  /////////////////////////////////////////////////
+  // modify the usage counts of any members that use them (e.g. means,
+  // covars); typically called with amount=1 or -1
+  virtual void adjustNumTimesShared(int amount) = 0;
 
 public:
 
@@ -84,6 +90,7 @@ public:
   // create a copy of self, with entirely new parameters with
   // identical values; NOTHING is shared
   virtual Component* identicalIndependentClone() = 0;
+
 
   //////////////////////////////////
   // set all current parameters to valid but random values
