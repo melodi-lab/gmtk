@@ -333,6 +333,45 @@ DlinkMatrix::noisyClone()
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * WHEN IMPLEMENTED:
+ *
+ * DlinkMatrix::identicalIndependentClone
+ *      creates an exact copy of this object that shares nothing with
+ *      the original
+ *
+ * Preconditions:
+ *      1) object being copied should be allocated
+ *      2) GM_Parms should contain all parameters, so that a unique name
+ *         for the new object can be generated
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      the new object is added to GM_Parms
+ *
+ * Results:
+ *      a pointer the new object
+ *
+ *-----------------------------------------------------------------------
+ */
+DlinkMatrix*
+DlinkMatrix::identicalIndependentClone()
+{
+  DlinkMatrix* newDLM = new DlinkMatrix();
+  newDLM->refCount = 0;
+  newDLM->numTimesShared = 0;
+
+
+  newDLM->setBasicAllocatedBit();
+
+  error("DlinkMatrix::identicalIndependentClone not fully implemented yet");
+  return newDLM;
+}
+
+
 /////////////////
 // EM routines //
 /////////////////
@@ -854,38 +893,3 @@ DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 }
 
 
-
-
-/*-
- *-----------------------------------------------------------------------
- * WHEN IMPLEMENTED:
- *
- * DlinkMatrix::identicalIndependentClone
- *      creates an exact copy of this object that shares nothing with
- *      the original
- *
- * Preconditions:
- *      1) object being copied should be allocated
- *      2) GM_Parms should contain all parameters, so that a unique name
- *         for the new object can be generated
- *
- * Postconditions:
- *      none
- *
- * Side Effects:
- *      the new object is added to GM_Parms
- *
- * Results:
- *      a pointer the new object
- *
- *-----------------------------------------------------------------------
- */
-DlinkMatrix*
-DlinkMatrix::identicalIndependentClone()
-{
-  DlinkMatrix* newDLM = new DlinkMatrix();
-
-  error("DlinkMatrix::identicalIndependentClone not implemented yet");
-
-  return newDLM;
-}
