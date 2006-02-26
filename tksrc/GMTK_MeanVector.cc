@@ -279,6 +279,7 @@ MeanVector::identicalIndependentClone()
 
   MeanVector* newMV = new MeanVector();
   newMV->refCount = 0;
+  newMV->numTimesShared = 0;
 
   newMV->means.resize(means.len());
   for (int i=0;i<means.len();i++) 
