@@ -4881,6 +4881,12 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       // get a handy reference to the current separator
       InferenceSeparatorClique& sep = 
 	part.separatorCliques[origin.ceReceiveSeparators[sepNumber]];
+
+      // if the separator is currently not active, we should not be
+      // using it for the additional probability here.
+      if (sep.origin.skipMe)
+	continue;
+
       // keep a local variable copy of this around to avoid potential dereferencing.
       InferenceSeparatorClique::AISeparatorValue * const
 	sepSeparatorValuesPtr = sep.separatorValues->ptr; 
