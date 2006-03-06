@@ -13,7 +13,8 @@ my $max_edges_in_graph;
 my $max_in_degree;
 my $nmbr_frames;
 my $total_iterations;
-my $deterministic;
+my $deterministic_prbblty;
+my $deterministic_nmbr;
 my $observed;
 my $max_rndm_card;
 my $max_disc_card;
@@ -36,7 +37,8 @@ $valid_options = &GetOptions(
   "max_edges:i"     => \$max_allowable_edges, 
   "max_in_degree:i" => \$max_in_degree, 
   "iterations:i"    => \$total_iterations, 
-  "deterministic:f" => \$deterministic, 
+  "deterministic_probability:f" => \$deterministic_prbblty, 
+  "deterministic_number:i"      => \$deterministic_nmbr, 
   "observed:f"      => \$observed, 
   "max_rndm_card:i" => \$max_rndm_card, 
   "max_disc_card:i" => \$max_disc_card, 
@@ -60,7 +62,8 @@ if (!$valid_options)
   print "   -max_in_degree       Maximum indgree of any node\n";
   print "   -frames              Number of frames in DBN (1 or 2)\n";
   print "   -iterations          Number of iterations in MCMC\n";
-  print "   -deterministic       Probability that a node is deterministic\n";
+  print "   -deterministic_probability Probability that a node is deterministic\n";
+  print "   -deterministic_number      Number of nodes that are deterministic\n";
   print "   -observed            Probability that a node is observed\n";
   print "   -max_rndm_card       Maximum cardinality of random nodes\n";
   print "   -max_disc_card       Maximum cardinality of a discrete node\n";
@@ -118,9 +121,18 @@ if (!defined $total_iterations) {
   $total_iterations = 10000;
 } 
 
-if (!defined $deterministic) {
-  $deterministic = 0.5;
+
+if ((!defined $deterministic_prbblty) &&
+    (!defined $deterministic_nmbr)) {
+  $deterministic_prbblty = 0.5;
 } 
+elsif ((defined $deterministic_prbblty) &&
+       (defined $deterministic_nmbr)) {
+  die "***ERROR:  Can only use one of deterministic_probability and deterministic_number\n";
+}
+elsif (defined $deterministic_nmbr) { 
+  ($nodes_per_frame >= $deterministic_nmbr) or die "***ERROR: deterministic_number, $deterministic_nmbr, is larger than the number of nodes, $nodes_per_frame\n"; 
+}
 
 if (!defined $observed) {
   $observed = 0.2;
@@ -166,7 +178,12 @@ print "%    $nmbr_verticies verticies per frame\n";
 print "%    Maximum of $max_allowable_edges edges\n";
 print "%    Maximum indegree $max_in_degree\n";
 print "%    $total_iterations iterations in MCMC chain\n"; 
-print "%    $deterministic probability of nodes being deterministic\n"; 
+if (defined $deterministic_prbblty) {
+  print "%    $deterministic_prbblty probability of nodes being deterministic\n"; 
+}
+else {
+  print "%    $deterministic_nmbr nodes will be deterministic\n"; 
+}
 print "%    $observed probability of nodes being observed\n"; 
 print "%    Maximum random node cardinality of $max_rndm_card\n"; 
 print "%    Maximum discrete node cardinality of $max_disc_card\n"; 
@@ -197,8 +214,8 @@ for ($i=0; $i<$nmbr_frames; $i++)
     $node_name = sprintf "%d", ($i*$nodes_per_frame+$j);
     push @V, $node_name; 
     $G->add_vertex( $node_name );
-    $G->set_attribute( 'frame', $node_name, $i ); 
-    $G->set_attribute( 'name',  $node_name, "v$j" ); 
+    $G->set_vertex_attribute( $node_name, 'frame', $i );
+    $G->set_vertex_attribute( $node_name, 'name', "v$j" ); 
   }
 }
 
@@ -277,31 +294,62 @@ my @sinks;
 ##############################################################################
 $nmbr_deterministic_CPT = 0;
 $nmbr_observed = 0;
+
+my @deterministic_list;
+if (defined $deterministic_nmbr)
+{
+  my $count = 0;
+  while ($count < $deterministic_nmbr)
+  {
+    $node_index = int rand($nodes_per_frame);
+    $vertex = $sorted_vertices[$node_index];
+    if ( ((scalar $G->predecessors($vertex)) > 0) &&
+         (!(grep /^$vertex$/, @deterministic_list)) ) {
+      push @deterministic_list, $vertex;
+      $count++;
+    }
+  }
+}
+
 for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
 {
   $vertex   = $sorted_vertices[$nodes_per_frame*($nmbr_frames-1)+$node_index];
   $vertex_b = $sorted_vertices[$node_index];
 
-  $rndm_nmbr = rand(1);
   $nmbr_parents = scalar $G->predecessors($vertex);
+ 
+  my $is_det = 0;
+  if (defined $deterministic_prbblty)
+  {
+    $rndm_nmbr = rand(1);
+    if ($rndm_nmbr < $deterministic_prbblty) {
+      $is_det = 1;
+    }
+  }
+  elsif (defined $deterministic_nmbr)
+  {
+    if (grep /^$vertex_b$/, @deterministic_list) {
+      $is_det = 1;
+    }
+  }
 
-  if ( ($nmbr_parents > 0) && ($rndm_nmbr < $deterministic) ) {
-    $G->set_attribute( 'deterministic', $vertex, 1 );    
-    $G->set_attribute( 'cardinality',   $vertex, 1 ); 
+  if ($is_det) { 
+    $G->set_vertex_attribute( $vertex, 'deterministic', 1 );    
+    $G->set_vertex_attribute( $vertex, 'cardinality', 1 ); 
     $nmbr_deterministic_CPT++;
     if ($nmbr_frames == 2) { 
-      $G->set_attribute( 'deterministic', $vertex_b, 1 );    
-      $G->set_attribute( 'cardinality',   $vertex_b, 1 ); 
+      $G->set_vertex_attribute( $vertex_b, 'deterministic', 1 );    
+      $G->set_vertex_attribute( $vertex_b, 'cardinality', 1 ); 
       $nmbr_deterministic_CPT++;
     }
   }
   else {
-    $G->set_attribute( 'deterministic', $vertex, 0 );
+    $G->set_vertex_attribute( $vertex, 'deterministic', 0 );
     $rndm_nmbr = 2 + int(rand($max_rndm_card-2));
-    $G->set_attribute( 'cardinality', $vertex, $rndm_nmbr );
+    $G->set_vertex_attribute( $vertex, 'cardinality', $rndm_nmbr );
     if ($nmbr_frames == 2) { 
-      $G->set_attribute( 'deterministic', $vertex_b, 0 );    
-      $G->set_attribute( 'cardinality', $vertex_b, $rndm_nmbr );
+      $G->set_vertex_attribute( $vertex_b, 'deterministic', 0 );    
+      $G->set_vertex_attribute( $vertex_b, 'cardinality', $rndm_nmbr );
     }
   }
 
@@ -345,7 +393,7 @@ for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
 #}
 
 ##############################################################################
-# Possibly increase state space of determistic nodes when parent 
+# Possibly increase state space of deterministic nodes when parent 
 #   cardinalities are large. 
 ##############################################################################
 for($frame=0; $frame<$nmbr_frames; $frame++)
@@ -355,8 +403,8 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
     $vertex   = $sorted_vertices[$frame*$nodes_per_frame+$node_index];
     $vertex_b = $sorted_vertices[$node_index];
 
-    if ( ($G->get_attribute('deterministic', $vertex ) == 1) &&
-         !($G->has_attribute('observed', $vertex )) ) 
+    if ( ($G->get_vertex_attribute($vertex, 'deterministic') == 1) &&
+         !($G->has_vertex_attribute($vertex, 'observed')) ) 
     { 
       @parents = $G->predecessors($vertex);
 
@@ -364,11 +412,11 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
       $self_parent = 0;
       foreach $parent (@parents) 
       {
-        if ($G->get_attribute('name', $parent) ne 
-            $G->get_attribute('name', $vertex))  
+        if ($G->get_vertex_attribute($parent, 'name') ne 
+            $G->get_vertex_attribute($vertex, 'name'))  
         {
           $crrnt_max_disc_card = $crrnt_max_disc_card *
-            $G->get_attribute('cardinality', $parent);
+            $G->get_vertex_attribute($parent, 'cardinality');
         }
         else {
           $self_parent = 1;
@@ -393,10 +441,10 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
       else { 
         $rndm_nmbr = 2 + int(rand($crrnt_max_disc_card-3));
       }     
-      $G->set_attribute( 'cardinality', $vertex, $rndm_nmbr ); 
+      $G->set_vertex_attribute( $vertex, 'cardinality', $rndm_nmbr ); 
 
       if ($nmbr_frames == 2) { 
-        $G->set_attribute( 'cardinality', $vertex_b, $rndm_nmbr );  
+        $G->set_avertex_attribute( $vertex_b, 'cardinality', $rndm_nmbr );  
       }
     } 
   } 
@@ -423,22 +471,22 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
       $vertex = $sorted_vertices[$frame*$nodes_per_frame+$node_index];
     }
 
-    printf "   variable : %s {\n", $G->get_attribute('name', $vertex);
+    printf "   variable : %s {\n", $G->get_vertex_attribute($vertex, 'name');
 
-    if ($G->has_attribute('observed', $vertex)) { 
+    if ($G->has_vertex_attribute($vertex, 'observed')) { 
       if ($continuous_obs) {
         printf "      type: continuous observed 0:%d;\n", 
-          ($G->get_attribute('cardinality', $vertex)-1); 
+          ($G->get_vertex_attribute($vertex, 'cardinality')-1); 
       }
       else {
         printf "      type: discrete observed value %d cardinality %d;\n",
-          rand($G->get_attribute('cardinality', $vertex)), 
-          $G->get_attribute('cardinality', $vertex); 
+          rand($G->get_vertex_attribute($vertex, 'cardinality')), 
+          $G->get_vertex_attribute($vertex, 'cardinality'); 
       }
     }
     else {
       printf "      type: discrete hidden cardinality %d;\n", 
-        $G->get_attribute('cardinality', $vertex);
+        $G->get_vertex_attribute($vertex, 'cardinality');
     }
  
     print "      switchingparents: nil;\n"; 
@@ -449,10 +497,10 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
     @parent_indices = $G->predecessors($vertex);
     for($prnt_index=0; $prnt_index<(scalar @parent_indices); $prnt_index++)
     {
-      $parent_name = $G->get_attribute('name', $parent_indices[$prnt_index]);
+      $parent_name = $G->get_vertex_attribute($parent_indices[$prnt_index], 'name');
 
       if (($nmbr_frames == 1) || 
-          ($G->get_attribute('frame', $parent_indices[$prnt_index]) == $frame)) 
+          ($G->get_vertex_attribute($parent_indices[$prnt_index], 'frame') == $frame)) 
       { 
         $parent_name = $parent_name . "(0)";
       }
@@ -477,12 +525,12 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
       }
     } 
 
-    if ($continuous_obs && ($G->has_attribute('observed', $vertex))) {
+    if ($continuous_obs && ($G->has_vertex_attribute($vertex, 'observed'))) {
       print "using mixture\n";
       print "        collection(\"myglobal\")\n";
       print "        mapping(\"${vertex}_DT\");\n"; 
     } 
-    elsif ($G->get_attribute('deterministic', $vertex)) {
+    elsif ($G->get_vertex_attribute($vertex, 'deterministic')) {
       print "using DeterministicCPT(\"${vertex}_DeterministicCPT\");\n"; 
     }
     else {
@@ -536,7 +584,7 @@ if (defined $master_file_name)
 
   foreach $vertex (@sorted_vertices)
   {
-    if ($G->get_attribute('deterministic', $vertex) == 1) { 
+    if ($G->get_vertex_attribute($vertex, 'deterministic') == 1) { 
 
       print MASTER "$DT_count  % DT number\n";
       $DT_count++;
@@ -545,7 +593,7 @@ if (defined $master_file_name)
 
       @parents = $G->predecessors($vertex);
       if ((scalar @parents) == 0) {
-        printf MASTER "   -1 %d\n", int(rand($G->get_attribute('cardinality', $vertex)));
+        printf MASTER "   -1 %d\n", int(rand($G->get_vertex_attribute($vertex, 'cardinality')));
       }
       else
       {   
@@ -561,7 +609,7 @@ if (defined $master_file_name)
           }
         }
 
-        printf MASTER "),%d)}\n", $G->get_attribute('cardinality', $vertex);
+        printf MASTER "),%d)}\n", $G->get_vertex_attribute($vertex, 'cardinality');
       } 
       print MASTER "\n";  
     } 
@@ -578,7 +626,7 @@ if (defined $master_file_name)
 
   foreach $vertex (@sorted_vertices)
   {
-    if ($G->get_attribute('deterministic', $vertex) == 1) { 
+    if ($G->get_vertex_attribute($vertex, 'deterministic') == 1) { 
       print MASTER "$DT_count  % count\n";
       $DT_count++;
       print MASTER "${vertex}_DeterministicCPT\n";
@@ -586,9 +634,9 @@ if (defined $master_file_name)
       printf MASTER "%d %% number of parents\n", (scalar @parents); 
       foreach $parent (@parents) 
       {
-        printf MASTER "%d ", $G->get_attribute('cardinality', $parent);
+        printf MASTER "%d ", $G->get_vertex_attribute($parent, 'cardinality');
       }
-      printf MASTER "%d\n", $G->get_attribute('cardinality', $vertex);
+      printf MASTER "%d\n", $G->get_vertex_attribute($vertex, 'cardinality');
       print MASTER "${vertex}_DT\n";
       print MASTER "\n";
     }
@@ -622,14 +670,14 @@ sub is_connected
   $G = pop @_;
  
   foreach $vertex (@V) { 
-    $G->set_attribute('marked', $vertex, 0)
+    $G->set_vertex_attribute($vertex, 'marked', 0)
   }
 
   recurse_tree($G, $V[0]);
   
   $connected = 1;
   for ($i=0; ($i<$nmbr_verticies) && ($connected == 1); $i++) {
-    if ($G->get_attribute('marked', $V[$i]) != 1) {
+    if ($G->get_vertex_attribute($V[$i], 'marked') != 1) {
       $connected = 0;
     }
   }
@@ -647,18 +695,18 @@ sub recurse_tree
   $vertex = pop @_;
   $G = pop @_;
 
-  $G->set_attribute('marked', $vertex, 1);
+  $G->set_vertex_attribute($vertex, 'marked', 1);
   
   @neighbors = $G->predecessors($vertex);
   foreach $neighbor (@neighbors) { 
-    if ($G->get_attribute('marked', $neighbor) == 0) {
+    if ($G->get_vertex_attribute($neighbor, 'marked') == 0) {
       recurse_tree($G, $neighbor);
     }
   }
   
   @neighbors = $G->successors($vertex);
   foreach $neighbor (@neighbors) { 
-    if ($G->get_attribute('marked', $neighbor) == 0) {
+    if ($G->get_vertex_attribute($neighbor, 'marked') == 0) {
       recurse_tree($G, $neighbor);
     }
   }
@@ -680,7 +728,7 @@ sub is_DAG
   for ($i=0; ($i<$nmbr_verticies) && ($path_found == 0); $i++) 
   {
     foreach $vertex (@V) {
-      $G->set_attribute('marked', $vertex, 0)
+      $G->set_vertex_attribute($vertex, 'marked', 0)
     }
 
     $path_found = is_directed_path( $G, $V[$i], $V[$i] );
@@ -711,8 +759,8 @@ sub is_directed_path
     if ($child eq $end) {
       $path_found = 1;
     }
-    elsif ($G->get_attribute('marked', $child) == 0) {
-      $G->set_attribute('marked', $child, 1);
+    elsif ($G->get_vertex_attribute($child, 'marked') == 0) {
+      $G->set_vertex_attribute($child, 'marked', 1);
       $path_found = is_directed_path( $G, $child, $end ); 
     }
   }
@@ -855,7 +903,7 @@ sub toposort
 
   foreach $node (@sorted_all) 
   {
-    if ($G->get_attribute( 'frame', $node ) == 0) {
+    if ($G->get_vertex_attribute( $node, 'frame' ) == 0) {
       push @sorted_frame, $node;
     }
   }
@@ -929,39 +977,39 @@ sub set_observed
 
   $vertex = pop @_;
 
-  $G->set_attribute('observed', $vertex, 1);
+  $G->set_vertex_attribute($vertex, 'observed', 1);
 
   if ($continuous_obs) {
-    $G->set_attribute('cardinality', $vertex, 42);
-    if ( $G->get_attribute('deterministic', $vertex) == 0 ) {
+    $G->set_vertex_attribute($vertex, 'cardinality', 42);
+    if ( $G->get_vertex_attribute($vertex, 'deterministic') == 0 ) {
       $nmbr_deterministic_CPT++;
-      $G->set_attribute('deterministic', $vertex, 1);
+      $G->set_vertex_attribute($vertex, 'deterministic', 1);
     }
   }
   else {
-    $G->set_attribute('cardinality', $vertex, 50);
-    if ( $G->get_attribute('deterministic', $vertex) == 1 ) {
+    $G->set_vertex_attribute($vertex, 'cardinality', 50);
+    if ( $G->get_vertex_attribute($vertex, 'deterministic') == 1 ) {
       $nmbr_deterministic_CPT--;
-      $G->set_attribute('deterministic', $vertex, 0);
+      $G->set_vertex_attribute($vertex, 'deterministic', 0);
     }
   }
 
   if ($nmbr_frames>1)
   {
     $vertex = $vertex+$nodes_per_frame;
-    $G->set_attribute('observed', $vertex, 1);
+    $G->set_vertex_attribute($vertex, 'observed', 1);
     if ($continuous_obs) {
-      $G->set_attribute('cardinality', $vertex, 42);
-      if ( $G->get_attribute('deterministic', $vertex) == 0 ) {
+      $G->set_vertex_attribute($vertex, 'cardinality', 42);
+      if ( $G->get_vertex_attribute($vertex, 'deterministic') == 0 ) {
         $nmbr_deterministic_CPT++;
-        $G->set_attribute('deterministic', $vertex, 1);
+        $G->set_vertex_attribute($vertex, 'deterministic', 1);
       } 
     }
     else {
-      $G->set_attribute('cardinality', $vertex, 50);
-      if ( $G->get_attribute('deterministic', $vertex) == 1 ) {
+      $G->set_vertex_attribute($vertex, 'cardinality', 50);
+      if ( $G->get_vertex_attribute($vertex, 'deterministic') == 1 ) {
         $nmbr_deterministic_CPT--;
-        $G->set_attribute('deterministic', $vertex, 0);
+        $G->set_vertex_attribute($vertex, 'deterministic', 0);
       }
     }
   }
