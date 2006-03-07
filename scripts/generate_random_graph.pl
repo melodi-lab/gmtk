@@ -288,13 +288,12 @@ my @sinks;
 @sorted_vertices = toposort($G);
 @sinks = get_frame_sinks($G);
 
-##############################################################################
-# Set the initial cardinalities, and decide if each vertex is random, 
-# deterministic, or observed.
-##############################################################################
 $nmbr_deterministic_CPT = 0;
 $nmbr_observed = 0;
 
+##############################################################################
+# If using a fixed number of deterministic variables choose them now 
+##############################################################################
 my @deterministic_list;
 if (defined $deterministic_nmbr)
 {
@@ -311,6 +310,10 @@ if (defined $deterministic_nmbr)
   }
 }
 
+##############################################################################
+# Set the initial cardinalities, and decide if each vertex is random, 
+# deterministic, or observed.
+##############################################################################
 for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
 {
   $vertex   = $sorted_vertices[$nodes_per_frame*($nmbr_frames-1)+$node_index];
@@ -357,40 +360,16 @@ for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
   # Choose if node is observed
   ##############################################################################
   $rndm_nmbr = rand(1);
-  if ($rndm_nmbr < $observed) 
-  {
+  if ($rndm_nmbr < $observed) {
     if (($continuous_obs==0) || (grep /^$vertex$/, @sinks)) {
-      set_observed($vertex_b); 
-      $nmbr_observed++;
+      if ((!defined $deterministic_nmbr) || (!$is_det)) {
+        set_observed($vertex); 
+        $nmbr_observed++;
+      }
     } 
   }
 
 }
-
-##############################################################################
-# Make sure one node is observed 
-##############################################################################
-#if ($nmbr_observed == 0)
-#{
-#  if ($continuous_obs)
-#  {
-#    ##########################################################################
-#    # Choose from sink nodes for continuous observation 
-#    ##########################################################################
-#    $rndm_nmbr = int(rand(scalar @sinks));
-#    $vertex = $sinks[$rndm_nmbr];
-#  }
-#  else 
-#  {
-#    ##########################################################################
-#    # Choose any node for discrete observation 
-#    ##########################################################################
-#    $rndm_nmbr = int(rand($nodes_per_frame));
-#    $vertex = $V[$rndm_nmbr];
-#  }
-#
-#  set_observed($vertex); 
-#}
 
 ##############################################################################
 # Possibly increase state space of deterministic nodes when parent 
@@ -1014,4 +993,5 @@ sub set_observed
     }
   }
 }
+
 
