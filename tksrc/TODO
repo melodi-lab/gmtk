@@ -3402,8 +3402,31 @@ Wed Feb 22 23:53:46 2006
             b) this is easy to make to use two threads in parallel (good for dual-core microprocessors giving
                a one time factor of 2 speedup relatively easily).
 
+Tue Mar  7 00:36:07 2006
+  - in island algorithm, have an option that the portion whose memory is freed (and so normally
+    needs to be re-generated) is instead saved to disk, and then when next needed is just loaded
+    in from a disk file. This might be faster than having to always re-generate it.
 
+  - Modification to decision trees. Add the ability to produce more compressed Decision trees
+    by allowing to have decision DAGs, where nodes can merge back together. I.e., perhaps
+    have a goto statement (or some form of link connect) so that common sub-trees do not
+    need to be duplicated over and over (which is the case with trees). Several ways
+    to do this:
+      - function calls, or DT calls, where a leaf of a DT can "call" another DT.
+      - gotos, where a leaf of a DT can call another non-terminal of a DT.
+         Syntax:
+           Rather than:
+                 P=parNo N=numSplits s1 s2 ... s(N-1) default
+           we could add an optional label to this:
+                 foo: P=parNo N=numSplits s1 s2 ... s(N-1) default
+           and then a leaf node could say:
+                 -1 goto foo;
+         when reading thigns in, keep a hash-table or set of labeled DT non-terminals,
+          and an array of pointers to goto, and do a 2nd pass updating all goto tags (so shouldn't
+          take too long to do).
+     Note: this could cause infinite loops, need to detect for directed cycles this during read-in time.
 
+    Take a look at binary decision diagrams of and manipulations therein, as in the paper:
+     "Graph-Based Algorithms for Boolean Function Manipulation", by Randal E. Bryant.
 
  
-
