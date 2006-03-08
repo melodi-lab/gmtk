@@ -3430,3 +3430,8 @@ Tue Mar  7 00:36:07 2006
      "Graph-Based Algorithms for Boolean Function Manipulation", by Randal E. Bryant.
 
  
+Wed Mar  8 12:27:44 2006
+  - pruning option: have pruning numbers come from observation files, and have pruning syntax
+    so that pruning numbers can change over sequence. (i.e., break obs range into percentages,
+    with diff. pruning option in each range).
+      
