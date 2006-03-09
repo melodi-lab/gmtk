@@ -857,7 +857,7 @@ const char*const argerr = "ARG ERROR";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("deterministiChildrenStore",Arg::Opt,MaxClique::storeDeterministicChildrenInClique,"Store deterministic children in clique memory"),
+  Arg("deterministicChildrenStore",Arg::Opt,MaxClique::storeDeterministicChildrenInClique,"Store deterministic children in clique memory"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
