@@ -3425,6 +3425,8 @@ Tue Mar  7 00:36:07 2006
           and an array of pointers to goto, and do a 2nd pass updating all goto tags (so shouldn't
           take too long to do).
      Note: this could cause infinite loops, need to detect for directed cycles this during read-in time.
+             (have a command line option that optinally doesn't check for cycles). If cycles,
+              and no check, we'll just get a run-time infinite loop. (for docs).
 
     Take a look at binary decision diagrams of and manipulations therein, as in the paper:
      "Graph-Based Algorithms for Boolean Function Manipulation", by Randal E. Bryant.
@@ -3435,3 +3437,9 @@ Wed Mar  8 12:27:44 2006
     so that pruning numbers can change over sequence. (i.e., break obs range into percentages,
     with diff. pruning option in each range).
       
+
+Wed Mar  8 18:30:25 2006
+ - when doing backjumping, if we backjump to a variable that is
+   a deterministic functio nof other variables, we backjump instead
+   to the latest non-deterministic function directly.
+ 
