@@ -3443,3 +3443,10 @@ Wed Mar  8 18:30:25 2006
    a deterministic functio nof other variables, we backjump instead
    to the latest non-deterministic function directly.
  
+Thu Mar  9 02:02:29 2006
+  - for clique packing, have a mode that packs at byte boundaries
+    rather than word boundaries (perhaps have a compile-time switch
+    that changes the code to pack at different boundaries, perhaps
+    using 1, 2, 4, 8 bytes, to work at byte boundaries, shorts,
+    32-bit words, or 64-bit word machines).
+
