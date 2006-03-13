@@ -3442,6 +3442,7 @@ Wed Mar  8 18:30:25 2006
  - when doing backjumping, if we backjump to a variable that is
    a deterministic functio nof other variables, we backjump instead
    to the latest non-deterministic function directly.
+
  
 Thu Mar  9 02:02:29 2006
   - for clique packing, have a mode that packs at byte boundaries
