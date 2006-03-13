@@ -3459,3 +3459,17 @@ Thu Mar  9 02:02:29 2006
     using 1, 2, 4, 8 bytes, to work at byte boundaries, shorts,
     32-bit words, or 64-bit word machines).
 
+
+Sun Mar 12 18:23:32 2006
+  - in cases where variables and their parents live in a clique but do not give the clique probability (but
+    when they could if they were so assigned), we still use them to trim off zero probability
+    entries in the clique. We should also use them for cpbeam style pruning as well (even though
+    if the entry survives, it won't be the case that the probabiltiy of those variables contributes
+    to any probability).
+
+Sun Mar 12 20:04:44 2006
+ - for docs: see email to 'benson limketkai' on
+        Date: Sat, 11 Mar 2006 16:21:10 -0800
+     for explanation of normalization in DGMs.
+
+
