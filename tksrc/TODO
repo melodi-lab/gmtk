@@ -3262,6 +3262,14 @@ Wed Jan 18 00:19:03 2006
     to a epsilon (implicit laplace smoothign), and then prune the table again
     on writing back out to disk.
 
+    Sun Mar 12 17:50:40 2006: Have a flag for the hash-sparse CPT such that
+     if there is only one cv for a given set of parent values, then the CPT
+     is completely deterministic, so we can take advantage of this during
+     inference (i.e., this type of CPT might dynamically be deterministic or not).
+     Also, do the same for SparseCPTs (i.e., if they happen to be deterministic,
+     then flag it as such). There should be an abstract CPT flag for "deterministic"
+     almost deterministic, etc.
+   
   - Domain pruning array: Keep an array of valid RV values, and when
     we want to prune an entry away, we swap it to with the ending value, and 
     decrease N, thereby providing an O(1) prune operation (while keeping the
@@ -3440,7 +3448,7 @@ Wed Mar  8 12:27:44 2006
 
 Wed Mar  8 18:30:25 2006
  - when doing backjumping, if we backjump to a variable that is
-   a deterministic functio nof other variables, we backjump instead
+   a deterministic functio nof other variables, we direclty backjump instead
    to the latest non-deterministic function directly.
 
  
