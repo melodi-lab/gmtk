@@ -470,23 +470,28 @@ setUpClonedPartitionGraph(const set<RV*>& P,
 			  map < RV*, RV* >& C_in_to_out,
 			  map < RV*, RV* >& E_in_to_out)
 {
-  // These routine calls set the neighbors of the output form (e.g.,
-  // PC, Cc, and Ec) to be the correctly associated variables, but it
-  // does not include neighbors that are not in the current partition
-  // (i.e., dissociate with any other possible portion of the
+
+  // These next few routine calls set the neighbors of the variables
+  // in the output arguments (i..e, PC, Cc, and Ec) to be the
+  // correctly associated variables, but those neighbors will not
+  // include neighbors that are not in the current partition (i.e.,
+  // they will be dissociated with any other possible portion of the
   // network).  This means that the rvs themselves in the intersection
   // between partitions need to be unique. Meaning, the intersection I
   // = intersection(P,C) is contained both in P, and C, but since P[I]
   // should have neighbors only in P and C[I] should have neighbors
   // only in C, we must use different actuall C++ random variables for
   // P[I] and C[I]. The reason for this is the triangulation code
-  // which otherwise wont work: specifically, we triangulate each
-  // partition separately, and after triangulation, the neighbors
-  // member of variables in P[I] will not be the same as the
-  // corresponding neighbors member for variables in C[I] (since they
-  // are triangulated separately).  Indeed, this is a little weird,
-  // however, since a variable v in C with a parent p in P will not
-  // have p as v's neighbor.
+  // which uses the neighbors of random variables as isolated
+  // partitions (i.e., each partition triangulation is within a
+  // partition, and has nothing to do with the triangulations of other
+  // partitions) --- specifically, we triangulate each partition
+  // separately, and after triangulation, the neighbors member of
+  // variables in P[I] will not be the same as the corresponding
+  // neighbors member for variables in C[I] (since they are
+  // triangulated separately).  Indeed, this may seem a little weird,
+  // since a variable v in C with a parent p in P will not have p as
+  // v's neighbor.
 
   // Note further that the variables PCInterface_in_P,
   // PCInterface_in_C, CEInterface_in_C, and CEInterface_in_E will
@@ -503,7 +508,7 @@ setUpClonedPartitionGraph(const set<RV*>& P,
   cloneRVShell(E,Ec,E_in_to_out);
   // Note that now, Pc, Cc, and Ec consist of completely separate C++
   // RV objects, meaning that from STL's point of view, there is no
-  // intersection between any of them (i..e, intersection(Pc,Cc) =
+  // intersection between any of them (i..e, C++intersection(Pc,Cc) =
   // empty, etc.). Of course, in terms of actual real RVs, there is an
   // intersection, namely the interface variables.
 
@@ -538,6 +543,15 @@ setUpClonedPartitionGraph(const set<RV*>& P,
  *   partitions. In other words, when done the parents and children
  *   very well might point into other partitions.
  *
+ *   To summarize
+ *        1) Sc will be a cloned graph of S (same RVs)
+ *        2) Sc will have undirected neighbors set to point only within Sc (not outside)
+ *        3) Sc will have parents/childrens possibly pointing outside of Sc. If
+ *           the parent/child lives in Sc, then the parent/child poitner will point
+ *           to within Sc, but if the parent/child does not live within Sc, it will
+ *           point to the corresponding variable in O1 or O2.
+ *
+ *
  * Preconditions:
  *   Sc is unfishined, i.e., variables have been cloned without parents
  *
@@ -571,7 +585,7 @@ setPartitionParentsChildrenNeighbors(const set<RV*>& S,
     // first set up new neighbors for S_in_to_out[rv]
     // Note: Neighbors are defined to point ONLY TO OTHER VARIABLES
     // IN THE SET S_in_to_out (i.e., the members of the partition). Any
-    // other parents or children are not contained in that set are not included.
+    // other neighbors are not contained in that set are not included.
     set<RV*> tmp;
     for (set<RV*>::iterator j = rv->neighbors.begin();
 	 j != rv->neighbors.end(); j++) {    
@@ -622,6 +636,7 @@ setPartitionParentsChildrenNeighbors(const set<RV*>& S,
 	  assert ( 0 );
       }
     }
+    // this next routine sets both parents and children.
     S_in_to_out[rv]->setParents(sParents,cParentsList);
   }
 }
@@ -631,8 +646,8 @@ setPartitionParentsChildrenNeighbors(const set<RV*>& S,
  *-----------------------------------------------------------------------
  * GMTemplate::cloneWithtoutParents()
  *   Clone a set of random variables from 'in' to 'out'. The cloned
- *   variables have only empty parents, children, and neighbors structures.
-
+ *   variables have entirely empty parents, children, and neighbors structures.
+ *
  * Preconditions:
  *   'in' is a set of random variables to be cloned.
  *
@@ -644,7 +659,7 @@ setPartitionParentsChildrenNeighbors(const set<RV*>& S,
  *     none
  *
  * Results:
- *     returns the in_to_out mapping
+ *     returns the new set of RVs, and the input-to-output mapping as a STL map.
  *
  *
  *-----------------------------------------------------------------------
@@ -1023,6 +1038,8 @@ readPartitions(iDataStreamFile& is)
   for (unsigned i=0;i<unrolled_rvs.size();i++) {
     unrolled_rvs[i]->createNeighborsFromParentsChildren();
   }
+  // add edges from any extra factors in .str file
+  fp.addUndirectedFactorEdges(M+S-1,unrolled_rvs,positions);
   for (unsigned i=0;i<unrolled_rvs.size();i++) {
     unrolled_rvs[i]->moralize();    
   }
@@ -1157,7 +1174,17 @@ readPartitions(iDataStreamFile& is)
  *   all from the same graph that have been unrolled M+S-1 times.
  *
  * Postconditions:
- *   the internal partition and interface variables are created. 
+ *   The internal partition and interface variables are created. 
+ *   Properties of the internal partitions are as follows:
+ *     1) Each set of variasbles in each parititon are different C++ RVs, even the
+ *        common interfaces are distinct C++ variables (but they correspond to the same
+ *        actual RVs).
+ *     2) All sets of interface variables in all partitions are completed.
+ *     3) In each partition, the RV's 'neighbors strucures will point only to
+ *        other RVs in its partition, and will not point outside the partition.
+ *     4) parents/children will point to current partition if the parent/child
+ *        lives in the current partiiton, but otherwise, those pointers will
+ *        point to a corresponding variable in another partitiion.
  *
  * Side Effects:
  *   Deletes any exiting partitions in the object.
