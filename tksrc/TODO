@@ -3459,6 +3459,9 @@ Thu Mar  9 02:02:29 2006
     using 1, 2, 4, 8 bytes, to work at byte boundaries, shorts,
     32-bit words, or 64-bit word machines).
 
+Fri Mar 10 00:33:50 2006
+  - give gibbs sampling style inference a whirl.
+  - (something else, can't remember)
 
 Sun Mar 12 18:23:32 2006
   - in cases where variables and their parents live in a clique but do not give the clique probability (but
