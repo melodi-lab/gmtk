@@ -1219,6 +1219,10 @@ MaxClique::prepareForUnrolling()
       // Last, we take some of the nodes in determinable nodes and add them
       // back to hashable nodes as long as the number of words does not
       // increase. Do this in increasing order of node cardinality.
+
+      // TODO: option to do this in increasing order of complexity of evaluating
+      // a deterministic node (i.e., store the nodes if they involve a complicated
+      // deterministic evaluator).
     
       vector<RV*> determinableNodesSortedByCard = determinableNodes;
       sort(determinableNodesSortedByCard.begin(),determinableNodesSortedByCard.end(),ParentCardinalityCompare());
@@ -1261,7 +1265,9 @@ MaxClique::prepareForUnrolling()
     // ensure that we have something to store.
     assert (packer.packedLen() > 0);
   } else {
-    // fully observed clique.
+    // fully observed clique, or at least a clique where all nodes are determinable.
+    // Note, this might also include a node that is "hidden", but that has
+    // a DeterminsticCPT with no parents that always returns one particular value.
   }
 
   // TODO: optimize initial size and growth factor.  Compute an
@@ -3733,9 +3739,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   infoMsg(IM::High-1,"Clique state space = %d.\n",numCliqueValuesUsed);
 #endif
 
-  // first check if this is an all observed clique.
+  // first check if this is an all "observed" clique
   if (origin.hashableNodes.size() == 0) {
-    // Everything in this clique is observed.  Therefore, there should
+    // Everything in this clique is observed or deterministic.  Therefore, there should
     // be one and only one clique value in this clique which is the
     // probability of the assigned probability nodes in this clique.
 
