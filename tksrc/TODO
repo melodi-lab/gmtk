@@ -3480,5 +3480,7 @@ Tue Mar 21 01:15:19 2006
  - Get regularized adaptation for Gaussians and other parameters working (i.e.,
    for Gaussians, use L2 norm distance from unadaptated model). For discrete parameters,
    use diriclet prior to unadapted model somehow.
+   Note this will be in coordination with MLLR style adaptation (i.e., there'll be two
+   forms of adaptation).
 
 
