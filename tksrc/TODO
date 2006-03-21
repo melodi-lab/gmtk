@@ -3483,4 +3483,7 @@ Tue Mar 21 01:15:19 2006
    Note this will be in coordination with MLLR style adaptation (i.e., there'll be two
    forms of adaptation).
 
-
+Tue Mar 21 03:53:13 2006
+  - for docs: see email with subject 'Bug?' from today regarding what kind of means
+    are being stored when using Gaussians with dlinks (i.e., make sure people
+    realize these are of the form E[X - prediction_of_(X)], so the means are residual.
