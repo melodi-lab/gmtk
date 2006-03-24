@@ -3305,6 +3305,11 @@ Thu Jan 26 10:34:12 2006
        on these unsupervised derived categories. I.e., here the clustering algorithm
        would be based on some measure or cost. Use a distance function on clique entries
        (could use something as simple as hamming, or something more categorical entry based).
+     - Thu Mar 23 21:24:53 2006: could also use hamming distance at the RV level, i.e.,
+        the number of RV values that are different from each other, or weighted
+        RV difference, where the difference in a RV might cost more or less depending
+        on how important the RV is. for entries m and n, diff = \sum_i w_i diff(x(m,i),x(n,i))
+        where x(m,i) is the ith random variable value for clique entry m.
 
    Memory savings idea: 
      - do some form of LZ-compression of cliques and their entries (so bit encode not only
@@ -3487,3 +3492,18 @@ Tue Mar 21 03:53:13 2006
   - for docs: see email with subject 'Bug?' from today regarding what kind of means
     are being stored when using Gaussians with dlinks (i.e., make sure people
     realize these are of the form E[X - prediction_of_(X)], so the means are residual.
+
+
+Wed Mar 22 17:52:43 2006
+   - replace set intersection things with counters.	
+   - set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
+		       P1.nodes.begin(),P1.nodes.end(),
+		       inserter(res,res.end()));
+
+Thu Mar 23 18:54:47 2006
+  - with factors, it will be valid to have discrete RVs without any associated
+    CPTs. Allow the use of NullCPT, i.e.,
+       conditionalparents: nil using NullCPT; (or UnityCPT).
+    which is a CPT that effectively always gives probability unity to everything.
+
+ 
