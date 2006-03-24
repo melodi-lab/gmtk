@@ -3314,7 +3314,6 @@ Thu Jan 26 10:34:12 2006
    Memory savings idea: 
      - do some form of LZ-compression of cliques and their entries (so bit encode not only
        one entry, but an entire list of entries).
-
  
 Sun Jan 29 16:55:08 2006
   - LatticeCPTs currently use hash table for each node in the lattice, but we could
@@ -3465,7 +3464,7 @@ Thu Mar  9 02:02:29 2006
     32-bit words, or 64-bit word machines).
 
 Fri Mar 10 00:33:50 2006
-  - give gibbs sampling style inference a whirl.
+  - give gibbs sampling style inference a whirl for learning and viterbi.
   - (something else, can't remember)
 
 Sun Mar 12 18:23:32 2006
@@ -3495,7 +3494,7 @@ Tue Mar 21 03:53:13 2006
 
 
 Wed Mar 22 17:52:43 2006
-   - replace set intersection things with counters.	
+   - replace set intersection things with counters (see new code in GMTK_RV.cc).
    - set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
 		       P1.nodes.begin(),P1.nodes.end(),
 		       inserter(res,res.end()));
@@ -3507,3 +3506,7 @@ Thu Mar 23 18:54:47 2006
     which is a CPT that effectively always gives probability unity to everything.
 
  
+Fri Mar 24 00:32:02 2006
+  - for docs: make sure to indicat that to get cpp output, we need to give
+    default -I options that GMTK gives (i.e., cpp -I. ,etc. in order to
+    see what cpp does).
