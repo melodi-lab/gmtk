@@ -212,7 +212,8 @@ void ObservationMatrix::openFiles(int n_files,
 				    // into _tmp{Flot,Int}SenBuffer
   for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
     
-    if (fof_names[stream_no] == NULL) error("ObservationMatrix::openFiles: file list for stream %i is NULL\n",stream_no);
+    if (fof_names[stream_no] == NULL) 
+      error("ObservationMatrix::openFiles: file list for stream %i is NULL\n",stream_no);
 
     // When range string is missing, assume default = all features
     const char *crng, *drng, *srng;
@@ -221,18 +222,31 @@ void ObservationMatrix::openFiles(int n_files,
     srng=init_range_str(segment_range_str,stream_no);
 
     bool sflag;
-    if (swap_flag == NULL || swap_flag[stream_no] == false) sflag = false; 
-    else sflag = swap_flag[stream_no];
+    if (swap_flag == NULL || swap_flag[stream_no] == false) 
+      sflag = false; 
+    else 
+      sflag = swap_flag[stream_no];
 
     // If we want to add deltas, something needs to be done about the
     // cont range: it wouldn't be valid to have a range extend into
     // the deltas for example.
-    _inStreams[stream_no] = new StreamInfo(fof_names[stream_no],crng,drng,(unsigned*)&n_floats[stream_no],(unsigned*)&n_ints[stream_no],(unsigned*)&formats[stream_no],sflag,stream_no,(bool)cpp_if_ascii,(char*)cpp_command_options,srng);
+    _inStreams[stream_no] 
+      = new StreamInfo(fof_names[stream_no],
+		       crng,
+		       drng,
+		       (unsigned*)&n_floats[stream_no],
+		       (unsigned*)&n_ints[stream_no],
+		       (unsigned*)&formats[stream_no],
+		       sflag,
+		       stream_no,
+		       (bool)cpp_if_ascii,
+		       (char*)cpp_command_options,srng);
     assert(_inStreams[stream_no] != NULL);
-    unsigned stream_n_floats_before_rng=_inStreams[stream_no]->getNumFloats();
-    unsigned stream_n_ints_before_rng=_inStreams[stream_no]->getNumInts();
+    unsigned stream_n_floats_before_rng = _inStreams[stream_no]->getNumFloats();
+    unsigned stream_n_ints_before_rng = _inStreams[stream_no]->getNumInts();
 
-    DBGFPRINTF((stderr,"ObservationMatrix::openFiles: stream_n_floats_before_rng = %d, stream_n_ints_before_rng = %d\n",stream_n_floats_before_rng,stream_n_ints_before_rng));
+    DBGFPRINTF((stderr,"ObservationMatrix::openFiles: stream_n_floats_before_rng = %d, stream_n_ints_before_rng = %d\n",
+		stream_n_floats_before_rng,stream_n_ints_before_rng));
     
     if(sen_float_buffer_stride < stream_n_floats_before_rng) {
       sen_float_buffer_stride = stream_n_floats_before_rng;
@@ -242,7 +256,7 @@ void ObservationMatrix::openFiles(int n_files,
     }
   }  // end for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++)
 
-    DBGFPRINTF((stderr,"ObservationMatrix::openFiles: sen_float_buffer_stride = %d, sen_int_buffer_stride = %d\n",sen_float_buffer_stride,sen_int_buffer_stride));
+  DBGFPRINTF((stderr,"ObservationMatrix::openFiles: sen_float_buffer_stride = %d, sen_int_buffer_stride = %d\n",sen_float_buffer_stride,sen_int_buffer_stride));
 
   if(sen_float_buffer_stride == 0 && sen_int_buffer_stride == 0) {
     error("ERROR: ObservationMatrix: Empty streams.\n");
@@ -297,10 +311,16 @@ void ObservationMatrix::openFiles(int n_files,
  * Exists if that's not the case.
  */
 void check_required_inputs(const char** fof_names, const unsigned* formats, const unsigned* n_floats, const unsigned *n_ints) {
-  if (fof_names == NULL) error("ObservationMatrix::openFiles: list of file names is NULL\n");
-  if (formats == NULL) error("ObservationMatrix::openFiles: list of file formats is NULL\n");
-  if (n_floats == NULL) error("ObservationMatrix::openFiles: list of number of floats is NULL\n");
-  if (n_ints == NULL) error("ObservationMatrix::openFiles: list of number of ints is NULL\n");
+
+  if (fof_names == NULL) 
+    error("ObservationMatrix::openFiles: list of file names is NULL\n");
+  if (formats == NULL) 
+    error("ObservationMatrix::openFiles: list of file formats is NULL\n");
+  if (n_floats == NULL) 
+    error("ObservationMatrix::openFiles: list of number of floats is NULL\n");
+  if (n_ints == NULL) 
+    error("ObservationMatrix::openFiles: list of number of ints is NULL\n");
+
 }
 
 char* init_range_str(const char** range_str, unsigned stream_no) {
