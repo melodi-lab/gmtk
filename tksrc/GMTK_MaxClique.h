@@ -47,6 +47,7 @@
 #include "GMTK_DiscRV.h"
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_SpaceManager.h"
+#include "GMTK_FactorInfo.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -211,6 +212,7 @@ public:
 //////////////////////////////////////////////////////////////////////////////
 
 
+
 class MaxClique : public IM {
 
   friend class FileParser;
@@ -224,12 +226,6 @@ public:
   // and previous previous clique max value around.
   logpr prevMaxCEValue;
   logpr prevPrevMaxCEValue;
-
-  // bool which if true means we globally do separator driven (rather
-  // than clique driven) inference. Separator driven is good when
-  // pruning is turned on. Clique driven is good when you want
-  // inference cost to directly correspond to normal weight.
-  static bool ceSeparatorDrivenInference;
 
   // beam width for clique-based beam pruning.
   static double cliqueBeam;
@@ -266,9 +262,6 @@ public:
 
   // the set of nodes which form a max clique, in arbitrary order.
   set<RV*> nodes;
-
-  // weight of this clique, keep pre-computed here.
-  float cliqueWeight;
 
   ///////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////
@@ -361,7 +354,8 @@ public:
   // print just the clique nodes
   void printCliqueNodes(FILE* f);
 
-  
+
+
   //////////////////////////////////////////////
   // TODO: figure out a way so that the member variables below exist only in
   // a subclass since all of the below is not needed for basic
@@ -475,19 +469,6 @@ public:
   //     which nodes in a clique are unassigend so iterated [0,card-1]
   //  3) in CE, choose which routine to call first.
   set<RV*> unassignedIteratedNodes;
-
-
-  // USED ONLY IN JUNCTION TREE INFERENCE 
-  // The set of nodes that are simply not assigned. In other words,
-  // these nodes can be defined as:
-  // 
-  //    unassignedNodes = nodes - assignedNodes;
-  //
-  // Computed in JunctionTree::assignRVsToCliques().
-  // Used to:
-  //  1) These nodes are used for iteration when doing
-  //     clique driven inference.
-  set<RV*> unassignedNodes;
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE 
@@ -747,8 +728,34 @@ public:
       child = grandChild = NULL;
     }
   };
-
   vector < VESepInfo > veSeparators;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // The set of factors/constraints that are assigned to this
+  // clique. In this case 'assigned' means that the factor is covered
+  // by this max clique (meaning the max clique variables are a
+  // superset of the factor variables). Any assigned factor might help
+  // to remove zeros from, or its score might be used to affect
+  // pruning in the clique, but any score provided by the factor is
+  // not necessarily applied.  Again, ints indexing into parent
+  // partition's factor array.
+  // 
+  // Created in JunctionTree::assignFactorsToCliques().
+  vector<unsigned> assignedFactors;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // The set of factors/constraints that are assigned and scored in
+  // this clique. In this case 'assigned' and 'scored' means that the
+  // factor is covered by this max clique (meaning the max clique
+  // variables are a superset of the factor variables), and that
+  // assigned factor might not only help to remove zeros, pruning, but
+  // it will also provide a numeric score (e.g., log probability) that
+  // is applied to any clique entry.  Again, ints indexing into parent
+  // partition's factor array.
+  // 
+  // Created in JunctionTree::assignFactorsToCliques().
+  vector<unsigned> assignedScoredFactors;
+
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // a value that is roughly equal to the order of the state space of
@@ -869,7 +876,6 @@ class InferenceMaxClique  : public IM
   sArray< RV*> fNodes;
   sArray< RV*> fSortedAssignedNodes;
   sArray< RV*> fUnassignedIteratedNodes;
-  sArray< RV*> fUnassignedNodes;
   sArray< RV*> fDeterminableNodes;
   // Direct pointers to the values within the discrete hidden RVs
   // within this clique.  Note, the observed discrete and continuous
@@ -877,6 +883,18 @@ class InferenceMaxClique  : public IM
   sArray < DiscRVType* > discreteValuePtrs;
 
 
+#if 0
+  // temporary factor hack, works with only one factor per clique using
+  // equality constraint.
+  struct InferenceFactorInfo {
+    sArray< RV*> fFactorNodes; // all factor nodes
+    sArray< RV*> fFactorNodesInSeps; // any factor nodes in incomming seps
+    sArray< RV*> fFactorNodesNotInSeps; // fFactorNodes - fFactorNodesInSeps
+    RV* fFirstFactorNodePastSepsUnassigned;
+    sArray< RV* > fRemainingFactorNodePastSepsUnassigned;
+  } *inferenceFactorInfo;
+
+#endif
 
   // Data structure holding a clique value, i.e., a set of random
   // variable values and a probability for that set of values.
@@ -970,7 +988,12 @@ public:
 
   // collect evidence functions.
   void ceGatherFromIncommingSeparators(JT_InferencePartition& part);
+  // special case when the clique is fully observed.
+  void ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePartition& part);
 
+
+  ///////////////////////////////////////
+  // iterate unassigned nodes
 
   void inline ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
 					const unsigned nodeNumber,
@@ -985,6 +1008,9 @@ public:
   void ceIterateUnassignedIteratedNodesRecurse(JT_InferencePartition& part,
 					       const unsigned nodeNumber,
 					       const logpr p);
+
+  ///////////////////////////////////////
+  // iterate separators
 
   void inline ceIterateSeparators(JT_InferencePartition& part,
 				  const unsigned sepNumber,
@@ -1004,6 +1030,9 @@ public:
 				       const unsigned sepNumber,
 				       const logpr p);
 
+  ///////////////////////////////////////
+  // iterate assigned nodes.
+
 
   void ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 				     const unsigned nodeNumber,
@@ -1015,6 +1044,9 @@ public:
 				     const unsigned nodeNumber,
 				     const logpr p)
   {
+    // apply factors so far from separators or unassigned nodes.
+
+
     if (fSortedAssignedNodes.size() == 0 || message(High)) {
       // let recursive version handle degenerate or message full case
       ceIterateAssignedNodesRecurse(part,0,p);
@@ -1023,6 +1055,9 @@ public:
       ceIterateAssignedNodesNoRecurse(part,p);
     }
   }
+
+  /////////////////////////////////////////
+
 
   void ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			    InferenceSeparatorClique& sep); 
@@ -1035,17 +1070,6 @@ public:
   void ceCliqueUniformSamplePrunedCliquePortion(const unsigned origNumCliqueValuesUsed);
   // a version that does all the pruning for this clique.
   void ceDoAllPruning();
-
-
-  // support for collect evidence clique driven operations.
-  void ceGatherFromIncommingSeparatorsCliqueDriven(JT_InferencePartition& part);
-  void ceIterateAssignedNodesCliqueDriven(JT_InferencePartition& part,
-					  const unsigned nodeNumber,
-					  logpr p);
-  void ceIterateUnassignedNodesCliqueDriven(JT_InferencePartition& part,
-					    const unsigned nodeNumber,
-					    const logpr p);
-  void ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePartition& part);
 
 
   // distribute evidence functions.
@@ -1074,8 +1098,6 @@ public:
 			  const bool normalize = false,
 			  const bool justPrintEntropy = false);
   
-
-
   // EM accumulation support.
   void emIncrement(const logpr probE, 
 		   const bool localCliqueNormalization = false,
@@ -1166,9 +1188,13 @@ public:
   // greater than this (in log base 10), we don't use this VE sep.
   static float veSeparatorLogProdCardLimit;
 
-  // a boolean flag that the inference code uses to determine if it
+
+
+  // A boolean flag that the inference code uses to determine if it
   // should skip this separator. This is used when a P partition is
-  // empty.
+  // empty and the C partition needs to skip its incomming
+  // interface separator (which is empty and if it wasn't
+  // skipped would lead to a zero probability).
   bool skipMe;
 
   // copy constructor 
@@ -1277,6 +1303,8 @@ public:
 
 
 };
+
+
 
 
 
@@ -1469,7 +1497,86 @@ public:
 };
 
 
+// A factor clique is a (not-necessarily max) clique that implements
+// some form of directed "factor" or "constraint" within a regular max
+// clique. This coresponds to the 'factor' construct in the .str file.
+// A factor clique's nodes will, like a separator, necessarily be a
+// subset of some MaxClique, but a factor is implemented quite
+// differently. Factors mixed with DAG cpts allow the specificatio of
+// true hybrid directed/undirected graphical models in GMTK.
+class FactorClique : public IM
+{
+  friend class FileParser;
+  friend class GraphicalModel;
+  friend class GMTemplate;
+  friend class InferenceSeparatorClique;
+  friend class JunctionTree;
+
+public:
 
 
+  // information about the factor corresponding
+  // to this factor
+  FactorInfo* factorInfo;
+
+  // the set of nodes that are involved in the factor/constraint.
+  set<RV*> nodes;
+  // vector of the same nodes, in order that they
+  // appear in the .str file, and the order used to index into
+  // the factor functions.
+  vector<RV*> orderedNodes;
+
+  // copy constructor 
+  FactorClique(const FactorClique& factor)
+  { 
+    factorInfo = factor.factorInfo;
+    nodes = factor.nodes; 
+    orderedNodes = factor.orderedNodes;
+  }
+  FactorClique(FactorInfo& factorInfo,
+	       vector <RV*>& unrolled_rvs,
+	       map < RVInfo::rvParent, unsigned > ppf,
+	       const unsigned offset);
+
+
+  ~FactorClique() {}
+
+  // prepare the last set of data structures so that clones of this
+  // can be unrolled and inference can occur.
+  void prepareForUnrolling();
+
+  // print out everything in this clique to a file.
+  void printAllJTInfo(FILE* f);
+
+};
+
+
+class InferenceFactorClique : public IM
+{
+
+  // Non-STL "f=fast" versions of arrays that are instantiated
+  // only in the final unrolled versions of the separator cliques.
+  sArray< RV*> fOrderedNodes;
+
+  // the original factor clique from which this object has been cloned.
+  FactorClique& origin;
+
+
+public:
+
+  // WARNING: constructor hack to create a very broken object with
+  // non-functional reference objects (in order to create an array of
+  // these objects and then initialize them later with appropriate
+  // references). Do not use until after proper re-constructor.
+  InferenceFactorClique() : origin(*((FactorClique*)NULL)) {}
+  // normal (or re-)constructor
+  InferenceFactorClique(FactorClique& _origin,
+			vector <RV*>& newRvs,
+			map < RVInfo::rvParent, unsigned >& ppf,
+			const unsigned int frameDelta);
+  // version for VE separators
+  InferenceFactorClique(FactorClique& _origin);
+
+};
 
 #endif

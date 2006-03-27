@@ -564,6 +564,11 @@ JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
 					    newRvs,ppf,frameDelta);
   }
 
+  for (unsigned i=0;i<factorCliques.size();i++) {
+    new (&factorCliques[i]) InferenceFactorClique(origin.factorCliques[i],
+						  newRvs,ppf,frameDelta);
+  }
+
 }
 
 
@@ -650,15 +655,20 @@ JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
   // main() routine for this class.
   createPartitionJunctionTrees(junctionTreeMSTpriorityStr);
   computePartitionInterfaces();
+  createFactorCliques();
   createDirectedGraphOfCliques();
   assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-  computeUnassignedCliqueNodes();
-  // TODO: move this next one above by one.
+  assignFactorsToCliques();
+  // TODO: assignScoringFactorsToCliques();
   setUpMessagePassingOrders();
   // create seps and VE seps.
-  createSeparators(); 
+  createSeparators();
   computeSeparatorIterationOrders();
-  getCumulativeUnassignedIteratedNodes();
+
+  // -- -- used only to compute weight.
+  getCumulativeUnassignedIteratedNodes(); 
+  // -- --
+
   sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
 }
 
@@ -720,6 +730,9 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionT
     // since it is run one time per partition, for all inference
     // runs of any length.
 
+    // Create a vector of sets, corresponding to the trees associated
+    // with each clique. Non-empty set intersection corresponds to
+    // tree overlap. Each set contains the clique indices in teh set.
     vector < set<unsigned> >  findSet;
     findSet.resize(numMaxCliques);
     for (unsigned i=0;i<numMaxCliques;i++) {
@@ -1079,14 +1092,8 @@ JunctionTree::base_unroll()
   // first create the unrolled set of random variables corresponding
   // to this JT.
 
-  // unrolled random variables
-  vector <RV*> unrolled_rvs;
-  // mapping from name(frame) to integer index into unrolled_rvs.
-  map < RVInfo::rvParent, unsigned > ppf;
-  // number of C repetitions is M + (k+1)*S, so
-  // we unroll one less than that.
   fp.unroll(gm_template.M + gm_template.S - 1,
-	    unrolled_rvs,ppf);
+	    partition_unrolled_rvs,partition_ppf);
   
   set <RV*> empty;
 
@@ -1094,13 +1101,13 @@ JunctionTree::base_unroll()
   new (&P1) JT_Partition(gm_template.P,0*gm_template.S,
 			 empty,0*gm_template.S,
 			 gm_template.PCInterface_in_P,0*gm_template.S,
-			 unrolled_rvs,ppf);
+			 partition_unrolled_rvs,partition_ppf);
 
   // copy E partition
   new (&E1) JT_Partition(gm_template.E,0*gm_template.S,
 			 gm_template.CEInterface_in_E,0*gm_template.S,
 			 empty,0*gm_template.S,
-			 unrolled_rvs,ppf);
+			 partition_unrolled_rvs,partition_ppf);
 
   if (gm_template.leftInterface) {
     // left interface case
@@ -1116,7 +1123,7 @@ JunctionTree::base_unroll()
       new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
 			     gm_template.PCInterface_in_C,0*gm_template.S,			   
 			     gm_template.CEInterface_in_C,0*gm_template.S,
-			     unrolled_rvs,ppf);
+			     partition_unrolled_rvs,partition_ppf);
     } else {
       // P1 is empty. For Co's left interface, we use its right
       // interface since there is no interface to P1. The reason why
@@ -1127,7 +1134,7 @@ JunctionTree::base_unroll()
       new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
 			     gm_template.CEInterface_in_C,-1*gm_template.S,			   
 			     gm_template.CEInterface_in_C,0*gm_template.S,
-			     unrolled_rvs,ppf);
+			     partition_unrolled_rvs,partition_ppf);
     }
   } else {
     // right interface case, symmetric to the left interface case above.
@@ -1145,12 +1152,12 @@ JunctionTree::base_unroll()
       new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
 			     gm_template.PCInterface_in_C,0*gm_template.S,			   
 			     gm_template.CEInterface_in_C,0*gm_template.S,
-			     unrolled_rvs,ppf);
+			     partition_unrolled_rvs,partition_ppf);
     } else {
       new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
 			     gm_template.PCInterface_in_C,0*gm_template.S,			   
 			     gm_template.PCInterface_in_C,1*gm_template.S,
-			     unrolled_rvs,ppf);
+			     partition_unrolled_rvs,partition_ppf);
     }
   }
   
@@ -1355,6 +1362,156 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
     icliques_same = false;
   }
 }
+
+
+      
+      
+      
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::createFactorCliques()
+ *   place factorClique in either P1, Co, or E whichever	 
+ *   is the left most that contains all the variables.	 
+ *   this is thus optimized for left-to-right inference.
+ *
+ *
+ * Preconditions:
+ *   Should be called only from createFactorClique.
+ *
+ * Postconditions:
+ *   The factor cliques have been inserted in the appropraite JT_Partitions
+ *
+ * Side Effects:
+ *    Changes member variables as described above.
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::insertFactorClique(FactorClique& factorClique,FactorInfo& factor)
+{
+
+  set <RV*> res;
+  // first try P1
+  set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
+		   P1.nodes.begin(),P1.nodes.end(),
+		   inserter(res,res.end()));
+  if (res.size() == factorClique.nodes.size()) {
+    // then fully contained in P1
+    infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
+	    factor.name.c_str(),factor.frame,P1_n);
+    P1.factorCliques.push_back(factorClique);
+  } else {
+    // try Co
+    res.clear();
+    set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
+		     Co.nodes.begin(),Co.nodes.end(),
+		     inserter(res,res.end()));
+    if (res.size() == factorClique.nodes.size()) {
+      // then fully contained in P1
+      infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
+	      factor.name.c_str(),factor.frame,Co_n);
+      Co.factorCliques.push_back(factorClique);
+    } else {
+      // try Co
+      res.clear();
+      set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
+		       E1.nodes.begin(),E1.nodes.end(),
+		       inserter(res,res.end()));
+      if (res.size() == factorClique.nodes.size()) {
+	// then fully contained in P1
+	infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
+		factor.name.c_str(),factor.frame,E1_n);
+	E1.factorCliques.push_back(factorClique);
+      } else {
+	error("INTERNAL ERROR: factor %s(%d) defined at %s:%d contains nodes that does not live in any partition\n",
+	      factor.name.c_str(),factor.frame,
+	      factor.fileName.c_str(),factor.fileLineNumber);
+      }
+    }
+  }
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::createFactorCliques()
+ *   Create the factor cliques (i.e., hard/soft) constraints to
+ *   be part of the partitions and maxcliques.
+ * 
+ *
+ * Preconditions:
+ *   Partitions must be instantiated, and interface cliques
+ *   must have been computed (i.e., computePartitionInterfaces()
+ *   must have been called)
+ *
+ * Postconditions:
+ *   The factor cliques have been created in the three main JT_Partitions
+ *
+ * Side Effects:
+ *    Changes member variables as described above.
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::createFactorCliques()
+{
+
+  // do this for all original C partitions.
+  // since this is the basic partition, we have
+  // M+S copies of the chunk.
+  const unsigned numChunkCopies = gm_template.M + gm_template.S;
+  
+  for (unsigned factorNo=0;factorNo < fp.factorList.size(); factorNo++) {
+    // find a home for the current factor, in either
+    // P1, Co, or E1, being mindful of the partial
+    // unrolling that potentially has already taken
+    // place in producing P1, Co, and E1.
+    
+    FactorInfo& factor = fp.factorList[factorNo];
+    
+    if (fp.frameInTemplateP(factor.frame)) {
+      const unsigned offset = 0;
+
+      FactorClique factorClique(factor,
+				partition_unrolled_rvs,partition_ppf,
+				offset);
+
+      insertFactorClique(factorClique,factor);
+
+    } else if (fp.frameInTemplateC(factor.frame)) {
+
+      for (unsigned i=0;i<numChunkCopies;i++) {
+	const unsigned offset = 
+	  i*fp.numFramesInC();
+
+	FactorClique factorClique(factor,
+				  partition_unrolled_rvs,partition_ppf,
+				  offset);
+	insertFactorClique(factorClique,factor);
+      }
+    } else {
+      assert (fp.frameInTemplateE(factor.frame));
+      const unsigned offset = 
+	(numChunkCopies-1)*fp.numFramesInC();
+
+      FactorClique factorClique(factor,
+				partition_unrolled_rvs,partition_ppf,
+				offset);
+      insertFactorClique(factorClique,factor);
+    }
+  }
+}
+
 
 
 /*-
@@ -2041,6 +2198,73 @@ JunctionTree::assignRVToClique(const char *const partName,
 
 /*-
  *-----------------------------------------------------------------------
+ * JunctionTree::assignFactorsCliques()
+ *    Assign any existing factors to cliques in the junction tree.
+ *
+ * Preconditions:
+ *     createPartitionJunctionTrees(), computePartitionInterfaces(), and
+ *     createDirectedGraphOfCliques() must have been called before 
+ *     this can be called.
+ *
+ * Postconditions:
+ *     each of the factors (if any) in the current partition
+ *     have now been assigned to the clique that is guaranteed
+ *     to contain that factor. There must exist a clique that
+ *     contains the factor by the triangulation code (there'll be
+ *     an error if we can't find a clique to place the factor).
+ *
+ * Side Effects:
+ *     Will change the clique data member variables
+ *
+ * Results:
+ *     None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::assignFactorsToCliques()
+{
+  assignFactorsToCliques(P1);
+  assignFactorsToCliques(Co);
+  assignFactorsToCliques(E1);
+}
+void
+JunctionTree::assignFactorsToCliques(JT_Partition& part)
+{
+  
+  // for each factor, assign it to any clique that contains
+  // it.
+
+  for (unsigned f=0;f<part.factorCliques.size();f++) {
+    // temporary: for now, only assign factors that
+    // correspond ot the allequal constriant.
+    if ((part.factorCliques[f].factorInfo->fType != FactorInfo::ft_symmetricConstraint)
+	||
+	(part.factorCliques[f].factorInfo->symmetricConstraintInfo.symmetricConstraintType
+	     != FactorInfo::sct_allVarsEqual))
+      continue;
+
+    for (unsigned c=0;c<part.cliques.size();c++) {
+      infoMsg(IM::Giga,"Checking if factor %d fits in clique %d, in partition\n",
+	     f,c);
+      if (firstRVSetContainedInSecond(part.factorCliques[f].nodes,
+				      part.cliques[c].nodes)) {
+
+	// then this factor becomes assigned to this cliuqe.
+	part.cliques[c].assignedFactors.push_back(f);
+	infoMsg(IM::Giga,"Assigning factor %s(%d) to clique %d\n",
+		part.factorCliques[f].factorInfo->name.c_str(),
+		part.factorCliques[f].factorInfo->frame,
+		c);
+      }
+    }
+  }
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
  * JunctionTree::getCumulativeAssignedNodes()
  *    Decends down the directed JT graph and computes and
  *    assignes the variable cumulativeAsignedNodes.
@@ -2083,48 +2307,6 @@ JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
 		   curClique.cumulativeAssignedProbNodes,true);
 
   }
-}
-
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::computeUnassignedCliqueNodes()
- *    Go through each clique and compute the unassigned nodes.
- *    This is only done when ceSeparatorDrivenInference == false.
- *
- * Preconditions:
- *     Must be called in appropriate order (setUpDataStructures).
- *
- * Postconditions:
- *     Cliques have this member variable filled in.
- *
- * Side Effects:
- *     Will change the clique data member variables
- *
- * Results:
- *     None.
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::computeUnassignedCliqueNodes(JT_Partition& part)
-{
-  if (MaxClique::ceSeparatorDrivenInference == false) {
-    // these are only needed by clique driven inference.
-    for (unsigned cliqueNum=0;cliqueNum<part.cliques.size();cliqueNum++) {
-      part.cliques[cliqueNum].computeUnassignedCliqueNodes();
-    }
-  }
-}
-void
-JunctionTree::computeUnassignedCliqueNodes()
-{
-  computeUnassignedCliqueNodes(P1);
-  computeUnassignedCliqueNodes(Co);
-  computeUnassignedCliqueNodes(E1);
 }
 
 
@@ -2175,6 +2357,7 @@ JunctionTree::setUpMessagePassingOrders()
 			   E1_message_order,
 			   E_li_to_C,
 			   E1_leaf_cliques);
+
 
 }
 
@@ -2583,20 +2766,31 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
   // all nodes in separators for incomming messages for this clique.
   clique.unionIncommingCESeps.clear();
 
-  if (MaxClique::ceSeparatorDrivenInference) {
-    if (numSeparators == 0) {
-      // This must be a leaf-node clique relatve to root.
-      // 'unionIncommingCESeps' is already empty so no need to do anything there.
-    } else if (numSeparators == 1) {
-      // shortcut to separator 0
-      SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
-      clique.unionIncommingCESeps = s0.nodes;
-      s0.accumulatedIntersection.clear();
-      s0.remainder = s0.nodes;
-      assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
-    } else if (numSeparators == 2) {
+  if (numSeparators == 0) {
+    // This must be a leaf-node clique relatve to root.
+    // 'unionIncommingCESeps' is already empty so no need to do anything there.
+  } else if (numSeparators == 1) {
+    // shortcut to separator 0
+    SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
+    clique.unionIncommingCESeps = s0.nodes;
+    s0.accumulatedIntersection.clear();
+    s0.remainder = s0.nodes;
+    assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
+  } else if (numSeparators == 2) {
 
 
+    // First, place all non VE separators first in the order, since
+    // these will be affected by the pruning parameters (while the
+    // VE seps (if any) don't change with pruning.
+    if (part.separators[clique.ceReceiveSeparators[0]].veSeparator
+	       && !part.separators[clique.ceReceiveSeparators[1]].veSeparator) {
+      // sep 0 is a VE separator, but sep 1 isn't. Put the VE sep last.
+      swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
+    } else if (part.separators[clique.ceReceiveSeparators[1]].veSeparator
+	       && !part.separators[clique.ceReceiveSeparators[0]].veSeparator) {
+      // sep 1 is a VE separator, but sep 0 isn't, do nothing.
+    } else {
+      // If neither or both of the separators are VE separators, then
       // iterate through smaller weight separator first. If no
       // intersection, then this still can have a benefit since we
       // want to do the most work in the inner (rather than the outer)
@@ -2610,363 +2804,343 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       } else {
 	swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
       }
-
-      // shortcuts to separator 0 and 1
-      SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
-      SeparatorClique& s1 = part.separators[clique.ceReceiveSeparators[1]];
+    }
 
 
-      // intersection of the two separators
-      set<RV*> sepIntersection;
-      set_intersection(s0.nodes.begin(),s0.nodes.end(),
-		       s1.nodes.begin(),s1.nodes.end(),
-		       inserter(sepIntersection,sepIntersection.end()));
+    // shortcuts to separator 0 and 1
+    SeparatorClique& s0 = part.separators[clique.ceReceiveSeparators[0]];
+    SeparatorClique& s1 = part.separators[clique.ceReceiveSeparators[1]];
 
-      // first one in order should be empty.
-      s0.accumulatedIntersection.clear();
-      // and remainder of first one should get the rest
-      s0.remainder = s0.nodes;
-      // 2nd one in should be intersection
-      s1.accumulatedIntersection = sepIntersection;
-      // and remainder gets the residual.
-      set_difference(s1.nodes.begin(),
-		     s1.nodes.end(),
-		     sepIntersection.begin(),sepIntersection.end(),
-		     inserter(s1.remainder,
-			      s1.remainder.end()));
-      // compute union of all separators.
-      set_union(s0.nodes.begin(),s0.nodes.end(),
-		s1.nodes.begin(),s1.nodes.end(),
-		inserter(clique.unionIncommingCESeps,clique.unionIncommingCESeps.end()));
 
-      assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
-      assert ( s1.accumulatedIntersection.size() + s1.remainder.size() == s1.nodes.size() );
+    // intersection of the two separators
+    set<RV*> sepIntersection;
+    set_intersection(s0.nodes.begin(),s0.nodes.end(),
+		     s1.nodes.begin(),s1.nodes.end(),
+		     inserter(sepIntersection,sepIntersection.end()));
 
-    } else {
-      // there are 3 or more separators, determine proper order and then
-      // compute running accumulated intersection relative to that order.
+    // first one in order should be empty.
+    s0.accumulatedIntersection.clear();
+    // and remainder of first one should get the rest
+    s0.remainder = s0.nodes;
+    // 2nd one in should be intersection
+    s1.accumulatedIntersection = sepIntersection;
+    // and remainder gets the residual.
+    set_difference(s1.nodes.begin(),
+		   s1.nodes.end(),
+		   sepIntersection.begin(),sepIntersection.end(),
+		   inserter(s1.remainder,
+			    s1.remainder.end()));
+    // compute union of all separators.
+    set_union(s0.nodes.begin(),s0.nodes.end(),
+	      s1.nodes.begin(),s1.nodes.end(),
+	      inserter(clique.unionIncommingCESeps,clique.unionIncommingCESeps.end()));
 
-      // Goal: to produce an optimal separator iteration order.  In
-      // general, the number of "live" surviving entries of all
-      // separators when they are intersected the end of a sep
-      // traversal will be the same no matter the order that is
-      // chosen. What we want here, however, is something that kills
-      // non-live entries ASAP, to avoid extra work.  This will depend
-      // on properties of the separators (which we have here) and the
-      // entries contained within the separators (which we don't have
-      // until run time). Therefore, our order is a heuristic.
-      // We do this by reordering the entries in clique.ceReceiveSeparators.
+    assert ( s0.accumulatedIntersection.size() + s0.remainder.size() == s0.nodes.size() );
+    assert ( s1.accumulatedIntersection.size() + s1.remainder.size() == s1.nodes.size() );
 
-      // Other Ideas:
-      // Probably a dynamic programing algorithm would work better
-      // here. Use DP to find the order that minimizes the sum (in
-      // reverse order) of the intersection of the last set with all
-      // previous ones.
+  } else {
+    // there are 3 or more separators, determine proper order and then
+    // compute running accumulated intersection relative to that order.
 
-      //
-      // What we first do: place VE seps last (since they are uneffected by pruning)
-      // What we next do: sort in reverse order, by separator that has the
-      // minimum intersection with others. At each step, when we have
-      // found the sep with min intersection among current number of
-      // seps, we place this at the *end* of the separation iteration
-      // order. Once we get back down to two separators, we start with
-      // the one of minimal weight (to do as much as possible in the
-      // inner loops).  Also, when ties exist, do the thing that
-      // causes the fewest number of branches and has the inner most
-      // loop run interuppted for the greatest amount of time (i.e.,
-      // min weight goes first).
+    // Goal: to produce an optimal separator iteration order.  In
+    // general, the number of "live" surviving entries of all
+    // separators when they are intersected the end of a sep
+    // traversal will be the same no matter the order that is
+    // chosen. What we want here, however, is something that kills
+    // non-live entries ASAP, to avoid extra work.  This will depend
+    // on properties of the separators (which we have here) and the
+    // entries contained within the separators (which we don't have
+    // until run time). Therefore, our order is a heuristic.
+    // We do this by reordering the entries in clique.ceReceiveSeparators.
 
-      // printf("before sorting\n");
-      // for (unsigned i = 0; i< clique.ceReceiveSeparators.size(); i++) {
-      // printf("ceRecSep[%d] = %d\n",i,clique.ceReceiveSeparators[i]);
-      // }
+    // Other Ideas:
+    // Probably a dynamic programing algorithm would work better
+    // here. Use DP to find the order that minimizes the sum (in
+    // reverse order) of the intersection of the last set with all
+    // previous ones.
 
-      // TODO: need to change this to be based only on hidden nodes,
-      // since the intersection of observed nodes doesn't count
-      // (observed nodes don't contribute to intersection pruning)
-      // since they are never inserted into the clique.
+    //
+    // What we first do: place VE seps last (since they are uneffected by pruning)
+    // What we next do: sort in reverse order, by separator that has the
+    // minimum intersection with others. At each step, when we have
+    // found the sep with min intersection among current number of
+    // seps, we place this at the *end* of the separation iteration
+    // order. Once we get back down to two separators, we start with
+    // the one of minimal weight (to do as much as possible in the
+    // inner loops).  Also, when ties exist, do the thing that
+    // causes the fewest number of branches and has the inner most
+    // loop run interuppted for the greatest amount of time (i.e.,
+    // min weight goes first).
+
+    // printf("before sorting\n");
+    // for (unsigned i = 0; i< clique.ceReceiveSeparators.size(); i++) {
+    // printf("ceRecSep[%d] = %d\n",i,clique.ceReceiveSeparators[i]);
+    // }
+
+    // TODO: need to change this to be based only on hidden nodes,
+    // since the intersection of observed nodes doesn't count
+    // (observed nodes don't contribute to intersection pruning)
+    // since they are never inserted into the clique.
 
 #if 0
-      for (unsigned i=0;i<clique.ceReceiveSeparators.size();i++) {
-	if ((clique.ceReceiveSeparators[i] == (part.separators.size()-1))) {
-	  swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[i]);
-	  break;
-	}
+    for (unsigned i=0;i<clique.ceReceiveSeparators.size();i++) {
+      if ((clique.ceReceiveSeparators[i] == (part.separators.size()-1))) {
+	swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[i]);
+	break;
       }
+    }
 #endif
 
-      // First, place all non VE separators first in the order, since
-      // these will be affected by the pruning parameters (while the
-      // VE seps (if any) don't change with pruning.
-      int swapPosition = numSeparators-1;
-      for (int i=0;i<swapPosition;) {
-	if (part.separators[clique.ceReceiveSeparators[i]].veSeparator) {
-	  swap(clique.ceReceiveSeparators[i],clique.ceReceiveSeparators[swapPosition]);
-	  swapPosition--;
-	} else
-	  i++;
-      }
-      if (!part.separators[clique.ceReceiveSeparators[swapPosition]].veSeparator)
-	swapPosition++;
-      const int firstVESeparator = swapPosition;
-      const int lastRealSeparator = swapPosition-1;
+    // First, place all non VE separators first in the order, since
+    // these will be affected by the pruning parameters (while the
+    // VE seps (if any) don't change with pruning.
+    int swapPosition = numSeparators-1;
+    for (int i=0;i<swapPosition;) {
+      if (part.separators[clique.ceReceiveSeparators[i]].veSeparator) {
+	swap(clique.ceReceiveSeparators[i],clique.ceReceiveSeparators[swapPosition]);
+	swapPosition--;
+      } else
+	i++;
+    }
+    if (!part.separators[clique.ceReceiveSeparators[swapPosition]].veSeparator)
+      swapPosition++;
+    const int firstVESeparator = swapPosition;
+    const int lastRealSeparator = swapPosition-1;
 
-      // printf("lastReal = %d, ceseps:",lastRealSeparator); 
-      // for (unsigned i=0;i<numSeparators;i++) {
-      // printf("%d ",clique.ceReceiveSeparators[i]);
-      // }
-      // printf("\n");
+    // printf("lastReal = %d, ceseps:",lastRealSeparator); 
+    // for (unsigned i=0;i<numSeparators;i++) {
+    // printf("%d ",clique.ceReceiveSeparators[i]);
+    // }
+    // printf("\n");
 
-      // printf("Sorting Seps\n");
+    // printf("Sorting Seps\n");
 
-      // next, sort the real separators based on maximizing intersection.
-      if (lastRealSeparator > 0) {
-	// then we have at least 2 real separators.
+    // next, sort the real separators based on maximizing intersection.
+    if (lastRealSeparator > 0) {
+      // then we have at least 2 real separators.
 
-	unsigned lastSeparator = lastRealSeparator;
-	set<RV*> sep_intr_set;
-	set<RV*> sep_union_set;
-	set<RV*> empty;
-	vector < pair<unsigned,unsigned> > sepIntersections; 
-	while (lastSeparator > 1) {
-	  // then at least three real separators to go.
+      unsigned lastSeparator = lastRealSeparator;
+      set<RV*> sep_intr_set;
+      set<RV*> sep_union_set;
+      set<RV*> empty;
+      vector < pair<unsigned,unsigned> > sepIntersections; 
+      while (lastSeparator > 1) {
+	// then at least three real separators to go.
 
-	  // compute separator index with minimum intersection with all previous separators
-	  // and swap its index with lastSeparator.
-	  sepIntersections.clear();
-	  sepIntersections.resize(lastSeparator+1);
-	  for (unsigned i=0;i<=lastSeparator;i++) {
-	    SeparatorClique& sep_i =
-	      part.separators[clique.ceReceiveSeparators[i]];
-	    sepIntersections[i].second = i;
-	    sepIntersections[i].first = 0;
-	    sep_union_set.clear();
-	    for (unsigned j=0;j<=lastSeparator;j++) {
-	      if (j == i)
-		continue;
-	      SeparatorClique& sep_j =
-		part.separators[clique.ceReceiveSeparators[j]];
-	      set_union(empty.begin(),empty.end(),
-			sep_j.nodes.begin(),sep_j.nodes.end(),
-			inserter(sep_union_set,sep_union_set.end()));
-	    }
-	    sep_intr_set.clear();
-	    set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
-			     sep_union_set.begin(),sep_union_set.end(),
-			     inserter(sep_intr_set,sep_intr_set.end()));
-	    sepIntersections[i].first = sep_intr_set.size();
+	// compute separator index with minimum intersection with all previous separators
+	// and swap its index with lastSeparator.
+	sepIntersections.clear();
+	sepIntersections.resize(lastSeparator+1);
+	for (unsigned i=0;i<=lastSeparator;i++) {
+	  SeparatorClique& sep_i =
+	    part.separators[clique.ceReceiveSeparators[i]];
+	  sepIntersections[i].second = i;
+	  sepIntersections[i].first = 0;
+	  sep_union_set.clear();
+	  for (unsigned j=0;j<=lastSeparator;j++) {
+	    if (j == i)
+	      continue;
+	    SeparatorClique& sep_j =
+	      part.separators[clique.ceReceiveSeparators[j]];
+	    set_union(empty.begin(),empty.end(),
+		      sep_j.nodes.begin(),sep_j.nodes.end(),
+		      inserter(sep_union_set,sep_union_set.end()));
 	  }
+	  sep_intr_set.clear();
+	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
+			   sep_union_set.begin(),sep_union_set.end(),
+			   inserter(sep_intr_set,sep_intr_set.end()));
+	  sepIntersections[i].first = sep_intr_set.size();
+	}
 
-	  // sort in (default) ascending order
-	  sort(sepIntersections.begin(),sepIntersections.end(),PairUnsigned1stElementCompare());
+	// sort in (default) ascending order
+	sort(sepIntersections.begin(),sepIntersections.end(),PairUnsigned1stElementCompare());
 	
-	  // among number of ties (the ones with minimal intersection
-	  // with others), find the one with greatest weight to place
-	  // last.
-	  unsigned bestIndex = 0;
-	  float bestWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[bestIndex].second]].weight();
-	  unsigned i = 1;
-	  while (i < sepIntersections.size() && sepIntersections[bestIndex].first == sepIntersections[i].first) {
-	    float curWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[i].second]].weight();
-	    if (curWeight > bestWeight) {
-	      bestWeight = curWeight;
-	      bestIndex = i;
-	    }
-	    i++;
+	// among number of ties (the ones with minimal intersection
+	// with others), find the one with greatest weight to place
+	// last.
+	unsigned bestIndex = 0;
+	float bestWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[bestIndex].second]].weight();
+	unsigned i = 1;
+	while (i < sepIntersections.size() && sepIntersections[bestIndex].first == sepIntersections[i].first) {
+	  float curWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[i].second]].weight();
+	  if (curWeight > bestWeight) {
+	    bestWeight = curWeight;
+	    bestIndex = i;
 	  }
-
-	  // finally, swap the best into last place.
-	  // printf("swaping sep %d with %d\n",bestIndex,lastSeparator);
-	  swap(clique.ceReceiveSeparators[sepIntersections[bestIndex].second],clique.ceReceiveSeparators[lastSeparator]);
-	  lastSeparator --;
+	  i++;
 	}
 
-	// Lastly, the first two separators should be iterated
-	// so that the min weight one goes first.
-	if (part.separators[clique.ceReceiveSeparators[0]].weight() >
-	    part.separators[clique.ceReceiveSeparators[1]].weight()) {
-	  swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
-	}
+	// finally, swap the best into last place.
+	// printf("swaping sep %d with %d\n",bestIndex,lastSeparator);
+	swap(clique.ceReceiveSeparators[sepIntersections[bestIndex].second],clique.ceReceiveSeparators[lastSeparator]);
+	lastSeparator --;
       }
 
-      // next, sort  the VE separators to maximize overlap.
-      const unsigned numVESeparators = numSeparators-firstVESeparator;
-      if (numVESeparators > 1) {
-	// so at least two VE separators.
+      // Lastly, the first two separators should be iterated
+      // so that the min weight one goes first.
+      if (part.separators[clique.ceReceiveSeparators[0]].weight() >
+	  part.separators[clique.ceReceiveSeparators[1]].weight()) {
+	swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
+      }
+    }
 
-	int lastSeparator = numSeparators-1;
-	set<RV*> sep_intr_set;
-	set<RV*> sep_union_set;
-	set<RV*> empty;
-	vector < pair<unsigned,unsigned> > sepIntersections; 
-	while (lastSeparator > firstVESeparator + 1) {
-	  // then at least three to go.
+    // next, sort  the VE separators to maximize overlap.
+    const unsigned numVESeparators = numSeparators-firstVESeparator;
+    if (numVESeparators > 1) {
+      // so at least two VE separators.
 
-	  // compute separator index with minimum intersection with
-	  // *all* previous separators (both normal and VE) and swap
-	  // its index with lastSeparator.
-	  sepIntersections.clear();
-	  sepIntersections.resize(lastSeparator+1-firstVESeparator);
-	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
-	    SeparatorClique& sep_i =
-	      part.separators[clique.ceReceiveSeparators[i]];
-	    sepIntersections[i-firstVESeparator].second = i;
-	    sepIntersections[i-firstVESeparator].first = 0;
-	    sep_union_set.clear();
-	    for (int j=0;j<=lastSeparator;j++) {
-	      if (j == i)
-		continue;
-	      SeparatorClique& sep_j =
-		part.separators[clique.ceReceiveSeparators[j]];
-	      set_union(empty.begin(),empty.end(),
-			sep_j.nodes.begin(),sep_j.nodes.end(),
-			inserter(sep_union_set,sep_union_set.end()));
+      int lastSeparator = numSeparators-1;
+      set<RV*> sep_intr_set;
+      set<RV*> sep_union_set;
+      set<RV*> empty;
+      vector < pair<unsigned,unsigned> > sepIntersections; 
+      while (lastSeparator > firstVESeparator + 1) {
+	// then at least three to go.
+
+	// compute separator index with minimum intersection with
+	// *all* previous separators (both normal and VE) and swap
+	// its index with lastSeparator.
+	sepIntersections.clear();
+	sepIntersections.resize(lastSeparator+1-firstVESeparator);
+	for (int i=firstVESeparator;i<=lastSeparator;i++) {
+	  SeparatorClique& sep_i =
+	    part.separators[clique.ceReceiveSeparators[i]];
+	  sepIntersections[i-firstVESeparator].second = i;
+	  sepIntersections[i-firstVESeparator].first = 0;
+	  sep_union_set.clear();
+	  for (int j=0;j<=lastSeparator;j++) {
+	    if (j == i)
+	      continue;
+	    SeparatorClique& sep_j =
+	      part.separators[clique.ceReceiveSeparators[j]];
+	    set_union(empty.begin(),empty.end(),
+		      sep_j.nodes.begin(),sep_j.nodes.end(),
+		      inserter(sep_union_set,sep_union_set.end()));
 	    
-	    }
-	    sep_intr_set.clear();
-	    set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
-		      sep_union_set.begin(),sep_union_set.end(),
-		      inserter(sep_intr_set,sep_intr_set.end()));
-	    sepIntersections[i-firstVESeparator].first = sep_intr_set.size();
 	  }
+	  sep_intr_set.clear();
+	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
+			   sep_union_set.begin(),sep_union_set.end(),
+			   inserter(sep_intr_set,sep_intr_set.end()));
+	  sepIntersections[i-firstVESeparator].first = sep_intr_set.size();
+	}
 	  
 
-// 	  printf("before sorting: VE seps have intersection among others:");
-// 	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
-// 	    printf("%d has %d,",
-// 		   sepIntersections[i-firstVESeparator].second,
-// 		   sepIntersections[i-firstVESeparator].first);
-// 	  }
-// 	  printf("\n");
+	// 	  printf("before sorting: VE seps have intersection among others:");
+	// 	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
+	// 	    printf("%d has %d,",
+	// 		   sepIntersections[i-firstVESeparator].second,
+	// 		   sepIntersections[i-firstVESeparator].first);
+	// 	  }
+	// 	  printf("\n");
 
 
-	  // sort in (default) ascending order
-	  sort(sepIntersections.begin(),sepIntersections.end(),PairUnsigned1stElementCompare());
+	// sort in (default) ascending order
+	sort(sepIntersections.begin(),sepIntersections.end(),PairUnsigned1stElementCompare());
 
-//  	  printf("after sorting: VE seps have intersection among others size = %d:",sepIntersections.size());
-//  	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
-//  	    printf("Sep %d w inter %d.  ",
-//  		   clique.ceReceiveSeparators[sepIntersections[i-firstVESeparator].second],
-//  		   sepIntersections[i-firstVESeparator].first);
-//  	  }
-// 	  printf("\n");
+	//  	  printf("after sorting: VE seps have intersection among others size = %d:",sepIntersections.size());
+	//  	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
+	//  	    printf("Sep %d w inter %d.  ",
+	//  		   clique.ceReceiveSeparators[sepIntersections[i-firstVESeparator].second],
+	//  		   sepIntersections[i-firstVESeparator].first);
+	//  	  }
+	// 	  printf("\n");
 
-// 	  vector < pair<unsigned,unsigned> >::iterator it;
-// 	  for (it = sepIntersections.begin(); 
-// 		 ((it) != sepIntersections.end()); it++) {
-// 	    printf("cur=(%d,%d), next=(%d,%d), cur<next=%d\n",
-// 		   (*it).first,(*it).second,
-// 		   (*(it+1)).first,(*(it+1)).second,
-// 		   (*it)<(*(it+1)));
-// 	  }
+	// 	  vector < pair<unsigned,unsigned> >::iterator it;
+	// 	  for (it = sepIntersections.begin(); 
+	// 		 ((it) != sepIntersections.end()); it++) {
+	// 	    printf("cur=(%d,%d), next=(%d,%d), cur<next=%d\n",
+	// 		   (*it).first,(*it).second,
+	// 		   (*(it+1)).first,(*(it+1)).second,
+	// 		   (*it)<(*(it+1)));
+	// 	  }
 
 	
-	  // among number of ties (the ones with minimal intersection
-	  // with others), find the one with greatest weight to place
-	  // last.
-	  unsigned bestIndex = 0;
-	  float bestWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[bestIndex].second]].weight();
-	  unsigned i = 1;
-	  while (i < sepIntersections.size() && sepIntersections[bestIndex].first == sepIntersections[i].first) {
-	    float curWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[i].second]].weight();
-	    if (curWeight > bestWeight) {
-	      bestWeight = curWeight;
-	      bestIndex = i;
-	    }
-	    i++;
+	// among number of ties (the ones with minimal intersection
+	// with others), find the one with greatest weight to place
+	// last.
+	unsigned bestIndex = 0;
+	float bestWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[bestIndex].second]].weight();
+	unsigned i = 1;
+	while (i < sepIntersections.size() && sepIntersections[bestIndex].first == sepIntersections[i].first) {
+	  float curWeight = part.separators[clique.ceReceiveSeparators[sepIntersections[i].second]].weight();
+	  if (curWeight > bestWeight) {
+	    bestWeight = curWeight;
+	    bestIndex = i;
 	  }
-
-	  // finally, swap the best into last place.
-	  // printf("swaping sep %d with %d\n",bestIndex,lastSeparator);
-	  swap(clique.ceReceiveSeparators[sepIntersections[bestIndex].second],clique.ceReceiveSeparators[lastSeparator]);
-	  lastSeparator --;
+	  i++;
 	}
 
-	// Lastly, the first two separators should be iterated
-	// so that the min weight one goes first.
-	if (part.separators[clique.ceReceiveSeparators[firstVESeparator]].weight() >
-	    part.separators[clique.ceReceiveSeparators[firstVESeparator+1]].weight()) {
-	  swap(clique.ceReceiveSeparators[firstVESeparator],clique.ceReceiveSeparators[firstVESeparator+1]);
-	}
+	// finally, swap the best into last place.
+	// printf("swaping sep %d with %d\n",bestIndex,lastSeparator);
+	swap(clique.ceReceiveSeparators[sepIntersections[bestIndex].second],clique.ceReceiveSeparators[lastSeparator]);
+	lastSeparator --;
       }
 
+      // Lastly, the first two separators should be iterated
+      // so that the min weight one goes first.
+      if (part.separators[clique.ceReceiveSeparators[firstVESeparator]].weight() >
+	  part.separators[clique.ceReceiveSeparators[firstVESeparator+1]].weight()) {
+	swap(clique.ceReceiveSeparators[firstVESeparator],clique.ceReceiveSeparators[firstVESeparator+1]);
+      }
+    }
 
-      ///////////////////////////////////////////////////////
-      // DONE SORTING clique.ceReceiveSeparators
-      // printf("after sorting\n");
-      // for (unsigned i = 0; i< clique.ceReceiveSeparators.size(); i++) {
-      // printf("ceRecSep[%d] = %d\n",i,clique.ceReceiveSeparators[i]);
-      // }
-      // Compute the cummulative intersection of the sepsets using the
-      // currently assigned sepset order.
-      {
 
-	// initialize union of all previous separators
+    ///////////////////////////////////////////////////////
+    // DONE SORTING clique.ceReceiveSeparators
+    // printf("after sorting\n");
+    // for (unsigned i = 0; i< clique.ceReceiveSeparators.size(); i++) {
+    // printf("ceRecSep[%d] = %d\n",i,clique.ceReceiveSeparators[i]);
+    // }
+    // Compute the cummulative intersection of the sepsets using the
+    // currently assigned sepset order.
+    {
 
-	clique.unionIncommingCESeps = 
-	  part.separators[clique.ceReceiveSeparators[0]].nodes;
-	part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
-	part.separators[clique.ceReceiveSeparators[0]].remainder
-	  = part.separators[clique.ceReceiveSeparators[0]].nodes;
+      // initialize union of all previous separators
 
-	for (unsigned sep=1;sep<numSeparators;sep++) {
+      clique.unionIncommingCESeps = 
+	part.separators[clique.ceReceiveSeparators[0]].nodes;
+      part.separators[clique.ceReceiveSeparators[0]].accumulatedIntersection.clear();
+      part.separators[clique.ceReceiveSeparators[0]].remainder
+	= part.separators[clique.ceReceiveSeparators[0]].nodes;
+
+      for (unsigned sep=1;sep<numSeparators;sep++) {
       
-	  // reference variables for easy access
-	  set<RV*>& sepNodes
-	    = part.separators[clique.ceReceiveSeparators[sep]].nodes;
-	  set<RV*>& sepAccumInter
-	    = part.separators[clique.ceReceiveSeparators[sep]].accumulatedIntersection;
+	// reference variables for easy access
+	set<RV*>& sepNodes
+	  = part.separators[clique.ceReceiveSeparators[sep]].nodes;
+	set<RV*>& sepAccumInter
+	  = part.separators[clique.ceReceiveSeparators[sep]].accumulatedIntersection;
 
 
-	  // create the intersection of 1) the union of all previous nodes in
-	  // the sep order, and 2) the current sep nodes.
-	  sepAccumInter.clear();
-	  set_intersection(clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
-			   sepNodes.begin(),sepNodes.end(),
-			   inserter(sepAccumInter,sepAccumInter.end()));
+	// create the intersection of 1) the union of all previous nodes in
+	// the sep order, and 2) the current sep nodes.
+	sepAccumInter.clear();
+	set_intersection(clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
+			 sepNodes.begin(),sepNodes.end(),
+			 inserter(sepAccumInter,sepAccumInter.end()));
 
-	  // compute the separator remainder while we're at it.
-	  // specifically: remainder = sepNodes - sepAccumInter.
-	  part.separators[clique.ceReceiveSeparators[sep]].remainder.clear();
-	  set_difference(sepNodes.begin(),sepNodes.end(),
-			 sepAccumInter.begin(),sepAccumInter.end(),
-			 inserter(part.separators[clique.ceReceiveSeparators[sep]].remainder,
-				  part.separators[clique.ceReceiveSeparators[sep]].remainder.end()));
+	// compute the separator remainder while we're at it.
+	// specifically: remainder = sepNodes - sepAccumInter.
+	part.separators[clique.ceReceiveSeparators[sep]].remainder.clear();
+	set_difference(sepNodes.begin(),sepNodes.end(),
+		       sepAccumInter.begin(),sepAccumInter.end(),
+		       inserter(part.separators[clique.ceReceiveSeparators[sep]].remainder,
+				part.separators[clique.ceReceiveSeparators[sep]].remainder.end()));
 
 
-	  // update the accumulated (union) of all previous sep nodes.
-	  set<RV*> res;
-	  set_union(sepNodes.begin(),sepNodes.end(),
-		    clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
-		    inserter(res,res.end()));
-	  clique.unionIncommingCESeps = res;	
-	}
+	// update the accumulated (union) of all previous sep nodes.
+	set<RV*> res;
+	set_union(sepNodes.begin(),sepNodes.end(),
+		  clique.unionIncommingCESeps.begin(),clique.unionIncommingCESeps.end(),
+		  inserter(res,res.end()));
+	clique.unionIncommingCESeps = res;	
       }
-
     }
-  } else {
-    // we are doing clique driven iteration 
 
-    // In the case of CLIQUE-DRIVEN inference: while we could use the
-    // same code as above (producing both accumulated intersection and
-    // remainder sets), we optimize for this case by making sure that
-    // all accumualted intersection sets should be of zero size, so
-    // that we only do one hash lookup for the remainder (which in
-    // this case will be everything). Note also that the order of the
-    // separators no longer matters.
-
-    const set < RV* > empty;
-    for (unsigned i=0;i<numSeparators;i++) {
-      SeparatorClique& sep = part.separators[clique.ceReceiveSeparators[i]];
-      sep.accumulatedIntersection.clear();
-      sep.remainder = sep.nodes;
-      // compute union of all separators.
-      set_union(empty.begin(),empty.end(),
-		sep.nodes.begin(),sep.nodes.end(),
-		inserter(clique.unionIncommingCESeps,clique.unionIncommingCESeps.end()));
-
-    }
   }
+
 
   // lastly, assign unassignedIteratedNodes in this clique
   {
@@ -5694,3 +5868,9 @@ JunctionTree::setCliquePrintRanges(char *p,char*c,char*e)
       ePartCliquePrintRange = tmp;
   }
 }
+
+
+
+/////////////////////////////////////////////	
+/// END OF FILE
+/////////////////////////////////////////////

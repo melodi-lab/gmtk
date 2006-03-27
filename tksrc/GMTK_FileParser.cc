@@ -100,7 +100,7 @@ Frame = "frame" ":" integer "{" RandomVariableList "}"
 RandomVariableList = RandomVariable RandomVariableList | NULL
 
 RandomVariable = "variable" ":" name "{" RandomVariableAttributeList "}"
-               |  "clique" ":" name "{" CliqueAttributeList "}"
+               |  "factor" ":" name "{" FactorAttributeList "}"
 
 
 RandomVariableAttributeList =
@@ -343,6 +343,32 @@ chunk: 1:1
 
 ------------------------------------------------------------
 
+Example factor syntax for reference.
+
+   factor: firstFactor {
+      variables: fooA(0),fooA(-1);
+
+      // only one type of constraint can be defined at a time??
+      symmetricConstraint:
+	allVarsEqual;
+        allVarsUnequal;
+        varsNotEqual;
+        varsSumTo(n);  // only values that sum to n
+        varsMultiplyTo(n); // only values that multiply to n
+        varsSumMod(m,n);  // only values such that (sum(vars) % m) = n
+                     // e.g., force even parity done by sumMod(2,0)
+        varsSatisfy using mapping("bla");
+           // where mapping is a DT
+
+     directionalConstraint: fooA(0) = functionOf(fooA(-1)) using mapping("bla");
+        // where 'bla' is the name of a decision tree
+
+     softConstraint: using table("foo"); // table is a new object, EM learnable, will also
+                                            be used for TableCPT.
+     softConstraint: using logLinear("bar"); // logLinear is a new loglinear object, EM learnable
+  }
+
+
 *********************************************************************** 
 *********************************************************************** 
 */
@@ -417,8 +443,21 @@ FileParser::fillKeywordTable()
     /* 35 */ "VirtualEvidenceCPT",
     /* 36 */ "LatticeNodeCPT",
     /* 37 */ "LatticeEdgeCPT",
-    /* 38 */ "clique",
+    /* 38 */ "factor",
     /* 39 */ "variables",
+    /* 40 */ "symmetricConstraint",
+    /* 41 */ "allVarsEqual",
+    /* 42 */ "allVarsUnequal",
+    /* 43 */ "varsNotEqual",
+    /* 44 */ "varsSumTo",
+    /* 45 */ "varsMultiplyTo",
+    /* 46 */ "varsSumMod",
+    /* 47 */ "varsSatisfy",
+    /* 48 */ "directionalConstraint",
+    /* 49 */ "functionOf",
+    /* 50 */ "softConstraint",
+    /* 51 */ "table",
+    /* 52 */ "logLinear"
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -704,7 +743,7 @@ FileParser::parseGraphicalModel()
   tokenInfo.srcChar = 1;
   curFrame = -1;
   rvInfoVector.clear();
-  cliqueList.clear();
+  factorList.clear();
 
   // prepare the first lookahead token
   prepareNextToken();
@@ -793,10 +832,11 @@ FileParser::parseFrame()
   consumeToken();
 }
 
+
 void
 FileParser::parseFrameEntryList()
 {
-  if (tokenInfo != KW_Variable && tokenInfo != KW_Clique)
+  if (tokenInfo != KW_Variable && tokenInfo != KW_Factor)
     return;
 
   if (tokenInfo == KW_Variable) {
@@ -878,25 +918,33 @@ FileParser::parseFrameEntryList()
       = rvInfoVector.size()-1;
 
   } else {
-    // this must be a clique definition.
-    curLC.clear();
-    parseLocalClique();
+    // this must be a factor definition.
+    curFactor.clear();
+    parseFactor();
 
-    // Do dumb linear search since number of cliques will probably be
+    // Do dumb linear search since number of factors will probably be
     // very small.
-    for (unsigned i=0;i<cliqueList.size();i++) {
-      if (cliqueList[i].frame == curLC.frame &&
-	  cliqueList[i].name == curLC.name) {
-	error("Error: local clique '%s' at frame (%d) defined twice in same frame, "
+    for (unsigned i=0;i<factorList.size();i++) {
+      if (factorList[i].frame == curFactor.frame &&
+	  factorList[i].name == curFactor.name) {
+	error("Error: factor '%s' at frame (%d) defined twice in same frame, "
 	      "on both line %d and line %d\n",
-	      curLC.name.c_str(),
-	      curLC.frame,
-	      cliqueList[i].fileLineNumber,
-	      curLC.fileLineNumber);
+	      curFactor.name.c_str(),
+	      curFactor.frame,
+	      factorList[i].fileLineNumber,
+	      curFactor.fileLineNumber);
       }
     }
 
-    cliqueList.push_back(curLC);
+    if (curFactor.variables.size() == 0) {
+      error("Error: factor '%s' frame (%d), line %d of file %s, must define more than zero variables\n",
+	    curFactor.name.c_str(),
+	    curFactor.frame,
+	    curFactor.fileLineNumber,
+	    curFactor.fileName.c_str());
+    }
+
+    factorList.push_back(curFactor);
   }
 
   parseFrameEntryList();
@@ -905,16 +953,16 @@ FileParser::parseFrameEntryList()
 
 
 void
-FileParser::parseLocalClique()
+FileParser::parseFactor()
 {
 
-  ensureNotAtEOF(KW_Clique);
-  if (tokenInfo != KW_Clique)
-    parseError(KW_Clique);
+  ensureNotAtEOF(KW_Factor);
+  if (tokenInfo != KW_Factor)
+    parseError(KW_Factor);
   
-  curLC.frame = curFrame;
-  curLC.fileLineNumber = tokenInfo.srcLine;
-  curLC.fileName  = fileNameParsing;
+  curFactor.frame = curFrame;
+  curFactor.fileLineNumber = tokenInfo.srcLine;
+  curFactor.fileName  = fileNameParsing;
   consumeToken();
 
 
@@ -923,51 +971,61 @@ FileParser::parseLocalClique()
     parseErrorExpecting("':'");
   consumeToken();
 
-  ensureNotAtEOF("clique name");
+  ensureNotAtEOF("factor name");
   if (tokenInfo != TT_Identifier)
-    parseErrorExpecting("clique name");
-  curLC.name = tokenInfo.tokenStr;
+    parseErrorExpecting("factor name");
+  curFactor.name = tokenInfo.tokenStr;
   consumeToken();
 
-  ensureNotAtEOF("open clique {");
+  ensureNotAtEOF("open factor {");
   if (tokenInfo != TT_LeftBrace)
-    parseErrorExpecting("open clique {");
+    parseErrorExpecting("open factor {");
   consumeToken();
 
-  parseCliqueAttributeList();
+  parseFactorAttributeList();
 
-  ensureNotAtEOF("close clique }");
+  ensureNotAtEOF("close factor }");
   if (tokenInfo != TT_RightBrace)
-    parseErrorExpecting("close clique }");
+    parseErrorExpecting("close factor }");
   consumeToken();
-
 
 }
 
 
 void
-FileParser::parseCliqueAttributeList()
+FileParser::parseFactorAttributeList()
 {
-  if (tokenInfo == KW_Variables) {
-    parseCliqueAttribute();
-    parseCliqueAttributeList();
-  }
+  if (tokenInfo == KW_Variables  
+      || tokenInfo == KW_SymmetricConstraint 
+      || tokenInfo == KW_DirectionalConstraint
+      || tokenInfo == KW_SoftConstraint) 
+    {
+      parseFactorAttribute();
+      parseFactorAttributeList();
+    }
   return;
 }
 
 
 void
-FileParser::parseCliqueAttribute()
+FileParser::parseFactorAttribute()
 {
-  ensureNotAtEOF("clique attribute");
-  if (tokenInfo == KW_Variables)
-    return parseCliqueVariablesAttribute();
-  else
-    parseErrorExpecting("clique attribute");
+  ensureNotAtEOF("factor attribute");
+  if (tokenInfo == KW_Variables) {
+    return parseFactorVariablesAttribute();
+  } else if (tokenInfo == KW_SymmetricConstraint) {
+    return parseFactorSymmetricConstraintAttribute();
+  } else if (tokenInfo == KW_DirectionalConstraint) {
+    return parseFactorDirectionalConstraintAttribute();
+  } else if (tokenInfo == KW_SoftConstraint) {
+    return parseFactorSoftConstraintAttribute();
+  } else
+    parseErrorExpecting("factor attribute");
+
 }
 
 void
-FileParser::parseCliqueVariablesAttribute()
+FileParser::parseFactorVariablesAttribute()
 {
   ensureNotAtEOF(KW_Variables);
   if (tokenInfo != KW_Variables)
@@ -983,10 +1041,281 @@ FileParser::parseCliqueVariablesAttribute()
   // parents (and use the relative offset notation, where the offset
   // is relative to the current frame number for convenience).
   
-  ensureNotAtEOF("list of clique variables");
+  ensureNotAtEOF("list of factor variables");
   rvDeclarationList.clear();
   parseRVDeclarationList();
-  curLC.variables = rvDeclarationList;
+  curFactor.variables = rvDeclarationList;
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseErrorExpecting("';'");
+  consumeToken();
+
+}
+
+
+void
+FileParser::parseFactorSymmetricConstraintAttribute()
+{
+
+  /*
+      symmetricConstraint: // followed by one of:
+	allVarsEqual;
+        allVarsUnequal;
+        varsNotEqual;
+        varsSumTo(n);  // only values that sum to n
+        varsMultiplyTo(n); // only values that multiply to n
+        varsSumMod(m,n);  // only values such that (sum(vars) % m) = n
+	// e.g., force even parity done by sumMod(2,0)
+	varsSatisfy using mapping("bla");
+	// where mapping is a DT
+  */
+
+  ensureNotAtEOF(KW_SymmetricConstraint);
+  if (tokenInfo != KW_SymmetricConstraint)
+    parseError(KW_SymmetricConstraint);
+  consumeToken();
+
+  if (curFactor.fType != FactorInfo::ft_unknown)
+    parseError("already defined a type for this factor, can't have more than one,");
+  curFactor.fType = FactorInfo::ft_symmetricConstraint;
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseErrorExpecting("':'");
+  consumeToken();
+
+  ensureNotAtEOF("type of symmetric constraint");
+  if (tokenInfo == KW_AllVarsEqual) {
+    curFactor.symmetricConstraintInfo.symmetricConstraintType = FactorInfo::sct_allVarsEqual;
+    consumeToken();
+
+  } else if (tokenInfo == KW_AllVarsUnequal) {
+    curFactor.symmetricConstraintInfo.symmetricConstraintType = FactorInfo::sct_allVarsUnequal;
+    consumeToken();
+
+  } else if (tokenInfo == KW_VarsNotEqual) {
+    curFactor.symmetricConstraintInfo.symmetricConstraintType = FactorInfo::sct_varsNotEqual;
+    consumeToken();
+
+  } else if (tokenInfo == KW_VarsSumTo) {
+    curFactor.symmetricConstraintInfo.symmetricConstraintType = FactorInfo::sct_varsSumTo;
+    consumeToken();
+
+    ensureNotAtEOF("(");
+    if (tokenInfo != TT_LeftParen)
+      parseErrorExpecting("'('");
+    consumeToken();
+
+    ensureNotAtEOF("int to sum");
+    if (tokenInfo != TT_Integer)
+      parseErrorExpecting("sum-to integer");
+    if (tokenInfo.int_val < 0) 
+      parseError("sum-to integer must be non-negative");
+    curFactor.symmetricConstraintInfo.n = (unsigned) tokenInfo.int_val;
+    consumeToken();
+
+    ensureNotAtEOF(")");
+    if (tokenInfo != TT_RightParen)
+      parseErrorExpecting("')'");
+    consumeToken();
+
+  } else if (tokenInfo == KW_VarsMultiplyTo) {
+    curFactor.symmetricConstraintInfo.symmetricConstraintType = FactorInfo::sct_varsMultiplyTo;
+    consumeToken();
+
+    ensureNotAtEOF("(");
+    if (tokenInfo != TT_LeftParen)
+      parseErrorExpecting("'('");
+    consumeToken();
+
+    ensureNotAtEOF("int to multiply");
+    if (tokenInfo != TT_Integer)
+      parseErrorExpecting("multiply-to integer");
+    if (tokenInfo.int_val < 0) 
+      parseError("multiply-to integer must be non-negative");
+    curFactor.symmetricConstraintInfo.n = (unsigned) tokenInfo.int_val;
+    consumeToken();
+
+    ensureNotAtEOF(")");
+    if (tokenInfo != TT_RightParen)
+      parseErrorExpecting("')'");
+    consumeToken();
+
+
+  } else if (tokenInfo == KW_VarsSumMod) {
+    curFactor.symmetricConstraintInfo.symmetricConstraintType = FactorInfo::sct_varsSumMod;
+    consumeToken();
+
+
+    ensureNotAtEOF("(");
+    if (tokenInfo != TT_LeftParen)
+      parseErrorExpecting("'('");
+    consumeToken();
+
+    ensureNotAtEOF("int to mod");
+    if (tokenInfo != TT_Integer)
+      parseErrorExpecting("mod-by integer");
+    if (tokenInfo.int_val < 0) 
+      parseError("mod-by integer must be non-negative");
+    curFactor.symmetricConstraintInfo.m = (unsigned) tokenInfo.int_val;
+    consumeToken();
+
+    ensureNotAtEOF(",");
+    if (tokenInfo != TT_Comma)
+      parseErrorExpecting("','");
+    consumeToken();
+
+    ensureNotAtEOF("int result of mod");
+    if (tokenInfo != TT_Integer)
+      parseErrorExpecting("mod-result integer");
+    if (tokenInfo.int_val < 0) 
+      parseError("mod-result integer must be non-negative");
+    curFactor.symmetricConstraintInfo.n = (unsigned) tokenInfo.int_val;
+    consumeToken();
+
+    ensureNotAtEOF(")");
+    if (tokenInfo != TT_RightParen)
+      parseErrorExpecting("')'");
+    consumeToken();
+
+
+  } else if (tokenInfo == KW_VarsSatisfy) {
+    curFactor.symmetricConstraintInfo.symmetricConstraintType = FactorInfo::sct_varsSatisfy;
+    consumeToken();
+
+    ensureNotAtEOF(KW_Using);
+    if (tokenInfo != KW_Using)
+      parseError(KW_Using);
+    consumeToken();
+
+    parseMappingSpec();
+    // name went into listIndex variable, grab it here.
+    curFactor.symmetricConstraintInfo.mappingDT = listIndex.nameIndex;
+    
+
+  } else 
+    parseErrorExpecting("symmetric constraint type");
+
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseErrorExpecting("';'");
+  consumeToken();
+}
+
+
+void
+FileParser::parseFactorDirectionalConstraintAttribute()
+{
+  // directionalConstraint: fooA(0) = functionOf(fooA(-1),fooB(-1)) using mapping("bla");
+
+  if (tokenInfo != KW_DirectionalConstraint)
+    parseError(KW_DirectionalConstraint);
+  consumeToken();
+
+  if (curFactor.fType != FactorInfo::ft_unknown)
+    parseError("already defined a type for this factor");
+  curFactor.fType = FactorInfo::ft_directionalConstraint;
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseErrorExpecting("':'");
+  consumeToken();
+
+  ensureNotAtEOF("child variable");
+  rvDeclarationList.clear();
+  parseRVDeclaration();
+  curFactor.directionalConstraintInfo.child = rvDeclarationList[0];
+
+  ensureNotAtEOF("=");
+  if (tokenInfo != TT_Equals)
+    parseErrorExpecting("'='");
+  consumeToken();
+
+  ensureNotAtEOF(KW_FunctionOf);
+  if (tokenInfo != KW_FunctionOf)
+    parseError(KW_FunctionOf);
+  consumeToken();
+
+  ensureNotAtEOF("(");
+  if (tokenInfo != TT_LeftParen)
+    parseErrorExpecting("'('");
+  consumeToken();
+
+  ensureNotAtEOF("list of variables");
+  rvDeclarationList.clear();
+  parseRVDeclarationList();
+  curFactor.directionalConstraintInfo.parents = rvDeclarationList;
+
+  ensureNotAtEOF(")");
+  if (tokenInfo != TT_RightParen)
+    parseErrorExpecting("')'");
+  consumeToken();
+
+
+  ensureNotAtEOF(KW_Using);
+  if (tokenInfo != KW_Using)
+    parseError(KW_Using);
+  consumeToken();
+
+  parseMappingSpec();
+  // name went into listIndex variable, grab it here.
+  curFactor.directionalConstraintInfo.mappingDT = listIndex.nameIndex;
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseErrorExpecting("';'");
+  consumeToken();
+}
+
+
+void
+FileParser::parseFactorSoftConstraintAttribute()
+{
+  // softConstraint: using table("foo"); // table is a new object, EM learnable, will also
+  //                             be used for TableCPT.
+  // softConstraint: using logLinear("bar"); // logLinear is a new loglinear object, EM learnable
+
+  if (tokenInfo != KW_SoftConstraint)
+    parseError(KW_SoftConstraint);
+  consumeToken();
+
+  if (curFactor.fType != FactorInfo::ft_unknown)
+    parseError("already defined a type for this factor");
+  curFactor.fType = FactorInfo::ft_softConstraint;
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseErrorExpecting("':'");
+  consumeToken();
+
+  ensureNotAtEOF(KW_Using);
+  if (tokenInfo != KW_Using)
+    parseError(KW_Using);
+  consumeToken();
+
+  if (tokenInfo == KW_Table) {
+    curFactor.softConstraintInfo.softConstraintType = FactorInfo::fct_table;
+  } else if (tokenInfo == KW_LogLinear) {
+    curFactor.softConstraintInfo.softConstraintType = FactorInfo::fct_logLinear;
+  } else
+    parseErrorExpecting("table or logLinear");
+  
+
+  ensureNotAtEOF("(");
+  if (tokenInfo != TT_LeftParen)
+    parseErrorExpecting("'('");
+  consumeToken();
+
+  parseListIndex();
+  curFactor.softConstraintInfo.name = listIndex.nameIndex;
+
+  ensureNotAtEOF(")");
+  if (tokenInfo != TT_RightParen)
+    parseErrorExpecting("')'");
+  consumeToken();
+
 
   ensureNotAtEOF(";");
   if (tokenInfo != TT_SemiColon)
@@ -1696,7 +2025,6 @@ FileParser::parseDiscreteImplementation()
     parseListIndex();
 
     ensureNotAtEOF(") or ,");
-
     if (tokenInfo != TT_RightParen) {
       if ( tokenInfo != TT_Comma )
 	parseErrorExpecting("')' or ','");
@@ -1915,9 +2243,10 @@ FileParser::parseMappingSpec()
 void
 FileParser::parseListIndex()
 {
-  ensureNotAtEOF("list index");
+  ensureNotAtEOF("name of object");
   if (tokenInfo == TT_Integer) {
     // TODO: need to remove the integer index code.
+    error("Integers no longer supported as object specifiers\n");
     listIndex.liType = RVInfo::ListIndex::li_Index;
     listIndex.intIndex = tokenInfo.int_val;
     consumeToken();
@@ -1931,7 +2260,7 @@ FileParser::parseListIndex()
     listIndex.nameIndex.replace(listIndex.nameIndex.length()-1,1,"");
     consumeToken();
   } else
-    parseErrorExpecting("list index");
+    parseErrorExpecting("name of object");
 }
 
 
@@ -2151,29 +2480,108 @@ FileParser::createRandomVariableGraph()
   }
 
 
-  // now go through clique list and added edges to neighbors of each
+  // now go through factor list and added edges to neighbors of each
   // random variable (and make sure that all variables in each
-  // clique exists according to the template).
+  // factor exists according to the template).
 
-  for (unsigned cliqueNo=0;cliqueNo<cliqueList.size();cliqueNo++) {
-    LocalClique& loc_clique = cliqueList[cliqueNo];
+  for (unsigned factorNo=0;factorNo<factorList.size();factorNo++) {
+    FactorInfo& factor = factorList[factorNo];
+    factor.rvs.resize(factor.variables.size());
 
-    for (unsigned varNo=0;varNo<loc_clique.variables.size();varNo++) {
-      RVInfo::rvParent pp(loc_clique.variables[varNo].first,
-			  loc_clique.variables[varNo].second 
-			  + loc_clique.frame);
+    set < RV* > factorVarsSet; // possibly include this in the FactorInfo itself
 
-      if (nameRVmap.find(pp) == nameRVmap.end())
-	error("Error: RV \"%s(%d)\" doesn't exist, declared as \"%s(%d)\" in clique '%s' at frame %d (line %d of file '%s')\n",
+    for (unsigned varNo=0;varNo<factor.variables.size();varNo++) {
+      RVInfo::rvParent pp(factor.variables[varNo].first,
+			  factor.variables[varNo].second 
+			  + factor.frame);
+
+      if (nameRVmap.find(pp) == nameRVmap.end()) {
+	error("Error: RV \"%s(%d)\" doesn't exist, declared as \"%s(%d)\" in factor '%s' at frame %d (line %d of file '%s')\n",
 	      pp.first.c_str(),pp.second,
-	      pp.first.c_str(),loc_clique.variables[varNo].second,
-	      loc_clique.name.c_str(),
-	      loc_clique.frame,
-	      loc_clique.fileLineNumber,
-	      loc_clique.fileName.c_str());
+	      pp.first.c_str(),factor.variables[varNo].second,
+	      factor.name.c_str(),
+	      factor.frame,
+	      factor.fileLineNumber,
+	      factor.fileName.c_str());
+      } else {
+	factor.rvs[varNo] = rvInfoVector[ nameRVmap[ pp ] ].rv;
+	// factors only defined over discrete variables for now.
+	if (factor.rvs[varNo]->continuous()) {
+	  error("Error: RV \"%s(%d)\" declared as \"%s(%d)\" in factor '%s' at frame %d (line %d of file '%s'), must be discrete (for now)\n",
+		pp.first.c_str(),pp.second,
+		pp.first.c_str(),factor.variables[varNo].second,
+		factor.name.c_str(),
+		factor.frame,
+		factor.fileLineNumber,
+		factor.fileName.c_str());
+	}
+	factorVarsSet.insert(factor.rvs[varNo]);
+      }
     }
 
-    // TODO: add neighbor members for each template random variable according to local cliques.
+    // do a bit more sanity checking of factors.
+    if (factor.fType == FactorInfo::ft_directionalConstraint) {
+      // check that each of child and parent are defined in the factor.
+      
+      // check child
+      RVInfo::rvParent pp(factor.directionalConstraintInfo.child.first,
+			  factor.directionalConstraintInfo.child.second 
+			  + factor.frame);
+      if (nameRVmap.find(pp) == nameRVmap.end())
+	error("Error: RV \"%s(%d)\" doesn't exist, declared as dependent variable \"%s(%d)\" in factor '%s' with directional constraint at frame %d (line %d of file '%s')\n",
+	      pp.first.c_str(),pp.second,
+	      pp.first.c_str(),factor.directionalConstraintInfo.child.second,
+	      factor.name.c_str(),
+	      factor.frame,
+	      factor.fileLineNumber,
+	      factor.fileName.c_str());
+
+      RV* child = rvInfoVector[ nameRVmap[ pp ] ].rv;
+      if (factorVarsSet.find(child) == factorVarsSet.end()) {
+	error("Error: RV \"%s(%d)\" must exist in current factor, declared as dependent variable \"%s(%d)\" in factor '%s' with directional constraint at frame %d (line %d of file '%s')\n",
+	      pp.first.c_str(),pp.second,
+	      pp.first.c_str(),factor.directionalConstraintInfo.child.second,
+	      factor.name.c_str(),
+	      factor.frame,
+	      factor.fileLineNumber,
+	      factor.fileName.c_str());
+      }
+
+      // now go through and do the same deal for the parents.
+      for (unsigned varNo=0;varNo<factor.directionalConstraintInfo.parents.size();varNo++) {      
+	RVInfo::rvParent pp(factor.directionalConstraintInfo.parents[varNo].first,
+			    factor.directionalConstraintInfo.parents[varNo].second 
+			    + factor.frame);
+
+	if (nameRVmap.find(pp) == nameRVmap.end())
+	  error("Error: RV \"%s(%d)\" doesn't exist, declared as independent variable \"%s(%d)\" in factor '%s' with directional constraint at frame %d (line %d of file '%s')\n",
+		pp.first.c_str(),pp.second,
+		pp.first.c_str(),factor.directionalConstraintInfo.child.second,
+		factor.name.c_str(),
+		factor.frame,
+		factor.fileLineNumber,
+		factor.fileName.c_str());
+
+	RV* child = rvInfoVector[ nameRVmap[ pp ] ].rv;
+	if (factorVarsSet.find(child) == factorVarsSet.end()) {
+	  error("Error: RV \"%s(%d)\" must exist in current factor, declared as independent variable \"%s(%d)\" in factor '%s' with directional constraint at frame %d (line %d of file '%s')\n",
+		pp.first.c_str(),pp.second,
+		pp.first.c_str(),factor.directionalConstraintInfo.child.second,
+		factor.name.c_str(),
+		factor.frame,
+		factor.fileLineNumber,
+		factor.fileName.c_str());
+	}
+
+      }
+      
+    }
+
+    // possible other checks of factors here.
+
+    // We add neighbor members for each template random variable
+    // according to factors at the point just before we need to
+    // triangulate.
 
   }
 
@@ -3169,6 +3577,22 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
       }
     }
   }
+
+  // now go through factor list and associate the 
+  // factor with appropriate GMTK objects (DTs, tables, etc.) when
+  // needed.
+  for (unsigned factorNo=0;factorNo<factorList.size();factorNo++) {
+    FactorInfo& factor = factorList[factorNo];
+
+    // TODO: finish this function.
+
+
+    if (factor.fType == FactorInfo::ft_directionalConstraint) {
+    }
+
+  }
+
+
 }
 
 
@@ -3607,26 +4031,31 @@ FileParser::unroll(unsigned timesToUnroll,
     unrolledVarSet[uvsi]->setParents(sparents,cpl);
   }
 
-  // optionally call the following if we want the neighbors
-  // members of RVS to respect the clique's that were defined in the .str file.
+  // We *may* at some point in the future want to add argument to
+  // optionally call the following if we want the neighbors members of
+  // RVS to respect the factor's that were defined in the .str
+  // file. Note that for long unrollings, this can add considerable
+  // expense (sihce this will compute the list of factors), so we
+  // leave this commented out and assume the caller of unroll() will
+  // do the right thing if need be.
   // 
-  // addUndirectedLocalCliqueEdges(unrolledVarSet,posOfParentAtFrame);
+  // addUndirectedFactorEdges(unrolledVarSet,posOfParentAtFrame);
 
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * addUndirectedLocalCliqueEdges()
+ * addUndirectedFactorEdges()
  *
  *  Given an unrolled graph (and the corresponding data structures
  *  returned by the unroll routine), add any undirected edges
- *  according to any local cliques specified in the structure file.
+ *  according to any undirected factors specified in the structure file.
  *
- *  Note that the semantics of local cliques in a graph is that the
- *  clique is added relative to the frame in the *unrolled*
- *  graph. This means that if a local clique is defined with a random
- *  variable foo(-3) in the template, and that local clique when
+ *  Note that the semantics of factors in a graph is that the
+ *  factor is added relative to the frame in the *unrolled*
+ *  graph. This means that if a factor is defined with a random
+ *  variable foo(-3) in the template, and that factor when
  *  unrolled exists at frame n, then it expects (and affects) random
  *  variable foo(n-3) in the unrolled graph.  Note that this is
  *  similar behavior to that of random variables that are defined in a
@@ -3634,7 +4063,7 @@ FileParser::unroll(unsigned timesToUnroll,
  *  relative to the child in the unrolled graph (so we first create
  *  the graph of children, and then create the parents relative to
  *  those children). Here, we first create the graph of nodes in
- *  frames, and then create the local cliques relative to those frames.
+ *  frames, and then create the factors relative to those frames.
  *
  * Preconditions:
  *     Must be called from unroll() after all the random variales have been set up.
@@ -3643,7 +4072,7 @@ FileParser::unroll(unsigned timesToUnroll,
  *
  * Postconditions:
  *     The neighbors members of the random variables in the unrolled graph
- *     have been adjusted to reflect the local cliques given in the structure file.
+ *     have been adjusted to reflect the factors given in the structure file.
  *
  * Side Effects:
  *     Changes neighbors members of RVs.
@@ -3654,30 +4083,36 @@ FileParser::unroll(unsigned timesToUnroll,
  *----------------------------------------------------------------------- 
  */
 void
-FileParser::addUndirectedLocalCliqueEdges(unsigned timesToUnroll,
-					  vector<RV*> &rvs,
-					  map < RVInfo::rvParent, unsigned >& pos)
-
+FileParser::addUndirectedFactorEdges(unsigned timesToUnroll,
+				     vector<RV*> &rvs,
+				     map < RVInfo::rvParent, unsigned >& pos,
+				     // return value
+				     vector < set < RV* > >& factorArray)
 {
+  // the set of rvs corresponding to a given factor.
+  set<RV*> rv_factor;
   // 
-  // Add neighbors structures in unrolled graph based on local cliques.
-  for (unsigned cliqueNo=0;cliqueNo<cliqueList.size();cliqueNo++) {
-    LocalClique& clique = cliqueList[cliqueNo];
-    if (frameInTemplateP(clique.frame)) {
+  // Add neighbors structures in unrolled graph based on factors.
+  for (unsigned factorNo=0;factorNo<factorList.size();factorNo++) {
+    FactorInfo& factor = factorList[factorNo];
+    if (frameInTemplateP(factor.frame)) {
       const unsigned offset = 0;
-      completeRVsInClique(clique,offset,rvs,pos);
-    } else if (frameInTemplateC(clique.frame)) {
+      completeRVsInFactor(factor,offset,rvs,pos,rv_factor);
+      factorArray.push_back(rv_factor);
+    } else if (frameInTemplateC(factor.frame)) {
       // do this for all original C partitions.
       for (unsigned i=0;i<(timesToUnroll+1);i++) {
 	const unsigned offset = 
 	  i*numFramesInC();
-	completeRVsInClique(clique,offset,rvs,pos);	
+	completeRVsInFactor(factor,offset,rvs,pos,rv_factor);	
+	factorArray.push_back(rv_factor);
       }
     } else {
-      assert (frameInTemplateE(clique.frame));
+      assert (frameInTemplateE(factor.frame));
       const unsigned offset = 
 	timesToUnroll*numFramesInC();
-      completeRVsInClique(clique,offset,rvs,pos);	
+      completeRVsInFactor(factor,offset,rvs,pos,rv_factor);
+      factorArray.push_back(rv_factor);
     }
   }
 }
@@ -3686,10 +4121,10 @@ FileParser::addUndirectedLocalCliqueEdges(unsigned timesToUnroll,
 
 /*-
  *-----------------------------------------------------------------------
- * completeRVsInClique()
- *  Given a file parser clique (which, as you should know, is not nec. a max clique),
+ * completeRVsInFactor()
+ *  Given a file parser factor (which, as you should know, is not nec. a max clique),
  *  and an offset, complete (connect all neighbors) of all the random variables
- *  in the unrolled graph according to that clique.
+ *  in the unrolled graph according to that factor.
  *
  *
  *
@@ -3699,7 +4134,7 @@ FileParser::addUndirectedLocalCliqueEdges(unsigned timesToUnroll,
  *
  * Postconditions:
  *     The neighbors members of the random variables in the unrolled graph
- *     have been adjusted to reflect the cliques given in the structure file.
+ *     have been adjusted to reflect the factors given in the structure file.
  *
  * Side Effects:
  *     Changes neighbors members of RVs.
@@ -3710,29 +4145,31 @@ FileParser::addUndirectedLocalCliqueEdges(unsigned timesToUnroll,
  *----------------------------------------------------------------------- 
  */
 void
-FileParser::completeRVsInClique(LocalClique& loc_clique,
+FileParser::completeRVsInFactor(FactorInfo& factor,
 				const unsigned offset,
 				vector<RV*> &rvs,
-				map < RVInfo::rvParent, unsigned >& pos)
+				map < RVInfo::rvParent, unsigned >& pos,
+				// return value
+				set<RV*>& rv_factor)
 {
 
   // form a set of the random variables themselves.
-  set<RV*> rv_clique;
+  rv_factor.clear();
 
   map < RVInfo::rvParent , unsigned >::iterator it;
-  for (unsigned varNo=0;varNo<loc_clique.variables.size();varNo++) {
-    RVInfo::rvParent pp(loc_clique.variables[varNo].first,
-			loc_clique.variables[varNo].second 
-			+ loc_clique.frame
+  for (unsigned varNo=0;varNo<factor.variables.size();varNo++) {
+    RVInfo::rvParent pp(factor.variables[varNo].first,
+			factor.variables[varNo].second 
+			+ factor.frame
 			+ offset);
 
     if ((it = pos.find(pp)) == pos.end()) {
       coredump("INTERNAL ERROR: Can't find random variable %s(%d) in unrolled collection.\n",
 	       pp.first.c_str(),pp.second);
     }
-    rv_clique.insert(rvs[(*it).second]);
+    rv_factor.insert(rvs[(*it).second]);
   }
-  MaxClique::makeComplete(rv_clique);
+  MaxClique::makeComplete(rv_factor);
 
 }
 
@@ -3810,6 +4247,29 @@ FileParser::writeGMId(oDataStreamFile& os)
     }
     os.nl();
   }
+  
+  for (unsigned i=0;i<factorList.size();i++) {
+    // for each factor, write out
+    //    1. Name of factor
+    //    2. frame where defined
+    //    3. Number of random variables
+    //    4. the list of random variables (name,frame) pairs
+    os.write(factorList[i].name,"name");
+    os.write(factorList[i].frame,"frame");
+    os.write(factorList[i].variables.size(),"num vars");
+    for (unsigned j=0;j<factorList[i].variables.size();j++) {
+      os.write(factorList[i].variables[j].first,"nm");
+      os.write(factorList[i].variables[j].second,"frm");
+    }
+    
+    // could write out more factor information, but we only write
+    // out what could effect the triangulation (and the only
+    // constraint is that a factor is complete, so the rest is
+    // ok to change under a current triangulation).
+
+  }
+  
+
   os.write(_firstChunkframe);
   os.write(_lastChunkframe);
   os.nl();
@@ -3916,6 +4376,43 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
       }
     }
   }
+
+
+  for (unsigned i=0;i<factorList.size();i++) {
+    // for each factor, check
+    //    1. Name of factor
+    //    2. frame where defined
+    //    3. Number of random variables
+    //    4. the list of random variables (name,frame) pairs
+
+
+    if (!is.read(nm)) return false;
+    // don't bother checking that name matches, since it curently doesn't matter.
+    // if (nm != factorList[i].name) return false;
+
+    if (!is.read(uval)) return false;
+    if (uval != factorList[i].frame) return false;
+
+    if (!is.read(uval)) return false;
+    if (uval != factorList[i].variables.size()) return false;
+
+    for (unsigned j=0;j<factorList[i].variables.size();j++) {
+      if (!is.read(nm)) return false;
+      if (nm != factorList[i].variables[j].first) return false;
+
+
+      if (!is.read(ival)) return false;
+      if (ival != factorList[i].variables[j].second) return false;
+
+    }
+
+    // we could check the rest of the factor, but since it doesn't
+    // effect the triangulation, we don't (meaning the user
+    // can change some of the information in the factor w/o needing to 
+    // retriangulate).
+
+  }
+
 
   if (!is.read(uval)) return false;
   if (uval != _firstChunkframe) return false;

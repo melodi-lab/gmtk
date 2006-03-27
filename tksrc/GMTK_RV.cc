@@ -309,6 +309,7 @@ bool RV::allParentsContainedInSet(const set <RV*> givenSet)
  * setParents()
  *      Set the parents to the given values. Works with variables
  *      that do not have switching. Also sets children.
+ *      TODO: change name of this routine.
  *
  * Preconditions:
  *      'this' Variable must not have switching.
@@ -467,6 +468,226 @@ printRVSetPtr(FILE*f,set<RV*>& locset,bool nl)
     first = false;
   }
   if (nl) fprintf(f,"\n");
+}
+
+
+
+
+/*
+ * Take the union of A and B and place it in C.
+ */
+void
+unionRVs(const set<RV*>& A,
+	 const set<RV*>& B,
+	 set<RV*>& C,
+	 bool do_not_clear)
+{
+  if (!do_not_clear)
+    C.clear();
+  set_union(A.begin(),A.end(),
+	    B.begin(),B.end(),
+	    inserter(C,C.end()));
+}
+
+
+/*
+ * getRV: from the set of random variables that live in (rvs,pos), get
+ *        the corresponding one named by 'pp' time-shifted by 'shift'.
+ *        Note, shift might be positive or negative.
+ *        Optionally, make a big stink if it is not there (i.e, internal error).
+ */
+RV * getRV(const vector <RV*>& rvs, // a set of RVs
+	   map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
+	   const RVInfo::rvParent& pp, // the variable to get
+	   const int shift,  
+	   const bool failIfNotExist)
+{
+
+  RVInfo::rvParent desired_pp(pp.first,pp.second+shift);
+
+  map < RVInfo::rvParent , unsigned >::iterator it;
+  if ((it = pos.find(desired_pp)) == pos.end()) {
+    // this could be an assertion failure as well, but we need to set 'it'
+    if (failIfNotExist) 
+      coredump("INTERNAL ERROR: getRV: Can't find random variable %s(%d) in unrolled collection, asked for rv %s(%d) with offset %d.\n",
+	       pp.first.c_str(),pp.second+shift,
+	       pp.first.c_str(),pp.second,shift);
+    else
+      return NULL;
+  }
+  return rvs[(*it).second];
+}
+
+
+/*
+ * getRV: get from the set of random variables that live in the
+ * set (rvs,pos), a time-shifted version of the random variable 'rv'.
+ * Note that this routine does not require rv to be in the rv set
+ * (rvs,pos) since it only depends on 'rv' via its name and frame. This
+ * means we use this routine to easily grab a corresponding rv from
+ * one unrolling using a rv from another unrolling using this routine.
+ */
+RV * getRV(const vector <RV*>& rvs, // a set of RVs
+	   map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
+	   RV* rv, // the variable to be shifted
+	   const int shift, // the shift amount in frames
+	   const bool failIfNotExist // abort if shifted RV doesnot exist, otherwise set empty
+	   )
+
+{
+  RVInfo::rvParent p(rv->name(),rv->frame()+shift);
+  map < RVInfo::rvParent , unsigned >::iterator it;      
+  if ((it = pos.find(p)) == pos.end()) {
+    // this could be an assertion failure as well, but we need
+    // to set 'it'
+    if (failIfNotExist)
+      coredump("INTERNAL ERROR: Can't find random variable %s(%d) when shifted by %d frames.\n",
+	       rv->name().c_str(),rv->frame(),
+	       shift);
+    else 
+      return NULL;
+  }
+  return rvs[(*it).second];
+}
+
+
+/*
+ * getRVSet: get from the set of random variables that live in the set
+ * (rvs,pos), a time-shifted version of the random variables in the
+ * set 'rvs_to_shift'. Note that this routine does not require the rv
+ * set to be in the set (rvs,pos) since it only depends on each rv via
+ * its name and frame. This means we use this routine to easily grab a
+ * corresponding rv from one unrolling using a rv from another
+ * unrolling using this routine.
+ */
+set<RV*>
+getRVSet(const vector <RV*>& rvs, // a set of RVs
+	 map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
+	 set<RV*>& rvs_to_shift, // the variable to be shifted
+	 const int shift, // the shift amount in frames
+	 const bool failIfNotExist // abort if shifted RV doesnot exist, otherwise set empty
+	 )
+{
+  set <RV*> res;
+  set<RV*>::iterator i;
+  for (i=rvs_to_shift.begin(); i!= rvs_to_shift.end(); i++) {
+    RV *rv = (*i);
+    RV *srv = getRV(rvs,pos,rv,shift,failIfNotExist);
+    if (srv != NULL)
+      res.insert(srv);
+  }
+  return res;
+}
+
+
+
+/*
+ * getRVVec: vector version of getRVSet()
+ */
+set<RV*>
+getRVVec(const vector <RV*>& rvs, // a set of RVs
+	 map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
+	 vector < RVInfo::rvParent> & pps,  // the variable to be shifted
+	 const int shift, // the shift amount in frames
+	 const bool failIfNotExist // abort if shifted RV doesnot exist, otherwise set empty
+	 )
+{
+  set <RV*> res;
+  for (unsigned i=0;i<pps.size();i++) {
+    RVInfo::rvParent& pp = pps[i];
+    RV *srv = getRV(rvs,pos,pp,shift,failIfNotExist);
+    if (srv != NULL)
+      res.insert(srv);
+  }
+  return res;
+}
+
+
+
+
+/*
+ * getRVOVec: return ordered vector, vector version of getRVSet()
+ */
+vector<RV*>
+getRVOVec(const vector <RV*>& rvs, // a set of RVs
+	 map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
+	 vector < RVInfo::rvParent> & pps,  // the variable to be shifted
+	 const int shift, // the shift amount in frames
+	 const bool failIfNotExist // abort if shifted RV doesnot exist, otherwise set empty
+	 )
+{
+  vector <RV*> res;
+  res.resize(pps.size());
+  for (unsigned i=0;i<pps.size();i++) {
+    RVInfo::rvParent& pp = pps[i];
+    RV *srv = getRV(rvs,pos,pp,shift,failIfNotExist);
+    if (srv != NULL)
+      res[i] = srv;
+  }
+  return res;
+}
+
+/*
+ * simple count iterator that counts the number
+ * of insertions made, but doesn't do anything else.
+ */
+template <typename _Container>
+class count_iterator 
+  : public iterator<output_iterator_tag, void, void, void, void> {
+  unsigned counter;
+public:
+
+  count_iterator(_Container& __x) { counter = 0; }
+  count_iterator() { counter = 0; }
+
+  // count_iterator(const count_iterator& ci) { counter = ci.counter; }
+  // count_iterator& operator=(const count_iterator& ci) { counter = ci.counter; }
+
+  count_iterator& operator=(const typename _Container::const_reference _value) 
+  { counter++; return *this; }
+  count_iterator& operator*() { return *this; }
+  count_iterator& operator++() {  return *this; }
+  count_iterator& operator++(int) { return *this; }
+
+  void reset() { counter = 0; }
+  unsigned count() { return counter; }
+};
+
+class setrv_count_iterator: public count_iterator <set <RV*> > {
+public:
+
+};
+
+
+// template<typename _Container>
+// inline count_iterator<_Container>
+// counter(_Container& __x)
+// {
+//   return count_iterator<_Container>();
+// }
+
+
+/*
+ * returns true if the first set of RVs is (not necessarily properly) contained (<=) in the
+ * second set.
+ * TODO: make this generic to sets of anything.
+ */
+bool firstRVSetContainedInSecond(set <RV*>& firstSet,
+				 set <RV*>& secondSet)
+{
+
+  // TODO: figure out how to create a count_iterator without needing
+  // to create dummy object.
+  // set <RV*> dummy;
+  // count_iterator< set <RV*> > myit(dummy);
+  setrv_count_iterator myit;
+
+  myit = set_intersection(firstSet.begin(),firstSet.end(),
+			  secondSet.begin(),secondSet.end(),
+			  myit);
+
+  return (myit.count() == firstSet.size());
+
 }
 
 

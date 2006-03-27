@@ -68,89 +68,6 @@ VCID("$Header$")
  *******************************************************************************
  */
 
-#if 0
-/*
- * Take the union of A and B and place it in C.
- */
-static void
-union_1_2_to_3(const set<RV*>& A,
-	       const set<RV*>& B,
-	       set<RV*>& C,
-	       bool do_not_clear = false)
-{
-  if (!do_not_clear)
-    C.clear();
-  set_union(A.begin(),A.end(),
-	    B.begin(),B.end(),
-	    inserter(C,C.end()));
-}
-#endif
-
-
-
-// TODO: this routine is probably generally useful, place it in an
-// appropriate place. Note that this routine does not require rv to be
-// in rvs since it only depends on rv via its name and frame. This means we use
-// this routine to easily grab a corresponding rv from one unrolling using
-// a rv from another unrolling using this routine.
-
-static RV *
-getRV(const vector <RV*>& rvs, // a set of RVs
-      map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
-      const RVInfo::rvParent& pp) // the variable to get
-{
-
-  map < RVInfo::rvParent , unsigned >::iterator it;
-  if ((it = pos.find(pp)) == pos.end()) {
-    // this could be an assertion failure as well, but we need
-    // to set 'it'
-    coredump("INTERNAL ERROR: getRV: Can't find random variable %s(%d) in unrolled collection.\n",
-	  pp.first.c_str(),pp.second);
-  }
-  return rvs[(*it).second];
-}
-
-static RV *
-shiftedRV(const vector <RV*>& rvs, // a set of RVs
-	  map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
-	  RV* rv, // the variable to be shifted
-	  const int shift=0, // the shift amount in frames
-	  const bool failIfNotExist=true // abort if shifted RV doesnot exist, otherwise set empty
-	  )
-{
-  RVInfo::rvParent p(rv->name(),rv->frame()+shift);
-  map < RVInfo::rvParent , unsigned >::iterator it;      
-  if ((it = pos.find(p)) == pos.end()) {
-    // this could be an assertion failure as well, but we need
-    // to set 'it'
-    if (failIfNotExist)
-      coredump("INTERNAL ERROR: Can't find random variable %s(%d) shifted by %d frames.\n",
-	       rv->name().c_str(),rv->frame(),
-	       shift);
-    else 
-      return NULL;
-  }
-  return rvs[(*it).second];
-}
-static set<RV*>
-shiftedRVSet(const vector <RV*>& rvs, // a set of RVs
-	     map < RVInfo::rvParent, unsigned >& pos, // mappings from name(frame) to RV ptrs
-	     set<RV*>& rvs_to_shift, // the variable to be shifted
-	     const int shift, // the shift amount in frames
-	     const bool failIfNotExist=true // abort if shifted RV doesnot exist, otherwise set empty
-	     )
-{
-  set <RV*> res;
-  set<RV*>::iterator i;
-  for (i=rvs_to_shift.begin(); i!= rvs_to_shift.end(); i++) {
-    RV *rv = (*i);
-    RV *srv = shiftedRV(rvs,pos,rv,shift,failIfNotExist);
-    if (srv != NULL)
-      res.insert(srv);
-  }
-  return res;
-}
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -868,7 +785,7 @@ BoundaryTriangulate
     unroll2_rvs[i]->createNeighborsFromParentsChildren();
   }
   // add any local cliques from .str file
-  fp.addUndirectedLocalCliqueEdges(M+1,unroll2_rvs,unroll2_pos);
+  fp.addUndirectedFactorEdges(M+1,unroll2_rvs,unroll2_pos);
   // moralize graph
   for (unsigned i=0;i<unroll2_rvs.size();i++) {
     unroll2_rvs[i]->moralize();
@@ -1084,8 +1001,8 @@ BoundaryTriangulate
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->createNeighborsFromParentsChildren();
   }
-  // add any local cliques from .str file
-  fp.addUndirectedLocalCliqueEdges(M+S-1,unroll1_rvs,unroll1_pos);
+  // add edges from any extra factors in .str file
+  fp.addUndirectedFactorEdges(M+S-1,unroll1_rvs,unroll1_pos);
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->moralize();
   }
@@ -1160,8 +1077,8 @@ BoundaryTriangulate
   for (unsigned i=0;i<unroll0_rvs.size();i++) {
     unroll0_rvs[i]->createNeighborsFromParentsChildren();
   }
-  // add any local cliques from .str file
-  fp.addUndirectedLocalCliqueEdges(M-1,unroll0_rvs,unroll0_pos);
+  // add edges from any extra factors in .str file
+  fp.addUndirectedFactorEdges(M-1,unroll0_rvs,unroll0_pos);
   // moralize graph
   for (unsigned i=0;i<unroll0_rvs.size();i++) {
     unroll0_rvs[i]->moralize();
@@ -1294,8 +1211,8 @@ BoundaryTriangulate
   set<RV*>::iterator c2_u2_iter;
   for (c2_u2_iter = C2_u2.begin(); c2_u2_iter != C2_u2.end(); c2_u2_iter ++) {  
     RV* rv = (*c2_u2_iter);
-    C2_u2_to_C1_u1[rv] = shiftedRV(unroll1_rvs,unroll1_pos,(rv),-fp.numFramesInC());
-    C2_u2_to_C2_u1[rv] = shiftedRV(unroll1_rvs,unroll1_pos,(rv),(S-1)*fp.numFramesInC());
+    C2_u2_to_C1_u1[rv] = getRV(unroll1_rvs,unroll1_pos,(rv),-fp.numFramesInC());
+    C2_u2_to_C2_u1[rv] = getRV(unroll1_rvs,unroll1_pos,(rv),(S-1)*fp.numFramesInC());
   }
 
 
@@ -2307,6 +2224,11 @@ BoundaryTriangulate
 
 	const BasicTriangulateHeuristic th = th_v[thi];
 
+	// 
+	// TODO: add another heuristic, which is size^\beta * weight^\gamma
+	//       where \gamma and \beta are command line parameters.
+	// 
+
 	if (th == TH_MIN_WEIGHT || th == TH_MIN_WEIGHT_NO_D) {
 	  float tmp_weight = MaxClique::computeWeight(activeNeighbors,(*i),
 					   (th == TH_MIN_WEIGHT));
@@ -2394,7 +2316,9 @@ BoundaryTriangulate
       //       to choose according to the (unnormalized) distribution given by these
       //       weights. This distribution should also be parameterized by \lambda so
       //       that when \lambda = 0, we get back to unform distribution, and \lambda = \infty
-      //       we get back to picking the best (first) one.
+      //       we get back to picking the best (first) one. We can convert from teh
+      //       vector to a single score by doing things like: a*1000 + b*100 + c*10 + d.
+      //       We can use this once we normalize each score to be in range (0,10).
 
       RAND rnd(false);
       int val = rnd.uniform(curNumRandomTop-1);
@@ -6397,8 +6321,8 @@ unrollAndTriangulate(// triangulate heuristics
     for (unsigned i=0;i<rvs.size();i++) {
       rvs[i]->createNeighborsFromParentsChildren();
     }
-    // add any local cliques from .str file
-    // fp.addUndirectedLocalCliqueEdges(numTimes,rvs,pos);
+    // add edges from any extra factors in .str file
+    fp.addUndirectedFactorEdges(numTimes,rvs,pos);
     for (unsigned i=0;i<rvs.size();i++) {
       rvs[i]->moralize();
       rvsSet.insert(rvs[i]);
@@ -7495,7 +7419,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   // same as the Ep <--> union_left interface is easy, since
   // we can just shift the first one to the right and check
   // for set equality.
-  set<RV*> UR_pli_r_shifted = shiftedRVSet(rvs,pos,UR_pli,(leftInterface?(1):(-1))*S*fp.numFramesInC(),false);
+  set<RV*> UR_pli_r_shifted = getRVSet(rvs,pos,UR_pli,(leftInterface?(1):(-1))*S*fp.numFramesInC(),false);
   if (UR_pli_r_shifted != Ep_uli) {
     if (message(Max)) {
       printf("%s INTERFACE FAILED (UR_pli_r_shifted(by %d) != Ep_uli)\n",
@@ -7511,7 +7435,7 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   // left interface to union left. We do this by creating a version of
   // Ep0_pli but shifted right and in the right space, and then
   // compare.
-  set<RV*> Ep0_pli_shifted = shiftedRVSet(rvs,pos,Ep0_pli,(leftInterface?1:0)*S*fp.numFramesInC(),false);
+  set<RV*> Ep0_pli_shifted = getRVSet(rvs,pos,Ep0_pli,(leftInterface?1:0)*S*fp.numFramesInC(),false);
   // next check that they are the same.
   if (Ep0_pli_shifted != Ep_uli) {
     if (message(Max)) {

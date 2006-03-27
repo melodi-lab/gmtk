@@ -1635,3 +1635,82 @@ C | [ C E ]
 #define CAT_B(a,b)                 a ## b
 #define CONCAT(a,b)                CAT_B(a,b)
 
+
+
++ ================================================================================
++ ================================================================================
+
+
+Tue Mar 21 16:21:09 2006
+ 
+ - goals:
+  - triangulation code should be relatively self contained and fast,
+    not too much inference stuff slowing it down when creating cliques.
+  - but still, will need to interface to inference when judging clique quality.
+     - do we need to know the clique in the JT, other than the outgoing
+       separator to judge cost? Probably not, since even if a node 
+       is not assigned, it can be used to prune. A constraint that is
+       not assigned can also be used to prune (if it is a 0/1 valued
+       constraint it can prune, if it is a soft constraint, it can still
+       be used to prune, but soft value is not applied).
+  - keep old and new inference running at same time? (why, in case old is
+    faster). Code is uglier.
+
+
+new clique, has data structor:
+   
+  factors
+    - could be a assigned node
+    - a constraint
+    - a separator (essentially a constraint)
+
+- TODO:
+  1) remove clique driven inference, compile and test.
+  2) comment out code with all jt_weight stuff for now (since
+     it will all change once new inference is there).
+  3) Change maxclique to have a pointer to all JT stuff.
+     (inference cliques can always grab direct pointers if
+      needed to avoid dereferencing).
+     recompile & test.
+  4) Add factor ability in file parser, add factors to 
+     clique representation, various forms of factors
+     (equals, directional, etc.)
+  5) add new representation for storage of factors,
+     nodes, etc. 
+  6) modify existing inference to work with equality constraint,
+     test. Get working for ICSLP paper, etc.
+  7) re-read all the CSP/SAT/val-elimin/recursive-cond papers. 
+  8) figure out and sketch algorithm for
+     new single recursive routine for expanding a clique, that
+     retains information accross time slices (for C) and utterances (for P,E).
+        a) do mathematical description of algorithm first w/o data structures
+        b) do a version with data structures, and list data structures needed.
+  8) implement data structures and modify/optimize single recursive routine
+  9) ultimately, add new code for jt_weight, depending on
+     new recursive routine.
+  10) look into non-recursive version of routine.
+
+What are the things that might be iterated:
+
+  1) separators, we hash from intersection (possibly backtracking) and iterate 
+     over remainder. 
+  2) VE separators (just like seps)
+  3) random variable values
+
+things that provide scores:
+ 
+  1) separators
+  2) ve seps
+  3) rv CPTs
+  4) factors
+
+
+
+
+
+  
+
+
+
+
+

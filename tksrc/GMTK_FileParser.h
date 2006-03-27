@@ -34,6 +34,7 @@
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
+#include "GMTK_FactorInfo.h"
 
 #include "fileParser.h"
 #include "debug.h"
@@ -45,6 +46,7 @@ class FileParser : public IM
  private:
   friend class RV;
   friend class StructPage;
+  friend class JunctionTree;
 
   ////////////////////////////////////////////////////////////////
   // The current pre-allocated random variable that is being
@@ -70,30 +72,22 @@ class FileParser : public IM
   vector < RVInfo > rvInfoVector;
 
 
-  //////////////////////////////////////////////
-  // the next structure is a set of 'cliques' (not max cliques) that
-  // are used for adding edges to the graph and/or producing
-  // hybrid directed-undirected graphical models. 
-  struct LocalClique {
-    // frame where this local clique is defined.
-    unsigned frame; 
-    // and where in the .str file it is defined.
-    unsigned fileLineNumber;
-    string fileName;
-    // the clique's name, used only to identify it later.
-    string name; 
-    // the list of variables (in file order) defined in this clique.
-    vector < RVInfo::rvParent > variables;
-
-    void clear() {
-      fileName.erase(); name.erase();
-      variables.clear();
-    }
-
-  };
-  vector < LocalClique > cliqueList;
-  LocalClique curLC; 
-
+  ////////////////////////////////////////////////
+  // the next set of structures is a set of undiredted edge 'factors',
+  // 'cliques' (not max cliques), or completed sets of variables that
+  // are used for adding edges to the graph and/or producing hybrid
+  // directed-undirected graphical models. They are also used for
+  // undirected style links between variables in the graph, where the
+  // constraint among the variables involved can either be fixed
+  // unlearned of the form:
+  //     1) a constant form of constraint, specified in the .str file that
+  //        inference knows how to deal with
+  //     2) a variable form of constraint, specified using a decision tree boolean evaluator
+  //        or a learned form consisting of a log-linear model:
+  //     3) a set of feature functions of the variables involved in the clique along with
+  //        weights that are learned along with EM using an iterative scaling form of algorithm.
+  vector < FactorInfo > factorList;
+  FactorInfo curFactor; 
 
   //////////////////////////////////////////////
   // the result of the chunk parse
@@ -128,9 +122,10 @@ public:
     TT_Keyword=10,
     TT_Identifier=11,
     TT_Comma=12,
-    TT_String=13,
-    TT_multiLineString=14,
-    TT_Undefined=15
+    TT_Equals=13,
+    TT_String=14,
+    TT_multiLineString=15,
+    TT_Undefined=16
   };
 
 
@@ -179,8 +174,21 @@ public:
     KW_VECPT=35,
     KW_LATTICENODECPT=36,
     KW_LATTICEEDGECPT=37,
-    KW_Clique=38,
-    KW_Variables=39
+    KW_Factor=38,
+    KW_Variables=39,
+    KW_SymmetricConstraint=40,
+    KW_AllVarsEqual=41,
+    KW_AllVarsUnequal=42,
+    KW_VarsNotEqual=43,
+    KW_VarsSumTo=44,
+    KW_VarsMultiplyTo=45,
+    KW_VarsSumMod=46,
+    KW_VarsSatisfy=47,
+    KW_DirectionalConstraint=48,
+    KW_FunctionOf=49,
+    KW_SoftConstraint=50,
+    KW_Table=51,
+    KW_LogLinear=52
   };
 
   // list of token keyword strings.
@@ -292,10 +300,13 @@ private:
   void parseRandomVariableWeightAttributeSpec();
   void parseRandomVariableWeightOptionList();
 
-  void parseLocalClique();
-  void parseCliqueAttributeList();
-  void parseCliqueAttribute();
-  void parseCliqueVariablesAttribute();
+  void parseFactor();
+  void parseFactorAttributeList();
+  void parseFactorAttribute();
+  void parseFactorVariablesAttribute();
+  void parseFactorSymmetricConstraintAttribute();
+  void parseFactorDirectionalConstraintAttribute();
+  void parseFactorSoftConstraintAttribute();
 
   void parseRandomVariableEliminationHintAttribute();
   void parseRandomVariableType();
@@ -331,11 +342,12 @@ private:
   void parseListIndex();
   RVInfo::ListIndex listIndex;
 
-  void completeRVsInClique(LocalClique& clique,
+  void completeRVsInFactor(FactorInfo& factor,
 			   const unsigned offset,
 			   vector<RV*> &unrolledVarSet,
-			   map < RVInfo::rvParent, unsigned >& posOfParentAtFrame);
-
+			   map < RVInfo::rvParent, unsigned >& posOfParentAtFrame,
+			   // return value
+			   set<RV*>& rv_factor);
 
 public:
 
@@ -392,10 +404,19 @@ public:
 	      map < RVInfo::rvParent, unsigned >& ppf);
 
 
-  // Add undirected edges from local clique.
-  void addUndirectedLocalCliqueEdges(unsigned k,
-				     vector<RV*> &unrolledVarSet,
-				     map < RVInfo::rvParent, unsigned >& ppf);
+  // Add undirected edges from local factor.
+  void addUndirectedFactorEdges(unsigned k,
+				vector<RV*> &unrolledVarSet,
+				map < RVInfo::rvParent, unsigned >& ppf) {
+    vector< set<RV*> > factorArray;
+    addUndirectedFactorEdges(k,unrolledVarSet,ppf,factorArray);
+  }
+
+  void addUndirectedFactorEdges(unsigned k,
+				vector<RV*> &unrolledVarSet,
+				map < RVInfo::rvParent, unsigned >& ppf,
+				// return value
+				vector < set < RV* > >& factorArray);
 
 
   // A routine to write out the graph template (P,C,E) in condensed

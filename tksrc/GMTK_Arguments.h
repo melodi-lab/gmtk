@@ -1160,25 +1160,6 @@ static bool  cliquePrintOnlyEntropy = false;
 /*************************************************************************************************************/
 
 
-#if defined(GMTK_ARG_CE_SEP_DRIVEN)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("ceSepDriven",Arg::Opt,MaxClique::ceSeparatorDrivenInference,"Do separator driven inference (=true) or clique driven (=false)"),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-#else
-#endif
-#endif // defined(GMTK_ARG_CE_SEP_DRIVEN)
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
 #if defined(GMTK_ARG_COMPONENT_CACHE)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
