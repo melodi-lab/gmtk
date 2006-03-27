@@ -112,6 +112,11 @@ public:
   // separator is called the LI separator.
   vector<SeparatorClique> separators;
 
+  // The set of factor cliques (i.e., hard and soft constraints) that
+  // live in this partition, corresponding to the 'factor' constructs
+  // in the .str file.
+  vector<FactorClique> factorCliques;
+
   void useLISeparator()  { separators[separators.size()-1].skipMe = false; }
   void skipLISeparator() { separators[separators.size()-1].skipMe = true; }
 
@@ -186,6 +191,7 @@ public:
   JT_Partition& origin;
   sArray< InferenceMaxClique > maxCliques;
   sArray< InferenceSeparatorClique > separatorCliques;
+  sArray< InferenceFactorClique > factorCliques;
 
   // WARNING: constructor hack to create a very broken object with
   // non-functional reference objects (in order to create an array of
@@ -234,13 +240,28 @@ class JunctionTree {
   //  u2: P' C' C' E' 
   //  u3: P' C' C' C' E'
   //  u4: etc.
-  // in the right interface case, P' contains an original P and M copies of C.
-  
+  // in the right interface case, P' contains an original P and M
+  // copies of C.  The next three variables hold partitions P', C',
+  // and E', where, for the standard left interface and simple
+  // boundary case, we have that P' = P, C' = C , and E' = [C
+  // E]. These partitions use the *same* set of C++ random variables
+  // (so the intersection of the random variables in P1 and Co will be
+  // the interface).
   JT_Partition P1; 
   JT_Partition Co;   // C "other", depending on if right or left interface method is used.
   JT_Partition E1; 
 
-  // names of the above three partitions to use for printing,
+  // The set of random variables corresponding to the union of the rvs
+  // P1, Co, E1, corresponding to the template unrolled M+S-1
+  // times. In other words, the number of C repetitions is M + S, so
+  // we unroll one less than that, see
+  // BoundaryTriangulate::findPartitions() for more information. These
+  // are determined in base_unroll().
+  vector <RV*> partition_unrolled_rvs; 
+  // mapping from name(frame) to integer index into unrolled_rvs.
+  map < RVInfo::rvParent, unsigned > partition_ppf;
+
+  // The names of the above three partitions to use for printing,
   // debugging, etc.
   static char* P1_n;
   static char* Co_n;
@@ -285,7 +306,7 @@ class JunctionTree {
   map < RVInfo::rvParent, unsigned > cur_ppf;
   // the evidence probability used during island algorithm.
   logpr cur_prob_evidence;
-  // the EM training beam used for island training
+  // the EM training beam used for island training (TODO:, move this elsewhere, perhaps in clique)
   double curEMTrainingBeam;
   ////////////////////////////////////////////////////////////////////////
 
@@ -336,6 +357,8 @@ class JunctionTree {
   // A version of unroll that starts with the gm_template and fills up
   // base partitions.
   void base_unroll();
+  void insertFactorClique(FactorClique& factorClique,FactorInfo& factor);
+
 
   // Helper routines that are private (only called by other member
   // functions of this class).
@@ -353,6 +376,7 @@ class JunctionTree {
 			       set<RV*>& parSet,
 			       const bool allParentsObserved,
 			       multimap< vector<double>, unsigned >& scoreSet);
+
   static void createDirectedGraphOfCliquesRecurse(JT_Partition& part,
 					   const unsigned root,
 					   vector< bool >& visited);
@@ -490,13 +514,6 @@ public:
   static float jtWeightSparseNodeSepScale;
   static float jtWeightDenseNodeSepScale;
 
-  // When doing separator driven clique instantiation, if this
-  // variable is true, we intersect the separators first before we
-  // create the clique. If set to false, we take the product of the
-  // cliques irrespective of clique intersection. 
-  // TODO: remove as this probably doesn't make sense.
-  // static bool separatorIntersection;
-
 
   // When doing scoring (prob(evidence)), do we make compute the 'viterbi'
   // score (meaning the score of the most probable set of variables
@@ -563,6 +580,8 @@ public:
 
   // routine to find the interface cliques of the partitions
   void computePartitionInterfaces();
+  // routine to create the factors in the appropriate partitions
+  void createFactorCliques();
   // routine to find the interface cliques of a partition
   void computePartitionInterface(JT_Partition& part1,
 				 unsigned int& part1_ric,
@@ -592,10 +611,9 @@ public:
 				 const char *varCliqueAssignmentPrior);
 
 
-  // determine and set the unassignedNodes in each clique
-  // in each partition
-  void computeUnassignedCliqueNodes();
-  static void computeUnassignedCliqueNodes(JT_Partition& part);
+
+  void assignFactorsToCliques();
+  void assignFactorsToCliques(JT_Partition& part);
 
 
   // For the three partitions, set up the different message passing

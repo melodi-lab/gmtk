@@ -448,7 +448,46 @@ void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl=true);
 void printRVSet(FILE*f,const set<RV*>& locset,const bool nl=true);
 void printRVSetPtr(FILE*f,set<RV*>& locset,const bool nl=true);
 
+// other useful routines.
 
+void unionRVs(const set<RV*>& A,
+	      const set<RV*>& B,
+	      set<RV*>& C,
+	      bool do_not_clear = false);
+RV * getRV(const vector <RV*>& rvs,
+	   map < RVInfo::rvParent, unsigned >& pos,
+	   const RVInfo::rvParent& pp,
+	   const int shift=0,  
+	   const bool failIfNotExist=true);
+RV * getRV(const vector <RV*>& rvs,
+	   map < RVInfo::rvParent, unsigned >& pos,
+	   RV* rv,
+	   const int shift=0,
+	   const bool failIfNotExist=true);
+set<RV*> getRVSet(const vector <RV*>& rvs,
+		  map < RVInfo::rvParent, unsigned >& pos,
+		  set<RV*>& rvs_to_shift,
+		  const int shift=0,
+		  const bool failIfNotExist=true);
+set<RV*> getRVVec(const vector <RV*>& rvs,
+		  map < RVInfo::rvParent, unsigned >& pos,
+		  vector < RVInfo::rvParent> & pps,
+		  const int shift=0,
+		  const bool failIfNotExist=true);
+vector<RV*> getRVOVec(const vector <RV*>& rvs,
+		      map < RVInfo::rvParent, unsigned >& pos,
+		      vector < RVInfo::rvParent> & pps,
+		      const int shift=0,
+		      const bool failIfNotExist=true);
 
+void getRVOVec(sArray<RV*>& destination,
+	       const vector <RV*>& rvs,
+	       map < RVInfo::rvParent, unsigned >& pos,
+	       vector < RVInfo::rvParent> & pps,
+	       const int shift=0,
+	       const bool failIfNotExist=true);
+
+bool firstRVSetContainedInSecond(set <RV*>& firstSet,
+				 set <RV*>& secondSet);
 
 #endif
