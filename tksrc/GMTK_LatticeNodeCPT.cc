@@ -78,54 +78,111 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
     return;
   }
 
-  // case on the current frame index
-  if ( drv->frame() < _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].startFrame ) {
-    if ( RV2DRV(parents[1])->val ) {
-      // word transition not allowed
+  if ( _latticeAdt->useTimeParent() )
+  {
+    // use time parent to check time
+    unsigned lat_time = (unsigned)round(_latticeAdt->_frameRate * _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].time);
+
+    // case on the current time
+    if ( RV2DRV(parents[2])->val < lat_time ) {
+      if ( RV2DRV(parents[1])->val ) {
+	// word transition not allowed
+	it.internalStatePtr = NULL;
+	p.set_to_zero();
+      } else {
+	// no word transition, just copy values from previous frame
+	it.internalStatePtr = NULL;
+	drv->val = RV2DRV(parents[0])->val;
+	p.set_to_one();
+      }
+    } else if ( RV2DRV(parents[2])->val > lat_time ) {
+      // we force this cannot happen by setting prob to zero
       it.internalStatePtr = NULL;
       p.set_to_zero();
     } else {
-      // no word transition, just copy values from previous frame
-      it.internalStatePtr = NULL;
-      drv->val = RV2DRV(parents[0])->val;
-      p.set_to_one();
-    }
-  } else if ( drv->frame() > _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].endFrame ) {
-    // we force this cannot happen by setting prob to zero
-    it.internalStatePtr = NULL;
-    p.set_to_zero();
-  } else {
-    if ( RV2DRV(parents[1])->val ) {
-      // iterate next lattice nodes
-      // find the out going edge
-      LatticeADT::LatticeNode &node = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val];
+      if ( RV2DRV(parents[1])->val ) {
+	// iterate next lattice nodes
+	// find the out going edge
+	LatticeADT::LatticeNode &node = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val];
 
-      // if the lattice node is the end, return prob zero
-      if ( node.edges.totalNumberEntries() == 0 ) {
+	// if the lattice node is the end, return prob zero
+	if ( node.edges.totalNumberEntries() == 0 ) {
+	  it.internalStatePtr = NULL;
+	  p.set_to_zero();
+	  return;
+	}
+
+	// check out the out-going edges based on parent value
+	shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator();
+
+	// now the current node can have next transition
+	// find the correct iterators
+	node.edges.begin(*pit);
+
+	// set up the internal state for iterator
+	it.internalStatePtr = (void*)pit;
+	it.internalState = RV2DRV(parents[0])->val;
+	it.drv = drv;
+
+	drv->val = pit->key();
+	p = (**pit).gmtk_score;
+      } else {
+	// no word transition, copy value
 	it.internalStatePtr = NULL;
-	p.set_to_zero();
-	return;
+	drv->val = RV2DRV(parents[0])->val;
+	p.set_to_one();
       }
-
-      // check out the out-going edges based on parent value
-      shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator();
-
-      // now the current node can have next transition
-      // find the correct iterators
-      node.edges.begin(*pit);
-
-      // set up the internal state for iterator
-      it.internalStatePtr = (void*)pit;
-      it.internalState = RV2DRV(parents[0])->val;
-      it.drv = drv;
-
-      drv->val = pit->key();
-      p = (**pit).gmtk_score;
-    } else {
-      // no word transition, copy value
+    }
+  } else {
+    // case on the current frame index
+    if ( drv->frame() < _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].startFrame ) {
+      if ( RV2DRV(parents[1])->val ) {
+        // word transition not allowed
+        it.internalStatePtr = NULL;
+        p.set_to_zero();
+      } else {
+        // no word transition, just copy values from previous frame
+        it.internalStatePtr = NULL;
+        drv->val = RV2DRV(parents[0])->val;
+        p.set_to_one();
+      }
+    } else if ( drv->frame() > _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].endFrame ) {
+      // we force this cannot happen by setting prob to zero
       it.internalStatePtr = NULL;
-      drv->val = RV2DRV(parents[0])->val;
-      p.set_to_one();
+      p.set_to_zero();
+    } else {
+      if ( RV2DRV(parents[1])->val ) {
+        // iterate next lattice nodes
+        // find the out going edge
+        LatticeADT::LatticeNode &node = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val];
+
+        // if the lattice node is the end, return prob zero
+        if ( node.edges.totalNumberEntries() == 0 ) {
+	  it.internalStatePtr = NULL;
+          p.set_to_zero();
+          return;
+        }
+
+        // check out the out-going edges based on parent value
+        shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator();
+
+        // now the current node can have next transition
+        // find the correct iterators
+        node.edges.begin(*pit);
+
+        // set up the internal state for iterator
+        it.internalStatePtr = (void*)pit;
+        it.internalState = RV2DRV(parents[0])->val;
+        it.drv = drv;
+
+        drv->val = pit->key();
+        p = (**pit).gmtk_score;
+      } else {
+        // no word transition, copy value
+        it.internalStatePtr = NULL;
+        drv->val = RV2DRV(parents[0])->val;
+        p.set_to_one();
+      }
     }
   }
 }
@@ -202,6 +259,17 @@ bool LatticeNodeCPT::next(iterator &it, logpr& p) {
  */
 void LatticeNodeCPT::setLatticeADT(const LatticeADT &latticeAdt) {
   _latticeAdt = &latticeAdt;
+
+  // check whether time is also used as parent
+  if ( _latticeAdt->useTimeParent() ) {
+    _numParents = 3;
+    cardinalities.resize(3);
+    cardinalities[2] = _latticeAdt->_timeCardinality;
+  } else {
+    _numParents = 2;
+    cardinalities.resize(2);
+  }
+
   // first parent is noade
   _card = cardinalities[0] = _latticeAdt->_nodeCardinality;
   // second parent is word transition

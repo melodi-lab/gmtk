@@ -340,6 +340,8 @@ main(int argc,char*argv[])
     while (!in.eof())
     {
       in >> val >> name >> ws;
+      if ( in.eof() )
+	break;
       // printf("reading %d word = (%s)\n",val,name.c_str());
       word_map[val] = name;
     }

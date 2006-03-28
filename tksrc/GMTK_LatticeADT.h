@@ -35,105 +35,115 @@
  * HTK lattice support
  */
 class LatticeADT : public NamedObject {
-public:
-	LatticeADT();
-	~LatticeADT();
+ public:
+  LatticeADT();
+  ~LatticeADT();
 
-	// read from HTK lattice format file
-	void readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab);
+  // read from HTK lattice format file
+  void readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab);
 
-	// read from GMTK master file
-	void read(iDataStreamFile &is);
+  // read from GMTK master file
+  void read(iDataStreamFile &is);
 
-	// this lattice is iterable
-	inline bool iterable() const { return _latticeFile != NULL; }
+  // this lattice is iterable
+  inline bool iterable() const { return _latticeFile != NULL; }
 
-	void seek(unsigned nmbr);
-	void initializeIterableLattice(const string &fileName);
-	void beginIterableLattice();
-	void nextIterableLattice();
+  void seek(unsigned nmbr);
+  void initializeIterableLattice(const string &fileName);
+  void beginIterableLattice();
+  void nextIterableLattice();
 
-	// reset the frame indices
-	void resetFrameIndices(unsigned numFrames);
-	void useScore(unsigned option);
+  // reset the frame indices
+  void resetFrameIndices(unsigned numFrames);
+  void useScore(unsigned option);
 
-	friend class LatticeNodeCPT;
-	friend class LatticeEdgeCPT;
+  inline bool useTimeParent() const {
+    return _timeCardinality != 0;
+  }
 
-protected:
-	/**
-	 * lattice edge
-	 */
-	struct LatticeEdge {
-		/** emission id from current state to next state */
-		unsigned emissionId;
-		/** acoustic score */
-		logpr ac_score;
-		/** acoustic score */
-		logpr lm_score;
-		/** posterior */
-		logpr posterior;
-		/** score used in GMTK */
-		logpr gmtk_score;
+  friend class LatticeNodeCPT;
+  friend class LatticeEdgeCPT;
 
-		LatticeEdge() : emissionId(0), gmtk_score(1.0) {}
-	};
+ protected:
+  /**
+   * lattice edge
+   */
+  struct LatticeEdge {
+    /** emission id from current state to next state */
+    unsigned emissionId;
+    /** acoustic score */
+    logpr ac_score;
+    /** acoustic score */
+    logpr lm_score;
+    /** posterior */
+    logpr posterior;
+    /** score used in GMTK */
+    logpr gmtk_score;
 
-	/**
-	 * lattice node information
-	 */
-	struct LatticeNode {
-		/** absolute time for this node */
-		float time;
-		/** starting frame number */
-		unsigned startFrame;
-		/** ending frame number */
-		unsigned endFrame;
-		/** possible out-going edges */
-		shash_map_iter<unsigned, LatticeEdge> edges;
+    LatticeEdge() : emissionId(0), gmtk_score(1.0) {}
+  };
 
-		LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdge>(1)) {}
-	};
+  /**
+   * lattice node information
+   */
+  struct LatticeNode {
+    /** absolute time for this node */
+    float time;
+    /** starting frame number */
+    unsigned startFrame;
+    /** ending frame number */
+    unsigned endFrame;
+    /** possible out-going edges */
+    shash_map_iter<unsigned, LatticeEdge> edges;
 
-	/**
-	 * renormalize posterior
-	 */
-	void normalizePosterior();
+    LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdge>(1)) {}
+  };
 
-	/** lattice nodes */
-	LatticeNode *_latticeNodes;
-	/** number of nodes in lattice this should be smaller than node cardinality */
-	unsigned _numberOfNodes;
-	/** number of links in lattice */
-	unsigned _numberOfLinks;
-	/** start node id */
-	unsigned _start;
-	/** end node id */
-	unsigned _end;
-	/** language model scale */
-	double _lmscale;
-	/** word penalty */
-	double _wdpenalty;
-	/** acoustic model scale */
-	double _acscale;
-	/** ? */
-	double _amscale;
-	/** log base */
-	double _base;
+  /**
+   * renormalize posterior
+   */
+  void normalizePosterior();
 
-	/** how many frame relaxation is allowed in CPT */
-	unsigned _frameRelax;
+  /** lattice nodes */
+  LatticeNode *_latticeNodes;
+  /** number of nodes in lattice this should be smaller than node cardinality */
+  unsigned _numberOfNodes;
+  /** number of links in lattice */
+  unsigned _numberOfLinks;
+  /** start node id */
+  unsigned _start;
+  /** end node id */
+  unsigned _end;
+  /** language model scale */
+  double _lmscale;
+  /** word penalty */
+  double _wdpenalty;
+  /** acoustic model scale */
+  double _acscale;
+  /** ? */
+  double _amscale;
+  /** log base */
+  double _base;
 
-	/** if this is an iterable cpt */
-	iDataStreamFile* _latticeFile; // the file pointer
-	string _latticeFileName; // the file name
-	unsigned _numLattices; // number of lattices in this file
-	int _curNum; // the current lattice number
-	string _curName; // the current lattice cpt name
+  /** frame rate */
+  static const double _frameRate;
+  /** how many frame relaxation is allowed in CPT */
+  unsigned _frameRelax;
 
-	// the following is GM paramters
-	unsigned _nodeCardinality;
-	unsigned _wordCardinality;
+  /** if this is an iterable cpt */
+  iDataStreamFile* _latticeFile; // the file pointer
+  string _latticeFileName; // the file name
+  unsigned _numLattices; // number of lattices in this file
+  int _curNum; // the current lattice number
+  string _curName; // the current lattice cpt name
+
+  // the following is GM paramters
+  unsigned _nodeCardinality;
+  unsigned _wordCardinality;
+	
+  // lattice can optionally have time as parent.  In this
+  // case, we need time cardinality. 0 mean no time parent.
+  unsigned _timeCardinality;
 };
 
 
