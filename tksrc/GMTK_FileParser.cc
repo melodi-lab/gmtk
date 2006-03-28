@@ -3293,12 +3293,18 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		    cpts[j]->parentCardinality(par));
 	  }
 	} else if ( cpts[j]->cptType == CPT::di_LatticeNodeCPT ) {
-		// lattice node cpt only has one parent
-		if ( cpts[j]->numParents() != 2 )
-			error("Error: RV \"%s\" at frame %d (line %d), should have only one parent",
-				rvInfoVector[i].name.c_str(),
-				rvInfoVector[i].frame,
-				rvInfoVector[i].fileLineNumber);
+	  // lattice node cpt only has three or two parent
+	  if ( ((LatticeNodeCPT*)cpts[j])->useTimeParent() ) {
+	    if ( cpts[j]->numParents() != 3 )
+	    error("Error: RV \"%s\" at frame %d (line %d), should have only three parents",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber);
+	  } else if ( cpts[j]->numParents() != 2 )
+	    error("Error: RV \"%s\" at frame %d (line %d), should have only two parents",
+		  rvInfoVector[i].name.c_str(),
+		  rvInfoVector[i].frame,
+		  rvInfoVector[i].fileLineNumber);
 	  if ((unsigned)cpts[j]->card() != rvInfoVector[i].rvCard) {
 	    error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but %s \"%s\" requires cardinality of %d.\n",
 		  rvInfoVector[i].name.c_str(),
@@ -3309,6 +3315,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  cpts[j]->name().c_str(),
 		  cpts[j]->card());
 	  }
+
 	  for (unsigned par=0;par<cpts[j]->numParents();par++) {
 	    if (RV2DRV(rv->condParentsVec(j)[par])->cardinality !=
 		cpts[j]->parentCardinality(par))
