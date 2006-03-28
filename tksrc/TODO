@@ -3510,3 +3510,21 @@ Fri Mar 24 00:32:02 2006
   - for docs: make sure to indicat that to get cpp output, we need to give
     default -I options that GMTK gives (i.e., cpp -I. ,etc. in order to
     see what cpp does).
+
+
+Mon Mar 27 16:23:14 2006
+  - three different tags types on dcache collections
+      - always applicable
+         - so once learned, should always be retained except when to reclaim memory.
+      - applicable only in this utterance accross time frames
+         - so once learned, should always be retained within the same observation sequence, 
+           except when to reclaim memory. When 
+      - only applicable only to this frame
+         - should be reclaimed as soon as we leave the frame (e.g., dcaches with things
+           like non-constant observations, VECPTs, lattice CPTs, etc.). 
+           Idea: if observation is from an obs file, and it happens to be the same value in the
+           neighboring frame, can keep the dcache entry for that one.
+           Might want to keep these around on the sidelines during island???
+
+
+   
