@@ -187,8 +187,22 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
       case 'W':
 	// word token
 	edge.emissionId = vocab.index(ptr+2);
-	if ( edge.emissionId == vocab.index("<unk>") )
-	  error("Error: word '%s' in lattice '%s' cannot be found in vocab", ptr+2, ifs.fileName());
+	if ( edge.emissionId == vocab.index("<unk>") ) {
+	  // ptr is the string value of an edge in the lattice. This
+	  // case corresponds to the case where the lattice contains
+	  // an edge that is labeled '<unk>' or it contains an edge
+	  // that has a label that is unknown in the current
+	  // vocabulary. TODO: ultimately, give options to have unk,
+	  // no unk, etc. similar to SRILM, but for now map either the
+	  // string <unk> or any other unknown word relative to the
+	  // vocab object to the id corresponding to the <unk> string.
+	  // Note: an LM, if it is used for this, must have an <unk> ability
+	  //  (i.e., an LM must be able to re-score an unk symbol).
+	  // Note: this will lose the original ID of the word (i.e., any
+	  // printing will print out unk).
+	  // TODO: fix this /rethink.
+	  // error("Error: word '%s' in lattice '%s' cannot be found in vocab", ptr+2, ifs.fileName());
+	}
 	break;
       case 'a':
 	// acoustic score
