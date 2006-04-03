@@ -3527,4 +3527,18 @@ Mon Mar 27 16:23:14 2006
            Might want to keep these around on the sidelines during island???
 
 
+Thu Mar 30 19:41:58 2006
+  - in new inference, make sure that all the cached factors and so on are based on
+    the actual factors (cpts, and factors) rather than on the undirected edges. 
+    For example, if we iterate over the incomming separator first, we are
+       essentially conditioning on the variables in the separator which might render
+       other variables independent (and can thus be solved separately).
+    All variables currently with values we are conditioning on, and might rendor
+    remainder of elements in clique independent.
+    If we're doing left-interface method, this is particular important to
+     note in light of the fact that the left-interface of the next chunk
+     has completed 'neighbors' even though those variables might be quite independnet
+     conditioned on the current value set that we're conditioning on.
+    
+       
    
