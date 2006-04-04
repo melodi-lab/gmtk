@@ -113,7 +113,8 @@ private:
 				    // random triangulation
 				    /* R */ TH_RANDOM = 9, 
 				    // reverse time frame
-				    /* X */ TH_MAX_TIMEFRAME = 10
+				    /* X */ TH_MAX_TIMEFRAME = 10,
+				    /* I */ TH_WEIGHTED_MIN_FILLIN = 11
   };
  
   typedef enum { 
@@ -232,6 +233,10 @@ private:
 
   // computes the fill in of a set of variables.
   int computeFillIn(const set<RV*>& nodes);
+
+  // computes the weighted fill in of a set of variables.
+  double computeWeightedFillIn(const set<RV*>& nodes);
+
 
   // compute the weight of a vector of cliques
   double graphWeight(vector<MaxClique>& cliques);

@@ -402,6 +402,9 @@ BoundaryTriangulate::parseTriHeuristicString(const string& tri_heur_str,
 	case 'F':
 	  tri_heur.heuristic_vector.push_back(TH_MIN_FILLIN);
 	  break;
+	case 'I':
+	  tri_heur.heuristic_vector.push_back(TH_WEIGHTED_MIN_FILLIN);
+	  break;
 	case 'W':
 	  tri_heur.heuristic_vector.push_back(TH_MIN_WEIGHT);
 	  break;
@@ -599,6 +602,78 @@ computeFillIn(const set<RV*>& nodes)
   fill_in /= 2;
   return fill_in;
 
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * BoundaryTriangulate::computeWeightedFillIn()
+ *
+ *   Computes the sum of the product of the cardinalities of the
+ *   fill-in edges that would need to be added among 'nodes' to make
+ *   'nodes' complete. In other words, we sum the we "weight" of
+ *   each fill-in edge, and each fill-in edge's weight is the 
+ *   product of the cardinalities of the edges two nodes. 
+ *
+ * Preconditions:
+ *   Set of nodes must be valid meaning that it has valid neighbors,
+ *   parents, and children member variables.
+ *
+ * Postconditions:
+ *   computed weight is provided.
+ *
+ * Side Effects:
+ *     none
+ *
+ * Results:
+ *     The log base 10 weight of the weighted fill in.
+ *
+ *
+ *-----------------------------------------------------------------------
+ */
+double
+BoundaryTriangulate::
+computeWeightedFillIn(const set<RV*>& nodes) 
+{
+
+
+  // start off with some very small value, which
+  // survives if there is no fill-in (meaning this
+  // case would be chosen).
+  double weight = -1e10;
+  bool start = true;
+  for (set<RV*>::iterator i=nodes.begin();
+       i != nodes.end();
+       i++) {
+    for (set<RV*>::iterator j=nodes.begin();
+	 j != nodes.end();
+	 j++) {
+      
+      if (i != j) {
+	if ((*j)->neighbors.find((*i)) == (*j)->neighbors.end()) {
+	  // then we would need to fill it in.
+	  double crrnt_weight;
+	  set<RV*> edge;
+	  edge.insert((*i));
+	  crrnt_weight = MaxClique::computeWeight(edge,(*j));
+	  if (start) {
+	    start = false;
+	    weight = crrnt_weight; 
+	  } else {
+	    weight = log10add(crrnt_weight,weight);
+	  } 
+	}
+      }
+    }
+  }
+
+
+  // Note, we counted each edge twice, so fix that, although not strictly
+  // necessary since we could just compute with 2*fill_in_weight, we do this,
+  // however, since the user will be happier.
+  weight -= log10(2.0);
+  return weight;
 }
 
 
@@ -2238,6 +2313,10 @@ BoundaryTriangulate
 	  int fill_in = computeFillIn(activeNeighbors);
 	  weight.push_back((float)fill_in);
 	  infoMsg(Huge,"  node has fill_in = %d\n",fill_in);
+	} else if (th == TH_WEIGHTED_MIN_FILLIN) {
+	  double wfill_in = computeWeightedFillIn(activeNeighbors);
+	  weight.push_back(wfill_in);
+	  infoMsg(Huge,"  node has weighted_fill_in = %f\n",wfill_in);
 	} else if (th == TH_MIN_TIMEFRAME) {
 	  weight.push_back((*i)->frame());
 	  infoMsg(Huge,"  node has time frame = %d\n",(*i)->frame());
