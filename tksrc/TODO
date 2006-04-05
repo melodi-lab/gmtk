@@ -3550,3 +3550,7 @@ Tue Apr  4 19:35:52 2006
     and we do not clear out the clique's value hash table, we don't need to
     do the extra check, since we know the entry will exist (so we can do the
     faster hash find, under assumption entry will be found). 
+
+Tue Apr  4 20:15:12 2006
+  - hash tables clique value holders for P and E. Code should check to see if they can be shared
+    with C clique versions (rather than having separate one for P, C, and E cliques).
