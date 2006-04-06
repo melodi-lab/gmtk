@@ -138,6 +138,11 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
   const char seps[] = " \t\n";
   unsigned id;
 
+  // to assert there is no erros in the latice, we perform two checks:
+  // 1. make sure that for each edge, the end time is later than start time
+  // 2. make sure that end node has the latest time
+  float latestTime = 0.0;
+
   // reading nodes
   for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
     ifs.readLine(line, 1024);
@@ -154,9 +159,17 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	// by default, there is no frame constrain
 	_latticeNodes[id].startFrame = 0;
 	_latticeNodes[id].endFrame = ~0;
+
+	// update latest time
+	if ( latestTime < _latticeNodes[id].time )
+	  latestTime = _latticeNodes[id].time;
       }
     }
   }
+
+  // make sure end node has the latest time
+  if ( _latticeNodes[_end].time < latestTime )
+    error("lattice end node doesn't have the latest time.");
 
   // reading links
   double score;
@@ -237,6 +250,11 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	break;
       }
     }
+
+    // make sure the end time is later than start time
+    if ( _latticeNodes[id].time >= _latticeNodes[endNodeId].time )
+      error("Lattice edge %d is reverse in time from %d(%f) to time %d(%f)",
+	    i, id, _latticeNodes[id].time, endNodeId, _latticeNodes[endNodeId].time);
 
     _latticeNodes[id].edges.insert(endNodeId, edge);
   }
