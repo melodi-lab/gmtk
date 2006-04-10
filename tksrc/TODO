@@ -3557,3 +3557,29 @@ Tue Apr  4 20:15:12 2006
 
 Wed Apr  5 19:34:39 2006
   - gmtkViz, change so that it removes automount string from .gvp file (i.e., change /atm/foo to /n/foo).
+
+Sat Apr  8 19:06:20 2006
+  - add other CPT types
+     - Dirichlet distribution for continous vectors on symplexes (for distributions over observed
+       values which are really probability vectors)
+     - Poison distributions (for length variables), but need to figure out how to make them finite
+       valued (since poisson is n >= 0)
+     - 
+
+Sun Apr  9 07:41:00 2006
+  - regarding the 'diversity pruning' idea from above: the question is how
+    to get a distance measure. The distance should probably be based on
+    original RV value equality (or distance), with weights to determine
+    which RVs being different are more important. I.e., with K variables
+    we'll have w_k*d_k(x^{(k)}_1,x^{(k)}_2).
+    We could have the user specify both the weights and the d() function. This could
+    take the form of, for each variable, a length card vector and card x card table.
+    Simpler approach might be just to set w_k = 1, and use hamming distance on varables 
+         (i.e., d(a,b) = (a == b))
+    Need fast implementation of MST.
+
+Mon Apr 10 13:25:12 2006
+  - VE style inference, we can simulate 'factored' representations by
+    shrinking d-sets artificially and in a value specific nature, which
+    corresponds to increasing the factorization. a d-set shrunk to zero
+    means factorization (entire independence). 
