@@ -248,7 +248,7 @@ ClusterableMean::Euclidean_distance(Clusterable *cc)
 
   for(signed i=0;i<my_mean_vector->means.len();i++){
     //cerr << m1->means[i] << "," m2->means[i]<<endl;
-    e=e+ pow(my_mean_vector->means[i] - other_mean_vector->means[i],2.0);
+    e=e+ pow((double)(my_mean_vector->means[i] - other_mean_vector->means[i]),2.0);
   }
   return sqrt(e);
 }
