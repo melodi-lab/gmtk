@@ -3583,3 +3583,8 @@ Mon Apr 10 13:25:12 2006
     shrinking d-sets artificially and in a value specific nature, which
     corresponds to increasing the factorization. a d-set shrunk to zero
     means factorization (entire independence). 
+
+Tue Apr 11 21:09:47 2006 
+ - another elimination heuristic:
+    - do min-fillin if it is below or equal to a threshold (default is 0), and then
+      if it is above a threshold, do another heuristic (e.g., size, weight, etc).
