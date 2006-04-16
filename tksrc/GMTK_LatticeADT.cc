@@ -352,10 +352,10 @@ void LatticeADT::read(iDataStreamFile &is) {
 	    option &= ~0x3;
 	    option |= 0x2;
 	  } else if ( strcmp(tok, "LM") == 0 ) {
-	    option &= 0xc;
+	    option &= ~0xc;
 	    option |= 0x4;
 	  } else if ( strcmp(tok, "LMScale") == 0 ) {
-	    option &= 0xc;
+	    option &= ~0xc;
 	    option |= 0x8;
 	  } else if ( strcmp(tok, "WDPenalty") == 0 ) {
 	    option |= 0x10;
@@ -541,10 +541,10 @@ void LatticeADT::nextIterableLattice() {
 	  option &= ~0x3;
 	  option |= 0x2;
 	} else if ( strcmp(tok, "LM") == 0 ) {
-	  option &= 0xc;
+	  option &= ~0xc;
 	  option |= 0x4;
 	} else if ( strcmp(tok, "LMScale") == 0 ) {
-	  option &= 0xc;
+	  option &= ~0xc;
 	  option |= 0x8;
 	} else if ( strcmp(tok, "WDPenalty") == 0 ) {
 	  option |= 0x10;
@@ -606,23 +606,23 @@ void LatticeADT::useScore(unsigned option) {
       shash_map_iter<unsigned, LatticeEdge>::iterator it;
       _latticeNodes[i].edges.begin(it);
       do {
-	logpr &score = (*it).gmtk_score;
+	// score of the edge in ln value
+	double score = 0;
 
 	if ( option & (0x1u<<5) ) {
 	  // use only posterior
-	  score = (*it).posterior;
+	  score = (*it).posterior.val();
 	} else {
 	  // do we use AC score?
 	  unsigned x = option & 0x3;
 	  switch ( x ) {
 	  case 1:	// AM score only
-	    score = (*it).ac_score;
+	    score = (*it).ac_score.val();
 	    break;
 	  case 2: // AM^a
-	    score = (*it).ac_score.pow(_amscale);
+	    score = (*it).ac_score.val() * _acscale;
 	    break;
 	  default: // no AM score
-	    score.set_to_one();
 	    break;
 	  }
 
@@ -630,10 +630,10 @@ void LatticeADT::useScore(unsigned option) {
 	  x = (option >> 2) & 0x3;
 	  switch ( x ) {
 	  case 1: // LM score only
-	    score *= (*it).lm_score;
+	    score += (*it).lm_score.val();
 	    break;
 	  case 2: // LM^b
-	    score *= (*it).lm_score.pow(_lmscale);
+	    score += (*it).lm_score.val() * _lmscale;
 	    break;
 	  default: // no LM score
 	    break;
@@ -641,14 +641,22 @@ void LatticeADT::useScore(unsigned option) {
 
 	  // do we use insertion penalty?
 	  if ( option & 0x10 )
-	    score.setFromLogP(score.val() + _wdpenalty);
+	    score += _wdpenalty;
 	}
+
+	// check whether the score is too small that will have zero
+	// probability.
+	if ( score <= LSMALL )
+          warning("score is essentially zero in lattice\n");
+
+	(*it).gmtk_score.setFromLogP(score);
       } while ( it.next() );
     }
   }
 
 #if 0
   // print the lattice for debugging reasons
+  printf("acscale=%f, amscale=%f, lmscale=%f\n", _acscale, _amscale, _lmscale);
   printf("starting %d and end %d\n", _start, _end);
   for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
     printf("node %d at frame (%u,%u):\n", i, _latticeNodes[i].startFrame, _latticeNodes[i].endFrame);
