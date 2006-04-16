@@ -67,11 +67,25 @@ LatticeNodeCPT::~LatticeNodeCPT() {
  *-----------------------------------------------------------------------
  */
 void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
+  // 
+  // In both cases, 
+  //    drv is the current lattice node.
+  // We assume that there are either 2 or 3 parents.
+  // In the case of 2 parents, (where time is normally obtained from 'drv', the current lattice node)
+  //      parent[0] is the previous lattice node
+  //      parent[1] is the  "word transition" (or variable that is acting like such a construct)
+  // In the case of 3 parents, 
+  //      parent[0] is the previous lattice node
+  //      parent[1] is the the "word transition" (or variable that is acting like such a construct)
+  //      parent[2] is the "time observation", namely it is a variable that is presumably observed that
+  //                keeps track of the time frame to use (rather than using the time frame of 'drv').
+  // 
   // For simplity reason, here cardinality of lattice nodes can be
   // bigger than number of real nodes in some particular lattice.
   // This is because in iterable lattices, different lattices can
   // have different number of nodes.  But in master file, we can
   // just specify the max of those.
+
   if ( RV2DRV(parents[0])->val > _latticeAdt->_end ) {
     it.internalStatePtr = NULL;
     p.set_to_zero();
@@ -81,25 +95,47 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
   if ( _latticeAdt->useTimeParent() )
   {
     // use time parent to check time
+
+    // first, compute lat_time, the time of the previous lattice node
+    // rounded to the closest frame. parent[0] contains the value of
+    // the previous lattice node, and we need to do a lookup in the
+    // lattce to find the actual previous lattice node to get its
+    // time.
     unsigned lat_time = (unsigned)round(_latticeAdt->_frameRate * _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].time);
 
     // case on the current time
     if ( RV2DRV(parents[2])->val < lat_time ) {
+      // then the current time is less than the previous lattice node.
       if ( RV2DRV(parents[1])->val ) {
-	// word transition not allowed
+	// a (word) transition is being hypothesized, but we do not allow it. Give it a
+	// zero probability.
 	it.internalStatePtr = NULL;
 	p.set_to_zero();
       } else {
-	// no word transition, just copy values from previous frame
+	// a (word) transition is not being hypothesized, so
+	// we copy the previous lattice node's value (from previous frame) to drv.
 	it.internalStatePtr = NULL;
 	drv->val = RV2DRV(parents[0])->val;
 	p.set_to_one();
       }
     } else if ( RV2DRV(parents[2])->val > lat_time ) {
-      // we force this cannot happen by setting prob to zero
+      // Then, the current time (i.e., parent[2]'s time value) is
+      // already ahead (i.e., after, later) of when a transition for
+      // the previous lattice node value may occur. We also want to
+      // force this not to happen by setting prob to zero. While
+      // you might think this might be valid, only allow jumping
+      // from the prevous lattice node when the time is exactly
+      // equal to the previous lattice nodes.
+
       it.internalStatePtr = NULL;
       p.set_to_zero();
     } else {
+      // (RV2DRV(parents[2])->val == lat_time), which means that the
+      // current time is right at the point that we allow the previous
+      // lattice node to jump to the next set of possible lattice
+      // nodes.
+
+
       if ( RV2DRV(parents[1])->val ) {
 	// iterate next lattice nodes
 	// find the out going edge
