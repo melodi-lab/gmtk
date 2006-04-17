@@ -86,6 +86,9 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
   // have different number of nodes.  But in master file, we can
   // just specify the max of those.
 
+  // initialize it to something always at least valid.
+  drv->val = 0;
+
   if ( RV2DRV(parents[0])->val > _latticeAdt->_end ) {
     it.internalStatePtr = NULL;
     p.set_to_zero();
