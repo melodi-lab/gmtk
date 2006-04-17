@@ -68,9 +68,9 @@ LatticeNodeCPT::~LatticeNodeCPT() {
  */
 void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
   // 
-  // In both cases, 
+  // We assume that there are either 2 or 3 parents,
+  // in both cases, 
   //    drv is the current lattice node.
-  // We assume that there are either 2 or 3 parents.
   // In the case of 2 parents, (where time is normally obtained from 'drv', the current lattice node)
   //      parent[0] is the previous lattice node
   //      parent[1] is the  "word transition" (or variable that is acting like such a construct)
