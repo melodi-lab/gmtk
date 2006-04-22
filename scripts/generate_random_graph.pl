@@ -292,6 +292,24 @@ $nmbr_deterministic_CPT = 0;
 $nmbr_observed = 0;
 
 ##############################################################################
+# Choose if nodes are observed
+##############################################################################
+for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
+{
+  $vertex = $sorted_vertices[$node_index];
+
+  $rndm_nmbr = rand(1);
+  if ($rndm_nmbr < $observed) {
+    if (($continuous_obs==0) || (grep /^$vertex$/, @sinks)) {
+      set_observed($vertex); 
+      $nmbr_observed++;
+    }
+  }
+}
+
+(($nodes_per_frame-$nmbr_observed)>=$deterministic_nmbr) or die;
+
+##############################################################################
 # If using a fixed number of deterministic variables choose them now 
 ##############################################################################
 my @deterministic_list;
@@ -304,15 +322,17 @@ if (defined $deterministic_nmbr)
     $vertex = $sorted_vertices[$node_index];
     if ( ((scalar $G->predecessors($vertex)) > 0) &&
          (!(grep /^$vertex$/, @deterministic_list)) ) {
-      push @deterministic_list, $vertex;
-      $count++;
+      if (! (($G->has_vertex_attribute( $vertex, 'observed')) && 
+            ($G->get_vertex_attribute( $vertex, 'observed') == 1)) ) {
+        push @deterministic_list, $vertex;
+        $count++;
+      }
     }
   }
 }
 
 ##############################################################################
-# Set the initial cardinalities, and decide if each vertex is random, 
-# deterministic, or observed.
+# Set the initial cardinalities and if each vertex is random or deterministic
 ##############################################################################
 for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
 {
@@ -336,37 +356,27 @@ for($node_index=0; $node_index<$nodes_per_frame; $node_index++)
     }
   }
 
-  if ($is_det) { 
-    $G->set_vertex_attribute( $vertex, 'deterministic', 1 );    
-    $G->set_vertex_attribute( $vertex, 'cardinality', 1 ); 
-    $nmbr_deterministic_CPT++;
-    if ($nmbr_frames == 2) { 
-      $G->set_vertex_attribute( $vertex_b, 'deterministic', 1 );    
-      $G->set_vertex_attribute( $vertex_b, 'cardinality', 1 ); 
+  if (! (($G->has_vertex_attribute( $vertex, 'observed')) && 
+         ($G->get_vertex_attribute( $vertex, 'observed') == 1)) ) {
+    if ($is_det) { 
+      $G->set_vertex_attribute( $vertex, 'deterministic', 1 );    
+      $G->set_vertex_attribute( $vertex, 'cardinality', 1 ); 
       $nmbr_deterministic_CPT++;
-    }
-  }
-  else {
-    $G->set_vertex_attribute( $vertex, 'deterministic', 0 );
-    $rndm_nmbr = 2 + int(rand($max_rndm_card-2));
-    $G->set_vertex_attribute( $vertex, 'cardinality', $rndm_nmbr );
-    if ($nmbr_frames == 2) { 
-      $G->set_vertex_attribute( $vertex_b, 'deterministic', 0 );    
-      $G->set_vertex_attribute( $vertex_b, 'cardinality', $rndm_nmbr );
-    }
-  }
-
-  ##############################################################################
-  # Choose if node is observed
-  ##############################################################################
-  $rndm_nmbr = rand(1);
-  if ($rndm_nmbr < $observed) {
-    if (($continuous_obs==0) || (grep /^$vertex$/, @sinks)) {
-      if ((!defined $deterministic_nmbr) || (!$is_det)) {
-        set_observed($vertex); 
-        $nmbr_observed++;
+      if ($nmbr_frames == 2) { 
+        $G->set_vertex_attribute( $vertex_b, 'deterministic', 1 );    
+        $G->set_vertex_attribute( $vertex_b, 'cardinality', 1 ); 
+        $nmbr_deterministic_CPT++;
       }
-    } 
+    }
+    else {
+      $G->set_vertex_attribute( $vertex, 'deterministic', 0 );
+      $rndm_nmbr = 2 + int(rand($max_rndm_card-2));
+      $G->set_vertex_attribute( $vertex, 'cardinality', $rndm_nmbr );
+      if ($nmbr_frames == 2) { 
+        $G->set_vertex_attribute( $vertex_b, 'deterministic', 0 );    
+        $G->set_vertex_attribute( $vertex_b, 'cardinality', $rndm_nmbr );
+      }
+    }
   }
 
 }
@@ -423,7 +433,7 @@ for($frame=0; $frame<$nmbr_frames; $frame++)
       $G->set_vertex_attribute( $vertex, 'cardinality', $rndm_nmbr ); 
 
       if ($nmbr_frames == 2) { 
-        $G->set_avertex_attribute( $vertex_b, 'cardinality', $rndm_nmbr );  
+        $G->set_vertex_attribute( $vertex_b, 'cardinality', $rndm_nmbr );  
       }
     } 
   } 
@@ -960,17 +970,12 @@ sub set_observed
 
   if ($continuous_obs) {
     $G->set_vertex_attribute($vertex, 'cardinality', 42);
-    if ( $G->get_vertex_attribute($vertex, 'deterministic') == 0 ) {
-      $nmbr_deterministic_CPT++;
-      $G->set_vertex_attribute($vertex, 'deterministic', 1);
-    }
+    $nmbr_deterministic_CPT++;
+    $G->set_vertex_attribute($vertex, 'deterministic', 1);
   }
   else {
     $G->set_vertex_attribute($vertex, 'cardinality', 50);
-    if ( $G->get_vertex_attribute($vertex, 'deterministic') == 1 ) {
-      $nmbr_deterministic_CPT--;
-      $G->set_vertex_attribute($vertex, 'deterministic', 0);
-    }
+    $G->set_vertex_attribute($vertex, 'deterministic', 0);
   }
 
   if ($nmbr_frames>1)
@@ -979,19 +984,15 @@ sub set_observed
     $G->set_vertex_attribute($vertex, 'observed', 1);
     if ($continuous_obs) {
       $G->set_vertex_attribute($vertex, 'cardinality', 42);
-      if ( $G->get_vertex_attribute($vertex, 'deterministic') == 0 ) {
-        $nmbr_deterministic_CPT++;
-        $G->set_vertex_attribute($vertex, 'deterministic', 1);
-      } 
+      $nmbr_deterministic_CPT++;
+      $G->set_vertex_attribute($vertex, 'deterministic', 1);
     }
     else {
       $G->set_vertex_attribute($vertex, 'cardinality', 50);
-      if ( $G->get_vertex_attribute($vertex, 'deterministic') == 1 ) {
-        $nmbr_deterministic_CPT--;
-        $G->set_vertex_attribute($vertex, 'deterministic', 0);
-      }
+      $G->set_vertex_attribute($vertex, 'deterministic', 0);
     }
   }
+
 }
 
 
