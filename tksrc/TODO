@@ -2709,6 +2709,7 @@ Thu Feb 17 13:52:17 2005
     In fact, logp.h should have a #define option to use linear arithmetic, and then
     this option is active, it activiates the scaling code in GMTK_MaxClique.cc
 
+
 Fri Feb 18 20:14:44 2005
  - another speedup:
   - to reduce virtual functions in inner loops, change CPTs so that
@@ -3588,3 +3589,13 @@ Tue Apr 11 21:09:47 2006
  - another elimination heuristic:
     - do min-fillin if it is below or equal to a threshold (default is 0), and then
       if it is above a threshold, do another heuristic (e.g., size, weight, etc).
+
+
+Mon Apr 24 22:05:20 2006
+ - another memory savings (and savings for unrolling).
+   Rather than unroll all RVs for the entire time, unroll only
+   enough to use, and then re-use the RVs in place,
+   changing their frame number and observed values when necessary.
+   This might also improve speed since the RV values will always be in
+   cache.
+
