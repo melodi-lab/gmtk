@@ -635,12 +635,16 @@ public:
   void nextIterableDT();
 
   ///////////////////////////////////////////////////////////    
-  // Function only used for testing 
+  // Functions only used for testing 
   bool testFormula(
     string               formula,
     const vector< RV* >& variables, 
     RV*                  child, 
     unsigned             desired_answer 
+    );
+
+  bool verifyParseError(
+    string               formula
     );
 
   ///////////////////////////////////////////////////////////    
