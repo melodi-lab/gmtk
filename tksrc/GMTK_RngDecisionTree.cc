@@ -1717,13 +1717,13 @@ RngDecisionTree::EquationClass::parseExpression(
       next_token = token;
       getToken(formula, token);
       next_precedence = tokenPriority[token.token];
- 
+
       parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
 
       switch (next_token.token) {
         case TOKEN_COLON:
           break;
-      
+
         default:
           new_command = MAKE_COMMAND( infixToken[next_token.token], 0 );
           cmmnds.push_back(new_command);
@@ -2336,6 +2336,7 @@ RngDecisionTree::EquationClass::getToken(
   // Erase portion of string that was parsed 
   //////////////////////////////////////////////////////////////////////////
   expression.erase(0, minimum_dlmtr_lctn ); 
+
 }
 
 
@@ -2417,7 +2418,11 @@ RngDecisionTree::EquationClass::changeDepth(
   unsigned& depth 
   )
 {
-  assert( ((change>0) || (((int)depth+change)>=0)) );  
+  if (((int)depth+change)<0)
+  {
+    throw("Not enough factors for given operators");
+  }
+
   depth += change;
   stack.growIfNeeded(depth);
 }
@@ -3090,12 +3095,35 @@ class TestRandomVariable : public DiscRV
 {
   public:
 
-    TestRandomVariable( RVInfo new_info, string new_name, int new_cardinality ) 
-       : DiscRV(new_info, 0, new_cardinality) { return; }
+    TestRandomVariable( RVInfo new_info, string new_name, unsigned new_card ) 
+       : DiscRV(new_info) { cardinality = new_card; return; }
     void begin(logpr& p) { return; }
     bool next(logpr& p) { return(false); }
     RV* create() { return(NULL); } //*
 };
+
+bool RngDecisionTree::verifyParseError(
+  string               formula
+  )
+{
+  Node     node;
+  bool     correct;
+
+  new (&node.ln_e()) LeafNodeEquationStruct();
+
+  try {
+    node.ln_e().equation.parseFormula(formula);
+    printf("Error not correctly caught in formula:'%s'\n", formula.c_str());
+    correct = false;
+  }
+  catch (...) {
+    printf("   Parse error correctly caught\n");
+    correct = true;
+  }
+ 
+  return(correct);
+}
+
 
 bool RngDecisionTree::testFormula(
   string               formula,
@@ -3108,8 +3136,6 @@ bool RngDecisionTree::testFormula(
   unsigned answer;
   bool     correct;
 
-  printf("Formula: %s\n",   formula.c_str());
-  
   new (&node.ln_e()) LeafNodeEquationStruct();
 
   try {
@@ -3153,16 +3179,16 @@ void test_formula()
   vector< RVInfo::WeightInfo > tmp_rvWeightInfo;
 
   RVInfo dummy(
-    0, 1, 0, 10, "test", "aa_info", RVInfo::t_discrete, RVInfo::d_hidden, 100, 
-    tmp_fr, NULL, tmp_li, tmp_switchingParents, 
+    0, 1, 0, 10, "test", "aa_info", RVInfo::t_discrete, RVInfo::d_hidden, 10,  
+    tmp_fr, false, false, NULL, tmp_li, tmp_switchingParents, 
     tmp_conditionalParents, tmp_discImplementations, tmp_contImplementations,
     tmp_listIndices, tmp_rvWeightInfo 
     );
 
-  TestRandomVariable p0(dummy, "p0",  8 );
+  TestRandomVariable p0(dummy, "p0", 8 );
   TestRandomVariable p1(dummy, "p1", 40 );
-  TestRandomVariable p2(dummy, "p2",  2 );
-  TestRandomVariable child(dummy, "child",  1000000 );
+  TestRandomVariable p2(dummy, "p2", 2 );
+  TestRandomVariable child(dummy, "child", 1000000 );
 
   p0.val  = 7;
   p1.val  = 3;
@@ -3172,6 +3198,15 @@ void test_formula()
   vars.push_back(&p2);
 
   correct = true;
+
+  formula = "+";
+  correct &= dt.verifyParseError(formula);
+
+  formula = "()*()";
+  correct &= dt.verifyParseError(formula);
+
+  formula = "()/3";
+  correct &= dt.verifyParseError(formula);
 
   formula = "(3!=4)";
   correct &= dt.testFormula( formula, vars, &child, 1);
@@ -3557,7 +3592,7 @@ char *dtStr4 =
 
 void test_dts()
 {
-
+  #ifdef REMOVE_THIS_CODE_FOR_NOW 
 
   // first write out the file
   {
@@ -3652,6 +3687,7 @@ void test_dts()
   }
 
 
+  #endif 
 }
 
 int
