@@ -3599,3 +3599,18 @@ Mon Apr 24 22:05:20 2006
    This might also improve speed since the RV values will always be in
    cache.
 
+Wed Apr 26 13:36:36 2006
+  - add observation 'T-frame' in additionto 'frame', i.e., we should
+    have a "distance to end" observation.
+  - new CPTs:
+      - MLP CPT for discrete distributiosn, learned using 2nd order inside EM
+      - Sigmoidal CPT for binary [0,1]-valued variables
+         P(S_i = s_i | S_j = s_j, j \in J) = sigmoid( (2s_i - 1) \sum_{j \in J} s_j w_{ij} )
+         See Radford Neal's paper "Learning Stochastic Feedforward Networks"
+      - log-linear CPT, i.e., each CPT can essentially be a CRF with a log-linear implementation
+        where feature functions are given by a list of decision trees.
+
+
+
+ 
+
