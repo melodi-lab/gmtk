@@ -25,17 +25,37 @@
 #include "error.h"
 #include "general.h"
 
-// ----------------------------------
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// A set of defines to control which hash and memory allocation
+// strategy to use.  For large jobs, this can significantly change the
+// amount of memory used.
+
 // Default HASH types:
 #if (!defined(HASH_FNV) && !defined(HASH_JENKENS) && !defined(HASH_GMTK_A) && !defined(HASH_GMTK_B) && !defined(HASH_GMTK_C) && !defined(HASH_GMTK_D) && !defined(HASH_GMTK_E))
 // define which hash function to use (see below for options), but only if not defined before.
 #define HASH_GMTK_D
 #endif
-// uncomment/define to use prime size hash tables (and use integer mod).
+
+// Uncomment/define the following to use prime size hash tables (and
+// use integer mod).  Note that using primes has shown to be a bit
+// slower than using power of two, but for large jobs, the power of
+// two case can use too much memory, and the prime array is more fine
+// grained with respect to memory. Therefore, if you are having memory
+// problems, define this here.  
 // #define HASH_PRIME_SIZE
-// uncomment/define to use  use hash folding for non-prime hash sizes.
+
+// Uncomment/define the following to use use hash folding. Only applible when using
+// non-prime hash sizes.
 #define HASH_LOC_FOLD
-// ----------------------------------
+
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+
 
 class hash_abstract {
 
