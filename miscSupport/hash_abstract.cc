@@ -127,11 +127,13 @@ other primes
   };
 */
 
-
-// the possible sizes for the has table, a list of prime
-// numbers each entry roughly doubling in size of the 
-// previous previous entry. Comment the ones at the beginning to get
-// the desired starting size of the hash table.
+//
+// the possible sizes for the has table, a list of prime numbers each
+// entry roughly doubling in size of the previous previous entry (but
+// as the sizes get larger, we increase by smaller amounts, see
+// comments below). Comment out the entries at the beginning of the
+// table to get the desired starting size of the hash table.
+// 
 
 const unsigned
 hash_abstract::HashTable_PrimesArray[] = {
@@ -154,17 +156,23 @@ hash_abstract::HashTable_PrimesArray[] = {
 134053,
 262139,
 524287,
-1048573,
+1048573, // after a million, we start increasing by roughly powers of sqrt(2)
+1664501,
 2097143,
+3328979,
 4194301,
+6657919,
 8388593,
-16777213,
+13315831,
+16777213, // after a 16 million, we start increasing by roughly powers of 2^(1/3)
+/* gang fill in here */
 33554393,
 67108859,
 134217689,
-268435399,
+268435399, // after 256 million, we start increasing by roughly powers of 2^(1/4)
+/* gang fill in here */
 536870909,
-1073741789,
+1073741789, 
 2147483647,
 /* 4294967291L */
 ((unsigned long) 2147483647) + ((unsigned long) 2147483642)
