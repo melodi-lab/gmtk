@@ -162,15 +162,15 @@ hash_abstract::HashTable_PrimesArray[] = {
 3328979,
 4194301,
 6657919,
-8388593,
+8388593, // after a 8 million, we start increasing by roughly powers of 2^(1/3)
+/* gang fill in here */
 13315831,
-16777213, // after a 16 million, we start increasing by roughly powers of 2^(1/3)
-/* gang fill in here */
+16777213,
 33554393,
-67108859,
-134217689,
-268435399, // after 256 million, we start increasing by roughly powers of 2^(1/4)
+67108859,  // after 64 million, we start increasing by roughly powers of 2^(1/4)
 /* gang fill in here */
+134217689,
+268435399,
 536870909,
 1073741789, 
 2147483647,
