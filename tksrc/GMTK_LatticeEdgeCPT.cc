@@ -33,9 +33,10 @@
  *-----------------------------------------------------------------------
  */
 LatticeEdgeCPT::LatticeEdgeCPT() : CPT(di_LatticeEdgeCPT), _latticeAdt(NULL) {
-	// some values are fixed
-	_numParents = 2;
-	cardinalities.resize(2);
+  // some values are fixed
+  // parents are current lattice node and previous lattice node.
+  _numParents = 2;
+  cardinalities.resize(2);
 }
 
 
@@ -124,8 +125,12 @@ logpr LatticeEdgeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
  *-----------------------------------------------------------------------
  */
 bool LatticeEdgeCPT::next(iterator &it, logpr& p) {
-	p.set_to_zero();
-	return false;
+  // already return zero here.
+  // for each start/end lattice node pair, there is only one
+  // edge (link) between them.  So after begin iteration, the
+  // next iteration will always return false.
+  p.set_to_zero();
+  return false;
 }
 
 
@@ -175,8 +180,16 @@ void LatticeEdgeCPT::assignDeterministicChild( vector < RV* >& parents, DiscRV* 
  *-----------------------------------------------------------------------
  */
 void LatticeEdgeCPT::setLatticeADT(const LatticeADT &latticeAdt) {
-        _latticeAdt = &latticeAdt;
-        cardinalities[0] = cardinalities[1] = _latticeAdt->_nodeCardinality;
-	_card = _latticeAdt->_wordCardinality;
+  _latticeAdt = &latticeAdt;
+
+  // in addition to lattice ADT, also set the cardinalties of
+  // the parents.
+
+  // typically, cardinalities comes from structure file or master
+  // file.  But in this case, we hope to support iterable lattice
+  // CPTs which will have different number of lattice nodes for
+  // each one.
+  cardinalities[0] = cardinalities[1] = _latticeAdt->_nodeCardinality;
+  _card = _latticeAdt->_wordCardinality;
 }
 
