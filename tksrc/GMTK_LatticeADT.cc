@@ -683,6 +683,10 @@ void LatticeADT::useScore(unsigned option) {
  *-----------------------------------------------------------------------
  */
 void LatticeADT::normalizePosterior() {
+  // normalizing posteriors has the benefits of better prunning.
+  // We don't need to do anything on the gmtk_score because
+  // those contains the real log probabilities which can be used
+  // with proper scale factors.
   for ( unsigned i = 0; i < _numberOfNodes; ++i ) {
     if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
       shash_map_iter<unsigned, LatticeEdge>::iterator it;

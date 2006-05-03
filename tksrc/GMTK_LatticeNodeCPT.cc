@@ -106,8 +106,10 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
     // time.
     unsigned lat_time = (unsigned)round(_latticeAdt->_frameRate * _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].time);
 
-    // case on the current time
-    if ( RV2DRV(parents[2])->val < lat_time ) {
+    // case on the current time.
+    // Same as no time parent case, we also allow some relaxation
+    // of time.
+    if ( RV2DRV(parents[2])->val < lat_time - _latticeAdt->_frameRelax ) {
       // then the current time is less than the previous lattice node.
       if ( RV2DRV(parents[1])->val ) {
 	// a (word) transition is being hypothesized, but we do not allow it. Give it a
@@ -121,7 +123,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 	drv->val = RV2DRV(parents[0])->val;
 	p.set_to_one();
       }
-    } else if ( RV2DRV(parents[2])->val > lat_time ) {
+    } else if ( RV2DRV(parents[2])->val > lat_time + _latticeAdt->_frameRelax ) {
       // Then, the current time (i.e., parent[2]'s time value) is
       // already ahead (i.e., after, later) of when a transition for
       // the previous lattice node value may occur. We also want to
@@ -270,6 +272,10 @@ bool LatticeNodeCPT::next(iterator &it, logpr& p) {
     return false;
   }
 
+  // No need to check the time constrains in the lattice
+  // transitions.  The reason is once the time passed
+  // checking in BeginIterate, it already satisfies the constrains.
+
   // find the next available in the tree
   if ( pit->next() ) {
     // set up the values
@@ -298,6 +304,14 @@ bool LatticeNodeCPT::next(iterator &it, logpr& p) {
  */
 void LatticeNodeCPT::setLatticeADT(const LatticeADT &latticeAdt) {
   _latticeAdt = &latticeAdt;
+
+  // in addtiont to setting lattice ADT, also need to set
+  // up the number of parents and cardinalities of the parents.
+
+  // typically, cardinalities comes from structure file or master
+  // file.  But in this case, we hope to support iterable lattice
+  // CPTs which will have different number of lattice nodes for
+  // each one.
 
   // check whether time is also used as parent
   if ( _latticeAdt->useTimeParent() ) {
