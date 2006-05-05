@@ -3614,9 +3614,15 @@ Wed Apr 26 13:36:36 2006
       - common CPTs that inference can exploit.
   - 
 
+
 Sun Apr 30 20:39:50 2006
  - for docs:
     - include description of the hash table options, where using primes can decrease memory usage.
     - include also description in GMTK_MaxClique.cc where memory growth rate can be changed at compile time.
     - add these options to the Makefile for easy compile time change.
 
+
+Fri May  5 15:48:30 2006
+  - on cygwin, if cpp doesn't exist, when called from GMTK, it seems to return an empty file
+    rather than proper error message saying that cpp doesn't exist. Perhasp system() should be called
+    with different set of options on cygwin. etc.
