@@ -20,6 +20,7 @@
  */
 
 #include <cstring>
+#include <cmath>
 
 #include "GMTK_Vocab.h"
 #include "fileParser.h"
@@ -377,12 +378,33 @@ bool isPrime(unsigned n) {
  *-----------------------------------------------------------------------
  */
 unsigned nextPrime(unsigned n) {
-	n = (n << 1) + 1;
+  // Instead of always find a prime number twice bigger than
+  // input, use some strategy to save memory.
+  // This size can be optmized for memory because this function
+  // is often used when number of elements in hash table is known.
+  // In this case, we use the following steps
 
-	while ( ! isPrime(n) )
-		n += 2;
+  if (n < 1000000) {
+    // 1. If it is less than 1 million, use sqrt(2)
+    // In the following +1 makes sure new n is bigger than the
+    // old n, i.e. the table will not be full.
+    n = (unsigned)(sqrt(2.0) * n + 1);
+  } else if (n < 8000000) {
+    // 2. If it is less than 8 million, use 2^(1/3)
+    n = (unsigned)(pow(2.0, 1.0 / 3.0) * n + 1);
+  } else {
+    // 3. Otherwise, use 2^(1/4)
+    n = (unsigned)(pow(2.0, 1.0 / 4.0) * n + 1);
+  }
 
-	return n;
+  // convert n into odd number
+  n += ((n+1) & 0x1);
+
+  // check the next prime number
+  while ( ! isPrime(n) )
+    n += 2;
+
+  return n;
 }
 
 
