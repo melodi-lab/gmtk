@@ -3512,7 +3512,6 @@ Fri Mar 24 00:32:02 2006
     default -I options that GMTK gives (i.e., cpp -I. ,etc. in order to
     see what cpp does).
 
-
 Mon Mar 27 16:23:14 2006
   - three different tags types on dcache collections
       - always applicable
@@ -3526,7 +3525,6 @@ Mon Mar 27 16:23:14 2006
            Idea: if observation is from an obs file, and it happens to be the same value in the
            neighboring frame, can keep the dcache entry for that one.
            Might want to keep these around on the sidelines during island???
-
 
 Thu Mar 30 19:41:58 2006
   - in new inference, make sure that all the cached factors and so on are based on
@@ -3620,9 +3618,14 @@ Sun Apr 30 20:39:50 2006
     - include description of the hash table options, where using primes can decrease memory usage.
     - include also description in GMTK_MaxClique.cc where memory growth rate can be changed at compile time.
     - add these options to the Makefile for easy compile time change.
+    - include a 'if memory gets large' section in the documentation.
 
 
 Fri May  5 15:48:30 2006
   - on cygwin, if cpp doesn't exist, when called from GMTK, it seems to return an empty file
     rather than proper error message saying that cpp doesn't exist. Perhasp system() should be called
     with different set of options on cygwin. etc.
+
+Tue May 16 19:55:14 2006
+  - for docs, include all memory operations, don't forget aobut -hashLoadFactor option.
+
