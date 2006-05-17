@@ -3627,5 +3627,25 @@ Fri May  5 15:48:30 2006
     with different set of options on cygwin. etc.
 
 Tue May 16 19:55:14 2006
-  - for docs, include all memory operations, don't forget aobut -hashLoadFactor option.
+  - for docs, include all memory optimization operations, don't forget
+     about all memory options:
+
+            1) find a different triangulation somehow.
+            2) -hashLoadFactor option (set to 0.98)
+            3) -deterministic F
+            4) use island algorithm  
+            5) compile with prime hash tables
+              #ifdef OPTIMIZE_FOR_MEMORY_USAGE in GMTK_MaxClique.cc         
+               could decrease the following even further in GMTK_MaxClique.cc
+                #define MEM_OPT_GROWTH_RATE 1.25
+            6) Gaussian cache if using Gaussians.
+            7) if there is no clique sharing, possibly change in GMTK_MaxClique.h
+			#define IMC_NWWOH (1)
+			#define ISC_NWWOH_AI (1)
+			#define ISC_NWWOH_RM (1)
+
+
+
+
+            
 
