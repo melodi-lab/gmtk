@@ -3646,6 +3646,17 @@ Tue May 16 19:55:14 2006
 
 
 
+Wed May 17 20:45:12 2006
+  - when caching-based inference is working, have option to save cache
+    to disk between runs, especially if it take a while to
+    reconstruct.
+
+
+
+
+
+
 
             
+
 
