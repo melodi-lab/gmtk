@@ -188,7 +188,8 @@ public:
     KW_FunctionOf=49,
     KW_SoftConstraint=50,
     KW_Table=51,
-    KW_LogLinear=52
+    KW_LogLinear=52,
+    KW_EmarfNum=53
   };
 
   // list of token keyword strings.

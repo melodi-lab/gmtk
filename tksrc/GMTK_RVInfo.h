@@ -121,7 +121,8 @@ public:
 
   struct FeatureRange {
     enum frEnum { fr_UnFilled, fr_Range, fr_FirstIsValue,
-		  fr_FrameNumIsValue, fr_NumFramesIsValue,
+		  fr_FrameNumIsValue, fr_EmarfNumIsValue,
+		  fr_NumFramesIsValue,
 		  fr_SegmentNumIsValue, fr_NumSegmentsIsValue
     };
     frEnum filled;

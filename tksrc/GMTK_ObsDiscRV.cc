@@ -165,6 +165,18 @@ void ObsDiscRV::setToObservedValue()
 	      globalObservationMatrix.segmentNumber(),
 	      globalObservationMatrix.numFrames());
       val = frame();
+    } else if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_EmarfNumIsValue) {
+      assert (globalObservationMatrix.active());
+      unsigned emarf = globalObservationMatrix.numFrames() - frame();
+      if (emarf >= cardinality) 
+	error("ERROR: RV '%s(%d)' has cardinality %d, but current emarf value %d too large to store in RV with this cardinality (in segment %d of frame length %d).\n",
+	      name().c_str(),
+	      frame(),
+	      cardinality,
+	      emarf,
+	      globalObservationMatrix.segmentNumber(),
+	      globalObservationMatrix.numFrames());
+      val = emarf;
     } else if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_NumFramesIsValue) {
       assert (globalObservationMatrix.active());
       if (globalObservationMatrix.numFrames() >= cardinality) 

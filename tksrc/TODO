@@ -3651,6 +3651,12 @@ Wed May 17 20:45:12 2006
     to disk between runs, especially if it take a while to
     reconstruct.
 
+Wed May 17 21:44:05 2006
+  - Time based pruning, where we have a fixed upper limit on the
+    amount of time per C chunk, and if we exceed the time, we decrease
+    a pruning threshold, and
+    if we are less than that time, we increase a pruning threshold. Time can
+    be given in absolute times, or relative to average value, or some other units?
 
 
 
