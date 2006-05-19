@@ -457,7 +457,8 @@ FileParser::fillKeywordTable()
     /* 49 */ "functionOf",
     /* 50 */ "softConstraint",
     /* 51 */ "table",
-    /* 52 */ "logLinear"
+    /* 52 */ "logLinear",
+    /* 53 */ "emarfNum"
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -1498,6 +1499,8 @@ FileParser::parseRandomVariableDiscreteType()
 	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_FirstIsValue;
       } else if (tokenInfo == KW_FrameNum) {
 	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_FrameNumIsValue;
+      } else if (tokenInfo == KW_EmarfNum) {
+	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_EmarfNumIsValue;
       } else if (tokenInfo == KW_NumFrames) {
 	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_NumFramesIsValue;
       } else if (tokenInfo == KW_SegmentNum) {
@@ -1505,7 +1508,7 @@ FileParser::parseRandomVariableDiscreteType()
       } else if (tokenInfo == KW_NumSegments) {
 	curRV.rvFeatureRange.filled = RVInfo::FeatureRange::fr_NumSegmentsIsValue;
       } else {
-	parseErrorExpecting("value {integer|frameNum|numFrames|segmentNum|numSegments}");
+	parseErrorExpecting("value {integer|frameNum|emarfNum|numFrames|segmentNum|numSegments}");
       }
       // consume whatever the value was.
       consumeToken();
