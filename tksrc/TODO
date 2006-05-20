@@ -3599,7 +3599,8 @@ Mon Apr 24 22:05:20 2006
    enough to use, and then re-use the RVs in place,
    changing their frame number and observed values when necessary.
    This might also improve speed since the RV values will always be in
-   cache.
+   cache. Viterbi paths might be printed out in reverse though.
+
 
 Wed Apr 26 13:36:36 2006
   - add observation 'T-frame' in additionto 'frame', i.e., we should
