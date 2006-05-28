@@ -3662,3 +3662,9 @@ Wed May 17 21:44:05 2006
     a pruning threshold, and
     if we are less than that time, we increase a pruning threshold. Time can
     be given in absolute times, or relative to average value, or some other units?
+
+
+Sat May 27 22:59:17 2006
+  - docs, don't forget about 'emarfNum' observation.
+
+
