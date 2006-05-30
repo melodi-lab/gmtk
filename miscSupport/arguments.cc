@@ -956,10 +956,17 @@ char *MultiType::printable(MultiType::ArgumentType at) {
  *
  *-----------------------------------------------------------------------
  */
-void Arg::usage(char* filter) {
+void Arg::usage(char* filter,bool stdErrPrint) {
 
-  fprintf(stderr,"Usage: %s  [[[-flag] [option]] ...]\n",Program_Name);
-  fprintf(stderr,"Required: <>; Optional: []; Flagless arguments must be in order.\n");
+  FILE* destStream;
+
+  if (stdErrPrint)
+    destStream = stderr;
+  else
+    destStream = stdout;
+
+  fprintf(destStream,"Usage: %s  [[[-flag] [option]] ...]\n",Program_Name);
+  fprintf(destStream,"Required: <>; Optional: []; Flagless arguments must be in order.\n");
 
   Arg* arg_ptr = Args;
   int longest_variation = 0;
@@ -991,7 +998,7 @@ void Arg::usage(char* filter) {
     if(arg_ptr->getPriority() > Requested_Priority) goto skip;
     
     if(categFlagP(arg_ptr->flag)) {
-      fprintf(stderr,"%s\n",
+      fprintf(destStream,"%s\n",
 	      ((arg_ptr->description == NULL) ? "" : arg_ptr->description));
       goto skip;
     }
@@ -1003,51 +1010,51 @@ void Arg::usage(char* filter) {
       //	if (!printOptional) goto skip;
       brackets[0] = '['; brackets[1] = ']';
     }
-    fprintf(stderr," %c",brackets[0]);
+    fprintf(destStream," %c",brackets[0]);
     
     if (!noFlagP(arg_ptr->flag)) {
       // add one for the '-', as in "-flag"
       this_variation = ::strlen(arg_ptr->flag) + 1;
       if(arg_ptr->dataStructType==ARRAY) {
-	fprintf(stderr,"-%sX",arg_ptr->flag);
+	fprintf(destStream,"-%sX",arg_ptr->flag);
 	this_variation ++;
       }
       else
-	fprintf(stderr,"-%s",arg_ptr->flag);
-      fprintf(stderr," ");
+	fprintf(destStream,"-%s",arg_ptr->flag);
+      fprintf(destStream," ");
       this_variation ++; //  add one for the ' ' in "-flag "
     }
     
     if(arg_ptr->arg_kind==Help)  {// add [] around unsigned for the help flag
-      fprintf(stderr,"[%s]",arg_ptr->mt.printable(arg_ptr->mt.type));
+      fprintf(destStream,"[%s]",arg_ptr->mt.printable(arg_ptr->mt.type));
       this_variation += 2;  // account for the extra []
     }
     else {
-      fprintf(stderr,"%s",arg_ptr->mt.printable(arg_ptr->mt.type));
+      fprintf(destStream,"%s",arg_ptr->mt.printable(arg_ptr->mt.type));
     }
     this_variation += ::strlen(MultiType::printable(arg_ptr->mt.type));
     // add two for brackets. '[',']', or '<','>' around type.
     this_variation += 2;
     
-    fprintf(stderr,"%c",brackets[1]);
+    fprintf(destStream,"%c",brackets[1]);
     
     while (this_variation++ < longest_variation)
-      fprintf(stderr," ");
-    fprintf(stderr,"   %s {",
+      fprintf(destStream," ");
+    fprintf(destStream,"   %s {",
 	    ((arg_ptr->description == NULL) ? "" : arg_ptr->description));
-    arg_ptr->mt.print(stderr);      
-    fprintf(stderr,"}\n");
+    arg_ptr->mt.print(destStream);      
+    fprintf(destStream,"}\n");
     
   skip:
     arg_ptr++;
   }
   //}
   
-  fprintf(stderr," [-%s <str>]",ARGS_FILE_NAME);
+  fprintf(destStream," [-%s <str>]",ARGS_FILE_NAME);
   int this_variation = 9 + strlen(ARGS_FILE_NAME);
   while (this_variation++ < longest_variation)
-    fprintf(stderr," ");
-  fprintf(stderr,"   File to obtain additional arguments from {}\n");
+    fprintf(destStream," ");
+  fprintf(destStream,"   File to obtain additional arguments from {}\n");
 }
 
 
@@ -1315,6 +1322,12 @@ bool Arg::parse(int argc,char** argv)
   if(arg_ptr!=NULL) {
     cnt=arg_ptr->getCount();
   }
+  if (cnt > 0) {
+    // if help argument is given, print usage and exit cleanly.
+    usage(NULL,false);
+    exit(0);
+  }
+
   if (cnt==0 && rc == ARG_MISSING) {
     Arg::checkMissing(true);
   }
