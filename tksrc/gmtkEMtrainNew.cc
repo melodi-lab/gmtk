@@ -290,7 +290,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////////////////////////////
 
   if (randomizeParams) {
-    infoMsg(IM::Default,"WARNING: GMTK is randomizing all trainable parameters and writing them to file 'random.gmp'");
+    infoMsg(IM::Default,"WARNING: GMTK is randomizing all trainable parameters and writing them to file 'random.gmp'\n");
     GM_Parms.makeRandom();
     oDataStreamFile of("random.gmp");
     GM_Parms.writeTrainable(of);
