@@ -57,6 +57,16 @@ bool GaussianComponent::cloneShareCovars = false;
 // true if hwen a clone occurs, we use the same dlink matrix
 bool GaussianComponent::cloneShareDlinks = false;
 
+// l2-norm based accuracy regularization ceofficients for training
+// regularized Gaussians. 
+// The first coefficient applies only to the means of Gaussiasn. 
+double GaussianComponent::gmarCoeffL2 = 0.0;
+// The second coefficient applies only to the dlink matrices of Gaussians,
+// so can be used to produce regularized BMMs or regularized covariance matrices
+double GaussianComponent::gdarCoeffL2 = 0.0;
+
+
+
 GaussianComponent::GaussianComponent(const int dim) 
   : Component(dim) 
 {

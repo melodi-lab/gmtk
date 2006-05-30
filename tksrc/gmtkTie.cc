@@ -148,7 +148,8 @@ main(int argc,char*argv[])
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
   if(!parse_was_ok) {
-    Arg::usage(); exit(-1);
+    Arg::usage(); 
+    exit(-1);
   }
 
 

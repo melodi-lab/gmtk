@@ -1409,6 +1409,9 @@ static bool localCliqueNormalization = false;
   Arg("localCliqueNorm",Arg::Opt,localCliqueNormalization,"Use local clique sum for posterior normalization."),
   Arg("dirichletPriors",Arg::Opt,EMable::useDirichletPriors,"Enable the use of Dirichlet priors for this process."),
 
+  Arg("gmarCoeffL2",Arg::Opt,GaussianComponent::gmarCoeffL2,"Gaussian mean l2 accuracy-regularization tradeoff coeff (ie, prior concentration)"),
+  Arg("gdarCoeffL2",Arg::Opt,GaussianComponent::gdarCoeffL2,"Gaussian dlink l2 accuracy-regularziation tradeoff coeff (ie, prior concentration)"),
+
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 

@@ -90,7 +90,6 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
   dLinkMat = GM_Parms.dLinkMats[GM_Parms.dLinkMatsMap[str]];
   dLinkMat->numTimesShared++;
 
-
   // check that lengths match, etc.
   if (covar->dim() != mean->dim()) {
     error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, specifices a mean '%s' with dim %d and covariance '%s' with dim '%d'\n",
@@ -118,6 +117,61 @@ LinMeanCondDiagGaussian::read(iDataStreamFile& is)
 	  is.fileName(),is.lineNo(),
 	  dLinkMat->name().c_str(),
 	  _dim);
+
+
+  // next, read in any potential adaptation points.
+  if (is.readIfMatch("regularizeToward")) {
+    // then we expect a mean, dlink matrix, or both to regularize
+    // towards. Syntax:
+    // mean name_of_mean
+    // dlink name_of_dlink
+    string parmName;    
+
+    while (1) {
+      if (is.readIfMatch("mean")) {
+	if (!is.readString(parmName)) {
+	  error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, expecting an 'mean' object name to adapt towards",
+		_name.c_str(),is.fileName(),is.lineNo());
+	}
+
+	if (GM_Parms.meansMap.find(parmName) ==  GM_Parms.meansMap.end()) 
+	  error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, specifies adaptatation mean name '%s' that does not exist",
+		_name.c_str(),is.fileName(),is.lineNo(),parmName.c_str());
+
+	adaptToMean = GM_Parms.means[GM_Parms.meansMap[parmName]];
+
+	if (adaptToMean->dim() != mean->dim()) {
+	  error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, specifices adaptation mean '%s' with dim %d and mean '%s' with dim '%d'\n",
+		_name.c_str(),is.fileName(),is.lineNo(),
+		adaptToMean->name().c_str(),
+		adaptToMean->dim(),
+		mean->name().c_str(),
+		mean->dim());
+	}
+
+      } else if (is.readIfMatch("dlink")) {
+	if (!is.readString(parmName)) {
+	  error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, expecting an 'dlink' object name to adapt towards",
+		_name.c_str(),is.fileName(),is.lineNo());
+	}
+
+	if (GM_Parms.dLinkMatsMap.find(parmName) == GM_Parms.dLinkMatsMap.end())
+	  error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d, specifies adaptation dlink matrix name '%s' that does not exist",
+		_name.c_str(),is.fileName(),is.lineNo(),parmName.c_str());
+	
+	adaptToDLinkMat = GM_Parms.dLinkMats[GM_Parms.dLinkMatsMap[parmName]];
+
+	if (adaptToDLinkMat->totalNumberLinks() != dLinkMat->totalNumberLinks())
+	  error("Error: LinMeanCondDiagGaussian '%s' in file '%s' line %d specifies a adaptation dlink matrix '%s' that has length %d not matching length of parameter dlink matrix '%d'\n",
+		_name.c_str(),
+		is.fileName(),is.lineNo(),
+		adaptToDLinkMat->name().c_str(),adaptToDLinkMat->totalNumberLinks(),
+		dLinkMat->name().c_str(),dLinkMat->totalNumberLinks());
+
+      } else
+	break;
+    }
+  }
 
   setBasicAllocatedBit();
 }
@@ -533,7 +587,9 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
 
     // Now we need the fully expanded forms of 
     // xz, zz, and B. These are used because we need to
-    // compute the inverse matrix in the formula B = (XZ)(ZZ)^(-1).
+    // compute the inverse matrix in the formula B = (XZ)(ZZ + reg)^(-1)
+    // where reg is any possible Gaussian l2 regularization (for means and dlinks).
+    // 
     // It is assumed that since this routine is not called often (relative
     // to emIncrement), we can do all the memory allocation/reclaimation here.
   
@@ -548,21 +604,57 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
     // now copy xz and x over to expanded xz
     double *xzExpAccumulators_p = xzExpAccumulators.ptr;
     float *xzAccumulators_p = xzAccumulators.ptr;
-    for (int feat=0;feat<mean->dim();feat++) {
-      const int nLinks = dLinkMat->numLinks(feat);
 
-      for (int dlink=0;dlink<nLinks;dlink++) {
+
+    if (adaptToMean == NULL && adaptToDLinkMat == NULL) {
+      // no regularized adaptation.
+      for (int feat=0;feat<mean->dim();feat++) {
+	const int nLinks = dLinkMat->numLinks(feat);
+
+	for (int dlink=0;dlink<nLinks;dlink++) {
+	  *xzExpAccumulators_p++ =
+	    *xzAccumulators_p++;
+	}
+
 	*xzExpAccumulators_p++ =
-	  *xzAccumulators_p++;
+	  xAccumulators[feat];
       }
+    } else {
+      // do some regularized adaptation.
+      float* vadaptMean_p = NULL;
+      float* vadaptDlink_p = NULL;
+      if (adaptToMean != NULL)
+	vadaptMean_p = adaptToMean->means.ptr;
+      if (adaptToDLinkMat != NULL)
+	vadaptDlink_p = adaptToDLinkMat->arr.ptr;
 
-      *xzExpAccumulators_p++ =
-	xAccumulators[feat];
+      for (int feat=0;feat<mean->dim();feat++) {
+	const double dlink_regularizer = gdarCoeffL2*covar->covariances[feat];
+	const double mean_regularizer = gmarCoeffL2*covar->covariances[feat];
+
+	const int nLinks = dLinkMat->numLinks(feat);
+
+	if (adaptToDLinkMat != NULL)
+	  for (int dlink=0;dlink<nLinks;dlink++) {
+	    *xzExpAccumulators_p++ =
+	      *xzAccumulators_p++ + dlink_regularizer*(*vadaptDlink_p++);
+	  }
+	else 
+	  for (int dlink=0;dlink<nLinks;dlink++) {
+	    *xzExpAccumulators_p++ =
+	      *xzAccumulators_p++;
+	  }
+
+	if (adaptToMean != NULL)
+	  *xzExpAccumulators_p++ = xAccumulators[feat] + mean_regularizer*(*vadaptMean_p++);
+	else 
+	  *xzExpAccumulators_p++ = xAccumulators[feat];
+      }
     }
 
     ///////////////////////////////////////////////////////////////////////////
     // zzExpAccumulators contains the same information as
-    // zzAccumulators, but includes the extra right most column and
+    // zzAccumulators, but includes the expanded extra right most column and
     // bottom most row containing the value accumulatedProbability.
     sArray<double> zzExpAccumulators;  
     // resize matrix, going from a size of just upper triangular
@@ -582,10 +674,13 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
     float *zAccumulators_p = zAccumulators.ptr;
     double *zzExpAccumulators_p = zzExpAccumulators.ptr;
     for (int feat=0;feat<mean->dim();feat++) {
+      const double dlink_regularizer = gdarCoeffL2*covar->covariances[feat];
+      const double mean_regularizer = gmarCoeffL2*covar->covariances[feat];
+
       const int nLinks = dLinkMat->numLinks(feat);
     
       float *zzp = zzAccumulators_p; // ptr to current zz
-      double *zzep = zzExpAccumulators_p; // ptr to current exp zz
+      double *zzep = zzExpAccumulators_p; // ptr to current expanded zz
 
       for (int dlink=0;dlink<=nLinks;dlink++) {
 	double *zze_rp = zzep; // row ptr to expanded zz
@@ -595,11 +690,27 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
 	  zze_rp ++;            // increment by one value
 	  zze_cp += (nLinks+1); // increment by stride
 	}
-	if (dlink < nLinks) 
+	if (dlink < nLinks) {
+	  // add the dlink coeff regularization term, a/d where a is the
+	  // accuracy-regularization coefficient and d is the inverse
+	  // variance.
+	  *zzep += dlink_regularizer;
+	  // as a modification, we could do:
+	  //   *zzep += gdarCoeffL2*covar->covariances[feat]*realAccumulatedProbability;
+	  // but this wouldn't be a consistent estimate I believe. Also, cross-validation should
+	  // be able to find the right gdarCoeffL2.
+
+	  
 	  *zze_rp = *zze_cp = *zAccumulators_p++;
-	else 
+	} else {
+	  // add the mean regularization term, a/d where a is the
+	  // accuracy-regularization coefficient and d is the inverse
+	  // variance.
+	  *zzep += mean_regularizer;
+
 	  *zze_rp = *zze_cp = 
 	    realAccumulatedProbability;
+	}
 
 	zzep += (nLinks+2);
       }
@@ -625,12 +736,12 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
     for (int feat=0;feat<mean->dim();feat++) {
       const int nLinks = dLinkMat->numLinks(feat);
 
-      // Solve for the burying coefficients using
+      // Solve for the burying (i.e., dlink or ridge-regression like) coefficients using
       // a routine which solves Ax = b for x where
       // A is nXn, x is nX1, and b is nX1
       // here,
       //     A = zzExpAccumulators_p,
-      //     x = the output
+      //     x = the resulting output which will be the dlinks and mean.
       //     b = xzExpAccumulators_p (which gets destroyed)
 
       // First, copy xzAccumulators over to nextDlinkMat since
@@ -818,11 +929,16 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
 	  zze_rp ++;            // increment by one value
 	  zze_cp += (nLinks+1); // increment by stride
 	}
-	if (dlink < nLinks) 
+	if (dlink < nLinks) {
+	  *zzep += gdarCoeffL2*covar->covariances[feat];
+
 	  *zze_rp = *zze_cp = *zAccumulators_p++;
-	else 
+	} else {
+	  *zzep += gmarCoeffL2*covar->covariances[feat];
+
 	  *zze_rp = *zze_cp = 
 	    realAccumulatedProbability;
+	}
 
 	zzep += (nLinks+2);
       }

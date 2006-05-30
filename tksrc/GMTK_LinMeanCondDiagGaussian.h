@@ -49,7 +49,11 @@ class LinMeanCondDiagGaussian : public GaussianComponent {
   ///////////////////////////////////////////////////////
   // parameters for the dlink structure
   DlinkMatrix* dLinkMat;
- 
+
+  // For regularized adaptation, we have another (mean,dlinkMat) that
+  // we may adapt towards.
+  MeanVector* adaptToMean;
+  DlinkMatrix* adaptToDLinkMat;
 
   /////////////////////////////////////////////////
   // modify the usage counts of any members that use them; typically
@@ -79,7 +83,8 @@ class LinMeanCondDiagGaussian : public GaussianComponent {
 
 public:
 
-  LinMeanCondDiagGaussian(const int dim) : GaussianComponent(dim) { }
+  LinMeanCondDiagGaussian(const int dim) : GaussianComponent(dim) 
+  { adaptToMean = NULL; adaptToDLinkMat = NULL; }
   ~LinMeanCondDiagGaussian() {}
 
   //////////////////////////////////////////////

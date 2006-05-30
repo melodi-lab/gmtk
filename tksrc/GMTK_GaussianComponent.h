@@ -51,6 +51,12 @@ public:
   static bool cloneShareCovars;
   static bool cloneShareDlinks;
 
+  // Gaussian mean l2 accuracy-regularization tradeoff coefficient
+  static double gmarCoeffL2;
+  // Gaussian dlink (regression coefficients) l2 accuracy-regularization
+  // tradeoff coefficient
+  static double gdarCoeffL2;
+
 
   //////////////////////////////////////////////
   // read/write basic parameters
