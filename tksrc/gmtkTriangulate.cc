@@ -77,7 +77,7 @@ VCID("$Header$")
 /****************************         GENERAL OPTIONS             ***********************************************/
 #define GMTK_ARG_SEED
 #define GMTK_ARG_VERB
-
+#define GMTK_ARG_HELP
 
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
