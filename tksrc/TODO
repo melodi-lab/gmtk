@@ -3668,3 +3668,10 @@ Sat May 27 22:59:17 2006
   - docs, don't forget about 'emarfNum' observation.
 
 
+Tue May 30 03:09:27 2006
+  - in -probE mode, we should also free up the memory of a
+    clique inside a partition, not just between partitions. This will
+    make it more possible to do static graphs with P(evidence).
+
+
+
