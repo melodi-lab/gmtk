@@ -214,7 +214,7 @@ class Arg {
   static ArgsRetCode parseArgsFromCommandLine(int,char**);
   static ArgsRetCode parseArgsFromFile(char*f="argsFile");
   static bool parse(int i,char**c);
-  static void usage(char* filter=NULL);
+  static void usage(char* filter=NULL, bool stdErrPrint = true);
   static void printArgs(Arg*args,FILE*f);
 
   static unsigned getNumArguments() { return (unsigned) Num_Arguments; } 
