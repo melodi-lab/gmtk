@@ -246,15 +246,18 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	edge.posterior.setFromP(score);
 	break;
       default:
-	error("unknonw token %s in LatticeCTP::readFromHTKLattice\n", ptr);
+	error("unknown token %s in LatticeCTP::readFromHTKLattice\n", ptr);
 	break;
       }
     }
 
     // make sure the end time is later than start time
     if ( _latticeNodes[id].time >= _latticeNodes[endNodeId].time )
-      error("Lattice edge %d is reverse in time from %d(%f) to time %d(%f)",
-	    i, id, _latticeNodes[id].time, endNodeId, _latticeNodes[endNodeId].time);
+      error("When reading lattice '%s', lattice edge %d, start node %d time (%f) should be earlier than end node %d time(%f)",
+	    ifs.fileName(),
+	    i, 
+	    id, _latticeNodes[id].time, 
+	    endNodeId, _latticeNodes[endNodeId].time);
 
     _latticeNodes[id].edges.insert(endNodeId, edge);
   }
