@@ -2090,7 +2090,7 @@ FileParser::parseContinuousImplementation()
     consumeToken();
 
     //////////////////////////////////////
-    // AAA: some semantic checking here.
+    // AAA: some semantic checking here (see AAA: tag below)
     // The current implementation presumably comes from a RV
     // with nil conditional parents, as in:
     //
@@ -2154,7 +2154,7 @@ FileParser::parseContinuousImplementation()
 
     //////////////////////////////////////////////////////////////////
     // semantic check, this is the dual check of the
-    // check at AAA above.
+    // check at "AAA:" above.
     if (curRV.conditionalParents[curRV.conditionalParents.size()-1].size() == 0)
       parseError("decision tree 'mapping' needs > 0 conditional parents");
   }
