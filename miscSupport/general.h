@@ -36,7 +36,6 @@ char *copyToNewStr(const char *const str);
 bool strIsInt(const char *const str, int* i=NULL,int* len=NULL);
 bool strIsInt(const char *const str, unsigned* i=NULL,int* len=NULL);
 
-
 // a general swapping routine.
 template <class T>
 void genSwap(T& v1, T& v2) 
