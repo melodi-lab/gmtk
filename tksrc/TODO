@@ -3680,3 +3680,10 @@ Fri Jun  2 20:08:56 2006
 
 Tue Jun 13 20:09:10 2006
   - go through LM and lattice error messages and add more info to/fix them.
+
+
+Tue Jun 13 20:34:09 2006
+  - added triangulation heuristic syntax, ability to specify sequence of heuristics, i.e.,
+         1000-W-3,1000-F-3
+    to do one after the other and take the best out of both heuristics.
+
