@@ -962,6 +962,26 @@ class InferenceMaxClique  : public IM
   unsigned numCliqueValuesShared;
 #endif
 
+  void clear(bool alsoClearOrigin=false) {
+    // clear out all memory used by this inference clique.
+    fNodes.clear();
+    fSortedAssignedNodes.clear();
+    fUnassignedIteratedNodes.clear();
+    fDeterminableNodes.clear();
+    discreteValuePtrs.clear();
+    cliqueValues.clear();
+    if (alsoClearOrigin) {
+      // also clear all memory associated with the origin clique.
+      // NOTE: do not use this if using this clique in a DBN (this is
+      // only relevant for graphs that have only one instance of a
+      // clique, such as static graphs, or cliques that are either in
+      // the P, or E partitions (not in the C partitions), so are used
+      // only once.
+      origin.valueHolder.prepare();
+      origin.cliqueValueHashSet.clear();
+    }
+  }
+
   // Max collect-evidence probability for this clique. Used for beam
   // pruning.
   logpr maxCEValue;
@@ -1046,7 +1066,6 @@ public:
   {
     // apply factors so far from separators or unassigned nodes.
 
-
     if (fSortedAssignedNodes.size() == 0 || message(High)) {
       // let recursive version handle degenerate or message full case
       ceIterateAssignedNodesRecurse(part,0,p);
@@ -1057,8 +1076,12 @@ public:
   }
 
   /////////////////////////////////////////
+  // memory clearing.
+  void clearCliqueAndIncommingSeparators(JT_InferencePartition& part,
+					 bool alsoClearOrigins = false);
 
 
+  /////////////////////////////////////////
   void ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			    InferenceSeparatorClique& sep); 
   void ceSendToOutgoingSeparator(JT_InferencePartition& part);
@@ -1465,7 +1488,7 @@ public:
   // non-functional reference objects (in order to create an array of
   // these objects and then initialize them later with appropriate
   // references). Do not use until after proper re-constructor.
-  InferenceSeparatorClique() : origin(*((SeparatorClique*)NULL)) {}
+  InferenceSeparatorClique() : origin(*((SeparatorClique*)NULL)) { iAccHashMap = NULL; separatorValues = NULL; }
   // normal (or re-)constructor
   InferenceSeparatorClique(SeparatorClique& _origin,
 			   vector <RV*>& newRvs,
@@ -1484,7 +1507,31 @@ public:
       // placeholder VE separator, but it is deleted only when the
       // containing SeparatorClique is deleted.
       delete iAccHashMap;
+      iAccHashMap = NULL;
       delete separatorValues;
+      separatorValues = NULL;
+    }
+  }
+
+  void clear(bool alsoClearOrigin=false) {
+    if (veSeparator())
+      return;
+
+    delete iAccHashMap;
+    iAccHashMap = NULL;
+    delete separatorValues;
+    separatorValues = NULL;
+    fNodes.clear();
+    fAccumulatedIntersection.clear();
+    fRemainder.clear();
+    accDiscreteValuePtrs.clear();
+    remDiscreteValuePtrs.clear();
+    if (alsoClearOrigin) {
+      origin.accSepValHashSet.clear();
+      origin.remSepValHashSet.clear();
+      // could change to makeEmpty if running on a static graph only 
+      origin.accValueHolder.prepare();
+      origin.remValueHolder.prepare();
     }
   }
 
