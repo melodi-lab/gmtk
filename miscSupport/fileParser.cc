@@ -71,11 +71,11 @@ extern "C" {
 #endif
 
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
-iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii, const char *const _cppCommandOptions)
-  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii)
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii, const char *const _cppCommandOptions,const char _extraCommentChar)
+  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii), extraCommentChar(_extraCommentChar)
 #else
-iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
-  : ioDataStreamFile(_name,_Binary)
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const char _extraCommentChar)
+  : ioDataStreamFile(_name,_Binary),extraCommentChar(_extraCommentChar)
 #endif
 {
   if (_name == NULL)
@@ -83,6 +83,9 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary)
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   if (!Binary) {
     if (cppIfAscii) {
+      if (extraCommentChar == CPP_DIRECTIVE_CHAR)
+	warning("WARNING: opening file '%s' via cpp but also using char '%c' as a comment, unexpected results may occur",fileName(),extraCommentChar);
+
       string cppCommand = string("cpp");
       if (_cppCommandOptions != NULL) {
 	cppCommand = cppCommand + string(" ") + string(_cppCommandOptions);
@@ -182,7 +185,7 @@ iDataStreamFile::prepareNext()
       if (s == NULL)
 	return false;
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
-      if (*s == CPP_DIRECTIVE_CHAR) {
+      if (cppIfAscii && (*s == CPP_DIRECTIVE_CHAR)) {
 	// check if there is a filename/lineNo change.
 	{
 	  if (strcmp("#line",s) == 0) {
@@ -241,12 +244,23 @@ iDataStreamFile::prepareNext()
 	error("ERROR: maximum line length of %d reached in ASCII file '%s', line %d\n",
 	      (MAXLINSIZEPLUS1-1),fileName(),lineNo());
 
-      char *cstart = ::index(s,COMMENTCHAR);
-      if (cstart != NULL) {
-	if (cstart == buff)
-	  continue;
-	*cstart = '\0';
+      {
+	char *cstart = ::index(s,COMMENTCHAR);
+	if (cstart != NULL) {
+	  if (cstart == buff)
+	    continue;
+	  *cstart = '\0';
+	}
       }
+      if (extraCommentChar != IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR) {
+	char *cstart = ::index(s,extraCommentChar);
+	if (cstart != NULL) {
+	  if (cstart == buff)
+	    continue;
+	  *cstart = '\0';
+	}
+      }
+
       buffp = buff;
       while (*buffp && isspace(*buffp)) {
 	buffp++;
@@ -629,31 +643,25 @@ iDataStreamFile::readDouble(double& d, char *msg)
 
 
 bool
-iDataStreamFile::readLine(char *&line, size_t n, char *msg) {
+iDataStreamFile::readLine(char * line, size_t n, char *msg) {
   if ( Binary )
-    error("getline: Can't getline in a binary file.");
-
-  /*
-  ssize_t rc = ::getline(&line, &n, fh);
-  if ( rc < 0 )
-	error("getline", msg);
-  
-  buffp += rc;
-  */
-
-  int len=0;
+    error("error calling getline(): Can't getline in a binary file.");
 
   if (!prepareNext())
-    return errorReturn("getline",msg);
+    return errorReturn("prepare next line",msg);
+  
+  if (n == 0)
+    return true;
 
-  // read until '\n'. Add a null character
-  // onto the end of the string.
+  // read until '\n' or 'n-1' characters have been written.
+  // Add a null character onto the end of the string, so that
+  // total length is at most 'n'
+  size_t len=0;
   char c;
   do {
     line[len++] = c = *buffp++;
-  } while ( c != '\n' );
-  line[len-1] = '\n';
-  line[len] = '\0';
+  } while ( c != '\n' && len < n );
+  line[len-1] = '\0';
 
   return true;
 }
