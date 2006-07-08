@@ -255,6 +255,10 @@ logpr NGramCPT::probBackingOff(const int val, ContextHashEntry** ptr, unsigned n
 	else
 		return logpr(0.0);
 
+	// TODO: this assumes interpolation is always on?? Check this
+	// to make sure we are compatible with the standard options
+	// for LM interpolation.
+
 	for ( unsigned i = 0; (i < numExistsParents) && (ptr[i] != NULL); i++ ) {
 		p = _probTable.find(val, (ptr[i])->probOffset, (ptr[i])->probBlockSize);
 		if ( p != NULL )
