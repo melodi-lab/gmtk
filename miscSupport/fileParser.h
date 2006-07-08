@@ -63,12 +63,16 @@ class iDataStreamFile : public ioDataStreamFile {
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   const bool cppIfAscii;
 #endif
+  const char extraCommentChar;
 
  public:
+
+#define IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR '\1'
+
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
-  iDataStreamFile(const char *_name, bool _Binary = false, bool _cppIfAscii = true, const char * const _cppCommandOptions = NULL);
+  iDataStreamFile(const char *_name, bool _Binary = false, bool _cppIfAscii = true, const char * const _cppCommandOptions = NULL,const char extraCommentChar = IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR);
 #else
-  iDataStreamFile(const char *_name, bool _Binary = false);
+  iDataStreamFile(const char *_name, bool _Binary = false,const char extraCommentChar = IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR);
 #endif
 
   ~iDataStreamFile();
@@ -115,8 +119,11 @@ class iDataStreamFile : public ioDataStreamFile {
     const char delimiter, 
     bool spaceIsDelimiter, 
     char *msg=NULL );
-  
-  bool readLine(char *&lineptr, size_t n, char *msg = NULL);
+
+  // read a line consisting of a total of n characters including the final '\0'.
+  // Memory allocation is done externally.
+  bool readLine(char * lineptr, size_t n, char *msg = NULL);
+
   char peekChar(char *msg = NULL);
 
   template <class T>
