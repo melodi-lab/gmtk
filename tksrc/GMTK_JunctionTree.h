@@ -205,6 +205,12 @@ public:
 			const unsigned int frameDelta);
   // destructor
   // ~JT_InferencePartition() {}
+
+  void clear() {
+    maxCliques.clear();
+    separatorCliques.clear();
+    factorCliques.clear();
+  }
   
   // EM updating.
   void emIncrement(const logpr probE, 
@@ -389,10 +395,12 @@ class JunctionTree {
 
 
   void ceGatherIntoRoot(JT_InferencePartition& part,
-			 const unsigned root,
-			 vector< pair<unsigned,unsigned> >& message_order,
-			 const char*const part_type_name,
-			 const unsigned part_num);
+			const unsigned root,
+			vector< pair<unsigned,unsigned> >& message_order,
+			const char*const part_type_name,
+			const unsigned part_num,
+			const bool clearWhenDone = false,
+			const bool alsoClearOrigins = false);
 
   void ceSendToNextPartition(JT_InferencePartition& previous_part,
 			     const unsigned previous_part_root,

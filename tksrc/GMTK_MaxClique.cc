@@ -3623,6 +3623,54 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceSendToOutgoingSeparator()
+ *
+ *    memory clearing routine, this routine clears all significant memory
+ *    associated with this clique and all its incomming separators.
+ *    It should only be called when using this clique in a collect-evidence
+ *    form, where the clique memory is never going to be used again (such as
+ *    during prob(Evidence) form of inference, where the goal is just to
+ *    compute the probability of evidence.
+ *
+ *    If 'alsoClearOrigins=true', then we also clear all memory
+ *    associated with the origin cliques and origin separators
+ *    associated with this inference clique and inference separators
+ * 
+ *
+ * Preconditions:
+ *
+ *   The basic data structures should be set up.
+ *
+ * Postconditions:
+ *    The memory has been completely freed. It should be possible to reconstruct the
+ *    separator again though. Also, if the 'alsoClearOrigins=true', then
+ *    we can no longer use an instance of this clique again without constructing
+ *    it from scratch (i.e., it would always do a hash insert).
+ *    
+ *
+ * Side Effects:
+ *    Changes 
+ *      1) all of the memory associated with this clique and its incomming separators
+ *      2) if 'alsoClearOrigins' is true, it will delete all of the memory associated with
+ *         the origin of the clique.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void InferenceMaxClique::clearCliqueAndIncommingSeparators(JT_InferencePartition& part,
+							   bool alsoClearOrigins)
+
+{
+  for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
+    part.separatorCliques[origin.ceReceiveSeparators[sepNumber]].clear(alsoClearOrigins);
+  }
+  clear(alsoClearOrigins);
+}
+
 
 
 /*-
