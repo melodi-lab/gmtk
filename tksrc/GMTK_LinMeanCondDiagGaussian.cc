@@ -752,18 +752,19 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
       ::lineqsolve(nLinks+1,1,
 		   zzExpAccumulators_p,nextDlinkMat_p);
 
-      // now solve for the variances
+      /////////////////////////////////////////////
+      // now solve for the conditional variances,
+      // first, get the subtraction amount $tmp = B_m(r) \sum_t p_{mt} x_t(r) z_t(r)$
       double tmp = 0.0;
       for (int i=0;i<(nLinks+1);i++) {
 	tmp += ( nextDlinkMat_p[i] * xzExpAccumulators_p[i]);
       }
-
-      // finally solve for the variance, putting the result back in
-      // the xx accumulator. Normalize by the posterior
+      // next, finish solving for the variance, putting the result back in
+      // the xx accumulator. Also, we normalize by the posterior
       // accumulator here as that will not be done by the covariance
       // object when we give this to it, below. Note also that
       // we do not check for variances being too small here, that
-      // is done in the variance object itself.
+      // is also done in the variance object itself.
       xxAccumulators[feat] = 
 	(xxAccumulators[feat] - tmp)*invRealAccumulatedProbability;
 
@@ -917,6 +918,9 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
     double *zzExpAccumulators_p = zzExpAccumulators.ptr;
     for (int feat=0;feat<mean->dim();feat++) {
       const int nLinks = dLinkMat->numLinks(feat);
+      const double dlink_regularizer = gdarCoeffL2*covar->covariances[feat];
+      const double mean_regularizer = gmarCoeffL2*covar->covariances[feat];
+
     
       float *zzp = zzAccumulators_p; // ptr to current zz
       double *zzep = zzExpAccumulators_p; // ptr to current exp zz
@@ -930,11 +934,11 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
 	  zze_cp += (nLinks+1); // increment by stride
 	}
 	if (dlink < nLinks) {
-	  *zzep += gdarCoeffL2*covar->covariances[feat];
+	  *zzep += dlink_regularizer;
 
 	  *zze_rp = *zze_cp = *zAccumulators_p++;
 	} else {
-	  *zzep += gmarCoeffL2*covar->covariances[feat];
+	  *zzep += mean_regularizer;
 
 	  *zze_rp = *zze_cp = 
 	    realAccumulatedProbability;
