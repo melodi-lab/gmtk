@@ -660,6 +660,7 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 	   ((double)(prev_mean_ptr[i])*(*zAccumulators_ptr++))
 	   );
 	*nextArr_ptr++ += tmp;
+	// TODO: add regularized adaptation here.
       }
 
       const int zz_size = nLinks*(nLinks+1)/2;
@@ -668,6 +669,7 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 	  +=
 	  previous_variances_inv_ptr[i]*
 	  (*zzAccumulators_ptr++);
+	// TODO: add B-matrix regularization here for the zz diagonal.
       }
     }
 
@@ -699,6 +701,9 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
     for (int i=0;i<dim();i++) {
       const int nLinks = numLinks(i);
 
+      // need to add up for each covar, and then normalize by overall one.
+      // const double dlink_regularizer = GaussianComponent::gdarCoeffL2*covar->covariances[i];
+
       nextDlinkMat.growIfNeeded(nLinks);
       // copy and convert to double
       for (int j=0;j<nLinks;j++) {
@@ -717,6 +722,11 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 	  zze_rp ++;            // increment by one value
 	  zze_cp +=  nLinks;    // increment by stride
 	}
+
+
+	// need to add up for each covar, and then normalize by overall one.
+	// *zzep += dlink_regularizer;
+
 	zzep += (nLinks+1);
       }
       
