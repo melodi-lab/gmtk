@@ -68,18 +68,30 @@ LatticeADT::~LatticeADT() {
 /*-
  *-----------------------------------------------------------------------
  * LatticeADT::readFromHTKLattice(ifs, vocab)
- *     read an HTK lattice
+ *     read an HTK SLF lattice file format file. This routine *should* conform
+ *     to the description that is listed in Chapter 20 (in 3.2.1) of the HTKbook.
  *
  * Results:
  *     no results:
  *-----------------------------------------------------------------------
  */
 void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
+
+
+  /////////////////////////
+  // Read Lattice Header
+  /////////////////////////
+
   char *s_tmp, *ptr;
   do {
     ifs.read(s_tmp);
     if ( s_tmp == NULL )
       break;
+
+    // TODO: change below atoi's to strtouls, ideally add a common routine in general.{h,cc}
+
+    // TODO: go through chapter 20 in HTK book nd finish implementing
+    // this function to fully support HTK lattices.
 
     if ( strstr(s_tmp, "VERSION") != 0 ) {
       // skip the line
@@ -101,26 +113,27 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
       // parse log base
       ptr = strchr(s_tmp, '=');
       _base = atof(++ptr);
-    } else if ( strstr(s_tmp, "amscale") != NULL ) {
-      // parse am scale
+    } else if ( strstr(s_tmp, "acscale") != NULL ) {
+      // parse acoustic likelyhood scale
       ptr = strchr(s_tmp, '=');
       _amscale = atof(++ptr);
-    } else if ( strstr(s_tmp, "start=") != NULL ) {
+    } else if ( strstr(s_tmp, "START=") != NULL ) {
       // parse start node id
       ptr = strchr(s_tmp, '=');
       _start = (unsigned)atoi(++ptr);
-    } else if ( strstr(s_tmp, "end=") != NULL ) {
+    } else if ( strstr(s_tmp, "END=") != NULL ) {
       // parse start node id
       ptr = strchr(s_tmp, '=');
       _end = (unsigned)atoi(++ptr);
-    } else if ( strstr(s_tmp, "N=") != NULL ) {
+    } else if ( (strstr(s_tmp, "N=") != NULL ) || (strstr(s_tmp, "NODES=") != NULL )) {
       // parse number of nodes
       ptr = strchr(s_tmp, '=');
       _numberOfNodes = (unsigned)atoi(++ptr);
       if ( _numberOfNodes > _nodeCardinality )
-	error("Runtime error: number of nodes in lattice %d is bigger than node cardinlaity %d", _numberOfNodes, _nodeCardinality);
-    } else if ( strstr(s_tmp, "L=") != NULL ) {
-      // parse number of nodes
+	error("Error in lattice '%s', number of nodes in lattice %d is bigger than RV lattice node cardinality %d",
+	      ifs.fileName(),_numberOfNodes, _nodeCardinality);
+    } else if ( (strstr(s_tmp, "L=") != NULL) || (strstr(s_tmp, "LINKS=") != NULL) ) { 
+      // parse number of links/edges
       ptr = strchr(s_tmp, '=');
       _numberOfLinks = (unsigned)atoi(++ptr);
       delete [] s_tmp;
@@ -131,26 +144,49 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
     s_tmp = NULL;
   } while ( ! ifs.isEOF() );
 
+  if (_numberOfNodes < 2) 
+    error("Error in lattice '%s', lattice only has %d nodes, must have at least 2 nodes",
+	  ifs.fileName(),_numberOfNodes);
+
+  if (_numberOfLinks < 1) 
+    error("Error in lattice '%s', lattice only has %d edges, must have at least 1 edge",
+	  ifs.fileName(),_numberOfLinks);
+
+  if (_start == _end) {
+    error("Error in lattice '%s', start node id = %d is same as end node id",
+	  ifs.fileName(),_start,_end);
+  }
+
+
+  /////////////////////////
+  // Read Lattice Nodes
+  /////////////////////////
+
   if ( _latticeNodes )
     delete [] _latticeNodes;
   _latticeNodes = new LatticeNode [_numberOfNodes];
-  char *line = new char [1024];
+
+  const unsigned linesize = 4096;
+  char line[linesize];
   const char seps[] = " \t\n";
   unsigned id;
 
-  // to assert there is no erros in the latice, we perform two checks:
+  // to assert there is no errors in the latice, we perform two checks:
   // 1. make sure that for each edge, the end time is later than start time
-  // 2. make sure that end node has the latest time
+  // 2. make sure that end node in the lattice has the very latest time
   float latestTime = 0.0;
 
   // reading nodes
   for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
-    ifs.readLine(line, 1024);
+    ifs.readLine( line, linesize);
     ptr = strtok(line, seps);
     if ( ptr[0] != 'I' || ptr[1] != '=' )
-      error("expecting I= in line %s at LatticeCPT::readFromHTKLattice", ptr);
+      error("Error in lattice '%s', line %d, expecting I= within line, but got '%s'", 
+	    ifs.fileName(),ifs.lineNo(),ptr);
     if ( (id = atoi(ptr+2)) > _numberOfNodes )
-      error("node id %d is bigger than number of nodes in LatticeCPT::readFromHTKLattice", id, _numberOfNodes);
+      error("Error in lattice '%s', line %d, node id %d is bigger than number of nodes %d",
+	    ifs.fileName(),ifs.lineNo(),
+	    id, _numberOfNodes);
     if ( (ptr = strtok(NULL, seps)) != NULL ) {
       // there is time information
       if ( ptr[0] == 't' ) {
@@ -169,26 +205,36 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 
   // make sure end node has the latest time
   if ( _latticeNodes[_end].time < latestTime )
-    error("lattice end node doesn't have the latest time.");
+    error("When reading lattice '%s', lattice end node %d has a time of %f which is not the latest found time which is %f.",ifs.fileName(),_end,_latticeNodes[_end].time,latestTime);
+
+
+  ////////////////////////////
+  // Read Lattice Edges/Links
+  ////////////////////////////
 
   // reading links
   double score;
   unsigned endNodeId = 0;
   for ( unsigned i = 0; i < _numberOfLinks; i++ ) {
-    ifs.readLine(line, 1024);
+    ifs.readLine(line, linesize);
     ptr = strtok(line, seps);
     if ( ptr[0] != 'J' || ptr[1] != '=' )
-      error("expecting J= in line %s at LatticeCPT::readFromHTKLattice", ptr);
+      error("Error in lattice %s, line %d, expecting J= within line '%s'",
+	    ifs.fileName(),ifs.lineNo(),ptr);
     if ( (id = atoi(ptr+2)) > _numberOfLinks )
-      error("link id %d is bigger than number of nodes in LatticeCPT::readFromHTKLattice", id, _numberOfLinks);
+      error("Error in lattice %s, line %d, link id %d is bigger than number of links %d", 
+	    ifs.fileName(),ifs.lineNo(),id, _numberOfLinks);
 
     // starting node
     if ( (ptr = strtok(NULL, seps)) == NULL )
-      error("expect starting node for link %d", id);
+      error("Error in lattice '%s', line %d, expecting starting node for link %d",
+	    ifs.fileName(),ifs.lineNo(),id);
     if ( ptr[0] != 'S' || ptr[1] != '=' )
-      error("expect starting node for link %d", id);
+      error("Error in lattice '%s', line %d, expecting starting node for link %d", 
+	    ifs.fileName(),ifs.lineNo(),id);
     if ( (id = atoi(ptr+2)) > _numberOfNodes )
-      error("node id %d is bigger than number of nodes in LatticeCPT::readFromHTKLattice", id, _numberOfNodes);
+      error("Error in lattice '%s', line %d,  node id %d is bigger than number of lattice nodes %d", 
+	    ifs.fileName(), ifs.lineNo(), id, _numberOfNodes);
 
     LatticeEdge edge;
     while ( (ptr = strtok(NULL, seps)) != NULL ) {
@@ -246,23 +292,30 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	edge.posterior.setFromP(score);
 	break;
       default:
-	error("unknown token %s in LatticeCTP::readFromHTKLattice\n", ptr);
+	error("Error in lattice '%s', line %d, found unknown token '%s'",
+	    ifs.fileName(),ifs.lineNo(),ptr);
+
 	break;
       }
     }
 
     // make sure the end time is later than start time
     if ( _latticeNodes[id].time >= _latticeNodes[endNodeId].time )
-      error("When reading lattice '%s', lattice edge %d, start node %d time (%f) should be earlier than end node %d time(%f)",
+      error("Error in lattice '%s', lattice edge %d, start node %d time (%f) should be earlier than end node %d time(%f)",
 	    ifs.fileName(),
 	    i, 
 	    id, _latticeNodes[id].time, 
 	    endNodeId, _latticeNodes[endNodeId].time);
 
     _latticeNodes[id].edges.insert(endNodeId, edge);
+
   }
 
-  delete [] line;
+  if ( _latticeNodes[_start].time >= _latticeNodes[_end].time )
+    error("Error in lattice '%s', overall start node %d time (%f) should be earlier than end node %d time(%f)",
+	  ifs.fileName(),
+	  _start, _latticeNodes[_start].time, 
+	  _end, _latticeNodes[_end].time);
 
   normalizePosterior();
 }
@@ -320,7 +373,13 @@ void LatticeADT::read(iDataStreamFile &is) {
 
     // set vocabulary and read in HTK lattice
     Vocab *vocab = GM_Parms.vocabs[GM_Parms.vocabsMap[vocabName]];
-    iDataStreamFile lfifs(latticeFile, false, false);
+    iDataStreamFile lfifs(latticeFile,  // name
+			  false,        // isBinary
+			  false,        // use CPP if ASCII
+			  NULL,         // extra CPP options
+			  '#'           // extra comment character to use, use SLF comment '#'
+			  );
+
     readFromHTKLattice(lfifs, *vocab);
     delete [] latticeFile;
 
@@ -530,8 +589,11 @@ void LatticeADT::nextIterableLattice() {
   unsigned option = 0;
   string trigger = "UseScore";
   if ( _latticeFile->readIfMatch(trigger, "reading score options") ) {
-    char *str = new char[1024];
+    char* str = NULL;
+    // note, read will allocate the string, but we need to free it below.
+    // since this is called only once, not too bad to allocate and delete here.
     _latticeFile->read(str, "reading score options");
+
     if ( strcmp(str, "Posterior") == 0 ) {
       option = 0x1u << 5;
     } else {
@@ -556,7 +618,7 @@ void LatticeADT::nextIterableLattice() {
 	tok = strtok(NULL, "+");
       }
     }
-    delete [] str;
+    free(str);
   }
   useScore(option);
 
