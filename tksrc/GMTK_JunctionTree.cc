@@ -4037,7 +4037,9 @@ JunctionTree::ceGatherIntoRoot(// partition
 			       const char*const part_type_name,
 			       // number of the partition in unrolled graph 
 			       // (for debugging/status msgs)
-			       const unsigned part_num)
+			       const unsigned part_num,
+			       const bool clearWhenDone,
+			       const bool alsoClearOrigins)
 {
   // first check that this is not an empty partition.
   if (part.maxCliques.size() == 0)
@@ -4057,6 +4059,15 @@ JunctionTree::ceGatherIntoRoot(// partition
 	    part_type_name,part_num,from,to);
     part.maxCliques[from].
       ceSendToOutgoingSeparator(part);
+
+    // TODO: if we are just computing probE here, we should
+    // delete memory in part.maxCliques[from]. Also, if we're
+    // only doing probE, we should not keep the cliques around at all, only
+    // the outgoing separator.
+    if (clearWhenDone) {
+      part.maxCliques[from].
+	clearCliqueAndIncommingSeparators(part,alsoClearOrigins);
+    }
   }
   // collect to partition's root clique
   infoMsg(IM::Med+5,
@@ -4709,7 +4720,8 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   ceGatherIntoRoot(*curPart,
 		   P_ri_to_C,
 		   P1_message_order,
-		   prv_nm,partNo);
+		   prv_nm,partNo,
+		   true,true);
   // curPart->origin.clearSeparatorValueCache();
 
   if (pPartCliquePrintRange != NULL) 
@@ -4742,7 +4754,8 @@ JunctionTree::probEvidence(const unsigned int numFrames,
     ceGatherIntoRoot(*curPart,
 		     C_ri_to_C,
 		     Co_message_order,
-		     prv_nm,partNo);
+		     prv_nm,partNo,
+		     true,true);
 
     if (cPartCliquePrintRange != NULL) 
       printAllCliques(*curPart,
@@ -4775,7 +4788,8 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   ceGatherIntoRoot(*curPart,
 		   E_root_clique,
 		   E1_message_order,
-		   E1_n,partNo);
+		   E1_n,partNo,
+		   true,true);
 
   if (ePartCliquePrintRange != NULL) 
     printAllCliques(*curPart,
