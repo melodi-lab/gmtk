@@ -1072,6 +1072,7 @@ void FNGramImp::readBackoffGraphNode(iDataStreamFile &ifs, BackoffGraphNode &bgN
 			bgNode.knFile = copyToNewStr(tok);
 		} else if ( strcmp(tok, "interpolate") == 0 ) {
 			bgNode.interpolate = true;
+			// TODO: implement this so that it has an effect.
 		} else if ( strcmp(tok, "write") == 0 ) {
 			if ( (tok = strtok(NULL, seps)) == NULL )
 				error("Error: write argument needs a value reading factored spec file in %s", line);
