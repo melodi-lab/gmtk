@@ -3687,3 +3687,10 @@ Tue Jun 13 20:34:09 2006
          1000-W-3,1000-F-3
     to do one after the other and take the best out of both heuristics.
 
+Mon Jul 10 03:44:01 2006
+  - another logp.h compiled mode that uses all normal arithmetic w/o any normalization. Will need to go through
+    and make sure that code is not breaking the interface (i.e., reaching in and
+    doing a divide). Need to implement a logp.h divide with no check routine (rather than reaching
+    in). This should help out on static networks where we can get a speedup if we're
+    doing just single or double precision.
+ 
