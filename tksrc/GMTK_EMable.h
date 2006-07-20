@@ -430,8 +430,25 @@ public:
   virtual void emAccumulateAccumulators(iDataStreamFile& ifile);
 
   ///////////////////////////////////////////////////////////////
+  // initialize (say to zero, or to appropriate starting values) the current set of accumulators.
+  virtual void emInitAccumulators();
+
+  ///////////////////////////////////////////////////////////////
+  // write accumulators in a simple, easy, unencoded, and fixed
+  // length way to read by humans, or to be used as a input to feature
+  // transform for a kernel machine.
+  virtual void emWriteUnencodedAccumulators(oDataStreamFile& ofile,
+					    bool writeLogVals = true);
+
+
+  ///////////////////////////////////////////////////////////////
   // virtual functions for objects to do the actual work.
-  virtual void emStoreObjectsAccumulators(oDataStreamFile& ofile) = 0;
+  virtual void emStoreObjectsAccumulators(oDataStreamFile& ofile,  // file to which to write
+					  bool writeLogVals = true, // write log(prob) vals
+					  bool writeZeros = false // write just a vector of zeros of appropriate length
+					  ) = 0;
+
+
   virtual void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) = 0;
   virtual void emZeroOutObjectsAccumulators() = 0;
   virtual void emLoadObjectsAccumulators(iDataStreamFile& ifile) = 0;

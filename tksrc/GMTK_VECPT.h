@@ -198,7 +198,9 @@ public:
   void emSwapCurAndNew() {}
 
   // parallel training (VECPTs are never trained)
-  void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile,
+				  bool writeLogVals = true,
+				  bool writeZeros = false) {}
   void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
   void emZeroOutObjectsAccumulators() {}
   void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}

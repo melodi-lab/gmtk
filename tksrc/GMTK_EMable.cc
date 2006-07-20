@@ -100,8 +100,15 @@ logpr EMable::setMinDiscAccumulatedProbability(const logpr floor)
  */
 
 
+/*
+ * emStoreAccumulators:
+ *   store the accumulators to file ofile.
+ *   we perform very simple compression (i.e., don't write long vectors of zeros) on the output.
+ *   When possible, write the accumulators in log probability space.
+ *
+ */
 void
-EMable::emStoreAccumulators(oDataStreamFile& ofile)
+EMable::emStoreAccumulators(oDataStreamFile& ofile) 
 {
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet()) {
@@ -139,6 +146,7 @@ EMable::emStoreAccumulators(oDataStreamFile& ofile)
       // accumulators stored for this object.
       unsigned flag = 1;
       ofile.write(flag,"writing acc flag");
+
       // store the accumulators as normal.
       ofile.write(accumulatedProbability.val(),"EM store accums");
       // call virtual function to do actual work for object.
@@ -260,3 +268,76 @@ EMable::emAccumulateAccumulators(iDataStreamFile& ifile)
     }
   }
 }
+
+
+void
+EMable::emInitAccumulators()
+{
+  assert (basicAllocatedBitIsSet()); 
+
+  if (!emAmTrainingBitIsSet()) {
+    // we are not "training" here, so we just move on.
+    return;
+  } else {
+    // so we are training or using these accumulators. 
+    accumulatedProbability.set_to_zero();
+    // call virtual function to do actual work for object.
+    emZeroOutObjectsAccumulators();
+  }
+}
+
+
+/*
+ * emWriteBasicAccumulators:
+ *  write accumulators in a simple, easy, unencoded, and fixed
+ *  length way to read by humans, or to be used as a input to feature
+ *  transform for a kernel machine. Note, we do not write out
+ *  log probabilities if logp is currently using them.
+ *
+ * 
+ */
+
+void
+EMable::emWriteUnencodedAccumulators(oDataStreamFile& ofile,
+				     bool writeLogVals)
+{
+  assert ( basicAllocatedBitIsSet() );
+  if (!emAmTrainingBitIsSet()) {
+    // then we are not training, because
+    // we have turned off training of this object.
+    // We write nothing out.
+    return;
+  } else {
+
+    // store the accumulators as normal values      
+    if (writeLogVals) {
+      ofile.write(accumulatedProbability.val(),"EM store accums");
+    } else {
+      ofile.write(accumulatedProbability.unlog(),"EM store accums");
+    }
+    if (accumulatedProbability.zero()) {
+      // then we have no probability values, so we need to write out 'zero' accumulators.
+      // call virtual function to do actual work for object.
+      emStoreObjectsAccumulators(ofile,
+				 writeLogVals, // log value writing
+				 true // set to true to just write zero vector of correct len
+				 );
+    } else {
+      // the training bit is set.  EM structures should have been
+      // allocated. This ensures
+      // that when we write a 1 before the accumulators,
+      // we will always have the full set of accumulators written.
+      assert (emEmAllocatedBitIsSet());
+
+      // call virtual function to do actual work for object.
+      emStoreObjectsAccumulators(ofile,
+				 writeLogVals // log value writing
+				 );
+    }
+  }
+}
+
+
+
+
+

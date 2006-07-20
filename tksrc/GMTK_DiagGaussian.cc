@@ -428,7 +428,6 @@ DiagGaussian::emEndIteration()
   // mean->emEndIteration(nextMeans.ptr);
   // covar->emEndIteration(accumulatedProbability,nextMeans.ptr,nextDiagCovars.ptr);
 
-
   emClearOnGoingBit();
 }
 
@@ -456,13 +455,25 @@ DiagGaussian::emSwapCurAndNew()
 
 
 void
-DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile)
+DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
+					 bool writeLogVals,
+					 bool writeZeros)
 {
-  for (int i=0;i<nextMeans.len();i++) {
-    ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
-  }
-  for (int i=0;i<nextDiagCovars.len();i++) {
-    ofile.write(nextDiagCovars[i],"Diag Gaussian store accums nc.");
+  // since this is a Gaussian, we ignore the writeLogVals
+  // argument since it doesn't make sense to take log of
+  // these values since they are continuous, could be negative, etc.
+  if (writeZeros) {
+    const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
+    for (int i=0;i<totalLen;i++) {
+      ofile.write(0.0,"Diag Gaussian store accums nm + nc.");
+    }
+  } else {
+    for (int i=0;i<nextMeans.len();i++) {
+      ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
+    }
+    for (int i=0;i<nextDiagCovars.len();i++) {
+      ofile.write(nextDiagCovars[i],"Diag Gaussian store accums nc.");
+    }
   }
 }
 
