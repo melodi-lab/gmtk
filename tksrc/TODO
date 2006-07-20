@@ -3693,4 +3693,13 @@ Mon Jul 10 03:44:01 2006
     doing a divide). Need to implement a logp.h divide with no check routine (rather than reaching
     in). This should help out on static networks where we can get a speedup if we're
     doing just single or double precision.
- 
+
+Mon Jul 17 21:54:29 2006
+ - add MLLR and regularized MLLR as in bookchapter, as well as regularized adaptation
+   (so we can do combinations of all of the above).
+ - c(x1,x2|x3,x4) such that for any x3, and x4, we define
+   a joint domain on x1 and x2, such that iteration
+   for (x1,x2) \in D(x1,x2|x3,x4) for fixed x3,x4.  We build
+   these conditional domains 
+
+
