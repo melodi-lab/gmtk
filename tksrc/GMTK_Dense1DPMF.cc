@@ -605,10 +605,32 @@ Dense1DPMF::emSwapCurAndNew()
 */
 
 
-void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile)
+void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile,
+					    bool writeLogVals,
+					    bool writeZeros)
 {
-  for (int i=0;i<nextPmf.len();i++) {
-    ofile.write(nextPmf[i].val(),"DPMF store accums");
+  if (writeZeros) {
+    if (writeLogVals) {
+      logpr z;
+      z.set_to_zero();
+      for (int i=0;i<nextPmf.len();i++) {
+	ofile.write(z.val(),"DPMF store accums");
+      }   
+    } else {
+      for (int i=0;i<nextPmf.len();i++) {
+	ofile.write(0.0,"DPMF store accums");
+      }   
+    } 
+  } else {
+    if (writeLogVals) {
+      for (int i=0;i<nextPmf.len();i++) {
+	ofile.write(nextPmf[i].val(),"DPMF store accums");
+      }
+    } else {
+      for (int i=0;i<nextPmf.len();i++) {
+	ofile.write(nextPmf[i].unlog(),"DPMF store accums");
+      }
+    }
   }
 }
 

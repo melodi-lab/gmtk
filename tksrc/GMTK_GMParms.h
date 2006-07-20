@@ -493,10 +493,12 @@ public:
   void emSwapCurAndNew();
 
   ////////////////////////////////////////////////////////////////////////////
-  // EM parallelism
+  // EM parallelism and Kernels
   void emStoreAccumulators(oDataStreamFile& ofile);
   void emLoadAccumulators(iDataStreamFile& ifile);
   void emAccumulateAccumulators(iDataStreamFile& ifile);
+  void emInitAccumulators(bool startEMIteration = false);
+  void emWriteUnencodedAccumulators(oDataStreamFile& ofile,bool writeLogVals = true);
 
   ////////////////////////////////////////////////////////////////////////////
   void makeRandom();

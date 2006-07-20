@@ -1144,22 +1144,39 @@ LinMeanCondDiagGaussian::emSwapCurAndNew()
 
 
 void
-LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile)
+LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
+						    bool writeLogVals,
+						    bool writeZeros)
 {
-  for (int i=0;i<xAccumulators.len();i++) {
-    ofile.write(xAccumulators[i],"LMDG store accums x.");
-  }
-  for (int i=0;i<xxAccumulators.len();i++) {
-    ofile.write(xxAccumulators[i],"LMDG store accums xx.");
-  }
-  for (int i=0;i<xzAccumulators.len();i++) {
-    ofile.write(xzAccumulators[i],"LMDG store accums xz.");
-  }
-  for (int i=0;i<zzAccumulators.len();i++) {
-    ofile.write(zzAccumulators[i],"LMDG store accums zz.");
-  }
-  for (int i=0;i<zAccumulators.len();i++) {
-    ofile.write(zAccumulators[i],"LMDG store accums z.");
+  // since this is a Gaussian, we ignore the writeLogVals
+  // argument since it doesn't make sense to take log of
+  // these values since they are continuous, could be negative, etc.
+  if (writeZeros) {
+    const unsigned totalLen = 
+      xAccumulators.len()+ 
+      xxAccumulators.len()+ 
+      xzAccumulators.len()+ 
+      zzAccumulators.len()+ 
+      zAccumulators.len();
+    for (int i=0;i<totalLen;i++) {
+      ofile.write(0.0,"LMDG zero accums x.");
+    }
+  } else {
+    for (int i=0;i<xAccumulators.len();i++) {
+      ofile.write(xAccumulators[i],"LMDG store accums x.");
+    }
+    for (int i=0;i<xxAccumulators.len();i++) {
+      ofile.write(xxAccumulators[i],"LMDG store accums xx.");
+    }
+    for (int i=0;i<xzAccumulators.len();i++) {
+      ofile.write(xzAccumulators[i],"LMDG store accums xz.");
+    }
+    for (int i=0;i<zzAccumulators.len();i++) {
+      ofile.write(zzAccumulators[i],"LMDG store accums zz.");
+    }
+    for (int i=0;i<zAccumulators.len();i++) {
+      ofile.write(zAccumulators[i],"LMDG store accums z.");
+    }
   }
 }
 

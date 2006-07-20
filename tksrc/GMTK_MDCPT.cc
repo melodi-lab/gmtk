@@ -857,10 +857,32 @@ MDCPT::emSwapCurAndNew()
 
 
 void
-MDCPT::emStoreObjectsAccumulators(oDataStreamFile& ofile)
+MDCPT::emStoreObjectsAccumulators(oDataStreamFile& ofile,
+				  bool writeLogVals,
+				  bool writeZeros)
 {
-  for (int i=0;i<nextMdcpt.len();i++) {
-    ofile.write(nextMdcpt[i].val(),"DenseCPT store accums");
+  if (writeZeros) {
+    if (writeLogVals) {
+      logpr v;
+      v.set_to_zero();
+      for (int i=0;i<nextMdcpt.len();i++) {
+	ofile.write(v.val(),"DenseCPT store accums");
+      }
+    } else {
+      for (int i=0;i<nextMdcpt.len();i++) {
+	ofile.write(0.0,"DenseCPT store accums");
+      }
+    }
+  } else {
+    if (writeLogVals) {
+      for (int i=0;i<nextMdcpt.len();i++) {
+	ofile.write(nextMdcpt[i].val(),"DenseCPT store accums");
+      }
+    } else {
+      for (int i=0;i<nextMdcpt.len();i++) {
+	ofile.write(nextMdcpt[i].unlog(),"DenseCPT store accums");
+      }
+    }
   }
 }
 

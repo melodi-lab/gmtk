@@ -90,7 +90,9 @@ class LatticeNodeCPT : public CPT {
 
   ///////////////////////////////////////////////////////////////
   // virtual functions for objects to do the actual work.
-  virtual void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
+  virtual void emStoreObjectsAccumulators(oDataStreamFile& ofile,
+					  bool writeLogVals = true,
+					  bool writeZeros = false) {}
   virtual void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
   virtual void emZeroOutObjectsAccumulators() {}
   virtual void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}

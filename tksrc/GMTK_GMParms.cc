@@ -3373,6 +3373,134 @@ GMParms::emAccumulateAccumulators(iDataStreamFile& ifile)
 }
 
 
+
+void
+GMParms::emInitAccumulators(bool startEMIteration)
+{
+
+  if (startEMIteration) {
+    /////////////////////////////////////////////////////////////
+    // First, make sure the EM iterations have been
+    // started. Like in the emEndIteration function above,
+    // we do not call this for all objects. This call
+    // ensure that all objects internal EM data structures
+    // have been allocated, so that they can be accumulated to.
+
+    // components
+    for (unsigned i=0;i<components.size();i++)
+      components[i]->emStartIteration();
+
+    // do the basic discrete objects
+    for (unsigned i=0;i<dPmfs.size();i++)
+      dPmfs[i]->emStartIteration();
+    for (unsigned i=0;i<sPmfs.size();i++)
+      sPmfs[i]->emStartIteration();
+
+    // for discrete RVs
+    for (unsigned i=0;i<mdCpts.size();i++)
+      mdCpts[i]->emStartIteration();
+    for (unsigned i=0;i<msCpts.size();i++)
+      msCpts[i]->emStartIteration();
+    for (unsigned i=0;i<mtCpts.size();i++)
+      mtCpts[i]->emStartIteration();
+
+    // for continuous RVs
+    for (unsigned i=0;i<mixtures.size();i++)
+      mixtures[i]->emStartIteration();
+    /////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////
+  }
+
+  /////////////////////////////////////////////////////////////
+  // Now, we actually initialize the accumulators.
+
+  // first do the basic objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emInitAccumulators();
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emInitAccumulators();
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->emInitAccumulators();
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->emInitAccumulators();
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->emInitAccumulators();
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->emInitAccumulators();
+
+  // components
+  for (unsigned i=0;i<components.size();i++)
+    components[i]->emInitAccumulators();
+
+  // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emInitAccumulators();
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emInitAccumulators();
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emInitAccumulators();
+
+  // for continuous RVs
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->emInitAccumulators();
+#if 0
+  // uncomment this when the objects get written.
+  for (unsigned i=0;i<gausSwitchingMixtures.size();i++)
+    gausSwitchingMixtures[i]->emInitAccumulators();
+  for (unsigned i=0;i<logitSwitchingMixtures.size();i++)
+    logitSwitchingMixtures[i]->emInitAccumulators();
+  for (unsigned i=0;i<mlpSwitchingMixtures.size();i++)
+    mlpSwitchingMixtures[i]->emInitAccumulators();
+#endif
+  /////////////////////////////////////////////////////////////
+}
+
+
+void
+GMParms::emWriteUnencodedAccumulators(oDataStreamFile& ofile, bool writeLogVals)
+{
+  // first do the basic objects
+  for (unsigned i=0;i<dPmfs.size();i++)
+    dPmfs[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  for (unsigned i=0;i<sPmfs.size();i++)
+    sPmfs[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  for (unsigned i=0;i<means.size();i++)
+    means[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  for (unsigned i=0;i<covars.size();i++)
+    covars[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  for (unsigned i=0;i<dLinkMats.size();i++)
+    dLinkMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  for (unsigned i=0;i<weightMats.size();i++)
+    weightMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+
+   // components
+  for (unsigned i=0;i<components.size();i++)
+    components[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+
+   // for discrete RVs
+  for (unsigned i=0;i<mdCpts.size();i++)
+    mdCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  for (unsigned i=0;i<msCpts.size();i++)
+    msCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  for (unsigned i=0;i<mtCpts.size();i++)
+    mtCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+
+   // for continuous RVs
+  for (unsigned i=0;i<mixtures.size();i++)
+    mixtures[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+#if 0
+  // uncomment this when the objects get written.
+  for (unsigned i=0;i<gausSwitchingMixtures.size();i++)
+    gausSwitchingMixtures[i]->emWriteUnencodedAccumulators(ofile,written);
+  for (unsigned i=0;i<logitSwitchingMixtures.size();i++)
+    logitSwitchingMixtures[i]->emWriteUnencodedAccumulators(ofile,written);
+  for (unsigned i=0;i<mlpSwitchingMixtures.size();i++)
+    mlpSwitchingMixtures[i]->emWriteUnencodedAccumulators(ofile,written);
+#endif
+
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * setFirstUtterance

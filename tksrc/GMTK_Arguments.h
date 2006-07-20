@@ -1421,10 +1421,66 @@ static bool localCliqueNormalization = false;
   DlinkMatrix::checkForValidValues();
 
 
-
 #else
 #endif
 #endif // defined(GMTK_ARG_EM_TRAINING_PARAMS)
+
+
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************                                     ***********************************************/
+/****************************       GMTK KERNEL OPTIONS           ***********************************************/
+/****************************                                     ***********************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+
+#if defined(GMTK_ARG_KERNEL_PARAMS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+static bool randomizeParams = false;
+static bool transFileIsBinary = false;
+static char *objsToNotUtilizeFile=NULL;
+static bool localCliqueNormalization = false;
+static bool fisherKernelP = false;
+static char *storeFeatureFile = NULL;
+static bool annotateTransformationOutput = true;
+static bool writeLogVals = false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("random",Arg::Opt,randomizeParams,"Randomize the parameters"),
+  // kernel accumulator file support
+  Arg("transFileIsBinary",Arg::Opt,transFileIsBinary,"Use binary to write the parameters in transformed space"), 
+  Arg("objsNotToUtilize",Arg::Opt,objsToNotUtilizeFile,"File listing trainable parameter objects to not utilize in transformed space."),
+  Arg("storeFeatureFile",Arg::Req,storeFeatureFile,"File to store feature space values in"),
+  Arg("localCliqueNorm",Arg::Opt,localCliqueNormalization,"Use local clique sum for posterior normalization."),
+  Arg("fisherKernel",Arg::Opt,fisherKernelP,"Compute the fisher kernel transformation."),
+  Arg("annotateTransformationOutput",Arg::Opt,annotateTransformationOutput,"Annotation the output tranformation matrix (one per line)."),
+  Arg("writeLogVals",Arg::Opt,writeLogVals,"Write log(p) rather than just p for prob values."),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (fisherKernelP == true) {
+    error("Fisher Kernel currently not supported, set fisherKernel to false for  now");
+  }
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_KERNEL_PARAMS)
+
+
+
 
 /*==============================================================================================================*/
 /****************************************************************************************************************/

@@ -193,7 +193,9 @@ public:
 
 
   // parallel training
-  void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile,
+				  bool writeLogVals = true,
+				  bool writeZeros = false) {}
   void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
   void emZeroOutObjectsAccumulators() {}
   void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}

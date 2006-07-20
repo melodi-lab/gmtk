@@ -1,6 +1,6 @@
 /*-
  * GMTK_UnityScoreMixture
- *        Mixture of gaussian that always returns probability 0 regardless
+ *        Mixture of gaussian that always returns probability 1 regardless
  *        of its parents or the corresponding feature values. This object
  *        can be useful in certain situations. The name of this mixture
  *        is internal, and is "internal::UnityScoreGaussianMixture"
@@ -104,7 +104,9 @@ public:
   void emLoadAccumulators(iDataStreamFile& ifile) {}
   void emAccumulateAccumulators(iDataStreamFile& ifile) {}
 
-  void emStoreObjectsAccumulators(oDataStreamFile& ofile) {}
+  void emStoreObjectsAccumulators(oDataStreamFile& ofile,
+				  bool writeLogVals = true,
+				  bool writeZeros = false) {}
   void emLoadObjectsDummyAccumulators(iDataStreamFile& ifile) {}
   void emZeroOutObjectsAccumulators() {}
   void emLoadObjectsAccumulators(iDataStreamFile& ifile) {}
