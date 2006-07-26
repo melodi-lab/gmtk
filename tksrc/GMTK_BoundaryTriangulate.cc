@@ -16,8 +16,6 @@
  *
  */
 
-
-
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -2002,167 +2000,164 @@ BoundaryTriangulate
   TriangulateHeuristics   ea_tri_heur;
   int                     trial;
 
-  if (!(timer && timer->Expired())) {
+  ////////////////////////////////////////////////////////////////////////
+  // compute the real best weight for a set of current
+  // cliques, if the weight has not already been computed.
+  ////////////////////////////////////////////////////////////////////////
+  if (best_weight == DBL_MAX && best_cliques.size() > 0) {
+    best_weight = graphWeight(best_cliques,jtWeight,nodesRootMustContain);
+  }
+
+  ////////////////////////////////////////////////////////////////////////
+  // Initialize variables 
+  ////////////////////////////////////////////////////////////////////////
+  prvs_best_weight = best_weight;
+  ea_tri_heur = tri_heur;
+
+  ////////////////////////////////////////////////////////////////////////
+  // Add extra edges, if appropriate 
+  ////////////////////////////////////////////////////////////////////////
+  restoreNeighbors(orgnl_nghbrs);
+
+  if ((tri_heur.extraEdgeHeuristic != NO_EDGES) && 
+      (tri_heur.extraEdgeHeuristic != RANDOM_EDGES)) {
+    addExtraEdgesToGraph( nodes, tri_heur.extraEdgeHeuristic );
+  }
+
+  saveCurrentNeighbors( nodes, nghbrs_with_extra ); 
+
+  ////////////////////////////////////////////////////////////////////////
+  // Repeat triangulation specified number of times 
+  ////////////////////////////////////////////////////////////////////////
+  trial = 0;
+  type_timer.Reset( tri_heur.seconds );
+  for (;
+    (best_cliques.size()<=0) ||
+    ( ((!timer) || (!timer->Expired())) && 
+      (((tri_heur.numberTrials>0) && (trial<tri_heur.numberTrials)) ||
+       ((tri_heur.seconds>0)      && (!type_timer.Expired()))) );
+    trial++) {
 
     ////////////////////////////////////////////////////////////////////////
-    // compute the real best weight for a set of current
-    // cliques, if the weight has not already been computed.
+    // Initialize graph for new triangulation 
     ////////////////////////////////////////////////////////////////////////
-    if (best_weight == DBL_MAX && best_cliques.size() > 0) {
-      best_weight = graphWeight(best_cliques,jtWeight,nodesRootMustContain);
-    }
+    order.clear();
+    cliques.clear();
 
-    ////////////////////////////////////////////////////////////////////////
-    // Initialize variables 
-    ////////////////////////////////////////////////////////////////////////
-    prvs_best_weight = best_weight;
-    ea_tri_heur = tri_heur;
-
-    ////////////////////////////////////////////////////////////////////////
-    // Add extra edges, if appropriate 
-    ////////////////////////////////////////////////////////////////////////
-    restoreNeighbors(orgnl_nghbrs);
-
-    if ((tri_heur.extraEdgeHeuristic != NO_EDGES) && 
-        (tri_heur.extraEdgeHeuristic != RANDOM_EDGES)) {
+    if (tri_heur.extraEdgeHeuristic == RANDOM_EDGES) {
+      restoreNeighbors(orgnl_nghbrs);
       addExtraEdgesToGraph( nodes, tri_heur.extraEdgeHeuristic );
     }
+    else {
+      restoreNeighbors(nghbrs_with_extra);
+    }
 
-    saveCurrentNeighbors( nodes, nghbrs_with_extra ); 
-
-    ////////////////////////////////////////////////////////////////////////
-    // Repeat triangulation specified number of times 
-    ////////////////////////////////////////////////////////////////////////
-    trial = 0;
-    type_timer.Reset( tri_heur.seconds );
-    for (;
-      ((!timer) || (!timer->Expired())) && 
-      (((tri_heur.numberTrials>0) && (trial<tri_heur.numberTrials)) ||
-       ((tri_heur.seconds>0)      && (!type_timer.Expired())));
-      trial++) {
+    switch (tri_heur.style) {
 
       ////////////////////////////////////////////////////////////////////////
-      // Initialize graph for new triangulation 
+      // Handle cases that keep their own running best weight 
       ////////////////////////////////////////////////////////////////////////
-      order.clear();
-      cliques.clear();
+      case TS_COMPLETE_FRAME_LEFT:
+        triangulateCompleteFrame( COMPLETE_FRAME_LEFT, nodes, jtWeight,
+          nodesRootMustContain, tri_heur.basic_method_string,
+          nghbrs_with_extra, best_cliques, best_method, best_weight,
+          best_method_prefix+"completeframeleft" );
+        break;
 
-      if (tri_heur.extraEdgeHeuristic == RANDOM_EDGES) {
-        restoreNeighbors(orgnl_nghbrs);
-        addExtraEdgesToGraph( nodes, tri_heur.extraEdgeHeuristic );
-      }
-      else {
-        restoreNeighbors(nghbrs_with_extra);
-      }
+      case TS_COMPLETE_FRAME_RIGHT:
+        triangulateCompleteFrame( COMPLETE_FRAME_RIGHT, nodes, jtWeight,
+          nodesRootMustContain, tri_heur.basic_method_string,
+          nghbrs_with_extra, best_cliques, best_method, best_weight,
+          best_method_prefix+"completeframeright" );
+        break;
 
-      switch (tri_heur.style) {
+      case TS_ELIMINATION_HEURISTICS:
+        tryEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
+          nghbrs_with_extra, best_cliques, best_method, best_weight, 
+          best_method_prefix );
+        break;
 
-        ////////////////////////////////////////////////////////////////////////
-        // Handle cases that keep their own running best weight 
-        ////////////////////////////////////////////////////////////////////////
-        case TS_COMPLETE_FRAME_LEFT:
-          triangulateCompleteFrame( COMPLETE_FRAME_LEFT, nodes, jtWeight,
-            nodesRootMustContain, tri_heur.basic_method_string,
-            nghbrs_with_extra, best_cliques, best_method, best_weight,
-            best_method_prefix+"completeframeleft" );
-          break;
+      case TS_NON_ELIMINATION_HEURISTICS:
+        tryNonEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
+          nghbrs_with_extra, best_cliques, best_method, best_weight);
+        break;
 
-          case TS_COMPLETE_FRAME_RIGHT:
-            triangulateCompleteFrame( COMPLETE_FRAME_RIGHT, nodes, jtWeight,
-              nodesRootMustContain, tri_heur.basic_method_string,
-              nghbrs_with_extra, best_cliques, best_method, best_weight,
-              best_method_prefix+"completeframeright" );
-            break;
+      case TS_ALL_HEURISTICS:
+        tryNonEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
+          nghbrs_with_extra, best_cliques, best_method, best_weight);
+        tryEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
+          nghbrs_with_extra, best_cliques, best_method, best_weight, 
+          best_method_prefix );
+        break;
 
-        case TS_ELIMINATION_HEURISTICS:
-          tryEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
-            nghbrs_with_extra, best_cliques, best_method, best_weight, 
-            best_method_prefix );
-          break;
+      case TS_PRE_EDGE_ALL:
+        parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
+        ea_tri_heur.extraEdgeHeuristic = ALL_EDGES;
+        sprintf(buff,"%d", trial+1 );
+        triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
+      			nghbrs_with_extra, best_cliques, best_method, best_weight, 
+      			buff+(string)"-pre-edge-all-" );
+        break;
 
-        case TS_NON_ELIMINATION_HEURISTICS:
-          tryNonEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
-            nghbrs_with_extra, best_cliques, best_method, best_weight);
-          break;
+      case TS_PRE_EDGE_LO:
+        parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
+        ea_tri_heur.extraEdgeHeuristic = LOCALLY_OPTIMAL_EDGES;
+        sprintf(buff,"%d", trial+1 );
+        triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
+      			nghbrs_with_extra, best_cliques, best_method, best_weight,
+      			buff+(string)"-pre-edge-lo-" );
+        break;
 
-        case TS_ALL_HEURISTICS:
-          tryNonEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
-            nghbrs_with_extra, best_cliques, best_method, best_weight);
-          tryEliminationHeuristics( nodes, jtWeight, nodesRootMustContain, 
-            nghbrs_with_extra, best_cliques, best_method, best_weight, 
-            best_method_prefix );
-          break;
+      case TS_PRE_EDGE_RANDOM:
+        parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
+        ea_tri_heur.extraEdgeHeuristic = RANDOM_EDGES;
+        sprintf(buff,"%d", trial+1 );
+        triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
+      			nghbrs_with_extra, best_cliques, best_method, best_weight,
+      			buff+(string)"-pre-edge-random-" );
+        break;
 
-        case TS_PRE_EDGE_ALL:
-          parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
-          ea_tri_heur.extraEdgeHeuristic = ALL_EDGES;
-          sprintf(buff,"%d", trial+1 );
-          triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
-				nghbrs_with_extra, best_cliques, best_method, best_weight, 
-				buff+(string)"-pre-edge-all-" );
-          break;
+      case TS_PRE_EDGE_SOME:
+        parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
+        ea_tri_heur.extraEdgeHeuristic = SOME_EDGES;
+        sprintf(buff,"%d", trial+1 );
+        triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
+      			nghbrs_with_extra, best_cliques, best_method, best_weight,
+      			buff+(string)"-pre-edge-some-" );
+        break;
 
-        case TS_PRE_EDGE_LO:
-          parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
-          ea_tri_heur.extraEdgeHeuristic = LOCALLY_OPTIMAL_EDGES;
-          sprintf(buff,"%d", trial+1 );
-          triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
-				nghbrs_with_extra, best_cliques, best_method, best_weight,
-				buff+(string)"-pre-edge-lo-" );
-          break;
+      ////////////////////////////////////////////////////////////////////////
+      // Handle cases that triangulate once and do not keep a best weight 
+      ////////////////////////////////////////////////////////////////////////
+      default:
+        triangulateOnce( nodes, jtWeight, nodesRootMustContain, tri_heur, 
+          nghbrs_with_extra, cliques, meth_str);
 
-        case TS_PRE_EDGE_RANDOM:
-          parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
-          ea_tri_heur.extraEdgeHeuristic = RANDOM_EDGES;
-          sprintf(buff,"%d", trial+1 );
-          triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
-				nghbrs_with_extra, best_cliques, best_method, best_weight,
-				buff+(string)"-pre-edge-random-" );
-          break;
+        weight = graphWeight(cliques, jtWeight, nodesRootMustContain);
 
-        case TS_PRE_EDGE_SOME:
-          parseTriHeuristicString( tri_heur.basic_method_string, ea_tri_heur );
-          ea_tri_heur.extraEdgeHeuristic = SOME_EDGES;
-          sprintf(buff,"%d", trial+1 );
-          triangulatePartition( nodes, jtWeight, nodesRootMustContain, ea_tri_heur, 
-				nghbrs_with_extra, best_cliques, best_method, best_weight,
-				buff+(string)"-pre-edge-some-" );
-          break;
+        if (weight < best_weight) 
+        { 
+          ////////////////////////////////////////////////////////////////////
+          ////////////////////////////////////////////////////////////////////
+          //@@@ There is a bug due to the stubbed out = operator in the 
+          //   MaxClique 
+          //   class the following line which clears the cliques appears to 
+          //   work around the bug. @@@
+          // TODO: ultimately take this out, but keep in for now until
+          // we do code restructuring (1/20/2004).
+          best_cliques.clear();
+          ////////////////////////////////////////////////////////////////////
+          ////////////////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////////////////////
-        // Handle cases that triangulate once and do not keep a best weight 
-        ////////////////////////////////////////////////////////////////////////
-        default:
-          triangulateOnce( nodes, jtWeight, nodesRootMustContain, tri_heur, 
-            nghbrs_with_extra, cliques, meth_str);
-
-          weight = graphWeight(cliques, jtWeight, nodesRootMustContain);
-
-          if (weight < best_weight) 
-          { 
-            ////////////////////////////////////////////////////////////////////
-            ////////////////////////////////////////////////////////////////////
-            //@@@ There is a bug due to the stubbed out = operator in the 
-            //   MaxClique 
-            //   class the following line which clears the cliques appears to 
-            //   work around the bug. @@@
-            // TODO: ultimately take this out, but keep in for now until
-            // we do code restructuring (1/20/2004).
-            best_cliques.clear();
-            ////////////////////////////////////////////////////////////////////
-            ////////////////////////////////////////////////////////////////////
-
-            best_cliques = cliques;
-            best_weight  = weight;
-    
-            sprintf(buff,"%d-", trial+1 );
-            best_method = best_method_prefix + buff + meth_str; 
-            infoMsg(IM::Tiny, "   New Best Triangulation Found: %20s %-10f\n", 
-              best_method.c_str(), weight);
-          }
-          break;
-      }
-
+          best_cliques = cliques;
+          best_weight  = weight;
+  
+          sprintf(buff,"%d-", trial+1 );
+          best_method = best_method_prefix + buff + meth_str; 
+          infoMsg(IM::Tiny, "   New Best Triangulation Found: %20s %-10f\n", 
+            best_method.c_str(), weight);
+        }
+        break;
     }
   }
 
@@ -4528,7 +4523,7 @@ fillTriangulateNodeStructures(
  *-----------------------------------------------------------------------
  * maximumCardinalitySearch
  *   
- *   Calculated a perfect ordering on the graph, if it exists.  If the 
+ *   Calculates a perfect ordering on the graph, if it exists.  If the 
  *   order is perfect, the maximal cliques of the graph are determined.
  *   The procedure can be used as a first step in an O(N+E) chordality 
  *   test.  The procedure can also be used as a heuristic search for an 
@@ -4536,7 +4531,7 @@ fillTriangulateNodeStructures(
  *   the cliques correspond to the maximal cliques that will occur if 
  *   elimination is run on the graph using the given order.  
  *
- *   The function calculated the order from back to front.  At each step 
+ *   The function calculates the order from back to front.  At each step 
  *   it chooses the node with the largest number of previously ordered 
  *   neighbors. 
  *
@@ -6950,6 +6945,18 @@ tryNonEliminationHeuristics(
   // deterministic nodes exist in the partition)
   triangulatePartition( nodes, jtWeight, nrmc, 
 			"completed", orgnl_nghbrs, cliques, 
+			best_method, best_weight );
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Completing the nodes within each frame, plus the left interface 
+  triangulatePartition( nodes, jtWeight, nrmc, 
+			"completeframeleft", orgnl_nghbrs, cliques, 
+			best_method, best_weight );
+
+  ///////////////////////////////////////////////////////////////////////////// 
+  // Completing the nodes within each frame, plus the right interface 
+  triangulatePartition( nodes, jtWeight, nrmc, 
+			"completeframeright", orgnl_nghbrs, cliques, 
 			best_method, best_weight );
 
   ///////////////////////////////////////////////////////////////////////////// 
