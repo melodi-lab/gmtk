@@ -89,11 +89,15 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
   // initialize it to something always at least valid.
   drv->val = 0;
 
+#if 0
+  // TODO: why is this here?
+
   if ( RV2DRV(parents[0])->val > _latticeAdt->_end ) {
     it.internalStatePtr = NULL;
     p.set_to_zero();
     return;
   }
+#endif
 
   if ( _latticeAdt->useTimeParent() )
   {
@@ -166,6 +170,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 	it.drv = drv;
 
 	drv->val = pit->key();
+
 	p = (**pit).gmtk_score;
       } else {
 	// no word transition, copy value
