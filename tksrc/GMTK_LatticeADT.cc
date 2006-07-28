@@ -301,7 +301,8 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
       }
     }
 
-    printf("Edge information: emissionID=%d, ac_score=%f, lm_score=%f, posterior=%f, node_id=%d, end_node_id=%d\n",edge.emissionId,edge.ac_score.val(),edge.lm_score.val(),edge.posterior.val(),id,endNodeId);
+
+    infoMsg(IM::Giga, "Edge information: emissionID=%d, ac_score=%f, lm_score=%f, posterior=%f, node_id=%d, end_node_id=%d\n",edge.emissionId,edge.ac_score.val(),edge.lm_score.val(),edge.posterior.val(),id,endNodeId);
 
 
     // make sure the end time is later than start time
