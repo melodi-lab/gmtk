@@ -93,6 +93,8 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
     // TODO: go through chapter 20 in HTK book nd finish implementing
     // this function to fully support HTK lattices.
 
+    // TODO: allow case to be both in checks below. 
+
     if ( strstr(s_tmp, "VERSION") != 0 ) {
       // skip the line
     } else if ( strstr(s_tmp, "UTTERANCE") != NULL ) {
@@ -153,7 +155,7 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	  ifs.fileName(),_numberOfLinks);
 
   if (_start == _end) {
-    error("Error in lattice '%s', start node id = %d is same as end node id",
+    error("Error in lattice '%s', start node id = %d is same as end node id = %d",
 	  ifs.fileName(),_start,_end);
   }
 
@@ -298,6 +300,9 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	break;
       }
     }
+
+    printf("Edge information: emissionID=%d, ac_score=%f, lm_score=%f, posterior=%f, node_id=%d, end_node_id=%d\n",edge.emissionId,edge.ac_score.val(),edge.lm_score.val(),edge.posterior.val(),id,endNodeId);
+
 
     // make sure the end time is later than start time
     if ( _latticeNodes[id].time >= _latticeNodes[endNodeId].time )
