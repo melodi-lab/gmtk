@@ -1530,8 +1530,10 @@ public:
       origin.accSepValHashSet.clear();
       origin.remSepValHashSet.clear();
       // could change to makeEmpty if running on a static graph only 
-      origin.accValueHolder.prepare();
-      origin.remValueHolder.prepare();
+      if (origin.accPacker.packedLen() > ISC_NWWOH_AI)
+	origin.accValueHolder.prepare();
+      if (origin.remPacker.packedLen() > ISC_NWWOH_RM)
+	origin.remValueHolder.prepare();
     }
   }
 
