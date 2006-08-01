@@ -3708,3 +3708,11 @@ Tue Jul 25 21:05:30 2006
    after we are done with a clique, we can iterate over it to update the p(a|b) counts
    which can produce a different prob. model for the next time frame.
 
+Mon Jul 31 17:07:28 2006
+  - for docs: there is lots of good text documentation in the NSF progress reports
+    over the years, don't forget to include that as well.
+  - like the above memory options, also in docs include a summary of all possible
+    'speed options' to try to help to improve speed (not just triangulation, but
+    also things like order, etc.)
+
+
