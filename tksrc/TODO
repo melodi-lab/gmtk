@@ -3715,4 +3715,9 @@ Mon Jul 31 17:07:28 2006
     'speed options' to try to help to improve speed (not just triangulation, but
     also things like order, etc.)
 
+Tue Aug  1 00:52:06 2006
+
+  - in the non-training objects, add a special flag to not train either
+       1) all means, 2) all diag covariances, or 3) all B matrices, so that it is easy
+       to do proper 3x EM training.
 
