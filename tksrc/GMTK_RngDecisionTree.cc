@@ -1050,6 +1050,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
     command = GET_COMMAND(commands[crrnt_cmnd]); 
 
+    char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula. Asking for parent %d but only %d parents are available.\n";
+
     switch (command) {
 	
       case COMMAND_PUSH_CARDINALITY_CHILD:
@@ -1059,7 +1061,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_CARDINALITY_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error("ERROR:  Reference to non-existant parent\n"); 	
+          error(missingParentErrorString,operand,variables.size());
         }
         stack.push_back( (variables[operand]->discrete() ? 
           RV2DRV(variables[operand])->cardinality : 0) );
@@ -1068,7 +1070,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error("ERROR:  Reference to non-existant parent\n"); 	
+          error(missingParentErrorString,operand,variables.size());
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           RV2DRV(variables[operand])->val : 0 );	
@@ -1077,7 +1079,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE_MINUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error("ERROR:  Reference to non-existant parent\n"); 	
+          error(missingParentErrorString,operand,variables.size());
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val-1) : 0 );	
@@ -1086,7 +1088,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE_PLUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error("ERROR:  Reference to non-existant parent\n"); 	
+          error(missingParentErrorString,operand,variables.size());
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val+1) : 0 );	
@@ -1099,7 +1101,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_MAX_VALUE_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error("ERROR:  Reference to non-existant parent\n"); 	
+          error(missingParentErrorString,operand,variables.size());
         }
         stack.push_back( (variables[operand]->discrete() ? 
           (RV2DRV(variables[operand])->cardinality - 1) : 0) );
