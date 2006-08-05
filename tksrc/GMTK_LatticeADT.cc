@@ -119,11 +119,11 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
       // parse acoustic likelyhood scale
       ptr = strchr(s_tmp, '=');
       _amscale = atof(++ptr);
-    } else if ( strstr(s_tmp, "START=") != NULL ) {
+    } else if ( strstr(s_tmp, "START=") != NULL || strstr(s_tmp, "start=") != NULL ) {
       // parse start node id
       ptr = strchr(s_tmp, '=');
       _start = (unsigned)atoi(++ptr);
-    } else if ( strstr(s_tmp, "END=") != NULL ) {
+    } else if ( strstr(s_tmp, "END=") != NULL || strstr(s_tmp, "end=") != NULL ) {
       // parse start node id
       ptr = strchr(s_tmp, '=');
       _end = (unsigned)atoi(++ptr);
