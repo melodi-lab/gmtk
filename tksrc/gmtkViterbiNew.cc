@@ -198,16 +198,19 @@ main(int argc,char*argv[])
 
   /////////////////////////////////////////////
   // read in all the parameters
-  if (inputMasterFile) {
-    // flat, where everything is contained in one file, always ASCII
-    iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
-    GM_Parms.read(pf);
-  }
+
   if (inputTrainableParameters) {
     // flat, where everything is contained in one file
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+
+  if (inputMasterFile) {
+    // flat, where everything is contained in one file, always ASCII
+    iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
+    GM_Parms.read(pf);
+  }
+
   // comment for now Sun Jan 11 09:47:23 2004
   GM_Parms.finalizeParameters();
 
@@ -467,7 +470,7 @@ main(int argc,char*argv[])
         for (int i=0; i<int(myjt.curNodes().size()); i++)
             if (dumpVars.count(myjt.curNodes()[i]->name())) 
             {
-                if (!myjt.curNodes()[i]->discrete() || !myjt.curNodes()[i]->hidden()) 
+                if (!myjt.curNodes()[i]->discrete()) 
                     error("variables to dump must be discrete and hidden");
                 int p = myjt.curNodes()[i]->frame()*dumpVars.size() 
                         + posFor[myjt.curNodes()[i]->name()];
