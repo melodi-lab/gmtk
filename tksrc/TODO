@@ -3721,3 +3721,7 @@ Tue Aug  1 00:52:06 2006
        1) all means, 2) all diag covariances, or 3) all B matrices, so that it is easy
        to do proper 3x EM training.
 
+Sun Aug 13 23:40:28 2006
+  - for docs: explain how factored structure significantly reduces parameters (perhaps
+    an exponential reduction) but that it may not reduce time if the tree-width is
+    still big, when doing exact inference.
