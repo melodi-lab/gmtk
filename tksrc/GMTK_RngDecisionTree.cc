@@ -3591,17 +3591,37 @@ char *dtStr4 =
 "                 -1 0\n"
 "\n\n";
 
+char *dtStr5 = 
+"foobar % DT name\n"
+"3 % number of parents\n"
+"0 2 0:4,8,10 default\n"
+"  -1 1\n"
+"  -1 0\n"
+"\n\n";
+
+
 
 void test_dts()
 {
-  #ifdef REMOVE_THIS_CODE_FOR_NOW 
 
-  // first write out the file
   {
     oDataStreamFile dtfile ("/tmp/foo.dt",false);
-    dtfile.write(dtStr4);
+    dtfile.write(dtStr5);
     dtfile.write('\n',"",false);
   }
+  iDataStreamFile is (file,false);
+  RngDecisionTree dt;
+  dt.read(is);
+
+
+
+
+#ifdef REMOVE_THIS_CODE_FOR_NOW 
+
+  // first write out the file
+  
+  printf("Writing to /tmp/foo.dt\n");
+
 
 
   {
@@ -3629,7 +3649,6 @@ void test_dts()
   dt.read(is);
 
 
-
   printf("Found decision tree\n");
 
   RVInfo::FeatureRange tmp_fr;
@@ -3642,7 +3661,7 @@ void test_dts()
   vector< RVInfo::WeightInfo > tmp_rvWeightInfo;
 
   RVInfo dummy(
-    0, 1, 0, 10, "test", "aa_info", RVInfo::t_discrete, RVInfo::d_hidden, 100, 
+    0.0, 1, 0, 10, "test", "aa_info", RVInfo::t_discrete, RVInfo::d_hidden, 100, 
     tmp_fr, NULL, tmp_li, tmp_switchingParents, 
     tmp_conditionalParents, tmp_discImplementations, tmp_contImplementations,
     tmp_listIndices, tmp_rvWeightInfo 
@@ -3689,14 +3708,16 @@ void test_dts()
   }
 
 
-  #endif 
+#endif 
 }
 
 int
 main(int argc,char *argv[])
 {
-/*
+
+
   printf("sizeof RngDecisionTree::Node = %d\n",sizeof(RngDecisionTree::Node));
+  /*
   printf("sizeof EquationClass = %d\n",sizeof(RngDecisionTree::EquationClass));
   printf("sizeof BP_Range = %d\n",sizeof(BP_Range));
 
@@ -3707,10 +3728,12 @@ main(int argc,char *argv[])
   printf("sizeof LeafNodeEquationStruct = %d\n",sizeof(RngDecisionTree::LeafNodeEquationStruct));
 */
 
-  // Test the formula parser 
-  test_formula();
+  test_dts();
 
-  //test_dts();
+  // Test the formula parser 
+  // test_formula();
+
+
 
 }
 
