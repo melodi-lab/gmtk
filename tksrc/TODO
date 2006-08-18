@@ -3725,3 +3725,7 @@ Sun Aug 13 23:40:28 2006
   - for docs: explain how factored structure significantly reduces parameters (perhaps
     an exponential reduction) but that it may not reduce time if the tree-width is
     still big, when doing exact inference.
+
+Thu Aug 17 20:24:58 2006
+  - have a decision tree and table to produce switching parent dependent scales/shifts/penalties
+    i.e., scale mapping("foo_dt") with table("bla") or something.
