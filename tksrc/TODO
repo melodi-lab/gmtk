@@ -3729,3 +3729,9 @@ Sun Aug 13 23:40:28 2006
 Thu Aug 17 20:24:58 2006
   - have a decision tree and table to produce switching parent dependent scales/shifts/penalties
     i.e., scale mapping("foo_dt") with table("bla") or something.
+
+Thu Aug 24 13:19:58 2006
+  - note, packing of RVs into set of integers is the same problem as backup of a set of
+    files on a set of disks (CDs/DVDs) such that the total space is the same (minimal number
+    of disks) but the number of file splits is minimized.
+
