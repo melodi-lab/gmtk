@@ -180,8 +180,10 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 
   // reading nodes
   for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
+
     ifs.readLine( line, linesize);
     ptr = strtok(line, seps);
+
     if ( ptr[0] != 'I' || ptr[1] != '=' )
       error("Error in lattice '%s', line %d, expecting I= within line, but got '%s'", 
 	    ifs.fileName(),ifs.lineNo(),ptr);
@@ -194,6 +196,7 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
       if ( ptr[0] == 't' ) {
 	// set up the time
 	_latticeNodes[id].time = atof(ptr+2);
+
 	// by default, there is no frame constrain
 	_latticeNodes[id].startFrame = 0;
 	_latticeNodes[id].endFrame = ~0;
@@ -293,10 +296,10 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
 	score = atof(ptr+2);
 	edge.posterior.setFromP(score);
 	break;
-      default:
-	error("Error in lattice '%s', line %d, found unknown token '%s'",
-	    ifs.fileName(),ifs.lineNo(),ptr);
-
+      default: 
+	// is its anything other than the above, simply ignore it for now. 
+	infoMsg(IM::Warning,"WARNING: Lattice '%s', line %d, contains a token '%s' that is not currently supported and will be ignored\n",ifs.fileName(),ifs.lineNo(),ptr);
+	//	error("Error in lattice '%s', line %d, found unknown token '%s'",ifs.fileName(),ifs.lineNo(),ptr);
 	break;
       }
     }
@@ -346,7 +349,7 @@ void LatticeADT::read(iDataStreamFile &is) {
   NamedObject::read(is);
 
   // read in node cardinality or lattice list filename
-  is.read(_latticeFileName, "Cano't read lattice file or number of fetures");
+  is.read(_latticeFileName, "Can't read lattice file or number of fetures");
 
   // if lattice file name is a string, then it is a list of lattices
   if ( ! strIsInt(_latticeFileName.c_str(), (int*)&_nodeCardinality) ) {
