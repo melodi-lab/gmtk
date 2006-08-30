@@ -3742,6 +3742,8 @@ Wed Aug 30 13:17:03 2006
      form otherDT(p0+1,3,45,mod(p1+p2,3)) to call another DT called 'otherDT'
      such that at that other one, the arguments (parents) are defined
      appropriately as call by value.
+  - integrate routine calls with tags, so that 'goto tag' and routine
+    calls work together.
 
 
 
