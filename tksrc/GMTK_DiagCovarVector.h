@@ -30,6 +30,7 @@
 #include "GMTK_NamedObject.h"
 
 class MeanVector;
+class DlinkMatrix;
 
 class DiagCovarVector : public EMable {
 
