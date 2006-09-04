@@ -3654,6 +3654,13 @@ Wed May 17 20:45:12 2006
   - when caching-based inference is working, have option to save cache
     to disk between runs, especially if it take a while to
     reconstruct.
+  - Update: Mon Sep  4 01:35:10 2006: we would cache to disk all factors
+    that are both time-inhomogeneous (meaning that
+    they are activatable at all time frames) and segment-inhomogeneous (meaning
+    that they are activatable over different segments, so they don't involve
+    an iterable DT or lattice).
+
+
 
 Wed May 17 21:44:05 2006
   - Time based pruning, where we have a fixed upper limit on the
@@ -3748,6 +3755,39 @@ Wed Aug 30 13:17:03 2006
 Thu Aug 31 13:25:13 2006
   - for new inference, have option -inference {v2,v3} to chose which version of inference
     to use.
+
+Thu Aug 31 19:10:46 2006
+  - current running syntax for factor
+
+
+   factor: firstFactor {
+      variables: fooA(0),fooA(-1);
+
+      // only one type of constraint can be defined at a time??
+      symmetricConstraint:
+	allVarsEqual;
+        allVarsUnequal;
+        varsNotEqual;
+        varsSumTo(n);  // only values that sum to n
+        varsMultiplyTo(n); // only values that multiply to n
+        varsSumMod(m,n);  // only values such that (sum(vars) % m) = n
+                     // e.g., force even parity done by sumMod(2,0)
+        varsSatisfy using mapping("bla");
+           // where mapping is a DT
+
+     directionalConstraint: fooA(0) = functionOf(fooA(-1)) using mapping("bla");
+        // where 'bla' is the name of a decision tree
+        // should it be possible to have more variables be a function? (and why)
+
+     softConstraint: using table("foo"); // table is a new hash table object, EM learnable, will also
+                                            be used for TableCPT.
+     softConstraint: using logLinear("bar"); // logLinear is a new loglinear object, EM learnable
+  }
+
+  - some of these constraints will be jointly iterable
+        (i.e., the table soft constraint)
+    while some aren't or there is no reason to as they are always positive. 
+  - allVarsEqual is such that once one variable is set, all the rest can be set (so should be).
 
 
 
