@@ -849,6 +849,13 @@ public:
     return veSeparators[s];
   }
 
+
+  // could start adding stuff for v3 inference here, and then clean up code later??
+  
+  
+
+  
+
 };
 
 
@@ -1343,6 +1350,11 @@ public:
 class InferenceSeparatorClique : public IM
 {
   friend class InferenceMaxClique;
+
+  // TODO: for the sArray's below, make only one copy of these and
+  // update then once before being used in a given origin clique
+  // (since they don't need to coexist). This would save memory
+  // (and wouldn't cost so much time).
 
   // Non-STL "f=fast" versions of arrays that are instantiated
   // only in the final unrolled versions of the separator cliques.
