@@ -1784,6 +1784,7 @@ array of variables, for each variable
 
 
 
+
 Need to have three different types of variable iteration:
   1) simple variable iteration (for v = ; v < card ; v++ )
   2) CPT based iteration v.begin(); while (!v.next())
