@@ -12,12 +12,12 @@
 
 # other flags
 EXLDFLAGS=
-# GCC=/usr/nikola/pkgs/gcc/.3.2/bin/gcc
-# GPP=/usr/nikola/pkgs/gcc/.3.2/bin/g++
+# GCC=/usr/nikola/pkgs/gcc/.4.1.1/bin/gcc
+# GPP=/usr/nikola/pkgs/gcc/.4.1.1/bin/g++
 CC=gcc
 CXX=g++
 EXCOMFLAGS=
-OPTFLAGS =-g -O3 -Wno-deprecated -march=pentium4 -mfpmath=sse $(EXCOMFLAGS)
+OPTFLAGS =-g -O3 -Wno-deprecated -march=pentium4 -mfpmath=sse -ffast-math $(EXCOMFLAGS)
 
 # GMTK modules 
 MODULES = \
@@ -82,7 +82,6 @@ EXCLUDE: force
 	find . -name CVS -print; \
 	find . -name RCS -print) | \
 	sed 's,^\./,,' > $@
-
 
 
 force:
