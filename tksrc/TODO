@@ -3754,7 +3754,7 @@ Wed Aug 30 13:17:03 2006
 
 Thu Aug 31 13:25:13 2006
   - for new inference, have option -inference {v2,v3} to chose which version of inference
-    to use.
+    to use. -inference v2 is easier when the user is debugging a graph.
 
 Thu Aug 31 19:10:46 2006
   - current running syntax for factor
