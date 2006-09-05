@@ -674,6 +674,9 @@ JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
 
 
 
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::createPartitionJunctionTree()
