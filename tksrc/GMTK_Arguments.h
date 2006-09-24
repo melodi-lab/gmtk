@@ -121,9 +121,9 @@ const char*const argerr = "ARG ERROR";
   Arg("fr",  Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("prepr", Arg::Opt, prepr,"Frame range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("postpr",Arg::Opt, postpr,"Frame range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("gpr",   Arg::Opt, gpr_str,"Global final frame range"),
+  Arg("prepr", Arg::Opt, prepr,"Pre Per Segment frame range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("postpr",Arg::Opt, postpr,"Post Per Segment frame range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("gpr",   Arg::Opt, gpr_str," Global Per Segment final frame range"),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
