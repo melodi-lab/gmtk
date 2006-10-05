@@ -460,11 +460,13 @@ void VECPT::begin(iterator& it,DiscRV* drv, logpr& p)
       if (base[i] == curParentValue)
 	break;
     }
+    // since this is a begin, this case corresponds to where
+    // the child is hidden and equal to value 0, so we use the zero-value case.
     if (i<obs.numDiscrete()) {
       p.valref() = (*obs.floatVecAtFrame(drv->frame(),i));
       p = 1.0 - p;
     } else {
-      p.set_to_zero();
+      p.set_to_one();
     }
   }
 }
@@ -512,9 +514,12 @@ logpr VECPT::probGivenParents(vector <RV *>& parents,
       }
     } else {
       if (val == 0) {
-	p.set_to_zero();
-      } else {
 	p.set_to_one();
+      } else {
+	// default: If the child is == 1, and there are any unspecified parent
+	// values that occur, unspecified in that they are not given in the sparse
+	// table, then give those parent values a zero score.
+	p.set_to_zero();
       }
     }
   }
@@ -536,10 +541,14 @@ bool VECPT::next(iterator &it,logpr& p)
       if (base[i] == it.uInternalState)
 	break;
     }
+    // since this is next, the child is hidden but
+    // here it is the case that the child is at iteration where it
+    // it is instantiated to 1 (unity). So we take the scores for
+    // the =1 case.
     if (i<obs.numDiscrete()) {
       p.valref() = (*obs.floatVecAtFrame(it.drv->frame(),i));
     } else {
-      p.set_to_one();
+      p.set_to_zero();
     }
   }
   return true;
