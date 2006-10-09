@@ -3799,6 +3799,16 @@ Mon Sep  4 19:07:51 2006
    clique value tables and scores themselves).
 
 
+Sun Oct  8 17:06:25 2006
+  - another form of entropy increaser/smoother for discrete probabilities. For binary
+    random variables with prob p = 1 - q, we can warp the probability with
+    parameter 0 <= a < = 1 as follows:
+         f(p) = a + (1-2a)p
+         f(q) = 1 - f(p)
+    This will map f(0) = a, and f(1) = 1-a. We can generalize this to
+    multinomial distributions both during and after training to keep probabilities
+    from ever hitting zero if that is what we want.
+    Compare with good-turing and other forms of estimator.
 
 
 
