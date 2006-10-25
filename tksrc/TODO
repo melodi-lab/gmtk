@@ -3811,4 +3811,7 @@ Sun Oct  8 17:06:25 2006
     Compare with good-turing and other forms of estimator.
 
 
+Tue Oct 24 18:48:10 2006
+  - in reading/writing accumulators and mean/covariance vectors, extend file IO library
+    to read/write vectors rather than scalars, so that we read/write in batch.
 
