@@ -3815,3 +3815,12 @@ Tue Oct 24 18:48:10 2006
   - in reading/writing accumulators and mean/covariance vectors, extend file IO library
     to read/write vectors rather than scalars, so that we read/write in batch.
 
+
+Thu Oct 26 20:03:34 2006
+  - create a version of the island algorithm that caches frames that are low memory
+    rather than just doing a log decomposition of the number of frames (which might
+    potentially cache frames which very large state spaces). This way,
+    the frames that are cached will take up less mem. This of course will only
+    work when there is either 1) lots of determinism or probabilty-based beam pruning,
+    and 2) lots of variance in the resulting state spaces over time.
+
