@@ -3831,4 +3831,7 @@ Thu Oct 26 20:05:25 2006
  
 Thu Oct 26 20:17:06 2006
   - island decoding, store islands to disk in cases where they use lots of memory.
-
+  - in island decoding, in a partition, the separators don't need to be stored.
+    Each island should only store the minimum necessary in order to do island
+    (rather than everything about a partition), and then we regenerate it as
+    needed. 
