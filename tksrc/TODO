@@ -3829,3 +3829,6 @@ Thu Oct 26 20:05:25 2006
   - have version that has command line versions of IMC_NWWOH, and those
     other parameters (so that island will work more effectively).
  
+Thu Oct 26 20:17:06 2006
+  - island decoding, store islands to disk in cases where they use lots of memory.
+
