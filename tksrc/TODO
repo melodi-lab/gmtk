@@ -3824,3 +3824,8 @@ Thu Oct 26 20:03:34 2006
     work when there is either 1) lots of determinism or probabilty-based beam pruning,
     and 2) lots of variance in the resulting state spaces over time.
 
+
+Thu Oct 26 20:05:25 2006
+  - have version that has command line versions of IMC_NWWOH, and those
+    other parameters (so that island will work more effectively).
+ 
