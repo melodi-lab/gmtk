@@ -1698,41 +1698,118 @@ What are the things that might be iterated:
   3) random variable values
 
 things that provide scores:
- 
+
   1) separators
   2) ve seps
   3) rv CPTs
   4) factors
 
 
-+ ================================================================================
-+ ================================================================================
++ =================================================================================== +
++ =================================================================================== +
++ =================================================================================== +
++ =================================================================================== +
++ =================================================================================== +
++ =================================================================================== +
++ =================================================================================== +
++ =================================================================================== +
 
 
 what should variable have
 
 - need a 'conditionalFactor' data structure that has
     - packers for X_C and X_A
+        (but for each x_A \in X_A, we might have a different
+         C).
     - hash lookups for X_C and X_A using packed values
     - a logp score on the for each x_C entry.
-
-
 
 Basic algorithm with table-tree memoization
 
 X = variable
 D[X] = current domain of a variable
 D[X_C|X_A=x_A] = domain of X_C variasbles given that X_A=x_A
+ - but probably can only afford to have one domain D[X_i] for each
+   variable that can be easily added/subtracted to, and have CPT
+   iterators be able to optionally take a variable domain (when the domain is shrunk).
+   Data structure for domain:
+      - array of all variable values
+        - push/pop form of interface:
+           - push, in one operation, a set of values to remove from domain
+                (or could be a set of indivdual pushes, and then a 'commit')
+           - pop, put back into the domain the set of values that were removed on
+             previous push.
 
+Variable ordering constraints:
+  - when choosing an order, we can dynamically choose an order relative to some constraints.
 
-each variable has a list of generic "factors" which could be any of:
-that it is involved in. Rather than having each variable
+  - build up a directed graph that obeys all the constraints, and then
+    do a topological sort to detect cycles. If any cycles are found, break the 
+    least important edge
+    (according to heuristics). We keep searching for cycles and breaking cycle
+    edges until there are no cycles and we have a DAG. This specifies the constraints
+    for the dynamic order. link breaking is heuristic. Note that if the
+    network is only a BN, then there will be no cycles.
+    A fully undirected model will result in the empty graph (we can choose
+      static/dynamic ordering fully heuristically based on max-fill or 
+      something else).
+
+  1) for any MTCPTs
+  2) directional constraints
+  3) s-factors??? (s-factor = separator factor, or a incomming separator to the clique)
+
+  - result is a DAG partial-order of variables which are then used to dynamically
+    choose the best order. Either at the beginning, or at each step we can do:
+      - i.e., we can use random min-fill in reverse order to get next variable
+      - can use max-fill in forward order
+      - max degree
+      - other reverse elimination heuristics
+
+   (key idea: why topological order according to BN might not be good,
+      as if there is a separator in the graph that breaks the net into
+      two pieces, like a form of conditioning, then these pieces can
+      be solved independently, even if the conditioning set doesn't obey
+      topology.
+      Obeying deterministic constraints, however, will hever have this issue??
+      Example:  
+
+          a -> b -> c -> d -> e
+      
+      suppose 'c' is det. function of b. c cuts the network, but so does b since
+      c is det. function of b, so better to condition on 'b'.
+      What if card if c is low and card of b is large? If we first condition on
+      'c' then there are two top-level iterations, but if we condition on 'b',
+      then we'll expand the right hand side many times (but since we're doing
+      l-factor caching, once we get the 'c=1' dset, we'll re-use that many
+      times for all values of 'b' (so perhaps this won't be a problem).
+
+Each variable has a list of generic "factors" (which could be any of
+the below) that it is involved in. Rather than having each variable
 list all of the factors that it is involved in, each factor
-"registers" at the start, and chooses one of its variables
-as the 'watched' one. When a factor registers, then that
-factor gets on the list of things to check. When we choose
-a RV, we look at this list, and then activate that factor
-if all of its variables have been assigned.
+"registers" at the start, and chooses one of its variables as the
+'watched' one. When a factor registers, then that factor gets on the
+list of things to check. When we choose a RV, we look at this list,
+and then activate that factor if all of its variables have been
+assigned.
+
+    - normal watched literal technique: we're in SAT situation, with
+      a bunch of clauses. Normally, a clause of N vars becomes unit (meaning there
+      is only one literal there, which for the current hyp to work must
+      be true) after N-1 assignments have taken place. At each variable
+      assignment, we could check each clause that the variable is involved with,
+      counting down each one. With the watched literal technique, there are
+      two variables in each clause that are watched, and each variable
+      has a list of classes that are currently watching it. When a variable
+      is assigned, it checks its watched clauses and checks if with the new
+      assignment + other assignments in the current hypotheses if the clause
+      becomes unit. If it does, we assign the variable. If not, we choose
+      a new variable to watch for this clause. 
+
+    - In SAT and CSP, there might be many many factors that a variable is involved
+      with, but with a GM, there *might* be many fewer factors. This might
+      make this approach less efficient, as it might be easy enough to just
+      check all factors associated with a variable, we'll have to see.
+
 
 Types of factors.
 ---------------------
@@ -1741,21 +1818,40 @@ Types of factors.
      random variable has one of these (associated with the child random variable).
      A random variable might have a 'UnityCPT' which gives score 1 to everything
      and so never needs to be applied to final score. CPT factors
-     can efficiently iterate all possible child variables given an assignment
+     can efficiently iterated all possible child variables given an assignment
      to all the parent variables, or in switching case, 
      Takes form X_C | X_A, where |C| = 1.
      (unity score CPT needs to be put in structure file, and if no parents
       or CPT given, we can default to this unity score thing).
+     CPT iterators can also take a current domain of D[X_C] which is 
+     efficiently intersected with the possibly sparase CPT domain of X_C.
+       Q: data structure and algorithm for this online intersection.
+
+       Q: The point of BN-based CPTs is that there must not be directed cycles.
+
+      New CPTs to add ultimately:
+         1) Neural network CPT. 
 
   2) Undirect constraint/log-linear/table CPT.
-      do we want joint iteration here of X_C.
+
       Takes form X_C|X_A where |A| = 0 and |C| > 1.
+      Two forms:
+        2a) joint iteration here of X_C, for example, hash-table CPT.
+        2b) non-joint iterable CPT, such as constraint/log-linear model.
+
   3) Directed constraint (i.e., X_C as a function of X_A, but a constraint
-     nontheless). Always has |C| = 1.
-  3) s-factors (separator factors of the form X_C|X_A).
+     nontheless). Always has |C| = 1. How is this different than a Det. CPT?
+      a) topology is not enforced (A BN can't have cycles, but we can add
+         these constraints with cycles as we would want).
+       
+
+  4) s-factors (separator factors of the form X_C|X_A).
        These s-factors contain scores, but they do not necessarily 
-       encompass/envelop/shroud/wrap/conceal/blanket other factors
-  4) l-factors (learned factors (using the value-elimination like algorithm))
+       encompass/envelop/shroud/wrap/conceal/blanket/subsume other factors
+       Also, we can jointly iterate over all variable X_C given X_A = x_A 
+       simultaneously (i.e., we do for x_C \in D[X_C|X_A=x_A]).
+
+  5) l-factors (learned factors (using the value-elimination like algorithm))
         These also take the form of X_C | X_A.
         These factors are all encompassing. When the X_A=x_A matches
         this factor, we are guaranteed that the X_C table is everything
@@ -1783,15 +1879,14 @@ array of variables, for each variable
        c) 
 
 
-
-
 Need to have three different types of variable iteration:
   1) simple variable iteration (for v = ; v < card ; v++ )
   2) CPT based iteration v.begin(); while (!v.next())
   3) domain based pruning: for v on D[V]
   4) iteration of an l-factor; for x_C \in D[X_C|X_A=x_A]
   5) joint domain and CPT iteration. for v in D[V] \cap v.cpt();
-       - if the domain was in order, we could leap-frog domain values,
+       - if the domain was in order, and iterators iterated in order, 
+         we could leap-frog domain values, taking the max values.
          i.e., a linked-list, or an array with jumpers. 
 
 Options:
@@ -1825,6 +1920,8 @@ funcb(level)
         return rc;
 }
 
+// possible to use setjmp/longjmp for this??
+
 
 - Q: how to remove entries from factor hash tables (i.e., when we move to next time frame,
      we don't want to keep expired entries around).
@@ -1838,6 +1935,11 @@ funcb(level)
     To avoid hashing three times for each factor table, the d-sets X_A can be
      single and the X_C values can be typed (but still have the removing problem)
 
+- Q: in most cases, the set of values that have zero (i.e., no-goods) will be much
+      larger than the set of values that are non-zero, therefore no-good storage
+      could be much larger than the 'good' or 'factor' storage. We might need
+      to delete no-goods inside of a clique.
+
 
 - How to isolate existing code.
 
@@ -1847,43 +1949,250 @@ funcb(level)
      existing compatible factor table is available already (so to share
      the table value, not need to create a new packer, etc.)
 
+D[X] is current domain of variable X
+
+All observed variables at the beginning, so we don't need to condition
+anywhere when we get a new variable if it is observed or hidden. In
+such case, all learnt factors will have observed values in D-sets so
+that they are applicable in future (but not if they have continous
+observations in the D-sets).
+  - currently, obs. variables are never stored in cliques (since they
+    observed, never need them. If we do EM, then they are properly set
+    during training).
+
 
 X = pickNextVariable();
-for x in D[X] // or do a combination D[X] and CPT iterator if this is valid.
-    if X is s-factor [X_C|X_A] and none of X_C is set
-        set x_C appropriately
+if X is a dummy variable that implies X_C of an s-factor (meaning X_A is assigned),
+         and none of X_C is currently set.
+   iterate over the X_C of the s_factor.
+   In each iteration, update factors depending on values of all variables in X_C.
         score[lvl] = factorScore
-    end
-    Based on the factors which are now full, multiply in their score,
-       and use the 
+        body()
+   Unmark values of X_C as being assigned.
+  
+else if X has worthwhile CPT iterator
+  cpt.iterate(X) // ultimately, do joint cpt intersect domain iteration here.
+        score[lvl] = 1
+        body()
+  unmark X as being assigned.
+else
+   for x in D[X] 
+        score[lvl] = 1
+        body()
+  unmark X as being assigned.
+end
+complete and cache factor
+    This takes dset[level] and all sub-factors that have been passed to current level
+    and expands them out to a new table for all variables in sset[lvl] (this will
+    need to be another recursive routine that iterates over factors into a new table).
+    If this is the very top level, then this table will be the final clique table.
+pushuplvl = deepest level in d-set
+pushUpFactor 
+    - pushes up the factor to level pushuplevel and adds it to that level.
+bcklvl = determineBackjumpLevel
+    - which is lvl-1 if the table is non-empty, otherwise it is the deepest level.
+return (bcklvl)
 
-    do unit propagation
+
+body()
+    dset[lvl] = {}; sset[lvl] = X;
+    o Based on the factors which are now "full", multiply in their score.
+      If there are s-factors with fully instantiated X_A sets, then mark them
+      as active. 
+      If some of the newly full factors (which might include the X_A of an s-factor)
+      is zero, then take one of them (the smallest), add that to the current d-set
+      as a new no-good, and don't continue processing. Otherwise, store the union
+      of the set of values of these full factors and add them to the current dset.
+    o do unit propagation
         if any values of active variables are such that they are determined,
         i.e., involved in a MTCPT, in a directional det. factor, or
         in special 'equality' constraint, set those values now,
-        and incorporate in the scores. Continue this process until
-        there is no more determinism to have, and deactiviate all
+        and incorporate in the scores. Those newly assigned variables 
+        have a level of 'lvl' associated with them. They also become
+        another sset to be passed up to the current lvl since the current
+        dset values imply them.
+        Continue this process recursively until
+        there is no more determinism to imply, and deactiviate all
         variables that are now assigned.
-    done
+        - note we do unit propagation here rather than choosing next variables
+          since each recursive call would create another table copy l-factor with
+          just one extra deterministic value.
+       - Question: do this before or after factor activiation?
+          - if we do it before, more factors might be activated. 
+    o assuming result is not zero, if there are any newly activiated l-factors,
+       for each l \in newly activiated l-factor
+           - pass up the factor to collected list of factors at current level (to be iterated over later)
+           - union l.dset into dset
+           - union l.sset into sset
+           - mark all variables as inactive in l.sset
+       If any of the factors are zero, then clear dset, and set dset = l.dset
+       of the zero one and stop (alternatively, set dset = l.dset of the
+       smallest l.dset of the l-factors that are zero).
 
-            
-          
+    o assuming result is not zero,  
+        bcklvl = recurse(lvl+1)
+    o append newly created tables to end of running tables (i.e., sum += prod[lvl]).
+    o return bcklvl;
+
+------------
+
+
+Factor data structure        
+
+ o) a list of variable indices involved in this factor
+ o) The type of factor
+      - cpt
+      - constraint
+        - other issues, equalityconstraint, etc.
+      - directional constraint
+      - etc.
+ o) The set of variables that may be watched before the factor
+     is "implied", where "implied" means that either
+          a) we can force a value of the remaining variable in the factor
+             to get a non-zero probability
+          b) we can iterate over a limited domain of the child
+               (e.g., for MTCPTs or MSCPTs),
+      for a CPT, the parent variables. For a constraint,
+      all o
+
+ o) Number of variables currently remaining to be instantiated
+ o) watched variable information
+ o) The usability of this factor, i.e.,
+      - can be only used in this frame.
+      - can be used in any frame in this utterance.
+      - can be used anywhere.
+
+Different types of factors:
+ 1) regular factors, which require all variables to produce a value.
+ 2) factor that require a fixed subset of variable values, the other set are then
+     determined from the first set. I.e., if a factor has varaibles X_A,X_C, thne
+     as soon as X_A is instantiated, all of X_C are determined. This includes things like:
+        a) equality constraint, where |A| = 1 
+        b) MTCPT, where |C| = 1
+ 3) things where knowing X_A=x_A doesn't determine X_C, but it lets X_C be iterable. 
+     a) s-factors (separator factors)
+     b) hash-factors??? (if they are so organized that way)
+     c) ve-separators (processed VE tables??) but no gurantee of this?
+
+
+What does a maxclique need
+
+o) assignedNodes;
+   array of N assigned variables to this cliuqe. This can
+   be an array. The order of the variables in this clique
+   is arbitrary, and the integer index into this array
+   is used everywhere to identify a variable. These  
+   are the RVID (random variable ID).
+
+
+o) partial DAG, giving partial ordering of node order, so that
+   we can dynamically choose a node ordering.
+
+
+o) a list of factors fully contained within this clique
+   (factor can be CPT, constraint, etc.). A factor's variables 
+   must be fully contained withint the clique. These factors
+   can be used to prune the state space by bulding no-goods. 
+
+
+o) a list of factors that supply probability to this clique.
+   For each factor:
+      1) list of RVIDs that involve that factor
+      2) variable that is currently being watched
+      3) number of variables remaining to be instantiated.
+      4) the type of the factor:
+          - if CPT, then the child variable of the CPT to give
+            probability
+          - other special things (is it the all equals constraint, etc.)
+
+
+o)  vector<unsigned> ceReceiveSeparators;
+    unsigned ceSendSeparator; 
+   integer identifiers of receive separators into this maxclique and integer 
+   send separator, indexes into the parent partition structure.
+
+
+o) packer
+      - something that packs values of this clique.
+   valueHolder
+       - clique values (array of packed values)
+   cliqueValueHashSet 
+       - set to quickly look up clique values.
+   cliqueValueSpaceManager
+       - space manager for clique values.
+
+
+o) Array of length N, that for each variable gives currently
+   assigned level of that varible.
+
+
+o) Array length N for each variable. Each entry gives
+    list of factors that is currently being watched. Each
+    time a new variable is assigned, we check these factors.
+
+
+o) array of length maxdepth that for each current level, gives index
+   of current variable for that level (invalid for levels lower
+   than current one).
+
+
+o) level array 
+    - an array that is allocated to be of maxdepth that contains
+        a) current score
+        b) list of l-factors not yet combined at this level
+        c) current d-set of this level
+        d) current s-set of this level
+
+What does an inference maxclique need
+---
+        
+1) array of direct pointers to the variable values for fast access
+   (calculate this at the beginning of each clique iteration,
+    rahter than keeping it around computed once at the beginning).
+
+
+Fri Sep 15 13:33:07 2006
+  - key issue: pruning can only determine what
+    factors exist in terms of their dset (i.e., a pruned
+    factor might end up making a factor that determines a no-good).
+    Otherwise, if pruned factors include a reduced Stable, then
+    that factor cannot be re-used in the next frame.
+
+
+We should not re-learn (via nogoods and domain pruning) all of the
+determinism and sparsity that exists inside of a MTCPT or a MSCPT and
+that can already be exploting by iterating over the child given the
+parents. Moreover, when there are chains of determinism, that should
+be learnt in l-factors (so that when the appropriate d-set is set,
+then all of the determinism that exists exists in the factor). So we
+can't do naive variable iteration with domain pruning.
+
+Several types of iterations:
+
+It1:
+  if parents are all set, do CPT iteration.
+     - good for sparsity, access to child values and probs using cached aprent lookup.
+
+it2:
+  if parents are not set when variable is chosen, do variable iteration on domain.
+
+it3: 
 
 
 
+Still big question:
+  1) with s-factors, how to use them to build up d-sets and s-sets. 
 
-
-
-
-
-
-
-
-
-  
-
-
-
-
+     Point of s-factor. In an s-factor, we have X_A and X_C. The thing
+     is that an s-factor is activiated whenever all of X_A is assigned some value.
+     I.e., an s-factor is active if all of X_A is set, or if |A| = 0.
+     Once that occurs, we do a hash lookup inside of X_A and see if there is an entry.
+     If there is no entry, then this assignment corresponds to a no-good (for this time-frame)
+     and can be added to the no-good learning. Otherwise, if there is an entry, then
+     it is possible to jointly iterate over other values X_C (rather than over each variable).
+     Joint iteration is presumed to be useful since pruning (in previous cliques) will make
+     it such that we'll be iterating only over those sets of X_C that are high probable.
+     If some particular X_C' later on ends up getting a zero value (with C' \subseteq C),
+     then no-good learning should kick kin. 
 
 
