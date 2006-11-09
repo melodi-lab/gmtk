@@ -2532,8 +2532,11 @@ Thu Nov 17 07:24:50 2005
 
 Fri Nov 19 12:15:41 2004
   - for docs: include bit about how different structures can be used to train same set of parameters  
-    by using the same master file.
-  - for docs: include bit aboutu how to use short utterances by concatenating things, and using a VE node
+    by using the same master file - e.g., if you have three templates, one that is 1 frame longm
+    another that is 2 frame, and a third which is 3 frame, each of these templates can use the 
+    same master file, write out accumulators that are all compatible with each other (i.e.,
+    accumulator file is defined according to the master file, not by the structure file, I think).
+  - for docs: include bit about how to use short utterances by concatenating things, and using a VE node
     with value 1, and with an always 1 DT. Also, why it works.
     update Fri Dec 31 02:01:06 2004: once disconnected networks are working, this will be moot. 
 
@@ -2584,7 +2587,6 @@ Sat Nov 27 22:10:37 2004
     need to re-start to try these options.
   - also, gmktTime should take just vcap, icap, etc. options to try same trifile over and over
     with different JT creation options.
-
 
 
 Mon Dec 27 19:40:22 2004
@@ -2809,7 +2811,6 @@ Wed Apr 20 00:46:19 2005
 
 
 
-
 Mon Apr 25 15:49:15 2005
   - for the constraint version of the algorithm,
      for conflict-directed backtracking, keep track of two conditions:
@@ -2904,6 +2905,7 @@ Tue May 10 14:19:41 2005
     say ,have a table of a,b representing a=b, we can just have the relation
     a=b, so that when we switch on a, it assignes b to a.
 
+
 Tue May 10 16:42:18 2005
   - potential bug: when cpbeam, need sometimes to call cpt->end() to reclaim storage for FNGramCPT and similar things.
   - when there are a cluster of variables that have many MTCPTs associated with them within the cluster,
@@ -2979,7 +2981,6 @@ Fri May 20 14:38:26 2005
   -  add a neural network (multi-layered MLP) CPT. NeuralCPT, MLP-CPT
   -  add an SVM binary and multi-way CDT.
   -  docs: email too email from today on 'pruning, triangulation, scores, and CPT -> clique assignment'
-
 
 Mon May 23 20:18:34 2005
   - in addition to a .trifile, have a .jtfile that contains all the information
@@ -3087,6 +3088,7 @@ Wed Jul 13 10:31:41 2005
           2) reduce hashing costs (smaller keys, and keys that are more defining of their entry).
    This probably won't work for separators since we need to hash into separators, but it is less
    important there since separators will be smaller.          
+    TODO: some large separators (non-minimal separators for example), this might be beneficial.
 
  - two modes of inference:
        1) static variable order
@@ -3288,6 +3290,9 @@ Wed Jan 18 00:19:03 2006
           which can be a big savings. Abstract class can still ask for
           to word number i, provid swapping routine, etc. To avoid integer
           mod, can do power of two sized groups of words (pages??).
+           Wed Nov 08 00:16:14 2006 - on the other hand, this might not be needed
+              since the domains will only be one per variable (and the domain arrays
+              can probably be re-used over time).
 
 
 Mon Jan 23 17:50:36 2006
@@ -3336,7 +3341,7 @@ Tue Jan 31 00:08:25 2006
 
 Tue Jan 31 01:35:39 2006
   - when possible, implement "variable trimming" as done in Superlink, where hidden variables
-    that are childless in the BN can be trimmed away without effecting likelyhood (assuming
+    that are childless in the BN can be trimmed away without effecting likelihood (assuming
     that we're just summing over hidden variables, and/or not computing viterbi paths).
     This can be applied recursively (i.e., if we have A --> B --> C, and we trim C, we'd get
     A --> B, and can trim B, etc.)
@@ -3363,15 +3368,15 @@ Mon Feb  6 16:27:55 2006
 
 Sat Feb 11 13:33:17 2006
   - fix bug in reading MTCPTs mentioned from bartels email on 2/4/2006.
-  - idea: rather than construct the table in one pass, consider first building
-    the tree of the clique, and then traversing it again to build the clique
-    table (but perhaps this'll be slower since we don't get sub-clique entry copy).
+  - idea: rather than construct the table of clique values in one pass, consider first building
+    the tree of the clique (so RV values are not duplicatd in the tree), and then traversing it again to build the clique
+    table (but perhaps this'll be slower since we don't get sub-clique entry copy). Also, this might
+    be harder to do with dynamic variable orderings. 
 
 Thu Feb 16 09:58:42 2006
    - Add ability to do sub-Clique printing during collect evidence stage
      (for all cliques, even if they are sub hanging dummy subset cliques)
                 
-
 
 Sun Feb 19 19:48:12 2006
   - for docs and for thinking: when modifying the trifile to do clique printing,
@@ -3408,6 +3413,8 @@ Wed Feb 22 23:53:46 2006
     the bit-packing, but in certain cases, it will probably be faster to use this
     than to move to island algorithm. Make this a command line option and default
     is still to use bit packing.
+      - Wed Nov 08 00:23:29 2006: this probably won't result in any real memory savings since
+        case A is not much worse than case B, and due to the rounding to machine words for storage. 
  
   - inside-outside inference (todo when infernece engine v3 is ready).
      New modes of inference:
@@ -3445,7 +3452,7 @@ Tue Mar  7 00:36:07 2006
              (have a command line option that optinally doesn't check for cycles). If cycles,
               and no check, we'll just get a run-time infinite loop. (for docs).
 
-    Take a look at binary decision diagrams of and manipulations therein, as in the paper:
+    Take a look at binary decision diagrams (BDD) of and manipulations therein, as in the paper:
      "Graph-Based Algorithms for Boolean Function Manipulation", by Randal E. Bryant.
 
  
@@ -3453,13 +3460,15 @@ Wed Mar  8 12:27:44 2006
   - pruning option: have pruning numbers come from observation files, and have pruning syntax
     so that pruning numbers can change over sequence. (i.e., break obs range into percentages,
     with diff. pruning option in each range).
-      
+
 
 Wed Mar  8 18:30:25 2006
  - when doing backjumping, if we backjump to a variable that is
-   a deterministic functio nof other variables, we direclty backjump instead
+   a deterministic function of other variables, we direclty backjump instead
    to the latest non-deterministic function directly.
-
+    Wed Nov 08 00:27:46 2006: the backjump level should backjump directly to the first
+     non-deterministic variable rather than do this in multiple stages, this shoudl be computable "offline" (depending
+     on if we use static or dynamic variable selection order).
  
 Thu Mar  9 02:02:29 2006
   - for clique packing, have a mode that packs at byte boundaries
@@ -3791,7 +3800,7 @@ Thu Aug 31 19:10:46 2006
 
 
 
-Mon Sep  4 19:07:51 2006
+Mon Sep 4 19:07:51 2006
  - memory optimization: in inference cliques, direct pointers member variable
    arrays can be computed anew each time we are about to use a clique/separator
    rather than storing them for all cliques since they are not being used 
@@ -3799,7 +3808,7 @@ Mon Sep  4 19:07:51 2006
    clique value tables and scores themselves).
 
 
-Sun Oct  8 17:06:25 2006
+Sun Oct 8 17:06:25 2006
   - another form of entropy increaser/smoother for discrete probabilities. For binary
     random variables with prob p = 1 - q, we can warp the probability with
     parameter 0 <= a < = 1 as follows:
@@ -3835,3 +3844,290 @@ Thu Oct 26 20:17:06 2006
     Each island should only store the minimum necessary in order to do island
     (rather than everything about a partition), and then we regenerate it as
     needed. 
+
+
+Tue Nov 07 21:19:06 2006 -----
+
+- Summary of many of the new features compiled from the above up to the
+  current date (this includes major new features, but not the bugs or
+  other minor things mentioned above). This also includes the
+  features from the date 'Wed Aug 18 21:05:31 2004', but modified
+  based on new knowledge acquired over the past 2 years.
+
+Categories:
+
+
+- support for new underlying different models
+          - DGM-based Fisher kernels, accumulator kernels. Use sequences for classification.
+          - native support for time-inhomogeneous DBNs
+          - non-linear Gaussians and non-linear BMMs w. pseudo-2nd-order training methods.
+            non-linear regression models, L2 and L1 (lasso) regression, etc.
+            NLPs, kernel regression, and Gaussian process giving the non-linearity.
+          - smoothing for CPTs in EM
+               Laplace smoothing (DONE), 
+               Good Turing within EM training, false counts.
+          - generalized parameter adaptation directly within GMTK
+          -  (Sat Apr 24 22:21:09 2004, probably "decision tree"
+             (or some form of) state clustering, generalized to
+             graphical models). Clustering of two distributions when they
+             get very similar (presumably, p(a|b), when two values of b yield
+             the same dist over a, we cluster bs together.
+          - generalized probability weights/exponents
+          - switching weight and penalty.
+          - native mode for virtual evidence 
+              - enables native-mode hybrid DBN/ANNs and DBN/SVMs.
+          - hidden continuous nodes, both GC models, and also non-linear hidden
+            continuous nodes, trained using sampling approaches.
+          - sparse inverse covariance matrices (corresponding to sparse undirected graphical
+            models as Gaussians). To avoid needing to do an iterative scheme, triangulate
+            this mdoel giving chordal Gaussians.
+          - ancestral graphs and Gaussians.
+          - sparse inverse covariance matrices, non-chordal, using iterative proporotional scaling (IPS)
+            to train within EM 
+
+     - new CPTs
+        - table and/or hash CPT (table of parent values is specified, could be very sparse).
+          Easier to specify than sparse CPT with DTs. 4/26/05, 1/18/06
+        - NN-based CPT 
+        - SVM binary and multi-class CPT
+        - Gaussian process-based CPT
+        - logistic regression CPT (i.e., 1 layer MLP)
+        - kernel classifier CPT (i.e., kernel nearest neighbor).
+        - native negative binomial CPT for length distributions. Also Poisson? 4/8/06
+        - log linear CPTs, letting the user specify features, weights can be learnt.
+        - dynamically updated CPT based on clique frequencies (7/31/06).
+
+      - new types of factors/constraints:
+         - rather than table a=b, have constraint/factor that says a=b=c=d= ... all equal constraint.
+           (see currnet GMTK part implementation).
+         - directional constraints. 7/5/2005
+         - other constraints 2/19/06
+         - still more constraints 8/31/2006
+
+       - ARPA LMs and FLMs
+       - sequence and lattice CPTs (that iterates through
+          a lattice depending on a specific set of parents).
+          Like a sparse CPT but easier to specify since it keeps track
+          of where it is. 
+
+   
+- theory/algorithms
+       - generalized discriminative training procedures
+           stochastic gradient descent. 
+           max margin/MCE-based training, MMIE using regularized gradient desccent 
+       - submodular flows for various things.
+       - new Gaussian splitting algorithms, use state posterior as well as mixture posterior (dasgupta material??)
+       - approximate inference, pruned seperator driven, improves only the left interface clique,
+         but if this separator intersects other cliques in the graph (and we have a JT-based implemnetat),
+         it can speed up that clique as well (but it will be the form of no-goods/constraints). 5/24/2005.
+       - dynamic variable order based on conditional cardinality 6/10/05
+       - VE-based algorithm (see notes file). 
+       - diversity pruning (8/11/05, 1/26/06 4/9/06)
+       - better island algorithm interaction with global shared clique values data structure. 9/28/05
+           - automatic way to improve memory in these cases (at commandline option). Also, see 9/28/05
+           - save to disk island portions. 
+       - wave pruning: 1/18/06
+           - dynamic pruning, prune values from observation files.
+           - HTK form of pruning, start again with wider beam if we get to a zero.
+       - time pruning - upper bound on amount of time 4/17/2006.
+ 
+       - caching CPTs in same clique if RVs happen to use same CPTs (this might be hard). 1/23/06.
+       - left-to-right/right-to-left outside-to-in (to take advantage of zeros).
+             - also, exploitation of 2-core CPUs in outside-to-in  2/22/06
+             - pipelining of segments to support quad- and higher core (new)
+       - adaptation algorithms
+           - regularized adaptation of Gaussians, MLPs, etc. Use direclet prior for unadapted model.
+           - MLLR type from speech recogntion, but applied to DBNs.
+           - regularized MLLR adaptation.
+       - real-time online decoding.
+            - standard algorithms for fixed lookahead 
+            - Mukund's ICML'06 algortihm for real-time variable 
+              lookahead viterbi approximation
+
+          - better boundary search algorithms & predicting of when boundary
+            will and won't be useful.
+          - optimal separator iteration orders
+          - switching parents in inference in forward/backward
+          - characterize nets which require particular M and S
+          - triangulation for nets with sparse CPTs (Chris)
+
+
+- fast exact & approximate inference and other inference features 
+          - describe new inference algorithm in some detail (see notes file)
+              l-factor types 3/27/06.
+          - CSP features into inference
+            - AC-3/AC-4 on factors before running and/or after factor creation, for l-time factors that are re-used in
+              next iterations, can run AC on these to make smaller (could do this on each next frame for new factors??)
+            - fail-first heuristics for variable selection. 1/31/06
+          - A*-like search, with contiation costs (both admissible and non-admissible).
+             - see Charniak parser heuristics, also heuristics used for stat-MT.
+          - New (viterbi) decoder program, that will
+               do the max-sum over subsets of cliques rather than
+               entire cliques. This will mean that we can
+               do a word only (or variable only) 
+               backtrace, generalizing LVCSR decoders (see decoder papers), as long
+               as the sub-variables we wish to decode are a sub-junction tree of the
+               underlying junction tree.
+                - ability to max/sum variables (max over some variables, sum over others,
+                  for hybrid decoding).
+                - n-best and lattice generation
+                - should be able to do this without editing the trifile.
+
+          - New inference methods:
+              hybrid inference/search based inference methods, generalizing value elimination.
+          - iterative approaches, using a form of importance sampling.
+          - loopy propagation will not be used, as many of the graphs involve determinism,
+            and we have found that large cliques decrease state space, so loopy would not
+            be able to take advantage of this. Give example A -> B -> C.
+          - sampling and hidden continuous mixture Gaussians.
+             - variational and mean-field inference                 
+          - fast boundary search, using max-flow/min-cut algorithms.
+             - submodular approximation to entropy based approach.
+          - gmtkDecode, and support for n-best and lattice generation.
+             - graph lattices, generalization of lattices in speech recognition
+               which give reduced state space for a DGM.
+          - option for inward/outward inference rather than forward-backwards.
+            This can significantly speed things up since we don't keep things
+            around that are zero (try to have a picture explaining this).
+
+         - support filtering p(x_t | y_{1:t}), prediction p(x_t |
+           y_{1:s}) s < t, as well as smoothing p(x_t| y_{1:T}), where
+           y is observed, and x are the hidden variables in the DBN.
+         - island algorithm interacts with Gaussian caching, so that we cache current island only.
+             - island algorithm better integrated with global clique packing.
+         - Single-Pass Retraining, ala HTK (sec 8.6). (single pass retraining).
+       - sampling-based inference - 
+          1) gibbs sampling, and other forms of sampling.
+             Block sampling (to sample entire clique entries and use deterministic variables when their parents have
+             been sampled).
+          2) distribution posterior sampling, i.e., P(x_H|\bar x_E) 5/17/05
+          3) sample from p(x_A|x_E) where A \subseteq H, and where it is a sub junction tree.
+          4) 
+
+
+
+- new usability features
+      - automatic unrolling, given only length, where the CPTs are per segment  (i.e., length
+         can come from either VECPTs, or just from a string length to do new string alignment models).
+      - new DT types: 
+          - skipby feature (9/14/2004)
+      - clique prining for forward and backwards.
+          - subclique printing (w/o having to edit .trifile) 2/16/06.
+
+      - trace output filtering -- right now, trace outputs are enormous, they can take up many 10s of gigi-bytes
+        before getting to the part of the trace that is important to the user to debug your graph. Trace is too
+        big for egrep since egrep spends all its time searching before it gets to the desired part and it takes
+        a long time to both generate all the ASCII output and search through it. Internal trace filtering 
+        will user syntax to filter output before being printed (e.g., by frame (or percentage), by variable value, 
+        by variable set of values, etc. etc.). Also see 9/16/05.
+
+      - min/max/median/mean-score Gaussian (to allow hidden variable to essentially skip a frame,
+        not have a Gaussian score at a particular frame. E.g.,
+            \prod_t p(x_t | q_t) p(q_t|q_{t-1})
+        previous/next-frame score Gaussian (i.e., could just copy previous Frame's Gaussian score for current state??).
+        Some way for a particular state, if it exists, to ignore the current
+        x_t (like unity/zero-score) but not make the hyps that extend this state excessively (or underly) probable.
+
+     - extended DT features:
+         - constraints 3/17/05
+         - new DT functions 4/20/2005
+         - compressed DTS. Decision graphs, BDDs, 3/7/2006
+         - leafs can have gotos. 8/30/06
+         - decision tree formulas (Chris)
+
+      - much better user-level error message reporting, 
+          - not only that there is a cycle but which vars are in cycle 
+       - quick reference cards (1 page for decision trees).
+       - tools for easy automatic parameter creation and structure creation.
+          (meta level description of parameters rather than needing to specify
+             them all). Also meta tools for Gaussians & continuous densities.
+             (converting from dense to sparse cpt).
+       - graphical user inferface for graph specification parameter specification
+       - regular expressions to determine objects not to train.
+       - symbolic observations such as support for language files, etc.
+              - word vocabulary objects, so RVs have symbol names associated with their values.
+          - Arbitrary sets of variable values, including strings, rather than [0..card-1] 
+            so that user interacts with variable values as strings (even though
+            internally they are unsigned integers).
+          - utilities to convert to and from other standard formats:
+             - other GM systems and other speech systems.
+             - other systems, HTK, etc.
+             - compatibliity with all NIST word scoring tools.
+          - emacs editing mode for GMTK structure files.
+          - user debugging features
+              - (see Sat Mar 15 22:33:27 2003 in TODO file)
+              - gmtk user-level debugger to help users figure out why they
+                get zero probabilities (i.e., bugs in their determinisitc cpt specifications).
+          - fixed upper bounded memory usage.
+          - allow for empty frames to do instant down-sampling and multi-rate
+            processing.
+          - dynamic beam pruning (so that beam widths or counts can come from global
+            observation file). beam comes from obs frame corresponding to first 
+            variable in the clique. Also, allow beam formulas on command line,
+            to adjust variable beams. (might want to have wider beams at beginning
+            of segment, an smaller in the middle).
+          - allow parameters to be read in in any order, rather than in
+            an order that requires any dependencies to have been read in beforehand.
+            Do final pass to ensure all is there.
+          - set up GMTK wiki page.
+
+
+- other software engineering speedups, & software infrastructure improvements
+       - common cliques in P, C, and E share mother clique.
+       - better error messages.
+       - currently, trifiles are written out but JT and variable iteration order are computed
+         internally. Also have .jtfile to allow this to be edited by a human so that if
+         the current heuristics are not ideal for a given graph, a knowledgable user can change it.
+       - phipac generator for gaussian evaluation and hash-key evaluations.
+       - inference clique pointers computed at start of each clique (rather than once) saving memory.
+            9/4/2006
+       - speed up logadd ops, + have a scaling mode for logp.h
+            - better log table, see 5/19/2006 for software version of hardware log-add implementation.
+            - normal floating point for static graphs 7/10/2006
+       - ability report how much memory is currently being used. Memory tracking.
+       - numerical scaling in addition to log arithmetic. 2/17/05
+       - value elimination table storage, shared packed dset value tables.
+       - pack to bytes rather than words (to save some memory).
+       - don't unroll entire length, just enough for expanded template and re-use RVs changing
+         their frame number 4/24/06 (but be careful with forward/backward and island as it might
+         assume some variables maintain their state).
+       - save l-caches/l-factors to disk between runs 4/17/06.
+         - custom floating point routines to implement log(1+exp(x)) as a
+           single function.
+         - much better hash tables
+     - general software infrastructure
+           - new makefile system, break large .cc files into smaller (better organization of code)
+           - use of gnu config for easy compilation on multiple platforms.
+           - sourceforge integration, proper source release and bug
+             tracking procedure. Distribution of both sources and pre-compiled native-mode binaries for  
+             multiple platforms (linux, windows, maxOS
+
+- tutorials/documentation
+        - new unrolling semantics (Nov 2004)
+          - many tutorials and examples to be created and released on the web.
+              (list different types).
+          - update and get aurora tutorial into CVS
+          - get Karim's fully implicit tutorial integrated in
+          - write other tutorials for
+              - language modeling
+              - pronunciation modeling
+          - integrate in small test suite examples (exp1, exp2, etc.) which will
+            both serve as tutorial material and something to
+            test things out to ensure compiled version works.  
+          - much improved and more complete documentation with many examples.
+
+
+
+
+Wed Nov 08 00:03:29 2006
+  - boundary algorithm to create non-minimal interface separators 
+     - don't store det values for seps after all (see 5/13/2005)
+         - once we instantiate acc-inter + residual, we set all deterministic values and
+           then continue.
+     - since separators are bigger, might be smaller state space even.
+     - how to generalize notion of cut, might be sufficient to just add 
+       extra ancestral edges in the graph which will produce a non-minimal separator
+       in the original graph (see 7/17/05)
+ - 
+
+
