@@ -2962,6 +2962,12 @@ Thu May 19 17:34:17 2005
           lewis93:
              Lewis, D.M., Interpolato r, Computer Arithmetic,
              1993. Proceedings., 11th Symposium on , 29 June-2 July 1993, Pages:2-9.
+            "An accurate LNS arithmetic unit using interleaved memory function interpolator"
+            Lewis, D.M.
+             Page(s): 2-9
+             Digital Object Identifier 10.1109/ARITH.1993.378115
+              (get at ieeexplore.ieee.org)
+
 
 Thu May 19 18:04:37 2005
   - unityScore CPT viterbi: Is it possible for unity score CPTs when used to make
@@ -3051,7 +3057,7 @@ Wed Jun 22 12:28:34 2005
 Wed Jun 22 14:38:17 2005
   - gmtkTime: remove error (change to warning) about not running lin-mem case (line 373 or so).
 
-Tue Jul  5 23:33:15 2005
+Tue Jul 5 23:33:15 2005
   - add a DirectionalConstraintCPT, where we have n parents, and the n'th parent
     is a det. function of the first (n-1) parents, and the child is satisfied only
     if the nth parent is that det function of the (n-1) parents. This is an easy
@@ -4130,4 +4136,16 @@ Wed Nov 08 00:03:29 2006
        in the original graph (see 7/17/05)
  - 
 
+
+Mon Nov 13 16:03:18 2006
+  - add to gmtkViz, ability to display color display of clique state spaces so that
+    we can see how cliques in the C partiiton evolove over time.
+
+
+
+Wed Nov 15 18:40:27 2006
+  - on lattices:
+    1) support lattices that have word definitions on nodes, right now it doesn't work,
+       look for set of emails from Hui/Amar on this issue around this time.
+    2) support zero time-length links in lattices, still doesn't support that.
 
