@@ -4,7 +4,7 @@
 * variable) for arbitrary feature positions in a sequence of feature
 * vectors.
 *
- 
+
 *
 * Input format: Data is assumed to be a collections of "sentences,"
 * each of which is a sequence of vectors of fixed dimension.
@@ -77,21 +77,21 @@ double      MCVR                        = 20.0;
 bool     Swap[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
 #else
 bool     Swap[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
-#endif 
+#endif
 
-char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   // 
-unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={ERROR,ERROR,ERROR,ERROR,ERROR};   // 
-char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"}; 
-unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END,TRUNCATE_FROM_END};   // 
+char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   //
+unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};
+char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"};
+unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   //
 
 bool     Cpp_If_Ascii        = true;
 char*    Cpp_Command_Options = NULL;
 
-bool     Seed                = true;  
+bool     Seed                = true;
 
 bool     Verbose             = false; // Print a lot of status messages.
-bool     Quiet               = false; // Don't print any status message.  Overrides verbose.  
-bool     Help                = false;
+bool     Quiet               = false; // Don't print any status message.  Overrides verbose.
+bool     Print_Help                = false;
 
 
 char *MI_Tuple_File = NULL;          // File name listing all the tuples we want to compute the mi/entropy of.
@@ -104,15 +104,15 @@ char *Kmeans_Output_MG_Fname = NULL;      // parameter kmeans output file name
 char *Sentence_Range_Str        = "all";         // sentence range string
 char *Kmeans_Sentence_Range_Str = "all";     // kmeans sentence range string
 char *MI_Sentence_Range_Str     = "all";         // mi data sentence range string
-//char *Frame_Range_Str[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string 
-char *Frame_Range_Str[MAX_NUM_OBS_FILES] = {"all","all","all","all","all"};   // per stream per sentence range string 
+//char *Frame_Range_Str[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string
+char *Frame_Range_Str[MAX_NUM_OBS_FILES] = {"all","all","all","all","all"};   // per stream per sentence range string
 
 int   Label_Position = -1;                   // If computing conditional mi and the labels are in the same pfile as features, labpos is the index of the label.  -1 means we are using the last discrete feature in each frame of the pfile as the label.
 
 unsigned Num_Mixtures                  = 1;       // By default use one mixture to estimate densities i.e. assumes linear dependencies.
 double   Log_Likelihood_Perc_Diff      = 0.01;    // When the change in log likelihood is less than lldp, we assume EM has converged for this tuple.
 unsigned Max_Num_Kmeans_Iterations     = 3;       // Number of k-means iterations to perform.
-unsigned Max_Num_EM_Iterations         = 100;     // The maximum number of EM iterations per tuple.   
+unsigned Max_Num_EM_Iterations         = 100;     // The maximum number of EM iterations per tuple.
 unsigned Num_Samples_Law_large_Numbers = 10000;   // The number of samples to use when using the law of large numbers to calculate MI.
 
 
@@ -126,10 +126,10 @@ bool Skip_EM     = false;               // If true, we don't run EM.
 bool Skip_Kmeans = false;           // If true we skip kmeans.  Not implemented yet.  The main issue is to have an alternate way to initialize EM and kmeans (even if for one iteration) seems teh smartest way to go about it.
 
 unsigned  Start_Skip  = 0;
-unsigned  End_Skip    = 0; 
+unsigned  End_Skip    = 0;
 
 
-char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};   // 
+char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};   //
 char    *Post_Transforms=NULL;
 
 char    *Ftr_Combo_Str="none";
@@ -163,7 +163,7 @@ char* Label_Range_Str=NULL;
 bool Marginalize_First_Parent_Out=false;
 
 //////  At some point will be deleted /////
-const char *lofs[]                   = { NULL }; 
+const char *lofs[]                   = { NULL };
 unsigned    lnfs[]                   = { 0 };
 unsigned    lnis[]                   = { 0 };
 const char *lfrs[]                   = { "all" };
@@ -192,7 +192,7 @@ Arg Arg::Args[] = {
   Arg("ir",       Arg::Opt, Int_Range_Str,"Int range to use",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("o",        Arg::Opt, Output_Fname,"Output file (- for sdtdout)"),
   Arg("miTupleFile", Arg::Req, MI_Tuple_File, "File specifying the tuples to compute the MI/entropy of"),
-  
+
   Arg("sr",       Arg::Opt, Sentence_Range_Str, "Sentence range for EM estimation of the probability densities"),
   Arg("ksr",      Arg::Opt, Kmeans_Sentence_Range_Str, "Sentence range for kmeans initial estimation of the probability densities"),
   Arg("lr",       Arg::Opt, Label_Range_Str, "Label range to condition on."),
@@ -236,7 +236,7 @@ Arg Arg::Args[] = {
   Arg("q",        Arg::Tog, Quiet,"Do not print any diagnostic messages"),
   Arg("norun",    Arg::Tog,  Dont_Run, "Don't run; just print the values of the arguments"),
   Arg("marginalizeFirstParent",     Arg::Tog,  Marginalize_First_Parent_Out, "Marginalize the first parent out when computing MI."),
-  Arg("help",     Arg::Tog, Help,"print this message"),
+  Arg("help",     Arg::Tog, Print_Help,"print this message"),
   // The argumentless argument marks the end of the above list.
   Arg()
 };
@@ -247,38 +247,26 @@ Arg Arg::Args[] = {
 
 /////////////////////////////////////////////////////////////////////////
 
-/**
- * the usage of this program
- *
- * @param message the (error) message to be outputted
- */
-static void usage(const char* message = 0) {
-  if (message)
-    fprintf(stderr, "%s: %s\n", program_name, message);
-  fprintf(stderr, "Usage: %s <options>\n", program_name);
-  exit(EXIT_FAILURE);
-}
-
 
 // not yet used ///////////////////////
 /**
 * read a sentence into memory
-* @param sentence sentence to be read im memory 
+* @param sentence sentence to be read im memory
 * @param numFrames output parameter that stores the number of frames in the sentence
 * @param numSamples output parameter storing the number of samples
 */
-int readSentenceUncond(Range::iterator sentence, 
+int readSentenceUncond(Range::iterator sentence,
 		       size_t &numFrames,
 		       Range &lrrng);
 
 
 
-int readSentenceCond(Range::iterator sentence, 
+int readSentenceCond(Range::iterator sentence,
 		     size_t &numFrames,
 		     size_t &numSamples,
-		     Range &lrrng, 
+		     Range &lrrng,
 		     int labpos,
-		     unsigned &frameStart, 
+		     unsigned &frameStart,
 		     unsigned &firstFrame);
 
 ///////////////////////////////////////////////////
@@ -299,23 +287,23 @@ int readFeatures(Range::iterator krit, size_t &n_frames,
   n_labs = (gotLabelFile?globalLabelMatrix.numDiscrete():globalObservationMatrix.numDiscrete());
   const bool stateCondMI = !lrrng.full();
 
-  if (stateCondMI && n_labs < 1) { 
+  if (stateCondMI && n_labs < 1) {
     error("For conditional MI, number of discrete features per frame in pfile must be at least one.");
   }
-  
+
   ObservationMatrix* obsMat;
-  if(gotLabelFile) 
+  if(gotLabelFile)
     obsMat = &globalLabelMatrix;
   else
     obsMat = &globalObservationMatrix;
   if(!segAlreadyLoaded)
     obsMat->loadSegment((const unsigned)(*krit));
   n_frames = obsMat->numFrames();
-  
+
   if ( n_frames == SIZET_BAD )
     error("%s couldn't find number of frames at sentence %lu in input pfile.\n", program_name, (unsigned long) *krit);
 
-  if (!stateCondMI) { 
+  if (!stateCondMI) {
     firstFrame = 0;
     n_samps = n_frames;
     if(n_samps == 0) return NO_DATA;
@@ -327,18 +315,18 @@ int readFeatures(Range::iterator krit, size_t &n_frames,
     int pos = (unsigned) labpos;
     if(pos == -1) //use default: last discrete feature
       pos =  obsMat->numFeatures() - 1;
-    
+
     int numFound = 0;
     for(frameno = frameStart; frameno < n_frames; ++frameno) {
       label =  obsMat->unsignedAtFrame(frameno,(const unsigned) pos);
       frameStart = frameno;
       while (lrrng.contains(label)) {
 	++numFound;
-	++frameno; 
+	++frameno;
 	if(frameno >= n_frames) break;
 	label =  obsMat->unsignedAtFrame(frameno,(const unsigned) pos);
       }
-      if (numFound == 0 || numFound < Min_Num_Consecutive_Labels) 
+      if (numFound == 0 || numFound < Min_Num_Consecutive_Labels)
 	numFound = 0; //reset
       else break;
     }
@@ -346,11 +334,11 @@ int readFeatures(Range::iterator krit, size_t &n_frames,
     //Case 1:  We haven't reached the last frame
     //         Everything is good, we return DATA_LEFT
     //Case2:   We've reached the last frame:
-    //   Case 2.a: numFound > 0 : return DONE   
+    //   Case 2.a: numFound > 0 : return DONE
     //   Case 2.b: numFound ==0 : return NO_DATA
-    //      
+    //
     n_samps = numFound;
-    firstFrame = frameStart;  
+    firstFrame = frameStart;
     if(frameno != n_frames) {
       if(!segAlreadyLoaded) {
 	globalObservationMatrix.loadSegment((const unsigned)(*krit));
@@ -362,7 +350,7 @@ int readFeatures(Range::iterator krit, size_t &n_frames,
       }
       frameStart = frameno;  //next time we start from here
       return DATA_LEFT;
-    }    
+    }
     else if(numFound > 0) {
       if(!segAlreadyLoaded) {
 	globalObservationMatrix.loadSegment((const unsigned)(*krit));
@@ -404,7 +392,7 @@ void sigexit(int flag) {
 
 /**
 * estimates the mixture of Gaussians and calculates MI
-* 
+*
 */
 
 static void multivariateMI(FILE *mi_ofp, // where to put output MI values
@@ -433,7 +421,7 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
                bool marginalizeFirstParentOut,
 	       const bool quiet
 			   ) {
-  
+
   size_t n_frames, n_samps;
   const size_t n_ftrs =  globalObservationMatrix.numFeatures();
 
@@ -477,10 +465,10 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
     error("Can't set SIGXCPU signal.");
   if (signal(SIGTERM,sigexit) == SIG_ERR)
     error("Can't set SIGTERM signal.");
-  
+
 #endif
 
-  // For debugging purposes: use -dumpdist <tuple num> to write out the distribution for the specified tuple 
+  // For debugging purposes: use -dumpdist <tuple num> to write out the distribution for the specified tuple
   if(distNumToDump >=0) {
     char dataFile[25];
     for(unsigned mixNum=0;mixNum<(unsigned)rngSetCol.getSize();++mixNum) {
@@ -490,14 +478,14 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
       fprintf(stderr,"Could not open dump file for writing\n");
       exit(-1);
     }
-    
-    cout<<"Dumping distribution data for mixture # "<<mixNum<<endl; 
+
+    cout<<"Dumping distribution data for mixture # "<<mixNum<<endl;
     dumpDistribSampleData(ofp,
 			  &globalObservationMatrix,
-			  rngSetCol, 
-			  lrrng, 
-			  kmeansrng, 
-			  numMixtures, 
+			  rngSetCol,
+			  lrrng,
+			  kmeansrng,
+			  numMixtures,
 			  numIterKmeans,
 			  labpos,
 			  mixNum,
@@ -507,7 +495,7 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
   ////////////////////////////////////////////////////////////////////////////
 
   if (pi_fp != NULL && fsize(pi_fp) > 0) {
-    prevNumActive = numActive = 
+    prevNumActive = numActive =
       mg.readCurParams(pi_fp,force_all_active,mgBinFormat);
   }
   else if(!skipKmeans) {
@@ -528,7 +516,7 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
     if(!quiet) cout<<"Converting kmeans parameters to mg ones...\n";
     mg.calcB();
     if(!quiet) cout<<"Writing converted kmeans parameters to mg file...\n";
-    mg.writeCurParams(po_fp,mgBinFormat); 
+    mg.writeCurParams(po_fp,mgBinFormat);
   }
   else {
 	if(!quiet) printf("Skipping kmeans.\n");
@@ -561,8 +549,8 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
 	  fflush(stdout);
 	  timeOfLastPrint = time(0);
 	}
-      
-      mg.startEpoch();  // Initialize EM data structures 
+
+      mg.startEpoch();  // Initialize EM data structures
       // Iterate over sentences and accumulate EM statistics
       for ( Range::iterator srit = srrng.begin(); !srit.at_end(); srit++ ) {
 	if ( ! quiet ) {
@@ -576,27 +564,27 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
 	// Read sentence in
 	frameStart = 0;
 	do{
-	  readStatus = 
+	  readStatus =
 	    readFeatures(srit, n_frames, n_samps,
 			 lrrng,labpos, frameStart,firstFrame);
 	  if(readStatus == NO_DATA) break;  //no frames were read
 	  mg.addToEpoch(&globalObservationMatrix, n_ftrs, n_frames, n_samps, firstFrame,rngSetCol);
 	} while(readStatus == DATA_LEFT);
-      
+
       } // end of for loop that iterates overs sentences
-      
+
       int rangeSpecNum;
       if( mg.noSamplesFound(rangeSpecNum) ) {
       error("ERROR:  There were no samples for at least one range spec (the %d th one).  Possible causes:  the label provided does not exist in the label file or there are too few frames with that label.\n",rangeSpecNum);
       }
-      
+
       mg.endEpoch();  // Finish accumulating statistics and update EM parameters
-      
+
       prevNumActive = numActive;
       numActive=mg.reComputeNumActive(maxDist,aveDist,minDist,lldp,em_iter);
-      
+
       if (!quiet &&
-	  ( ( numActive < prevNumActive ) || 
+	  ( ( numActive < prevNumActive ) ||
 	    ( (time(0) - timeOfLastPrintNumActive ) > minTimePerPrintNumActive ) ||
 	    ( em_iter % activePrintFrequency == 0 )
 	    )
@@ -611,15 +599,15 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
 	fflush(stdout);
 	timeOfLastPrint = timeOfLastPrintNumActive = time(0);
       }
-      
+
       if (usr2_terminate) {
 	// If we got a sigusr2 recently, then we expect to
-	// soon be killed (by pmake) but we don't want to be killed in 
+	// soon be killed (by pmake) but we don't want to be killed in
 	// the middle of saving the parameters. So, instead of saving, we forfeit
 	// the work done during this em_iter for safety's sake.
 	printf("Iter %d: Not Saving Mixture Parameters Since Received SIGUSR2.\n",em_iter); fflush(stdout);
-      } 
-      else if (po_fp != NULL && 
+      }
+      else if (po_fp != NULL &&
 	       ((prevSaveIter+nips <= em_iter) ||
 		(numActive+nacps <= prevNumActive) ||
 		(numActive == num_active_to_stop) ||
@@ -635,26 +623,26 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
 	mg.dumpCurIterParams(em_iter);
 #endif
       }
-    } 
-    
+    }
+
     if (usr2_terminate) {
       printf("Iter %d: Exiting early with failure due to received SIGUSR2\n",em_iter);
       exit (EXIT_FAILURE);
     }
-    
+
     if(!quiet) printf("Finished computing mixtures.\n");
-    
-  }  // end if(!skipEM) 
+
+  }  // end if(!skipEM)
   else {
     cout<<"Skipping EM.\n";
   }
-  
+
   // Compute MI quantities from the learned densities
   if( data ) // Use the original data (or a subset specfied by mirng) to compute MI
     mg.computeMIUsingData(globalObservationMatrix,rngSetCol, mirng, quiet, mi_ofp,lrrng,labpos,rangeFileFP);
-  else       // Sample from the learned densities (lll is the number of samples to use) 
+  else       // Sample from the learned densities (lll is the number of samples to use)
     mg.computeMI(mi_ofp, lll, rngSetCol,rangeFileFP,marginalizeFirstParentOut);
-  
+
   // restore signals.
   if (signal(SIGUSR1,SIG_DFL) == SIG_ERR)
     error("Can't unset SIGUSR1 signal.");
@@ -687,7 +675,7 @@ int main(int argc, const char *argv[]) {
 
   ////// Figure out the Endian of the machine this is running on and set the swap defaults accordingly /////
   bool doWeSwap;
-  
+
   ByteEndian byteEndian = getWordOrganization();
   switch(byteEndian) {
   case BYTE_BIG_ENDIAN:
@@ -704,7 +692,7 @@ int main(int argc, const char *argv[]) {
     doWeSwap=false;
 #endif
   }
-  
+
   for(int i=0; i<MAX_NUM_OBS_FILES; ++i) {
     Swap[i]=doWeSwap;
   }
@@ -713,7 +701,7 @@ int main(int argc, const char *argv[]) {
   ///////  Parse Arguments //////
   bool successful_parse = Arg::parse(argc,(char**)argv);
 
-  if(Dont_Run || Help) {
+  if(Dont_Run || Print_Help) {
     Arg::usage();
     exit(0);
   }
@@ -723,12 +711,12 @@ int main(int argc, const char *argv[]) {
     exit(-1);
   }
 
-  
+
   if(Seed) {
     rnd.seed();
     srand((unsigned)(time(NULL)));
   }
-  
+
   // TODO: put all the checks below in a new function
 
   if(MCVR < 1) {
@@ -760,17 +748,17 @@ int main(int argc, const char *argv[]) {
   for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
    if(Input_Fname[i]!=NULL) {
      if (strcmp(Action_If_Diff_Num_Frames_Str[i],"er") == 0)
-       Action_If_Diff_Num_Frames[i] = ERROR;
+       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_ERROR;
      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rl") == 0)
-       Action_If_Diff_Num_Frames[i] = REPEAT_LAST;
+       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_LAST;
      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rf") == 0)
-       Action_If_Diff_Num_Frames[i] = REPEAT_FIRST;
+       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_FIRST;
      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0)
-       Action_If_Diff_Num_Frames[i] = EXPAND_SEGMENTALLY;
+       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0)
-       Action_If_Diff_Num_Frames[i] = TRUNCATE_FROM_START;
+       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0)
-       Action_If_Diff_Num_Frames[i] = TRUNCATE_FROM_END;
+       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
      else
        error("ERROR: Unknown action when diff num of frames: '%s'\n", Action_If_Diff_Num_Frames_Str[i]);
    }
@@ -779,13 +767,13 @@ int main(int argc, const char *argv[]) {
 for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
    if(Input_Fname[i]!=NULL) {
      if (strcmp(Action_If_Diff_Num_Sents_Str[i],"er") == 0)
-       Action_If_Diff_Num_Sents[i] = ERROR;
+       Action_If_Diff_Num_Sents[i] = SEGMATCH_ERROR;
      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0)
-       Action_If_Diff_Num_Sents[i] = REPEAT_LAST;
+       Action_If_Diff_Num_Sents[i] = SEGMATCH_REPEAT_LAST;
      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0)
-       Action_If_Diff_Num_Sents[i] = WRAP_AROUND;
+       Action_If_Diff_Num_Sents[i] = SEGMATCH_WRAP_AROUND;
      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0)
-       Action_If_Diff_Num_Sents[i] = TRUNCATE_FROM_END;
+       Action_If_Diff_Num_Sents[i] = SEGMATCH_TRUNCATE_FROM_END;
      else
        error("ERROR: Unknown action when diff num of sentences: '%s'\n",Action_If_Diff_Num_Sents_Str[i]);
    }
@@ -799,7 +787,7 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
      if ((out_fp = fopen(Output_Fname, "w")) == NULL) {
        error("Couldn't open output file for writing.\n");
      }
- } 
+ }
 
  // If we have a pfile, we can extract the number if features from the file directly
  for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
@@ -819,7 +807,7 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
      }
    }
  }
-  
+
   if (Num_Active_To_Inactive_Changes_For_Save < 1) {
       error("nacps (number of active->inactive changes per save must be >= 1");
   }
@@ -831,12 +819,12 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
 
   lr_rng = new Range(Label_Range_Str,0,MAX_LABEL_VAL);
   if(lr_rng->full() && label_fname != NULL)
-    error("Cannot specify a label file when no label range is given\n"); 
+    error("Cannot specify a label file when no label range is given\n");
   if (!lr_rng->full()) { //or better yet if lr_str != NULL
     // only bother to open this if the label range isn't full.
     if (label_fname!=NULL) {
       gotLabelFile = true;
-      
+
       lofs[0] = label_fname;
       //lnfs[0] = 0; lnis[0] = 1;
       if(lswap == true) liswps[0] = true;
@@ -845,7 +833,7 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
       if(Label_Position < 0 && lnis[0] > 1) {
 	printf("Using the last discrete feature of the label file as the label\n");
       }
-      
+
       unsigned lifmts[1];
       if (strcmp(lfmts[0],"htk") == 0)
 	lifmts[0] = HTK;
@@ -857,7 +845,7 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
 	lifmts[0] = PFILE;
       else
 	error("ERROR: Unknown observation file format type: '%s'\n",lfmts[0]);
-      
+
       globalLabelMatrix.openFiles(1,
 				  (const char**)&lofs,
 				  (const char**)&lfrs,
@@ -866,10 +854,10 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
 				  (unsigned*)&lnis,
 				  (unsigned*)&lifmts,
 				  (bool*)&liswps);
-      
+
       unsigned numLabelFeatures = globalLabelMatrix.numFeatures();
       unsigned numLabelContinuous = globalLabelMatrix.numContinuous();
-      if(Label_Position != -1 && 
+      if(Label_Position != -1 &&
 	 (Label_Position < (int)numLabelContinuous || Label_Position >= (int)numLabelFeatures) )
       error("Label position (%d) out of range (%d - %d): must be within the range of discrete observations of the label file\n",Label_Position,numLabelContinuous,numLabelFeatures-1);
       }
@@ -899,10 +887,10 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
                                    Per_Stream_Transforms,
                                    Post_Transforms,
                                    Ftr_Combo);
- 
+
     unsigned numFeatures = globalObservationMatrix.numFeatures();
     unsigned numContinuous = globalObservationMatrix.numContinuous();
-    if(!gotLabelFile && Label_Position != -1 && 
+    if(!gotLabelFile && Label_Position != -1 &&
        (Label_Position < (int)numContinuous || Label_Position >= (int)numFeatures) )
       error("labpos (%d) out of range (%d - %d): must be within the range of discrete obsevations\n",Label_Position,numContinuous,numFeatures-1);
 
@@ -936,17 +924,17 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
       }
       fclose(pi_fp); fclose(po_fp);
       delete [] buf;
-    } 
+    }
     else {
       // parameter file does not yet exist or we don't want to backup.
     }
-    
+
     pi_fp = po_fp = fopen(Input_MG_Fname, "r+");
     if (pi_fp==NULL) // assume file doesn't exist.
       pi_fp = po_fp = fopen(Input_MG_Fname, "w+");
     if (pi_fp==NULL)
       error("Couldn't open i/o file for reading/writing.");
-  } 
+  }
   else {
     if (Input_MG_Fname!=0) {
       pi_fp = fopen(Input_MG_Fname, "r");
@@ -985,7 +973,7 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
 	error("Couldn't open input kmeans file for writing.");
     }
     else
-      kpo_fp=po_fp;  // else we write to the mg output param file 
+      kpo_fp=po_fp;  // else we write to the mg output param file
   }
 
 
@@ -1001,26 +989,26 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
 
 
   // Do the work.
-  multivariateMI(out_fp, 
-		 pi_fp, 
+  multivariateMI(out_fp,
+		 pi_fp,
 		 po_fp,
 		 kpi_fp,
 		 kpo_fp,
-		 *sr_rng, 
-		 *lr_rng, 
-		 *kmeans_rng, 
+		 *sr_rng,
+		 *lr_rng,
+		 *kmeans_rng,
 		 *mi_rng,
 		 MI_Tuple_File,
-		 Num_Mixtures, 
+		 Num_Mixtures,
 		 Max_Num_Kmeans_Iterations,
 		 Max_Num_EM_Iterations,
-		 Log_Likelihood_Perc_Diff, 
+		 Log_Likelihood_Perc_Diff,
 		 Num_Samples_Law_large_Numbers,
-		 Use_Data_For_MI_Estimation, 
+		 Use_Data_For_MI_Estimation,
 		 Label_Position,
 		 Activate_All_MGs,
-		 Num_Active_To_Inactive_Changes_For_Save, 
-		 Num_Active_To_Stop, 
+		 Num_Active_To_Inactive_Changes_For_Save,
+		 Num_Active_To_Stop,
 		 Num_Iterations_Between_Saves,
 		 Skip_Kmeans,
 		 Skip_EM,
@@ -1044,6 +1032,3 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
 
   return 0;
 }
-
-
-
