@@ -3851,7 +3851,6 @@ Thu Oct 26 20:17:06 2006
     (rather than everything about a partition), and then we regenerate it as
     needed. 
 
-
 Tue Nov 07 21:19:06 2006 -----
 
 - Summary of many of the new features compiled from the above up to the
@@ -4142,10 +4141,15 @@ Mon Nov 13 16:03:18 2006
     we can see how cliques in the C partiiton evolove over time.
 
 
-
 Wed Nov 15 18:40:27 2006
   - on lattices:
     1) support lattices that have word definitions on nodes, right now it doesn't work,
        look for set of emails from Hui/Amar on this issue around this time.
     2) support zero time-length links in lattices, still doesn't support that.
+
+
+
+Wed Dec 13 05:53:29 2006
+  - create an int32 type for domains (since an array of domain values
+    shoudln't use 64 bits when we move to 64 bit machines).=======
 
