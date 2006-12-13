@@ -4152,4 +4152,4 @@ Wed Nov 15 18:40:27 2006
 Wed Dec 13 05:53:29 2006
   - create an int32 type for domains (since an array of domain values
     shoudln't use 64 bits when we move to 64 bit machines).=======
-
+  - for DOCS: have a large comparison with the FST approach. 
