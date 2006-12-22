@@ -4171,3 +4171,16 @@ Thu Dec 21 16:20:46 2006
   - Using l-infinity norm for removing outliers in l-2 norm problems
     (Christy Sim & Hartly).    
 
+Thu Dec 21 19:49:32 2006
+  - for Gaussian mixtures, implement the following algorihtm:
+    Learning Mixtures of Arbitrary Gaussians (2001),
+    Sanjeev Arora, Ravi Kannan
+    ACM Symposium on Theory of Computing
+
+
+
+
+
+
+
+
