@@ -4153,3 +4153,17 @@ Wed Dec 13 05:53:29 2006
   - create an int32 type for domains (since an array of domain values
     shoudln't use 64 bits when we move to 64 bit machines).=======
   - for DOCS: have a large comparison with the FST approach. 
+
+
+Thu Dec 21 16:20:46 2006
+  - algorithm for clustering that is O(kn) and that keeps outliers.
+    Dorit S. Hochbaum and David B. Shmoys. A best possible heuristic
+    for the k-center problem. Mathematics of Operations Research,
+    10:180--184, 1985.
+    http://www.cs.utexas.edu/~abhinay/ee382v/Project/Papers/fft85.pdf
+  - using l-infinity norm for removing outliers in l-2 norm problems
+    (Christy Sim & Hartly).    
+
+
+     
+
