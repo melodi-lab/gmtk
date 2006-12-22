@@ -4157,13 +4157,17 @@ Wed Dec 13 05:53:29 2006
 
 Thu Dec 21 16:20:46 2006
   - algorithm for clustering that is O(kn) and that keeps outliers.
+     (pick a random point, find a point that is max distance away,
+      then cluster into two, then for each do the same thing or some
+      modification).
+
     Dorit S. Hochbaum and David B. Shmoys. A best possible heuristic
     for the k-center problem. Mathematics of Operations Research,
     10:180--184, 1985.
     http://www.cs.utexas.edu/~abhinay/ee382v/Project/Papers/fft85.pdf
-  - using l-infinity norm for removing outliers in l-2 norm problems
+    (or it could be in ).
+    T.L. Gonzales, clustering to minimize the max intercluster distance
+    theoretical CS, 1985.
+  - Using l-infinity norm for removing outliers in l-2 norm problems
     (Christy Sim & Hartly).    
-
-
-     
 
