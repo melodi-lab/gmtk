@@ -198,6 +198,10 @@ gmtkViterbiNew: gmtkViterbiNew.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEX
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkViterbiNew.o $(LIBS)
 
+gmtkViterbiNew3: gmtkViterbiNew3.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
+	-@rm -f $@
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkViterbiNew3.o $(LIBS)
+
 gmtkParmConvert: gmtkParmConvert.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkParmConvert.o $(LIBS)

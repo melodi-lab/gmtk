@@ -2097,6 +2097,7 @@ InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
   if (message(IM::Mod)) {
     if (numCliqueValuesUsed == 0) {
       printf("WARNING: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+      exit(0);
     }
   }
 
