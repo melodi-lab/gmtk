@@ -4179,8 +4179,13 @@ Thu Dec 21 19:49:32 2006
 
 
 
+Sun Feb 11 20:05:10 2007
+  - change priorities so that reading/writing of parameter messages come
+    out much earlier.
 
 
-
-
+Mon Feb 12 22:45:34 2007
+  - reg adaptation to implement Bayesian tieing, i.e., with reg adapt,
+    large coefficient, this is like tying, but we can do Bayesian reasoning
+    with mutliple such tyings. 
 
