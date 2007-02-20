@@ -75,8 +75,8 @@ LatticeADT::~LatticeADT() {
  *     no results:
  *-----------------------------------------------------------------------
  */
-void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) {
-
+void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab) 
+{
 
   /////////////////////////
   // Read Lattice Header
@@ -458,7 +458,12 @@ void LatticeADT::read(iDataStreamFile &is) {
  *      none
  *-----------------------------------------------------------------------
  */
-void LatticeADT::seek(unsigned nmbr) {
+void LatticeADT::seek(unsigned nmbr) 
+{
+  string tmpStr;
+  int tmpInt;
+  char trigger[] = "UseScore";
+
   if (!iterable())
     error("ERROR: trying to seek in non-iterable lattice, '%s'\n",
 	  _curName.c_str() );
@@ -469,17 +474,33 @@ void LatticeADT::seek(unsigned nmbr) {
   if ( _numLattices <= nmbr )
     error("number of lattices (%d) in '%s' is less than segment number (%d)", _numLattices, _latticeFileName.c_str(), nmbr);
 
-  // one way to do this is like decision trees
-  // here since every lattice cpt has same number of tokens
-  // an easy approached is used in this implementation
-  string tmp;
-  string trigger = "UseScore";
+  // Iterate through the lattices based on  the nubmer of lines each CPT has
   for ( unsigned i = 0; i < nmbr; i++ ) {
-    for ( unsigned j = 0; j < 5; j++ )
-      _latticeFile->read(tmp);
-    if ( _latticeFile->readIfMatch(trigger, "reading score options") )
-      _latticeFile->read(tmp);
-    _latticeFile->read(tmp);
+    // Read index, lattice name, and cardinality 
+    for ( unsigned j = 0; j < 3; j++ ) {
+      _latticeFile->read(tmpStr);
+    }
+
+    // Read the next line, if is an integer there is a time parent and one 
+    // more line needs to be read.  
+    _latticeFile->read(tmpStr);
+    if ( strIsInt(tmpStr.c_str(), &tmpInt) ) {
+      _latticeFile->read(tmpStr);
+    } 
+
+    // Read Vocabulary 
+    _latticeFile->read(tmpStr);
+
+    // Read UseScore 
+    _latticeFile->read(tmpStr);
+    if (strcmp(tmpStr.c_str(), trigger) != 0) {
+      error("ERROR: Error seeking to lattice %d\n", nmbr);
+    }
+
+    // Read UseScore options and slack
+    for ( unsigned j = 0; j < 2; j++ ) {
+      _latticeFile->read(tmpStr);
+    }
   }
 
   // set current nuber to this so that next can be called
@@ -539,7 +560,8 @@ void LatticeADT::beginIterableLattice() {
  *     None.
  *-----------------------------------------------------------------------
  */
-void LatticeADT::nextIterableLattice() {
+void LatticeADT::nextIterableLattice() 
+{
   if ( ! iterable() )
     error("ERROR: can't call nextIterableDT() for non-file lattice");
 
@@ -674,7 +696,8 @@ void LatticeADT::resetFrameIndices(unsigned numFrames) {
  *     refer read for what option means
  *-----------------------------------------------------------------------
  */
-void LatticeADT::useScore(unsigned option) {
+void LatticeADT::useScore(unsigned option) 
+{
   for ( unsigned i = 0; i < _numberOfNodes; ++i ) {
     if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
       shash_map_iter<unsigned, LatticeEdge>::iterator it;
