@@ -737,8 +737,10 @@ void LatticeADT::useScore(unsigned option)
 	  }
 
 	  // do we use insertion penalty?
+	  // Amar: there  a bug in the next line w.r.t not multiplying by 
+	  // by log(_base) and it has now been fixed. 
 	  if ( option & 0x10 )
-	    score += _wdpenalty;
+	    score += log(_base)*_wdpenalty;
 	}
 
 	// check whether the score is too small that will have zero
