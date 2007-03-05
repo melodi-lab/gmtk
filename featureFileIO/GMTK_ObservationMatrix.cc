@@ -37,9 +37,9 @@
  *   - The number of sentences per stream can be adjusted so that they
  *   match across streams.  The following options are available:
  *
- *       a) Report an error 
+ *       a) Report an error
  *
- *       b) Truncate 
+ *       b) Truncate
  *
  *       c) Repeat the last sentence
  *
@@ -48,7 +48,7 @@
  *   - The following transformations can be applied to the data:
  *
  *        a) Mean and variance normalization
- *       
+ *
  *        b) Multiplication by some constant
  *
  *        c) Upsampling (either by simple repetition of frames or interpolation)
@@ -61,23 +61,23 @@
  *
  *        g) Mean substraction only
  *
- *      a, b, d, e, f and g can also be applied as a last global transformation after prrng and frame adjustement.  
+ *      a, b, d, e, f and g can also be applied as a last global transformation after prrng and frame adjustement.
  *
  *   - Streams can be combined instead of concatenated.  The following operations are supported:
- *      
- *      addition, substraction, multiplication, and division.       
  *
- *   TODO: 
+ *      addition, substraction, multiplication, and division.
+ *
+ *   TODO:
  *    1- Add deltas and deltas
 v *    2- Add flatascii and flatbin formats
  *   (could treat them as single sentences or have each frame prefixed
  *   by the sentence number and maybe the frame number)
- *    3- Add support for the WAVEFORM HTK paramter kind 
- *      
- *            
+ *    3- Add support for the WAVEFORM HTK paramter kind
+ *
+ *
  *   Dec 02, 2003 -- Fixed discrete data reading bug when using the
  *   HTK format.  HTK uses shorts not ints.
- *   
+ *
  * $Header$
  *
  * Copyright (c) 2001
@@ -146,7 +146,7 @@ ObservationMatrix::ObservationMatrix() {
   _numSegments    = 0;
 
   _numStreams     = 0;
-  
+
   _inStreams      = NULL;
 
   _filterFileName = NULL;
@@ -156,12 +156,12 @@ ObservationMatrix::~ObservationMatrix() {
   for (unsigned i = 0; i < _numStreams; i++)
     delete _inStreams[i];
   delete [] _inStreams;
-  
-  if(  _filterFileName != NULL ) 
+
+  if(  _filterFileName != NULL )
     delete [] _filterFileName;
 }
 
-// initializes input streams, allocates feature buffer 
+// initializes input streams, allocates feature buffer
 
 void ObservationMatrix::openFiles(int n_files,
 			     const char **fof_names,
@@ -183,7 +183,7 @@ void ObservationMatrix::openFiles(int n_files,
 			     unsigned ftrcombo,
 			     const char **segment_range_str,
 			     const char **preTransFrameRangeStr,
-			     const char * finalFrameRangeStr) 
+			     const char * finalFrameRangeStr)
 {
   assert (n_files > 0);
   check_required_inputs(fof_names,formats,n_floats,n_ints);
@@ -196,23 +196,23 @@ void ObservationMatrix::openFiles(int n_files,
   _actionIfDiffNumSents=actionIfDiffNumSents;
   _perStreamPreTransforms=perStreamPreTransforms;
   _postTransforms=postTransforms;
-  _ftrcombo=ftrcombo; 
+  _ftrcombo=ftrcombo;
   _cppIfAscii            = (bool)      cpp_if_ascii;
   _cppCommandOptions     = (char*)     cpp_command_options;
 
   _inStreams = new StreamInfo*[_numStreams];
   assert(_inStreams != NULL);
-  
+
   ///////////////////////////////////////////////////////////////////////
   ////////////////   Create Streams /////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////
-  unsigned sen_float_buffer_stride=0; 
+  unsigned sen_float_buffer_stride=0;
   unsigned sen_int_buffer_stride=0; // hold the maximum strides
 				    // necessary to read any stream
 				    // into _tmp{Flot,Int}SenBuffer
   for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
-    
-    if (fof_names[stream_no] == NULL) 
+
+    if (fof_names[stream_no] == NULL)
       error("ObservationMatrix::openFiles: file list for stream %i is NULL\n",stream_no);
 
     // When range string is missing, assume default = all features
@@ -222,15 +222,15 @@ void ObservationMatrix::openFiles(int n_files,
     srng=init_range_str(segment_range_str,stream_no);
 
     bool sflag;
-    if (swap_flag == NULL || swap_flag[stream_no] == false) 
-      sflag = false; 
-    else 
+    if (swap_flag == NULL || swap_flag[stream_no] == false)
+      sflag = false;
+    else
       sflag = swap_flag[stream_no];
 
     // If we want to add deltas, something needs to be done about the
     // cont range: it wouldn't be valid to have a range extend into
     // the deltas for example.
-    _inStreams[stream_no] 
+    _inStreams[stream_no]
       = new StreamInfo(fof_names[stream_no],
 		       crng,
 		       drng,
@@ -247,7 +247,7 @@ void ObservationMatrix::openFiles(int n_files,
 
     DBGFPRINTF((stderr,"ObservationMatrix::openFiles: stream_n_floats_before_rng = %d, stream_n_ints_before_rng = %d\n",
 		stream_n_floats_before_rng,stream_n_ints_before_rng));
-    
+
     if(sen_float_buffer_stride < stream_n_floats_before_rng) {
       sen_float_buffer_stride = stream_n_floats_before_rng;
     }
@@ -255,7 +255,6 @@ void ObservationMatrix::openFiles(int n_files,
       sen_int_buffer_stride = stream_n_ints_before_rng;
     }
   }  // end for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++)
-
   DBGFPRINTF((stderr,"ObservationMatrix::openFiles: sen_float_buffer_stride = %d, sen_int_buffer_stride = %d\n",sen_float_buffer_stride,sen_int_buffer_stride));
 
   if(sen_float_buffer_stride == 0 && sen_int_buffer_stride == 0) {
@@ -282,7 +281,7 @@ void ObservationMatrix::openFiles(int n_files,
   // REDUCES the number of features.  We can also INCREASE the number
   // of features, that's why _maxContinuous is initialized in the
   // checkNumFeatures() function above
-  if(sen_float_buffer_stride > _maxContinuous) _maxContinuous = sen_float_buffer_stride; 
+  if(sen_float_buffer_stride > _maxContinuous) _maxContinuous = sen_float_buffer_stride;
   // We do the same kind of check for int features
   if(sen_int_buffer_stride > _maxDiscrete) _maxDiscrete = sen_int_buffer_stride;
 
@@ -292,9 +291,9 @@ void ObservationMatrix::openFiles(int n_files,
   _bufSize = INITIAL_NUM_FRAMES_IN_BUFFER;
 
 #if ALLOW_VARIABLE_DIM_COMBINED_STREAMS
-  features.resizeAndZero(_bufSize * _stride); 
+  features.resizeAndZero(_bufSize * _stride);
 #else
-  features.resize(_bufSize * _stride); 
+  features.resize(_bufSize * _stride);
 #endif
   featuresBase = features.ptr + _stride*_startSkip;
 
@@ -303,29 +302,28 @@ void ObservationMatrix::openFiles(int n_files,
   _tmpFloatSenBuffer.resize(_bufSize * _maxContinuous);
   _tmpIntSenBuffer.resize(_bufSize * _maxDiscrete);
   _repeat.resize(_bufSize);
-
 }
 
-/** 
+/**
  * Verifies that required inputs are provided.
  * Exists if that's not the case.
  */
 void check_required_inputs(const char** fof_names, const unsigned* formats, const unsigned* n_floats, const unsigned *n_ints) {
 
-  if (fof_names == NULL) 
+  if (fof_names == NULL)
     error("ObservationMatrix::openFiles: list of file names is NULL\n");
-  if (formats == NULL) 
+  if (formats == NULL)
     error("ObservationMatrix::openFiles: list of file formats is NULL\n");
-  if (n_floats == NULL) 
+  if (n_floats == NULL)
     error("ObservationMatrix::openFiles: list of number of floats is NULL\n");
-  if (n_ints == NULL) 
+  if (n_ints == NULL)
     error("ObservationMatrix::openFiles: list of number of ints is NULL\n");
 
 }
 
 char* init_range_str(const char** range_str, unsigned stream_no) {
   char* rng=NULL;
-  if (range_str == NULL || range_str[stream_no] == NULL ) rng = "all"; 
+  if (range_str == NULL || range_str[stream_no] == NULL ) rng = "all";
   else rng = (char*) range_str[stream_no];
   return rng;
 }
@@ -335,7 +333,7 @@ char* init_range_str(const char** range_str, unsigned stream_no) {
  * Side effects:  truncates the length of streams if that's called for.
  */
 unsigned ObservationMatrix::checkNumSegments(StreamInfo* streams[], unsigned n_streams, unsigned* action_if_diff_stream_len) {
-  
+
   unsigned min_len=streams[0]->getFofSize();
   unsigned max_len=streams[0]->getFofSize();
   if(max_len == 0) warning("WARNING: ObservationMatrix:OpenFiles:checkNumSegments:  stream %d is empty\n",0);
@@ -348,27 +346,27 @@ unsigned ObservationMatrix::checkNumSegments(StreamInfo* streams[], unsigned n_s
     unsigned len=streams[stream_no]->getFofSize();
     if(len < min_len) min_len=len;
     if(len > max_len) max_len=len;
-    
+
     if(	(action_if_diff_stream_len != NULL && action_if_diff_stream_len[stream_no] == SEGMATCH_ERROR) )
-      got_error = true; 
+      got_error = true;
     // the default is always to truncate (i.e. NULL case below)
     else if(action_if_diff_stream_len == NULL || action_if_diff_stream_len[stream_no] == SEGMATCH_TRUNCATE_FROM_END)
       got_truncate =true;
     else if( action_if_diff_stream_len != NULL &&
-	(action_if_diff_stream_len[stream_no] == SEGMATCH_REPEAT_LAST || 
+	(action_if_diff_stream_len[stream_no] == SEGMATCH_REPEAT_LAST ||
 	 action_if_diff_stream_len[stream_no] == SEGMATCH_WRAP_AROUND)
-	     ) 
+	     )
       got_expand = true;
   }
 
-  if(max_len == 0) 
+  if(max_len == 0)
     error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments:  all streams have zero length");
 
   // error checking
   if(min_len != max_len) {
     if(got_error)
       error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: Streams have different # of segments (min=%d, max=%d)",min_len,max_len);
-    
+
     if(got_truncate && got_expand)
       error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: Cannot specify both truncate and expand actions when using observation files of different lengths");
   }
@@ -379,7 +377,7 @@ unsigned ObservationMatrix::checkNumSegments(StreamInfo* streams[], unsigned n_s
     for(unsigned stream_no=0; stream_no < n_streams; ++stream_no) {
 	streams[stream_no]->setFofSize(min_len);
     }
-    if(min_len == 0) 
+    if(min_len == 0)
       error("ERROR: ObservationMatrix:OpenFiles:checkNumSegments: minimum stream length is zero");
     return min_len;
   }
@@ -400,10 +398,10 @@ void ObservationMatrix::checkNumFeatures(StreamInfo* streams[], unsigned n_strea
 
     if (stream_n_floats > max_cont)
       max_cont = stream_n_floats;
-    
+
     if (stream_n_ints > max_disc)
       max_disc = stream_n_ints;
-    
+
     // add up features used for observation matrix
     *n_floats += stream_n_floats;
     *n_ints   += stream_n_ints;
@@ -431,13 +429,13 @@ void ObservationMatrix::checkNumFeatures(StreamInfo* streams[], unsigned n_strea
 /**
  *  returns true if true if all streams have the same number of frames
  *  at segno.  Else, returns false (if the action when the number of
- *  frames is different is FRAMEMATCH_ERROR, we exit with an error) 
+ *  frames is different is FRAMEMATCH_ERROR, we exit with an error)
  *
  * max_num_samples get the maximum number of frames over all streams.
  *
  * prrng_num_samples gets either the maximum or the minimum number of
  * frames over all ranges AFTER the per-sentence range has been
- * applied.  
+ * applied.
  * */
 
 bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_samples, unsigned& prrng_num_samples){
@@ -455,7 +453,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   max_num_samples=cur_n_samps;  // i.e. 0
   prrng_max_num_samples=cur_prrng_n_samps;  // i.e. 0
 
-  if (segno < 0 || segno >= _numSegments)  
+  if (segno < 0 || segno >= _numSegments)
     error("ObservationMatrix:::checkIfSameNumSamples: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
 
   ////////////////////////////////////
@@ -466,7 +464,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
     s = _inStreams[stream_no];
     if (s == NULL)
       error("ObservationMatrix::checkIfSameNumSamples: stream %i is NULL\n",stream_no);
-    
+
     if (s->fofName == NULL)
       sname = "(unset)";
     else
@@ -535,7 +533,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
      }
     //////////////////////////////////////////////////////////////////////////////////////
 
-    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before cheking per stream transforms.\n"));    
+    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before cheking per stream transforms.\n"));
     /////////////////////////////////////////////////////////////////////////////////////////////
     // check whether there is a transformation that changes the number of frames, e.g: upsampling
     // Post transformations are not allowed to change the number of frames
@@ -560,28 +558,28 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
     }
     /////////////////////////////////////////////////////////////////////////////////
 
-    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before calling s->setAfterTransformCurNumFrames(cur_n_samps);.\n"));    
+    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before calling s->setAfterTransformCurNumFrames(cur_n_samps);.\n"));
 
     s->setAfterTransformCurNumFrames(cur_n_samps);
 
-    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before setting up prrng.\n"));    
+    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, before setting up prrng.\n"));
 
     /////////////////////////////////////////////////////////////////////////
     Range* prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[stream_no],0,cur_n_samps);
-    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 1.\n"));    
+    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 1.\n"));
     cur_prrng_n_samps=prrng->length();
-    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 2.\n"));    
+    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 2.\n"));
     s->setPrrngCurNumFrames(cur_prrng_n_samps);
-    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 3.\n"));    
+    DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, setting up prrng 3.\n"));
     delete prrng;
     /////////////////////////////////////////////////////////////////////////
 
     DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, checking if different num frames.\n"));
 
     if( _actionIfDiffNumFrames != NULL ) {
-      if(_actionIfDiffNumFrames[stream_no]==FRAMEMATCH_TRUNCATE_FROM_START || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_TRUNCATE_FROM_END) 
+      if(_actionIfDiffNumFrames[stream_no]==FRAMEMATCH_TRUNCATE_FROM_START || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_TRUNCATE_FROM_END)
 	gotATruncate=true;
-      if(_actionIfDiffNumFrames[stream_no]==FRAMEMATCH_REPEAT_FIRST || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_REPEAT_LAST || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_EXPAND_SEGMENTALLY) 
+      if(_actionIfDiffNumFrames[stream_no]==FRAMEMATCH_REPEAT_FIRST || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_REPEAT_LAST || _actionIfDiffNumFrames[stream_no]==FRAMEMATCH_EXPAND_SEGMENTALLY)
 	gotAnExpand=true;
     }
 
@@ -607,7 +605,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
       prrng_min_num_samples=cur_prrng_n_samps;
     else if(cur_prrng_n_samps < prrng_min_num_samples)
       prrng_min_num_samples=cur_prrng_n_samps;
-    
+
         DBGFPRINTF((stderr,"In ObservationMatrix::checkIfSameNumSamples, finished processing stream %d, segment number %d\n",stream_no, segno));
 
   }  // end for (stream_no = 0; stream_no < _numStreams; stream_no++)
@@ -617,10 +615,12 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
     s = _inStreams[stream_no];
     if(gotAnExpand && s->getPrrngCurNumFrames() < prrng_max_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_REPEAT_FIRST && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_REPEAT_LAST && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_EXPAND_SEGMENTALLY))  ) {
-      error("ERROR: Observation file '%s' does not have an expand action associated with it and its number of frames, %d, is less than the maximum, %d, across streams",_inStreams[stream_no-1]->fofName,s->getPrrngCurNumFrames(),prrng_max_num_samples);
+      //      error("ERROR: Observation file '%s' does not have an expand action associated with it and its number of frames, %d, is less than the maximum, %d, across streams",_inStreams[stream_no-1]->fofName,s->getPrrngCurNumFrames(),prrng_max_num_samples);
+      error("ERROR: Observation file '%s' does not have an expand action associated with it and its number of frames, %d, is less than the maximum, %d, across streams",s->fofName,s->getPrrngCurNumFrames(),prrng_max_num_samples);
     }
-    if(gotATruncate && s->getPrrngCurNumFrames() > prrng_min_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_TRUNCATE_FROM_START && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_TRUNCATE_FROM_END))) { 
-      error("ERROR: Observation file '%s' does not have a truncate action associated with it and its number of frames, %d, is larger than the minimum, %d, across streams",_inStreams[stream_no-1]->fofName,s->getPrrngCurNumFrames(),prrng_min_num_samples);
+    if(gotATruncate && s->getPrrngCurNumFrames() > prrng_min_num_samples && ( _actionIfDiffNumFrames==NULL || (_actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_TRUNCATE_FROM_START && _actionIfDiffNumFrames[stream_no]!=FRAMEMATCH_TRUNCATE_FROM_END))) {
+      //      error("ERROR: Observation file '%s' does not have a truncate action associated with it and its number of frames, %d, is larger than the minimum, %d, across streams",_inStreams[stream_no-1]->fofName,s->getPrrngCurNumFrames(),prrng_min_num_samples);
+      error("ERROR: Observation file '%s' does not have a truncate action associated with it and its number of frames, %d, is larger than the minimum, %d, across streams",s->fofName,s->getPrrngCurNumFrames(),prrng_min_num_samples);
     }
   }
 
@@ -643,13 +643,13 @@ unsigned ObservationMatrix::numFrames(unsigned segno) {
   unsigned num_frames=0;
 
   // max_n_samps and prrng_n_samps are initialized in the next fct call
-  unsigned max_n_samps,prrng_n_samps;  
+  unsigned max_n_samps,prrng_n_samps;
   checkIfSameNumSamples(segno,max_n_samps,prrng_n_samps);
 
   // maybe move this to the end after potential upsampling takes place
   if (_totalSkip >= prrng_n_samps)
     error("ERROR: The number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
-  
+
   num_frames = prrng_n_samps - _totalSkip;
   closeDataFiles();
   return num_frames;
@@ -670,14 +670,14 @@ void ObservationMatrix::loadSegment(unsigned segno) {
 
   StreamInfo *s;
   // max_n_samps and prrng_n_samps are initialized in the next fct call
-  unsigned max_n_samps,prrng_n_samps;  
+  unsigned max_n_samps,prrng_n_samps;
   DBGFPRINTF((stderr,"ObservationMatrix::loadSegment: before call to checkIfSameNumSamples\n"));
   bool same_num_samples = checkIfSameNumSamples(logicalSegNo,max_n_samps,prrng_n_samps);
 
   // maybe move this to the end after potential upsampling takes place
   if (_totalSkip >= prrng_n_samps)
     error("ERROR: The number of real frames (%d) for logical segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,logicalSegNo,_totalSkip);
-  
+
 
   /////////////////////////////////////////////
   // resize buffer if necessary
@@ -690,21 +690,21 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     _tmpIntSenBuffer.resize(_bufSize*_maxDiscrete);
     _repeat.resize(_bufSize);
   }
-  
+
   _numNonSkippedFrames = prrng_n_samps;
-  
+
 
   ////////////////////////////////////////////
   // Loop over al streams
   ////////////////////////////////////////////
   for (unsigned i = 0; i < _numStreams; i++) {
-    
+
     s = _inStreams[i];
     unsigned num_floats = s->getNumFloats();
     unsigned num_ints   = s->getNumInts();
     unsigned physicalSegNo=s->mapToValueInRange(logicalSegNo);
     // all checks were done in the function checkNumSamples
-    
+
     Range* prrng=new Range(_prrngStr==NULL?NULL:_prrngStr[i],0,s->getAfterTransformCurNumFrames());
     assert(prrng != NULL);
 
@@ -719,7 +719,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
       }
     }
 
-    // Used to before the above section of code that modifies segno.  It seems obvious it should follow it instead, but the coment is here just in case there was a reason for that I don't see now. 
+    // Used to before the above section of code that modifies segno.  It seems obvious it should follow it instead, but the coment is here just in case there was a reason for that I don't see now.
     _segmentNumber = logicalSegNo;
 
     DBGFPRINTF((stderr,"In loadSegment(): Reading sentence. prrng->length()=%d.\n",prrng->length()));
@@ -761,16 +761,16 @@ void ObservationMatrix::loadSegment(unsigned segno) {
 
 #ifdef DEBUG
     DBGFPRINTF((stderr,"In loadSegment(): num_floats = %d and first frame of _tmpFloatSenBuffer.ptr = \n",num_floats));
-    //    for(unsigned fr_no=0;fr_no<_numNonSkippedFrames;++fr_no) 
-    for(unsigned fr_no=0;fr_no<1;++fr_no) 
-      for(unsigned j=0; j<num_floats;j++)   
+    //    for(unsigned fr_no=0;fr_no<_numNonSkippedFrames;++fr_no)
+    for(unsigned fr_no=0;fr_no<1;++fr_no)
+      for(unsigned j=0; j<num_floats;j++)
 	//	DBGFPRINTF((stderr,"%f\n", _tmpFloatSenBuffer.ptr[fr_no*num_floats+j]));
 	DBGFPRINTF((stderr,"%f ", _tmpFloatSenBuffer.ptr[fr_no*num_floats+j]));
     DBGFPRINTF((stderr,"\n"));
 
     DBGFPRINTF((stderr,"In loadSegment(): num_ints = %d and _tmpintSenBuffer.ptr = \n",num_ints));
-    for(unsigned fr_no=0;fr_no<_numNonSkippedFrames;++fr_no) 
-      for(unsigned j=0; j<num_ints;j++)    
+    for(unsigned fr_no=0;fr_no<_numNonSkippedFrames;++fr_no)
+      for(unsigned j=0; j<num_ints;j++)
 	//	DBGFPRINTF((stderr,"%d", _tmpIntSenBuffer.ptr[fr_no*num_ints+j]));
 	DBGFPRINTF((stderr,"%d ", _tmpIntSenBuffer.ptr[fr_no*num_ints+j]));
     DBGFPRINTF((stderr,"\n"));
@@ -784,7 +784,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     // efficient to combine all transformations as it is done in the
     // copy...() functions below
     if(_perStreamPreTransforms!=NULL && _perStreamPreTransforms[i] != NULL) {
-      // if binary or HTK, we need to swap if needed before applying the transforms. 
+      // if binary or HTK, we need to swap if needed before applying the transforms.
       // -> Taken care when reading bin/HTK files
       applyTransforms(_perStreamPreTransforms[i],num_floats, num_ints, s->curNumFrames);
     }
@@ -803,7 +803,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     DBGFPRINTF((stderr,"In loadSegment(): Deleted prrng.\n"));
   }  //end for(int i = 0; i < _numStreams; i++) loop
 
-  DBGFPRINTF((stderr,"In loadSegment(): Applying post transforms.\n"));  
+  DBGFPRINTF((stderr,"In loadSegment(): Applying post transforms.\n"));
   if(_postTransforms!=NULL) {
     applyPostTransforms(_postTransforms,numContinuous(), numDiscrete(), _numNonSkippedFrames);
   }
@@ -873,28 +873,28 @@ double conv2double(char* str, unsigned& len, char delimiter,bool conv2int=false)
   DBGFPRINTF((stderr,"str=%s\n",str));
 
   int i=0;
-  while(*str_ptr!='_' && *str_ptr!='\0') { 
+  while(*str_ptr!='_' && *str_ptr!='\0') {
     new_str[i]=*str_ptr; str_ptr++; i++;
-    if(i>=NUMBER_STRING_MAX_LEN) 
+    if(i>=NUMBER_STRING_MAX_LEN)
       error("ERROR: While reading observation files, a number string was too long while converting to float\n");
   }
-  
+
   new_str[i]='\0';
   if(conv2int)
     val=parse_long(new_str);
   else
     val=parse_float(new_str);
-  
+
   len=i;
 
   return (val);
-  
+
 }
- 
+
 /**
  * parses a transformation string and returns the next transformation
  * to perform.  Advances the string pointer to the next
- * transformation.  
+ * transformation.
  *
  * side effects: string is modified to point to the next transformation substring.
  *
@@ -905,46 +905,46 @@ double conv2double(char* str, unsigned& len, char delimiter,bool conv2int=false)
  * */
 int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& magic_double) {
 
-  if(*trans_str=='\0') 
+  if(*trans_str=='\0')
     return (END_STR);
 
   unsigned len;
   unsigned return_val;
   // remove leading spaces
   trans_str += strspn(trans_str, " ");
-  
+
   char c=*trans_str;
   DBGFPRINTF((stderr,"In parseTransform: c=%c\n",c));
   switch(c) {
     //see GMTK_ObservationMatrix.h for definitions of LETTERs below
   case TRANS_NORMALIZATION_LETTER:   // 'N'
-    ++trans_str; 
+    ++trans_str;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return NORMALIZE;
   case TRANS_MEAN_SUB_LETTER:  // 'E'
-    ++trans_str; 
+    ++trans_str;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return MEAN_SUB;
   case TRANS_MULTIPLICATION_LETTER: // 'M'
-    ++trans_str; 
+    ++trans_str;
     // get multiplier
     //DBGFPRINTF((stderr,"trans_str=%s\n",trans_str));
     magic_double=conv2double(trans_str,len,'_');
-    if(len==0) 
+    if(len==0)
       error("ERROR: In parsing tranforms: Need to supply multiplicative factor with the 'M' transformation.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return MULTIPLY;
   case TRANS_OFFSET_LETTER: // 'O'
-    ++trans_str; 
+    ++trans_str;
     // get offset
     magic_double=conv2double(trans_str,len,'_');
-    if(len==0) 
+    if(len==0)
       error("ERROR: In parsing tranforms: Need to supply offset with 'O' transformation.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return OFFSET;
-  case TRANS_UPSAMPLING_LETTER: // 'U' 
+  case TRANS_UPSAMPLING_LETTER: // 'U'
     // an upsampling style should follow
     ++trans_str;
     if(*(trans_str)==TRANS_SMOOTH_LETTER)  // 'S'
@@ -956,20 +956,20 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
     // a number to upsample by should follow
     ++trans_str;
     magic_double=conv2double(trans_str,len,'_');
-    if(len==0) 
+    if(len==0)
       error("ERROR: In parsing tranforms: Need to supply upsampling factor with 'UH' or 'US' transformations.\n");
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return return_val;
   case TRANS_ARMA_LETTER: // 'R'
-    ++trans_str; 
+    ++trans_str;
     //DBGFPRINTF((stderr,"trans_str=%s\n",trans_str));
     // get order of ARMA filter
     magic_int=(int)conv2double(trans_str,len,'_',true); // conv2int is true
-    if(len==0) 
+    if(len==0)
       error("ERROR: In parsing tranforms: Need to supply order of arma filter with 'R' transformation.\n");
     trans_str+=len;
-    if(*trans_str=='_') ++trans_str; 
+    if(*trans_str=='_') ++trans_str;
     return ARMA;
   case FILTER_LETTER: // 'F'
     ++trans_str;
@@ -982,27 +982,27 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
       while(*trans_str != '\0' && *trans_str != '_') {
 	tmpString[i++]=*trans_str;
 	++trans_str;
-      } 
+      }
       tmpString[i]='\0';
       DBGFPRINTF((stderr,"Read filter file name '%s'\n",tmpString));
       unsigned tmpStringLen=strlen(tmpString);
       if(tmpStringLen==0) error("ERROR: In parsing tranforms: no filter file name specified\n");
       _filterFileName=new char[tmpStringLen];
       strcpy(_filterFileName,tmpString);
-      if(*trans_str=='_') ++trans_str; 
+      if(*trans_str=='_') ++trans_str;
     }
     else if(*trans_str=='_') ++trans_str;
-    
+
     return FILTER;
   case NONE_LETTER:
-    ++trans_str; 
-    if(*trans_str=='_') ++trans_str; 
+    ++trans_str;
+    if(*trans_str=='_') ++trans_str;
     return NONE;
   default:
     error("ERROR: In parsing tranforms: Unrecognized transformation substring (%s)\n",trans_str);
     //DBGFPRINTF((stderr,"In parseTransform: Unrecognized transform @ trans_str=%s\n",trans_str));
     //return UNRECOGNIZED_TRANSFORM;
-    
+
   }
 
   return UNRECOGNIZED_TRANSFORM;
@@ -1016,9 +1016,9 @@ int ObservationMatrix::parseTransform(char*& trans_str, int& magic_int, double& 
  *
  */
 void ObservationMatrix::applyTransforms(char* trans_str, unsigned num_floats, unsigned num_ints, unsigned num_frames) {
-  
+
   if(trans_str==NULL)
-    return;  // nothing to do 
+    return;  // nothing to do
 
   DBGFPRINTF((stderr,"At start of ObservationMatrix::applyTransforms: trans_str=%s\n",trans_str));
 
@@ -1083,9 +1083,9 @@ void ObservationMatrix::applyTransforms(char* trans_str, unsigned num_floats, un
  *
  * */
 void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats, unsigned num_ints, unsigned num_frames) {
-  
+
   if(trans_str==NULL)
-    return;  // nothing to do 
+    return;  // nothing to do
 
   DBGFPRINTF((stderr,"At start of ObservationMatrix::applyTransforms: trans_str=%s\n",trans_str));
 
@@ -1157,13 +1157,13 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
   StreamInfo* s            = _inStreams[stream_no];
   unsigned num_floats      = s->getNumFloats();
   unsigned num_ints        = s->getNumInts();
-  unsigned stride          = numFeatures(); 
+  unsigned stride          = numFeatures();
   unsigned start_float_pos = 0;
   unsigned start_int_pos   = 0;
   //  bool swap                = s->swap();
   bool swap                = false;  // all swapping is already done.  At some point should get rid of all the swapping code that is no longer needed.
   unsigned fmt             = s->getDataFormat();
-  if(fmt == PFILE || fmt == RAWASC) swap=false;  // byte swapping is already taken care of for pfiles and is not needed for ascii 
+  if(fmt == PFILE || fmt == RAWASC) swap=false;  // byte swapping is already taken care of for pfiles and is not needed for ascii
 
   DBGFPRINTF((stderr,"\tNum total cont feats = %d; stream %d num floats = %d, num ints = %d, stride = %d.\n",_numContinuous,stream_no,num_floats,num_ints,stride));
 
@@ -1239,12 +1239,12 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
   Int32* start_int_buf   = getPhysicalStartOfIntFeaturesBuffer()   + start_int_pos;
   Int32* int_buf_ptr;
 
-  DBGFPRINTF((stderr,"start of physical start of float buf=%d, start of physical start of int buf=%d.\n",getPhysicalStartOfFloatFeaturesBuffer(), getPhysicalStartOfIntFeaturesBuffer()));  
+  DBGFPRINTF((stderr,"start of physical start of float buf=%d, start of physical start of int buf=%d.\n",getPhysicalStartOfFloatFeaturesBuffer(), getPhysicalStartOfIntFeaturesBuffer()));
 
   if(num_floats>0) {
     for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_float_buf+=stride) {
       float_buf_ptr=start_float_buf;
-      //      DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.   *pr_it= %d.\n",*pr_it));  
+      //      DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.   *pr_it= %d.\n",*pr_it));
       for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	copy_swap_func_ptr(1,(const int *) &float_buf[*it+(*pr_it)*num_floats], (int *)float_buf_ptr++);
 	if(!finite(*(float_buf_ptr-1))) {
@@ -1287,13 +1287,13 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
   StreamInfo* s            = _inStreams[stream_no];
   unsigned num_floats      = s->getNumFloats();
   unsigned num_ints        = s->getNumInts();
-  unsigned stride          = numFeatures(); 
+  unsigned stride          = numFeatures();
   unsigned start_float_pos = 0;
   unsigned start_int_pos   = 0;
   //  bool swap                = s->swap();
   bool swap                = false; // all swapping is already done.  At some point should get rid of all the swapping code that is no longer needed.
   unsigned fmt             = s->getDataFormat();
-  if(fmt == PFILE || fmt == RAWASC) swap=false;  // byte swapping is already taken care of for pfiles and is not needed for ascii 
+  if(fmt == PFILE || fmt == RAWASC) swap=false;  // byte swapping is already taken care of for pfiles and is not needed for ascii
 
   unsigned cur_stream_prrng_num_frames=s->getPrrngCurNumFrames();
   unsigned diff_in_num_frames=prrng_n_samps-cur_stream_prrng_num_frames;
@@ -1483,7 +1483,7 @@ unsigned ObservationMatrix::applyFinalFrameRange(unsigned num_frames,const char*
     float* float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
     float* tmp_float_buf=new float[num_frames*_numContinuous];
     // copy buffer into a temporary one
-    for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned i=0;i<num_frames;++i)
       for(unsigned j=0;j<_numContinuous;++j) {
 	tmp_float_buf[i*_numContinuous+j]=float_ptr[i*_stride+j];
       }
@@ -1498,19 +1498,19 @@ unsigned ObservationMatrix::applyFinalFrameRange(unsigned num_frames,const char*
 
     unsigned cnt=0;
     for(Range::iterator frame_it = ffrng->begin(); !frame_it.at_end();++frame_it,++cnt) {
-      for(unsigned j=0;j<_numContinuous;++j) { 
+      for(unsigned j=0;j<_numContinuous;++j) {
 	float_ptr[cnt*_stride+j]=tmp_float_buf[*frame_it*_numContinuous+j];
       }
-    }  
+    }
 
     delete [] tmp_float_buf;
   }
-  
+
   if(_numDiscrete > 0) {
       int * int_ptr=getPhysicalStartOfIntFeaturesBuffer();
       int* tmp_int_buf = new int[num_frames*_numDiscrete];
       // copy buffer into a temporary one
-      for(unsigned i=0;i<num_frames;++i)  
+      for(unsigned i=0;i<num_frames;++i)
 	for(unsigned j=0;j<_numDiscrete;++j) {
 	  tmp_int_buf[i*_numDiscrete+j]=int_ptr[i*_stride+j];
 	}
@@ -1520,14 +1520,14 @@ unsigned ObservationMatrix::applyFinalFrameRange(unsigned num_frames,const char*
 	resize(_bufSize);
 	int_ptr=getPhysicalStartOfIntFeaturesBuffer();
       }
-      
+
 
       unsigned cnt=0;
       for(Range::iterator frame_it = ffrng->begin(); !frame_it.at_end();++frame_it,++cnt) {
-	for(unsigned j=0;j<_numDiscrete;++j) { 
+	for(unsigned j=0;j<_numDiscrete;++j) {
 	  int_ptr[cnt*_stride+j]=tmp_int_buf[*frame_it*_numDiscrete+j];
 	}
-      }  
+      }
       delete [] tmp_int_buf;
   }
 
@@ -1541,18 +1541,18 @@ unsigned ObservationMatrix::applyFinalFrameRange(unsigned num_frames,const char*
 
 
 void ObservationMatrix::upsampleHold(unsigned num_frames,unsigned upsample) {
-  
+
   unsigned new_num_frames = num_frames*(upsample+1);
   bool resized=false;  // we want to resize features only once
   if(_numContinuous > 0) {
     float* float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
     float* tmp_float_buf=new float[num_frames*_numContinuous*(upsample+1)];
     // copy buffer into a temporary one
-    for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned i=0;i<num_frames;++i)
       for(unsigned j=0;j<_numContinuous;++j) {
 	tmp_float_buf[i*_numContinuous+j]=float_ptr[i*_stride+j];
       }
-    
+
     if(new_num_frames > _bufSize) {
       _bufSize = new_num_frames*2;
       resize(_bufSize);
@@ -1563,55 +1563,55 @@ void ObservationMatrix::upsampleHold(unsigned num_frames,unsigned upsample) {
     unsigned cnt=0;
     for(unsigned frame_no=0;frame_no<num_frames;++frame_no) {
       for(unsigned k=0;k<upsample+1;++k) {
-	for(unsigned j=0;j<_numContinuous;++j) { 
+	for(unsigned j=0;j<_numContinuous;++j) {
 	  float_ptr[cnt*_stride+j]=tmp_float_buf[frame_no*_numContinuous+j];
 	}
-      }  
+      }
     }
     delete [] tmp_float_buf;
   }
-  
+
   if(_numDiscrete > 0) {
     int * int_ptr=getPhysicalStartOfIntFeaturesBuffer();
     int* tmp_int_buf = new int[num_frames*_numDiscrete*(upsample+1)];
     // copy buffer into a temporary one
-    for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned i=0;i<num_frames;++i)
       for(unsigned j=0;j<_numDiscrete;++j) {
 	tmp_int_buf[i*_numDiscrete+j]=int_ptr[i*_stride+j];
       }
-    
+
     if(!resized && new_num_frames > _bufSize) {
       _bufSize = new_num_frames*2;
       resize(_bufSize);
       int_ptr=getPhysicalStartOfIntFeaturesBuffer();
     }
-    
+
     unsigned cnt=0;
     for(unsigned frame_no=0;frame_no<num_frames;++frame_no) {
       for(unsigned k=0;k<upsample+1;++k) {
-	for(unsigned j=0;j<_numDiscrete;++j) { 
+	for(unsigned j=0;j<_numDiscrete;++j) {
 	  int_ptr[cnt*_stride+j]=tmp_int_buf[frame_no*_numDiscrete+j];
 	}
       }
-    }  
+    }
     delete [] tmp_int_buf;
   }
 
 }
 
-void ObservationMatrix::upsampleSmooth(unsigned num_frames, unsigned upsample){ 
+void ObservationMatrix::upsampleSmooth(unsigned num_frames, unsigned upsample){
 
-  unsigned new_num_frames = num_frames*(upsample+1);  
+  unsigned new_num_frames = num_frames*(upsample+1);
   bool resized=false;  // we want to resize features only once
   if(_numContinuous > 0) {
     float* float_ptr = getPhysicalStartOfFloatFeaturesBuffer();
     float* tmp_float_buf=new float[num_frames*_numContinuous*(upsample+1)];
     // copy buffer into a temporary one
-    for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned i=0;i<num_frames;++i)
       for(unsigned j=0;j<_numContinuous;++j) {
 	tmp_float_buf[i*_numContinuous+j]=float_ptr[i*_stride+j];
       }
-    
+
     if(new_num_frames > _bufSize) {
       _bufSize = new_num_frames*2;
       resize(_bufSize);
@@ -1635,23 +1635,23 @@ void ObservationMatrix::upsampleSmooth(unsigned num_frames, unsigned upsample){
 	cnt++;
       }
     }
-    
+
     for(unsigned j=0;j<_numContinuous;++j) {
       float_ptr[cnt*_stride+j]=tmp_float_buf[(num_frames-1)*_numContinuous+j];
     }
-    
+
     delete [] tmp_float_buf;
   }
-  
+
   if(_numDiscrete > 0) {
     int * int_ptr=getPhysicalStartOfIntFeaturesBuffer();
     int* tmp_int_buf = new int[num_frames*_numDiscrete*(upsample+1)];
     // copy buffer into a temporary one
-    for(unsigned i=0;i<num_frames;++i)  
+    for(unsigned i=0;i<num_frames;++i)
       for(unsigned j=0;j<_numDiscrete;++j) {
 	tmp_int_buf[i*_numDiscrete+j]=int_ptr[i*_stride+j];
       }
-    
+
     if(!resized && new_num_frames > _bufSize) {
       _bufSize = new_num_frames*2;
       resize(_bufSize);
@@ -1667,7 +1667,7 @@ void ObservationMatrix::upsampleSmooth(unsigned num_frames, unsigned upsample){
 	cnt++;
       }
     }
-    
+
     for(unsigned j=0;j<_numDiscrete;++j) {
       int_ptr[cnt*_stride+j]=tmp_int_buf[(num_frames-1)*_numDiscrete+j];
     }
@@ -1680,12 +1680,12 @@ void ObservationMatrix::upsampleIntNoSmooth(sArray<int>* tmp_sen_buffer, unsigne
 
   if(vec_size==0 || stride ==0)
     return;
-  
+
   int* tmp_buf=new int[num_frames*vec_size*(upsample+1)];
   int* x=tmp_sen_buffer->ptr;
 
   // copy buffer into a temporary one
-  for(unsigned i=0;i<num_frames;++i)  
+  for(unsigned i=0;i<num_frames;++i)
     for(unsigned j=0;j<vec_size;++j) {
 	tmp_buf[i*vec_size+j]=x[i*stride+j];
     }
@@ -1694,7 +1694,7 @@ void ObservationMatrix::upsampleIntNoSmooth(sArray<int>* tmp_sen_buffer, unsigne
 
   tmp_sen_buffer->resize(after_transform_num_frames*stride);
   resize(after_transform_num_frames);
-   
+
   x=tmp_sen_buffer->ptr;
 
   unsigned cnt=0;
@@ -1730,7 +1730,7 @@ void ObservationMatrix::reset() {
  * n_frames: new number of frames
  */
 
-void ObservationMatrix::resize(size_t n_frames) 
+void ObservationMatrix::resize(size_t n_frames)
 {
   features.growIfNeeded(n_frames * _stride);
   featuresBase = features.ptr + _stride*_startSkip;
@@ -1743,7 +1743,7 @@ void ObservationMatrix::resize(size_t n_frames)
  */
 
 void ObservationMatrix::printFrame(FILE *stream, size_t absoluteFrameno) {
-  
+
   unsigned f;
 
   assert(absoluteFrameno < _numNonSkippedFrames && absoluteFrameno >= 0);
@@ -1767,7 +1767,7 @@ void ObservationMatrix::printFrame(FILE *stream, size_t absoluteFrameno) {
 /* get info for segment 'sentno' from pfile stream 'f' */
 
 size_t ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
-  
+
   unsigned long pfile_size=f->getFullFofSize();
   if((sentno < 0) || (sentno >= pfile_size)) {
     error("ERROR: Requested segment no %li of observation file '%s' but the max num of segments in pfile is %li",sentno,f->fofName,pfile_size);
@@ -1811,33 +1811,33 @@ size_t ObservationMatrix::openBinaryFile(StreamInfo *f, size_t sentno) {
     warning("ObservationMatrix::openBinaryFile: Filename is NULL for segment %li\n",sentno);
     return 0;
   }
-  
+
   if ((f->curDataFile = fopen(fname,"rb")) == NULL) {
     error("ObservationMatrix::openBinaryFile: Can't open '%s' for input\n",
 	  fname);
-	  
+
   }
-    
+
     //sanity check on number of bytes
-    
+
     if (fseek(f->curDataFile,0L,SEEK_END) == -1) {
       warning("ObservationMatrix::openBinaryFile: Can't skip to end of file %s",
 	      fname);
     }
-    
+
     fsize = ftell(f->curDataFile);
-    
+
     rewind(f->curDataFile);
-    
+
     int rec_size = nfloats * sizeof(float) + nints * sizeof(int);
-    
+
     if ((fsize % rec_size) > 0)
       error("ObservationMatrix::openBinaryFile: odd number of bytes in file %s\n",fname);
-    
+
     int n_samples = fsize / rec_size;
-    
+
     f->curNumFrames = n_samples;
-    
+
     return n_samples;
 }
 
@@ -1854,8 +1854,8 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
     return 0;
   }
 
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP     
-     if(_cppIfAscii) { 
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+     if(_cppIfAscii) {
        string cppCommand = string("cpp");
        if (_cppCommandOptions != NULL) {
 	 cppCommand = cppCommand + string(" ") + string(_cppCommandOptions);
@@ -1866,7 +1866,7 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
        }
        fclose(f->curDataFile);
        cppCommand = cppCommand + string(" ") + string(fname);
-       f->curDataFile = ::popen(cppCommand.c_str(),"r");    
+       f->curDataFile = ::popen(cppCommand.c_str(),"r");
        if (f->curDataFile == NULL)
 	 error("ERROR, can't open file (%s)",f->curDataFile);
 
@@ -1884,7 +1884,7 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
        }
        	 DBGFPRINTF((stderr,"\n"));
        fclose(f->curDataFile);
-       f->curDataFile = ::popen(cppCommand.c_str(),"r");    
+       f->curDataFile = ::popen(cppCommand.c_str(),"r");
      }
      else {
        if ((f->curDataFile = fopen(fname,"r")) == NULL) {
@@ -1937,15 +1937,15 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 /*
  *
  * ObservationMatrix::openHTKFile()
- * 
+ *
  * open an HTK file for segment 'sentno'.
  *
  * The HTK file is presumed to be in the following format (taken directly
  * from the HTK book:
  *
- * 
+ *
  * 5.10.1 HTK Format Parameter Files
- * 
+ *
  * HTK format files consist of a contiguous sequence of samples preceded
  * by a header. Each sample is a vector of either 2-byte integers or
  * 4-byte floats. 2-byte integers are used for compressed forms as
@@ -1953,16 +1953,16 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
  * section 5.14. HTK format data files can also be used to store speech
  * waveforms as described in section 5.11.  The HTK file format header is
  * 12 bytes long and contains the following data:
- * 
+ *
  * nSamples - number of samples in file (4-byte integer)
  * sampPeriod -  sample period in 100ns units (4-byte integer)
  * sampSize -  number of bytes per sample (2-byte integer)
  * parmKind -  a code indicating the sample kind (2-byte integer)
- * 
+ *
  * The parameter kind consists of a 6 bit code representing the basic
  * parameter kind plus additional bits for each of the possible
  * qualifiers. The basic parameter kind codes are
- * 
+ *
  * 0 WAVEFORM sampled waveform
  * 1 LPC linear prediction filter coefficients
  * 2 LPREFC linear prediction reflection coefficients
@@ -2014,7 +2014,7 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
     error("ERROR: ObservationMatrix::openHTKFile: Can't read number of samples\n");
   }
 
-  
+
   if (fread((short *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
     error("ERROR: ObservationMatrix::openHTKFile: Can't read sample period\n");
   }
@@ -2133,7 +2133,7 @@ void ObservationMatrix::printSegmentInfo() {
  */
 
 bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats, Int32* int_buffer, unsigned num_ints,StreamInfo* s) {
-  
+
   assert(num_floats > 0 || num_ints > 0);
 
   unsigned n_samples= s->curNumFrames;
@@ -2141,7 +2141,7 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
   unsigned data_format=s->dataFormat;
   unsigned swap = s->swap();
 
-  unsigned n_read=0;	
+  unsigned n_read=0;
   unsigned total_num_floats=num_floats*n_samples;
   unsigned total_num_ints=num_ints*n_samples;
 
@@ -2158,7 +2158,7 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
 	      n_read,total_num_floats);
       return false;
     }
-    // swap if needed.  
+    // swap if needed.
     if(swap) {
       float tmp_float[1];
       for (unsigned i=0; i<total_num_floats; ++i) {
@@ -2166,7 +2166,7 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
 	float_buffer[i]=tmp_float[0];
       }
     }
-  } 
+  }
   else if(num_floats==0) {
     assert(int_buffer != NULL);
     if(data_format==HTK) {
@@ -2175,7 +2175,7 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
       for (unsigned i=0; i<total_num_ints; ++i) {
 	// should get this swap check out of the loop.  It's wasteful.
 	if(swap) {
-	  tmp_short_buffer[i]=swapb_short_short(tmp_short_buffer[i]); 
+	  tmp_short_buffer[i]=swapb_short_short(tmp_short_buffer[i]);
 	}
 	int_buffer[i]=(int)tmp_short_buffer[i];
       }
@@ -2202,7 +2202,7 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
     Int32* int_buffer_ptr   = int_buffer;
     for(unsigned s=0; s < n_samples; ++s) {
       n_read += fread((float*)float_buffer_ptr,sizeof(float), num_floats, f);
-      // swap if needed.  
+      // swap if needed.
       if(swap) {
 	float tmp_float[1];
 	for (unsigned i=0; i<num_floats; ++i) {
@@ -2251,7 +2251,7 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
 
 
   // consume CPP special directives if any
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP     
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
   if(_cppIfAscii) {
     while((tmp=fgetc(f))==CPP_DIRECTIVE_CHAR) {
       while((tmp=fgetc(f))!='\n');
@@ -2260,13 +2260,13 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
     ungetc(tmp,f);
   }
 #endif
-  
-  
-  
+
+
+
   // could be made a bit more efficient since we check whether
   // num_floats and num_ints > 0 for each frame.
   DBGFPRINTF((stderr,"Reading ascii sentence...\n"));
-  for(unsigned s=0; s < n_samples; ++s) { 
+  for(unsigned s=0; s < n_samples; ++s) {
     DBGFPRINTF((stderr,"%d:  ",lineNum));
     lineNum++;
     if(num_floats > 0) {
@@ -2287,7 +2287,7 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
     }
     DBGFPRINTF((stderr,"\n"));
   }
-  
+
   DBGFPRINTF((stderr,"Done reading ascii sentence.\n"));
   return true;
 }
@@ -2308,7 +2308,7 @@ bool ObservationMatrix::readPfileSentence(const unsigned segno, float* float_buf
 
   unsigned num_ints    = f->num_labs();
   unsigned num_floats  = f->num_ftrs();
-  unsigned num_frames  = f->num_frames(segno); 
+  unsigned num_frames  = f->num_frames(segno);
 
   DBGFPRINTF((stderr,"In ObservationMatrix::readPfileSentence, segno=%d, num_ints=%d, num_floats=%d, num_frames=%d\n", segno,num_ints,num_floats,num_frames));
 
