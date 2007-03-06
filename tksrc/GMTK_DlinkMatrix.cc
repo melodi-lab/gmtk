@@ -160,9 +160,8 @@ DlinkMatrix::read(iDataStreamFile& is)
     int oldLen = arr.len();
     arr.resizeAndCopy(oldLen+nlinks);
 
-    for (int j=0;j<nlinks;j++) {
-      is.read(arr[oldLen+j],"Can't read DlinkMatrix's link value");
-    }
+    is.read(&arr.ptr[oldLen],nlinks,"Can't read DlinkMatrix's link value");
+
   }
   setBasicAllocatedBit();
   numTimesShared = 0;
@@ -199,9 +198,10 @@ DlinkMatrix::write(oDataStreamFile& os)
   int ptr = 0;
   for (int i=0;i<dim();i++) {
     os.write(dLinks->numLinks(i),"DlinkMatrix::write, nlinks");
-    for (int j=0;j<dLinks->numLinks(i);j++) {
-      os.write(arr[ptr++],"DlinkMatrix::write val ");
-    }
+
+    os.write(&arr[ptr],dLinks->numLinks(i),"DlinkMatrix::write val");
+    ptr += dLinks->numLinks(i);
+
     os.nl();
   }
 }

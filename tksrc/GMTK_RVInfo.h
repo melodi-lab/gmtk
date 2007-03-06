@@ -40,9 +40,6 @@ class GMTemplate;
 class Partition;
 class BoundaryTriangulate;
 
-class RV;
-class DiscRV;
-
 #include "GMTK_CPT.h"
 #include "GMTK_MixtureCommon.h"
 
@@ -224,7 +221,9 @@ public:
 
   /////////////////////////////////////////////////////////
   // constructor
-  RVInfo() { clear(); }
+  RVInfo() : rv(NULL) { clear(); }
+  // destructor
+  ~RVInfo() { clear(); }
 
   // copy constructor
   RVInfo(
@@ -297,26 +296,7 @@ public:
 
   // clear out the current RV structure when we
   // are parsing and encounter a new RV.
-  void clear() {
-    name.erase();
-
-    rvType = t_unknown;
-    rvDisp = d_unknown;
-    rvFeatureRange.clear();
-    rvWeightInfo.clear();
-    eliminationOrderHint = 0.0;
-    variablePositionInStrFile = -1;
-
-    switchingParents.clear();
-    switchMapping.clear();
-
-    conditionalParents.clear();
-    discImplementations.clear();
-    contImplementations.clear();
-    listIndices.clear();
-
-    isDeterministic = isSparse = false;
-  }
+  void clear();
 
   bool computeAndReturnDeterministicStatus() {
     isDeterministic = false;

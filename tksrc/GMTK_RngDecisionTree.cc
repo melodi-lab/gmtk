@@ -124,6 +124,9 @@ RngDecisionTree::~RngDecisionTree()
   if (root != NULL) {
     destructorRecurse(root);
   }
+  if (indexFile != NULL) {
+    delete indexFile;
+  }
   delete root;
   delete dtFile;
 }

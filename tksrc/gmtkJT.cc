@@ -148,7 +148,7 @@ ObservationMatrix globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
-{
+{{ // use double so that we can destruct objects at end.
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -383,5 +383,6 @@ main(int argc,char*argv[])
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
 
-  exit_program_with_status(0);
+} // close brace to cause a destruct on valid end of program.
+ exit_program_with_status(0); 
 }

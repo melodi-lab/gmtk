@@ -347,7 +347,7 @@ iDataStreamFile::readStr(char*& str, char *msg)
 bool 
 iDataStreamFile::readString(string& str, char *msg) 
 {
-  str.erase();
+  str.clear();
   if (Binary) {
     char c;
     // read a string up to the next NULL character.
@@ -363,15 +363,29 @@ iDataStreamFile::readString(string& str, char *msg)
     if (str.size() == 0)
 	return errorReturn("readString, zero length string",msg);
   } else {
+
     if (!prepareNext())
       return errorReturn("readString",msg);
-    // read until a space. Add a null character
-    // onto the end of the string.
-    char c = *buffp++;
-    while (!isspace(c) &&  c != '\n') {
-      str += c;
-      c = *buffp++;
-    }
+
+    // Assume: pointer is currently to something other than a space.
+    // Then read until a space. 
+
+    char *startingPosition = buffp;
+    while (!isspace(*buffp) &&  (*buffp) != '\n') {
+      buffp++;
+    } 
+    str.append(startingPosition,buffp-startingPosition);
+
+    // This next code does the same as above, but it is commented out
+    // since valgrind reports a possible memory leak with the 'str += c' line
+    // under g++ 3.4.3 on linux/x86 (it may not be a real leak though).
+    // 
+    // char c = *buffp++;
+    // while (!isspace(c) &&  c != '\n') {
+    //  str += c;
+    //  c = *buffp++;
+    // }
+
   }
   return true;
 }
@@ -617,6 +631,25 @@ iDataStreamFile::readFloat(float& f, char *msg)
   }
 }
 
+bool 
+iDataStreamFile::readFloatVec(float* fp, unsigned len,char *msg) 
+{
+  if (Binary) {
+    // binary mode reads in the entire vector at a time.
+    size_t rc = fread(fp, sizeof(float),len,fh);
+    if (rc != len)
+      return errorReturn("readFloatVec",msg);
+    return true;
+  } else {
+    // ASCI mode is no faster than reading the floats individually
+    while (len--) {
+      if (!readFloat(*fp++,msg))
+	return false;
+    }
+    return true;
+  }
+}
+
 
 bool 
 iDataStreamFile::readDouble(double& d, char *msg) 
@@ -640,6 +673,27 @@ iDataStreamFile::readDouble(double& d, char *msg)
     return true;
   }
 }
+
+
+bool 
+iDataStreamFile::readDoubleVec(double* dp, unsigned len,char *msg) 
+{
+  if (Binary) {
+    // binary mode reads in the entire vector at a time.
+    size_t rc = fread(dp, sizeof(double),len,fh);
+    if (rc != len)
+      return errorReturn("readDoubleVec",msg);
+    return true;
+  } else {
+    // ASCI mode is no faster than reading the doubles individually
+    while (len--) {
+      if (!readDouble(*dp++,msg))
+	return false;
+    }
+    return true;
+  }
+}
+
 
 
 bool
@@ -825,6 +879,23 @@ bool oDataStreamFile::writeFloat(const float f,char *msg)
 }
 
 
+bool oDataStreamFile::writeFloatVec(const float* fp,unsigned len, char *msg)
+{
+  if (Binary) {
+    size_t rc = fwrite(fp, sizeof(float), len,fh);
+    if (rc != len)
+      return errorReturn("writeFloatVec",msg);
+    return true;
+  } else {
+    while (len--) {
+      if (fprintf(fh,FLOATWRITESTR,*fp++) == 0) 
+	return errorReturn("writeFloatVec",msg);
+    }
+    return true;
+  }
+}
+
+
 bool oDataStreamFile::writeDouble(const double d,char *msg)
 {
   if (Binary) {
@@ -838,6 +909,24 @@ bool oDataStreamFile::writeDouble(const double d,char *msg)
     return true;
   }
 }
+
+
+bool oDataStreamFile::writeDoubleVec(const double* dp,unsigned len, char *msg)
+{
+  if (Binary) {
+    size_t rc = fwrite(dp, sizeof(double), len,fh);
+    if (rc != len)
+      return errorReturn("writeDoubleVec",msg);
+    return true;
+  } else {
+    while (len--) {
+      if (fprintf(fh,DOUBLEWRITESTR,*dp++) == 0) 
+	return errorReturn("writeDoubleVec",msg);
+    }
+    return true;
+  }
+}
+
 
 
 bool oDataStreamFile::writeComment(char *comment, ...)

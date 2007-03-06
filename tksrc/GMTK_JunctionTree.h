@@ -547,6 +547,7 @@ public:
     delete pPartCliquePrintRange;
     delete cPartCliquePrintRange;
     delete ePartCliquePrintRange;
+    clearAfterUnroll();
   }
 
   // the fixed file parser for this model, for RV unrolling, etc.
@@ -719,6 +720,10 @@ public:
   // Unrolling only affects the non-STL data structures.
   // Returns number of frames actually used, or 0 if invalid num frames.
   unsigned unroll(unsigned numFrames);
+
+  // do any cleanup after an unroll. Useful to be called by
+  // destructors, etc.
+  void clearAfterUnroll();
 
   // Set all random variables to their observed values either from an
   // observation matrix or to the values given in the file. unroll()

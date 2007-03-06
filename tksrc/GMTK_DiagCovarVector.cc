@@ -109,8 +109,10 @@ DiagCovarVector::read(iDataStreamFile& is)
 	  name().c_str(),length);
   covariances.resize(length);
   unsigned numFloored=0;
+
+  is.read(covariances.ptr,length,"Can't read DiagCovarVector's covar value");
+
   for (int i=0;i<length;i++) {
-    is.read(covariances[i],"Can't read DiagCovarVector's covar value");
     if (covariances[i] < (float)GaussianComponent::varianceFloor()) {
       if (!floorVariancesWhenReadIn) {
 	error("Error: reading diagonal covariance matrix '%s' (from file '%s' line %d), but covariance[%d] = (%e) < current Floor = (%e)",
@@ -155,9 +157,7 @@ DiagCovarVector::write(oDataStreamFile& os)
 {
   NamedObject::write(os);
   os.write(covariances.len(),"diag cov vector write length");
-  for (int i=0;i<covariances.len();i++) {
-    os.write(covariances[i],"diag cov vector write, values");
-  }
+  os.write(covariances.ptr,covariances.len(),"diag cov vector write, values");
   os.nl();
 }
 

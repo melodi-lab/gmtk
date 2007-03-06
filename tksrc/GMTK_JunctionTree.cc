@@ -3960,6 +3960,38 @@ JunctionTree::unroll(const unsigned int numFrames)
 
 /*-
  *-----------------------------------------------------------------------
+ * JunctionTree::clearAfterUnroll()
+ *   After an unroll has been called, clear any memory that might have
+ *   been allocated by unroll. 
+ *
+ * Preconditions:
+ *   unroll should have been called at least once.
+ *
+ * Postconditions:
+ *   Memory allocated by unroll is free
+ *
+ * Side Effects:
+ *   Modifies member variables in this object.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::clearAfterUnroll()
+{
+  for (unsigned i=0; i < cur_unrolled_rvs.size(); i++) 
+    delete cur_unrolled_rvs[i];
+  // clear out the old and pre-allocate for new size.
+  jtIPartitions.clear();
+  // this clears the shared caches. 
+  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
  * JunctionTree::setObservedRVs()
  *   sets the observed RVs to their values, either taking values from
  *   the global observation matrix, or taking the values from the files.

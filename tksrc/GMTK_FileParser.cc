@@ -2629,6 +2629,9 @@ FileParser::ensureValidTemplate(bool longCheck)
     // TODO: fix error messages to give indication as to where loop is.
     if (!GraphicalModel::topologicalSort(vars,vars2))
       error("ERROR. Graph is not acyclic, contains a directed loop when unrolled %d times.\n",unrollAmount);
+    // need to delete the variables here.
+    for (unsigned i=0;i<vars.size();i++)
+      delete vars[i];
     vars.clear(); vars2.clear();
   }
 
@@ -2643,6 +2646,9 @@ FileParser::ensureValidTemplate(bool longCheck)
 	// TODO: fix error messages to give indication as to where loop is.
 	if (!GraphicalModel::topologicalSort(vars,vars2))
 	  error("ERROR. Graph is not directed, contains a directed loop when unrolled %d times.\n",unrollAmount);
+	// need to delete the variables here.
+	for (unsigned i=0;i<vars.size();i++)
+	  delete vars[i];
 	vars.clear(); vars2.clear();
       }
   }

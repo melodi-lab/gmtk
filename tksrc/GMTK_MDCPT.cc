@@ -304,6 +304,7 @@ MDCPT::read(iDataStreamFile& is)
   int row=0;;
   // be more forgiving as cardinality increases
   const double threshold = _card*normalizationThreshold;
+  
   for (int i=0;i<numValues;) {
 
     double val;  // sign bit below needs to be changed if we change this type.
