@@ -147,7 +147,7 @@ ObservationMatrix globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
-{
+{{ // use double so that we can destruct objects at end.
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -376,6 +376,7 @@ main(int argc,char*argv[])
 
     unsigned total_num_frames = 0;
 
+    int tmp_cnt = 0;
     if (trrng->length() > 0) {
       total_data_prob = 1.0;
       Range::iterator* trrng_it = new Range::iterator(trrng->begin());
@@ -445,6 +446,10 @@ main(int argc,char*argv[])
 	    // And actually train with EM.
 	    infoMsg(IM::Low,"Incrementing EM Accumulators\n");
 	    myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
+
+	    if (++tmp_cnt == 2)
+	      exit(0);
+
 	  }
 	}
 	(*trrng_it)++;
@@ -532,5 +537,9 @@ main(int argc,char*argv[])
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
 
-  exit_program_with_status(0);
+
+} // close brace to cause a destruct on valid end of program.
+ exit_program_with_status(0); 
 }
+
+

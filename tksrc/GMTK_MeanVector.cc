@@ -96,9 +96,9 @@ void MeanVector::read(iDataStreamFile& is) {
     error("ERROR: mean vector %s specifies length (%d) < 0 in input. Must be positive.",
 	    name().c_str(),length);
   means.resize(length);
-  for (int i=0;i<length;i++) {
-    is.read(means[i],"Can't read MeanVector's mean values");
-  }
+
+  is.read(means.ptr,length,"Can't read MeanVector's mean values");
+  
   setBasicAllocatedBit();
   numTimesShared = 0;
   refCount = 0;
@@ -120,9 +120,9 @@ void MeanVector::read(iDataStreamFile& is) {
 void MeanVector::write(oDataStreamFile& os) { 
   NamedObject::write(os);
   os.write(means.len(),"mean vector write length");
-  for (int i=0;i<means.len();i++) {
-    os.write(means[i],"mean vector write, values");
-  }
+
+  os.write(means.ptr,means.len(),"mean vector write, values");
+
   os.nl();
 }
 

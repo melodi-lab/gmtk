@@ -1176,25 +1176,25 @@ GMParms::readAll(iDataStreamFile& is)
 void 
 GMParms::readTrainable(iDataStreamFile& is)
 {
-  infoMsg(Med+8,"Reading Dense Prob. Mass Functions\n");
+  infoMsg(Low+9,"Reading Dense Prob. Mass Functions\n");
   readDPmfs(is);
-  infoMsg(Med+8,"Reading Sparse Prob. Mass Functions\n");
+  infoMsg(Low+9,"Reading Sparse Prob. Mass Functions\n");
   readSPmfs(is);
-  infoMsg(Med+8,"Reading Means Functions\n");
+  infoMsg(Low+9,"Reading Means Functions\n");
   readMeans(is);
-  infoMsg(Med+8,"Reading Covars Functions\n");
+  infoMsg(Low+9,"Reading Covars Functions\n");
   readCovars(is);
-  infoMsg(Med+8,"Reading Dlink Mats\n");
+  infoMsg(Low+9,"Reading Dlink Mats\n");
   readDLinkMats(is);
-  infoMsg(Med+8,"Reading Weight  Mats\n");
+  infoMsg(Low+9,"Reading Weight  Mats\n");
   readWeightMats(is);  
-  infoMsg(Med+8,"Reading Dense CPTs\n");
+  infoMsg(Low+9,"Reading Dense CPTs\n");
   readMdCpts(is);
 
   // next read definitional items
-  infoMsg(Med+8,"Reading Components\n");
+  infoMsg(Low+9,"Reading Components\n");
   readComponents(is);
-  infoMsg(Med+8,"Reading Mixtures\n");
+  infoMsg(Low+9,"Reading Mixtures\n");
   readMixtures(is);
   readGausSwitchMixtures(is);
   readLogitSwitchMixtures(is);
@@ -1232,22 +1232,22 @@ void
 GMParms::readNonTrainable(iDataStreamFile& is)
 {
   // first read structural items
-  infoMsg(Med+8,"Reading Decision Trees\n");
+  infoMsg(Low+9,"Reading Decision Trees\n");
   readDTs(is);
-  infoMsg(Med+8,"Reading Dlinks\n");
+  infoMsg(Low+9,"Reading Dlinks\n");
   readDLinks(is);
 
-  infoMsg(Med+8,"Reading SparseCPTs\n");
+  infoMsg(Low+9,"Reading SparseCPTs\n");
   readMsCpts(is);
-  infoMsg(Med+8,"Reading Deterministic CPTs\n");
+  infoMsg(Low+9,"Reading Deterministic CPTs\n");
   readMtCpts(is);
-  infoMsg(Med+8,"Reading Vocabs\n");
+  infoMsg(Low+9,"Reading Vocabs\n");
   readVocabs(is);
-  infoMsg(Med+8,"Reading NgramCPTs\n");
+  infoMsg(Low+9,"Reading NgramCPTs\n");
   readNgramCpts(is);
-  infoMsg(Med+8,"Reading FNgramCPTs\n");
+  infoMsg(Low+9,"Reading FNgramCPTs\n");
   readFNgramImps(is);
-  infoMsg(Med+8,"Reading VirtualEvidenceCPTs\n");
+  infoMsg(Low+9,"Reading VirtualEvidenceCPTs\n");
   readVECpts(is);
 }
 
@@ -1291,11 +1291,11 @@ GMParms::read(
 	error("ERROR: while reading file '%s' line %d, got string '%s' when expecting 'ascii'/'binary' keyword",
 	      is.fileName(),is.lineNo(),binStatus.c_str());
       }
-      infoMsg(Med+8,"Reading keyword '%s' from %s file '%s'.\n",
+      infoMsg(Low+9,"Reading keyword '%s' from %s file '%s'.\n",
 	      keyword.c_str(),(binary_p?"binary":"ASCII"),
 	      fileName.c_str());
     } else {
-      infoMsg(Med+8,"Reading keyword '%s' from inline.\n",keyword.c_str());
+      infoMsg(Low+9,"Reading keyword '%s' from inline.\n",keyword.c_str());
     }
 
     map<string,iDataStreamFile*>::iterator it = fileNameMap.find(fileName);
@@ -1476,6 +1476,8 @@ GMParms::finalizeParameters()
   // not been called or nobody else defined a collection with this name.
   assert (nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) == nclsMap.end());
 
+
+  // TODO: delete this at some point in the future.
   NameCollection* nc = new NameCollection();
   nc->_name = NAMED_COLLECTION_GLOBAL_NAME;
   // copy the tables:

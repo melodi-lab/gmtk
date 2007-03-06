@@ -464,14 +464,14 @@ DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // these values since they are continuous, could be negative, etc.
   if (writeZeros) {
     const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
-    for (int i=0;i<totalLen;i++) {
+    for (unsigned i=0;i<totalLen;i++) {
       ofile.write(0.0,"Diag Gaussian store accums nm + nc.");
     }
   } else {
-    for (int i=0;i<nextMeans.len();i++) {
+    for (unsigned i=0;i<nextMeans.len();i++) {
       ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
     }
-    for (int i=0;i<nextDiagCovars.len();i++) {
+    for (unsigned i=0;i<nextDiagCovars.len();i++) {
       ofile.write(nextDiagCovars[i],"Diag Gaussian store accums nc.");
     }
   }

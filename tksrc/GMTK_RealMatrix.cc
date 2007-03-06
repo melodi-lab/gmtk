@@ -87,12 +87,14 @@ RealMatrix::read(iDataStreamFile& is)
 
   arr.resize(rows*cols);
 
-  float *ptr = arr.ptr;
-  for (int i=0;i<rows*cols;i++) {
-    float val;
-    is.read(val,"RealMatrix::read, reading value");
-    *ptr++ = val;
-  }
+  is.read(arr.ptr,arr.len(),"RealMatrix:: reading value");
+
+//   float *ptr = arr.ptr;
+//   for (int i=0;i<rows*cols;i++) {
+//     float val;
+//     is.read(val,"RealMatrix::read, reading value");
+//     *ptr++ = val;
+//   }
 }
 
 
@@ -118,9 +120,11 @@ RealMatrix::write(oDataStreamFile& os)
   os.write(rows,"RealMatrix::write, distribution rows");
   os.write(cols,"RealMatrix::write, distribution cols");
 
-  for (int i=0;i<rows*cols;i++) {
-    os.write(arr[i],"RealMatrix::write, writeing value");
-  }
+  os.write(arr.ptr,arr.len(),"RealMatrix::write, writeing value");
+
+//   for (int i=0;i<rows*cols;i++) {
+//     os.write(arr[i],"RealMatrix::write, writeing value");
+//   }
 }
 
 
