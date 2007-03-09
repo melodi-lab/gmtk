@@ -4588,7 +4588,7 @@ maximumCardinalitySearch(
   vector<triangulateNode*>::iterator crrnt_nghbr; 
   vector<triangulateNode*>::iterator end_nghbr; 
 
-  unsigned         max_cardinality;    // largest cardinality found so far
+  int              max_cardinality;    // largest cardinality found so far
   int              index;              // index of selected variable 
   triangulateNode* elmnt_node;         // node selected for elimination
   unsigned         nmbr_nodes_ordered; // count of number of nodes ordered
@@ -4597,7 +4597,7 @@ maximumCardinalitySearch(
   ////////////////////////////////////////////////////////////////////
   // Put all nodes in cardinality set 0 
   ////////////////////////////////////////////////////////////////////
-  card_set.resize( nodes.size() );
+  card_set.resize( nodes.size()+1 );
 
   for (crrnt_node = nodes.begin(), 
        end_node = nodes.end(); 
@@ -4677,6 +4677,7 @@ maximumCardinalitySearch(
         card_set[(*crrnt_nghbr)->cardinality].erase( *crrnt_nghbr );
         (*crrnt_nghbr)->cardinality++; 
         card_set[(*crrnt_nghbr)->cardinality].push_back( *crrnt_nghbr );
+
       }
       else {
 
@@ -4716,10 +4717,10 @@ maximumCardinalitySearch(
     // Set the maximum cardinality  
     //////////////////////////////////////////////////////////////////
     ++max_cardinality;
-    while( card_set[max_cardinality].size() == 0 ) {
+
+    while( (max_cardinality>=0) && (card_set[max_cardinality].size()==0) ) {
       --max_cardinality;
     }
-
   }
 
   //////////////////////////////////////////////////////////////////
@@ -6485,7 +6486,7 @@ ensurePartitionsAreChordal(GMTemplate& gm_template,
   bool p_chordal;
   bool c_chordal;
   bool e_chordal;
- 
+
   fillTriangulateNodeStructures( gm_template.P.nodes, triangulate_nodes );
   maximumCardinalitySearch( triangulate_nodes, list_cliques, order, false);
   p_chordal = testZeroFillIn( order );
