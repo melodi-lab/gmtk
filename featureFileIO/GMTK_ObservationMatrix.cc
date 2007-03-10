@@ -112,9 +112,9 @@ extern "C" {
 
 #define WARNING_ON_NAN 1
 
-//#define DEBUG
 
-#ifdef DEBUG
+
+#if 0
 #define DBGFPRINTF(_x_) fprintf _x_
 #else
 #define DBGFPRINTF(_x_)
@@ -287,6 +287,7 @@ void ObservationMatrix::openFiles(int n_files,
 
   _startSkip = start_skip;
   _endSkip =   end_skip;
+  _totalSkip = _startSkip+_endSkip;
 
   _bufSize = INITIAL_NUM_FRAMES_IN_BUFFER;
 
@@ -1262,9 +1263,11 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
 
   if(num_ints>0) {
     for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,start_int_buf+=stride) {
+      DBGFPRINTF((stderr," pr_it (frame)=%d, start_int_buf=%d.\n",*pr_it,start_int_buf));
       int_buf_ptr=start_int_buf;
       for(Range::iterator it = int_rng->begin(); !it.at_end(); it++) {
 	int_copy_swap_func_ptr(1,(const int *) &int_buf[*it+(*pr_it)*num_ints], (int *)int_buf_ptr++);
+	DBGFPRINTF((stderr,"   *(int_buf_ptr-1)=%d.\n",*(int_buf_ptr-1)));
       }
     }
   }
