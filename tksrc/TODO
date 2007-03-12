@@ -4191,3 +4191,8 @@ Mon Feb 12 22:45:34 2007
     large coefficient, this is like tying, but we can do Bayesian reasoning
     with mutliple such tyings. 
 
+Mon Mar 12 02:22:03 2007
+  - Alternate to quadratic programming for lasso-style regression.
+    Osborne, M. R., Presnell, B. & Turlach, B. (2000b)Computational
+    and Graphical Statistics 9(2), 319, On the lasso and its dual
+
