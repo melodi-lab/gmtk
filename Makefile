@@ -16,7 +16,7 @@ EXLDFLAGS=
 # GPP=/usr/nikola/pkgs/gcc/.4.1.1/bin/g++
 CC=gcc
 CXX=g++
-EXCOMFLAGS=
+EXCOMFLAGS=-DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
 OPTFLAGS =-g -O3 -Wno-deprecated -march=pentium4 -mfpmath=sse -ffast-math $(EXCOMFLAGS)
 
 # GMTK modules 
