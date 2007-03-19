@@ -95,8 +95,14 @@ class iDataStreamFile : public ioDataStreamFile {
   bool readStr(char*& str,char *msg=NULL);
   bool readInt(int& i,char *msg=NULL);
   bool readUnsigned(unsigned& i,char *msg=NULL);
+
   bool readFloat(float& f,char *msg=NULL);
   bool readDouble(double& d,char *msg=NULL);
+
+  bool readFloatVec(float* fp,const unsigned len,char *msg=NULL);
+  bool readDoubleVec(double* dp,const unsigned len,char *msg=NULL);
+
+
   bool readString(string& str,char *msg=NULL);
   bool readToken(string& str,const string& tokenChars,char *msg=NULL);
 
@@ -109,6 +115,8 @@ class iDataStreamFile : public ioDataStreamFile {
   bool read(unsigned& i,char *msg=NULL) { return readUnsigned(i,msg); }
   bool read(float& f,char *msg=NULL) { return readFloat(f,msg); }
   bool read(double& d,char *msg=NULL) { return readDouble(d,msg); }
+  bool read(float* fp, const unsigned len, char *msg=NULL) { return readFloatVec(fp,len,msg); }
+  bool read(double* dp, const unsigned len, char *msg=NULL) { return readDoubleVec(dp,len,msg); }
   bool read(string& str,char *msg=NULL) { return readString(str,msg); }
   bool read(string& str,const string& tokenChars,char *msg=NULL) {
     return readToken(str,tokenChars,msg);
@@ -190,6 +198,9 @@ class oDataStreamFile : public ioDataStreamFile {
   bool writeUnsigned(const unsigned int u,char *msg=NULL);
   bool writeFloat(const float f,char *msg=NULL);
   bool writeDouble(const double d,char *msg=NULL);
+  bool writeFloatVec(const float* fp,unsigned len, char *msg=NULL);
+  bool writeDoubleVec(const double* dp,unsigned len,char *msg=NULL);
+
   bool writeComment(char *comment, ...);
   bool indent(const int i,const bool doubSpace, char *msg=NULL);
   bool space(const int numSpaceChars, char *msg=NULL);
@@ -209,6 +220,8 @@ class oDataStreamFile : public ioDataStreamFile {
 #endif
   bool write(const float f,char *msg=NULL) { return writeFloat(f,msg); }
   bool write(const double d,char *msg=NULL) { return writeDouble(d,msg); }
+  bool write(const float* fp,unsigned len,char *msg=NULL) { return writeFloatVec(fp,len,msg); }
+  bool write(const double* dp,unsigned len,char *msg=NULL) { return writeDoubleVec(dp,len,msg); }
 
 
   template <class T>
