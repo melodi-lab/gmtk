@@ -1101,15 +1101,15 @@ JunctionTree::base_unroll()
   set <RV*> empty;
 
   // copy P partition 
-  new (&P1) JT_Partition(gm_template.P,0*gm_template.S,
-			 empty,0*gm_template.S,
-			 gm_template.PCInterface_in_P,0*gm_template.S,
+  new (&P1) JT_Partition(gm_template.P,0*gm_template.S*fp.numFramesInC(),
+			 empty,0*gm_template.S*fp.numFramesInC(),
+			 gm_template.PCInterface_in_P,0*gm_template.S*fp.numFramesInC(),
 			 partition_unrolled_rvs,partition_ppf);
 
   // copy E partition
-  new (&E1) JT_Partition(gm_template.E,0*gm_template.S,
-			 gm_template.CEInterface_in_E,0*gm_template.S,
-			 empty,0*gm_template.S,
+  new (&E1) JT_Partition(gm_template.E,0*gm_template.S*fp.numFramesInC(),
+			 gm_template.CEInterface_in_E,0*gm_template.S*fp.numFramesInC(),
+			 empty,0*gm_template.S*fp.numFramesInC(),
 			 partition_unrolled_rvs,partition_ppf);
 
   if (gm_template.leftInterface) {
@@ -1123,9 +1123,9 @@ JunctionTree::base_unroll()
     // there might be an empty P1, though, so we need to check for that.
     if (P1.cliques.size() > 0) {
       // neither P1 nor E1 are empty.
-      new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
-			     gm_template.PCInterface_in_C,0*gm_template.S,			   
-			     gm_template.CEInterface_in_C,0*gm_template.S,
+      new (&Co) JT_Partition(gm_template.C,0*gm_template.S*fp.numFramesInC(),
+			     gm_template.PCInterface_in_C,0*gm_template.S*fp.numFramesInC(),			   
+			     gm_template.CEInterface_in_C,0*gm_template.S*fp.numFramesInC(),
 			     partition_unrolled_rvs,partition_ppf);
     } else {
       // P1 is empty. For Co's left interface, we use its right
@@ -1134,9 +1134,9 @@ JunctionTree::base_unroll()
       // in [C1 C2 E], so C2's li to C1 is the same as E's li to C' in
       // [C' E']. We do need to shift E'ls li to C' to the left by S
       // though.
-      new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
-			     gm_template.CEInterface_in_C,-1*gm_template.S,			   
-			     gm_template.CEInterface_in_C,0*gm_template.S,
+      new (&Co) JT_Partition(gm_template.C,0*gm_template.S*fp.numFramesInC(),
+			     gm_template.CEInterface_in_C,-1*gm_template.S*fp.numFramesInC(),			   
+			     gm_template.CEInterface_in_C,0*gm_template.S*fp.numFramesInC(),
 			     partition_unrolled_rvs,partition_ppf);
     }
   } else {
@@ -1152,14 +1152,14 @@ JunctionTree::base_unroll()
 
     if (E1.cliques.size() > 0) {
       // neither E1 nor P1 are empty.
-      new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
-			     gm_template.PCInterface_in_C,0*gm_template.S,			   
-			     gm_template.CEInterface_in_C,0*gm_template.S,
+      new (&Co) JT_Partition(gm_template.C,0*gm_template.S*fp.numFramesInC(),
+			     gm_template.PCInterface_in_C,0*gm_template.S*fp.numFramesInC(),			   
+			     gm_template.CEInterface_in_C,0*gm_template.S*fp.numFramesInC(),
 			     partition_unrolled_rvs,partition_ppf);
     } else {
-      new (&Co) JT_Partition(gm_template.C,0*gm_template.S,
-			     gm_template.PCInterface_in_C,0*gm_template.S,			   
-			     gm_template.PCInterface_in_C,1*gm_template.S,
+      new (&Co) JT_Partition(gm_template.C,0*gm_template.S*fp.numFramesInC(),
+			     gm_template.PCInterface_in_C,0*gm_template.S*fp.numFramesInC(),			   
+			     gm_template.PCInterface_in_C,1*gm_template.S*fp.numFramesInC(),
 			     partition_unrolled_rvs,partition_ppf);
     }
   }
@@ -3935,9 +3935,9 @@ JunctionTree::unroll(const unsigned int numFrames)
   unsigned partNo = 0;
   const int numCoPartitions = modifiedTemplateUnrollAmount+1;
 
-  new (&jtIPartitions[partNo++]) JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
+  new (&jtIPartitions[partNo++]) JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S*fp.numFramesInC());
   for (int p=0;p<numCoPartitions;p++) {
-    new (&jtIPartitions[partNo]) JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
+    new (&jtIPartitions[partNo]) JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S*fp.numFramesInC());
     if (p == 0 && P1.cliques.size() == 0) {
       // Alternatively to the below, we might set this inference
       // partition to not use the LI separator, since it is will
@@ -3949,7 +3949,7 @@ JunctionTree::unroll(const unsigned int numFrames)
 
   new (&jtIPartitions[partNo++]) 
     JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-			  (modifiedTemplateUnrollAmount)*gm_template.S);
+			  (modifiedTemplateUnrollAmount)*gm_template.S*fp.numFramesInC());
 
   assert (partNo == jtIPartitions.size());
 
@@ -4748,7 +4748,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   unsigned prv_ri;
 
   partNo = 0;
-  curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
+  curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S*fp.numFramesInC());
   prevPart = NULL;
   prv_nm = P1_n;
   prv_ri = P_ri_to_C;
@@ -4771,7 +4771,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 
   for (int p = 0; p < numCoPartitions; p++) {
     delete curPart;
-    curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
+    curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S*fp.numFramesInC());
     ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,C_li_to_C,Co_n,partNo+1);
 
@@ -4812,7 +4812,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
 
   delete curPart;
   curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-				      modifiedTemplateUnrollAmount*gm_template.S);
+				      modifiedTemplateUnrollAmount*gm_template.S*fp.numFramesInC());
   ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			*curPart,E_li_to_C,E1_n,partNo+1);
   // prevPart->origin.clearCliqueValueCache(true);
@@ -4933,7 +4933,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   unsigned prv_ri;
 
   partNo = 0;
-  curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
+  curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S*fp.numFramesInC());
   prevPart = NULL;
   prv_nm = P1_n;
   prv_ri = P_ri_to_C;
@@ -4947,7 +4947,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
 
   for (unsigned p = 0; p < numCoPartitions; p++ ) {
     delete curPart;
-    curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S);
+    curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S*fp.numFramesInC());
     ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,C_li_to_C,Co_n,partNo+1);
     partNo++;
@@ -4974,7 +4974,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
   if (!noE) {
     // then do E.
     curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-					modifiedTemplateUnrollAmount*gm_template.S);
+					modifiedTemplateUnrollAmount*gm_template.S*fp.numFramesInC());
     ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
 			  *curPart,E_li_to_C,E1_n,partNo+1);
     partNo++;
@@ -5667,7 +5667,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   // debug messages and easy access to *significantly* simplify the
   // island code above.
   partPArray[partNo].JT = &P1;
-  partPArray[partNo].offset = 0*gm_template.S;
+  partPArray[partNo].offset = 0*gm_template.S*fp.numFramesInC();
   partPArray[partNo].p = NULL;
   partPArray[partNo].mo = &P1_message_order;
   partPArray[partNo].nm = P1_n;
@@ -5676,7 +5676,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   partNo++;
   for (unsigned p=0;p<numCoPartitions;p++) {
     partPArray[partNo].JT = &Co;
-    partPArray[partNo].offset = p*gm_template.S;
+    partPArray[partNo].offset = p*gm_template.S*fp.numFramesInC();
     partPArray[partNo].p = NULL;
     partPArray[partNo].mo = &Co_message_order;
     partPArray[partNo].nm = Co_n;
@@ -5685,7 +5685,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
     partNo++;
   }
   partPArray[partNo].JT = &E1;
-  partPArray[partNo].offset = (modifiedTemplateUnrollAmount)*gm_template.S;
+  partPArray[partNo].offset = (modifiedTemplateUnrollAmount)*gm_template.S*fp.numFramesInC();
   partPArray[partNo].p = NULL;
   partPArray[partNo].mo = &E1_message_order;
   partPArray[partNo].nm = E1_n;
@@ -5707,7 +5707,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   // The recursion assumes that its first partition is already
   // allocated, so we make sure to do that here.
-  partPArray[0].p = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S);
+  partPArray[0].p = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S*fp.numFramesInC());
   ceGatherIntoRoot(0);
   collectDistributeIslandRecurse(0,partPArray.size()-1,base,linear_section_threshold,
 				 runEMalgorithm,
