@@ -134,7 +134,6 @@ Arg Arg::Args[] = {
 
 };
 
-
 /*
  *
  * definition of needed global arguments
@@ -195,16 +194,19 @@ main(int argc,char*argv[])
 
   /////////////////////////////////////////////
   // read in all the parameters
+
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
   }
+
   if (inputTrainableParameters) {
     // flat, where everything is contained in one file
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
+
   // comment for now Sun Jan 11 09:47:23 2004
   GM_Parms.finalizeParameters();
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
@@ -335,7 +337,7 @@ main(int argc,char*argv[])
       inf.read(total_data_prob.valref());
       GM_Parms.emLoadAccumulators(inf);
     } else {
-      Range lfrng(loadAccRange,0,1000);
+      Range lfrng(loadAccRange,0,10000);
       for (Range::iterator lfit=lfrng.begin();
 	   !lfit.at_end();
 	   lfit++) {
@@ -376,7 +378,6 @@ main(int argc,char*argv[])
 
     unsigned total_num_frames = 0;
 
-    int tmp_cnt = 0;
     if (trrng->length() > 0) {
       total_data_prob = 1.0;
       Range::iterator* trrng_it = new Range::iterator(trrng->begin());
@@ -446,10 +447,6 @@ main(int argc,char*argv[])
 	    // And actually train with EM.
 	    infoMsg(IM::Low,"Incrementing EM Accumulators\n");
 	    myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
-
-	    if (++tmp_cnt == 2)
-	      exit(0);
-
 	  }
 	}
 	(*trrng_it)++;
