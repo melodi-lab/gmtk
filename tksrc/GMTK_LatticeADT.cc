@@ -41,7 +41,7 @@
 LatticeADT::LatticeADT()
   : _latticeNodes(NULL), _numberOfNodes(0),
     _numberOfLinks(0), _start(0), _end(0),
-    _lmscale(0), _wdpenalty(0), _acscale(0),
+    _lmscale(0), _wdpenalty(0), _acscale(1.0),
     _amscale(0), _base(0), _frameRelax(0),
     _latticeFile(NULL), _numLattices(0), _curNum(0),
     _nodeCardinality(0), _wordCardinality(0), _timeCardinality(0) {
@@ -476,6 +476,7 @@ void LatticeADT::seek(unsigned nmbr)
 
   // Iterate through the lattices based on  the nubmer of lines each CPT has
   for ( unsigned i = 0; i < nmbr; i++ ) {
+
     // Read index, lattice name, and cardinality 
     for ( unsigned j = 0; j < 3; j++ ) {
       _latticeFile->read(tmpStr);
@@ -491,14 +492,12 @@ void LatticeADT::seek(unsigned nmbr)
     // Read Vocabulary 
     _latticeFile->read(tmpStr);
 
-    // Read UseScore 
+    // Read UseScore or Slack
     _latticeFile->read(tmpStr);
-    if (strcmp(tmpStr.c_str(), trigger) != 0) {
-      error("ERROR: Error seeking to lattice %d\n", nmbr);
-    }
-
-    // Read UseScore options and slack
-    for ( unsigned j = 0; j < 2; j++ ) {
+    if (strcmp(tmpStr.c_str(), trigger) == 0) {
+      // Read options
+      _latticeFile->read(tmpStr);
+      // Read Slack 
       _latticeFile->read(tmpStr);
     }
   }
@@ -739,6 +738,8 @@ void LatticeADT::useScore(unsigned option)
 	  // do we use insertion penalty?
 	  // Amar: there  a bug in the next line w.r.t not multiplying by 
 	  // by log(_base) and it has now been fixed. 
+
+
 	  if ( option & 0x10 )
 	    score += log(_base)*_wdpenalty;
 	}
