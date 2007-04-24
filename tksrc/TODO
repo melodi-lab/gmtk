@@ -4202,6 +4202,9 @@ Tue Mar 20 01:48:42 2007
     merge and the most probable of them are left to re-generate, all within
     one time clique.
 
+Mon Apr 23 18:10:35 2007
+  - add fast log implementation: see email in gmtk mail history
+    from today by Oriol Vinyals @ ICSI.
 
 
 
