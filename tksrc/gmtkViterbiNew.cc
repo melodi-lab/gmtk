@@ -336,19 +336,22 @@ main(int argc,char*argv[])
       error("File to map from word index to string not specified.");
     if(transitionLabel == NULL)
       error("The label of the transition variable was not specified.");
+
     ifstream in(varMapFile);
     if (!in) { cout << "Unable to open " << varMapFile << endl; exit(1); }
     string name;
     int val;
     while (!in.eof())
     {
-      in >> val >> name >> ws;
+      in >> val;
       if ( in.eof() )
 	break;
-      // printf("reading %d word = (%s)\n",val,name.c_str());
+      in >> name >> ws;
+      printf("reading %d word = (%s)\n",val,name.c_str());
       word_map[val] = name;
     }
     in.close();
+
   }
 
   set<string> dumpVars;
