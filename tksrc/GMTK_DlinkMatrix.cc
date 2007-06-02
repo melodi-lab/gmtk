@@ -199,8 +199,13 @@ DlinkMatrix::write(oDataStreamFile& os)
   for (int i=0;i<dim();i++) {
     os.write(dLinks->numLinks(i),"DlinkMatrix::write, nlinks");
 
-    os.write(&arr[ptr],dLinks->numLinks(i),"DlinkMatrix::write val");
-    ptr += dLinks->numLinks(i);
+    // we add a check for non-zero length here since if not,
+    // and we are at the last dim which is zero lenght, array
+    // bounds check might fail.
+    if (dLinks->numLinks(i) > 0) {
+      os.write(&arr[ptr],dLinks->numLinks(i),"DlinkMatrix::write val");
+      ptr += dLinks->numLinks(i);
+    }
 
     os.nl();
   }
