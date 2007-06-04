@@ -183,6 +183,8 @@ protected:
     leafNodeValType evaluateFormula(const vector< RV* >& variables,
 				    const RV* rv = NULL);
 
+    void write(oDataStreamFile& os); 
+
   protected:
 
     typedef int stack_element_t;
@@ -190,6 +192,9 @@ protected:
 
     // Vector of commands 
     formulaCommandContainer commands;
+
+    // The original equation in string form
+    string equation;
 
     ///////////////////////////////////////////////////////////////////////
     // Tokens used by the equation parsing function  
