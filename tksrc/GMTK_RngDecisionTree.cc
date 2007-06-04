@@ -1591,6 +1591,8 @@ RngDecisionTree::EquationClass::parseFormula(
 
   assert( (LAST_COMMAND_INDEX & COMMAND_MASK) == LAST_COMMAND_INDEX );
 
+  equation = formula;
+
   preProcessFormula(formula);
 
   getToken(formula, token);
@@ -2435,6 +2437,33 @@ RngDecisionTree::EquationClass::changeDepth(
 
 /*-
  *-----------------------------------------------------------------------
+ * RngDecisionTree::EquationClass::write
+ * 
+ * Preconditions:
+ *   none     
+ *
+ * Postconditions:
+ *   none     
+ *
+ * Side Effects:
+ *   Writes the original equation to the given file pointer 
+ *
+ * Results:
+ *   none     
+ *-----------------------------------------------------------------------
+ */
+void 
+RngDecisionTree::EquationClass::write(
+  oDataStreamFile& os 
+  )
+{
+  os.write("{","RngDecisionTree::EquationClass::write equation");
+  os.write(equation,"RngDecisionTree::EquationClass::write equation");
+  os.write("}","RngDecisionTree::EquationClass::write equation");
+}
+
+/*-
+ *-----------------------------------------------------------------------
  * beginIterableDT
  *      rewinds the DT file to the beginning.
  * 
@@ -2709,8 +2738,7 @@ RngDecisionTree::writeRecurse(oDataStreamFile& os,
   } else if (n->nodeType == LeafNodeEquation) {
     os.space(depth*2);
     os.write(-1);
-    // TODO: equation guy should be able to write itself.
-    os.write("equation");
+    n->ln_e().equation.write(os); 
     os.nl();
   } else if (n->nodeType == NonLeafNodeArray) {
     os.space(depth*2);
