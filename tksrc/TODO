@@ -4210,4 +4210,7 @@ Mon Apr 23 18:10:35 2007
     (and entry above from June 22, 2004).
 
 
-
+Mon Jun  4 19:19:43 2007
+  - when we add the neg binomial/poisson dist, also give option to
+    reverse the ints (so that most prob. are at the end). Also give
+    option to supply a permutation to the int meanings. 
