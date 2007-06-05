@@ -579,9 +579,13 @@ public:
 
   // create the three junction trees for the basic partitions.
   void createPartitionJunctionTrees(const string pStr = junctionTreeMSTpriorityStr) {
+    infoMsg(IM::Giga,"Creating of P partition JT\n");
     createPartitionJunctionTree(gm_template.P,pStr);
+    infoMsg(IM::Giga,"Creating of C partition JT\n");
     createPartitionJunctionTree(gm_template.C,pStr);
+    infoMsg(IM::Giga,"Creating of E partition JT\n");
     createPartitionJunctionTree(gm_template.E,pStr);
+    infoMsg(IM::Giga,"Done creating P,C,E partition JTs\n");
   }
   // create a junction tree within a partition.
   static void createPartitionJunctionTree(Partition& part, 
