@@ -59,6 +59,12 @@ public:
 		return _unkIndex < _size;
 	}
 
+	///////////////////////////////////////////////////////////
+	// Return id of <unk>
+	unsigned unkId() const {
+		return _unkIndex;
+	}
+
 protected:
 	/**
 	 * entry in the array
