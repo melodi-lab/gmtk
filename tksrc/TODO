@@ -4221,3 +4221,7 @@ Tue Jun  5 03:44:44 2007
     re-use, just turn off the hash table (i.e., just have the
     hash table always miss, so that we insert, but never allocate
     memory for the hash table).
+  - actually, a better idea (which is probably mentioned above) is to do the
+    old C trick where the last entry in a struct is one element long,
+    but maloc is used to allocate enough storage so that the last element
+    is large enough.
