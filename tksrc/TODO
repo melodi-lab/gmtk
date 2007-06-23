@@ -3663,6 +3663,11 @@ Tue May 16 19:55:14 2006
 			#define IMC_NWWOH (1)
 			#define ISC_NWWOH_AI (1)
 			#define ISC_NWWOH_RM (1)
+            8) typedef logp<double,double> logpr; in logpr.h, 
+               change to using floats in first argument, i.e., change to:
+               typedef logp<float,double> logpr; in logpr.h (but in such
+               case, then start using  -localCliqueNorm option in EM training, esp.
+               when segments are long.
 
 
 Wed May 17 20:45:12 2006
