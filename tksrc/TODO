@@ -4243,5 +4243,8 @@ Fri Jun 22 21:24:58 2007
     using a fixed polynomial estimate of max probability from clique to clique,
     instead use online update of least squares estimate
     to update coefficients (i.e., adaptively learn) as the process
-    proceeds.
+    proceeds. (plot these out for various values).
+
+
+
 
