@@ -144,6 +144,7 @@ public:
   inline bool not_essentially_zero() const { return (v >= LSMALL); }
   inline bool almost_zero() const { return (v == LSMALL); }
   inline void set_to_zero() { v = LZERO; }
+  inline void set_to_infty() { v = -LZERO; }
   inline void set_to_almost_zero() { v = LSMALL; }
   inline void set_to_one() { v = 0; }
 
@@ -279,7 +280,19 @@ public:
 
   inline logp<FT,iFT> pow(double pwr) const {
     void *dummy=NULL;
-    return logp<FT,iFT>(dummy,pwr*v);
+    // check first for zero special case.
+    if (essentially_zero()) {
+      logp<FT,iFT> tmp(dummy);
+      if (pwr > 0.0) {
+	tmp.set_to_zero();
+      } else if (pwr == 0.0) {
+	tmp.set_to_one();
+      } else {
+	tmp.set_to_infty();
+      }
+      return tmp;
+    } else
+      return logp<FT,iFT>(dummy,pwr*v);
   }
 
 
