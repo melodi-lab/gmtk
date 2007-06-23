@@ -3813,11 +3813,10 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 		    origin.cliqueBeamMassFurtherBeam,
 		    origin.cliqueBeamMassMinSize);
 
-  // do a pass of clique pruning here.
-  // TODO: if we do this here, we should take out inline code in loop below that does the same.
-  ceCliquePrune();
 
   if (origin.cliqueBeamUniformSampleAmount != 0) {
+    // do a pass of clique pruning here.
+    ceCliquePrune();
     ceCliqueUniformSamplePrunedCliquePortion(origNumCliqueValuesUsed);
   }
 
