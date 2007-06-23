@@ -4237,3 +4237,11 @@ Fri Jun 22 16:12:28 2007
     clique tables are very low entropy, they can be adjusted so that
     cmbeam pruning is more effective (without needing the cmmin option).
    
+
+Fri Jun 22 21:24:58 2007
+  - when extimating the max clique entry in next clique, rather than
+    using a fixed polynomial estimate of max probability from clique to clique,
+    instead use online update of least squares estimate
+    to update coefficients (i.e., adaptively learn) as the process
+    proceeds.
+
