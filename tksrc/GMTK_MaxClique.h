@@ -238,6 +238,8 @@ public:
   static float cliqueBeamRetainFraction;
   // between 0 and 1 (i.e., 0 < v <= 1).
   static double cliqueBeamMassRelinquishFraction;
+  // exponentiate the clique scores before pruning by this amount.
+  static double cliqueBeamMassExponentiate;
   // min possible resulting size.
   static unsigned cliqueBeamMassMinSize;
   // additional normal beam to include once mass is covered.
@@ -1095,6 +1097,7 @@ public:
   void ceCliquePrune();
   void ceCliquePrune(const unsigned k);
   void ceCliqueMassPrune(const double removeFraction,
+			 const double exponentiate,
 			 const double furtherBeam,
 			 const unsigned minSize);
   void ceCliqueUniformSamplePrunedCliquePortion(const unsigned origNumCliqueValuesUsed);
@@ -1114,6 +1117,7 @@ public:
 
   // sum up the probabilities in the current clique and return their value.
   logpr sumProbabilities();
+  logpr sumExponentiatedProbabilities(double exponent);
 
   // compute the clique entropy
   double cliqueEntropy();

@@ -292,6 +292,16 @@ double
 MaxClique::cliqueBeamMassFurtherBeam = 0.0;
 
 
+
+/*
+ * When using mass beam pruning, we can exponentiate the clique scores 
+ * to make them more uniform if need be, so as to hopefully prune more effectively.
+ *
+ */
+double
+MaxClique::cliqueBeamMassExponentiate = 1.0;
+
+
 /*
  * If 0 <= val <= 1, then fraction of pruned clique table to uniformly re-sample from (without replacement)
  * if > 1, then number of times to re-sample (without replacement) from pruned clique table.
@@ -3799,6 +3809,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   ceCliquePrune(k);
   // prune also based on mass, using remaining probability after previous pruning.
   ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,
+		    origin.cliqueBeamMassExponentiate,
 		    origin.cliqueBeamMassFurtherBeam,
 		    origin.cliqueBeamMassMinSize);
 
@@ -4328,6 +4339,7 @@ InferenceMaxClique::ceDoAllPruning()
 
   // next do mass pruning.
   ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,
+		    origin.cliqueBeamMassExponentiate,
 		    origin.cliqueBeamMassFurtherBeam,
 		    origin.cliqueBeamMassMinSize);
 
@@ -4582,6 +4594,7 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 
 void 
 InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
+				      const double exponentiate,
 				      const double furtherBeam,
 				      const unsigned minSize)
 {
@@ -4590,14 +4603,17 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
     return;
 
   // sort all current clique values descending based on clique mass value.
+  // Note, sorting won't be correct if the exponent is negative.
+  if (exponentiate < 0) {
+    error("ERROR: trying to do exponentiated mass clique pruning with a negative exponent (%e). Exponent must be non-negative for sensible pruning.\n",exponentiate);
+  }
   sort(cliqueValues.ptr,cliqueValues.ptr + numCliqueValuesUsed,CliqueValueDescendingProbCompare());
 
-  logpr loc_maxCEValue = cliqueValues.ptr[0].p;
-
+  // logpr loc_maxCEValue = cliqueValues.ptr[0].p;
   // printf("mass pruning: maxVal %.18e, minVal %.18e\n",
   // loc_maxCEValue.val(),cliqueValues.ptr[numCliqueValuesUsed-1].p.val());
 
-  logpr origSum = sumProbabilities(); // /loc_maxCEValue;
+  logpr origSum = sumExponentiatedProbabilities(exponentiate); // /loc_maxCEValue;
 
   if (origSum.zero())
     return;
@@ -4613,18 +4629,28 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
   
   unsigned k;
   for (k=0;k<numCliqueValuesUsed;k++) {
-    actualSum += cliqueValues.ptr[k].p; // /loc_maxCEValue;
+
+    actualSum += cliqueValues.ptr[k].p.pow(exponentiate); // /loc_maxCEValue;
+
+    // printf("k=%d: origSum = %.16e, desiredSum = %.16e, actualSum = %.16e\n",k,origSum.valref(),desiredSum.valref(),actualSum.valref());
 
     // could use either ">" or ">=" here.
-    //   - use ">=" if you want more aggressive pruning (will probably want to use a bigger minSize in this case).
+    //   - use ">=" if you want more aggressive pruning (will probably
+    //       want to use a bigger minSize in this case).
     //   - use ">" if you want less agressive pruning.
-    // This can actually have a big effect since due to the dynamic range of the elements
-    // in the clique, the rest of the clique when added to the current sum might
-    // not cause any increment at all (all it needs to be is different by
-    // less than the min difference, see logp.h).
-    if (actualSum >= desiredSum)
+    // This can actually have a big effect since due to the dynamic
+    // range of the elements in the clique, the rest of the clique
+    // when added to the current sum might not cause any increment at
+    // all (all it needs to be is different by less than the min
+    // difference, see logp.h). If we were to use ">" here, then
+    // we would continue to add all the rest of the clique while
+    // not changing actualSum, so no pruning would be done. We
+    // therefore use ">=".
+    if (actualSum >= desiredSum) {
+      // increment k so that it becomes a count rather than an index.
+      k++;
       break;
-
+    }
   }
   
   if (furtherBeam != 0.0 && k < numCliqueValuesUsed ) {
@@ -4650,11 +4676,14 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
   if (k<minSize)
     k=min(minSize,numCliqueValuesUsed);
 
-  infoMsg(IM::Med,"Clique mass-beam pruning: Original clique state space = %d (mass=%e), new state space = %d, desired(actual) new-mass = %e(%e)\n",
-	  numCliqueValuesUsed,origSum.val(),
-	  k,desiredSum.val(),actualSum.val());
-
-  numCliqueValuesUsed = k;  
+  const unsigned newStateSpace = min(k,numCliqueValuesUsed);
+  infoMsg(IM::Med,"Clique mass-beam pruning: Original state space = %d (exp-mass=%e), new state space = %d, desired exp-mass = %e, actual exp-mass = %e\n",
+	  numCliqueValuesUsed,
+	  origSum.val(),
+	  newStateSpace,
+	  desiredSum.val(),
+	  actualSum.val());
+  numCliqueValuesUsed = newStateSpace;
 
 }
 
@@ -4959,6 +4988,44 @@ sumProbabilities()
     p = cliqueValues.ptr[0].p;
     for (unsigned i=1;i<numCliqueValuesUsed;i++)
       p += cliqueValues.ptr[i].p;
+  }
+  return p;
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::sumExponentiatedProbabilities()
+ *
+ *    Simply sum up the exponentiated probabilities of all elements in this clique
+ *    and return the results.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     sum of probabilities of all elements in the clique.
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr
+InferenceMaxClique::
+sumExponentiatedProbabilities(double exponent)
+{
+  logpr p;
+  if (numCliqueValuesUsed > 0) {
+    // We directly assign first one rather than adding to initialized
+    // zero so that logpr's log(0) floating point value is preserved.
+    p = cliqueValues.ptr[0].p.pow(exponent);
+    for (unsigned i=1;i<numCliqueValuesUsed;i++)
+      p += cliqueValues.ptr[i].p.pow(exponent);
   }
   return p;
 }

@@ -757,6 +757,7 @@ const char*const argerr = "ARG ERROR";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("cmbeam",Arg::Opt,MaxClique::cliqueBeamMassRelinquishFraction,"Percentage of clique mass to relinquish. Range: 0 < v <= 1. v = 0.0 means no pruning"),
+  Arg("cmexp",Arg::Opt,MaxClique::cliqueBeamMassExponentiate,"Exponent to apply to clique scores when doing mass pruning. Must be non-negative."),
   Arg("cmmin",Arg::Opt,MaxClique::cliqueBeamMassMinSize,"When using -cmbeam, min possible resulting clique state size (>= 1)"),
   Arg("cmfurther",Arg::Opt,MaxClique::cliqueBeamMassFurtherBeam,"When using -cmbeam, additional beam to use after mass has been acounted for (>= 0)"),
 
@@ -768,7 +769,10 @@ const char*const argerr = "ARG ERROR";
   if (MaxClique::cliqueBeamMassMinSize <= 0)
     error("%s: -cmmin option must be at least unity.",argerr);
   if (MaxClique::cliqueBeamMassFurtherBeam < 0)
-    error("%s: -cmfurther option must be >= 0.");
+    error("%s: -cmfurther option must be >= 0.",argerr);
+  if (MaxClique::cliqueBeamMassExponentiate < 0.0) 
+    error("%s: -cmexp option must be >= 0.",argerr);
+
 
 #else
 #endif
