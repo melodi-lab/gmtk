@@ -4236,15 +4236,42 @@ Fri Jun 22 16:12:28 2007
   - in cmbeam option, add a scale option as well, so that when
     clique tables are very low entropy, they can be adjusted so that
     cmbeam pruning is more effective (without needing the cmmin option).
-   
+  useful options:
+    ./jtcommand -cmbeam 1e-5 -cmexp 0.1 -cpbeam 200 -dcdrng 0:0 -verb 59
+
 
 Fri Jun 22 21:24:58 2007
   - when extimating the max clique entry in next clique, rather than
     using a fixed polynomial estimate of max probability from clique to clique,
-    instead use online update of least squares estimate
-    to update coefficients (i.e., adaptively learn) as the process
-    proceeds. (plot these out for various values).
+    instead use online update of least squares estimate (i.e., either
+    using the LMS algorithm or RLS recursive least squares) to update coefficients 
+    (i.e., adaptively learn) as the process proceeds. 
+    (plot these out for various values).
 
+
+Sun Jul  1 23:04:18 2007
+  - iterable CPTs (such as iterable decision trees) are similar to conditional
+    evidence, i.e., evidence of the form "if A then B", which might effect
+    a model by parameter adjustment rather than by any evidence of the
+    form A=a or virtual evidence p(V=1|A=a). See Pearl's paper on Jeffrey's rule
+    and the Geffner&Pearl88 reference contained therein.
+
+
+Tue Jul  3 12:33:09 2007
+  - memory optimization: when reading in lots of gaussians in one go, allocate
+    one pool of memory for the means and variances (since it can be pre-allocated)
+    and have Gausisan's pointers point therein rather than having each gaussian component
+    allocate its own little memory thus wasting space.
+
+Tue Jul  3 13:23:51 2007
+  - memory opt: when doing the search, right now the shared clique value pool stores a value
+    of a clique entry even if it is pruned away. To save memory, don't store the values
+    that are ultimately about to get pruned away (perhaps put them in a temporary
+    buffer and only commit them to the shared pool once they don't get pruned away).
+    Q: how does this interact with island algorithm.
+
+
+ 
 
 
 
