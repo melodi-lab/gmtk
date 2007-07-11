@@ -347,7 +347,7 @@ main(int argc,char*argv[])
       if ( in.eof() )
 	break;
       in >> name >> ws;
-      printf("reading %d word = (%s)\n",val,name.c_str());
+      // printf("reading %d word = (%s)\n",val,name.c_str());
       word_map[val] = name;
     }
     in.close();
@@ -497,10 +497,13 @@ main(int argc,char*argv[])
       {
         if (myjt.curNodes()[i]->name() == pvn)
         {
-          if (!myjt.curNodes()[i]->discrete()) 
+          if (!myjt.curNodes()[i]->discrete())
             error("Can only print Viterbi values for discrete variables");
           if (RV2DRV(myjt.curNodes()[i])->cardinality != word_map.size())
-            error("Word-val to string map file size %d does not match the number of words %d.",int(word_map.size()),RV2DRV(myjt.curNodes()[i])->cardinality);
+            error("Word-val to string map file (%s) size %d does not match the number of words %d.",
+		  varMapFile,
+		  int(word_map.size()),
+		  RV2DRV(myjt.curNodes()[i])->cardinality);
           lv = RV2DRV(myjt.curNodes()[i])->val;
         }
         else if (myjt.curNodes()[i]->name()==tl)
