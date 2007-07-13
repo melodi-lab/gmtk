@@ -287,8 +287,6 @@ bool LatticeNodeCPT::next(iterator &it, logpr& p) {
     it.drv->val = pit->key();
     p = (**pit).gmtk_score;
 
-    printf("        next child %d\n", it.drv->val);
-
     return true;
   } else {
     // we didn't find anything satisfying the frame constrain
