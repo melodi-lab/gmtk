@@ -4271,7 +4271,16 @@ Tue Jul  3 13:23:51 2007
     Q: how does this interact with island algorithm.
 
 
- 
+Thu Jul 12 18:10:09 2007
+  - another new CPT. Inlucde the case where the probabilities come from an 
+    exponential, but where parent integer varialbes can multiply into the exponential
+    coefficients. I.e., if we have p_i \propto exp(\lambda_i x) where p_i is prob of a child
+    in state i, and \lambda_i is a vector of parameters and x is a set of parents, we might
+    instead have a special parent that effects all of the parameters, as in:
+         p_i \propto exp( y (\lambda_i x)) where y is a count. This could be used
+    if y has a very large (or unbounded) cardinality.
+
+
 
 
 
