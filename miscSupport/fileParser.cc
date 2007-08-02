@@ -415,7 +415,7 @@ iDataStreamFile::readStringUntil(
 	return errorReturn("readStringUntil, zero length string",msg);
   } else {
     if (!prepareNext()) {
-      return errorReturn("readStringUntil_aaa",msg);
+      return errorReturn("readStringUntil",msg);
     }
     char c = *buffp++;
 
@@ -424,7 +424,7 @@ iDataStreamFile::readStringUntil(
 
       if (c == '\n') {
         if (!prepareNext()) {
-          return errorReturn("readStringUntil_whee",msg);
+          return errorReturn("readStringUntil",msg);
         }
       }
       c = *buffp++;
