@@ -41,6 +41,7 @@ ByteEndian getWordOrganization() {
    }
   } else {
     shortEndian = SHORT_UNSUPPORTED_ORG;
+    byteEndian = BYTE_UNSUPPORTED_ORG;
   }
 
   return byteEndian;
