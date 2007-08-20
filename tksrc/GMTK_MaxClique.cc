@@ -217,7 +217,7 @@ MaxClique::continuousObservationPerFeaturePenalty = 0.0;
 // VE separator files information.
 ///////////////////////////////////////////////
 bool SeparatorClique::recomputeVESeparatorTables = false;
-char* SeparatorClique::veSeparatorFileName = "veSeparatorFile.dat";
+const char* SeparatorClique::veSeparatorFileName = "veSeparatorFile.dat";
 bool SeparatorClique::generatingVESeparatorTables = "true";
 FILE* SeparatorClique::veSeparatorFile = NULL;
 float SeparatorClique::veSeparatorLogProdCardLimit = 7.0; // i.e., 1e7=10M is default max.

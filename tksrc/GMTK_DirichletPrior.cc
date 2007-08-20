@@ -36,6 +36,6 @@ VCID("$Header$")
  * Static Variable definitions 
 */
 
-char * DirichletPrior::DirichletConstStr = "DirichletConst";
-char * DirichletPrior::DirichletTableStr = "DirichletTable";
+const char * DirichletPrior::DirichletConstStr = "DirichletConst";
+const char * DirichletPrior::DirichletTableStr = "DirichletTable";
 

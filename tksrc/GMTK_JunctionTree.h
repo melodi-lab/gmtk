@@ -269,9 +269,9 @@ class JunctionTree {
 
   // The names of the above three partitions to use for printing,
   // debugging, etc.
-  static char* P1_n;
-  static char* Co_n;
-  static char* E1_n;
+  static const char* P1_n;
+  static const char* Co_n;
+  static const char* E1_n;
 
   // Note, while we need extra separator cliques that are between the
   // corresponding partitions interface cliques, these separators will
@@ -298,7 +298,7 @@ class JunctionTree {
     vector< pair<unsigned,unsigned> >* mo;
     // the name (type) of this partition, i.e., either
     // a P1, Co, or an E1.
-    char *nm;
+    const char *nm;
     // clique number of right interface 
     unsigned ri;
     // clique number of left interface
@@ -503,13 +503,13 @@ public:
   // The priority string for selecting the next edge when constructing
   // the junction tree. Default is in .cc file, and see .cc file for
   // what options are supported.
-  static char* junctionTreeMSTpriorityStr;
+  static const char* junctionTreeMSTpriorityStr;
 
   // The priority string for selecting which clique of a partition
   // (from the set of valid ones) should be used as the partition
   // interface clique. See .cc file in routine findInterfaceClique()
   // for documentation.
-  static char* interfaceCliquePriorityStr;
+  static const char* interfaceCliquePriorityStr;
 
   // Set to > 0.0 if the JT weight that we compute should heavily
   // penalize any unassigned iterated nodes. Penalty = factor
@@ -697,7 +697,7 @@ public:
   // Print all information about the JT. Must
   // have had computeSeparatorIterationOrders() called
   // already.
-  void printAllJTInfo(char* fileName);
+  void printAllJTInfo(const char* fileName);
   void printAllJTInfo(FILE* f,JT_Partition& part,const unsigned root,
 		      set <RV*>* lp_nodes,set <RV*>* rp_nodes);
   void printAllJTInfoCliques(FILE* f,JT_Partition& part,const unsigned root,const unsigned treeLevel,

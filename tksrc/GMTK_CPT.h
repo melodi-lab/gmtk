@@ -202,7 +202,7 @@ public:
       internalStatePtr = it.internalStatePtr; 
     }
     // allow to construct an empty iterator, to be filled in later
-    iterator() : cpt(NULL) {}
+    iterator() : cpt(NULL),drv(NULL),internalStatePtr(NULL) {}
 
   };
 

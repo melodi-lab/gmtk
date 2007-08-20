@@ -1158,7 +1158,7 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       xzAccumulators.len()+ 
       zzAccumulators.len()+ 
       zAccumulators.len();
-    for (int i=0;i<totalLen;i++) {
+    for (unsigned i=0;i<totalLen;i++) {
       ofile.write(0.0,"LMDG zero accums x.");
     }
   } else {
