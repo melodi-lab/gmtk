@@ -1520,13 +1520,17 @@ GMTK_Tie::data_driven_cluster(unsigned command_index, std::vector<std::vector<st
 
 
   std::list<Cluster> clusters;
-  std::list<Cluster>::iterator ci,ci2,save1=NULL,save2=NULL;
+  std::list<Cluster>::iterator ci;
+  std::list<Cluster>::iterator ci2;
+  std::list<Cluster>::iterator save1;
+  std::list<Cluster>::iterator save2;
+
   float this_size, saved_size=LZERO;
   int p_counter=0;
   // make the initial set of clusters - one per parameter
   for(std::vector<std::string>::iterator i=commands[command_index].params.begin();i!=commands[command_index].params.end();i++,p_counter++){
     
-    Clusterable *c;
+    Clusterable *c=NULL;
     
     switch(commands[command_index].param_type){
       
@@ -1677,7 +1681,7 @@ GMTK_Tie::data_driven_cluster(unsigned command_index, std::vector<std::vector<st
       }
 
       // find the lowest occupancy cluster
-      save1=NULL;
+      save1=clusters.end();
     
       ci=clusters.begin();
       double lowest_occupancy=ci->occupancy;
@@ -1691,9 +1695,9 @@ GMTK_Tie::data_driven_cluster(unsigned command_index, std::vector<std::vector<st
     
       // if lowest occuapncy cluster exceeds the minimum, we are done
       if(lowest_occupancy > commands[command_index].options.MinOccupancyCount)
-	save1=NULL;
+	save1=clusters.end();
     
-      if(save1==NULL){
+      if(save1==clusters.end()){
 	no_more_low_occupancy=true;
 	infoMsg(IM::Tiny,"\nMinOccupancyCount threshold reached:  ");
 	print_cluster_stats(&clusters,IM::Tiny);
@@ -1765,7 +1769,7 @@ GMTK_Tie::data_driven_cluster(unsigned command_index, std::vector<std::vector<st
 	  save1=ci;
 	}
     
-      if(save1==NULL){
+      if(save1==clusters.end()){
 	infoMsg(IM::Tiny,"\nMinClusterMembers threshold reached:  ");
 	print_cluster_stats(&clusters,IM::Tiny);
 	no_more_small_clusters=true;

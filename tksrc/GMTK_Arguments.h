@@ -100,10 +100,10 @@ const char*const argerr = "ARG ERROR";
    char    *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL }; 
    unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
    unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-   char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
-   char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+   const char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
+   const char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+   const char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+   const char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
    // per stream frame range string before any tranformations are applied
    char  *prepr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
    // per stream frame range string after per-stream transformations are applied
@@ -553,7 +553,7 @@ const char*const argerr = "ARG ERROR";
 #ifdef GMTK_ARG_JT_INFO_FILE_DEF_VAL
     static char *jtFileName = GMTK_ARG_JT_INFO_FILE_DEF_VAL;
 #else
-    static char *jtFileName = "jt_info.txt";
+    const static char *jtFileName = "jt_info.txt";
 #endif
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
@@ -911,7 +911,7 @@ const char*const argerr = "ARG ERROR";
 #if defined(GMTK_ARG_DCDRNG)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-  static char *dcdrng_str="all";
+  const static char *dcdrng_str="all";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
@@ -933,7 +933,7 @@ const char*const argerr = "ARG ERROR";
 #if defined(GMTK_ARG_TRRNG)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-  static char *trrng_str="all";
+  static const char *trrng_str="all";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
@@ -1217,8 +1217,8 @@ static bool  cliquePrintOnlyEntropy = false;
 #if defined(GMTK_ARG_CLIQUE_VAR_ITER_ORDERS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-static char* varPartitionAssignmentPrior = "COI";
-static char* varCliqueAssignmentPrior = "COT";
+static const char* varPartitionAssignmentPrior = "COI";
+static const char* varCliqueAssignmentPrior = "COT";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
@@ -1507,15 +1507,15 @@ static bool writeLogVals = false;
 
 bool     Cpp_If_Ascii        = false;
 
-char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   // 
+const char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   // 
 unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
-char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"}; 
+const char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"}; 
 unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
 
 char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};   // 
 char    *Post_Transforms=NULL;
 
-char    *Ftr_Combo_Str="none";
+const char    *Ftr_Combo_Str="none";
 unsigned Ftr_Combo=FTROP_NONE;
  
 #ifdef INTV_WORDS_BIGENDIAN
@@ -1686,12 +1686,12 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #if defined(GMTK_ARG_TRIANGULATION_OPTIONS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-  static char* triangulationHeuristic="completed";
+  const static char* triangulationHeuristic="completed";
   static bool jtWeight = true;
   static double traverseFraction = 1.0;
   static bool noBoundaryMemoize = false;
-  static char* forceLeftRight="";
-  static char* boundaryHeuristic="S";
+  const static char* forceLeftRight="";
+  const static char* boundaryHeuristic="S";
   static unsigned maxNumChunksInBoundary = 1; 
   static unsigned chunkSkip = 1; 
   static int jut = -1;

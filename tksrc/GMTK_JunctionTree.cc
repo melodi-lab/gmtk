@@ -67,16 +67,16 @@ bool JunctionTree::jtWeightMoreConservative = false;
 float JunctionTree::jtWeightPenalizeUnassignedIterated = 0.0;
 float JunctionTree::jtWeightSparseNodeSepScale = 1.0;
 float JunctionTree::jtWeightDenseNodeSepScale = 1.0;
-char* JunctionTree::junctionTreeMSTpriorityStr = "DSU";
-char* JunctionTree::interfaceCliquePriorityStr = "W";
+const char* JunctionTree::junctionTreeMSTpriorityStr = "DSU";
+const char* JunctionTree::interfaceCliquePriorityStr = "W";
 
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
 
 // default names of the three partitions for printing/debugging messages.
-char* JunctionTree::P1_n = "P'";
-char* JunctionTree::Co_n = "C'";
-char* JunctionTree::E1_n = "E'";
+const char* JunctionTree::P1_n = "P'";
+const char* JunctionTree::Co_n = "C'";
+const char* JunctionTree::E1_n = "E'";
 
 
 ////////////////////////////////////////////////////////////////////
@@ -3537,7 +3537,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::printAllJTInfo(char *fileName) 
+JunctionTree::printAllJTInfo(const char *fileName) 
 {
   FILE* f;
   if ((fileName == NULL)

@@ -1053,7 +1053,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
     command = GET_COMMAND(commands[crrnt_cmnd]); 
 
-    char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula. Asking for parent %d but only %d parents are available.\n";
+    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula. Asking for parent %d but only %d parents are available.\n";
 
     switch (command) {
 	

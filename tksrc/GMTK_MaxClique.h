@@ -1210,7 +1210,7 @@ public:
   // Command line: recompute the VE separator tables and save to disk in all cases.
   static bool recomputeVESeparatorTables;
   // File name to read/write VE separator table.
-  static char* veSeparatorFileName;
+  static const char* veSeparatorFileName;
   // set to true if we are (re-)generating the VE tables,
   // or set to false if we are just reading them in from disk.
   static bool generatingVESeparatorTables;

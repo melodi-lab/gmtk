@@ -37,8 +37,8 @@ protected:
   DirichletTable* dirichletTable;
 
   // strings for the master files
-  static char* DirichletConstStr;
-  static char* DirichletTableStr;
+  static const char* DirichletConstStr;
+  static const char* DirichletTableStr;
 
   DirichletPrior() {
     smoothingType = NoneVal;
