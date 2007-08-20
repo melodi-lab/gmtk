@@ -17,10 +17,10 @@
 #endif
 #endif
 
-void error(char *format, ...);
-void coredump(char *format, ...);
-void warning(char *format, ...);
-void ensure(bool condition,char *errorIfFail, ...);
+void error(const char * const format, ...);
+void coredump(const char * constformat, ...);
+void warning(const char * const format, ...);
+void ensure(const bool condition,const char * const errorIfFail, ...);
 
 
 #endif

@@ -20,7 +20,7 @@ enum bool { false = 0, true = 1 };
 
 
 void
-error(char *format, ...)
+error(const char * const format, ...)
 {
   va_list ap;
   va_start(ap,format);
@@ -32,7 +32,7 @@ error(char *format, ...)
 }
 
 void
-coredump(char *format, ...)
+coredump(const char * const format, ...)
 {
   va_list ap;
   va_start(ap,format);
@@ -44,7 +44,7 @@ coredump(char *format, ...)
 }
 
 void
-warning(char *format, ...)
+warning(const char * const format, ...)
 {
   va_list ap;
   va_start(ap,format);
@@ -55,7 +55,7 @@ warning(char *format, ...)
 }
 
 void
-ensure(bool condition,char *errorIfFail, ...)
+ensure(const bool condition,const char * const errorIfFail, ...)
 {
   if (!condition) {
     va_list ap;

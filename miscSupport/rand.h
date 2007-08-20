@@ -54,8 +54,7 @@ class RAND {
   // seed with a float
   void seed(float* f) {
     double d = *f;
-    unsigned short* tmp = (unsigned short*)&d;
-    seed48(tmp);
+    seed(&d);
   }
 
 

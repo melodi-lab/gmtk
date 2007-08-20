@@ -950,7 +950,7 @@ int Range::iterator::read_next (int *result, FILE *file_handle, const char* file
     static int bufpos = 0;
     static int bufline = 0; */
 
-    char *WS = " \t\n\r";
+    const char *WS = " \t\n\r";
 
     if (buf == NULL) {
 	buf = new char[buflen];

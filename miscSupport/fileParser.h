@@ -34,7 +34,7 @@ class ioDataStreamFile {
  protected:
   FILE *fh;
   bool Binary;
-  bool errorReturn(char *from,char *msg);
+  bool errorReturn(const char *from,const char *msg);
   // the current file name
   string _fileName;
   // the current line number in the current file name (always 0 for binary file).
