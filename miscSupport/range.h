@@ -118,7 +118,7 @@ protected:
     char *pos;			// global for roach-parsing string
     int min_val;		// lower bound defined for string
     int max_val;		// upper bound defined for string
-    char *errmsg;		// message describing parse error
+    const char * errmsg;		// message describing parse error
 
     RangeList rangeList;	// The root of the range list
 

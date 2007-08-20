@@ -41,7 +41,7 @@ VCID("$Header$")
 
 
 bool 
-ioDataStreamFile::errorReturn(char *from,char *msg)
+ioDataStreamFile::errorReturn(const char *from,const char *msg)
 {
   if (msg != NULL) {
     error("%s occurred in %s, file '%s' line %d: %s\n",
