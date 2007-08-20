@@ -7,9 +7,8 @@
 */
 
 
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <math.h>
 #include "GMTK_ObsStats.h"
 
