@@ -15,9 +15,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <math.h>
 
 #include "general.h"

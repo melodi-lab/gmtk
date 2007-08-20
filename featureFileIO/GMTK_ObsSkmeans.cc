@@ -16,9 +16,8 @@
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <cmath>
 #include <cassert>
 #include <stdlib.h>

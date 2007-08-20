@@ -54,9 +54,8 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <math.h>
 #include <assert.h>
 #include "pfile.h"
