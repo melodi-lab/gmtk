@@ -91,34 +91,34 @@ class iDataStreamFile : public ioDataStreamFile {
   // occurs, msg will be printed and the program will die.
 
   // type explicit
-  bool readChar(char& c,char *msg=NULL);
-  bool readStr(char*& str,char *msg=NULL);
-  bool readInt(int& i,char *msg=NULL);
-  bool readUnsigned(unsigned& i,char *msg=NULL);
+  bool readChar(char& c,const char *msg=NULL);
+  bool readStr(char*& str,const char *msg=NULL);
+  bool readInt(int& i,const char *msg=NULL);
+  bool readUnsigned(unsigned& i,const char *msg=NULL);
 
-  bool readFloat(float& f,char *msg=NULL);
-  bool readDouble(double& d,char *msg=NULL);
+  bool readFloat(float& f,const char *msg=NULL);
+  bool readDouble(double& d,const char *msg=NULL);
 
-  bool readFloatVec(float* fp,const unsigned len,char *msg=NULL);
-  bool readDoubleVec(double* dp,const unsigned len,char *msg=NULL);
+  bool readFloatVec(float* fp,const unsigned len,const char *msg=NULL);
+  bool readDoubleVec(double* dp,const unsigned len,const char *msg=NULL);
 
 
-  bool readString(string& str,char *msg=NULL);
-  bool readToken(string& str,const string& tokenChars,char *msg=NULL);
+  bool readString(string& str,const char *msg=NULL);
+  bool readToken(string& str,const string& tokenChars,const char *msg=NULL);
 
-  bool readIfMatch(const string& matchTokenStr,char *msg=NULL);
+  bool readIfMatch(const string& matchTokenStr,const char *msg=NULL);
 
   // type implicit
-  bool read(char*& str,char *msg=NULL) { return readStr(str,msg); }
-  bool read(char& c,char *msg=NULL) { return readChar(c,msg); }
-  bool read(int& i,char *msg=NULL) { return readInt(i,msg); }
-  bool read(unsigned& i,char *msg=NULL) { return readUnsigned(i,msg); }
-  bool read(float& f,char *msg=NULL) { return readFloat(f,msg); }
-  bool read(double& d,char *msg=NULL) { return readDouble(d,msg); }
-  bool read(float* fp, const unsigned len, char *msg=NULL) { return readFloatVec(fp,len,msg); }
-  bool read(double* dp, const unsigned len, char *msg=NULL) { return readDoubleVec(dp,len,msg); }
-  bool read(string& str,char *msg=NULL) { return readString(str,msg); }
-  bool read(string& str,const string& tokenChars,char *msg=NULL) {
+  bool read(char*& str,const char *msg=NULL) { return readStr(str,msg); }
+  bool read(char& c,const char *msg=NULL) { return readChar(c,msg); }
+  bool read(int& i,const char *msg=NULL) { return readInt(i,msg); }
+  bool read(unsigned& i,const char *msg=NULL) { return readUnsigned(i,msg); }
+  bool read(float& f,const char *msg=NULL) { return readFloat(f,msg); }
+  bool read(double& d,const char *msg=NULL) { return readDouble(d,msg); }
+  bool read(float* fp, const unsigned len, const char *msg=NULL) { return readFloatVec(fp,len,msg); }
+  bool read(double* dp, const unsigned len, const char *msg=NULL) { return readDoubleVec(dp,len,msg); }
+  bool read(string& str,const char *msg=NULL) { return readString(str,msg); }
+  bool read(string& str,const string& tokenChars,const char *msg=NULL) {
     return readToken(str,tokenChars,msg);
   }
 
@@ -126,16 +126,16 @@ class iDataStreamFile : public ioDataStreamFile {
     string& str, 
     const char delimiter, 
     bool spaceIsDelimiter, 
-    char *msg=NULL );
+    const char *msg=NULL );
 
   // read a line consisting of a total of n characters including the final '\0'.
   // Memory allocation is done externally.
-  bool readLine(char * lineptr, size_t n, char *msg = NULL);
+  bool readLine(char * lineptr, size_t n, const char *msg = NULL);
 
-  char peekChar(char *msg = NULL);
+  char peekChar(const char *msg = NULL);
 
   template <class T>
-  bool readArray(T* location, const int length, char *msg = NULL) 
+  bool readArray(T* location, const int length, const char *msg = NULL) 
   {
     assert ( length >= 0 && location != NULL);
     
@@ -151,12 +151,12 @@ class iDataStreamFile : public ioDataStreamFile {
   }
 
   template <class T>
-  bool read(T* location, const int length, char *msg = NULL)
+  bool read(T* location, const int length, const char *msg = NULL)
   { return readArray(location,length,msg); }
 
 
   template <class T>
-  bool readVector(vector<T>& location, const int length, char *msg = NULL) 
+  bool readVector(vector<T>& location, const int length, const char *msg = NULL) 
   {
     assert ( length >= 0 );
     
@@ -173,7 +173,7 @@ class iDataStreamFile : public ioDataStreamFile {
   }
 
   template <class T>
-  bool read(vector<T>& location, const int length, char *msg = NULL)
+  bool read(vector<T>& location, const int length, const char *msg = NULL)
   { return readVector(location,length,msg); }
 
 
@@ -191,41 +191,41 @@ class oDataStreamFile : public ioDataStreamFile {
   ~oDataStreamFile();
 
   // type explicit
-  bool writeStr(const char * const str, char *msg=NULL,const bool writeSpaceSuffixAscii=true);
-  bool writeString(const string& str,char *msg=NULL,const bool writeSpaceSuffixAscii=true);
-  bool writeChar(const char c, char *msg=NULL,const bool writeSpaceSuffixAscii=true);
-  bool writeInt(const int i,char *msg=NULL);
-  bool writeUnsigned(const unsigned int u,char *msg=NULL);
-  bool writeFloat(const float f,char *msg=NULL);
-  bool writeDouble(const double d,char *msg=NULL);
-  bool writeFloatVec(const float* fp,unsigned len, char *msg=NULL);
-  bool writeDoubleVec(const double* dp,unsigned len,char *msg=NULL);
+  bool writeStr(const char * const str, const char *msg=NULL,const bool writeSpaceSuffixAscii=true);
+  bool writeString(const string& str,const char *msg=NULL,const bool writeSpaceSuffixAscii=true);
+  bool writeChar(const char c, const char *msg=NULL,const bool writeSpaceSuffixAscii=true);
+  bool writeInt(const int i,const char *msg=NULL);
+  bool writeUnsigned(const unsigned int u,const char *msg=NULL);
+  bool writeFloat(const float f,const char *msg=NULL);
+  bool writeDouble(const double d,const char *msg=NULL);
+  bool writeFloatVec(const float* fp,unsigned len, const char *msg=NULL);
+  bool writeDoubleVec(const double* dp,unsigned len,const char *msg=NULL);
 
-  bool writeComment(char *comment, ...);
-  bool indent(const int i,const bool doubSpace, char *msg=NULL);
-  bool space(const int numSpaceChars, char *msg=NULL);
-  bool nl(char *msg=NULL);
-  bool flush(char *msg=NULL);
+  bool writeComment(const char *comment, ...);
+  bool indent(const int i,const bool doubSpace, const char *msg=NULL);
+  bool space(const int numSpaceChars, const char *msg=NULL);
+  bool nl(const char *msg=NULL);
+  bool flush(const char *msg=NULL);
   void rewind();
 
   // type implicit
-  bool write(const char *const str,char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeStr(str,msg,writeSpaceSuffixAscii); }
-  bool write(const string& str,char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeString(str,msg,writeSpaceSuffixAscii); }
-  bool write(const char c, char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeChar(c,msg,writeSpaceSuffixAscii); }
+  bool write(const char *const str,const char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeStr(str,msg,writeSpaceSuffixAscii); }
+  bool write(const string& str,const char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeString(str,msg,writeSpaceSuffixAscii); }
+  bool write(const char c, const char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeChar(c,msg,writeSpaceSuffixAscii); }
 
-  bool write(const int i,char *msg=NULL) { return writeInt(i,msg); }
-  bool write(const unsigned int u,char *msg=NULL) { return writeUnsigned(u,msg); }
+  bool write(const int i,const char *msg=NULL) { return writeInt(i,msg); }
+  bool write(const unsigned int u,const char *msg=NULL) { return writeUnsigned(u,msg); }
 #ifdef _AIX
-  bool write(const size_t i,char *msg=NULL) { return writeUnsigned(i,msg); }
+  bool write(const size_t i,const char *msg=NULL) { return writeUnsigned(i,msg); }
 #endif
-  bool write(const float f,char *msg=NULL) { return writeFloat(f,msg); }
-  bool write(const double d,char *msg=NULL) { return writeDouble(d,msg); }
-  bool write(const float* fp,unsigned len,char *msg=NULL) { return writeFloatVec(fp,len,msg); }
-  bool write(const double* dp,unsigned len,char *msg=NULL) { return writeDoubleVec(dp,len,msg); }
+  bool write(const float f,const char *msg=NULL) { return writeFloat(f,msg); }
+  bool write(const double d,const char *msg=NULL) { return writeDouble(d,msg); }
+  bool write(const float* fp,unsigned len,const char *msg=NULL) { return writeFloatVec(fp,len,msg); }
+  bool write(const double* dp,unsigned len,const char *msg=NULL) { return writeDoubleVec(dp,len,msg); }
 
 
   template <class T>
-  bool writeArray(T* location, const int length, char *msg = NULL) 
+  bool writeArray(T* location, const int length, const char *msg = NULL) 
   {
     assert ( length >= 0 && location != NULL);
     
@@ -240,13 +240,13 @@ class oDataStreamFile : public ioDataStreamFile {
     return rc;
   }
 
-  template <class T>
-  bool write(T* location, const int length, char *msg = NULL)
-  { return writeArray(location,length,msg); }
+  // template <class T>
+  // bool write(T* location, const int length, const char *msg = NULL)
+  // { return writeArray(location,length,msg); }
 
 
   template <class T>
-  bool writeVector(vector<T> location, char *msg = NULL) 
+  bool writeVector(vector<T> location, const char *msg = NULL) 
   {
     if (location.length() == 0)
       return true;
@@ -259,9 +259,9 @@ class oDataStreamFile : public ioDataStreamFile {
     return rc;
   }
 
-  template <class T>
-  bool write(vector<T> location, char *msg = NULL)
-  { return writeVector(location,msg); }
+  // template <class T>
+  // bool write(vector<T> location, const char *msg = NULL)
+  // { return writeVector(location,msg); }
 
 
 

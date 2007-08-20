@@ -226,7 +226,7 @@ void reportTiming(// input
 /*
  * a version of printf that goes to a C++ string 
  */
-int stringprintf(string& str,char *format, ...)
+int stringprintf(string& str,const char *format, ...)
 {
   char buff[512];
   va_list ap;
