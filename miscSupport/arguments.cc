@@ -188,7 +188,7 @@ Arg::Arg() : mt(EMPTY_ARGS_FLAG) {
  *
  *-----------------------------------------------------------------------
  **/
-Arg::Arg(char* d) : mt(EMPTY_ARGS_FLAG) {
+Arg::Arg(const char* d) : mt(EMPTY_ARGS_FLAG) {
   initialize(CATEG_FLAG,Arg::Opt,d,SINGLE,DEFAULT_MAX_NUM_ARRAY_ELEMENTS,false,HIGHEST_PRIORITY);
 }
 
@@ -203,7 +203,7 @@ Arg::Arg(char* d) : mt(EMPTY_ARGS_FLAG) {
  *
  *-----------------------------------------------------------------------
  */
-Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts, bool hidden, unsigned priority) : mt(ucl) {
+Arg::Arg(const char*m ,ArgDisposition r,MultiType ucl,const char* d,ArgDataStruct ds,unsigned maxArrayElmts, bool hidden, unsigned priority) : mt(ucl) {
   initialize(m,r,d,ds,maxArrayElmts,hidden,priority);
 }
 
@@ -218,7 +218,7 @@ Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigne
  *
  *-----------------------------------------------------------------------
  */
-Arg::Arg(ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts,bool hidden,unsigned priority): mt(ucl) {
+Arg::Arg(ArgDisposition r,MultiType ucl,const char* d,ArgDataStruct ds,unsigned maxArrayElmts,bool hidden,unsigned priority): mt(ucl) {
   //initialize(NOFLAG,r,d);
   initialize(NOFLAG,r,d,ds,maxArrayElmts,hidden,priority);
 }
@@ -683,6 +683,9 @@ Arg::argsSwitch(Arg* arg_ptr,const char *arg,int& index,bool& found,const char*f
 	      flag);
       return ARG_ERROR;
     }
+    // TODO: fix minor memory leak here, where old ptr is written over. Note that
+    // it is not as simple as just freeing old pointer, as old pointer might point to
+    // non-dynamicaly allocated memory (i.e., something like 'const char * foo = "bar"; ).
     if(arg_ptr->dataStructType == ARRAY)
       *( (char**)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex) = ::strcpy(new char[strlen(arg)+1],arg);
     else
@@ -975,7 +978,7 @@ const char *MultiType::printable(MultiType::ArgumentType at) {
  *
  *-----------------------------------------------------------------------
  */
-void Arg::usage(char* filter,bool stdErrPrint) {
+void Arg::usage(const char* filter,bool stdErrPrint) {
 
   FILE* destStream;
 
@@ -1408,7 +1411,7 @@ bool Arg::parse(int argc,char** argv)
  * arguments without flags
  */
 
-char *string_fl="This is a string";
+const char *string_fl="This is a string";
 char char_fl = 'C';
 float float_fl = 3.4;
 double double_fl = 4.5;
@@ -1418,9 +1421,9 @@ int int_fl = 343;
 /*
  * arguments with flags
  */
-//char *myString = "BARSTR";
-char *myString;
-char* strOfStr[10];
+const char *myString = "BARSTR";
+// char *myString;
+const char* strOfStr[10] = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" };
 float aSingle = 2.3;
 double aDouble = .4;
 int int1 = 3;
@@ -1436,7 +1439,7 @@ int int3=3;
 int int4=4;
 int arg[10]={1000};
 
-char* testArrayOfChars="abcde";
+const char* testArrayOfChars="abcde";
 char testArrayOfChars2[10]={'z','y','x'};
 
 

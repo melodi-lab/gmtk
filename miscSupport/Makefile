@@ -117,7 +117,7 @@ testBPRange: bp_range.cc error.o
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ bp_range.cc error.o $(objs)
 
 testArguments: arguments.cc
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ arguments.cc $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ arguments.cc error.o
 
 testLogp: logp.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ logp.cc error.o $(objs)

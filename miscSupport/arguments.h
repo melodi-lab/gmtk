@@ -103,12 +103,14 @@ class MultiType {
   MultiType(bool& b) { ptr = (void*)&b; type = bool_type; }
   MultiType(char& c) { ptr = (void*)&c;  type = char_type; }
   MultiType(char*& s) { ptr = (void*)&s; type = str_type; }
+  MultiType(const char*& s) { ptr = (void*)&s; type = str_type; }
   MultiType(int& i)  { ptr = (void*)&i;  type = int_type; }
   MultiType(unsigned int& i)  { ptr = (void*)&i; type = uint_type; }
   MultiType(float& f) { ptr = (void*)&f; type = float_type; }
   MultiType(double& d) { ptr = (void*)&d; type = double_type; }
 
   MultiType(char** s) { ptr = (void*)s; type = str_type; }
+  MultiType(const char** s) { ptr = (void*)s; type = str_type; }
   MultiType(bool* b) { ptr = (void*)b; type = bool_type; }
   MultiType(int* i)  { ptr = (void*)i; type = int_type; }
   MultiType(unsigned int* i)  { ptr = (void*)i;  type = uint_type; }
@@ -201,20 +203,29 @@ class Arg {
   unsigned count;  // keeps track of how many command line instances of this flag there are.  
 
  public:
-  //Arg(char*,ArgDisposition,MultiType,char*d=NULL);
-  Arg(char*,ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false,unsigned priority=HIGHEST_PRIORITY);
-  //Arg(ArgDisposition,MultiType,char*d=NULL);
-  Arg(ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false, unsigned priority=HIGHEST_PRIORITY);
 
-  Arg(char*d);
-  Arg(const Arg&);
+  // constructors.
   Arg();
+  Arg(const char*d);
+  Arg(const char*,ArgDisposition,MultiType,const char*d=NULL,ArgDataStruct ds=SINGLE,
+      unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false,
+      unsigned priority=HIGHEST_PRIORITY);
+  Arg(ArgDisposition,MultiType,const char*d=NULL,ArgDataStruct ds=SINGLE,
+      unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false,
+      unsigned priority=HIGHEST_PRIORITY);
+  Arg(const Arg&);
+
+
+  //Arg(char*,ArgDisposition,MultiType,char*d=NULL);
+  //Arg(ArgDisposition,MultiType,char*d=NULL);
+
+
   ~Arg();
 
   static ArgsRetCode parseArgsFromCommandLine(int,char**);
   static ArgsRetCode parseArgsFromFile(char*f="argsFile");
   static bool parse(int i,char**c);
-  static void usage(char* filter=NULL, bool stdErrPrint = true);
+  static void usage(const char* filter=NULL, bool stdErrPrint = true);
   static void printArgs(Arg*args,FILE*f);
 
   static unsigned getNumArguments() { return (unsigned) Num_Arguments; } 

@@ -105,7 +105,7 @@ void reportTiming(// input
 		  FILE* outputf=NULL);
 
 
-int stringprintf(string& str,char *format, ...);
+int stringprintf(string& str,const char *format, ...);
 
 
 /*

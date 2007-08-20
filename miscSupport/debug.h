@@ -99,7 +99,7 @@ public:
 #endif    
   }
 
-  inline void infoMsg(unsigned v,char*format, ...) 
+  inline void infoMsg(unsigned v,const char* format, ...) 
   {
 #if INFO_MESSAGES_ON
     if (message(v)) {
@@ -116,7 +116,7 @@ public:
 #endif
   }
 
-  inline void infoMsg(char*format, ...) 
+  inline void infoMsg(const char* format, ...) 
   {
 #if INFO_MESSAGES_ON
     if (message(Default)) {
@@ -137,7 +137,7 @@ public:
   // I.e., this routine can be used with an
   // external check, so we don't pay to do a
   // routine call case this doesn't get inlined.
-  inline void infoMsgForce(char*format, ...) 
+  inline void infoMsgForce(const char* format, ...) 
   {
 #if INFO_MESSAGES_ON
     va_list ap;
@@ -164,7 +164,7 @@ public:
 };
 
 // Global version
-inline void infoMsg(unsigned v,char*format, ...) 
+inline void infoMsg(unsigned v,const char* format, ...) 
 {
 #if INFO_MESSAGES_ON
   if (IM::messageGlb(v)) {
@@ -179,7 +179,7 @@ inline void infoMsg(unsigned v,char*format, ...)
 #endif
 }
 
-inline void infoMsg(char*format, ...) 
+inline void infoMsg(const char* format, ...) 
 {
 #if INFO_MESSAGES_ON
   if (IM::messageGlb(IM::Default)) {
@@ -195,7 +195,7 @@ inline void infoMsg(char*format, ...)
 }
 
 
-inline void infoMsgForce(char*format, ...) 
+inline void infoMsgForce(const char* format, ...) 
 {
 #if INFO_MESSAGES_ON
     va_list ap;
