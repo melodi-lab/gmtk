@@ -37,7 +37,7 @@ extern "C" {
      FILE     *popen(const char *, const char *) __THROW;
      int pclose(FILE *stream) __THROW;
 #endif
-};
+}
 #endif
 #endif
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
