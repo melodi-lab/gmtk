@@ -94,6 +94,8 @@ v *    2- Add flatascii and flatbin formats
 
 #include <stdio.h>
 #include "GMTK_ObservationMatrix.h"
+#include "vbyteswapping.h"
+
 
 #include "fileParser.h"
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
@@ -121,8 +123,12 @@ extern "C" {
 #endif
 
 
-void check_required_inputs(const char** fof_names, const unsigned* formats, const unsigned* n_floats, const unsigned *n_ints);
-char* init_range_str(const char** range_str, unsigned stream_no);
+void check_required_inputs(const char** fof_names, 
+			   const unsigned* formats, 
+			   const unsigned* n_floats, 
+			   const unsigned *n_ints);
+const char* init_range_str(const char** range_str, 
+			   unsigned stream_no);
 
 
 // create ObservationMatrix object
@@ -322,10 +328,12 @@ void check_required_inputs(const char** fof_names, const unsigned* formats, cons
 
 }
 
-char* init_range_str(const char** range_str, unsigned stream_no) {
-  char* rng=NULL;
-  if (range_str == NULL || range_str[stream_no] == NULL ) rng = "all";
-  else rng = (char*) range_str[stream_no];
+const char* init_range_str(const char** range_str, unsigned stream_no) {
+  const char* rng=NULL;
+  if (range_str == NULL || range_str[stream_no] == NULL ) 
+    rng = "all";
+  else 
+    rng = (char*) range_str[stream_no];
   return rng;
 }
 
@@ -448,8 +456,8 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   size_t cur_n_samps = 0;
   size_t cur_prrng_n_samps = 0;
   StreamInfo *s;
-  char *fname = "Unknown file";
-  char *sname;
+  const char *fname = "Unknown file";
+  const char *sname;
 
   max_num_samples=cur_n_samps;  // i.e. 0
   prrng_max_num_samples=cur_prrng_n_samps;  // i.e. 0
@@ -1142,6 +1150,66 @@ void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats
 }
 
 
+
+void ObservationMatrix::initializeCopyFunctionPtrs(
+	   const unsigned stream_no,
+	   const bool swap,
+	   const unsigned lftrcombo,
+	   float_copy_swap_func_ptr_type&float_copy_swap_func_ptr,
+	   int_copy_swap_func_ptr_type&int_copy_swap_func_ptr)
+
+
+{
+  if(stream_no==0) {
+    if(swap) {
+      float_copy_swap_func_ptr=&swapb_vf32_vf32;
+      int_copy_swap_func_ptr=&swapb_vi32_vi32;
+    }
+    else {
+      float_copy_swap_func_ptr=&copy_vf32_vf32;
+      int_copy_swap_func_ptr=&copy_vi32_vi32;
+    }
+  }
+  else {
+    if(swap) {
+      int_copy_swap_func_ptr=&swapb_vi32_vi32;
+      switch(lftrcombo) {
+      case FTROP_NONE:
+	float_copy_swap_func_ptr=&swapb_vf32_vf32; break;
+      case FTROP_ADD:
+	float_copy_swap_func_ptr=&swapb_add_vf32_vf32; break;
+      case FTROP_MUL:
+	float_copy_swap_func_ptr=&swapb_mul_vf32_vf32; break;
+      case FTROP_SUB:
+	float_copy_swap_func_ptr=&swapb_sub_vf32_vf32; break;
+      case FTROP_DIV:
+	float_copy_swap_func_ptr=&swapb_div_vf32_vf32; break;
+      default:
+      error("ERROR: Unrecognized feature combination type (%d)",lftrcombo);
+      }
+    }
+    else {
+      int_copy_swap_func_ptr=&copy_vi32_vi32;
+      switch(lftrcombo) {
+      case FTROP_NONE:
+	float_copy_swap_func_ptr=&copy_vf32_vf32; break;
+      case FTROP_ADD:
+	float_copy_swap_func_ptr=&copy_add_vf32_vf32; break;
+      case FTROP_MUL:
+	float_copy_swap_func_ptr=&copy_mul_vf32_vf32; break;
+      case FTROP_SUB:
+	float_copy_swap_func_ptr=&copy_sub_vf32_vf32; break;
+      case FTROP_DIV:
+	float_copy_swap_func_ptr=&copy_div_vf32_vf32; break;
+      default:
+	error("ERROR: Unrecognized feature combination type (%d)",lftrcombo);
+      }
+
+    }
+  }
+}
+
+
 /**
  * applies the continuous features (float_rng), the discrete features
  * (int_rng), and the per-sentence (pr_rng) ranges to the current
@@ -1151,7 +1219,12 @@ void ObservationMatrix::applyPostTransforms(char* trans_str, unsigned num_floats
  * Side effects: none
  *
  * */
-void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,Range* float_rng,Range* int_rng,Range* pr_rng) {
+void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,
+					  float* float_buf,
+					  Int32* int_buf,
+					  Range* float_rng,
+					  Range* int_rng,
+					  Range* pr_rng) {
 
   DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.\n\tProcessing stream no %d.  pr_rng = %s, pr_rng->length()=%d\n", stream_no, pr_rng->GetDefStr(), pr_rng->length()));
 
@@ -1168,55 +1241,10 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
 
   DBGFPRINTF((stderr,"\tNum total cont feats = %d; stream %d num floats = %d, num ints = %d, stride = %d.\n",_numContinuous,stream_no,num_floats,num_ints,stride));
 
-  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  void (*float_copy_swap_func_ptr)(size_t, const float*, float*)=NULL;
   void (*int_copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
 
-  if(stream_no==0) {
-    if(swap) {
-      copy_swap_func_ptr=&swapb_vi32_vi32;
-      int_copy_swap_func_ptr=&swapb_vi32_vi32;
-    }
-    else {
-      copy_swap_func_ptr=&copy_vi32_vi32;
-      int_copy_swap_func_ptr=&copy_vi32_vi32;
-    }
-  }
-  else {
-    if(swap) {
-      int_copy_swap_func_ptr=&swapb_vi32_vi32;
-      switch(_ftrcombo) {
-      case FTROP_NONE:
-	copy_swap_func_ptr=&swapb_vi32_vi32; break;
-      case FTROP_ADD:
-	copy_swap_func_ptr=&swapb_add_vi32_vi32; break;
-      case FTROP_MUL:
-	copy_swap_func_ptr=&swapb_mul_vi32_vi32; break;
-      case FTROP_SUB:
-	copy_swap_func_ptr=&swapb_sub_vi32_vi32; break;
-      case FTROP_DIV:
-	copy_swap_func_ptr=&swapb_div_vi32_vi32; break;
-      default:
-	error("ERROR: Unrecognized feature combination type (%d)",_ftrcombo);
-      }
-    }
-    else {
-      int_copy_swap_func_ptr=&copy_vi32_vi32;
-      switch(_ftrcombo) {
-      case FTROP_NONE:
-	copy_swap_func_ptr=&copy_vi32_vi32; break;
-      case FTROP_ADD:
-	copy_swap_func_ptr=&copy_add_vi32_vi32; break;
-      case FTROP_MUL:
-	copy_swap_func_ptr=&copy_mul_vi32_vi32; break;
-      case FTROP_SUB:
-	copy_swap_func_ptr=&copy_sub_vi32_vi32; break;
-      case FTROP_DIV:
-	copy_swap_func_ptr=&copy_div_vi32_vi32; break;
-      default:
-	error("ERROR: Unrecognized feature combination type (%d)",_ftrcombo);
-      }
-    }
-  }
+  initializeCopyFunctionPtrs(stream_no,swap,_ftrcombo,float_copy_swap_func_ptr,int_copy_swap_func_ptr);
 
   if(_ftrcombo==FTROP_NONE) {
     for (unsigned i=0; i < stream_no; ++i) {
@@ -1247,7 +1275,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
       float_buf_ptr=start_float_buf;
       //      DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.   *pr_it= %d.\n",*pr_it));
       for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
-	copy_swap_func_ptr(1,(const int *) &float_buf[*it+(*pr_it)*num_floats], (int *)float_buf_ptr++);
+	float_copy_swap_func_ptr(1,&float_buf[*it+(*pr_it)*num_floats],float_buf_ptr++);
 	if(!finite(*(float_buf_ptr-1))) {
 #ifdef WARNING_ON_NAN
 	  warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, sentence %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
@@ -1266,13 +1294,13 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
       DBGFPRINTF((stderr," pr_it (frame)=%d, start_int_buf=%d.\n",*pr_it,start_int_buf));
       int_buf_ptr=start_int_buf;
       for(Range::iterator it = int_rng->begin(); !it.at_end(); it++) {
-	int_copy_swap_func_ptr(1,(const int *) &int_buf[*it+(*pr_it)*num_ints], (int *)int_buf_ptr++);
+	int_copy_swap_func_ptr(1,&int_buf[*it+(*pr_it)*num_ints], int_buf_ptr++);
 	DBGFPRINTF((stderr,"   *(int_buf_ptr-1)=%d.\n",*(int_buf_ptr-1)));
       }
     }
   }
 
-    DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.  END.\n"));
+  DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.  END.\n"));
 
 }
 
@@ -1285,7 +1313,14 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,float* float_buf,In
  * Side effects: none
  *
  * */
-void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,float* float_buf,Int32* int_buf,Range* float_rng,Range* int_rng,Range* pr_rng,unsigned prrng_n_samps) {
+void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,
+							 float* float_buf,
+							 Int32* int_buf,
+							 Range* float_rng,
+							 Range* int_rng,
+							 Range* pr_rng,
+							 unsigned prrng_n_samps) 
+{
 
   StreamInfo* s            = _inStreams[stream_no];
   unsigned num_floats      = s->getNumFloats();
@@ -1356,49 +1391,12 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
     _repeat[2]=-1;
   }
 
-  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  void (*float_copy_swap_func_ptr)(size_t, const float*, float*)=NULL;
+  void (*int_copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
 
-  if(stream_no==0) {
-    copy_swap_func_ptr=swap?&swapb_vi32_vi32:&copy_vi32_vi32;
-  }
-  else {
-    if(swap) {
-      switch(_ftrcombo) {
-      case FTROP_NONE:
-	copy_swap_func_ptr=&swapb_vi32_vi32; break;
-      case FTROP_ADD:
-	copy_swap_func_ptr=&swapb_add_vi32_vi32; break;
-      case FTROP_MUL:
-	copy_swap_func_ptr=&swapb_mul_vi32_vi32; break;
-      case FTROP_SUB:
-	copy_swap_func_ptr=&swapb_sub_vi32_vi32; break;
-      case FTROP_DIV:
-	copy_swap_func_ptr=&swapb_div_vi32_vi32; break;
-      default:
-      error("ERROR: Unrecognized feature combination type (%d)",_ftrcombo);
-      }
-      //copy_swap_func_ptr=&swapb_vi32_vi32;
-    }
-    else {
-      switch(_ftrcombo) {
-      case FTROP_NONE:
-      copy_swap_func_ptr=&copy_vi32_vi32; break;
-      case FTROP_ADD:
-      copy_swap_func_ptr=&copy_add_vi32_vi32; break;
-      case FTROP_MUL:
-      copy_swap_func_ptr=&copy_mul_vi32_vi32; break;
-      case FTROP_SUB:
-	copy_swap_func_ptr=&copy_sub_vi32_vi32; break;
-      case FTROP_DIV:
-      copy_swap_func_ptr=&copy_div_vi32_vi32; break;
-      default:
-	error("ERROR: Unrecognized feature combination type (%d)",_ftrcombo);
-      }
-      //copy_swap_func_ptr=&copy_vi32_vi32;
-    }
-  }
+  initializeCopyFunctionPtrs(stream_no,swap,_ftrcombo,float_copy_swap_func_ptr,int_copy_swap_func_ptr);
 
- if(_ftrcombo==FTROP_NONE) {
+  if(_ftrcombo==FTROP_NONE) {
     for (unsigned i=0; i < stream_no; ++i) {
       start_float_pos += _inStreams[i]->getNumFloatsUsed();
       start_int_pos += _inStreams[i]->getNumIntsUsed();
@@ -1431,7 +1429,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
       for(int i=0; i<repeat;++i) {
 	float_buf_ptr=start_float_buf;
 	for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
-	  copy_swap_func_ptr(1,(const int *) &float_buf[*it+(*pr_it)*num_floats], (int *)float_buf_ptr++);
+	  float_copy_swap_func_ptr(1,&float_buf[*it+(*pr_it)*num_floats],float_buf_ptr++);
 	  if(!finite(*(float_buf_ptr-1))) {
 #ifdef WARNING_ON_NAN
 	    warning("WARNING: ObservationMatrix::copyToFinalBuffer: found NaN or +/-INF at %i'th float in frame %i and stream %i\n",*it,*pr_it,stream_no);
@@ -1444,7 +1442,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
       }
     }
   }
-  if(num_ints>0) {
+  if (num_ints>0) {
     int repeat, cnt=0;
     int* rep_ptr=_repeat.ptr;
     for (Range::iterator pr_it = pr_rng->begin(); !pr_it.at_end(); pr_it++,cnt++) {
@@ -1457,7 +1455,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,floa
       for(int i=0; i<repeat;++i) {
 	int_buf_ptr=start_int_buf;
 	for(Range::iterator it = int_rng->begin(); !it.at_end(); it++) {
-	  copy_swap_func_ptr(1,(const int *) &int_buf[*it+(*pr_it)*num_ints], (int *)int_buf_ptr++);
+	  int_copy_swap_func_ptr(1,&int_buf[*it+(*pr_it)*num_ints], int_buf_ptr++);
 	}
 	start_int_buf+=stride;
       }
@@ -2018,7 +2016,7 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   }
 
 
-  if (fread((short *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
+  if (fread((Int32 *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
     error("ERROR: ObservationMatrix::openHTKFile: Can't read sample period\n");
   }
 
@@ -2165,7 +2163,7 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
     if(swap) {
       float tmp_float[1];
       for (unsigned i=0; i<total_num_floats; ++i) {
-	swapb_vi32_vi32(1,(const int*)(float_buffer+i),(int*)tmp_float);
+	swapb_vf32_vf32(1,(float_buffer+i),tmp_float);
 	float_buffer[i]=tmp_float[0];
       }
     }
@@ -2209,7 +2207,7 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
       if(swap) {
 	float tmp_float[1];
 	for (unsigned i=0; i<num_floats; ++i) {
-	  swapb_vi32_vi32(1,(const int*)(float_buffer_ptr+i),(int*)tmp_float);
+	  swapb_vf32_vf32(1,(float_buffer_ptr+i),tmp_float);
 	  float_buffer_ptr[i]=tmp_float[0];
 	}
       }

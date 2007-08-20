@@ -231,7 +231,7 @@ public:
     char *buf;
     int bufpos;
     int linect;
-    static char *WS;
+    static const char *WS;
 
     tokFile(FILE* a_file, const char *a_name = "(unknown)") {
         file = a_file;
@@ -253,7 +253,8 @@ public:
         fclose(file);
     }
 };
-char *tokFile::WS = " \t\n";
+
+const char *tokFile::WS = " \t\n";
 
 int tokFile::getNextTok(char **ret) {
     // Pull another space-delimited token from an open file handle.

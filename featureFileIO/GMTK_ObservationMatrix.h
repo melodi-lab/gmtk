@@ -279,7 +279,18 @@ class ObservationMatrix {
    // Auxilliary functions
   unsigned checkNumSegments(StreamInfo* streams[], unsigned n_streams, unsigned* action_if_diff_seg_len);
   void     checkNumFeatures(StreamInfo* streams[], unsigned n_streams, unsigned* n_floats, unsigned* n_ints, unsigned* max_n_floats, unsigned* max_n_ints, unsigned ftrcombo);
-  
+
+
+  typedef void (*float_copy_swap_func_ptr_type)(size_t, const float*, float*);
+  typedef void (*int_copy_swap_func_ptr_type)(size_t, const intv_int32_t*, intv_int32_t*);
+  void initializeCopyFunctionPtrs(
+				  const unsigned stream_no,
+				  const bool swap,
+				  const unsigned lftrcombo,
+				  float_copy_swap_func_ptr_type&float_copy_swap_func_ptr,
+				  int_copy_swap_func_ptr_type&int_copy_swap_func_ptr);
+
+
 
  public:
   

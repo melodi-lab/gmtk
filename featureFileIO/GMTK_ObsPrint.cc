@@ -47,6 +47,7 @@
 #include "error.h"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
+#include "vbyteswapping.h"
 
 #include "GMTK_ObsPrint.h"
 #include "GMTK_ObsKLT.h"
@@ -72,7 +73,7 @@ void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
 char * output_fname = NULL; // Output pfile name.
 char * outputList = NULL;
 FILE *outputListFp=NULL;
-char * outputNameSeparatorStr="_";
+const char * outputNameSeparatorStr="_";
 
 
 
@@ -86,7 +87,13 @@ Prints an HTK header given the dimensionality of the feature vector and the numb
 
 */
 
-void printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSamples, short parameterKind=USER, Int32 samplePeriod=1) {
+void printHTKHeader(FILE* ofp, 
+		    bool oswap, 
+		    int numInts, 
+		    int numFloats, 
+		    int numSamples, 
+		    short parameterKind=USER, 
+		    Int32 samplePeriod=1) {
 
   DBGFPRINTF((stderr,"obsPrint: Printing HTK header.\n"));
   // structure of HTK header
@@ -114,7 +121,7 @@ void printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSa
   if (fwrite(&numSamples,sizeof(Int32),1,ofp) != 1) {
     error("Cannot write HTK number of samples\n");
   }
-  if (fwrite((short *)&samplePeriod,sizeof(Int32),1,ofp) != 1) {
+  if (fwrite((Int32 *)&samplePeriod,sizeof(Int32),1,ofp) != 1) {
     error("Cannot write HTK sample period\n");
   }
 
@@ -429,10 +436,10 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 #define MAX_OBJECTS 10
 
 char *input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};  // Input file name.
-char * ifmtStr[MAX_OBJECTS]={"pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile"};
+const char * ifmtStr[MAX_OBJECTS]={"pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile"};
 unsigned ifmt[MAX_OBJECTS];
 
-char * ofmtStr="flatasc";
+const char * ofmtStr="flatasc";
 unsigned ofmt;
 
 unsigned int nis[MAX_OBJECTS];
@@ -447,11 +454,11 @@ char  *prepr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NU
 char  *postpr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream post-transform frame range string 
 char  *gpr_str               = 0;   // global final frame range string
 
-char* actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er","er","er","er","er","er"};   // 
+const char* actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er","er","er","er","er","er"};   // 
 unsigned actionIfDiffNumFrames[MAX_OBJECTS]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
 
 
-char*    actionIfDiffNumSentsStr[MAX_OBJECTS] = {"te","te","te","te","te","te","te","te","te","te"}; 
+const char*    actionIfDiffNumSentsStr[MAX_OBJECTS] = {"te","te","te","te","te","te","te","te","te","te"}; 
 unsigned actionIfDiffNumSents[MAX_OBJECTS]    = {SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
 
 char* perStreamTransforms[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // 
@@ -475,7 +482,7 @@ unsigned startSkip = 0;
 unsigned endSkip   = 0;
 
 
-char*    ftrcomboStr = "none";
+const char*    ftrcomboStr = "none";
 unsigned ftrcombo    = FTROP_NONE;
 
 

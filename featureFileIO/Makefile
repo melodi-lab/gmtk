@@ -109,15 +109,15 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_ObservationMatrix.o GMTK_Stream.o GMTK_DataTransformations.o GMTK_WordOrganization.o GMTK_ObsStats.o pfile.o
+objs = GMTK_ObservationMatrix.o GMTK_Stream.o GMTK_DataTransformations.o GMTK_WordOrganization.o GMTK_ObsStats.o pfile.o vbyteswapping.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
 
-all_srcs = GMTK_ObservationMatrix.cc GMTK_Stream.cc GMTK_DataTransformations.cc GMTK_WordOrganization.cc  GMTK_ObsStats.cc
+all_srcs = GMTK_ObservationMatrix.cc GMTK_Stream.cc GMTK_DataTransformations.cc GMTK_WordOrganization.cc  GMTK_ObsStats.cc vbyteswapping.cc
 
-all_hdrs = GMTK_Stream.h GMTK_ObservationMatrix.h GMTK_WordOrganization.h  GMTK_ObsStats.h
+all_hdrs = GMTK_Stream.h GMTK_ObservationMatrix.h GMTK_WordOrganization.h  GMTK_ObsStats.h vbyteswapping.h
 
 all_objs = $(objs)
 
