@@ -12,10 +12,10 @@
 
 # other flags
 EXLDFLAGS=
-# GCC=/usr/nikola/pkgs/gcc/.4.1.1/bin/gcc
-# GPP=/usr/nikola/pkgs/gcc/.4.1.1/bin/g++
-CC=gcc
-CXX=g++
+CC=/usr/nikola/pkgs/gcc/.4.2.1/bin/gcc
+CXX=/usr/nikola/pkgs/gcc/.4.2.1/bin/g++
+# CC=gcc
+# CXX=g++
 EXCOMFLAGS=-DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
 OPTFLAGS =-g -O3 -Wno-deprecated -march=pentium4 -mfpmath=sse -ffast-math $(EXCOMFLAGS)
 
