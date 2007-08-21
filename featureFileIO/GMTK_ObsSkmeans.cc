@@ -218,7 +218,7 @@ static void uniformSkmeans(ObservationMatrix* obs_mat,
 
 	  if (!quiet_mode) {
 	    if ((sent_no) % SENTS_PER_PRINT == 0)
-	      printf("Processing sentence %d\n",(sent_no));
+	      printf("Processing sentence %ld\n",(sent_no));
 	  }
 
 	  //	  const size_t n_read = in_streamp->read_ftrslabs(sent_no,ftr_buf, lab_buf);
@@ -345,7 +345,7 @@ static void uniformSkmeans(ObservationMatrix* obs_mat,
 
 	if (!quiet_mode) {
 	  if ((sent_no) % SENTS_PER_PRINT == 0)
-	    printf("Processing sentence %d\n",(sent_no));
+	    printf("Processing sentence %ld\n",(sent_no));
 	}
 
 	//	const size_t n_read = in_streamp->read_ftrslabs(sent_no, ftr_buf, lab_buf);
@@ -510,7 +510,7 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 
 	  if (!quiet_mode) {
 	    if ((sent_no) % 1 == 0)
-	      printf("Processing sentence %d\n",(sent_no));
+	      printf("Processing sentence %ld\n",(sent_no));
 	  }
 
 	  //	  const size_t n_read = in_streamp->read_ftrslabs(sent_no,ftr_buf, lab_buf);
@@ -636,7 +636,7 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 
 	if (!quiet_mode) {
 	  if ((sent_no) % SENTS_PER_PRINT == 0)
-	    printf("Processing sentence %d\n",(sent_no));
+	    printf("Processing sentence %ld\n",(sent_no));
 	}
 
 	//	const size_t n_read = in_streamp->read_ftrslabs(sent_no, ftr_buf, lab_buf);
