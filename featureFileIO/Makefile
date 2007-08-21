@@ -57,7 +57,7 @@ prefix = .
 exec_prefix = .
 install_prefix = .
 
-libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../IEEEFloatingpoint -L/g/rcs/sw/lib
+libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../IEEEFloatingpoint 
 includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../IEEEFloatingpoint
 docdir = $(prefix)/man/man1
 

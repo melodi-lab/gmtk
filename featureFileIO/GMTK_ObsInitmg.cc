@@ -96,7 +96,7 @@ void initmg(ObservationMatrix* obs_mat,
 
 	  if (!quiet_mode) {
 	    if ((sent_no) % 1000 == 0)
-	      printf("Processing sentence %d\n",(sent_no));
+	      printf("Processing sentence %ld\n",(sent_no));
 	  }
 
 	  //const int n_read =  in_streamp->read_ftrslabs(sent_no, ftr_buf, lab_buf);
@@ -192,7 +192,7 @@ void initmg(ObservationMatrix* obs_mat,
 
 	if (!quiet_mode) {
 	  if ((sent_no) % 1000 == 0)
-	    printf("Processing sentence %d\n",(sent_no));
+	    printf("Processing sentence %ld\n",(sent_no));
 	}
 
 	 for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
