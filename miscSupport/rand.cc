@@ -13,6 +13,7 @@
 #include <math.h>
 #include <limits.h>
 #include <float.h>
+#include <limits.h>
 #include <assert.h>
 
 #include "general.h"
