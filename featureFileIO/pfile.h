@@ -9,12 +9,10 @@
 
 #include <stdio.h>
 #include "error.h"
+#include "general.h"
 
 // This is the size of the PFile header
 #define PFILE_HEADER_SIZE (32768)
-
-typedef size_t UInt32;
-typedef int Int32;
 
 typedef int intv_int32_t;
 typedef unsigned int intv_uint32_t;
