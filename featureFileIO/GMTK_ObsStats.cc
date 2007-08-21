@@ -221,7 +221,7 @@ void obsStats(FILE *out_fp, ObservationMatrix* obs_mat,Range& srrng, Range& frrn
     for (i=0;i<frrng.length();i++) {
       const double maxs_stds = (*ftr_maxs_p)/(*ftr_stds_p);
       const double mins_stds = (*ftr_mins_p)/(*ftr_stds_p);
-      fprintf(out_fp,"%d %f %f %f %d %d %f %d %d %f %f ",i,
+      fprintf(out_fp,"%u %f %f %f %u %u %f %u %u %f %f ",i,
 	     *ftr_means_p,*ftr_stds_p,
 	     *ftr_maxs_p,ftr_maxs_locs_p->sent_no,ftr_maxs_locs_p->frame_no,
 	     *ftr_mins_p,ftr_mins_locs_p->sent_no,ftr_mins_locs_p->frame_no,
