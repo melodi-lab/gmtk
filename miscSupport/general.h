@@ -141,14 +141,26 @@ unsigned int numBitsSet(unsigned u);
 // 8-bit (1 byte) unsigned integer type
 typedef unsigned char UInt8;
 
+// 8-bit (1 byte) signed integer type
+typedef char Int8;
+
 // 16-bit (2 byte) unsigned integer type
 typedef unsigned short UInt16;
+
+// 16-bit (2 byte) signed integer type
+typedef int short Int16;
 
 // 32-bit (4 byte) unsigned integer type.
 typedef unsigned int UInt32;
 
+// 32-bit (4 byte) signed integer type.
+typedef int Int32;
+
 // 64-bit (8 byte) unsigned integer type.
 // typedef long long unsigned UInt64;
+
+// 64-bit (8 byte) signed integer type.
+// typedef long long int Int64;
 
 
 #endif
