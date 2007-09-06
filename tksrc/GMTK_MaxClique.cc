@@ -1937,7 +1937,6 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
   }
 
 
-
   // Clique values only store/hash values of hidden (thus necessarily
   // discrete) variables since they are the only thing that change.
   discreteValuePtrs.resize(origin.hashableNodes.size());

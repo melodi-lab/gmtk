@@ -4214,6 +4214,11 @@ Mon Apr 23 18:10:35 2007
        http://www.flipcode.com/cgi-bin/fcarticles.cgi?show=63828
     (and entry above from June 22, 2004).
 
+Sun May 13 22:35:12 2007
+  - when changing the r.v. unrolling process to only use the modified template, 
+    we still need to keep track of r.v. values when doing things like viterbi.
+    for this process, use the packing process to store the values as we compute
+    the viterbi path so that even if we unroll by quite a bit, it will be fast.
 
 Mon Jun  4 19:19:43 2007
   - when we add the neg binomial/poisson dist, also give option to

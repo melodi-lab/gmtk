@@ -56,11 +56,11 @@ public:
         // of the child 'val' given the parents are the assigned to
         // the set of values set during the most previous call to
         // becomeAwareOfParentValues.
-        logpr probGivenParents(const int val) { assert(0); }
+        logpr probGivenParents(const int val) { assert(0); return 0.0; }
  
         ///////////////////////////////////////////////////////////
         // Given the current parent values, generate a random sample.
-        virtual int randomSample(DiscRV*drv) { assert(0); }
+        virtual int randomSample(DiscRV*drv) { assert(0); return 0; }
  
         ///////////////////////////////////////////////////////////
         // Re-normalize the output distributions
