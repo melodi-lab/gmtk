@@ -2441,8 +2441,8 @@ BoundaryTriangulate
       if (is_max_clique) {
 	if (message(Huge)) {
 	  // print out clique information.
-	  printf("Found a max clique of size %d while eliminating node %s(%d):",
-		 candidateMaxClique.size(),
+	  printf("Found a max clique of size %ld while eliminating node %s(%d):",
+		 (unsigned long)candidateMaxClique.size(),
 		 rv->name().c_str(),rv->frame());
 	  for (set<RV*>::iterator j=candidateMaxClique.begin();
 	       j != candidateMaxClique.end(); j++) {
@@ -6433,8 +6433,8 @@ unrollAndTriangulate(// triangulate heuristics
 	maxSize = cliques[i].nodes.size();
 	maxSizeCliqueWeight = curWeight;
       }
-      printf("%d : %d  %f\n",i,
-	     cliques[i].nodes.size(),curWeight);
+      printf("%d : %ld  %f\n",i,
+	     (unsigned long)cliques[i].nodes.size(),curWeight);
       for (set<RV*>::iterator j=cliques[i].nodes.begin();
 	   j != cliques[i].nodes.end(); j++) {
 	RV* rv = (*j);
@@ -7484,16 +7484,20 @@ bool BoundaryTriangulate::validInterfaceDefinition(const set<RV*> &P,
   if (UR_pli.size() != Ep_uli.size() || 
       Ep_uli.size() != Ep0_pli.size()) {
     if (message(Max)) {
-      printf("INTERFACE FAILED: size(LI of union(C',E') to P')=%d, size(LI of E' to union(P',C'))=%d, size(LI of E' to P')=%d\n",
-	     UR_pli.size(),Ep_uli.size(),Ep0_pli.size());
+      printf("INTERFACE FAILED: size(LI of union(C',E') to P')=%ld, size(LI of E' to union(P',C'))=%ld, size(LI of E' to P')=%ld\n",
+	     (unsigned long)UR_pli.size(),
+	     (unsigned long)Ep_uli.size(),
+	     (unsigned long)Ep0_pli.size());
       printf("LI of union(C',E') to P': ");printRVSet(stdout,UR_pli);
       printf("LI of E' to union(P',C'): ");printRVSet(stdout,Ep_uli);
       printf("LI of E' to P': ");printRVSet(stdout,Ep0_pli);
     }
     return false;
   } else if (message(Max+50)) {
-    printf("INTERFACE SIZE SUCCEEDED: size(LI of union(C',E') to P')=%d, size(LI of E' to union(P',C'))=%d, size(LI of E' to P')=%d\n",
-	   UR_pli.size(),Ep_uli.size(),Ep0_pli.size());
+    printf("INTERFACE SIZE SUCCEEDED: size(LI of union(C',E') to P')=%ld, size(LI of E' to union(P',C'))=%ld, size(LI of E' to P')=%ld\n",
+	   (unsigned long)UR_pli.size(),
+	   (unsigned long)Ep_uli.size(),
+	   (unsigned long)Ep0_pli.size());
     printf("LI of union(C',E') to P': ");printRVSet(stdout,UR_pli);
     printf("LI of E' to union(P',C'): ");printRVSet(stdout,Ep_uli);
     printf("LI of E' to P': ");printRVSet(stdout,Ep0_pli);    
@@ -7958,7 +7962,7 @@ BoundaryTriangulate::findBestInterface(
 	cw = &flowMinSizeHelper;
 
       if (message(Tiny)) {
-	printf("Initial boundary has size %d: ",C_l.size());
+	printf("Initial boundary has size %ld: ",(unsigned long)C_l.size());
 	printRVSet(stdout,C_l);
       }
 
@@ -7973,10 +7977,10 @@ BoundaryTriangulate::findBestInterface(
       
       if (message(Tiny)) {
 	printf("Best flow found is %f\n", flow); 
-	printf("Best boundary found has size %d: ",C_l.size());
+	printf("Best boundary found has size %ld: ",(unsigned long)C_l.size());
 	printRVSet(stdout,C_l);
 	if (message(Med)) {
-	  printf("Best (left of boundary) found has size %d and is:",left_C_l.size());
+	  printf("Best (left of boundary) found has size %ld and is:",(unsigned long)left_C_l.size());
 	  printRVSet(stdout,left_C_l);
 	}
       }
@@ -8021,7 +8025,7 @@ BoundaryTriangulate::findBestInterface(
 		 best_score);
 
   if (message(Tiny)) {
-    printf("  Initial interface size = %d\n",C_l.size());
+    printf("  Initial interface size = %ld\n",(unsigned long)C_l.size());
     printf("  Initial interface score =");
     for (unsigned i=0;i<best_score.size();i++)
       printf(" %f ",best_score[i]);
@@ -8071,7 +8075,7 @@ BoundaryTriangulate::findBestInterface(
 			     P_u1,C1_u1,Cextra_u1,C2_u1,E_u1,
 			     C2_u2_to_C1_u1,C2_u2_to_C2_u1);
     if (message(Tiny)) {
-      printf("  Size of best interface = %d\n",best_C_l.size());
+      printf("  Size of best interface = %ld\n",(unsigned long)best_C_l.size());
       printf("  Score of best interface =");
       for (unsigned i=0;i<best_score.size();i++)
 	printf(" %f ",best_score[i]);

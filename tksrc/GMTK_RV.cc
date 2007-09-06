@@ -464,7 +464,7 @@ printRVSetPtr(FILE*f,set<RV*>& locset,bool nl)
     RV* rv = (*it);
     if (!first)
       fprintf(f,",");
-    fprintf(f,"%s(%d)=0x%X",rv->name().c_str(),rv->frame(),(unsigned)rv);
+    fprintf(f,"%s(%d)=0x%lX",rv->name().c_str(),rv->frame(),(unsigned long)rv);
     first = false;
   }
   if (nl) fprintf(f,"\n");

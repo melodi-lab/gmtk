@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 
 	// figure out how many words in the vocab file
 	unsigned card = 0;
-	unsigned len = 1024;
+	size_t len = 1024;
 	char * word = new char[len];
 	FILE *fp = fopen(vocabFile, "r");
 	if ( fp == NULL )

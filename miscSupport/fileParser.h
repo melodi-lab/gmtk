@@ -95,6 +95,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool readStr(char*& str,const char *msg=NULL);
   bool readInt(int& i,const char *msg=NULL);
   bool readUnsigned(unsigned& i,const char *msg=NULL);
+  bool readUnsignedLong(unsigned long& i,const char *msg=NULL);
 
   bool readFloat(float& f,const char *msg=NULL);
   bool readDouble(double& d,const char *msg=NULL);
@@ -113,6 +114,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool read(char& c,const char *msg=NULL) { return readChar(c,msg); }
   bool read(int& i,const char *msg=NULL) { return readInt(i,msg); }
   bool read(unsigned& i,const char *msg=NULL) { return readUnsigned(i,msg); }
+  bool read(unsigned long& i,const char *msg=NULL) { return readUnsignedLong(i,msg); }
   bool read(float& f,const char *msg=NULL) { return readFloat(f,msg); }
   bool read(double& d,const char *msg=NULL) { return readDouble(d,msg); }
   bool read(float* fp, const unsigned len, const char *msg=NULL) { return readFloatVec(fp,len,msg); }
@@ -196,6 +198,7 @@ class oDataStreamFile : public ioDataStreamFile {
   bool writeChar(const char c, const char *msg=NULL,const bool writeSpaceSuffixAscii=true);
   bool writeInt(const int i,const char *msg=NULL);
   bool writeUnsigned(const unsigned int u,const char *msg=NULL);
+  bool writeUnsignedLong(const unsigned long u,const char *msg=NULL);
   bool writeFloat(const float f,const char *msg=NULL);
   bool writeDouble(const double d,const char *msg=NULL);
   bool writeFloatVec(const float* fp,unsigned len, const char *msg=NULL);
@@ -215,6 +218,7 @@ class oDataStreamFile : public ioDataStreamFile {
 
   bool write(const int i,const char *msg=NULL) { return writeInt(i,msg); }
   bool write(const unsigned int u,const char *msg=NULL) { return writeUnsigned(u,msg); }
+  bool write(const unsigned long u,const char *msg=NULL) { return writeUnsignedLong(u,msg); }
 #ifdef _AIX
   bool write(const size_t i,const char *msg=NULL) { return writeUnsigned(i,msg); }
 #endif

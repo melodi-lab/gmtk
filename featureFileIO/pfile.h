@@ -14,6 +14,12 @@
 // This is the size of the PFile header
 #define PFILE_HEADER_SIZE (32768)
 
+// a print command for size_t similar to what you might find in inttypes.h
+#define PRIst "zu"
+// a print command for ssize_t similar to what you might find in inttypes.h
+#define PRIsst "zd"
+
+
 typedef int intv_int32_t;
 typedef unsigned int intv_uint32_t;
 

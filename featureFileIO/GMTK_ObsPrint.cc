@@ -354,8 +354,8 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
       if (!dontPrintFrameID) {
 	//	if (ofmt==FLATBIN || ofmt==RAWBIN) {
 	if (ofmt==FLATBIN) {
-	  size_t sent_no = *srit;
-	  size_t frame_no = *prit;
+	  int sent_no = *srit;
+	  int frame_no = *prit;
 	  
 	  copy_swap_func_ptr(1,(int*)&sent_no,(int*)&sent_no);
 	  copy_swap_func_ptr(1,(int*)&frame_no,(int*)&frame_no);

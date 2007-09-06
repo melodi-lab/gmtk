@@ -600,7 +600,7 @@ main(int argc,char*argv[])
 
 	double p_maxWeight = -1.0;
 	double p_totalWeight = -1.0; // starting flag
-	printf("  --- Prologue summary, %d cliques\n",gm_template.P.cliques.size());
+	printf("  --- Prologue summary, %lu cliques\n",(unsigned long)gm_template.P.cliques.size());
 	for (unsigned i=0;i<gm_template.P.cliques.size();i++) {
 	  double curWeight = MaxClique::computeWeight(gm_template.P.cliques[i].nodes);
 	  printf("   --- P curWeight = %f\n",curWeight);
@@ -624,7 +624,7 @@ main(int argc,char*argv[])
 
 	double c_maxWeight = -1.0;
 	double c_totalWeight = -1.0; // starting flag
-	printf("  --- Chunk summary, %d cliques\n",gm_template.C.cliques.size());
+	printf("  --- Chunk summary, %lu cliques\n",(unsigned long)gm_template.C.cliques.size());
 	for (unsigned i=0;i<gm_template.C.cliques.size();i++) {
 	  double curWeight = MaxClique::computeWeight(gm_template.C.cliques[i].nodes);
 	  printf("   --- C curWeight = %f\n",curWeight);
@@ -652,7 +652,7 @@ main(int argc,char*argv[])
 
 	double e_maxWeight = -1.0;
 	double e_totalWeight = -1.0; // starting flag
-	printf("  --- Epilogue summary, %d cliques\n",gm_template.E.cliques.size());
+	printf("  --- Epilogue summary, %lu cliques\n",(unsigned long)gm_template.E.cliques.size());
 	for (unsigned i=0;i<gm_template.E.cliques.size();i++) {
 	  double curWeight = MaxClique::computeWeight(gm_template.E.cliques[i].nodes);
 	  printf("   --- E curWeight = %f\n",curWeight);

@@ -82,7 +82,9 @@ VCID("$Header$")
 
 ////////////////////////////////////////////////////////////////////////
 // Comment/Uncomment to optimize for speed/reducing memory usage.
+#ifndef OPTIMIZE_FOR_MEMORY_USAGE
 #define OPTIMIZE_FOR_MEMORY_USAGE
+#endif
 ////////////////////////////////////////////////////////////////////////
 
 #ifdef OPTIMIZE_FOR_MEMORY_USAGE
@@ -1573,13 +1575,13 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
 
 
   psp(f,indent*2);
-  fprintf(f,"%d Nodes: ",nodes.size()); printRVSetAndCards(f,nodes);
+  fprintf(f,"%ld Nodes: ",(unsigned long)nodes.size()); printRVSetAndCards(f,nodes);
 
   psp(f,indent*2);
-  fprintf(f,"%d Assigned: ",assignedNodes.size()); printRVSet(f,assignedNodes);
+  fprintf(f,"%ld Assigned: ",(unsigned long)assignedNodes.size()); printRVSet(f,assignedNodes);
 
   psp(f,indent*2);
-  fprintf(f,"%d Assigned Sorted: ",sortedAssignedNodes.size()); printRVSetAndCards(f,sortedAssignedNodes);
+  fprintf(f,"%ld Assigned Sorted: ",(unsigned long)sortedAssignedNodes.size()); printRVSetAndCards(f,sortedAssignedNodes);
 
   psp(f,indent*2);
   fprintf(f,"%d Dispositions:",dispositionSortedAssignedNodes.size());
@@ -1589,47 +1591,47 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
 
 
   psp(f,indent*2);
-  fprintf(f,"%d Assigned Prob: ",assignedProbNodes.size()); printRVSet(f,assignedProbNodes);  
+  fprintf(f,"%ld Assigned Prob: ",(unsigned long)assignedProbNodes.size()); printRVSet(f,assignedProbNodes);  
 
   psp(f,indent*2);
-  fprintf(f,"%d Cum Assigned Prob: ",cumulativeAssignedProbNodes.size()); printRVSet(f,cumulativeAssignedProbNodes);  
+  fprintf(f,"%ld Cum Assigned Prob: ",(unsigned long)cumulativeAssignedProbNodes.size()); printRVSet(f,cumulativeAssignedProbNodes);  
 
   psp(f,indent*2);
-  fprintf(f,"%d Union Incomming Seps: ",unionIncommingCESeps.size()); printRVSet(f,unionIncommingCESeps);
+  fprintf(f,"%ld Union Incomming Seps: ",(unsigned long)unionIncommingCESeps.size()); printRVSet(f,unionIncommingCESeps);
 
   psp(f,indent*2);
-  fprintf(f,"%d Unassigned Iterated: ",unassignedIteratedNodes.size()); printRVSet(f,unassignedIteratedNodes);
+  fprintf(f,"%ld Unassigned Iterated: ",(unsigned long)unassignedIteratedNodes.size()); printRVSet(f,unassignedIteratedNodes);
 
 
   psp(f,indent*2);
-  fprintf(f,"%d Cumulative Unassigned: ",cumulativeUnassignedIteratedNodes.size()); printRVSet(f,cumulativeUnassignedIteratedNodes);
+  fprintf(f,"%ld Cumulative Unassigned: ",(unsigned long)cumulativeUnassignedIteratedNodes.size()); printRVSet(f,cumulativeUnassignedIteratedNodes);
 
   if (hiddenNodes.size() == hashableNodes.size()) {
     psp(f,indent*2);
-    fprintf(f,"%d Hidden/Hashable: ",hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
+    fprintf(f,"%ld Hidden/Hashable: ",(unsigned long)hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
   } else {
     psp(f,indent*2);
-    fprintf(f,"%d Hidden: ",hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
+    fprintf(f,"%ld Hidden: ",(unsigned long)hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
 
     psp(f,indent*2);
-    fprintf(f,"%d Hashable: ",hashableNodes.size()); printRVSetAndCards(f,hashableNodes);
+    fprintf(f,"%ld Hashable: ",(unsigned long)hashableNodes.size()); printRVSetAndCards(f,hashableNodes);
   }
 
 
   psp(f,indent*2);
-  fprintf(f,"%d Clique Neighbors: ",neighbors.size());
+  fprintf(f,"%ld Clique Neighbors: ",(unsigned long)neighbors.size());
   for (unsigned i=0;i<neighbors.size();i++) fprintf(f,"%d,",neighbors[i]); fprintf(f,"\n");
 
   psp(f,indent*2);
-  fprintf(f,"%d Clique Children: ",children.size());
+  fprintf(f,"%ld Clique Children: ",(unsigned long)children.size());
   for (unsigned i=0;i<children.size();i++) fprintf(f,"%d,",children[i]); fprintf(f,"\n");
 
   psp(f,indent*2);
-  fprintf(f,"%d Receive Seps: ",ceReceiveSeparators.size());
+  fprintf(f,"%ld Receive Seps: ",(unsigned long)ceReceiveSeparators.size());
   for (unsigned i=0;i<ceReceiveSeparators.size();i++) fprintf(f,"%d,",ceReceiveSeparators[i]); fprintf(f,"\n");
 
   psp(f,indent*2);
-  fprintf(f,"%d incomming VE Separators\n",veSeparators.size());
+  fprintf(f,"%ld incomming VE Separators\n",(unsigned long)veSeparators.size());
 
   psp(f,indent*2);
   fprintf(f,"Send Sep: %d\n",ceSendSeparator);
@@ -1662,7 +1664,7 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
 void
 MaxClique::printCliqueNodes(FILE*f)
 {
-  fprintf(f,"%d Nodes: ",nodes.size()); printRVSet(f,nodes);
+  fprintf(f,"%ld Nodes: ",(unsigned long)nodes.size()); printRVSet(f,nodes);
 }
 
 
@@ -2310,9 +2312,9 @@ InferenceMaxClique::ceIterateSeparatorsRecurse(JT_InferencePartition& part,
 
 	if (message(Huge)) {
 	  psp2(stdout,spi*traceIndent);
-	  infoMsg(Huge,"S%d:Separator iter %d,partSepNo=%d,p=%f,sp=%f,nodes:",
+	  infoMsg(Huge,"S%d:Separator iter %d of %d,partSepNo=%d,p=%f,sp=%f,nodes:",
 		  sepNumber,
-		  i,
+		  i,sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed,
 		  origin.ceReceiveSeparators[sepNumber],
 		  p.val(),
 		  sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p.val());
@@ -2334,9 +2336,9 @@ InferenceMaxClique::ceIterateSeparatorsRecurse(JT_InferencePartition& part,
 
 	if (message(Huge)) {
 	  psp2(stdout,spi*traceIndent);
-	  infoMsg(Huge,"S%d:Separator iter %d,partSepNo=%d,p=%f,sp=%f,nodes:",
+	  infoMsg(Huge,"S%d:Separator iter %d of %d,partSepNo=%d,p=%f,sp=%f,nodes:",
 		  sepNumber,
-		  i,
+		  i,sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed,
 		  origin.ceReceiveSeparators[sepNumber],
 		  p.val(),
 		  sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p.val());
@@ -7036,14 +7038,14 @@ SeparatorClique::printAllJTInfo(FILE*f)
 	  accPacker.packedLenBits(),accPacker.packedLen(),accPacker.numSplits(),
 	  remPacker.packedLenBits(),remPacker.packedLen(),remPacker.numSplits());
 
-  fprintf(f,"%d Nodes: ",nodes.size()); printRVSetAndCards(f,nodes);
-  fprintf(f,"%d Acc Inter: ",accumulatedIntersection.size()); printRVSet(f,accumulatedIntersection);  
-  fprintf(f,"%d Hid Acc Inter: ",hAccumulatedIntersection.size()); printRVSet(f,hAccumulatedIntersection);  
-  fprintf(f,"%d remainder: ",remainder.size()); printRVSet(f,remainder);  
-  fprintf(f,"%d hRemainder: ",hRemainder.size()); printRVSet(f,hRemainder);
+  fprintf(f,"%ld Nodes: ",(unsigned long)nodes.size()); printRVSetAndCards(f,nodes);
+  fprintf(f,"%ld Acc Inter: ",(unsigned long)accumulatedIntersection.size()); printRVSet(f,accumulatedIntersection);  
+  fprintf(f,"%ld Hid Acc Inter: ",(unsigned long)hAccumulatedIntersection.size()); printRVSet(f,hAccumulatedIntersection);  
+  fprintf(f,"%ld remainder: ",(unsigned long)remainder.size()); printRVSet(f,remainder);  
+  fprintf(f,"%ld hRemainder: ",(unsigned long)hRemainder.size()); printRVSet(f,hRemainder);
 
   if (veSeparator) {
-    fprintf(f,"%d VE sep parents: ",veSepInfo.parents.size()); printRVSet(f,veSepInfo.parents);
+    fprintf(f,"%ld VE sep parents: ",(unsigned long)veSepInfo.parents.size()); printRVSet(f,veSepInfo.parents);
     fprintf(f,"VE sep child: "); veSepInfo.child->printNameFrame(f);
     if (veSepInfo.grandChild != NULL) {
       fprintf(f,"VE sep grand child: "); veSepInfo.grandChild->printNameFrame(f);

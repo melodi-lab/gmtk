@@ -524,7 +524,7 @@ FileParser::FileParser(const char*const file,
 
     // add path of file to include directory paths.
     string path = file;
-    unsigned slashPos = path.rfind("/");
+    unsigned long slashPos = path.rfind("/");
     if (slashPos != string::npos) {
       // then '/' is found
       cppCommand = cppCommand + " -I" + path.substr(0,slashPos);

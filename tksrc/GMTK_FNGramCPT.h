@@ -92,6 +92,7 @@ protected:
 		// attributes
 		unsigned index;		// index for the parent, same as tag id
 		int offset;		// offset can be both postive and negative
+	        ParentType() {} 
 	};
 
 	/** node in the backing-off graph */
