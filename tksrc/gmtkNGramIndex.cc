@@ -83,6 +83,7 @@ ObservationMatrix globalObservationMatrix;
 
 
 int main(int argc, char *argv[]) {
+#if 0
 	////////////////////////////////////////////
 	// set things up so that if an FP exception
 	// occurs such as an "invalid" (NaN), overflow
@@ -158,4 +159,5 @@ int main(int argc, char *argv[]) {
 	delete [] indexFile;
 
 	return 0;
+#endif
 }
