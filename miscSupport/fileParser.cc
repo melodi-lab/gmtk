@@ -104,7 +104,7 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
 
 	// add path of file to include directory paths.
 	string path = _name;
-	unsigned slashPos = path.rfind("/");
+	unsigned long slashPos = path.rfind("/");
 	if (slashPos != string::npos) {
 	  // then '/' is found
 	  cppCommand = cppCommand + " -I" + path.substr(0,slashPos);
@@ -608,6 +608,34 @@ iDataStreamFile::readUnsigned(unsigned& i, const char *msg)
 }
 
 
+
+
+bool 
+iDataStreamFile::readUnsignedLong(unsigned long& i, const char *msg) 
+{
+  if (Binary) {
+    size_t rc = fread(&i, sizeof(unsigned long), 1,fh);
+    if (rc != 1)
+      return errorReturn("readUnsignedLong",msg);
+    return true;
+  } else {
+    if (!prepareNext())
+      return errorReturn("readUnsignedLong",msg);
+    char *ptr;
+    i = strtoul(buffp,&ptr,0);
+    if (ptr == buffp) {
+      error("readUnsignedLong: Can't form unsigned at (%s) in file (%s) line %d. %s",buffp,
+	    fileName(),lineNo(),
+	    (msg?msg:""));
+    } else
+      buffp = ptr;
+    return true;
+  }
+}
+
+
+
+
 bool 
 iDataStreamFile::readFloat(float& f, const char *msg) 
 {
@@ -862,6 +890,23 @@ bool oDataStreamFile::writeUnsigned(const unsigned int u,const char *msg)
     return true;
   }
 }
+
+
+bool oDataStreamFile::writeUnsignedLong(const unsigned long u,const char *msg)
+{
+  if (Binary) {
+    size_t rc = fwrite(&u, sizeof(unsigned long), 1,fh);
+    if (rc != 1)
+      return errorReturn("writeUnsignedLong",msg);
+    return true;
+  } else {
+    if (fprintf(fh,"%lu ",u) == 0) 
+      return errorReturn("writeUnsignedLong",msg);
+    return true;
+  }
+}
+
+
 
 
 bool oDataStreamFile::writeFloat(const float f,const char *msg)

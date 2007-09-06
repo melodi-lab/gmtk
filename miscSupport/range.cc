@@ -697,7 +697,7 @@ void Range::_reportParseError(char *def_str) {
     fprintf(stderr, "Range::Parse error: %s\n", errmsg);
     fprintf(stderr, ">> %s\n", def_str);
     char fmtstr[32];
-    sprintf(fmtstr, ">> %%%ds\n", (pos-def_str));
+    sprintf(fmtstr, ">> %%%lds\n", (long int)(pos-def_str));
     fprintf(stderr, fmtstr, "^");
     exit(-1); // Karim 13oct2004
 }

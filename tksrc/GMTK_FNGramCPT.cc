@@ -919,6 +919,7 @@ unsigned FNGramImp::parseNodeString(char *str) {
 		*p = '\0';
 
 		ParentType parent;
+		parent.index = 0;
 		if ( ! _tagMap.find(parentStr, parent.index) )
 			error("Error: parent '%s' not exist", parentStr);
 		*p = tmp;

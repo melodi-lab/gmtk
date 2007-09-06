@@ -3624,13 +3624,13 @@ JunctionTree::printAllJTInfo(FILE* f,
 {
   // print cliques information
   fprintf(f,"=== Clique Information ===\n");
-  fprintf(f,"Number of cliques = %d\n",part.cliques.size());
+  fprintf(f,"Number of cliques = %ld\n",(unsigned long)part.cliques.size());
   if (part.cliques.size() > 0)
     printAllJTInfoCliques(f,part,root,0,lp_nodes,rp_nodes);
 
   // print separator information
   fprintf(f,"\n=== Separator Information ===\n");
-  fprintf(f,"Number of separators = %d\n",part.separators.size());
+  fprintf(f,"Number of separators = %ld\n",(unsigned long)part.separators.size());
   for (unsigned sepNo=0;sepNo<part.separators.size();sepNo++) {
     fprintf(f,"== Separator number: %d\n",sepNo);
     part.separators[sepNo].printAllJTInfo(f);
@@ -3740,7 +3740,7 @@ void
 JunctionTree::printMessageOrder(FILE *f,
 				vector< pair<unsigned,unsigned> >& message_order)
 {
-  fprintf(f,"Number of messages: %d\n",message_order.size());
+  fprintf(f,"Number of messages: %ld\n",(unsigned long)message_order.size());
   for (unsigned m=0;m<message_order.size();m++) {
     const unsigned from = message_order[m].first;
     const unsigned to = message_order[m].second;
