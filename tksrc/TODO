@@ -4286,6 +4286,10 @@ Thu Jul 12 18:10:09 2007
     if y has a very large (or unbounded) cardinality.
 
 
+Thu Sep 27 14:00:37 2007
+  - use 'fast gauss transform' to speed up Gaussian evaluation on long sequences,
+    since dimensionality is low.
+
 
 
 
