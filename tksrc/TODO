@@ -4290,6 +4290,8 @@ Thu Sep 27 14:00:37 2007
   - use 'fast gauss transform' to speed up Gaussian evaluation on long sequences,
     since dimensionality is low.
 
-
+Wed Oct  3 12:34:03 2007
+  - add a viterbi training option to EMtrain (i.e., accumulate counts only based
+    on viterbi path, or n-best path).
 
 
