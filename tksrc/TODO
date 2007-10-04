@@ -4294,4 +4294,10 @@ Wed Oct  3 12:34:03 2007
   - add a viterbi training option to EMtrain (i.e., accumulate counts only based
     on viterbi path, or n-best path).
 
+Thu Oct  4 12:36:35 2007
+  - add a training scrore observation. I.e., this observation would be
+    a value from 0 to 1, and it would be multiplied by what gets
+    accumulated into each CPT at each frame. Setting this to 1 at each
+    frame would do what training is doing now, but it would allow the
+    training of a model based on how reliable a given time region is.
 
