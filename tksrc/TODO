@@ -4301,3 +4301,12 @@ Thu Oct  4 12:36:35 2007
     frame would do what training is doing now, but it would allow the
     training of a model based on how reliable a given time region is.
 
+
+Fri Oct  5 13:03:56 2007
+  - this might already be mentioned above, but just in case: to save memory, we can have
+    more than one shared packed clique array. The first one is used when the
+    clique is being constructed. Then, after pruning, only those entries that
+    have survived are inserted into the shared ones, along with pointer modifications.
+    Otherwise, what happens is that the shared one contains clique values most of which
+    have been pruned away, and prunign has a worse effect on memory.
+    An alternative might be to get the better -cpbeam option working.
