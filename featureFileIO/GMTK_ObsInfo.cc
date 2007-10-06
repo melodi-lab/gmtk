@@ -48,7 +48,7 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
 }
 
 
-#ifdef MAIN
+// #ifdef MAIN
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -287,4 +287,4 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 
     return 0;
 }
-#endif
+// #endif
