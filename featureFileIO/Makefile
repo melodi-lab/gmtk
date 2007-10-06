@@ -1,8 +1,12 @@
 #
 # Makefile 
-#   General Makefile for GMTK
-#   J. Bilmes
+#   GMTK Makefile for GMTK's observation and feature file support.
+# Do not run make directly using this directory. If you wish to compile only this module,
+# from the current directory run the following command:
 #
+#    make -f ../Makefile MODULES=featureFileIO
+#
+# instead.
 #
 # $Header$
 #
@@ -21,36 +25,26 @@ top_srcdir = /n/pato/home/bilmes/gmtoolkit/gmtk
 VPATH = .
 
 #
-# Compilng programs to use.
-#
+# default options
+CC = gcc
 CXX = g++
-CC =  gcc
 LD = $(CXX)
+EXCCFLAGS=
+EXCXXFLAGS=
+EXLDFLAGS =  
+OPTFLAGS =-g -O3
+ANSI=-ansi
+PEDANTIC=-pedantic
+WALL=-Wall
+CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+CXXFLAGS = -g $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+
 AR = ar
 LEX = flex
 RANLIB = :
 INSTALL = /usr/ucb/install -c
 INSTALL_DATA = ${INSTALL} -m 555
 INSTALL_EXE = $(INSTALL) -m 555
-
-#
-# Program options.
-#
-# OPTFLAGS = -O2 -DNDEBUG
-OPTFLAGS=-O3
-
-# extra flags via command line (e.g., -pg).
-EXCFLAGS =  
-EXLDFLAGS =  
-CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -pedantic -ansi -DMAIN
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -pedantic -ansi -DMAIN
-LDFLAGS = 
-DEFS = 
-
-# doesn't appear to work with pmake, temporarly remove. JB:12/29/04.
-# i f d e f DEBUG
-# CXXFLAGS := $(CXXFLAGS) -DDEBUG='$(DEBUG)'
-# e n d i f
 
 
 prefix = .
@@ -62,13 +56,13 @@ includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../IEEEFloating
 docdir = $(prefix)/man/man1
 
 
-LIBS = -lfileParser  -lmiscSupport  -lIEEEsupport -lfl -lsunmath -lm 
-GMTEST_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm 
-OBS_PRINT_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
-OBS_INFO_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
-OBS_SKMEANS_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
-OBS_CONCAT_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
-OBS_DIFF_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
+LIBS = -lfileParser  -lmiscSupport  -lIEEEsupport -lm 
+GMTEST_LIBS = -lmiscSupport  -lIEEEsupport -lm 
+OBS_PRINT_LIBS = -lmiscSupport  -lIEEEsupport -lm
+OBS_INFO_LIBS = -lmiscSupport  -lIEEEsupport -lm
+OBS_SKMEANS_LIBS = -lmiscSupport  -lIEEEsupport -lm
+OBS_CONCAT_LIBS = -lmiscSupport  -lIEEEsupport -lm
+OBS_DIFF_LIBS = -lmiscSupport  -lIEEEsupport -lm
 
 
 INCLUDES =  $(includedirs)
@@ -76,8 +70,8 @@ LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
 # This can be done easily by doing 'make -DPURE=purify' 
 PURE =
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS)
+compile.cc = $(CXX) $(INCLUDES) $(CXXFLAGS)
+compile.c = $(CC) $(INCLUDES) $(CCFLAGS)
 link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
 compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
