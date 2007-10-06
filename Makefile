@@ -4,20 +4,26 @@
 # $Header$
 #
 
-# .EXPORT:
-# .EXPORT: Linux AND !crane
-# .EXPORT:
-# .EXPORT: nikola2 Linux
-
-
-# other flags
-EXLDFLAGS=
+# compiler selection flags
 CC=/usr/nikola/pkgs/gcc/.4.2.1/bin/gcc
 CXX=/usr/nikola/pkgs/gcc/.4.2.1/bin/g++
 # CC=gcc
 # CXX=g++
-EXCOMFLAGS=-DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
-OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math $(EXCOMFLAGS)
+# extra flags to compilers and linker, allows user to control this from top level make run.
+EXCCFLAGS=
+# EXCXXFLAGS=-Wno-deprecated
+EXCXXFLAGS=
+EXLDFLAGS =  
+# optimization flags
+OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -mfpmath=sse2 -ffast-math
+# other general optional flags, optionally turned off at top level command line.
+ANSI=-ansi
+PEDANTIC=-pedantic
+WALL=-Wall
+# specific flags to C and C++, and combining the above together.
+CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC) -DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
+CXXFLAGS = -g $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) -DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
+
 
 # GMTK modules 
 MODULES = \
@@ -33,10 +39,11 @@ EXCLUDE = \
 
 
 MAKE_VARS = \
-	OPTFLAGS="$(OPTFLAGS)" \
 	CC="$(CC)" \
 	CXX="$(CXX)" \
-	EXLDFLAGS="$(EXLDFLAGS)"
+	EXLDFLAGS="$(EXLDFLAGS)" \
+	CCFLAGS="$(CCFLAGS)" \
+	CXXFLAGS="$(CXXFLAGS)"
 
 all clean:
 	for subdir in $(MODULES); do \

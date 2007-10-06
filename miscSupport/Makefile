@@ -1,7 +1,12 @@
 #
-# Makefile 
-#   for misc support
 #
+# GMTK Makefile for misc Support.
+# Do not run make directly using this directory. If you wish to compile only this module,
+# from the current directory run the following command:
+#
+#    make -f ../Makefile MODULES=miscSupport
+#
+# instead.
 #
 # $Header$
 #
@@ -20,32 +25,25 @@ top_srcdir = .
 VPATH = .
 
 #
-# Compilng programs to use.
-#
-CXX = g++
+# default options
 CC = gcc
+CXX = g++
 LD = $(CXX)
+EXCCFLAGS=
+EXCXXFLAGS=
+EXLDFLAGS =  
+OPTFLAGS =-g -O3 -DHAVE_NONSTANDARD_ARITHMETIC
+ANSI=-ansi
+PEDANTIC=-pedantic
+WALL=-Wall
+CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+CXXFLAGS = -g $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+
 AR = ar
 RANLIB = :
 INSTALL = /usr/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 555
 INSTALL_EXE = $(INSTALL) -m 555
-
-#
-# Program options.
-#
-# OPTFLAGS = -O
-OPTFLAGS = -O3
-# OPTFLAGS =
-
-# extra flags via command line (e.g., -pg).
-EXCFLAGS =  
-EXLDFLAGS =  
-CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -pedantic
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic
-LDFLAGS = 
-DEFS = 
-
 
 prefix = .
 exec_prefix = .
@@ -61,8 +59,8 @@ docdir = $(prefix)/man/man1
 LIBS = -lm
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS) $(HASH)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS) $(HASH)
+compile.cc = $(CXX) $(INCLUDES) $(CXXFLAGS) $(HASH)
+compile.c = $(CC) $(INCLUDES) $(CCFLAGS) $(HASH)
 pure =
 link = $(pure) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r

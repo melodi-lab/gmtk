@@ -23,9 +23,6 @@
 
 VCID("$Header$");
 
-#ifdef HAVE_NONSTANDARD_ARITHMETIC
-
-#endif
 
 void ieeeFPsetup()
 {

@@ -24,10 +24,6 @@
 
 VCID("$Header$");
 
-#ifdef HAVE_NONSTANDARD_ARITHMETIC
-
-#endif
-
 void fp_sigaction(int sig, siginfo_t* s_info, void *foo)
 {
 }

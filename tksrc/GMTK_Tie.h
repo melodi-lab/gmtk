@@ -27,7 +27,6 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
-#include <iostream.h>
 
 #include "general.h"
 #include "error.h"

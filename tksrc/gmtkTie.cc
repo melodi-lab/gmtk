@@ -57,7 +57,8 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
-#include <list.h>
+
+#include <list>
 
 #include "general.h"
 #include "error.h"
