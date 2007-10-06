@@ -1,7 +1,14 @@
 #
+#
 # Makefile 
-#   General Makefile for GMTK
-#   J. Bilmes
+#   GMTK Makefile for GMTK's main toolkit source (tksrc) code.
+# Do not run make directly using this directory. If you wish to compile only this module,
+# from the current directory run the following command:
+#
+#    make -f ../Makefile MODULES=tksrc
+#
+# instead.
+#
 #
 #
 # $Header$
@@ -27,37 +34,29 @@ top_srcdir = /n/pato/home/bilmes/gmtoolkit/gmtk
 VPATH = .
 
 #
-# Compilng programs to use.
-#
-CXX = g++
+# default options
 CC = gcc
+CXX = g++
 LD = $(CXX)
+EXCCFLAGS=
+EXCXXFLAGS=
+EXLDFLAGS =  
+OPTFLAGS =-g -O3
+ANSI=-ansi
+PEDANTIC=-pedantic
+WALL=-Wall
+CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+CXXFLAGS = -g $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+
+# extra optimization options for certain GMTK sources, used below.
+XOPTFLAGS=-funroll-loops -fargument-noalias-global
+
 AR = ar
 LEX = flex
 RANLIB = :
 INSTALL = /usr/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 555
 INSTALL_EXE = $(INSTALL) -m 755
-
-#
-# Program options.
-#
-# OPTFLAGS = -O2 -DNDEBUG
-OPTFLAGS=-O3 -Wno-deprecated -march=pentium4 -mfpmath=sse
-# OPTFLAGS= -Wno-deprecated -march=pentium4 -mfpmath=sse
-# OPTFLAGS=
-XOPTFLAGS=-funroll-loops -fargument-noalias
-# XOPTFLAGS=
-
-# extra flags via command line (e.g., -pg).
-EXCFLAGS =  
-EXLDFLAGS =  
-# CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall  -Wno-deprecated -ansi -pedantic
-# CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -Wno-deprecated -ansi -pedantic
-CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall  -Wno-deprecated  -pedantic
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -pedantic
-LDFLAGS = 
-DEFS = 
 
 
 prefix = .
@@ -84,8 +83,8 @@ LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
 # This can be done easily by doing 'make -DPURE=purify' 
 PURE =
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS)
+compile.cc = $(CXX) $(INCLUDES) $(CXXFLAGS)
+compile.c = $(CC) $(INCLUDES) $(CCFLAGS)
 link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
 compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
@@ -220,7 +219,7 @@ gmtkTie: gmtkTie.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 
 gmtkViz.o: gmtkViz.cc 
 	-@rm -f $@
-	$(CXX) $(DEFS) $(INCLUDES) -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -Wno-deprecated `wx-config --cxxflags` -Wall -g -c gmtkViz.cc
+	$(CXX) $(INCLUDES) -g $(OPTFLAGS)  $(EXCFLAGS) -Wall   -Wno-deprecated `wx-config --cxxflags` -Wall -g -c gmtkViz.cc
 
 gmtkViz: gmtkViz.o libGMTK.a
 	-@rm -f $@

@@ -24,8 +24,8 @@
 #include <assert.h>
 
 // TODO: remove next 2 eventually 
-#include <iostream.h>
-#include <fstream.h>
+#include <iostream>
+#include <fstream>
 
 #include "general.h"
 #include "error.h"

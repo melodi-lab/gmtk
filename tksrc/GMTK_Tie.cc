@@ -648,7 +648,7 @@ GMTK_Tie::validate_command_parameters()
       // look in the graph to find the matching RV
       std::string rv=j->substr(0,j->find_first_of("="));
 
-      cerr << "Looking for RV called " << rv << endl;
+      fprintf(stderr,"Looking for RV called %s\n",rv.c_str());
 
       if(!rval){
 	error("Variable '%s' does not exist in the graphs",j->c_str());
