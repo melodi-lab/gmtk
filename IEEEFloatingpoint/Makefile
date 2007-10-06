@@ -129,6 +129,14 @@ cygwin:
 	ln -s ieeeFPsetup_cygwin.h ieeeFPsetup.h
 	ln -s ieeeFPsetup_cygwin.cc ieeeFPsetup.cc
 
+osx:
+	rm -f ieeeFPsetup.h
+	rm -f ieeeFPsetup.cc
+	ln -s ieeeFPsetup_osx.h ieeeFPsetup.h
+	ln -s ieeeFPsetup_osx.cc ieeeFPsetup.cc
+
+
+
 
 #----------------------------------------------------------------------------
 # Test programs for each .cc file
