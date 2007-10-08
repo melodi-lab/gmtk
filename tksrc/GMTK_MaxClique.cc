@@ -7733,6 +7733,10 @@ InferenceSeparatorClique::ceSeparatorPrune()
   // break into the logp to avoid unnecessary zero checking.
   beamThreshold.valref() = maxCEsepValue.valref() - origin.separatorBeam;
 
+  // pointers to the ht keys for the two entries.
+  unsigned** ht_prune_key_p=NULL;
+  unsigned** ht_swap_key_p=NULL;
+
   // go through and shrink guys less than maximum.
   unsigned newTotalStateSpace = 0;  
   for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
@@ -7770,9 +7774,6 @@ InferenceSeparatorClique::ceSeparatorPrune()
 	  unsigned* prune_key_p;
 	  unsigned* swap_key_p;
 
-	  // pointers to the ht keys for the two entries.
-	  unsigned** ht_prune_key_p;
-	  unsigned** ht_swap_key_p;
 
 	  if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
 	    prune_key_p = &(separatorValuesPtr[asv].remValues.ptr[rsv].val[0]);
