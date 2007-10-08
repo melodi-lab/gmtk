@@ -20,7 +20,6 @@ SHELL = /bin/sh
 # .EXPORT:
 # .EXPORT: Linux AND !crane
 # .EXPORT:
-# .EXPORT: nikola2 Linux
 
 
 .SUFFIXES:
