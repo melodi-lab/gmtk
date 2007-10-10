@@ -22,6 +22,7 @@
 
 #include "ieeeFPsetup.h"
 
+VCID("$Header$")
 
 /*
 ** Gets the i386 status bits

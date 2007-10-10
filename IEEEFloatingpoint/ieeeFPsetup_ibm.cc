@@ -22,7 +22,7 @@
 #include "error.h"
 
 
-VCID("$Header$");
+VCID("$Header$")
 
 void fp_sigaction(int sig, siginfo_t* s_info, void *foo)
 {
