@@ -21,7 +21,7 @@
 #include "error.h"
 
 
-VCID("$Header$");
+VCID("$Header$")
 
 
 void ieeeFPsetup()
