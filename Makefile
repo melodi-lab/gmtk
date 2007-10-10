@@ -5,17 +5,18 @@
 #
 
 # compiler selection flags
-CC=/usr/nikola/pkgs/gcc/.4.2.1/bin/gcc
-CXX=/usr/nikola/pkgs/gcc/.4.2.1/bin/g++
-# CC=gcc
-# CXX=g++
+# CC=/usr/nikola/pkgs/gcc/.4.2.1/bin/gcc
+# CXX=/usr/nikola/pkgs/gcc/.4.2.1/bin/g++
+CC=gcc
+CXX=g++
 # extra flags to compilers and linker, allows user to control this from top level make run.
 EXCCFLAGS=
 # EXCXXFLAGS=-Wno-deprecated
 EXCXXFLAGS=
 EXLDFLAGS =  
 # optimization flags
-OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -mfpmath=sse2 -ffast-math
+# OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -mfpmath=sse2 -ffast-math
+OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
 # other general optional flags, optionally turned off at top level command line.
 ANSI=-ansi
 PEDANTIC=-pedantic
