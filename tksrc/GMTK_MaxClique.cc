@@ -89,6 +89,10 @@ VCID("$Header$")
 
 #ifdef OPTIMIZE_FOR_MEMORY_USAGE
 
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+#define TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE 1.15
+#endif
+
 // reasonable starting value is 1.25
 #define MEM_OPT_GROWTH_RATE 1.25
 
@@ -119,6 +123,12 @@ VCID("$Header$")
   // segment processed (which means that if segment i uses less memory
   // than segment i+1, we might use more memory than segment i+1
   // needs).
+
+
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+#define TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE 2.0
+#endif
+
 
 #define CLIQUE_VALUE_HOLDER_STARTING_SIZE 23
 #define CLIQUE_VALUE_HOLDER_GROWTH_RATE   2.0
@@ -2663,7 +2673,8 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       if (lindex >= origin.temporaryCliqueValuePool.size()) {
 	// use aggressive growth factor for now to avoid expensive copies.
 	origin.temporaryCliqueValuePool.resizeAndCopy(
-						      origin.packer.packedLen()*(1+origin.temporaryCliqueValuePool.size()*2));
+	      origin.packer.packedLen()*
+	      int(1.5+(double)origin.temporaryCliqueValuePool.size()*TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE));
       }
       unsigned *pcv = 
 	&origin.temporaryCliqueValuePool.ptr[lindex];
@@ -3083,7 +3094,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 	if (lindex >= origin.temporaryCliqueValuePool.size()) {
 	  // use aggressive growth factor for now to avoid expensive copies.
 	  origin.temporaryCliqueValuePool.resizeAndCopy(
-							origin.packer.packedLen()*(1+origin.temporaryCliqueValuePool.size()*2));
+		origin.packer.packedLen()*
+		int(1.5+(double)origin.temporaryCliqueValuePool.size()*TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE));
 	}
 	unsigned *pcv = 
 	  &origin.temporaryCliqueValuePool.ptr[lindex];
