@@ -4303,10 +4303,24 @@ Thu Oct  4 12:36:35 2007
 
 
 Fri Oct  5 13:03:56 2007
-  - this might already be mentioned above, but just in case: to save memory, we can have
+  - this is already mentioned above (7/3/2007): to save memory, we can have
     more than one shared packed clique array. The first one is used when the
     clique is being constructed. Then, after pruning, only those entries that
     have survived are inserted into the shared ones, along with pointer modifications.
     Otherwise, what happens is that the shared one contains clique values most of which
     have been pruned away, and prunign has a worse effect on memory.
     An alternative might be to get the better -cpbeam option working.
+
+
+Mon Oct 15 15:28:13 2007
+  - look into new Intel Yorkfield Q9000-series 45nm chips with instructions
+    supporting the "Super Shuffle Engine and Radix 16" technique,
+    which should speed up packing/unpacking of clique values.
+
+Thu Oct 18 22:38:40 2007
+  - go through all code and make sure anything that is representing a size
+    object is now either a size_t type, or is an 'unsigned long' (which
+    apparently seems on all relevant 32 and 64-bit architectures to be the
+    right size, 32 or 64 bits). See /u/bilmes/bin/sizesizet.sh.
+    
+    

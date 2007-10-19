@@ -1093,6 +1093,9 @@ MaxClique::clearCliqueValueCache(bool force)
   if (force && packer.packedLen() > IMC_NWWOH) {
     valueHolder.prepare();
     cliqueValueHashSet.clear(CLIQUE_VALUE_HOLDER_STARTING_SIZE);
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+    temporaryCliqueValuePool.clear();
+#endif
   }
   // shrink space asked for by clique values. 
   cliqueValueSpaceManager.decay();
@@ -1314,6 +1317,10 @@ MaxClique::prepareForUnrolling()
     // TODO: add appropriate default staring hash sizes.
     // new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2);
     new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),CLIQUE_VALUE_HOLDER_STARTING_SIZE);
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+    temporaryCliqueValuePool.resize(CLIQUE_VALUE_HOLDER_STARTING_SIZE*packer.packedLen());
+#endif
+
   } else {
     // then no need to do a hash table at all, either
     // we just store the packed values in a local integer
@@ -2650,6 +2657,21 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 			 (unsigned**)discreteValuePtrs.ptr,
 			 (unsigned*)&(cliqueValues.ptr[numCliqueValuesUsed].val[0]));
     } else {
+
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL      
+      const unsigned long lindex = numCliqueValuesUsed*origin.packer.packedLen();
+      if (lindex >= origin.temporaryCliqueValuePool.size()) {
+	// use aggressive growth factor for now to avoid expensive copies.
+	origin.temporaryCliqueValuePool.resizeAndCopy(
+						      origin.packer.packedLen()*(1+origin.temporaryCliqueValuePool.size()*2));
+      }
+      unsigned *pcv = 
+	&origin.temporaryCliqueValuePool.ptr[lindex];
+      origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
+      // store integer value of the location.
+      cliqueValues.ptr[numCliqueValuesUsed].ival = lindex;
+#else
+
       // Deal with the hash table to re-use clique values.
       // First, grab pointer to storge where next clique value would
       // be stored if it ends up being used.
@@ -2667,6 +2689,9 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
       }
       // Save the pointer to whatever the hash table decided to use.
       cliqueValues.ptr[numCliqueValuesUsed].ptr = key;
+#endif
+
+
     }
     // save the probability
     cliqueValues.ptr[numCliqueValuesUsed].p = p;
@@ -2918,9 +2943,6 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
  *
  *-----------------------------------------------------------------------
  */
-
-#if 1
-
 void
 InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 						    const logpr p)
@@ -3054,6 +3076,33 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 			   (unsigned**)discreteValuePtrs.ptr,
 			   (unsigned*)&(cliqueValues.ptr[numCliqueValuesUsed].val[0]));
       } else {
+
+
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+	const unsigned long lindex = numCliqueValuesUsed*origin.packer.packedLen();
+	if (lindex >= origin.temporaryCliqueValuePool.size()) {
+	  // use aggressive growth factor for now to avoid expensive copies.
+	  origin.temporaryCliqueValuePool.resizeAndCopy(
+							origin.packer.packedLen()*(1+origin.temporaryCliqueValuePool.size()*2));
+	}
+	unsigned *pcv = 
+	  &origin.temporaryCliqueValuePool.ptr[lindex];
+	origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
+	// store integer value of the location.
+	cliqueValues.ptr[numCliqueValuesUsed].ival = lindex;
+
+#if 0
+	// grab pointer to storage.
+	unsigned *pcv = origin.localValueHolder.curCliqueValuePtr();
+	origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
+	// claim stored value.
+	origin.localValueHolder.allocateCurCliqueValue();
+	// store pointer to appropriate location.
+	cliqueValues.ptr[numCliqueValuesUsed].ptr = pcv;
+#endif
+	
+#else
+
 	// Deal with the hash table to re-use clique values.
 	// First, grab pointer to storge where next clique value would
 	// be stored if it ends up being used.
@@ -3075,6 +3124,10 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 #endif
 	// Save the pointer to whatever the hash table decided to use.
 	cliqueValues.ptr[numCliqueValuesUsed].ptr = key;
+
+
+#endif
+
       }
       // save the probability
       cliqueValues.ptr[numCliqueValuesUsed].p = final_p;
@@ -3272,366 +3325,6 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
 }
 
-#else
-
-// version before changes on Sun Feb 27 13:18:53 2005 
-// keep this around for easy access until sure the new version above is ok.
-
-void
-InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
-						    const logpr p)
-{
-
-  // parray has to be 1 offset, storing p in entry -1
-  logpr* parray = origin.probArrayStorage.ptr + 1;
-  parray[-1] = p;
-
-  int nodeNumber;
-  logpr cur_p;
-  for (nodeNumber=0;nodeNumber<(int)fSortedAssignedNodes.size();nodeNumber++) {
-    RV* rv = fSortedAssignedNodes.ptr[nodeNumber];
-    switch (origin.dispositionSortedAssignedNodes.ptr[nodeNumber]) {
-    case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
-      {
-	rv->begin(cur_p);
-	// check for possible zero (could occur with
-	// zero score or observations).
-	if (cur_p.essentially_zero()) {
-	  // Since we have zero here, we cancel iterations of all
-	  // subsequent variables right now, rather than iterate them
-	  // with what will end up being zero probability.
-	  parray[nodeNumber].set_to_zero();
-	  nodeNumber++;
-	  goto end_of_initial_clique_value;
-	} else 
-	  parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
-      }
-      break;
-
-    case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
-      {
-	rv->begin(cur_p);
-	// check for possible zero (could occur with
-	// zero score or observations).
-	if (cur_p.essentially_zero()) {
-	  // Since we have zero here, we cancel iterations of all
-	  // subsequent variables right now, rather than iterate them
-	  // with what will end up being zero probability.
-	  parray[nodeNumber].set_to_zero();
-	  nodeNumber++;
-	  goto end_of_initial_clique_value;
-	} else 
-	  parray[nodeNumber] = parray[nodeNumber-1];
-      }
-      break;
-
-
-    case MaxClique::AN_CARD_ITERATION:
-      {
-	DiscRV* drv = (DiscRV*)rv;
-	drv->val = 0;
-	parray[nodeNumber] = parray[nodeNumber-1];
-      }
-      break;
-
-    case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
-      {
-	// TODO: Make more efficient version of this, based on the type of
-	// RV.
-	rv->probGivenParents(cur_p);
-	// might get a zero probability, check condition here.
-	if (cur_p.essentially_zero()) {
-	  // Since we have zero here, we cancel iterations of all
-	  // subsequent variables right now, rather than iterate them
-	  // with what will end up being zero probability.
-	  parray[nodeNumber].set_to_zero();
-	  nodeNumber++;
-	  goto end_of_initial_clique_value;
-	} else 
-	  parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
-      }
-      break;
-
-    case MaxClique::AN_CONTINUE:
-      parray[nodeNumber] = parray[nodeNumber-1];
-      break;
-
-    case MaxClique::AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS:
-      {
-	// TODO: Make more efficient version of this, based on the type of
-	// RV.
-	rv->probGivenParents(cur_p);
-	// might get a zero probability check condition here.
-	if (cur_p.essentially_zero()) {
-	  // Since we have zero here, we cancel iterations of all
-	  // subsequent variables right now, rather than iterate them
-	  // with what will end up being zero probability.
-	  parray[nodeNumber].set_to_zero();
-	  nodeNumber++;
-	  goto end_of_initial_clique_value;
-	} else 
-	  parray[nodeNumber] = parray[nodeNumber-1];
-      }
-      break;
-    }
-  }
-  
- end_of_initial_clique_value:
-  
-  // get ready for main loop
-  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
-  const int maxNodeNumber = (int)fSortedAssignedNodes.size()-1;
-  nodeNumber--;
-
-  MaxClique::AssignedNodeDisposition cur_disp = origin.dispositionSortedAssignedNodes.ptr[nodeNumber];
-  RV* cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
-
-  // check if zero probability, and if so, skip the first one and
-  // continue on.
-  if (parray[nodeNumber].essentially_zero())
-    goto next_iteration;
-
-
-  // main loop, iterate through all assigned nodes in this clique.
-  do {
-
-    // add a clique value to the clique.
-    {
-      const logpr final_p = parray[nodeNumber];
-
-      // time to store clique value and total probability, p is current
-      // clique probability.
-      // keep track of the max clique probability right here.
-
-      if (final_p > maxCEValue)
-	maxCEValue = final_p;
-
-      if (numCliqueValuesUsed >= cliqueValues.size()) {
-	// TODO: optimize this.
-	// cliqueValues.resizeAndCopy(cliqueValues.size()*2);
-	if (numCliqueValuesUsed >= origin.cliqueValueSpaceManager.currentSize())
-	  origin.cliqueValueSpaceManager.advanceToNextSize();
-	cliqueValues.resizeAndCopy(origin.cliqueValueSpaceManager.currentSize());
-      }
-
-      // Possibly remove this check if possible. It's probably ok though
-      // since as long as this loop runs several times, branch
-      // predictions should handle it (so 1 cycle latency).
-      if (imc_nwwoh_p) {
-	// pack the clique values directly into place
-	origin.packer.pack(
-			   (unsigned**)discreteValuePtrs.ptr,
-			   (unsigned*)&(cliqueValues.ptr[numCliqueValuesUsed].val[0]));
-      } else {
-	// Deal with the hash table to re-use clique values.
-	// First, grab pointer to storge where next clique value would
-	// be stored if it ends up being used.
-	unsigned *pcv = origin.valueHolder.curCliqueValuePtr();
-	// Next, pack the clique values into this position.
-	origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
-	// Look it up in the hash table.
-	bool foundp;
-	unsigned *key;
-	key = origin.cliqueValueHashSet.insert(pcv,foundp);
-	if (!foundp) {
-	  // if it was not found, need to claim this storage that we
-	  // just used.
-	  origin.valueHolder.allocateCurCliqueValue();
-	}
-	// Save the pointer to whatever the hash table decided to use.
-	cliqueValues.ptr[numCliqueValuesUsed].ptr = key;
-      }
-      // save the probability
-      cliqueValues.ptr[numCliqueValuesUsed].p = final_p;
-      numCliqueValuesUsed++;
-
-      /*
-       * uncomment this next code to produce lots of messages.
-       * note above, if high verbosity is on, recursive version of this
-       * routine will print this message.
-       */
-      /*
-      if (message(Mega)) {
-	// psp2(stdout,spi*traceIndent);
-	infoMsg(Mega,"Inserting New Clique Val,pr=%f,sm=%f: ",
-		cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
-	printRVSetAndValues(stdout,fNodes);
-      }
-      */
-
-    }
-
-  next_iteration:
-    // Now we need to move to next clique value. This bunch of next
-    // code is like an inlined iterator over clique values. It is done
-    // as "inline" in an attempt to avoid branch mis-predicts and since
-    // this code appears only one time.
-    do {
-
-      bool unfinished;
-      switch (cur_disp) {
-      case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
-	{
-	  unfinished = cur_rv->next(cur_p);
-	  // assert ( !unfinished || cur_p.not_essentially_zero() );
-	  parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
-	}
-	break;
-
-      case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
-	{
-	  // guaranteed not to get zero prob here. Note that
-	  // we get the probability into cur_p, but we do not
-	  // use it in this case. Also, parray[nodeNumber] is
-	  // already up to date from the "begin()" at the beginning
-	  // of this variables iteration.
-	  unfinished = cur_rv->next(cur_p);
-	  // we could include:
-	  // assert ( !cur_p.essentially_zero() );
-	}
-	break;
-
-      case MaxClique::AN_CARD_ITERATION:
-	{
-	  DiscRV* drv = (DiscRV*)cur_rv;
-	  unfinished = (++drv->val < drv->cardinality);
-	}
-	break;
-
-      default:
-	// these cases are handeled by 'default':
-	// case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
-	// case MaxClique::AN_CONTINUE:
-	// case MaxClique::AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS:
-	{
-	  unfinished = false;
-	}
-	break;
-      }
-      
-      if (unfinished) {
-	// Best case, we continue on to next outer iteration filling
-	// in next clique value.
-	break;
-      } else {
-	// we're finished with the current variable.
-	if (nodeNumber == 0) {
-	  // then we're really done.
-	  goto done_with_clique_iteration;
-	} else {
-	  nodeNumber--;
-	  cur_disp = origin.dispositionSortedAssignedNodes.ptr[nodeNumber];
-	  cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
-	}
-      }
-
-      // still here? Continue on incrementing previous variable.
-    } while (1);
-
-    while (nodeNumber < maxNodeNumber) {
-      nodeNumber++;
-      cur_disp = origin.dispositionSortedAssignedNodes.ptr[nodeNumber];
-      cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
-
-
-      // need to fill up the rest of the table.
-      switch (cur_disp) {
-      case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
-	{
-	  cur_rv->begin(cur_p);
-	  // might get a zero probability, check condition here.
-	  if (cur_p.essentially_zero()) {
-	    // Since we have zero here, we cancel iterations of all
-	    // subsequent variables right now, rather than iterate
-	    // them with what will end up being zero probability.
-	    nodeNumber--;
-	    cur_disp = origin.dispositionSortedAssignedNodes.ptr[nodeNumber];
-	    cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
-	    goto next_iteration;
-	  } else 
-	    parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
-	}
-	break;
-
-      case MaxClique::AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS:
-	{
-	  cur_rv->begin(cur_p);
-	  // might get a zero probability, check condition here.
-	  if (cur_p.essentially_zero()) {
-	    // Since we have zero here, we cancel iterations of all
-	    // subsequent variables right now, rather than iterate them
-	    // with what will end up being zero probability.
-	    nodeNumber--;
-	    cur_disp = origin.dispositionSortedAssignedNodes.ptr[nodeNumber];
-	    cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
-	    goto next_iteration;
-	  } else {
-	    // TODO: update post-condition comments in RV and CPT iterators as
-	    // to when a zero RV can occur and when not.
-	    parray[nodeNumber] = parray[nodeNumber-1];
-	  }
-	}
-	break;
-
-      case MaxClique::AN_CARD_ITERATION:
-	{
-	  DiscRV* drv = (DiscRV*)cur_rv;
-	  drv->val = 0;
-	  parray[nodeNumber] = parray[nodeNumber-1];
-	}
-	break;
-
-      case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
-	{
-	  // TODO: Make more efficient version of this, based on the type of
-	  // RV.
-	  cur_rv->probGivenParents(cur_p);
-	  // might get a zero probability, check condition here.
-	  if (cur_p.essentially_zero()) {
-	    // Since we have zero here, we cancel iterations of all
-	    // subsequent variables right now, rather than iterate them
-	    // with what will end up being zero probability.
-	    nodeNumber--;
-	    cur_disp = origin.dispositionSortedAssignedNodes.ptr[nodeNumber];
-	    cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
-	    goto next_iteration;
-	  } else 
-	    parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
-	}
-	break;
-
-      case MaxClique::AN_CONTINUE:
-	parray[nodeNumber] = parray[nodeNumber-1];
-	break;
-
-      case MaxClique::AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS:
-	{
-	  // TODO: Make more efficient version of this, based on the type of
-	  // RV.
-	  cur_rv->probGivenParents(cur_p);
-	  // might get a zero probability check condition here.
-	  if (cur_p.essentially_zero()) {
-	    // Since we have zero here, we cancel iterations of all
-	    // subsequent variables right now, rather than iterate them
-	    // with what will end up being zero probability.
-	    nodeNumber--;
-	    cur_disp = origin.dispositionSortedAssignedNodes.ptr[nodeNumber];
-	    cur_rv = fSortedAssignedNodes.ptr[nodeNumber];
-	    goto next_iteration;
-	  } else 
-	    parray[nodeNumber] = parray[nodeNumber-1];
-	}
-	break;
-      }
-    }
-
-  } while (1);
-
- done_with_clique_iteration:
-  ;
-}
-
-#endif
 
 
 
@@ -3791,53 +3484,9 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // ***************** PRUNING & SAMPLING **********************
   // ***********************************************************
 
-  // TODO: have option where user can specify order of
-  // these pruning options. BKM
+  ceDoAllPruning();
 
-  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
-
-  // do k-pruning (ideally we would do this after
-  // beam pruning, but since beam pruning is integrated
-  // into the code below, we do max state pruning first).
-  // Prune the minimum of the fixed K size and the percentage size.
-  unsigned k;
-  k = 2 + (unsigned)((origin.cliqueBeamRetainFraction)*(double)numCliqueValuesUsed);
-  if (origin.cliqueBeamMaxNumStates > 0) {
-    k = min(k,origin.cliqueBeamMaxNumStates);
-  }
-  //   printf("nms = %d, pf = %f, ncv = %d, k = %d\n",origin.cliqueBeamMaxNumStates,
-  // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
-  ceCliquePrune(k);
-  // prune also based on mass, using remaining probability after previous pruning.
-  ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,
-		    origin.cliqueBeamMassExponentiate,
-		    origin.cliqueBeamMassFurtherBeam,
-		    origin.cliqueBeamMassMinSize);
-
-
-  if (origin.cliqueBeamUniformSampleAmount != 0) {
-    // do a pass of clique pruning here.
-    ceCliquePrune();
-    ceCliqueUniformSamplePrunedCliquePortion(origNumCliqueValuesUsed);
-  }
-
-
-  // create an ininitialized variable using dummy argument
-  logpr beamThreshold((void*)0);
-  if (origin.cliqueBeam != (-LZERO)) {
-    // then we do clique table pruning right here rather
-    // than a separate call to ceCliquePrune().
-    // break into the logp to avoid unnecessary zero checking.
-    beamThreshold.valref() = maxCEValue.valref() - origin.cliqueBeam;
-  } else {
-    // set beam threshold to a value that will never cause pruning.
-    beamThreshold.set_to_zero();
-  }
-
-  // Now, we send the clique to the outgoing separator, doing
-  // regular clique beam pruning as we go.
-
-  const unsigned cbOrigNumCliqueValuesUsed = numCliqueValuesUsed;  
+  // Now, we send the clique to the outgoing separator.
   // logpr origSum = sumProbabilities();
 
   // TODO: do sampling code here, i.e., optionally sample from remaining portion
@@ -3876,25 +3525,16 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // same point), but we do it here anyway for numerical consistency
     // with the general case.
     for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
-      if (cliqueValues.ptr[cvn].p < beamThreshold) {
-	// swap with last entry, and decrease numCliqueValuesUsed by
-	// one.
-	swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
-	numCliqueValuesUsed--;
-	// continue on to next iteration without incrementing cvn
-	continue;
-      } else {
-	if (JunctionTree::viterbiScore) {
-	  // sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
-	  if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
-	    sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
-	    sv.remValues.ptr[0].backPointer = cvn;
-	  }
-	} else {
-	  sv.remValues.ptr[0].p += cliqueValues.ptr[cvn].p;
+      if (JunctionTree::viterbiScore) {
+	// sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
+	if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
+	  sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
+	  sv.remValues.ptr[0].backPointer = cvn;
 	}
-	cvn++;
+      } else {
+	sv.remValues.ptr[0].p += cliqueValues.ptr[cvn].p;
       }
+      cvn++;
     }
 
   } else {
@@ -3917,15 +3557,6 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 
 
       // printf("Iteration through clique, iter = %d\n",cvn);
-
-      if (cliqueValues.ptr[cvn].p < beamThreshold) {
-	// swap with last entry, and decrease numCliqueValuesUsed by
-	// one.
-	swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
-	numCliqueValuesUsed--;
-	// continue on to next iteration without incrementing cvn
-	continue;
-      }
 
       // TODO: optimize away this conditional check. (and/or use const
       // local variable to indicate it wont change)
@@ -4182,31 +3813,6 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   if (numCliqueValuesUsed < cliqueValues.size())
     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
 
-  // Keep this out of previous check so we can also use large beams to
-  // take a look at what state space size is with large verbosity
-  // value.
-  if (origin.cliqueBeam != (-LZERO)) {
-
-    // only print out this message if we did inline clique beam pruning, since if we did
-    // it by routine call, this information has already been printed. 
-    if (origin.cliqueBeamUniformSampleAmount == 0)
-      infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
-	      maxCEValue.valref(),
-	      beamThreshold.valref(),
-	      cbOrigNumCliqueValuesUsed,
-	      numCliqueValuesUsed);
-#if 0
-    // A version with a bit more information printed.
-    infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, orig sum = %f, new clique state space = %d, new sum = %f\n",
-	    maxCEValue.valref(),
-	    beamThreshold.valref(),
-	    cbOrigNumCliqueValuesUsed,
-	    origSum.valref(),
-	    numCliqueValuesUsed,
-	    sumProbabilities().valref());
-#endif
-  }
-
   // printCliqueEntries(stdout);
 
 
@@ -4291,6 +3897,18 @@ InferenceMaxClique::ceCliquePrune()
 	  origNumCliqueValuesUsed,
 	  numCliqueValuesUsed);
 
+#if 0
+    // A version with a bit more information printed.
+    infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, orig sum = %f, new clique state space = %d, new sum = %f\n",
+	    maxCEValue.valref(),
+	    beamThreshold.valref(),
+	    origNumCliqueValuesUsed,
+	    origSum.valref(),
+	    numCliqueValuesUsed,
+	    sumProbabilities().valref());
+#endif
+
+
 }
 
 
@@ -4362,9 +3980,89 @@ InferenceMaxClique::ceDoAllPruning()
   //       will soon be deleted anyway.
   // TODO: if we do a backward pass, we might not want to resize, and if an entry ends up
   //       becoming probable, re-insert the entry as a valid clique entry.
-  cliqueValues.resizeAndCopy(numCliqueValuesUsed);
+
+  // resize only if we've shrunk by more than about 1.6%
+  // relative. Assume strength reduction will take care of fast
+  // divide.
+  if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > origNumCliqueValuesUsed/64) {
+    cliqueValues.resizeAndCopy(numCliqueValuesUsed);
+  }
+
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+  if (origin.packer.packedLen() > IMC_NWWOH) {
+    // finally, insert surviving entries into global shared pool.
+    insertLocalCliqueValuesIntoSharedPool();
+    // and free up the local buffer.
+    origin.temporaryCliqueValuePool.resize(CLIQUE_VALUE_HOLDER_STARTING_SIZE*origin.packer.packedLen());
+  }
+#endif
+  
+}
+
+
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::insertLocalCliqueValuesIntoSharedPool();
+ *
+ *    This routine takes all the clique entries and values, and inserts
+ *    the values that live currently in the local clique value pool into
+ *    the globally shared clique value pool.
+ *
+ * Preconditions:
+ *   The clique must currently be set up so that the clique entries indicate 
+ *   an index into the local clique value pool. Note that the clique value pointers
+ *   are such that they give the actual integer index into the exact location
+ *   of the current local clique value pool (i.e., it is the entry location
+ *   multiplied in by the number of words per clique value).
+ *
+ * Postconditions:
+ *    The clique entries are now set so that the values are pointers into
+ *    the potentially shared value location in the globally shared pool.
+ *
+ * Side Effects:
+ *    changes the clique entry value pointers.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+InferenceMaxClique::insertLocalCliqueValuesIntoSharedPool()
+{
+
+  // clique value length in bytes
+  const unsigned cvlb = origin.packer.packedLenBytes();
+  
+  unsigned k;
+  for (k=0;k<numCliqueValuesUsed;k++) {
+    // First, grab pointer to storge where next clique value would
+    // be stored if it ends up being used.
+    unsigned *pcv = origin.valueHolder.curCliqueValuePtr();
+    // next, grab pointer to storge where the local clique value currently lives.
+    unsigned *lcv = &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[k].ival];
+    // copy from the local location to the permanent storage pool.
+    ::memcpy((void*)pcv,(void*)lcv,cvlb);
+    // Look it up in the hash table.
+    bool foundp;
+    unsigned *key;
+    key = origin.cliqueValueHashSet.insert(pcv,foundp);
+    if (!foundp) {
+      // if it was not found, need to claim this storage that we
+      // just used.
+      origin.valueHolder.allocateCurCliqueValue();
+    } 
+#ifdef TRACK_NUM_CLIQUE_VALS_SHARED	
+    else
+      numCliqueValuesShared++;
+#endif
+    // Save the pointer to whatever the hash table decided to use.
+    cliqueValues.ptr[k].ptr = key;
+  }
 
 }
+#endif
 
 
 /*-
