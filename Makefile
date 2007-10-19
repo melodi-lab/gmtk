@@ -4,11 +4,19 @@
 # $Header$
 #
 
+# Compiling notes:
+#   cygwin: make ANSI= ...
+#   linux:
+#   solaris:
+#   mac:
+#   ibm:
+
+
 # compiler selection flags
-# CC=/usr/nikola/pkgs/gcc/.4.2.1/bin/gcc
-# CXX=/usr/nikola/pkgs/gcc/.4.2.1/bin/g++
-CC=gcc
-CXX=g++
+CC=/usr/nikola/pkgs/gcc/.4.2.1/bin/gcc
+CXX=/usr/nikola/pkgs/gcc/.4.2.1/bin/g++
+# CC=gcc
+# CXX=g++
 # extra flags to compilers and linker, allows user to control this from top level make run.
 EXCCFLAGS=
 # EXCXXFLAGS=-Wno-deprecated
@@ -51,7 +59,7 @@ all clean:
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
 	done
 
-linux solaris ibm cygwin:
+linux solaris ibm cygwin osx:
 	for subdir in IEEEFloatingpoint; do \
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
 	done
