@@ -364,6 +364,9 @@ public:
   // triangulation.
 
 
+  // TODO: write a destructor for this (not a problem for now since
+  // we only create a fixed set of maxcliques per GMTK run). 
+
   // USED ONLY IN JUNCTION TREE INFERENCE
   // The set of nodes that are *assigned* to this maxClique. "Assigned"
   // means that the node and its parents exist in this clique, but
@@ -699,6 +702,19 @@ public:
   vhash_set< unsigned > cliqueValueHashSet;
 
 
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // this next array is used when creating a clique. It is used when
+  // pruning is turned on, and when a clique insert has occured,
+  // the clique values are stored here first, before putting in the global
+  // shared pool. Then after pruning, only those clique values that correspond
+  // to clique value scores that survive pruning are added to the globally shared
+  // poll, thus saving memory. The array is stored here so that we don't need
+  // to reallocate it each time we create a clique if we don't want to.
+  // CliqueValueHolder localValueHolder;
+  sArray < unsigned > temporaryCliqueValuePool;
+#endif
+
   // USED ONLY IN JUNCTION TREE INFERENCE
   // Manages and memorizes the size and space requests made
   // by all corresponding InferenceMaxCliques. This way,
@@ -943,7 +959,11 @@ class InferenceMaxClique  : public IM
       // then we keep a pointer to the packed clique value (list of
       // variables) where the actuall clique value is obtained. This
       // points to a data structure maintained by origin.
-      unsigned *ptr;
+      union {
+	// keep both a ptr and an unsigned long version of the ptr.
+	unsigned *ptr;
+	unsigned long ival;
+      };
       // When a packed clique value is only ISC_NWWOH words (unsigned)
       // or less we don't bother with a hash table and just store the
       // packed clique value right here, thereby saving needing to
@@ -990,6 +1010,9 @@ class InferenceMaxClique  : public IM
       // only once.
       origin.valueHolder.prepare();
       origin.cliqueValueHashSet.clear();
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+      origin.temporaryCliqueValuePool.clear();
+#endif
     }
   }
 
@@ -1105,7 +1128,9 @@ public:
   void ceCliqueUniformSamplePrunedCliquePortion(const unsigned origNumCliqueValuesUsed);
   // a version that does all the pruning for this clique.
   void ceDoAllPruning();
-
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+  void insertLocalCliqueValuesIntoSharedPool();
+#endif
 
   // distribute evidence functions.
   void deScatterToOutgoingSeparators(JT_InferencePartition& part);
