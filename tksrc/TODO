@@ -4329,4 +4329,17 @@ Thu Oct 18 22:38:40 2007
     apparently seems on all relevant 32 and 64-bit architectures to be the
     right size, 32 or 64 bits). See /u/bilmes/bin/sizesizet.sh.
     
+Sat Oct 20 15:33:47 2007
+ The below applies to all forms of pruning, 'beam' = the appropriate beam settings for a given pruning option.
+  - add smart decoding pruning, so that if we fail to decode, we increase the
+    beam options. If we do decode and it does not take much memory and/or time,
+    we re-decode but with a wider set of beam options. 
+  - add ability to have time-dependent beams, with a beam observation
+    per frame. Also, have beam options associated with individal RVs,
+    and in a clique, where the beam might be set based on cardinality,
+    or something else and then in a clique, have some form of beam
+    aggregation function that combines the beams for all RVs in a
+    clique to get a current clique beam.
+   
+  
     
