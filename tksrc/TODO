@@ -4342,4 +4342,10 @@ Sat Oct 20 15:33:47 2007
     clique to get a current clique beam.
    
   
-    
+Wed Nov  7 11:00:12 2007
+  - add variance floor to each Gaussian (rather than needing to be global).
+    It could be associated with a Gaussian object, and overide any command line
+    if it exists. It would be an optional arg to an object.
+
+
+ 
