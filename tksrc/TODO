@@ -4348,4 +4348,17 @@ Wed Nov  7 11:00:12 2007
     if it exists. It would be an optional arg to an object.
 
 
+Tue Nov 13 14:00:34 2007
+  - length distributions
+     1) Poisson distribution, with Gamma conjugate priors. Use the
+         the mode as the Poisson parameter point estimate.
+     2) Negative binomial distributions (which is also a gamma-poisson mixture).
+        (this is just like using the mean of the Poisson with Gamma prior).
+     3) Negative binomial distribution with Beta distribution conjugate prior.
+        Use the mode as the parameter point estimate.
+     3) Negative binomial distribution with Beta distribution conjugate prior.
+        Use the mean as the parameter point estimate.
+
+
+        
  
