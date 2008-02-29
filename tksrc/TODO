@@ -4359,6 +4359,16 @@ Tue Nov 13 14:00:34 2007
      3) Negative binomial distribution with Beta distribution conjugate prior.
         Use the mean as the parameter point estimate.
 
+Fri Feb 29 12:28:19 2008
+  - probability models with additional scaling functions. I.e., for conditional
+    distribution p(a|b) given two distributions p1(a|b) and p2(a|b) and we want to combine
+    them with an event that occurs with probability f(a,b) (note function of both a,b), the
+    ability to form the event:
+       p(a|b) = p1(a|b)f(a,b) + p2(a|b)[ 1 - \sum_a p1(a|b)f(a,b) ]
+    here, f(a,b) is the probability that the first model p1 is used for the probability,
+    and the term on the right ensures proper normalization \sum_a p(a|b) = 1.
+    This is similar to a backoff model but this will alow us to construct them, and is also
+    similar to proof of metropolis-hastings alg.
 
         
  
