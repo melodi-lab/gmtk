@@ -4371,4 +4371,12 @@ Fri Feb 29 12:28:19 2008
     similar to proof of metropolis-hastings alg.
 
         
- 
+Fri Feb 29 13:14:27 2008
+  - question: for MCMC based inference in a clique, how well do MCMC algorithms work for
+    distributions (or clique functions) where the values are orders of mangnitude different
+    from each other. I.e., when the dynamic range of values of cliques are large (.e.g, 10^50 or
+    so difference, which can happen with high dimensional Gaussians), it seems like MCMC
+    methods would require many samples even if the proposal disribution is accurate or not (i.e.,
+    if it is accurate, one would rarely get such a sample, and if it is not (say uniform)),
+    then the sample would likely be rejected (unless the proposal's reverse position cancels out 
+    the effect). Need to look into this ...
