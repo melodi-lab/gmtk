@@ -291,6 +291,9 @@ public:
     }
   }
 
+  // return the total number of OS bytes requested by this object at the latest allocation size.
+  unsigned long bytesRequested() { return ((unsigned long)table.size())*sizeof(SBucket); }
+
 };
 
 
