@@ -94,7 +94,7 @@ VCID("$Header$")
 #endif
 
 // reasonable value is 1.25, but could go as low as 1.05 or so.
-#define MEM_OPT_GROWTH_RATE 1.05
+#define MEM_OPT_GROWTH_RATE 1.25
 
 #define CLIQUE_VALUE_HOLDER_STARTING_SIZE 23
 #define CLIQUE_VALUE_HOLDER_GROWTH_RATE   MEM_OPT_GROWTH_RATE
