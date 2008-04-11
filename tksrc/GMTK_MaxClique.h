@@ -34,6 +34,16 @@
 #ifndef GMTK_MAXCLIQUE_H
 #define GMTK_MAXCLIQUE_H
 
+
+////////////////////////////////////////////////////////////////////////
+// Comment/Uncomment to optimize for speed/reducing memory usage using
+// another trick that only works when pruning is turned on.
+#ifndef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+#define USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+#endif
+////////////////////////////////////////////////////////////////////////
+
+
 #include "general.h"
 #include "vhash_set.h"
 #include "vhash_map.h"
@@ -91,7 +101,7 @@ class CliqueValueHolder  {
   // manage the space here.
   // SpaceManager spaceManager;
 
-  // Current capacity, total number of packed clique values that this
+  // Current capacity, total number of unsigned values that this
   // object can currently potentially hold max without a resize.
   unsigned capacity;
 
@@ -145,6 +155,8 @@ public:
   // and then advance curCliqueValuePtr() to the next position.
   void allocateCurCliqueValue();
 
+  // return the total number of bytes requested to the OS memory system by this structure.
+  unsigned long bytesRequested() { return (unsigned long)capacity*sizeof(unsigned); }
 
 };
 
@@ -357,6 +369,8 @@ public:
   void printCliqueNodes(FILE* f);
 
 
+  // memory reporting
+  void reportMemoryUsageTo(FILE *f);
 
   //////////////////////////////////////////////
   // TODO: figure out a way so that the member variables below exist only in
@@ -870,10 +884,6 @@ public:
 
   // could start adding stuff for v3 inference here, and then clean up code later??
 
-
-  
-  
-
   
 
 };
@@ -1149,6 +1159,9 @@ public:
   // compute the clique entropy
   double cliqueEntropy();
 
+  // memory reporting.
+  void reportMemoryUsageTo(FILE *f);
+
 
   // compute the max probability and return its value, and also
   // optionally sets the clique to its max value.
@@ -1336,6 +1349,8 @@ public:
   // print out everything in this clique to a file.
   void printAllJTInfo(FILE* f);
 
+  // memory reporting
+  void reportMemoryUsageTo(FILE *f);
 
   // Manages and memorizes the size and space requests made by all
   // corresponding InferenceSeparatorCliques regarding the size of
@@ -1585,6 +1600,10 @@ public:
 
   // separator based pruning
   void ceSeparatorPrune();
+
+  // memory reporting
+  void reportMemoryUsageTo(FILE *f);
+
 
 };
 

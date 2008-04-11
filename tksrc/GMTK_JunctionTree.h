@@ -217,6 +217,9 @@ public:
 		   const bool localCliqueNormalization = false,
 		   const double emTrainingBeam = -LZERO);
 
+  // memory use reporting
+  void reportMemoryUsageTo(FILE *f);
+
 };
 
 
@@ -359,6 +362,9 @@ class JunctionTree {
 
   // do a bit of setup for the upcomming inference round.
   void prepareForNextInferenceRound();
+
+  // memory use reporting
+  void reportMemoryUsageTo(FILE *f,unsigned whichPartitions = 0x7);
 
   // A version of unroll that starts with the gm_template and fills up
   // base partitions.

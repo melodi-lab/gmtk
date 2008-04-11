@@ -93,8 +93,8 @@ VCID("$Header$")
 #define TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE 1.15
 #endif
 
-// reasonable starting value is 1.25
-#define MEM_OPT_GROWTH_RATE 1.25
+// reasonable value is 1.25, but could go as low as 1.05 or so.
+#define MEM_OPT_GROWTH_RATE 1.05
 
 #define CLIQUE_VALUE_HOLDER_STARTING_SIZE 23
 #define CLIQUE_VALUE_HOLDER_GROWTH_RATE   MEM_OPT_GROWTH_RATE
@@ -1081,6 +1081,7 @@ MaxClique
  * MaxClique::clearCliqueValueCache()
  *   
  *   clear out hash and clique value memory for use between segments
+ *   (but not yet working between partitions/frames/slices/chunks).
  *
  * Preconditions:
  *   Data structures must be set up.
@@ -1110,6 +1111,59 @@ MaxClique::clearCliqueValueCache(bool force)
   // shrink space asked for by clique values. 
   cliqueValueSpaceManager.decay();
 }
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::reportMemoryUsageTo()
+ *
+ *    Report current memory usage of this inference clique *and* the origin clique to the file in
+ *    units of MBs.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      results printed.
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MaxClique::
+reportMemoryUsageTo(FILE *f)
+{
+
+  if (packer.packedLen() > IMC_NWWOH) {
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+    fprintf(f,"OC(VH=%luMB,HS=%luMB,TP=%luMB)",
+	    1+valueHolder.bytesRequested()/(1024*1024),
+	    1+cliqueValueHashSet.bytesRequested()/(1024*1024),
+	    1+(sizeof(unsigned)*((unsigned long)temporaryCliqueValuePool.size()))/(1024*1024));
+#else
+    fprintf(f,"OC(VH=%luMB,HS=%luMB)",
+	    1+valueHolder.bytesRequested()/(1024*1024),
+	    1+cliqueValueHashSet.bytesRequested()/(1024*1024));
+#endif
+  } else {
+    // in this case, we report zero usage since the clique values are
+    // all being stored in the inference clique.
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+    fprintf(f,"OC(VH=0MB,HS=0MB,TP=0MB)");
+#else
+    fprintf(f,"OC(VH=0MB,HS=0MB)");
+#endif
+  }
+}
+
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -2134,6 +2188,10 @@ InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
     origin.prevPrevMaxCEValue.valref() = origin.prevMaxCEValue.valref();
     origin.prevMaxCEValue.valref() = maxCEValue.valref();
   }
+
+  // do all the pruning here.
+  ceDoAllPruning();
+
 }
 
 
@@ -3342,7 +3400,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
 /*-
  *-----------------------------------------------------------------------
- * InferenceMaxClique::ceSendToOutgoingSeparator()
+ * InferenceMaxClique::clearCliqueAndIncommingSeparators()
  *
  *    memory clearing routine, this routine clears all significant memory
  *    associated with this clique and all its incomming separators.
@@ -3496,7 +3554,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // ***************** PRUNING & SAMPLING **********************
   // ***********************************************************
 
-  ceDoAllPruning();
+  // TEST: do this when we construct the clique rather than here
+  // ceDoAllPruning();
 
   // Now, we send the clique to the outgoing separator.
   // logpr origSum = sumProbabilities();
@@ -3813,7 +3872,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   }
   
   // To reallocate or not to reallocate, that is the question.  here,
-  // we just reallocate for now.
+  // we just reallocate for now. The reason why we might want to reallocate is that
+  // pruning might have adjusted numCliqueValuesUsed in this routine above.
   // 
   // TODO: reallocate only if change is > some percentage (say 5%),
   // and export to command line.
@@ -3952,7 +4012,12 @@ void
 InferenceMaxClique::ceDoAllPruning()
 {
 
-  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
+  // if all observed and/or deterministic clique, then only one state, so nothing to prune.
+  if (origin.hashableNodes.size() == 0)
+    return;
+
+  const unsigned long origNumCliqueValuesUsed = numCliqueValuesUsed;
+  // printf("DEBUG: orig = %lu, allo = %lu\n",origNumCliqueValuesUsed,cliqueValues.size());
 
   // First, do k-pruning (ideally we would do this after
   // beam pruning, but since beam pruning is integrated
@@ -3996,11 +4061,20 @@ InferenceMaxClique::ceDoAllPruning()
   // resize only if we've shrunk by more than about 1.6%
   // relative. Assume strength reduction will take care of fast
   // divide.
-  if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > origNumCliqueValuesUsed/64) {
+
+
+//   if ((origNumCliqueValuesUsed - numCliqueValuesUsed) > origNumCliqueValuesUsed/64) {
+//     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
+//   }
+  // printf("DEBUG: old cond = %d, new cond = %d\n",((origNumCliqueValuesUsed - numCliqueValuesUsed) > origNumCliqueValuesUsed/64),((cliqueValues.size() - numCliqueValuesUsed) > cliqueValues.size()/64));
+
+  if ((cliqueValues.size() - numCliqueValuesUsed) > cliqueValues.size()/64) {
     cliqueValues.resizeAndCopy(numCliqueValuesUsed);
   }
 
+
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+  // if this code is enabled, it means that we cannot call pruning more than once.
   if (origin.packer.packedLen() > IMC_NWWOH) {
     // finally, insert surviving entries into global shared pool.
     insertLocalCliqueValuesIntoSharedPool();
@@ -4780,6 +4854,42 @@ cliqueEntropy()
   return - H / logpr::internal_log(2.0);
 }
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::reportMemoryUsageTo()
+ *
+ *    Report current memory usage of this inference clique *and* the origin clique to the file in
+ *    units of MBs.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      results printed.
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+InferenceMaxClique::
+reportMemoryUsageTo(FILE *f)
+{
+  // Memory: IC=Inference Clique, CT=Clique Table
+  fprintf(f,"*MEM:IC CT(used=%lu,all=%lu=%luMB), ",
+	  (unsigned long)numCliqueValuesUsed,
+	  (unsigned long)cliqueValues.size(),
+	  (unsigned long)((1+(sizeof(CliqueValue)*(unsigned long)cliqueValues.size())/(1024ul*1024ul))));
+  origin.reportMemoryUsageTo(f);
+  fprintf(f,"\n");
+}
 
 
 
@@ -6765,6 +6875,50 @@ SeparatorClique::printAllJTInfo(FILE*f)
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * SeparatorClique::reportMemoryUsageTo()
+ *
+ *    Report current memory usage of this inference sep clique *and*
+ *    the origin sep clique to the file in units of MBs.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      results printed.
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+SeparatorClique::
+reportMemoryUsageTo(FILE *f)
+{
+  // Memory: OST=Origin Separator Clique, AI = accumulated intersection, RM = remainder
+  if (accPacker.packedLen() > ISC_NWWOH_AI) {
+    fprintf(f,"OST(AIVH=%luMB,AIHS=%luMB,",
+	    1+accValueHolder.bytesRequested()/(1024*1024),
+	    1+accSepValHashSet.bytesRequested()/(1024*1024));
+  } else {
+    fprintf(f,"OST(AIVH=0MB,RMHS=0MB,");
+  }
+  if (remPacker.packedLen() > ISC_NWWOH_RM) { 
+    fprintf(f,"RMVH=%luMB,RMHS=%luMB)",
+	    1+remValueHolder.bytesRequested()/(1024*1024),
+	    1+remSepValHashSet.bytesRequested()/(1024*1024));
+  } else {
+      fprintf(f,"RMVH=0MB,RMHS=0MB)");
+  }
+}
+
+
+
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -7401,159 +7555,257 @@ void InferenceSeparatorClique::insert()
 void 
 InferenceSeparatorClique::ceSeparatorPrune()
 {
-  // return immediately if separator beam pruning is turned off.
-  if (origin.separatorBeam == (-LZERO))
-    return;
-
-  // we shouldn't have to check this since we should never be pruning
-  // a VE separator.
-  // if (veSeparator())
-  // return;
 
   // keep a local variable copy of this around to avoid potential dereferencing.
   AISeparatorValue * const
     separatorValuesPtr = separatorValues->ptr; 
 
-  // compute max and current state space.
-  logpr maxCEsepValue;
-  unsigned originalTotalStateSpace = 0;
-  for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
-    originalTotalStateSpace += separatorValuesPtr[asv].numRemValuesUsed;
-    for (unsigned rsv=0;rsv<separatorValuesPtr[asv].numRemValuesUsed;rsv++) {
-      if (separatorValuesPtr[asv].remValues.ptr[rsv].p > maxCEsepValue)
-	maxCEsepValue = separatorValuesPtr[asv].remValues.ptr[rsv].p;
+  if (origin.separatorBeam != (-LZERO)) {
+    // only do this if separator beam pruning is not turned off.
+
+    // we shouldn't have to check this since we should never be pruning
+    // a VE separator.
+    // if (veSeparator())
+    // return;
+
+    // compute max and current state space.
+    logpr maxCEsepValue;
+    unsigned originalTotalStateSpace = 0;
+    for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
+      originalTotalStateSpace += separatorValuesPtr[asv].numRemValuesUsed;
+      for (unsigned rsv=0;rsv<separatorValuesPtr[asv].numRemValuesUsed;rsv++) {
+	if (separatorValuesPtr[asv].remValues.ptr[rsv].p > maxCEsepValue)
+	  maxCEsepValue = separatorValuesPtr[asv].remValues.ptr[rsv].p;
+      }
     }
-  }
 
-  // Check for all observed case, or a case where there is only one
-  // entry, in which case we never do anything.
-  if (originalTotalStateSpace == 1)
-    return;
+    // Check for all observed case, or a case where there is only one
+    // entry, in which case we never do anything.
+    if (originalTotalStateSpace == 1)
+      return;
 
-  // check if we have a zero separator, and if we do, print message.
-  // Do this before separator pruning.
-  if (originalTotalStateSpace == 0) {
-    infoMsg(IM::Mod,"WARNING: ZERO SEPARATOR: separator with no entries. Final probability will be zero.\n");
-    // nothing to prune, so we return.
-    return;
-  }
+    // check if we have a zero separator, and if we do, print message.
+    // Do this before separator pruning.
+    if (originalTotalStateSpace == 0) {
+      infoMsg(IM::Mod,"WARNING: ZERO SEPARATOR: separator with no entries. Final probability will be zero.\n");
+      // nothing to prune, so we return.
+      return;
+    }
 
-  // create an ininitialized variable
-  logpr beamThreshold((void*)0);
-  // break into the logp to avoid unnecessary zero checking.
-  beamThreshold.valref() = maxCEsepValue.valref() - origin.separatorBeam;
+    // create an ininitialized variable
+    logpr beamThreshold((void*)0);
+    // break into the logp to avoid unnecessary zero checking.
+    beamThreshold.valref() = maxCEsepValue.valref() - origin.separatorBeam;
 
-  // pointers to the ht keys for the two entries.
-  unsigned** ht_prune_key_p=NULL;
-  unsigned** ht_swap_key_p=NULL;
+    // pointers to the ht keys for the two entries.
+    unsigned** ht_prune_key_p=NULL;
+    unsigned** ht_swap_key_p=NULL;
 
-  // go through and shrink guys less than maximum.
-  unsigned newTotalStateSpace = 0;  
-  for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
-    const unsigned origNumRemValuesUsed = separatorValuesPtr[asv].numRemValuesUsed;
-    for (unsigned rsv=0;rsv<separatorValuesPtr[asv].numRemValuesUsed;) {
-      if (separatorValuesPtr[asv].remValues.ptr[rsv].p < beamThreshold) {
+    // go through and shrink guys less than maximum.
+    unsigned newTotalStateSpace = 0;  
+    for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
+      const unsigned origNumRemValuesUsed = separatorValuesPtr[asv].numRemValuesUsed;
+      for (unsigned rsv=0;rsv<separatorValuesPtr[asv].numRemValuesUsed;) {
+	if (separatorValuesPtr[asv].remValues.ptr[rsv].p < beamThreshold) {
 
-	if (separatorValuesPtr[asv].numRemValuesUsed > 1) {
-
-
-	  // We prune away entry for rsv, by swapping it in last
-	  // position. Here, however, it is not as easy as with a clique
-	  // separator as we have also to deal with the hash
-	  // table. Specifically, we need to swap index entries in hash
-	  // table as well. Note that we can not remove the hash table
-	  // entry for the one that got pruned away without re-hashing
-	  // the entire hash table. The reason is that if the entry that
-	  // got removed was a collision for another entry that is in
-	  // the table, then removing the collision will make the other
-	  // entry inaccessible.
-	  // TODO: test if it is better to just prune here and just
-	  // rehash everything.
-
-	  // the index of the entry being swapped with the
-	  // one that is being pruned.
-	  const unsigned swap_index = separatorValuesPtr[asv].numRemValuesUsed-1;
-
-	  // First, get pointers to hash table index values for the two
-	  // entries corresponding to the one we are prunning
-	  // and the one ware swapping it with.
-	  unsigned* prune_index_p;
-	  unsigned* swap_index_p;
-
-	  // the keys for the two entries.
-	  unsigned* prune_key_p;
-	  unsigned* swap_key_p;
+	  if (separatorValuesPtr[asv].numRemValuesUsed > 1) {
 
 
-	  if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-	    prune_key_p = &(separatorValuesPtr[asv].remValues.ptr[rsv].val[0]);
-	    swap_key_p = &(separatorValuesPtr[asv].remValues.ptr[swap_index].val[0]);
-	  } else {
-	    prune_key_p = separatorValuesPtr[asv].remValues.ptr[rsv].ptr;
-	    swap_key_p = separatorValuesPtr[asv].remValues.ptr[swap_index].ptr;
-	  }
+	    // We prune away entry for rsv, by swapping it in last
+	    // position. Here, however, it is not as easy as with a clique
+	    // separator as we have also to deal with the hash
+	    // table. Specifically, we need to swap index entries in hash
+	    // table as well. Note that we can not remove the hash table
+	    // entry for the one that got pruned away without re-hashing
+	    // the entire hash table. The reason is that if the entry that
+	    // got removed was a collision for another entry that is in
+	    // the table, then removing the collision will make the other
+	    // entry inaccessible. Therefore, for now, the hash table
+	    // does not shrink while the table does.
+	    // TODO: test if it is better to just prune here and just
+	    // rehash everything.
+
+	    // the index of the entry being swapped with the
+	    // one that is being pruned.
+	    const unsigned swap_index = separatorValuesPtr[asv].numRemValuesUsed-1;
+
+	    // First, get pointers to hash table index values for the two
+	    // entries corresponding to the one we are prunning
+	    // and the one ware swapping it with.
+	    unsigned* prune_index_p;
+	    unsigned* swap_index_p;
+
+	    // the keys for the two entries.
+	    unsigned* prune_key_p;
+	    unsigned* swap_key_p;
+
+
+	    if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
+	      prune_key_p = &(separatorValuesPtr[asv].remValues.ptr[rsv].val[0]);
+	      swap_key_p = &(separatorValuesPtr[asv].remValues.ptr[swap_index].val[0]);
+	    } else {
+	      prune_key_p = separatorValuesPtr[asv].remValues.ptr[rsv].ptr;
+	      swap_key_p = separatorValuesPtr[asv].remValues.ptr[swap_index].ptr;
+	    }
 	
-	  prune_index_p =  separatorValuesPtr[asv].iRemHashMap.find(prune_key_p,ht_prune_key_p);
-	  // it must exist
-	  assert ( prune_index_p != NULL );
-	  swap_index_p =  separatorValuesPtr[asv].iRemHashMap.find(swap_key_p,ht_swap_key_p);
-	  // it must exist
-	  assert ( swap_index_p != NULL );
+	    prune_index_p =  separatorValuesPtr[asv].iRemHashMap.find(prune_key_p,ht_prune_key_p);
+	    // it must exist
+	    assert ( prune_index_p != NULL );
+	    swap_index_p =  separatorValuesPtr[asv].iRemHashMap.find(swap_key_p,ht_swap_key_p);
+	    // it must exist
+	    assert ( swap_index_p != NULL );
 
-	  // swap the entries
-	  swap(separatorValuesPtr[asv].remValues.ptr[rsv],
-	       separatorValuesPtr[asv].remValues.ptr[swap_index]);
-	  // and swap the hash table pointers
-	  swap((*prune_index_p),(*swap_index_p));
-	  // and swap the hash table keys if they are pointers to the arrays which
-	  // just got swapped.
-	  if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-	    // printf("foobarbaz");
-	    swap((*ht_prune_key_p),(*ht_swap_key_p));
+	    // swap the entries in the separator remainder (rv_val,
+	    // prob) table. We can't do this any earlier than here
+	    // since the hash finding above uses pointers to these
+	    // entries.
+	    swap(separatorValuesPtr[asv].remValues.ptr[rsv],
+		 separatorValuesPtr[asv].remValues.ptr[swap_index]);
+
+	    // and swap the hash table item index values (i.e., the ht items are integer indices
+	    // into the separator remainder (rv_val, prob) table. We want the hash table entry for the
+	    // item that we are not pruning to now point to the separator remainder entry that is not
+	    // being pruned away (rather than its old entry, which is no longer being used). This
+	    // does not change the position in the hash table of this entry, rather it only changes
+	    // what the hash table entry is pointing back to in the separator remainder table.
+	    swap((*prune_index_p),(*swap_index_p));
+
+	    // and swap the hash table keys if they are pointers to
+	    // the arrays which just got swapped. In other words, when
+	    // the separator remainder value is small enough to fit in
+	    // one machine word, then the hash table key values will
+	    // point directly into the slot in the separator remainder
+	    // (rv_val, prob) table rather than pointing to some
+	    // globally shared value pool. In this case, since the
+	    // separator remainder table (containing rv values
+	    // directly rather than pointers) has changed, we need to
+	    // adjust the hash table so that its pointer to key is
+	    // appropriate.
+	    if (origin.remPacker.packedLen() <= ISC_NWWOH_RM) {
+	      // printf("foobarbaz");
+	      swap((*ht_prune_key_p),(*ht_swap_key_p));
+	    }
+
+	    // TODO: we don't need to swap above, rather we just need
+	    // to update the slot that is not getting pruned away.
+
+	    // decrease values
+	    separatorValuesPtr[asv].numRemValuesUsed--;
+
+	    // TODO: the above needs to be looked at for 64bit (64-bit) case.
+
+	  } else {
+	    // then separatorValuesPtr[asv].numRemValuesUsed == 1. This
+	    // will happen under two conditiosn.
+	    //  1) There is no remainder, meaning (sep.origin.hRemainder.size() == 0), 
+	    //     and the entire separator is
+	    //     in the accumulated intersection with other separators.
+	    //     In this case there is no hash table at all.
+	    //  2) All other entries in the remainder for this particular
+	    //     accumulated intersection slot have been pruned away. In this
+	    //     case, the hash table does exist, but it'll still be deleted
+	    //     upon calling the destructor.
+
+	    // so, what we do is just set the the number of values to zero.
+	    // Other code will need to thus check for empty separator acc. intersection
+	    // values.
+	    separatorValuesPtr[asv].numRemValuesUsed = 0;
+
 	  }
 
-	  // decrease values
-	  separatorValuesPtr[asv].numRemValuesUsed--;
 	} else {
-	  // then separatorValuesPtr[asv].numRemValuesUsed == 1. This
-	  // will happen under two conditiosn.
-	  //  1) There is no remainder, meaning (sep.origin.hRemainder.size() == 0), 
-	  //     and the entire separator is
-	  //     in the accumulated intersection with other separators.
-	  //     In this case there is no hash table at all.
-	  //  2) All other entries in the remainder for this particular
-	  //     accumulated intersection slot have been pruned away. In this
-	  //     case, the hash table does exist, but it'll still be deleted
-	  //     upon calling the destructor.
-
-	  // so, what we do is just set the the number of values to zero.
-	  // Other code will need to thus check for empty separator acc. intersection
-	  // values.
-	  separatorValuesPtr[asv].numRemValuesUsed = 0;
-
+	  rsv++;
 	}
+      }
+      newTotalStateSpace += separatorValuesPtr[asv].numRemValuesUsed;
+      if (separatorValuesPtr[asv].numRemValuesUsed < origNumRemValuesUsed) {
+	if (separatorValuesPtr[asv].numRemValuesUsed == 0 ) {
+	  // should/could remove accumulator entry here as well. 
+	}
+	// - re-allocate memory & adjust hash table.
+	// - separatorValuesPtr[asv].remValues
+	// - possibly re-hash hash tables if necessary.
+      }
+    }
 
-      } else {
-	rsv++;
-      }
-    }
-    newTotalStateSpace += separatorValuesPtr[asv].numRemValuesUsed;
-    if (separatorValuesPtr[asv].numRemValuesUsed < origNumRemValuesUsed) {
-      if (separatorValuesPtr[asv].numRemValuesUsed == 0 ) {
-	// should/could remove accumulator entry here as well. 
-      }
-      // - re-allocate memory & adjust hash table.
-      // - separatorValuesPtr[asv].remValues
-      // - possibly re-hash hash tables if necessary.
-    }
+    infoMsg(IM::Med,"Separator beam pruning, Max cv = %f, thres = %f. Original sep state space = %d, new sep state space = %d\n",
+	    maxCEsepValue.valref(),
+	    beamThreshold.valref(),
+	    originalTotalStateSpace,newTotalStateSpace);
+
   }
 
-  infoMsg(IM::Med,"Separator beam pruning, Max cv = %f, thres = %f. Original sep state space = %d, new sep state space = %d\n",
-	  maxCEsepValue.valref(),
-	  beamThreshold.valref(),
-	  originalTotalStateSpace,newTotalStateSpace);
+#if 0
+  // reallocate memory so that nothing is wasted.
+  for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
+    // shrink down if we can gain more than about 1.6% of size.
+    if ((separatorValuesPtr[asv].remValues.size() - separatorValuesPtr[asv].numRemValuesUsed) > separatorValuesPtr[asv].remValues.size()/64) {
+      separatorValuesPtr[asv].remValues.resizeAndCopy(separatorValuesPtr[asv].numRemValuesUsed);
+    }
+  }
+#endif
+
 
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceSeparatorClique::reportMemoryUsageTo()
+ *
+ *    Report current memory usage of this inference sep clique *and*
+ *    the origin sep clique to the file in units of MBs.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      results printed.
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+InferenceSeparatorClique::
+reportMemoryUsageTo(FILE *f)
+{
+  // Memory: IC=Inference Separator  Clique, AI=accumulated intersection
+  fprintf(f,"*MEM:ISC AI(used=%lu,all=%lu=%luMB),AIH(%luMB)",
+	  (unsigned long)numSeparatorValuesUsed,
+	  (unsigned long)separatorValues->size(),
+	  (unsigned long)((1+(sizeof(AISeparatorValue)*(unsigned long)separatorValues->size())/(1024ul*1024ul))),
+	  (iAccHashMap != NULL)? (unsigned long)(1 + iAccHashMap->bytesRequested()/(1024ul*1024ul)) : 0 );
+
+  // sum up stats from the remainders
+  unsigned long remUsed = 0;
+  unsigned long remAllocated = 0;
+  unsigned long remHashAllocated = 0;
+
+  for (unsigned long i =0; i< numSeparatorValuesUsed; i++) {
+    remUsed += separatorValues->ptr[i].numRemValuesUsed;
+    remAllocated += separatorValues->ptr[i].remValues.size();
+    remHashAllocated += separatorValues->ptr[i].iRemHashMap.bytesRequested();
+  }
+  // note: remUsed is also equal to the state space size of the separator.
+
+  // REM = remainder
+  fprintf(f,"REM(used=%lu,all=%lu=%luMB),RH(%luMB),",
+	  (unsigned long)remUsed,
+	  (unsigned long)remAllocated,
+	  (unsigned long)((1+(sizeof(RemainderValue)*(unsigned long)remAllocated)/(1024ul*1024ul))),
+	  (unsigned long)((1+remHashAllocated/(1024ul*1024ul))));
+  origin.reportMemoryUsageTo(f);
+  fprintf(f,"\n");
+
+}
+
+
 
 
 
@@ -7625,7 +7877,7 @@ CliqueValueHolder::allocateCurCliqueValue()
   // don't need to re-copy all the existing ones already.
   values.resizeAndCopy(values.size()+1);
 
-  // newSize *MUST* be a multiple of 'cliqueValueSize' or else
+  // newSize *MUST* be a multiple of 'cliqueValueSize' or else.
   // this code will fail.
   // TODO: optimize this re-sizing.
   unsigned newSize = cliqueValueSize*
@@ -7639,7 +7891,6 @@ CliqueValueHolder::allocateCurCliqueValue()
   curAllocationEnd = values[values.size()-1].ptr + newSize;
 
 }
-
 
 
 VHashMapUnsignedUnsignedKeyUpdatable::
