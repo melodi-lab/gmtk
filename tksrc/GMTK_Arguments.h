@@ -708,7 +708,7 @@ const char*const argerr = "ARG ERROR";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("ckbeam",Arg::Opt,MaxClique::cliqueBeamMaxNumStates,"Prune to this clique max state space (0 = no pruning)"),
-  Arg("cusample",Arg::Opt,MaxClique::cliqueBeamUniformSampleAmount,"Uniformly sample pruned clique (0<v=<1 fraction, >= 1 number)"),
+  Arg("cusample",Arg::Opt,MaxClique::cliqueBeamUniformSampleAmount,"Uniformly sample pruned clique (0<v=<=1 fraction, > 1 number)"),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
