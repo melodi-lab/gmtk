@@ -6900,13 +6900,13 @@ void
 SeparatorClique::
 reportMemoryUsageTo(FILE *f)
 {
-  // Memory: OST=Origin Separator Clique, AI = accumulated intersection, RM = remainder
+  // Memory: OSC=Origin Separator Clique, AI = accumulated intersection, RM = remainder
   if (accPacker.packedLen() > ISC_NWWOH_AI) {
-    fprintf(f,"OST(AIVH=%luMB,AIHS=%luMB,",
+    fprintf(f,"OSC(AIVH=%luMB,AIHS=%luMB,",
 	    1+accValueHolder.bytesRequested()/(1024*1024),
 	    1+accSepValHashSet.bytesRequested()/(1024*1024));
   } else {
-    fprintf(f,"OST(AIVH=0MB,RMHS=0MB,");
+    fprintf(f,"OSC(AIVH=0MB,AIHS=0MB,");
   }
   if (remPacker.packedLen() > ISC_NWWOH_RM) { 
     fprintf(f,"RMVH=%luMB,RMHS=%luMB)",
