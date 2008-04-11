@@ -4380,3 +4380,11 @@ Fri Feb 29 13:14:27 2008
     if it is accurate, one would rarely get such a sample, and if it is not (say uniform)),
     then the sample would likely be rejected (unless the proposal's reverse position cancels out 
     the effect). Need to look into this ...
+
+Fri Apr 11 00:30:44 2008
+  - viterbi decoding front end should have the ability to give a score for each decoded unit.
+    E.g., for word decoding, each word should give a score, such that when all the scores
+    are added up they add up to the total viterbi score of the utterance.
+
+
+
