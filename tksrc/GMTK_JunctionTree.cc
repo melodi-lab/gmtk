@@ -611,8 +611,41 @@ JT_InferencePartition::emIncrement(const logpr probE,
   for (unsigned cliqueNo=0;cliqueNo < maxCliques.size(); cliqueNo++ ) {
     maxCliques[cliqueNo].emIncrement(probE,localCliqueNormalization,emTrainingBeam);
   }
+
+
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JT_InferencePartition::reportMemoryUsageTo()
+ *   Reports memory usage of the template in ASCII format (suitable for stdout or an ascii file)
+ *
+ * Preconditions:
+ *   The partitions must be validly instantiated with clique & separator structures.
+ *
+ * Postconditions:
+ *   current memory usage is reported.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JT_InferencePartition::reportMemoryUsageTo(FILE *f)
+{
+  for (unsigned cliqueNo=0;cliqueNo < maxCliques.size(); cliqueNo++ ) {
+    maxCliques[cliqueNo].reportMemoryUsageTo(f);
+  }
+  for (unsigned i=0;i<separatorCliques.size();i++) {
+    separatorCliques[i].reportMemoryUsageTo(f);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -1053,6 +1086,40 @@ JunctionTree::prepareForNextInferenceRound()
     E1.cliques[c].prepareForNextInferenceRound();
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::reportMemoryUsageTo()
+ *   Reports memory usage of the template in ASCII format (suitable for stdout or an ascii file)
+ *
+ * Preconditions:
+ *   The partitions must be validly instantiated with cliques, and
+ *   the routine assignRVsToCliques() must have been called. This can be called between messages.
+ *
+ * Postconditions:
+ *   current memory usage is reported.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+JunctionTree::reportMemoryUsageTo(FILE *f,unsigned whichPartitions)
+{
+  if (whichPartitions & 0x1)
+    for (unsigned c=0;c<P1.cliques.size();c++)
+      P1.cliques[c].reportMemoryUsageTo(f);
+  if (whichPartitions & 0x2)
+    for (unsigned c=0;c<Co.cliques.size();c++)
+      Co.cliques[c].reportMemoryUsageTo(f);
+  if (whichPartitions & 0x4)
+    for (unsigned c=0;c<E1.cliques.size();c++)
+      E1.cliques[c].reportMemoryUsageTo(f);
+}
 
 
 /*-
@@ -4110,6 +4177,10 @@ JunctionTree::ceGatherIntoRoot(// partition
 	  part_type_name,part_num,root);
   part.maxCliques[root].
     ceGatherFromIncommingSeparators(part);
+
+  if (IM::messageGlb(IM::Med+9)) {
+    part.reportMemoryUsageTo(stdout);
+  }
 }
 
 
@@ -4181,6 +4252,10 @@ JunctionTree::ceSendToNextPartition(// previous partition
     ceSendToOutgoingSeparator(previous_part,
 			      next_part.
 			      separatorCliques[next_part.separatorCliques.size()-1]);
+
+  if (IM::messageGlb(IM::Med+9)) {
+    previous_part.reportMemoryUsageTo(stdout);
+  }
 }
 
 
@@ -4248,7 +4323,7 @@ JunctionTree::collectEvidence()
 		   P1_message_order,
 		   prv_nm,partNo);
 
-  for (unsigned p = 0; p < numCoPartitions; p++ ) {
+  for (unsigned p = 0; p < numCoPartitions; p++) {
     ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
 			  jtIPartitions[partNo+1],C_li_to_C,Co_n,partNo+1);
     partNo++;
@@ -4290,8 +4365,8 @@ JunctionTree::collectEvidence()
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
   // call pruning on the root clique of the last partition.
-  if (jtIPartitions[partNo].maxCliques.size() > 0)
-    jtIPartitions[partNo].maxCliques[E_root_clique].ceDoAllPruning();
+  //if (jtIPartitions[partNo].maxCliques.size() > 0)
+  //  jtIPartitions[partNo].maxCliques[E_root_clique].ceDoAllPruning();
 
 }
 
@@ -4842,7 +4917,7 @@ JunctionTree::probEvidence(const unsigned int numFrames,
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
   // call pruning on the root clique of the last partition.
-  curPart->maxCliques[E_root_clique].ceDoAllPruning();
+  // curPart->maxCliques[E_root_clique].ceDoAllPruning();
 
   logpr rc = curPart->maxCliques[E_root_clique].sumProbabilities();
   
@@ -4992,7 +5067,7 @@ JunctionTree::probEvidenceTime(const unsigned int numFrames,
     // root clique of last partition did not do partition, since it
     // never sent to next separator (since there is none). We explicitly
     // call pruning on the root clique of the last partition.
-    curPart->maxCliques[E_root_clique].ceDoAllPruning();
+    // curPart->maxCliques[E_root_clique].ceDoAllPruning();
     
     res = curPart->maxCliques[E_root_clique].sumProbabilities();
   } else {
@@ -5115,8 +5190,8 @@ cePruneRootCliqueOfPartition(const unsigned part)
 {
   infoMsg(IM::Mod,"\\/- cePruneRootCliqueOfPartition: part = %d, nm = %s\n",
 	  part,partPArray[part].nm);
-  if (cur_prob_evidence.not_essentially_zero())
-    partPArray[part].p->maxCliques[partPArray[part].ri].ceDoAllPruning();
+  // if (cur_prob_evidence.not_essentially_zero())
+  //  partPArray[part].p->maxCliques[partPArray[part].ri].ceDoAllPruning();
 }
 void JunctionTree::
 deReceiveToPreviousPartition(const unsigned part,const unsigned prevPart)
