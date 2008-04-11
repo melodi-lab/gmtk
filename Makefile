@@ -23,8 +23,13 @@ EXCCFLAGS=
 EXCXXFLAGS=
 EXLDFLAGS =  
 # optimization flags
-# OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -mfpmath=sse2 -ffast-math
+# OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
 OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
+# Other -march flags to try are:
+#       -march=pentium4 - includes MMX, SSE, SSE2, instructions.
+#       -march=prescott - includes MMX, SSE, SSE2, SSE3 instructions + better p4 scheduling
+#       -march=nocona   - includes MMX, SSE, SSE2, SSE3 and 64-bit instructions + better p4 scheduling
+#
 # other general optional flags, optionally turned off at top level command line.
 ANSI=-ansi
 PEDANTIC=-pedantic
