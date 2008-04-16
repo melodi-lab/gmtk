@@ -4178,7 +4178,7 @@ Thu Dec 21 16:20:46 2006
     http://www.cs.utexas.edu/~abhinay/ee382v/Project/Papers/fft85.pdf
     (or it could be in ).
     T.L. Gonzales, clustering to minimize the max intercluster distance
-    theoretical CS, 1985.
+    theoretical CS, 1985. Vol 38, No 2-3, June 85, 293-306.
   - Using l-infinity norm for removing outliers in l-2 norm problems
     (Christy Sim & Hartly).    
 
@@ -4387,4 +4387,19 @@ Fri Apr 11 00:30:44 2008
     are added up they add up to the total viterbi score of the utterance.
 
 
+Tue Apr 25 02:26:46 2008
+ - see paper by Streeter & Smith about new methods for algorithm
+   portfolio design, which talks about choosing and scheduling
+   heuristcis for solving NP complete optimization problems.
+
+Tue Apr 15 23:38:51 2008
+  - add another form of bayesian prior that can do parameter
+    tying. I.e., this prior would be, say, over a subet of Gaussians,
+    and would allow their means to be anything as long as they don't
+    get too far away from each other. I.e., lets say that \mu_i is the
+    mean for the i^{th} gaussian. Let \mu = average(\mu_i, over i) be the
+    mean of the means. Then a Gaussian prior placed over each \mu_i would
+    be something like N(\mu,\sigma). I.e., the l2 version of this would
+    be to have || \mu_i - \mu ||_2 for each i. There could be approximate
+    or exact l1 versions of this as well.
 
