@@ -4220,6 +4220,49 @@ Mon Apr 23 18:10:35 2007
        http://www.flipcode.com/cgi-bin/fcarticles.cgi?show=63828
     (and entry above from June 22, 2004).
 
+================================================================================
+================================================================================
+================================================================================
+
+
+Fast log() Function
+  Submitted by Laurent de Soras 
+
+Here is a code snippet to replace the slow log() function... It just performs an approximation, but the maximum error is below 0.007. Speed gain is about x5, and probably could be increased by tweaking the assembly code.
+
+The function is based on floating point coding. It's easy to get floor (log2(N)) by isolating exponent part. We can refine the approximation by using the mantissa. This function returns log2(N) : 
+
+
+inline float fast_log2 (float val)
+{
+   int * const    exp_ptr = reinterpret_cast <int * (&val);
+   int            x = *exp_ptr;
+   const int      log_2 = ((x  23) & 255) - 128;
+   x &= ~(255 << 23);
+   x += 127 << 23;
+   *exp_ptr = x;   val = ((-1.0f/3) * val + 2) * val - 2.0f/3;   // (1)
+
+   return (val + log_2);
+} 
+ 
+
+The line (1) computes 1+log2(m), m ranging from 1 to 2. The proposed formula is a 3rd degree polynomial keeping first derivate continuity. Higher degree could be used for more accuracy. For faster results, one can remove this line, if accuracy is not the matter (it gives some linear interpolation between powers of 2). 
+
+Now we got log2(N), we have to multiply it by ln(2) to get the natural log : 
+
+
+inline float fast_log (const float &val)
+{
+   return (fast_log2 (val) * 0.69314718f);
+} 
+
+-- Laurent
+
+================================================================================
+================================================================================
+================================================================================
+
+
 Sun May 13 22:35:12 2007
   - when changing the r.v. unrolling process to only use the modified template, 
     we still need to keep track of r.v. values when doing things like viterbi.
