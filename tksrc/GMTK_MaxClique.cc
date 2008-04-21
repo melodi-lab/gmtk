@@ -7815,6 +7815,7 @@ InferenceSeparatorClique::ceSeparatorPrune()
 
   }
 
+#if 0
   // reallocate memory so that nothing is wasted.
   for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
     // shrink down if we can gain more than about 1.6% of size.
@@ -7822,6 +7823,7 @@ InferenceSeparatorClique::ceSeparatorPrune()
       separatorValuesPtr[asv].remValues.resizeAndCopy(separatorValuesPtr[asv].numRemValuesUsed);
     }
   }
+#endif 
 
 
 }
