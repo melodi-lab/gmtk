@@ -4348,6 +4348,86 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 }
 
 
+
+#if 0
+
+void 
+InferenceMaxClique::ceCliqueDiversityPrune(const unsigned numClusters)
+{
+  // k can't be larger than the number of clique entries.
+  if (k == 0 || k >= numCliqueValuesUsed)
+    return;
+
+  // first, cluster the points using an O(kn) algorithm that 
+  // attempts to preserver outliers, where k = numClusters, and n = number of points.
+
+  // first, we try to identify maximally dissimilar cluster centers using O(kn) steps.
+
+  unsigned long centers[numClusters];
+
+  // pick a random point.
+  center[0] = rnd.uniform(numCliqueValuesUsed);
+  unsigned k = 1;
+  while (k < numClusters) {
+    // find the point that is maximally dissimilar to the closest point
+    // so far found.
+
+    // to compute the max of the min distances.
+    double dist = 0;
+    unsigned dist_index = cvn;
+    for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+
+
+      // to compute the min
+      double min_dist = MAX_DIST;
+      // compute the min distance
+      for (int i = 0; i < k; i++) {
+	if (center[i] == cvn)
+	  goto cvn_continue;
+
+	// get the two keys
+	unsigned* center_key_p;
+	unsigned* current_key_p;
+	if (origin.packer.packedLen() <= IMC_NWWOH) {
+	  center_key_p = &(cliqueValues.ptr[center[k]].val[0]);
+	  current_key_p = &(cliqueValues.ptr[cvn].val[0]);
+	} else {
+	  center_key_p = (unsigned*)cliqueValues.ptr[center[k]].ptr;
+	  current_key_p = (unsigned*)cliqueValues.ptr[cvn].ptr;
+	}
+	min_dist = min(min_dist,measure(center_key_p,current_key_p,origin.packer.packedLen()));
+      }
+
+      if (min_dist > dist) {
+	dist = min_dist;
+	dist_index = cvn;
+      }
+
+    cvn_continue:
+
+    }
+    center[k] = dist_index;
+
+    k++;
+  }
+
+
+  // now that we have the k centers, we need to do the clustering. We cluster each remaining
+  // point to the closest center.
+
+
+
+
+
+
+}
+
+#endif
+
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * InferenceMaxClique::ceCliqueMassPrune(double removeFraction, unsigned minSize)
