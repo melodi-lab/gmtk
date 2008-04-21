@@ -1276,7 +1276,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,
       //      DBGFPRINTF((stderr,"In ObservationMatrix::copyToFinalBuffer.   *pr_it= %d.\n",*pr_it));
       for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	float_copy_swap_func_ptr(1,&float_buf[*it+(*pr_it)*num_floats],float_buf_ptr++);
-	if(!finite(*(float_buf_ptr-1))) {
+	if(!isfinite(*(float_buf_ptr-1))) {
 #ifdef WARNING_ON_NAN
 	  warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, sentence %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #else
@@ -1430,7 +1430,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,
 	float_buf_ptr=start_float_buf;
 	for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	  float_copy_swap_func_ptr(1,&float_buf[*it+(*pr_it)*num_floats],float_buf_ptr++);
-	  if(!finite(*(float_buf_ptr-1))) {
+	  if(!isfinite(*(float_buf_ptr-1))) {
 #ifdef WARNING_ON_NAN
 	    warning("WARNING: ObservationMatrix::copyToFinalBuffer: found NaN or +/-INF at %i'th float in frame %i and stream %i\n",*it,*pr_it,stream_no);
 #else
