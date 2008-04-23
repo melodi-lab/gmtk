@@ -7816,6 +7816,7 @@ InferenceSeparatorClique::ceSeparatorPrune()
   }
 
 #if 0
+
   // reallocate memory so that nothing is wasted.
   for (unsigned asv=0;asv<numSeparatorValuesUsed;asv++) {
     // shrink down if we can gain more than about 1.6% of size.
@@ -7823,6 +7824,10 @@ InferenceSeparatorClique::ceSeparatorPrune()
       separatorValuesPtr[asv].remValues.resizeAndCopy(separatorValuesPtr[asv].numRemValuesUsed);
     }
   }
+
+  // TODO: get the rest of this code working, will need in some cases
+  // to re-hash the above hash tables. Not sure this is worth it.
+
 #endif 
 
 
