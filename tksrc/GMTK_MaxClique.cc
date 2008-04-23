@@ -4119,7 +4119,7 @@ InferenceMaxClique::insertLocalCliqueValuesIntoSharedPool()
 {
 
   // clique value length in bytes
-  const unsigned cvlb = origin.packer.packedLenBytes();
+  const unsigned cvlb = origin.packer.packedLenInBytes();
   
   unsigned k;
   for (k=0;k<numCliqueValuesUsed;k++) {
@@ -4486,10 +4486,10 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
   logpr desiredSum = (origSum - (origSum*removeFraction));
   logpr actualSum;
 
-  //   printf("mass pruning: origSum %.18e, desiredSum %.18e, diff %.18e\n",
-  // 	 origSum.val(),
-  // 	 desiredSum.val(),
-  // 	 (origSum - desiredSum).val());
+  printf("DEBUG: mass pruning: origSum %.18e, desiredSum %.18e, diff %.18e\n",
+   	 origSum.val(),
+   	 desiredSum.val(),
+   	 (origSum - desiredSum).val());
   
   unsigned k;
   for (k=0;k<numCliqueValuesUsed;k++) {

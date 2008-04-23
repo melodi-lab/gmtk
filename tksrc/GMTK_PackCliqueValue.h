@@ -93,7 +93,9 @@ class PackCliqueValue {
   ValLocator *member_vl_endp;
 
 
-  // total number of bits in this packed clique.
+  // Total number of bits in this packed clique, meaning the total
+  // number of bits that are required for each packed value. This
+  // will be <= packedLen()*sizeof(unsigned)*8.
   unsigned totalNumBits;
 
 
@@ -118,18 +120,34 @@ public:
   static unsigned numWordsRequiredFor(const unsigned len, const unsigned *const cards);
   static unsigned numSpareBitsAvailableWith(vector<RV*>& nodes);
 
-  // Return the number of unsigned words that are required to hold a
-  // packed clique value.
-  unsigned packedLen() { return numUnsignedInPackedVector; }
+
   // Return the number of words needed to hold an unpacked clique
   // value (i.e., the number of hidden variables in the clique).
   unsigned unPackedLen() { return unpackedVectorLength; }
-  // Return the number of bits needed to hold a packed clique value.
+
+  // Return the minimum number of unsigned words that are required to hold a
+  // packed clique value.
+  unsigned packedLen() { return numUnsignedInPackedVector; }
+  // Return the minimum number of bits needed to hold a packed clique value.
   unsigned packedLenBits() { return totalNumBits; }
-  // Return the number of bytes needed to hold a packed clique value.
+  // Return the minimum number of bytes needed to hold a packed clique value.
   unsigned packedLenBytes() { return (totalNumBits+7)/8; }
   // Return the number of splits (word boundary crossings) in this packing.
   unsigned numSplits() { return (member_vl_endp - member_vl_nwb_endp); }
+
+
+  // Return the number of words needed to hold a packed clique value. I.e., this returns
+  // the total amount of memory that is allocated to each packed entry, in units of worsd.
+  unsigned packedLenInWords() { return packedLen(); }
+  // Return the number of bytes needed to hold a packed clique value. I.e., this returns
+  // the total amount of memory that is allocated to each packed entry, in units of bytes.
+  unsigned packedLenInBytes() { return packedLen()*sizeof(unsigned); }
+  // Return the number of bits needed to hold a packed clique value. I.e., this returns
+  // the total amount of memory that is allocated to each packed entry, in units of bits. 
+  unsigned packedLenInBits() { return packedLen()*sizeof(unsigned)*8; }
+
+
+
 
   // pack()
   // this routine assumes that both
