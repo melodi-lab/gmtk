@@ -573,6 +573,78 @@ DlinkMatrix::emIncrement(const logpr prob,
 }
 
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * emIncrement
+ *      Another version of emIncrement that doesn't increment the real-valued accumulators,
+ *      only the total accumulated probability variables.
+ * 
+ * Preconditions:
+ *      basic structures must be allocated.
+ *
+ * Postconditions:
+ *      data has been accumulated
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DlinkMatrix::emIncrement(const logpr prob,
+			 const float fprob,
+			 const float* const f,
+			 const Data32* const base,
+			 const int stride)
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
+
+
+  /////////////////////////////////////////////
+  // Note: unlike the normal EM mode described
+  // in GMTK_EMable.h, we do not call
+  // emStartIteration() here and assume that it
+  // was called by the Gaussian component that
+  // is using this mean. This is because
+  // this object keeps a reference count (needed for
+  // sharing), and calling that routine repeatedly 
+  // would result in an incorrect count. We do
+  // make sure that em has been allocated with the
+  // following assertion.
+  assert ( emEmAllocatedBitIsSet() );
+
+  // we assume here that (prob > minIncrementProbabilty),
+  // i.e., that this condition has been checked by the caller
+  // of this routine (meaning that fprob is valid)
+  assert ( prob >= minIncrementProbabilty );
+
+  accumulatedProbability += prob;
+
+}
+
+
+
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * emEndIterationSharedMeansCovarsDlinks()

@@ -445,13 +445,26 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
   // prob.unlog() here so it doesn't need to be done
   // multiple times by the callees.
   const float fprob = prob.unlog();
-  mean->emIncrement(prob,fprob,f,base,stride,xAccumulators.ptr);
-  dLinkMat->emIncrement(prob,fprob,f,base,stride,
-			xzAccumulators.ptr,
-			zzAccumulators.ptr,
-			zAccumulators.ptr);
-  covar->emIncrement(prob,fprob,f,base,stride,xxAccumulators.ptr);
-  DiagGaussian::emIncrementMeanDiagCovar(fprob,f,xAccumulators.size(),xAccumulators.ptr,xxAccumulators.ptr);
+
+  if (!accumulateFisherKernelScores) {
+    mean->emIncrement(prob,fprob,f,base,stride,xAccumulators.ptr);
+    dLinkMat->emIncrement(prob,fprob,f,base,stride,
+			  xzAccumulators.ptr,
+			  zzAccumulators.ptr,
+			  zAccumulators.ptr);
+    covar->emIncrement(prob,fprob,f,base,stride,xxAccumulators.ptr);
+    DiagGaussian::emIncrementMeanDiagCovar(fprob,f,xAccumulators.size(),xAccumulators.ptr,xxAccumulators.ptr);
+  } else {
+    // these next three routines only increment the total accumulated probability,
+    // not the actual real-valued scores.
+    mean->emIncrement(prob,fprob,f,base,stride,xAccumulators.ptr);
+    covar->emIncrement(prob,fprob,f,base,stride,xxAccumulators.ptr);
+    dLinkMat->emIncrement(prob,fprob,f,base,stride);
+
+    // do the Fisher kernel real-valued true accumulations.
+    fkIncrementMeanDiagCovarDlinks();
+
+  }
 }
 
 
@@ -1289,7 +1302,7 @@ void LinMeanCondDiagGaussian::sampleGenerate(float *const sample,
 				  const Data32* const base,
 				  const int stride)
 {
-  error("not implemented");
+  error("LinMeanCondDiagGaussian::sampleGenerate: not implemented");
 }
 
 

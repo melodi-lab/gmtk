@@ -434,13 +434,23 @@ Dense1DPMF::emIncrement(logpr prob,
     return;
   }
   accumulatedProbability+= prob;
-  for (int i=0;i<nextPmf.len();i++) {
-    // we assume here that 'prob' has already
-    // been multipled into postDist by our friendly
-    // caller. If this is not the case, then
-    // this code would be wrong.
-    nextPmf[i] += postDist[i];
+  if (!accumulateFisherKernelScores) {
+    for (int i=0;i<nextPmf.len();i++) {
+      // we assume here that 'prob' has already
+      // been multipled into postDist by our friendly
+      // caller. If this is not the case, then
+      // this code would be wrong.
+      nextPmf[i] += postDist[i];
+    }
+  } else {
+    // do the fisher kernel score case, the same as above but divide by
+    // the previous parameters.
+    for (int i=0;i<nextPmf.len();i++) {
+      if (!pmf[i].zero())
+	nextPmf[i] += postDist[i]/pmf[i];
+    }
   }
+
 }
 
 
@@ -483,7 +493,14 @@ Dense1DPMF::emIncrement(logpr prob,
     return;
   } 
   accumulatedProbability+= prob;
-  nextPmf[val] += prob;
+  if (!accumulateFisherKernelScores) {
+    nextPmf[val] += prob;
+  } else {
+    // do Fisher score accumulation case.
+    if (!pmf[val].zero())
+      nextPmf[val] += prob/pmf[val];
+  }
+
 }
 
 

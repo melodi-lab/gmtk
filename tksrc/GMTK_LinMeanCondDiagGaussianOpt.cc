@@ -132,6 +132,15 @@ LinMeanCondDiagGaussian::log_p(const float *const x,
 /////////////////
 
 
+void
+LinMeanCondDiagGaussian::fkIncrementMeanDiagCovarDlinks()
+{
+  // TODO: go through and implmenet the fk for this class. Will need
+  // to go into the dlink structure, as basically we need to compute:
+  //      \sum_t p_t(i,l|x_{1:T}) D_{il} (x_t - B_{il}z_t - u_{il})z_t^T
+  // See the TR for more information.
+  error("LinMeanCondDiagGaussian::fkIncrementMeanDiagCovarDlinks(): not implemented");
+}
 
 
 
