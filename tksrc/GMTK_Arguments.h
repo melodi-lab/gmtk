@@ -1474,9 +1474,6 @@ static bool writeLogVals = false;
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  if (fisherKernelP == true) {
-    error("Fisher Kernel currently not supported, set fisherKernel to false for  now");
-  }
 
 
 #else

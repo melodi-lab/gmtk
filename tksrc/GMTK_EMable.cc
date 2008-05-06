@@ -45,6 +45,8 @@ EMable::missedIncrementCount = 0;
 
 bool EMable::useDirichletPriors = false;
 
+bool EMable::accumulateFisherKernelScores = false;
+
 
 ////////////////////////////////////////////////////
 // The minimum accumulated probability of mean and covariance -like

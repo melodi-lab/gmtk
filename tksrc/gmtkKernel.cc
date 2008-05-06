@@ -171,6 +171,12 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
+
+  // Check if we want to do the Fisher kernel rather than the
+  // accumulator kernel.
+  if (fisherKernelP)
+    EMable::accumulateFisherKernelScores = true;
+
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,
 				    (const char**)&frs,
@@ -328,7 +334,6 @@ main(int argc,char*argv[])
 
   // Now, do CE/DE iterations, writing out the parameter "increments" one per segment.
 
-
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
   {
     oDataStreamFile outf(storeFeatureFile,transFileIsBinary);
@@ -382,21 +387,17 @@ main(int argc,char*argv[])
       }
 
 
-      if (!fisherKernelP) {
-	printf("writing feature space vector ...\n");
-	if (annotateTransformationOutput) {
-	  char buff[1024];
-	  sprintf(buff,"Segment %d : %d frames, %d usable frames, log(PE) = %f",segment,numFrames,numUsableFrames,data_prob.val());
-	  outf.write(buff);
-	  outf.nl();
-	};
-	outf.write(data_prob.val());
-	GM_Parms.emWriteUnencodedAccumulators(outf,writeLogVals);
+      printf("writing %s-kernel feature space vector ...\n",(fisherKernelP?"Fisher":"accumulator"));
+      if (annotateTransformationOutput) {
+	char buff[1024];
+	sprintf(buff,"Segment %d : %d frames, %d usable frames, log(PE) = %f",segment,numFrames,numUsableFrames,data_prob.val());
+	outf.write(buff);
 	outf.nl();
-      } else {
-	error("\nERROR in gmtkKernel: Fisher Kernel not yet supported");
-      }
-
+      };
+      outf.write(data_prob.val());
+      GM_Parms.emWriteUnencodedAccumulators(outf,writeLogVals);
+      outf.nl();
+      
       (*dcdrng_it)++;
       firstTime = false;
     }

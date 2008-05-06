@@ -141,6 +141,10 @@ DiagGaussian::emIncrementMeanDiagCovar(const float fprob,
   register float *meanAccumulator_p = meanAccumulator;
   register float *diagCovarAccumulator_p = diagCovarAccumulator;
   do {
+
+#if 0
+    // this code has aliasing so is commented out in favor of the
+    // code below.
     register float tmp = (*f_p)*fprob;
     *meanAccumulator_p += tmp;
     tmp *= (*f_p);
@@ -148,6 +152,94 @@ DiagGaussian::emIncrementMeanDiagCovar(const float fprob,
     meanAccumulator_p++;
     diagCovarAccumulator_p++;
     f_p ++;
+#endif
+
+    // a version of the above code that avoids aliasing of f_p and
+    // meanAccumulator_p so the compiler can probably optimize better.
+
+    register float tmp = (*f_p)*fprob;
+    register float tmp2 = tmp*(*f_p);
+
+    *meanAccumulator_p += tmp;
+    *diagCovarAccumulator_p += tmp2;
+
+    meanAccumulator_p++;
+    diagCovarAccumulator_p++;
+    f_p ++;
+
   } while (f_p != f_p_endp);
 }
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * fkIncrementMeanDiagCovar
+ *      Simultaneously increments a mean and a diagonal covariance vector
+ *      with one loop rather than doing each separately with two loops.
+ *      Here we incement the mean and covariance according to what is needed
+ *      to produce the Fisher kernel vector (i.e., what is needed to produce the
+ *      Fisher kernel of the DBN). The resulting feature space parameters are
+ *      stored in the very same EM accumulators.
+ * 
+ * Preconditions:
+ *      Vectors must be allocated and pointing to appropriately sized
+ *      arrays. No other assumptions are made (e.g., such as like prob
+ *      is large enough).
+ *
+ * Postconditions:
+ *      Vectors have been accumulated by f.
+ *
+ * Side Effects:
+ *      Changes meanAccumulator and diagCovarAccumulator arrays.
+ *
+ * Results:
+ *      nothing.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+DiagGaussian::fkIncrementMeanDiagCovar(const float fprob,
+				       const float * const f,
+				       const unsigned len,
+				       float *curMeans,
+				       float *curDiagCovars,
+				       float *meanAccumulator,
+				       float *diagCovarAccumulator)
+{
+  register const float * f_p = f;
+  register const float *const f_p_endp = f + len;
+
+  register float *mean_p = curMeans;
+  register float *diagCovar_p = curDiagCovars;
+
+  register float *meanAccumulator_p = meanAccumulator;
+  register float *diagCovarAccumulator_p = diagCovarAccumulator;
+
+  do {
+
+    register float tmp = (*f_p - *mean_p)/(*diagCovar_p);
+
+    // store the values in temporaries so that the
+    // compiler knows that there is no aliasing.
+    register float mean_val = fprob*tmp;
+    tmp = tmp*tmp;
+    register float covar_val = -0.5*fprob*(1.0/(*diagCovar_p) + tmp);
+
+    // increment the actual accumulators
+    *meanAccumulator_p += mean_val;
+    *diagCovarAccumulator_p += covar_val;
+
+    // update all pointers
+
+    mean_p++;
+    diagCovar_p++;
+    meanAccumulator_p++;
+    diagCovarAccumulator_p++;
+    f_p ++;
+  } while (f_p != f_p_endp);
+
+}
+
 

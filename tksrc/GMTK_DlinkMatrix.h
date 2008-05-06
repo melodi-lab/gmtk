@@ -140,6 +140,11 @@ public:
 		   float* xzAccumulators,
 		   float* zzAccumulators,
 		   float* zAccumulators);
+  void emIncrement(const logpr prob,
+		   const float fprob,
+		   const float* const f,
+		   const Data32* const base,
+		   const int stride);
   void emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumulators);
   void emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulators,
 					     const float*const zAccumulators,

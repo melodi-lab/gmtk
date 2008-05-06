@@ -120,6 +120,14 @@ public:
   // only want to add the priors to one process, not all of them.
   static bool useDirichletPriors;
 
+
+  // global variable to determine if, when we do the accumulators, we
+  // actually want to accumulate according to the Fisher kernel
+  // scores.  I.e., rather than actually accumulating the EM expected
+  // counts, what we do is accumulate so that the result is the
+  // derivative of the log likelihood.
+  static bool accumulateFisherKernelScores;
+
   
   EMable() { bitmask = bm_amTraining; }
   virtual ~EMable() {}
@@ -313,7 +321,7 @@ public:
   { assert(0); }
 
   ////////////////////////////////////////////////////////////////////
-  // Accumulate new data into the internal structures for eam.
+  // Accumulate new data into the internal structures for EM.
   // assumes that the ongoing bit it set. The various 
   // versions are for differnet objects that need to utilize
   // different information when they are being called.

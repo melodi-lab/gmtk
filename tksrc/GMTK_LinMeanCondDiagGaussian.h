@@ -170,6 +170,8 @@ public:
   const string typeName() { return "Linear mean-conditional Gaussian"; }
   //////////////////////////////////
 
+  void fkIncrementMeanDiagCovarDlinks();
+
   //////////////////////////////////
   // Sample Generation            //
   //////////////////////////////////

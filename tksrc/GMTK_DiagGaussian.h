@@ -137,6 +137,13 @@ public:
   void emEndIteration();
   void emSwapCurAndNew();
 
+  static void fkIncrementMeanDiagCovar(const float prob,
+				       const float *const f,
+				       const unsigned len,
+				       float *curMeans,
+				       float *curDiagCovars,
+				       float *meanAccumulator,
+				       float *diagCovarAccumulator);
 
 
   // parallel training

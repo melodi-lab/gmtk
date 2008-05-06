@@ -353,11 +353,25 @@ DiagGaussian::emIncrement(logpr prob,
   // prob.unlog() here so it doesn't need to be done
   // twice by the callees.
   const float fprob = prob.unlog();
+
+
+  // these next calls are presumed to be valid for both EM and FK (fisher kernel accumulation).
   mean->emIncrement(prob,fprob,f,base,stride,nextMeans.ptr);
   covar->emIncrement(prob,fprob,f,base,stride,nextDiagCovars.ptr);
 
-  emIncrementMeanDiagCovar(fprob,f,nextMeans.size(),nextMeans.ptr,nextDiagCovars.ptr);
+  if (!accumulateFisherKernelScores) {
+    // do normal EM increment
+    // this call is optimized to do the 1st and 2nd moment stats simultaneously
+    emIncrementMeanDiagCovar(fprob,f,nextMeans.size(),nextMeans.ptr,nextDiagCovars.ptr);
+  } else {
+    // do a fisher score increment
+    fkIncrementMeanDiagCovar(fprob,f,nextMeans.size(),
+			     mean->means.ptr,
+			     covar->covariances.ptr,
+			     nextMeans.ptr,
+			     nextDiagCovars.ptr);
 
+  }
 }
 
 void
