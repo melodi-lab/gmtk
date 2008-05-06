@@ -225,7 +225,7 @@ DiagGaussian::fkIncrementMeanDiagCovar(const float fprob,
     // compiler knows that there is no aliasing.
     register float mean_val = fprob*tmp;
     tmp = tmp*tmp;
-    register float covar_val = -0.5*fprob*(1.0/(*diagCovar_p) + tmp);
+    register float covar_val = 0.5*fprob*(-1.0/(*diagCovar_p) + tmp);
 
     // increment the actual accumulators
     *meanAccumulator_p += mean_val;
