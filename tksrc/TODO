@@ -4466,11 +4466,15 @@ Wed May  7 00:33:19 2008
 
 
 Thu May  8 00:14:07 2008
-  - add multi-trial multinomial discrete distributions. I.e., a vector of integers
+  - add observed RV multi-trial multinomial discrete distributions. I.e., a vector of integers
     gives a histogram over N trials, and this distribution models that histogram (so this would
     use up a vector of integer observations for each frame, similar to how a Gaussian uses
     up a vector of cont. observations)
     Allow Dirichlet priors over this, ability to learn this.
+  - one simple way to do this is that when the random variable is observed, we allow
+    a range of integer features where the range must match the cardinality of the random variable.
+    In such case the accumulation will be over the range of counts and the number of trials is implicitely
+    given by \sum_i n_i.
 
 Thu May  8 00:15:23 2008
   - add regularization to discrete distributions to favor max-ent and min-ent. I.e.,
