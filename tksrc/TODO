@@ -4446,3 +4446,38 @@ Tue Apr 15 23:38:51 2008
     be to have || \mu_i - \mu ||_2 for each i. There could be approximate
     or exact l1 versions of this as well.
 
+Wed May  7 00:33:19 2008
+  - yet another idea for pruning.
+    Each clique entry has a bit string and a probability.
+       - regular pruning uses only the probabilities
+       - diversity pruning (above) prunes but maintains the diversity of the population.
+    Another idea is a form of Kolmogorov complexity pruning, where the bit strings
+      that are somehow regular are considered more likely than the bit strings that
+      are irregular. Pruning then would remove the more irregular bit strings keeping
+      the regular ones, appealing to Occam's razer that the regular ones (i.e., the
+      ones that are easy or simple or require a short program to describe) are more
+      likely to come from a simple generative process, and since there are fewer
+      simple then complex processes, the regular strings would be more probable.
+    To do this, we'd need for each bit string $b$ a way to get to $K(b)$ which is
+     a description length of $b$, and it needs to be fast.
+      - possible simple functions to try: 
+          1) number of 1 bits (i.e., if l(b) = n, and N(1|b) = n/2, this is more complex
+              than if N(1|b) is small.
+
+
+Thu May  8 00:14:07 2008
+  - add multi-trial multinomial discrete distributions. I.e., a vector of integers
+    gives a histogram over N trials, and this distribution models that histogram (so this would
+    use up a vector of integer observations for each frame, similar to how a Gaussian uses
+    up a vector of cont. observations)
+    Allow Dirichlet priors over this, ability to learn this.
+
+Thu May  8 00:15:23 2008
+  - add regularization to discrete distributions to favor max-ent and min-ent. I.e.,
+    add a pentalty of -\lambda H(p) so that during the update, we encourage the distribution
+    to be min/max entropy depending on the sign of \lambda.
+
+ 
+
+
+
