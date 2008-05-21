@@ -174,8 +174,7 @@ main(int argc,char*argv[])
 
   // Check if we want to do the Fisher kernel rather than the
   // accumulator kernel.
-  if (fisherKernelP)
-    EMable::accumulateFisherKernelScores = true;
+  EMable::fisherKernelMode = fisherKernelP;
 
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,

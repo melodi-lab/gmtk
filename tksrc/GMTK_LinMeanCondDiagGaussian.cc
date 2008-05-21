@@ -446,7 +446,7 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
   // multiple times by the callees.
   const float fprob = prob.unlog();
 
-  if (!accumulateFisherKernelScores) {
+  if (!fisherKernelMode) {
     mean->emIncrement(prob,fprob,f,base,stride,xAccumulators.ptr);
     dLinkMat->emIncrement(prob,fprob,f,base,stride,
 			  xzAccumulators.ptr,

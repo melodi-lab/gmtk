@@ -758,7 +758,7 @@ MDCPT::emIncrement(logpr prob,vector <RV*>& parents,RV* rv)
   // Grab the current offset ...
   int offset = mdcpt_ptr-mdcpt.ptr;
 
-  if (accumulateFisherKernelScores) {
+  if (fisherKernelMode) {
     // TODO: make it so that we don't divide (i.e. subtract) the
     // existing parameter each time but we factor this out of
     // the loop.
