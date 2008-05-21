@@ -45,8 +45,11 @@ EMable::missedIncrementCount = 0;
 
 bool EMable::useDirichletPriors = false;
 
-bool EMable::accumulateFisherKernelScores = false;
-
+// It is important to set this by default false here as otherwise EM
+// training won't work. Set this to true *only* when you are outputing
+// the EM accumulators and you want them to be the Fisher kernel
+// fixed-length vector.
+bool EMable::fisherKernelMode = false;
 
 ////////////////////////////////////////////////////
 // The minimum accumulated probability of mean and covariance -like
@@ -311,11 +314,16 @@ EMable::emWriteUnencodedAccumulators(oDataStreamFile& ofile,
     return;
   } else {
 
-    // store the accumulators as normal values      
-    if (writeLogVals) {
-      ofile.write(accumulatedProbability.val(),"EM store accums");
-    } else {
-      ofile.write(accumulatedProbability.unlog(),"EM store accums");
+    // this routine might be called indirectly by the fisher kernel program 
+    // so we check if we're doing the fisher kernel or the accumulator kernel to
+    // see if we set the appropriate values.
+    if (!fisherKernelMode) {
+      // store the accumulators as normal values      
+      if (writeLogVals) {
+	ofile.write(accumulatedProbability.val(),"EM store accums");
+      } else {
+	ofile.write(accumulatedProbability.unlog(),"EM store accums");
+      }
     }
     if (accumulatedProbability.zero()) {
       // then we have no probability values, so we need to write out 'zero' accumulators.

@@ -359,7 +359,7 @@ DiagGaussian::emIncrement(logpr prob,
   mean->emIncrement(prob,fprob,f,base,stride,nextMeans.ptr);
   covar->emIncrement(prob,fprob,f,base,stride,nextDiagCovars.ptr);
 
-  if (!accumulateFisherKernelScores) {
+  if (!fisherKernelMode) {
     // do normal EM increment
     // this call is optimized to do the 1st and 2nd moment stats simultaneously
     emIncrementMeanDiagCovar(fprob,f,nextMeans.size(),nextMeans.ptr,nextDiagCovars.ptr);

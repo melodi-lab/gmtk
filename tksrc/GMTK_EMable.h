@@ -125,8 +125,10 @@ public:
   // actually want to accumulate according to the Fisher kernel
   // scores.  I.e., rather than actually accumulating the EM expected
   // counts, what we do is accumulate so that the result is the
-  // derivative of the log likelihood.
-  static bool accumulateFisherKernelScores;
+  // derivative of the log likelihood. This also effects a few other
+  // things like the writing out of accumulators (which are really
+  // fisher scores), and so is different than the EM accumulators.
+  static bool fisherKernelMode;
 
   
   EMable() { bitmask = bm_amTraining; }

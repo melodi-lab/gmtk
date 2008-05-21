@@ -434,7 +434,7 @@ Dense1DPMF::emIncrement(logpr prob,
     return;
   }
   accumulatedProbability+= prob;
-  if (!accumulateFisherKernelScores) {
+  if (!fisherKernelMode) {
     for (int i=0;i<nextPmf.len();i++) {
       // we assume here that 'prob' has already
       // been multipled into postDist by our friendly
@@ -493,7 +493,7 @@ Dense1DPMF::emIncrement(logpr prob,
     return;
   } 
   accumulatedProbability+= prob;
-  if (!accumulateFisherKernelScores) {
+  if (!fisherKernelMode) {
     nextPmf[val] += prob;
   } else {
     // do Fisher score accumulation case.

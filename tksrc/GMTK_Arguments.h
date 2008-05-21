@@ -1455,7 +1455,10 @@ static bool randomizeParams = false;
 static bool transFileIsBinary = false;
 static char *objsToNotUtilizeFile=NULL;
 static bool localCliqueNormalization = false;
-static bool fisherKernelP = false;
+
+// WARNING: we set the default behaivor of any program that includes the kernel code to true (to default to fisher kernel)
+// but this means that we should not include this in any program that wants to do EM training by default.
+static bool fisherKernelP = true;
 static char *storeFeatureFile = NULL;
 static bool annotateTransformationOutput = true;
 static bool writeLogVals = false;
