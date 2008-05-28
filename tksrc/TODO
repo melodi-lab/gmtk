@@ -4482,6 +4482,12 @@ Thu May  8 00:15:23 2008
     to be min/max entropy depending on the sign of \lambda.
 
  
+Tue May 27 23:47:27 2008
+  - in cases when objects are not trainable, it should be possible to make them
+    all potentially iterable (e.g., iterable sparse CPTs, iterable MDCPTs, etc. etc.) just
+    like decision trees and lattices are currently.
+
+
 
 
 
