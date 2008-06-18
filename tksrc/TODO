@@ -3801,6 +3801,14 @@ Thu Aug 31 19:10:46 2006
         varsSatisfy using mapping("bla");
            // where mapping is a DT
 
+        (added Sun Jun  1 01:43:36 2008)
+            allSorted(varset) (i.e., true only if vars of the argument are sorted).
+            isPermutationOf(varSetA,varSetB) true if the values of A can be permuted to get the
+                variables in set B, both sets must be same size and consist of vars with 
+                same domain (cardinality)
+            permutationDistance(varSetA,varSetB) returns score of distance of two var sets.
+
+
      directionalConstraint: fooA(0) = functionOf(fooA(-1)) using mapping("bla");
         // where 'bla' is the name of a decision tree
         // should it be possible to have more variables be a function? (and why)
@@ -4487,7 +4495,27 @@ Tue May 27 23:47:27 2008
     all potentially iterable (e.g., iterable sparse CPTs, iterable MDCPTs, etc. etc.) just
     like decision trees and lattices are currently.
 
+Mon Jun  9 00:57:20 2008
+  - yet another form of diversity pruning. The diversity pruning above
+    uses the clique values to determine diversity. But we can cluster
+    not only clique values but also the scores into clusters, and then
+    prune separaetly within each cluster. I.e., if the
+    probabilities/scores bunch into clusters, we might want to keep
+    the most probable within each cluster.
+   - k-means might do a good job here, but maybe a better idea is to:
+       1) choose a bunch of points at random w/o replacement and throw them into random bins.
+       2) keep choosing points randomly w/o replacement and throw them into the bin which
+          has the closest mean, updating the bin mean occordingly.
+      - simple way of doing this using random w replacement. Randomly sample L points and
+          randomly place them into K bins. Randomly sample N-L points and place them into the
+          closest bin updaing means accordingly. Next, go through all N points and
+          place them into the appropriate bin. This clusters the points in time 2N.
+        (should do some analysis here on clique distributions, are they clustered,
+         what sort of distributions do we see for certain applications?)
 
+
+
+     
 
 
 
