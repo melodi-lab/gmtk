@@ -4515,7 +4515,25 @@ Mon Jun  9 00:57:20 2008
 
 
 
-     
+Tue Jul  1 15:57:53 2008
+  - add ability to give a list of all paths that are involved in GMTK.
+    I.e., in all files, objects, etc. give a list of all paths that any parameter
+    somewhere might have a dependence on.
+
+Tue Jul  8 13:43:08 2008
+  - this is probably mentioned somewhere above, but just in case:
+      when choosing variable order to iterate over, when we have switching
+      parents, that is the case that makes the most sence to do variable ordering.
+      I.e., say we have switching parent S and conditional parents P1 and P2.
+      We would first iterate over S, and then depending on the value of S,
+      next iterate over *only* P1, and then C (the child) without iterating
+      over P2 (assuming that S switches in P1). This is especially true if
+      the relationship between P1 and C is sparse or deterministic as we can
+      do a lot of pruning by iterating over only those values of C that
+      survive P1 without having to extraneously doing it over and over
+      for different values of P2. Once we instantiate S, P1, and C, then
+      we can (at some point later) iterate over P2 to get the final clique entries.
+      Thus, variable order will need to be built in at the beginning.
 
 
-
+      
