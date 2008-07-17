@@ -4536,4 +4536,20 @@ Tue Jul  8 13:43:08 2008
       Thus, variable order will need to be built in at the beginning.
 
 
-      
+Tue Jul  8 16:14:02 2008
+  - right now, accumulator files are compatible if the parameter files are identical
+    (even if the structure is different). Add an ability to create compatible
+    accumulator files from different parameter files (i.e., the ability to
+    say something like only save the 'trainable' parameters to the accumulator
+    files rather than all of the accumluators for all parameters).
+
+
+Wed Jul 16 22:49:32 2008
+  - regarding diversity pruning, have the ability for a user to
+    specify the 'meanings' of random variables for the purposes of calculating diversity. E.g., in a lattice
+    CPT, each edge has its own integer, but if the label on two edges are the same, but they have different integer ids,
+    then that shouldn't count as more diverse (diversity should be measured by the meaning of the random variables rather
+    than their integer id). This could take the form of the vocabulary/strings associated with RVs. Alternatively,
+    for each random variable, it could optinoally be given a table of 'meaning' integers which are used for calculating
+    diversity.
+
