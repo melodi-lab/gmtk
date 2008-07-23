@@ -4553,3 +4553,9 @@ Wed Jul 16 22:49:32 2008
     for each random variable, it could optinoally be given a table of 'meaning' integers which are used for calculating
     diversity.
 
+
+Wed Jul 23 11:54:30 2008
+  - add a scalar gamma observed distribution for continuous values with parametrs k & theta
+  - mean is u =  k\theta, variance is s = k \theta^2, so we can get
+        \theta = s/u and \theta = u^2/s.
+
