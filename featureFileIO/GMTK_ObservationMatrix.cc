@@ -2055,15 +2055,19 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   }
 
   short pk = parm_kind & BASEMASK;
+  bool isCompressed = parm_kind & IS_COMPRESSED;
 
   if (pk < WAVEFORM || pk > ANON) {
     warning("WARNING: ObservationMatrix::openHTKFile: Undefined parameter kind for HTK feature file: %i. Will assume float features.\n",pk);
   }
 
-  // For now we don't support the WAVEFORM parameter kind.  It uses
+  // For now we don't support the WAVEFORM and IREFC parameter kind.  It uses
   // shorts instead of floats and that requires special treatment.
   if (pk == WAVEFORM) {
     warning("WARNING: ObservationMatrix::openHTKFile: HTK WAVEFORM parameter kind not supported: %i\n",pk);
+  }
+  else if (pk == IREFC) {
+    warning("WARNING: ObservationMatrix::openHTKFile: HTK IREFC parameter kind not supported: %i\n",pk);
   }
 
 
@@ -2084,7 +2088,11 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   }
   // otherwise all continuous features
   else {
-    n_fea = samp_size / sizeof(float);
+	if(isCompressed)
+		n_fea = samp_size / sizeof(short);
+	else
+		n_fea = samp_size / sizeof(float);
+	
     if (n_fea != nfloats) {
       error("ERROR: ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of floats specified (%i)\n", n_fea,nfloats);
     }
@@ -2092,10 +2100,40 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
       warning("WARNING: ObservationMatrix::openHTKFile:  Number of floats specified (%i) is not 0 but the HTK parameter kind is DISCRETE.\n",nfloats);
     }
   }
+  
+  if (isCompressed){
+	  //the scale and offset floats take 8 bytes in total, 
+	  //which is the same as 4 compressed samples
+	  float* scale = new float[n_fea]; //A in htk book	  
+	  float* offset = new float[n_fea]; //B in htk book	  
+	  float* tmp = new float[n_fea];
+	  if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
+	    error("ERROR: ObservationMatrix::openHTKFile: Can't read scales for decompressing.\n");
+	  }
+	  if(bswap)
+		  swapb_vf32_vf32(n_fea,tmp,scale);
+	  else
+		  copy_vf32_vf32(n_fea,tmp,scale);
 
-  f->curNumFrames = n_samples;
+	  if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
+	    error("ERROR: ObservationMatrix::openHTKFile: Can't read offsets for decompressing.\n");
+	  }
+	  if(bswap)
+		  swapb_vf32_vf32(n_fea,tmp,offset);
+	  else
+		  copy_vf32_vf32(n_fea,tmp,offset);
+	  f->curHTKFileInfo= new HTKFileInfo(isCompressed,scale,offset);
 
-  return n_samples;
+	  f->curNumFrames = n_samples-4;
+
+  }
+  else{
+	  f->curHTKFileInfo= new HTKFileInfo(isCompressed,NULL,NULL);
+
+	  f->curNumFrames = n_samples;
+  }
+  
+  return f->curNumFrames;
 }
 
 /* close individual data files, except for pfile. */
@@ -2153,19 +2191,50 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
   // if we have only one type read complete sentence
   if(num_ints==0) {
     assert(float_buffer !=NULL);
-    n_read = fread((float *)float_buffer,sizeof(float),total_num_floats,f);
-    if (n_read != total_num_floats) {
-      warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
-	      n_read,total_num_floats);
-      return false;
-    }
-    // swap if needed.
-    if(swap) {
-      float tmp_float[1];
-      for (unsigned i=0; i<total_num_floats; ++i) {
-	swapb_vf32_vf32(1,(float_buffer+i),tmp_float);
-	float_buffer[i]=tmp_float[0];
-      }
+    if (data_format==HTK && s->curHTKFileInfo->isCompressed) {
+			short* tmp_short_buffer = new short[total_num_floats];
+			n_read = fread((short*)tmp_short_buffer, sizeof(short),
+					total_num_floats, f);
+		    if (n_read != total_num_floats) {
+		      warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
+			      n_read,total_num_floats);
+		      return false;
+		    }
+			
+			if (swap) {
+				for (unsigned i=0; i<total_num_floats; ++i) {
+					tmp_short_buffer[i]=swapb_short_short(tmp_short_buffer[i]);
+				}
+			}
+			for (unsigned i=0; i<total_num_floats; ++i) {
+				float_buffer[i]=tmp_short_buffer[i];
+			}
+			delete [] tmp_short_buffer;
+			
+			//uncompress the shorts
+			for (unsigned i=0; i<n_samples;i++){
+				float* curSampPtr=float_buffer+i*num_floats;
+				copy_add_vf32_vf32(num_floats,s->curHTKFileInfo->offset,curSampPtr);
+				copy_div_vf32_vf32(num_floats,s->curHTKFileInfo->scale,curSampPtr);
+
+			}
+	}
+    else {
+	    
+	    n_read = fread((float *)float_buffer,sizeof(float),total_num_floats,f);
+	    if (n_read != total_num_floats) {
+	      warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
+		      n_read,total_num_floats);
+	      return false;
+	    }
+	    // swap if needed.
+	    if(swap) {
+	      float tmp_float[1];
+	      for (unsigned i=0; i<total_num_floats; ++i) {
+		swapb_vf32_vf32(1,(float_buffer+i),tmp_float);
+		float_buffer[i]=tmp_float[0];
+	      }
+	    }
     }
   }
   else if(num_floats==0) {

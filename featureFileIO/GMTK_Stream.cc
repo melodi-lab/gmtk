@@ -50,11 +50,25 @@ extern "C" {
 #define DBGFPRINTF(_x_)
 #endif
 
+
+HTKFileInfo::HTKFileInfo(bool isCompressed, float* scale, float* offset):
+	isCompressed(isCompressed), scale(scale), offset(offset){
+	
+}
+
+HTKFileInfo::~HTKFileInfo(){
+	if(scale)
+		delete [] scale;
+	if(offset)
+		delete [] offset;
+}
+
+
 StreamInfo::StreamInfo(const char *name, const char *crng_str,
 		       const char *drng_str,
 		       unsigned *nfloats, unsigned *nints, 
 		       unsigned *format, bool swap, unsigned num,bool cppIfAscii,char* cppCommandOptions, const char* sr_range_str) 
-  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions),numFileNames(0),srRng(NULL), pfile_istr(NULL), dataNames(NULL), cont_rng(NULL),disc_rng(NULL)
+  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions),numFileNames(0),srRng(NULL), pfile_istr(NULL),curHTKFileInfo(NULL), dataNames(NULL), cont_rng(NULL),disc_rng(NULL)
 {
 
   if (name == NULL) 	

@@ -58,6 +58,35 @@ enum {
 };
 
 
+///HTK parameter kind flags
+enum {
+	HAS_ENERGY=000100, 						// has energy
+	ABS_ENERGY_SUPPRESSED=000200, 			//absolute energy suppressed
+	HAS_DELTA_COEFS=000400,					//has delta coeﬃcients
+	HAS_ACCEL_COEFS=001000,					//has acceleration coeﬃcients
+	IS_COMPRESSED=002000, 					//is compressed
+	HAS_ZERO_MEAN=004000,					//has zero mean static coef.
+	HAS_CRC_CHECKSUM=010000,				//has CRC checksum
+	HAS_ZEROTH_CEPSTRAL_COEF=020000			//has 0’th cepstral coef.
+};
+
+///The description of an HTK observations file
+class HTKFileInfo{
+public:
+	HTKFileInfo(bool isCompressed, float* scale, float* offset);
+	~HTKFileInfo();
+	///HTK kind flags.  See sect. "5.10.1 HTK Format Parameter Files" of the HTK book
+	bool isCompressed;
+	 
+	/**	if the file is compressed, these are the parameters need to reinflate the compressed shorts
+	 *	into regular floats.  The memory for them is freed when the instance is destroyed
+	 */
+	float* scale;
+	float* offset;
+	  
+};
+
+
 /* file description class: contains information about (list of) input files */
 
 class StreamInfo {
@@ -92,10 +121,10 @@ public:
 
 
 
-
   InFtrLabStream_PFile *pfile_istr;  // pfile input stream
 
   FILE *curDataFile;
+  HTKFileInfo* curHTKFileInfo;	//not null if and only if curDataFile is an HTK file 
 
   char **dataNames;        // pointers to individual filenames (into fofBuf)
   size_t curNumFrames;      // size of current data file
