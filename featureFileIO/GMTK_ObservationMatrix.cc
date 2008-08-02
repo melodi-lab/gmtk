@@ -2140,8 +2140,11 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 void ObservationMatrix::closeDataFiles() {
 
   for (unsigned i = 0; i < _numStreams; i++)
-    if (_inStreams[i]->dataFormat != PFILE)
+    if (_inStreams[i]->dataFormat != PFILE){
       fclose(_inStreams[i]->curDataFile);
+      if(_inStreams[i]->curHTKFileInfo)
+    	  delete _inStreams[i]->curHTKFileInfo;
+    }
 }
 
 
