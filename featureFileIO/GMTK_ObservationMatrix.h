@@ -269,6 +269,7 @@ class ObservationMatrix {
   size_t openBinaryFile(StreamInfo *,size_t);
   size_t openAsciiFile (StreamInfo *,size_t);
   size_t openHTKFile   (StreamInfo *,size_t);
+  size_t openHTKFile2 (const string& fname, StreamInfo* f) const; //used by openHTKFile    
   size_t openPFile     (StreamInfo *,size_t);
   
   void   closeDataFiles();
