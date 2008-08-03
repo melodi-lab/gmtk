@@ -25,6 +25,9 @@
 #include <ctype.h>
 #include "range.h"
 #include "pfile.h"
+#include <string>
+
+using namespace std;
 
 // possible file formats
 
@@ -70,11 +73,22 @@ enum {
 	HAS_ZEROTH_CEPSTRAL_COEF=020000			//has 0’th cepstral coef.
 };
 
-///The description of an HTK observations file
+/** The description of an HTK observations file.
+ * Note that this refers to the actual HTK file, and not to a row in the FoF file
+ *  (the later can be a subset of the former).
+ */
 class HTKFileInfo{
 public:
-	HTKFileInfo(bool isCompressed, float* scale, float* offset);
+	HTKFileInfo(const string& fname, int samp_size, int n_samples, int startOfData,
+				bool isCompressed, float* scale, float* offset);
 	~HTKFileInfo();
+
+	string fname;  ///the name of the file
+	
+	int samp_size; /// bytes per sample
+	int n_samples; /// number of samples
+	int startOfData; ///the offset from start of file to the start of actual data
+	
 	///HTK kind flags.  See sect. "5.10.1 HTK Format Parameter Files" of the HTK book
 	bool isCompressed;
 	 

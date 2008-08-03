@@ -51,7 +51,9 @@ extern "C" {
 #endif
 
 
-HTKFileInfo::HTKFileInfo(bool isCompressed, float* scale, float* offset):
+HTKFileInfo::HTKFileInfo(const string& fname, int samp_size, int n_samples, int startOfData,
+						 bool isCompressed, float* scale, float* offset):
+	fname(fname), samp_size(samp_size), n_samples(n_samples), startOfData(startOfData),
 	isCompressed(isCompressed), scale(scale), offset(offset){
 	
 }
@@ -211,6 +213,13 @@ StreamInfo::~StreamInfo() {
   else 
     delete pfile_istr;
 
+  if(curHTKFileInfo){
+      fclose(curDataFile);
+      curDataFile = NULL;
+   	  delete curHTKFileInfo;
+   	  curHTKFileInfo= NULL;
+  }
+  
   if (cont_rng != NULL)
     delete cont_rng;   
   if (disc_rng != NULL)

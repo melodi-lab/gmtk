@@ -1937,12 +1937,8 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
  return n_samples;
 }
 
-/*
- *
- * ObservationMatrix::openHTKFile()
- *
- * open an HTK file for segment 'sentno'.
- *
+
+/** Actually open the file designated by fname, seek to the beginning of the data,(past the header).
  * The HTK file is presumed to be in the following format (taken directly
  * from the HTK book:
  *
@@ -1978,8 +1974,173 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
  * 9 USER user defined sample kind
  * 10 DISCRETE vector quantised data
  *
+ *  @pre f->curHTKFileInfo and f->curDataFile must be NULL
+ *  @post f->curHTKFileInfo and f->curDataFile and opened and filled in appropriately
+ *  @param fname the name of file to open
+ *  @param f associated stream
+ *  @return the total number of samples in the opened file
  */
+size_t ObservationMatrix::openHTKFile2(const string& fname, StreamInfo *f) const {
 
+	
+	  // structure of HTK header
+	  Int32 n_samples;
+	  Int32 samp_period;
+	  short samp_size;
+	  short parm_kind;
+
+	  Int32 tmp1,tmp2;
+
+	  short stmp1,stmp2;
+
+	  bool bswap = f->swap();
+	  int nints = f->nInts;
+	  int nfloats = f->nFloats;
+
+	  //printf ("call ObservationMatrix::openHTKFile2(%s)\n",fname.c_str());
+
+	  if ((f->curDataFile = fopen(fname.c_str(),"rb")) == NULL) {
+	    error("ERROR: ObservationMatrix::openHTKFile: Can't open '%s' for input\n",fname.c_str());
+	  }
+
+	  if (fread(&tmp1,sizeof(Int32),1,f->curDataFile) != 1) {
+	    error("ERROR: ObservationMatrix::openHTKFile: Can't read number of samples\n");
+	  }
+
+
+	  if (fread((Int32 *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
+	    error("ERROR: ObservationMatrix::openHTKFile: Can't read sample period\n");
+	  }
+
+	  if (fread((short *)&stmp1,sizeof(short),1,f->curDataFile) != 1) {
+	    error("ERROR: ObservationMatrix::openHTKFile: Can't read sample size\n");
+	    return 0;
+	  }
+
+	  if (fread(&stmp2,sizeof(short),1,f->curDataFile) != 1) {
+	    error("ERROR: ObservationMatrix::openHTKFile: Can't read parm kind\n");
+	  }
+
+	  if (bswap) {
+	    n_samples = swapb_i32_i32(tmp1);
+	    samp_period = swapb_i32_i32(tmp2);
+	    samp_size = swapb_short_short(stmp1);
+	    parm_kind = swapb_short_short(stmp2);
+	  }
+	  else {
+	    n_samples = tmp1;
+	    samp_period = tmp2;
+	    samp_size = stmp1;
+	    parm_kind = stmp2;
+	  }
+
+	  if (n_samples <= 0) {
+	    error("ERROR: ObservationMatrix::openHTKFile: number of samples is %i\n",n_samples);
+	  }
+
+	  if (samp_period <= 0 || samp_period > 1000000) {
+	    warning("WARNING: ObservationMatrix::openHTKFile: sample period is %i - must be between 0 and 1000000\n", samp_period);
+	  }
+
+	  if (samp_size <= 0 || samp_size > 5000) {
+	    warning("WARNING: ObservationMatrix::openHTKFile: sample size is %i - must be between 0 and 5000\n",samp_size);
+	  }
+
+	  short pk = parm_kind & BASEMASK;
+	  bool isCompressed = parm_kind & IS_COMPRESSED;
+
+	  if (pk < WAVEFORM || pk > ANON) {
+	    warning("WARNING: ObservationMatrix::openHTKFile: Undefined parameter kind for HTK feature file: %i. Will assume float features.\n",pk);
+	  }
+
+	  // For now we don't support the WAVEFORM and IREFC parameter kind.  It uses
+	  // shorts instead of floats and that requires special treatment.
+	  if (pk == WAVEFORM) {
+	    warning("WARNING: ObservationMatrix::openHTKFile: HTK WAVEFORM parameter kind not supported: %i\n",pk);
+	  }
+	  else if (pk == IREFC) {
+	    warning("WARNING: ObservationMatrix::openHTKFile: HTK IREFC parameter kind not supported: %i\n",pk);
+	  }
+
+	  int n_fea;
+
+	  // parameter kind DISCRETE = all discrete features
+
+	  if (nfloats == 0) {
+	    // we divide by sizeof(short) which should be presumably size of a 2-byte int
+	    // (but this is MACHINE DEPENDENT).
+	    n_fea = samp_size / sizeof(short) ;
+	    if (n_fea != nints) {
+	      error("ERROR: ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of ints specified (%i)\n", n_fea,nints);
+	    }
+	    if(parm_kind != DISCRETE) {
+	      warning("WARNING: ObservationMatrix::openHTKFile: Number of floats specified is 0 but the HTK parameter kind is not DISCRETE.\n");
+	    }
+	  }
+	  // otherwise all continuous features
+	  else {
+		if(isCompressed)
+			n_fea = samp_size / sizeof(short);
+		else
+			n_fea = samp_size / sizeof(float);
+		
+	    if (n_fea != nfloats) {
+	      error("ERROR: ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of floats specified (%i)\n", n_fea,nfloats);
+	    }
+	    if(parm_kind == DISCRETE) {
+	      warning("WARNING: ObservationMatrix::openHTKFile:  Number of floats specified (%i) is not 0 but the HTK parameter kind is DISCRETE.\n",nfloats);
+	    }
+	  }
+	  
+	  float* scale =NULL;	  
+	  float* offset =NULL;
+	  
+	  if (isCompressed){
+		  //the scale and offset floats take 8 bytes in total, 
+		  //which is the same as 4 compressed samples
+		  scale = new float[n_fea]; //A in htk book	  
+		  offset = new float[n_fea]; //B in htk book	  
+		  float* tmp = new float[n_fea];
+		  if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
+		    error("ERROR: ObservationMatrix::openHTKFile: Can't read scales for decompressing.\n");
+		  }
+		  if(bswap)
+			  swapb_vf32_vf32(n_fea,tmp,scale);
+		  else
+			  copy_vf32_vf32(n_fea,tmp,scale);
+
+		  if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
+		    error("ERROR: ObservationMatrix::openHTKFile: Can't read offsets for decompressing.\n");
+		  }
+		  if(bswap)
+			  swapb_vf32_vf32(n_fea,tmp,offset);
+		  else
+			  copy_vf32_vf32(n_fea,tmp,offset);
+
+		  n_samples -= 4;
+
+	  }
+
+	  f->curHTKFileInfo= new HTKFileInfo(fname,samp_size,n_samples,ftell(f->curDataFile),isCompressed,scale,offset);
+	  
+	  return n_samples;
+	
+}
+
+/**  open an HTK file for segment 'sentno' if necessary and seek to the beginning of data.
+ *
+ * HTK sentence locators (lines in the FoF file) can be filesnames 
+ * or they can be of format filename[sentStart:sentEnd], where sentStart and sentEnd
+ * are 0-based, indexes into the file.  So now you can specify an utterance as a 
+ * consecutive subset of frames of the htk file, as described in the htk book, section
+ * "4.2 Script Files", starting probably with HTK version 3.3
+ *
+ * 
+ *  If another HTK file is open for a different segment is already open, it is first closed.
+ *  If the sentno is contained within the previously opened HTK file, only an fseek is done
+ *  instead of reopening the file. 
+ *
+ */
 size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
   unsigned long htkfile_size=f->getFullFofSize();
@@ -1988,12 +2149,11 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   }
 
   //  assert(sentno >= 0 && sentno < _numSegments);
+  if (f->dataNames[sentno] == NULL) {
+    error("ERROR: ObservationMatrix::openHTKFile: Filename is NULL for segment %li\n",f->dataNames[sentno]);
+  }
+
   
-  //HTK sentence locators (lines in the FoF file) can now be filesnames as before
-  //or they can be of format filename[sentStart:sentEnd], where sentStart and sentEnd
-  //are 0-based, indexes into the file.  So now you can specify an utterance as a 
-  //consecutive subset of frames of the htk file, as described in the htk book, section
-  //"4.2 Script Files", starting probably with HTK version 3.3
   string sentLoc(f->dataNames[sentno]);
   unsigned int fNameLen;
   int startFrame=0, endFrame=-1; //these are the right values if the frame range is not specified
@@ -2012,177 +2172,46 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 	  fNameLen = sentLoc.length();
   }
   string fnameStr = sentLoc.substr(0,fNameLen);
-  const char *fname = fnameStr.c_str();
 
-  // structure of HTK header
-  Int32 n_samples;
-  Int32 samp_period;
-  short samp_size;
-  short parm_kind;
-
-  Int32 tmp1,tmp2;
-
-  short stmp1,stmp2;
-
-  bool bswap = f->swap();
-  int nints = f->nInts;
-  int nfloats = f->nFloats;
-
-  if (fname == NULL) {
-    error("ERROR: ObservationMatrix::openHTKFile: Filename is NULL for segment %li\n",sentno);
-  }
-
-  if ((f->curDataFile = fopen(fname,"rb")) == NULL) {
-    error("ERROR: ObservationMatrix::openHTKFile: Can't open '%s' for input\n",fname);
-  }
-
-  if (fread(&tmp1,sizeof(Int32),1,f->curDataFile) != 1) {
-    error("ERROR: ObservationMatrix::openHTKFile: Can't read number of samples\n");
-  }
-
-
-  if (fread((Int32 *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
-    error("ERROR: ObservationMatrix::openHTKFile: Can't read sample period\n");
-  }
-
-  if (fread((short *)&stmp1,sizeof(short),1,f->curDataFile) != 1) {
-    error("ERROR: ObservationMatrix::openHTKFile: Can't read sample size\n");
-    return 0;
-  }
-
-  if (fread(&stmp2,sizeof(short),1,f->curDataFile) != 1) {
-    error("ERROR: ObservationMatrix::openHTKFile: Can't read parm kind\n");
-  }
-
-  if (bswap) {
-    n_samples = swapb_i32_i32(tmp1);
-    samp_period = swapb_i32_i32(tmp2);
-    samp_size = swapb_short_short(stmp1);
-    parm_kind = swapb_short_short(stmp2);
-  }
-  else {
-    n_samples = tmp1;
-    samp_period = tmp2;
-    samp_size = stmp1;
-    parm_kind = stmp2;
-  }
-
-  if (n_samples <= 0) {
-    error("ERROR: ObservationMatrix::openHTKFile: number of samples is %i\n",n_samples);
-  }
-
-  if (samp_period <= 0 || samp_period > 1000000) {
-    warning("WARNING: ObservationMatrix::openHTKFile: sample period is %i - must be between 0 and 1000000\n", samp_period);
-  }
-
-  if (samp_size <= 0 || samp_size > 5000) {
-    warning("WARNING: ObservationMatrix::openHTKFile: sample size is %i - must be between 0 and 5000\n",samp_size);
-  }
-
-  short pk = parm_kind & BASEMASK;
-  bool isCompressed = parm_kind & IS_COMPRESSED;
-
-  if (pk < WAVEFORM || pk > ANON) {
-    warning("WARNING: ObservationMatrix::openHTKFile: Undefined parameter kind for HTK feature file: %i. Will assume float features.\n",pk);
-  }
-
-  // For now we don't support the WAVEFORM and IREFC parameter kind.  It uses
-  // shorts instead of floats and that requires special treatment.
-  if (pk == WAVEFORM) {
-    warning("WARNING: ObservationMatrix::openHTKFile: HTK WAVEFORM parameter kind not supported: %i\n",pk);
-  }
-  else if (pk == IREFC) {
-    warning("WARNING: ObservationMatrix::openHTKFile: HTK IREFC parameter kind not supported: %i\n",pk);
-  }
-
-  int n_fea;
-
-  // parameter kind DISCRETE = all discrete features
-
-  if (nfloats == 0) {
-    // we divide by sizeof(short) which should be presumably size of a 2-byte int
-    // (but this is MACHINE DEPENDENT).
-    n_fea = samp_size / sizeof(short) ;
-    if (n_fea != nints) {
-      error("ERROR: ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of ints specified (%i)\n", n_fea,nints);
-    }
-    if(parm_kind != DISCRETE) {
-      warning("WARNING: ObservationMatrix::openHTKFile: Number of floats specified is 0 but the HTK parameter kind is not DISCRETE.\n");
-    }
-  }
-  // otherwise all continuous features
-  else {
-	if(isCompressed)
-		n_fea = samp_size / sizeof(short);
-	else
-		n_fea = samp_size / sizeof(float);
-	
-    if (n_fea != nfloats) {
-      error("ERROR: ObservationMatrix::openHTKFile:  Number of features in file (%i) does not match number of floats specified (%i)\n", n_fea,nfloats);
-    }
-    if(parm_kind == DISCRETE) {
-      warning("WARNING: ObservationMatrix::openHTKFile:  Number of floats specified (%i) is not 0 but the HTK parameter kind is DISCRETE.\n",nfloats);
-    }
+  if(f->curHTKFileInfo && f->curHTKFileInfo->fname != fnameStr){
+	  //the wrong file is open
+      fclose(f->curDataFile);
+      f->curDataFile = NULL;
+   	  delete f->curHTKFileInfo;
+   	  f->curHTKFileInfo= NULL;
   }
   
-  if (isCompressed){
-	  //the scale and offset floats take 8 bytes in total, 
-	  //which is the same as 4 compressed samples
-	  float* scale = new float[n_fea]; //A in htk book	  
-	  float* offset = new float[n_fea]; //B in htk book	  
-	  float* tmp = new float[n_fea];
-	  if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
-	    error("ERROR: ObservationMatrix::openHTKFile: Can't read scales for decompressing.\n");
-	  }
-	  if(bswap)
-		  swapb_vf32_vf32(n_fea,tmp,scale);
-	  else
-		  copy_vf32_vf32(n_fea,tmp,scale);
-
-	  if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
-	    error("ERROR: ObservationMatrix::openHTKFile: Can't read offsets for decompressing.\n");
-	  }
-	  if(bswap)
-		  swapb_vf32_vf32(n_fea,tmp,offset);
-	  else
-		  copy_vf32_vf32(n_fea,tmp,offset);
-	  f->curHTKFileInfo= new HTKFileInfo(isCompressed,scale,offset);
-
-	  n_samples -= 4;
-
-  }
-  else{
-	  f->curHTKFileInfo= new HTKFileInfo(isCompressed,NULL,NULL);
-
-  }
-
-  //endFrame, and therefore the range has not been specified: use the whole file 
-  if(endFrame<0)
-	  endFrame= n_samples-1;
+  if(!f->curHTKFileInfo)   
+	  openHTKFile2(fnameStr,f);
+  
+  const HTKFileInfo* htkInfo = f->curHTKFileInfo;
+   
+  if(endFrame<0) //endFrame, and therefore the range has not been specified: use the whole file
+	  endFrame= htkInfo->n_samples-1;
   
   if(endFrame<startFrame)
 	    error("ERROR: ObservationMatrix::openHTKFile: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
   
-  if(endFrame>=n_samples)
-	    error("ERROR: ObservationMatrix::openHTKFile: %s has the last frame at %d, beyond %d, which is the number of frames in file.\n",sentLoc.c_str(), endFrame, n_samples);	  
+  if(endFrame>=htkInfo->n_samples)
+	    error("ERROR: ObservationMatrix::openHTKFile: %s has the last frame at %d, beyond %d, which is the number of frames in file.\n",sentLoc.c_str(), endFrame, htkInfo->n_samples);	  
   
   f->curNumFrames=endFrame-startFrame+1;
   
-  int dataStart = ftell(f->curDataFile);
+  
   
   //now we seek to the start frame 
-  fseek(f->curDataFile, startFrame*samp_size, SEEK_CUR);
+  fseek(f->curDataFile, htkInfo->startOfData+startFrame*htkInfo->samp_size, SEEK_SET);
   return f->curNumFrames;
 }
 
-/* close individual data files, except for pfile. */
+
+/* close individual data files, except for pfile and HTK files. 
+ * HTK file is closed only when the next HTK file is open, or when the stream is destroyed*/
 void ObservationMatrix::closeDataFiles() {
 
   for (unsigned i = 0; i < _numStreams; i++)
-    if (_inStreams[i]->dataFormat != PFILE){
+    if (_inStreams[i]->dataFormat != PFILE && _inStreams[i]->dataFormat != HTK ){
       fclose(_inStreams[i]->curDataFile);
-      if(_inStreams[i]->curHTKFileInfo)
-    	  delete _inStreams[i]->curHTKFileInfo;
     }
 }
 
