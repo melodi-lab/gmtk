@@ -30,6 +30,7 @@ VCID("$Header$")
 #include <stdio.h>
 #include <stdlib.h>
 #include <set>
+#include <algorithm>
 #include <string.h>
 
 
