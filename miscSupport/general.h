@@ -26,6 +26,7 @@ using namespace std;
 #include <sys/resource.h>
 
 #include <vector>
+#include <string>
 
 #include "machine-dependent.h"
 

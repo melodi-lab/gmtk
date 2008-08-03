@@ -30,6 +30,7 @@
 #include <ctype.h>
 
 #include <string>
+#include <algorithm>
 
 #include "general.h"
 VCID("$Header$")
