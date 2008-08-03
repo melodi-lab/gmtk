@@ -1,4 +1,4 @@
-/*
+/**
  * Written by Katrin Kirchhoff <katrin@ee.washington.edu>
  *
  * Modified by Karim Filali <karim@cs.washington.edu> on 08sep2003:
@@ -69,7 +69,7 @@
  *
  *   TODO:
  *    1- Add deltas and deltas
-v *    2- Add flatascii and flatbin formats
+ *    2- Add flatascii and flatbin formats
  *   (could treat them as single sentences or have each frame prefixed
  *   by the sentence number and maybe the frame number)
  *    3- Add support for the WAVEFORM HTK paramter kind
@@ -93,9 +93,11 @@ v *    2- Add flatascii and flatbin formats
  * */
 
 #include <stdio.h>
+#include <string>
 #include "GMTK_ObservationMatrix.h"
 #include "vbyteswapping.h"
 
+using namespace std;
 
 #include "fileParser.h"
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
@@ -1982,12 +1984,35 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
   unsigned long htkfile_size=f->getFullFofSize();
   if(sentno < 0 || sentno >= htkfile_size) {
-    error("ERROR: Requested segment no %li of observation file '%s' but the max num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
+    error("ERROR: ObservationMatrix::openHTKFile: Requested segment no %li of observation file '%s' but the max num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
   }
 
   //  assert(sentno >= 0 && sentno < _numSegments);
+  
+  //HTK sentence locators (lines in the FoF file) can now be filesnames as before
+  //or they can be of format filename[sentStart:sentEnd], where sentStart and sentEnd
+  //are 0-based, indexes into the file.  So now you can specify an utterance as a 
+  //consecutive subset of frames of the htk file, as described in the htk book, section
+  //"4.2 Script Files", starting probably with HTK version 3.3
+  string sentLoc(f->dataNames[sentno]);
+  unsigned int fNameLen;
+  int startFrame=0, endFrame=-1; //these are the right values if the frame range is not specified
+  if(sentLoc[sentLoc.length()-1]==']'){
+	  //have a subrange spec
+	  fNameLen=sentLoc.find_last_of('[');
+	  if (fNameLen==string::npos){
+		    error("ERROR: ObservationMatrix::openHTKFile: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",f->dataNames[sentno]);		  
+	  }
 
-  char *fname = f->dataNames[sentno];
+	  string range= sentLoc.substr(fNameLen+1,sentLoc.length()-2-fNameLen);
+	  if (sscanf(range.c_str(),"%d:%d",&startFrame,&endFrame) != 2)
+	  	error("ERROR: ObservationMatrix::openHTKFile: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",f->dataNames[sentno]);		  
+  }
+  else{
+	  fNameLen = sentLoc.length();
+  }
+  string fnameStr = sentLoc.substr(0,fNameLen);
+  const char *fname = fnameStr.c_str();
 
   // structure of HTK header
   Int32 n_samples;
@@ -2070,7 +2095,6 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
     warning("WARNING: ObservationMatrix::openHTKFile: HTK IREFC parameter kind not supported: %i\n",pk);
   }
 
-
   int n_fea;
 
   // parameter kind DISCRETE = all discrete features
@@ -2124,15 +2148,30 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 		  copy_vf32_vf32(n_fea,tmp,offset);
 	  f->curHTKFileInfo= new HTKFileInfo(isCompressed,scale,offset);
 
-	  f->curNumFrames = n_samples-4;
+	  n_samples -= 4;
 
   }
   else{
 	  f->curHTKFileInfo= new HTKFileInfo(isCompressed,NULL,NULL);
 
-	  f->curNumFrames = n_samples;
   }
+
+  //endFrame, and therefore the range has not been specified: use the whole file 
+  if(endFrame<0)
+	  endFrame= n_samples-1;
   
+  if(endFrame<startFrame)
+	    error("ERROR: ObservationMatrix::openHTKFile: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
+  
+  if(endFrame>=n_samples)
+	    error("ERROR: ObservationMatrix::openHTKFile: %s has the last frame at %d, beyond %d, which is the number of frames in file.\n",sentLoc.c_str(), endFrame, n_samples);	  
+  
+  f->curNumFrames=endFrame-startFrame+1;
+  
+  int dataStart = ftell(f->curDataFile);
+  
+  //now we seek to the start frame 
+  fseek(f->curDataFile, startFrame*samp_size, SEEK_CUR);
   return f->curNumFrames;
 }
 
