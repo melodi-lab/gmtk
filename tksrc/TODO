@@ -4559,3 +4559,24 @@ Wed Jul 23 11:54:30 2008
   - mean is u =  k\theta, variance is s = k \theta^2, so we can get
         \theta = s/u and \theta = u^2/s.
 
+
+Wed Jul 23 12:25:13 2008
+  - add a clique diversit measure. I.e., this is simialr to the diversity pruning above, but also similar
+    to how GMTK can print out clique entropy. Here, suppose we have a distance measure d(a,b) for clique
+    entries a and b. Clique diversity would be 
+          1/N^2 \sum_{a,a') d(a,a') where a and a' sum over all clique entries. 
+    This would cost N^2 so to speed this up, we would choose a random subset of size 
+          N' ~=~ sqrt(N log N) to do the computation, which would give an N\log N algorithm
+         (which will still probably be bast enough)
+    This could be printed in addition or in place of the clique entropy.
+
+Tue Aug 12 18:19:30 2008
+  - it may be possible to construct cliques at latter times using earlier cliques. I.e., it is possible (and perhaps even
+    probable) that most of the entries in the cliques at successive times are redundant (i.e., the same entry). While
+    there is probably little innovation at each time step t, we can save memory (which we're already doing by
+    the fact that we're using the global clique value pool) but we could also potentially save computation. Several ways:
+       1) by clustering, using the idea that the previous cluster could be re-fined rather than reconstructed, and then
+          used for pruning.
+       2) By pruning, perhaps the previous cliques probabilities could be used for a score adjustment in some way
+    Key thing is: what's the typical innovation at each time step?          
+
