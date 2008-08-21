@@ -4585,4 +4585,9 @@ Wed Aug 13 13:23:00 2008
   - implemnet parallel backtracking search where differnet threads eliminate
     part of a clique.
 
+Thu Aug 21 13:27:15 2008
+  - take a look at "Incorporating Diversity in Active Learning with SVMs"
+     in ICML-2003, by Brinker as a way to do submodular selection of points.
+     Potentially relevant to diversity pruning.
+
 
