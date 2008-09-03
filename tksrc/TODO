@@ -2944,6 +2944,9 @@ Tue May 17 18:22:30 2005
       - add a "sample training" appraoch to EM, where rather than iterating over all values,
         we just sample from the distribution N times per observation vector.
 
+   Tue Sep 2 22:20:58 2008: update: I'd guess that "posterior sampling
+      training" (which is what it could be called) probably would
+      converge in the expected value.
 
 Thu May 19 17:34:17 2005
   - new faster log table implementation.
