@@ -4593,4 +4593,10 @@ Thu Aug 21 13:27:15 2008
      in ICML-2003, by Brinker as a way to do submodular selection of points.
      Potentially relevant to diversity pruning.
 
+Wed Oct 15 14:23:45 2008
+  - look at getting a student-t distriution working as an observation distribution.
+  - also, get a real Dirichlet prior thing working (hwere we integrate over the priors parameters) useful for protein stuff.
+
+
+
 
