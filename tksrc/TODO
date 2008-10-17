@@ -4598,5 +4598,6 @@ Wed Oct 15 14:23:45 2008
   - also, get a real Dirichlet prior thing working (hwere we integrate over the priors parameters) useful for protein stuff.
 
 
-
+Fri Oct 17 02:12:46 2008
+  - add parametric semi-supervised learning to GMTK using the MP objective fnction. 
 
