@@ -4601,3 +4601,9 @@ Wed Oct 15 14:23:45 2008
 Fri Oct 17 02:12:46 2008
   - add parametric semi-supervised learning to GMTK using the MP objective fnction. 
 
+
+Sun Oct 26 15:38:11 2008 possible relevant paper on dynamic update
+  clustering for diverisity pruning.  N. J. Mitra, S. Floery,
+  M. Ovsjanikov, N. Gelfand, L. Guibas, and H. Pottmann, "Dynamic
+  geometry registration," in Proc. of the Eurographics Symposium on
+  Geometry Processing, 2007.
