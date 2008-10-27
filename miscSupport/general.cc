@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <string>
 #include <string.h>
@@ -307,4 +308,13 @@ unsigned numBitsSet(unsigned u) {
   unsigned count=0;
   while (u) { count += (u&0x1); u >>= 1; }
   return count;
+}
+
+
+char *CPP_Command() 
+{
+  char *rc = getenv("GMTK_CPP_CMD");
+  if (rc == NULL)
+    rc = "cpp";
+  return rc;
 }

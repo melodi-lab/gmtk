@@ -26,7 +26,6 @@
 #include "sArray.h"
 
 #include "GMTK_EMable.h"
-#include "GMTK_RealArray.h"
 #include "GMTK_NamedObject.h"
 
 class MeanVector;

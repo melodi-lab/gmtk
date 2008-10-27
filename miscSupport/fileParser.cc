@@ -86,7 +86,7 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
       if (extraCommentChar == CPP_DIRECTIVE_CHAR)
 	warning("WARNING: opening file '%s' via cpp but also using char '%c' as a comment, unexpected results may occur",fileName(),extraCommentChar);
 
-      string cppCommand = string("cpp");
+      string cppCommand = CPP_Command();
       if (_cppCommandOptions != NULL) {
 	cppCommand = cppCommand + string(" ") + string(_cppCommandOptions);
       }

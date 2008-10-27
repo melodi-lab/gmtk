@@ -13,17 +13,19 @@
 
 
 # compiler selection flags
-CC=gcc
-CXX=g++
+CC=gcc-4.2
+CXX=g++-4.2
 # extra flags to compilers and linker, allows user to control this from top level make run.
 EXCCFLAGS=
 # EXCXXFLAGS=-Wno-deprecated
 EXCXXFLAGS=
 EXLDFLAGS =  
-# optimization flags
-# OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
+# optimization flags (activate the appropriate one to get faster results).
+OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
 # OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
-OPTFLAGS=-g -O3 -march=prescott -mfpmath=sse -ffast-math
+# OPTFLAGS=-g -O3 -march=prescott -mfpmath=sse -ffast-math
+# OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -ffast-math
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -ffast-math
 # Other -march flags to try are:
 #       -march=pentium4 - includes MMX, SSE, SSE2, instructions.
 #       -march=prescott - includes MMX, SSE, SSE2, SSE3 instructions + better p4 scheduling

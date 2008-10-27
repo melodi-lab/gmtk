@@ -1488,7 +1488,7 @@ JunctionTree::insertFactorClique(FactorClique& factorClique,FactorInfo& factor)
 	      factor.name.c_str(),factor.frame,Co_n);
       Co.factorCliques.push_back(factorClique);
     } else {
-      // try Co
+      // try E1
       res.clear();
       set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
 		       E1.nodes.begin(),E1.nodes.end(),
@@ -1624,7 +1624,6 @@ JunctionTree::createDirectedGraphOfCliques()
 			       E_root_clique);
 
 }
-
 
 /*-
  *-----------------------------------------------------------------------
@@ -3994,7 +3993,13 @@ JunctionTree::unroll(const unsigned int numFrames)
 
   // TODO: clear out the old and pre-allocate for new size.
   jtIPartitions.clear();
-  // re-allocate.
+  // re-allocate. We add three to modifiedTemplateUnrollAmount
+  // since: 
+  //  1) when we unroll by n we get n+1 copies (+1) and
+  //     modifiedTemplateUnrollAmount is how much to unroll,
+  //     but below is how much to allocate.
+  //  2) we need a partition for P, even if it is empty. (+1) 
+  //  3) we need a partition for E, even if it is empty. (+1)
   jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
   // this clears the shared caches. 
   clearCliqueSepValueCache(perSegmentClearCliqueValueCache);

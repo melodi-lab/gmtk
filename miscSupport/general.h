@@ -136,6 +136,13 @@ unsigned int numBitsSet(unsigned u);
 
 
 /*
+ * returns a char* to the cpp command to use.
+ * It returns a string that should not be freed.
+ */
+char *CPP_Command();
+
+
+/*
  * MACHINE DEPENDENT typedefs.
  */
 

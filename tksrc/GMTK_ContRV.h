@@ -59,8 +59,8 @@ protected:
   // used to map from the current set of conditional parent values an
   // integer which then indexes into the current collection array that
   // locates a particular mixture in the global GM_Parms Mixture
-  // array. Note that for non-switching ContRVs, direct is always
-  // false, and it may be assumed to be so. In the switching case
+  // array. Note that for non-switching ContRVs, direct is almost always
+  // false (but you still need to check). In the switching case
   // (subclasses of this class) we need to check the direct field of
   // this object.
   class MappingOrDirect {

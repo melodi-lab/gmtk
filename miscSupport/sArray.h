@@ -95,6 +95,24 @@ class sArray {
   ~sArray() {
     delete [] ptr;
   }
+
+  // We don't create an operator= since we don't
+  // use this array like a regular container class.
+  sArray<T>* makeCopyOfSelf()  {
+    // makes a copy of self with duplicated memory
+    sArray<T>* cpy = new sArray<T>(_size);
+    ::memcpy((void*)cpy->ptr,(void*)ptr,sizeof(T)*_size);
+    return cpy;
+  }
+
+  void copyOtherIntoSelf(sArray<T>& other)  {
+    delete [] ptr;
+    _size  = other._size;
+    ptr = new T[_size];
+    ::memcpy((void*)ptr,(void*)other.ptr,sizeof(T)*_size);
+  }
+
+
   void resize(int arg_size) {
     if (arg_size < 0)
       coredump("Error: Sarray:resize arg_size < 0");

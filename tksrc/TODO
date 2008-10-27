@@ -4517,7 +4517,6 @@ Mon Jun  9 00:57:20 2008
          what sort of distributions do we see for certain applications?)
 
 
-
 Tue Jul  1 15:57:53 2008
   - add ability to give a list of all paths that are involved in GMTK.
     I.e., in all files, objects, etc. give a list of all paths that any parameter
@@ -4583,9 +4582,8 @@ Tue Aug 12 18:19:30 2008
        2) By pruning, perhaps the previous cliques probabilities could be used for a score adjustment in some way
     Key thing is: what's the typical innovation at each time step?          
 
-
 Wed Aug 13 13:23:00 2008
-  - implemnet parallel backtracking search where differnet threads eliminate
+  - implement parallel backtracking search where differnet threads eliminate
     part of a clique.
 
 Thu Aug 21 13:27:15 2008
@@ -4597,13 +4595,39 @@ Wed Oct 15 14:23:45 2008
   - look at getting a student-t distriution working as an observation distribution.
   - also, get a real Dirichlet prior thing working (hwere we integrate over the priors parameters) useful for protein stuff.
 
-
 Fri Oct 17 02:12:46 2008
   - add parametric semi-supervised learning to GMTK using the MP objective fnction. 
 
+Wed Oct 22 15:47:02 2008
+ - get fisher kernal working with language models
+ - get FK working with gamma distributions, and check to make sure working with gaussians. 
+
+Thu Oct 23 06:19:49 2008
+ - remove GMTK prefix from file names.
+
+Thu Oct 23 06:24:51 2008
+ - integrate rest of Simon Kings tie support.
+
+Fri Oct 24 02:14:14 2008
+ - when some objects are shared that might not make sense, give a warning message.
+   I.e., when a dpmf is shared between a discrete variable and a mixutre Gaussian variable,
+   or when a real matrix is shared between, say, a NN and a Gamma distribution, this might
+   not be something the user intends to do.
+
+Fri Oct 24 04:29:34 2008
+  - for gradient descent based discriminative learning (and other discriminative learning methods),
+    figure out how to best parallelize since otherwise training will be extremely slow.
+
+Fri Oct 24 12:24:56 2008
+  - also allow cpp command name to be on command line in addition to env variable.
+
+Fri Oct 24 13:34:17 2008
+  - give simple ability to produce posteriors of variables after
+    for/back without needing to specify a hand writen trifile.=======
 
 Sun Oct 26 15:38:11 2008 possible relevant paper on dynamic update
   clustering for diverisity pruning.  N. J. Mitra, S. Floery,
   M. Ovsjanikov, N. Gelfand, L. Guibas, and H. Pottmann, "Dynamic
   geometry registration," in Proc. of the Eurographics Symposium on
   Geometry Processing, 2007.
+

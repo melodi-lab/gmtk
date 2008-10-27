@@ -3498,6 +3498,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
 			  InferenceSeparatorClique& sep)
 {
 
+  // printf("At start of sending to outgoing separator\n");
+
   // keep a local variable copy of this around to avoid potential
   // dereferencing.  This one cannot be const since it might change
   // during a resize, in which case we need to reassign this variable.
@@ -3521,6 +3523,8 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
     // that the seperator will consist only of observed nodes. We
     // therefore create one accumulated entry and one rem entry and
     // insert our current probability.
+
+    // printf("=====>>>> Observed clique in forward pass\n");
 
     // first do some sanity checks.
     assert (sep.origin.hAccumulatedIntersection.size() == 0);
@@ -3566,7 +3570,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // next check if the outgoing separator has only obseved values.
   if (sep.origin.hAccumulatedIntersection.size() == 0 && sep.origin.hRemainder.size() == 0) {
 
-    // printf("Observed separator\n");
+    printf("Observed separator\n");
 
     // Then indeed, outgoing separator is all observed values. We do
     // this special separately from the general case since that case
@@ -4787,11 +4791,10 @@ InferenceMaxClique::ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePa
       
       InferenceSeparatorClique::AISeparatorValue& sv
 	= sepSeparatorValuesPtr[accIndex];
-    
+
+      // If anyone is almost zero, stop right now. 
       // Where was this allocated?  Search in file for key string
       // "ALLOCATE_REMVALUES_ALL_OBSERVED'
-
-      // if anyone is almost zero, stop right now.a 
       if (sv.remValues.ptr[0].p.essentially_zero()) {
 	maxCEValue.set_to_zero();
 	cliqueValues.ptr[0].p.set_to_zero();
@@ -5857,6 +5860,8 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 
 
   if (origin.hashableNodes.size() == 0) {
+    // printf("<<<<<==== Observed clique in backwards pass\n");
+
     // Do the observed clique case up front right here so we don't
     // need to keep checking below. Here, the clique is observed which
     // means that all connecting separators are also observed. We just
@@ -5868,6 +5873,7 @@ deScatterToOutgoingSeparators(JT_InferencePartition& part)
 	= sep.separatorValues->ptr[0];
       // can use assignment rather than += here since there is only one value.
       sv.remValues.ptr[0].bp() = cliqueValues.ptr[0].p;      
+      sv.numRemValuesUsed = 1;
     }
   } else {
 
@@ -7183,6 +7189,9 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique,
 	// Search in file for key string
 	// "ALLOCATE_REMVALUES_ALL_OBSERVED'
 	// to find where the nec. single entry is allocated.
+	// @@@ try allocating it here
+	separatorValues->ptr[0].remValues.resize(1);
+	separatorValues->ptr[0].numRemValuesUsed = 0;	
       }
     } else {
       // start with something a bit larger
@@ -7303,6 +7312,10 @@ InferenceSeparatorClique::InferenceSeparatorClique(SeparatorClique& from_clique)
       // Search in file for key string
       // "ALLOCATE_REMVALUES_ALL_OBSERVED'
       // to find where the nec. single entry is allocated.
+      // @@@ try allocating it here
+      separatorValues->ptr[0].remValues.resize(1);
+      separatorValues->ptr[0].numRemValuesUsed = 0;
+
     }
   } else {
     // start with something a bit larger

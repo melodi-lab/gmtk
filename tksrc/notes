@@ -2196,3 +2196,69 @@ Still big question:
      then no-good learning should kick kin. 
 
 
+Fri Oct 24 07:38:29 2008
+Code restructure:
+  - boundarytriangulate in two files
+  - JunctionTree.cc, 
+    separate files for:
+     junction tree construction
+     general message passing
+     forward inference
+     backwards inference
+     island inference
+
+Left interface:
+
+Start with, M=1,S=1
+     P C E 
+then unroll once create 
+      P C C E
+     [P]  [C]   [C E]
+    P' C'   E'
+So P' = P, C'=C, and E' = [C E] .
+We can unroll partitions zero times to create
+   P' E'
+which is the original template. We can unroll
+one time to get P' C' E' which is the orginal
+template unrolled one time.
+
+Right interface
+  P C E
+  [P C] [C] [E]
+   P'    C'  E'
+
+So when template consists of one frame which is C,
+we get that P and E are empty. Left interface case is:
+  P C E (but P and E are empty)
+  [P] C [C E]  (again P and E are empty)
+  so P' = empty
+     C' = C
+     E' = C also.
+
+If we unroll zero times, we just have an E'.  Right interface is
+symmetric case.
+
+
+Three frames of independent variables per slice.
+0 1 2
+
+Template is 1 frame, and modified template
+consists of empty P', one frame C' and one frame E'
+so to get three frames, we unroll modified template
+once.
+
+Part[0] = empty (was a P)
+Part[1] = C
+Part[2] = C
+Part[3] = C
+
+
+
+- sequence memory optimization
+ 1) can't call jt.unroll() on entire length which
+   is used by default collectEvidence() and JunctionTree::distributeEvidence()
+ 2) can't call fileparser unroll() on entire length
+ 3) 
+
+
+
